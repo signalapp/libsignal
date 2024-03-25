@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::str::FromStr;
+
 use http::{HeaderMap, HeaderName, HeaderValue, StatusCode};
 use libsignal_bridge_macros::*;
 use libsignal_net::cdsi::{LookupError, LookupResponse, LookupResponseEntry, E164};
@@ -43,9 +45,52 @@ async fn TESTING_CdsiLookupResponseConvert() -> LookupResponse {
     }
 }
 
-#[bridge_fn]
-fn TESTING_CdsiLookupErrorConvert() -> Result<(), LookupError> {
-    Err(LookupError::ParseError)
+#[repr(u8)]
+#[derive(Copy, Clone, strum::EnumString)]
+enum TestingCdsiLookupError {
+    Protocol,
+    AttestationDataError,
+    InvalidResponse,
+    RetryAfter42Seconds,
+    Parse,
+    ConnectDnsFailed,
+    WebSocketIdleTooLong,
+    Timeout,
+}
+
+impl TryFrom<String> for TestingCdsiLookupError {
+    type Error = <Self as FromStr>::Err;
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        FromStr::from_str(&value)
+    }
+}
+
+/// Return an error matching the requested description.
+#[bridge_fn_void]
+fn TESTING_CdsiLookupErrorConvert(
+    // The stringly-typed API makes the call sites more self-explanatory.
+    error_description: AsType<TestingCdsiLookupError, String>,
+) -> Result<(), LookupError> {
+    Err(match error_description.into_inner() {
+        TestingCdsiLookupError::Protocol => LookupError::Protocol,
+        TestingCdsiLookupError::AttestationDataError => {
+            LookupError::AttestationError(attest::enclave::Error::AttestationDataError {
+                reason: "fake reason".into(),
+            })
+        }
+        TestingCdsiLookupError::InvalidResponse => LookupError::InvalidResponse,
+        TestingCdsiLookupError::RetryAfter42Seconds => LookupError::RateLimited {
+            retry_after_seconds: 42,
+        },
+        TestingCdsiLookupError::Parse => LookupError::ParseError,
+        TestingCdsiLookupError::ConnectDnsFailed => LookupError::ConnectTransport(
+            libsignal_net::infra::errors::TransportConnectError::DnsError,
+        ),
+        TestingCdsiLookupError::WebSocketIdleTooLong => LookupError::WebSocket(
+            libsignal_net::infra::ws::WebSocketServiceError::ChannelIdleTooLong,
+        ),
+        TestingCdsiLookupError::Timeout => LookupError::Timeout,
+    })
 }
 
 #[bridge_fn(ffi = false)]

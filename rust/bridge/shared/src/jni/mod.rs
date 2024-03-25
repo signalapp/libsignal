@@ -17,6 +17,9 @@ use libsignal_protocol::*;
 use once_cell::sync::OnceCell;
 use signal_crypto::Error as SignalCryptoError;
 use signal_pin::Error as PinError;
+use usernames::{UsernameError, UsernameLinkError};
+
+use crate::net::cdsi::CdsiError;
 
 pub(crate) use jni::objects::{
     AutoElements, JByteArray, JClass, JLongArray, JObject, JObjectArray, JString, ReleaseMode,
@@ -43,8 +46,6 @@ pub use io::*;
 
 mod storage;
 pub use storage::*;
-
-use usernames::{UsernameError, UsernameLinkError};
 
 /// The type of boxed Rust values, as surfaced in JavaScript.
 pub type ObjectHandle = jlong;
@@ -251,6 +252,22 @@ where
                 env,
                 jni_class_name!(org.signal.libsignal.metadata.SelfSendException),
                 jni_args!(() -> void),
+            )
+            .map(JThrowable::from);
+
+            consume(env, throwable.map_err(Into::into), &error);
+            return;
+        }
+
+        SignalJniError::Cdsi(CdsiError::RateLimited { retry_after }) => {
+            let retry_after_seconds = retry_after
+                .as_secs()
+                .try_into()
+                .expect("duration < lifetime of the universe");
+            let throwable = new_object(
+                env,
+                jni_class_name!(org.signal.libsignal.net.RetryLaterException),
+                jni_args!((retry_after_seconds => long) -> void),
             )
             .map(JThrowable::from);
 
@@ -543,7 +560,13 @@ where
             jni_class_name!(org.signal.libsignal.media.ParseException)
         }
 
-        SignalJniError::Cdsi(_) => jni_class_name!(org.signal.libsignal.net.CdsiLookupException),
+        SignalJniError::Cdsi(CdsiError::RateLimited { retry_after: _ }) => {
+            unreachable!("already handled above")
+        }
+
+        SignalJniError::Cdsi(
+            CdsiError::InvalidResponse | CdsiError::ParseError | CdsiError::Protocol,
+        ) => jni_class_name!(org.signal.libsignal.net.CdsiProtocolException),
         SignalJniError::WebSocket(_) | SignalJniError::Timeout => {
             jni_class_name!(org.signal.libsignal.net.NetworkException)
         }

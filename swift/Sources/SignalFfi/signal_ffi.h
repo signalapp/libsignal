@@ -1516,6 +1516,6 @@ SignalFfiError *signal_testing_process_bytestring_array(SignalBytestringArray *o
 
 SignalFfiError *signal_testing_cdsi_lookup_response_convert(SignalCPromiseFfiCdsiLookupResponse promise, const void *promise_context, const SignalTokioAsyncContext *async_runtime);
 
-SignalFfiError *signal_testing_cdsi_lookup_error_convert(bool *out);
+SignalFfiError *signal_testing_cdsi_lookup_error_convert(const char *error_description);
 
 #endif /* SIGNAL_FFI_H_ */

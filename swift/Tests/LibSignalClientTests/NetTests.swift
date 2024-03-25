@@ -42,12 +42,49 @@ final class NetTests: XCTestCase {
     }
 
     func testCdsiLookupErrorConversion() async throws {
-        do {
-            var ignoredOut = false
-            try checkError(signal_testing_cdsi_lookup_error_convert(&ignoredOut))
+        let failWithError = {
+            try checkError(signal_testing_cdsi_lookup_error_convert($0))
             XCTFail("should have failed")
-        } catch SignalError.networkProtocolError(_) {
-            // good
+        }
+        do {
+            try failWithError("Protocol")
+        } catch SignalError.networkProtocolError(let message) {
+            XCTAssertEqual(message, "Protocol error: protocol error after establishing a connection")
+        }
+        do {
+            try failWithError("AttestationDataError")
+        } catch SignalError.unknown(SignalErrorCodeInvalidAttestationData.rawValue, let message) {
+            XCTAssertEqual(message, "SGX operation failed: attestation data invalid: fake reason")
+        }
+        do {
+            try failWithError("InvalidResponse")
+        } catch SignalError.networkProtocolError(let message) {
+            XCTAssertEqual(message, "Protocol error: invalid response received from the server")
+        }
+        do {
+            try failWithError("RetryAfter42Seconds")
+        } catch SignalError.rateLimitedError(retryAfter: 42, let message) {
+            XCTAssertEqual(message, "Rate limited; try again after 42s")
+        }
+        do {
+            try failWithError("Parse")
+        } catch SignalError.networkProtocolError(let message) {
+            XCTAssertEqual(message, "Protocol error: failed to parse the response from the server")
+        }
+        do {
+            try failWithError("ConnectDnsFailed")
+        } catch SignalError.ioError(let message) {
+            XCTAssertEqual(message, "IO error: DNS lookup failed")
+        }
+        do {
+            try failWithError("WebSocketIdleTooLong")
+        } catch SignalError.webSocketError(let message) {
+            XCTAssertEqual(message, "WebSocket error: channel was idle for too long")
+        }
+        do {
+            try failWithError("Timeout")
+        } catch SignalError.timeoutError(let message) {
+            XCTAssertEqual(message, "Operation timed out")
         }
     }
 
@@ -55,7 +92,13 @@ final class NetTests: XCTestCase {
         try throwSkipForCompileOnlyTest()
 
         let auth = Auth(username: "username", password: "password")
-        let request = try CdsiLookupRequest(e164s: [], prevE164s: [], acisAndAccessKeys: [], token: nil, returnAcisWithoutUaks: false)
+        let request = try CdsiLookupRequest(
+            e164s: [],
+            prevE164s: [],
+            acisAndAccessKeys: [],
+            token: nil,
+            returnAcisWithoutUaks: false
+        )
         let net = Net(env: .staging)
 
         let lookup = try await net.cdsiLookup(auth: auth, request: request, timeout: TimeInterval(0))

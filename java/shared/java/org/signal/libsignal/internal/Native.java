@@ -600,7 +600,7 @@ public final class Native {
 
   public static native CompletableFuture<byte[]> Svr3Restore(long asyncRuntime, long connectionManager, String password, byte[] shareSet, String username, String enclavePassword, int opTimeoutMs);
 
-  public static native void TESTING_CdsiLookupErrorConvert() throws Exception;
+  public static native void TESTING_CdsiLookupErrorConvert(String errorDescription) throws Exception;
   public static native CompletableFuture<Object> TESTING_CdsiLookupResponseConvert(long asyncRuntime);
   public static native byte[] TESTING_ChatRequestGetBody(long request);
   public static native String TESTING_ChatRequestGetHeaderValue(long request, String headerName);

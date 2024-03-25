@@ -24,13 +24,13 @@ use crate::*;
 /// Contains cases for errors that aren't covered by other error types.
 #[derive(Debug, displaydoc::Display)]
 pub enum CdsiError {
-    /// Protocol error after establishing a connection.
+    /// Protocol error after establishing a connection
     Protocol,
-    /// Invalid response received from the server.
+    /// Invalid response received from the server
     InvalidResponse,
-    /// Retry later.
+    /// Retry later
     RateLimited { retry_after: Duration },
-    /// Failed to parse the response from the server.
+    /// Failed to parse the response from the server
     ParseError,
 }
 

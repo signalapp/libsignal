@@ -7,11 +7,14 @@ package org.signal.libsignal.net;
 
 import static org.junit.Assert.*;
 
+import java.io.IOException;
+import java.time.Duration;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import org.junit.Test;
+import org.signal.libsignal.attest.AttestationDataException;
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
 import org.signal.libsignal.protocol.ServiceId;
@@ -51,6 +54,35 @@ public class CdsiLookupResponseTest {
 
   @Test
   public void cdsiLookupErrorConvert() {
-    assertThrows(java.lang.Exception.class, () -> Native.TESTING_CdsiLookupErrorConvert());
+    assertLookupErrorIs(
+        "Protocol", CdsiProtocolException.class, "Protocol error after establishing a connection");
+    assertLookupErrorIs(
+        "AttestationDataError",
+        AttestationDataException.class,
+        "attestation data invalid: fake reason");
+    assertLookupErrorIs(
+        "InvalidResponse",
+        CdsiProtocolException.class,
+        "Invalid response received from the server");
+    RetryLaterException retryLater =
+        assertLookupErrorIs(
+            "RetryAfter42Seconds", RetryLaterException.class, "Retry after 42 seconds");
+    assertEquals(retryLater.duration, Duration.ofSeconds(42));
+
+    assertLookupErrorIs(
+        "Parse", CdsiProtocolException.class, "Failed to parse the response from the server");
+    assertLookupErrorIs("ConnectDnsFailed", IOException.class, "DNS lookup failed");
+    assertLookupErrorIs(
+        "WebSocketIdleTooLong", NetworkException.class, "channel was idle for too long");
+    assertLookupErrorIs("Timeout", NetworkException.class, "timeout");
+  }
+
+  private static <E extends Exception> E assertLookupErrorIs(
+      String errorDescription, Class<E> expectedErrorType, String expectedMessage) {
+    E e =
+        assertThrows(
+            expectedErrorType, () -> Native.TESTING_CdsiLookupErrorConvert(errorDescription));
+    assertEquals(e.getMessage(), expectedMessage);
+    return e;
   }
 }

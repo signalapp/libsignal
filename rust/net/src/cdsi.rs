@@ -243,21 +243,21 @@ impl<S> AsMut<AttestedConnection<S>> for CdsiConnection<S> {
 /// Anything that can go wrong during a CDSI lookup.
 #[derive(Debug, Error, displaydoc::Display)]
 pub enum LookupError {
-    /// Protocol error after establishing a connection.
+    /// protocol error after establishing a connection
     Protocol,
     /// SGX attestation failed.
     AttestationError(attest::enclave::Error),
-    /// Invalid response received from the server.
+    /// invalid response received from the server
     InvalidResponse,
-    /// Retry later.
+    /// retry later
     RateLimited { retry_after_seconds: u32 },
-    /// Failed to parse the response from the server.
+    /// failed to parse the response from the server
     ParseError,
-    /// Transport failed: {0}
+    /// transport failed: {0}
     ConnectTransport(TransportConnectError),
-    /// WebSocket error: {0}
+    /// websocket error: {0}
     WebSocket(WebSocketServiceError),
-    /// Lookup timed out
+    /// lookup timed out
     Timeout,
 }
 

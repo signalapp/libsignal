@@ -146,9 +146,49 @@ describe('cdsi lookup', () => {
     });
 
     it('converts errors to native', () => {
-      expect(() => Native.TESTING_CdsiLookupErrorConvert())
-        .throws(LibSignalErrorBase)
-        .with.property('code', ErrorCode.IoError);
+      const cases: Array<[string, ErrorCode, string]> = [
+        [
+          'Protocol',
+          ErrorCode.IoError,
+          'protocol error after establishing a connection',
+        ],
+        [
+          'AttestationDataError',
+          ErrorCode.Generic,
+          'attestation data invalid: fake reason',
+        ],
+        [
+          'InvalidResponse',
+          ErrorCode.IoError,
+          'invalid response received from the server',
+        ],
+        ['RetryAfter42Seconds', ErrorCode.RateLimitedError, 'retry later'],
+        [
+          'Parse',
+          ErrorCode.IoError,
+          'failed to parse the response from the server',
+        ],
+        [
+          'ConnectDnsFailed',
+          ErrorCode.IoError,
+          'transport failed: DNS lookup failed',
+        ],
+        [
+          'WebSocketIdleTooLong',
+          ErrorCode.IoError,
+          'websocket error: channel was idle for too long',
+        ],
+        ['Timeout', ErrorCode.IoError, 'lookup timed out'],
+      ];
+      cases.forEach((testCase) => {
+        const [name, expectedCode, expectedMessage] = testCase;
+        expect(() => Native.TESTING_CdsiLookupErrorConvert(name))
+          .throws(LibSignalErrorBase)
+          .to.include({
+            code: expectedCode,
+            message: expectedMessage,
+          });
+      });
     });
   });
 });

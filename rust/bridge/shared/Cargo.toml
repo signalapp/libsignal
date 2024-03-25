@@ -62,6 +62,7 @@ jni = { version = "0.21", package = "jni", optional = true }
 neon = { version = "1.0.0", optional = true, default-features = false, features = ["napi-6"] }
 linkme = { version = "0.3.9", optional = true }
 signal-neon-futures = { path = "../node/futures", optional = true }
+strum = { version = "0.26", features = ["derive"] }
 
 [dev-dependencies]
 test-case = "3.3.1"
