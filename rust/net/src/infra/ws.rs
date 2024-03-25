@@ -392,11 +392,28 @@ impl<S: AsyncDuplexStream, E> WebSocketClient<S, E>
 where
     WebSocketServiceError: Into<E>,
 {
+    #[cfg(test)]
+    pub(crate) fn new_fake(channel: WebSocketStream<S>, remote_address: url::Host) -> Self {
+        const VERY_LARGE_TIMEOUT: Duration = Duration::from_secs(u32::MAX as u64);
+        let (client, _service_status) = start_ws_service(
+            channel,
+            remote_address,
+            VERY_LARGE_TIMEOUT,
+            VERY_LARGE_TIMEOUT,
+        );
+        client
+    }
+
     /// Sends a request on the connection.
     ///
     /// An error is returned if the send fails.
     pub(crate) async fn send(&mut self, item: TextOrBinary) -> Result<(), E> {
         self.ws_client_writer.send(item).await
+    }
+
+    #[cfg(test)]
+    pub(crate) async fn close(self, close: Option<CloseFrame<'static>>) -> Result<(), E> {
+        self.ws_client_writer.send(Message::Close(close)).await
     }
 
     /// Receives a message on the connection.
@@ -576,17 +593,133 @@ async fn authenticate<S: AsyncDuplexStream>(
     Ok(handshake.complete(&initial_response)?)
 }
 
+/// Test utilities related to websockets.
 #[cfg(test)]
-mod test {
-    use crate::env::{WS_KEEP_ALIVE_INTERVAL, WS_MAX_IDLE_TIME};
-    use assert_matches::assert_matches;
-    use futures_util::{pin_mut, poll};
+pub(crate) mod testutil {
     use tokio::io::DuplexStream;
+    use tokio_tungstenite::WebSocketStream;
+
+    use crate::env::{WS_KEEP_ALIVE_INTERVAL, WS_MAX_IDLE_TIME};
+    use crate::infra::AsyncDuplexStream;
 
     use super::*;
 
+    pub(crate) async fn fake_websocket(
+    ) -> (WebSocketStream<DuplexStream>, WebSocketStream<DuplexStream>) {
+        let (client, server) = tokio::io::duplex(1024);
+        let req = url::Url::parse("ws://localhost:8080/").unwrap();
+        let client_future = tokio_tungstenite::client_async(req, client);
+        let server_future = tokio_tungstenite::accept_async(server);
+        let (client_res, server_res) = tokio::join!(client_future, server_future);
+        let (client_stream, _) = client_res.unwrap();
+        let server_stream = server_res.unwrap();
+        (server_stream, client_stream)
+    }
+
+    pub(crate) fn websocket_test_client<S: AsyncDuplexStream>(
+        channel: WebSocketStream<S>,
+    ) -> WebSocketClient<S, WebSocketServiceError> {
+        start_ws_service(
+            channel,
+            url::Host::Domain("localhost".to_string()),
+            WS_KEEP_ALIVE_INTERVAL,
+            WS_MAX_IDLE_TIME,
+        )
+        .0
+    }
+
+    pub(crate) const FAKE_ATTESTATION: &[u8] =
+        include_bytes!("../../../attest/tests/data/svr2handshakestart.data");
+
+    /// Runs a fake SGX server that sets up a session and then responds to requests.
+    ///
+    /// Produces a future that, when polled, runs the server side of an attested
+    /// websocket connection. The provided callback is executed for each
+    /// incoming event, and the returned value is sent to the peer. If the
+    /// callback returns [`NextOrClose::Close`], the connection is terminated
+    /// and this future resolves.
+    pub(crate) async fn run_attested_server(
+        websocket: WebSocketStream<impl AsyncDuplexStream>,
+        private_key: impl AsRef<[u8]>,
+        mut on_message: impl FnMut(NextOrClose<Vec<u8>>) -> NextOrClose<Vec<u8>>,
+    ) {
+        let mut websocket = websocket_test_client(websocket);
+        // Start the server with a known private key (K of NK).
+        let mut server_hs =
+            snow::Builder::new(attest::client_connection::NOISE_PATTERN.parse().unwrap())
+                .local_private_key(private_key.as_ref())
+                .build_responder()
+                .unwrap();
+
+        // The server first sends over its attestation message.
+        websocket
+            .send(Vec::from(FAKE_ATTESTATION).into())
+            .await
+            .unwrap();
+
+        // Wait for the handshake from the client.
+        let incoming = websocket
+            .receive()
+            .await
+            .unwrap()
+            .unwrap_next()
+            .try_into_binary()
+            .unwrap();
+        assert_eq!(server_hs.read_message(&incoming, &mut []).unwrap(), 0);
+
+        let mut message = vec![0u8; 48];
+        let write_size = server_hs.write_message(&[], &mut message).unwrap();
+
+        assert_eq!(write_size, 48);
+        assert!(server_hs.is_handshake_finished());
+
+        websocket.send(message.into()).await.unwrap();
+
+        let mut server_transport = server_hs.into_transport_mode().unwrap();
+
+        while let Ok(incoming) = websocket.receive().await {
+            let received = match incoming {
+                NextOrClose::Close(close) => NextOrClose::Close(close),
+                NextOrClose::Next(incoming) => {
+                    let incoming = incoming.try_into_binary().unwrap();
+                    let mut payload = vec![0; incoming.len()];
+                    let read = server_transport
+                        .read_message(&incoming, &mut payload)
+                        .unwrap();
+                    payload.truncate(read);
+
+                    NextOrClose::Next(payload)
+                }
+            };
+
+            match on_message(received) {
+                NextOrClose::Close(close) => {
+                    websocket.close(close).await.unwrap();
+                    break;
+                }
+                NextOrClose::Next(payload) => {
+                    let mut outgoing = vec![0; payload.len() * 2];
+                    let written = server_transport
+                        .write_message(&payload, &mut outgoing)
+                        .unwrap();
+                    outgoing.truncate(written);
+                    websocket.send(outgoing.into()).await.unwrap();
+                }
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use assert_matches::assert_matches;
+    use futures_util::{pin_mut, poll};
+
+    use super::testutil::*;
+    use super::*;
+
     impl<T: Debug> NextOrClose<T> {
-        fn unwrap_next(self) -> T
+        pub(crate) fn unwrap_next(self) -> T
         where
             T: Debug,
         {
@@ -598,29 +731,6 @@ mod test {
     }
 
     const MESSAGE_TEXT: &str = "text";
-
-    async fn fake_websocket() -> (WebSocketStream<DuplexStream>, WebSocketStream<DuplexStream>) {
-        let (client, server) = tokio::io::duplex(1024);
-        let req = url::Url::parse("ws://localhost:8080/").unwrap();
-        let client_future = tokio_tungstenite::client_async(req, client);
-        let server_future = tokio_tungstenite::accept_async(server);
-        let (client_res, server_res) = tokio::join!(client_future, server_future);
-        let (client_stream, _) = client_res.unwrap();
-        let server_stream = server_res.unwrap();
-        (server_stream, client_stream)
-    }
-
-    fn websocket_test_client<S: AsyncDuplexStream>(
-        channel: WebSocketStream<S>,
-    ) -> WebSocketClient<S, WebSocketServiceError> {
-        start_ws_service(
-            channel,
-            url::Host::Domain("localhost".to_string()),
-            WS_KEEP_ALIVE_INTERVAL,
-            WS_MAX_IDLE_TIME,
-        )
-        .0
-    }
 
     #[tokio::test]
     async fn websocket_client_sends_pong_on_server_ping() {
@@ -694,64 +804,17 @@ mod test {
         assert_matches!(handle.await.expect("joined"), Ok(()));
     }
 
-    const FAKE_ATTESTATION: &[u8] =
-        include_bytes!("../../../attest/tests/data/svr2handshakestart.data");
-
     /// Runs a fake SGX server that sets up a session and then echos back
     /// incoming messages.
     async fn run_attested_echo_server(
         websocket: WebSocketStream<impl AsyncDuplexStream>,
         private_key: impl AsRef<[u8]>,
     ) {
-        let mut websocket = websocket_test_client(websocket);
-        // Start the server with a known private key (K of NK).
-        let mut server_hs =
-            snow::Builder::new(attest::client_connection::NOISE_PATTERN.parse().unwrap())
-                .local_private_key(private_key.as_ref())
-                .build_responder()
-                .unwrap();
-
-        // The server first sends over its attestation message.
-        websocket
-            .send(Vec::from(FAKE_ATTESTATION).into())
-            .await
-            .unwrap();
-
-        // Wait for the handshake from the client.
-        let incoming = websocket
-            .receive()
-            .await
-            .unwrap()
-            .unwrap_next()
-            .try_into_binary()
-            .unwrap();
-        assert_eq!(server_hs.read_message(&incoming, &mut []).unwrap(), 0);
-
-        let mut message = vec![0u8; 48];
-        let write_size = server_hs.write_message(&[], &mut message).unwrap();
-
-        assert_eq!(write_size, 48);
-        assert!(server_hs.is_handshake_finished());
-
-        websocket.send(message.into()).await.unwrap();
-
-        let mut server_transport = server_hs.into_transport_mode().unwrap();
-
-        while let NextOrClose::Next(incoming) = websocket.receive().await.unwrap() {
-            let incoming = incoming.try_into_binary().unwrap();
-            let mut payload = vec![0; incoming.len()];
-            let read = server_transport
-                .read_message(&incoming, &mut payload)
-                .unwrap();
-            payload.truncate(read);
-
-            let mut outgoing = vec![0; incoming.len() * 2];
-            let written = server_transport
-                .write_message(&payload, &mut outgoing)
-                .unwrap();
-            outgoing.truncate(written);
-            websocket.send(outgoing.into()).await.unwrap();
-        }
+        run_attested_server(websocket, private_key, |message| {
+            // Just echo any incoming message back.
+            message
+        })
+        .await
     }
 
     const ECHO_BYTES: &[u8] = b"two nibbles to a byte";

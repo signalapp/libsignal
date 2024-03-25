@@ -8,6 +8,7 @@ use std::fmt::Display;
 use std::num::{NonZeroU64, ParseIntError};
 use std::str::FromStr;
 
+use http::StatusCode;
 use libsignal_core::{Aci, Pni};
 use prost::Message as _;
 use thiserror::Error;
@@ -230,6 +231,7 @@ impl LookupResponseEntry {
     }
 }
 
+#[cfg_attr(test, derive(Debug))]
 pub struct CdsiConnection<S>(AttestedConnection<S>);
 
 impl<S> AsMut<AttestedConnection<S>> for CdsiConnection<S> {
@@ -276,7 +278,23 @@ impl From<crate::enclave::Error> for LookupError {
             crate::svr::Error::WebSocketConnect(err) => match err {
                 WebSocketConnectError::Timeout => Self::Timeout,
                 WebSocketConnectError::Transport(e) => Self::ConnectTransport(e),
-                WebSocketConnectError::WebSocketError(e) => Self::WebSocket(e.into()),
+                WebSocketConnectError::WebSocketError(e) => {
+                    if let tungstenite::Error::Http(response) = &e {
+                        if response.status() == StatusCode::TOO_MANY_REQUESTS {
+                            let retry_after_header = response.headers().get("retry-after");
+
+                            if let Some(retry_after_seconds) = retry_after_header
+                                .and_then(|value| value.to_str().ok())
+                                .and_then(|str| u32::from_str(str).ok())
+                            {
+                                return Self::RateLimited {
+                                    retry_after_seconds,
+                                };
+                            }
+                        }
+                    }
+                    Self::WebSocket(e.into())
+                }
             },
             crate::svr::Error::AttestationError(err) => Self::AttestationError(err),
             crate::svr::Error::WebSocket(err) => Self::WebSocket(err),
@@ -293,6 +311,7 @@ impl From<prost::DecodeError> for LookupError {
 }
 
 #[derive(serde::Deserialize)]
+#[cfg_attr(test, derive(serde::Serialize))]
 struct RateLimitExceededResponse {
     retry_after_seconds: u32,
 }
@@ -302,6 +321,7 @@ impl RateLimitExceededResponse {
     const CLOSE_CODE: u16 = 4008;
 }
 
+#[cfg_attr(test, derive(Debug))]
 pub struct ClientResponseCollector<S = SslStream<TcpStream>>(CdsiConnection<S>);
 
 impl<S: AsyncDuplexStream> CdsiConnection<S> {
@@ -380,8 +400,20 @@ impl<S: AsyncDuplexStream> ClientResponseCollector<S> {
 
 #[cfg(test)]
 mod test {
+    use std::time::Duration;
+
+    use assert_matches::assert_matches;
     use hex_literal::hex;
+    use tungstenite::protocol::frame::coding::CloseCode;
+    use tungstenite::protocol::CloseFrame;
     use uuid::Uuid;
+    use warp::Filter as _;
+
+    use crate::auth::Auth;
+    use crate::infra::test::shared::InMemoryWarpConnector;
+
+    use crate::infra::ws::testutil::{fake_websocket, run_attested_server, FAKE_ATTESTATION};
+    use crate::infra::ws::WebSocketClient;
 
     use super::*;
 
@@ -464,5 +496,99 @@ mod test {
                 "8585858585858585858585858585858505050505050505050505050505050505"
             )
         );
+    }
+
+    #[tokio::test]
+    async fn websocket_close_with_rate_limit_exceeded() {
+        const RETRY_AFTER_SECS: u32 = 12345;
+
+        let (server, client) = fake_websocket().await;
+
+        let mut awaiting_token = false;
+        let on_message = move |next: NextOrClose<Vec<u8>>| {
+            let message_bytes = next.unwrap_next();
+            let _client_request =
+                ClientRequest::decode(message_bytes.as_slice()).expect("can decode");
+
+            if awaiting_token {
+                awaiting_token = false;
+                return NextOrClose::Next(
+                    ClientResponse {
+                        token: b"new token".as_slice().into(),
+                        ..Default::default()
+                    }
+                    .encode_to_vec(),
+                );
+            }
+
+            // The token was previously sent, now this request has some phone
+            // numbers. But there are too many of them, so tell the client to
+            // try again later.
+            NextOrClose::Close(Some(CloseFrame {
+                code: CloseCode::Bad(RateLimitExceededResponse::CLOSE_CODE),
+                reason: serde_json::to_string_pretty(&RateLimitExceededResponse {
+                    retry_after_seconds: RETRY_AFTER_SECS,
+                })
+                .expect("can JSON-encode")
+                .into(),
+            }))
+        };
+
+        tokio::spawn(run_attested_server(
+            server,
+            attest::sgx_session::testutil::private_key(),
+            on_message,
+        ));
+
+        let ws_client =
+            WebSocketClient::new_fake(client, url::Host::Domain("localhost".to_string()));
+        let cdsi_connection = CdsiConnection(
+            AttestedConnection::connect(ws_client, |fake_attestation| {
+                assert_eq!(fake_attestation, FAKE_ATTESTATION);
+                attest::sgx_session::testutil::handshake_from_tests_data()
+            })
+            .await
+            .expect("handshake failed"),
+        );
+
+        let response = cdsi_connection
+            .send_request(LookupRequest {
+                token: b"valid but ignored token".as_slice().into(),
+                ..Default::default()
+            })
+            .await;
+
+        assert_matches!(
+            response,
+            Err(LookupError::RateLimited {
+                retry_after_seconds: RETRY_AFTER_SECS
+            })
+        );
+    }
+
+    #[tokio::test]
+    async fn websocket_rejected_with_http_429_too_many_requests() {
+        let h2_server = warp::get().then(|| async move {
+            warp::reply::with_status(
+                warp::reply::with_header("(ignored body)", "Retry-After", "100"),
+                warp::http::StatusCode::TOO_MANY_REQUESTS,
+            )
+        });
+        let connector = InMemoryWarpConnector::new(h2_server);
+
+        let env = &crate::env::PROD;
+        let endpoint_connection = EnclaveEndpointConnection::new(env.cdsi, Duration::from_secs(10));
+        let auth = Auth {
+            username: "username".to_string(),
+            password: "password".to_string(),
+        };
+
+        let result = CdsiConnection::connect(&endpoint_connection, connector, auth).await;
+        assert_matches!(
+            result,
+            Err(LookupError::RateLimited {
+                retry_after_seconds: 100
+            })
+        )
     }
 }
