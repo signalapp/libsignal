@@ -67,7 +67,7 @@ impl TryFrom<String> for TestingCdsiLookupError {
 }
 
 /// Return an error matching the requested description.
-#[bridge_fn_void]
+#[bridge_fn]
 fn TESTING_CdsiLookupErrorConvert(
     // The stringly-typed API makes the call sites more self-explanatory.
     error_description: AsType<TestingCdsiLookupError, String>,

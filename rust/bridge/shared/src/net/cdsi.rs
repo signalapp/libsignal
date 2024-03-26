@@ -6,7 +6,7 @@
 use std::convert::TryInto as _;
 use std::time::Duration;
 
-use libsignal_bridge_macros::{bridge_fn, bridge_fn_void, bridge_io};
+use libsignal_bridge_macros::{bridge_fn, bridge_io};
 use libsignal_net::auth::Auth;
 use libsignal_net::cdsi::{
     self, AciAndAccessKey, CdsiConnection, ClientResponseCollector, LookupResponse, Token, E164,
@@ -64,7 +64,7 @@ fn LookupRequest_setToken(request: &LookupRequest, token: &[u8]) {
     request.0.lock().expect("not poisoned").token = token.into();
 }
 
-#[bridge_fn_void]
+#[bridge_fn]
 fn LookupRequest_addAciAndAccessKey(
     request: &LookupRequest,
     aci: Aci,

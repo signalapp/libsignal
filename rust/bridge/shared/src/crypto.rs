@@ -72,7 +72,7 @@ fn Aes256Ctr32_New(key: &[u8], nonce: &[u8], initial_ctr: u32) -> Result<Aes256C
     Aes256Ctr32::from_key(key, nonce, initial_ctr)
 }
 
-#[bridge_fn_void(node = false)]
+#[bridge_fn(node = false)]
 fn Aes256Ctr32_Process(ctr: &mut Aes256Ctr32, data: &mut [u8], offset: u32, length: u32) {
     let offset = offset as usize;
     let length = length as usize;
@@ -88,7 +88,7 @@ fn Aes256GcmEncryption_New(
     Aes256GcmEncryption::new(key, nonce, associated_data)
 }
 
-#[bridge_fn_void(node = false)]
+#[bridge_fn(node = false)]
 fn Aes256GcmEncryption_Update(
     gcm: &mut Aes256GcmEncryption,
     data: &mut [u8],
@@ -114,7 +114,7 @@ fn Aes256GcmDecryption_New(
     Aes256GcmDecryption::new(key, nonce, associated_data)
 }
 
-#[bridge_fn_void(node = false)]
+#[bridge_fn(node = false)]
 fn Aes256GcmDecryption_Update(
     gcm: &mut Aes256GcmDecryption,
     data: &mut [u8],
@@ -187,12 +187,12 @@ fn CryptographicHash_New(algo: String) -> Result<CryptographicHash> {
     CryptographicHash::new(&algo)
 }
 
-#[bridge_fn_void(ffi = false, node = false)]
+#[bridge_fn(ffi = false, node = false)]
 fn CryptographicHash_Update(hash: &mut CryptographicHash, input: &[u8]) {
     hash.update(input)
 }
 
-#[bridge_fn_void(ffi = false, node = false)]
+#[bridge_fn(ffi = false, node = false)]
 fn CryptographicHash_UpdateWithOffset(
     hash: &mut CryptographicHash,
     input: &[u8],
@@ -214,12 +214,12 @@ fn CryptographicMac_New(algo: String, key: &[u8]) -> Result<CryptographicMac> {
     CryptographicMac::new(&algo, key)
 }
 
-#[bridge_fn_void(ffi = false, node = false)]
+#[bridge_fn(ffi = false, node = false)]
 fn CryptographicMac_Update(mac: &mut CryptographicMac, input: &[u8]) {
     mac.update(input)
 }
 
-#[bridge_fn_void(ffi = false, node = false)]
+#[bridge_fn(ffi = false, node = false)]
 fn CryptographicMac_UpdateWithOffset(
     mac: &mut CryptographicMac,
     input: &[u8],

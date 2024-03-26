@@ -72,7 +72,7 @@ bridge_get!(
     SgxClientState::initial_request as InitialRequest -> &[u8]
 );
 
-#[bridge_fn_void]
+#[bridge_fn]
 fn SgxClientState_CompleteHandshake(
     cli: &mut SgxClientState,
     handshake_received: &[u8],

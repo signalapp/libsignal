@@ -15,7 +15,7 @@ use base64::prelude::{Engine, BASE64_STANDARD};
 use futures_util::future::TryFutureExt as _;
 use http::uri::{InvalidUri, PathAndQuery};
 use http::{HeaderMap, HeaderName, HeaderValue};
-use libsignal_bridge_macros::{bridge_fn, bridge_fn_void, bridge_io};
+use libsignal_bridge_macros::{bridge_fn, bridge_io};
 use libsignal_net::auth::Auth;
 use libsignal_net::chat::{
     chat_service, ChatServiceError, ChatServiceWithDebugInfo, DebugInfo, Request, Response,
@@ -286,7 +286,7 @@ fn HttpRequest_new(
     })
 }
 
-#[bridge_fn_void(ffi = false)]
+#[bridge_fn(ffi = false)]
 fn HttpRequest_add_header(
     request: &HttpRequest,
     name: AsType<HeaderName, String>,

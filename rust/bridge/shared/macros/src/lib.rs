@@ -179,9 +179,47 @@ fn name_for_meta_key(
 }
 
 #[derive(Clone, Copy)]
+#[cfg_attr(test, derive(Debug, PartialEq))]
 enum ResultKind {
     Regular,
     Void,
+}
+
+impl From<&syn_mid::Signature> for ResultKind {
+    fn from(value: &syn_mid::Signature) -> Self {
+        let type_ = match &value.output {
+            ReturnType::Default => return Self::Void,
+            ReturnType::Type(_, type_) => type_.as_ref(),
+        };
+
+        let output_type = match &type_ {
+            syn::Type::Path(path) if path.qself.is_none() => &path.path,
+            syn::Type::Tuple(t) if t.elems.is_empty() => return ResultKind::Void,
+            _ => return ResultKind::Regular,
+        };
+
+        let is_void_result = |segment: &syn::PathSegment| {
+            if segment.ident != "Result" {
+                return false;
+            }
+
+            let PathArguments::AngleBracketed(args) = &segment.arguments else {
+                return false;
+            };
+
+            args.args.first().is_some_and(|arg| match arg {
+                GenericArgument::Type(syn::Type::Tuple(t)) => t.elems.is_empty(),
+                _ => false,
+            })
+        };
+
+        let last_segment = output_type.segments.last();
+        if last_segment.is_some_and(is_void_result) {
+            return ResultKind::Void;
+        }
+
+        ResultKind::Regular
+    }
 }
 
 enum BridgingKind<T = Type> {
@@ -225,7 +263,6 @@ impl Parse for BridgeIoParams {
 fn bridge_fn_impl(
     attr: TokenStream,
     item: TokenStream,
-    result_kind: ResultKind,
     bridging_kind: BridgingKind<()>,
 ) -> TokenStream {
     let function = parse_macro_input!(item as ItemFn);
@@ -245,6 +282,7 @@ fn bridge_fn_impl(
             )
         }
     };
+    let result_kind = ResultKind::from(&function.sig);
 
     let ffi_name = match name_for_meta_key(&item_names, "ffi", || {
         ffi::name_from_ident(&function.sig.ident)
@@ -319,41 +357,12 @@ fn bridge_fn_impl(
 /// ```
 #[proc_macro_attribute]
 pub fn bridge_fn(attr: TokenStream, item: TokenStream) -> TokenStream {
-    bridge_fn_impl(attr, item, ResultKind::Regular, BridgingKind::Regular)
-}
-
-/// Generates C, Java, and Node entry points for a Rust function that returns `Result<(), _>`.
-///
-/// Because the C bindings conventions use out-parameters for successful return values,
-/// a case of "no result on success" must be annotated specially.
-///
-/// See the [crate-level documentation](crate) for more information.
-///
-/// # Example
-///
-/// ```ignore
-/// // Produces a C function manually named "signal_process_postkey"
-/// // and a JNI function named "PostKey_1Process" (with JNI "_1" mangling for an underscore),
-/// // with the Node entry point disabled.
-/// # #[cfg(ignore_even_when_running_all_tests)]
-/// #[bridge_fn_void(ffi = "process_postkey", node = false)]
-/// fn PostKey_Process(post_key: &PostKey) -> Result<()> {
-///   // ...
-/// }
-/// ```
-#[proc_macro_attribute]
-pub fn bridge_fn_void(attr: TokenStream, item: TokenStream) -> TokenStream {
-    bridge_fn_impl(attr, item, ResultKind::Void, BridgingKind::Regular)
+    bridge_fn_impl(attr, item, BridgingKind::Regular)
 }
 
 #[proc_macro_attribute]
 pub fn bridge_io(attr: TokenStream, item: TokenStream) -> TokenStream {
-    bridge_fn_impl(
-        attr,
-        item,
-        ResultKind::Regular,
-        BridgingKind::Io { runtime: () },
-    )
+    bridge_fn_impl(attr, item, BridgingKind::Io { runtime: () })
 }
 
 #[cfg(test)]
@@ -400,5 +409,65 @@ mod bridge_io_params_tests {
                 .into_iter()
                 .collect::<Vec<_>>(),
         );
+    }
+}
+
+#[cfg(test)]
+mod return_type_test {
+    use super::*;
+
+    #[test]
+    fn implicit() {
+        let parsed: ItemFn = parse_quote! {
+            fn no_return() {}
+        };
+        assert_eq!(ResultKind::from(&parsed.sig), ResultKind::Void)
+    }
+
+    #[test]
+    fn explicit_empty_tuple() {
+        let parsed: ItemFn = parse_quote! {
+            fn returns_empty_tuple() -> () {}
+        };
+        assert_eq!(ResultKind::from(&parsed.sig), ResultKind::Void)
+    }
+
+    #[test]
+    fn result_returns() {
+        let parsed: &[ItemFn] = &[
+            parse_quote! { fn result_empty_tuple() -> Result<(), Err> { unimplemented!() } },
+            parse_quote! { fn result_empty_tuple_alias() -> Result<()> { unimplemented!() } },
+            parse_quote! { fn result_fq_empty_tuple() -> std::result::Result<(), Err> { unimplemented!() } },
+            parse_quote! { fn result_fq_empty_tuple_alias() -> my::package::custom::Result<()> { unimplemented!() } },
+        ];
+
+        for item in parsed {
+            assert_eq!(
+                ResultKind::from(&item.sig),
+                ResultKind::Void,
+                "{}",
+                item.to_token_stream()
+            );
+        }
+    }
+
+    #[test]
+    fn regular_types() {
+        let parsed: &[ItemFn] = &[
+            parse_quote! { fn returns_bool() -> bool { unimplemented!() } },
+            parse_quote! { fn returns_u32() -> u32 { unimplemented!() } },
+            parse_quote! { fn returns_result_u32_alias() -> Result<u32> { unimplemented!() } },
+            parse_quote! { fn returns_result_u32() -> Result<u32, Err> { unimplemented!() } },
+            parse_quote! { fn returns_fq_result_u32() -> std::result::Result<u32, Err> { unimplemented!() } },
+        ];
+
+        for item in parsed {
+            assert_eq!(
+                ResultKind::from(&item.sig),
+                ResultKind::Regular,
+                "{}",
+                item.to_token_stream()
+            );
+        }
     }
 }

@@ -98,7 +98,7 @@ bridge_get!(
     HsmEnclaveClient::initial_request as InitialRequest -> &[u8]
 );
 
-#[bridge_fn_void]
+#[bridge_fn]
 fn HsmEnclaveClient_CompleteHandshake(
     cli: &mut HsmEnclaveClient,
     handshake_received: &[u8],

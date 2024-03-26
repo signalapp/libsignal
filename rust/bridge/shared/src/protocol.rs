@@ -90,7 +90,7 @@ fn HKDF_DeriveSecrets(
 }
 
 // Alternate implementation to fill an existing buffer.
-#[bridge_fn_void(jni = false, node = false)]
+#[bridge_fn(jni = false, node = false)]
 fn HKDF_Derive(output: &mut [u8], ikm: &[u8], label: &[u8], salt: &[u8]) -> Result<()> {
     hkdf::Hkdf::<sha2::Sha256>::new(Some(salt), ikm)
         .expand(label, output)
@@ -961,7 +961,7 @@ fn SessionRecord_GetSessionVersion(s: &SessionRecord) -> Result<u32> {
     }
 }
 
-#[bridge_fn_void]
+#[bridge_fn]
 fn SessionRecord_ArchiveCurrentState(session_record: &mut SessionRecord) -> Result<()> {
     session_record.archive_current_state()
 }
@@ -1088,7 +1088,7 @@ fn SessionRecord_InitializeBobSession(
 
 // End SessionRecord testing functions
 
-#[bridge_fn_void(ffi = "process_prekey_bundle")]
+#[bridge_fn(ffi = "process_prekey_bundle")]
 async fn SessionBuilder_ProcessPreKeyBundle(
     bundle: &PreKeyBundle,
     protocol_address: &ProtocolAddress,
@@ -1285,7 +1285,7 @@ async fn SenderKeyDistributionMessage_Create(
     create_sender_key_distribution_message(sender, distribution_id, store, &mut csprng).await
 }
 
-#[bridge_fn_void(
+#[bridge_fn(
     ffi = "process_sender_key_distribution_message",
     jni = "GroupSessionBuilder_1ProcessSenderKeyDistributionMessage"
 )]

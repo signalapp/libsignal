@@ -48,7 +48,7 @@ macro_rules! fixed_length_serializable {
             impl FixedLengthBincodeSerializable for $typ {
                 type Array = [u8; [<$typ:snake:upper _LEN>]];
             }
-            #[bridge_fn_void]
+            #[bridge_fn]
             fn [<$typ _CheckValidContents>](
                 buffer: &[u8]
             ) -> Result<(), ZkGroupDeserializationFailure> {
@@ -420,21 +420,21 @@ fn ServerSecretParams_IssueAuthCredentialWithPniZkcDeterministic(
     ))
 }
 
-#[bridge_fn_void]
+#[bridge_fn]
 fn AuthCredentialWithPni_CheckValidContents(
     bytes: &[u8],
 ) -> Result<(), ZkGroupDeserializationFailure> {
     AuthCredentialWithPni::new(bytes).map(|_| ())
 }
 
-#[bridge_fn_void]
+#[bridge_fn]
 fn AuthCredentialWithPniResponse_CheckValidContents(
     bytes: &[u8],
 ) -> Result<(), ZkGroupDeserializationFailure> {
     AuthCredentialWithPniResponse::new(bytes).map(|_| ())
 }
 
-#[bridge_fn_void]
+#[bridge_fn]
 fn ServerSecretParams_VerifyAuthCredentialPresentation(
     server_secret_params: Serialized<ServerSecretParams>,
     group_public_params: Serialized<GroupPublicParams>,
@@ -470,7 +470,7 @@ fn ServerSecretParams_IssueExpiringProfileKeyCredentialDeterministic(
         .into())
 }
 
-#[bridge_fn_void]
+#[bridge_fn]
 fn ServerSecretParams_VerifyProfileKeyCredentialPresentation(
     server_secret_params: Serialized<ServerSecretParams>,
     group_public_params: Serialized<GroupPublicParams>,
@@ -504,7 +504,7 @@ fn ServerSecretParams_IssueReceiptCredentialDeterministic(
         .into()
 }
 
-#[bridge_fn_void]
+#[bridge_fn]
 fn ServerSecretParams_VerifyReceiptCredentialPresentation(
     server_secret_params: Serialized<ServerSecretParams>,
     presentation: Serialized<ReceiptCredentialPresentation>,
@@ -520,7 +520,7 @@ fn GroupPublicParams_GetGroupIdentifier(
     group_public_params.get_group_identifier()
 }
 
-#[bridge_fn_void]
+#[bridge_fn]
 fn ServerPublicParams_VerifySignature(
     server_public_params: Serialized<ServerPublicParams>,
     message: &[u8],
@@ -529,7 +529,7 @@ fn ServerPublicParams_VerifySignature(
     server_public_params.verify_signature(message, *notary_signature)
 }
 
-#[bridge_fn_void]
+#[bridge_fn]
 fn AuthCredentialPresentation_CheckValidContents(
     presentation_bytes: &[u8],
 ) -> Result<(), ZkGroupDeserializationFailure> {
@@ -588,7 +588,7 @@ fn ExpiringProfileKeyCredential_GetExpirationTime(
     credential.get_expiration_time().into()
 }
 
-#[bridge_fn_void]
+#[bridge_fn]
 fn ProfileKeyCredentialPresentation_CheckValidContents(
     presentation_bytes: &[u8],
 ) -> Result<(), ZkGroupDeserializationFailure> {
@@ -660,7 +660,7 @@ fn ReceiptCredentialPresentation_GetReceiptSerial(
     presentation.get_receipt_serial_bytes()
 }
 
-#[bridge_fn_void]
+#[bridge_fn]
 fn GenericServerSecretParams_CheckValidContents(
     params_bytes: &[u8],
 ) -> Result<(), ZkGroupDeserializationFailure> {
@@ -682,14 +682,14 @@ fn GenericServerSecretParams_GetPublicParams(params_bytes: &[u8]) -> Vec<u8> {
     zkgroup::serialize(&public_params)
 }
 
-#[bridge_fn_void]
+#[bridge_fn]
 fn GenericServerPublicParams_CheckValidContents(
     params_bytes: &[u8],
 ) -> Result<(), ZkGroupDeserializationFailure> {
     validate_serialization::<GenericServerPublicParams>(params_bytes)
 }
 
-#[bridge_fn_void]
+#[bridge_fn]
 fn CallLinkSecretParams_CheckValidContents(
     params_bytes: &[u8],
 ) -> Result<(), ZkGroupDeserializationFailure> {
@@ -722,14 +722,14 @@ fn CallLinkSecretParams_DecryptUserId(
     params.decrypt_uid(user_id.into_inner())
 }
 
-#[bridge_fn_void]
+#[bridge_fn]
 fn CallLinkPublicParams_CheckValidContents(
     params_bytes: &[u8],
 ) -> Result<(), ZkGroupDeserializationFailure> {
     validate_serialization::<CallLinkPublicParams>(params_bytes)
 }
 
-#[bridge_fn_void]
+#[bridge_fn]
 fn CreateCallLinkCredentialRequestContext_CheckValidContents(
     context_bytes: &[u8],
 ) -> Result<(), ZkGroupDeserializationFailure> {
@@ -754,7 +754,7 @@ fn CreateCallLinkCredentialRequestContext_GetRequest(context_bytes: &[u8]) -> Ve
     zkgroup::serialize(&request)
 }
 
-#[bridge_fn_void]
+#[bridge_fn]
 fn CreateCallLinkCredentialRequest_CheckValidContents(
     request_bytes: &[u8],
 ) -> Result<(), ZkGroupDeserializationFailure> {
@@ -778,7 +778,7 @@ fn CreateCallLinkCredentialRequest_IssueDeterministic(
     zkgroup::serialize(&response)
 }
 
-#[bridge_fn_void]
+#[bridge_fn]
 fn CreateCallLinkCredentialResponse_CheckValidContents(
     response_bytes: &[u8],
 ) -> Result<(), ZkGroupDeserializationFailure> {
@@ -803,7 +803,7 @@ fn CreateCallLinkCredentialRequestContext_ReceiveResponse(
     Ok(zkgroup::serialize(&credential))
 }
 
-#[bridge_fn_void]
+#[bridge_fn]
 fn CreateCallLinkCredential_CheckValidContents(
     params_bytes: &[u8],
 ) -> Result<(), ZkGroupDeserializationFailure> {
@@ -836,14 +836,14 @@ fn CreateCallLinkCredential_PresentDeterministic(
     Ok(zkgroup::serialize(&presentation))
 }
 
-#[bridge_fn_void]
+#[bridge_fn]
 fn CreateCallLinkCredentialPresentation_CheckValidContents(
     presentation_bytes: &[u8],
 ) -> Result<(), ZkGroupDeserializationFailure> {
     validate_serialization::<CreateCallLinkCredentialPresentation>(presentation_bytes)
 }
 
-#[bridge_fn_void]
+#[bridge_fn]
 fn CreateCallLinkCredentialPresentation_Verify(
     presentation_bytes: &[u8],
     room_id: &[u8],
@@ -862,7 +862,7 @@ fn CreateCallLinkCredentialPresentation_Verify(
     presentation.verify(room_id, now.as_seconds(), &server_params, &call_link_params)
 }
 
-#[bridge_fn_void]
+#[bridge_fn]
 fn CallLinkAuthCredentialResponse_CheckValidContents(
     response_bytes: &[u8],
 ) -> Result<(), ZkGroupDeserializationFailure> {
@@ -904,7 +904,7 @@ fn CallLinkAuthCredentialResponse_Receive(
     Ok(zkgroup::serialize(&credential))
 }
 
-#[bridge_fn_void]
+#[bridge_fn]
 fn CallLinkAuthCredential_CheckValidContents(
     credential_bytes: &[u8],
 ) -> Result<(), ZkGroupDeserializationFailure> {
@@ -937,14 +937,14 @@ fn CallLinkAuthCredential_PresentDeterministic(
     Ok(zkgroup::serialize(&presentation))
 }
 
-#[bridge_fn_void]
+#[bridge_fn]
 fn CallLinkAuthCredentialPresentation_CheckValidContents(
     presentation_bytes: &[u8],
 ) -> Result<(), ZkGroupDeserializationFailure> {
     validate_serialization::<CallLinkAuthCredentialPresentation>(presentation_bytes)
 }
 
-#[bridge_fn_void]
+#[bridge_fn]
 fn CallLinkAuthCredentialPresentation_Verify(
     presentation_bytes: &[u8],
     now: Timestamp,
@@ -979,7 +979,7 @@ fn BackupAuthCredentialRequestContext_New(backup_key: &[u8; 32], uuid: Uuid) -> 
     zkgroup::serialize(&context)
 }
 
-#[bridge_fn_void]
+#[bridge_fn]
 fn BackupAuthCredentialRequestContext_CheckValidContents(
     context_bytes: &[u8],
 ) -> Result<(), ZkGroupDeserializationFailure> {
@@ -995,7 +995,7 @@ fn BackupAuthCredentialRequestContext_GetRequest(context_bytes: &[u8]) -> Vec<u8
     zkgroup::serialize(&request)
 }
 
-#[bridge_fn_void]
+#[bridge_fn]
 fn BackupAuthCredentialRequest_CheckValidContents(
     request_bytes: &[u8],
 ) -> Result<(), ZkGroupDeserializationFailure> {
@@ -1024,7 +1024,7 @@ fn BackupAuthCredentialRequest_IssueDeterministic(
     zkgroup::serialize(&response)
 }
 
-#[bridge_fn_void]
+#[bridge_fn]
 fn BackupAuthCredentialResponse_CheckValidContents(
     response_bytes: &[u8],
 ) -> Result<(), ZkGroupDeserializationFailure> {
@@ -1049,7 +1049,7 @@ fn BackupAuthCredentialRequestContext_ReceiveResponse(
     Ok(zkgroup::serialize(&credential))
 }
 
-#[bridge_fn_void]
+#[bridge_fn]
 fn BackupAuthCredential_CheckValidContents(
     params_bytes: &[u8],
 ) -> Result<(), ZkGroupDeserializationFailure> {
@@ -1078,14 +1078,14 @@ fn BackupAuthCredential_PresentDeterministic(
     Ok(zkgroup::serialize(&presentation))
 }
 
-#[bridge_fn_void]
+#[bridge_fn]
 fn BackupAuthCredentialPresentation_CheckValidContents(
     presentation_bytes: &[u8],
 ) -> Result<(), ZkGroupDeserializationFailure> {
     validate_serialization::<BackupAuthCredentialPresentation>(presentation_bytes)
 }
 
-#[bridge_fn_void]
+#[bridge_fn]
 fn BackupAuthCredentialPresentation_Verify(
     presentation_bytes: &[u8],
     now: Timestamp,
@@ -1113,7 +1113,7 @@ fn BackupAuthCredentialPresentation_GetReceiptLevel(presentation_bytes: &[u8]) -
     presentation.receipt_level()
 }
 
-#[bridge_fn_void]
+#[bridge_fn]
 fn GroupSendDerivedKeyPair_CheckValidContents(
     bytes: &[u8],
 ) -> Result<(), ZkGroupDeserializationFailure> {
@@ -1131,7 +1131,7 @@ fn GroupSendDerivedKeyPair_ForExpiration(
     ))
 }
 
-#[bridge_fn_void]
+#[bridge_fn]
 fn GroupSendEndorsementsResponse_CheckValidContents(
     bytes: &[u8],
 ) -> Result<(), ZkGroupDeserializationFailure> {
@@ -1246,7 +1246,7 @@ fn GroupSendEndorsementsResponse_ReceiveAndCombineWithCiphertexts(
         .collect())
 }
 
-#[bridge_fn_void]
+#[bridge_fn]
 fn GroupSendEndorsement_CheckValidContents(
     bytes: &[u8],
 ) -> Result<(), ZkGroupDeserializationFailure> {
@@ -1283,7 +1283,7 @@ fn GroupSendEndorsement_ToToken(
     zkgroup::serialize(&endorsement.to_token(&group_params))
 }
 
-#[bridge_fn_void]
+#[bridge_fn]
 fn GroupSendToken_CheckValidContents(bytes: &[u8]) -> Result<(), ZkGroupDeserializationFailure> {
     validate_serialization::<GroupSendToken>(bytes)
 }
@@ -1295,7 +1295,7 @@ fn GroupSendToken_ToFullToken(token: &[u8], expiration: Timestamp) -> Vec<u8> {
     zkgroup::serialize(&token.into_full_token(expiration.as_seconds()))
 }
 
-#[bridge_fn_void]
+#[bridge_fn]
 fn GroupSendFullToken_CheckValidContents(
     bytes: &[u8],
 ) -> Result<(), ZkGroupDeserializationFailure> {
@@ -1309,7 +1309,7 @@ fn GroupSendFullToken_GetExpiration(token: &[u8]) -> Timestamp {
     Timestamp::from_seconds(token.expiration())
 }
 
-#[bridge_fn_void]
+#[bridge_fn]
 fn GroupSendFullToken_Verify(
     token: &[u8],
     user_ids: ServiceIdSequence<'_>,
