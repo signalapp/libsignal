@@ -631,17 +631,42 @@ pub(crate) mod testutil {
     pub(crate) const FAKE_ATTESTATION: &[u8] =
         include_bytes!("../../../attest/tests/data/svr2handshakestart.data");
 
+    /// Response to an incoming frame.
+    ///
+    /// Zero or one frames to reply with followed by an optional close.
+    #[derive(Default)]
+    pub(crate) struct AttestedServerOutput {
+        pub(crate) message: Option<Vec<u8>>,
+        pub(crate) close_after: Option<Option<CloseFrame<'static>>>,
+    }
+
+    impl AttestedServerOutput {
+        pub(crate) fn message(contents: Vec<u8>) -> Self {
+            Self {
+                message: Some(contents),
+                ..Default::default()
+            }
+        }
+
+        pub(crate) fn close(frame: Option<CloseFrame<'static>>) -> Self {
+            Self {
+                close_after: Some(frame),
+                ..Default::default()
+            }
+        }
+    }
+
     /// Runs a fake SGX server that sets up a session and then responds to requests.
     ///
     /// Produces a future that, when polled, runs the server side of an attested
     /// websocket connection. The provided callback is executed for each
     /// incoming event, and the returned value is sent to the peer. If the
-    /// callback returns [`NextOrClose::Close`], the connection is terminated
-    /// and this future resolves.
+    /// callback returns an [`AttestedServerOutput`] with `close_after:
+    /// Some(_)`, the connection is terminated and this future resolves.
     pub(crate) async fn run_attested_server(
         websocket: WebSocketStream<impl AsyncDuplexStream>,
         private_key: impl AsRef<[u8]>,
-        mut on_message: impl FnMut(NextOrClose<Vec<u8>>) -> NextOrClose<Vec<u8>>,
+        mut on_message: impl FnMut(NextOrClose<Vec<u8>>) -> AttestedServerOutput,
     ) {
         let mut websocket = websocket_test_client(websocket);
         // Start the server with a known private key (K of NK).
@@ -692,19 +717,23 @@ pub(crate) mod testutil {
                 }
             };
 
-            match on_message(received) {
-                NextOrClose::Close(close) => {
-                    websocket.close(close).await.unwrap();
-                    break;
-                }
-                NextOrClose::Next(payload) => {
-                    let mut outgoing = vec![0; payload.len() * 2];
-                    let written = server_transport
-                        .write_message(&payload, &mut outgoing)
-                        .unwrap();
-                    outgoing.truncate(written);
-                    websocket.send(outgoing.into()).await.unwrap();
-                }
+            let AttestedServerOutput {
+                close_after,
+                message,
+            } = on_message(received);
+
+            if let Some(payload) = message {
+                let mut outgoing = vec![0; payload.len() + 16 /* snow tag len */];
+                let written = server_transport
+                    .write_message(&payload, &mut outgoing)
+                    .unwrap();
+                outgoing.truncate(written);
+                websocket.send(outgoing.into()).await.unwrap();
+            }
+
+            if let Some(close) = close_after {
+                websocket.close(close).await.unwrap();
+                return;
             }
         }
     }
@@ -812,7 +841,10 @@ mod test {
     ) {
         run_attested_server(websocket, private_key, |message| {
             // Just echo any incoming message back.
-            message
+            match message {
+                NextOrClose::Next(message) => AttestedServerOutput::message(message),
+                NextOrClose::Close(close) => AttestedServerOutput::close(close),
+            }
         })
         .await
     }

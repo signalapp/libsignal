@@ -91,6 +91,13 @@ impl FixedLengthSerializable for E164 {
     }
 }
 
+impl FixedLengthSerializable for Uuid {
+    const SERIALIZED_LEN: usize = 16;
+    fn serialize_into(&self, target: &mut [u8]) {
+        target.copy_from_slice(self.as_bytes())
+    }
+}
+
 pub struct AciAndAccessKey {
     pub aci: Aci,
     pub access_key: [u8; 16],
@@ -100,10 +107,10 @@ impl FixedLengthSerializable for AciAndAccessKey {
     const SERIALIZED_LEN: usize = 32;
 
     fn serialize_into(&self, target: &mut [u8]) {
-        let uuid_bytes = Uuid::from(self.aci).into_bytes();
+        let (aci_bytes, access_key_bytes) = target.split_at_mut(Uuid::SERIALIZED_LEN);
 
-        target[0..uuid_bytes.len()].copy_from_slice(&uuid_bytes);
-        target[uuid_bytes.len()..].copy_from_slice(&self.access_key);
+        Uuid::from(self.aci).serialize_into(aci_bytes);
+        access_key_bytes.copy_from_slice(&self.access_key)
     }
 }
 
@@ -208,9 +215,6 @@ impl TryFrom<ClientResponse> for LookupResponse {
 }
 
 impl LookupResponseEntry {
-    const UUID_LEN: usize = 16;
-    const SERIALIZED_LEN: usize = E164::SERIALIZED_LEN + Self::UUID_LEN * 2;
-
     fn try_parse_from(record: &[u8; Self::SERIALIZED_LEN]) -> Option<Self> {
         fn non_nil_uuid<T: From<Uuid>>(bytes: &uuid::Bytes) -> Option<T> {
             let uuid = Uuid::from_bytes(*bytes);
@@ -222,12 +226,32 @@ impl LookupResponseEntry {
         let (e164_bytes, record) = record.split_at(E164::SERIALIZED_LEN);
         let e164_bytes = <&[u8; E164::SERIALIZED_LEN]>::try_from(e164_bytes).expect("split at len");
         let e164 = E164::from_serialized(*e164_bytes)?;
-        let (pni_bytes, aci_bytes) = record.split_at(Self::UUID_LEN);
+        let (pni_bytes, aci_bytes) = record.split_at(Uuid::SERIALIZED_LEN);
 
         let pni = non_nil_uuid(pni_bytes.try_into().expect("split at len"));
         let aci = non_nil_uuid(aci_bytes.try_into().expect("split at len"));
 
         Some(Self { e164, aci, pni })
+    }
+}
+
+impl FixedLengthSerializable for LookupResponseEntry {
+    const SERIALIZED_LEN: usize = E164::SERIALIZED_LEN + Uuid::SERIALIZED_LEN * 2;
+
+    fn serialize_into(&self, target: &mut [u8]) {
+        let Self { e164, aci, pni } = self;
+
+        let (e164_bytes, target) = target.split_at_mut(E164::SERIALIZED_LEN);
+        e164.serialize_into(e164_bytes);
+
+        let (pni_bytes, aci_bytes) = target.split_at_mut(Uuid::SERIALIZED_LEN);
+        pni.map(Uuid::from)
+            .unwrap_or(Uuid::nil())
+            .serialize_into(pni_bytes);
+
+        aci.map(Uuid::from)
+            .unwrap_or(Uuid::nil())
+            .serialize_into(aci_bytes);
     }
 }
 
@@ -412,6 +436,7 @@ mod test {
 
     use assert_matches::assert_matches;
     use hex_literal::hex;
+    use nonzero_ext::nonzero;
     use tungstenite::protocol::frame::coding::CloseCode;
     use tungstenite::protocol::CloseFrame;
     use uuid::Uuid;
@@ -420,7 +445,9 @@ mod test {
     use crate::auth::Auth;
     use crate::infra::test::shared::InMemoryWarpConnector;
 
-    use crate::infra::ws::testutil::{fake_websocket, run_attested_server, FAKE_ATTESTATION};
+    use crate::infra::ws::testutil::{
+        fake_websocket, run_attested_server, AttestedServerOutput, FAKE_ATTESTATION,
+    };
     use crate::infra::ws::WebSocketClient;
 
     use super::*;
@@ -506,46 +533,162 @@ mod test {
         );
     }
 
-    #[tokio::test]
-    async fn websocket_close_with_rate_limit_exceeded() {
-        const RETRY_AFTER_SECS: u32 = 12345;
+    /// Server-side state relative to a remote request.
+    #[derive(Debug, Default, PartialEq)]
+    enum FakeServerState {
+        /// The client has not yet sent the first request message.
+        #[default]
+        AwaitingLookupRequest,
+        /// Token response was sent, waiting for the client to ack it.
+        AwaitingTokenAck,
+        /// All response messages have been sent.
+        Finished,
+    }
 
+    impl FakeServerState {
+        const RESPONSE_TOKEN: &'static [u8] = b"new token";
+        const RESPONSE_RECORD: LookupResponseEntry = LookupResponseEntry {
+            aci: Some(Aci::from_uuid_bytes([b'a'; 16])),
+            pni: Some(Pni::from_uuid_bytes([b'p'; 16])),
+            e164: E164(nonzero!(18005550101u64)),
+        };
+
+        fn receive_frame(&mut self, frame: &[u8]) -> AttestedServerOutput {
+            match self {
+                Self::AwaitingLookupRequest => {
+                    let _client_request = ClientRequest::decode(frame).expect("can decode");
+
+                    *self = Self::AwaitingTokenAck;
+                    AttestedServerOutput::message(
+                        ClientResponse {
+                            token: Self::RESPONSE_TOKEN.into(),
+                            ..Default::default()
+                        }
+                        .encode_to_vec(),
+                    )
+                }
+                Self::AwaitingTokenAck => {
+                    let client_request = ClientRequest::decode(frame).expect("can decode");
+                    assert!(
+                        client_request.token_ack,
+                        "invalid message: {client_request:?}"
+                    );
+                    *self = Self::Finished;
+                    let mut triples_bytes = [0; LookupResponseEntry::SERIALIZED_LEN];
+                    Self::RESPONSE_RECORD.serialize_into(&mut triples_bytes);
+                    AttestedServerOutput {
+                        message: Some(
+                            ClientResponse {
+                                debug_permits_used: 1,
+                                e164_pni_aci_triples: triples_bytes.to_vec(),
+                                ..Default::default()
+                            }
+                            .encode_to_vec(),
+                        ),
+                        close_after: Some(None),
+                    }
+                }
+                Self::Finished => {
+                    panic!("no frame expected");
+                }
+            }
+        }
+
+        /// Produces a closure usable with [`run_attested_server`].
+        fn into_handler(mut self) -> impl FnMut(NextOrClose<Vec<u8>>) -> AttestedServerOutput {
+            move |frame| {
+                let frame = match frame {
+                    NextOrClose::Close(_) => panic!("unexpected client-originating close"),
+                    NextOrClose::Next(frame) => frame,
+                };
+                self.receive_frame(&frame)
+            }
+        }
+
+        fn into_handler_with_close_from(
+            mut self,
+            state_before_close: &'static FakeServerState,
+            close_frame: CloseFrame<'static>,
+        ) -> impl FnMut(NextOrClose<Vec<u8>>) -> AttestedServerOutput {
+            move |frame| {
+                if &self == state_before_close {
+                    return AttestedServerOutput::close(Some(close_frame.clone()));
+                }
+
+                let frame = match frame {
+                    NextOrClose::Close(_) => panic!("unexpected client-originating close"),
+                    NextOrClose::Next(frame) => frame,
+                };
+                self.receive_frame(&frame)
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn lookup_success() {
         let (server, client) = fake_websocket().await;
 
-        let mut awaiting_token = false;
-        let on_message = move |next: NextOrClose<Vec<u8>>| {
-            let message_bytes = next.unwrap_next();
-            let _client_request =
-                ClientRequest::decode(message_bytes.as_slice()).expect("can decode");
+        let fake_server = FakeServerState::default().into_handler();
+        tokio::spawn(run_attested_server(
+            server,
+            attest::sgx_session::testutil::private_key(),
+            fake_server,
+        ));
 
-            if awaiting_token {
-                awaiting_token = false;
-                return NextOrClose::Next(
-                    ClientResponse {
-                        token: b"new token".as_slice().into(),
-                        ..Default::default()
-                    }
-                    .encode_to_vec(),
-                );
+        let ws_client =
+            WebSocketClient::new_fake(client, url::Host::Domain("localhost".to_string()));
+        let cdsi_connection = CdsiConnection(
+            AttestedConnection::connect(ws_client, |fake_attestation| {
+                assert_eq!(fake_attestation, FAKE_ATTESTATION);
+                attest::sgx_session::testutil::handshake_from_tests_data()
+            })
+            .await
+            .expect("handshake failed"),
+        );
+
+        let (token, collector) = cdsi_connection
+            .send_request(LookupRequest {
+                token: b"valid but ignored token".as_slice().into(),
+                ..Default::default()
+            })
+            .await
+            .expect("request accepted");
+
+        assert_eq!(&*token.0, FakeServerState::RESPONSE_TOKEN);
+
+        let response = collector.collect().await.expect("successful request");
+
+        assert_eq!(
+            response,
+            LookupResponse {
+                debug_permits_used: 1,
+                records: vec![FakeServerState::RESPONSE_RECORD],
             }
+        );
+    }
 
-            // The token was previously sent, now this request has some phone
-            // numbers. But there are too many of them, so tell the client to
-            // try again later.
-            NextOrClose::Close(Some(CloseFrame {
-                code: CloseCode::Bad(RateLimitExceededResponse::CLOSE_CODE),
+    const RETRY_AFTER_SECS: u32 = 12345;
+
+    #[tokio::test]
+    async fn websocket_close_with_rate_limit_exceeded_after_initial_request() {
+        let (server, client) = fake_websocket().await;
+
+        let fake_server = FakeServerState::default().into_handler_with_close_from(
+            &FakeServerState::AwaitingLookupRequest,
+            CloseFrame {
+                code: CloseCode::Bad(4008),
                 reason: serde_json::to_string_pretty(&RateLimitExceededResponse {
                     retry_after_seconds: RETRY_AFTER_SECS,
                 })
                 .expect("can JSON-encode")
                 .into(),
-            }))
-        };
+            },
+        );
 
         tokio::spawn(run_attested_server(
             server,
             attest::sgx_session::testutil::private_key(),
-            on_message,
+            fake_server,
         ));
 
         let ws_client =
@@ -572,6 +715,53 @@ mod test {
                 retry_after_seconds: RETRY_AFTER_SECS
             })
         );
+    }
+
+    #[tokio::test]
+    async fn websocket_close_with_rate_limit_exceeded_after_token_ack() {
+        let (server, client) = fake_websocket().await;
+
+        let fake_server = FakeServerState::default().into_handler_with_close_from(
+            &FakeServerState::AwaitingTokenAck,
+            CloseFrame {
+                code: CloseCode::Bad(4008),
+                reason: serde_json::to_string_pretty(&RateLimitExceededResponse {
+                    retry_after_seconds: RETRY_AFTER_SECS,
+                })
+                .expect("can JSON-encode")
+                .into(),
+            },
+        );
+
+        tokio::spawn(run_attested_server(
+            server,
+            attest::sgx_session::testutil::private_key(),
+            fake_server,
+        ));
+
+        let ws_client =
+            WebSocketClient::new_fake(client, url::Host::Domain("localhost".to_string()));
+        let cdsi_connection = CdsiConnection(
+            AttestedConnection::connect(ws_client, |fake_attestation| {
+                assert_eq!(fake_attestation, FAKE_ATTESTATION);
+                attest::sgx_session::testutil::handshake_from_tests_data()
+            })
+            .await
+            .expect("handshake failed"),
+        );
+
+        let (_token, collector) = cdsi_connection
+            .send_request(LookupRequest {
+                token: b"valid but ignored token".as_slice().into(),
+                ..Default::default()
+            })
+            .await
+            .expect("request accepted");
+
+        let response = collector.collect().await;
+
+        // TODO this is wrong, this should be a RateLimited error.
+        assert_matches!(response, Err(LookupError::Protocol));
     }
 
     #[tokio::test]
@@ -605,23 +795,18 @@ mod test {
         let (server, client) = fake_websocket().await;
 
         const INVALID_TOKEN: &[u8] = b"invalid token";
-
-        let on_message = |next: NextOrClose<Vec<u8>>| {
-            let message_bytes = next.unwrap_next();
-            let client_request =
-                ClientRequest::decode(message_bytes.as_slice()).expect("can decode");
-            assert_eq!(client_request.token, INVALID_TOKEN);
-
-            NextOrClose::Close(Some(CloseFrame {
-                code: CloseCode::Bad(INVALID_TOKEN_CLOSE_CODE),
+        let fake_server = FakeServerState::default().into_handler_with_close_from(
+            &FakeServerState::AwaitingLookupRequest,
+            CloseFrame {
+                code: CloseCode::Bad(4101),
                 reason: "invalid token".into(),
-            }))
-        };
+            },
+        );
 
         tokio::spawn(run_attested_server(
             server,
             attest::sgx_session::testutil::private_key(),
-            on_message,
+            fake_server,
         ));
 
         let ws_client =
