@@ -89,8 +89,7 @@ fn convert_to_exception<'a, F>(env: &mut JNIEnv<'a>, error: SignalJniError, cons
 where
     F: FnOnce(&mut JNIEnv<'a>, Result<JThrowable<'a>, BridgeLayerError>, &dyn Display),
 {
-    // Handle special cases first.
-    let error = match error {
+    let (exception_type, error) = match error {
         SignalJniError::Bridge(BridgeLayerError::CallbackException(callback, exception)) => {
             let throwable = env.new_local_ref(exception.as_obj()).map(JThrowable::from);
             consume(
@@ -116,33 +115,27 @@ where
                 );
                 return;
             }
-            SignalJniError::Io(error)
+            (
+                jni_class_name!(java.io.IOException),
+                SignalJniError::Io(error),
+            )
         }
 
         SignalJniError::Protocol(SignalProtocolError::ApplicationCallbackError(
             callback,
             exception,
-        )) => {
+        )) if <dyn Error>::is::<ThrownException>(&*exception) => {
             // The usual way to write this code would be to match on the result of Error::downcast.
             // However, the "failure" result, which is intended to return the original type back,
             // only supports Send and Sync as additional traits. For anything else, we have to test first.
-            if <dyn Error>::is::<ThrownException>(&*exception) {
-                let exception =
-                    <dyn Error>::downcast::<ThrownException>(exception).expect("just checked");
-                convert_to_exception(
-                    env,
-                    SignalJniError::Bridge(BridgeLayerError::CallbackException(
-                        callback, *exception,
-                    )),
-                    consume,
-                );
-                return;
-            }
-
-            // Fall through to generic handling below.
-            SignalJniError::Protocol(SignalProtocolError::ApplicationCallbackError(
-                callback, exception,
-            ))
+            let exception =
+                <dyn Error>::downcast::<ThrownException>(exception).expect("just checked");
+            convert_to_exception(
+                env,
+                SignalJniError::Bridge(BridgeLayerError::CallbackException(callback, *exception)),
+                consume,
+            );
+            return;
         }
 
         SignalJniError::Protocol(SignalProtocolError::UntrustedIdentity(ref addr)) => {
@@ -292,16 +285,12 @@ where
             return;
         }
 
-        e => e,
-    };
-
-    let exception_type = match &error {
         SignalJniError::Bridge(BridgeLayerError::NullPointer(_)) => {
-            jni_class_name!(java.lang.NullPointerException)
+            (jni_class_name!(java.lang.NullPointerException), error)
         }
 
         SignalJniError::Protocol(SignalProtocolError::InvalidState(_, _)) => {
-            jni_class_name!(java.lang.IllegalStateException)
+            (jni_class_name!(java.lang.IllegalStateException), error)
         }
 
         SignalJniError::Protocol(SignalProtocolError::InvalidArgument(_))
@@ -310,7 +299,7 @@ where
         | SignalJniError::SignalCrypto(SignalCryptoError::InvalidNonceSize)
         | SignalJniError::Bridge(BridgeLayerError::BadArgument(_))
         | SignalJniError::Bridge(BridgeLayerError::IncorrectArrayLength { .. }) => {
-            jni_class_name!(java.lang.IllegalArgumentException)
+            (jni_class_name!(java.lang.IllegalArgumentException), error)
         }
 
         SignalJniError::Bridge(BridgeLayerError::IntegerOverflow(_))
@@ -319,18 +308,20 @@ where
         | SignalJniError::Protocol(SignalProtocolError::FfiBindingError(_))
         | SignalJniError::DeviceTransfer(DeviceTransferError::InternalError(_))
         | SignalJniError::DeviceTransfer(DeviceTransferError::KeyDecodingFailed) => {
-            jni_class_name!(java.lang.RuntimeException)
+            (jni_class_name!(java.lang.RuntimeException), error)
         }
 
-        SignalJniError::Protocol(SignalProtocolError::DuplicatedMessage(_, _)) => {
-            jni_class_name!(org.signal.libsignal.protocol.DuplicateMessageException)
-        }
+        SignalJniError::Protocol(SignalProtocolError::DuplicatedMessage(_, _)) => (
+            jni_class_name!(org.signal.libsignal.protocol.DuplicateMessageException),
+            error,
+        ),
 
         SignalJniError::Protocol(SignalProtocolError::InvalidPreKeyId)
         | SignalJniError::Protocol(SignalProtocolError::InvalidSignedPreKeyId)
-        | SignalJniError::Protocol(SignalProtocolError::InvalidKyberPreKeyId) => {
-            jni_class_name!(org.signal.libsignal.protocol.InvalidKeyIdException)
-        }
+        | SignalJniError::Protocol(SignalProtocolError::InvalidKyberPreKeyId) => (
+            jni_class_name!(org.signal.libsignal.protocol.InvalidKeyIdException),
+            error,
+        ),
 
         SignalJniError::Protocol(SignalProtocolError::NoKeyTypeIdentifier)
         | SignalJniError::Protocol(SignalProtocolError::SignatureValidationFailed)
@@ -340,257 +331,278 @@ where
         | SignalJniError::Protocol(SignalProtocolError::BadKEMKeyType(_))
         | SignalJniError::Protocol(SignalProtocolError::WrongKEMKeyType(_, _))
         | SignalJniError::Protocol(SignalProtocolError::BadKEMKeyLength(_, _))
-        | SignalJniError::SignalCrypto(SignalCryptoError::InvalidKeySize) => {
-            jni_class_name!(org.signal.libsignal.protocol.InvalidKeyException)
-        }
+        | SignalJniError::SignalCrypto(SignalCryptoError::InvalidKeySize) => (
+            jni_class_name!(org.signal.libsignal.protocol.InvalidKeyException),
+            error,
+        ),
 
-        SignalJniError::Protocol(SignalProtocolError::NoSenderKeyState { .. }) => {
-            jni_class_name!(org.signal.libsignal.protocol.NoSessionException)
-        }
+        SignalJniError::Protocol(SignalProtocolError::NoSenderKeyState { .. }) => (
+            jni_class_name!(org.signal.libsignal.protocol.NoSessionException),
+            error,
+        ),
 
-        SignalJniError::Protocol(SignalProtocolError::InvalidSessionStructure(_)) => {
-            jni_class_name!(org.signal.libsignal.protocol.InvalidSessionException)
-        }
+        SignalJniError::Protocol(SignalProtocolError::InvalidSessionStructure(_)) => (
+            jni_class_name!(org.signal.libsignal.protocol.InvalidSessionException),
+            error,
+        ),
 
         SignalJniError::Protocol(SignalProtocolError::InvalidMessage(..))
         | SignalJniError::Protocol(SignalProtocolError::CiphertextMessageTooShort(_))
         | SignalJniError::Protocol(SignalProtocolError::InvalidProtobufEncoding)
         | SignalJniError::Protocol(SignalProtocolError::InvalidSealedSenderMessage(_))
         | SignalJniError::Protocol(SignalProtocolError::BadKEMCiphertextLength(_, _))
-        | SignalJniError::SignalCrypto(SignalCryptoError::InvalidTag) => {
-            jni_class_name!(org.signal.libsignal.protocol.InvalidMessageException)
-        }
+        | SignalJniError::SignalCrypto(SignalCryptoError::InvalidTag) => (
+            jni_class_name!(org.signal.libsignal.protocol.InvalidMessageException),
+            error,
+        ),
 
         SignalJniError::Protocol(SignalProtocolError::UnrecognizedCiphertextVersion(_))
         | SignalJniError::Protocol(SignalProtocolError::UnrecognizedMessageVersion(_))
-        | SignalJniError::Protocol(SignalProtocolError::UnknownSealedSenderVersion(_)) => {
-            jni_class_name!(org.signal.libsignal.protocol.InvalidVersionException)
-        }
+        | SignalJniError::Protocol(SignalProtocolError::UnknownSealedSenderVersion(_)) => (
+            jni_class_name!(org.signal.libsignal.protocol.InvalidVersionException),
+            error,
+        ),
 
-        SignalJniError::Protocol(SignalProtocolError::LegacyCiphertextVersion(_)) => {
-            jni_class_name!(org.signal.libsignal.protocol.LegacyMessageException)
-        }
+        SignalJniError::Protocol(SignalProtocolError::LegacyCiphertextVersion(_)) => (
+            jni_class_name!(org.signal.libsignal.protocol.LegacyMessageException),
+            error,
+        ),
 
-        SignalJniError::Protocol(SignalProtocolError::FingerprintParsingError) => {
+        SignalJniError::Protocol(SignalProtocolError::FingerprintParsingError) => (
             jni_class_name!(
                 org.signal
                     .libsignal
                     .protocol
                     .fingerprint
                     .FingerprintParsingException
-            )
-        }
-
-        SignalJniError::Protocol(SignalProtocolError::SealedSenderSelfSend)
-        | SignalJniError::Protocol(SignalProtocolError::UntrustedIdentity(_))
-        | SignalJniError::Protocol(SignalProtocolError::FingerprintVersionMismatch(_, _))
-        | SignalJniError::Protocol(SignalProtocolError::SessionNotFound(..))
-        | SignalJniError::Protocol(SignalProtocolError::InvalidRegistrationId(..))
-        | SignalJniError::Protocol(SignalProtocolError::InvalidSenderKeySession { .. })
-        | SignalJniError::Bridge(BridgeLayerError::BadJniParameter(_))
-        | SignalJniError::Bridge(BridgeLayerError::UnexpectedJniResultType(_, _))
-        | SignalJniError::Bridge(BridgeLayerError::CallbackException(_, _))
-        | SignalJniError::Bridge(BridgeLayerError::UnexpectedPanic(_)) => {
-            unreachable!("already handled in prior match")
-        }
+            ),
+            error,
+        ),
 
         SignalJniError::HsmEnclave(HsmEnclaveError::HSMHandshakeError(_))
-        | SignalJniError::HsmEnclave(HsmEnclaveError::HSMCommunicationError(_)) => {
+        | SignalJniError::HsmEnclave(HsmEnclaveError::HSMCommunicationError(_)) => (
             jni_class_name!(
                 org.signal
                     .libsignal
                     .hsmenclave
                     .EnclaveCommunicationFailureException
-            )
-        }
-        SignalJniError::HsmEnclave(HsmEnclaveError::TrustedCodeError) => {
-            jni_class_name!(org.signal.libsignal.hsmenclave.TrustedCodeMismatchException)
-        }
+            ),
+            error,
+        ),
+        SignalJniError::HsmEnclave(HsmEnclaveError::TrustedCodeError) => (
+            jni_class_name!(org.signal.libsignal.hsmenclave.TrustedCodeMismatchException),
+            error,
+        ),
         SignalJniError::HsmEnclave(HsmEnclaveError::InvalidPublicKeyError)
         | SignalJniError::HsmEnclave(HsmEnclaveError::InvalidCodeHashError) => {
-            jni_class_name!(java.lang.IllegalArgumentException)
+            (jni_class_name!(java.lang.IllegalArgumentException), error)
         }
         SignalJniError::HsmEnclave(HsmEnclaveError::InvalidBridgeStateError) => {
-            jni_class_name!(java.lang.IllegalStateException)
+            (jni_class_name!(java.lang.IllegalStateException), error)
         }
 
         SignalJniError::Enclave(EnclaveError::NoiseHandshakeError(_))
-        | SignalJniError::Enclave(EnclaveError::NoiseError(_)) => {
+        | SignalJniError::Enclave(EnclaveError::NoiseError(_)) => (
             jni_class_name!(
                 org.signal
                     .libsignal
                     .sgxsession
                     .SgxCommunicationFailureException
-            )
-        }
-        SignalJniError::Enclave(EnclaveError::AttestationError(_)) => {
-            jni_class_name!(org.signal.libsignal.attest.AttestationFailedException)
-        }
-        SignalJniError::Enclave(EnclaveError::AttestationDataError { .. }) => {
-            jni_class_name!(org.signal.libsignal.attest.AttestationDataException)
-        }
+            ),
+            error,
+        ),
+        SignalJniError::Enclave(EnclaveError::AttestationError(_)) => (
+            jni_class_name!(org.signal.libsignal.attest.AttestationFailedException),
+            error,
+        ),
+        SignalJniError::Enclave(EnclaveError::AttestationDataError { .. }) => (
+            jni_class_name!(org.signal.libsignal.attest.AttestationDataException),
+            error,
+        ),
         SignalJniError::Enclave(EnclaveError::InvalidBridgeStateError) => {
-            jni_class_name!(java.lang.IllegalStateException)
+            (jni_class_name!(java.lang.IllegalStateException), error)
         }
 
         SignalJniError::Pin(PinError::Argon2Error(_))
         | SignalJniError::Pin(PinError::DecodingError(_))
         | SignalJniError::Pin(PinError::MrenclaveLookupError) => {
-            jni_class_name!(java.lang.IllegalArgumentException)
+            (jni_class_name!(java.lang.IllegalArgumentException), error)
         }
 
-        SignalJniError::ZkGroupDeserializationFailure(_) => {
-            jni_class_name!(org.signal.libsignal.zkgroup.InvalidInputException)
-        }
+        SignalJniError::ZkGroupDeserializationFailure(_) => (
+            jni_class_name!(org.signal.libsignal.zkgroup.InvalidInputException),
+            error,
+        ),
 
-        SignalJniError::ZkGroupVerificationFailure(_) => {
-            jni_class_name!(org.signal.libsignal.zkgroup.VerificationFailedException)
-        }
+        SignalJniError::ZkGroupVerificationFailure(_) => (
+            jni_class_name!(org.signal.libsignal.zkgroup.VerificationFailedException),
+            error,
+        ),
 
-        SignalJniError::UsernameError(UsernameError::NicknameCannotBeEmpty) => {
-            jni_class_name!(org.signal.libsignal.usernames.CannotBeEmptyException)
-        }
+        SignalJniError::UsernameError(UsernameError::NicknameCannotBeEmpty) => (
+            jni_class_name!(org.signal.libsignal.usernames.CannotBeEmptyException),
+            error,
+        ),
 
-        SignalJniError::UsernameError(UsernameError::NicknameCannotStartWithDigit) => {
-            jni_class_name!(org.signal.libsignal.usernames.CannotStartWithDigitException)
-        }
+        SignalJniError::UsernameError(UsernameError::NicknameCannotStartWithDigit) => (
+            jni_class_name!(org.signal.libsignal.usernames.CannotStartWithDigitException),
+            error,
+        ),
 
-        SignalJniError::UsernameError(UsernameError::MissingSeparator) => {
-            jni_class_name!(org.signal.libsignal.usernames.MissingSeparatorException)
-        }
+        SignalJniError::UsernameError(UsernameError::MissingSeparator) => (
+            jni_class_name!(org.signal.libsignal.usernames.MissingSeparatorException),
+            error,
+        ),
 
-        SignalJniError::UsernameError(UsernameError::BadNicknameCharacter) => {
-            jni_class_name!(org.signal.libsignal.usernames.BadNicknameCharacterException)
-        }
+        SignalJniError::UsernameError(UsernameError::BadNicknameCharacter) => (
+            jni_class_name!(org.signal.libsignal.usernames.BadNicknameCharacterException),
+            error,
+        ),
 
-        SignalJniError::UsernameError(UsernameError::NicknameTooShort) => {
-            jni_class_name!(org.signal.libsignal.usernames.NicknameTooShortException)
-        }
+        SignalJniError::UsernameError(UsernameError::NicknameTooShort) => (
+            jni_class_name!(org.signal.libsignal.usernames.NicknameTooShortException),
+            error,
+        ),
 
-        SignalJniError::UsernameError(UsernameError::NicknameTooLong) => {
-            jni_class_name!(org.signal.libsignal.usernames.NicknameTooLongException)
-        }
+        SignalJniError::UsernameError(UsernameError::NicknameTooLong) => (
+            jni_class_name!(org.signal.libsignal.usernames.NicknameTooLongException),
+            error,
+        ),
 
-        SignalJniError::UsernameError(UsernameError::DiscriminatorCannotBeEmpty) => {
+        SignalJniError::UsernameError(UsernameError::DiscriminatorCannotBeEmpty) => (
             jni_class_name!(
                 org.signal
                     .libsignal
                     .usernames
                     .DiscriminatorCannotBeEmptyException
-            )
-        }
+            ),
+            error,
+        ),
 
-        SignalJniError::UsernameError(UsernameError::DiscriminatorCannotBeZero) => {
+        SignalJniError::UsernameError(UsernameError::DiscriminatorCannotBeZero) => (
             jni_class_name!(
                 org.signal
                     .libsignal
                     .usernames
                     .DiscriminatorCannotBeZeroException
-            )
-        }
+            ),
+            error,
+        ),
 
-        SignalJniError::UsernameError(UsernameError::DiscriminatorCannotBeSingleDigit) => {
+        SignalJniError::UsernameError(UsernameError::DiscriminatorCannotBeSingleDigit) => (
             jni_class_name!(
                 org.signal
                     .libsignal
                     .usernames
                     .DiscriminatorCannotBeSingleDigitException
-            )
-        }
+            ),
+            error,
+        ),
 
-        SignalJniError::UsernameError(UsernameError::DiscriminatorCannotHaveLeadingZeros) => {
+        SignalJniError::UsernameError(UsernameError::DiscriminatorCannotHaveLeadingZeros) => (
             jni_class_name!(
                 org.signal
                     .libsignal
                     .usernames
                     .DiscriminatorCannotHaveLeadingZerosException
-            )
-        }
+            ),
+            error,
+        ),
 
-        SignalJniError::UsernameError(UsernameError::BadDiscriminatorCharacter) => {
+        SignalJniError::UsernameError(UsernameError::BadDiscriminatorCharacter) => (
             jni_class_name!(
                 org.signal
                     .libsignal
                     .usernames
                     .BadDiscriminatorCharacterException
-            )
-        }
+            ),
+            error,
+        ),
 
-        SignalJniError::UsernameError(UsernameError::DiscriminatorTooLarge) => {
+        SignalJniError::UsernameError(UsernameError::DiscriminatorTooLarge) => (
             jni_class_name!(
                 org.signal
                     .libsignal
                     .usernames
                     .DiscriminatorTooLargeException
-            )
-        }
+            ),
+            error,
+        ),
 
-        SignalJniError::UsernameProofError(usernames::ProofVerificationFailure) => {
+        SignalJniError::UsernameProofError(usernames::ProofVerificationFailure) => (
             jni_class_name!(
                 org.signal
                     .libsignal
                     .usernames
                     .ProofVerificationFailureException
-            )
-        }
+            ),
+            error,
+        ),
 
-        SignalJniError::UsernameLinkError(UsernameLinkError::InputDataTooLong) => {
-            jni_class_name!(org.signal.libsignal.usernames.UsernameLinkInputDataTooLong)
-        }
+        SignalJniError::UsernameLinkError(UsernameLinkError::InputDataTooLong) => (
+            jni_class_name!(org.signal.libsignal.usernames.UsernameLinkInputDataTooLong),
+            error,
+        ),
 
-        SignalJniError::UsernameLinkError(UsernameLinkError::InvalidEntropyDataLength) => {
+        SignalJniError::UsernameLinkError(UsernameLinkError::InvalidEntropyDataLength) => (
             jni_class_name!(
                 org.signal
                     .libsignal
                     .usernames
                     .UsernameLinkInvalidEntropyDataLength
-            )
-        }
+            ),
+            error,
+        ),
 
-        SignalJniError::UsernameLinkError(_) => {
-            jni_class_name!(org.signal.libsignal.usernames.UsernameLinkInvalidLinkData)
-        }
+        SignalJniError::UsernameLinkError(_) => (
+            jni_class_name!(org.signal.libsignal.usernames.UsernameLinkInvalidLinkData),
+            error,
+        ),
 
-        SignalJniError::Io(_) => {
-            jni_class_name!(java.io.IOException)
-        }
+        SignalJniError::Io(_) => (jni_class_name!(java.io.IOException), error),
 
         #[cfg(feature = "signal-media")]
-        SignalJniError::Mp4SanitizeParse(_) | SignalJniError::WebpSanitizeParse(_) => {
-            jni_class_name!(org.signal.libsignal.media.ParseException)
-        }
+        SignalJniError::Mp4SanitizeParse(_) | SignalJniError::WebpSanitizeParse(_) => (
+            jni_class_name!(org.signal.libsignal.media.ParseException),
+            error,
+        ),
 
-        SignalJniError::Cdsi(CdsiError::RateLimited { retry_after: _ }) => {
-            unreachable!("already handled above")
-        }
-
-        SignalJniError::Cdsi(CdsiError::InvalidToken) => {
-            jni_class_name!(org.signal.libsignal.net.CdsiInvalidTokenException)
-        }
+        SignalJniError::Cdsi(CdsiError::InvalidToken) => (
+            jni_class_name!(org.signal.libsignal.net.CdsiInvalidTokenException),
+            error,
+        ),
         SignalJniError::Cdsi(
             CdsiError::InvalidResponse | CdsiError::ParseError | CdsiError::Protocol,
-        ) => jni_class_name!(org.signal.libsignal.net.CdsiProtocolException),
-        SignalJniError::WebSocket(_) | SignalJniError::Timeout => {
-            jni_class_name!(org.signal.libsignal.net.NetworkException)
-        }
+        ) => (
+            jni_class_name!(org.signal.libsignal.net.CdsiProtocolException),
+            error,
+        ),
+        SignalJniError::WebSocket(_) | SignalJniError::Timeout => (
+            jni_class_name!(org.signal.libsignal.net.NetworkException),
+            error,
+        ),
 
-        SignalJniError::Svr3(Svr3Error::RestoreFailed) => {
-            jni_class_name!(org.signal.libsignal.svr.RestoreFailedException)
-        }
-        SignalJniError::Svr3(Svr3Error::DataMissing) => {
-            jni_class_name!(org.signal.libsignal.svr.DataMissingException)
-        }
-        SignalJniError::Svr3(_) => jni_class_name!(org.signal.libsignal.svr.SvrException),
+        SignalJniError::Svr3(Svr3Error::RestoreFailed) => (
+            jni_class_name!(org.signal.libsignal.svr.RestoreFailedException),
+            error,
+        ),
+        SignalJniError::Svr3(Svr3Error::DataMissing) => (
+            jni_class_name!(org.signal.libsignal.svr.DataMissingException),
+            error,
+        ),
+        SignalJniError::Svr3(_) => (
+            jni_class_name!(org.signal.libsignal.svr.SvrException),
+            error,
+        ),
 
-        SignalJniError::InvalidUri(_) => {
-            jni_class_name!(java.net.MalformedURLException)
-        }
-        SignalJniError::ChatService(_) => {
-            jni_class_name!(org.signal.libsignal.net.ChatServiceException)
-        }
+        SignalJniError::InvalidUri(_) => (jni_class_name!(java.net.MalformedURLException), error),
+        SignalJniError::ChatService(_) => (
+            jni_class_name!(org.signal.libsignal.net.ChatServiceException),
+            error,
+        ),
 
         #[cfg(feature = "testing-fns")]
-        SignalJniError::TestingError { exception_class } => exception_class,
+        SignalJniError::TestingError { exception_class } => (exception_class, error),
     };
 
     let throwable = env
