@@ -10,10 +10,9 @@ edition = "2021"
 cargo-fuzz = true
 
 [dependencies]
-libfuzzer-sys = "0.4"
+attest = { path = "../" }
 
-[dependencies.attest]
-path = ".."
+libfuzzer-sys = "0.4"
 
 # Prevent this from interfering with workspaces
 [workspace]

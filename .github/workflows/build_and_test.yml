@@ -120,16 +120,24 @@ jobs:
       uses: actions/cache@ab5e6d0c87105b4c9c2047343972218f562e4319 # v4.0.1
       with:
         path: local-tools
-        key: ${{ runner.os }}-local-tools-${{ matrix.version }}-${{ hashFiles('acknowledgments/cargo-about-version') }}
+        key: ${{ runner.os }}-local-tools-${{ matrix.version }}-${{ hashFiles('acknowledgments/cargo-about-version', '.taplo-cli-version') }}
 
     - name: Build cargo-about if needed
       run: cargo +stable install --version $(cat acknowledgments/cargo-about-version) --locked cargo-about --root local-tools
+      if: matrix.version == 'nightly'
+
+    - name: Build taplo-cli if needed
+      run: cargo +stable install --version $(cat .taplo-cli-version) --locked taplo-cli --root local-tools
       if: matrix.version == 'nightly'
 
     # This should be done before anything else
     # because it also checks that the lockfile is up to date.
     - name: Check for duplicate dependencies
       run: ./bin/verify_duplicate_crates
+      if: matrix.version == 'nightly'
+
+    - name: Cargo.toml formatting check
+      run: PATH="$PATH:$PWD/local-tools/bin" taplo format -c .taplo.toml --check
       if: matrix.version == 'nightly'
 
     - name: Rustfmt check

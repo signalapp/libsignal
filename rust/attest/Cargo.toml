@@ -20,9 +20,9 @@ chacha20poly1305 = "0.10.1"
 chrono = { version = "0.4", features = ["serde"] }
 ciborium = "0.2"
 displaydoc = "0.2"
-hmac = "0.12"
 hex = { version = "0.4", features = ["serde"] }
 hex-literal = "0.4.1"
+hmac = "0.12"
 lazy_static = "1.4.0"
 libc = "0.2"
 log = "0.4"

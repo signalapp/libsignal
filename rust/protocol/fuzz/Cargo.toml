@@ -9,14 +9,14 @@ edition = "2021"
 cargo-fuzz = true
 
 [dependencies]
+libsignal-protocol = { path = ".." }
+
 env_logger = "0.10.0"
 futures-util = "0.3.7"
 libfuzzer-sys = "0.4"
 log = "0.4"
 rand = "0.8"
 
-[dependencies.libsignal-protocol]
-path = ".."
 
 # Prevent this from interfering with workspaces
 [workspace]

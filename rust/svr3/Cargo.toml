@@ -11,13 +11,14 @@ license = "AGPL-3.0-only"
 
 [dependencies]
 attest = { path = "../attest" }
+
 base64 = "0.21.5"
 curve25519-dalek = { version = "4.0", features = ["rand_core"] }
 displaydoc = "0.2"
 hkdf = "0.12"
+http = "1.0.0"
 prost = "0.12.1"
 rand_core = { version = "0.6", features = ["getrandom"] }
-http = "1.0.0"
 sha2 = "0.10"
 strum_macros = "0.26"
 subtle = "2.5"

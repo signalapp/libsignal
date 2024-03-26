@@ -11,18 +11,19 @@ edition = "2021"
 license = "AGPL-3.0-only"
 
 [dependencies]
-libsignal-protocol = { path = "../../protocol" }
+attest = { path = "../../attest" }
+device-transfer = { path = "../../device-transfer" }
+libsignal-bridge-macros = { path = "macros" }
+libsignal-message-backup = { path = "../../message-backup" }
 libsignal-net = { path = "../../net" }
+libsignal-protocol = { path = "../../protocol" }
 libsignal-svr3 = { path = "../../svr3" }
 signal-crypto = { path = "../../crypto" }
-device-transfer = { path = "../../device-transfer" }
-attest = { path = "../../attest" }
-zkgroup = { path = "../../zkgroup" }
-usernames = { path = "../../usernames" }
-signal-pin = { path = "../../pin" }
-libsignal-message-backup = { path = "../../message-backup" }
 signal-media = { path = "../../media", optional = true }
-libsignal-bridge-macros = { path = "macros" }
+signal-pin = { path = "../../pin" }
+usernames = { path = "../../usernames" }
+zkgroup = { path = "../../zkgroup" }
+
 aes-gcm-siv = "0.11.1"
 async-trait = "0.1.41"
 base64 = "0.21"
@@ -59,8 +60,8 @@ subtle = { version = "2.5", features = ["core_hint_black_box"] }
 
 bytemuck = { version = "1.13.0", optional = true }
 jni = { version = "0.21", package = "jni", optional = true }
-neon = { version = "1.0.0", optional = true, default-features = false, features = ["napi-6"] }
 linkme = { version = "0.3.9", optional = true }
+neon = { version = "1.0.0", optional = true, default-features = false, features = ["napi-6"] }
 signal-neon-futures = { path = "../node/futures", optional = true }
 strum = { version = "0.26", features = ["derive"] }
 

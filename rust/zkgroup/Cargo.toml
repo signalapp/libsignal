@@ -17,12 +17,15 @@ poksho = { path = "../poksho" }
 signal-crypto = { path = "../crypto" }
 zkcredential = { path = "../zkcredential", features = ["rayon"] }
 
+curve25519-dalek = { git = 'https://github.com/signalapp/curve25519-dalek', tag = 'signal-curve25519-4.1.1', version = "4.1.1", features = ["serde"] }
+
 aes-gcm-siv = "0.11.1"
 bincode = "1.2.1"
 derive-where = "1.2.5"
 displaydoc = "0.2"
 hex = "0.4.0"
 hex-literal = "0.4.1"
+hkdf = "0.12"
 lazy_static = "1.4.0"
 num_enum = "0.6.1"
 partial-default = { version = "0.1.0", features = ["derive"] }
@@ -31,17 +34,11 @@ serde = { version = "1.0.106", features = ["derive"] }
 sha2 = "0.10.0"
 subtle = "2.3"
 uuid = "1.1.2"
-hkdf = "0.12"
 
 # For generation
 base64 = { version = "0.21", optional = true }
 rand = { version = "0.8", optional = true }
 
-[dependencies.curve25519-dalek]
-git = 'https://github.com/signalapp/curve25519-dalek'
-tag = 'signal-curve25519-4.1.1'
-features = ["serde"]
-version = "4.1.1"
 
 [dev-dependencies]
 rand = "0.8"

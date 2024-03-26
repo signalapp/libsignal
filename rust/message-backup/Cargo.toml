@@ -42,15 +42,15 @@ hkdf = "0.12"
 hmac = "0.12"
 log = "0.4"
 mediasan-common = "0.5.0"
+num_enum = "0.6.1"
 protobuf = "3.3.0"
 protobuf-json-mapping = { version = "3.3.0", optional = true }
 serde_json = { version = "1.0", optional = true }
 sha2 = "0.10"
+strum = { version = "0.26", features = ["derive"] }
 subtle = "2.5.0"
 thiserror = "1.0.50"
 uuid = "1.1.2"
-num_enum = "0.6.1"
-strum = { version = "0.26", features = ["derive"] }
 
 [dev-dependencies]
 libsignal-message-backup = { path = "./", features = ["json"] }

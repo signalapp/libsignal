@@ -1,0 +1,13 @@
+include = ["Cargo.toml", "rust/**/*.toml"]
+
+[formatting]
+reorder_keys = false
+indent_string = '    '
+
+[[rule]]
+include = ["**/Cargo.toml"]
+keys = ["dependencies"]
+
+[rule.formatting]
+reorder_keys = true
+inline_table_expand = false

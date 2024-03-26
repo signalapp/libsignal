@@ -16,6 +16,7 @@ generate-bridge:
 # Auto-format code in Java, Rust, Swift, and TypeScript
 format-all:
     cargo fmt
+    taplo fmt
     (cd swift && swiftformat --swiftversion 5 .)
     (cd node && yarn format)
     (cd java && ./gradlew spotlessApply)

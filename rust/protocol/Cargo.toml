@@ -13,6 +13,7 @@ license = "AGPL-3.0-only"
 [dependencies]
 libsignal-core = { path = "../core" }
 signal-crypto = { path = "../crypto" }
+
 aes = { version = "0.8.3", features = ["zeroize"] }
 aes-gcm-siv = "0.11.1"
 arrayref = "0.3.6"
@@ -20,25 +21,25 @@ async-trait = "0.1.41"
 ctr = { version = "0.9.2", features = ["zeroize"] }
 curve25519-dalek = { version = "4.0.0", features = ["digest"] }
 derive-where = "1.2.5"
+displaydoc = "0.2"
+hex = "0.4"
 hkdf = "0.12"
 hmac = "0.12"
 indexmap = "2.1.0"
 itertools = "0.12.0"
+log = "0.4"
+num_enum = "0.6.1"
+pqcrypto-kyber = { version = "0.7.6", default-features = false, features = ["std"] }
+pqcrypto-traits = "0.3.4"
 prost = "0.12"
 rand = "0.8"
 rayon = "1.8.0"
 sha2 = "0.10"
 static_assertions = "1.1"
 subtle = "2.3"
-x25519-dalek = { version = "2.0.0", features = ["static_secrets"] }
-hex = "0.4"
-log = "0.4"
-num_enum = "0.6.1"
-uuid = "1.1.2"
-displaydoc = "0.2"
 thiserror = "1.0.30"
-pqcrypto-kyber = { version = "0.7.6", default-features = false, features = ["std"] }
-pqcrypto-traits = "0.3.4"
+uuid = "1.1.2"
+x25519-dalek = { version = "2.0.0", features = ["static_secrets"] }
 
 # WARNING: pqcrypto-kyber 0.8 and 0.7 don't actually coexist, they both depend on the same C symbols.
 # We keep this here for if/when that gets cleared up.
