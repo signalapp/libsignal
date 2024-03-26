@@ -445,7 +445,7 @@ impl SignalNodeError for libsignal_net::cdsi::LookupError {
             Self::RateLimited {
                 retry_after_seconds,
             } => (
-                RATE_LIMITED_ERROR,
+                Some(RATE_LIMITED_ERROR),
                 Some({
                     let props = cx.empty_object();
                     let retry_after = retry_after_seconds.convert_into(cx)?;
@@ -454,26 +454,21 @@ impl SignalNodeError for libsignal_net::cdsi::LookupError {
                 }),
             ),
             Self::AttestationError(e) => return e.throw(cx, module, operation_name),
-            Self::InvalidToken => ("CdsiInvalidToken", None),
+            Self::InvalidArgument { server_reason: _ } => (None, None),
+            Self::InvalidToken => (Some("CdsiInvalidToken"), None),
             Self::Timeout
             | Self::ConnectTransport(_)
             | Self::WebSocket(_)
             | Self::Protocol
             | Self::InvalidResponse
-            | Self::ParseError => (IO_ERROR, None),
+            | Self::ParseError
+            | Self::Server { reason: _ } => (Some(IO_ERROR), None),
         };
         let message = self.to_string();
-        new_js_error(
-            cx,
-            module,
-            Some(name),
-            &message,
-            operation_name,
-            extra_props,
-        )
-        .map(|e| cx.throw(e))
-        // Make sure we still throw something.
-        .unwrap_or_else(|| cx.throw_error(&message))
+        new_js_error(cx, module, name, &message, operation_name, extra_props)
+            .map(|e| cx.throw(e))
+            // Make sure we still throw something.
+            .unwrap_or_else(|| cx.throw_error(&message))
     }
 }
 

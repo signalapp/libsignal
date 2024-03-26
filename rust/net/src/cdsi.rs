@@ -14,6 +14,8 @@ use prost::Message as _;
 use thiserror::Error;
 use tokio::net::TcpStream;
 use tokio_boring::SslStream;
+use tungstenite::protocol::frame::coding::CloseCode;
+use tungstenite::protocol::CloseFrame;
 use uuid::Uuid;
 
 use crate::auth::HttpBasicAuth;
@@ -285,6 +287,10 @@ pub enum LookupError {
     WebSocket(WebSocketServiceError),
     /// lookup timed out
     Timeout,
+    /// request was invalid: {server_reason}
+    InvalidArgument { server_reason: String },
+    /// server error: {reason}
+    Server { reason: &'static str },
 }
 
 impl From<AttestedConnectionError> for LookupError {
@@ -342,13 +348,6 @@ struct RateLimitExceededResponse {
     retry_after_seconds: u32,
 }
 
-impl RateLimitExceededResponse {
-    /// Numeric code set by the server on the websocket close frame.
-    const CLOSE_CODE: u16 = 4008;
-}
-
-const INVALID_TOKEN_CLOSE_CODE: u16 = 4101;
-
 #[cfg_attr(test, derive(Debug))]
 pub struct ClientResponseCollector<S = SslStream<TcpStream>>(CdsiConnection<S>);
 
@@ -372,28 +371,11 @@ impl<S: AsyncDuplexStream> CdsiConnection<S> {
         request: LookupRequest,
     ) -> Result<(Token, ClientResponseCollector<S>), LookupError> {
         self.0.send(request.into_client_request()).await?;
-        let token_response: ClientResponse = match self.0.receive().await? {
-            NextOrClose::Next(response) => response,
-            NextOrClose::Close(close) => {
-                if let Some(close) = close {
-                    match u16::from(close.code) {
-                        RateLimitExceededResponse::CLOSE_CODE => {
-                            if let Ok(RateLimitExceededResponse {
-                                retry_after_seconds,
-                            }) = serde_json::from_str(&close.reason)
-                            {
-                                return Err(LookupError::RateLimited {
-                                    retry_after_seconds,
-                                });
-                            }
-                        }
-                        INVALID_TOKEN_CLOSE_CODE => return Err(LookupError::InvalidToken),
-                        _ => (),
-                    }
-                };
-                return Err(LookupError::Protocol);
-            }
-        };
+        let token_response: ClientResponse = self.0.receive().await?.next_or_else(|close| {
+            close
+                .and_then(err_for_close)
+                .unwrap_or(LookupError::Protocol)
+        })?;
 
         if token_response.token.is_empty() {
             return Err(LookupError::Protocol);
@@ -416,17 +398,73 @@ impl<S: AsyncDuplexStream> ClientResponseCollector<S> {
         };
 
         connection.0.send(token_ack).await?;
-        let mut response: ClientResponse = connection
-            .0
-            .receive()
-            .await?
-            .next_or(LookupError::Protocol)?;
-        while let NextOrClose::Next(decoded) = connection.0.receive_bytes().await? {
-            response
-                .merge(decoded.as_ref())
-                .map_err(LookupError::from)?;
+        let mut response: ClientResponse = connection.0.receive().await?.next_or_else(|close| {
+            close
+                .and_then(err_for_close)
+                .unwrap_or(LookupError::Protocol)
+        })?;
+        loop {
+            match connection.0.receive_bytes().await? {
+                NextOrClose::Next(decoded) => {
+                    response
+                        .merge(decoded.as_ref())
+                        .map_err(LookupError::from)?;
+                }
+                NextOrClose::Close(
+                    None
+                    | Some(CloseFrame {
+                        code: CloseCode::Normal,
+                        reason: _,
+                    }),
+                ) => break,
+                NextOrClose::Close(Some(close)) => {
+                    return Err(err_for_close(close).unwrap_or(LookupError::Protocol))
+                }
+            }
         }
         Ok(response.try_into()?)
+    }
+}
+
+/// Produces a [`LookupError`] for the provided [`CloseFrame`].
+///
+/// Returns `Some(err)` if there is a relevant `LookupError` value for the
+/// provided close frame. Otherwise returns `None`.
+fn err_for_close(CloseFrame { code, reason }: CloseFrame<'_>) -> Option<LookupError> {
+    /// Numeric code set by the server on the websocket close frame.
+    #[repr(u16)]
+    #[derive(Copy, Clone, num_enum::TryFromPrimitive, strum::IntoStaticStr)]
+    enum CdsiCloseCode {
+        InvalidArgument = 4003,
+        RateLimitExceeded = 4008,
+        ServerInternalError = 4013,
+        ServerUnavailable = 4014,
+        InvalidToken = 4101,
+    }
+
+    let Ok(code) = CdsiCloseCode::try_from(u16::from(code)) else {
+        log::warn!("got unexpected websocket error code: {code}",);
+        return None;
+    };
+
+    match code {
+        CdsiCloseCode::InvalidArgument => Some(LookupError::InvalidArgument {
+            server_reason: reason.into_owned(),
+        }),
+        CdsiCloseCode::InvalidToken => Some(LookupError::InvalidToken),
+        CdsiCloseCode::RateLimitExceeded => {
+            let RateLimitExceededResponse {
+                retry_after_seconds,
+            } = serde_json::from_str(&reason).ok()?;
+            Some(LookupError::RateLimited {
+                retry_after_seconds,
+            })
+        }
+        CdsiCloseCode::ServerInternalError | CdsiCloseCode::ServerUnavailable => {
+            Some(LookupError::Server {
+                reason: code.into(),
+            })
+        }
     }
 }
 
@@ -760,8 +798,12 @@ mod test {
 
         let response = collector.collect().await;
 
-        // TODO this is wrong, this should be a RateLimited error.
-        assert_matches!(response, Err(LookupError::Protocol));
+        assert_matches!(
+            response,
+            Err(LookupError::RateLimited {
+                retry_after_seconds: RETRY_AFTER_SECS
+            })
+        )
     }
 
     #[tokio::test]

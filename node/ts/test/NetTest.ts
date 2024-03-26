@@ -169,6 +169,11 @@ describe('cdsi lookup', () => {
           'request token was invalid',
         ],
         [
+          'InvalidArgument',
+          ErrorCode.Generic,
+          'request was invalid: fake reason',
+        ],
+        [
           'Parse',
           ErrorCode.IoError,
           'failed to parse the response from the server',
@@ -184,6 +189,7 @@ describe('cdsi lookup', () => {
           'websocket error: channel was idle for too long',
         ],
         ['Timeout', ErrorCode.IoError, 'lookup timed out'],
+        ['ServerCrashed', ErrorCode.IoError, 'server error: crashed'],
       ];
       cases.forEach((testCase) => {
         const [name, expectedCode, expectedMessage] = testCase;

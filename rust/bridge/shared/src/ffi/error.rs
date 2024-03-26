@@ -200,7 +200,10 @@ impl From<libsignal_net::cdsi::LookupError> for SignalFfiError {
             LookupError::ConnectTransport(e) => SignalFfiError::Io(e.into()),
             LookupError::WebSocket(e) => SignalFfiError::WebSocket(e),
             LookupError::Timeout => SignalFfiError::Timeout,
-            LookupError::ParseError | LookupError::Protocol | LookupError::InvalidResponse => {
+            LookupError::ParseError
+            | LookupError::Protocol
+            | LookupError::InvalidResponse
+            | LookupError::Server { reason: _ } => {
                 SignalFfiError::NetworkProtocol(value.to_string())
             }
             LookupError::RateLimited {
@@ -209,6 +212,9 @@ impl From<libsignal_net::cdsi::LookupError> for SignalFfiError {
                 retry_after_seconds: retry_after,
             },
             LookupError::InvalidToken => SignalFfiError::CdsiInvalidToken,
+            LookupError::InvalidArgument { server_reason: _ } => {
+                SignalFfiError::Signal(SignalProtocolError::InvalidArgument(value.to_string()))
+            }
         }
     }
 }

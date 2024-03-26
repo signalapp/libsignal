@@ -255,6 +255,11 @@ impl From<libsignal_net::cdsi::LookupError> for SignalJniError {
             LookupError::AttestationError(e) => return e.into(),
             LookupError::ConnectTransport(e) => return IoError::from(e).into(),
             LookupError::WebSocket(e) => return e.into(),
+            LookupError::InvalidArgument { server_reason: _ } => {
+                return SignalJniError::Protocol(SignalProtocolError::InvalidArgument(
+                    e.to_string(),
+                ))
+            }
             LookupError::InvalidResponse => CdsiError::InvalidResponse,
             LookupError::Protocol => CdsiError::Protocol,
             LookupError::RateLimited {
@@ -264,6 +269,7 @@ impl From<libsignal_net::cdsi::LookupError> for SignalJniError {
             },
             LookupError::ParseError => CdsiError::ParseError,
             LookupError::InvalidToken => CdsiError::InvalidToken,
+            LookupError::Server { reason } => CdsiError::Server { reason },
         })
     }
 }

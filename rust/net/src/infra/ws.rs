@@ -495,6 +495,16 @@ impl<T> NextOrClose<T> {
             Self::Next(t) => Ok(t),
         }
     }
+
+    pub fn next_or_else<E>(
+        self,
+        on_close: impl FnOnce(Option<CloseFrame<'static>>) -> E,
+    ) -> Result<T, E> {
+        match self {
+            Self::Next(t) => Ok(t),
+            Self::Close(close) => Err(on_close(close)),
+        }
+    }
 }
 
 impl<S> AttestedConnection<S>

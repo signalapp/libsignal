@@ -72,6 +72,11 @@ final class NetTests: XCTestCase {
             XCTAssertEqual(message, "CDSI request token was invalid")
         }
         do {
+            try failWithError("InvalidArgument")
+        } catch SignalError.invalidArgument(let message) {
+            XCTAssertEqual(message, "invalid argument: request was invalid: fake reason")
+        }
+        do {
             try failWithError("Parse")
         } catch SignalError.networkProtocolError(let message) {
             XCTAssertEqual(message, "Protocol error: failed to parse the response from the server")
@@ -90,6 +95,11 @@ final class NetTests: XCTestCase {
             try failWithError("Timeout")
         } catch SignalError.timeoutError(let message) {
             XCTAssertEqual(message, "Operation timed out")
+        }
+        do {
+            try failWithError("ServerCrashed")
+        } catch SignalError.networkProtocolError(let message) {
+            XCTAssertEqual(message, "Protocol error: server error: crashed")
         }
     }
 

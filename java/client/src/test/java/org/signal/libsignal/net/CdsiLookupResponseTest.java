@@ -72,11 +72,16 @@ public class CdsiLookupResponseTest {
     assertLookupErrorIs(
         "InvalidToken", CdsiInvalidTokenException.class, "Request token was invalid");
     assertLookupErrorIs(
+        "InvalidArgument",
+        IllegalArgumentException.class,
+        "invalid argument: request was invalid: fake reason");
+    assertLookupErrorIs(
         "Parse", CdsiProtocolException.class, "Failed to parse the response from the server");
     assertLookupErrorIs("ConnectDnsFailed", IOException.class, "DNS lookup failed");
     assertLookupErrorIs(
         "WebSocketIdleTooLong", NetworkException.class, "channel was idle for too long");
     assertLookupErrorIs("Timeout", NetworkException.class, "timeout");
+    assertLookupErrorIs("ServerCrashed", CdsiProtocolException.class, "Server error: crashed");
   }
 
   private static <E extends Exception> E assertLookupErrorIs(

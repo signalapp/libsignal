@@ -34,6 +34,8 @@ pub enum CdsiError {
     ParseError,
     /// Request token was invalid
     InvalidToken,
+    /// Server error: {reason}
+    Server { reason: &'static str },
 }
 
 #[derive(Default)]

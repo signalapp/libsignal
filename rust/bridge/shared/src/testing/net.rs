@@ -53,11 +53,39 @@ enum TestingCdsiLookupError {
     InvalidResponse,
     RetryAfter42Seconds,
     InvalidToken,
+    InvalidArgument,
     Parse,
     ConnectDnsFailed,
     WebSocketIdleTooLong,
     Timeout,
+    ServerCrashed,
 }
+
+const _: () = {
+    /// This code isn't ever executed. It exists so that when new cases are
+    /// added to `LookupError`, this will fail to compile until corresponding
+    /// cases are added to `TestingCdsiLookupError`
+    #[allow(unused)]
+    fn match_on_lookup_error(value: &'static LookupError) -> TestingCdsiLookupError {
+        match value {
+            LookupError::Protocol => TestingCdsiLookupError::Protocol,
+            LookupError::AttestationError(_) => TestingCdsiLookupError::AttestationDataError,
+            LookupError::InvalidResponse => TestingCdsiLookupError::InvalidResponse,
+            LookupError::RateLimited {
+                retry_after_seconds: _,
+            } => TestingCdsiLookupError::RetryAfter42Seconds,
+            LookupError::InvalidToken => TestingCdsiLookupError::InvalidToken,
+            LookupError::InvalidArgument { server_reason: _ } => {
+                TestingCdsiLookupError::InvalidArgument
+            }
+            LookupError::ParseError => TestingCdsiLookupError::Parse,
+            LookupError::ConnectTransport(_) => TestingCdsiLookupError::ConnectDnsFailed,
+            LookupError::WebSocket(_) => TestingCdsiLookupError::WebSocketIdleTooLong,
+            LookupError::Timeout => TestingCdsiLookupError::Timeout,
+            LookupError::Server { reason } => TestingCdsiLookupError::ServerCrashed,
+        }
+    }
+};
 
 impl TryFrom<String> for TestingCdsiLookupError {
     type Error = <Self as FromStr>::Err;
@@ -84,6 +112,9 @@ fn TESTING_CdsiLookupErrorConvert(
             retry_after_seconds: 42,
         },
         TestingCdsiLookupError::InvalidToken => LookupError::InvalidToken,
+        TestingCdsiLookupError::InvalidArgument => LookupError::InvalidArgument {
+            server_reason: "fake reason".into(),
+        },
         TestingCdsiLookupError::Parse => LookupError::ParseError,
         TestingCdsiLookupError::ConnectDnsFailed => LookupError::ConnectTransport(
             libsignal_net::infra::errors::TransportConnectError::DnsError,
@@ -92,6 +123,7 @@ fn TESTING_CdsiLookupErrorConvert(
             libsignal_net::infra::ws::WebSocketServiceError::ChannelIdleTooLong,
         ),
         TestingCdsiLookupError::Timeout => LookupError::Timeout,
+        TestingCdsiLookupError::ServerCrashed => LookupError::Server { reason: "crashed" },
     })
 }
 

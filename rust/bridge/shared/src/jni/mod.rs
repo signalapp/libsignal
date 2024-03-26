@@ -572,7 +572,10 @@ where
             error,
         ),
         SignalJniError::Cdsi(
-            CdsiError::InvalidResponse | CdsiError::ParseError | CdsiError::Protocol,
+            CdsiError::InvalidResponse
+            | CdsiError::ParseError
+            | CdsiError::Protocol
+            | CdsiError::Server { reason: _ },
         ) => (
             jni_class_name!(org.signal.libsignal.net.CdsiProtocolException),
             error,
