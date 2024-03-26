@@ -8,7 +8,7 @@ package org.signal.libsignal.zkgroup.groupsend;
 import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
 
 import java.time.Instant;
-import java.util.List;
+import java.util.Collection;
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.protocol.ServiceId;
 import org.signal.libsignal.zkgroup.InvalidInputException;
@@ -42,7 +42,7 @@ public final class GroupSendFullToken extends ByteArray {
    *
    * @throws VerificationFailedException if the token is invalid.
    */
-  public void verify(List<ServiceId> userIds, GroupSendDerivedKeyPair keyPair)
+  public void verify(Collection<ServiceId> userIds, GroupSendDerivedKeyPair keyPair)
       throws VerificationFailedException {
     verify(userIds, Instant.now(), keyPair);
   }
@@ -53,9 +53,9 @@ public final class GroupSendFullToken extends ByteArray {
    *
    * <p>This should only be used for testing purposes.
    *
-   * @see #verify(List, GroupSendDerivedKeyPair)
+   * @see #verify(Collection, GroupSendDerivedKeyPair)
    */
-  public void verify(List<ServiceId> userIds, Instant now, GroupSendDerivedKeyPair keyPair)
+  public void verify(Collection<ServiceId> userIds, Instant now, GroupSendDerivedKeyPair keyPair)
       throws VerificationFailedException {
     filterExceptions(
         VerificationFailedException.class,

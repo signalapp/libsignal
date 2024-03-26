@@ -9,7 +9,7 @@ import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.util.List;
+import java.util.Collection;
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.zkgroup.InvalidInputException;
 import org.signal.libsignal.zkgroup.internal.ByteArray;
@@ -21,7 +21,7 @@ public final class UuidCiphertext extends ByteArray {
         InvalidInputException.class, () -> Native.UuidCiphertext_CheckValidContents(contents));
   }
 
-  public static byte[] serializeAndConcatenate(List<UuidCiphertext> ciphertexts) {
+  public static byte[] serializeAndConcatenate(Collection<UuidCiphertext> ciphertexts) {
     ByteArrayOutputStream concatenated = new ByteArrayOutputStream();
     for (UuidCiphertext member : ciphertexts) {
       try {

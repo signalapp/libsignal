@@ -9,7 +9,7 @@ import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
 
 import java.nio.ByteBuffer;
 import java.time.Instant;
-import java.util.List;
+import java.util.Collection;
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.zkgroup.InvalidInputException;
 import org.signal.libsignal.zkgroup.groups.GroupSecretParams;
@@ -61,7 +61,7 @@ public final class GroupSendEndorsement extends ByteArray {
    * can combine them to produce an endorsement to send a multi-recipient message to the two of
    * them.
    */
-  public static GroupSendEndorsement combine(List<GroupSendEndorsement> endorsements) {
+  public static GroupSendEndorsement combine(Collection<GroupSendEndorsement> endorsements) {
     ByteBuffer[] buffers = new ByteBuffer[endorsements.size()];
     int nextOffset = 0;
     for (GroupSendEndorsement next : endorsements) {

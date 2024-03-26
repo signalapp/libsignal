@@ -11,6 +11,7 @@ import static org.signal.libsignal.zkgroup.internal.Constants.RANDOM_LENGTH;
 import java.security.SecureRandom;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.protocol.ServiceId;
@@ -43,7 +44,7 @@ public final class GroupSendEndorsementsResponse extends ByteArray {
    * <p>{@code groupMembers} should include {@code requestingUser} as well.
    */
   public static GroupSendEndorsementsResponse issue(
-      List<UuidCiphertext> groupMembers, GroupSendDerivedKeyPair keyPair) {
+      Collection<UuidCiphertext> groupMembers, GroupSendDerivedKeyPair keyPair) {
     return issue(groupMembers, keyPair, new SecureRandom());
   }
 
@@ -53,7 +54,7 @@ public final class GroupSendEndorsementsResponse extends ByteArray {
    * <p>{@code groupMembers} should include {@code requestingUser} as well.
    */
   public static GroupSendEndorsementsResponse issue(
-      List<UuidCiphertext> groupMembers,
+      Collection<UuidCiphertext> groupMembers,
       GroupSendDerivedKeyPair keyPair,
       SecureRandom secureRandom) {
     byte[] random = new byte[RANDOM_LENGTH];
@@ -94,7 +95,9 @@ public final class GroupSendEndorsementsResponse extends ByteArray {
    * #receive(List, UuidCiphertext, ServerPublicParams)} should be faster; if you don't, this method
    * is faster than generating the ciphertexts and throwing them away afterwards.
    *
-   * <p>{@code localUser} should be included in {@code groupMembers}.
+   * <p>{@code localUser} should be included in {@code groupMembers}. {@code groupMembers} uses
+   * {@code List} rather than {@code Collection} because the resulting endorsements are returned in
+   * the same order, and thus the order of iteration must be fixed.
    *
    * @throws VerificationFailedException if the endorsements are not valid for any reason
    */
@@ -156,7 +159,9 @@ public final class GroupSendEndorsementsResponse extends ByteArray {
    * ServerPublicParams)} is faster than generating the ciphertexts and throwing them away
    * afterwards.
    *
-   * <p>{@code localUser} should be included in {@code groupMembers}.
+   * <p>{@code localUser} should be included in {@code groupMembers}. {@code groupMembers} uses
+   * {@code List} rather than {@code Collection} because the resulting endorsements are returned in
+   * the same order, and thus the order of iteration must be fixed.
    *
    * @throws VerificationFailedException if the endorsements are not valid for any reason
    */
