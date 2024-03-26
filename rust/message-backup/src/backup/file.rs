@@ -39,9 +39,7 @@ impl TryFrom<proto::MessageAttachment> for VoiceMessageAttachment {
         let FilePointer {
             locator,
             // TODO validate these fields
-            key: _,
             contentType: _,
-            size: _,
             incrementalMac: _,
             incrementalMacChunkSize: _,
             fileName: _,
