@@ -32,6 +32,8 @@ interface DebugInfo {
   connectionReused: boolean;
   reconnectCount: number;
   ipType: number;
+  durationMillis: number;
+  connectionInfo: string;
 }
 
 interface ResponseAndDebugInfo {
@@ -166,6 +168,8 @@ export function Cds2ClientState_New(mrenclave: Buffer, attestationMsg: Buffer, c
 export function CdsiLookup_complete(asyncRuntime: Wrapper<TokioAsyncContext>, lookup: Wrapper<CdsiLookup>): Promise<LookupResponse>;
 export function CdsiLookup_new(asyncRuntime: Wrapper<TokioAsyncContext>, connectionManager: Wrapper<ConnectionManager>, username: string, password: string, request: Wrapper<LookupRequest>, timeoutMillis: number): Promise<CdsiLookup>;
 export function CdsiLookup_token(lookup: Wrapper<CdsiLookup>): Buffer;
+export function ChatService_connect_auth(asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<Chat>): Promise<DebugInfo>;
+export function ChatService_connect_unauth(asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<Chat>): Promise<DebugInfo>;
 export function ChatService_disconnect(asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<Chat>): Promise<void>;
 export function ChatService_new(connectionManager: Wrapper<ConnectionManager>, username: string, password: string): Chat;
 export function ChatService_unauth_send(asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<Chat>, httpRequest: Wrapper<HttpRequest>, timeoutMillis: number): Promise<Response>;

@@ -55,6 +55,51 @@ public class ChatService extends NativeHandleGuard.SimpleOwner {
   }
 
   /**
+   * Initiates establishing of the underlying authenticated connection to the Chat Service. Once the
+   * service is connected, all the requests will be using the established connection. Also, if the
+   * connection is lost for any reason other than the call to {@link #disconnect()}, an automatic
+   * reconnect attempt will be made.
+   *
+   * <p>Note: it's not necessary to call this method before attempting the first request. If the
+   * service is not connected, {@code connectAuthenticated()} will be called before the first
+   * authenticated request. However, in the case of the authenticated connection, calling this
+   * method will result in starting to accept incoming requests from the Chat Service.
+   *
+   * @return a future with the result of the connection attempt (either a {@link DebugInfo} or an
+   *     error).
+   */
+  public CompletableFuture<DebugInfo> connectAuthenticated() {
+    return tokioAsyncContext.guardedMap(
+        asyncContextHandle ->
+            guardedMap(
+                chatServiceHandle ->
+                    Native.ChatService_connect_auth(asyncContextHandle, chatServiceHandle)
+                        .thenApply(o -> (DebugInfo) o)));
+  }
+
+  /**
+   * Initiates establishing of the underlying unauthenticated connection to the Chat Service. Once
+   * the service is connected, all the requests will be using the established connection. Also, if
+   * the connection is lost for any reason other than the call to {@link #disconnect()}, an
+   * automatic reconnect attempt will be made.
+   *
+   * <p>Note: it's not necessary to call this method before attempting the first request. If the
+   * service is not connected, {@code connectUnauthenticated()} ()} will be called before the first
+   * unauthenticated request.
+   *
+   * @return a future with the result of the connection attempt (either a {@link DebugInfo} or an
+   *     error).
+   */
+  public CompletableFuture<DebugInfo> connectUnauthenticated() {
+    return tokioAsyncContext.guardedMap(
+        asyncContextHandle ->
+            guardedMap(
+                chatServiceHandle ->
+                    Native.ChatService_connect_unauth(asyncContextHandle, chatServiceHandle)
+                        .thenApply(o -> (DebugInfo) o)));
+  }
+
+  /**
    * Sends request to the Chat Service over an unauthenticated channel.
    *
    * @param req request object
@@ -143,10 +188,25 @@ public class ChatService extends NativeHandleGuard.SimpleOwner {
 
   public record Response(int status, String message, Map<String, String> headers, byte[] body) {}
 
-  public record DebugInfo(boolean connectionReused, int reconnectCount, IpType ipType) {
+  public record DebugInfo(
+      boolean connectionReused,
+      int reconnectCount,
+      IpType ipType,
+      int durationMs,
+      String connectionInfo) {
     @CalledFromNative
-    DebugInfo(boolean connectionReused, int reconnectCount, byte ipTypeCode) {
-      this(connectionReused, reconnectCount, IpType.values()[ipTypeCode]);
+    DebugInfo(
+        boolean connectionReused,
+        int reconnectCount,
+        byte ipTypeCode,
+        int durationMs,
+        String connectionInfo) {
+      this(
+          connectionReused,
+          reconnectCount,
+          IpType.values()[ipTypeCode],
+          durationMs,
+          connectionInfo);
     }
   }
 

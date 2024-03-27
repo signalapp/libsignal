@@ -23,6 +23,7 @@ pub enum Error {
 
 #[derive(Debug, Default, Clone)]
 pub struct LookupResult {
+    from_lookup: bool,
     ipv4: Vec<Ipv4Addr>,
     ipv6: Vec<Ipv6Addr>,
 }
@@ -45,8 +46,27 @@ impl IntoIterator for LookupResult {
 }
 
 impl LookupResult {
-    pub fn new(ipv4: Vec<Ipv4Addr>, ipv6: Vec<Ipv6Addr>) -> Self {
-        Self { ipv4, ipv6 }
+    pub fn from_lookup(ipv4: Vec<Ipv4Addr>, ipv6: Vec<Ipv6Addr>) -> Self {
+        Self {
+            from_lookup: true,
+            ipv4,
+            ipv6,
+        }
+    }
+
+    pub fn new_static(ipv4: Vec<Ipv4Addr>, ipv6: Vec<Ipv6Addr>) -> Self {
+        Self {
+            from_lookup: false,
+            ipv4,
+            ipv6,
+        }
+    }
+
+    pub(crate) fn source(&self) -> &'static str {
+        match self.from_lookup {
+            true => "lookup",
+            false => "static",
+        }
     }
 
     pub(crate) fn is_empty(&self) -> bool {
@@ -96,7 +116,7 @@ impl DnsResolver {
                 SocketAddr::V4(v4) => Either::Left(*v4.ip()),
                 SocketAddr::V6(v6) => Either::Right(*v6.ip()),
             });
-        match LookupResult::new(ipv4s, ipv6s) {
+        match LookupResult::from_lookup(ipv4s, ipv6s) {
             lookup_result if !lookup_result.is_empty() => Ok(lookup_result),
             _ => Err(Error::LookupFailed),
         }
@@ -161,7 +181,7 @@ mod test {
     }
 
     fn validate_expected_order(ipv4s: Vec<Ipv4Addr>, ipv6s: Vec<Ipv6Addr>, expected: Vec<IpAddr>) {
-        let lookup_result = LookupResult::new(ipv4s, ipv6s);
+        let lookup_result = LookupResult::new_static(ipv4s, ipv6s);
         let actual: Vec<IpAddr> = lookup_result.into_iter().collect();
         assert_eq!(expected, actual);
     }

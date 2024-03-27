@@ -6,6 +6,7 @@
 use http::header::ToStrError;
 
 use crate::infra::errors::LogSafeDisplay;
+use crate::infra::reconnect;
 use crate::infra::ws::WebSocketServiceError;
 
 #[derive(Debug, thiserror::Error, displaydoc::Display)]
@@ -24,8 +25,10 @@ pub enum ChatServiceError {
     RequestHasInvalidHeader,
     /// Timeout
     Timeout,
-    /// Service is not connected
-    NoServiceConnection,
+    /// Timed out while establishing connection after {attempts} attempts
+    TimeoutEstablishingConnection { attempts: u16 },
+    /// All connection routes failed or timed out, {attempts} attempts made
+    AllConnectionRoutesFailed { attempts: u16 },
 }
 
 impl LogSafeDisplay for ChatServiceError {}
@@ -33,5 +36,18 @@ impl LogSafeDisplay for ChatServiceError {}
 impl From<ToStrError> for ChatServiceError {
     fn from(_: ToStrError) -> Self {
         ChatServiceError::RequestHasInvalidHeader
+    }
+}
+
+impl From<reconnect::ReconnectError> for ChatServiceError {
+    fn from(e: reconnect::ReconnectError) -> Self {
+        match e {
+            reconnect::ReconnectError::Timeout { attempts } => {
+                Self::TimeoutEstablishingConnection { attempts }
+            }
+            reconnect::ReconnectError::AllRoutesFailed { attempts } => {
+                Self::AllConnectionRoutesFailed { attempts }
+            }
+        }
     }
 }

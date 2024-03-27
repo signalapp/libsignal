@@ -10,6 +10,7 @@ use std::time::Duration;
 
 use async_trait::async_trait;
 use derive_where::derive_where;
+use displaydoc::Display;
 use tokio::sync::Mutex;
 use tokio::time::{timeout_at, Instant};
 use tokio_util::sync::CancellationToken;
@@ -231,6 +232,14 @@ pub(crate) struct ServiceWithReconnect<C: ServiceConnector, M> {
     data: Arc<ServiceWithReconnectData<C, M>>,
 }
 
+#[derive(Debug, Display)]
+pub(crate) enum ReconnectError {
+    /// Operation timed out
+    Timeout { attempts: u16 },
+    /// All attempted routes failed to connect
+    AllRoutesFailed { attempts: u16 },
+}
+
 impl<C, M> ServiceWithReconnect<C, M>
 where
     M: ConnectionManager + 'static,
@@ -257,17 +266,6 @@ where
         }
     }
 
-    pub(crate) async fn is_connected(&self, deadline: Instant) -> bool {
-        let guard = match timeout_at(deadline, self.data.state.lock()).await {
-            Ok(guard) => guard,
-            Err(_) => {
-                log::info!("Timed out waiting for the state lock");
-                return false;
-            }
-        };
-        matches!(&*guard, ServiceState::Active(_, status) if !status.is_stopped())
-    }
-
     pub(crate) fn reconnect_count(&self) -> u32 {
         self.data.reconnect_count.load(Ordering::Relaxed)
     }
@@ -278,13 +276,14 @@ where
         }
     }
 
-    pub(crate) async fn service_clone(&self) -> Option<C::Service> {
+    pub(crate) async fn service_clone(&self) -> Result<C::Service, ReconnectError> {
+        let mut attempts: u16 = 0;
         let deadline = Instant::now() + self.data.connection_timeout;
         let mut guard = match timeout_at(deadline, self.data.state.lock()).await {
             Ok(guard) => guard,
             Err(_) => {
                 log::info!("Timed out waiting for the state lock");
-                return None;
+                return Err(ReconnectError::Timeout { attempts });
             }
         };
         loop {
@@ -294,7 +293,7 @@ where
                         // if the state is `Active` and service has not been stopped,
                         // clone the service and return it
                         log::debug!("reusing active service instance");
-                        return Some(service.clone());
+                        return Ok(service.clone());
                     }
                     if let Some(error) = service_status.get_error() {
                         log::debug!("Service stopped due to an error: {:?}", error);
@@ -305,7 +304,7 @@ where
                     // checking if the `next_attempt_time` is still in the future
                     if next_attempt_time > &deadline {
                         log::debug!("All possible routes are in cooldown state");
-                        return None;
+                        return Err(ReconnectError::AllRoutesFailed { attempts });
                     }
                     // it's safe to sleep without a `timeout`
                     // because we just checked that we'll wake before the deadline
@@ -315,16 +314,17 @@ where
                     // keep trying until we hit our own timeout deadline
                     log::info!("Connection attempt timed out");
                     if Instant::now() >= deadline {
-                        return None;
+                        return Err(ReconnectError::Timeout { attempts });
                     }
                 }
                 ServiceState::Error(e) => {
-                    // short circuiting mechanism is responsibility of the `ConnectionManager`,
+                    // short-circuiting mechanism is responsibility of the `ConnectionManager`,
                     // so here we're just going to keep trying until we get into
                     // one of the non-retryable states, `Cooldown` or time out.
                     log::info!("Connection attempt resulted in an error: {}", e);
                 }
             };
+            attempts += 1;
             *guard = match timeout_at(deadline, self.data.service_initializer.connect()).await {
                 Ok(result) => {
                     self.data.reconnect_count.fetch_add(1, Ordering::Relaxed);
@@ -354,7 +354,7 @@ mod test {
         SingleRouteThrottlingConnectionManager, MAX_COOLDOWN_INTERVAL,
     };
     use crate::infra::reconnect::{
-        ServiceConnector, ServiceState, ServiceStatus, ServiceWithReconnect,
+        ReconnectError, ServiceConnector, ServiceState, ServiceStatus, ServiceWithReconnect,
     };
     use crate::infra::test::shared::{
         TestError, LONG_CONNECTION_TIME, NORMAL_CONNECTION_TIME, TIMEOUT_DURATION,
@@ -442,6 +442,7 @@ mod test {
 
     fn example_connection_params() -> ConnectionParams {
         ConnectionParams::new(
+            "test",
             "chat.signal.org",
             "chat.signal.org",
             443,
@@ -510,8 +511,25 @@ mod test {
         let service_with_reconnect =
             ServiceWithReconnect::new(connector.clone(), manager, TIMEOUT_DURATION);
         let service = service_with_reconnect.service_clone().await;
-        assert!(service.is_none());
-        assert!(connector.attempts_made() > 1);
+
+        // Here we have 3 attempts made by the reconnect service:
+        // - first attempt went to the connector and resulted in expected error
+        // - after the first attempt, the configured cooldown is 0, so the second attempt
+        //   also went to the connector and resulted in expected error
+        // - after two consecutive unsuccessful attempts, the configured cooldown is 1 second,
+        //   so the third attempt was made by the reconnect service but didn't reach the connector
+        //   and immediately resulted in a Cooldown result
+        // - 1 second is longder than our test TIMEOUT_DURATION, so no more attempts were made
+        // Based on that, connector only saw 2 attempts, but ServiceWithReconnect had time
+        // to perform 3 attempts.
+        // Note that if the values in `COOLDOWN_INTERVALS` constant change, the number of attempts
+        // may also change
+        assert_eq!(connector.attempts_made(), 2);
+        assert_matches!(
+            service,
+            Err(ReconnectError::AllRoutesFailed { attempts: 3 })
+        );
+
         assert_matches!(
             *service_with_reconnect.data.state.lock().await,
             ServiceState::Cooldown(_)
@@ -519,10 +537,10 @@ mod test {
 
         let now_or_never_service_option = service_with_reconnect.service_clone().now_or_never();
         // the future should be completed immediately
-        // but the result of the future should be `None` because we're in cooldown
+        // but the result of the future should be `Err()` because we're in cooldown
         assert!(now_or_never_service_option
             .expect("completed future")
-            .is_none());
+            .is_err());
     }
 
     #[tokio::test]
@@ -538,7 +556,7 @@ mod test {
         service.expect("service is present").close_channel();
         let service = service_with_reconnect.service_clone().await;
         assert_eq!(connector.attempts_made(), 2);
-        assert!(service.is_some());
+        assert_matches!(service, Ok(_));
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -558,8 +576,8 @@ mod test {
         let handle2 = tokio::spawn(async move { aaa2.service_clone().await });
 
         let (s1, s2) = tokio::join!(handle1, handle2);
-        assert!(s1.expect("future completed successfully").is_some());
-        assert!(s2.expect("future completed successfully").is_some());
+        assert!(s1.expect("future completed successfully").is_ok());
+        assert!(s2.expect("future completed successfully").is_ok());
         assert_eq!(connector.attempts_made(), 1);
     }
 
@@ -581,7 +599,7 @@ mod test {
         let res = service_with_reconnect.service_clone().await;
 
         // now the time should've auto-advanced from `start` by the `connection_timeout` value
-        assert!(res.is_none());
+        assert!(res.is_err());
         assert_eq!(Instant::now(), start + service_with_reconnect_timeout);
     }
 
@@ -604,7 +622,7 @@ mod test {
         let res = service_with_reconnect.service_clone().await;
 
         // now the time should've auto-advanced from `start` by the `connection_timeout` value
-        assert!(res.is_none());
+        assert_matches!(res, Err(ReconnectError::Timeout { attempts: 1 }));
         assert_eq!(Instant::now(), start + service_with_reconnect_timeout);
     }
 
@@ -621,7 +639,12 @@ mod test {
         time::advance(TIME_ADVANCE_VALUE).await;
         connector.set_service_healthy(false);
         let service = service_with_reconnect.service_clone().await;
-        assert!(service.is_none());
+
+        // number of attempts is the same as in the `immediately_fail_if_in_cooldown()` test
+        assert_matches!(
+            service,
+            Err(ReconnectError::AllRoutesFailed { attempts: 3 })
+        );
 
         // At this point, `service_with_reconnect` tried multiple times to connect
         // and hit the cooldown. Let's advance time to make sure next attempt will be made.
@@ -629,7 +652,7 @@ mod test {
 
         connector.set_service_healthy(true);
         let service = service_with_reconnect.service_clone().await;
-        assert!(service.is_some());
+        assert_matches!(service, Ok(_));
     }
 
     #[tokio::test(flavor = "current_thread", start_paused = true)]
@@ -645,7 +668,7 @@ mod test {
         time::advance(TIME_ADVANCE_VALUE).await;
         connector.set_time_to_connect(LONG_CONNECTION_TIME);
         let service = service_with_reconnect.service_clone().await;
-        assert!(service.is_none());
+        assert_matches!(service, Err(ReconnectError::Timeout { attempts: 1 }));
 
         // At this point, `service_with_reconnect` tried multiple times to connect
         // and hit the cooldown. Let's advance time to make sure next attempt will be made.
@@ -653,6 +676,6 @@ mod test {
 
         connector.set_time_to_connect(NORMAL_CONNECTION_TIME);
         let service = service_with_reconnect.service_clone().await;
-        assert!(service.is_some());
+        assert_matches!(service, Ok(_));
     }
 }

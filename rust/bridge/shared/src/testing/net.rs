@@ -4,11 +4,13 @@
 //
 
 use std::str::FromStr;
+use std::time::Duration;
 
 use http::{HeaderMap, HeaderName, HeaderValue, StatusCode};
 use libsignal_bridge_macros::*;
 use libsignal_net::cdsi::{LookupError, LookupResponse, LookupResponseEntry, E164};
-use libsignal_net::chat::{ChatServiceError, DebugInfo, IpType, Response};
+use libsignal_net::chat::{ChatServiceError, DebugInfo, Response};
+use libsignal_net::infra::IpType;
 use libsignal_protocol::{Aci, Pni};
 use nonzero_ext::nonzero;
 use uuid::Uuid;
@@ -155,6 +157,8 @@ fn TESTING_ChatServiceDebugInfoConvert() -> Result<DebugInfo, ChatServiceError> 
         connection_reused: true,
         reconnect_count: 2,
         ip_type: IpType::V4,
+        duration: Duration::from_millis(200),
+        connection_info: "connection_info".to_string(),
     })
 }
 

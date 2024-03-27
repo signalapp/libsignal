@@ -494,6 +494,7 @@ mod test {
 
     fn example_connection_params(host: &str) -> ConnectionParams {
         ConnectionParams::new(
+            "test",
             host,
             host,
             443,

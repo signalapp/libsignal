@@ -26,7 +26,9 @@ use tungstenite::{http, Message};
 use crate::infra::errors::LogSafeDisplay;
 use crate::infra::reconnect::{ServiceConnector, ServiceStatus};
 use crate::infra::ws::error::{HttpFormatError, ProtocolError, SpaceError};
-use crate::infra::{AsyncDuplexStream, ConnectionParams, StreamAndHost, TransportConnector};
+use crate::infra::{
+    AsyncDuplexStream, ConnectionInfo, ConnectionParams, StreamAndInfo, TransportConnector,
+};
 use crate::utils::timeout;
 
 pub mod error;
@@ -121,7 +123,7 @@ where
     WebSocketServiceError: Into<E>,
 {
     type Service = WebSocketClient<T::Stream, E>;
-    type Channel = (WebSocketStream<T::Stream>, url::Host);
+    type Channel = (WebSocketStream<T::Stream>, ConnectionInfo);
     type ConnectError = WebSocketConnectError;
     type StartError = E;
 
@@ -159,7 +161,7 @@ where
 
 fn start_ws_service<S: AsyncDuplexStream, E>(
     channel: WebSocketStream<S>,
-    remote_address: url::Host,
+    connection_info: ConnectionInfo,
     keep_alive_interval: Duration,
     max_idle_time: Duration,
 ) -> (WebSocketClient<S, E>, ServiceStatus<E>) {
@@ -182,7 +184,7 @@ fn start_ws_service<S: AsyncDuplexStream, E>(
         WebSocketClient {
             ws_client_writer,
             ws_client_reader,
-            remote_address,
+            connection_info,
         },
         service_status,
     )
@@ -312,8 +314,8 @@ async fn connect_websocket<T: TransportConnector>(
     endpoint: PathAndQuery,
     ws_config: tungstenite::protocol::WebSocketConfig,
     transport_connector: &T,
-) -> Result<(WebSocketStream<T::Stream>, url::Host), WebSocketConnectError> {
-    let StreamAndHost(ssl_stream, remote_address) = transport_connector
+) -> Result<(WebSocketStream<T::Stream>, ConnectionInfo), WebSocketConnectError> {
+    let StreamAndInfo(ssl_stream, remote_address) = transport_connector
         .connect(connection_params, WS_ALPN)
         .await?;
 
@@ -385,7 +387,7 @@ impl From<TextOrBinary> for Message {
 pub struct WebSocketClient<S, E> {
     pub(crate) ws_client_writer: WebSocketClientWriter<S, E>,
     pub(crate) ws_client_reader: WebSocketClientReader<S, E>,
-    pub(crate) remote_address: url::Host,
+    pub(crate) connection_info: ConnectionInfo,
 }
 
 impl<S: AsyncDuplexStream, E> WebSocketClient<S, E>
@@ -393,11 +395,11 @@ where
     WebSocketServiceError: Into<E>,
 {
     #[cfg(test)]
-    pub(crate) fn new_fake(channel: WebSocketStream<S>, remote_address: url::Host) -> Self {
+    pub(crate) fn new_fake(channel: WebSocketStream<S>, connection_info: ConnectionInfo) -> Self {
         const VERY_LARGE_TIMEOUT: Duration = Duration::from_secs(u32::MAX as u64);
         let (client, _service_status) = start_ws_service(
             channel,
-            remote_address,
+            connection_info,
             VERY_LARGE_TIMEOUT,
             VERY_LARGE_TIMEOUT,
         );
@@ -462,7 +464,7 @@ pub struct AttestedConnection<S = DefaultStream> {
 
 impl<S> AttestedConnection<S> {
     pub(crate) fn remote_address(&self) -> &url::Host {
-        &self.websocket.remote_address
+        &self.websocket.connection_info.address
     }
 }
 
@@ -626,12 +628,20 @@ pub(crate) mod testutil {
         (server_stream, client_stream)
     }
 
+    pub(crate) fn mock_connection_info() -> ConnectionInfo {
+        ConnectionInfo {
+            route_type: "test",
+            dns_source: "test",
+            address: url::Host::Domain("localhost".to_string()),
+        }
+    }
+
     pub(crate) fn websocket_test_client<S: AsyncDuplexStream>(
         channel: WebSocketStream<S>,
     ) -> WebSocketClient<S, WebSocketServiceError> {
         start_ws_service(
             channel,
-            url::Host::Domain("localhost".to_string()),
+            mock_connection_info(),
             WS_KEEP_ALIVE_INTERVAL,
             WS_MAX_IDLE_TIME,
         )

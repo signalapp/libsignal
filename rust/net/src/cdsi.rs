@@ -484,7 +484,8 @@ mod test {
     use crate::infra::test::shared::InMemoryWarpConnector;
 
     use crate::infra::ws::testutil::{
-        fake_websocket, run_attested_server, AttestedServerOutput, FAKE_ATTESTATION,
+        fake_websocket, mock_connection_info, run_attested_server, AttestedServerOutput,
+        FAKE_ATTESTATION,
     };
     use crate::infra::ws::WebSocketClient;
 
@@ -673,8 +674,7 @@ mod test {
             fake_server,
         ));
 
-        let ws_client =
-            WebSocketClient::new_fake(client, url::Host::Domain("localhost".to_string()));
+        let ws_client = WebSocketClient::new_fake(client, mock_connection_info());
         let cdsi_connection = CdsiConnection(
             AttestedConnection::connect(ws_client, |fake_attestation| {
                 assert_eq!(fake_attestation, FAKE_ATTESTATION);
@@ -729,8 +729,7 @@ mod test {
             fake_server,
         ));
 
-        let ws_client =
-            WebSocketClient::new_fake(client, url::Host::Domain("localhost".to_string()));
+        let ws_client = WebSocketClient::new_fake(client, mock_connection_info());
         let cdsi_connection = CdsiConnection(
             AttestedConnection::connect(ws_client, |fake_attestation| {
                 assert_eq!(fake_attestation, FAKE_ATTESTATION);
@@ -777,8 +776,7 @@ mod test {
             fake_server,
         ));
 
-        let ws_client =
-            WebSocketClient::new_fake(client, url::Host::Domain("localhost".to_string()));
+        let ws_client = WebSocketClient::new_fake(client, mock_connection_info());
         let cdsi_connection = CdsiConnection(
             AttestedConnection::connect(ws_client, |fake_attestation| {
                 assert_eq!(fake_attestation, FAKE_ATTESTATION);
@@ -851,8 +849,7 @@ mod test {
             fake_server,
         ));
 
-        let ws_client =
-            WebSocketClient::new_fake(client, url::Host::Domain("localhost".to_string()));
+        let ws_client = WebSocketClient::new_fake(client, mock_connection_info());
         let cdsi_connection = CdsiConnection(
             AttestedConnection::connect(ws_client, |fake_attestation| {
                 assert_eq!(fake_attestation, FAKE_ATTESTATION);

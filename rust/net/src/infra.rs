@@ -18,6 +18,7 @@ use futures_util::TryFutureExt;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::net::TcpStream;
 use tokio_boring::SslStream;
+use url::Host;
 
 use crate::infra::certs::RootCertificates;
 use crate::infra::connection_manager::{
@@ -36,6 +37,24 @@ pub(crate) mod reconnect;
 pub mod ws;
 
 const CONNECTION_ATTEMPT_DELAY: Duration = Duration::from_millis(200);
+
+#[derive(Copy, Clone, Debug)]
+#[repr(u8)]
+pub enum IpType {
+    Unknown = 0,
+    V4 = 1,
+    V6 = 2,
+}
+
+impl IpType {
+    pub(crate) fn from_host(host: &Host) -> Self {
+        match host {
+            Host::Domain(_) => IpType::Unknown,
+            Host::Ipv4(_) => IpType::V4,
+            Host::Ipv6(_) => IpType::V6,
+        }
+    }
+}
 
 /// A collection of commonly used decorators for HTTP requests.
 #[derive(Clone, Debug)]
@@ -71,6 +90,7 @@ impl From<HttpRequestDecorator> for HttpRequestDecoratorSeq {
 /// only be applied to the initial connection upgrade request).
 #[derive(Clone, Debug)]
 pub struct ConnectionParams {
+    pub route_type: &'static str,
     pub sni: Arc<str>,
     pub host: Arc<str>,
     pub port: u16,
@@ -80,6 +100,7 @@ pub struct ConnectionParams {
 
 impl ConnectionParams {
     pub fn new(
+        route_type: &'static str,
         sni: &str,
         host: &str,
         port: u16,
@@ -87,6 +108,7 @@ impl ConnectionParams {
         certs: RootCertificates,
     ) -> Self {
         Self {
+            route_type,
             sni: Arc::from(sni),
             host: Arc::from(host),
             port,
@@ -104,6 +126,32 @@ impl ConnectionParams {
     pub fn with_certs(mut self, certs: RootCertificates) -> Self {
         self.certs = certs;
         self
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct ConnectionInfo {
+    /// Type of the connection, e.g. direct or via proxy
+    pub route_type: &'static str,
+
+    /// The source of the DNS data, e.g. lookup or static fallback
+    pub dns_source: &'static str,
+
+    /// Address that was used to establish the connection
+    ///
+    /// If IP information is available, it's recommended to use [Host::Ipv4] or [Host::Ipv6]
+    /// and only use [Host::Domain] as a fallback.
+    pub address: Host,
+}
+
+impl ConnectionInfo {
+    pub fn description(&self) -> String {
+        format!(
+            "route={};dns_source={};ip_type={:?}",
+            self.route_type,
+            self.dns_source,
+            IpType::from_host(&self.address)
+        )
     }
 }
 
@@ -142,7 +190,7 @@ impl HttpRequestDecorator {
     }
 }
 
-pub struct StreamAndHost<T>(T, url::Host);
+pub struct StreamAndInfo<T>(T, ConnectionInfo);
 
 pub trait AsyncDuplexStream: AsyncRead + AsyncWrite + Unpin + Send + Sync {}
 
@@ -156,7 +204,7 @@ pub trait TransportConnector: Clone + Send + Sync {
         &self,
         connection_params: &ConnectionParams,
         alpn: &[u8],
-    ) -> Result<StreamAndHost<Self::Stream>, TransportConnectError>;
+    ) -> Result<StreamAndInfo<Self::Stream>, TransportConnectError>;
 }
 
 #[derive(Clone)]
@@ -172,9 +220,10 @@ impl TransportConnector for TcpSslTransportConnector {
         &self,
         connection_params: &ConnectionParams,
         alpn: &[u8],
-    ) -> Result<StreamAndHost<Self::Stream>, TransportConnectError> {
-        let StreamAndHost(tcp_stream, remote_address) = connect_tcp(
+    ) -> Result<StreamAndInfo<Self::Stream>, TransportConnectError> {
+        let StreamAndInfo(tcp_stream, remote_address) = connect_tcp(
             &self.dns_resolver,
+            connection_params.route_type,
             &connection_params.sni,
             connection_params.port,
         )
@@ -188,7 +237,7 @@ impl TransportConnector for TcpSslTransportConnector {
             .await
             .map_err(|_| TransportConnectError::SslFailedHandshake)?;
 
-        Ok(StreamAndHost(ssl_stream, remote_address))
+        Ok(StreamAndInfo(ssl_stream, remote_address))
     }
 }
 
@@ -251,9 +300,10 @@ pub fn make_ws_config(
 
 pub(crate) async fn connect_tcp(
     dns_resolver: &DnsResolver,
+    route_type: &'static str,
     host: &str,
     port: u16,
-) -> Result<StreamAndHost<TcpStream>, TransportConnectError> {
+) -> Result<StreamAndInfo<TcpStream>, TransportConnectError> {
     let dns_lookup = dns_resolver
         .lookup_ip(host)
         .await
@@ -262,6 +312,8 @@ pub(crate) async fn connect_tcp(
     if dns_lookup.is_empty() {
         return Err(TransportConnectError::DnsError);
     }
+
+    let dns_source = dns_lookup.source();
 
     // The idea is to go through the list of candidate IP addresses
     // and to attempt a connection to each of them, giving each one a `CONNECTION_ATTEMPT_DELAY` headstart
@@ -282,7 +334,16 @@ pub(crate) async fn connect_tcp(
                     log::debug!("failed to connect to IP [{}] with an error: {:?}", ip, e)
                 })
                 .await
-                .map(|r| StreamAndHost(r, ip_addr_to_host(ip)))
+                .map(|r| {
+                    StreamAndInfo(
+                        r,
+                        ConnectionInfo {
+                            route_type,
+                            dns_source,
+                            address: ip_addr_to_host(ip),
+                        },
+                    )
+                })
         }
     });
 
@@ -322,7 +383,7 @@ pub(crate) mod test {
         use crate::infra::reconnect::{
             ServiceConnector, ServiceInitializer, ServiceState, ServiceStatus,
         };
-        use crate::infra::{ConnectionParams, StreamAndHost, TransportConnector};
+        use crate::infra::{ConnectionInfo, ConnectionParams, StreamAndInfo, TransportConnector};
 
         #[derive(Debug, Display)]
         pub(crate) enum TestError {
@@ -374,7 +435,7 @@ pub(crate) mod test {
                 &self,
                 connection_params: &ConnectionParams,
                 _alpn: &[u8],
-            ) -> Result<StreamAndHost<Self::Stream>, TransportConnectError> {
+            ) -> Result<StreamAndInfo<Self::Stream>, TransportConnectError> {
                 let (client, server) = tokio::io::duplex(1024);
                 let routes = self.filter.clone();
                 tokio::spawn(async {
@@ -382,9 +443,13 @@ pub(crate) mod test {
                         futures_util::stream::iter(vec![Ok::<DuplexStream, io::Error>(server)]);
                     warp::serve(routes).run_incoming(one_element_iter).await;
                 });
-                Ok(StreamAndHost(
+                Ok(StreamAndInfo(
                     client,
-                    url::Host::Domain(connection_params.host.to_string()),
+                    ConnectionInfo {
+                        route_type: "test",
+                        dns_source: "test",
+                        address: url::Host::Domain(connection_params.host.to_string()),
+                    },
                 ))
             }
         }

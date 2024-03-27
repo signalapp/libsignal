@@ -83,6 +83,20 @@ export class Net {
     await Native.ChatService_disconnect(this._asyncContext, this._chatService);
   }
 
+  async connectUnauthenticatedChatService(): Promise<void> {
+    await Native.ChatService_connect_unauth(
+      this._asyncContext,
+      this._chatService
+    );
+  }
+
+  async connectAuthenticatedChatService(): Promise<void> {
+    await Native.ChatService_connect_auth(
+      this._asyncContext,
+      this._chatService
+    );
+  }
+
   async unauthenticatedFetchAndDebug(
     chatRequest: ChatRequest
   ): Promise<Native.ResponseAndDebugInfo> {

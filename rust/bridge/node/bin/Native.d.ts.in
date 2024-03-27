@@ -32,6 +32,8 @@ interface DebugInfo {
   connectionReused: boolean;
   reconnectCount: number;
   ipType: number;
+  durationMillis: number;
+  connectionInfo: string;
 }
 
 interface ResponseAndDebugInfo {

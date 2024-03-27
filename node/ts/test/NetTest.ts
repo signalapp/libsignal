@@ -56,6 +56,8 @@ describe('chat service api', () => {
       connectionReused: true,
       reconnectCount: 2,
       ipType: 1,
+      durationMillis: 200,
+      connectionInfo: 'connection_info',
     };
     expect(Native.TESTING_ChatServiceDebugInfoConvert()).deep.equals(expected);
   });

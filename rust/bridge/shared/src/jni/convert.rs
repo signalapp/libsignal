@@ -1082,6 +1082,8 @@ impl<'a> ResultTypeInfo<'a> for libsignal_net::chat::DebugInfo {
             connection_reused,
             reconnect_count,
             ip_type,
+            duration,
+            connection_info,
         } = self;
 
         // reconnect count as i32
@@ -1089,6 +1091,12 @@ impl<'a> ResultTypeInfo<'a> for libsignal_net::chat::DebugInfo {
 
         // ip type as code
         let ip_type_byte = ip_type as i8;
+
+        // duration as millis
+        let duration_ms: i32 = duration.as_millis().try_into().expect("within i32 range");
+
+        // connection info string
+        let connection_info_string = env.new_string(connection_info)?;
 
         let class = {
             const RESPONSE_CLASS: &str =
@@ -1104,7 +1112,9 @@ impl<'a> ResultTypeInfo<'a> for libsignal_net::chat::DebugInfo {
             jni_args!((
                 connection_reused => boolean,
                 reconnect_count_i32 => int,
-                ip_type_byte => byte
+                ip_type_byte => byte,
+                duration_ms => int,
+                connection_info_string => java.lang.String,
             ) -> void),
         )?)
     }

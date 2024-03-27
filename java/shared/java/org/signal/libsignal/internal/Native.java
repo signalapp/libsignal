@@ -161,6 +161,8 @@ public final class Native {
   public static native CompletableFuture<Long> CdsiLookup_new(long asyncRuntime, long connectionManager, String username, String password, long request, int timeoutMillis);
   public static native byte[] CdsiLookup_token(long lookup);
 
+  public static native CompletableFuture<Object> ChatService_connect_auth(long asyncRuntime, long chat);
+  public static native CompletableFuture<Object> ChatService_connect_unauth(long asyncRuntime, long chat);
   public static native CompletableFuture ChatService_disconnect(long asyncRuntime, long chat);
   public static native long ChatService_new(long connectionManager, String username, String password);
   public static native CompletableFuture<Object> ChatService_unauth_send(long asyncRuntime, long chat, long httpRequest, int timeoutMillis);

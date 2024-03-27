@@ -955,16 +955,22 @@ impl<'a> ResultTypeInfo<'a> for libsignal_net::chat::DebugInfo {
             connection_reused,
             reconnect_count,
             ip_type,
+            duration,
+            connection_info,
         } = self;
         let obj = JsObject::new(cx);
 
         let connection_reused = cx.boolean(connection_reused);
         let reconnect_count = cx.number(reconnect_count);
         let ip_type = cx.number(ip_type as u8);
+        let duration = cx.number(duration.as_millis().try_into().unwrap_or(u32::MAX));
+        let connection_info = cx.string(connection_info);
 
         obj.set(cx, "connectionReused", connection_reused)?;
         obj.set(cx, "reconnectCount", reconnect_count)?;
         obj.set(cx, "ipType", ip_type)?;
+        obj.set(cx, "durationMillis", duration)?;
+        obj.set(cx, "connectionInfo", connection_info)?;
 
         Ok(obj)
     }

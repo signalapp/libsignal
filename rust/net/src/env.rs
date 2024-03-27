@@ -131,6 +131,7 @@ pub const DOMAIN_CONFIG_SVR3_TPM2SNP_STAGING: DomainConfig = DomainConfig {
 };
 
 const PROXY_CONFIG_F: ProxyConfig = ProxyConfig {
+    route_log_name: "proxy_f",
     hostname: "reflector-signal.global.ssl.fastly.net",
     sni_list: &[
         "github.githubassets.com",
@@ -140,6 +141,7 @@ const PROXY_CONFIG_F: ProxyConfig = ProxyConfig {
 };
 
 const PROXY_CONFIG_G: ProxyConfig = ProxyConfig {
+    route_log_name: "proxy_g",
     hostname: "reflector-nrgwuv7kwq-uc.a.run.app",
     sni_list: &[
         "www.google.com",
@@ -163,12 +165,13 @@ impl DomainConfig {
     pub fn static_fallback(&self) -> (&'static str, LookupResult) {
         (
             self.hostname,
-            LookupResult::new(self.ip_v4.into(), self.ip_v6.into()),
+            LookupResult::new_static(self.ip_v4.into(), self.ip_v6.into()),
         )
     }
 
     pub fn connection_params(&self) -> ConnectionParams {
         ConnectionParams::new(
+            "direct",
             self.hostname,
             self.hostname,
             443,
@@ -189,6 +192,7 @@ impl DomainConfig {
 }
 
 pub struct ProxyConfig {
+    route_log_name: &'static str,
     hostname: &'static str,
     sni_list: &'static [&'static str],
 }
@@ -203,6 +207,7 @@ impl ProxyConfig {
         sni_list.shuffle(&mut rng);
         sni_list.into_iter().map(move |sni| {
             ConnectionParams::new(
+                self.route_log_name,
                 sni,
                 self.hostname,
                 443,

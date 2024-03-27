@@ -8,13 +8,14 @@ use std::time::Duration;
 use ::http::uri::PathAndQuery;
 use ::http::{HeaderMap, HeaderName, HeaderValue, StatusCode};
 use async_trait::async_trait;
-use url::Host;
 
 use crate::chat::ws::{ChatOverWebSocketServiceConnector, ServerRequest};
 use crate::infra::connection_manager::MultiRouteConnectionManager;
 use crate::infra::reconnect::{ServiceConnectorWithDecorator, ServiceWithReconnect};
 use crate::infra::ws::WebSocketClientConnector;
-use crate::infra::{EndpointConnection, HttpRequestDecorator, TransportConnector};
+use crate::infra::{
+    ConnectionInfo, EndpointConnection, HttpRequestDecorator, IpType, TransportConnector,
+};
 use crate::proto;
 use crate::utils::basic_authorization;
 
@@ -38,6 +39,9 @@ pub trait ChatService {
     /// or HTTP) capable of sending [Request] objects.
     async fn send(&self, msg: Request, timeout: Duration) -> Result<Response, ChatServiceError>;
 
+    /// Establish a connection without sending a request.
+    async fn connect(&self) -> Result<(), ChatServiceError>;
+
     /// If the service is currently holding an open connection, closes that connection.
     ///
     /// Depending on the implementing logic, the connection may be re-established later
@@ -53,43 +57,28 @@ pub trait ChatServiceWithDebugInfo: ChatService {
         msg: Request,
         timeout: Duration,
     ) -> (Result<Response, ChatServiceError>, DebugInfo);
+
+    /// Establish a connection without sending a request.
+    async fn connect_and_debug(&self) -> Result<DebugInfo, ChatServiceError>;
 }
 
 pub trait RemoteAddressInfo {
     /// Provides information about the remote address the service is connected to
-    ///
-    /// If IP information is available, implementation should prefer to return [Host::Ipv4] or [Host::Ipv6]
-    /// and only use [Host::Domain] as a fallback.
-    fn remote_address(&self) -> Host;
+    fn connection_info(&self) -> ConnectionInfo;
 }
 
-#[derive(Copy, Clone, Debug)]
-#[repr(u8)]
-pub enum IpType {
-    Unknown = 0,
-    V4 = 1,
-    V6 = 2,
-}
-
-impl From<Host> for IpType {
-    fn from(host: Host) -> Self {
-        match host {
-            Host::Domain(_) => IpType::Unknown,
-            Host::Ipv4(_) => IpType::V4,
-            Host::Ipv6(_) => IpType::V6,
-        }
-    }
-}
-
-#[derive(Copy, Clone, Debug)]
+#[derive(Debug)]
 pub struct DebugInfo {
     /// Indicates if the connection was active at the time of the call.
     pub connection_reused: bool,
     /// Number of times a connection had to be established since the service was created.
     pub reconnect_count: u32,
-    /// IP type of the connection that was used for the request. `0`, if information is not available
-    /// or if the connection failed.
+    /// IP type of the connection that was used for the request.
     pub ip_type: IpType,
+    /// Time it took to complete the request.
+    pub duration: Duration,
+    /// Connection information summary.
+    pub connection_info: String,
 }
 
 #[derive(Clone, Debug)]
@@ -195,6 +184,14 @@ where
         self.unauth_service.send_and_debug(msg, timeout).await
     }
 
+    pub async fn connect_authenticated(&self) -> Result<DebugInfo, ChatServiceError> {
+        self.auth_service.connect_and_debug().await
+    }
+
+    pub async fn connect_unauthenticated(&self) -> Result<DebugInfo, ChatServiceError> {
+        self.unauth_service.connect_and_debug().await
+    }
+
     pub async fn disconnect(&self) {
         self.unauth_service.disconnect().await;
         self.auth_service.disconnect().await;
@@ -246,6 +243,10 @@ where
         self.inner.send(msg, timeout).await
     }
 
+    async fn connect(&self) -> Result<(), ChatServiceError> {
+        self.inner.connect().await
+    }
+
     async fn disconnect(&self) {
         self.inner.disconnect().await
     }
@@ -262,6 +263,10 @@ where
         timeout: Duration,
     ) -> (Result<Response, ChatServiceError>, DebugInfo) {
         self.inner.send_and_debug(msg, timeout).await
+    }
+
+    async fn connect_and_debug(&self) -> Result<DebugInfo, ChatServiceError> {
+        self.inner.connect_and_debug().await
     }
 }
 
@@ -286,6 +291,10 @@ where
         self.inner.send(msg, timeout).await
     }
 
+    async fn connect(&self) -> Result<(), ChatServiceError> {
+        self.inner.connect().await
+    }
+
     async fn disconnect(&self) {
         self.inner.disconnect().await
     }
@@ -295,6 +304,10 @@ where
 impl ChatService for Arc<dyn ChatService + Send + Sync> {
     async fn send(&self, msg: Request, timeout: Duration) -> Result<Response, ChatServiceError> {
         self.as_ref().send(msg, timeout).await
+    }
+
+    async fn connect(&self) -> Result<(), ChatServiceError> {
+        self.as_ref().connect().await
     }
 
     async fn disconnect(&self) {
@@ -314,12 +327,20 @@ where
     ) -> (Result<Response, ChatServiceError>, DebugInfo) {
         self.inner.send_and_debug(msg, timeout).await
     }
+
+    async fn connect_and_debug(&self) -> Result<DebugInfo, ChatServiceError> {
+        self.inner.connect_and_debug().await
+    }
 }
 
 #[async_trait]
 impl ChatService for Arc<dyn ChatServiceWithDebugInfo + Send + Sync> {
     async fn send(&self, msg: Request, timeout: Duration) -> Result<Response, ChatServiceError> {
         self.as_ref().send(msg, timeout).await
+    }
+
+    async fn connect(&self) -> Result<(), ChatServiceError> {
+        self.as_ref().connect().await
     }
 
     async fn disconnect(&self) {
@@ -335,6 +356,10 @@ impl ChatServiceWithDebugInfo for Arc<dyn ChatServiceWithDebugInfo + Send + Sync
         timeout: Duration,
     ) -> (Result<Response, ChatServiceError>, DebugInfo) {
         self.as_ref().send_and_debug(msg, timeout).await
+    }
+
+    async fn connect_and_debug(&self) -> Result<DebugInfo, ChatServiceError> {
+        self.as_ref().connect_and_debug().await
     }
 }
 
@@ -443,8 +468,12 @@ pub(crate) mod test {
                     ServiceState::Active(service, status) if !status.is_stopped() => {
                         service.clone().send(msg, timeout).await
                     }
-                    _ => Err(ChatServiceError::NoServiceConnection),
+                    _ => Err(ChatServiceError::AllConnectionRoutesFailed { attempts: 1 }),
                 }
+            }
+
+            async fn connect(&self) -> Result<(), ChatServiceError> {
+                Ok(())
             }
 
             async fn disconnect(&self) {
@@ -465,6 +494,7 @@ pub(crate) mod test {
 
         pub fn connection_manager() -> SingleRouteThrottlingConnectionManager {
             let connection_params = ConnectionParams::new(
+                "test",
                 "test.signal.org",
                 "test.signal.org",
                 443,

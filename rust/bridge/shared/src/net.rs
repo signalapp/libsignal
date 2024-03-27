@@ -323,6 +323,16 @@ async fn ChatService_disconnect(chat: &Chat) {
 }
 
 #[bridge_io(TokioAsyncContext, ffi = false)]
+async fn ChatService_connect_unauth(chat: &Chat) -> Result<DebugInfo, ChatServiceError> {
+    chat.service.connect_unauthenticated().await
+}
+
+#[bridge_io(TokioAsyncContext, ffi = false)]
+async fn ChatService_connect_auth(chat: &Chat) -> Result<DebugInfo, ChatServiceError> {
+    chat.service.connect_authenticated().await
+}
+
+#[bridge_io(TokioAsyncContext, ffi = false)]
 async fn ChatService_unauth_send(
     chat: &Chat,
     http_request: &HttpRequest,

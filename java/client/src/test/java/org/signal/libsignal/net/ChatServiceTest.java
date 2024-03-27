@@ -50,6 +50,8 @@ public class ChatServiceTest {
     assertTrue(debugInfo.connectionReused());
     assertEquals(2, debugInfo.reconnectCount());
     assertEquals(IpType.IPv4, debugInfo.ipType());
+    assertEquals(200, debugInfo.durationMs());
+    assertEquals("connection_info", debugInfo.connectionInfo());
   }
 
   @Test
