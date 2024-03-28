@@ -26,9 +26,40 @@ import {
   GroupSendEndorsementsResponse,
   GroupSendDerivedKeyPair,
   GroupSendEndorsement,
+  ServerPublicParams,
+  GenericServerPublicParams,
+  AuthCredentialPresentation,
+  AuthCredentialWithPni,
+  AuthCredentialWithPniResponse,
+  BackupAuthCredential,
+  BackupAuthCredentialRequest,
+  BackupAuthCredentialPresentation,
+  BackupAuthCredentialResponse,
+  CallLinkAuthCredential,
+  CallLinkAuthCredentialPresentation,
+  CallLinkPublicParams,
+  CreateCallLinkCredential,
+  CreateCallLinkCredentialRequest,
+  CreateCallLinkCredentialResponse,
+  GroupPublicParams,
+  ProfileKeyCiphertext,
+  UuidCiphertext,
+  GroupSendFullToken,
+  GroupSendToken,
+  ExpiringProfileKeyCredential,
+  ExpiringProfileKeyCredentialResponse,
+  ProfileKeyCommitment,
+  ProfileKeyCredentialPresentation,
+  ProfileKeyCredentialRequest,
+  ProfileKeyCredentialRequestContext,
+  ReceiptCredential,
+  ReceiptCredentialPresentation,
+  ReceiptCredentialRequest,
+  ReceiptCredentialRequestContext,
+  ReceiptCredentialResponse,
 } from '../zkgroup/';
 import { Aci, Pni } from '../Address';
-import { Uuid } from '..';
+import { LibSignalErrorBase, Uuid } from '..';
 
 const SECONDS_PER_DAY = 86400;
 
@@ -76,6 +107,61 @@ describe('ZKGroup', () => {
   const TEST_ARRAY_32_5 = hexToBuffer(
     '030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122'
   );
+
+  it('deserializationErrorType', () => {
+    function assertDeserializeInvalidThrows<T>(
+      constructor: new (serialized: Buffer) => T
+    ) {
+      assert.throws(
+        () => {
+          new constructor(Buffer.from('invalid contents'));
+        },
+        LibSignalErrorBase,
+        'Deserialization failure'
+      );
+    }
+    assertDeserializeInvalidThrows(AuthCredentialPresentation);
+    assertDeserializeInvalidThrows(AuthCredentialWithPni);
+    assertDeserializeInvalidThrows(AuthCredentialWithPniResponse);
+    assertDeserializeInvalidThrows(BackupAuthCredential);
+    assertDeserializeInvalidThrows(BackupAuthCredentialPresentation);
+    assertDeserializeInvalidThrows(BackupAuthCredentialRequest);
+    assertDeserializeInvalidThrows(BackupAuthCredentialRequestContext);
+    assertDeserializeInvalidThrows(BackupAuthCredentialResponse);
+    assertDeserializeInvalidThrows(CallLinkAuthCredential);
+    assertDeserializeInvalidThrows(CallLinkAuthCredentialPresentation);
+    assertDeserializeInvalidThrows(CallLinkAuthCredentialResponse);
+    assertDeserializeInvalidThrows(CallLinkPublicParams);
+    assertDeserializeInvalidThrows(CallLinkSecretParams);
+    assertDeserializeInvalidThrows(CreateCallLinkCredential);
+    assertDeserializeInvalidThrows(CreateCallLinkCredentialRequest);
+    assertDeserializeInvalidThrows(CreateCallLinkCredentialRequestContext);
+    assertDeserializeInvalidThrows(CreateCallLinkCredentialResponse);
+    assertDeserializeInvalidThrows(ExpiringProfileKeyCredential);
+    assertDeserializeInvalidThrows(ExpiringProfileKeyCredentialResponse);
+    assertDeserializeInvalidThrows(GenericServerPublicParams);
+    assertDeserializeInvalidThrows(GenericServerSecretParams);
+    assertDeserializeInvalidThrows(GroupPublicParams);
+    assertDeserializeInvalidThrows(GroupSecretParams);
+    assertDeserializeInvalidThrows(GroupSendDerivedKeyPair);
+    assertDeserializeInvalidThrows(GroupSendEndorsement);
+    assertDeserializeInvalidThrows(GroupSendEndorsementsResponse);
+    assertDeserializeInvalidThrows(GroupSendFullToken);
+    assertDeserializeInvalidThrows(GroupSendToken);
+    assertDeserializeInvalidThrows(ProfileKeyCiphertext);
+    assertDeserializeInvalidThrows(ProfileKeyCommitment);
+    assertDeserializeInvalidThrows(ProfileKeyCredentialPresentation);
+    assertDeserializeInvalidThrows(ProfileKeyCredentialRequest);
+    assertDeserializeInvalidThrows(ProfileKeyCredentialRequestContext);
+    assertDeserializeInvalidThrows(ReceiptCredential);
+    assertDeserializeInvalidThrows(ReceiptCredentialPresentation);
+    assertDeserializeInvalidThrows(ReceiptCredentialRequest);
+    assertDeserializeInvalidThrows(ReceiptCredentialRequestContext);
+    assertDeserializeInvalidThrows(ReceiptCredentialResponse);
+    assertDeserializeInvalidThrows(ServerPublicParams);
+    assertDeserializeInvalidThrows(ServerSecretParams);
+    assertDeserializeInvalidThrows(UuidCiphertext);
+  });
 
   it('testAuthWithPniIntegration', () => {
     const aci = Aci.fromUuid(TEST_UUID);

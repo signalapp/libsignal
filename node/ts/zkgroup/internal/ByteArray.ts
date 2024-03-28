@@ -4,20 +4,21 @@
 //
 
 import { LibSignalErrorBase } from '../../Errors';
+import * as Native from '../../../Native';
 
 export const UNCHECKED_AND_UNCLONED: unique symbol = Symbol();
 
 export default class ByteArray {
   contents: Buffer;
 
-  constructor(
+  protected constructor(
     contents: Buffer,
     checkValid: ((contents: Buffer) => void) | typeof UNCHECKED_AND_UNCLONED
   ) {
     if (checkValid === UNCHECKED_AND_UNCLONED) {
       this.contents = contents;
     } else {
-      checkValid(contents);
+      checkValid.call(Native, contents);
       this.contents = Buffer.from(contents);
     }
   }
