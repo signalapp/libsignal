@@ -147,8 +147,8 @@ impl<E> ServiceStatus<E> {
     }
 
     pub(crate) fn stop_service_with_error(&self, error: E) {
-        self.stop_service();
         self.maybe_error.get_or_init(|| error);
+        self.stop_service();
     }
 
     pub(crate) fn is_stopped(&self) -> bool {
