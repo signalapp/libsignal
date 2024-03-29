@@ -333,6 +333,66 @@ where
     }
 }
 
+/// Wraps a ChatService `T` to automatically call [`disconnect`][ChatService::disconnect] on Drop.
+///
+/// If dropped in a tokio context, the disconnect will happen asynchronously.
+///
+/// Deliberately does *not* implement Clone; this interface only makes sense as a way to impose a
+/// single owner on an underlying cloneable ChatService.
+struct AutoDisconnecting<T: ChatService + Clone + Send + Sync + 'static> {
+    inner: T,
+}
+
+impl<T: ChatService + Clone + Send + Sync + 'static> Drop for AutoDisconnecting<T> {
+    fn drop(&mut self) {
+        if let Ok(handle) = tokio::runtime::Handle::try_current() {
+            let inner = self.inner.clone();
+            handle.spawn(async move { inner.disconnect().await });
+        } else {
+            tokio::runtime::Builder::new_current_thread()
+                .build()
+                .expect("can create ad-hoc runtime")
+                .block_on(self.inner.disconnect())
+        }
+    }
+}
+
+#[async_trait]
+impl<T> ChatService for AutoDisconnecting<T>
+where
+    T: ChatService + Clone + Send + Sync,
+{
+    async fn send(&self, msg: Request, timeout: Duration) -> Result<Response, ChatServiceError> {
+        self.inner.send(msg, timeout).await
+    }
+
+    async fn connect(&self) -> Result<(), ChatServiceError> {
+        self.inner.connect().await
+    }
+
+    async fn disconnect(&self) {
+        self.inner.disconnect().await
+    }
+}
+
+#[async_trait]
+impl<T> ChatServiceWithDebugInfo for AutoDisconnecting<T>
+where
+    T: ChatServiceWithDebugInfo + Clone + Send + Sync,
+{
+    async fn send_and_debug(
+        &self,
+        msg: Request,
+        timeout: Duration,
+    ) -> (Result<Response, ChatServiceError>, DebugInfo) {
+        self.inner.send_and_debug(msg, timeout).await
+    }
+
+    async fn connect_and_debug(&self) -> Result<DebugInfo, ChatServiceError> {
+        self.inner.connect_and_debug().await
+    }
+}
+
 #[async_trait]
 impl ChatService for Arc<dyn ChatServiceWithDebugInfo + Send + Sync> {
     async fn send(&self, msg: Request, timeout: Duration) -> Result<Response, ChatServiceError> {
@@ -383,7 +443,9 @@ fn build_authorized_chat_service(
     );
 
     AuthorizedChatService {
-        inner: chat_over_ws_auth,
+        inner: AutoDisconnecting {
+            inner: chat_over_ws_auth,
+        },
     }
 }
 
@@ -399,7 +461,9 @@ fn build_anonymous_chat_service(
     );
 
     AnonymousChatService {
-        inner: chat_over_ws_anonymous,
+        inner: AutoDisconnecting {
+            inner: chat_over_ws_anonymous,
+        },
     }
 }
 
