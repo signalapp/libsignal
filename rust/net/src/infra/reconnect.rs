@@ -414,6 +414,7 @@ mod test {
     use assert_matches::assert_matches;
     use async_trait::async_trait;
     use futures_util::FutureExt;
+    use nonzero_ext::nonzero;
     use tokio::time;
     use tokio::time::Instant;
 
@@ -514,7 +515,7 @@ mod test {
             "test",
             "chat.signal.org",
             "chat.signal.org",
-            443,
+            nonzero!(443u16),
             HttpRequestDecoratorSeq::default(),
             RootCertificates::Signal,
         )

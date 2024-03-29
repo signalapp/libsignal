@@ -441,6 +441,7 @@ pub(crate) mod test {
 
         use async_trait::async_trait;
         use http::Method;
+        use nonzero_ext::nonzero;
 
         use crate::chat::{ChatService, ChatServiceError, Request, Response};
         use crate::infra::certs::RootCertificates;
@@ -497,7 +498,7 @@ pub(crate) mod test {
                 "test",
                 "test.signal.org",
                 "test.signal.org",
-                443,
+                nonzero!(443u16),
                 Default::default(),
                 RootCertificates::Signal,
             );

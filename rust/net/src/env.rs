@@ -3,19 +3,20 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use const_str::ip_addr;
 use std::collections::HashMap;
 use std::iter;
 use std::net::{Ipv4Addr, Ipv6Addr};
 use std::time::Duration;
 
+use const_str::ip_addr;
+use nonzero_ext::nonzero;
 use rand::seq::SliceRandom;
 use rand::{thread_rng, Rng};
 
 use crate::enclave::{Cdsi, EnclaveEndpoint, MrEnclave, Nitro, Sgx, Tpm2Snp};
 use crate::infra::certs::RootCertificates;
 use crate::infra::dns::LookupResult;
-use crate::infra::{ConnectionParams, HttpRequestDecorator, HttpRequestDecoratorSeq};
+use crate::infra::{ConnectionParams, DnsSource, HttpRequestDecorator, HttpRequestDecoratorSeq};
 
 pub(crate) const WS_KEEP_ALIVE_INTERVAL: Duration = Duration::from_secs(5);
 pub(crate) const WS_MAX_IDLE_TIME: Duration = Duration::from_secs(15);
@@ -165,7 +166,7 @@ impl DomainConfig {
     pub fn static_fallback(&self) -> (&'static str, LookupResult) {
         (
             self.hostname,
-            LookupResult::new_static(self.ip_v4.into(), self.ip_v6.into()),
+            LookupResult::new(DnsSource::Static, self.ip_v4.into(), self.ip_v6.into()),
         )
     }
 
@@ -174,7 +175,7 @@ impl DomainConfig {
             "direct",
             self.hostname,
             self.hostname,
-            443,
+            nonzero!(443u16),
             HttpRequestDecoratorSeq::default(),
             *self.cert,
         )
@@ -210,7 +211,7 @@ impl ProxyConfig {
                 self.route_log_name,
                 sni,
                 self.hostname,
-                443,
+                nonzero!(443u16),
                 HttpRequestDecorator::PathPrefix(proxy_path).into(),
                 RootCertificates::Native,
             )

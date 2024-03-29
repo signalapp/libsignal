@@ -10,6 +10,7 @@ use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
 use std::time::Duration;
 use std::vec::IntoIter;
 
+use crate::infra::DnsSource;
 use crate::utils;
 
 const RESOLUTION_TIMEOUT: Duration = Duration::from_secs(1);
@@ -21,9 +22,9 @@ pub enum Error {
     LookupFailed,
 }
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Clone)]
 pub struct LookupResult {
-    from_lookup: bool,
+    source: DnsSource,
     ipv4: Vec<Ipv4Addr>,
     ipv6: Vec<Ipv6Addr>,
 }
@@ -46,27 +47,12 @@ impl IntoIterator for LookupResult {
 }
 
 impl LookupResult {
-    pub fn from_lookup(ipv4: Vec<Ipv4Addr>, ipv6: Vec<Ipv6Addr>) -> Self {
-        Self {
-            from_lookup: true,
-            ipv4,
-            ipv6,
-        }
+    pub fn new(source: DnsSource, ipv4: Vec<Ipv4Addr>, ipv6: Vec<Ipv6Addr>) -> Self {
+        Self { source, ipv4, ipv6 }
     }
 
-    pub fn new_static(ipv4: Vec<Ipv4Addr>, ipv6: Vec<Ipv6Addr>) -> Self {
-        Self {
-            from_lookup: false,
-            ipv4,
-            ipv6,
-        }
-    }
-
-    pub(crate) fn source(&self) -> &'static str {
-        match self.from_lookup {
-            true => "lookup",
-            false => "static",
-        }
+    pub(crate) fn source(&self) -> DnsSource {
+        self.source
     }
 
     pub(crate) fn is_empty(&self) -> bool {
@@ -116,7 +102,7 @@ impl DnsResolver {
                 SocketAddr::V4(v4) => Either::Left(*v4.ip()),
                 SocketAddr::V6(v6) => Either::Right(*v6.ip()),
             });
-        match LookupResult::from_lookup(ipv4s, ipv6s) {
+        match LookupResult::new(DnsSource::Lookup, ipv4s, ipv6s) {
             lookup_result if !lookup_result.is_empty() => Ok(lookup_result),
             _ => Err(Error::LookupFailed),
         }
@@ -126,6 +112,7 @@ impl DnsResolver {
 #[cfg(test)]
 mod test {
     use crate::infra::dns::LookupResult;
+    use crate::infra::DnsSource;
     use const_str::ip_addr;
     use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 
@@ -181,7 +168,7 @@ mod test {
     }
 
     fn validate_expected_order(ipv4s: Vec<Ipv4Addr>, ipv6s: Vec<Ipv6Addr>, expected: Vec<IpAddr>) {
-        let lookup_result = LookupResult::new_static(ipv4s, ipv6s);
+        let lookup_result = LookupResult::new(DnsSource::Static, ipv4s, ipv6s);
         let actual: Vec<IpAddr> = lookup_result.into_iter().collect();
         assert_eq!(expected, actual);
     }

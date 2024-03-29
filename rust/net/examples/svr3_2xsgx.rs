@@ -25,7 +25,7 @@ use libsignal_net::enclave::{
 };
 use libsignal_net::env::DomainConfig;
 use libsignal_net::infra::certs::RootCertificates;
-use libsignal_net::infra::TcpSslTransportConnector;
+use libsignal_net::infra::tcp_ssl::TcpSslTransportConnector;
 use libsignal_net::svr::SvrConnection;
 use libsignal_net::svr3::{OpaqueMaskedShareSet, PpssOps};
 

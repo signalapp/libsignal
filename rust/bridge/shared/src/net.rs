@@ -26,7 +26,8 @@ use libsignal_net::enclave::{
 use libsignal_net::env::{Env, Svr3Env};
 use libsignal_net::infra::connection_manager::MultiRouteConnectionManager;
 use libsignal_net::infra::dns::DnsResolver;
-use libsignal_net::infra::{make_ws_config, EndpointConnection, TcpSslTransportConnector};
+use libsignal_net::infra::tcp_ssl::TcpSslTransportConnector;
+use libsignal_net::infra::{make_ws_config, EndpointConnection};
 use libsignal_net::svr::{self, SvrConnection};
 use libsignal_net::svr3::{self, OpaqueMaskedShareSet, PpssOps as _};
 use libsignal_net::utils::timeout;

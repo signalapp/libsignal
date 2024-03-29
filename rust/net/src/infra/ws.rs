@@ -27,14 +27,12 @@ use crate::infra::errors::LogSafeDisplay;
 use crate::infra::reconnect::{ServiceConnector, ServiceStatus};
 use crate::infra::ws::error::{HttpFormatError, ProtocolError, SpaceError};
 use crate::infra::{
-    AsyncDuplexStream, ConnectionInfo, ConnectionParams, StreamAndInfo, TransportConnector,
+    Alpn, AsyncDuplexStream, ConnectionInfo, ConnectionParams, StreamAndInfo, TransportConnector,
 };
 use crate::utils::timeout;
 
 pub mod error;
 pub use error::{Error, WebSocketConnectError};
-
-const WS_ALPN: &[u8] = b"\x08http/1.1";
 
 #[derive(Debug, Clone)]
 pub struct WebSocketConfig {
@@ -316,7 +314,7 @@ async fn connect_websocket<T: TransportConnector>(
     transport_connector: &T,
 ) -> Result<(WebSocketStream<T::Stream>, ConnectionInfo), WebSocketConnectError> {
     let StreamAndInfo(ssl_stream, remote_address) = transport_connector
-        .connect(connection_params, WS_ALPN)
+        .connect(connection_params, Alpn::Http1_1)
         .await?;
 
     // we need to explicitly create upgrade request
@@ -612,7 +610,7 @@ pub(crate) mod testutil {
     use tokio_tungstenite::WebSocketStream;
 
     use crate::env::{WS_KEEP_ALIVE_INTERVAL, WS_MAX_IDLE_TIME};
-    use crate::infra::AsyncDuplexStream;
+    use crate::infra::{AsyncDuplexStream, DnsSource};
 
     use super::*;
 
@@ -631,7 +629,7 @@ pub(crate) mod testutil {
     pub(crate) fn mock_connection_info() -> ConnectionInfo {
         ConnectionInfo {
             route_type: "test",
-            dns_source: "test",
+            dns_source: DnsSource::Test,
             address: url::Host::Domain("localhost".to_string()),
         }
     }

@@ -275,6 +275,7 @@ mod test {
     use std::future;
 
     use assert_matches::assert_matches;
+    use nonzero_ext::nonzero;
     use tokio::time;
 
     use crate::infra::certs::RootCertificates;
@@ -497,7 +498,7 @@ mod test {
             "test",
             host,
             host,
-            443,
+            nonzero!(443u16),
             HttpRequestDecoratorSeq::default(),
             RootCertificates::Signal,
         )

@@ -16,7 +16,7 @@ use rand_core::OsRng;
 use libsignal_net::auth::Auth;
 use libsignal_net::enclave::{EnclaveEndpointConnection, Nitro, PpssSetup, Sgx, Tpm2Snp};
 use libsignal_net::env::Svr3Env;
-use libsignal_net::infra::TcpSslTransportConnector;
+use libsignal_net::infra::tcp_ssl::TcpSslTransportConnector;
 use libsignal_net::svr::SvrConnection;
 use libsignal_net::svr3::{Error, OpaqueMaskedShareSet, PpssOps as _};
 use support::*;
