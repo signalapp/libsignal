@@ -26,7 +26,7 @@ async fn cdsi_lookup(
     let connected = CdsiConnection::connect(endpoint, transport_connector, auth).await?;
     let (_token, remaining_response) = libsignal_net::utils::timeout(
         timeout,
-        LookupError::Timeout,
+        LookupError::ConnectionTimedOut,
         connected.send_request(request),
     )
     .await?;

@@ -36,7 +36,7 @@ pub(crate) enum ServiceState<T, CE, SE> {
     /// Last connection attempt resulted in an error.
     Error(CE),
     /// Last connection attempt timed out.
-    TimedOut,
+    ConnectionTimedOut,
 }
 
 /// Represents the logic needed to establish a connection over some transport.
@@ -217,7 +217,7 @@ where
             }
             ConnectionAttemptOutcome::TimedOut => {
                 log::debug!("connection attempt timed out");
-                ServiceState::TimedOut
+                ServiceState::ConnectionTimedOut
             }
         }
     }
@@ -263,7 +263,7 @@ where
             ServiceState::Active(service, status) if !status.is_stopped() => Ok(mapper(service)),
             ServiceState::Inactive => Err(StateError::Inactive),
             ServiceState::Cooldown(_)
-            | ServiceState::TimedOut
+            | ServiceState::ConnectionTimedOut
             | ServiceState::Error(_)
             | ServiceState::Active(_, _) => Err(StateError::ServiceUnavailable),
         }
@@ -352,7 +352,7 @@ where
                     // because we just checked that we'll wake before the deadline
                     tokio::time::sleep_until(*next_attempt_time).await;
                 }
-                ServiceState::TimedOut => {
+                ServiceState::ConnectionTimedOut => {
                     // keep trying until we hit our own timeout deadline
                     log::info!("Connection attempt timed out");
                     if Instant::now() >= deadline {
@@ -374,7 +374,7 @@ where
                     ServiceState::Active(service, service_state)
                 }
                 Ok(result) => result,
-                Err(_) => ServiceState::TimedOut,
+                Err(_) => ServiceState::ConnectionTimedOut,
             }
         }
     }

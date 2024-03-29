@@ -59,7 +59,7 @@ enum TestingCdsiLookupError {
     Parse,
     ConnectDnsFailed,
     WebSocketIdleTooLong,
-    Timeout,
+    ConnectionTimedOut,
     ServerCrashed,
 }
 
@@ -83,7 +83,7 @@ const _: () = {
             LookupError::ParseError => TestingCdsiLookupError::Parse,
             LookupError::ConnectTransport(_) => TestingCdsiLookupError::ConnectDnsFailed,
             LookupError::WebSocket(_) => TestingCdsiLookupError::WebSocketIdleTooLong,
-            LookupError::Timeout => TestingCdsiLookupError::Timeout,
+            LookupError::ConnectionTimedOut => TestingCdsiLookupError::ConnectionTimedOut,
             LookupError::Server { reason } => TestingCdsiLookupError::ServerCrashed,
         }
     }
@@ -124,7 +124,7 @@ fn TESTING_CdsiLookupErrorConvert(
         TestingCdsiLookupError::WebSocketIdleTooLong => LookupError::WebSocket(
             libsignal_net::infra::ws::WebSocketServiceError::ChannelIdleTooLong,
         ),
-        TestingCdsiLookupError::Timeout => LookupError::Timeout,
+        TestingCdsiLookupError::ConnectionTimedOut => LookupError::ConnectionTimedOut,
         TestingCdsiLookupError::ServerCrashed => LookupError::Server { reason: "crashed" },
     })
 }

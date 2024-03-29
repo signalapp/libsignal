@@ -29,7 +29,6 @@ export type ServiceAuth = {
 export type CDSRequestOptionsType = {
   e164s: Array<string>;
   acisAndAccessKeys: Array<{ aci: string; accessKey: string }>;
-  timeout: number;
   returnAcisWithoutUaks: boolean;
 };
 
@@ -140,7 +139,6 @@ export class Net {
     {
       e164s,
       acisAndAccessKeys,
-      timeout,
       returnAcisWithoutUaks,
     }: ReadonlyDeep<CDSRequestOptionsType>
   ): Promise<CDSResponseType<string, string>> {
@@ -167,8 +165,7 @@ export class Net {
       this._connectionManager,
       username,
       password,
-      request,
-      timeout
+      request
     );
 
     return await Native.CdsiLookup_complete(this._asyncContext, {
@@ -193,8 +190,8 @@ export class Net {
  * // Instantiate ServiceAuth with the username and password obtained from the Chat Server.
  * const auth = { username: USERNAME, password: ENCLAVE_PASSWORD };
  * // Store a value in SVR3. Here 10 is the number of permitted restore attempts.
- * const shareSet = await SVR3.backup(SECRET_TO_BE_STORED, PASSWORD, 10, auth, TIMEOUT);
- * const restoredSecret = await SVR3.restore( PASSWORD, shareSet, auth, TIMEOUT);
+ * const shareSet = await SVR3.backup(SECRET_TO_BE_STORED, PASSWORD, 10, auth);
+ * const restoredSecret = await SVR3.restore( PASSWORD, shareSet, auth);
  * ```
  */
 export interface Svr3Client {
@@ -215,8 +212,6 @@ export interface Svr3Client {
    * generally good for about 15 minutes, therefore it can be reused for the
    * subsequent calls to either backup or restore that are not too far apart in
    * time.
-   * @param opTimeoutMs - The maximum wall time libsignal is allowed to spend
-   * communicating with SVR3 service.
    * @returns A `Promise` which--when awaited--will return a byte array with a
    * serialized masked share set. It is supposed to be an opaque blob for the
    * clients and therefore no assumptions should be made about its contents.
@@ -224,20 +219,20 @@ export interface Svr3Client {
    * secret along with the password. Please note that masked share set does not
    * have to be treated as secret.
    *
-   * The returned `Promise` can also fail due to the network issues (including the
-   * timeout), problems establishing the Noise connection to the enclaves, or
-   * invalid arguments' values. {@link IoError} errors can, in general, be
-   * retried, although there is already a retry-with-backoff mechanism inside
-   * libsignal used to connect to the SVR3 servers. Other exceptions are caused
-   * by the bad input or data missing on the server. They are therefore
-   * non-actionable and are guaranteed to be thrown again when retried.
+   * The returned `Promise` can also fail due to the network issues (including a
+   * connection timeout), problems establishing the Noise connection to the
+   * enclaves, or invalid arguments' values. {@link IoError} errors can, in
+   * general, be retried, although there is already a retry-with-backoff
+   * mechanism inside libsignal used to connect to the SVR3 servers. Other
+   * exceptions are caused by the bad input or data missing on the server. They
+   * are therefore non-actionable and are guaranteed to be thrown again when
+   * retried.
    */
   backup(
     what: Buffer,
     password: string,
     maxTries: number,
-    auth: Readonly<ServiceAuth>,
-    opTimeoutMs: number
+    auth: Readonly<ServiceAuth>
   ): Promise<Buffer>;
 
   /**
@@ -255,18 +250,17 @@ export interface Svr3Client {
    * generally good for about 15 minutes, therefore it can be reused for the
    * subsequent calls to either backup or restore that are not too far apart in
    * time.
-   * @param opTimeoutMs - The maximum wall time libsignal is allowed to spend
-   * communicating with SVR3 service.
    * @returns A `Promise` which--when awaited--will return a byte array with the
    * restored secret.
    *
-   * The returned `Promise` can also fail due to the network issues (including the
-   * timeout), problems establishing the Noise connection to the enclaves, or
-   * invalid arguments' values. {@link IoError} errors can, in general, be
-   * retried, although there is already a retry-with-backoff mechanism inside
-   * libsignal used to connect to the SVR3 servers. Other exceptions are caused
-   * by the bad input or data missing on the server. They are therefore
-   * non-actionable and are guaranteed to be thrown again when retried.
+   * The returned `Promise` can also fail due to the network issues (including
+   * the connection timeout), problems establishing the Noise connection to the
+   * enclaves, or invalid arguments' values. {@link IoError} errors can, in
+   * general, be retried, although there is already a retry-with-backoff
+   * mechanism inside libsignal used to connect to the SVR3 servers. Other
+   * exceptions are caused by the bad input or data missing on the server. They
+   * are therefore non-actionable and are guaranteed to be thrown again when
+   * retried.
    *
    * - {@link SvrDataMissingError} is returned when the maximum restore attempts
    * number has been exceeded or if the value has never been backed up.
@@ -280,8 +274,7 @@ export interface Svr3Client {
   restore(
     password: string,
     shareSet: Buffer,
-    auth: Readonly<ServiceAuth>,
-    opTimeoutMs: number
+    auth: Readonly<ServiceAuth>
   ): Promise<Buffer>;
 }
 
@@ -297,8 +290,7 @@ class Svr3ClientImpl implements Svr3Client {
     what: Buffer,
     password: string,
     maxTries: number,
-    auth: Readonly<ServiceAuth>,
-    opTimeoutMs: number
+    auth: Readonly<ServiceAuth>
   ): Promise<Buffer> {
     return Native.Svr3Backup(
       this._asyncContext,
@@ -307,16 +299,14 @@ class Svr3ClientImpl implements Svr3Client {
       password,
       maxTries,
       auth.username,
-      auth.password,
-      opTimeoutMs
+      auth.password
     );
   }
 
   async restore(
     password: string,
     shareSet: Buffer,
-    auth: Readonly<ServiceAuth>,
-    opTimeoutMs: number
+    auth: Readonly<ServiceAuth>
   ): Promise<Buffer> {
     return Native.Svr3Restore(
       this._asyncContext,
@@ -324,8 +314,7 @@ class Svr3ClientImpl implements Svr3Client {
       password,
       shareSet,
       auth.username,
-      auth.password,
-      opTimeoutMs
+      auth.password
     );
   }
 }

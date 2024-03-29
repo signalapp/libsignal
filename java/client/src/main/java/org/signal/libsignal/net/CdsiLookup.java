@@ -5,10 +5,7 @@
 
 package org.signal.libsignal.net;
 
-import static org.signal.libsignal.net.DurationExt.timeoutMillis;
-
 import java.io.IOException;
-import java.time.Duration;
 import java.util.concurrent.ExecutionException;
 import org.signal.libsignal.internal.CompletableFuture;
 import org.signal.libsignal.internal.Native;
@@ -16,11 +13,7 @@ import org.signal.libsignal.internal.NativeHandleGuard;
 
 class CdsiLookup implements NativeHandleGuard.Owner {
   public static CompletableFuture<CdsiLookup> start(
-      Network network,
-      String username,
-      String password,
-      CdsiLookupRequest request,
-      Duration timeout)
+      Network network, String username, String password, CdsiLookupRequest request)
       throws IOException, InterruptedException, ExecutionException {
 
     CdsiLookupRequest.NativeRequest nativeRequest = request.makeNative();
@@ -33,8 +26,7 @@ class CdsiLookup implements NativeHandleGuard.Owner {
               connectionManager.nativeHandle(),
               username,
               password,
-              nativeRequest.getHandle(),
-              timeoutMillis(timeout))
+              nativeRequest.getHandle())
           .thenApply((Long nativeHandle) -> new CdsiLookup(nativeHandle, network));
     }
   }

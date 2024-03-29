@@ -5,9 +5,6 @@
 
 package org.signal.libsignal.net;
 
-import static org.signal.libsignal.net.DurationExt.timeoutMillis;
-
-import java.time.Duration;
 import org.signal.libsignal.internal.CompletableFuture;
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
@@ -26,8 +23,8 @@ import org.signal.libsignal.internal.NativeHandleGuard;
  * // Instantiate EnclaveAuth with the username and password obtained from the Chat Server.
  * EnclaveAuth auth = new EnclaveAuth(USERNAME, ENCLAVE_PASSWORD);
  * // Store a value in SVR3. Here 10 is the number of permitted restore attempts.
- * byte[] shareSet = net.svr3().backup(SECRET_TO_BE_STORED, PASSWORD, 10, auth, TIMEOUT).get();
- * byte[] restoredSecret = net.svr3().restore(PASSWORD, shareSet, auth, TIMEOUT).get();
+ * byte[] shareSet = net.svr3().backup(SECRET_TO_BE_STORED, PASSWORD, 10, auth).get();
+ * byte[] restoredSecret = net.svr3().restore(PASSWORD, shareSet, auth).get();
  * }</pre>
  *
  * <p>Please note that the methods of this class return {@link
@@ -62,8 +59,6 @@ public final class Svr3 {
    *     and password obtained from the Chat Server. The password is an OTP which is generally good
    *     for about 15 minutes, therefore it can be reused for the subsequent calls to either backup
    *     or restore that are not too far apart in time.
-   * @param timeout The maximum wall time libsignal is allowed to spend communicating with SVR3
-   *     service.
    * @return an instance of {@link org.signal.libsignal.internal.CompletableFuture} which-when
    *     awaited-will return a byte array with a serialized masked share set. It is supposed to be
    *     an opaque blob for the clients and therefore no assumptions should be made about its
@@ -71,14 +66,14 @@ public final class Svr3 {
    *     along with the password. Please note that masked share set does not have to be treated as
    *     secret.
    * @throws {@link org.signal.libsignal.net.NetworkException} in case of network related errors,
-   *     including timeouts and failed auth.
+   *     including connect timeout and failed auth.
    * @throws {@link org.signal.libsignal.attest.AttestationFailedException} when an attempt to
    *     validate the server attestation document fails.
    * @throws {@link org.signal.libsignal.sgxsession.SgxCommunicationFailureException} when a Noise
    *     connection error happens.
    */
   public final CompletableFuture<byte[]> backup(
-      byte[] what, String password, int maxTries, EnclaveAuth auth, Duration timeout) {
+      byte[] what, String password, int maxTries, EnclaveAuth auth) {
     try (NativeHandleGuard asyncRuntime = new NativeHandleGuard(this.network.getAsyncContext());
         NativeHandleGuard connectionManager =
             new NativeHandleGuard(this.network.getConnectionManager())) {
@@ -90,8 +85,7 @@ public final class Svr3 {
           password,
           maxTries,
           auth.username,
-          auth.password,
-          timeoutMillis(timeout));
+          auth.password);
     }
   }
 
@@ -117,12 +111,10 @@ public final class Svr3 {
    *     and password obtained from the Chat Server. The password is an OTP which is generally good
    *     for about 15 minutes, therefore it can be reused for the subsequent calls to either backup
    *     or restore that are not too far apart in time.
-   * @param timeout The maximum wall time libsignal is allowed to spend communicating with SVR3
-   *     service.
    * @return an instance of {@link org.signal.libsignal.internal.CompletableFuture} which-when
    *     awaited-will return a byte array with the restored secret.
    * @throws {@link org.signal.libsignal.net.NetworkException} in case of network related errors,
-   *     including timeouts and failed auth.
+   *     including connection timeouts and failed auth.
    * @throws {@link org.signal.libsignal.svr.DataMissingException} when the maximum restore attempts
    *     number has been exceeded or if the value has never been backed up.
    * @throws {@link org.signal.libsignal.svr.RestoreFailedException} when the combination of the
@@ -136,7 +128,7 @@ public final class Svr3 {
    *     connection error happens.
    */
   public final CompletableFuture<byte[]> restore(
-      String password, byte[] shareSet, EnclaveAuth auth, Duration timeout) {
+      String password, byte[] shareSet, EnclaveAuth auth) {
     try (NativeHandleGuard asyncRuntime = new NativeHandleGuard(this.network.getAsyncContext());
         NativeHandleGuard connectionManager =
             new NativeHandleGuard(this.network.getConnectionManager())) {
@@ -147,8 +139,7 @@ public final class Svr3 {
           password,
           shareSet,
           auth.username,
-          auth.password,
-          timeoutMillis(timeout));
+          auth.password);
     }
   }
 }

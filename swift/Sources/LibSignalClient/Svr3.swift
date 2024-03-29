@@ -25,16 +25,14 @@ import SignalFfi
 ///     SECRET_TO_BE_STORED,
 ///     password: PASSWORD,
 ///     maxTries: 10,
-///     auth: auth,
-///     timeout: TIMEOUT
+///     auth: auth
 /// )
 /// // Attempt to retrieve the secret from SVR3 provided the masked share set
 /// // and a password.
 /// let restoredSecret = try await net.svr3.restore(
 ///     password: PASSWORD,
 ///     shareSet: shareSet,
-///     auth: auth,
-///     timeout: TIMEOUT
+///     auth: auth
 /// )
 /// ~~~
 public class Svr3Client {
@@ -56,7 +54,7 @@ public class Svr3Client {
     ///   - password: User-provided password that will be used to derive the
     ///     encryption key for the secret.
     ///   - maxTries: Maximum allowed number of restore attempts (successful
-    ///     or not). Each call to ``restore(password:shareSet:auth:timeout:)``
+    ///     or not). Each call to ``restore(password:shareSet:auth:)``
     ///     that reaches the server will decrement the counter. Must be
     ///     positive.
     ///   - auth: An instance of ``Auth`` containing the username and password
@@ -64,8 +62,6 @@ public class Svr3Client {
     ///     generally good for about 15 minutes, therefore it can be reused for
     ///     the subsequent calls to either `backup` or `restore` that are not
     ///     too far apart in time.
-    ///   - timeout: The maximum wall time libsignal is allowed to spend
-    ///     communicating with SVR3 service.
     ///
     /// - Returns:
     ///   A byte array containing a serialized masked share set. It is supposed
@@ -78,15 +74,15 @@ public class Svr3Client {
     /// - Throws:
     ///   On error, throws a ``SignalError``. Expected error cases are
     ///   - `SignalError.networkError` for a network-level connectivity issue,
-    ///     including timeouts.
+    ///     including connection timeout.
     ///   - `SignalError.networkProtocolError` for an SVR3 or attested
     ///     connection protocol issue.
     ///
     /// ## Notes:
     ///   - Error messages are expected to be log-safe and not contain any
     ///     sensitive data.
-    ///   - Failures caused by the network issues (including the timeouts) can,
-    ///     in general, be retried, although there is already a
+    ///   - Failures caused by the network issues (including a connection
+    ///     timeout) can, in general, be retried, although there is already a
     ///     retry-with-backoff mechanism inside libsignal used to connect to the
     ///     SVR3 servers. Other exceptions are caused by the bad input or data
     ///     missing on the server. They are therefore non-actionable and are
@@ -95,10 +91,8 @@ public class Svr3Client {
         _ secret: some ContiguousBytes,
         password: String,
         maxTries: UInt32,
-        auth: Auth,
-        timeout: TimeInterval
+        auth: Auth
     ) async throws -> [UInt8] {
-        let timeoutMs = durationToMillis(timeout)
         let output = try await invokeAsyncFunction(returning: SignalOwnedBuffer.self) { promise, context in
             self.asyncContext.withNativeHandle { asyncContext in
                 self.connectionManager.withNativeHandle { connectionManager in
@@ -112,8 +106,7 @@ public class Svr3Client {
                             password,
                             maxTries,
                             auth.username,
-                            auth.password,
-                            timeoutMs
+                            auth.password
                         )
                     }
                 }
@@ -131,14 +124,12 @@ public class Svr3Client {
     ///   - password: User-provided password that will be used to derive the
     ///     encryption key for the secret.
     ///   - shareSet: A serialized masked share set returned by
-    ///     ``backup(_:password:maxTries:auth:timeout:)``.
+    ///     ``backup(_:password:maxTries:auth:)``.
     ///   - auth: An instance of ``Auth`` containing the username and password
     ///     obtained from the Chat Server. The password is an OTP which is
     ///     generally good for about 15 minutes, therefore it can be reused for
     ///     the subsequent calls to either backup or restore that are not too
     ///     far apart in time.
-    ///   - timeout: The maximum wall time libsignal is allowed to spend
-    ///     communicating with SVR3 service.
     ///
     /// - Returns:
     ///   A byte array containing the restored secret.
@@ -146,7 +137,7 @@ public class Svr3Client {
     /// - Throws:
     ///   On error, throws a ``SignalError``. Expected error cases are
     ///   - `SignalError.networkError` for a network-level connectivity issue,
-    ///     including timeouts.
+    ///     including connection timeouts.
     ///   - `SignalError.networkProtocolError` for an SVR3 or attested
     ///     connection protocol issue.
     ///   - `SignalError.svrDataMissing` when either the maximum number of
@@ -158,8 +149,8 @@ public class Svr3Client {
     /// ## Notes:
     ///   - Error messages are expected to be log-safe and not contain any
     ///     sensitive data.
-    ///   - Failures caused by the network issues (including the timeouts) can,
-    ///     in general, be retried, although there is already a
+    ///   - Failures caused by the network issues (including a connection
+    ///     timeout) can, in general, be retried, although there is already a
     ///     retry-with-backoff mechanism inside libsignal used to connect to the
     ///     SVR3 servers. Other exceptions are caused by the bad input or data
     ///     missing on the server. They are therefore non-actionable and are
@@ -167,10 +158,8 @@ public class Svr3Client {
     public func restore(
         password: String,
         shareSet: some ContiguousBytes,
-        auth: Auth,
-        timeout: TimeInterval
+        auth: Auth
     ) async throws -> [UInt8] {
-        let timeoutMs = durationToMillis(timeout)
         let output = try await invokeAsyncFunction(returning: SignalOwnedBuffer.self) { promise, context in
             self.asyncContext.withNativeHandle { asyncContext in
                 self.connectionManager.withNativeHandle { connectionManager in
@@ -183,8 +172,7 @@ public class Svr3Client {
                             password,
                             shareSetBuffer,
                             auth.username,
-                            auth.password,
-                            timeoutMs
+                            auth.password
                         )
                     }
                 }

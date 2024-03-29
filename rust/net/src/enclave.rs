@@ -214,8 +214,8 @@ pub enum Error {
     Protocol,
     /// Enclave attestation failed: {0}
     AttestationError(attest::enclave::Error),
-    /// Timeout
-    Timeout,
+    /// Connection timeout
+    ConnectionTimedOut,
 }
 
 impl LogSafeDisplay for Error {}
@@ -257,7 +257,7 @@ impl<E: EnclaveKind + NewHandshake, C: ConnectionManager> EnclaveEndpointConnect
                 unreachable!("new service connector should not be in cooldown")
             }
             ServiceState::Error(e) => Err(Error::WebSocketConnect(e)),
-            ServiceState::TimedOut => Err(Error::Timeout),
+            ServiceState::ConnectionTimedOut => Err(Error::ConnectionTimedOut),
             ServiceState::Inactive => {
                 unreachable!("can't be returned by the initializer")
             }

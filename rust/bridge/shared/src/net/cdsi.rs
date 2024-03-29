@@ -4,14 +4,12 @@
 //
 
 use std::convert::TryInto as _;
-use std::time::Duration;
 
 use libsignal_bridge_macros::{bridge_fn, bridge_io};
 use libsignal_net::auth::Auth;
 use libsignal_net::cdsi::{
     self, AciAndAccessKey, CdsiConnection, ClientResponseCollector, LookupResponse, Token, E164,
 };
-use libsignal_net::utils::timeout;
 use libsignal_protocol::{Aci, SignalProtocolError};
 
 use crate::net::{ConnectionManager, TokioAsyncContext};
@@ -29,7 +27,7 @@ pub enum CdsiError {
     /// Invalid response received from the server
     InvalidResponse,
     /// Retry later
-    RateLimited { retry_after: Duration },
+    RateLimited { retry_after: std::time::Duration },
     /// Failed to parse the response from the server
     ParseError,
     /// Request token was invalid
@@ -109,7 +107,6 @@ async fn CdsiLookup_new(
     username: String,
     password: String,
     request: &LookupRequest,
-    timeout_millis: u32,
 ) -> Result<CdsiLookup, cdsi::LookupError> {
     let request = std::mem::take(&mut *request.0.lock().expect("not poisoned"));
     let auth = Auth { username, password };
@@ -120,12 +117,7 @@ async fn CdsiLookup_new(
         auth,
     )
     .await?;
-    let (token, remaining_response) = timeout(
-        Duration::from_millis(timeout_millis.into()),
-        cdsi::LookupError::Timeout,
-        connected.send_request(request),
-    )
-    .await?;
+    let (token, remaining_response) = connected.send_request(request).await?;
 
     Ok(CdsiLookup {
         token,

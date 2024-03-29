@@ -6,7 +6,6 @@
 package org.signal.libsignal.net;
 
 import java.io.IOException;
-import java.time.Duration;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
 import org.signal.libsignal.internal.CompletableFuture;
@@ -47,13 +46,9 @@ public class Network {
   }
 
   public CompletableFuture<CdsiLookupResponse> cdsiLookup(
-      String username,
-      String password,
-      CdsiLookupRequest request,
-      Duration timeout,
-      Consumer<byte[]> tokenConsumer)
+      String username, String password, CdsiLookupRequest request, Consumer<byte[]> tokenConsumer)
       throws IOException, InterruptedException, ExecutionException {
-    return CdsiLookup.start(this, username, password, request, timeout)
+    return CdsiLookup.start(this, username, password, request)
         .thenCompose(
             (CdsiLookup lookup) -> {
               tokenConsumer.accept(lookup.getToken());

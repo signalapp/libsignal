@@ -79,7 +79,7 @@ pub enum SignalErrorCode {
     #[allow(dead_code)]
     UnsupportedMediaInput = 132,
 
-    Timeout = 133,
+    ConnectionTimedOut = 133,
     NetworkProtocol = 134,
     RateLimited = 135,
     WebSocket = 136,
@@ -320,7 +320,7 @@ impl From<&SignalFfiError> for SignalErrorCode {
                 }
             }
             SignalFfiError::WebSocket(_) => SignalErrorCode::WebSocket,
-            SignalFfiError::Timeout => SignalErrorCode::Timeout,
+            SignalFfiError::ConnectionTimedOut => SignalErrorCode::ConnectionTimedOut,
             SignalFfiError::NetworkProtocol(_) => SignalErrorCode::NetworkProtocol,
             SignalFfiError::CdsiInvalidToken => SignalErrorCode::CdsiInvalidToken,
             SignalFfiError::RateLimited {

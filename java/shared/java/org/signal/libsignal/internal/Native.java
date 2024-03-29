@@ -158,7 +158,7 @@ public final class Native {
 
   public static native void CdsiLookup_Destroy(long handle);
   public static native CompletableFuture<Object> CdsiLookup_complete(long asyncRuntime, long lookup);
-  public static native CompletableFuture<Long> CdsiLookup_new(long asyncRuntime, long connectionManager, String username, String password, long request, int timeoutMillis);
+  public static native CompletableFuture<Long> CdsiLookup_new(long asyncRuntime, long connectionManager, String username, String password, long request);
   public static native byte[] CdsiLookup_token(long lookup);
 
   public static native CompletableFuture<Object> ChatService_connect_auth(long asyncRuntime, long chat);
@@ -598,9 +598,9 @@ public final class Native {
 
   public static native long Svr2Client_New(byte[] mrenclave, byte[] attestationMsg, long currentTimestamp) throws Exception;
 
-  public static native CompletableFuture<byte[]> Svr3Backup(long asyncRuntime, long connectionManager, byte[] secret, String password, int maxTries, String username, String enclavePassword, int opTimeoutMs);
+  public static native CompletableFuture<byte[]> Svr3Backup(long asyncRuntime, long connectionManager, byte[] secret, String password, int maxTries, String username, String enclavePassword);
 
-  public static native CompletableFuture<byte[]> Svr3Restore(long asyncRuntime, long connectionManager, String password, byte[] shareSet, String username, String enclavePassword, int opTimeoutMs);
+  public static native CompletableFuture<byte[]> Svr3Restore(long asyncRuntime, long connectionManager, String password, byte[] shareSet, String username, String enclavePassword);
 
   public static native void TESTING_CdsiLookupErrorConvert(String errorDescription) throws Exception;
   public static native CompletableFuture<Object> TESTING_CdsiLookupResponseConvert(long asyncRuntime);

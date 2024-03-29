@@ -184,7 +184,7 @@ typedef enum {
   SignalErrorCodeIoError = 130,
   SignalErrorCodeInvalidMediaInput = 131,
   SignalErrorCodeUnsupportedMediaInput = 132,
-  SignalErrorCodeTimeout = 133,
+  SignalErrorCodeConnectionTimedOut = 133,
   SignalErrorCodeNetworkProtocol = 134,
   SignalErrorCodeRateLimited = 135,
   SignalErrorCodeWebSocket = 136,
@@ -1329,9 +1329,9 @@ SignalFfiError *signal_create_otp(const char **out, const char *username, Signal
 
 SignalFfiError *signal_create_otp_from_base64(const char **out, const char *username, const char *secret);
 
-SignalFfiError *signal_svr3_backup(SignalCPromiseOwnedBufferOfc_uchar promise, const void *promise_context, const SignalTokioAsyncContext *async_runtime, const SignalConnectionManager *connection_manager, SignalBorrowedBuffer secret, const char *password, uint32_t max_tries, const char *username, const char *enclave_password, uint32_t op_timeout_ms);
+SignalFfiError *signal_svr3_backup(SignalCPromiseOwnedBufferOfc_uchar promise, const void *promise_context, const SignalTokioAsyncContext *async_runtime, const SignalConnectionManager *connection_manager, SignalBorrowedBuffer secret, const char *password, uint32_t max_tries, const char *username, const char *enclave_password);
 
-SignalFfiError *signal_svr3_restore(SignalCPromiseOwnedBufferOfc_uchar promise, const void *promise_context, const SignalTokioAsyncContext *async_runtime, const SignalConnectionManager *connection_manager, const char *password, SignalBorrowedBuffer share_set, const char *username, const char *enclave_password, uint32_t op_timeout_ms);
+SignalFfiError *signal_svr3_restore(SignalCPromiseOwnedBufferOfc_uchar promise, const void *promise_context, const SignalTokioAsyncContext *async_runtime, const SignalConnectionManager *connection_manager, const char *password, SignalBorrowedBuffer share_set, const char *username, const char *enclave_password);
 
 SignalFfiError *signal_chat_destroy(SignalChat *p);
 
@@ -1353,7 +1353,7 @@ SignalFfiError *signal_lookup_request_destroy(SignalLookupRequest *p);
 
 SignalFfiError *signal_cdsi_lookup_destroy(SignalCdsiLookup *p);
 
-SignalFfiError *signal_cdsi_lookup_new(SignalCPromiseCdsiLookup promise, const void *promise_context, const SignalTokioAsyncContext *async_runtime, const SignalConnectionManager *connection_manager, const char *username, const char *password, const SignalLookupRequest *request, uint32_t timeout_millis);
+SignalFfiError *signal_cdsi_lookup_new(SignalCPromiseCdsiLookup promise, const void *promise_context, const SignalTokioAsyncContext *async_runtime, const SignalConnectionManager *connection_manager, const char *username, const char *password, const SignalLookupRequest *request);
 
 SignalFfiError *signal_cdsi_lookup_token(SignalOwnedBuffer *out, const SignalCdsiLookup *lookup);
 

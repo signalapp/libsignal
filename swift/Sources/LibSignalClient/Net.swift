@@ -32,18 +32,17 @@ public class Net {
         self.svr3 = Svr3Client(self.asyncContext, self.connectionManager)
     }
 
-    /// Like ``cdsiLookup(auth:request:timeout:)`` but with the parameters to ``CdsiLookupRequest`` broken out.
+    /// Like ``cdsiLookup(auth:request:)`` but with the parameters to ``CdsiLookupRequest`` broken out.
     public func cdsiLookup(
         auth: Auth,
         prevE164s: [String],
         e164s: [String],
         acisAndAccessKeys: [AciAndAccessKey],
         returnAcisWithoutUaks: Bool,
-        token: Data?,
-        timeout: TimeInterval
+        token: Data?
     ) async throws -> CdsiLookup {
         let request = try CdsiLookupRequest(e164s: e164s, prevE164s: prevE164s, acisAndAccessKeys: acisAndAccessKeys, token: token, returnAcisWithoutUaks: returnAcisWithoutUaks)
-        return try await self.cdsiLookup(auth: auth, request: request, timeout: timeout)
+        return try await self.cdsiLookup(auth: auth, request: request)
     }
 
     /// Starts a new CDSI lookup request.
@@ -56,7 +55,6 @@ public class Net {
     /// - Parameters:
     ///   - auth: The information to use when authenticating with the CDSI server.
     ///   - request: The CDSI request to be sent to the server.
-    ///   - timeout: The amount of time to wait for the initial connection before giving up.
     ///
     /// - Returns:
     ///   An object representing the in-progress request. If this method
@@ -77,7 +75,7 @@ public class Net {
     ///
     /// // Start the request.
     /// let net = Net(env: Net.Environment.production)
-    /// let lookup = try await net.cdsiLookup(auth: auth, request: request, timeout: TimeInterval(10))
+    /// let lookup = try await net.cdsiLookup(auth: auth, request: request)
     ///
     /// // Save the token for future lookups.
     /// let savedToken = lookup.token
@@ -90,15 +88,13 @@ public class Net {
     /// ```
     public func cdsiLookup(
         auth: Auth,
-        request: CdsiLookupRequest,
-        timeout: TimeInterval
+        request: CdsiLookupRequest
     ) async throws -> CdsiLookup {
-        let timeoutMs = durationToMillis(timeout)
         let handle: OpaquePointer = try await invokeAsyncFunction { promise, context in
             self.asyncContext.withNativeHandle { asyncContext in
                 self.connectionManager.withNativeHandle { connectionManager in
                     request.withNativeHandle { request in
-                        signal_cdsi_lookup_new(promise, context, asyncContext, connectionManager, auth.username, auth.password, request, timeoutMs)
+                        signal_cdsi_lookup_new(promise, context, asyncContext, connectionManager, auth.username, auth.password, request)
                     }
                 }
             }
@@ -204,7 +200,7 @@ public class CdsiLookupRequest: NativeHandleOwner {
 
 /// CDSI lookup in progress.
 ///
-/// Returned by ``Net/cdsiLookup(auth:request:timeout:)`` when a request is successfully initiated.
+/// Returned by ``Net/cdsiLookup(auth:request:)`` when a request is successfully initiated.
 public class CdsiLookup {
     class NativeCdsiLookup: NativeHandleOwner {
         override internal class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {

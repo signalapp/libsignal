@@ -37,7 +37,7 @@ pub enum SignalFfiError {
     UsernameLinkError(UsernameLinkError),
     Io(IoError),
     WebSocket(#[from] WebSocketServiceError),
-    Timeout,
+    ConnectionTimedOut,
     NetworkProtocol(String),
     CdsiInvalidToken,
     RateLimited {
@@ -76,7 +76,7 @@ impl fmt::Display for SignalFfiError {
             SignalFfiError::UsernameProofError(e) => write!(f, "{}", e),
             SignalFfiError::UsernameLinkError(e) => write!(f, "{}", e),
             SignalFfiError::Io(e) => write!(f, "IO error: {}", e),
-            SignalFfiError::Timeout => write!(f, "Operation timed out"),
+            SignalFfiError::ConnectionTimedOut => write!(f, "Connect timed out"),
             SignalFfiError::WebSocket(e) => write!(f, "WebSocket error: {e}"),
             SignalFfiError::CdsiInvalidToken => write!(f, "CDSI request token was invalid"),
             SignalFfiError::NetworkProtocol(message) => write!(f, "Protocol error: {}", message),
@@ -199,7 +199,7 @@ impl From<libsignal_net::cdsi::LookupError> for SignalFfiError {
             LookupError::AttestationError(e) => SignalFfiError::Sgx(e),
             LookupError::ConnectTransport(e) => SignalFfiError::Io(e.into()),
             LookupError::WebSocket(e) => SignalFfiError::WebSocket(e),
-            LookupError::Timeout => SignalFfiError::Timeout,
+            LookupError::ConnectionTimedOut => SignalFfiError::ConnectionTimedOut,
             LookupError::ParseError
             | LookupError::Protocol
             | LookupError::InvalidResponse
@@ -224,11 +224,11 @@ impl From<Svr3Error> for SignalFfiError {
         match err {
             Svr3Error::Connect(e) => match e {
                 WebSocketConnectError::Transport(e) => SignalFfiError::Io(e.into()),
-                WebSocketConnectError::Timeout => SignalFfiError::Timeout,
+                WebSocketConnectError::Timeout => SignalFfiError::ConnectionTimedOut,
                 WebSocketConnectError::WebSocketError(e) => WebSocketServiceError::from(e).into(),
             },
             Svr3Error::Service(e) => SignalFfiError::WebSocket(e),
-            Svr3Error::Timeout => SignalFfiError::Timeout,
+            Svr3Error::ConnectionTimedOut => SignalFfiError::ConnectionTimedOut,
             Svr3Error::AttestationError(inner) => SignalFfiError::Sgx(inner),
             Svr3Error::Protocol(inner) => SignalFfiError::NetworkProtocol(inner.to_string()),
             Svr3Error::RequestFailed(_) | Svr3Error::RestoreFailed | Svr3Error::DataMissing => {

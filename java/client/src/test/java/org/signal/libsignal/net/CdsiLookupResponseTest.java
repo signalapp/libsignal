@@ -80,7 +80,7 @@ public class CdsiLookupResponseTest {
     assertLookupErrorIs("ConnectDnsFailed", IOException.class, "DNS lookup failed");
     assertLookupErrorIs(
         "WebSocketIdleTooLong", NetworkException.class, "channel was idle for too long");
-    assertLookupErrorIs("Timeout", NetworkException.class, "timeout");
+    assertLookupErrorIs("ConnectionTimedOut", NetworkException.class, "connect timed out");
     assertLookupErrorIs("ServerCrashed", CdsiProtocolException.class, "Server error: crashed");
   }
 
@@ -88,7 +88,9 @@ public class CdsiLookupResponseTest {
       String errorDescription, Class<E> expectedErrorType, String expectedMessage) {
     E e =
         assertThrows(
-            expectedErrorType, () -> Native.TESTING_CdsiLookupErrorConvert(errorDescription));
+            "for " + errorDescription,
+            expectedErrorType,
+            () -> Native.TESTING_CdsiLookupErrorConvert(errorDescription));
     assertEquals(e.getMessage(), expectedMessage);
     return e;
   }

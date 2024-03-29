@@ -196,7 +196,7 @@ describe('cdsi lookup', () => {
           ErrorCode.IoError,
           'websocket error: channel was idle for too long',
         ],
-        ['Timeout', ErrorCode.IoError, 'lookup timed out'],
+        ['ConnectionTimedOut', ErrorCode.IoError, 'connect attempt timed out'],
         ['ServerCrashed', ErrorCode.IoError, 'server error: crashed'],
       ];
       cases.forEach((testCase) => {
@@ -213,7 +213,6 @@ describe('cdsi lookup', () => {
 });
 
 describe('SVR3', () => {
-  const TIMEOUT = 5000;
   const USERNAME = randomBytes(16).toString('hex');
   const SVR3 = new Net(Environment.Staging).svr3;
 
@@ -232,14 +231,14 @@ describe('SVR3', () => {
 
     it('maxTries must be positive', () => {
       const secret = randomBytes(32);
-      return expect(SVR3.backup(secret, 'password', 0, AUTH, TIMEOUT)).to
-        .eventually.be.rejected;
+      return expect(SVR3.backup(secret, 'password', 0, AUTH)).to.eventually.be
+        .rejected;
     });
 
     it('Secret must be 32 bytes', () => {
       const secret = randomBytes(42);
-      return expect(SVR3.backup(secret, 'password', 1, AUTH, TIMEOUT)).to
-        .eventually.be.rejected;
+      return expect(SVR3.backup(secret, 'password', 1, AUTH)).to.eventually.be
+        .rejected;
     });
   });
 
@@ -248,7 +247,7 @@ describe('SVR3', () => {
       const auth = make_auth();
       const shareSet = Buffer.alloc(0);
       return expect(
-        SVR3.restore('password', shareSet, auth, TIMEOUT)
+        SVR3.restore('password', shareSet, auth)
       ).to.eventually.be.rejectedWith(LibSignalErrorBase);
     });
 
@@ -256,7 +255,7 @@ describe('SVR3', () => {
       const auth = make_auth();
       const shareSet = Buffer.from([42]);
       return expect(
-        SVR3.restore('password', shareSet, auth, TIMEOUT)
+        SVR3.restore('password', shareSet, auth)
       ).to.eventually.be.rejectedWith(LibSignalErrorBase);
     });
   });
@@ -274,21 +273,16 @@ describe('SVR3', () => {
     it('Backup and restore work in staging', async () => {
       const auth = make_auth();
       const secret = randomBytes(32);
-      const shareSet = await SVR3.backup(secret, 'password', 10, auth, TIMEOUT);
-      const restoredSecret = await SVR3.restore(
-        'password',
-        shareSet,
-        auth,
-        TIMEOUT
-      );
+      const shareSet = await SVR3.backup(secret, 'password', 10, auth);
+      const restoredSecret = await SVR3.restore('password', shareSet, auth);
       expect(restoredSecret).to.eql(secret);
     }).timeout(10000);
 
     it('Restore with wrong password', async () => {
       const auth = make_auth();
       const secret = randomBytes(32);
-      const shareSet = await SVR3.backup(secret, 'password', 10, auth, TIMEOUT);
-      return expect(SVR3.restore('wrong password', shareSet, auth, TIMEOUT))
+      const shareSet = await SVR3.backup(secret, 'password', 10, auth);
+      return expect(SVR3.restore('wrong password', shareSet, auth))
         .to.eventually.be.rejectedWith(LibSignalErrorBase)
         .and.have.property('code', ErrorCode.SvrRestoreFailed);
     }).timeout(10000);
@@ -296,33 +290,24 @@ describe('SVR3', () => {
     it('Restore with corrupted share set', async () => {
       const auth = make_auth();
       const secret = randomBytes(32);
-      const shareSet = await SVR3.backup(secret, 'password', 10, auth, TIMEOUT);
+      const shareSet = await SVR3.backup(secret, 'password', 10, auth);
       // The first byte is the serialization format version, changing that
       // _will_ fail (checked in the other test). Changing the actual share set
       // value makes a more interesting test case.
       shareSet[1] ^= 0xff;
       return expect(
-        SVR3.restore('password', shareSet, auth, TIMEOUT)
+        SVR3.restore('password', shareSet, auth)
       ).to.eventually.be.rejectedWith(LibSignalErrorBase);
     }).timeout(10000);
 
     it('Exceed maxTries', async () => {
       const auth = make_auth();
       const secret = randomBytes(32);
-      const shareSet = await SVR3.backup(secret, 'password', 1, auth, TIMEOUT);
-      await SVR3.restore('password', shareSet, auth, TIMEOUT);
-      return expect(SVR3.restore('password', shareSet, auth, TIMEOUT))
+      const shareSet = await SVR3.backup(secret, 'password', 1, auth);
+      await SVR3.restore('password', shareSet, auth);
+      return expect(SVR3.restore('password', shareSet, auth))
         .to.eventually.be.rejectedWith(LibSignalErrorBase)
         .and.have.property('code', ErrorCode.SvrDataMissing);
-    });
-
-    it('Timeout', async () => {
-      const auth = make_auth();
-      const secret = randomBytes(32);
-      const SHORT_TIMEOUT = 100;
-      return expect(SVR3.backup(secret, 'password', 10, auth, SHORT_TIMEOUT))
-        .to.eventually.be.rejectedWith(LibSignalErrorBase)
-        .and.have.property('code', ErrorCode.IoError);
     });
   });
 });

@@ -581,7 +581,7 @@ where
             jni_class_name!(org.signal.libsignal.net.CdsiProtocolException),
             error,
         ),
-        SignalJniError::WebSocket(_) | SignalJniError::Timeout => (
+        SignalJniError::WebSocket(_) | SignalJniError::ConnectTimedOut => (
             jni_class_name!(org.signal.libsignal.net.NetworkException),
             error,
         ),

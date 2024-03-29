@@ -143,8 +143,8 @@ pub enum Error {
     /// This could mean either the data was never backed-up or we ran out of attempts to restore
     /// it.
     DataMissing,
-    /// Timeout
-    Timeout,
+    /// Connect timed out
+    ConnectionTimedOut,
 }
 
 impl From<DeserializeError> for Error {
@@ -184,7 +184,7 @@ impl From<super::svr::Error> for Error {
             SvrError::WebSocket(inner) => Self::Service(inner),
             SvrError::Protocol => Self::Protocol("General SVR protocol error".to_string()),
             SvrError::AttestationError(inner) => Self::AttestationError(inner),
-            SvrError::Timeout => Self::Timeout,
+            SvrError::ConnectionTimedOut => Self::ConnectionTimedOut,
         }
     }
 }

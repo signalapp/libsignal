@@ -285,8 +285,8 @@ pub enum LookupError {
     ConnectTransport(TransportConnectError),
     /// websocket error: {0}
     WebSocket(WebSocketServiceError),
-    /// lookup timed out
-    Timeout,
+    /// connect attempt timed out
+    ConnectionTimedOut,
     /// request was invalid: {server_reason}
     InvalidArgument { server_reason: String },
     /// server error: {reason}
@@ -306,9 +306,10 @@ impl From<AttestedConnectionError> for LookupError {
 
 impl From<crate::enclave::Error> for LookupError {
     fn from(value: crate::enclave::Error) -> Self {
+        use crate::enclave::Error;
         match value {
-            crate::svr::Error::WebSocketConnect(err) => match err {
-                WebSocketConnectError::Timeout => Self::Timeout,
+            Error::WebSocketConnect(err) => match err {
+                WebSocketConnectError::Timeout => Self::ConnectionTimedOut,
                 WebSocketConnectError::Transport(e) => Self::ConnectTransport(e),
                 WebSocketConnectError::WebSocketError(e) => {
                     if let tungstenite::Error::Http(response) = &e {
@@ -328,10 +329,10 @@ impl From<crate::enclave::Error> for LookupError {
                     Self::WebSocket(e.into())
                 }
             },
-            crate::svr::Error::AttestationError(err) => Self::AttestationError(err),
-            crate::svr::Error::WebSocket(err) => Self::WebSocket(err),
-            crate::svr::Error::Protocol => Self::Protocol,
-            crate::svr::Error::Timeout => Self::Timeout,
+            Error::AttestationError(err) => Self::AttestationError(err),
+            Error::WebSocket(err) => Self::WebSocket(err),
+            Error::Protocol => Self::Protocol,
+            Error::ConnectionTimedOut => Self::ConnectionTimedOut,
         }
     }
 }

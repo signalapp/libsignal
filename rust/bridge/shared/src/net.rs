@@ -30,7 +30,6 @@ use libsignal_net::infra::tcp_ssl::TcpSslTransportConnector;
 use libsignal_net::infra::{make_ws_config, EndpointConnection};
 use libsignal_net::svr::{self, SvrConnection};
 use libsignal_net::svr3::{self, OpaqueMaskedShareSet, PpssOps as _};
-use libsignal_net::utils::timeout;
 use libsignal_net::{chat, env};
 use rand::rngs::OsRng;
 use tokio::sync::mpsc;
@@ -168,29 +167,24 @@ async fn Svr3Backup(
     max_tries: AsType<NonZeroU32, u32>,
     username: String,         // hex-encoded uid
     enclave_password: String, // timestamp:otp(...)
-    op_timeout_ms: u32,       // timeout spans both connecting and performing the operation
 ) -> Result<Vec<u8>, svr3::Error> {
     let secret = secret
         .as_ref()
         .try_into()
         .expect("can only backup 32 bytes");
     let mut rng = OsRng;
-    let share_set = timeout(
-        Duration::from_millis(op_timeout_ms.into()),
-        svr::Error::Timeout.into(),
-        svr3_connect(connection_manager, username, enclave_password)
-            .map_err(|err| err.into())
-            .and_then(|connections| {
-                Svr3Env::backup(
-                    connections,
-                    &password,
-                    secret,
-                    max_tries.into_inner(),
-                    &mut rng,
-                )
-            }),
-    )
-    .await?;
+    let share_set = svr3_connect(connection_manager, username, enclave_password)
+        .map_err(|err| err.into())
+        .and_then(|connections| {
+            Svr3Env::backup(
+                connections,
+                &password,
+                secret,
+                max_tries.into_inner(),
+                &mut rng,
+            )
+        })
+        .await?;
     Ok(share_set.serialize().expect("can serialize the share set"))
 }
 
@@ -201,18 +195,13 @@ async fn Svr3Restore(
     share_set: Box<[u8]>,
     username: String,         // hex-encoded uid
     enclave_password: String, // timestamp:otp(...)
-    op_timeout_ms: u32,       // timeout spans both connecting and performing the operation
 ) -> Result<Vec<u8>, svr3::Error> {
     let mut rng = OsRng;
     let share_set = OpaqueMaskedShareSet::deserialize(&share_set)?;
-    let restored_secret = timeout(
-        Duration::from_millis(op_timeout_ms.into()),
-        svr::Error::Timeout.into(),
-        svr3_connect(connection_manager, username, enclave_password)
-            .map_err(|err| err.into())
-            .and_then(|connections| Svr3Env::restore(connections, &password, share_set, &mut rng)),
-    )
-    .await?;
+    let restored_secret = svr3_connect(connection_manager, username, enclave_password)
+        .map_err(|err| err.into())
+        .and_then(|connections| Svr3Env::restore(connections, &password, share_set, &mut rng))
+        .await?;
     Ok(restored_secret.to_vec())
 }
 

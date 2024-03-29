@@ -54,7 +54,7 @@ public enum SignalError: Error {
     case unsupportedMediaInput(String)
     case callbackError(String)
     case webSocketError(String)
-    case timeoutError(String)
+    case connectionTimeoutError(String)
     case networkProtocolError(String)
     case cdsiInvalidToken(String)
     case rateLimitedError(retryAfter: TimeInterval, message: String)
@@ -168,8 +168,8 @@ internal func checkError(_ error: SignalFfiErrorRef?) throws {
         throw SignalError.callbackError(errStr)
     case SignalErrorCodeWebSocket:
         throw SignalError.webSocketError(errStr)
-    case SignalErrorCodeTimeout:
-        throw SignalError.timeoutError(errStr)
+    case SignalErrorCodeConnectionTimedOut:
+        throw SignalError.connectionTimeoutError(errStr)
     case SignalErrorCodeNetworkProtocol:
         throw SignalError.networkProtocolError(errStr)
     case SignalErrorCodeCdsiInvalidToken:

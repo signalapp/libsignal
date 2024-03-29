@@ -461,7 +461,7 @@ impl SignalNodeError for libsignal_net::cdsi::LookupError {
             Self::AttestationError(e) => return e.throw(cx, module, operation_name),
             Self::InvalidArgument { server_reason: _ } => (None, None),
             Self::InvalidToken => (Some("CdsiInvalidToken"), None),
-            Self::Timeout
+            Self::ConnectionTimedOut
             | Self::ConnectTransport(_)
             | Self::WebSocket(_)
             | Self::Protocol
@@ -485,7 +485,9 @@ impl SignalNodeError for libsignal_net::svr3::Error {
         operation_name: &str,
     ) -> JsResult<'a, JsValue> {
         let name = match self {
-            Svr3Error::Service(_) | Svr3Error::Timeout | Svr3Error::Connect(_) => Some(IO_ERROR),
+            Svr3Error::Service(_) | Svr3Error::ConnectionTimedOut | Svr3Error::Connect(_) => {
+                Some(IO_ERROR)
+            }
             Svr3Error::AttestationError(inner) => {
                 return inner.throw(cx, module, operation_name);
             }

@@ -49,7 +49,7 @@ pub enum SignalJniError {
     WebSocket(#[from] WebSocketServiceError),
     ChatService(ChatServiceError),
     InvalidUri(InvalidUri),
-    Timeout,
+    ConnectTimedOut,
     Bridge(BridgeLayerError),
     #[cfg(feature = "testing-fns")]
     TestingError {
@@ -97,7 +97,7 @@ impl fmt::Display for SignalJniError {
             SignalJniError::ChatService(e) => write!(f, "{}", e),
             SignalJniError::InvalidUri(e) => write!(f, "{}", e),
             SignalJniError::WebSocket(e) => write!(f, "{e}"),
-            SignalJniError::Timeout => write!(f, "timeout"),
+            SignalJniError::ConnectTimedOut => write!(f, "connect timed out"),
             SignalJniError::Svr3(e) => write!(f, "{}", e),
             SignalJniError::Bridge(e) => write!(f, "{}", e),
             #[cfg(feature = "testing-fns")]
@@ -251,7 +251,7 @@ impl From<libsignal_net::cdsi::LookupError> for SignalJniError {
     fn from(e: libsignal_net::cdsi::LookupError) -> SignalJniError {
         use libsignal_net::cdsi::LookupError;
         SignalJniError::Cdsi(match e {
-            LookupError::Timeout => return SignalJniError::Timeout,
+            LookupError::ConnectionTimedOut => return SignalJniError::ConnectTimedOut,
             LookupError::AttestationError(e) => return e.into(),
             LookupError::ConnectTransport(e) => return IoError::from(e).into(),
             LookupError::WebSocket(e) => return e.into(),
@@ -290,11 +290,11 @@ impl From<Svr3Error> for SignalJniError {
     fn from(err: Svr3Error) -> Self {
         match err {
             Svr3Error::Connect(inner) => match inner {
-                WebSocketConnectError::Timeout => SignalJniError::Timeout,
+                WebSocketConnectError::Timeout => SignalJniError::ConnectTimedOut,
                 WebSocketConnectError::Transport(e) => SignalJniError::Io(e.into()),
                 WebSocketConnectError::WebSocketError(e) => WebSocketServiceError::from(e).into(),
             },
-            Svr3Error::Timeout => SignalJniError::Timeout,
+            Svr3Error::ConnectionTimedOut => SignalJniError::ConnectTimedOut,
             Svr3Error::Service(inner) => inner.into(),
             Svr3Error::AttestationError(inner) => inner.into(),
             Svr3Error::Protocol(_)
