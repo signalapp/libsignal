@@ -76,6 +76,11 @@ public class ChatServiceTest {
     Native.TESTING_ChatServiceErrorConvert();
   }
 
+  @Test(expected = ChatServiceInactiveException.class)
+  public void testConvertInactiveError() throws Exception {
+    Native.TESTING_ChatServiceInactiveErrorConvert();
+  }
+
   @Test
   public void testConstructRequest() throws Exception {
     final String expectedMethod = "GET";

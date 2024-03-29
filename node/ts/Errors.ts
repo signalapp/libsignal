@@ -46,6 +46,8 @@ export enum ErrorCode {
   SvrDataMissing,
   SvrRequestFailed,
   SvrRestoreFailed,
+
+  ChatServiceInactive,
 }
 
 export class LibSignalErrorBase extends Error {
@@ -207,6 +209,10 @@ export type UnsupportedMediaInputError = LibSignalErrorCommon & {
 export type RateLimitedError = LibSignalErrorBase & {
   code: ErrorCode.RateLimitedError;
   readonly retryAfterSecs: number;
+};
+
+export type ChatServiceInactive = LibSignalErrorBase & {
+  code: ErrorCode.ChatServiceInactive;
 };
 
 export type SvrDataMissingError = LibSignalErrorBase & {

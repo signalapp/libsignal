@@ -19,10 +19,16 @@ util.initLogger();
 config.truncateThreshold = 0;
 
 describe('chat service api', () => {
-  it('converts NetError to native', () => {
+  it('converts ChatServiceError to native', () => {
     expect(() => Native.TESTING_ChatServiceErrorConvert())
       .throws(LibSignalErrorBase)
       .with.property('code', ErrorCode.IoError);
+  });
+
+  it('converts ChatServiceError::ServiceInactive to native', () => {
+    expect(() => Native.TESTING_ChatServiceInactiveErrorConvert())
+      .throws(LibSignalErrorBase)
+      .with.property('code', ErrorCode.ChatServiceInactive);
   });
 
   it('converts Response object to native', () => {

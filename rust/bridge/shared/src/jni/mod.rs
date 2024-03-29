@@ -43,6 +43,7 @@ pub use futures::*;
 
 mod io;
 pub use io::*;
+use libsignal_net::chat::ChatServiceError;
 
 mod storage;
 pub use storage::*;
@@ -599,6 +600,11 @@ where
         ),
 
         SignalJniError::InvalidUri(_) => (jni_class_name!(java.net.MalformedURLException), error),
+
+        SignalJniError::ChatService(ChatServiceError::ServiceInactive) => (
+            jni_class_name!(org.signal.libsignal.net.ChatServiceInactiveException),
+            error,
+        ),
         SignalJniError::ChatService(_) => (
             jni_class_name!(org.signal.libsignal.net.ChatServiceException),
             error,

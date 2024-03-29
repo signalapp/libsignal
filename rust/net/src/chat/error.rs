@@ -29,6 +29,10 @@ pub enum ChatServiceError {
     TimeoutEstablishingConnection { attempts: u16 },
     /// All connection routes failed or timed out, {attempts} attempts made
     AllConnectionRoutesFailed { attempts: u16 },
+    /// Service is inactive
+    ServiceInactive,
+    /// Service is unavailable due to the lost connection
+    ServiceUnavailable,
 }
 
 impl LogSafeDisplay for ChatServiceError {}
@@ -48,6 +52,16 @@ impl From<reconnect::ReconnectError> for ChatServiceError {
             reconnect::ReconnectError::AllRoutesFailed { attempts } => {
                 Self::AllConnectionRoutesFailed { attempts }
             }
+            reconnect::ReconnectError::Inactive => Self::ServiceInactive,
+        }
+    }
+}
+
+impl From<reconnect::StateError> for ChatServiceError {
+    fn from(e: reconnect::StateError) -> Self {
+        match e {
+            reconnect::StateError::Inactive => Self::ServiceInactive,
+            reconnect::StateError::ServiceUnavailable => Self::ServiceUnavailable,
         }
     }
 }

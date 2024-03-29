@@ -4,6 +4,7 @@
 //
 use std::fmt;
 
+use libsignal_net::chat::ChatServiceError;
 use libsignal_net::svr3::Error as Svr3Error;
 use paste::paste;
 use signal_media::sanitize::mp4::{Error as Mp4Error, ParseError as Mp4ParseError};
@@ -139,6 +140,7 @@ const SVR3_DATA_MISSING: &str = "SvrDataMissing";
 const SVR3_REQUEST_FAILED: &str = "SvrRequestFailed";
 const SVR3_RESTORE_FAILED: &str = "SvrRestoreFailed";
 const UNSUPPORTED_MEDIA_INPUT: &str = "UnsupportedMediaInput";
+const CHAT_SERVICE_INACTIVE: &str = "ChatServiceInactive";
 
 impl SignalNodeError for neon::result::Throw {
     fn throw<'a>(
@@ -403,7 +405,10 @@ impl SignalNodeError for libsignal_net::chat::ChatServiceError {
         module: Handle<'a, JsObject>,
         operation_name: &str,
     ) -> JsResult<'a, JsValue> {
-        let name = Some(IO_ERROR);
+        let name = match self {
+            ChatServiceError::ServiceInactive => Some(CHAT_SERVICE_INACTIVE),
+            _ => Some(IO_ERROR),
+        };
         let message = self.to_string();
         match new_js_error(cx, module, name, &message, operation_name, None) {
             Some(error) => cx.throw(error),

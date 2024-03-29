@@ -135,6 +135,11 @@ fn TESTING_ChatServiceErrorConvert() -> Result<(), ChatServiceError> {
 }
 
 #[bridge_fn(ffi = false)]
+fn TESTING_ChatServiceInactiveErrorConvert() -> Result<(), ChatServiceError> {
+    Err(ChatServiceError::ServiceInactive)
+}
+
+#[bridge_fn(ffi = false)]
 fn TESTING_ChatServiceResponseConvert(body_present: bool) -> Result<Response, ChatServiceError> {
     let body = match body_present {
         true => Some(b"content".to_vec().into_boxed_slice()),

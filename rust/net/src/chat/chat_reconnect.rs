@@ -28,12 +28,11 @@ where
     C::StartError: Send + Sync + Debug + LogSafeDisplay,
 {
     async fn send(&self, msg: Request, timeout: Duration) -> Result<Response, ChatServiceError> {
-        self.service_clone().await?.send(msg, timeout).await
+        self.service().await?.send(msg, timeout).await
     }
 
     async fn connect(&self) -> Result<(), ChatServiceError> {
-        self.service_clone().await?;
-        Ok(())
+        Ok(self.connect_from_inactive().await?)
     }
 
     async fn disconnect(&self) {
@@ -59,7 +58,7 @@ where
         let start = Instant::now();
         let initial_reconnect_count = self.reconnect_count();
         let deadline = start + timeout;
-        let service = self.service_clone().await;
+        let service = self.service().await;
         let (response, ip_type, connection_info) = match service {
             Ok(s) => {
                 let result = s.send(msg, deadline - Instant::now()).await;
@@ -88,8 +87,10 @@ where
     async fn connect_and_debug(&self) -> Result<DebugInfo, ChatServiceError> {
         let start = Instant::now();
         let initial_reconnect_count = self.reconnect_count();
-        let service = self.service_clone().await?;
-        let connection_info = service.connection_info();
+
+        self.connect_from_inactive().await?;
+
+        let connection_info = self.connection_info().await?;
         let ip_type = IpType::from_host(&connection_info.address);
         let connection_info = connection_info.description();
         let duration = start.elapsed();

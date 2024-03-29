@@ -254,10 +254,13 @@ impl<E: EnclaveKind + NewHandshake, C: ConnectionManager> EnclaveEndpointConnect
         let websocket = match connection_attempt_result {
             ServiceState::Active(websocket, _) => Ok(websocket),
             ServiceState::Cooldown(_) => {
-                unreachable!("new servie connector should not be in cooldown")
+                unreachable!("new service connector should not be in cooldown")
             }
             ServiceState::Error(e) => Err(Error::WebSocketConnect(e)),
             ServiceState::TimedOut => Err(Error::Timeout),
+            ServiceState::Inactive => {
+                unreachable!("can't be returned by the initializer")
+            }
         }?;
         let attested = AttestedConnection::connect(websocket, |attestation_msg| {
             E::new_handshake(&self.params, attestation_msg)

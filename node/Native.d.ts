@@ -471,6 +471,7 @@ export function TESTING_ChatRequestGetMethod(request: Wrapper<HttpRequest>): str
 export function TESTING_ChatRequestGetPath(request: Wrapper<HttpRequest>): string;
 export function TESTING_ChatServiceDebugInfoConvert(): DebugInfo;
 export function TESTING_ChatServiceErrorConvert(): void;
+export function TESTING_ChatServiceInactiveErrorConvert(): void;
 export function TESTING_ChatServiceResponseAndDebugInfoConvert(): ResponseAndDebugInfo;
 export function TESTING_ChatServiceResponseConvert(bodyPresent: boolean): Response;
 export function TESTING_ErrorOnBorrowAsync(_input: null): Promise<void>;
