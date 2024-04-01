@@ -3,8 +3,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use http::header::ToStrError;
-
 use crate::infra::errors::LogSafeDisplay;
 use crate::infra::reconnect;
 use crate::infra::ws::WebSocketServiceError;
@@ -36,12 +34,6 @@ pub enum ChatServiceError {
 }
 
 impl LogSafeDisplay for ChatServiceError {}
-
-impl From<ToStrError> for ChatServiceError {
-    fn from(_: ToStrError) -> Self {
-        ChatServiceError::RequestHasInvalidHeader
-    }
-}
 
 impl From<reconnect::ReconnectError> for ChatServiceError {
     fn from(e: reconnect::ReconnectError) -> Self {

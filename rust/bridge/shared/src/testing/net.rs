@@ -9,7 +9,9 @@ use std::time::Duration;
 use http::{HeaderMap, HeaderName, HeaderValue, StatusCode};
 use libsignal_bridge_macros::*;
 use libsignal_net::cdsi::{LookupError, LookupResponse, LookupResponseEntry, E164};
-use libsignal_net::chat::{ChatServiceError, DebugInfo, Response};
+use libsignal_net::chat::{
+    ChatServiceError, DebugInfo as ChatServiceDebugInfo, Response as ChatResponse,
+};
 use libsignal_net::infra::IpType;
 use libsignal_protocol::{Aci, Pni};
 use nonzero_ext::nonzero;
@@ -129,18 +131,20 @@ fn TESTING_CdsiLookupErrorConvert(
     })
 }
 
-#[bridge_fn(ffi = false)]
+#[bridge_fn]
 fn TESTING_ChatServiceErrorConvert() -> Result<(), ChatServiceError> {
     Err(ChatServiceError::Timeout)
 }
 
-#[bridge_fn(ffi = false)]
+#[bridge_fn]
 fn TESTING_ChatServiceInactiveErrorConvert() -> Result<(), ChatServiceError> {
     Err(ChatServiceError::ServiceInactive)
 }
 
-#[bridge_fn(ffi = false)]
-fn TESTING_ChatServiceResponseConvert(body_present: bool) -> Result<Response, ChatServiceError> {
+#[bridge_fn]
+fn TESTING_ChatServiceResponseConvert(
+    body_present: bool,
+) -> Result<ChatResponse, ChatServiceError> {
     let body = match body_present {
         true => Some(b"content".to_vec().into_boxed_slice()),
         false => None,
@@ -148,7 +152,7 @@ fn TESTING_ChatServiceResponseConvert(body_present: bool) -> Result<Response, Ch
     let mut headers = HeaderMap::new();
     headers.append(http::header::USER_AGENT, HeaderValue::from_static("test"));
     headers.append(http::header::FORWARDED, HeaderValue::from_static("1.1.1.1"));
-    Ok(Response {
+    Ok(ChatResponse {
         status: StatusCode::OK,
         message: Some("OK".to_string()),
         body,
@@ -156,9 +160,9 @@ fn TESTING_ChatServiceResponseConvert(body_present: bool) -> Result<Response, Ch
     })
 }
 
-#[bridge_fn(ffi = false)]
-fn TESTING_ChatServiceDebugInfoConvert() -> Result<DebugInfo, ChatServiceError> {
-    Ok(DebugInfo {
+#[bridge_fn]
+fn TESTING_ChatServiceDebugInfoConvert() -> Result<ChatServiceDebugInfo, ChatServiceError> {
+    Ok(ChatServiceDebugInfo {
         connection_reused: true,
         reconnect_count: 2,
         ip_type: IpType::V4,
@@ -167,7 +171,7 @@ fn TESTING_ChatServiceDebugInfoConvert() -> Result<DebugInfo, ChatServiceError> 
     })
 }
 
-#[bridge_fn(ffi = false)]
+#[bridge_fn]
 fn TESTING_ChatServiceResponseAndDebugInfoConvert() -> Result<ResponseAndDebugInfo, ChatServiceError>
 {
     Ok(ResponseAndDebugInfo {
@@ -176,17 +180,17 @@ fn TESTING_ChatServiceResponseAndDebugInfoConvert() -> Result<ResponseAndDebugIn
     })
 }
 
-#[bridge_fn(ffi = false)]
+#[bridge_fn]
 fn TESTING_ChatRequestGetMethod(request: &HttpRequest) -> String {
     request.method.to_string()
 }
 
-#[bridge_fn(ffi = false)]
+#[bridge_fn]
 fn TESTING_ChatRequestGetPath(request: &HttpRequest) -> String {
     request.path.to_string()
 }
 
-#[bridge_fn(ffi = false)]
+#[bridge_fn]
 fn TESTING_ChatRequestGetHeaderValue(request: &HttpRequest, header_name: String) -> String {
     request
         .headers
@@ -199,7 +203,11 @@ fn TESTING_ChatRequestGetHeaderValue(request: &HttpRequest, header_name: String)
         .to_string()
 }
 
-#[bridge_fn(ffi = false)]
-fn TESTING_ChatRequestGetBody(request: &HttpRequest) -> Option<Vec<u8>> {
-    request.body.clone().map(|b| b.to_vec())
+#[bridge_fn]
+fn TESTING_ChatRequestGetBody(request: &HttpRequest) -> Vec<u8> {
+    request
+        .body
+        .clone()
+        .map(|b| b.into_vec())
+        .unwrap_or_default()
 }

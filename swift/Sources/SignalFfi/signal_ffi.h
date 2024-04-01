@@ -189,6 +189,8 @@ typedef enum {
   SignalErrorCodeRateLimited = 135,
   SignalErrorCodeWebSocket = 136,
   SignalErrorCodeCdsiInvalidToken = 137,
+  SignalErrorCodeConnectionFailed = 138,
+  SignalErrorCodeChatServiceInactive = 139,
   SignalErrorCodeSvrDataMissing = 150,
   SignalErrorCodeSvrRestoreFailed = 151,
 } SignalErrorCode;
@@ -292,6 +294,23 @@ typedef struct SignalTokioAsyncContext SignalTokioAsyncContext;
 typedef struct SignalUnidentifiedSenderMessageContent SignalUnidentifiedSenderMessageContent;
 
 typedef struct SignalValidatingMac SignalValidatingMac;
+
+/**
+ * A type alias to be used with [`OwnedBufferOf`], so that `OwnedBufferOf<c_char>` and
+ * `OwnedBufferOf<*const c_char>` get distinct names.
+ */
+typedef const char *SignalCStringPtr;
+
+/**
+ * A representation of a array allocated on the Rust heap for use in C code.
+ */
+typedef struct {
+  SignalCStringPtr *base;
+  /**
+   * The number of elements in the buffer (not necessarily the number of bytes).
+   */
+  size_t length;
+} SignalOwnedBufferOfCStringPtr;
 
 typedef struct {
   /**
@@ -484,6 +503,58 @@ typedef void (*SignalCPromiseOwnedBufferOfc_uchar)(SignalFfiError *error, const 
  * cbindgen will produce independent C types like `SignalCPromisei32` and
  * `SignalCPromiseProtocolAddress`.
  */
+typedef void (*SignalCPromisebool)(SignalFfiError *error, const bool *result, const void *context);
+
+typedef struct {
+  bool connection_reused;
+  uint32_t reconnect_count;
+  uint8_t raw_ip_type;
+  double duration_secs;
+  const char *connection_info;
+} SignalFfiChatServiceDebugInfo;
+
+/**
+ * A C callback used to report the results of Rust futures.
+ *
+ * cbindgen will produce independent C types like `SignalCPromisei32` and
+ * `SignalCPromiseProtocolAddress`.
+ */
+typedef void (*SignalCPromiseFfiChatServiceDebugInfo)(SignalFfiError *error, const SignalFfiChatServiceDebugInfo *result, const void *context);
+
+typedef struct {
+  uint16_t status;
+  const char *message;
+  SignalOwnedBufferOfCStringPtr headers;
+  SignalOwnedBuffer body;
+} SignalFfiChatResponse;
+
+/**
+ * A C callback used to report the results of Rust futures.
+ *
+ * cbindgen will produce independent C types like `SignalCPromisei32` and
+ * `SignalCPromiseProtocolAddress`.
+ */
+typedef void (*SignalCPromiseFfiChatResponse)(SignalFfiError *error, const SignalFfiChatResponse *result, const void *context);
+
+typedef struct {
+  SignalFfiChatResponse response;
+  SignalFfiChatServiceDebugInfo debug_info;
+} SignalFfiResponseAndDebugInfo;
+
+/**
+ * A C callback used to report the results of Rust futures.
+ *
+ * cbindgen will produce independent C types like `SignalCPromisei32` and
+ * `SignalCPromiseProtocolAddress`.
+ */
+typedef void (*SignalCPromiseFfiResponseAndDebugInfo)(SignalFfiError *error, const SignalFfiResponseAndDebugInfo *result, const void *context);
+
+/**
+ * A C callback used to report the results of Rust futures.
+ *
+ * cbindgen will produce independent C types like `SignalCPromisei32` and
+ * `SignalCPromiseProtocolAddress`.
+ */
 typedef void (*SignalCPromiseCdsiLookup)(SignalFfiError *error, SignalCdsiLookup *const *result, const void *context);
 
 typedef struct {
@@ -543,14 +614,6 @@ typedef void (*SignalCPromiseOtherTestingHandleType)(SignalFfiError *error, Sign
  * cbindgen will produce independent C types like `SignalCPromisei32` and
  * `SignalCPromiseProtocolAddress`.
  */
-typedef void (*SignalCPromisebool)(SignalFfiError *error, const bool *result, const void *context);
-
-/**
- * A C callback used to report the results of Rust futures.
- *
- * cbindgen will produce independent C types like `SignalCPromisei32` and
- * `SignalCPromiseProtocolAddress`.
- */
 typedef void (*SignalCPromiseRawPointer)(SignalFfiError *error, const void *const *result, const void *context);
 
 typedef uint8_t SignalRandomnessBytes[SignalRANDOMNESS_LEN];
@@ -560,6 +623,8 @@ void signal_print_ptr(const void *p);
 void signal_free_string(const char *buf);
 
 void signal_free_buffer(const unsigned char *buf, size_t buf_len);
+
+void signal_free_list_of_strings(SignalOwnedBufferOfCStringPtr buffer);
 
 void signal_free_lookup_response_entry_list(SignalOwnedBufferOfFfiCdsiLookupResponseEntry buffer);
 
@@ -1337,6 +1402,24 @@ SignalFfiError *signal_chat_destroy(SignalChat *p);
 
 SignalFfiError *signal_http_request_destroy(SignalHttpRequest *p);
 
+SignalFfiError *signal_http_request_new_with_body(SignalHttpRequest **out, const char *method, const char *path, SignalBorrowedBuffer body_as_slice);
+
+SignalFfiError *signal_http_request_new_without_body(SignalHttpRequest **out, const char *method, const char *path);
+
+SignalFfiError *signal_http_request_add_header(const SignalHttpRequest *request, const char *name, const char *value);
+
+SignalFfiError *signal_chat_service_new(SignalChat **out, const SignalConnectionManager *connection_manager, const char *username, const char *password);
+
+SignalFfiError *signal_chat_service_disconnect(SignalCPromisebool promise, const void *promise_context, const SignalTokioAsyncContext *async_runtime, const SignalChat *chat);
+
+SignalFfiError *signal_chat_service_connect_unauth(SignalCPromiseFfiChatServiceDebugInfo promise, const void *promise_context, const SignalTokioAsyncContext *async_runtime, const SignalChat *chat);
+
+SignalFfiError *signal_chat_service_connect_auth(SignalCPromiseFfiChatServiceDebugInfo promise, const void *promise_context, const SignalTokioAsyncContext *async_runtime, const SignalChat *chat);
+
+SignalFfiError *signal_chat_service_unauth_send(SignalCPromiseFfiChatResponse promise, const void *promise_context, const SignalTokioAsyncContext *async_runtime, const SignalChat *chat, const SignalHttpRequest *http_request, uint32_t timeout_millis);
+
+SignalFfiError *signal_chat_service_unauth_send_and_debug(SignalCPromiseFfiResponseAndDebugInfo promise, const void *promise_context, const SignalTokioAsyncContext *async_runtime, const SignalChat *chat, const SignalHttpRequest *http_request, uint32_t timeout_millis);
+
 SignalFfiError *signal_lookup_request_new(SignalLookupRequest **out);
 
 SignalFfiError *signal_lookup_request_add_e164(const SignalLookupRequest *request, const char *e164);
@@ -1518,5 +1601,23 @@ SignalFfiError *signal_testing_process_bytestring_array(SignalBytestringArray *o
 SignalFfiError *signal_testing_cdsi_lookup_response_convert(SignalCPromiseFfiCdsiLookupResponse promise, const void *promise_context, const SignalTokioAsyncContext *async_runtime);
 
 SignalFfiError *signal_testing_cdsi_lookup_error_convert(const char *error_description);
+
+SignalFfiError *signal_testing_chat_service_error_convert(void);
+
+SignalFfiError *signal_testing_chat_service_inactive_error_convert(void);
+
+SignalFfiError *signal_testing_chat_service_response_convert(SignalFfiChatResponse *out, bool body_present);
+
+SignalFfiError *signal_testing_chat_service_debug_info_convert(SignalFfiChatServiceDebugInfo *out);
+
+SignalFfiError *signal_testing_chat_service_response_and_debug_info_convert(SignalFfiResponseAndDebugInfo *out);
+
+SignalFfiError *signal_testing_chat_request_get_method(const char **out, const SignalHttpRequest *request);
+
+SignalFfiError *signal_testing_chat_request_get_path(const char **out, const SignalHttpRequest *request);
+
+SignalFfiError *signal_testing_chat_request_get_header_value(const char **out, const SignalHttpRequest *request, const char *header_name);
+
+SignalFfiError *signal_testing_chat_request_get_body(SignalOwnedBuffer *out, const SignalHttpRequest *request);
 
 #endif /* SIGNAL_FFI_H_ */

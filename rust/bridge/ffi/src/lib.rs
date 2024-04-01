@@ -43,6 +43,15 @@ pub unsafe extern "C" fn signal_free_buffer(buf: *const c_uchar, buf_len: usize)
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn signal_free_list_of_strings(buffer: OwnedBufferOf<CStringPtr>) {
+    let strings = buffer.into_box();
+    for &s in &*strings {
+        signal_free_string(s);
+    }
+    drop(strings);
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn signal_free_lookup_response_entry_list(
     buffer: OwnedBufferOf<crate::FfiCdsiLookupResponseEntry>,
 ) {

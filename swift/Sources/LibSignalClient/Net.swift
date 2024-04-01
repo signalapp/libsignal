@@ -102,6 +102,10 @@ public class Net {
         return CdsiLookup(native: handle, asyncContext: self.asyncContext)
     }
 
+    public func createChatService(username: String, password: String) -> ChatService {
+        return ChatService(tokioAsyncContext: self.asyncContext, connectionManager: self.connectionManager, username: username, password: password)
+    }
+
     private var asyncContext: TokioAsyncContext
     private var connectionManager: ConnectionManager
 }

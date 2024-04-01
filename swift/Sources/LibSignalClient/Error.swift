@@ -58,9 +58,11 @@ public enum SignalError: Error {
     case networkProtocolError(String)
     case cdsiInvalidToken(String)
     case rateLimitedError(retryAfter: TimeInterval, message: String)
-    case unknown(UInt32, String)
     case svrDataMissing(String)
     case svrRestoreFailed(String)
+    case chatServiceInactive(String)
+
+    case unknown(UInt32, String)
 }
 
 internal typealias SignalFfiErrorRef = OpaquePointer
@@ -183,6 +185,8 @@ internal func checkError(_ error: SignalFfiErrorRef?) throws {
         throw SignalError.svrDataMissing(errStr)
     case SignalErrorCodeSvrRestoreFailed:
         throw SignalError.svrRestoreFailed(errStr)
+    case SignalErrorCodeChatServiceInactive:
+        throw SignalError.chatServiceInactive(errStr)
     default:
         throw SignalError.unknown(errType, errStr)
     }

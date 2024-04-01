@@ -42,6 +42,18 @@ extension SignalFfiCdsiLookupResponse: Completable {
     typealias PromiseCallback = SignalCPromiseFfiCdsiLookupResponse
 }
 
+extension SignalFfiChatResponse: Completable {
+    typealias PromiseCallback = SignalCPromiseFfiChatResponse
+}
+
+extension SignalFfiChatServiceDebugInfo: Completable {
+    typealias PromiseCallback = SignalCPromiseFfiChatServiceDebugInfo
+}
+
+extension SignalFfiResponseAndDebugInfo: Completable {
+    typealias PromiseCallback = SignalCPromiseFfiResponseAndDebugInfo
+}
+
 extension SignalOwnedBuffer: Completable {
     typealias PromiseCallback = SignalCPromiseOwnedBufferOfc_uchar
 }

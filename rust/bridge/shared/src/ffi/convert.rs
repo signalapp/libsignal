@@ -648,6 +648,80 @@ impl ResultTypeInfo for libsignal_net::cdsi::LookupResponse {
     }
 }
 
+impl ResultTypeInfo for libsignal_net::chat::Response {
+    type ResultType = FfiChatResponse;
+
+    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
+        let Self {
+            status,
+            message,
+            body,
+            headers,
+        } = self;
+
+        let header_strings: Vec<*const c_char> = headers
+            .iter()
+            .map(|(k, v)| {
+                // We only support string values for now (see chat_websocket.proto).
+                format!(
+                    "{}:{}",
+                    k,
+                    v.to_str().expect("Chat never produces non-string headers")
+                )
+                .convert_into()
+            })
+            .collect::<SignalFfiResult<_>>()?;
+
+        Ok(FfiChatResponse {
+            status: status.as_u16(),
+            message: message.unwrap_or_default().convert_into()?,
+            headers: OwnedBufferOf::from(header_strings.into_boxed_slice()),
+            body: body.unwrap_or_default().convert_into()?,
+        })
+    }
+}
+
+impl ResultTypeInfo for libsignal_net::chat::DebugInfo {
+    type ResultType = FfiChatServiceDebugInfo;
+
+    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
+        let Self {
+            connection_reused,
+            reconnect_count,
+            ip_type,
+            duration,
+            connection_info,
+        } = self;
+
+        Ok(FfiChatServiceDebugInfo {
+            connection_reused,
+            reconnect_count,
+            raw_ip_type: ip_type as u8,
+            duration_secs: duration.as_secs_f64(),
+            connection_info: connection_info.convert_into()?,
+        })
+    }
+}
+
+impl ResultTypeInfo for crate::net::ResponseAndDebugInfo {
+    type ResultType = FfiResponseAndDebugInfo;
+
+    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
+        let Self {
+            response,
+            debug_info,
+        } = self;
+
+        let response = response.convert_into()?;
+        let debug_info = debug_info.convert_into()?;
+
+        Ok(FfiResponseAndDebugInfo {
+            response,
+            debug_info,
+        })
+    }
+}
+
 /// Implementation of [`bridge_handle`](crate::support::bridge_handle) for FFI.
 macro_rules! ffi_bridge_handle {
     ( $typ:ty as false $(, $($_:tt)*)? ) => {};
@@ -757,7 +831,8 @@ macro_rules! ffi_result_type {
     // These rules only match a single token for a Result's success type.
     // We can't use `:ty` because we need the resulting tokens to be matched recursively rather than
     // treated as a single unit, and we can't match multiple tokens because Rust's macros match
-    // eagerly. Therefore, if you need to return a more complicated Result type, you'll have to add // another rule for its form.
+    // eagerly. Therefore, if you need to return a more complicated Result type, you'll have to add
+    // another rule for its form.
     (Result<$typ:tt $(, $_:ty)?>) => (ffi_result_type!($typ));
     (Result<&$typ:tt $(, $_:ty)?>) => (ffi_result_type!(&$typ));
     (Result<Option<&$typ:tt> $(, $_:ty)?>) => (ffi_result_type!(&$typ));
@@ -788,6 +863,9 @@ macro_rules! ffi_result_type {
     (Box<[Vec<u8>]>) => (ffi::BytestringArray);
 
     (LookupResponse) => (ffi::FfiCdsiLookupResponse);
+    (ChatResponse) => (ffi::FfiChatResponse);
+    (ChatServiceDebugInfo) => (ffi::FfiChatServiceDebugInfo);
+    (ResponseAndDebugInfo) => (ffi::FfiResponseAndDebugInfo);
 
     // In order to provide a fixed-sized array of the correct length,
     // a serialized type FooBar must have a constant FOO_BAR_LEN that's in scope (and exposed to C).

@@ -158,6 +158,36 @@ pub struct FfiCdsiLookupResponse {
     debug_permits_used: i32,
 }
 
+/// A type alias to be used with [`OwnedBufferOf`], so that `OwnedBufferOf<c_char>` and
+/// `OwnedBufferOf<*const c_char>` get distinct names.
+pub type CStringPtr = *const std::ffi::c_char;
+
+#[repr(C)]
+#[derive(Debug)]
+pub struct FfiChatResponse {
+    status: u16,
+    message: *const std::ffi::c_char,
+    headers: OwnedBufferOf<CStringPtr>,
+    body: OwnedBufferOf<std::ffi::c_uchar>,
+}
+
+#[repr(C)]
+#[derive(Debug)]
+pub struct FfiChatServiceDebugInfo {
+    connection_reused: bool,
+    reconnect_count: u32,
+    raw_ip_type: u8,
+    duration_secs: f64,
+    connection_info: *const std::ffi::c_char,
+}
+
+#[repr(C)]
+#[derive(Debug)]
+pub struct FfiResponseAndDebugInfo {
+    response: FfiChatResponse,
+    debug_info: FfiChatServiceDebugInfo,
+}
+
 #[inline(always)]
 pub fn run_ffi_safe<F: FnOnce() -> Result<(), SignalFfiError> + std::panic::UnwindSafe>(
     f: F,

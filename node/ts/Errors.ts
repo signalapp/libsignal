@@ -258,4 +258,5 @@ export type LibSignalError =
   | SvrDataMissingError
   | SvrRestoreFailedError
   | SvrRequestFailedError
-  | UnsupportedMediaInputError;
+  | UnsupportedMediaInputError
+  | ChatServiceInactive;

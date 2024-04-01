@@ -11,6 +11,7 @@ import {
   SvrDataMissingError,
   SvrRestoreFailedError,
   SvrRequestFailedError,
+  ChatServiceInactive,
 } from './Errors';
 
 const DEFAULT_CHAT_REQUEST_TIMEOUT_MILLIS = 5000;
@@ -78,24 +79,54 @@ export class Net {
     this.svr3 = new Svr3ClientImpl(this._asyncContext, this._connectionManager);
   }
 
+  /**
+   * Initiates termination of the underlying connection to the Chat Service. After the service is
+   * disconnected, it will not attempt to automatically reconnect until you call
+   * {@link Net#connectAuthenticatedChatService} and/or {@link Net#connectUnauthenticatedChatService}.
+   *
+   * Note: the same instance of {@code ChatService} can be reused after {@code disconnect()} was
+   * called.
+   */
   async disconnectChatService(): Promise<void> {
     await Native.ChatService_disconnect(this._asyncContext, this._chatService);
   }
 
-  async connectUnauthenticatedChatService(): Promise<void> {
-    await Native.ChatService_connect_unauth(
+  /**
+   * Initiates establishing of the underlying unauthenticated connection to the Chat Service. Once
+   * the service is connected, all the requests will be using the established connection. Also, if
+   * the connection is lost for any reason other than the call to {@link #disconnect()}, an
+   * automatic reconnect attempt will be made.
+   */
+  async connectUnauthenticatedChatService(): Promise<Native.ChatServiceDebugInfo> {
+    return await Native.ChatService_connect_unauth(
       this._asyncContext,
       this._chatService
     );
   }
 
-  async connectAuthenticatedChatService(): Promise<void> {
-    await Native.ChatService_connect_auth(
+  /**
+   * Initiates establishing of the underlying authenticated connection to the Chat Service. Once the
+   * service is connected, all the requests will be using the established connection. Also, if the
+   * connection is lost for any reason other than the call to {@link #disconnect()}, an automatic
+   * reconnect attempt will be made.
+   *
+   * Calling this method will result in starting to accept incoming requests from the Chat Service.
+   */
+  async connectAuthenticatedChatService(): Promise<Native.ChatServiceDebugInfo> {
+    return await Native.ChatService_connect_auth(
       this._asyncContext,
       this._chatService
     );
   }
 
+  /**
+   * Sends request to the Chat Service over an unauthenticated channel.
+   *
+   * In addition to the response, an object containing debug information about the request flow is
+   * returned.
+   *
+   * @throws {ChatServiceInactive} if you haven't called {@link Net#connectUnauthenticatedChatService()}.
+   */
   async unauthenticatedFetchAndDebug(
     chatRequest: ChatRequest
   ): Promise<Native.ResponseAndDebugInfo> {
@@ -107,9 +138,14 @@ export class Net {
     );
   }
 
+  /**
+   * Sends request to the Chat Service over an unauthenticated channel.
+   *
+   * @throws {ChatServiceInactive} if you haven't called {@link Net#connectUnauthenticatedChatService()}.
+   */
   async unauthenticatedFetch(
     chatRequest: ChatRequest
-  ): Promise<Native.Response> {
+  ): Promise<Native.ChatResponse> {
     return await Native.ChatService_unauth_send(
       this._asyncContext,
       this._chatService,

@@ -84,6 +84,8 @@ pub enum SignalErrorCode {
     RateLimited = 135,
     WebSocket = 136,
     CdsiInvalidToken = 137,
+    ConnectionFailed = 138,
+    ChatServiceInactive = 139,
 
     SvrDataMissing = 150,
     SvrRestoreFailed = 151,
@@ -95,6 +97,7 @@ impl From<&SignalFfiError> for SignalErrorCode {
             SignalFfiError::NullPointer => SignalErrorCode::NullParameter,
 
             SignalFfiError::UnexpectedPanic(_)
+            | SignalFfiError::InternalError(_)
             | SignalFfiError::DeviceTransfer(DeviceTransferError::InternalError(_))
             | SignalFfiError::Signal(SignalProtocolError::FfiBindingError(_)) => {
                 SignalErrorCode::InternalError
@@ -209,7 +212,8 @@ impl From<&SignalFfiError> for SignalErrorCode {
                 SignalErrorCode::InvalidSenderKeySession
             }
 
-            SignalFfiError::Signal(SignalProtocolError::InvalidArgument(_))
+            SignalFfiError::InvalidArgument(_)
+            | SignalFfiError::Signal(SignalProtocolError::InvalidArgument(_))
             | SignalFfiError::HsmEnclave(HsmEnclaveError::InvalidCodeHashError)
             | SignalFfiError::SignalCrypto(_) => SignalErrorCode::InvalidArgument,
 
@@ -321,6 +325,8 @@ impl From<&SignalFfiError> for SignalErrorCode {
             }
             SignalFfiError::WebSocket(_) => SignalErrorCode::WebSocket,
             SignalFfiError::ConnectionTimedOut => SignalErrorCode::ConnectionTimedOut,
+            SignalFfiError::ConnectionFailed => SignalErrorCode::ConnectionFailed,
+            SignalFfiError::ChatServiceInactive => SignalErrorCode::ChatServiceInactive,
             SignalFfiError::NetworkProtocol(_) => SignalErrorCode::NetworkProtocol,
             SignalFfiError::CdsiInvalidToken => SignalErrorCode::CdsiInvalidToken,
             SignalFfiError::RateLimited {

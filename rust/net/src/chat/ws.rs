@@ -259,7 +259,8 @@ where
             map.insert(response_tx)
         };
 
-        let msg = request_to_websocket_proto(msg, id)?;
+        let msg = request_to_websocket_proto(msg, id)
+            .map_err(|_| ChatServiceError::RequestHasInvalidHeader)?;
 
         self.ws_client_writer.send(msg.encode_to_vec()).await?;
 

@@ -37,8 +37,8 @@ public class ChatService extends NativeHandleGuard.SimpleOwner {
 
   /**
    * Initiates termination of the underlying connection to the Chat Service. After the service is
-   * disconnected, it will not attempt to automatically reconnect until one of the request methods
-   * is used (e.g. {@link #unauthenticatedSend(Request)}).
+   * disconnected, it will not attempt to automatically reconnect until you call {@link
+   * #connectAuthenticated()} and/or {@link #connectUnauthenticated()}.
    *
    * <p>Note: the same instance of {@code ChatService} can be reused after {@code disconnect()} was
    * called.
@@ -60,10 +60,8 @@ public class ChatService extends NativeHandleGuard.SimpleOwner {
    * connection is lost for any reason other than the call to {@link #disconnect()}, an automatic
    * reconnect attempt will be made.
    *
-   * <p>Note: it's not necessary to call this method before attempting the first request. If the
-   * service is not connected, {@code connectAuthenticated()} will be called before the first
-   * authenticated request. However, in the case of the authenticated connection, calling this
-   * method will result in starting to accept incoming requests from the Chat Service.
+   * <p>Calling this method will result in starting to accept incoming requests from the Chat
+   * Service.
    *
    * @return a future with the result of the connection attempt (either a {@link DebugInfo} or an
    *     error).
@@ -83,10 +81,6 @@ public class ChatService extends NativeHandleGuard.SimpleOwner {
    * the connection is lost for any reason other than the call to {@link #disconnect()}, an
    * automatic reconnect attempt will be made.
    *
-   * <p>Note: it's not necessary to call this method before attempting the first request. If the
-   * service is not connected, {@code connectUnauthenticated()} ()} will be called before the first
-   * unauthenticated request.
-   *
    * @return a future with the result of the connection attempt (either a {@link DebugInfo} or an
    *     error).
    */
@@ -104,8 +98,9 @@ public class ChatService extends NativeHandleGuard.SimpleOwner {
    *
    * @param req request object
    * @return a {@code CompletableFuture} of a {@link Response}
-   * @throws MalformedURLException is thrown if {@code pathAndQuery} component of the request has an
-   *     invalid structure.
+   * @throws MalformedURLException if {@code pathAndQuery} component of the request has an invalid
+   *     structure.
+   * @throws ChatServiceInactiveException if you haven't called {@link #connectUnauthenticated()}.
    */
   public CompletableFuture<Response> unauthenticatedSend(final Request req)
       throws MalformedURLException {
@@ -130,8 +125,9 @@ public class ChatService extends NativeHandleGuard.SimpleOwner {
    *
    * @param req request object
    * @return a {@code CompletableFuture} of a {@link ResponseAndDebugInfo}
-   * @throws MalformedURLException is thrown if {@code pathAndQuery} component of the request has an
-   *     invalid structure.
+   * @throws MalformedURLException if {@code pathAndQuery} component of the request has an invalid
+   *     structure.
+   * @throws ChatServiceInactiveException if you haven't called {@link #connectUnauthenticated()}.
    */
   public CompletableFuture<ResponseAndDebugInfo> unauthenticatedSendAndDebug(final Request req)
       throws MalformedURLException {

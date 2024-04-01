@@ -9,6 +9,7 @@ use std::io::{Error as IoError, ErrorKind as IoErrorKind};
 use attest::enclave::Error as EnclaveError;
 use attest::hsm_enclave::Error as HsmEnclaveError;
 use device_transfer::Error as DeviceTransferError;
+use libsignal_net::chat::ChatServiceError;
 use libsignal_net::infra::ws::{WebSocketConnectError, WebSocketServiceError};
 use libsignal_net::svr3::Error as Svr3Error;
 use libsignal_protocol::*;
@@ -38,6 +39,8 @@ pub enum SignalFfiError {
     Io(IoError),
     WebSocket(#[from] WebSocketServiceError),
     ConnectionTimedOut,
+    ConnectionFailed,
+    ChatServiceInactive,
     NetworkProtocol(String),
     CdsiInvalidToken,
     RateLimited {
@@ -50,6 +53,8 @@ pub enum SignalFfiError {
     WebpSanitizeParse(signal_media::sanitize::webp::ParseErrorReport),
     NullPointer,
     InvalidUtf8String,
+    InvalidArgument(String),
+    InternalError(String),
     UnexpectedPanic(std::boxed::Box<dyn std::any::Any + std::marker::Send>),
 }
 
@@ -77,6 +82,8 @@ impl fmt::Display for SignalFfiError {
             SignalFfiError::UsernameLinkError(e) => write!(f, "{}", e),
             SignalFfiError::Io(e) => write!(f, "IO error: {}", e),
             SignalFfiError::ConnectionTimedOut => write!(f, "Connect timed out"),
+            SignalFfiError::ConnectionFailed => write!(f, "Connection failed"),
+            SignalFfiError::ChatServiceInactive => write!(f, "Chat service inactive"),
             SignalFfiError::WebSocket(e) => write!(f, "WebSocket error: {e}"),
             SignalFfiError::CdsiInvalidToken => write!(f, "CDSI request token was invalid"),
             SignalFfiError::NetworkProtocol(message) => write!(f, "Protocol error: {}", message),
@@ -94,6 +101,8 @@ impl fmt::Display for SignalFfiError {
             }
             SignalFfiError::NullPointer => write!(f, "null pointer"),
             SignalFfiError::InvalidUtf8String => write!(f, "invalid UTF8 string"),
+            SignalFfiError::InvalidArgument(msg) => write!(f, "invalid argument: {msg}"),
+            SignalFfiError::InternalError(msg) => write!(f, "internal error: {msg}"),
             SignalFfiError::UnexpectedPanic(e) => {
                 write!(f, "unexpected panic: {}", describe_panic(e))
             }
@@ -235,6 +244,38 @@ impl From<Svr3Error> for SignalFfiError {
                 SignalFfiError::Svr(err)
             }
         }
+    }
+}
+
+impl From<ChatServiceError> for SignalFfiError {
+    fn from(err: ChatServiceError) -> Self {
+        match err {
+            ChatServiceError::WebSocket(e) => SignalFfiError::WebSocket(e),
+            ChatServiceError::AllConnectionRoutesFailed { attempts: _ }
+            | ChatServiceError::ServiceUnavailable => SignalFfiError::ConnectionFailed,
+            ChatServiceError::UnexpectedFrameReceived
+            | ChatServiceError::ServerRequestMissingId
+            | ChatServiceError::IncomingDataInvalid => {
+                SignalFfiError::NetworkProtocol(err.to_string())
+            }
+            ChatServiceError::FailedToPassMessageToIncomingChannel => {
+                SignalFfiError::InternalError(err.to_string())
+            }
+            ChatServiceError::RequestHasInvalidHeader => SignalFfiError::InternalError(format!(
+                "{err} (but libsignal_ffi only supports string values anyway, so how?)"
+            )),
+            ChatServiceError::Timeout
+            | ChatServiceError::TimeoutEstablishingConnection { attempts: _ } => {
+                SignalFfiError::ConnectionTimedOut
+            }
+            ChatServiceError::ServiceInactive => SignalFfiError::ChatServiceInactive,
+        }
+    }
+}
+
+impl From<http::uri::InvalidUri> for SignalFfiError {
+    fn from(err: http::uri::InvalidUri) -> Self {
+        SignalFfiError::InvalidArgument(err.to_string())
     }
 }
 

@@ -21,14 +21,14 @@ interface LookupResponseEntry {
   readonly pni: string | undefined;
 }
 
-interface Response {
+interface ChatResponse {
   status: number;
   message: string | undefined;
   headers: ReadonlyArray<[string, string]>;
   body: Buffer | undefined;
 }
 
-interface DebugInfo {
+interface ChatServiceDebugInfo {
   connectionReused: boolean;
   reconnectCount: number;
   ipType: number;
@@ -37,8 +37,8 @@ interface DebugInfo {
 }
 
 interface ResponseAndDebugInfo {
-  response: Response;
-  debugInfo: DebugInfo;
+  response: ChatResponse;
+  debugInfo: ChatServiceDebugInfo;
 }
 
 interface SealedSenderMultiRecipientMessageRecipient {
@@ -168,11 +168,11 @@ export function Cds2ClientState_New(mrenclave: Buffer, attestationMsg: Buffer, c
 export function CdsiLookup_complete(asyncRuntime: Wrapper<TokioAsyncContext>, lookup: Wrapper<CdsiLookup>): Promise<LookupResponse>;
 export function CdsiLookup_new(asyncRuntime: Wrapper<TokioAsyncContext>, connectionManager: Wrapper<ConnectionManager>, username: string, password: string, request: Wrapper<LookupRequest>): Promise<CdsiLookup>;
 export function CdsiLookup_token(lookup: Wrapper<CdsiLookup>): Buffer;
-export function ChatService_connect_auth(asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<Chat>): Promise<DebugInfo>;
-export function ChatService_connect_unauth(asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<Chat>): Promise<DebugInfo>;
+export function ChatService_connect_auth(asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<Chat>): Promise<ChatServiceDebugInfo>;
+export function ChatService_connect_unauth(asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<Chat>): Promise<ChatServiceDebugInfo>;
 export function ChatService_disconnect(asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<Chat>): Promise<void>;
 export function ChatService_new(connectionManager: Wrapper<ConnectionManager>, username: string, password: string): Chat;
-export function ChatService_unauth_send(asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<Chat>, httpRequest: Wrapper<HttpRequest>, timeoutMillis: number): Promise<Response>;
+export function ChatService_unauth_send(asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<Chat>, httpRequest: Wrapper<HttpRequest>, timeoutMillis: number): Promise<ChatResponse>;
 export function ChatService_unauth_send_and_debug(asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<Chat>, httpRequest: Wrapper<HttpRequest>, timeoutMillis: number): Promise<ResponseAndDebugInfo>;
 export function CiphertextMessage_FromPlaintextContent(m: Wrapper<PlaintextContent>): CiphertextMessage;
 export function CiphertextMessage_Serialize(obj: Wrapper<CiphertextMessage>): Buffer;
@@ -465,15 +465,15 @@ export function Svr3Backup(asyncRuntime: Wrapper<TokioAsyncContext>, connectionM
 export function Svr3Restore(asyncRuntime: Wrapper<TokioAsyncContext>, connectionManager: Wrapper<ConnectionManager>, password: string, shareSet: Buffer, username: string, enclavePassword: string): Promise<Buffer>;
 export function TESTING_CdsiLookupErrorConvert(errorDescription: string): void;
 export function TESTING_CdsiLookupResponseConvert(asyncRuntime: Wrapper<TokioAsyncContext>): Promise<LookupResponse>;
-export function TESTING_ChatRequestGetBody(request: Wrapper<HttpRequest>): Buffer | null;
+export function TESTING_ChatRequestGetBody(request: Wrapper<HttpRequest>): Buffer;
 export function TESTING_ChatRequestGetHeaderValue(request: Wrapper<HttpRequest>, headerName: string): string;
 export function TESTING_ChatRequestGetMethod(request: Wrapper<HttpRequest>): string;
 export function TESTING_ChatRequestGetPath(request: Wrapper<HttpRequest>): string;
-export function TESTING_ChatServiceDebugInfoConvert(): DebugInfo;
+export function TESTING_ChatServiceDebugInfoConvert(): ChatServiceDebugInfo;
 export function TESTING_ChatServiceErrorConvert(): void;
 export function TESTING_ChatServiceInactiveErrorConvert(): void;
 export function TESTING_ChatServiceResponseAndDebugInfoConvert(): ResponseAndDebugInfo;
-export function TESTING_ChatServiceResponseConvert(bodyPresent: boolean): Response;
+export function TESTING_ChatServiceResponseConvert(bodyPresent: boolean): ChatResponse;
 export function TESTING_ErrorOnBorrowAsync(_input: null): Promise<void>;
 export function TESTING_ErrorOnBorrowIo(asyncRuntime: Wrapper<NonSuspendingBackgroundThreadRuntime>, _input: null): Promise<void>;
 export function TESTING_ErrorOnBorrowSync(_input: null): void;

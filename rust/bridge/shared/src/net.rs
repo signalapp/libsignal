@@ -18,7 +18,8 @@ use http::{HeaderMap, HeaderName, HeaderValue};
 use libsignal_bridge_macros::{bridge_fn, bridge_io};
 use libsignal_net::auth::Auth;
 use libsignal_net::chat::{
-    chat_service, ChatServiceError, ChatServiceWithDebugInfo, DebugInfo, Request, Response,
+    chat_service, ChatServiceError, ChatServiceWithDebugInfo, DebugInfo as ChatServiceDebugInfo,
+    Request, Response as ChatResponse,
 };
 use libsignal_net::enclave::{
     Cdsi, EnclaveEndpoint, EnclaveEndpointConnection, EnclaveKind, Nitro, PpssSetup, Sgx, Tpm2Snp,
@@ -240,18 +241,16 @@ pub struct HttpRequest {
 }
 
 pub struct ResponseAndDebugInfo {
-    pub response: Response,
-    pub debug_info: DebugInfo,
+    pub response: ChatResponse,
+    pub debug_info: ChatServiceDebugInfo,
 }
 
 bridge_handle!(Chat, clone = false);
 bridge_handle!(HttpRequest, clone = false);
 
-#[cfg(any(feature = "node", feature = "jni"))]
 /// Newtype wrapper for implementing [`TryFrom`]`
 struct HttpMethod(http::Method);
 
-#[cfg(any(feature = "node", feature = "jni"))]
 impl TryFrom<String> for HttpMethod {
     type Error = <http::Method as FromStr>::Err;
     fn try_from(value: String) -> Result<Self, Self::Error> {
@@ -259,8 +258,7 @@ impl TryFrom<String> for HttpMethod {
     }
 }
 
-#[bridge_fn(ffi = false)]
-fn HttpRequest_new(
+fn http_request_new_impl(
     method: AsType<HttpMethod, String>,
     path: String,
     body_as_slice: Option<&[u8]>,
@@ -277,6 +275,32 @@ fn HttpRequest_new(
 }
 
 #[bridge_fn(ffi = false)]
+fn HttpRequest_new(
+    method: AsType<HttpMethod, String>,
+    path: String,
+    body_as_slice: Option<&[u8]>,
+) -> Result<HttpRequest, InvalidUri> {
+    http_request_new_impl(method, path, body_as_slice)
+}
+
+#[bridge_fn(jni = false, node = false)]
+fn HttpRequest_new_with_body(
+    method: AsType<HttpMethod, String>,
+    path: String,
+    body_as_slice: &[u8],
+) -> Result<HttpRequest, InvalidUri> {
+    http_request_new_impl(method, path, Some(body_as_slice))
+}
+
+#[bridge_fn(jni = false, node = false)]
+fn HttpRequest_new_without_body(
+    method: AsType<HttpMethod, String>,
+    path: String,
+) -> Result<HttpRequest, InvalidUri> {
+    http_request_new_impl(method, path, None)
+}
+
+#[bridge_fn]
 fn HttpRequest_add_header(
     request: &HttpRequest,
     name: AsType<HeaderName, String>,
@@ -288,7 +312,7 @@ fn HttpRequest_add_header(
     (*guard).append(header_key, header_value);
 }
 
-#[bridge_fn(ffi = false)]
+#[bridge_fn]
 fn ChatService_new(
     connection_manager: &ConnectionManager,
     username: String,
@@ -307,27 +331,27 @@ fn ChatService_new(
     }
 }
 
-#[bridge_io(TokioAsyncContext, ffi = false)]
+#[bridge_io(TokioAsyncContext)]
 async fn ChatService_disconnect(chat: &Chat) {
     chat.service.disconnect().await
 }
 
-#[bridge_io(TokioAsyncContext, ffi = false)]
-async fn ChatService_connect_unauth(chat: &Chat) -> Result<DebugInfo, ChatServiceError> {
+#[bridge_io(TokioAsyncContext)]
+async fn ChatService_connect_unauth(chat: &Chat) -> Result<ChatServiceDebugInfo, ChatServiceError> {
     chat.service.connect_unauthenticated().await
 }
 
-#[bridge_io(TokioAsyncContext, ffi = false)]
-async fn ChatService_connect_auth(chat: &Chat) -> Result<DebugInfo, ChatServiceError> {
+#[bridge_io(TokioAsyncContext)]
+async fn ChatService_connect_auth(chat: &Chat) -> Result<ChatServiceDebugInfo, ChatServiceError> {
     chat.service.connect_authenticated().await
 }
 
-#[bridge_io(TokioAsyncContext, ffi = false)]
+#[bridge_io(TokioAsyncContext)]
 async fn ChatService_unauth_send(
     chat: &Chat,
     http_request: &HttpRequest,
     timeout_millis: u32,
-) -> Result<Response, ChatServiceError> {
+) -> Result<ChatResponse, ChatServiceError> {
     let headers = http_request.headers.lock().expect("not poisoned").clone();
     let request = Request {
         method: http_request.method.clone(),
@@ -340,7 +364,7 @@ async fn ChatService_unauth_send(
         .await
 }
 
-#[bridge_io(TokioAsyncContext, ffi = false)]
+#[bridge_io(TokioAsyncContext)]
 async fn ChatService_unauth_send_and_debug(
     chat: &Chat,
     http_request: &HttpRequest,

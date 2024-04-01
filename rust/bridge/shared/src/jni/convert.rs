@@ -1474,10 +1474,10 @@ macro_rules! jni_result_type {
     (LookupResponse) => {
         jni::JObject<'local>
     };
-    (Response) => {
+    (ChatResponse) => {
         jni::JObject<'local>
     };
-    (DebugInfo) => {
+    (ChatServiceDebugInfo) => {
         jni::JObject<'local>
     };
     (ResponseAndDebugInfo) => {

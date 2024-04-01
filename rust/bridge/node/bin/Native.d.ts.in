@@ -21,14 +21,14 @@ interface LookupResponseEntry {
   readonly pni: string | undefined;
 }
 
-interface Response {
+interface ChatResponse {
   status: number;
   message: string | undefined;
   headers: ReadonlyArray<[string, string]>;
   body: Buffer | undefined;
 }
 
-interface DebugInfo {
+interface ChatServiceDebugInfo {
   connectionReused: boolean;
   reconnectCount: number;
   ipType: number;
@@ -37,8 +37,8 @@ interface DebugInfo {
 }
 
 interface ResponseAndDebugInfo {
-  response: Response;
-  debugInfo: DebugInfo;
+  response: ChatResponse;
+  debugInfo: ChatServiceDebugInfo;
 }
 
 interface SealedSenderMultiRecipientMessageRecipient {
