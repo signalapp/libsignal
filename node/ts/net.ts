@@ -13,6 +13,7 @@ import {
   SvrRequestFailedError,
   ChatServiceInactive,
 } from './Errors';
+import { Wrapper } from '../Native';
 
 const DEFAULT_CHAT_REQUEST_TIMEOUT_MILLIS = 5000;
 
@@ -56,39 +57,44 @@ export type ChatRequest = Readonly<{
   timeoutMillis?: number;
 }>;
 
-export class Net {
-  private readonly _asyncContext: { _nativeHandle: Native.TokioAsyncContext };
-  private readonly _chatService: { _nativeHandle: Native.Chat };
-  private readonly _connectionManager: {
-    _nativeHandle: Native.ConnectionManager;
+type TokioAsyncContext = Wrapper<Native.TokioAsyncContext>;
+
+type ConnectionManager = Wrapper<Native.ConnectionManager>;
+
+function newNativeHandle<T>(handle: T): Wrapper<T> {
+  return {
+    _nativeHandle: handle,
   };
+}
 
-  /**
-   * Instance of the {@link Svr3Client} to access SVR3.
-   */
-  svr3: Svr3Client;
+/**
+ * Provides API methods to connect and communicate with the Chat Service.
+ * Before using either authenticated or unauthenticated channels,
+ * a corresponding `connect*` method must be called.
+ * It's also important to call {@link #disconnect()} method when the instance is no longer needed.
+ */
+export class ChatService {
+  private readonly chatService: Wrapper<Native.Chat>;
 
-  constructor(env: Environment) {
-    this._asyncContext = { _nativeHandle: Native.TokioAsyncContext_new() };
-    this._connectionManager = {
-      _nativeHandle: Native.ConnectionManager_new(env),
-    };
-    this._chatService = {
-      _nativeHandle: Native.ChatService_new(this._connectionManager, '', ''),
-    };
-    this.svr3 = new Svr3ClientImpl(this._asyncContext, this._connectionManager);
+  constructor(
+    private readonly asyncContext: TokioAsyncContext,
+    connectionManager: ConnectionManager
+  ) {
+    this.chatService = newNativeHandle(
+      Native.ChatService_new(connectionManager, '', '')
+    );
   }
 
   /**
    * Initiates termination of the underlying connection to the Chat Service. After the service is
    * disconnected, it will not attempt to automatically reconnect until you call
-   * {@link Net#connectAuthenticatedChatService} and/or {@link Net#connectUnauthenticatedChatService}.
+   * {@link #connectAuthenticated()} and/or {@link #connectUnauthenticated()}.
    *
-   * Note: the same instance of {@code ChatService} can be reused after {@code disconnect()} was
+   * Note: the same instance of `ChatService` can be reused after `disconnect()` was
    * called.
    */
-  async disconnectChatService(): Promise<void> {
-    await Native.ChatService_disconnect(this._asyncContext, this._chatService);
+  async disconnect(): Promise<void> {
+    await Native.ChatService_disconnect(this.asyncContext, this.chatService);
   }
 
   /**
@@ -97,10 +103,10 @@ export class Net {
    * the connection is lost for any reason other than the call to {@link #disconnect()}, an
    * automatic reconnect attempt will be made.
    */
-  async connectUnauthenticatedChatService(): Promise<Native.ChatServiceDebugInfo> {
+  async connectUnauthenticated(): Promise<Native.ChatServiceDebugInfo> {
     return await Native.ChatService_connect_unauth(
-      this._asyncContext,
-      this._chatService
+      this.asyncContext,
+      this.chatService
     );
   }
 
@@ -112,10 +118,10 @@ export class Net {
    *
    * Calling this method will result in starting to accept incoming requests from the Chat Service.
    */
-  async connectAuthenticatedChatService(): Promise<Native.ChatServiceDebugInfo> {
+  async connectAuthenticated(): Promise<Native.ChatServiceDebugInfo> {
     return await Native.ChatService_connect_auth(
-      this._asyncContext,
-      this._chatService
+      this.asyncContext,
+      this.chatService
     );
   }
 
@@ -125,15 +131,15 @@ export class Net {
    * In addition to the response, an object containing debug information about the request flow is
    * returned.
    *
-   * @throws {ChatServiceInactive} if you haven't called {@link Net#connectUnauthenticatedChatService()}.
+   * @throws {ChatServiceInactive} if you haven't called {@link #connectUnauthenticated()}.
    */
   async unauthenticatedFetchAndDebug(
     chatRequest: ChatRequest
   ): Promise<Native.ResponseAndDebugInfo> {
     return await Native.ChatService_unauth_send_and_debug(
-      this._asyncContext,
-      this._chatService,
-      Net.buildHttpRequest(chatRequest),
+      this.asyncContext,
+      this.chatService,
+      ChatService.buildHttpRequest(chatRequest),
       chatRequest.timeoutMillis ?? DEFAULT_CHAT_REQUEST_TIMEOUT_MILLIS
     );
   }
@@ -141,15 +147,15 @@ export class Net {
   /**
    * Sends request to the Chat Service over an unauthenticated channel.
    *
-   * @throws {ChatServiceInactive} if you haven't called {@link Net#connectUnauthenticatedChatService()}.
+   * @throws {ChatServiceInactive} if you haven't called {@link #connectUnauthenticated()}.
    */
   async unauthenticatedFetch(
     chatRequest: ChatRequest
   ): Promise<Native.ChatResponse> {
     return await Native.ChatService_unauth_send(
-      this._asyncContext,
-      this._chatService,
-      Net.buildHttpRequest(chatRequest),
+      this.asyncContext,
+      this.chatService,
+      ChatService.buildHttpRequest(chatRequest),
       chatRequest.timeoutMillis ?? DEFAULT_CHAT_REQUEST_TIMEOUT_MILLIS
     );
   }
@@ -169,6 +175,29 @@ export class Net {
     });
     return httpRequest;
   }
+}
+
+export class Net {
+  private readonly asyncContext: TokioAsyncContext;
+  private readonly connectionManager: ConnectionManager;
+
+  /**
+   * Instance of the {@link Svr3Client} to access SVR3.
+   */
+  svr3: Svr3Client;
+
+  constructor(env: Environment) {
+    this.asyncContext = newNativeHandle(Native.TokioAsyncContext_new());
+    this.connectionManager = newNativeHandle(Native.ConnectionManager_new(env));
+    this.svr3 = new Svr3ClientImpl(this.asyncContext, this.connectionManager);
+  }
+
+  /**
+   * Creates a new instance of {@link ChatService}.
+   */
+  public newChatService(): ChatService {
+    return new ChatService(this.asyncContext, this.connectionManager);
+  }
 
   async cdsiLookup(
     { username, password }: Readonly<ServiceAuth>,
@@ -178,7 +207,7 @@ export class Net {
       returnAcisWithoutUaks,
     }: ReadonlyDeep<CDSRequestOptionsType>
   ): Promise<CDSResponseType<string, string>> {
-    const request = { _nativeHandle: Native.LookupRequest_new() };
+    const request = newNativeHandle(Native.LookupRequest_new());
     e164s.forEach((e164) => {
       Native.LookupRequest_addE164(request, e164);
     });
@@ -197,16 +226,17 @@ export class Net {
     );
 
     const lookup = await Native.CdsiLookup_new(
-      this._asyncContext,
-      this._connectionManager,
+      this.asyncContext,
+      this.connectionManager,
       username,
       password,
       request
     );
 
-    return await Native.CdsiLookup_complete(this._asyncContext, {
-      _nativeHandle: lookup,
-    });
+    return await Native.CdsiLookup_complete(
+      this.asyncContext,
+      newNativeHandle(lookup)
+    );
   }
 }
 
@@ -316,10 +346,8 @@ export interface Svr3Client {
 
 class Svr3ClientImpl implements Svr3Client {
   constructor(
-    private readonly _asyncContext: { _nativeHandle: Native.TokioAsyncContext },
-    private readonly _connectionManager: {
-      _nativeHandle: Native.ConnectionManager;
-    }
+    private readonly asyncContext: TokioAsyncContext,
+    private readonly connectionManager: ConnectionManager
   ) {}
 
   async backup(
@@ -329,8 +357,8 @@ class Svr3ClientImpl implements Svr3Client {
     auth: Readonly<ServiceAuth>
   ): Promise<Buffer> {
     return Native.Svr3Backup(
-      this._asyncContext,
-      this._connectionManager,
+      this.asyncContext,
+      this.connectionManager,
       what,
       password,
       maxTries,
@@ -345,8 +373,8 @@ class Svr3ClientImpl implements Svr3Client {
     auth: Readonly<ServiceAuth>
   ): Promise<Buffer> {
     return Native.Svr3Restore(
-      this._asyncContext,
-      this._connectionManager,
+      this.asyncContext,
+      this.connectionManager,
       password,
       shareSet,
       auth.username,

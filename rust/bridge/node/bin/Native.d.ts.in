@@ -115,9 +115,9 @@ export abstract class InputStream {
 
 export abstract class SyncInputStream extends Buffer {}
 
-interface Wrapper<T> {
-  readonly _nativeHandle: T;
-}
+type Wrapper<T> = Readonly<{
+  _nativeHandle: T;
+}>;
 
 interface MessageBackupValidationOutcome {
   errorMessage: string | null;

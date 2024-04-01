@@ -9,7 +9,7 @@ import * as util from './util';
 import { Aci, Pni } from '../Address';
 import * as Native from '../../Native';
 import { ErrorCode, LibSignalErrorBase } from '../Errors';
-import { Environment, Net, ServiceAuth } from '../net';
+import { ChatService, Environment, Net, ServiceAuth } from '../net';
 import { randomBytes } from 'crypto';
 import { ChatResponse } from '../../Native';
 
@@ -79,7 +79,7 @@ describe('chat service api', () => {
   ];
 
   it('constructs request object correctly', () => {
-    const request = Net.buildHttpRequest({
+    const request = ChatService.buildHttpRequest({
       verb: verb,
       path: path,
       headers: headers,
@@ -105,7 +105,7 @@ describe('chat service api', () => {
     };
 
     const requestWith = (params: object) =>
-      Net.buildHttpRequest({ ...goodRequest, ...params });
+      ChatService.buildHttpRequest({ ...goodRequest, ...params });
 
     expect(() => requestWith({ verb: '\x00abc' })).throws(TypeError, 'method');
     expect(() => requestWith({ path: '/bad\x00path' }))
