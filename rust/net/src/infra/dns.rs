@@ -60,6 +60,17 @@ impl LookupResult {
     }
 }
 
+#[cfg(test)]
+impl LookupResult {
+    pub(crate) fn localhost() -> Self {
+        Self::new(
+            crate::infra::DnsSource::Static,
+            vec![Ipv4Addr::LOCALHOST],
+            vec![Ipv6Addr::LOCALHOST],
+        )
+    }
+}
+
 #[derive(Debug, Default)]
 pub struct DnsResolver {
     static_map: HashMap<&'static str, LookupResult>,
