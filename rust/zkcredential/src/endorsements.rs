@@ -373,16 +373,30 @@ impl EndorsementResponse {
         R: &[CompressedRistretto],
     ) -> Vec<Scalar> {
         debug_assert_eq!(E.len(), R.len());
+
         let mut gen = poksho::ShoHmacSha256::new(
             b"Signal_ZKCredential_Endorsements_EndorsementResponse_ProofWeights_20240207",
         );
-        gen.absorb_and_ratchet(public_key.PK_prime.compress().as_bytes());
-        // Absorb the sum of input points rather than each one independently, to save on compress()
-        // and SHA operations.
-        gen.absorb_and_ratchet(E.iter().sum::<RistrettoPoint>().compress().as_bytes());
-        for R_i in R {
-            gen.absorb_and_ratchet(R_i.as_bytes());
+
+        // Here and in the following steps we only need to absorb, since (1) all
+        // inputs are equal length so we do not need ratcheting or standard
+        // length prefixes to prevent different series of from producing the
+        // same output (e.g. absorbing [1,2,3] then [4] gives same output as
+        // absorbing [1,2] then [3,4]). Furthermore we do not need to use the
+        // Sho's underlying secret until we squeeze out the random challenges.
+        gen.absorb(public_key.PK_prime.compress().as_bytes());
+
+        // It is more efficient to double and compress than to compress individually, and the doubled values
+        // bind the prover to the E values just as much as compressing the E values directly would.
+        let compressed_double_Es = RistrettoPoint::double_and_compress_batch(E);
+
+        for E_i in compressed_double_Es {
+            gen.absorb(E_i.as_bytes());
         }
+        for R_i in R {
+            gen.absorb(R_i.as_bytes());
+        }
+        gen.ratchet();
 
         // Deliberately generate scalars < 2^127 only, which we can multiply faster.
         // This still gives us 127-bit soundness according to Henry's analysis of RME (cited above).
