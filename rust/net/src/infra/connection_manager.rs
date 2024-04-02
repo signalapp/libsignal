@@ -20,7 +20,7 @@ use crate::infra::ConnectionParams;
 
 pub(crate) const MAX_COOLDOWN_INTERVAL: Duration = Duration::from_secs(64);
 
-const COOLDOWN_INTERVALS: [Duration; 8] = [
+pub(crate) const COOLDOWN_INTERVALS: [Duration; 8] = [
     Duration::from_secs(0),
     Duration::from_secs(1),
     Duration::from_secs(2),

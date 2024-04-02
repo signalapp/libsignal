@@ -29,7 +29,7 @@ pub type RequestProto = proto::chat_websocket::WebSocketRequestMessage;
 pub type ResponseProto = proto::chat_websocket::WebSocketResponseMessage;
 pub type ChatMessageType = proto::chat_websocket::web_socket_message::Type;
 
-const TOTAL_CONNECTION_TIMEOUT: Duration = Duration::from_secs(3);
+const TOTAL_CONNECTION_TIMEOUT: Duration = Duration::from_secs(5);
 
 #[async_trait]
 pub trait ChatService {
