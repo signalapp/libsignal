@@ -6,22 +6,26 @@
 use std::marker::PhantomData;
 
 use crate::auth::HttpBasicAuth;
-use crate::enclave::{EnclaveEndpointConnection, NewHandshake, Svr3Flavor};
+use crate::enclave::{EnclaveEndpointConnection, IntoAttestedConnection, NewHandshake, Svr3Flavor};
 use crate::infra::connection_manager::ConnectionManager;
-use crate::infra::ws::{AttestedConnection, DefaultStream};
+use crate::infra::ws::AttestedConnection;
 use crate::infra::{AsyncDuplexStream, TransportConnector};
 
 pub use crate::enclave::Error;
 
-pub struct SvrConnection<Flavor: Svr3Flavor, S = DefaultStream> {
+pub struct SvrConnection<Flavor: Svr3Flavor, S> {
     inner: AttestedConnection<S>,
     witness: PhantomData<Flavor>,
 }
 
-impl<Flavor: Svr3Flavor> From<SvrConnection<Flavor>> for AttestedConnection {
-    fn from(conn: SvrConnection<Flavor>) -> Self {
+impl<Flavor: Svr3Flavor, S> From<SvrConnection<Flavor, S>> for AttestedConnection<S> {
+    fn from(conn: SvrConnection<Flavor, S>) -> Self {
         conn.inner
     }
+}
+
+impl<Flavor: Svr3Flavor, S: Send> IntoAttestedConnection for SvrConnection<Flavor, S> {
+    type Stream = S;
 }
 
 impl<E: Svr3Flavor, S: AsyncDuplexStream> SvrConnection<E, S>

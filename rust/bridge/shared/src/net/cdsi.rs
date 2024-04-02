@@ -10,6 +10,7 @@ use libsignal_net::auth::Auth;
 use libsignal_net::cdsi::{
     self, AciAndAccessKey, CdsiConnection, ClientResponseCollector, LookupResponse, Token, E164,
 };
+use libsignal_net::infra::tcp_ssl::TcpSslConnectorStream;
 use libsignal_protocol::{Aci, SignalProtocolError};
 
 use crate::net::{ConnectionManager, TokioAsyncContext};
@@ -97,7 +98,7 @@ bridge_handle!(LookupRequest, clone = false);
 
 pub struct CdsiLookup {
     token: Token,
-    remaining: std::sync::Mutex<Option<ClientResponseCollector>>,
+    remaining: std::sync::Mutex<Option<ClientResponseCollector<TcpSslConnectorStream>>>,
 }
 bridge_handle!(CdsiLookup, clone = false);
 
@@ -111,12 +112,13 @@ async fn CdsiLookup_new(
     let request = std::mem::take(&mut *request.0.lock().expect("not poisoned"));
     let auth = Auth { username, password };
 
-    let connected = CdsiConnection::connect(
-        &connection_manager.cdsi,
-        connection_manager.transport_connector.clone(),
-        auth,
-    )
-    .await?;
+    let transport_connector = connection_manager
+        .transport_connector
+        .lock()
+        .expect("not poisoned")
+        .clone();
+    let connected =
+        CdsiConnection::connect(&connection_manager.cdsi, transport_connector, auth).await?;
     let (token, remaining_response) = connected.send_request(request).await?;
 
     Ok(CdsiLookup {

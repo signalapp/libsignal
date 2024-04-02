@@ -199,6 +199,27 @@ export class Net {
     return new ChatService(this.asyncContext, this.connectionManager);
   }
 
+  /**
+   * Sets the proxy host to be used for all new connections (until overridden).
+   *
+   * Sets a domain name and port to be used to proxy all new outgoing
+   * connections. The proxy can be overridden by calling this method again or
+   * unset by calling {@link #clearProxy}.
+   */
+  setProxy(host: string, port: number): void {
+    Native.ConnectionManager_set_proxy(this.connectionManager, host, port);
+  }
+
+  /**
+   * Ensures that future connections will be made directly, not through a proxy.
+   *
+   * Clears any proxy configuration set via {@link #setProxy}. If none was set, calling this
+   * method is a no-op.
+   */
+  clearProxy(): void {
+    Native.ConnectionManager_clear_proxy(this.connectionManager);
+  }
+
   async cdsiLookup(
     { username, password }: Readonly<ServiceAuth>,
     {

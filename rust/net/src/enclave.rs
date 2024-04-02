@@ -79,15 +79,21 @@ impl Svr3Flavor for Nitro {}
 impl Svr3Flavor for Tpm2Snp {}
 
 pub trait IntoConnections {
-    type Connections: ArrayIsh<AttestedConnection> + Send;
+    type Stream;
+    type Connections: ArrayIsh<AttestedConnection<Self::Stream>> + Send;
     fn into_connections(self) -> Self::Connections;
+}
+
+pub trait IntoAttestedConnection: Into<AttestedConnection<Self::Stream>> {
+    type Stream: Send;
 }
 
 impl<A> IntoConnections for A
 where
-    A: Into<AttestedConnection>,
+    A: IntoAttestedConnection,
 {
-    type Connections = [AttestedConnection; 1];
+    type Connections = [AttestedConnection<A::Stream>; 1];
+    type Stream = A::Stream;
     fn into_connections(self) -> Self::Connections {
         [self.into()]
     }
@@ -95,10 +101,11 @@ where
 
 impl<A, B> IntoConnections for (A, B)
 where
-    A: Into<AttestedConnection>,
-    B: Into<AttestedConnection>,
+    A: IntoAttestedConnection,
+    B: IntoAttestedConnection<Stream = A::Stream>,
 {
-    type Connections = [AttestedConnection; 2];
+    type Connections = [AttestedConnection<A::Stream>; 2];
+    type Stream = A::Stream;
     fn into_connections(self) -> Self::Connections {
         [self.0.into(), self.1.into()]
     }
@@ -106,11 +113,12 @@ where
 
 impl<A, B, C> IntoConnections for (A, B, C)
 where
-    A: Into<AttestedConnection>,
-    B: Into<AttestedConnection>,
-    C: Into<AttestedConnection>,
+    A: IntoAttestedConnection,
+    B: IntoAttestedConnection<Stream = A::Stream>,
+    C: IntoAttestedConnection<Stream = A::Stream>,
 {
-    type Connections = [AttestedConnection; 3];
+    type Connections = [AttestedConnection<A::Stream>; 3];
+    type Stream = A::Stream;
     fn into_connections(self) -> Self::Connections {
         [self.0.into(), self.1.into(), self.2.into()]
     }
@@ -124,18 +132,18 @@ impl<T, const N: usize> ArrayIsh<T> for [T; N] {
     const N: usize = N;
 }
 
-pub trait PpssSetup {
-    type Connections: IntoConnections + Send;
+pub trait PpssSetup<S> {
+    type Connections: IntoConnections<Stream = S> + Send;
     type ServerIds: ArrayIsh<u64> + Send;
     const N: usize = Self::ServerIds::N;
     fn server_ids() -> Self::ServerIds;
 }
 
-impl PpssSetup for Svr3Env<'_> {
+impl<S: Send> PpssSetup<S> for Svr3Env<'_> {
     type Connections = (
-        SvrConnection<Sgx>,
-        SvrConnection<Nitro>,
-        SvrConnection<Tpm2Snp>,
+        SvrConnection<Sgx, S>,
+        SvrConnection<Nitro, S>,
+        SvrConnection<Tpm2Snp, S>,
     );
     type ServerIds = [u64; 3];
 

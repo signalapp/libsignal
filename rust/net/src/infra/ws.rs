@@ -455,7 +455,7 @@ pub type DefaultStream = tokio_boring::SslStream<tokio::net::TcpStream>;
 
 /// Encrypted connection to an attested host.
 #[derive(Debug)]
-pub struct AttestedConnection<S = DefaultStream> {
+pub struct AttestedConnection<S> {
     websocket: WebSocketClient<S, WebSocketServiceError>,
     client_connection: ClientConnection,
 }
@@ -466,13 +466,17 @@ impl<S> AttestedConnection<S> {
     }
 }
 
-impl AsMut<AttestedConnection> for AttestedConnection {
-    fn as_mut(&mut self) -> &mut AttestedConnection {
+impl<S> AsMut<AttestedConnection<S>> for AttestedConnection<S> {
+    fn as_mut(&mut self) -> &mut AttestedConnection<S> {
         self
     }
 }
 
-pub(crate) async fn run_attested_interaction<C: AsMut<AttestedConnection>, B: AsRef<[u8]>>(
+pub(crate) async fn run_attested_interaction<
+    C: AsMut<AttestedConnection<S>>,
+    B: AsRef<[u8]>,
+    S: AsyncDuplexStream,
+>(
     connection: &mut C,
     bytes: B,
 ) -> Result<NextOrClose<Vec<u8>>, AttestedConnectionError> {

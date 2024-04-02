@@ -226,6 +226,15 @@ impl SimpleArgTypeInfo<'_> for u8 {
     }
 }
 
+/// Supports all valid u16 values `0..=65536`.
+impl SimpleArgTypeInfo<'_> for u16 {
+    type ArgType = jint;
+    fn convert_from(_env: &mut JNIEnv, foreign: &jint) -> Result<Self, BridgeLayerError> {
+        u16::try_from(*foreign)
+            .map_err(|_| BridgeLayerError::IntegerOverflow(format!("{} to u16", foreign)))
+    }
+}
+
 impl<'a> SimpleArgTypeInfo<'a> for String {
     type ArgType = JString<'a>;
     fn convert_from(env: &mut JNIEnv, foreign: &JString<'a>) -> Result<Self, BridgeLayerError> {
@@ -1278,6 +1287,9 @@ trivial!(());
 macro_rules! jni_arg_type {
     (u8) => {
         // Note: not a jbyte. It's better to preserve the signedness here.
+        jni::jint
+    };
+    (u16) => {
         jni::jint
     };
     (u32) => {

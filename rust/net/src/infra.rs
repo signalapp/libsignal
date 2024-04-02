@@ -20,7 +20,6 @@ use crate::infra::certs::RootCertificates;
 use crate::infra::connection_manager::{
     MultiRouteConnectionManager, SingleRouteThrottlingConnectionManager,
 };
-
 use crate::infra::errors::TransportConnectError;
 use crate::infra::ws::WebSocketConfig;
 
@@ -199,6 +198,12 @@ impl HttpRequestDecorator {
 }
 
 pub struct StreamAndInfo<T>(T, ConnectionInfo);
+
+impl<T> StreamAndInfo<T> {
+    fn map_stream<U>(self, f: impl FnOnce(T) -> U) -> StreamAndInfo<U> {
+        StreamAndInfo(f(self.0), self.1)
+    }
+}
 
 pub trait AsyncDuplexStream: AsyncRead + AsyncWrite + Unpin + Send + Sync {}
 

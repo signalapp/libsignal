@@ -14,6 +14,7 @@ use futures_util::TryFutureExt;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::net::TcpStream;
 use tokio_boring::SslStream;
+use tokio_util::either::Either;
 
 use crate::infra::certs::RootCertificates;
 use crate::infra::dns::DnsResolver;
@@ -24,12 +25,25 @@ use crate::utils::first_ok;
 const CONNECTION_ATTEMPT_DELAY: Duration = Duration::from_millis(200);
 
 #[derive(Clone)]
-pub struct TcpSslTransportConnector {
-    dns_resolver: Arc<DnsResolver>,
+pub enum TcpSslConnector {
+    Direct(DirectConnector),
+    Proxied(ProxyConnector),
+}
+
+pub struct TcpSslConnectorStream(
+    Either<
+        <DirectConnector as TransportConnector>::Stream,
+        <ProxyConnector as TransportConnector>::Stream,
+    >,
+);
+
+#[derive(Clone)]
+pub struct DirectConnector {
+    dns_resolver: DnsResolver,
 }
 
 #[async_trait]
-impl TransportConnector for TcpSslTransportConnector {
+impl TransportConnector for DirectConnector {
     type Stream = SslStream<TcpStream>;
 
     async fn connect(
@@ -51,24 +65,27 @@ impl TransportConnector for TcpSslTransportConnector {
     }
 }
 
-impl TcpSslTransportConnector {
-    pub fn new(resolver: DnsResolver) -> Self {
-        Self {
-            dns_resolver: Arc::new(resolver),
-        }
+impl DirectConnector {
+    pub fn new(dns_resolver: DnsResolver) -> Self {
+        Self { dns_resolver }
+    }
+
+    pub fn with_proxy(&self, proxy_addr: (&str, NonZeroU16)) -> ProxyConnector {
+        let Self { dns_resolver } = self;
+        ProxyConnector::new(dns_resolver.clone(), proxy_addr)
     }
 }
 
 #[derive(Clone)]
-pub struct TcpSslProxyConnector {
-    dns_resolver: Arc<DnsResolver>,
+pub struct ProxyConnector {
+    pub dns_resolver: DnsResolver,
     proxy_host: Arc<str>,
     proxy_port: NonZeroU16,
     proxy_certs: RootCertificates,
 }
 
 #[async_trait]
-impl TransportConnector for TcpSslProxyConnector {
+impl TransportConnector for ProxyConnector {
     type Stream = SslStream<SslStream<TcpStream>>;
 
     async fn connect(
@@ -94,10 +111,10 @@ impl TransportConnector for TcpSslProxyConnector {
     }
 }
 
-impl TcpSslProxyConnector {
-    pub fn new(resolver: DnsResolver, (proxy_host, proxy_port): (&str, NonZeroU16)) -> Self {
+impl ProxyConnector {
+    pub fn new(dns_resolver: DnsResolver, (proxy_host, proxy_port): (&str, NonZeroU16)) -> Self {
         Self {
-            dns_resolver: Arc::new(resolver),
+            dns_resolver,
             proxy_host: proxy_host.into(),
             proxy_port,
             // We don't bundle roots of trust for all the SSL proxies, just the
@@ -106,6 +123,11 @@ impl TcpSslProxyConnector {
             // is also TLS-encrypted.
             proxy_certs: RootCertificates::Native,
         }
+    }
+
+    pub fn set_proxy(&mut self, (host, port): (&str, NonZeroU16)) {
+        self.proxy_host = host.into();
+        self.proxy_port = port;
     }
 }
 
@@ -189,6 +211,75 @@ fn ip_addr_to_host(ip: IpAddr) -> url::Host {
     match ip {
         IpAddr::V4(v4) => url::Host::Ipv4(v4),
         IpAddr::V6(v6) => url::Host::Ipv6(v6),
+    }
+}
+
+impl AsyncRead for TcpSslConnectorStream {
+    fn poll_read(
+        self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+        buf: &mut tokio::io::ReadBuf<'_>,
+    ) -> std::task::Poll<std::io::Result<()>> {
+        std::pin::Pin::new(&mut self.get_mut().0).poll_read(cx, buf)
+    }
+}
+
+impl AsyncWrite for TcpSslConnectorStream {
+    fn poll_write(
+        self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+        buf: &[u8],
+    ) -> std::task::Poll<Result<usize, std::io::Error>> {
+        std::pin::Pin::new(&mut self.get_mut().0).poll_write(cx, buf)
+    }
+
+    fn poll_flush(
+        self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<Result<(), std::io::Error>> {
+        std::pin::Pin::new(&mut self.get_mut().0).poll_flush(cx)
+    }
+
+    fn poll_shutdown(
+        self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<Result<(), std::io::Error>> {
+        std::pin::Pin::new(&mut self.get_mut().0).poll_shutdown(cx)
+    }
+}
+
+#[async_trait]
+impl TransportConnector for TcpSslConnector {
+    type Stream = TcpSslConnectorStream;
+
+    async fn connect(
+        &self,
+        connection_params: &ConnectionParams,
+        alpn: Alpn,
+    ) -> Result<StreamAndInfo<Self::Stream>, TransportConnectError> {
+        match self {
+            Self::Direct(direct) => direct
+                .connect(connection_params, alpn)
+                .await
+                .map(|s| s.map_stream(Either::Left)),
+            Self::Proxied(proxied) => proxied
+                .connect(connection_params, alpn)
+                .await
+                .map(|s| s.map_stream(Either::Right)),
+        }
+        .map(|s| s.map_stream(TcpSslConnectorStream))
+    }
+}
+
+impl From<DirectConnector> for TcpSslConnector {
+    fn from(value: DirectConnector) -> Self {
+        Self::Direct(value)
+    }
+}
+
+impl From<ProxyConnector> for TcpSslConnector {
+    fn from(value: ProxyConnector) -> Self {
+        Self::Proxied(value)
     }
 }
 
@@ -380,10 +471,9 @@ mod test {
         let (addr, server) = localhost_http_server();
         let _server_handle = tokio::spawn(server);
 
-        let connector =
-            TcpSslTransportConnector::new(DnsResolver::new_with_static_fallback(HashMap::from([
-                (SERVER_HOSTNAME, LookupResult::localhost()),
-            ])));
+        let connector = DirectConnector::new(DnsResolver::new_with_static_fallback(HashMap::from(
+            [(SERVER_HOSTNAME, LookupResult::localhost())],
+        )));
         let connection_params = ConnectionParams {
             route_type: "test",
             sni: SERVER_HOSTNAME.into(),
@@ -419,7 +509,7 @@ mod test {
         let _proxy_handle = tokio::spawn(proxy);
 
         // Ensure that the proxy is doing the right thing
-        let mut connector = TcpSslProxyConnector::new(
+        let mut connector = ProxyConnector::new(
             DnsResolver::new_with_static_fallback(HashMap::from([(
                 PROXY_HOSTNAME,
                 LookupResult::localhost(),

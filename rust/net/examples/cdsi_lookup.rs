@@ -13,7 +13,7 @@ use tokio::io::AsyncBufReadExt as _;
 use libsignal_net::auth::Auth;
 use libsignal_net::cdsi::{CdsiConnection, LookupError, LookupRequest, LookupResponse};
 use libsignal_net::enclave::{Cdsi, EnclaveEndpointConnection};
-use libsignal_net::infra::tcp_ssl::TcpSslTransportConnector;
+use libsignal_net::infra::tcp_ssl::DirectConnector as TcpSslTransportConnector;
 use libsignal_net::infra::TransportConnector;
 
 async fn cdsi_lookup(

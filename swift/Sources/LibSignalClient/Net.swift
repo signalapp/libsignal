@@ -32,6 +32,22 @@ public class Net {
         self.svr3 = Svr3Client(self.asyncContext, self.connectionManager)
     }
 
+    /// Sets the proxy host to be used for all new connections (until overridden).
+    ///
+    /// Sets a domain name and port to be used to proxy all new outgoing connections. The proxy can
+    /// be overridden by calling this method again or unset by calling ``Net/clearProxy()``.
+    public func setProxy(host: String, port: UInt16) throws {
+        try self.connectionManager.setProxy(host: host, port: port)
+    }
+
+    /// Clears the proxy host (if any) so that future connections will be made directly.
+    ///
+    /// Clears any proxy configuration set via ``Net/setProxy(host:port:)``. If
+    /// none was set, calling this method is a no-op.
+    public func clearProxy() {
+        self.connectionManager.clearProxy()
+    }
+
     /// Like ``cdsiLookup(auth:request:)`` but with the parameters to ``CdsiLookupRequest`` broken out.
     public func cdsiLookup(
         auth: Auth,
@@ -363,12 +379,22 @@ internal class ConnectionManager: NativeHandleOwner {
         self.init(owned: handle!)
     }
 
+    internal func setProxy(host: String, port: UInt16) throws {
+        if port == 0 {
+            throw SignalError.invalidArgument("port cannot be 0")
+        }
+        self.withNativeHandle {
+            failOnError(signal_connection_manager_set_proxy($0, host, port))
+        }
+    }
+
+    internal func clearProxy() {
+        self.withNativeHandle {
+            failOnError(signal_connection_manager_clear_proxy($0))
+        }
+    }
+
     override internal class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
         signal_connection_manager_destroy(handle)
     }
-}
-
-func durationToMillis(_ interval: TimeInterval) -> UInt32 {
-    let msDouble = interval * 1000
-    return msDouble > Double(UInt32.max) ? UInt32.max : UInt32(msDouble)
 }

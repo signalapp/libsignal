@@ -5,7 +5,7 @@
 
 use std::convert::TryInto as _;
 use std::future::Future;
-use std::num::NonZeroU32;
+use std::num::{NonZeroU16, NonZeroU32};
 use std::panic::RefUnwindSafe;
 use std::str::FromStr;
 use std::sync::Arc;
@@ -27,7 +27,9 @@ use libsignal_net::enclave::{
 use libsignal_net::env::{Env, Svr3Env};
 use libsignal_net::infra::connection_manager::MultiRouteConnectionManager;
 use libsignal_net::infra::dns::DnsResolver;
-use libsignal_net::infra::tcp_ssl::TcpSslTransportConnector;
+use libsignal_net::infra::tcp_ssl::{
+    DirectConnector as TcpSslDirectConnector, TcpSslConnector, TcpSslConnectorStream,
+};
 use libsignal_net::infra::{make_ws_config, EndpointConnection};
 use libsignal_net::svr::{self, SvrConnection};
 use libsignal_net::svr3::{self, OpaqueMaskedShareSet, PpssOps as _};
@@ -97,7 +99,7 @@ pub struct ConnectionManager {
         EnclaveEndpointConnection<Nitro, MultiRouteConnectionManager>,
         EnclaveEndpointConnection<Tpm2Snp, MultiRouteConnectionManager>,
     ),
-    transport_connector: TcpSslTransportConnector,
+    transport_connector: std::sync::Mutex<TcpSslConnector>,
 }
 
 impl RefUnwindSafe for ConnectionManager {}
@@ -107,7 +109,8 @@ impl ConnectionManager {
     fn new(environment: Environment) -> Self {
         let dns_resolver =
             DnsResolver::new_with_static_fallback(environment.env().static_fallback());
-        let transport_connector = TcpSslTransportConnector::new(dns_resolver);
+        let transport_connector =
+            std::sync::Mutex::new(TcpSslDirectConnector::new(dns_resolver).into());
         let chat_endpoint = PathAndQuery::from_static(env::constants::WEB_SOCKET_PATH);
         let chat_connection_params = environment
             .env()
@@ -145,6 +148,38 @@ impl ConnectionManager {
 #[bridge_fn]
 fn ConnectionManager_new(environment: AsType<Environment, u8>) -> ConnectionManager {
     ConnectionManager::new(environment.into_inner())
+}
+
+#[bridge_fn]
+fn ConnectionManager_set_proxy(
+    connection_manager: &ConnectionManager,
+    host: String,
+    port: AsType<NonZeroU16, u16>,
+) {
+    let port = port.into_inner();
+    let proxy_addr = (host.as_str(), port);
+    let mut guard = connection_manager
+        .transport_connector
+        .lock()
+        .expect("not poisoned");
+    match &mut *guard {
+        TcpSslConnector::Direct(direct) => *guard = direct.with_proxy(proxy_addr).into(),
+        TcpSslConnector::Proxied(proxied) => proxied.set_proxy(proxy_addr),
+    };
+}
+
+#[bridge_fn]
+fn ConnectionManager_clear_proxy(connection_manager: &ConnectionManager) {
+    let mut guard = connection_manager
+        .transport_connector
+        .lock()
+        .expect("not poisoned");
+    match &*guard {
+        TcpSslConnector::Direct(_direct) => (),
+        TcpSslConnector::Proxied(proxied) => {
+            *guard = TcpSslDirectConnector::new(proxied.dns_resolver.clone()).into()
+        }
+    };
 }
 
 bridge_handle!(ConnectionManager, clone = false);
@@ -210,7 +245,7 @@ async fn svr3_connect<'a>(
     connection_manager: &ConnectionManager,
     username: String,
     password: String,
-) -> Result<<Svr3Env<'a> as PpssSetup>::Connections, svr::Error> {
+) -> Result<<Svr3Env<'a> as PpssSetup<TcpSslConnectorStream>>::Connections, svr::Error> {
     let auth = Auth { username, password };
     let ConnectionManager {
         chat: _chat,
@@ -218,9 +253,10 @@ async fn svr3_connect<'a>(
         svr3: (sgx, nitro, tpm2snp),
         transport_connector,
     } = connection_manager;
+    let transport_connector = transport_connector.lock().expect("not poisoned").clone();
     let sgx = SvrConnection::connect(auth.clone(), sgx, transport_connector.clone()).await?;
     let nitro = SvrConnection::connect(auth.clone(), nitro, transport_connector.clone()).await?;
-    let tpm2snp = SvrConnection::connect(auth, tpm2snp, transport_connector.clone()).await?;
+    let tpm2snp = SvrConnection::connect(auth, tpm2snp, transport_connector).await?;
     Ok((sgx, nitro, tpm2snp))
 }
 
@@ -322,7 +358,11 @@ fn ChatService_new(
     Chat {
         service: chat_service(
             &connection_manager.chat,
-            connection_manager.transport_connector.clone(),
+            connection_manager
+                .transport_connector
+                .lock()
+                .expect("not poisoned")
+                .clone(),
             incoming_tx,
             username,
             password,

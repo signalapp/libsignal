@@ -50,6 +50,7 @@ def translate_to_ts(typ):
         "&[u8]": "Buffer",
         "i32": "number",
         "u8": "number",
+        "u16": "number",
         "u32": "number",
         "u64": "bigint",
         "bool": "boolean",

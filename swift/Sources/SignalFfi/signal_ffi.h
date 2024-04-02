@@ -1388,6 +1388,10 @@ SignalFfiError *signal_tokio_async_context_destroy(SignalTokioAsyncContext *p);
 
 SignalFfiError *signal_connection_manager_new(SignalConnectionManager **out, uint8_t environment);
 
+SignalFfiError *signal_connection_manager_set_proxy(const SignalConnectionManager *connection_manager, const char *host, uint16_t port);
+
+SignalFfiError *signal_connection_manager_clear_proxy(const SignalConnectionManager *connection_manager);
+
 SignalFfiError *signal_connection_manager_destroy(SignalConnectionManager *p);
 
 SignalFfiError *signal_create_otp(const char **out, const char *username, SignalBorrowedBuffer secret);

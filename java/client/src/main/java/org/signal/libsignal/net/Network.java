@@ -41,6 +41,26 @@ public class Network {
     this.svr3 = new Svr3(this);
   }
 
+  /**
+   * Sets the proxy host to be used for all new connections (until overridden).
+   *
+   * <p>Sets a domain name and port to be used to proxy all new outgoing connections. The proxy can
+   * be overridden by calling this method again or unset by calling {@link clearProxy}.
+   */
+  public void setProxy(String host, int port) {
+    this.connectionManager.setProxy(host, port);
+  }
+
+  /**
+   * Ensures that future connections will be made directly, not through a proxy.
+   *
+   * <p>Clears any proxy configuration set via {@link setProxy}. If none was set, calling this
+   * method is a no-op.
+   */
+  public void clearProxy() {
+    this.connectionManager.clearProxy();
+  }
+
   public Svr3 svr3() {
     return this.svr3;
   }
@@ -71,6 +91,17 @@ public class Network {
   static class ConnectionManager extends NativeHandleGuard.SimpleOwner {
     private ConnectionManager(Environment env) {
       super(Native.ConnectionManager_new(env.value));
+    }
+
+    private void setProxy(String host, int port) {
+      if (port == 0) {
+        throw new IllegalArgumentException("Port cannot be zero");
+      }
+      guardedRun(nativeHandle -> Native.ConnectionManager_set_proxy(nativeHandle, host, port));
+    }
+
+    private void clearProxy() {
+      guardedRun(Native::ConnectionManager_clear_proxy);
     }
 
     @Override

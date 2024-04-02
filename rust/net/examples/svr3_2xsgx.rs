@@ -25,7 +25,7 @@ use libsignal_net::enclave::{
 };
 use libsignal_net::env::DomainConfig;
 use libsignal_net::infra::certs::RootCertificates;
-use libsignal_net::infra::tcp_ssl::TcpSslTransportConnector;
+use libsignal_net::infra::tcp_ssl::DirectConnector as TcpSslTransportConnector;
 use libsignal_net::svr::SvrConnection;
 use libsignal_net::svr3::{OpaqueMaskedShareSet, PpssOps};
 
@@ -50,12 +50,13 @@ where
     A: Svr3Flavor,
     B: Svr3Flavor;
 
-impl<'a, A, B> PpssSetup for TwoForTwoEnv<'a, A, B>
+impl<'a, A, B, S> PpssSetup<S> for TwoForTwoEnv<'a, A, B>
 where
     A: Svr3Flavor + Send,
     B: Svr3Flavor + Send,
+    S: Send,
 {
-    type Connections = (SvrConnection<A>, SvrConnection<B>);
+    type Connections = (SvrConnection<A, S>, SvrConnection<B, S>);
     type ServerIds = [u64; 2];
 
     fn server_ids() -> Self::ServerIds {

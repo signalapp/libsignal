@@ -7,6 +7,7 @@ use itertools::{Either, Itertools};
 use std::collections::HashMap;
 use std::iter::Map;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
+use std::sync::Arc;
 use std::time::Duration;
 use std::vec::IntoIter;
 
@@ -71,14 +72,19 @@ impl LookupResult {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct DnsResolver {
-    static_map: HashMap<&'static str, LookupResult>,
+    /// Static lookup entries.
+    ///
+    /// Held in an [`Arc`] to make `DnsResolver` cheap to clone.
+    static_map: Arc<HashMap<&'static str, LookupResult>>,
 }
 
 impl DnsResolver {
     pub fn new_with_static_fallback(static_map: HashMap<&'static str, LookupResult>) -> Self {
-        Self { static_map }
+        Self {
+            static_map: Arc::new(static_map),
+        }
     }
 
     pub async fn lookup_ip(&self, hostname: &str) -> Result<LookupResult, Error> {

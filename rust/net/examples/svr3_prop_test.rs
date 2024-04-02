@@ -8,6 +8,7 @@ use std::time::Duration;
 
 use assert_matches::assert_matches;
 use libsignal_net::infra::dns::DnsResolver;
+use libsignal_net::infra::ws::DefaultStream;
 use proptest::prelude::*;
 use proptest::test_runner::Config;
 use proptest_state_machine::{prop_state_machine, ReferenceStateMachine, StateMachineTest};
@@ -16,7 +17,7 @@ use rand_core::OsRng;
 use libsignal_net::auth::Auth;
 use libsignal_net::enclave::{EnclaveEndpointConnection, Nitro, PpssSetup, Sgx, Tpm2Snp};
 use libsignal_net::env::Svr3Env;
-use libsignal_net::infra::tcp_ssl::TcpSslTransportConnector;
+use libsignal_net::infra::tcp_ssl::DirectConnector as TcpSslTransportConnector;
 use libsignal_net::svr::SvrConnection;
 use libsignal_net::svr3::{Error, OpaqueMaskedShareSet, PpssOps as _};
 use support::*;
@@ -316,7 +317,7 @@ impl Svr3Storage {
         }
     }
 
-    async fn connect(&self, uid: Uid) -> <Svr3Env as PpssSetup>::Connections {
+    async fn connect(&self, uid: Uid) -> <Svr3Env as PpssSetup<DefaultStream>>::Connections {
         let connector = TcpSslTransportConnector::new(DnsResolver::default());
         if let Some(duration) = self.config.sleep {
             tokio::time::sleep(duration).await;
@@ -324,19 +325,20 @@ impl Svr3Storage {
         let auth = Auth::from_uid_and_secret(uid, self.enclave_secret);
         let sgx_connection =
             EnclaveEndpointConnection::new(self.env.sgx(), Duration::from_secs(10));
-        let a = SvrConnection::<Sgx>::connect(auth.clone(), &sgx_connection, connector.clone())
+        let a = SvrConnection::<Sgx, _>::connect(auth.clone(), &sgx_connection, connector.clone())
             .await
             .expect("can attestedly connect to SGX");
 
         let nitro_connection =
             EnclaveEndpointConnection::new(self.env.nitro(), Duration::from_secs(10));
-        let b = SvrConnection::<Nitro>::connect(auth.clone(), &nitro_connection, connector.clone())
-            .await
-            .expect("can attestedly connect to Nitro");
+        let b =
+            SvrConnection::<Nitro, _>::connect(auth.clone(), &nitro_connection, connector.clone())
+                .await
+                .expect("can attestedly connect to Nitro");
 
         let tpm2snp_connection =
             EnclaveEndpointConnection::new(self.env.tpm2snp(), Duration::from_secs(10));
-        let c = SvrConnection::<Tpm2Snp>::connect(auth.clone(), &tpm2snp_connection, connector)
+        let c = SvrConnection::<Tpm2Snp, _>::connect(auth.clone(), &tpm2snp_connection, connector)
             .await
             .expect("can attestedly connect to Nitro");
 

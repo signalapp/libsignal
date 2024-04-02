@@ -10,6 +10,7 @@ use crate::infra::errors::LogSafeDisplay;
 use crate::infra::ws::{
     run_attested_interaction, AttestedConnectionError, WebSocketConnectError, WebSocketServiceError,
 };
+use crate::infra::AsyncDuplexStream;
 use async_trait::async_trait;
 use bincode::Options as _;
 use futures_util::future::try_join_all;
@@ -196,7 +197,7 @@ impl From<AttestedConnectionError> for Error {
 }
 
 #[async_trait]
-pub trait PpssOps: PpssSetup {
+pub trait PpssOps<S>: PpssSetup<S> {
     async fn backup(
         connections: Self::Connections,
         password: &str,
@@ -214,7 +215,7 @@ pub trait PpssOps: PpssSetup {
 }
 
 #[async_trait]
-impl<Env: PpssSetup> PpssOps for Env {
+impl<S: AsyncDuplexStream + 'static, Env: PpssSetup<S>> PpssOps<S> for Env {
     async fn backup(
         connections: Self::Connections,
         password: &str,
