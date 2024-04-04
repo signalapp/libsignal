@@ -24,6 +24,7 @@ public enum SignalError: Error {
     case invalidMessage(String)
     case invalidKey(String)
     case invalidSignature(String)
+    case invalidAttestationData(String)
     case fingerprintVersionMismatch(String)
     case fingerprintParsingError(String)
     case sealedSenderSelfSend(String)
@@ -55,6 +56,7 @@ public enum SignalError: Error {
     case callbackError(String)
     case webSocketError(String)
     case connectionTimeoutError(String)
+    case connectionFailed(String)
     case networkProtocolError(String)
     case cdsiInvalidToken(String)
     case rateLimitedError(retryAfter: TimeInterval, message: String)
@@ -108,6 +110,8 @@ internal func checkError(_ error: SignalFfiErrorRef?) throws {
         throw SignalError.invalidKey(errStr)
     case SignalErrorCodeInvalidSignature:
         throw SignalError.invalidSignature(errStr)
+    case SignalErrorCodeInvalidAttestationData:
+        throw SignalError.invalidAttestationData(errStr)
     case SignalErrorCodeFingerprintVersionMismatch:
         throw SignalError.fingerprintVersionMismatch(errStr)
     case SignalErrorCodeUntrustedIdentity:
@@ -172,6 +176,8 @@ internal func checkError(_ error: SignalFfiErrorRef?) throws {
         throw SignalError.webSocketError(errStr)
     case SignalErrorCodeConnectionTimedOut:
         throw SignalError.connectionTimeoutError(errStr)
+    case SignalErrorCodeConnectionFailed:
+        throw SignalError.connectionFailed(errStr)
     case SignalErrorCodeNetworkProtocol:
         throw SignalError.networkProtocolError(errStr)
     case SignalErrorCodeCdsiInvalidToken:

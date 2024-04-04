@@ -53,7 +53,7 @@ final class NetTests: XCTestCase {
         }
         do {
             try failWithError("AttestationDataError")
-        } catch SignalError.unknown(SignalErrorCodeInvalidAttestationData.rawValue, let message) {
+        } catch SignalError.invalidAttestationData(let message) {
             XCTAssertEqual(message, "SGX operation failed: attestation data invalid: fake reason")
         }
         do {

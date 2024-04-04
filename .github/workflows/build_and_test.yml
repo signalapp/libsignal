@@ -357,6 +357,8 @@ jobs:
 
     - run: sudo apt-get update && sudo apt-get install protobuf-compiler
 
+    - run: swift/verify_error_codes.sh
+
     - name: Build libsignal-ffi
       run: swift/build_ffi.sh -d -v --verify-ffi
 
