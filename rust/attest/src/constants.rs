@@ -14,7 +14,7 @@ pub const ENCLAVE_ID_CDSI_STAGING: &[u8] =
 pub const ENCLAVE_ID_SVR2_STAGING: &[u8] =
     &hex!("acb1973aa0bbbd14b3b4e06f145497d948fd4a98efc500fcce363b3b743ec482");
 pub const ENCLAVE_ID_SVR3_SGX_STAGING: &[u8] =
-    &hex!("b7811fb574a4d7e59408e30a2e0ddd9ae3f241594156e7ad647785c1c52e4f3c");
+    &hex!("6ac35d9eef8d11f4e6276656f4081925770922e01b7c4d80a51de87d001ac259");
 pub const ENCLAVE_ID_SVR3_NITRO_STAGING: &[u8] = b"3b3dda58.52b91975.02dfde15";
 pub const ENCLAVE_ID_SVR3_TPM2SNP_STAGING: &[u8] = b"0.20240319.160523";
 
@@ -105,9 +105,9 @@ pub(crate) static EXPECTED_RAFT_CONFIG: SmallMap<&'static [u8], &'static RaftCon
             ENCLAVE_ID_SVR3_SGX_STAGING,
             &RaftConfig {
                 min_voting_replicas: 3,
-                max_voting_replicas: 5,
+                max_voting_replicas: 9,
                 super_majority: 0,
-                group_id: 1292240360480775808,
+                group_id: 7392562970588785022,
             },
         ),
         (
