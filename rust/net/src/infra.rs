@@ -83,7 +83,7 @@ impl From<HttpRequestDecorator> for HttpRequestDecoratorSeq {
 /// only be applied to the initial connection upgrade request).
 #[derive(Clone, Debug)]
 pub struct ConnectionParams {
-    pub route_type: &'static str,
+    pub route_type: RouteType,
     pub sni: Arc<str>,
     pub host: Arc<str>,
     pub port: NonZeroU16,
@@ -93,7 +93,7 @@ pub struct ConnectionParams {
 
 impl ConnectionParams {
     pub fn new(
-        route_type: &'static str,
+        route_type: RouteType,
         sni: &str,
         host: &str,
         port: NonZeroU16,
@@ -126,7 +126,7 @@ impl ConnectionParams {
 #[cfg_attr(test, derive(PartialEq))]
 pub struct ConnectionInfo {
     /// Type of the connection, e.g. direct or via proxy
-    pub route_type: &'static str,
+    pub route_type: RouteType,
 
     /// The source of the DNS data, e.g. lookup or static fallback
     pub dns_source: DnsSource,
@@ -146,6 +146,23 @@ pub enum DnsSource {
     Lookup,
     /// The result was resolved from a preconfigured static entry.
     Static,
+    /// Test-only value
+    #[cfg(test)]
+    Test,
+}
+
+/// Type of the route used for the connection.
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, strum::Display)]
+#[strum(serialize_all = "lowercase")]
+pub enum RouteType {
+    /// Direct connection to the service.
+    Direct,
+    /// Connection over the Google proxy
+    ProxyF,
+    /// Connection over the Fastly proxy
+    ProxyG,
+    /// Connection over a custom TLS proxy
+    TlsProxy,
     /// Test-only value
     #[cfg(test)]
     Test,
@@ -300,7 +317,8 @@ pub(crate) mod test {
             ServiceConnector, ServiceInitializer, ServiceState, ServiceStatus,
         };
         use crate::infra::{
-            Alpn, ConnectionInfo, ConnectionParams, DnsSource, StreamAndInfo, TransportConnector,
+            Alpn, ConnectionInfo, ConnectionParams, DnsSource, RouteType, StreamAndInfo,
+            TransportConnector,
         };
 
         #[test]
@@ -308,12 +326,12 @@ pub(crate) mod test {
             let connection_info = ConnectionInfo {
                 address: url::Host::Domain("test.signal.org".to_string()),
                 dns_source: DnsSource::Lookup,
-                route_type: "test-route-type",
+                route_type: RouteType::Test,
             };
 
             assert_eq!(
                 connection_info.description(),
-                "route=test-route-type;dns_source=lookup;ip_type=Unknown"
+                "route=test;dns_source=lookup;ip_type=Unknown"
             );
         }
 
@@ -378,7 +396,7 @@ pub(crate) mod test {
                 Ok(StreamAndInfo(
                     client,
                     ConnectionInfo {
-                        route_type: "test",
+                        route_type: RouteType::Test,
                         dns_source: DnsSource::Test,
                         address: url::Host::Domain(connection_params.host.to_string()),
                     },

@@ -19,7 +19,9 @@ use tokio_util::either::Either;
 use crate::infra::certs::RootCertificates;
 use crate::infra::dns::DnsResolver;
 use crate::infra::errors::TransportConnectError;
-use crate::infra::{Alpn, ConnectionInfo, ConnectionParams, StreamAndInfo, TransportConnector};
+use crate::infra::{
+    Alpn, ConnectionInfo, ConnectionParams, RouteType, StreamAndInfo, TransportConnector,
+};
 use crate::utils::first_ok;
 
 const CONNECTION_ATTEMPT_DELAY: Duration = Duration::from_millis(200);
@@ -107,7 +109,13 @@ impl TransportConnector for ProxyConnector {
 
         let tls_stream = connect_tls(outer_ssl, connection_params, alpn).await?;
 
-        Ok(StreamAndInfo(tls_stream, remote_address))
+        Ok(StreamAndInfo(
+            tls_stream,
+            ConnectionInfo {
+                route_type: RouteType::TlsProxy,
+                ..remote_address
+            },
+        ))
     }
 }
 
@@ -155,7 +163,7 @@ async fn connect_tls<S: AsyncRead + AsyncWrite + Unpin>(
 
 async fn connect_tcp(
     dns_resolver: &DnsResolver,
-    route_type: &'static str,
+    route_type: RouteType,
     host: &str,
     port: NonZeroU16,
 ) -> Result<StreamAndInfo<TcpStream>, TransportConnectError> {
@@ -475,7 +483,7 @@ mod test {
             [(SERVER_HOSTNAME, LookupResult::localhost())],
         )));
         let connection_params = ConnectionParams {
-            route_type: "test",
+            route_type: RouteType::Test,
             sni: SERVER_HOSTNAME.into(),
             host: addr.ip().to_string().into(),
             port: addr.port().try_into().expect("bound port"),
@@ -493,7 +501,7 @@ mod test {
             ConnectionInfo {
                 address: url::Host::Ipv6(Ipv6Addr::LOCALHOST),
                 dns_source: crate::infra::DnsSource::Static,
-                route_type: "test"
+                route_type: RouteType::Test,
             }
         );
 
@@ -525,7 +533,7 @@ mod test {
         assert_matches!(default_root_cert, RootCertificates::Native);
 
         let connection_params = ConnectionParams {
-            route_type: "test",
+            route_type: RouteType::Test,
             sni: SERVER_HOSTNAME.into(),
             host: "localhost".to_string().into(),
             port: addr.port().try_into().expect("bound port"),
@@ -543,7 +551,7 @@ mod test {
             ConnectionInfo {
                 address: url::Host::Ipv6(Ipv6Addr::LOCALHOST),
                 dns_source: crate::infra::DnsSource::Static,
-                route_type: "test"
+                route_type: RouteType::TlsProxy,
             }
         );
 

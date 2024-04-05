@@ -470,7 +470,7 @@ mod test {
         TestError, LONG_CONNECTION_TIME, NORMAL_CONNECTION_TIME, TIMEOUT_DURATION,
         TIME_ADVANCE_VALUE,
     };
-    use crate::infra::{ConnectionParams, HttpRequestDecoratorSeq};
+    use crate::infra::{ConnectionParams, HttpRequestDecoratorSeq, RouteType};
 
     #[derive(Clone, Debug)]
     struct TestService {
@@ -552,7 +552,7 @@ mod test {
 
     fn example_connection_params() -> ConnectionParams {
         ConnectionParams::new(
-            "test",
+            RouteType::Test,
             "chat.signal.org",
             "chat.signal.org",
             nonzero!(443u16),

@@ -283,7 +283,7 @@ mod test {
         TestError, FEW_ATTEMPTS, LONG_CONNECTION_TIME, MANY_ATTEMPTS, TIMEOUT_DURATION,
         TIME_ADVANCE_VALUE,
     };
-    use crate::infra::HttpRequestDecoratorSeq;
+    use crate::infra::{HttpRequestDecoratorSeq, RouteType};
 
     use super::*;
 
@@ -495,7 +495,7 @@ mod test {
 
     fn example_connection_params(host: &str) -> ConnectionParams {
         ConnectionParams::new(
-            "test",
+            RouteType::Test,
             host,
             host,
             nonzero!(443u16),

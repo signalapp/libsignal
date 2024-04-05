@@ -614,7 +614,7 @@ pub(crate) mod testutil {
     use tokio_tungstenite::WebSocketStream;
 
     use crate::env::{WS_KEEP_ALIVE_INTERVAL, WS_MAX_IDLE_TIME};
-    use crate::infra::{AsyncDuplexStream, DnsSource};
+    use crate::infra::{AsyncDuplexStream, DnsSource, RouteType};
 
     use super::*;
 
@@ -632,7 +632,7 @@ pub(crate) mod testutil {
 
     pub(crate) fn mock_connection_info() -> ConnectionInfo {
         ConnectionInfo {
-            route_type: "test",
+            route_type: RouteType::Test,
             dns_source: DnsSource::Test,
             address: url::Host::Domain("localhost".to_string()),
         }
