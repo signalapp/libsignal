@@ -84,11 +84,18 @@ pub struct ProxyConnector {
     proxy_host: Arc<str>,
     proxy_port: NonZeroU16,
     proxy_certs: RootCertificates,
+    use_tls_for_proxy: ShouldUseTls,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ShouldUseTls {
+    No,
+    Yes,
 }
 
 #[async_trait]
 impl TransportConnector for ProxyConnector {
-    type Stream = SslStream<SslStream<TcpStream>>;
+    type Stream = SslStream<Either<SslStream<TcpStream>, TcpStream>>;
 
     async fn connect(
         &self,
@@ -103,11 +110,15 @@ impl TransportConnector for ProxyConnector {
         )
         .await?;
 
-        let ssl_config = ssl_config(self.proxy_certs, None)?;
+        let inner_stream = match self.use_tls_for_proxy {
+            ShouldUseTls::Yes => {
+                let ssl_config = ssl_config(self.proxy_certs, None)?;
+                Either::Left(tokio_boring::connect(ssl_config, &self.proxy_host, tcp_stream).await?)
+            }
+            ShouldUseTls::No => Either::Right(tcp_stream),
+        };
 
-        let outer_ssl = tokio_boring::connect(ssl_config, &self.proxy_host, tcp_stream).await?;
-
-        let tls_stream = connect_tls(outer_ssl, connection_params, alpn).await?;
+        let tls_stream = connect_tls(inner_stream, connection_params, alpn).await?;
 
         Ok(StreamAndInfo(
             tls_stream,
@@ -121,21 +132,36 @@ impl TransportConnector for ProxyConnector {
 
 impl ProxyConnector {
     pub fn new(dns_resolver: DnsResolver, (proxy_host, proxy_port): (&str, NonZeroU16)) -> Self {
+        let (use_tls_for_proxy, actual_host) = Self::parse_host_for_tls_opt_out(proxy_host);
+
         Self {
             dns_resolver,
-            proxy_host: proxy_host.into(),
+            proxy_host: actual_host.into(),
             proxy_port,
             // We don't bundle roots of trust for all the SSL proxies, just the
             // Signal servers. It's fine to use the system SSL trust roots;
             // even if the outer connection is not secure, the inner connection
             // is also TLS-encrypted.
             proxy_certs: RootCertificates::Native,
+            use_tls_for_proxy,
         }
     }
 
     pub fn set_proxy(&mut self, (host, port): (&str, NonZeroU16)) {
-        self.proxy_host = host.into();
+        let (use_tls_for_proxy, actual_host) = Self::parse_host_for_tls_opt_out(host);
+
+        self.proxy_host = actual_host.into();
         self.proxy_port = port;
+        self.use_tls_for_proxy = use_tls_for_proxy;
+    }
+
+    fn parse_host_for_tls_opt_out(proxy_host: &str) -> (ShouldUseTls, &str) {
+        // Special case for testing: UNENCRYPTED_FOR_TESTING@foo.bar connects over TCP instead of TLS.
+        if let Some(("UNENCRYPTED_FOR_TESTING", host)) = proxy_host.split_once('@') {
+            (ShouldUseTls::No, host)
+        } else {
+            (ShouldUseTls::Yes, proxy_host)
+        }
     }
 }
 
@@ -306,6 +332,7 @@ mod testutil {
     use tokio::io::{
         AsyncBufReadExt, AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt, BufStream,
     };
+    use tokio_util::either::Either;
     use warp::Filter;
 
     pub(super) const SERVER_HOSTNAME: &str = "test-server.signal.org.local";
@@ -383,6 +410,19 @@ mod testutil {
         })()
         .expect("can configure acceptor");
 
+        localhost_tls_proxy_with_ssl_acceptor(upstream_sni, upstream_addr, Some(ssl_acceptor))
+    }
+
+    /// Starts a TLS server that proxies TLS connections to an upstream server.
+    ///
+    /// Proxies TLS connections with `upstream_sni` to `upstream_addr`.
+    ///
+    /// If `ssl_acceptor` is `None`, expects the "outer" connection to be plain TCP rather than TLS.
+    pub(crate) fn localhost_tls_proxy_with_ssl_acceptor(
+        upstream_sni: &'static str,
+        upstream_addr: SocketAddr,
+        ssl_acceptor: Option<SslAcceptor>,
+    ) -> (SocketAddr, impl Future<Output = ()>) {
         let listener = std::net::TcpListener::bind((Ipv6Addr::LOCALHOST, 0)).expect("can bind");
         listener.set_nonblocking(true).expect("can set nonblocking");
         let listen_addr = listener.local_addr().expect("is bound to local addr");
@@ -391,18 +431,23 @@ mod testutil {
             loop {
                 let (tcp_stream, _remote_addr) =
                     tcp_listener.accept().await.expect("incoming connection");
-                let ssl_stream = tokio_boring::accept(&ssl_acceptor, tcp_stream)
-                    .await
-                    .expect("handshake successful");
+                let mut input_stream = if let Some(ssl_acceptor) = &ssl_acceptor {
+                    let ssl_stream = tokio_boring::accept(ssl_acceptor, tcp_stream)
+                        .await
+                        .expect("handshake successful");
 
-                let (sni_names, mut ssl_stream) = parse_sni_from_stream(ssl_stream).await;
-                assert_eq!(sni_names, &[upstream_sni]);
+                    let (sni_names, ssl_stream) = parse_sni_from_stream(ssl_stream).await;
+                    assert_eq!(sni_names, &[upstream_sni]);
+                    Either::Left(ssl_stream)
+                } else {
+                    Either::Right(tcp_stream)
+                };
 
                 // Now connect to the upstream and then proxy for the life of the connection.
                 let mut upstream_stream = tokio::net::TcpStream::connect(upstream_addr)
                     .await
                     .expect("can connect to upstream");
-                tokio::io::copy_bidirectional(&mut ssl_stream, &mut upstream_stream)
+                tokio::io::copy_bidirectional(&mut input_stream, &mut upstream_stream)
                     .await
                     .expect("can proxy");
             }
@@ -553,6 +598,51 @@ mod test {
                 address: url::Host::Ipv6(Ipv6Addr::LOCALHOST),
                 dns_source: crate::infra::DnsSource::Static,
                 route_type: RouteType::TlsProxy,
+            }
+        );
+
+        make_http_request_response_over(stream).await;
+    }
+
+    #[tokio::test]
+    async fn connect_through_unencrypted_proxy() {
+        let (addr, server) = localhost_http_server();
+        let _server_handle = tokio::spawn(server);
+
+        let modified_proxy_host = format!("UNENCRYPTED_FOR_TESTING@{PROXY_HOSTNAME}");
+        let (proxy_addr, proxy) =
+            localhost_tls_proxy_with_ssl_acceptor(SERVER_HOSTNAME, addr, None);
+        let _proxy_handle = tokio::spawn(proxy);
+
+        // Ensure that the proxy is doing the right thing
+        let connector = ProxyConnector::new(
+            DnsResolver::new_with_static_fallback(HashMap::from([(
+                PROXY_HOSTNAME,
+                LookupResult::localhost(),
+            )])),
+            (&modified_proxy_host, proxy_addr.port().try_into().unwrap()),
+        );
+
+        let connection_params = ConnectionParams {
+            route_type: RouteType::Test,
+            sni: SERVER_HOSTNAME.into(),
+            host: "localhost".to_string().into(),
+            port: addr.port().try_into().expect("bound port"),
+            http_request_decorator: HttpRequestDecoratorSeq::default(),
+            certs: RootCertificates::FromDer(SERVER_CERTIFICATE.cert.der()),
+        };
+
+        let StreamAndInfo(stream, info) = connector
+            .connect(&connection_params, Alpn::Http1_1)
+            .await
+            .expect("can connect");
+
+        assert_eq!(
+            info,
+            ConnectionInfo {
+                address: url::Host::Ipv6(Ipv6Addr::LOCALHOST),
+                dns_source: crate::infra::DnsSource::Static,
+                route_type: RouteType::TlsProxy
             }
         );
 
