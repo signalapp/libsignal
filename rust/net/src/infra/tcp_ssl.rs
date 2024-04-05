@@ -384,6 +384,7 @@ mod testutil {
         .expect("can configure acceptor");
 
         let listener = std::net::TcpListener::bind((Ipv6Addr::LOCALHOST, 0)).expect("can bind");
+        listener.set_nonblocking(true).expect("can set nonblocking");
         let listen_addr = listener.local_addr().expect("is bound to local addr");
         let tcp_listener = tokio::net::TcpListener::from_std(listener).expect("can use std socket");
         let proxy = async move {
