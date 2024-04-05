@@ -193,7 +193,7 @@ public class PreKeyBundle: NativeHandleOwner {
         let prekey_id = withNativeHandle { nativeHandle in
             failOnError {
                 try invokeFnReturningInteger {
-                    signal_pre_key_bundle_get_signed_pre_key_id($0, nativeHandle)
+                    signal_pre_key_bundle_get_pre_key_id($0, nativeHandle)
                 }
             }
         }
