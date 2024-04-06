@@ -950,6 +950,8 @@ SignalFfiError *signal_pre_key_bundle_get_pre_key_public(SignalPublicKey **out, 
 
 SignalFfiError *signal_pre_key_bundle_get_signed_pre_key_public(SignalPublicKey **out, const SignalPreKeyBundle *obj);
 
+SignalFfiError *signal_pre_key_bundle_get_kyber_pre_key_id(uint32_t *out, const SignalPreKeyBundle *obj);
+
 SignalFfiError *signal_pre_key_bundle_get_kyber_pre_key_public(SignalKyberPublicKey **out, const SignalPreKeyBundle *bundle);
 
 SignalFfiError *signal_pre_key_bundle_get_kyber_pre_key_signature(SignalOwnedBuffer *out, const SignalPreKeyBundle *bundle);

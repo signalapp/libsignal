@@ -193,16 +193,11 @@ public class PreKeyBundle: NativeHandleOwner {
         let prekey_id = withNativeHandle { nativeHandle in
             failOnError {
                 try invokeFnReturningInteger {
-                    signal_pre_key_bundle_get_signed_pre_key_id($0, nativeHandle)
+                    signal_pre_key_bundle_get_pre_key_id($0, nativeHandle)
                 }
             }
         }
-
-        if prekey_id == ~0 {
-            return nil
-        } else {
-            return prekey_id
-        }
+        return prekey_id == ~0 ? nil : prekey_id
     }
 
     public var preKeyPublic: PublicKey? {
@@ -244,5 +239,37 @@ public class PreKeyBundle: NativeHandleOwner {
                 }
             }
         }
+    }
+
+    public var kyberPreKeyId: UInt32? {
+        let prekey_id = withNativeHandle { nativeHandle in
+            failOnError {
+                try invokeFnReturningInteger {
+                    signal_pre_key_bundle_get_kyber_pre_key_id($0, nativeHandle)
+                }
+            }
+        }
+        return prekey_id == ~0 ? nil : prekey_id
+    }
+
+    public var kyberPreKeyPublic: KEMPublicKey? {
+        return withNativeHandle { nativeHandle in
+            failOnError {
+                try invokeFnReturningOptionalNativeHandle {
+                    signal_pre_key_bundle_get_kyber_pre_key_public($0, nativeHandle)
+                }
+            }
+        }
+    }
+
+    public var kyberPreKeySignature: [UInt8]? {
+        let result: [UInt8] = withNativeHandle { nativeHandle in
+            failOnError {
+                try invokeFnReturningArray {
+                    signal_pre_key_bundle_get_kyber_pre_key_signature($0, nativeHandle)
+                }
+            }
+        }
+        return result.isEmpty ? nil : result
     }
 }

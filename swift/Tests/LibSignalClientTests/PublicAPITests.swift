@@ -486,4 +486,69 @@ class PublicAPITests: TestCaseBase {
         let signature = secondary.signAlternateIdentity(primary.identityKey)
         XCTAssert(try! secondary.identityKey.verifyAlternateIdentity(primary.identityKey, signature: signature))
     }
+
+    func testPreKeyBundleAccessors() {
+        let registrationId: UInt32 = 123
+        let deviceId: UInt32 = 5
+        let signedPreKeyId: UInt32 = 20
+        let identityKeyPair = IdentityKeyPair.generate()
+        let signedPreKey = IdentityKeyPair.generate().publicKey
+        let signedPreKeySignature = identityKeyPair.privateKey.generateSignature(message: signedPreKey.serialize())
+
+        let preKeyId: UInt32 = 10
+        let preKey = IdentityKeyPair.generate().publicKey
+
+        let kyberPreKeyId: UInt32 = 50
+        let kyberPreKey = KEMKeyPair.generate().publicKey
+        let kyberPreKeySignature = identityKeyPair.privateKey.generateSignature(message: kyberPreKey.serialize())
+
+        func checkConsistentFields(_ bundle: PreKeyBundle) {
+            XCTAssertEqual(bundle.registrationId, registrationId)
+            XCTAssertEqual(bundle.deviceId, deviceId)
+            XCTAssertEqual(bundle.signedPreKeyId, signedPreKeyId)
+            XCTAssertEqual(bundle.signedPreKeyPublic, signedPreKey)
+            XCTAssertEqual(bundle.signedPreKeySignature, signedPreKeySignature)
+            XCTAssertEqual(bundle.identityKey, identityKeyPair.identityKey)
+        }
+
+        do {
+            let bundle = try! PreKeyBundle(registrationId: registrationId, deviceId: deviceId, signedPrekeyId: signedPreKeyId, signedPrekey: signedPreKey, signedPrekeySignature: signedPreKeySignature, identity: identityKeyPair.identityKey)
+            checkConsistentFields(bundle)
+            XCTAssertNil(bundle.preKeyId)
+            XCTAssertNil(bundle.preKeyPublic)
+            XCTAssertNil(bundle.kyberPreKeyId)
+            XCTAssertNil(bundle.kyberPreKeyPublic)
+            XCTAssertNil(bundle.kyberPreKeySignature)
+        }
+
+        do {
+            let bundle = try! PreKeyBundle(registrationId: registrationId, deviceId: deviceId, prekeyId: preKeyId, prekey: preKey, signedPrekeyId: signedPreKeyId, signedPrekey: signedPreKey, signedPrekeySignature: signedPreKeySignature, identity: identityKeyPair.identityKey)
+            checkConsistentFields(bundle)
+            XCTAssertEqual(bundle.preKeyId, preKeyId)
+            XCTAssertEqual(bundle.preKeyPublic, preKey)
+            XCTAssertNil(bundle.kyberPreKeyId)
+            XCTAssertNil(bundle.kyberPreKeyPublic)
+            XCTAssertNil(bundle.kyberPreKeySignature)
+        }
+
+        do {
+            let bundle = try! PreKeyBundle(registrationId: registrationId, deviceId: deviceId, signedPrekeyId: signedPreKeyId, signedPrekey: signedPreKey, signedPrekeySignature: signedPreKeySignature, identity: identityKeyPair.identityKey, kyberPrekeyId: kyberPreKeyId, kyberPrekey: kyberPreKey, kyberPrekeySignature: kyberPreKeySignature)
+            checkConsistentFields(bundle)
+            XCTAssertNil(bundle.preKeyId)
+            XCTAssertNil(bundle.preKeyPublic)
+            XCTAssertEqual(bundle.kyberPreKeyId, kyberPreKeyId)
+            XCTAssertEqual(bundle.kyberPreKeyPublic, kyberPreKey)
+            XCTAssertEqual(bundle.kyberPreKeySignature, kyberPreKeySignature)
+        }
+
+        do {
+            let bundle = try! PreKeyBundle(registrationId: registrationId, deviceId: deviceId, prekeyId: preKeyId, prekey: preKey, signedPrekeyId: signedPreKeyId, signedPrekey: signedPreKey, signedPrekeySignature: signedPreKeySignature, identity: identityKeyPair.identityKey, kyberPrekeyId: kyberPreKeyId, kyberPrekey: kyberPreKey, kyberPrekeySignature: kyberPreKeySignature)
+            checkConsistentFields(bundle)
+            XCTAssertEqual(bundle.preKeyId, preKeyId)
+            XCTAssertEqual(bundle.preKeyPublic, preKey)
+            XCTAssertEqual(bundle.kyberPreKeyId, kyberPreKeyId)
+            XCTAssertEqual(bundle.kyberPreKeyPublic, kyberPreKey)
+            XCTAssertEqual(bundle.kyberPreKeySignature, kyberPreKeySignature)
+        }
+    }
 }

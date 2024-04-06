@@ -649,7 +649,7 @@ bridge_get!(PreKeyBundle::signed_pre_key_id -> u32);
 bridge_get!(PreKeyBundle::pre_key_id -> Option<u32>);
 bridge_get!(PreKeyBundle::pre_key_public -> Option<PublicKey>);
 bridge_get!(PreKeyBundle::signed_pre_key_public -> PublicKey);
-bridge_get!(PreKeyBundle::kyber_pre_key_id -> Option<u32>, ffi = false);
+bridge_get!(PreKeyBundle::kyber_pre_key_id -> Option<u32>);
 #[bridge_fn]
 fn PreKeyBundle_GetKyberPreKeyPublic(bundle: &PreKeyBundle) -> Result<Option<KyberPublicKey>> {
     bundle
