@@ -41,8 +41,10 @@ public final class GroupSendDerivedKeyPair extends ByteArray {
   public static GroupSendDerivedKeyPair forExpiration(
       Instant expiration, ServerSecretParams params) {
     byte[] newContents =
-        Native.GroupSendDerivedKeyPair_ForExpiration(
-            expiration.getEpochSecond(), params.getInternalContentsForJNI());
+        params.guardedMap(
+            (publicParams) ->
+                Native.GroupSendDerivedKeyPair_ForExpiration(
+                    expiration.getEpochSecond(), publicParams));
     return filterExceptions(() -> new GroupSendDerivedKeyPair(newContents));
   }
 }

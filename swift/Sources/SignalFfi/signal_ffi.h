@@ -274,6 +274,10 @@ typedef struct SignalSenderKeyRecord SignalSenderKeyRecord;
 
 typedef struct SignalServerCertificate SignalServerCertificate;
 
+typedef struct SignalServerPublicParams SignalServerPublicParams;
+
+typedef struct SignalServerSecretParams SignalServerSecretParams;
+
 typedef struct SignalSessionRecord SignalSessionRecord;
 
 typedef struct SignalSgxClientState SignalSgxClientState;
@@ -1158,11 +1162,19 @@ SignalFfiError *signal_receipt_credential_request_context_check_valid_contents(S
 
 SignalFfiError *signal_receipt_credential_response_check_valid_contents(SignalBorrowedBuffer buffer);
 
-SignalFfiError *signal_server_public_params_check_valid_contents(SignalBorrowedBuffer buffer);
-
-SignalFfiError *signal_server_secret_params_check_valid_contents(SignalBorrowedBuffer buffer);
-
 SignalFfiError *signal_uuid_ciphertext_check_valid_contents(SignalBorrowedBuffer buffer);
+
+SignalFfiError *signal_server_public_params_destroy(SignalServerPublicParams *p);
+
+SignalFfiError *signal_server_public_params_deserialize(SignalServerPublicParams **out, SignalBorrowedBuffer buffer);
+
+SignalFfiError *signal_server_public_params_serialize(SignalOwnedBuffer *out, const SignalServerPublicParams *handle);
+
+SignalFfiError *signal_server_secret_params_destroy(SignalServerSecretParams *p);
+
+SignalFfiError *signal_server_secret_params_deserialize(SignalServerSecretParams **out, SignalBorrowedBuffer buffer);
+
+SignalFfiError *signal_server_secret_params_serialize(SignalOwnedBuffer *out, const SignalServerSecretParams *handle);
 
 SignalFfiError *signal_profile_key_get_commitment(unsigned char (*out)[SignalPROFILE_KEY_COMMITMENT_LEN], const unsigned char (*profile_key)[SignalPROFILE_KEY_LEN], const SignalServiceIdFixedWidthBinaryBytes *user_id);
 
@@ -1190,53 +1202,53 @@ SignalFfiError *signal_group_secret_params_encrypt_blob_with_padding_determinist
 
 SignalFfiError *signal_group_secret_params_decrypt_blob_with_padding(SignalOwnedBuffer *out, const unsigned char (*params)[SignalGROUP_SECRET_PARAMS_LEN], SignalBorrowedBuffer ciphertext);
 
-SignalFfiError *signal_server_secret_params_generate_deterministic(unsigned char (*out)[SignalSERVER_SECRET_PARAMS_LEN], const uint8_t (*randomness)[SignalRANDOMNESS_LEN]);
+SignalFfiError *signal_server_secret_params_generate_deterministic(SignalServerSecretParams **out, const uint8_t (*randomness)[SignalRANDOMNESS_LEN]);
 
-SignalFfiError *signal_server_secret_params_get_public_params(unsigned char (*out)[SignalSERVER_PUBLIC_PARAMS_LEN], const unsigned char (*params)[SignalSERVER_SECRET_PARAMS_LEN]);
+SignalFfiError *signal_server_secret_params_get_public_params(SignalServerPublicParams **out, const SignalServerSecretParams *params);
 
-SignalFfiError *signal_server_secret_params_sign_deterministic(uint8_t (*out)[SignalSIGNATURE_LEN], const unsigned char (*params)[SignalSERVER_SECRET_PARAMS_LEN], const uint8_t (*randomness)[SignalRANDOMNESS_LEN], SignalBorrowedBuffer message);
+SignalFfiError *signal_server_secret_params_sign_deterministic(uint8_t (*out)[SignalSIGNATURE_LEN], const SignalServerSecretParams *params, const uint8_t (*randomness)[SignalRANDOMNESS_LEN], SignalBorrowedBuffer message);
 
-SignalFfiError *signal_server_public_params_receive_auth_credential_with_pni_as_service_id(SignalOwnedBuffer *out, const unsigned char (*params)[SignalSERVER_PUBLIC_PARAMS_LEN], const SignalServiceIdFixedWidthBinaryBytes *aci, const SignalServiceIdFixedWidthBinaryBytes *pni, uint64_t redemption_time, SignalBorrowedBuffer auth_credential_with_pni_response_bytes);
+SignalFfiError *signal_server_public_params_receive_auth_credential_with_pni_as_service_id(SignalOwnedBuffer *out, const SignalServerPublicParams *params, const SignalServiceIdFixedWidthBinaryBytes *aci, const SignalServiceIdFixedWidthBinaryBytes *pni, uint64_t redemption_time, SignalBorrowedBuffer auth_credential_with_pni_response_bytes);
 
-SignalFfiError *signal_server_public_params_receive_auth_credential_with_pni_as_aci(SignalOwnedBuffer *out, const unsigned char (*params)[SignalSERVER_PUBLIC_PARAMS_LEN], const SignalServiceIdFixedWidthBinaryBytes *aci, const SignalServiceIdFixedWidthBinaryBytes *pni, uint64_t redemption_time, SignalBorrowedBuffer auth_credential_with_pni_response_bytes);
+SignalFfiError *signal_server_public_params_receive_auth_credential_with_pni_as_aci(SignalOwnedBuffer *out, const SignalServerPublicParams *params, const SignalServiceIdFixedWidthBinaryBytes *aci, const SignalServiceIdFixedWidthBinaryBytes *pni, uint64_t redemption_time, SignalBorrowedBuffer auth_credential_with_pni_response_bytes);
 
-SignalFfiError *signal_server_public_params_create_auth_credential_with_pni_presentation_deterministic(SignalOwnedBuffer *out, const unsigned char (*server_public_params)[SignalSERVER_PUBLIC_PARAMS_LEN], const uint8_t (*randomness)[SignalRANDOMNESS_LEN], const unsigned char (*group_secret_params)[SignalGROUP_SECRET_PARAMS_LEN], SignalBorrowedBuffer auth_credential_with_pni_bytes);
+SignalFfiError *signal_server_public_params_create_auth_credential_with_pni_presentation_deterministic(SignalOwnedBuffer *out, const SignalServerPublicParams *server_public_params, const uint8_t (*randomness)[SignalRANDOMNESS_LEN], const unsigned char (*group_secret_params)[SignalGROUP_SECRET_PARAMS_LEN], SignalBorrowedBuffer auth_credential_with_pni_bytes);
 
-SignalFfiError *signal_server_public_params_create_profile_key_credential_request_context_deterministic(unsigned char (*out)[SignalPROFILE_KEY_CREDENTIAL_REQUEST_CONTEXT_LEN], const unsigned char (*server_public_params)[SignalSERVER_PUBLIC_PARAMS_LEN], const uint8_t (*randomness)[SignalRANDOMNESS_LEN], const SignalServiceIdFixedWidthBinaryBytes *user_id, const unsigned char (*profile_key)[SignalPROFILE_KEY_LEN]);
+SignalFfiError *signal_server_public_params_create_profile_key_credential_request_context_deterministic(unsigned char (*out)[SignalPROFILE_KEY_CREDENTIAL_REQUEST_CONTEXT_LEN], const SignalServerPublicParams *server_public_params, const uint8_t (*randomness)[SignalRANDOMNESS_LEN], const SignalServiceIdFixedWidthBinaryBytes *user_id, const unsigned char (*profile_key)[SignalPROFILE_KEY_LEN]);
 
-SignalFfiError *signal_server_public_params_receive_expiring_profile_key_credential(unsigned char (*out)[SignalEXPIRING_PROFILE_KEY_CREDENTIAL_LEN], const unsigned char (*server_public_params)[SignalSERVER_PUBLIC_PARAMS_LEN], const unsigned char (*request_context)[SignalPROFILE_KEY_CREDENTIAL_REQUEST_CONTEXT_LEN], const unsigned char (*response)[SignalEXPIRING_PROFILE_KEY_CREDENTIAL_RESPONSE_LEN], uint64_t current_time_in_seconds);
+SignalFfiError *signal_server_public_params_receive_expiring_profile_key_credential(unsigned char (*out)[SignalEXPIRING_PROFILE_KEY_CREDENTIAL_LEN], const SignalServerPublicParams *server_public_params, const unsigned char (*request_context)[SignalPROFILE_KEY_CREDENTIAL_REQUEST_CONTEXT_LEN], const unsigned char (*response)[SignalEXPIRING_PROFILE_KEY_CREDENTIAL_RESPONSE_LEN], uint64_t current_time_in_seconds);
 
-SignalFfiError *signal_server_public_params_create_expiring_profile_key_credential_presentation_deterministic(SignalOwnedBuffer *out, const unsigned char (*server_public_params)[SignalSERVER_PUBLIC_PARAMS_LEN], const uint8_t (*randomness)[SignalRANDOMNESS_LEN], const unsigned char (*group_secret_params)[SignalGROUP_SECRET_PARAMS_LEN], const unsigned char (*profile_key_credential)[SignalEXPIRING_PROFILE_KEY_CREDENTIAL_LEN]);
+SignalFfiError *signal_server_public_params_create_expiring_profile_key_credential_presentation_deterministic(SignalOwnedBuffer *out, const SignalServerPublicParams *server_public_params, const uint8_t (*randomness)[SignalRANDOMNESS_LEN], const unsigned char (*group_secret_params)[SignalGROUP_SECRET_PARAMS_LEN], const unsigned char (*profile_key_credential)[SignalEXPIRING_PROFILE_KEY_CREDENTIAL_LEN]);
 
-SignalFfiError *signal_server_public_params_create_receipt_credential_request_context_deterministic(unsigned char (*out)[SignalRECEIPT_CREDENTIAL_REQUEST_CONTEXT_LEN], const unsigned char (*server_public_params)[SignalSERVER_PUBLIC_PARAMS_LEN], const uint8_t (*randomness)[SignalRANDOMNESS_LEN], const uint8_t (*receipt_serial)[SignalRECEIPT_SERIAL_LEN]);
+SignalFfiError *signal_server_public_params_create_receipt_credential_request_context_deterministic(unsigned char (*out)[SignalRECEIPT_CREDENTIAL_REQUEST_CONTEXT_LEN], const SignalServerPublicParams *server_public_params, const uint8_t (*randomness)[SignalRANDOMNESS_LEN], const uint8_t (*receipt_serial)[SignalRECEIPT_SERIAL_LEN]);
 
-SignalFfiError *signal_server_public_params_receive_receipt_credential(unsigned char (*out)[SignalRECEIPT_CREDENTIAL_LEN], const unsigned char (*server_public_params)[SignalSERVER_PUBLIC_PARAMS_LEN], const unsigned char (*request_context)[SignalRECEIPT_CREDENTIAL_REQUEST_CONTEXT_LEN], const unsigned char (*response)[SignalRECEIPT_CREDENTIAL_RESPONSE_LEN]);
+SignalFfiError *signal_server_public_params_receive_receipt_credential(unsigned char (*out)[SignalRECEIPT_CREDENTIAL_LEN], const SignalServerPublicParams *server_public_params, const unsigned char (*request_context)[SignalRECEIPT_CREDENTIAL_REQUEST_CONTEXT_LEN], const unsigned char (*response)[SignalRECEIPT_CREDENTIAL_RESPONSE_LEN]);
 
-SignalFfiError *signal_server_public_params_create_receipt_credential_presentation_deterministic(unsigned char (*out)[SignalRECEIPT_CREDENTIAL_PRESENTATION_LEN], const unsigned char (*server_public_params)[SignalSERVER_PUBLIC_PARAMS_LEN], const uint8_t (*randomness)[SignalRANDOMNESS_LEN], const unsigned char (*receipt_credential)[SignalRECEIPT_CREDENTIAL_LEN]);
+SignalFfiError *signal_server_public_params_create_receipt_credential_presentation_deterministic(unsigned char (*out)[SignalRECEIPT_CREDENTIAL_PRESENTATION_LEN], const SignalServerPublicParams *server_public_params, const uint8_t (*randomness)[SignalRANDOMNESS_LEN], const unsigned char (*receipt_credential)[SignalRECEIPT_CREDENTIAL_LEN]);
 
-SignalFfiError *signal_server_secret_params_issue_auth_credential_with_pni_as_service_id_deterministic(SignalOwnedBuffer *out, const unsigned char (*server_secret_params)[SignalSERVER_SECRET_PARAMS_LEN], const uint8_t (*randomness)[SignalRANDOMNESS_LEN], const SignalServiceIdFixedWidthBinaryBytes *aci, const SignalServiceIdFixedWidthBinaryBytes *pni, uint64_t redemption_time);
+SignalFfiError *signal_server_secret_params_issue_auth_credential_with_pni_as_service_id_deterministic(SignalOwnedBuffer *out, const SignalServerSecretParams *server_secret_params, const uint8_t (*randomness)[SignalRANDOMNESS_LEN], const SignalServiceIdFixedWidthBinaryBytes *aci, const SignalServiceIdFixedWidthBinaryBytes *pni, uint64_t redemption_time);
 
-SignalFfiError *signal_server_secret_params_issue_auth_credential_with_pni_as_aci_deterministic(SignalOwnedBuffer *out, const unsigned char (*server_secret_params)[SignalSERVER_SECRET_PARAMS_LEN], const uint8_t (*randomness)[SignalRANDOMNESS_LEN], const SignalServiceIdFixedWidthBinaryBytes *aci, const SignalServiceIdFixedWidthBinaryBytes *pni, uint64_t redemption_time);
+SignalFfiError *signal_server_secret_params_issue_auth_credential_with_pni_as_aci_deterministic(SignalOwnedBuffer *out, const SignalServerSecretParams *server_secret_params, const uint8_t (*randomness)[SignalRANDOMNESS_LEN], const SignalServiceIdFixedWidthBinaryBytes *aci, const SignalServiceIdFixedWidthBinaryBytes *pni, uint64_t redemption_time);
 
-SignalFfiError *signal_server_secret_params_issue_auth_credential_with_pni_zkc_deterministic(SignalOwnedBuffer *out, const unsigned char (*server_secret_params)[SignalSERVER_SECRET_PARAMS_LEN], const uint8_t (*randomness)[SignalRANDOMNESS_LEN], const SignalServiceIdFixedWidthBinaryBytes *aci, const SignalServiceIdFixedWidthBinaryBytes *pni, uint64_t redemption_time);
+SignalFfiError *signal_server_secret_params_issue_auth_credential_with_pni_zkc_deterministic(SignalOwnedBuffer *out, const SignalServerSecretParams *server_secret_params, const uint8_t (*randomness)[SignalRANDOMNESS_LEN], const SignalServiceIdFixedWidthBinaryBytes *aci, const SignalServiceIdFixedWidthBinaryBytes *pni, uint64_t redemption_time);
 
 SignalFfiError *signal_auth_credential_with_pni_check_valid_contents(SignalBorrowedBuffer bytes);
 
 SignalFfiError *signal_auth_credential_with_pni_response_check_valid_contents(SignalBorrowedBuffer bytes);
 
-SignalFfiError *signal_server_secret_params_verify_auth_credential_presentation(const unsigned char (*server_secret_params)[SignalSERVER_SECRET_PARAMS_LEN], const unsigned char (*group_public_params)[SignalGROUP_PUBLIC_PARAMS_LEN], SignalBorrowedBuffer presentation_bytes, uint64_t current_time_in_seconds);
+SignalFfiError *signal_server_secret_params_verify_auth_credential_presentation(const SignalServerSecretParams *server_secret_params, const unsigned char (*group_public_params)[SignalGROUP_PUBLIC_PARAMS_LEN], SignalBorrowedBuffer presentation_bytes, uint64_t current_time_in_seconds);
 
-SignalFfiError *signal_server_secret_params_issue_expiring_profile_key_credential_deterministic(unsigned char (*out)[SignalEXPIRING_PROFILE_KEY_CREDENTIAL_RESPONSE_LEN], const unsigned char (*server_secret_params)[SignalSERVER_SECRET_PARAMS_LEN], const uint8_t (*randomness)[SignalRANDOMNESS_LEN], const unsigned char (*request)[SignalPROFILE_KEY_CREDENTIAL_REQUEST_LEN], const SignalServiceIdFixedWidthBinaryBytes *user_id, const unsigned char (*commitment)[SignalPROFILE_KEY_COMMITMENT_LEN], uint64_t expiration_in_seconds);
+SignalFfiError *signal_server_secret_params_issue_expiring_profile_key_credential_deterministic(unsigned char (*out)[SignalEXPIRING_PROFILE_KEY_CREDENTIAL_RESPONSE_LEN], const SignalServerSecretParams *server_secret_params, const uint8_t (*randomness)[SignalRANDOMNESS_LEN], const unsigned char (*request)[SignalPROFILE_KEY_CREDENTIAL_REQUEST_LEN], const SignalServiceIdFixedWidthBinaryBytes *user_id, const unsigned char (*commitment)[SignalPROFILE_KEY_COMMITMENT_LEN], uint64_t expiration_in_seconds);
 
-SignalFfiError *signal_server_secret_params_verify_profile_key_credential_presentation(const unsigned char (*server_secret_params)[SignalSERVER_SECRET_PARAMS_LEN], const unsigned char (*group_public_params)[SignalGROUP_PUBLIC_PARAMS_LEN], SignalBorrowedBuffer presentation_bytes, uint64_t current_time_in_seconds);
+SignalFfiError *signal_server_secret_params_verify_profile_key_credential_presentation(const SignalServerSecretParams *server_secret_params, const unsigned char (*group_public_params)[SignalGROUP_PUBLIC_PARAMS_LEN], SignalBorrowedBuffer presentation_bytes, uint64_t current_time_in_seconds);
 
-SignalFfiError *signal_server_secret_params_issue_receipt_credential_deterministic(unsigned char (*out)[SignalRECEIPT_CREDENTIAL_RESPONSE_LEN], const unsigned char (*server_secret_params)[SignalSERVER_SECRET_PARAMS_LEN], const uint8_t (*randomness)[SignalRANDOMNESS_LEN], const unsigned char (*request)[SignalRECEIPT_CREDENTIAL_REQUEST_LEN], uint64_t receipt_expiration_time, uint64_t receipt_level);
+SignalFfiError *signal_server_secret_params_issue_receipt_credential_deterministic(unsigned char (*out)[SignalRECEIPT_CREDENTIAL_RESPONSE_LEN], const SignalServerSecretParams *server_secret_params, const uint8_t (*randomness)[SignalRANDOMNESS_LEN], const unsigned char (*request)[SignalRECEIPT_CREDENTIAL_REQUEST_LEN], uint64_t receipt_expiration_time, uint64_t receipt_level);
 
-SignalFfiError *signal_server_secret_params_verify_receipt_credential_presentation(const unsigned char (*server_secret_params)[SignalSERVER_SECRET_PARAMS_LEN], const unsigned char (*presentation)[SignalRECEIPT_CREDENTIAL_PRESENTATION_LEN]);
+SignalFfiError *signal_server_secret_params_verify_receipt_credential_presentation(const SignalServerSecretParams *server_secret_params, const unsigned char (*presentation)[SignalRECEIPT_CREDENTIAL_PRESENTATION_LEN]);
 
 SignalFfiError *signal_group_public_params_get_group_identifier(uint8_t (*out)[SignalGROUP_IDENTIFIER_LEN], const unsigned char (*group_public_params)[SignalGROUP_PUBLIC_PARAMS_LEN]);
 
-SignalFfiError *signal_server_public_params_verify_signature(const unsigned char (*server_public_params)[SignalSERVER_PUBLIC_PARAMS_LEN], SignalBorrowedBuffer message, const uint8_t (*notary_signature)[SignalSIGNATURE_LEN]);
+SignalFfiError *signal_server_public_params_verify_signature(const SignalServerPublicParams *server_public_params, SignalBorrowedBuffer message, const uint8_t (*notary_signature)[SignalSIGNATURE_LEN]);
 
 SignalFfiError *signal_auth_credential_presentation_check_valid_contents(SignalBorrowedBuffer presentation_bytes);
 
@@ -1350,7 +1362,7 @@ SignalFfiError *signal_backup_auth_credential_presentation_verify(SignalBorrowed
 
 SignalFfiError *signal_group_send_derived_key_pair_check_valid_contents(SignalBorrowedBuffer bytes);
 
-SignalFfiError *signal_group_send_derived_key_pair_for_expiration(SignalOwnedBuffer *out, uint64_t expiration, const unsigned char (*server_params)[SignalSERVER_SECRET_PARAMS_LEN]);
+SignalFfiError *signal_group_send_derived_key_pair_for_expiration(SignalOwnedBuffer *out, uint64_t expiration, const SignalServerSecretParams *server_params);
 
 SignalFfiError *signal_group_send_endorsements_response_check_valid_contents(SignalBorrowedBuffer bytes);
 
@@ -1358,9 +1370,9 @@ SignalFfiError *signal_group_send_endorsements_response_issue_deterministic(Sign
 
 SignalFfiError *signal_group_send_endorsements_response_get_expiration(uint64_t *out, SignalBorrowedBuffer response_bytes);
 
-SignalFfiError *signal_group_send_endorsements_response_receive_and_combine_with_service_ids(SignalBytestringArray *out, SignalBorrowedBuffer response_bytes, SignalBorrowedBuffer group_members, const SignalServiceIdFixedWidthBinaryBytes *local_user, uint64_t now, const unsigned char (*group_params)[SignalGROUP_SECRET_PARAMS_LEN], const unsigned char (*server_params)[SignalSERVER_PUBLIC_PARAMS_LEN]);
+SignalFfiError *signal_group_send_endorsements_response_receive_and_combine_with_service_ids(SignalBytestringArray *out, SignalBorrowedBuffer response_bytes, SignalBorrowedBuffer group_members, const SignalServiceIdFixedWidthBinaryBytes *local_user, uint64_t now, const unsigned char (*group_params)[SignalGROUP_SECRET_PARAMS_LEN], const SignalServerPublicParams *server_params);
 
-SignalFfiError *signal_group_send_endorsements_response_receive_and_combine_with_ciphertexts(SignalBytestringArray *out, SignalBorrowedBuffer response_bytes, SignalBorrowedBuffer concatenated_group_member_ciphertexts, SignalBorrowedBuffer local_user_ciphertext, uint64_t now, const unsigned char (*server_params)[SignalSERVER_PUBLIC_PARAMS_LEN]);
+SignalFfiError *signal_group_send_endorsements_response_receive_and_combine_with_ciphertexts(SignalBytestringArray *out, SignalBorrowedBuffer response_bytes, SignalBorrowedBuffer concatenated_group_member_ciphertexts, SignalBorrowedBuffer local_user_ciphertext, uint64_t now, const SignalServerPublicParams *server_params);
 
 SignalFfiError *signal_group_send_endorsement_check_valid_contents(SignalBorrowedBuffer bytes);
 

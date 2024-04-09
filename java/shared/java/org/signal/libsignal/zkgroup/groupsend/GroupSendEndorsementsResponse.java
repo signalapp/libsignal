@@ -123,19 +123,21 @@ public final class GroupSendEndorsementsResponse extends ByteArray {
       ServiceId.Aci localUser,
       Instant now,
       GroupSecretParams groupParams,
-      ServerPublicParams serverParams)
+      ServerPublicParams serverPublicParams)
       throws VerificationFailedException {
     byte[][] endorsementContents =
         filterExceptions(
             VerificationFailedException.class,
             () ->
-                Native.GroupSendEndorsementsResponse_ReceiveAndCombineWithServiceIds(
-                    getInternalContentsForJNI(),
-                    ServiceId.toConcatenatedFixedWidthBinary(groupMembers),
-                    localUser.toServiceIdFixedWidthBinary(),
-                    now.getEpochSecond(),
-                    groupParams.getInternalContentsForJNI(),
-                    serverParams.getInternalContentsForJNI()));
+                serverPublicParams.guardedMapChecked(
+                    (publicParams) ->
+                        Native.GroupSendEndorsementsResponse_ReceiveAndCombineWithServiceIds(
+                            getInternalContentsForJNI(),
+                            ServiceId.toConcatenatedFixedWidthBinary(groupMembers),
+                            localUser.toServiceIdFixedWidthBinary(),
+                            now.getEpochSecond(),
+                            groupParams.getInternalContentsForJNI(),
+                            publicParams)));
 
     List<GroupSendEndorsement> endorsements = new ArrayList<>(endorsementContents.length - 1);
     for (int i = 0; i < endorsementContents.length - 1; ++i) {
@@ -183,18 +185,20 @@ public final class GroupSendEndorsementsResponse extends ByteArray {
       List<UuidCiphertext> groupMembers,
       UuidCiphertext localUser,
       Instant now,
-      ServerPublicParams serverParams)
+      ServerPublicParams serverPublicParams)
       throws VerificationFailedException {
     byte[][] endorsementContents =
         filterExceptions(
             VerificationFailedException.class,
             () ->
-                Native.GroupSendEndorsementsResponse_ReceiveAndCombineWithCiphertexts(
-                    getInternalContentsForJNI(),
-                    UuidCiphertext.serializeAndConcatenate(groupMembers),
-                    localUser.getInternalContentsForJNI(),
-                    now.getEpochSecond(),
-                    serverParams.getInternalContentsForJNI()));
+                serverPublicParams.guardedMapChecked(
+                    (publicParams) ->
+                        Native.GroupSendEndorsementsResponse_ReceiveAndCombineWithCiphertexts(
+                            getInternalContentsForJNI(),
+                            UuidCiphertext.serializeAndConcatenate(groupMembers),
+                            localUser.getInternalContentsForJNI(),
+                            now.getEpochSecond(),
+                            publicParams)));
 
     List<GroupSendEndorsement> endorsements = new ArrayList<>(endorsementContents.length - 1);
     for (int i = 0; i < endorsementContents.length - 1; ++i) {

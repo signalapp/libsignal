@@ -58,13 +58,15 @@ public class ServerZkProfileOperations {
         filterExceptions(
             VerificationFailedException.class,
             () ->
-                Native.ServerSecretParams_IssueExpiringProfileKeyCredentialDeterministic(
-                    serverSecretParams.getInternalContentsForJNI(),
-                    random,
-                    profileKeyCredentialRequest.getInternalContentsForJNI(),
-                    userId.toServiceIdFixedWidthBinary(),
-                    profileKeyCommitment.getInternalContentsForJNI(),
-                    expiration.getEpochSecond()));
+                serverSecretParams.guardedMapChecked(
+                    (secretParams) ->
+                        Native.ServerSecretParams_IssueExpiringProfileKeyCredentialDeterministic(
+                            secretParams,
+                            random,
+                            profileKeyCredentialRequest.getInternalContentsForJNI(),
+                            userId.toServiceIdFixedWidthBinary(),
+                            profileKeyCommitment.getInternalContentsForJNI(),
+                            expiration.getEpochSecond())));
 
     try {
       return new ExpiringProfileKeyCredentialResponse(newContents);
@@ -89,10 +91,12 @@ public class ServerZkProfileOperations {
     filterExceptions(
         VerificationFailedException.class,
         () ->
-            Native.ServerSecretParams_VerifyProfileKeyCredentialPresentation(
-                serverSecretParams.getInternalContentsForJNI(),
-                groupPublicParams.getInternalContentsForJNI(),
-                profileKeyCredentialPresentation.getInternalContentsForJNI(),
-                now.getEpochSecond()));
+            serverSecretParams.guardedRunChecked(
+                (secretParams) ->
+                    Native.ServerSecretParams_VerifyProfileKeyCredentialPresentation(
+                        secretParams,
+                        groupPublicParams.getInternalContentsForJNI(),
+                        profileKeyCredentialPresentation.getInternalContentsForJNI(),
+                        now.getEpochSecond())));
   }
 }

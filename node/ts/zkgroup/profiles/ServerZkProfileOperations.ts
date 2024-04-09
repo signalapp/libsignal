@@ -49,7 +49,7 @@ export default class ServerZkProfileOperations {
   ): ExpiringProfileKeyCredentialResponse {
     return new ExpiringProfileKeyCredentialResponse(
       Native.ServerSecretParams_IssueExpiringProfileKeyCredentialDeterministic(
-        this.serverSecretParams.getContents(),
+        this.serverSecretParams,
         random,
         profileKeyCredentialRequest.getContents(),
         userId.getServiceIdFixedWidthBinary(),
@@ -65,7 +65,7 @@ export default class ServerZkProfileOperations {
     now: Date = new Date()
   ): void {
     Native.ServerSecretParams_VerifyProfileKeyCredentialPresentation(
-      this.serverSecretParams.getContents(),
+      this.serverSecretParams,
       groupPublicParams.getContents(),
       profileKeyCredentialPresentation.getContents(),
       Math.floor(now.getTime() / 1000)

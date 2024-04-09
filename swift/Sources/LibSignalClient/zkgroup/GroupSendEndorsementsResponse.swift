@@ -97,7 +97,7 @@ public class GroupSendEndorsementsResponse: ByteArray {
             try ServiceId.concatenatedFixedWidthBinary(groupMembers).withUnsafeBorrowedBuffer { groupMembers in
                 try localUser.withPointerToFixedWidthBinary { localUser in
                     try groupParams.withUnsafePointerToSerialized { groupParams in
-                        try serverParams.withUnsafePointerToSerialized { serverParams in
+                        try serverParams.withNativeHandle { serverParams in
                             try invokeFnReturningBytestringArray {
                                 signal_group_send_endorsements_response_receive_and_combine_with_service_ids($0, response, groupMembers, localUser, UInt64(now.timeIntervalSince1970), groupParams, serverParams)
                             }
@@ -135,7 +135,7 @@ public class GroupSendEndorsementsResponse: ByteArray {
         let rawEndorsements = try withUnsafeBorrowedBuffer { response in
             try groupMembers.flatMap { $0.serialize() }.withUnsafeBorrowedBuffer { groupMembers in
                 try localUser.withUnsafeBorrowedBuffer { localUser in
-                    try serverParams.withUnsafePointerToSerialized { serverParams in
+                    try serverParams.withNativeHandle { serverParams in
                         try invokeFnReturningBytestringArray {
                             signal_group_send_endorsements_response_receive_and_combine_with_ciphertexts($0, response, groupMembers, localUser, UInt64(now.timeIntervalSince1970), serverParams)
                         }

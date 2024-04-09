@@ -26,7 +26,7 @@ public class GroupSendDerivedKeyPair: ByteArray {
     /// server.
     public static func forExpiration(_ expiration: Date, params: ServerSecretParams) -> GroupSendDerivedKeyPair {
         return failOnError {
-            try params.withUnsafePointerToSerialized { params in
+            try params.withNativeHandle { params in
                 try invokeFnReturningVariableLengthSerialized {
                     signal_group_send_derived_key_pair_for_expiration($0, UInt64(expiration.timeIntervalSince1970), params)
                 }

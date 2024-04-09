@@ -36,7 +36,7 @@ export default class ClientZkReceiptOperations {
   ): ReceiptCredentialRequestContext {
     return new ReceiptCredentialRequestContext(
       Native.ServerPublicParams_CreateReceiptCredentialRequestContextDeterministic(
-        this.serverPublicParams.getContents(),
+        this.serverPublicParams,
         random,
         receiptSerial.getContents()
       )
@@ -49,7 +49,7 @@ export default class ClientZkReceiptOperations {
   ): ReceiptCredential {
     return new ReceiptCredential(
       Native.ServerPublicParams_ReceiveReceiptCredential(
-        this.serverPublicParams.getContents(),
+        this.serverPublicParams,
         receiptCredentialRequestContext.getContents(),
         receiptCredentialResponse.getContents()
       )
@@ -72,7 +72,7 @@ export default class ClientZkReceiptOperations {
   ): ReceiptCredentialPresentation {
     return new ReceiptCredentialPresentation(
       Native.ServerPublicParams_CreateReceiptCredentialPresentationDeterministic(
-        this.serverPublicParams.getContents(),
+        this.serverPublicParams,
         random,
         receiptCredential.getContents()
       )

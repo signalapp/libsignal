@@ -36,6 +36,7 @@ public class GroupSendEndorsements {
   }
 
   private final ServerSecretParams serverParams = ServerSecretParams.generate();
+  private final ServerPublicParams serverPublicParams = serverParams.getPublicParams();
   private final GroupSecretParams groupParams = GroupSecretParams.generate();
 
   private final Instant expiration =
@@ -65,7 +66,6 @@ public class GroupSendEndorsements {
   @Test
   public void benchmarkReceiveWithServiceIds() throws VerificationFailedException {
     final BenchmarkState state = benchmarkRule.getState();
-    final ServerPublicParams serverPublicParams = serverParams.getPublicParams();
 
     while (state.keepRunning()) {
       response.receive(Arrays.asList(members), members[0], groupParams, serverPublicParams);
@@ -75,7 +75,6 @@ public class GroupSendEndorsements {
   @Test
   public void benchmarkReceiveWithCiphertexts() throws VerificationFailedException {
     final BenchmarkState state = benchmarkRule.getState();
-    final ServerPublicParams serverPublicParams = serverParams.getPublicParams();
 
     while (state.keepRunning()) {
       response.receive(Arrays.asList(encryptedMembers), encryptedMembers[0], serverPublicParams);
@@ -85,7 +84,6 @@ public class GroupSendEndorsements {
   @Test
   public void benchmarkToToken() throws VerificationFailedException {
     final BenchmarkState state = benchmarkRule.getState();
-    final ServerPublicParams serverPublicParams = serverParams.getPublicParams();
     final List<GroupSendEndorsement> endorsements =
         response
             .receive(Arrays.asList(encryptedMembers), encryptedMembers[0], serverPublicParams)

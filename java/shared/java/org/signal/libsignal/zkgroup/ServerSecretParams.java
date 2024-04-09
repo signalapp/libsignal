@@ -9,11 +9,12 @@ import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
 import static org.signal.libsignal.zkgroup.internal.Constants.RANDOM_LENGTH;
 
 import java.security.SecureRandom;
+import java.util.Arrays;
 import org.signal.libsignal.internal.Native;
+import org.signal.libsignal.internal.NativeHandleGuard;
 import org.signal.libsignal.zkgroup.internal.ByteArray;
 
-public final class ServerSecretParams extends ByteArray {
-
+public final class ServerSecretParams extends NativeHandleGuard.SimpleOwner {
   public static ServerSecretParams generate() {
     return generate(new SecureRandom());
   }
@@ -22,28 +23,19 @@ public final class ServerSecretParams extends ByteArray {
     byte[] random = new byte[RANDOM_LENGTH];
     secureRandom.nextBytes(random);
 
-    byte[] newContents = Native.ServerSecretParams_GenerateDeterministic(random);
-
-    try {
-      return new ServerSecretParams(newContents);
-    } catch (InvalidInputException e) {
-      throw new AssertionError(e);
-    }
+    return new ServerSecretParams(Native.ServerSecretParams_GenerateDeterministic(random));
   }
 
   public ServerSecretParams(byte[] contents) throws InvalidInputException {
-    super(contents);
-    filterExceptions(
-        InvalidInputException.class, () -> Native.ServerSecretParams_CheckValidContents(contents));
+    super(filterExceptions(() -> Native.ServerSecretParams_Deserialize(contents)));
+  }
+
+  ServerSecretParams(long nativeHandle) {
+    super(nativeHandle);
   }
 
   public ServerPublicParams getPublicParams() {
-    byte[] newContents = Native.ServerSecretParams_GetPublicParams(contents);
-    try {
-      return new ServerPublicParams(newContents);
-    } catch (InvalidInputException e) {
-      throw new AssertionError(e);
-    }
+    return new ServerPublicParams(this.guardedMap(Native::ServerSecretParams_GetPublicParams));
   }
 
   public NotarySignature sign(byte[] message) {
@@ -54,12 +46,37 @@ public final class ServerSecretParams extends ByteArray {
     byte[] random = new byte[RANDOM_LENGTH];
     secureRandom.nextBytes(random);
 
-    byte[] newContents = Native.ServerSecretParams_SignDeterministic(contents, random, message);
+    byte[] newContents =
+        this.guardedMap(
+            (nativeHandle) ->
+                Native.ServerSecretParams_SignDeterministic(nativeHandle, random, message));
 
     try {
       return new NotarySignature(newContents);
     } catch (InvalidInputException e) {
       throw new AssertionError(e);
     }
+  }
+
+  @Override
+  protected void release(long handle) {
+    Native.ServerSecretParams_Destroy(handle);
+  }
+
+  public byte[] serialize() {
+    return guardedMap(Native::ServerSecretParams_Serialize);
+  }
+
+  @Override
+  public int hashCode() {
+    return getClass().hashCode() * 31 + Arrays.hashCode(serialize());
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (o == null || getClass() != o.getClass()) return false;
+
+    ServerPublicParams other = (ServerPublicParams) o;
+    return ByteArray.constantTimeEqual(this.serialize(), other.serialize());
   }
 }

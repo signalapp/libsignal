@@ -3,22 +3,29 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import ByteArray from './internal/ByteArray';
 import * as Native from '../../Native';
 import NotarySignature from './NotarySignature';
 
-export default class ServerPublicParams extends ByteArray {
-  private readonly __type?: never;
+export default class ServerPublicParams {
+  readonly _nativeHandle: Native.ServerPublicParams;
 
-  constructor(contents: Buffer) {
-    super(contents, Native.ServerPublicParams_CheckValidContents);
+  constructor(contents: Buffer | Native.ServerPublicParams) {
+    if (contents instanceof Buffer) {
+      this._nativeHandle = Native.ServerPublicParams_Deserialize(contents);
+    } else {
+      this._nativeHandle = contents;
+    }
   }
 
   verifySignature(message: Buffer, notarySignature: NotarySignature): void {
     Native.ServerPublicParams_VerifySignature(
-      this.contents,
+      this,
       message,
       notarySignature.getContents()
     );
+  }
+
+  serialize(): Buffer {
+    return Native.ServerPublicParams_Serialize(this);
   }
 }

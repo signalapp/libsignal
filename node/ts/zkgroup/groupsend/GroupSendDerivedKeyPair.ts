@@ -38,7 +38,7 @@ export default class GroupSendDerivedKeyPair extends ByteArray {
     return new GroupSendDerivedKeyPair(
       Native.GroupSendDerivedKeyPair_ForExpiration(
         Math.floor(expiration.getTime() / 1000),
-        params.contents
+        params
       )
     );
   }

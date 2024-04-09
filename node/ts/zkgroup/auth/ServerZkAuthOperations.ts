@@ -43,7 +43,7 @@ export default class ServerZkAuthOperations {
   ): AuthCredentialWithPniResponse {
     return new AuthCredentialWithPniResponse(
       Native.ServerSecretParams_IssueAuthCredentialWithPniAsServiceIdDeterministic(
-        this.serverSecretParams.getContents(),
+        this.serverSecretParams,
         random,
         aci.getServiceIdFixedWidthBinary(),
         pni.getServiceIdFixedWidthBinary(),
@@ -75,7 +75,7 @@ export default class ServerZkAuthOperations {
   ): AuthCredentialWithPniResponse {
     return new AuthCredentialWithPniResponse(
       Native.ServerSecretParams_IssueAuthCredentialWithPniAsAciDeterministic(
-        this.serverSecretParams.getContents(),
+        this.serverSecretParams,
         random,
         aci.getServiceIdFixedWidthBinary(),
         pni.getServiceIdFixedWidthBinary(),
@@ -107,7 +107,7 @@ export default class ServerZkAuthOperations {
   ): AuthCredentialWithPniResponse {
     return new AuthCredentialWithPniResponse(
       Native.ServerSecretParams_IssueAuthCredentialWithPniZkcDeterministic(
-        this.serverSecretParams.getContents(),
+        this.serverSecretParams,
         random,
         aci.getServiceIdFixedWidthBinary(),
         pni.getServiceIdFixedWidthBinary(),
@@ -122,7 +122,7 @@ export default class ServerZkAuthOperations {
     now: Date = new Date()
   ): void {
     Native.ServerSecretParams_VerifyAuthCredentialPresentation(
-      this.serverSecretParams.getContents(),
+      this.serverSecretParams,
       groupPublicParams.getContents(),
       authCredentialPresentation.getContents(),
       Math.floor(now.getTime() / 1000)

@@ -92,6 +92,20 @@ public final class ZkGroupTest extends SecureRandomTest {
   }
 
   @Test
+  public void serializeRoundTrip() throws InvalidInputException {
+    ServerSecretParams serverSecretParams =
+        ServerSecretParams.generate(createSecureRandom(TEST_ARRAY_32));
+    byte[] serializedSecretParams = serverSecretParams.serialize();
+    assertArrayEquals(
+        serializedSecretParams, new ServerSecretParams(serializedSecretParams).serialize());
+
+    ServerPublicParams serverPublicParams = serverSecretParams.getPublicParams();
+    byte[] serializedPublicParams = serverPublicParams.serialize();
+    assertArrayEquals(
+        serializedPublicParams, new ServerPublicParams(serializedPublicParams).serialize());
+  }
+
+  @Test
   public void testAuthIntegrationCurrentTime()
       throws VerificationFailedException, InvalidInputException {
 

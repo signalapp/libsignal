@@ -40,7 +40,7 @@ export default class ServerZkReceiptOperations {
   ): ReceiptCredentialResponse {
     return new ReceiptCredentialResponse(
       Native.ServerSecretParams_IssueReceiptCredentialDeterministic(
-        this.serverSecretParams.getContents(),
+        this.serverSecretParams,
         random,
         receiptCredentialRequest.getContents(),
         receiptExpirationTime,
@@ -53,7 +53,7 @@ export default class ServerZkReceiptOperations {
     receiptCredentialPresentation: ReceiptCredentialPresentation
   ): void {
     Native.ServerSecretParams_VerifyReceiptCredentialPresentation(
-      this.serverSecretParams.getContents(),
+      this.serverSecretParams,
       receiptCredentialPresentation.getContents()
     );
   }

@@ -17,7 +17,7 @@ public class ClientZkAuthOperations {
     ///
     /// - parameter redemptionTime: This is provided by the server as an integer, and should be passed through directly.
     public func receiveAuthCredentialWithPniAsServiceId(aci: Aci, pni: Pni, redemptionTime: UInt64, authCredentialResponse: AuthCredentialWithPniResponse) throws -> AuthCredentialWithPni {
-        return try self.serverPublicParams.withUnsafePointerToSerialized { serverPublicParams in
+        return try self.serverPublicParams.withNativeHandle { serverPublicParams in
             try aci.withPointerToFixedWidthBinary { aci in
                 try pni.withPointerToFixedWidthBinary { pni in
                     try authCredentialResponse.withUnsafeBorrowedBuffer { authCredentialResponse in
@@ -37,7 +37,7 @@ public class ClientZkAuthOperations {
     ///
     /// - parameter redemptionTime: This is provided by the server as an integer, and should be passed through directly.
     public func receiveAuthCredentialWithPniAsAci(aci: Aci, pni: Pni, redemptionTime: UInt64, authCredentialResponse: AuthCredentialWithPniResponse) throws -> AuthCredentialWithPni {
-        return try self.serverPublicParams.withUnsafePointerToSerialized { serverPublicParams in
+        return try self.serverPublicParams.withNativeHandle { serverPublicParams in
             try aci.withPointerToFixedWidthBinary { aci in
                 try pni.withPointerToFixedWidthBinary { pni in
                     try authCredentialResponse.withUnsafeBorrowedBuffer { authCredentialResponse in
@@ -55,7 +55,7 @@ public class ClientZkAuthOperations {
     }
 
     public func createAuthCredentialPresentation(randomness: Randomness, groupSecretParams: GroupSecretParams, authCredential: AuthCredentialWithPni) throws -> AuthCredentialPresentation {
-        return try self.serverPublicParams.withUnsafePointerToSerialized { contents in
+        return try self.serverPublicParams.withNativeHandle { contents in
             try randomness.withUnsafePointerToBytes { randomness in
                 try groupSecretParams.withUnsafePointerToSerialized { groupSecretParams in
                     try authCredential.withUnsafeBorrowedBuffer { authCredential in

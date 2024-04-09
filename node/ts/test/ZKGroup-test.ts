@@ -163,6 +163,23 @@ describe('ZKGroup', () => {
     assertDeserializeInvalidThrows(UuidCiphertext);
   });
 
+  it('serializeRoundTrip', () => {
+    const serverSecretParams =
+      ServerSecretParams.generateWithRandom(TEST_ARRAY_32);
+    const serializedSecretParams = serverSecretParams.serialize();
+    assertArrayEquals(
+      serializedSecretParams,
+      new ServerSecretParams(serializedSecretParams).serialize()
+    );
+
+    const serverPublicParams = serverSecretParams.getPublicParams();
+    const serializedPublicParams = serverPublicParams.serialize();
+    assertArrayEquals(
+      serializedPublicParams,
+      new ServerPublicParams(serializedPublicParams).serialize()
+    );
+  });
+
   it('testAuthWithPniIntegration', () => {
     const aci = Aci.fromUuid(TEST_UUID);
     const pni = Pni.fromUuid(TEST_UUID_1);

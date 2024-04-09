@@ -36,11 +36,13 @@ public class ClientZkProfileOperations {
     secureRandom.nextBytes(random);
 
     byte[] newContents =
-        Native.ServerPublicParams_CreateProfileKeyCredentialRequestContextDeterministic(
-            serverPublicParams.getInternalContentsForJNI(),
-            random,
-            userId.toServiceIdFixedWidthBinary(),
-            profileKey.getInternalContentsForJNI());
+        serverPublicParams.guardedMap(
+            (serverPublicParams) ->
+                Native.ServerPublicParams_CreateProfileKeyCredentialRequestContextDeterministic(
+                    serverPublicParams,
+                    random,
+                    userId.toServiceIdFixedWidthBinary(),
+                    profileKey.getInternalContentsForJNI()));
 
     try {
       return new ProfileKeyCredentialRequestContext(newContents);
@@ -70,11 +72,13 @@ public class ClientZkProfileOperations {
         filterExceptions(
             VerificationFailedException.class,
             () ->
-                Native.ServerPublicParams_ReceiveExpiringProfileKeyCredential(
-                    serverPublicParams.getInternalContentsForJNI(),
-                    profileKeyCredentialRequestContext.getInternalContentsForJNI(),
-                    profileKeyCredentialResponse.getInternalContentsForJNI(),
-                    now.getEpochSecond()));
+                serverPublicParams.guardedMapChecked(
+                    (publicParams) ->
+                        Native.ServerPublicParams_ReceiveExpiringProfileKeyCredential(
+                            publicParams,
+                            profileKeyCredentialRequestContext.getInternalContentsForJNI(),
+                            profileKeyCredentialResponse.getInternalContentsForJNI(),
+                            now.getEpochSecond())));
 
     try {
       return new ExpiringProfileKeyCredential(newContents);
@@ -97,11 +101,14 @@ public class ClientZkProfileOperations {
     secureRandom.nextBytes(random);
 
     byte[] newContents =
-        Native.ServerPublicParams_CreateExpiringProfileKeyCredentialPresentationDeterministic(
-            serverPublicParams.getInternalContentsForJNI(),
-            random,
-            groupSecretParams.getInternalContentsForJNI(),
-            profileKeyCredential.getInternalContentsForJNI());
+        serverPublicParams.guardedMap(
+            (publicParams) ->
+                Native
+                    .ServerPublicParams_CreateExpiringProfileKeyCredentialPresentationDeterministic(
+                        publicParams,
+                        random,
+                        groupSecretParams.getInternalContentsForJNI(),
+                        profileKeyCredential.getInternalContentsForJNI()));
 
     try {
       return new ProfileKeyCredentialPresentation(newContents);

@@ -35,7 +35,7 @@ export default class ClientZkAuthOperations {
   ): AuthCredentialWithPni {
     return new AuthCredentialWithPni(
       Native.ServerPublicParams_ReceiveAuthCredentialWithPniAsServiceId(
-        this.serverPublicParams.getContents(),
+        this.serverPublicParams,
         aci.getServiceIdFixedWidthBinary(),
         pni.getServiceIdFixedWidthBinary(),
         redemptionTime,
@@ -60,7 +60,7 @@ export default class ClientZkAuthOperations {
   ): AuthCredentialWithPni {
     return new AuthCredentialWithPni(
       Native.ServerPublicParams_ReceiveAuthCredentialWithPniAsAci(
-        this.serverPublicParams.getContents(),
+        this.serverPublicParams,
         aci.getServiceIdFixedWidthBinary(),
         pni.getServiceIdFixedWidthBinary(),
         redemptionTime,
@@ -89,7 +89,7 @@ export default class ClientZkAuthOperations {
   ): AuthCredentialPresentation {
     return new AuthCredentialPresentation(
       Native.ServerPublicParams_CreateAuthCredentialWithPniPresentationDeterministic(
-        this.serverPublicParams.getContents(),
+        this.serverPublicParams,
         random,
         groupSecretParams.getContents(),
         authCredential.getContents()

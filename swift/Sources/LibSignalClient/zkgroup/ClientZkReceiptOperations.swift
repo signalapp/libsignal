@@ -18,7 +18,7 @@ public class ClientZkReceiptOperations {
     }
 
     public func createReceiptCredentialRequestContext(randomness: Randomness, receiptSerial: ReceiptSerial) throws -> ReceiptCredentialRequestContext {
-        return try self.serverPublicParams.withUnsafePointerToSerialized { serverPublicParams in
+        return try self.serverPublicParams.withNativeHandle { serverPublicParams in
             try randomness.withUnsafePointerToBytes { randomness in
                 try receiptSerial.withUnsafePointerToSerialized { receiptSerial in
                     try invokeFnReturningSerialized {
@@ -30,7 +30,7 @@ public class ClientZkReceiptOperations {
     }
 
     public func receiveReceiptCredential(receiptCredentialRequestContext: ReceiptCredentialRequestContext, receiptCredentialResponse: ReceiptCredentialResponse) throws -> ReceiptCredential {
-        return try self.serverPublicParams.withUnsafePointerToSerialized { serverPublicParams in
+        return try self.serverPublicParams.withNativeHandle { serverPublicParams in
             try receiptCredentialRequestContext.withUnsafePointerToSerialized { requestContext in
                 try receiptCredentialResponse.withUnsafePointerToSerialized { response in
                     try invokeFnReturningSerialized {
@@ -46,7 +46,7 @@ public class ClientZkReceiptOperations {
     }
 
     public func createReceiptCredentialPresentation(randomness: Randomness, receiptCredential: ReceiptCredential) throws -> ReceiptCredentialPresentation {
-        return try self.serverPublicParams.withUnsafePointerToSerialized { serverPublicParams in
+        return try self.serverPublicParams.withNativeHandle { serverPublicParams in
             try randomness.withUnsafePointerToBytes { randomness in
                 try receiptCredential.withUnsafePointerToSerialized { receiptCredential in
                     try invokeFnReturningSerialized {

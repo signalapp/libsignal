@@ -66,13 +66,17 @@ public abstract class ByteArray {
     if (o == null || getClass() != o.getClass()) return false;
 
     ByteArray other = (ByteArray) o;
-    if (contents == other.getInternalContentsForJNI()) return true;
+    return constantTimeEqual(contents, other.getInternalContentsForJNI());
+  }
 
-    if (contents.length != other.getInternalContentsForJNI().length) return false;
+  public static boolean constantTimeEqual(byte[] lhs, byte[] rhs) {
+    if (lhs == rhs) return true;
+
+    if (lhs.length != rhs.length) return false;
 
     int result = 0;
-    for (int i = 0; i < contents.length; i++) {
-      result |= contents[i] ^ other.getInternalContentsForJNI()[i];
+    for (int i = 0; i < lhs.length; i++) {
+      result |= lhs[i] ^ rhs[i];
     }
     return result == 0;
   }

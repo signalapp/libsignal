@@ -38,12 +38,14 @@ public class ServerZkAuthOperations {
     secureRandom.nextBytes(random);
 
     byte[] newContents =
-        Native.ServerSecretParams_IssueAuthCredentialWithPniAsServiceIdDeterministic(
-            serverSecretParams.getInternalContentsForJNI(),
-            random,
-            aci.toServiceIdFixedWidthBinary(),
-            pni.toServiceIdFixedWidthBinary(),
-            redemptionTime.getEpochSecond());
+        serverSecretParams.guardedMap(
+            (serverSecretParams) ->
+                Native.ServerSecretParams_IssueAuthCredentialWithPniAsServiceIdDeterministic(
+                    serverSecretParams,
+                    random,
+                    aci.toServiceIdFixedWidthBinary(),
+                    pni.toServiceIdFixedWidthBinary(),
+                    redemptionTime.getEpochSecond()));
 
     try {
       return new AuthCredentialWithPniResponse(newContents);
@@ -64,12 +66,14 @@ public class ServerZkAuthOperations {
     secureRandom.nextBytes(random);
 
     byte[] newContents =
-        Native.ServerSecretParams_IssueAuthCredentialWithPniAsAciDeterministic(
-            serverSecretParams.getInternalContentsForJNI(),
-            random,
-            aci.toServiceIdFixedWidthBinary(),
-            pni.toServiceIdFixedWidthBinary(),
-            redemptionTime.getEpochSecond());
+        serverSecretParams.guardedMap(
+            (serverSecretParams) ->
+                Native.ServerSecretParams_IssueAuthCredentialWithPniAsAciDeterministic(
+                    serverSecretParams,
+                    random,
+                    aci.toServiceIdFixedWidthBinary(),
+                    pni.toServiceIdFixedWidthBinary(),
+                    redemptionTime.getEpochSecond()));
 
     try {
       return new AuthCredentialWithPniResponse(newContents);
@@ -90,12 +94,14 @@ public class ServerZkAuthOperations {
     secureRandom.nextBytes(random);
 
     byte[] newContents =
-        Native.ServerSecretParams_IssueAuthCredentialWithPniZkcDeterministic(
-            serverSecretParams.getInternalContentsForJNI(),
-            random,
-            aci.toServiceIdFixedWidthBinary(),
-            pni.toServiceIdFixedWidthBinary(),
-            redemptionTime.getEpochSecond());
+        serverSecretParams.guardedMap(
+            (serverSecretParams) ->
+                Native.ServerSecretParams_IssueAuthCredentialWithPniZkcDeterministic(
+                    serverSecretParams,
+                    random,
+                    aci.toServiceIdFixedWidthBinary(),
+                    pni.toServiceIdFixedWidthBinary(),
+                    redemptionTime.getEpochSecond()));
 
     try {
       return new AuthCredentialWithPniResponse(newContents);
@@ -118,10 +124,12 @@ public class ServerZkAuthOperations {
     filterExceptions(
         VerificationFailedException.class,
         () ->
-            Native.ServerSecretParams_VerifyAuthCredentialPresentation(
-                serverSecretParams.getInternalContentsForJNI(),
-                groupPublicParams.getInternalContentsForJNI(),
-                authCredentialPresentation.getInternalContentsForJNI(),
-                currentTime.getEpochSecond()));
+            serverSecretParams.guardedRunChecked(
+                (secretParams) ->
+                    Native.ServerSecretParams_VerifyAuthCredentialPresentation(
+                        secretParams,
+                        groupPublicParams.getInternalContentsForJNI(),
+                        authCredentialPresentation.getInternalContentsForJNI(),
+                        currentTime.getEpochSecond())));
   }
 }

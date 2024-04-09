@@ -82,6 +82,16 @@ class ZKGroupTests: TestCaseBase {
         0x33, 0x3C, 0x02, 0xFE, 0x4A, 0x33, 0x85, 0x80, 0x22, 0xFD, 0xD7, 0xA4, 0xAB, 0x36, 0x7B, 0x06,
     ]
 
+    func testSerializeRoundTrip() throws {
+        let serverSecretParams = try ServerSecretParams.generate(randomness: self.TEST_ARRAY_32)
+        let serializedSecretParams = serverSecretParams.serialize()
+        XCTAssertEqual(serializedSecretParams, try ServerSecretParams(contents: serializedSecretParams).serialize())
+
+        let serverPublicParams = try serverSecretParams.getPublicParams()
+        let serializedPublicParams = serverPublicParams.serialize()
+        XCTAssertEqual(serializedPublicParams, try ServerPublicParams(contents: serializedPublicParams).serialize())
+    }
+
     func testAuthWithPniIntegration() throws {
         let aci = Aci(fromUUID: TEST_ARRAY_16)
         let pni = Pni(fromUUID: TEST_ARRAY_16_1)

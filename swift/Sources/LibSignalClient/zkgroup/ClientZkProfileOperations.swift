@@ -18,7 +18,7 @@ public class ClientZkProfileOperations {
     }
 
     public func createProfileKeyCredentialRequestContext(randomness: Randomness, userId: Aci, profileKey: ProfileKey) throws -> ProfileKeyCredentialRequestContext {
-        return try self.serverPublicParams.withUnsafePointerToSerialized { serverPublicParams in
+        return try self.serverPublicParams.withNativeHandle { serverPublicParams in
             try randomness.withUnsafePointerToBytes { randomness in
                 try userId.withPointerToFixedWidthBinary { userId in
                     try profileKey.withUnsafePointerToSerialized { profileKey in
@@ -36,7 +36,7 @@ public class ClientZkProfileOperations {
         profileKeyCredentialResponse: ExpiringProfileKeyCredentialResponse,
         now: Date = Date()
     ) throws -> ExpiringProfileKeyCredential {
-        return try self.serverPublicParams.withUnsafePointerToSerialized { serverPublicParams in
+        return try self.serverPublicParams.withNativeHandle { serverPublicParams in
             try profileKeyCredentialRequestContext.withUnsafePointerToSerialized { requestContext in
                 try profileKeyCredentialResponse.withUnsafePointerToSerialized { response in
                     try invokeFnReturningSerialized {
@@ -52,7 +52,7 @@ public class ClientZkProfileOperations {
     }
 
     public func createProfileKeyCredentialPresentation(randomness: Randomness, groupSecretParams: GroupSecretParams, profileKeyCredential: ExpiringProfileKeyCredential) throws -> ProfileKeyCredentialPresentation {
-        return try self.serverPublicParams.withUnsafePointerToSerialized { serverPublicParams in
+        return try self.serverPublicParams.withNativeHandle { serverPublicParams in
             try randomness.withUnsafePointerToBytes { randomness in
                 try groupSecretParams.withUnsafePointerToSerialized { groupSecretParams in
                     try profileKeyCredential.withUnsafePointerToSerialized { profileKeyCredential in

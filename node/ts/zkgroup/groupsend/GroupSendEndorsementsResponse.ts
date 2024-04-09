@@ -113,7 +113,7 @@ export default class GroupSendEndorsementsResponse extends ByteArray {
         localUser.getServiceIdFixedWidthBinary(),
         Math.floor(now.getTime() / 1000),
         groupParams.contents,
-        serverParams.contents
+        serverParams
       );
     const endorsements = endorsementContents.map((next) => {
       // Normally we don't notice the cost of validating just-created zkgroup objects,
@@ -153,7 +153,7 @@ export default class GroupSendEndorsementsResponse extends ByteArray {
         UuidCiphertext.serializeAndConcatenate(groupMembers),
         localUser.contents,
         Math.floor(now.getTime() / 1000),
-        serverParams.contents
+        serverParams
       );
     const endorsements = endorsementContents.map((next) => {
       // Normally we don't notice the cost of validating just-created zkgroup objects,

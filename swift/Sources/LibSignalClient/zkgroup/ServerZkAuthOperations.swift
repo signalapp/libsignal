@@ -18,7 +18,7 @@ public class ServerZkAuthOperations {
     }
 
     public func issueAuthCredentialWithPniAsServiceId(randomness: Randomness, aci: Aci, pni: Pni, redemptionTime: UInt64) throws -> AuthCredentialWithPniResponse {
-        return try self.serverSecretParams.withUnsafePointerToSerialized { serverSecretParams in
+        return try self.serverSecretParams.withNativeHandle { serverSecretParams in
             try randomness.withUnsafePointerToBytes { randomness in
                 try aci.withPointerToFixedWidthBinary { aci in
                     try pni.withPointerToFixedWidthBinary { pni in
@@ -36,7 +36,7 @@ public class ServerZkAuthOperations {
     }
 
     public func issueAuthCredentialWithPniAsAci(randomness: Randomness, aci: Aci, pni: Pni, redemptionTime: UInt64) throws -> AuthCredentialWithPniResponse {
-        return try self.serverSecretParams.withUnsafePointerToSerialized { serverSecretParams in
+        return try self.serverSecretParams.withNativeHandle { serverSecretParams in
             try randomness.withUnsafePointerToBytes { randomness in
                 try aci.withPointerToFixedWidthBinary { aci in
                     try pni.withPointerToFixedWidthBinary { pni in
@@ -54,7 +54,7 @@ public class ServerZkAuthOperations {
     }
 
     public func issueAuthCredentialWithPniZkc(randomness: Randomness, aci: Aci, pni: Pni, redemptionTime: UInt64) throws -> AuthCredentialWithPniResponse {
-        return try self.serverSecretParams.withUnsafePointerToSerialized { serverSecretParams in
+        return try self.serverSecretParams.withNativeHandle { serverSecretParams in
             try randomness.withUnsafePointerToBytes { randomness in
                 try aci.withPointerToFixedWidthBinary { aci in
                     try pni.withPointerToFixedWidthBinary { pni in
@@ -68,7 +68,7 @@ public class ServerZkAuthOperations {
     }
 
     public func verifyAuthCredentialPresentation(groupPublicParams: GroupPublicParams, authCredentialPresentation: AuthCredentialPresentation, now: Date = Date()) throws {
-        try self.serverSecretParams.withUnsafePointerToSerialized { serverSecretParams in
+        try self.serverSecretParams.withNativeHandle { serverSecretParams in
             try groupPublicParams.withUnsafePointerToSerialized { groupPublicParams in
                 try authCredentialPresentation.withUnsafeBorrowedBuffer { authCredentialPresentation in
                     try checkError(signal_server_secret_params_verify_auth_credential_presentation(serverSecretParams, groupPublicParams, authCredentialPresentation, UInt64(now.timeIntervalSince1970)))

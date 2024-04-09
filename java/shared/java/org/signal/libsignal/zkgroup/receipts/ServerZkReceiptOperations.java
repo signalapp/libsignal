@@ -41,12 +41,14 @@ public class ServerZkReceiptOperations {
     secureRandom.nextBytes(random);
 
     byte[] newContents =
-        Native.ServerSecretParams_IssueReceiptCredentialDeterministic(
-            serverSecretParams.getInternalContentsForJNI(),
-            random,
-            receiptCredentialRequest.getInternalContentsForJNI(),
-            receiptExpirationTime,
-            receiptLevel);
+        serverSecretParams.guardedMap(
+            (serverSecretParams) ->
+                Native.ServerSecretParams_IssueReceiptCredentialDeterministic(
+                    serverSecretParams,
+                    random,
+                    receiptCredentialRequest.getInternalContentsForJNI(),
+                    receiptExpirationTime,
+                    receiptLevel));
 
     try {
       return new ReceiptCredentialResponse(newContents);
@@ -61,8 +63,9 @@ public class ServerZkReceiptOperations {
     filterExceptions(
         VerificationFailedException.class,
         () ->
-            Native.ServerSecretParams_VerifyReceiptCredentialPresentation(
-                serverSecretParams.getInternalContentsForJNI(),
-                receiptCredentialPresentation.getInternalContentsForJNI()));
+            serverSecretParams.guardedRunChecked(
+                (secretParams) ->
+                    Native.ServerSecretParams_VerifyReceiptCredentialPresentation(
+                        secretParams, receiptCredentialPresentation.getInternalContentsForJNI())));
   }
 }

@@ -33,10 +33,10 @@ public class ClientZkReceiptOperations {
     secureRandom.nextBytes(random);
 
     byte[] newContents =
-        Native.ServerPublicParams_CreateReceiptCredentialRequestContextDeterministic(
-            serverPublicParams.getInternalContentsForJNI(),
-            random,
-            receiptSerial.getInternalContentsForJNI());
+        serverPublicParams.guardedMap(
+            (serverPublicParams) ->
+                Native.ServerPublicParams_CreateReceiptCredentialRequestContextDeterministic(
+                    serverPublicParams, random, receiptSerial.getInternalContentsForJNI()));
 
     try {
       return new ReceiptCredentialRequestContext(newContents);
@@ -53,11 +53,12 @@ public class ClientZkReceiptOperations {
         filterExceptions(
             VerificationFailedException.class,
             () ->
-                Native.ServerPublicParams_ReceiveReceiptCredential(
-                    serverPublicParams.getInternalContentsForJNI(),
-                    receiptCredentialRequestContext.getInternalContentsForJNI(),
-                    receiptCredentialResponse.getInternalContentsForJNI()));
-
+                serverPublicParams.guardedMapChecked(
+                    (publicParams) ->
+                        Native.ServerPublicParams_ReceiveReceiptCredential(
+                            publicParams,
+                            receiptCredentialRequestContext.getInternalContentsForJNI(),
+                            receiptCredentialResponse.getInternalContentsForJNI())));
     try {
       return new ReceiptCredential(newContents);
     } catch (InvalidInputException e) {
@@ -77,11 +78,10 @@ public class ClientZkReceiptOperations {
     secureRandom.nextBytes(random);
 
     byte[] newContents =
-        Native.ServerPublicParams_CreateReceiptCredentialPresentationDeterministic(
-            serverPublicParams.getInternalContentsForJNI(),
-            random,
-            receiptCredential.getInternalContentsForJNI());
-
+        serverPublicParams.guardedMap(
+            (publicParams) ->
+                Native.ServerPublicParams_CreateReceiptCredentialPresentationDeterministic(
+                    publicParams, random, receiptCredential.getInternalContentsForJNI()));
     try {
       return new ReceiptCredentialPresentation(newContents);
     } catch (InvalidInputException e) {

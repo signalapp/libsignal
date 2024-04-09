@@ -33,13 +33,13 @@ fn validate_serialization<'a, T: Deserialize<'a> + PartialDefault>(
     zkgroup::deserialize::<T>(bytes).map(|_| ())
 }
 
-/// Exposes a ZKGroup serializable type to the bridges via [`FixedLengthBincodeSerializable`].
+/// Bridges a ZKGroup serializable type via [`FixedLengthBincodeSerializable`].
 ///
-/// `fixed_length_serializable!(FooBar)` generates
+/// `bridge_fixed_length_serializable!(FooBar)` generates
 /// - `impl FixedLengthBincodeSerializable for FooBar`, using `[u8; FOO_BAR_LEN]` as the associated
 ///   array type.
 /// - `#[bridge_fn] fn FooBar_CheckValidContents`, which checks that the type can be deserialized.
-macro_rules! fixed_length_serializable {
+macro_rules! bridge_fixed_length_serializable {
     ($typ:ident) => {
         paste! {
             // Declare a marker type for TypeScript, the same as bridge_handle.
@@ -61,24 +61,50 @@ macro_rules! fixed_length_serializable {
     };
 }
 
-fixed_length_serializable!(ExpiringProfileKeyCredential);
-fixed_length_serializable!(ExpiringProfileKeyCredentialResponse);
-fixed_length_serializable!(GroupMasterKey);
-fixed_length_serializable!(GroupPublicParams);
-fixed_length_serializable!(GroupSecretParams);
-fixed_length_serializable!(ProfileKey);
-fixed_length_serializable!(ProfileKeyCiphertext);
-fixed_length_serializable!(ProfileKeyCommitment);
-fixed_length_serializable!(ProfileKeyCredentialRequest);
-fixed_length_serializable!(ProfileKeyCredentialRequestContext);
-fixed_length_serializable!(ReceiptCredential);
-fixed_length_serializable!(ReceiptCredentialPresentation);
-fixed_length_serializable!(ReceiptCredentialRequest);
-fixed_length_serializable!(ReceiptCredentialRequestContext);
-fixed_length_serializable!(ReceiptCredentialResponse);
-fixed_length_serializable!(ServerPublicParams);
-fixed_length_serializable!(ServerSecretParams);
-fixed_length_serializable!(UuidCiphertext);
+/// Bridges a ZKGroup serializable type via [`FixedLengthBincodeSerializable`].
+///
+/// `bridge_serializable_as_handle!(FooBar)` generates
+/// - `#[bridge_fn] fn FooBar_Deserialize` for deserializing into a `FooBar`, and
+/// - `#[bridge_fn] fn FooBar_Serialize` for serializing a `FooBar` again.
+macro_rules! bridge_serializable_as_handle {
+    ($typ:ident) => {
+        bridge_handle!($typ, clone = false);
+        paste! {
+            #[bridge_fn]
+            fn [<$typ _Deserialize>](
+                buffer: &[u8]
+            ) -> Result<$typ, ZkGroupDeserializationFailure> {
+                zkgroup::deserialize(buffer)
+            }
+            #[bridge_fn]
+            fn [<$typ _Serialize>](
+                handle: & $typ,
+            ) -> Vec<u8> {
+                zkgroup::serialize(handle)
+            }
+        }
+    };
+}
+
+bridge_fixed_length_serializable!(ExpiringProfileKeyCredential);
+bridge_fixed_length_serializable!(ExpiringProfileKeyCredentialResponse);
+bridge_fixed_length_serializable!(GroupMasterKey);
+bridge_fixed_length_serializable!(GroupPublicParams);
+bridge_fixed_length_serializable!(GroupSecretParams);
+bridge_fixed_length_serializable!(ProfileKey);
+bridge_fixed_length_serializable!(ProfileKeyCiphertext);
+bridge_fixed_length_serializable!(ProfileKeyCommitment);
+bridge_fixed_length_serializable!(ProfileKeyCredentialRequest);
+bridge_fixed_length_serializable!(ProfileKeyCredentialRequestContext);
+bridge_fixed_length_serializable!(ReceiptCredential);
+bridge_fixed_length_serializable!(ReceiptCredentialPresentation);
+bridge_fixed_length_serializable!(ReceiptCredentialRequest);
+bridge_fixed_length_serializable!(ReceiptCredentialRequestContext);
+bridge_fixed_length_serializable!(ReceiptCredentialResponse);
+bridge_fixed_length_serializable!(UuidCiphertext);
+
+bridge_serializable_as_handle!(ServerPublicParams);
+bridge_serializable_as_handle!(ServerSecretParams);
 
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct Timestamp(u64);
@@ -210,21 +236,19 @@ fn GroupSecretParams_DecryptBlobWithPadding(
 #[bridge_fn]
 fn ServerSecretParams_GenerateDeterministic(
     randomness: &[u8; RANDOMNESS_LEN],
-) -> Serialized<ServerSecretParams> {
-    ServerSecretParams::generate(*randomness).into()
+) -> ServerSecretParams {
+    ServerSecretParams::generate(*randomness)
 }
 
 // FIXME: Could be bridge_get!
 #[bridge_fn]
-fn ServerSecretParams_GetPublicParams(
-    params: Serialized<ServerSecretParams>,
-) -> Serialized<ServerPublicParams> {
-    params.get_public_params().into()
+fn ServerSecretParams_GetPublicParams(params: &ServerSecretParams) -> ServerPublicParams {
+    params.get_public_params()
 }
 
 #[bridge_fn]
 fn ServerSecretParams_SignDeterministic(
-    params: Serialized<ServerSecretParams>,
+    params: &ServerSecretParams,
     randomness: &[u8; RANDOMNESS_LEN],
     message: &[u8],
 ) -> [u8; SIGNATURE_LEN] {
@@ -233,7 +257,7 @@ fn ServerSecretParams_SignDeterministic(
 
 #[bridge_fn]
 fn ServerPublicParams_ReceiveAuthCredentialWithPniAsServiceId(
-    params: Serialized<ServerPublicParams>,
+    params: &ServerPublicParams,
     aci: Aci,
     pni: Pni,
     redemption_time: Timestamp,
@@ -253,7 +277,7 @@ fn ServerPublicParams_ReceiveAuthCredentialWithPniAsServiceId(
 
 #[bridge_fn]
 fn ServerPublicParams_ReceiveAuthCredentialWithPniAsAci(
-    params: Serialized<ServerPublicParams>,
+    params: &ServerPublicParams,
     aci: Aci,
     pni: Pni,
     redemption_time: Timestamp,
@@ -273,7 +297,7 @@ fn ServerPublicParams_ReceiveAuthCredentialWithPniAsAci(
 
 #[bridge_fn]
 fn ServerPublicParams_CreateAuthCredentialWithPniPresentationDeterministic(
-    server_public_params: Serialized<ServerPublicParams>,
+    server_public_params: &ServerPublicParams,
     randomness: &[u8; RANDOMNESS_LEN],
     group_secret_params: Serialized<GroupSecretParams>,
     auth_credential_with_pni_bytes: &[u8],
@@ -291,7 +315,7 @@ fn ServerPublicParams_CreateAuthCredentialWithPniPresentationDeterministic(
 
 #[bridge_fn]
 fn ServerPublicParams_CreateProfileKeyCredentialRequestContextDeterministic(
-    server_public_params: Serialized<ServerPublicParams>,
+    server_public_params: &ServerPublicParams,
     randomness: &[u8; RANDOMNESS_LEN],
     user_id: Aci,
     profile_key: Serialized<ProfileKey>,
@@ -307,7 +331,7 @@ fn ServerPublicParams_CreateProfileKeyCredentialRequestContextDeterministic(
 
 #[bridge_fn]
 fn ServerPublicParams_ReceiveExpiringProfileKeyCredential(
-    server_public_params: Serialized<ServerPublicParams>,
+    server_public_params: &ServerPublicParams,
     request_context: Serialized<ProfileKeyCredentialRequestContext>,
     response: Serialized<ExpiringProfileKeyCredentialResponse>,
     current_time_in_seconds: Timestamp,
@@ -323,7 +347,7 @@ fn ServerPublicParams_ReceiveExpiringProfileKeyCredential(
 
 #[bridge_fn]
 fn ServerPublicParams_CreateExpiringProfileKeyCredentialPresentationDeterministic(
-    server_public_params: Serialized<ServerPublicParams>,
+    server_public_params: &ServerPublicParams,
     randomness: &[u8; RANDOMNESS_LEN],
     group_secret_params: Serialized<GroupSecretParams>,
     profile_key_credential: Serialized<ExpiringProfileKeyCredential>,
@@ -339,7 +363,7 @@ fn ServerPublicParams_CreateExpiringProfileKeyCredentialPresentationDeterministi
 
 #[bridge_fn]
 fn ServerPublicParams_CreateReceiptCredentialRequestContextDeterministic(
-    server_public_params: Serialized<ServerPublicParams>,
+    server_public_params: &ServerPublicParams,
     randomness: &[u8; RANDOMNESS_LEN],
     receipt_serial: &[u8; RECEIPT_SERIAL_LEN],
 ) -> Serialized<ReceiptCredentialRequestContext> {
@@ -350,7 +374,7 @@ fn ServerPublicParams_CreateReceiptCredentialRequestContextDeterministic(
 
 #[bridge_fn]
 fn ServerPublicParams_ReceiveReceiptCredential(
-    server_public_params: Serialized<ServerPublicParams>,
+    server_public_params: &ServerPublicParams,
     request_context: Serialized<ReceiptCredentialRequestContext>,
     response: Serialized<ReceiptCredentialResponse>,
 ) -> Result<Serialized<ReceiptCredential>, ZkGroupVerificationFailure> {
@@ -361,7 +385,7 @@ fn ServerPublicParams_ReceiveReceiptCredential(
 
 #[bridge_fn]
 fn ServerPublicParams_CreateReceiptCredentialPresentationDeterministic(
-    server_public_params: Serialized<ServerPublicParams>,
+    server_public_params: &ServerPublicParams,
     randomness: &[u8; RANDOMNESS_LEN],
     receipt_credential: Serialized<ReceiptCredential>,
 ) -> Serialized<ReceiptCredentialPresentation> {
@@ -372,7 +396,7 @@ fn ServerPublicParams_CreateReceiptCredentialPresentationDeterministic(
 
 #[bridge_fn]
 fn ServerSecretParams_IssueAuthCredentialWithPniAsServiceIdDeterministic(
-    server_secret_params: Serialized<ServerSecretParams>,
+    server_secret_params: &ServerSecretParams,
     randomness: &[u8; RANDOMNESS_LEN],
     aci: Aci,
     pni: Pni,
@@ -390,7 +414,7 @@ fn ServerSecretParams_IssueAuthCredentialWithPniAsServiceIdDeterministic(
 
 #[bridge_fn]
 fn ServerSecretParams_IssueAuthCredentialWithPniAsAciDeterministic(
-    server_secret_params: Serialized<ServerSecretParams>,
+    server_secret_params: &ServerSecretParams,
     randomness: &[u8; RANDOMNESS_LEN],
     aci: Aci,
     pni: Pni,
@@ -405,7 +429,7 @@ fn ServerSecretParams_IssueAuthCredentialWithPniAsAciDeterministic(
 }
 #[bridge_fn]
 fn ServerSecretParams_IssueAuthCredentialWithPniZkcDeterministic(
-    server_secret_params: Serialized<ServerSecretParams>,
+    server_secret_params: &ServerSecretParams,
     randomness: &[u8; RANDOMNESS_LEN],
     aci: Aci,
     pni: Pni,
@@ -415,7 +439,7 @@ fn ServerSecretParams_IssueAuthCredentialWithPniZkcDeterministic(
         aci,
         pni,
         redemption_time.as_seconds(),
-        &server_secret_params,
+        server_secret_params,
         *randomness,
     ))
 }
@@ -436,7 +460,7 @@ fn AuthCredentialWithPniResponse_CheckValidContents(
 
 #[bridge_fn]
 fn ServerSecretParams_VerifyAuthCredentialPresentation(
-    server_secret_params: Serialized<ServerSecretParams>,
+    server_secret_params: &ServerSecretParams,
     group_public_params: Serialized<GroupPublicParams>,
     presentation_bytes: &[u8],
     current_time_in_seconds: Timestamp,
@@ -452,7 +476,7 @@ fn ServerSecretParams_VerifyAuthCredentialPresentation(
 
 #[bridge_fn]
 fn ServerSecretParams_IssueExpiringProfileKeyCredentialDeterministic(
-    server_secret_params: Serialized<ServerSecretParams>,
+    server_secret_params: &ServerSecretParams,
     randomness: &[u8; RANDOMNESS_LEN],
     request: Serialized<ProfileKeyCredentialRequest>,
     user_id: Aci,
@@ -472,7 +496,7 @@ fn ServerSecretParams_IssueExpiringProfileKeyCredentialDeterministic(
 
 #[bridge_fn]
 fn ServerSecretParams_VerifyProfileKeyCredentialPresentation(
-    server_secret_params: Serialized<ServerSecretParams>,
+    server_secret_params: &ServerSecretParams,
     group_public_params: Serialized<GroupPublicParams>,
     presentation_bytes: &[u8],
     current_time_in_seconds: Timestamp,
@@ -488,7 +512,7 @@ fn ServerSecretParams_VerifyProfileKeyCredentialPresentation(
 
 #[bridge_fn]
 fn ServerSecretParams_IssueReceiptCredentialDeterministic(
-    server_secret_params: Serialized<ServerSecretParams>,
+    server_secret_params: &ServerSecretParams,
     randomness: &[u8; RANDOMNESS_LEN],
     request: Serialized<ReceiptCredentialRequest>,
     receipt_expiration_time: Timestamp,
@@ -506,7 +530,7 @@ fn ServerSecretParams_IssueReceiptCredentialDeterministic(
 
 #[bridge_fn]
 fn ServerSecretParams_VerifyReceiptCredentialPresentation(
-    server_secret_params: Serialized<ServerSecretParams>,
+    server_secret_params: &ServerSecretParams,
     presentation: Serialized<ReceiptCredentialPresentation>,
 ) -> Result<(), ZkGroupVerificationFailure> {
     server_secret_params.verify_receipt_credential_presentation(&presentation)
@@ -522,7 +546,7 @@ fn GroupPublicParams_GetGroupIdentifier(
 
 #[bridge_fn]
 fn ServerPublicParams_VerifySignature(
-    server_public_params: Serialized<ServerPublicParams>,
+    server_public_params: &ServerPublicParams,
     message: &[u8],
     notary_signature: &[u8; SIGNATURE_LEN],
 ) -> Result<(), ZkGroupVerificationFailure> {
@@ -1123,11 +1147,11 @@ fn GroupSendDerivedKeyPair_CheckValidContents(
 #[bridge_fn]
 fn GroupSendDerivedKeyPair_ForExpiration(
     expiration: Timestamp,
-    server_params: Serialized<ServerSecretParams>,
+    server_params: &ServerSecretParams,
 ) -> Vec<u8> {
     zkgroup::serialize(&GroupSendDerivedKeyPair::for_expiration(
         expiration.as_seconds(),
-        &server_params,
+        server_params,
     ))
 }
 
@@ -1176,7 +1200,7 @@ fn GroupSendEndorsementsResponse_ReceiveAndCombineWithServiceIds(
     local_user: ServiceId,
     now: Timestamp,
     group_params: Serialized<GroupSecretParams>,
-    server_params: Serialized<ServerPublicParams>,
+    server_params: &ServerPublicParams,
 ) -> Result<Box<[Vec<u8>]>, ZkGroupVerificationFailure> {
     let response = zkgroup::deserialize::<GroupSendEndorsementsResponse>(response_bytes)
         .expect("should have been parsed previously");
@@ -1190,7 +1214,7 @@ fn GroupSendEndorsementsResponse_ReceiveAndCombineWithServiceIds(
         group_members,
         now.as_seconds(),
         &group_params,
-        &server_params,
+        server_params,
     )?;
     let combined_endorsement = GroupSendEndorsement::combine(
         endorsements[..local_user_index]
@@ -1212,7 +1236,7 @@ fn GroupSendEndorsementsResponse_ReceiveAndCombineWithCiphertexts(
     concatenated_group_member_ciphertexts: &[u8],
     local_user_ciphertext: &[u8],
     now: Timestamp,
-    server_params: Serialized<ServerPublicParams>,
+    server_params: &ServerPublicParams,
 ) -> Result<Box<[Vec<u8>]>, ZkGroupVerificationFailure> {
     let response = zkgroup::deserialize::<GroupSendEndorsementsResponse>(response_bytes)
         .expect("should have been parsed previously");
@@ -1231,7 +1255,7 @@ fn GroupSendEndorsementsResponse_ReceiveAndCombineWithCiphertexts(
         });
 
     let endorsements =
-        response.receive_with_ciphertexts(user_id_ciphertexts, now.as_seconds(), &server_params)?;
+        response.receive_with_ciphertexts(user_id_ciphertexts, now.as_seconds(), server_params)?;
     let combined_endorsement = GroupSendEndorsement::combine(
         endorsements[..local_user_index]
             .iter()
