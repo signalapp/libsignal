@@ -60,7 +60,7 @@ pub enum HttpRequestDecorator {
     /// Prefixes the path portion of the request with the given string.
     PathPrefix(&'static str),
     /// Applies generic decoration logic.
-    Generic(fn(hyper::http::request::Builder) -> hyper::http::request::Builder),
+    Generic(fn(http::request::Builder) -> http::request::Builder),
 }
 
 #[derive(Clone, Debug, Default)]
@@ -182,8 +182,8 @@ impl ConnectionInfo {
 impl HttpRequestDecoratorSeq {
     pub fn decorate_request(
         &self,
-        request_builder: hyper::http::request::Builder,
-    ) -> hyper::http::request::Builder {
+        request_builder: http::request::Builder,
+    ) -> http::request::Builder {
         self.0
             .iter()
             .fold(request_builder, |rb, dec| dec.decorate_request(rb))
@@ -191,10 +191,7 @@ impl HttpRequestDecoratorSeq {
 }
 
 impl HttpRequestDecorator {
-    fn decorate_request(
-        &self,
-        request_builder: hyper::http::request::Builder,
-    ) -> hyper::http::request::Builder {
+    fn decorate_request(&self, request_builder: http::request::Builder) -> http::request::Builder {
         match self {
             Self::Generic(decorator) => decorator(request_builder),
             Self::HeaderAuth(auth) => request_builder.header(::http::header::AUTHORIZATION, auth),
@@ -294,7 +291,7 @@ pub fn make_ws_config(
 
 #[cfg(test)]
 pub(crate) mod test {
-    use hyper::Request;
+    use http::Request;
 
     use crate::infra::HttpRequestDecorator;
     use crate::utils::basic_authorization;
