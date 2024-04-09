@@ -32,6 +32,7 @@ pub fn describe_panic(any: &Box<dyn std::any::Any + Send>) -> String {
 ///
 /// Only here so that we're not directly calling [`std::mem::transmute`], which is even more unsafe.
 /// All call sites need to explain why extending the lifetime is safe.
+#[cfg(any(feature = "ffi", feature = "node"))]
 pub(crate) unsafe fn extend_lifetime<'a, 'b: 'a, T: ?Sized>(some_ref: &'a T) -> &'b T {
     std::mem::transmute::<&'a T, &'b T>(some_ref)
 }
@@ -175,7 +176,7 @@ macro_rules! bridge_deserialize {
 /// # #[cfg(ignore_even_when_running_all_tests)]
 /// #[bridge_fn]
 /// fn Foo_GetBar(obj: &Foo) -> Result<&str> {
-///   Foo::bar(obj)   
+///   Foo::bar(obj)
 /// }
 /// ```
 ///

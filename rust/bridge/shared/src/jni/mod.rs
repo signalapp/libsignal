@@ -753,12 +753,29 @@ fn check_exceptions_and_convert_result<'output, R: TryFrom<JValueOwned<'output>>
 static PRELOADED_CLASSES: OnceCell<HashMap<&'static str, GlobalRef>> = OnceCell::new();
 
 const PRELOADED_CLASS_NAMES: &[&str] = &[
-    jni_class_name!(org.signal.libsignal.net.CdsiLookupResponse::Entry),
+    jni_class_name!(org.signal.libsignal.attest.AttestationFailedException),
+    jni_class_name!(org.signal.libsignal.net.CdsiInvalidTokenException),
     jni_class_name!(org.signal.libsignal.net.CdsiLookupResponse),
+    jni_class_name!(org.signal.libsignal.net.CdsiLookupResponse::Entry),
+    jni_class_name!(org.signal.libsignal.net.CdsiProtocolException),
     jni_class_name!(org.signal.libsignal.net.ChatService),
-    jni_class_name!(org.signal.libsignal.net.ChatService::Response),
     jni_class_name!(org.signal.libsignal.net.ChatService::DebugInfo),
+    jni_class_name!(org.signal.libsignal.net.ChatService::Response),
     jni_class_name!(org.signal.libsignal.net.ChatService::ResponseAndDebugInfo),
+    jni_class_name!(org.signal.libsignal.net.ChatServiceException),
+    jni_class_name!(org.signal.libsignal.net.ChatServiceInactiveException),
+    jni_class_name!(org.signal.libsignal.net.NetworkException),
+    jni_class_name!(org.signal.libsignal.net.RetryLaterException),
+    jni_class_name!(
+        org.signal
+            .libsignal
+            .sgxsession
+            .SgxCommunicationFailureException
+    ),
+    jni_class_name!(org.signal.libsignal.svr.DataMissingException),
+    jni_class_name!(org.signal.libsignal.svr.RestoreFailedException),
+    jni_class_name!(org.signal.libsignal.svr.SvrException),
+    #[cfg(feature = "testing-fns")]
     jni_class_name!(org.signal.libsignal.internal.TestingException),
 ];
 
