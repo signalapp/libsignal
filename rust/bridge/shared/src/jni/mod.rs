@@ -10,7 +10,7 @@ use std::marker::PhantomData;
 use attest::enclave::Error as EnclaveError;
 use attest::hsm_enclave::Error as HsmEnclaveError;
 use device_transfer::Error as DeviceTransferError;
-use jni::objects::{GlobalRef, JThrowable, JValue, JValueOwned};
+use jni::objects::{AutoLocal, GlobalRef, JThrowable, JValue, JValueOwned};
 use jni::JavaVM;
 use libsignal_net::svr3::Error as Svr3Error;
 use libsignal_protocol::*;
@@ -788,9 +788,9 @@ pub fn preload_classes(env: &mut JNIEnv<'_>) -> Result<(), BridgeLayerError> {
         PRELOADED_CLASS_NAMES
             .iter()
             .map(|name| {
-                let find_class_result = env.find_class(name);
-                let throwable = env.exception_occurred()?;
-                let class = if **throwable == *JObject::null() {
+                let find_class_result = env.find_class(name).map(|c| AutoLocal::new(c, env));
+                let throwable = AutoLocal::new(env.exception_occurred()?, env);
+                let class = if throwable.is_null() {
                     find_class_result?
                 } else {
                     env.exception_clear()?;
@@ -805,9 +805,10 @@ pub fn preload_classes(env: &mut JNIEnv<'_>) -> Result<(), BridgeLayerError> {
                     // Ignore failures caused by nonexistent classes. This
                     // allows the same native library to be used with JAR files
                     // that contain different subsets of classes.
-                    JObject::null().into()
+                    AutoLocal::new(JObject::null().into(), env)
                 };
-                Ok((*name, env.new_global_ref(class)?))
+                let global_ref = env.new_global_ref(class)?;
+                Ok((*name, global_ref))
             })
             .collect::<Result<HashMap<_, _>, BridgeLayerError>>()
     })?;

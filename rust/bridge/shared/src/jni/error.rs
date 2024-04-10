@@ -361,11 +361,14 @@ impl ThrownException {
     }
 
     /// Persists the given throwable.
-    pub fn new<'a>(env: &JNIEnv<'a>, throwable: JThrowable<'a>) -> Result<Self, BridgeLayerError> {
-        assert!(**throwable != *JObject::null());
+    pub fn new<'a>(
+        env: &JNIEnv<'a>,
+        throwable: impl AsRef<JThrowable<'a>>,
+    ) -> Result<Self, BridgeLayerError> {
+        assert!(!throwable.as_ref().is_null());
         Ok(Self {
             jvm: env.get_java_vm()?,
-            exception_ref: env.new_global_ref(throwable)?,
+            exception_ref: env.new_global_ref(throwable.as_ref())?,
         })
     }
 
