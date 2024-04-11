@@ -143,7 +143,7 @@ fn verify_vcek_cert(
     let root_cert = [snp::ARK_GENOA_ROOT_PEM, snp::ARK_MILAN_ROOT_PEM]
         .iter()
         .map(|pem| X509::from_pem(pem).expect("Invalid AMD root certificate"))
-        .find(|root| root.issued(&ask_cert) == boring::x509::X509VerifyResult::OK)
+        .find(|root| root.issued(&ask_cert).is_ok())
         .ok_or_else(|| Error::AttestationDataError {
             reason: "Certificate issuer not trusted".to_string(),
         })?;

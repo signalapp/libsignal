@@ -8,7 +8,7 @@ use boring::pkey::Public;
 use boring::stack::{Stack, Stackable};
 use boring::x509::crl::X509CRLRef;
 use boring::x509::store::X509StoreRef;
-use boring::x509::{X509StoreContext, X509VerifyResult, X509};
+use boring::x509::{X509StoreContext, X509};
 
 use std::time::SystemTime;
 
@@ -85,7 +85,7 @@ impl CertChain {
             #[cfg(not(fuzzing))]
             return Err(Error::new(format!(
                 "invalid certificate: {:?}",
-                ctx.error()
+                ctx.verify_result().unwrap_err()
             )));
         }
 
@@ -115,7 +115,7 @@ impl CertChain {
         // move the root into the last position
         let root_pos = certs
             .iter()
-            .rposition(|c| c.issued(c) == X509VerifyResult::OK)
+            .rposition(|c| c.issued(c).is_ok())
             .ok_or_else(to_error)?;
         let end_pos = certs.len() - 1;
         certs.swap(end_pos, root_pos);
@@ -127,7 +127,7 @@ impl CertChain {
             // starting at curr - 1, find the cert issued by curr
             let nxt_pos = certs[0..curr]
                 .iter()
-                .rposition(|c| issuer.issued(c) == X509VerifyResult::OK)
+                .rposition(|c| issuer.issued(c).is_ok())
                 .ok_or_else(to_error)?;
             certs.swap(curr - 1, nxt_pos);
         }

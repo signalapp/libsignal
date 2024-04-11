@@ -1922,7 +1922,7 @@ limitations under the License.
 
 ```
 
-## boring 3.1.0
+## boring 4.6.0
 
 ```
 Copyright 2011-2017 Google Inc.
@@ -1976,7 +1976,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ```
 
-## bindgen 0.66.1
+## bindgen 0.68.1
 
 ```
 BSD 3-Clause License
@@ -2377,7 +2377,7 @@ express Statement of Purpose.
 
 ```
 
-## boring-sys 3.1.0
+## boring-sys 4.6.0
 
 ```
 /* Copyright (c) 2015, Google Inc.
@@ -2685,7 +2685,7 @@ DEALINGS IN THE SOFTWARE.
 
 ```
 
-## boring-sys 3.1.0
+## boring-sys 4.6.0
 
 ```
 Copyright (c) 2014 Alex Crichton
@@ -3270,7 +3270,7 @@ DEALINGS IN THE SOFTWARE.
 
 ```
 
-## boring-sys 3.1.0
+## boring-sys 4.6.0
 
 ```
 Copyright (c) 2015-2016 the fiat-crypto authors (see
@@ -3627,7 +3627,7 @@ DEALINGS IN THE SOFTWARE.
 
 ```
 
-## lock_api 0.4.11, parking_lot 0.12.1, parking_lot_core 0.9.9, rustc_version 0.4.0
+## rustc_version 0.4.0
 
 ```
 Copyright (c) 2016 The Rust Project Developers
@@ -3715,7 +3715,7 @@ SOFTWARE.
 
 ```
 
-## tokio-boring 3.1.0
+## tokio-boring 4.6.0
 
 ```
 Copyright (c) 2016 Tokio contributors
@@ -4164,37 +4164,6 @@ DEALINGS IN THE SOFTWARE.
 
 ```
 Copyright (c) 2017 http-rs authors
-
-Permission is hereby granted, free of charge, to any
-person obtaining a copy of this software and associated
-documentation files (the "Software"), to deal in the
-Software without restriction, including without
-limitation the rights to use, copy, modify, merge,
-publish, distribute, sublicense, and/or sell copies of
-the Software, and to permit persons to whom the Software
-is furnished to do so, subject to the following
-conditions:
-
-The above copyright notice and this permission notice
-shall be included in all copies or substantial portions
-of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF
-ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED
-TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
-PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT
-SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
-OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
-IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-DEALINGS IN THE SOFTWARE.
-
-```
-
-## signal-hook-registry 1.4.1
-
-```
-Copyright (c) 2017 tokio-jsonrpc developers
 
 Permission is hereby granted, free of charge, to any
 person obtaining a copy of this software and associated
@@ -6838,7 +6807,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-## boring-sys 3.1.0
+## boring-sys 4.6.0
 
 ```
 /* ====================================================================

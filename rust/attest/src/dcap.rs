@@ -34,7 +34,7 @@ use boring::pkey::{PKey, PKeyRef, Public};
 use boring::x509::crl::X509CRLRef;
 use boring::x509::store::{X509Store, X509StoreBuilder};
 use boring::x509::verify::X509VerifyFlags;
-use boring::x509::{X509Ref, X509VerifyResult, X509};
+use boring::x509::{X509Ref, X509};
 use hex::ToHex;
 use lazy_static::lazy_static;
 use uuid::Uuid;
@@ -335,7 +335,7 @@ fn root_trust_store(
     current_time: SystemTime,
 ) -> Result<X509Store> {
     // should be self issued
-    if X509VerifyResult::OK != root_ca.issued(root_ca) {
+    if root_ca.issued(root_ca).is_err() {
         return Err(Error::new("Invalid root certificate (not self signed)"));
     }
 
