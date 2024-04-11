@@ -123,13 +123,11 @@ pub const DOMAIN_CONFIG_SVR3_TPM2SNP: DomainConfig = DomainConfig {
     proxy_path: "/svr3-tpm2snp",
 };
 
-const TPM2SNP_TEST_SERVER_CERT: RootCertificates =
-    RootCertificates::FromDer(include_bytes!("../res/tpm2snp_test_server_cert.cer"));
 pub const DOMAIN_CONFIG_SVR3_TPM2SNP_STAGING: DomainConfig = DomainConfig {
     hostname: "backend3.svr3.staging.signal.org",
     ip_v4: &[ip_addr!(v4, "13.88.30.76")],
     ip_v6: &[],
-    cert: &TPM2SNP_TEST_SERVER_CERT,
+    cert: &RootCertificates::Signal,
     proxy_path: "/svr3-tpm2snp-staging",
 };
 

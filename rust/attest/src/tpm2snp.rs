@@ -23,7 +23,7 @@ mod tpm2;
 
 pub(crate) use tpm2::{Error as Tpm2Error, PcrMap};
 
-const MSFT_AKCERT_ROOT_PEM: &[u8] = include_bytes!("../res/msft_akcert_root.pem");
+const GOOG_AKCERT_ROOT_PEM: &[u8] = include_bytes!("../res/goog_akcert_root.pem");
 
 pub fn new_handshake(enclave: &[u8], attestation_msg: &[u8], now: SystemTime) -> Result<Handshake> {
     let expected_raft_config = expected_raft_config(enclave, None)?;
@@ -58,7 +58,17 @@ fn attest(
     endorsements: &svr3::AsnpEndorsements,
     now: SystemTime,
 ) -> Result<svr::AttestationData> {
-    let ak_cert_pk = verify_ak_cert(evidence, endorsements, now)?;
+    attest_with_root(enclave, evidence, endorsements, now, GOOG_AKCERT_ROOT_PEM)
+}
+
+fn attest_with_root(
+    enclave: &[u8],
+    evidence: &svr3::AsnpEvidence,
+    endorsements: &svr3::AsnpEndorsements,
+    now: SystemTime,
+    root_pem: &[u8],
+) -> Result<svr::AttestationData> {
+    let ak_cert_pk = verify_ak_cert(evidence, endorsements, now, root_pem)?;
     let runtime_pk = verify_snp_report(evidence, endorsements, now)?;
     if !(ak_cert_pk.n() == runtime_pk.n() && ak_cert_pk.e() == runtime_pk.e()) {
         return Err(Error::AttestationDataError {
@@ -80,10 +90,11 @@ fn verify_ak_cert(
     evidence: &svr3::AsnpEvidence,
     endorsements: &svr3::AsnpEndorsements,
     now: SystemTime,
+    root_pem: &[u8],
 ) -> Result<Rsa<Public>> {
     let akcert = X509::from_der(&evidence.akcert_der).expect("valid cert der");
     let chain = {
-        let root = X509::from_pem(MSFT_AKCERT_ROOT_PEM).expect("Invalid MSFT root certificate");
+        let root = X509::from_pem(root_pem).expect("Invalid root certificate");
         let intermediate = X509::from_der(&endorsements.intermediate_der).expect("valid cert der");
         CertChain::new([akcert.clone(), intermediate, root])?
     };
@@ -212,14 +223,15 @@ mod test {
             svr3::AsnpEvidence::decode(attestation.evidence.as_slice()).expect("valid evidence");
         let endorsements = svr3::AsnpEndorsements::decode(attestation.endorsement.as_slice())
             .expect("valid endorsements");
-        attest(
+        attest_with_root(
             ENCLAVE_ID_SVR3_TPM2SNP_STAGING,
             &evidence,
             &endorsements,
             SystemTime::UNIX_EPOCH + VALID_TIMESTAMP,
+            GOOG_AKCERT_ROOT_PEM,
         )
         .expect("can attest asnp");
     }
 
-    const VALID_TIMESTAMP: Duration = Duration::from_millis(1710875945000);
+    const VALID_TIMESTAMP: Duration = Duration::from_millis(1712946543000);
 }
