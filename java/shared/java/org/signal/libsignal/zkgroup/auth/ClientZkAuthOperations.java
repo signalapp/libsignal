@@ -54,37 +54,6 @@ public class ClientZkAuthOperations {
     }
   }
 
-  /**
-   * Produces the AuthCredentialWithPni from a server-generated AuthCredentialWithPniResponse.
-   *
-   * <p>This older style of AuthCredentialWithPni will not actually have a usable PNI field, but can
-   * still be used for authenticating with an ACI.
-   *
-   * @param redemptionTime This is provided by the server as an integer, and should be passed
-   *     through directly.
-   */
-  public AuthCredentialWithPni receiveAuthCredentialWithPniAsAci(
-      Aci aci, Pni pni, long redemptionTime, AuthCredentialWithPniResponse authCredentialResponse)
-      throws VerificationFailedException {
-    byte[] newContents =
-        filterExceptions(
-            VerificationFailedException.class,
-            () ->
-                serverPublicParams.guardedMapChecked(
-                    (publicParams) ->
-                        Native.ServerPublicParams_ReceiveAuthCredentialWithPniAsAci(
-                            publicParams,
-                            aci.toServiceIdFixedWidthBinary(),
-                            pni.toServiceIdFixedWidthBinary(),
-                            redemptionTime,
-                            authCredentialResponse.getInternalContentsForJNI())));
-    try {
-      return new AuthCredentialWithPni(newContents);
-    } catch (InvalidInputException e) {
-      throw new AssertionError(e);
-    }
-  }
-
   public AuthCredentialPresentation createAuthCredentialPresentation(
       GroupSecretParams groupSecretParams, AuthCredentialWithPni authCredential) {
     return createAuthCredentialPresentation(new SecureRandom(), groupSecretParams, authCredential);

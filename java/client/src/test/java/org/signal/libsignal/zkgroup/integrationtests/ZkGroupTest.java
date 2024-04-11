@@ -275,15 +275,6 @@ public final class ZkGroupTest extends SecureRandomTest {
       } catch (VerificationFailedException e) {
         // expected
       }
-
-      try {
-        // Use wrong kind of AuthCredentialWithPni
-        clientZkAuthCipher.receiveAuthCredentialWithPniAsAci(
-            aci, pni, redemptionTime.getEpochSecond(), authCredentialResponse);
-        throw new AssertionError("Failed to catch AuthCredentialWithServiceId treated as Aci");
-      } catch (VerificationFailedException e) {
-        // expected
-      }
     }
 
     // Create and decrypt user entry
@@ -383,118 +374,6 @@ public final class ZkGroupTest extends SecureRandomTest {
           groupPublicParams, presentationTemp, redemptionTime);
       throw new AssertionError("verifyAuthCredentialPresentation should fail #5");
     } catch (InvalidInputException e) {
-      // expected
-    }
-  }
-
-  @Test
-  public void testAuthWithPniAsAciIntegration()
-      throws VerificationFailedException, InvalidInputException {
-
-    Aci aci = new Aci(TEST_UUID);
-    Pni pni = new Pni(TEST_UUID_1);
-    Instant redemptionTime = Instant.now().truncatedTo(ChronoUnit.DAYS);
-
-    // Generate keys (client's are per-group, server's are not)
-    // ---
-
-    // SERVER
-    ServerSecretParams serverSecretParams =
-        ServerSecretParams.generate(createSecureRandom(TEST_ARRAY_32));
-    ServerPublicParams serverPublicParams = serverSecretParams.getPublicParams();
-
-    ServerZkAuthOperations serverZkAuth = new ServerZkAuthOperations(serverSecretParams);
-
-    // CLIENT
-    GroupMasterKey masterKey = new GroupMasterKey(TEST_ARRAY_32_1);
-    GroupSecretParams groupSecretParams = GroupSecretParams.deriveFromMasterKey(masterKey);
-
-    assertArrayEquals(groupSecretParams.getMasterKey().serialize(), masterKey.serialize());
-
-    GroupPublicParams groupPublicParams = groupSecretParams.getPublicParams();
-
-    // SERVER
-    // Issue credential
-    AuthCredentialWithPniResponse authCredentialResponse =
-        serverZkAuth.issueAuthCredentialWithPniAsAci(
-            createSecureRandom(TEST_ARRAY_32_2), aci, pni, redemptionTime);
-
-    // CLIENT
-    // Receive credential
-    ClientZkAuthOperations clientZkAuthCipher = new ClientZkAuthOperations(serverPublicParams);
-    ClientZkGroupCipher clientZkGroupCipher = new ClientZkGroupCipher(groupSecretParams);
-    AuthCredentialWithPni authCredential =
-        clientZkAuthCipher.receiveAuthCredentialWithPniAsAci(
-            aci, pni, redemptionTime.getEpochSecond(), authCredentialResponse);
-
-    // CLIENT - verify test
-    {
-      try {
-        // Use wrong kind of AuthCredentialWithPni
-        clientZkAuthCipher.receiveAuthCredentialWithPniAsServiceId(
-            aci, pni, redemptionTime.getEpochSecond(), authCredentialResponse);
-        throw new AssertionError("Failed to catch AuthCredentialWithPniAsAci treated as ServiceId");
-      } catch (VerificationFailedException e) {
-        // expected
-      }
-    }
-
-    // Create and decrypt user entry
-    UuidCiphertext aciCiphertext = clientZkGroupCipher.encrypt(aci);
-    ServiceId aciPlaintext = clientZkGroupCipher.decrypt(aciCiphertext);
-    assertEquals(aci, aciPlaintext);
-    Aci pniAsAci = new Aci(pni.getRawUUID());
-    UuidCiphertext pniCiphertext = clientZkGroupCipher.encrypt(pniAsAci);
-    ServiceId pniPlaintext = clientZkGroupCipher.decrypt(pniCiphertext);
-    assertEquals(pniAsAci, pniPlaintext);
-
-    // CLIENT - Create presentation
-    AuthCredentialPresentation presentation =
-        clientZkAuthCipher.createAuthCredentialPresentation(
-            createSecureRandom(TEST_ARRAY_32_5), groupSecretParams, authCredential);
-    assertEquals(
-        presentation.serialize()[0],
-        2); // Check V3 (versions start from 1 but are encoded starting from 0)
-    assertEquals(presentation.getVersion(), AuthCredentialPresentation.Version.V3);
-
-    // SERVER - Verify presentation, using times at the edge of the acceptable window
-    assertArrayEquals(aciCiphertext.serialize(), presentation.getUuidCiphertext().serialize());
-    assertArrayEquals(pniCiphertext.serialize(), presentation.getPniCiphertext().serialize());
-    assertEquals(presentation.getRedemptionTime(), redemptionTime);
-
-    serverZkAuth.verifyAuthCredentialPresentation(
-        groupPublicParams, presentation, redemptionTime.minus(1, ChronoUnit.DAYS));
-    serverZkAuth.verifyAuthCredentialPresentation(
-        groupPublicParams, presentation, redemptionTime.plus(2, ChronoUnit.DAYS));
-
-    try {
-      serverZkAuth.verifyAuthCredentialPresentation(
-          groupPublicParams,
-          presentation,
-          redemptionTime.minus(1, ChronoUnit.DAYS).minus(1, ChronoUnit.SECONDS));
-      throw new AssertionError("verifyAuthCredentialPresentation should fail #1!");
-    } catch (VerificationFailedException e) {
-      // good
-    }
-
-    try {
-      serverZkAuth.verifyAuthCredentialPresentation(
-          groupPublicParams,
-          presentation,
-          redemptionTime.plus(2, ChronoUnit.DAYS).plus(1, ChronoUnit.SECONDS));
-      throw new AssertionError("verifyAuthCredentialPresentation should fail #2!");
-    } catch (VerificationFailedException e) {
-      // good
-    }
-
-    try {
-      byte[] temp = presentation.serialize();
-      temp[3] += 5; // We need a bad presentation that passes deserialization, this seems to work
-      AuthCredentialPresentation presentationTemp = new AuthCredentialPresentation(temp);
-      serverZkAuth.verifyAuthCredentialPresentation(
-          groupPublicParams, presentationTemp, redemptionTime);
-      throw new AssertionError("verifyAuthCredentialPresentation should fail #3!");
-    } catch (VerificationFailedException e) {
       // expected
     }
   }

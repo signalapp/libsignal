@@ -30,26 +30,6 @@ public class ClientZkAuthOperations {
         }
     }
 
-    /// Produces the `AuthCredentialWithPni` from a server-generated `AuthCredentialWithPniResponse`.
-    ///
-    /// This older style of AuthCredentialWithPni will not actually have a usable PNI field,
-    /// but can still be used for authenticating with an ACI.
-    ///
-    /// - parameter redemptionTime: This is provided by the server as an integer, and should be passed through directly.
-    public func receiveAuthCredentialWithPniAsAci(aci: Aci, pni: Pni, redemptionTime: UInt64, authCredentialResponse: AuthCredentialWithPniResponse) throws -> AuthCredentialWithPni {
-        return try self.serverPublicParams.withNativeHandle { serverPublicParams in
-            try aci.withPointerToFixedWidthBinary { aci in
-                try pni.withPointerToFixedWidthBinary { pni in
-                    try authCredentialResponse.withUnsafeBorrowedBuffer { authCredentialResponse in
-                        try invokeFnReturningVariableLengthSerialized {
-                            signal_server_public_params_receive_auth_credential_with_pni_as_aci($0, serverPublicParams, aci, pni, redemptionTime, authCredentialResponse)
-                        }
-                    }
-                }
-            }
-        }
-    }
-
     public func createAuthCredentialPresentation(groupSecretParams: GroupSecretParams, authCredential: AuthCredentialWithPni) throws -> AuthCredentialPresentation {
         return try self.createAuthCredentialPresentation(randomness: Randomness.generate(), groupSecretParams: groupSecretParams, authCredential: authCredential)
     }

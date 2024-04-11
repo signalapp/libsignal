@@ -124,13 +124,12 @@ impl ServerSecretParams {
         self.sig_key_pair.sign(message, &mut sho)
     }
 
-    fn issue_auth_credential_with_pni(
+    pub fn issue_auth_credential_with_pni_as_service_id(
         &self,
         randomness: RandomnessBytes,
         aci: libsignal_core::Aci,
         pni: libsignal_core::Pni,
         redemption_time: Timestamp,
-        encode_pni_as_aci_for_backward_compatibility: bool,
     ) -> api::auth::AuthCredentialWithPniResponse {
         let mut sho = Sho::new(
             b"Signal_ZKGroup_20220617_Random_ServerSecretParams_IssueAuthCredentialWithPni",
@@ -138,12 +137,7 @@ impl ServerSecretParams {
         );
 
         let aci_struct = crypto::uid_struct::UidStruct::from_service_id(aci.into());
-        let pni_struct = if encode_pni_as_aci_for_backward_compatibility {
-            let pni_as_aci = libsignal_core::Aci::from(uuid::Uuid::from(pni));
-            crypto::uid_struct::UidStruct::from_service_id(pni_as_aci.into())
-        } else {
-            crypto::uid_struct::UidStruct::from_service_id(pni.into())
-        };
+        let pni_struct = crypto::uid_struct::UidStruct::from_service_id(pni.into());
         let credential = self
             .auth_credentials_with_pni_key_pair
             .create_auth_credential_with_pni(aci_struct, pni_struct, redemption_time, &mut sho);
@@ -161,26 +155,6 @@ impl ServerSecretParams {
             proof,
         }
         .into()
-    }
-
-    pub fn issue_auth_credential_with_pni_as_service_id(
-        &self,
-        randomness: RandomnessBytes,
-        aci: libsignal_core::Aci,
-        pni: libsignal_core::Pni,
-        redemption_time: Timestamp,
-    ) -> api::auth::AuthCredentialWithPniResponse {
-        self.issue_auth_credential_with_pni(randomness, aci, pni, redemption_time, false)
-    }
-
-    pub fn issue_auth_credential_with_pni_as_aci(
-        &self,
-        randomness: RandomnessBytes,
-        aci: libsignal_core::Aci,
-        pni: libsignal_core::Pni,
-        redemption_time: Timestamp,
-    ) -> api::auth::AuthCredentialWithPniResponse {
-        self.issue_auth_credential_with_pni(randomness, aci, pni, redemption_time, true)
     }
 
     /// Checks that `current_time_in_seconds` is within the validity window defined by
@@ -407,13 +381,12 @@ impl ServerPublicParams {
         self.sig_public_key.verify(message, signature)
     }
 
-    fn receive_auth_credential_with_pni(
+    pub fn receive_auth_credential_with_pni_as_service_id(
         &self,
         aci: libsignal_core::Aci,
         pni: libsignal_core::Pni,
         redemption_time: Timestamp,
         response: api::auth::AuthCredentialWithPniResponse,
-        encode_pni_as_aci_for_backward_compatibility: bool,
     ) -> Result<api::auth::AuthCredentialWithPni, ZkGroupVerificationFailure> {
         let response = match response {
             api::auth::AuthCredentialWithPniResponse::Zkc(response) => {
@@ -424,15 +397,7 @@ impl ServerPublicParams {
             api::auth::AuthCredentialWithPniResponse::V0(response) => response,
         };
         let aci_struct = crypto::uid_struct::UidStruct::from_service_id(aci.into());
-        let pni_struct = if encode_pni_as_aci_for_backward_compatibility {
-            // Older AuthCredentialWithPnis used the same encoding for PNIs as ACIs.
-            // This won't match up with UuidCiphertexts that hold correctly-encoded PNIs,
-            // but can still be used as a valid ACI credential.
-            let pni_as_aci = libsignal_core::Aci::from(uuid::Uuid::from(pni));
-            crypto::uid_struct::UidStruct::from_service_id(pni_as_aci.into())
-        } else {
-            crypto::uid_struct::UidStruct::from_service_id(pni.into())
-        };
+        let pni_struct = crypto::uid_struct::UidStruct::from_service_id(pni.into());
         response.proof.verify(
             self.auth_credentials_with_pni_public_key,
             response.credential,
@@ -449,26 +414,6 @@ impl ServerPublicParams {
             redemption_time,
         }
         .into())
-    }
-
-    pub fn receive_auth_credential_with_pni_as_service_id(
-        &self,
-        aci: libsignal_core::Aci,
-        pni: libsignal_core::Pni,
-        redemption_time: Timestamp,
-        response: api::auth::AuthCredentialWithPniResponse,
-    ) -> Result<api::auth::AuthCredentialWithPni, ZkGroupVerificationFailure> {
-        self.receive_auth_credential_with_pni(aci, pni, redemption_time, response, false)
-    }
-
-    pub fn receive_auth_credential_with_pni_as_aci(
-        &self,
-        aci: libsignal_core::Aci,
-        pni: libsignal_core::Pni,
-        redemption_time: Timestamp,
-        response: api::auth::AuthCredentialWithPniResponse,
-    ) -> Result<api::auth::AuthCredentialWithPni, ZkGroupVerificationFailure> {
-        self.receive_auth_credential_with_pni(aci, pni, redemption_time, response, true)
     }
 
     pub fn create_auth_credential_with_pni_presentation(

@@ -52,38 +52,6 @@ export default class ServerZkAuthOperations {
     );
   }
 
-  issueAuthCredentialWithPniAsAci(
-    aci: Aci,
-    pni: Pni,
-    redemptionTime: number
-  ): AuthCredentialWithPniResponse {
-    const random = randomBytes(RANDOM_LENGTH);
-
-    return this.issueAuthCredentialWithPniAsAciWithRandom(
-      random,
-      aci,
-      pni,
-      redemptionTime
-    );
-  }
-
-  issueAuthCredentialWithPniAsAciWithRandom(
-    random: Buffer,
-    aci: Aci,
-    pni: Pni,
-    redemptionTime: number
-  ): AuthCredentialWithPniResponse {
-    return new AuthCredentialWithPniResponse(
-      Native.ServerSecretParams_IssueAuthCredentialWithPniAsAciDeterministic(
-        this.serverSecretParams,
-        random,
-        aci.getServiceIdFixedWidthBinary(),
-        pni.getServiceIdFixedWidthBinary(),
-        redemptionTime
-      )
-    );
-  }
-
   issueAuthCredentialWithPniZkc(
     aci: Aci,
     pni: Pni,

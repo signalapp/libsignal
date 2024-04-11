@@ -31,24 +31,6 @@ public class ServerZkAuthOperations {
         }
     }
 
-    public func issueAuthCredentialWithPniAsAci(aci: Aci, pni: Pni, redemptionTime: UInt64) throws -> AuthCredentialWithPniResponse {
-        return try self.issueAuthCredentialWithPniAsAci(randomness: Randomness.generate(), aci: aci, pni: pni, redemptionTime: redemptionTime)
-    }
-
-    public func issueAuthCredentialWithPniAsAci(randomness: Randomness, aci: Aci, pni: Pni, redemptionTime: UInt64) throws -> AuthCredentialWithPniResponse {
-        return try self.serverSecretParams.withNativeHandle { serverSecretParams in
-            try randomness.withUnsafePointerToBytes { randomness in
-                try aci.withPointerToFixedWidthBinary { aci in
-                    try pni.withPointerToFixedWidthBinary { pni in
-                        try invokeFnReturningVariableLengthSerialized {
-                            signal_server_secret_params_issue_auth_credential_with_pni_as_aci_deterministic($0, serverSecretParams, randomness, aci, pni, redemptionTime)
-                        }
-                    }
-                }
-            }
-        }
-    }
-
     public func issueAuthCredentialWithPniZkc(aci: Aci, pni: Pni, redemptionTime: UInt64) throws -> AuthCredentialWithPniResponse {
         return try self.issueAuthCredentialWithPniZkc(randomness: Randomness.generate(), aci: aci, pni: pni, redemptionTime: redemptionTime)
     }

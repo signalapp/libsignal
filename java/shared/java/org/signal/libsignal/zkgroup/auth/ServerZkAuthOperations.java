@@ -54,34 +54,6 @@ public class ServerZkAuthOperations {
     }
   }
 
-  public AuthCredentialWithPniResponse issueAuthCredentialWithPniAsAci(
-      Aci aci, Pni pni, Instant redemptionTime) {
-    return issueAuthCredentialWithPniAsAci(new SecureRandom(), aci, pni, redemptionTime);
-  }
-
-  public AuthCredentialWithPniResponse issueAuthCredentialWithPniAsAci(
-      SecureRandom secureRandom, Aci aci, Pni pni, Instant redemptionTime) {
-    byte[] random = new byte[RANDOM_LENGTH];
-
-    secureRandom.nextBytes(random);
-
-    byte[] newContents =
-        serverSecretParams.guardedMap(
-            (serverSecretParams) ->
-                Native.ServerSecretParams_IssueAuthCredentialWithPniAsAciDeterministic(
-                    serverSecretParams,
-                    random,
-                    aci.toServiceIdFixedWidthBinary(),
-                    pni.toServiceIdFixedWidthBinary(),
-                    redemptionTime.getEpochSecond()));
-
-    try {
-      return new AuthCredentialWithPniResponse(newContents);
-    } catch (InvalidInputException e) {
-      throw new AssertionError(e);
-    }
-  }
-
   public AuthCredentialWithPniResponse issueAuthCredentialWithPniZkc(
       Aci aci, Pni pni, Instant redemptionTime) {
     return issueAuthCredentialWithPniZkc(new SecureRandom(), aci, pni, redemptionTime);
