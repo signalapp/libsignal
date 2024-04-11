@@ -98,6 +98,8 @@ async fn async_main() {
         print,
         verbose,
     } = Cli::parse();
+    env_logger::init();
+
     let print = PrintOutput(print);
 
     let verbosity = verbose.into();

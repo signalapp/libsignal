@@ -10,7 +10,9 @@ use mediasan_common::AsyncSkip;
 use protobuf::Message as _;
 
 use crate::backup::Purpose;
-use crate::frame::{HmacMismatchError, ReaderFactory, UnvalidatedHmacReader, VerifyHmac};
+use crate::frame::{
+    HmacMismatchError, ReaderFactory, UnvalidatedHmacReader, VerifyHmac, VerifyHmacError,
+};
 use crate::key::MessageBackupKey;
 use crate::parse::VarintDelimitedReader;
 use crate::unknown::{FormatPath, PathPart, UnknownValue, VisitUnknownFieldsExt as _};
@@ -181,7 +183,16 @@ async fn read_all_frames<M: backup::method::Method>(
 
     // Before reporting success, check that the HMAC still matches. This
     // prevents TOC/TOU issues.
-    reader.into_inner().verify_hmac()?;
+    reader.into_inner().verify_hmac().await?;
 
     Ok(backup)
+}
+
+impl From<VerifyHmacError> for Error {
+    fn from(value: VerifyHmacError) -> Self {
+        match value {
+            VerifyHmacError::HmacMismatch(e) => e.into(),
+            VerifyHmacError::Io(e) => Self::Parse(e.into()),
+        }
+    }
 }

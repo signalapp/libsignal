@@ -31,11 +31,13 @@ zkgroup = { path = "../zkgroup" }
 aes = "0.8.3"
 arrayvec = "0.7.4"
 async-compression = { version = "0.4.5", features = ["futures-io", "gzip"] }
+async-trait = "0.1.41"
 cbc = "0.1.2"
 clap = { version = "4.2.1", features = ["derive"] }
 clap-stdin = "0.3.0"
 derive-where = "1.2.5"
 displaydoc = "0.2.4"
+env_logger = "0.10.0"
 futures = "0.3.29"
 hex = "0.4.3"
 hkdf = "0.12"

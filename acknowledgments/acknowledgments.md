@@ -3658,6 +3658,38 @@ DEALINGS IN THE SOFTWARE.
 
 ```
 
+## humantime 2.1.0
+
+```
+Copyright (c) 2016 The humantime Developers
+
+Includes parts of http date with the following copyright:
+Copyright (c) 2016 Pyfisch
+
+Includes portions of musl libc with the following copyright:
+Copyright © 2005-2013 Rich Felker
+
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+```
+
 ## log-panics 2.1.0
 
 ```
@@ -5384,7 +5416,7 @@ SOFTWARE.
 
 ```
 
-## anstream 0.6.13, anstyle-query 1.0.2, clap 4.4.18, colorchoice 1.0.0, toml_datetime 0.6.5, toml_edit 0.19.15
+## anstream 0.6.13, anstyle-query 1.0.2, clap 4.4.18, colorchoice 1.0.0, env_logger 0.10.2, toml_datetime 0.6.5, toml_edit 0.19.15
 
 ```
 Copyright (c) Individual contributors
@@ -6114,7 +6146,7 @@ DEALINGS IN THE SOFTWARE.
 
 ```
 
-## adler 1.0.2, anyhow 1.0.80, async-trait 0.1.77, dyn-clone 1.0.17, fastrand 2.0.1, home 0.5.9, itoa 1.0.10, linkme 0.3.25, linkme-impl 0.3.25, linux-raw-sys 0.4.13, minimal-lexical 0.2.1, num_enum 0.6.1, num_enum_derive 0.6.1, once_cell 1.19.0, paste 1.0.14, pin-project-lite 0.2.13, prettyplease 0.2.16, proc-macro-crate 1.3.1, proc-macro2 1.0.78, quote 1.0.35, rustc-hash 1.1.0, rustix 0.38.31, rustversion 1.0.14, semver 1.0.22, send_wrapper 0.6.0, serde 1.0.197, serde_derive 1.0.197, serde_json 1.0.114, syn 1.0.109, syn 2.0.52, syn-mid 0.6.0, thiserror 1.0.57, thiserror-impl 1.0.57, unicode-ident 1.0.12, utf-8 0.7.6
+## adler 1.0.2, anyhow 1.0.80, async-trait 0.1.77, dyn-clone 1.0.17, fastrand 2.0.1, home 0.5.9, is-terminal 0.4.12, itoa 1.0.10, linkme 0.3.25, linkme-impl 0.3.25, linux-raw-sys 0.4.13, minimal-lexical 0.2.1, num_enum 0.6.1, num_enum_derive 0.6.1, once_cell 1.19.0, paste 1.0.14, pin-project-lite 0.2.13, prettyplease 0.2.16, proc-macro-crate 1.3.1, proc-macro2 1.0.78, quote 1.0.35, rustc-hash 1.1.0, rustix 0.38.31, rustversion 1.0.14, semver 1.0.22, send_wrapper 0.6.0, serde 1.0.197, serde_derive 1.0.197, serde_json 1.0.114, syn 1.0.109, syn 2.0.52, syn-mid 0.6.0, thiserror 1.0.57, thiserror-impl 1.0.57, unicode-ident 1.0.12, utf-8 0.7.6
 
 ```
 Permission is hereby granted, free of charge, to any
@@ -6313,7 +6345,7 @@ THE SOFTWARE.
 
 ```
 
-## aho-corasick 1.1.2, byteorder 1.5.0, memchr 2.7.1, walkdir 2.5.0
+## aho-corasick 1.1.2, byteorder 1.5.0, memchr 2.7.1, termcolor 1.4.1, walkdir 2.5.0
 
 ```
 The MIT License (MIT)

@@ -7,6 +7,7 @@ use std::borrow::BorrowMut;
 
 use aes::cipher::Unsigned;
 use async_compression::futures::bufread::GzipDecoder;
+use async_trait::async_trait;
 use futures::io::{BufReader, Take};
 use futures::{AsyncRead, AsyncReadExt};
 use hmac::digest::OutputSizeUser;
@@ -61,9 +62,18 @@ pub struct HmacMismatchError {
 /// Implements [`VerifyHmac`] by always returning success from `verify_hmac`.
 pub struct UnvalidatedHmacReader<R>(R);
 
+#[derive(Debug, thiserror::Error, displaydoc::Display)]
+pub enum VerifyHmacError {
+    /// io error {0}
+    Io(#[from] futures::io::Error),
+    /// HMAC doesn't match
+    HmacMismatch(#[from] HmacMismatchError),
+}
+
+#[async_trait(?Send)]
 pub trait VerifyHmac: Sized {
     /// Checks that the input that was received has a valid HMAC.
-    fn verify_hmac(self) -> Result<(), HmacMismatchError>;
+    async fn verify_hmac(self) -> Result<(), VerifyHmacError>;
 }
 
 impl<R: AsyncRead + AsyncSkip + Unpin> FramesReader<R> {
@@ -149,8 +159,9 @@ impl<R: AsyncRead + Unpin> AsyncRead for UnvalidatedHmacReader<R> {
     }
 }
 
+#[async_trait(?Send)]
 impl<R> VerifyHmac for UnvalidatedHmacReader<R> {
-    fn verify_hmac(self) -> Result<(), HmacMismatchError> {
+    async fn verify_hmac(self) -> Result<(), VerifyHmacError> {
         Ok(())
     }
 }
@@ -169,18 +180,26 @@ impl std::fmt::Display for HmacMismatchError {
     }
 }
 
+#[async_trait(?Send)]
 impl<R: AsyncRead + Unpin> VerifyHmac for FramesReader<R> {
-    fn verify_hmac(self) -> Result<(), HmacMismatchError> {
+    async fn verify_hmac(self) -> Result<(), VerifyHmacError> {
         let Self {
             expected_hmac: expected,
             reader,
         } = self;
-        let reader = reader.into_inner().into_inner().into_inner();
+        // It's possible that the outer reader didn't read all the way to the
+        // end. This can happen when the GZIPped data has trailing padding after
+        // the compressed contents. Make sure all the bytes from the inner
+        // stream get read through the MacReader input bytes before doing the
+        // comparison.
+        let mut reader: MacReader<_, _> = reader.into_inner().into_inner().into_inner();
+        futures::io::copy(&mut reader, &mut futures::io::sink()).await?;
+
         let found: [u8; HMAC_LEN] = reader.finalize().into();
         if expected.ct_eq(&found).into() {
             Ok(())
         } else {
-            Err(HmacMismatchError { expected, found })
+            Err(HmacMismatchError { expected, found }.into())
         }
     }
 }
@@ -206,6 +225,7 @@ mod test {
     use futures::io::Cursor;
     use futures::AsyncWriteExt;
     use hex_literal::hex;
+    use test_case::test_case;
 
     use crate::key::test::FAKE_MESSAGE_BACKUP_KEY;
 
@@ -258,8 +278,21 @@ mod test {
             Err(e) if e.kind() == ErrorKind::UnexpectedEof);
     }
 
-    async fn make_encrypted(key: &MessageBackupKey, plaintext: &[u8]) -> Box<[u8]> {
-        let compressed = {
+    #[derive(Copy, Clone)]
+    enum PadCompressed {
+        Pad,
+        NoPad,
+    }
+    use PadCompressed::*;
+
+    async fn make_encrypted(
+        key: &MessageBackupKey,
+        plaintext: &[u8],
+        pad: PadCompressed,
+    ) -> Box<[u8]> {
+        const PAD_BYTES: [u8; 55] = [0; 55];
+
+        let mut compressed = {
             let mut gz_writer = GzipEncoder::new(Cursor::new(Vec::new()));
             gz_writer
                 .write_all(plaintext)
@@ -268,6 +301,11 @@ mod test {
             gz_writer.close().await.expect("close can't fail");
             gz_writer.into_inner().into_inner()
         };
+
+        match pad {
+            NoPad => (),
+            Pad => compressed.extend_from_slice(&PAD_BYTES),
+        }
 
         let mut ctext = signal_crypto::aes_256_cbc_encrypt(&compressed, &key.aes_key, &key.iv)
             .expect("can encrypt");
@@ -282,11 +320,12 @@ mod test {
         ctext.into_boxed_slice()
     }
 
-    #[test]
-    fn frame_round_trip() {
+    #[test_case(Pad)]
+    #[test_case(NoPad)]
+    fn frame_round_trip(pad: PadCompressed) {
         const FRAME_DATA: &[u8] = b"this was a triumph";
 
-        let encoded_frame = block_on(make_encrypted(&FAKE_MESSAGE_BACKUP_KEY, FRAME_DATA));
+        let encoded_frame = block_on(make_encrypted(&FAKE_MESSAGE_BACKUP_KEY, FRAME_DATA, pad));
 
         let mut reader = block_on(FramesReader::new(
             &FAKE_MESSAGE_BACKUP_KEY,
@@ -299,8 +338,9 @@ mod test {
         assert_eq!(buf, FRAME_DATA,);
     }
 
-    #[test]
-    fn mismatched_hmac() {
+    #[test_case(Pad)]
+    #[test_case(NoPad)]
+    fn mismatched_hmac(pad: PadCompressed) {
         // Create two different contents. The first will be read during HMAC
         // verification by FramesReader::new, while the second will actually
         // produce the contents for the reader. Since the contents are
@@ -308,10 +348,12 @@ mod test {
         let first_contents = block_on(make_encrypted(
             &FAKE_MESSAGE_BACKUP_KEY,
             b"this was a triumph",
+            pad,
         ));
         let second_contents = block_on(make_encrypted(
             &FAKE_MESSAGE_BACKUP_KEY,
             b"THIS WAS A TRIUMPH",
+            pad,
         ));
 
         let reader_factory = LimitedReaderFactory::new([
@@ -324,12 +366,14 @@ mod test {
         block_on(futures::io::copy(&mut reader, &mut futures::io::sink())).expect("can read");
 
         let hmac_tail = |bytes: &[u8]| bytes[bytes.len() - HMAC_LEN..].try_into().unwrap();
+        let hmac_err = block_on(reader.verify_hmac());
+        let err = assert_matches!( hmac_err, Err(VerifyHmacError::HmacMismatch(e)) => e);
         assert_eq!(
-            reader.verify_hmac(),
-            Err(HmacMismatchError {
+            err,
+            HmacMismatchError {
                 expected: hmac_tail(&first_contents),
                 found: hmac_tail(&second_contents)
-            })
-        )
+            }
+        );
     }
 }

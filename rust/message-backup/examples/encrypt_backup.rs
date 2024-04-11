@@ -11,7 +11,7 @@ use aes::cipher::{BlockEncryptMut, KeyIvInit};
 use aes::Aes256;
 use async_compression::futures::bufread::GzipEncoder;
 use clap::builder::TypedValueParser;
-use clap::Parser;
+use clap::{ArgAction, Parser};
 use clap_stdin::FileOrStdin;
 use futures::io::Cursor;
 use futures::AsyncReadExt;
@@ -45,6 +45,10 @@ struct CliArgs {
         default_value_t=WrapCliArg(DEFAULT_MASTER_KEY)
     )]
     master_key: WrapCliArg<[u8; BackupKey::MASTER_KEY_LEN]>,
+
+    /// pad the compressed output to a bucket boundary before encrypting
+    #[arg(long, default_value_t = true, action=ArgAction::Set)]
+    pad_bucketed: bool,
 }
 
 fn main() {
@@ -52,6 +56,7 @@ fn main() {
         filename,
         master_key: WrapCliArg(master_key),
         aci: WrapCliArg(aci),
+        pad_bucketed,
     } = CliArgs::parse();
 
     let backup_key = BackupKey::derive_from_master_key(&master_key);
@@ -63,8 +68,13 @@ fn main() {
     let contents = read_file(filename);
     eprintln!("read {} bytes", contents.len());
 
-    let compressed_contents = gzip_compress(contents);
+    let mut compressed_contents = gzip_compress(contents);
     eprintln!("compressed to {} bytes", compressed_contents.len());
+
+    if pad_bucketed {
+        pad_gzipped_bucketed(&mut compressed_contents);
+        eprintln!("padded to {} bytes", compressed_contents.len());
+    }
 
     let MessageBackupKey {
         hmac_key,
@@ -111,6 +121,17 @@ fn gzip_compress(contents: Vec<u8>) -> Vec<u8> {
     .expect("failed to compress");
 
     compressed_contents
+}
+
+fn pad_gzipped_bucketed(out: &mut Vec<u8>) {
+    const BASE: f64 = 1.05;
+    let len = u32::try_from(out.len()).expect("backup < 4GB");
+    let padded_len = {
+        let exp = f64::log(len.into(), BASE).ceil();
+        u32::max(541, BASE.powf(exp).floor() as u32)
+    };
+
+    out.resize(padded_len.try_into().unwrap(), 0);
 }
 
 fn write_bytes(label: &'static str, bytes: impl AsRef<[u8]>) {
