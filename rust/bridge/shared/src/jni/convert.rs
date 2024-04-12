@@ -1088,7 +1088,6 @@ impl<'a> ResultTypeInfo<'a> for libsignal_net::chat::DebugInfo {
 
     fn convert_into(self, env: &mut JNIEnv<'a>) -> Result<Self::ResultType, BridgeLayerError> {
         let Self {
-            connection_reused,
             reconnect_count,
             ip_type,
             duration,
@@ -1119,7 +1118,6 @@ impl<'a> ResultTypeInfo<'a> for libsignal_net::chat::DebugInfo {
             env,
             class,
             jni_args!((
-                connection_reused => boolean,
                 reconnect_count_i32 => int,
                 ip_type_byte => byte,
                 duration_ms => int,

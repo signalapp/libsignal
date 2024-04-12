@@ -174,7 +174,6 @@ pub struct FfiChatResponse {
 #[repr(C)]
 #[derive(Debug)]
 pub struct FfiChatServiceDebugInfo {
-    connection_reused: bool,
     reconnect_count: u32,
     raw_ip_type: u8,
     duration_secs: f64,

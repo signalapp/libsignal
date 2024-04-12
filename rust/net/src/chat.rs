@@ -69,8 +69,6 @@ pub trait RemoteAddressInfo {
 
 #[derive(Debug)]
 pub struct DebugInfo {
-    /// Indicates if the connection was active at the time of the call.
-    pub connection_reused: bool,
     /// Number of times a connection had to be established since the service was created.
     pub reconnect_count: u32,
     /// IP type of the connection that was used for the request.

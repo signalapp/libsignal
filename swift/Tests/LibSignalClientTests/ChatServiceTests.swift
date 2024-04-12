@@ -45,7 +45,6 @@ final class ChatServiceTests: XCTestCase {
         var rawDebugInfo = SignalFfiChatServiceDebugInfo()
         try checkError(signal_testing_chat_service_debug_info_convert(&rawDebugInfo))
         let debugInfo = ChatService.DebugInfo(consuming: rawDebugInfo)
-        XCTAssertTrue(debugInfo.connectionReused)
         XCTAssertEqual(2, debugInfo.reconnectCount)
         XCTAssertEqual(.ipv4, debugInfo.ipType)
         XCTAssertEqual(0.2, debugInfo.duration)
@@ -63,7 +62,6 @@ final class ChatServiceTests: XCTestCase {
         XCTAssertEqual(Self.expectedContent, response.body)
 
         let debugInfo = ChatService.DebugInfo(consuming: rawResponseAndDebugInfo.debug_info)
-        XCTAssertTrue(debugInfo.connectionReused)
         XCTAssertEqual(2, debugInfo.reconnectCount)
         XCTAssertEqual(.ipv4, debugInfo.ipType)
         XCTAssertEqual(0.2, debugInfo.duration)

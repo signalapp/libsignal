@@ -56,7 +56,6 @@ where
         timeout: Duration,
     ) -> (Result<Response, ChatServiceError>, DebugInfo) {
         let start = Instant::now();
-        let initial_reconnect_count = self.reconnect_count();
         let deadline = start + timeout;
         let service = self.service().await;
         let (response, ip_type, connection_info) = match service {
@@ -75,7 +74,6 @@ where
         (
             response,
             DebugInfo {
-                connection_reused: reconnect_count == initial_reconnect_count,
                 reconnect_count,
                 ip_type,
                 duration,
@@ -86,7 +84,6 @@ where
 
     async fn connect_and_debug(&self) -> Result<DebugInfo, ChatServiceError> {
         let start = Instant::now();
-        let initial_reconnect_count = self.reconnect_count();
 
         self.connect_from_inactive().await?;
 
@@ -96,7 +93,6 @@ where
         let duration = start.elapsed();
         let reconnect_count = self.reconnect_count();
         Ok(DebugInfo {
-            connection_reused: reconnect_count == initial_reconnect_count,
             reconnect_count,
             ip_type,
             duration,

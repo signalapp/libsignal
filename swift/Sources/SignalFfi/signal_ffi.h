@@ -510,7 +510,6 @@ typedef void (*SignalCPromiseOwnedBufferOfc_uchar)(SignalFfiError *error, const 
 typedef void (*SignalCPromisebool)(SignalFfiError *error, const bool *result, const void *context);
 
 typedef struct {
-  bool connection_reused;
   uint32_t reconnect_count;
   uint8_t raw_ip_type;
   double duration_secs;

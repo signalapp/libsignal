@@ -47,7 +47,6 @@ public class ChatServiceTest {
   public void testConvertDebugInfo() throws Exception {
     final ChatService.DebugInfo debugInfo =
         (ChatService.DebugInfo) Native.TESTING_ChatServiceDebugInfoConvert();
-    assertTrue(debugInfo.connectionReused());
     assertEquals(2, debugInfo.reconnectCount());
     assertEquals(IpType.IPv4, debugInfo.ipType());
     assertEquals(200, debugInfo.durationMs());
@@ -66,7 +65,6 @@ public class ChatServiceTest {
     assertEquals(EXPECTED_HEADERS, response.headers());
 
     final ChatService.DebugInfo debugInfo = responseAndDebugInfo.debugInfo();
-    assertTrue(debugInfo.connectionReused());
     assertEquals(2, debugInfo.reconnectCount());
     assertEquals(IpType.IPv4, debugInfo.ipType());
   }

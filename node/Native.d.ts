@@ -29,7 +29,6 @@ interface ChatResponse {
 }
 
 interface ChatServiceDebugInfo {
-  connectionReused: boolean;
   reconnectCount: number;
   ipType: number;
   durationMillis: number;

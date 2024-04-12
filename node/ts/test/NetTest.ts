@@ -59,7 +59,6 @@ describe('chat service api', () => {
 
   it('converts DebugInfo object to native', () => {
     const expected = {
-      connectionReused: true,
       reconnectCount: 2,
       ipType: 1,
       durationMillis: 200,

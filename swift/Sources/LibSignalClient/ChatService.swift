@@ -90,14 +90,12 @@ public class ChatService: NativeHandleOwner {
     }
 
     public struct DebugInfo: Equatable {
-        public var connectionReused: Bool
         public var reconnectCount: UInt32
         public var ipType: IpType
         public var duration: TimeInterval
         public var connectionInfo: String
 
-        public init(connectionReused: Bool, reconnectCount: UInt32, ipType: IpType, duration: TimeInterval, connectionInfo: String) {
-            self.connectionReused = connectionReused
+        public init(reconnectCount: UInt32, ipType: IpType, duration: TimeInterval, connectionInfo: String) {
             self.reconnectCount = reconnectCount
             self.ipType = ipType
             self.duration = duration
@@ -107,7 +105,6 @@ public class ChatService: NativeHandleOwner {
         internal init(consuming rawDebugInfo: SignalFfiChatServiceDebugInfo) {
             var rawDebugInfo = rawDebugInfo
             defer { rawDebugInfo.free() }
-            self.connectionReused = rawDebugInfo.connection_reused
             self.reconnectCount = rawDebugInfo.reconnect_count
             self.ipType = IpType(rawValue: rawDebugInfo.raw_ip_type) ?? .unknown
             self.duration = rawDebugInfo.duration_secs
