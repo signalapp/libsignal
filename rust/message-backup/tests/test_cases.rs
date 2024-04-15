@@ -55,6 +55,8 @@ fn is_valid_encrypted_proto(input: Fixture<PathBuf>) {
     const MASTER_KEY: [u8; 32] = [b'M'; 32];
     let backup_key = BackupKey::derive_from_master_key(&MASTER_KEY);
     let key = MessageBackupKey::derive(&backup_key, &backup_key.derive_backup_id(&ACI));
+    println!("hmac key: {}", hex::encode(key.hmac_key));
+    println!("aes key: {}", hex::encode(key.aes_key));
 
     let path = input.into_content();
     // Check via the library interface.
@@ -64,7 +66,7 @@ fn is_valid_encrypted_proto(input: Fixture<PathBuf>) {
         factory,
         Purpose::RemoteBackup,
     ))
-    .expect("invalid HMAC");
+    .unwrap_or_else(|e| panic!("expected valid, got {e}"));
     validate(reader);
 
     // The CLI tool should agree.

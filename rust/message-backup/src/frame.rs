@@ -16,7 +16,7 @@ use mediasan_common::{AsyncSkip, AsyncSkipExt as _};
 use sha2::Sha256;
 use subtle::ConstantTimeEq as _;
 
-use crate::frame::aes_read::Aes256CbcReader;
+use crate::frame::aes_read::{Aes256CbcReader, AES_IV_SIZE};
 use crate::frame::mac_read::MacReader;
 use crate::key::MessageBackupKey;
 
@@ -46,7 +46,7 @@ pub enum ValidationError {
     Io(#[from] futures::io::Error),
     /// not enough bytes for an HMAC
     TooShort,
-    /// HMAC doesn't match
+    /// HMAC doesn't match: {0}
     InvalidHmac(#[from] HmacMismatchError),
 }
 
@@ -109,11 +109,15 @@ impl<R: AsyncRead + AsyncSkip + Unpin> FramesReader<R> {
             }
         };
 
-        let content = MacReader::new_sha256(
+        let mut content = MacReader::new_sha256(
             reader_factory.make_reader()?.take(content_len),
             &key.hmac_key,
         );
-        let decrypted = Aes256CbcReader::new(&key.aes_key, &key.iv, content);
+
+        let mut iv = [0; AES_IV_SIZE];
+        content.read_exact(&mut iv).await?;
+
+        let decrypted = Aes256CbcReader::new(&key.aes_key, &iv, content);
         let decompressed = GzipDecoder::new(BufReader::new(decrypted));
 
         Ok(Self {
@@ -216,6 +220,7 @@ async fn hmac_sha256(
 
 #[cfg(test)]
 mod test {
+    use aes::cipher::crypto_common::rand_core::{OsRng, RngCore as _};
     use futures::io::ErrorKind;
 
     use array_concat::concat_arrays;
@@ -260,17 +265,17 @@ mod test {
 
     #[test_log::test]
     fn frame_failed_decrypt() {
-        const BYTES: [u8; 10] = *b"abcdefghij";
+        const BYTES: [u8; 26] = *b"abcdefghijklmnopqrstuvwxyz";
         const VALID_HMAC: [u8; HMAC_LEN] =
-            hex!("2e4a0e7bc18de0ca7f40ab3537f0f97a06e56c3a5e4a3526c95780f21c3f549e");
+            hex!("bb6f4845da4d7538006dbc639cd06a56768eec45eeecefb65058de79247f4393");
         // Garbage, but with a valid HMAC appended.
-        let frame_bytes: [u8; 42] = concat_arrays!(BYTES, VALID_HMAC);
+        let frame_bytes: [u8; 58] = concat_arrays!(BYTES, VALID_HMAC);
 
         let mut reader = block_on(FramesReader::new(
             &FAKE_MESSAGE_BACKUP_KEY,
             CursorFactory::new(&frame_bytes),
         ))
-        .expect("valid HMAC");
+        .unwrap_or_else(|e| panic!("expected valid HMAC, got {e}"));
 
         let mut buf = Vec::new();
         assert_matches!(
@@ -307,9 +312,14 @@ mod test {
             Pad => compressed.extend_from_slice(&PAD_BYTES),
         }
 
-        let mut ctext = signal_crypto::aes_256_cbc_encrypt(&compressed, &key.aes_key, &key.iv)
+        let mut iv = [0; AES_IV_SIZE];
+        OsRng.fill_bytes(&mut iv);
+        let mut ctext = signal_crypto::aes_256_cbc_encrypt(&compressed, &key.aes_key, &iv)
             .expect("can encrypt");
         drop(compressed);
+
+        // Prepend the IV bytes to the encrypted contents.
+        ctext = iv.into_iter().chain(ctext).collect();
 
         // Append the hmac
         let hmac = hmac_sha256(&key.hmac_key, Cursor::new(&ctext))

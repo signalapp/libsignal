@@ -7,6 +7,7 @@ use std::fmt::Display;
 use std::io::{stdout, Read as _, Write};
 
 use aes::cipher::block_padding::Pkcs7;
+use aes::cipher::crypto_common::rand_core::{OsRng, RngCore};
 use aes::cipher::{BlockEncryptMut, KeyIvInit};
 use aes::Aes256;
 use async_compression::futures::bufread::GzipEncoder;
@@ -76,13 +77,11 @@ fn main() {
         eprintln!("padded to {} bytes", compressed_contents.len());
     }
 
-    let MessageBackupKey {
-        hmac_key,
-        aes_key,
-        iv,
-    } = &key;
+    let MessageBackupKey { hmac_key, aes_key } = &key;
 
-    let encrypted_contents = aes_cbc_encrypt(aes_key, iv, compressed_contents);
+    let mut iv = [0; 16];
+    OsRng.fill_bytes(&mut iv);
+    let encrypted_contents = aes_cbc_encrypt(aes_key, &iv, compressed_contents);
     eprintln!("encrypted to {} bytes", encrypted_contents.len());
 
     let hmac = hmac_checksum(hmac_key, &encrypted_contents);

@@ -20,7 +20,8 @@ use crate::frame::unpad::UnpadLast;
 
 const AES_BLOCK_SIZE: usize = <<Aes256 as BlockSizeUser>::BlockSize as Unsigned>::USIZE;
 const AES_KEY_SIZE: usize = <<Aes256 as KeySizeUser>::KeySize as Unsigned>::USIZE;
-const AES_IV_SIZE: usize = <<cbc::Decryptor<Aes256> as IvSizeUser>::IvSize as Unsigned>::USIZE;
+pub(super) const AES_IV_SIZE: usize =
+    <<cbc::Decryptor<Aes256> as IvSizeUser>::IvSize as Unsigned>::USIZE;
 
 /// Decrypting implementation of [`futures::io::AsyncRead`].
 ///

@@ -22,7 +22,7 @@ class MessageBackupTests: TestCaseBase {
         // Validation failed, so this should throw.
         XCTAssertThrowsError(try Self.validateBackup(bytes: bytes)) { error in
             if let error = error as? MessageBackupValidationError {
-                XCTAssertEqual(error.errorMessage, "HMAC doesn't match")
+                XCTAssert(error.errorMessage.starts(with: "HMAC doesn't match"), "\(error.errorMessage)")
             } else {
                 XCTFail("\(error)")
             }

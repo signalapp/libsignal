@@ -72,14 +72,11 @@ struct DeriveKey {
 #[group(conflicts_with = "DeriveKey")]
 struct KeyParts {
     /// HMAC key, used if the master key is not provided
-    #[arg(long, value_parser=parse_hex_bytes::<32>, requires_all=["aes_key", "iv"])]
+    #[arg(long, value_parser=parse_hex_bytes::<32>, requires_all=["aes_key"])]
     hmac_key: Option<[u8; MessageBackupKey::HMAC_KEY_LEN]>,
     /// AES encryption key, used if the master key is not provided
-    #[arg(long, value_parser=parse_hex_bytes::<32>, requires_all=["hmac_key", "iv"])]
+    #[arg(long, value_parser=parse_hex_bytes::<32>, requires_all=["hmac_key"])]
     aes_key: Option<[u8; MessageBackupKey::AES_KEY_LEN]>,
-    /// AES IV bytes, used if the master key is not provided
-    #[arg(long, value_parser=parse_hex_bytes::<16>, requires_all=["hmac_key", "aes_key"])]
-    iv: Option<[u8; MessageBackupKey::IV_LEN]>,
 }
 
 fn main() {
@@ -109,22 +106,14 @@ async fn async_main() {
         master_key.zip(aci)
     };
     let key_parts = {
-        let KeyParts {
-            hmac_key,
-            aes_key,
-            iv,
-        } = key_parts;
-        hmac_key.zip(aes_key).zip(iv)
+        let KeyParts { hmac_key, aes_key } = key_parts;
+        hmac_key.zip(aes_key)
     };
 
     let key = {
         match (derive_key, key_parts) {
             (None, None) => None,
-            (None, Some(((hmac_key, aes_key), iv))) => Some(MessageBackupKey {
-                aes_key,
-                hmac_key,
-                iv,
-            }),
+            (None, Some((hmac_key, aes_key))) => Some(MessageBackupKey { aes_key, hmac_key }),
             (Some((master_key, aci)), None) => Some({
                 let backup_key = BackupKey::derive_from_master_key(&master_key);
                 let backup_id = backup_key.derive_backup_id(&aci);
@@ -298,7 +287,7 @@ mod test {
             print: false,
             purpose: Purpose::RemoteBackup,
             derive_key: DeriveKey { master_key: None, aci: None},
-            key_parts: KeyParts { hmac_key: None, aes_key: None, iv: None },
+            key_parts: KeyParts { hmac_key: None, aes_key: None },
         }) =>  file_source);
         assert_eq!(file_source, "filename");
     }
@@ -324,7 +313,7 @@ mod test {
             print: false,
             purpose: Purpose::RemoteBackup,
             derive_key,
-            key_parts: KeyParts { hmac_key: None, aes_key: None, iv: None },
+            key_parts: KeyParts { hmac_key: None, aes_key: None },
         }) => (file_source, derive_key));
         assert_eq!(file_source, "filename");
         assert_eq!(
@@ -345,8 +334,6 @@ mod test {
             "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
             "--aes-key",
             "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-            "--iv",
-            "dddddddddddddddddddddddddddddddd",
         ];
 
         let (file_source, key_parts) = assert_matches!(Cli::try_parse_from(INPUT), Ok(Cli {
@@ -367,7 +354,6 @@ mod test {
             KeyParts {
                 aes_key: Some([0xcc; 32]),
                 hmac_key: Some([0xbb; 32]),
-                iv: Some([0xdd; 16]),
             }
         );
     }
@@ -393,13 +379,11 @@ mod test {
             "filename",
             "--hmac-key",
             "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-            "--aes-key",
-            "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
         ];
         let e = assert_matches!(Cli::try_parse_from(INPUT), Err(e) => e);
         assert_eq!(e.kind(), clap::error::ErrorKind::MissingRequiredArgument);
 
-        assert!(e.to_string().contains("--iv <IV>"), "{e}");
+        assert!(e.to_string().contains("--aes-key <AES_KEY>"), "{e}");
     }
 
     #[test]
@@ -412,7 +396,7 @@ mod test {
             "--aci",
             "55555555-5555-5555-5555-555555555555",
         ];
-        const CONFLICTING_FLAGS: [&[&str]; 3] = [
+        const CONFLICTING_FLAGS: &[&[&str]] = &[
             &[
                 "--hmac-key",
                 "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
@@ -421,12 +405,11 @@ mod test {
                 "--aes-key",
                 "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
             ],
-            &["--iv", "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"],
         ];
         for case in CONFLICTING_FLAGS {
             println!("case: {case:?}");
             let e =
-                assert_matches!(Cli::try_parse_from(INPUT_PREFIX.iter().chain(case)), Err(e) => e);
+                assert_matches!(Cli::try_parse_from(INPUT_PREFIX.iter().chain(*case)), Err(e) => e);
             assert_eq!(e.kind(), clap::error::ErrorKind::ArgumentConflict);
 
             assert!(e.to_string().contains("--aci <ACI>"), "{e}");
