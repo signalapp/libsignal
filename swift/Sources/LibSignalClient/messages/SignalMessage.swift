@@ -76,7 +76,7 @@ public class SignalMessage: NativeHandleOwner {
     ) throws -> Bool {
         return try withNativeHandles(self, sender, receiver) { messageHandle, senderHandle, receiverHandle in
             try macKey.withUnsafeBorrowedBuffer {
-                var result: Bool = false
+                var result = false
                 try checkError(signal_message_verify_mac(
                     &result,
                     messageHandle,
