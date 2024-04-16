@@ -307,6 +307,6 @@ describe('SVR3', () => {
       return expect(SVR3.restore('password', shareSet, auth))
         .to.eventually.be.rejectedWith(LibSignalErrorBase)
         .and.have.property('code', ErrorCode.SvrDataMissing);
-    });
+    }).timeout(10000);
   });
 });
