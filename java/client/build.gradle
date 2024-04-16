@@ -45,7 +45,7 @@ dependencies {
 test {
     jvmArgs '-Xcheck:jni'
     testLogging {
-        events 'passed'
+        events 'passed','skipped','failed'
         showStandardStreams = true
         showExceptions true
         exceptionFormat 'full'
