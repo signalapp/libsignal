@@ -41,7 +41,9 @@ targets = [
 ]
 
 workarounds = [
-    "chrono"
+    "chrono",
+    "prost",
+    "ring",
 ]
 
 
@@ -234,32 +236,6 @@ license = "MIT"
 [[procfs-core.clarify.git]]
 path = "LICENSE-MIT"
 checksum = "c5bbf39118b0639bf8bd391ae0d7d81f25c1cb4066e0fdae6a405b20fb7ca170"
-
-
-# The prost-* crates are embedded in a larger repo.
-[prost-build.clarify]
-license = "Apache-2.0"
-override-git-commit = "v0.9.0"
-
-[[prost-build.clarify.git]]
-path = "LICENSE"
-checksum = "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2"
-
-[prost-derive.clarify]
-license = "Apache-2.0"
-override-git-commit = "v0.9.0"
-
-[[prost-derive.clarify.git]]
-path = "LICENSE"
-checksum = "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2"
-
-[prost-types.clarify]
-license = "Apache-2.0"
-override-git-commit = "v0.9.0"
-
-[[prost-types.clarify.git]]
-path = "LICENSE"
-checksum = "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2"
 
 
 # The protobuf crates are embedded in a larger repo

@@ -11,8 +11,14 @@
 # You can use the `cargo tree` command below to see where they come from,
 # and then document them here.
 #
+# bitflags: v1 is used indirectly by rustls-platform-verifier, v2 by us and others
+# jni: v0.19 is used by rustls-platform-verifier on Android, v0.21 by us
 # pqcrypto-kyber: v0.7 is what we shipped PQXDH on, v0.8 contains the NIST standard version
 EXPECTED="
+bitflags v1.3.2
+bitflags v2.4.2
+jni v0.19.0
+jni v0.21.1
 pqcrypto-kyber v0.7.9
 pqcrypto-kyber v0.8.1"
 
