@@ -102,5 +102,11 @@ Pod::Spec.new do |s|
       # Don't also link into the test target.
       'LIBSIGNAL_FFI_LIB_TO_LINK' => '',
     }
+
+    # Ideally we'd do this at run time, not configuration time, but CocoaPods doesn't make that easy.
+    # This is good enough.
+    test_spec.scheme = {
+      environment_variables: ENV.select { |name, value| name.start_with?('LIBSIGNAL_TESTING_') }
+    }
   end
 end

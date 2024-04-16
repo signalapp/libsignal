@@ -298,7 +298,8 @@ impl StateMachineTest for Svr3Storage {
 impl Svr3Storage {
     fn new() -> Self {
         let enclave_secret = {
-            let b64 = std::env::var("ENCLAVE_SECRET").expect("ENCLAVE_SECRET should be set");
+            let b64 = std::env::var("LIBSIGNAL_TESTING_ENCLAVE_SECRET")
+                .expect("LIBSIGNAL_TESTING_ENCLAVE_SECRET should be set");
             parse_auth_secret(&b64)
         };
 

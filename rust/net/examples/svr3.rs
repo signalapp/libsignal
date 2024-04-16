@@ -40,7 +40,7 @@ async fn main() {
     let enclave_secret: [u8; 32] = {
         let b64 = &args
             .enclave_secret
-            .or_else(|| std::env::var("ENCLAVE_SECRET").ok())
+            .or_else(|| std::env::var("LIBSIGNAL_TESTING_ENCLAVE_SECRET").ok())
             .expect("Enclave secret is not set");
         parse_auth_secret(b64)
     };

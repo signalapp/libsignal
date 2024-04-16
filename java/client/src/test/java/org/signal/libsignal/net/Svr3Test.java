@@ -17,13 +17,14 @@ import org.signal.libsignal.protocol.util.Hex;
 import org.signal.libsignal.svr.DataMissingException;
 import org.signal.libsignal.svr.RestoreFailedException;
 import org.signal.libsignal.svr.SvrException;
+import org.signal.libsignal.util.TestEnvironment;
 
 public class Svr3Test {
 
   private final byte[] STORED_SECRET =
       Hex.fromStringCondensedAssert(
           "d2ae1668ac8a2bfd6170498332babad7cd72b9314631559a361310eee0a8adc6");
-  private final String ENCLAVE_SECRET = System.getenv("ENCLAVE_SECRET");
+  private final String ENCLAVE_SECRET = TestEnvironment.get("LIBSIGNAL_TESTING_ENCLAVE_SECRET");
 
   private EnclaveAuth auth;
 

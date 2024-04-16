@@ -131,8 +131,8 @@ final class Svr3Tests: TestCaseBase {
     private let storedSecret = randomBytes(32)
 
     func getEnclaveSecret() throws -> String {
-        guard let enclaveSecret = ProcessInfo.processInfo.environment["ENCLAVE_SECRET"] else {
-            throw XCTSkip("requires ENCLAVE_SECRET")
+        guard let enclaveSecret = ProcessInfo.processInfo.environment["LIBSIGNAL_TESTING_ENCLAVE_SECRET"] else {
+            throw XCTSkip("requires LIBSIGNAL_TESTING_ENCLAVE_SECRET")
         }
         return enclaveSecret
     }

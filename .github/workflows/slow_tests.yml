@@ -1,7 +1,7 @@
 name: Slow Tests
 
 env:
-  ENCLAVE_SECRET: ${{secrets.SVR_ENCLAVE_SECRET}}
+  LIBSIGNAL_TESTING_ENCLAVE_SECRET: ${{secrets.SVR_ENCLAVE_SECRET}}
 
 on:
   schedule:

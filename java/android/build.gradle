@@ -22,7 +22,10 @@ android {
         minSdkVersion 21
         targetSdkVersion 33
         multiDexEnabled true
-        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        testInstrumentationRunner "org.signal.libsignal.util.AndroidJUnitRunner"
+        // Automatically propagate matching environment variables into Java properties.
+        // See the custom AndroidJUnitRunner and TestEnvironment classes for more details.
+        testInstrumentationRunnerArguments["org.signal.libsignal.test.environment"] = collectTestEnvironment()
     }
 
     compileOptions {
@@ -53,6 +56,26 @@ android {
     publishing {
         singleVariant('release')
     }
+}
+
+String collectTestEnvironment() {
+    def result = []
+    System.getenv().each { k, v ->
+        if (k.startsWith("LIBSIGNAL_TESTING_")) {
+            // Limit what characters we accept in values.
+            // This is going to get mashed down to a single command-line argument.
+            // (This pattern is only meant to head off likely problems and was not specifically
+            // tested; if you need to use one of these characters, you can remove the check and see
+            // if things Just Work, or tweak our AndroidJUnitRunner to handle different delimiters
+            // or escaping.)
+            if (v.matches(".*[, \t\r\n].*")) {
+                logger.warn("warning: ignoring ${k} for running tests; it contains invalid characters")
+                return
+            }
+            result << "${k}=${v}"
+        }
+    }
+    result.join(",")
 }
 
 dependencies {
