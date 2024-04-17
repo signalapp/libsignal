@@ -29,6 +29,7 @@ impl TryFrom<proto::MessageAttachment> for VoiceMessageAttachment {
         let proto::MessageAttachment {
             pointer,
             flag,
+            wasDownloaded: _,
             special_fields: _,
         } = value;
 

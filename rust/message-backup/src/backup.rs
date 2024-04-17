@@ -7,7 +7,7 @@ use std::collections::{hash_map, HashMap};
 use std::fmt::Debug;
 
 use crate::backup::account_data::{AccountData, AccountDataError};
-use crate::backup::call::{Call, CallError};
+use crate::backup::call::{Call, CallError, MaybeWithCall};
 use crate::backup::chat::{ChatData, ChatError, ChatItemError};
 use crate::backup::frame::{CallId, ChatId, RecipientId};
 use crate::backup::method::{Contains, KeyExists, Map as _, Method, Store, ValidateOnly};
@@ -231,7 +231,6 @@ impl<M: Method> PartialBackup<M> {
             FrameItem::Recipient(recipient) => self.add_recipient(recipient).map_err(Into::into),
             FrameItem::Chat(chat) => self.add_chat(chat).map_err(Into::into),
             FrameItem::ChatItem(chat_item) => self.add_chat_item(chat_item).map_err(Into::into),
-            FrameItem::Call(call) => self.add_call(call).map_err(Into::into),
             FrameItem::StickerPack(sticker_pack) => {
                 self.add_sticker_pack(sticker_pack).map_err(Into::into)
             }
@@ -274,43 +273,37 @@ impl<M: Method> PartialBackup<M> {
         }
     }
 
-    fn add_chat_item(&mut self, chat_item: proto::ChatItem) -> Result<(), ChatFrameError> {
+    fn add_chat_item(&mut self, chat_item: proto::ChatItem) -> Result<(), ValidationError> {
         let chat_id = ChatId(chat_item.chatId);
 
         let chat_data = match self.chats.entry(chat_id) {
             hash_map::Entry::Occupied(o) => o.into_mut(),
             hash_map::Entry::Vacant(_) => {
-                return Err(ChatFrameError(chat_id, ChatItemError::NoChatForItem.into()))
+                return Err(ChatFrameError(chat_id, ChatItemError::NoChatForItem.into()).into())
             }
         };
 
-        chat_data.items.extend([chat_item
+        let MaybeWithCall {
+            item: chat_item_data,
+            call,
+        } = chat_item
             .try_into_with(&ConvertContext {
                 recipients: &self.recipients,
                 calls: &self.calls,
                 chats: &(),
                 meta: &self.meta,
             })
-            .map_err(|e: ChatItemError| ChatFrameError(chat_id, e.into()))?]);
+            .map_err(|e: ChatItemError| ChatFrameError(chat_id, e.into()))?;
 
-        Ok(())
-    }
+        // Delay updates to state until everything has been fallibly converted.
+        if let Some(call) = call {
+            let call_id = call.id;
+            self.calls
+                .insert(call_id, call)
+                .map_err(|KeyExists| CallFrameError(call_id, CallError::DuplicateId))?
+        }
 
-    fn add_call(&mut self, call: proto::Call) -> Result<(), CallFrameError> {
-        let call_id = call.id();
-
-        let call = call
-            .try_into_with(&ConvertContext {
-                recipients: &self.recipients,
-                calls: &self.calls,
-                chats: &self.chats,
-                meta: &self.meta,
-            })
-            .map_err(|e| CallFrameError(call_id, e))?;
-
-        self.calls
-            .insert(call_id, call)
-            .map_err(|KeyExists| CallFrameError(call_id, CallError::DuplicateId))?;
+        chat_data.items.extend([chat_item_data]);
 
         Ok(())
     }
@@ -486,8 +479,8 @@ mod test {
             Self::fake_with([
                 proto::Recipient::test_data().into(),
                 proto::Chat::test_data().into(),
-                proto::Call::test_data().into(),
                 proto::ChatItem::test_data().into(),
+                proto::ChatItem::test_data_with_call().into(),
             ])
         }
 
@@ -505,7 +498,7 @@ mod test {
 
     #[test_matrix(
         (ValidateOnly::fake(), Store::fake()),
-        (proto::Recipient::test_data(), proto::Chat::test_data(), proto::Call::test_data())
+        (proto::Recipient::test_data(), proto::Chat::test_data(), proto::ChatItem::test_data_with_call())
     )]
     fn rejects_duplicate_id<M: Method>(mut partial: PartialBackup<M>, item: impl Into<FrameItem>) {
         let err = partial.add_frame_item(item.into()).unwrap_err().to_string();
@@ -514,7 +507,7 @@ mod test {
 
     #[test_matrix(
         (ValidateOnly::empty(), Store::empty()),
-        (proto::Chat::test_data(), proto::Call::test_data())
+        (proto::Chat::test_data(), proto::ChatItem::test_data_with_call())
     )]
     #[test_case(
         ValidateOnly::fake_with([proto::Recipient::test_data().into()]),

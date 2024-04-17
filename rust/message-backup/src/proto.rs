@@ -42,7 +42,6 @@ impl_from_oneof!(frame::Item, AccountData, Account);
 impl_from_oneof!(frame::Item, Recipient, Recipient);
 impl_from_oneof!(frame::Item, Chat, Chat);
 impl_from_oneof!(frame::Item, ChatItem, ChatItem);
-impl_from_oneof!(frame::Item, Call, Call);
 impl_from_oneof!(frame::Item, StickerPack, StickerPack);
 
 impl_from_oneof!(recipient::Destination, Group, Group);

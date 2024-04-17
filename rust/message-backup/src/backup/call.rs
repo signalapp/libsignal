@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use crate::backup::frame::{RecipientId, RingerRecipientId};
+use crate::backup::frame::{CallId, RecipientId, RingerRecipientId};
 use crate::backup::method::Contains;
 use crate::backup::time::Timestamp;
 use crate::backup::TryFromWith;
@@ -12,10 +12,19 @@ use crate::proto::backup as proto;
 #[derive(Debug)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct Call {
+    pub id: CallId,
     pub call_type: CallType,
     pub state: CallState,
     pub outgoing: bool,
     pub timestamp: Timestamp,
+}
+
+/// Wrapper around another type for returning it and at most one [`Call`] value.
+#[derive(Debug)]
+#[cfg_attr(test, derive(PartialEq))]
+pub struct MaybeWithCall<T> {
+    pub item: T,
+    pub call: Option<Call>,
 }
 
 #[derive(Debug, displaydoc::Display, thiserror::Error)]
@@ -56,7 +65,7 @@ impl<C: Contains<RecipientId>> TryFromWith<proto::Call, C> for Call {
 
     fn try_from_with(call: proto::Call, context: &C) -> Result<Self, Self::Error> {
         let proto::Call {
-            callId: _,
+            callId,
             conversationRecipientId,
             type_,
             outgoing,
@@ -102,8 +111,10 @@ impl<C: Contains<RecipientId>> TryFromWith<proto::Call, C> for Call {
         };
 
         let timestamp = Timestamp::from_millis(timestamp, "Call.timestamp");
+        let id = CallId(callId);
 
         Ok(Call {
+            id,
             call_type,
             state,
             outgoing,
@@ -151,6 +162,7 @@ mod test {
         assert_eq!(
             proto::Call::test_data().try_into_with(&TestContext),
             Ok(Call {
+                id: CallId(proto::Call::TEST_ID),
                 call_type: CallType::AdHoc,
                 state: CallState::DeclinedByUser,
                 outgoing: true,
