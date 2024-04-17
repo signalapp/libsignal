@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import { config, expect, use } from 'chai';
+import { assert, config, expect, use } from 'chai';
 import * as chaiAsPromised from 'chai-as-promised';
 import * as util from './util';
 import { Aci, Pni } from '../Address';
@@ -118,6 +118,36 @@ describe('chat service api', () => {
       TypeError,
       'header value'
     );
+  });
+
+  // Integration tests make real network calls and as such will not be run unless a proxy server is provided.
+  describe('Integration tests', function (this: Mocha.Suite) {
+    before(() => {
+      if (!process.env.LIBSIGNAL_TESTING_PROXY_SERVER) {
+        this.ctx.skip();
+      }
+    });
+
+    it('can connect unauthenticated', async () => {
+      const net = new Net(Environment.Staging);
+      const chatService = net.newChatService();
+      await chatService.connectUnauthenticated();
+      await chatService.disconnect();
+    }).timeout(10000);
+
+    it('can connect through a proxy server', async () => {
+      const PROXY_SERVER = process.env.LIBSIGNAL_TESTING_PROXY_SERVER;
+      assert(PROXY_SERVER, 'checked above');
+
+      // The default TLS proxy config doesn't support staging, so we connect to production.
+      const net = new Net(Environment.Production);
+      const [host = PROXY_SERVER, port = '443'] = PROXY_SERVER.split(':', 2);
+      net.setProxy(host, parseInt(port, 10));
+
+      const chatService = net.newChatService();
+      await chatService.connectUnauthenticated();
+      await chatService.disconnect();
+    }).timeout(10000);
   });
 });
 
