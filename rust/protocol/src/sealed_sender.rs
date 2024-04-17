@@ -266,7 +266,9 @@ impl SenderCertificate {
 
     pub fn validate(&self, trust_root: &PublicKey, validation_time: u64) -> Result<bool> {
         if !self.signer.validate(trust_root)? {
-            log::error!("received server certificate not signed by trust root");
+            log::error!(
+                "sender certificate contained server certificate that wasn't signed by trust root"
+            );
             return Ok(false);
         }
 
@@ -275,13 +277,13 @@ impl SenderCertificate {
             .public_key()?
             .verify_signature(&self.certificate, &self.signature)?
         {
-            log::error!("received sender certificate not signed by server");
+            log::error!("sender certificate not signed by server");
             return Ok(false);
         }
 
         if validation_time > self.expiration {
             log::error!(
-                "received expired sender certificate (expiration: {}, validation_time: {})",
+                "sender certificate is expired (expiration: {}, validation_time: {})",
                 self.expiration,
                 validation_time
             );
