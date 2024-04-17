@@ -23,16 +23,16 @@ fi
 export CFLAGS_aarch64_apple_ios_macabi="--target=arm64-apple-ios-macabi ${CFLAGS}"
 export CFLAGS_x86_64_apple_ios_macabi="--target=x86_64-apple-ios-macabi ${CFLAGS}"
 
+# For some reason, 'ring' symbols (rustls dependency) don't get linked properly without using LTO.
+export CARGO_PROFILE_DEV_LTO=thin
+
 if [[ "${CARGO_BUILD_TARGET:-}" =~ -ios(-sim|-macabi)?$ ]]; then
   export IPHONEOS_DEPLOYMENT_TARGET=13
   # Use full LTO to reduce binary size
   export CARGO_PROFILE_RELEASE_LTO=fat
   export CFLAGS="-flto=full ${CFLAGS:-}"
 else
-  # On Linux, cdylibs don't include public symbols from their dependencies,
-  # even if those symbols have been re-exported in the Rust source.
-  # Using LTO works around this at the cost of a slightly slower build.
-  # https://github.com/rust-lang/rfcs/issues/2771
+  # Matches the "dev" setting above.
   export CARGO_PROFILE_RELEASE_LTO=thin
 fi
 
