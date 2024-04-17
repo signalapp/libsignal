@@ -15,18 +15,12 @@ use prost::Message;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
+/// Failure to attest remote enclave.
+#[error("{message}")]
 pub struct AttestationError {
     message: String,
 }
-
-impl std::fmt::Display for AttestationError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.message.fmt(f)
-    }
-}
-
-impl std::error::Error for AttestationError {}
 
 impl From<dcap::Error> for AttestationError {
     fn from(e: dcap::Error) -> Self {
@@ -37,36 +31,18 @@ impl From<dcap::Error> for AttestationError {
 }
 
 /// Error types for an enclave noise session.
-#[derive(Display, Debug)]
+#[derive(Display, Debug, thiserror::Error)]
 pub enum Error {
     /// failure to attest remote enclave: {0:?}
-    AttestationError(AttestationError),
+    AttestationError(#[from] AttestationError),
     /// failure to communicate on established Noise channel to the enclave: {0}
-    NoiseError(client_connection::Error),
+    NoiseError(#[from] client_connection::Error),
     /// failure to complete Noise handshake to the enclave: {0}
-    NoiseHandshakeError(snow::Error),
+    NoiseHandshakeError(#[from] snow::Error),
     /// attestation data invalid: {reason}
     AttestationDataError { reason: String },
     /// invalid bridge state
     InvalidBridgeStateError,
-}
-
-impl From<snow::Error> for Error {
-    fn from(e: snow::Error) -> Self {
-        Error::NoiseHandshakeError(e)
-    }
-}
-
-impl From<AttestationError> for Error {
-    fn from(err: AttestationError) -> Error {
-        Error::AttestationError(err)
-    }
-}
-
-impl From<client_connection::Error> for Error {
-    fn from(err: client_connection::Error) -> Self {
-        Error::NoiseError(err)
-    }
 }
 
 impl From<prost::DecodeError> for Error {

@@ -5,11 +5,11 @@
 
 use zkcredential::VerificationFailure;
 
-#[derive(Debug, displaydoc::Display)]
+#[derive(Debug, thiserror::Error, displaydoc::Display)]
 /// Verification failure in zkgroup
 pub struct ZkGroupVerificationFailure;
 
-#[derive(Debug, displaydoc::Display)]
+#[derive(Debug, thiserror::Error, displaydoc::Display)]
 /// Deserialization failure in zkgroup
 pub struct ZkGroupDeserializationFailure;
 

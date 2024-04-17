@@ -9,18 +9,17 @@
 #![warn(missing_docs)]
 
 use log::*;
-use std::convert::From;
 use std::fmt;
 
 use crate::{client_connection, snow_resolver};
 
 /// Error types for HSM enclave.
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum Error {
     /// Failure to connect to a trusted HSM.
-    HSMCommunicationError(client_connection::Error),
+    HSMCommunicationError(#[from] client_connection::Error),
     /// Failure to handshake to trusted HSM.
-    HSMHandshakeError(snow::Error),
+    HSMHandshakeError(#[from] snow::Error),
     /// Failure to connect to trusted code on the given HSM.
     TrustedCodeError,
     /// Invalid public key provided (used in bridging)
@@ -56,18 +55,6 @@ impl fmt::Display for Error {
                 write!(f, "Invalid bridge state")
             }
         }
-    }
-}
-
-impl From<client_connection::Error> for Error {
-    fn from(e: client_connection::Error) -> Self {
-        Error::HSMCommunicationError(e)
-    }
-}
-
-impl From<snow::Error> for Error {
-    fn from(e: snow::Error) -> Self {
-        Error::HSMHandshakeError(e)
     }
 }
 

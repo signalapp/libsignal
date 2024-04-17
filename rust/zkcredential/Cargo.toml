@@ -22,6 +22,7 @@ partial-default = { version = "0.1.0", features = ["derive"] }
 serde = { version = "1.0.106", features = ["derive"] }
 sha2 = "0.10"
 subtle = "2.3"
+thiserror = "1.0.57"
 
 # If rayon is enabled, certain operations will use rayon's thread pool.
 rayon = { version = "1.8.0", optional = true }

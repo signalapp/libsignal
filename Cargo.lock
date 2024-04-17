@@ -278,6 +278,7 @@ dependencies = [
  "strum",
  "subtle",
  "test-case",
+ "thiserror",
  "uuid",
  "x25519-dalek",
 ]
@@ -3516,6 +3517,7 @@ dependencies = [
  "rand_core",
  "sha2",
  "static_assertions",
+ "thiserror",
 ]
 
 [[package]]
@@ -4625,6 +4627,7 @@ dependencies = [
  "serde",
  "sha2",
  "subtle",
+ "thiserror",
 ]
 
 [[package]]
@@ -4653,6 +4656,7 @@ dependencies = [
  "signal-crypto",
  "subtle",
  "test-case",
+ "thiserror",
  "uuid",
  "zkcredential",
 ]

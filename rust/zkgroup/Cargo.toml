@@ -33,6 +33,7 @@ rayon = "1.8.0"
 serde = { version = "1.0.106", features = ["derive"] }
 sha2 = "0.10.0"
 subtle = "2.3"
+thiserror = "1.0.57"
 uuid = "1.1.2"
 
 # For generation

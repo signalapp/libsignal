@@ -39,7 +39,7 @@
 #![warn(missing_docs)]
 
 /// A zkcredential operation failed to verify.
-#[derive(Debug, displaydoc::Display)]
+#[derive(Debug, thiserror::Error, displaydoc::Display)]
 pub struct VerificationFailure;
 
 /// A reasonable size of entropy to request for operations.
