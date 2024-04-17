@@ -11,7 +11,7 @@ import Foundation
 import SignalFfi
 import XCTest
 
-final class ChatServiceTests: XCTestCase {
+final class ChatServiceTests: TestCaseBase {
     private static let expectedStatus: UInt16 = 200
     private static let expectedMessage = "OK"
     private static let expectedContent = "content".data(using: .utf8)
@@ -103,6 +103,43 @@ final class ChatServiceTests: XCTestCase {
                 })
             }
         }
+    }
+
+    func testConnectUnauth() async throws {
+        // Use the presence of the proxy server environment setting to know whether we should make network requests in our tests.
+        guard ProcessInfo.processInfo.environment["LIBSIGNAL_TESTING_PROXY_SERVER"] != nil else {
+            throw XCTSkip()
+        }
+
+        let net = Net(env: .staging)
+        let chat = net.createChatService(username: "", password: "")
+        // Just make sure we can connect.
+        try await chat.connectUnauthenticated()
+        try await chat.disconnect()
+    }
+
+    func testConnectUnauthThroughProxy() async throws {
+        guard let PROXY_SERVER = ProcessInfo.processInfo.environment["LIBSIGNAL_TESTING_PROXY_SERVER"] else {
+            throw XCTSkip()
+        }
+
+        // The default TLS proxy config doesn't support staging, so we connect to production.
+        let net = Net(env: .production)
+        let host: Substring
+        let port: UInt16
+        if let colonIndex = PROXY_SERVER.firstIndex(of: ":") {
+            host = PROXY_SERVER[..<colonIndex]
+            port = UInt16(PROXY_SERVER[colonIndex...].dropFirst())!
+        } else {
+            host = PROXY_SERVER[...]
+            port = 443
+        }
+        try net.setProxy(host: String(host), port: port)
+
+        let chat = net.createChatService(username: "", password: "")
+        // Just make sure we can connect.
+        try await chat.connectUnauthenticated()
+        try await chat.disconnect()
     }
 }
 
