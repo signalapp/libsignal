@@ -2,7 +2,6 @@
 // Copyright 2020-2021 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
-use std::collections::HashMap;
 use std::error::Error;
 use std::fmt::Display;
 use std::marker::PhantomData;
@@ -10,11 +9,10 @@ use std::marker::PhantomData;
 use attest::enclave::Error as EnclaveError;
 use attest::hsm_enclave::Error as HsmEnclaveError;
 use device_transfer::Error as DeviceTransferError;
-use jni::objects::{AutoLocal, GlobalRef, JThrowable, JValue, JValueOwned};
+use jni::objects::{GlobalRef, JThrowable, JValue, JValueOwned};
 use jni::JavaVM;
 use libsignal_net::svr3::Error as Svr3Error;
 use libsignal_protocol::*;
-use once_cell::sync::OnceCell;
 use signal_crypto::Error as SignalCryptoError;
 use signal_pin::Error as PinError;
 use usernames::{UsernameError, UsernameLinkError};
@@ -30,6 +28,9 @@ pub(crate) use jni::JNIEnv;
 #[macro_use]
 mod args;
 pub use args::*;
+
+mod class_lookup;
+pub use class_lookup::*;
 
 #[macro_use]
 mod convert;
@@ -617,9 +618,7 @@ where
     let throwable = env
         .new_string(error.to_string())
         .and_then(|message| {
-            let class = get_preloaded_class(env, exception_type)
-                .transpose()
-                .unwrap_or_else(|| env.find_class(exception_type))?;
+            let class = find_class(env, exception_type)?;
             Ok(new_object(env, class, jni_args!((message => java.lang.String) -> void))?.into())
         })
         .map_err(Into::into);
@@ -750,112 +749,6 @@ fn check_exceptions_and_convert_result<'output, R: TryFrom<JValueOwned<'output>>
     }
 }
 
-static PRELOADED_CLASSES: OnceCell<HashMap<&'static str, GlobalRef>> = OnceCell::new();
-
-const PRELOADED_CLASS_NAMES: &[&str] = &[
-    jni_class_name!(org.signal.libsignal.attest.AttestationFailedException),
-    jni_class_name!(org.signal.libsignal.net.CdsiInvalidTokenException),
-    jni_class_name!(org.signal.libsignal.net.CdsiLookupResponse),
-    jni_class_name!(org.signal.libsignal.net.CdsiLookupResponse::Entry),
-    jni_class_name!(org.signal.libsignal.net.CdsiProtocolException),
-    jni_class_name!(org.signal.libsignal.net.ChatService),
-    jni_class_name!(org.signal.libsignal.net.ChatService::DebugInfo),
-    jni_class_name!(org.signal.libsignal.net.ChatService::Response),
-    jni_class_name!(org.signal.libsignal.net.ChatService::ResponseAndDebugInfo),
-    jni_class_name!(org.signal.libsignal.net.ChatServiceException),
-    jni_class_name!(org.signal.libsignal.net.ChatServiceInactiveException),
-    jni_class_name!(org.signal.libsignal.net.NetworkException),
-    jni_class_name!(org.signal.libsignal.net.RetryLaterException),
-    jni_class_name!(
-        org.signal
-            .libsignal
-            .sgxsession
-            .SgxCommunicationFailureException
-    ),
-    jni_class_name!(org.signal.libsignal.svr.DataMissingException),
-    jni_class_name!(org.signal.libsignal.svr.RestoreFailedException),
-    jni_class_name!(org.signal.libsignal.svr.SvrException),
-    #[cfg(feature = "testing-fns")]
-    jni_class_name!(org.signal.libsignal.internal.TestingException),
-];
-
-/// Preloads some classes from the provided [`JNIEnv`].
-///
-/// Uses [`JNIEnv::find_class`] to cache some classes in a static variable for
-/// later. These cached class instances can later be retrieved with
-/// [`get_preloaded_class`].
-pub fn preload_classes(env: &mut JNIEnv<'_>) -> Result<(), BridgeLayerError> {
-    let _saved = PRELOADED_CLASSES.get_or_try_init(|| {
-        let no_class_found_exceptions = {
-            let first = env.find_class(jni_class_name!(java.lang.NoClassDefFoundError))?;
-            let second = env.find_class(jni_class_name!(java.lang.ClassNotFoundException))?;
-            [first, second]
-        };
-
-        let is_not_found_exception =
-            |throwable: &JThrowable<'_>, env: &JNIEnv<'_>| -> jni::errors::Result<bool> {
-                for no_class_found in &no_class_found_exceptions {
-                    if env.is_same_object(env.get_object_class(throwable)?, no_class_found)? {
-                        return Ok(true);
-                    }
-                }
-                Ok(false)
-            };
-
-        PRELOADED_CLASS_NAMES
-            .iter()
-            .map(|name| {
-                let find_class_result = env.find_class(name).map(|c| AutoLocal::new(c, env));
-                let throwable = AutoLocal::new(env.exception_occurred()?, env);
-                let class = if throwable.is_null() {
-                    find_class_result?
-                } else {
-                    env.exception_clear()?;
-
-                    if !is_not_found_exception(&throwable, env)? {
-                        return Err(BridgeLayerError::CallbackException(
-                            "FindClass",
-                            ThrownException::new(env, throwable)?,
-                        ));
-                    }
-
-                    // Ignore failures caused by nonexistent classes. This
-                    // allows the same native library to be used with JAR files
-                    // that contain different subsets of classes.
-                    AutoLocal::new(JObject::null().into(), env)
-                };
-                let global_ref = env.new_global_ref(class)?;
-                Ok((*name, global_ref))
-            })
-            .collect::<Result<HashMap<_, _>, BridgeLayerError>>()
-    })?;
-
-    Ok(())
-}
-
-/// Loads a previously cached class.
-///
-/// Looks up the given class name saved by [`preload_classes`], if there was
-/// one. Returns `Ok(None)` otherwise.
-///
-/// This is useful on platforms like Android where JVM-spawned threads have
-/// access to application-defined classes but native threads (including Tokio
-/// runtime threads) do not. A class object cached from a JVM-spawned thread can
-/// be used by natively-spawned threads to access application-defined types.
-pub fn get_preloaded_class<'output>(
-    env: &mut JNIEnv<'output>,
-    name: &'static str,
-) -> Result<Option<JClass<'output>>, jni::errors::Error> {
-    let class = PRELOADED_CLASSES
-        .get()
-        .expect("Java classes were not preloaded")
-        .get(&name);
-
-    let local_ref = class.map(|class| env.new_local_ref(class)).transpose()?;
-
-    Ok(local_ref.map(Into::into))
-}
-
 /// Constructs a new object using [`JniArgs`].
 ///
 /// Wraps [`JNIEnv::new_object`]; all arguments are the same.
@@ -911,7 +804,7 @@ pub fn check_jobject_type(
         return Err(BridgeLayerError::NullPointer(Some(class_name)));
     }
 
-    let class = env.find_class(class_name)?;
+    let class = find_class(env, class_name)?;
 
     if !env.is_instance_of(obj, class)? {
         return Err(BridgeLayerError::BadJniParameter(class_name));

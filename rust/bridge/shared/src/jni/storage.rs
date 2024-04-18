@@ -110,7 +110,8 @@ impl<'a> JniIdentityKeyStore<'a> {
                 key_handle,
             )?;
 
-            let direction_class = env.find_class(
+            let direction_class = find_class(
+                env,
                 jni_class_name!(org.signal.libsignal.protocol.state.IdentityKeyStore::Direction),
             )?;
             let field_name = match direction {

@@ -1,1 +1,5 @@
 too-many-arguments-threshold = 8
+disallowed-methods = [
+    { path = "jni::JNIEnv::find_class", reason = "use lookup helper instead" },
+    ".." # keep any defaults
+]

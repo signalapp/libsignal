@@ -85,15 +85,20 @@ pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_SealedSender_
                 .try_into()
                 .expect("too many recipients"),
             |env| -> SignalJniResult<_> {
-                let recipient_class = env.find_class(jni_class_name!(
-                    org.signal
-                        .libsignal
-                        .protocol
-                        .SealedSenderMultiRecipientMessage
-                        ::Recipient
-                ))?;
-                let service_id_class =
-                    env.find_class(jni_class_name!(org.signal.libsignal.protocol.ServiceId))?;
+                let recipient_class = find_class(
+                    env,
+                    jni_class_name!(
+                        org.signal
+                            .libsignal
+                            .protocol
+                            .SealedSenderMultiRecipientMessage
+                            ::Recipient
+                    ),
+                )?;
+                let service_id_class = find_class(
+                    env,
+                    jni_class_name!(org.signal.libsignal.protocol.ServiceId),
+                )?;
 
                 let mut excluded_recipient_java_service_ids = vec![];
 
