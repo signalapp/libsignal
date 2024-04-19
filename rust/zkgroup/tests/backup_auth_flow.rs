@@ -41,7 +41,7 @@ fn test_backup_auth_request_response() {
     // client generated materials; issuance response -> redemption request
     let server_public_params = server_secret_params.get_public_params();
     let credential = request_context
-        .receive(blinded_credential, &server_public_params)
+        .receive(blinded_credential, &server_public_params, redemption_time)
         .expect("credential should be valid");
 
     assert_eq!(credential.backup_level(), backup_level);

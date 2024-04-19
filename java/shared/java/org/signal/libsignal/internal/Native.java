@@ -123,7 +123,7 @@ public final class Native {
   public static native void BackupAuthCredentialRequestContext_CheckValidContents(byte[] contextBytes) throws Exception;
   public static native byte[] BackupAuthCredentialRequestContext_GetRequest(byte[] contextBytes);
   public static native byte[] BackupAuthCredentialRequestContext_New(byte[] backupKey, UUID uuid);
-  public static native byte[] BackupAuthCredentialRequestContext_ReceiveResponse(byte[] contextBytes, byte[] responseBytes, byte[] paramsBytes) throws Exception;
+  public static native byte[] BackupAuthCredentialRequestContext_ReceiveResponse(byte[] contextBytes, byte[] responseBytes, long expectedRedemptionTime, byte[] paramsBytes) throws Exception;
 
   public static native void BackupAuthCredentialRequest_CheckValidContents(byte[] requestBytes) throws Exception;
   public static native byte[] BackupAuthCredentialRequest_IssueDeterministic(byte[] requestBytes, long redemptionTime, int backupLevel, byte[] paramsBytes, byte[] randomness);

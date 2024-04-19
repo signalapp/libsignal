@@ -744,6 +744,7 @@ describe('ZKGroup', () => {
       );
       const credential = context.receive(
         response,
+        startOfDay,
         serverSecretParams.getPublicParams()
       );
       assert.equal(backupLevel, credential.getBackupLevel());
@@ -775,7 +776,11 @@ describe('ZKGroup', () => {
       );
 
       // client
-      const credential = context.receive(response, serverPublicParams);
+      const credential = context.receive(
+        response,
+        startOfDay,
+        serverPublicParams
+      );
       assert.equal(backupLevel, credential.getBackupLevel());
       const presentation = credential.presentWithRandom(
         serverPublicParams,

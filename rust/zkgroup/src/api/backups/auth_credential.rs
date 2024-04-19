@@ -162,6 +162,9 @@ impl BackupAuthCredentialRequest {
 #[derive(Serialize, Deserialize, PartialDefault)]
 pub struct BackupAuthCredentialResponse {
     reserved: ReservedByte,
+    // In theory, we don't need to store this (AuthCredentialResponse doesn't),
+    // because the redemption time is also passed *outside* the response by chat-server.
+    // But that would change the format.
     redemption_time: Timestamp,
     backup_level: BackupLevel,
     blinded_credential: zkcredential::issuance::blind::BlindedIssuanceProof,
@@ -172,8 +175,11 @@ impl BackupAuthCredentialRequestContext {
         self,
         response: BackupAuthCredentialResponse,
         params: &GenericServerPublicParams,
+        expected_redemption_time: Timestamp,
     ) -> Result<BackupAuthCredential, ZkGroupVerificationFailure> {
-        if response.redemption_time % SECONDS_PER_DAY != 0 {
+        if response.redemption_time != expected_redemption_time
+            || response.redemption_time % SECONDS_PER_DAY != 0
+        {
             return Err(ZkGroupVerificationFailure);
         }
 
@@ -311,7 +317,7 @@ mod tests {
         // client generated materials; issuance response -> redemption request
         let server_public_params = server_secret_params().get_public_params();
         request_context
-            .receive(blinded_credential, &server_public_params)
+            .receive(blinded_credential, &server_public_params, redemption_time)
             .expect("credential should be valid")
     }
 
@@ -373,13 +379,37 @@ mod tests {
         let valid_presentation =
             credential.present(&server_secret_params().get_public_params(), PRESENT_RAND);
         let invalid_presentation = BackupAuthCredentialPresentation {
-            // Credential was for BackupLevel::MESSAGES
+            // Credential was for BackupLevel::Messages
             backup_level: BackupLevel::Media,
             ..valid_presentation
         };
         invalid_presentation
             .verify(DAY_ALIGNED_TIMESTAMP, &server_secret_params())
             .expect_err("credential should not be valid with wrong receipt");
+    }
+
+    #[test]
+    fn test_client_enforces_timestamp() {
+        let redemption_time: Timestamp = DAY_ALIGNED_TIMESTAMP;
+
+        let request_context = BackupAuthCredentialRequestContext::new(&KEY, &ACI);
+        let request = request_context.get_request();
+        let blinded_credential = request.issue(
+            redemption_time,
+            BackupLevel::Messages,
+            &server_secret_params(),
+            ISSUE_RAND,
+        );
+        assert!(
+            request_context
+                .receive(
+                    blinded_credential,
+                    &server_secret_params().get_public_params(),
+                    redemption_time + SECONDS_PER_DAY,
+                )
+                .is_err(),
+            "client should require that timestamp matches its expectation"
+        );
     }
 
     #[test]
@@ -399,6 +429,7 @@ mod tests {
                 .receive(
                     blinded_credential,
                     &server_secret_params().get_public_params(),
+                    redemption_time,
                 )
                 .is_err(),
             "client should require that timestamp is on a day boundary"

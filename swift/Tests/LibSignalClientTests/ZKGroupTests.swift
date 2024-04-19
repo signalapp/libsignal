@@ -439,8 +439,9 @@ class ZKGroupTests: TestCaseBase {
 
         let now = UInt64(Date().timeIntervalSince1970)
         let startOfDay = now - (now % SECONDS_PER_DAY)
-        let response = request.issueCredential(timestamp: Date(timeIntervalSince1970: TimeInterval(startOfDay)), backupLevel: backupLevel, params: serverSecretParams, randomness: self.TEST_ARRAY_32_2)
-        let credential = try context.receive(response, params: serverPublicParams)
+        let redemptionTime = Date(timeIntervalSince1970: TimeInterval(startOfDay))
+        let response = request.issueCredential(timestamp: redemptionTime, backupLevel: backupLevel, params: serverSecretParams, randomness: self.TEST_ARRAY_32_2)
+        let credential = try context.receive(response, timestamp: redemptionTime, params: serverPublicParams)
         XCTAssertEqual(credential.backupID, serializedBackupID)
         XCTAssertEqual(credential.backupLevel, backupLevel)
     }
@@ -460,10 +461,11 @@ class ZKGroupTests: TestCaseBase {
         // Server
         let now = UInt64(Date().timeIntervalSince1970)
         let startOfDay = now - (now % SECONDS_PER_DAY)
-        let response = request.issueCredential(timestamp: Date(timeIntervalSince1970: TimeInterval(startOfDay)), backupLevel: backupLevel, params: serverSecretParams, randomness: self.TEST_ARRAY_32_2)
+        let redemptionTime = Date(timeIntervalSince1970: TimeInterval(startOfDay))
+        let response = request.issueCredential(timestamp: redemptionTime, backupLevel: backupLevel, params: serverSecretParams, randomness: self.TEST_ARRAY_32_2)
 
         // Client
-        let credential = try context.receive(response, params: serverPublicParams)
+        let credential = try context.receive(response, timestamp: redemptionTime, params: serverPublicParams)
         XCTAssertEqual(backupLevel, credential.backupLevel)
 
         let presentation = credential.present(serverParams: serverPublicParams, randomness: self.TEST_ARRAY_32_3)

@@ -143,7 +143,7 @@ export function BackupAuthCredentialPresentation_Verify(presentationBytes: Buffe
 export function BackupAuthCredentialRequestContext_CheckValidContents(contextBytes: Buffer): void;
 export function BackupAuthCredentialRequestContext_GetRequest(contextBytes: Buffer): Buffer;
 export function BackupAuthCredentialRequestContext_New(backupKey: Buffer, uuid: Uuid): Buffer;
-export function BackupAuthCredentialRequestContext_ReceiveResponse(contextBytes: Buffer, responseBytes: Buffer, paramsBytes: Buffer): Buffer;
+export function BackupAuthCredentialRequestContext_ReceiveResponse(contextBytes: Buffer, responseBytes: Buffer, expectedRedemptionTime: Timestamp, paramsBytes: Buffer): Buffer;
 export function BackupAuthCredentialRequest_CheckValidContents(requestBytes: Buffer): void;
 export function BackupAuthCredentialRequest_IssueDeterministic(requestBytes: Buffer, redemptionTime: Timestamp, backupLevel: number, paramsBytes: Buffer, randomness: Buffer): Buffer;
 export function BackupAuthCredentialResponse_CheckValidContents(responseBytes: Buffer): void;

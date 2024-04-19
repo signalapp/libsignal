@@ -7,6 +7,7 @@ package org.signal.libsignal.zkgroup.backups;
 
 import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
 
+import java.time.Instant;
 import java.util.UUID;
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.zkgroup.GenericServerPublicParams;
@@ -44,7 +45,7 @@ public final class BackupAuthCredentialRequestContext extends ByteArray {
   }
 
   public BackupAuthCredential receiveResponse(
-      BackupAuthCredentialResponse response, GenericServerPublicParams params)
+      BackupAuthCredentialResponse response, Instant timestamp, GenericServerPublicParams params)
       throws VerificationFailedException {
     final byte[] newContents =
         filterExceptions(
@@ -53,6 +54,7 @@ public final class BackupAuthCredentialRequestContext extends ByteArray {
                 Native.BackupAuthCredentialRequestContext_ReceiveResponse(
                     getInternalContentsForJNI(),
                     response.getInternalContentsForJNI(),
+                    timestamp.getEpochSecond(),
                     params.getInternalContentsForJNI()));
 
     try {

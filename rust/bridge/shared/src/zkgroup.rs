@@ -1024,6 +1024,7 @@ fn BackupAuthCredentialResponse_CheckValidContents(
 fn BackupAuthCredentialRequestContext_ReceiveResponse(
     context_bytes: &[u8],
     response_bytes: &[u8],
+    expected_redemption_time: Timestamp,
     params_bytes: &[u8],
 ) -> Result<Vec<u8>, ZkGroupVerificationFailure> {
     let context = bincode::deserialize::<BackupAuthCredentialRequestContext>(context_bytes)
@@ -1033,7 +1034,7 @@ fn BackupAuthCredentialRequestContext_ReceiveResponse(
     let params = bincode::deserialize::<GenericServerPublicParams>(params_bytes)
         .expect("should have been parsed previously");
 
-    let credential = context.receive(response, &params)?;
+    let credential = context.receive(response, &params, expected_redemption_time.as_seconds())?;
     Ok(zkgroup::serialize(&credential))
 }
 

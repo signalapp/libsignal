@@ -35,12 +35,12 @@ public class BackupAuthCredentialRequestContext: ByteArray {
         }
     }
 
-    public func receive(_ response: BackupAuthCredentialResponse, params: GenericServerPublicParams) throws -> BackupAuthCredential {
+    public func receive(_ response: BackupAuthCredentialResponse, timestamp: Date, params: GenericServerPublicParams) throws -> BackupAuthCredential {
         return try withUnsafeBorrowedBuffer { contents in
             try response.withUnsafeBorrowedBuffer { response in
                 try params.withUnsafeBorrowedBuffer { params in
                     try invokeFnReturningVariableLengthSerialized {
-                        signal_backup_auth_credential_request_context_receive_response($0, contents, response, params)
+                        signal_backup_auth_credential_request_context_receive_response($0, contents, response, UInt64(timestamp.timeIntervalSince1970), params)
                     }
                 }
             }

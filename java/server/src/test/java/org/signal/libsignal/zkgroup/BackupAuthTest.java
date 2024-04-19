@@ -63,7 +63,7 @@ public final class BackupAuthTest extends SecureRandomTest {
         request.issueCredential(timestamp, BackupLevel.MESSAGES, serverSecretParams);
 
     BackupAuthCredential credential =
-        context.receiveResponse(response, serverSecretParams.getPublicParams());
+        context.receiveResponse(response, timestamp, serverSecretParams.getPublicParams());
     Assert.assertArrayEquals(SERIALIZED_BACKUP_ID, credential.getBackupId());
     Assert.assertArrayEquals(
         SERIALIZED_BACKUP_ID,
@@ -95,7 +95,8 @@ public final class BackupAuthTest extends SecureRandomTest {
 
     // CLIENT
     // Gets stored credential
-    BackupAuthCredential credential = context.receiveResponse(response, serverPublicParams);
+    BackupAuthCredential credential =
+        context.receiveResponse(response, timestamp, serverPublicParams);
     Assert.assertEquals(backupLevel, credential.getBackupLevel());
 
     // CLIENT
