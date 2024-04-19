@@ -179,6 +179,7 @@ export function CiphertextMessage_Serialize(obj: Wrapper<CiphertextMessage>): Bu
 export function CiphertextMessage_Type(msg: Wrapper<CiphertextMessage>): number;
 export function ConnectionManager_clear_proxy(connectionManager: Wrapper<ConnectionManager>): void;
 export function ConnectionManager_new(environment: number): ConnectionManager;
+export function ConnectionManager_set_ipv6_enabled(connectionManager: Wrapper<ConnectionManager>, ipv6Enabled: boolean): void;
 export function ConnectionManager_set_proxy(connectionManager: Wrapper<ConnectionManager>, host: string, port: number): void;
 export function CreateCallLinkCredentialPresentation_CheckValidContents(presentationBytes: Buffer): void;
 export function CreateCallLinkCredentialPresentation_Verify(presentationBytes: Buffer, roomId: Buffer, now: Timestamp, serverParamsBytes: Buffer, callLinkParamsBytes: Buffer): void;

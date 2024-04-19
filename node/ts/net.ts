@@ -200,6 +200,18 @@ export class Net {
   }
 
   /**
+   * Enables/disables IPv6 for all new connections (until changed).
+   *
+   * The flag is `true` by default.
+   */
+  public setIpv6Enabled(ipv6Enabled: boolean): void {
+    Native.ConnectionManager_set_ipv6_enabled(
+      this.connectionManager,
+      ipv6Enabled
+    );
+  }
+
+  /**
    * Sets the proxy host to be used for all new connections (until overridden).
    *
    * Sets a domain name and port to be used to proxy all new outgoing

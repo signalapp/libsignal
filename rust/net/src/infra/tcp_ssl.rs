@@ -32,6 +32,16 @@ pub enum TcpSslConnector {
     Proxied(ProxyConnector),
 }
 
+impl TcpSslConnector {
+    pub fn set_ipv6_enabled(&mut self, ipv6_enabled: bool) {
+        let dns_resolver = match self {
+            TcpSslConnector::Direct(ref mut c) => &mut c.dns_resolver,
+            TcpSslConnector::Proxied(ref mut c) => &mut c.dns_resolver,
+        };
+        dns_resolver.set_ipv6_enabled(ipv6_enabled);
+    }
+}
+
 pub struct TcpSslConnectorStream(
     Either<
         <DirectConnector as TransportConnector>::Stream,

@@ -182,6 +182,15 @@ fn ConnectionManager_clear_proxy(connection_manager: &ConnectionManager) {
     };
 }
 
+#[bridge_fn(jni = false, ffi = false)]
+fn ConnectionManager_set_ipv6_enabled(connection_manager: &ConnectionManager, ipv6_enabled: bool) {
+    let mut guard = connection_manager
+        .transport_connector
+        .lock()
+        .expect("not poisoned");
+    guard.set_ipv6_enabled(ipv6_enabled);
+}
+
 bridge_handle!(ConnectionManager, clone = false);
 
 #[bridge_fn]
