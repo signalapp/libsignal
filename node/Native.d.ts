@@ -143,12 +143,13 @@ export function BackupAuthCredentialPresentation_Verify(presentationBytes: Buffe
 export function BackupAuthCredentialRequestContext_CheckValidContents(contextBytes: Buffer): void;
 export function BackupAuthCredentialRequestContext_GetRequest(contextBytes: Buffer): Buffer;
 export function BackupAuthCredentialRequestContext_New(backupKey: Buffer, uuid: Uuid): Buffer;
-export function BackupAuthCredentialRequestContext_ReceiveResponse(contextBytes: Buffer, responseBytes: Buffer, paramsBytes: Buffer, expectedReceiptLevel: bigint): Buffer;
+export function BackupAuthCredentialRequestContext_ReceiveResponse(contextBytes: Buffer, responseBytes: Buffer, paramsBytes: Buffer): Buffer;
 export function BackupAuthCredentialRequest_CheckValidContents(requestBytes: Buffer): void;
-export function BackupAuthCredentialRequest_IssueDeterministic(requestBytes: Buffer, redemptionTime: Timestamp, receiptLevel: bigint, paramsBytes: Buffer, randomness: Buffer): Buffer;
+export function BackupAuthCredentialRequest_IssueDeterministic(requestBytes: Buffer, redemptionTime: Timestamp, backupLevel: number, paramsBytes: Buffer, randomness: Buffer): Buffer;
 export function BackupAuthCredentialResponse_CheckValidContents(responseBytes: Buffer): void;
 export function BackupAuthCredential_CheckValidContents(paramsBytes: Buffer): void;
 export function BackupAuthCredential_GetBackupId(credentialBytes: Buffer): Buffer;
+export function BackupAuthCredential_GetBackupLevel(credentialBytes: Buffer): number;
 export function BackupAuthCredential_PresentDeterministic(credentialBytes: Buffer, serverParamsBytes: Buffer, randomness: Buffer): Buffer;
 export function CallLinkAuthCredentialPresentation_CheckValidContents(presentationBytes: Buffer): void;
 export function CallLinkAuthCredentialPresentation_GetUserId(presentationBytes: Buffer): Serialized<UuidCiphertext>;

@@ -44,9 +44,7 @@ public final class BackupAuthCredentialRequestContext extends ByteArray {
   }
 
   public BackupAuthCredential receiveResponse(
-      BackupAuthCredentialResponse response,
-      GenericServerPublicParams params,
-      long expectedReceiptLevel)
+      BackupAuthCredentialResponse response, GenericServerPublicParams params)
       throws VerificationFailedException {
     final byte[] newContents =
         filterExceptions(
@@ -55,8 +53,7 @@ public final class BackupAuthCredentialRequestContext extends ByteArray {
                 Native.BackupAuthCredentialRequestContext_ReceiveResponse(
                     getInternalContentsForJNI(),
                     response.getInternalContentsForJNI(),
-                    params.getInternalContentsForJNI(),
-                    expectedReceiptLevel));
+                    params.getInternalContentsForJNI()));
 
     try {
       return new BackupAuthCredential(newContents);

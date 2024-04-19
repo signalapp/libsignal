@@ -40,4 +40,18 @@ public class BackupAuthCredential: ByteArray {
             }
         }
     }
+
+    public var backupLevel: BackupLevel {
+        return failOnError {
+            let rawValue = try withUnsafeBorrowedBuffer { contents in
+                try invokeFnReturningInteger {
+                    signal_backup_auth_credential_get_backup_level($0, contents)
+                }
+            }
+            guard let backupLevel = BackupLevel(rawValue: rawValue) else {
+                throw SignalError.internalError("Invalid BackupLevel \(rawValue)")
+            }
+            return backupLevel
+        }
+    }
 }

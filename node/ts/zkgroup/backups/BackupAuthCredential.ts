@@ -11,6 +11,7 @@ import { RANDOM_LENGTH } from '../internal/Constants';
 
 import GenericServerPublicParams from '../GenericServerPublicParams';
 import BackupAuthCredentialPresentation from './BackupAuthCredentialPresentation';
+import BackupLevel from './BackupLevel';
 
 export default class BackupAuthCredential extends ByteArray {
   private readonly __type?: never;
@@ -41,5 +42,13 @@ export default class BackupAuthCredential extends ByteArray {
 
   getBackupId(): Buffer {
     return Native.BackupAuthCredential_GetBackupId(this.contents);
+  }
+
+  getBackupLevel(): BackupLevel {
+    const n: number = Native.BackupAuthCredential_GetBackupLevel(this.contents);
+    if (!(n in BackupLevel)) {
+      throw new TypeError(`Invalid BackupLevel ${n}`);
+    }
+    return n;
   }
 }

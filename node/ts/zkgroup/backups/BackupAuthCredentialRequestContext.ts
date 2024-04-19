@@ -44,15 +44,13 @@ export default class BackupAuthCredentialRequestContext extends ByteArray {
 
   receive(
     response: BackupAuthCredentialResponse,
-    params: GenericServerPublicParams,
-    expectedReceiptLevel: bigint
+    params: GenericServerPublicParams
   ): BackupAuthCredential {
     return new BackupAuthCredential(
       Native.BackupAuthCredentialRequestContext_ReceiveResponse(
         this.contents,
         response.contents,
-        params.contents,
-        expectedReceiptLevel
+        params.contents
       )
     );
   }

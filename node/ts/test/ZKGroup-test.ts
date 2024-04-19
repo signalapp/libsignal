@@ -57,6 +57,7 @@ import {
   ReceiptCredentialRequest,
   ReceiptCredentialRequestContext,
   ReceiptCredentialResponse,
+  BackupLevel,
 } from '../zkgroup/';
 import { Aci, Pni } from '../Address';
 import { LibSignalErrorBase, Uuid } from '..';
@@ -723,7 +724,7 @@ describe('ZKGroup', () => {
     );
 
     it('testDeterministic', () => {
-      const receiptLevel = 1n;
+      const backupLevel = BackupLevel.Messages;
       const context = BackupAuthCredentialRequestContext.create(
         BACKUP_KEY,
         TEST_USER_ID
@@ -738,19 +739,19 @@ describe('ZKGroup', () => {
       const startOfDay = now - (now % SECONDS_PER_DAY);
       const response = request.issueCredential(
         startOfDay,
-        receiptLevel,
+        backupLevel,
         serverSecretParams
       );
       const credential = context.receive(
         response,
-        serverSecretParams.getPublicParams(),
-        receiptLevel
+        serverSecretParams.getPublicParams()
       );
+      assert.equal(backupLevel, credential.getBackupLevel());
       assertArrayEquals(SERIALIZED_BACKUP_ID, credential.getBackupId());
     });
 
     it('testIntegration', () => {
-      const receiptLevel = 10n;
+      const backupLevel = BackupLevel.Messages;
 
       const serverSecretParams =
         GenericServerSecretParams.generateWithRandom(SERVER_SECRET_RANDOM);
@@ -768,20 +769,14 @@ describe('ZKGroup', () => {
       const startOfDay = now - (now % SECONDS_PER_DAY);
       const response = request.issueCredentialWithRandom(
         startOfDay,
-        receiptLevel,
+        backupLevel,
         serverSecretParams,
         TEST_ARRAY_32_1
       );
 
       // client
-      const credential = context.receive(
-        response,
-        serverPublicParams,
-        receiptLevel
-      );
-      assert.throws(() =>
-        context.receive(response, serverPublicParams, receiptLevel + 1n)
-      );
+      const credential = context.receive(response, serverPublicParams);
+      assert.equal(backupLevel, credential.getBackupLevel());
       const presentation = credential.presentWithRandom(
         serverPublicParams,
         TEST_ARRAY_32_2

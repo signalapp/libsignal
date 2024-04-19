@@ -20,7 +20,7 @@ use serde::Deserialize;
 use uuid::Uuid;
 use zkgroup::backups::{
     BackupAuthCredential, BackupAuthCredentialPresentation, BackupAuthCredentialRequest,
-    BackupAuthCredentialRequestContext, BackupAuthCredentialResponse,
+    BackupAuthCredentialRequestContext, BackupAuthCredentialResponse, BackupLevel,
 };
 
 use crate::support::*;
@@ -995,7 +995,7 @@ fn BackupAuthCredentialRequest_CheckValidContents(
 fn BackupAuthCredentialRequest_IssueDeterministic(
     request_bytes: &[u8],
     redemption_time: Timestamp,
-    receipt_level: u64,
+    backup_level: AsType<BackupLevel, u8>,
     params_bytes: &[u8],
     randomness: &[u8; RANDOMNESS_LEN],
 ) -> Vec<u8> {
@@ -1006,7 +1006,7 @@ fn BackupAuthCredentialRequest_IssueDeterministic(
 
     let response = request.issue(
         redemption_time.as_seconds(),
-        receipt_level,
+        backup_level.into_inner(),
         &params,
         *randomness,
     );
@@ -1025,7 +1025,6 @@ fn BackupAuthCredentialRequestContext_ReceiveResponse(
     context_bytes: &[u8],
     response_bytes: &[u8],
     params_bytes: &[u8],
-    expected_receipt_level: u64,
 ) -> Result<Vec<u8>, ZkGroupVerificationFailure> {
     let context = bincode::deserialize::<BackupAuthCredentialRequestContext>(context_bytes)
         .expect("should have been parsed previously");
@@ -1034,7 +1033,7 @@ fn BackupAuthCredentialRequestContext_ReceiveResponse(
     let params = bincode::deserialize::<GenericServerPublicParams>(params_bytes)
         .expect("should have been parsed previously");
 
-    let credential = context.receive(response, &params, expected_receipt_level)?;
+    let credential = context.receive(response, &params)?;
     Ok(zkgroup::serialize(&credential))
 }
 
@@ -1050,6 +1049,13 @@ fn BackupAuthCredential_GetBackupId(credential_bytes: &[u8]) -> [u8; 16] {
     let credential = bincode::deserialize::<BackupAuthCredential>(credential_bytes)
         .expect("should have been parsed previously");
     credential.backup_id()
+}
+
+#[bridge_fn]
+fn BackupAuthCredential_GetBackupLevel(credential_bytes: &[u8]) -> u8 {
+    let credential = bincode::deserialize::<BackupAuthCredential>(credential_bytes)
+        .expect("should have been parsed previously");
+    credential.backup_level() as u8
 }
 
 #[bridge_fn]
@@ -1096,10 +1102,10 @@ fn BackupAuthCredentialPresentation_GetBackupId(presentation_bytes: &[u8]) -> [u
 }
 
 #[bridge_fn(ffi = false, node = false)]
-fn BackupAuthCredentialPresentation_GetReceiptLevel(presentation_bytes: &[u8]) -> ReceiptLevel {
+fn BackupAuthCredentialPresentation_GetBackupLevel(presentation_bytes: &[u8]) -> u8 {
     let presentation = bincode::deserialize::<BackupAuthCredentialPresentation>(presentation_bytes)
         .expect("should have been parsed previously");
-    presentation.receipt_level()
+    presentation.backup_level() as u8
 }
 
 #[bridge_fn]

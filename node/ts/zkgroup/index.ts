@@ -73,6 +73,7 @@ export { default as BackupAuthCredentialPresentation } from './backups/BackupAut
 export { default as BackupAuthCredentialRequest } from './backups/BackupAuthCredentialRequest';
 export { default as BackupAuthCredentialRequestContext } from './backups/BackupAuthCredentialRequestContext';
 export { default as BackupAuthCredentialResponse } from './backups/BackupAuthCredentialResponse';
+export { default as BackupLevel } from './backups/BackupLevel';
 
 // Group Send
 
