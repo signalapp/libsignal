@@ -5,7 +5,7 @@
 
 [package]
 name = "libsignal-jni"
-version = "0.44.0"
+version = "0.45.0"
 authors = ["Signal Messenger LLC"]
 edition = "2021"
 license = "AGPL-3.0-only"

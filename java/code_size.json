@@ -79,5 +79,6 @@
     { "version": "v0.41.2", "size": 3888200 },
     { "version": "v0.42.0", "size": 3971632 },
     { "version": "v0.43.0", "size": 4228336 },
-    { "version": "v0.44.0", "size": 4249088 }
+    { "version": "v0.44.0", "size": 4249088 },
+    { "version": "v0.45.0", "size": 4207080 }
 ]
