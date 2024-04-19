@@ -11,6 +11,9 @@
 //! - an expiration timestamp, truncated to day granularity (chosen by the group server at issuance,
 //!   passed publicly to the chat server for verification)
 
+use std::fmt::Debug;
+
+use derive_where::derive_where;
 use partial_default::PartialDefault;
 use poksho::ShoApi;
 use rayon::iter::{IndexedParallelIterator as _, ParallelIterator as _};
@@ -64,7 +67,7 @@ impl GroupSendDerivedKeyPair {
 ///
 /// The group server may cache this for a particular group as long as the group membership does not
 /// change (being careful of expiration, of course). It is the same for every requesting member.
-#[derive(Serialize, Deserialize, PartialDefault)]
+#[derive(Serialize, Deserialize, PartialDefault, Debug)]
 pub struct GroupSendEndorsementsResponse {
     reserved: ReservedByte,
     endorsements: zkcredential::endorsements::EndorsementResponse,
@@ -341,9 +344,28 @@ impl GroupSendEndorsementsResponse {
 /// immediately serialized.
 #[derive(Serialize, Deserialize, PartialDefault, Clone, Copy)]
 #[partial_default(bound = "Storage: curve25519_dalek::traits::Identity")]
+#[derive_where(PartialEq; Storage: subtle::ConstantTimeEq)]
 pub struct GroupSendEndorsement<Storage = curve25519_dalek::RistrettoPoint> {
     reserved: ReservedByte,
     endorsement: zkcredential::endorsements::Endorsement<Storage>,
+}
+
+impl Debug for GroupSendEndorsement<curve25519_dalek::RistrettoPoint> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("GroupSendEndorsement")
+            .field("reserved", &self.reserved)
+            .field("endorsement", &self.endorsement)
+            .finish()
+    }
+}
+
+impl Debug for GroupSendEndorsement<curve25519_dalek::ristretto::CompressedRistretto> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("GroupSendEndorsement")
+            .field("reserved", &self.reserved)
+            .field("endorsement", &self.endorsement)
+            .finish()
+    }
 }
 
 /// An endorsement as extracted from a [`GroupSendEndorsementsResponse`].
@@ -481,6 +503,15 @@ pub struct GroupSendToken {
     raw_token: Box<[u8]>,
 }
 
+impl Debug for GroupSendToken {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("GroupSendToken")
+            .field("reserved", &self.reserved)
+            .field("raw_token", &zkcredential::PrintAsHex(&*self.raw_token))
+            .finish()
+    }
+}
+
 impl GroupSendToken {
     /// Attaches the expiration to this token to create a GroupSendFullToken.
     ///
@@ -502,6 +533,16 @@ pub struct GroupSendFullToken {
     reserved: ReservedByte,
     raw_token: Box<[u8]>,
     expiration: Timestamp,
+}
+
+impl Debug for GroupSendFullToken {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("GroupSendFullToken")
+            .field("reserved", &self.reserved)
+            .field("raw_token", &zkcredential::PrintAsHex(&*self.raw_token))
+            .field("expiration", &self.expiration)
+            .finish()
+    }
 }
 
 impl GroupSendFullToken {

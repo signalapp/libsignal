@@ -3,17 +3,33 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use partial_default::PartialDefault;
+use serde::{Deserialize, Serialize};
+use signal_crypto::Aes256GcmEncryption;
+use subtle::ConstantTimeEq;
+
 use crate::common::constants::*;
 use crate::common::sho::*;
 use crate::common::simple_types::*;
 use crate::{api, crypto};
-use partial_default::PartialDefault;
-use serde::{Deserialize, Serialize};
-use signal_crypto::Aes256GcmEncryption;
 
 #[derive(Copy, Clone, Serialize, Deserialize, PartialDefault)]
 pub struct ProfileKey {
     pub bytes: ProfileKeyBytes,
+}
+
+impl std::fmt::Debug for ProfileKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ProfileKey")
+            .field("bytes", &zkcredential::PrintAsHex(self.bytes.as_slice()))
+            .finish()
+    }
+}
+
+impl PartialEq for ProfileKey {
+    fn eq(&self, other: &Self) -> bool {
+        self.bytes.as_slice().ct_eq(other.bytes.as_slice()).into()
+    }
 }
 
 impl ProfileKey {

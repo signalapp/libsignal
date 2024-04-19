@@ -55,6 +55,8 @@
 //! [PrivacyPass]: https://privacypass.github.io
 //! [HMAC]: https://en.wikipedia.org/wiki/HMAC
 
+use std::fmt::Debug;
+
 use curve25519_dalek::ristretto::CompressedRistretto;
 use curve25519_dalek::traits::{MultiscalarMul, VartimeMultiscalarMul};
 use curve25519_dalek::{RistrettoPoint, Scalar};
@@ -168,6 +170,15 @@ pub struct EndorsementResponse {
     proof: Vec<u8>,
 }
 
+impl Debug for EndorsementResponse {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("EndorsementResponse")
+            .field("R", &crate::PrintAsHex(&*self.R))
+            .field("proof", &crate::PrintAsHex(&*self.proof))
+            .finish()
+    }
+}
+
 /// An endorsement of a particular hidden attribute point.
 ///
 /// Endorsements are implicitly associated with both the point they were issued on, and the key used
@@ -180,6 +191,26 @@ pub struct EndorsementResponse {
 #[derive(Clone, Copy, Serialize, Deserialize)]
 pub struct Endorsement<Storage = RistrettoPoint> {
     R: Storage,
+}
+
+impl Debug for Endorsement<RistrettoPoint> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.compress().fmt(f)
+    }
+}
+
+impl Debug for Endorsement<CompressedRistretto> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Endorsement")
+            .field("R", &crate::PrintAsHex(self.R.as_bytes().as_slice()))
+            .finish()
+    }
+}
+
+impl<R: ConstantTimeEq> PartialEq for Endorsement<R> {
+    fn eq(&self, other: &Endorsement<R>) -> bool {
+        self.R.ct_eq(&other.R).into()
+    }
 }
 
 impl Endorsement<CompressedRistretto> {
