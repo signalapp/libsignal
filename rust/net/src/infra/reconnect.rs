@@ -318,7 +318,8 @@ where
 
     async fn connect(&self, respect_inactive: bool) -> Result<(), ReconnectError> {
         let mut attempts: u16 = 0;
-        let deadline = Instant::now() + self.data.connection_timeout;
+        let start_of_connection_process = Instant::now();
+        let deadline = start_of_connection_process + self.data.connection_timeout;
         let mut guard = match timeout_at(deadline, self.data.state.lock()).await {
             Ok(guard) => guard,
             Err(_) => {
@@ -326,6 +327,7 @@ where
                 return Err(ReconnectError::Timeout { attempts });
             }
         };
+        let lock_taken_instant = Instant::now();
         loop {
             match &*guard {
                 ServiceState::Inactive => {
@@ -353,8 +355,20 @@ where
                     tokio::time::sleep_until(*next_attempt_time).await;
                 }
                 ServiceState::ConnectionTimedOut => {
+                    // Only log about timeouts that happened on *this* connect attempt.
+                    match attempts {
+                        0 => {}
+                        1 => {
+                            log::info!(
+                                "Connection attempt timed out ({:.2?} spent waiting for lock)",
+                                lock_taken_instant.duration_since(start_of_connection_process)
+                            );
+                        }
+                        _ => {
+                            log::info!("Connection attempt timed out");
+                        }
+                    }
                     // keep trying until we hit our own timeout deadline
-                    log::info!("Connection attempt timed out");
                     if Instant::now() >= deadline {
                         return Err(ReconnectError::Timeout { attempts });
                     }
@@ -363,7 +377,10 @@ where
                     // short-circuiting mechanism is responsibility of the `ConnectionManager`,
                     // so here we're just going to keep trying until we get into
                     // one of the non-retryable states, `Cooldown` or time out.
-                    log::info!("Connection attempt resulted in an error: {}", e);
+                    if attempts > 0 {
+                        // Only log about errors that happened on *this* connect attempt.
+                        log::info!("Connection attempt resulted in an error: {}", e);
+                    }
                 }
             };
             attempts += 1;
