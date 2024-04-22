@@ -41,12 +41,12 @@ static void logMessage(const char *_Nonnull target,
     OWSLogUnconditionally(flagForLevel(level), file ?: "", NO, line, "", @"%s", message);
 }
 
-static void flush()
+static void flush(void)
 {
     OWSLogFlush();
 }
 
-__attribute__((constructor)) static void initLogging()
+__attribute__((constructor)) static void initLogging(void)
 {
     @autoreleasepool {
         SignalLogLevel logLevel = ShouldLogDebug() ? SignalLogLevelTrace : SignalLogLevelInfo;
