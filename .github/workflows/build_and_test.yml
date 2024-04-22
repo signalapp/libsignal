@@ -386,6 +386,8 @@ jobs:
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
 
+      - run: brew install protobuf swiftlint
+
       - name: Check formatting
         run: swiftformat --swiftversion 5 --reporter github-actions-log --lint .
         working-directory: swift
@@ -401,8 +403,6 @@ jobs:
           path: SignalCoreKit
 
       - run: rustup toolchain install $(cat rust-toolchain) --profile minimal --target x86_64-apple-ios,aarch64-apple-ios-sim
-
-      - run: brew install protobuf
 
       # Build only the targets that `pod lib lint` will test building.
       - name: Build for x86_64-apple-ios
