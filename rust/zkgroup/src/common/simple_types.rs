@@ -21,11 +21,6 @@ pub type GroupIdentifierBytes = [u8; GROUP_IDENTIFIER_LEN];
 pub type ProfileKeyVersionBytes = [u8; PROFILE_KEY_VERSION_LEN];
 pub type ProfileKeyVersionEncodedBytes = [u8; PROFILE_KEY_VERSION_ENCODED_LEN];
 
-/// Measured in days past the epoch.
-///
-/// Clients should check that this is within a day of the current date.
-pub type CoarseRedemptionTime = u32;
-
 // A random UUID that the receipt issuing server will blind authorize to redeem a given receipt
 // level within a certain time frame.
 pub type ReceiptSerialBytes = [u8; RECEIPT_SERIAL_LEN];
