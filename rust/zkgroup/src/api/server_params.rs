@@ -157,19 +157,23 @@ impl ServerSecretParams {
         .into()
     }
 
-    /// Checks that `current_time_in_seconds` is within the validity window defined by
-    /// `redemption_time_in_seconds`.
+    /// Checks that `current_time` is within the validity window defined by
+    /// `redemption_time`.
     ///
     /// All times are relative to SystemTime::UNIX_EPOCH,
     /// but we don't actually use SystemTime because it's too small on 32-bit Linux.
     pub(crate) fn check_auth_credential_redemption_time(
-        redemption_time_in_seconds: Timestamp,
-        current_time_in_seconds: Timestamp,
+        redemption_time: Timestamp,
+        current_time: Timestamp,
     ) -> Result<(), ZkGroupVerificationFailure> {
-        let acceptable_start_time = redemption_time_in_seconds - SECONDS_PER_DAY;
-        let acceptable_end_time = redemption_time_in_seconds + 2 * SECONDS_PER_DAY;
+        let acceptable_start_time = redemption_time
+            .checked_sub_seconds(SECONDS_PER_DAY)
+            .ok_or(ZkGroupVerificationFailure)?;
+        let acceptable_end_time = redemption_time
+            .checked_add_seconds(2 * SECONDS_PER_DAY)
+            .ok_or(ZkGroupVerificationFailure)?;
 
-        if !(acceptable_start_time..=acceptable_end_time).contains(&current_time_in_seconds) {
+        if !(acceptable_start_time..=acceptable_end_time).contains(&current_time) {
             return Err(ZkGroupVerificationFailure);
         }
 
@@ -180,11 +184,11 @@ impl ServerSecretParams {
         &self,
         group_public_params: api::groups::GroupPublicParams,
         presentation: &api::auth::AnyAuthCredentialPresentation,
-        current_time_in_seconds: Timestamp,
+        current_time: Timestamp,
     ) -> Result<(), ZkGroupVerificationFailure> {
         Self::check_auth_credential_redemption_time(
             presentation.get_redemption_time(),
-            current_time_in_seconds,
+            current_time,
         )?;
 
         match presentation {
@@ -208,11 +212,11 @@ impl ServerSecretParams {
         &self,
         group_public_params: api::groups::GroupPublicParams,
         presentation: &api::auth::AuthCredentialWithPniPresentation,
-        current_time_in_seconds: Timestamp,
+        current_time: Timestamp,
     ) -> Result<(), ZkGroupVerificationFailure> {
         Self::check_auth_credential_redemption_time(
             presentation.get_redemption_time(),
-            current_time_in_seconds,
+            current_time,
         )?;
         presentation.proof.verify(
             self.auth_credentials_with_pni_key_pair,
@@ -515,12 +519,12 @@ impl ServerPublicParams {
             response.credential_expiration_time,
         )?;
 
-        if response.credential_expiration_time % SECONDS_PER_DAY != 0 {
+        if !response.credential_expiration_time.is_day_aligned() {
             return Err(ZkGroupVerificationFailure);
         }
         let days_remaining = response
             .credential_expiration_time
-            .saturating_sub(current_time)
+            .saturating_seconds_since(current_time)
             / SECONDS_PER_DAY;
         if days_remaining == 0 || days_remaining > 7 {
             return Err(ZkGroupVerificationFailure);

@@ -475,14 +475,14 @@ impl ResultTypeInfo for crate::protocol::Timestamp {
 impl SimpleArgTypeInfo for crate::zkgroup::Timestamp {
     type ArgType = u64;
     fn convert_from(foreign: Self::ArgType) -> SignalFfiResult<Self> {
-        Ok(Self::from_seconds(foreign))
+        Ok(Self::from_epoch_seconds(foreign))
     }
 }
 
 impl ResultTypeInfo for crate::zkgroup::Timestamp {
     type ResultType = u64;
     fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
-        Ok(self.as_seconds())
+        Ok(self.epoch_seconds())
     }
 }
 

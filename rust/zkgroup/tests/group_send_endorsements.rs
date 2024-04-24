@@ -5,7 +5,7 @@
 
 use zkgroup::{RandomnessBytes, Timestamp, RANDOMNESS_LEN, SECONDS_PER_DAY, UUID_LEN};
 
-const DAY_ALIGNED_TIMESTAMP: Timestamp = 1681344000; // 2023-04-13 00:00:00 UTC
+const DAY_ALIGNED_TIMESTAMP: Timestamp = Timestamp::from_epoch_seconds(1681344000); // 2023-04-13 00:00:00 UTC
 
 #[test]
 fn test_endorsement() {
@@ -37,7 +37,7 @@ fn test_endorsement() {
     // server generated materials; issuance request -> issuance response
     let server_secret_params = zkgroup::ServerSecretParams::generate(randomness2);
     let todays_key = zkgroup::groups::GroupSendDerivedKeyPair::for_expiration(
-        DAY_ALIGNED_TIMESTAMP + SECONDS_PER_DAY,
+        DAY_ALIGNED_TIMESTAMP.add_seconds(SECONDS_PER_DAY),
         &server_secret_params,
     );
 
@@ -140,7 +140,7 @@ fn test_single_member_group() {
     // server generated materials; issuance request -> issuance response
     let server_secret_params = zkgroup::ServerSecretParams::generate(randomness2);
     let todays_key = zkgroup::groups::GroupSendDerivedKeyPair::for_expiration(
-        DAY_ALIGNED_TIMESTAMP + SECONDS_PER_DAY,
+        DAY_ALIGNED_TIMESTAMP.add_seconds(SECONDS_PER_DAY),
         &server_secret_params,
     );
     let response = zkgroup::groups::GroupSendEndorsementsResponse::issue(
@@ -210,21 +210,21 @@ fn test_client_rejects_bad_expirations() {
                     &server_public_params,
                 )
                 .is_err(),
-            "now: {now}, expiration: {expiration}"
+            "now: {now:?}, expiration: {expiration:?}"
         );
     };
     expect_credential_rejected(DAY_ALIGNED_TIMESTAMP, DAY_ALIGNED_TIMESTAMP);
     expect_credential_rejected(
         DAY_ALIGNED_TIMESTAMP,
-        DAY_ALIGNED_TIMESTAMP - SECONDS_PER_DAY,
+        DAY_ALIGNED_TIMESTAMP.sub_seconds(SECONDS_PER_DAY),
     );
-    expect_credential_rejected(DAY_ALIGNED_TIMESTAMP, DAY_ALIGNED_TIMESTAMP + 1);
+    expect_credential_rejected(DAY_ALIGNED_TIMESTAMP, DAY_ALIGNED_TIMESTAMP.add_seconds(1));
     expect_credential_rejected(
         DAY_ALIGNED_TIMESTAMP,
-        DAY_ALIGNED_TIMESTAMP + 8 * SECONDS_PER_DAY,
+        DAY_ALIGNED_TIMESTAMP.add_seconds(8 * SECONDS_PER_DAY),
     );
     expect_credential_rejected(
         DAY_ALIGNED_TIMESTAMP,
-        DAY_ALIGNED_TIMESTAMP + 1000 * SECONDS_PER_DAY,
+        DAY_ALIGNED_TIMESTAMP.add_seconds(1000 * SECONDS_PER_DAY),
     );
 }

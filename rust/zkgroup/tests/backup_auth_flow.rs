@@ -5,7 +5,7 @@
 
 use zkgroup::{RandomnessBytes, Timestamp, RANDOMNESS_LEN};
 
-const DAY_ALIGNED_TIMESTAMP: Timestamp = 1681344000; // 2023-04-13 00:00:00 UTC
+const DAY_ALIGNED_TIMESTAMP: Timestamp = Timestamp::from_epoch_seconds(1681344000); // 2023-04-13 00:00:00 UTC
 
 #[test]
 fn test_backup_auth_request_response() {

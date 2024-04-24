@@ -19,7 +19,7 @@ fn benchmark_integration_auth(c: &mut Criterion) {
     // Random UID and issueTime
     let aci = libsignal_core::Aci::from_uuid_bytes(zkgroup::TEST_ARRAY_16);
     let pni = libsignal_core::Pni::from_uuid_bytes(zkgroup::TEST_ARRAY_16_1);
-    let redemption_time = 123456;
+    let redemption_time = zkgroup::Timestamp::from_epoch_seconds(123456);
 
     // SERVER
     // Issue credential
@@ -154,7 +154,7 @@ pub fn benchmark_integration_profile(c: &mut Criterion) {
             &request,
             aci,
             profile_key_commitment,
-            zkgroup::SECONDS_PER_DAY,
+            zkgroup::Timestamp::from_epoch_seconds(zkgroup::SECONDS_PER_DAY),
         )
         .unwrap();
 
@@ -166,7 +166,7 @@ pub fn benchmark_integration_profile(c: &mut Criterion) {
                     &request,
                     aci,
                     profile_key_commitment,
-                    zkgroup::SECONDS_PER_DAY,
+                    zkgroup::Timestamp::from_epoch_seconds(zkgroup::SECONDS_PER_DAY),
                 )
                 .unwrap()
         })
@@ -175,13 +175,21 @@ pub fn benchmark_integration_profile(c: &mut Criterion) {
     // CLIENT
     // Gets stored profile credential
     let profile_key_credential = server_public_params
-        .receive_expiring_profile_key_credential(&context, &response, 0)
+        .receive_expiring_profile_key_credential(
+            &context,
+            &response,
+            zkgroup::Timestamp::from_epoch_seconds(0),
+        )
         .unwrap();
 
     c.bench_function("receive_profile_key_credential", |b| {
         b.iter(|| {
             server_public_params
-                .receive_expiring_profile_key_credential(&context, &response, 0)
+                .receive_expiring_profile_key_credential(
+                    &context,
+                    &response,
+                    zkgroup::Timestamp::from_epoch_seconds(0),
+                )
                 .unwrap()
         })
     });
@@ -241,7 +249,11 @@ pub fn benchmark_integration_profile(c: &mut Criterion) {
 
     // SERVER
     server_secret_params
-        .verify_expiring_profile_key_credential_presentation(group_public_params, &presentation, 0)
+        .verify_expiring_profile_key_credential_presentation(
+            group_public_params,
+            &presentation,
+            zkgroup::Timestamp::from_epoch_seconds(0),
+        )
         .unwrap();
 
     c.bench_function(
@@ -251,7 +263,7 @@ pub fn benchmark_integration_profile(c: &mut Criterion) {
                 server_secret_params.verify_expiring_profile_key_credential_presentation(
                     group_public_params,
                     &presentation,
-                    0,
+                    zkgroup::Timestamp::from_epoch_seconds(0),
                 )
             })
         },
@@ -259,14 +271,15 @@ pub fn benchmark_integration_profile(c: &mut Criterion) {
 }
 
 pub fn benchmark_group_send_endorsements(c: &mut Criterion) {
-    const DAY_ALIGNED_TIMESTAMP: zkgroup::Timestamp = 1681344000; // 2023-04-13 00:00:00 UTC
+    const DAY_ALIGNED_TIMESTAMP: zkgroup::Timestamp =
+        zkgroup::Timestamp::from_epoch_seconds(1681344000); // 2023-04-13 00:00:00 UTC
     let now = DAY_ALIGNED_TIMESTAMP;
 
     // SERVER
     let server_secret_params = zkgroup::ServerSecretParams::generate(zkgroup::TEST_ARRAY_32);
     let server_public_params = server_secret_params.get_public_params();
     let todays_key = zkgroup::groups::GroupSendDerivedKeyPair::for_expiration(
-        now + SECONDS_PER_DAY,
+        now.add_seconds(SECONDS_PER_DAY),
         &server_secret_params,
     );
 

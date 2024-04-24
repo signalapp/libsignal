@@ -26,6 +26,8 @@ use zkgroup::backups::{
 use crate::support::*;
 use crate::*;
 
+pub(crate) use zkgroup::Timestamp;
+
 /// Checks that `bytes` can be deserialized as a `T` using our standard bincode settings.
 fn validate_serialization<'a, T: Deserialize<'a> + PartialDefault>(
     bytes: &'a [u8],
@@ -105,25 +107,6 @@ bridge_fixed_length_serializable!(UuidCiphertext);
 
 bridge_serializable_as_handle!(ServerPublicParams);
 bridge_serializable_as_handle!(ServerSecretParams);
-
-#[derive(Clone, Copy, Debug)]
-pub(crate) struct Timestamp(u64);
-
-impl Timestamp {
-    pub(crate) fn from_seconds(seconds: u64) -> Self {
-        Self(seconds)
-    }
-
-    pub(crate) fn as_seconds(self) -> u64 {
-        self.0
-    }
-}
-
-impl From<u64> for Timestamp {
-    fn from(seconds: u64) -> Self {
-        Self::from_seconds(seconds)
-    }
-}
 
 #[bridge_fn]
 fn ProfileKey_GetCommitment(
@@ -269,7 +252,7 @@ fn ServerPublicParams_ReceiveAuthCredentialWithPniAsServiceId(
         &params.receive_auth_credential_with_pni_as_service_id(
             aci,
             pni,
-            redemption_time.as_seconds(),
+            redemption_time,
             response,
         )?,
     ))
@@ -320,7 +303,7 @@ fn ServerPublicParams_ReceiveExpiringProfileKeyCredential(
         .receive_expiring_profile_key_credential(
             &request_context,
             &response,
-            current_time_in_seconds.as_seconds(),
+            current_time_in_seconds,
         )?
         .into())
 }
@@ -387,7 +370,7 @@ fn ServerSecretParams_IssueAuthCredentialWithPniAsServiceIdDeterministic(
             *randomness,
             aci,
             pni,
-            redemption_time.as_seconds(),
+            redemption_time,
         ),
     )
 }
@@ -403,7 +386,7 @@ fn ServerSecretParams_IssueAuthCredentialWithPniZkcDeterministic(
     zkgroup::serialize(&AuthCredentialWithPniZkcResponse::issue_credential(
         aci,
         pni,
-        redemption_time.as_seconds(),
+        redemption_time,
         server_secret_params,
         *randomness,
     ))
@@ -435,7 +418,7 @@ fn ServerSecretParams_VerifyAuthCredentialPresentation(
     server_secret_params.verify_auth_credential_presentation(
         group_public_params.into_inner(),
         &presentation,
-        current_time_in_seconds.as_seconds(),
+        current_time_in_seconds,
     )
 }
 
@@ -454,7 +437,7 @@ fn ServerSecretParams_IssueExpiringProfileKeyCredentialDeterministic(
             &request,
             user_id,
             commitment.into_inner(),
-            expiration_in_seconds.as_seconds(),
+            expiration_in_seconds,
         )?
         .into())
 }
@@ -471,7 +454,7 @@ fn ServerSecretParams_VerifyProfileKeyCredentialPresentation(
     server_secret_params.verify_profile_key_credential_presentation(
         group_public_params.into_inner(),
         &presentation,
-        current_time_in_seconds.as_seconds(),
+        current_time_in_seconds,
     )
 }
 
@@ -487,7 +470,7 @@ fn ServerSecretParams_IssueReceiptCredentialDeterministic(
         .issue_receipt_credential(
             *randomness,
             &request,
-            receipt_expiration_time.as_seconds(),
+            receipt_expiration_time,
             receipt_level,
         )
         .into()
@@ -558,7 +541,7 @@ fn AuthCredentialPresentation_GetPniCiphertextOrEmpty(presentation_bytes: &[u8])
 fn AuthCredentialPresentation_GetRedemptionTime(presentation_bytes: &[u8]) -> Timestamp {
     let presentation = AnyAuthCredentialPresentation::new(presentation_bytes)
         .expect("should have been parsed previously");
-    Timestamp::from_seconds(presentation.get_redemption_time())
+    presentation.get_redemption_time()
 }
 
 // FIXME: bridge_get
@@ -574,7 +557,7 @@ fn ProfileKeyCredentialRequestContext_GetRequest(
 fn ExpiringProfileKeyCredential_GetExpirationTime(
     credential: Serialized<ExpiringProfileKeyCredential>,
 ) -> Timestamp {
-    credential.get_expiration_time().into()
+    credential.get_expiration_time()
 }
 
 #[bridge_fn]
@@ -616,7 +599,7 @@ fn ReceiptCredentialRequestContext_GetRequest(
 fn ReceiptCredential_GetReceiptExpirationTime(
     receipt_credential: Serialized<ReceiptCredential>,
 ) -> Timestamp {
-    receipt_credential.get_receipt_expiration_time().into()
+    receipt_credential.get_receipt_expiration_time()
 }
 
 // FIXME: bridge_get
@@ -630,7 +613,7 @@ fn ReceiptCredential_GetReceiptLevel(receipt_credential: Serialized<ReceiptCrede
 fn ReceiptCredentialPresentation_GetReceiptExpirationTime(
     presentation: Serialized<ReceiptCredentialPresentation>,
 ) -> Timestamp {
-    presentation.get_receipt_expiration_time().into()
+    presentation.get_receipt_expiration_time()
 }
 
 // FIXME: bridge_get
@@ -763,7 +746,7 @@ fn CreateCallLinkCredentialRequest_IssueDeterministic(
     let params = zkgroup::deserialize::<GenericServerSecretParams>(params_bytes)
         .expect("should have been parsed previously");
 
-    let response = request.issue(user_id, timestamp.as_seconds(), &params, *randomness);
+    let response = request.issue(user_id, timestamp, &params, *randomness);
     zkgroup::serialize(&response)
 }
 
@@ -848,7 +831,7 @@ fn CreateCallLinkCredentialPresentation_Verify(
     let call_link_params = zkgroup::deserialize::<CallLinkPublicParams>(call_link_params_bytes)
         .expect("should have been parsed previously");
 
-    presentation.verify(room_id, now.as_seconds(), &server_params, &call_link_params)
+    presentation.verify(room_id, now, &server_params, &call_link_params)
 }
 
 #[bridge_fn]
@@ -870,7 +853,7 @@ fn CallLinkAuthCredentialResponse_IssueDeterministic(
 
     let response = CallLinkAuthCredentialResponse::issue_credential(
         user_id,
-        redemption_time.as_seconds(),
+        redemption_time,
         &params,
         *randomness,
     );
@@ -889,7 +872,7 @@ fn CallLinkAuthCredentialResponse_Receive(
     let params = zkgroup::deserialize::<GenericServerPublicParams>(params_bytes)
         .expect("should have been parsed previously");
 
-    let credential = response.receive(user_id, redemption_time.as_seconds(), &params)?;
+    let credential = response.receive(user_id, redemption_time, &params)?;
     Ok(zkgroup::serialize(&credential))
 }
 
@@ -918,7 +901,7 @@ fn CallLinkAuthCredential_PresentDeterministic(
 
     let presentation = credential.present(
         user_id,
-        redemption_time.as_seconds(),
+        redemption_time,
         &server_params,
         &call_link_params,
         *randomness,
@@ -948,7 +931,7 @@ fn CallLinkAuthCredentialPresentation_Verify(
     let call_link_params = zkgroup::deserialize::<CallLinkPublicParams>(call_link_params_bytes)
         .expect("should have been parsed previously");
 
-    presentation.verify(now.as_seconds(), &server_params, &call_link_params)
+    presentation.verify(now, &server_params, &call_link_params)
 }
 
 #[bridge_fn]
@@ -1005,7 +988,7 @@ fn BackupAuthCredentialRequest_IssueDeterministic(
         .expect("should have been parsed previously");
 
     let response = request.issue(
-        redemption_time.as_seconds(),
+        redemption_time,
         backup_level.into_inner(),
         &params,
         *randomness,
@@ -1034,7 +1017,7 @@ fn BackupAuthCredentialRequestContext_ReceiveResponse(
     let params = bincode::deserialize::<GenericServerPublicParams>(params_bytes)
         .expect("should have been parsed previously");
 
-    let credential = context.receive(response, &params, expected_redemption_time.as_seconds())?;
+    let credential = context.receive(response, &params, expected_redemption_time)?;
     Ok(zkgroup::serialize(&credential))
 }
 
@@ -1092,7 +1075,7 @@ fn BackupAuthCredentialPresentation_Verify(
     let server_params = bincode::deserialize::<GenericServerSecretParams>(server_params_bytes)
         .expect("should have been parsed previously");
 
-    presentation.verify(now.as_seconds(), &server_params)
+    presentation.verify(now, &server_params)
 }
 
 #[bridge_fn(ffi = false, node = false)]
@@ -1122,7 +1105,7 @@ fn GroupSendDerivedKeyPair_ForExpiration(
     server_params: &ServerSecretParams,
 ) -> Vec<u8> {
     zkgroup::serialize(&GroupSendDerivedKeyPair::for_expiration(
-        expiration.as_seconds(),
+        expiration,
         server_params,
     ))
 }
@@ -1162,7 +1145,7 @@ fn GroupSendEndorsementsResponse_IssueDeterministic(
 fn GroupSendEndorsementsResponse_GetExpiration(response_bytes: &[u8]) -> Timestamp {
     let response = zkgroup::deserialize::<GroupSendEndorsementsResponse>(response_bytes)
         .expect("should have been parsed previously");
-    Timestamp::from_seconds(response.expiration())
+    response.expiration()
 }
 
 #[bridge_fn]
@@ -1182,12 +1165,8 @@ fn GroupSendEndorsementsResponse_ReceiveAndCombineWithServiceIds(
         .position(|next| next == local_user)
         .expect("local user not included in member list");
 
-    let endorsements = response.receive_with_service_ids(
-        group_members,
-        now.as_seconds(),
-        &group_params,
-        server_params,
-    )?;
+    let endorsements =
+        response.receive_with_service_ids(group_members, now, &group_params, server_params)?;
     let combined_endorsement = GroupSendEndorsement::combine(
         endorsements[..local_user_index]
             .iter()
@@ -1227,7 +1206,7 @@ fn GroupSendEndorsementsResponse_ReceiveAndCombineWithCiphertexts(
         });
 
     let endorsements =
-        response.receive_with_ciphertexts(user_id_ciphertexts, now.as_seconds(), server_params)?;
+        response.receive_with_ciphertexts(user_id_ciphertexts, now, server_params)?;
     let combined_endorsement = GroupSendEndorsement::combine(
         endorsements[..local_user_index]
             .iter()
@@ -1288,7 +1267,7 @@ fn GroupSendToken_CheckValidContents(bytes: &[u8]) -> Result<(), ZkGroupDeserial
 fn GroupSendToken_ToFullToken(token: &[u8], expiration: Timestamp) -> Vec<u8> {
     let token =
         zkgroup::deserialize::<GroupSendToken>(token).expect("should have been parsed previously");
-    zkgroup::serialize(&token.into_full_token(expiration.as_seconds()))
+    zkgroup::serialize(&token.into_full_token(expiration))
 }
 
 #[bridge_fn]
@@ -1302,7 +1281,7 @@ fn GroupSendFullToken_CheckValidContents(
 fn GroupSendFullToken_GetExpiration(token: &[u8]) -> Timestamp {
     let token = zkgroup::deserialize::<GroupSendFullToken>(token)
         .expect("should have been parsed previously");
-    Timestamp::from_seconds(token.expiration())
+    token.expiration()
 }
 
 #[bridge_fn]
@@ -1316,5 +1295,5 @@ fn GroupSendFullToken_Verify(
         .expect("should have been parsed previously");
     let key_pair = zkgroup::deserialize::<GroupSendDerivedKeyPair>(key_pair)
         .expect("should have been parsed previously");
-    token.verify(user_ids, now.as_seconds(), &key_pair)
+    token.verify(user_ids, now, &key_pair)
 }

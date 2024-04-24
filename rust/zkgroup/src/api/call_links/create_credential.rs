@@ -22,7 +22,7 @@ use crate::crypto::uid_encryption;
 use crate::crypto::uid_struct::UidStruct;
 use crate::generic_server_params::{GenericServerPublicParams, GenericServerSecretParams};
 use crate::groups::UuidCiphertext;
-use crate::{ZkGroupVerificationFailure, SECONDS_PER_DAY};
+use crate::ZkGroupVerificationFailure;
 
 use super::{CallLinkPublicParams, CallLinkSecretParams};
 
@@ -128,7 +128,7 @@ impl CreateCallLinkCredentialRequestContext {
         user_id: libsignal_core::Aci,
         params: &GenericServerPublicParams,
     ) -> Result<CreateCallLinkCredential, ZkGroupVerificationFailure> {
-        if response.timestamp % SECONDS_PER_DAY != 0 {
+        if !response.timestamp.is_day_aligned() {
             return Err(ZkGroupVerificationFailure);
         }
 
@@ -195,16 +195,16 @@ impl CreateCallLinkCredentialPresentation {
     pub fn verify(
         &self,
         room_id: &[u8],
-        current_time_in_seconds: Timestamp,
+        current_time: Timestamp,
         server_params: &GenericServerSecretParams,
         call_link_params: &CallLinkPublicParams,
     ) -> Result<(), ZkGroupVerificationFailure> {
         let expiration = self
             .timestamp
-            .checked_add(30 * 60 * 60) // 30 hours, to account for clock skew
+            .checked_add_seconds(30 * 60 * 60) // 30 hours, to account for clock skew
             .ok_or(ZkGroupVerificationFailure)?;
 
-        if !(self.timestamp..expiration).contains(&current_time_in_seconds) {
+        if !(self.timestamp..expiration).contains(&current_time) {
             return Err(ZkGroupVerificationFailure);
         }
 

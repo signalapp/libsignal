@@ -213,7 +213,7 @@ impl SimpleArgTypeInfo<'_> for crate::zkgroup::Timestamp {
                 foreign
             )));
         }
-        Ok(Self::from_seconds(*foreign as u64))
+        Ok(Self::from_epoch_seconds(*foreign as u64))
     }
 }
 
@@ -594,7 +594,7 @@ impl ResultTypeInfo<'_> for crate::zkgroup::Timestamp {
     type ResultType = jlong;
     fn convert_into(self, _env: &mut JNIEnv) -> Result<Self::ResultType, BridgeLayerError> {
         // Note that we don't check bounds here.
-        Ok(self.as_seconds() as jlong)
+        Ok(self.epoch_seconds() as jlong)
     }
 }
 

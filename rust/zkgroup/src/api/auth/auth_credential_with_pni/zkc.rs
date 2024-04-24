@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use zkcredential::credentials::{CredentialKeyPair, CredentialPublicKey};
 
 use crate::api::auth::auth_credential_with_pni::AuthCredentialWithPniVersion;
-use crate::common::constants::{PRESENTATION_VERSION_4, SECONDS_PER_DAY};
+use crate::common::constants::PRESENTATION_VERSION_4;
 use crate::common::serialization::VersionByte;
 use crate::common::simple_types::{RandomnessBytes, Timestamp};
 use crate::crypto::uid_encryption;
@@ -105,7 +105,7 @@ impl AuthCredentialWithPniZkcResponse {
         redemption_time: Timestamp,
         public_key: &CredentialPublicKey,
     ) -> Result<AuthCredentialWithPniZkc, ZkGroupVerificationFailure> {
-        if redemption_time % SECONDS_PER_DAY != 0 {
+        if !redemption_time.is_day_aligned() {
             return Err(ZkGroupVerificationFailure);
         }
 
@@ -228,13 +228,15 @@ impl AuthCredentialWithPniZkcPresentation {
 mod test {
     use zkcredential::RANDOMNESS_LEN;
 
+    use crate::SECONDS_PER_DAY;
+
     use super::*;
 
     #[test]
     fn issue_receive_present() {
         const ACI: Aci = Aci::from_uuid_bytes([b'a'; 16]);
         const PNI: Pni = Pni::from_uuid_bytes([b'p'; 16]);
-        const REDEMPTION_TIME: Timestamp = 12345 * SECONDS_PER_DAY;
+        const REDEMPTION_TIME: Timestamp = Timestamp::from_epoch_seconds(12345 * SECONDS_PER_DAY);
 
         let credential_key = CredentialKeyPair::generate([1; RANDOMNESS_LEN]);
         let public_key = credential_key.public_key();

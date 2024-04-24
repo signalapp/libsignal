@@ -59,7 +59,7 @@ fn test_integration_auth_with_pni() {
     // Random UID and issueTime
     let aci = libsignal_core::Aci::from_uuid_bytes(zkgroup::TEST_ARRAY_16);
     let pni = libsignal_core::Pni::from_uuid_bytes(zkgroup::TEST_ARRAY_16_1);
-    let redemption_time = 123456 * SECONDS_PER_DAY;
+    let redemption_time = zkgroup::Timestamp::from_epoch_seconds(123456 * SECONDS_PER_DAY);
 
     // SERVER
     // Issue credential
@@ -131,7 +131,7 @@ fn test_integration_auth_with_pni() {
         .verify_auth_credential_presentation(
             group_public_params,
             &presentation_any,
-            redemption_time - SECONDS_PER_DAY - 1,
+            redemption_time.sub_seconds(SECONDS_PER_DAY + 1),
         )
         .expect_err("credential not valid before redemption time (allowing for clock skew)");
 
@@ -139,7 +139,7 @@ fn test_integration_auth_with_pni() {
         .verify_auth_credential_presentation(
             group_public_params,
             &presentation_any,
-            redemption_time + 2 * SECONDS_PER_DAY + 2,
+            redemption_time.add_seconds(2 * SECONDS_PER_DAY + 2),
         )
         .expect_err("credential not valid past deadline");
 
@@ -178,7 +178,7 @@ fn test_integration_auth_zkc() {
     // Random UID and issueTime
     let aci = libsignal_core::Aci::from(uuid::Uuid::from_bytes(zkgroup::TEST_ARRAY_16));
     let pni = libsignal_core::Pni::from(uuid::Uuid::from_bytes(zkgroup::TEST_ARRAY_16_1));
-    let redemption_time = 123456 * SECONDS_PER_DAY;
+    let redemption_time = zkgroup::Timestamp::from_epoch_seconds(123456 * SECONDS_PER_DAY);
 
     // SERVER
     // Issue credential
@@ -246,7 +246,7 @@ fn test_integration_auth_zkc() {
         .verify_auth_credential_presentation(
             group_public_params,
             &presentation_any,
-            redemption_time - SECONDS_PER_DAY - 1,
+            redemption_time.sub_seconds(SECONDS_PER_DAY + 1),
         )
         .expect_err("credential not valid before redemption time (allowing for clock skew)");
 
@@ -254,7 +254,7 @@ fn test_integration_auth_zkc() {
         .verify_auth_credential_presentation(
             group_public_params,
             &presentation_any,
-            redemption_time + 2 * SECONDS_PER_DAY + 2,
+            redemption_time.add_seconds(2 * SECONDS_PER_DAY + 2),
         )
         .expect_err("credential not valid past deadline");
 
@@ -297,8 +297,8 @@ fn test_integration_expiring_profile() {
     // SERVER
 
     let randomness = zkgroup::TEST_ARRAY_32_4;
-    let expiration = 17u64 * 24 * 60 * 60;
-    let current_time = expiration - 2 * 24 * 60 * 60;
+    let expiration = zkgroup::Timestamp::from_epoch_seconds(17u64 * 24 * 60 * 60);
+    let current_time = expiration.sub_seconds(2 * 24 * 60 * 60);
     let response = server_secret_params
         .issue_expiring_profile_key_credential(
             randomness,
@@ -359,7 +359,7 @@ fn test_integration_expiring_profile() {
         .verify_profile_key_credential_presentation(
             group_public_params,
             &presentation_any,
-            expiration - 5,
+            expiration.sub_seconds(5),
         )
         .unwrap();
 
@@ -374,7 +374,7 @@ fn test_integration_expiring_profile() {
         .verify_profile_key_credential_presentation(
             group_public_params,
             &presentation_any,
-            expiration + 5,
+            expiration.add_seconds(5),
         )
         .is_err());
 
@@ -384,7 +384,7 @@ fn test_integration_expiring_profile() {
         .verify_profile_key_credential_presentation(
             group_public_params,
             &presentation_parsed,
-            expiration - 5,
+            expiration.sub_seconds(5),
         )
         .unwrap();
 

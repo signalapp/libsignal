@@ -75,15 +75,16 @@ pub struct GroupSendEndorsementsResponse {
 }
 
 impl GroupSendEndorsementsResponse {
-    pub fn default_expiration(current_time_in_seconds: Timestamp) -> Timestamp {
+    pub fn default_expiration(current_time: Timestamp) -> Timestamp {
         // Return the end of the next day, unless that's less than 25 hours away.
         // In that case, return the end of the following day.
+        let current_time_in_seconds = current_time.epoch_seconds();
         let start_of_day = current_time_in_seconds - (current_time_in_seconds % SECONDS_PER_DAY);
         let mut expiration = start_of_day + 2 * SECONDS_PER_DAY;
         if (expiration - current_time_in_seconds) < SECONDS_PER_DAY + SECONDS_PER_HOUR {
             expiration += SECONDS_PER_DAY;
         }
-        expiration
+        Timestamp::from_epoch_seconds(expiration)
     }
 
     /// Sorts `points` in *some* deterministic order based on the contents of each `RistrettoPoint`.
@@ -152,12 +153,12 @@ impl GroupSendEndorsementsResponse {
         server_params: &ServerPublicParams,
     ) -> Result<zkcredential::endorsements::ServerDerivedPublicKey, ZkGroupVerificationFailure>
     {
-        if self.expiration % SECONDS_PER_DAY != 0 {
+        if !self.expiration.is_day_aligned() {
             // Reject credentials that don't expire on a day boundary,
             // because the server might be trying to fingerprint us.
             return Err(ZkGroupVerificationFailure);
         }
-        let time_remaining_in_seconds = self.expiration.saturating_sub(now);
+        let time_remaining_in_seconds = self.expiration.saturating_seconds_since(now);
         if time_remaining_in_seconds < 2 * SECONDS_PER_HOUR {
             // Reject credentials that expire in less than two hours,
             // including those that might expire in the past.

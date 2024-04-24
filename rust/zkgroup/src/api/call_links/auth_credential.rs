@@ -18,7 +18,7 @@ use crate::crypto::uid_encryption;
 use crate::crypto::uid_struct::UidStruct;
 use crate::generic_server_params::{GenericServerPublicParams, GenericServerSecretParams};
 use crate::groups::UuidCiphertext;
-use crate::{ZkGroupVerificationFailure, SECONDS_PER_DAY};
+use crate::ZkGroupVerificationFailure;
 
 use super::{CallLinkPublicParams, CallLinkSecretParams};
 
@@ -55,7 +55,7 @@ impl CallLinkAuthCredentialResponse {
         redemption_time: Timestamp,
         params: &GenericServerPublicParams,
     ) -> Result<CallLinkAuthCredential, ZkGroupVerificationFailure> {
-        if redemption_time % SECONDS_PER_DAY != 0 {
+        if !redemption_time.is_day_aligned() {
             return Err(ZkGroupVerificationFailure);
         }
 
@@ -112,13 +112,13 @@ pub struct CallLinkAuthCredentialPresentation {
 impl CallLinkAuthCredentialPresentation {
     pub fn verify(
         &self,
-        current_time_in_seconds: Timestamp,
+        current_time: Timestamp,
         server_params: &GenericServerSecretParams,
         call_link_params: &CallLinkPublicParams,
     ) -> Result<(), ZkGroupVerificationFailure> {
         crate::ServerSecretParams::check_auth_credential_redemption_time(
             self.redemption_time,
-            current_time_in_seconds,
+            current_time,
         )?;
 
         zkcredential::presentation::PresentationProofVerifier::new(CREDENTIAL_LABEL)

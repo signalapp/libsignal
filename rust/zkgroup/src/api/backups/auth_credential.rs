@@ -178,7 +178,7 @@ impl BackupAuthCredentialRequestContext {
         expected_redemption_time: Timestamp,
     ) -> Result<BackupAuthCredential, ZkGroupVerificationFailure> {
         if response.redemption_time != expected_redemption_time
-            || response.redemption_time % SECONDS_PER_DAY != 0
+            || !response.redemption_time.is_day_aligned()
         {
             return Err(ZkGroupVerificationFailure);
         }
@@ -249,19 +249,19 @@ pub struct BackupAuthCredentialPresentation {
 impl BackupAuthCredentialPresentation {
     pub fn verify(
         &self,
-        current_time_in_seconds: Timestamp,
+        current_time: Timestamp,
         server_params: &GenericServerSecretParams,
     ) -> Result<(), ZkGroupVerificationFailure> {
         let acceptable_start_time = self
             .redemption_time
-            .checked_sub(SECONDS_PER_DAY)
+            .checked_sub_seconds(SECONDS_PER_DAY)
             .ok_or(ZkGroupVerificationFailure)?;
         let acceptable_end_time = self
             .redemption_time
-            .checked_add(2 * SECONDS_PER_DAY)
+            .checked_add_seconds(2 * SECONDS_PER_DAY)
             .ok_or(ZkGroupVerificationFailure)?;
 
-        if !(acceptable_start_time..=acceptable_end_time).contains(&current_time_in_seconds) {
+        if !(acceptable_start_time..=acceptable_end_time).contains(&current_time) {
             return Err(ZkGroupVerificationFailure);
         }
 
@@ -290,7 +290,7 @@ mod tests {
     };
     use crate::{common, RandomnessBytes, Timestamp, RANDOMNESS_LEN, SECONDS_PER_DAY};
 
-    const DAY_ALIGNED_TIMESTAMP: Timestamp = 1681344000; // 2023-04-13 00:00:00 UTC
+    const DAY_ALIGNED_TIMESTAMP: Timestamp = Timestamp::from_epoch_seconds(1681344000); // 2023-04-13 00:00:00 UTC
     const KEY: [u8; 32] = [0x42u8; 32];
     const ACI: uuid::Uuid = uuid::uuid!("c0fc16e4-bae5-4343-9f0d-e7ecf4251343");
     const SERVER_SECRET_RAND: RandomnessBytes = [0xA0; RANDOMNESS_LEN];
@@ -333,13 +333,13 @@ mod tests {
 
         presentation
             .verify(
-                DAY_ALIGNED_TIMESTAMP - SECONDS_PER_DAY - 1,
+                DAY_ALIGNED_TIMESTAMP.sub_seconds(SECONDS_PER_DAY + 1),
                 &server_secret_params(),
             )
             .expect_err("credential should not be valid 24h before redemption time");
         presentation
             .verify(
-                DAY_ALIGNED_TIMESTAMP + 2 * SECONDS_PER_DAY + 1,
+                DAY_ALIGNED_TIMESTAMP.add_seconds(2 * SECONDS_PER_DAY + 1),
                 &server_secret_params(),
             )
             .expect_err("credential should not be valid after expiration (2 days later)");
@@ -365,7 +365,7 @@ mod tests {
         let valid_presentation =
             credential.present(&server_secret_params().get_public_params(), PRESENT_RAND);
         let invalid_presentation = BackupAuthCredentialPresentation {
-            redemption_time: DAY_ALIGNED_TIMESTAMP + 1,
+            redemption_time: DAY_ALIGNED_TIMESTAMP.add_seconds(1),
             ..valid_presentation
         };
         invalid_presentation
@@ -405,7 +405,7 @@ mod tests {
                 .receive(
                     blinded_credential,
                     &server_secret_params().get_public_params(),
-                    redemption_time + SECONDS_PER_DAY,
+                    redemption_time.add_seconds(SECONDS_PER_DAY),
                 )
                 .is_err(),
             "client should require that timestamp matches its expectation"
@@ -414,7 +414,7 @@ mod tests {
 
     #[test]
     fn test_client_enforces_timestamp_granularity() {
-        let redemption_time: Timestamp = DAY_ALIGNED_TIMESTAMP + 60 * 60; // not on a day boundary!
+        let redemption_time: Timestamp = DAY_ALIGNED_TIMESTAMP.add_seconds(60 * 60); // not on a day boundary!
 
         let request_context = BackupAuthCredentialRequestContext::new(&KEY, &ACI);
         let request = request_context.get_request();
