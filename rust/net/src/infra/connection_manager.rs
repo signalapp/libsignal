@@ -12,6 +12,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use async_trait::async_trait;
+use itertools::Itertools;
 use tokio::sync::Mutex;
 use tokio::time::{timeout_at, Instant};
 
@@ -59,6 +60,8 @@ pub trait ConnectionManager: Clone + Send + Sync {
         E: Send + Debug + LogSafeDisplay,
         Fun: Fn(&'a ConnectionParams) -> Fut + Send + Sync,
         Fut: Future<Output = Result<T, E>> + Send;
+
+    fn describe_for_logging(&self) -> String;
 }
 
 #[async_trait]
@@ -77,6 +80,10 @@ where
         Fut: Future<Output = Result<T, E>> + Send,
     {
         (*self).connect_or_wait(connection_fn).await
+    }
+
+    fn describe_for_logging(&self) -> String {
+        (*self).describe_for_logging()
     }
 }
 
@@ -190,11 +197,18 @@ where
                     }
                     ConnectionAttemptOutcome::Attempted(Err(e)) => {
                         log::debug!("Connection attempt failed with an error: {:?}", e);
-                        log::info!("Connection attempt failed with an error: {}", e);
+                        log::info!(
+                            "Connection attempt failed with an error: {} ({})",
+                            e,
+                            route_manager.describe_for_logging(),
+                        );
                         continue;
                     }
                     ConnectionAttemptOutcome::TimedOut => {
-                        log::info!("Connection attempt timed out");
+                        log::info!(
+                            "Connection attempt timed out ({:?})",
+                            route_manager.describe_for_logging()
+                        );
                         continue;
                     }
                     ConnectionAttemptOutcome::WaitUntil(i) => {
@@ -207,6 +221,16 @@ where
             }
         }
         ConnectionAttemptOutcome::WaitUntil(earliest_retry)
+    }
+
+    fn describe_for_logging(&self) -> String {
+        format!(
+            "multi-route: [{}]",
+            self.route_managers
+                .iter()
+                .map(ConnectionManager::describe_for_logging)
+                .join(", ")
+        )
     }
 }
 
@@ -266,6 +290,10 @@ impl ConnectionManager for SingleRouteThrottlingConnectionManager {
         connection_result_or_timeout.map_or(ConnectionAttemptOutcome::TimedOut, |result| {
             ConnectionAttemptOutcome::Attempted(result)
         })
+    }
+
+    fn describe_for_logging(&self) -> String {
+        self.connection_params.route_type.to_string()
     }
 }
 
