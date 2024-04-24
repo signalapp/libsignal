@@ -30,6 +30,8 @@ jobs:
             additional-rust-target: aarch64-apple-darwin
         # Ubuntu binaries are built using Docker, below
 
+    timeout-minutes: 45
+
     steps:
     - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
 
@@ -89,7 +91,9 @@ jobs:
   verify-rust:
     name: Verify JNI bindings
     runs-on: ubuntu-latest
-    
+
+    timeout-minutes: 45
+
     steps:
     - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
 
@@ -106,6 +110,8 @@ jobs:
     runs-on: ubuntu-latest
 
     needs: [build, verify-rust]
+
+    timeout-minutes: 45
 
     steps:
     - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1

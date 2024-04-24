@@ -34,6 +34,8 @@ jobs:
           custom-arm64-dist-url: https://unofficial-builds.nodejs.org/download/release
         # Ubuntu binaries are built using Docker, below
 
+    timeout-minutes: 45
+
     steps:
     - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
 
@@ -98,6 +100,8 @@ jobs:
 
     runs-on: ubuntu-latest
 
+    timeout-minutes: 45
+
     steps:
     - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
 
@@ -113,6 +117,8 @@ jobs:
     name: Verify Node bindings
     runs-on: ubuntu-latest
     
+    timeout-minutes: 45
+
     steps:
     - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
 
@@ -129,6 +135,8 @@ jobs:
     runs-on: ubuntu-latest
 
     needs: [build, build-docker, verify-rust]
+
+    timeout-minutes: 45
 
     steps:
     - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1

@@ -108,6 +108,8 @@ jobs:
           toolchain: "$(cat rust-toolchain)"
         - version: stable
           toolchain: "${LIBSIGNAL_MINIMUM_SUPPORTED_RUST_VERSION}"
+    
+    timeout-minutes: 45
 
     steps:
     - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
@@ -228,6 +230,8 @@ jobs:
         - version: stable
           toolchain: "${LIBSIGNAL_MINIMUM_SUPPORTED_RUST_VERSION}"
 
+    timeout-minutes: 45
+
     steps:
     - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
 
@@ -252,6 +256,8 @@ jobs:
       contents: read
 
     if: ${{ needs.changes.outputs.java == 'true' }}
+
+    timeout-minutes: 45
 
     steps:
     - run: echo "JAVA_HOME=$JAVA_HOME_17_X64" >> "$GITHUB_ENV"
@@ -295,6 +301,8 @@ jobs:
     needs: changes
 
     if: ${{ needs.changes.outputs.node == 'true' }}
+
+    timeout-minutes: 45
 
     steps:
     - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
@@ -350,6 +358,8 @@ jobs:
 
     if: ${{ needs.changes.outputs.swift == 'true' }}
 
+    timeout-minutes: 45
+
     steps:
     - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
 
@@ -382,6 +392,8 @@ jobs:
     needs: changes
 
     if: ${{ needs.changes.outputs.swift == 'true' }}
+
+    timeout-minutes: 45
 
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
