@@ -9,8 +9,10 @@ import static org.junit.Assert.*;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
+import org.junit.Assume;
 import org.junit.Test;
 import org.signal.libsignal.internal.Native;
+import org.signal.libsignal.util.TestEnvironment;
 
 public class ChatServiceTest {
 
@@ -95,5 +97,44 @@ public class ChatServiceTest {
             assertEquals(
                 value,
                 internal.guardedMap(h -> Native.TESTING_ChatRequestGetHeaderValue(h, name))));
+  }
+
+  @Test
+  public void testConnectUnauth() throws Exception {
+    // Use the presence of the proxy server environment setting to know whether we should make
+    // network requests in our tests.
+    final String PROXY_SERVER = TestEnvironment.get("LIBSIGNAL_TESTING_PROXY_SERVER");
+    Assume.assumeNotNull(PROXY_SERVER);
+
+    final Network net = new Network(Network.Environment.STAGING);
+    final ChatService chat = net.createChatService("", "");
+    // Just make sure we can connect.
+    chat.connectUnauthenticated().get();
+    chat.disconnect();
+  }
+
+  @Test
+  public void testConnectUnauthThroughProxy() throws Exception {
+    final String PROXY_SERVER = TestEnvironment.get("LIBSIGNAL_TESTING_PROXY_SERVER");
+    Assume.assumeNotNull(PROXY_SERVER);
+
+    // The default TLS proxy config doesn't support staging, so we connect to production.
+    final Network net = new Network(Network.Environment.PRODUCTION);
+    final String[] proxyComponents = PROXY_SERVER.split(":");
+    switch (proxyComponents.length) {
+      case 1:
+        net.setProxy(PROXY_SERVER, 443);
+        break;
+      case 2:
+        net.setProxy(proxyComponents[0], Integer.parseInt(proxyComponents[1]));
+        break;
+      default:
+        throw new IllegalArgumentException("invalid LIBSIGNAL_TESTING_PROXY_SERVER");
+    }
+
+    final ChatService chat = net.createChatService("", "");
+    // Just make sure we can connect.
+    chat.connectUnauthenticated().get();
+    chat.disconnect();
   }
 }

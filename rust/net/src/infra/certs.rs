@@ -64,11 +64,6 @@ fn set_up_platform_verifier(
     host_name: &str,
     verifier: impl ServerCertVerifier + 'static,
 ) -> Result<(), Error> {
-    if cfg!(target_os = "android") {
-        log::warn!("TLS verification on Android (without a pinned cert) isn't supported yet");
-        return Err(Error::BadCertificate);
-    }
-
     let host_as_server_name = rustls::pki_types::ServerName::try_from(host_name)
         .map_err(|_| Error::BadHostname)?
         .to_owned();

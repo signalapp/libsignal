@@ -6588,7 +6588,7 @@ SOFTWARE.
 
 ```
 
-## jni 0.21.1
+## jni 0.19.0, jni 0.21.1
 
 ```
 The MIT License (MIT)

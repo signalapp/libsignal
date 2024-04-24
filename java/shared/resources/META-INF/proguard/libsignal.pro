@@ -57,3 +57,6 @@
 
 -keepnames enum org.signal.libsignal.protocol.state.IdentityKeyStore$Direction { *; }
 -keepnames class org.signal.libsignal.**.*Record
+
+# Keep rustls-platform-verifier classes
+-keep, includedescriptorclasses class org.rustls.platformverifier.** { *; }

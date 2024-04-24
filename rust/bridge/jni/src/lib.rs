@@ -12,8 +12,9 @@ use jni::objects::{JMap, JValue};
 use jni::JNIEnv;
 
 use libsignal_bridge::jni::*;
+use libsignal_bridge::jni_args;
 #[cfg(not(target_os = "android"))]
-use libsignal_bridge::{jni_args, jni_class_name};
+use libsignal_bridge::jni_class_name;
 use libsignal_protocol::*;
 
 pub mod logging;
@@ -50,10 +51,17 @@ pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_IdentityKeyPa
 #[no_mangle]
 pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_preloadClasses<'local>(
     mut env: JNIEnv<'local>,
-    _class: JClass<'local>,
+    class: JClass<'local>,
 ) {
     run_ffi_safe(&mut env, |env| {
-        preload_classes(env).map_err(SignalJniError::from)
+        preload_classes(env)?;
+
+        #[cfg(target_os = "android")]
+        set_up_rustls_platform_verifier(env, class)?;
+        // Silence the unused variable warning on non-Android.
+        _ = class;
+
+        Ok(())
     })
 }
 
@@ -201,4 +209,59 @@ pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_keepAlive(
     _class: JClass,
     _obj: JObject,
 ) {
+}
+
+#[cfg(target_os = "android")]
+fn set_up_rustls_platform_verifier(
+    env: &mut JNIEnv<'_>,
+    class: JClass<'_>,
+) -> Result<(), SignalJniError> {
+    // The "easy" way of setting up rustls-platform-verifier requires an Android Context object.
+    // However, at the time of this writing, the Context was only used to extract a ClassLoader that
+    // can find the rustls-platform-verifier Kotlin classes. We can do that with the Native class's
+    // loader just as well, so we provide `null` for the Context without worrying about it.
+    // (It *is* unfortunate that they're still using jni 0.19 though.
+    // https://github.com/rustls/rustls-platform-verifier/issues/22)
+    struct CachedRuntime {
+        vm: jni19::JavaVM,
+        context: jni19::objects::GlobalRef,
+        class_loader: jni19::objects::GlobalRef,
+    }
+    impl rustls_platform_verifier::android::Runtime for CachedRuntime {
+        fn java_vm(&self) -> &jni19::JavaVM {
+            &self.vm
+        }
+        fn context(&self) -> &jni19::objects::GlobalRef {
+            &self.context
+        }
+        fn class_loader(&self) -> &jni19::objects::GlobalRef {
+            &self.class_loader
+        }
+    }
+
+    let class_loader = call_method_checked(
+        env,
+        class,
+        "getClassLoader",
+        jni_args!(() -> java.lang.ClassLoader),
+    )?;
+
+    // JNIEnv, old or new, is a wrapper around a raw table (C struct) of function pointers.
+    // So it's safe to convert from the old one to the new one.
+    // Note that we can't propagate the errors normally because they are jni19 Errors,
+    // but if there ever *are* any errors we are running inside run_ffi_safe anyway.
+    let jni19_env =
+        unsafe { jni19::JNIEnv::from_raw(env.get_raw() as *mut _) }.expect("valid JNIEnv");
+    // This is expected to be one-time setup, so it's okay that we're leaking a bit of configuration info.
+    rustls_platform_verifier::android::init_external(Box::leak(Box::new(CachedRuntime {
+        vm: jni19_env.get_java_vm().expect("can get VM"),
+        context: jni19_env
+            .new_global_ref(std::ptr::null_mut())
+            .expect("can create global ref to null"),
+        class_loader: jni19_env
+            .new_global_ref(class_loader.as_raw())
+            .expect("can create global ref to class loader"),
+    })));
+
+    Ok(())
 }

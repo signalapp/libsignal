@@ -7297,7 +7297,7 @@ SOFTWARE.
 			<key>License</key>
 			<string>MIT License</string>
 			<key>Title</key>
-			<string>jni 0.21.1</string>
+			<string>jni 0.19.0, jni 0.21.1</string>
 			<key>Type</key>
 			<string>PSGroupSpecifier</string>
 		</dict>

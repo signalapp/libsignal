@@ -31,3 +31,7 @@ testing-fns = ["libsignal-bridge/testing-fns"]
 
 [target.aarch64-linux-android.dependencies]
 cpufeatures = "0.2.2" # Make sure 64-bit Android gets optimized crypto
+
+[target.'cfg(target_os = "android")'.dependencies]
+jni19 = { version = "0.19", package = "jni" }
+rustls-platform-verifier = "0.3.1"
