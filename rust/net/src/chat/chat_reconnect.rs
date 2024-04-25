@@ -60,7 +60,23 @@ where
         let service = self.service().await;
         let (response, ip_type, connection_info) = match service {
             Ok(s) => {
+                let method_for_log = msg.method.clone();
+                let path_for_log_without_query = msg.path.path().to_owned();
+
                 let result = s.send(msg, deadline - Instant::now()).await;
+
+                if let Err(e) = &result {
+                    // This is likely partially redundant with whatever logs the caller might do,
+                    // but it ensures the connection info is included.
+                    log::warn!(
+                        "[{} {}] failed to complete request: {} ({})",
+                        method_for_log,
+                        path_for_log_without_query,
+                        e,
+                        s.connection_info().description()
+                    );
+                }
+
                 (
                     result,
                     IpType::from_host(&s.connection_info().address),
