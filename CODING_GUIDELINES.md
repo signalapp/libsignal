@@ -27,6 +27,10 @@ These should usually be prioritized in that order, but adjust the trade-off as n
 
     Low-level objects like ServiceId and ProtocolAddress do not follow this rule; instead, they stringify in fixed formats that are easy to filter from higher-level logs en masse.
 
+- **Logs should be kept minimal on success paths**. It's harder to find significant information in a sea of "operation succeeded!", and in the worst case we'd hit the log size limit sooner. (Clients only keep a few days of logs, and they'll keep even less if the recent logs are taking up too much space.) Even on failure paths, consider how much will end up in client logs, and if it'll be redundant with a higher-level log. Especially when logging in a loop. But don't go too far: it's important to know when certain events happen in relation to earlier or later failures.
+
+    As with the previous rule, this does not apply to the "debug" and "verbose" log levels, which are turned off at compile time in our client library release builds.
+
 
 # Rust
 
