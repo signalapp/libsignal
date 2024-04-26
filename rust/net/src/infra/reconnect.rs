@@ -128,7 +128,7 @@ where
 #[derive(Debug)]
 #[derive_where(Clone)]
 pub(crate) struct ServiceStatus<E> {
-    maybe_error: Arc<OnceLock<E>>,
+    maybe_error: Arc<OnceLock<Option<E>>>,
     service_cancellation: CancellationToken,
 }
 
@@ -143,12 +143,13 @@ impl<E> Default for ServiceStatus<E> {
 
 impl<E> ServiceStatus<E> {
     pub(crate) fn stop_service(&self) {
+        self.maybe_error.get_or_init(|| None);
         self.service_cancellation.cancel();
     }
 
     pub(crate) fn stop_service_with_error(&self, error: E) {
-        self.maybe_error.get_or_init(|| error);
-        self.stop_service();
+        self.maybe_error.get_or_init(|| Some(error));
+        self.service_cancellation.cancel();
     }
 
     pub(crate) fn is_stopped(&self) -> bool {
@@ -159,8 +160,26 @@ impl<E> ServiceStatus<E> {
         self.service_cancellation.cancelled().await
     }
 
+    /// Returns an error if `stop_service_with_error` was called previously.
+    ///
+    /// Note that returning `None` could mean the service is still running, or that the service was
+    /// stopped deliberately without an error, or that the service stopped because of an error but
+    /// that error was handled elsewhere.
     pub(crate) fn get_error(&self) -> Option<&E> {
-        self.maybe_error.get()
+        match self.maybe_error.get() {
+            None => {
+                // service not stopped
+                None
+            }
+            Some(None) => {
+                // service stopped without error
+                None
+            }
+            Some(Some(e)) => {
+                // service stopped with error
+                Some(e)
+            }
+        }
     }
 }
 
