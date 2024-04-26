@@ -21,11 +21,11 @@ jobs:
 
     strategy:
       matrix:
-        os: [windows-latest, macos-latest]
+        os: [windows-latest, macos-12]
         include:
           - os: windows-latest
             library: signal_jni.dll
-          - os: macos-latest
+          - os: macos-12
             library: libsignal_jni.dylib
             additional-rust-target: aarch64-apple-darwin
         # Ubuntu binaries are built using Docker, below
@@ -42,8 +42,8 @@ jobs:
           const dryRun = ${{ inputs.dry_run }};
           const refType = '${{ github.ref_type }}';
           const refName = '${{ github.ref_name }}';
-          console.log(dryRun 
-            ? `Running in 'dry run' mode on '${refName}' ${refType}` 
+          console.log(dryRun
+            ? `Running in 'dry run' mode on '${refName}' ${refType}`
             : `Running on '${refName}' ${refType}`);
           if (refType !== 'tag' && !dryRun) {
             core.setFailed("the action should either be launched on a tag or with a 'dry run' switch");
@@ -64,7 +64,7 @@ jobs:
       if: matrix.os == 'windows-latest'
 
     - run: brew install protobuf
-      if: matrix.os == 'macos-latest'
+      if: matrix.os == 'macos-12'
 
     - name: Build for host (should be x86_64)
       run: java/build_jni.sh desktop
@@ -72,7 +72,7 @@ jobs:
 
     - name: Build for alternate target (arm64)
       run: java/build_jni.sh desktop
-      if: matrix.os == 'macos-latest'
+      if: matrix.os == 'macos-12'
       env:
         CARGO_BUILD_TARGET: ${{ matrix.additional-rust-target }}
 
@@ -80,7 +80,7 @@ jobs:
       # Using target/release/ for both the input and output wouldn't normally be ideal
       # from a build system perspective, but we're going to immediately upload the merged library.
       run: lipo -create target/release/${{ matrix.library }} target/${{ matrix.additional-rust-target }}/release/${{ matrix.library }} -output target/release/${{ matrix.library }}
-      if: matrix.os == 'macos-latest'
+      if: matrix.os == 'macos-12'
 
     - name: Upload library
       uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4.3.1
