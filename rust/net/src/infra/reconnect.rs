@@ -446,7 +446,7 @@ where
                 if sleep_until > Instant::now() {
                     tokio::time::sleep_until(sleep_until).await;
                 }
-                log::info!("attempting reconnect");
+                log::debug!("attempting reconnect");
                 match service_with_reconnect.reconnect_if_active().await {
                     Ok(_) => {
                         log::info!("reconnect attempt succeeded");
@@ -454,6 +454,9 @@ where
                             .data
                             .reconnect_count
                             .fetch_add(1, Ordering::Relaxed);
+                        return;
+                    }
+                    Err(ReconnectError::Inactive) => {
                         return;
                     }
                     Err(error) => {
