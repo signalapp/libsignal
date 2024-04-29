@@ -85,7 +85,7 @@ Pod::Spec.new do |s|
         rm -rf "${LIBSIGNAL_FFI_TEMP_DIR}"
         if [ -e "${PODS_TARGET_SRCROOT}/swift/build_ffi.sh" ]; then
           # Local development
-          ln -fhs "${PODS_TARGET_SRCROOT}" "${LIBSIGNAL_FFI_TEMP_DIR}"
+          ln -fns "${PODS_TARGET_SRCROOT}" "${LIBSIGNAL_FFI_TEMP_DIR}"
         elif [ -e "${SCRIPT_INPUT_FILE_0}" ]; then
           mkdir -p "${LIBSIGNAL_FFI_TEMP_DIR}"
           cd "${LIBSIGNAL_FFI_TEMP_DIR}"
