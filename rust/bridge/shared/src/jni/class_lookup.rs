@@ -102,11 +102,22 @@ pub fn preload_classes(env: &mut JNIEnv<'_>) -> Result<(), BridgeLayerError> {
 /// [`JNIEnv::find_class`].
 pub fn find_class<'output>(
     env: &mut JNIEnv<'output>,
-    name: &'static str,
-) -> Result<JClass<'output>, jni::errors::Error> {
+    name: &str,
+) -> Result<JClass<'output>, BridgeLayerError> {
     match get_preloaded_class(env, name)? {
         Some(c) => Ok(c),
-        None => real_jni_find_class(env, name),
+        None => real_jni_find_class(env, name).or_else(|e| {
+            let exception = env.exception_occurred()?;
+            Err(if !exception.is_null() {
+                env.exception_clear()?;
+                BridgeLayerError::CallbackException(
+                    "FindClass",
+                    ThrownException::new(env, exception)?,
+                )
+            } else {
+                e.into()
+            })
+        }),
     }
 }
 
@@ -121,7 +132,7 @@ pub fn find_class<'output>(
 /// be used by natively-spawned threads to access application-defined types.
 fn get_preloaded_class<'output>(
     env: &mut JNIEnv<'output>,
-    name: &'static str,
+    name: &str,
 ) -> Result<Option<JClass<'output>>, jni::errors::Error> {
     let class = PRELOADED_CLASSES
         .get()
@@ -143,7 +154,7 @@ fn get_preloaded_class<'output>(
 #[allow(clippy::disallowed_methods)]
 fn real_jni_find_class<'output>(
     env: &mut JNIEnv<'output>,
-    name: &'static str,
+    name: &str,
 ) -> Result<JClass<'output>, jni::errors::Error> {
     env.find_class(name)
 }

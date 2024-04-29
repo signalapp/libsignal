@@ -76,6 +76,33 @@ public class Network {
             });
   }
 
+  /**
+   * Try to load several libsignal classes asynchronously, using the same mechanism as native (Rust)
+   * code.
+   *
+   * <p>This should only be called in tests, and can be used to ensure at test time that libsignal
+   * async code won't fail to load exceptions.
+   */
+  public static void checkClassesCanBeLoadedAsyncForTest() {
+    // This doesn't need to be comprehensive, just check a few classes.
+    final String[] classesToLoad = {
+      "org.signal.libsignal.net.CdsiLookupResponse$Entry",
+      "org.signal.libsignal.net.NetworkException",
+      "org.signal.libsignal.net.ChatServiceException",
+      "org.signal.libsignal.protocol.ServiceId",
+    };
+    TokioAsyncContext context = new TokioAsyncContext();
+
+    for (String className : classesToLoad) {
+      // No need to do anything with the result; if it doesn't throw, it succeeded.
+      try {
+        context.loadClassAsync(className).get();
+      } catch (ExecutionException | InterruptedException e) {
+        throw new RuntimeException(e);
+      }
+    }
+  }
+
   TokioAsyncContext getAsyncContext() {
     return this.tokioAsyncContext;
   }

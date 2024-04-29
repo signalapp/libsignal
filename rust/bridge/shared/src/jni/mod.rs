@@ -617,11 +617,11 @@ where
 
     let throwable = env
         .new_string(error.to_string())
+        .map_err(Into::into)
         .and_then(|message| {
             let class = find_class(env, exception_type)?;
             Ok(new_object(env, class, jni_args!((message => java.lang.String) -> void))?.into())
-        })
-        .map_err(Into::into);
+        });
     consume(env, throwable, &error)
 }
 

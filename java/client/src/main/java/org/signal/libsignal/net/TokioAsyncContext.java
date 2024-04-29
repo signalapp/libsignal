@@ -5,12 +5,19 @@
 
 package org.signal.libsignal.net;
 
+import org.signal.libsignal.internal.CompletableFuture;
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
 
 class TokioAsyncContext extends NativeHandleGuard.SimpleOwner {
   TokioAsyncContext() {
     super(Native.TokioAsyncContext_new());
+  }
+
+  @SuppressWarnings("unchecked")
+  CompletableFuture<Class<Object>> loadClassAsync(String className) {
+    className = className.replace('.', '/');
+    return (CompletableFuture<Class<Object>>) Native.AsyncLoadClass(this, className);
   }
 
   @Override

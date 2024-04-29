@@ -6,15 +6,14 @@
 #![allow(clippy::missing_safety_doc)]
 #![deny(clippy::unwrap_used)]
 
-use jni::objects::{JByteArray, JClass, JLongArray, JObject};
+use jni::objects::{JByteArray, JClass, JLongArray, JObject, JString};
 #[cfg(not(target_os = "android"))]
 use jni::objects::{JMap, JValue};
 use jni::JNIEnv;
 
 use libsignal_bridge::jni::*;
-use libsignal_bridge::jni_args;
-#[cfg(not(target_os = "android"))]
-use libsignal_bridge::jni_class_name;
+use libsignal_bridge::net::TokioAsyncContext;
+use libsignal_bridge::{jni_args, jni_class_name};
 use libsignal_protocol::*;
 
 pub mod logging;
@@ -63,6 +62,39 @@ pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_preloadClasse
 
         Ok(())
     })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_AsyncLoadClass<'local>(
+    mut env: JNIEnv<'local>,
+    _class: JClass,
+    tokio_context: JObject<'local>,
+    class_name: JString,
+) -> JObject<'local> {
+    struct LoadClassFromName(String);
+
+    impl<'a> ResultTypeInfo<'a> for LoadClassFromName {
+        type ResultType = JClass<'a>;
+
+        fn convert_into(self, env: &mut JNIEnv<'a>) -> Result<Self::ResultType, BridgeLayerError> {
+            find_class(env, &self.0).map_err(Into::into)
+        }
+    }
+
+    run_ffi_safe(&mut env, |env| {
+        let handle = call_method_checked(
+            env,
+            tokio_context,
+            "unsafeNativeHandleWithoutGuard",
+            jni_args!(() -> long),
+        )?;
+        let tokio_context = <&TokioAsyncContext>::convert_from(env, &handle)?;
+        let class_name = env.get_string(&class_name)?.into();
+        run_future_on_runtime(env, tokio_context, async {
+            FutureResultReporter::new(Ok(LoadClassFromName(class_name)), ())
+        })
+    })
+    .into()
 }
 
 #[cfg(not(target_os = "android"))]

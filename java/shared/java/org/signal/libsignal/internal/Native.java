@@ -106,6 +106,8 @@ public final class Native {
   public static native byte[] Aes256GcmSiv_Encrypt(long aesGcmSivObj, byte[] ptext, byte[] nonce, byte[] associatedData) throws Exception;
   public static native long Aes256GcmSiv_New(byte[] key) throws Exception;
 
+  public static native Object AsyncLoadClass(Object tokioContext, String className);
+
   public static native void AuthCredentialPresentation_CheckValidContents(byte[] presentationBytes) throws Exception;
   public static native byte[] AuthCredentialPresentation_GetPniCiphertext(byte[] presentationBytes);
   public static native long AuthCredentialPresentation_GetRedemptionTime(byte[] presentationBytes);
