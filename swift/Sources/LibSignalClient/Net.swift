@@ -108,11 +108,11 @@ public class Net {
         auth: Auth,
         request: CdsiLookupRequest
     ) async throws -> CdsiLookup {
-        let handle: OpaquePointer = try await invokeAsyncFunction { promise, context in
+        let handle: OpaquePointer = try await invokeAsyncFunction { promise in
             self.asyncContext.withNativeHandle { asyncContext in
                 self.connectionManager.withNativeHandle { connectionManager in
                     request.withNativeHandle { request in
-                        signal_cdsi_lookup_new(promise, context, asyncContext, connectionManager, auth.username, auth.password, request)
+                        signal_cdsi_lookup_new(promise, asyncContext, connectionManager, auth.username, auth.password, request)
                     }
                 }
             }
@@ -264,10 +264,10 @@ public class CdsiLookup {
     ///   `SignalError.networkError` for a network-level connectivity issue,
     ///   `SignalError.networkProtocolError` for a CDSI or attested connection protocol issue.
     public func complete() async throws -> CdsiLookupResponse {
-        let response: SignalFfiCdsiLookupResponse = try await invokeAsyncFunction { promise, context in
+        let response: SignalFfiCdsiLookupResponse = try await invokeAsyncFunction { promise in
             self.asyncContext.withNativeHandle { asyncContext in
                 self.native.withNativeHandle { handle in
-                    signal_cdsi_lookup_complete(promise, context, asyncContext, handle)
+                    signal_cdsi_lookup_complete(promise, asyncContext, handle)
                 }
             }
         }

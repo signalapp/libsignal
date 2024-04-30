@@ -93,13 +93,12 @@ public class Svr3Client {
         maxTries: UInt32,
         auth: Auth
     ) async throws -> [UInt8] {
-        let output = try await invokeAsyncFunction(returning: SignalOwnedBuffer.self) { promise, context in
+        let output = try await invokeAsyncFunction { promise in
             self.asyncContext.withNativeHandle { asyncContext in
                 self.connectionManager.withNativeHandle { connectionManager in
                     secret.withUnsafeBorrowedBuffer { secretBuffer in
                         signal_svr3_backup(
                             promise,
-                            context,
                             asyncContext,
                             connectionManager,
                             secretBuffer,
@@ -160,13 +159,12 @@ public class Svr3Client {
         shareSet: some ContiguousBytes,
         auth: Auth
     ) async throws -> [UInt8] {
-        let output = try await invokeAsyncFunction(returning: SignalOwnedBuffer.self) { promise, context in
+        let output = try await invokeAsyncFunction { promise in
             self.asyncContext.withNativeHandle { asyncContext in
                 self.connectionManager.withNativeHandle { connectionManager in
                     shareSet.withUnsafeBorrowedBuffer { shareSetBuffer in
                         signal_svr3_restore(
                             promise,
-                            context,
                             asyncContext,
                             connectionManager,
                             password,

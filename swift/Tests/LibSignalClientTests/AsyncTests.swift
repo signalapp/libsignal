@@ -10,10 +10,18 @@
 import SignalFfi
 import XCTest
 
+extension SignalCPromiseTestingHandleType: PromiseStruct {
+    public typealias Result = OpaquePointer
+}
+
+extension SignalCPromiseOtherTestingHandleType: PromiseStruct {
+    public typealias Result = OpaquePointer
+}
+
 final class AsyncTests: XCTestCase {
     func testSuccess() async throws {
         let result: Int32 = try await invokeAsyncFunction {
-            signal_testing_future_success($0, $1, OpaquePointer(bitPattern: -1), 21)
+            signal_testing_future_success($0, OpaquePointer(bitPattern: -1), 21)
         }
         XCTAssertEqual(42, result)
     }
@@ -21,7 +29,7 @@ final class AsyncTests: XCTestCase {
     func testFailure() async throws {
         do {
             let _: Int32 = try await invokeAsyncFunction {
-                signal_testing_future_failure($0, $1, OpaquePointer(bitPattern: -1), 21)
+                signal_testing_future_failure($0, OpaquePointer(bitPattern: -1), 21)
             }
             XCTFail("should have failed")
         } catch SignalError.invalidArgument(_) {
@@ -33,7 +41,7 @@ final class AsyncTests: XCTestCase {
         do {
             let value = UInt8(44)
             let handle: OpaquePointer = try await invokeAsyncFunction {
-                signal_testing_future_produces_pointer_type($0, $1, OpaquePointer(bitPattern: -1), value)
+                signal_testing_future_produces_pointer_type($0, OpaquePointer(bitPattern: -1), value)
             }
             defer { signal_testing_handle_type_destroy(handle) }
             XCTAssertEqual(
@@ -46,7 +54,7 @@ final class AsyncTests: XCTestCase {
         do {
             let value = "into the future"
             let otherHandle: OpaquePointer = try await invokeAsyncFunction {
-                signal_testing_future_produces_other_pointer_type($0, $1, OpaquePointer(bitPattern: -1), value)
+                signal_testing_future_produces_other_pointer_type($0, OpaquePointer(bitPattern: -1), value)
             }
             defer { signal_other_testing_handle_type_destroy(otherHandle) }
 

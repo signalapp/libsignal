@@ -39,8 +39,8 @@ final class BridgingTests: XCTestCase {
         }
 
         do {
-            _ = try await invokeAsyncFunction(returning: Bool.self) {
-                signal_testing_error_on_borrow_io($0, $1, fakeAsyncRuntime(), nil)
+            _ = try await invokeAsyncFunction {
+                signal_testing_error_on_borrow_io($0, fakeAsyncRuntime(), nil)
             }
             XCTFail("should have failed")
         } catch SignalError.invalidArgument(_) {
@@ -64,8 +64,8 @@ final class BridgingTests: XCTestCase {
         }
 
         do {
-            _ = try await invokeAsyncFunction(returning: Bool.self) {
-                signal_testing_panic_on_borrow_io($0, $1, fakeAsyncRuntime(), nil)
+            _ = try await invokeAsyncFunction {
+                signal_testing_panic_on_borrow_io($0, fakeAsyncRuntime(), nil)
             }
             XCTFail("should have failed")
         } catch SignalError.internalError(_) {
@@ -89,8 +89,8 @@ final class BridgingTests: XCTestCase {
         }
 
         do {
-            _ = try await invokeAsyncFunction(returning: Bool.self) {
-                signal_testing_panic_on_load_io($0, $1, fakeAsyncRuntime(), nil, nil)
+            _ = try await invokeAsyncFunction {
+                signal_testing_panic_on_load_io($0, fakeAsyncRuntime(), nil, nil)
             }
             XCTFail("should have failed")
         } catch SignalError.internalError(_) {
@@ -114,8 +114,8 @@ final class BridgingTests: XCTestCase {
         }
 
         do {
-            _ = try await invokeAsyncFunction(returning: Bool.self) {
-                signal_testing_panic_in_body_io($0, $1, fakeAsyncRuntime(), nil)
+            _ = try await invokeAsyncFunction {
+                signal_testing_panic_in_body_io($0, fakeAsyncRuntime(), nil)
             }
             XCTFail("should have failed")
         } catch SignalError.internalError(_) {
@@ -139,8 +139,8 @@ final class BridgingTests: XCTestCase {
         }
 
         do {
-            _ = try await invokeAsyncFunction(returning: UnsafeRawPointer.self) {
-                signal_testing_error_on_return_io($0, $1, fakeAsyncRuntime(), nil)
+            _ = try await invokeAsyncFunction {
+                signal_testing_error_on_return_io($0, fakeAsyncRuntime(), nil)
             }
             XCTFail("should have failed")
         } catch SignalError.invalidArgument(_) {
@@ -164,8 +164,8 @@ final class BridgingTests: XCTestCase {
         }
 
         do {
-            _ = try await invokeAsyncFunction(returning: UnsafeRawPointer.self) {
-                signal_testing_panic_on_return_io($0, $1, fakeAsyncRuntime(), nil)
+            _ = try await invokeAsyncFunction {
+                signal_testing_panic_on_return_io($0, fakeAsyncRuntime(), nil)
             }
             XCTFail("should have failed")
         } catch SignalError.internalError(_) {

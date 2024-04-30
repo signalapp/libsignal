@@ -13,54 +13,44 @@ import SignalFfi
 /// calls to `invokeAsyncFunction` can tell you if you got the result type wrong.
 ///
 /// Note that implementing this is **unchecked;** make sure you match up the types correctly!
-internal protocol Completable {
-    associatedtype PromiseCallback
+internal protocol PromiseStruct {
+    associatedtype Result
 }
 
-extension Bool: Completable {
-    typealias PromiseCallback = SignalCPromisebool
+extension SignalCPromisebool: PromiseStruct {
+    typealias Result = Bool
 }
 
-extension Int32: Completable {
-    typealias PromiseCallback = SignalCPromisei32
+extension SignalCPromisei32: PromiseStruct {
+    typealias Result = Int32
 }
 
-extension UnsafeRawPointer: Completable {
-    typealias PromiseCallback = SignalCPromiseRawPointer
+extension SignalCPromiseRawPointer: PromiseStruct {
+    typealias Result = UnsafeRawPointer
 }
 
-extension OpaquePointer: Completable {
-    // C function pointer that takes two output arguments and one input argument.
-    typealias PromiseCallback = (@convention(c) (
-        _ error: SignalFfiErrorRef?,
-        _ value: UnsafePointer<OpaquePointer?>?,
-        _ context: UnsafeRawPointer?
-    ) -> Void)?
+extension SignalCPromiseCdsiLookup: PromiseStruct {
+    typealias Result = OpaquePointer
 }
 
-extension SignalFfiCdsiLookupResponse: Completable {
-    typealias PromiseCallback = SignalCPromiseFfiCdsiLookupResponse
+extension SignalCPromiseFfiCdsiLookupResponse: PromiseStruct {
+    typealias Result = SignalFfiCdsiLookupResponse
 }
 
-extension SignalFfiChatResponse: Completable {
-    typealias PromiseCallback = SignalCPromiseFfiChatResponse
+extension SignalCPromiseFfiChatResponse: PromiseStruct {
+    typealias Result = SignalFfiChatResponse
 }
 
-extension SignalFfiChatServiceDebugInfo: Completable {
-    typealias PromiseCallback = SignalCPromiseFfiChatServiceDebugInfo
+extension SignalCPromiseFfiChatServiceDebugInfo: PromiseStruct {
+    typealias Result = SignalFfiChatServiceDebugInfo
 }
 
-extension SignalFfiResponseAndDebugInfo: Completable {
-    typealias PromiseCallback = SignalCPromiseFfiResponseAndDebugInfo
+extension SignalCPromiseFfiResponseAndDebugInfo: PromiseStruct {
+    typealias Result = SignalFfiResponseAndDebugInfo
 }
 
-extension SignalOwnedBuffer: Completable {
-    typealias PromiseCallback = SignalCPromiseOwnedBufferOfc_uchar
-}
-
-@available(*, unavailable, message: "SignalOwnedBuffer should be used instead")
-extension [UInt8]: Completable {
-    typealias PromiseCallback = SignalCPromiseOwnedBufferOfc_uchar
+extension SignalCPromiseOwnedBufferOfc_uchar: PromiseStruct {
+    typealias Result = SignalOwnedBuffer
 }
 
 /// A type-erased version of ``Completer``.
@@ -85,8 +75,8 @@ private class CompleterBase {
 /// It is a class so that it can be passed in a C-style context pointer.
 ///
 /// [CheckedContinuation]: https://developer.apple.com/documentation/swift/checkedcontinuation
-private class Completer<Value: Completable>: CompleterBase {
-    init(continuation: CheckedContinuation<Value, Error>) {
+private class Completer<Promise: PromiseStruct>: CompleterBase {
+    init(continuation: CheckedContinuation<Promise.Result, Error>) {
         super.init { error, valuePtr in
             continuation.resume(with: Result {
                 try checkError(error)
@@ -94,51 +84,70 @@ private class Completer<Value: Completable>: CompleterBase {
                     throw SignalError.internalError("produced neither an error nor a value")
                 }
                 // This is the part that preserves the type:
-                // we assume that whatever pointer we've been handed does in fact point to a Value.
-                return valuePtr.load(as: Value.self)
+                // we assume that whatever pointer we've been handed does in fact point to a Promise.Result.
+                return valuePtr.load(as: Promise.Result.self)
             })
         }
     }
 
     /// Generates the correct C callback for a promise that produces `Value` as a result.
-    var callback: Value.PromiseCallback {
+    ///
+    /// This retains `self`, to be used as the C context pointer for the callback.
+    /// You must ensure that either the callback is called, or the result is passed to
+    /// ``destroyUncompletedPromiseStruct(_:)``.
+    func makePromiseStruct() -> Promise {
         typealias RawPromiseCallback = @convention(c) (_ error: SignalFfiErrorRef?, _ value: UnsafeRawPointer?, _ context: UnsafeRawPointer?) -> Void
         let completeOpaque: RawPromiseCallback = { error, value, context in
             let completer: CompleterBase = Unmanaged.fromOpaque(context!).takeRetainedValue()
             completer.completeUnsafe(error, value)
         }
+
         // We know UnsafeRawPointer and UnsafePointer<X> have the same representation,
         // so we can treat `completeOpaque` as a promise callback for any type.
         // We know it's the *correct* type (for this completer specifically!)
         // because of how `self.completeUnsafe` is initialized.
-        return unsafeBitCast(completeOpaque, to: Value.PromiseCallback.self)
+        // So first we build a promise struct---it doesn't matter which one---by reinterpreting the callback...
+        typealias RawPointerPromiseCallback = @convention(c) (_ error: SignalFfiErrorRef?, _ value: UnsafePointer<UnsafeRawPointer?>?, _ context: UnsafeRawPointer?) -> Void
+        let rawPromiseStruct = SignalCPromiseRawPointer(complete: unsafeBitCast(completeOpaque, to: RawPointerPromiseCallback.self), context: Unmanaged.passRetained(self).toOpaque())
+
+        // ...And then we reinterpret the entire struct, because all promise structs *also* have the same layout.
+        // (Which we at least check a little bit here.)
+        // This is like doing a memcpy in C between two structs with compatible layouts.
+        // This all definitely isn't ideal---we're sidestepping all of Swift's type safety!---
+        // but it gives us type safety *elsewhere*.
+        precondition(MemoryLayout<SignalCPromiseRawPointer>.size == MemoryLayout<Promise>.size)
+        return unsafeBitCast(rawPromiseStruct, to: Promise.self)
+    }
+
+    func destroyUncompletedPromiseStruct(_ promiseStruct: Promise) {
+        // Double-check that all promise structs have the same layout, then reverse what we did above.
+        precondition(MemoryLayout<SignalCPromiseRawPointer>.size == MemoryLayout<Promise>.size)
+        let rawPromiseStruct = unsafeBitCast(promiseStruct, to: SignalCPromiseRawPointer.self)
+        Unmanaged<CompleterBase>.fromOpaque(rawPromiseStruct.context!).release()
     }
 }
 
-/// Provides a callback and context for calling Promise-based libsignal\_ffi functions.
+/// Provides a context struct for calling Promise-based libsignal\_ffi functions.
 ///
 /// Example:
 ///
 /// ```
 /// let result: Int32 = try await invokeAsyncFunction {
-///   signal_do_async_work($0, $1, someInput, someOtherInput)
+///   signal_do_async_work($0, someInput, someOtherInput)
 /// }
 /// ```
-///
-/// - Parameter resultType: Allows you to explicitly specify the result type if it cannot be inferred
-/// - Parameter body: Call the libsignal\_ffi function here
-internal func invokeAsyncFunction<Result: Completable>(
-    returning resultType: Result.Type = Result.self,
-    _ body: (Result.PromiseCallback, UnsafeRawPointer) -> SignalFfiErrorRef?
-) async throws -> Result {
+internal func invokeAsyncFunction<Promise: PromiseStruct>(
+    _ body: (UnsafeMutablePointer<Promise>) -> SignalFfiErrorRef?
+) async throws -> Promise.Result {
     try await withCheckedThrowingContinuation { continuation in
-        let completer = Completer(continuation: continuation)
-        let manuallyRetainedCompleter = Unmanaged.passRetained(completer)
-        let startResult = body(completer.callback, manuallyRetainedCompleter.toOpaque())
+        let completer = Completer<Promise>(continuation: continuation)
+        var promiseStruct = completer.makePromiseStruct()
+        let startResult = body(&promiseStruct)
         if let error = startResult {
             // Our completion callback is never going to get called, so we need to balance the `passRetained` above.
-            _ = manuallyRetainedCompleter.takeRetainedValue()
+            completer.destroyUncompletedPromiseStruct(promiseStruct)
             completer.completeUnsafe(error, nil)
+            return
         }
     }
 }

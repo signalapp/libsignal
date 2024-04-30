@@ -45,8 +45,7 @@ pub(crate) fn bridge_fn(
             }
             let output = result_type(&sig.output);
             quote!(
-                promise: ffi::CPromise<ffi_result_type!(#output)>,
-                promise_context: *const std::ffi::c_void,
+                promise: *mut ffi::CPromise<ffi_result_type!(#output)>,
                 async_runtime: ffi_arg_type!(&#runtime), // note the trailing comma
             )
         }
@@ -132,6 +131,9 @@ fn bridge_io_body(
     // This is the best way to understand what we're trying to produce.
 
     let load_async_runtime = generate_code_to_load_input("async_runtime", quote!(&#runtime));
+    let load_promise = quote! {
+        let promise = promise.as_mut().ok_or(ffi::SignalFfiError::NullPointer)?;
+    };
 
     let input_saving = input_args.iter().map(|(name, ty)| {
         let name_stored = format_ident!("{}_stored", name);
@@ -157,11 +159,11 @@ fn bridge_io_body(
     quote! {
         ffi::run_ffi_safe(|| {
             #load_async_runtime
+            #load_promise
             #(#input_saving)*
             ffi::run_future_on_runtime(
                 async_runtime,
                 promise,
-                promise_context,
                 |__cancel| async move {
                     let __future = ffi::catch_unwind(std::panic::AssertUnwindSafe(async move {
                         #(#input_loading)*

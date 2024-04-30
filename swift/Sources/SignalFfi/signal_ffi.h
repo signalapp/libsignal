@@ -498,16 +498,28 @@ typedef struct {
  *
  * cbindgen will produce independent C types like `SignalCPromisei32` and
  * `SignalCPromiseProtocolAddress`.
+ *
+ * This derives Copy because it behaves like a C type; nevertheless, a promise should still only be
+ * completed once.
  */
-typedef void (*SignalCPromiseOwnedBufferOfc_uchar)(SignalFfiError *error, const SignalOwnedBuffer *result, const void *context);
+typedef struct {
+  void (*complete)(SignalFfiError *error, const SignalOwnedBuffer *result, const void *context);
+  const void *context;
+} SignalCPromiseOwnedBufferOfc_uchar;
 
 /**
  * A C callback used to report the results of Rust futures.
  *
  * cbindgen will produce independent C types like `SignalCPromisei32` and
  * `SignalCPromiseProtocolAddress`.
+ *
+ * This derives Copy because it behaves like a C type; nevertheless, a promise should still only be
+ * completed once.
  */
-typedef void (*SignalCPromisebool)(SignalFfiError *error, const bool *result, const void *context);
+typedef struct {
+  void (*complete)(SignalFfiError *error, const bool *result, const void *context);
+  const void *context;
+} SignalCPromisebool;
 
 typedef struct {
   uint32_t reconnect_count;
@@ -521,8 +533,14 @@ typedef struct {
  *
  * cbindgen will produce independent C types like `SignalCPromisei32` and
  * `SignalCPromiseProtocolAddress`.
+ *
+ * This derives Copy because it behaves like a C type; nevertheless, a promise should still only be
+ * completed once.
  */
-typedef void (*SignalCPromiseFfiChatServiceDebugInfo)(SignalFfiError *error, const SignalFfiChatServiceDebugInfo *result, const void *context);
+typedef struct {
+  void (*complete)(SignalFfiError *error, const SignalFfiChatServiceDebugInfo *result, const void *context);
+  const void *context;
+} SignalCPromiseFfiChatServiceDebugInfo;
 
 typedef struct {
   uint16_t status;
@@ -536,8 +554,14 @@ typedef struct {
  *
  * cbindgen will produce independent C types like `SignalCPromisei32` and
  * `SignalCPromiseProtocolAddress`.
+ *
+ * This derives Copy because it behaves like a C type; nevertheless, a promise should still only be
+ * completed once.
  */
-typedef void (*SignalCPromiseFfiChatResponse)(SignalFfiError *error, const SignalFfiChatResponse *result, const void *context);
+typedef struct {
+  void (*complete)(SignalFfiError *error, const SignalFfiChatResponse *result, const void *context);
+  const void *context;
+} SignalCPromiseFfiChatResponse;
 
 typedef struct {
   SignalFfiChatResponse response;
@@ -549,16 +573,28 @@ typedef struct {
  *
  * cbindgen will produce independent C types like `SignalCPromisei32` and
  * `SignalCPromiseProtocolAddress`.
+ *
+ * This derives Copy because it behaves like a C type; nevertheless, a promise should still only be
+ * completed once.
  */
-typedef void (*SignalCPromiseFfiResponseAndDebugInfo)(SignalFfiError *error, const SignalFfiResponseAndDebugInfo *result, const void *context);
+typedef struct {
+  void (*complete)(SignalFfiError *error, const SignalFfiResponseAndDebugInfo *result, const void *context);
+  const void *context;
+} SignalCPromiseFfiResponseAndDebugInfo;
 
 /**
  * A C callback used to report the results of Rust futures.
  *
  * cbindgen will produce independent C types like `SignalCPromisei32` and
  * `SignalCPromiseProtocolAddress`.
+ *
+ * This derives Copy because it behaves like a C type; nevertheless, a promise should still only be
+ * completed once.
  */
-typedef void (*SignalCPromiseCdsiLookup)(SignalFfiError *error, SignalCdsiLookup *const *result, const void *context);
+typedef struct {
+  void (*complete)(SignalFfiError *error, SignalCdsiLookup *const *result, const void *context);
+  const void *context;
+} SignalCPromiseCdsiLookup;
 
 typedef struct {
   SignalOwnedBufferOfFfiCdsiLookupResponseEntry entries;
@@ -570,8 +606,14 @@ typedef struct {
  *
  * cbindgen will produce independent C types like `SignalCPromisei32` and
  * `SignalCPromiseProtocolAddress`.
+ *
+ * This derives Copy because it behaves like a C type; nevertheless, a promise should still only be
+ * completed once.
  */
-typedef void (*SignalCPromiseFfiCdsiLookupResponse)(SignalFfiError *error, const SignalFfiCdsiLookupResponse *result, const void *context);
+typedef struct {
+  void (*complete)(SignalFfiError *error, const SignalFfiCdsiLookupResponse *result, const void *context);
+  const void *context;
+} SignalCPromiseFfiCdsiLookupResponse;
 
 typedef SignalBytestringArray SignalStringArray;
 
@@ -592,32 +634,56 @@ typedef SignalInputStream SignalSyncInputStream;
  *
  * cbindgen will produce independent C types like `SignalCPromisei32` and
  * `SignalCPromiseProtocolAddress`.
+ *
+ * This derives Copy because it behaves like a C type; nevertheless, a promise should still only be
+ * completed once.
  */
-typedef void (*SignalCPromisei32)(SignalFfiError *error, const int32_t *result, const void *context);
+typedef struct {
+  void (*complete)(SignalFfiError *error, const int32_t *result, const void *context);
+  const void *context;
+} SignalCPromisei32;
 
 /**
  * A C callback used to report the results of Rust futures.
  *
  * cbindgen will produce independent C types like `SignalCPromisei32` and
  * `SignalCPromiseProtocolAddress`.
+ *
+ * This derives Copy because it behaves like a C type; nevertheless, a promise should still only be
+ * completed once.
  */
-typedef void (*SignalCPromiseTestingHandleType)(SignalFfiError *error, SignalTestingHandleType *const *result, const void *context);
+typedef struct {
+  void (*complete)(SignalFfiError *error, SignalTestingHandleType *const *result, const void *context);
+  const void *context;
+} SignalCPromiseTestingHandleType;
 
 /**
  * A C callback used to report the results of Rust futures.
  *
  * cbindgen will produce independent C types like `SignalCPromisei32` and
  * `SignalCPromiseProtocolAddress`.
+ *
+ * This derives Copy because it behaves like a C type; nevertheless, a promise should still only be
+ * completed once.
  */
-typedef void (*SignalCPromiseOtherTestingHandleType)(SignalFfiError *error, SignalOtherTestingHandleType *const *result, const void *context);
+typedef struct {
+  void (*complete)(SignalFfiError *error, SignalOtherTestingHandleType *const *result, const void *context);
+  const void *context;
+} SignalCPromiseOtherTestingHandleType;
 
 /**
  * A C callback used to report the results of Rust futures.
  *
  * cbindgen will produce independent C types like `SignalCPromisei32` and
  * `SignalCPromiseProtocolAddress`.
+ *
+ * This derives Copy because it behaves like a C type; nevertheless, a promise should still only be
+ * completed once.
  */
-typedef void (*SignalCPromiseRawPointer)(SignalFfiError *error, const void *const *result, const void *context);
+typedef struct {
+  void (*complete)(SignalFfiError *error, const void *const *result, const void *context);
+  const void *context;
+} SignalCPromiseRawPointer;
 
 typedef uint8_t SignalRandomnessBytes[SignalRANDOMNESS_LEN];
 
@@ -1405,9 +1471,9 @@ SignalFfiError *signal_create_otp(const char **out, const char *username, Signal
 
 SignalFfiError *signal_create_otp_from_base64(const char **out, const char *username, const char *secret);
 
-SignalFfiError *signal_svr3_backup(SignalCPromiseOwnedBufferOfc_uchar promise, const void *promise_context, const SignalTokioAsyncContext *async_runtime, const SignalConnectionManager *connection_manager, SignalBorrowedBuffer secret, const char *password, uint32_t max_tries, const char *username, const char *enclave_password);
+SignalFfiError *signal_svr3_backup(SignalCPromiseOwnedBufferOfc_uchar *promise, const SignalTokioAsyncContext *async_runtime, const SignalConnectionManager *connection_manager, SignalBorrowedBuffer secret, const char *password, uint32_t max_tries, const char *username, const char *enclave_password);
 
-SignalFfiError *signal_svr3_restore(SignalCPromiseOwnedBufferOfc_uchar promise, const void *promise_context, const SignalTokioAsyncContext *async_runtime, const SignalConnectionManager *connection_manager, const char *password, SignalBorrowedBuffer share_set, const char *username, const char *enclave_password);
+SignalFfiError *signal_svr3_restore(SignalCPromiseOwnedBufferOfc_uchar *promise, const SignalTokioAsyncContext *async_runtime, const SignalConnectionManager *connection_manager, const char *password, SignalBorrowedBuffer share_set, const char *username, const char *enclave_password);
 
 SignalFfiError *signal_chat_destroy(SignalChat *p);
 
@@ -1421,19 +1487,19 @@ SignalFfiError *signal_http_request_add_header(const SignalHttpRequest *request,
 
 SignalFfiError *signal_chat_service_new(SignalChat **out, const SignalConnectionManager *connection_manager, const char *username, const char *password);
 
-SignalFfiError *signal_chat_service_disconnect(SignalCPromisebool promise, const void *promise_context, const SignalTokioAsyncContext *async_runtime, const SignalChat *chat);
+SignalFfiError *signal_chat_service_disconnect(SignalCPromisebool *promise, const SignalTokioAsyncContext *async_runtime, const SignalChat *chat);
 
-SignalFfiError *signal_chat_service_connect_unauth(SignalCPromiseFfiChatServiceDebugInfo promise, const void *promise_context, const SignalTokioAsyncContext *async_runtime, const SignalChat *chat);
+SignalFfiError *signal_chat_service_connect_unauth(SignalCPromiseFfiChatServiceDebugInfo *promise, const SignalTokioAsyncContext *async_runtime, const SignalChat *chat);
 
-SignalFfiError *signal_chat_service_connect_auth(SignalCPromiseFfiChatServiceDebugInfo promise, const void *promise_context, const SignalTokioAsyncContext *async_runtime, const SignalChat *chat);
+SignalFfiError *signal_chat_service_connect_auth(SignalCPromiseFfiChatServiceDebugInfo *promise, const SignalTokioAsyncContext *async_runtime, const SignalChat *chat);
 
-SignalFfiError *signal_chat_service_unauth_send(SignalCPromiseFfiChatResponse promise, const void *promise_context, const SignalTokioAsyncContext *async_runtime, const SignalChat *chat, const SignalHttpRequest *http_request, uint32_t timeout_millis);
+SignalFfiError *signal_chat_service_unauth_send(SignalCPromiseFfiChatResponse *promise, const SignalTokioAsyncContext *async_runtime, const SignalChat *chat, const SignalHttpRequest *http_request, uint32_t timeout_millis);
 
-SignalFfiError *signal_chat_service_unauth_send_and_debug(SignalCPromiseFfiResponseAndDebugInfo promise, const void *promise_context, const SignalTokioAsyncContext *async_runtime, const SignalChat *chat, const SignalHttpRequest *http_request, uint32_t timeout_millis);
+SignalFfiError *signal_chat_service_unauth_send_and_debug(SignalCPromiseFfiResponseAndDebugInfo *promise, const SignalTokioAsyncContext *async_runtime, const SignalChat *chat, const SignalHttpRequest *http_request, uint32_t timeout_millis);
 
-SignalFfiError *signal_chat_service_auth_send(SignalCPromiseFfiChatResponse promise, const void *promise_context, const SignalTokioAsyncContext *async_runtime, const SignalChat *chat, const SignalHttpRequest *http_request, uint32_t timeout_millis);
+SignalFfiError *signal_chat_service_auth_send(SignalCPromiseFfiChatResponse *promise, const SignalTokioAsyncContext *async_runtime, const SignalChat *chat, const SignalHttpRequest *http_request, uint32_t timeout_millis);
 
-SignalFfiError *signal_chat_service_auth_send_and_debug(SignalCPromiseFfiResponseAndDebugInfo promise, const void *promise_context, const SignalTokioAsyncContext *async_runtime, const SignalChat *chat, const SignalHttpRequest *http_request, uint32_t timeout_millis);
+SignalFfiError *signal_chat_service_auth_send_and_debug(SignalCPromiseFfiResponseAndDebugInfo *promise, const SignalTokioAsyncContext *async_runtime, const SignalChat *chat, const SignalHttpRequest *http_request, uint32_t timeout_millis);
 
 SignalFfiError *signal_lookup_request_new(SignalLookupRequest **out);
 
@@ -1451,11 +1517,11 @@ SignalFfiError *signal_lookup_request_destroy(SignalLookupRequest *p);
 
 SignalFfiError *signal_cdsi_lookup_destroy(SignalCdsiLookup *p);
 
-SignalFfiError *signal_cdsi_lookup_new(SignalCPromiseCdsiLookup promise, const void *promise_context, const SignalTokioAsyncContext *async_runtime, const SignalConnectionManager *connection_manager, const char *username, const char *password, const SignalLookupRequest *request);
+SignalFfiError *signal_cdsi_lookup_new(SignalCPromiseCdsiLookup *promise, const SignalTokioAsyncContext *async_runtime, const SignalConnectionManager *connection_manager, const char *username, const char *password, const SignalLookupRequest *request);
 
 SignalFfiError *signal_cdsi_lookup_token(SignalOwnedBuffer *out, const SignalCdsiLookup *lookup);
 
-SignalFfiError *signal_cdsi_lookup_complete(SignalCPromiseFfiCdsiLookupResponse promise, const void *promise_context, const SignalTokioAsyncContext *async_runtime, const SignalCdsiLookup *lookup);
+SignalFfiError *signal_cdsi_lookup_complete(SignalCPromiseFfiCdsiLookupResponse *promise, const SignalTokioAsyncContext *async_runtime, const SignalCdsiLookup *lookup);
 
 SignalFfiError *signal_tokio_async_context_destroy(SignalTokioAsyncContext *p);
 
@@ -1557,9 +1623,9 @@ SignalFfiError *signal_sanitized_metadata_get_data_len(uint64_t *out, const Sign
 
 SignalFfiError *signal_testing_NonSuspendingBackgroundThreadRuntime_destroy(SignalNonSuspendingBackgroundThreadRuntime *p);
 
-SignalFfiError *signal_testing_future_success(SignalCPromisei32 promise, const void *promise_context, const SignalNonSuspendingBackgroundThreadRuntime *async_runtime, uint8_t input);
+SignalFfiError *signal_testing_future_success(SignalCPromisei32 *promise, const SignalNonSuspendingBackgroundThreadRuntime *async_runtime, uint8_t input);
 
-SignalFfiError *signal_testing_future_failure(SignalCPromisei32 promise, const void *promise_context, const SignalNonSuspendingBackgroundThreadRuntime *async_runtime, uint8_t _input);
+SignalFfiError *signal_testing_future_failure(SignalCPromisei32 *promise, const SignalNonSuspendingBackgroundThreadRuntime *async_runtime, uint8_t _input);
 
 SignalFfiError *signal_testing_handle_type_destroy(SignalTestingHandleType *p);
 
@@ -1567,7 +1633,7 @@ SignalFfiError *signal_testing_handle_type_clone(SignalTestingHandleType **new_o
 
 SignalFfiError *signal_testing_testing_handle_type_get_value(uint8_t *out, const SignalTestingHandleType *handle);
 
-SignalFfiError *signal_testing_future_produces_pointer_type(SignalCPromiseTestingHandleType promise, const void *promise_context, const SignalNonSuspendingBackgroundThreadRuntime *async_runtime, uint8_t input);
+SignalFfiError *signal_testing_future_produces_pointer_type(SignalCPromiseTestingHandleType *promise, const SignalNonSuspendingBackgroundThreadRuntime *async_runtime, uint8_t input);
 
 SignalFfiError *signal_other_testing_handle_type_destroy(SignalOtherTestingHandleType *p);
 
@@ -1575,49 +1641,49 @@ SignalFfiError *signal_other_testing_handle_type_clone(SignalOtherTestingHandleT
 
 SignalFfiError *signal_testing_other_testing_handle_type_get_value(const char **out, const SignalOtherTestingHandleType *handle);
 
-SignalFfiError *signal_testing_future_produces_other_pointer_type(SignalCPromiseOtherTestingHandleType promise, const void *promise_context, const SignalNonSuspendingBackgroundThreadRuntime *async_runtime, const char *input);
+SignalFfiError *signal_testing_future_produces_other_pointer_type(SignalCPromiseOtherTestingHandleType *promise, const SignalNonSuspendingBackgroundThreadRuntime *async_runtime, const char *input);
 
 SignalFfiError *signal_testing_panic_on_borrow_sync(const void *_input);
 
 SignalFfiError *signal_testing_panic_on_borrow_async(const void *_input);
 
-SignalFfiError *signal_testing_panic_on_borrow_io(SignalCPromisebool promise, const void *promise_context, const SignalNonSuspendingBackgroundThreadRuntime *async_runtime, const void *_input);
+SignalFfiError *signal_testing_panic_on_borrow_io(SignalCPromisebool *promise, const SignalNonSuspendingBackgroundThreadRuntime *async_runtime, const void *_input);
 
 SignalFfiError *signal_testing_error_on_borrow_sync(const void *_input);
 
 SignalFfiError *signal_testing_error_on_borrow_async(const void *_input);
 
-SignalFfiError *signal_testing_error_on_borrow_io(SignalCPromisebool promise, const void *promise_context, const SignalNonSuspendingBackgroundThreadRuntime *async_runtime, const void *_input);
+SignalFfiError *signal_testing_error_on_borrow_io(SignalCPromisebool *promise, const SignalNonSuspendingBackgroundThreadRuntime *async_runtime, const void *_input);
 
 SignalFfiError *signal_testing_panic_on_load_sync(const void *_needs_cleanup, const void *_input);
 
 SignalFfiError *signal_testing_panic_on_load_async(const void *_needs_cleanup, const void *_input);
 
-SignalFfiError *signal_testing_panic_on_load_io(SignalCPromisebool promise, const void *promise_context, const SignalNonSuspendingBackgroundThreadRuntime *async_runtime, const void *_needs_cleanup, const void *_input);
+SignalFfiError *signal_testing_panic_on_load_io(SignalCPromisebool *promise, const SignalNonSuspendingBackgroundThreadRuntime *async_runtime, const void *_needs_cleanup, const void *_input);
 
 SignalFfiError *signal_testing_panic_in_body_sync(const void *_input);
 
 SignalFfiError *signal_testing_panic_in_body_async(const void *_input);
 
-SignalFfiError *signal_testing_panic_in_body_io(SignalCPromisebool promise, const void *promise_context, const SignalNonSuspendingBackgroundThreadRuntime *async_runtime, const void *_input);
+SignalFfiError *signal_testing_panic_in_body_io(SignalCPromisebool *promise, const SignalNonSuspendingBackgroundThreadRuntime *async_runtime, const void *_input);
 
 SignalFfiError *signal_testing_panic_on_return_sync(const void **out, const void *_needs_cleanup);
 
 SignalFfiError *signal_testing_panic_on_return_async(const void **out, const void *_needs_cleanup);
 
-SignalFfiError *signal_testing_panic_on_return_io(SignalCPromiseRawPointer promise, const void *promise_context, const SignalNonSuspendingBackgroundThreadRuntime *async_runtime, const void *_needs_cleanup);
+SignalFfiError *signal_testing_panic_on_return_io(SignalCPromiseRawPointer *promise, const SignalNonSuspendingBackgroundThreadRuntime *async_runtime, const void *_needs_cleanup);
 
 SignalFfiError *signal_testing_error_on_return_sync(const void **out, const void *_needs_cleanup);
 
 SignalFfiError *signal_testing_error_on_return_async(const void **out, const void *_needs_cleanup);
 
-SignalFfiError *signal_testing_error_on_return_io(SignalCPromiseRawPointer promise, const void *promise_context, const SignalNonSuspendingBackgroundThreadRuntime *async_runtime, const void *_needs_cleanup);
+SignalFfiError *signal_testing_error_on_return_io(SignalCPromiseRawPointer *promise, const SignalNonSuspendingBackgroundThreadRuntime *async_runtime, const void *_needs_cleanup);
 
 SignalFfiError *signal_testing_return_string_array(SignalStringArray *out);
 
 SignalFfiError *signal_testing_process_bytestring_array(SignalBytestringArray *out, SignalBorrowedSliceOfBuffers input);
 
-SignalFfiError *signal_testing_cdsi_lookup_response_convert(SignalCPromiseFfiCdsiLookupResponse promise, const void *promise_context, const SignalTokioAsyncContext *async_runtime);
+SignalFfiError *signal_testing_cdsi_lookup_response_convert(SignalCPromiseFfiCdsiLookupResponse *promise, const SignalTokioAsyncContext *async_runtime);
 
 SignalFfiError *signal_testing_cdsi_lookup_error_convert(const char *error_description);
 

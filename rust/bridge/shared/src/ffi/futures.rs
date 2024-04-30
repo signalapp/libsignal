@@ -14,8 +14,19 @@ use std::future::Future;
 ///
 /// cbindgen will produce independent C types like `SignalCPromisei32` and
 /// `SignalCPromiseProtocolAddress`.
-pub type CPromise<T> =
-    extern "C" fn(error: *mut SignalFfiError, result: *const T, context: *const std::ffi::c_void);
+///
+/// This derives Copy because it behaves like a C type; nevertheless, a promise should still only be
+/// completed once.
+#[derive_where(Clone, Copy)]
+#[repr(C)]
+pub struct CPromise<T> {
+    complete: extern "C" fn(
+        error: *mut SignalFfiError,
+        result: *const T,
+        context: *const std::ffi::c_void,
+    ),
+    context: *const std::ffi::c_void,
+}
 
 /// Keeps track of the information necessary to report a promise result back to C.
 ///
@@ -24,7 +35,6 @@ pub type CPromise<T> =
 /// will result in a panic in debug mode and an error log in release mode.
 pub struct PromiseCompleter<T: ResultTypeInfo> {
     promise: CPromise<T::ResultType>,
-    promise_context: *const std::ffi::c_void,
 }
 
 /// Pointers are not Send by default just in case,
@@ -58,10 +68,7 @@ impl<T: ResultTypeInfo + std::panic::UnwindSafe> ResultReporter for FutureResult
 
     fn report_to(self, completer: Self::Receiver) {
         let Self(result) = self;
-        let PromiseCompleter {
-            promise,
-            promise_context,
-        } = completer;
+        let PromiseCompleter { promise } = completer;
         // Disable the check for uncompleted promises in our Drop before we do anything else.
         std::mem::forget(completer);
 
@@ -71,11 +78,11 @@ impl<T: ResultTypeInfo + std::panic::UnwindSafe> ResultReporter for FutureResult
         });
 
         match result {
-            Ok(value) => promise(std::ptr::null_mut(), &value, promise_context),
-            Err(err) => promise(
+            Ok(value) => (promise.complete)(std::ptr::null_mut(), &value, promise.context),
+            Err(err) => (promise.complete)(
                 Box::into_raw(Box::new(err)),
                 std::ptr::null(),
-                promise_context,
+                promise.context,
             ),
         }
     }
@@ -95,8 +102,8 @@ impl<T: ResultTypeInfo + std::panic::UnwindSafe> ResultReporter for FutureResult
 /// # use libsignal_bridge::ffi::*;
 /// # use libsignal_bridge::{AsyncRuntime, ResultReporter};
 /// # use libsignal_bridge::testing::NonSuspendingBackgroundThreadRuntime;
-/// # fn test(promise: CPromise<i32>, promise_context: *const std::ffi::c_void, async_runtime: &NonSuspendingBackgroundThreadRuntime) {
-/// run_future_on_runtime(async_runtime, promise, promise_context, |_cancel| async {
+/// # fn test(promise: &mut CPromise<i32>, async_runtime: &NonSuspendingBackgroundThreadRuntime) {
+/// run_future_on_runtime(async_runtime, promise, |_cancel| async {
 ///     let result: i32 = 1 + 2;
 ///     // Do some complicated awaiting here.
 ///     FutureResultReporter::new(Ok(result))
@@ -105,8 +112,7 @@ impl<T: ResultTypeInfo + std::panic::UnwindSafe> ResultReporter for FutureResult
 #[inline]
 pub fn run_future_on_runtime<R, F, O>(
     runtime: &R,
-    promise: CPromise<O::ResultType>,
-    promise_context: *const std::ffi::c_void,
+    promise: &mut CPromise<O::ResultType>,
     future: impl FnOnce(R::Cancellation) -> F,
 ) where
     R: AsyncRuntime<F>,
@@ -114,10 +120,7 @@ pub fn run_future_on_runtime<R, F, O>(
     F::Output: ResultReporter<Receiver = PromiseCompleter<O>>,
     O: ResultTypeInfo + 'static,
 {
-    let completion = PromiseCompleter {
-        promise,
-        promise_context,
-    };
+    let completion = PromiseCompleter { promise: *promise };
     runtime.run_future(future, completion);
 }
 
