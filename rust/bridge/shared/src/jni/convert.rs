@@ -1007,16 +1007,11 @@ impl<'a> ResultTypeInfo<'a> for libsignal_net::cdsi::LookupResponse {
             entries_jmap.put(env, &e164, &entry)?;
         }
 
-        let class = {
-            const RESPONSE_CLASS: ClassName =
-                ClassName("org.signal.libsignal.net.CdsiLookupResponse");
-            find_class(env, RESPONSE_CLASS)?
-        };
-        Ok(new_object(
+        new_instance(
             env,
-            class,
+            ClassName("org.signal.libsignal.net.CdsiLookupResponse"),
             jni_args!((entries_hashmap => java.util.Map, debug_permits_used => int) -> void),
-        )?)
+        )
     }
 }
 
@@ -1047,22 +1042,16 @@ impl<'a> ResultTypeInfo<'a> for libsignal_net::chat::Response {
             headers_jmap.put(env, &name_str, &value_str)?;
         }
 
-        let class = {
-            const RESPONSE_CLASS: ClassName =
-                ClassName("org.signal.libsignal.net.ChatService$Response");
-            find_class(env, RESPONSE_CLASS)?
-        };
-
-        Ok(new_object(
+        new_instance(
             env,
-            class,
+            ClassName("org.signal.libsignal.net.ChatService$Response"),
             jni_args!((
                 status.as_u16().into() => int,
                 message_local => java.lang.String,
                 headers_jmap => java.util.Map,
                 body_arr => [byte]
             ) -> void),
-        )?)
+        )
     }
 }
 
@@ -1089,22 +1078,16 @@ impl<'a> ResultTypeInfo<'a> for libsignal_net::chat::DebugInfo {
         // connection info string
         let connection_info_string = env.new_string(connection_info)?;
 
-        let class = {
-            const RESPONSE_CLASS: ClassName =
-                ClassName("org.signal.libsignal.net.ChatService$DebugInfo");
-            find_class(env, RESPONSE_CLASS)?
-        };
-
-        Ok(new_object(
+        new_instance(
             env,
-            class,
+            ClassName("org.signal.libsignal.net.ChatService$DebugInfo"),
             jni_args!((
                 reconnect_count_i32 => int,
                 ip_type_byte => byte,
                 duration_ms => int,
                 connection_info_string => java.lang.String,
             ) -> void),
-        )?)
+        )
     }
 }
 
@@ -1120,20 +1103,14 @@ impl<'a> ResultTypeInfo<'a> for ResponseAndDebugInfo {
         let response: JObject<'a> = response.convert_into(env)?;
         let debug_info: JObject<'a> = debug_info.convert_into(env)?;
 
-        let class = {
-            const RESPONSE_CLASS: ClassName =
-                ClassName("org.signal.libsignal.net.ChatService$ResponseAndDebugInfo");
-            find_class(env, RESPONSE_CLASS)?
-        };
-
-        Ok(new_object(
+        new_instance(
             env,
-            class,
+            ClassName("org.signal.libsignal.net.ChatService$ResponseAndDebugInfo"),
             jni_args!((
                 response => org.signal.libsignal.net.ChatService::Response,
                 debug_info => org.signal.libsignal.net.ChatService::DebugInfo
             ) -> void),
-        )?)
+        )
     }
 }
 
@@ -1205,13 +1182,11 @@ impl<'a> ResultTypeInfo<'a> for MessageBackupValidationOutcome {
         )?;
         let error_message = error_message.convert_into(env)?;
 
-        let new_object = new_instance(
+        new_instance(
             env,
             ClassName("org.signal.libsignal.protocol.util.Pair"),
             jni_args!((error_message => java.lang.Object, unknown_fields => java.lang.Object) -> void),
-        )?;
-
-        Ok(new_object)
+        )
     }
 }
 

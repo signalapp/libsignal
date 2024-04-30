@@ -142,19 +142,14 @@ where
                 .new_string(addr.name())
                 .map_err(Into::into)
                 .and_then(|addr_name| {
-                    let class = find_class(
+                    new_instance(
                         env,
                         ClassName("org.signal.libsignal.protocol.UntrustedIdentityException"),
-                    )?;
-                    Ok(new_object(
-                        env,
-                        class,
                         jni_args!((addr_name => java.lang.String) -> void),
-                    )?
-                    .into())
+                    )
                 });
 
-            consume(env, throwable, &error);
+            consume(env, throwable.map(Into::into), &error);
             return;
         }
 
@@ -162,22 +157,17 @@ where
             let throwable = protocol_address_to_jobject(env, addr)
                 .and_then(|addr_object| Ok((addr_object, env.new_string(error.to_string())?)))
                 .and_then(|(addr_object, message)| {
-                    let class = find_class(
+                    new_instance(
                         env,
                         ClassName("org.signal.libsignal.protocol.NoSessionException"),
-                    )?;
-                    Ok(new_object(
-                        env,
-                        class,
                         jni_args!((
                             addr_object => org.signal.libsignal.protocol.SignalProtocolAddress,
                             message => java.lang.String,
                         ) -> void),
-                    )?
-                    .into())
+                    )
                 });
 
-            consume(env, throwable, &error);
+            consume(env, throwable.map(Into::into), &error);
             return;
         }
 
@@ -185,22 +175,17 @@ where
             let throwable = protocol_address_to_jobject(env, addr)
                 .and_then(|addr_object| Ok((addr_object, env.new_string(error.to_string())?)))
                 .and_then(|(addr_object, message)| {
-                    let class = find_class(
+                    new_instance(
                         env,
                         ClassName("org.signal.libsignal.protocol.InvalidRegistrationIdException"),
-                    )?;
-                    Ok(new_object(
-                        env,
-                        class,
                         jni_args!((
                             addr_object => org.signal.libsignal.protocol.SignalProtocolAddress,
                             message => java.lang.String,
                         ) -> void),
-                    )?
-                    .into())
+                    )
                 });
 
-            consume(env, throwable, &error);
+            consume(env, throwable.map(Into::into), &error);
             return;
         }
 
@@ -213,55 +198,43 @@ where
                     Ok((distribution_id_obj, env.new_string(error.to_string())?))
                 })
                 .and_then(|(distribution_id_obj, message)| {
-                    let class = find_class(
+                    new_instance(
                         env,
                         ClassName(
                             "org.signal.libsignal.protocol.groups.InvalidSenderKeySessionException",
                         ),
-                    )?;
-                    Ok(new_object(
-                        env,
-                        class,
                         jni_args!((
                             distribution_id_obj => java.util.UUID,
                             message => java.lang.String,
                         ) -> void),
-                    )?
-                    .into())
+                    )
                 });
 
-            consume(env, throwable, &error);
+            consume(env, throwable.map(Into::into), &error);
             return;
         }
 
         SignalJniError::Protocol(SignalProtocolError::FingerprintVersionMismatch(theirs, ours)) => {
-            let throwable = find_class(
+            let throwable = new_instance(
                 env,
                 ClassName(
                     "org.signal.libsignal.protocol.fingerprint.FingerprintVersionMismatchException",
                 ),
-            )
-            .and_then(|class| {
-                Ok(new_object(
-                    env,
-                    class,
-                    jni_args!((theirs as jint => int, ours as jint => int) -> void),
-                )?
-                .into())
-            });
+                jni_args!((theirs as jint => int, ours as jint => int) -> void),
+            );
 
-            consume(env, throwable.map_err(Into::into), &error);
+            consume(env, throwable.map(Into::into), &error);
             return;
         }
 
         SignalJniError::Protocol(SignalProtocolError::SealedSenderSelfSend) => {
-            let throwable = find_class(
+            let throwable = new_instance(
                 env,
                 ClassName("org.signal.libsignal.metadata.SelfSendException"),
-            )
-            .and_then(|class| Ok(new_object(env, class, jni_args!(() -> void))?.into()));
+                jni_args!(() -> void),
+            );
 
-            consume(env, throwable.map_err(Into::into), &error);
+            consume(env, throwable.map(Into::into), &error);
             return;
         }
 
@@ -270,18 +243,13 @@ where
                 .as_secs()
                 .try_into()
                 .expect("duration < lifetime of the universe");
-            let throwable = find_class(
+            let throwable = new_instance(
                 env,
                 ClassName("org.signal.libsignal.net.RetryLaterException"),
-            )
-            .and_then(|class| {
-                Ok(
-                    new_object(env, class, jni_args!((retry_after_seconds => long) -> void))?
-                        .into(),
-                )
-            });
+                jni_args!((retry_after_seconds => long) -> void),
+            );
 
-            consume(env, throwable, &error);
+            consume(env, throwable.map(Into::into), &error);
             return;
         }
 
@@ -580,10 +548,13 @@ where
         .new_string(error.to_string())
         .map_err(Into::into)
         .and_then(|message| {
-            let class = find_class(env, exception_type)?;
-            Ok(new_object(env, class, jni_args!((message => java.lang.String) -> void))?.into())
+            new_instance(
+                env,
+                exception_type,
+                jni_args!((message => java.lang.String) -> void),
+            )
         });
-    consume(env, throwable, &error)
+    consume(env, throwable.map(Into::into), &error)
 }
 
 /// Translates errors into Java exceptions.
