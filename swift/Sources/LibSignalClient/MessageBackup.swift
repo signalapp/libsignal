@@ -47,10 +47,10 @@ public enum MessageBackupPurpose: UInt8 {
 ///  - `SignalError.ioError`: If an IO error on the input occurs.
 ///  - `MessageBackupValidationError`: If validation fails
 public func validateMessageBackup(
-    key: MessageBackupKey, purpose: MessageBackupPurpose, length: UInt64, makeStream: () -> SignalInputStream
+    key: MessageBackupKey, purpose: MessageBackupPurpose, length: UInt64, makeStream: () throws -> SignalInputStream
 ) throws -> MessageBackupUnknownFields {
-    let outcome: ValidationOutcome = try withInputStream(makeStream()) { firstInput in
-        try withInputStream(makeStream()) { secondInput in
+    let outcome: ValidationOutcome = try withInputStream(try makeStream()) { firstInput in
+        try withInputStream(try makeStream()) { secondInput in
             try key.withNativeHandle { key in
                 try invokeFnReturningNativeHandle {
                     signal_message_backup_validator_validate($0, key, firstInput, secondInput, length, purpose.rawValue)

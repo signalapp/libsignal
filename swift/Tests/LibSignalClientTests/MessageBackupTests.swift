@@ -39,6 +39,20 @@ class MessageBackupTests: TestCaseBase {
         }
     }
 
+    func testInputFactoryThrows() {
+        struct TestFactoryError: Error {}
+
+        XCTAssertThrowsError(
+            try validateMessageBackup(
+                key: MessageBackupKey.testKey(),
+                purpose: .remoteBackup,
+                length: 4242
+            ) { throw TestFactoryError() }
+        ) { error in
+            if error is TestFactoryError {} else { XCTFail("\(error)") }
+        }
+    }
+
     func testInputThrowsAfter() {
         let bytes = readResource(forName: "new_account.binproto.encrypted")
         let makeStream = { ThrowsAfterInputStream(inner: SignalInputStreamAdapter(bytes), readBeforeThrow: UInt64(bytes.count) - 1) }
