@@ -4,7 +4,7 @@
 //
 
 use crate::proto::storage::SignedPreKeyRecordStructure;
-use crate::{kem, KeyPair, PrivateKey, PublicKey, Result, SignalProtocolError};
+use crate::{kem, KeyPair, PrivateKey, PublicKey, Result, SignalProtocolError, Timestamp};
 
 use prost::Message;
 
@@ -66,10 +66,11 @@ pub trait GenericSignedPreKey {
     fn get_storage(&self) -> &SignedPreKeyRecordStructure;
     fn from_storage(storage: SignedPreKeyRecordStructure) -> Self;
 
-    fn new(id: Self::Id, timestamp: u64, key_pair: &Self::KeyPair, signature: &[u8]) -> Self
+    fn new(id: Self::Id, timestamp: Timestamp, key_pair: &Self::KeyPair, signature: &[u8]) -> Self
     where
         Self: Sized,
     {
+        let timestamp = timestamp.epoch_millis();
         let public_key = key_pair.get_public().serialize();
         let private_key = key_pair.get_private().serialize();
         let signature = signature.to_vec();
@@ -100,8 +101,8 @@ pub trait GenericSignedPreKey {
         Ok(self.get_storage().id.into())
     }
 
-    fn timestamp(&self) -> Result<u64> {
-        Ok(self.get_storage().timestamp)
+    fn timestamp(&self) -> Result<Timestamp> {
+        Ok(Timestamp::from_epoch_millis(self.get_storage().timestamp))
     }
 
     fn signature(&self) -> Result<Vec<u8>> {

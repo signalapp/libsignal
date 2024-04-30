@@ -222,7 +222,7 @@ pub unsafe extern "C" fn signal_sealed_session_cipher_decrypt(
         let decrypted = sealed_sender_decrypt(
             ctext,
             trust_root,
-            timestamp,
+            Timestamp::from_epoch_millis(timestamp),
             local_e164,
             local_uuid,
             local_device_id.into(),

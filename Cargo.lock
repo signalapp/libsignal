@@ -2088,6 +2088,7 @@ dependencies = [
  "prost-build",
  "rand",
  "rayon",
+ "serde",
  "sha2",
  "signal-crypto",
  "static_assertions",

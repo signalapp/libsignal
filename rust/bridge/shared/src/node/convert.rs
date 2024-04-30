@@ -262,7 +262,7 @@ impl SimpleArgTypeInfo for crate::protocol::Timestamp {
         if !can_convert_js_number_to_int(value, 0.0..=MAX_SAFE_JS_INTEGER) {
             return cx.throw_range_error(format!("cannot convert {} to Timestamp (u64)", value));
         }
-        Ok(Self::from_millis(value as u64))
+        Ok(Self::from_epoch_millis(value as u64))
     }
 }
 
@@ -682,11 +682,11 @@ impl<'a> ResultTypeInfo<'a> for bool {
 impl<'a> ResultTypeInfo<'a> for crate::protocol::Timestamp {
     type ResultType = JsNumber;
     fn convert_into(self, cx: &mut impl Context<'a>) -> NeonResult<Handle<'a, Self::ResultType>> {
-        let result = self.as_millis() as f64;
+        let result = self.epoch_millis() as f64;
         if result > MAX_SAFE_JS_INTEGER {
             cx.throw_range_error(format!(
                 "precision loss during conversion of {} to f64",
-                self.as_millis()
+                self.epoch_millis()
             ))?;
         }
         Ok(cx.number(result))

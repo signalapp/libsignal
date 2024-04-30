@@ -50,7 +50,7 @@ impl Participant {
                 signed_pre_key_id,
                 &SignedPreKeyRecord::new(
                     signed_pre_key_id,
-                    /*timestamp*/ 42,
+                    libsignal_protocol::Timestamp::from_epoch_millis(42),
                     &their_signed_pre_key_pair,
                     &their_signed_pre_key_signature,
                 ),

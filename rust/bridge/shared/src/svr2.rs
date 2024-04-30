@@ -33,10 +33,5 @@ fn Svr2Client_New(
     attestation_msg: &[u8],
     current_timestamp: Timestamp,
 ) -> Result<SgxClientState> {
-    new_client(
-        mrenclave,
-        attestation_msg,
-        std::time::SystemTime::UNIX_EPOCH
-            + std::time::Duration::from_millis(current_timestamp.as_millis()),
-    )
+    new_client(mrenclave, attestation_msg, current_timestamp.into())
 }

@@ -461,14 +461,14 @@ impl ResultTypeInfo for Option<u32> {
 impl SimpleArgTypeInfo for crate::protocol::Timestamp {
     type ArgType = u64;
     fn convert_from(foreign: Self::ArgType) -> SignalFfiResult<Self> {
-        Ok(Self::from_millis(foreign))
+        Ok(Self::from_epoch_millis(foreign))
     }
 }
 
 impl ResultTypeInfo for crate::protocol::Timestamp {
     type ResultType = u64;
     fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
-        Ok(self.as_millis())
+        Ok(self.epoch_millis())
     }
 }
 

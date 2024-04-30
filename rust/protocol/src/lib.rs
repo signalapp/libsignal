@@ -40,6 +40,7 @@ mod session;
 mod session_cipher;
 mod state;
 mod storage;
+mod timestamp;
 mod utils;
 
 use error::Result;
@@ -86,3 +87,4 @@ pub use storage::{
     InMemSenderKeyStore, InMemSessionStore, InMemSignalProtocolStore, InMemSignedPreKeyStore,
     KyberPreKeyStore, PreKeyStore, ProtocolStore, SenderKeyStore, SessionStore, SignedPreKeyStore,
 };
+pub use timestamp::Timestamp;

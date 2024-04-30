@@ -7,7 +7,7 @@ use crate::{
     message_encrypt, Aci, CiphertextMessageType, DeviceId, Direction, IdentityKey, IdentityKeyPair,
     IdentityKeyStore, KeyPair, KyberPreKeyStore, PreKeySignalMessage, PreKeyStore, PrivateKey,
     ProtocolAddress, PublicKey, Result, ServiceId, ServiceIdFixedWidthBinaryBytes, SessionRecord,
-    SessionStore, SignalMessage, SignalProtocolError, SignedPreKeyStore,
+    SessionStore, SignalMessage, SignalProtocolError, SignedPreKeyStore, Timestamp,
 };
 
 use crate::{crypto, curve, proto, session_cipher};
@@ -165,7 +165,7 @@ pub struct SenderCertificate {
     sender_device_id: DeviceId,
     sender_uuid: String,
     sender_e164: Option<String>,
-    expiration: u64,
+    expiration: Timestamp,
     serialized: Vec<u8>,
     certificate: Vec<u8>,
     signature: Vec<u8>,
@@ -191,6 +191,7 @@ impl SenderCertificate {
             .into();
         let expiration = certificate_data
             .expires
+            .map(Timestamp::from_epoch_millis)
             .ok_or(SignalProtocolError::InvalidProtobufEncoding)?;
         let signer_pb = certificate_data
             .signer
@@ -227,7 +228,7 @@ impl SenderCertificate {
         sender_e164: Option<String>,
         key: PublicKey,
         sender_device_id: DeviceId,
-        expiration: u64,
+        expiration: Timestamp,
         signer: ServerCertificate,
         signer_key: &PrivateKey,
         rng: &mut R,
@@ -236,7 +237,7 @@ impl SenderCertificate {
             sender_uuid: Some(sender_uuid.clone()),
             sender_e164: sender_e164.clone(),
             sender_device: Some(sender_device_id.into()),
-            expires: Some(expiration),
+            expires: Some(expiration.epoch_millis()),
             identity_key: Some(key.serialize().to_vec()),
             signer: Some(signer.to_protobuf()?),
         };
@@ -264,7 +265,7 @@ impl SenderCertificate {
         })
     }
 
-    pub fn validate(&self, trust_root: &PublicKey, validation_time: u64) -> Result<bool> {
+    pub fn validate(&self, trust_root: &PublicKey, validation_time: Timestamp) -> Result<bool> {
         if !self.signer.validate(trust_root)? {
             log::error!(
                 "sender certificate contained server certificate that wasn't signed by trust root"
@@ -284,8 +285,8 @@ impl SenderCertificate {
         if validation_time > self.expiration {
             log::error!(
                 "sender certificate is expired (expiration: {}, validation_time: {})",
-                self.expiration,
-                validation_time
+                self.expiration.epoch_millis(),
+                validation_time.epoch_millis()
             );
             return Ok(false);
         }
@@ -313,7 +314,7 @@ impl SenderCertificate {
         Ok(self.sender_e164.as_deref())
     }
 
-    pub fn expiration(&self) -> Result<u64> {
+    pub fn expiration(&self) -> Result<Timestamp> {
         Ok(self.expiration)
     }
 
@@ -1974,7 +1975,7 @@ impl SealedSenderDecryptionResult {
 pub async fn sealed_sender_decrypt(
     ciphertext: &[u8],
     trust_root: &PublicKey,
-    timestamp: u64,
+    timestamp: Timestamp,
     local_e164: Option<String>,
     local_uuid: String,
     local_device_id: DeviceId,
@@ -2114,6 +2115,9 @@ fn test_lossless_round_trip() -> Result<()> {
 
     let sender_certificate =
         SenderCertificate::deserialize(&sender_certificate_data.encode_to_vec())?;
-    assert!(sender_certificate.validate(&trust_root.public_key()?, 31336)?);
+    assert!(sender_certificate.validate(
+        &trust_root.public_key()?,
+        Timestamp::from_epoch_millis(31336)
+    )?);
     Ok(())
 }

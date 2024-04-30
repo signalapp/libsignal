@@ -50,7 +50,7 @@ pub fn v1(c: &mut Criterion) {
         ServerCertificate::new(1, server_key.public_key, &trust_root.private_key, &mut rng)
             .expect("valid");
 
-    let expires = 1605722925;
+    let expires = Timestamp::from_epoch_millis(1605722925);
 
     let sender_cert = SenderCertificate::new(
         alice_address.name().to_string(),
@@ -134,7 +134,7 @@ pub fn v2(c: &mut Criterion) {
         ServerCertificate::new(1, server_key.public_key, &trust_root.private_key, &mut rng)
             .expect("valid");
 
-    let expires = 1605722925;
+    let expires = Timestamp::from_epoch_millis(1605722925);
 
     let sender_cert = SenderCertificate::new(
         alice_address.name().to_string(),

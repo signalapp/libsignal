@@ -196,7 +196,7 @@ impl SimpleArgTypeInfo<'_> for crate::protocol::Timestamp {
                 foreign
             )));
         }
-        Ok(Self::from_millis(*foreign as u64))
+        Ok(Self::from_epoch_millis(*foreign as u64))
     }
 }
 
@@ -579,7 +579,7 @@ impl ResultTypeInfo<'_> for crate::protocol::Timestamp {
     type ResultType = jlong;
     fn convert_into(self, _env: &mut JNIEnv) -> Result<Self::ResultType, BridgeLayerError> {
         // Note that we don't check bounds here.
-        Ok(self.as_millis() as jlong)
+        Ok(self.epoch_millis() as jlong)
     }
 }
 

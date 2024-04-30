@@ -4,7 +4,9 @@
 //
 
 use crate::state::{KyberPreKeyId, PreKeyId, SignedPreKeyId};
-use crate::{kem, proto, IdentityKey, PrivateKey, PublicKey, Result, SignalProtocolError};
+use crate::{
+    kem, proto, IdentityKey, PrivateKey, PublicKey, Result, SignalProtocolError, Timestamp,
+};
 
 use hmac::{Hmac, Mac};
 use prost::Message;
@@ -784,7 +786,7 @@ impl TryFrom<&[u8]> for PlaintextContent {
 #[derive(Debug, Clone)]
 pub struct DecryptionErrorMessage {
     ratchet_key: Option<PublicKey>,
-    timestamp: u64,
+    timestamp: Timestamp,
     device_id: u32,
     serialized: Box<[u8]>,
 }
@@ -793,7 +795,7 @@ impl DecryptionErrorMessage {
     pub fn for_original(
         original_bytes: &[u8],
         original_type: CiphertextMessageType,
-        original_timestamp: u64,
+        original_timestamp: Timestamp,
         original_sender_device_id: u32,
     ) -> Result<Self> {
         let ratchet_key = match original_type {
@@ -814,7 +816,7 @@ impl DecryptionErrorMessage {
         };
 
         let proto_message = proto::service::DecryptionErrorMessage {
-            timestamp: Some(original_timestamp),
+            timestamp: Some(original_timestamp.epoch_millis()),
             ratchet_key: ratchet_key.map(|k| k.serialize().into()),
             device_id: Some(original_sender_device_id),
         };
@@ -829,7 +831,7 @@ impl DecryptionErrorMessage {
     }
 
     #[inline]
-    pub fn timestamp(&self) -> u64 {
+    pub fn timestamp(&self) -> Timestamp {
         self.timestamp
     }
 
@@ -857,6 +859,7 @@ impl TryFrom<&[u8]> for DecryptionErrorMessage {
             .map_err(|_| SignalProtocolError::InvalidProtobufEncoding)?;
         let timestamp = proto_structure
             .timestamp
+            .map(Timestamp::from_epoch_millis)
             .ok_or(SignalProtocolError::InvalidProtobufEncoding)?;
         let ratchet_key = proto_structure
             .ratchet_key
@@ -1045,7 +1048,7 @@ mod tests {
         let identity_key_pair = KeyPair::generate(&mut csprng);
         let base_key_pair = KeyPair::generate(&mut csprng);
         let message = create_signal_message(&mut csprng)?;
-        let timestamp = 0x2_0000_0001;
+        let timestamp: Timestamp = Timestamp::from_epoch_millis(0x2_0000_0001);
         let device_id = 0x8086_2021;
 
         {
@@ -1120,7 +1123,12 @@ mod tests {
     #[test]
     fn test_decryption_error_message_for_plaintext() {
         assert!(matches!(
-            DecryptionErrorMessage::for_original(&[], CiphertextMessageType::Plaintext, 5, 7),
+            DecryptionErrorMessage::for_original(
+                &[],
+                CiphertextMessageType::Plaintext,
+                Timestamp::from_epoch_millis(5),
+                7
+            ),
             Err(SignalProtocolError::InvalidArgument(_))
         ));
     }

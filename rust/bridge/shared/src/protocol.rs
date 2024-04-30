@@ -7,7 +7,6 @@ use libsignal_bridge_macros::*;
 use libsignal_protocol::error::Result;
 use libsignal_protocol::*;
 use static_assertions::const_assert_eq;
-use std::time::{Duration, SystemTime};
 use uuid::Uuid;
 
 // Will be unused when building for Node only.
@@ -49,28 +48,7 @@ bridge_handle!(KyberKeyPair);
 bridge_handle!(KyberPublicKey);
 bridge_handle!(KyberSecretKey);
 
-#[derive(Clone, Copy, Debug)]
-pub(crate) struct Timestamp(u64);
-
-impl Timestamp {
-    pub(crate) fn from_millis(millis: u64) -> Self {
-        Self(millis)
-    }
-
-    pub(crate) fn as_millis(self) -> u64 {
-        self.0
-    }
-
-    fn as_millis_from_unix_epoch(self) -> SystemTime {
-        SystemTime::UNIX_EPOCH + Duration::from_millis(self.as_millis())
-    }
-}
-
-impl From<u64> for Timestamp {
-    fn from(value: u64) -> Self {
-        Self::from_millis(value)
-    }
-}
+pub(crate) use libsignal_protocol::Timestamp;
 
 #[bridge_fn(ffi = false)]
 fn HKDF_DeriveSecrets(
@@ -558,7 +536,7 @@ fn DecryptionErrorMessage_ForOriginalMessage(
     DecryptionErrorMessage::for_original(
         original_bytes,
         original_type,
-        original_timestamp.as_millis(),
+        original_timestamp,
         original_sender_device_id,
     )
 }
@@ -696,7 +674,7 @@ fn SignedPreKeyRecord_New(
     signature: &[u8],
 ) -> SignedPreKeyRecord {
     let keypair = KeyPair::new(*pub_key, *priv_key);
-    SignedPreKeyRecord::new(id.into(), timestamp.as_millis(), &keypair, signature)
+    SignedPreKeyRecord::new(id.into(), timestamp, &keypair, signature)
 }
 
 #[bridge_fn]
@@ -706,7 +684,7 @@ fn KyberPreKeyRecord_New(
     key_pair: &KyberKeyPair,
     signature: &[u8],
 ) -> KyberPreKeyRecord {
-    KyberPreKeyRecord::new(id.into(), timestamp.as_millis(), key_pair, signature)
+    KyberPreKeyRecord::new(id.into(), timestamp, key_pair, signature)
 }
 
 bridge_deserialize!(PreKeyRecord::deserialize);
@@ -763,7 +741,7 @@ fn SenderCertificate_Validate(
     key: &PublicKey,
     time: Timestamp,
 ) -> Result<bool> {
-    cert.validate(key, time.as_millis())
+    cert.validate(key, time)
 }
 
 #[bridge_fn]
@@ -788,7 +766,7 @@ fn SenderCertificate_New(
         sender_e164,
         *sender_key,
         sender_device_id.into(),
-        expiration.as_millis(),
+        expiration,
         signer_cert.clone(),
         signer_key,
         &mut rng,
@@ -968,7 +946,7 @@ fn SessionRecord_ArchiveCurrentState(session_record: &mut SessionRecord) -> Resu
 
 #[bridge_fn]
 fn SessionRecord_HasUsableSenderChain(s: &SessionRecord, now: Timestamp) -> Result<bool> {
-    s.has_usable_sender_chain(now.as_millis_from_unix_epoch())
+    s.has_usable_sender_chain(now.into())
 }
 
 #[bridge_fn]
@@ -1102,7 +1080,7 @@ async fn SessionBuilder_ProcessPreKeyBundle(
         session_store,
         identity_key_store,
         bundle,
-        now.as_millis_from_unix_epoch(),
+        now.into(),
         &mut csprng,
     )
     .await
@@ -1121,7 +1099,7 @@ async fn SessionCipher_EncryptMessage(
         protocol_address,
         session_store,
         identity_key_store,
-        now.as_millis_from_unix_epoch(),
+        now.into(),
     )
     .await
 }
@@ -1262,7 +1240,7 @@ async fn SealedSender_DecryptMessage(
     sealed_sender_decrypt(
         message,
         trust_root,
-        timestamp.as_millis(),
+        timestamp,
         local_e164,
         local_uuid,
         local_device_id.into(),
