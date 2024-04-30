@@ -163,9 +163,9 @@ where
     O: for<'a> ResultTypeInfo<'a> + std::panic::UnwindSafe + 'static,
     F::Output: ResultReporter<Receiver = FutureCompleter<O>>,
 {
-    let java_future = new_object(
+    let java_future = new_instance(
         env,
-        jni_class_name!(org.signal.libsignal.internal.CompletableFuture),
+        ClassName("org.signal.libsignal.internal.CompletableFuture"),
         jni_args!(() -> void),
     )?;
     let completer = FutureCompleter::new(env, &java_future)?;

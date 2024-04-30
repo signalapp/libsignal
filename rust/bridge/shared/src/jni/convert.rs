@@ -259,7 +259,7 @@ impl<'a> SimpleArgTypeInfo<'a> for Option<String> {
 impl<'a> SimpleArgTypeInfo<'a> for uuid::Uuid {
     type ArgType = JObject<'a>;
     fn convert_from(env: &mut JNIEnv, foreign: &JObject<'a>) -> Result<Self, BridgeLayerError> {
-        check_jobject_type(env, foreign, jni_class_name!(java.util.UUID))?;
+        check_jobject_type(env, foreign, ClassName("java.util.UUID"))?;
         let args = jni_args!(() -> long);
         let msb: jlong = call_method_checked(env, foreign, "getMostSignificantBits", args)?;
         let lsb: jlong = call_method_checked(env, foreign, "getLeastSignificantBits", args)?;
@@ -513,14 +513,10 @@ impl<'a> ResultTypeInfo<'a> for crate::cds2::Cds2Metrics {
     type ResultType = JObject<'a>;
 
     fn convert_into(self, env: &mut JNIEnv<'a>) -> Result<Self::ResultType, BridgeLayerError> {
-        let jobj = new_object(
-            env,
-            jni_class_name!(java.util.HashMap),
-            jni_args!(() -> void),
-        )?;
+        let jobj = new_instance(env, ClassName("java.util.HashMap"), jni_args!(() -> void))?;
         let jmap = JMap::from_env(env, &jobj)?;
 
-        let long_class = find_class(env, jni_class_name!(java.lang.Long))?;
+        let long_class = find_class(env, ClassName("java.lang.Long"))?;
         for (k, v) in self.0 {
             let k = k.convert_into(env)?;
             let v = new_object(env, &long_class, jni_args!((v => long) -> void))?;
@@ -699,14 +695,14 @@ impl<'a> ResultTypeInfo<'a> for uuid::Uuid {
     fn convert_into(self, env: &mut JNIEnv<'a>) -> Result<Self::ResultType, BridgeLayerError> {
         let uuid_bytes: [u8; 16] = *self.as_bytes();
         let (msb, lsb) = uuid_bytes.split_at(8);
-        Ok(new_object(
+        new_instance(
             env,
-            jni_class_name!(java.util.UUID),
+            ClassName("java.util.UUID"),
             jni_args!((
                 jlong::from_be_bytes(msb.try_into().expect("correct length")) => long,
                 jlong::from_be_bytes(lsb.try_into().expect("correct length")) => long,
             ) -> void),
-        )?)
+        )
     }
 }
 
@@ -719,7 +715,7 @@ impl<'a> ResultTypeInfo<'a> for CiphertextMessage {
                 let message = m.convert_into(env)?;
                 jobject_from_native_handle(
                     env,
-                    jni_class_name!(org.signal.libsignal.protocol.message.SignalMessage),
+                    ClassName("org.signal.libsignal.protocol.message.SignalMessage"),
                     message,
                 )
             }
@@ -727,7 +723,7 @@ impl<'a> ResultTypeInfo<'a> for CiphertextMessage {
                 let message = m.convert_into(env)?;
                 jobject_from_native_handle(
                     env,
-                    jni_class_name!(org.signal.libsignal.protocol.message.PreKeySignalMessage),
+                    ClassName("org.signal.libsignal.protocol.message.PreKeySignalMessage"),
                     message,
                 )
             }
@@ -735,7 +731,7 @@ impl<'a> ResultTypeInfo<'a> for CiphertextMessage {
                 let message = m.convert_into(env)?;
                 jobject_from_native_handle(
                     env,
-                    jni_class_name!(org.signal.libsignal.protocol.message.SenderKeyMessage),
+                    ClassName("org.signal.libsignal.protocol.message.SenderKeyMessage"),
                     message,
                 )
             }
@@ -743,7 +739,7 @@ impl<'a> ResultTypeInfo<'a> for CiphertextMessage {
                 let message = m.convert_into(env)?;
                 jobject_from_native_handle(
                     env,
-                    jni_class_name!(org.signal.libsignal.protocol.message.PlaintextContent),
+                    ClassName("org.signal.libsignal.protocol.message.PlaintextContent"),
                     message,
                 )
             }
@@ -973,16 +969,13 @@ impl<'a> ResultTypeInfo<'a> for libsignal_net::cdsi::LookupResponse {
             debug_permits_used,
         } = self;
 
-        let entries_hashmap = new_object(
-            env,
-            jni_class_name!(java.util.HashMap),
-            jni_args!(() -> void),
-        )?;
+        let entries_hashmap =
+            new_instance(env, ClassName("java.util.HashMap"), jni_args!(() -> void))?;
         let entries_jmap = JMap::from_env(env, &entries_hashmap)?;
 
         let entry_class = {
-            const ENTRY_CLASS: &str =
-                jni_class_name!(org.signal.libsignal.net.CdsiLookupResponse::Entry);
+            const ENTRY_CLASS: ClassName =
+                ClassName("org.signal.libsignal.net.CdsiLookupResponse$Entry");
             find_class(env, ENTRY_CLASS)?
         };
 
@@ -1015,8 +1008,8 @@ impl<'a> ResultTypeInfo<'a> for libsignal_net::cdsi::LookupResponse {
         }
 
         let class = {
-            const RESPONSE_CLASS: &str =
-                jni_class_name!(org.signal.libsignal.net.CdsiLookupResponse);
+            const RESPONSE_CLASS: ClassName =
+                ClassName("org.signal.libsignal.net.CdsiLookupResponse");
             find_class(env, RESPONSE_CLASS)?
         };
         Ok(new_object(
@@ -1046,11 +1039,7 @@ impl<'a> ResultTypeInfo<'a> for libsignal_net::chat::Response {
         let message_local = env.new_string(message.as_deref().unwrap_or(""))?;
 
         // headers
-        let headers_map = new_object(
-            env,
-            jni_class_name!(java.util.HashMap),
-            jni_args!(() -> void),
-        )?;
+        let headers_map = new_instance(env, ClassName("java.util.HashMap"), jni_args!(() -> void))?;
         let headers_jmap = JMap::from_env(env, &headers_map)?;
         for (name, value) in headers.iter() {
             let name_str = env.new_string(name.as_str())?;
@@ -1059,8 +1048,8 @@ impl<'a> ResultTypeInfo<'a> for libsignal_net::chat::Response {
         }
 
         let class = {
-            const RESPONSE_CLASS: &str =
-                jni_class_name!(org.signal.libsignal.net.ChatService::Response);
+            const RESPONSE_CLASS: ClassName =
+                ClassName("org.signal.libsignal.net.ChatService$Response");
             find_class(env, RESPONSE_CLASS)?
         };
 
@@ -1101,8 +1090,8 @@ impl<'a> ResultTypeInfo<'a> for libsignal_net::chat::DebugInfo {
         let connection_info_string = env.new_string(connection_info)?;
 
         let class = {
-            const RESPONSE_CLASS: &str =
-                jni_class_name!(org.signal.libsignal.net.ChatService::DebugInfo);
+            const RESPONSE_CLASS: ClassName =
+                ClassName("org.signal.libsignal.net.ChatService$DebugInfo");
             find_class(env, RESPONSE_CLASS)?
         };
 
@@ -1132,8 +1121,8 @@ impl<'a> ResultTypeInfo<'a> for ResponseAndDebugInfo {
         let debug_info: JObject<'a> = debug_info.convert_into(env)?;
 
         let class = {
-            const RESPONSE_CLASS: &str =
-                jni_class_name!(org.signal.libsignal.net.ChatService::ResponseAndDebugInfo);
+            const RESPONSE_CLASS: ClassName =
+                ClassName("org.signal.libsignal.net.ChatService$ResponseAndDebugInfo");
             find_class(env, RESPONSE_CLASS)?
         };
 
@@ -1216,9 +1205,9 @@ impl<'a> ResultTypeInfo<'a> for MessageBackupValidationOutcome {
         )?;
         let error_message = error_message.convert_into(env)?;
 
-        let new_object = new_object(
+        let new_object = new_instance(
             env,
-            jni_class_name!(org.signal.libsignal.protocol.util.Pair),
+            ClassName("org.signal.libsignal.protocol.util.Pair"),
             jni_args!((error_message => java.lang.Object, unknown_fields => java.lang.Object) -> void),
         )?;
 

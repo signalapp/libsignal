@@ -16,7 +16,6 @@ class TokioAsyncContext extends NativeHandleGuard.SimpleOwner {
 
   @SuppressWarnings("unchecked")
   CompletableFuture<Class<Object>> loadClassAsync(String className) {
-    className = className.replace('.', '/');
     return (CompletableFuture<Class<Object>>) Native.AsyncLoadClass(this, className);
   }
 

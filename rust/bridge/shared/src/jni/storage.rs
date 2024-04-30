@@ -29,7 +29,7 @@ impl<'a> JniIdentityKeyStore<'a> {
         check_jobject_type(
             env,
             store,
-            jni_class_name!(org.signal.libsignal.protocol.state.IdentityKeyStore),
+            ClassName("org.signal.libsignal.protocol.state.IdentityKeyStore"),
         )?;
         Ok(Self {
             env: EnvHandle::new(env).into(),
@@ -82,7 +82,7 @@ impl<'a> JniIdentityKeyStore<'a> {
             let key_handle = identity.public_key().convert_into(env)?;
             let key_jobject = jobject_from_native_handle(
                 env,
-                jni_class_name!(org.signal.libsignal.protocol.IdentityKey),
+                ClassName("org.signal.libsignal.protocol.IdentityKey"),
                 key_handle,
             )?;
             let callback_args = jni_args!((
@@ -106,13 +106,13 @@ impl<'a> JniIdentityKeyStore<'a> {
             let key_handle = identity.public_key().convert_into(env)?;
             let key_jobject = jobject_from_native_handle(
                 env,
-                jni_class_name!(org.signal.libsignal.protocol.IdentityKey),
+                ClassName("org.signal.libsignal.protocol.IdentityKey"),
                 key_handle,
             )?;
 
             let direction_class = find_class(
                 env,
-                jni_class_name!(org.signal.libsignal.protocol.state.IdentityKeyStore::Direction),
+                ClassName("org.signal.libsignal.protocol.state.IdentityKeyStore$Direction"),
             )?;
             let field_name = match direction {
                 Direction::Sending => "SENDING",
@@ -211,7 +211,7 @@ impl<'a> JniPreKeyStore<'a> {
         check_jobject_type(
             env,
             store,
-            jni_class_name!(org.signal.libsignal.protocol.state.PreKeyStore),
+            ClassName("org.signal.libsignal.protocol.state.PreKeyStore"),
         )?;
         Ok(Self {
             env: EnvHandle::new(env).into(),
@@ -246,7 +246,7 @@ impl<'a> JniPreKeyStore<'a> {
             let record_handle = record.clone().convert_into(env)?;
             let jobject_record = jobject_from_native_handle(
                 env,
-                jni_class_name!(org.signal.libsignal.protocol.state.PreKeyRecord),
+                ClassName("org.signal.libsignal.protocol.state.PreKeyRecord"),
                 record_handle,
             )?;
             let callback_args = jni_args!((
@@ -304,7 +304,7 @@ impl<'a> JniSignedPreKeyStore<'a> {
         check_jobject_type(
             env,
             store,
-            jni_class_name!(org.signal.libsignal.protocol.state.SignedPreKeyStore),
+            ClassName("org.signal.libsignal.protocol.state.SignedPreKeyStore"),
         )?;
         Ok(Self {
             env: EnvHandle::new(env).into(),
@@ -339,7 +339,7 @@ impl<'a> JniSignedPreKeyStore<'a> {
             let record_handle = record.clone().convert_into(env)?;
             let jobject_record = jobject_from_native_handle(
                 env,
-                jni_class_name!(org.signal.libsignal.protocol.state.SignedPreKeyRecord),
+                ClassName("org.signal.libsignal.protocol.state.SignedPreKeyRecord"),
                 record_handle,
             )?;
             let callback_args = jni_args!((
@@ -383,7 +383,7 @@ impl<'a> JniKyberPreKeyStore<'a> {
         check_jobject_type(
             env,
             store,
-            jni_class_name!(org.signal.libsignal.protocol.state.KyberPreKeyStore),
+            ClassName("org.signal.libsignal.protocol.state.KyberPreKeyStore"),
         )?;
         Ok(Self {
             env: EnvHandle::new(env).into(),
@@ -418,7 +418,7 @@ impl<'a> JniKyberPreKeyStore<'a> {
             let record_handle = record.clone().convert_into(env)?;
             let jobject_record = jobject_from_native_handle(
                 env,
-                jni_class_name!(org.signal.libsignal.protocol.state.KyberPreKeyRecord),
+                ClassName("org.signal.libsignal.protocol.state.KyberPreKeyRecord"),
                 record_handle,
             )?;
             let callback_args = jni_args!((
@@ -482,7 +482,7 @@ impl<'a> JniSessionStore<'a> {
         check_jobject_type(
             env,
             store,
-            jni_class_name!(org.signal.libsignal.protocol.state.SessionStore),
+            ClassName("org.signal.libsignal.protocol.state.SessionStore"),
         )?;
         Ok(Self {
             env: EnvHandle::new(env).into(),
@@ -516,7 +516,7 @@ impl<'a> JniSessionStore<'a> {
             let record_handle = record.clone().convert_into(env)?;
             let session_jobject = jobject_from_native_handle(
                 env,
-                jni_class_name!(org.signal.libsignal.protocol.state.SessionRecord),
+                ClassName("org.signal.libsignal.protocol.state.SessionRecord"),
                 record_handle,
             )?;
 
@@ -561,7 +561,7 @@ impl<'a> JniSenderKeyStore<'a> {
         check_jobject_type(
             env,
             store,
-            jni_class_name!(org.signal.libsignal.protocol.groups.state.SenderKeyStore),
+            ClassName("org.signal.libsignal.protocol.groups.state.SenderKeyStore"),
         )?;
         Ok(Self {
             env: EnvHandle::new(env).into(),
@@ -583,7 +583,7 @@ impl<'a> JniSenderKeyStore<'a> {
             let record_handle = record.clone().convert_into(env)?;
             let sender_key_record_jobject = jobject_from_native_handle(
                 env,
-                jni_class_name!(org.signal.libsignal.protocol.groups.state.SenderKeyRecord),
+                ClassName("org.signal.libsignal.protocol.groups.state.SenderKeyRecord"),
                 record_handle,
             )?;
 

@@ -53,7 +53,7 @@ pub enum SignalJniError {
     Bridge(BridgeLayerError),
     #[cfg(feature = "testing-fns")]
     TestingError {
-        exception_class: &'static str,
+        exception_class: ClassName<'static>,
     },
 }
 

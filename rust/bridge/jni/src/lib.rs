@@ -40,25 +40,20 @@ pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_IdentityKeyPa
     })
 }
 
-/// Preload classes used in natively-spawned threads.
+/// Initialize internal data structures.
 ///
-/// This is useful on Android where natively-spawned threads use a
-/// [`ClassLoader`] that doesn't have access to application-defined classes.
-/// Read more [here](https://developer.android.com/training/articles/perf-jni#faq:-why-didnt-findclass-find-my-class).
-///
-/// [`ClassLoader`]: https://docs.oracle.com/javase/8/docs/api/java/lang/ClassLoader.html
+/// Initialization function used to set up internal data structures. This should
+/// be called once when the library is first loaded.
 #[no_mangle]
-pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_preloadClasses<'local>(
+pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_initializeLibrary<'local>(
     mut env: JNIEnv<'local>,
     class: JClass<'local>,
 ) {
     run_ffi_safe(&mut env, |env| {
-        preload_classes(env)?;
+        save_class_loader(env, &class)?;
 
         #[cfg(target_os = "android")]
         set_up_rustls_platform_verifier(env, class)?;
-        // Silence the unused variable warning on non-Android.
-        _ = class;
 
         Ok(())
     })
@@ -77,7 +72,7 @@ pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_AsyncLoadClas
         type ResultType = JClass<'a>;
 
         fn convert_into(self, env: &mut JNIEnv<'a>) -> Result<Self::ResultType, BridgeLayerError> {
-            find_class(env, &self.0).map_err(Into::into)
+            find_class(env, ClassName(&self.0)).map_err(Into::into)
         }
     }
 
@@ -112,9 +107,9 @@ pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_SealedSender_
         let data_as_slice = <&[u8]>::load_from(&mut data_stored);
         let messages = SealedSenderV2SentMessage::parse(data_as_slice)?;
 
-        let recipient_map_object = new_object(
+        let recipient_map_object = new_instance(
             env,
-            jni_class_name!(java.util.LinkedHashMap),
+            ClassName("java.util.LinkedHashMap"),
             jni_args!(() -> void),
         )?;
         let recipient_map: JMap = JMap::from_env(env, &recipient_map_object)?;
@@ -127,18 +122,12 @@ pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_SealedSender_
             |env| -> SignalJniResult<_> {
                 let recipient_class = find_class(
                     env,
-                    jni_class_name!(
-                        org.signal
-                            .libsignal
-                            .protocol
-                            .SealedSenderMultiRecipientMessage
-                            ::Recipient
+                    ClassName(
+                        "org.signal.libsignal.protocol.SealedSenderMultiRecipientMessage$Recipient",
                     ),
                 )?;
-                let service_id_class = find_class(
-                    env,
-                    jni_class_name!(org.signal.libsignal.protocol.ServiceId),
-                )?;
+                let service_id_class =
+                    find_class(env, ClassName("org.signal.libsignal.protocol.ServiceId"))?;
 
                 let mut excluded_recipient_java_service_ids = vec![];
 
@@ -214,14 +203,9 @@ pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_SealedSender_
 
         let offset_of_shared_bytes = messages.offset_of_shared_bytes();
 
-        Ok(new_object(
+        Ok(new_instance(
             env,
-            jni_class_name!(
-                org.signal
-                    .libsignal
-                    .protocol
-                    .SealedSenderMultiRecipientMessage
-            ),
+            ClassName("org.signal.libsignal.protocol.SealedSenderMultiRecipientMessage"),
             jni_args!((
                 data => [byte],
                 recipient_map => java.util.Map,

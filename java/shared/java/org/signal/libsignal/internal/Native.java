@@ -67,7 +67,7 @@ public final class Native {
   static {
     loadLibrary();
     Logger_Initialize(SignalProtocolLogger.INFO, Log.class);
-    preloadClasses();
+    initializeLibrary();
   }
 
   private Native() {}
@@ -682,5 +682,5 @@ public final class Native {
 
   public static native void WebpSanitizer_Sanitize(InputStream input) throws Exception;
 
-  public static native void preloadClasses();
+  public static native void initializeLibrary();
 }

@@ -30,7 +30,7 @@ impl<'a> JniInputStream<'a> {
         env: &mut JNIEnv<'context>,
         stream: &'a JObject<'a>,
     ) -> Result<Self, BridgeLayerError> {
-        check_jobject_type(env, stream, jni_class_name!(java.io.InputStream))?;
+        check_jobject_type(env, stream, ClassName("java.io.InputStream"))?;
         Ok(Self {
             env: EnvHandle::new(env).into(),
             stream,

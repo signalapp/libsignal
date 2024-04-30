@@ -184,7 +184,9 @@ struct CustomErrorType;
 impl From<CustomErrorType> for crate::jni::SignalJniError {
     fn from(CustomErrorType: CustomErrorType) -> Self {
         Self::TestingError {
-            exception_class: jni_class_name!(org.signal.libsignal.internal.TestingException),
+            exception_class: crate::jni::ClassName(
+                "org.signal.libsignal.internal.TestingException",
+            ),
         }
     }
 }
