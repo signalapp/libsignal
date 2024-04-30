@@ -48,6 +48,8 @@ These should usually be prioritized in that order, but adjust the trade-off as n
 
 - **We do not have a changelog file**; we rely on [GitHub displaying all our releases](https://github.com/signalapp/libsignal/releases).
 
+- **Avoid `cargo add`**, or fix up the Cargo.toml afterwards. Some of our dependency lists are organized and `cargo add` doesn't respect that.
+
 - We do not have consistent guidelines for how to do errors in Rust, and the different crates do them differently. :-(
 
 
