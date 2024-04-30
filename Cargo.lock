@@ -1877,6 +1877,7 @@ dependencies = [
  "hex-literal",
  "num_enum",
  "proptest",
+ "rand",
  "uuid",
 ]
 

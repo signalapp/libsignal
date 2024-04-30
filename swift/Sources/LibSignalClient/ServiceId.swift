@@ -42,6 +42,13 @@ public enum ServiceIdError: Error {
     case wrongServiceIdKind
 }
 
+/// Typed representation of a Signal service ID, which can be one of various types.
+///
+/// Conceptually this is a UUID in a particular "namespace" representing a particular way to reach a
+/// user on the Signal service.
+///
+/// The sort order for ServiceIds is first by kind (ACI, then PNI), then lexicographically by the
+/// bytes of the UUID.
 public class ServiceId {
     private var storage: ServiceIdStorage = (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
 
@@ -165,6 +172,16 @@ public class ServiceId {
 extension ServiceId: Equatable {
     public static func == (_ lhs: ServiceId, _ rhs: ServiceId) -> Bool {
         return lhs.storage == rhs.storage
+    }
+}
+
+extension ServiceId: Comparable {
+    public static func < (_ lhs: ServiceId, _ rhs: ServiceId) -> Bool {
+        return withUnsafeBytes(of: lhs.storage) { lhsBytes in
+            withUnsafeBytes(of: rhs.storage) { rhsBytes in
+                lhsBytes.lexicographicallyPrecedes(rhsBytes)
+            }
+        }
     }
 }
 

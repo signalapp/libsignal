@@ -5,9 +5,12 @@
 
 package org.signal.libsignal.protocol;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.UUID;
 import org.junit.Test;
 import org.signal.libsignal.protocol.ServiceId.InvalidServiceIdException;
@@ -118,5 +121,20 @@ public class ServiceIdTest {
       fail("Should have failed");
     } catch (InvalidServiceIdException ex) {
     }
+  }
+
+  @Test
+  public void testOrdering() throws Exception {
+    ServiceId[] ids =
+        new ServiceId[] {
+          new ServiceId.Aci(new UUID(0, 0)),
+          new ServiceId.Aci(TEST_UUID),
+          new ServiceId.Pni(new UUID(0, 0)),
+          new ServiceId.Pni(TEST_UUID)
+        };
+    ServiceId[] original = ids.clone();
+    Collections.shuffle(Arrays.asList(ids));
+    Arrays.sort(ids);
+    assertArrayEquals(original, ids);
   }
 }

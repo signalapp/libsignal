@@ -82,5 +82,20 @@ class ServiceIdTests: TestCaseBase {
             XCTFail("Should have failed")
         } catch SignalError.invalidArgument {}
     }
+
     // swiftlint:enable force_cast
+
+    func testOrdering() {
+        let nilUuid = UUID(uuid: (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0))
+        var ids = [
+            Aci(fromUUID: nilUuid),
+            Aci(fromUUID: Self.TEST_UUID),
+            Pni(fromUUID: nilUuid),
+            Pni(fromUUID: Self.TEST_UUID),
+        ]
+        let original = ids
+        ids.shuffle()
+        ids.sort()
+        XCTAssertEqual(original, ids)
+    }
 }

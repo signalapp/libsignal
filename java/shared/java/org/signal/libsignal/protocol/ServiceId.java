@@ -14,7 +14,16 @@ import java.util.UUID;
 import org.signal.libsignal.internal.CalledFromNative;
 import org.signal.libsignal.internal.Native;
 
-public abstract class ServiceId {
+/**
+ * Typed representation of a Signal service ID, which can be one of various types.
+ *
+ * <p>Conceptually this is a UUID in a particular "namespace" representing a particular way to reach
+ * a user on the Signal service.
+ *
+ * <p>The sort order for ServiceIds is first by kind (ACI, then PNI), then lexicographically by the
+ * bytes of the UUID.
+ */
+public abstract class ServiceId implements Comparable<ServiceId> {
   private static final byte FIXED_WIDTH_BINARY_LENGTH = 17;
 
   private static final byte ACI_MARKER = 0x00;
@@ -53,6 +62,19 @@ public abstract class ServiceId {
   @Override
   public int hashCode() {
     return Arrays.hashCode(this.storage);
+  }
+
+  @Override
+  public int compareTo(ServiceId other) {
+    for (int i = 0; i < FIXED_WIDTH_BINARY_LENGTH; ++i) {
+      // We specifically want to be doing an *unsigned* comparison of bytes, to match the Rust code
+      // and other platforms.
+      int comparisonResult = Byte.toUnsignedInt(storage[i]) - Byte.toUnsignedInt(other.storage[i]);
+      if (comparisonResult != 0) {
+        return comparisonResult;
+      }
+    }
+    return 0;
   }
 
   @Override

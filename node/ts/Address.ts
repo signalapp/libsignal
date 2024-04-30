@@ -14,6 +14,12 @@ export enum ServiceIdKind {
 
 const SERVICE_ID_FIXED_WIDTH_BINARY_LEN = 17;
 
+/**
+ * Typed representation of a Signal service ID, which can be one of various types.
+ *
+ * Conceptually this is a UUID in a particular "namespace" representing a particular way to reach a
+ * user on the Signal service.
+ */
 export abstract class ServiceId extends Object {
   private readonly serviceIdFixedWidthBinary: Buffer;
 
@@ -117,6 +123,15 @@ export abstract class ServiceId extends Object {
     return this.serviceIdFixedWidthBinary.equals(
       other.serviceIdFixedWidthBinary
     );
+  }
+
+  /**
+   * Orders ServiceIds by kind, then lexicographically by the bytes of the UUID.
+   *
+   * Compatible with <code>Array.sort</code>.
+   */
+  static comparator(this: void, lhs: ServiceId, rhs: ServiceId): number {
+    return lhs.serviceIdFixedWidthBinary.compare(rhs.serviceIdFixedWidthBinary);
   }
 
   static toConcatenatedFixedWidthBinary(serviceIds: ServiceId[]): Buffer {
