@@ -5,16 +5,20 @@
 
 package org.signal.libsignal.protocol;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
+
 import java.util.UUID;
-import junit.framework.TestCase;
+import org.junit.Test;
 import org.signal.libsignal.protocol.ServiceId.InvalidServiceIdException;
 import org.signal.libsignal.protocol.util.Hex;
 
-public class ServiceIdTest extends TestCase {
+public class ServiceIdTest {
   private static final String TEST_UUID_STRING = "c04d643e-1c2d-43b6-bcb7-d7f41f7f0990";
   private static final UUID TEST_UUID = UUID.fromString(TEST_UUID_STRING);
   private static final String TEST_UUID_HEX = "c04d643e1c2d43b6bcb7d7f41f7f0990";
 
+  @Test
   public void testFromUUIDAndBack() throws Exception {
     UUID original = UUID.randomUUID();
     ServiceId.Aci aci = new ServiceId.Aci(original);
@@ -23,6 +27,7 @@ public class ServiceIdTest extends TestCase {
     assertEquals(original, pni.getRawUUID());
   }
 
+  @Test
   public void testAciRepresentations() throws Exception {
     ServiceId.Aci aci = new ServiceId.Aci(TEST_UUID);
     assertEquals(TEST_UUID_STRING, aci.toServiceIdString());
@@ -31,6 +36,7 @@ public class ServiceIdTest extends TestCase {
     assertEquals(String.format("<ACI:%s>", TEST_UUID_STRING), aci.toString());
   }
 
+  @Test
   public void testPniRepresentations() throws Exception {
     ServiceId.Pni pni = new ServiceId.Pni(TEST_UUID);
     assertEquals(String.format("PNI:%s", TEST_UUID_STRING), pni.toServiceIdString());
@@ -40,6 +46,7 @@ public class ServiceIdTest extends TestCase {
     assertEquals(String.format("<PNI:%s>", TEST_UUID_STRING), pni.toString());
   }
 
+  @Test
   public void testParseFromString() throws Exception {
     assert (ServiceId.parseFromString(TEST_UUID_STRING) instanceof ServiceId.Aci);
     ServiceId.Aci.parseFromString(TEST_UUID_STRING);
@@ -55,6 +62,7 @@ public class ServiceIdTest extends TestCase {
     }
   }
 
+  @Test
   public void testParseFromBinary() throws Exception {
     byte[] aciBytes = Hex.fromStringCondensedAssert(TEST_UUID_HEX);
     assert (ServiceId.parseFromBinary(aciBytes) instanceof ServiceId.Aci);
@@ -72,6 +80,7 @@ public class ServiceIdTest extends TestCase {
     }
   }
 
+  @Test
   public void testNullInputs() throws Exception {
     try {
       new ServiceId.Aci((UUID) null);
@@ -95,6 +104,7 @@ public class ServiceIdTest extends TestCase {
     }
   }
 
+  @Test
   public void testInvalidServiceId() throws Exception {
     try {
       byte[] invalidServiceIdBytes = Hex.fromStringCondensedAssert("02" + TEST_UUID_HEX);
