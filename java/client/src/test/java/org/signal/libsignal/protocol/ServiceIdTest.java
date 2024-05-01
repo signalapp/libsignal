@@ -5,12 +5,12 @@
 
 package org.signal.libsignal.protocol;
 
-import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.assertThrows;
 
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import java.util.UUID;
 import org.junit.Test;
 import org.signal.libsignal.protocol.ServiceId.InvalidServiceIdException;
@@ -58,11 +58,9 @@ public class ServiceIdTest {
         instanceof ServiceId.Pni);
     ServiceId.Pni.parseFromString(String.format("PNI:%s", TEST_UUID_STRING));
 
-    try {
-      ServiceId.parseFromString(String.format("ACI:%s", TEST_UUID_STRING));
-      fail("Successfully parsed an invalid Service-Id-String");
-    } catch (InvalidServiceIdException ex) {
-    }
+    assertThrows(
+        InvalidServiceIdException.class,
+        () -> ServiceId.parseFromString(String.format("ACI:%s", TEST_UUID_STRING)));
   }
 
   @Test
@@ -76,65 +74,46 @@ public class ServiceIdTest {
     ServiceId.Pni.parseFromBinary(pniBytes);
 
     byte[] invalidAciBytes = Hex.fromStringCondensedAssert("00" + TEST_UUID_HEX);
-    try {
-      ServiceId.parseFromBinary(invalidAciBytes);
-      fail("Successfully parsed in invalid Service-Id-Binary");
-    } catch (InvalidServiceIdException ex) {
-    }
+    assertThrows(InvalidServiceIdException.class, () -> ServiceId.parseFromBinary(invalidAciBytes));
   }
 
   @Test
   public void testNullInputs() throws Exception {
-    try {
-      new ServiceId.Aci((UUID) null);
-      fail("Should have failed");
-    } catch (IllegalArgumentException ex) {
-    }
-    try {
-      new ServiceId.Pni((UUID) null);
-      fail("Should have failed");
-    } catch (IllegalArgumentException ex) {
-    }
-    try {
-      ServiceId.parseFromString((String) null);
-      fail("Should have failed");
-    } catch (InvalidServiceIdException ex) {
-    }
-    try {
-      ServiceId.parseFromBinary((byte[]) null);
-      fail("Should have failed");
-    } catch (InvalidServiceIdException ex) {
-    }
+    assertThrows(IllegalArgumentException.class, () -> new ServiceId.Aci((UUID) null));
+    assertThrows(IllegalArgumentException.class, () -> new ServiceId.Pni((UUID) null));
+    assertThrows(InvalidServiceIdException.class, () -> ServiceId.parseFromString(null));
+    assertThrows(InvalidServiceIdException.class, () -> ServiceId.parseFromBinary(null));
   }
 
   @Test
   public void testInvalidServiceId() throws Exception {
-    try {
-      byte[] invalidServiceIdBytes = Hex.fromStringCondensedAssert("02" + TEST_UUID_HEX);
-      ServiceId.parseFromBinary(invalidServiceIdBytes);
-      fail("Should have failed");
-    } catch (InvalidServiceIdException ex) {
-    }
-    try {
-      String invalidServiceString = "SGL:" + TEST_UUID_STRING;
-      ServiceId.parseFromString(invalidServiceString);
-      fail("Should have failed");
-    } catch (InvalidServiceIdException ex) {
-    }
+    assertThrows(
+        InvalidServiceIdException.class,
+        () -> {
+          byte[] invalidServiceIdBytes = Hex.fromStringCondensedAssert("02" + TEST_UUID_HEX);
+          ServiceId.parseFromBinary(invalidServiceIdBytes);
+        });
+    assertThrows(
+        InvalidServiceIdException.class,
+        () -> {
+          String invalidServiceString = "SGL:" + TEST_UUID_STRING;
+          ServiceId.parseFromString(invalidServiceString);
+        });
   }
 
   @Test
   public void testOrdering() throws Exception {
-    ServiceId[] ids =
-        new ServiceId[] {
-          new ServiceId.Aci(new UUID(0, 0)),
-          new ServiceId.Aci(TEST_UUID),
-          new ServiceId.Pni(new UUID(0, 0)),
-          new ServiceId.Pni(TEST_UUID)
-        };
-    ServiceId[] original = ids.clone();
-    Collections.shuffle(Arrays.asList(ids));
-    Arrays.sort(ids);
-    assertArrayEquals(original, ids);
+    // creates an immutabale list
+    List<ServiceId> original =
+        List.of(
+            new ServiceId.Aci(new UUID(0, 0)),
+            new ServiceId.Aci(TEST_UUID),
+            new ServiceId.Pni(new UUID(0, 0)),
+            new ServiceId.Pni(TEST_UUID));
+    // copying to another list
+    List<ServiceId> ids = new ArrayList<>(original);
+    Collections.shuffle(ids);
+    Collections.sort(ids);
+    assertEquals(original, ids);
   }
 }
