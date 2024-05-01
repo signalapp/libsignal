@@ -360,9 +360,9 @@ pub(crate) mod test {
 
         pub(crate) const MANY_ATTEMPTS: u16 = 1000;
 
-        pub(crate) const TIMEOUT_DURATION: Duration = Duration::from_millis(100);
+        pub(crate) const TIMEOUT_DURATION: Duration = Duration::from_millis(1000);
 
-        pub(crate) const NORMAL_CONNECTION_TIME: Duration = Duration::from_millis(20);
+        pub(crate) const NORMAL_CONNECTION_TIME: Duration = Duration::from_millis(200);
 
         pub(crate) const LONG_CONNECTION_TIME: Duration = Duration::from_secs(10);
 

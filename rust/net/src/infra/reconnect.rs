@@ -20,6 +20,10 @@ use crate::infra::connection_manager::{ConnectionAttemptOutcome, ConnectionManag
 use crate::infra::errors::LogSafeDisplay;
 use crate::infra::{ConnectionInfo, ConnectionParams, HttpRequestDecorator};
 
+// A duration where, if this is all that's left on the timeout, we're more likely to fail than not.
+// Useful for debouncing repeated connection attempts.
+const MINIMUM_CONNECTION_TIME: Duration = Duration::from_millis(500);
+
 /// For a service that needs to go through some initialization procedure
 /// before it's ready for use, this enum describes its possible states.
 #[derive(Debug)]
@@ -339,6 +343,8 @@ where
         let mut attempts: u16 = 0;
         let start_of_connection_process = Instant::now();
         let deadline = start_of_connection_process + self.data.connection_timeout;
+        let deadline_for_starting = deadline - MINIMUM_CONNECTION_TIME;
+
         let mut guard = match timeout_at(deadline, self.data.state.lock()).await {
             Ok(guard) => guard,
             Err(_) => {
@@ -347,6 +353,7 @@ where
             }
         };
         let lock_taken_instant = Instant::now();
+
         loop {
             match &*guard {
                 ServiceState::Inactive => {
@@ -365,7 +372,7 @@ where
                 }
                 ServiceState::Cooldown(next_attempt_time) => {
                     // checking if the `next_attempt_time` is still in the future
-                    if next_attempt_time > &deadline {
+                    if next_attempt_time > &deadline_for_starting {
                         log::info!(
                             "All possible routes are in cooldown state until {:?} from now",
                             next_attempt_time.saturating_duration_since(lock_taken_instant)
@@ -390,10 +397,6 @@ where
                             log::info!("Connection attempt timed out");
                         }
                     }
-                    // keep trying until we hit our own timeout deadline
-                    if Instant::now() >= deadline {
-                        return Err(ReconnectError::Timeout { attempts });
-                    }
                 }
                 ServiceState::Error(e) => {
                     // short-circuiting mechanism is responsibility of the `ConnectionManager`,
@@ -405,6 +408,16 @@ where
                     }
                 }
             };
+
+            if Instant::now() >= deadline_for_starting {
+                // Don't bother trying to connect if we only have a little bit of time left.
+                // This helps debounce repeated connection attempts.
+                log::debug!(
+                    "skipping connection attempt due to only a little bit of time remaining"
+                );
+                return Err(ReconnectError::Timeout { attempts });
+            }
+
             attempts += 1;
             *guard = match timeout_at(deadline, self.data.service_initializer.connect()).await {
                 Ok(ServiceState::Active(service, service_state)) => {
@@ -499,13 +512,10 @@ mod test {
     use tokio::time;
     use tokio::time::Instant;
 
+    use super::*;
     use crate::infra::certs::RootCertificates;
     use crate::infra::connection_manager::{
         SingleRouteThrottlingConnectionManager, COOLDOWN_INTERVALS, MAX_COOLDOWN_INTERVAL,
-    };
-    use crate::infra::reconnect::{
-        ReconnectError, ServiceConnector, ServiceState, ServiceStatus, ServiceWithReconnect,
-        StateError,
     };
     use crate::infra::test::shared::{
         TestError, LONG_CONNECTION_TIME, NORMAL_CONNECTION_TIME, TIMEOUT_DURATION,
@@ -935,6 +945,26 @@ mod test {
 
         // reconnect count should not change
         assert_eq!(1, service_with_reconnect.reconnect_count());
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn service_times_out_early_on_guard_contention() {
+        let (connector, service_with_reconnect) = connector_and_service();
+        let guard = service_with_reconnect.data.state.lock().await;
+
+        let service_for_task = service_with_reconnect.clone();
+        let connection_task =
+            tokio::spawn(async move { service_for_task.connect_from_inactive().await });
+
+        sleep_and_catch_up(TIMEOUT_DURATION - MINIMUM_CONNECTION_TIME).await;
+        drop(guard);
+
+        let connection_result = connection_task.await.expect("joined successfully");
+        assert_matches!(
+            connection_result,
+            Err(ReconnectError::Timeout { attempts: 0 })
+        );
+        assert_eq!(connector.attempts_made(), 0);
     }
 
     fn connector_and_service() -> (
