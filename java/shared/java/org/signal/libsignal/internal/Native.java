@@ -424,6 +424,7 @@ public final class Native {
 
   public static native void ProfileKeyCredentialPresentation_CheckValidContents(byte[] presentationBytes) throws Exception;
   public static native byte[] ProfileKeyCredentialPresentation_GetProfileKeyCiphertext(byte[] presentationBytes);
+  public static native byte[] ProfileKeyCredentialPresentation_GetStructurallyValidV1PresentationBytes(byte[] presentationBytes);
   public static native byte[] ProfileKeyCredentialPresentation_GetUuidCiphertext(byte[] presentationBytes);
 
   public static native void ProfileKeyCredentialRequestContext_CheckValidContents(byte[] buffer) throws Exception;

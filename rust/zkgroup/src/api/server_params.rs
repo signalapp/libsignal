@@ -234,6 +234,10 @@ impl ServerSecretParams {
         current_time: Timestamp,
     ) -> Result<(), ZkGroupVerificationFailure> {
         match presentation {
+            api::profiles::AnyProfileKeyCredentialPresentation::V1(_) => {
+                Err(ZkGroupVerificationFailure)
+            }
+
             api::profiles::AnyProfileKeyCredentialPresentation::V2(_) => {
                 Err(ZkGroupVerificationFailure)
             }

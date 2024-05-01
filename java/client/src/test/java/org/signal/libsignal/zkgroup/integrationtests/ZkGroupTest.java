@@ -667,12 +667,35 @@ public final class ZkGroupTest extends SecureRandomTest {
 
     try {
       byte[] temp = presentation.serialize();
-      temp[0] = 40; // This interprets a V3 as a non-existent version, so should fail
+      temp[0] = 0; // This interprets a V3 as V1, so should fail
       ProfileKeyCredentialPresentation presentationTemp =
           new ProfileKeyCredentialPresentation(temp);
       serverZkProfile.verifyProfileKeyCredentialPresentation(groupPublicParams, presentationTemp);
       throw new AssertionError("verifyProfileKeyCredentialPresentation should fail 2");
+    } catch (VerificationFailedException e) {
+      // expected
+    }
+
+    try {
+      byte[] temp = presentation.serialize();
+      temp[0] = 40; // This interprets a V3 as a non-existent version, so should fail
+      ProfileKeyCredentialPresentation presentationTemp =
+          new ProfileKeyCredentialPresentation(temp);
+      serverZkProfile.verifyProfileKeyCredentialPresentation(groupPublicParams, presentationTemp);
+      throw new AssertionError("verifyProfileKeyCredentialPresentation should fail 3");
     } catch (InvalidInputException e) {
+      // expected
+    }
+
+    // Test that we can encode as a V1 presentation, even though it won't verify.
+    ProfileKeyCredentialPresentation v1Presentation =
+        new ProfileKeyCredentialPresentation(
+            presentation.getStructurallyValidV1PresentationBytes());
+    assertEquals(v1Presentation.getUuidCiphertext(), presentation.getUuidCiphertext());
+    assertEquals(v1Presentation.getProfileKeyCiphertext(), presentation.getProfileKeyCiphertext());
+    try {
+      serverZkProfile.verifyProfileKeyCredentialPresentation(groupPublicParams, v1Presentation);
+    } catch (VerificationFailedException e) {
       // expected
     }
   }

@@ -49,6 +49,11 @@ public final class ProfileKeyCredentialPresentation extends ByteArray {
     }
   }
 
+  public byte[] getStructurallyValidV1PresentationBytes() {
+    return Native.ProfileKeyCredentialPresentation_GetStructurallyValidV1PresentationBytes(
+        contents);
+  }
+
   public Version getVersion() {
     switch (this.contents[0]) {
       case 0:
