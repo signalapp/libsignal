@@ -62,9 +62,9 @@ impl AnyAuthCredentialPresentation {
     pub fn new(presentation_bytes: &[u8]) -> Result<Self, ZkGroupDeserializationFailure> {
         let first = *presentation_bytes
             .first()
-            .ok_or(ZkGroupDeserializationFailure)?;
-        let version =
-            PresentationVersion::try_from(first).map_err(|_| ZkGroupDeserializationFailure)?;
+            .ok_or(ZkGroupDeserializationFailure::new::<Self>())?;
+        let version = PresentationVersion::try_from(first)
+            .map_err(|_| ZkGroupDeserializationFailure::new::<Self>())?;
         match version {
             PresentationVersion::V3 => Ok(crate::deserialize::<AuthCredentialWithPniPresentation>(
                 presentation_bytes,

@@ -409,7 +409,7 @@ impl GroupSendEndorsement<curve25519_dalek::ristretto::CompressedRistretto> {
             endorsement: self
                 .endorsement
                 .decompress()
-                .map_err(|_| ZkGroupDeserializationFailure)?,
+                .map_err(|_| ZkGroupDeserializationFailure::new::<Self>())?,
         })
     }
 }

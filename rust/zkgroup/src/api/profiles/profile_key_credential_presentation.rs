@@ -99,26 +99,18 @@ impl AnyProfileKeyCredentialPresentation {
     pub fn new(presentation_bytes: &[u8]) -> Result<Self, ZkGroupDeserializationFailure> {
         match presentation_bytes[0] {
             PRESENTATION_VERSION_1 => {
-                match crate::deserialize::<ProfileKeyCredentialPresentationV1>(presentation_bytes) {
-                    Ok(presentation) => Ok(AnyProfileKeyCredentialPresentation::V1(presentation)),
-                    Err(_) => Err(ZkGroupDeserializationFailure),
-                }
+                crate::deserialize::<ProfileKeyCredentialPresentationV1>(presentation_bytes)
+                    .map(AnyProfileKeyCredentialPresentation::V1)
             }
             PRESENTATION_VERSION_2 => {
-                match crate::deserialize::<ProfileKeyCredentialPresentationV2>(presentation_bytes) {
-                    Ok(presentation) => Ok(AnyProfileKeyCredentialPresentation::V2(presentation)),
-                    Err(_) => Err(ZkGroupDeserializationFailure),
-                }
+                crate::deserialize::<ProfileKeyCredentialPresentationV2>(presentation_bytes)
+                    .map(AnyProfileKeyCredentialPresentation::V2)
             }
             PRESENTATION_VERSION_3 => {
-                match crate::deserialize::<ExpiringProfileKeyCredentialPresentation>(
-                    presentation_bytes,
-                ) {
-                    Ok(presentation) => Ok(AnyProfileKeyCredentialPresentation::V3(presentation)),
-                    Err(_) => Err(ZkGroupDeserializationFailure),
-                }
+                crate::deserialize::<ExpiringProfileKeyCredentialPresentation>(presentation_bytes)
+                    .map(AnyProfileKeyCredentialPresentation::V3)
             }
-            _ => Err(ZkGroupDeserializationFailure),
+            _ => Err(ZkGroupDeserializationFailure::new::<Self>()),
         }
     }
 

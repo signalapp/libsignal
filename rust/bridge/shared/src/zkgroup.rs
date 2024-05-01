@@ -55,7 +55,7 @@ macro_rules! bridge_fixed_length_serializable {
                 buffer: &[u8]
             ) -> Result<(), ZkGroupDeserializationFailure> {
                 if buffer.len() != <$typ as FixedLengthBincodeSerializable>::Array::LEN {
-                    return Err(ZkGroupDeserializationFailure)
+                    return Err(ZkGroupDeserializationFailure::new::<$typ>())
                 }
                 validate_serialization::<$typ>(buffer)
             }

@@ -41,9 +41,11 @@ pub enum AuthCredentialWithPniVersion {
 
 impl AuthCredentialWithPni {
     pub fn new(bytes: &[u8]) -> Result<Self, ZkGroupDeserializationFailure> {
-        let first = bytes.first().ok_or(ZkGroupDeserializationFailure)?;
+        let first = bytes
+            .first()
+            .ok_or_else(ZkGroupDeserializationFailure::new::<Self>)?;
         let version = AuthCredentialWithPniVersion::try_from(*first)
-            .map_err(|_| ZkGroupDeserializationFailure)?;
+            .map_err(|_| ZkGroupDeserializationFailure::new::<Self>())?;
         match version {
             AuthCredentialWithPniVersion::V0 => {
                 crate::common::serialization::deserialize(bytes).map(Self::V0)
@@ -57,9 +59,11 @@ impl AuthCredentialWithPni {
 
 impl AuthCredentialWithPniResponse {
     pub fn new(bytes: &[u8]) -> Result<Self, ZkGroupDeserializationFailure> {
-        let first = bytes.first().ok_or(ZkGroupDeserializationFailure)?;
+        let first = bytes
+            .first()
+            .ok_or_else(ZkGroupDeserializationFailure::new::<Self>)?;
         let version = AuthCredentialWithPniVersion::try_from(*first)
-            .map_err(|_| ZkGroupDeserializationFailure)?;
+            .map_err(|_| ZkGroupDeserializationFailure::new::<Self>())?;
         match version {
             AuthCredentialWithPniVersion::V0 => {
                 crate::common::serialization::deserialize(bytes).map(Self::V0)

@@ -9,12 +9,18 @@ use zkcredential::VerificationFailure;
 /// Verification failure in zkgroup
 pub struct ZkGroupVerificationFailure;
 
-#[derive(Debug, thiserror::Error, displaydoc::Display)]
-/// Deserialization failure in zkgroup
-pub struct ZkGroupDeserializationFailure;
-
 impl From<VerificationFailure> for ZkGroupVerificationFailure {
     fn from(VerificationFailure: VerificationFailure) -> Self {
         Self
+    }
+}
+
+#[derive(Debug, thiserror::Error, displaydoc::Display)]
+/// Failed to deserialize {0}
+pub struct ZkGroupDeserializationFailure(&'static str);
+
+impl ZkGroupDeserializationFailure {
+    pub fn new<T>() -> Self {
+        Self(std::any::type_name::<T>())
     }
 }

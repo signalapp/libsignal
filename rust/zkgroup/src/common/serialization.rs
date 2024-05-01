@@ -30,7 +30,7 @@ pub fn deserialize<'a, T: Deserialize<'a> + PartialDefault>(
         &mut bincode::Deserializer::from_slice(bytes, zkgroup_bincode_options()),
         &mut result,
     )
-    .map_err(|_| ZkGroupDeserializationFailure)?;
+    .map_err(|_| ZkGroupDeserializationFailure::new::<T>())?;
     Ok(result)
 }
 

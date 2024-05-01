@@ -118,7 +118,7 @@ describe('ZKGroup', () => {
           new constructor(Buffer.from('invalid contents'));
         },
         LibSignalErrorBase,
-        'Deserialization failure'
+        'Failed to deserialize'
       );
     }
     assertDeserializeInvalidThrows(AuthCredentialPresentation);

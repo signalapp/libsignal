@@ -12,7 +12,7 @@ use libsignal_protocol::*;
 use signal_crypto::Error as SignalCryptoError;
 use signal_pin::Error as PinError;
 use usernames::{UsernameError, UsernameLinkError};
-use zkgroup::{ZkGroupDeserializationFailure, ZkGroupVerificationFailure};
+use zkgroup::ZkGroupVerificationFailure;
 
 #[derive(Debug)]
 #[repr(C)]
@@ -225,9 +225,7 @@ impl From<&SignalFfiError> for SignalErrorCode {
                 SignalErrorCode::VerificationFailure
             }
 
-            SignalFfiError::ZkGroupDeserializationFailure(ZkGroupDeserializationFailure) => {
-                SignalErrorCode::InvalidType
-            }
+            SignalFfiError::ZkGroupDeserializationFailure(_) => SignalErrorCode::InvalidType,
 
             SignalFfiError::UsernameError(UsernameError::NicknameCannotBeEmpty) => {
                 SignalErrorCode::UsernameCannotBeEmpty
