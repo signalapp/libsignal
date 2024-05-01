@@ -29,6 +29,7 @@ hkdf = "0.12"
 lazy_static = "1.4.0"
 num_enum = "0.6.1"
 partial-default = { version = "0.1.0", features = ["derive"] }
+rand = "0.8"
 rayon = "1.8.0"
 serde = { version = "1.0.106", features = ["derive"] }
 sha2 = "0.10.0"
@@ -38,11 +39,8 @@ uuid = "1.1.2"
 
 # For generation
 base64 = { version = "0.21", optional = true }
-rand = { version = "0.8", optional = true }
-
 
 [dev-dependencies]
-rand = "0.8"
 uuid = { version = "1", features = ["v5"] }
 
 # For benchmarking
@@ -59,8 +57,8 @@ harness = false
 
 [[bin]]
 name = "generate_server_params"
-required-features = ["base64", "rand"]
+required-features = ["base64"]
 
 [[bin]]
 name = "generate_generic_server_params"
-required-features = ["base64", "rand"]
+required-features = ["base64"]

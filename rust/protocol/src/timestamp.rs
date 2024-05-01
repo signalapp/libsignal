@@ -33,3 +33,9 @@ impl From<Timestamp> for std::time::SystemTime {
         Self::UNIX_EPOCH + std::time::Duration::from_millis(value.epoch_millis())
     }
 }
+
+impl rand::distributions::Distribution<Timestamp> for rand::distributions::Standard {
+    fn sample<R: rand::prelude::Rng + ?Sized>(&self, rng: &mut R) -> Timestamp {
+        Timestamp(Self::sample(self, rng))
+    }
+}

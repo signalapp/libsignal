@@ -92,6 +92,12 @@ impl From<Timestamp> for std::time::SystemTime {
     }
 }
 
+impl rand::distributions::Distribution<Timestamp> for rand::distributions::Standard {
+    fn sample<R: rand::prelude::Rng + ?Sized>(&self, rng: &mut R) -> Timestamp {
+        Timestamp(Self::sample(self, rng))
+    }
+}
+
 impl PublicAttribute for Timestamp {
     fn hash_into(&self, sho: &mut dyn poksho::ShoApi) {
         self.0.hash_into(sho)
