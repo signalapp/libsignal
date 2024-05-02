@@ -261,11 +261,10 @@ impl<E: EnclaveKind + NewHandshake, C: ConnectionManager> EnclaveEndpointConnect
         let connection_attempt_result = service_initializer.connect().await;
         let websocket = match connection_attempt_result {
             ServiceState::Active(websocket, _) => Ok(websocket),
-            ServiceState::Cooldown(_) => {
-                unreachable!("new service connector should not be in cooldown")
-            }
             ServiceState::Error(e) => Err(Error::WebSocketConnect(e)),
-            ServiceState::ConnectionTimedOut => Err(Error::ConnectionTimedOut),
+            ServiceState::Cooldown(_) | ServiceState::ConnectionTimedOut => {
+                Err(Error::ConnectionTimedOut)
+            }
             ServiceState::Inactive => {
                 unreachable!("can't be returned by the initializer")
             }
@@ -376,5 +375,143 @@ impl NewHandshake for Tpm2Snp {
             attestation_message,
             SystemTime::now(),
         )
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use std::fmt::Debug;
+
+    use assert_matches::assert_matches;
+    use async_trait::async_trait;
+    use nonzero_ext::nonzero;
+    use tokio::net::TcpStream;
+    use tokio_boring::SslStream;
+
+    use crate::auth::Auth;
+    use crate::infra::connection_manager::ConnectionAttemptOutcome;
+    use crate::infra::errors::TransportConnectError;
+    use crate::infra::{Alpn, HttpRequestDecoratorSeq, RouteType, StreamAndInfo};
+
+    use super::*;
+
+    #[derive(Clone, Debug)]
+    struct AlwaysFailingConnector;
+
+    #[async_trait]
+    impl TransportConnector for AlwaysFailingConnector {
+        type Stream = SslStream<TcpStream>;
+
+        async fn connect(
+            &self,
+            _connection_params: &ConnectionParams,
+            _alpn: Alpn,
+        ) -> Result<StreamAndInfo<Self::Stream>, TransportConnectError> {
+            Err(TransportConnectError::TcpConnectionFailed)
+        }
+    }
+
+    const CONNECT_TIMEOUT: tokio::time::Duration = tokio::time::Duration::from_secs(10);
+
+    async fn enclave_connect<C: ConnectionManager>(
+        manager: C,
+    ) -> Result<AttestedConnection<SslStream<TcpStream>>, Error> {
+        let connection = EnclaveEndpointConnection {
+            endpoint_connection: EndpointConnection {
+                manager,
+                config: make_ws_config(PathAndQuery::from_static("/endpoint"), CONNECT_TIMEOUT),
+            },
+            params: EndpointParams::<Cdsi>::new(MrEnclave::new(b"abcdef")),
+        };
+
+        connection
+            .connect(
+                Auth {
+                    password: "asdf".to_string(),
+                    username: "fdsa".to_string(),
+                },
+                AlwaysFailingConnector,
+            )
+            .await
+    }
+
+    fn fake_connection_params() -> ConnectionParams {
+        ConnectionParams::new(
+            RouteType::Direct,
+            "fake",
+            "fake-sni",
+            nonzero!(1234u16),
+            HttpRequestDecoratorSeq::default(),
+            crate::infra::certs::RootCertificates::Native,
+        )
+    }
+
+    #[tokio::test]
+    async fn single_route_enclave_connect_failure() {
+        let result = enclave_connect(SingleRouteThrottlingConnectionManager::new(
+            fake_connection_params(),
+            CONNECT_TIMEOUT,
+        ))
+        .await;
+        assert_matches!(
+            result,
+            Err(Error::WebSocketConnect(WebSocketConnectError::Transport(
+                TransportConnectError::TcpConnectionFailed
+            )))
+        );
+    }
+
+    #[tokio::test]
+    async fn multi_route_enclave_connect_failure() {
+        let result = enclave_connect(MultiRouteConnectionManager::new(
+            vec![
+                SingleRouteThrottlingConnectionManager::new(
+                    fake_connection_params(),
+                    CONNECT_TIMEOUT
+                );
+                3
+            ],
+            CONNECT_TIMEOUT,
+        ))
+        .await;
+        assert_matches!(result, Err(Error::ConnectionTimedOut));
+    }
+
+    /// Demonstrate a scenario where an enclave connection can be attempted
+    /// where the service can produce [`ServiceState::Cooldown`].
+    #[tokio::test]
+    async fn multi_route_enclave_connect_cooldown() {
+        let connection_manager = MultiRouteConnectionManager::new(
+            vec![
+                SingleRouteThrottlingConnectionManager::new(
+                    fake_connection_params(),
+                    CONNECT_TIMEOUT
+                );
+                3
+            ],
+            CONNECT_TIMEOUT,
+        );
+
+        // Repeatedly try connecting unsuccessfully until all the inner routes
+        // are throttling, with a max count to prevent infinite looping.
+        let mut limit_max_tries = 0..100;
+        loop {
+            let _ = limit_max_tries
+                .next()
+                .expect("didn't finish setup after many iterations");
+            match connection_manager
+                .connect_or_wait(|_conn_params| {
+                    std::future::ready(Err::<(), _>(WebSocketConnectError::Timeout))
+                })
+                .await
+            {
+                ConnectionAttemptOutcome::WaitUntil(_) => break,
+                ConnectionAttemptOutcome::Attempted(_) => (),
+                ConnectionAttemptOutcome::TimedOut => (),
+            }
+        }
+
+        let result = enclave_connect(connection_manager).await;
+        assert_matches!(result, Err(Error::ConnectionTimedOut));
     }
 }
