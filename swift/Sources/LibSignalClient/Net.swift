@@ -26,9 +26,9 @@ public class Net {
     public let svr3: Svr3Client
 
     /// Creates a new `Net` instance that enables interacting with services in the given Signal environment.
-    public init(env: Environment) {
+    public init(env: Environment, userAgent: String) {
         self.asyncContext = TokioAsyncContext()
-        self.connectionManager = ConnectionManager(env: env)
+        self.connectionManager = ConnectionManager(env: env, userAgent: userAgent)
         self.svr3 = Svr3Client(self.asyncContext, self.connectionManager)
     }
 
@@ -373,9 +373,9 @@ internal class TokioAsyncContext: NativeHandleOwner {
 }
 
 internal class ConnectionManager: NativeHandleOwner {
-    convenience init(env: Net.Environment) {
+    convenience init(env: Net.Environment, userAgent: String) {
         var handle: OpaquePointer?
-        failOnError(signal_connection_manager_new(&handle, env.rawValue))
+        failOnError(signal_connection_manager_new(&handle, env.rawValue, userAgent))
         self.init(owned: handle!)
     }
 

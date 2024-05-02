@@ -17,7 +17,10 @@ pub trait HttpBasicAuth {
 
 impl<T: HttpBasicAuth> From<T> for HttpRequestDecorator {
     fn from(value: T) -> Self {
-        HttpRequestDecorator::HeaderAuth(basic_authorization(value.username(), value.password()))
+        HttpRequestDecorator::Header(
+            http::header::AUTHORIZATION,
+            basic_authorization(value.username(), value.password()),
+        )
     }
 }
 

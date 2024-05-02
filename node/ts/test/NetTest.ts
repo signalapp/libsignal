@@ -18,6 +18,8 @@ use(chaiAsPromised);
 util.initLogger();
 config.truncateThreshold = 0;
 
+const userAgent = 'test';
+
 describe('chat service api', () => {
   it('converts ChatServiceError to native', () => {
     expect(() => Native.TESTING_ChatServiceErrorConvert())
@@ -34,7 +36,7 @@ describe('chat service api', () => {
   it('converts Response object to native', () => {
     const status = 200;
     const headers: ReadonlyArray<[string, string]> = [
-      ['user-agent', 'test'],
+      ['content-type', 'application/octet-stream'],
       ['forwarded', '1.1.1.1'],
     ];
     const expectedWithContent: ChatResponse = {
@@ -69,11 +71,11 @@ describe('chat service api', () => {
 
   const verb = 'GET';
   const path = '/test';
-  const userAgent = 'test';
+  const contentType = 'application/octet-stream';
   const forwarded = '1.1.1.1';
   const content = Buffer.from('content');
   const headers: Array<[string, string]> = [
-    ['user-agent', userAgent],
+    ['content-type', contentType],
     ['forwarded', forwarded],
   ];
 
@@ -88,8 +90,8 @@ describe('chat service api', () => {
     expect(Native.TESTING_ChatRequestGetPath(request)).equals(path);
     expect(Native.TESTING_ChatRequestGetBody(request)).deep.equals(content);
     expect(
-      Native.TESTING_ChatRequestGetHeaderValue(request, 'user-agent')
-    ).equals(userAgent);
+      Native.TESTING_ChatRequestGetHeaderValue(request, 'content-type')
+    ).equals(contentType);
     expect(
       Native.TESTING_ChatRequestGetHeaderValue(request, 'forwarded')
     ).equals(forwarded);
@@ -129,7 +131,7 @@ describe('chat service api', () => {
     });
 
     it('can connect unauthenticated', async () => {
-      const net = new Net(Environment.Staging);
+      const net = new Net(Environment.Staging, userAgent);
       const chatService = net.newChatService();
       await chatService.connectUnauthenticated();
       await chatService.disconnect();
@@ -140,7 +142,7 @@ describe('chat service api', () => {
       assert(PROXY_SERVER, 'checked above');
 
       // The default TLS proxy config doesn't support staging, so we connect to production.
-      const net = new Net(Environment.Production);
+      const net = new Net(Environment.Production, userAgent);
       const [host = PROXY_SERVER, port = '443'] = PROXY_SERVER.split(':', 2);
       net.setProxy(host, parseInt(port, 10));
 
@@ -243,7 +245,7 @@ describe('cdsi lookup', () => {
 
 describe('SVR3', () => {
   const USERNAME = randomBytes(16).toString('hex');
-  const SVR3 = new Net(Environment.Staging).svr3;
+  const SVR3 = new Net(Environment.Staging, userAgent).svr3;
 
   function make_auth(): Readonly<ServiceAuth> {
     const otp = Native.CreateOTPFromBase64(

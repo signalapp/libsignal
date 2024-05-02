@@ -24,7 +24,7 @@ use libsignal_net::chat::{
 use libsignal_net::enclave::{
     Cdsi, EnclaveEndpoint, EnclaveEndpointConnection, EnclaveKind, Nitro, PpssSetup, Sgx, Tpm2Snp,
 };
-use libsignal_net::env::{Env, Svr3Env};
+use libsignal_net::env::{add_user_agent_header, Env, Svr3Env};
 use libsignal_net::infra::connection_manager::MultiRouteConnectionManager;
 use libsignal_net::infra::dns::DnsResolver;
 use libsignal_net::infra::tcp_ssl::{
@@ -106,7 +106,7 @@ impl RefUnwindSafe for ConnectionManager {}
 
 impl ConnectionManager {
     const DEFAULT_CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
-    fn new(environment: Environment) -> Self {
+    fn new(environment: Environment, user_agent: String) -> Self {
         let dns_resolver =
             DnsResolver::new_with_static_fallback(environment.env().static_fallback());
         let transport_connector =
@@ -116,6 +116,7 @@ impl ConnectionManager {
             .env()
             .chat_domain_config
             .connection_params_with_fallback();
+        let chat_connection_params = add_user_agent_header(chat_connection_params, &user_agent);
         let chat_ws_config = make_ws_config(chat_endpoint, Self::DEFAULT_CONNECT_TIMEOUT);
         Self {
             chat: EndpointConnection::new_multi(
@@ -123,11 +124,11 @@ impl ConnectionManager {
                 Self::DEFAULT_CONNECT_TIMEOUT,
                 chat_ws_config,
             ),
-            cdsi: Self::endpoint_connection(environment.env().cdsi),
+            cdsi: Self::endpoint_connection(environment.env().cdsi, &user_agent),
             svr3: (
-                Self::endpoint_connection(environment.env().svr3.sgx()),
-                Self::endpoint_connection(environment.env().svr3.nitro()),
-                Self::endpoint_connection(environment.env().svr3.tpm2snp()),
+                Self::endpoint_connection(environment.env().svr3.sgx(), &user_agent),
+                Self::endpoint_connection(environment.env().svr3.nitro(), &user_agent),
+                Self::endpoint_connection(environment.env().svr3.tpm2snp(), &user_agent),
             ),
             transport_connector,
         }
@@ -135,8 +136,10 @@ impl ConnectionManager {
 
     fn endpoint_connection<E: EnclaveKind>(
         endpoint: EnclaveEndpoint<'static, E>,
+        user_agent: &str,
     ) -> EnclaveEndpointConnection<E, MultiRouteConnectionManager> {
         let params = endpoint.domain_config.connection_params_with_fallback();
+        let params = add_user_agent_header(params, user_agent);
         EnclaveEndpointConnection::new_multi(
             endpoint.mr_enclave,
             params,
@@ -146,8 +149,11 @@ impl ConnectionManager {
 }
 
 #[bridge_fn]
-fn ConnectionManager_new(environment: AsType<Environment, u8>) -> ConnectionManager {
-    ConnectionManager::new(environment.into_inner())
+fn ConnectionManager_new(
+    environment: AsType<Environment, u8>,
+    user_agent: String,
+) -> ConnectionManager {
+    ConnectionManager::new(environment.into_inner(), user_agent)
 }
 
 #[bridge_fn]
@@ -559,6 +565,6 @@ mod test {
     #[test_case(Environment::Staging; "staging")]
     #[test_case(Environment::Prod; "prod")]
     fn can_create_connection_manager(env: Environment) {
-        let _ = ConnectionManager::new(env);
+        let _ = ConnectionManager::new(env, "test-user-agent".to_string());
     }
 }

@@ -1397,7 +1397,7 @@ SignalFfiError *signal_tokio_async_context_new(SignalTokioAsyncContext **out);
 
 SignalFfiError *signal_tokio_async_context_destroy(SignalTokioAsyncContext *p);
 
-SignalFfiError *signal_connection_manager_new(SignalConnectionManager **out, uint8_t environment);
+SignalFfiError *signal_connection_manager_new(SignalConnectionManager **out, uint8_t environment, const char *user_agent);
 
 SignalFfiError *signal_connection_manager_set_proxy(const SignalConnectionManager *connection_manager, const char *host, uint16_t port);
 

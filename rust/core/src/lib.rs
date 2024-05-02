@@ -4,6 +4,9 @@
 //
 
 mod address;
+mod version;
+
 pub use address::{
     Aci, DeviceId, Pni, ProtocolAddress, ServiceId, ServiceIdFixedWidthBinaryBytes, ServiceIdKind,
 };
+pub use version::VERSION;

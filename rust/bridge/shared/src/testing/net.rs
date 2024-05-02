@@ -150,7 +150,10 @@ fn TESTING_ChatServiceResponseConvert(
         false => None,
     };
     let mut headers = HeaderMap::new();
-    headers.append(http::header::USER_AGENT, HeaderValue::from_static("test"));
+    headers.append(
+        http::header::CONTENT_TYPE,
+        HeaderValue::from_static("application/octet-stream"),
+    );
     headers.append(http::header::FORWARDED, HeaderValue::from_static("1.1.1.1"));
     Ok(ChatResponse {
         status: StatusCode::OK,

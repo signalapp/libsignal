@@ -11,6 +11,8 @@ import Foundation
 import SignalFfi
 import XCTest
 
+let userAgent: String = "test"
+
 final class NetTests: XCTestCase {
     func testCdsiLookupResultConversion() async throws {
         let ACI_UUID = "9d0652a3-dcc3-4d11-975f-74d61598733f"
@@ -114,7 +116,7 @@ final class NetTests: XCTestCase {
             token: nil,
             returnAcisWithoutUaks: false
         )
-        let net = Net(env: .staging)
+        let net = Net(env: .staging, userAgent: userAgent)
 
         let lookup = try await net.cdsiLookup(auth: auth, request: request)
         let response = try await lookup.complete()
@@ -139,7 +141,7 @@ final class Svr3Tests: TestCaseBase {
 
     func testBackupAndRestore() async throws {
         let auth = try Auth(username: self.username, enclaveSecret: self.getEnclaveSecret())
-        let net = Net(env: .staging)
+        let net = Net(env: .staging, userAgent: userAgent)
 
         let shareSet = try await net.svr3.backup(
             self.storedSecret,
@@ -158,7 +160,7 @@ final class Svr3Tests: TestCaseBase {
 
     func testInvalidPassword() async throws {
         let auth = try Auth(username: self.username, enclaveSecret: self.getEnclaveSecret())
-        let net = Net(env: .staging)
+        let net = Net(env: .staging, userAgent: userAgent)
 
         let shareSet = try await net.svr3.backup(
             self.storedSecret,
@@ -183,7 +185,7 @@ final class Svr3Tests: TestCaseBase {
 
     func testCorruptedShareSet() async throws {
         let auth = try Auth(username: self.username, enclaveSecret: self.getEnclaveSecret())
-        let net = Net(env: .staging)
+        let net = Net(env: .staging, userAgent: userAgent)
 
         var shareSet = try await net.svr3.backup(
             self.storedSecret,
@@ -210,7 +212,7 @@ final class Svr3Tests: TestCaseBase {
 
     func testMaxRetries() async throws {
         let auth = try Auth(username: self.username, enclaveSecret: self.getEnclaveSecret())
-        let net = Net(env: .staging)
+        let net = Net(env: .staging, userAgent: userAgent)
 
         let shareSet = try await net.svr3.backup(
             self.storedSecret,
@@ -241,7 +243,7 @@ final class Svr3Tests: TestCaseBase {
 
     func testMaxRetriesAfterFailure() async throws {
         let auth = try Auth(username: self.username, enclaveSecret: self.getEnclaveSecret())
-        let net = Net(env: .staging)
+        let net = Net(env: .staging, userAgent: userAgent)
 
         let shareSet = try await net.svr3.backup(
             self.storedSecret,
@@ -279,7 +281,7 @@ final class Svr3Tests: TestCaseBase {
 
     func testInvalidMaxTries() async throws {
         let auth = try Auth(username: self.username, enclaveSecret: self.getEnclaveSecret())
-        let net = Net(env: .staging)
+        let net = Net(env: .staging, userAgent: userAgent)
 
         do {
             _ = try await net.svr3.backup(
@@ -298,7 +300,7 @@ final class Svr3Tests: TestCaseBase {
 
     func testInvalidSecretSize() async throws {
         let auth = try Auth(username: self.username, enclaveSecret: self.getEnclaveSecret())
-        let net = Net(env: .staging)
+        let net = Net(env: .staging, userAgent: userAgent)
 
         do {
             _ = try await net.svr3.backup(

@@ -35,9 +35,9 @@ public class Network {
    */
   private final Svr3 svr3;
 
-  public Network(Environment env) {
+  public Network(Environment env, String userAgent) {
     this.tokioAsyncContext = new TokioAsyncContext();
-    this.connectionManager = new ConnectionManager(env);
+    this.connectionManager = new ConnectionManager(env, userAgent);
     this.svr3 = new Svr3(this);
   }
 
@@ -45,7 +45,7 @@ public class Network {
    * Sets the proxy host to be used for all new connections (until overridden).
    *
    * <p>Sets a domain name and port to be used to proxy all new outgoing connections. The proxy can
-   * be overridden by calling this method again or unset by calling {@link clearProxy}.
+   * be overridden by calling this method again or unset by calling {@link #clearProxy}.
    */
   public void setProxy(String host, int port) {
     this.connectionManager.setProxy(host, port);
@@ -54,7 +54,7 @@ public class Network {
   /**
    * Ensures that future connections will be made directly, not through a proxy.
    *
-   * <p>Clears any proxy configuration set via {@link setProxy}. If none was set, calling this
+   * <p>Clears any proxy configuration set via {@link #setProxy}. If none was set, calling this
    * method is a no-op.
    */
   public void clearProxy() {
@@ -116,8 +116,8 @@ public class Network {
   }
 
   static class ConnectionManager extends NativeHandleGuard.SimpleOwner {
-    private ConnectionManager(Environment env) {
-      super(Native.ConnectionManager_new(env.value));
+    private ConnectionManager(Environment env, String userAgent) {
+      super(Native.ConnectionManager_new(env.value, userAgent));
     }
 
     private void setProxy(String host, int port) {

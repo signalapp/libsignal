@@ -16,6 +16,8 @@ import org.signal.libsignal.util.TestEnvironment;
 
 public class ChatServiceTest {
 
+  private static final String USER_AGENT = "test";
+
   private static final int EXPECTED_STATUS = 200;
 
   private static final String EXPECTED_MESSAGE = "OK";
@@ -24,7 +26,7 @@ public class ChatServiceTest {
 
   private static final Map<String, String> EXPECTED_HEADERS =
       Map.of(
-          "user-agent", "test",
+          "content-type", "application/octet-stream",
           "forwarded", "1.1.1.1");
 
   @Test
@@ -106,7 +108,7 @@ public class ChatServiceTest {
     final String PROXY_SERVER = TestEnvironment.get("LIBSIGNAL_TESTING_PROXY_SERVER");
     Assume.assumeNotNull(PROXY_SERVER);
 
-    final Network net = new Network(Network.Environment.STAGING);
+    final Network net = new Network(Network.Environment.STAGING, USER_AGENT);
     final ChatService chat = net.createChatService("", "");
     // Just make sure we can connect.
     chat.connectUnauthenticated().get();
@@ -119,7 +121,7 @@ public class ChatServiceTest {
     Assume.assumeNotNull(PROXY_SERVER);
 
     // The default TLS proxy config doesn't support staging, so we connect to production.
-    final Network net = new Network(Network.Environment.PRODUCTION);
+    final Network net = new Network(Network.Environment.PRODUCTION, USER_AGENT);
     final String[] proxyComponents = PROXY_SERVER.split(":");
     switch (proxyComponents.length) {
       case 1:

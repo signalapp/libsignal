@@ -1824,6 +1824,7 @@ dependencies = [
  "http 1.1.0",
  "jni 0.21.1",
  "libsignal-bridge-macros",
+ "libsignal-core",
  "libsignal-message-backup",
  "libsignal-net",
  "libsignal-protocol",

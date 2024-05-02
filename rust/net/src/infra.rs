@@ -52,11 +52,8 @@ impl IpType {
 /// A collection of commonly used decorators for HTTP requests.
 #[derive(Clone, Debug)]
 pub enum HttpRequestDecorator {
-    /// Adds the following header to the request:
-    /// ```text
-    /// Authorization: Basic base64(<username>:<password>)
-    /// ```
-    HeaderAuth(String),
+    /// Adds a specific header to the request
+    Header(http::header::HeaderName, http::header::HeaderValue),
     /// Prefixes the path portion of the request with the given string.
     PathPrefix(&'static str),
     /// Applies generic decoration logic.
@@ -69,6 +66,12 @@ pub struct HttpRequestDecoratorSeq(Vec<HttpRequestDecorator>);
 impl From<HttpRequestDecorator> for HttpRequestDecoratorSeq {
     fn from(value: HttpRequestDecorator) -> Self {
         Self(vec![value])
+    }
+}
+
+impl HttpRequestDecoratorSeq {
+    pub fn add(&mut self, decorator: HttpRequestDecorator) {
+        self.0.push(decorator)
     }
 }
 
@@ -194,7 +197,7 @@ impl HttpRequestDecorator {
     fn decorate_request(&self, request_builder: http::request::Builder) -> http::request::Builder {
         match self {
             Self::Generic(decorator) => decorator(request_builder),
-            Self::HeaderAuth(auth) => request_builder.header(::http::header::AUTHORIZATION, auth),
+            Self::Header(name, value) => request_builder.header(name, value),
             Self::PathPrefix(prefix) => {
                 let uri = request_builder.uri_ref().expect("request has URI set");
                 let mut parts = (*uri).clone().into_parts();
@@ -454,8 +457,11 @@ pub(crate) mod test {
     fn test_header_auth_decorator() {
         let expected = "Basic dXNybm06cHNzd2Q=";
         let builder = Request::get("https://chat.signal.org/");
-        let builder = HttpRequestDecorator::HeaderAuth(basic_authorization("usrnm", "psswd"))
-            .decorate_request(builder);
+        let builder = HttpRequestDecorator::Header(
+            http::header::AUTHORIZATION,
+            basic_authorization("usrnm", "psswd"),
+        )
+        .decorate_request(builder);
         let (parts, _) = builder.body(()).unwrap().into_parts();
         assert_eq!(
             expected,

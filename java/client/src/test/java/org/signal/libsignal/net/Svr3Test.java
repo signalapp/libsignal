@@ -21,6 +21,8 @@ import org.signal.libsignal.util.TestEnvironment;
 
 public class Svr3Test {
 
+  private static final String USER_AGENT = "test";
+
   private final byte[] STORED_SECRET =
       Hex.fromStringCondensedAssert(
           "d2ae1668ac8a2bfd6170498332babad7cd72b9314631559a361310eee0a8adc6");
@@ -49,7 +51,7 @@ public class Svr3Test {
 
   @Test
   public void backupAndRestore() throws Exception {
-    Network net = new Network(Network.Environment.STAGING);
+    Network net = new Network(Network.Environment.STAGING, USER_AGENT);
     byte[] restored =
         net.svr3()
             .backup(STORED_SECRET, "password", 2, this.auth)
@@ -60,7 +62,7 @@ public class Svr3Test {
 
   @Test
   public void noMoreTries() throws Exception {
-    Network net = new Network(Network.Environment.STAGING);
+    Network net = new Network(Network.Environment.STAGING, USER_AGENT);
     // Backup and first restore should succeed
     byte[] shareSet = net.svr3().backup(STORED_SECRET, "password", 1, this.auth).get();
     net.svr3().restore("password", shareSet, this.auth).get();
@@ -75,7 +77,7 @@ public class Svr3Test {
 
   @Test
   public void failedRestore() throws Exception {
-    Network net = new Network(Network.Environment.STAGING);
+    Network net = new Network(Network.Environment.STAGING, USER_AGENT);
     byte[] shareSet = net.svr3().backup(STORED_SECRET, "password", 1, this.auth).get();
     try {
       net.svr3().restore("wrong password", shareSet, this.auth).get();
@@ -87,7 +89,7 @@ public class Svr3Test {
 
   @Test
   public void zeroTries() throws Exception {
-    Network net = new Network(Network.Environment.STAGING);
+    Network net = new Network(Network.Environment.STAGING, USER_AGENT);
     assertThrows(
         IllegalArgumentException.class,
         () -> net.svr3().backup(STORED_SECRET, "password", 0, this.auth).get());
@@ -95,7 +97,7 @@ public class Svr3Test {
 
   @Test
   public void badSecret() throws Exception {
-    Network net = new Network(Network.Environment.STAGING);
+    Network net = new Network(Network.Environment.STAGING, USER_AGENT);
     try {
       net.svr3().backup(new byte[31], "password", 1, this.auth).get();
     } catch (ExecutionException ex) {
@@ -106,7 +108,7 @@ public class Svr3Test {
 
   @Test
   public void badShareSet() throws Exception {
-    Network net = new Network(Network.Environment.STAGING);
+    Network net = new Network(Network.Environment.STAGING, USER_AGENT);
     byte[] shareSet = net.svr3().backup(STORED_SECRET, "password", 1, this.auth).get();
     shareSet[0] ^= 0xff;
     try {

@@ -12,10 +12,11 @@ import SignalFfi
 import XCTest
 
 final class ChatServiceTests: TestCaseBase {
+    private static let userAgent = "test"
     private static let expectedStatus: UInt16 = 200
     private static let expectedMessage = "OK"
     private static let expectedContent = "content".data(using: .utf8)
-    private static let expectedHeaders = ["user-agent": "test", "forwarded": "1.1.1.1"]
+    private static let expectedHeaders = ["content-type": "application/octet-stream", "forwarded": "1.1.1.1"]
 
     func testConvertResponse() throws {
         do {
@@ -111,7 +112,7 @@ final class ChatServiceTests: TestCaseBase {
             throw XCTSkip()
         }
 
-        let net = Net(env: .staging)
+        let net = Net(env: .staging, userAgent: Self.userAgent)
         let chat = net.createChatService(username: "", password: "")
         // Just make sure we can connect.
         try await chat.connectUnauthenticated()
@@ -124,7 +125,7 @@ final class ChatServiceTests: TestCaseBase {
         }
 
         // The default TLS proxy config doesn't support staging, so we connect to production.
-        let net = Net(env: .production)
+        let net = Net(env: .production, userAgent: Self.userAgent)
         let host: Substring
         let port: UInt16
         if let colonIndex = PROXY_SERVER.firstIndex(of: ":") {

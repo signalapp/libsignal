@@ -427,8 +427,10 @@ fn build_authorized_chat_service(
     username: String,
     password: String,
 ) -> AuthorizedChatService<impl ChatServiceWithDebugInfo> {
-    let header_auth_decorator =
-        HttpRequestDecorator::HeaderAuth(basic_authorization(&username, &password));
+    let header_auth_decorator = HttpRequestDecorator::Header(
+        http::header::AUTHORIZATION,
+        basic_authorization(&username, &password),
+    );
 
     // ws authorized
     let chat_over_ws_auth = ServiceWithReconnect::new(

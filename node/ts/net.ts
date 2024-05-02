@@ -186,9 +186,11 @@ export class Net {
    */
   svr3: Svr3Client;
 
-  constructor(env: Environment) {
+  constructor(env: Environment, userAgent: string) {
     this.asyncContext = newNativeHandle(Native.TokioAsyncContext_new());
-    this.connectionManager = newNativeHandle(Native.ConnectionManager_new(env));
+    this.connectionManager = newNativeHandle(
+      Native.ConnectionManager_new(env, userAgent)
+    );
     this.svr3 = new Svr3ClientImpl(this.asyncContext, this.connectionManager);
   }
 

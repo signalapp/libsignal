@@ -6,15 +6,16 @@
 use base64::prelude::{Engine as _, BASE64_STANDARD};
 use futures_util::stream::FuturesUnordered;
 use futures_util::StreamExt;
+use http::HeaderValue;
 use std::future;
 use std::future::Future;
 use std::time::Duration;
 
 /// Constructs the value of the `Authorization` header for the `Basic` auth scheme.
-pub(crate) fn basic_authorization(username: &str, password: &str) -> String {
+pub(crate) fn basic_authorization(username: &str, password: &str) -> HeaderValue {
     let auth = BASE64_STANDARD.encode(format!("{}:{}", username, password).as_bytes());
     let auth = format!("Basic {}", auth);
-    auth
+    HeaderValue::try_from(auth).expect("valid header value")
 }
 
 /// Requires a `Future` to complete before the specified duration has elapsed.

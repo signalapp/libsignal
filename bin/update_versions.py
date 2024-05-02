@@ -32,6 +32,7 @@ PODSPEC_PATTERN = re.compile(r"^(.*\.version\s+=\s+')(.*)(')")
 GRADLE_PATTERN = re.compile(r'^(\s+version\s+=\s+")(.*)(")')
 NODE_PATTERN = re.compile(r'^(\s+"version": ")(.*)(")')
 CARGO_PATTERN = re.compile(r'^(version = ")(.*)(")')
+RUST_PATTERN = re.compile(r'^(pub const VERSION: &str = ")(.*)(")')
 
 
 def bridge_path(bridge):
@@ -48,6 +49,7 @@ def main():
         update_version('LibSignalClient.podspec', PODSPEC_PATTERN, new_version)
         update_version(os.path.join('java', 'build.gradle'), GRADLE_PATTERN, new_version)
         update_version(os.path.join('node', 'package.json'), NODE_PATTERN, new_version)
+        update_version(os.path.join('rust', 'core', 'src', 'version.rs'), RUST_PATTERN, new_version)
         update_version(bridge_path('ffi'), CARGO_PATTERN, new_version)
         update_version(bridge_path('jni'), CARGO_PATTERN, new_version)
         update_version(bridge_path('node'), CARGO_PATTERN, new_version)
