@@ -4,6 +4,7 @@
 //
 
 use std::future::Future;
+use std::num::NonZeroU64;
 
 pub(crate) use paste::paste;
 
@@ -208,17 +209,78 @@ pub trait ResultReporter {
     fn report_to(self, receiver: Self::Receiver);
 }
 
+/// ID for a future run by an [`AsyncRuntime`].
+///
+/// `AsyncRuntime`s that support cancellation are recommended to use a simple autoincrementing
+/// counter to generate IDs---2^64 *nanoseconds* is over 500 years.
+///
+/// This type is designed to not need cleanup across language bridges.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub enum CancellationId {
+    NotSupported,
+    Id(NonZeroU64),
+}
+
+impl From<CancellationId> for u64 {
+    fn from(value: CancellationId) -> Self {
+        match value {
+            CancellationId::NotSupported => 0,
+            CancellationId::Id(value) => value.into(),
+        }
+    }
+}
+
+impl From<u64> for CancellationId {
+    fn from(value: u64) -> Self {
+        match NonZeroU64::try_from(value) {
+            Ok(value) => Self::Id(value),
+            Err(_) => Self::NotSupported,
+        }
+    }
+}
+
+impl From<NonZeroU64> for CancellationId {
+    fn from(value: NonZeroU64) -> Self {
+        Self::Id(value)
+    }
+}
+
+/// Contains methods of [`AsyncRuntime`] that don't depend on the type of Futures being run.
+pub trait AsyncRuntimeBase {
+    /// Opportunistically, cooperatively cancels the future associated with the given token.
+    ///
+    /// This is different from the usual Rust paradigm of simply dropping a future for a few
+    /// reasons:
+    /// - Bridged tasks often have saved state they need to clean up (hence the Reporter interface).
+    /// - We want the cancellation token itself to not need cleanup.
+    /// - We may still need *some* output to be reported, depending on how the future's result is
+    ///   being consumed.
+    ///
+    /// If a particular `AsyncRuntime` does not support cancellation, this method does nothing.
+    fn cancel(&self, cancellation_token: CancellationId) {
+        if cancellation_token != CancellationId::NotSupported {
+            log::warn!("this runtime does not support cancellation ({cancellation_token:?})");
+        }
+    }
+}
+
 /// Abstracts over executing a future with type `F`.
 ///
 /// Putting the future type in the trait signature allows runtimes to impose additional
 /// requirements, such as `Send`, on the Futures they can run.
-pub trait AsyncRuntime<F: Future>
+pub trait AsyncRuntime<F: Future>: AsyncRuntimeBase
 where
     F::Output: ResultReporter,
 {
+    type Cancellation: Future<Output = ()>;
+
     /// Runs the provided future to completion, then reports the result.
     ///
     /// Executes the provided future to completion, then reports the output to
     /// the provided completer.
-    fn run_future(&self, future: F, completer: <F::Output as ResultReporter>::Receiver);
+    fn run_future(
+        &self,
+        make_future: impl FnOnce(Self::Cancellation) -> F,
+        completer: <F::Output as ResultReporter>::Receiver,
+    ) -> CancellationId;
 }

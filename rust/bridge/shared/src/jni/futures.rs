@@ -139,26 +139,22 @@ impl<T: for<'a> ResultTypeInfo<'a> + std::panic::UnwindSafe, U> ResultReporter
 /// ```no_run
 /// # use jni::JNIEnv;
 /// # use libsignal_bridge::jni::*;
-/// # use libsignal_bridge::{AsyncRuntime, ResultReporter};
-/// # struct ExampleAsyncRuntime;
-/// # impl<F: std::future::Future> AsyncRuntime<F> for ExampleAsyncRuntime
-/// # where F::Output: ResultReporter {
-/// #   fn run_future(&self, future: F, receiver: <F::Output as ResultReporter>::Receiver) { unimplemented!() }
-/// # }
-/// # fn test(env: &mut JNIEnv, async_runtime: &ExampleAsyncRuntime) -> SignalJniResult<()> {
-/// let java_future = run_future_on_runtime(env, async_runtime, async {
+/// # use libsignal_bridge::testing::NonSuspendingBackgroundThreadRuntime;
+/// # fn test(env: &mut JNIEnv, async_runtime: &NonSuspendingBackgroundThreadRuntime) -> SignalJniResult<()> {
+/// let java_future = run_future_on_runtime(env, async_runtime, |_cancel| async {
 ///     let result: i32 = 1 + 2;
 ///     // Do some complicated awaiting here.
 ///     FutureResultReporter::new(Ok(result), ())
 /// })?;
 /// # Ok(())
 /// # }
-pub fn run_future_on_runtime<'local, F, O>(
+pub fn run_future_on_runtime<'local, R, F, O>(
     env: &mut JNIEnv<'local>,
-    runtime: &impl AsyncRuntime<F>,
-    future: F,
+    runtime: &R,
+    future: impl FnOnce(R::Cancellation) -> F,
 ) -> SignalJniResult<JavaCompletableFuture<'local, <O as ResultTypeInfo<'local>>::ResultType>>
 where
+    R: AsyncRuntime<F>,
     F: Future + std::panic::UnwindSafe + 'static,
     O: for<'a> ResultTypeInfo<'a> + std::panic::UnwindSafe + 'static,
     F::Output: ResultReporter<Receiver = FutureCompleter<O>>,

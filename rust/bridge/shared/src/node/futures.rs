@@ -10,7 +10,9 @@ use futures_util::FutureExt;
 use neon::types::Deferred;
 use signal_neon_futures::ChannelEx;
 
-use crate::support::{describe_panic, AsyncRuntime, ResultReporter};
+use crate::support::{
+    describe_panic, AsyncRuntime, AsyncRuntimeBase, CancellationId, ResultReporter,
+};
 
 use super::*;
 
@@ -144,19 +146,14 @@ where
 /// # use futures_util::FutureExt;
 /// # use neon::prelude::*;
 /// # use libsignal_bridge::node::*;
-/// # use libsignal_bridge::{AsyncRuntime, ResultReporter};
-/// # struct ExampleAsyncRuntime;
-/// # impl<F: std::future::Future> AsyncRuntime<F> for ExampleAsyncRuntime
-/// # where F::Output: ResultReporter {
-/// #   fn run_future(&self, future: F, receiver: <F::Output as ResultReporter>::Receiver) { unimplemented!() }
-/// # }
+/// # use libsignal_bridge::testing::NonSuspendingBackgroundThreadRuntime;
 /// # struct MyError;
 /// # impl std::fmt::Display for MyError {
 /// #   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { unimplemented!() }
 /// # }
 /// # impl SignalNodeError for MyError {}
-/// # fn test(cx: &mut FunctionContext, async_runtime: &ExampleAsyncRuntime) -> NeonResult<()> {
-/// let js_promise = run_future_on_runtime(cx, async_runtime, "example", async {
+/// # fn test(cx: &mut FunctionContext, async_runtime: &NonSuspendingBackgroundThreadRuntime) -> NeonResult<()> {
+/// let js_promise = run_future_on_runtime(cx, async_runtime, "example", |_cancel| async {
 ///     let future = async {
 ///         let result: i32 = 1 + 2;
 ///         // Do some complicated awaiting here.
@@ -166,13 +163,14 @@ where
 /// })?;
 /// # Ok(())
 /// # }
-pub fn run_future_on_runtime<'cx, F, O, E>(
+pub fn run_future_on_runtime<'cx, R, F, O, E>(
     cx: &mut FunctionContext<'cx>,
-    runtime: &impl AsyncRuntime<F>,
+    runtime: &R,
     node_function_name: &'static str,
-    future: F,
+    future: impl FnOnce(R::Cancellation) -> F,
 ) -> JsResult<'cx, JsPromise>
 where
+    R: AsyncRuntime<F>,
     F: Future + std::panic::UnwindSafe + 'static,
     F::Output: ResultReporter<Receiver = PromiseSettler<O, E>>,
     O: for<'a> ResultTypeInfo<'a> + Send + std::panic::UnwindSafe + 'static,
@@ -232,19 +230,29 @@ impl<'a> ChannelOnItsOriginalThread<'a> {
     }
 }
 
+impl AsyncRuntimeBase for ChannelOnItsOriginalThread<'_> {}
+
 impl<F> AsyncRuntime<F> for ChannelOnItsOriginalThread<'_>
 where
     F: Future + 'static,
     F::Output: ResultReporter,
     <F::Output as ResultReporter>::Receiver: Send,
 {
-    fn run_future(&self, future: F, completer: <F::Output as ResultReporter>::Receiver) {
+    // Cancellation isn't supported at this time.
+    type Cancellation = std::future::Pending<()>;
+
+    fn run_future(
+        &self,
+        make_future: impl FnOnce(Self::Cancellation) -> F,
+        completer: <F::Output as ResultReporter>::Receiver,
+    ) -> CancellationId {
         // Because we're on the JS main thread, we don't need `future` to be Send; it will only be
         // run synchronously with other JS tasks by the Node microtask queue.
-        let future = AssertSendSafe(future);
+        let future = AssertSendSafe(make_future(std::future::pending()));
         // Note that this will poll the future *synchronously* first, to minimize context switches.
         self.channel.start_future(async move {
             future.await.report_to(completer);
         });
+        CancellationId::NotSupported
     }
 }

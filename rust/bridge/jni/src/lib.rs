@@ -85,7 +85,7 @@ pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_AsyncLoadClas
         )?;
         let tokio_context = <&TokioAsyncContext>::convert_from(env, &handle)?;
         let class_name = env.get_string(&class_name)?.into();
-        run_future_on_runtime(env, tokio_context, async {
+        run_future_on_runtime(env, tokio_context, |_cancel| async {
             FutureResultReporter::new(Ok(LoadClassFromName(class_name)), ())
         })
     })

@@ -143,7 +143,7 @@ fn bridge_fn_async_body(
             &mut cx,
             async_runtime,
             #custom_name,
-            async move {
+            |__cancel| async move {
                 // Wrap the actual work to catch any panics.
                 let __future = node::catch_unwind(std::panic::AssertUnwindSafe(async {
                     #(#input_loading)*

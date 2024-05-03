@@ -24,13 +24,22 @@ bridge_handle!(
     jni = TESTING_1NonSuspendingBackgroundThreadRuntime
 );
 
+impl AsyncRuntimeBase for NonSuspendingBackgroundThreadRuntime {}
+
 impl<F> AsyncRuntime<F> for NonSuspendingBackgroundThreadRuntime
 where
     F: Future + Send + 'static,
     F::Output: ResultReporter,
     <F::Output as ResultReporter>::Receiver: Send,
 {
-    fn run_future(&self, future: F, completer: <F::Output as ResultReporter>::Receiver) {
+    type Cancellation = std::future::Pending<()>;
+
+    fn run_future(
+        &self,
+        make_future: impl FnOnce(Self::Cancellation) -> F,
+        completer: <F::Output as ResultReporter>::Receiver,
+    ) -> CancellationId {
+        let future = make_future(std::future::pending());
         std::thread::spawn(move || {
             std::panic::catch_unwind(std::panic::AssertUnwindSafe(move || {
                 future
@@ -43,6 +52,7 @@ where
                 std::process::abort()
             })
         });
+        CancellationId::NotSupported
     }
 }
 

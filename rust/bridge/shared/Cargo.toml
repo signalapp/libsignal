@@ -67,6 +67,7 @@ signal-neon-futures = { path = "../node/futures", optional = true }
 strum = { version = "0.26", features = ["derive"] }
 
 [dev-dependencies]
+assert_matches = "1.5"
 test-case = "3.3.1"
 
 [features]

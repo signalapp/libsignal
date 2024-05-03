@@ -94,25 +94,22 @@ impl<T: ResultTypeInfo + std::panic::UnwindSafe> ResultReporter for FutureResult
 /// ```no_run
 /// # use libsignal_bridge::ffi::*;
 /// # use libsignal_bridge::{AsyncRuntime, ResultReporter};
-/// # struct ExampleAsyncRuntime;
-/// # impl<F: std::future::Future> AsyncRuntime<F> for ExampleAsyncRuntime
-/// # where F::Output: ResultReporter {
-/// #   fn run_future(&self, future: F, receiver: <F::Output as ResultReporter>::Receiver) { unimplemented!() }
-/// # }
-/// # fn test(promise: CPromise<i32>, promise_context: *const std::ffi::c_void, async_runtime: &ExampleAsyncRuntime) {
-/// run_future_on_runtime(async_runtime, promise, promise_context, async {
+/// # use libsignal_bridge::testing::NonSuspendingBackgroundThreadRuntime;
+/// # fn test(promise: CPromise<i32>, promise_context: *const std::ffi::c_void, async_runtime: &NonSuspendingBackgroundThreadRuntime) {
+/// run_future_on_runtime(async_runtime, promise, promise_context, |_cancel| async {
 ///     let result: i32 = 1 + 2;
 ///     // Do some complicated awaiting here.
 ///     FutureResultReporter::new(Ok(result))
 /// });
 /// # }
 #[inline]
-pub fn run_future_on_runtime<F, O>(
-    runtime: &impl AsyncRuntime<F>,
+pub fn run_future_on_runtime<R, F, O>(
+    runtime: &R,
     promise: CPromise<O::ResultType>,
     promise_context: *const std::ffi::c_void,
-    future: F,
+    future: impl FnOnce(R::Cancellation) -> F,
 ) where
+    R: AsyncRuntime<F>,
     F: Future + std::panic::UnwindSafe + 'static,
     F::Output: ResultReporter<Receiver = PromiseCompleter<O>>,
     O: ResultTypeInfo + 'static,

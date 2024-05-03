@@ -162,7 +162,7 @@ fn bridge_io_body(
                 async_runtime,
                 promise,
                 promise_context,
-                async move {
+                |__cancel| async move {
                     let __future = ffi::catch_unwind(std::panic::AssertUnwindSafe(async move {
                         #(#input_loading)*
                         let __result = #orig_name(#(#input_names),*).await;

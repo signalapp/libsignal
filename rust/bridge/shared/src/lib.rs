@@ -65,4 +65,4 @@ pub mod media;
 // These APIs are only useful for tests. To save on code size, we omit them by default.
 // To run tests, build with `--features testing-fns`.
 #[cfg(feature = "testing-fns")]
-mod testing;
+pub mod testing;
