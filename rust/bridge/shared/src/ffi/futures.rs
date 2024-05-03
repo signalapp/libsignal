@@ -10,6 +10,8 @@ use futures_util::{FutureExt, TryFutureExt};
 
 use std::future::Future;
 
+pub type RawCancellationId = u64;
+
 /// A C callback used to report the results of Rust futures.
 ///
 /// cbindgen will produce independent C types like `SignalCPromisei32` and
@@ -26,6 +28,7 @@ pub struct CPromise<T> {
         context: *const std::ffi::c_void,
     ),
     context: *const std::ffi::c_void,
+    cancellation_id: RawCancellationId,
 }
 
 /// Keeps track of the information necessary to report a promise result back to C.
@@ -121,7 +124,8 @@ pub fn run_future_on_runtime<R, F, O>(
     O: ResultTypeInfo + 'static,
 {
     let completion = PromiseCompleter { promise: *promise };
-    runtime.run_future(future, completion);
+    let cancellation_id = runtime.run_future(future, completion);
+    promise.cancellation_id = cancellation_id.into();
 }
 
 /// Catches panics that occur in `future` and converts them to [`SignalFfiError::UnexpectedPanic`].

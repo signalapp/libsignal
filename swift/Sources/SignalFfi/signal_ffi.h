@@ -147,6 +147,7 @@ typedef enum {
   SignalErrorCodeInvalidArgument = 5,
   SignalErrorCodeInvalidType = 6,
   SignalErrorCodeInvalidUtf8String = 7,
+  SignalErrorCodeCancelled = 8,
   SignalErrorCodeProtobufError = 10,
   SignalErrorCodeLegacyCiphertextVersion = 21,
   SignalErrorCodeUnknownCiphertextVersion = 22,
@@ -493,6 +494,8 @@ typedef struct {
   size_t length;
 } SignalBorrowedSliceOfBuffers;
 
+typedef uint64_t SignalCancellationId;
+
 /**
  * A C callback used to report the results of Rust futures.
  *
@@ -505,6 +508,7 @@ typedef struct {
 typedef struct {
   void (*complete)(SignalFfiError *error, const SignalOwnedBuffer *result, const void *context);
   const void *context;
+  SignalCancellationId cancellation_id;
 } SignalCPromiseOwnedBufferOfc_uchar;
 
 /**
@@ -519,6 +523,7 @@ typedef struct {
 typedef struct {
   void (*complete)(SignalFfiError *error, const bool *result, const void *context);
   const void *context;
+  SignalCancellationId cancellation_id;
 } SignalCPromisebool;
 
 typedef struct {
@@ -540,6 +545,7 @@ typedef struct {
 typedef struct {
   void (*complete)(SignalFfiError *error, const SignalFfiChatServiceDebugInfo *result, const void *context);
   const void *context;
+  SignalCancellationId cancellation_id;
 } SignalCPromiseFfiChatServiceDebugInfo;
 
 typedef struct {
@@ -561,6 +567,7 @@ typedef struct {
 typedef struct {
   void (*complete)(SignalFfiError *error, const SignalFfiChatResponse *result, const void *context);
   const void *context;
+  SignalCancellationId cancellation_id;
 } SignalCPromiseFfiChatResponse;
 
 typedef struct {
@@ -580,6 +587,7 @@ typedef struct {
 typedef struct {
   void (*complete)(SignalFfiError *error, const SignalFfiResponseAndDebugInfo *result, const void *context);
   const void *context;
+  SignalCancellationId cancellation_id;
 } SignalCPromiseFfiResponseAndDebugInfo;
 
 /**
@@ -594,6 +602,7 @@ typedef struct {
 typedef struct {
   void (*complete)(SignalFfiError *error, SignalCdsiLookup *const *result, const void *context);
   const void *context;
+  SignalCancellationId cancellation_id;
 } SignalCPromiseCdsiLookup;
 
 typedef struct {
@@ -613,6 +622,7 @@ typedef struct {
 typedef struct {
   void (*complete)(SignalFfiError *error, const SignalFfiCdsiLookupResponse *result, const void *context);
   const void *context;
+  SignalCancellationId cancellation_id;
 } SignalCPromiseFfiCdsiLookupResponse;
 
 typedef SignalBytestringArray SignalStringArray;
@@ -641,6 +651,7 @@ typedef SignalInputStream SignalSyncInputStream;
 typedef struct {
   void (*complete)(SignalFfiError *error, const int32_t *result, const void *context);
   const void *context;
+  SignalCancellationId cancellation_id;
 } SignalCPromisei32;
 
 /**
@@ -655,6 +666,7 @@ typedef struct {
 typedef struct {
   void (*complete)(SignalFfiError *error, SignalTestingHandleType *const *result, const void *context);
   const void *context;
+  SignalCancellationId cancellation_id;
 } SignalCPromiseTestingHandleType;
 
 /**
@@ -669,6 +681,7 @@ typedef struct {
 typedef struct {
   void (*complete)(SignalFfiError *error, SignalOtherTestingHandleType *const *result, const void *context);
   const void *context;
+  SignalCancellationId cancellation_id;
 } SignalCPromiseOtherTestingHandleType;
 
 /**
@@ -683,6 +696,7 @@ typedef struct {
 typedef struct {
   void (*complete)(SignalFfiError *error, const void *const *result, const void *context);
   const void *context;
+  SignalCancellationId cancellation_id;
 } SignalCPromiseRawPointer;
 
 typedef uint8_t SignalRandomnessBytes[SignalRANDOMNESS_LEN];
@@ -1527,6 +1541,8 @@ SignalFfiError *signal_tokio_async_context_destroy(SignalTokioAsyncContext *p);
 
 SignalFfiError *signal_tokio_async_context_new(SignalTokioAsyncContext **out);
 
+SignalFfiError *signal_tokio_async_context_cancel(const SignalTokioAsyncContext *context, uint64_t raw_cancellation_id);
+
 SignalFfiError *signal_pin_hash_destroy(SignalPinHash *p);
 
 SignalFfiError *signal_pin_hash_clone(SignalPinHash **new_obj, const SignalPinHash *obj);
@@ -1684,6 +1700,8 @@ SignalFfiError *signal_testing_return_string_array(SignalStringArray *out);
 SignalFfiError *signal_testing_process_bytestring_array(SignalBytestringArray *out, SignalBorrowedSliceOfBuffers input);
 
 SignalFfiError *signal_testing_cdsi_lookup_response_convert(SignalCPromiseFfiCdsiLookupResponse *promise, const SignalTokioAsyncContext *async_runtime);
+
+SignalFfiError *signal_testing_only_completes_by_cancellation(SignalCPromisebool *promise, const SignalTokioAsyncContext *async_runtime);
 
 SignalFfiError *signal_testing_cdsi_lookup_error_convert(const char *error_description);
 

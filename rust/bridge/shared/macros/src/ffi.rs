@@ -167,10 +167,16 @@ fn bridge_io_body(
                 |__cancel| async move {
                     let __future = ffi::catch_unwind(std::panic::AssertUnwindSafe(async move {
                         #(#input_loading)*
-                        let __result = #orig_name(#(#input_names),*).await;
-                        // If the original function can't fail, wrap the result in Ok for uniformity.
-                        // See TransformHelper::ok_if_needed.
-                        Ok(TransformHelper(__result).ok_if_needed()?.0)
+                        ::tokio::select! {
+                            __result = #orig_name(#(#input_names),*) => {
+                                // If the original function can't fail, wrap the result in Ok for uniformity.
+                                // See TransformHelper::ok_if_needed.
+                                Ok(TransformHelper(__result).ok_if_needed()?.0)
+                            }
+                            _ = __cancel => {
+                                Err(ffi::SignalFfiError::Cancelled)
+                            }
+                        }
                     }));
                     ffi::FutureResultReporter::new(__future.await)
                 }

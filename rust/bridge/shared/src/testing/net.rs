@@ -49,6 +49,11 @@ async fn TESTING_CdsiLookupResponseConvert() -> LookupResponse {
     }
 }
 
+#[bridge_io(TokioAsyncContext)]
+async fn TESTING_OnlyCompletesByCancellation() {
+    std::future::pending::<()>().await
+}
+
 #[repr(u8)]
 #[derive(Copy, Clone, strum::EnumString)]
 enum TestingCdsiLookupError {

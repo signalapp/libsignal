@@ -23,10 +23,8 @@ final class NetTests: XCTestCase {
 
         let asyncContext = TokioAsyncContext()
 
-        let output: SignalFfiCdsiLookupResponse = try await invokeAsyncFunction { promise in
-            asyncContext.withNativeHandle { asyncContext in
-                signal_testing_cdsi_lookup_response_convert(promise, asyncContext)
-            }
+        let output: SignalFfiCdsiLookupResponse = try await asyncContext.invokeAsyncFunction { promise, asyncContext in
+            signal_testing_cdsi_lookup_response_convert(promise, asyncContext)
         }
         XCTAssertEqual(output.debug_permits_used, 123)
 

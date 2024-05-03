@@ -635,6 +635,7 @@ public final class Native {
   public static native CompletableFuture<Integer> TESTING_FutureSuccess(long asyncRuntime, int input);
   public static native CompletableFuture<Void> TESTING_FutureThrowsCustomErrorType(long asyncRuntime);
   public static native void TESTING_NonSuspendingBackgroundThreadRuntime_Destroy(long handle);
+  public static native CompletableFuture TESTING_OnlyCompletesByCancellation(long asyncRuntime);
   public static native String TESTING_OtherTestingHandleType_getValue(long handle);
   public static native void TESTING_PanicInBodyAsync(Object input);
   public static native CompletableFuture TESTING_PanicInBodyIo(long asyncRuntime, Object input);
@@ -655,6 +656,7 @@ public final class Native {
   public static native void TestingHandleType_Destroy(long handle);
 
   public static native void TokioAsyncContext_Destroy(long handle);
+  public static native void TokioAsyncContext_cancel(long context, long rawCancellationId);
   public static native long TokioAsyncContext_new();
 
   public static native long UnidentifiedSenderMessageContent_Deserialize(byte[] data) throws Exception;

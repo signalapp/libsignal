@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+import Foundation
 import SignalFfi
 
 /// Used to check types for values produced asynchronously by Rust.
@@ -15,6 +16,12 @@ import SignalFfi
 /// Note that implementing this is **unchecked;** make sure you match up the types correctly!
 internal protocol PromiseStruct {
     associatedtype Result
+
+    // We can't declare the 'complete' callback without an associated type,
+    // and that associated type won't get inferred for an imported struct (not sure why).
+    // So we'd have to write out the callback type for every conformer.
+    var context: UnsafeRawPointer! { get }
+    var cancellation_id: SignalCancellationId { get }
 }
 
 extension SignalCPromisebool: PromiseStruct {
@@ -94,7 +101,7 @@ private class Completer<Promise: PromiseStruct>: CompleterBase {
     ///
     /// This retains `self`, to be used as the C context pointer for the callback.
     /// You must ensure that either the callback is called, or the result is passed to
-    /// ``destroyUncompletedPromiseStruct(_:)``.
+    /// ``cleanUpUncompletedPromiseStruct(_:)``.
     func makePromiseStruct() -> Promise {
         typealias RawPromiseCallback = @convention(c) (_ error: SignalFfiErrorRef?, _ value: UnsafeRawPointer?, _ context: UnsafeRawPointer?) -> Void
         let completeOpaque: RawPromiseCallback = { error, value, context in
@@ -108,7 +115,7 @@ private class Completer<Promise: PromiseStruct>: CompleterBase {
         // because of how `self.completeUnsafe` is initialized.
         // So first we build a promise struct---it doesn't matter which one---by reinterpreting the callback...
         typealias RawPointerPromiseCallback = @convention(c) (_ error: SignalFfiErrorRef?, _ value: UnsafePointer<UnsafeRawPointer?>?, _ context: UnsafeRawPointer?) -> Void
-        let rawPromiseStruct = SignalCPromiseRawPointer(complete: unsafeBitCast(completeOpaque, to: RawPointerPromiseCallback.self), context: Unmanaged.passRetained(self).toOpaque())
+        let rawPromiseStruct = SignalCPromiseRawPointer(complete: unsafeBitCast(completeOpaque, to: RawPointerPromiseCallback.self), context: Unmanaged.passRetained(self).toOpaque(), cancellation_id: 0)
 
         // ...And then we reinterpret the entire struct, because all promise structs *also* have the same layout.
         // (Which we at least check a little bit here.)
@@ -119,11 +126,8 @@ private class Completer<Promise: PromiseStruct>: CompleterBase {
         return unsafeBitCast(rawPromiseStruct, to: Promise.self)
     }
 
-    func destroyUncompletedPromiseStruct(_ promiseStruct: Promise) {
-        // Double-check that all promise structs have the same layout, then reverse what we did above.
-        precondition(MemoryLayout<SignalCPromiseRawPointer>.size == MemoryLayout<Promise>.size)
-        let rawPromiseStruct = unsafeBitCast(promiseStruct, to: SignalCPromiseRawPointer.self)
-        Unmanaged<CompleterBase>.fromOpaque(rawPromiseStruct.context!).release()
+    func cleanUpUncompletedPromiseStruct(_ promiseStruct: Promise) {
+        Unmanaged<CompleterBase>.fromOpaque(promiseStruct.context!).release()
     }
 }
 
@@ -136,8 +140,12 @@ private class Completer<Promise: PromiseStruct>: CompleterBase {
 ///   signal_do_async_work($0, someInput, someOtherInput)
 /// }
 /// ```
+///
+/// Prefer ``TokioAsyncContext/invokeAsyncFunction(_:)`` if using a TokioAsyncContext;
+/// that method supports cancellation.
 internal func invokeAsyncFunction<Promise: PromiseStruct>(
-    _ body: (UnsafeMutablePointer<Promise>) -> SignalFfiErrorRef?
+    _ body: (UnsafeMutablePointer<Promise>) -> SignalFfiErrorRef?,
+    saveCancellationId: (SignalCancellationId) -> Void = { _ in }
 ) async throws -> Promise.Result {
     try await withCheckedThrowingContinuation { continuation in
         let completer = Completer<Promise>(continuation: continuation)
@@ -145,9 +153,10 @@ internal func invokeAsyncFunction<Promise: PromiseStruct>(
         let startResult = body(&promiseStruct)
         if let error = startResult {
             // Our completion callback is never going to get called, so we need to balance the `passRetained` above.
-            completer.destroyUncompletedPromiseStruct(promiseStruct)
+            completer.cleanUpUncompletedPromiseStruct(promiseStruct)
             completer.completeUnsafe(error, nil)
             return
         }
+        saveCancellationId(promiseStruct.cancellation_id)
     }
 }

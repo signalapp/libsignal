@@ -108,12 +108,10 @@ public class Net {
         auth: Auth,
         request: CdsiLookupRequest
     ) async throws -> CdsiLookup {
-        let handle: OpaquePointer = try await invokeAsyncFunction { promise in
-            self.asyncContext.withNativeHandle { asyncContext in
-                self.connectionManager.withNativeHandle { connectionManager in
-                    request.withNativeHandle { request in
-                        signal_cdsi_lookup_new(promise, asyncContext, connectionManager, auth.username, auth.password, request)
-                    }
+        let handle: OpaquePointer = try await self.asyncContext.invokeAsyncFunction { promise, asyncContext in
+            self.connectionManager.withNativeHandle { connectionManager in
+                request.withNativeHandle { request in
+                    signal_cdsi_lookup_new(promise, asyncContext, connectionManager, auth.username, auth.password, request)
                 }
             }
         }
@@ -264,11 +262,9 @@ public class CdsiLookup {
     ///   `SignalError.networkError` for a network-level connectivity issue,
     ///   `SignalError.networkProtocolError` for a CDSI or attested connection protocol issue.
     public func complete() async throws -> CdsiLookupResponse {
-        let response: SignalFfiCdsiLookupResponse = try await invokeAsyncFunction { promise in
-            self.asyncContext.withNativeHandle { asyncContext in
-                self.native.withNativeHandle { handle in
-                    signal_cdsi_lookup_complete(promise, asyncContext, handle)
-                }
+        let response: SignalFfiCdsiLookupResponse = try await self.asyncContext.invokeAsyncFunction { promise, asyncContext in
+            self.native.withNativeHandle { handle in
+                signal_cdsi_lookup_complete(promise, asyncContext, handle)
             }
         }
 
@@ -359,18 +355,6 @@ extension CdsiLookupResponseEntry: CdsiLookupResponseEntryProtocol {
 extension CdsiLookupResponseEntry: Equatable {
     public static func == (lhs: Self, rhs: Self) -> Bool {
         lhs.aci == rhs.aci && lhs.pni == rhs.pni && lhs.e164 == rhs.e164
-    }
-}
-
-internal class TokioAsyncContext: NativeHandleOwner {
-    convenience init() {
-        var handle: OpaquePointer?
-        failOnError(signal_tokio_async_context_new(&handle))
-        self.init(owned: handle!)
-    }
-
-    override internal class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
-        signal_tokio_async_context_destroy(handle)
     }
 }
 

@@ -25,6 +25,7 @@ pub enum SignalErrorCode {
     InvalidArgument = 5,
     InvalidType = 6,
     InvalidUtf8String = 7,
+    Cancelled = 8,
 
     ProtobufError = 10,
 
@@ -104,6 +105,8 @@ impl From<&SignalFfiError> for SignalErrorCode {
             }
 
             SignalFfiError::InvalidUtf8String => SignalErrorCode::InvalidUtf8String,
+
+            SignalFfiError::Cancelled => SignalErrorCode::Cancelled,
 
             SignalFfiError::Signal(SignalProtocolError::InvalidProtobufEncoding) => {
                 SignalErrorCode::ProtobufError

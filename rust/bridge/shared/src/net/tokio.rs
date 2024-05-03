@@ -38,6 +38,11 @@ fn TokioAsyncContext_new() -> TokioAsyncContext {
     }
 }
 
+#[bridge_fn]
+fn TokioAsyncContext_cancel(context: &TokioAsyncContext, raw_cancellation_id: u64) {
+    context.cancel(raw_cancellation_id.into())
+}
+
 pub struct TokioContextCancellation(tokio::sync::oneshot::Receiver<()>);
 
 impl Future for TokioContextCancellation {
@@ -51,6 +56,12 @@ impl Future for TokioContextCancellation {
         self.0.poll_unpin(cx).map(|_| ())
     }
 }
+
+// Not ideal! tokio doesn't promise that a oneshot::Receiver is in fact panic-safe.
+// But its interior mutable state is only modified by the Receiver while it's being polled,
+// and that means a panic would have to happen inside Receiver itself to cause a problem.
+// Combined with our payload type being (), it's unlikely this can happen in practice.
+impl std::panic::UnwindSafe for TokioContextCancellation {}
 
 impl AsyncRuntimeBase for TokioAsyncContext {
     fn cancel(&self, cancellation_token: CancellationId) {

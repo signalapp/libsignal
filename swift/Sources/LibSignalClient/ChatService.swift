@@ -139,11 +139,9 @@ public class ChatService: NativeHandleOwner {
     /// Calling this method will result in starting to accept incoming requests from the Chat Service.
     @discardableResult
     public func connectAuthenticated() async throws -> DebugInfo {
-        let rawDebugInfo = try await invokeAsyncFunction { promise in
-            self.tokioAsyncContext.withNativeHandle { tokioAsyncContext in
-                withNativeHandle { chatService in
-                    signal_chat_service_connect_auth(promise, tokioAsyncContext, chatService)
-                }
+        let rawDebugInfo = try await self.tokioAsyncContext.invokeAsyncFunction { promise, tokioAsyncContext in
+            withNativeHandle { chatService in
+                signal_chat_service_connect_auth(promise, tokioAsyncContext, chatService)
             }
         }
         return DebugInfo(consuming: rawDebugInfo)
@@ -155,11 +153,9 @@ public class ChatService: NativeHandleOwner {
     /// reconnect attempt will be made.
     @discardableResult
     public func connectUnauthenticated() async throws -> DebugInfo {
-        let rawDebugInfo = try await invokeAsyncFunction { promise in
-            self.tokioAsyncContext.withNativeHandle { tokioAsyncContext in
-                withNativeHandle { chatService in
-                    signal_chat_service_connect_unauth(promise, tokioAsyncContext, chatService)
-                }
+        let rawDebugInfo = try await self.tokioAsyncContext.invokeAsyncFunction { promise, tokioAsyncContext in
+            withNativeHandle { chatService in
+                signal_chat_service_connect_unauth(promise, tokioAsyncContext, chatService)
             }
         }
         return DebugInfo(consuming: rawDebugInfo)
@@ -174,11 +170,9 @@ public class ChatService: NativeHandleOwner {
     ///
     /// Returns when the disconnection is complete.
     public func disconnect() async throws {
-        _ = try await invokeAsyncFunction { promise in
-            self.tokioAsyncContext.withNativeHandle { tokioAsyncContext in
-                withNativeHandle { chatService in
-                    signal_chat_service_disconnect(promise, tokioAsyncContext, chatService)
-                }
+        _ = try await self.tokioAsyncContext.invokeAsyncFunction { promise, tokioAsyncContext in
+            withNativeHandle { chatService in
+                signal_chat_service_disconnect(promise, tokioAsyncContext, chatService)
             }
         }
     }
@@ -190,12 +184,10 @@ public class ChatService: NativeHandleOwner {
     public func unauthenticatedSend(_ request: Request) async throws -> Response {
         let internalRequest = try InternalRequest(request)
         let timeoutMillis = request.timeoutMillis
-        let rawResponse: SignalFfiChatResponse = try await invokeAsyncFunction { promise in
-            self.tokioAsyncContext.withNativeHandle { tokioAsyncContext in
-                withNativeHandle { chatService in
-                    internalRequest.withNativeHandle { request in
-                        signal_chat_service_unauth_send(promise, tokioAsyncContext, chatService, request, timeoutMillis)
-                    }
+        let rawResponse: SignalFfiChatResponse = try await self.tokioAsyncContext.invokeAsyncFunction { promise, tokioAsyncContext in
+            withNativeHandle { chatService in
+                internalRequest.withNativeHandle { request in
+                    signal_chat_service_unauth_send(promise, tokioAsyncContext, chatService, request, timeoutMillis)
                 }
             }
         }
@@ -212,12 +204,10 @@ public class ChatService: NativeHandleOwner {
     public func unauthenticatedSendAndDebug(_ request: Request) async throws -> (Response, DebugInfo) {
         let internalRequest = try InternalRequest(request)
         let timeoutMillis = request.timeoutMillis
-        let rawResponse: SignalFfiResponseAndDebugInfo = try await invokeAsyncFunction { promise in
-            self.tokioAsyncContext.withNativeHandle { tokioAsyncContext in
-                withNativeHandle { chatService in
-                    internalRequest.withNativeHandle { request in
-                        signal_chat_service_unauth_send_and_debug(promise, tokioAsyncContext, chatService, request, timeoutMillis)
-                    }
+        let rawResponse: SignalFfiResponseAndDebugInfo = try await self.tokioAsyncContext.invokeAsyncFunction { promise, tokioAsyncContext in
+            withNativeHandle { chatService in
+                internalRequest.withNativeHandle { request in
+                    signal_chat_service_unauth_send_and_debug(promise, tokioAsyncContext, chatService, request, timeoutMillis)
                 }
             }
         }
@@ -231,12 +221,10 @@ public class ChatService: NativeHandleOwner {
     public func authenticatedSend(_ request: Request) async throws -> Response {
         let internalRequest = try InternalRequest(request)
         let timeoutMillis = request.timeoutMillis
-        let rawResponse: SignalFfiChatResponse = try await invokeAsyncFunction { promise in
-            self.tokioAsyncContext.withNativeHandle { tokioAsyncContext in
-                withNativeHandle { chatService in
-                    internalRequest.withNativeHandle { request in
-                        signal_chat_service_auth_send(promise, tokioAsyncContext, chatService, request, timeoutMillis)
-                    }
+        let rawResponse: SignalFfiChatResponse = try await self.tokioAsyncContext.invokeAsyncFunction { promise, tokioAsyncContext in
+            withNativeHandle { chatService in
+                internalRequest.withNativeHandle { request in
+                    signal_chat_service_auth_send(promise, tokioAsyncContext, chatService, request, timeoutMillis)
                 }
             }
         }
@@ -253,12 +241,10 @@ public class ChatService: NativeHandleOwner {
     public func authenticatedSendAndDebug(_ request: Request) async throws -> (Response, DebugInfo) {
         let internalRequest = try InternalRequest(request)
         let timeoutMillis = request.timeoutMillis
-        let rawResponse: SignalFfiResponseAndDebugInfo = try await invokeAsyncFunction { promise in
-            self.tokioAsyncContext.withNativeHandle { tokioAsyncContext in
-                withNativeHandle { chatService in
-                    internalRequest.withNativeHandle { request in
-                        signal_chat_service_auth_send_and_debug(promise, tokioAsyncContext, chatService, request, timeoutMillis)
-                    }
+        let rawResponse: SignalFfiResponseAndDebugInfo = try await self.tokioAsyncContext.invokeAsyncFunction { promise, tokioAsyncContext in
+            withNativeHandle { chatService in
+                internalRequest.withNativeHandle { request in
+                    signal_chat_service_auth_send_and_debug(promise, tokioAsyncContext, chatService, request, timeoutMillis)
                 }
             }
         }

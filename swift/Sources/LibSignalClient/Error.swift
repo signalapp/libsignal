@@ -80,6 +80,9 @@ internal func checkError(_ error: SignalFfiErrorRef?) throws {
     defer { signal_error_free(error) }
 
     switch SignalErrorCode(errType) {
+    case SignalErrorCodeCancelled:
+        // Special case: don't use SignalError for this one.
+        throw CancellationError()
     case SignalErrorCodeInvalidState:
         throw SignalError.invalidState(errStr)
     case SignalErrorCodeInternalError:

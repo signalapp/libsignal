@@ -54,6 +54,7 @@ pub enum SignalFfiError {
     NullPointer,
     InvalidUtf8String,
     InvalidArgument(String),
+    Cancelled,
     InternalError(String),
     UnexpectedPanic(std::boxed::Box<dyn std::any::Any + std::marker::Send>),
 }
@@ -102,6 +103,7 @@ impl fmt::Display for SignalFfiError {
             SignalFfiError::NullPointer => write!(f, "null pointer"),
             SignalFfiError::InvalidUtf8String => write!(f, "invalid UTF8 string"),
             SignalFfiError::InvalidArgument(msg) => write!(f, "invalid argument: {msg}"),
+            SignalFfiError::Cancelled => write!(f, "cancelled"),
             SignalFfiError::InternalError(msg) => write!(f, "internal error: {msg}"),
             SignalFfiError::UnexpectedPanic(e) => {
                 write!(f, "unexpected panic: {}", describe_panic(e))

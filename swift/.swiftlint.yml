@@ -21,5 +21,7 @@ file_header:
 inclusive_language:
   override_allowed_terms:
   - master
+nesting:
+  type_level: 2
 excluded:
   - .build/**
