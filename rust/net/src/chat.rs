@@ -22,6 +22,7 @@ use crate::utils::basic_authorization;
 pub mod chat_reconnect;
 mod error;
 pub use error::ChatServiceError;
+pub mod server_requests;
 pub mod ws;
 
 pub type MessageProto = proto::chat_websocket::WebSocketMessage;

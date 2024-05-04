@@ -5358,7 +5358,7 @@ SOFTWARE.
 
 ```
 
-## tokio 1.36.0, tokio-macros 2.2.0, tokio-util 0.7.10
+## tokio 1.36.0, tokio-macros 2.2.0, tokio-stream 0.1.14, tokio-util 0.7.10
 
 ```
 Copyright (c) 2023 Tokio Contributors

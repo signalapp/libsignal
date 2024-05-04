@@ -5883,7 +5883,7 @@ DEALINGS IN THE SOFTWARE.
 			<key>License</key>
 			<string>MIT License</string>
 			<key>Title</key>
-			<string>tokio 1.36.0, tokio-macros 2.2.0, tokio-util 0.7.10</string>
+			<string>tokio 1.36.0, tokio-macros 2.2.0, tokio-stream 0.1.14, tokio-util 0.7.10</string>
 			<key>Type</key>
 			<string>PSGroupSpecifier</string>
 		</dict>

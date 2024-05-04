@@ -8,6 +8,7 @@ license = "AGPL-3.0-only"
 [dependencies]
 attest = { path = "../attest" }
 libsignal-core = { path = "../core" }
+libsignal-protocol = { path = "../protocol" }
 libsignal-svr3 = { path = "../svr3" }
 
 async-trait = "0.1.41"
@@ -42,6 +43,7 @@ strum = { version = "0.26", features = ["derive"] }
 thiserror = "1.0.38"
 tokio = { version = "1", features = ["rt", "time", "macros"] }
 tokio-boring = { git = "https://github.com/signalapp/boring", tag = "signal-v4.6.0" }
+tokio-stream = "0.1.14"
 tokio-tungstenite = { version = "0.21.0" }
 tokio-util = "0.7.9"
 tungstenite = { version = "0.21.0" }
@@ -61,7 +63,6 @@ proptest-state-machine = "0.1.0"
 rcgen = "0.13.0"
 snow = "0.9.5"
 tokio = { version = "1", features = ["test-util", "io-std", "rt-multi-thread"] }
-tokio-stream = "0.1.14"
 url = "2.4.1"
 warp = { version = "0.3.6", features = ["tls"] }
 tls-parser = "0.11.0"
