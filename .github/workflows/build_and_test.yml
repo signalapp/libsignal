@@ -387,7 +387,7 @@ jobs:
   swift_cocoapod:
     name: Swift CocoaPod
 
-    runs-on: macOS-latest
+    runs-on: macOS-12
 
     needs: changes
 
