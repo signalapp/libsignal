@@ -213,11 +213,16 @@ jobs:
     - name: Build bins and examples
       run: cargo +stable build --workspace  --bins --examples --all-features --verbose
 
+    - name: cargo clean (reclaim disk space)
+      # Clean the contents of the target directory to avoid running out of disk space during the
+      # following steps.
+      run: cargo +stable clean
+
     - name: Run tests (32-bit)
       # Exclude signal-neon-futures because those tests run Node
       run: cargo +stable test --workspace --all-features --verbose --target i686-unknown-linux-gnu --exclude signal-neon-futures -- --include-ignored
 
-    - name: cargo clean (reclaim disk space)
+    - name: cargo clean again (reclaim disk space)
       # Clean the contents of the target directory to avoid running out of disk space during the
       # following steps.
       run: cargo +stable clean
