@@ -173,7 +173,7 @@ impl<Bytes: AsRef<[u8]>, S> AsRef<[u8]> for MrEnclave<Bytes, S> {
     }
 }
 
-#[derive_where(Copy, Clone)]
+#[derive_where(Clone)]
 pub struct EnclaveEndpoint<'a, E: EnclaveKind> {
     pub domain_config: DomainConfig,
     pub mr_enclave: MrEnclave<&'a [u8], E>,

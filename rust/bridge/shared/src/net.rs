@@ -94,7 +94,7 @@ impl ConnectionManager {
                 Self::DEFAULT_CONNECT_TIMEOUT,
                 chat_ws_config,
             ),
-            cdsi: Self::endpoint_connection(environment.env().cdsi, &user_agent),
+            cdsi: Self::endpoint_connection(&environment.env().cdsi, &user_agent),
             svr3: (
                 Self::endpoint_connection(environment.env().svr3.sgx(), &user_agent),
                 Self::endpoint_connection(environment.env().svr3.nitro(), &user_agent),
@@ -105,7 +105,7 @@ impl ConnectionManager {
     }
 
     fn endpoint_connection<E: EnclaveKind>(
-        endpoint: EnclaveEndpoint<'static, E>,
+        endpoint: &EnclaveEndpoint<'static, E>,
         user_agent: &str,
     ) -> EnclaveEndpointConnection<E, MultiRouteConnectionManager> {
         let params = endpoint.domain_config.connection_params_with_fallback();

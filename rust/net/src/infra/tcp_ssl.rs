@@ -127,7 +127,7 @@ impl TransportConnector for ProxyConnector {
                     self.proxy_host,
                     self.proxy_port
                 );
-                let ssl_config = ssl_config(self.proxy_certs, &self.proxy_host, None)?;
+                let ssl_config = ssl_config(&self.proxy_certs, &self.proxy_host, None)?;
                 Either::Left(tokio_boring::connect(ssl_config, &self.proxy_host, tcp_stream).await?)
             }
             ShouldUseTls::No => {
@@ -188,7 +188,7 @@ impl ProxyConnector {
 }
 
 fn ssl_config(
-    certs: RootCertificates,
+    certs: &RootCertificates,
     host_name: &str,
     alpn: Option<Alpn>,
 ) -> Result<ConnectConfiguration, TransportConnectError> {
@@ -205,7 +205,7 @@ async fn connect_tls<S: AsyncRead + AsyncWrite + Unpin>(
     connection_params: &ConnectionParams,
     alpn: Alpn,
 ) -> Result<SslStream<S>, TransportConnectError> {
-    let ssl_config = ssl_config(connection_params.certs, &connection_params.sni, Some(alpn))?;
+    let ssl_config = ssl_config(&connection_params.certs, &connection_params.sni, Some(alpn))?;
 
     Ok(tokio_boring::connect(ssl_config, &connection_params.sni, transport).await?)
 }
@@ -532,6 +532,7 @@ pub(crate) mod testutil {
 
 #[cfg(test)]
 mod test {
+    use std::borrow::Cow;
     use std::collections::HashMap;
     use std::net::Ipv6Addr;
 
@@ -557,7 +558,7 @@ mod test {
             host: addr.ip().to_string().into(),
             port: addr.port().try_into().expect("bound port"),
             http_request_decorator: HttpRequestDecoratorSeq::default(),
-            certs: RootCertificates::FromDer(SERVER_CERTIFICATE.cert.der()),
+            certs: RootCertificates::FromDer(Cow::Borrowed(SERVER_CERTIFICATE.cert.der())),
         };
 
         let StreamAndInfo(stream, info) = connector
@@ -597,7 +598,7 @@ mod test {
         // it won't work with the default config.
         let default_root_cert = std::mem::replace(
             &mut connector.proxy_certs,
-            RootCertificates::FromDer(PROXY_CERTIFICATE.cert.der()),
+            RootCertificates::FromDer(Cow::Borrowed(PROXY_CERTIFICATE.cert.der())),
         );
         assert_matches!(default_root_cert, RootCertificates::Native);
 
@@ -607,7 +608,7 @@ mod test {
             host: "localhost".to_string().into(),
             port: addr.port().try_into().expect("bound port"),
             http_request_decorator: HttpRequestDecoratorSeq::default(),
-            certs: RootCertificates::FromDer(SERVER_CERTIFICATE.cert.der()),
+            certs: RootCertificates::FromDer(Cow::Borrowed(SERVER_CERTIFICATE.cert.der())),
         };
 
         let StreamAndInfo(stream, info) = connector
@@ -652,7 +653,7 @@ mod test {
             host: "localhost".to_string().into(),
             port: addr.port().try_into().expect("bound port"),
             http_request_decorator: HttpRequestDecoratorSeq::default(),
-            certs: RootCertificates::FromDer(SERVER_CERTIFICATE.cert.der()),
+            certs: RootCertificates::FromDer(Cow::Borrowed(SERVER_CERTIFICATE.cert.der())),
         };
 
         let StreamAndInfo(stream, info) = connector

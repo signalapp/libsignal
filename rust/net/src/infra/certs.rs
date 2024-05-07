@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::borrow::Cow;
+
 use boring::error::ErrorStack;
 use boring::ssl::{SslAlert, SslConnectorBuilder, SslVerifyError, SslVerifyMode};
 use boring::x509::store::X509StoreBuilder;
@@ -25,17 +27,16 @@ impl From<ErrorStack> for Error {
     }
 }
 
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone)]
 pub enum RootCertificates {
-    #[default]
     Native,
     Signal,
-    FromDer(&'static [u8]),
+    FromDer(Cow<'static, [u8]>),
 }
 
 impl RootCertificates {
     pub fn apply_to_connector(
-        self,
+        &self,
         connector: &mut SslConnectorBuilder,
         host_name: &str,
     ) -> Result<(), Error> {

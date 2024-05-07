@@ -53,7 +53,7 @@ async fn main() {
         return_acis_without_uaks: true,
         ..Default::default()
     };
-    let env = &libsignal_net::env::PROD;
+    let env = libsignal_net::env::PROD;
     let endpoint_connection = EnclaveEndpointConnection::new(env.cdsi, Duration::from_secs(10));
     let transport_connection = TcpSslTransportConnector::new(DnsResolver::default());
     let cdsi_response = cdsi_lookup(

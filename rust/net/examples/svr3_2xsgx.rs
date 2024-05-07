@@ -9,6 +9,7 @@
 //! as well as the password that will be used to protect the data being stored. Since the
 //! actual stored secret data needs to be exactly 32 bytes long, it is generated randomly
 //! at each invocation instead of being passed via the command line.
+use std::borrow::Cow;
 use std::time::Duration;
 
 use base64::prelude::{Engine, BASE64_STANDARD};
@@ -29,8 +30,9 @@ use libsignal_net::infra::tcp_ssl::DirectConnector as TcpSslTransportConnector;
 use libsignal_net::svr::SvrConnection;
 use libsignal_net::svr3::{OpaqueMaskedShareSet, PpssOps};
 
-const TEST_SERVER_CERT: RootCertificates =
-    RootCertificates::FromDer(include_bytes!("../res/sgx_test_server_cert.cer"));
+const TEST_SERVER_CERT: RootCertificates = RootCertificates::FromDer(Cow::Borrowed(
+    include_bytes!("../res/sgx_test_server_cert.cer"),
+));
 const TEST_SERVER_RAFT_CONFIG: RaftConfig = RaftConfig {
     min_voting_replicas: 1,
     max_voting_replicas: 3,
@@ -39,9 +41,10 @@ const TEST_SERVER_RAFT_CONFIG: RaftConfig = RaftConfig {
 };
 const TEST_SERVER_DOMAIN_CONFIG: DomainConfig = DomainConfig {
     hostname: "backend1.svr3.test.signal.org",
+    port: nonzero!(443_u16),
     ip_v4: &[],
     ip_v6: &[],
-    cert: &TEST_SERVER_CERT,
+    cert: TEST_SERVER_CERT,
     proxy_path: "/svr3-test",
 };
 
@@ -102,7 +105,7 @@ async fn main() {
                 "acb1973aa0bbbd14b3b4e06f145497d948fd4a98efc500fcce363b3b743ec482"
             )),
         };
-        TwoForTwoEnv(endpoint, endpoint)
+        TwoForTwoEnv(endpoint.clone(), endpoint)
     };
 
     let (uid_a, uid_b) = (make_uid(), make_uid());
@@ -110,7 +113,7 @@ async fn main() {
     let connect = || async {
         let connector = TcpSslTransportConnector::new(DnsResolver::default());
         let connection_a = EnclaveEndpointConnection::with_custom_properties(
-            two_sgx_env.0,
+            two_sgx_env.0.clone(),
             Duration::from_secs(10),
             Some(&TEST_SERVER_RAFT_CONFIG),
         );
@@ -120,7 +123,7 @@ async fn main() {
             .expect("can attestedly connect");
 
         let connection_b = EnclaveEndpointConnection::with_custom_properties(
-            two_sgx_env.1,
+            two_sgx_env.1.clone(),
             Duration::from_secs(10),
             Some(&TEST_SERVER_RAFT_CONFIG),
         );

@@ -6,6 +6,7 @@
 use std::collections::HashMap;
 use std::iter;
 use std::net::{Ipv4Addr, Ipv6Addr};
+use std::num::NonZeroU16;
 use std::time::Duration;
 
 use const_str::ip_addr;
@@ -22,9 +23,11 @@ use crate::infra::{
 
 pub(crate) const WS_KEEP_ALIVE_INTERVAL: Duration = Duration::from_secs(5);
 pub(crate) const WS_MAX_IDLE_TIME: Duration = Duration::from_secs(15);
+const DEFAULT_HTTPS_PORT: NonZeroU16 = nonzero!(443_u16);
 
 const DOMAIN_CONFIG_CHAT: DomainConfig = DomainConfig {
     hostname: "chat.signal.org",
+    port: DEFAULT_HTTPS_PORT,
     ip_v4: &[
         ip_addr!(v4, "76.223.92.165"),
         ip_addr!(v4, "13.248.212.111"),
@@ -33,12 +36,13 @@ const DOMAIN_CONFIG_CHAT: DomainConfig = DomainConfig {
         ip_addr!(v6, "2600:9000:a507:ab6d:4ce3:2f58:25d7:9cbf"),
         ip_addr!(v6, "2600:9000:a61f:527c:d5eb:a431:5239:3232"),
     ],
-    cert: &RootCertificates::Signal,
+    cert: RootCertificates::Signal,
     proxy_path: "/service",
 };
 
 const DOMAIN_CONFIG_CHAT_STAGING: DomainConfig = DomainConfig {
     hostname: "chat.staging.signal.org",
+    port: DEFAULT_HTTPS_PORT,
     ip_v4: &[
         ip_addr!(v4, "76.223.72.142"),
         ip_addr!(v4, "13.248.206.115"),
@@ -47,87 +51,97 @@ const DOMAIN_CONFIG_CHAT_STAGING: DomainConfig = DomainConfig {
         ip_addr!(v6, "2600:9000:a507:ab6d:7b25:2580:8bd6:3b93"),
         ip_addr!(v6, "2600:9000:a61f:527c:2215:cd9:bac6:a2f8"),
     ],
-    cert: &RootCertificates::Signal,
+    cert: RootCertificates::Signal,
     proxy_path: "/service-staging",
 };
 
 const DOMAIN_CONFIG_CDSI: DomainConfig = DomainConfig {
     hostname: "cdsi.signal.org",
+    port: DEFAULT_HTTPS_PORT,
     ip_v4: &[ip_addr!(v4, "40.122.45.194")],
     ip_v6: &[ip_addr!(v6, "2603:1030:7::1")],
-    cert: &RootCertificates::Signal,
+    cert: RootCertificates::Signal,
     proxy_path: "/cdsi",
 };
 
 const DOMAIN_CONFIG_CDSI_STAGING: DomainConfig = DomainConfig {
     hostname: "cdsi.staging.signal.org",
+    port: DEFAULT_HTTPS_PORT,
     ip_v4: &[ip_addr!(v4, "104.43.162.137")],
     ip_v6: &[ip_addr!(v6, "2603:1030:7::732")],
-    cert: &RootCertificates::Signal,
+    cert: RootCertificates::Signal,
     proxy_path: "/cdsi-staging",
 };
 
 const DOMAIN_CONFIG_SVR2: DomainConfig = DomainConfig {
     hostname: "svr2.signal.org",
+    port: DEFAULT_HTTPS_PORT,
     ip_v4: &[ip_addr!(v4, "20.66.40.69")],
     ip_v6: &[],
-    cert: &RootCertificates::Signal,
+    cert: RootCertificates::Signal,
     proxy_path: "/svr2",
 };
 
 const DOMAIN_CONFIG_SVR2_STAGING: DomainConfig = DomainConfig {
     hostname: "svr2.staging.signal.org",
+    port: DEFAULT_HTTPS_PORT,
     ip_v4: &[ip_addr!(v4, "20.253.229.239")],
     ip_v6: &[],
-    cert: &RootCertificates::Signal,
+    cert: RootCertificates::Signal,
     proxy_path: "/svr2-staging",
 };
 
 const DOMAIN_CONFIG_SVR3_SGX: DomainConfig = DomainConfig {
     hostname: "svr3.signal.org",
+    port: DEFAULT_HTTPS_PORT,
     ip_v4: &[ip_addr!(v4, "143.244.220.150")],
     ip_v6: &[],
-    cert: &RootCertificates::Signal,
+    cert: RootCertificates::Signal,
     proxy_path: "/svr3-sgx",
 };
 
 const DOMAIN_CONFIG_SVR3_SGX_STAGING: DomainConfig = DomainConfig {
     hostname: "backend1.svr3.staging.signal.org",
+    port: DEFAULT_HTTPS_PORT,
     ip_v4: &[ip_addr!(v4, "13.88.63.29")],
     ip_v6: &[],
-    cert: &RootCertificates::Signal,
+    cert: RootCertificates::Signal,
     proxy_path: "/svr3-sgx-staging",
 };
 
 const DOMAIN_CONFIG_SVR3_NITRO: DomainConfig = DomainConfig {
     hostname: "devnull.signal.org",
+    port: DEFAULT_HTTPS_PORT,
     ip_v4: &[],
     ip_v6: &[],
-    cert: &RootCertificates::Signal,
+    cert: RootCertificates::Signal,
     proxy_path: "/svr3-nitro",
 };
 
 const DOMAIN_CONFIG_SVR3_NITRO_STAGING: DomainConfig = DomainConfig {
     hostname: "backend2.svr3.staging.signal.org",
+    port: DEFAULT_HTTPS_PORT,
     ip_v4: &[ip_addr!(v4, "75.2.86.85"), ip_addr!(v4, "99.83.239.137")],
     ip_v6: &[],
-    cert: &RootCertificates::Signal,
+    cert: RootCertificates::Signal,
     proxy_path: "/svr3-nitro-staging",
 };
 
 pub const DOMAIN_CONFIG_SVR3_TPM2SNP: DomainConfig = DomainConfig {
     hostname: "devnull.signal.org",
+    port: DEFAULT_HTTPS_PORT,
     ip_v4: &[],
     ip_v6: &[],
-    cert: &RootCertificates::Signal,
+    cert: RootCertificates::Signal,
     proxy_path: "/svr3-tpm2snp",
 };
 
 pub const DOMAIN_CONFIG_SVR3_TPM2SNP_STAGING: DomainConfig = DomainConfig {
     hostname: "backend3.svr3.staging.signal.org",
+    port: DEFAULT_HTTPS_PORT,
     ip_v4: &[ip_addr!(v4, "13.88.30.76")],
     ip_v6: &[],
-    cert: &RootCertificates::Signal,
+    cert: RootCertificates::Signal,
     proxy_path: "/svr3-tpm2snp-staging",
 };
 
@@ -153,13 +167,14 @@ const PROXY_CONFIG_G: ProxyConfig = ProxyConfig {
     ],
 };
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub struct DomainConfig {
     pub hostname: &'static str,
+    pub port: NonZeroU16,
     pub proxy_path: &'static str,
     pub ip_v4: &'static [Ipv4Addr],
     pub ip_v6: &'static [Ipv6Addr],
-    pub cert: &'static RootCertificates,
+    pub cert: RootCertificates,
 }
 
 impl DomainConfig {
@@ -175,9 +190,9 @@ impl DomainConfig {
             RouteType::Direct,
             self.hostname,
             self.hostname,
-            nonzero!(443u16),
+            self.port,
             HttpRequestDecoratorSeq::default(),
-            *self.cert,
+            self.cert.clone(),
         )
     }
 
@@ -268,18 +283,18 @@ pub struct Svr3Env<'a>(
 
 impl<'a> Svr3Env<'a> {
     #[inline]
-    pub fn sgx(&self) -> EnclaveEndpoint<'a, Sgx> {
-        self.0
+    pub fn sgx(&self) -> &EnclaveEndpoint<'a, Sgx> {
+        &self.0
     }
 
     #[inline]
-    pub fn nitro(&self) -> EnclaveEndpoint<'a, Nitro> {
-        self.1
+    pub fn nitro(&self) -> &EnclaveEndpoint<'a, Nitro> {
+        &self.1
     }
 
     #[inline]
-    pub fn tpm2snp(&self) -> EnclaveEndpoint<'a, Tpm2Snp> {
-        self.2
+    pub fn tpm2snp(&self) -> &EnclaveEndpoint<'a, Tpm2Snp> {
+        &self.2
     }
 }
 
