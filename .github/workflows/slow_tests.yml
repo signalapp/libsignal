@@ -213,6 +213,11 @@ jobs:
     - name: Build bins and examples
       run: cargo +stable build --workspace  --bins --examples --all-features --verbose
 
+    - name: Run libsignal-net smoke tests
+      run: cargo +stable run --example chat_smoke_test -p libsignal-net -- --try-all-routes staging
+      env:
+        RUST_LOG: debug
+
     - name: cargo clean (reclaim disk space)
       # Clean the contents of the target directory to avoid running out of disk space during the
       # following steps.
