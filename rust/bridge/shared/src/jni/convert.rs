@@ -1244,6 +1244,9 @@ macro_rules! jni_arg_type {
     (u16) => {
         jni::jint
     };
+    (i32) => {
+        jni::jint
+    };
     (u32) => {
         jni::jint
     };

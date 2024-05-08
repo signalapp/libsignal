@@ -28,7 +28,8 @@ use libsignal_net::env::{add_user_agent_header, Env, Svr3Env};
 use libsignal_net::infra::connection_manager::MultiRouteConnectionManager;
 use libsignal_net::infra::dns::DnsResolver;
 use libsignal_net::infra::tcp_ssl::{
-    DirectConnector as TcpSslDirectConnector, TcpSslConnector, TcpSslConnectorStream,
+    DirectConnector as TcpSslDirectConnector, ProxyConnector as TcpSslProxyConnector,
+    TcpSslConnector, TcpSslConnectorStream,
 };
 use libsignal_net::infra::{make_ws_config, EndpointConnection};
 use libsignal_net::svr::{self, SvrConnection};
@@ -130,18 +131,40 @@ fn ConnectionManager_new(
 fn ConnectionManager_set_proxy(
     connection_manager: &ConnectionManager,
     host: String,
-    port: AsType<NonZeroU16, u16>,
-) {
-    let port = port.into_inner();
-    let proxy_addr = (host.as_str(), port);
+    port: i32,
+) -> Result<(), std::io::Error> {
     let mut guard = connection_manager
         .transport_connector
         .lock()
         .expect("not poisoned");
-    match &mut *guard {
-        TcpSslConnector::Direct(direct) => *guard = direct.with_proxy(proxy_addr).into(),
-        TcpSslConnector::Proxied(proxied) => proxied.set_proxy(proxy_addr),
-    };
+    // We take port as an i32 because Java 'short' is signed and thus can't represent all port
+    // numbers, and we want too-large port numbers to be handled the same way as 0.
+    match u16::try_from(port)
+        .ok()
+        .and_then(|port| NonZeroU16::try_from(port).ok())
+    {
+        Some(port) => {
+            let proxy_addr = (host.as_str(), port);
+            match &mut *guard {
+                TcpSslConnector::Direct(direct) => *guard = direct.with_proxy(proxy_addr).into(),
+                TcpSslConnector::Proxied(proxied) => proxied.set_proxy(proxy_addr),
+                TcpSslConnector::Invalid(dns_resolver) => {
+                    *guard = TcpSslProxyConnector::new(dns_resolver.clone(), proxy_addr).into()
+                }
+            };
+            Ok(())
+        }
+        None => {
+            match &*guard {
+                TcpSslConnector::Direct(TcpSslDirectConnector { dns_resolver, .. })
+                | TcpSslConnector::Proxied(TcpSslProxyConnector { dns_resolver, .. }) => {
+                    *guard = TcpSslConnector::Invalid(dns_resolver.clone())
+                }
+                TcpSslConnector::Invalid(_dns_resolver) => (),
+            }
+            Err(std::io::ErrorKind::InvalidInput.into())
+        }
+    }
 }
 
 #[bridge_fn]
@@ -152,8 +175,9 @@ fn ConnectionManager_clear_proxy(connection_manager: &ConnectionManager) {
         .expect("not poisoned");
     match &*guard {
         TcpSslConnector::Direct(_direct) => (),
-        TcpSslConnector::Proxied(proxied) => {
-            *guard = TcpSslDirectConnector::new(proxied.dns_resolver.clone()).into()
+        TcpSslConnector::Proxied(TcpSslProxyConnector { dns_resolver, .. })
+        | TcpSslConnector::Invalid(dns_resolver) => {
+            *guard = TcpSslDirectConnector::new(dns_resolver.clone()).into()
         }
     };
 }

@@ -5,6 +5,8 @@
 
 package org.signal.libsignal.net;
 
+import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
+
 import java.io.IOException;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
@@ -46,8 +48,11 @@ public class Network {
    *
    * <p>Sets a domain name and port to be used to proxy all new outgoing connections. The proxy can
    * be overridden by calling this method again or unset by calling {@link #clearProxy}.
+   *
+   * @throws IOException if the host or port are not (structurally) valid, such as a port that
+   *     doesn't fit in u16.
    */
-  public void setProxy(String host, int port) {
+  public void setProxy(String host, int port) throws IOException {
     this.connectionManager.setProxy(host, port);
   }
 
@@ -120,11 +125,10 @@ public class Network {
       super(Native.ConnectionManager_new(env.value, userAgent));
     }
 
-    private void setProxy(String host, int port) {
-      if (port == 0) {
-        throw new IllegalArgumentException("Port cannot be zero");
-      }
-      guardedRun(nativeHandle -> Native.ConnectionManager_set_proxy(nativeHandle, host, port));
+    private void setProxy(String host, int port) throws IOException {
+      filterExceptions(
+          IOException.class,
+          () -> guardedRunChecked(h -> Native.ConnectionManager_set_proxy(h, host, port)));
     }
 
     private void clearProxy() {

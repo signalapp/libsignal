@@ -3,15 +3,15 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-// These testing endpoints aren't generated in device builds, to save on code size.
-#if !os(iOS) || targetEnvironment(simulator)
-
 import Foundation
 @testable import LibSignalClient
 import SignalFfi
 import XCTest
 
 final class ChatServiceTests: TestCaseBase {
+// These testing endpoints aren't generated in device builds, to save on code size.
+#if !os(iOS) || targetEnvironment(simulator)
+
     private static let userAgent = "test"
     private static let expectedStatus: UInt16 = 200
     private static let expectedMessage = "OK"
@@ -72,11 +72,13 @@ final class ChatServiceTests: TestCaseBase {
     func testConvertError() throws {
         do {
             try checkError(signal_testing_chat_service_error_convert())
+            XCTFail("error not thrown")
         } catch SignalError.connectionTimeoutError(_) {
             // Okay
         }
         do {
             try checkError(signal_testing_chat_service_inactive_error_convert())
+            XCTFail("error not thrown")
         } catch SignalError.chatServiceInactive(_) {
             // Okay
         }
@@ -105,6 +107,8 @@ final class ChatServiceTests: TestCaseBase {
             }
         }
     }
+
+#endif
 
     func testConnectUnauth() async throws {
         // Use the presence of the proxy server environment setting to know whether we should make network requests in our tests.
@@ -142,6 +146,24 @@ final class ChatServiceTests: TestCaseBase {
         try await chat.connectUnauthenticated()
         try await chat.disconnect()
     }
-}
 
-#endif
+    func testConnectFailsWithInvalidProxy() async throws {
+        // The default TLS proxy config doesn't support staging, so we connect to production.
+        let net = Net(env: .production, userAgent: Self.userAgent)
+        do {
+            try net.setProxy(host: "signalfoundation.org", port: 0)
+            XCTFail("should not allow setting invalid proxy")
+        } catch SignalError.ioError {
+            // Okay
+        }
+
+        let chat = net.createChatService(username: "", password: "")
+        // Make sure we *can't* connect.
+        do {
+            try await chat.connectUnauthenticated()
+            XCTFail("should not allow connecting")
+        } catch SignalError.connectionFailed {
+            // Okay
+        }
+    }
+}

@@ -30,13 +30,17 @@ const CONNECTION_ATTEMPT_DELAY: Duration = Duration::from_millis(200);
 pub enum TcpSslConnector {
     Direct(DirectConnector),
     Proxied(ProxyConnector),
+    /// Used when configuring one of the other kinds of connector isn't possible, perhaps because
+    /// invalid configuration options were provided.
+    Invalid(DnsResolver),
 }
 
 impl TcpSslConnector {
     pub fn set_ipv6_enabled(&mut self, ipv6_enabled: bool) {
         let dns_resolver = match self {
-            TcpSslConnector::Direct(ref mut c) => &mut c.dns_resolver,
-            TcpSslConnector::Proxied(ref mut c) => &mut c.dns_resolver,
+            TcpSslConnector::Direct(c) => &mut c.dns_resolver,
+            TcpSslConnector::Proxied(c) => &mut c.dns_resolver,
+            TcpSslConnector::Invalid(resolver) => resolver,
         };
         dns_resolver.set_ipv6_enabled(ipv6_enabled);
     }
@@ -51,7 +55,7 @@ pub struct TcpSslConnectorStream(
 
 #[derive(Clone)]
 pub struct DirectConnector {
-    dns_resolver: DnsResolver,
+    pub dns_resolver: DnsResolver,
 }
 
 #[async_trait]
@@ -323,6 +327,7 @@ impl TransportConnector for TcpSslConnector {
                 .connect(connection_params, alpn)
                 .await
                 .map(|s| s.map_stream(Either::Right)),
+            Self::Invalid(_) => Err(TransportConnectError::InvalidConfiguration),
         }
         .map(|s| s.map_stream(TcpSslConnectorStream))
     }
@@ -671,5 +676,33 @@ mod test {
         );
 
         make_http_request_response_over(stream).await;
+    }
+
+    #[tokio::test]
+    async fn connect_through_invalid() {
+        let (addr, server) = localhost_http_server();
+        let _server_handle = tokio::spawn(server);
+
+        let connector = TcpSslConnector::Invalid(DnsResolver::new_with_static_fallback(
+            HashMap::from([(SERVER_HOSTNAME, LookupResult::localhost())]),
+        ));
+        let connection_params = ConnectionParams {
+            route_type: RouteType::Test,
+            sni: SERVER_HOSTNAME.into(),
+            host: addr.ip().to_string().into(),
+            port: addr.port().try_into().expect("bound port"),
+            http_request_decorator: HttpRequestDecoratorSeq::default(),
+            certs: RootCertificates::FromDer(Cow::Borrowed(SERVER_CERTIFICATE.cert.der())),
+        };
+
+        match connector.connect(&connection_params, Alpn::Http1_1).await {
+            Ok(_) => {
+                // We can't use expect_err() or assert_matches! because the success case isn't Debug.
+                panic!("should have failed");
+            }
+            Err(e) => {
+                assert_matches!(e, TransportConnectError::InvalidConfiguration);
+            }
+        }
     }
 }

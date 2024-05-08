@@ -36,6 +36,8 @@ public class Net {
     ///
     /// Sets a domain name and port to be used to proxy all new outgoing connections. The proxy can
     /// be overridden by calling this method again or unset by calling ``Net/clearProxy()``.
+    ///
+    /// - Throws: if the host or port is not structurally valid, such as a port of 0.
     public func setProxy(host: String, port: UInt16) throws {
         try self.connectionManager.setProxy(host: host, port: port)
     }
@@ -380,11 +382,9 @@ internal class ConnectionManager: NativeHandleOwner {
     }
 
     internal func setProxy(host: String, port: UInt16) throws {
-        if port == 0 {
-            throw SignalError.invalidArgument("port cannot be 0")
-        }
-        self.withNativeHandle {
-            failOnError(signal_connection_manager_set_proxy($0, host, port))
+        try self.withNativeHandle {
+            // We have to cast to Int32 because of how the port number is validated...for Java.
+            try checkError(signal_connection_manager_set_proxy($0, host, Int32(port)))
         }
     }
 

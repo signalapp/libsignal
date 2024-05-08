@@ -14,6 +14,8 @@ pub trait LogSafeDisplay: Display {}
 /// Errors that can occur during transport-level connection establishment.
 #[derive(displaydoc::Display, Debug, thiserror::Error)]
 pub enum TransportConnectError {
+    /// Invalid configuration for this connection
+    InvalidConfiguration,
     /// Failed to establish TCP connection to any of the IPs
     TcpConnectionFailed,
     /// DNS lookup failed
@@ -96,6 +98,7 @@ impl From<TransportConnectError> for std::io::Error {
     fn from(value: TransportConnectError) -> Self {
         use std::io::ErrorKind;
         let kind = match value {
+            TransportConnectError::InvalidConfiguration => ErrorKind::InvalidInput,
             TransportConnectError::TcpConnectionFailed => ErrorKind::ConnectionRefused,
             TransportConnectError::SslFailedHandshake(_)
             | TransportConnectError::SslError(_)

@@ -219,6 +219,8 @@ export class Net {
    * Sets a domain name and port to be used to proxy all new outgoing
    * connections. The proxy can be overridden by calling this method again or
    * unset by calling {@link #clearProxy}.
+   *
+   * Throws if the host or port is structurally invalid, such as a port that doesn't fit in u16.
    */
   setProxy(host: string, port: number): void {
     Native.ConnectionManager_set_proxy(this.connectionManager, host, port);

@@ -788,6 +788,7 @@ trivial!(bool);
 macro_rules! ffi_arg_type {
     (u8) => (u8);
     (u16) => (u16);
+    (i32) => (i32);
     (u32) => (u32);
     (u64) => (u64);
     (Option<u32>) => (u32);

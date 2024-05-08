@@ -176,7 +176,7 @@ public final class Native {
   public static native void ConnectionManager_Destroy(long handle);
   public static native void ConnectionManager_clear_proxy(long connectionManager);
   public static native long ConnectionManager_new(int environment, String userAgent);
-  public static native void ConnectionManager_set_proxy(long connectionManager, String host, int port);
+  public static native void ConnectionManager_set_proxy(long connectionManager, String host, int port) throws Exception;
 
   public static native void CreateCallLinkCredentialPresentation_CheckValidContents(byte[] presentationBytes) throws Exception;
   public static native void CreateCallLinkCredentialPresentation_Verify(byte[] presentationBytes, byte[] roomId, long now, byte[] serverParamsBytes, byte[] callLinkParamsBytes) throws Exception;
