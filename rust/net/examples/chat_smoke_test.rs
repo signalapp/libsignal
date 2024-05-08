@@ -7,11 +7,12 @@ use std::time::Duration;
 
 use clap::{Args, Parser, ValueEnum};
 use http::uri::PathAndQuery;
-use libsignal_net::chat::chat_service;
+use libsignal_net::chat::{chat_service, ChatServiceError};
 use libsignal_net::env::constants::WEB_SOCKET_PATH;
+use libsignal_net::env::Svr3Env;
 use libsignal_net::infra::dns::DnsResolver;
 use libsignal_net::infra::tcp_ssl::DirectConnector;
-use libsignal_net::infra::{make_ws_config, EndpointConnection, RouteType};
+use libsignal_net::infra::{make_ws_config, ConnectionParams, EndpointConnection, RouteType};
 use tokio::sync::mpsc;
 
 #[derive(Parser)]
@@ -19,6 +20,8 @@ struct Config {
     #[clap(flatten)]
     route: Option<Route>,
     env: Environment,
+    #[arg(long)]
+    try_all_routes: bool,
 }
 
 #[derive(Args)]
@@ -40,7 +43,7 @@ enum Environment {
 #[tokio::main]
 async fn main() {
     env_logger::builder()
-        .filter_level(log::LevelFilter::Info)
+        .filter_module(module_path!(), log::LevelFilter::Info)
         .parse_default_env()
         .init();
 
@@ -58,9 +61,30 @@ async fn main() {
         Some(Route { proxy_f: true, .. }) => {
             connection_params.retain(|c| c.route_type == RouteType::ProxyF)
         }
+        _ if config.try_all_routes => {
+            // Retain every route, including the direct one.
+        }
         _ => connection_params.retain(|c| c.route_type == RouteType::Direct),
     };
 
+    if config.try_all_routes {
+        for route in connection_params {
+            log::info!("trying {} ({})", route.sni, route.route_type);
+            test_connection(&env, vec![route])
+                .await
+                .unwrap_or_else(|e| log::error!("failed to connect: {e}"));
+        }
+    } else {
+        test_connection(&env, connection_params)
+            .await
+            .unwrap_or_else(|e| log::error!("failed to connect: {e}"));
+    }
+}
+
+async fn test_connection(
+    env: &libsignal_net::env::Env<'static, Svr3Env<'static>>,
+    connection_params: Vec<ConnectionParams>,
+) -> Result<(), ChatServiceError> {
     let dns_resolver = DnsResolver::new_with_static_fallback(env.static_fallback());
     let transport_connector = DirectConnector::new(dns_resolver);
     let chat_endpoint = PathAndQuery::from_static(WEB_SOCKET_PATH);
@@ -77,9 +101,8 @@ async fn main() {
         "".to_owned(),
     );
 
-    chat.connect_unauthenticated()
-        .await
-        .expect("should have connected");
+    chat.connect_unauthenticated().await?;
     chat.disconnect().await;
     log::info!("completed successfully");
+    Ok(())
 }
