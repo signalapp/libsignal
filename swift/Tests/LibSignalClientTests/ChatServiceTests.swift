@@ -110,6 +110,47 @@ final class ChatServiceTests: TestCaseBase {
 
 #endif
 
+    func testListenerCleanup() throws {
+        class Listener: ChatListener {
+            let expectation: XCTestExpectation
+            init(expectation: XCTestExpectation) {
+                self.expectation = expectation
+            }
+
+            deinit {
+                expectation.fulfill()
+            }
+
+            func chatServiceDidReceiveQueueEmpty(_: ChatService) {}
+            func chatService(_ chat: ChatService, didReceiveIncomingMessage envelope: Data, serverDeliveryTimestamp: UInt64, sendAck: () async throws -> Void) {}
+        }
+
+        let net = Net(env: .staging, userAgent: Self.userAgent)
+
+        do {
+            let chat = net.createChatService(username: "", password: "")
+
+            do {
+                let listener = Listener(expectation: expectation(description: "first listener destroyed"))
+                chat.setListener(listener)
+            }
+            do {
+                let listener = Listener(expectation: expectation(description: "second listener destroyed"))
+                chat.setListener(listener)
+            }
+            // Clearing the listener has a separate implementation, so let's make sure both get destroyed.
+            chat.setListener(nil)
+            waitForExpectations(timeout: 2)
+
+            do {
+                let listener = Listener(expectation: expectation(description: "third listener destroyed"))
+                chat.setListener(listener)
+            }
+        }
+        // If we destroy the ChatService, we should also clean up the listener.
+        waitForExpectations(timeout: 2)
+    }
+
     func testConnectUnauth() async throws {
         // Use the presence of the proxy server environment setting to know whether we should make network requests in our tests.
         guard ProcessInfo.processInfo.environment["LIBSIGNAL_TESTING_PROXY_SERVER"] != nil else {

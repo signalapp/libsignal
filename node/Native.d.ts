@@ -407,6 +407,7 @@ export function ServerCertificate_GetKeyId(obj: Wrapper<ServerCertificate>): num
 export function ServerCertificate_GetSerialized(obj: Wrapper<ServerCertificate>): Buffer;
 export function ServerCertificate_GetSignature(obj: Wrapper<ServerCertificate>): Buffer;
 export function ServerCertificate_New(keyId: number, serverKey: Wrapper<PublicKey>, trustRoot: Wrapper<PrivateKey>): ServerCertificate;
+export function ServerMessageAck_Send(asyncRuntime: Wrapper<TokioAsyncContext>, ack: Wrapper<ServerMessageAck>): Promise<void>;
 export function ServerPublicParams_CreateAuthCredentialWithPniPresentationDeterministic(serverPublicParams: Wrapper<ServerPublicParams>, randomness: Buffer, groupSecretParams: Serialized<GroupSecretParams>, authCredentialWithPniBytes: Buffer): Buffer;
 export function ServerPublicParams_CreateExpiringProfileKeyCredentialPresentationDeterministic(serverPublicParams: Wrapper<ServerPublicParams>, randomness: Buffer, groupSecretParams: Serialized<GroupSecretParams>, profileKeyCredential: Serialized<ExpiringProfileKeyCredential>): Buffer;
 export function ServerPublicParams_CreateProfileKeyCredentialRequestContextDeterministic(serverPublicParams: Wrapper<ServerPublicParams>, randomness: Buffer, userId: Buffer, profileKey: Serialized<ProfileKey>): Serialized<ProfileKeyCredentialRequestContext>;
@@ -578,6 +579,7 @@ interface SenderKeyDistributionMessage { readonly __type: unique symbol; }
 interface SenderKeyMessage { readonly __type: unique symbol; }
 interface SenderKeyRecord { readonly __type: unique symbol; }
 interface ServerCertificate { readonly __type: unique symbol; }
+interface ServerMessageAck { readonly __type: unique symbol; }
 interface ServerPublicParams { readonly __type: unique symbol; }
 interface ServerSecretParams { readonly __type: unique symbol; }
 interface SessionRecord { readonly __type: unique symbol; }

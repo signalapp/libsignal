@@ -12,6 +12,9 @@ use libsignal_protocol::*;
 mod convert;
 pub use convert::*;
 
+mod chat;
+pub use chat::*;
+
 mod error;
 pub use error::*;
 

@@ -13,6 +13,7 @@ use paste::paste;
 use uuid::Uuid;
 
 use crate::io::{InputStream, SyncInputStream};
+use crate::net::MakeChatListener;
 use crate::support::{extend_lifetime, AsType, FixedLengthBincodeSerializable, Serialized};
 
 use super::*;
@@ -361,6 +362,18 @@ macro_rules! bridge_trait {
                     stored
                 }
             }
+
+            impl<'a> ArgTypeInfo<'a> for Option<&'a dyn $name> {
+                type ArgType = *const [<Ffi $name Struct>];
+                type StoredType = Option<&'a [<Ffi $name Struct>]>;
+                #[allow(clippy::not_unsafe_ptr_arg_deref)]
+                fn borrow(foreign: Self::ArgType) -> SignalFfiResult<Self::StoredType> {
+                    Ok(unsafe { foreign.as_ref() })
+                }
+                fn load_from(stored: &'a mut Self::StoredType) -> Self {
+                    stored.as_ref().map(|x| x as &'a dyn $name)
+                }
+            }
         }
     };
 }
@@ -373,6 +386,7 @@ bridge_trait!(SignedPreKeyStore);
 bridge_trait!(KyberPreKeyStore);
 bridge_trait!(InputStream);
 bridge_trait!(SyncInputStream);
+bridge_trait!(MakeChatListener);
 
 impl<T: ResultTypeInfo, E> ResultTypeInfo for Result<T, E>
 where
@@ -810,6 +824,7 @@ macro_rules! ffi_arg_type {
     (&[u8; $len:expr]) => (*const [u8; $len]);
     (&[& $typ:ty]) => (ffi::BorrowedSliceOf<*const $typ>);
     (&mut dyn $typ:ty) => (*const paste!(ffi::[<Ffi $typ Struct>]));
+    (Option<&dyn $typ:ty>) => (*const paste!(ffi::[<Ffi $typ Struct>]));
     (& $typ:ty) => (*const $typ);
     (&mut $typ:ty) => (*mut $typ);
     (Option<& $typ:ty>) => (*const $typ);

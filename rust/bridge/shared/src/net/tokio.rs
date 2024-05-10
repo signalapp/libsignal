@@ -14,7 +14,7 @@ use libsignal_bridge_macros::bridge_fn;
 use crate::support::*;
 use crate::*;
 pub struct TokioAsyncContext {
-    rt: tokio::runtime::Runtime,
+    pub(crate) rt: tokio::runtime::Runtime,
     tasks: Arc<Mutex<HashMap<CancellationId, tokio::sync::oneshot::Sender<()>>>>,
     next_raw_cancellation_id: AtomicU64,
 }

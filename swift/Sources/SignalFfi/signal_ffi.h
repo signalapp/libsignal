@@ -275,6 +275,11 @@ typedef struct SignalSenderKeyRecord SignalSenderKeyRecord;
 
 typedef struct SignalServerCertificate SignalServerCertificate;
 
+/**
+ * Wraps a named type and a single-use guard around [`chat::server_requests::AckEnvelopeFuture`].
+ */
+typedef struct SignalServerMessageAck SignalServerMessageAck;
+
 typedef struct SignalServerPublicParams SignalServerPublicParams;
 
 typedef struct SignalServerSecretParams SignalServerSecretParams;
@@ -587,6 +592,28 @@ typedef struct {
   const void *context;
   SignalCancellationId cancellation_id;
 } SignalCPromiseFfiResponseAndDebugInfo;
+
+typedef void (*SignalReceivedIncomingMessage)(void *ctx, SignalOwnedBuffer envelope, uint64_t timestamp_millis, SignalServerMessageAck *cleanup);
+
+typedef void (*SignalReceivedQueueEmpty)(void *ctx);
+
+typedef void (*SignalDestroyChatListener)(void *ctx);
+
+/**
+ * Callbacks for [`ChatListener`].
+ *
+ * Callbacks will be serialized (i.e. two calls will not come in at the same time), but may not
+ * always happen on the same thread. Calls should be responded to promptly to avoid blocking later
+ * messages.
+ */
+typedef struct {
+  void *ctx;
+  SignalReceivedIncomingMessage received_incoming_message;
+  SignalReceivedQueueEmpty received_queue_empty;
+  SignalDestroyChatListener destroy;
+} SignalFfiChatListenerStruct;
+
+typedef SignalFfiChatListenerStruct SignalFfiMakeChatListenerStruct;
 
 /**
  * A C callback used to report the results of Rust futures.
@@ -1516,6 +1543,12 @@ SignalFfiError *signal_chat_service_unauth_send_and_debug(SignalCPromiseFfiRespo
 SignalFfiError *signal_chat_service_auth_send(SignalCPromiseFfiChatResponse *promise, const SignalTokioAsyncContext *async_runtime, const SignalChat *chat, const SignalHttpRequest *http_request, uint32_t timeout_millis);
 
 SignalFfiError *signal_chat_service_auth_send_and_debug(SignalCPromiseFfiResponseAndDebugInfo *promise, const SignalTokioAsyncContext *async_runtime, const SignalChat *chat, const SignalHttpRequest *http_request, uint32_t timeout_millis);
+
+SignalFfiError *signal_chat_server_set_listener(const SignalTokioAsyncContext *runtime, const SignalChat *chat, const SignalFfiMakeChatListenerStruct *make_listener);
+
+SignalFfiError *signal_server_message_ack_destroy(SignalServerMessageAck *p);
+
+SignalFfiError *signal_server_message_ack_send(SignalCPromisebool *promise, const SignalTokioAsyncContext *async_runtime, const SignalServerMessageAck *ack);
 
 SignalFfiError *signal_lookup_request_new(SignalLookupRequest **out);
 
