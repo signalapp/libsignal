@@ -8,6 +8,20 @@ import Foundation
 import SignalFfi
 import XCTest
 
+extension ChatService {
+    func injectServerRequest(base64: String) {
+        self.injectServerRequest(Data(base64Encoded: base64)!)
+    }
+
+    func injectServerRequest(_ requestBytes: Data) {
+        withNativeHandle { handle in
+            requestBytes.withUnsafeBorrowedBuffer { requestBytes in
+                failOnError(signal_testing_chat_service_inject_raw_server_request(handle, requestBytes))
+            }
+        }
+    }
+}
+
 final class ChatServiceTests: TestCaseBase {
 // These testing endpoints aren't generated in device builds, to save on code size.
 #if !os(iOS) || targetEnvironment(simulator)
@@ -106,6 +120,84 @@ final class ChatServiceTests: TestCaseBase {
                 })
             }
         }
+    }
+
+    func testListenerCallbacks() throws {
+        class Listener: ChatListener {
+            var stage = 0
+            let queueEmpty: XCTestExpectation
+            let firstMessageReceived: XCTestExpectation
+            let secondMessageReceived: XCTestExpectation
+
+            init(queueEmpty: XCTestExpectation, firstMessageReceived: XCTestExpectation, secondMessageReceived: XCTestExpectation) {
+                self.queueEmpty = queueEmpty
+                self.firstMessageReceived = firstMessageReceived
+                self.secondMessageReceived = secondMessageReceived
+            }
+
+            func chatService(_ chat: ChatService, didReceiveIncomingMessage envelope: Data, serverDeliveryTimestamp: UInt64, sendAck: () async throws -> Void) {
+                // This assumes a little-endian platform.
+                XCTAssertEqual(envelope, withUnsafeBytes(of: serverDeliveryTimestamp) { Data($0) })
+                switch serverDeliveryTimestamp {
+                case 1000:
+                    XCTAssertEqual(self.stage, 0)
+                    self.stage += 1
+                    self.firstMessageReceived.fulfill()
+                case 2000:
+                    XCTAssertEqual(self.stage, 1)
+                    self.stage += 1
+                    self.secondMessageReceived.fulfill()
+                default:
+                    XCTFail("unexpected message")
+                }
+            }
+
+            func chatServiceDidReceiveQueueEmpty(_: ChatService) {
+                XCTAssertEqual(self.stage, 2)
+                self.stage += 1
+                self.queueEmpty.fulfill()
+            }
+        }
+
+        let net = Net(env: .staging, userAgent: Self.userAgent)
+        let chat = net.createChatService(username: "", password: "")
+        let listener = Listener(
+            queueEmpty: expectation(description: "queue empty"),
+            firstMessageReceived: expectation(description: "first message received"),
+            secondMessageReceived: expectation(description: "second message received")
+        )
+        chat.setListener(listener)
+
+        // The following payloads were generated via protoscope.
+        // % protoscope -s | base64
+        // The fields are described by chat_websocket.proto in the libsignal-net crate.
+
+        // 1: {"PUT"}
+        // 2: {"/api/v1/message"}
+        // 3: {1000i64}
+        // 5: {"x-signal-timestamp:1000"}
+        // 4: 1
+        chat.injectServerRequest(base64: "CgNQVVQSDy9hcGkvdjEvbWVzc2FnZRoI6AMAAAAAAAAqF3gtc2lnbmFsLXRpbWVzdGFtcDoxMDAwIAE=")
+        // 1: {"PUT"}
+        // 2: {"/api/v1/message"}
+        // 3: {2000i64}
+        // 5: {"x-signal-timestamp:2000"}
+        // 4: 2
+        chat.injectServerRequest(base64: "CgNQVVQSDy9hcGkvdjEvbWVzc2FnZRoI0AcAAAAAAAAqF3gtc2lnbmFsLXRpbWVzdGFtcDoyMDAwIAI=")
+
+        // Sending an invalid message should not affect the listener at all, nor should it stop future requests.
+        // 1: {"PUT"}
+        // 2: {"/invalid"}
+        // 4: 10
+        chat.injectServerRequest(base64: "CgNQVVQSCC9pbnZhbGlkIAo=")
+
+        // 1: {"PUT"}
+        // 2: {"/api/v1/queue/empty"}
+        // 4: 99
+        chat.injectServerRequest(base64: "CgNQVVQSEy9hcGkvdjEvcXVldWUvZW1wdHkgYw==")
+
+        waitForExpectations(timeout: 2)
+        XCTAssertEqual(listener.stage, 3)
     }
 
 #endif

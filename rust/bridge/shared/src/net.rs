@@ -316,6 +316,8 @@ pub struct Chat {
         Arc<dyn ChatServiceWithDebugInfo + Send + Sync>,
     >,
     listener: std::sync::Mutex<ChatListenerState>,
+    #[cfg(feature = "testing-fns")]
+    synthetic_request_tx: mpsc::Sender<chat::ws::ServerRequest<TcpSslConnectorStream>>,
 }
 
 impl RefUnwindSafe for Chat {}
@@ -407,6 +409,9 @@ fn ChatService_new(
 ) -> Chat {
     let (incoming_tx, incoming_rx) = mpsc::channel(1);
     let incoming_stream = chat::server_requests::stream_incoming_messages(incoming_rx);
+    #[cfg(feature = "testing-fns")]
+    let synthetic_request_tx = incoming_tx.clone();
+
     Chat {
         service: chat_service(
             &connection_manager.chat,
@@ -421,6 +426,8 @@ fn ChatService_new(
         )
         .into_dyn(),
         listener: std::sync::Mutex::new(ChatListenerState::Inactive(Box::pin(incoming_stream))),
+        #[cfg(feature = "testing-fns")]
+        synthetic_request_tx,
     }
 }
 
@@ -675,6 +682,16 @@ fn ChatServer_SetListener(
         };
         drop(guard);
     }
+}
+
+#[cfg(feature = "testing-fns")]
+#[bridge_fn]
+fn TESTING_ChatService_InjectRawServerRequest(chat: &Chat, bytes: &[u8]) {
+    let request_proto = <chat::RequestProto as prost::Message>::decode(bytes)
+        .expect("invalid protobuf cannot use this endpoint to test");
+    chat.synthetic_request_tx
+        .blocking_send(chat::ws::ServerRequest::fake(request_proto))
+        .expect("not closed");
 }
 
 /// Wraps a named type and a single-use guard around [`chat::server_requests::AckEnvelopeFuture`].

@@ -1546,6 +1546,8 @@ SignalFfiError *signal_chat_service_auth_send_and_debug(SignalCPromiseFfiRespons
 
 SignalFfiError *signal_chat_server_set_listener(const SignalTokioAsyncContext *runtime, const SignalChat *chat, const SignalFfiMakeChatListenerStruct *make_listener);
 
+SignalFfiError *signal_testing_chat_service_inject_raw_server_request(const SignalChat *chat, SignalBorrowedBuffer bytes);
+
 SignalFfiError *signal_server_message_ack_destroy(SignalServerMessageAck *p);
 
 SignalFfiError *signal_server_message_ack_send(SignalCPromisebool *promise, const SignalTokioAsyncContext *async_runtime, const SignalServerMessageAck *ack);

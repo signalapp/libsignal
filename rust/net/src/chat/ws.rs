@@ -46,13 +46,17 @@ enum ChatMessage {
 #[derive(Debug)]
 pub struct ResponseSender<S> {
     request_id: u64,
-    writer: WebSocketClientWriter<S, ChatServiceError>,
+    // Declared with Option for testing ServerRequest handlers.
+    writer: Option<WebSocketClientWriter<S, ChatServiceError>>,
 }
 
 impl<S: AsyncDuplexStream> ResponseSender<S> {
     pub async fn send_response(self, status_code: StatusCode) -> Result<(), ChatServiceError> {
+        let Some(writer) = self.writer else {
+            return Ok(());
+        };
         let response = response_for_code(self.request_id, status_code);
-        self.writer.send(response.encode_to_vec()).await
+        writer.send(response.encode_to_vec()).await
     }
 }
 
@@ -72,8 +76,23 @@ impl<S: AsyncDuplexStream> ServerRequest<S> {
             .ok_or(ChatServiceError::ServerRequestMissingId)?;
         Ok(Self {
             request_proto,
-            response_sender: ResponseSender { request_id, writer },
+            response_sender: ResponseSender {
+                request_id,
+                writer: Some(writer),
+            },
         })
+    }
+
+    /// Creates a ServerRequest that does nothing when ack'd.
+    pub fn fake(request_proto: RequestProto) -> Self {
+        let request_id = request_proto.id.expect("fake requests still need IDs");
+        Self {
+            request_proto,
+            response_sender: ResponseSender {
+                request_id,
+                writer: None,
+            },
+        }
     }
 }
 

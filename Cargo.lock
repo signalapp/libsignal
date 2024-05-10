@@ -1961,6 +1961,7 @@ dependencies = [
  "once_cell",
  "partial-default",
  "paste",
+ "prost",
  "rand",
  "rayon",
  "scopeguard",
