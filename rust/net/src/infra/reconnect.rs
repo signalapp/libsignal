@@ -366,7 +366,10 @@ where
                 ServiceState::Cooldown(next_attempt_time) => {
                     // checking if the `next_attempt_time` is still in the future
                     if next_attempt_time > &deadline {
-                        log::debug!("All possible routes are in cooldown state");
+                        log::info!(
+                            "All possible routes are in cooldown state until {:?} from now",
+                            next_attempt_time.saturating_duration_since(lock_taken_instant)
+                        );
                         return Err(ReconnectError::AllRoutesFailed { attempts });
                     }
                     // it's safe to sleep without a `timeout`
