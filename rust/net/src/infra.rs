@@ -27,6 +27,7 @@ pub mod certs;
 pub mod connection_manager;
 pub mod dns;
 pub mod errors;
+mod http_client;
 pub(crate) mod reconnect;
 pub mod tcp_ssl;
 pub mod ws;
@@ -145,8 +146,14 @@ pub struct ConnectionInfo {
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, strum::Display)]
 #[strum(serialize_all = "lowercase")]
 pub enum DnsSource {
-    /// The result came from performing a DNS query.
-    Lookup,
+    /// The result was returned from the cache
+    Cache,
+    /// The result came from performing a plaintext DNS query over UDP.
+    UdpLookup,
+    /// The result came from performing a DNS-over-HTTPS query.
+    DnsOverHttpsLookup,
+    /// The result came from performing a DNS query using a system resolver.
+    SystemLookup,
     /// The result was resolved from a preconfigured static entry.
     Static,
     /// Test-only value
@@ -243,12 +250,14 @@ pub trait TransportConnector: Clone + Send + Sync {
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub enum Alpn {
     Http1_1,
+    Http2,
 }
 
 impl AsRef<[u8]> for Alpn {
     fn as_ref(&self) -> &[u8] {
         match self {
             Alpn::Http1_1 => b"\x08http/1.1",
+            Alpn::Http2 => b"\x02h2",
         }
     }
 }
@@ -325,13 +334,13 @@ pub(crate) mod test {
         fn connection_info_description() {
             let connection_info = ConnectionInfo {
                 address: url::Host::Domain("test.signal.org".to_string()),
-                dns_source: DnsSource::Lookup,
+                dns_source: DnsSource::SystemLookup,
                 route_type: RouteType::Test,
             };
 
             assert_eq!(
                 connection_info.description(),
-                "route=test;dns_source=lookup;ip_type=Unknown"
+                "route=test;dns_source=systemlookup;ip_type=Unknown"
             );
         }
 

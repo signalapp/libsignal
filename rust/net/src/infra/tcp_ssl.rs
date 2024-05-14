@@ -537,17 +537,14 @@ pub(crate) mod testutil {
 
 #[cfg(test)]
 mod test {
+    use super::testutil::*;
+    use super::*;
+    use crate::infra::dns::lookup_result::LookupResult;
+    use crate::infra::HttpRequestDecoratorSeq;
+    use assert_matches::assert_matches;
     use std::borrow::Cow;
     use std::collections::HashMap;
     use std::net::Ipv6Addr;
-
-    use assert_matches::assert_matches;
-
-    use crate::infra::dns::LookupResult;
-    use crate::infra::HttpRequestDecoratorSeq;
-
-    use super::testutil::*;
-    use super::*;
 
     #[tokio::test]
     async fn connect_to_server() {

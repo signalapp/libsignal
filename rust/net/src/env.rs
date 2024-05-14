@@ -16,7 +16,7 @@ use rand::{thread_rng, Rng};
 
 use crate::enclave::{Cdsi, EnclaveEndpoint, MrEnclave, Nitro, Sgx, Tpm2Snp};
 use crate::infra::certs::RootCertificates;
-use crate::infra::dns::LookupResult;
+use crate::infra::dns::lookup_result::LookupResult;
 use crate::infra::{
     ConnectionParams, DnsSource, HttpRequestDecorator, HttpRequestDecoratorSeq, RouteType,
 };

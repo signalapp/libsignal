@@ -88,6 +88,7 @@ impl From<certs::Error> for TransportConnectError {
         Self::CertError
     }
 }
+
 impl<S> From<HandshakeError<S>> for TransportConnectError {
     fn from(error: HandshakeError<S>) -> Self {
         Self::SslFailedHandshake(FailedHandshakeReason::from(error))

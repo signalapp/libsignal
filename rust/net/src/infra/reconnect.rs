@@ -485,7 +485,6 @@ where
 #[cfg(test)]
 mod test {
     use std::fmt::Debug;
-    use std::future::Future;
     use std::sync::atomic::{AtomicBool, AtomicI32, Ordering};
     use std::sync::{Arc, Mutex};
     use std::time::Duration;
@@ -510,6 +509,7 @@ mod test {
         TIME_ADVANCE_VALUE,
     };
     use crate::infra::{ConnectionParams, HttpRequestDecoratorSeq, RouteType};
+    use crate::utils::sleep_and_catch_up;
 
     #[derive(Clone, Debug)]
     struct TestService {
@@ -932,38 +932,6 @@ mod test {
 
         // reconnect count should not change
         assert_eq!(1, service_with_reconnect.reconnect_count());
-    }
-
-    #[tokio::test(start_paused = true)]
-    async fn sleep_and_catch_up_showcase() {
-        const DURATION: Duration = Duration::from_millis(100);
-
-        async fn test<F: Future<Output = ()>>(sleep_variant: F) -> bool {
-            let flag = Arc::new(AtomicBool::new(false));
-            let flag_clone = flag.clone();
-            tokio::spawn(async move {
-                time::sleep(DURATION).await;
-                flag_clone.store(true, Ordering::Relaxed);
-            });
-            sleep_variant.await;
-            flag.load(Ordering::Relaxed)
-        }
-
-        assert!(!test(time::sleep(DURATION)).await);
-        assert!(!test(time::advance(DURATION)).await);
-        assert!(test(sleep_and_catch_up(DURATION)).await);
-    }
-
-    async fn sleep_and_catch_up(duration: Duration) {
-        // In the tokio time paused test mode, if some logic is supposed to wake up at specific time
-        // and a test wants to make sure it observes the result of that logic without moving
-        // the time past that point, it's not enough to call `sleep()` or `advance()` alone.
-        // The combination of sleeping and advancing by 0 makes sure that all events
-        // (in all tokio thread) scheduled to run at (or before) that specific time are processed.
-        //
-        // `sleep_and_catch_up_showcase()` test demonstrates this behavior.
-        time::sleep(duration).await;
-        time::advance(Duration::ZERO).await
     }
 
     fn connector_and_service() -> (
