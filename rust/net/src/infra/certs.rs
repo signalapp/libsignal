@@ -42,10 +42,24 @@ impl RootCertificates {
     ) -> Result<(), Error> {
         let der = match self {
             RootCertificates::Native => {
+                let rustls_crypto_provider = match rustls::crypto::CryptoProvider::get_default() {
+                    Some(provider) => provider.clone(),
+                    None if cfg!(target_os = "linux") => {
+                        // On Linux rustls-platform-verifier uses the webpki crate,
+                        // which requires a rustls CryptoProvider.
+                        rustls::crypto::ring::default_provider().into()
+                    }
+                    None => {
+                        // On other platforms, we don't want to take a dependency on ring,
+                        // because it responds to some of the same CFLAGS as BoringSSL
+                        // but doesn't expect them to be set.
+                        panic!("no default rustls CryptoProvider set");
+                    }
+                };
                 return set_up_platform_verifier(
                     connector,
                     host_name,
-                    rustls_platform_verifier::Verifier::new(),
+                    rustls_platform_verifier::Verifier::new().with_provider(rustls_crypto_provider),
                 );
             }
             RootCertificates::Signal => SIGNAL_ROOT_CERT_DER,
