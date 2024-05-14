@@ -47,6 +47,9 @@ async fn main() -> ExitCode {
         .filter_module(module_path!(), log::LevelFilter::Info)
         .parse_default_env()
         .init();
+    rustls::crypto::ring::default_provider()
+        .install_default()
+        .expect("is only provider");
 
     let config = Config::parse();
     let env = match config.env {
