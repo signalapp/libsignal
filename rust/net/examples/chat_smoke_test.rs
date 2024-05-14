@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::process::ExitCode;
 use std::time::Duration;
 
 use clap::{Args, Parser, ValueEnum};
@@ -41,7 +42,7 @@ enum Environment {
 }
 
 #[tokio::main]
-async fn main() {
+async fn main() -> ExitCode {
     env_logger::builder()
         .filter_module(module_path!(), log::LevelFilter::Info)
         .parse_default_env()
@@ -67,17 +68,30 @@ async fn main() {
         _ => connection_params.retain(|c| c.route_type == RouteType::Direct),
     };
 
+    let mut any_failures = false;
     if config.try_all_routes {
         for route in connection_params {
             log::info!("trying {} ({})", route.sni, route.route_type);
             test_connection(&env, vec![route])
                 .await
-                .unwrap_or_else(|e| log::error!("failed to connect: {e}"));
+                .unwrap_or_else(|e| {
+                    any_failures = true;
+                    log::error!("failed to connect: {e}")
+                });
         }
     } else {
         test_connection(&env, connection_params)
             .await
-            .unwrap_or_else(|e| log::error!("failed to connect: {e}"));
+            .unwrap_or_else(|e| {
+                any_failures = true;
+                log::error!("failed to connect: {e}")
+            });
+    }
+
+    if any_failures {
+        ExitCode::FAILURE
+    } else {
+        ExitCode::SUCCESS
     }
 }
 
