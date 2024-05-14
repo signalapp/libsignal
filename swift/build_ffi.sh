@@ -62,7 +62,7 @@ check_cbindgen() {
     echo 'error: cbindgen not found in PATH' >&2
     if command -v cargo > /dev/null; then
       echo 'note: get it by running' >&2
-      printf "\n\t%s\n\n" "cargo install cbindgen --vers '^0.16'" >&2
+      printf "\n\t%s\n\n" "cargo +stable install cbindgen" >&2
     fi
     exit 1
   fi
