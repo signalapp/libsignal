@@ -12,29 +12,23 @@ cd "${SCRIPT_DIR}"/..
 . bin/build_helpers.sh
 
 export CARGO_PROFILE_RELEASE_DEBUG=1 # enable line tables
-export CFLAGS="-DOPENSSL_SMALL ${CFLAGS:-}" # use small BoringSSL curve tables to reduce binary size
 
 if [[ -n "${CARGO_BUILD_TARGET:-}" ]]; then
   # Avoid overriding RUSTFLAGS for host builds, because that resets the incremental build.
   export RUSTFLAGS="--cfg aes_armv8 --cfg polyval_armv8 ${RUSTFLAGS:-}" # Enable ARMv8 cryptography acceleration when available
 fi
 
-# Work around cc crate bug with Catalyst targets
-export CFLAGS_aarch64_apple_ios_macabi="--target=arm64-apple-ios-macabi ${CFLAGS}"
-export CFLAGS_x86_64_apple_ios_macabi="--target=x86_64-apple-ios-macabi ${CFLAGS}"
-
-# For some reason, 'ring' symbols (rustls dependency) don't get linked properly without using LTO.
-export CARGO_PROFILE_DEV_LTO=thin
-
 if [[ "${CARGO_BUILD_TARGET:-}" =~ -ios(-sim|-macabi)?$ ]]; then
   export IPHONEOS_DEPLOYMENT_TARGET=13
   # Use full LTO to reduce binary size
   export CARGO_PROFILE_RELEASE_LTO=fat
   export CFLAGS="-flto=full ${CFLAGS:-}"
-else
-  # Matches the "dev" setting above.
-  export CARGO_PROFILE_RELEASE_LTO=thin
+  export CFLAGS="-DOPENSSL_SMALL ${CFLAGS:-}" # use small BoringSSL curve tables to reduce binary size
 fi
+
+# Work around cc crate bug with Catalyst targets
+export CFLAGS_aarch64_apple_ios_macabi="--target=arm64-apple-ios-macabi ${CFLAGS:-}"
+export CFLAGS_x86_64_apple_ios_macabi="--target=x86_64-apple-ios-macabi ${CFLAGS:-}"
 
 if [[ "${CARGO_BUILD_TARGET:-}" != "aarch64-apple-ios" ]]; then
   FEATURES="testing-fns"
