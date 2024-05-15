@@ -5,29 +5,28 @@
 
 //! Signal remote message backup utilities.
 //!
+//! Contains code to read and validate message backup files.
+
 use futures::AsyncRead;
+use libsignal_message_backup_io::frame::{
+    HmacMismatchError, ReaderFactory, UnvalidatedHmacReader, VerifyHmac, VerifyHmacError,
+};
+use libsignal_message_backup_io::key::MessageBackupKey;
+use libsignal_message_backup_io::parse::VarintDelimitedReader;
+use libsignal_message_backup_io::proto;
+use libsignal_message_backup_io::unknown::{
+    FormatPath, PathPart, UnknownValue, VisitUnknownFieldsExt as _,
+};
 use mediasan_common::AsyncSkip;
 use protobuf::Message as _;
 
 use crate::backup::Purpose;
-use crate::frame::{
-    HmacMismatchError, ReaderFactory, UnvalidatedHmacReader, VerifyHmac, VerifyHmacError,
-};
-use crate::key::MessageBackupKey;
-use crate::parse::VarintDelimitedReader;
-use crate::unknown::{FormatPath, PathPart, UnknownValue, VisitUnknownFieldsExt as _};
 
-pub mod args;
 pub mod backup;
-pub mod frame;
-pub mod key;
-pub mod parse;
-pub mod unknown;
 
-#[cfg(not(feature = "expose-proto-types"))]
-pub(crate) mod proto;
-#[cfg(feature = "expose-proto-types")]
-pub mod proto;
+// Re-export these modules so that the libsignal_message_backup_io crate can be
+// treated as a private dependency.
+pub use libsignal_message_backup_io::{frame, key, parse, unknown};
 
 pub struct BackupReader<R> {
     purpose: Purpose,

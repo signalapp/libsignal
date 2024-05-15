@@ -77,6 +77,19 @@ fn main() {
         .write_all(b" #[cfg(test)] pub mod test; ")
         .expect("failed to write");
 
+    // Strip the `#[non_exhaustive]` attributes in the generated proto. Ideally
+    // we'd just configure the generator to not emit this but it's not currently
+    // configurable.
+    for entry in std::fs::read_dir(&out_dir).unwrap() {
+        let entry = entry.unwrap();
+        if !entry.file_type().unwrap().is_file() {
+            continue;
+        }
+        let path = entry.path();
+        let contents = std::fs::read_to_string(&path).unwrap();
+        std::fs::write(path, contents.replace("#[non_exhaustive]", "")).unwrap();
+    }
+
     for proto in PROTOS {
         println!("cargo:rerun-if-changed={}", proto);
     }

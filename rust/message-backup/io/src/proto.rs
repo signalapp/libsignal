@@ -19,9 +19,6 @@ macro_rules! impl_from_oneof {
 
 use self::backup::*;
 
-#[cfg(feature = "expose-proto-types")]
-pub use self::backup::*;
-
 impl_from_oneof!(
     chat_item::DirectionalDetails,
     chat_item::IncomingMessageDetails,

@@ -18,20 +18,20 @@ pub enum ParseError {
 
 const VARINT_MAX_LENGTH: usize = 10;
 
-pub(crate) struct VarintDelimitedReader<R> {
+pub struct VarintDelimitedReader<R> {
     reader: R,
     buffer: ArrayVec<u8, VARINT_MAX_LENGTH>,
 }
 
 impl<R: AsyncRead + Unpin> VarintDelimitedReader<R> {
-    pub(crate) fn new(reader: R) -> Self {
+    pub fn new(reader: R) -> Self {
         Self {
             reader,
             buffer: ArrayVec::new(),
         }
     }
 
-    pub(crate) async fn read_next(&mut self) -> Result<Option<Box<[u8]>>, ParseError> {
+    pub async fn read_next(&mut self) -> Result<Option<Box<[u8]>>, ParseError> {
         let length = match self.read_next_varint().await? {
             None => return Ok(None),
             Some(length) => length,
@@ -54,8 +54,8 @@ impl<R: AsyncRead + Unpin> VarintDelimitedReader<R> {
         Ok(Some(buf.into_boxed_slice()))
     }
 
-    /// Consumes self, returning the inner [`AsyncRead`]er.
-    pub(crate) fn into_inner(self) -> R {
+    /// Consumes self, returning the inner [`AsyncRead`]er.                                                                                                                                            
+    pub fn into_inner(self) -> R {
         self.reader
     }
 

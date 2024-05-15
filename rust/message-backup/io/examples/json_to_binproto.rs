@@ -27,7 +27,7 @@ fn main() {
 
     let contents = assert_matches!(contents, serde_json::Value::Array(contents) => contents);
     let serialized =
-        libsignal_message_backup::backup::convert_from_json(contents).expect("failed to convert");
+        libsignal_message_backup_io::convert_from_json(contents).expect("failed to convert");
 
     std::io::stdout()
         .write_all(&serialized)

@@ -128,14 +128,17 @@ mod test {
     use protobuf::EnumOrUnknown;
     use test_case::test_case;
 
+    use crate::backup::test::{ProtoTestData, ProtoTestDataId};
     use crate::backup::time::testutil::MillisecondsSinceEpoch;
     use crate::backup::TryIntoWith as _;
 
     use super::*;
 
-    impl proto::Call {
-        pub(crate) const TEST_ID: u64 = 33333;
-        pub(crate) fn test_data() -> Self {
+    impl ProtoTestDataId for proto::Call {
+        const TEST_ID: u64 = 33333;
+    }
+    impl ProtoTestData for proto::Call {
+        fn test_data() -> Self {
             Self {
                 callId: Self::TEST_ID,
                 conversationRecipientId: proto::Recipient::TEST_ID,

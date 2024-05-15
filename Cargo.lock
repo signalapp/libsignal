@@ -2032,14 +2032,10 @@ dependencies = [
 name = "libsignal-message-backup"
 version = "0.1.0"
 dependencies = [
- "aes",
  "array-concat",
  "arrayvec",
  "assert_cmd",
  "assert_matches",
- "async-compression",
- "async-trait",
- "cbc",
  "clap",
  "clap-stdin",
  "derive-where",
@@ -2049,17 +2045,12 @@ dependencies = [
  "futures",
  "hex",
  "hex-literal",
- "hkdf",
- "hmac",
- "libsignal-message-backup",
- "libsignal-message-backup-macros",
+ "libsignal-message-backup-io",
  "libsignal-protocol",
  "log",
  "mediasan-common",
  "num_enum",
  "protobuf",
- "protobuf-codegen",
- "protobuf-json-mapping",
  "serde_json",
  "sha2",
  "signal-crypto",
@@ -2072,6 +2063,43 @@ dependencies = [
  "usernames",
  "uuid",
  "zkgroup",
+]
+
+[[package]]
+name = "libsignal-message-backup-io"
+version = "0.1.0"
+dependencies = [
+ "aes",
+ "array-concat",
+ "arrayvec",
+ "assert_matches",
+ "async-compression",
+ "async-trait",
+ "cbc",
+ "clap",
+ "clap-stdin",
+ "derive-where",
+ "displaydoc",
+ "futures",
+ "hex",
+ "hex-literal",
+ "hkdf",
+ "hmac",
+ "libsignal-message-backup-io",
+ "libsignal-message-backup-macros",
+ "libsignal-protocol",
+ "log",
+ "mediasan-common",
+ "protobuf",
+ "protobuf-codegen",
+ "protobuf-json-mapping",
+ "serde_json",
+ "sha2",
+ "signal-crypto",
+ "subtle",
+ "test-case",
+ "test-log",
+ "thiserror",
 ]
 
 [[package]]

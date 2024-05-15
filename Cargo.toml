@@ -6,6 +6,7 @@ members = [
     "rust/device-transfer",
     "rust/media",
     "rust/message-backup",
+    "rust/message-backup/io",
     "rust/net",
     "rust/pin",
     "rust/poksho",
