@@ -125,10 +125,15 @@ def translate_to_ts(typ):
     return typ
 
 
-ignore_this_warning = re.compile(
-    "("
-    r"warning: \d+ warnings? emitted"
-    ")")
+diagnostics_to_ignore = [
+    r"warning: \d+ warnings? emitted",
+    r"warning: unused import",
+    r"warning: field.+ never read",
+    r"warning: variant.+ never constructed",
+    r"warning: method.+ never used",
+    r"warning: associated function.+ never used",
+]
+should_ignore_pattern = re.compile("(" + ")|(".join(diagnostics_to_ignore) + ")")
 
 
 def camelcase(arg):
@@ -148,6 +153,7 @@ def collect_decls(crate_dir, features=()):
         '--profile=check',
         '--features', ','.join(features),
         '--message-format=short',
+        '--color=never',
         '--',
         '-Zunpretty=expanded']
     rustc = subprocess.Popen(args, cwd=crate_dir, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -162,7 +168,7 @@ def collect_decls(crate_dir, features=()):
         if l == "":
             continue
 
-        if ignore_this_warning.match(l):
+        if should_ignore_pattern.search(l):
             continue
 
         print(l, file=sys.stderr)
