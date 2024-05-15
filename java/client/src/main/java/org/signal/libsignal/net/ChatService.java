@@ -97,10 +97,11 @@ public class ChatService extends NativeHandleGuard.SimpleOwner {
    * Sends request to the Chat Service over an unauthenticated channel.
    *
    * @param req request object
-   * @return a {@code CompletableFuture} of a {@link Response}
+   * @return a {@code CompletableFuture} of a {@link Response}. The future will fail with a {@link
+   *     ChatServiceInactiveException} (inside an {@link java.util.concurrent.ExecutionException
+   *     ExecutionException}) if you haven't called {@link #connectUnauthenticated()}.
    * @throws MalformedURLException if {@code pathAndQuery} component of the request has an invalid
    *     structure.
-   * @throws ChatServiceInactiveException if you haven't called {@link #connectUnauthenticated()}.
    */
   public CompletableFuture<Response> unauthenticatedSend(final Request req)
       throws MalformedURLException {
@@ -124,10 +125,12 @@ public class ChatService extends NativeHandleGuard.SimpleOwner {
    * is returned.
    *
    * @param req request object
-   * @return a {@code CompletableFuture} of a {@link ResponseAndDebugInfo}
+   * @return a {@code CompletableFuture} of a {@link ResponseAndDebugInfo}. The future will fail
+   *     with a {@link ChatServiceInactiveException} (inside an {@link
+   *     java.util.concurrent.ExecutionException ExecutionException}) if you haven't called {@link
+   *     #connectUnauthenticated()}.
    * @throws MalformedURLException if {@code pathAndQuery} component of the request has an invalid
    *     structure.
-   * @throws ChatServiceInactiveException if you haven't called {@link #connectUnauthenticated()}.
    */
   public CompletableFuture<ResponseAndDebugInfo> unauthenticatedSendAndDebug(final Request req)
       throws MalformedURLException {
@@ -136,6 +139,61 @@ public class ChatService extends NativeHandleGuard.SimpleOwner {
         final NativeHandleGuard chatServiceHandle = new NativeHandleGuard(this);
         final NativeHandleGuard requestHandle = new NativeHandleGuard(internalRequest)) {
       return Native.ChatService_unauth_send_and_debug(
+              asyncContextHandle.nativeHandle(),
+              chatServiceHandle.nativeHandle(),
+              requestHandle.nativeHandle(),
+              req.timeoutMillis)
+          .thenApply(o -> (ResponseAndDebugInfo) o);
+    }
+  }
+
+  /**
+   * Sends request to the Chat Service over an authenticated channel.
+   *
+   * @param req request object
+   * @return a {@code CompletableFuture} of a {@link Response}. The future will fail with a {@link
+   *     ChatServiceInactiveException} (inside an {@link java.util.concurrent.ExecutionException
+   *     ExecutionException}) if you haven't called {@link #connectAuthenticated()}.
+   * @throws MalformedURLException if {@code pathAndQuery} component of the request has an invalid
+   *     structure.
+   */
+  public CompletableFuture<Response> authenticatedSend(final Request req)
+      throws MalformedURLException {
+    final InternalRequest internalRequest = buildInternalRequest(req);
+    try (final NativeHandleGuard asyncContextHandle = new NativeHandleGuard(tokioAsyncContext);
+        final NativeHandleGuard chatServiceHandle = new NativeHandleGuard(this);
+        final NativeHandleGuard requestHandle = new NativeHandleGuard(internalRequest)) {
+      return Native.ChatService_auth_send(
+              asyncContextHandle.nativeHandle(),
+              chatServiceHandle.nativeHandle(),
+              requestHandle.nativeHandle(),
+              req.timeoutMillis)
+          .thenApply(o -> (Response) o);
+    }
+  }
+
+  /**
+   * Sends request to the Chat Service over an authenticated channel.
+   *
+   * <p>In addition to the response, an object containing debug information about the request flow
+   * is returned.
+   *
+   * @param req request object
+   * @return a {@code CompletableFuture} of a {@link ResponseAndDebugInfo}. The future will fail
+   *     with a {@link ChatServiceInactiveException} (inside an {@link
+   *     java.util.concurrent.ExecutionException ExecutionException}) if you haven't called {@link
+   *     #connectAuthenticated()}.
+   * @throws MalformedURLException if {@code pathAndQuery} component of the request has an invalid
+   *     structure.
+   * @throws ChatServiceInactiveException if you haven't called {@link #connectAuthenticated()}.
+   */
+  public CompletableFuture<ResponseAndDebugInfo> authenticatedSendAndDebug(final Request req)
+      throws MalformedURLException {
+    final InternalRequest internalRequest = buildInternalRequest(req);
+    try (final NativeHandleGuard asyncContextHandle = new NativeHandleGuard(tokioAsyncContext);
+        final NativeHandleGuard chatServiceHandle = new NativeHandleGuard(this);
+        final NativeHandleGuard requestHandle = new NativeHandleGuard(internalRequest)) {
+      return Native.ChatService_auth_send_and_debug(
               asyncContextHandle.nativeHandle(),
               chatServiceHandle.nativeHandle(),
               requestHandle.nativeHandle(),

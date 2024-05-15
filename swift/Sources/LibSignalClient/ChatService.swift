@@ -224,6 +224,47 @@ public class ChatService: NativeHandleOwner {
         return (try Response(consuming: rawResponse.response), DebugInfo(consuming: rawResponse.debug_info))
     }
 
+    /// Sends request to the Chat Service over an authenticated channel.
+    ///
+    /// - Throws: ``SignalError/chatServiceInactive(_:)`` if you haven't called ``connectAuthenticated()``
+    /// - SeeAlso: ``authenticatedSendAndDebug(_:)``
+    public func authenticatedSend(_ request: Request) async throws -> Response {
+        let internalRequest = try InternalRequest(request)
+        let timeoutMillis = request.timeoutMillis
+        let rawResponse: SignalFfiChatResponse = try await invokeAsyncFunction { promise, context in
+            self.tokioAsyncContext.withNativeHandle { tokioAsyncContext in
+                withNativeHandle { chatService in
+                    internalRequest.withNativeHandle { request in
+                        signal_chat_service_auth_send(promise, context, tokioAsyncContext, chatService, request, timeoutMillis)
+                    }
+                }
+            }
+        }
+        return try Response(consuming: rawResponse)
+    }
+
+    /// Sends request to the Chat Service over an authenticated channel.
+    ///
+    /// In addition to the response, an object containing debug information about the request flow
+    /// is returned.
+    ///
+    /// - Throws: ``SignalError/chatServiceInactive(_:)`` if you haven't called ``connectAuthenticated()``
+    /// - SeeAlso: ``authenticatedSend(_:)``
+    public func authenticatedSendAndDebug(_ request: Request) async throws -> (Response, DebugInfo) {
+        let internalRequest = try InternalRequest(request)
+        let timeoutMillis = request.timeoutMillis
+        let rawResponse: SignalFfiResponseAndDebugInfo = try await invokeAsyncFunction { promise, context in
+            self.tokioAsyncContext.withNativeHandle { tokioAsyncContext in
+                withNativeHandle { chatService in
+                    internalRequest.withNativeHandle { request in
+                        signal_chat_service_auth_send_and_debug(promise, context, tokioAsyncContext, chatService, request, timeoutMillis)
+                    }
+                }
+            }
+        }
+        return (try Response(consuming: rawResponse.response), DebugInfo(consuming: rawResponse.debug_info))
+    }
+
     // Exposed for testing
     internal class InternalRequest: NativeHandleOwner {
         convenience init(_ request: Request) throws {

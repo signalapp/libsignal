@@ -437,6 +437,48 @@ async fn ChatService_unauth_send_and_debug(
     })
 }
 
+#[bridge_io(TokioAsyncContext)]
+async fn ChatService_auth_send(
+    chat: &Chat,
+    http_request: &HttpRequest,
+    timeout_millis: u32,
+) -> Result<ChatResponse, ChatServiceError> {
+    let headers = http_request.headers.lock().expect("not poisoned").clone();
+    let request = Request {
+        method: http_request.method.clone(),
+        path: http_request.path.clone(),
+        headers,
+        body: http_request.body.clone(),
+    };
+    chat.service
+        .send_authenticated(request, Duration::from_millis(timeout_millis.into()))
+        .await
+}
+
+#[bridge_io(TokioAsyncContext)]
+async fn ChatService_auth_send_and_debug(
+    chat: &Chat,
+    http_request: &HttpRequest,
+    timeout_millis: u32,
+) -> Result<ResponseAndDebugInfo, ChatServiceError> {
+    let headers = http_request.headers.lock().expect("not poisoned").clone();
+    let request = Request {
+        method: http_request.method.clone(),
+        path: http_request.path.clone(),
+        headers,
+        body: http_request.body.clone(),
+    };
+    let (result, debug_info) = chat
+        .service
+        .send_authenticated_and_debug(request, Duration::from_millis(timeout_millis.into()))
+        .await;
+
+    result.map(|response| ResponseAndDebugInfo {
+        response,
+        debug_info,
+    })
+}
+
 #[cfg(test)]
 mod test {
     use super::*;

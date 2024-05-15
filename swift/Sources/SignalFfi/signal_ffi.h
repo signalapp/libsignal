@@ -1431,6 +1431,10 @@ SignalFfiError *signal_chat_service_unauth_send(SignalCPromiseFfiChatResponse pr
 
 SignalFfiError *signal_chat_service_unauth_send_and_debug(SignalCPromiseFfiResponseAndDebugInfo promise, const void *promise_context, const SignalTokioAsyncContext *async_runtime, const SignalChat *chat, const SignalHttpRequest *http_request, uint32_t timeout_millis);
 
+SignalFfiError *signal_chat_service_auth_send(SignalCPromiseFfiChatResponse promise, const void *promise_context, const SignalTokioAsyncContext *async_runtime, const SignalChat *chat, const SignalHttpRequest *http_request, uint32_t timeout_millis);
+
+SignalFfiError *signal_chat_service_auth_send_and_debug(SignalCPromiseFfiResponseAndDebugInfo promise, const void *promise_context, const SignalTokioAsyncContext *async_runtime, const SignalChat *chat, const SignalHttpRequest *http_request, uint32_t timeout_millis);
+
 SignalFfiError *signal_lookup_request_new(SignalLookupRequest **out);
 
 SignalFfiError *signal_lookup_request_add_e164(const SignalLookupRequest *request, const char *e164);

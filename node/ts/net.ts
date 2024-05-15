@@ -131,7 +131,8 @@ export class ChatService {
    * In addition to the response, an object containing debug information about the request flow is
    * returned.
    *
-   * @throws {ChatServiceInactive} if you haven't called {@link #connectUnauthenticated()}.
+   * @throws {ChatServiceInactive} if you haven't called {@link #connectUnauthenticated()} (as a
+   * rejection of the promise).
    */
   async unauthenticatedFetchAndDebug(
     chatRequest: ChatRequest
@@ -147,7 +148,8 @@ export class ChatService {
   /**
    * Sends request to the Chat Service over an unauthenticated channel.
    *
-   * @throws {ChatServiceInactive} if you haven't called {@link #connectUnauthenticated()}.
+   * @throws {ChatServiceInactive} if you haven't called {@link #connectUnauthenticated()} (as a
+   * rejection of the promise).
    */
   async unauthenticatedFetch(
     chatRequest: ChatRequest
@@ -160,6 +162,42 @@ export class ChatService {
     );
   }
 
+  /**
+   * Sends request to the Chat Service over an authenticated channel.
+   *
+   * In addition to the response, an object containing debug information about the request flow is
+   * returned.
+   *
+   * @throws {ChatServiceInactive} if you haven't called {@link #connectAuthenticated()} (as a
+   * rejection of the promise).
+   */
+  async authenticatedFetchAndDebug(
+    chatRequest: ChatRequest
+  ): Promise<Native.ResponseAndDebugInfo> {
+    return await Native.ChatService_auth_send_and_debug(
+      this.asyncContext,
+      this.chatService,
+      ChatService.buildHttpRequest(chatRequest),
+      chatRequest.timeoutMillis ?? DEFAULT_CHAT_REQUEST_TIMEOUT_MILLIS
+    );
+  }
+
+  /**
+   * Sends request to the Chat Service over an authenticated channel.
+   *
+   * @throws {ChatServiceInactive} if you haven't called {@link #connectAuthenticated()} (as a
+   * rejection of the promise).
+   */
+  async authenticatedFetch(
+    chatRequest: ChatRequest
+  ): Promise<Native.ChatResponse> {
+    return await Native.ChatService_auth_send(
+      this.asyncContext,
+      this.chatService,
+      ChatService.buildHttpRequest(chatRequest),
+      chatRequest.timeoutMillis ?? DEFAULT_CHAT_REQUEST_TIMEOUT_MILLIS
+    );
+  }
   static buildHttpRequest(chatRequest: ChatRequest): {
     _nativeHandle: Native.HttpRequest;
   } {
