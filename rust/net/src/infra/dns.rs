@@ -52,10 +52,16 @@ impl Default for DnsResolverState {
     }
 }
 
-#[derive(Clone, Default)]
+#[derive(Clone)]
 pub struct DnsResolver {
     lookup_options: Arc<Vec<(Box<dyn DnsLookup>, Duration)>>,
     state: Arc<Mutex<DnsResolverState>>,
+}
+
+impl Default for DnsResolver {
+    fn default() -> Self {
+        DnsResolver::new_with_static_fallback(HashMap::new())
+    }
 }
 
 impl DnsResolver {
