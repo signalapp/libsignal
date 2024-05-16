@@ -301,6 +301,7 @@ impl ConnectionManager for SingleRouteThrottlingConnectionManager {
 mod test {
     use std::borrow::Borrow;
     use std::future;
+    use std::sync::atomic::{AtomicU16, Ordering};
 
     use assert_matches::assert_matches;
     use nonzero_ext::nonzero;
@@ -484,6 +485,114 @@ mod test {
             .connect_or_wait(|connection_params| simulate_connect(connection_params, true))
             .await;
         assert_matches!(attempt_outcome, ConnectionAttemptOutcome::TimedOut);
+    }
+
+    #[derive(Clone, Debug)]
+    struct CooldownAfterSomeAttempts {
+        attempts_until_cooldown: u16,
+        attempts_made: Arc<AtomicU16>,
+        connection_params: ConnectionParams,
+    }
+
+    impl CooldownAfterSomeAttempts {
+        fn new(attempts_until_cooldown: u16, connection_params: ConnectionParams) -> Self {
+            Self {
+                attempts_until_cooldown,
+                connection_params,
+                attempts_made: Arc::new(Default::default()),
+            }
+        }
+    }
+
+    #[async_trait]
+    impl ConnectionManager for CooldownAfterSomeAttempts {
+        async fn connect_or_wait<'a, T, E, Fun, Fut>(
+            &'a self,
+            connection_fn: Fun,
+        ) -> ConnectionAttemptOutcome<T, E>
+        where
+            T: Send,
+            E: Send + Debug + LogSafeDisplay,
+            Fun: Fn(&'a ConnectionParams) -> Fut + Send + Sync,
+            Fut: Future<Output = Result<T, E>> + Send,
+        {
+            match self.attempts_made.fetch_add(1, Ordering::Relaxed) {
+                n if n < self.attempts_until_cooldown => ConnectionAttemptOutcome::Attempted(
+                    connection_fn(&self.connection_params).await,
+                ),
+                _ => ConnectionAttemptOutcome::WaitUntil(Instant::now() + MAX_COOLDOWN_INTERVAL),
+            }
+        }
+
+        fn describe_for_logging(&self) -> String {
+            format!("{self:?}")
+        }
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn multi_route_manager_retries_the_same_option_until_cooldown() {
+        let route_1 = example_connection_params(ROUTE_1);
+        let route_2 = example_connection_params(ROUTE_2);
+        let route_1_attempts_until_cooldown = 2;
+        let route_2_attempts_until_cooldown = 1;
+        let route_1_manager =
+            CooldownAfterSomeAttempts::new(route_1_attempts_until_cooldown, route_1.clone());
+        let route_2_manager =
+            CooldownAfterSomeAttempts::new(route_2_attempts_until_cooldown, route_2.clone());
+        let multi_route_manager = MultiRouteConnectionManager::new(
+            vec![route_1_manager.clone(), route_2_manager.clone()],
+            TIMEOUT_DURATION,
+        );
+        let route_1_attempt = AtomicU16::new(1);
+        let res = multi_route_manager
+            .connect_or_wait(|connection_params| {
+                // route_1 only connects when there is one attempt left before the cooldown
+                //
+                // note: route_2 is always healthy, the flag only affects route_1
+                let route_1_healthy = route_1_attempt.fetch_add(1, Ordering::Relaxed)
+                    == route_1_attempts_until_cooldown;
+
+                simulate_connect(connection_params, route_1_healthy)
+            })
+            .await;
+
+        assert_matches!(res, ConnectionAttemptOutcome::Attempted(Ok(r)) if r == ROUTE_1);
+        assert_eq!(
+            route_1_attempts_until_cooldown,
+            route_1_manager.attempts_made.load(Ordering::Relaxed)
+        );
+        assert_eq!(0, route_2_manager.attempts_made.load(Ordering::Relaxed));
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn multi_route_manager_attempt_to_connect_until_all_routes_in_cooldown() {
+        let connection_params = example_connection_params(ROUTE_1);
+        let first_manager_attempts_until_cooldown = 5;
+        let second_manager_attempts_until_cooldown = 3;
+        let first_manager = CooldownAfterSomeAttempts::new(
+            first_manager_attempts_until_cooldown,
+            connection_params.clone(),
+        );
+        let second_manager = CooldownAfterSomeAttempts::new(
+            second_manager_attempts_until_cooldown,
+            connection_params,
+        );
+        let multi_route_manager = MultiRouteConnectionManager::new(
+            vec![first_manager.clone(), second_manager.clone()],
+            TIMEOUT_DURATION,
+        );
+        let res = multi_route_manager
+            .connect_or_wait(|connection_params| simulate_connect(connection_params, false))
+            .await;
+        assert_matches!(res, ConnectionAttemptOutcome::WaitUntil(_));
+        assert_eq!(
+            first_manager_attempts_until_cooldown + 1,
+            first_manager.attempts_made.load(Ordering::Relaxed)
+        );
+        assert_eq!(
+            second_manager_attempts_until_cooldown + 1,
+            second_manager.attempts_made.load(Ordering::Relaxed)
+        );
     }
 
     async fn validate_expected_route(
