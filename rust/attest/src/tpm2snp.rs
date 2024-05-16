@@ -58,7 +58,14 @@ fn attest(
     endorsements: &svr3::AsnpEndorsements,
     now: SystemTime,
 ) -> Result<svr::AttestationData> {
-    attest_with_root(enclave, evidence, endorsements, now, GOOG_AKCERT_ROOT_PEM)
+    attest_with_root(
+        enclave,
+        evidence,
+        endorsements,
+        now,
+        GOOG_AKCERT_ROOT_PEM,
+        None,
+    )
 }
 
 fn attest_with_root(
@@ -67,6 +74,7 @@ fn attest_with_root(
     endorsements: &svr3::AsnpEndorsements,
     now: SystemTime,
     root_pem: &[u8],
+    pcrs_override: Option<&tpm2::PcrMap>,
 ) -> Result<svr::AttestationData> {
     let ak_cert_pk = verify_ak_cert(evidence, endorsements, now, root_pem)?;
     let runtime_pk = verify_snp_report(evidence, endorsements, now)?;
@@ -75,12 +83,14 @@ fn attest_with_root(
             reason: "RSA keys mismatch".to_string(),
         });
     }
-    let expected_pcrs =
-        TPM2SNP_EXPECTED_PCRS
+    let expected_pcrs = match pcrs_override {
+        None => TPM2SNP_EXPECTED_PCRS
             .get(&enclave)
             .ok_or_else(|| Error::AttestationDataError {
                 reason: format!("unknown enclave {:?}", enclave),
-            })?;
+            })?,
+        Some(pcr_map) => pcr_map,
+    };
     let tpm2_report = verify_tpm2_quote(evidence, expected_pcrs)?;
     let attestation_data = tpm2_report.verify_atteststion_data(&evidence.attestation_data)?;
     Ok(svr::AttestationData::decode(attestation_data.as_ref())?)
@@ -211,7 +221,7 @@ fn verify_tpm2_quote<'a>(
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::constants::ENCLAVE_ID_SVR3_TPM2SNP_STAGING;
+    use hex_literal::hex;
     use std::time::Duration;
 
     #[test]
@@ -224,14 +234,62 @@ mod test {
         let endorsements = svr3::AsnpEndorsements::decode(attestation.endorsement.as_slice())
             .expect("valid endorsements");
         attest_with_root(
-            ENCLAVE_ID_SVR3_TPM2SNP_STAGING,
+            ENCLAVE_ID,
             &evidence,
             &endorsements,
             SystemTime::UNIX_EPOCH + VALID_TIMESTAMP,
             GOOG_AKCERT_ROOT_PEM,
+            Some(EXPECTED_PCRS),
         )
         .expect("can attest asnp");
     }
 
     const VALID_TIMESTAMP: Duration = Duration::from_millis(1712946543000);
+    const ENCLAVE_ID: &[u8] = b"0.20240411.210730";
+    const EXPECTED_PCRS: &tpm2::PcrMap = &[
+        (
+            2,
+            hex!("3d458cfe55cc03ea1f443f1562beec8df51c75e14a9fcf9a7234a13f198e7969"),
+        ),
+        (
+            3,
+            hex!("3d458cfe55cc03ea1f443f1562beec8df51c75e14a9fcf9a7234a13f198e7969"),
+        ),
+        (
+            4,
+            hex!("6038382cdf539eb64d05c804c510e22b81e2c71fb171c9616ab14504f3654bb1"),
+        ),
+        (
+            5,
+            hex!("4e871c2923a78a62db4afde169145ad46c633f871f7a5d14b68153d81d1de4d3"),
+        ),
+        (
+            7,
+            hex!("590471a4fbd0c881c4fdc6349bc697e4df18c660c3ae3de9cb29028f8ef77280"),
+        ),
+        (
+            8,
+            hex!("497c436dde91431c96e19e14036cce3a0a70e0dd007b6dcc01f07fbab228c56c"),
+        ),
+        (
+            9,
+            hex!("9afeee52dee64ac16107982f37f70ffde99126b56e6c1de17c3cb105e4ea6d97"),
+        ),
+        (
+            11,
+            hex!("0000000000000000000000000000000000000000000000000000000000000000"),
+        ),
+        (
+            12,
+            hex!("0000000000000000000000000000000000000000000000000000000000000000"),
+        ),
+        (
+            13,
+            hex!("0000000000000000000000000000000000000000000000000000000000000000"),
+        ),
+        (
+            14,
+            hex!("b9c97933fe323334271a718fdf2966e0609afcb793f3b68aaf18fc31ea39dc0a"),
+        ),
+    ];
 }
