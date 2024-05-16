@@ -37,21 +37,33 @@ pub mod lookup_result;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
-#[derive(Clone, Default)]
-pub struct DnsResolver {
+struct DnsResolverState {
     /// Controls if lookup results will contain IPv6 entries.
     ipv6_enabled: bool,
+    in_flight_lookups: HashMap<String, Receiver<Result<LookupResult>>>,
+}
+
+impl Default for DnsResolverState {
+    fn default() -> Self {
+        Self {
+            ipv6_enabled: true,
+            in_flight_lookups: Default::default(),
+        }
+    }
+}
+
+#[derive(Clone, Default)]
+pub struct DnsResolver {
     lookup_options: Arc<Vec<(Box<dyn DnsLookup>, Duration)>>,
-    in_flight_lookups: Arc<Mutex<HashMap<String, Receiver<Result<LookupResult>>>>>,
+    state: Arc<Mutex<DnsResolverState>>,
 }
 
 impl DnsResolver {
     #[cfg(test)]
     pub(crate) fn new_custom(lookup_options: Vec<(Box<dyn DnsLookup>, Duration)>) -> Self {
         DnsResolver {
-            ipv6_enabled: true,
             lookup_options: Arc::new(lookup_options),
-            in_flight_lookups: Default::default(),
+            state: Default::default(),
         }
     }
 
@@ -59,12 +71,11 @@ impl DnsResolver {
     /// to resolve DNS lookups
     pub(crate) fn new_from_static_map(static_map: HashMap<&'static str, LookupResult>) -> Self {
         DnsResolver {
-            ipv6_enabled: true,
             lookup_options: Arc::new(vec![(
                 Box::new(StaticDnsMap(static_map)),
                 Duration::from_millis(1),
             )]),
-            in_flight_lookups: Default::default(),
+            state: Default::default(),
         }
     }
 
@@ -81,7 +92,6 @@ impl DnsResolver {
         );
         let custom_resolver = Box::new(CustomDnsResolver::<DohTransport>::new(connection_params));
         DnsResolver {
-            ipv6_enabled: true,
             lookup_options: Arc::new(vec![
                 (Box::new(SystemDnsLookup), Duration::from_secs(2)),
                 (custom_resolver.clone(), Duration::from_secs(5)),
@@ -89,12 +99,16 @@ impl DnsResolver {
                 (custom_resolver.clone(), Duration::from_secs(15)),
                 (Box::new(StaticDnsMap(static_map)), Duration::from_secs(1)),
             ]),
-            in_flight_lookups: Default::default(),
+            state: Default::default(),
         }
     }
 
-    pub fn set_ipv6_enabled(&mut self, ipv6_enabled: bool) {
-        self.ipv6_enabled = ipv6_enabled;
+    pub fn set_ipv6_enabled(&self, ipv6_enabled: bool) {
+        let mut guard = self.state.lock().expect("not poisoned");
+        if guard.ipv6_enabled != ipv6_enabled {
+            guard.ipv6_enabled = ipv6_enabled;
+            guard.in_flight_lookups.clear();
+        }
     }
 
     pub async fn lookup_ip(&self, hostname: &str) -> Result<LookupResult> {
@@ -108,24 +122,31 @@ impl DnsResolver {
     }
 
     fn start_or_join_lookup(&self, hostname: &str) -> Receiver<Result<LookupResult>> {
-        let mut guard = self.in_flight_lookups.lock().expect("not poisoned");
-        match guard.get(hostname) {
+        let mut guard = self.state.lock().expect("not poisoned");
+        match guard.in_flight_lookups.get(hostname) {
             None => {
                 let (tx, rx) = oneshot_broadcast::channel();
-                guard.insert(hostname.to_string(), rx.clone());
-                self.spawn_lookup(hostname.to_string(), tx);
+                guard
+                    .in_flight_lookups
+                    .insert(hostname.to_string(), rx.clone());
+                self.spawn_lookup(hostname.to_string(), tx, guard.ipv6_enabled);
                 rx
             }
             Some(r) => r.clone(),
         }
     }
 
-    fn spawn_lookup(&self, hostname: String, result_sender: Sender<Result<LookupResult>>) {
+    fn spawn_lookup(
+        &self,
+        hostname: String,
+        result_sender: Sender<Result<LookupResult>>,
+        ipv6_enabled: bool,
+    ) {
         let self_clone = self.clone();
         tokio::spawn(async move {
             let request = DnsLookupRequest {
                 hostname: Arc::from(hostname.as_str()),
-                ipv6_enabled: self_clone.ipv6_enabled,
+                ipv6_enabled,
             };
             let sequence = self_clone
                 .lookup_options
@@ -139,7 +160,7 @@ impl DnsResolver {
                 .next()
                 .await
                 .ok_or(Error::LookupFailed)
-                .and_then(|res| match self_clone.ipv6_enabled {
+                .and_then(|res| match ipv6_enabled {
                     true => Ok(res),
                     false if res.ipv4.is_empty() => Err(Error::RequestedIpTypeNotFound),
                     false => Ok(LookupResult {
@@ -158,8 +179,8 @@ impl DnsResolver {
     }
 
     fn clear_in_flight_map(&self, hostname: &str) {
-        let mut guard = self.in_flight_lookups.lock().expect("not poisoned");
-        guard.remove(hostname);
+        let mut guard = self.state.lock().expect("not poisoned");
+        guard.in_flight_lookups.remove(hostname);
     }
 }
 
@@ -204,16 +225,15 @@ mod test {
     use async_trait::async_trait;
     use const_str::ip_addr;
 
-    use crate::infra::dns::custom_resolver::test::{
-        ok_query_result_ipv4, respond_after_timeout, TestDnsTransportWithOneResponse,
-    };
     use crate::infra::dns::dns_lookup::DnsLookupRequest;
     use crate::infra::dns::{DnsLookup, DnsResolver, Error, LookupResult, StaticDnsMap};
     use crate::infra::DnsSource;
+    use crate::utils::sleep_and_catch_up;
 
     const IPV4: Ipv4Addr = ip_addr!(v4, "1.1.1.1");
     const IPV6: Ipv6Addr = ip_addr!(v6, "::1");
 
+    const CUSTOM_DOMAIN: &str = "custom.signal.org";
     const IPV4_ONLY_DOMAIN: &str = "ipv4.signal.org";
     const IPV6_ONLY_DOMAIN: &str = "ipv6.signal.org";
     const DUAL_STACK_DOMAIN: &str = "dual.signal.org";
@@ -222,15 +242,72 @@ mod test {
 
     const ATTEMPT_TIMEOUT: Duration = Duration::from_secs(1);
 
-    struct TestLookup;
+    impl From<Ipv4Addr> for LookupResult {
+        fn from(value: Ipv4Addr) -> Self {
+            LookupResult::new(DnsSource::Test, vec![value], vec![])
+        }
+    }
+
+    impl From<Ipv6Addr> for LookupResult {
+        fn from(value: Ipv6Addr) -> Self {
+            LookupResult::new(DnsSource::Test, vec![], vec![value])
+        }
+    }
+
+    impl From<(Ipv4Addr, Ipv6Addr)> for LookupResult {
+        fn from(value: (Ipv4Addr, Ipv6Addr)) -> Self {
+            LookupResult::new(DnsSource::Test, vec![value.0], vec![value.1])
+        }
+    }
+
+    #[derive(Clone)]
+    struct TestLookup {
+        delay: Duration,
+        custom_domain_result: Result<LookupResult>,
+        requests_log: Arc<Mutex<Vec<DnsLookupRequest>>>,
+    }
+
+    impl TestLookup {
+        fn standard_responses(delay: Duration) -> Box<Self> {
+            Box::new(Self {
+                delay,
+                custom_domain_result: Err(Error::LookupFailed),
+                requests_log: Default::default(),
+            })
+        }
+
+        fn with_custom_response<T: Into<LookupResult>>(
+            delay: Duration,
+            custom_domain_result: T,
+        ) -> Box<Self> {
+            Box::new(Self {
+                delay,
+                custom_domain_result: Ok(custom_domain_result.into()),
+                requests_log: Default::default(),
+            })
+        }
+
+        fn log_request(&self, request: DnsLookupRequest) {
+            let mut guard = self.requests_log.lock().expect("not poisoned");
+            guard.push(request);
+        }
+
+        fn logged_requests(&self) -> Vec<DnsLookupRequest> {
+            let guard = self.requests_log.lock().expect("not poisoned");
+            guard.clone()
+        }
+    }
 
     #[async_trait]
     impl DnsLookup for TestLookup {
-        async fn dns_lookup(&self, request: DnsLookupRequest) -> super::Result<LookupResult> {
+        async fn dns_lookup(&self, request: DnsLookupRequest) -> Result<LookupResult> {
+            self.log_request(request.clone());
+            tokio::time::sleep(self.delay).await;
             match request.hostname.as_ref() {
-                IPV4_ONLY_DOMAIN => Ok(LookupResult::new(DnsSource::Test, vec![IPV4], vec![])),
-                IPV6_ONLY_DOMAIN => Ok(LookupResult::new(DnsSource::Test, vec![], vec![IPV6])),
-                DUAL_STACK_DOMAIN => Ok(LookupResult::new(DnsSource::Test, vec![IPV4], vec![IPV6])),
+                IPV4_ONLY_DOMAIN => Ok(IPV4.into()),
+                IPV6_ONLY_DOMAIN => Ok(IPV6.into()),
+                DUAL_STACK_DOMAIN => Ok((IPV4, IPV6).into()),
+                CUSTOM_DOMAIN => self.custom_domain_result.clone(),
                 TIMING_OUT_DOMAIN => future::pending().await,
                 _ => Err(Error::LookupFailed),
             }
@@ -251,7 +328,10 @@ mod test {
 
     #[tokio::test(start_paused = true)]
     async fn test_dns_loopup_without_fallback() {
-        let dns_resolver = DnsResolver::new_custom(vec![(Box::new(TestLookup), ATTEMPT_TIMEOUT)]);
+        let dns_resolver = DnsResolver::new_custom(vec![(
+            TestLookup::standard_responses(Duration::ZERO),
+            ATTEMPT_TIMEOUT,
+        )]);
 
         let ipv4_only_result = dns_resolver
             .lookup_ip(IPV4_ONLY_DOMAIN)
@@ -284,17 +364,14 @@ mod test {
     #[tokio::test(start_paused = true)]
     async fn test_dns_loopup_fallback() {
         let static_dns_map = StaticDnsMap(HashMap::from([
-            (
-                FALLBACK_ONLY_DOMAIN,
-                LookupResult::new(DnsSource::Test, vec![IPV4], vec![IPV6]),
-            ),
-            (
-                TIMING_OUT_DOMAIN,
-                LookupResult::new(DnsSource::Test, vec![IPV4], vec![IPV6]),
-            ),
+            (FALLBACK_ONLY_DOMAIN, (IPV4, IPV6).into()),
+            (TIMING_OUT_DOMAIN, (IPV4, IPV6).into()),
         ]));
         let dns_resolver = DnsResolver::new_custom(vec![
-            (Box::new(TestLookup), ATTEMPT_TIMEOUT),
+            (
+                TestLookup::standard_responses(Duration::ZERO),
+                ATTEMPT_TIMEOUT,
+            ),
             (Box::new(static_dns_map), ATTEMPT_TIMEOUT),
         ]);
 
@@ -315,12 +392,13 @@ mod test {
 
     #[tokio::test]
     async fn test_dns_loopup_ipv6_disabled() {
-        let static_dns_map = StaticDnsMap(HashMap::from([(
-            FALLBACK_ONLY_DOMAIN,
-            LookupResult::new(DnsSource::Test, vec![IPV4], vec![IPV6]),
-        )]));
-        let mut dns_resolver = DnsResolver::new_custom(vec![
-            (Box::new(TestLookup), ATTEMPT_TIMEOUT),
+        let static_dns_map =
+            StaticDnsMap(HashMap::from([(FALLBACK_ONLY_DOMAIN, (IPV4, IPV6).into())]));
+        let dns_resolver = DnsResolver::new_custom(vec![
+            (
+                TestLookup::standard_responses(Duration::ZERO),
+                ATTEMPT_TIMEOUT,
+            ),
             (Box::new(static_dns_map), ATTEMPT_TIMEOUT),
         ]);
         dns_resolver.set_ipv6_enabled(false);
@@ -356,40 +434,99 @@ mod test {
 
     #[tokio::test(start_paused = true)]
     async fn test_ipv6_enabled_flag_is_passed_with_request() {
-        struct ExpectedIpv6EnabledFlagValue(bool);
+        let test_lookup = TestLookup::standard_responses(Duration::ZERO);
+        let dns_resolver = DnsResolver::new_custom(vec![(test_lookup.clone(), ATTEMPT_TIMEOUT)]);
 
-        #[async_trait]
-        impl DnsLookup for ExpectedIpv6EnabledFlagValue {
-            async fn dns_lookup(&self, request: DnsLookupRequest) -> Result<LookupResult> {
-                if request.ipv6_enabled == self.0 {
-                    Ok(LookupResult::new(DnsSource::Test, vec![IPV4], vec![]))
-                } else {
-                    Err(Error::LookupFailed)
-                }
-            }
-        }
+        let _ = dns_resolver.lookup_ip(IPV4_ONLY_DOMAIN).await;
+        dns_resolver.set_ipv6_enabled(false);
+        let _ = dns_resolver.lookup_ip(IPV4_ONLY_DOMAIN).await;
+        dns_resolver.set_ipv6_enabled(true);
+        let _ = dns_resolver.lookup_ip(IPV4_ONLY_DOMAIN).await;
+        assert_matches!(
+            test_lookup.logged_requests().as_slice(),
+            [
+                DnsLookupRequest {
+                    ipv6_enabled: true,
+                    ..
+                },
+                DnsLookupRequest {
+                    ipv6_enabled: false,
+                    ..
+                },
+                DnsLookupRequest {
+                    ipv6_enabled: true,
+                    ..
+                },
+            ]
+        );
+    }
 
-        let mut dns_resolver = DnsResolver::new_custom(vec![(
-            Box::new(ExpectedIpv6EnabledFlagValue(true)),
+    #[tokio::test(start_paused = true)]
+    async fn test_flag_value_used_from_the_time_of_request() {
+        let lookup_time = ATTEMPT_TIMEOUT / 2;
+        let flag_change_time = lookup_time / 2;
+
+        let dns_resolver = DnsResolver::new_custom(vec![(
+            TestLookup::standard_responses(lookup_time),
             ATTEMPT_TIMEOUT,
         )]);
-        assert_matches!(dns_resolver.lookup_ip(IPV4_ONLY_DOMAIN).await, Ok(_));
-        dns_resolver.set_ipv6_enabled(false);
-        assert_matches!(
-            dns_resolver.lookup_ip(IPV4_ONLY_DOMAIN).await,
-            Err(Error::LookupFailed)
-        );
 
-        let mut dns_resolver = DnsResolver::new_custom(vec![(
-            Box::new(ExpectedIpv6EnabledFlagValue(false)),
-            ATTEMPT_TIMEOUT,
-        )]);
-        assert_matches!(
-            dns_resolver.lookup_ip(IPV4_ONLY_DOMAIN).await,
-            Err(Error::LookupFailed)
-        );
+        // starting the lookup with the `ipv6_enabled` flag set to `true`
+        let dns_resolver_clone = dns_resolver.clone();
+        let lookup_result_handle =
+            tokio::spawn(async move { dns_resolver_clone.lookup_ip(DUAL_STACK_DOMAIN).await });
+
+        // changing the flag
+        tokio::time::sleep(flag_change_time).await;
         dns_resolver.set_ipv6_enabled(false);
-        assert_matches!(dns_resolver.lookup_ip(IPV4_ONLY_DOMAIN).await, Ok(_));
+
+        // dual stack now only returns ipv4
+        let dual_stack_result = lookup_result_handle
+            .await
+            .expect("successfully joined spawned task")
+            .expect("successful lookup result");
+        // mid-lookup flag change should've not affected the result
+        assert_non_empty!(dual_stack_result.ipv4);
+        assert_non_empty!(dual_stack_result.ipv6);
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn test_in_flight_requests_respect_ipv6_flag_value() {
+        let lookup_time = ATTEMPT_TIMEOUT / 2;
+        let flag_change_time = lookup_time / 2;
+
+        let test_lookup = TestLookup::standard_responses(lookup_time);
+        let dns_resolver = DnsResolver::new_custom(vec![(test_lookup.clone(), ATTEMPT_TIMEOUT)]);
+
+        // starting the lookup with the `ipv6_enabled` flag set to `true`
+        let dns_resolver_clone = dns_resolver.clone();
+        tokio::spawn(async move { dns_resolver_clone.lookup_ip(DUAL_STACK_DOMAIN).await });
+
+        // changing the flag
+        tokio::time::sleep(flag_change_time).await;
+        dns_resolver.set_ipv6_enabled(false);
+
+        // starting another lookup to the same domain
+        let dns_resolver_clone = dns_resolver.clone();
+        tokio::spawn(async move { dns_resolver_clone.lookup_ip(DUAL_STACK_DOMAIN).await });
+
+        sleep_and_catch_up(Duration::ZERO).await;
+
+        // checking that the resolver sent both requests to the `DnsLookup`
+        // instead of merging them into one
+        assert_matches!(
+            test_lookup.logged_requests().as_slice(),
+            [
+                DnsLookupRequest {
+                    ipv6_enabled: true,
+                    ..
+                },
+                DnsLookupRequest {
+                    ipv6_enabled: false,
+                    ..
+                },
+            ]
+        );
     }
 
     #[tokio::test(start_paused = true)]
@@ -412,18 +549,22 @@ mod test {
                     .map(|lookup| (lookup, ATTEMPT_TIMEOUT))
                     .collect(),
             );
-            let actual = dns_resolver.lookup_ip(IPV4_ONLY_DOMAIN).await;
+            let actual = dns_resolver.lookup_ip(CUSTOM_DOMAIN).await;
             match expected {
                 Some(ip) => assert_eq!(&[ip], actual.unwrap().ipv4.as_slice()),
                 None => assert_matches!(actual, Err(Error::LookupFailed)),
             }
         }
 
+        // the domain checked in `assert_expected_result` is `CUSTOM_DOMAIN`
+        // `TestLookup::with_custom_response()` configures the response,
+        // while `TestLookup::standard_responses` will result in a lookup error
+
         assert_expected_result(
             vec![
-                lookup_ok(normal_delay, ip_1),
-                lookup_ok(short_delay, ip_2),
-                lookup_ok(timing_out, ip_3),
+                TestLookup::with_custom_response(normal_delay, ip_1),
+                TestLookup::with_custom_response(short_delay, ip_2),
+                TestLookup::with_custom_response(timing_out, ip_3),
             ],
             Some(ip_1),
         )
@@ -431,9 +572,9 @@ mod test {
 
         assert_expected_result(
             vec![
-                lookup_ok(timing_out, ip_1),
-                lookup_ok(normal_delay, ip_2),
-                lookup_ok(short_delay, ip_3),
+                TestLookup::with_custom_response(timing_out, ip_1),
+                TestLookup::with_custom_response(normal_delay, ip_2),
+                TestLookup::with_custom_response(short_delay, ip_3),
             ],
             Some(ip_2),
         )
@@ -441,9 +582,9 @@ mod test {
 
         assert_expected_result(
             vec![
-                lookup_ok(timing_out, ip_1),
-                lookup_ok(timing_out, ip_2),
-                lookup_ok(short_delay, ip_3),
+                TestLookup::with_custom_response(timing_out, ip_1),
+                TestLookup::with_custom_response(timing_out, ip_2),
+                TestLookup::with_custom_response(short_delay, ip_3),
             ],
             Some(ip_3),
         )
@@ -451,9 +592,9 @@ mod test {
 
         assert_expected_result(
             vec![
-                lookup_error(short_delay),
-                lookup_ok(normal_delay, ip_2),
-                lookup_ok(short_delay, ip_3),
+                TestLookup::standard_responses(short_delay),
+                TestLookup::with_custom_response(normal_delay, ip_2),
+                TestLookup::with_custom_response(short_delay, ip_3),
             ],
             Some(ip_2),
         )
@@ -461,9 +602,9 @@ mod test {
 
         assert_expected_result(
             vec![
-                lookup_error(short_delay),
-                lookup_error(normal_delay),
-                lookup_ok(short_delay, ip_3),
+                TestLookup::standard_responses(short_delay),
+                TestLookup::standard_responses(normal_delay),
+                TestLookup::with_custom_response(short_delay, ip_3),
             ],
             Some(ip_3),
         )
@@ -471,16 +612,19 @@ mod test {
 
         assert_expected_result(
             vec![
-                lookup_error(short_delay),
-                lookup_error(normal_delay),
-                lookup_error(normal_delay),
+                TestLookup::standard_responses(short_delay),
+                TestLookup::standard_responses(normal_delay),
+                TestLookup::standard_responses(normal_delay),
             ],
             None,
         )
         .await;
 
         assert_expected_result(
-            vec![lookup_error(short_delay), lookup_ok(timing_out, ip_2)],
+            vec![
+                TestLookup::standard_responses(short_delay),
+                TestLookup::with_custom_response(timing_out, ip_2),
+            ],
             None,
         )
         .await;
@@ -489,21 +633,9 @@ mod test {
     #[tokio::test(start_paused = true)]
     async fn test_request_joins_in_flight_request() {
         let response_delay = ATTEMPT_TIMEOUT / 2;
-        let resolver =
-            TestDnsTransportWithOneResponse::custom_dns_resolver(move |_, q_num, txs| {
-                // only works once
-                if q_num == 1 {
-                    let [tx] = txs;
-                    respond_after_timeout(
-                        response_delay,
-                        tx,
-                        ok_query_result_ipv4(Duration::ZERO, &[IPV4]),
-                    );
-                }
-            });
-
+        let test_lookup = TestLookup::standard_responses(response_delay);
         let dns_resolver = Arc::new(DnsResolver::new_custom(vec![(
-            Box::new(resolver),
+            test_lookup.clone(),
             ATTEMPT_TIMEOUT,
         )]));
 
@@ -523,48 +655,21 @@ mod test {
         for jh in join_handlers {
             assert_eq!(&[IPV4], jh.await.unwrap().unwrap().ipv4.as_slice())
         }
+        // making sure that the `test_lookup` have only seen one request
+        assert_matches!(test_lookup.logged_requests().as_slice(), [_]);
     }
 
     #[tokio::test(start_paused = true)]
     async fn test_starting_new_lookup_if_previous_done() {
         let response_delay = ATTEMPT_TIMEOUT / 2;
-        let ip_1 = ip_addr!(v4, "2.2.2.1");
-        let ip_2 = ip_addr!(v4, "2.2.2.2");
-        let resolver =
-            TestDnsTransportWithOneResponse::custom_dns_resolver(move |_, q_num, txs| {
-                let [tx] = txs;
-                let ip = if q_num == 1 { ip_1 } else { ip_2 };
-                respond_after_timeout(
-                    response_delay,
-                    tx,
-                    ok_query_result_ipv4(Duration::ZERO, &[ip]),
-                );
-            });
-
-        let dns_resolver = DnsResolver::new_custom(vec![(Box::new(resolver), ATTEMPT_TIMEOUT)]);
-
-        let result = dns_resolver.lookup_ip(IPV4_ONLY_DOMAIN).await.unwrap();
-        assert_eq!(&[ip_1], result.ipv4.as_slice());
-
-        let result = dns_resolver.lookup_ip(IPV4_ONLY_DOMAIN).await.unwrap();
-        assert_eq!(&[ip_2], result.ipv4.as_slice());
-    }
-
-    fn lookup_ok(delay: Duration, ip: Ipv4Addr) -> Box<impl DnsLookup> {
-        Box::new(TestDnsTransportWithOneResponse::custom_dns_resolver(
-            move |_, _, txs| {
-                let [tx] = txs;
-                respond_after_timeout(delay, tx, ok_query_result_ipv4(Duration::ZERO, &[ip]));
-            },
-        ))
-    }
-
-    fn lookup_error(delay: Duration) -> Box<impl DnsLookup> {
-        Box::new(TestDnsTransportWithOneResponse::custom_dns_resolver(
-            move |_, _, txs| {
-                let [tx] = txs;
-                respond_after_timeout(delay, tx, Err(Error::LookupFailed));
-            },
-        ))
+        let test_lookup = TestLookup::standard_responses(response_delay);
+        let dns_resolver = Arc::new(DnsResolver::new_custom(vec![(
+            test_lookup.clone(),
+            ATTEMPT_TIMEOUT,
+        )]));
+        let _ = dns_resolver.lookup_ip(IPV4_ONLY_DOMAIN).await.unwrap();
+        let _ = dns_resolver.lookup_ip(IPV4_ONLY_DOMAIN).await.unwrap();
+        // making sure that the `test_lookup` have only seen one request
+        assert_matches!(test_lookup.logged_requests().as_slice(), [_, _]);
     }
 }

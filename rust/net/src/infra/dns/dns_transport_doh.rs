@@ -48,8 +48,8 @@ fn dns_resolver_for_known_ns(ipv6_enabled: bool) -> DnsResolver {
             )
         })
         .collect();
-    let mut result = DnsResolver::new_from_static_map(map);
-    result.ipv6_enabled = ipv6_enabled;
+    let result = DnsResolver::new_from_static_map(map);
+    result.set_ipv6_enabled(ipv6_enabled);
     result
 }
 

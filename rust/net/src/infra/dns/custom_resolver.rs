@@ -388,7 +388,7 @@ pub(crate) mod test {
         }
     }
 
-    pub(crate) type TestDnsTransportWithOneResponse = TestDnsTransportWithResponses<1>;
+    type TestDnsTransportWithOneResponse = TestDnsTransportWithResponses<1>;
     type TestDnsTransportWithTwoResponses = TestDnsTransportWithResponses<2>;
     type TestDnsTransportWithThreeResponses = TestDnsTransportWithResponses<3>;
 
@@ -398,10 +398,7 @@ pub(crate) mod test {
         rx.map(|r| r.unwrap_or(Err(Error::LookupFailed))).await
     }
 
-    pub(crate) fn ok_query_result_ipv4(
-        ttl: Duration,
-        data: &[Ipv4Addr],
-    ) -> dns::Result<DnsQueryResult> {
+    fn ok_query_result_ipv4(ttl: Duration, data: &[Ipv4Addr]) -> dns::Result<DnsQueryResult> {
         Ok(DnsQueryResult::Left(Expiring {
             data: data.to_vec(),
             expiration: Instant::now() + ttl,
@@ -415,7 +412,7 @@ pub(crate) mod test {
         }))
     }
 
-    pub(crate) fn respond_after_timeout(
+    fn respond_after_timeout(
         timeout: Duration,
         tx: OneshotDnsQueryResultSender,
         response: dns::Result<DnsQueryResult>,
