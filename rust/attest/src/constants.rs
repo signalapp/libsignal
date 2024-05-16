@@ -14,9 +14,9 @@ pub const ENCLAVE_ID_CDSI_STAGING: &[u8] =
 pub const ENCLAVE_ID_SVR2_STAGING: &[u8] =
     &hex!("acb1973aa0bbbd14b3b4e06f145497d948fd4a98efc500fcce363b3b743ec482");
 pub const ENCLAVE_ID_SVR3_SGX_STAGING: &[u8] =
-    &hex!("6ac35d9eef8d11f4e6276656f4081925770922e01b7c4d80a51de87d001ac259");
-pub const ENCLAVE_ID_SVR3_NITRO_STAGING: &[u8] = b"24e56baa.52b91975.ec540f3f";
-pub const ENCLAVE_ID_SVR3_TPM2SNP_STAGING: &[u8] = b"0.20240411.210730";
+    &hex!("29cd5aa268da2412ae14e9de2168608c9b22daadfd7effa2029abac02289e691");
+pub const ENCLAVE_ID_SVR3_NITRO_STAGING: &[u8] = b"ffe631d7.52b91975.a4544fb5";
+pub const ENCLAVE_ID_SVR3_TPM2SNP_STAGING: &[u8] = b"0.20240510.172959";
 
 pub const ENCLAVE_ID_SVR3_SGX_PROD: &[u8] =
     &hex!("0000000000000000000000000000000000000000000000000000000000000000");
@@ -31,9 +31,9 @@ pub(crate) const NITRO_EXPECTED_PCRS: SmallMap<&'static [u8], nitro::PcrMap, 1> 
     (
         ENCLAVE_ID_SVR3_NITRO_STAGING,
         SmallMap::new([
-             (0, hex!("24e56baabe26dcedc58f5753ee979e2f74750df31f43a18f0cf4e08f8ad8c0cd304142cf3441945c3568f4096cb69c66")),
+             (0, hex!("ffe631d7b726c672480ddde425f3ed9cbdaafa354dc6a85277dde6bfca56e93fafd66052f1dd93bf5f240c5a55fb2cb1")),
              (1, hex!("52b919754e1643f4027eeee8ec39cc4a2cb931723de0c93ce5cc8d407467dc4302e86490c01c0d755acfe10dbf657546")),
-             (2, hex!("ec540f3f7f673ab65582d96cf26a747beffcc9392e82f48cfa4ceec47a6ad69a63f9102fc7e1fae37a83a9741814210f")),
+             (2, hex!("a4544fb5e5f416c08c4aca4c3f14efaf8d16d7ddc39d15f17b3b02605ef6e3a834553a0901fbce8716cc0de8caea028d")),
         ]),
     ),
 ]);
@@ -47,10 +47,10 @@ pub(crate) const TPM2SNP_EXPECTED_PCRS: SmallMap<&'static [u8], &'static tpm2snp
             (2,  hex!("3d458cfe55cc03ea1f443f1562beec8df51c75e14a9fcf9a7234a13f198e7969")),
             (3,  hex!("3d458cfe55cc03ea1f443f1562beec8df51c75e14a9fcf9a7234a13f198e7969")),
             (4,  hex!("6038382cdf539eb64d05c804c510e22b81e2c71fb171c9616ab14504f3654bb1")),
-            (5,  hex!("4e871c2923a78a62db4afde169145ad46c633f871f7a5d14b68153d81d1de4d3")),
+            (5,  hex!("4a00dca027080350a681b2ea214711374e97427042626aacb935398ef4030651")),
             (7,  hex!("590471a4fbd0c881c4fdc6349bc697e4df18c660c3ae3de9cb29028f8ef77280")),
-            (8,  hex!("497c436dde91431c96e19e14036cce3a0a70e0dd007b6dcc01f07fbab228c56c")),
-            (9,  hex!("9afeee52dee64ac16107982f37f70ffde99126b56e6c1de17c3cb105e4ea6d97")),
+            (8,  hex!("48f56c81de21292cd225485ec0ba268497662a1bfcdf5ef65d0b03bbc0d0c4d9")),
+            (9,  hex!("626d155ba40667ab3cb4385102c89e0b7ffd1a8348da20653e4f651ea0152e32")),
             (11, hex!("0000000000000000000000000000000000000000000000000000000000000000")),
             (12, hex!("0000000000000000000000000000000000000000000000000000000000000000")),
             (13, hex!("0000000000000000000000000000000000000000000000000000000000000000")),
@@ -107,13 +107,13 @@ pub(crate) static EXPECTED_RAFT_CONFIG: SmallMap<&'static [u8], &'static RaftCon
                 min_voting_replicas: 3,
                 max_voting_replicas: 9,
                 super_majority: 0,
-                group_id: 7392562970588785022,
+                group_id: 15742431669367858463,
             },
         ),
         (
             ENCLAVE_ID_SVR3_NITRO_STAGING,
             &RaftConfig {
-                group_id: 15634566125189380832,
+                group_id: 10298929430185113734,
                 min_voting_replicas: 3,
                 max_voting_replicas: 9,
                 super_majority: 0,
@@ -122,7 +122,7 @@ pub(crate) static EXPECTED_RAFT_CONFIG: SmallMap<&'static [u8], &'static RaftCon
         (
             ENCLAVE_ID_SVR3_TPM2SNP_STAGING,
             &RaftConfig {
-                group_id: 8812204445911365918,
+                group_id: 8572438378773168949,
                 min_voting_replicas: 3,
                 max_voting_replicas: 9,
                 super_majority: 0,
