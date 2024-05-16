@@ -6,10 +6,6 @@
 import Foundation
 import SignalFfi
 
-#if canImport(SignalCoreKit)
-import SignalCoreKit
-#endif
-
 public enum SignalError: Error {
     case invalidState(String)
     case internalError(String)
@@ -205,14 +201,15 @@ internal func failOnError(_ error: SignalFfiErrorRef?) {
     failOnError { try checkError(error) }
 }
 
-internal func failOnError<Result>(_ fn: () throws -> Result) -> Result {
-#if canImport(SignalCoreKit)
+internal func failOnError<Result>(_ fn: () throws -> Result, file: StaticString = #file, line: UInt32 = #line) -> Result {
     do {
         return try fn()
     } catch {
-        owsFail("unexpected error: \(error)")
+        guard let loggerBridge = LoggerBridge.shared else {
+            fatalError("unexpected error: \(error)", file: file, line: UInt(line))
+        }
+        "unexpected error: \(error)".withCString {
+            loggerBridge.logger.logFatal(file: String(describing: file), line: line, message: $0)
+        }
     }
-#else
-    return try! fn()
-#endif
 }

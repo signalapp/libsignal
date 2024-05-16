@@ -3,30 +3,29 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import SignalFfi
+import LibSignalClient
 import XCTest
-
-#if canImport(SignalCoreKit)
-import SignalCoreKit
-#endif
 
 class TestCaseBase: XCTestCase {
     // Use a static stored property for one-time initialization.
     static let loggingInitialized: Bool = {
-#if canImport(SignalCoreKit)
-        DDLog.add(DDOSLogger.sharedInstance)
-#else
-        signal_init_logger(SignalLogLevelTrace, .init(
-            enabled: { _, _ in true },
-            log: { _, level, file, line, message in
-                let file = file.map { String(cString: $0) } ?? "<unknown>"
-                file.withCString {
-                    NSLog("(%u) [%s:%u] %s", level.rawValue, $0, line, message!)
+        struct LogToNSLog: LibsignalLogger {
+            func log(level: LibsignalLogLevel, file: UnsafePointer<CChar>?, line: UInt32, message: UnsafePointer<CChar>) {
+                let abbreviation: String
+                switch level {
+                case .error: abbreviation = "E"
+                case .warn: abbreviation = "W"
+                case .info: abbreviation = "I"
+                case .debug: abbreviation = "D"
+                case .trace: abbreviation = "T"
                 }
-            },
-            flush: {}
-        ))
-#endif
+                let file = file.map { String(cString: $0) } ?? "<unknown>"
+                NSLog("%@ [%s:%u] %s", abbreviation, file, line, message)
+            }
+
+            func flush() {}
+        }
+        LogToNSLog().setUpLibsignalLogging(level: .trace)
         return true
     }()
 

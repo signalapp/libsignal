@@ -16,8 +16,6 @@ Pod::Spec.new do |s|
   s.swift_version    = '5'
   s.platform         = :ios, '13.0'
 
-  s.dependency 'SignalCoreKit'
-
   s.source_files = ['swift/Sources/**/*.swift', 'swift/Sources/**/*.m']
   s.preserve_paths = [
     'swift/Sources/SignalFfi',

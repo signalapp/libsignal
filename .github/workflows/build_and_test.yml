@@ -408,12 +408,6 @@ jobs:
         run: swiftlint lint --strict --reporter github-actions-logging
         working-directory: swift
 
-      - name: Check out SignalCoreKit
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
-        with:
-          repository: signalapp/SignalCoreKit
-          path: SignalCoreKit
-
       - run: rustup toolchain install $(cat rust-toolchain) --profile minimal --target x86_64-apple-ios,aarch64-apple-ios-sim
 
       # Build only the targets that `pod lib lint` will test building.
@@ -428,5 +422,4 @@ jobs:
           CARGO_BUILD_TARGET: aarch64-apple-ios-sim
 
       - name: Run pod lint
-        # No import validation because it tries to build unsupported platforms (like 32-bit iOS).
-        run: pod lib lint --verbose --platforms=ios --include-podspecs=SignalCoreKit/SignalCoreKit.podspec --skip-import-validation
+        run: pod lib lint --verbose --platforms=ios

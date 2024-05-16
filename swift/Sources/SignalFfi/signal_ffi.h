@@ -421,14 +421,12 @@ typedef struct {
   SignalStoreSignedPreKey store_signed_pre_key;
 } SignalSignedPreKeyStore;
 
-typedef bool (*SignalLogEnabledCallback)(const char *target, SignalLogLevel level);
+typedef void (*SignalLogCallback)(void *ctx, const char *target, SignalLogLevel level, const char *file, uint32_t line, const char *message);
 
-typedef void (*SignalLogCallback)(const char *target, SignalLogLevel level, const char *file, uint32_t line, const char *message);
-
-typedef void (*SignalLogFlushCallback)(void);
+typedef void (*SignalLogFlushCallback)(void *ctx);
 
 typedef struct {
-  SignalLogEnabledCallback enabled;
+  void *ctx;
   SignalLogCallback log;
   SignalLogFlushCallback flush;
 } SignalFfiLogger;
@@ -729,7 +727,7 @@ SignalFfiError *signal_identitykeypair_deserialize(SignalPrivateKey **private_ke
 
 SignalFfiError *signal_sealed_session_cipher_decrypt(SignalOwnedBuffer *out, const char **sender_e164, const char **sender_uuid, uint32_t *sender_device_id, SignalBorrowedBuffer ctext, const SignalPublicKey *trust_root, uint64_t timestamp, const char *local_e164, const char *local_uuid, unsigned int local_device_id, const SignalSessionStore *session_store, const SignalIdentityKeyStore *identity_store, const SignalPreKeyStore *prekey_store, const SignalSignedPreKeyStore *signed_prekey_store);
 
-void signal_init_logger(SignalLogLevel max_level, SignalFfiLogger logger);
+bool signal_init_logger(SignalLogLevel max_level, SignalFfiLogger logger);
 
 SignalFfiError *signal_aes256_gcm_siv_destroy(SignalAes256GcmSiv *p);
 
