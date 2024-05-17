@@ -50,10 +50,15 @@ pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_initializeLib
     class: JClass<'local>,
 ) {
     run_ffi_safe(&mut env, |env| {
+        #[cfg(target_os = "android")]
         save_class_loader(env, &class)?;
 
         #[cfg(target_os = "android")]
         set_up_rustls_platform_verifier(env, class)?;
+
+        // Silence the unused variable warning on non-Android.
+        _ = class;
+        _ = env;
 
         Ok(())
     })
