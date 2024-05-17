@@ -14,9 +14,9 @@ use derive_where::derive_where;
 use libsignal_protocol::Aci;
 use protobuf::EnumOrUnknown;
 
-use crate::backup::call::MaybeWithCall;
+use crate::backup::call::CallId;
 use crate::backup::file::{VoiceMessageAttachment, VoiceMessageAttachmentError};
-use crate::backup::frame::{CallId, RecipientId};
+use crate::backup::frame::RecipientId;
 use crate::backup::method::{Contains, Method, Store};
 use crate::backup::sticker::{MessageSticker, MessageStickerError};
 use crate::backup::time::{Duration, Timestamp};
@@ -389,8 +389,8 @@ impl<M: Method, C: Contains<RecipientId>> TryFromWith<proto::Chat, C> for ChatDa
     }
 }
 
-impl<R: Contains<RecipientId> + Contains<CallId> + AsRef<BackupMeta>>
-    TryFromWith<proto::ChatItem, R> for MaybeWithCall<ChatItemData>
+impl<R: Contains<RecipientId> + AsRef<BackupMeta>> TryFromWith<proto::ChatItem, R>
+    for ChatItemData
 {
     type Error = ChatItemError;
 
@@ -416,10 +416,7 @@ impl<R: Contains<RecipientId> + Contains<CallId> + AsRef<BackupMeta>>
             return Err(ChatItemError::AuthorNotFound(author));
         }
 
-        let MaybeWithCall {
-            item: message,
-            call,
-        } = item
+        let message = item
             .ok_or(ChatItemError::MissingItem)?
             .try_into_with(context)?;
 
@@ -430,10 +427,28 @@ impl<R: Contains<RecipientId> + Contains<CallId> + AsRef<BackupMeta>>
         let revisions: Vec<_> = revisions
             .into_iter()
             .map(|rev| {
-                let MaybeWithCall { item, call } = rev.try_into_with(context)?;
-                if call.is_some() {
-                    return Err(ChatItemError::RevisionContainsCall);
-                }
+                let item: ChatItemData = rev.try_into_with(context)?;
+                match &item.message {
+                    ChatItemMessage::Update(update) => match update {
+                        UpdateMessage::Call(_, _) => {
+                            return Err(ChatItemError::RevisionContainsCall)
+                        }
+                        UpdateMessage::Simple(_)
+                        | UpdateMessage::GroupChange { updates: _ }
+                        | UpdateMessage::ExpirationTimerChange { expires_in: _ }
+                        | UpdateMessage::ProfileChange {
+                            previous: _,
+                            new: _,
+                        }
+                        | UpdateMessage::ThreadMerge
+                        | UpdateMessage::SessionSwitchover => (),
+                    },
+                    ChatItemMessage::Standard(_)
+                    | ChatItemMessage::Contact(_)
+                    | ChatItemMessage::Voice(_)
+                    | ChatItemMessage::Sticker(_)
+                    | ChatItemMessage::RemoteDeleted => (),
+                };
                 Ok(item)
             })
             .collect::<Result<_, _>>()?;
@@ -469,7 +484,7 @@ impl<R: Contains<RecipientId> + Contains<CallId> + AsRef<BackupMeta>>
             }
         }
 
-        let chat_item_data = ChatItemData {
+        Ok(ChatItemData {
             author,
             message,
             revisions,
@@ -478,11 +493,6 @@ impl<R: Contains<RecipientId> + Contains<CallId> + AsRef<BackupMeta>>
             expire_start,
             expires_in,
             _limit_construction_to_module: (),
-        };
-
-        Ok(Self {
-            item: chat_item_data,
-            call,
         })
     }
 }
@@ -571,15 +581,15 @@ impl<R: Contains<RecipientId>> TryFromWith<proto::SendStatus, R> for OutgoingSen
     }
 }
 
-impl<R: Contains<RecipientId> + Contains<CallId> + AsRef<BackupMeta>>
-    TryFromWith<proto::chat_item::Item, R> for MaybeWithCall<ChatItemMessage>
+impl<R: Contains<RecipientId> + AsRef<BackupMeta>> TryFromWith<proto::chat_item::Item, R>
+    for ChatItemMessage
 {
     type Error = ChatItemError;
 
     fn try_from_with(value: proto::chat_item::Item, recipients: &R) -> Result<Self, Self::Error> {
         use proto::chat_item::Item;
 
-        let without_calls = match value {
+        Ok(match value {
             Item::StandardMessage(message) => {
                 let is_voice_message = matches!(message.attachments.as_slice(),
                 [single_attachment] if
@@ -603,16 +613,9 @@ impl<R: Contains<RecipientId> + Contains<CallId> + AsRef<BackupMeta>>
                 ChatItemMessage::RemoteDeleted
             }
             Item::UpdateMessage(message) => {
-                let MaybeWithCall { item: update, call } = message.try_into_with(recipients)?;
-                return Ok(Self {
-                    item: ChatItemMessage::Update(update),
-                    call,
-                });
+                let update = message.try_into_with(recipients)?;
+                ChatItemMessage::Update(update)
             }
-        };
-        Ok(Self {
-            item: without_calls,
-            call: None,
         })
     }
 }
@@ -834,9 +837,7 @@ impl<R: Contains<RecipientId>> TryFromWith<proto::StickerMessage, R> for Sticker
     }
 }
 
-impl<R: Contains<RecipientId> + Contains<CallId>> TryFromWith<proto::ChatUpdateMessage, R>
-    for MaybeWithCall<UpdateMessage>
-{
+impl<R: Contains<RecipientId>> TryFromWith<proto::ChatUpdateMessage, R> for UpdateMessage {
     type Error = ChatItemError;
 
     fn try_from_with(item: proto::ChatUpdateMessage, context: &R) -> Result<Self, Self::Error> {
@@ -848,7 +849,7 @@ impl<R: Contains<RecipientId> + Contains<CallId>> TryFromWith<proto::ChatUpdateM
         let update = update.ok_or(ChatItemError::UpdateIsEmpty)?;
 
         use proto::chat_update_message::Update;
-        let without_calls = match update {
+        Ok(match update {
             Update::SimpleUpdate(proto::SimpleChatUpdate {
                 type_,
                 special_fields: _,
@@ -936,15 +937,8 @@ impl<R: Contains<RecipientId> + Contains<CallId>> TryFromWith<proto::ChatUpdateM
                     .transpose()
                     .map_err(CallChatUpdateError::CallError)?;
 
-                return Ok(MaybeWithCall {
-                    item: UpdateMessage::Call(chat_update, call.as_ref().map(|c: &Call| c.id)),
-                    call,
-                });
+                UpdateMessage::Call(chat_update, call.as_ref().map(|c: &Call| c.id))
             }
-        };
-        Ok(MaybeWithCall {
-            item: without_calls,
-            call: None,
         })
     }
 }
@@ -1118,32 +1112,6 @@ pub(crate) mod test {
                 expiresInMs: 12 * 60 * 60 * 1000,
                 dateSent: MillisecondsSinceEpoch::TEST_VALUE.0,
                 ..Default::default()
-            }
-        }
-    }
-
-    pub(crate) trait ChatItemTestData {
-        fn test_data_with_call() -> Self;
-    }
-    impl ChatItemTestData for proto::ChatItem {
-        fn test_data_with_call() -> Self {
-            let data = proto::ChatItem::test_data();
-            proto::ChatItem {
-                item: Some(proto::chat_item::Item::UpdateMessage(
-                    proto::ChatUpdateMessage {
-                        update: Some(proto::chat_update_message::Update::CallingMessage(
-                            proto::CallChatUpdate {
-                                call: Some(proto::Call::test_data()).into(),
-                                chatUpdate: Some(
-                                    proto::call_chat_update::ChatUpdate::test_call_message(),
-                                ),
-                                ..Default::default()
-                            },
-                        )),
-                        ..Default::default()
-                    },
-                )),
-                ..data
             }
         }
     }
@@ -1355,7 +1323,7 @@ pub(crate) mod test {
 
     impl Contains<CallId> for TestContext {
         fn contains(&self, key: &CallId) -> bool {
-            key == &CallId(proto::Call::TEST_ID)
+            key == &proto::Call::TEST_ID
         }
     }
 
@@ -1369,21 +1337,18 @@ pub(crate) mod test {
     fn valid_chat_item() {
         assert_eq!(
             proto::ChatItem::test_data().try_into_with(&TestContext::default()),
-            Ok(MaybeWithCall {
-                item: ChatItemData {
-                    author: RecipientId(proto::Recipient::TEST_ID),
-                    message: ChatItemMessage::Standard(StandardMessage::from_proto_test_data()),
-                    revisions: vec![],
-                    direction: Direction::Incoming {
-                        received: Timestamp::test_value(),
-                        sent: Timestamp::test_value()
-                    },
-                    expire_start: Some(Timestamp::test_value()),
-                    expires_in: Some(Duration::TWELVE_HOURS),
-                    sent_at: Timestamp::test_value(),
-                    _limit_construction_to_module: (),
+            Ok(ChatItemData {
+                author: RecipientId(proto::Recipient::TEST_ID),
+                message: ChatItemMessage::Standard(StandardMessage::from_proto_test_data()),
+                revisions: vec![],
+                direction: Direction::Incoming {
+                    received: Timestamp::test_value(),
+                    sent: Timestamp::test_value()
                 },
-                call: None,
+                expire_start: Some(Timestamp::test_value()),
+                expires_in: Some(Duration::TWELVE_HOURS),
+                sent_at: Timestamp::test_value(),
+                _limit_construction_to_module: (),
             })
         )
     }
@@ -1443,7 +1408,7 @@ pub(crate) mod test {
 
         let result = message
             .try_into_with(&TestContext::default())
-            .map(|_: MaybeWithCall<ChatItemData>| ());
+            .map(|_: ChatItemData| ());
         assert_eq!(result, expected);
     }
 
@@ -1568,7 +1533,7 @@ pub(crate) mod test {
     #[test]
     fn chat_update_message_no_item() {
         assert_matches!(
-            MaybeWithCall::<UpdateMessage>::try_from_with(
+            UpdateMessage::try_from_with(
                 proto::ChatUpdateMessage::default(),
                 &TestContext::default()
             ),
@@ -1594,7 +1559,7 @@ pub(crate) mod test {
             ..Default::default()
         }
         .try_into_with(&TestContext::default())
-        .map(|_: MaybeWithCall<UpdateMessage>| ());
+        .map(|_: UpdateMessage| ());
 
         assert_eq!(result, expected)
     }
@@ -1745,7 +1710,7 @@ pub(crate) mod test {
             .unwrap();
         item.expiresInMs = until_expiration_ms;
 
-        let result = MaybeWithCall::<ChatItemData>::try_from_with(item, &TestContext(meta))
+        let result = ChatItemData::try_from_with(item, &TestContext(meta))
             .map(|_| ())
             .map_err(|e| assert_matches!(e, ChatItemError::InvalidExpiration(e) => e).to_string());
         assert_eq!(result, expected.map_err(ToString::to_string));
@@ -1758,7 +1723,7 @@ pub(crate) mod test {
         item.expiresInMs = 0;
 
         assert_matches!(
-            MaybeWithCall::<ChatItemData>::try_from_with(item, &TestContext::default()),
+            ChatItemData::try_from_with(item, &TestContext::default()),
             Err(ChatItemError::ExpirationMismatch)
         );
     }

@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use crate::backup::frame::{CallId, RecipientId, RingerRecipientId};
+use crate::backup::frame::{RecipientId, RingerRecipientId};
 use crate::backup::method::Contains;
 use crate::backup::time::Timestamp;
 use crate::backup::TryFromWith;
@@ -19,19 +19,12 @@ pub struct Call {
     pub timestamp: Timestamp,
 }
 
-/// Wrapper around another type for returning it and at most one [`Call`] value.
-#[derive(Debug)]
-#[cfg_attr(test, derive(PartialEq))]
-pub struct MaybeWithCall<T> {
-    pub item: T,
-    pub call: Option<Call>,
-}
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub struct CallId(u64);
 
 #[derive(Debug, displaydoc::Display, thiserror::Error)]
 #[cfg_attr(test, derive(PartialEq))]
 pub enum CallError {
-    /// multiple records with the same ID
-    DuplicateId,
     /// no record for {0:?}
     NoConversation(RecipientId),
     /// no record for {0:?}
@@ -134,13 +127,14 @@ mod test {
 
     use super::*;
 
-    impl ProtoTestDataId for proto::Call {
-        const TEST_ID: u64 = 33333;
+    impl ProtoTestDataId<CallId> for proto::Call {
+        const TEST_ID: CallId = CallId(33333);
     }
+
     impl ProtoTestData for proto::Call {
         fn test_data() -> Self {
             Self {
-                callId: Self::TEST_ID,
+                callId: Self::TEST_ID.0,
                 conversationRecipientId: proto::Recipient::TEST_ID,
                 ringerRecipientId: Some(proto::Recipient::TEST_ID),
                 outgoing: true,
@@ -165,7 +159,7 @@ mod test {
         assert_eq!(
             proto::Call::test_data().try_into_with(&TestContext),
             Ok(Call {
-                id: CallId(proto::Call::TEST_ID),
+                id: proto::Call::TEST_ID,
                 call_type: CallType::AdHoc,
                 state: CallState::DeclinedByUser,
                 outgoing: true,
