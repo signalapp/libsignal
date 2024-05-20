@@ -10,6 +10,7 @@ use libsignal_protocol::{Aci, Pni, ServiceIdKind};
 use uuid::Uuid;
 use zkgroup::{GroupMasterKeyBytes, ProfileKeyBytes};
 
+use crate::backup::call::{CallLink, CallLinkError};
 use crate::backup::method::{Method, Store};
 use crate::backup::time::Timestamp;
 use crate::proto::backup as proto;
@@ -34,22 +35,27 @@ pub enum RecipientError {
     ContactRegistrationUnknown,
     /// distribution list has privacy mode UNKNOWN
     DistributionListPrivacyUnknown,
+    /// invalid call link: {0}
+    InvalidCallLink(#[from] CallLinkError),
 }
 
 #[derive_where(Debug)]
-#[derive_where(PartialEq; M::Value<Destination>: PartialEq)]
+#[cfg_attr(test, derive_where(PartialEq; Destination<M>: PartialEq))]
 pub struct RecipientData<M: Method = Store> {
-    pub destination: M::Value<Destination>,
+    pub destination: Destination<M>,
 }
 
-#[derive(Debug)]
-#[cfg_attr(test, derive(PartialEq))]
-pub enum Destination {
-    Contact(ContactData),
-    Group(GroupData),
-    DistributionList(DistributionListData),
+#[derive_where(Debug)]
+#[cfg_attr(test, derive_where(PartialEq; M::Value<ContactData>: PartialEq, M::Value<GroupData>: PartialEq, M::Value<DistributionListData>: PartialEq, M::Value<CallLink>: PartialEq))]
+#[derive(strum::EnumDiscriminants)]
+#[strum_discriminants(name(DestinationKind))]
+pub enum Destination<M: Method = Store> {
+    Contact(M::Value<ContactData>),
+    Group(M::Value<GroupData>),
+    DistributionList(M::Value<DistributionListData>),
     Self_,
     ReleaseNotes,
+    CallLink(M::Value<CallLink>),
 }
 
 #[derive(Debug)]
@@ -83,6 +89,23 @@ pub enum PrivacyMode {
     All,
 }
 
+impl<M: Method> AsRef<DestinationKind> for RecipientData<M> {
+    fn as_ref(&self) -> &DestinationKind {
+        let Self { destination } = self;
+        // We cheat by returning static references. That's fine since these are
+        // just discriminants; they don't represent the actual data from the
+        // enum values.
+        match destination {
+            Destination::Contact(_) => &DestinationKind::Contact,
+            Destination::Group(_) => &DestinationKind::Group,
+            Destination::DistributionList(_) => &DestinationKind::DistributionList,
+            Destination::Self_ => &DestinationKind::Self_,
+            Destination::ReleaseNotes => &DestinationKind::ReleaseNotes,
+            Destination::CallLink(_) => &DestinationKind::CallLink,
+        }
+    }
+}
+
 impl<M: Method> TryFrom<proto::Recipient> for RecipientData<M> {
     type Error = RecipientError;
     fn try_from(value: proto::Recipient) -> Result<Self, Self::Error> {
@@ -95,20 +118,23 @@ impl<M: Method> TryFrom<proto::Recipient> for RecipientData<M> {
         let destination = destination.ok_or(RecipientError::MissingDestination)?;
 
         let destination = match destination {
-            RecipientDestination::Contact(contact) => Destination::Contact(contact.try_into()?),
-            RecipientDestination::Group(group) => Destination::Group(group.try_into()?),
+            RecipientDestination::Contact(contact) => {
+                Destination::Contact(M::value(contact.try_into()?))
+            }
+            RecipientDestination::Group(group) => Destination::Group(M::value(group.try_into()?)),
             RecipientDestination::DistributionList(list) => {
-                Destination::DistributionList(list.try_into()?)
+                Destination::DistributionList(M::value(list.try_into()?))
             }
             RecipientDestination::Self_(proto::Self_ { special_fields: _ }) => Destination::Self_,
             RecipientDestination::ReleaseNotes(proto::ReleaseNotes { special_fields: _ }) => {
                 Destination::ReleaseNotes
             }
+            RecipientDestination::CallLink(call_link) => {
+                Destination::CallLink(M::value(call_link.try_into()?))
+            }
         };
 
-        Ok(Self {
-            destination: M::value(destination),
-        })
+        Ok(Self { destination })
     }
 }
 
@@ -179,7 +205,7 @@ impl TryFrom<proto::Group> for GroupData {
             whitelisted: _,
             hideStory: _,
             storySendMode: _,
-            name: _,
+            snapshot: _,
             special_fields: _,
         } = value;
 

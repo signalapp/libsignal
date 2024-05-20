@@ -11,16 +11,15 @@
 use std::num::NonZeroU64;
 
 use derive_where::derive_where;
-use libsignal_protocol::Aci;
 use protobuf::EnumOrUnknown;
 
-use crate::backup::call::CallId;
+use crate::backup::call::{GroupCall, IndividualCall};
 use crate::backup::file::{VoiceMessageAttachment, VoiceMessageAttachmentError};
 use crate::backup::frame::RecipientId;
 use crate::backup::method::{Contains, Method, Store};
 use crate::backup::sticker::{MessageSticker, MessageStickerError};
 use crate::backup::time::{Duration, Timestamp};
-use crate::backup::{BackupMeta, Call, CallError, TryFromWith, TryIntoWith as _};
+use crate::backup::{BackupMeta, CallError, TryFromWith, TryIntoWith as _};
 use crate::proto::backup as proto;
 
 mod group;
@@ -50,10 +49,8 @@ pub enum ChatItemError {
     Reaction(#[from] ReactionError),
     /// ChatUpdateMessage.update is a oneof but is empty
     UpdateIsEmpty,
-    /// CallChatUpdate.chatUpdate is a oneof but is empty
-    ChatUpdateIsEmpty,
-    /// call update: {0}
-    CallUpdate(#[from] CallChatUpdateError),
+    /// call error: {0}
+    Call(#[from] CallError),
     /// GroupChange has no changes.
     GroupChangeIsEmpty,
     /// for GroupUpdate change {0}, Update.update is a oneof but is empty
@@ -199,7 +196,8 @@ pub enum UpdateMessage {
     },
     ThreadMerge,
     SessionSwitchover,
-    Call(CallChatUpdate, Option<CallId>),
+    IndividualCall(IndividualCall),
+    GroupCall(GroupCall),
 }
 
 /// Validated version of [`proto::simple_chat_update::Type`].
@@ -224,31 +222,6 @@ pub enum SimpleChatUpdate {
 #[cfg_attr(test, derive(PartialEq))]
 pub struct ContactAttachment {
     _limit_construction_to_module: (),
-}
-
-/// Validated version of [`proto::call_chat_update::Call`].
-#[derive(Debug)]
-#[cfg_attr(test, derive(PartialEq))]
-pub enum CallChatUpdate {
-    CallMessage,
-    GroupCall {
-        started_call_aci: Option<Aci>,
-        in_call_acis: Vec<Aci>,
-        started_call_at: Timestamp,
-        ended_call_at: Timestamp,
-        local_user_joined: bool,
-    },
-}
-
-#[derive(Debug, thiserror::Error, displaydoc::Display)]
-#[cfg_attr(test, derive(PartialEq))]
-pub enum CallChatUpdateError {
-    /// call error: {0:?}
-    CallError(#[from] CallError),
-    /// IndividualCallChatUpdate.type is UNKNOWN
-    CallTypeUnknown,
-    /// invalid ACI uuid
-    InvalidAci,
 }
 
 /// Validated version of [`proto::Reaction`].
@@ -430,7 +403,7 @@ impl<R: Contains<RecipientId> + AsRef<BackupMeta>> TryFromWith<proto::ChatItem, 
                 let item: ChatItemData = rev.try_into_with(context)?;
                 match &item.message {
                     ChatItemMessage::Update(update) => match update {
-                        UpdateMessage::Call(_, _) => {
+                        UpdateMessage::GroupCall(_) | UpdateMessage::IndividualCall(_) => {
                             return Err(ChatItemError::RevisionContainsCall)
                         }
                         UpdateMessage::Simple(_)
@@ -484,7 +457,7 @@ impl<R: Contains<RecipientId> + AsRef<BackupMeta>> TryFromWith<proto::ChatItem, 
             }
         }
 
-        Ok(ChatItemData {
+        Ok(Self {
             author,
             message,
             revisions,
@@ -613,8 +586,7 @@ impl<R: Contains<RecipientId> + AsRef<BackupMeta>> TryFromWith<proto::chat_item:
                 ChatItemMessage::RemoteDeleted
             }
             Item::UpdateMessage(message) => {
-                let update = message.try_into_with(recipients)?;
-                ChatItemMessage::Update(update)
+                ChatItemMessage::Update(message.try_into_with(recipients)?)
             }
         })
     }
@@ -922,92 +894,9 @@ impl<R: Contains<RecipientId>> TryFromWith<proto::ChatUpdateMessage, R> for Upda
                 // TODO validate this field
                 e164: _,
             }) => UpdateMessage::SessionSwitchover,
-            Update::CallingMessage(proto::CallChatUpdate {
-                call,
-                chatUpdate,
-                special_fields: _,
-            }) => {
-                let chat_update = chatUpdate
-                    .ok_or(ChatItemError::ChatUpdateIsEmpty)?
-                    .try_into()?;
-
-                let call = call
-                    .into_option()
-                    .map(|c| c.try_into_with(context))
-                    .transpose()
-                    .map_err(CallChatUpdateError::CallError)?;
-
-                UpdateMessage::Call(chat_update, call.as_ref().map(|c: &Call| c.id))
-            }
+            Update::IndividualCall(call) => UpdateMessage::IndividualCall(call.try_into()?),
+            Update::GroupCall(call) => UpdateMessage::GroupCall(call.try_into_with(context)?),
         })
-    }
-}
-
-impl TryFrom<proto::call_chat_update::ChatUpdate> for CallChatUpdate {
-    type Error = CallChatUpdateError;
-    fn try_from(item: proto::call_chat_update::ChatUpdate) -> Result<Self, Self::Error> {
-        use proto::call_chat_update::ChatUpdate;
-        use proto::group_call_chat_update::LocalUserJoined;
-        match item {
-            ChatUpdate::CallMessage(proto::IndividualCallChatUpdate {
-                special_fields: _,
-                type_,
-            }) => {
-                if type_.enum_value_or_default()
-                    == proto::individual_call_chat_update::Type::UNKNOWN
-                {
-                    return Err(CallChatUpdateError::CallTypeUnknown);
-                }
-                Ok(Self::CallMessage)
-            }
-            ChatUpdate::GroupCall(group) => {
-                let proto::GroupCallChatUpdate {
-                    startedCallAci,
-                    inCallAcis,
-                    startedCallTimestamp,
-                    endedCallTimestamp,
-                    localUserJoined,
-                    special_fields: _,
-                } = group;
-
-                let uuid_bytes_to_aci = |bytes: Vec<u8>| {
-                    bytes
-                        .try_into()
-                        .map(Aci::from_uuid_bytes)
-                        .map_err(|_| CallChatUpdateError::InvalidAci)
-                };
-                let started_call_aci = startedCallAci.map(uuid_bytes_to_aci).transpose()?;
-
-                let in_call_acis = inCallAcis
-                    .into_iter()
-                    .map(uuid_bytes_to_aci)
-                    .collect::<Result<_, _>>()?;
-
-                let local_user_joined = match localUserJoined.enum_value_or_default() {
-                    LocalUserJoined::DID_NOT_JOIN => false,
-                    LocalUserJoined::UNKNOWN // Clients should treat an UNKNOWN case the same as JOINED.
-                    | LocalUserJoined::JOINED => true,
-                };
-
-                let started_call_at = Timestamp::from_millis(
-                    startedCallTimestamp,
-                    "ChatUpdate.Call.startedCallTimestamp",
-                );
-
-                let ended_call_at = Timestamp::from_millis(
-                    endedCallTimestamp,
-                    "ChatUpdate.Call.endedCallTimestamp",
-                );
-
-                Ok(Self::GroupCall {
-                    started_call_aci,
-                    in_call_acis,
-                    started_call_at,
-                    ended_call_at,
-                    local_user_joined,
-                })
-            }
-        }
     }
 }
 
@@ -1321,12 +1210,6 @@ pub(crate) mod test {
         }
     }
 
-    impl Contains<CallId> for TestContext {
-        fn contains(&self, key: &CallId) -> bool {
-            key == &proto::Call::TEST_ID
-        }
-    }
-
     impl AsRef<BackupMeta> for TestContext {
         fn as_ref(&self) -> &BackupMeta {
             &self.0
@@ -1546,10 +1429,6 @@ pub(crate) mod test {
     #[test_case(proto::ProfileChangeChatUpdate::default(), Ok(()))]
     #[test_case(proto::ThreadMergeChatUpdate::default(), Ok(()))]
     #[test_case(proto::SessionSwitchoverChatUpdate::default(), Ok(()))]
-    #[test_case(
-        proto::CallChatUpdate::default(),
-        Err(ChatItemError::ChatUpdateIsEmpty)
-    )]
     fn chat_update_message_item(
         update: impl Into<proto::chat_update_message::Update>,
         expected: Result<(), ChatItemError>,
@@ -1564,80 +1443,52 @@ pub(crate) mod test {
         assert_eq!(result, expected)
     }
 
-    use proto::call_chat_update::ChatUpdate as CallChatUpdateProto;
-    trait ChatUpdateTestData {
-        fn test_call_message() -> Self;
-    }
-
-    impl ChatUpdateTestData for CallChatUpdateProto {
-        fn test_call_message() -> Self {
-            Self::CallMessage(proto::IndividualCallChatUpdate {
-                type_: proto::individual_call_chat_update::Type::INCOMING_VIDEO_CALL.into(),
-                special_fields: SpecialFields::new(),
-            })
-        }
-    }
-
-    impl ProtoTestData for proto::GroupCallChatUpdate {
-        fn test_data() -> Self {
-            Self {
-                startedCallAci: Some(Self::TEST_ACI.into()),
-                inCallAcis: vec![Self::TEST_ACI.into()],
-                startedCallTimestamp: MillisecondsSinceEpoch::TEST_VALUE.0,
-                endedCallTimestamp: MillisecondsSinceEpoch::TEST_VALUE.0 + 1000,
-                localUserJoined: proto::group_call_chat_update::LocalUserJoined::JOINED.into(),
-                ..Default::default()
-            }
-        }
-    }
+    use proto::chat_update_message::Update as ChatUpdateProto;
     trait GroupCallChatUpdateTestData {
         const TEST_ACI: [u8; 16];
-        fn bad_in_call_aci() -> Self;
-        fn bad_started_call_aci() -> Self;
-        fn no_started_call_aci() -> Self;
+        fn bad_started_call() -> Self;
+        fn no_started_call() -> Self;
     }
 
-    impl GroupCallChatUpdateTestData for proto::GroupCallChatUpdate {
+    const BAD_RECIPIENT: RecipientId = RecipientId(u64::MAX);
+    impl GroupCallChatUpdateTestData for proto::GroupCall {
         const TEST_ACI: [u8; 16] = [0x12; 16];
 
-        fn no_started_call_aci() -> Self {
+        fn no_started_call() -> Self {
             Self {
-                startedCallAci: None,
+                startedCallRecipientId: None,
                 ..Self::test_data()
             }
         }
 
-        fn bad_started_call_aci() -> Self {
+        fn bad_started_call() -> Self {
             Self {
-                startedCallAci: Some(vec![0x01; 2]),
-                ..Self::test_data()
-            }
-        }
-
-        fn bad_in_call_aci() -> Self {
-            Self {
-                inCallAcis: vec![Self::TEST_ACI.into(), vec![0x01; 3]],
+                startedCallRecipientId: Some(BAD_RECIPIENT.0),
                 ..Self::test_data()
             }
         }
     }
 
-    #[test_case(CallChatUpdateProto::test_call_message(), Ok(()))]
-    #[test_case(CallChatUpdateProto::GroupCall(proto::GroupCallChatUpdate::test_data()), Ok(()))]
+    #[test_case(ChatUpdateProto::IndividualCall(proto::IndividualCall::test_data()), Ok(()))]
+    #[test_case(ChatUpdateProto::GroupCall(proto::GroupCall::test_data()), Ok(()))]
     #[test_case(
-        CallChatUpdateProto::GroupCall(proto::GroupCallChatUpdate::no_started_call_aci()),
+        ChatUpdateProto::GroupCall(proto::GroupCall::no_started_call()),
         Ok(())
     )]
     #[test_case(
-        CallChatUpdateProto::GroupCall(proto::GroupCallChatUpdate::bad_started_call_aci()),
-        Err(CallChatUpdateError::InvalidAci)
+        ChatUpdateProto::GroupCall(proto::GroupCall::bad_started_call()),
+        Err(CallError::UnknownCallStarter(BAD_RECIPIENT))
     )]
-    #[test_case(
-        CallChatUpdateProto::GroupCall(proto::GroupCallChatUpdate::bad_in_call_aci()),
-        Err(CallChatUpdateError::InvalidAci)
-    )]
-    fn call_chat_update(update: CallChatUpdateProto, expected: Result<(), CallChatUpdateError>) {
-        assert_eq!(update.try_into().map(|_: CallChatUpdate| ()), expected);
+    fn call_chat_update(update: ChatUpdateProto, expected: Result<(), CallError>) {
+        assert_eq!(
+            proto::ChatUpdateMessage {
+                update: Some(update),
+                special_fields: Default::default()
+            }
+            .try_into_with(&TestContext::default())
+            .map(|_: UpdateMessage| ()),
+            expected.map_err(ChatItemError::Call)
+        );
     }
 
     #[test]

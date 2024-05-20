@@ -6,11 +6,13 @@
 use std::collections::{hash_map, HashMap};
 use std::fmt::Debug;
 
+use libsignal_protocol::Aci;
+
 use crate::backup::account_data::{AccountData, AccountDataError};
-use crate::backup::call::{Call, CallError, CallId};
+use crate::backup::call::{AdHocCall, CallError};
 use crate::backup::chat::{ChatData, ChatError, ChatItemError};
 use crate::backup::frame::{ChatId, RecipientId};
-use crate::backup::method::{Contains, KeyExists, Map as _, Method, Store, ValidateOnly};
+use crate::backup::method::{Contains, Method, Store, ValidateOnly};
 use crate::backup::recipient::{RecipientData, RecipientError};
 use crate::backup::sticker::{PackId as StickerPackId, StickerId, StickerPack, StickerPackError};
 use crate::backup::time::Timestamp;
@@ -30,7 +32,7 @@ mod time;
 pub struct PartialBackup<M: Method> {
     meta: BackupMeta,
     account_data: Option<M::Value<AccountData<M>>>,
-    recipients: M::Map<RecipientId, RecipientData<M>>,
+    recipients: HashMap<RecipientId, RecipientData<M>>,
     chats: HashMap<ChatId, ChatData<M>>,
     sticker_packs: HashMap<StickerPackId, StickerPack>,
 }
@@ -124,9 +126,13 @@ pub enum ValidationError {
 /// chat frame {0:?} error: {1}
 pub struct ChatFrameError(ChatId, ChatError);
 
-/// call data {0:?} error: {1}
+/// ad-hoc call (recipientId {recipient_id}, callId {call_id}) error: {error}
 #[derive(Debug, displaydoc::Display, thiserror::Error)]
-pub struct CallFrameError(CallId, CallError);
+pub struct CallFrameError {
+    recipient_id: u64,
+    call_id: u64,
+    error: CallError,
+}
 
 /// Like [`TryFrom`] but with an extra context argument.
 ///
@@ -229,7 +235,21 @@ impl<M: Method> PartialBackup<M> {
             FrameItem::StickerPack(sticker_pack) => {
                 self.add_sticker_pack(sticker_pack).map_err(Into::into)
             }
+            FrameItem::AdHocCall(call) => self.add_ad_hoc_call(call).map_err(Into::into),
         }
+    }
+
+    fn add_ad_hoc_call(&mut self, call: proto::AdHocCall) -> Result<(), CallFrameError> {
+        let recipient_id = call.recipientId;
+        let call_id = call.callId;
+        let _call: AdHocCall =
+            call.try_into_with(&self.recipients)
+                .map_err(|error| CallFrameError {
+                    recipient_id,
+                    call_id,
+                    error,
+                })?;
+        Ok(())
     }
 
     fn add_account_data(
@@ -248,9 +268,13 @@ impl<M: Method> PartialBackup<M> {
         let id = recipient.id();
         let err_with_id = |e| RecipientFrameError(id, e);
         let recipient = recipient.try_into().map_err(err_with_id)?;
-        self.recipients
-            .insert(id, recipient)
-            .map_err(|KeyExists| err_with_id(RecipientError::DuplicateRecipient))
+        match self.recipients.entry(id) {
+            hash_map::Entry::Occupied(_) => Err(err_with_id(RecipientError::DuplicateRecipient)),
+            hash_map::Entry::Vacant(v) => {
+                let _ = v.insert(recipient);
+                Ok(())
+            }
+        }
     }
 
     fn add_chat(&mut self, chat: proto::Chat) -> Result<(), ChatFrameError> {
@@ -343,6 +367,15 @@ impl<'a, R, Ch> AsRef<BackupMeta> for ConvertContext<'a, R, Ch> {
     fn as_ref(&self) -> &BackupMeta {
         self.meta
     }
+}
+
+struct InvalidAci;
+
+fn uuid_bytes_to_aci(bytes: Vec<u8>) -> Result<Aci, InvalidAci> {
+    bytes
+        .try_into()
+        .map(Aci::from_uuid_bytes)
+        .map_err(|_| InvalidAci)
 }
 
 #[cfg(test)]

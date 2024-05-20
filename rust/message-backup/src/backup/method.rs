@@ -10,6 +10,11 @@ pub trait Contains<K> {
     fn contains(&self, key: &K) -> bool;
 }
 
+pub trait Lookup<K, V>: Contains<K> {
+    /// Retrieve the value for a key in the map if one is present.
+    fn lookup(&self, key: &K) -> Option<&V>;
+}
+
 pub trait Map<K, V>: Contains<K> + Default {
     /// Insert a key and value into the map if the key isn't already present.
     ///
@@ -26,6 +31,18 @@ impl<K: Eq + Hash, V> Map<K, V> for HashMap<K, V> {
                 Ok(())
             }
         }
+    }
+}
+
+impl<K, Q, V, W> Lookup<Q, W> for HashMap<K, V>
+where
+    Q: Eq + Hash,
+    K: Eq + Hash,
+    K: Borrow<Q>,
+    V: AsRef<W>,
+{
+    fn lookup(&self, key: &Q) -> Option<&W> {
+        HashMap::get(self, key).map(AsRef::as_ref)
     }
 }
 
