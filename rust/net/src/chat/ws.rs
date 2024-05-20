@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -13,6 +13,7 @@ use http::header::ToStrError;
 use http::status::StatusCode;
 use prost::Message;
 use tokio::sync::{mpsc, oneshot, Mutex};
+use tokio::time::Instant;
 use tokio_tungstenite::WebSocketStream;
 
 use crate::chat::{
@@ -190,8 +191,10 @@ async fn reader_task<S: AsyncDuplexStream + 'static>(
     pending_messages: Arc<Mutex<PendingMessagesMap>>,
     service_status: ServiceStatus<ChatServiceError>,
 ) {
-    // This variable holds the timestamp of the latest network activity event.
-    // When listening to incoming frames/events, we will explicitly refresh it when needed.
+    const LONG_REQUEST_PROCESSING_THRESHOLD: Duration = Duration::from_millis(500);
+    let mut previous_request_paths_for_logging =
+        VecDeque::with_capacity(incoming_tx.max_capacity());
+
     loop {
         let data = match ws_client_reader.next().await {
             Ok(NextOrClose::Next(TextOrBinary::Binary(data))) => data,
@@ -220,12 +223,39 @@ async fn reader_task<S: AsyncDuplexStream + 'static>(
                         break;
                     }
                 };
+                let request_path = server_request.request_proto.path().to_owned();
+
+                let request_send_start = Instant::now();
                 let delivery_result = incoming_tx.send(server_request).await;
+                let request_send_elapsed = request_send_start.elapsed();
+
                 if delivery_result.is_err() {
                     service_status.stop_service_with_error(
                         ChatServiceError::FailedToPassMessageToIncomingChannel,
                     );
                 }
+
+                if previous_request_paths_for_logging.len() == incoming_tx.max_capacity() {
+                    let previous_request_path = previous_request_paths_for_logging.pop_front();
+                    if request_send_elapsed > LONG_REQUEST_PROCESSING_THRESHOLD {
+                        log::warn!(
+                            concat!(
+                                "processing for previous request {} ({} request(s) ago) took {:?}{}; ",
+                                "this could cause problems for the authenticated connection to the ",
+                                "chat server",
+                            ),
+                            previous_request_path.as_deref().unwrap_or("<none>"),
+                            incoming_tx.max_capacity(),
+                            request_send_elapsed,
+                            if delivery_result.is_err() {
+                                " (after which the channel was closed)"
+                            } else {
+                                ""
+                            },
+                        );
+                    }
+                }
+                previous_request_paths_for_logging.push_back(request_path);
             }
             Ok(ChatMessage::Response(id, res)) => {
                 let map = &mut pending_messages.lock().await;
