@@ -51,13 +51,15 @@ public class Svr3Test {
 
   @Test
   public void backupAndRestore() throws Exception {
+    final int tries = 2;
     Network net = new Network(Network.Environment.STAGING, USER_AGENT);
-    byte[] restored =
+    Svr3.RestoredSecret restored =
         net.svr3()
-            .backup(STORED_SECRET, "password", 2, this.auth)
+            .backup(STORED_SECRET, "password", tries, this.auth)
             .thenCompose(shareSet -> net.svr3().restore("password", shareSet, this.auth))
             .get();
-    assertEquals(Hex.toStringCondensed(STORED_SECRET), Hex.toStringCondensed(restored));
+    assertEquals(Hex.toStringCondensed(STORED_SECRET), Hex.toStringCondensed(restored.value()));
+    assertEquals(tries - 1, restored.triesRemaining());
   }
 
   @Test

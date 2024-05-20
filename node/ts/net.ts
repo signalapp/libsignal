@@ -391,8 +391,8 @@ export interface Svr3Client {
    * generally good for about 15 minutes, therefore it can be reused for the
    * subsequent calls to either backup or restore that are not too far apart in
    * time.
-   * @returns A `Promise` which--when awaited--will return a byte array with the
-   * restored secret.
+   * @returns A `Promise` which--when awaited--will return a
+   * {@link RestoredSecret} object, containing the restored secret.
    *
    * The returned `Promise` can also fail due to the network issues (including
    * the connection timeout), problems establishing the Noise connection to the
@@ -416,7 +416,21 @@ export interface Svr3Client {
     password: string,
     shareSet: Buffer,
     auth: Readonly<ServiceAuth>
-  ): Promise<Buffer>;
+  ): Promise<RestoredSecret>;
+}
+
+/**
+ * A simple data class containing the secret restored from SVR3 as well as the
+ * number of restore attempts remaining.
+ */
+export class RestoredSecret {
+  readonly triesRemaining: number;
+  readonly value: Buffer;
+
+  constructor(serialized: Buffer) {
+    this.triesRemaining = serialized.readInt32BE();
+    this.value = serialized.subarray(4);
+  }
 }
 
 class Svr3ClientImpl implements Svr3Client {
@@ -446,8 +460,8 @@ class Svr3ClientImpl implements Svr3Client {
     password: string,
     shareSet: Buffer,
     auth: Readonly<ServiceAuth>
-  ): Promise<Buffer> {
-    return Native.Svr3Restore(
+  ): Promise<RestoredSecret> {
+    const serialized = await Native.Svr3Restore(
       this.asyncContext,
       this.connectionManager,
       password,
@@ -455,5 +469,6 @@ class Svr3ClientImpl implements Svr3Client {
       auth.username,
       auth.password
     );
+    return new RestoredSecret(serialized);
   }
 }

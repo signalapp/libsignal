@@ -5,6 +5,8 @@
 
 package org.signal.libsignal.net;
 
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import org.signal.libsignal.internal.CompletableFuture;
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
@@ -112,7 +114,7 @@ public final class Svr3 {
    *     for about 15 minutes, therefore it can be reused for the subsequent calls to either backup
    *     or restore that are not too far apart in time.
    * @return an instance of {@link org.signal.libsignal.internal.CompletableFuture} which-when
-   *     awaited-will return a byte array with the restored secret.
+   *     awaited-will return a {@link RestoredSecret} object containing the secret.
    * @throws {@link org.signal.libsignal.net.NetworkException} in case of network related errors,
    *     including connection timeouts and failed auth.
    * @throws {@link org.signal.libsignal.svr.DataMissingException} when the maximum restore attempts
@@ -127,19 +129,33 @@ public final class Svr3 {
    * @throws {@link org.signal.libsignal.sgxsession.SgxCommunicationFailureException} when a Noise
    *     connection error happens.
    */
-  public final CompletableFuture<byte[]> restore(
+  public final CompletableFuture<RestoredSecret> restore(
       String password, byte[] shareSet, EnclaveAuth auth) {
     try (NativeHandleGuard asyncRuntime = new NativeHandleGuard(this.network.getAsyncContext());
         NativeHandleGuard connectionManager =
             new NativeHandleGuard(this.network.getConnectionManager())) {
 
       return Native.Svr3Restore(
-          asyncRuntime.nativeHandle(),
-          connectionManager.nativeHandle(),
-          password,
-          shareSet,
-          auth.username,
-          auth.password);
+              asyncRuntime.nativeHandle(),
+              connectionManager.nativeHandle(),
+              password,
+              shareSet,
+              auth.username,
+              auth.password)
+          .thenApply(RestoredSecret::deserialize);
+    }
+  }
+
+  /** The value containing restored secret returned from {@link #restore}. */
+  public record RestoredSecret(int triesRemaining, byte[] value) {
+
+    static RestoredSecret deserialize(byte[] bytes) {
+      ByteBuffer buffer = ByteBuffer.wrap(bytes);
+      buffer.order(ByteOrder.BIG_ENDIAN);
+      int triesRemaining = buffer.getInt();
+      byte[] value = new byte[32];
+      buffer.get(value);
+      return new RestoredSecret(triesRemaining, value);
     }
   }
 }

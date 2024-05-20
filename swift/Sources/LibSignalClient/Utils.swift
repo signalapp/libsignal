@@ -211,3 +211,9 @@ internal func rethrowCallbackErrors<Store, Result>(_ store: Store, _ body: (Unsa
         throw context.error!
     }
 }
+
+extension Collection {
+    public func split(at index: Self.Index) -> (Self.SubSequence, Self.SubSequence) {
+        (self.prefix(upTo: index), self.suffix(from: index))
+    }
+}

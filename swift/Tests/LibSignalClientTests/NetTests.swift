@@ -138,13 +138,14 @@ final class Svr3Tests: TestCaseBase {
     }
 
     func testBackupAndRestore() async throws {
+        let tries = UInt32(10)
         let auth = try Auth(username: self.username, enclaveSecret: self.getEnclaveSecret())
         let net = Net(env: .staging, userAgent: userAgent)
 
         let shareSet = try await net.svr3.backup(
             self.storedSecret,
             password: "password",
-            maxTries: 10,
+            maxTries: tries,
             auth: auth
         )
 
@@ -153,7 +154,8 @@ final class Svr3Tests: TestCaseBase {
             shareSet: shareSet,
             auth: auth
         )
-        XCTAssertEqual(restoredSecret, self.storedSecret)
+        XCTAssertEqual(restoredSecret.value, self.storedSecret)
+        XCTAssertEqual(restoredSecret.triesRemaining, tries - 1)
     }
 
     func testInvalidPassword() async throws {

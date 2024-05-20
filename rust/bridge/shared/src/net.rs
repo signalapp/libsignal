@@ -47,7 +47,7 @@ pub use tokio::TokioAsyncContext;
 
 #[derive(num_enum::TryFromPrimitive)]
 #[repr(u8)]
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, strum::Display)]
 pub enum Environment {
     Staging = 0,
     Prod = 1,
@@ -78,6 +78,7 @@ impl RefUnwindSafe for ConnectionManager {}
 impl ConnectionManager {
     const DEFAULT_CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
     fn new(environment: Environment, user_agent: String) -> Self {
+        log::info!("Initializing connection manager for {}...", &environment);
         let dns_resolver =
             DnsResolver::new_with_static_fallback(environment.env().static_fallback());
         let transport_connector =
@@ -247,7 +248,7 @@ async fn Svr3Restore(
         .map_err(|err| err.into())
         .and_then(|connections| Svr3Env::restore(connections, &password, share_set, &mut rng))
         .await?;
-    Ok(restored_secret.to_vec())
+    Ok(restored_secret.serialize())
 }
 
 async fn svr3_connect<'a>(

@@ -129,7 +129,7 @@ public class Svr3Client {
     ///     far apart in time.
     ///
     /// - Returns:
-    ///   A byte array containing the restored secret.
+    ///   An instance of `RestoredSecret` containing the restored secret.
     ///
     /// - Throws:
     ///   On error, throws a ``SignalError``. Expected error cases are
@@ -156,7 +156,7 @@ public class Svr3Client {
         password: String,
         shareSet: some ContiguousBytes,
         auth: Auth
-    ) async throws -> [UInt8] {
+    ) async throws -> RestoredSecret {
         let output = try await self.asyncContext.invokeAsyncFunction { promise, asyncContext in
             self.connectionManager.withNativeHandle { connectionManager in
                 shareSet.withUnsafeBorrowedBuffer { shareSetBuffer in
@@ -175,6 +175,29 @@ public class Svr3Client {
         defer {
             signal_free_buffer(output.base, output.length)
         }
-        return Array(UnsafeBufferPointer(start: output.base, count: output.length))
+        let buffer = UnsafeBufferPointer(start: output.base, count: output.length)
+        return RestoredSecret(fromBytes: buffer)
+    }
+}
+
+public struct RestoredSecret {
+    public let value: [UInt8]
+    public let triesRemaining: UInt32
+
+    init(fromBytes bytes: UnsafeBufferPointer<UInt8>) {
+        let (prefix, suffix) = bytes.split(at: MemoryLayout<UInt32>.size)
+        self.triesRemaining = UInt32(bigEndian: prefix)
+        self.value = Array(suffix)
+    }
+}
+
+extension UInt32 {
+    internal init<Bytes: Collection>(bigEndian bytes: Bytes) where Bytes.Element == UInt8 {
+        precondition(bytes.count == MemoryLayout<Self>.size)
+        var value = Self()
+        for byte in bytes {
+            value = (value << 8) + UInt32(byte)
+        }
+        self = value
     }
 }

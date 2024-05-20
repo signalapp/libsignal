@@ -14,7 +14,7 @@ use crate::infra::AsyncDuplexStream;
 use async_trait::async_trait;
 use bincode::Options as _;
 use futures_util::future::try_join_all;
-use libsignal_svr3::{Backup, MaskedShareSet, Restore};
+use libsignal_svr3::{Backup, EvaluationResult, MaskedShareSet, Restore};
 use rand_core::CryptoRngCore;
 use serde::{Deserialize, Serialize};
 use std::num::NonZeroU32;
@@ -211,7 +211,7 @@ pub trait PpssOps<S>: PpssSetup<S> {
         password: &str,
         share_set: OpaqueMaskedShareSet,
         rng: &mut (impl CryptoRngCore + Send),
-    ) -> Result<[u8; 32], Error>;
+    ) -> Result<EvaluationResult, Error>;
 }
 
 #[async_trait]
@@ -251,7 +251,7 @@ impl<S: AsyncDuplexStream + 'static, Env: PpssSetup<S>> PpssOps<S> for Env {
         password: &str,
         share_set: OpaqueMaskedShareSet,
         rng: &mut (impl CryptoRngCore + Send),
-    ) -> Result<[u8; 32], Error> {
+    ) -> Result<EvaluationResult, Error> {
         let restore = Restore::new(password, share_set.into_inner(), rng)?;
         let mut connections = connections.into_connections();
         let futures = connections

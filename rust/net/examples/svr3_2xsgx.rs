@@ -158,9 +158,9 @@ async fn main() {
             .await
             .expect("can multi restore")
     };
-    println!("Restored secret: {}", hex::encode(restored));
+    println!("Restored secret: {}", hex::encode(restored.value));
 
-    assert_eq!(secret, restored);
+    assert_eq!(secret, restored.value);
 }
 
 fn make_secret(rng: &mut impl CryptoRngCore) -> [u8; 32] {

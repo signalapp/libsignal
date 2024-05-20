@@ -21,7 +21,7 @@ pub enum Error {
 }
 
 /// Represents an erroneous SVR3 response status
-#[derive(Debug, strum_macros::Display)]
+#[derive(Debug, strum_macros::Display, PartialEq)]
 pub enum ErrorStatus {
     Unset,
     Missing,

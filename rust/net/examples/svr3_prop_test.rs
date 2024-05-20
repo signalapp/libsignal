@@ -20,6 +20,7 @@ use libsignal_net::env::Svr3Env;
 use libsignal_net::infra::tcp_ssl::DirectConnector as TcpSslTransportConnector;
 use libsignal_net::svr::SvrConnection;
 use libsignal_net::svr3::{Error, OpaqueMaskedShareSet, PpssOps as _};
+use libsignal_svr3::EvaluationResult;
 use support::*;
 
 const MAX_TRIES_LIMIT: u32 = 10;
@@ -242,11 +243,11 @@ impl StateMachineTest for Svr3Storage {
                             "password"
                         };
                         match state.restore(uid, share_set.clone(), password) {
-                            Ok(actual_secret) => {
+                            Ok(evaluation_result) => {
                                 assert_matches!(
                                 ref_state.last_transition_outcome,
                                 TransitionOutcome::Restored(expected_secret) => {
-                                    assert_eq!(actual_secret, expected_secret)
+                                    assert_eq!(evaluation_result.value, expected_secret)
                                 });
                                 log::info!("\tgood restore");
                             }
@@ -367,7 +368,7 @@ impl Svr3Storage {
         uid: Uid,
         share_set: OpaqueMaskedShareSet,
         password: &str,
-    ) -> Result<[u8; 32], Error> {
+    ) -> Result<EvaluationResult, Error> {
         self.runtime.block_on(async {
             let mut rng = OsRng;
             let connections = self.connect(uid).await;

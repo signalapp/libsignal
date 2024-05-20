@@ -319,9 +319,11 @@ describe('SVR3', () => {
     it('Backup and restore work in staging', async () => {
       const auth = make_auth();
       const secret = randomBytes(32);
-      const shareSet = await SVR3.backup(secret, 'password', 10, auth);
+      const tries = 10;
+      const shareSet = await SVR3.backup(secret, 'password', tries, auth);
       const restoredSecret = await SVR3.restore('password', shareSet, auth);
-      expect(restoredSecret).to.eql(secret);
+      expect(restoredSecret.value).to.eql(secret);
+      expect(restoredSecret.triesRemaining).to.eql(tries - 1);
     }).timeout(10000);
 
     it('Restore with wrong password', async () => {
