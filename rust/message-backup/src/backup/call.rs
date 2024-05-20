@@ -15,6 +15,7 @@ use crate::proto::backup as proto;
 #[derive(Debug)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct AdHocCall {
+    pub id: CallId,
     pub started_at: Timestamp,
     pub ended_at: Timestamp,
     pub started_by: Option<Aci>,
@@ -257,7 +258,7 @@ impl<C: Lookup<RecipientId, DestinationKind>> TryFromWith<proto::AdHocCall, C> f
 
     fn try_from_with(item: proto::AdHocCall, context: &C) -> Result<Self, Self::Error> {
         let proto::AdHocCall {
-            callId: _,
+            callId,
             recipientId,
             state,
             startedCallAci,
@@ -265,6 +266,8 @@ impl<C: Lookup<RecipientId, DestinationKind>> TryFromWith<proto::AdHocCall, C> f
             endedCallTimestamp,
             special_fields: _,
         } = item;
+
+        let id = CallId(callId);
 
         let started_by = startedCallAci
             .map(super::uuid_bytes_to_aci)
@@ -297,6 +300,7 @@ impl<C: Lookup<RecipientId, DestinationKind>> TryFromWith<proto::AdHocCall, C> f
         let ended_at = Timestamp::from_millis(endedCallTimestamp, "AdHocCall.startedCallTimestamp");
 
         Ok(Self {
+            id,
             started_at,
             ended_at,
             started_by,
@@ -547,6 +551,7 @@ pub(crate) mod test {
         assert_eq!(
             proto::AdHocCall::test_data().try_into_with(&TestContext),
             Ok(AdHocCall {
+                id: CallId(proto::AdHocCall::TEST_ID),
                 started_at: Timestamp::test_value(),
                 ended_at: Timestamp::test_value() + Duration::from_millis(1000),
                 started_by: None,

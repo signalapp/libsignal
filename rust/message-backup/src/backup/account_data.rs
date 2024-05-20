@@ -4,33 +4,89 @@
 //
 
 use std::fmt::Debug;
+use std::num::NonZeroU32;
 
 use derive_where::derive_where;
+use usernames::constants::USERNAME_LINK_ENTROPY_SIZE;
 use usernames::{Username, UsernameError};
+use uuid::Uuid;
 use zkgroup::ProfileKeyBytes;
 
 use crate::backup::method::Method;
+use crate::backup::time::Duration;
 use crate::proto::backup as proto;
 
 #[derive_where(Debug)]
 #[cfg_attr(test, derive_where(PartialEq;
     M::Value<ProfileKeyBytes>: PartialEq,
-    M::Value<Option<usernames::Username>>: PartialEq,
+    M::Value<Option<UsernameData>>: PartialEq,
     M::Value<String>: PartialEq,
-    M::Value<String>: PartialEq,
+    M::Value<Subscription>: PartialEq,
     M::Value<AccountSettings>: PartialEq,
 ))]
 pub struct AccountData<M: Method> {
     pub profile_key: M::Value<ProfileKeyBytes>,
-    pub username: M::Value<Option<usernames::Username>>,
+    pub username: M::Value<Option<UsernameData>>,
     pub given_name: M::Value<String>,
     pub family_name: M::Value<String>,
     pub account_settings: M::Value<AccountSettings>,
+    pub avatar_url_path: M::Value<String>,
+    pub subscription: M::Value<Subscription>,
 }
 
 #[derive(Debug)]
 #[cfg_attr(test, derive(PartialEq))]
-pub struct AccountSettings {}
+pub struct UsernameData {
+    pub username: Username,
+    pub link: Option<UsernameLink>,
+}
+
+#[derive(Debug)]
+#[cfg_attr(test, derive(PartialEq))]
+pub struct UsernameLink {
+    pub color: crate::proto::backup::account_data::username_link::Color,
+    pub entropy: [u8; USERNAME_LINK_ENTROPY_SIZE],
+    pub server_id: Uuid,
+}
+
+#[derive(Debug)]
+#[cfg_attr(test, derive(PartialEq))]
+pub struct Subscription {
+    pub subscriber_id: SubscriberId,
+    pub currency_code: String,
+    pub manually_canceled: bool,
+}
+
+const SUBSCRIBER_ID_LENGTH: usize = 32;
+type SubscriberId = [u8; SUBSCRIBER_ID_LENGTH];
+
+#[derive(Debug)]
+#[cfg_attr(test, derive(PartialEq))]
+pub struct AccountSettings {
+    pub phone_number_sharing: PhoneSharing,
+    pub read_receipts: bool,
+    pub sealed_sender_indicators: bool,
+    pub typing_indicators: bool,
+    pub link_previews: bool,
+    pub not_discoverable_by_phone_number: bool,
+    pub prefer_contact_avatars: bool,
+    pub display_badges_on_profile: bool,
+    pub keep_muted_chats_archived: bool,
+    pub has_set_my_stories_privacy: bool,
+    pub has_viewed_onboarding_story: bool,
+    pub stories_disabled: bool,
+    pub story_view_receipts_enabled: Option<bool>,
+    pub has_seen_group_story_education_sheet: bool,
+    pub has_completed_username_onboarding: bool,
+    pub universal_expire_timer: Option<Duration>,
+    pub preferred_reaction_emoji: Vec<String>,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum PhoneSharing {
+    WithEverybody,
+    WithNobody,
+}
 
 #[derive(Debug, displaydoc::Display, thiserror::Error)]
 #[cfg_attr(test, derive(PartialEq))]
@@ -45,6 +101,12 @@ pub enum AccountDataError {
     UnknownPhoneNumberSharingMode,
     /// username link is present without username
     UsernameLinkWithoutUsername,
+    /// subscriber ID should have {SUBSCRIBER_ID_LENGTH:?} bytes but had {0}
+    InvalidSubscriberId(usize),
+    /// username entropy should have been {USERNAME_LINK_ENTROPY_SIZE:?} bytes but was {0}
+    BadUsernameEntropyLength(usize),
+    /// username server ID should be a UUID but was {0} bytes
+    BadUsernameServerIdLength(usize),
 }
 
 impl<M: Method> TryFrom<proto::AccountData> for AccountData<M> {
@@ -57,38 +119,34 @@ impl<M: Method> TryFrom<proto::AccountData> for AccountData<M> {
             familyName,
             accountSettings,
             usernameLink,
+            avatarUrlPath,
+            subscriberId,
+            subscriberCurrencyCode,
+            subscriptionManuallyCancelled,
             special_fields: _,
-
-            // TODO do something with these values.
-            avatarUrlPath: _,
-            subscriberId: _,
-            subscriberCurrencyCode: _,
-            subscriptionManuallyCancelled: _,
         } = proto;
 
         let profile_key = ProfileKeyBytes::try_from(profileKey)
             .map_err(|_| AccountDataError::InvalidProfileKey)?;
 
-        let username = username.as_deref().map(Username::new).transpose()?;
-        if let Some(proto::account_data::UsernameLink {
-            color,
-            special_fields: _,
-            // TODO validate these fields
-            entropy: _,
-            serverId: _,
-        }) = usernameLink.into_option()
-        {
-            if username.is_none() {
-                return Err(AccountDataError::UsernameLinkWithoutUsername);
+        let username = match username {
+            None => {
+                if usernameLink.is_some() {
+                    return Err(AccountDataError::UsernameLinkWithoutUsername);
+                }
+                None
             }
-            // The color is allowed to be unset, so no validation is necessary.
-            let _: proto::account_data::username_link::Color = color.enum_value_or_default();
-        }
+            Some(username) => Some((username, usernameLink.into_option()).try_into()?),
+        };
 
         let account_settings = accountSettings
             .into_option()
             .ok_or(AccountDataError::MissingSettings)?
             .try_into()?;
+
+        let subscriber_id = subscriberId
+            .try_into()
+            .map_err(|id: Vec<u8>| AccountDataError::InvalidSubscriberId(id.len()))?;
 
         Ok(Self {
             profile_key: M::value(profile_key),
@@ -96,6 +154,51 @@ impl<M: Method> TryFrom<proto::AccountData> for AccountData<M> {
             given_name: M::value(givenName),
             family_name: M::value(familyName),
             account_settings: M::value(account_settings),
+            avatar_url_path: M::value(avatarUrlPath),
+            subscription: M::value(Subscription {
+                subscriber_id,
+                currency_code: subscriberCurrencyCode,
+                manually_canceled: subscriptionManuallyCancelled,
+            }),
+        })
+    }
+}
+
+impl TryFrom<(String, Option<proto::account_data::UsernameLink>)> for UsernameData {
+    type Error = AccountDataError;
+
+    fn try_from(
+        (username, username_link): (String, Option<proto::account_data::UsernameLink>),
+    ) -> Result<Self, Self::Error> {
+        let username = Username::new(&username)?;
+        let link = username_link.map(TryInto::try_into).transpose()?;
+        Ok(UsernameData { username, link })
+    }
+}
+
+impl TryFrom<proto::account_data::UsernameLink> for UsernameLink {
+    type Error = AccountDataError;
+
+    fn try_from(value: proto::account_data::UsernameLink) -> Result<Self, Self::Error> {
+        let proto::account_data::UsernameLink {
+            color,
+            entropy,
+            serverId,
+            special_fields: _,
+        } = value;
+        // The color is allowed to be unset.
+        let color = color.enum_value_or_default();
+        let entropy = entropy.try_into().map_err(|entropy: Vec<u8>| {
+            AccountDataError::BadUsernameEntropyLength(entropy.len())
+        })?;
+        let server_id = serverId
+            .try_into()
+            .map_err(|id: Vec<u8>| AccountDataError::BadUsernameServerIdLength(id.len()))?;
+        let server_id = Uuid::from_bytes(server_id);
+        Ok(Self {
+            color,
+            entropy,
+            server_id,
         })
     }
 }
@@ -106,40 +209,64 @@ impl TryFrom<proto::account_data::AccountSettings> for AccountSettings {
     fn try_from(value: proto::account_data::AccountSettings) -> Result<Self, Self::Error> {
         let proto::account_data::AccountSettings {
             phoneNumberSharingMode,
-            readReceipts: _,
-            sealedSenderIndicators: _,
-            typingIndicators: _,
-            linkPreviews: _,
-            notDiscoverableByPhoneNumber: _,
-            preferContactAvatars: _,
-            universalExpireTimer: _,
-            displayBadgesOnProfile: _,
-            keepMutedChatsArchived: _,
-            hasSetMyStoriesPrivacy: _,
-            hasViewedOnboardingStory: _,
-            storiesDisabled: _,
-            storyViewReceiptsEnabled: _,
-            hasSeenGroupStoryEducationSheet: _,
-            hasCompletedUsernameOnboarding: _,
+            readReceipts,
+            sealedSenderIndicators,
+            typingIndicators,
+            linkPreviews,
+            notDiscoverableByPhoneNumber,
+            preferContactAvatars,
+            displayBadgesOnProfile,
+            keepMutedChatsArchived,
+            hasSetMyStoriesPrivacy,
+            hasViewedOnboardingStory,
+            storiesDisabled,
+            storyViewReceiptsEnabled,
+            hasSeenGroupStoryEducationSheet,
+            hasCompletedUsernameOnboarding,
+            universalExpireTimer,
+            preferredReactionEmoji,
             special_fields: _,
-
-            // TODO validate this field
-            preferredReactionEmoji: _,
         } = value;
 
-        if let proto::account_data::PhoneNumberSharingMode::UNKNOWN =
-            phoneNumberSharingMode.enum_value_or_default()
-        {
-            return Err(AccountDataError::UnknownPhoneNumberSharingMode);
+        use proto::account_data::PhoneNumberSharingMode;
+        let phone_number_sharing = match phoneNumberSharingMode.enum_value_or_default() {
+            PhoneNumberSharingMode::UNKNOWN => {
+                return Err(AccountDataError::UnknownPhoneNumberSharingMode)
+            }
+            PhoneNumberSharingMode::EVERYBODY => PhoneSharing::WithEverybody,
+            PhoneNumberSharingMode::NOBODY => PhoneSharing::WithNobody,
         };
 
-        Ok(Self {})
+        let universal_expire_timer =
+            NonZeroU32::new(universalExpireTimer).map(|d| Duration::from_millis(d.get().into()));
+
+        Ok(Self {
+            phone_number_sharing,
+            read_receipts: readReceipts,
+            sealed_sender_indicators: sealedSenderIndicators,
+            typing_indicators: typingIndicators,
+            link_previews: linkPreviews,
+            not_discoverable_by_phone_number: notDiscoverableByPhoneNumber,
+            prefer_contact_avatars: preferContactAvatars,
+            display_badges_on_profile: displayBadgesOnProfile,
+            keep_muted_chats_archived: keepMutedChatsArchived,
+            has_set_my_stories_privacy: hasSetMyStoriesPrivacy,
+            has_viewed_onboarding_story: hasViewedOnboardingStory,
+            stories_disabled: storiesDisabled,
+            story_view_receipts_enabled: storyViewReceiptsEnabled,
+            has_seen_group_story_education_sheet: hasSeenGroupStoryEducationSheet,
+            has_completed_username_onboarding: hasCompletedUsernameOnboarding,
+            preferred_reaction_emoji: preferredReactionEmoji,
+            universal_expire_timer,
+        })
     }
 }
 
 #[cfg(test)]
 mod test {
+    use protobuf::EnumOrUnknown;
     use test_case::test_case;
+    use uuid::Uuid;
 
     use crate::backup::method::{Store, ValidateOnly};
     use crate::backup::test::ProtoTestData;
@@ -154,9 +281,13 @@ mod test {
                 username: Some("abc.123".to_string()),
                 usernameLink: Some(proto::account_data::UsernameLink {
                     color: proto::account_data::username_link::Color::BLUE.into(),
+                    entropy: FAKE_USERNAME_LINK_ENTROPY.to_vec(),
+                    serverId: FAKE_USERNAME_SERVER_ID.into_bytes().to_vec(),
                     ..Default::default()
                 })
                 .into(),
+                subscriberId: FAKE_SUBSCRIBER_ID.to_vec(),
+                subscriberCurrencyCode: "XTS".to_string(),
                 ..Default::default()
             }
         }
@@ -173,6 +304,9 @@ mod test {
     }
 
     const FAKE_PROFILE_KEY: ProfileKeyBytes = [0xaa; 32];
+    const FAKE_SUBSCRIBER_ID: SubscriberId = [55; 32];
+    const FAKE_USERNAME_LINK_ENTROPY: [u8; USERNAME_LINK_ENTROPY_SIZE] = [12; 32];
+    const FAKE_USERNAME_SERVER_ID: Uuid = Uuid::from_bytes([10; 16]);
 
     #[test]
     fn valid_account_data() {
@@ -180,10 +314,41 @@ mod test {
             proto::AccountData::test_data().try_into(),
             Ok(AccountData::<Store> {
                 profile_key: FAKE_PROFILE_KEY,
-                username: Some(Username::new("abc.123").unwrap()),
+                username: Some(UsernameData {
+                    username: Username::new("abc.123").unwrap(),
+                    link: Some(UsernameLink {
+                        color: proto::account_data::username_link::Color::BLUE,
+                        entropy: FAKE_USERNAME_LINK_ENTROPY,
+                        server_id: FAKE_USERNAME_SERVER_ID
+                    })
+                }),
                 given_name: "".to_string(),
                 family_name: "".to_string(),
-                account_settings: AccountSettings {}
+                account_settings: AccountSettings {
+                    phone_number_sharing: PhoneSharing::WithEverybody,
+                    read_receipts: false,
+                    sealed_sender_indicators: false,
+                    typing_indicators: false,
+                    link_previews: false,
+                    not_discoverable_by_phone_number: false,
+                    prefer_contact_avatars: false,
+                    display_badges_on_profile: false,
+                    keep_muted_chats_archived: false,
+                    has_set_my_stories_privacy: false,
+                    has_viewed_onboarding_story: false,
+                    stories_disabled: false,
+                    story_view_receipts_enabled: None,
+                    has_seen_group_story_education_sheet: false,
+                    has_completed_username_onboarding: false,
+                    universal_expire_timer: None,
+                    preferred_reaction_emoji: vec![],
+                },
+                avatar_url_path: "".to_string(),
+                subscription: Subscription {
+                    subscriber_id: FAKE_SUBSCRIBER_ID,
+                    currency_code: "XTS".to_string(),
+                    manually_canceled: false,
+                }
             })
         )
     }
@@ -202,7 +367,7 @@ mod test {
         target.usernameLink = None.into();
     }
     fn username_link_unknown_color(target: &mut proto::AccountData) {
-        target.usernameLink = Some(proto::account_data::UsernameLink::default()).into();
+        target.usernameLink.as_mut().unwrap().color = EnumOrUnknown::default();
     }
     fn username_link_without_username(target: &mut proto::AccountData) {
         target.username = None;
@@ -210,6 +375,9 @@ mod test {
     }
     fn no_account_settings(target: &mut proto::AccountData) {
         target.accountSettings = None.into();
+    }
+    fn invalid_subscriber_id(target: &mut proto::AccountData) {
+        target.subscriberId = vec![123];
     }
 
     #[test_case(invalid_profile_key, Err(AccountDataError::InvalidProfileKey))]
@@ -225,6 +393,7 @@ mod test {
         Err(AccountDataError::UsernameLinkWithoutUsername)
     )]
     #[test_case(no_account_settings, Err(AccountDataError::MissingSettings))]
+    #[test_case(invalid_subscriber_id, Err(AccountDataError::InvalidSubscriberId(1)))]
     fn with(
         modifier: impl FnOnce(&mut proto::AccountData),
         expected: Result<(), AccountDataError>,
