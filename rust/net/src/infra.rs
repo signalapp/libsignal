@@ -281,7 +281,6 @@ impl EndpointConnection<MultiRouteConnectionManager> {
                         SingleRouteThrottlingConnectionManager::new(params, connect_timeout)
                     })
                     .collect(),
-                connect_timeout,
             ),
             config,
         }

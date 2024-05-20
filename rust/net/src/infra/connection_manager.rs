@@ -145,15 +145,11 @@ pub struct SingleRouteThrottlingConnectionManager {
 #[derive(Clone)]
 pub struct MultiRouteConnectionManager<M = SingleRouteThrottlingConnectionManager> {
     route_managers: Vec<M>,
-    connection_timeout: Duration,
 }
 
 impl<M> MultiRouteConnectionManager<M> {
-    pub fn new(route_managers: Vec<M>, connection_timeout: Duration) -> Self {
-        Self {
-            route_managers,
-            connection_timeout,
-        }
+    pub fn new(route_managers: Vec<M>) -> Self {
+        Self { route_managers }
     }
 }
 
@@ -180,47 +176,21 @@ where
         Fun: Fn(&'a ConnectionParams) -> Fut + Send + Sync,
         Fut: Future<Output = Result<T, E>> + Send,
     {
-        let now = Instant::now();
-        let deadline = now + self.connection_timeout;
-        let mut earliest_retry = now + MAX_COOLDOWN_INTERVAL;
+        let mut wait_until = None;
         for route_manager in self.route_managers.iter() {
-            loop {
-                let result_or_timeout =
-                    timeout_at(deadline, route_manager.connect_or_wait(&connection_fn)).await;
-                let result = match result_or_timeout {
-                    Ok(r) => r,
-                    Err(_) => return ConnectionAttemptOutcome::TimedOut,
-                };
-                match result {
-                    ConnectionAttemptOutcome::Attempted(Ok(r)) => {
-                        return ConnectionAttemptOutcome::Attempted(Ok(r));
-                    }
-                    ConnectionAttemptOutcome::Attempted(Err(e)) => {
-                        log::debug!("Connection attempt failed with an error: {:?}", e);
-                        log::info!(
-                            "Connection attempt failed with an error: {} ({})",
-                            e,
-                            route_manager.describe_for_logging(),
-                        );
-                        continue;
-                    }
-                    ConnectionAttemptOutcome::TimedOut => {
-                        log::info!(
-                            "Connection attempt timed out ({:?})",
-                            route_manager.describe_for_logging()
-                        );
-                        continue;
-                    }
-                    ConnectionAttemptOutcome::WaitUntil(i) => {
-                        if i < earliest_retry {
-                            earliest_retry = i
-                        }
-                        break;
-                    }
+            match retry_connect_until_cooldown(route_manager, &connection_fn).await {
+                Ok(t) => return ConnectionAttemptOutcome::Attempted(Ok(t)),
+                Err(WaitUntil(i)) => {
+                    wait_until = Some(
+                        wait_until.map_or(i, |earliest_retry| Instant::min(i, earliest_retry)),
+                    );
                 }
             }
         }
-        ConnectionAttemptOutcome::WaitUntil(earliest_retry)
+        wait_until.map_or(
+            ConnectionAttemptOutcome::TimedOut,
+            ConnectionAttemptOutcome::WaitUntil,
+        )
     }
 
     fn describe_for_logging(&self) -> String {
@@ -231,6 +201,45 @@ where
                 .map(ConnectionManager::describe_for_logging)
                 .join(", ")
         )
+    }
+}
+
+struct WaitUntil(Instant);
+
+async fn retry_connect_until_cooldown<'a, T, E, Fun, Fut>(
+    route_manager: &'a impl ConnectionManager,
+    connection_fn: &Fun,
+) -> Result<T, WaitUntil>
+where
+    T: Send,
+    E: Send + Debug + LogSafeDisplay,
+    Fun: Fn(&'a ConnectionParams) -> Fut + Send + Sync,
+    Fut: Future<Output = Result<T, E>> + Send,
+{
+    loop {
+        let result = route_manager.connect_or_wait(connection_fn).await;
+        match result {
+            ConnectionAttemptOutcome::Attempted(Ok(r)) => {
+                return Ok(r);
+            }
+            ConnectionAttemptOutcome::Attempted(Err(e)) => {
+                log::debug!("Connection attempt failed with an error: {:?}", e);
+                log::info!(
+                    "Connection attempt failed with an error: {} ({})",
+                    e,
+                    route_manager.describe_for_logging(),
+                );
+                continue;
+            }
+            ConnectionAttemptOutcome::TimedOut => {
+                log::info!(
+                    "Connection attempt timed out ({:?})",
+                    route_manager.describe_for_logging()
+                );
+                continue;
+            }
+            ConnectionAttemptOutcome::WaitUntil(i) => return Err(WaitUntil(i)),
+        }
     }
 }
 
@@ -426,8 +435,7 @@ mod test {
             example_connection_params(ROUTE_2),
             TIMEOUT_DURATION,
         );
-        let multi_route_manager =
-            MultiRouteConnectionManager::new(vec![manager_1, manager_2], Duration::from_secs(2));
+        let multi_route_manager = MultiRouteConnectionManager::new(vec![manager_1, manager_2]);
 
         // route1 is working
         time::advance(TIME_ADVANCE_VALUE).await;
@@ -456,35 +464,11 @@ mod test {
             example_connection_params(ROUTE_1),
             TIMEOUT_DURATION,
         );
-        let multi_route_manager = MultiRouteConnectionManager::new(
-            vec![timing_out_route_manager, manager_1],
-            TIMEOUT_DURATION * 2,
-        );
+        let multi_route_manager =
+            MultiRouteConnectionManager::new(vec![timing_out_route_manager, manager_1]);
 
         time::advance(TIME_ADVANCE_VALUE).await;
         validate_expected_route(&multi_route_manager, true, ROUTE_1).await;
-    }
-
-    #[tokio::test(flavor = "current_thread", start_paused = true)]
-    async fn multi_route_manager_times_out() {
-        let timing_out_route_manager_1 = SingleRouteThrottlingConnectionManager::new(
-            example_connection_params(ROUTE_THAT_TIMES_OUT),
-            TIMEOUT_DURATION,
-        );
-        let timing_out_route_manager_2 = SingleRouteThrottlingConnectionManager::new(
-            example_connection_params(ROUTE_THAT_TIMES_OUT),
-            TIMEOUT_DURATION,
-        );
-        let multi_route_manager = MultiRouteConnectionManager::new(
-            vec![timing_out_route_manager_1, timing_out_route_manager_2],
-            TIMEOUT_DURATION * 2,
-        );
-
-        time::advance(TIME_ADVANCE_VALUE).await;
-        let attempt_outcome: ConnectionAttemptOutcome<&str, TestError> = multi_route_manager
-            .connect_or_wait(|connection_params| simulate_connect(connection_params, true))
-            .await;
-        assert_matches!(attempt_outcome, ConnectionAttemptOutcome::TimedOut);
     }
 
     #[derive(Clone, Debug)]
@@ -539,10 +523,10 @@ mod test {
             CooldownAfterSomeAttempts::new(route_1_attempts_until_cooldown, route_1.clone());
         let route_2_manager =
             CooldownAfterSomeAttempts::new(route_2_attempts_until_cooldown, route_2.clone());
-        let multi_route_manager = MultiRouteConnectionManager::new(
-            vec![route_1_manager.clone(), route_2_manager.clone()],
-            TIMEOUT_DURATION,
-        );
+        let multi_route_manager = MultiRouteConnectionManager::new(vec![
+            route_1_manager.clone(),
+            route_2_manager.clone(),
+        ]);
         let route_1_attempt = AtomicU16::new(1);
         let res = multi_route_manager
             .connect_or_wait(|connection_params| {
@@ -564,6 +548,31 @@ mod test {
         assert_eq!(0, route_2_manager.attempts_made.load(Ordering::Relaxed));
     }
 
+    #[derive(Copy, Clone, Debug)]
+    struct AlwaysInCooldown {
+        wait: Duration,
+    }
+
+    #[async_trait]
+    impl ConnectionManager for AlwaysInCooldown {
+        async fn connect_or_wait<'a, T, E, Fun, Fut>(
+            &'a self,
+            _connection_fn: Fun,
+        ) -> ConnectionAttemptOutcome<T, E>
+        where
+            T: Send,
+            E: Send + Debug + LogSafeDisplay,
+            Fun: Fn(&'a ConnectionParams) -> Fut + Send + Sync,
+            Fut: Future<Output = Result<T, E>> + Send,
+        {
+            ConnectionAttemptOutcome::WaitUntil(Instant::now() + self.wait)
+        }
+
+        fn describe_for_logging(&self) -> String {
+            format!("{self:?}")
+        }
+    }
+
     #[tokio::test(start_paused = true)]
     async fn multi_route_manager_attempt_to_connect_until_all_routes_in_cooldown() {
         let connection_params = example_connection_params(ROUTE_1);
@@ -577,10 +586,8 @@ mod test {
             second_manager_attempts_until_cooldown,
             connection_params,
         );
-        let multi_route_manager = MultiRouteConnectionManager::new(
-            vec![first_manager.clone(), second_manager.clone()],
-            TIMEOUT_DURATION,
-        );
+        let multi_route_manager =
+            MultiRouteConnectionManager::new(vec![first_manager.clone(), second_manager.clone()]);
         let res = multi_route_manager
             .connect_or_wait(|connection_params| simulate_connect(connection_params, false))
             .await;
@@ -593,6 +600,24 @@ mod test {
             second_manager_attempts_until_cooldown + 1,
             second_manager.attempts_made.load(Ordering::Relaxed)
         );
+    }
+
+    #[tokio::test(flavor = "current_thread", start_paused = true)]
+    async fn multi_route_manager_all_in_cooldown() {
+        const SHORT_DELAY: Duration = Duration::from_secs(5);
+        const LONG_DELAY: Duration = Duration::from_secs(100);
+        let multi_route_manager = MultiRouteConnectionManager::new(vec![
+            AlwaysInCooldown { wait: LONG_DELAY },
+            AlwaysInCooldown { wait: SHORT_DELAY },
+        ]);
+
+        let now = Instant::now();
+        let attempt_outcome: ConnectionAttemptOutcome<&str, TestError> = multi_route_manager
+            .connect_or_wait(|connection_params| simulate_connect(connection_params, true))
+            .await;
+        let wait_until =
+            assert_matches!(attempt_outcome, ConnectionAttemptOutcome::WaitUntil(t) => t);
+        assert_eq!(wait_until, now + SHORT_DELAY);
     }
 
     async fn validate_expected_route(

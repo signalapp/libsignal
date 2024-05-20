@@ -463,16 +463,13 @@ mod test {
 
     #[tokio::test]
     async fn multi_route_enclave_connect_failure() {
-        let result = enclave_connect(MultiRouteConnectionManager::new(
-            vec![
+        let result = enclave_connect(MultiRouteConnectionManager::new(vec![
                 SingleRouteThrottlingConnectionManager::new(
                     fake_connection_params(),
                     CONNECT_TIMEOUT
                 );
                 3
-            ],
-            CONNECT_TIMEOUT,
-        ))
+            ]))
         .await;
         assert_matches!(result, Err(Error::ConnectionTimedOut));
     }
@@ -481,16 +478,13 @@ mod test {
     /// where the service can produce [`ServiceState::Cooldown`].
     #[tokio::test]
     async fn multi_route_enclave_connect_cooldown() {
-        let connection_manager = MultiRouteConnectionManager::new(
-            vec![
+        let connection_manager = MultiRouteConnectionManager::new(vec![
                 SingleRouteThrottlingConnectionManager::new(
                     fake_connection_params(),
                     CONNECT_TIMEOUT
                 );
                 3
-            ],
-            CONNECT_TIMEOUT,
-        );
+            ]);
 
         // Repeatedly try connecting unsuccessfully until all the inner routes
         // are throttling, with a max count to prevent infinite looping.
