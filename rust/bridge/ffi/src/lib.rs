@@ -167,6 +167,27 @@ pub unsafe extern "C" fn signal_error_get_retry_after_seconds(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn signal_error_get_tries_remaining(
+    err: *const SignalFfiError,
+    out: *mut u32,
+) -> *mut SignalFfiError {
+    let err = AssertUnwindSafe(err);
+    run_ffi_safe(|| {
+        let err = err.as_ref().ok_or(SignalFfiError::NullPointer)?;
+        match err {
+            SignalFfiError::Svr(libsignal_net::svr3::Error::RestoreFailed(tries_remaining)) => {
+                write_result_to(out, *tries_remaining)
+            }
+            err => Err(SignalFfiError::Signal(
+                SignalProtocolError::InvalidArgument(format!(
+                    "cannot get tries_remaining from error ({err})"
+                )),
+            )),
+        }
+    })
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn signal_error_free(err: *mut SignalFfiError) {
     if !err.is_null() {
         let _boxed_err = Box::from_raw(err);

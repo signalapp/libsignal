@@ -721,6 +721,8 @@ uint32_t signal_error_get_type(const SignalFfiError *err);
 
 SignalFfiError *signal_error_get_retry_after_seconds(const SignalFfiError *err, uint32_t *out);
 
+SignalFfiError *signal_error_get_tries_remaining(const SignalFfiError *err, uint32_t *out);
+
 void signal_error_free(SignalFfiError *err);
 
 SignalFfiError *signal_identitykeypair_deserialize(SignalPrivateKey **private_key, SignalPublicKey **public_key, SignalBorrowedBuffer input);

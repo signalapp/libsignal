@@ -329,10 +329,14 @@ describe('SVR3', () => {
     it('Restore with wrong password', async () => {
       const auth = make_auth();
       const secret = randomBytes(32);
-      const shareSet = await SVR3.backup(secret, 'password', 10, auth);
+      const tries = 10;
+      const shareSet = await SVR3.backup(secret, 'password', tries, auth);
       return expect(SVR3.restore('wrong password', shareSet, auth))
         .to.eventually.be.rejectedWith(LibSignalErrorBase)
-        .and.have.property('code', ErrorCode.SvrRestoreFailed);
+        .and.include({
+          code: ErrorCode.SvrRestoreFailed,
+          triesRemaining: tries - 1,
+        });
     }).timeout(10000);
 
     it('Restore with corrupted share set', async () => {

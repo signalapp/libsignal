@@ -10,8 +10,8 @@ use prost::DecodeError;
 pub enum Error {
     /// OPRF error: {0}
     Oprf(OPRFError),
-    /// PPSS error: {0}
-    Ppss(PPSSError),
+    /// PPSS error: {0}, {1} tries remaining
+    Ppss(PPSSError, u32),
     /// Invalid protobuf
     BadData,
     /// Unexpected or missing server response
@@ -34,12 +34,6 @@ impl std::error::Error for Error {}
 impl From<OPRFError> for Error {
     fn from(err: OPRFError) -> Self {
         Self::Oprf(err)
-    }
-}
-
-impl From<PPSSError> for Error {
-    fn from(err: PPSSError) -> Self {
-        Self::Ppss(err)
     }
 }
 

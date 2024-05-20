@@ -225,6 +225,7 @@ export type SvrRequestFailedError = LibSignalErrorCommon & {
 
 export type SvrRestoreFailedError = LibSignalErrorCommon & {
   code: ErrorCode.SvrRestoreFailed;
+  readonly triesRemaining: number;
 };
 
 export type LibSignalError =

@@ -57,7 +57,7 @@ public enum SignalError: Error {
     case cdsiInvalidToken(String)
     case rateLimitedError(retryAfter: TimeInterval, message: String)
     case svrDataMissing(String)
-    case svrRestoreFailed(String)
+    case svrRestoreFailed(triesRemaining: UInt32, message: String)
     case chatServiceInactive(String)
 
     case unknown(UInt32, String)
@@ -189,7 +189,10 @@ internal func checkError(_ error: SignalFfiErrorRef?) throws {
     case SignalErrorCodeSvrDataMissing:
         throw SignalError.svrDataMissing(errStr)
     case SignalErrorCodeSvrRestoreFailed:
-        throw SignalError.svrRestoreFailed(errStr)
+        let triesRemaining = try invokeFnReturningInteger {
+            signal_error_get_tries_remaining(error, $0)
+        }
+        throw SignalError.svrRestoreFailed(triesRemaining: triesRemaining, message: errStr)
     case SignalErrorCodeChatServiceInactive:
         throw SignalError.chatServiceInactive(errStr)
     default:

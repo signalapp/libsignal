@@ -6,7 +6,14 @@
 package org.signal.libsignal.svr;
 
 public final class RestoreFailedException extends SvrException {
-  public RestoreFailedException(String message) {
+  private int triesRemaining;
+
+  public RestoreFailedException(String message, int triesRemaining) {
     super(message);
+    this.triesRemaining = triesRemaining;
+  }
+
+  public int getTriesRemaining() {
+    return this.triesRemaining;
   }
 }

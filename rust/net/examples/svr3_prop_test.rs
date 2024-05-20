@@ -267,7 +267,7 @@ impl StateMachineTest for Svr3Storage {
                                             "Should have exceeded the tries limit"
                                         );
                                     }
-                                    Error::RestoreFailed if expect_bad_commitment => {
+                                    Error::RestoreFailed(_) if expect_bad_commitment => {
                                         log::info!(
                                             "\tbad commitment error (as expected) [{}]",
                                             err

@@ -60,7 +60,8 @@ impl<'a> Backup<'a> {
             .iter()
             .map(|vec| decode_create_response(vec))
             .collect::<Result<Vec<_>, _>>()?;
-        let outputs = ppss::finalize_oprfs(self.oprfs, evaluated_elements)?;
+        let outputs = ppss::finalize_oprfs(self.oprfs, evaluated_elements)
+            .map_err(|err| Error::Ppss(err, 0))?;
         Ok(ppss::backup_secret(
             CONTEXT,
             self.password.as_bytes(),
@@ -118,9 +119,11 @@ impl<'a> Restore<'a> {
             .map(|r| r.tries_remaining)
             .min()
             .expect("At least one server response expected");
-        let outputs = ppss::finalize_oprfs(self.oprfs, evaluated_elements)?;
+        let outputs = ppss::finalize_oprfs(self.oprfs, evaluated_elements)
+            .map_err(|err| Error::Ppss(err, tries_remaining))?;
         let (secret, _key) =
-            ppss::restore_secret(CONTEXT, self.password.as_bytes(), outputs, self.share_set)?;
+            ppss::restore_secret(CONTEXT, self.password.as_bytes(), outputs, self.share_set)
+                .map_err(|err| Error::Ppss(err, tries_remaining))?;
         Ok(EvaluationResult {
             value: secret,
             tries_remaining,

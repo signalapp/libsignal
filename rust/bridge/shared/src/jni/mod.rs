@@ -519,10 +519,26 @@ where
             error,
         ),
 
-        SignalJniError::Svr3(Svr3Error::RestoreFailed) => (
-            ClassName("org.signal.libsignal.svr.RestoreFailedException"),
-            error,
-        ),
+        SignalJniError::Svr3(Svr3Error::RestoreFailed(tries_remaining)) => {
+            let throwable = env
+                .new_string(error.to_string())
+                .map_err(BridgeLayerError::from)
+                .and_then(|message| {
+                    new_instance(
+                        env,
+                        ClassName("org.signal.libsignal.svr.RestoreFailedException"),
+                        // The number of tries will be hard-coded by the client app
+                        // to some sensible value well within the int (i32) range.
+                        // Malicious server can still send an invalid value. In
+                        // this case panic is the best thing we can do.
+                        jni_args!((message => java.lang.String, tries_remaining
+                            .try_into()
+                            .expect("tries_remaining overflows int") => int) -> void),
+                    )
+                });
+            consume(env, throwable.map(Into::into), &error);
+            return;
+        }
         SignalJniError::Svr3(Svr3Error::DataMissing) => (
             ClassName("org.signal.libsignal.svr.DataMissingException"),
             error,

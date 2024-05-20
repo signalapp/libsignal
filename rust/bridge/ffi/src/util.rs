@@ -334,7 +334,7 @@ impl From<&SignalFfiError> for SignalErrorCode {
                 retry_after_seconds: _,
             } => SignalErrorCode::RateLimited,
             SignalFfiError::Svr(Svr3Error::DataMissing) => SignalErrorCode::SvrDataMissing,
-            SignalFfiError::Svr(Svr3Error::RestoreFailed) => SignalErrorCode::SvrRestoreFailed,
+            SignalFfiError::Svr(Svr3Error::RestoreFailed(_)) => SignalErrorCode::SvrRestoreFailed,
             SignalFfiError::Svr(_) => SignalErrorCode::UnknownError,
         }
     }

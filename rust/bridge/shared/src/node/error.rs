@@ -484,21 +484,29 @@ impl SignalNodeError for libsignal_net::svr3::Error {
         module: Handle<'a, JsObject>,
         operation_name: &str,
     ) -> JsResult<'a, JsValue> {
-        let name = match self {
+        let (name, props) = match self {
             Svr3Error::Service(_) | Svr3Error::ConnectionTimedOut | Svr3Error::Connect(_) => {
-                Some(IO_ERROR)
+                (Some(IO_ERROR), None)
             }
             Svr3Error::AttestationError(inner) => {
                 return inner.throw(cx, module, operation_name);
             }
-            Svr3Error::RequestFailed(_) => Some(SVR3_REQUEST_FAILED),
-            Svr3Error::RestoreFailed => Some(SVR3_RESTORE_FAILED),
-            Svr3Error::DataMissing => Some(SVR3_DATA_MISSING),
-            Svr3Error::Protocol(_) => None,
+            Svr3Error::RequestFailed(_) => (Some(SVR3_REQUEST_FAILED), None),
+            Svr3Error::RestoreFailed(tries_remaining) => (
+                Some(SVR3_RESTORE_FAILED),
+                Some({
+                    let props = cx.empty_object();
+                    let tries_remaining = tries_remaining.convert_into(cx)?;
+                    props.set(cx, "triesRemaining", tries_remaining)?;
+                    props
+                }),
+            ),
+            Svr3Error::DataMissing => (Some(SVR3_DATA_MISSING), None),
+            Svr3Error::Protocol(_) => (None, None),
         };
 
         let message = self.to_string();
-        match new_js_error(cx, module, name, &message, operation_name, None) {
+        match new_js_error(cx, module, name, &message, operation_name, props) {
             Some(error) => cx.throw(error),
             None => {
                 // Make sure we still throw something.

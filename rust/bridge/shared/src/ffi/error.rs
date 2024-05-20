@@ -242,7 +242,7 @@ impl From<Svr3Error> for SignalFfiError {
             Svr3Error::ConnectionTimedOut => SignalFfiError::ConnectionTimedOut,
             Svr3Error::AttestationError(inner) => SignalFfiError::Sgx(inner),
             Svr3Error::Protocol(inner) => SignalFfiError::NetworkProtocol(inner.to_string()),
-            Svr3Error::RequestFailed(_) | Svr3Error::RestoreFailed | Svr3Error::DataMissing => {
+            Svr3Error::RequestFailed(_) | Svr3Error::RestoreFailed(_) | Svr3Error::DataMissing => {
                 SignalFfiError::Svr(err)
             }
         }

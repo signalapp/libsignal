@@ -80,12 +80,15 @@ public class Svr3Test {
   @Test
   public void failedRestore() throws Exception {
     Network net = new Network(Network.Environment.STAGING, USER_AGENT);
-    byte[] shareSet = net.svr3().backup(STORED_SECRET, "password", 1, this.auth).get();
+    final int tries = 2;
+    byte[] shareSet = net.svr3().backup(STORED_SECRET, "password", tries, this.auth).get();
     try {
       net.svr3().restore("wrong password", shareSet, this.auth).get();
     } catch (ExecutionException ex) {
       Throwable cause = ex.getCause();
       assertTrue("Unexpected exception: " + cause, cause instanceof RestoreFailedException);
+      var restoreFailed = (RestoreFailedException) cause;
+      assertEquals(tries - 1, restoreFailed.getTriesRemaining());
     }
   }
 

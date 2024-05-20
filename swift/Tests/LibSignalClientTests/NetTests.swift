@@ -159,13 +159,14 @@ final class Svr3Tests: TestCaseBase {
     }
 
     func testInvalidPassword() async throws {
+        let tries = UInt32(10)
         let auth = try Auth(username: self.username, enclaveSecret: self.getEnclaveSecret())
         let net = Net(env: .staging, userAgent: userAgent)
 
         let shareSet = try await net.svr3.backup(
             self.storedSecret,
             password: "password",
-            maxTries: 10,
+            maxTries: tries,
             auth: auth
         )
 
@@ -176,8 +177,9 @@ final class Svr3Tests: TestCaseBase {
                 auth: auth
             )
             XCTFail("Should have thrown")
-        } catch SignalError.svrRestoreFailed(_) {
+        } catch SignalError.svrRestoreFailed(let triesRemaining, _) {
             // Success!
+            XCTAssertEqual(triesRemaining, tries - 1)
         } catch {
             XCTFail("Unexpected exception: '\(error)'")
         }
@@ -203,7 +205,7 @@ final class Svr3Tests: TestCaseBase {
                 auth: auth
             )
             XCTFail("Should have thrown")
-        } catch SignalError.svrRestoreFailed(_) {
+        } catch SignalError.svrRestoreFailed(_, _) {
             // Success!
         } catch {
             XCTFail("Unexpected exception: '\(error)'")
@@ -259,7 +261,7 @@ final class Svr3Tests: TestCaseBase {
                 auth: auth
             )
             XCTFail("Should have thrown")
-        } catch SignalError.svrRestoreFailed(_) {
+        } catch SignalError.svrRestoreFailed(_, _) {
             // Success!
         } catch {
             XCTFail("Unexpected exception: '\(error)'")

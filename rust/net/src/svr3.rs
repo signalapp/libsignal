@@ -135,10 +135,10 @@ pub enum Error {
     AttestationError(attest::enclave::Error),
     /// SVR3 request failed with status {0}
     RequestFailed(libsignal_svr3::ErrorStatus),
-    /// Failure to restore data
+    /// Failure to restore data. {0} tries remaining.
     ///
     /// This could be caused by an invalid password or share set.
-    RestoreFailed,
+    RestoreFailed(u32),
     /// Restore request failed with MISSING status,
     ///
     /// This could mean either the data was never backed-up or we ran out of attempts to restore
@@ -164,12 +164,14 @@ impl From<libsignal_svr3::Error> for Error {
     fn from(err: libsignal_svr3::Error) -> Self {
         use libsignal_svr3::{Error as LogicError, PPSSError};
         match err {
-            LogicError::Ppss(PPSSError::InvalidCommitment) => Self::RestoreFailed,
+            LogicError::Ppss(PPSSError::InvalidCommitment, tries_remaining) => {
+                Self::RestoreFailed(tries_remaining)
+            }
             LogicError::BadResponseStatus(libsignal_svr3::ErrorStatus::Missing) => {
                 Self::DataMissing
             }
             LogicError::Oprf(_)
-            | LogicError::Ppss(_)
+            | LogicError::Ppss(_, _)
             | LogicError::BadData
             | LogicError::BadResponse
             | LogicError::BadResponseStatus(_) => Self::Protocol(err.to_string()),
