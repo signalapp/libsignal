@@ -30,10 +30,18 @@ public class ECPublicKey implements Comparable<ECPublicKey>, NativeHandleGuard.O
             InvalidKeyException.class, () -> Native.ECPublicKey_Deserialize(serialized, 0));
   }
 
-  public static ECPublicKey fromPublicKeyBytes(byte[] key) {
-    byte[] with_type = new byte[33];
+  public static ECPublicKey fromPublicKeyBytes(byte[] key) throws InvalidKeyException {
+    if (key.length != KEY_SIZE - 1) {
+      throw new InvalidKeyException(
+          "invalid number of public key bytes (expected"
+              + (KEY_SIZE - 1)
+              + ", was "
+              + key.length
+              + ")");
+    }
+    byte[] with_type = new byte[KEY_SIZE];
     with_type[0] = 0x05;
-    System.arraycopy(key, 0, with_type, 1, 32);
+    System.arraycopy(key, 0, with_type, 1, KEY_SIZE - 1);
     return new ECPublicKey(filterExceptions(() -> Native.ECPublicKey_Deserialize(with_type, 0)));
   }
 

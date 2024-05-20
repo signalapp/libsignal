@@ -5,12 +5,16 @@
 
 package org.signal.libsignal.protocol.ecc;
 
+import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
+
 import java.util.Arrays;
-import junit.framework.TestCase;
+import org.junit.Test;
 import org.signal.libsignal.protocol.InvalidKeyException;
 
-public class Curve25519Test extends TestCase {
+public class Curve25519Test {
 
+  @Test
   public void testAgreement() throws InvalidKeyException {
     byte[] alicePublic = {
       (byte) 0x05, (byte) 0x1b, (byte) 0xb7, (byte) 0x59, (byte) 0x66,
@@ -75,6 +79,7 @@ public class Curve25519Test extends TestCase {
     assertTrue(Arrays.equals(sharedTwo, shared));
   }
 
+  @Test
   public void testRandomAgreements() throws InvalidKeyException {
     for (int i = 0; i < 50; i++) {
       ECKeyPair alice = Curve.generateKeyPair();
@@ -87,6 +92,7 @@ public class Curve25519Test extends TestCase {
     }
   }
 
+  @Test
   public void testSignature() throws InvalidKeyException {
     byte[] aliceIdentityPrivate = {
       (byte) 0xc0, (byte) 0x97, (byte) 0x24, (byte) 0x84, (byte) 0x12,
@@ -157,39 +163,42 @@ public class Curve25519Test extends TestCase {
     }
   }
 
+  @Test
   public void testDecodeSize() throws InvalidKeyException {
     ECKeyPair keyPair = Curve.generateKeyPair();
     byte[] serializedPublic = keyPair.getPublicKey().serialize();
 
     ECPublicKey justRight = Curve.decodePoint(serializedPublic, 0);
 
-    try {
-      ECPublicKey tooSmall = Curve.decodePoint(serializedPublic, 1);
-      throw new AssertionError("Shouldn't decode");
-    } catch (InvalidKeyException e) {
-      // good
-    }
+    assertThrows(
+        "too small w/ offset",
+        InvalidKeyException.class,
+        () -> Curve.decodePoint(serializedPublic, 1));
 
-    try {
-      ECPublicKey empty = Curve.decodePoint(new byte[0], 0);
-      throw new AssertionError("Shouldn't parse");
-    } catch (InvalidKeyException e) {
-      // good
-    }
+    byte[] truncated = new byte[31];
+    System.arraycopy(serializedPublic, 1, truncated, 0, truncated.length);
+    assertThrows("too small", InvalidKeyException.class, () -> Curve.decodePoint(truncated, 0));
+    assertThrows("too small", InvalidKeyException.class, () -> Curve.decodePrivatePoint(truncated));
+    assertThrows(
+        "too small", InvalidKeyException.class, () -> ECPublicKey.fromPublicKeyBytes(truncated));
 
-    try {
-      byte[] badKeyType = new byte[33];
-      System.arraycopy(serializedPublic, 0, badKeyType, 0, serializedPublic.length);
-      badKeyType[0] = 0x01;
-      Curve.decodePoint(badKeyType, 0);
-      throw new AssertionError("Should be bad key type");
-    } catch (InvalidKeyException e) {
-      // good
-    }
+    assertThrows("empty", InvalidKeyException.class, () -> Curve.decodePoint(new byte[0], 0));
+    assertThrows("empty", InvalidKeyException.class, () -> Curve.decodePrivatePoint(new byte[0]));
+    assertThrows(
+        "empty", InvalidKeyException.class, () -> ECPublicKey.fromPublicKeyBytes(new byte[0]));
 
+    byte[] badKeyType = new byte[33];
+    System.arraycopy(serializedPublic, 0, badKeyType, 0, serializedPublic.length);
+    badKeyType[0] = 0x01;
+    assertThrows(InvalidKeyException.class, () -> Curve.decodePoint(badKeyType, 0));
+
+    // We allow extra trailing space for keys with type bytes for historical compatibility.
     byte[] extraSpace = new byte[serializedPublic.length + 1];
     System.arraycopy(serializedPublic, 0, extraSpace, 0, serializedPublic.length);
     ECPublicKey extra = Curve.decodePoint(extraSpace, 0);
+    assertThrows("too big", InvalidKeyException.class, () -> Curve.decodePrivatePoint(extraSpace));
+    assertThrows(
+        "too big", InvalidKeyException.class, () -> ECPublicKey.fromPublicKeyBytes(extraSpace));
 
     byte[] offsetSpace = new byte[serializedPublic.length + 1];
     System.arraycopy(serializedPublic, 0, offsetSpace, 1, serializedPublic.length);
