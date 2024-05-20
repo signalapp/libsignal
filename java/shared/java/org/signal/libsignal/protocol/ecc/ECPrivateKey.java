@@ -18,7 +18,7 @@ public class ECPrivateKey implements NativeHandleGuard.Owner {
     return new ECPrivateKey(Native.ECPrivateKey_Generate());
   }
 
-  ECPrivateKey(byte[] privateKey) throws InvalidKeyException {
+  public ECPrivateKey(byte[] privateKey) throws InvalidKeyException {
     this.unsafeHandle =
         filterExceptions(
             InvalidKeyException.class, () -> Native.ECPrivateKey_Deserialize(privateKey));
