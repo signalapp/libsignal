@@ -9,6 +9,7 @@ use clap::{Args, Parser};
 use futures::io::AllowStdIo;
 use futures::AsyncRead;
 
+use libsignal_message_backup::args::{parse_aci, parse_hex_bytes};
 use libsignal_message_backup::backup::Purpose;
 use libsignal_message_backup::frame::{
     CursorFactory, FileReaderFactory, FramesReader, ReaderFactory, UnvalidatedHmacReader,
@@ -16,7 +17,6 @@ use libsignal_message_backup::frame::{
 };
 use libsignal_message_backup::key::{BackupKey, MessageBackupKey};
 use libsignal_message_backup::{BackupReader, Error, FoundUnknownField, ReadResult};
-use libsignal_message_backup_io::args::{parse_aci, parse_hex_bytes};
 use libsignal_protocol::Aci;
 use mediasan_common::SeekSkipAdapter;
 

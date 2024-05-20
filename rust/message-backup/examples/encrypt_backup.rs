@@ -17,8 +17,8 @@ use clap_stdin::FileOrStdin;
 use futures::io::Cursor;
 use futures::AsyncReadExt;
 use hmac::Mac;
-use libsignal_message_backup_io::args::{parse_aci, parse_hex_bytes};
-use libsignal_message_backup_io::key::{BackupKey, MessageBackupKey};
+use libsignal_message_backup::args::{parse_aci, parse_hex_bytes};
+use libsignal_message_backup::key::{BackupKey, MessageBackupKey};
 use libsignal_protocol::Aci;
 use sha2::Sha256;
 

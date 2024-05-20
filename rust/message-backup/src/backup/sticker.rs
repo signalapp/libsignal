@@ -166,30 +166,27 @@ mod test {
 
     use test_case::test_case;
 
-    use crate::backup::test::{ProtoTestData, ProtoTestDataId};
-
     use super::*;
 
-    const TEST_ID_BYTES: [u8; 16] = [0x22; 16];
-    const TEST_KEY: [u8; 32] = [0x11; 32];
-    impl ProtoTestDataId<PackId> for proto::StickerPack {
-        const TEST_ID: PackId = PackId(TEST_ID_BYTES);
-    }
-    impl ProtoTestData for proto::StickerPack {
+    impl proto::StickerPack {
+        pub(crate) const TEST_ID: PackId = PackId(Self::TEST_ID_BYTES);
+
+        const TEST_ID_BYTES: [u8; 16] = [0x22; 16];
+        const TEST_KEY: [u8; 32] = [0x11; 32];
+
         fn test_data() -> Self {
             Self {
-                packId: TEST_ID_BYTES.into(),
-                packKey: TEST_KEY.into(),
+                packId: Self::TEST_ID_BYTES.into(),
+                packKey: Self::TEST_KEY.into(),
                 stickers: vec![proto::StickerPackSticker::test_data()],
                 ..Default::default()
             }
         }
     }
 
-    impl ProtoTestDataId<StickerId> for proto::StickerPackSticker {
-        const TEST_ID: StickerId = StickerId(9988);
-    }
-    impl ProtoTestData for proto::StickerPackSticker {
+    impl proto::StickerPackSticker {
+        pub(crate) const TEST_ID: StickerId = StickerId(9988);
+
         fn test_data() -> Self {
             Self {
                 id: Self::TEST_ID.0,
@@ -198,11 +195,11 @@ mod test {
         }
     }
 
-    impl ProtoTestData for proto::Sticker {
-        fn test_data() -> Self {
+    impl proto::Sticker {
+        pub(crate) fn test_data() -> Self {
             Self {
-                packId: TEST_ID_BYTES.into(),
-                packKey: TEST_KEY.into(),
+                packId: proto::StickerPack::TEST_ID_BYTES.into(),
+                packKey: proto::StickerPack::TEST_KEY.into(),
                 stickerId: proto::StickerPackSticker::TEST_ID.0,
                 ..Default::default()
             }
@@ -214,7 +211,7 @@ mod test {
         assert_eq!(
             proto::StickerPack::test_data().try_into(),
             Ok(StickerPack {
-                key: Key(TEST_KEY),
+                key: Key(proto::StickerPack::TEST_KEY),
                 stickers: HashMap::from([(
                     proto::StickerPackSticker::TEST_ID,
                     PackSticker {
@@ -267,7 +264,7 @@ mod test {
             proto::Sticker::test_data().try_into(),
             Ok(MessageSticker {
                 pack_id: proto::StickerPack::TEST_ID,
-                pack_key: Key(TEST_KEY),
+                pack_key: Key(proto::StickerPack::TEST_KEY),
                 _limit_construction_to_module: (),
             })
         );

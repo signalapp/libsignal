@@ -358,19 +358,16 @@ pub(crate) mod test {
     use protobuf::EnumOrUnknown;
     use test_case::test_case;
 
-    use crate::backup::test::{ProtoTestData, ProtoTestDataId};
     use crate::backup::time::testutil::MillisecondsSinceEpoch;
     use crate::backup::time::Duration;
     use crate::backup::TryIntoWith as _;
 
     use super::*;
 
-    impl ProtoTestDataId<CallId> for proto::IndividualCall {
+    impl proto::IndividualCall {
         const TEST_ID: CallId = CallId(33333);
-    }
 
-    impl ProtoTestData for proto::IndividualCall {
-        fn test_data() -> Self {
+        pub(crate) fn test_data() -> Self {
             Self {
                 callId: Some(Self::TEST_ID.0),
                 state: proto::individual_call::State::ACCEPTED.into(),
@@ -382,8 +379,8 @@ pub(crate) mod test {
         }
     }
 
-    impl ProtoTestData for proto::GroupCall {
-        fn test_data() -> Self {
+    impl proto::GroupCall {
+        pub(crate) fn test_data() -> Self {
             Self {
                 callId: None,
                 ringerRecipientId: Some(proto::Recipient::TEST_ID),
@@ -398,11 +395,9 @@ pub(crate) mod test {
     pub(crate) const TEST_CALL_LINK_RECIPIENT_ID: RecipientId = RecipientId(987654);
     pub(crate) const NONEXISTENT_RECIPIENT: RecipientId = RecipientId(9999999999999999999);
 
-    impl ProtoTestDataId for proto::AdHocCall {
+    impl proto::AdHocCall {
         const TEST_ID: u64 = 888888;
-    }
 
-    impl ProtoTestData for proto::AdHocCall {
         fn test_data() -> Self {
             Self {
                 callId: Self::TEST_ID,
@@ -417,7 +412,7 @@ pub(crate) mod test {
 
     const TEST_CALL_LINK_ROOT_KEY: CallLinkRootKey = [b'R'; 16];
     const TEST_CALL_LINK_ADMIN_KEY: CallLinkAdminKey = [b'A'; 32];
-    impl ProtoTestData for proto::CallLink {
+    impl proto::CallLink {
         fn test_data() -> Self {
             Self {
                 rootKey: TEST_CALL_LINK_ROOT_KEY.to_vec(),

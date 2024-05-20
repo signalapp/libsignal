@@ -19,10 +19,11 @@ fn main() {
 
     eprintln!("reading from {:?}", filename.source);
 
-    let json_array = futures::executor::block_on(libsignal_message_backup_io::convert_to_json(
-        AllowStdIo::new(filename.into_reader().expect("failed to open")),
-    ))
-    .expect("failed to convert");
+    let json_array =
+        futures::executor::block_on(libsignal_message_backup::backup::convert_to_json(
+            AllowStdIo::new(filename.into_reader().expect("failed to open")),
+        ))
+        .expect("failed to convert");
 
     print!("{:#}", serde_json::Value::Array(json_array));
 }

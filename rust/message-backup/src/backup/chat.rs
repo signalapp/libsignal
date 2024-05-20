@@ -969,21 +969,20 @@ impl<R: Contains<RecipientId>> TryFromWith<proto::Reaction, R> for Reaction {
 }
 
 #[cfg(test)]
-pub(crate) mod test {
+mod test {
     use std::time::UNIX_EPOCH;
 
     use assert_matches::assert_matches;
     use protobuf::{EnumOrUnknown, MessageField, SpecialFields};
     use test_case::test_case;
 
-    use crate::backup::test::{ProtoTestData, ProtoTestDataId as _};
     use crate::backup::time::testutil::MillisecondsSinceEpoch;
     use crate::backup::Purpose;
 
     use super::*;
 
-    impl ProtoTestData for proto::ChatItem {
-        fn test_data() -> Self {
+    impl proto::ChatItem {
+        pub(crate) fn test_data() -> Self {
             Self {
                 chatId: proto::Chat::TEST_ID,
                 authorId: proto::Recipient::TEST_ID,
@@ -1005,22 +1004,17 @@ pub(crate) mod test {
         }
     }
 
-    impl ProtoTestData for proto::StandardMessage {
-        fn test_data() -> Self {
+    impl proto::StandardMessage {
+        pub(crate) fn test_data() -> Self {
             Self {
                 reactions: vec![proto::Reaction::test_data()],
                 quote: Some(proto::Quote::test_data()).into(),
                 ..Default::default()
             }
         }
-    }
 
-    pub(crate) trait StandardMessageTestData {
-        fn test_voice_message_data() -> Self;
-    }
-    impl StandardMessageTestData for proto::StandardMessage {
-        fn test_voice_message_data() -> proto::StandardMessage {
-            proto::StandardMessage {
+        pub(crate) fn test_voice_message_data() -> Self {
+            Self {
                 attachments: vec![proto::MessageAttachment {
                     pointer: Some(proto::FilePointer {
                         locator: Some(proto::file_pointer::Locator::BackupLocator(
@@ -1035,12 +1029,12 @@ pub(crate) mod test {
                 longText: None.into(),
                 linkPreview: vec![],
                 text: None.into(),
-                ..proto::StandardMessage::test_data()
+                ..Self::test_data()
             }
         }
     }
 
-    impl ProtoTestData for proto::ContactMessage {
+    impl proto::ContactMessage {
         fn test_data() -> Self {
             Self {
                 reactions: vec![proto::Reaction::test_data()],
@@ -1050,7 +1044,7 @@ pub(crate) mod test {
         }
     }
 
-    impl ProtoTestData for proto::ContactAttachment {
+    impl proto::ContactAttachment {
         fn test_data() -> Self {
             Self {
                 ..Default::default()
@@ -1058,7 +1052,7 @@ pub(crate) mod test {
         }
     }
 
-    impl ProtoTestData for proto::Reaction {
+    impl proto::Reaction {
         fn test_data() -> Self {
             Self {
                 authorId: proto::Recipient::TEST_ID,
@@ -1069,7 +1063,7 @@ pub(crate) mod test {
         }
     }
 
-    impl ProtoTestData for proto::Quote {
+    impl proto::Quote {
         fn test_data() -> Self {
             Self {
                 authorId: proto::Recipient::TEST_ID,
@@ -1080,7 +1074,7 @@ pub(crate) mod test {
         }
     }
 
-    impl ProtoTestData for proto::StickerMessage {
+    impl proto::StickerMessage {
         fn test_data() -> Self {
             Self {
                 reactions: vec![proto::Reaction::test_data()],
@@ -1158,7 +1152,7 @@ pub(crate) mod test {
         }
     }
 
-    impl ProtoTestData for proto::chat_item::OutgoingMessageDetails {
+    impl proto::chat_item::OutgoingMessageDetails {
         fn test_data() -> Self {
             Self {
                 sendStatus: vec![proto::SendStatus::test_data()],
@@ -1167,7 +1161,7 @@ pub(crate) mod test {
         }
     }
 
-    impl ProtoTestData for proto::SendStatus {
+    impl proto::SendStatus {
         fn test_data() -> Self {
             Self {
                 recipientId: proto::Recipient::TEST_ID,
@@ -1177,7 +1171,7 @@ pub(crate) mod test {
         }
     }
 
-    impl ProtoTestData for proto::SimpleChatUpdate {
+    impl proto::SimpleChatUpdate {
         fn test_data() -> Self {
             Self {
                 type_: proto::simple_chat_update::Type::IDENTITY_VERIFIED.into(),
@@ -1444,16 +1438,9 @@ pub(crate) mod test {
     }
 
     use proto::chat_update_message::Update as ChatUpdateProto;
-    trait GroupCallChatUpdateTestData {
-        const TEST_ACI: [u8; 16];
-        fn bad_started_call() -> Self;
-        fn no_started_call() -> Self;
-    }
-
     const BAD_RECIPIENT: RecipientId = RecipientId(u64::MAX);
-    impl GroupCallChatUpdateTestData for proto::GroupCall {
-        const TEST_ACI: [u8; 16] = [0x12; 16];
 
+    impl proto::GroupCall {
         fn no_started_call() -> Self {
             Self {
                 startedCallRecipientId: None,

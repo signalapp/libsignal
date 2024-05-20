@@ -28,7 +28,7 @@ fn is_valid_json_proto(input: Fixture<&str>) {
     let json_contents = serde_json::from_str(json_contents).expect("invalid JSON");
     let json_array = assert_matches!(json_contents, serde_json::Value::Array(contents) => contents);
     let binary =
-        libsignal_message_backup_io::convert_from_json(json_array).expect("failed to convert");
+        libsignal_message_backup::backup::convert_from_json(json_array).expect("failed to convert");
 
     // Check via the library interface.
     let input = Cursor::new(&*binary);
@@ -99,7 +99,7 @@ fn invalid_jsonproto(input: Fixture<PathBuf>) {
             .expect("invalid JSON");
     let json_array = assert_matches!(json_contents, serde_json::Value::Array(contents) => contents);
     let binary =
-        libsignal_message_backup_io::convert_from_json(json_array).expect("failed to convert");
+        libsignal_message_backup::backup::convert_from_json(json_array).expect("failed to convert");
 
     let input = Cursor::new(&*binary);
     let reader = BackupReader::new_unencrypted(input, Purpose::RemoteBackup);

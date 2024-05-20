@@ -269,16 +269,11 @@ mod test {
     use protobuf::EnumOrUnknown;
     use test_case::test_case;
 
-    use crate::backup::test::{ProtoTestData, ProtoTestDataId};
-
     use super::*;
 
-    impl ProtoTestDataId for proto::Recipient {
-        const TEST_ID: u64 = 11111;
-    }
-
-    impl ProtoTestData for proto::Recipient {
-        fn test_data() -> Self {
+    impl proto::Recipient {
+        pub(crate) const TEST_ID: u64 = 11111;
+        pub(crate) fn test_data() -> Self {
             Self {
                 id: Self::TEST_ID,
                 destination: Some(proto::recipient::Destination::Self_(Default::default())),
@@ -287,18 +282,11 @@ mod test {
         }
     }
 
-    trait ContactTestData {
-        const TEST_ACI: [u8; 16];
-        const TEST_PNI: [u8; 16];
-        const TEST_PROFILE_KEY: ProfileKeyBytes;
-    }
-    impl ContactTestData for proto::Contact {
-        const TEST_ACI: [u8; 16] = [0xaa; 16];
-        const TEST_PNI: [u8; 16] = [0xba; 16];
-        const TEST_PROFILE_KEY: ProfileKeyBytes = [0x36; 32];
-    }
+    impl proto::Contact {
+        pub(crate) const TEST_ACI: [u8; 16] = [0xaa; 16];
+        pub(crate) const TEST_PNI: [u8; 16] = [0xba; 16];
+        pub(crate) const TEST_PROFILE_KEY: ProfileKeyBytes = [0x36; 32];
 
-    impl ProtoTestData for proto::Contact {
         fn test_data() -> Self {
             Self {
                 aci: Some(Self::TEST_ACI.into()),
@@ -310,21 +298,22 @@ mod test {
         }
     }
 
-    const TEST_MASTER_KEY: GroupMasterKeyBytes = [0x33; 32];
-    impl ProtoTestData for proto::Group {
+    impl proto::Group {
+        const TEST_MASTER_KEY: GroupMasterKeyBytes = [0x33; 32];
+
         fn test_data() -> Self {
             Self {
-                masterKey: TEST_MASTER_KEY.into(),
+                masterKey: Self::TEST_MASTER_KEY.into(),
                 ..Self::default()
             }
         }
     }
 
-    const TEST_UUID: [u8; 16] = [0x99; 16];
-    impl ProtoTestData for proto::DistributionList {
+    impl proto::DistributionList {
+        const TEST_UUID: [u8; 16] = [0x99; 16];
         fn test_data() -> Self {
             Self {
-                distributionId: TEST_UUID.into(),
+                distributionId: Self::TEST_UUID.into(),
                 privacyMode: proto::distribution_list::PrivacyMode::ALL_EXCEPT.into(),
                 ..Self::default()
             }
@@ -445,7 +434,7 @@ mod test {
             RecipientData::<Store>::try_from(recipient),
             Ok(RecipientData {
                 destination: Destination::Group(GroupData {
-                    master_key: TEST_MASTER_KEY
+                    master_key: proto::Group::TEST_MASTER_KEY
                 })
             })
         );
@@ -482,7 +471,7 @@ mod test {
             RecipientData::<Store>::try_from(recipient),
             Ok(RecipientData {
                 destination: Destination::DistributionList(DistributionListData {
-                    distribution_id: Uuid::from_bytes(TEST_UUID),
+                    distribution_id: Uuid::from_bytes(proto::DistributionList::TEST_UUID),
                     privacy_mode: PrivacyMode::AllExcept,
                 })
             })
@@ -490,7 +479,7 @@ mod test {
     }
 
     fn invalid_distribution_id(input: &mut proto::DistributionList) {
-        input.distributionId = vec![0x55; TEST_UUID.len() * 2];
+        input.distributionId = vec![0x55; proto::DistributionList::TEST_UUID.len() * 2];
     }
     fn privacy_mode_unknown(input: &mut proto::DistributionList) {
         input.privacyMode = EnumOrUnknown::default();

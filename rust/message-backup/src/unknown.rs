@@ -145,7 +145,7 @@ impl PathPart {
 }
 
 /// Visitor for unknown fields on a [`protobuf::Message`].
-pub trait VisitUnknownFields {
+pub(crate) trait VisitUnknownFields {
     /// Calls the visitor for each unknown field in the message.
     fn visit_unknown_fields<F: UnknownFieldVisitor>(&self, visitor: F);
 }
@@ -162,7 +162,7 @@ impl<M: visit_static::VisitUnknownFields> VisitUnknownFields for M {
 }
 
 /// Extension trait for [`VisitUnknownFields`] with convenience methods.
-pub trait VisitUnknownFieldsExt {
+pub(crate) trait VisitUnknownFieldsExt {
     fn has_unknown_fields(&self) -> bool;
     fn collect_unknown_fields(&self) -> Vec<(Vec<PathPart>, UnknownValue)>;
     fn find_unknown_field(&self) -> Option<(Vec<PathPart>, UnknownValue)>;

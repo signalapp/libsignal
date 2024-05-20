@@ -77,7 +77,7 @@ pub trait VerifyHmac: Sized {
 }
 
 impl<R: AsyncRead + AsyncSkip + Unpin> FramesReader<R> {
-    pub async fn new(
+    pub(crate) async fn new(
         key: &MessageBackupKey,
         mut reader_factory: impl ReaderFactory<Reader = R>,
     ) -> Result<FramesReader<R>, ValidationError> {
@@ -148,7 +148,7 @@ impl<R> MacReader<R, Hmac<Sha256>> {
 }
 
 impl<R> UnvalidatedHmacReader<R> {
-    pub fn new(reader: R) -> Self {
+    pub(crate) fn new(reader: R) -> Self {
         Self(reader)
     }
 }

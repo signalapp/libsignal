@@ -269,12 +269,11 @@ mod test {
     use uuid::Uuid;
 
     use crate::backup::method::{Store, ValidateOnly};
-    use crate::backup::test::ProtoTestData;
 
     use super::*;
 
-    impl ProtoTestData for proto::AccountData {
-        fn test_data() -> Self {
+    impl proto::AccountData {
+        pub(crate) fn test_data() -> Self {
             Self {
                 profileKey: FAKE_PROFILE_KEY.into(),
                 accountSettings: Some(proto::account_data::AccountSettings::test_data()).into(),
@@ -293,7 +292,7 @@ mod test {
         }
     }
 
-    impl ProtoTestData for proto::account_data::AccountSettings {
+    impl proto::account_data::AccountSettings {
         fn test_data() -> Self {
             Self {
                 phoneNumberSharingMode: proto::account_data::PhoneNumberSharingMode::EVERYBODY
