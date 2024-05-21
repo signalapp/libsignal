@@ -9,6 +9,7 @@ import static org.junit.Assert.*;
 
 import java.security.SecureRandom;
 import java.util.concurrent.ExecutionException;
+import org.junit.After;
 import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
@@ -26,9 +27,12 @@ public class Svr3Test {
   private final byte[] STORED_SECRET =
       Hex.fromStringCondensedAssert(
           "d2ae1668ac8a2bfd6170498332babad7cd72b9314631559a361310eee0a8adc6");
+  private final String TEST_PASSWORD = "password";
   private final String ENCLAVE_SECRET = TestEnvironment.get("LIBSIGNAL_TESTING_ENCLAVE_SECRET");
 
-  private EnclaveAuth auth;
+  record State(EnclaveAuth auth, Network net) {}
+
+  private State state;
 
   @Before
   public void before() {
@@ -39,7 +43,19 @@ public class Svr3Test {
     // probability of being throttled
     String username = randomBytesHex(16);
     String otp = Native.CreateOTPFromBase64(username, ENCLAVE_SECRET);
-    this.auth = new EnclaveAuth(username, otp);
+    var auth = new EnclaveAuth(username, otp);
+    var net = new Network(Network.Environment.STAGING, USER_AGENT);
+    this.state = new State(auth, net);
+  }
+
+  @After
+  public void after() {
+    try {
+      this.state.net().svr3().remove(state.auth()).get();
+    } catch (Exception ignored) {
+    } finally {
+      this.state = null;
+    }
   }
 
   static final String randomBytesHex(int size) {
@@ -52,25 +68,47 @@ public class Svr3Test {
   @Test
   public void backupAndRestore() throws Exception {
     final int tries = 2;
-    Network net = new Network(Network.Environment.STAGING, USER_AGENT);
     Svr3.RestoredSecret restored =
-        net.svr3()
-            .backup(STORED_SECRET, "password", tries, this.auth)
-            .thenCompose(shareSet -> net.svr3().restore("password", shareSet, this.auth))
+        state
+            .net()
+            .svr3()
+            .backup(STORED_SECRET, TEST_PASSWORD, tries, state.auth())
+            .thenCompose(
+                shareSet -> state.net().svr3().restore(TEST_PASSWORD, shareSet, state.auth()))
             .get();
     assertEquals(Hex.toStringCondensed(STORED_SECRET), Hex.toStringCondensed(restored.value()));
     assertEquals(tries - 1, restored.triesRemaining());
   }
 
   @Test
-  public void noMoreTries() throws Exception {
-    Network net = new Network(Network.Environment.STAGING, USER_AGENT);
-    // Backup and first restore should succeed
-    byte[] shareSet = net.svr3().backup(STORED_SECRET, "password", 1, this.auth).get();
-    net.svr3().restore("password", shareSet, this.auth).get();
+  public void noRestoreAfterRemove() throws Exception {
+    final int tries = 10;
+    byte[] shareSet =
+        state.net().svr3().backup(STORED_SECRET, TEST_PASSWORD, tries, state.auth()).get();
+    state.net().svr3().remove(state.auth()).get();
     try {
       // The next attempt should fail
-      net.svr3().restore("password", shareSet, this.auth).get();
+      state.net().svr3().restore(TEST_PASSWORD, shareSet, state.auth()).get();
+    } catch (ExecutionException ex) {
+      Throwable cause = ex.getCause();
+      assertTrue("Unexpected exception: " + cause, cause instanceof DataMissingException);
+    }
+  }
+
+  @Test
+  public void removeSomethingThatNeverWas() throws Exception {
+    state.net().svr3().remove(state.auth()).get();
+  }
+
+  @Test
+  public void noMoreTries() throws Exception {
+    // Backup and first restore should succeed
+    byte[] shareSet =
+        state.net().svr3().backup(STORED_SECRET, TEST_PASSWORD, 1, state.auth()).get();
+    state.net().svr3().restore(TEST_PASSWORD, shareSet, state.auth()).get();
+    try {
+      // The next attempt should fail
+      state.net().svr3().restore(TEST_PASSWORD, shareSet, state.auth()).get();
     } catch (ExecutionException ex) {
       Throwable cause = ex.getCause();
       assertTrue("Unexpected exception: " + cause, cause instanceof DataMissingException);
@@ -79,11 +117,11 @@ public class Svr3Test {
 
   @Test
   public void failedRestore() throws Exception {
-    Network net = new Network(Network.Environment.STAGING, USER_AGENT);
     final int tries = 2;
-    byte[] shareSet = net.svr3().backup(STORED_SECRET, "password", tries, this.auth).get();
+    byte[] shareSet =
+        state.net().svr3().backup(STORED_SECRET, TEST_PASSWORD, tries, state.auth()).get();
     try {
-      net.svr3().restore("wrong password", shareSet, this.auth).get();
+      state.net().svr3().restore("wrong password", shareSet, state.auth()).get();
     } catch (ExecutionException ex) {
       Throwable cause = ex.getCause();
       assertTrue("Unexpected exception: " + cause, cause instanceof RestoreFailedException);
@@ -94,17 +132,15 @@ public class Svr3Test {
 
   @Test
   public void zeroTries() throws Exception {
-    Network net = new Network(Network.Environment.STAGING, USER_AGENT);
     assertThrows(
         IllegalArgumentException.class,
-        () -> net.svr3().backup(STORED_SECRET, "password", 0, this.auth).get());
+        () -> state.net().svr3().backup(STORED_SECRET, TEST_PASSWORD, 0, state.auth()).get());
   }
 
   @Test
   public void badSecret() throws Exception {
-    Network net = new Network(Network.Environment.STAGING, USER_AGENT);
     try {
-      net.svr3().backup(new byte[31], "password", 1, this.auth).get();
+      state.net().svr3().backup(new byte[31], TEST_PASSWORD, 1, state.auth()).get();
     } catch (ExecutionException ex) {
       Throwable cause = ex.getCause();
       assertTrue("Unexpected exception: " + cause, cause instanceof AssertionError);
@@ -113,11 +149,11 @@ public class Svr3Test {
 
   @Test
   public void badShareSet() throws Exception {
-    Network net = new Network(Network.Environment.STAGING, USER_AGENT);
-    byte[] shareSet = net.svr3().backup(STORED_SECRET, "password", 1, this.auth).get();
+    byte[] shareSet =
+        state.net().svr3().backup(STORED_SECRET, TEST_PASSWORD, 1, state.auth()).get();
     shareSet[0] ^= 0xff;
     try {
-      net.svr3().restore("password", shareSet, this.auth).get();
+      state.net().svr3().restore(TEST_PASSWORD, shareSet, state.auth()).get();
     } catch (ExecutionException ex) {
       Throwable cause = ex.getCause();
       assertTrue("Unexpected exception: " + cause, cause instanceof SvrException);

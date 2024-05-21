@@ -339,8 +339,7 @@ export interface Svr3Client {
   /**
    * Backup a secret to SVR3.
    *
-   * Error messages are expected to be log-safe and not contain any sensitive
-   *   data.
+   * Error messages are log-safe and do not contain any sensitive data.
    *
    * @param what - The secret to be stored. Must be 32 bytes long.
    * @param password - User-provided password that will be used to derive the
@@ -379,8 +378,7 @@ export interface Svr3Client {
   /**
    * Restore a secret from SVR3.
    *
-   * Error messages are expected to be log-safe and not contain any sensitive
-   * data.
+   * Error messages are log-safe and do not contain any sensitive data.
    *
    * @param password - User-provided password that will be used to derive the
    * decryption key for the secret.
@@ -417,6 +415,33 @@ export interface Svr3Client {
     shareSet: Buffer,
     auth: Readonly<ServiceAuth>
   ): Promise<RestoredSecret>;
+
+  /**
+   * Remove a value stored in SVR3.
+   *
+   * This method will succeed even if the data has never been backed up in the
+   * first place.
+   *
+   * Error messages are log-safe and do not contain any sensitive data.
+   *
+   * @param auth - An instance of {@link ServiceAuth} containing the username
+   * and password obtained from the Chat Server. The password is an OTP which is
+   * generally good for about 15 minutes, therefore it can be reused for the
+   * subsequent calls to either backup or restore that are not too far apart in
+   * time.
+   * @returns A `Promise` successful completion of which will mean the data has
+   * been removed.
+   *
+   * The returned `Promise` can also fail due to the network issues (including
+   * the connection timeout), problems establishing the Noise connection to the
+   * enclaves, or invalid arguments' values. {@link IoError} errors can, in
+   * general, be retried, although there is already a retry-with-backoff
+   * mechanism inside libsignal used to connect to the SVR3 servers. Other
+   * exceptions are caused by the bad input or data missing on the server. They
+   * are therefore non-actionable and are guaranteed to be thrown again when
+   * retried.
+   */
+  remove(auth: Readonly<ServiceAuth>): Promise<void>;
 }
 
 /**
@@ -470,5 +495,13 @@ class Svr3ClientImpl implements Svr3Client {
       auth.password
     );
     return new RestoredSecret(serialized);
+  }
+  async remove(auth: Readonly<ServiceAuth>): Promise<void> {
+    return Native.Svr3Remove(
+      this.asyncContext,
+      this.connectionManager,
+      auth.username,
+      auth.password
+    );
   }
 }

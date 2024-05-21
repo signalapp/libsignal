@@ -15,11 +15,17 @@ pub use ppss::{MaskedShareSet, OPRFSession};
 mod errors;
 pub use errors::{Error, ErrorStatus, OPRFError, PPSSError};
 mod proto;
-use proto::svr3;
-use proto::svr3::{create_response, evaluate_response};
+use proto::svr3::{self, create_response, evaluate_response};
 
 const SECRET_BYTES: usize = 32;
 const CONTEXT: &str = "Signal_SVR3_20231121_PPSS_Context";
+
+pub fn make_remove_request() -> Vec<u8> {
+    svr3::Request {
+        inner: Some(svr3::request::Inner::Remove(svr3::RemoveRequest {})),
+    }
+    .encode_to_vec()
+}
 
 pub struct Backup<'a> {
     oprfs: Vec<OPRFSession>,
@@ -40,7 +46,7 @@ impl<'a> Backup<'a> {
         let oprfs = ppss::begin_oprfs(CONTEXT, server_ids, password, rng)?;
         let requests = oprfs
             .iter()
-            .map(|oprf| crate::make_create_request(max_tries.into(), &oprf.blinded_elt_bytes))
+            .map(|oprf| make_create_request(max_tries.into(), &oprf.blinded_elt_bytes))
             .map(|request| request.encode_to_vec())
             .collect();
         Ok(Self {

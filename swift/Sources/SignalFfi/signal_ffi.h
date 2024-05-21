@@ -1489,6 +1489,8 @@ SignalFfiError *signal_svr3_backup(SignalCPromiseOwnedBufferOfc_uchar *promise, 
 
 SignalFfiError *signal_svr3_restore(SignalCPromiseOwnedBufferOfc_uchar *promise, const SignalTokioAsyncContext *async_runtime, const SignalConnectionManager *connection_manager, const char *password, SignalBorrowedBuffer share_set, const char *username, const char *enclave_password);
 
+SignalFfiError *signal_svr3_remove(SignalCPromisebool *promise, const SignalTokioAsyncContext *async_runtime, const SignalConnectionManager *connection_manager, const char *username, const char *enclave_password);
+
 SignalFfiError *signal_chat_destroy(SignalChat *p);
 
 SignalFfiError *signal_http_request_destroy(SignalHttpRequest *p);

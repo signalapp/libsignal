@@ -12,7 +12,6 @@ use std::time::Duration;
 
 use ::tokio::sync::mpsc;
 use base64::prelude::{Engine, BASE64_STANDARD};
-use futures_util::future::TryFutureExt as _;
 use http::uri::{InvalidUri, PathAndQuery};
 use http::{HeaderMap, HeaderName, HeaderValue};
 use libsignal_bridge_macros::{bridge_fn, bridge_io};
@@ -219,18 +218,15 @@ async fn Svr3Backup(
         .try_into()
         .expect("can only backup 32 bytes");
     let mut rng = OsRng;
-    let share_set = svr3_connect(connection_manager, username, enclave_password)
-        .map_err(|err| err.into())
-        .and_then(|connections| {
-            Svr3Env::backup(
-                connections,
-                &password,
-                secret,
-                max_tries.into_inner(),
-                &mut rng,
-            )
-        })
-        .await?;
+    let connections = svr3_connect(connection_manager, username, enclave_password).await?;
+    let share_set = Svr3Env::backup(
+        connections,
+        &password,
+        secret,
+        max_tries.into_inner(),
+        &mut rng,
+    )
+    .await?;
     Ok(share_set.serialize().expect("can serialize the share set"))
 }
 
@@ -244,11 +240,20 @@ async fn Svr3Restore(
 ) -> Result<Vec<u8>, svr3::Error> {
     let mut rng = OsRng;
     let share_set = OpaqueMaskedShareSet::deserialize(&share_set)?;
-    let restored_secret = svr3_connect(connection_manager, username, enclave_password)
-        .map_err(|err| err.into())
-        .and_then(|connections| Svr3Env::restore(connections, &password, share_set, &mut rng))
-        .await?;
+    let connections = svr3_connect(connection_manager, username, enclave_password).await?;
+    let restored_secret = Svr3Env::restore(connections, &password, share_set, &mut rng).await?;
     Ok(restored_secret.serialize())
+}
+
+#[bridge_io(TokioAsyncContext)]
+async fn Svr3Remove(
+    connection_manager: &ConnectionManager,
+    username: String,         // hex-encoded uid
+    enclave_password: String, // timestamp:otp(...)
+) -> Result<(), svr3::Error> {
+    let connections = svr3_connect(connection_manager, username, enclave_password).await?;
+    Svr3Env::remove(connections).await?;
+    Ok(())
 }
 
 async fn svr3_connect<'a>(

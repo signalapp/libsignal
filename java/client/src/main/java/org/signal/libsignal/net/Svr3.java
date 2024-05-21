@@ -50,7 +50,7 @@ public final class Svr3 {
    * be thrown when the Future is awaited, and furthermore will be wrapped in {@link
    * java.util.concurrent.ExecutionException}.
    *
-   * <p>Exception messages are expected to be log-safe and not contain any sensitive data.
+   * <p>Exception messages are log-safe and do not contain any sensitive data.
    *
    * @param what the secret to be stored. Must be 32 bytes long.
    * @param password user-provide password that will be used to derive the encryption key for the
@@ -98,7 +98,7 @@ public final class Svr3 {
    * be thrown when the Future is awaited, and furthermore will be wrapped in {@link
    * java.util.concurrent.ExecutionException}.
    *
-   * <p>Exception messages are expected to be log-safe and not contain any sensitive data.
+   * <p>Exception messages are log-safe and do not contain any sensitive data.
    *
    * <p>Note on exceptions. Only the operations resulting in {@link
    * org.signal.libsignal.net.NetworkException} should be retried (even though there are multiple
@@ -143,6 +143,43 @@ public final class Svr3 {
               auth.username,
               auth.password)
           .thenApply(RestoredSecret::deserialize);
+    }
+  }
+
+  /**
+   * Remove a value stored in SVR3.
+   *
+   * <p>This method will succeed even if the data has never been backed up in the first place.
+   *
+   * <p>As noted above due to the asynchronous nature of the API all the expected errors will only
+   * be thrown when the Future is awaited, and furthermore will be wrapped in {@link
+   * java.util.concurrent.ExecutionException}.
+   *
+   * <p>Exception messages are log-safe and do not contain any sensitive data.
+   *
+   * @param auth an instance of {@link org.signal.libsignal.net.EnclaveAuth} containing the username
+   *     and password obtained from the Chat Server. The password is an OTP which is generally good
+   *     for about 15 minutes, therefore it can be reused for the subsequent calls to either backup
+   *     or restore that are not too far apart in time.
+   * @return an instance of {@link org.signal.libsignal.internal.CompletableFuture} successful
+   *     completion of which will mean the data has been removed.
+   * @throws {@link org.signal.libsignal.net.NetworkException} in case of network related errors,
+   *     including connection timeouts and failed auth.
+   * @throws {@link org.signal.libsignal.attest.AttestationFailedException} when an attempt to
+   *     validate the server attestation document fails.
+   * @throws {@link org.signal.libsignal.sgxsession.SgxCommunicationFailureException} when a Noise
+   *     connection error happens.
+   */
+  public final CompletableFuture<Void> remove(EnclaveAuth auth) {
+    try (NativeHandleGuard asyncRuntime = new NativeHandleGuard(this.network.getAsyncContext());
+        NativeHandleGuard connectionManager =
+            new NativeHandleGuard(this.network.getConnectionManager())) {
+
+      return Native.Svr3Remove(
+          asyncRuntime.nativeHandle(),
+          connectionManager.nativeHandle(),
+          auth.username,
+          auth.password);
     }
   }
 

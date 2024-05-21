@@ -10,8 +10,10 @@
 //! at each invocation instead of being passed via the command line.
 use std::time::Duration;
 
+use assert_matches::assert_matches;
 use base64::prelude::{Engine, BASE64_STANDARD};
 use clap::Parser;
+use colored::Colorize as _;
 use libsignal_net::infra::dns::DnsResolver;
 use nonzero_ext::nonzero;
 use rand_core::{CryptoRngCore, OsRng, RngCore};
@@ -21,7 +23,7 @@ use libsignal_net::enclave::{EnclaveEndpointConnection, Nitro, Sgx, Tpm2Snp};
 use libsignal_net::env::Svr3Env;
 use libsignal_net::infra::tcp_ssl::DirectConnector as TcpSslTransportConnector;
 use libsignal_net::svr::SvrConnection;
-use libsignal_net::svr3::{OpaqueMaskedShareSet, PpssOps};
+use libsignal_net::svr3::{Error, OpaqueMaskedShareSet, PpssOps};
 
 #[derive(Parser, Debug)]
 struct Args {
@@ -79,21 +81,17 @@ async fn main() {
     };
 
     let secret = make_secret(&mut rng);
-    println!("Secret to be stored: {}", hex::encode(secret));
+    println!("{}: {}", "Secret to be stored".cyan(), hex::encode(secret));
+    let tries = nonzero!(10u32);
 
     let share_set_bytes = {
-        let opaque_share_set = Svr3Env::backup(
-            connect().await,
-            &args.password,
-            secret,
-            nonzero!(10u32),
-            &mut rng,
-        )
-        .await
-        .expect("can multi backup");
+        let opaque_share_set =
+            Svr3Env::backup(connect().await, &args.password, secret, tries, &mut rng)
+                .await
+                .expect("can multi backup");
         opaque_share_set.serialize().expect("can serialize")
     };
-    println!("Share set: {}", hex::encode(&share_set_bytes));
+    println!("{}: {}", "Share set".cyan(), hex::encode(&share_set_bytes));
 
     let restored = {
         let opaque_share_set =
@@ -102,9 +100,27 @@ async fn main() {
             .await
             .expect("can mutli restore")
     };
-    println!("Restored secret: {}", hex::encode(restored.value));
-
     assert_eq!(secret, restored.value);
+    println!(
+        "{}: {}",
+        "Restored secret".cyan(),
+        &hex::encode(restored.value)
+    );
+
+    assert_eq!(tries.get() - 1, restored.tries_remaining);
+    println!("{}: {}", "Tries remaining".cyan(), restored.tries_remaining);
+
+    println!("{}...", "Removing the secret".cyan());
+    Svr3Env::remove(connect().await).await.expect("can remove");
+    // The next attempt to restore should fail
+    {
+        let opaque_share_set =
+            OpaqueMaskedShareSet::deserialize(&share_set_bytes).expect("can deserialize");
+        let failed_restore_result =
+            Svr3Env::restore(connect().await, &args.password, opaque_share_set, &mut rng).await;
+        assert_matches!(failed_restore_result, Err(Error::DataMissing));
+    }
+    println!("{}.", "Done".green());
 }
 
 fn make_secret(rng: &mut impl CryptoRngCore) -> [u8; 32] {

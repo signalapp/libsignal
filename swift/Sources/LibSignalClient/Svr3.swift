@@ -79,8 +79,7 @@ public class Svr3Client {
     ///     connection protocol issue.
     ///
     /// ## Notes:
-    ///   - Error messages are expected to be log-safe and not contain any
-    ///     sensitive data.
+    ///   - Error messages are log-safe and do not contain any sensitive data.
     ///   - Failures caused by the network issues (including a connection
     ///     timeout) can, in general, be retried, although there is already a
     ///     retry-with-backoff mechanism inside libsignal used to connect to the
@@ -144,8 +143,7 @@ public class Svr3Client {
     ///     combination of password and share set.
     ///
     /// ## Notes:
-    ///   - Error messages are expected to be log-safe and not contain any
-    ///     sensitive data.
+    ///   - Error messages are log-safe and do not contain any sensitive data.
     ///   - Failures caused by the network issues (including a connection
     ///     timeout) can, in general, be retried, although there is already a
     ///     retry-with-backoff mechanism inside libsignal used to connect to the
@@ -177,6 +175,40 @@ public class Svr3Client {
         }
         let buffer = UnsafeBufferPointer(start: output.base, count: output.length)
         return RestoredSecret(fromBytes: buffer)
+    }
+
+    /// Remove a secret stored in SVR3.
+    ///
+    /// - Parameters:
+    ///   - auth: An instance of ``Auth`` containing the username and password
+    ///     obtained from the Chat Server. The password is an OTP which is
+    ///     generally good for about 15 minutes, therefore it can be reused for
+    ///     the subsequent calls to either backup or restore that are not too
+    ///     far apart in time.
+    ///
+    /// - Throws:
+    ///   On error, throws a ``SignalError``. Expected error cases are
+    ///   - `SignalError.networkError` for a network-level connectivity issue,
+    ///     including connection timeouts.
+    ///   - `SignalError.networkProtocolError` for an SVR3 or attested
+    ///     connection protocol issue.
+    ///
+    /// ## Notes:
+    ///   - The method will succeed even if the data has never been backed up
+    ///     in the first place.
+    ///   - Error messages are log-safe and do not contain any sensitive data.
+    ///   - Failures caused by the network issues (including a connection
+    ///     timeout) can, in general, be retried, although there is already a
+    ///     retry-with-backoff mechanism inside libsignal used to connect to the
+    ///     SVR3 servers. Other exceptions are caused by the bad input or data
+    ///     missing on the server. They are therefore non-actionable and are
+    ///     guaranteed to be thrown again when retried.
+    public func remove(auth: Auth) async throws {
+        _ = try await self.asyncContext.invokeAsyncFunction { promise, asyncContext in
+            self.connectionManager.withNativeHandle { connectionManager in
+                signal_svr3_remove(promise, asyncContext, connectionManager, auth.username, auth.password)
+            }
+        }
     }
 }
 

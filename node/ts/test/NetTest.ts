@@ -259,10 +259,15 @@ describe('cdsi lookup', () => {
 });
 
 describe('SVR3', () => {
-  const USERNAME = randomBytes(16).toString('hex');
-  const SVR3 = new Net(Environment.Staging, userAgent).svr3;
+  /* eslint-disable @typescript-eslint/no-non-null-assertion */
+  type State = {
+    auth: ServiceAuth;
+    net: Net;
+  };
+  let state: State | null;
 
   function make_auth(): Readonly<ServiceAuth> {
+    const USERNAME = randomBytes(16).toString('hex');
     const otp = Native.CreateOTPFromBase64(
       USERNAME,
       // Empty string is a valid base64 encoding
@@ -271,37 +276,40 @@ describe('SVR3', () => {
     return { username: USERNAME, password: otp };
   }
 
-  describe('Backup', () => {
-    // It is OK to reuse the auth in "input validation" tests.
-    const AUTH = make_auth();
+  beforeEach(() => {
+    state = { auth: make_auth(), net: new Net(Environment.Staging, userAgent) };
+  });
 
+  afterEach(() => {
+    state = null;
+  });
+
+  describe('Backup', () => {
     it('maxTries must be positive', () => {
       const secret = randomBytes(32);
-      return expect(SVR3.backup(secret, 'password', 0, AUTH)).to.eventually.be
-        .rejected;
+      return expect(state!.net.svr3.backup(secret, 'password', 0, state!.auth))
+        .to.eventually.be.rejected;
     });
 
     it('Secret must be 32 bytes', () => {
       const secret = randomBytes(42);
-      return expect(SVR3.backup(secret, 'password', 1, AUTH)).to.eventually.be
-        .rejected;
+      return expect(state!.net.svr3.backup(secret, 'password', 1, state!.auth))
+        .to.eventually.be.rejected;
     });
   });
 
   describe('Restore', () => {
     it('Empty share set', () => {
-      const auth = make_auth();
       const shareSet = Buffer.alloc(0);
       return expect(
-        SVR3.restore('password', shareSet, auth)
+        state!.net.svr3.restore('password', shareSet, state!.auth)
       ).to.eventually.be.rejectedWith(LibSignalErrorBase);
     });
 
     it('Share set bad format', () => {
-      const auth = make_auth();
       const shareSet = Buffer.from([42]);
       return expect(
-        SVR3.restore('password', shareSet, auth)
+        state!.net.svr3.restore('password', shareSet, state!.auth)
       ).to.eventually.be.rejectedWith(LibSignalErrorBase);
     });
   });
@@ -316,22 +324,61 @@ describe('SVR3', () => {
       }
     });
 
+    afterEach(async () => {
+      await state!.net.svr3.remove(state!.auth);
+      state = null;
+    });
+
     it('Backup and restore work in staging', async () => {
-      const auth = make_auth();
       const secret = randomBytes(32);
       const tries = 10;
-      const shareSet = await SVR3.backup(secret, 'password', tries, auth);
-      const restoredSecret = await SVR3.restore('password', shareSet, auth);
+      const shareSet = await state!.net.svr3.backup(
+        secret,
+        'password',
+        tries,
+        state!.auth
+      );
+      const restoredSecret = await state!.net.svr3.restore(
+        'password',
+        shareSet,
+        state!.auth
+      );
       expect(restoredSecret.value).to.eql(secret);
       expect(restoredSecret.triesRemaining).to.eql(tries - 1);
     }).timeout(10000);
 
-    it('Restore with wrong password', async () => {
-      const auth = make_auth();
+    it('Restore should fail after remove', async () => {
       const secret = randomBytes(32);
       const tries = 10;
-      const shareSet = await SVR3.backup(secret, 'password', tries, auth);
-      return expect(SVR3.restore('wrong password', shareSet, auth))
+      const shareSet = await state!.net.svr3.backup(
+        secret,
+        'password',
+        tries,
+        state!.auth
+      );
+      await state!.net.svr3.remove(state!.auth);
+      return expect(state!.net.svr3.restore('password', shareSet, state!.auth))
+        .to.eventually.be.rejectedWith(LibSignalErrorBase)
+        .and.have.property('code', ErrorCode.SvrDataMissing);
+    }).timeout(10000);
+
+    it('Remove non-existent data', async () => {
+      return expect(state!.net.svr3.remove(state!.auth)).to.eventually.be
+        .fulfilled;
+    }).timeout(10000);
+
+    it('Restore with wrong password', async () => {
+      const secret = randomBytes(32);
+      const tries = 10;
+      const shareSet = await state!.net.svr3.backup(
+        secret,
+        'password',
+        tries,
+        state!.auth
+      );
+      return expect(
+        state!.net.svr3.restore('wrong password', shareSet, state!.auth)
+      )
         .to.eventually.be.rejectedWith(LibSignalErrorBase)
         .and.include({
           code: ErrorCode.SvrRestoreFailed,
@@ -340,24 +387,32 @@ describe('SVR3', () => {
     }).timeout(10000);
 
     it('Restore with corrupted share set', async () => {
-      const auth = make_auth();
       const secret = randomBytes(32);
-      const shareSet = await SVR3.backup(secret, 'password', 10, auth);
+      const shareSet = await state!.net.svr3.backup(
+        secret,
+        'password',
+        10,
+        state!.auth
+      );
       // The first byte is the serialization format version, changing that
       // _will_ fail (checked in the other test). Changing the actual share set
       // value makes a more interesting test case.
       shareSet[1] ^= 0xff;
       return expect(
-        SVR3.restore('password', shareSet, auth)
+        state!.net.svr3.restore('password', shareSet, state!.auth)
       ).to.eventually.be.rejectedWith(LibSignalErrorBase);
     }).timeout(10000);
 
     it('Exceed maxTries', async () => {
-      const auth = make_auth();
       const secret = randomBytes(32);
-      const shareSet = await SVR3.backup(secret, 'password', 1, auth);
-      await SVR3.restore('password', shareSet, auth);
-      return expect(SVR3.restore('password', shareSet, auth))
+      const shareSet = await state!.net.svr3.backup(
+        secret,
+        'password',
+        1,
+        state!.auth
+      );
+      await state!.net.svr3.restore('password', shareSet, state!.auth);
+      return expect(state!.net.svr3.restore('password', shareSet, state!.auth))
         .to.eventually.be.rejectedWith(LibSignalErrorBase)
         .and.have.property('code', ErrorCode.SvrDataMissing);
     }).timeout(10000);

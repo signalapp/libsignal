@@ -8,7 +8,8 @@ use thiserror::Error;
 use crate::enclave::{IntoConnections, PpssSetup};
 use crate::infra::errors::LogSafeDisplay;
 use crate::infra::ws::{
-    run_attested_interaction, AttestedConnectionError, WebSocketConnectError, WebSocketServiceError,
+    run_attested_interaction, AttestedConnectionError, NextOrClose, WebSocketConnectError,
+    WebSocketServiceError,
 };
 use crate::infra::AsyncDuplexStream;
 use async_trait::async_trait;
@@ -214,6 +215,8 @@ pub trait PpssOps<S>: PpssSetup<S> {
         share_set: OpaqueMaskedShareSet,
         rng: &mut (impl CryptoRngCore + Send),
     ) -> Result<EvaluationResult, Error>;
+
+    async fn remove(connections: Self::Connections) -> Result<(), Error>;
 }
 
 #[async_trait]
@@ -233,17 +236,9 @@ impl<S: AsyncDuplexStream + 'static, Env: PpssSetup<S>> PpssOps<S> for Env {
             .iter_mut()
             .zip(&backup.requests)
             .map(|(connection, request)| run_attested_interaction(connection, request));
-        let result = try_join_all(futures).await?;
-        let responses = result
-            .into_iter()
-            .enumerate()
-            .map(|(i, next_or_close)| {
-                let remote_address = connections.as_ref()[i].remote_address();
-                next_or_close.next_or(Error::Protocol(format!(
-                    "no response from {remote_address}"
-                )))
-            })
-            .collect::<Result<Vec<_>, _>>()?;
+        let results = try_join_all(futures).await?;
+        let addresses = connections.as_ref().iter().map(|c| c.remote_address());
+        let responses = collect_responses(results, addresses)?;
         let share_set = backup.finalize(rng, &responses)?;
         Ok(OpaqueMaskedShareSet::new(share_set))
     }
@@ -261,19 +256,39 @@ impl<S: AsyncDuplexStream + 'static, Env: PpssSetup<S>> PpssOps<S> for Env {
             .iter_mut()
             .zip(&restore.requests)
             .map(|(connection, request)| run_attested_interaction(connection, request));
-        let result = try_join_all(futures).await?;
-        let responses = result
-            .into_iter()
-            .enumerate()
-            .map(|(i, next_or_close)| {
-                let remote_address = connections.as_ref()[i].remote_address();
-                next_or_close.next_or(Error::Protocol(format!(
-                    "no response from {remote_address}"
-                )))
-            })
-            .collect::<Result<Vec<_>, _>>()?;
+        let results = try_join_all(futures).await?;
+        let addresses = connections.as_ref().iter().map(|c| c.remote_address());
+        let responses = collect_responses(results, addresses)?;
         Ok(restore.finalize(&responses)?)
     }
+
+    async fn remove(connections: Self::Connections) -> Result<(), Error> {
+        let requests = std::iter::repeat(libsignal_svr3::make_remove_request());
+        let mut connections = connections.into_connections();
+        let futures = connections
+            .as_mut()
+            .iter_mut()
+            .zip(requests)
+            .map(|(connection, request)| run_attested_interaction(connection, request));
+        let results = try_join_all(futures).await?;
+        let addresses = connections.as_ref().iter().map(|c| c.remote_address());
+        // RemoveResponse's are empty, safe to ignore as long as they came
+        let _responses = collect_responses(results, addresses)?;
+        Ok(())
+    }
+}
+
+fn collect_responses<'a>(
+    results: impl IntoIterator<Item = NextOrClose<Vec<u8>>>,
+    addresses: impl IntoIterator<Item = &'a url::Host>,
+) -> Result<Vec<Vec<u8>>, Error> {
+    results
+        .into_iter()
+        .zip(addresses.into_iter())
+        .map(|(next_or_close, address)| {
+            next_or_close.next_or(Error::Protocol(format!("no response from {}", address)))
+        })
+        .collect()
 }
 
 #[cfg(test)]
