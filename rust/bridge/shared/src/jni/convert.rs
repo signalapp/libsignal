@@ -16,7 +16,7 @@ use std::ops::Deref;
 
 use crate::io::{InputStream, SyncInputStream};
 use crate::message_backup::MessageBackupValidationOutcome;
-use crate::net::ResponseAndDebugInfo;
+use crate::net::chat::ResponseAndDebugInfo;
 use crate::support::{Array, AsType, FixedLengthBincodeSerializable, Serialized};
 
 use super::*;

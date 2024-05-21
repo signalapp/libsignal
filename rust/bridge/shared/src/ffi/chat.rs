@@ -5,7 +5,7 @@
 
 use super::*;
 
-use crate::net::{ChatListener, MakeChatListener, ServerMessageAck};
+use crate::net::chat::{ChatListener, MakeChatListener, ServerMessageAck};
 
 use std::ffi::{c_uchar, c_void};
 

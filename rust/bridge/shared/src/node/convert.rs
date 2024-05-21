@@ -16,7 +16,7 @@ use std::ops::{Deref, DerefMut, RangeInclusive};
 use std::slice;
 
 use crate::io::{InputStream, SyncInputStream};
-use crate::net::ResponseAndDebugInfo;
+use crate::net::chat::ResponseAndDebugInfo;
 use crate::support::{extend_lifetime, Array, AsType, FixedLengthBincodeSerializable, Serialized};
 
 use super::*;

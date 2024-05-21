@@ -13,7 +13,7 @@ use paste::paste;
 use uuid::Uuid;
 
 use crate::io::{InputStream, SyncInputStream};
-use crate::net::MakeChatListener;
+use crate::net::chat::MakeChatListener;
 use crate::support::{extend_lifetime, AsType, FixedLengthBincodeSerializable, Serialized};
 
 use super::*;
@@ -715,7 +715,7 @@ impl ResultTypeInfo for libsignal_net::chat::DebugInfo {
     }
 }
 
-impl ResultTypeInfo for crate::net::ResponseAndDebugInfo {
+impl ResultTypeInfo for crate::net::chat::ResponseAndDebugInfo {
     type ResultType = FfiResponseAndDebugInfo;
 
     fn convert_into(self) -> SignalFfiResult<Self::ResultType> {

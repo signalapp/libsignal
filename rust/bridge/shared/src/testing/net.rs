@@ -17,7 +17,8 @@ use libsignal_protocol::{Aci, Pni};
 use nonzero_ext::nonzero;
 use uuid::Uuid;
 
-use crate::net::{HttpRequest, ResponseAndDebugInfo, TokioAsyncContext};
+use crate::net::chat::{HttpRequest, ResponseAndDebugInfo};
+use crate::net::TokioAsyncContext;
 use crate::support::*;
 use crate::*;
 

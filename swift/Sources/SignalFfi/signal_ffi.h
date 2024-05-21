@@ -529,6 +529,41 @@ typedef struct {
   SignalCancellationId cancellation_id;
 } SignalCPromisebool;
 
+/**
+ * A C callback used to report the results of Rust futures.
+ *
+ * cbindgen will produce independent C types like `SignalCPromisei32` and
+ * `SignalCPromiseProtocolAddress`.
+ *
+ * This derives Copy because it behaves like a C type; nevertheless, a promise should still only be
+ * completed once.
+ */
+typedef struct {
+  void (*complete)(SignalFfiError *error, SignalCdsiLookup *const *result, const void *context);
+  const void *context;
+  SignalCancellationId cancellation_id;
+} SignalCPromiseCdsiLookup;
+
+typedef struct {
+  SignalOwnedBufferOfFfiCdsiLookupResponseEntry entries;
+  int32_t debug_permits_used;
+} SignalFfiCdsiLookupResponse;
+
+/**
+ * A C callback used to report the results of Rust futures.
+ *
+ * cbindgen will produce independent C types like `SignalCPromisei32` and
+ * `SignalCPromiseProtocolAddress`.
+ *
+ * This derives Copy because it behaves like a C type; nevertheless, a promise should still only be
+ * completed once.
+ */
+typedef struct {
+  void (*complete)(SignalFfiError *error, const SignalFfiCdsiLookupResponse *result, const void *context);
+  const void *context;
+  SignalCancellationId cancellation_id;
+} SignalCPromiseFfiCdsiLookupResponse;
+
 typedef struct {
   uint32_t reconnect_count;
   uint8_t raw_ip_type;
@@ -614,41 +649,6 @@ typedef struct {
 } SignalFfiChatListenerStruct;
 
 typedef SignalFfiChatListenerStruct SignalFfiMakeChatListenerStruct;
-
-/**
- * A C callback used to report the results of Rust futures.
- *
- * cbindgen will produce independent C types like `SignalCPromisei32` and
- * `SignalCPromiseProtocolAddress`.
- *
- * This derives Copy because it behaves like a C type; nevertheless, a promise should still only be
- * completed once.
- */
-typedef struct {
-  void (*complete)(SignalFfiError *error, SignalCdsiLookup *const *result, const void *context);
-  const void *context;
-  SignalCancellationId cancellation_id;
-} SignalCPromiseCdsiLookup;
-
-typedef struct {
-  SignalOwnedBufferOfFfiCdsiLookupResponseEntry entries;
-  int32_t debug_permits_used;
-} SignalFfiCdsiLookupResponse;
-
-/**
- * A C callback used to report the results of Rust futures.
- *
- * cbindgen will produce independent C types like `SignalCPromisei32` and
- * `SignalCPromiseProtocolAddress`.
- *
- * This derives Copy because it behaves like a C type; nevertheless, a promise should still only be
- * completed once.
- */
-typedef struct {
-  void (*complete)(SignalFfiError *error, const SignalFfiCdsiLookupResponse *result, const void *context);
-  const void *context;
-  SignalCancellationId cancellation_id;
-} SignalCPromiseFfiCdsiLookupResponse;
 
 typedef SignalBytestringArray SignalStringArray;
 
@@ -1518,6 +1518,28 @@ SignalFfiError *signal_svr3_restore(SignalCPromiseOwnedBufferOfc_uchar *promise,
 
 SignalFfiError *signal_svr3_remove(SignalCPromisebool *promise, const SignalTokioAsyncContext *async_runtime, const SignalConnectionManager *connection_manager, const char *username, const char *enclave_password);
 
+SignalFfiError *signal_lookup_request_new(SignalLookupRequest **out);
+
+SignalFfiError *signal_lookup_request_add_e164(const SignalLookupRequest *request, const char *e164);
+
+SignalFfiError *signal_lookup_request_add_previous_e164(const SignalLookupRequest *request, const char *e164);
+
+SignalFfiError *signal_lookup_request_set_token(const SignalLookupRequest *request, SignalBorrowedBuffer token);
+
+SignalFfiError *signal_lookup_request_add_aci_and_access_key(const SignalLookupRequest *request, const SignalServiceIdFixedWidthBinaryBytes *aci, SignalBorrowedBuffer access_key);
+
+SignalFfiError *signal_lookup_request_set_return_acis_without_uaks(const SignalLookupRequest *request, bool return_acis_without_uaks);
+
+SignalFfiError *signal_lookup_request_destroy(SignalLookupRequest *p);
+
+SignalFfiError *signal_cdsi_lookup_destroy(SignalCdsiLookup *p);
+
+SignalFfiError *signal_cdsi_lookup_new(SignalCPromiseCdsiLookup *promise, const SignalTokioAsyncContext *async_runtime, const SignalConnectionManager *connection_manager, const char *username, const char *password, const SignalLookupRequest *request);
+
+SignalFfiError *signal_cdsi_lookup_token(SignalOwnedBuffer *out, const SignalCdsiLookup *lookup);
+
+SignalFfiError *signal_cdsi_lookup_complete(SignalCPromiseFfiCdsiLookupResponse *promise, const SignalTokioAsyncContext *async_runtime, const SignalCdsiLookup *lookup);
+
 SignalFfiError *signal_chat_destroy(SignalChat *p);
 
 SignalFfiError *signal_http_request_destroy(SignalHttpRequest *p);
@@ -1551,28 +1573,6 @@ SignalFfiError *signal_testing_chat_service_inject_raw_server_request(const Sign
 SignalFfiError *signal_server_message_ack_destroy(SignalServerMessageAck *p);
 
 SignalFfiError *signal_server_message_ack_send(SignalCPromisebool *promise, const SignalTokioAsyncContext *async_runtime, const SignalServerMessageAck *ack);
-
-SignalFfiError *signal_lookup_request_new(SignalLookupRequest **out);
-
-SignalFfiError *signal_lookup_request_add_e164(const SignalLookupRequest *request, const char *e164);
-
-SignalFfiError *signal_lookup_request_add_previous_e164(const SignalLookupRequest *request, const char *e164);
-
-SignalFfiError *signal_lookup_request_set_token(const SignalLookupRequest *request, SignalBorrowedBuffer token);
-
-SignalFfiError *signal_lookup_request_add_aci_and_access_key(const SignalLookupRequest *request, const SignalServiceIdFixedWidthBinaryBytes *aci, SignalBorrowedBuffer access_key);
-
-SignalFfiError *signal_lookup_request_set_return_acis_without_uaks(const SignalLookupRequest *request, bool return_acis_without_uaks);
-
-SignalFfiError *signal_lookup_request_destroy(SignalLookupRequest *p);
-
-SignalFfiError *signal_cdsi_lookup_destroy(SignalCdsiLookup *p);
-
-SignalFfiError *signal_cdsi_lookup_new(SignalCPromiseCdsiLookup *promise, const SignalTokioAsyncContext *async_runtime, const SignalConnectionManager *connection_manager, const char *username, const char *password, const SignalLookupRequest *request);
-
-SignalFfiError *signal_cdsi_lookup_token(SignalOwnedBuffer *out, const SignalCdsiLookup *lookup);
-
-SignalFfiError *signal_cdsi_lookup_complete(SignalCPromiseFfiCdsiLookupResponse *promise, const SignalTokioAsyncContext *async_runtime, const SignalCdsiLookup *lookup);
 
 SignalFfiError *signal_tokio_async_context_destroy(SignalTokioAsyncContext *p);
 
