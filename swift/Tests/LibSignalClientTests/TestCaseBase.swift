@@ -20,7 +20,7 @@ class TestCaseBase: XCTestCase {
                 case .trace: abbreviation = "T"
                 }
                 let file = file.map { String(cString: $0) } ?? "<unknown>"
-                NSLog("%@ [%s:%u] %s", abbreviation, file, line, message)
+                NSLog("%@ [%@:%u] %s", abbreviation, file, line, message)
             }
 
             func flush() {}
