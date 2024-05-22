@@ -48,6 +48,8 @@ export enum ErrorCode {
   SvrRestoreFailed,
 
   ChatServiceInactive,
+
+  Cancelled,
 }
 
 export class LibSignalErrorBase extends Error {
@@ -228,6 +230,10 @@ export type SvrRestoreFailedError = LibSignalErrorCommon & {
   readonly triesRemaining: number;
 };
 
+export type CancellationError = LibSignalErrorCommon & {
+  code: ErrorCode.Cancelled;
+};
+
 export type LibSignalError =
   | GenericError
   | DuplicatedMessageError
@@ -260,4 +266,5 @@ export type LibSignalError =
   | SvrRestoreFailedError
   | SvrRequestFailedError
   | UnsupportedMediaInputError
-  | ChatServiceInactive;
+  | ChatServiceInactive
+  | CancellationError;

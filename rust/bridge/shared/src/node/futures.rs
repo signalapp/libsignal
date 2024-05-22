@@ -7,7 +7,7 @@ use std::future::Future;
 use std::marker::PhantomData;
 
 use futures_util::FutureExt;
-use neon::types::Deferred;
+use neon::types::{Deferred, JsBigInt};
 use signal_neon_futures::ChannelEx;
 
 use crate::support::{
@@ -15,6 +15,10 @@ use crate::support::{
 };
 
 use super::*;
+
+#[derive(Debug, thiserror::Error, displaydoc::Display)]
+/// Promise cancelled
+pub struct CancellationError;
 
 /// Used to settle a Node Promise from any thread.
 pub struct PromiseSettler<T, E> {
@@ -58,11 +62,14 @@ where
 /// JS value and reporting it.
 pub struct FutureResultReporter<T, E, U> {
     to_finalize: U,
-    result: std::thread::Result<Result<T, E>>,
+    result: std::thread::Result<Result<Result<T, E>, CancellationError>>,
 }
 
 impl<T, E, U: Finalize + Send + 'static> FutureResultReporter<T, E, U> {
-    pub fn new(result: std::thread::Result<Result<T, E>>, to_finalize: U) -> Self {
+    pub fn new(
+        result: std::thread::Result<Result<Result<T, E>, CancellationError>>,
+        to_finalize: U,
+    ) -> Self {
         Self {
             to_finalize,
             result,
@@ -114,10 +121,15 @@ where
                     // And if Neon panics, there's not much we can do about it.
                     let mut cx = std::panic::AssertUnwindSafe(&mut cx);
                     match result {
-                        Ok(success) => std::panic::catch_unwind(move || {
+                        Ok(Ok(success)) => std::panic::catch_unwind(move || {
                             Ok(success.convert_into(*cx)?.upcast())
                         }),
-                        Err(failure) => Ok(failure.throw(*cx, error_module, node_function_name)),
+                        Ok(Err(failure)) => {
+                            Ok(failure.throw(*cx, error_module, node_function_name))
+                        }
+                        Err(CancellationError) => {
+                            Ok(CancellationError.throw(*cx, error_module, node_function_name))
+                        }
                     }
                 });
 
@@ -157,7 +169,7 @@ where
 ///     let future = async {
 ///         let result: i32 = 1 + 2;
 ///         // Do some complicated awaiting here.
-///         Ok::<_, MyError>(result)
+///         Ok(Ok::<_, MyError>(result))
 ///     }.catch_unwind();
 ///     FutureResultReporter::new(future.await, ())
 /// })?;
@@ -178,7 +190,11 @@ where
 {
     let (deferred, promise) = cx.promise();
     let completer = PromiseSettler::new(cx, deferred, node_function_name);
-    runtime.run_future(future, completer);
+    let cancellation_token = runtime.run_future(future, completer);
+    if cancellation_token != CancellationId::NotSupported {
+        let js_cancellation_token = JsBigInt::from_u64(cx, cancellation_token.into());
+        promise.set(cx, "_cancellationToken", js_cancellation_token)?;
+    }
     Ok(promise)
 }
 

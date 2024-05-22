@@ -32,6 +32,7 @@ export type CDSRequestOptionsType = {
   e164s: Array<string>;
   acisAndAccessKeys: Array<{ aci: string; accessKey: string }>;
   returnAcisWithoutUaks: boolean;
+  abortSignal?: AbortSignal;
 };
 
 export type CDSResponseEntryType<Aci, Pni> = {
@@ -57,14 +58,44 @@ export type ChatRequest = Readonly<{
   timeoutMillis?: number;
 }>;
 
-type TokioAsyncContext = Wrapper<Native.TokioAsyncContext>;
-
 type ConnectionManager = Wrapper<Native.ConnectionManager>;
 
 function newNativeHandle<T>(handle: T): Wrapper<T> {
   return {
     _nativeHandle: handle,
   };
+}
+
+/** Low-level async runtime control, mostly just exported for testing. */
+export class TokioAsyncContext {
+  readonly _nativeHandle: Native.TokioAsyncContext;
+
+  constructor(handle: Native.TokioAsyncContext) {
+    this._nativeHandle = handle;
+  }
+
+  makeCancellable<T>(
+    abortSignal: AbortSignal | undefined,
+    promise: Promise<T>
+  ): Promise<T> {
+    if (
+      abortSignal !== undefined &&
+      '_cancellationToken' in promise &&
+      typeof promise._cancellationToken === 'bigint'
+    ) {
+      const cancellationToken = promise._cancellationToken;
+      const cancel = () => {
+        Native.TokioAsyncContext_cancel(this, cancellationToken);
+      };
+
+      if (abortSignal.aborted) {
+        cancel();
+      } else {
+        abortSignal.addEventListener('abort', cancel);
+      }
+    }
+    return promise;
+  }
 }
 
 /**
@@ -93,8 +124,8 @@ export class ChatService {
    * Note: the same instance of `ChatService` can be reused after `disconnect()` was
    * called.
    */
-  async disconnect(): Promise<void> {
-    await Native.ChatService_disconnect(this.asyncContext, this.chatService);
+  disconnect(): Promise<void> {
+    return Native.ChatService_disconnect(this.asyncContext, this.chatService);
   }
 
   /**
@@ -103,10 +134,12 @@ export class ChatService {
    * the connection is lost for any reason other than the call to {@link #disconnect()}, an
    * automatic reconnect attempt will be made.
    */
-  async connectUnauthenticated(): Promise<Native.ChatServiceDebugInfo> {
-    return await Native.ChatService_connect_unauth(
-      this.asyncContext,
-      this.chatService
+  connectUnauthenticated(options?: {
+    abortSignal?: AbortSignal;
+  }): Promise<Native.ChatServiceDebugInfo> {
+    return this.asyncContext.makeCancellable(
+      options?.abortSignal,
+      Native.ChatService_connect_unauth(this.asyncContext, this.chatService)
     );
   }
 
@@ -118,10 +151,12 @@ export class ChatService {
    *
    * Calling this method will result in starting to accept incoming requests from the Chat Service.
    */
-  async connectAuthenticated(): Promise<Native.ChatServiceDebugInfo> {
-    return await Native.ChatService_connect_auth(
-      this.asyncContext,
-      this.chatService
+  connectAuthenticated(options?: {
+    abortSignal?: AbortSignal;
+  }): Promise<Native.ChatServiceDebugInfo> {
+    return this.asyncContext.makeCancellable(
+      options?.abortSignal,
+      Native.ChatService_connect_auth(this.asyncContext, this.chatService)
     );
   }
 
@@ -134,14 +169,18 @@ export class ChatService {
    * @throws {ChatServiceInactive} if you haven't called {@link #connectUnauthenticated()} (as a
    * rejection of the promise).
    */
-  async unauthenticatedFetchAndDebug(
-    chatRequest: ChatRequest
+  unauthenticatedFetchAndDebug(
+    chatRequest: ChatRequest,
+    options?: { abortSignal?: AbortSignal }
   ): Promise<Native.ResponseAndDebugInfo> {
-    return await Native.ChatService_unauth_send_and_debug(
-      this.asyncContext,
-      this.chatService,
-      ChatService.buildHttpRequest(chatRequest),
-      chatRequest.timeoutMillis ?? DEFAULT_CHAT_REQUEST_TIMEOUT_MILLIS
+    return this.asyncContext.makeCancellable(
+      options?.abortSignal,
+      Native.ChatService_unauth_send_and_debug(
+        this.asyncContext,
+        this.chatService,
+        ChatService.buildHttpRequest(chatRequest),
+        chatRequest.timeoutMillis ?? DEFAULT_CHAT_REQUEST_TIMEOUT_MILLIS
+      )
     );
   }
 
@@ -151,14 +190,18 @@ export class ChatService {
    * @throws {ChatServiceInactive} if you haven't called {@link #connectUnauthenticated()} (as a
    * rejection of the promise).
    */
-  async unauthenticatedFetch(
-    chatRequest: ChatRequest
+  unauthenticatedFetch(
+    chatRequest: ChatRequest,
+    options?: { abortSignal?: AbortSignal }
   ): Promise<Native.ChatResponse> {
-    return await Native.ChatService_unauth_send(
-      this.asyncContext,
-      this.chatService,
-      ChatService.buildHttpRequest(chatRequest),
-      chatRequest.timeoutMillis ?? DEFAULT_CHAT_REQUEST_TIMEOUT_MILLIS
+    return this.asyncContext.makeCancellable(
+      options?.abortSignal,
+      Native.ChatService_unauth_send(
+        this.asyncContext,
+        this.chatService,
+        ChatService.buildHttpRequest(chatRequest),
+        chatRequest.timeoutMillis ?? DEFAULT_CHAT_REQUEST_TIMEOUT_MILLIS
+      )
     );
   }
 
@@ -171,14 +214,18 @@ export class ChatService {
    * @throws {ChatServiceInactive} if you haven't called {@link #connectAuthenticated()} (as a
    * rejection of the promise).
    */
-  async authenticatedFetchAndDebug(
-    chatRequest: ChatRequest
+  authenticatedFetchAndDebug(
+    chatRequest: ChatRequest,
+    options?: { abortSignal?: AbortSignal }
   ): Promise<Native.ResponseAndDebugInfo> {
-    return await Native.ChatService_auth_send_and_debug(
-      this.asyncContext,
-      this.chatService,
-      ChatService.buildHttpRequest(chatRequest),
-      chatRequest.timeoutMillis ?? DEFAULT_CHAT_REQUEST_TIMEOUT_MILLIS
+    return this.asyncContext.makeCancellable(
+      options?.abortSignal,
+      Native.ChatService_auth_send_and_debug(
+        this.asyncContext,
+        this.chatService,
+        ChatService.buildHttpRequest(chatRequest),
+        chatRequest.timeoutMillis ?? DEFAULT_CHAT_REQUEST_TIMEOUT_MILLIS
+      )
     );
   }
 
@@ -188,16 +235,21 @@ export class ChatService {
    * @throws {ChatServiceInactive} if you haven't called {@link #connectAuthenticated()} (as a
    * rejection of the promise).
    */
-  async authenticatedFetch(
-    chatRequest: ChatRequest
+  authenticatedFetch(
+    chatRequest: ChatRequest,
+    options?: { abortSignal?: AbortSignal }
   ): Promise<Native.ChatResponse> {
-    return await Native.ChatService_auth_send(
-      this.asyncContext,
-      this.chatService,
-      ChatService.buildHttpRequest(chatRequest),
-      chatRequest.timeoutMillis ?? DEFAULT_CHAT_REQUEST_TIMEOUT_MILLIS
+    return this.asyncContext.makeCancellable(
+      options?.abortSignal,
+      Native.ChatService_auth_send(
+        this.asyncContext,
+        this.chatService,
+        ChatService.buildHttpRequest(chatRequest),
+        chatRequest.timeoutMillis ?? DEFAULT_CHAT_REQUEST_TIMEOUT_MILLIS
+      )
     );
   }
+
   static buildHttpRequest(chatRequest: ChatRequest): {
     _nativeHandle: Native.HttpRequest;
   } {
@@ -225,7 +277,7 @@ export class Net {
   svr3: Svr3Client;
 
   constructor(env: Environment, userAgent: string) {
-    this.asyncContext = newNativeHandle(Native.TokioAsyncContext_new());
+    this.asyncContext = new TokioAsyncContext(Native.TokioAsyncContext_new());
     this.connectionManager = newNativeHandle(
       Native.ConnectionManager_new(env, userAgent)
     );
@@ -280,6 +332,7 @@ export class Net {
       e164s,
       acisAndAccessKeys,
       returnAcisWithoutUaks,
+      abortSignal,
     }: ReadonlyDeep<CDSRequestOptionsType>
   ): Promise<CDSResponseType<string, string>> {
     const request = newNativeHandle(Native.LookupRequest_new());
@@ -300,17 +353,19 @@ export class Net {
       returnAcisWithoutUaks
     );
 
-    const lookup = await Native.CdsiLookup_new(
-      this.asyncContext,
-      this.connectionManager,
-      username,
-      password,
-      request
+    const lookup = await this.asyncContext.makeCancellable(
+      abortSignal,
+      Native.CdsiLookup_new(
+        this.asyncContext,
+        this.connectionManager,
+        username,
+        password,
+        request
+      )
     );
-
-    return await Native.CdsiLookup_complete(
-      this.asyncContext,
-      newNativeHandle(lookup)
+    return await this.asyncContext.makeCancellable(
+      abortSignal,
+      Native.CdsiLookup_complete(this.asyncContext, newNativeHandle(lookup))
     );
   }
 }
@@ -372,7 +427,8 @@ export interface Svr3Client {
     what: Buffer,
     password: string,
     maxTries: number,
-    auth: Readonly<ServiceAuth>
+    auth: Readonly<ServiceAuth>,
+    options?: { abortSignal?: AbortSignal }
   ): Promise<Buffer>;
 
   /**
@@ -413,7 +469,8 @@ export interface Svr3Client {
   restore(
     password: string,
     shareSet: Buffer,
-    auth: Readonly<ServiceAuth>
+    auth: Readonly<ServiceAuth>,
+    options?: { abortSignal?: AbortSignal }
   ): Promise<RestoredSecret>;
 
   /**
@@ -441,7 +498,10 @@ export interface Svr3Client {
    * are therefore non-actionable and are guaranteed to be thrown again when
    * retried.
    */
-  remove(auth: Readonly<ServiceAuth>): Promise<void>;
+  remove(
+    auth: Readonly<ServiceAuth>,
+    options?: { abortSignal?: AbortSignal }
+  ): Promise<void>;
 }
 
 /**
@@ -468,40 +528,54 @@ class Svr3ClientImpl implements Svr3Client {
     what: Buffer,
     password: string,
     maxTries: number,
-    auth: Readonly<ServiceAuth>
+    auth: Readonly<ServiceAuth>,
+    options?: { abortSignal?: AbortSignal }
   ): Promise<Buffer> {
-    return Native.Svr3Backup(
-      this.asyncContext,
-      this.connectionManager,
-      what,
-      password,
-      maxTries,
-      auth.username,
-      auth.password
+    return this.asyncContext.makeCancellable(
+      options?.abortSignal,
+      Native.Svr3Backup(
+        this.asyncContext,
+        this.connectionManager,
+        what,
+        password,
+        maxTries,
+        auth.username,
+        auth.password
+      )
     );
   }
 
   async restore(
     password: string,
     shareSet: Buffer,
-    auth: Readonly<ServiceAuth>
+    auth: Readonly<ServiceAuth>,
+    options?: { abortSignal?: AbortSignal }
   ): Promise<RestoredSecret> {
-    const serialized = await Native.Svr3Restore(
-      this.asyncContext,
-      this.connectionManager,
-      password,
-      shareSet,
-      auth.username,
-      auth.password
+    const serialized = await this.asyncContext.makeCancellable(
+      options?.abortSignal,
+      Native.Svr3Restore(
+        this.asyncContext,
+        this.connectionManager,
+        password,
+        shareSet,
+        auth.username,
+        auth.password
+      )
     );
     return new RestoredSecret(serialized);
   }
-  async remove(auth: Readonly<ServiceAuth>): Promise<void> {
-    return Native.Svr3Remove(
-      this.asyncContext,
-      this.connectionManager,
-      auth.username,
-      auth.password
+  async remove(
+    auth: Readonly<ServiceAuth>,
+    options?: { abortSignal?: AbortSignal }
+  ): Promise<void> {
+    return this.asyncContext.makeCancellable(
+      options?.abortSignal,
+      Native.Svr3Remove(
+        this.asyncContext,
+        this.connectionManager,
+        auth.username,
+        auth.password
+      )
     );
   }
 }

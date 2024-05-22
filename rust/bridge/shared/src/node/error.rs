@@ -516,6 +516,31 @@ impl SignalNodeError for libsignal_net::svr3::Error {
     }
 }
 
+impl SignalNodeError for CancellationError {
+    fn throw<'a>(
+        self,
+        cx: &mut impl Context<'a>,
+        module: Handle<'a, JsObject>,
+        operation_name: &str,
+    ) -> JsResult<'a, JsValue> {
+        let message = self.to_string();
+        match new_js_error(
+            cx,
+            module,
+            Some("Cancelled"),
+            &message,
+            operation_name,
+            None,
+        ) {
+            Some(error) => cx.throw(error),
+            None => {
+                // Make sure we still throw something.
+                cx.throw_error(&message)
+            }
+        }
+    }
+}
+
 /// Represents an error returned by a callback.
 #[derive(Debug)]
 struct CallbackError {

@@ -147,11 +147,17 @@ fn bridge_fn_async_body(
                 // Wrap the actual work to catch any panics.
                 let __future = node::catch_unwind(std::panic::AssertUnwindSafe(async {
                     #(#input_loading)*
-                    let __result = #orig_name(#(#input_names),*).await;
-                    // If the original function can't fail, wrap the result in Ok for uniformity.
-                    // See TransformHelper::ok_if_needed.
-                    TransformHelper(__result).ok_if_needed().map(|x| x.0)
-                }));
+                    ::tokio::select! {
+                        __result = #orig_name(#(#input_names),*) => {
+                            // If the original function can't fail, wrap the result in Ok for uniformity.
+                            // See TransformHelper::ok_if_needed.
+                            Ok(TransformHelper(__result).ok_if_needed().map(|x| x.0))
+                        }
+                        _ = __cancel => {
+                            Err(node::CancellationError)
+                        }
+                    }
+            }));
                 // Pass the stored inputs to the reporter to finalize them before reporting the result.
                 node::FutureResultReporter::new(
                     __future.await,
