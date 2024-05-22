@@ -6,13 +6,14 @@
 use std::collections::{hash_map, HashMap};
 use std::fmt::Debug;
 
+use derive_where::derive_where;
 use libsignal_protocol::Aci;
 
 use crate::backup::account_data::{AccountData, AccountDataError};
 use crate::backup::call::{AdHocCall, CallError};
-use crate::backup::chat::{ChatData, ChatError, ChatItemError};
+use crate::backup::chat::{ChatData, ChatError, ChatItemError, PinOrder};
 use crate::backup::frame::{ChatId, RecipientId};
-use crate::backup::method::{Contains, Method, Store, ValidateOnly};
+use crate::backup::method::{Contains, Lookup, Method, Store, ValidateOnly};
 use crate::backup::recipient::{RecipientData, RecipientError};
 use crate::backup::sticker::{PackId as StickerPackId, StickerId, StickerPack, StickerPackError};
 use crate::backup::time::Timestamp;
@@ -33,8 +34,14 @@ pub struct PartialBackup<M: Method> {
     meta: BackupMeta,
     account_data: Option<M::Value<AccountData<M>>>,
     recipients: HashMap<RecipientId, RecipientData<M>>,
-    chats: HashMap<ChatId, ChatData<M>>,
+    chats: ChatsData<M>,
     sticker_packs: HashMap<StickerPackId, StickerPack>,
+}
+
+#[derive_where(Default)]
+struct ChatsData<M: Method> {
+    items: HashMap<ChatId, ChatData<M>>,
+    pinned: Vec<(PinOrder, RecipientId)>,
 }
 
 #[derive(Debug)]
@@ -90,7 +97,11 @@ impl From<PartialBackup<Store>> for Backup {
             meta,
             account_data,
             recipients,
-            chats,
+            chats:
+                ChatsData {
+                    items: chats,
+                    pinned: _,
+                },
             sticker_packs,
         } = value;
 
@@ -280,12 +291,15 @@ impl<M: Method> PartialBackup<M> {
     fn add_chat(&mut self, chat: proto::Chat) -> Result<(), ChatFrameError> {
         let id = chat.id();
 
-        let chat = chat
-            .try_into_with(&self.recipients)
+        let chat: ChatData<M> = chat
+            .try_into_with(self)
             .map_err(|e| ChatFrameError(id, e))?;
-        match self.chats.entry(id) {
+        match self.chats.items.entry(id) {
             hash_map::Entry::Occupied(_) => Err(ChatFrameError(id, ChatError::DuplicateId)),
             hash_map::Entry::Vacant(v) => {
+                if let Some(pin) = chat.pinned_order {
+                    self.chats.pinned.push((pin, chat.recipient));
+                }
                 let _ = v.insert(chat);
                 Ok(())
             }
@@ -295,20 +309,15 @@ impl<M: Method> PartialBackup<M> {
     fn add_chat_item(&mut self, chat_item: proto::ChatItem) -> Result<(), ValidationError> {
         let chat_id = ChatId(chat_item.chatId);
 
-        let chat_data = match self.chats.entry(chat_id) {
-            hash_map::Entry::Occupied(o) => o.into_mut(),
-            hash_map::Entry::Vacant(_) => {
-                return Err(ChatFrameError(chat_id, ChatItemError::NoChatForItem.into()).into())
-            }
-        };
-
         let chat_item_data = chat_item
-            .try_into_with(&ConvertContext {
-                recipients: &self.recipients,
-                chats: &(),
-                meta: &self.meta,
-            })
+            .try_into_with(self)
             .map_err(|e: ChatItemError| ChatFrameError(chat_id, e.into()))?;
+
+        let chat_data = self
+            .chats
+            .items
+            .get_mut(&chat_id)
+            .ok_or(ChatFrameError(chat_id, ChatItemError::NoChatForItem.into()))?;
 
         chat_data.items.extend([chat_item_data]);
 
@@ -334,38 +343,47 @@ impl<M: Method> PartialBackup<M> {
     }
 }
 
-/// Context for converting proto types via [`TryFromWith`].
-///
-/// This is used as the concrete "context" type for the [`TryFromWith`]
-/// implementations below.
-pub(super) struct ConvertContext<'a, Recipients, Chats> {
-    recipients: &'a Recipients,
-    chats: &'a Chats,
-    meta: &'a BackupMeta,
-}
-
-impl<R: Contains<RecipientId>, Ch> Contains<RecipientId> for ConvertContext<'_, R, Ch> {
+impl<M: Method> Contains<RecipientId> for PartialBackup<M> {
     fn contains(&self, key: &RecipientId) -> bool {
         self.recipients.contains(key)
     }
 }
 
-impl<R, Ch: Contains<ChatId>> Contains<ChatId> for ConvertContext<'_, R, Ch> {
+impl<M: Method> Contains<ChatId> for PartialBackup<M> {
     fn contains(&self, key: &ChatId) -> bool {
-        self.chats.contains(key)
+        self.chats.items.contains(key)
     }
 }
 
-impl<M: Method> Contains<(StickerPackId, StickerId)> for HashMap<StickerPackId, StickerPack<M>> {
+impl<M: Method> Contains<(StickerPackId, StickerId)> for PartialBackup<M> {
     fn contains(&self, (pack_id, sticker_id): &(StickerPackId, StickerId)) -> bool {
-        self.get(pack_id)
+        self.sticker_packs
+            .get(pack_id)
             .is_some_and(|pack| pack.stickers.contains(sticker_id))
     }
 }
 
-impl<'a, R, Ch> AsRef<BackupMeta> for ConvertContext<'a, R, Ch> {
+impl<M: Method> Contains<PinOrder> for PartialBackup<M> {
+    fn contains(&self, key: &PinOrder) -> bool {
+        self.lookup(key).is_some()
+    }
+}
+
+impl<M: Method> Lookup<PinOrder, RecipientId> for PartialBackup<M> {
+    fn lookup(&self, key: &PinOrder) -> Option<&RecipientId> {
+        // This is a linear search, but the number of pinned chats should be
+        // small enough in real backups that it's more efficient than a hash
+        // lookup.
+        self.chats
+            .pinned
+            .iter()
+            .find_map(|(order, recipient)| (order == key).then_some(recipient))
+    }
+}
+
+impl<M: Method> AsRef<BackupMeta> for PartialBackup<M> {
     fn as_ref(&self) -> &BackupMeta {
-        self.meta
+        &self.meta
     }
 }
 
@@ -461,7 +479,7 @@ mod test {
 
     impl proto::Chat {
         pub(super) const TEST_ID: u64 = 22222;
-        fn test_data() -> Self {
+        pub(crate) fn test_data() -> Self {
             Self {
                 id: Self::TEST_ID,
                 recipientId: proto::Recipient::TEST_ID,

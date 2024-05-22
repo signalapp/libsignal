@@ -8,23 +8,25 @@
 // crate, but we want intra-crate privacy.
 #![allow(clippy::manual_non_exhaustive)]
 
-use std::num::NonZeroU64;
+use std::num::{NonZeroU32, NonZeroU64};
 
 use derive_where::derive_where;
+use libsignal_protocol::Aci;
 use protobuf::EnumOrUnknown;
 
 use crate::backup::call::{GroupCall, IndividualCall};
 use crate::backup::file::{VoiceMessageAttachment, VoiceMessageAttachmentError};
 use crate::backup::frame::RecipientId;
-use crate::backup::method::{Contains, Method, Store};
+use crate::backup::method::{Contains, Lookup, Method, Store};
 use crate::backup::sticker::{MessageSticker, MessageStickerError};
 use crate::backup::time::{Duration, Timestamp};
-use crate::backup::{BackupMeta, CallError, TryFromWith, TryIntoWith as _};
+use crate::backup::{uuid_bytes_to_aci, BackupMeta, CallError, TryFromWith, TryIntoWith as _};
 use crate::proto::backup as proto;
 
 mod group;
 
 #[derive(Debug, displaydoc::Display, thiserror::Error)]
+#[cfg_attr(test, derive(PartialEq))]
 pub enum ChatError {
     /// multiple records with the same ID
     DuplicateId,
@@ -32,6 +34,8 @@ pub enum ChatError {
     NoRecipient(RecipientId),
     /// chat item: {0}
     ChatItem(#[from] ChatItemError),
+    /// {0:?} already appeared for {1:?}
+    DuplicatePinnedOrder(PinOrder, RecipientId),
 }
 
 #[derive(Debug, displaydoc::Display, thiserror::Error)]
@@ -43,8 +47,12 @@ pub enum ChatItemError {
     AuthorNotFound(RecipientId),
     /// ChatItem.item is a oneof but is empty
     MissingItem,
+    /// text: {0}
+    Text(#[from] TextError),
     /// quote: {0}
     Quote(#[from] QuoteError),
+    /// link preview: {0}
+    Link(#[from] LinkPreviewError),
     /// reaction: {0}
     Reaction(#[from] ReactionError),
     /// ChatUpdateMessage.update is a oneof but is empty
@@ -88,11 +96,20 @@ pub struct InvalidExpiration {
 
 /// Validated version of [`proto::Chat`].
 #[derive_where(Debug)]
+#[cfg_attr(test, derive_where(PartialEq; M::List<ChatItemData>: PartialEq))]
 pub struct ChatData<M: Method = Store> {
+    pub recipient: RecipientId,
     pub(super) items: M::List<ChatItemData>,
-    pub expiration_timer: Duration,
-    pub mute_until: Timestamp,
+    pub expiration_timer: Option<Duration>,
+    pub mute_until: Option<Timestamp>,
+    pub pinned_order: Option<PinOrder>,
+    pub dont_notify_for_mentions_if_muted: bool,
+    pub marked_unread: bool,
+    pub archived: bool,
 }
+
+#[derive(Copy, Clone, Debug, Eq, Hash, PartialEq)]
+pub struct PinOrder(NonZeroU32);
 
 /// Validated version of [`proto::ChatItem`].
 #[derive(Debug)]
@@ -105,6 +122,7 @@ pub struct ChatItemData {
     pub expire_start: Option<Timestamp>,
     pub expires_in: Option<Duration>,
     pub sent_at: Timestamp,
+    pub sms: bool,
     _limit_construction_to_module: (),
 }
 
@@ -124,10 +142,57 @@ pub enum ChatItemMessage {
 #[derive(Debug)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct StandardMessage {
+    pub text: Option<MessageText>,
     pub quote: Option<Quote>,
     pub reactions: Vec<Reaction>,
+    pub link_previews: Vec<LinkPreview>,
     _limit_construction_to_module: (),
 }
+
+/// Validated version of [`proto::Text`].
+#[derive(Debug)]
+#[cfg_attr(test, derive(PartialEq))]
+pub struct MessageText {
+    pub text: String,
+    pub ranges: Vec<TextRange>,
+}
+
+#[derive(Debug)]
+#[cfg_attr(test, derive(PartialEq))]
+pub struct TextRange {
+    pub start: Option<u32>,
+    pub length: Option<u32>,
+    pub effect: TextEffect,
+}
+
+#[derive(Debug)]
+#[cfg_attr(test, derive(PartialEq))]
+pub enum TextEffect {
+    MentionAci(Aci),
+    Style(proto::body_range::Style),
+}
+
+#[derive(Debug, displaydoc::Display, thiserror::Error)]
+#[cfg_attr(test, derive(PartialEq))]
+pub enum TextError {
+    /// mention had invalid ACI
+    MentionInvalidAci,
+    /// BodyRange.associatedValue is a oneof but has no value
+    NoAssociatedValueForBodyRange,
+}
+
+#[derive(Debug)]
+#[cfg_attr(test, derive(PartialEq))]
+pub struct LinkPreview {
+    pub url: String,
+    pub title: Option<String>,
+    pub description: Option<String>,
+    pub date: Option<Timestamp>,
+}
+
+#[derive(Debug, thiserror::Error)]
+#[cfg_attr(test, derive(PartialEq))]
+pub enum LinkPreviewError {}
 
 /// Validated version of [`proto::ContactMessage`].
 #[derive(Debug)]
@@ -221,6 +286,11 @@ pub enum SimpleChatUpdate {
 #[derive(Debug)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct ContactAttachment {
+    pub name: Option<proto::contact_attachment::Name>,
+    pub number: Vec<proto::contact_attachment::Phone>,
+    pub email: Vec<proto::contact_attachment::Email>,
+    pub address: Vec<proto::contact_attachment::PostalAddress>,
+    pub organization: Option<String>,
     _limit_construction_to_module: (),
 }
 
@@ -228,6 +298,8 @@ pub struct ContactAttachment {
 #[derive(Debug)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct Reaction {
+    pub emoji: String,
+    pub sort_order: u64,
     pub author: RecipientId,
     pub sent_timestamp: Timestamp,
     pub received_timestamp: Option<Timestamp>,
@@ -239,6 +311,8 @@ pub struct Reaction {
 pub enum ReactionError {
     /// unknown author {0:?}
     AuthorNotFound(RecipientId),
+    /// "emoji" is an empty string
+    EmptyEmoji,
 }
 
 /// Validated version of [`proto::Quote`]
@@ -248,6 +322,7 @@ pub struct Quote {
     pub author: RecipientId,
     pub quote_type: QuoteType,
     pub target_sent_timestamp: Option<Timestamp>,
+    pub text: Option<MessageText>,
     _limit_construction_to_module: (),
 }
 
@@ -264,6 +339,8 @@ pub enum Direction {
     Incoming {
         sent: Timestamp,
         received: Timestamp,
+        read: bool,
+        sealed_sender: bool,
     },
     Outgoing(Vec<OutgoingSend>),
     Directionless,
@@ -275,6 +352,9 @@ pub struct OutgoingSend {
     pub recipient: RecipientId,
     pub status: DeliveryStatus,
     pub last_status_update: Timestamp,
+    pub network_failure: bool,
+    pub identity_key_mismatch: bool,
+    pub sealed_sender: bool,
 }
 
 #[derive(Debug)]
@@ -305,6 +385,10 @@ pub enum QuoteError {
     AuthorNotFound(RecipientId),
     /// "type" is unknown
     TypeUnknown,
+    /// "text" is missing but "bodyRanges" is not empty
+    BodyRangesWithoutText,
+    /// text error: {0}
+    Text(#[from] TextError),
 }
 
 impl std::fmt::Display for InvalidExpiration {
@@ -327,7 +411,9 @@ impl std::fmt::Display for InvalidExpiration {
     }
 }
 
-impl<M: Method, C: Contains<RecipientId>> TryFromWith<proto::Chat, C> for ChatData<M> {
+impl<M: Method, C: Contains<RecipientId> + Lookup<PinOrder, RecipientId>>
+    TryFromWith<proto::Chat, C> for ChatData<M>
+{
     type Error = ChatError;
 
     fn try_from_with(value: proto::Chat, context: &C) -> Result<Self, Self::Error> {
@@ -336,28 +422,41 @@ impl<M: Method, C: Contains<RecipientId>> TryFromWith<proto::Chat, C> for ChatDa
             recipientId,
             expirationTimerMs,
             muteUntilMs,
-            // TODO validate these fields
-            archived: _,
-            pinnedOrder: _,
-            markedUnread: _,
-            dontNotifyForMentionsIfMuted: _,
-            wallpaper: _,
+            pinnedOrder,
+            archived,
+            markedUnread,
+            dontNotifyForMentionsIfMuted,
             special_fields: _,
+            // TODO validate this field
+            wallpaper: _,
         } = value;
 
-        let recipient_id = RecipientId(recipientId);
-
-        if !context.contains(&recipient_id) {
-            return Err(ChatError::NoRecipient(recipient_id));
+        let recipient = RecipientId(recipientId);
+        if !context.contains(&recipient) {
+            return Err(ChatError::NoRecipient(recipient));
         }
 
-        let expiration_timer = Duration::from_millis(expirationTimerMs);
-        let mute_until = Timestamp::from_millis(muteUntilMs, "Chat.muteUntilMs");
+        let pinned_order = NonZeroU32::new(pinnedOrder).map(PinOrder);
+        if let Some(pinned_order) = pinned_order {
+            if let Some(recipient) = context.lookup(&pinned_order) {
+                return Err(ChatError::DuplicatePinnedOrder(pinned_order, *recipient));
+            }
+        };
+
+        let expiration_timer =
+            NonZeroU64::new(expirationTimerMs).map(|t| Duration::from_millis(t.get()));
+        let mute_until = NonZeroU64::new(muteUntilMs)
+            .map(|t| Timestamp::from_millis(t.get(), "Chat.muteUntilMs"));
 
         Ok(Self {
+            recipient,
             expiration_timer,
             mute_until,
             items: Default::default(),
+            pinned_order,
+            archived,
+            marked_unread: markedUnread,
+            dont_notify_for_mentions_if_muted: dontNotifyForMentionsIfMuted,
         })
     }
 }
@@ -377,9 +476,7 @@ impl<R: Contains<RecipientId> + AsRef<BackupMeta>> TryFromWith<proto::ChatItem, 
             expireStartDate,
             expiresInMs,
             dateSent,
-
-            // TODO validate these fields
-            sms: _,
+            sms,
             special_fields: _,
         } = value;
 
@@ -465,6 +562,7 @@ impl<R: Contains<RecipientId> + AsRef<BackupMeta>> TryFromWith<proto::ChatItem, 
             sent_at,
             expire_start,
             expires_in,
+            sms,
             _limit_construction_to_module: (),
         })
     }
@@ -483,15 +581,19 @@ impl<R: Contains<RecipientId>> TryFromWith<proto::chat_item::DirectionalDetails,
                 special_fields: _,
                 dateReceived,
                 dateServerSent,
-                // TODO validate this field.
-                read: _,
-                sealedSender: _,
+                read,
+                sealedSender,
             }) => {
                 let sent =
                     Timestamp::from_millis(dateServerSent, "DirectionalDetails.dateServerSent");
                 let received =
                     Timestamp::from_millis(dateReceived, "DirectionalDetails.dateReceived");
-                Ok(Self::Incoming { received, sent })
+                Ok(Self::Incoming {
+                    received,
+                    sent,
+                    read,
+                    sealed_sender: sealedSender,
+                })
             }
             DirectionalDetails::Outgoing(OutgoingMessageDetails {
                 sendStatus,
@@ -516,11 +618,10 @@ impl<R: Contains<RecipientId>> TryFromWith<proto::SendStatus, R> for OutgoingSen
             recipientId,
             deliveryStatus,
             lastStatusUpdateTimestamp,
+            networkFailure,
+            identityKeyMismatch,
+            sealedSender,
             special_fields: _,
-            // TODO validate these fields
-            networkFailure: _,
-            identityKeyMismatch: _,
-            sealedSender: _,
         } = item;
 
         let recipient = RecipientId(recipientId);
@@ -550,6 +651,9 @@ impl<R: Contains<RecipientId>> TryFromWith<proto::SendStatus, R> for OutgoingSen
             recipient,
             status,
             last_status_update,
+            network_failure: networkFailure,
+            identity_key_mismatch: identityKeyMismatch,
+            sealed_sender: sealedSender,
         })
     }
 }
@@ -597,14 +701,14 @@ impl<R: Contains<RecipientId>> TryFromWith<proto::StandardMessage, R> for Standa
 
     fn try_from_with(item: proto::StandardMessage, context: &R) -> Result<Self, Self::Error> {
         let proto::StandardMessage {
+            text,
             quote,
             reactions,
-            // TODO validate these fields
-            text: _,
-            attachments: _,
-            linkPreview: _,
-            longText: _,
+            linkPreview,
             special_fields: _,
+            // TODO validate these fields
+            attachments: _,
+            longText: _,
         } = item;
 
         let reactions = reactions
@@ -617,9 +721,18 @@ impl<R: Contains<RecipientId>> TryFromWith<proto::StandardMessage, R> for Standa
             .map(|q| q.try_into_with(context))
             .transpose()?;
 
+        let text = text.into_option().map(MessageText::try_from).transpose()?;
+
+        let link_previews = linkPreview
+            .into_iter()
+            .map(LinkPreview::try_from)
+            .collect::<Result<_, _>>()?;
+
         Ok(Self {
+            text,
             quote,
             reactions,
+            link_previews,
             _limit_construction_to_module: (),
         })
     }
@@ -662,32 +775,31 @@ impl TryFrom<proto::ContactAttachment> for ContactAttachment {
             number,
             email,
             address,
-            organization: _,
+            organization,
             special_fields: _,
             // TODO validate this field
             avatarUrlPath: _,
         } = value;
 
-        name.map(
-            |proto::contact_attachment::Name {
-                 // Ignore all these fields, but cause a compilation error if
-                 // they are changed.
-                 givenName: _,
-                 familyName: _,
-                 prefix: _,
-                 suffix: _,
-                 middleName: _,
-                 displayName: _,
-                 special_fields: _,
-             }| {},
-        );
+        if let Some(proto::contact_attachment::Name {
+            // Ignore all these fields, but cause a compilation error if
+            // they are changed.
+            givenName: _,
+            familyName: _,
+            prefix: _,
+            suffix: _,
+            middleName: _,
+            displayName: _,
+            special_fields: _,
+        }) = name.as_ref()
+        {}
 
         for proto::contact_attachment::Phone {
             type_,
             value: _,
             label: _,
             special_fields: _,
-        } in number
+        } in &number
         {
             if let Some(proto::contact_attachment::phone::Type::UNKNOWN) =
                 type_.as_ref().map(EnumOrUnknown::enum_value_or_default)
@@ -701,7 +813,7 @@ impl TryFrom<proto::ContactAttachment> for ContactAttachment {
             value: _,
             label: _,
             special_fields: _,
-        } in email
+        } in &email
         {
             if let Some(proto::contact_attachment::email::Type::UNKNOWN) =
                 type_.as_ref().map(EnumOrUnknown::enum_value_or_default)
@@ -721,7 +833,7 @@ impl TryFrom<proto::ContactAttachment> for ContactAttachment {
             postcode: _,
             country: _,
             special_fields: _,
-        } in address
+        } in &address
         {
             if let Some(proto::contact_attachment::postal_address::Type::UNKNOWN) =
                 type_.as_ref().map(EnumOrUnknown::enum_value_or_default)
@@ -731,6 +843,11 @@ impl TryFrom<proto::ContactAttachment> for ContactAttachment {
         }
 
         Ok(ContactAttachment {
+            name: name.into_option(),
+            number,
+            email,
+            address,
+            organization,
             _limit_construction_to_module: (),
         })
     }
@@ -900,6 +1017,71 @@ impl<R: Contains<RecipientId>> TryFromWith<proto::ChatUpdateMessage, R> for Upda
     }
 }
 
+impl TryFrom<proto::Text> for MessageText {
+    type Error = TextError;
+
+    fn try_from(value: proto::Text) -> Result<Self, Self::Error> {
+        let proto::Text {
+            body,
+            bodyRanges,
+            special_fields: _,
+        } = value;
+
+        let ranges = bodyRanges
+            .into_iter()
+            .map(|range| {
+                let proto::BodyRange {
+                    start,
+                    length,
+                    associatedValue,
+                    special_fields: _,
+                } = range;
+                use proto::body_range::AssociatedValue;
+                let effect =
+                    match associatedValue.ok_or(TextError::NoAssociatedValueForBodyRange)? {
+                        AssociatedValue::MentionAci(aci) => TextEffect::MentionAci(
+                            uuid_bytes_to_aci(aci).map_err(|_| TextError::MentionInvalidAci)?,
+                        ),
+                        AssociatedValue::Style(style) => {
+                            // All style values are valid
+                            TextEffect::Style(style.enum_value_or_default())
+                        }
+                    };
+                Ok(TextRange {
+                    start,
+                    length,
+                    effect,
+                })
+            })
+            .collect::<Result<_, _>>()?;
+        Ok(Self { text: body, ranges })
+    }
+}
+
+impl TryFrom<proto::LinkPreview> for LinkPreview {
+    type Error = LinkPreviewError;
+
+    fn try_from(value: proto::LinkPreview) -> Result<Self, Self::Error> {
+        let proto::LinkPreview {
+            url,
+            title,
+            description,
+            date,
+            special_fields: _,
+            // TODO validate this field
+            image: _,
+        } = value;
+        let date = date.map(|d| Timestamp::from_millis(d, "LinkPreview.date"));
+
+        Ok(Self {
+            url,
+            title,
+            description,
+            date,
+        })
+    }
+}
+
 impl<R: Contains<RecipientId>> TryFromWith<proto::Quote, R> for Quote {
     type Error = QuoteError;
 
@@ -908,10 +1090,10 @@ impl<R: Contains<RecipientId>> TryFromWith<proto::Quote, R> for Quote {
             authorId,
             type_,
             targetSentTimestamp,
+            text,
+            bodyRanges,
             // TODO validate these fields
-            text: _,
             attachments: _,
-            bodyRanges: _,
             special_fields: _,
         } = item;
 
@@ -927,10 +1109,24 @@ impl<R: Contains<RecipientId>> TryFromWith<proto::Quote, R> for Quote {
             proto::quote::Type::NORMAL => QuoteType::Normal,
             proto::quote::Type::GIFTBADGE => QuoteType::GiftBadge,
         };
+
+        let text = match text {
+            None if !bodyRanges.is_empty() => return Err(QuoteError::BodyRangesWithoutText),
+            None => None,
+            Some(text) => Some(
+                proto::Text {
+                    body: text,
+                    bodyRanges,
+                    special_fields: Default::default(),
+                }
+                .try_into()?,
+            ),
+        };
         Ok(Self {
             author,
             quote_type,
             target_sent_timestamp,
+            text,
             _limit_construction_to_module: (),
         })
     }
@@ -944,11 +1140,14 @@ impl<R: Contains<RecipientId>> TryFromWith<proto::Reaction, R> for Reaction {
             authorId,
             sentTimestamp,
             receivedTimestamp,
-            // TODO validate these fields
-            emoji: _,
-            sortOrder: _,
+            emoji,
+            sortOrder,
             special_fields: _,
         } = item;
+
+        if emoji.is_empty() {
+            return Err(ReactionError::EmptyEmoji);
+        }
 
         let author = RecipientId(authorId);
         if !context.contains(&author) {
@@ -960,6 +1159,8 @@ impl<R: Contains<RecipientId>> TryFromWith<proto::Reaction, R> for Reaction {
             .map(|timestamp| Timestamp::from_millis(timestamp, "Reaction.receivedTimestamp"));
 
         Ok(Self {
+            emoji,
+            sort_order: sortOrder,
             author,
             sent_timestamp,
             received_timestamp,
@@ -973,6 +1174,7 @@ mod test {
     use std::time::UNIX_EPOCH;
 
     use assert_matches::assert_matches;
+    use nonzero_ext::nonzero;
     use protobuf::{EnumOrUnknown, MessageField, SpecialFields};
     use test_case::test_case;
 
@@ -1007,6 +1209,7 @@ mod test {
     impl proto::StandardMessage {
         pub(crate) fn test_data() -> Self {
             Self {
+                text: Some(proto::Text::test_data()).into(),
                 reactions: vec![proto::Reaction::test_data()],
                 quote: Some(proto::Quote::test_data()).into(),
                 ..Default::default()
@@ -1055,6 +1258,8 @@ mod test {
     impl proto::Reaction {
         fn test_data() -> Self {
             Self {
+                emoji: "📲".to_string(),
+                sortOrder: 3,
                 authorId: proto::Recipient::TEST_ID,
                 sentTimestamp: MillisecondsSinceEpoch::TEST_VALUE.0,
                 receivedTimestamp: Some(MillisecondsSinceEpoch::TEST_VALUE.0),
@@ -1063,12 +1268,21 @@ mod test {
         }
     }
 
+    const TEST_MESSAGE_TEXT: &str = "test message text";
     impl proto::Quote {
         fn test_data() -> Self {
+            let proto::Text {
+                body,
+                bodyRanges,
+                special_fields: _,
+            } = proto::Text::test_data();
+
             Self {
                 authorId: proto::Recipient::TEST_ID,
                 type_: proto::quote::Type::NORMAL.into(),
                 targetSentTimestamp: Some(MillisecondsSinceEpoch::TEST_VALUE.0),
+                text: Some(body),
+                bodyRanges,
                 ..Default::default()
             }
         }
@@ -1121,6 +1335,8 @@ mod test {
     impl Reaction {
         pub(crate) fn from_proto_test_data() -> Self {
             Self {
+                emoji: "📲".to_string(),
+                sort_order: 3,
                 author: RecipientId(proto::Recipient::TEST_ID),
                 sent_timestamp: Timestamp::test_value(),
                 received_timestamp: Some(Timestamp::test_value()),
@@ -1132,6 +1348,11 @@ mod test {
     impl ContactAttachment {
         fn from_proto_test_data() -> Self {
             Self {
+                name: None,
+                number: vec![],
+                email: vec![],
+                address: vec![],
+                organization: None,
                 _limit_construction_to_module: (),
             }
         }
@@ -1140,14 +1361,47 @@ mod test {
     impl StandardMessage {
         fn from_proto_test_data() -> Self {
             Self {
+                text: Some(MessageText::from_proto_test_data()),
                 reactions: vec![Reaction::from_proto_test_data()],
                 quote: Some(Quote {
+                    text: Some(MessageText::from_proto_test_data()),
                     author: RecipientId(proto::Recipient::TEST_ID),
                     quote_type: QuoteType::Normal,
                     target_sent_timestamp: Some(Timestamp::test_value()),
                     _limit_construction_to_module: (),
                 }),
+                link_previews: vec![],
                 _limit_construction_to_module: (),
+            }
+        }
+    }
+
+    impl proto::Text {
+        fn test_data() -> Self {
+            Self {
+                body: TEST_MESSAGE_TEXT.to_string(),
+                bodyRanges: vec![proto::BodyRange {
+                    start: Some(2),
+                    length: Some(5),
+                    associatedValue: Some(proto::body_range::AssociatedValue::Style(
+                        proto::body_range::Style::MONOSPACE.into(),
+                    )),
+                    special_fields: Default::default(),
+                }],
+                special_fields: Default::default(),
+            }
+        }
+    }
+
+    impl MessageText {
+        fn from_proto_test_data() -> Self {
+            Self {
+                text: TEST_MESSAGE_TEXT.to_string(),
+                ranges: vec![TextRange {
+                    start: Some(2),
+                    length: Some(5),
+                    effect: TextEffect::Style(proto::body_range::Style::MONOSPACE),
+                }],
             }
         }
     }
@@ -1204,10 +1458,72 @@ mod test {
         }
     }
 
+    impl Contains<PinOrder> for TestContext {
+        fn contains(&self, key: &PinOrder) -> bool {
+            Self::lookup(self, key).is_some()
+        }
+    }
+
+    impl Lookup<PinOrder, RecipientId> for TestContext {
+        fn lookup(&self, key: &PinOrder) -> Option<&RecipientId> {
+            (*key == TEST_DUPLICATE_PINNED_ORDER).then_some(&TEST_DUPLICATE_PINNED_ORDER_RECIPIENT)
+        }
+    }
+
     impl AsRef<BackupMeta> for TestContext {
         fn as_ref(&self) -> &BackupMeta {
             &self.0
         }
+    }
+
+    const TEST_DUPLICATE_PINNED_ORDER: PinOrder = PinOrder(nonzero!(183324u32));
+    const TEST_DUPLICATE_PINNED_ORDER_RECIPIENT: RecipientId = RecipientId(183324);
+
+    #[test]
+    fn valid_chat() {
+        assert_eq!(
+            proto::Chat::test_data().try_into_with(&TestContext::default()),
+            Ok(ChatData::<Store> {
+                recipient: RecipientId(proto::Recipient::TEST_ID),
+                items: Vec::default(),
+                expiration_timer: None,
+                mute_until: None,
+                pinned_order: None,
+                archived: false,
+                marked_unread: false,
+                dont_notify_for_mentions_if_muted: false,
+            })
+        );
+    }
+
+    fn duplicate_pinned_order(message: &mut proto::Chat) {
+        message.pinnedOrder = TEST_DUPLICATE_PINNED_ORDER.0.get();
+    }
+
+    fn with_expiration_timer(chat: &mut proto::Chat) {
+        chat.expirationTimerMs = 123456;
+    }
+    fn with_mute_until(chat: &mut proto::Chat) {
+        chat.muteUntilMs = MillisecondsSinceEpoch::TEST_VALUE.0;
+    }
+
+    #[test_case(with_expiration_timer, Ok(()))]
+    #[test_case(with_mute_until, Ok(()))]
+    #[test_case(
+        duplicate_pinned_order,
+        Err(ChatError::DuplicatePinnedOrder(
+            TEST_DUPLICATE_PINNED_ORDER,
+            TEST_DUPLICATE_PINNED_ORDER_RECIPIENT
+        ))
+    )]
+    fn chat(modifier: fn(&mut proto::Chat), expected: Result<(), ChatError>) {
+        let mut chat = proto::Chat::test_data();
+        modifier(&mut chat);
+        assert_eq!(
+            chat.try_into_with(&TestContext::default())
+                .map(|_: ChatData| ()),
+            expected
+        );
     }
 
     #[test]
@@ -1220,11 +1536,14 @@ mod test {
                 revisions: vec![],
                 direction: Direction::Incoming {
                     received: Timestamp::test_value(),
-                    sent: Timestamp::test_value()
+                    sent: Timestamp::test_value(),
+                    read: false,
+                    sealed_sender: false,
                 },
                 expire_start: Some(Timestamp::test_value()),
                 expires_in: Some(Duration::TWELVE_HOURS),
                 sent_at: Timestamp::test_value(),
+                sms: false,
                 _limit_construction_to_module: (),
             })
         )
@@ -1298,6 +1617,14 @@ mod test {
     }
 
     #[test]
+    fn valid_text() {
+        assert_eq!(
+            proto::Text::test_data().try_into(),
+            Ok(MessageText::from_proto_test_data())
+        );
+    }
+
+    #[test]
     fn valid_contact_message() {
         assert_eq!(
             proto::ContactMessage::test_data().try_into_with(&TestContext::default()),
@@ -1334,7 +1661,7 @@ mod test {
     #[test_case(no_reactions, Ok(()))]
     #[test_case(
         invalid_reaction,
-        Err(ChatItemError::Reaction(ReactionError::AuthorNotFound(RecipientId(0))))
+        Err(ChatItemError::Reaction(ReactionError::EmptyEmoji))
     )]
     fn contact_message(
         modifier: fn(&mut proto::ContactMessage),
@@ -1356,6 +1683,7 @@ mod test {
                 .try_into_with(&TestContext::default()),
             Ok(VoiceMessage {
                 quote: Some(Quote {
+                    text: Some(MessageText::from_proto_test_data()),
                     author: RecipientId(proto::Recipient::TEST_ID),
                     quote_type: QuoteType::Normal,
                     target_sent_timestamp: Some(Timestamp::test_value()),
@@ -1371,7 +1699,7 @@ mod test {
     #[test_case(no_reactions, Ok(()))]
     #[test_case(
         invalid_reaction,
-        Err(VoiceMessageError::Reaction(ReactionError::AuthorNotFound(RecipientId(0))))
+        Err(VoiceMessageError::Reaction(ReactionError::EmptyEmoji))
     )]
     #[test_case(no_quote, Ok(()))]
     #[test_case(no_attachments, Err(VoiceMessageError::WrongAttachmentsCount(0)))]
@@ -1392,7 +1720,7 @@ mod test {
     #[test_case(no_reactions, Ok(()))]
     #[test_case(
         invalid_reaction,
-        Err(ChatItemError::Reaction(ReactionError::AuthorNotFound(RecipientId(0))))
+        Err(ChatItemError::Reaction(ReactionError::EmptyEmoji))
     )]
     fn sticker_message(
         modifier: fn(&mut proto::StickerMessage),

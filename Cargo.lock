@@ -2074,6 +2074,7 @@ dependencies = [
  "libsignal-protocol",
  "log",
  "mediasan-common",
+ "nonzero_ext",
  "num_enum",
  "protobuf",
  "protobuf-codegen",
