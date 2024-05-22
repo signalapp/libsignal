@@ -12,7 +12,7 @@ public enum IpType: UInt8 {
 }
 
 public protocol ChatListener: AnyObject {
-    func chatService(_ chat: ChatService, didReceiveIncomingMessage envelope: Data, serverDeliveryTimestamp: UInt64, sendAck: () async throws -> Void)
+    func chatService(_ chat: ChatService, didReceiveIncomingMessage envelope: Data, serverDeliveryTimestamp: UInt64, sendAck: @escaping () async throws -> Void)
     func chatServiceDidReceiveQueueEmpty(_ chat: ChatService)
 }
 
