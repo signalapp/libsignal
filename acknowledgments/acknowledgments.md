@@ -4454,7 +4454,7 @@ DEALINGS IN THE SOFTWARE.
 
 ```
 
-## smallvec 1.13.1
+## smallvec 1.13.2
 
 ```
 Copyright (c) 2018 The Servo Project Developers

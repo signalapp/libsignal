@@ -4859,7 +4859,7 @@ DEALINGS IN THE SOFTWARE.
 			<key>License</key>
 			<string>MIT License</string>
 			<key>Title</key>
-			<string>smallvec 1.13.1</string>
+			<string>smallvec 1.13.2</string>
 			<key>Type</key>
 			<string>PSGroupSpecifier</string>
 		</dict>

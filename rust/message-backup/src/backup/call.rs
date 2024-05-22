@@ -2,7 +2,6 @@
 // Copyright (C) 2024 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
-use libsignal_protocol::Aci;
 
 use crate::backup::frame::{RecipientId, RingerRecipientId};
 use crate::backup::method::{Contains, Lookup};
@@ -16,9 +15,7 @@ use crate::proto::backup as proto;
 #[cfg_attr(test, derive(PartialEq))]
 pub struct AdHocCall {
     pub id: CallId,
-    pub started_at: Timestamp,
-    pub ended_at: Timestamp,
-    pub started_by: Option<Aci>,
+    pub timestamp: Timestamp,
     pub recipient: RecipientId,
 }
 
@@ -68,8 +65,6 @@ pub enum CallError {
     UnknownState,
     /// call direction is UNKNOWN_DIRECTION
     UnknownDirection,
-    /// invalid call starter ACI
-    InvalidStarterAci,
 }
 
 #[derive(Debug, displaydoc::Display, thiserror::Error)]
@@ -261,18 +256,12 @@ impl<C: Lookup<RecipientId, DestinationKind>> TryFromWith<proto::AdHocCall, C> f
             callId,
             recipientId,
             state,
-            startedCallAci,
-            startedCallTimestamp,
-            endedCallTimestamp,
+            callTimestamp,
             special_fields: _,
         } = item;
 
         let id = CallId(callId);
 
-        let started_by = startedCallAci
-            .map(super::uuid_bytes_to_aci)
-            .transpose()
-            .map_err(|super::InvalidAci| CallError::InvalidStarterAci)?;
         let recipient = RecipientId(recipientId);
 
         match context.lookup(&recipient) {
@@ -295,15 +284,11 @@ impl<C: Lookup<RecipientId, DestinationKind>> TryFromWith<proto::AdHocCall, C> f
             }
         };
 
-        let started_at =
-            Timestamp::from_millis(startedCallTimestamp, "AdHocCall.startedCallTimestamp");
-        let ended_at = Timestamp::from_millis(endedCallTimestamp, "AdHocCall.startedCallTimestamp");
+        let timestamp = Timestamp::from_millis(callTimestamp, "AdHocCall.startedCallTimestamp");
 
         Ok(Self {
             id,
-            started_at,
-            ended_at,
-            started_by,
+            timestamp,
             recipient,
         })
     }
@@ -359,7 +344,6 @@ pub(crate) mod test {
     use test_case::test_case;
 
     use crate::backup::time::testutil::MillisecondsSinceEpoch;
-    use crate::backup::time::Duration;
     use crate::backup::TryIntoWith as _;
 
     use super::*;
@@ -403,8 +387,7 @@ pub(crate) mod test {
                 callId: Self::TEST_ID,
                 recipientId: TEST_CALL_LINK_RECIPIENT_ID.0,
                 state: proto::ad_hoc_call::State::GENERIC.into(),
-                startedCallTimestamp: MillisecondsSinceEpoch::TEST_VALUE.0,
-                endedCallTimestamp: MillisecondsSinceEpoch::TEST_VALUE.0 + 1000,
+                callTimestamp: MillisecondsSinceEpoch::TEST_VALUE.0,
                 ..Default::default()
             }
         }
@@ -529,10 +512,6 @@ pub(crate) mod test {
         }
     }
 
-    fn invalid_starter_aci(call: &mut proto::AdHocCall) {
-        call.startedCallAci = Some(vec![123]);
-    }
-
     fn invalid_ad_hoc_recipient(call: &mut proto::AdHocCall) {
         call.recipientId = NONEXISTENT_RECIPIENT.0;
     }
@@ -547,16 +526,13 @@ pub(crate) mod test {
             proto::AdHocCall::test_data().try_into_with(&TestContext),
             Ok(AdHocCall {
                 id: CallId(proto::AdHocCall::TEST_ID),
-                started_at: Timestamp::test_value(),
-                ended_at: Timestamp::test_value() + Duration::from_millis(1000),
-                started_by: None,
+                timestamp: Timestamp::test_value(),
                 recipient: TEST_CALL_LINK_RECIPIENT_ID,
             })
         );
     }
 
     #[test_case(InvalidCallState::unknown_state, Err(CallError::UnknownState))]
-    #[test_case(invalid_starter_aci, Err(CallError::InvalidStarterAci))]
     #[test_case(
         invalid_ad_hoc_recipient,
         Err(CallError::NoAdHocRecipient(NONEXISTENT_RECIPIENT))

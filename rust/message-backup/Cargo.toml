@@ -49,6 +49,7 @@ protobuf = "3.3.0"
 protobuf-json-mapping = { version = "3.3.0", optional = true }
 serde_json = { version = "1.0", optional = true }
 sha2 = "0.10"
+smallvec = "1.13.2"
 strum = { version = "0.26", features = ["derive"] }
 subtle = "2.5.0"
 thiserror = "1.0.50"

@@ -93,7 +93,6 @@ impl<R: Contains<RecipientId>> TryFromWith<proto::Quote, R> for Quote {
 
 #[cfg(test)]
 mod test {
-
     use crate::backup::time::testutil::MillisecondsSinceEpoch;
 
     use super::*;

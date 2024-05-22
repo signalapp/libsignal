@@ -77,7 +77,7 @@ fn main() {
         .write_all(b" #[cfg(test)] pub mod test; ")
         .expect("failed to write");
 
-    for proto in PROTOS {
+    for proto in PROTOS.iter().chain(TEST_PROTOS) {
         println!("cargo:rerun-if-changed={}", proto);
     }
 }

@@ -28,6 +28,9 @@ use group::*;
 mod link;
 use link::*;
 
+mod payment;
+use payment::*;
+
 mod quote;
 use quote::*;
 
@@ -79,6 +82,8 @@ pub enum ChatItemError {
     Link(#[from] LinkPreviewError),
     /// reaction: {0}
     Reaction(#[from] ReactionError),
+    /// payment: {0}
+    Payment(#[from] PaymentError),
     /// ChatUpdateMessage.update is a oneof but is empty
     UpdateIsEmpty,
     /// call error: {0}
@@ -160,6 +165,7 @@ pub enum ChatItemMessage {
     Sticker(StickerMessage),
     RemoteDeleted,
     Update(UpdateMessage),
+    PaymentNotification(PaymentNotification),
 }
 
 /// Validated version of [`proto::Reaction`].
@@ -353,6 +359,7 @@ impl<R: Contains<RecipientId> + AsRef<BackupMeta>> TryFromWith<proto::ChatItem, 
                     ChatItemMessage::Standard(_)
                     | ChatItemMessage::Contact(_)
                     | ChatItemMessage::Voice(_)
+                    | ChatItemMessage::PaymentNotification(_)
                     | ChatItemMessage::Sticker(_)
                     | ChatItemMessage::RemoteDeleted => (),
                 };
@@ -528,6 +535,9 @@ impl<R: Contains<RecipientId> + AsRef<BackupMeta>> TryFromWith<proto::chat_item:
             }
             Item::UpdateMessage(message) => {
                 ChatItemMessage::Update(message.try_into_with(recipients)?)
+            }
+            Item::PaymentNotification(message) => {
+                ChatItemMessage::PaymentNotification(message.try_into()?)
             }
         })
     }
