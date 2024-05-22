@@ -11,6 +11,7 @@ use std::panic::RefUnwindSafe;
 use std::sync::Arc;
 use std::time::Duration;
 
+use crate::timeouts::{CONNECTION_ROUTE_COOLDOWN_INTERVALS, CONNECTION_ROUTE_MAX_COOLDOWN};
 use async_trait::async_trait;
 use itertools::Itertools;
 use tokio::sync::Mutex;
@@ -18,19 +19,6 @@ use tokio::time::{timeout_at, Instant};
 
 use crate::infra::errors::LogSafeDisplay;
 use crate::infra::ConnectionParams;
-
-pub(crate) const MAX_COOLDOWN_INTERVAL: Duration = Duration::from_secs(64);
-
-pub(crate) const COOLDOWN_INTERVALS: [Duration; 8] = [
-    Duration::from_secs(0),
-    Duration::from_secs(1),
-    Duration::from_secs(2),
-    Duration::from_secs(4),
-    Duration::from_secs(8),
-    Duration::from_secs(16),
-    Duration::from_secs(32),
-    MAX_COOLDOWN_INTERVAL,
-];
 
 /// Represents the outcome of the connection attempt
 #[derive(Debug)]
@@ -47,7 +35,7 @@ pub enum ConnectionAttemptOutcome<T, E> {
 }
 
 /// Encapsulates the logic that for every connection attempt decides
-/// whether or not an attempt is to be made in the first place, and, if yes,
+/// whether an attempt is to be made in the first place, and, if yes,
 /// which [ConnectionParams] are to be used for the attempt.
 #[async_trait]
 pub trait ConnectionManager: Clone + Send + Sync {
@@ -115,13 +103,15 @@ impl ThrottlingConnectionManagerState {
         } else if attempt_start_time > s.latest_attempt || s.consecutive_fails > 0 {
             s.latest_attempt = max(attempt_start_time, s.latest_attempt);
             let idx: usize = s.consecutive_fails.into();
-            let cooldown_interval = COOLDOWN_INTERVALS
+            let cooldown_interval = CONNECTION_ROUTE_COOLDOWN_INTERVALS
                 .get(idx)
-                .unwrap_or(&MAX_COOLDOWN_INTERVAL);
+                .unwrap_or(&CONNECTION_ROUTE_MAX_COOLDOWN);
             s.next_attempt = Instant::now() + *cooldown_interval;
             s.consecutive_fails = min(
                 s.consecutive_fails.saturating_add(1),
-                (COOLDOWN_INTERVALS.len() - 1).try_into().unwrap(),
+                (CONNECTION_ROUTE_COOLDOWN_INTERVALS.len() - 1)
+                    .try_into()
+                    .unwrap(),
             );
         }
         s
@@ -130,7 +120,7 @@ impl ThrottlingConnectionManagerState {
 
 /// A connection manager that only attempts one route (i.e. one [ConnectionParams])
 /// but keeps track of consecutive failed attempts and after each failure waits for a duration
-/// chosen according to [COOLDOWN_INTERVALS] list.
+/// chosen according to [CONNECTION_ROUTE_COOLDOWN_INTERVALS] list.
 #[derive(Clone)]
 pub struct SingleRouteThrottlingConnectionManager {
     state: Arc<Mutex<ThrottlingConnectionManagerState>>,
@@ -251,7 +241,7 @@ impl SingleRouteThrottlingConnectionManager {
             state: Arc::new(Mutex::new(ThrottlingConnectionManagerState {
                 consecutive_fails: 0,
                 next_attempt: Instant::now(),
-                latest_attempt: Instant::now(),
+                latest_attempt: Instant::now() - Duration::from_nanos(1),
             })),
         }
     }
@@ -419,7 +409,7 @@ mod test {
         assert_matches!(attempt_outcome, ConnectionAttemptOutcome::WaitUntil(_));
 
         // now let's advance the time to the point after the cooldown period
-        time::advance(MAX_COOLDOWN_INTERVAL).await;
+        time::advance(CONNECTION_ROUTE_MAX_COOLDOWN).await;
         let attempt_outcome: ConnectionAttemptOutcome<(), TestError> =
             manager.connect_or_wait(|_| future::ready(Ok(()))).await;
         assert_matches!(attempt_outcome, ConnectionAttemptOutcome::Attempted(Ok(())));
@@ -450,7 +440,7 @@ mod test {
         validate_expected_route(&multi_route_manager, true, ROUTE_2).await;
 
         // and now after a cooldown period, route1 should be used again
-        time::advance(MAX_COOLDOWN_INTERVAL).await;
+        time::advance(CONNECTION_ROUTE_MAX_COOLDOWN).await;
         validate_expected_route(&multi_route_manager, true, ROUTE_1).await;
     }
 
@@ -504,7 +494,9 @@ mod test {
                 n if n < self.attempts_until_cooldown => ConnectionAttemptOutcome::Attempted(
                     connection_fn(&self.connection_params).await,
                 ),
-                _ => ConnectionAttemptOutcome::WaitUntil(Instant::now() + MAX_COOLDOWN_INTERVAL),
+                _ => ConnectionAttemptOutcome::WaitUntil(
+                    Instant::now() + CONNECTION_ROUTE_MAX_COOLDOWN,
+                ),
             }
         }
 

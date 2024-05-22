@@ -9,7 +9,7 @@ use std::string::ToString;
 use std::sync::Arc;
 use std::time::Duration;
 
-use crate::env::{WS_KEEP_ALIVE_INTERVAL, WS_MAX_IDLE_TIME};
+use crate::timeouts::{WS_KEEP_ALIVE_INTERVAL, WS_MAX_IDLE_INTERVAL};
 use ::http::uri::PathAndQuery;
 use ::http::Uri;
 use async_trait::async_trait;
@@ -270,7 +270,7 @@ pub struct EndpointConnection<C> {
 impl EndpointConnection<MultiRouteConnectionManager> {
     pub fn new_multi(
         connection_params: impl IntoIterator<Item = ConnectionParams>,
-        connect_timeout: Duration,
+        one_route_connect_timeout: Duration,
         config: WebSocketConfig,
     ) -> Self {
         Self {
@@ -278,7 +278,10 @@ impl EndpointConnection<MultiRouteConnectionManager> {
                 connection_params
                     .into_iter()
                     .map(|params| {
-                        SingleRouteThrottlingConnectionManager::new(params, connect_timeout)
+                        SingleRouteThrottlingConnectionManager::new(
+                            params,
+                            one_route_connect_timeout,
+                        )
                     })
                     .collect(),
             ),
@@ -296,7 +299,7 @@ pub fn make_ws_config(
         endpoint: websocket_endpoint,
         max_connection_time: connect_timeout,
         keep_alive_interval: WS_KEEP_ALIVE_INTERVAL,
-        max_idle_time: WS_MAX_IDLE_TIME,
+        max_idle_time: WS_MAX_IDLE_INTERVAL,
     }
 }
 

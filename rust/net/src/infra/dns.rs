@@ -9,6 +9,7 @@ use std::future;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
+use crate::timeouts::{DNS_FALLBACK_LOOKUP_TIMEOUTS, DNS_SYSTEM_LOOKUP_TIMEOUT};
 use nonzero_ext::nonzero;
 use oneshot_broadcast::Sender;
 use tokio::time::Instant;
@@ -97,14 +98,17 @@ impl DnsResolver {
             RootCertificates::Native,
         );
         let custom_resolver = Box::new(CustomDnsResolver::<DohTransport>::new(connection_params));
+        let fallback_lookups = DNS_FALLBACK_LOOKUP_TIMEOUTS
+            .iter()
+            .map(|timeout| (custom_resolver.clone() as Box<dyn DnsLookup>, *timeout));
+
+        let mut lookup_options: Vec<(Box<dyn DnsLookup>, Duration)> =
+            Vec::with_capacity(fallback_lookups.len() + 2);
+        lookup_options.push((Box::new(SystemDnsLookup), DNS_SYSTEM_LOOKUP_TIMEOUT));
+        lookup_options.extend(fallback_lookups);
+        lookup_options.push((Box::new(StaticDnsMap(static_map)), Duration::from_secs(1)));
         DnsResolver {
-            lookup_options: Arc::new(vec![
-                (Box::new(SystemDnsLookup), Duration::from_secs(2)),
-                (custom_resolver.clone(), Duration::from_secs(5)),
-                (custom_resolver.clone(), Duration::from_secs(10)),
-                (custom_resolver.clone(), Duration::from_secs(15)),
-                (Box::new(StaticDnsMap(static_map)), Duration::from_secs(1)),
-            ]),
+            lookup_options: Arc::new(lookup_options),
             state: Default::default(),
         }
     }

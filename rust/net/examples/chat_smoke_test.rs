@@ -99,12 +99,13 @@ async fn test_connection(
     env: &libsignal_net::env::Env<'static, Svr3Env<'static>>,
     connection_params: Vec<ConnectionParams>,
 ) -> Result<(), ChatServiceError> {
+    let one_route_connect_timeout = Duration::from_secs(5);
     let dns_resolver = DnsResolver::new_with_static_fallback(env.static_fallback());
     let transport_connector = DirectConnector::new(dns_resolver);
     let chat_endpoint = PathAndQuery::from_static(WEB_SOCKET_PATH);
-    let chat_ws_config = make_ws_config(chat_endpoint, Duration::from_secs(5));
+    let chat_ws_config = make_ws_config(chat_endpoint, one_route_connect_timeout);
     let connection =
-        EndpointConnection::new_multi(connection_params, Duration::from_secs(5), chat_ws_config);
+        EndpointConnection::new_multi(connection_params, one_route_connect_timeout, chat_ws_config);
 
     let (incoming_tx, _incoming_rx) = mpsc::channel(1);
     let chat = chat_service(

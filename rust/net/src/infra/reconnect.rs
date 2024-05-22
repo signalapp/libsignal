@@ -505,6 +505,7 @@ mod test {
     use std::sync::{Arc, Mutex};
     use std::time::Duration;
 
+    use crate::timeouts::{CONNECTION_ROUTE_COOLDOWN_INTERVALS, CONNECTION_ROUTE_MAX_COOLDOWN};
     use assert_matches::assert_matches;
     use async_trait::async_trait;
     use futures_util::FutureExt;
@@ -514,9 +515,7 @@ mod test {
 
     use super::*;
     use crate::infra::certs::RootCertificates;
-    use crate::infra::connection_manager::{
-        SingleRouteThrottlingConnectionManager, COOLDOWN_INTERVALS, MAX_COOLDOWN_INTERVAL,
-    };
+    use crate::infra::connection_manager::SingleRouteThrottlingConnectionManager;
     use crate::infra::test::shared::{
         TestError, LONG_CONNECTION_TIME, NORMAL_CONNECTION_TIME, TIMEOUT_DURATION,
         TIME_ADVANCE_VALUE,
@@ -813,7 +812,7 @@ mod test {
 
         // At this point, `service_with_reconnect` tried multiple times to connect
         // and hit the cooldown. Let's advance time to make sure next attempt will be made.
-        time::advance(MAX_COOLDOWN_INTERVAL).await;
+        time::advance(CONNECTION_ROUTE_MAX_COOLDOWN).await;
 
         connector.set_service_healthy(true);
         let connection_result = service_with_reconnect.connect_from_inactive().await;
@@ -833,7 +832,7 @@ mod test {
 
         // At this point, `service_with_reconnect` tried multiple times to connect
         // and hit the cooldown. Let's advance time to make sure next attempt will be made.
-        time::advance(MAX_COOLDOWN_INTERVAL).await;
+        time::advance(CONNECTION_ROUTE_MAX_COOLDOWN).await;
 
         connector.set_time_to_connect(NORMAL_CONNECTION_TIME);
         let connection_result = service_with_reconnect.connect_from_inactive().await;
@@ -859,11 +858,11 @@ mod test {
         sleep_and_catch_up(NORMAL_CONNECTION_TIME).await;
         assert_eq!(connector.attempts.load(Ordering::Relaxed), 2);
 
-        sleep_and_catch_up(COOLDOWN_INTERVALS[0] + NORMAL_CONNECTION_TIME).await;
+        sleep_and_catch_up(CONNECTION_ROUTE_COOLDOWN_INTERVALS[0] + NORMAL_CONNECTION_TIME).await;
         assert_eq!(connector.attempts.load(Ordering::Relaxed), 3);
         assert_matches!(service_with_reconnect.service().await, Err(_));
 
-        sleep_and_catch_up(COOLDOWN_INTERVALS[1] + NORMAL_CONNECTION_TIME).await;
+        sleep_and_catch_up(CONNECTION_ROUTE_COOLDOWN_INTERVALS[1] + NORMAL_CONNECTION_TIME).await;
         assert_eq!(connector.attempts.load(Ordering::Relaxed), 4);
         assert_matches!(service_with_reconnect.service().await, Err(_));
 
@@ -871,7 +870,7 @@ mod test {
         // letting next cooldown interval pass and checking again
         connector.set_service_healthy(true);
 
-        sleep_and_catch_up(COOLDOWN_INTERVALS[2] + NORMAL_CONNECTION_TIME).await;
+        sleep_and_catch_up(CONNECTION_ROUTE_COOLDOWN_INTERVALS[2] + NORMAL_CONNECTION_TIME).await;
         assert_eq!(connector.attempts.load(Ordering::Relaxed), 5);
         assert_matches!(service_with_reconnect.service().await, Ok(_));
     }
@@ -895,18 +894,18 @@ mod test {
         sleep_and_catch_up(NORMAL_CONNECTION_TIME).await;
         assert_eq!(connector.attempts.load(Ordering::Relaxed), 2);
 
-        sleep_and_catch_up(COOLDOWN_INTERVALS[0] + NORMAL_CONNECTION_TIME).await;
+        sleep_and_catch_up(CONNECTION_ROUTE_COOLDOWN_INTERVALS[0] + NORMAL_CONNECTION_TIME).await;
         assert_eq!(connector.attempts.load(Ordering::Relaxed), 3);
         assert_matches!(service_with_reconnect.service().await, Err(_));
 
-        sleep_and_catch_up(COOLDOWN_INTERVALS[1] + NORMAL_CONNECTION_TIME).await;
+        sleep_and_catch_up(CONNECTION_ROUTE_COOLDOWN_INTERVALS[1] + NORMAL_CONNECTION_TIME).await;
         assert_eq!(connector.attempts.load(Ordering::Relaxed), 4);
         assert_matches!(service_with_reconnect.service().await, Err(_));
 
         // now we decide to disconnect, and we need to make sure we're not making
         // any more attempts
         service_with_reconnect.disconnect().await;
-        for interval in COOLDOWN_INTERVALS.into_iter().skip(2) {
+        for interval in CONNECTION_ROUTE_COOLDOWN_INTERVALS.into_iter().skip(2) {
             sleep_and_catch_up(interval + NORMAL_CONNECTION_TIME).await;
             assert_eq!(connector.attempts.load(Ordering::Relaxed), 4);
             assert_matches!(

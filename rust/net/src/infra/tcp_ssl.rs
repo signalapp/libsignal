@@ -6,8 +6,8 @@
 use std::net::IpAddr;
 use std::num::NonZeroU16;
 use std::sync::Arc;
-use std::time::Duration;
 
+use crate::timeouts::TCP_CONNECTION_ATTEMPT_DELAY;
 use async_trait::async_trait;
 use boring::ssl::{ConnectConfiguration, SslConnector, SslMethod};
 use futures_util::TryFutureExt;
@@ -23,8 +23,6 @@ use crate::infra::{
     Alpn, ConnectionInfo, ConnectionParams, RouteType, StreamAndInfo, TransportConnector,
 };
 use crate::utils::first_ok;
-
-const CONNECTION_ATTEMPT_DELAY: Duration = Duration::from_millis(200);
 
 #[derive(Clone)]
 pub enum TcpSslConnector {
@@ -240,7 +238,7 @@ async fn connect_tcp(
     // that incorporates the delay based on its position in the list.
     // This way we can start all futures at once and simply wait for the first one to complete successfully.
     let staggered_futures = dns_lookup.into_iter().enumerate().map(|(idx, ip)| {
-        let delay = CONNECTION_ATTEMPT_DELAY * idx.try_into().unwrap();
+        let delay = TCP_CONNECTION_ATTEMPT_DELAY * idx.try_into().unwrap();
         async move {
             if !delay.is_zero() {
                 tokio::time::sleep(delay).await;

@@ -466,3 +466,36 @@ async fn ServerMessageAck_Send(ack: &ServerMessageAck) -> Result<(), ChatService
     let future = ack.inner.take().expect("a message is only acked once");
     future.await
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::net::{ConnectionManager, ConnectionManager_set_proxy, Environment};
+    use assert_matches::assert_matches;
+    use libsignal_net::chat::ChatServiceError;
+
+    #[tokio::test(start_paused = true)]
+    async fn cannon_connect_through_invalid_proxy() {
+        let cm = ConnectionManager::new(Environment::Staging, "test-user-agent".to_string());
+
+        assert_matches!(
+            ConnectionManager_set_proxy(&cm, "signalfoundation.org".to_string(), 0),
+            Err(_)
+        );
+        assert_matches!(
+            ConnectionManager_set_proxy(&cm, "signalfoundation.org".to_string(), 100_000),
+            Err(_)
+        );
+
+        assert_matches!(
+            ConnectionManager_set_proxy(&cm, "signalfoundation.org".to_string(), -1),
+            Err(_)
+        );
+
+        let chat = ChatService_new(&cm, "".to_string(), "".to_string());
+        assert_matches!(
+            ChatService_connect_unauth(&chat).await,
+            Err(ChatServiceError::AllConnectionRoutesFailed { .. })
+        );
+    }
+}

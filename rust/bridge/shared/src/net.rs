@@ -6,7 +6,6 @@
 use std::convert::TryInto as _;
 use std::num::{NonZeroU16, NonZeroU32};
 use std::panic::RefUnwindSafe;
-use std::time::Duration;
 
 use base64::prelude::{Engine, BASE64_STANDARD};
 use http::uri::PathAndQuery;
@@ -26,6 +25,7 @@ use libsignal_net::infra::tcp_ssl::{
 use libsignal_net::infra::{make_ws_config, EndpointConnection};
 use libsignal_net::svr::{self, SvrConnection};
 use libsignal_net::svr3::{self, OpaqueMaskedShareSet, PpssOps as _};
+use libsignal_net::timeouts::ONE_ROUTE_CONNECTION_TIMEOUT;
 use rand::rngs::OsRng;
 
 use crate::support::*;
@@ -68,7 +68,6 @@ pub struct ConnectionManager {
 impl RefUnwindSafe for ConnectionManager {}
 
 impl ConnectionManager {
-    const DEFAULT_CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
     fn new(environment: Environment, user_agent: String) -> Self {
         log::info!("Initializing connection manager for {}...", &environment);
         let dns_resolver =
@@ -81,11 +80,11 @@ impl ConnectionManager {
             .chat_domain_config
             .connection_params_with_fallback();
         let chat_connection_params = add_user_agent_header(chat_connection_params, &user_agent);
-        let chat_ws_config = make_ws_config(chat_endpoint, Self::DEFAULT_CONNECT_TIMEOUT);
+        let chat_ws_config = make_ws_config(chat_endpoint, ONE_ROUTE_CONNECTION_TIMEOUT);
         Self {
             chat: EndpointConnection::new_multi(
                 chat_connection_params,
-                Self::DEFAULT_CONNECT_TIMEOUT,
+                ONE_ROUTE_CONNECTION_TIMEOUT,
                 chat_ws_config,
             ),
             cdsi: Self::endpoint_connection(&environment.env().cdsi, &user_agent),
@@ -107,7 +106,7 @@ impl ConnectionManager {
         EnclaveEndpointConnection::new_multi(
             endpoint.mr_enclave,
             params,
-            Self::DEFAULT_CONNECT_TIMEOUT,
+            ONE_ROUTE_CONNECTION_TIMEOUT,
         )
     }
 }
@@ -271,7 +270,6 @@ async fn svr3_connect<'a>(
 #[cfg(test)]
 mod test {
     use super::*;
-
     use test_case::test_case;
 
     #[test_case(Environment::Staging; "staging")]

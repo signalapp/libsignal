@@ -308,13 +308,13 @@ impl<E: EnclaveKind> EnclaveEndpointConnection<E, MultiRouteConnectionManager> {
     pub fn new_multi(
         mr_enclave: MrEnclave<&'static [u8], E>,
         connection_params: impl IntoIterator<Item = ConnectionParams>,
-        connect_timeout: Duration,
+        one_route_connect_timeout: Duration,
     ) -> Self {
         Self {
             endpoint_connection: EndpointConnection::new_multi(
                 connection_params,
-                connect_timeout,
-                make_ws_config(E::url_path(mr_enclave.as_ref()), connect_timeout),
+                one_route_connect_timeout,
+                make_ws_config(E::url_path(mr_enclave.as_ref()), one_route_connect_timeout),
             ),
             params: EndpointParams {
                 mr_enclave,
@@ -411,7 +411,7 @@ mod test {
         }
     }
 
-    const CONNECT_TIMEOUT: tokio::time::Duration = tokio::time::Duration::from_secs(10);
+    const CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
 
     async fn enclave_connect<C: ConnectionManager>(
         manager: C,

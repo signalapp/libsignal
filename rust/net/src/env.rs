@@ -7,7 +7,6 @@ use std::collections::HashMap;
 use std::iter;
 use std::net::{Ipv4Addr, Ipv6Addr};
 use std::num::NonZeroU16;
-use std::time::Duration;
 
 use const_str::ip_addr;
 use nonzero_ext::nonzero;
@@ -21,8 +20,6 @@ use crate::infra::{
     ConnectionParams, DnsSource, HttpRequestDecorator, HttpRequestDecoratorSeq, RouteType,
 };
 
-pub(crate) const WS_KEEP_ALIVE_INTERVAL: Duration = Duration::from_secs(5);
-pub(crate) const WS_MAX_IDLE_TIME: Duration = Duration::from_secs(15);
 const DEFAULT_HTTPS_PORT: NonZeroU16 = nonzero!(443_u16);
 
 const DOMAIN_CONFIG_CHAT: DomainConfig = DomainConfig {

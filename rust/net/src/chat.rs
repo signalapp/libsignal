@@ -21,7 +21,9 @@ use crate::utils::basic_authorization;
 
 pub mod chat_reconnect;
 mod error;
+use crate::timeouts::MULTI_ROUTE_CONNECTION_TIMEOUT;
 pub use error::ChatServiceError;
+
 pub mod server_requests;
 pub mod ws;
 
@@ -29,8 +31,6 @@ pub type MessageProto = proto::chat_websocket::WebSocketMessage;
 pub type RequestProto = proto::chat_websocket::WebSocketRequestMessage;
 pub type ResponseProto = proto::chat_websocket::WebSocketResponseMessage;
 pub type ChatMessageType = proto::chat_websocket::web_socket_message::Type;
-
-const TOTAL_CONNECTION_TIMEOUT: Duration = Duration::from_secs(5);
 
 #[async_trait]
 pub trait ChatService {
@@ -440,7 +440,7 @@ fn build_authorized_chat_service(
             header_auth_decorator.clone(),
         ),
         connection_manager_ws.clone(),
-        TOTAL_CONNECTION_TIMEOUT,
+        MULTI_ROUTE_CONNECTION_TIMEOUT,
     );
 
     AuthorizedChatService {
@@ -458,7 +458,7 @@ fn build_anonymous_chat_service(
     let chat_over_ws_anonymous = ServiceWithReconnect::new(
         service_connector_ws.clone(),
         connection_manager_ws.clone(),
-        TOTAL_CONNECTION_TIMEOUT,
+        MULTI_ROUTE_CONNECTION_TIMEOUT,
     );
 
     AnonymousChatService {

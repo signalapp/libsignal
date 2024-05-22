@@ -7,8 +7,8 @@ use std::cmp::min;
 use std::collections::HashMap;
 use std::net::{Ipv4Addr, Ipv6Addr};
 use std::sync::Arc;
-use std::time::Duration;
 
+use crate::timeouts::{DNS_CALL_BACKGROUND_TIMEOUT, DNS_RESOLUTION_DELAY};
 use async_trait::async_trait;
 use either::Either;
 use futures_util::stream::BoxStream;
@@ -26,9 +26,6 @@ use crate::infra::{dns, DnsSource};
 pub type DnsIpv4Result = Expiring<Vec<Ipv4Addr>>;
 pub type DnsIpv6Result = Expiring<Vec<Ipv6Addr>>;
 pub type DnsQueryResult = Either<DnsIpv4Result, DnsIpv6Result>;
-
-const RESOLUTION_DELAY: Duration = Duration::from_millis(50);
-const LONG_TIMEOUT: Duration = Duration::from_secs(30);
 
 /// Implementors of this trait encapsulate the logic of sending queries to the DNS server
 /// and receiving resposnes.
@@ -120,7 +117,7 @@ impl<T: DnsTransport + Sync + 'static> CustomDnsResolver<T> {
         .await?;
         let (ipv4_res_rx, ipv6_res_rx) = self.send_dns_queries(transport, request);
         let (maybe_ipv4, maybe_ipv6) =
-            results_within_interval(ipv4_res_rx, ipv6_res_rx, RESOLUTION_DELAY).await;
+            results_within_interval(ipv4_res_rx, ipv6_res_rx, DNS_RESOLUTION_DELAY).await;
         let ipv4s = maybe_ipv4.map_or(vec![], |r| r.data);
         let ipv6s = maybe_ipv6.map_or(vec![], |r| r.data);
         match LookupResult::new(T::dns_source(), ipv4s, ipv6s) {
@@ -153,7 +150,7 @@ impl<T: DnsTransport + Sync + 'static> CustomDnsResolver<T> {
         // Reference: https://datatracker.ietf.org/doc/html/rfc8305#section-3
         tokio::spawn(async move {
             let started_at = Instant::now();
-            let timeout_at = started_at + LONG_TIMEOUT;
+            let timeout_at = started_at + DNS_CALL_BACKGROUND_TIMEOUT;
 
             let mut stream = match transport.send_queries(request.clone()).await {
                 Ok(stream) => stream,
@@ -254,7 +251,8 @@ impl<T: DnsTransport + Sync + 'static> CustomDnsResolver<T> {
 #[cfg(test)]
 pub(crate) mod test {
     use crate::infra::dns::custom_resolver::{
-        CustomDnsResolver, DnsQueryResult, DnsTransport, LONG_TIMEOUT, RESOLUTION_DELAY,
+        CustomDnsResolver, DnsQueryResult, DnsTransport, DNS_CALL_BACKGROUND_TIMEOUT,
+        DNS_RESOLUTION_DELAY,
     };
     use crate::infra::dns::dns_errors::Error;
     use crate::infra::dns::dns_lookup::DnsLookupRequest;
@@ -448,8 +446,8 @@ pub(crate) mod test {
     async fn works_correctly_when_both_results_are_within_resolution_delay() {
         let (transport, resolver) =
             TestDnsTransportWithTwoResponses::transport_and_custom_dns_resolver(|_, q_num, txs| {
-                let first = LONG_TIMEOUT / 4;
-                let second = first + RESOLUTION_DELAY / 2;
+                let first = DNS_CALL_BACKGROUND_TIMEOUT / 4;
+                let second = first + DNS_RESOLUTION_DELAY / 2;
                 let (timeout_1, timeout_2) = if q_num == 1 {
                     (first, second)
                 } else {
@@ -471,8 +469,8 @@ pub(crate) mod test {
     #[tokio::test(start_paused = true)]
     async fn works_correctly_when_second_response_is_after_resolution_delay() {
         let resolver = TestDnsTransportWithTwoResponses::custom_dns_resolver(|_, q_num, txs| {
-            let first = LONG_TIMEOUT / 4;
-            let second = first + RESOLUTION_DELAY * 2;
+            let first = DNS_CALL_BACKGROUND_TIMEOUT / 4;
+            let second = first + DNS_RESOLUTION_DELAY * 2;
             let (timeout_1, timeout_2) = if q_num == 1 {
                 (first, second)
             } else {
@@ -508,9 +506,9 @@ pub(crate) mod test {
             let res_1 = ok_query_result_ipv4(Duration::ZERO, IP_V4_LIST_1);
             let res_2 = ok_query_result_ipv6(Duration::ZERO, IP_V6_LIST_1);
             let res_3 = Err(Error::NoData);
-            let timeout_1 = LONG_TIMEOUT / 4;
-            let timeout_2 = timeout_1 + RESOLUTION_DELAY / 3;
-            let timeout_3 = timeout_1 + RESOLUTION_DELAY / 2;
+            let timeout_1 = DNS_CALL_BACKGROUND_TIMEOUT / 4;
+            let timeout_2 = timeout_1 + DNS_RESOLUTION_DELAY / 3;
+            let timeout_3 = timeout_1 + DNS_RESOLUTION_DELAY / 2;
             respond_after_timeout(timeout_1, tx_1, res_1);
             respond_after_timeout(timeout_2, tx_2, res_2);
             respond_after_timeout(timeout_3, tx_3, res_3);
@@ -522,7 +520,7 @@ pub(crate) mod test {
     #[tokio::test(start_paused = true)]
     async fn returns_second_result_if_first_result_fails() {
         let resolver = TestDnsTransportWithTwoResponses::custom_dns_resolver(|_, _, txs| {
-            let timeout_2 = RESOLUTION_DELAY * 2;
+            let timeout_2 = DNS_RESOLUTION_DELAY * 2;
             let [tx_1, tx_2] = txs;
             let res_1 = Err(Error::LookupFailed);
             let res_2 = ok_query_result_ipv6(Duration::ZERO, IP_V6_LIST_1);
@@ -578,8 +576,8 @@ pub(crate) mod test {
     #[tokio::test(start_paused = true)]
     async fn results_cached_even_if_received_late() {
         // second result is sent within the `LONG_TIMEOUT`, but after the `RESOLUTION_DELAY`
-        let timeout_1 = LONG_TIMEOUT / 4;
-        let timeout_2 = LONG_TIMEOUT / 2;
+        let timeout_1 = DNS_CALL_BACKGROUND_TIMEOUT / 4;
+        let timeout_2 = DNS_CALL_BACKGROUND_TIMEOUT / 2;
         let all_results_received_time = Instant::now() + timeout_2;
         let (transport, resolver) =
             TestDnsTransportWithTwoResponses::transport_and_custom_dns_resolver(

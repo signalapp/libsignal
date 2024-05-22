@@ -613,8 +613,8 @@ pub(crate) mod testutil {
     use tokio::io::DuplexStream;
     use tokio_tungstenite::WebSocketStream;
 
-    use crate::env::{WS_KEEP_ALIVE_INTERVAL, WS_MAX_IDLE_TIME};
     use crate::infra::{AsyncDuplexStream, DnsSource, RouteType};
+    use crate::timeouts::{WS_KEEP_ALIVE_INTERVAL, WS_MAX_IDLE_INTERVAL};
 
     use super::*;
 
@@ -645,7 +645,7 @@ pub(crate) mod testutil {
             channel,
             mock_connection_info(),
             WS_KEEP_ALIVE_INTERVAL,
-            WS_MAX_IDLE_TIME,
+            WS_MAX_IDLE_INTERVAL,
         )
         .0
     }

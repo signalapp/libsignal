@@ -152,19 +152,13 @@ describe('chat service api', () => {
     }).timeout(10000);
   });
 
-  it('cannot connect through an invalid proxy', async () => {
+  it('cannot connect through an invalid proxy', () => {
     // The default TLS proxy config doesn't support staging, so we connect to production.
     const net = new Net(Environment.Production, userAgent);
     expect(() => net.setProxy('signalfoundation.org', 0)).throws(Error);
     expect(() => net.setProxy('signalfoundation.org', 100_000)).throws(Error);
     expect(() => net.setProxy('signalfoundation.org', -1)).throws(Error);
     expect(() => net.setProxy('signalfoundation.org', 0.1)).throws(Error);
-
-    const chatService = net.newChatService();
-    // Make sure we *can't* connect.
-    await expect(chatService.connectUnauthenticated()).to.be.rejectedWith(
-      LibSignalErrorBase
-    );
   }).timeout(10000);
 });
 
