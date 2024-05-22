@@ -27,8 +27,7 @@ let package = Package(
         .systemLibrary(name: "SignalFfi"),
         .target(
             name: "LibSignalClient",
-            dependencies: ["SignalFfi"],
-            exclude: ["Logging.m"]
+            dependencies: ["SignalFfi"]
         ),
         .testTarget(
             name: "LibSignalClientTests",
