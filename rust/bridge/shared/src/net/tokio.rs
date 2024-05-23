@@ -32,7 +32,12 @@ bridge_handle!(TokioAsyncContext, clone = false);
 #[bridge_fn]
 fn TokioAsyncContext_new() -> TokioAsyncContext {
     TokioAsyncContext {
-        rt: tokio::runtime::Runtime::new().expect("failed to create runtime"),
+        rt: tokio::runtime::Builder::new_multi_thread()
+            .enable_io()
+            .enable_time()
+            .thread_name("libsignal-tokio-worker")
+            .build()
+            .expect("failed to create runtime"),
         tasks: Default::default(),
         next_raw_cancellation_id: AtomicU64::new(1),
     }
