@@ -624,8 +624,7 @@ public final class Native {
   public static native String TESTING_ChatRequestGetMethod(long request);
   public static native String TESTING_ChatRequestGetPath(long request);
   public static native Object TESTING_ChatServiceDebugInfoConvert() throws Exception;
-  public static native void TESTING_ChatServiceErrorConvert() throws Exception;
-  public static native void TESTING_ChatServiceInactiveErrorConvert() throws Exception;
+  public static native void TESTING_ChatServiceErrorConvert(String errorDescription) throws Exception;
   public static native Object TESTING_ChatServiceResponseAndDebugInfoConvert() throws Exception;
   public static native Object TESTING_ChatServiceResponseConvert(boolean bodyPresent) throws Exception;
   public static native void TESTING_ChatService_InjectRawServerRequest(long chat, byte[] bytes);

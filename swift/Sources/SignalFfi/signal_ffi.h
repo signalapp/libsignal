@@ -194,6 +194,8 @@ typedef enum {
   SignalErrorCodeChatServiceInactive = 139,
   SignalErrorCodeSvrDataMissing = 150,
   SignalErrorCodeSvrRestoreFailed = 151,
+  SignalErrorCodeAppExpired = 160,
+  SignalErrorCodeDeviceDeregistered = 161,
 } SignalErrorCode;
 
 /**
@@ -1742,9 +1744,7 @@ SignalFfiError *signal_testing_only_completes_by_cancellation(SignalCPromisebool
 
 SignalFfiError *signal_testing_cdsi_lookup_error_convert(const char *error_description);
 
-SignalFfiError *signal_testing_chat_service_error_convert(void);
-
-SignalFfiError *signal_testing_chat_service_inactive_error_convert(void);
+SignalFfiError *signal_testing_chat_service_error_convert(const char *error_description);
 
 SignalFfiError *signal_testing_chat_service_response_convert(SignalFfiChatResponse *out, bool body_present);
 

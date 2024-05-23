@@ -10,7 +10,11 @@ use crate::infra::ws::WebSocketServiceError;
 #[derive(Debug, thiserror::Error, displaydoc::Display)]
 pub enum ChatServiceError {
     /// websocket error: {0}
-    WebSocket(#[from] WebSocketServiceError),
+    WebSocket(WebSocketServiceError),
+    /// App version too old
+    AppExpired,
+    /// Device deregistered or delinked
+    DeviceDeregistered,
     /// Unexpected text frame received
     UnexpectedFrameReceived,
     /// Request message from the server is missing the `id` field
@@ -34,6 +38,20 @@ pub enum ChatServiceError {
 }
 
 impl LogSafeDisplay for ChatServiceError {}
+
+impl From<WebSocketServiceError> for ChatServiceError {
+    fn from(e: WebSocketServiceError) -> Self {
+        match e {
+            WebSocketServiceError::Http(response) if response.status() == 499 => Self::AppExpired,
+            WebSocketServiceError::Http(response) if response.status() == 403 => {
+                // Technically this only applies to identified sockets,
+                // but unidentified sockets should never produce a 403 anyway.
+                Self::DeviceDeregistered
+            }
+            e => Self::WebSocket(e),
+        }
+    }
+}
 
 impl From<reconnect::ReconnectError> for ChatServiceError {
     fn from(e: reconnect::ReconnectError) -> Self {

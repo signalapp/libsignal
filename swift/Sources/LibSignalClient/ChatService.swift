@@ -210,13 +210,19 @@ public class ChatService: NativeHandleOwner {
         }
     }
 
-    /// Initiates establishing of the underlying authenticated connection to the Chat Service. Once the
-    /// service is connected, all the requests will be using the established connection. Also, if the
-    /// connection is lost for any reason other than the call to ``disconnect()``, an automatic
-    /// reconnect attempt will be made.
+    /// Initiates establishing of the underlying authenticated connection to the Chat Service. Once
+    /// the service is connected, all the requests will be using the established connection. Also,
+    /// if the connection is lost for any reason other than the call to ``disconnect()``, an
+    /// automatic reconnect attempt will be made.
     ///
-    /// Calling this method will result in starting to accept incoming requests from the Chat Service.
-    /// You should set a listener first using ``setListener(_:)``.
+    /// Calling this method will result in starting to accept incoming requests from the Chat
+    /// Service. You should set a listener first using ``setListener(_:)``.
+    ///
+    /// - Throws: ``SignalError/appExpired(_:)`` if the current app version is too old (as judged by
+    ///   the server).
+    /// - Throws: ``SignalError/deviceDeregistered(_:)`` if the current device has been deregistered
+    ///   or delinked.
+    /// - Throws: Other ``SignalError``s for other kinds of failures.
     @discardableResult
     public func connectAuthenticated() async throws -> DebugInfo {
         let rawDebugInfo = try await self.tokioAsyncContext.invokeAsyncFunction { promise, tokioAsyncContext in
@@ -227,10 +233,14 @@ public class ChatService: NativeHandleOwner {
         return DebugInfo(consuming: rawDebugInfo)
     }
 
-    /// Initiates establishing of the underlying authenticated connection to the Chat Service. Once the
-    /// service is connected, all the requests will be using the established connection. Also, if the
-    /// connection is lost for any reason other than the call to ``disconnect()``, an automatic
-    /// reconnect attempt will be made.
+    /// Initiates establishing of the underlying authenticated connection to the Chat Service. Once
+    /// the service is connected, all the requests will be using the established connection. Also,
+    /// if the connection is lost for any reason other than the call to ``disconnect()``, an
+    /// automatic reconnect attempt will be made.
+    ///
+    /// - Throws: ``SignalError/appExpired(_:)`` if the current app version is too old (as judged by
+    ///   the server).
+    /// - Throws: Other ``SignalError``s for other kinds of failures.
     @discardableResult
     public func connectUnauthenticated() async throws -> DebugInfo {
         let rawDebugInfo = try await self.tokioAsyncContext.invokeAsyncFunction { promise, tokioAsyncContext in

@@ -477,8 +477,7 @@ export function TESTING_ChatRequestGetHeaderValue(request: Wrapper<HttpRequest>,
 export function TESTING_ChatRequestGetMethod(request: Wrapper<HttpRequest>): string;
 export function TESTING_ChatRequestGetPath(request: Wrapper<HttpRequest>): string;
 export function TESTING_ChatServiceDebugInfoConvert(): ChatServiceDebugInfo;
-export function TESTING_ChatServiceErrorConvert(): void;
-export function TESTING_ChatServiceInactiveErrorConvert(): void;
+export function TESTING_ChatServiceErrorConvert(errorDescription: string): void;
 export function TESTING_ChatServiceResponseAndDebugInfoConvert(): ResponseAndDebugInfo;
 export function TESTING_ChatServiceResponseConvert(bodyPresent: boolean): ChatResponse;
 export function TESTING_ChatService_InjectRawServerRequest(chat: Wrapper<Chat>, bytes: Buffer): void;

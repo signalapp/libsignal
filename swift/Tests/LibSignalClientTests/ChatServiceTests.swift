@@ -84,18 +84,45 @@ final class ChatServiceTests: TestCaseBase {
     }
 
     func testConvertError() throws {
-        do {
-            try checkError(signal_testing_chat_service_error_convert())
-            XCTFail("error not thrown")
-        } catch SignalError.connectionTimeoutError(_) {
-            // Okay
+        let failWithError = {
+            try checkError(signal_testing_chat_service_error_convert($0))
+            XCTFail("should have failed")
         }
         do {
-            try checkError(signal_testing_chat_service_inactive_error_convert())
-            XCTFail("error not thrown")
-        } catch SignalError.chatServiceInactive(_) {
-            // Okay
-        }
+            try failWithError("AppExpired")
+        } catch SignalError.appExpired(_) {}
+        do {
+            try failWithError("DeviceDeregistered")
+        } catch SignalError.deviceDeregistered(_) {}
+        do {
+            try failWithError("ServiceInactive")
+        } catch SignalError.chatServiceInactive(_) {}
+
+        do {
+            try failWithError("WebSocket")
+        } catch SignalError.webSocketError(_) {}
+        do {
+            try failWithError("UnexpectedFrameReceived")
+        } catch SignalError.networkProtocolError(_) {}
+        do {
+            try failWithError("ServerRequestMissingId")
+        } catch SignalError.networkProtocolError(_) {}
+        do {
+            try failWithError("IncomingDataInvalid")
+        } catch SignalError.networkProtocolError(_) {}
+        do {
+            try failWithError("Timeout")
+        } catch SignalError.connectionTimeoutError(_) {}
+        do {
+            try failWithError("TimeoutEstablishingConnection")
+        } catch SignalError.connectionTimeoutError(_) {}
+
+        do {
+            try failWithError("FailedToPassMessageToIncomingChannel")
+        } catch SignalError.internalError(_) {}
+        do {
+            try failWithError("RequestHasInvalidHeader")
+        } catch SignalError.internalError(_) {}
     }
 
     func testConstructRequest() throws {

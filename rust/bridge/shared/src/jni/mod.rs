@@ -551,6 +551,14 @@ where
             ClassName("org.signal.libsignal.net.ChatServiceInactiveException"),
             error,
         ),
+        SignalJniError::ChatService(ChatServiceError::AppExpired) => (
+            ClassName("org.signal.libsignal.net.AppExpiredException"),
+            error,
+        ),
+        SignalJniError::ChatService(ChatServiceError::DeviceDeregistered) => (
+            ClassName("org.signal.libsignal.net.DeviceDeregisteredException"),
+            error,
+        ),
         SignalJniError::ChatService(_) => (
             ClassName("org.signal.libsignal.net.ChatServiceException"),
             error,

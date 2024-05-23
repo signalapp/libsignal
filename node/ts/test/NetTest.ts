@@ -21,16 +21,31 @@ config.truncateThreshold = 0;
 const userAgent = 'test';
 
 describe('chat service api', () => {
-  it('converts ChatServiceError to native', () => {
-    expect(() => Native.TESTING_ChatServiceErrorConvert())
-      .throws(LibSignalErrorBase)
-      .with.property('code', ErrorCode.IoError);
-  });
+  it('converts errors to native', () => {
+    const cases: Array<[string, ErrorCode]> = [
+      ['AppExpired', ErrorCode.AppExpired],
+      ['DeviceDeregistered', ErrorCode.DeviceDelinked],
+      ['ServiceInactive', ErrorCode.ChatServiceInactive],
 
-  it('converts ChatServiceError::ServiceInactive to native', () => {
-    expect(() => Native.TESTING_ChatServiceInactiveErrorConvert())
-      .throws(LibSignalErrorBase)
-      .with.property('code', ErrorCode.ChatServiceInactive);
+      ['WebSocket', ErrorCode.IoError],
+      ['UnexpectedFrameReceived', ErrorCode.IoError],
+      ['ServerRequestMissingId', ErrorCode.IoError],
+      ['IncomingDataInvalid', ErrorCode.IoError],
+      ['Timeout', ErrorCode.IoError],
+      ['TimeoutEstablishingConnection', ErrorCode.IoError],
+
+      // These two are more of internal errors, but they should never happen anyway.
+      ['FailedToPassMessageToIncomingChannel', ErrorCode.IoError],
+      ['RequestHasInvalidHeader', ErrorCode.IoError],
+    ];
+    cases.forEach((testCase) => {
+      const [name, expectedCode] = testCase;
+      expect(() => Native.TESTING_ChatServiceErrorConvert(name))
+        .throws(LibSignalErrorBase)
+        .to.include({
+          code: expectedCode,
+        });
+    });
   });
 
   it('converts Response object to native', () => {

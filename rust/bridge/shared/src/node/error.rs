@@ -140,7 +140,6 @@ const SVR3_DATA_MISSING: &str = "SvrDataMissing";
 const SVR3_REQUEST_FAILED: &str = "SvrRequestFailed";
 const SVR3_RESTORE_FAILED: &str = "SvrRestoreFailed";
 const UNSUPPORTED_MEDIA_INPUT: &str = "UnsupportedMediaInput";
-const CHAT_SERVICE_INACTIVE: &str = "ChatServiceInactive";
 
 impl SignalNodeError for neon::result::Throw {
     fn throw<'a>(
@@ -406,7 +405,10 @@ impl SignalNodeError for libsignal_net::chat::ChatServiceError {
         operation_name: &str,
     ) -> JsResult<'a, JsValue> {
         let name = match self {
-            ChatServiceError::ServiceInactive => Some(CHAT_SERVICE_INACTIVE),
+            ChatServiceError::ServiceInactive => Some("ChatServiceInactive"),
+            ChatServiceError::AppExpired => Some("AppExpired"),
+            ChatServiceError::DeviceDeregistered => Some("DeviceDelinked"),
+            // TODO: Distinguish retryable errors from proper failures?
             _ => Some(IO_ERROR),
         };
         let message = self.to_string();

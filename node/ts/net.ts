@@ -7,11 +7,14 @@ import type { ReadonlyDeep } from 'type-fest';
 import * as Native from '../Native';
 import { Aci } from './Address';
 import {
+  AppExpiredError,
+  ChatServiceInactive,
+  DeviceDelinkedError,
   IoError,
   SvrDataMissingError,
   SvrRestoreFailedError,
   SvrRequestFailedError,
-  ChatServiceInactive,
+  LibSignalError,
 } from './Errors';
 import { Wrapper } from '../Native';
 
@@ -133,6 +136,9 @@ export class ChatService {
    * the service is connected, all the requests will be using the established connection. Also, if
    * the connection is lost for any reason other than the call to {@link #disconnect()}, an
    * automatic reconnect attempt will be made.
+   *
+   * @throws {AppExpiredError} if the current app version is too old (as judged by the server).
+   * @throws {LibSignalError} with other codes for other failures.
    */
   connectUnauthenticated(options?: {
     abortSignal?: AbortSignal;
@@ -150,6 +156,10 @@ export class ChatService {
    * reconnect attempt will be made.
    *
    * Calling this method will result in starting to accept incoming requests from the Chat Service.
+   *
+   * @throws {AppExpiredError} if the current app version is too old (as judged by the server).
+   * @throws {DeviceDelinkedError} if the current device has been delinked.
+   * @throws {LibSignalError} with other codes for other failures.
    */
   connectAuthenticated(options?: {
     abortSignal?: AbortSignal;

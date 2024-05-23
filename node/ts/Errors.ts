@@ -48,6 +48,8 @@ export enum ErrorCode {
   SvrRestoreFailed,
 
   ChatServiceInactive,
+  AppExpired,
+  DeviceDelinked,
 
   Cancelled,
 }
@@ -217,6 +219,14 @@ export type ChatServiceInactive = LibSignalErrorBase & {
   code: ErrorCode.ChatServiceInactive;
 };
 
+export type AppExpiredError = LibSignalErrorBase & {
+  code: ErrorCode.AppExpired;
+};
+
+export type DeviceDelinkedError = LibSignalErrorBase & {
+  code: ErrorCode.DeviceDelinked;
+};
+
 export type SvrDataMissingError = LibSignalErrorBase & {
   code: ErrorCode.SvrDataMissing;
 };
@@ -267,4 +277,6 @@ export type LibSignalError =
   | SvrRequestFailedError
   | UnsupportedMediaInputError
   | ChatServiceInactive
+  | AppExpiredError
+  | DeviceDelinkedError
   | CancellationError;

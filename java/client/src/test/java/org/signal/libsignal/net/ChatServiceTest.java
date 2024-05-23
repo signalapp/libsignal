@@ -75,14 +75,30 @@ public class ChatServiceTest {
     assertEquals(IpType.IPv4, debugInfo.ipType());
   }
 
-  @Test(expected = ChatServiceException.class)
-  public void testConvertError() throws Exception {
-    Native.TESTING_ChatServiceErrorConvert();
+  @Test
+  public void cdsiLookupErrorConvert() {
+    assertChatServiceErrorIs("AppExpired", AppExpiredException.class);
+    assertChatServiceErrorIs("DeviceDeregistered", DeviceDeregisteredException.class);
+    assertChatServiceErrorIs("ServiceInactive", ChatServiceInactiveException.class);
+
+    assertChatServiceErrorIs("WebSocket", ChatServiceException.class);
+    assertChatServiceErrorIs("UnexpectedFrameReceived", ChatServiceException.class);
+    assertChatServiceErrorIs("ServerRequestMissingId", ChatServiceException.class);
+    assertChatServiceErrorIs("IncomingDataInvalid", ChatServiceException.class);
+    assertChatServiceErrorIs("Timeout", ChatServiceException.class);
+    assertChatServiceErrorIs("TimeoutEstablishingConnection", ChatServiceException.class);
+
+    // These two are more of internal errors, but they should never happen anyway.
+    assertChatServiceErrorIs("FailedToPassMessageToIncomingChannel", ChatServiceException.class);
+    assertChatServiceErrorIs("RequestHasInvalidHeader", ChatServiceException.class);
   }
 
-  @Test(expected = ChatServiceInactiveException.class)
-  public void testConvertInactiveError() throws Exception {
-    Native.TESTING_ChatServiceInactiveErrorConvert();
+  private static <E extends Throwable> E assertChatServiceErrorIs(
+      String errorDescription, Class<E> expectedErrorType) {
+    return assertThrows(
+        "for " + errorDescription,
+        expectedErrorType,
+        () -> Native.TESTING_ChatServiceErrorConvert(errorDescription));
   }
 
   @Test

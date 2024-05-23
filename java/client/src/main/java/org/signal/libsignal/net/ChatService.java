@@ -63,6 +63,10 @@ public class ChatService extends NativeHandleGuard.SimpleOwner {
    * <p>Calling this method will result in starting to accept incoming requests from the Chat
    * Service.
    *
+   * <p>The resulting future may fail with {@link AppExpiredException} or {@link
+   * DeviceDeregisteredException} (inside an {@link java.util.concurrent.ExecutionException
+   * ExecutionException}), along with other {@link ChatServiceException}s.
+   *
    * @return a future with the result of the connection attempt (either a {@link DebugInfo} or an
    *     error).
    */
@@ -80,6 +84,10 @@ public class ChatService extends NativeHandleGuard.SimpleOwner {
    * the service is connected, all the requests will be using the established connection. Also, if
    * the connection is lost for any reason other than the call to {@link #disconnect()}, an
    * automatic reconnect attempt will be made.
+   *
+   * <p>The resulting future may fail with {@link AppExpiredException} (inside an {@link
+   * java.util.concurrent.ExecutionException ExecutionException}), along with other {@link
+   * ChatServiceException}s.
    *
    * @return a future with the result of the connection attempt (either a {@link DebugInfo} or an
    *     error).

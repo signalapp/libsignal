@@ -41,6 +41,8 @@ pub enum SignalFfiError {
     ConnectionTimedOut,
     ConnectionFailed,
     ChatServiceInactive,
+    AppExpired,
+    DeviceDeregistered,
     NetworkProtocol(String),
     CdsiInvalidToken,
     RateLimited {
@@ -85,6 +87,8 @@ impl fmt::Display for SignalFfiError {
             SignalFfiError::ConnectionTimedOut => write!(f, "Connect timed out"),
             SignalFfiError::ConnectionFailed => write!(f, "Connection failed"),
             SignalFfiError::ChatServiceInactive => write!(f, "Chat service inactive"),
+            SignalFfiError::AppExpired => write!(f, "App expired"),
+            SignalFfiError::DeviceDeregistered => write!(f, "Device deregistered or delinked"),
             SignalFfiError::WebSocket(e) => write!(f, "WebSocket error: {e}"),
             SignalFfiError::CdsiInvalidToken => write!(f, "CDSI request token was invalid"),
             SignalFfiError::NetworkProtocol(message) => write!(f, "Protocol error: {}", message),
@@ -271,6 +275,8 @@ impl From<ChatServiceError> for SignalFfiError {
                 SignalFfiError::ConnectionTimedOut
             }
             ChatServiceError::ServiceInactive => SignalFfiError::ChatServiceInactive,
+            ChatServiceError::AppExpired => SignalFfiError::AppExpired,
+            ChatServiceError::DeviceDeregistered => SignalFfiError::DeviceDeregistered,
         }
     }
 }

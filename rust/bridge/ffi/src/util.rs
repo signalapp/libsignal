@@ -90,6 +90,9 @@ pub enum SignalErrorCode {
 
     SvrDataMissing = 150,
     SvrRestoreFailed = 151,
+
+    AppExpired = 160,
+    DeviceDeregistered = 161,
 }
 
 impl From<&SignalFfiError> for SignalErrorCode {
@@ -328,6 +331,8 @@ impl From<&SignalFfiError> for SignalErrorCode {
             SignalFfiError::ConnectionTimedOut => SignalErrorCode::ConnectionTimedOut,
             SignalFfiError::ConnectionFailed => SignalErrorCode::ConnectionFailed,
             SignalFfiError::ChatServiceInactive => SignalErrorCode::ChatServiceInactive,
+            SignalFfiError::AppExpired => SignalErrorCode::AppExpired,
+            SignalFfiError::DeviceDeregistered => SignalErrorCode::DeviceDeregistered,
             SignalFfiError::NetworkProtocol(_) => SignalErrorCode::NetworkProtocol,
             SignalFfiError::CdsiInvalidToken => SignalErrorCode::CdsiInvalidToken,
             SignalFfiError::RateLimited {

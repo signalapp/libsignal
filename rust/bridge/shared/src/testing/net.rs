@@ -55,52 +55,49 @@ async fn TESTING_OnlyCompletesByCancellation() {
     std::future::pending::<()>().await
 }
 
-#[repr(u8)]
-#[derive(Copy, Clone, strum::EnumString)]
-enum TestingCdsiLookupError {
-    Protocol,
-    AttestationDataError,
-    InvalidResponse,
-    RetryAfter42Seconds,
-    InvalidToken,
-    InvalidArgument,
-    Parse,
-    ConnectDnsFailed,
-    WebSocketIdleTooLong,
-    ConnectionTimedOut,
-    ServerCrashed,
-}
-
-const _: () = {
-    /// This code isn't ever executed. It exists so that when new cases are
-    /// added to `LookupError`, this will fail to compile until corresponding
-    /// cases are added to `TestingCdsiLookupError`
-    #[allow(unused)]
-    fn match_on_lookup_error(value: &'static LookupError) -> TestingCdsiLookupError {
-        match value {
-            LookupError::Protocol => TestingCdsiLookupError::Protocol,
-            LookupError::AttestationError(_) => TestingCdsiLookupError::AttestationDataError,
-            LookupError::InvalidResponse => TestingCdsiLookupError::InvalidResponse,
-            LookupError::RateLimited {
-                retry_after_seconds: _,
-            } => TestingCdsiLookupError::RetryAfter42Seconds,
-            LookupError::InvalidToken => TestingCdsiLookupError::InvalidToken,
-            LookupError::InvalidArgument { server_reason: _ } => {
-                TestingCdsiLookupError::InvalidArgument
+macro_rules! make_error_testing_enum {
+    (enum $name:ident for $orig:ident {
+        $($orig_case:ident => $case:ident,)*
+        $(; $($extra_case:ident,)*)?
+    }) => {
+        #[derive(Copy, Clone, strum::EnumString)]
+        enum $name {
+            $($case,)*
+            $($($extra_case,)*)?
+        }
+        const _: () = {
+            /// This code isn't ever executed. It exists so that when new cases are
+            /// added to the original enum, this will fail to compile until corresponding
+            /// cases are added to the testing enum.
+            #[allow(unused)]
+            fn match_on_lookup_error(value: &'static $orig) -> $name {
+                match value {
+                    $($orig::$orig_case { .. } => $name::$case),*
+                }
             }
-            LookupError::ParseError => TestingCdsiLookupError::Parse,
-            LookupError::ConnectTransport(_) => TestingCdsiLookupError::ConnectDnsFailed,
-            LookupError::WebSocket(_) => TestingCdsiLookupError::WebSocketIdleTooLong,
-            LookupError::ConnectionTimedOut => TestingCdsiLookupError::ConnectionTimedOut,
-            LookupError::Server { reason } => TestingCdsiLookupError::ServerCrashed,
+        };
+        impl TryFrom<String> for $name {
+            type Error = <Self as FromStr>::Err;
+            fn try_from(value: String) -> Result<Self, Self::Error> {
+                FromStr::from_str(&value)
+            }
         }
     }
-};
+}
 
-impl TryFrom<String> for TestingCdsiLookupError {
-    type Error = <Self as FromStr>::Err;
-    fn try_from(value: String) -> Result<Self, Self::Error> {
-        FromStr::from_str(&value)
+make_error_testing_enum! {
+    enum TestingCdsiLookupError for LookupError {
+        Protocol => Protocol,
+        AttestationError => AttestationDataError,
+        InvalidResponse => InvalidResponse,
+        RateLimited => RetryAfter42Seconds,
+        InvalidToken => InvalidToken,
+        InvalidArgument => InvalidArgument,
+        ParseError => Parse,
+        ConnectTransport => ConnectDnsFailed,
+        WebSocket => WebSocketIdleTooLong,
+        ConnectionTimedOut => ConnectionTimedOut,
+        Server => ServerCrashed,
     }
 }
 
@@ -137,14 +134,56 @@ fn TESTING_CdsiLookupErrorConvert(
     })
 }
 
-#[bridge_fn]
-fn TESTING_ChatServiceErrorConvert() -> Result<(), ChatServiceError> {
-    Err(ChatServiceError::Timeout)
+make_error_testing_enum! {
+    enum TestingChatServiceError for ChatServiceError {
+        WebSocket => WebSocket,
+        AppExpired => AppExpired,
+        DeviceDeregistered => DeviceDeregistered,
+        UnexpectedFrameReceived => UnexpectedFrameReceived,
+        ServerRequestMissingId => ServerRequestMissingId,
+        FailedToPassMessageToIncomingChannel => FailedToPassMessageToIncomingChannel,
+        IncomingDataInvalid => IncomingDataInvalid,
+        RequestHasInvalidHeader => RequestHasInvalidHeader,
+        Timeout => Timeout,
+        TimeoutEstablishingConnection => TimeoutEstablishingConnection,
+        AllConnectionRoutesFailed => AllConnectionRoutesFailed,
+        ServiceInactive => ServiceInactive,
+        ServiceUnavailable => ServiceUnavailable,
+    }
 }
 
 #[bridge_fn]
-fn TESTING_ChatServiceInactiveErrorConvert() -> Result<(), ChatServiceError> {
-    Err(ChatServiceError::ServiceInactive)
+fn TESTING_ChatServiceErrorConvert(
+    // The stringly-typed API makes the call sites more self-explanatory.
+    error_description: AsType<TestingChatServiceError, String>,
+) -> Result<(), ChatServiceError> {
+    Err(match error_description.into_inner() {
+        TestingChatServiceError::WebSocket => ChatServiceError::WebSocket(
+            libsignal_net::infra::ws::WebSocketServiceError::Other("testing"),
+        ),
+        TestingChatServiceError::AppExpired => ChatServiceError::AppExpired,
+        TestingChatServiceError::DeviceDeregistered => ChatServiceError::DeviceDeregistered,
+        TestingChatServiceError::UnexpectedFrameReceived => {
+            ChatServiceError::UnexpectedFrameReceived
+        }
+        TestingChatServiceError::ServerRequestMissingId => ChatServiceError::ServerRequestMissingId,
+        TestingChatServiceError::FailedToPassMessageToIncomingChannel => {
+            ChatServiceError::FailedToPassMessageToIncomingChannel
+        }
+        TestingChatServiceError::IncomingDataInvalid => ChatServiceError::IncomingDataInvalid,
+        TestingChatServiceError::RequestHasInvalidHeader => {
+            ChatServiceError::RequestHasInvalidHeader
+        }
+        TestingChatServiceError::Timeout => ChatServiceError::Timeout,
+        TestingChatServiceError::TimeoutEstablishingConnection => {
+            ChatServiceError::TimeoutEstablishingConnection { attempts: 42 }
+        }
+        TestingChatServiceError::AllConnectionRoutesFailed => {
+            ChatServiceError::AllConnectionRoutesFailed { attempts: 42 }
+        }
+        TestingChatServiceError::ServiceInactive => ChatServiceError::ServiceInactive,
+        TestingChatServiceError::ServiceUnavailable => ChatServiceError::ServiceUnavailable,
+    })
 }
 
 #[bridge_fn]

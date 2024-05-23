@@ -6,7 +6,7 @@
 package org.signal.libsignal.net;
 
 /** Indicates that an operation on the {@code ChatService} has been called before */
-public class ChatServiceInactiveException extends Exception {
+public class ChatServiceInactiveException extends ChatServiceException {
   public ChatServiceInactiveException(String message) {
     super(message);
   }
