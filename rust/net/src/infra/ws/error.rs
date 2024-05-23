@@ -12,14 +12,23 @@ use std::borrow::Borrow;
 use crate::infra::errors::{LogSafeDisplay, TransportConnectError};
 
 /// Errors that can occur when connecting a websocket.
-#[derive(Debug, thiserror::Error, displaydoc::Display)]
+#[derive(Debug, thiserror::Error)]
 pub enum WebSocketConnectError {
-    /// transport: {0}
     Transport(#[from] TransportConnectError),
-    /// timed out while connecting
     Timeout,
-    /// websocket error
     WebSocketError(#[from] tungstenite::Error),
+}
+
+impl std::fmt::Display for WebSocketConnectError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            WebSocketConnectError::Transport(e) => write!(f, "transport: {e}"),
+            WebSocketConnectError::Timeout => write!(f, "timed out while connecting"),
+            WebSocketConnectError::WebSocketError(e) => {
+                write!(f, "websocket error: {}", Error::from(e))
+            }
+        }
+    }
 }
 
 impl LogSafeDisplay for WebSocketConnectError {}
@@ -161,13 +170,22 @@ impl<E: Borrow<http::Error>> From<E> for HttpFormatError {
 impl From<tungstenite::Error> for Error {
     fn from(value: tungstenite::Error) -> Self {
         match value {
+            tungstenite::Error::Protocol(e) => Self::Protocol(ProtocolError::from(e)),
+            e => Self::from(&e),
+        }
+    }
+}
+
+impl<'a> From<&'a tungstenite::Error> for Error {
+    fn from(value: &'a tungstenite::Error) -> Self {
+        match value {
             tungstenite::Error::ConnectionClosed | tungstenite::Error::AlreadyClosed => {
                 Self::Closed
             }
             tungstenite::Error::Io(_) | tungstenite::Error::AttackAttempt => Self::Io,
             tungstenite::Error::Tls(_) => Self::UnexpectedTlsError,
-            tungstenite::Error::Capacity(e) => Self::Space(SpaceError::from(e)),
-            tungstenite::Error::Protocol(e) => Self::Protocol(ProtocolError::from(e)),
+            tungstenite::Error::Capacity(e) => Self::Space(SpaceError::from(*e)),
+            tungstenite::Error::Protocol(e) => Self::Protocol(ProtocolError::from(e.clone())),
             tungstenite::Error::WriteBufferFull(_) => Self::Space(SpaceError::SendQueueFull),
             tungstenite::Error::Utf8 => Self::BadUtf8,
             tungstenite::Error::Url(_) => Self::Url,
