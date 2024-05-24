@@ -22,7 +22,7 @@ use crate::proto::backup as proto;
     M::Value<ProfileKeyBytes>: PartialEq,
     M::Value<Option<UsernameData>>: PartialEq,
     M::Value<String>: PartialEq,
-    M::Value<Subscription>: PartialEq,
+    M::Value<Option<Subscription>>: PartialEq,
     M::Value<AccountSettings>: PartialEq,
 ))]
 pub struct AccountData<M: Method> {
@@ -32,7 +32,7 @@ pub struct AccountData<M: Method> {
     pub family_name: M::Value<String>,
     pub account_settings: M::Value<AccountSettings>,
     pub avatar_url_path: M::Value<String>,
-    pub subscription: M::Value<Subscription>,
+    pub subscription: M::Value<Option<Subscription>>,
 }
 
 #[derive(Debug)]
@@ -109,6 +109,10 @@ pub enum AccountDataError {
     BadUsernameEntropyLength(usize),
     /// username server ID should be a UUID but was {0} bytes
     BadUsernameServerIdLength(usize),
+    /// subscriber ID was present but not the currency code
+    SubscriberIdWithoutCurrency,
+    /// subscriber currency code was present but not the ID
+    SubscriberCurrencyWithoutId,
     /// chat style: {0}
     ChatStyle(#[from] ChatStyleError),
 }
@@ -148,9 +152,24 @@ impl<M: Method> TryFrom<proto::AccountData> for AccountData<M> {
             .ok_or(AccountDataError::MissingSettings)?
             .try_into()?;
 
-        let subscriber_id = subscriberId
-            .try_into()
-            .map_err(|id: Vec<u8>| AccountDataError::InvalidSubscriberId(id.len()))?;
+        let subscriber_id = (!subscriberId.is_empty())
+            .then(|| {
+                subscriberId
+                    .try_into()
+                    .map_err(|id: Vec<u8>| AccountDataError::InvalidSubscriberId(id.len()))
+            })
+            .transpose()?;
+
+        let subscription = match (subscriber_id, &*subscriberCurrencyCode) {
+            (None, "") => None,
+            (None, _currency) => return Err(AccountDataError::SubscriberCurrencyWithoutId),
+            (Some(_), "") => return Err(AccountDataError::SubscriberIdWithoutCurrency),
+            (Some(subscriber_id), _currency_code) => Some(Subscription {
+                subscriber_id,
+                currency_code: subscriberCurrencyCode,
+                manually_canceled: subscriptionManuallyCancelled,
+            }),
+        };
 
         Ok(Self {
             profile_key: M::value(profile_key),
@@ -159,11 +178,7 @@ impl<M: Method> TryFrom<proto::AccountData> for AccountData<M> {
             family_name: M::value(familyName),
             account_settings: M::value(account_settings),
             avatar_url_path: M::value(avatarUrlPath),
-            subscription: M::value(Subscription {
-                subscriber_id,
-                currency_code: subscriberCurrencyCode,
-                manually_canceled: subscriptionManuallyCancelled,
-            }),
+            subscription: M::value(subscription),
         })
     }
 }
@@ -355,11 +370,11 @@ mod test {
                     preferred_reaction_emoji: vec![],
                 },
                 avatar_url_path: "".to_string(),
-                subscription: Subscription {
+                subscription: Some(Subscription {
                     subscriber_id: FAKE_SUBSCRIBER_ID,
                     currency_code: "XTS".to_string(),
                     manually_canceled: false,
-                }
+                })
             })
         )
     }
@@ -390,6 +405,16 @@ mod test {
     fn invalid_subscriber_id(target: &mut proto::AccountData) {
         target.subscriberId = vec![123];
     }
+    fn empty_subscriber_id(target: &mut proto::AccountData) {
+        target.subscriberId = vec![];
+    }
+    fn empty_subscriber_currency(target: &mut proto::AccountData) {
+        target.subscriberCurrencyCode = String::default();
+    }
+    fn empty_subscriber_id_and_currency(target: &mut proto::AccountData) {
+        empty_subscriber_id(target);
+        empty_subscriber_currency(target);
+    }
 
     #[test_case(invalid_profile_key, Err(AccountDataError::InvalidProfileKey))]
     #[test_case(
@@ -405,6 +430,15 @@ mod test {
     )]
     #[test_case(no_account_settings, Err(AccountDataError::MissingSettings))]
     #[test_case(invalid_subscriber_id, Err(AccountDataError::InvalidSubscriberId(1)))]
+    #[test_case(
+        empty_subscriber_id,
+        Err(AccountDataError::SubscriberCurrencyWithoutId)
+    )]
+    #[test_case(
+        empty_subscriber_currency,
+        Err(AccountDataError::SubscriberIdWithoutCurrency)
+    )]
+    #[test_case(empty_subscriber_id_and_currency, Ok(()))]
     fn with(
         modifier: impl FnOnce(&mut proto::AccountData),
         expected: Result<(), AccountDataError>,
