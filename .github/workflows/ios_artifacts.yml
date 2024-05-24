@@ -28,6 +28,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      with:
+        submodules: recursive
 
     - name: Checking run eligibility
       uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1

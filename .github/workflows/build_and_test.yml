@@ -34,6 +34,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      with:
+        submodules: recursive
 
     - uses: dorny/paths-filter@0bc4621a3135347011ad047f9ecf449bf72ce2bd # v3.0
       id: filter
@@ -108,11 +110,13 @@ jobs:
           toolchain: "$(cat rust-toolchain)"
         - version: stable
           toolchain: "${LIBSIGNAL_MINIMUM_SUPPORTED_RUST_VERSION}"
-    
+
     timeout-minutes: 45
 
     steps:
     - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      with:
+        submodules: recursive
 
     - run: sudo apt-get update && sudo apt-get install protobuf-compiler
 
@@ -234,6 +238,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      with:
+        submodules: recursive
 
     - run: sudo apt-get update && sudo apt-get install gcc-multilib g++-multilib protobuf-compiler
 
@@ -264,6 +270,7 @@ jobs:
 
     - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
       with:
+        submodules: recursive
         # Download all commits so we can search for the merge base with origin/main.
         fetch-depth: 0
 
@@ -306,6 +313,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      with:
+        submodules: recursive
 
     - run: rustup toolchain install $(cat rust-toolchain) --profile minimal
 
@@ -362,6 +371,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      with:
+        submodules: recursive
 
     - run: rustup toolchain install $(cat rust-toolchain) --profile minimal
 
@@ -397,6 +408,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+        with:
+          submodules: recursive
 
       - run: brew install protobuf swiftlint
 

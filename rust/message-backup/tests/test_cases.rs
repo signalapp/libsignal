@@ -21,32 +21,30 @@ const BACKUP_PURPOSE: Purpose = Purpose::RemoteBackup;
 #[dir_test(
         dir: "$CARGO_MANIFEST_DIR/tests/res/test-cases",
         glob: "valid/*.jsonproto",
-        postfix: "binproto"
+        postfix: "jsonproto"
     )]
 fn is_valid_json_proto(input: Fixture<&str>) {
     let json_contents = input.into_content();
     let json_contents = serde_json::from_str(json_contents).expect("invalid JSON");
     let json_array = assert_matches!(json_contents, serde_json::Value::Array(contents) => contents);
-    let binary =
+    let binproto =
         libsignal_message_backup::backup::convert_from_json(json_array).expect("failed to convert");
-
-    // Check via the library interface.
-    let input = Cursor::new(&*binary);
-    let reader = BackupReader::new_unencrypted(input, BACKUP_PURPOSE);
-    validate(reader);
-
-    // The CLI tool should agree.
-    validator_command()
-        .arg("-")
-        .args(["--purpose", BACKUP_PURPOSE.into()])
-        .write_stdin(binary)
-        .ok()
-        .expect("command failed");
+    validate_proto(&binproto)
 }
 
 #[dir_test(
         dir: "$CARGO_MANIFEST_DIR/tests/res/test-cases",
-        glob: "valid/*.binproto.encrypted",
+        glob: "valid/*.binproto",
+        postfix: "binproto"
+        loader: read_file
+    )]
+fn is_valid_binary_proto(input: Fixture<Vec<u8>>) {
+    validate_proto(input.content())
+}
+
+#[dir_test(
+        dir: "$CARGO_MANIFEST_DIR/tests/res/test-cases",
+        glob: "valid-encrypted/*.binproto.encrypted",
         loader: PathBuf::from,
         postfix: "encrypted"
     )]
@@ -98,10 +96,10 @@ fn invalid_jsonproto(input: Fixture<PathBuf>) {
         serde_json::from_str(&std::fs::read_to_string(path).expect("failed to read"))
             .expect("invalid JSON");
     let json_array = assert_matches!(json_contents, serde_json::Value::Array(contents) => contents);
-    let binary =
+    let binproto =
         libsignal_message_backup::backup::convert_from_json(json_array).expect("failed to convert");
 
-    let input = Cursor::new(&*binary);
+    let input = Cursor::new(&*binproto);
     let reader = BackupReader::new_unencrypted(input, Purpose::RemoteBackup);
 
     let ReadResult {
@@ -123,8 +121,27 @@ fn invalid_jsonproto(input: Fixture<PathBuf>) {
     assert_eq!(text, expected_text);
 }
 
+fn read_file(path: &str) -> Vec<u8> {
+    std::fs::read(path).expect("can read")
+}
+
 fn write_expected_error() -> bool {
     std::env::var_os("OVERWRITE_EXPECTED_OUTPUT").is_some()
+}
+
+fn validate_proto(binproto: &[u8]) {
+    // Check via the library interface.
+    let input = Cursor::new(binproto);
+    let reader = BackupReader::new_unencrypted(input, BACKUP_PURPOSE);
+    validate(reader);
+
+    // The CLI tool should agree.
+    validator_command()
+        .arg("-")
+        .args(["--purpose", BACKUP_PURPOSE.into()])
+        .write_stdin(binproto)
+        .ok()
+        .expect("command failed");
 }
 
 fn validate(mut reader: BackupReader<impl AsyncRead + Unpin + VerifyHmac>) {

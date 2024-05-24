@@ -22,6 +22,8 @@ jobs:
       has-changes: ${{ steps.check.outputs.has-changes }}
     steps:
     - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      with:
+        submodules: recursive
     - run: git log --after '24 hours ago' --exit-code || echo 'has-changes=true' >> $GITHUB_OUTPUT
       id: check
 
@@ -34,6 +36,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      with:
+        submodules: recursive
     - run: make -C java java_test
     - name: Upload JNI libraries
       uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4.3.1
@@ -66,6 +70,8 @@ jobs:
             sudo udevadm trigger --name-match=kvm
 
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+        with:
+          submodules: recursive
 
       - name: Download JNI libraries
         id: download
@@ -113,6 +119,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      with:
+        submodules: recursive
     - run: node/docker-prebuildify.sh
     - run: yarn tsc && yarn test
       working-directory: node
@@ -128,6 +136,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      with:
+        submodules: recursive
     - run: rustup toolchain install $(cat rust-toolchain) --profile minimal --target aarch64-pc-windows-msvc
     # install nasm compiler for boring
     - name: Install nasm
@@ -160,6 +170,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+        with:
+          submodules: recursive
 
       - run: rustup toolchain install $(cat rust-toolchain) --profile minimal --target x86_64-apple-ios,aarch64-apple-ios,aarch64-apple-ios-sim --component rust-src
 
@@ -192,6 +204,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      with:
+        submodules: recursive
 
     - run: sudo apt-get update && sudo apt-get install gcc-multilib g++-multilib protobuf-compiler
 
