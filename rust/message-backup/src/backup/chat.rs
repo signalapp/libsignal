@@ -12,6 +12,7 @@ use std::num::{NonZeroU32, NonZeroU64};
 
 use derive_where::derive_where;
 
+use crate::backup::chat::chat_style::{ChatStyle, ChatStyleError};
 use crate::backup::frame::RecipientId;
 use crate::backup::method::{Contains, Lookup, Method, Store};
 use crate::backup::sticker::MessageStickerError;
@@ -21,6 +22,8 @@ use crate::proto::backup as proto;
 
 mod contact_message;
 use contact_message::*;
+
+pub(crate) mod chat_style;
 
 mod group;
 use group::*;
@@ -63,6 +66,8 @@ pub enum ChatError {
     ChatItem(#[from] ChatItemError),
     /// {0:?} already appeared for {1:?}
     DuplicatePinnedOrder(PinOrder, RecipientId),
+    /// style error: {0}
+    Style(#[from] ChatStyleError),
 }
 
 #[derive(Debug, displaydoc::Display, thiserror::Error)]
@@ -131,6 +136,7 @@ pub struct ChatData<M: Method = Store> {
     pub(super) items: M::List<ChatItemData>,
     pub expiration_timer: Option<Duration>,
     pub mute_until: Option<Timestamp>,
+    pub style: Option<ChatStyle>,
     pub pinned_order: Option<PinOrder>,
     pub dont_notify_for_mentions_if_muted: bool,
     pub marked_unread: bool,
@@ -269,9 +275,8 @@ impl<M: Method, C: Contains<RecipientId> + Lookup<PinOrder, RecipientId>>
             archived,
             markedUnread,
             dontNotifyForMentionsIfMuted,
+            style,
             special_fields: _,
-            // TODO validate this field
-            wallpaper: _,
         } = value;
 
         let recipient = RecipientId(recipientId);
@@ -286,6 +291,8 @@ impl<M: Method, C: Contains<RecipientId> + Lookup<PinOrder, RecipientId>>
             }
         };
 
+        let style = style.into_option().map(ChatStyle::try_from).transpose()?;
+
         let expiration_timer =
             NonZeroU64::new(expirationTimerMs).map(|t| Duration::from_millis(t.get()));
         let mute_until = NonZeroU64::new(muteUntilMs)
@@ -296,6 +303,7 @@ impl<M: Method, C: Contains<RecipientId> + Lookup<PinOrder, RecipientId>>
             expiration_timer,
             mute_until,
             items: Default::default(),
+            style,
             pinned_order,
             archived,
             marked_unread: markedUnread,
@@ -672,6 +680,7 @@ mod test {
                 items: Vec::default(),
                 expiration_timer: None,
                 mute_until: None,
+                style: None,
                 pinned_order: None,
                 archived: false,
                 marked_unread: false,

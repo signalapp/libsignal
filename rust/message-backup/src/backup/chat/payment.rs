@@ -202,9 +202,9 @@ impl TryFrom<proto::payment_notification::transaction_details::FailedTransaction
         value: proto::payment_notification::transaction_details::FailedTransaction,
     ) -> Result<Self, Self::Error> {
         use proto::payment_notification::transaction_details::failed_transaction::FailureReason;
-        use proto::payment_notification::transaction_details::FailedTransaction;
+        use proto::payment_notification::transaction_details::FailedTransaction as FailedTransactionProto;
 
-        let FailedTransaction {
+        let FailedTransactionProto {
             reason,
             special_fields: _,
         } = value;

@@ -168,6 +168,8 @@ no_unknown_fields!(u32);
 no_unknown_fields!(u64);
 no_unknown_fields!(i32);
 no_unknown_fields!(i64);
+no_unknown_fields!(f32);
+no_unknown_fields!(f64);
 no_unknown_fields!(bool);
 no_unknown_fields!(String);
 no_unknown_fields!(Vec<u8>);

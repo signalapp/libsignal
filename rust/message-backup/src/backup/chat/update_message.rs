@@ -40,6 +40,7 @@ pub enum SimpleChatUpdate {
     BadDecrypt,
     PaymentsActivated,
     PaymentActivationRequest,
+    UnsupportedProtocolMessage,
 }
 
 impl<R: Contains<RecipientId>> TryFromWith<proto::ChatUpdateMessage, R> for UpdateMessage {
@@ -73,6 +74,9 @@ impl<R: Contains<RecipientId>> TryFromWith<proto::ChatUpdateMessage, R> for Upda
                     Type::BAD_DECRYPT => SimpleChatUpdate::BadDecrypt,
                     Type::PAYMENTS_ACTIVATED => SimpleChatUpdate::PaymentsActivated,
                     Type::PAYMENT_ACTIVATION_REQUEST => SimpleChatUpdate::PaymentActivationRequest,
+                    Type::UNSUPPORTED_PROTOCOL_MESSAGE => {
+                        SimpleChatUpdate::UnsupportedProtocolMessage
+                    }
                 }
             }),
             Update::GroupChange(proto::GroupChangeChatUpdate {

@@ -12,6 +12,7 @@ use usernames::{Username, UsernameError};
 use uuid::Uuid;
 use zkgroup::ProfileKeyBytes;
 
+use crate::backup::chat::chat_style::{ChatStyle, ChatStyleError};
 use crate::backup::method::Method;
 use crate::backup::time::Duration;
 use crate::proto::backup as proto;
@@ -80,6 +81,7 @@ pub struct AccountSettings {
     pub has_completed_username_onboarding: bool,
     pub universal_expire_timer: Option<Duration>,
     pub preferred_reaction_emoji: Vec<String>,
+    pub default_chat_style: Option<ChatStyle>,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -107,6 +109,8 @@ pub enum AccountDataError {
     BadUsernameEntropyLength(usize),
     /// username server ID should be a UUID but was {0} bytes
     BadUsernameServerIdLength(usize),
+    /// chat style: {0}
+    ChatStyle(#[from] ChatStyleError),
 }
 
 impl<M: Method> TryFrom<proto::AccountData> for AccountData<M> {
@@ -225,6 +229,7 @@ impl TryFrom<proto::account_data::AccountSettings> for AccountSettings {
             hasCompletedUsernameOnboarding,
             universalExpireTimer,
             preferredReactionEmoji,
+            defaultChatStyle,
             special_fields: _,
         } = value;
 
@@ -237,11 +242,17 @@ impl TryFrom<proto::account_data::AccountSettings> for AccountSettings {
             PhoneNumberSharingMode::NOBODY => PhoneSharing::WithNobody,
         };
 
+        let default_chat_style = defaultChatStyle
+            .into_option()
+            .map(ChatStyle::try_from)
+            .transpose()?;
+
         let universal_expire_timer =
             NonZeroU32::new(universalExpireTimer).map(|d| Duration::from_millis(d.get().into()));
 
         Ok(Self {
             phone_number_sharing,
+            default_chat_style,
             read_receipts: readReceipts,
             sealed_sender_indicators: sealedSenderIndicators,
             typing_indicators: typingIndicators,
@@ -325,6 +336,7 @@ mod test {
                 family_name: "".to_string(),
                 account_settings: AccountSettings {
                     phone_number_sharing: PhoneSharing::WithEverybody,
+                    default_chat_style: None,
                     read_receipts: false,
                     sealed_sender_indicators: false,
                     typing_indicators: false,
