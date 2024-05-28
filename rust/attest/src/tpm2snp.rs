@@ -14,7 +14,7 @@ use crate::cert_chain::{self, CertChain};
 use crate::enclave::{Claims, Error, Handshake, Result, UnvalidatedHandshake};
 use crate::expireable::Expireable as _;
 use crate::proto::{svr, svr3};
-use crate::svr2::expected_raft_config;
+use crate::svr2::RaftConfig;
 
 use crate::constants::TPM2SNP_EXPECTED_PCRS;
 
@@ -25,8 +25,12 @@ pub(crate) use tpm2::{Error as Tpm2Error, PcrMap};
 
 const GOOG_AKCERT_ROOT_PEM: &[u8] = include_bytes!("../res/goog_akcert_root.pem");
 
-pub fn new_handshake(enclave: &[u8], attestation_msg: &[u8], now: SystemTime) -> Result<Handshake> {
-    let expected_raft_config = expected_raft_config(enclave, None)?;
+pub fn new_handshake(
+    enclave: &[u8],
+    attestation_msg: &[u8],
+    now: SystemTime,
+    expected_raft_config: &'static RaftConfig,
+) -> Result<Handshake> {
     let handshake_start = svr::ClientHandshakeStart::decode(attestation_msg)?;
     Handshake::for_tpm2snp(
         enclave,

@@ -3,7 +3,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use crate::constants::{ACCEPTABLE_SW_ADVISORIES, DEFAULT_SW_ADVISORIES, EXPECTED_RAFT_CONFIG};
+use crate::constants::{
+    ACCEPTABLE_SW_ADVISORIES, DEFAULT_SW_ADVISORIES, EXPECTED_RAFT_CONFIG_SVR2,
+};
 use prost::Message;
 
 use crate::enclave::{Error, Handshake, Result};
@@ -27,38 +29,41 @@ impl PartialEq<svr::RaftGroupConfig> for RaftConfig {
     }
 }
 
-pub(crate) fn expected_raft_config(
-    mr_enclave: &[u8],
-    config_override: Option<&'static RaftConfig>,
-) -> Result<&'static RaftConfig> {
-    config_override
-        .or_else(|| EXPECTED_RAFT_CONFIG.get(&mr_enclave).copied())
-        .ok_or(Error::AttestationDataError {
-            reason: format!("unknown mrenclave {:?}", mr_enclave),
-        })
-}
 /// Lookup the group id constant associated with the `mrenclave`
 pub fn lookup_groupid(mrenclave: &[u8]) -> Option<u64> {
-    EXPECTED_RAFT_CONFIG
+    EXPECTED_RAFT_CONFIG_SVR2
         .get(&mrenclave)
         .map(|config| config.group_id)
+}
+
+// Must only be used for SVR2 bridging code that does
+// not expose the notion of environment to the clients.
+pub fn new_handshake_with_raft_config_lookup(
+    mrenclave: &[u8],
+    attestation_msg: &[u8],
+    current_time: std::time::SystemTime,
+) -> Result<Handshake> {
+    let expected_raft_config =
+        EXPECTED_RAFT_CONFIG_SVR2
+            .get(&mrenclave)
+            .copied()
+            .ok_or(Error::AttestationDataError {
+                reason: format!("unknown mrenclave {:?}", &mrenclave),
+            })?;
+    new_handshake(
+        mrenclave,
+        attestation_msg,
+        current_time,
+        expected_raft_config,
+    )
 }
 
 pub fn new_handshake(
     mrenclave: &[u8],
     attestation_msg: &[u8],
     current_time: std::time::SystemTime,
+    expected_raft_config: &'static RaftConfig,
 ) -> Result<Handshake> {
-    new_handshake_with_override(mrenclave, attestation_msg, current_time, None)
-}
-
-pub fn new_handshake_with_override(
-    mrenclave: &[u8],
-    attestation_msg: &[u8],
-    current_time: std::time::SystemTime,
-    raft_config_override: Option<&'static RaftConfig>,
-) -> Result<Handshake> {
-    let expected_raft_config = expected_raft_config(mrenclave, raft_config_override)?;
     new_handshake_with_constants(
         mrenclave,
         attestation_msg,
@@ -105,7 +110,13 @@ mod tests {
         let current_time = SystemTime::UNIX_EPOCH + Duration::from_secs(1709245753);
         let mrenclave_bytes =
             hex!("acb1973aa0bbbd14b3b4e06f145497d948fd4a98efc500fcce363b3b743ec482");
-        new_handshake(&mrenclave_bytes, HANDSHAKE_BYTES, current_time).unwrap();
+        let raft_config: &RaftConfig = &RaftConfig {
+            min_voting_replicas: 3,
+            max_voting_replicas: 5,
+            super_majority: 0,
+            group_id: 16934825672495360159,
+        };
+        new_handshake(&mrenclave_bytes, HANDSHAKE_BYTES, current_time, raft_config).unwrap();
     }
 
     #[test]

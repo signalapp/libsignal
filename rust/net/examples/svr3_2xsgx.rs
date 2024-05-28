@@ -33,7 +33,7 @@ use libsignal_net::svr3::{OpaqueMaskedShareSet, PpssOps};
 const TEST_SERVER_CERT: RootCertificates = RootCertificates::FromDer(Cow::Borrowed(
     include_bytes!("../res/sgx_test_server_cert.cer"),
 ));
-const TEST_SERVER_RAFT_CONFIG: RaftConfig = RaftConfig {
+const TEST_SERVER_RAFT_CONFIG: &RaftConfig = &RaftConfig {
     min_voting_replicas: 1,
     max_voting_replicas: 3,
     super_majority: 0,
@@ -104,6 +104,7 @@ async fn main() {
             mr_enclave: MrEnclave::new(&hex!(
                 "acb1973aa0bbbd14b3b4e06f145497d948fd4a98efc500fcce363b3b743ec482"
             )),
+            raft_config: Some(TEST_SERVER_RAFT_CONFIG),
         };
         TwoForTwoEnv(endpoint.clone(), endpoint)
     };
@@ -112,21 +113,15 @@ async fn main() {
 
     let connect = || async {
         let connector = TcpSslTransportConnector::new(DnsResolver::default());
-        let connection_a = EnclaveEndpointConnection::with_custom_properties(
-            two_sgx_env.0.clone(),
-            Duration::from_secs(10),
-            Some(&TEST_SERVER_RAFT_CONFIG),
-        );
+        let connection_a =
+            EnclaveEndpointConnection::new(two_sgx_env.0.clone(), Duration::from_secs(10));
 
         let a = SvrConnection::connect(make_auth(uid_a), &connection_a, connector.clone())
             .await
             .expect("can attestedly connect");
 
-        let connection_b = EnclaveEndpointConnection::with_custom_properties(
-            two_sgx_env.1.clone(),
-            Duration::from_secs(10),
-            Some(&TEST_SERVER_RAFT_CONFIG),
-        );
+        let connection_b =
+            EnclaveEndpointConnection::new(two_sgx_env.1.clone(), Duration::from_secs(10));
 
         let b = SvrConnection::connect(make_auth(uid_b), &connection_b, connector)
             .await

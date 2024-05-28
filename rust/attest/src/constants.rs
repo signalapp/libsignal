@@ -19,9 +19,9 @@ pub const ENCLAVE_ID_SVR3_NITRO_STAGING: &[u8] = b"ffe631d7.52b91975.a4544fb5";
 pub const ENCLAVE_ID_SVR3_TPM2SNP_STAGING: &[u8] = b"0.20240510.172959";
 
 pub const ENCLAVE_ID_SVR3_SGX_PROD: &[u8] =
-    &hex!("0000000000000000000000000000000000000000000000000000000000000000");
-pub const ENCLAVE_ID_SVR3_NITRO_PROD: &[u8] = b"00000000.00000000.00000000";
-pub const ENCLAVE_ID_SVR3_TPM2SNP_PROD: &[u8] = b"0.00000000.000000";
+    &hex!("0899bf951b57f27b5cd3d2dd4dbe5a144a4a62154853a4e352ac2c93ecfe6a2c");
+pub const ENCLAVE_ID_SVR3_NITRO_PROD: &[u8] = ENCLAVE_ID_SVR3_NITRO_STAGING;
+pub const ENCLAVE_ID_SVR3_TPM2SNP_PROD: &[u8] = ENCLAVE_ID_SVR3_TPM2SNP_STAGING;
 
 pub const ENCLAVE_ID_CDSI_PROD: &[u8] = ENCLAVE_ID_CDSI_STAGING;
 pub const ENCLAVE_ID_SVR2_PROD: &[u8] =
@@ -60,7 +60,7 @@ pub(crate) const TPM2SNP_EXPECTED_PCRS: SmallMap<&'static [u8], &'static tpm2snp
 
 /// Map from MREnclave to intel SW advisories that are known to be mitigated in the
 /// build with that MREnclave value
-pub(crate) const ACCEPTABLE_SW_ADVISORIES: &SmallMap<&'static [u8], &'static [&'static str], 3> =
+pub(crate) const ACCEPTABLE_SW_ADVISORIES: &SmallMap<&'static [u8], &'static [&'static str], 4> =
     &SmallMap::new([
         (
             ENCLAVE_ID_SVR2_STAGING,
@@ -74,6 +74,10 @@ pub(crate) const ACCEPTABLE_SW_ADVISORIES: &SmallMap<&'static [u8], &'static [&'
             ENCLAVE_ID_SVR3_SGX_STAGING,
             &["INTEL-SA-00615", "INTEL-SA-00657"] as &[&str],
         ),
+        (
+            ENCLAVE_ID_SVR3_SGX_PROD,
+            &["INTEL-SA-00615", "INTEL-SA-00657"] as &[&str],
+        ),
     ]);
 
 /// SW advisories known to be mitigated by default. If an MREnclave is provided that
@@ -81,51 +85,61 @@ pub(crate) const ACCEPTABLE_SW_ADVISORIES: &SmallMap<&'static [u8], &'static [&'
 pub(crate) const DEFAULT_SW_ADVISORIES: &[&str] = &[];
 
 /// Expected raft configuration for a given enclave.
-pub(crate) static EXPECTED_RAFT_CONFIG: SmallMap<&'static [u8], &'static RaftConfig, 5> =
+pub const RAFT_CONFIG_SVR2_STAGING: &RaftConfig = &RaftConfig {
+    min_voting_replicas: 3,
+    max_voting_replicas: 5,
+    super_majority: 0,
+    group_id: 16934825672495360159,
+};
+
+pub const RAFT_CONFIG_SVR2_PROD: &RaftConfig = &RaftConfig {
+    min_voting_replicas: 4,
+    max_voting_replicas: 7,
+    super_majority: 2,
+    group_id: 1230918306983775578,
+};
+
+pub const RAFT_CONFIG_SVR3_SGX_STAGING: &RaftConfig = &RaftConfig {
+    min_voting_replicas: 3,
+    max_voting_replicas: 9,
+    super_majority: 0,
+    group_id: 15742431669367858463,
+};
+pub const RAFT_CONFIG_SVR3_NITRO_STAGING: &RaftConfig = &RaftConfig {
+    group_id: 10298929430185113734,
+    min_voting_replicas: 3,
+    max_voting_replicas: 9,
+    super_majority: 0,
+};
+pub const RAFT_CONFIG_SVR3_TPM2SNP_STAGING: &RaftConfig = &RaftConfig {
+    group_id: 8572438378773168949,
+    min_voting_replicas: 3,
+    max_voting_replicas: 9,
+    super_majority: 0,
+};
+pub const RAFT_CONFIG_SVR3_SGX_PROD: &RaftConfig = &RaftConfig {
+    min_voting_replicas: 4,
+    max_voting_replicas: 13,
+    super_majority: 2,
+    group_id: 9590812984166600424,
+};
+pub const RAFT_CONFIG_SVR3_NITRO_PROD: &RaftConfig = &RaftConfig {
+    group_id: 13958530449904196066,
+    min_voting_replicas: 4,
+    max_voting_replicas: 13,
+    super_majority: 2,
+};
+pub const RAFT_CONFIG_SVR3_TPM2SNP_PROD: &RaftConfig = &RaftConfig {
+    group_id: 6899183880775443455,
+    min_voting_replicas: 4,
+    max_voting_replicas: 13,
+    super_majority: 2,
+};
+
+// This is left here primarily to support SVR2 bridging code that does
+// not expose the notion of environment to the clients.
+pub(crate) static EXPECTED_RAFT_CONFIG_SVR2: SmallMap<&'static [u8], &'static RaftConfig, 2> =
     SmallMap::new([
-        (
-            ENCLAVE_ID_SVR2_STAGING,
-            &RaftConfig {
-                min_voting_replicas: 3,
-                max_voting_replicas: 5,
-                super_majority: 0,
-                group_id: 16934825672495360159,
-            },
-        ),
-        (
-            ENCLAVE_ID_SVR2_PROD,
-            &RaftConfig {
-                min_voting_replicas: 4,
-                max_voting_replicas: 7,
-                super_majority: 2,
-                group_id: 1230918306983775578,
-            },
-        ),
-        (
-            ENCLAVE_ID_SVR3_SGX_STAGING,
-            &RaftConfig {
-                min_voting_replicas: 3,
-                max_voting_replicas: 9,
-                super_majority: 0,
-                group_id: 15742431669367858463,
-            },
-        ),
-        (
-            ENCLAVE_ID_SVR3_NITRO_STAGING,
-            &RaftConfig {
-                group_id: 10298929430185113734,
-                min_voting_replicas: 3,
-                max_voting_replicas: 9,
-                super_majority: 0,
-            },
-        ),
-        (
-            ENCLAVE_ID_SVR3_TPM2SNP_STAGING,
-            &RaftConfig {
-                group_id: 8572438378773168949,
-                min_voting_replicas: 3,
-                max_voting_replicas: 9,
-                super_majority: 0,
-            },
-        ),
+        (ENCLAVE_ID_SVR2_STAGING, RAFT_CONFIG_SVR2_STAGING),
+        (ENCLAVE_ID_SVR2_PROD, RAFT_CONFIG_SVR2_PROD),
     ]);

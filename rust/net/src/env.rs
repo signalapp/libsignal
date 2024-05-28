@@ -89,9 +89,9 @@ const DOMAIN_CONFIG_SVR2_STAGING: DomainConfig = DomainConfig {
 };
 
 const DOMAIN_CONFIG_SVR3_SGX: DomainConfig = DomainConfig {
-    hostname: "svr3.signal.org",
+    hostname: "backend1.svr3.signal.org",
     port: DEFAULT_HTTPS_PORT,
-    ip_v4: &[ip_addr!(v4, "143.244.220.150")],
+    ip_v4: &[ip_addr!(v4, "40.112.138.96")],
     ip_v6: &[],
     cert: RootCertificates::Signal,
     proxy_path: "/svr3-sgx",
@@ -107,9 +107,9 @@ const DOMAIN_CONFIG_SVR3_SGX_STAGING: DomainConfig = DomainConfig {
 };
 
 const DOMAIN_CONFIG_SVR3_NITRO: DomainConfig = DomainConfig {
-    hostname: "devnull.signal.org",
+    hostname: "backend2.svr3.signal.org",
     port: DEFAULT_HTTPS_PORT,
-    ip_v4: &[],
+    ip_v4: &[ip_addr!(v4, "75.2.91.98")],
     ip_v6: &[],
     cert: RootCertificates::Signal,
     proxy_path: "/svr3-nitro",
@@ -125,9 +125,9 @@ const DOMAIN_CONFIG_SVR3_NITRO_STAGING: DomainConfig = DomainConfig {
 };
 
 pub const DOMAIN_CONFIG_SVR3_TPM2SNP: DomainConfig = DomainConfig {
-    hostname: "devnull.signal.org",
+    hostname: "backend3.svr3.signal.org",
     port: DEFAULT_HTTPS_PORT,
-    ip_v4: &[],
+    ip_v4: &[ip_addr!(v4, "34.144.241.251")],
     ip_v6: &[],
     cert: RootCertificates::Signal,
     proxy_path: "/svr3-tpm2snp",
@@ -300,23 +300,28 @@ pub const STAGING: Env<'static, Svr3Env> = Env {
     cdsi: EnclaveEndpoint {
         domain_config: DOMAIN_CONFIG_CDSI_STAGING,
         mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_CDSI_STAGING),
+        raft_config: None,
     },
     svr2: EnclaveEndpoint {
         domain_config: DOMAIN_CONFIG_SVR2_STAGING,
         mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVR2_STAGING),
+        raft_config: Some(attest::constants::RAFT_CONFIG_SVR2_STAGING),
     },
     svr3: Svr3Env(
         EnclaveEndpoint {
             domain_config: DOMAIN_CONFIG_SVR3_SGX_STAGING,
             mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVR3_SGX_STAGING),
+            raft_config: Some(attest::constants::RAFT_CONFIG_SVR3_SGX_STAGING),
         },
         EnclaveEndpoint {
             domain_config: DOMAIN_CONFIG_SVR3_NITRO_STAGING,
             mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVR3_NITRO_STAGING),
+            raft_config: Some(attest::constants::RAFT_CONFIG_SVR3_NITRO_STAGING),
         },
         EnclaveEndpoint {
             domain_config: DOMAIN_CONFIG_SVR3_TPM2SNP_STAGING,
             mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVR3_TPM2SNP_STAGING),
+            raft_config: Some(attest::constants::RAFT_CONFIG_SVR3_TPM2SNP_STAGING),
         },
     ),
 };
@@ -326,23 +331,28 @@ pub const PROD: Env<'static, Svr3Env> = Env {
     cdsi: EnclaveEndpoint {
         domain_config: DOMAIN_CONFIG_CDSI,
         mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_CDSI_PROD),
+        raft_config: None,
     },
     svr2: EnclaveEndpoint {
         domain_config: DOMAIN_CONFIG_SVR2,
         mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVR2_PROD),
+        raft_config: Some(attest::constants::RAFT_CONFIG_SVR2_PROD),
     },
     svr3: Svr3Env(
         EnclaveEndpoint {
             domain_config: DOMAIN_CONFIG_SVR3_SGX,
             mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVR3_SGX_PROD),
+            raft_config: Some(attest::constants::RAFT_CONFIG_SVR3_SGX_PROD),
         },
         EnclaveEndpoint {
             domain_config: DOMAIN_CONFIG_SVR3_NITRO,
             mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVR3_NITRO_PROD),
+            raft_config: Some(attest::constants::RAFT_CONFIG_SVR3_NITRO_PROD),
         },
         EnclaveEndpoint {
             domain_config: DOMAIN_CONFIG_SVR3_TPM2SNP,
             mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVR3_TPM2SNP_PROD),
+            raft_config: Some(attest::constants::RAFT_CONFIG_SVR3_TPM2SNP_PROD),
         },
     ),
 };

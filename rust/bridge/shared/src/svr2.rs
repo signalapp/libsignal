@@ -20,7 +20,7 @@ fn new_client(
     attestation_msg: &[u8],
     current_time: std::time::SystemTime,
 ) -> Result<SgxClientState> {
-    SgxClientState::new(svr2::new_handshake(
+    SgxClientState::new(svr2::new_handshake_with_raft_config_lookup(
         mrenclave,
         attestation_msg,
         current_time,

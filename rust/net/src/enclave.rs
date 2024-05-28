@@ -30,6 +30,7 @@ use crate::svr::SvrConnection;
 pub trait EnclaveKind {
     fn url_path(enclave: &[u8]) -> PathAndQuery;
 }
+
 pub trait Svr3Flavor: EnclaveKind {}
 
 pub enum Cdsi {}
@@ -177,6 +178,7 @@ impl<Bytes: AsRef<[u8]>, S> AsRef<[u8]> for MrEnclave<Bytes, S> {
 pub struct EnclaveEndpoint<'a, E: EnclaveKind> {
     pub domain_config: DomainConfig,
     pub mr_enclave: MrEnclave<&'a [u8], E>,
+    pub raft_config: Option<&'a RaftConfig>,
 }
 
 pub trait NewHandshake {
@@ -190,21 +192,7 @@ pub trait NewHandshake {
 
 pub struct EndpointParams<E: EnclaveKind> {
     pub(crate) mr_enclave: MrEnclave<&'static [u8], E>,
-    pub(crate) raft_config_override: Option<&'static RaftConfig>,
-}
-
-impl<E: EnclaveKind> EndpointParams<E> {
-    pub const fn new(mr_enclave: MrEnclave<&'static [u8], E>) -> Self {
-        Self {
-            mr_enclave,
-            raft_config_override: None,
-        }
-    }
-
-    pub fn with_raft_override(mut self, raft_config: &'static RaftConfig) -> Self {
-        self.raft_config_override = Some(raft_config);
-        self
-    }
+    pub(crate) raft_config: Option<&'static RaftConfig>,
 }
 
 pub struct EnclaveEndpointConnection<E: EnclaveKind, C> {
@@ -280,14 +268,6 @@ impl<E: EnclaveKind + NewHandshake, C: ConnectionManager> EnclaveEndpointConnect
 
 impl<E: EnclaveKind> EnclaveEndpointConnection<E, SingleRouteThrottlingConnectionManager> {
     pub fn new(endpoint: EnclaveEndpoint<'static, E>, connect_timeout: Duration) -> Self {
-        Self::with_custom_properties(endpoint, connect_timeout, None)
-    }
-
-    pub fn with_custom_properties(
-        endpoint: EnclaveEndpoint<'static, E>,
-        connect_timeout: Duration,
-        raft_config_override: Option<&'static RaftConfig>,
-    ) -> Self {
         Self {
             endpoint_connection: EndpointConnection {
                 manager: SingleRouteThrottlingConnectionManager::new(
@@ -298,7 +278,7 @@ impl<E: EnclaveKind> EnclaveEndpointConnection<E, SingleRouteThrottlingConnectio
             },
             params: EndpointParams {
                 mr_enclave: endpoint.mr_enclave,
-                raft_config_override,
+                raft_config: endpoint.raft_config,
             },
         }
     }
@@ -306,7 +286,7 @@ impl<E: EnclaveKind> EnclaveEndpointConnection<E, SingleRouteThrottlingConnectio
 
 impl<E: EnclaveKind> EnclaveEndpointConnection<E, MultiRouteConnectionManager> {
     pub fn new_multi(
-        mr_enclave: MrEnclave<&'static [u8], E>,
+        endpoint: &EnclaveEndpoint<'static, E>,
         connection_params: impl IntoIterator<Item = ConnectionParams>,
         one_route_connect_timeout: Duration,
     ) -> Self {
@@ -314,11 +294,14 @@ impl<E: EnclaveKind> EnclaveEndpointConnection<E, MultiRouteConnectionManager> {
             endpoint_connection: EndpointConnection::new_multi(
                 connection_params,
                 one_route_connect_timeout,
-                make_ws_config(E::url_path(mr_enclave.as_ref()), one_route_connect_timeout),
+                make_ws_config(
+                    E::url_path(endpoint.mr_enclave.as_ref()),
+                    one_route_connect_timeout,
+                ),
             ),
             params: EndpointParams {
-                mr_enclave,
-                raft_config_override: None,
+                mr_enclave: endpoint.mr_enclave,
+                raft_config: endpoint.raft_config,
             },
         }
     }
@@ -329,11 +312,13 @@ impl NewHandshake for Sgx {
         params: &EndpointParams<Self>,
         attestation_message: &[u8],
     ) -> enclave::Result<enclave::Handshake> {
-        attest::svr2::new_handshake_with_override(
+        attest::svr2::new_handshake(
             params.mr_enclave.as_ref(),
             attestation_message,
             SystemTime::now(),
-            params.raft_config_override,
+            params
+                .raft_config
+                .expect("Raft config must be present for SGX"),
         )
     }
 }
@@ -360,7 +345,9 @@ impl NewHandshake for Nitro {
             params.mr_enclave.as_ref(),
             attestation_message,
             SystemTime::now(),
-            params.raft_config_override,
+            params
+                .raft_config
+                .expect("Raft config must be present for Nitro"),
         )
     }
 }
@@ -374,6 +361,9 @@ impl NewHandshake for Tpm2Snp {
             params.mr_enclave.as_ref(),
             attestation_message,
             SystemTime::now(),
+            params
+                .raft_config
+                .expect("Raft config must be present for Tpm2Snp"),
         )
     }
 }
@@ -412,16 +402,26 @@ mod test {
     }
 
     const CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
+    const TEST_RAFT_CONFIG: &RaftConfig = &RaftConfig {
+        min_voting_replicas: 0,
+        max_voting_replicas: 0,
+        super_majority: 0,
+        group_id: 0,
+    };
 
     async fn enclave_connect<C: ConnectionManager>(
         manager: C,
     ) -> Result<AttestedConnection<SslStream<TcpStream>>, Error> {
+        let mr_enclave = MrEnclave::new(b"abcdef".as_slice());
         let connection = EnclaveEndpointConnection {
             endpoint_connection: EndpointConnection {
                 manager,
                 config: make_ws_config(PathAndQuery::from_static("/endpoint"), CONNECT_TIMEOUT),
             },
-            params: EndpointParams::<Cdsi>::new(MrEnclave::new(b"abcdef")),
+            params: EndpointParams::<Cdsi> {
+                mr_enclave,
+                raft_config: Some(TEST_RAFT_CONFIG),
+            },
         };
 
         connection
@@ -464,12 +464,12 @@ mod test {
     #[tokio::test]
     async fn multi_route_enclave_connect_failure() {
         let result = enclave_connect(MultiRouteConnectionManager::new(vec![
-                SingleRouteThrottlingConnectionManager::new(
-                    fake_connection_params(),
-                    CONNECT_TIMEOUT
-                );
-                3
-            ]))
+            SingleRouteThrottlingConnectionManager::new(
+                fake_connection_params(),
+                CONNECT_TIMEOUT,
+            );
+            3
+        ]))
         .await;
         assert_matches!(result, Err(Error::ConnectionTimedOut));
     }
@@ -479,12 +479,12 @@ mod test {
     #[tokio::test]
     async fn multi_route_enclave_connect_cooldown() {
         let connection_manager = MultiRouteConnectionManager::new(vec![
-                SingleRouteThrottlingConnectionManager::new(
-                    fake_connection_params(),
-                    CONNECT_TIMEOUT
-                );
-                3
-            ]);
+            SingleRouteThrottlingConnectionManager::new(
+                fake_connection_params(),
+                CONNECT_TIMEOUT,
+            );
+            3
+        ]);
 
         // Repeatedly try connecting unsuccessfully until all the inner routes
         // are throttling, with a max count to prevent infinite looping.

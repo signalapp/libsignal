@@ -103,11 +103,7 @@ impl ConnectionManager {
     ) -> EnclaveEndpointConnection<E, MultiRouteConnectionManager> {
         let params = endpoint.domain_config.connection_params_with_fallback();
         let params = add_user_agent_header(params, user_agent);
-        EnclaveEndpointConnection::new_multi(
-            endpoint.mr_enclave,
-            params,
-            ONE_ROUTE_CONNECTION_TIMEOUT,
-        )
+        EnclaveEndpointConnection::new_multi(endpoint, params, ONE_ROUTE_CONNECTION_TIMEOUT)
     }
 }
 

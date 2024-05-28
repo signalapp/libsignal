@@ -17,7 +17,7 @@ use subtle::ConstantTimeEq;
 
 use crate::enclave::{self, Claims, Handshake};
 use crate::proto;
-use crate::svr2::{expected_raft_config, RaftConfig};
+use crate::svr2::RaftConfig;
 use crate::util::SmallMap;
 
 use crate::constants::NITRO_EXPECTED_PCRS;
@@ -55,9 +55,8 @@ pub fn new_handshake(
     mr_enclave: &[u8],
     attestation_msg: &[u8],
     now: SystemTime,
-    raft_config_override: Option<&'static RaftConfig>,
+    expected_raft_config: &'static RaftConfig,
 ) -> Result<Handshake, enclave::Error> {
-    let expected_raft_config = expected_raft_config(mr_enclave, raft_config_override)?;
     let handshake_start = proto::svr::ClientHandshakeStart::decode(attestation_msg)?;
     let handshake = Handshake::for_nitro(
         mr_enclave,
