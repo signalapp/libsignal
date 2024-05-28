@@ -300,28 +300,28 @@ pub const STAGING: Env<'static, Svr3Env> = Env {
     cdsi: EnclaveEndpoint {
         domain_config: DOMAIN_CONFIG_CDSI_STAGING,
         mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_CDSI_STAGING),
-        raft_config: None,
+        raft_config: (),
     },
     svr2: EnclaveEndpoint {
         domain_config: DOMAIN_CONFIG_SVR2_STAGING,
         mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVR2_STAGING),
-        raft_config: Some(attest::constants::RAFT_CONFIG_SVR2_STAGING),
+        raft_config: attest::constants::RAFT_CONFIG_SVR2_STAGING,
     },
     svr3: Svr3Env(
         EnclaveEndpoint {
             domain_config: DOMAIN_CONFIG_SVR3_SGX_STAGING,
             mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVR3_SGX_STAGING),
-            raft_config: Some(attest::constants::RAFT_CONFIG_SVR3_SGX_STAGING),
+            raft_config: attest::constants::RAFT_CONFIG_SVR3_SGX_STAGING,
         },
         EnclaveEndpoint {
             domain_config: DOMAIN_CONFIG_SVR3_NITRO_STAGING,
             mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVR3_NITRO_STAGING),
-            raft_config: Some(attest::constants::RAFT_CONFIG_SVR3_NITRO_STAGING),
+            raft_config: attest::constants::RAFT_CONFIG_SVR3_NITRO_STAGING,
         },
         EnclaveEndpoint {
             domain_config: DOMAIN_CONFIG_SVR3_TPM2SNP_STAGING,
             mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVR3_TPM2SNP_STAGING),
-            raft_config: Some(attest::constants::RAFT_CONFIG_SVR3_TPM2SNP_STAGING),
+            raft_config: attest::constants::RAFT_CONFIG_SVR3_TPM2SNP_STAGING,
         },
     ),
 };
@@ -331,28 +331,28 @@ pub const PROD: Env<'static, Svr3Env> = Env {
     cdsi: EnclaveEndpoint {
         domain_config: DOMAIN_CONFIG_CDSI,
         mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_CDSI_PROD),
-        raft_config: None,
+        raft_config: (),
     },
     svr2: EnclaveEndpoint {
         domain_config: DOMAIN_CONFIG_SVR2,
         mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVR2_PROD),
-        raft_config: Some(attest::constants::RAFT_CONFIG_SVR2_PROD),
+        raft_config: attest::constants::RAFT_CONFIG_SVR2_PROD,
     },
     svr3: Svr3Env(
         EnclaveEndpoint {
             domain_config: DOMAIN_CONFIG_SVR3_SGX,
             mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVR3_SGX_PROD),
-            raft_config: Some(attest::constants::RAFT_CONFIG_SVR3_SGX_PROD),
+            raft_config: attest::constants::RAFT_CONFIG_SVR3_SGX_PROD,
         },
         EnclaveEndpoint {
             domain_config: DOMAIN_CONFIG_SVR3_NITRO,
             mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVR3_NITRO_PROD),
-            raft_config: Some(attest::constants::RAFT_CONFIG_SVR3_NITRO_PROD),
+            raft_config: attest::constants::RAFT_CONFIG_SVR3_NITRO_PROD,
         },
         EnclaveEndpoint {
             domain_config: DOMAIN_CONFIG_SVR3_TPM2SNP,
             mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVR3_TPM2SNP_PROD),
-            raft_config: Some(attest::constants::RAFT_CONFIG_SVR3_TPM2SNP_PROD),
+            raft_config: attest::constants::RAFT_CONFIG_SVR3_TPM2SNP_PROD,
         },
     ),
 };

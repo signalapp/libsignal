@@ -326,20 +326,20 @@ impl Svr3Storage {
         }
         let auth = Auth::from_uid_and_secret(uid, self.enclave_secret);
         let sgx_connection =
-            EnclaveEndpointConnection::new(self.env.sgx().clone(), Duration::from_secs(10));
+            EnclaveEndpointConnection::new(self.env.sgx(), Duration::from_secs(10));
         let a = SvrConnection::<Sgx, _>::connect(auth.clone(), &sgx_connection, connector.clone())
             .await
             .expect("can attestedly connect to SGX");
 
         let nitro_connection =
-            EnclaveEndpointConnection::new(self.env.nitro().clone(), Duration::from_secs(10));
+            EnclaveEndpointConnection::new(self.env.nitro(), Duration::from_secs(10));
         let b =
             SvrConnection::<Nitro, _>::connect(auth.clone(), &nitro_connection, connector.clone())
                 .await
                 .expect("can attestedly connect to Nitro");
 
         let tpm2snp_connection =
-            EnclaveEndpointConnection::new(self.env.tpm2snp().clone(), Duration::from_secs(10));
+            EnclaveEndpointConnection::new(self.env.tpm2snp(), Duration::from_secs(10));
         let c = SvrConnection::<Tpm2Snp, _>::connect(auth.clone(), &tpm2snp_connection, connector)
             .await
             .expect("can attestedly connect to Nitro");

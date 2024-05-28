@@ -60,20 +60,17 @@ async fn main() {
 
     let connect = || async {
         let connector = TcpSslTransportConnector::new(DnsResolver::default());
-        let connection_a =
-            EnclaveEndpointConnection::new(env.sgx().clone(), Duration::from_secs(10));
+        let connection_a = EnclaveEndpointConnection::new(env.sgx(), Duration::from_secs(10));
         let a = SvrConnection::<Sgx, _>::connect(auth.clone(), &connection_a, connector.clone())
             .await
             .expect("can attestedly connect to SGX");
 
-        let connection_b =
-            EnclaveEndpointConnection::new(env.nitro().clone(), Duration::from_secs(10));
+        let connection_b = EnclaveEndpointConnection::new(env.nitro(), Duration::from_secs(10));
         let b = SvrConnection::<Nitro, _>::connect(auth.clone(), &connection_b, connector.clone())
             .await
             .expect("can attestedly connect to Nitro");
 
-        let connection_c =
-            EnclaveEndpointConnection::new(env.tpm2snp().clone(), Duration::from_secs(10));
+        let connection_c = EnclaveEndpointConnection::new(env.tpm2snp(), Duration::from_secs(10));
         let c = SvrConnection::<Tpm2Snp, _>::connect(auth.clone(), &connection_c, connector)
             .await
             .expect("can attestedly connect to Tpm2Snp");

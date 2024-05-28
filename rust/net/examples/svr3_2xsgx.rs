@@ -104,7 +104,7 @@ async fn main() {
             mr_enclave: MrEnclave::new(&hex!(
                 "acb1973aa0bbbd14b3b4e06f145497d948fd4a98efc500fcce363b3b743ec482"
             )),
-            raft_config: Some(TEST_SERVER_RAFT_CONFIG),
+            raft_config: TEST_SERVER_RAFT_CONFIG,
         };
         TwoForTwoEnv(endpoint.clone(), endpoint)
     };
@@ -113,15 +113,13 @@ async fn main() {
 
     let connect = || async {
         let connector = TcpSslTransportConnector::new(DnsResolver::default());
-        let connection_a =
-            EnclaveEndpointConnection::new(two_sgx_env.0.clone(), Duration::from_secs(10));
+        let connection_a = EnclaveEndpointConnection::new(&two_sgx_env.0, Duration::from_secs(10));
 
         let a = SvrConnection::connect(make_auth(uid_a), &connection_a, connector.clone())
             .await
             .expect("can attestedly connect");
 
-        let connection_b =
-            EnclaveEndpointConnection::new(two_sgx_env.1.clone(), Duration::from_secs(10));
+        let connection_b = EnclaveEndpointConnection::new(&two_sgx_env.1, Duration::from_secs(10));
 
         let b = SvrConnection::connect(make_auth(uid_b), &connection_b, connector)
             .await

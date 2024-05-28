@@ -27,7 +27,24 @@ use crate::infra::{
 };
 use crate::svr::SvrConnection;
 
+pub trait AsRaftConfig<'a> {
+    fn as_raft_config(&self) -> Option<&'a RaftConfig>;
+}
+
+impl<'a> AsRaftConfig<'a> for () {
+    fn as_raft_config(&self) -> Option<&'a RaftConfig> {
+        None
+    }
+}
+
+impl<'a> AsRaftConfig<'a> for &'a RaftConfig {
+    fn as_raft_config(&self) -> Option<&'a RaftConfig> {
+        Some(self)
+    }
+}
+
 pub trait EnclaveKind {
+    type RaftConfigType: AsRaftConfig<'static> + Clone;
     fn url_path(enclave: &[u8]) -> PathAndQuery;
 }
 
@@ -42,18 +59,21 @@ pub enum Nitro {}
 pub enum Tpm2Snp {}
 
 impl EnclaveKind for Cdsi {
+    type RaftConfigType = ();
     fn url_path(enclave: &[u8]) -> PathAndQuery {
         PathAndQuery::try_from(format!("/v1/{}/discovery", hex::encode(enclave))).unwrap()
     }
 }
 
 impl EnclaveKind for Sgx {
+    type RaftConfigType = &'static RaftConfig;
     fn url_path(enclave: &[u8]) -> PathAndQuery {
         PathAndQuery::try_from(format!("/v1/{}", hex::encode(enclave))).unwrap()
     }
 }
 
 impl EnclaveKind for Nitro {
+    type RaftConfigType = &'static RaftConfig;
     fn url_path(enclave: &[u8]) -> PathAndQuery {
         PathAndQuery::try_from(format!(
             "/v1/{}",
@@ -64,6 +84,7 @@ impl EnclaveKind for Nitro {
 }
 
 impl EnclaveKind for Tpm2Snp {
+    type RaftConfigType = &'static RaftConfig;
     fn url_path(enclave: &[u8]) -> PathAndQuery {
         PathAndQuery::try_from(format!(
             "/v1/{}",
@@ -93,8 +114,8 @@ impl<A> IntoConnections for A
 where
     A: IntoAttestedConnection,
 {
-    type Connections = [AttestedConnection<A::Stream>; 1];
     type Stream = A::Stream;
+    type Connections = [AttestedConnection<A::Stream>; 1];
     fn into_connections(self) -> Self::Connections {
         [self.into()]
     }
@@ -105,8 +126,8 @@ where
     A: IntoAttestedConnection,
     B: IntoAttestedConnection<Stream = A::Stream>,
 {
-    type Connections = [AttestedConnection<A::Stream>; 2];
     type Stream = A::Stream;
+    type Connections = [AttestedConnection<A::Stream>; 2];
     fn into_connections(self) -> Self::Connections {
         [self.0.into(), self.1.into()]
     }
@@ -118,8 +139,8 @@ where
     B: IntoAttestedConnection<Stream = A::Stream>,
     C: IntoAttestedConnection<Stream = A::Stream>,
 {
-    type Connections = [AttestedConnection<A::Stream>; 3];
     type Stream = A::Stream;
+    type Connections = [AttestedConnection<A::Stream>; 3];
     fn into_connections(self) -> Self::Connections {
         [self.0.into(), self.1.into(), self.2.into()]
     }
@@ -178,7 +199,7 @@ impl<Bytes: AsRef<[u8]>, S> AsRef<[u8]> for MrEnclave<Bytes, S> {
 pub struct EnclaveEndpoint<'a, E: EnclaveKind> {
     pub domain_config: DomainConfig,
     pub mr_enclave: MrEnclave<&'a [u8], E>,
-    pub raft_config: Option<&'a RaftConfig>,
+    pub raft_config: E::RaftConfigType,
 }
 
 pub trait NewHandshake {
@@ -193,6 +214,15 @@ pub trait NewHandshake {
 pub struct EndpointParams<E: EnclaveKind> {
     pub(crate) mr_enclave: MrEnclave<&'static [u8], E>,
     pub(crate) raft_config: Option<&'static RaftConfig>,
+}
+
+impl<E: EnclaveKind> EnclaveEndpoint<'static, E> {
+    fn get_params(&self) -> EndpointParams<E> {
+        EndpointParams {
+            mr_enclave: self.mr_enclave,
+            raft_config: self.raft_config.as_raft_config(),
+        }
+    }
 }
 
 pub struct EnclaveEndpointConnection<E: EnclaveKind, C> {
@@ -267,7 +297,7 @@ impl<E: EnclaveKind + NewHandshake, C: ConnectionManager> EnclaveEndpointConnect
 }
 
 impl<E: EnclaveKind> EnclaveEndpointConnection<E, SingleRouteThrottlingConnectionManager> {
-    pub fn new(endpoint: EnclaveEndpoint<'static, E>, connect_timeout: Duration) -> Self {
+    pub fn new(endpoint: &EnclaveEndpoint<'static, E>, connect_timeout: Duration) -> Self {
         Self {
             endpoint_connection: EndpointConnection {
                 manager: SingleRouteThrottlingConnectionManager::new(
@@ -276,10 +306,7 @@ impl<E: EnclaveKind> EnclaveEndpointConnection<E, SingleRouteThrottlingConnectio
                 ),
                 config: make_ws_config(E::url_path(endpoint.mr_enclave.as_ref()), connect_timeout),
             },
-            params: EndpointParams {
-                mr_enclave: endpoint.mr_enclave,
-                raft_config: endpoint.raft_config,
-            },
+            params: endpoint.get_params(),
         }
     }
 }
@@ -299,10 +326,7 @@ impl<E: EnclaveKind> EnclaveEndpointConnection<E, MultiRouteConnectionManager> {
                     one_route_connect_timeout,
                 ),
             ),
-            params: EndpointParams {
-                mr_enclave: endpoint.mr_enclave,
-                raft_config: endpoint.raft_config,
-            },
+            params: endpoint.get_params(),
         }
     }
 }
