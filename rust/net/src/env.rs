@@ -13,7 +13,7 @@ use nonzero_ext::nonzero;
 use rand::seq::SliceRandom;
 use rand::{thread_rng, Rng};
 
-use crate::enclave::{Cdsi, EnclaveEndpoint, MrEnclave, Nitro, Sgx, Tpm2Snp};
+use crate::enclave::{Cdsi, EnclaveEndpoint, EndpointParams, MrEnclave, Nitro, Sgx, Tpm2Snp};
 use crate::infra::certs::RootCertificates;
 use crate::infra::dns::lookup_result::LookupResult;
 use crate::infra::{
@@ -164,6 +164,52 @@ const PROXY_CONFIG_G: ProxyConfig = ProxyConfig {
     ],
 };
 
+pub(crate) const ENDPOINT_PARAMS_CDSI_STAGING: EndpointParams<'static, Cdsi> = EndpointParams {
+    mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_CDSI_STAGING),
+    raft_config: (),
+};
+
+pub(crate) const ENDPOINT_PARAMS_SVR2_STAGING: EndpointParams<'static, Sgx> = EndpointParams {
+    mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVR2_STAGING),
+    raft_config: attest::constants::RAFT_CONFIG_SVR2_STAGING,
+};
+pub(crate) const ENDPOINT_PARAMS_SVR3_SGX_STAGING: EndpointParams<'static, Sgx> = EndpointParams {
+    mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVR3_SGX_STAGING),
+    raft_config: attest::constants::RAFT_CONFIG_SVR3_SGX_STAGING,
+};
+pub(crate) const ENDPOINT_PARAMS_SVR3_NITRO_STAGING: EndpointParams<'static, Nitro> =
+    EndpointParams {
+        mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVR3_NITRO_STAGING),
+        raft_config: attest::constants::RAFT_CONFIG_SVR3_NITRO_STAGING,
+    };
+pub(crate) const ENDPOINT_PARAMS_SVR3_TPM2SNP_STAGING: EndpointParams<'static, Tpm2Snp> =
+    EndpointParams {
+        mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVR3_TPM2SNP_STAGING),
+        raft_config: attest::constants::RAFT_CONFIG_SVR3_TPM2SNP_STAGING,
+    };
+
+pub(crate) const ENDPOINT_PARAMS_CDSI_PROD: EndpointParams<'static, Cdsi> = EndpointParams {
+    mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_CDSI_PROD),
+    raft_config: (),
+};
+pub(crate) const ENDPOINT_PARAMS_SVR2_PROD: EndpointParams<'static, Sgx> = EndpointParams {
+    mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVR2_PROD),
+    raft_config: attest::constants::RAFT_CONFIG_SVR2_PROD,
+};
+pub(crate) const ENDPOINT_PARAMS_SVR3_SGX_PROD: EndpointParams<'static, Sgx> = EndpointParams {
+    mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVR3_SGX_PROD),
+    raft_config: attest::constants::RAFT_CONFIG_SVR3_SGX_PROD,
+};
+pub(crate) const ENDPOINT_PARAMS_SVR3_NITRO_PROD: EndpointParams<'static, Nitro> = EndpointParams {
+    mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVR3_NITRO_PROD),
+    raft_config: attest::constants::RAFT_CONFIG_SVR3_NITRO_PROD,
+};
+pub(crate) const ENDPOINT_PARAMS_SVR3_TPM2SNP_PROD: EndpointParams<'static, Tpm2Snp> =
+    EndpointParams {
+        mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVR3_TPM2SNP_PROD),
+        raft_config: attest::constants::RAFT_CONFIG_SVR3_TPM2SNP_PROD,
+    };
+
 #[derive(Clone)]
 pub struct DomainConfig {
     pub hostname: &'static str,
@@ -299,29 +345,24 @@ pub const STAGING: Env<'static, Svr3Env> = Env {
     chat_domain_config: DOMAIN_CONFIG_CHAT_STAGING,
     cdsi: EnclaveEndpoint {
         domain_config: DOMAIN_CONFIG_CDSI_STAGING,
-        mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_CDSI_STAGING),
-        raft_config: (),
+        params: ENDPOINT_PARAMS_CDSI_STAGING,
     },
     svr2: EnclaveEndpoint {
         domain_config: DOMAIN_CONFIG_SVR2_STAGING,
-        mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVR2_STAGING),
-        raft_config: attest::constants::RAFT_CONFIG_SVR2_STAGING,
+        params: ENDPOINT_PARAMS_SVR2_STAGING,
     },
     svr3: Svr3Env(
         EnclaveEndpoint {
             domain_config: DOMAIN_CONFIG_SVR3_SGX_STAGING,
-            mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVR3_SGX_STAGING),
-            raft_config: attest::constants::RAFT_CONFIG_SVR3_SGX_STAGING,
+            params: ENDPOINT_PARAMS_SVR3_SGX_STAGING,
         },
         EnclaveEndpoint {
             domain_config: DOMAIN_CONFIG_SVR3_NITRO_STAGING,
-            mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVR3_NITRO_STAGING),
-            raft_config: attest::constants::RAFT_CONFIG_SVR3_NITRO_STAGING,
+            params: ENDPOINT_PARAMS_SVR3_NITRO_STAGING,
         },
         EnclaveEndpoint {
             domain_config: DOMAIN_CONFIG_SVR3_TPM2SNP_STAGING,
-            mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVR3_TPM2SNP_STAGING),
-            raft_config: attest::constants::RAFT_CONFIG_SVR3_TPM2SNP_STAGING,
+            params: ENDPOINT_PARAMS_SVR3_TPM2SNP_STAGING,
         },
     ),
 };
@@ -330,29 +371,24 @@ pub const PROD: Env<'static, Svr3Env> = Env {
     chat_domain_config: DOMAIN_CONFIG_CHAT,
     cdsi: EnclaveEndpoint {
         domain_config: DOMAIN_CONFIG_CDSI,
-        mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_CDSI_PROD),
-        raft_config: (),
+        params: ENDPOINT_PARAMS_CDSI_PROD,
     },
     svr2: EnclaveEndpoint {
         domain_config: DOMAIN_CONFIG_SVR2,
-        mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVR2_PROD),
-        raft_config: attest::constants::RAFT_CONFIG_SVR2_PROD,
+        params: ENDPOINT_PARAMS_SVR2_PROD,
     },
     svr3: Svr3Env(
         EnclaveEndpoint {
             domain_config: DOMAIN_CONFIG_SVR3_SGX,
-            mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVR3_SGX_PROD),
-            raft_config: attest::constants::RAFT_CONFIG_SVR3_SGX_PROD,
+            params: ENDPOINT_PARAMS_SVR3_SGX_PROD,
         },
         EnclaveEndpoint {
             domain_config: DOMAIN_CONFIG_SVR3_NITRO,
-            mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVR3_NITRO_PROD),
-            raft_config: attest::constants::RAFT_CONFIG_SVR3_NITRO_PROD,
+            params: ENDPOINT_PARAMS_SVR3_NITRO_PROD,
         },
         EnclaveEndpoint {
             domain_config: DOMAIN_CONFIG_SVR3_TPM2SNP,
-            mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVR3_TPM2SNP_PROD),
-            raft_config: attest::constants::RAFT_CONFIG_SVR3_TPM2SNP_PROD,
+            params: ENDPOINT_PARAMS_SVR3_TPM2SNP_PROD,
         },
     ),
 };

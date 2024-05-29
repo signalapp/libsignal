@@ -196,10 +196,15 @@ impl<Bytes: AsRef<[u8]>, S> AsRef<[u8]> for MrEnclave<Bytes, S> {
 }
 
 #[derive_where(Clone)]
-pub struct EnclaveEndpoint<'a, E: EnclaveKind> {
-    pub domain_config: DomainConfig,
+pub struct EndpointParams<'a, E: EnclaveKind> {
     pub mr_enclave: MrEnclave<&'a [u8], E>,
     pub raft_config: E::RaftConfigType,
+}
+
+#[derive_where(Clone)]
+pub struct EnclaveEndpoint<'a, E: EnclaveKind> {
+    pub domain_config: DomainConfig,
+    pub params: EndpointParams<'a, E>,
 }
 
 pub trait NewHandshake {
@@ -211,23 +216,9 @@ pub trait NewHandshake {
         Self: EnclaveKind + Sized;
 }
 
-pub struct EndpointParams<E: EnclaveKind> {
-    pub(crate) mr_enclave: MrEnclave<&'static [u8], E>,
-    pub(crate) raft_config: Option<&'static RaftConfig>,
-}
-
-impl<E: EnclaveKind> EnclaveEndpoint<'static, E> {
-    fn get_params(&self) -> EndpointParams<E> {
-        EndpointParams {
-            mr_enclave: self.mr_enclave,
-            raft_config: self.raft_config.as_raft_config(),
-        }
-    }
-}
-
 pub struct EnclaveEndpointConnection<E: EnclaveKind, C> {
     pub(crate) endpoint_connection: EndpointConnection<C>,
-    pub(crate) params: EndpointParams<E>,
+    pub(crate) params: EndpointParams<'static, E>,
 }
 
 #[derive(Debug, thiserror::Error, displaydoc::Display)]
@@ -304,9 +295,12 @@ impl<E: EnclaveKind> EnclaveEndpointConnection<E, SingleRouteThrottlingConnectio
                     endpoint.domain_config.connection_params(),
                     connect_timeout,
                 ),
-                config: make_ws_config(E::url_path(endpoint.mr_enclave.as_ref()), connect_timeout),
+                config: make_ws_config(
+                    E::url_path(endpoint.params.mr_enclave.as_ref()),
+                    connect_timeout,
+                ),
             },
-            params: endpoint.get_params(),
+            params: endpoint.params.clone(),
         }
     }
 }
@@ -322,11 +316,11 @@ impl<E: EnclaveKind> EnclaveEndpointConnection<E, MultiRouteConnectionManager> {
                 connection_params,
                 one_route_connect_timeout,
                 make_ws_config(
-                    E::url_path(endpoint.mr_enclave.as_ref()),
+                    E::url_path(endpoint.params.mr_enclave.as_ref()),
                     one_route_connect_timeout,
                 ),
             ),
-            params: endpoint.get_params(),
+            params: endpoint.params.clone(),
         }
     }
 }
@@ -342,6 +336,7 @@ impl NewHandshake for Sgx {
             SystemTime::now(),
             params
                 .raft_config
+                .as_raft_config()
                 .expect("Raft config must be present for SGX"),
         )
     }
@@ -371,6 +366,7 @@ impl NewHandshake for Nitro {
             SystemTime::now(),
             params
                 .raft_config
+                .as_raft_config()
                 .expect("Raft config must be present for Nitro"),
         )
     }
@@ -387,6 +383,7 @@ impl NewHandshake for Tpm2Snp {
             SystemTime::now(),
             params
                 .raft_config
+                .as_raft_config()
                 .expect("Raft config must be present for Tpm2Snp"),
         )
     }
@@ -426,12 +423,6 @@ mod test {
     }
 
     const CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
-    const TEST_RAFT_CONFIG: &RaftConfig = &RaftConfig {
-        min_voting_replicas: 0,
-        max_voting_replicas: 0,
-        super_majority: 0,
-        group_id: 0,
-    };
 
     async fn enclave_connect<C: ConnectionManager>(
         manager: C,
@@ -444,7 +435,7 @@ mod test {
             },
             params: EndpointParams::<Cdsi> {
                 mr_enclave,
-                raft_config: Some(TEST_RAFT_CONFIG),
+                raft_config: (),
             },
         };
 

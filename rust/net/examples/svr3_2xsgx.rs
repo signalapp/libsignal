@@ -22,7 +22,8 @@ use rand_core::{CryptoRngCore, OsRng, RngCore};
 use attest::svr2::RaftConfig;
 use libsignal_net::auth::Auth;
 use libsignal_net::enclave::{
-    EnclaveEndpoint, EnclaveEndpointConnection, MrEnclave, PpssSetup, Sgx, Svr3Flavor,
+    EnclaveEndpoint, EnclaveEndpointConnection, EndpointParams, MrEnclave, PpssSetup, Sgx,
+    Svr3Flavor,
 };
 use libsignal_net::env::DomainConfig;
 use libsignal_net::infra::certs::RootCertificates;
@@ -46,6 +47,12 @@ const TEST_SERVER_DOMAIN_CONFIG: DomainConfig = DomainConfig {
     ip_v6: &[],
     cert: TEST_SERVER_CERT,
     proxy_path: "/svr3-test",
+};
+const TEST_SERVER_ENDPOINT_PARAMS: EndpointParams<'static, Sgx> = EndpointParams {
+    mr_enclave: MrEnclave::new(&hex!(
+        "acb1973aa0bbbd14b3b4e06f145497d948fd4a98efc500fcce363b3b743ec482"
+    )),
+    raft_config: TEST_SERVER_RAFT_CONFIG,
 };
 
 pub struct TwoForTwoEnv<'a, A, B>(EnclaveEndpoint<'a, A>, EnclaveEndpoint<'a, B>)
@@ -76,6 +83,7 @@ struct Args {
     #[arg(long)]
     password: String,
 }
+
 #[tokio::main]
 async fn main() {
     let args = Args::parse();
@@ -101,10 +109,7 @@ async fn main() {
     let two_sgx_env = {
         let endpoint = EnclaveEndpoint::<Sgx> {
             domain_config: TEST_SERVER_DOMAIN_CONFIG,
-            mr_enclave: MrEnclave::new(&hex!(
-                "acb1973aa0bbbd14b3b4e06f145497d948fd4a98efc500fcce363b3b743ec482"
-            )),
-            raft_config: TEST_SERVER_RAFT_CONFIG,
+            params: TEST_SERVER_ENDPOINT_PARAMS,
         };
         TwoForTwoEnv(endpoint.clone(), endpoint)
     };
