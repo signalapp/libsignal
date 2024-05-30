@@ -10,7 +10,6 @@ import static org.junit.Assert.*;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
-import java.util.concurrent.ExecutionException;
 import org.junit.Assume;
 import org.junit.Test;
 import org.signal.libsignal.internal.Native;
@@ -159,17 +158,11 @@ public class ChatServiceTest {
   }
 
   @Test
-  public void testConnectFailsWithInvalidProxy() throws Exception {
+  public void testInvalidProxyRejected() throws Exception {
     // The default TLS proxy config doesn't support staging, so we connect to production.
     final Network net = new Network(Network.Environment.PRODUCTION, USER_AGENT);
     assertThrows(IOException.class, () -> net.setProxy("signalfoundation.org", 0));
     assertThrows(IOException.class, () -> net.setProxy("signalfoundation.org", 100_000));
     assertThrows(IOException.class, () -> net.setProxy("signalfoundation.org", -1));
-
-    final ChatService chat = net.createChatService("", "");
-    // Make sure we *can't* connect.
-    final ExecutionException failure =
-        assertThrows(ExecutionException.class, () -> chat.connectUnauthenticated().get());
-    assertTrue(failure.getCause().toString(), failure.getCause() instanceof ChatServiceException);
   }
 }

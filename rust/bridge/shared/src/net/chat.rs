@@ -474,8 +474,10 @@ mod test {
     use assert_matches::assert_matches;
     use libsignal_net::chat::ChatServiceError;
 
+    // Normally we would write this test in the app languages, but it depends on timeouts.
+    // Using a paused tokio runtime auto-advances time when there's no other work to be done.
     #[tokio::test(start_paused = true)]
-    async fn cannon_connect_through_invalid_proxy() {
+    async fn cannot_connect_through_invalid_proxy() {
         let cm = ConnectionManager::new(Environment::Staging, "test-user-agent".to_string());
 
         assert_matches!(

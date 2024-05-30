@@ -137,6 +137,15 @@ describe('chat service api', () => {
     );
   });
 
+  it('invalid proxies are rejected', () => {
+    // The default TLS proxy config doesn't support staging, so we connect to production.
+    const net = new Net(Environment.Production, userAgent);
+    expect(() => net.setProxy('signalfoundation.org', 0)).throws(Error);
+    expect(() => net.setProxy('signalfoundation.org', 100_000)).throws(Error);
+    expect(() => net.setProxy('signalfoundation.org', -1)).throws(Error);
+    expect(() => net.setProxy('signalfoundation.org', 0.1)).throws(Error);
+  });
+
   // Integration tests make real network calls and as such will not be run unless a proxy server is provided.
   describe('Integration tests', function (this: Mocha.Suite) {
     before(() => {
@@ -166,15 +175,6 @@ describe('chat service api', () => {
       await chatService.disconnect();
     }).timeout(10000);
   });
-
-  it('cannot connect through an invalid proxy', () => {
-    // The default TLS proxy config doesn't support staging, so we connect to production.
-    const net = new Net(Environment.Production, userAgent);
-    expect(() => net.setProxy('signalfoundation.org', 0)).throws(Error);
-    expect(() => net.setProxy('signalfoundation.org', 100_000)).throws(Error);
-    expect(() => net.setProxy('signalfoundation.org', -1)).throws(Error);
-    expect(() => net.setProxy('signalfoundation.org', 0.1)).throws(Error);
-  }).timeout(10000);
 });
 
 describe('cdsi lookup', () => {
