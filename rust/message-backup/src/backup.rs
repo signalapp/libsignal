@@ -35,7 +35,7 @@ pub struct PartialBackup<M: Method> {
     account_data: Option<M::Value<AccountData<M>>>,
     recipients: HashMap<RecipientId, RecipientData<M>>,
     chats: ChatsData<M>,
-    sticker_packs: HashMap<StickerPackId, StickerPack>,
+    sticker_packs: HashMap<StickerPackId, StickerPack<M>>,
 }
 
 #[derive_where(Default)]
@@ -48,9 +48,9 @@ struct ChatsData<M: Method> {
 pub struct Backup {
     pub meta: BackupMeta,
     pub account_data: Option<AccountData<Store>>,
-    pub recipients: HashMap<RecipientId, RecipientData>,
-    pub chats: HashMap<ChatId, ChatData>,
-    pub sticker_packs: HashMap<StickerPackId, StickerPack>,
+    pub recipients: HashMap<RecipientId, RecipientData<Store>>,
+    pub chats: HashMap<ChatId, ChatData<Store>>,
+    pub sticker_packs: HashMap<StickerPackId, StickerPack<Store>>,
 }
 
 #[derive(Debug)]

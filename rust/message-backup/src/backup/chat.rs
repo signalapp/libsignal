@@ -14,7 +14,7 @@ use derive_where::derive_where;
 
 use crate::backup::chat::chat_style::{ChatStyle, ChatStyleError};
 use crate::backup::frame::RecipientId;
-use crate::backup::method::{Contains, Lookup, Method, Store};
+use crate::backup::method::{Contains, Lookup, Method};
 use crate::backup::sticker::MessageStickerError;
 use crate::backup::time::{Duration, Timestamp};
 use crate::backup::{BackupMeta, CallError, TryFromWith, TryIntoWith as _};
@@ -131,7 +131,7 @@ pub struct InvalidExpiration {
 /// Validated version of [`proto::Chat`].
 #[derive_where(Debug)]
 #[cfg_attr(test, derive_where(PartialEq; M::List<ChatItemData>: PartialEq))]
-pub struct ChatData<M: Method = Store> {
+pub struct ChatData<M: Method> {
     pub recipient: RecipientId,
     pub(super) items: M::List<ChatItemData>,
     pub expiration_timer: Option<Duration>,
@@ -598,6 +598,7 @@ mod test {
     use test_case::test_case;
 
     use crate::backup::chat::testutil::TestContext;
+    use crate::backup::method::Store;
     use crate::backup::time::testutil::MillisecondsSinceEpoch;
     use crate::backup::Purpose;
 
@@ -714,7 +715,7 @@ mod test {
         modifier(&mut chat);
         assert_eq!(
             chat.try_into_with(&TestContext::default())
-                .map(|_: ChatData| ()),
+                .map(|_: ChatData::<Store>| ()),
             expected
         );
     }

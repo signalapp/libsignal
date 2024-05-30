@@ -11,7 +11,7 @@ use uuid::Uuid;
 use zkgroup::{GroupMasterKeyBytes, ProfileKeyBytes};
 
 use crate::backup::call::{CallLink, CallLinkError};
-use crate::backup::method::{Method, Store};
+use crate::backup::method::Method;
 use crate::backup::time::Timestamp;
 use crate::proto::backup as proto;
 use crate::proto::backup::recipient::Destination as RecipientDestination;
@@ -37,11 +37,15 @@ pub enum RecipientError {
     DistributionListPrivacyUnknown,
     /// invalid call link: {0}
     InvalidCallLink(#[from] CallLinkError),
+    /// contact has invalid username
+    InvalidContactUsername,
+    /// contact is registered but has unregistered timestamp
+    UnregisteredAtForRegisteredContact,
 }
 
 #[derive_where(Debug)]
 #[cfg_attr(test, derive_where(PartialEq; Destination<M>: PartialEq))]
-pub struct RecipientData<M: Method = Store> {
+pub struct RecipientData<M: Method> {
     pub destination: Destination<M>,
 }
 
@@ -49,7 +53,7 @@ pub struct RecipientData<M: Method = Store> {
 #[cfg_attr(test, derive_where(PartialEq; M::Value<ContactData>: PartialEq, M::Value<GroupData>: PartialEq, M::Value<DistributionListData>: PartialEq, M::Value<CallLink>: PartialEq))]
 #[derive(strum::EnumDiscriminants)]
 #[strum_discriminants(name(DestinationKind))]
-pub enum Destination<M: Method = Store> {
+pub enum Destination<M: Method> {
     Contact(M::Value<ContactData>),
     Group(M::Value<GroupData>),
     DistributionList(M::Value<DistributionListData>),
@@ -65,6 +69,15 @@ pub struct ContactData {
     pub pni: Option<Pni>,
     pub profile_key: Option<ProfileKeyBytes>,
     pub registered: bool,
+    pub username: Option<String>,
+    pub unregistered_at: Option<Timestamp>,
+    pub e164: Option<u64>,
+    pub blocked: bool,
+    pub hidden: bool,
+    pub profile_sharing: bool,
+    pub profile_given_name: Option<String>,
+    pub profile_family_name: Option<String>,
+    pub hide_story: bool,
 }
 
 #[non_exhaustive]
@@ -147,16 +160,16 @@ impl TryFrom<proto::Contact> for ContactData {
             profileKey,
             registered,
             unregisteredTimestamp,
+            username,
+            e164,
+            blocked,
+            hidden,
 
             // TODO validate these fields
-            username: _,
-            e164: _,
-            blocked: _,
-            hidden: _,
-            profileSharing: _,
-            profileGivenName: _,
-            profileFamilyName: _,
-            hideStory: _,
+            profileSharing,
+            profileGivenName,
+            profileFamilyName,
+            hideStory,
             special_fields: _,
         } = value;
 
@@ -171,6 +184,14 @@ impl TryFrom<proto::Contact> for ContactData {
             .map_err(|_| RecipientError::InvalidServiceId(ServiceIdKind::Pni))?
             .map(Pni::from_uuid_bytes);
 
+        let username = username
+            .map(|username| {
+                usernames::Username::new(&username)
+                    .map_err(|_| RecipientError::InvalidContactUsername)
+                    .map(|_| username)
+            })
+            .transpose()?;
+
         let profile_key = profileKey
             .map(TryInto::try_into)
             .transpose()
@@ -184,14 +205,27 @@ impl TryFrom<proto::Contact> for ContactData {
             proto::contact::Registered::NOT_REGISTERED => false,
         };
 
-        let _ = NonZeroU64::new(unregisteredTimestamp)
+        let unregistered_at = NonZeroU64::new(unregisteredTimestamp)
             .map(|u| Timestamp::from_millis(u.get(), "Contact.unregisteredTimestamp"));
+
+        if unregistered_at.is_some() && registered {
+            return Err(RecipientError::UnregisteredAtForRegisteredContact);
+        }
 
         Ok(Self {
             aci,
             pni,
             profile_key,
             registered,
+            unregistered_at,
+            username,
+            e164,
+            blocked,
+            hidden,
+            profile_sharing: profileSharing,
+            profile_given_name: profileGivenName,
+            profile_family_name: profileFamilyName,
+            hide_story: hideStory,
         })
     }
 }
@@ -269,6 +303,8 @@ mod test {
     use protobuf::EnumOrUnknown;
     use test_case::test_case;
 
+    use crate::backup::method::Store;
+
     use super::*;
 
     impl proto::Recipient {
@@ -293,6 +329,10 @@ mod test {
                 pni: Some(Self::TEST_PNI.into()),
                 profileKey: Some(Self::TEST_PROFILE_KEY.into()),
                 registered: proto::contact::Registered::NOT_REGISTERED.into(),
+                username: Some("example.1234".to_owned()),
+                profileGivenName: Some("GivenName".to_owned()),
+                profileFamilyName: Some("FamilyName".to_owned()),
+
                 ..Default::default()
             }
         }
@@ -376,6 +416,10 @@ mod test {
     fn registration_unknown(input: &mut proto::Contact) {
         input.registered = EnumOrUnknown::default();
     }
+    fn profile_no_names(input: &mut proto::Contact) {
+        input.profileGivenName = None;
+        input.profileFamilyName = None;
+    }
 
     #[test]
     fn valid_destination_contact() {
@@ -392,6 +436,15 @@ mod test {
                     pni: Some(Pni::from_uuid_bytes(proto::Contact::TEST_PNI)),
                     profile_key: Some(proto::Contact::TEST_PROFILE_KEY),
                     registered: false,
+                    username: Some("example.1234".to_owned()),
+                    unregistered_at: None,
+                    e164: None,
+                    blocked: false,
+                    hidden: false,
+                    profile_sharing: false,
+                    profile_given_name: Some("GivenName".to_owned()),
+                    profile_family_name: Some("FamilyName".to_owned()),
+                    hide_story: false,
                 })
             })
         )
@@ -405,6 +458,7 @@ mod test {
     #[test_case(no_profile_key, Ok(()))]
     #[test_case(invalid_profile_key, Err(RecipientError::InvalidProfileKey))]
     #[test_case(registration_unknown, Err(RecipientError::ContactRegistrationUnknown))]
+    #[test_case(profile_no_names, Ok(()))]
     fn destination_contact(
         modifier: fn(&mut proto::Contact),
         expected: Result<(), RecipientError>,

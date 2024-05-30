@@ -10,22 +10,30 @@
 
 use derive_where::derive_where;
 
-use crate::backup::method::{Method, Store};
+use crate::backup::method::{KeyExists, Map as _, Method};
 use crate::backup::WithId;
 use crate::proto::backup as proto;
 
 /// Validated version of [`proto::StickerPack`].
 #[derive_where(Debug)]
-#[cfg_attr(test, derive_where(PartialEq; M::Map<StickerId, PackSticker>: PartialEq, M::Value<Key>: PartialEq))]
-pub struct StickerPack<M: Method = Store> {
+#[cfg_attr(test, derive_where(PartialEq;
+        M::Map<StickerId, PackSticker>: PartialEq,
+        M::Value<Key>: PartialEq,
+        M::Value<String>: PartialEq
+    ))]
+pub struct StickerPack<M: Method> {
     pub key: M::Value<Key>,
     pub stickers: M::Map<StickerId, PackSticker>,
+    pub title: M::Value<String>,
+    pub author: M::Value<String>,
     _limit_construction_to_module: (),
 }
 
 #[derive(Debug)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct PackSticker {
+    pub id: StickerId,
+    pub emoji: String,
     _limit_construction_to_module: (),
 }
 
@@ -34,6 +42,7 @@ pub struct PackSticker {
 pub struct MessageSticker {
     pub pack_id: PackId,
     pub pack_key: Key,
+    pub emoji: Option<String>,
     _limit_construction_to_module: (),
 }
 
@@ -72,6 +81,10 @@ impl WithId for proto::StickerPackSticker {
 pub enum StickerPackError {
     /// key is invalid
     InvalidKey,
+    /// sticker pack ID is invalid
+    InvalidPackId,
+    /// {0:?} contains more than one sticker with {0:?}
+    DuplicateId(PackId, StickerId),
 }
 
 #[derive(Debug, thiserror::Error, displaydoc::Display)]
@@ -83,31 +96,44 @@ pub enum MessageStickerError {
     InvalidPackKey,
 }
 
-impl TryFrom<proto::StickerPack> for StickerPack {
+impl<M: Method> TryFrom<proto::StickerPack> for StickerPack<M> {
     type Error = StickerPackError;
     fn try_from(value: proto::StickerPack) -> Result<Self, Self::Error> {
         let proto::StickerPack {
-            packId: _,
+            packId,
             packKey,
             stickers,
-            // TODO validate these fields
-            title: _,
-            author: _,
+            title,
+            author,
             special_fields: _,
         } = value;
+
+        let pack_id = PackId(
+            packId
+                .try_into()
+                .map_err(|_| StickerPackError::InvalidPackId)?,
+        );
 
         let key = packKey
             .try_into()
             .map_err(|_| StickerPackError::InvalidKey)?;
 
-        let stickers = stickers
-            .into_iter()
-            .map(|sticker| Ok((sticker.id(), sticker.try_into()?)))
-            .collect::<Result<_, _>>()?;
+        let stickers = {
+            let mut out = M::Map::default();
+            for sticker in stickers {
+                let sticker: PackSticker = sticker.try_into()?;
+                let id = sticker.id;
+                out.insert(id, sticker)
+                    .map_err(|KeyExists| StickerPackError::DuplicateId(pack_id, id))?;
+            }
+            out
+        };
 
         Ok(Self {
-            key,
+            key: M::value(key),
             stickers,
+            title: M::value(title),
+            author: M::value(author),
             _limit_construction_to_module: (),
         })
     }
@@ -117,13 +143,14 @@ impl TryFrom<proto::StickerPackSticker> for PackSticker {
     type Error = StickerPackError;
     fn try_from(value: proto::StickerPackSticker) -> Result<Self, Self::Error> {
         let proto::StickerPackSticker {
-            id: _,
-            // TODO validate these fields
-            emoji: _,
+            id,
+            emoji,
             special_fields: _,
         } = value;
 
         Ok(Self {
+            id: StickerId(id),
+            emoji,
             _limit_construction_to_module: (),
         })
     }
@@ -137,10 +164,10 @@ impl TryFrom<proto::Sticker> for MessageSticker {
             packId,
             packKey,
             stickerId: _,
+            emoji,
+            special_fields: _,
             // TODO validate these fields
             data: _,
-            emoji: _,
-            special_fields: _,
         } = item;
 
         let pack_id = packId
@@ -155,6 +182,7 @@ impl TryFrom<proto::Sticker> for MessageSticker {
         Ok(Self {
             pack_id,
             pack_key,
+            emoji,
             _limit_construction_to_module: (),
         })
     }
@@ -165,6 +193,8 @@ mod test {
     use std::collections::HashMap;
 
     use test_case::test_case;
+
+    use crate::backup::method::Store;
 
     use super::*;
 
@@ -179,6 +209,8 @@ mod test {
                 packId: Self::TEST_ID_BYTES.into(),
                 packKey: Self::TEST_KEY.into(),
                 stickers: vec![proto::StickerPackSticker::test_data()],
+                author: "author".to_owned(),
+                title: "title".to_owned(),
                 ..Default::default()
             }
         }
@@ -210,14 +242,18 @@ mod test {
     fn valid_sticker_pack() {
         assert_eq!(
             proto::StickerPack::test_data().try_into(),
-            Ok(StickerPack {
+            Ok(StickerPack::<Store> {
                 key: Key(proto::StickerPack::TEST_KEY),
                 stickers: HashMap::from([(
                     proto::StickerPackSticker::TEST_ID,
                     PackSticker {
+                        id: proto::StickerPackSticker::TEST_ID,
+                        emoji: "".to_owned(),
                         _limit_construction_to_module: (),
                     }
                 )]),
+                title: "title".to_owned(),
+                author: "author".to_owned(),
                 _limit_construction_to_module: ()
             })
         )
@@ -254,7 +290,7 @@ mod test {
         let mut sticker_pack = proto::StickerPack::test_data();
         mutator(&mut sticker_pack);
 
-        let result = sticker_pack.try_into().map(|_: StickerPack| ());
+        let result = sticker_pack.try_into().map(|_: StickerPack<Store>| ());
         assert_eq!(result, expected);
     }
 
@@ -265,6 +301,7 @@ mod test {
             Ok(MessageSticker {
                 pack_id: proto::StickerPack::TEST_ID,
                 pack_key: Key(proto::StickerPack::TEST_KEY),
+                emoji: None,
                 _limit_construction_to_module: (),
             })
         );
