@@ -29,7 +29,7 @@ final class ChatServiceTests: TestCaseBase {
     private static let userAgent = "test"
     private static let expectedStatus: UInt16 = 200
     private static let expectedMessage = "OK"
-    private static let expectedContent = "content".data(using: .utf8)
+    private static let expectedContent = Data("content".utf8)
     private static let expectedHeaders = ["content-type": "application/octet-stream", "forwarded": "1.1.1.1"]
 
     func testConvertResponse() throws {
