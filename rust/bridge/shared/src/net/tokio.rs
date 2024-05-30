@@ -8,6 +8,7 @@ use std::future::Future;
 use std::sync::atomic::AtomicU64;
 use std::sync::{Arc, Mutex};
 
+use futures_util::future::BoxFuture;
 use futures_util::FutureExt as _;
 use libsignal_bridge_macros::bridge_fn;
 
@@ -104,6 +105,37 @@ where
         make_future: impl FnOnce(TokioContextCancellation) -> F,
         completer: <F::Output as ResultReporter>::Receiver,
     ) -> CancellationId {
+        // Delegate to a non-templated function with dynamic dispatch to save on
+        // compiled code size.
+        self.run_future_boxed(Box::new(move |cancellation| {
+            let future = make_future(cancellation);
+            async {
+                let reporter = future.await;
+                let report_cb: Box<dyn FnOnce() + Send> =
+                    Box::new(move || reporter.report_to(completer));
+                report_cb
+            }
+            .boxed()
+        }))
+    }
+}
+
+type ReportResultBoxed = Box<dyn FnOnce() + Send>;
+
+impl TokioAsyncContext {
+    /// Create and spawn a `Future` as a task, then spawn a blocking task to
+    /// execute the output callback.
+    ///
+    /// This intentionally uses dynamic dispatch to save on code size. Future
+    /// spawning in templated code (that gets duplicated during
+    /// monomorphization) should call this method with a callback of the
+    /// appropriate type.
+    fn run_future_boxed<'s>(
+        &'s self,
+        make_future: Box<
+            dyn 's + FnOnce(TokioContextCancellation) -> BoxFuture<'static, ReportResultBoxed>,
+        >,
+    ) -> CancellationId {
         let (cancel_tx, cancel_rx) = tokio::sync::oneshot::channel();
 
         let cancellation_id = CancellationId::from(
@@ -128,9 +160,8 @@ where
 
         #[allow(clippy::let_underscore_future)]
         let _: tokio::task::JoinHandle<()> = self.rt.spawn(async move {
-            let completed = future.await;
-            let _: tokio::task::JoinHandle<()> =
-                handle.spawn_blocking(move || completed.report_to(completer));
+            let report_fn = future.await;
+            let _: tokio::task::JoinHandle<()> = handle.spawn_blocking(report_fn);
             // What happens if we don't get here? We leak an entry in the task map. Also, we
             // probably have bigger problems, because in practice all the `bridge_io` futures are
             // supposed to be catching panics.

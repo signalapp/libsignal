@@ -44,7 +44,7 @@ impl<'a> AsRaftConfig<'a> for &'a RaftConfig {
 }
 
 pub trait EnclaveKind {
-    type RaftConfigType: AsRaftConfig<'static> + Clone;
+    type RaftConfigType: AsRaftConfig<'static> + Clone + Sync;
     fn url_path(enclave: &[u8]) -> PathAndQuery;
 }
 
@@ -177,7 +177,9 @@ impl<S: Send> PpssSetup<S> for Svr3Env<'_> {
 #[derive_where(Clone, Copy; Bytes)]
 pub struct MrEnclave<Bytes, E> {
     inner: Bytes,
-    enclave_kind: PhantomData<E>,
+    // Using fn instead of E directly so that `MrEnclave` implements `Send +
+    // Sync` even if `E` does not.
+    enclave_kind: PhantomData<fn(E) -> E>,
 }
 
 impl<Bytes, E: EnclaveKind> MrEnclave<Bytes, E> {
@@ -257,34 +259,56 @@ impl<E: EnclaveKind + NewHandshake, C: ConnectionManager> EnclaveEndpointConnect
     where
         C: ConnectionManager,
     {
-        let auth_decorator = auth.into();
-        let connector = ServiceConnectorWithDecorator::new(
-            WebSocketClientConnector::<_, WebSocketServiceError>::new(
-                transport_connector,
-                self.endpoint_connection.config.clone(),
-            ),
-            auth_decorator,
-        );
-        let service_initializer =
-            ServiceInitializer::new(connector, &self.endpoint_connection.manager);
-        let connection_attempt_result = service_initializer.connect().await;
-        let websocket = match connection_attempt_result {
-            ServiceState::Active(websocket, _) => Ok(websocket),
-            ServiceState::Error(e) => Err(Error::WebSocketConnect(e)),
-            ServiceState::Cooldown(_) | ServiceState::ConnectionTimedOut => {
-                Err(Error::ConnectionTimedOut)
-            }
-            ServiceState::Inactive => {
-                unreachable!("can't be returned by the initializer")
-            }
-        }?;
-        let attested = AttestedConnection::connect(websocket, |attestation_msg| {
-            E::new_handshake(&self.params, attestation_msg)
-        })
-        .await?;
-
-        Ok(attested)
+        // Delegate to a function that dynamically-dispatches. This could be
+        // inlined, but then the body would be duplicated in the generated code
+        // for each instantiation of this trait (of which there is one per
+        // unique `E: EnclaveKind`).
+        connect_attested(
+            &self.endpoint_connection,
+            auth,
+            transport_connector,
+            &move |attestation_message| E::new_handshake(&self.params, attestation_message),
+        )
+        .await
     }
+}
+
+/// Create an `AttestedConnection`.
+///
+/// Making the handshaker a concrete type (via `&dyn`) prevents this from being
+/// instantiated multiple times and duplicated in the generated code.
+async fn connect_attested<
+    C: ConnectionManager,
+    T: TransportConnector<Stream = S>,
+    S: AsyncDuplexStream,
+>(
+    endpoint_connection: &EndpointConnection<C>,
+    auth: impl HttpBasicAuth,
+    transport_connector: T,
+    do_handshake: &(dyn Sync + Fn(&[u8]) -> enclave::Result<enclave::Handshake>),
+) -> Result<AttestedConnection<S>, Error> {
+    let auth_decorator = auth.into();
+    let connector = ServiceConnectorWithDecorator::new(
+        WebSocketClientConnector::<_, WebSocketServiceError>::new(
+            transport_connector,
+            endpoint_connection.config.clone(),
+        ),
+        auth_decorator,
+    );
+    let service_initializer = ServiceInitializer::new(connector, &endpoint_connection.manager);
+    let connection_attempt_result = service_initializer.connect().await;
+    let websocket = match connection_attempt_result {
+        ServiceState::Active(websocket, _) => Ok(websocket),
+        ServiceState::Error(e) => Err(Error::WebSocketConnect(e)),
+        ServiceState::Cooldown(_) | ServiceState::ConnectionTimedOut => {
+            Err(Error::ConnectionTimedOut)
+        }
+        ServiceState::Inactive => {
+            unreachable!("can't be returned by the initializer")
+        }
+    }?;
+    let attested = AttestedConnection::connect(websocket, do_handshake).await?;
+    Ok(attested)
 }
 
 impl<E: EnclaveKind> EnclaveEndpointConnection<E, SingleRouteThrottlingConnectionManager> {
