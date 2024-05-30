@@ -101,13 +101,15 @@ impl<T: for<'a> ResultTypeInfo<'a> + std::panic::UnwindSafe, U> ResultReporter
         // From this point on we can't catch panics, because SignalJniError isn't UnwindSafe. This
         // is consistent with the synchronous implementation in run_ffi_safe, which doesn't catch
         // panics when converting errors to exceptions either.
-        maybe_error.unwrap_or_else(|error| {
-            convert_to_exception(&mut env, error, |env, throwable, error| {
+        let future_for_convert = &future;
+        let env_mut = &mut *env;
+        maybe_error.unwrap_or_else(move |error| {
+            convert_to_exception(env_mut, error, move |env, throwable, error| {
                 throwable
-                    .and_then(|throwable| {
+                    .and_then(move |throwable| {
                         _ = call_method_checked(
                             env,
-                            &future,
+                            future_for_convert,
                             "completeExceptionally",
                             jni_args!((throwable => java.lang.Throwable) -> boolean),
                         )?;
@@ -124,6 +126,7 @@ impl<T: for<'a> ResultTypeInfo<'a> + std::panic::UnwindSafe, U> ResultReporter
         // Explicitly drop these while the thread is still attached to the JVM.
         drop(future);
         drop(extra_args_to_drop);
+        drop(env);
     }
 }
 
