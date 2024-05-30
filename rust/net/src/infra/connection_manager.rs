@@ -122,9 +122,9 @@ impl ThrottlingConnectionManagerState {
 /// but keeps track of consecutive failed attempts and after each failure waits for a duration
 /// chosen according to [CONNECTION_ROUTE_COOLDOWN_INTERVALS] list.
 #[derive(Clone)]
-pub struct SingleRouteThrottlingConnectionManager {
+pub struct SingleRouteThrottlingConnectionManager<C = ConnectionParams> {
     state: Arc<Mutex<ThrottlingConnectionManagerState>>,
-    connection_params: ConnectionParams,
+    connection_params: C,
     connection_timeout: Duration,
 }
 
@@ -233,8 +233,8 @@ where
     }
 }
 
-impl SingleRouteThrottlingConnectionManager {
-    pub fn new(connection_params: ConnectionParams, connection_timeout: Duration) -> Self {
+impl<C> SingleRouteThrottlingConnectionManager<C> {
+    pub fn new(connection_params: C, connection_timeout: Duration) -> Self {
         Self {
             connection_params,
             connection_timeout,
@@ -245,24 +245,15 @@ impl SingleRouteThrottlingConnectionManager {
             })),
         }
     }
-}
 
-/// Declare &SingleRouteThrottlingConnectionManager unwind-safe.
-///
-/// This is guaranteed by the impl blocks, which only update locked state
-/// atomically to avoid logic errors.
-impl RefUnwindSafe for SingleRouteThrottlingConnectionManager {}
-
-#[async_trait]
-impl ConnectionManager for SingleRouteThrottlingConnectionManager {
-    async fn connect_or_wait<'a, T, E, Fun, Fut>(
+    pub(crate) async fn connect_or_wait<'a, T, E, Fun, Fut>(
         &'a self,
         connection_fn: Fun,
     ) -> ConnectionAttemptOutcome<T, E>
     where
         T: Send,
         E: Send,
-        Fun: Fn(&'a ConnectionParams) -> Fut + Send + Sync,
+        Fun: Fn(&'a C) -> Fut + Send + Sync,
         Fut: Future<Output = Result<T, E>> + Send,
     {
         let state = self.state.lock().await.clone();
@@ -289,6 +280,28 @@ impl ConnectionManager for SingleRouteThrottlingConnectionManager {
         connection_result_or_timeout.map_or(ConnectionAttemptOutcome::TimedOut, |result| {
             ConnectionAttemptOutcome::Attempted(result)
         })
+    }
+}
+
+/// Declare &SingleRouteThrottlingConnectionManager unwind-safe.
+///
+/// This is guaranteed by the impl blocks, which only update locked state
+/// atomically to avoid logic errors.
+impl RefUnwindSafe for SingleRouteThrottlingConnectionManager {}
+
+#[async_trait]
+impl ConnectionManager for SingleRouteThrottlingConnectionManager {
+    async fn connect_or_wait<'a, T, E, Fun, Fut>(
+        &'a self,
+        connection_fn: Fun,
+    ) -> ConnectionAttemptOutcome<T, E>
+    where
+        T: Send,
+        E: Send,
+        Fun: Fn(&'a ConnectionParams) -> Fut + Send + Sync,
+        Fut: Future<Output = Result<T, E>> + Send,
+    {
+        self.connect_or_wait(connection_fn).await
     }
 
     fn describe_for_logging(&self) -> String {

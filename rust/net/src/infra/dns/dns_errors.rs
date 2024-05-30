@@ -13,6 +13,8 @@ pub enum Error {
     LookupFailed,
     /// DNS lookup timed out
     Timeout,
+    /// DNS lookup on cooldown
+    Cooldown,
     /// Internal IO error
     Io(io::ErrorKind),
     /// Received a response with a message ID that doesn't match any of the requests sent

@@ -8,6 +8,9 @@ use std::collections::HashMap;
 use std::net::{Ipv4Addr, Ipv6Addr};
 use std::sync::Arc;
 
+use crate::infra::connection_manager::{
+    ConnectionAttemptOutcome, SingleRouteThrottlingConnectionManager,
+};
 use crate::timeouts::{DNS_CALL_BACKGROUND_TIMEOUT, DNS_RESOLUTION_DELAY};
 use async_trait::async_trait;
 use either::Either;
@@ -66,14 +69,17 @@ pub trait DnsTransport: Sized + Send {
 /// records expiration times.
 #[derive(Clone)]
 pub struct CustomDnsResolver<T: DnsTransport> {
-    transport_connection_params: T::ConnectionParameters,
+    connection_manager: SingleRouteThrottlingConnectionManager<T::ConnectionParameters>,
     cache: Arc<std::sync::Mutex<HashMap<String, Expiring<LookupResult>>>>,
 }
 
 impl<T: DnsTransport + Sync + 'static> CustomDnsResolver<T> {
     pub fn new(transport_connection_params: T::ConnectionParameters) -> Self {
         Self {
-            transport_connection_params,
+            connection_manager: SingleRouteThrottlingConnectionManager::new(
+                transport_connection_params,
+                DNS_CALL_BACKGROUND_TIMEOUT,
+            ),
             cache: Default::default(),
         }
     }
@@ -110,11 +116,15 @@ impl<T: DnsTransport + Sync + 'static> CustomDnsResolver<T> {
     }
 
     async fn lookup(&self, request: DnsLookupRequest) -> dns::Result<LookupResult> {
-        let transport = T::connect(
-            self.transport_connection_params.clone(),
-            request.ipv6_enabled,
-        )
-        .await?;
+        let transport = match self
+            .connection_manager
+            .connect_or_wait(|params| T::connect(params.clone(), request.ipv6_enabled))
+            .await
+        {
+            ConnectionAttemptOutcome::Attempted(result) => result,
+            ConnectionAttemptOutcome::TimedOut => Err(Error::Timeout),
+            ConnectionAttemptOutcome::WaitUntil(_) => Err(Error::Cooldown),
+        }?;
         let (ipv4_res_rx, ipv6_res_rx) = self.send_dns_queries(transport, request);
         let (maybe_ipv4, maybe_ipv6) =
             results_within_interval(ipv4_res_rx, ipv6_res_rx, DNS_RESOLUTION_DELAY).await;
@@ -259,6 +269,7 @@ pub(crate) mod test {
     use crate::infra::dns::dns_types::Expiring;
     use crate::infra::dns::lookup_result::LookupResult;
     use crate::infra::{dns, DnsSource};
+    use crate::timeouts::CONNECTION_ROUTE_MAX_COOLDOWN;
     use crate::utils::sleep_until_and_catch_up;
     use assert_matches::assert_matches;
     use async_trait::async_trait;
@@ -609,6 +620,26 @@ pub(crate) mod test {
             CustomDnsResolver::<TestDnsTransportFailingToConnect>::new(Error::TransportRestricted);
         let result = resolver.resolve(test_request()).await;
         assert_matches!(result, Err(Error::TransportRestricted));
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn early_exits_for_cooldown() {
+        let resolver =
+            CustomDnsResolver::<TestDnsTransportFailingToConnect>::new(Error::TransportRestricted);
+        let result = resolver.resolve(test_request()).await;
+        assert_matches!(result, Err(Error::TransportRestricted));
+        // First retry has no cooldown.
+        let result = resolver.resolve(test_request()).await;
+        assert_matches!(result, Err(Error::TransportRestricted));
+        // But the second one does have one.
+        let result = resolver.resolve(test_request()).await;
+        assert_matches!(result, Err(Error::Cooldown));
+
+        tokio::time::advance(CONNECTION_ROUTE_MAX_COOLDOWN).await;
+        let result = resolver.resolve(test_request()).await;
+        assert_matches!(result, Err(Error::TransportRestricted));
+        let result = resolver.resolve(test_request()).await;
+        assert_matches!(result, Err(Error::Cooldown));
     }
 
     #[tokio::test(start_paused = true)]
