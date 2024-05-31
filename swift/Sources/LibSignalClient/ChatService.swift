@@ -11,69 +11,6 @@ public enum IpType: UInt8 {
     case unknown, ipv4, ipv6
 }
 
-public protocol ChatListener: AnyObject {
-    func chatService(_ chat: ChatService, didReceiveIncomingMessage envelope: Data, serverDeliveryTimestamp: UInt64, sendAck: @escaping () async throws -> Void)
-    func chatServiceDidReceiveQueueEmpty(_ chat: ChatService)
-}
-
-internal class ChatListenerBridge {
-    private class AckHandleOwner: NativeHandleOwner {
-        override class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
-            signal_server_message_ack_destroy(handle)
-        }
-    }
-
-    weak var chatService: ChatService?
-    let chatListener: ChatListener
-
-    init(chatService: ChatService, chatListener: ChatListener) {
-        self.chatService = chatService
-        self.chatListener = chatListener
-    }
-
-    /// Creates an **owned** callback struct from this object.
-    ///
-    /// The resulting struct must eventually have its `destroy` callback invoked with its `ctx` as argument,
-    /// or the ChatListenerBridge object used to construct it (`self`) will be leaked.
-    func makeListenerStruct() -> SignalFfiChatListenerStruct {
-        let receivedIncomingMessage: SignalReceivedIncomingMessage = { rawCtx, envelope, timestamp, ackHandle in
-            defer { signal_free_buffer(envelope.base, envelope.length) }
-            let ackHandleOwner = AckHandleOwner(owned: ackHandle!)
-
-            let bridge = Unmanaged<ChatListenerBridge>.fromOpaque(rawCtx!).takeUnretainedValue()
-            guard let chatService = bridge.chatService else {
-                return
-            }
-
-            let envelopeData = Data(bytes: envelope.base, count: envelope.length)
-            bridge.chatListener.chatService(chatService, didReceiveIncomingMessage: envelopeData, serverDeliveryTimestamp: timestamp) {
-                _ = try await chatService.tokioAsyncContext.invokeAsyncFunction { promise, asyncContext in
-                    ackHandleOwner.withNativeHandle { ackHandle in
-                        signal_server_message_ack_send(promise, asyncContext, ackHandle)
-                    }
-                }
-            }
-        }
-        let receivedQueueEmpty: SignalReceivedQueueEmpty = { rawCtx in
-            let bridge = Unmanaged<ChatListenerBridge>.fromOpaque(rawCtx!).takeUnretainedValue()
-            guard let chatService = bridge.chatService else {
-                return
-            }
-
-            bridge.chatListener.chatServiceDidReceiveQueueEmpty(chatService)
-        }
-
-        return .init(
-            ctx: Unmanaged.passRetained(self).toOpaque(),
-            received_incoming_message: receivedIncomingMessage,
-            received_queue_empty: receivedQueueEmpty,
-            destroy: { rawCtx in
-                _ = Unmanaged<AnyObject>.fromOpaque(rawCtx!).takeRetainedValue()
-            }
-        )
-    }
-}
-
 /// Represents an API of communication with the Chat Service.
 ///
 /// An instance of this object is obtained via call to ``Net/createChatService(username:password:)``.
@@ -175,7 +112,7 @@ public class ChatService: NativeHandleOwner {
         }
     }
 
-    fileprivate let tokioAsyncContext: TokioAsyncContext
+    internal let tokioAsyncContext: TokioAsyncContext
 
     internal init(tokioAsyncContext: TokioAsyncContext, connectionManager: ConnectionManager, username: String, password: String) {
         var handle: OpaquePointer?
