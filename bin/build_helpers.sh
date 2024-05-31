@@ -52,6 +52,14 @@ copy_built_library() {
 }
 
 echo_then_run() {
-  echo "$@"
+  for x in "$@"; do
+    # Put single quotes around any argument with spaces in it.
+    if [[ "$x" == *" "* ]]; then
+      echo -n "'$x' "
+    else
+      echo -n "$x "
+    fi
+  done
+  echo
   "$@"
 }

@@ -30,22 +30,24 @@ fi
 export CFLAGS_aarch64_apple_ios_macabi="--target=arm64-apple-ios-macabi ${CFLAGS:-}"
 export CFLAGS_x86_64_apple_ios_macabi="--target=x86_64-apple-ios-macabi ${CFLAGS:-}"
 
+FEATURES=()
 if [[ "${CARGO_BUILD_TARGET:-}" != "aarch64-apple-ios" ]]; then
-  FEATURES="testing-fns"
+  FEATURES+=("testing-fns")
 fi
 
 usage() {
   cat >&2 <<END
-Usage: $(basename "$0") [-d|-r] [-v] [--generate-ffi|--verify-ffi|--build-std]
+Usage: $(basename "$0") [options]
 
 Options:
   -d -- debug build (default)
   -r -- release build
   -v -- verbose build
 
-  --generate-ffi -- regenerate ffi headers
-  --verify-ffi   -- verify that ffi headers are up to date
-  --build-std    -- use Cargo's -Zbuild-std to compile for a tier 3 target
+  --generate-ffi     -- regenerate ffi headers
+  --verify-ffi       -- verify that ffi headers are up to date
+  --build-std        -- use Cargo's -Zbuild-std to compile for a tier 3 target
+  --debug-level-logs -- include log levels below INFO (default for debug builds)
 
 Use CARGO_BUILD_TARGET for cross-compilation (such as for iOS).
 END
@@ -68,6 +70,7 @@ VERBOSE=
 SHOULD_CBINDGEN=
 CBINDGEN_VERIFY=
 BUILD_STD=
+DEBUG_LEVEL_LOGS=
 
 while [ "${1:-}" != "" ]; do
   case $1 in
@@ -89,6 +92,9 @@ while [ "${1:-}" != "" ]; do
       ;;
     --build-std)
       BUILD_STD=1
+      ;;
+    --debug-level-logs)
+      DEBUG_LEVEL_LOGS=1
       ;;
     -h | --help )
       usage
@@ -121,7 +127,11 @@ if [[ -n "${BUILD_STD:-}" ]]; then
   fi
 fi
 
-echo_then_run cargo build -p libsignal-ffi ${RELEASE_BUILD:+--release} ${VERBOSE:+--verbose} ${CARGO_BUILD_TARGET:+--target $CARGO_BUILD_TARGET} ${FEATURES:+--features $FEATURES} ${BUILD_STD:+-Zbuild-std}
+if [[ -z "${DEBUG_LEVEL_LOGS:-}" ]]; then
+  FEATURES+=("log/release_max_level_info")
+fi
+
+echo_then_run cargo build -p libsignal-ffi ${RELEASE_BUILD:+--release} ${VERBOSE:+--verbose} ${CARGO_BUILD_TARGET:+--target $CARGO_BUILD_TARGET} ${FEATURES:+--features "${FEATURES[*]}"} ${BUILD_STD:+-Zbuild-std}
 
 FFI_HEADER_PATH=swift/Sources/SignalFfi/signal_ffi.h
 

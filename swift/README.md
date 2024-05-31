@@ -27,7 +27,7 @@ Instead of a git-based dependency, use a path-based dependency to treat LibSigna
     CARGO_BUILD_TARGET=aarch64-apple-ios-sim swift/build_ffi.sh --release
     CARGO_BUILD_TARGET=aarch64-apple-ios swift/build_ffi.sh --release
 
-The CocoaPod is configured to use the release build of the Rust library. Use `pod lib lint` to validate locally.
+The CocoaPod is configured to use the release build of the Rust library. Use `pod lib lint` to validate locally. You can pass `--debug-level-logs` to `build_ffi.sh` to turn on debug- and verbose-level logs.
 
 When exposing new APIs to Swift, you will need to add the `--generate-ffi` flag to your
 `build_ffi.sh` invocation.

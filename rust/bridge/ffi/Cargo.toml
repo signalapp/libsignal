@@ -34,7 +34,7 @@ zkgroup = { path = "../../zkgroup" }
 
 async-trait = "0.1.41"
 futures-util = "0.3"
-log = { version = "0.4", features = ["release_max_level_info"] }
+log = "0.4"
 log-panics = { version = "2.1.0", features = ["with-backtrace"] }
 rand = "0.8"
 
