@@ -43,6 +43,7 @@ impl From<dns_message::Error> for Error {
             | dns_message::Error::ProtocolErrorNameTooLong
             | dns_message::Error::ProtocolErrorUnexpectedValue
             | dns_message::Error::ProtocolErrorInvalidNameCharacters
+            | dns_message::Error::ProtocolErrorFailedToParseResourceRecord
             | dns_message::Error::ProtocolErrorInvalidMessage => Error::Protocol(error),
             dns_message::Error::NoData => Error::NoData,
             dns_message::Error::RequestFailedWithErrorCode(code) => {

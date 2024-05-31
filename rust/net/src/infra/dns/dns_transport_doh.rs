@@ -6,6 +6,7 @@
 use crate::infra::dns::custom_resolver::{DnsQueryResult, DnsTransport};
 use crate::infra::dns::dns_errors::Error;
 use crate::infra::dns::dns_lookup::DnsLookupRequest;
+use crate::infra::dns::dns_message::{parse_a_record, parse_aaaa_record};
 use crate::infra::dns::dns_types::ResourceType;
 use crate::infra::dns::lookup_result::LookupResult;
 use crate::infra::dns::{dns_message, DnsResolver};
@@ -128,18 +129,16 @@ impl DohTransport {
             return Err(Error::DohRequestBadStatus(response_parts.status.as_u16()));
         }
         let result = match resource_type {
-            ResourceType::A => {
-                DnsQueryResult::Left(dns_message::parse_response(&response_body, |bytes_vec| {
-                    let octets: [u8; 4] = bytes_vec.try_into().unwrap();
-                    Ok(Ipv4Addr::from(octets))
-                })?)
-            }
-            ResourceType::AAAA => {
-                DnsQueryResult::Right(dns_message::parse_response(&response_body, |bytes_vec| {
-                    let octets: [u8; 16] = bytes_vec.try_into().unwrap();
-                    Ok(Ipv6Addr::from(octets))
-                })?)
-            }
+            ResourceType::A => DnsQueryResult::Left(dns_message::parse_response(
+                &response_body,
+                ResourceType::A,
+                parse_a_record,
+            )?),
+            ResourceType::AAAA => DnsQueryResult::Right(dns_message::parse_response(
+                &response_body,
+                ResourceType::AAAA,
+                parse_aaaa_record,
+            )?),
         };
         Ok(result)
     }

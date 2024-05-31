@@ -7,7 +7,7 @@ use crate::infra::dns::custom_resolver::{DnsQueryResult, DnsTransport};
 use crate::infra::dns::dns_errors::Error;
 use crate::infra::dns::dns_lookup::DnsLookupRequest;
 use crate::infra::dns::dns_message;
-use crate::infra::dns::dns_message::MAX_DNS_UDP_MESSAGE_LEN;
+use crate::infra::dns::dns_message::{parse_a_record, parse_aaaa_record, MAX_DNS_UDP_MESSAGE_LEN};
 use crate::infra::dns::dns_types::ResourceType;
 use crate::infra::{dns, DnsSource};
 use async_trait::async_trait;
@@ -78,18 +78,16 @@ impl UdpTransport {
         let bytes_received = self.socket.recv(&mut buf).await?;
         let message = &buf[..bytes_received];
         let result = match dns_message::get_id(message)? {
-            A_REQUEST_ID => {
-                DnsQueryResult::Left(dns_message::parse_response(message, |bytes_vec| {
-                    let octets: [u8; 4] = bytes_vec.try_into().unwrap();
-                    Ok(Ipv4Addr::from(octets))
-                })?)
-            }
-            AAAA_REQUEST_ID => {
-                DnsQueryResult::Right(dns_message::parse_response(message, |bytes_vec| {
-                    let octets: [u8; 16] = bytes_vec.try_into().unwrap();
-                    Ok(Ipv6Addr::from(octets))
-                })?)
-            }
+            A_REQUEST_ID => DnsQueryResult::Left(dns_message::parse_response(
+                message,
+                ResourceType::A,
+                parse_a_record,
+            )?),
+            AAAA_REQUEST_ID => DnsQueryResult::Right(dns_message::parse_response(
+                message,
+                ResourceType::AAAA,
+                parse_aaaa_record,
+            )?),
             _ => Err(Error::UnexpectedMessageId)?,
         };
         Ok(result)

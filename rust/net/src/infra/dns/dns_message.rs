@@ -11,6 +11,7 @@ use bitstream_io::{
 use std::cmp::{max, min};
 use std::io;
 use std::io::Cursor;
+use std::net::{Ipv4Addr, Ipv6Addr};
 use std::time::Duration;
 use tokio::time::Instant;
 
@@ -37,6 +38,8 @@ pub enum Error {
     ProtocolErrorInvalidMessage,
     /// Failed to decode name from the DNS response
     ProtocolErrorInvalidNameCharacters,
+    /// Failed to parse resourse record
+    ProtocolErrorFailedToParseResourceRecord,
     /// Data for the given name is not available
     NoData,
     /// DNS request resulted in a non-zero error code: {0}
@@ -101,8 +104,23 @@ pub fn get_id(message: &[u8]) -> Result<u16> {
     }
 }
 
+pub fn parse_a_record(bytes_vec: &[u8]) -> Result<Ipv4Addr> {
+    let octets: [u8; 4] = bytes_vec
+        .try_into()
+        .map_err(|_| Error::ProtocolErrorFailedToParseResourceRecord)?;
+    Ok(Ipv4Addr::from(octets))
+}
+
+pub fn parse_aaaa_record(bytes_vec: &[u8]) -> Result<Ipv6Addr> {
+    let octets: [u8; 16] = bytes_vec
+        .try_into()
+        .map_err(|_| Error::ProtocolErrorFailedToParseResourceRecord)?;
+    Ok(Ipv6Addr::from(octets))
+}
+
 pub fn parse_response<T>(
     message: &[u8],
+    expected_type: ResourceType,
     parser: fn(&[u8]) -> Result<T>,
 ) -> Result<Expiring<Vec<T>>> {
     let mut reader = BitReader::endian(Cursor::new(message), BigEndian);
@@ -137,14 +155,25 @@ pub fn parse_response<T>(
     let mut min_ttl = u32::MAX;
     for _ in 0..answers_count {
         let _name = read_name(&mut reader, message)?;
-        let _data_type = reader.read_to::<u16>()?;
+        let data_type = reader.read_to::<u16>()?;
         let _data_class = reader.read_to::<u16>()?;
         let data_ttl = reader.read_to::<u32>()?;
         let data_length = reader.read_to::<u16>()?;
 
         let data = reader.read_to_vec(data_length as usize)?;
-        let data = parser(data.as_slice())?;
-        results.push(data);
+        let expected_type = expected_type as u16;
+        if data_type != expected_type {
+            log::debug!(
+                "expected resource records of type {} but have {}",
+                expected_type,
+                data_type
+            );
+            continue;
+        }
+        match parser(data.as_slice()) {
+            Ok(data) => results.push(data),
+            Err(error) => log::warn!("error parsing DNS response: {}", error),
+        }
 
         min_ttl = min(min_ttl, data_ttl);
     }
@@ -241,12 +270,11 @@ mod test {
     use assert_matches::assert_matches;
     use const_str::{concat_bytes, ip_addr};
     use hickory_proto::op::{MessageType, ResponseCode};
-    use hickory_proto::rr::rdata::A;
+    use hickory_proto::rr::rdata::{A, CNAME};
     use hickory_proto::rr::{Name, RData, RecordType};
     use hickory_proto::serialize::binary::BinEncodable;
     use itertools::Itertools;
     use std::iter;
-    use std::net::Ipv4Addr;
     use std::str::FromStr;
     use std::time::Duration;
     use tokio::time::Instant;
@@ -357,11 +385,8 @@ mod test {
         });
 
         // parsing response message
-        let response = parse_response(response_message.as_slice(), |bytes_vec| {
-            let octets: [u8; 4] = bytes_vec.try_into().unwrap();
-            Ok(Ipv4Addr::from(octets))
-        })
-        .expect("parsed result");
+        let response = parse_response(response_message.as_slice(), ResourceType::A, parse_a_record)
+            .expect("parsed result");
 
         assert_matches!(get_id(response_message.as_slice()), Ok(REQUEST_ID));
         assert_eq!(
@@ -380,7 +405,7 @@ mod test {
     #[test]
     fn invalid_message_error_parsing_data() {
         assert_matches!(
-            parse_response(&[], |_| Ok(())),
+            parse_response(&[], ResourceType::A, |_| Ok(())),
             Err(Error::ProtocolErrorInvalidMessage)
         );
     }
@@ -424,15 +449,15 @@ mod test {
         );
     }
 
-    #[tokio::test(start_paused = true)]
-    async fn error_response_code_handled_correctly() {
+    #[test]
+    fn error_response_code_handled_correctly() {
         let expected_response_code = 2;
         let response_message = response_bytes(RecordType::A, |message| {
             message.set_response_code(ResponseCode::from_low(expected_response_code));
         });
 
         // parsing response message
-        let response = parse_response(response_message.as_slice(), |_| Ok(()));
+        let response = parse_response(response_message.as_slice(), ResourceType::A, |_| Ok(()));
 
         assert_matches!(
             response,
@@ -440,14 +465,92 @@ mod test {
         )
     }
 
-    #[tokio::test(start_paused = true)]
-    async fn response_with_no_answers_handled_correctly() {
+    #[test]
+    fn response_with_no_answers_handled_correctly() {
         let response_message = response_bytes(RecordType::A, |_| {});
 
         // parsing response message
-        let response = parse_response(response_message.as_slice(), |_| Ok(()));
+        let response = parse_response(response_message.as_slice(), ResourceType::A, |_| Ok(()));
 
         assert_matches!(response, Err(Error::NoData))
+    }
+
+    #[test]
+    fn unexpected_resource_record_is_skipped() {
+        let ttl_sec = 100;
+        let name = Name::from_str(VALID_DOMAIN).expect("valid name");
+        let expected_ip = ip_addr!(v4, "1.1.1.1");
+        let response_message = response_bytes(RecordType::A, |message| {
+            // add CNAME record
+            let cname = Name::from_str("cname.signal.org").unwrap();
+            let mut rr = hickory_proto::rr::Record::<RData>::new();
+            rr.set_name(name.clone())
+                .set_record_type(RecordType::CNAME)
+                .set_ttl(ttl_sec)
+                .set_data(Some(RData::CNAME(CNAME(cname))));
+            message.add_answer(rr);
+
+            // add A record
+            let mut rr = hickory_proto::rr::Record::<RData>::new();
+            rr.set_name(name.clone())
+                .set_record_type(RecordType::A)
+                .set_ttl(ttl_sec)
+                .set_data(Some(RData::A(A::from(expected_ip))));
+            message.add_answer(rr);
+        });
+
+        // parsing response message
+        let response = parse_response(response_message.as_slice(), ResourceType::A, parse_a_record)
+            .expect("parsed result");
+
+        assert_matches!(get_id(response_message.as_slice()), Ok(REQUEST_ID));
+        assert_eq!(&[expected_ip], response.data.as_slice());
+    }
+
+    #[test]
+    fn record_with_invalid_data_is_skipped() {
+        const EXPECTED_IP: Ipv4Addr = ip_addr!(v4, "1.1.1.1");
+        let ttl_sec = 100;
+        let name = Name::from_str(VALID_DOMAIN).expect("valid name");
+        let ip_to_simulate_error = ip_addr!(v4, "2.2.2.2");
+        let response_message = response_bytes(RecordType::A, move |message| {
+            // add invalid record
+            let mut rr = hickory_proto::rr::Record::<RData>::new();
+            rr.set_name(name.clone())
+                .set_record_type(RecordType::A)
+                .set_ttl(ttl_sec)
+                .set_data(Some(RData::A(A::from(ip_to_simulate_error))));
+            message.add_answer(rr);
+
+            // add A record
+            let mut rr = hickory_proto::rr::Record::<RData>::new();
+            rr.set_name(name.clone())
+                .set_record_type(RecordType::A)
+                .set_ttl(ttl_sec)
+                .set_data(Some(RData::A(A::from(EXPECTED_IP))));
+            message.add_answer(rr);
+        });
+
+        // parsing response message
+        let response = parse_response(
+            response_message.as_slice(),
+            ResourceType::A,
+            move |bytes_vec| {
+                let octets: [u8; 4] = bytes_vec
+                    .try_into()
+                    .map_err(|_| Error::ProtocolErrorFailedToParseResourceRecord)?;
+                let res = Ipv4Addr::from(octets);
+                if res == EXPECTED_IP {
+                    Ok(res)
+                } else {
+                    Err(Error::ProtocolErrorInvalidMessage)
+                }
+            },
+        )
+        .expect("parsed result");
+
+        assert_matches!(get_id(response_message.as_slice()), Ok(REQUEST_ID));
+        assert_eq!(&[EXPECTED_IP], response.data.as_slice());
     }
 
     fn response_bytes<F>(record_type: RecordType, builder: F) -> Vec<u8>
