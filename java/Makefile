@@ -5,7 +5,7 @@
 
 DOCKER ?= docker
 
-.PHONY: docker java_build java_test publish_java
+.PHONY: docker java_build publish_java
 
 default: java_build
 
@@ -21,12 +21,6 @@ java_build: docker_image
         --env LIBSIGNAL_TESTING_ENCLAVE_SECRET \
         -v `cd .. && pwd`/:/home/libsignal/src $(DOCKER_EXTRA) $(DOCKER_IMAGE) \
         sh -c "cd src/java; ./gradlew build"
-
-java_test: java_build
-	$(DOCKER) run $(DOCKER_TTY_FLAG) --init --rm --user $$(id -u):$$(id -g) \
-        --env LIBSIGNAL_TESTING_ENCLAVE_SECRET \
-        -v `cd .. && pwd`/:/home/libsignal/src $(DOCKER_EXTRA) $(DOCKER_IMAGE) \
-        sh -c "cd src/java; ./gradlew test"
 
 publish_java: DOCKER_EXTRA = $(shell [ -L build ] && P=$$(readlink build) && echo -v $$P/:$$P )
 publish_java: docker_image

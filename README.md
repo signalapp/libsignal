@@ -79,7 +79,7 @@ Alternately, a build system using Docker is available:
 
 ```shell
 $ cd java
-$ make java_test
+$ make
 ```
 
 When exposing new APIs to Java, you will need to run `rust/bridge/jni/bin/gen_java_decl.py` in
