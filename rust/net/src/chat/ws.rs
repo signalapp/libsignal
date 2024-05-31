@@ -62,12 +62,15 @@ impl<S: AsyncDuplexStream> ResponseSender<S> {
 }
 
 #[derive(Debug)]
-pub struct ServerRequest<S> {
-    pub request_proto: RequestProto,
-    pub response_sender: ResponseSender<S>,
+pub enum ServerEvent<S> {
+    Request {
+        request_proto: RequestProto,
+        response_sender: ResponseSender<S>,
+    },
+    Stopped,
 }
 
-impl<S: AsyncDuplexStream> ServerRequest<S> {
+impl<S: AsyncDuplexStream> ServerEvent<S> {
     fn new(
         request_proto: RequestProto,
         writer: WebSocketClientWriter<S, ChatServiceError>,
@@ -75,7 +78,7 @@ impl<S: AsyncDuplexStream> ServerRequest<S> {
         let request_id = request_proto
             .id
             .ok_or(ChatServiceError::ServerRequestMissingId)?;
-        Ok(Self {
+        Ok(Self::Request {
             request_proto,
             response_sender: ResponseSender {
                 request_id,
@@ -87,7 +90,7 @@ impl<S: AsyncDuplexStream> ServerRequest<S> {
     /// Creates a ServerRequest that does nothing when ack'd.
     pub fn fake(request_proto: RequestProto) -> Self {
         let request_id = request_proto.id.expect("fake requests still need IDs");
-        Self {
+        Self::Request {
             request_proto,
             response_sender: ResponseSender {
                 request_id,
@@ -139,13 +142,13 @@ impl PendingMessagesMap {
 #[derive_where(Clone)]
 pub(super) struct ChatOverWebSocketServiceConnector<T: TransportConnector> {
     ws_client_connector: WebSocketClientConnector<T, ChatServiceError>,
-    incoming_tx: mpsc::Sender<ServerRequest<T::Stream>>,
+    incoming_tx: mpsc::Sender<ServerEvent<T::Stream>>,
 }
 
 impl<T: TransportConnector> ChatOverWebSocketServiceConnector<T> {
     pub fn new(
         ws_client_connector: WebSocketClientConnector<T, ChatServiceError>,
-        incoming_tx: mpsc::Sender<ServerRequest<T::Stream>>,
+        incoming_tx: mpsc::Sender<ServerEvent<T::Stream>>,
     ) -> Self {
         Self {
             ws_client_connector,
@@ -203,7 +206,7 @@ impl<T: TransportConnector> ServiceConnector for ChatOverWebSocketServiceConnect
 async fn reader_task<S: AsyncDuplexStream + 'static>(
     mut ws_client_reader: WebSocketClientReader<S, ChatServiceError>,
     ws_client_writer: WebSocketClientWriter<S, ChatServiceError>,
-    incoming_tx: mpsc::Sender<ServerRequest<S>>,
+    incoming_tx: mpsc::Sender<ServerEvent<S>>,
     pending_messages: Arc<Mutex<PendingMessagesMap>>,
     service_status: ServiceStatus<ChatServiceError>,
 ) {
@@ -232,14 +235,14 @@ async fn reader_task<S: AsyncDuplexStream + 'static>(
         // binary data received
         match decode_and_validate(data.as_slice()) {
             Ok(ChatMessage::Request(req)) => {
-                let server_request = match ServerRequest::new(req, ws_client_writer.clone()) {
+                let request_path = req.path().to_owned();
+                let server_request = match ServerEvent::new(req, ws_client_writer.clone()) {
                     Ok(server_request) => server_request,
                     Err(e) => {
                         service_status.stop_service_with_error(e);
                         break;
                     }
                 };
-                let request_path = server_request.request_proto.path().to_owned();
 
                 let request_send_start = Instant::now();
                 let delivery_result = incoming_tx.send(server_request).await;
@@ -434,7 +437,7 @@ mod test {
     use crate::chat::test::shared::{connection_manager, test_request};
     use crate::chat::ws::{
         decode_and_validate, request_to_websocket_proto, ChatMessage,
-        ChatOverWebSocketServiceConnector, ChatServiceError, RequestId, ServerRequest,
+        ChatOverWebSocketServiceConnector, ChatServiceError, RequestId, ServerEvent,
     };
     use crate::chat::{ChatMessageType, ChatService, MessageProto, ResponseProto};
 
@@ -700,10 +703,13 @@ mod test {
         let ws_config = test_ws_config();
         let (_, mut incoming_rx) = create_ws_chat_service(ws_config, ws_server).await;
 
-        let ServerRequest {
-            request_proto: _,
-            response_sender,
-        } = incoming_rx.recv().await.expect("server request");
+        let response_sender = assert_matches!(
+            incoming_rx.recv().await.expect("server request"),
+            ServerEvent::Request {
+                request_proto: _,
+                response_sender
+            } => response_sender
+        );
 
         response_sender
             .send_response(StatusCode::OK)
@@ -837,13 +843,13 @@ mod test {
         ws_server: F,
     ) -> (
         NoReconnectService<ChatOverWebSocketServiceConnector<InMemoryWarpConnector<F>>>,
-        Receiver<ServerRequest<DuplexStream>>,
+        Receiver<ServerEvent<DuplexStream>>,
     )
     where
         F: Filter + Clone + Send + Sync + 'static,
         F::Extract: Reply,
     {
-        let (incoming_tx, incoming_rx) = mpsc::channel::<ServerRequest<DuplexStream>>(512);
+        let (incoming_tx, incoming_rx) = mpsc::channel::<ServerEvent<DuplexStream>>(512);
         let ws_connector = ChatOverWebSocketServiceConnector::new(
             WebSocketClientConnector::new(InMemoryWarpConnector::new(ws_server), ws_config),
             incoming_tx,

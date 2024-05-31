@@ -10,7 +10,7 @@ use ::http::{HeaderMap, HeaderName, HeaderValue, StatusCode};
 use async_trait::async_trait;
 use futures_util::future::BoxFuture;
 
-use crate::chat::ws::{ChatOverWebSocketServiceConnector, ServerRequest};
+use crate::chat::ws::{ChatOverWebSocketServiceConnector, ServerEvent};
 use crate::infra::connection_manager::MultiRouteConnectionManager;
 use crate::infra::reconnect::{ServiceConnectorWithDecorator, ServiceWithReconnect};
 use crate::infra::ws::WebSocketClientConnector;
@@ -435,7 +435,7 @@ fn build_anonymous_chat_service(
 pub fn chat_service<T: TransportConnector + 'static>(
     endpoint: &EndpointConnection<MultiRouteConnectionManager>,
     transport_connector: T,
-    incoming_tx: tokio::sync::mpsc::Sender<ServerRequest<T::Stream>>,
+    incoming_tx: tokio::sync::mpsc::Sender<ServerEvent<T::Stream>>,
     username: String,
     password: String,
 ) -> Chat<impl ChatServiceWithDebugInfo, impl ChatServiceWithDebugInfo> {

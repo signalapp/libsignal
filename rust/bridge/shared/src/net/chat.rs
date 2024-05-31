@@ -62,7 +62,7 @@ pub struct Chat {
     >,
     listener: std::sync::Mutex<ChatListenerState>,
     #[cfg(feature = "testing-fns")]
-    synthetic_request_tx: mpsc::Sender<chat::ws::ServerRequest<TcpSslConnectorStream>>,
+    synthetic_request_tx: mpsc::Sender<chat::ws::ServerEvent<TcpSslConnectorStream>>,
 }
 
 impl RefUnwindSafe for Chat {}
@@ -304,6 +304,7 @@ impl dyn ChatListener {
                 ServerMessageAck::new(send_ack),
             ),
             chat::server_requests::ServerMessage::QueueEmpty => self.received_queue_empty(),
+            chat::server_requests::ServerMessage::Stopped => todo!(),
         }
     }
 
@@ -437,7 +438,7 @@ fn TESTING_ChatService_InjectRawServerRequest(chat: &Chat, bytes: &[u8]) {
     let request_proto = <chat::RequestProto as prost::Message>::decode(bytes)
         .expect("invalid protobuf cannot use this endpoint to test");
     chat.synthetic_request_tx
-        .blocking_send(chat::ws::ServerRequest::fake(request_proto))
+        .blocking_send(chat::ws::ServerEvent::fake(request_proto))
         .expect("not closed");
 }
 
