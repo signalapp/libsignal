@@ -119,6 +119,8 @@ pub enum ChatItemError {
     InvalidExpiration(#[from] InvalidExpiration),
     /// revisions contains a ChatItem with a call message
     RevisionContainsCall,
+    /// learned profile chat update has no e164 or name
+    LearnedProfileIsEmpty,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -362,7 +364,8 @@ impl<R: Contains<RecipientId> + AsRef<BackupMeta>> TryFromWith<proto::ChatItem, 
                             new: _,
                         }
                         | UpdateMessage::ThreadMerge
-                        | UpdateMessage::SessionSwitchover => (),
+                        | UpdateMessage::SessionSwitchover
+                        | UpdateMessage::LearnedProfileUpdate(_) => (),
                     },
                     ChatItemMessage::Standard(_)
                     | ChatItemMessage::Contact(_)

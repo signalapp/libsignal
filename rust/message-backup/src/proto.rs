@@ -47,7 +47,11 @@ impl_from_oneof!(frame::Item, AdHocCall, AdHocCall);
 
 impl_from_oneof!(recipient::Destination, Group, Group);
 impl_from_oneof!(recipient::Destination, Contact, Contact);
-impl_from_oneof!(recipient::Destination, DistributionList, DistributionList);
+impl_from_oneof!(
+    recipient::Destination,
+    DistributionListItem,
+    DistributionList
+);
 
 impl_from_oneof!(chat_update_message::Update, SimpleChatUpdate, SimpleUpdate);
 impl_from_oneof!(
@@ -69,4 +73,9 @@ impl_from_oneof!(
     chat_update_message::Update,
     SessionSwitchoverChatUpdate,
     SessionSwitchover
+);
+impl_from_oneof!(
+    chat_update_message::Update,
+    LearnedProfileChatUpdate,
+    LearnedProfileChange
 );

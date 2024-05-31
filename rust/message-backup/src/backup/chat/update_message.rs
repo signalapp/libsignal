@@ -23,6 +23,7 @@ pub enum UpdateMessage {
     SessionSwitchover,
     IndividualCall(IndividualCall),
     GroupCall(GroupCall),
+    LearnedProfileUpdate(proto::learned_profile_chat_update::PreviousName),
 }
 
 /// Validated version of [`proto::simple_chat_update::Type`].
@@ -132,9 +133,16 @@ impl<R: Contains<RecipientId>> TryFromWith<proto::ChatUpdateMessage, R> for Upda
             }) => UpdateMessage::SessionSwitchover,
             Update::IndividualCall(call) => UpdateMessage::IndividualCall(call.try_into()?),
             Update::GroupCall(call) => UpdateMessage::GroupCall(call.try_into_with(context)?),
+            Update::LearnedProfileChange(proto::LearnedProfileChatUpdate {
+                previousName,
+                special_fields: _,
+            }) => UpdateMessage::LearnedProfileUpdate(
+                previousName.ok_or(ChatItemError::LearnedProfileIsEmpty)?,
+            ),
         })
     }
 }
+
 #[cfg(test)]
 mod test {
     use assert_matches::assert_matches;
@@ -211,6 +219,10 @@ mod test {
     #[test_case(proto::ProfileChangeChatUpdate::default(), Ok(()))]
     #[test_case(proto::ThreadMergeChatUpdate::default(), Ok(()))]
     #[test_case(proto::SessionSwitchoverChatUpdate::default(), Ok(()))]
+    #[test_case(
+        proto::LearnedProfileChatUpdate::default(),
+        Err(ChatItemError::LearnedProfileIsEmpty)
+    )]
     fn chat_update_message_item(
         update: impl Into<proto::chat_update_message::Update>,
         expected: Result<(), ChatItemError>,

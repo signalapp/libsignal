@@ -278,7 +278,7 @@ impl<M: Method> PartialBackup<M> {
     fn add_recipient(&mut self, recipient: proto::Recipient) -> Result<(), RecipientFrameError> {
         let id = recipient.id();
         let err_with_id = |e| RecipientFrameError(id, e);
-        let recipient = recipient.try_into().map_err(err_with_id)?;
+        let recipient = recipient.try_into_with(self).map_err(err_with_id)?;
         match self.recipients.entry(id) {
             hash_map::Entry::Occupied(_) => Err(err_with_id(RecipientError::DuplicateRecipient)),
             hash_map::Entry::Vacant(v) => {

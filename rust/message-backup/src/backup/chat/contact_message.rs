@@ -78,7 +78,7 @@ impl TryFrom<proto::ContactAttachment> for ContactAttachment {
             organization,
             special_fields: _,
             // TODO validate this field
-            avatarUrlPath: _,
+            avatar: _,
         } = value;
 
         if let Some(proto::contact_attachment::Name {

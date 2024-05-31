@@ -6,15 +6,20 @@
 use std::num::NonZeroU64;
 
 use derive_where::derive_where;
+use itertools::Itertools as _;
 use libsignal_protocol::{Aci, Pni, ServiceIdKind};
 use uuid::Uuid;
 use zkgroup::{GroupMasterKeyBytes, ProfileKeyBytes};
 
 use crate::backup::call::{CallLink, CallLinkError};
-use crate::backup::method::Method;
+use crate::backup::frame::RecipientId;
+use crate::backup::method::{Contains, Method};
 use crate::backup::time::Timestamp;
+use crate::backup::TryFromWith;
 use crate::proto::backup as proto;
 use crate::proto::backup::recipient::Destination as RecipientDestination;
+
+use super::TryIntoWith;
 
 #[derive(Debug, thiserror::Error, displaydoc::Display)]
 #[cfg_attr(test, derive(PartialEq))]
@@ -41,6 +46,10 @@ pub enum RecipientError {
     InvalidContactUsername,
     /// contact is registered but has unregistered timestamp
     UnregisteredAtForRegisteredContact,
+    /// DistributionList.item is a oneof but is empty
+    DistributionListItemMissing,
+    /// distribution list member {0:?} is unknown
+    DistributionListMemberUnknown(RecipientId),
 }
 
 #[derive_where(Debug)]
@@ -50,13 +59,20 @@ pub struct RecipientData<M: Method> {
 }
 
 #[derive_where(Debug)]
-#[cfg_attr(test, derive_where(PartialEq; M::Value<ContactData>: PartialEq, M::Value<GroupData>: PartialEq, M::Value<DistributionListData>: PartialEq, M::Value<CallLink>: PartialEq))]
+#[cfg_attr(test,
+    derive_where(PartialEq;
+        M::Value<ContactData>: PartialEq,
+        M::Value<GroupData>: PartialEq,
+        M::Value<DistributionListItem>: PartialEq,
+        M::Value<CallLink>: PartialEq
+    )
+)]
 #[derive(strum::EnumDiscriminants)]
 #[strum_discriminants(name(DestinationKind))]
 pub enum Destination<M: Method> {
     Contact(M::Value<ContactData>),
     Group(M::Value<GroupData>),
-    DistributionList(M::Value<DistributionListData>),
+    DistributionList(M::Value<DistributionListItem>),
     Self_,
     ReleaseNotes,
     CallLink(M::Value<CallLink>),
@@ -68,12 +84,11 @@ pub struct ContactData {
     pub aci: Option<Aci>,
     pub pni: Option<Pni>,
     pub profile_key: Option<ProfileKeyBytes>,
-    pub registered: bool,
     pub username: Option<String>,
-    pub unregistered_at: Option<Timestamp>,
+    pub registration: Registration,
     pub e164: Option<u64>,
     pub blocked: bool,
-    pub hidden: bool,
+    pub visibility: proto::contact::Visibility,
     pub profile_sharing: bool,
     pub profile_given_name: Option<String>,
     pub profile_family_name: Option<String>,
@@ -89,9 +104,25 @@ pub struct GroupData {
 
 #[derive(Debug)]
 #[cfg_attr(test, derive(PartialEq))]
-pub struct DistributionListData {
-    pub distribution_id: Uuid,
-    pub privacy_mode: PrivacyMode,
+pub enum DistributionListItem {
+    Deleted {
+        distribution_id: Uuid,
+        at: Timestamp,
+    },
+    List {
+        distribution_id: Uuid,
+        name: String,
+        allow_replies: bool,
+        privacy_mode: PrivacyMode,
+        members: Vec<RecipientId>,
+    },
+}
+
+#[derive(Debug)]
+#[cfg_attr(test, derive(PartialEq))]
+pub enum Registration {
+    NotRegistered { unregistered_at: Option<Timestamp> },
+    Registered,
 }
 
 #[derive(Debug)]
@@ -119,9 +150,9 @@ impl<M: Method> AsRef<DestinationKind> for RecipientData<M> {
     }
 }
 
-impl<M: Method> TryFrom<proto::Recipient> for RecipientData<M> {
+impl<M: Method, C: Contains<RecipientId>> TryFromWith<proto::Recipient, C> for RecipientData<M> {
     type Error = RecipientError;
-    fn try_from(value: proto::Recipient) -> Result<Self, Self::Error> {
+    fn try_from_with(value: proto::Recipient, context: &C) -> Result<Self, Self::Error> {
         let proto::Recipient {
             id: _,
             destination,
@@ -136,7 +167,7 @@ impl<M: Method> TryFrom<proto::Recipient> for RecipientData<M> {
             }
             RecipientDestination::Group(group) => Destination::Group(M::value(group.try_into()?)),
             RecipientDestination::DistributionList(list) => {
-                Destination::DistributionList(M::value(list.try_into()?))
+                Destination::DistributionList(M::value(list.try_into_with(context)?))
             }
             RecipientDestination::Self_(proto::Self_ { special_fields: _ }) => Destination::Self_,
             RecipientDestination::ReleaseNotes(proto::ReleaseNotes { special_fields: _ }) => {
@@ -158,14 +189,11 @@ impl TryFrom<proto::Contact> for ContactData {
             aci,
             pni,
             profileKey,
-            registered,
-            unregisteredTimestamp,
             username,
             e164,
             blocked,
-            hidden,
-
-            // TODO validate these fields
+            visibility,
+            registration,
             profileSharing,
             profileGivenName,
             profileFamilyName,
@@ -197,31 +225,35 @@ impl TryFrom<proto::Contact> for ContactData {
             .transpose()
             .map_err(|_| RecipientError::InvalidProfileKey)?;
 
-        let registered = match registered.enum_value_or_default() {
-            proto::contact::Registered::UNKNOWN => {
-                return Err(RecipientError::ContactRegistrationUnknown)
-            }
-            proto::contact::Registered::REGISTERED => true,
-            proto::contact::Registered::NOT_REGISTERED => false,
+        let registration = match registration.ok_or(RecipientError::ContactRegistrationUnknown)? {
+            proto::contact::Registration::NotRegistered(proto::contact::NotRegistered {
+                unregisteredTimestamp,
+                special_fields: _,
+            }) => Registration::NotRegistered {
+                unregistered_at: NonZeroU64::new(unregisteredTimestamp).map(|u| {
+                    Timestamp::from_millis(u.get(), "Contact.notRegistered.unregisteredTimestamp")
+                }),
+            },
+            proto::contact::Registration::Registered(proto::contact::Registered {
+                special_fields: _,
+            }) => Registration::Registered,
         };
 
-        let unregistered_at = NonZeroU64::new(unregisteredTimestamp)
-            .map(|u| Timestamp::from_millis(u.get(), "Contact.unregisteredTimestamp"));
-
-        if unregistered_at.is_some() && registered {
-            return Err(RecipientError::UnregisteredAtForRegisteredContact);
-        }
+        let visibility = match visibility.enum_value_or_default() {
+            v @ (proto::contact::Visibility::VISIBLE
+            | proto::contact::Visibility::HIDDEN
+            | proto::contact::Visibility::HIDDEN_MESSAGE_REQUEST) => v,
+        };
 
         Ok(Self {
             aci,
             pni,
             profile_key,
-            registered,
-            unregistered_at,
+            registration,
             username,
             e164,
             blocked,
-            hidden,
+            visibility,
             profile_sharing: profileSharing,
             profile_given_name: profileGivenName,
             profile_family_name: profileFamilyName,
@@ -250,18 +282,15 @@ impl TryFrom<proto::Group> for GroupData {
     }
 }
 
-impl TryFrom<proto::DistributionList> for DistributionListData {
+impl<C: Contains<RecipientId>> TryFromWith<proto::DistributionListItem, C>
+    for DistributionListItem
+{
     type Error = RecipientError;
 
-    fn try_from(value: proto::DistributionList) -> Result<Self, Self::Error> {
-        let proto::DistributionList {
+    fn try_from_with(value: proto::DistributionListItem, context: &C) -> Result<Self, Self::Error> {
+        let proto::DistributionListItem {
             distributionId,
-            privacyMode,
-            deletionTimestamp,
-            // TODO validate these fields.
-            name: _,
-            allowReplies: _,
-            memberRecipientIds: _,
+            item,
             special_fields: _,
         } = value;
 
@@ -271,15 +300,50 @@ impl TryFrom<proto::DistributionList> for DistributionListData {
                 .map_err(|_| RecipientError::InvalidDistributionId)?,
         );
 
-        let privacy_mode = PrivacyMode::try_from(privacyMode.enum_value_or_default())?;
+        Ok(
+            match item.ok_or(RecipientError::DistributionListItemMissing)? {
+                proto::distribution_list_item::Item::DeletionTimestamp(deletion_timestamp) => {
+                    let at = Timestamp::from_millis(
+                        deletion_timestamp,
+                        "DistributionList.deletionTimestamp",
+                    );
+                    Self::Deleted {
+                        distribution_id,
+                        at,
+                    }
+                }
+                proto::distribution_list_item::Item::DistributionList(
+                    proto::DistributionList {
+                        name,
+                        allowReplies,
+                        privacyMode,
+                        memberRecipientIds,
+                        special_fields: _,
+                    },
+                ) => {
+                    let privacy_mode = PrivacyMode::try_from(privacyMode.enum_value_or_default())?;
 
-        let _ = NonZeroU64::new(deletionTimestamp)
-            .map(|u| Timestamp::from_millis(u.get(), "DistributionList.deletionTimestamp"));
+                    let members = memberRecipientIds
+                        .into_iter()
+                        .map(|id| {
+                            let id = RecipientId(id);
+                            if !context.contains(&id) {
+                                return Err(RecipientError::DistributionListMemberUnknown(id));
+                            }
+                            Ok(id)
+                        })
+                        .try_collect()?;
 
-        Ok(Self {
-            distribution_id,
-            privacy_mode,
-        })
+                    Self::List {
+                        distribution_id,
+                        name,
+                        allow_replies: allowReplies,
+                        privacy_mode,
+                        members,
+                    }
+                }
+            },
+        )
     }
 }
 
@@ -328,7 +392,9 @@ mod test {
                 aci: Some(Self::TEST_ACI.into()),
                 pni: Some(Self::TEST_PNI.into()),
                 profileKey: Some(Self::TEST_PROFILE_KEY.into()),
-                registered: proto::contact::Registered::NOT_REGISTERED.into(),
+                registration: Some(proto::contact::Registration::NotRegistered(
+                    Default::default(),
+                )),
                 username: Some("example.1234".to_owned()),
                 profileGivenName: Some("GivenName".to_owned()),
                 profileFamilyName: Some("FamilyName".to_owned()),
@@ -349,14 +415,28 @@ mod test {
         }
     }
 
-    impl proto::DistributionList {
+    impl proto::DistributionListItem {
         const TEST_UUID: [u8; 16] = [0x99; 16];
         fn test_data() -> Self {
             Self {
                 distributionId: Self::TEST_UUID.into(),
-                privacyMode: proto::distribution_list::PrivacyMode::ALL_EXCEPT.into(),
-                ..Self::default()
+                item: Some(proto::distribution_list_item::Item::DistributionList(
+                    proto::DistributionList {
+                        privacyMode: proto::distribution_list::PrivacyMode::ALL_EXCEPT.into(),
+                        memberRecipientIds: vec![proto::Recipient::TEST_ID],
+                        ..Default::default()
+                    },
+                )),
+                ..Default::default()
             }
+        }
+    }
+
+    struct TestContext;
+
+    impl Contains<RecipientId> for TestContext {
+        fn contains(&self, key: &RecipientId) -> bool {
+            key.0 == proto::Recipient::TEST_ID
         }
     }
 
@@ -368,7 +448,7 @@ mod test {
         };
 
         assert_matches!(
-            RecipientData::<Store>::try_from(recipient),
+            RecipientData::<Store>::try_from_with(recipient, &TestContext),
             Err(RecipientError::MissingDestination)
         );
     }
@@ -378,7 +458,7 @@ mod test {
         let recipient = proto::Recipient::test_data();
 
         assert_eq!(
-            RecipientData::<Store>::try_from(recipient),
+            RecipientData::<Store>::try_from_with(recipient, &TestContext),
             Ok(RecipientData {
                 destination: Destination::Self_
             })
@@ -414,11 +494,17 @@ mod test {
         ));
     }
     fn registration_unknown(input: &mut proto::Contact) {
-        input.registered = EnumOrUnknown::default();
+        input.registration = None;
     }
     fn profile_no_names(input: &mut proto::Contact) {
         input.profileGivenName = None;
         input.profileFamilyName = None;
+    }
+    fn visibility_hidden(input: &mut proto::Contact) {
+        input.visibility = proto::contact::Visibility::HIDDEN.into();
+    }
+    fn visibility_default(input: &mut proto::Contact) {
+        input.visibility = EnumOrUnknown::default();
     }
 
     #[test]
@@ -429,18 +515,19 @@ mod test {
         };
 
         assert_eq!(
-            RecipientData::<Store>::try_from(recipient),
+            RecipientData::<Store>::try_from_with(recipient, &TestContext),
             Ok(RecipientData {
                 destination: Destination::Contact(ContactData {
                     aci: Some(Aci::from_uuid_bytes(proto::Contact::TEST_ACI)),
                     pni: Some(Pni::from_uuid_bytes(proto::Contact::TEST_PNI)),
                     profile_key: Some(proto::Contact::TEST_PROFILE_KEY),
-                    registered: false,
+                    registration: Registration::NotRegistered {
+                        unregistered_at: None
+                    },
                     username: Some("example.1234".to_owned()),
-                    unregistered_at: None,
                     e164: None,
                     blocked: false,
-                    hidden: false,
+                    visibility: proto::contact::Visibility::VISIBLE,
                     profile_sharing: false,
                     profile_given_name: Some("GivenName".to_owned()),
                     profile_family_name: Some("FamilyName".to_owned()),
@@ -459,6 +546,8 @@ mod test {
     #[test_case(invalid_profile_key, Err(RecipientError::InvalidProfileKey))]
     #[test_case(registration_unknown, Err(RecipientError::ContactRegistrationUnknown))]
     #[test_case(profile_no_names, Ok(()))]
+    #[test_case(visibility_hidden, Ok(()))]
+    #[test_case(visibility_default, Ok(()))]
     fn destination_contact(
         modifier: fn(&mut proto::Contact),
         expected: Result<(), RecipientError>,
@@ -472,7 +561,7 @@ mod test {
         };
 
         assert_eq!(
-            RecipientData::<Store>::try_from(recipient).map(|_| ()),
+            RecipientData::<Store>::try_from_with(recipient, &TestContext).map(|_| ()),
             expected
         );
     }
@@ -485,7 +574,7 @@ mod test {
         };
 
         assert_eq!(
-            RecipientData::<Store>::try_from(recipient),
+            RecipientData::<Store>::try_from_with(recipient, &TestContext),
             Ok(RecipientData {
                 destination: Destination::Group(GroupData {
                     master_key: proto::Group::TEST_MASTER_KEY
@@ -509,7 +598,7 @@ mod test {
         };
 
         assert_eq!(
-            RecipientData::<Store>::try_from(recipient).map(|_| ()),
+            RecipientData::<Store>::try_from_with(recipient, &TestContext).map(|_| ()),
             expected
         );
     }
@@ -517,26 +606,34 @@ mod test {
     #[test]
     fn valid_distribution_list() {
         let recipient = proto::Recipient {
-            destination: Some(proto::DistributionList::test_data().into()),
+            destination: Some(proto::DistributionListItem::test_data().into()),
             ..proto::Recipient::test_data()
         };
 
         assert_eq!(
-            RecipientData::<Store>::try_from(recipient),
+            RecipientData::<Store>::try_from_with(recipient, &TestContext),
             Ok(RecipientData {
-                destination: Destination::DistributionList(DistributionListData {
-                    distribution_id: Uuid::from_bytes(proto::DistributionList::TEST_UUID),
+                destination: Destination::DistributionList(DistributionListItem::List {
+                    distribution_id: Uuid::from_bytes(proto::DistributionListItem::TEST_UUID),
                     privacy_mode: PrivacyMode::AllExcept,
+                    name: "".to_owned(),
+                    allow_replies: false,
+                    members: vec![RecipientId(proto::Recipient::TEST_ID)],
                 })
             })
         );
     }
 
-    fn invalid_distribution_id(input: &mut proto::DistributionList) {
-        input.distributionId = vec![0x55; proto::DistributionList::TEST_UUID.len() * 2];
+    const UNKNOWN_RECIPIENT_ID: RecipientId = RecipientId(9999999999);
+
+    fn invalid_distribution_id(input: &mut proto::DistributionListItem) {
+        input.distributionId = vec![0x55; proto::DistributionListItem::TEST_UUID.len() * 2];
     }
-    fn privacy_mode_unknown(input: &mut proto::DistributionList) {
-        input.privacyMode = EnumOrUnknown::default();
+    fn privacy_mode_unknown(input: &mut proto::DistributionListItem) {
+        input.mut_distributionList().privacyMode = EnumOrUnknown::default();
+    }
+    fn unknown_member(input: &mut proto::DistributionListItem) {
+        input.mut_distributionList().memberRecipientIds = vec![UNKNOWN_RECIPIENT_ID.0];
     }
 
     #[test_case(invalid_distribution_id, Err(RecipientError::InvalidDistributionId))]
@@ -544,11 +641,15 @@ mod test {
         privacy_mode_unknown,
         Err(RecipientError::DistributionListPrivacyUnknown)
     )]
+    #[test_case(
+        unknown_member,
+        Err(RecipientError::DistributionListMemberUnknown(UNKNOWN_RECIPIENT_ID))
+    )]
     fn destination_distribution_list(
-        modifier: fn(&mut proto::DistributionList),
+        modifier: fn(&mut proto::DistributionListItem),
         expected: Result<(), RecipientError>,
     ) {
-        let mut distribution_list = proto::DistributionList::test_data();
+        let mut distribution_list = proto::DistributionListItem::test_data();
         modifier(&mut distribution_list);
 
         let recipient = proto::Recipient {
@@ -557,7 +658,7 @@ mod test {
         };
 
         assert_eq!(
-            RecipientData::<Store>::try_from(recipient).map(|_| ()),
+            RecipientData::<Store>::try_from_with(recipient, &TestContext).map(|_| ()),
             expected
         );
     }
