@@ -142,7 +142,7 @@ impl PendingMessagesMap {
 #[derive_where(Clone)]
 pub(super) struct ChatOverWebSocketServiceConnector<T: TransportConnector> {
     ws_client_connector: WebSocketClientConnector<T, ChatServiceError>,
-    incoming_tx: mpsc::Sender<ServerEvent<T::Stream>>,
+    incoming_tx: Arc<Mutex<mpsc::Sender<ServerEvent<T::Stream>>>>,
 }
 
 impl<T: TransportConnector> ChatOverWebSocketServiceConnector<T> {
@@ -152,7 +152,7 @@ impl<T: TransportConnector> ChatOverWebSocketServiceConnector<T> {
     ) -> Self {
         Self {
             ws_client_connector,
-            incoming_tx,
+            incoming_tx: Arc::new(Mutex::new(incoming_tx)),
         }
     }
 }
@@ -206,13 +206,20 @@ impl<T: TransportConnector> ServiceConnector for ChatOverWebSocketServiceConnect
 async fn reader_task<S: AsyncDuplexStream + 'static>(
     mut ws_client_reader: WebSocketClientReader<S, ChatServiceError>,
     ws_client_writer: WebSocketClientWriter<S, ChatServiceError>,
-    incoming_tx: mpsc::Sender<ServerEvent<S>>,
+    incoming_tx: Arc<Mutex<mpsc::Sender<ServerEvent<S>>>>,
     pending_messages: Arc<Mutex<PendingMessagesMap>>,
     service_status: ServiceStatus<ChatServiceError>,
 ) {
     const LONG_REQUEST_PROCESSING_THRESHOLD: Duration = Duration::from_millis(500);
+
+    // Hold the ServerEvent Sender exclusively while the reader task is alive. This prevents two
+    // reader tasks from being active at once, interleaving their events. Note that ServerEvents
+    // that don't come from ChatOverWebSocketServiceConnector still won't be synchronized.
+    let incoming_tx = incoming_tx.lock().await;
+
     let mut previous_request_paths_for_logging =
         VecDeque::with_capacity(incoming_tx.max_capacity());
+    let mut has_ever_sent_server_event = false;
 
     loop {
         let data = match ws_client_reader.next().await {
@@ -275,6 +282,7 @@ async fn reader_task<S: AsyncDuplexStream + 'static>(
                     }
                 }
                 previous_request_paths_for_logging.push_back(request_path);
+                has_ever_sent_server_event = true;
             }
             Ok(ChatMessage::Response(id, res)) => {
                 let map = &mut pending_messages.lock().await;
@@ -289,6 +297,16 @@ async fn reader_task<S: AsyncDuplexStream + 'static>(
             }
         }
     }
+
+    if has_ever_sent_server_event {
+        // We only need a Stopped event to separate the events from different connections. If there
+        // haven't been any events from this connection, we don't bother. This also avoids sending
+        // events for the unauth socket, even though it still has to read responses.
+        // (But don't worry about delivery failure here; if no one's listening, the event is
+        // superfluous anyway.)
+        _ = incoming_tx.send(ServerEvent::Stopped).await;
+    }
+
     // before terminating the task, marking channel as inactive
     service_status.stop_service();
 
@@ -716,6 +734,48 @@ mod test {
             .await
             .expect("response sent to back server");
         validate_server_stopped_successfully(server_res_rx).await;
+
+        assert_matches!(
+            incoming_rx.recv().await.expect("server request"),
+            ServerEvent::Stopped
+        );
+    }
+
+    #[tokio::test(flavor = "current_thread", start_paused = true)]
+    async fn ws_service_skips_stop_event_without_requests() {
+        // creating a server that accepts a request, responds, then closes the connection.
+        let (ws_server, server_res_rx) = ws_warp_filter(move |websocket| async move {
+            let (mut tx, mut rx) = websocket.split();
+            let msg = rx
+                .next()
+                .await
+                .expect("stream should not be closed")
+                .expect("should be Ok");
+            assert!(msg.is_binary(), "not binary: {msg:?}");
+            let request = decode_and_validate(msg.as_bytes()).expect("chat message");
+            let message_proto =
+                response_for_request(&request, StatusCode::OK).expect("not an error");
+            let send_result = tx
+                .send(warp::ws::Message::binary(message_proto.encode_to_vec()))
+                .await;
+            assert_matches!(send_result, Ok(_));
+        });
+
+        let ws_config = test_ws_config();
+        let (ws_chat, mut incoming_rx) = create_ws_chat_service(ws_config, ws_server).await;
+
+        // Requests from the client can still get responses without resulting in a Stopped event.
+        let response = ws_chat
+            .send(test_request(Method::GET, "/"), TIMEOUT_DURATION)
+            .await;
+        response.expect("response");
+
+        validate_server_stopped_successfully(server_res_rx).await;
+
+        assert_matches!(
+            incoming_rx.try_recv(),
+            Err(mpsc::error::TryRecvError::Disconnected)
+        );
     }
 
     #[tokio::test(flavor = "current_thread", start_paused = true)]
