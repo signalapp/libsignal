@@ -121,6 +121,7 @@ export abstract class ChatListener {
     ack: ServerMessageAck
   ): void;
   _queue_empty(): void;
+  _connection_interrupted(): void;
 }
 
 export abstract class MakeChatListener extends ChatListener {}
@@ -492,6 +493,7 @@ export function TESTING_ChatServiceDebugInfoConvert(): ChatServiceDebugInfo;
 export function TESTING_ChatServiceErrorConvert(errorDescription: string): void;
 export function TESTING_ChatServiceResponseAndDebugInfoConvert(): ResponseAndDebugInfo;
 export function TESTING_ChatServiceResponseConvert(bodyPresent: boolean): ChatResponse;
+export function TESTING_ChatService_InjectConnectionInterrupted(chat: Wrapper<Chat>): void;
 export function TESTING_ChatService_InjectRawServerRequest(chat: Wrapper<Chat>, bytes: Buffer): void;
 export function TESTING_ErrorOnBorrowAsync(_input: null): Promise<void>;
 export function TESTING_ErrorOnBorrowIo(asyncRuntime: Wrapper<NonSuspendingBackgroundThreadRuntime>, _input: null): Promise<void>;

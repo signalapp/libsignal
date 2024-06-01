@@ -18,14 +18,26 @@ public protocol ChatListener: AnyObject {
     /// Called when the server indicates that there are no further messages in the message queue.
     ///
     /// Note that further messages may still be delivered; this merely indicates that all messages
-    /// that were in the queue
+    /// that were in the queue *when the connection was established* have been delivered.
     ///
     /// The default implementation of this method does nothing.
     func chatServiceDidReceiveQueueEmpty(_ chat: ChatService)
+
+    /// Called when the client gets disconnected from the server.
+    ///
+    /// This includes both deliberate disconnects as well as unexpected socket closures that will be
+    /// automatically retried.
+    ///
+    /// Will not be called if no other requests have been invoked for this connection attempt. That
+    /// is, you should never see this as the first callback, nor two of these callbacks in a row.
+    ///
+    /// The default implementation of this method does nothing.
+    func chatServiceConnectionWasInterrupted(_ chat: ChatService)
 }
 
 extension ChatListener {
-    func chatServiceDidReceiveQueueEmpty(_: ChatService) {}
+    public func chatServiceDidReceiveQueueEmpty(_: ChatService) {}
+    public func chatServiceConnectionWasInterrupted(_: ChatService) {}
 }
 
 internal class ChatListenerBridge {
@@ -74,11 +86,20 @@ internal class ChatListenerBridge {
 
             bridge.chatListener.chatServiceDidReceiveQueueEmpty(chatService)
         }
+        let connectionInterrupted: SignalConnectionInterrupted = { rawCtx in
+            let bridge = Unmanaged<ChatListenerBridge>.fromOpaque(rawCtx!).takeUnretainedValue()
+            guard let chatService = bridge.chatService else {
+                return
+            }
+
+            bridge.chatListener.chatServiceConnectionWasInterrupted(chatService)
+        }
 
         return .init(
             ctx: Unmanaged.passRetained(self).toOpaque(),
             received_incoming_message: receivedIncomingMessage,
             received_queue_empty: receivedQueueEmpty,
+            connection_interrupted: connectionInterrupted,
             destroy: { rawCtx in
                 _ = Unmanaged<AnyObject>.fromOpaque(rawCtx!).takeRetainedValue()
             }

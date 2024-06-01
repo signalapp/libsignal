@@ -20,6 +20,12 @@ extension ChatService {
             }
         }
     }
+
+    func injectConnectionInterrupted() {
+        withNativeHandle { handle in
+            failOnError(signal_testing_chat_service_inject_connection_interrupted(handle))
+        }
+    }
 }
 
 final class ChatServiceTests: TestCaseBase {
@@ -155,11 +161,13 @@ final class ChatServiceTests: TestCaseBase {
             let queueEmpty: XCTestExpectation
             let firstMessageReceived: XCTestExpectation
             let secondMessageReceived: XCTestExpectation
+            let connectionInterrupted: XCTestExpectation
 
-            init(queueEmpty: XCTestExpectation, firstMessageReceived: XCTestExpectation, secondMessageReceived: XCTestExpectation) {
+            init(queueEmpty: XCTestExpectation, firstMessageReceived: XCTestExpectation, secondMessageReceived: XCTestExpectation, connectionInterrupted: XCTestExpectation) {
                 self.queueEmpty = queueEmpty
                 self.firstMessageReceived = firstMessageReceived
                 self.secondMessageReceived = secondMessageReceived
+                self.connectionInterrupted = connectionInterrupted
             }
 
             func chatService(_ chat: ChatService, didReceiveIncomingMessage envelope: Data, serverDeliveryTimestamp: UInt64, sendAck: () async throws -> Void) {
@@ -184,6 +192,12 @@ final class ChatServiceTests: TestCaseBase {
                 self.stage += 1
                 self.queueEmpty.fulfill()
             }
+
+            func chatServiceConnectionWasInterrupted(_: ChatService) {
+                XCTAssertEqual(self.stage, 3)
+                self.stage += 1
+                self.connectionInterrupted.fulfill()
+            }
         }
 
         let net = Net(env: .staging, userAgent: Self.userAgent)
@@ -191,7 +205,8 @@ final class ChatServiceTests: TestCaseBase {
         let listener = Listener(
             queueEmpty: expectation(description: "queue empty"),
             firstMessageReceived: expectation(description: "first message received"),
-            secondMessageReceived: expectation(description: "second message received")
+            secondMessageReceived: expectation(description: "second message received"),
+            connectionInterrupted: expectation(description: "connection interrupted")
         )
         chat.setListener(listener)
 
@@ -223,8 +238,10 @@ final class ChatServiceTests: TestCaseBase {
         // 4: 99
         chat.injectServerRequest(base64: "CgNQVVQSEy9hcGkvdjEvcXVldWUvZW1wdHkgYw==")
 
+        chat.injectConnectionInterrupted()
+
         waitForExpectations(timeout: 2)
-        XCTAssertEqual(listener.stage, 3)
+        XCTAssertEqual(listener.stage, 4)
     }
 
 #endif

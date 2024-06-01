@@ -140,6 +140,17 @@ export interface ChatServiceListener {
    * were in the queue *when the connection was established* have been delivered.
    */
   onQueueEmpty(): void;
+
+  /**
+   * Called when the client gets disconnected from the server.
+   *
+   * This includes both deliberate disconnects as well as unexpected socket closures that will be
+   * automatically retried.
+   *
+   * Will not be called if no other requests have been invoked for this connection attempt. That is,
+   * you should never see this as the first callback, nor two of these callbacks in a row.
+   */
+  onConnectionInterrupted(): void;
 }
 
 /**
@@ -185,6 +196,9 @@ export class ChatService {
       },
       _queue_empty(): void {
         listener.onQueueEmpty();
+      },
+      _connection_interrupted(): void {
+        listener.onConnectionInterrupted();
       },
     };
     Native.ChatServer_SetListener(

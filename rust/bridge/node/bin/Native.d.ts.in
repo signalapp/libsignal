@@ -121,6 +121,7 @@ export abstract class ChatListener {
     ack: ServerMessageAck
   ): void;
   _queue_empty(): void;
+  _connection_interrupted(): void;
 }
 
 export abstract class MakeChatListener extends ChatListener {}

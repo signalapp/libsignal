@@ -52,6 +52,16 @@ impl ChatListener for NodeChatListener {
             Ok(())
         });
     }
+
+    fn connection_interrupted(&mut self) {
+        let callback_object_shared = self.callback_object.clone();
+        self.js_channel.send(move |mut cx| {
+            let callback = callback_object_shared.to_inner(&mut cx);
+            let _result = call_method(&mut cx, callback, "_connection_interrupted", [])?;
+            callback_object_shared.finalize(&mut cx);
+            Ok(())
+        });
+    }
 }
 
 pub struct NodeMakeChatListener {

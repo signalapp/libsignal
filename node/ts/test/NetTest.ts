@@ -14,6 +14,7 @@ import { ErrorCode, LibSignalErrorBase } from '../Errors';
 import {
   ChatServerMessageAck,
   ChatService,
+  ChatServiceListener,
   Environment,
   Net,
   ServiceAuth,
@@ -229,6 +230,7 @@ describe('chat service api', () => {
     const listener = {
       onIncomingMessage: sinon.stub(),
       onQueueEmpty: sinon.stub(),
+      onConnectionInterrupted: sinon.stub(),
     };
     chat.setListener(listener);
 
@@ -279,6 +281,7 @@ describe('chat service api', () => {
       '_incoming_message',
       '_queue_empty',
       '_incoming_message',
+      '_connection_interrupted',
     ];
     const recordCall = function (name: string) {
       callsReceived.push(name);
@@ -286,7 +289,7 @@ describe('chat service api', () => {
         completable.complete();
       }
     };
-    const listener = {
+    const listener: ChatServiceListener = {
       onIncomingMessage(
         _envelope: Buffer,
         _timestamp: number,
@@ -297,6 +300,9 @@ describe('chat service api', () => {
       onQueueEmpty(): void {
         recordCall('_queue_empty');
       },
+      onConnectionInterrupted(): void {
+        recordCall('_connection_interrupted');
+      },
     };
     chat.setListener(listener);
     callsToMake.forEach((message) =>
@@ -305,6 +311,7 @@ describe('chat service api', () => {
         message
       )
     );
+    Native.TESTING_ChatService_InjectConnectionInterrupted(chat.chatService);
     await completable.done();
     expect(callsReceived).to.eql(callsExpected);
   });
@@ -315,10 +322,12 @@ describe('chat service api', () => {
     const listener1 = {
       onIncomingMessage: sinon.stub(),
       onQueueEmpty: sinon.stub(),
+      onConnectionInterrupted: sinon.stub(),
     };
     const listener2 = {
       onIncomingMessage: sinon.stub(),
       onQueueEmpty: sinon.stub(),
+      onConnectionInterrupted: sinon.stub(),
     };
 
     async function check(
@@ -359,6 +368,7 @@ describe('chat service api', () => {
     const listener = {
       onIncomingMessage: sinon.stub(),
       onQueueEmpty: sinon.stub(),
+      onConnectionInterrupted: sinon.stub(),
     };
     Native.TESTING_ChatService_InjectRawServerRequest(
       chat.chatService,

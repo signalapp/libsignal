@@ -634,6 +634,8 @@ typedef void (*SignalReceivedIncomingMessage)(void *ctx, SignalOwnedBuffer envel
 
 typedef void (*SignalReceivedQueueEmpty)(void *ctx);
 
+typedef void (*SignalConnectionInterrupted)(void *ctx);
+
 typedef void (*SignalDestroyChatListener)(void *ctx);
 
 /**
@@ -647,6 +649,7 @@ typedef struct {
   void *ctx;
   SignalReceivedIncomingMessage received_incoming_message;
   SignalReceivedQueueEmpty received_queue_empty;
+  SignalConnectionInterrupted connection_interrupted;
   SignalDestroyChatListener destroy;
 } SignalFfiChatListenerStruct;
 
@@ -1571,6 +1574,8 @@ SignalFfiError *signal_chat_service_auth_send_and_debug(SignalCPromiseFfiRespons
 SignalFfiError *signal_chat_server_set_listener(const SignalTokioAsyncContext *runtime, const SignalChat *chat, const SignalFfiMakeChatListenerStruct *make_listener);
 
 SignalFfiError *signal_testing_chat_service_inject_raw_server_request(const SignalChat *chat, SignalBorrowedBuffer bytes);
+
+SignalFfiError *signal_testing_chat_service_inject_connection_interrupted(const SignalChat *chat);
 
 SignalFfiError *signal_server_message_ack_destroy(SignalServerMessageAck *p);
 

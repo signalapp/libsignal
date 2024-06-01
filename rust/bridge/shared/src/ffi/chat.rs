@@ -16,6 +16,7 @@ type ReceivedIncomingMessage = extern "C" fn(
     cleanup: *mut ServerMessageAck,
 );
 type ReceivedQueueEmpty = extern "C" fn(ctx: *mut c_void);
+type ConnectionInterrupted = extern "C" fn(ctx: *mut c_void);
 type DestroyChatListener = extern "C" fn(ctx: *mut c_void);
 
 /// Callbacks for [`ChatListener`].
@@ -29,6 +30,7 @@ pub struct FfiChatListenerStruct {
     ctx: *mut c_void,
     received_incoming_message: ReceivedIncomingMessage,
     received_queue_empty: ReceivedQueueEmpty,
+    connection_interrupted: ConnectionInterrupted,
     destroy: DestroyChatListener,
 }
 
@@ -72,5 +74,9 @@ impl ChatListener for ChatListenerStruct {
 
     fn received_queue_empty(&mut self) {
         (self.0.received_queue_empty)(self.0.ctx)
+    }
+
+    fn connection_interrupted(&mut self) {
+        (self.0.connection_interrupted)(self.0.ctx)
     }
 }

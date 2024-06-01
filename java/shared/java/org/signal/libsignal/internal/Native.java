@@ -626,6 +626,7 @@ public final class Native {
   public static native void TESTING_ChatServiceErrorConvert(String errorDescription) throws Exception;
   public static native Object TESTING_ChatServiceResponseAndDebugInfoConvert() throws Exception;
   public static native Object TESTING_ChatServiceResponseConvert(boolean bodyPresent) throws Exception;
+  public static native void TESTING_ChatService_InjectConnectionInterrupted(long chat);
   public static native void TESTING_ChatService_InjectRawServerRequest(long chat, byte[] bytes);
   public static native void TESTING_ErrorOnBorrowAsync(Object input);
   public static native CompletableFuture TESTING_ErrorOnBorrowIo(long asyncRuntime, Object input);

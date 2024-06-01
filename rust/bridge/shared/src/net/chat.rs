@@ -286,6 +286,7 @@ pub trait ChatListener: Send {
         ack: ServerMessageAck,
     );
     fn received_queue_empty(&mut self);
+    fn connection_interrupted(&mut self);
 }
 
 impl dyn ChatListener {
@@ -304,7 +305,7 @@ impl dyn ChatListener {
                 ServerMessageAck::new(send_ack),
             ),
             chat::server_requests::ServerMessage::QueueEmpty => self.received_queue_empty(),
-            chat::server_requests::ServerMessage::Stopped => todo!(),
+            chat::server_requests::ServerMessage::Stopped => self.connection_interrupted(),
         }
     }
 
@@ -439,6 +440,14 @@ fn TESTING_ChatService_InjectRawServerRequest(chat: &Chat, bytes: &[u8]) {
         .expect("invalid protobuf cannot use this endpoint to test");
     chat.synthetic_request_tx
         .blocking_send(chat::ws::ServerEvent::fake(request_proto))
+        .expect("not closed");
+}
+
+#[cfg(feature = "testing-fns")]
+#[bridge_fn]
+fn TESTING_ChatService_InjectConnectionInterrupted(chat: &Chat) {
+    chat.synthetic_request_tx
+        .blocking_send(chat::ws::ServerEvent::Stopped)
         .expect("not closed");
 }
 
