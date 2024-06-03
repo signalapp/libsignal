@@ -8,6 +8,7 @@ use std::time::Duration;
 use ::http::uri::PathAndQuery;
 use ::http::{HeaderMap, HeaderName, HeaderValue, StatusCode};
 use async_trait::async_trait;
+use futures_util::future::BoxFuture;
 
 use crate::chat::ws::{ChatOverWebSocketServiceConnector, ServerRequest};
 use crate::infra::connection_manager::MultiRouteConnectionManager;
@@ -221,6 +222,74 @@ where
     }
 }
 
+/// Convenience trait for implementing [`ChatService`] on types that wrap
+/// another implementer of `ChatService`.
+///
+/// Provides a blanket implementation of `ChatService` that delegates all calls
+/// to `self.inner()`, and likewise for [`ChatServiceWithDebugInfo`].
+trait DelegatingChatService {
+    type Inner: ChatService + Send + Sync + ?Sized;
+    fn inner(&self) -> &Self::Inner;
+}
+
+// Implemented without `#[async_trait]` to avoid extra `Box`ing.
+impl<D: DelegatingChatService> ChatService for D {
+    fn send<'life0, 'async_trait>(
+        &'life0 self,
+        msg: Request,
+        timeout: Duration,
+    ) -> BoxFuture<'async_trait, Result<Response, ChatServiceError>>
+    where
+        'life0: 'async_trait,
+        Self: 'async_trait,
+    {
+        self.inner().send(msg, timeout)
+    }
+
+    fn connect<'life0, 'async_trait>(&'life0 self) -> BoxFuture<Result<(), ChatServiceError>>
+    where
+        'life0: 'async_trait,
+        Self: 'async_trait,
+    {
+        self.inner().connect()
+    }
+
+    fn disconnect<'life0, 'async_trait>(&'life0 self) -> BoxFuture<'async_trait, ()>
+    where
+        'life0: 'async_trait,
+        Self: 'async_trait,
+    {
+        self.inner().disconnect()
+    }
+}
+
+impl<D: DelegatingChatService> ChatServiceWithDebugInfo for D
+where
+    D::Inner: ChatServiceWithDebugInfo,
+{
+    fn send_and_debug<'life0, 'async_trait>(
+        &'life0 self,
+        msg: Request,
+        timeout: Duration,
+    ) -> BoxFuture<'async_trait, (Result<Response, ChatServiceError>, DebugInfo)>
+    where
+        'life0: 'async_trait,
+        Self: 'async_trait,
+    {
+        self.inner().send_and_debug(msg, timeout)
+    }
+
+    fn connect_and_debug<'life0, 'async_trait>(
+        &'life0 self,
+    ) -> BoxFuture<'async_trait, Result<DebugInfo, ChatServiceError>>
+    where
+        'life0: 'async_trait,
+        Self: 'async_trait,
+    {
+        self.inner().connect_and_debug()
+    }
+}
+
 struct AnonymousChatService<T> {
     inner: T,
 }
@@ -233,39 +302,14 @@ impl<T: ChatServiceWithDebugInfo + Send + Sync + 'static> AnonymousChatService<T
     }
 }
 
-#[async_trait]
-impl<T> ChatService for AnonymousChatService<T>
+impl<T> DelegatingChatService for AnonymousChatService<T>
 where
     T: ChatService + Send + Sync,
 {
-    async fn send(&self, msg: Request, timeout: Duration) -> Result<Response, ChatServiceError> {
-        self.inner.send(msg, timeout).await
-    }
+    type Inner = T;
 
-    async fn connect(&self) -> Result<(), ChatServiceError> {
-        self.inner.connect().await
-    }
-
-    async fn disconnect(&self) {
-        self.inner.disconnect().await
-    }
-}
-
-#[async_trait]
-impl<T> ChatServiceWithDebugInfo for AnonymousChatService<T>
-where
-    T: ChatServiceWithDebugInfo + Send + Sync,
-{
-    async fn send_and_debug(
-        &self,
-        msg: Request,
-        timeout: Duration,
-    ) -> (Result<Response, ChatServiceError>, DebugInfo) {
-        self.inner.send_and_debug(msg, timeout).await
-    }
-
-    async fn connect_and_debug(&self) -> Result<DebugInfo, ChatServiceError> {
-        self.inner.connect_and_debug().await
+    fn inner(&self) -> &Self::Inner {
+        &self.inner
     }
 }
 
@@ -281,54 +325,21 @@ impl<T: ChatServiceWithDebugInfo + Send + Sync + 'static> AuthorizedChatService<
     }
 }
 
-#[async_trait]
-impl<T> ChatService for AuthorizedChatService<T>
+impl<T> DelegatingChatService for AuthorizedChatService<T>
 where
     T: ChatService + Send + Sync,
 {
-    async fn send(&self, msg: Request, timeout: Duration) -> Result<Response, ChatServiceError> {
-        self.inner.send(msg, timeout).await
-    }
-
-    async fn connect(&self) -> Result<(), ChatServiceError> {
-        self.inner.connect().await
-    }
-
-    async fn disconnect(&self) {
-        self.inner.disconnect().await
+    type Inner = T;
+    fn inner(&self) -> &Self::Inner {
+        &self.inner
     }
 }
 
-#[async_trait]
-impl ChatService for Arc<dyn ChatService + Send + Sync> {
-    async fn send(&self, msg: Request, timeout: Duration) -> Result<Response, ChatServiceError> {
-        self.as_ref().send(msg, timeout).await
-    }
+impl DelegatingChatService for Arc<dyn ChatService + Send + Sync> {
+    type Inner = dyn ChatService + Send + Sync;
 
-    async fn connect(&self) -> Result<(), ChatServiceError> {
-        self.as_ref().connect().await
-    }
-
-    async fn disconnect(&self) {
-        self.as_ref().disconnect().await
-    }
-}
-
-#[async_trait]
-impl<T> ChatServiceWithDebugInfo for AuthorizedChatService<T>
-where
-    T: ChatServiceWithDebugInfo + Send + Sync,
-{
-    async fn send_and_debug(
-        &self,
-        msg: Request,
-        timeout: Duration,
-    ) -> (Result<Response, ChatServiceError>, DebugInfo) {
-        self.inner.send_and_debug(msg, timeout).await
-    }
-
-    async fn connect_and_debug(&self) -> Result<DebugInfo, ChatServiceError> {
-        self.inner.connect_and_debug().await
+    fn inner(&self) -> &Self::Inner {
+        self.as_ref()
     }
 }
 
@@ -356,69 +367,22 @@ impl<T: ChatService + Clone + Send + Sync + 'static> Drop for AutoDisconnecting<
     }
 }
 
-#[async_trait]
-impl<T> ChatService for AutoDisconnecting<T>
+impl<T> DelegatingChatService for AutoDisconnecting<T>
 where
-    T: ChatService + Clone + Send + Sync,
+    T: ChatService + Clone + Send + Sync + 'static,
 {
-    async fn send(&self, msg: Request, timeout: Duration) -> Result<Response, ChatServiceError> {
-        self.inner.send(msg, timeout).await
-    }
+    type Inner = T;
 
-    async fn connect(&self) -> Result<(), ChatServiceError> {
-        self.inner.connect().await
-    }
-
-    async fn disconnect(&self) {
-        self.inner.disconnect().await
+    fn inner(&self) -> &Self::Inner {
+        &self.inner
     }
 }
 
-#[async_trait]
-impl<T> ChatServiceWithDebugInfo for AutoDisconnecting<T>
-where
-    T: ChatServiceWithDebugInfo + Clone + Send + Sync,
-{
-    async fn send_and_debug(
-        &self,
-        msg: Request,
-        timeout: Duration,
-    ) -> (Result<Response, ChatServiceError>, DebugInfo) {
-        self.inner.send_and_debug(msg, timeout).await
-    }
+impl DelegatingChatService for Arc<dyn ChatServiceWithDebugInfo + Send + Sync> {
+    type Inner = dyn ChatServiceWithDebugInfo + Send + Sync;
 
-    async fn connect_and_debug(&self) -> Result<DebugInfo, ChatServiceError> {
-        self.inner.connect_and_debug().await
-    }
-}
-
-#[async_trait]
-impl ChatService for Arc<dyn ChatServiceWithDebugInfo + Send + Sync> {
-    async fn send(&self, msg: Request, timeout: Duration) -> Result<Response, ChatServiceError> {
-        self.as_ref().send(msg, timeout).await
-    }
-
-    async fn connect(&self) -> Result<(), ChatServiceError> {
-        self.as_ref().connect().await
-    }
-
-    async fn disconnect(&self) {
-        self.as_ref().disconnect().await
-    }
-}
-
-#[async_trait]
-impl ChatServiceWithDebugInfo for Arc<dyn ChatServiceWithDebugInfo + Send + Sync> {
-    async fn send_and_debug(
-        &self,
-        msg: Request,
-        timeout: Duration,
-    ) -> (Result<Response, ChatServiceError>, DebugInfo) {
-        self.as_ref().send_and_debug(msg, timeout).await
-    }
-
-    async fn connect_and_debug(&self) -> Result<DebugInfo, ChatServiceError> {
-        self.as_ref().connect_and_debug().await
+    fn inner(&self) -> &Self::Inner {
+        self.as_ref()
     }
 }
 
