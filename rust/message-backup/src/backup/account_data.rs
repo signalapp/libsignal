@@ -32,7 +32,8 @@ pub struct AccountData<M: Method> {
     pub family_name: M::Value<String>,
     pub account_settings: M::Value<AccountSettings>,
     pub avatar_url_path: M::Value<String>,
-    pub subscription: M::Value<Option<Subscription>>,
+    pub donation_subscription: M::Value<Option<Subscription>>,
+    pub backup_subscription: M::Value<Option<Subscription>>,
 }
 
 #[derive(Debug)]
@@ -103,18 +104,27 @@ pub enum AccountDataError {
     UnknownPhoneNumberSharingMode,
     /// username link is present without username
     UsernameLinkWithoutUsername,
-    /// subscriber ID should have {SUBSCRIBER_ID_LENGTH:?} bytes but had {0}
-    InvalidSubscriberId(usize),
     /// username entropy should have been {USERNAME_LINK_ENTROPY_SIZE:?} bytes but was {0}
     BadUsernameEntropyLength(usize),
     /// username server ID should be a UUID but was {0} bytes
     BadUsernameServerIdLength(usize),
-    /// subscriber ID was present but not the currency code
-    SubscriberIdWithoutCurrency,
     /// subscriber currency code was present but not the ID
     SubscriberCurrencyWithoutId,
     /// chat style: {0}
     ChatStyle(#[from] ChatStyleError),
+    /// donation subscription: {0}
+    DonationSubscription(SubscriptionError),
+    /// backups subscription: {0}
+    BackupSubscription(SubscriptionError),
+}
+
+#[derive(Debug, displaydoc::Display, thiserror::Error)]
+#[cfg_attr(test, derive(PartialEq))]
+pub enum SubscriptionError {
+    /// subscriber ID should have {SUBSCRIBER_ID_LENGTH:?} bytes but had {0}
+    InvalidSubscriberId(usize),
+    /// subscriber ID was present but not the currency code
+    EmptyCurrency,
 }
 
 impl<M: Method> TryFrom<proto::AccountData> for AccountData<M> {
@@ -128,9 +138,8 @@ impl<M: Method> TryFrom<proto::AccountData> for AccountData<M> {
             accountSettings,
             usernameLink,
             avatarUrlPath,
-            subscriberId,
-            subscriberCurrencyCode,
-            subscriptionManuallyCancelled,
+            donationSubscriberData,
+            backupsSubscriberData,
             special_fields: _,
         } = proto;
 
@@ -152,24 +161,16 @@ impl<M: Method> TryFrom<proto::AccountData> for AccountData<M> {
             .ok_or(AccountDataError::MissingSettings)?
             .try_into()?;
 
-        let subscriber_id = (!subscriberId.is_empty())
-            .then(|| {
-                subscriberId
-                    .try_into()
-                    .map_err(|id: Vec<u8>| AccountDataError::InvalidSubscriberId(id.len()))
-            })
-            .transpose()?;
-
-        let subscription = match (subscriber_id, &*subscriberCurrencyCode) {
-            (None, "") => None,
-            (None, _currency) => return Err(AccountDataError::SubscriberCurrencyWithoutId),
-            (Some(_), "") => return Err(AccountDataError::SubscriberIdWithoutCurrency),
-            (Some(subscriber_id), _currency_code) => Some(Subscription {
-                subscriber_id,
-                currency_code: subscriberCurrencyCode,
-                manually_canceled: subscriptionManuallyCancelled,
-            }),
-        };
+        let donation_subscription = donationSubscriberData
+            .into_option()
+            .map(Subscription::try_from)
+            .transpose()
+            .map_err(AccountDataError::DonationSubscription)?;
+        let backup_subscription = backupsSubscriberData
+            .into_option()
+            .map(Subscription::try_from)
+            .transpose()
+            .map_err(AccountDataError::BackupSubscription)?;
 
         Ok(Self {
             profile_key: M::value(profile_key),
@@ -178,7 +179,35 @@ impl<M: Method> TryFrom<proto::AccountData> for AccountData<M> {
             family_name: M::value(familyName),
             account_settings: M::value(account_settings),
             avatar_url_path: M::value(avatarUrlPath),
-            subscription: M::value(subscription),
+            donation_subscription: M::value(donation_subscription),
+            backup_subscription: M::value(backup_subscription),
+        })
+    }
+}
+
+impl TryFrom<proto::account_data::SubscriberData> for Subscription {
+    type Error = SubscriptionError;
+
+    fn try_from(value: proto::account_data::SubscriberData) -> Result<Self, Self::Error> {
+        let proto::account_data::SubscriberData {
+            subscriberId,
+            currencyCode,
+            manuallyCancelled,
+            special_fields: _,
+        } = value;
+        let subscriber_id = subscriberId
+            .try_into()
+            .map_err(|id: Vec<u8>| SubscriptionError::InvalidSubscriberId(id.len()))?;
+
+        if currencyCode.is_empty() {
+            return Err(SubscriptionError::EmptyCurrency);
+        }
+        let currency_code = currencyCode;
+
+        Ok(Subscription {
+            subscriber_id,
+            currency_code,
+            manually_canceled: manuallyCancelled,
         })
     }
 }
@@ -311,8 +340,12 @@ mod test {
                     ..Default::default()
                 })
                 .into(),
-                subscriberId: FAKE_SUBSCRIBER_ID.to_vec(),
-                subscriberCurrencyCode: "XTS".to_string(),
+                backupsSubscriberData: Some(proto::account_data::SubscriberData {
+                    subscriberId: FAKE_SUBSCRIBER_ID.to_vec(),
+                    currencyCode: "XTS".to_string(),
+                    ..Default::default()
+                })
+                .into(),
                 ..Default::default()
             }
         }
@@ -370,11 +403,12 @@ mod test {
                     preferred_reaction_emoji: vec![],
                 },
                 avatar_url_path: "".to_string(),
-                subscription: Some(Subscription {
+                backup_subscription: Some(Subscription {
                     subscriber_id: FAKE_SUBSCRIBER_ID,
                     currency_code: "XTS".to_string(),
                     manually_canceled: false,
-                })
+                }),
+                donation_subscription: None,
             })
         )
     }
@@ -403,17 +437,17 @@ mod test {
         target.accountSettings = None.into();
     }
     fn invalid_subscriber_id(target: &mut proto::AccountData) {
-        target.subscriberId = vec![123];
+        target.backupsSubscriberData.as_mut().unwrap().subscriberId = vec![123];
     }
     fn empty_subscriber_id(target: &mut proto::AccountData) {
-        target.subscriberId = vec![];
+        target.backupsSubscriberData.as_mut().unwrap().subscriberId = vec![];
     }
     fn empty_subscriber_currency(target: &mut proto::AccountData) {
-        target.subscriberCurrencyCode = String::default();
+        target.backupsSubscriberData.as_mut().unwrap().currencyCode = "".to_owned();
     }
-    fn empty_subscriber_id_and_currency(target: &mut proto::AccountData) {
-        empty_subscriber_id(target);
-        empty_subscriber_currency(target);
+    fn no_subscriptions(target: &mut proto::AccountData) {
+        target.backupsSubscriberData = None.into();
+        target.donationSubscriberData = None.into();
     }
 
     #[test_case(invalid_profile_key, Err(AccountDataError::InvalidProfileKey))]
@@ -429,16 +463,19 @@ mod test {
         Err(AccountDataError::UsernameLinkWithoutUsername)
     )]
     #[test_case(no_account_settings, Err(AccountDataError::MissingSettings))]
-    #[test_case(invalid_subscriber_id, Err(AccountDataError::InvalidSubscriberId(1)))]
+    #[test_case(
+        invalid_subscriber_id,
+        Err(AccountDataError::BackupSubscription(SubscriptionError::InvalidSubscriberId(1)))
+    )]
     #[test_case(
         empty_subscriber_id,
-        Err(AccountDataError::SubscriberCurrencyWithoutId)
+        Err(AccountDataError::BackupSubscription(SubscriptionError::InvalidSubscriberId(0)))
     )]
     #[test_case(
         empty_subscriber_currency,
-        Err(AccountDataError::SubscriberIdWithoutCurrency)
+        Err(AccountDataError::BackupSubscription(SubscriptionError::EmptyCurrency))
     )]
-    #[test_case(empty_subscriber_id_and_currency, Ok(()))]
+    #[test_case(no_subscriptions, Ok(()))]
     fn with(
         modifier: impl FnOnce(&mut proto::AccountData),
         expected: Result<(), AccountDataError>,

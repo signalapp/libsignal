@@ -77,16 +77,21 @@ message AccountData {
     ChatStyle defaultChatStyle = 18;
   }
 
+  message SubscriberData {
+    bytes subscriberId = 1;
+    string currencyCode = 2;
+    bool manuallyCancelled = 3;
+  }
+
   bytes profileKey = 1;
   optional string username = 2;
   UsernameLink usernameLink = 3;
   string givenName = 4;
   string familyName = 5;
   string avatarUrlPath = 6;
-  bytes subscriberId = 7;
-  string subscriberCurrencyCode = 8;
-  bool subscriptionManuallyCancelled = 9;
-  AccountSettings accountSettings = 10;
+  SubscriberData donationSubscriberData = 7;
+  SubscriberData backupsSubscriberData = 8;
+  AccountSettings accountSettings = 9;
 }
 
 message Recipient {
