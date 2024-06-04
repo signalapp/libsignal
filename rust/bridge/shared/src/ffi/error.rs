@@ -10,7 +10,7 @@ use attest::enclave::Error as EnclaveError;
 use attest::hsm_enclave::Error as HsmEnclaveError;
 use device_transfer::Error as DeviceTransferError;
 use libsignal_net::chat::ChatServiceError;
-use libsignal_net::infra::ws::{WebSocketConnectError, WebSocketServiceError};
+use libsignal_net::infra::ws::WebSocketConnectError;
 use libsignal_net::svr3::Error as Svr3Error;
 use libsignal_protocol::*;
 use signal_crypto::Error as SignalCryptoError;
@@ -20,310 +20,597 @@ use zkgroup::{ZkGroupDeserializationFailure, ZkGroupVerificationFailure};
 
 use crate::support::describe_panic;
 
-use super::NullPointerError;
+use super::{FutureCancelled, NullPointerError, UnexpectedPanic};
+
+#[derive(Debug)]
+#[repr(C)]
+pub enum SignalErrorCode {
+    #[allow(dead_code)]
+    UnknownError = 1,
+    InvalidState = 2,
+    InternalError = 3,
+    NullParameter = 4,
+    InvalidArgument = 5,
+    InvalidType = 6,
+    InvalidUtf8String = 7,
+    Cancelled = 8,
+
+    ProtobufError = 10,
+
+    LegacyCiphertextVersion = 21,
+    UnknownCiphertextVersion = 22,
+    UnrecognizedMessageVersion = 23,
+
+    InvalidMessage = 30,
+    SealedSenderSelfSend = 31,
+
+    InvalidKey = 40,
+    InvalidSignature = 41,
+    InvalidAttestationData = 42,
+
+    FingerprintVersionMismatch = 51,
+    FingerprintParsingError = 52,
+
+    UntrustedIdentity = 60,
+
+    InvalidKeyIdentifier = 70,
+
+    SessionNotFound = 80,
+    InvalidRegistrationId = 81,
+    InvalidSession = 82,
+    InvalidSenderKeySession = 83,
+
+    DuplicatedMessage = 90,
+
+    CallbackError = 100,
+
+    VerificationFailure = 110,
+
+    UsernameCannotBeEmpty = 120,
+    UsernameCannotStartWithDigit = 121,
+    UsernameMissingSeparator = 122,
+    UsernameBadDiscriminatorCharacter = 123,
+    UsernameBadNicknameCharacter = 124,
+    UsernameTooShort = 125,
+    UsernameTooLong = 126,
+    UsernameLinkInvalidEntropyDataLength = 127,
+    UsernameLinkInvalid = 128,
+
+    UsernameDiscriminatorCannotBeEmpty = 140,
+    UsernameDiscriminatorCannotBeZero = 141,
+    UsernameDiscriminatorCannotBeSingleDigit = 142,
+    UsernameDiscriminatorCannotHaveLeadingZeros = 143,
+    UsernameDiscriminatorTooLarge = 144,
+
+    IoError = 130,
+    #[allow(dead_code)]
+    InvalidMediaInput = 131,
+    #[allow(dead_code)]
+    UnsupportedMediaInput = 132,
+
+    ConnectionTimedOut = 133,
+    NetworkProtocol = 134,
+    RateLimited = 135,
+    WebSocket = 136,
+    CdsiInvalidToken = 137,
+    ConnectionFailed = 138,
+    ChatServiceInactive = 139,
+
+    SvrDataMissing = 150,
+    SvrRestoreFailed = 151,
+
+    AppExpired = 160,
+    DeviceDeregistered = 161,
+}
+
+pub trait UpcastAsAny {
+    fn upcast_as_any(&self) -> &dyn std::any::Any;
+}
+impl<T: std::any::Any> UpcastAsAny for T {
+    fn upcast_as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+}
+
+pub trait FfiError: UpcastAsAny + fmt::Debug + Send + 'static {
+    fn describe(&self) -> String;
+    fn code(&self) -> SignalErrorCode;
+}
 
 /// The top-level error type (opaquely) returned to C clients when something goes wrong.
-#[derive(Debug, thiserror::Error)]
-pub enum SignalFfiError {
-    Signal(SignalProtocolError),
-    DeviceTransfer(DeviceTransferError),
-    HsmEnclave(HsmEnclaveError),
-    Sgx(EnclaveError),
-    Pin(PinError),
-    SignalCrypto(SignalCryptoError),
-    ZkGroupVerificationFailure(ZkGroupVerificationFailure),
-    ZkGroupDeserializationFailure(ZkGroupDeserializationFailure),
-    UsernameError(UsernameError),
-    UsernameProofError(usernames::ProofVerificationFailure),
-    UsernameLinkError(UsernameLinkError),
-    Io(IoError),
-    WebSocket(#[from] WebSocketServiceError),
-    ConnectionTimedOut,
-    ConnectionFailed,
-    ChatServiceInactive,
-    AppExpired,
-    DeviceDeregistered,
-    NetworkProtocol(String),
-    CdsiInvalidToken,
-    RateLimited {
-        retry_after_seconds: u32,
-    },
-    Svr(Svr3Error),
-    #[cfg(feature = "signal-media")]
-    Mp4SanitizeParse(signal_media::sanitize::mp4::ParseErrorReport),
-    #[cfg(feature = "signal-media")]
-    WebpSanitizeParse(signal_media::sanitize::webp::ParseErrorReport),
-    NullPointer,
-    InvalidUtf8String,
-    InvalidArgument(String),
-    Cancelled,
-    InternalError(String),
-    UnexpectedPanic(std::boxed::Box<dyn std::any::Any + std::marker::Send>),
+///
+/// Ideally this would use [ThinBox][], and then we wouldn't need an extra level of indirection when
+/// returning it to C, but unfortunately that isn't stable yet.
+///
+/// [ThinBox]: https://doc.rust-lang.org/std/boxed/struct.ThinBox.html
+#[derive(Debug)]
+pub struct SignalFfiError(Box<dyn FfiError + Send>);
+
+impl SignalFfiError {
+    pub fn code(&self) -> SignalErrorCode {
+        self.0.code()
+    }
+
+    pub fn downcast_ref<T: FfiError>(&self) -> Option<&T> {
+        (*self.0).upcast_as_any().downcast_ref()
+    }
 }
 
 impl fmt::Display for SignalFfiError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(&self.0.describe())
+    }
+}
+
+impl<T: FfiError> From<T> for SignalFfiError {
+    fn from(mut value: T) -> Self {
+        // Special case: if the error being boxed is an IoError containing a SignalProtocolError,
+        // extract the SignalProtocolError up front.
+        match (&mut value as &mut dyn std::any::Any).downcast_mut::<IoError>() {
+            Some(e) => {
+                let original_error = (e.kind() == IoErrorKind::Other)
+                    .then(|| {
+                        e.get_mut()
+                            .and_then(|e| e.downcast_mut::<SignalProtocolError>())
+                    })
+                    .flatten()
+                    .map(|e| {
+                        // We can't get the inner error out without putting something in
+                        // its place, so leave some random (cheap-to-construct) error.
+                        // TODO: use IoError::downcast() once it is stabilized
+                        // (https://github.com/rust-lang/rust/issues/99262).
+                        std::mem::replace(e, SignalProtocolError::InvalidPreKeyId)
+                    });
+                if let Some(original_error) = original_error {
+                    Self(Box::new(original_error))
+                } else {
+                    Self(Box::new(value))
+                }
+            }
+            None => Self(Box::new(value)),
+        }
+    }
+}
+
+impl FfiError for SignalProtocolError {
+    fn describe(&self) -> String {
+        self.to_string()
+    }
+
+    fn code(&self) -> SignalErrorCode {
         match self {
-            SignalFfiError::Signal(s) => write!(f, "{}", s),
-            SignalFfiError::DeviceTransfer(c) => {
-                write!(f, "Device transfer operation failed: {}", c)
+            Self::InvalidArgument(_) => SignalErrorCode::InvalidArgument,
+            Self::InvalidState(_, _) => SignalErrorCode::InvalidState,
+            Self::InvalidProtobufEncoding => SignalErrorCode::ProtobufError,
+            Self::CiphertextMessageTooShort(_)
+            | Self::InvalidMessage(_, _)
+            | Self::InvalidSealedSenderMessage(_)
+            | Self::BadKEMCiphertextLength(_, _) => SignalErrorCode::InvalidMessage,
+            Self::LegacyCiphertextVersion(_) => SignalErrorCode::LegacyCiphertextVersion,
+            Self::UnrecognizedCiphertextVersion(_) => SignalErrorCode::UnknownCiphertextVersion,
+            Self::UnrecognizedMessageVersion(_) | Self::UnknownSealedSenderVersion(_) => {
+                SignalErrorCode::UnrecognizedMessageVersion
             }
-            SignalFfiError::HsmEnclave(e) => {
-                write!(f, "HSM enclave operation failed: {}", e)
+            Self::FingerprintVersionMismatch(_, _) => SignalErrorCode::FingerprintVersionMismatch,
+            Self::FingerprintParsingError => SignalErrorCode::FingerprintParsingError,
+            Self::NoKeyTypeIdentifier
+            | Self::BadKeyType(_)
+            | Self::BadKeyLength(_, _)
+            | Self::InvalidMacKeyLength(_)
+            | Self::BadKEMKeyType(_)
+            | Self::WrongKEMKeyType(_, _)
+            | Self::BadKEMKeyLength(_, _) => SignalErrorCode::InvalidKey,
+            Self::SignatureValidationFailed => SignalErrorCode::InvalidSignature,
+            Self::UntrustedIdentity(_) => SignalErrorCode::UntrustedIdentity,
+            Self::InvalidPreKeyId | Self::InvalidSignedPreKeyId | Self::InvalidKyberPreKeyId => {
+                SignalErrorCode::InvalidKeyIdentifier
             }
-            SignalFfiError::Sgx(e) => {
-                write!(f, "SGX operation failed: {}", e)
+            Self::NoSenderKeyState { .. } | Self::SessionNotFound(_) => {
+                SignalErrorCode::SessionNotFound
             }
-            SignalFfiError::SignalCrypto(c) => {
-                write!(f, "Cryptographic operation failed: {}", c)
+            Self::InvalidSessionStructure(_) => SignalErrorCode::InvalidSession,
+            Self::InvalidSenderKeySession { .. } => SignalErrorCode::InvalidSenderKeySession,
+            Self::InvalidRegistrationId(_, _) => SignalErrorCode::InvalidRegistrationId,
+            Self::DuplicatedMessage(_, _) => SignalErrorCode::DuplicatedMessage,
+            Self::FfiBindingError(_) => SignalErrorCode::InternalError,
+            Self::ApplicationCallbackError(_, _) => SignalErrorCode::CallbackError,
+            Self::SealedSenderSelfSend => SignalErrorCode::SealedSenderSelfSend,
+        }
+    }
+}
+
+impl FfiError for DeviceTransferError {
+    fn describe(&self) -> String {
+        format!("Device transfer operation failed: {self}")
+    }
+
+    fn code(&self) -> SignalErrorCode {
+        match self {
+            Self::KeyDecodingFailed => SignalErrorCode::InvalidKey,
+            Self::InternalError(_) => SignalErrorCode::InternalError,
+        }
+    }
+}
+
+impl FfiError for HsmEnclaveError {
+    fn describe(&self) -> String {
+        format!("HSM enclave operation failed: {self}")
+    }
+
+    fn code(&self) -> SignalErrorCode {
+        match self {
+            Self::HSMCommunicationError(_) | Self::HSMHandshakeError(_) => {
+                SignalErrorCode::InvalidMessage
             }
-            SignalFfiError::Pin(e) => write!(f, "{}", e),
-            SignalFfiError::ZkGroupVerificationFailure(e) => write!(f, "{}", e),
-            SignalFfiError::ZkGroupDeserializationFailure(e) => write!(f, "{}", e),
-            SignalFfiError::UsernameError(e) => write!(f, "{}", e),
-            SignalFfiError::UsernameProofError(e) => write!(f, "{}", e),
-            SignalFfiError::UsernameLinkError(e) => write!(f, "{}", e),
-            SignalFfiError::Io(e) => write!(f, "IO error: {}", e),
-            SignalFfiError::ConnectionTimedOut => write!(f, "Connect timed out"),
-            SignalFfiError::ConnectionFailed => write!(f, "Connection failed"),
-            SignalFfiError::ChatServiceInactive => write!(f, "Chat service inactive"),
-            SignalFfiError::AppExpired => write!(f, "App expired"),
-            SignalFfiError::DeviceDeregistered => write!(f, "Device deregistered or delinked"),
-            SignalFfiError::WebSocket(e) => write!(f, "WebSocket error: {e}"),
-            SignalFfiError::CdsiInvalidToken => write!(f, "CDSI request token was invalid"),
-            SignalFfiError::NetworkProtocol(message) => write!(f, "Protocol error: {}", message),
-            SignalFfiError::RateLimited {
-                retry_after_seconds,
-            } => write!(f, "Rate limited; try again after {}s", retry_after_seconds),
-            SignalFfiError::Svr(e) => write!(f, "SVR error: {e}"),
-            #[cfg(feature = "signal-media")]
-            SignalFfiError::Mp4SanitizeParse(e) => {
-                write!(f, "Mp4 sanitizer failed to parse mp4 file: {}", e)
+            Self::TrustedCodeError => SignalErrorCode::UntrustedIdentity,
+            Self::InvalidPublicKeyError => SignalErrorCode::InvalidKey,
+            Self::InvalidCodeHashError => SignalErrorCode::InvalidArgument,
+            Self::InvalidBridgeStateError => SignalErrorCode::InvalidState,
+        }
+    }
+}
+
+impl FfiError for EnclaveError {
+    fn describe(&self) -> String {
+        format!("SGX operation failed: {self}")
+    }
+
+    fn code(&self) -> SignalErrorCode {
+        match self {
+            Self::AttestationError(_) | Self::NoiseError(_) | Self::NoiseHandshakeError(_) => {
+                SignalErrorCode::InvalidMessage
             }
-            #[cfg(feature = "signal-media")]
-            SignalFfiError::WebpSanitizeParse(e) => {
-                write!(f, "WebP sanitizer failed to parse webp file: {}", e)
-            }
-            SignalFfiError::NullPointer => write!(f, "null pointer"),
-            SignalFfiError::InvalidUtf8String => write!(f, "invalid UTF8 string"),
-            SignalFfiError::InvalidArgument(msg) => write!(f, "invalid argument: {msg}"),
-            SignalFfiError::Cancelled => write!(f, "cancelled"),
-            SignalFfiError::InternalError(msg) => write!(f, "internal error: {msg}"),
-            SignalFfiError::UnexpectedPanic(e) => {
-                write!(f, "unexpected panic: {}", describe_panic(e))
+            Self::AttestationDataError { .. } => SignalErrorCode::InvalidAttestationData,
+            Self::InvalidBridgeStateError => SignalErrorCode::InvalidState,
+        }
+    }
+}
+
+impl FfiError for PinError {
+    fn describe(&self) -> String {
+        self.to_string()
+    }
+
+    fn code(&self) -> SignalErrorCode {
+        match self {
+            Self::Argon2Error(_) | Self::DecodingError(_) | Self::MrenclaveLookupError => {
+                SignalErrorCode::InvalidArgument
             }
         }
     }
 }
 
-impl From<SignalProtocolError> for SignalFfiError {
-    fn from(e: SignalProtocolError) -> SignalFfiError {
-        SignalFfiError::Signal(e)
+impl FfiError for SignalCryptoError {
+    fn describe(&self) -> String {
+        format!("Cryptographic operation failed: {self}")
+    }
+
+    fn code(&self) -> SignalErrorCode {
+        match self {
+            Self::UnknownAlgorithm(_, _)
+            | Self::InvalidKeySize
+            | Self::InvalidNonceSize
+            | Self::InvalidInputSize => SignalErrorCode::InvalidArgument,
+            Self::InvalidTag => SignalErrorCode::InvalidMessage,
+        }
     }
 }
 
-impl From<DeviceTransferError> for SignalFfiError {
-    fn from(e: DeviceTransferError) -> SignalFfiError {
-        SignalFfiError::DeviceTransfer(e)
+impl FfiError for ZkGroupVerificationFailure {
+    fn describe(&self) -> String {
+        self.to_string()
+    }
+
+    fn code(&self) -> SignalErrorCode {
+        SignalErrorCode::VerificationFailure
     }
 }
 
-impl From<HsmEnclaveError> for SignalFfiError {
-    fn from(e: HsmEnclaveError) -> SignalFfiError {
-        SignalFfiError::HsmEnclave(e)
+impl FfiError for ZkGroupDeserializationFailure {
+    fn describe(&self) -> String {
+        self.to_string()
+    }
+
+    fn code(&self) -> SignalErrorCode {
+        SignalErrorCode::InvalidType
     }
 }
 
-impl From<EnclaveError> for SignalFfiError {
-    fn from(e: EnclaveError) -> SignalFfiError {
-        SignalFfiError::Sgx(e)
+impl FfiError for UsernameError {
+    fn describe(&self) -> String {
+        self.to_string()
+    }
+
+    fn code(&self) -> SignalErrorCode {
+        match self {
+            Self::MissingSeparator => SignalErrorCode::UsernameMissingSeparator,
+            Self::NicknameCannotBeEmpty => SignalErrorCode::UsernameCannotBeEmpty,
+            Self::NicknameCannotStartWithDigit => SignalErrorCode::UsernameCannotStartWithDigit,
+            Self::BadNicknameCharacter => SignalErrorCode::UsernameBadNicknameCharacter,
+            Self::NicknameTooShort => SignalErrorCode::UsernameTooShort,
+            Self::NicknameTooLong => SignalErrorCode::UsernameTooLong,
+            Self::DiscriminatorCannotBeEmpty => SignalErrorCode::UsernameDiscriminatorCannotBeEmpty,
+            Self::DiscriminatorCannotBeZero => SignalErrorCode::UsernameDiscriminatorCannotBeZero,
+            Self::DiscriminatorCannotBeSingleDigit => {
+                SignalErrorCode::UsernameDiscriminatorCannotBeSingleDigit
+            }
+            Self::DiscriminatorCannotHaveLeadingZeros => {
+                SignalErrorCode::UsernameDiscriminatorCannotHaveLeadingZeros
+            }
+            Self::BadDiscriminatorCharacter => SignalErrorCode::UsernameBadDiscriminatorCharacter,
+            Self::DiscriminatorTooLarge => SignalErrorCode::UsernameDiscriminatorTooLarge,
+        }
     }
 }
 
-impl From<PinError> for SignalFfiError {
-    fn from(e: PinError) -> SignalFfiError {
-        SignalFfiError::Pin(e)
+impl FfiError for usernames::ProofVerificationFailure {
+    fn describe(&self) -> String {
+        self.to_string()
+    }
+
+    fn code(&self) -> SignalErrorCode {
+        SignalErrorCode::VerificationFailure
     }
 }
 
-impl From<SignalCryptoError> for SignalFfiError {
-    fn from(e: SignalCryptoError) -> SignalFfiError {
-        SignalFfiError::SignalCrypto(e)
+impl FfiError for UsernameLinkError {
+    fn describe(&self) -> String {
+        self.to_string()
+    }
+
+    fn code(&self) -> SignalErrorCode {
+        match self {
+            Self::InputDataTooLong => SignalErrorCode::UsernameTooLong,
+            Self::InvalidEntropyDataLength => SignalErrorCode::UsernameLinkInvalidEntropyDataLength,
+            Self::UsernameLinkDataTooShort
+            | Self::HmacMismatch
+            | Self::BadCiphertext
+            | Self::InvalidDecryptedDataStructure => SignalErrorCode::UsernameLinkInvalid,
+        }
     }
 }
 
-impl From<ZkGroupVerificationFailure> for SignalFfiError {
-    fn from(e: ZkGroupVerificationFailure) -> SignalFfiError {
-        SignalFfiError::ZkGroupVerificationFailure(e)
+impl FfiError for IoError {
+    fn describe(&self) -> String {
+        format!("IO error: {self}")
     }
-}
 
-impl From<ZkGroupDeserializationFailure> for SignalFfiError {
-    fn from(e: ZkGroupDeserializationFailure) -> SignalFfiError {
-        SignalFfiError::ZkGroupDeserializationFailure(e)
-    }
-}
-
-impl From<UsernameError> for SignalFfiError {
-    fn from(e: UsernameError) -> SignalFfiError {
-        SignalFfiError::UsernameError(e)
-    }
-}
-
-impl From<usernames::ProofVerificationFailure> for SignalFfiError {
-    fn from(e: usernames::ProofVerificationFailure) -> SignalFfiError {
-        SignalFfiError::UsernameProofError(e)
-    }
-}
-
-impl From<UsernameLinkError> for SignalFfiError {
-    fn from(e: UsernameLinkError) -> SignalFfiError {
-        SignalFfiError::UsernameLinkError(e)
-    }
-}
-
-impl From<IoError> for SignalFfiError {
-    fn from(mut e: IoError) -> SignalFfiError {
-        let original_error = (e.kind() == IoErrorKind::Other)
+    fn code(&self) -> SignalErrorCode {
+        // Parallels the unwrapping that happens when converting to a boxed SignalFfiError.
+        (self.kind() == IoErrorKind::Other)
             .then(|| {
-                e.get_mut()
-                    .and_then(|e| e.downcast_mut::<SignalProtocolError>())
+                Some(
+                    self.get_ref()?
+                        .downcast_ref::<SignalProtocolError>()?
+                        .code(),
+                )
             })
             .flatten()
-            .map(|e| {
-                // We can't get the inner error out without putting something in
-                // its place, so leave some random (cheap-to-construct) error.
-                // TODO: use IoError::downcast() once it is stabilized
-                // (https://github.com/rust-lang/rust/issues/99262).
-                std::mem::replace(e, SignalProtocolError::InvalidPreKeyId)
-            });
+            .unwrap_or(SignalErrorCode::IoError)
+    }
+}
 
-        if let Some(callback_err) = original_error {
-            Self::Signal(callback_err)
-        } else {
-            Self::Io(e)
+impl FfiError for libsignal_net::cdsi::LookupError {
+    fn describe(&self) -> String {
+        match self {
+            Self::Protocol | Self::InvalidResponse | Self::ParseError | Self::Server { .. } => {
+                format!("Protocol error: {self}")
+            }
+            Self::AttestationError(e) => e.describe(),
+            Self::RateLimited {
+                retry_after_seconds,
+            } => format!("Rate limited; try again after {retry_after_seconds}s"),
+            Self::InvalidToken => "CDSI request token was invalid".to_owned(),
+            Self::ConnectTransport(e) => format!("IO error: {e}"),
+            Self::WebSocket(e) => format!("WebSocket error: {e}"),
+            Self::ConnectionTimedOut => "Connect timed out".to_owned(),
+            Self::InvalidArgument { .. } => format!("invalid argument: {self}"),
+        }
+    }
+
+    fn code(&self) -> SignalErrorCode {
+        match self {
+            Self::Protocol | Self::InvalidResponse | Self::ParseError | Self::Server { .. } => {
+                SignalErrorCode::NetworkProtocol
+            }
+            Self::AttestationError(e) => e.code(),
+            Self::RateLimited { .. } => SignalErrorCode::RateLimited,
+            Self::InvalidToken => SignalErrorCode::CdsiInvalidToken,
+            Self::ConnectTransport(_) => SignalErrorCode::IoError,
+            Self::WebSocket(_) => SignalErrorCode::WebSocket,
+            Self::ConnectionTimedOut => SignalErrorCode::ConnectionTimedOut,
+            Self::InvalidArgument { .. } => SignalErrorCode::InvalidArgument,
         }
     }
 }
 
-impl From<libsignal_net::cdsi::LookupError> for SignalFfiError {
-    fn from(value: libsignal_net::cdsi::LookupError) -> Self {
-        use libsignal_net::cdsi::LookupError;
-
-        match value {
-            LookupError::AttestationError(e) => SignalFfiError::Sgx(e),
-            LookupError::ConnectTransport(e) => SignalFfiError::Io(e.into()),
-            LookupError::WebSocket(e) => SignalFfiError::WebSocket(e),
-            LookupError::ConnectionTimedOut => SignalFfiError::ConnectionTimedOut,
-            LookupError::ParseError
-            | LookupError::Protocol
-            | LookupError::InvalidResponse
-            | LookupError::Server { reason: _ } => {
-                SignalFfiError::NetworkProtocol(value.to_string())
+impl FfiError for Svr3Error {
+    fn describe(&self) -> String {
+        match self {
+            Self::Connect(WebSocketConnectError::Timeout) | Self::ConnectionTimedOut => {
+                "Connect timed out".to_owned()
             }
-            LookupError::RateLimited {
-                retry_after_seconds: retry_after,
-            } => SignalFfiError::RateLimited {
-                retry_after_seconds: retry_after,
+            Self::Connect(WebSocketConnectError::Transport(e)) => format!("IO error: {e}"),
+            Self::Connect(
+                e @ (WebSocketConnectError::WebSocketError(_)
+                | WebSocketConnectError::RejectedByServer(_)),
+            ) => {
+                format!("WebSocket error: {e}")
+            }
+            Self::Service(e) => format!("WebSocket error: {e}"),
+            Self::Protocol(e) => format!("Protocol error: {e}"),
+            Self::AttestationError(inner) => inner.describe(),
+            Self::RequestFailed(_) | Self::RestoreFailed(_) | Self::DataMissing => {
+                format!("SVR error: {self}")
+            }
+        }
+    }
+
+    fn code(&self) -> SignalErrorCode {
+        match self {
+            Self::Connect(e) => match e {
+                WebSocketConnectError::Transport(_) => SignalErrorCode::IoError,
+                WebSocketConnectError::Timeout => SignalErrorCode::ConnectionTimedOut,
+                WebSocketConnectError::WebSocketError(_)
+                | WebSocketConnectError::RejectedByServer(_) => SignalErrorCode::WebSocket,
             },
-            LookupError::InvalidToken => SignalFfiError::CdsiInvalidToken,
-            LookupError::InvalidArgument { server_reason: _ } => {
-                SignalFfiError::Signal(SignalProtocolError::InvalidArgument(value.to_string()))
-            }
+            Self::Service(_) => SignalErrorCode::WebSocket,
+            Self::ConnectionTimedOut => SignalErrorCode::ConnectionTimedOut,
+            Self::AttestationError(inner) => inner.code(),
+            Self::Protocol(_) => SignalErrorCode::NetworkProtocol,
+            Self::RequestFailed(_) => SignalErrorCode::UnknownError,
+            Self::RestoreFailed(_) => SignalErrorCode::SvrRestoreFailed,
+            Self::DataMissing => SignalErrorCode::SvrDataMissing,
         }
     }
 }
 
-impl From<Svr3Error> for SignalFfiError {
-    fn from(err: Svr3Error) -> Self {
-        match err {
-            Svr3Error::Connect(e) => match e {
-                WebSocketConnectError::Transport(e) => SignalFfiError::Io(e.into()),
-                WebSocketConnectError::Timeout => SignalFfiError::ConnectionTimedOut,
-                WebSocketConnectError::WebSocketError(e) => WebSocketServiceError::from(e).into(),
-                WebSocketConnectError::RejectedByServer(response) => {
-                    WebSocketServiceError::Http(response).into()
+impl FfiError for ChatServiceError {
+    fn describe(&self) -> String {
+        match self {
+            Self::WebSocket(e) => format!("WebSocket error: {e}"),
+            Self::AllConnectionRoutesFailed { .. } | Self::ServiceUnavailable => {
+                "Connection failed".to_owned()
+            }
+            Self::UnexpectedFrameReceived
+            | Self::ServerRequestMissingId
+            | Self::IncomingDataInvalid => format!("Protocol error: {self}"),
+            Self::FailedToPassMessageToIncomingChannel | Self::RequestHasInvalidHeader => {
+                format!("internal error: {self}")
+            }
+            Self::Timeout | Self::TimeoutEstablishingConnection { .. } => {
+                "Connect timed out".to_owned()
+            }
+            Self::ServiceInactive => "Chat service inactive".to_owned(),
+            Self::AppExpired => "App expired".to_owned(),
+            Self::DeviceDeregistered => "Device deregistered or delinked".to_owned(),
+        }
+    }
+
+    fn code(&self) -> SignalErrorCode {
+        match self {
+            Self::WebSocket(_) => SignalErrorCode::WebSocket,
+            Self::AllConnectionRoutesFailed { .. } | Self::ServiceUnavailable => {
+                SignalErrorCode::ConnectionFailed
+            }
+            Self::UnexpectedFrameReceived
+            | Self::ServerRequestMissingId
+            | Self::IncomingDataInvalid => SignalErrorCode::NetworkProtocol,
+            Self::FailedToPassMessageToIncomingChannel | Self::RequestHasInvalidHeader => {
+                SignalErrorCode::InternalError
+            }
+            Self::Timeout | Self::TimeoutEstablishingConnection { .. } => {
+                SignalErrorCode::ConnectionTimedOut
+            }
+            Self::ServiceInactive => SignalErrorCode::ChatServiceInactive,
+            Self::AppExpired => SignalErrorCode::AppExpired,
+            Self::DeviceDeregistered => SignalErrorCode::DeviceDeregistered,
+        }
+    }
+}
+
+impl FfiError for http::uri::InvalidUri {
+    fn describe(&self) -> String {
+        format!("invalid argument: {self}")
+    }
+
+    fn code(&self) -> SignalErrorCode {
+        SignalErrorCode::InvalidArgument
+    }
+}
+
+#[cfg(feature = "signal-media")]
+impl FfiError for signal_media::sanitize::mp4::Error {
+    fn describe(&self) -> String {
+        match self {
+            Self::Io(e) => e.describe(),
+            Self::Parse(e) => format!("Mp4 sanitizer failed to parse mp4 file: {e}"),
+        }
+    }
+
+    fn code(&self) -> SignalErrorCode {
+        use signal_media::sanitize::mp4::ParseError;
+        match self {
+            Self::Io(e) => e.code(),
+            Self::Parse(e) => match e.kind {
+                ParseError::InvalidBoxLayout { .. }
+                | ParseError::InvalidInput { .. }
+                | ParseError::MissingRequiredBox { .. }
+                | ParseError::TruncatedBox => SignalErrorCode::InvalidMediaInput,
+
+                ParseError::UnsupportedBoxLayout { .. }
+                | ParseError::UnsupportedBox { .. }
+                | ParseError::UnsupportedFormat { .. } => SignalErrorCode::UnsupportedMediaInput,
+            },
+        }
+    }
+}
+
+#[cfg(feature = "signal-media")]
+impl FfiError for signal_media::sanitize::webp::Error {
+    fn describe(&self) -> String {
+        match self {
+            Self::Io(e) => e.describe(),
+            Self::Parse(e) => format!("WebP sanitizer failed to parse webp file: {e}"),
+        }
+    }
+
+    fn code(&self) -> SignalErrorCode {
+        use signal_media::sanitize::webp::ParseError;
+        match self {
+            Self::Io(e) => e.code(),
+            Self::Parse(e) => match e.kind {
+                ParseError::InvalidChunkLayout { .. }
+                | ParseError::InvalidInput { .. }
+                | ParseError::InvalidVp8lPrefixCode { .. }
+                | ParseError::MissingRequiredChunk { .. }
+                | ParseError::TruncatedChunk => SignalErrorCode::InvalidMediaInput,
+
+                ParseError::UnsupportedChunk { .. } | ParseError::UnsupportedVp8lVersion { .. } => {
+                    SignalErrorCode::UnsupportedMediaInput
                 }
             },
-            Svr3Error::Service(e) => SignalFfiError::WebSocket(e),
-            Svr3Error::ConnectionTimedOut => SignalFfiError::ConnectionTimedOut,
-            Svr3Error::AttestationError(inner) => SignalFfiError::Sgx(inner),
-            Svr3Error::Protocol(inner) => SignalFfiError::NetworkProtocol(inner.to_string()),
-            Svr3Error::RequestFailed(_) | Svr3Error::RestoreFailed(_) | Svr3Error::DataMissing => {
-                SignalFfiError::Svr(err)
-            }
         }
     }
 }
 
-impl From<ChatServiceError> for SignalFfiError {
-    fn from(err: ChatServiceError) -> Self {
-        match err {
-            ChatServiceError::WebSocket(e) => SignalFfiError::WebSocket(e),
-            ChatServiceError::AllConnectionRoutesFailed { attempts: _ }
-            | ChatServiceError::ServiceUnavailable => SignalFfiError::ConnectionFailed,
-            ChatServiceError::UnexpectedFrameReceived
-            | ChatServiceError::ServerRequestMissingId
-            | ChatServiceError::IncomingDataInvalid => {
-                SignalFfiError::NetworkProtocol(err.to_string())
-            }
-            ChatServiceError::FailedToPassMessageToIncomingChannel => {
-                SignalFfiError::InternalError(err.to_string())
-            }
-            ChatServiceError::RequestHasInvalidHeader => SignalFfiError::InternalError(format!(
-                "{err} (but libsignal_ffi only supports string values anyway, so how?)"
-            )),
-            ChatServiceError::Timeout
-            | ChatServiceError::TimeoutEstablishingConnection { attempts: _ } => {
-                SignalFfiError::ConnectionTimedOut
-            }
-            ChatServiceError::ServiceInactive => SignalFfiError::ChatServiceInactive,
-            ChatServiceError::AppExpired => SignalFfiError::AppExpired,
-            ChatServiceError::DeviceDeregistered => SignalFfiError::DeviceDeregistered,
-        }
+impl FfiError for NullPointerError {
+    fn describe(&self) -> String {
+        "null pointer".to_owned()
+    }
+
+    fn code(&self) -> SignalErrorCode {
+        SignalErrorCode::NullParameter
     }
 }
 
-impl From<http::uri::InvalidUri> for SignalFfiError {
-    fn from(err: http::uri::InvalidUri) -> Self {
-        SignalFfiError::InvalidArgument(err.to_string())
+impl FfiError for UnexpectedPanic {
+    fn describe(&self) -> String {
+        format!("unexpected panic: {}", describe_panic(&self.0))
+    }
+
+    fn code(&self) -> SignalErrorCode {
+        SignalErrorCode::InternalError
     }
 }
 
-#[cfg(feature = "signal-media")]
-impl From<signal_media::sanitize::mp4::Error> for SignalFfiError {
-    fn from(e: signal_media::sanitize::mp4::Error) -> SignalFfiError {
-        use signal_media::sanitize::mp4::Error;
-        match e {
-            Error::Io(e) => Self::Io(e),
-            Error::Parse(e) => Self::Mp4SanitizeParse(e),
-        }
+impl FfiError for std::str::Utf8Error {
+    fn describe(&self) -> String {
+        "invalid UTF8 string".to_owned()
+    }
+
+    fn code(&self) -> SignalErrorCode {
+        SignalErrorCode::InvalidUtf8String
     }
 }
 
-#[cfg(feature = "signal-media")]
-impl From<signal_media::sanitize::webp::Error> for SignalFfiError {
-    fn from(e: signal_media::sanitize::webp::Error) -> SignalFfiError {
-        use signal_media::sanitize::webp::Error;
-        match e {
-            Error::Io(e) => Self::Io(e),
-            Error::Parse(e) => Self::WebpSanitizeParse(e),
-        }
+impl FfiError for FutureCancelled {
+    fn describe(&self) -> String {
+        "cancelled".to_owned()
     }
-}
 
-impl From<NullPointerError> for SignalFfiError {
-    fn from(_: NullPointerError) -> SignalFfiError {
-        SignalFfiError::NullPointer
-    }
-}
-
-impl From<SignalFfiError> for IoError {
-    fn from(e: SignalFfiError) -> Self {
-        match e {
-            SignalFfiError::Io(e) => e,
-            e => IoError::new(IoErrorKind::Other, e.to_string()),
-        }
+    fn code(&self) -> SignalErrorCode {
+        SignalErrorCode::Cancelled
     }
 }
 

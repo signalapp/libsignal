@@ -292,6 +292,11 @@ typedef struct SignalSgxClientState SignalSgxClientState;
 
 /**
  * The top-level error type (opaquely) returned to C clients when something goes wrong.
+ *
+ * Ideally this would use [ThinBox][], and then we wouldn't need an extra level of indirection when
+ * returning it to C, but unfortunately that isn't stable yet.
+ *
+ * [ThinBox]: https://doc.rust-lang.org/std/boxed/struct.ThinBox.html
  */
 typedef struct SignalFfiError SignalFfiError;
 

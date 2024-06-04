@@ -197,7 +197,7 @@ impl<const LEN: usize> SimpleArgTypeInfo for &mut [u8; LEN] {
     type ArgType = *mut [u8; LEN];
     #[allow(clippy::not_unsafe_ptr_arg_deref)]
     fn convert_from(input: Self::ArgType) -> SignalFfiResult<Self> {
-        unsafe { input.as_mut() }.ok_or(SignalFfiError::NullPointer)
+        unsafe { input.as_mut() }.ok_or_else(|| NullPointerError.into())
     }
 }
 
@@ -219,12 +219,12 @@ impl SimpleArgTypeInfo for String {
     #[allow(clippy::not_unsafe_ptr_arg_deref)]
     fn convert_from(foreign: *const c_char) -> SignalFfiResult<Self> {
         if foreign.is_null() {
-            return Err(SignalFfiError::NullPointer);
+            return Err(NullPointerError.into());
         }
 
         match unsafe { CStr::from_ptr(foreign).to_str() } {
             Ok(s) => Ok(s.to_owned()),
-            Err(_) => Err(SignalFfiError::InvalidUtf8String),
+            Err(e) => Err(e.into()),
         }
     }
 }
@@ -247,7 +247,7 @@ impl SimpleArgTypeInfo for uuid::Uuid {
     fn convert_from(foreign: Self::ArgType) -> SignalFfiResult<Self> {
         match unsafe { foreign.as_ref() } {
             Some(array) => Ok(uuid::Uuid::from_bytes(*array)),
-            None => Err(SignalFfiError::NullPointer),
+            None => Err(NullPointerError.into()),
         }
     }
 }
@@ -273,7 +273,7 @@ impl SimpleArgTypeInfo for libsignal_protocol::ServiceId {
                         .into()
                     })
             }
-            None => Err(SignalFfiError::NullPointer),
+            None => Err(NullPointerError.into()),
         }
     }
 }
@@ -334,7 +334,7 @@ impl<const LEN: usize> SimpleArgTypeInfo for &'_ [u8; LEN] {
     type ArgType = *const [u8; LEN];
     #[allow(clippy::not_unsafe_ptr_arg_deref)]
     fn convert_from(arg: *const [u8; LEN]) -> SignalFfiResult<Self> {
-        unsafe { arg.as_ref() }.ok_or(SignalFfiError::NullPointer)
+        unsafe { arg.as_ref() }.ok_or(NullPointerError.into())
     }
 }
 
@@ -354,7 +354,7 @@ macro_rules! bridge_trait {
                 #[allow(clippy::not_unsafe_ptr_arg_deref)]
                 fn borrow(foreign: Self::ArgType) -> SignalFfiResult<Self::StoredType> {
                     match unsafe { foreign.as_ref() } {
-                        None => Err(SignalFfiError::NullPointer),
+                        None => Err(NullPointerError.into()),
                         Some(store) => Ok(store),
                     }
                 }
@@ -390,11 +390,11 @@ bridge_trait!(MakeChatListener);
 
 impl<T: ResultTypeInfo, E> ResultTypeInfo for Result<T, E>
 where
-    E: Into<SignalFfiError>,
+    E: FfiError,
 {
     type ResultType = T::ResultType;
     fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
-        T::convert_into(self.map_err(Into::into)?)
+        T::convert_into(self?)
     }
 }
 
@@ -540,7 +540,7 @@ impl<'a, T: BridgeHandle> ArgTypeInfo<'a> for &'a [&'a T] {
         // Check preconditions up front.
         let slice_of_pointers = unsafe { foreign.as_slice() }?;
         if slice_of_pointers.contains(&std::ptr::null()) {
-            return Err(SignalFfiError::NullPointer);
+            return Err(NullPointerError.into());
         }
 
         Ok(foreign)
@@ -584,7 +584,7 @@ where
     type ArgType = *const T::Array;
 
     fn convert_from(foreign: Self::ArgType) -> SignalFfiResult<Self> {
-        let array = unsafe { foreign.as_ref() }.ok_or(SignalFfiError::NullPointer)?;
+        let array = unsafe { foreign.as_ref() }.ok_or(NullPointerError)?;
         let result: T = zkgroup::deserialize(array.as_ref()).unwrap_or_else(|_| {
             panic!(
                 "{} should have been validated on creation",
@@ -606,10 +606,11 @@ where
         let p = P::convert_from(foreign)?;
         p.try_into()
             .map_err(|e| {
-                SignalFfiError::Signal(SignalProtocolError::InvalidArgument(format!(
+                SignalProtocolError::InvalidArgument(format!(
                     "invalid {}: {e}",
                     std::any::type_name::<T>()
-                )))
+                ))
+                .into()
             })
             .map(AsType::from)
     }

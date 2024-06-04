@@ -27,6 +27,8 @@ pub use io::*;
 mod storage;
 pub use storage::*;
 
+use crate::support::describe_panic;
+
 #[derive(Debug)]
 pub struct NullPointerError;
 
@@ -190,6 +192,16 @@ pub struct FfiResponseAndDebugInfo {
     debug_info: FfiChatServiceDebugInfo,
 }
 
+struct UnexpectedPanic(Box<dyn std::any::Any + Send>);
+
+impl std::fmt::Debug for UnexpectedPanic {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_tuple("UnexpectedPanic")
+            .field(&describe_panic(&self.0))
+            .finish()
+    }
+}
+
 #[inline(always)]
 pub fn run_ffi_safe<F: FnOnce() -> Result<(), SignalFfiError> + std::panic::UnwindSafe>(
     f: F,
@@ -197,9 +209,11 @@ pub fn run_ffi_safe<F: FnOnce() -> Result<(), SignalFfiError> + std::panic::Unwi
     let result = match std::panic::catch_unwind(f) {
         Ok(Ok(())) => Ok(()),
         Ok(Err(e)) => Err(e),
-        Err(r) => Err(SignalFfiError::UnexpectedPanic(r)),
+        Err(r) => Err(UnexpectedPanic(r).into()),
     };
 
+    // When ThinBox is stabilized, we can return that instead of double-boxing.
+    // (Unfortunately, Box<dyn MyTrait> is two pointers wide and not FFI-safe.)
     match result {
         Ok(()) => std::ptr::null_mut(),
         Err(e) => Box::into_raw(Box::new(e)),
@@ -208,7 +222,7 @@ pub fn run_ffi_safe<F: FnOnce() -> Result<(), SignalFfiError> + std::panic::Unwi
 
 pub unsafe fn native_handle_cast<T>(handle: *const T) -> Result<&'static T, SignalFfiError> {
     if handle.is_null() {
-        return Err(SignalFfiError::NullPointer);
+        return Err(NullPointerError.into());
     }
 
     Ok(&*(handle))
@@ -216,7 +230,7 @@ pub unsafe fn native_handle_cast<T>(handle: *const T) -> Result<&'static T, Sign
 
 pub unsafe fn native_handle_cast_mut<T>(handle: *mut T) -> Result<&'static mut T, SignalFfiError> {
     if handle.is_null() {
-        return Err(SignalFfiError::NullPointer);
+        return Err(NullPointerError.into());
     }
 
     Ok(&mut *handle)
@@ -227,7 +241,7 @@ pub unsafe fn write_result_to<T: ResultTypeInfo>(
     value: T,
 ) -> SignalFfiResult<()> {
     if ptr.is_null() {
-        return Err(SignalFfiError::NullPointer);
+        return Err(NullPointerError.into());
     }
     *ptr = value.convert_into()?;
     Ok(())

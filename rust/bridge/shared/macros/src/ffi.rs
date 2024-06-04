@@ -132,7 +132,7 @@ fn bridge_io_body(
 
     let load_async_runtime = generate_code_to_load_input("async_runtime", quote!(&#runtime));
     let load_promise = quote! {
-        let promise = promise.as_mut().ok_or(ffi::SignalFfiError::NullPointer)?;
+        let promise = promise.as_mut().ok_or(ffi::NullPointerError)?;
     };
 
     let input_saving = input_args.iter().map(|(name, ty)| {
@@ -174,7 +174,7 @@ fn bridge_io_body(
                                 Ok(TransformHelper(__result).ok_if_needed()?.0)
                             }
                             _ = __cancel => {
-                                Err(ffi::SignalFfiError::Cancelled)
+                                Err(ffi::FutureCancelled.into())
                             }
                         }
                     }));

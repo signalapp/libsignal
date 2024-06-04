@@ -10,6 +10,9 @@ use futures_util::{FutureExt, TryFutureExt};
 
 use std::future::Future;
 
+#[derive(Debug)]
+pub(crate) struct FutureCancelled;
+
 pub type RawCancellationId = u64;
 
 /// A C callback used to report the results of Rust futures.
@@ -77,7 +80,7 @@ impl<T: ResultTypeInfo + std::panic::UnwindSafe> ResultReporter for FutureResult
 
         let result = result.and_then(|result| {
             std::panic::catch_unwind(|| result.convert_into())
-                .unwrap_or_else(|panic| Err(SignalFfiError::UnexpectedPanic(panic)))
+                .unwrap_or_else(|panic| Err(UnexpectedPanic(panic).into()))
         });
 
         match result {
@@ -134,5 +137,5 @@ pub fn catch_unwind<T>(
 ) -> impl Future<Output = SignalFfiResult<T>> + Send + std::panic::UnwindSafe + 'static {
     future
         .catch_unwind()
-        .unwrap_or_else(|panic| Err(SignalFfiError::UnexpectedPanic(panic)))
+        .unwrap_or_else(|panic| Err(UnexpectedPanic(panic).into()))
 }
