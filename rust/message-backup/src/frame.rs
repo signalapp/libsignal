@@ -77,7 +77,7 @@ pub trait VerifyHmac: Sized {
 }
 
 impl<R: AsyncRead + AsyncSkip + Unpin> FramesReader<R> {
-    pub(crate) async fn new(
+    pub async fn new(
         key: &MessageBackupKey,
         mut reader_factory: impl ReaderFactory<Reader = R>,
     ) -> Result<FramesReader<R>, ValidationError> {

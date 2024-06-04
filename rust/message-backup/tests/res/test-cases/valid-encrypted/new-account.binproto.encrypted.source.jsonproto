@@ -1,0 +1,18 @@
+[
+    {
+        "backupTimeMs": "1705692409729",
+        "version": "1"
+    },
+    {
+        "recipient": {
+        "id": "2",
+        "self": {}
+        }
+    },
+    {
+        "chat": {
+        "id": "1",
+        "recipientId": "2"
+        }
+    }
+]

@@ -47,6 +47,9 @@ struct CliArgs {
     )]
     master_key: WrapCliArg<[u8; BackupKey::MASTER_KEY_LEN]>,
 
+    #[arg(long, value_parser=parse_hex_bytes::<16>.map(WrapCliArg))]
+    iv: Option<WrapCliArg<[u8; 16]>>,
+
     /// pad the compressed output to a bucket boundary before encrypting
     #[arg(long, default_value_t = true, action=ArgAction::Set)]
     pad_bucketed: bool,
@@ -57,12 +60,18 @@ fn main() {
         filename,
         master_key: WrapCliArg(master_key),
         aci: WrapCliArg(aci),
+        iv,
         pad_bucketed,
     } = CliArgs::parse();
 
     let backup_key = BackupKey::derive_from_master_key(&master_key);
     let backup_id = backup_key.derive_backup_id(&aci);
     let key = MessageBackupKey::derive(&backup_key, &backup_id);
+    let iv = iv.map(|WrapCliArg(iv)| iv).unwrap_or_else(|| {
+        let mut iv = [0; 16];
+        OsRng.fill_bytes(&mut iv);
+        iv
+    });
 
     eprintln!("reading from {:?}", filename.source);
 
@@ -79,12 +88,12 @@ fn main() {
 
     let MessageBackupKey { hmac_key, aes_key } = &key;
 
-    let mut iv = [0; 16];
-    OsRng.fill_bytes(&mut iv);
+    write_bytes("IV", iv);
+
     let encrypted_contents = aes_cbc_encrypt(aes_key, &iv, compressed_contents);
     eprintln!("encrypted to {} bytes", encrypted_contents.len());
 
-    let hmac = hmac_checksum(hmac_key, &encrypted_contents);
+    let hmac = hmac_checksum(hmac_key, &iv, &encrypted_contents);
     write_bytes("encrypted", encrypted_contents);
 
     write_bytes("HMAC", hmac);
@@ -106,8 +115,9 @@ fn aes_cbc_encrypt(aes_key: &[u8; 32], iv: &[u8; 16], compressed_contents: Vec<u
 
     encryptor.encrypt_padded_vec_mut::<Pkcs7>(&compressed_contents)
 }
-fn hmac_checksum(hmac_key: &[u8; 32], encrypted_contents: &[u8]) -> [u8; 32] {
+fn hmac_checksum(hmac_key: &[u8; 32], iv: &[u8], encrypted_contents: &[u8]) -> [u8; 32] {
     let mut hmac = hmac::Hmac::<Sha256>::new_from_slice(hmac_key).expect("correct key size");
+    hmac.update(iv);
     hmac.update(encrypted_contents);
     hmac.finalize().into_bytes().into()
 }
@@ -151,6 +161,6 @@ impl Display for WrapCliArg<Aci> {
 
 impl Display for WrapCliArg<[u8; 32]> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", hex::ToHex::encode_hex::<String>(&self.0))
+        write!(f, "{}", hex::encode(self.0))
     }
 }
