@@ -126,12 +126,25 @@ impl Handshake {
             Box::new(snow_resolver::Resolver),
         )
         .remote_public_key(&claims.public_key)
-        .build_initiator()?;
+        .build_initiator()
+        .map_err(|_| {
+            // The only thing that can go wrong is that claims.public_key is invalid, which isn't a
+            // fault in the Noise handshake. Produce a data error instead to indicate this (and for
+            // simpler exception logic in the apps).
+            //
+            // In practice the current version of Noise does not even check this up front, so we
+            // can't test this. But a future version could and the previous reasoning stands.
+            Error::AttestationDataError {
+                reason: "invalid public key".to_string(),
+            }
+        })?;
         let mut initial_request = vec![0u8; client_connection::NOISE_HANDSHAKE_OVERHEAD];
         // We send an empty message, but the round-trip to the server and back is still required
         // in order to complete the noise handshake. If we needed some initial payload we could
         // add it here in future.
-        let size = handshake.write_message(&[], &mut initial_request)?;
+        let size = handshake
+            .write_message(&[], &mut initial_request)
+            .expect("properly sized");
         initial_request.truncate(size);
         Ok(UnvalidatedHandshake(Self {
             handshake,

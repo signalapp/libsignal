@@ -69,6 +69,8 @@ public final class Svr3 {
    *     secret.
    * @throws {@link org.signal.libsignal.net.NetworkException} in case of network related errors,
    *     including connect timeout and failed auth.
+   * @throws {@link org.signal.libsignal.attest.AttestationDataException} when the server
+   *     attestation document is malformed or incomplete.
    * @throws {@link org.signal.libsignal.attest.AttestationFailedException} when an attempt to
    *     validate the server attestation document fails.
    * @throws {@link org.signal.libsignal.sgxsession.SgxCommunicationFailureException} when a Noise
@@ -124,6 +126,8 @@ public final class Svr3 {
    * @throws {@link org.signal.libsignal.svr.SvrException} when the de-serialization of a masked
    *     share set fails, or when the server requests fail for reasons other than "maximum attempts
    *     exceeded".
+   * @throws {@link org.signal.libsignal.attest.AttestationDataException} when the server
+   *     attestation document is malformed or incomplete.
    * @throws {@link org.signal.libsignal.attest.AttestationFailedException} when an attempt to
    *     validate the server attestation document fails.
    * @throws {@link org.signal.libsignal.sgxsession.SgxCommunicationFailureException} when a Noise
@@ -165,6 +169,8 @@ public final class Svr3 {
    *     completion of which will mean the data has been removed.
    * @throws {@link org.signal.libsignal.net.NetworkException} in case of network related errors,
    *     including connection timeouts and failed auth.
+   * @throws {@link org.signal.libsignal.attest.AttestationDataException} when the server
+   *     attestation document is malformed or incomplete.
    * @throws {@link org.signal.libsignal.attest.AttestationFailedException} when an attempt to
    *     validate the server attestation document fails.
    * @throws {@link org.signal.libsignal.sgxsession.SgxCommunicationFailureException} when a Noise

@@ -5,6 +5,7 @@
 
 package org.signal.libsignal.attest;
 
+/** An enclave failed attestation. */
 public class AttestationFailedException extends Exception {
   public AttestationFailedException(String msg) {
     super(msg);

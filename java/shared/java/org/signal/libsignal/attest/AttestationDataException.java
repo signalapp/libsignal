@@ -5,6 +5,7 @@
 
 package org.signal.libsignal.attest;
 
+/** Attestation data was malformed. */
 public class AttestationDataException extends Exception {
   public AttestationDataException(String msg) {
     super(msg);

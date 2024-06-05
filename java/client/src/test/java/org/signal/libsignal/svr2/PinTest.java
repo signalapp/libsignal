@@ -12,7 +12,6 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
 import org.junit.Test;
-import org.signal.libsignal.attest.AttestationDataException;
 import org.signal.libsignal.protocol.kdf.HKDF;
 import org.signal.libsignal.protocol.util.Hex;
 
@@ -80,7 +79,7 @@ public class PinTest {
   }
 
   @Test
-  public void testSaltWithGroupId() throws IOException, AttestationDataException {
+  public void testSaltWithGroupId() throws IOException {
     final byte[] mrenclave =
         Hex.fromStringCondensed("acb1973aa0bbbd14b3b4e06f145497d948fd4a98efc500fcce363b3b743ec482");
     final byte[] pin = "password".getBytes(StandardCharsets.UTF_8);
