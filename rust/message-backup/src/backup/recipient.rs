@@ -13,13 +13,11 @@ use zkgroup::{GroupMasterKeyBytes, ProfileKeyBytes};
 
 use crate::backup::call::{CallLink, CallLinkError};
 use crate::backup::frame::RecipientId;
-use crate::backup::method::{Contains, Method};
+use crate::backup::method::{Lookup, Method};
 use crate::backup::time::Timestamp;
-use crate::backup::TryFromWith;
+use crate::backup::{TryFromWith, TryIntoWith};
 use crate::proto::backup as proto;
 use crate::proto::backup::recipient::Destination as RecipientDestination;
-
-use super::TryIntoWith;
 
 #[derive(Debug, thiserror::Error, displaydoc::Display)]
 #[cfg_attr(test, derive(PartialEq))]
@@ -50,6 +48,8 @@ pub enum RecipientError {
     DistributionListItemMissing,
     /// distribution list member {0:?} is unknown
     DistributionListMemberUnknown(RecipientId),
+    /// distribution list member {0:?} is a {1:?} not a contact
+    DistributionListMemberWrongKind(RecipientId, DestinationKind),
 }
 
 #[derive_where(Debug)]
@@ -95,11 +95,14 @@ pub struct ContactData {
     pub hide_story: bool,
 }
 
-#[non_exhaustive]
 #[derive(Debug)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct GroupData {
     pub master_key: GroupMasterKeyBytes,
+    pub whitelisted: bool,
+    pub hide_story: bool,
+    pub story_send_mode: proto::group::StorySendMode,
+    pub snapshot: Option<Box<proto::group::GroupSnapshot>>,
 }
 
 #[derive(Debug)]
@@ -150,7 +153,9 @@ impl<M: Method> AsRef<DestinationKind> for RecipientData<M> {
     }
 }
 
-impl<M: Method, C: Contains<RecipientId>> TryFromWith<proto::Recipient, C> for RecipientData<M> {
+impl<M: Method, C: Lookup<RecipientId, DestinationKind>> TryFromWith<proto::Recipient, C>
+    for RecipientData<M>
+{
     type Error = RecipientError;
     fn try_from_with(value: proto::Recipient, context: &C) -> Result<Self, Self::Error> {
         let proto::Recipient {
@@ -267,22 +272,37 @@ impl TryFrom<proto::Group> for GroupData {
     fn try_from(value: proto::Group) -> Result<Self, Self::Error> {
         let proto::Group {
             masterKey,
-            // TODO validate these fields.
-            whitelisted: _,
-            hideStory: _,
-            storySendMode: _,
-            snapshot: _,
+            whitelisted,
+            hideStory,
+            storySendMode,
+            snapshot,
             special_fields: _,
         } = value;
 
         let master_key = masterKey
             .try_into()
             .map_err(|_| RecipientError::InvalidMasterKey)?;
-        Ok(GroupData { master_key })
+
+        let story_send_mode = match storySendMode.enum_value_or_default() {
+            s @ (proto::group::StorySendMode::DEFAULT
+            | proto::group::StorySendMode::DISABLED
+            | proto::group::StorySendMode::ENABLED) => s,
+        };
+
+        // TODO consider additional group snapshot validation.
+        let snapshot = snapshot.0;
+
+        Ok(GroupData {
+            master_key,
+            whitelisted,
+            hide_story: hideStory,
+            story_send_mode,
+            snapshot,
+        })
     }
 }
 
-impl<C: Contains<RecipientId>> TryFromWith<proto::DistributionListItem, C>
+impl<C: Lookup<RecipientId, DestinationKind>> TryFromWith<proto::DistributionListItem, C>
     for DistributionListItem
 {
     type Error = RecipientError;
@@ -327,10 +347,19 @@ impl<C: Contains<RecipientId>> TryFromWith<proto::DistributionListItem, C>
                         .into_iter()
                         .map(|id| {
                             let id = RecipientId(id);
-                            if !context.contains(&id) {
-                                return Err(RecipientError::DistributionListMemberUnknown(id));
+                            match context.lookup(&id) {
+                                Some(DestinationKind::Contact) => Ok(id),
+                                Some(
+                                    kind @ (DestinationKind::Group
+                                    | DestinationKind::DistributionList
+                                    | DestinationKind::Self_
+                                    | DestinationKind::ReleaseNotes
+                                    | DestinationKind::CallLink),
+                                ) => {
+                                    Err(RecipientError::DistributionListMemberWrongKind(id, *kind))
+                                }
+                                None => Err(RecipientError::DistributionListMemberUnknown(id)),
                             }
-                            Ok(id)
                         })
                         .try_collect()?;
 
@@ -367,7 +396,7 @@ mod test {
     use protobuf::EnumOrUnknown;
     use test_case::test_case;
 
-    use crate::backup::method::Store;
+    use crate::backup::method::{Contains, Store};
 
     use super::*;
 
@@ -410,6 +439,7 @@ mod test {
         fn test_data() -> Self {
             Self {
                 masterKey: Self::TEST_MASTER_KEY.into(),
+                storySendMode: proto::group::StorySendMode::ENABLED.into(),
                 ..Self::default()
             }
         }
@@ -423,7 +453,7 @@ mod test {
                 item: Some(proto::distribution_list_item::Item::DistributionList(
                     proto::DistributionList {
                         privacyMode: proto::distribution_list::PrivacyMode::ALL_EXCEPT.into(),
-                        memberRecipientIds: vec![proto::Recipient::TEST_ID],
+                        memberRecipientIds: vec![TestContext::CONTACT_ID.0],
                         ..Default::default()
                     },
                 )),
@@ -434,9 +464,24 @@ mod test {
 
     struct TestContext;
 
+    impl TestContext {
+        const CONTACT_ID: RecipientId = RecipientId(123456789);
+        const SELF_ID: RecipientId = RecipientId(1111111111);
+    }
+
     impl Contains<RecipientId> for TestContext {
         fn contains(&self, key: &RecipientId) -> bool {
-            key.0 == proto::Recipient::TEST_ID
+            key == &Self::CONTACT_ID || key == &Self::SELF_ID
+        }
+    }
+
+    impl Lookup<RecipientId, DestinationKind> for TestContext {
+        fn lookup(&self, key: &RecipientId) -> Option<&DestinationKind> {
+            match *key {
+                Self::CONTACT_ID => Some(&DestinationKind::Contact),
+                Self::SELF_ID => Some(&DestinationKind::Self_),
+                _ => None,
+            }
         }
     }
 
@@ -577,7 +622,11 @@ mod test {
             RecipientData::<Store>::try_from_with(recipient, &TestContext),
             Ok(RecipientData {
                 destination: Destination::Group(GroupData {
-                    master_key: proto::Group::TEST_MASTER_KEY
+                    master_key: proto::Group::TEST_MASTER_KEY,
+                    story_send_mode: proto::group::StorySendMode::ENABLED,
+                    whitelisted: false,
+                    hide_story: false,
+                    snapshot: None,
                 })
             })
         );
@@ -586,8 +635,12 @@ mod test {
     fn invalid_master_key(input: &mut proto::Group) {
         input.masterKey = vec![];
     }
+    fn default_story_send_mode(input: &mut proto::Group) {
+        input.storySendMode = Default::default();
+    }
 
     #[test_case(invalid_master_key, Err(RecipientError::InvalidMasterKey))]
+    #[test_case(default_story_send_mode, Ok(()))]
     fn destination_group(modifier: fn(&mut proto::Group), expected: Result<(), RecipientError>) {
         let mut group = proto::Group::test_data();
         modifier(&mut group);
@@ -618,7 +671,7 @@ mod test {
                     privacy_mode: PrivacyMode::AllExcept,
                     name: "".to_owned(),
                     allow_replies: false,
-                    members: vec![RecipientId(proto::Recipient::TEST_ID)],
+                    members: vec![TestContext::CONTACT_ID]
                 })
             })
         );
@@ -635,6 +688,12 @@ mod test {
     fn unknown_member(input: &mut proto::DistributionListItem) {
         input.mut_distributionList().memberRecipientIds = vec![UNKNOWN_RECIPIENT_ID.0];
     }
+    fn member_is_not_a_contact(input: &mut proto::DistributionListItem) {
+        input
+            .mut_distributionList()
+            .memberRecipientIds
+            .push(TestContext::SELF_ID.0);
+    }
 
     #[test_case(invalid_distribution_id, Err(RecipientError::InvalidDistributionId))]
     #[test_case(
@@ -644,6 +703,13 @@ mod test {
     #[test_case(
         unknown_member,
         Err(RecipientError::DistributionListMemberUnknown(UNKNOWN_RECIPIENT_ID))
+    )]
+    #[test_case(
+        member_is_not_a_contact,
+        Err(RecipientError::DistributionListMemberWrongKind(
+            TestContext::SELF_ID,
+            DestinationKind::Self_
+        ))
     )]
     fn destination_distribution_list(
         modifier: fn(&mut proto::DistributionListItem),

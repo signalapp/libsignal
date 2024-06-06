@@ -14,8 +14,8 @@ use crate::backup::call::{AdHocCall, CallError};
 use crate::backup::chat::{ChatData, ChatError, ChatItemError, PinOrder};
 use crate::backup::frame::{ChatId, RecipientId};
 use crate::backup::method::{Contains, Lookup, Method, Store, ValidateOnly};
-use crate::backup::recipient::{RecipientData, RecipientError};
-use crate::backup::sticker::{PackId as StickerPackId, StickerId, StickerPack, StickerPackError};
+use crate::backup::recipient::{DestinationKind, RecipientData, RecipientError};
+use crate::backup::sticker::{PackId as StickerPackId, StickerPack, StickerPackError};
 use crate::backup::time::Timestamp;
 use crate::proto::backup as proto;
 use crate::proto::backup::frame::Item as FrameItem;
@@ -349,17 +349,15 @@ impl<M: Method> Contains<RecipientId> for PartialBackup<M> {
     }
 }
 
-impl<M: Method> Contains<ChatId> for PartialBackup<M> {
-    fn contains(&self, key: &ChatId) -> bool {
-        self.chats.items.contains(key)
+impl<M: Method> Lookup<RecipientId, DestinationKind> for PartialBackup<M> {
+    fn lookup(&self, key: &RecipientId) -> Option<&DestinationKind> {
+        self.recipients.lookup(key)
     }
 }
 
-impl<M: Method> Contains<(StickerPackId, StickerId)> for PartialBackup<M> {
-    fn contains(&self, (pack_id, sticker_id): &(StickerPackId, StickerId)) -> bool {
-        self.sticker_packs
-            .get(pack_id)
-            .is_some_and(|pack| pack.stickers.contains(sticker_id))
+impl<M: Method> Contains<ChatId> for PartialBackup<M> {
+    fn contains(&self, key: &ChatId) -> bool {
+        self.chats.items.contains(key)
     }
 }
 
