@@ -67,8 +67,11 @@ public final class Svr3 {
    *     contents. This byte array should be stored by the clients and used to restore the secret
    *     along with the password. Please note that masked share set does not have to be treated as
    *     secret.
-   * @throws {@link org.signal.libsignal.net.NetworkException} in case of network related errors,
-   *     including connect timeout and failed auth.
+   * @throws {@link org.signal.libsignal.net.NetworkException} in case of network connection errors,
+   *     like connect timeout.
+   * @throws {@link org.signal.libsignal.net.NetworkProtocolException} more specifically in cases
+   *     when connection cannot be established on a higher level of the network stack. For example,
+   *     receiving an error HTTP status code.
    * @throws {@link org.signal.libsignal.attest.AttestationDataException} when the server
    *     attestation document is malformed or incomplete.
    * @throws {@link org.signal.libsignal.attest.AttestationFailedException} when an attempt to
@@ -117,8 +120,11 @@ public final class Svr3 {
    *     or restore that are not too far apart in time.
    * @return an instance of {@link org.signal.libsignal.internal.CompletableFuture} which-when
    *     awaited-will return a {@link RestoredSecret} object containing the secret.
-   * @throws {@link org.signal.libsignal.net.NetworkException} in case of network related errors,
-   *     including connection timeouts and failed auth.
+   * @throws {@link org.signal.libsignal.net.NetworkException} in case of network connection errors,
+   *     like connect timeout.
+   * @throws {@link org.signal.libsignal.net.NetworkProtocolException} more specifically in cases
+   *     when connection cannot be established on a higher level of the network stack. For example,
+   *     receiving an error HTTP status code.
    * @throws {@link org.signal.libsignal.svr.DataMissingException} when the maximum restore attempts
    *     number has been exceeded or if the value has never been backed up.
    * @throws {@link org.signal.libsignal.svr.RestoreFailedException} when the combination of the
@@ -167,8 +173,11 @@ public final class Svr3 {
    *     or restore that are not too far apart in time.
    * @return an instance of {@link org.signal.libsignal.internal.CompletableFuture} successful
    *     completion of which will mean the data has been removed.
-   * @throws {@link org.signal.libsignal.net.NetworkException} in case of network related errors,
-   *     including connection timeouts and failed auth.
+   * @throws {@link org.signal.libsignal.net.NetworkException} in case of network connection errors,
+   *     like connect timeout.
+   * @throws {@link org.signal.libsignal.net.NetworkProtocolException} more specifically in cases
+   *     when connection cannot be established on a higher level of the network stack. For example,
+   *     receiving an error HTTP status code.
    * @throws {@link org.signal.libsignal.attest.AttestationDataException} when the server
    *     attestation document is malformed or incomplete.
    * @throws {@link org.signal.libsignal.attest.AttestationFailedException} when an attempt to

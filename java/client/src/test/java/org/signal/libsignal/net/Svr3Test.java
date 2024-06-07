@@ -159,4 +159,21 @@ public class Svr3Test {
       assertTrue("Unexpected exception: " + cause, cause instanceof SvrException);
     }
   }
+
+  @Test
+  public void invalidEnclaveAuth() throws Exception {
+    String username = randomBytesHex(16);
+    // Intentionally invalid enclave secret
+    String otp = Native.CreateOTP(username, new byte[32]);
+    var auth = new EnclaveAuth(username, otp);
+    try {
+      state.net().svr3().backup(STORED_SECRET, TEST_PASSWORD, 10, auth).get();
+      fail("Must have thrown");
+    } catch (ExecutionException ex) {
+      Throwable cause = ex.getCause();
+      assertFalse(
+          "Unexpectedly generic exception used: " + cause, cause instanceof NetworkException);
+      assertTrue("Unexpected exception: " + cause, cause instanceof NetworkProtocolException);
+    }
+  }
 }

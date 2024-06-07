@@ -13,7 +13,7 @@ use crate::chat::{
     ChatService, ChatServiceError, ChatServiceWithDebugInfo, DebugInfo, IpType, RemoteAddressInfo,
     Request, Response,
 };
-use crate::infra::connection_manager::ConnectionManager;
+use crate::infra::connection_manager::{ConnectionManager, ErrorClassifier};
 use crate::infra::errors::LogSafeDisplay;
 use crate::infra::reconnect::{ServiceConnector, ServiceWithReconnect};
 
@@ -24,7 +24,7 @@ where
     C: ServiceConnector + Send + Sync + 'static,
     C::Service: ChatService + Clone + Sync + Send + 'static,
     C::Channel: Send + Sync,
-    C::ConnectError: Send + Sync + Debug + LogSafeDisplay,
+    C::ConnectError: Send + Sync + Debug + LogSafeDisplay + ErrorClassifier,
     C::StartError: Send + Sync + Debug + LogSafeDisplay,
 {
     async fn send(&self, msg: Request, timeout: Duration) -> Result<Response, ChatServiceError> {
@@ -47,7 +47,7 @@ where
     C: ServiceConnector + Send + Sync + 'static,
     C::Service: ChatService + RemoteAddressInfo + Clone + Sync + Send + 'static,
     C::Channel: Send + Sync,
-    C::ConnectError: Send + Sync + Debug + LogSafeDisplay,
+    C::ConnectError: Send + Sync + Debug + LogSafeDisplay + ErrorClassifier,
     C::StartError: Send + Sync + Debug + LogSafeDisplay,
 {
     async fn send_and_debug(

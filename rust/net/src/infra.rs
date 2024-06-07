@@ -322,7 +322,7 @@ pub(crate) mod test {
         use tokio::io::DuplexStream;
         use warp::{Filter, Reply};
 
-        use crate::infra::connection_manager::ConnectionManager;
+        use crate::infra::connection_manager::{ConnectionManager, ErrorClass, ErrorClassifier};
         use crate::infra::errors::{LogSafeDisplay, TransportConnectError};
         use crate::infra::reconnect::{
             ServiceConnector, ServiceInitializer, ServiceState, ServiceStatus,
@@ -352,6 +352,12 @@ pub(crate) mod test {
             Expected,
             /// unexpected error
             Unexpected(&'static str),
+        }
+
+        impl ErrorClassifier for TestError {
+            fn classify(&self) -> ErrorClass {
+                ErrorClass::Intermittent
+            }
         }
 
         impl LogSafeDisplay for TestError {}
@@ -425,7 +431,7 @@ pub(crate) mod test {
             C: ServiceConnector + Send + Sync + 'static,
             C::Service: Clone + Send + Sync + 'static,
             C::Channel: Send + Sync,
-            C::ConnectError: Send + Sync + Debug + LogSafeDisplay,
+            C::ConnectError: Send + Sync + Debug + LogSafeDisplay + ErrorClassifier,
         {
             pub(crate) async fn start<M>(service_connector: C, connection_manager: M) -> Self
             where

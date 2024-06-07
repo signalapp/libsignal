@@ -60,7 +60,11 @@ async fn main() {
 
     let connect = || async {
         let connector = TcpSslTransportConnector::new(DnsResolver::default());
-        let connection_a = EnclaveEndpointConnection::new(env.sgx(), Duration::from_secs(10));
+        let connection_a = EnclaveEndpointConnection::new_multi(
+            env.sgx(),
+            env.sgx().domain_config.connection_params_with_fallback(),
+            Duration::from_secs(10),
+        );
         let a = SvrConnection::<Sgx, _>::connect(auth.clone(), &connection_a, connector.clone())
             .await
             .expect("can attestedly connect to SGX");

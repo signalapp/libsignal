@@ -350,6 +350,26 @@ final class Svr3Tests: TestCaseBase {
             XCTFail("Unexpected error: \(error)")
         }
     }
+
+    func testInvalidEnclaveAuth() async throws {
+        // calling it to make it an "integration test"
+        _ = try self.getEnclaveSecret()
+        let auth = Auth(username: randomBytes(16).hexString, password: randomBytes(32).hexString)
+
+        do {
+            _ = try await self.state!.net.svr3.backup(
+                self.storedSecret,
+                password: "password",
+                maxTries: 10,
+                auth: auth
+            )
+            XCTFail("Should have failed")
+        } catch SignalError.webSocketError(let message) {
+            XCTAssert(message.contains("401"))
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+    }
 }
 
 #endif

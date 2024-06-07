@@ -11,6 +11,7 @@ use attest::hsm_enclave::Error as HsmEnclaveError;
 use device_transfer::Error as DeviceTransferError;
 use jni::objects::{GlobalRef, JThrowable, JValue, JValueOwned};
 use jni::JavaVM;
+use libsignal_net::infra::ws::WebSocketServiceError;
 use libsignal_net::svr3::Error as Svr3Error;
 use libsignal_protocol::*;
 use signal_crypto::Error as SignalCryptoError;
@@ -563,6 +564,17 @@ impl<'env> ConsumableException<'env> {
                 ClassName("org.signal.libsignal.net.CdsiProtocolException"),
                 error,
             ),
+
+            SignalJniError::WebSocket(WebSocketServiceError::Http(_)) => (
+                // In practice, all WebSocket HTTP errors come from multi-route connections, so any
+                // that make it to the point of bridging are considered to have resulted from a
+                // successful *connection* that then gets an error status code, and so we use
+                // NetworkProtocolException instead of NetworkException. We may want to revisit
+                // assuming that *here*, though.
+                ClassName("org.signal.libsignal.net.NetworkProtocolException"),
+                error,
+            ),
+
             SignalJniError::WebSocket(_) | SignalJniError::ConnectTimedOut => (
                 ClassName("org.signal.libsignal.net.NetworkException"),
                 error,

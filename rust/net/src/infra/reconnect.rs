@@ -16,7 +16,9 @@ use tokio::sync::Mutex;
 use tokio::time::{timeout_at, Instant};
 use tokio_util::sync::CancellationToken;
 
-use crate::infra::connection_manager::{ConnectionAttemptOutcome, ConnectionManager};
+use crate::infra::connection_manager::{
+    ConnectionAttemptOutcome, ConnectionManager, ErrorClass, ErrorClassifier,
+};
 use crate::infra::errors::LogSafeDisplay;
 use crate::infra::{ConnectionInfo, ConnectionParams, HttpRequestDecorator};
 
@@ -198,7 +200,7 @@ where
     C: ServiceConnector + Send + Sync + 'a,
     C::Service: Send + Sync + 'a,
     C::Channel: Send + Sync,
-    C::ConnectError: Send + Sync + Debug + LogSafeDisplay,
+    C::ConnectError: Send + Sync + Debug + LogSafeDisplay + ErrorClassifier,
 {
     pub(crate) fn new(service_connector: C, connection_manager: M) -> Self {
         Self {
@@ -268,6 +270,12 @@ pub(crate) enum ReconnectError {
     Inactive,
 }
 
+impl ErrorClassifier for ReconnectError {
+    fn classify(&self) -> ErrorClass {
+        ErrorClass::Intermittent
+    }
+}
+
 #[derive(Debug, Display)]
 pub(crate) enum StateError {
     /// Service is in the inactive state
@@ -309,7 +317,7 @@ where
     C: ServiceConnector + Send + Sync + 'static,
     C::Service: Clone + Send + Sync + 'static,
     C::Channel: Send + Sync,
-    C::ConnectError: Send + Sync + Debug + LogSafeDisplay,
+    C::ConnectError: Send + Sync + Debug + LogSafeDisplay + ErrorClassifier,
     C::StartError: Send + Sync + Debug + LogSafeDisplay,
 {
     pub(crate) fn new(

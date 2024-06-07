@@ -45,7 +45,7 @@ pub trait ConnectionManager: Clone + Send + Sync {
     ) -> ConnectionAttemptOutcome<T, E>
     where
         T: Send,
-        E: Send + Debug + LogSafeDisplay,
+        E: Send + Debug + LogSafeDisplay + ErrorClassifier,
         Fun: Fn(&'a ConnectionParams) -> Fut + Send + Sync,
         Fut: Future<Output = Result<T, E>> + Send;
 
@@ -63,7 +63,7 @@ where
     ) -> ConnectionAttemptOutcome<T, E>
     where
         T: Send,
-        E: Send + Debug + LogSafeDisplay,
+        E: Send + Debug + LogSafeDisplay + ErrorClassifier,
         Fun: Fn(&'a ConnectionParams) -> Fut + Send + Sync,
         Fut: Future<Output = Result<T, E>> + Send,
     {
@@ -162,7 +162,7 @@ where
     ) -> ConnectionAttemptOutcome<T, E>
     where
         T: Send,
-        E: Send + Debug + LogSafeDisplay,
+        E: Send + Debug + LogSafeDisplay + ErrorClassifier,
         Fun: Fn(&'a ConnectionParams) -> Fut + Send + Sync,
         Fut: Future<Output = Result<T, E>> + Send,
     {
@@ -170,11 +170,12 @@ where
         for route_manager in self.route_managers.iter() {
             match retry_connect_until_cooldown(route_manager, &connection_fn).await {
                 Ok(t) => return ConnectionAttemptOutcome::Attempted(Ok(t)),
-                Err(WaitUntil(i)) => {
+                Err(RetryError::WaitUntil(i)) => {
                     wait_until = Some(
                         wait_until.map_or(i, |earliest_retry| Instant::min(i, earliest_retry)),
                     );
                 }
+                Err(RetryError::Fatal(e)) => return ConnectionAttemptOutcome::Attempted(Err(e)),
             }
         }
         wait_until.map_or(
@@ -194,15 +195,39 @@ where
     }
 }
 
-struct WaitUntil(Instant);
+pub enum RetryError<E> {
+    /// Connection can be attempted again at a given Instant
+    WaitUntil(Instant),
+    /// Connection failed due to an issue that retries will not solve
+    Fatal(E),
+}
+
+/// Classification of connection errors by fatality.
+#[cfg_attr(test, derive(Clone, Copy))]
+#[derive(Debug)]
+pub enum ErrorClass {
+    /// Non-fatal, somewhat counterintuitively unreachable server is a non-fatal error at this level
+    /// as other connection parameters can still result in a successful connection.
+    Intermittent,
+    /// Fatal errors with a known retry-after value. For situations when we can reach the server,
+    /// but it replies with a 429-Too Many Requests _and_ a recommended delay before any retries.
+    RetryAt(Instant),
+    /// Server can be reached at a lower level of net stack (TCP), but responds with an error while
+    /// establishing connection at a higher level (HTTP, WebSocket, etc.)
+    Fatal,
+}
+
+pub trait ErrorClassifier {
+    fn classify(&self) -> ErrorClass;
+}
 
 async fn retry_connect_until_cooldown<'a, T, E, Fun, Fut>(
     route_manager: &'a impl ConnectionManager,
     connection_fn: &Fun,
-) -> Result<T, WaitUntil>
+) -> Result<T, RetryError<E>>
 where
     T: Send,
-    E: Send + Debug + LogSafeDisplay,
+    E: Send + Debug + LogSafeDisplay + ErrorClassifier,
     Fun: Fn(&'a ConnectionParams) -> Fut + Send + Sync,
     Fut: Future<Output = Result<T, E>> + Send,
 {
@@ -213,13 +238,25 @@ where
                 return Ok(r);
             }
             ConnectionAttemptOutcome::Attempted(Err(e)) => {
-                log::debug!("Connection attempt failed with an error: {:?}", e);
-                log::info!(
-                    "Connection attempt failed with an error: {} ({})",
-                    e,
-                    route_manager.describe_for_logging(),
-                );
-                continue;
+                let log_error = || {
+                    log::debug!("Connection attempt failed with a non-fatal error: {:?}", e);
+                    log::info!(
+                        "Connection attempt failed with an error: {} ({})",
+                        e,
+                        route_manager.describe_for_logging(),
+                    );
+                };
+                match e.classify() {
+                    ErrorClass::Fatal => return Err(RetryError::Fatal(e)),
+                    ErrorClass::Intermittent => {
+                        log_error();
+                        continue;
+                    }
+                    ErrorClass::RetryAt(when) => {
+                        log_error();
+                        return Err(RetryError::WaitUntil(when));
+                    }
+                }
             }
             ConnectionAttemptOutcome::TimedOut => {
                 log::info!(
@@ -228,7 +265,7 @@ where
                 );
                 continue;
             }
-            ConnectionAttemptOutcome::WaitUntil(i) => return Err(WaitUntil(i)),
+            ConnectionAttemptOutcome::WaitUntil(i) => return Err(RetryError::WaitUntil(i)),
         }
     }
 }
@@ -312,6 +349,7 @@ impl ConnectionManager for SingleRouteThrottlingConnectionManager {
 #[cfg(test)]
 mod test {
     use std::borrow::Borrow;
+    use std::fmt::{Display, Formatter};
     use std::future;
     use std::sync::atomic::{AtomicU16, Ordering};
 
@@ -669,5 +707,83 @@ mod test {
             HttpRequestDecoratorSeq::default(),
             RootCertificates::Signal,
         )
+    }
+
+    #[derive(Debug)]
+    struct ClassifiableTestError(ErrorClass);
+
+    impl ErrorClassifier for ClassifiableTestError {
+        fn classify(&self) -> ErrorClass {
+            self.0
+        }
+    }
+
+    impl Display for ClassifiableTestError {
+        fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+            write!(f, "{:?}", self.0)
+        }
+    }
+
+    impl LogSafeDisplay for ClassifiableTestError {}
+
+    #[derive(Clone, Debug)]
+    struct FailingSingle(ConnectionParams);
+
+    #[async_trait]
+    impl ConnectionManager for FailingSingle {
+        async fn connect_or_wait<'a, T, E, Fun, Fut>(
+            &'a self,
+            connection_fn: Fun,
+        ) -> ConnectionAttemptOutcome<T, E>
+        where
+            T: Send,
+            E: Send + Debug + LogSafeDisplay + ErrorClassifier,
+            Fun: Fn(&'a ConnectionParams) -> Fut + Send + Sync,
+            Fut: Future<Output = Result<T, E>> + Send,
+        {
+            ConnectionAttemptOutcome::Attempted(connection_fn(&self.0).await)
+        }
+
+        fn describe_for_logging(&self) -> String {
+            format!("{self:?}")
+        }
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn multi_route_manager_should_short_circuit_on_fatal_errors() {
+        let first_manager = FailingSingle(example_connection_params(ROUTE_1));
+        let second_manager = FailingSingle(example_connection_params(ROUTE_2));
+
+        let multi_route_manager =
+            MultiRouteConnectionManager::new(vec![first_manager.clone(), second_manager.clone()]);
+        let res: ConnectionAttemptOutcome<(), ClassifiableTestError> = multi_route_manager
+            .connect_or_wait(|connection_params| {
+                assert_ne!(
+                    *connection_params.host, *ROUTE_2,
+                    "Should not attempt second route if the first one was fatal"
+                );
+                future::ready(Err(ClassifiableTestError(ErrorClass::Fatal)))
+            })
+            .await;
+        assert_matches!(
+            res,
+            ConnectionAttemptOutcome::Attempted(Err(ClassifiableTestError(ErrorClass::Fatal)))
+        );
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn multi_route_manager_should_respect_retry_after() {
+        let first_manager = FailingSingle(example_connection_params(ROUTE_1));
+
+        let retry_at = Instant::now() + Duration::from_secs(42);
+        let multi_route_manager = MultiRouteConnectionManager::new(vec![first_manager.clone()]);
+        let res: ConnectionAttemptOutcome<(), ClassifiableTestError> = multi_route_manager
+            .connect_or_wait(|_connection_params| {
+                future::ready(Err(ClassifiableTestError(ErrorClass::RetryAt(retry_at))))
+            })
+            .await;
+        assert_matches!(res, ConnectionAttemptOutcome::WaitUntil(instant) => {
+            assert_eq!(instant, retry_at)
+        });
     }
 }
