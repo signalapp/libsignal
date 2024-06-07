@@ -5,7 +5,7 @@
 
 [package]
 name = "libsignal-ffi"
-version = "0.49.0"
+version = "0.50.0"
 authors = ["Signal Messenger LLC"]
 edition = "2021"
 license = "AGPL-3.0-only"
