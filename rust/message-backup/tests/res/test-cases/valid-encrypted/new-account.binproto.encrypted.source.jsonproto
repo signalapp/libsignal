@@ -4,6 +4,14 @@
         "version": "1"
     },
     {
+        "account": {
+            "profileKey": "YQKRq+3DQklInaOaMcmlzZnN0m/1hzLiaONX7gB12dg=",
+            "accountSettings": {
+                "phoneNumberSharingMode": "NOBODY"
+            }
+        }
+    },
+    {
         "recipient": {
         "id": "2",
         "self": {}

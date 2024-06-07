@@ -40,6 +40,7 @@ impl From<Error> for MessageBackupValidationError {
     fn from(value: Error) -> Self {
         match value {
             Error::BackupValidation(e) => Self::String(e.to_string()),
+            Error::BackupCompletion(e) => Self::String(e.to_string()),
             Error::Parse(ParseError::Io(e)) => Self::Io(e),
             e @ Error::NoFrames
             | e @ Error::InvalidProtobuf(_)

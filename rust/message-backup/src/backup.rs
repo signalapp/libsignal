@@ -9,7 +9,7 @@ use std::fmt::Debug;
 use derive_where::derive_where;
 use libsignal_protocol::Aci;
 
-use crate::backup::account_data::{AccountData, AccountDataError};
+pub(crate) use crate::backup::account_data::{AccountData, AccountDataError};
 use crate::backup::call::{AdHocCall, CallError};
 use crate::backup::chat::{ChatData, ChatError, ChatItemError, PinOrder};
 use crate::backup::frame::{ChatId, RecipientId};
@@ -38,6 +38,14 @@ pub struct PartialBackup<M: Method> {
     sticker_packs: HashMap<StickerPackId, StickerPack<M>>,
 }
 
+pub struct CompletedBackup<M: Method> {
+    meta: BackupMeta,
+    account_data: M::Value<AccountData<M>>,
+    recipients: HashMap<RecipientId, RecipientData<M>>,
+    chats: ChatsData<M>,
+    sticker_packs: HashMap<StickerPackId, StickerPack<M>>,
+}
+
 #[derive_where(Default)]
 struct ChatsData<M: Method> {
     items: HashMap<ChatId, ChatData<M>>,
@@ -47,7 +55,7 @@ struct ChatsData<M: Method> {
 #[derive(Debug)]
 pub struct Backup {
     pub meta: BackupMeta,
-    pub account_data: Option<AccountData<Store>>,
+    pub account_data: AccountData<Store>,
     pub recipients: HashMap<RecipientId, RecipientData<Store>>,
     pub chats: HashMap<ChatId, ChatData<Store>>,
     pub sticker_packs: HashMap<StickerPackId, StickerPack<Store>>,
@@ -91,9 +99,39 @@ pub enum Purpose {
     RemoteBackup = 1,
 }
 
-impl From<PartialBackup<Store>> for Backup {
-    fn from(value: PartialBackup<Store>) -> Self {
+#[derive(Debug, displaydoc::Display, thiserror::Error)]
+pub enum CompletionError {
+    /// no AccountData frames found
+    MissingAccountData,
+}
+
+impl<M: Method> TryFrom<PartialBackup<M>> for CompletedBackup<M> {
+    type Error = CompletionError;
+
+    fn try_from(value: PartialBackup<M>) -> Result<Self, Self::Error> {
         let PartialBackup {
+            meta,
+            account_data,
+            recipients,
+            chats,
+            sticker_packs,
+        } = value;
+
+        let account_data = account_data.ok_or(CompletionError::MissingAccountData)?;
+
+        Ok(CompletedBackup {
+            meta,
+            account_data,
+            recipients,
+            chats,
+            sticker_packs,
+        })
+    }
+}
+
+impl From<CompletedBackup<Store>> for Backup {
+    fn from(value: CompletedBackup<Store>) -> Self {
+        let CompletedBackup {
             meta,
             account_data,
             recipients,

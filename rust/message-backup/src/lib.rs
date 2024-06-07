@@ -11,7 +11,8 @@ use futures::AsyncRead;
 use mediasan_common::AsyncSkip;
 use protobuf::Message as _;
 
-use crate::backup::Purpose;
+use crate::backup::method::ValidateOnly;
+use crate::backup::{CompletedBackup, Purpose};
 use crate::frame::{
     HmacMismatchError, ReaderFactory, UnvalidatedHmacReader, VerifyHmac, VerifyHmacError,
 };
@@ -41,6 +42,8 @@ pub struct BackupReader<R> {
 pub enum Error {
     /// {0}
     BackupValidation(#[from] backup::ValidationError),
+    /// {0}
+    BackupCompletion(#[from] backup::CompletionError),
     /// {0}
     Parse(#[from] parse::ParseError),
     /// no frames found
@@ -81,27 +84,30 @@ impl std::fmt::Display for FoundUnknownField {
 }
 
 impl<R> ReadResult<R> {
-    fn map<T>(self, f: impl FnOnce(R) -> T) -> ReadResult<T> {
+    fn and_then<T>(self, f: impl FnOnce(R) -> Result<T, Error>) -> ReadResult<T> {
         let Self {
             result,
             found_unknown_fields,
         } = self;
         ReadResult {
             found_unknown_fields,
-            result: result.map(f),
+            result: result.and_then(f),
         }
     }
 }
 
 impl<R: AsyncRead + Unpin + VerifyHmac> BackupReader<R> {
     pub async fn read_all(self) -> ReadResult<backup::Backup> {
-        self.collect_all().await.map(Into::into)
+        self.collect_all()
+            .await
+            .and_then(|r| Ok(CompletedBackup::try_from(r)?.into()))
     }
 
     pub async fn validate_all(self) -> ReadResult<()> {
-        self.collect_all()
-            .await
-            .map(|_: backup::PartialBackup<backup::method::ValidateOnly>| ())
+        self.collect_all().await.and_then(|partial| {
+            let _: CompletedBackup<ValidateOnly> = partial.try_into()?;
+            Ok(())
+        })
     }
 
     pub async fn collect_all<M: backup::method::Method>(
