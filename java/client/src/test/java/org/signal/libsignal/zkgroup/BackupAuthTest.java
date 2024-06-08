@@ -5,22 +5,16 @@
 
 package org.signal.libsignal.zkgroup;
 
-import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.Base64;
 import java.util.UUID;
 import org.junit.Assert;
 import org.junit.Test;
 import org.signal.libsignal.protocol.util.Hex;
+import org.signal.libsignal.util.Base64;
 import org.signal.libsignal.zkgroup.backups.*;
 
-/**
- * Tests the BackupAuthCredential
- *
- * <p>Normally, we'd like to run this test on both android and non-android platforms, but Android 21
- * doesn't have java.util.Base64 and non-android hosts don't have android.util.Base64
- */
+/** Tests the BackupAuthCredential */
 public final class BackupAuthTest extends SecureRandomTest {
 
   // Chosen randomly
@@ -47,10 +41,8 @@ public final class BackupAuthTest extends SecureRandomTest {
   private static final byte[] SERIALIZED_BACKUP_ID =
       Hex.fromStringCondensedAssert("52b899ef83125719d3daa9a4edcc0aff");
   private static final byte[] SERIALIZED_REQUEST_CREDENTIAL =
-      Base64.getDecoder()
-          .decode(
-              "AISCxQa8OsFqphsQPxqtzJk5+jndpE3SJG6bfazQB3999KZFdtnpcIjx/0DPYbLJRbLQmz1ZXnueq5HPo9ewpEjojRSO8xaZOpKJOvWSDJIGn6EeMl2jOjx+IQg8d8M0AQ=="
-                  .getBytes(StandardCharsets.UTF_8));
+      Base64.decode(
+          "AISCxQa8OsFqphsQPxqtzJk5+jndpE3SJG6bfazQB3999KZFdtnpcIjx/0DPYbLJRbLQmz1ZXnueq5HPo9ewpEjojRSO8xaZOpKJOvWSDJIGn6EeMl2jOjx+IQg8d8M0AQ==");
 
   @Test
   public void testCredentialIsDeterministic() throws VerificationFailedException {
