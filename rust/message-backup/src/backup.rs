@@ -6,6 +6,7 @@
 use std::collections::{hash_map, HashMap};
 use std::fmt::Debug;
 
+use chat::ChatItemData;
 use derive_where::derive_where;
 use libsignal_protocol::Aci;
 
@@ -50,6 +51,8 @@ pub struct CompletedBackup<M: Method> {
 struct ChatsData<M: Method> {
     items: HashMap<ChatId, ChatData<M>>,
     pinned: Vec<(PinOrder, RecipientId)>,
+    /// Count of the total number of chat items held across all values in `items`.
+    chat_items_count: usize,
 }
 
 #[derive(Debug)]
@@ -139,6 +142,7 @@ impl From<CompletedBackup<Store>> for Backup {
                 ChatsData {
                     items: chats,
                     pinned: _,
+                    chat_items_count: _,
                 },
             sticker_packs,
         } = value;
@@ -332,16 +336,9 @@ impl<M: Method> PartialBackup<M> {
         let chat: ChatData<M> = chat
             .try_into_with(self)
             .map_err(|e| ChatFrameError(id, e))?;
-        match self.chats.items.entry(id) {
-            hash_map::Entry::Occupied(_) => Err(ChatFrameError(id, ChatError::DuplicateId)),
-            hash_map::Entry::Vacant(v) => {
-                if let Some(pin) = chat.pinned_order {
-                    self.chats.pinned.push((pin, chat.recipient));
-                }
-                let _ = v.insert(chat);
-                Ok(())
-            }
-        }
+
+        self.chats.add_chat(id, chat)?;
+        Ok(())
     }
 
     fn add_chat_item(&mut self, chat_item: proto::ChatItem) -> Result<(), ValidationError> {
@@ -351,15 +348,7 @@ impl<M: Method> PartialBackup<M> {
             .try_into_with(self)
             .map_err(|e: ChatItemError| ChatFrameError(chat_id, e.into()))?;
 
-        let chat_data = self
-            .chats
-            .items
-            .get_mut(&chat_id)
-            .ok_or(ChatFrameError(chat_id, ChatItemError::NoChatForItem.into()))?;
-
-        chat_data.items.extend([chat_item_data]);
-
-        Ok(())
+        Ok(self.chats.add_chat_item(chat_id, chat_item_data)?)
     }
 
     fn add_sticker_pack(&mut self, sticker_pack: proto::StickerPack) -> Result<(), StickerError> {
@@ -378,6 +367,51 @@ impl<M: Method> PartialBackup<M> {
                 Ok(())
             }
         }
+    }
+}
+
+impl<M: Method> ChatsData<M> {
+    fn add_chat(&mut self, id: ChatId, chat: ChatData<M>) -> Result<(), ChatFrameError> {
+        let Self {
+            items,
+            pinned,
+            chat_items_count: _,
+        } = self;
+
+        match items.entry(id) {
+            hash_map::Entry::Occupied(_) => Err(ChatFrameError(id, ChatError::DuplicateId)),
+            hash_map::Entry::Vacant(v) => {
+                if let Some(pin) = chat.pinned_order {
+                    pinned.push((pin, chat.recipient));
+                }
+                let _ = v.insert(chat);
+                Ok(())
+            }
+        }
+    }
+
+    fn add_chat_item(
+        &mut self,
+        chat_id: ChatId,
+        mut item: ChatItemData,
+    ) -> Result<(), ChatFrameError> {
+        let Self {
+            chat_items_count,
+            items,
+            pinned: _,
+        } = self;
+
+        let chat_data = items
+            .get_mut(&chat_id)
+            .ok_or(ChatFrameError(chat_id, ChatItemError::NoChatForItem.into()))?;
+
+        item.total_chat_item_order_index = *chat_items_count;
+
+        chat_data.items.extend([item]);
+
+        *chat_items_count += 1;
+
+        Ok(())
     }
 }
 
@@ -602,6 +636,62 @@ mod test {
         assert_matches!(
             partial.add_frame_item(proto::AccountData::test_data().into()),
             Err(ValidationError::MultipleAccountData)
+        );
+    }
+
+    #[test]
+    fn chat_item_order() {
+        let mut partial = Store::empty();
+
+        partial
+            .add_account_data(proto::AccountData::test_data())
+            .expect("valid account data");
+        partial
+            .add_recipient(proto::Recipient::test_data())
+            .expect("valid recipient");
+
+        const CHAT_IDS: std::ops::RangeInclusive<u64> = 1..=2;
+
+        // Interleave some chat items from different chats.
+        for chat_id in CHAT_IDS {
+            partial
+                .add_chat(proto::Chat {
+                    id: chat_id,
+                    ..proto::Chat::test_data()
+                })
+                .expect("valid chat");
+        }
+        for _ in 0..3 {
+            for chat_id in CHAT_IDS {
+                partial
+                    .add_chat_item(proto::ChatItem {
+                        chatId: chat_id,
+                        ..proto::ChatItem::test_data()
+                    })
+                    .expect("valid chat item");
+            }
+        }
+
+        let chat_order_indices = CompletedBackup::try_from(partial)
+            .expect("valid completed backup")
+            .chats
+            .items
+            .into_iter()
+            .map(|(chat_id, items)| {
+                (
+                    chat_id,
+                    items
+                        .items
+                        .into_iter()
+                        .map(|item| item.total_chat_item_order_index)
+                        .collect(),
+                )
+            })
+            .collect::<HashMap<ChatId, Vec<usize>>>();
+
+        assert_eq!(
+            chat_order_indices,
+            HashMap::from([(ChatId(1), vec![0, 2, 4]), (ChatId(2), vec![1, 3, 5])])
         );
     }
 }

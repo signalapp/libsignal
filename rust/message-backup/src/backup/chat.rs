@@ -160,6 +160,9 @@ pub struct ChatItemData {
     pub expires_in: Option<Duration>,
     pub sent_at: Timestamp,
     pub sms: bool,
+    /// The position of this chat item among all chat items (across chats) in
+    /// the source stream.
+    pub total_chat_item_order_index: usize,
     _limit_construction_to_module: (),
 }
 
@@ -418,6 +421,7 @@ impl<R: Contains<RecipientId> + AsRef<BackupMeta>> TryFromWith<proto::ChatItem, 
             expire_start,
             expires_in,
             sms,
+            total_chat_item_order_index: Default::default(),
             _limit_construction_to_module: (),
         })
     }
@@ -741,6 +745,7 @@ mod test {
                 expires_in: Some(Duration::TWELVE_HOURS),
                 sent_at: Timestamp::test_value(),
                 sms: false,
+                total_chat_item_order_index: 0,
                 _limit_construction_to_module: (),
             })
         )
