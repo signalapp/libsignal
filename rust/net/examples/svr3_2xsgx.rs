@@ -47,6 +47,7 @@ const TEST_SERVER_DOMAIN_CONFIG: DomainConfig = DomainConfig {
     ip_v6: &[],
     cert: TEST_SERVER_CERT,
     proxy_path: "/svr3-test",
+    confirmation_header_name: None,
 };
 const TEST_SERVER_ENDPOINT_PARAMS: EndpointParams<'static, Sgx> = EndpointParams {
     mr_enclave: MrEnclave::new(&hex!(

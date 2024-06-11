@@ -2161,6 +2161,7 @@ dependencies = [
  "sha2",
  "snow",
  "strum",
+ "test-case",
  "thiserror",
  "tls-parser",
  "tokio",

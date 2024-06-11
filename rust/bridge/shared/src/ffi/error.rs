@@ -241,6 +241,9 @@ impl From<Svr3Error> for SignalFfiError {
                 WebSocketConnectError::Transport(e) => SignalFfiError::Io(e.into()),
                 WebSocketConnectError::Timeout => SignalFfiError::ConnectionTimedOut,
                 WebSocketConnectError::WebSocketError(e) => WebSocketServiceError::from(e).into(),
+                WebSocketConnectError::RejectedByServer(response) => {
+                    WebSocketServiceError::Http(response).into()
+                }
             },
             Svr3Error::Service(e) => SignalFfiError::WebSocket(e),
             Svr3Error::ConnectionTimedOut => SignalFfiError::ConnectionTimedOut,

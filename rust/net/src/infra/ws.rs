@@ -349,9 +349,31 @@ async fn connect_websocket<T: TransportConnector>(
         ssl_stream,
         Some(ws_config),
     )
-    .await?;
+    .await
+    .map_err(|e| handle_ws_error(connection_params, e))?;
 
     Ok((ws_stream, remote_address))
+}
+
+fn handle_ws_error(
+    connection_params: &ConnectionParams,
+    error: tungstenite::Error,
+) -> WebSocketConnectError {
+    match error {
+        tungstenite::Error::Http(response)
+            if connection_params
+                .connection_confirmation_header
+                .as_ref()
+                .map(|header| response.headers().contains_key(header))
+                .unwrap_or(true) =>
+        {
+            // Promote any HTTP error to an explicit rejection if
+            // - the confirmation header is present in the response, or
+            // - there's no header to check
+            WebSocketConnectError::RejectedByServer(response)
+        }
+        e => WebSocketConnectError::WebSocketError(e),
+    }
 }
 
 #[cfg_attr(test, derive(Clone, Debug, Eq, PartialEq))]
@@ -766,6 +788,11 @@ pub(crate) mod testutil {
 mod test {
     use assert_matches::assert_matches;
     use futures_util::{pin_mut, poll};
+    use nonzero_ext::nonzero;
+    use test_case::test_matrix;
+
+    use crate::infra::certs::RootCertificates;
+    use crate::infra::{HttpRequestDecoratorSeq, RouteType};
 
     use super::testutil::*;
     use super::*;
@@ -940,5 +967,66 @@ mod test {
             connection.receive::<f32>().await.expect_err("wrong type"),
             AttestedConnectionError::Protocol
         );
+    }
+
+    fn example_connection_params(host: &str) -> ConnectionParams {
+        ConnectionParams::new(
+            RouteType::Test,
+            host,
+            host,
+            nonzero!(443u16),
+            HttpRequestDecoratorSeq::default(),
+            RootCertificates::Signal,
+        )
+    }
+
+    #[test_matrix([None, Some("x-pinky-promise")])]
+    fn classify_errors(confirmation_header: Option<&'static str>) {
+        let connection_params = example_connection_params("example.signal.org");
+        let connection_params = if let Some(header) = confirmation_header {
+            connection_params.with_confirmation_header(http::HeaderName::from_static(header))
+        } else {
+            connection_params
+        };
+
+        let non_http_error = handle_ws_error(
+            &connection_params,
+            tungstenite::Error::Io(std::io::ErrorKind::BrokenPipe.into()),
+        );
+        assert_matches!(
+            non_http_error,
+            WebSocketConnectError::WebSocketError(tungstenite::Error::Io(_))
+        );
+
+        let mut response_4xx = http::Response::new(None);
+        *response_4xx.status_mut() = http::StatusCode::BAD_REQUEST;
+
+        let http_4xx_error = handle_ws_error(
+            &connection_params,
+            tungstenite::Error::Http(response_4xx.clone()),
+        );
+        if connection_params.connection_confirmation_header.is_some() {
+            assert_matches!(
+                http_4xx_error,
+                WebSocketConnectError::WebSocketError(tungstenite::Error::Http(_))
+            );
+        } else {
+            assert_matches!(http_4xx_error, WebSocketConnectError::RejectedByServer(_));
+        }
+
+        if let Some(header) = &connection_params.connection_confirmation_header {
+            response_4xx
+                .headers_mut()
+                .append(header, http::HeaderValue::from_static("1"));
+
+            let error_with_header = handle_ws_error(
+                &connection_params,
+                tungstenite::Error::Http(response_4xx.clone()),
+            );
+            assert_matches!(
+                error_with_header,
+                WebSocketConnectError::RejectedByServer(_)
+            );
+        }
     }
 }

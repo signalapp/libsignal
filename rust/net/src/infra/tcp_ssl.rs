@@ -559,6 +559,7 @@ mod test {
             port: addr.port().try_into().expect("bound port"),
             http_request_decorator: HttpRequestDecoratorSeq::default(),
             certs: RootCertificates::FromDer(Cow::Borrowed(SERVER_CERTIFICATE.cert.der())),
+            connection_confirmation_header: None,
         };
 
         let StreamAndInfo(stream, info) = connector
@@ -609,6 +610,7 @@ mod test {
             port: addr.port().try_into().expect("bound port"),
             http_request_decorator: HttpRequestDecoratorSeq::default(),
             certs: RootCertificates::FromDer(Cow::Borrowed(SERVER_CERTIFICATE.cert.der())),
+            connection_confirmation_header: None,
         };
 
         let StreamAndInfo(stream, info) = connector
@@ -654,6 +656,7 @@ mod test {
             port: addr.port().try_into().expect("bound port"),
             http_request_decorator: HttpRequestDecoratorSeq::default(),
             certs: RootCertificates::FromDer(Cow::Borrowed(SERVER_CERTIFICATE.cert.der())),
+            connection_confirmation_header: None,
         };
 
         let StreamAndInfo(stream, info) = connector
@@ -688,6 +691,7 @@ mod test {
             port: addr.port().try_into().expect("bound port"),
             http_request_decorator: HttpRequestDecoratorSeq::default(),
             certs: RootCertificates::FromDer(Cow::Borrowed(SERVER_CERTIFICATE.cert.der())),
+            connection_confirmation_header: None,
         };
 
         match connector.connect(&connection_params, Alpn::Http1_1).await {

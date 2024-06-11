@@ -68,6 +68,7 @@ proptest = "1.4.0"
 proptest-state-machine = "0.1.0"
 rcgen = "0.13.0"
 snow = "0.9.5"
+test-case = "3.3.1"
 tls-parser = "0.11.0"
 tokio = { version = "1", features = ["test-util", "io-std", "rt-multi-thread"] }
 url = "2.4.1"

@@ -14,8 +14,7 @@ use http::uri::PathAndQuery;
 use crate::auth::HttpBasicAuth;
 use crate::env::{DomainConfig, Svr3Env};
 use crate::infra::connection_manager::{
-    ConnectionManager, ErrorClass, ErrorClassifier, MultiRouteConnectionManager,
-    SingleRouteThrottlingConnectionManager,
+    ConnectionManager, MultiRouteConnectionManager, SingleRouteThrottlingConnectionManager,
 };
 use crate::infra::errors::LogSafeDisplay;
 use crate::infra::reconnect::{ServiceConnectorWithDecorator, ServiceInitializer, ServiceState};
@@ -247,21 +246,6 @@ impl From<AttestedConnectionError> for Error {
             AttestedConnectionError::WebSocket(net) => Self::WebSocket(net),
             AttestedConnectionError::Protocol => Self::Protocol,
             AttestedConnectionError::Sgx(err) => Self::AttestationError(err),
-        }
-    }
-}
-
-impl ErrorClassifier for WebSocketConnectError {
-    fn classify(&self) -> ErrorClass {
-        match &self {
-            WebSocketConnectError::WebSocketError(tungstenite::Error::Http(response))
-            // is_client_error means 4XX error. 5XX errors can be intermittent.
-            if response.status().is_client_error() =>
-                {
-                    // TODO: handle StatusCode::TOO_MANY_REQUESTS to produce RetryError::WaitUntil(Instant)
-                    ErrorClass::Fatal
-                }
-            _ => ErrorClass::Intermittent,
         }
     }
 }

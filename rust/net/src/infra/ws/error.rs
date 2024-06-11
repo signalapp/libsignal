@@ -9,6 +9,7 @@
 
 use std::borrow::Borrow;
 
+use crate::infra::connection_manager::{ErrorClass, ErrorClassifier};
 use crate::infra::errors::{LogSafeDisplay, TransportConnectError};
 
 /// Errors that can occur when connecting a websocket.
@@ -16,7 +17,12 @@ use crate::infra::errors::{LogSafeDisplay, TransportConnectError};
 pub enum WebSocketConnectError {
     Transport(#[from] TransportConnectError),
     Timeout,
-    WebSocketError(#[from] tungstenite::Error),
+    WebSocketError(tungstenite::Error),
+    /// A special case of [`tungstenite::Error::Http`] where the response is considered to come from
+    /// the Signal servers.
+    ///
+    /// See [`ConnectionParams::connection_confirmation_header`](crate::infra::ConnectionParams::connection_confirmation_header).
+    RejectedByServer(http::Response<Option<Vec<u8>>>),
 }
 
 impl std::fmt::Display for WebSocketConnectError {
@@ -27,11 +33,33 @@ impl std::fmt::Display for WebSocketConnectError {
             WebSocketConnectError::WebSocketError(e) => {
                 write!(f, "websocket error: {}", Error::from(e))
             }
+            WebSocketConnectError::RejectedByServer(response) => {
+                write!(
+                    f,
+                    "rejected by server with error code {}",
+                    response.status()
+                )
+            }
         }
     }
 }
 
 impl LogSafeDisplay for WebSocketConnectError {}
+
+impl ErrorClassifier for WebSocketConnectError {
+    fn classify(&self) -> ErrorClass {
+        match self {
+            WebSocketConnectError::RejectedByServer(response)
+                // is_client_error means 4XX error. 5XX errors can be intermittent.
+                if response.status().is_client_error() =>
+            {
+                // TODO: handle StatusCode::TOO_MANY_REQUESTS to produce RetryError::WaitUntil(Instant)
+                ErrorClass::Fatal
+            }
+            _ => ErrorClass::Intermittent,
+        }
+    }
+}
 
 /// Mirror of [`tungstenite::error::Error`].
 ///

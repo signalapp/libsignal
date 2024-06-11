@@ -76,23 +76,27 @@ impl HttpRequestDecoratorSeq {
     }
 }
 
-/// Contains all information required to establish an HTTP connection to the remote endpoint:
-/// - `sni` value to be used in TLS,
-/// - `host` value to be used for DNS resolution an in the HTTP requests headers,
-/// - `port` to connect to,
-/// - `http_request_decorator`, a [HttpRequestDecorator] to apply to all HTTP requests,
-/// - `certs`, [RootCertificates] representing trusted certificates,
-/// - `dns_resolver`, a [DnsResolver] to use when resolving DNS.
-/// This is also applicable to WebSocket connections (in this case, `http_request_decorator` will
-/// only be applied to the initial connection upgrade request).
+/// Contains all information required to establish an HTTP connection to a remote endpoint.
+///
+/// For WebSocket connections, `http_request_decorator` will only be applied to the initial
+/// connection upgrade request.
 #[derive(Clone, Debug)]
 pub struct ConnectionParams {
+    /// High-level classification of the route (mostly for logging)
     pub route_type: RouteType,
+    /// Host name to be used in the TLS handshake.
     pub sni: Arc<str>,
+    /// Host name used for DNS resolution and in the HTTP request headers.
     pub host: Arc<str>,
+    /// Port to connect to.
     pub port: NonZeroU16,
+    /// Applied to all HTTP requests.
     pub http_request_decorator: HttpRequestDecoratorSeq,
+    /// Trusted certificates for this connection.
     pub certs: RootCertificates,
+    /// If present, differentiates HTTP responses that actually come from the remote endpoint from
+    /// those produced by an intermediate server.
+    pub connection_confirmation_header: Option<http::HeaderName>,
 }
 
 impl ConnectionParams {
@@ -111,6 +115,7 @@ impl ConnectionParams {
             port,
             http_request_decorator,
             certs,
+            connection_confirmation_header: None,
         }
     }
 
@@ -122,6 +127,11 @@ impl ConnectionParams {
 
     pub fn with_certs(mut self, certs: RootCertificates) -> Self {
         self.certs = certs;
+        self
+    }
+
+    pub fn with_confirmation_header(mut self, header: http::HeaderName) -> Self {
+        self.connection_confirmation_header = Some(header);
         self
     }
 }

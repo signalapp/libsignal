@@ -21,6 +21,7 @@ use crate::infra::{
 };
 
 const DEFAULT_HTTPS_PORT: NonZeroU16 = nonzero!(443_u16);
+pub const TIMESTAMP_HEADER_NAME: &str = "x-signal-timestamp";
 
 const DOMAIN_CONFIG_CHAT: DomainConfig = DomainConfig {
     hostname: "chat.signal.org",
@@ -35,6 +36,7 @@ const DOMAIN_CONFIG_CHAT: DomainConfig = DomainConfig {
     ],
     cert: RootCertificates::Signal,
     proxy_path: "/service",
+    confirmation_header_name: Some(TIMESTAMP_HEADER_NAME),
 };
 
 const DOMAIN_CONFIG_CHAT_STAGING: DomainConfig = DomainConfig {
@@ -50,6 +52,7 @@ const DOMAIN_CONFIG_CHAT_STAGING: DomainConfig = DomainConfig {
     ],
     cert: RootCertificates::Signal,
     proxy_path: "/service-staging",
+    confirmation_header_name: Some(TIMESTAMP_HEADER_NAME),
 };
 
 const DOMAIN_CONFIG_CDSI: DomainConfig = DomainConfig {
@@ -59,6 +62,7 @@ const DOMAIN_CONFIG_CDSI: DomainConfig = DomainConfig {
     ip_v6: &[ip_addr!(v6, "2603:1030:7::1")],
     cert: RootCertificates::Signal,
     proxy_path: "/cdsi",
+    confirmation_header_name: None,
 };
 
 const DOMAIN_CONFIG_CDSI_STAGING: DomainConfig = DomainConfig {
@@ -68,6 +72,7 @@ const DOMAIN_CONFIG_CDSI_STAGING: DomainConfig = DomainConfig {
     ip_v6: &[ip_addr!(v6, "2603:1030:7::732")],
     cert: RootCertificates::Signal,
     proxy_path: "/cdsi-staging",
+    confirmation_header_name: None,
 };
 
 const DOMAIN_CONFIG_SVR2: DomainConfig = DomainConfig {
@@ -77,6 +82,7 @@ const DOMAIN_CONFIG_SVR2: DomainConfig = DomainConfig {
     ip_v6: &[],
     cert: RootCertificates::Signal,
     proxy_path: "/svr2",
+    confirmation_header_name: None,
 };
 
 const DOMAIN_CONFIG_SVR2_STAGING: DomainConfig = DomainConfig {
@@ -86,6 +92,7 @@ const DOMAIN_CONFIG_SVR2_STAGING: DomainConfig = DomainConfig {
     ip_v6: &[],
     cert: RootCertificates::Signal,
     proxy_path: "/svr2-staging",
+    confirmation_header_name: None,
 };
 
 const DOMAIN_CONFIG_SVR3_SGX: DomainConfig = DomainConfig {
@@ -95,6 +102,7 @@ const DOMAIN_CONFIG_SVR3_SGX: DomainConfig = DomainConfig {
     ip_v6: &[],
     cert: RootCertificates::Signal,
     proxy_path: "/svr3-sgx",
+    confirmation_header_name: None,
 };
 
 const DOMAIN_CONFIG_SVR3_SGX_STAGING: DomainConfig = DomainConfig {
@@ -104,6 +112,7 @@ const DOMAIN_CONFIG_SVR3_SGX_STAGING: DomainConfig = DomainConfig {
     ip_v6: &[],
     cert: RootCertificates::Signal,
     proxy_path: "/svr3-sgx-staging",
+    confirmation_header_name: None,
 };
 
 const DOMAIN_CONFIG_SVR3_NITRO: DomainConfig = DomainConfig {
@@ -113,6 +122,7 @@ const DOMAIN_CONFIG_SVR3_NITRO: DomainConfig = DomainConfig {
     ip_v6: &[],
     cert: RootCertificates::Signal,
     proxy_path: "/svr3-nitro",
+    confirmation_header_name: None,
 };
 
 const DOMAIN_CONFIG_SVR3_NITRO_STAGING: DomainConfig = DomainConfig {
@@ -122,6 +132,7 @@ const DOMAIN_CONFIG_SVR3_NITRO_STAGING: DomainConfig = DomainConfig {
     ip_v6: &[],
     cert: RootCertificates::Signal,
     proxy_path: "/svr3-nitro-staging",
+    confirmation_header_name: None,
 };
 
 pub const DOMAIN_CONFIG_SVR3_TPM2SNP: DomainConfig = DomainConfig {
@@ -131,6 +142,7 @@ pub const DOMAIN_CONFIG_SVR3_TPM2SNP: DomainConfig = DomainConfig {
     ip_v6: &[],
     cert: RootCertificates::Signal,
     proxy_path: "/svr3-tpm2snp",
+    confirmation_header_name: None,
 };
 
 pub const DOMAIN_CONFIG_SVR3_TPM2SNP_STAGING: DomainConfig = DomainConfig {
@@ -140,6 +152,7 @@ pub const DOMAIN_CONFIG_SVR3_TPM2SNP_STAGING: DomainConfig = DomainConfig {
     ip_v6: &[],
     cert: RootCertificates::Signal,
     proxy_path: "/svr3-tpm2snp-staging",
+    confirmation_header_name: None,
 };
 
 const PROXY_CONFIG_F: ProxyConfig = ProxyConfig {
@@ -218,6 +231,7 @@ pub struct DomainConfig {
     pub ip_v4: &'static [Ipv4Addr],
     pub ip_v6: &'static [Ipv6Addr],
     pub cert: RootCertificates,
+    pub confirmation_header_name: Option<&'static str>,
 }
 
 impl DomainConfig {
@@ -229,14 +243,18 @@ impl DomainConfig {
     }
 
     pub fn connection_params(&self) -> ConnectionParams {
-        ConnectionParams::new(
+        let result = ConnectionParams::new(
             RouteType::Direct,
             self.hostname,
             self.hostname,
             self.port,
             HttpRequestDecoratorSeq::default(),
             self.cert.clone(),
-        )
+        );
+        if let Some(header) = &self.confirmation_header_name {
+            return result.with_confirmation_header(http::HeaderName::from_static(header));
+        }
+        result
     }
 
     pub fn connection_params_with_fallback(&self) -> Vec<ConnectionParams> {

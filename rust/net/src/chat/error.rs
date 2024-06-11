@@ -72,18 +72,17 @@ impl From<WebSocketConnectError> for ChatServiceError {
             }
             .into(),
             WebSocketConnectError::Timeout => Self::Timeout,
-            WebSocketConnectError::WebSocketError(e) => {
-                match e {
-                    tungstenite::Error::Http(response) if response.status() == 499 => {
-                        Self::AppExpired
-                    }
-                    tungstenite::Error::Http(response) if response.status() == 403 => {
-                        // Technically this only applies to identified sockets,
-                        // but unidentified sockets should never produce a 403 anyway.
-                        Self::DeviceDeregistered
-                    }
-                    _ => Self::WebSocket(e.into()),
-                }
+            WebSocketConnectError::WebSocketError(e) => Self::WebSocket(e.into()),
+            WebSocketConnectError::RejectedByServer(response) if response.status() == 499 => {
+                Self::AppExpired
+            }
+            WebSocketConnectError::RejectedByServer(response) if response.status() == 403 => {
+                // Technically this only applies to identified sockets,
+                // but unidentified sockets should never produce a 403 anyway.
+                Self::DeviceDeregistered
+            }
+            WebSocketConnectError::RejectedByServer(response) => {
+                Self::WebSocket(WebSocketServiceError::Http(response))
             }
         }
     }

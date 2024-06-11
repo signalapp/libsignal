@@ -311,23 +311,22 @@ impl From<crate::enclave::Error> for LookupError {
             Error::WebSocketConnect(err) => match err {
                 WebSocketConnectError::Timeout => Self::ConnectionTimedOut,
                 WebSocketConnectError::Transport(e) => Self::ConnectTransport(e),
-                WebSocketConnectError::WebSocketError(e) => {
-                    if let tungstenite::Error::Http(response) = &e {
-                        if response.status() == StatusCode::TOO_MANY_REQUESTS {
-                            let retry_after_header = response.headers().get("retry-after");
+                WebSocketConnectError::RejectedByServer(response) => {
+                    if response.status() == StatusCode::TOO_MANY_REQUESTS {
+                        let retry_after_header = response.headers().get("retry-after");
 
-                            if let Some(retry_after_seconds) = retry_after_header
-                                .and_then(|value| value.to_str().ok())
-                                .and_then(|str| u32::from_str(str).ok())
-                            {
-                                return Self::RateLimited {
-                                    retry_after_seconds,
-                                };
-                            }
+                        if let Some(retry_after_seconds) = retry_after_header
+                            .and_then(|value| value.to_str().ok())
+                            .and_then(|str| u32::from_str(str).ok())
+                        {
+                            return Self::RateLimited {
+                                retry_after_seconds,
+                            };
                         }
                     }
-                    Self::WebSocket(e.into())
+                    Self::WebSocket(WebSocketServiceError::Http(response))
                 }
+                WebSocketConnectError::WebSocketError(e) => Self::WebSocket(e.into()),
             },
             Error::AttestationError(err) => Self::AttestationError(err),
             Error::WebSocket(err) => Self::WebSocket(err),

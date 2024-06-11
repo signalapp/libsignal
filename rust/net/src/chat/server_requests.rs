@@ -12,6 +12,7 @@ use tokio_stream::StreamExt as _;
 
 use crate::chat::ws::ServerRequest;
 use crate::chat::ChatServiceError;
+use crate::env::TIMESTAMP_HEADER_NAME;
 use crate::infra::AsyncDuplexStream;
 
 pub type AckEnvelopeFuture = BoxFuture<'static, Result<(), ChatServiceError>>;
@@ -70,7 +71,7 @@ pub fn stream_incoming_messages(
                     .iter()
                     .filter_map(|header| {
                         let (name, value) = header.split_once(':')?;
-                        if name.eq_ignore_ascii_case("x-signal-timestamp") {
+                        if name.eq_ignore_ascii_case(TIMESTAMP_HEADER_NAME) {
                             value.trim().parse::<u64>().ok()
                         } else {
                             None
@@ -78,7 +79,7 @@ pub fn stream_incoming_messages(
                     })
                     .last();
                 if raw_timestamp.is_none() {
-                    log::warn!("server delivered message with no x-signal-timestamp header");
+                    log::warn!("server delivered message with no {TIMESTAMP_HEADER_NAME} header");
                 }
 
                 // We don't check whether the body is missing here. The consumer still needs to ack
