@@ -579,7 +579,14 @@ mod test {
                 let route_1_healthy = route_1_attempt.fetch_add(1, Ordering::Relaxed)
                     == route_1_attempts_until_cooldown;
 
-                simulate_connect(connection_params, route_1_healthy)
+                simulate_connect(
+                    connection_params,
+                    if route_1_healthy {
+                        None
+                    } else {
+                        Some(TestError::Expected)
+                    },
+                )
             })
             .await;
 
@@ -632,7 +639,9 @@ mod test {
         let multi_route_manager =
             MultiRouteConnectionManager::new(vec![first_manager.clone(), second_manager.clone()]);
         let res = multi_route_manager
-            .connect_or_wait(|connection_params| simulate_connect(connection_params, false))
+            .connect_or_wait(|connection_params| {
+                simulate_connect(connection_params, Some(TestError::Expected))
+            })
             .await;
         assert_matches!(res, ConnectionAttemptOutcome::WaitUntil(_));
         assert_eq!(
@@ -643,6 +652,37 @@ mod test {
             second_manager_attempts_until_cooldown + 1,
             second_manager.attempts_made.load(Ordering::Relaxed)
         );
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn multi_route_manager_propagates_post_connection_failure() {
+        let connection_params = example_connection_params(ROUTE_1);
+        let first_manager_attempts_until_cooldown = 5;
+        let second_manager_attempts_until_cooldown = 3;
+        let first_manager = CooldownAfterSomeAttempts::new(
+            first_manager_attempts_until_cooldown,
+            connection_params.clone(),
+        );
+        let second_manager = CooldownAfterSomeAttempts::new(
+            second_manager_attempts_until_cooldown,
+            connection_params,
+        );
+        let multi_route_manager =
+            MultiRouteConnectionManager::new(vec![first_manager.clone(), second_manager.clone()]);
+        let res = multi_route_manager
+            .connect_or_wait(|connection_params| {
+                simulate_connect(
+                    connection_params,
+                    Some(ClassifiableTestError(ErrorClass::Fatal)),
+                )
+            })
+            .await;
+        assert_matches!(
+            res,
+            ConnectionAttemptOutcome::Attempted(Err(ClassifiableTestError(ErrorClass::Fatal)))
+        );
+        assert_eq!(1, first_manager.attempts_made.load(Ordering::Relaxed));
+        assert_eq!(0, second_manager.attempts_made.load(Ordering::Relaxed));
     }
 
     #[tokio::test(flavor = "current_thread", start_paused = true)]
@@ -656,7 +696,9 @@ mod test {
 
         let now = Instant::now();
         let attempt_outcome: ConnectionAttemptOutcome<&str, TestError> = multi_route_manager
-            .connect_or_wait(|connection_params| simulate_connect(connection_params, true))
+            .connect_or_wait(|connection_params| {
+                simulate_connect(connection_params, Some(TestError::Expected))
+            })
             .await;
         let wait_until =
             assert_matches!(attempt_outcome, ConnectionAttemptOutcome::WaitUntil(t) => t);
@@ -670,7 +712,15 @@ mod test {
     ) {
         let attempt_outcome: ConnectionAttemptOutcome<&str, TestError> = multi_route_manager
             .connect_or_wait(|connection_params| async move {
-                simulate_connect(connection_params, route1_healthy).await
+                simulate_connect(
+                    connection_params,
+                    if route1_healthy {
+                        None
+                    } else {
+                        Some(TestError::Expected)
+                    },
+                )
+                .await
             })
             .await;
         assert_matches!(
@@ -679,13 +729,13 @@ mod test {
         );
     }
 
-    async fn simulate_connect(
+    async fn simulate_connect<E>(
         connection_params: &ConnectionParams,
-        route1_healthy: bool,
-    ) -> Result<&str, TestError> {
-        let route1_response = match route1_healthy {
-            true => Ok(ROUTE_1),
-            false => Err(TestError::Expected),
+        route1_error: Option<E>,
+    ) -> Result<&str, E> {
+        let route1_response = match route1_error {
+            None => Ok(ROUTE_1),
+            Some(err) => Err(err),
         };
         match connection_params.host.borrow() {
             ROUTE_1 => future::ready(route1_response).await,
@@ -694,7 +744,7 @@ mod test {
                 tokio::time::sleep(LONG_CONNECTION_TIME).await;
                 future::ready(Ok(ROUTE_THAT_TIMES_OUT)).await
             }
-            _ => future::ready(Err(TestError::Unexpected("not configured for the route"))).await,
+            _ => panic!("not configured for the route"),
         }
     }
 

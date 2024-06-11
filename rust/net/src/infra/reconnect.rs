@@ -261,18 +261,25 @@ pub(crate) struct ServiceWithReconnect<C: ServiceConnector, M> {
 }
 
 #[derive(Debug, Display)]
-pub(crate) enum ReconnectError {
+pub(crate) enum ReconnectError<E: LogSafeDisplay> {
     /// Operation timed out
     Timeout { attempts: u16 },
     /// All attempted routes failed to connect
     AllRoutesFailed { attempts: u16 },
+    /// Rejected by server: {0}
+    RejectedByServer(E),
     /// Service is in the inactive state
     Inactive,
 }
 
-impl ErrorClassifier for ReconnectError {
+impl<E: LogSafeDisplay> ErrorClassifier for ReconnectError<E> {
     fn classify(&self) -> ErrorClass {
-        ErrorClass::Intermittent
+        match self {
+            ReconnectError::Timeout { .. } | ReconnectError::AllRoutesFailed { .. } => {
+                ErrorClass::Intermittent
+            }
+            ReconnectError::RejectedByServer(_) | ReconnectError::Inactive => ErrorClass::Fatal,
+        }
     }
 }
 
@@ -339,15 +346,17 @@ where
         self.data.reconnect_count.load(Ordering::Relaxed)
     }
 
-    pub(crate) async fn reconnect_if_active(&self) -> Result<(), ReconnectError> {
+    pub(crate) async fn reconnect_if_active(&self) -> Result<(), ReconnectError<C::ConnectError>> {
         self.connect(true).await
     }
 
-    pub(crate) async fn connect_from_inactive(&self) -> Result<(), ReconnectError> {
+    pub(crate) async fn connect_from_inactive(
+        &self,
+    ) -> Result<(), ReconnectError<C::ConnectError>> {
         self.connect(false).await
     }
 
-    async fn connect(&self, respect_inactive: bool) -> Result<(), ReconnectError> {
+    async fn connect(&self, respect_inactive: bool) -> Result<(), ReconnectError<C::ConnectError>> {
         let mut attempts: u16 = 0;
         let start_of_connection_process = Instant::now();
         let deadline = start_of_connection_process + self.data.connection_timeout;
@@ -407,12 +416,32 @@ where
                     }
                 }
                 ServiceState::Error(e) => {
-                    // short-circuiting mechanism is responsibility of the `ConnectionManager`,
-                    // so here we're just going to keep trying until we get into
-                    // one of the non-retryable states, `Cooldown` or time out.
                     if attempts > 0 {
                         // Only log about errors that happened on *this* connect attempt.
                         log::info!("Connection attempt resulted in an error: {}", e);
+                    }
+
+                    match e.classify() {
+                        ErrorClass::Intermittent => {
+                            // short-circuiting mechanism is responsibility of the `ConnectionManager`,
+                            // so here we're just going to keep trying until we get into
+                            // one of the non-retryable states, `Cooldown` or time out.
+                        }
+                        ErrorClass::RetryAt(next_attempt_time) => {
+                            *guard = ServiceState::Cooldown(next_attempt_time);
+                            continue;
+                        }
+                        ErrorClass::Fatal => {
+                            if !respect_inactive {
+                                return Err(ReconnectError::AllRoutesFailed { attempts });
+                            }
+
+                            let state = std::mem::replace(&mut *guard, ServiceState::Inactive);
+                            let ServiceState::Error(e) = state else {
+                                unreachable!("we checked this above, matching on &*guard");
+                            };
+                            return Err(ReconnectError::RejectedByServer(e));
+                        }
                     }
                 }
             };

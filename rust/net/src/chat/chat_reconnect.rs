@@ -24,7 +24,8 @@ where
     C: ServiceConnector + Send + Sync + 'static,
     C::Service: ChatService + Clone + Sync + Send + 'static,
     C::Channel: Send + Sync,
-    C::ConnectError: Send + Sync + Debug + LogSafeDisplay + ErrorClassifier,
+    C::ConnectError:
+        Send + Sync + Debug + LogSafeDisplay + ErrorClassifier + Into<ChatServiceError>,
     C::StartError: Send + Sync + Debug + LogSafeDisplay,
 {
     async fn send(&self, msg: Request, timeout: Duration) -> Result<Response, ChatServiceError> {
@@ -47,7 +48,8 @@ where
     C: ServiceConnector + Send + Sync + 'static,
     C::Service: ChatService + RemoteAddressInfo + Clone + Sync + Send + 'static,
     C::Channel: Send + Sync,
-    C::ConnectError: Send + Sync + Debug + LogSafeDisplay + ErrorClassifier,
+    C::ConnectError:
+        Send + Sync + Debug + LogSafeDisplay + ErrorClassifier + Into<ChatServiceError>,
     C::StartError: Send + Sync + Debug + LogSafeDisplay,
 {
     async fn send_and_debug(

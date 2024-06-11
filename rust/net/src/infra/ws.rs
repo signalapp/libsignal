@@ -60,6 +60,7 @@ impl<T: TransportConnector, E> WebSocketClientConnector<T, E> {
     }
 }
 
+/// A simplified version of [`tungstenite::Error`] that supports [`LogSafeDisplay`].
 #[derive(Debug, thiserror::Error)]
 pub enum WebSocketServiceError {
     ChannelClosed,
