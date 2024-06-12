@@ -75,6 +75,9 @@ $ ./gradlew test
 $ ./gradlew build # if you need AAR outputs
 ```
 
+You can pass `-P debugLevelLogs` to Gradle to build without filtering out debug- and verbose-level
+logs from Rust.
+
 Alternately, a build system using Docker is available:
 
 ```shell

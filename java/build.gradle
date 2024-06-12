@@ -46,8 +46,9 @@ task makeJniLibrariesDesktop(type:Exec) {
   group 'Rust'
   description 'Build the JNI libraries'
 
+  def debugLevelLogsFlag = hasProperty('debugLevelLogs') ? ['--debug-level-logs'] : []
   // Explicitly specify 'bash' for Windows compatibility.
-  commandLine 'bash', './build_jni.sh', 'desktop'
+  commandLine 'bash', './build_jni.sh', *debugLevelLogsFlag, 'desktop'
 }
 
 task cargoClean(type:Exec) {

@@ -138,8 +138,9 @@ task makeJniLibraries(type:Exec) {
     description 'Build the JNI libraries for Android'
 
     def archs = archsFromProperty('androidArchs') ?: ['android']
+    def debugLevelLogsFlag = project.hasProperty('debugLevelLogs') ? ['--debug-level-logs'] : []
     // Explicitly specify 'bash' for Windows compatibility.
-    commandLine 'bash', '../build_jni.sh', *archs
+    commandLine 'bash', '../build_jni.sh', *debugLevelLogsFlag, *archs
     environment 'ANDROID_NDK_HOME', android.ndkDirectory
 }
 
@@ -148,8 +149,11 @@ task makeTestJniLibraries(type:Exec) {
     description 'Build JNI libraries for Android for testing'
 
     def archs = archsFromProperty('androidTestingArchs') ?: archsFromProperty('androidArchs') ?: ['android']
+    // While it might make sense for tests to always have debug level logs on,
+    // we would lose most of the shared incremental build between test and non-test that way.
+    def debugLevelLogsFlag = project.hasProperty('debugLevelLogs') ? ['--debug-level-logs'] : []
     // Explicitly specify 'bash' for Windows compatibility.
-    commandLine 'bash', '../build_jni.sh', '--testing', *archs
+    commandLine 'bash', '../build_jni.sh', '--testing', *debugLevelLogsFlag, *archs
     environment 'ANDROID_NDK_HOME', android.ndkDirectory
 }
 

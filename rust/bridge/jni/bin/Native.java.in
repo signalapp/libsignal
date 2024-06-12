@@ -66,7 +66,6 @@ public final class Native {
 
   static {
     loadLibrary();
-    Logger_Initialize(SignalProtocolLogger.INFO, Log.class);
     initializeLibrary();
   }
 

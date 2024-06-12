@@ -19,19 +19,29 @@ export CARGO_PROFILE_RELEASE_DEBUG=1 # enable line tables
 export CARGO_PROFILE_RELEASE_OPT_LEVEL=s # optimize for size over speed
 
 BUILD_FOR_TEST=
-case "${1:-}" in
-    --testing )
-        BUILD_FOR_TEST=1
-        shift
-        ;;
-    -* )
-        echo "Unrecognized flag $1; use --testing to compile with test functions" >&2
-        exit 2
-        ;;
-    *)
-        # Do nothing
-        ;;
-esac
+DEBUG_LEVEL_LOGS=
+while [ "${1:-}" != "" ]; do
+    case "${1:-}" in
+        --testing )
+            BUILD_FOR_TEST=1
+            shift
+            ;;
+        --debug-level-logs )
+            DEBUG_LEVEL_LOGS=1
+            shift
+            ;;
+        -* )
+            echo "Unrecognized flag $1; expected --testing or --debug-level-logs" >&2
+            exit 2
+            ;;
+        *)
+            break
+    esac
+done
+
+if [[ -z "${DEBUG_LEVEL_LOGS:-}" ]]; then
+  FEATURES+=("log/release_max_level_info")
+fi
 
 android_abis=()
 while [ "${1:-}" != "" ]; do
@@ -42,7 +52,8 @@ while [ "${1:-}" != "" ]; do
             # Using LTO works around this at the cost of a slightly slower build.
             # https://github.com/rust-lang/rfcs/issues/2771
             export CARGO_PROFILE_RELEASE_LTO=thin
-            echo_then_run cargo build -p libsignal-jni --release --features testing-fns
+            FEATURES+=("testing-fns")
+            echo_then_run cargo build -p libsignal-jni --release --features "${FEATURES[*]}"
             if [[ -z "${CARGO_BUILD_TARGET:-}" ]]; then
                 copy_built_library target/release signal_jni "${DESKTOP_LIB_DIR}/"
             fi
@@ -98,7 +109,7 @@ export RUSTFLAGS="--cfg aes_armv8 --cfg polyval_armv8 ${RUSTFLAGS:-}" # Enable A
 export RUSTFLAGS="--cfg curve25519_dalek_bits=\"64\" ${RUSTFLAGS:-}"
 
 if [ $BUILD_FOR_TEST ]; then
-    FEATURES="testing-fns"
+    FEATURES+=("testing-fns")
     ANDROID_LIB_DIR="${ANDROID_LIB_DIR}/../../androidTest/jniLibs"
 fi
 
@@ -125,5 +136,5 @@ target_for_abi() {
 
 for abi in "${android_abis[@]}"; do
     rust_target=$(target_for_abi "$abi")
-    echo_then_run cargo build -p libsignal-jni --release ${FEATURES:+--features $FEATURES} -Z unstable-options --target "$rust_target" --out-dir "${ANDROID_LIB_DIR}/$abi"
+    echo_then_run cargo build -p libsignal-jni --release ${FEATURES:+--features "${FEATURES[*]}"} -Z unstable-options --target "$rust_target" --out-dir "${ANDROID_LIB_DIR}/$abi"
 done
