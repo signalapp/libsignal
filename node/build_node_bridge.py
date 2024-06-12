@@ -63,7 +63,11 @@ def main(args=None):
 
     out_dir = options.out_dir.strip('"') or os.path.join('build', configuration_name)
 
-    cmdline = ['cargo', 'build', '--target', cargo_target, '-p', 'libsignal-node', '--features', 'testing-fns']
+    features = ['testing-fns']
+    if 'npm_config_libsignal_debug_level_logs' not in os.environ:
+        features.append('log/release_max_level_info')
+
+    cmdline = ['cargo', 'build', '--target', cargo_target, '-p', 'libsignal-node', '--features', ','.join(features)]
     if configuration_name == 'Release':
         cmdline.append('--release')
     print("Running '%s'" % (' '.join(cmdline)))

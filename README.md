@@ -131,7 +131,7 @@ $ yarn tsc
 $ yarn test
 ```
 
-When testing changes locally, you can use `yarn build` to do an incremental rebuild of the Rust library.
+When testing changes locally, you can use `yarn build` to do an incremental rebuild of the Rust library. Alternately, `yarn build-with-debug-level-logs` will rebuild without filtering out debug- and verbose-level logs.
 
 When exposing new APIs to Node, you will need to run `rust/bridge/node/bin/gen_ts_decl.py` in
 addition to rebuilding.

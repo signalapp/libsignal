@@ -19,6 +19,7 @@
   "scripts": {
     "install": "node-gyp-build",
     "build": "node-gyp build",
+    "build-with-debug-level-logs": "npx --libsignal-debug-level-logs node-gyp build",
     "tsc": "tsc -b",
     "clean": "rimraf dist build prebuilds",
     "test": "mocha --recursive dist/test --require source-map-support/register",

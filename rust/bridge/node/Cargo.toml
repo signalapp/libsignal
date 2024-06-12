@@ -21,7 +21,7 @@ signal-neon-futures = { path = "futures" }
 
 async-trait = "0.1.41"
 futures = { version = "0.3", default-features = false, features = ["executor"] }
-log = { version = "0.4", features = ["release_max_level_info"] }
+log = "0.4"
 log-panics = { version = "2.0.0", features = ["with-backtrace"] }
 minidump = { version = "0.20.0", default-features = false }
 minidump-processor = { version = "0.20.0", default-features = false }
