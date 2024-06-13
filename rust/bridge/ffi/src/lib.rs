@@ -84,19 +84,10 @@ pub unsafe extern "C" fn signal_error_get_address(
     let err = AssertUnwindSafe(err);
     run_ffi_safe(|| {
         let err = err.as_ref().ok_or(NullPointerError)?;
-        match err.downcast_ref::<SignalProtocolError>() {
-            Some(SignalProtocolError::InvalidRegistrationId(addr, _value)) => {
-                write_result_to(out, addr.clone())?;
-            }
-            _ => {
-                return Err(SignalProtocolError::InvalidArgument(format!(
-                    "cannot get address from error ({})",
-                    err
-                ))
-                .into());
-            }
-        }
-        Ok(())
+        let value = err.provide_address().map_err(|_| {
+            SignalProtocolError::InvalidArgument(format!("cannot get address from error ({})", err))
+        })?;
+        write_result_to(out, value)
     })
 }
 
@@ -108,19 +99,10 @@ pub unsafe extern "C" fn signal_error_get_uuid(
     let err = AssertUnwindSafe(err);
     run_ffi_safe(|| {
         let err = err.as_ref().ok_or(NullPointerError)?;
-        match err.downcast_ref::<SignalProtocolError>() {
-            Some(SignalProtocolError::InvalidSenderKeySession { distribution_id }) => {
-                write_result_to(out, *distribution_id.as_bytes())?;
-            }
-            _ => {
-                return Err(SignalProtocolError::InvalidArgument(format!(
-                    "cannot get UUID from error ({})",
-                    err
-                ))
-                .into());
-            }
-        }
-        Ok(())
+        let value = err.provide_uuid().map_err(|_| {
+            SignalProtocolError::InvalidArgument(format!("cannot get UUID from error ({})", err))
+        })?;
+        write_result_to(out, value.into_bytes())
     })
 }
 
@@ -140,16 +122,13 @@ pub unsafe extern "C" fn signal_error_get_retry_after_seconds(
     let err = AssertUnwindSafe(err);
     run_ffi_safe(|| {
         let err = err.as_ref().ok_or(NullPointerError)?;
-        match err.downcast_ref::<libsignal_net::cdsi::LookupError>() {
-            Some(libsignal_net::cdsi::LookupError::RateLimited {
-                retry_after_seconds,
-            }) => write_result_to(out, *retry_after_seconds),
-            _ => Err(SignalProtocolError::InvalidArgument(format!(
+        let value = err.provide_retry_after_seconds().map_err(|_| {
+            SignalProtocolError::InvalidArgument(format!(
                 "cannot get retry_after_seconds from error ({})",
                 err
             ))
-            .into()),
-        }
+        })?;
+        write_result_to(out, value)
     })
 }
 
@@ -161,16 +140,13 @@ pub unsafe extern "C" fn signal_error_get_tries_remaining(
     let err = AssertUnwindSafe(err);
     run_ffi_safe(|| {
         let err = err.as_ref().ok_or(NullPointerError)?;
-        match err.downcast_ref::<libsignal_net::svr3::Error>() {
-            Some(libsignal_net::svr3::Error::RestoreFailed(tries_remaining)) => {
-                write_result_to(out, *tries_remaining)
-            }
-            _ => Err(SignalProtocolError::InvalidArgument(format!(
+        let value = err.provide_tries_remaining().map_err(|_| {
+            SignalProtocolError::InvalidArgument(format!(
                 "cannot get tries_remaining from error ({})",
                 err
             ))
-            .into()),
-        }
+        })?;
+        write_result_to(out, value)
     })
 }
 

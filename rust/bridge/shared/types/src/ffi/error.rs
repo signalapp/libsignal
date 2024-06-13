@@ -112,9 +112,25 @@ impl<T: std::any::Any> UpcastAsAny for T {
     }
 }
 
+/// Error returned when asking for an attribute of an error that doesn't support that attribute.
+pub struct WrongErrorKind;
+
 pub trait FfiError: UpcastAsAny + fmt::Debug + Send + 'static {
     fn describe(&self) -> String;
     fn code(&self) -> SignalErrorCode;
+
+    fn provide_address(&self) -> Result<ProtocolAddress, WrongErrorKind> {
+        Err(WrongErrorKind)
+    }
+    fn provide_uuid(&self) -> Result<uuid::Uuid, WrongErrorKind> {
+        Err(WrongErrorKind)
+    }
+    fn provide_retry_after_seconds(&self) -> Result<u32, WrongErrorKind> {
+        Err(WrongErrorKind)
+    }
+    fn provide_tries_remaining(&self) -> Result<u32, WrongErrorKind> {
+        Err(WrongErrorKind)
+    }
 }
 
 /// The top-level error type (opaquely) returned to C clients when something goes wrong.
@@ -127,12 +143,19 @@ pub trait FfiError: UpcastAsAny + fmt::Debug + Send + 'static {
 pub struct SignalFfiError(Box<dyn FfiError + Send>);
 
 impl SignalFfiError {
-    pub fn code(&self) -> SignalErrorCode {
-        self.0.code()
-    }
-
     pub fn downcast_ref<T: FfiError>(&self) -> Option<&T> {
         (*self.0).upcast_as_any().downcast_ref()
+    }
+}
+
+/// SignalFfiError is a typed wrapper around a Box, and as such it's reasonable for it to have the
+/// same Deref behavior as a Box. All the interesting functionality is present on the [`FfiError`]
+/// trait.
+impl std::ops::Deref for SignalFfiError {
+    type Target = dyn FfiError;
+
+    fn deref(&self) -> &Self::Target {
+        &*self.0
     }
 }
 
@@ -215,6 +238,20 @@ impl FfiError for SignalProtocolError {
             Self::FfiBindingError(_) => SignalErrorCode::InternalError,
             Self::ApplicationCallbackError(_, _) => SignalErrorCode::CallbackError,
             Self::SealedSenderSelfSend => SignalErrorCode::SealedSenderSelfSend,
+        }
+    }
+
+    fn provide_address(&self) -> Result<ProtocolAddress, WrongErrorKind> {
+        match self {
+            Self::InvalidRegistrationId(address, _id) => Ok(address.clone()),
+            _ => Err(WrongErrorKind),
+        }
+    }
+
+    fn provide_uuid(&self) -> Result<uuid::Uuid, WrongErrorKind> {
+        match self {
+            Self::InvalidSenderKeySession { distribution_id } => Ok(*distribution_id),
+            _ => Err(WrongErrorKind),
         }
     }
 }
@@ -422,6 +459,15 @@ impl FfiError for libsignal_net::cdsi::LookupError {
             Self::InvalidArgument { .. } => SignalErrorCode::InvalidArgument,
         }
     }
+
+    fn provide_retry_after_seconds(&self) -> Result<u32, WrongErrorKind> {
+        match self {
+            Self::RateLimited {
+                retry_after_seconds,
+            } => Ok(*retry_after_seconds),
+            _ => Err(WrongErrorKind),
+        }
+    }
 }
 
 impl FfiError for Svr3Error {
@@ -461,6 +507,13 @@ impl FfiError for Svr3Error {
             Self::RequestFailed(_) => SignalErrorCode::UnknownError,
             Self::RestoreFailed(_) => SignalErrorCode::SvrRestoreFailed,
             Self::DataMissing => SignalErrorCode::SvrDataMissing,
+        }
+    }
+
+    fn provide_tries_remaining(&self) -> Result<u32, WrongErrorKind> {
+        match self {
+            Self::RestoreFailed(tries_remaining) => Ok(*tries_remaining),
+            _ => Err(WrongErrorKind),
         }
     }
 }
