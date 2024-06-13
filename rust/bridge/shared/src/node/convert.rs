@@ -16,7 +16,8 @@ use std::ops::{Deref, DerefMut, RangeInclusive};
 use std::slice;
 
 use crate::io::{InputStream, SyncInputStream};
-use crate::net::chat::ResponseAndDebugInfo;
+use crate::net::chat::{MakeChatListener, ResponseAndDebugInfo};
+use crate::node::chat::NodeMakeChatListener;
 use crate::support::{extend_lifetime, Array, AsType, FixedLengthBincodeSerializable, Serialized};
 
 use super::*;
@@ -648,6 +649,24 @@ bridge_trait!(SessionStore);
 bridge_trait!(SignedPreKeyStore);
 bridge_trait!(KyberPreKeyStore);
 bridge_trait!(InputStream);
+
+impl<'storage, 'context: 'storage> ArgTypeInfo<'storage, 'context>
+    for &'storage dyn MakeChatListener
+{
+    type ArgType = JsObject;
+    type StoredType = NodeMakeChatListener;
+
+    fn borrow(
+        cx: &mut FunctionContext<'context>,
+        foreign: Handle<'context, Self::ArgType>,
+    ) -> NeonResult<Self::StoredType> {
+        Ok(NodeMakeChatListener::new(cx, foreign))
+    }
+
+    fn load_from(stored: &'storage mut Self::StoredType) -> Self {
+        stored
+    }
+}
 
 impl<'storage, 'context: 'storage> ArgTypeInfo<'storage, 'context>
     for &'storage mut dyn SyncInputStream

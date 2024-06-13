@@ -75,6 +75,9 @@ def translate_to_ts(typ):
     if typ.startswith('&mutdyn'):
         return typ[7:]
 
+    if typ.startswith('&dyn'):
+        return typ[4:]
+
     if typ.startswith('&mut'):
         return 'Wrapper<' + typ[4:] + '>'
 

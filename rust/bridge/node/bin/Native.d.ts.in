@@ -114,6 +114,17 @@ export abstract class InputStream {
 
 export abstract class SyncInputStream extends Buffer {}
 
+export abstract class ChatListener {
+  _incoming_message(
+    envelope: Buffer,
+    timestamp: number,
+    ack: ServerMessageAck
+  ): void;
+  _queue_empty(): void;
+}
+
+export abstract class MakeChatListener extends ChatListener {}
+
 type Wrapper<T> = Readonly<{
   _nativeHandle: T;
 }>;

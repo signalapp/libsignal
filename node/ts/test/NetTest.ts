@@ -5,15 +5,25 @@
 
 import { assert, config, expect, use } from 'chai';
 import * as chaiAsPromised from 'chai-as-promised';
+import * as sinon from 'sinon';
+import * as sinonChai from 'sinon-chai';
 import * as util from './util';
 import { Aci, Pni } from '../Address';
 import * as Native from '../../Native';
 import { ErrorCode, LibSignalErrorBase } from '../Errors';
-import { ChatService, Environment, Net, ServiceAuth } from '../net';
+import {
+  ChatServerMessageAck,
+  ChatService,
+  Environment,
+  Net,
+  ServiceAuth,
+} from '../net';
 import { randomBytes } from 'crypto';
 import { ChatResponse } from '../../Native';
+import { CompletablePromise } from './util';
 
 use(chaiAsPromised);
+use(sinonChai);
 
 util.initLogger();
 config.truncateThreshold = 0;
@@ -174,6 +184,191 @@ describe('chat service api', () => {
       await chatService.connectUnauthenticated();
       await chatService.disconnect();
     }).timeout(10000);
+  });
+
+  // The following payloads were generated via protoscope.
+  // % protoscope -s | base64
+  // The fields are described by chat_websocket.proto in the libsignal-net crate.
+
+  // 1: {"PUT"}
+  // 2: {"/api/v1/message"}
+  // 3: {"payload"}
+  // 5: {"x-signal-timestamp: 1000"}
+  // 4: 1
+  const INCOMING_MESSAGE_1 = Buffer.from(
+    'CgNQVVQSDy9hcGkvdjEvbWVzc2FnZRoHcGF5bG9hZCoYeC1zaWduYWwtdGltZXN0YW1wOiAxMDAwIAE=',
+    'base64'
+  );
+
+  // 1: {"PUT"}
+  // 2: {"/api/v1/message"}
+  // 3: {"payload"}
+  // 5: {"x-signal-timestamp: 2000"}
+  // 4: 2
+  const INCOMING_MESSAGE_2 = Buffer.from(
+    'CgNQVVQSDy9hcGkvdjEvbWVzc2FnZRoHcGF5bG9hZCoYeC1zaWduYWwtdGltZXN0YW1wOiAyMDAwIAI=',
+    'base64'
+  );
+
+  // 1: {"PUT"}
+  // 2: {"/api/v1/queue/empty"}
+  // 4: 99
+  const EMPTY_QUEUE = Buffer.from(
+    'CgNQVVQSEy9hcGkvdjEvcXVldWUvZW1wdHkgYw==',
+    'base64'
+  );
+
+  // 1: {"PUT"}
+  // 2: {"/invalid"}
+  // 4: 10
+  const INVALID_MESSAGE = Buffer.from('CgNQVVQSCC9pbnZhbGlkIAo=', 'base64');
+
+  it('messages from the server are passed to the listener', async () => {
+    const net = new Net(Environment.Staging, userAgent);
+    const chat = net.newChatService();
+    const listener = {
+      onIncomingMessage: sinon.stub(),
+      onQueueEmpty: sinon.stub(),
+    };
+    chat.setListener(listener);
+
+    // a helper function to check that the message has been passed to the listener
+    async function check(
+      serverRequest: Buffer,
+      expectedMethod: sinon.SinonStub,
+      expectedArguments: unknown[]
+    ) {
+      expectedMethod.reset();
+      const completable = new CompletablePromise();
+      expectedMethod.callsFake(completable.resolve);
+      Native.TESTING_ChatService_InjectRawServerRequest(
+        chat.chatService,
+        serverRequest
+      );
+      await completable.done();
+      expect(expectedMethod).to.have.been.calledOnceWith(...expectedArguments);
+    }
+
+    await check(INCOMING_MESSAGE_1, listener.onIncomingMessage, [
+      Buffer.from('payload', 'utf8'),
+      1000,
+      sinon.match.object,
+    ]);
+
+    await check(INCOMING_MESSAGE_2, listener.onIncomingMessage, [
+      Buffer.from('payload', 'utf8'),
+      2000,
+      sinon.match.object,
+    ]);
+
+    await check(EMPTY_QUEUE, listener.onQueueEmpty, []);
+  });
+
+  it('messages arrive in order', async () => {
+    const net = new Net(Environment.Staging, userAgent);
+    const chat = net.newChatService();
+    const completable = new CompletablePromise();
+    const callsToMake: Buffer[] = [
+      INCOMING_MESSAGE_1,
+      EMPTY_QUEUE,
+      INVALID_MESSAGE,
+      INCOMING_MESSAGE_2,
+    ];
+    const callsReceived: string[] = [];
+    const callsExpected: string[] = [
+      '_incoming_message',
+      '_queue_empty',
+      '_incoming_message',
+    ];
+    const recordCall = function (name: string) {
+      callsReceived.push(name);
+      if (callsReceived.length == callsExpected.length) {
+        completable.complete();
+      }
+    };
+    const listener = {
+      onIncomingMessage(
+        _envelope: Buffer,
+        _timestamp: number,
+        _ack: ChatServerMessageAck
+      ): void {
+        recordCall('_incoming_message');
+      },
+      onQueueEmpty(): void {
+        recordCall('_queue_empty');
+      },
+    };
+    chat.setListener(listener);
+    callsToMake.forEach((message) =>
+      Native.TESTING_ChatService_InjectRawServerRequest(
+        chat.chatService,
+        message
+      )
+    );
+    await completable.done();
+    expect(callsReceived).to.eql(callsExpected);
+  });
+
+  it('listener can be replaced', async () => {
+    const net = new Net(Environment.Staging, userAgent);
+    const chat = net.newChatService();
+    const listener1 = {
+      onIncomingMessage: sinon.stub(),
+      onQueueEmpty: sinon.stub(),
+    };
+    const listener2 = {
+      onIncomingMessage: sinon.stub(),
+      onQueueEmpty: sinon.stub(),
+    };
+
+    async function check(
+      serverRequest: Buffer,
+      expectedCalled: sinon.SinonStub,
+      expectedNotCalled: sinon.SinonStub
+    ) {
+      expectedCalled.reset();
+      expectedNotCalled.reset();
+      const completable = new CompletablePromise();
+      expectedCalled.callsFake(completable.resolve);
+      Native.TESTING_ChatService_InjectRawServerRequest(
+        chat.chatService,
+        serverRequest
+      );
+      await completable.done();
+      expect(expectedCalled).to.have.been.calledOnce;
+      expect(expectedNotCalled).to.not.have.been.called;
+    }
+
+    chat.setListener(listener1);
+    await check(
+      INCOMING_MESSAGE_1,
+      listener1.onIncomingMessage,
+      listener2.onIncomingMessage
+    );
+    chat.setListener(listener2);
+    await check(
+      INCOMING_MESSAGE_2,
+      listener2.onIncomingMessage,
+      listener1.onIncomingMessage
+    );
+  });
+
+  it('messages from the server are not lost if the listener is not set', async () => {
+    const net = new Net(Environment.Staging, userAgent);
+    const chat = net.newChatService();
+    const listener = {
+      onIncomingMessage: sinon.stub(),
+      onQueueEmpty: sinon.stub(),
+    };
+    Native.TESTING_ChatService_InjectRawServerRequest(
+      chat.chatService,
+      INCOMING_MESSAGE_1
+    );
+    chat.setListener(listener);
+    const completable = new CompletablePromise();
+    listener.onIncomingMessage.callsFake(completable.resolve);
+    await completable.done();
+    expect(listener.onIncomingMessage).to.have.been.calledOnce;
   });
 });
 

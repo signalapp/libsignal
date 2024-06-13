@@ -16,7 +16,8 @@ import {
   SvrRequestFailedError,
   LibSignalError,
 } from './Errors';
-import { Wrapper } from '../Native';
+import { ServerMessageAck, Wrapper } from '../Native';
+import { Buffer } from 'node:buffer';
 
 const DEFAULT_CHAT_REQUEST_TIMEOUT_MILLIS = 5000;
 
@@ -101,6 +102,32 @@ export class TokioAsyncContext {
   }
 }
 
+export class ChatServerMessageAck {
+  private promise: Promise<void> | null = null;
+
+  constructor(
+    private readonly asyncContext: TokioAsyncContext,
+    readonly _nativeHandle: Native.ServerMessageAck
+  ) {}
+
+  send(): Promise<void> {
+    if (!this.promise) {
+      this.promise = Native.ServerMessageAck_Send(this.asyncContext, this);
+    }
+    return this.promise;
+  }
+}
+
+export interface ChatServiceListener {
+  onIncomingMessage(
+    envelope: Buffer,
+    timestamp: number,
+    ack: ChatServerMessageAck
+  ): void;
+
+  onQueueEmpty(): void;
+}
+
 /**
  * Provides API methods to connect and communicate with the Chat Service.
  * Before using either authenticated or unauthenticated channels,
@@ -108,7 +135,7 @@ export class TokioAsyncContext {
  * It's also important to call {@link #disconnect()} method when the instance is no longer needed.
  */
 export class ChatService {
-  private readonly chatService: Wrapper<Native.Chat>;
+  public readonly chatService: Wrapper<Native.Chat>;
 
   constructor(
     private readonly asyncContext: TokioAsyncContext,
@@ -117,6 +144,35 @@ export class ChatService {
     this.chatService = newNativeHandle(
       Native.ChatService_new(connectionManager, '', '')
     );
+  }
+
+  setListener(listener: ChatServiceListener): void {
+    const asyncContext = this.asyncContext;
+    const nativeChatListener = {
+      _incoming_message(
+        envelope: Buffer,
+        timestamp: number,
+        ack: ServerMessageAck
+      ): void {
+        listener.onIncomingMessage(
+          envelope,
+          timestamp,
+          new ChatServerMessageAck(asyncContext, ack)
+        );
+      },
+      _queue_empty(): void {
+        listener.onQueueEmpty();
+      },
+    };
+    Native.ChatServer_SetListener(
+      asyncContext,
+      this.chatService,
+      nativeChatListener
+    );
+  }
+
+  clearListener(): void {
+    Native.ChatServer_SetListener(this.asyncContext, this.chatService, null);
   }
 
   /**

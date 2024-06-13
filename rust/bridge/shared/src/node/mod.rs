@@ -41,7 +41,9 @@ pub use futures::*;
 mod io;
 pub use io::*;
 
+mod chat;
 mod storage;
+
 pub use storage::*;
 
 /// A function pointer referring to a Neon-based Node entry point.

@@ -27,3 +27,25 @@ export function shuffled<T>(input: T[]): T[] {
     .sort((a, b) => a.sort - b.sort)
     .map(({ value }) => value);
 }
+
+// A utility class that allows its instance to act as both a promise and a handle used to fulfil the promise
+export class CompletablePromise {
+  promise: Promise<void>;
+  resolve: (value: void | PromiseLike<void>) => void = () => {
+    // no-op initial logic
+  };
+
+  constructor() {
+    this.promise = new Promise<void>((resolve, _) => {
+      this.resolve = resolve;
+    });
+  }
+
+  public complete(): void {
+    this.resolve();
+  }
+
+  public async done(): Promise<void> {
+    await this.promise;
+  }
+}

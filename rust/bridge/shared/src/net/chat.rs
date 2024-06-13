@@ -380,7 +380,7 @@ pub trait MakeChatListener {
     fn make_listener(&self) -> Box<dyn ChatListener>;
 }
 
-#[bridge_fn(jni = false, node = false)]
+#[bridge_fn(jni = false)]
 fn ChatServer_SetListener(
     runtime: &TokioAsyncContext,
     chat: &Chat,
