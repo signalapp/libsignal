@@ -393,7 +393,7 @@ impl<M: Method> ChatsData<M> {
     fn add_chat_item(
         &mut self,
         chat_id: ChatId,
-        mut item: ChatItemData,
+        mut item: ChatItemData<M>,
     ) -> Result<(), ChatFrameError> {
         let Self {
             chat_items_count,

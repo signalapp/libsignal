@@ -26,6 +26,7 @@ libsignal-message-backup-macros = { path = "macros" }
 libsignal-protocol = { path = "../protocol" }
 signal-crypto = { path = "../crypto" }
 usernames = { path = "../usernames" }
+zkcredential = { path = "../zkcredential", features = ["rayon"] }
 zkgroup = { path = "../zkgroup" }
 
 aes = "0.8.3"

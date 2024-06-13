@@ -25,6 +25,9 @@ use contact_message::*;
 
 pub(crate) mod chat_style;
 
+mod gift_badge;
+use gift_badge::*;
+
 mod group;
 use group::*;
 
@@ -103,6 +106,8 @@ pub enum ChatItemError {
     StickerMessageMissingSticker,
     /// sticker message: {0}
     StickerMessage(#[from] MessageStickerError),
+    /// gift badge: {0}
+    GiftBadge(#[from] GiftBadgeError),
     /// ChatItem.directionalDetails is a oneof but is empty
     NoDirection,
     /// outgoing message {0}
@@ -132,10 +137,10 @@ pub struct InvalidExpiration {
 
 /// Validated version of [`proto::Chat`].
 #[derive_where(Debug)]
-#[cfg_attr(test, derive_where(PartialEq; M::List<ChatItemData>: PartialEq))]
+#[cfg_attr(test, derive_where(PartialEq; M::List<ChatItemData<M>>: PartialEq))]
 pub struct ChatData<M: Method> {
     pub recipient: RecipientId,
-    pub(super) items: M::List<ChatItemData>,
+    pub(super) items: M::List<ChatItemData<M>>,
     pub expiration_timer: Option<Duration>,
     pub mute_until: Option<Timestamp>,
     pub style: Option<ChatStyle>,
@@ -149,12 +154,12 @@ pub struct ChatData<M: Method> {
 pub struct PinOrder(NonZeroU32);
 
 /// Validated version of [`proto::ChatItem`].
-#[derive(Debug)]
-#[cfg_attr(test, derive(PartialEq))]
-pub struct ChatItemData {
+#[derive_where(Debug)]
+#[cfg_attr(test, derive_where(PartialEq; ChatItemMessage<M>: PartialEq))]
+pub struct ChatItemData<M: Method> {
     pub author: RecipientId,
-    pub message: ChatItemMessage,
-    pub revisions: Vec<ChatItemData>,
+    pub message: ChatItemMessage<M>,
+    pub revisions: Vec<ChatItemData<M>>,
     pub direction: Direction,
     pub expire_start: Option<Timestamp>,
     pub expires_in: Option<Duration>,
@@ -167,9 +172,9 @@ pub struct ChatItemData {
 }
 
 /// Validated version of [`proto::chat_item::Item`].
-#[derive(Debug)]
-#[cfg_attr(test, derive(PartialEq))]
-pub enum ChatItemMessage {
+#[derive_where(Debug)]
+#[cfg_attr(test, derive_where(PartialEq; M::BoxedValue<GiftBadge>: PartialEq))]
+pub enum ChatItemMessage<M: Method> {
     Standard(StandardMessage),
     Contact(ContactMessage),
     Voice(VoiceMessage),
@@ -177,6 +182,7 @@ pub enum ChatItemMessage {
     RemoteDeleted,
     Update(UpdateMessage),
     PaymentNotification(PaymentNotification),
+    GiftBadge(M::BoxedValue<GiftBadge>),
 }
 
 /// Validated version of [`proto::Reaction`].
@@ -317,8 +323,8 @@ impl<M: Method, C: Contains<RecipientId> + Lookup<PinOrder, RecipientId>>
     }
 }
 
-impl<R: Contains<RecipientId> + AsRef<BackupMeta>> TryFromWith<proto::ChatItem, R>
-    for ChatItemData
+impl<R: Contains<RecipientId> + AsRef<BackupMeta>, M: Method> TryFromWith<proto::ChatItem, R>
+    for ChatItemData<M>
 {
     type Error = ChatItemError;
 
@@ -353,7 +359,7 @@ impl<R: Contains<RecipientId> + AsRef<BackupMeta>> TryFromWith<proto::ChatItem, 
         let revisions: Vec<_> = revisions
             .into_iter()
             .map(|rev| {
-                let item: ChatItemData = rev.try_into_with(context)?;
+                let item: ChatItemData<M> = rev.try_into_with(context)?;
                 match &item.message {
                     ChatItemMessage::Update(update) => match update {
                         UpdateMessage::GroupCall(_) | UpdateMessage::IndividualCall(_) => {
@@ -375,6 +381,7 @@ impl<R: Contains<RecipientId> + AsRef<BackupMeta>> TryFromWith<proto::ChatItem, 
                     | ChatItemMessage::Voice(_)
                     | ChatItemMessage::PaymentNotification(_)
                     | ChatItemMessage::Sticker(_)
+                    | ChatItemMessage::GiftBadge(_)
                     | ChatItemMessage::RemoteDeleted => (),
                 };
                 Ok(item)
@@ -517,8 +524,8 @@ impl<R: Contains<RecipientId>> TryFromWith<proto::SendStatus, R> for OutgoingSen
     }
 }
 
-impl<R: Contains<RecipientId> + AsRef<BackupMeta>> TryFromWith<proto::chat_item::Item, R>
-    for ChatItemMessage
+impl<R: Contains<RecipientId> + AsRef<BackupMeta>, M: Method> TryFromWith<proto::chat_item::Item, R>
+    for ChatItemMessage<M>
 {
     type Error = ChatItemError;
 
@@ -554,6 +561,7 @@ impl<R: Contains<RecipientId> + AsRef<BackupMeta>> TryFromWith<proto::chat_item:
             Item::PaymentNotification(message) => {
                 ChatItemMessage::PaymentNotification(message.try_into()?)
             }
+            Item::GiftBadge(badge) => ChatItemMessage::GiftBadge(M::boxed_value(badge.try_into()?)),
         })
     }
 }
@@ -731,7 +739,7 @@ mod test {
     fn valid_chat_item() {
         assert_eq!(
             proto::ChatItem::test_data().try_into_with(&TestContext::default()),
-            Ok(ChatItemData {
+            Ok(ChatItemData::<Store> {
                 author: RecipientId(proto::Recipient::TEST_ID),
                 message: ChatItemMessage::Standard(StandardMessage::from_proto_test_data()),
                 revisions: vec![],
@@ -806,7 +814,7 @@ mod test {
 
         let result = message
             .try_into_with(&TestContext::default())
-            .map(|_: ChatItemData| ());
+            .map(|_: ChatItemData<Store>| ());
         assert_eq!(result, expected);
     }
 
@@ -880,7 +888,7 @@ mod test {
             .unwrap();
         item.expiresInMs = until_expiration_ms;
 
-        let result = ChatItemData::try_from_with(item, &TestContext(meta))
+        let result = ChatItemData::<Store>::try_from_with(item, &TestContext(meta))
             .map(|_| ())
             .map_err(|e| assert_matches!(e, ChatItemError::InvalidExpiration(e) => e).to_string());
         assert_eq!(result, expected.map_err(ToString::to_string));
@@ -893,7 +901,7 @@ mod test {
         item.expiresInMs = 0;
 
         assert_matches!(
-            ChatItemData::try_from_with(item, &TestContext::default()),
+            ChatItemData::<Store>::try_from_with(item, &TestContext::default()),
             Err(ChatItemError::ExpirationMismatch)
         );
     }
