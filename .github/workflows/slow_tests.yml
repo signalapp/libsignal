@@ -45,6 +45,72 @@ jobs:
         name: jniLibs
         path: java/android/src/androidTest/jniLibs/*
         retention-days: 2
+    - name: Upload full JARs
+      uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4.3.1
+      with:
+        name: jars
+        path: java/*/build/libs/*
+        retention-days: 2
+    - name: Upload full AARs
+      uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4.3.1
+      with:
+        name: aars
+        path: java/android/build/outputs/aar/*
+        retention-days: 2
+
+  java-docker-secondary:
+    name: Java (Secondary Docker)
+    runs-on: ubuntu-latest
+    needs: [check-up-to-date]
+    if: ${{ always() && (needs.check-up-to-date.outputs.has-changes || github.event_name != 'schedule') }}
+    timeout-minutes: 60
+
+    steps:
+    - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      with:
+        submodules: recursive
+    - run: make -C java
+    - name: Upload full JARs
+      uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4.3.1
+      with:
+        name: jars-secondary
+        path: java/*/build/libs/*
+        retention-days: 2
+    - name: Upload full AARs
+      uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4.3.1
+      with:
+        name: aars-secondary
+        path: java/android/build/outputs/aar/*
+        retention-days: 2
+
+  java-reproducibility:
+    name: Verify Reproducible Build
+    runs-on: ubuntu-latest
+    needs: [java-docker, java-docker-secondary]
+    if: ${{ always() && needs.java-docker.result == 'success' && needs.java-docker-secondary.result == 'success' }}
+
+    steps:
+      - name: Download jars
+        uses: actions/download-artifact@c850b930e6ba138125429b7e5c93fc707a7f8427 # v4.1.4
+        with:
+          name: jars
+          path: a/jars/
+      - name: Download jars (secondary)
+        uses: actions/download-artifact@c850b930e6ba138125429b7e5c93fc707a7f8427 # v4.1.4
+        with:
+          name: jars-secondary
+          path: b/jars/
+      - name: Download aars
+        uses: actions/download-artifact@c850b930e6ba138125429b7e5c93fc707a7f8427 # v4.1.4
+        with:
+          name: aars
+          path: a/aars/
+      - name: Download aars (secondary)
+        uses: actions/download-artifact@c850b930e6ba138125429b7e5c93fc707a7f8427 # v4.1.4
+        with:
+          name: aars-secondary
+          path: b/aars/
+      - run: diff -qr a/ b/
 
   android-emulator-tests:
     name: Android Emulator Tests
@@ -253,7 +319,7 @@ jobs:
   report_failures:
     name: Report Failures
     runs-on: ubuntu-latest
-    needs: [java-docker, android-emulator-tests, node-docker, node-windows-arm64, swift-cocoapod, rust-stable-testing]
+    needs: [java-docker, java-reproducibility, android-emulator-tests, node-docker, node-windows-arm64, swift-cocoapod, rust-stable-testing]
     if: ${{ failure() && github.event_name == 'schedule' }}
 
     permissions:
