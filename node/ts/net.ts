@@ -119,12 +119,26 @@ export class ChatServerMessageAck {
 }
 
 export interface ChatServiceListener {
+  /**
+   * Called when the server delivers an incoming message to the client.
+   *
+   * `timestamp` is in milliseconds.
+   *
+   * If `ack`'s `send` method is not called, the server will leave this message in the message
+   * queue and attempt to deliver it again in the future.
+   */
   onIncomingMessage(
     envelope: Buffer,
     timestamp: number,
     ack: ChatServerMessageAck
   ): void;
 
+  /**
+   * Called when the server indicates that there are no further messages in the message queue.
+   *
+   * Note that further messages may still be delivered; this merely indicates that all messages that
+   * were in the queue *when the connection was established* have been delivered.
+   */
   onQueueEmpty(): void;
 }
 
@@ -146,6 +160,15 @@ export class ChatService {
     );
   }
 
+  /**
+   * Sets the listener for server push messages on the authenticated connection.
+   *
+   * Note that this creates a **non-garbage-collectable** reference to `listener`. If `listener`
+   * contains a reference to this ChatService (directly or indirectly), both objects will be kept
+   * alive even with no other references. This may be fine if `listener` is a long-lived object
+   * anyway, but if not, make sure to eventually break the cycle, possibly by calling
+   * {@link #clearListener}.
+   */
   setListener(listener: ChatServiceListener): void {
     const asyncContext = this.asyncContext;
     const nativeChatListener = {
@@ -212,6 +235,7 @@ export class ChatService {
    * reconnect attempt will be made.
    *
    * Calling this method will result in starting to accept incoming requests from the Chat Service.
+   * You should set a listener first using {@link #setListener()}.
    *
    * @throws {AppExpiredError} if the current app version is too old (as judged by the server).
    * @throws {DeviceDelinkedError} if the current device has been delinked.
