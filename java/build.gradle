@@ -25,6 +25,10 @@ subprojects {
             options.encoding = 'UTF-8'
             options.compilerArgs += ["-Xlint:deprecation", "-Xlint:fallthrough", "-Xlint:unchecked"]
         }
+        tasks.withType(AbstractArchiveTask) {
+            preserveFileTimestamps = false
+            reproducibleFileOrder = true
+        }
     }
 
     apply plugin: "com.diffplug.spotless"
