@@ -57,7 +57,7 @@
     "eslint-plugin-more": "^1.0.0",
     "mocha": "^9",
     "node-gyp": "^10.0.0",
-    "prebuildify": "^5.0.1",
+    "prebuildify": "^6.0.0",
     "prettier": "^2.7.1",
     "rimraf": "^3.0.1",
     "sinon": "^18.0.0",
