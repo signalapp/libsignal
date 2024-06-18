@@ -36,7 +36,6 @@ rand = "0.8"
 rayon = "1.8.0"
 serde = { version = "1.0", features = ["derive"] }
 sha2 = "0.10"
-static_assertions = "1.1"
 subtle = "2.3"
 thiserror = "1.0.30"
 uuid = "1.1.2"

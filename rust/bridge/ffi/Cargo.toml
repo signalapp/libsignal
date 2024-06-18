@@ -21,22 +21,14 @@ signal-media = ["libsignal-bridge/signal-media"]
 testing-fns = ["libsignal-bridge/testing-fns"]
 
 [dependencies]
-attest = { path = "../../attest" }
-device-transfer = { path = "../../device-transfer" }
 libsignal-bridge = { path = "../shared", features = ["ffi"] }
 libsignal-net = { path = "../../net" }
 libsignal-protocol = { path = "../../protocol" }
-signal-crypto = { path = "../../crypto" }
 signal-media = { path = "../../media" }
-signal-pin = { path = "../../pin" }
-usernames = { path = "../../usernames" }
-zkgroup = { path = "../../zkgroup" }
 
-async-trait = "0.1.41"
 futures-util = "0.3"
 log = "0.4"
 log-panics = { version = "2.1.0", features = ["with-backtrace"] }
-rand = "0.8"
 
 [target.aarch64-apple-ios.dependencies]
 cpufeatures = "0.2.1" # Make sure iOS gets optimized crypto.

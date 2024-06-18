@@ -17,9 +17,7 @@ crate-type = ["cdylib"]
 [dependencies]
 libsignal-bridge = { path = "../shared", features = ["node", "signal-media"] }
 libsignal-protocol = { path = "../../protocol" }
-signal-neon-futures = { path = "futures" }
 
-async-trait = "0.1.41"
 futures = { version = "0.3", default-features = false, features = ["executor"] }
 log = "0.4"
 log-panics = { version = "2.0.0", features = ["with-backtrace"] }
@@ -27,7 +25,6 @@ minidump = { version = "0.20.0", default-features = false }
 minidump-processor = { version = "0.20.0", default-features = false }
 minidump-unwind = { version = "0.20.0", default-features = false }
 neon = { version = "1.0.0", default-features = false, features = ["napi-6"] }
-rand = "0.8"
 
 [build-dependencies]
 # cmake 0.1.49 breaks no-toolchain Windows cross-compilation using Visual Studio

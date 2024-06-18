@@ -276,7 +276,6 @@ dependencies = [
  "displaydoc",
  "hex",
  "hex-literal",
- "hmac",
  "lazy_static",
  "libc",
  "log",
@@ -1936,22 +1935,18 @@ dependencies = [
  "base64 0.21.7",
  "bincode",
  "bytemuck",
- "cfg-if",
  "derive-where",
  "device-transfer",
  "displaydoc",
  "futures-util",
- "hex",
  "hkdf",
  "hmac",
  "http 1.1.0",
  "jni 0.21.1",
  "libsignal-bridge-macros",
- "libsignal-core",
  "libsignal-message-backup",
  "libsignal-net",
  "libsignal-protocol",
- "libsignal-svr3",
  "linkme",
  "log",
  "mediasan-common",
@@ -1966,7 +1961,6 @@ dependencies = [
  "rayon",
  "scopeguard",
  "serde",
- "serde_derive",
  "sha2",
  "signal-crypto",
  "signal-media",
@@ -1978,7 +1972,6 @@ dependencies = [
  "test-case",
  "thiserror",
  "tokio",
- "tokio-boring",
  "usernames",
  "uuid",
  "zkgroup",
@@ -2010,29 +2003,20 @@ dependencies = [
 name = "libsignal-ffi"
 version = "0.51.0"
 dependencies = [
- "async-trait",
- "attest",
  "cpufeatures",
- "device-transfer",
  "futures-util",
  "libsignal-bridge",
  "libsignal-net",
  "libsignal-protocol",
  "log",
  "log-panics",
- "rand",
- "signal-crypto",
  "signal-media",
- "signal-pin",
- "usernames",
- "zkgroup",
 ]
 
 [[package]]
 name = "libsignal-jni"
 version = "0.51.0"
 dependencies = [
- "async-trait",
  "cfg-if",
  "cpufeatures",
  "jni 0.19.0",
@@ -2041,7 +2025,6 @@ dependencies = [
  "libsignal-protocol",
  "log",
  "log-panics",
- "rand",
  "rustls-platform-verifier",
  "signal-crypto",
 ]
@@ -2102,7 +2085,6 @@ name = "libsignal-message-backup-macros"
 version = "0.1.0"
 dependencies = [
  "heck 0.3.3",
- "lazy_static",
  "proc-macro2",
  "quote",
  "syn 2.0.66",
@@ -2132,7 +2114,6 @@ dependencies = [
  "hex",
  "hex-literal",
  "hickory-proto",
- "hkdf",
  "hmac",
  "http 1.1.0",
  "http-body-util",
@@ -2146,7 +2127,6 @@ dependencies = [
  "log",
  "nonzero_ext",
  "num_enum",
- "pin-project-lite",
  "proptest",
  "proptest-state-machine",
  "prost",
@@ -2179,7 +2159,6 @@ dependencies = [
 name = "libsignal-node"
 version = "0.51.0"
 dependencies = [
- "async-trait",
  "cmake",
  "futures",
  "libsignal-bridge",
@@ -2190,8 +2169,6 @@ dependencies = [
  "minidump-processor",
  "minidump-unwind",
  "neon",
- "rand",
- "signal-neon-futures",
 ]
 
 [[package]]
@@ -2230,7 +2207,6 @@ dependencies = [
  "serde",
  "sha2",
  "signal-crypto",
- "static_assertions",
  "subtle",
  "thiserror",
  "uuid",
@@ -2242,8 +2218,6 @@ name = "libsignal-svr3"
 version = "0.1.0"
 dependencies = [
  "assert_matches",
- "attest",
- "base64 0.21.7",
  "bytemuck",
  "criterion",
  "curve25519-dalek",
@@ -2251,7 +2225,6 @@ dependencies = [
  "hex",
  "hex-literal",
  "hkdf",
- "http 1.1.0",
  "nonzero_ext",
  "prost",
  "prost-build",
@@ -2260,7 +2233,6 @@ dependencies = [
  "strum_macros",
  "subtle",
  "test-case",
- "tokio",
 ]
 
 [[package]]
@@ -2905,7 +2877,6 @@ dependencies = [
  "hmac",
  "rand",
  "sha2",
- "subtle",
 ]
 
 [[package]]
@@ -3748,7 +3719,6 @@ dependencies = [
  "hex-literal",
  "hkdf",
  "hmac",
- "rand_core",
  "sha2",
  "static_assertions",
  "thiserror",
