@@ -349,7 +349,6 @@ impl ConnectionManager for SingleRouteThrottlingConnectionManager {
 #[cfg(test)]
 mod test {
     use std::borrow::Borrow;
-    use std::fmt::{Display, Formatter};
     use std::future;
     use std::sync::atomic::{AtomicU16, Ordering};
 
@@ -359,8 +358,8 @@ mod test {
 
     use crate::infra::certs::RootCertificates;
     use crate::infra::test::shared::{
-        TestError, FEW_ATTEMPTS, LONG_CONNECTION_TIME, MANY_ATTEMPTS, TIMEOUT_DURATION,
-        TIME_ADVANCE_VALUE,
+        ClassifiableTestError, TestError, FEW_ATTEMPTS, LONG_CONNECTION_TIME, MANY_ATTEMPTS,
+        TIMEOUT_DURATION, TIME_ADVANCE_VALUE,
     };
     use crate::infra::{HttpRequestDecoratorSeq, RouteType};
 
@@ -758,23 +757,6 @@ mod test {
             RootCertificates::Signal,
         )
     }
-
-    #[derive(Debug)]
-    struct ClassifiableTestError(ErrorClass);
-
-    impl ErrorClassifier for ClassifiableTestError {
-        fn classify(&self) -> ErrorClass {
-            self.0
-        }
-    }
-
-    impl Display for ClassifiableTestError {
-        fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-            write!(f, "{:?}", self.0)
-        }
-    }
-
-    impl LogSafeDisplay for ClassifiableTestError {}
 
     #[derive(Clone, Debug)]
     struct FailingSingle(ConnectionParams);

@@ -372,6 +372,25 @@ pub(crate) mod test {
 
         impl LogSafeDisplay for TestError {}
 
+        // This could be Copy, but we don't want to rely on *all* errors being Copy, or only test
+        // that case.
+        #[derive(Debug, Clone)]
+        pub(crate) struct ClassifiableTestError(pub ErrorClass);
+
+        impl ErrorClassifier for ClassifiableTestError {
+            fn classify(&self) -> ErrorClass {
+                self.0
+            }
+        }
+
+        impl std::fmt::Display for ClassifiableTestError {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                write!(f, "{:?}", self.0)
+            }
+        }
+
+        impl LogSafeDisplay for ClassifiableTestError {}
+
         // the choice of the constant value is dictated by a vague notion of being
         // "not too many, but also not just once or twice"
         pub(crate) const FEW_ATTEMPTS: u16 = 3;

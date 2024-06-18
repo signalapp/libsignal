@@ -347,16 +347,19 @@ where
     }
 
     pub(crate) async fn reconnect_if_active(&self) -> Result<(), ReconnectError<C::ConnectError>> {
-        self.connect(true).await
+        self.connect(false).await
     }
 
     pub(crate) async fn connect_from_inactive(
         &self,
     ) -> Result<(), ReconnectError<C::ConnectError>> {
-        self.connect(false).await
+        self.connect(true).await
     }
 
-    async fn connect(&self, respect_inactive: bool) -> Result<(), ReconnectError<C::ConnectError>> {
+    async fn connect(
+        &self,
+        is_explicit_connect: bool,
+    ) -> Result<(), ReconnectError<C::ConnectError>> {
         let mut attempts: u16 = 0;
         let start_of_connection_process = Instant::now();
         let deadline = start_of_connection_process + self.data.connection_timeout;
@@ -374,7 +377,7 @@ where
         loop {
             match &*guard {
                 ServiceState::Inactive => {
-                    if respect_inactive {
+                    if !is_explicit_connect {
                         return Err(ReconnectError::Inactive);
                     }
                     // otherwise, proceeding to connect
@@ -432,7 +435,10 @@ where
                             continue;
                         }
                         ErrorClass::Fatal => {
-                            if !respect_inactive {
+                            if !is_explicit_connect {
+                                // Only explicit connection requests have a place to report this
+                                // error, so for now, non-explicit attempts treat this as a generic
+                                // failure.
                                 return Err(ReconnectError::AllRoutesFailed { attempts });
                             }
 
@@ -538,7 +544,7 @@ where
 #[cfg(test)]
 mod test {
     use std::fmt::Debug;
-    use std::sync::atomic::{AtomicBool, AtomicI32, Ordering};
+    use std::sync::atomic::{AtomicI32, Ordering};
     use std::sync::{Arc, Mutex};
     use std::time::Duration;
 
@@ -554,8 +560,8 @@ mod test {
     use crate::infra::certs::RootCertificates;
     use crate::infra::connection_manager::SingleRouteThrottlingConnectionManager;
     use crate::infra::test::shared::{
-        TestError, LONG_CONNECTION_TIME, NORMAL_CONNECTION_TIME, TIMEOUT_DURATION,
-        TIME_ADVANCE_VALUE,
+        ClassifiableTestError, TestError, LONG_CONNECTION_TIME, NORMAL_CONNECTION_TIME,
+        TIMEOUT_DURATION, TIME_ADVANCE_VALUE,
     };
     use crate::infra::{ConnectionParams, HttpRequestDecoratorSeq, RouteType};
     use crate::utils::sleep_and_catch_up;
@@ -579,7 +585,7 @@ mod test {
     struct TestServiceConnector {
         attempts: Arc<AtomicI32>,
         time_to_connect: Arc<Mutex<Duration>>,
-        service_healthy: Arc<AtomicBool>,
+        connection_error: Arc<Mutex<Option<ClassifiableTestError>>>,
     }
 
     impl TestServiceConnector {
@@ -587,7 +593,7 @@ mod test {
             Self {
                 attempts: Arc::new(AtomicI32::new(0)),
                 time_to_connect: Arc::new(Mutex::new(NORMAL_CONNECTION_TIME)),
-                service_healthy: Arc::new(AtomicBool::new(true)),
+                connection_error: Arc::new(Mutex::new(None)),
             }
         }
 
@@ -600,9 +606,8 @@ mod test {
             *guard = time_to_connect;
         }
 
-        fn set_service_healthy(&self, service_healthy: bool) {
-            self.service_healthy
-                .store(service_healthy, Ordering::Relaxed);
+        fn set_connection_error(&self, connection_error: Option<ClassifiableTestError>) {
+            *self.connection_error.lock().unwrap() = connection_error;
         }
     }
 
@@ -610,7 +615,7 @@ mod test {
     impl ServiceConnector for TestServiceConnector {
         type Service = TestService;
         type Channel = ();
-        type ConnectError = TestError;
+        type ConnectError = ClassifiableTestError;
         type StartError = TestError;
 
         async fn connect_channel(
@@ -618,13 +623,13 @@ mod test {
             _connection_params: &ConnectionParams,
         ) -> Result<Self::Channel, Self::ConnectError> {
             let connection_time = *self.time_to_connect.lock().unwrap();
-            let service_healthy = self.service_healthy.load(Ordering::Relaxed);
+            let connection_error = self.connection_error.lock().unwrap().clone();
             tokio::time::sleep(connection_time).await;
             self.attempts.fetch_add(1, Ordering::Relaxed);
-            if service_healthy {
-                Ok(())
+            if let Some(connection_error) = connection_error {
+                Err(connection_error)
             } else {
-                Err(TestError::Expected)
+                Ok(())
             }
         }
 
@@ -693,7 +698,7 @@ mod test {
         // we're doing it again, but this time we'll instruct service connector to fail,
         // and as a result, service won't be available
         service.close_channel();
-        connector.set_service_healthy(false);
+        connector.set_connection_error(Some(ClassifiableTestError(ErrorClass::Intermittent)));
         time::advance(TIME_ADVANCE_VALUE).await;
 
         assert_matches!(
@@ -738,7 +743,7 @@ mod test {
     async fn immediately_fail_if_in_cooldown() {
         let (connector, service_with_reconnect) = connector_and_service();
 
-        connector.set_service_healthy(false);
+        connector.set_connection_error(Some(ClassifiableTestError(ErrorClass::Intermittent)));
         let connection_result = service_with_reconnect.connect_from_inactive().await;
 
         // Here we have 3 attempts made by the reconnect service:
@@ -838,7 +843,7 @@ mod test {
         let (connector, service_with_reconnect) = connector_and_service();
 
         time::advance(TIME_ADVANCE_VALUE).await;
-        connector.set_service_healthy(false);
+        connector.set_connection_error(Some(ClassifiableTestError(ErrorClass::Intermittent)));
         let connection_result = service_with_reconnect.connect_from_inactive().await;
 
         // number of attempts is the same as in the `immediately_fail_if_in_cooldown()` test
@@ -851,7 +856,7 @@ mod test {
         // and hit the cooldown. Let's advance time to make sure next attempt will be made.
         time::advance(CONNECTION_ROUTE_MAX_COOLDOWN).await;
 
-        connector.set_service_healthy(true);
+        connector.set_connection_error(None);
         let connection_result = service_with_reconnect.connect_from_inactive().await;
         assert_matches!(connection_result, Ok(_));
     }
@@ -889,7 +894,7 @@ mod test {
         assert_eq!(connector.attempts.load(Ordering::Relaxed), 1);
 
         // internet connection lost
-        connector.set_service_healthy(false);
+        connector.set_connection_error(Some(ClassifiableTestError(ErrorClass::Intermittent)));
         service.close_channel();
 
         sleep_and_catch_up(NORMAL_CONNECTION_TIME).await;
@@ -905,7 +910,7 @@ mod test {
 
         // now internet connection is back
         // letting next cooldown interval pass and checking again
-        connector.set_service_healthy(true);
+        connector.set_connection_error(None);
 
         sleep_and_catch_up(CONNECTION_ROUTE_COOLDOWN_INTERVALS[2] + NORMAL_CONNECTION_TIME).await;
         assert_eq!(connector.attempts.load(Ordering::Relaxed), 5);
@@ -925,7 +930,7 @@ mod test {
         assert_eq!(connector.attempts.load(Ordering::Relaxed), 1);
 
         // internet connection lost
-        connector.set_service_healthy(false);
+        connector.set_connection_error(Some(ClassifiableTestError(ErrorClass::Intermittent)));
         service.close_channel();
 
         sleep_and_catch_up(NORMAL_CONNECTION_TIME).await;
@@ -1001,6 +1006,106 @@ mod test {
             Err(ReconnectError::Timeout { attempts: 0 })
         );
         assert_eq!(connector.attempts_made(), 0);
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn intermittent_errors_do_not_get_propagated() {
+        let (connector, service_with_reconnect) = connector_and_service();
+        connector.set_connection_error(Some(ClassifiableTestError(ErrorClass::Intermittent)));
+
+        // A "reconnect" won't even make it to the connection error yet.
+        let inactive_error = service_with_reconnect
+            .reconnect_if_active()
+            .await
+            .expect_err("not active yet");
+        assert_matches!(inactive_error, ReconnectError::Inactive);
+
+        // A proper connect will.
+        let fatal_error = service_with_reconnect
+            .connect_from_inactive()
+            .await
+            .expect_err("should have returned the connection error");
+        assert_matches!(fatal_error, ReconnectError::AllRoutesFailed { .. });
+        assert_matches!(
+            *service_with_reconnect.data.state.lock().await,
+            ServiceState::Cooldown(_)
+        );
+
+        // Okay, let's connect properly...
+        time::advance(CONNECTION_ROUTE_MAX_COOLDOWN).await;
+        connector.set_connection_error(None);
+        service_with_reconnect
+            .connect_from_inactive()
+            .await
+            .expect("success");
+        let service = service_with_reconnect.service().await.expect("service");
+
+        // ...then disconnect...
+        connector.set_connection_error(Some(ClassifiableTestError(ErrorClass::Intermittent)));
+        service.close_channel();
+
+        // ...then try to auto-reconnect.
+        let reconnect_error = service_with_reconnect
+            .reconnect_if_active()
+            .await
+            .expect_err("not active yet");
+        assert_matches!(reconnect_error, ReconnectError::AllRoutesFailed { .. });
+        assert_matches!(
+            *service_with_reconnect.data.state.lock().await,
+            ServiceState::Cooldown(_)
+        );
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn fatal_error_gets_propagated_on_explicit_connect_only() {
+        let (connector, service_with_reconnect) = connector_and_service();
+        connector.set_connection_error(Some(ClassifiableTestError(ErrorClass::Fatal)));
+
+        // A "reconnect" won't even make it to the connection error yet.
+        let inactive_error = service_with_reconnect
+            .reconnect_if_active()
+            .await
+            .expect_err("not active yet");
+        assert_matches!(inactive_error, ReconnectError::Inactive);
+
+        // A proper connect will.
+        let fatal_error = service_with_reconnect
+            .connect_from_inactive()
+            .await
+            .expect_err("should have returned the connection error");
+        assert_matches!(
+            fatal_error,
+            ReconnectError::RejectedByServer(ClassifiableTestError(ErrorClass::Fatal))
+        );
+
+        // And it will leave us inactive.
+        assert_matches!(
+            *service_with_reconnect.data.state.lock().await,
+            ServiceState::Inactive
+        );
+
+        // Okay, let's connect properly...
+        connector.set_connection_error(None);
+        service_with_reconnect
+            .connect_from_inactive()
+            .await
+            .expect("success");
+        let service = service_with_reconnect.service().await.expect("service");
+
+        // ...then disconnect...
+        connector.set_connection_error(Some(ClassifiableTestError(ErrorClass::Fatal)));
+        service.close_channel();
+
+        // ...then try to auto-reconnect.
+        let reconnect_error = service_with_reconnect
+            .reconnect_if_active()
+            .await
+            .expect_err("not active yet");
+        assert_matches!(reconnect_error, ReconnectError::AllRoutesFailed { .. });
+        assert_matches!(
+            *service_with_reconnect.data.state.lock().await,
+            ServiceState::Error(ClassifiableTestError(ErrorClass::Fatal))
+        );
     }
 
     fn connector_and_service() -> (
