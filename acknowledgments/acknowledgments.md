@@ -2011,7 +2011,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ```
 
-## curve25519-dalek 4.1.1
+## curve25519-dalek 4.1.3
 
 ```
 Copyright (c) 2012 The Go Authors. All rights reserved.
@@ -2077,7 +2077,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ```
 
-## curve25519-dalek 4.1.1
+## curve25519-dalek 4.1.3
 
 ```
 Copyright (c) 2016-2021 isis agora lovecruft. All rights reserved.
@@ -4534,37 +4534,6 @@ DEALINGS IN THE SOFTWARE.
 
 ```
 
-## platforms 3.4.0
-
-```
-Copyright (c) 2018-2020 The Rust Secure Code Working Group
-
-Permission is hereby granted, free of charge, to any
-person obtaining a copy of this software and associated
-documentation files (the "Software"), to deal in the
-Software without restriction, including without
-limitation the rights to use, copy, modify, merge,
-publish, distribute, sublicense, and/or sell copies of
-the Software, and to permit persons to whom the Software
-is furnished to do so, subject to the following
-conditions:
-
-The above copyright notice and this permission notice
-shall be included in all copies or substantial portions
-of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF
-ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED
-TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
-PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT
-SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
-OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
-IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-DEALINGS IN THE SOFTWARE.
-
-```
-
 ## cbc 0.1.2, ctr 0.9.2
 
 ```
@@ -6152,7 +6121,7 @@ SOFTWARE.
 
 ```
 
-## curve25519-dalek-derive 0.1.0, cesu8 1.1.0, half 2.4.1, pqcrypto-internals 0.2.5, pqcrypto-kyber 0.7.9, pqcrypto-kyber 0.8.1, pqcrypto-traits 0.3.5, rustls-platform-verifier-android 0.1.0, rustls-platform-verifier 0.3.1
+## cesu8 1.1.0, half 2.4.1, pqcrypto-internals 0.2.5, pqcrypto-kyber 0.7.9, pqcrypto-kyber 0.8.1, pqcrypto-traits 0.3.5, rustls-platform-verifier-android 0.1.0, rustls-platform-verifier 0.3.1
 
 ```
 MIT License
@@ -6266,7 +6235,7 @@ DEALINGS IN THE SOFTWARE.
 
 ```
 
-## adler 1.0.2, anyhow 1.0.86, async-trait 0.1.80, atomic-waker 1.1.2, dyn-clone 1.0.17, fastrand 2.1.0, home 0.5.9, is-terminal 0.4.12, itoa 1.0.11, linkme-impl 0.3.26, linkme 0.3.26, linux-raw-sys 0.4.14, minimal-lexical 0.2.1, num_enum 0.6.1, num_enum_derive 0.6.1, once_cell 1.19.0, paste 1.0.15, pin-project-lite 0.2.14, prettyplease 0.2.20, proc-macro-crate 1.3.1, proc-macro2 1.0.83, quote 1.0.36, rustc-hash 1.1.0, rustix 0.38.34, rustversion 1.0.17, semver 1.0.23, send_wrapper 0.6.0, serde 1.0.202, serde_derive 1.0.202, serde_json 1.0.117, syn-mid 0.6.0, syn 1.0.109, syn 2.0.66, thiserror-impl 1.0.61, thiserror 1.0.61, unicode-ident 1.0.12, utf-8 0.7.6
+## curve25519-dalek-derive 0.1.1, adler 1.0.2, anyhow 1.0.86, async-trait 0.1.80, atomic-waker 1.1.2, dyn-clone 1.0.17, fastrand 2.1.0, home 0.5.9, is-terminal 0.4.12, itoa 1.0.11, linkme-impl 0.3.26, linkme 0.3.26, linux-raw-sys 0.4.14, minimal-lexical 0.2.1, num_enum 0.6.1, num_enum_derive 0.6.1, once_cell 1.19.0, paste 1.0.15, pin-project-lite 0.2.14, prettyplease 0.2.20, proc-macro-crate 1.3.1, proc-macro2 1.0.83, quote 1.0.36, rustc-hash 1.1.0, rustix 0.38.34, rustversion 1.0.17, semver 1.0.23, send_wrapper 0.6.0, serde 1.0.202, serde_derive 1.0.202, serde_json 1.0.117, syn-mid 0.6.0, syn 1.0.109, syn 2.0.66, thiserror-impl 1.0.61, thiserror 1.0.61, unicode-ident 1.0.12, utf-8 0.7.6
 
 ```
 Permission is hereby granted, free of charge, to any
