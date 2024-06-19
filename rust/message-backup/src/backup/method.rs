@@ -19,6 +19,7 @@ pub trait Map<K, V>: Contains<K> + Default {
     /// Insert a key and value into the map if the key isn't already present.
     ///
     /// On failure, the map is unmodified.
+    #[allow(dead_code)]
     fn insert(&mut self, key: K, value: V) -> Result<(), KeyExists>;
 }
 

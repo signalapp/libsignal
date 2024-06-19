@@ -284,7 +284,7 @@ fn collect_responses<'a>(
 ) -> Result<Vec<Vec<u8>>, Error> {
     results
         .into_iter()
-        .zip(addresses.into_iter())
+        .zip(addresses)
         .map(|(next_or_close, address)| {
             next_or_close.next_or(Error::Protocol(format!("no response from {}", address)))
         })

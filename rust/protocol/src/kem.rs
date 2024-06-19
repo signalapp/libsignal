@@ -98,6 +98,7 @@ trait DynParameters {
     fn public_key_length(&self) -> usize;
     fn secret_key_length(&self) -> usize;
     fn ciphertext_length(&self) -> usize;
+    #[allow(dead_code)]
     fn shared_secret_length(&self) -> usize;
     fn generate(&self) -> (KeyMaterial<Public>, KeyMaterial<Secret>);
     fn encapsulate(&self, pub_key: &KeyMaterial<Public>) -> (SharedSecret, RawCiphertext);

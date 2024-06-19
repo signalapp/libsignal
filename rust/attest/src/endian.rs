@@ -69,12 +69,3 @@ impl FromHex for UInt32LE {
         })
     }
 }
-
-#[derive(Debug, Clone, Copy)]
-#[repr(C)]
-pub(crate) struct UInt64LE {
-    bytes: [u8; 8],
-}
-
-static_assertions::assert_eq_align!(u8, UInt64LE);
-static_assertions::assert_eq_size!(u64, UInt64LE);

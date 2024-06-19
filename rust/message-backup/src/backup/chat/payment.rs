@@ -227,7 +227,7 @@ impl TryFrom<String> for MobAmount {
     type Error = ParseError;
 
     fn try_from(s: String) -> Result<Self, Self::Error> {
-        let (integral, fractional) = s.split_once('.').unwrap_or((&s, &""));
+        let (integral, fractional) = s.split_once('.').unwrap_or((&s, ""));
         if integral.is_empty() && fractional.is_empty() {
             return Err(ParseError);
         }
