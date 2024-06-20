@@ -9,7 +9,7 @@ use crate::svr2::RaftConfig;
 use crate::util::SmallMap;
 use crate::{nitro, tpm2snp};
 
-pub const ENCLAVE_ID_CDSI_STAGING: &[u8] =
+pub const ENCLAVE_ID_CDSI_STAGING_AND_PROD: &[u8] =
     &hex!("0f6fd79cdfdaa5b2e6337f534d3baf999318b0c462a7ac1f41297a3e4b424a57");
 pub const ENCLAVE_ID_SVR2_STAGING: &[u8] =
     &hex!("acb1973aa0bbbd14b3b4e06f145497d948fd4a98efc500fcce363b3b743ec482");
@@ -23,7 +23,6 @@ pub const ENCLAVE_ID_SVR3_SGX_PROD: &[u8] =
 pub const ENCLAVE_ID_SVR3_NITRO_PROD: &[u8] = ENCLAVE_ID_SVR3_NITRO_STAGING;
 pub const ENCLAVE_ID_SVR3_TPM2SNP_PROD: &[u8] = ENCLAVE_ID_SVR3_TPM2SNP_STAGING;
 
-pub const ENCLAVE_ID_CDSI_PROD: &[u8] = ENCLAVE_ID_CDSI_STAGING;
 pub const ENCLAVE_ID_SVR2_PROD: &[u8] =
     &hex!("a6622ad4656e1abcd0bc0ff17c229477747d2ded0495c4ebee7ed35c1789fa97");
 
