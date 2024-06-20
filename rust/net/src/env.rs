@@ -37,6 +37,8 @@ const DOMAIN_CONFIG_CHAT: DomainConfig = DomainConfig {
     cert: RootCertificates::Signal,
     proxy_path: "/service",
     confirmation_header_name: Some(TIMESTAMP_HEADER_NAME),
+    proxy_config_f: PROXY_CONFIG_F_PROD,
+    proxy_config_g: PROXY_CONFIG_G,
 };
 
 const DOMAIN_CONFIG_CHAT_STAGING: DomainConfig = DomainConfig {
@@ -53,6 +55,8 @@ const DOMAIN_CONFIG_CHAT_STAGING: DomainConfig = DomainConfig {
     cert: RootCertificates::Signal,
     proxy_path: "/service-staging",
     confirmation_header_name: Some(TIMESTAMP_HEADER_NAME),
+    proxy_config_f: PROXY_CONFIG_F_STAGING,
+    proxy_config_g: PROXY_CONFIG_G,
 };
 
 const DOMAIN_CONFIG_CDSI: DomainConfig = DomainConfig {
@@ -63,6 +67,8 @@ const DOMAIN_CONFIG_CDSI: DomainConfig = DomainConfig {
     cert: RootCertificates::Signal,
     proxy_path: "/cdsi",
     confirmation_header_name: None,
+    proxy_config_f: PROXY_CONFIG_F_PROD,
+    proxy_config_g: PROXY_CONFIG_G,
 };
 
 const DOMAIN_CONFIG_CDSI_STAGING: DomainConfig = DomainConfig {
@@ -73,6 +79,8 @@ const DOMAIN_CONFIG_CDSI_STAGING: DomainConfig = DomainConfig {
     cert: RootCertificates::Signal,
     proxy_path: "/cdsi-staging",
     confirmation_header_name: None,
+    proxy_config_f: PROXY_CONFIG_F_STAGING,
+    proxy_config_g: PROXY_CONFIG_G,
 };
 
 const DOMAIN_CONFIG_SVR2: DomainConfig = DomainConfig {
@@ -83,6 +91,8 @@ const DOMAIN_CONFIG_SVR2: DomainConfig = DomainConfig {
     cert: RootCertificates::Signal,
     proxy_path: "/svr2",
     confirmation_header_name: None,
+    proxy_config_f: PROXY_CONFIG_F_PROD,
+    proxy_config_g: PROXY_CONFIG_G,
 };
 
 const DOMAIN_CONFIG_SVR2_STAGING: DomainConfig = DomainConfig {
@@ -93,6 +103,8 @@ const DOMAIN_CONFIG_SVR2_STAGING: DomainConfig = DomainConfig {
     cert: RootCertificates::Signal,
     proxy_path: "/svr2-staging",
     confirmation_header_name: None,
+    proxy_config_f: PROXY_CONFIG_F_STAGING,
+    proxy_config_g: PROXY_CONFIG_G,
 };
 
 const DOMAIN_CONFIG_SVR3_SGX: DomainConfig = DomainConfig {
@@ -103,6 +115,8 @@ const DOMAIN_CONFIG_SVR3_SGX: DomainConfig = DomainConfig {
     cert: RootCertificates::Signal,
     proxy_path: "/svr3-sgx",
     confirmation_header_name: None,
+    proxy_config_f: PROXY_CONFIG_F_PROD,
+    proxy_config_g: PROXY_CONFIG_G,
 };
 
 const DOMAIN_CONFIG_SVR3_SGX_STAGING: DomainConfig = DomainConfig {
@@ -113,6 +127,8 @@ const DOMAIN_CONFIG_SVR3_SGX_STAGING: DomainConfig = DomainConfig {
     cert: RootCertificates::Signal,
     proxy_path: "/svr3-sgx-staging",
     confirmation_header_name: None,
+    proxy_config_f: PROXY_CONFIG_F_STAGING,
+    proxy_config_g: PROXY_CONFIG_G,
 };
 
 const DOMAIN_CONFIG_SVR3_NITRO: DomainConfig = DomainConfig {
@@ -123,6 +139,8 @@ const DOMAIN_CONFIG_SVR3_NITRO: DomainConfig = DomainConfig {
     cert: RootCertificates::Signal,
     proxy_path: "/svr3-nitro",
     confirmation_header_name: None,
+    proxy_config_f: PROXY_CONFIG_F_PROD,
+    proxy_config_g: PROXY_CONFIG_G,
 };
 
 const DOMAIN_CONFIG_SVR3_NITRO_STAGING: DomainConfig = DomainConfig {
@@ -133,6 +151,8 @@ const DOMAIN_CONFIG_SVR3_NITRO_STAGING: DomainConfig = DomainConfig {
     cert: RootCertificates::Signal,
     proxy_path: "/svr3-nitro-staging",
     confirmation_header_name: None,
+    proxy_config_f: PROXY_CONFIG_F_STAGING,
+    proxy_config_g: PROXY_CONFIG_G,
 };
 
 pub const DOMAIN_CONFIG_SVR3_TPM2SNP: DomainConfig = DomainConfig {
@@ -143,6 +163,8 @@ pub const DOMAIN_CONFIG_SVR3_TPM2SNP: DomainConfig = DomainConfig {
     cert: RootCertificates::Signal,
     proxy_path: "/svr3-tpm2snp",
     confirmation_header_name: None,
+    proxy_config_f: PROXY_CONFIG_F_PROD,
+    proxy_config_g: PROXY_CONFIG_G,
 };
 
 pub const DOMAIN_CONFIG_SVR3_TPM2SNP_STAGING: DomainConfig = DomainConfig {
@@ -153,9 +175,11 @@ pub const DOMAIN_CONFIG_SVR3_TPM2SNP_STAGING: DomainConfig = DomainConfig {
     cert: RootCertificates::Signal,
     proxy_path: "/svr3-tpm2snp-staging",
     confirmation_header_name: None,
+    proxy_config_f: PROXY_CONFIG_F_STAGING,
+    proxy_config_g: PROXY_CONFIG_G,
 };
 
-const PROXY_CONFIG_F: ProxyConfig = ProxyConfig {
+pub const PROXY_CONFIG_F_PROD: ProxyConfig = ProxyConfig {
     route_type: RouteType::ProxyF,
     hostname: "reflector-signal.global.ssl.fastly.net",
     sni_list: &[
@@ -165,7 +189,17 @@ const PROXY_CONFIG_F: ProxyConfig = ProxyConfig {
     ],
 };
 
-const PROXY_CONFIG_G: ProxyConfig = ProxyConfig {
+pub const PROXY_CONFIG_F_STAGING: ProxyConfig = ProxyConfig {
+    route_type: RouteType::ProxyF,
+    hostname: "reflector-staging-signal.global.ssl.fastly.net",
+    sni_list: &[
+        "github.githubassets.com",
+        "pinterest.com",
+        "www.redditstatic.com",
+    ],
+};
+
+pub const PROXY_CONFIG_G: ProxyConfig = ProxyConfig {
     route_type: RouteType::ProxyG,
     hostname: "reflector-nrgwuv7kwq-uc.a.run.app",
     sni_list: &[
@@ -232,6 +266,8 @@ pub struct DomainConfig {
     pub ip_v6: &'static [Ipv6Addr],
     pub cert: RootCertificates,
     pub confirmation_header_name: Option<&'static str>,
+    pub proxy_config_f: ProxyConfig,
+    pub proxy_config_g: ProxyConfig,
 }
 
 impl DomainConfig {
@@ -260,9 +296,12 @@ impl DomainConfig {
     pub fn connection_params_with_fallback(&self) -> Vec<ConnectionParams> {
         let direct = self.connection_params();
         let rng = thread_rng();
-        let shuffled_g_params =
-            PROXY_CONFIG_G.shuffled_connection_params(self.proxy_path, rng.clone());
-        let shuffled_f_params = PROXY_CONFIG_F.shuffled_connection_params(self.proxy_path, rng);
+        let shuffled_g_params = self
+            .proxy_config_g
+            .shuffled_connection_params(self.proxy_path, rng.clone());
+        let shuffled_f_params = self
+            .proxy_config_f
+            .shuffled_connection_params(self.proxy_path, rng);
         let proxy_params = itertools::interleave(shuffled_g_params, shuffled_f_params);
         iter::once(direct).chain(proxy_params).collect()
     }
@@ -282,6 +321,7 @@ pub fn add_user_agent_header(
     connection_params_list
 }
 
+#[derive(Clone)]
 pub struct ProxyConfig {
     route_type: RouteType,
     hostname: &'static str,

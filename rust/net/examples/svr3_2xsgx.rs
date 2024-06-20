@@ -25,7 +25,7 @@ use libsignal_net::enclave::{
     EnclaveEndpoint, EnclaveEndpointConnection, EndpointParams, MrEnclave, PpssSetup, Sgx,
     Svr3Flavor,
 };
-use libsignal_net::env::DomainConfig;
+use libsignal_net::env::{DomainConfig, PROXY_CONFIG_F_STAGING, PROXY_CONFIG_G};
 use libsignal_net::infra::certs::RootCertificates;
 use libsignal_net::infra::tcp_ssl::DirectConnector as TcpSslTransportConnector;
 use libsignal_net::svr::SvrConnection;
@@ -48,6 +48,8 @@ const TEST_SERVER_DOMAIN_CONFIG: DomainConfig = DomainConfig {
     cert: TEST_SERVER_CERT,
     proxy_path: "/svr3-test",
     confirmation_header_name: None,
+    proxy_config_f: PROXY_CONFIG_F_STAGING,
+    proxy_config_g: PROXY_CONFIG_G,
 };
 const TEST_SERVER_ENDPOINT_PARAMS: EndpointParams<'static, Sgx> = EndpointParams {
     mr_enclave: MrEnclave::new(&hex!(
