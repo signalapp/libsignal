@@ -108,8 +108,11 @@ jobs:
         include:
         - version: nightly
           toolchain: "$(cat rust-toolchain)"
+          cargo-keep-going: "--keep-going"
         - version: stable
           toolchain: "${LIBSIGNAL_MINIMUM_SUPPORTED_RUST_VERSION}"
+          # Remove this switch once our MSRV is at least 1.74, which stablilized the --keep-going flag.
+          cargo-keep-going: ""
 
     timeout-minutes: 45
 
@@ -164,19 +167,19 @@ jobs:
       if: matrix.version == 'nightly'
 
     - name: Build
-      run: cargo +${{ matrix.toolchain }} build --workspace --features libsignal-ffi/signal-media --verbose
+      run: cargo +${{ matrix.toolchain }} build --workspace --features libsignal-ffi/signal-media --verbose ${{ matrix.cargo-keep-going }}
 
     - name: Run tests
-      run: cargo +${{ matrix.toolchain }} test --workspace --all-features --verbose -- --include-ignored
+      run: cargo +${{ matrix.toolchain }} test --workspace --all-features --verbose --no-fail-fast -- --include-ignored
 
     - name: Test run benches
-      run: cargo +${{ matrix.toolchain }} test --workspace --benches --all-features --verbose
+      run: cargo +${{ matrix.toolchain }} test --workspace --benches --all-features --verbose --no-fail-fast
 
     - name: Build bins and examples
-      run: cargo +${{ matrix.toolchain }} build --workspace  --bins --examples --all-features --verbose
+      run: cargo +${{ matrix.toolchain }} build --workspace  --bins --examples --all-features --verbose ${{ matrix.cargo-keep-going }}
 
     - name: Clippy
-      run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+      run: cargo clippy --workspace --all-targets --all-features ${{ matrix.cargo-keep-going }} -- -D warnings
       if: matrix.version == 'nightly'
 
     - name: cargo clean (reclaim disk space)
@@ -186,7 +189,7 @@ jobs:
       if: matrix.version == 'stable'
 
     - name: Rust docs
-      run: cargo +${{ matrix.toolchain }} doc --workspace --all-features
+      run: cargo +${{ matrix.toolchain }} doc --workspace --all-features ${{ matrix.cargo-keep-going }}
       if: matrix.version == 'stable'
       env:
         RUSTFLAGS: -D warnings
@@ -202,14 +205,14 @@ jobs:
       if: matrix.version == 'stable'
 
     - name: Check that the protocol fuzz target still builds
-      run: cargo +${{ matrix.toolchain }} check --all-targets
+      run: cargo +${{ matrix.toolchain }} check --all-targets ${{ matrix.cargo-keep-going }}
       working-directory: rust/protocol/fuzz
       env:
         RUSTFLAGS: --cfg fuzzing
       if: matrix.version == 'stable'
 
     - name: Check that the attest fuzz target still builds
-      run: cargo +${{ matrix.toolchain }} check --all-targets
+      run: cargo +${{ matrix.toolchain }} check --all-targets ${{ matrix.cargo-keep-going }}
       working-directory: rust/attest/fuzz
       env:
         RUSTFLAGS: --cfg fuzzing
@@ -247,7 +250,7 @@ jobs:
 
     - name: Run tests (32-bit)
       # Exclude signal-neon-futures because those tests run Node
-      run: cargo +${{ matrix.toolchain }} test --workspace --all-features --verbose --target i686-unknown-linux-gnu --exclude signal-neon-futures -- --include-ignored
+      run: cargo +${{ matrix.toolchain }} test --workspace --all-features --verbose --target i686-unknown-linux-gnu --exclude signal-neon-futures --no-fail-fast -- --include-ignored
 
   java:
     name: Java

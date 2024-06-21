@@ -278,13 +278,13 @@ jobs:
     - run: rustup +stable target add i686-unknown-linux-gnu
 
     - name: Run tests
-      run: cargo +stable test --workspace --all-features --verbose -- --include-ignored
+      run: cargo +stable test --workspace --all-features --verbose --no-fail-fast -- --include-ignored
 
     - name: Test run benches
-      run: cargo +stable test --workspace --benches --all-features --verbose
+      run: cargo +stable test --workspace --benches --all-features --no-fail-fast --verbose
 
     - name: Build bins and examples
-      run: cargo +stable build --workspace  --bins --examples --all-features --verbose
+      run: cargo +stable build --workspace  --bins --examples --all-features --verbose --keep-going
 
     - name: Run libsignal-net smoke tests
       run: cargo +stable run --example chat_smoke_test -p libsignal-net -- --try-all-routes staging
@@ -298,7 +298,7 @@ jobs:
 
     - name: Run tests (32-bit)
       # Exclude signal-neon-futures because those tests run Node
-      run: cargo +stable test --workspace --all-features --verbose --target i686-unknown-linux-gnu --exclude signal-neon-futures -- --include-ignored
+      run: cargo +stable test --workspace --all-features --verbose --target i686-unknown-linux-gnu --exclude signal-neon-futures --no-fail-fast -- --include-ignored
 
     - name: cargo clean again (reclaim disk space)
       # Clean the contents of the target directory to avoid running out of disk space during the
@@ -306,11 +306,11 @@ jobs:
       run: cargo +stable clean
 
     - name: Run libsignal-protocol cross-version tests
-      run: cargo +stable test
+      run: cargo +stable test --keep-going
       working-directory: rust/protocol/cross-version-testing
 
     - name: Run libsignal-protocol cross-version tests (32-bit)
-      run: cargo +stable test --target i686-unknown-linux-gnu
+      run: cargo +stable test --target i686-unknown-linux-gnu --keep-going
       working-directory: rust/protocol/cross-version-testing
 
     # We don't run Clippy because GitHub silently updates `stable` and that can introduce new lints,
