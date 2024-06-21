@@ -10,6 +10,7 @@ use ::http::{HeaderMap, HeaderName, HeaderValue, StatusCode};
 use async_trait::async_trait;
 use futures_util::future::BoxFuture;
 
+use crate::auth::Auth;
 use crate::chat::ws::{ChatOverWebSocketServiceConnector, ServerEvent};
 use crate::infra::connection_manager::MultiRouteConnectionManager;
 use crate::infra::reconnect::{ServiceConnectorWithDecorator, ServiceWithReconnect};
@@ -389,12 +390,11 @@ impl DelegatingChatService for Arc<dyn ChatServiceWithDebugInfo + Send + Sync> {
 fn build_authorized_chat_service(
     connection_manager_ws: &MultiRouteConnectionManager,
     service_connector_ws: &ChatOverWebSocketServiceConnector<impl TransportConnector + 'static>,
-    username: String,
-    password: String,
+    auth: Auth,
 ) -> AuthorizedChatService<impl ChatServiceWithDebugInfo> {
     let header_auth_decorator = HttpRequestDecorator::Header(
         http::header::AUTHORIZATION,
-        basic_authorization(&username, &password),
+        basic_authorization(&auth.username, &auth.password),
     );
 
     // ws authorized
@@ -436,20 +436,15 @@ pub fn chat_service<T: TransportConnector + 'static>(
     endpoint: &EndpointConnection<MultiRouteConnectionManager>,
     transport_connector: T,
     incoming_tx: tokio::sync::mpsc::Sender<ServerEvent<T::Stream>>,
-    username: String,
-    password: String,
+    auth: Auth,
 ) -> Chat<impl ChatServiceWithDebugInfo, impl ChatServiceWithDebugInfo> {
     let ws_service_connector = ChatOverWebSocketServiceConnector::new(
         WebSocketClientConnector::new(transport_connector, endpoint.config.clone()),
         incoming_tx,
     );
     {
-        let auth_service = build_authorized_chat_service(
-            &endpoint.manager,
-            &ws_service_connector,
-            username,
-            password,
-        );
+        let auth_service =
+            build_authorized_chat_service(&endpoint.manager, &ws_service_connector, auth);
         let unauth_service = build_anonymous_chat_service(&endpoint.manager, &ws_service_connector);
         Chat {
             auth_service,

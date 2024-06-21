@@ -249,7 +249,7 @@ impl<'local, 'obj_ref, 'output, const LEN: usize> JniArgs<'local, 'obj_ref, JObj
 /// # Example
 ///
 /// ```
-/// # use libsignal_bridge::jni_args;
+/// # use libsignal_bridge_types::jni_args;
 /// # use jni::objects::JValue;
 /// # let name = jni::objects::JObject::null();
 /// let args = jni_args!((name => java.lang.String, 0x3FFF => short) -> void);

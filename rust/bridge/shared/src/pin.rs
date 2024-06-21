@@ -11,7 +11,7 @@ use ::attest::svr2::lookup_groupid;
 use ::signal_pin::{local_pin_hash, verify_local_pin_hash, PinHash, Result};
 use signal_pin::Error;
 
-bridge_handle!(PinHash, node = false);
+bridge_handle_fns!(PinHash, node = false);
 
 #[bridge_fn(node = false)]
 pub fn PinHash_EncryptionKey(ph: &PinHash) -> [u8; 32] {

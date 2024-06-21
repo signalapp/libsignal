@@ -227,7 +227,9 @@ our_abs_dir = os.path.dirname(os.path.realpath(__file__))
 
 decls = itertools.chain(
     collect_decls(os.path.join(our_abs_dir, '..')),
-    collect_decls(os.path.join(our_abs_dir, '..', '..', 'shared'), features=('node', 'signal-media', 'testing-fns')))
+    collect_decls(os.path.join(our_abs_dir, '..', '..', 'shared'), features=('node', 'signal-media', 'testing-fns')),
+    collect_decls(os.path.join(our_abs_dir, '..', '..', 'shared', 'types'), features=('node', 'signal-media')),
+)
 
 output_file_name = 'Native.d.ts'
 contents = open(os.path.join(our_abs_dir, output_file_name + '.in')).read()

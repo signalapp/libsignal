@@ -6,7 +6,6 @@ use std::fmt;
 
 use libsignal_net::chat::ChatServiceError;
 use libsignal_net::svr3::Error as Svr3Error;
-use paste::paste;
 use signal_media::sanitize::mp4::{Error as Mp4Error, ParseError as Mp4ParseError};
 use signal_media::sanitize::webp::{Error as WebpError, ParseError as WebpParseError};
 

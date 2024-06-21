@@ -27,7 +27,7 @@ use super::*;
 /// `ArgTypeInfo` has two required methods: `borrow` and `load_from`. The use site looks like this:
 ///
 /// ```no_run
-/// # use libsignal_bridge::node::*;
+/// # use libsignal_bridge_types::node::*;
 /// # use neon::prelude::*;
 /// # struct Foo;
 /// # impl SimpleArgTypeInfo for Foo {
@@ -74,7 +74,7 @@ pub trait ArgTypeInfo<'storage, 'context: 'storage>: Sized {
 /// Conceptually, the use site for `AsyncArgTypeInfo` looks like this:
 ///
 /// ```no_run
-/// # use libsignal_bridge::node::*;
+/// # use libsignal_bridge_types::node::*;
 /// # use neon::prelude::*;
 /// # extern crate signal_neon_futures;
 /// # struct Foo;
@@ -126,7 +126,7 @@ pub trait AsyncArgTypeInfo<'storage>: Sized {
 /// This trait is easier to use when writing Neon functions manually:
 ///
 /// ```no_run
-/// # use libsignal_bridge::node::*;
+/// # use libsignal_bridge_types::node::*;
 /// # use neon::prelude::*;
 /// # struct Foo;
 /// impl SimpleArgTypeInfo for Foo {
@@ -186,7 +186,7 @@ where
 }
 
 // Implement AsyncArgTypeInfo for a slice of SessionRecords outside of
-// the node_bridge_handle macro since we don't want to use async for
+// the node_bridge_as_handle macro since we don't want to use async for
 // the HsmEnclave module.
 // FIXME: This is necessarily a cloning API.
 // We should try to avoid cloning data when possible.
@@ -220,7 +220,7 @@ impl<'a> AsyncArgTypeInfo<'a> for &'a [SessionRecord] {
 /// `ResultTypeInfo` is used to implement the `bridge_fn` macro, but can also be used outside it.
 ///
 /// ```no_run
-/// # use libsignal_bridge::node::*;
+/// # use libsignal_bridge_types::node::*;
 /// # use neon::prelude::*;
 /// # struct Foo;
 /// # impl<'a> ResultTypeInfo<'a> for Foo {
@@ -1162,7 +1162,7 @@ pub(crate) const NATIVE_HANDLE_PROPERTY: &str = "_nativeHandle";
 ///
 /// Since this trait is used as a marker and implemented through a macro,
 /// operations that might differ across types have been factored into the [`BridgeHandleStrategy`]
-/// trait. The [`bridge_handle`](crate::support::bridge_handle) macro will automatically choose the
+/// trait. The [`bridge_as_handle`](crate::support::bridge_as_handle) macro will automatically choose the
 /// correct strategy.
 pub trait BridgeHandle: Send + Sync + Sized + 'static {
     /// Factors out operations that differ between mutable and immutable bridge handles.
@@ -1226,7 +1226,7 @@ impl<'a, T: BridgeHandle> ResultTypeInfo<'a> for T {
 /// # Example
 ///
 /// ```no_run
-/// # use libsignal_bridge::node::{BridgeHandle, BorrowedJsBoxedBridgeHandle, Mutable};
+/// # use libsignal_bridge_types::node::{BridgeHandle, BorrowedJsBoxedBridgeHandle, Mutable};
 /// # use neon::prelude::*;
 /// # use std::cell::{RefCell, RefMut};
 /// #
@@ -1322,10 +1322,7 @@ impl<T: BridgeHandle<Strategy = Immutable<T>>> PersistentBorrowedJsBoxedBridgeHa
     ///
     /// Note that this only works for immutable handles, since
     /// `PersistentBorrowedJsBoxedBridgeHandle` does not allow customizing how the box is accessed.
-    pub(crate) fn new<'a>(
-        cx: &mut impl Context<'a>,
-        wrapper: Handle<JsObject>,
-    ) -> NeonResult<Self> {
+    pub fn new<'a>(cx: &mut impl Context<'a>, wrapper: Handle<JsObject>) -> NeonResult<Self> {
         let value_box: Handle<DefaultJsBox<T>> = wrapper.get(cx, NATIVE_HANDLE_PROPERTY)?;
         let value_ref = &***value_box;
         // We must create the root after all failable operations.
@@ -1453,11 +1450,12 @@ pub fn clone_from_array_of_wrappers<'a, T: BridgeHandle<Strategy = Mutable<T>> +
         .collect()
 }
 
-/// Implementation of [`bridge_handle`](crate::support::bridge_handle) for Node.
-macro_rules! node_bridge_handle {
+/// Implementation of [`bridge_as_handle`](crate::support::bridge_as_handle) for Node.
+#[macro_export]
+macro_rules! node_bridge_as_handle {
     ( $typ:ty as false $(, $($_:tt)*)? ) => {};
     ( $typ:ty as $node_name:ident ) => {
-        paste! {
+        ::paste::paste! {
             #[doc = "ts: interface " $typ " { readonly __type: unique symbol; }"]
             impl node::BridgeHandle for $typ {
                 type Strategy = node::Immutable<Self>;
@@ -1498,7 +1496,7 @@ macro_rules! node_bridge_handle {
         }
     };
     ( $typ:ty as $node_name:ident, mut = true ) => {
-        paste! {
+        ::paste::paste! {
             #[doc = "ts: interface " $typ " { readonly __type: unique symbol; }"]
             impl node::BridgeHandle for $typ {
                 type Strategy = node::Mutable<Self>;
@@ -1541,8 +1539,8 @@ macro_rules! node_bridge_handle {
         }
     };
     ( $typ:ty $(, mut = $_:tt)?) => {
-        paste! {
-            node_bridge_handle!($typ as $typ $(, mut = $_)?);
+        ::paste::paste! {
+            $crate::node_bridge_as_handle!($typ as $typ $(, mut = $_)?);
         }
     };
 }

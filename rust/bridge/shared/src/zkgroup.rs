@@ -5,8 +5,9 @@
 
 use ::zkgroup;
 use libsignal_bridge_macros::*;
+use libsignal_bridge_types::zkgroup::validate_serialization;
 use libsignal_protocol::{Aci, Pni, ServiceId};
-use partial_default::PartialDefault;
+
 use zkgroup::auth::*;
 use zkgroup::call_links::*;
 use zkgroup::generic_server_params::*;
@@ -14,8 +15,6 @@ use zkgroup::groups::*;
 use zkgroup::profiles::*;
 use zkgroup::receipts::*;
 use zkgroup::*;
-
-use serde::Deserialize;
 
 use uuid::Uuid;
 use zkgroup::backups::{
@@ -28,85 +27,25 @@ use crate::*;
 
 pub(crate) use zkgroup::Timestamp;
 
-/// Checks that `bytes` can be deserialized as a `T` using our standard bincode settings.
-fn validate_serialization<'a, T: Deserialize<'a> + PartialDefault>(
-    bytes: &'a [u8],
-) -> Result<(), ZkGroupDeserializationFailure> {
-    zkgroup::deserialize::<T>(bytes).map(|_| ())
-}
+bridge_fixed_length_serializable_fns!(ExpiringProfileKeyCredential);
+bridge_fixed_length_serializable_fns!(ExpiringProfileKeyCredentialResponse);
+bridge_fixed_length_serializable_fns!(GroupMasterKey);
+bridge_fixed_length_serializable_fns!(GroupPublicParams);
+bridge_fixed_length_serializable_fns!(GroupSecretParams);
+bridge_fixed_length_serializable_fns!(ProfileKey);
+bridge_fixed_length_serializable_fns!(ProfileKeyCiphertext);
+bridge_fixed_length_serializable_fns!(ProfileKeyCommitment);
+bridge_fixed_length_serializable_fns!(ProfileKeyCredentialRequest);
+bridge_fixed_length_serializable_fns!(ProfileKeyCredentialRequestContext);
+bridge_fixed_length_serializable_fns!(ReceiptCredential);
+bridge_fixed_length_serializable_fns!(ReceiptCredentialPresentation);
+bridge_fixed_length_serializable_fns!(ReceiptCredentialRequest);
+bridge_fixed_length_serializable_fns!(ReceiptCredentialRequestContext);
+bridge_fixed_length_serializable_fns!(ReceiptCredentialResponse);
+bridge_fixed_length_serializable_fns!(UuidCiphertext);
 
-/// Bridges a ZKGroup serializable type via [`FixedLengthBincodeSerializable`].
-///
-/// `bridge_fixed_length_serializable!(FooBar)` generates
-/// - `impl FixedLengthBincodeSerializable for FooBar`, using `[u8; FOO_BAR_LEN]` as the associated
-///   array type.
-/// - `#[bridge_fn] fn FooBar_CheckValidContents`, which checks that the type can be deserialized.
-macro_rules! bridge_fixed_length_serializable {
-    ($typ:ident) => {
-        paste! {
-            // Declare a marker type for TypeScript, the same as bridge_handle.
-            // (This is harmless for the other bridges.)
-            #[doc = "ts: interface " $typ " { readonly __type: unique symbol; }"]
-            impl FixedLengthBincodeSerializable for $typ {
-                type Array = [u8; [<$typ:snake:upper _LEN>]];
-            }
-            #[bridge_fn]
-            fn [<$typ _CheckValidContents>](
-                buffer: &[u8]
-            ) -> Result<(), ZkGroupDeserializationFailure> {
-                if buffer.len() != <$typ as FixedLengthBincodeSerializable>::Array::LEN {
-                    return Err(ZkGroupDeserializationFailure::new::<$typ>())
-                }
-                validate_serialization::<$typ>(buffer)
-            }
-        }
-    };
-}
-
-/// Bridges a ZKGroup serializable type via [`FixedLengthBincodeSerializable`].
-///
-/// `bridge_serializable_as_handle!(FooBar)` generates
-/// - `#[bridge_fn] fn FooBar_Deserialize` for deserializing into a `FooBar`, and
-/// - `#[bridge_fn] fn FooBar_Serialize` for serializing a `FooBar` again.
-macro_rules! bridge_serializable_as_handle {
-    ($typ:ident) => {
-        bridge_handle!($typ, clone = false);
-        paste! {
-            #[bridge_fn]
-            fn [<$typ _Deserialize>](
-                buffer: &[u8]
-            ) -> Result<$typ, ZkGroupDeserializationFailure> {
-                zkgroup::deserialize(buffer)
-            }
-            #[bridge_fn]
-            fn [<$typ _Serialize>](
-                handle: & $typ,
-            ) -> Vec<u8> {
-                zkgroup::serialize(handle)
-            }
-        }
-    };
-}
-
-bridge_fixed_length_serializable!(ExpiringProfileKeyCredential);
-bridge_fixed_length_serializable!(ExpiringProfileKeyCredentialResponse);
-bridge_fixed_length_serializable!(GroupMasterKey);
-bridge_fixed_length_serializable!(GroupPublicParams);
-bridge_fixed_length_serializable!(GroupSecretParams);
-bridge_fixed_length_serializable!(ProfileKey);
-bridge_fixed_length_serializable!(ProfileKeyCiphertext);
-bridge_fixed_length_serializable!(ProfileKeyCommitment);
-bridge_fixed_length_serializable!(ProfileKeyCredentialRequest);
-bridge_fixed_length_serializable!(ProfileKeyCredentialRequestContext);
-bridge_fixed_length_serializable!(ReceiptCredential);
-bridge_fixed_length_serializable!(ReceiptCredentialPresentation);
-bridge_fixed_length_serializable!(ReceiptCredentialRequest);
-bridge_fixed_length_serializable!(ReceiptCredentialRequestContext);
-bridge_fixed_length_serializable!(ReceiptCredentialResponse);
-bridge_fixed_length_serializable!(UuidCiphertext);
-
-bridge_serializable_as_handle!(ServerPublicParams);
-bridge_serializable_as_handle!(ServerSecretParams);
+bridge_serializable_handle_fns!(ServerPublicParams);
+bridge_serializable_handle_fns!(ServerSecretParams);
 
 #[bridge_fn]
 fn ProfileKey_GetCommitment(

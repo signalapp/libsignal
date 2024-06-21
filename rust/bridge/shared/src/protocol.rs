@@ -4,6 +4,8 @@
 //
 
 use libsignal_bridge_macros::*;
+#[cfg(feature = "jni")]
+use libsignal_bridge_types::jni;
 use libsignal_protocol::error::Result;
 use libsignal_protocol::*;
 use static_assertions::const_assert_eq;
@@ -23,32 +25,32 @@ pub type KyberKeyPair = kem::KeyPair;
 pub type KyberPublicKey = kem::PublicKey;
 pub type KyberSecretKey = kem::SecretKey;
 
-bridge_handle!(CiphertextMessage, clone = false, jni = false);
-bridge_handle!(DecryptionErrorMessage);
-bridge_handle!(Fingerprint, jni = NumericFingerprintGenerator);
-bridge_handle!(PlaintextContent);
-bridge_handle!(PreKeyBundle);
-bridge_handle!(PreKeyRecord);
-bridge_handle!(PreKeySignalMessage);
-bridge_handle!(PrivateKey, ffi = privatekey, jni = ECPrivateKey);
-bridge_handle!(ProtocolAddress, ffi = address);
-bridge_handle!(PublicKey, ffi = publickey, jni = ECPublicKey);
-bridge_handle!(SenderCertificate);
-bridge_handle!(SenderKeyDistributionMessage);
-bridge_handle!(SenderKeyMessage);
-bridge_handle!(SenderKeyRecord);
-bridge_handle!(ServerCertificate);
-bridge_handle!(SessionRecord, mut = true);
-bridge_handle!(SignalMessage, ffi = message);
-bridge_handle!(SignedPreKeyRecord);
-bridge_handle!(KyberPreKeyRecord);
-bridge_handle!(UnidentifiedSenderMessageContent, clone = false);
-bridge_handle!(SealedSenderDecryptionResult, ffi = false, jni = false);
-bridge_handle!(KyberKeyPair);
-bridge_handle!(KyberPublicKey);
-bridge_handle!(KyberSecretKey);
-
 pub(crate) use libsignal_protocol::Timestamp;
+
+bridge_handle_fns!(CiphertextMessage, clone = false, jni = false);
+bridge_handle_fns!(DecryptionErrorMessage);
+bridge_handle_fns!(Fingerprint, jni = NumericFingerprintGenerator);
+bridge_handle_fns!(PlaintextContent);
+bridge_handle_fns!(PreKeyBundle);
+bridge_handle_fns!(PreKeyRecord);
+bridge_handle_fns!(PreKeySignalMessage);
+bridge_handle_fns!(PrivateKey, ffi = privatekey, jni = ECPrivateKey);
+bridge_handle_fns!(ProtocolAddress, ffi = address);
+bridge_handle_fns!(PublicKey, ffi = publickey, jni = ECPublicKey);
+bridge_handle_fns!(SenderCertificate);
+bridge_handle_fns!(SenderKeyDistributionMessage);
+bridge_handle_fns!(SenderKeyMessage);
+bridge_handle_fns!(SenderKeyRecord);
+bridge_handle_fns!(ServerCertificate);
+bridge_handle_fns!(SessionRecord);
+bridge_handle_fns!(SignalMessage, ffi = message);
+bridge_handle_fns!(SignedPreKeyRecord);
+bridge_handle_fns!(KyberPreKeyRecord);
+bridge_handle_fns!(UnidentifiedSenderMessageContent, clone = false);
+bridge_handle_fns!(SealedSenderDecryptionResult, ffi = false, jni = false);
+bridge_handle_fns!(KyberKeyPair);
+bridge_handle_fns!(KyberPublicKey);
+bridge_handle_fns!(KyberSecretKey);
 
 #[bridge_fn(ffi = false)]
 fn HKDF_DeriveSecrets(

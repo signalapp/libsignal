@@ -11,7 +11,7 @@ use std::ops::Deref;
 ///
 /// This should not be used to convert user-provided data since the error messages are not very friendly. A failure to
 /// convert from `P` to `T` indicates a bug in libsignal or in application code.
-pub(crate) struct AsType<T, P>(T, PhantomData<P>);
+pub struct AsType<T, P>(T, PhantomData<P>);
 
 impl<T, P> AsType<T, P> {
     pub fn into_inner(self) -> T {

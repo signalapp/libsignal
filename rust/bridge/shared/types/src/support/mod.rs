@@ -6,17 +6,15 @@
 use std::future::Future;
 use std::num::NonZeroU64;
 
-pub(crate) use paste::paste;
-
 mod as_type;
 mod sequences;
 mod serialized;
-pub(crate) use as_type::*;
-pub(crate) use sequences::*;
-pub(crate) use serialized::*;
+pub use as_type::*;
+pub use sequences::*;
+pub use serialized::*;
 
 mod transform_helper;
-pub(crate) use transform_helper::*;
+pub use transform_helper::*;
 
 // See https://github.com/rust-lang/rfcs/issues/1389
 pub fn describe_panic(any: &Box<dyn std::any::Any + Send>) -> String {
@@ -38,15 +36,17 @@ pub(crate) unsafe fn extend_lifetime<'a, 'b: 'a, T: ?Sized>(some_ref: &'a T) -> 
     std::mem::transmute::<&'a T, &'b T>(some_ref)
 }
 
-/// Exposes a Rust type to each of the bridges as a boxed value.
+/// With `bridge_handle_fns`, exposes a Rust type to each of the bridges as a boxed value.
 ///
 /// Full form:
 ///
 /// ```ignore
-/// # #[macro_use] extern crate libsignal_bridge;
+/// # #[macro_use] extern crate libsignal_bridge_types;
 /// # struct Foo;
 /// # #[cfg(ignore_even_when_running_all_tests)]
-/// bridge_handle!(Foo, clone = true, mut = true, ffi = "foo", jni = "Foo", node = "Foo");
+/// bridge_as_handle!(Foo, mut = true, ffi = foo, jni = Foo, node = Foo);
+/// # #[cfg(ignore_even_when_running_all_tests)]
+/// bridge_handle_fns!(Foo, ffi = foo, jni = Foo, node = Foo);
 /// ```
 ///
 /// This has several effects for a type `Foo`:
@@ -57,18 +57,18 @@ pub(crate) unsafe fn extend_lifetime<'a, 'b: 'a, T: ?Sized>(some_ref: &'a T) -> 
 /// - `&Foo` and `Option<&Foo>` become valid argument types (conforming to the `ArgTypeInfo` traits
 ///   for all three bridges).
 ///
-/// - If `mut = true` is passed to `bridge_handle`, `&mut Foo` becomes a valid argument type for all
+/// - If `mut = true` is passed to `bridge_as_handle`, `&mut Foo` becomes a valid argument type for all
 ///   three bridges as well. This may include extra overhead to check Rust's exclusive borrow rules,
 ///   even for immutable accesses.
 ///
-/// - If `mut = true` is *not* passed to `bridge_handle`, `&Foo` and `Option<&Foo>` become valid
+/// - If `mut = true` is *not* passed to `bridge_as_handle`, `&Foo` and `Option<&Foo>` become valid
 ///   argument types for async functions as well (conforming to [`node::AsyncArgTypeInfo`]).
 ///   (Note that you can't write `mut = false` because I was lazy with the macros.)
 ///
 /// - "Destroy" functions are generated for FFI and JNI based on the name of the type:
 ///   `signal_foo_destroy` and `Native.Foo_Destroy`.
 ///
-/// - If `clone = true` is passed to `bridge_handle`, a `signal_foo_clone` function will be
+/// - If `clone = true` is passed to `bridge_handle_fns`, a `signal_foo_clone` function will be
 ///   generated for the FFI bridge as well. `Foo` must adopt `Clone`.
 ///
 /// # Representation
@@ -93,20 +93,32 @@ pub(crate) unsafe fn extend_lifetime<'a, 'b: 'a, T: ?Sized>(some_ref: &'a T) -> 
 /// [`JsBox`]: https://docs.rs/neon/0.7.1-napi/neon/types/struct.JsBox.html
 /// [`node::AsyncArgTypeInfo`]: crate::node::AsyncArgTypeInfo
 #[macro_export]
-macro_rules! bridge_handle {
-    ($typ:ty $(, clone = $_clone:tt)? $(, mut = $_mut:tt)? $(, ffi = $ffi_name:ident)? $(, jni = $jni_name:ident)? $(, node = $node_name:ident)?) => {
+macro_rules! bridge_as_handle {
+    ($typ:ty $(, mut = $_mut:tt)? $(, ffi = $ffi_name:ident)? $(, jni = $jni_name:ident)? $(, node = $node_name:ident)?) => {
         #[cfg(feature = "ffi")]
-        ffi_bridge_handle!($typ $(as $ffi_name)? $(, clone = $_clone)?);
+        $crate::ffi_bridge_as_handle!($typ $(as $ffi_name)?);
         #[cfg(feature = "jni")]
-        jni_bridge_handle!($typ $(as $jni_name)?);
+        $crate::jni_bridge_as_handle!($typ $(as $jni_name)?);
         #[cfg(feature = "node")]
-        node_bridge_handle!($typ $(as $node_name)? $(, mut = $_mut)?);
+        $crate::node_bridge_as_handle!($typ $(as $node_name)? $(, mut = $_mut)?);
+    };
+}
+
+/// See [`bridge_as_handle`].
+#[macro_export]
+macro_rules! bridge_handle_fns {
+    ($typ:ty $(, clone = $_clone:tt)? $(, ffi = $ffi_name:ident)? $(, jni = $jni_name:ident)? $(, node = $node_name:ident)?) => {
+        #[cfg(feature = "ffi")]
+        $crate::ffi_bridge_handle_fns!($typ $(as $ffi_name)? $(, clone = $_clone)?);
+        #[cfg(feature = "jni")]
+        $crate::jni_bridge_handle_fns!($typ $(as $jni_name)?);
+        // Node doesn't need any generated bridging functions
     };
 }
 
 // Allow referring to the macro by path in doc comments.
 #[cfg(doc)]
-pub use bridge_handle;
+pub use {bridge_as_handle, bridge_handle_fns};
 
 /// Convenience syntax to expose a deserialization method to the bridges.
 ///
@@ -131,9 +143,10 @@ pub use bridge_handle;
 /// This function does not allow customizing which bridges are enabled, or the name of the bridge
 /// functions that are generated (they are always suffixed with `_Deserialize` or `_deserialize`
 /// as appropriate). If you need additional flexibility, use `bridge_fn` directly.
+#[macro_export]
 macro_rules! bridge_deserialize {
     ($typ:ident::$fn:path $(, $param:ident = $val:tt)*) => {
-        paste! {
+        ::paste::paste! {
             #[bridge_fn($($param = $val),*)]
             fn [<$typ _Deserialize>](data: &[u8]) -> Result<$typ> {
                 $typ::$fn(data)
@@ -147,7 +160,7 @@ macro_rules! bridge_deserialize {
 /// Full form:
 ///
 /// ```ignore
-/// # #[macro_use] extern crate libsignal_bridge;
+/// # #[macro_use] extern crate libsignal_bridge_types;
 /// # struct Foo;
 /// impl Foo {
 ///     fn bar(&self) -> &str {
@@ -183,9 +196,10 @@ macro_rules! bridge_deserialize {
 ///
 /// Automatically handles converting from the underlying type (using `into()`) and wrapping in
 /// `Ok` if the underlying result is non-failable.
+#[macro_export]
 macro_rules! bridge_get {
     ($typ:ident :: $method:ident as $name:ident -> $result:ty $(, $param:ident = $val:tt)* ) => {
-        paste! {
+        ::paste::paste! {
             #[bridge_fn($($param = $val),*)]
             fn [<$typ _ $name>](obj: &$typ) -> Result<$result> {
                 let result = TransformHelper($typ::$method(obj));
@@ -194,7 +208,7 @@ macro_rules! bridge_get {
         }
     };
     ($typ:ident :: $method:ident -> $result:ty $(, $param:ident = $val:tt)* ) => {
-        paste! {
+        ::paste::paste! {
             bridge_get!($typ::$method as [<Get $method:camel>] -> $result $(, $param = $val)*);
         }
     };
@@ -283,4 +297,27 @@ where
         make_future: impl FnOnce(Self::Cancellation) -> F,
         completer: <F::Output as ResultReporter>::Receiver,
     ) -> CancellationId;
+}
+
+#[doc(hidden)]
+/// An `AsyncRuntime` implementer that doesn't do anything.
+///
+/// This should only be used for writing doctests.
+pub struct NoOpAsyncRuntime;
+
+impl AsyncRuntimeBase for NoOpAsyncRuntime {}
+
+impl<F: Future> AsyncRuntime<F> for NoOpAsyncRuntime
+where
+    F::Output: ResultReporter,
+{
+    type Cancellation = std::future::Pending<()>;
+
+    fn run_future(
+        &self,
+        _make_future: impl FnOnce(Self::Cancellation) -> F,
+        _completer: <F::Output as ResultReporter>::Receiver,
+    ) -> CancellationId {
+        CancellationId::NotSupported
+    }
 }

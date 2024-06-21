@@ -62,9 +62,9 @@ pub(crate) fn bridge_fn(
         #[export_name = concat!(env!("LIBSIGNAL_BRIDGE_FN_PREFIX_JNI"), #name)]
         #[allow(non_snake_case)]
         pub unsafe extern "C" fn #wrapper_name<'local>(
-            mut env: jni::JNIEnv<'local>,
+            mut env: ::jni::JNIEnv<'local>,
             // We only generate static methods.
-            _class: jni::JClass,
+            _class: ::jni::objects::JClass,
             #async_runtime_if_needed
             #(#input_args),*
         ) -> #result_ty {

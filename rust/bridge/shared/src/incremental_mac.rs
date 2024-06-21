@@ -10,12 +10,13 @@ use hmac::digest::typenum::Unsigned;
 use hmac::Hmac;
 
 use libsignal_bridge_macros::*;
-use libsignal_protocol::incremental_mac::{calculate_chunk_size, Incremental, Validating};
+use libsignal_bridge_types::incremental_mac::*;
+use libsignal_protocol::incremental_mac::{calculate_chunk_size, Incremental};
 
 use crate::support::*;
 use crate::*;
 
-type Digest = sha2::Sha256;
+bridge_handle_fns!(IncrementalMac, clone = false);
 
 #[bridge_fn]
 pub fn IncrementalMac_CalculateChunkSize(data_size: u32) -> u32 {
@@ -23,11 +24,6 @@ pub fn IncrementalMac_CalculateChunkSize(data_size: u32) -> u32 {
         .try_into()
         .expect("Chunk size cannot be represented")
 }
-
-#[derive(Clone)]
-pub struct IncrementalMac(Option<Incremental<Hmac<Digest>>>);
-
-bridge_handle!(IncrementalMac, clone = false, mut = true);
 
 #[bridge_fn]
 pub fn IncrementalMac_Initialize(key: &[u8], chunk_size: u32) -> IncrementalMac {
@@ -63,10 +59,7 @@ pub fn IncrementalMac_Finalize(mac: &mut IncrementalMac) -> Vec<u8> {
         .to_vec()
 }
 
-#[derive(Clone)]
-pub struct ValidatingMac(Option<Validating<Hmac<Digest>>>);
-
-bridge_handle!(ValidatingMac, clone = false, mut = true);
+bridge_handle_fns!(ValidatingMac, clone = false);
 
 #[bridge_fn]
 pub fn ValidatingMac_Initialize(key: &[u8], chunk_size: u32, digests: &[u8]) -> ValidatingMac {
@@ -106,39 +99,35 @@ pub fn ValidatingMac_Finalize(mac: &mut ValidatingMac) -> i32 {
         .unwrap_or(-1)
 }
 
-impl Drop for IncrementalMac {
-    fn drop(&mut self) {
-        if self.0.is_some() {
-            report_unexpected_drop()
-        }
-    }
-}
-
-static UNEXPECTED_DROP_MESSAGE: &str = "MAC is dropped without calling finalize";
-
-fn report_unexpected_drop() {
-    if cfg!(test) {
-        panic!("{}", UNEXPECTED_DROP_MESSAGE);
-    } else {
-        log::warn!("{}", UNEXPECTED_DROP_MESSAGE);
-    }
-}
-
 #[cfg(test)]
 mod test {
     use super::*;
 
+    fn find_drop_log<'a>(
+        logs: impl IntoIterator<Item = &'a testing_logger::CapturedLog>,
+    ) -> Option<&'a testing_logger::CapturedLog> {
+        logs.into_iter()
+            .find(|log| log.body.contains(UNEXPECTED_DROP_MESSAGE))
+    }
+
     #[test]
-    #[should_panic]
     fn drop_without_finalize() {
+        testing_logger::setup();
         let incremental = IncrementalMac_Initialize(&[], 32);
         std::mem::drop(incremental);
+        testing_logger::validate(|captured_logs| {
+            assert!(find_drop_log(captured_logs).is_some());
+        })
     }
 
     #[test]
     fn drop_with_finalize() {
+        testing_logger::setup();
         let mut incremental = IncrementalMac_Initialize(&[], 32);
         IncrementalMac_Finalize(&mut incremental);
         std::mem::drop(incremental);
+        testing_logger::validate(|captured_logs| {
+            assert!(find_drop_log(captured_logs).is_none());
+        })
     }
 }

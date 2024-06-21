@@ -18,6 +18,8 @@ use crate::*;
 #[allow(unused_imports)]
 use futures_util::FutureExt;
 
+bridge_handle_fns!(SanitizedMetadata);
+
 /// Exposed so that we have an easy method to invoke from Java to test whether libsignal was
 /// compiled with signal-media.
 #[bridge_fn]
@@ -39,8 +41,6 @@ fn WebpSanitizer_Sanitize(input: &mut dyn SyncInputStream) -> Result<(), webp::E
     webp::sanitize(input)?;
     Ok(())
 }
-
-bridge_handle!(SanitizedMetadata);
 
 #[bridge_fn]
 fn SanitizedMetadata_GetMetadata(sanitized: &SanitizedMetadata) -> &[u8] {

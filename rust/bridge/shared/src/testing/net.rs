@@ -8,6 +8,8 @@ use std::time::Duration;
 
 use http::{HeaderMap, HeaderName, HeaderValue, StatusCode};
 use libsignal_bridge_macros::*;
+use libsignal_bridge_types::net::chat::{HttpRequest, ResponseAndDebugInfo};
+use libsignal_bridge_types::net::TokioAsyncContext;
 use libsignal_net::cdsi::{LookupError, LookupResponse, LookupResponseEntry, E164};
 use libsignal_net::chat::{
     ChatServiceError, DebugInfo as ChatServiceDebugInfo, Response as ChatResponse,
@@ -17,8 +19,6 @@ use libsignal_protocol::{Aci, Pni};
 use nonzero_ext::nonzero;
 use uuid::Uuid;
 
-use crate::net::chat::{HttpRequest, ResponseAndDebugInfo};
-use crate::net::TokioAsyncContext;
 use crate::support::*;
 use crate::*;
 

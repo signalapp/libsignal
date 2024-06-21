@@ -1228,6 +1228,18 @@ SignalFfiError *signal_device_transfer_generate_certificate(SignalOwnedBuffer *o
 
 SignalFfiError *signal_cds2_client_state_new(SignalSgxClientState **out, SignalBorrowedBuffer mrenclave, SignalBorrowedBuffer attestation_msg, uint64_t current_timestamp);
 
+SignalFfiError *signal_hsm_enclave_client_destroy(SignalHsmEnclaveClient *p);
+
+SignalFfiError *signal_hsm_enclave_client_new(SignalHsmEnclaveClient **out, SignalBorrowedBuffer trusted_public_key, SignalBorrowedBuffer trusted_code_hashes);
+
+SignalFfiError *signal_hsm_enclave_client_complete_handshake(SignalHsmEnclaveClient *cli, SignalBorrowedBuffer handshake_received);
+
+SignalFfiError *signal_hsm_enclave_client_established_send(SignalOwnedBuffer *out, SignalHsmEnclaveClient *cli, SignalBorrowedBuffer plaintext_to_send);
+
+SignalFfiError *signal_hsm_enclave_client_established_recv(SignalOwnedBuffer *out, SignalHsmEnclaveClient *cli, SignalBorrowedBuffer received_ciphertext);
+
+SignalFfiError *signal_hsm_enclave_client_initial_request(SignalOwnedBuffer *out, const SignalHsmEnclaveClient *obj);
+
 SignalFfiError *signal_sgx_client_state_destroy(SignalSgxClientState *p);
 
 SignalFfiError *signal_sgx_client_state_initial_request(SignalOwnedBuffer *out, const SignalSgxClientState *obj);
@@ -1237,18 +1249,6 @@ SignalFfiError *signal_sgx_client_state_complete_handshake(SignalSgxClientState 
 SignalFfiError *signal_sgx_client_state_established_send(SignalOwnedBuffer *out, SignalSgxClientState *cli, SignalBorrowedBuffer plaintext_to_send);
 
 SignalFfiError *signal_sgx_client_state_established_recv(SignalOwnedBuffer *out, SignalSgxClientState *cli, SignalBorrowedBuffer received_ciphertext);
-
-SignalFfiError *signal_hsm_enclave_client_destroy(SignalHsmEnclaveClient *p);
-
-SignalFfiError *signal_hsm_enclave_client_new(SignalHsmEnclaveClient **out, SignalBorrowedBuffer trusted_public_key, SignalBorrowedBuffer trusted_code_hashes);
-
-SignalFfiError *signal_hsm_enclave_client_initial_request(SignalOwnedBuffer *out, const SignalHsmEnclaveClient *obj);
-
-SignalFfiError *signal_hsm_enclave_client_complete_handshake(SignalHsmEnclaveClient *cli, SignalBorrowedBuffer handshake_received);
-
-SignalFfiError *signal_hsm_enclave_client_established_send(SignalOwnedBuffer *out, SignalHsmEnclaveClient *cli, SignalBorrowedBuffer plaintext_to_send);
-
-SignalFfiError *signal_hsm_enclave_client_established_recv(SignalOwnedBuffer *out, SignalHsmEnclaveClient *cli, SignalBorrowedBuffer received_ciphertext);
 
 SignalFfiError *signal_expiring_profile_key_credential_check_valid_contents(SignalBorrowedBuffer buffer);
 
@@ -1510,13 +1510,13 @@ SignalFfiError *signal_group_send_full_token_verify(SignalBorrowedBuffer token, 
 
 SignalFfiError *signal_verify_signature(bool *out, SignalBorrowedBuffer cert_pem, SignalBorrowedBuffer body, SignalBorrowedBuffer signature, uint64_t current_timestamp);
 
+SignalFfiError *signal_connection_manager_destroy(SignalConnectionManager *p);
+
 SignalFfiError *signal_connection_manager_new(SignalConnectionManager **out, uint8_t environment, const char *user_agent);
 
 SignalFfiError *signal_connection_manager_set_proxy(const SignalConnectionManager *connection_manager, const char *host, int32_t port);
 
 SignalFfiError *signal_connection_manager_clear_proxy(const SignalConnectionManager *connection_manager);
-
-SignalFfiError *signal_connection_manager_destroy(SignalConnectionManager *p);
 
 SignalFfiError *signal_create_otp(const char **out, const char *username, SignalBorrowedBuffer secret);
 
@@ -1527,6 +1527,8 @@ SignalFfiError *signal_svr3_backup(SignalCPromiseOwnedBufferOfc_uchar *promise, 
 SignalFfiError *signal_svr3_restore(SignalCPromiseOwnedBufferOfc_uchar *promise, const SignalTokioAsyncContext *async_runtime, const SignalConnectionManager *connection_manager, const char *password, SignalBorrowedBuffer share_set, const char *username, const char *enclave_password);
 
 SignalFfiError *signal_svr3_remove(SignalCPromisebool *promise, const SignalTokioAsyncContext *async_runtime, const SignalConnectionManager *connection_manager, const char *username, const char *enclave_password);
+
+SignalFfiError *signal_lookup_request_destroy(SignalLookupRequest *p);
 
 SignalFfiError *signal_lookup_request_new(SignalLookupRequest **out);
 
@@ -1539,8 +1541,6 @@ SignalFfiError *signal_lookup_request_set_token(const SignalLookupRequest *reque
 SignalFfiError *signal_lookup_request_add_aci_and_access_key(const SignalLookupRequest *request, const SignalServiceIdFixedWidthBinaryBytes *aci, SignalBorrowedBuffer access_key);
 
 SignalFfiError *signal_lookup_request_set_return_acis_without_uaks(const SignalLookupRequest *request, bool return_acis_without_uaks);
-
-SignalFfiError *signal_lookup_request_destroy(SignalLookupRequest *p);
 
 SignalFfiError *signal_cdsi_lookup_destroy(SignalCdsiLookup *p);
 
@@ -1610,9 +1610,9 @@ SignalFfiError *signal_pin_verify_local_hash(bool *out, const char *encoded_hash
 
 SignalFfiError *signal_svr2_client_new(SignalSgxClientState **out, SignalBorrowedBuffer mrenclave, SignalBorrowedBuffer attestation_msg, uint64_t current_timestamp);
 
-SignalFfiError *signal_incremental_mac_calculate_chunk_size(uint32_t *out, uint32_t data_size);
-
 SignalFfiError *signal_incremental_mac_destroy(SignalIncrementalMac *p);
+
+SignalFfiError *signal_incremental_mac_calculate_chunk_size(uint32_t *out, uint32_t data_size);
 
 SignalFfiError *signal_incremental_mac_initialize(SignalIncrementalMac **out, SignalBorrowedBuffer key, uint32_t chunk_size);
 
@@ -1630,9 +1630,9 @@ SignalFfiError *signal_validating_mac_finalize(int32_t *out, SignalValidatingMac
 
 SignalFfiError *signal_message_backup_key_destroy(SignalMessageBackupKey *p);
 
-SignalFfiError *signal_message_backup_key_new(SignalMessageBackupKey **out, const uint8_t (*master_key)[32], const SignalServiceIdFixedWidthBinaryBytes *aci);
-
 SignalFfiError *signal_message_backup_validation_outcome_destroy(SignalMessageBackupValidationOutcome *p);
+
+SignalFfiError *signal_message_backup_key_new(SignalMessageBackupKey **out, const uint8_t (*master_key)[32], const SignalServiceIdFixedWidthBinaryBytes *aci);
 
 SignalFfiError *signal_message_backup_validation_outcome_get_error_message(const char **out, const SignalMessageBackupValidationOutcome *outcome);
 
@@ -1655,6 +1655,14 @@ SignalFfiError *signal_username_link_create(SignalOwnedBuffer *out, const char *
 SignalFfiError *signal_username_link_decrypt_username(const char **out, SignalBorrowedBuffer entropy, SignalBorrowedBuffer encrypted_username);
 
 #if defined(SIGNAL_MEDIA_SUPPORTED)
+SignalFfiError *signal_sanitized_metadata_destroy(SignalSanitizedMetadata *p);
+#endif
+
+#if defined(SIGNAL_MEDIA_SUPPORTED)
+SignalFfiError *signal_sanitized_metadata_clone(SignalSanitizedMetadata **new_obj, const SignalSanitizedMetadata *obj);
+#endif
+
+#if defined(SIGNAL_MEDIA_SUPPORTED)
 SignalFfiError *signal_signal_media_check_available(void);
 #endif
 
@@ -1664,14 +1672,6 @@ SignalFfiError *signal_mp4_sanitizer_sanitize(SignalSanitizedMetadata **out, con
 
 #if defined(SIGNAL_MEDIA_SUPPORTED)
 SignalFfiError *signal_webp_sanitizer_sanitize(const SignalSyncInputStream *input);
-#endif
-
-#if defined(SIGNAL_MEDIA_SUPPORTED)
-SignalFfiError *signal_sanitized_metadata_destroy(SignalSanitizedMetadata *p);
-#endif
-
-#if defined(SIGNAL_MEDIA_SUPPORTED)
-SignalFfiError *signal_sanitized_metadata_clone(SignalSanitizedMetadata **new_obj, const SignalSanitizedMetadata *obj);
 #endif
 
 #if defined(SIGNAL_MEDIA_SUPPORTED)

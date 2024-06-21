@@ -26,7 +26,7 @@ use super::*;
 /// `ArgTypeInfo` has two required methods: `borrow` and `load_from`. The use site looks like this:
 ///
 /// ```no_run
-/// # use libsignal_bridge::jni::*;
+/// # use libsignal_bridge_types::jni::*;
 /// # use jni::JNIEnv;
 /// # struct Foo;
 /// # impl SimpleArgTypeInfo<'_> for Foo {
@@ -70,7 +70,7 @@ pub trait ArgTypeInfo<'storage, 'param: 'storage, 'context: 'param>: Sized {
 /// This trait is easier to use when writing JNI functions manually:
 ///
 /// ```no_run
-/// # use libsignal_bridge::jni::*;
+/// # use libsignal_bridge_types::jni::*;
 /// # use jni::objects::JObject;
 /// # use jni::JNIEnv;
 /// # struct Foo;
@@ -121,7 +121,7 @@ where
 /// `ResultTypeInfo` is used to implement the `bridge_fn` macro, but can also be used outside it.
 ///
 /// ```no_run
-/// # use libsignal_bridge::jni::*;
+/// # use libsignal_bridge_types::jni::*;
 /// # use jni::JNIEnv;
 /// # use jni::objects::JString;
 /// # struct Foo;
@@ -1190,19 +1190,35 @@ impl<'a> ResultTypeInfo<'a> for MessageBackupValidationOutcome {
     }
 }
 
-/// Implementation of [`bridge_handle`](crate::support::bridge_handle) for JNI.
-macro_rules! jni_bridge_handle {
+/// Implementation of [`bridge_as_handle`](crate::support::bridge_as_handle) for JNI.
+#[macro_export]
+macro_rules! jni_bridge_as_handle {
     ( $typ:ty as false $(, $($_:tt)*)? ) => {};
     ( $typ:ty as $jni_name:ident ) => {
-        impl jni::BridgeHandle for $typ {}
-        jni_bridge_destroy!($typ as $jni_name);
+        impl $crate::jni::BridgeHandle for $typ {}
     };
     ( $typ:ty ) => {
         // `paste!` turns the type back into an identifier.
-        // We can't specify an identifier here because the main `bridge_handle!` accepts any type
+        // We can't specify an identifier here because the main `bridge_as_handle!` accepts any type
         // and just passes it down.
-        paste! {
-            jni_bridge_handle!($typ as $typ);
+        ::paste::paste! {
+            $crate::jni_bridge_as_handle!($typ as $typ);
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! jni_bridge_handle_fns {
+    ( $typ:ty as false $(, $($_:tt)*)? ) => {};
+    ( $typ:ty as $jni_name:ident ) => {
+        $crate::jni_bridge_handle_destroy!($typ as $jni_name);
+    };
+    ( $typ:ty ) => {
+        // `paste!` turns the type back into an identifier.
+        // We can't specify an identifier here because the main `bridge_handle_fns!` accepts any type
+        // and just passes it down.
+        ::paste::paste! {
+            $crate::jni_bridge_handle_fns!($typ as $typ);
         }
     };
 }
@@ -1236,100 +1252,101 @@ trivial!(());
 /// behavior for `&mut dyn Foo` is to assume there's a type called `jni::JavaFoo`.
 ///
 /// The `'local` lifetime represents the lifetime of the JNI context.
+#[macro_export]
 macro_rules! jni_arg_type {
     (u8) => {
         // Note: not a jbyte. It's better to preserve the signedness here.
-        jni::jint
+        ::jni::sys::jint
     };
     (u16) => {
-        jni::jint
+        ::jni::sys::jint
     };
     (i32) => {
-        jni::jint
+        ::jni::sys::jint
     };
     (u32) => {
-        jni::jint
+        ::jni::sys::jint
     };
     (Option<u32>) => {
-        jni::jint
+        ::jni::sys::jint
     };
     (u64) => {
-        jni::jlong
+        ::jni::sys::jlong
     };
     (bool) => {
-        jni::jboolean
+        ::jni::sys::jboolean
     };
     (String) => {
-        jni::JString<'local>
+        ::jni::objects::JString<'local>
     };
     (Option<String>) => {
-        jni::JString<'local>
+        ::jni::objects::JString<'local>
     };
     (&[u8]) => {
-        jni::JByteArray<'local>
+        ::jni::objects::JByteArray<'local>
     };
     (Option<&[u8]>) => {
-        jni::JByteArray<'local>
+        ::jni::objects::JByteArray<'local>
     };
     (&mut [u8]) => {
-        jni::JByteArray<'local>
+        ::jni::objects::JByteArray<'local>
     };
     (&[u8; $len:expr]) => {
-        jni::JByteArray<'local>
+        ::jni::objects::JByteArray<'local>
     };
     (Box<[u8]>) => {
-        jni::JByteArray<'local>
+        ::jni::objects::JByteArray<'local>
     };
     (ServiceId) => {
-        jni::JByteArray<'local>
+        ::jni::objects::JByteArray<'local>
     };
     (Aci) => {
-        jni::JByteArray<'local>
+        ::jni::objects::JByteArray<'local>
     };
     (Pni) => {
-        jni::JByteArray<'local>
+        ::jni::objects::JByteArray<'local>
     };
     (ServiceIdSequence<'_>) => {
-        jni::JByteArray<'local>
+        ::jni::objects::JByteArray<'local>
     };
     (Vec<&[u8]>) => {
         jni::JavaByteBufferArray<'local>
     };
     (Timestamp) => {
-        jni::jlong
+        ::jni::sys::jlong
     };
     (Uuid) => {
-        jni::JavaUUID<'local>
+        $crate::jni::JavaUUID<'local>
     };
     (E164) => {
-        jni::JString<'local>
+        ::jni::objects::JString<'local>
     };
     (jni::CiphertextMessageRef) => {
-        jni::JavaCiphertextMessage<'local>
+        $crate::jni::JavaCiphertextMessage<'local>
     };
     (& [& $typ:ty]) => {
-        jni::JLongArray<'local>
+        ::jni::objects::JLongArray<'local>
     };
     (&mut dyn $typ:ty) => {
-        paste!(jni::[<Java $typ>]<'local>)
+        ::paste::paste!(jni::[<Java $typ>]<'local>)
     };
     (& $typ:ty) => {
-        jni::ObjectHandle
+        $crate::jni::ObjectHandle
     };
     (&mut $typ:ty) => {
-        jni::ObjectHandle
+        $crate::jni::ObjectHandle
     };
     (Option<& $typ:ty>) => {
-        jni::ObjectHandle
+        $crate::jni::ObjectHandle
     };
     (Serialized<$typ:ident>) => {
-        jni::JByteArray<'local>
+        ::jni::objects::JByteArray<'local>
     };
     (AsType<$typ:ident, $bridged:ident>) => {
-        jni_arg_type!($bridged)
+        $crate::jni_arg_type!($bridged)
     };
 
-    (Ignored<$typ:ty>) => (jni::JObject<'local>);
+    (Ignored<$typ:ty>) => (::jni::objects::JObject<'local>);
 }
 
 /// Syntactically translates `bridge_fn` result types to JNI types for `cbindgen` and
@@ -1340,6 +1357,7 @@ macro_rules! jni_arg_type {
 /// default behavior is to assume we're returning an opaque handle to a Rust value.
 ///
 /// The `'local` lifetime represents the lifetime of the JNI context.
+#[macro_export]
 macro_rules! jni_result_type {
     // These rules only match a single token for a Result's success type, or
     // Option's inner type.  We can't use `:ty` because we need the resulting
@@ -1348,118 +1366,118 @@ macro_rules! jni_result_type {
     // Therefore, if you need to return a more complicated Result or Option
     // type, you'll have to add another rule for its form.
     (Result<$typ:tt $(, $_:ty)?>) => {
-        jni::Throwing<jni_result_type!($typ)>
+        $crate::jni::Throwing<jni_result_type!($typ)>
     };
     (Result<&$typ:tt $(, $_:ty)?>) => {
-        jni::Throwing<jni_result_type!(&$typ)>
+        $crate::jni::Throwing<jni_result_type!(&$typ)>
     };
     (Result<Option<&$typ:tt> $(, $_:ty)?>) => {
-        jni::Throwing<jni_result_type!(&$typ)>
+        $crate::jni::Throwing<jni_result_type!(&$typ)>
     };
     (Result<Option<$typ:tt<$($args:tt),+> > $(, $_:ty)?>) => {
-        jni::Throwing<jni_result_type!($typ<$($args),+>)>
+        $crate::jni::Throwing<jni_result_type!($typ<$($args),+>)>
     };
     (Result<$typ:tt<$($args:tt),+> $(, $_:ty)?>) => {
-        jni::Throwing<jni_result_type!($typ<$($args),+>)>
+        $crate::jni::Throwing<jni_result_type!($typ<$($args),+>)>
     };
     (Option<$typ:tt>) => {
-        jni_result_type!($typ)
+        $crate::jni_result_type!($typ)
     };
     (Option<&$typ:tt>) => {
-        jni_result_type!(&$typ)
+        $crate::jni_result_type!(&$typ)
     };
     (Option<$typ:tt<$($args:tt),+> >) => {
-        jni_result_type!($typ<$($args),+>)
+        $crate::jni_result_type!($typ<$($args),+>)
     };
     (()) => {
         ()
     };
     (bool) => {
-        jni::jboolean
+        ::jni::sys::jboolean
     };
     (u8) => {
         // Note: not a jbyte. It's better to preserve the signedness here.
-        jni::jint
+        ::jni::sys::jint
     };
     (i32) => {
-        jni::jint
+        ::jni::sys::jint
     };
     (u32) => {
-        jni::jint
+        ::jni::sys::jint
     };
     (Option<u32>) => {
-        jni::jint
+        ::jni::sys::jint
     };
     (u64) => {
-        jni::jlong
+        ::jni::sys::jlong
     };
     (&str) => {
-        jni::JString<'local>
+        ::jni::objects::JString<'local>
     };
     (String) => {
-        jni::JString<'local>
+        ::jni::objects::JString<'local>
     };
     (Uuid) => {
-        jni::JavaUUID<'local>
+        $crate::jni::JavaUUID<'local>
     };
     (Timestamp) => {
-        jni::jlong
+        ::jni::sys::jlong
     };
     (&[u8]) => {
-        jni::JByteArray<'local>
+        ::jni::objects::JByteArray<'local>
     };
     (Vec<u8>) => {
-        jni::JByteArray<'local>
+        ::jni::objects::JByteArray<'local>
     };
     (&[String]) => {
-        jni::JObjectArray<'local>
+        ::jni::objects::JObjectArray<'local>
     };
     (Box<[String]>) => {
-        jni::JObjectArray<'local>
+        ::jni::objects::JObjectArray<'local>
     };
     (Box<[Vec<u8>]>) => {
-        jni::JavaArrayOfByteArray<'local>
+        $crate::jni::JavaArrayOfByteArray<'local>
     };
     (Cds2Metrics) => {
-        jni::JavaMap<'local>
+        $crate::jni::JavaMap<'local>
     };
     ([u8; $len:expr]) => {
-        jni::JByteArray<'local>
+        ::jni::objects::JByteArray<'local>
     };
     (ServiceId) => {
-        jni::JByteArray<'local>
+        ::jni::objects::JByteArray<'local>
     };
     (Aci) => {
-        jni::JByteArray<'local>
+        ::jni::objects::JByteArray<'local>
     };
     (Pni) => {
-        jni::JByteArray<'local>
+        ::jni::objects::JByteArray<'local>
     };
     (MessageBackupValidationOutcome) => {
-        jni::JObject<'local>
+        ::jni::objects::JObject<'local>
     };
     (LookupResponse) => {
-        jni::JObject<'local>
+        ::jni::objects::JObject<'local>
     };
     (ChatResponse) => {
-        jni::JObject<'local>
+        ::jni::objects::JObject<'local>
     };
     (ChatServiceDebugInfo) => {
-        jni::JObject<'local>
+        ::jni::objects::JObject<'local>
     };
     (ResponseAndDebugInfo) => {
-        jni::JObject<'local>
+        ::jni::objects::JObject<'local>
     };
     (CiphertextMessage) => {
         jni::JavaCiphertextMessage<'local>
     };
     (Serialized<$typ:ident>) => {
-        jni::JByteArray<'local>
+        ::jni::objects::JByteArray<'local>
     };
     (Ignored<$typ:ty>) => {
-        jni::JObject<'local>
+        ::jni::objects::JObject<'local>
     };
     ( $handle:ty ) => {
-        jni::ObjectHandle
+        $crate::jni::ObjectHandle
     };
 }

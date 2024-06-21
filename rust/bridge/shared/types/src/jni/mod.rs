@@ -20,11 +20,11 @@ use usernames::{UsernameError, UsernameLinkError};
 
 use crate::net::cdsi::CdsiError;
 
-pub(crate) use jni::objects::{
+pub use jni::objects::{
     AutoElements, JByteArray, JClass, JLongArray, JObject, JObjectArray, JString, ReleaseMode,
 };
-pub(crate) use jni::sys::{jboolean, jint, jlong};
-pub(crate) use jni::JNIEnv;
+pub use jni::sys::{jboolean, jint, jlong};
+pub use jni::JNIEnv;
 
 #[macro_use]
 mod args;
@@ -627,7 +627,6 @@ impl<'env> ConsumableException<'env> {
                 error,
             ),
 
-            #[cfg(feature = "testing-fns")]
             SignalJniError::TestingError { exception_class } => (exception_class, error),
         };
 
@@ -964,12 +963,13 @@ impl<'a> CiphertextMessageRef<'a> {
     }
 }
 
-/// Used by [`bridge_handle`](crate::support::bridge_handle).
+/// Used by [`bridge_handle_fns`](crate::support::bridge_handle_fns).
 ///
 /// Not intended to be invoked directly.
-macro_rules! jni_bridge_destroy {
+#[macro_export]
+macro_rules! jni_bridge_handle_destroy {
     ( $typ:ty as $jni_name:ident ) => {
-        paste! {
+        ::paste::paste! {
             #[export_name = concat!(
                 env!("LIBSIGNAL_BRIDGE_FN_PREFIX_JNI"),
                 stringify!($jni_name),
@@ -977,9 +977,9 @@ macro_rules! jni_bridge_destroy {
             )]
             #[allow(non_snake_case)]
             pub unsafe extern "C" fn [<__bridge_handle_jni_ $jni_name _destroy>](
-                _env: jni::JNIEnv,
-                _class: jni::JClass,
-                handle: jni::ObjectHandle,
+                _env: ::jni::JNIEnv,
+                _class: ::jni::objects::JClass,
+                handle: $crate::jni::ObjectHandle,
             ) {
                 if handle != 0 {
                     let _boxed_value = Box::from_raw(handle as *mut $typ);

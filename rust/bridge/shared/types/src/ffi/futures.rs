@@ -11,7 +11,7 @@ use futures_util::{FutureExt, TryFutureExt};
 use std::future::Future;
 
 #[derive(Debug)]
-pub(crate) struct FutureCancelled;
+pub struct FutureCancelled;
 
 pub type RawCancellationId = u64;
 
@@ -105,10 +105,10 @@ impl<T: ResultTypeInfo + std::panic::UnwindSafe> ResultReporter for FutureResult
 /// ## Example
 ///
 /// ```no_run
-/// # use libsignal_bridge::ffi::*;
-/// # use libsignal_bridge::{AsyncRuntime, ResultReporter};
-/// # use libsignal_bridge::testing::NonSuspendingBackgroundThreadRuntime;
-/// # fn test(promise: &mut CPromise<i32>, async_runtime: &NonSuspendingBackgroundThreadRuntime) {
+/// # use libsignal_bridge_types::ffi::*;
+/// # use libsignal_bridge_types::{AsyncRuntime, ResultReporter};
+/// # use libsignal_bridge_types::support::NoOpAsyncRuntime;
+/// # fn test(promise: &mut CPromise<i32>, async_runtime: &NoOpAsyncRuntime) {
 /// run_future_on_runtime(async_runtime, promise, |_cancel| async {
 ///     let result: i32 = 1 + 2;
 ///     // Do some complicated awaiting here.

@@ -83,6 +83,7 @@ parse_deps = true
 include = [
     "libsignal-core",
     "libsignal-protocol",
+    "libsignal-bridge-types",
     "signal-crypto",
     "signal-pin",
     "zkgroup",
@@ -91,7 +92,7 @@ include = [
     "mp4san",
     "webpsan",
 ]
-extra_bindings = ["libsignal-bridge", "zkgroup"]
+extra_bindings = ["libsignal-bridge", "libsignal-bridge-types", "zkgroup"]
 
 [parse.expand]
 crates = ["libsignal-ffi", "libsignal-bridge"]

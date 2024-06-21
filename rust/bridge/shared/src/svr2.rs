@@ -6,9 +6,9 @@
 use ::attest::enclave::Result;
 use ::attest::svr2;
 use libsignal_bridge_macros::*;
+use libsignal_bridge_types::sgx_session::SgxClientState;
 
 use crate::protocol::Timestamp;
-use crate::sgx_session::SgxClientState;
 #[allow(unused_imports)]
 use crate::support::*;
 use crate::*;

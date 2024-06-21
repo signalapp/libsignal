@@ -13,13 +13,13 @@ use rayon::slice::ParallelSlice as _;
 /// bridge, though; a buffer that really is constructed from concatenating service IDs should never
 /// error.
 #[derive(Clone, Copy, Debug)]
-pub(crate) struct ServiceIdSequence<'a>(&'a [u8]);
+pub struct ServiceIdSequence<'a>(&'a [u8]);
 
 impl<'a> ServiceIdSequence<'a> {
     const SERVICE_ID_FIXED_WIDTH_BINARY_LEN: usize =
         std::mem::size_of::<ServiceIdFixedWidthBinaryBytes>();
 
-    pub(crate) fn parse(input: &'a [u8]) -> Self {
+    pub fn parse(input: &'a [u8]) -> Self {
         let extra_bytes = input.len() % Self::SERVICE_ID_FIXED_WIDTH_BINARY_LEN;
         assert!(
             extra_bytes == 0,

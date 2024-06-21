@@ -3,17 +3,15 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-#[cfg(all(not(target_os = "android"), feature = "jni"))]
-use std::collections::HashMap;
-
 use ::attest::cds2;
 use ::attest::enclave::Result;
 use libsignal_bridge_macros::*;
+#[cfg(all(not(target_os = "android"), feature = "jni"))]
+use libsignal_bridge_types::cds2::Cds2Metrics;
+use libsignal_bridge_types::sgx_session::SgxClientState;
+use libsignal_bridge_types::support::*;
 
 use crate::protocol::Timestamp;
-use crate::sgx_session::SgxClientState;
-#[allow(unused_imports)]
-use crate::support::*;
 use crate::*;
 
 /// Builds an SGX client for the cds2 service
@@ -42,9 +40,6 @@ fn Cds2ClientState_New(
             + std::time::Duration::from_millis(current_timestamp.epoch_millis()),
     )
 }
-
-#[cfg(all(not(target_os = "android"), feature = "jni"))]
-pub struct Cds2Metrics(pub HashMap<String, i64>);
 
 #[cfg(not(target_os = "android"))]
 #[bridge_fn(ffi = false, node = false)]

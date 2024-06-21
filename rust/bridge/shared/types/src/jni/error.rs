@@ -51,7 +51,6 @@ pub enum SignalJniError {
     InvalidUri(InvalidUri),
     ConnectTimedOut,
     Bridge(BridgeLayerError),
-    #[cfg(feature = "testing-fns")]
     TestingError {
         exception_class: ClassName<'static>,
     },
@@ -100,7 +99,6 @@ impl fmt::Display for SignalJniError {
             SignalJniError::ConnectTimedOut => write!(f, "connect timed out"),
             SignalJniError::Svr3(e) => write!(f, "{}", e),
             SignalJniError::Bridge(e) => write!(f, "{}", e),
-            #[cfg(feature = "testing-fns")]
             SignalJniError::TestingError { exception_class } => {
                 write!(f, "TestingError({})", exception_class)
             }

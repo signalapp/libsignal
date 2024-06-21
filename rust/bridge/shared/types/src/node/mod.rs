@@ -7,22 +7,23 @@ use libsignal_protocol::*;
 
 use std::ops::Deref;
 
-pub(crate) use neon::context::Context;
-pub(crate) use neon::prelude::*;
-pub(crate) use neon::types::buffer::TypedArray;
+pub use neon::context::Context;
+pub use neon::prelude::*;
+pub use neon::types::buffer::TypedArray;
 
 /// Used to keep track of all generated entry points.
 ///
 /// Takes the *JavaScript* name `fooBar` of a function; the corresponding Rust function must be
 /// declared `node_fooBar`.
 // Declared early so it can be used in submodules.
+#[macro_export]
 macro_rules! node_register {
     ( $name:ident ) => {
-        paste! {
+        ::paste::paste! {
             #[no_mangle] // necessary because we are linking as a cdylib
             #[allow(non_upper_case_globals)]
-            #[linkme::distributed_slice(crate::node::LIBSIGNAL_FNS)]
-            static [<signal_register_node_ $name>]: (&str, crate::node::JsFn) =
+            #[linkme::distributed_slice($crate::node::LIBSIGNAL_FNS)]
+            static [<signal_register_node_ $name>]: (&str, $crate::node::JsFn) =
                 (stringify!($name), [<node_ $name>]);
         }
     };
@@ -48,11 +49,11 @@ pub use storage::*;
 
 /// A function pointer referring to a Neon-based Node entry point.
 #[doc(hidden)]
-pub(crate) type JsFn = for<'a> fn(FunctionContext<'a>) -> JsResult<'a, JsValue>;
+pub type JsFn = for<'a> fn(FunctionContext<'a>) -> JsResult<'a, JsValue>;
 
 #[doc(hidden)]
 #[linkme::distributed_slice]
-pub(crate) static LIBSIGNAL_FNS: [(&'static str, JsFn)] = [..];
+pub static LIBSIGNAL_FNS: [(&'static str, JsFn)] = [..];
 
 /// Exports all `bridge_fn`-generated entry points.
 pub fn register(cx: &mut ModuleContext) -> NeonResult<()> {

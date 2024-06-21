@@ -109,7 +109,7 @@
 //! # Adding new argument and result types
 //!
 //! If your argument or result type is a Rust value being wrapped in an opaque box, declare it
-//! using the `bridge_handle` macro alongside other such types. Otherwise, there are two steps:
+//! using the `bridge_as_handle` macro alongside other such types. Otherwise, there are two steps:
 //!
 //! 1. Argument and result types for FFI and JNI are determined by macros `ffi_arg_type`,
 //!    `ffi_result_type`, `jni_arg_type`, and `jni_result_type`. You may need to add your new type

@@ -23,7 +23,7 @@ use super::*;
 /// `ArgTypeInfo` has two required methods: `borrow` and `load_from`. The use site looks like this:
 ///
 /// ```
-/// # use libsignal_bridge::ffi::*;
+/// # use libsignal_bridge_types::ffi::*;
 /// # struct Foo;
 /// # impl SimpleArgTypeInfo for Foo {
 /// #     type ArgType = isize;
@@ -59,7 +59,7 @@ pub trait ArgTypeInfo<'storage>: Sized {
 /// This trait is easier to use when writing FFI functions manually:
 ///
 /// ```
-/// # use libsignal_bridge::ffi::*;
+/// # use libsignal_bridge_types::ffi::*;
 /// # struct Foo;
 /// impl SimpleArgTypeInfo for Foo {
 ///     type ArgType = isize;
@@ -103,7 +103,7 @@ where
 /// `ResultTypeInfo` is used to implement the `bridge_fn` macro, but can also be used outside it.
 ///
 /// ```
-/// # use libsignal_bridge::ffi::*;
+/// # use libsignal_bridge_types::ffi::*;
 /// # struct Foo;
 /// # impl ResultTypeInfo for Foo {
 /// #     type ResultType = isize;
@@ -575,6 +575,7 @@ impl<T: BridgeHandle> ResultTypeInfo for Option<T> {
     }
 }
 
+#[allow(clippy::not_unsafe_ptr_arg_deref)]
 impl<T> SimpleArgTypeInfo for Serialized<T>
 where
     T: FixedLengthBincodeSerializable
@@ -735,16 +736,11 @@ impl ResultTypeInfo for crate::net::chat::ResponseAndDebugInfo {
     }
 }
 
-/// Implementation of [`bridge_handle`](crate::support::bridge_handle) for FFI.
-macro_rules! ffi_bridge_handle {
-    ( $typ:ty as false $(, $($_:tt)*)? ) => {};
-    ( $typ:ty as $ffi_name:ident, clone = false ) => {
-        impl ffi::BridgeHandle for $typ {}
-        ffi_bridge_destroy!($typ as $ffi_name);
-    };
+/// Defines an `extern "C"` function for cloning the given type.
+#[macro_export]
+macro_rules! ffi_bridge_handle_clone {
     ( $typ:ty as $ffi_name:ident ) => {
-        ffi_bridge_handle!($typ as $ffi_name, clone = false);
-        paste! {
+        ::paste::paste! {
             #[export_name = concat!(
                 env!("LIBSIGNAL_BRIDGE_FN_PREFIX_FFI"),
                 stringify!($ffi_name),
@@ -753,17 +749,44 @@ macro_rules! ffi_bridge_handle {
             pub unsafe extern "C" fn [<__bridge_handle_ffi_ $ffi_name _clone>](
                 new_obj: *mut *mut $typ,
                 obj: *const $typ,
-            ) -> *mut ffi::SignalFfiError {
-                ffi::run_ffi_safe(|| {
-                    let obj = ffi::native_handle_cast::<$typ>(obj)?;
-                    ffi::write_result_to::<$typ>(new_obj, obj.clone())
+            ) -> *mut $crate::ffi::SignalFfiError {
+                $crate::ffi::run_ffi_safe(|| {
+                    let obj = $crate::ffi::native_handle_cast::<$typ>(obj)?;
+                    $crate::ffi::write_result_to::<$typ>(new_obj, obj.clone())
                 })
             }
         }
     };
+}
+
+/// Implements `crate::ffi::BridgeHandle` for the given type.
+#[macro_export]
+macro_rules! ffi_bridge_as_handle {
+    ( $typ:ty as false $(, $($_:tt)*)? ) => {};
+    ( $typ:ty as $ffi_name:ident ) => {
+        impl $crate::ffi::BridgeHandle for $typ {}
+    };
+    ( $typ:ty ) => {
+        ::paste::paste! {
+            $crate::ffi_bridge_as_handle!($typ as [<$typ:snake>] );
+        }
+    };
+}
+
+/// Defines boilerplate `extern "C"` functions for the given type.
+#[macro_export]
+macro_rules! ffi_bridge_handle_fns {
+    ( $typ:ty as false $(, $($_:tt)*)? ) => {};
+    ( $typ:ty as $ffi_name:ident, clone = false ) => {
+        $crate::ffi_bridge_handle_destroy!($typ as $ffi_name);
+    };
+    ( $typ:ty as $ffi_name:ident ) => {
+        $crate::ffi_bridge_handle_fns!($typ as $ffi_name, clone = false);
+        $crate::ffi_bridge_handle_clone!($typ as $ffi_name);
+    };
     ( $typ:ty $(, clone = $_:tt)? ) => {
-        paste! {
-            ffi_bridge_handle!($typ as [<$typ:snake>] $(, clone = $_)? );
+        ::paste::paste! {
+            $crate::ffi_bridge_handle_fns!($typ as [<$typ:snake>] $(, clone = $_)? );
         }
     };
 }
@@ -800,6 +823,7 @@ trivial!(bool);
 /// behavior for references is to pass them through as pointers; the default behavior for
 /// `&mut dyn Foo` is to assume there's a struct called `ffi::FfiFooStruct` and produce a pointer
 /// to that.
+#[macro_export]
 macro_rules! ffi_arg_type {
     (u8) => (u8);
     (u16) => (u16);
@@ -824,8 +848,8 @@ macro_rules! ffi_arg_type {
     (E164) => (*const std::ffi::c_char);
     (&[u8; $len:expr]) => (*const [u8; $len]);
     (&[& $typ:ty]) => (ffi::BorrowedSliceOf<*const $typ>);
-    (&mut dyn $typ:ty) => (*const paste!(ffi::[<Ffi $typ Struct>]));
-    (Option<&dyn $typ:ty>) => (*const paste!(ffi::[<Ffi $typ Struct>]));
+    (&mut dyn $typ:ty) => (*const ::paste::paste!(ffi::[<Ffi $typ Struct>]));
+    (Option<&dyn $typ:ty>) => (*const ::paste::paste!(ffi::[<Ffi $typ Struct>]));
     (& $typ:ty) => (*const $typ);
     (&mut $typ:ty) => (*mut $typ);
     (Option<& $typ:ty>) => (*const $typ);
@@ -836,7 +860,7 @@ macro_rules! ffi_arg_type {
 
     // In order to provide a fixed-sized array of the correct length,
     // a serialized type FooBar must have a constant FOO_BAR_LEN that's in scope (and exposed to C).
-    (Serialized<$typ:ident>) => (*const [std::ffi::c_uchar; paste!([<$typ:snake:upper _LEN>])]);
+    (Serialized<$typ:ident>) => (*const [std::ffi::c_uchar; ::paste::paste!([<$typ:snake:upper _LEN>])]);
 }
 
 /// Syntactically translates `bridge_fn` result types to FFI types for `cbindgen`.
@@ -844,6 +868,7 @@ macro_rules! ffi_arg_type {
 /// This is a syntactic transformation (because that's how Rust macros work), so new result types
 /// will need to be added here directly even if they already implement [`ResultTypeInfo`]. The
 /// default behavior is to assume we're returning an opaque boxed value `*mut Foo` (`Foo *` in C).
+#[macro_export]
 macro_rules! ffi_result_type {
     // These rules only match a single token for a Result's success type.
     // We can't use `:ty` because we need the resulting tokens to be matched recursively rather than
@@ -886,7 +911,7 @@ macro_rules! ffi_result_type {
 
     // In order to provide a fixed-sized array of the correct length,
     // a serialized type FooBar must have a constant FOO_BAR_LEN that's in scope (and exposed to C).
-    (Serialized<$typ:ident>) => ([std::ffi::c_uchar; paste!([<$typ:snake:upper _LEN>])]);
+    (Serialized<$typ:ident>) => ([std::ffi::c_uchar; ::paste::paste!([<$typ:snake:upper _LEN>])]);
 
     (Ignored<$typ:ty>) => (*const std::ffi::c_void);
 

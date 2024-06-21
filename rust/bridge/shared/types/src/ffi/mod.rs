@@ -247,12 +247,13 @@ pub unsafe fn write_result_to<T: ResultTypeInfo>(
     Ok(())
 }
 
-/// Used by [`bridge_handle`](crate::support::bridge_handle).
+/// Used by [`bridge_as_handle`](crate::support::bridge_as_handle).
 ///
 /// Not intended to be invoked directly.
-macro_rules! ffi_bridge_destroy {
+#[macro_export]
+macro_rules! ffi_bridge_handle_destroy {
     ( $typ:ty as $ffi_name:ident ) => {
-        paste! {
+        ::paste::paste! {
             #[cfg(feature = "ffi")]
             #[export_name = concat!(
                 env!("LIBSIGNAL_BRIDGE_FN_PREFIX_FFI"),

@@ -141,9 +141,9 @@ impl<T: for<'a> ResultTypeInfo<'a> + std::panic::UnwindSafe, U> ResultReporter
 ///
 /// ```no_run
 /// # use jni::JNIEnv;
-/// # use libsignal_bridge::jni::*;
-/// # use libsignal_bridge::testing::NonSuspendingBackgroundThreadRuntime;
-/// # fn test(env: &mut JNIEnv, async_runtime: &NonSuspendingBackgroundThreadRuntime) -> SignalJniResult<()> {
+/// # use libsignal_bridge_types::jni::*;
+/// # use libsignal_bridge_types::support::NoOpAsyncRuntime;
+/// # fn test(env: &mut JNIEnv, async_runtime: &NoOpAsyncRuntime) -> SignalJniResult<()> {
 /// let java_future = run_future_on_runtime(env, async_runtime, |_cancel| async {
 ///     let result: i32 = 1 + 2;
 ///     // Do some complicated awaiting here.

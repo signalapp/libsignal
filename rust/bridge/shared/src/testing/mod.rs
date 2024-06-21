@@ -5,19 +5,23 @@
 
 use futures_util::FutureExt;
 use libsignal_bridge_macros::*;
+use libsignal_bridge_types::support::*;
+use libsignal_bridge_types::*;
 use libsignal_protocol::SignalProtocolError;
 
 use std::future::Future;
-
-use crate::support::*;
-use crate::*;
 
 mod net;
 mod types;
 use types::*;
 
 pub struct NonSuspendingBackgroundThreadRuntime;
-bridge_handle!(
+bridge_as_handle!(
+    NonSuspendingBackgroundThreadRuntime,
+    ffi = testing_NonSuspendingBackgroundThreadRuntime,
+    jni = TESTING_1NonSuspendingBackgroundThreadRuntime
+);
+bridge_handle_fns!(
     NonSuspendingBackgroundThreadRuntime,
     clone = false,
     ffi = testing_NonSuspendingBackgroundThreadRuntime,
@@ -75,7 +79,8 @@ async fn TESTING_FutureFailure(_input: u8) -> Result<i32, SignalProtocolError> {
 pub struct TestingHandleType {
     value: u8,
 }
-bridge_handle!(TestingHandleType);
+bridge_as_handle!(TestingHandleType);
+bridge_handle_fns!(TestingHandleType);
 
 #[bridge_fn]
 fn TESTING_TestingHandleType_getValue(handle: &TestingHandleType) -> u8 {
@@ -91,7 +96,8 @@ async fn TESTING_FutureProducesPointerType(input: u8) -> TestingHandleType {
 pub struct OtherTestingHandleType {
     value: String,
 }
-bridge_handle!(OtherTestingHandleType);
+bridge_as_handle!(OtherTestingHandleType);
+bridge_handle_fns!(OtherTestingHandleType);
 
 #[bridge_fn]
 fn TESTING_OtherTestingHandleType_getValue(handle: &OtherTestingHandleType) -> String {

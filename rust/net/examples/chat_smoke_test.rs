@@ -8,6 +8,7 @@ use std::time::Duration;
 
 use clap::{Args, Parser, ValueEnum};
 use http::uri::PathAndQuery;
+use libsignal_net::auth::Auth;
 use libsignal_net::chat::{chat_service, ChatServiceError};
 use libsignal_net::env::constants::WEB_SOCKET_PATH;
 use libsignal_net::env::Svr3Env;
@@ -112,8 +113,10 @@ async fn test_connection(
         &connection,
         transport_connector,
         incoming_tx,
-        "".to_owned(),
-        "".to_owned(),
+        Auth {
+            username: "".to_owned(),
+            password: "".to_owned(),
+        },
     );
 
     chat.connect_unauthenticated().await?;
