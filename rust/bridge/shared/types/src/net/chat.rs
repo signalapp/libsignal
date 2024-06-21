@@ -242,6 +242,7 @@ impl dyn ChatListener {
         let mut listener = Some(self);
         loop {
             let next = ::tokio::select! {
+                biased; // Always checking cancellation first makes it easier to test changing listeners.
                 _ = &mut cancel_rx => None,
                 next = request_stream.next() => next,
             };
