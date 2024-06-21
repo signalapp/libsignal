@@ -33,7 +33,7 @@ public class ECPublicKey implements Comparable<ECPublicKey>, NativeHandleGuard.O
   public static ECPublicKey fromPublicKeyBytes(byte[] key) throws InvalidKeyException {
     if (key.length != KEY_SIZE - 1) {
       throw new InvalidKeyException(
-          "invalid number of public key bytes (expected"
+          "invalid number of public key bytes (expected "
               + (KEY_SIZE - 1)
               + ", was "
               + key.length
