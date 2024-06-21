@@ -18,7 +18,7 @@ if [[ -t 0 ]]; then
     IS_TTY="yes"
 fi
 
-docker build --build-arg "UID=${UID:-501}" --build-arg "GID=${GID:-501}" -t ${DOCKER_IMAGE} -f node/Dockerfile .
+docker build --build-arg "UID=${UID:-501}" --build-arg "GID=${GID:-501}" --build-arg "NODE_VERSION=$(cat .nvmrc)" -t ${DOCKER_IMAGE} -f node/Dockerfile .
 
 # We build both architectures in the same run action to save on intermediates
 # (including downloading dependencies)
@@ -30,6 +30,6 @@ docker run ${IS_TTY:+ -it} --init --rm -v "${PWD}":/home/libsignal/src ${DOCKER_
         CC=aarch64-linux-gnu-gcc \
         CXX=aarch64-linux-gnu-g++ \
         CPATH=/usr/aarch64-linux-gnu/include \
-        npx prebuildify --napi -t $(cat ~/.nvmrc) --arch arm64 &&
-    npx prebuildify --napi -t $(cat ~/.nvmrc) --arch x64
+        npx prebuildify --napi -t $(cat ../.nvmrc) --arch arm64 &&
+    npx prebuildify --napi -t $(cat ../.nvmrc) --arch x64
 '
