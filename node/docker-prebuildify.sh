@@ -31,5 +31,7 @@ docker run ${IS_TTY:+ -it} --init --rm -v "${PWD}":/home/libsignal/src ${DOCKER_
         CXX=aarch64-linux-gnu-g++ \
         CPATH=/usr/aarch64-linux-gnu/include \
         npx prebuildify --napi -t $(cat ../.nvmrc) --arch arm64 &&
-    npx prebuildify --napi -t $(cat ../.nvmrc) --arch x64
+    mv build/Release/*-debuginfo.* . &&
+    npx prebuildify --napi -t $(cat ../.nvmrc) --arch x64 &&
+    mv build/Release/*-debuginfo.* .
 '
