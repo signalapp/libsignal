@@ -36,6 +36,7 @@ pub struct PartialBackup<M: Method> {
     account_data: Option<M::Value<AccountData<M>>>,
     recipients: HashMap<RecipientId, RecipientData<M>>,
     chats: ChatsData<M>,
+    ad_hoc_calls: M::List<AdHocCall>,
     sticker_packs: HashMap<StickerPackId, StickerPack<M>>,
 }
 
@@ -44,6 +45,7 @@ pub struct CompletedBackup<M: Method> {
     account_data: M::Value<AccountData<M>>,
     recipients: HashMap<RecipientId, RecipientData<M>>,
     chats: ChatsData<M>,
+    ad_hoc_calls: M::List<AdHocCall>,
     sticker_packs: HashMap<StickerPackId, StickerPack<M>>,
 }
 
@@ -61,6 +63,7 @@ pub struct Backup {
     pub account_data: AccountData<Store>,
     pub recipients: HashMap<RecipientId, RecipientData<Store>>,
     pub chats: HashMap<ChatId, ChatData<Store>>,
+    pub ad_hoc_calls: Vec<AdHocCall>,
     pub sticker_packs: HashMap<StickerPackId, StickerPack<Store>>,
 }
 
@@ -117,6 +120,7 @@ impl<M: Method> TryFrom<PartialBackup<M>> for CompletedBackup<M> {
             account_data,
             recipients,
             chats,
+            ad_hoc_calls,
             sticker_packs,
         } = value;
 
@@ -127,6 +131,7 @@ impl<M: Method> TryFrom<PartialBackup<M>> for CompletedBackup<M> {
             account_data,
             recipients,
             chats,
+            ad_hoc_calls,
             sticker_packs,
         })
     }
@@ -144,6 +149,7 @@ impl From<CompletedBackup<Store>> for Backup {
                     pinned: _,
                     chat_items_count: _,
                 },
+            ad_hoc_calls,
             sticker_packs,
         } = value;
 
@@ -152,6 +158,7 @@ impl From<CompletedBackup<Store>> for Backup {
             account_data,
             recipients,
             chats,
+            ad_hoc_calls,
             sticker_packs,
         }
     }
@@ -271,6 +278,7 @@ impl<M: Method> PartialBackup<M> {
             account_data: None,
             recipients: Default::default(),
             chats: Default::default(),
+            ad_hoc_calls: Default::default(),
             sticker_packs: HashMap::new(),
         }
     }
@@ -295,13 +303,14 @@ impl<M: Method> PartialBackup<M> {
     fn add_ad_hoc_call(&mut self, call: proto::AdHocCall) -> Result<(), CallFrameError> {
         let recipient_id = call.recipientId;
         let call_id = call.callId;
-        let _call: AdHocCall =
-            call.try_into_with(&self.recipients)
-                .map_err(|error| CallFrameError {
-                    recipient_id,
-                    call_id,
-                    error,
-                })?;
+        let call = call
+            .try_into_with(&self.recipients)
+            .map_err(|error| CallFrameError {
+                recipient_id,
+                call_id,
+                error,
+            })?;
+        self.ad_hoc_calls.extend(Some(call));
         Ok(())
     }
 
