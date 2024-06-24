@@ -304,11 +304,11 @@ jobs:
       run: cargo +stable clean
 
     - name: Run libsignal-protocol cross-version tests
-      run: cargo +stable test --keep-going
+      run: cargo +stable test --no-fail-fast
       working-directory: rust/protocol/cross-version-testing
 
     - name: Run libsignal-protocol cross-version tests (32-bit)
-      run: cargo +stable test --target i686-unknown-linux-gnu --keep-going
+      run: cargo +stable test --target i686-unknown-linux-gnu --no-fail-fast
       working-directory: rust/protocol/cross-version-testing
 
     # We don't run Clippy because GitHub silently updates `stable` and that can introduce new lints,
