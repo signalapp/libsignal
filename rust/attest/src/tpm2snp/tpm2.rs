@@ -45,9 +45,13 @@ pub struct Signature<'a>(&'a [u8]);
 
 #[derive(Debug)]
 pub struct Clock {
+    #[allow(unused)]
     pub millis_since_clear: u64,
+    #[allow(unused)]
     pub resets: u32,
+    #[allow(unused)]
     pub restarts: u32,
+    #[allow(unused)]
     pub is_safe: bool,
 }
 

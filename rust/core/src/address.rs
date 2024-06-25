@@ -695,7 +695,7 @@ impl ProtocolAddress {
     /// Create a new address.
     ///
     /// - `name` defines a user's public identity, and therefore must be globally unique to that
-    /// user.
+    ///   user.
     /// - Each Signal client instance then has its own `device_id`, which must be unique among
     ///   all clients for that user.
     ///

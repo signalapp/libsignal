@@ -52,9 +52,6 @@ impl TryFrom<Vec<u8>> for Key {
     }
 }
 
-#[derive(Copy, Clone, Debug, Eq, Hash, PartialEq)]
-pub struct StickerId(u32);
-
 #[derive(Debug, thiserror::Error, displaydoc::Display)]
 #[cfg_attr(test, derive(PartialEq))]
 pub enum StickerPackError {
@@ -147,13 +144,13 @@ mod test {
     }
 
     impl proto::Sticker {
-        pub(crate) const TEST_ID: StickerId = StickerId(9988);
+        pub(crate) const TEST_ID: u32 = 9988;
 
         pub(crate) fn test_data() -> Self {
             Self {
                 packId: proto::StickerPack::TEST_ID_BYTES.into(),
                 packKey: proto::StickerPack::TEST_KEY.into(),
-                stickerId: Self::TEST_ID.0,
+                stickerId: Self::TEST_ID,
                 ..Default::default()
             }
         }

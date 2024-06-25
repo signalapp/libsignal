@@ -292,7 +292,12 @@ impl TryFrom<[u8; std::mem::size_of::<EndorsementsHeader>()]> for EndorsementsHe
     type Error = super::Error;
 
     fn try_from(src: [u8; std::mem::size_of::<EndorsementsHeader>()]) -> super::Result<Self> {
-        unsafe { Ok(transmute(src)) }
+        unsafe {
+            Ok(transmute::<
+                [u8; std::mem::size_of::<EndorsementsHeader>()],
+                Self,
+            >(src))
+        }
     }
 }
 

@@ -51,10 +51,10 @@ pub struct CompletedBackup<M: Method> {
 
 #[derive_where(Default)]
 struct ChatsData<M: Method> {
-    items: HashMap<ChatId, ChatData<M>>,
-    pinned: Vec<(PinOrder, RecipientId)>,
+    pub items: HashMap<ChatId, ChatData<M>>,
+    pub pinned: Vec<(PinOrder, RecipientId)>,
     /// Count of the total number of chat items held across all values in `items`.
-    chat_items_count: usize,
+    pub chat_items_count: usize,
 }
 
 #[derive(Debug)]

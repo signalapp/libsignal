@@ -37,7 +37,7 @@ cbc = "0.1.2"
 clap = { version = "4.2.1", features = ["derive"] }
 clap-stdin = "0.3.0"
 derive-where = "1.2.5"
-displaydoc = "0.2.4"
+displaydoc = "0.2.5"
 env_logger = "0.10.0"
 futures = "0.3.29"
 hex = "0.4.3"
@@ -54,6 +54,10 @@ serde_json = { version = "1.0", optional = true }
 sha2 = "0.10"
 smallvec = "1.13.2"
 strum = { version = "0.26", features = ["derive"] }
+# This isn't strictly necessary but we need at least this version to avoid
+# warnings from the latest nightly rustc. Remove this when the referenced strum
+# version has at least this version as a dependency.
+strum_macros = { version = "0.26.4" }
 subtle = "2.5.0"
 thiserror = "1.0.50"
 uuid = "1.1.2"

@@ -109,6 +109,7 @@ def main(args=None):
         if 'npm_package_version' in cargo_env:
             cargo_env['RUSTFLAGS'] += ' -Clink-arg=-Wl,-current_version,%s' % cargo_env['npm_package_version']
 
+    print("with environment: %s" % (' '.join("%s=%s" % (k, v) for (k, v) in cargo_env.items())))
     cmd = subprocess.Popen(cmdline, env=cargo_env)
     cmd.wait()
 

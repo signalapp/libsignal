@@ -154,7 +154,8 @@ impl TryFrom<[u8; std::mem::size_of::<SgxQuoteBody>()]> for SgxQuoteBody {
     type Error = super::Error;
 
     fn try_from(bytes: [u8; std::mem::size_of::<SgxQuoteBody>()]) -> super::Result<Self> {
-        let quote_body: SgxQuoteBody = unsafe { transmute(bytes) };
+        let quote_body =
+            unsafe { transmute::<[u8; std::mem::size_of::<SgxQuoteBody>()], SgxQuoteBody>(bytes) };
         if quote_body.version.value() != QUOTE_V3 {
             return Err(Error::new(format!(
                 "unsupported SGX quote version: {}",
@@ -350,7 +351,9 @@ impl TryFrom<[u8; std::mem::size_of::<SgxEcdsaSignatureHeader>()]> for SgxEcdsaS
     fn try_from(
         bytes: [u8; std::mem::size_of::<SgxEcdsaSignatureHeader>()],
     ) -> super::Result<Self> {
-        Ok(unsafe { transmute(bytes) })
+        Ok(unsafe {
+            transmute::<[u8; std::mem::size_of::<SgxEcdsaSignatureHeader>()], Self>(bytes)
+        })
     }
 }
 

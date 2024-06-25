@@ -27,10 +27,7 @@ pub mod key;
 pub mod parse;
 pub mod unknown;
 
-#[cfg(not(feature = "expose-proto-types"))]
 pub(crate) mod proto;
-#[cfg(feature = "expose-proto-types")]
-pub mod proto;
 
 pub struct BackupReader<R> {
     purpose: Purpose,

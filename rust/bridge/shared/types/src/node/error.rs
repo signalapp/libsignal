@@ -231,7 +231,7 @@ impl SignalNodeError for SignalProtocolError {
             Some(error) => cx.throw(error),
             None => {
                 // Make sure we still throw something.
-                cx.throw_error(&self.to_string())
+                cx.throw_error(self.to_string())
             }
         }
     }

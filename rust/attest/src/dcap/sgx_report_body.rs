@@ -121,6 +121,6 @@ impl TryFrom<[u8; std::mem::size_of::<SgxReportBody>()]> for SgxReportBody {
     type Error = super::Error;
 
     fn try_from(src: [u8; std::mem::size_of::<SgxReportBody>()]) -> super::Result<Self> {
-        unsafe { Ok(transmute(src)) }
+        unsafe { Ok(transmute::<[u8; std::mem::size_of::<SgxReportBody>()], Self>(src)) }
     }
 }

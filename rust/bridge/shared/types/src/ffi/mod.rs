@@ -87,7 +87,7 @@ impl<T> OwnedBufferOf<T> {
     /// Callers of this function must ensure that
     /// - the `OwnedBufferOf` was originally created from `Box`
     /// - any C code operating on the buffer left all its elements in a valid
-    /// state.
+    ///   state.
     pub unsafe fn into_box(self) -> Box<[T]> {
         let Self { base, length } = self;
         if base.is_null() {

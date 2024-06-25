@@ -140,7 +140,7 @@ pub struct InvalidExpiration {
 #[cfg_attr(test, derive_where(PartialEq; M::List<ChatItemData<M>>: PartialEq))]
 pub struct ChatData<M: Method> {
     pub recipient: RecipientId,
-    pub(super) items: M::List<ChatItemData<M>>,
+    pub items: M::List<ChatItemData<M>>,
     pub expiration_timer: Option<Duration>,
     pub mute_until: Option<Timestamp>,
     pub style: Option<ChatStyle>,

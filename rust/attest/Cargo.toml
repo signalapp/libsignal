@@ -45,3 +45,6 @@ test-case = "3.3"
 
 [build-dependencies]
 prost-build = "0.12"
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(fuzzing)'] }

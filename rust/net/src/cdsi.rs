@@ -426,22 +426,22 @@ impl<S: AsyncDuplexStream> ClientResponseCollector<S> {
     }
 }
 
+/// Numeric code set by the server on the websocket close frame.
+#[repr(u16)]
+#[derive(Copy, Clone, num_enum::TryFromPrimitive, strum::IntoStaticStr)]
+enum CdsiCloseCode {
+    InvalidArgument = 4003,
+    RateLimitExceeded = 4008,
+    ServerInternalError = 4013,
+    ServerUnavailable = 4014,
+    InvalidToken = 4101,
+}
+
 /// Produces a [`LookupError`] for the provided [`CloseFrame`].
 ///
 /// Returns `Some(err)` if there is a relevant `LookupError` value for the
 /// provided close frame. Otherwise returns `None`.
 fn err_for_close(CloseFrame { code, reason }: CloseFrame<'_>) -> Option<LookupError> {
-    /// Numeric code set by the server on the websocket close frame.
-    #[repr(u16)]
-    #[derive(Copy, Clone, num_enum::TryFromPrimitive, strum::IntoStaticStr)]
-    enum CdsiCloseCode {
-        InvalidArgument = 4003,
-        RateLimitExceeded = 4008,
-        ServerInternalError = 4013,
-        ServerUnavailable = 4014,
-        InvalidToken = 4101,
-    }
-
     let Ok(code) = CdsiCloseCode::try_from(u16::from(code)) else {
         log::warn!("got unexpected websocket error code: {code}",);
         return None;

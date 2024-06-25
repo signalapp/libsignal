@@ -118,10 +118,10 @@ impl OpaqueMaskedShareSet {
 ///
 /// In its essence it is simply a union of three other error types:
 /// - libsignal_svr3::Error for the errors originating in the PPSS implementation. Most of them are
-/// unlikely due to the way higher level APIs invoke the lower-level primitives from
-/// libsignal_svr3.
+///   unlikely due to the way higher level APIs invoke the lower-level primitives from
+///   libsignal_svr3.
 /// - DeserializeError for the errors deserializing the OpaqueMaskedShareSet that is stored as a
-/// simple blob by the clients and may be corrupted.
+///   simple blob by the clients and may be corrupted.
 /// - libsignal_net::svr::Error for network related errors.
 #[derive(Debug, Error, displaydoc::Display)]
 #[ignore_extra_doc_attributes]
