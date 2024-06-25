@@ -15,7 +15,7 @@ use crate::infra::AsyncDuplexStream;
 use async_trait::async_trait;
 use bincode::Options as _;
 use futures_util::future::try_join_all;
-use libsignal_svr3::{Backup, EvaluationResult, MaskedShareSet, Restore};
+use libsignal_svr3::{Backup, EvaluationResult, MaskedShareSet, Query, Restore};
 use rand_core::CryptoRngCore;
 use serde::{Deserialize, Serialize};
 use std::num::NonZeroU32;
@@ -217,6 +217,7 @@ pub trait PpssOps<S>: PpssSetup<S> {
     ) -> Result<EvaluationResult, Error>;
 
     async fn remove(connections: Self::Connections) -> Result<(), Error>;
+    async fn query(connections: Self::Connections) -> Result<u32, Error>;
 }
 
 #[async_trait]
@@ -275,6 +276,19 @@ impl<S: AsyncDuplexStream + 'static, Env: PpssSetup<S>> PpssOps<S> for Env {
         // RemoveResponse's are empty, safe to ignore as long as they came
         let _responses = collect_responses(results, addresses)?;
         Ok(())
+    }
+
+    async fn query(connections: Self::Connections) -> Result<u32, Error> {
+        let mut connections = connections.into_connections();
+        let futures = connections
+            .as_mut()
+            .iter_mut()
+            .zip(Query::requests())
+            .map(|(connection, request)| run_attested_interaction(connection, request));
+        let results = try_join_all(futures).await?;
+        let addresses = connections.as_ref().iter().map(|c| c.remote_address());
+        let responses = collect_responses(results, addresses)?;
+        Ok(Query::finalize(&responses)?)
     }
 }
 

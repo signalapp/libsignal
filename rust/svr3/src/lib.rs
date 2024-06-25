@@ -15,7 +15,7 @@ pub use ppss::{MaskedShareSet, OPRFSession};
 mod errors;
 pub use errors::{Error, ErrorStatus, OPRFError, PPSSError};
 mod proto;
-use proto::svr3::{self, create_response, evaluate_response};
+use proto::svr3::{self, create_response, evaluate_response, query_response};
 
 const SECRET_BYTES: usize = 32;
 const CONTEXT: &str = "Signal_SVR3_20231121_PPSS_Context";
@@ -113,6 +113,9 @@ impl<'a> Restore<'a> {
         })
     }
 
+    /// Extracts the evaluation results from server responses.
+    ///
+    /// Panics if the `responses` slice is empty.
     pub fn finalize(self, responses: &[Vec<u8>]) -> Result<EvaluationResult, Error> {
         let evaluation_results = responses
             .iter()
@@ -137,6 +140,51 @@ impl<'a> Restore<'a> {
     }
 }
 
+pub enum Query {}
+
+impl Query {
+    // Using `impl Iterator<...>` makes libsignal-net fail to build in Rust 1.72
+    pub fn requests() -> std::iter::Repeat<Vec<u8>> {
+        std::iter::repeat(make_query_request().encode_to_vec())
+    }
+
+    /// Extracts the tries remaining value from server responses.
+    ///
+    /// Panics if the `responses` slice is empty.
+    pub fn finalize(responses: &[Vec<u8>]) -> Result<u32, Error> {
+        let results = responses
+            .iter()
+            .map(|vec| decode_query_response(vec))
+            // Collecting into a vector is unnecessary wasteful but helps overall readability.
+            .collect::<Result<Vec<_>, _>>()?;
+        // It is possible that different servers will have different idea of what the remaining tries value is.
+        let tries_remaining = results
+            .into_iter()
+            .min()
+            .expect("At least one server response expected");
+        Ok(tries_remaining)
+    }
+}
+
+fn make_query_request() -> svr3::Request {
+    svr3::Request {
+        inner: Some(svr3::request::Inner::Query(svr3::QueryRequest {})),
+    }
+}
+
+fn decode_query_response(bytes: &[u8]) -> Result<u32, Error> {
+    let decoded = svr3::Response::decode(bytes)?;
+    if let Some(svr3::response::Inner::Query(response)) = decoded.inner {
+        if let Some(error_status) = ErrorStatus::from_query_status(response.status()) {
+            Err(Error::BadResponseStatus(error_status))
+        } else {
+            Ok(response.tries_remaining)
+        }
+    } else {
+        Err(Error::BadResponse)
+    }
+}
+
 fn make_create_request(max_tries: u32, blinded_element: &[u8]) -> svr3::Request {
     svr3::Request {
         inner: Some(svr3::request::Inner::Create(svr3::CreateRequest {
@@ -146,27 +194,16 @@ fn make_create_request(max_tries: u32, blinded_element: &[u8]) -> svr3::Request 
     }
 }
 
-impl From<create_response::Status> for ErrorStatus {
-    fn from(status: create_response::Status) -> Self {
-        match status {
-            create_response::Status::Ok => unreachable!(),
-            create_response::Status::Unset => Self::Unset,
-            create_response::Status::InvalidRequest => Self::InvalidRequest,
-            create_response::Status::Error => Self::Error,
-        }
-    }
-}
-
 fn decode_create_response(bytes: &[u8]) -> Result<[u8; 32], Error> {
     let decoded = svr3::Response::decode(bytes)?;
     if let Some(svr3::response::Inner::Create(response)) = decoded.inner {
-        if response.status() == create_response::Status::Ok {
+        if let Some(error_status) = ErrorStatus::from_create_status(response.status()) {
+            Err(Error::BadResponseStatus(error_status))
+        } else {
             Ok(response
                 .evaluated_element
                 .try_into()
                 .expect("response should be of right size"))
-        } else {
-            Err(Error::BadResponseStatus(response.status().into()))
         }
     } else {
         Err(Error::BadResponse)
@@ -178,18 +215,6 @@ fn make_evaluate_request(blinded_element: &[u8]) -> svr3::Request {
         inner: Some(svr3::request::Inner::Evaluate(svr3::EvaluateRequest {
             blinded_element: blinded_element.to_vec(),
         })),
-    }
-}
-
-impl From<evaluate_response::Status> for ErrorStatus {
-    fn from(status: evaluate_response::Status) -> Self {
-        match status {
-            evaluate_response::Status::Ok => unreachable!(),
-            evaluate_response::Status::Unset => Self::Unset,
-            evaluate_response::Status::Missing => Self::Missing,
-            evaluate_response::Status::InvalidRequest => Self::InvalidRequest,
-            evaluate_response::Status::Error => Self::Error,
-        }
     }
 }
 
@@ -219,13 +244,42 @@ impl EvaluationResult {
 fn decode_evaluate_response(bytes: &[u8]) -> Result<EvaluationResult, Error> {
     let decoded = svr3::Response::decode(bytes)?;
     if let Some(svr3::response::Inner::Evaluate(response)) = decoded.inner {
-        if response.status() == evaluate_response::Status::Ok {
-            Ok(response.into())
+        if let Some(error_status) = ErrorStatus::from_evaluate_status(response.status()) {
+            Err(Error::BadResponseStatus(error_status))
         } else {
-            Err(Error::BadResponseStatus(response.status().into()))
+            Ok(response.into())
         }
     } else {
         Err(Error::BadResponse)
+    }
+}
+
+impl ErrorStatus {
+    fn from_query_status(status: query_response::Status) -> Option<Self> {
+        match status {
+            query_response::Status::Unset => Some(Self::Unset),
+            query_response::Status::Ok => None,
+            query_response::Status::Missing => Some(Self::Missing),
+        }
+    }
+
+    fn from_create_status(status: create_response::Status) -> Option<Self> {
+        match status {
+            create_response::Status::Ok => None,
+            create_response::Status::Unset => Some(Self::Unset),
+            create_response::Status::InvalidRequest => Some(Self::InvalidRequest),
+            create_response::Status::Error => Some(Self::Error),
+        }
+    }
+
+    fn from_evaluate_status(status: evaluate_response::Status) -> Option<Self> {
+        match status {
+            evaluate_response::Status::Ok => None,
+            evaluate_response::Status::Unset => Some(Self::Unset),
+            evaluate_response::Status::Missing => Some(Self::Missing),
+            evaluate_response::Status::InvalidRequest => Some(Self::InvalidRequest),
+            evaluate_response::Status::Error => Some(Self::Error),
+        }
     }
 }
 
@@ -314,14 +368,8 @@ mod test {
         Error::BadResponse;
         "wrong_response_type")]
     fn backup_invalid_response(response: Vec<u8>, _expected: Error) {
-        let backup = Backup::new(
-            SERVER_IDS,
-            PASSWORD,
-            make_secret(),
-            nonzero!(1u32),
-            &mut OsRng,
-        )
-        .expect("can create backup");
+        let backup = Backup::new(&[1], PASSWORD, make_secret(), nonzero!(1u32), &mut OsRng)
+            .expect("can create backup");
         let mut rng = OsRng;
         let result = backup.finalize(&mut rng, &[response]);
         assert_matches!(result, Err(_expected));
@@ -369,7 +417,7 @@ mod test {
         }
     }
 
-    fn make_evaluate_response(status: svr3::evaluate_response::Status) -> svr3::Response {
+    fn make_evaluate_response(status: evaluate_response::Status) -> svr3::Response {
         let valid_evaluated_element = hash_to_group(&[0x0; 32]).compress().to_bytes().into();
         svr3::Response {
             inner: Some(svr3::response::Inner::Evaluate(svr3::EvaluateResponse {
@@ -402,6 +450,15 @@ mod test {
             .collect()
     }
 
+    fn make_query_response(status: query_response::Status, tries_remaining: u32) -> svr3::Response {
+        svr3::Response {
+            inner: Some(svr3::response::Inner::Query(svr3::QueryResponse {
+                status: status.into(),
+                tries_remaining,
+            })),
+        }
+    }
+
     #[test_case(svr3::evaluate_response::Status::Unset; "status_unset")]
     #[test_case(svr3::evaluate_response::Status::Missing; "status_missing")]
     #[test_case(svr3::evaluate_response::Status::InvalidRequest; "status_invalid_request")]
@@ -414,7 +471,7 @@ mod test {
             .collect();
         let result = restore.finalize(&responses);
         assert_matches!(result, Err(Error::BadResponseStatus(actual_status)) =>
-            assert_eq!(ErrorStatus::from(status), actual_status));
+            assert_eq!(ErrorStatus::from_evaluate_status(status), Some(actual_status)));
     }
 
     #[test]
@@ -445,5 +502,39 @@ mod test {
             .expect("can create restore");
         let result = restore.finalize(&[response]);
         assert_matches!(result, Err(_expected));
+    }
+
+    #[test]
+    #[should_panic]
+    fn restore_finalize_panics_with_no_responses() {
+        if let Ok(restore) = Restore::new(PASSWORD, make_masked_share_set(), &mut OsRng) {
+            let _ = restore.finalize(&[]);
+        }
+    }
+
+    #[test_case(query_response::Status::Unset; "status_unset")]
+    #[test_case(query_response::Status::Missing; "status_missing")]
+    fn query_finalize_checks_status_error(status: query_response::Status) {
+        let responses = [make_query_response(status, 42).encode_to_vec()];
+        let result = Query::finalize(&responses);
+        assert_matches!(result, Err(Error::BadResponseStatus(actual_status)) =>
+            assert_eq!(ErrorStatus::from_query_status(status), Some(actual_status)));
+    }
+
+    #[test]
+    fn query_returns_minimum_tries() {
+        let responses: Vec<_> = [4u32, 3, 42]
+            .into_iter()
+            .map(|tries| make_query_response(query_response::Status::Ok, tries).encode_to_vec())
+            .collect();
+
+        let result = Query::finalize(&responses);
+        assert_matches!(result, Ok(3));
+    }
+
+    #[test]
+    #[should_panic]
+    fn query_finalize_panics_with_no_responses() {
+        let _ = Query::finalize(&[]);
     }
 }

@@ -111,6 +111,10 @@ async fn main() {
     assert_eq!(tries.get() - 1, restored.tries_remaining);
     println!("{}: {}", "Tries remaining".cyan(), restored.tries_remaining);
 
+    println!("{}...", "Querying...".cyan());
+    let query_result = Svr3Env::query(connect().await).await.expect("can query");
+    println!("{}: {}", "Tries remaining".cyan(), query_result);
+
     println!("{}...", "Removing the secret".cyan());
     Svr3Env::remove(connect().await).await.expect("can remove");
     // The next attempt to restore should fail
