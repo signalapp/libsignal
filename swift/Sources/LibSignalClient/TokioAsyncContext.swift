@@ -6,10 +6,6 @@
 import Foundation
 import SignalFfi
 
-#if canImport(SignalCoreKit)
-import SignalCoreKit
-#endif
-
 internal class TokioAsyncContext: NativeHandleOwner {
     convenience init() {
         var handle: OpaquePointer?
@@ -90,11 +86,7 @@ internal class TokioAsyncContext: NativeHandleOwner {
                     try checkError(signal_tokio_async_context_cancel($0, id))
                 }
             } catch {
-#if canImport(SignalCoreKit)
-                Logger.warn("failed to cancel libsignal task \(id): \(error)")
-#else
                 NSLog("failed to cancel libsignal task %ld: %@", id, "\(error)")
-#endif
             }
         }
     }
