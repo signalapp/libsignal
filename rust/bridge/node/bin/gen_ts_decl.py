@@ -5,6 +5,7 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 #
 
+import collections
 import difflib
 import itertools
 import os
@@ -12,14 +13,27 @@ import subprocess
 import re
 import sys
 
-
-# If the command-line handling below gets any more complicated, this should be switched to argparse.
-def print_usage_and_exit():
-    print('usage: %s [--verify]' % sys.argv[0], file=sys.stderr)
-    sys.exit(2)
+Args = collections.namedtuple('Args', ['verify'])
 
 
-def split_args(args):
+def parse_args():
+    def print_usage_and_exit():
+        print('usage: %s [--verify]' % sys.argv[0], file=sys.stderr)
+        sys.exit(2)
+
+    # If the command-line handling below gets any more complicated, this should be switched to argparse.
+    mode = None
+    if len(sys.argv) > 2:
+        print_usage_and_exit()
+    elif len(sys.argv) == 2:
+        mode = sys.argv[1]
+        if mode != '--verify':
+            print_usage_and_exit()
+
+    return Args(verify=mode is not None)
+
+
+def split_rust_args(args):
     """
     Split Rust `arg: Type` pairs separated by commas.
 
@@ -128,7 +142,7 @@ def translate_to_ts(typ):
     return typ
 
 
-diagnostics_to_ignore = [
+DIAGNOSTICS_TO_IGNORE = [
     r"warning: \d+ warnings? emitted",
     r"warning: unused import",
     r"warning: field.+ never read",
@@ -136,7 +150,7 @@ diagnostics_to_ignore = [
     r"warning: method.+ never used",
     r"warning: associated function.+ never used",
 ]
-should_ignore_pattern = re.compile("(" + ")|(".join(diagnostics_to_ignore) + ")")
+SHOULD_IGNORE_PATTERN = re.compile("(" + ")|(".join(DIAGNOSTICS_TO_IGNORE) + ")")
 
 
 def camelcase(arg):
@@ -171,7 +185,7 @@ def collect_decls(crate_dir, features=()):
         if l == "":
             continue
 
-        if should_ignore_pattern.search(l):
+        if SHOULD_IGNORE_PATTERN.search(l):
             continue
 
         print(l, file=sys.stderr)
@@ -208,51 +222,67 @@ def collect_decls(crate_dir, features=()):
         if '::' in args:
             raise Exception(f'Paths are not supported. Use alias for the type of \'{args}\'')
 
-        for (arg_name, arg_type) in split_args(args):
+        for (arg_name, arg_type) in split_rust_args(args):
             ts_arg_type = translate_to_ts(arg_type)
             ts_args.append('%s: %s' % (camelcase(arg_name.strip()), ts_arg_type))
 
         yield '%s(%s): %s;' % (prefix, ', '.join(ts_args), ts_ret_type)
 
 
-mode = None
-if len(sys.argv) > 2:
-    print_usage_and_exit()
-elif len(sys.argv) == 2:
-    mode = sys.argv[1]
-    if mode != '--verify':
-        print_usage_and_exit()
+def expand_template(template_file, decls):
+    with open(template_file, "r") as template_file:
+        contents = template_file.read()
+        contents += "\n"
+        contents += "\n".join(sorted(decls))
+        contents += "\n"
 
-our_abs_dir = os.path.dirname(os.path.realpath(__file__))
+        return contents
 
-decls = itertools.chain(
-    collect_decls(os.path.join(our_abs_dir, '..')),
-    collect_decls(os.path.join(our_abs_dir, '..', '..', 'shared'), features=('node', 'signal-media', 'testing-fns')),
-    collect_decls(os.path.join(our_abs_dir, '..', '..', 'shared', 'types'), features=('node', 'signal-media')),
-)
 
-output_file_name = 'Native.d.ts'
-contents = open(os.path.join(our_abs_dir, output_file_name + '.in')).read()
-contents += "\n"
-contents += "\n".join(sorted(decls))
-contents += "\n"
-
-output_file = os.path.join(our_abs_dir, '..', '..', '..', '..', 'node', output_file_name)
-
-if not os.access(output_file, os.F_OK):
-    raise Exception("Didn't find %s where it was expected" % output_file_name)
-
-if not mode:
-    with open(output_file, 'w') as fh:
-        fh.write(contents)
-elif mode == '--verify':
-    with open(output_file) as fh:
+def verify_contents(expected_output_file, expected_contents):
+    with open(expected_output_file) as fh:
         current_contents = fh.readlines()
-    diff = difflib.unified_diff(current_contents, contents.splitlines(keepends=True))
+    diff = difflib.unified_diff(current_contents, expected_contents.splitlines(keepends=True))
     first_line = next(diff, None)
     if first_line:
         sys.stdout.write(first_line)
         sys.stdout.writelines(diff)
-        sys.exit("error: %s not up to date; re-run %s!" % (output_file_name, sys.argv[0]))
-else:
-    raise Exception("mode not properly validated")
+        sys.exit(f"error: {expected_output_file} not up to date; re-run {sys.argv[0]}!")
+
+
+Crate = collections.namedtuple('Crate', ["path", "features"], defaults=[()])
+
+
+def convert_to_typescript(rust_crates, ts_in_path, ts_out_path, verify):
+    decls = itertools.chain.from_iterable(collect_decls(crate.path, crate.features) for crate in rust_crates)
+    contents = expand_template(ts_in_path, decls)
+
+    if not os.access(ts_out_path, os.F_OK):
+        raise Exception(f"Didn't find {ts_out_path} where it was expected")
+
+    if not verify:
+        with open(ts_out_path, 'w') as fh:
+            fh.write(contents)
+    else:
+        verify_contents(ts_out_path, contents)
+
+
+def main():
+    args = parse_args()
+    our_abs_dir = os.path.dirname(os.path.realpath(__file__))
+    output_file_name = 'Native.d.ts'
+
+    convert_to_typescript(
+        rust_crates=[
+            Crate(path=os.path.join(our_abs_dir, '..')),
+            Crate(path=os.path.join(our_abs_dir, '..', '..', 'shared'), features=('node', 'signal-media', 'testing-fns')),
+            Crate(path=os.path.join(our_abs_dir, '..', '..', 'shared', 'types'), features=('node', 'signal-media')),
+        ],
+        ts_in_path=os.path.join(our_abs_dir, output_file_name + '.in'),
+        ts_out_path=os.path.join(our_abs_dir, '..', '..', '..', '..', 'node', output_file_name),
+        verify=args.verify,
+    )
+
+
+if __name__ == '__main__':
+    main()

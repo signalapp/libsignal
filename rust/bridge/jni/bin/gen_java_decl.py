@@ -5,37 +5,35 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 #
 
+import collections
 import difflib
 import os
 import subprocess
 import re
 import sys
 
-
-# If the command-line handling below gets any more complicated, this should be switched to argparse.
-def print_usage_and_exit():
-    print('usage: %s [--verify]' % sys.argv[0], file=sys.stderr)
-    sys.exit(2)
+Args = collections.namedtuple('Args', 'verify')
 
 
-mode = None
-if len(sys.argv) > 2:
-    print_usage_and_exit()
-elif len(sys.argv) == 2:
-    mode = sys.argv[1]
-    if mode != '--verify':
+def parse_args():
+    def print_usage_and_exit():
+        print(f'usage: {sys.argv[0]} [--verify]', file=sys.stderr)
+        sys.exit(2)
+
+    # If the command-line handling below gets any more complicated, this should be switched to argparse.
+    mode = None
+    if len(sys.argv) > 2:
         print_usage_and_exit()
 
-our_abs_dir = os.path.dirname(os.path.realpath(__file__))
+    if len(sys.argv) == 2:
+        mode = sys.argv[1]
+        if mode != '--verify':
+            print_usage_and_exit()
 
-cbindgen = subprocess.Popen(['cbindgen'], cwd=os.path.join(our_abs_dir, '..'), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    return Args(verify=mode is not None)
 
-(stdout, stderr) = cbindgen.communicate()
 
-stdout = str(stdout.decode('utf8'))
-stderr = str(stderr.decode('utf8'))
-
-ignore_this_warning = re.compile(
+IGNORE_THIS_WARNING = re.compile(
     "("
     r"WARN: Can't find .*\. This usually means that this type was incompatible or not found\.|"
     r"WARN: Missing `\[defines\]` entry for `feature = \".*\"` in cbindgen config\.|"
@@ -47,29 +45,31 @@ ignore_this_warning = re.compile(
     r"WARN: Cannot find a mangling for generic path GenericPath { path: Path { name: \"Throwing\" }.+"
     ")")
 
-unknown_warning = False
 
-for l in stderr.split('\n'):
-    if l == "":
-        continue
+def run_cbindgen(cwd):
+    cbindgen = subprocess.Popen(['cbindgen'], cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
-    if ignore_this_warning.match(l):
-        continue
+    (stdout, stderr) = cbindgen.communicate()
 
-    print(l, file=sys.stderr)
-    unknown_warning = True
+    stdout = str(stdout.decode('utf8'))
+    stderr = str(stderr.decode('utf8'))
 
-if unknown_warning:
-    sys.exit(1)
+    unknown_warning = False
 
-java_decl = re.compile(r"""
-    ([a-zA-Z0-9]+(?:<.+>)?)[ ]                 # (0) A possibly-generic return type
-    Java_org_signal_libsignal_internal_Native_ # The required JNI prefix
-    (([a-zA-Z0-9]+)                            # (1) The method name, with (2) a grouping prefix
-     (?:_1[a-zA-Z0-9_]*)?)                     # ...possibly followed by an underscore and then more name
-    \(JNIEnv[ ].?env,[ ]JClass[ ]class_        # and then the required JNI args,
-     (,[ ].*)?\);                              # then (3) actual args
-    """, re.VERBOSE)
+    for l in stderr.split('\n'):
+        if l == "":
+            continue
+
+        if IGNORE_THIS_WARNING.match(l):
+            continue
+
+        print(l, file=sys.stderr)
+        unknown_warning = True
+
+    if unknown_warning:
+        raise Exception("cbindgen produced unknown warning")
+
+    return stdout
 
 
 def box_primitive_if_needed(typ):
@@ -127,60 +127,96 @@ def translate_to_java(typ):
     raise Exception("Don't know what to do with a", typ)
 
 
-cur_type = None
-decls = []
+JAVA_DECL = re.compile(r"""
+    ([a-zA-Z0-9]+(?:<.+>)?)[ ]                 # (0) A possibly-generic return type
+    Java_org_signal_libsignal_internal_Native_ # The required JNI prefix
+    (([a-zA-Z0-9]+)                            # (1) The method name, with (2) a grouping prefix
+    (?:_1[a-zA-Z0-9_]*)?)                      # ...possibly followed by an underscore and then more name
+    \(JNIEnv[ ].?env,[ ]JClass[ ]class_        # and then the required JNI args,
+    (,[ ].*)?\);                               # then (3) actual args
+    """, re.VERBOSE)
 
-for line in stdout.split('\n'):
-    if line == '':
-        continue
 
-    match = java_decl.match(line)
-    if match is None:
-        raise Exception("Could not understand", line)
+def parse_decls(cbindgen_output):
+    cur_type = None
 
-    (ret_type, method_name, this_type, args) = match.groups()
+    for line in cbindgen_output.split('\n'):
+        if line == '':
+            continue
 
-    # Add newlines between groups of functions for readability
-    if cur_type is None or this_type != cur_type:
-        decls.append("")
-        cur_type = this_type
+        match = JAVA_DECL.match(line)
+        if match is None:
+            raise Exception("Could not understand", line)
 
-    java_fn_name = method_name.replace('_1', '_')
-    (java_ret_type, is_throwing) = translate_to_java(ret_type)
-    java_args = []
+        (ret_type, method_name, this_type, args) = match.groups()
 
-    if args is not None:
-        for arg in args.split(', ')[1:]:
-            (arg_type, arg_name) = arg.split(' ')
-            (java_arg_type, _is_throwing) = translate_to_java(arg_type)
-            java_args.append('%s %s' % (java_arg_type, arg_name))
+        # Add newlines between groups of functions for readability
+        if cur_type is None or this_type != cur_type:
+            yield ""
+            cur_type = this_type
 
-    decls.append("  public static native %s %s(%s)%s;" % (
-        java_ret_type,
-        java_fn_name,
-        ", ".join(java_args),
-        " throws Exception" if is_throwing else ""))
+        java_fn_name = method_name.replace('_1', '_')
+        (java_ret_type, is_throwing) = translate_to_java(ret_type)
+        java_args = []
 
-template_file = open(os.path.join(our_abs_dir, 'Native.java.in')).read()
+        if args is not None:
+            for arg in args.split(', ')[1:]:
+                (arg_type, arg_name) = arg.split(' ')
+                (java_arg_type, _is_throwing) = translate_to_java(arg_type)
+                java_args.append('%s %s' % (java_arg_type, arg_name))
 
-contents = template_file.replace('\n  // INSERT DECLS HERE', "\n".join(decls))
+        yield ("  public static native %s %s(%s)%s;" % (
+            java_ret_type,
+            java_fn_name,
+            ", ".join(java_args),
+            " throws Exception" if is_throwing else ""))
 
-native_java = os.path.join(our_abs_dir, '../../../../java/shared/java/org/signal/libsignal/internal/Native.java')
 
-if not os.access(native_java, os.F_OK):
-    raise Exception("Didn't find Native.java where it was expected")
+def expand_template(template_file, decls):
+    with open(template_file, "r") as template_file:
+        contents = template_file.read().replace('\n  // INSERT DECLS HERE', "\n".join(decls))
+    return contents
 
-if not mode:
-    with open(native_java, 'w') as fh:
-        fh.write(contents)
-elif mode == '--verify':
-    with open(native_java) as fh:
+
+def verify_contents(expected_output_file, expected_contents):
+    with open(expected_output_file) as fh:
         current_contents = fh.readlines()
-    diff = difflib.unified_diff(current_contents, contents.splitlines(keepends=True))
+    diff = difflib.unified_diff(current_contents, expected_contents.splitlines(keepends=True))
     first_line = next(diff, None)
     if first_line:
         sys.stdout.write(first_line)
         sys.stdout.writelines(diff)
         sys.exit("error: Native.java not up to date; re-run %s!" % sys.argv[0])
-else:
-    raise Exception("mode not properly validated")
+
+
+def convert_to_java(rust_crate_dir, java_in_path, java_out_path, verify):
+    stdout = run_cbindgen(rust_crate_dir)
+
+    decls = list(parse_decls(stdout))
+
+    contents = expand_template(java_in_path, decls)
+
+    if not os.access(java_out_path, os.F_OK):
+        raise Exception(f"Didn't find expected file {java_out_path}")
+
+    if not verify:
+        with open(java_out_path, 'w') as fh:
+            fh.write(contents)
+    else:
+        verify_contents(java_out_path, contents)
+
+
+def main():
+    args = parse_args()
+
+    our_abs_dir = os.path.dirname(os.path.realpath(__file__))
+    convert_to_java(
+        rust_crate_dir=os.path.join(our_abs_dir, '..'),
+        java_in_path=os.path.join(our_abs_dir, 'Native.java.in'),
+        java_out_path=os.path.join(our_abs_dir, '..', '..', '..', '..', 'java', 'shared', 'java', 'org', 'signal', 'libsignal', 'internal', 'Native.java'),
+        verify=args.verify,
+    )
+
+
+if __name__ == "__main__":
+    main()
