@@ -29,7 +29,7 @@ const IV: [u8; 16] = [b'I'; 16];
     )]
 fn is_valid_json_proto(input: Fixture<&str>) {
     let json_contents = input.into_content();
-    let json_contents = serde_json::from_str(json_contents).expect("invalid JSON");
+    let json_contents = json5::from_str(json_contents).expect("invalid JSON");
     let json_array = assert_matches!(json_contents, serde_json::Value::Array(contents) => contents);
     let binproto =
         libsignal_message_backup::backup::convert_from_json(json_array).expect("failed to convert");
@@ -148,9 +148,8 @@ fn invalid_jsonproto(input: Fixture<PathBuf>) {
     let path = input.into_content();
     let expected_path = path.with_extension(EXPECTED_SUFFIX);
 
-    let json_contents =
-        serde_json::from_str(&std::fs::read_to_string(path).expect("failed to read"))
-            .expect("invalid JSON");
+    let json_contents = json5::from_str(&std::fs::read_to_string(path).expect("failed to read"))
+        .expect("invalid JSON");
     let json_array = assert_matches!(json_contents, serde_json::Value::Array(contents) => contents);
     let binproto =
         libsignal_message_backup::backup::convert_from_json(json_array).expect("failed to convert");
