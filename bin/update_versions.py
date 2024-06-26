@@ -7,6 +7,7 @@
 
 # Keep crate versions and lib package versions in accord
 
+import collections
 import fileinput
 import sys
 import re
@@ -39,6 +40,17 @@ def bridge_path(bridge):
     return os.path.join('rust', 'bridge', bridge, 'Cargo.toml')
 
 
+VERSION_FILES = [
+    ('LibSignalClient.podspec', PODSPEC_PATTERN),
+    (os.path.join('java', 'build.gradle'), GRADLE_PATTERN),
+    (os.path.join('node', 'package.json'), NODE_PATTERN),
+    (os.path.join('rust', 'core', 'src', 'version.rs'), RUST_PATTERN),
+    (bridge_path('ffi'), CARGO_PATTERN),
+    (bridge_path('jni'), CARGO_PATTERN),
+    (bridge_path('node'), CARGO_PATTERN),
+]
+
+
 def main():
     os.chdir(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 
@@ -46,32 +58,24 @@ def main():
         new_version = sys.argv[1]
         if new_version[0] == 'v':
             new_version = new_version[1:]
-        update_version('LibSignalClient.podspec', PODSPEC_PATTERN, new_version)
-        update_version(os.path.join('java', 'build.gradle'), GRADLE_PATTERN, new_version)
-        update_version(os.path.join('node', 'package.json'), NODE_PATTERN, new_version)
-        update_version(os.path.join('rust', 'core', 'src', 'version.rs'), RUST_PATTERN, new_version)
-        update_version(bridge_path('ffi'), CARGO_PATTERN, new_version)
-        update_version(bridge_path('jni'), CARGO_PATTERN, new_version)
-        update_version(bridge_path('node'), CARGO_PATTERN, new_version)
+        for (path, pattern) in VERSION_FILES:
+            update_version(path, pattern, new_version)
+
         return 0
 
-    package_versions = {
-        'swift': read_version('LibSignalClient.podspec', PODSPEC_PATTERN),
-        'java': read_version(os.path.join('java', 'build.gradle'), GRADLE_PATTERN),
-        'node': read_version(os.path.join('node', 'package.json'), NODE_PATTERN)
-    }
+    found_versions = collections.defaultdict(list)
+    for (path, pattern) in VERSION_FILES:
+        version = read_version(path, pattern)
+        found_versions[version].append(path)
 
-    bridge_versions = {
-        'swift': read_version(bridge_path('ffi'), CARGO_PATTERN),
-        'java': read_version(bridge_path('jni'), CARGO_PATTERN),
-        'node': read_version(bridge_path('node'), CARGO_PATTERN),
-    }
+    if len(found_versions) != 1:
+        print("ERROR: found inconsistent versions:")
+        for (version, files) in sorted(found_versions.items()):
+            print(f"{version}:")
+            for file in files:
+                print(f"  {file}")
 
-    for bridge in package_versions:
-        if bridge_versions[bridge] != package_versions[bridge]:
-            print("ERROR: Bridge %s has package version %s but crate version is %s" % (
-                bridge, package_versions[bridge], bridge_versions[bridge]))
-            return 1
+        return 1
 
     return 0
 
