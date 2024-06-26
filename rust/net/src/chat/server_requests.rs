@@ -15,7 +15,9 @@ use crate::chat::ChatServiceError;
 use crate::env::TIMESTAMP_HEADER_NAME;
 use crate::infra::AsyncDuplexStream;
 
-pub type AckEnvelopeFuture = BoxFuture<'static, Result<(), ChatServiceError>>;
+pub type ResponseEnvelopeSender = Box<
+    dyn FnOnce(http::StatusCode) -> BoxFuture<'static, Result<(), ChatServiceError>> + Send + Sync,
+>;
 
 pub enum ServerMessage {
     QueueEmpty,
@@ -23,7 +25,7 @@ pub enum ServerMessage {
         request_id: u64,
         envelope: Vec<u8>,
         server_delivery_timestamp: Timestamp,
-        send_ack: AckEnvelopeFuture,
+        send_ack: ResponseEnvelopeSender,
     },
     /// Not actually a message, but an event processed as part of the message stream.
     Stopped,
@@ -96,7 +98,9 @@ pub fn stream_incoming_messages(
                         server_delivery_timestamp: Timestamp::from_epoch_millis(
                             raw_timestamp.unwrap_or_default(),
                         ),
-                        send_ack: Box::pin(response_sender.send_response(http::StatusCode::OK)),
+                        send_ack: Box::new(|status| {
+                            Box::pin(response_sender.send_response(status))
+                        }),
                     }
                 }
                 "" => {

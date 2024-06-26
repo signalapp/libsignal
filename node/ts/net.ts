@@ -64,7 +64,7 @@ export type ChatRequest = Readonly<{
 
 type ConnectionManager = Wrapper<Native.ConnectionManager>;
 
-function newNativeHandle<T>(handle: T): Wrapper<T> {
+export function newNativeHandle<T>(handle: T): Wrapper<T> {
   return {
     _nativeHandle: handle,
   };
@@ -110,9 +110,13 @@ export class ChatServerMessageAck {
     readonly _nativeHandle: Native.ServerMessageAck
   ) {}
 
-  send(): Promise<void> {
+  send(statusCode: number): Promise<void> {
     if (!this.promise) {
-      this.promise = Native.ServerMessageAck_Send(this.asyncContext, this);
+      this.promise = Native.ServerMessageAck_SendStatus(
+        this.asyncContext,
+        this,
+        statusCode
+      );
     }
     return this.promise;
   }

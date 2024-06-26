@@ -420,7 +420,7 @@ export function ServerCertificate_GetKeyId(obj: Wrapper<ServerCertificate>): num
 export function ServerCertificate_GetSerialized(obj: Wrapper<ServerCertificate>): Buffer;
 export function ServerCertificate_GetSignature(obj: Wrapper<ServerCertificate>): Buffer;
 export function ServerCertificate_New(keyId: number, serverKey: Wrapper<PublicKey>, trustRoot: Wrapper<PrivateKey>): ServerCertificate;
-export function ServerMessageAck_Send(asyncRuntime: Wrapper<TokioAsyncContext>, ack: Wrapper<ServerMessageAck>): Promise<void>;
+export function ServerMessageAck_SendStatus(asyncRuntime: Wrapper<TokioAsyncContext>, ack: Wrapper<ServerMessageAck>, status: number): Promise<void>;
 export function ServerPublicParams_CreateAuthCredentialWithPniPresentationDeterministic(serverPublicParams: Wrapper<ServerPublicParams>, randomness: Buffer, groupSecretParams: Serialized<GroupSecretParams>, authCredentialWithPniBytes: Buffer): Buffer;
 export function ServerPublicParams_CreateExpiringProfileKeyCredentialPresentationDeterministic(serverPublicParams: Wrapper<ServerPublicParams>, randomness: Buffer, groupSecretParams: Serialized<GroupSecretParams>, profileKeyCredential: Serialized<ExpiringProfileKeyCredential>): Buffer;
 export function ServerPublicParams_CreateProfileKeyCredentialRequestContextDeterministic(serverPublicParams: Wrapper<ServerPublicParams>, randomness: Buffer, userId: Buffer, profileKey: Serialized<ProfileKey>): Serialized<ProfileKeyCredentialRequestContext>;
@@ -522,6 +522,7 @@ export function TESTING_PanicOnReturnIo(asyncRuntime: Wrapper<NonSuspendingBackg
 export function TESTING_PanicOnReturnSync(_needsCleanup: null): null;
 export function TESTING_ProcessBytestringArray(input: Buffer[]): Buffer[];
 export function TESTING_ReturnStringArray(): string[];
+export function TESTING_ServerMessageAck_Create(): ServerMessageAck;
 export function TESTING_TestingHandleType_getValue(handle: Wrapper<TestingHandleType>): number;
 export function TokioAsyncContext_cancel(context: Wrapper<TokioAsyncContext>, rawCancellationId: bigint): void;
 export function TokioAsyncContext_new(): TokioAsyncContext;

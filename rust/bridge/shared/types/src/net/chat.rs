@@ -11,6 +11,7 @@ use std::sync::Arc;
 use atomic_take::AtomicTake;
 use futures_util::stream::BoxStream;
 use futures_util::StreamExt as _;
+use http::status::InvalidStatusCode;
 use http::uri::{InvalidUri, PathAndQuery};
 use http::{HeaderMap, HeaderName, HeaderValue};
 use libsignal_net::auth::Auth;
@@ -153,6 +154,21 @@ impl TryFrom<String> for HttpMethod {
     }
 }
 
+pub struct HttpStatus(http::StatusCode);
+
+impl TryFrom<u16> for HttpStatus {
+    type Error = InvalidStatusCode;
+    fn try_from(value: u16) -> Result<Self, Self::Error> {
+        http::StatusCode::from_u16(value).map(Self)
+    }
+}
+
+impl From<HttpStatus> for http::StatusCode {
+    fn from(value: HttpStatus) -> Self {
+        value.0
+    }
+}
+
 impl HttpRequest {
     pub fn new(
         method: HttpMethod,
@@ -286,17 +302,17 @@ pub trait MakeChatListener {
 
 /// Wraps a named type and a single-use guard around [`chat::server_requests::AckEnvelopeFuture`].
 pub struct ServerMessageAck {
-    inner: AtomicTake<chat::server_requests::AckEnvelopeFuture>,
+    inner: AtomicTake<chat::server_requests::ResponseEnvelopeSender>,
 }
 
 impl ServerMessageAck {
-    fn new(send_ack: chat::server_requests::AckEnvelopeFuture) -> Self {
+    pub fn new(send_ack: chat::server_requests::ResponseEnvelopeSender) -> Self {
         Self {
             inner: AtomicTake::new(send_ack),
         }
     }
 
-    pub fn take(&self) -> Option<chat::server_requests::AckEnvelopeFuture> {
+    pub fn take(&self) -> Option<chat::server_requests::ResponseEnvelopeSender> {
         self.inner.take()
     }
 }

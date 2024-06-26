@@ -17,6 +17,7 @@ import {
   ChatServiceListener,
   Environment,
   Net,
+  newNativeHandle,
   ServiceAuth,
 } from '../net';
 import { randomBytes } from 'crypto';
@@ -379,6 +380,43 @@ describe('chat service api', () => {
     listener.onIncomingMessage.callsFake(completable.resolve);
     await completable.done();
     expect(listener.onIncomingMessage).to.have.been.calledOnce;
+  });
+
+  it('client can respond with http status code to a server message', () => {
+    const runtime = newNativeHandle(Native.TokioAsyncContext_new());
+    const serverMessageAck = newNativeHandle(
+      Native.TESTING_ServerMessageAck_Create()
+    );
+
+    // test out of u16 range values
+    [-1, 100000].forEach((invalidCode) => {
+      expect(() => {
+        const _ignore = Native.ServerMessageAck_SendStatus(
+          runtime,
+          serverMessageAck,
+          invalidCode
+        );
+      }).throws(RangeError);
+    });
+
+    // test u16 valus that are not status code types
+    [0, 1, 99, 1000].forEach((invalidCode) => {
+      expect(() => {
+        const _ignore = Native.ServerMessageAck_SendStatus(
+          runtime,
+          serverMessageAck,
+          invalidCode
+        );
+      }).throws(TypeError);
+    });
+
+    [100, 200, 400, 500].forEach((validCode) => {
+      const _ignore = Native.ServerMessageAck_SendStatus(
+        runtime,
+        serverMessageAck,
+        validCode
+      );
+    });
   });
 });
 

@@ -3,10 +3,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::future;
 use std::time::Duration;
 
 use http::uri::InvalidUri;
-use http::{HeaderName, HeaderValue};
+use http::{HeaderName, HeaderValue, StatusCode};
 use libsignal_bridge_macros::{bridge_fn, bridge_io};
 use libsignal_bridge_types::net::chat::*;
 use libsignal_bridge_types::net::{ConnectionManager, TokioAsyncContext};
@@ -199,12 +200,27 @@ fn TESTING_ChatService_InjectConnectionInterrupted(chat: &Chat) {
         .expect("not closed");
 }
 
+#[cfg(feature = "testing-fns")]
+#[bridge_fn(jni = false, ffi = false)]
+fn TESTING_ServerMessageAck_Create() -> ServerMessageAck {
+    ServerMessageAck::new(Box::new(|_| Box::pin(future::ready(Ok(())))))
+}
+
 bridge_handle_fns!(ServerMessageAck, clone = false);
 
-#[bridge_io(TokioAsyncContext)]
+#[bridge_io(TokioAsyncContext, node = false)]
 async fn ServerMessageAck_Send(ack: &ServerMessageAck) -> Result<(), ChatServiceError> {
     let future = ack.take().expect("a message is only acked once");
-    future.await
+    future(StatusCode::OK).await
+}
+
+#[bridge_io(TokioAsyncContext, jni = false, ffi = false)]
+async fn ServerMessageAck_SendStatus(
+    ack: &ServerMessageAck,
+    status: AsType<HttpStatus, u16>,
+) -> Result<(), ChatServiceError> {
+    let future = ack.take().expect("a message is only acked once");
+    future(status.into_inner().into()).await
 }
 
 #[cfg(test)]
