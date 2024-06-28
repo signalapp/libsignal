@@ -24,9 +24,9 @@ jobs:
 
     strategy:
       matrix:
-        os: [windows-latest, macos-11]
+        os: [windows-latest, macos-12]
         include:
-        - os: macos-11
+        - os: macos-12
           arm64-rust-target: aarch64-apple-darwin
         - os: windows-latest
           arm64-rust-target: aarch64-pc-windows-msvc
@@ -46,8 +46,8 @@ jobs:
           const dryRun = ${{ inputs.dry_run }};
           const refType = '${{ github.ref_type }}';
           const refName = '${{ github.ref_name }}';
-          console.log(dryRun 
-            ? `Running in 'dry run' mode on '${refName}' ${refType}` 
+          console.log(dryRun
+            ? `Running in 'dry run' mode on '${refName}' ${refType}`
             : `Running on '${refName}' ${refType}`);
           if (refType !== 'tag' && !dryRun) {
             core.setFailed("the action should either be launched on a tag or with a 'dry run' switch");
@@ -116,7 +116,7 @@ jobs:
   verify-rust:
     name: Verify Node bindings
     runs-on: ubuntu-latest
-    
+
     timeout-minutes: 45
 
     steps:
