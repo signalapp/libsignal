@@ -46,7 +46,6 @@ pub(crate) const TPM2SNP_EXPECTED_PCRS: SmallMap<&'static [u8], &'static tpm2snp
             (2,  hex!("3d458cfe55cc03ea1f443f1562beec8df51c75e14a9fcf9a7234a13f198e7969")),
             (3,  hex!("3d458cfe55cc03ea1f443f1562beec8df51c75e14a9fcf9a7234a13f198e7969")),
             (4,  hex!("6038382cdf539eb64d05c804c510e22b81e2c71fb171c9616ab14504f3654bb1")),
-            (5,  hex!("4a00dca027080350a681b2ea214711374e97427042626aacb935398ef4030651")),
             (7,  hex!("590471a4fbd0c881c4fdc6349bc697e4df18c660c3ae3de9cb29028f8ef77280")),
             (8,  hex!("48f56c81de21292cd225485ec0ba268497662a1bfcdf5ef65d0b03bbc0d0c4d9")),
             (9,  hex!("626d155ba40667ab3cb4385102c89e0b7ffd1a8348da20653e4f651ea0152e32")),
