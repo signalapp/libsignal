@@ -16,7 +16,7 @@ pub const ENCLAVE_ID_SVR2_STAGING: &[u8] =
 pub const ENCLAVE_ID_SVR3_SGX_STAGING: &[u8] =
     &hex!("29cd5aa268da2412ae14e9de2168608c9b22daadfd7effa2029abac02289e691");
 pub const ENCLAVE_ID_SVR3_NITRO_STAGING: &[u8] = b"ffe631d7.52b91975.a4544fb5";
-pub const ENCLAVE_ID_SVR3_TPM2SNP_STAGING: &[u8] = b"0.20240510.172959";
+pub const ENCLAVE_ID_SVR3_TPM2SNP_STAGING: &[u8] = b"0.20240703.193412";
 
 pub const ENCLAVE_ID_SVR3_SGX_PROD: &[u8] =
     &hex!("0899bf951b57f27b5cd3d2dd4dbe5a144a4a62154853a4e352ac2c93ecfe6a2c");
@@ -47,8 +47,8 @@ pub(crate) const TPM2SNP_EXPECTED_PCRS: SmallMap<&'static [u8], &'static tpm2snp
             (3,  hex!("3d458cfe55cc03ea1f443f1562beec8df51c75e14a9fcf9a7234a13f198e7969")),
             (4,  hex!("6038382cdf539eb64d05c804c510e22b81e2c71fb171c9616ab14504f3654bb1")),
             (7,  hex!("590471a4fbd0c881c4fdc6349bc697e4df18c660c3ae3de9cb29028f8ef77280")),
-            (8,  hex!("48f56c81de21292cd225485ec0ba268497662a1bfcdf5ef65d0b03bbc0d0c4d9")),
-            (9,  hex!("626d155ba40667ab3cb4385102c89e0b7ffd1a8348da20653e4f651ea0152e32")),
+            (8,  hex!("7ea60a57d8d6b5c522dabeb55a3fa15aed6df65ae470b43865042e39be26ac06")),
+            (9,  hex!("95abd7aab524ef6b25f18f58a8b7f7e5b6eb285686fa8b7b28ccd39a73ac8d30")),
             (11, hex!("0000000000000000000000000000000000000000000000000000000000000000")),
             (12, hex!("0000000000000000000000000000000000000000000000000000000000000000")),
             (13, hex!("0000000000000000000000000000000000000000000000000000000000000000")),
@@ -110,7 +110,7 @@ pub const RAFT_CONFIG_SVR3_NITRO_STAGING: &RaftConfig = &RaftConfig {
     super_majority: 0,
 };
 pub const RAFT_CONFIG_SVR3_TPM2SNP_STAGING: &RaftConfig = &RaftConfig {
-    group_id: 8572438378773168949,
+    group_id: 2579018130363863974,
     min_voting_replicas: 3,
     max_voting_replicas: 9,
     super_majority: 0,
@@ -128,7 +128,7 @@ pub const RAFT_CONFIG_SVR3_NITRO_PROD: &RaftConfig = &RaftConfig {
     super_majority: 2,
 };
 pub const RAFT_CONFIG_SVR3_TPM2SNP_PROD: &RaftConfig = &RaftConfig {
-    group_id: 6899183880775443455,
+    group_id: 6022122590068091690,
     min_voting_replicas: 4,
     max_voting_replicas: 13,
     super_majority: 2,
