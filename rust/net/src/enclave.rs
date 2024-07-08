@@ -155,6 +155,7 @@ impl<T, const N: usize> ArrayIsh<T> for [T; N] {
 }
 
 pub trait PpssSetup<S> {
+    type Stream;
     type Connections: IntoConnections<Stream = S> + Send;
     type ServerIds: ArrayIsh<u64> + Send;
     const N: usize = Self::ServerIds::N;
@@ -162,6 +163,7 @@ pub trait PpssSetup<S> {
 }
 
 impl<S: Send> PpssSetup<S> for Svr3Env<'_> {
+    type Stream = S;
     type Connections = (
         SvrConnection<Sgx, S>,
         SvrConnection<Nitro, S>,

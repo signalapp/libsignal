@@ -6,12 +6,13 @@
 use std::num::NonZeroU16;
 use std::panic::RefUnwindSafe;
 
+use async_trait::async_trait;
 use http::uri::PathAndQuery;
+
 use libsignal_net::auth::Auth;
 use libsignal_net::enclave::{
     Cdsi, EnclaveEndpoint, EnclaveEndpointConnection, EnclaveKind, Nitro, PpssSetup, Sgx, Tpm2Snp,
 };
-use libsignal_net::env;
 use libsignal_net::env::{add_user_agent_header, Env, Svr3Env};
 use libsignal_net::infra::connection_manager::MultiRouteConnectionManager;
 use libsignal_net::infra::dns::DnsResolver;
@@ -20,7 +21,8 @@ use libsignal_net::infra::tcp_ssl::{
     TcpSslConnector, TcpSslConnectorStream,
 };
 use libsignal_net::infra::{make_ws_config, EndpointConnection};
-use libsignal_net::svr::{self, SvrConnection};
+use libsignal_net::svr::SvrConnection;
+use libsignal_net::svr3::Svr3Connect;
 use libsignal_net::timeouts::ONE_ROUTE_CONNECTION_TIMEOUT;
 
 use crate::*;
@@ -68,7 +70,8 @@ impl ConnectionManager {
             DnsResolver::new_with_static_fallback(environment.env().static_fallback());
         let transport_connector =
             std::sync::Mutex::new(TcpSslDirectConnector::new(dns_resolver).into());
-        let chat_endpoint = PathAndQuery::from_static(env::constants::WEB_SOCKET_PATH);
+        let chat_endpoint =
+            PathAndQuery::from_static(libsignal_net::env::constants::WEB_SOCKET_PATH);
         let chat_connection_params = environment
             .env()
             .chat_domain_config
@@ -150,23 +153,48 @@ impl ConnectionManager {
 
 bridge_as_handle!(ConnectionManager);
 
-pub async fn svr3_connect<'a>(
-    connection_manager: &ConnectionManager,
-    username: String,
-    password: String,
-) -> Result<<Svr3Env<'a> as PpssSetup<TcpSslConnectorStream>>::Connections, svr::Error> {
-    let auth = Auth { username, password };
-    let ConnectionManager {
-        chat: _chat,
-        cdsi: _cdsi,
-        svr3: (sgx, nitro, tpm2snp),
-        transport_connector,
-    } = connection_manager;
-    let transport_connector = transport_connector.lock().expect("not poisoned").clone();
-    let sgx = SvrConnection::connect(auth.clone(), sgx, transport_connector.clone()).await?;
-    let nitro = SvrConnection::connect(auth.clone(), nitro, transport_connector.clone()).await?;
-    let tpm2snp = SvrConnection::connect(auth, tpm2snp, transport_connector).await?;
-    Ok((sgx, nitro, tpm2snp))
+pub struct Svr3Client<'a> {
+    connection_manager: &'a ConnectionManager,
+    auth: Auth,
+}
+
+impl<'a> Svr3Client<'a> {
+    pub fn new(
+        connection_manager: &'a ConnectionManager,
+        username: String,
+        password: String,
+    ) -> Self {
+        Svr3Client {
+            connection_manager,
+            auth: Auth { username, password },
+        }
+    }
+}
+
+#[async_trait]
+impl<'a> Svr3Connect for Svr3Client<'a> {
+    type Stream = TcpSslConnectorStream;
+    type Env = Svr3Env<'static>;
+
+    async fn connect(
+        &self,
+    ) -> Result<<Self::Env as PpssSetup<Self::Stream>>::Connections, libsignal_net::enclave::Error>
+    {
+        let ConnectionManager {
+            chat: _chat,
+            cdsi: _cdsi,
+            svr3: (sgx, nitro, tpm2snp),
+            transport_connector,
+        } = &self.connection_manager;
+        let transport_connector = transport_connector.lock().expect("not poisoned").clone();
+        let sgx =
+            SvrConnection::connect(self.auth.clone(), sgx, transport_connector.clone()).await?;
+        let nitro =
+            SvrConnection::connect(self.auth.clone(), nitro, transport_connector.clone()).await?;
+        let tpm2snp =
+            SvrConnection::connect(self.auth.clone(), tpm2snp, transport_connector).await?;
+        Ok((sgx, nitro, tpm2snp))
+    }
 }
 
 #[cfg(test)]

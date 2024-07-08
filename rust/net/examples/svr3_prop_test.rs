@@ -7,20 +7,21 @@ use std::collections::HashMap;
 use std::time::Duration;
 
 use assert_matches::assert_matches;
-use libsignal_net::infra::dns::DnsResolver;
-use libsignal_net::infra::ws::DefaultStream;
+use async_trait::async_trait;
 use proptest::prelude::*;
 use proptest::test_runner::Config;
 use proptest_state_machine::{prop_state_machine, ReferenceStateMachine, StateMachineTest};
 use rand_core::OsRng;
 
 use libsignal_net::auth::Auth;
-use libsignal_net::enclave::{EnclaveEndpointConnection, Nitro, PpssSetup, Sgx, Tpm2Snp};
+use libsignal_net::enclave::{self, PpssSetup};
 use libsignal_net::env::Svr3Env;
-use libsignal_net::infra::tcp_ssl::DirectConnector as TcpSslTransportConnector;
-use libsignal_net::svr::SvrConnection;
-use libsignal_net::svr3::{Error, OpaqueMaskedShareSet, PpssOps as _};
+use libsignal_net::infra::ws::DefaultStream;
+use libsignal_net::svr3::{
+    simple_svr3_connect, Error, OpaqueMaskedShareSet, Svr3Client, Svr3Connect,
+};
 use libsignal_svr3::EvaluationResult;
+
 use support::*;
 
 const MAX_TRIES_LIMIT: u32 = 10;
@@ -296,6 +297,39 @@ impl StateMachineTest for Svr3Storage {
     }
 }
 
+struct Client<'a> {
+    auth: Auth,
+    env: &'a Svr3Env<'static>,
+    config: &'a SUTConfig,
+}
+
+impl<'a> Client<'a> {
+    fn new(uid: Uid, storage: &'a Svr3Storage) -> Self {
+        let auth = Auth::from_uid_and_secret(uid, storage.enclave_secret);
+        Self {
+            auth,
+            env: &storage.env,
+            config: &storage.config,
+        }
+    }
+}
+
+#[async_trait]
+impl Svr3Connect for Client<'_> {
+    type Stream = DefaultStream;
+    type Env = Svr3Env<'static>;
+
+    async fn connect(
+        &self,
+    ) -> Result<<Self::Env as PpssSetup<Self::Stream>>::Connections, enclave::Error> {
+        if let Some(duration) = self.config.sleep {
+            log::info!("💤 to avoid throttling...");
+            tokio::time::sleep(duration).await;
+        }
+        simple_svr3_connect(self.env, &self.auth).await
+    }
+}
+
 impl Svr3Storage {
     fn new() -> Self {
         let enclave_secret = {
@@ -319,47 +353,14 @@ impl Svr3Storage {
         }
     }
 
-    async fn connect(&self, uid: Uid) -> <Svr3Env as PpssSetup<DefaultStream>>::Connections {
-        let connector = TcpSslTransportConnector::new(DnsResolver::default());
-        if let Some(duration) = self.config.sleep {
-            tokio::time::sleep(duration).await;
-        }
-        let auth = Auth::from_uid_and_secret(uid, self.enclave_secret);
-        let sgx_connection =
-            EnclaveEndpointConnection::new(self.env.sgx(), Duration::from_secs(10));
-        let a = SvrConnection::<Sgx, _>::connect(auth.clone(), &sgx_connection, connector.clone())
-            .await
-            .expect("can attestedly connect to SGX");
-
-        let nitro_connection =
-            EnclaveEndpointConnection::new(self.env.nitro(), Duration::from_secs(10));
-        let b =
-            SvrConnection::<Nitro, _>::connect(auth.clone(), &nitro_connection, connector.clone())
-                .await
-                .expect("can attestedly connect to Nitro");
-
-        let tpm2snp_connection =
-            EnclaveEndpointConnection::new(self.env.tpm2snp(), Duration::from_secs(10));
-        let c = SvrConnection::<Tpm2Snp, _>::connect(auth.clone(), &tpm2snp_connection, connector)
-            .await
-            .expect("can attestedly connect to Nitro");
-
-        (a, b, c)
-    }
-
     fn backup(&mut self, uid: Uid, what: Secret, max_tries: u32) -> OpaqueMaskedShareSet {
         self.runtime.block_on(async {
             let mut rng = OsRng;
-            let connections = self.connect(uid).await;
-            Svr3Env::backup(
-                connections,
-                "password",
-                what,
-                max_tries.try_into().unwrap(),
-                &mut rng,
-            )
-            .await
-            .expect("can backup")
+            let client = Client::new(uid, self);
+            client
+                .backup("password", what, max_tries.try_into().unwrap(), &mut rng)
+                .await
+                .expect("can backup")
         })
     }
 
@@ -371,8 +372,8 @@ impl Svr3Storage {
     ) -> Result<EvaluationResult, Error> {
         self.runtime.block_on(async {
             let mut rng = OsRng;
-            let connections = self.connect(uid).await;
-            Svr3Env::restore(connections, password, share_set, &mut rng).await
+            let client = Client::new(uid, self);
+            client.restore(password, share_set, &mut rng).await
         })
     }
 }

@@ -7,12 +7,12 @@ use std::convert::TryInto as _;
 use std::num::{NonZeroU16, NonZeroU32};
 
 use base64::prelude::{Engine, BASE64_STANDARD};
-use libsignal_bridge_macros::{bridge_fn, bridge_io};
-use libsignal_bridge_types::net::svr3_connect;
-use libsignal_net::auth::Auth;
-use libsignal_net::env::Svr3Env;
-use libsignal_net::svr3::{self, OpaqueMaskedShareSet, PpssOps as _};
 use rand::rngs::OsRng;
+
+use libsignal_bridge_macros::{bridge_fn, bridge_io};
+use libsignal_bridge_types::net::Svr3Client;
+use libsignal_net::auth::Auth;
+use libsignal_net::svr3::{self, OpaqueMaskedShareSet, Svr3Client as _};
 
 pub use libsignal_bridge_types::net::{ConnectionManager, Environment, TokioAsyncContext};
 
@@ -80,15 +80,10 @@ async fn Svr3Backup(
         .try_into()
         .expect("can only backup 32 bytes");
     let mut rng = OsRng;
-    let connections = svr3_connect(connection_manager, username, enclave_password).await?;
-    let share_set = Svr3Env::backup(
-        connections,
-        &password,
-        secret,
-        max_tries.into_inner(),
-        &mut rng,
-    )
-    .await?;
+    let client = Svr3Client::new(connection_manager, username, enclave_password);
+    let share_set = client
+        .backup(&password, secret, max_tries.into_inner(), &mut rng)
+        .await?;
     Ok(share_set.serialize().expect("can serialize the share set"))
 }
 
@@ -102,8 +97,8 @@ async fn Svr3Restore(
 ) -> Result<Vec<u8>, svr3::Error> {
     let mut rng = OsRng;
     let share_set = OpaqueMaskedShareSet::deserialize(&share_set)?;
-    let connections = svr3_connect(connection_manager, username, enclave_password).await?;
-    let restored_secret = Svr3Env::restore(connections, &password, share_set, &mut rng).await?;
+    let client = Svr3Client::new(connection_manager, username, enclave_password);
+    let restored_secret = client.restore(&password, share_set, &mut rng).await?;
     Ok(restored_secret.serialize())
 }
 
@@ -113,8 +108,8 @@ async fn Svr3Remove(
     username: String,         // hex-encoded uid
     enclave_password: String, // timestamp:otp(...)
 ) -> Result<(), svr3::Error> {
-    let connections = svr3_connect(connection_manager, username, enclave_password).await?;
-    Svr3Env::remove(connections).await?;
+    let client = Svr3Client::new(connection_manager, username, enclave_password);
+    client.remove().await?;
     Ok(())
 }
 

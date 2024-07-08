@@ -87,7 +87,7 @@ pub struct Restore<'a> {
     pub requests: Vec<Vec<u8>>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct EvaluationResult {
     pub value: [u8; SECRET_BYTES],
     pub tries_remaining: u32,

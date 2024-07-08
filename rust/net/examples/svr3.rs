@@ -8,22 +8,23 @@
 //! as well as the password that will be used to protect the data being stored. Since the
 //! actual stored secret data needs to be exactly 32 bytes long, it is generated randomly
 //! at each invocation instead of being passed via the command line.
-use std::time::Duration;
 
 use assert_matches::assert_matches;
+use async_trait::async_trait;
 use base64::prelude::{Engine, BASE64_STANDARD};
 use clap::Parser;
 use colored::Colorize as _;
-use libsignal_net::infra::dns::DnsResolver;
 use nonzero_ext::nonzero;
 use rand_core::{CryptoRngCore, OsRng, RngCore};
 
 use libsignal_net::auth::Auth;
-use libsignal_net::enclave::{EnclaveEndpointConnection, Nitro, Sgx, Tpm2Snp};
+use libsignal_net::enclave::PpssSetup;
 use libsignal_net::env::Svr3Env;
-use libsignal_net::infra::tcp_ssl::DirectConnector as TcpSslTransportConnector;
-use libsignal_net::svr::SvrConnection;
-use libsignal_net::svr3::{Error, OpaqueMaskedShareSet, PpssOps};
+use libsignal_net::infra::tcp_ssl::DirectConnector;
+use libsignal_net::infra::TransportConnector;
+use libsignal_net::svr3::{
+    simple_svr3_connect, Error, OpaqueMaskedShareSet, Svr3Client as _, Svr3Connect,
+};
 
 #[derive(Parser, Debug)]
 struct Args {
@@ -34,6 +35,26 @@ struct Args {
     #[arg(long)]
     password: String,
 }
+
+struct Svr3Client {
+    env: Svr3Env<'static>,
+    auth: Auth,
+}
+
+type Stream = <DirectConnector as TransportConnector>::Stream;
+
+#[async_trait]
+impl Svr3Connect for Svr3Client {
+    type Stream = Stream;
+    type Env = Svr3Env<'static>;
+
+    async fn connect(
+        &self,
+    ) -> Result<<Svr3Env as PpssSetup<Stream>>::Connections, libsignal_net::enclave::Error> {
+        simple_svr3_connect(&self.env, &self.auth).await
+    }
+}
+
 #[tokio::main]
 async fn main() {
     init_logger();
@@ -49,36 +70,16 @@ async fn main() {
 
     let mut rng = OsRng;
 
-    let env = libsignal_net::env::STAGING.svr3;
-
     let uid = {
         let mut bytes = [0u8; 16];
         rng.fill_bytes(&mut bytes[..]);
         bytes
     };
-    let auth = Auth::from_uid_and_secret(uid, enclave_secret);
 
-    let connect = || async {
-        let connector = TcpSslTransportConnector::new(DnsResolver::default());
-        let connection_a = EnclaveEndpointConnection::new_multi(
-            env.sgx(),
-            env.sgx().domain_config.connection_params_with_fallback(),
-            Duration::from_secs(10),
-        );
-        let a = SvrConnection::<Sgx, _>::connect(auth.clone(), &connection_a, connector.clone())
-            .await
-            .expect("can attestedly connect to SGX");
-
-        let connection_b = EnclaveEndpointConnection::new(env.nitro(), Duration::from_secs(10));
-        let b = SvrConnection::<Nitro, _>::connect(auth.clone(), &connection_b, connector.clone())
-            .await
-            .expect("can attestedly connect to Nitro");
-
-        let connection_c = EnclaveEndpointConnection::new(env.tpm2snp(), Duration::from_secs(10));
-        let c = SvrConnection::<Tpm2Snp, _>::connect(auth.clone(), &connection_c, connector)
-            .await
-            .expect("can attestedly connect to Tpm2Snp");
-        (a, b, c)
+    let client = {
+        let env = libsignal_net::env::STAGING.svr3;
+        let auth = Auth::from_uid_and_secret(uid, enclave_secret);
+        Svr3Client { env, auth }
     };
 
     let secret = make_secret(&mut rng);
@@ -86,10 +87,10 @@ async fn main() {
     let tries = nonzero!(10u32);
 
     let share_set_bytes = {
-        let opaque_share_set =
-            Svr3Env::backup(connect().await, &args.password, secret, tries, &mut rng)
-                .await
-                .expect("can multi backup");
+        let opaque_share_set = client
+            .backup(&args.password, secret, tries, &mut rng)
+            .await
+            .expect("can multi backup");
         opaque_share_set.serialize().expect("can serialize")
     };
     println!("{}: {}", "Share set".cyan(), hex::encode(&share_set_bytes));
@@ -97,7 +98,8 @@ async fn main() {
     let restored = {
         let opaque_share_set =
             OpaqueMaskedShareSet::deserialize(&share_set_bytes).expect("can deserialize");
-        Svr3Env::restore(connect().await, &args.password, opaque_share_set, &mut rng)
+        client
+            .restore(&args.password, opaque_share_set, &mut rng)
             .await
             .expect("can mutli restore")
     };
@@ -112,17 +114,18 @@ async fn main() {
     println!("{}: {}", "Tries remaining".cyan(), restored.tries_remaining);
 
     println!("{}...", "Querying...".cyan());
-    let query_result = Svr3Env::query(connect().await).await.expect("can query");
+    let query_result = client.query().await.expect("can query");
     println!("{}: {}", "Tries remaining".cyan(), query_result);
 
     println!("{}...", "Removing the secret".cyan());
-    Svr3Env::remove(connect().await).await.expect("can remove");
+    client.remove().await.expect("can remove");
     // The next attempt to restore should fail
     {
         let opaque_share_set =
             OpaqueMaskedShareSet::deserialize(&share_set_bytes).expect("can deserialize");
-        let failed_restore_result =
-            Svr3Env::restore(connect().await, &args.password, opaque_share_set, &mut rng).await;
+        let failed_restore_result = client
+            .restore(&args.password, opaque_share_set, &mut rng)
+            .await;
         assert_matches!(failed_restore_result, Err(Error::DataMissing));
     }
     println!("{}.", "Done".green());

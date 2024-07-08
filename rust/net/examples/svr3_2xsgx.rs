@@ -12,24 +12,26 @@
 use std::borrow::Cow;
 use std::time::Duration;
 
+use async_trait::async_trait;
+use attest::svr2::RaftConfig;
 use base64::prelude::{Engine, BASE64_STANDARD};
 use clap::Parser;
 use hex_literal::hex;
-use libsignal_net::infra::dns::DnsResolver;
 use nonzero_ext::nonzero;
 use rand_core::{CryptoRngCore, OsRng, RngCore};
 
-use attest::svr2::RaftConfig;
 use libsignal_net::auth::Auth;
 use libsignal_net::enclave::{
-    EnclaveEndpoint, EnclaveEndpointConnection, EndpointParams, MrEnclave, PpssSetup, Sgx,
+    EnclaveEndpoint, EnclaveEndpointConnection, EndpointParams, Error, MrEnclave, PpssSetup, Sgx,
     Svr3Flavor,
 };
 use libsignal_net::env::{DomainConfig, PROXY_CONFIG_F_STAGING, PROXY_CONFIG_G};
 use libsignal_net::infra::certs::RootCertificates;
+use libsignal_net::infra::dns::DnsResolver;
 use libsignal_net::infra::tcp_ssl::DirectConnector as TcpSslTransportConnector;
+use libsignal_net::infra::TransportConnector;
 use libsignal_net::svr::SvrConnection;
-use libsignal_net::svr3::{OpaqueMaskedShareSet, PpssOps};
+use libsignal_net::svr3::{OpaqueMaskedShareSet, Svr3Client as _, Svr3Connect};
 
 const TEST_SERVER_CERT: RootCertificates = RootCertificates::FromDer(Cow::Borrowed(
     include_bytes!("../res/sgx_test_server_cert.cer"),
@@ -69,6 +71,7 @@ where
     B: Svr3Flavor + Send,
     S: Send,
 {
+    type Stream = <TcpSslTransportConnector as TransportConnector>::Stream;
     type Connections = (SvrConnection<A, S>, SvrConnection<B, S>);
     type ServerIds = [u64; 2];
 
@@ -87,6 +90,31 @@ struct Args {
     password: String,
 }
 
+struct Client {
+    env: TwoForTwoEnv<'static, Sgx, Sgx>,
+    auth_a: Auth,
+    auth_b: Auth,
+}
+
+#[async_trait]
+impl Svr3Connect for Client {
+    type Stream = <TcpSslTransportConnector as TransportConnector>::Stream;
+    type Env = TwoForTwoEnv<'static, Sgx, Sgx>;
+
+    async fn connect(&self) -> Result<<Self::Env as PpssSetup<Self::Stream>>::Connections, Error> {
+        let connector = TcpSslTransportConnector::new(DnsResolver::default());
+        let connection_a = EnclaveEndpointConnection::new(&self.env.0, Duration::from_secs(10));
+
+        let a =
+            SvrConnection::connect(self.auth_a.clone(), &connection_a, connector.clone()).await?;
+
+        let connection_b = EnclaveEndpointConnection::new(&self.env.1, Duration::from_secs(10));
+
+        let b = SvrConnection::connect(self.auth_b.clone(), &connection_b, connector).await?;
+        Ok((a, b))
+    }
+}
+
 #[tokio::main]
 async fn main() {
     let args = Args::parse();
@@ -101,14 +129,6 @@ async fn main() {
 
     let mut rng = OsRng;
 
-    let mut make_uid = || {
-        let mut bytes = [0u8; 16];
-        rng.fill_bytes(&mut bytes[..]);
-        bytes
-    };
-
-    let make_auth = |uid: [u8; 16]| Auth::from_uid_and_secret(uid, auth_secret);
-
     let two_sgx_env = {
         let endpoint = EnclaveEndpoint::<Sgx> {
             domain_config: TEST_SERVER_DOMAIN_CONFIG,
@@ -117,37 +137,30 @@ async fn main() {
         TwoForTwoEnv(endpoint.clone(), endpoint)
     };
 
-    let (uid_a, uid_b) = (make_uid(), make_uid());
+    let client = {
+        let mut make_uid = || {
+            let mut bytes = [0u8; 16];
+            rng.fill_bytes(&mut bytes[..]);
+            bytes
+        };
 
-    let connect = || async {
-        let connector = TcpSslTransportConnector::new(DnsResolver::default());
-        let connection_a = EnclaveEndpointConnection::new(&two_sgx_env.0, Duration::from_secs(10));
+        let make_auth = |uid: [u8; 16]| Auth::from_uid_and_secret(uid, auth_secret);
 
-        let a = SvrConnection::connect(make_auth(uid_a), &connection_a, connector.clone())
-            .await
-            .expect("can attestedly connect");
-
-        let connection_b = EnclaveEndpointConnection::new(&two_sgx_env.1, Duration::from_secs(10));
-
-        let b = SvrConnection::connect(make_auth(uid_b), &connection_b, connector)
-            .await
-            .expect("can attestedly connect");
-        (a, b)
+        Client {
+            env: two_sgx_env,
+            auth_a: make_auth(make_uid()),
+            auth_b: make_auth(make_uid()),
+        }
     };
 
     let secret = make_secret(&mut rng);
     println!("Secret to be stored: {}", hex::encode(secret));
 
     let share_set_bytes = {
-        let opaque_share_set = TwoForTwoEnv::backup(
-            connect().await,
-            &args.password,
-            secret,
-            nonzero!(10u32),
-            &mut rng,
-        )
-        .await
-        .expect("can multi backup");
+        let opaque_share_set = client
+            .backup(&args.password, secret, nonzero!(10u32), &mut rng)
+            .await
+            .expect("can multi backup");
         opaque_share_set.serialize().expect("can serialize")
     };
     println!("Share set: {}", hex::encode(&share_set_bytes));
@@ -155,7 +168,8 @@ async fn main() {
     let restored = {
         let opaque_share_set =
             OpaqueMaskedShareSet::deserialize(&share_set_bytes).expect("can deserialize");
-        TwoForTwoEnv::restore(connect().await, &args.password, opaque_share_set, &mut rng)
+        client
+            .restore(&args.password, opaque_share_set, &mut rng)
             .await
             .expect("can multi restore")
     };
