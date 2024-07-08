@@ -14,7 +14,7 @@ import re
 import os
 
 
-def read_version(file, pattern):
+def read_version(file: str, pattern: re.Pattern[str]) -> str:
     with open(file) as f:
         for line in f:
             match = pattern.match(line)
@@ -23,7 +23,7 @@ def read_version(file, pattern):
     raise Exception(f"Could not determine version from {file}")
 
 
-def update_version(file, pattern, new_version):
+def update_version(file: str, pattern: re.Pattern[str], new_version: str) -> None:
     with fileinput.input(files=(file,), inplace=True) as f:
         for line in f:
             print(pattern.sub(f"\\g<1>{new_version}\\g<3>", line, count=1), end='')
@@ -36,7 +36,7 @@ CARGO_PATTERN = re.compile(r'^(version = ")(.*)(")')
 RUST_PATTERN = re.compile(r'^(pub const VERSION: &str = ")(.*)(")')
 
 
-def bridge_path(*bridge):
+def bridge_path(*bridge: str) -> str:
     return os.path.join('rust', 'bridge', *bridge, 'Cargo.toml')
 
 
@@ -52,7 +52,7 @@ VERSION_FILES = [
 ]
 
 
-def main():
+def main() -> int:
     os.chdir(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 
     if len(sys.argv) > 1:

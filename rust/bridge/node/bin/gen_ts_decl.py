@@ -13,11 +13,13 @@ import subprocess
 import re
 import sys
 
+from typing import Iterable, Iterator, Tuple
+
 Args = collections.namedtuple('Args', ['verify'])
 
 
-def parse_args():
-    def print_usage_and_exit():
+def parse_args() -> Args:
+    def print_usage_and_exit() -> None:
         print('usage: %s [--verify]' % sys.argv[0], file=sys.stderr)
         sys.exit(2)
 
@@ -33,7 +35,7 @@ def parse_args():
     return Args(verify=mode is not None)
 
 
-def split_rust_args(args):
+def split_rust_args(args: str) -> Iterator[Tuple[str, str]]:
     """
     Split Rust `arg: Type` pairs separated by commas.
 
@@ -56,7 +58,7 @@ def split_rust_args(args):
             yield (name.strip(), args.strip())
 
 
-def translate_to_ts(typ):
+def translate_to_ts(typ: str) -> str:
     typ = typ.replace(' ', '')
 
     type_map = {
@@ -153,7 +155,7 @@ DIAGNOSTICS_TO_IGNORE = [
 SHOULD_IGNORE_PATTERN = re.compile("(" + ")|(".join(DIAGNOSTICS_TO_IGNORE) + ")")
 
 
-def camelcase(arg):
+def camelcase(arg: str) -> str:
     return re.sub(
         # Preserve double-underscores and leading underscores,
         # but remove single underscores and capitalize the following letter.
@@ -162,7 +164,7 @@ def camelcase(arg):
         arg)
 
 
-def collect_decls(crate_dir, features=()):
+def collect_decls(crate_dir: str, features: Iterable[str] = ()) -> Iterator[str]:
     args = [
         'cargo',
         'rustc',
@@ -175,10 +177,10 @@ def collect_decls(crate_dir, features=()):
         '-Zunpretty=expanded']
     rustc = subprocess.Popen(args, cwd=crate_dir, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
-    (stdout, stderr) = rustc.communicate()
+    (raw_stdout, raw_stderr) = rustc.communicate()
 
-    stdout = str(stdout.decode('utf8'))
-    stderr = str(stderr.decode('utf8'))
+    stdout = str(raw_stdout.decode('utf8'))
+    stderr = str(raw_stderr.decode('utf8'))
 
     had_error = False
     for l in stderr.split('\n'):
@@ -215,23 +217,23 @@ def collect_decls(crate_dir, features=()):
             yield decl
             continue
 
-        (prefix, args, ret_type) = function_match.groups()
+        (prefix, fn_args, ret_type) = function_match.groups()
 
         ts_ret_type = translate_to_ts(ret_type)
         ts_args = []
-        if '::' in args:
-            raise Exception(f'Paths are not supported. Use alias for the type of \'{args}\'')
+        if '::' in fn_args:
+            raise Exception(f'Paths are not supported. Use alias for the type of \'{fn_args}\'')
 
-        for (arg_name, arg_type) in split_rust_args(args):
+        for (arg_name, arg_type) in split_rust_args(fn_args):
             ts_arg_type = translate_to_ts(arg_type)
             ts_args.append('%s: %s' % (camelcase(arg_name.strip()), ts_arg_type))
 
         yield '%s(%s): %s;' % (prefix, ', '.join(ts_args), ts_ret_type)
 
 
-def expand_template(template_file, decls):
-    with open(template_file, "r") as template_file:
-        contents = template_file.read()
+def expand_template(template_file: str, decls: Iterable[str]) -> str:
+    with open(template_file, "r") as f:
+        contents = f.read()
         contents += "\n"
         contents += "\n".join(sorted(decls))
         contents += "\n"
@@ -239,7 +241,7 @@ def expand_template(template_file, decls):
         return contents
 
 
-def verify_contents(expected_output_file, expected_contents):
+def verify_contents(expected_output_file: str, expected_contents: str) -> None:
     with open(expected_output_file) as fh:
         current_contents = fh.readlines()
     diff = difflib.unified_diff(current_contents, expected_contents.splitlines(keepends=True))
@@ -253,7 +255,7 @@ def verify_contents(expected_output_file, expected_contents):
 Crate = collections.namedtuple('Crate', ["path", "features"], defaults=[()])
 
 
-def convert_to_typescript(rust_crates, ts_in_path, ts_out_path, verify):
+def convert_to_typescript(rust_crates: Iterable[Crate], ts_in_path: str, ts_out_path: str, verify: bool) -> None:
     decls = itertools.chain.from_iterable(collect_decls(crate.path, crate.features) for crate in rust_crates)
     contents = expand_template(ts_in_path, decls)
 
@@ -267,7 +269,7 @@ def convert_to_typescript(rust_crates, ts_in_path, ts_out_path, verify):
         verify_contents(ts_out_path, contents)
 
 
-def main():
+def main() -> None:
     args = parse_args()
     our_abs_dir = os.path.dirname(os.path.realpath(__file__))
     output_file_name = 'Native.d.ts'

@@ -10,15 +10,17 @@ import json
 import subprocess
 import sys
 
+from typing import Any, List, Mapping, Optional
 
-def warn(message):
+
+def warn(message: str) -> None:
     if 'GITHUB_ACTIONS' in os.environ:
         print("::warning ::" + message)
     else:
         print("warning: " + message, file=sys.stderr)
 
 
-def print_size_diff(lib_size, old_entry):
+def print_size_diff(lib_size: int, old_entry: Mapping[str, Any]) -> None:
     delta = lib_size - old_entry['size']
     delta_fraction = (float(delta) / old_entry['size'])
     message = "current build is {0}% larger than {1} (current: {2} bytes, {1}: {3} bytes)".format(
@@ -33,7 +35,7 @@ def print_size_diff(lib_size, old_entry):
         print(message)
 
 
-def current_origin_main_entry():
+def current_origin_main_entry() -> Optional[Mapping[str, Any]]:
     try:
         most_recent_main = subprocess.run(["git", "merge-base", "HEAD", "origin/main"], capture_output=True, check=True).stdout.decode().strip()
 
@@ -85,10 +87,10 @@ if origin_main_entry is not None:
     print_size_diff(lib_size, origin_main_entry)
 
 
-def print_plot(sizes):
+def print_plot(sizes: List[Mapping[str, Any]]) -> None:
     highest_size = max(recent_sizes, key=lambda x: x['size'])['size']
 
-    scale = 1 * 1024 * 1024
+    scale = 1.0 * 1024 * 1024
     while scale < highest_size:
         scale *= 2
     scale /= 20

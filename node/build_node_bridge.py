@@ -14,8 +14,10 @@ import subprocess
 import sys
 import tarfile
 
+from typing import List, Optional
 
-def maybe_archive_debug_info(*, src_path, src_checksum_path, dst_path, dst_checksum_path):
+
+def maybe_archive_debug_info(*, src_path: str, src_checksum_path: str, dst_path: str, dst_checksum_path: str) -> None:
     with open(src_checksum_path, 'rb') as f:
         digest = hashlib.sha256()
         # Use read1 to use the file object's buffering.
@@ -39,7 +41,7 @@ def maybe_archive_debug_info(*, src_path, src_checksum_path, dst_path, dst_check
         archive.add(debug_realpath, arcname=os.path.basename(src_path))
 
 
-def main(args=None):
+def main(args: Optional[List[str]] = None) -> int:
     if args is None:
         args = sys.argv
 

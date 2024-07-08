@@ -12,11 +12,13 @@ import subprocess
 import re
 import sys
 
+from typing import Iterable, Iterator, Tuple
+
 Args = collections.namedtuple('Args', 'verify')
 
 
-def parse_args():
-    def print_usage_and_exit():
+def parse_args() -> Args:
+    def print_usage_and_exit() -> None:
         print(f'usage: {sys.argv[0]} [--verify]', file=sys.stderr)
         sys.exit(2)
 
@@ -46,13 +48,13 @@ IGNORE_THIS_WARNING = re.compile(
     ")")
 
 
-def run_cbindgen(cwd):
+def run_cbindgen(cwd: str) -> str:
     cbindgen = subprocess.Popen(['cbindgen'], cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
-    (stdout, stderr) = cbindgen.communicate()
+    (raw_stdout, raw_stderr) = cbindgen.communicate()
 
-    stdout = str(stdout.decode('utf8'))
-    stderr = str(stderr.decode('utf8'))
+    stdout = str(raw_stdout.decode('utf8'))
+    stderr = str(raw_stderr.decode('utf8'))
 
     unknown_warning = False
 
@@ -72,7 +74,7 @@ def run_cbindgen(cwd):
     return stdout
 
 
-def box_primitive_if_needed(typ):
+def box_primitive_if_needed(typ: str) -> str:
     type_map = {
         "void": "Void",
         "boolean": "Boolean",
@@ -88,7 +90,7 @@ def box_primitive_if_needed(typ):
     return type_map.get(typ, typ)
 
 
-def translate_to_java(typ):
+def translate_to_java(typ: str) -> Tuple[str, bool]:
     type_map = {
         "void": "void",
         "JString": "String",
@@ -137,7 +139,7 @@ JAVA_DECL = re.compile(r"""
     """, re.VERBOSE)
 
 
-def parse_decls(cbindgen_output):
+def parse_decls(cbindgen_output: str) -> Iterator[str]:
     cur_type = None
 
     for line in cbindgen_output.split('\n'):
@@ -172,13 +174,13 @@ def parse_decls(cbindgen_output):
             " throws Exception" if is_throwing else ""))
 
 
-def expand_template(template_file, decls):
-    with open(template_file, "r") as template_file:
-        contents = template_file.read().replace('\n  // INSERT DECLS HERE', "\n".join(decls))
+def expand_template(template_file: str, decls: Iterable[str]) -> str:
+    with open(template_file, "r") as f:
+        contents = f.read().replace('\n  // INSERT DECLS HERE', "\n".join(decls))
     return contents
 
 
-def verify_contents(expected_output_file, expected_contents):
+def verify_contents(expected_output_file: str, expected_contents: str) -> None:
     with open(expected_output_file) as fh:
         current_contents = fh.readlines()
     diff = difflib.unified_diff(current_contents, expected_contents.splitlines(keepends=True))
@@ -189,7 +191,7 @@ def verify_contents(expected_output_file, expected_contents):
         sys.exit("error: Native.java not up to date; re-run %s!" % sys.argv[0])
 
 
-def convert_to_java(rust_crate_dir, java_in_path, java_out_path, verify):
+def convert_to_java(rust_crate_dir: str, java_in_path: str, java_out_path: str, verify: bool) -> None:
     stdout = run_cbindgen(rust_crate_dir)
 
     decls = list(parse_decls(stdout))
@@ -206,7 +208,7 @@ def convert_to_java(rust_crate_dir, java_in_path, java_out_path, verify):
         verify_contents(java_out_path, contents)
 
 
-def main():
+def main() -> None:
     args = parse_args()
 
     our_abs_dir = os.path.dirname(os.path.realpath(__file__))
