@@ -86,7 +86,7 @@ internal class TokioAsyncContext: NativeHandleOwner {
                     try checkError(signal_tokio_async_context_cancel($0, id))
                 }
             } catch {
-                NSLog("failed to cancel libsignal task %ld: %@", id, "\(error)")
+                LoggerBridge.shared?.logger.log(level: .warn, file: #fileID, line: #line, message: "failed to cancel libsignal task \(id): \(error)")
             }
         }
     }
