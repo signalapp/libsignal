@@ -3,7 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use futures_util::FutureExt;
+use futures_util::{AsyncReadExt as _, FutureExt};
+use io::{AsyncInput, InputStream};
 use libsignal_bridge_macros::*;
 use libsignal_bridge_types::support::*;
 use libsignal_bridge_types::*;
@@ -227,4 +228,42 @@ fn TESTING_ProcessBytestringArray(input: Vec<&[u8]>) -> Box<[Vec<u8>]> {
         .map(|x| [x, x].concat())
         .collect::<Vec<Vec<u8>>>()
         .into_boxed_slice()
+}
+
+#[bridge_fn]
+async fn TESTING_InputStreamReadIntoZeroLengthSlice(
+    caps_alphabet_input: &mut dyn InputStream,
+) -> Vec<u8> {
+    let mut async_input = AsyncInput::new(caps_alphabet_input, 26);
+    let first = {
+        let mut buf = [0; 10];
+        async_input
+            .read_exact(&mut buf)
+            .await
+            .expect("can read first");
+        buf
+    };
+    {
+        let mut zero_length_array = [0; 0];
+        assert_eq!(
+            async_input
+                .read(&mut zero_length_array)
+                .await
+                .expect("can do zero-length read"),
+            0
+        );
+    }
+    let remainder = {
+        let mut buf = Vec::with_capacity(16);
+        async_input
+            .read_to_end(&mut buf)
+            .await
+            .expect("can read to end");
+        buf
+    };
+
+    assert_eq!(&first, b"ABCDEFGHIJ");
+    assert_eq!(remainder, b"KLMNOPQRSTUVWXYZ");
+
+    first.into_iter().chain(remainder).collect()
 }

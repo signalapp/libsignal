@@ -17,7 +17,6 @@ use std::sync::Arc;
 pub struct NodeInputStream {
     js_channel: Channel,
     stream_object: Arc<Root<JsObject>>,
-    eof_reached: Cell<bool>,
 }
 
 pub struct NodeSyncInputStream<'a> {
@@ -30,7 +29,6 @@ impl NodeInputStream {
         Self {
             js_channel: cx.channel(),
             stream_object: Arc::new(stream.root(cx)),
-            eof_reached: Default::default(),
         }
     }
 
@@ -52,9 +50,6 @@ impl NodeInputStream {
             Err(error) => Err(ThrownException::from_value(cx, error)),
         })
         .await?;
-        if read_data.is_empty() {
-            self.eof_reached.set(true);
-        }
         Ok(read_data)
     }
 
@@ -94,16 +89,10 @@ impl Finalize for NodeInputStream {
 impl InputStream for NodeInputStream {
     fn read<'out, 'a: 'out>(&'a self, buf: &mut [u8]) -> IoResult<InputStreamRead<'out>> {
         let amount = buf.len() as u32;
-        if self.eof_reached.get() {
-            // If we read again after eof was reached, we can end up hitting an unreachable!() in
-            // futures::io::FillBuf due to issue rust-lang/futures#2727.
-            Ok(InputStreamRead::Ready { amount_read: 0 })
-        } else {
-            Ok(InputStreamRead::Pending(Box::pin(
-                self.do_read(amount)
-                    .map_err(|err| IoError::new(IoErrorKind::Other, err)),
-            )))
-        }
+        Ok(InputStreamRead::Pending(Box::pin(
+            self.do_read(amount)
+                .map_err(|err| IoError::new(IoErrorKind::Other, err)),
+        )))
     }
 
     async fn skip(&self, amount: u64) -> IoResult<()> {
