@@ -128,12 +128,12 @@ def translate_to_java(typ):
 
 
 JAVA_DECL = re.compile(r"""
-    ([a-zA-Z0-9]+(?:<.+>)?)[ ]                 # (0) A possibly-generic return type
-    Java_org_signal_libsignal_internal_Native_ # The required JNI prefix
-    (([a-zA-Z0-9]+)                            # (1) The method name, with (2) a grouping prefix
-    (?:_1[a-zA-Z0-9_]*)?)                      # ...possibly followed by an underscore and then more name
-    \(JNIEnv[ ].?env,[ ]JClass[ ]class_        # and then the required JNI args,
-    (,[ ].*)?\);                               # then (3) actual args
+    ([a-zA-Z0-9]+(?:<.+>)?)[ ]                             # (0) A possibly-generic return type
+    Java_org_signal_libsignal_internal_Native(?:Testing)?_ # The required JNI prefix
+    (([a-zA-Z0-9]+)                                        # (1) The method name, with (2) a grouping prefix
+    (?:_1[a-zA-Z0-9_]*)?)                                  # ...possibly followed by an underscore and then more name
+    \(JNIEnv[ ].?env,[ ]JClass[ ]class_                    # and then the required JNI args,
+    (,[ ].*)?\);                                           # then (3) actual args
     """, re.VERBOSE)
 
 
@@ -214,6 +214,13 @@ def main():
         rust_crate_dir=os.path.join(our_abs_dir, '..'),
         java_in_path=os.path.join(our_abs_dir, 'Native.java.in'),
         java_out_path=os.path.join(our_abs_dir, '..', '..', '..', '..', 'java', 'shared', 'java', 'org', 'signal', 'libsignal', 'internal', 'Native.java'),
+        verify=args.verify,
+    )
+
+    convert_to_java(
+        rust_crate_dir=os.path.join(our_abs_dir, '..', 'testing'),
+        java_in_path=os.path.join(our_abs_dir, 'NativeTesting.java.in'),
+        java_out_path=os.path.join(our_abs_dir, '..', '..', '..', '..', 'java', 'shared', 'java', 'org', 'signal', 'libsignal', 'internal', 'NativeTesting.java'),
         verify=args.verify,
     )
 

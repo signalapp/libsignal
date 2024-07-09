@@ -36,8 +36,8 @@ CARGO_PATTERN = re.compile(r'^(version = ")(.*)(")')
 RUST_PATTERN = re.compile(r'^(pub const VERSION: &str = ")(.*)(")')
 
 
-def bridge_path(bridge):
-    return os.path.join('rust', 'bridge', bridge, 'Cargo.toml')
+def bridge_path(*bridge):
+    return os.path.join('rust', 'bridge', *bridge, 'Cargo.toml')
 
 
 VERSION_FILES = [
@@ -47,6 +47,7 @@ VERSION_FILES = [
     (os.path.join('rust', 'core', 'src', 'version.rs'), RUST_PATTERN),
     (bridge_path('ffi'), CARGO_PATTERN),
     (bridge_path('jni'), CARGO_PATTERN),
+    (bridge_path('jni', 'testing'), CARGO_PATTERN),
     (bridge_path('node'), CARGO_PATTERN),
 ]
 

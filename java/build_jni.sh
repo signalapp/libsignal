@@ -53,9 +53,10 @@ while [ "${1:-}" != "" ]; do
             # https://github.com/rust-lang/rfcs/issues/2771
             export CARGO_PROFILE_RELEASE_LTO=thin
             FEATURES+=("testing-fns")
-            echo_then_run cargo build -p libsignal-jni --release --features "${FEATURES[*]}"
+            echo_then_run cargo build -p libsignal-jni -p libsignal-jni-testing --release ${FEATURES:+--features "${FEATURES[*]}"}
             if [[ -z "${CARGO_BUILD_TARGET:-}" ]]; then
                 copy_built_library target/release signal_jni "${DESKTOP_LIB_DIR}/"
+                copy_built_library target/release signal_jni_testing "${DESKTOP_LIB_DIR}/"
             fi
             exit
             ;;
@@ -136,5 +137,5 @@ target_for_abi() {
 
 for abi in "${android_abis[@]}"; do
     rust_target=$(target_for_abi "$abi")
-    echo_then_run cargo build -p libsignal-jni --release ${FEATURES:+--features "${FEATURES[*]}"} -Z unstable-options --target "$rust_target" --out-dir "${ANDROID_LIB_DIR}/$abi"
+    echo_then_run cargo build -p libsignal-jni -p libsignal-jni-testing --release ${FEATURES:+--features "${FEATURES[*]}"} -Z unstable-options --target "$rust_target" --out-dir "${ANDROID_LIB_DIR}/$abi"
 done

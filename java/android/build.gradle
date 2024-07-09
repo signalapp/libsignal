@@ -52,6 +52,7 @@ android {
     packagingOptions {
         jniLibs {
             pickFirst 'lib/*/libsignal_jni.so'
+            pickFirst 'lib/*/libsignal_jni_testing.so'
         }
     }
 

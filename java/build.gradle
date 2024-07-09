@@ -35,7 +35,7 @@ subprojects {
     spotless {
         java {
             target('**/*.java')
-            targetExclude('**/Native.java')
+            targetExclude('**/Native.java', '**/NativeTesting.java')
             importOrder()
             removeUnusedImports()
 
@@ -76,7 +76,7 @@ clean.dependsOn([cargoClean, cleanJni])
 
 // PUBLISHING
 
-ext.setUpSigningKey = { signingExt -> 
+ext.setUpSigningKey = { signingExt ->
     def signingKeyId = findProperty("signingKeyId")
     def signingKey = findProperty("signingKey")
     def signingPassword = findProperty("signingPassword")

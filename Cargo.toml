@@ -16,6 +16,7 @@ members = [
     "rust/zkgroup",
     "rust/bridge/ffi",
     "rust/bridge/jni",
+    "rust/bridge/jni/testing",
     "rust/bridge/node",
 ]
 default-members = [

@@ -90,6 +90,7 @@ fn bridge_fn_body(
     // "Support" async operations by requiring them to complete synchronously.
     let await_if_needed = sig.asyncness.map(|_| {
         quote! {
+            use ::futures_util::future::FutureExt as _;
             let __result = __result.now_or_never().unwrap();
         }
     });

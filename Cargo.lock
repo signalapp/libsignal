@@ -2008,6 +2008,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "libsignal-bridge-testing"
+version = "0.1.0"
+dependencies = [
+ "bytemuck",
+ "futures-util",
+ "jni 0.21.1",
+ "libsignal-bridge-macros",
+ "libsignal-bridge-types",
+ "libsignal-message-backup",
+ "linkme",
+ "neon",
+ "paste",
+ "scopeguard",
+ "signal-neon-futures",
+ "strum",
+ "thiserror",
+]
+
+[[package]]
 name = "libsignal-bridge-types"
 version = "0.1.0"
 dependencies = [
@@ -2106,6 +2125,19 @@ dependencies = [
  "log-panics",
  "rustls-platform-verifier",
  "signal-crypto",
+]
+
+[[package]]
+name = "libsignal-jni-testing"
+version = "0.52.1"
+dependencies = [
+ "async-trait",
+ "cfg-if",
+ "jni 0.21.1",
+ "libsignal-bridge-testing",
+ "log",
+ "log-panics",
+ "rand",
 ]
 
 [[package]]

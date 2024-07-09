@@ -94,6 +94,8 @@ fn bridge_fn_body(
 
     let await_if_needed = await_needed.then(|| {
         quote! {
+            #[allow(unused)]
+            use ::futures_util::future::FutureExt as _;
             let __result = __result.now_or_never().unwrap();
         }
     });
