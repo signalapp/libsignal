@@ -10,9 +10,11 @@ use base64::prelude::{Engine, BASE64_STANDARD};
 use rand::rngs::OsRng;
 
 use libsignal_bridge_macros::{bridge_fn, bridge_io};
-use libsignal_bridge_types::net::Svr3Client;
+use libsignal_bridge_types::net::Svr3Clients;
 use libsignal_net::auth::Auth;
-use libsignal_net::svr3::{self, OpaqueMaskedShareSet, Svr3Client as _};
+use libsignal_net::svr3::{
+    self, migrate_backup, restore_with_fallback, OpaqueMaskedShareSet, Svr3Client as _,
+};
 
 pub use libsignal_bridge_types::net::{ConnectionManager, Environment, TokioAsyncContext};
 
@@ -80,10 +82,39 @@ async fn Svr3Backup(
         .try_into()
         .expect("can only backup 32 bytes");
     let mut rng = OsRng;
-    let client = Svr3Client::new(connection_manager, username, enclave_password);
+
+    // SVR3 writes always happen to the current set of enclaves
+    let client = Svr3Clients::new(connection_manager, username, enclave_password).current;
     let share_set = client
         .backup(&password, secret, max_tries.into_inner(), &mut rng)
         .await?;
+    Ok(share_set.serialize().expect("can serialize the share set"))
+}
+
+#[bridge_io(TokioAsyncContext, node = false)]
+async fn Svr3Migrate(
+    connection_manager: &ConnectionManager,
+    secret: Box<[u8]>,
+    password: String,
+    max_tries: AsType<NonZeroU32, u32>,
+    username: String,         // hex-encoded uid
+    enclave_password: String, // timestamp:otp(...)
+) -> Result<Vec<u8>, svr3::Error> {
+    let secret = secret
+        .as_ref()
+        .try_into()
+        .expect("can only backup 32 bytes");
+    let mut rng = OsRng;
+
+    let clients = Svr3Clients::new(connection_manager, username, enclave_password);
+    let share_set = migrate_backup(
+        (clients.previous, clients.current),
+        &password,
+        secret,
+        max_tries.into_inner(),
+        &mut rng,
+    )
+    .await?;
     Ok(share_set.serialize().expect("can serialize the share set"))
 }
 
@@ -97,8 +128,18 @@ async fn Svr3Restore(
 ) -> Result<Vec<u8>, svr3::Error> {
     let mut rng = OsRng;
     let share_set = OpaqueMaskedShareSet::deserialize(&share_set)?;
-    let client = Svr3Client::new(connection_manager, username, enclave_password);
-    let restored_secret = client.restore(&password, share_set, &mut rng).await?;
+    let clients = Svr3Clients::new(connection_manager, username, enclave_password);
+    // It is always safe to use `restore_with_fallback`.
+    // If there is no migration, then the "previous" environment will return
+    // `DataMissing` error, similarly to how the actual migrated-from environment
+    // would.
+    let restored_secret = restore_with_fallback(
+        (clients.current, clients.previous),
+        &password,
+        share_set,
+        &mut rng,
+    )
+    .await?;
     Ok(restored_secret.serialize())
 }
 
@@ -108,9 +149,11 @@ async fn Svr3Remove(
     username: String,         // hex-encoded uid
     enclave_password: String, // timestamp:otp(...)
 ) -> Result<(), svr3::Error> {
-    let client = Svr3Client::new(connection_manager, username, enclave_password);
-    client.remove().await?;
-    Ok(())
+    // Removal assumes that any migration that needed to happen already happened,
+    // and, just like with `backup`, it is always performed on the current set
+    // of SVR3 enclaves.
+    let client = Svr3Clients::new(connection_manager, username, enclave_password).current;
+    client.remove().await
 }
 
 #[cfg(test)]

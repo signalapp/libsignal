@@ -370,6 +370,27 @@ final class Svr3Tests: TestCaseBase {
             XCTFail("Unexpected error: \(error)")
         }
     }
+
+    func testRestoreAfterMigrate() async throws {
+        // migrate is equivalent to backup, so this test merely validates that the "write" happens,
+        // not that the value is removed from the old location.
+        let tries = UInt32(10)
+
+        let shareSet = try await state!.net.svr3.migrate(
+            self.storedSecret,
+            password: "password",
+            maxTries: tries,
+            auth: self.state!.auth
+        )
+
+        let restoredSecret = try await state!.net.svr3.restore(
+            password: "password",
+            shareSet: shareSet,
+            auth: self.state!.auth
+        )
+        XCTAssertEqual(restoredSecret.value, self.storedSecret)
+        XCTAssertEqual(restoredSecret.triesRemaining, tries - 1)
+    }
 }
 
 #endif

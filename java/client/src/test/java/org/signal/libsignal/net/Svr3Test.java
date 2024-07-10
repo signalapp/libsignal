@@ -176,4 +176,21 @@ public class Svr3Test {
       assertTrue("Unexpected exception: " + cause, cause instanceof NetworkProtocolException);
     }
   }
+
+  @Test
+  public void restoreAfterMigrate() throws Exception {
+    // migrate is equivalent to backup, so this test merely validates that the "write" happens,
+    // not that the value is removed from the old location.
+    final int tries = 2;
+    Svr3.RestoredSecret restored =
+        state
+            .net()
+            .svr3()
+            .migrate(STORED_SECRET, TEST_PASSWORD, tries, state.auth())
+            .thenCompose(
+                shareSet -> state.net().svr3().restore(TEST_PASSWORD, shareSet, state.auth()))
+            .get();
+    assertEquals(Hex.toStringCondensed(STORED_SECRET), Hex.toStringCondensed(restored.value()));
+    assertEquals(tries - 1, restored.triesRemaining());
+  }
 }

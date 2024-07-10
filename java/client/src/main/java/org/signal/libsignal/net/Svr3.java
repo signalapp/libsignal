@@ -97,7 +97,73 @@ public final class Svr3 {
   }
 
   /**
+   * Migrate a secret to a new SVR3 environment.
+   *
+   * <p>Enclaves need to be updated from time to time and when they do, the stored secret needs to
+   * be migrated. From the API standpoint it is exactly like an ordinary backup operation, but
+   * internally it performs a backup to a new location combined with the remove from the old one. No
+   * data is read from the "old" location, that is, the restore operation is not performed.
+   *
+   * <p>If the remove operation fails, this error is ignored.
+   *
+   * <p>As noted above due to the asynchronous nature of the API all the expected errors will only
+   * be thrown when the Future is awaited, and furthermore will be wrapped in {@link
+   * java.util.concurrent.ExecutionException}.
+   *
+   * <p>Exception messages are log-safe and do not contain any sensitive data.
+   *
+   * @param what the secret to be stored. Must be 32 bytes long.
+   * @param password user-provide password that will be used to derive the encryption key for the
+   *     secret.
+   * @param maxTries number of times the secret will be allowed to be guessed. Each call to {@link
+   *     #restore} that has reached the server will decrement the counter. Must be positive.
+   * @param auth an instance of {@link org.signal.libsignal.net.EnclaveAuth} containing the username
+   *     and password obtained from the Chat Server. The password is an OTP which is generally good
+   *     for about 15 minutes, therefore it can be reused for the subsequent calls to either backup
+   *     or restore that are not too far apart in time.
+   * @return an instance of {@link org.signal.libsignal.internal.CompletableFuture} which-when
+   *     awaited-will return a byte array with a serialized masked share set. It is supposed to be
+   *     an opaque blob for the clients and therefore no assumptions should be made about its
+   *     contents. This byte array should be stored by the clients and used to restore the secret
+   *     along with the password. Please note that masked share set does not have to be treated as
+   *     secret.
+   * @throws {@link org.signal.libsignal.net.NetworkException} in case of network connection errors,
+   *     like connect timeout.
+   * @throws {@link org.signal.libsignal.net.NetworkProtocolException} more specifically in cases
+   *     when connection cannot be established on a higher level of the network stack. For example,
+   *     receiving an error HTTP status code.
+   * @throws {@link org.signal.libsignal.attest.AttestationDataException} when the server
+   *     attestation document is malformed or incomplete.
+   * @throws {@link org.signal.libsignal.attest.AttestationFailedException} when an attempt to
+   *     validate the server attestation document fails.
+   * @throws {@link org.signal.libsignal.sgxsession.SgxCommunicationFailureException} when a Noise
+   *     connection error happens.
+   */
+  public final CompletableFuture<byte[]> migrate(
+      byte[] what, String password, int maxTries, EnclaveAuth auth) {
+    try (NativeHandleGuard asyncRuntime = new NativeHandleGuard(this.network.getAsyncContext());
+        NativeHandleGuard connectionManager =
+            new NativeHandleGuard(this.network.getConnectionManager())) {
+
+      return Native.Svr3Migrate(
+          asyncRuntime.nativeHandle(),
+          connectionManager.nativeHandle(),
+          what,
+          password,
+          maxTries,
+          auth.username,
+          auth.password);
+    }
+  }
+
+  /**
    * Restore a secret from SVR3.
+   *
+   * <p>This function is safe to use during both the "normal" operation of SVR3 and during enclave
+   * migration periods. In the latter case it will attempt reading from the "new" set of enclaves
+   * first, only when the backup is not found it will fall back to restoring from the "old" set of
+   * enclaves. However, if restore from "new" fails for any other reason, the fallback will not be
+   * attempted and the error will be returned immediately.
    *
    * <p>As noted above due to the asynchronous nature of the API all the expected errors will only
    * be thrown when the Future is awaited, and furthermore will be wrapped in {@link

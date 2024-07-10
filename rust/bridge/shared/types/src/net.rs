@@ -3,12 +3,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use std::num::NonZeroU16;
-use std::panic::RefUnwindSafe;
-
+use crate::*;
+use aes_gcm_siv::aead::rand_core::CryptoRngCore;
 use async_trait::async_trait;
 use http::uri::PathAndQuery;
-
 use libsignal_net::auth::Auth;
 use libsignal_net::enclave::{
     Cdsi, EnclaveEndpoint, EnclaveEndpointConnection, EnclaveKind, Nitro, PpssSetup, Sgx, Tpm2Snp,
@@ -22,10 +20,14 @@ use libsignal_net::infra::tcp_ssl::{
 };
 use libsignal_net::infra::{make_ws_config, EndpointConnection};
 use libsignal_net::svr::SvrConnection;
-use libsignal_net::svr3::Svr3Connect;
+use libsignal_net::svr3::{
+    Error, OpaqueMaskedShareSet, Svr3Client as Svr3ClientTrait, Svr3Connect,
+};
 use libsignal_net::timeouts::ONE_ROUTE_CONNECTION_TIMEOUT;
-
-use crate::*;
+use libsignal_svr3::EvaluationResult;
+use std::marker::PhantomData;
+use std::num::{NonZeroU16, NonZeroU32};
+use std::panic::RefUnwindSafe;
 
 pub mod cdsi;
 pub mod chat;
@@ -153,26 +155,46 @@ impl ConnectionManager {
 
 bridge_as_handle!(ConnectionManager);
 
-pub struct Svr3Client<'a> {
+pub enum PreviousVersion {}
+pub enum CurrentVersion {}
+
+pub struct Svr3Client<'a, Kind> {
     connection_manager: &'a ConnectionManager,
     auth: Auth,
+    kind: PhantomData<Kind>,
 }
 
-impl<'a> Svr3Client<'a> {
+impl<'a, Kind> Svr3Client<'a, Kind> {
+    fn new(connection_manager: &'a ConnectionManager, auth: Auth) -> Self {
+        Self {
+            connection_manager,
+            auth,
+            kind: PhantomData,
+        }
+    }
+}
+
+pub struct Svr3Clients<'a> {
+    pub previous: Svr3Client<'a, PreviousVersion>,
+    pub current: Svr3Client<'a, CurrentVersion>,
+}
+
+impl<'a> Svr3Clients<'a> {
     pub fn new(
         connection_manager: &'a ConnectionManager,
         username: String,
         password: String,
     ) -> Self {
-        Svr3Client {
-            connection_manager,
-            auth: Auth { username, password },
+        let auth = Auth { username, password };
+        Self {
+            previous: Svr3Client::new(connection_manager, auth.clone()),
+            current: Svr3Client::new(connection_manager, auth),
         }
     }
 }
 
 #[async_trait]
-impl<'a> Svr3Connect for Svr3Client<'a> {
+impl<'a> Svr3Connect for Svr3Client<'a, CurrentVersion> {
     type Stream = TcpSslConnectorStream;
     type Env = Svr3Env<'static>;
 
@@ -181,10 +203,9 @@ impl<'a> Svr3Connect for Svr3Client<'a> {
     ) -> Result<<Self::Env as PpssSetup<Self::Stream>>::Connections, libsignal_net::enclave::Error>
     {
         let ConnectionManager {
-            chat: _chat,
-            cdsi: _cdsi,
             svr3: (sgx, nitro, tpm2snp),
             transport_connector,
+            ..
         } = &self.connection_manager;
         let transport_connector = transport_connector.lock().expect("not poisoned").clone();
         let sgx =
@@ -194,6 +215,72 @@ impl<'a> Svr3Connect for Svr3Client<'a> {
         let tpm2snp =
             SvrConnection::connect(self.auth.clone(), tpm2snp, transport_connector).await?;
         Ok((sgx, nitro, tpm2snp))
+    }
+}
+
+#[async_trait]
+impl<'a> Svr3ClientTrait for Svr3Client<'a, PreviousVersion> {
+    async fn backup(
+        &self,
+        _password: &str,
+        _secret: [u8; 32],
+        _max_tries: NonZeroU32,
+        _rng: &mut (impl CryptoRngCore + Send),
+    ) -> Result<OpaqueMaskedShareSet, Error> {
+        empty_env::backup().await
+    }
+
+    async fn restore(
+        &self,
+        _password: &str,
+        _share_set: OpaqueMaskedShareSet,
+        _rng: &mut (impl CryptoRngCore + Send),
+    ) -> Result<EvaluationResult, Error> {
+        empty_env::restore().await
+    }
+
+    async fn remove(&self) -> Result<(), Error> {
+        empty_env::remove().await
+    }
+
+    async fn query(&self) -> Result<u32, Error> {
+        empty_env::query().await
+    }
+}
+
+// These functions define the behavior of the empty `PreviousVersion`
+// when there is no migration going on.
+// When there _is_ migration both current and previous clients should instead
+// implement `Svr3Connect` and use the blanket implementation of `Svr3Client`.
+mod empty_env {
+    use super::*;
+
+    pub async fn backup() -> Result<OpaqueMaskedShareSet, Error> {
+        // Ideally it would be a panic, as this is certainly a programmer error
+        // that needs to be fixed. However, panics are propagated to the clients
+        // and become runtime exceptions that can be caught. This way we will
+        // don't change the set of expected errors on the client side, and get a
+        // descriptive message in the logs.
+        Err(Error::AttestationError(
+            attest::enclave::Error::AttestationDataError {
+                reason: "This SVR3 environment does not exist".to_string(),
+            },
+        ))
+    }
+
+    pub async fn restore() -> Result<EvaluationResult, Error> {
+        // This is the only error value that will make `restore_with_fallback`
+        // function effectively ignore this SVR3 setup, thus making it possible
+        // to use `restore_with_fallback` for all restores unconditionally.
+        Err(Error::DataMissing)
+    }
+
+    pub async fn remove() -> Result<(), Error> {
+        Ok(())
+    }
+
+    pub async fn query() -> Result<u32, Error> {
+        Err(Error::DataMissing)
     }
 }
 

@@ -29,13 +29,14 @@ use crate::svr::SvrConnection;
 const MASKED_SHARE_SET_FORMAT: u8 = 0;
 
 #[derive(Clone)]
-#[cfg_attr(test, derive(Debug))]
+#[cfg_attr(test, derive(Debug, PartialEq, Eq))]
 pub struct OpaqueMaskedShareSet {
     inner: SerializableMaskedShareSet,
 }
 
 // Non pub version of ppss::MaskedShareSet used for serialization
 #[derive(Clone, Serialize, Deserialize, Debug)]
+#[cfg_attr(test, derive(PartialEq, Eq))]
 struct SerializableMaskedShareSet {
     server_ids: Vec<u64>,
     masked_shares: Vec<[u8; 32]>,
@@ -409,13 +410,48 @@ where
     let (primary_conn, fallback_conn) = clients;
 
     match primary_conn.restore(password, share_set.clone(), rng).await {
-        Err(Error::DataMissing) => (/* fall through to fallback */),
+        Err(Error::DataMissing) => {}
         result @ (Err(_) | Ok(_)) => return result,
     }
     fallback_conn.restore(password, share_set, rng).await
 }
 
-/// Simplest way to connect to an SVR3 Environment in integration tests and examples.
+/// Move the backup from `From` to `To`, representing current and next SVR3
+/// environments, respectively.
+///
+/// Despite the name, no data is _read_ from `From`, and instead must be
+/// provided by the caller just like for an ordinary `backup` call.
+///
+/// Moving includes _attempting_ deletion from `From` that can fail, in which
+/// case the error will be ignored. The other alternative implementations could
+/// be:
+/// - Do not attempt deleting from `From`.
+///   This would leave the data for harvesting longer than necessary, even
+///   though the migration period is expected to be relatively short, and the
+///   set of `From` enclaves would have been deleted in the end.
+/// - Ignore the successful write to `To`.
+///   Despite sounding like a better option, it would make `restore_with_fallback`
+///   more complicated, as the data may have been written to `To`, thus
+///   rendering it impossible to be used for all restores unconditionally.
+pub async fn migrate_backup<From, To>(
+    clients: (From, To),
+    password: &str,
+    secret: [u8; 32],
+    max_tries: NonZeroU32,
+    rng: &mut (impl CryptoRngCore + Send),
+) -> Result<OpaqueMaskedShareSet, Error>
+where
+    From: Svr3Client + Sync,
+    To: Svr3Client + Sync,
+{
+    let (from_client, to_client) = clients;
+    let share_set = to_client.backup(password, secret, max_tries, rng).await?;
+    let _ = from_client.remove().await;
+    Ok(share_set)
+}
+
+/// Simplest way to connect to an SVR3 Environment in integration tests, command
+/// line tools, and examples.
 pub async fn simple_svr3_connect(
     env: &Svr3Env<'static>,
     auth: &Auth,
@@ -441,7 +477,8 @@ mod test {
     use super::*;
 
     use assert_matches::assert_matches;
-    use rand_core::OsRng;
+    use nonzero_ext::nonzero;
+    use rand_core::{OsRng, RngCore};
 
     fn new_empty_share_set() -> OpaqueMaskedShareSet {
         OpaqueMaskedShareSet {
@@ -481,7 +518,19 @@ mod test {
     }
 
     struct TestSvr3Client {
+        backup_fn: fn() -> Result<OpaqueMaskedShareSet, Error>,
         restore_fn: fn() -> Result<EvaluationResult, Error>,
+        remove_fn: fn() -> Result<(), Error>,
+    }
+
+    impl Default for TestSvr3Client {
+        fn default() -> Self {
+            Self {
+                backup_fn: || panic!("Unexpected call to backup"),
+                restore_fn: || panic!("Unexpected call to restore"),
+                remove_fn: || panic!("Unexpected call to remove"),
+            }
+        }
     }
 
     #[async_trait]
@@ -493,7 +542,7 @@ mod test {
             _max_tries: NonZeroU32,
             _rng: &mut (impl CryptoRngCore + Send),
         ) -> Result<OpaqueMaskedShareSet, Error> {
-            unreachable!()
+            (self.backup_fn)()
         }
 
         async fn restore(
@@ -506,7 +555,7 @@ mod test {
         }
 
         async fn remove(&self) -> Result<(), Error> {
-            unreachable!()
+            (self.remove_fn)()
         }
 
         async fn query(&self) -> Result<u32, Error> {
@@ -514,15 +563,6 @@ mod test {
         }
     }
 
-    fn test_share_set() -> OpaqueMaskedShareSet {
-        OpaqueMaskedShareSet {
-            inner: SerializableMaskedShareSet {
-                server_ids: vec![],
-                masked_shares: vec![],
-                commitment: [0; 32],
-            },
-        }
-    }
     fn test_evaluation_result() -> EvaluationResult {
         EvaluationResult {
             value: [0; 32],
@@ -530,18 +570,27 @@ mod test {
         }
     }
 
+    fn make_secret() -> [u8; 32] {
+        let mut rng = OsRng;
+        let mut secret = [0; 32];
+        rng.fill_bytes(&mut secret);
+        secret
+    }
+
     #[tokio::test]
     async fn restore_with_fallback_primary_success() {
         let primary = TestSvr3Client {
             restore_fn: || Ok(test_evaluation_result()),
+            ..TestSvr3Client::default()
         };
         let fallback = TestSvr3Client {
             restore_fn: || panic!("Must not be called"),
+            ..TestSvr3Client::default()
         };
 
         let mut rng = OsRng;
         let result =
-            restore_with_fallback((primary, fallback), "", test_share_set(), &mut rng).await;
+            restore_with_fallback((primary, fallback), "", new_empty_share_set(), &mut rng).await;
         assert_matches!(result, Ok(evaluation_result) => assert_eq!(evaluation_result, test_evaluation_result()));
     }
 
@@ -549,14 +598,16 @@ mod test {
     async fn restore_with_fallback_primary_fatal_error() {
         let primary = TestSvr3Client {
             restore_fn: || Err(Error::ConnectionTimedOut),
+            ..TestSvr3Client::default()
         };
         let fallback = TestSvr3Client {
             restore_fn: || panic!("Must not be called"),
+            ..TestSvr3Client::default()
         };
 
         let mut rng = OsRng;
         let result =
-            restore_with_fallback((primary, fallback), "", test_share_set(), &mut rng).await;
+            restore_with_fallback((primary, fallback), "", new_empty_share_set(), &mut rng).await;
         assert_matches!(result, Err(Error::ConnectionTimedOut));
     }
 
@@ -564,13 +615,15 @@ mod test {
     async fn restore_with_fallback_fallback_error() {
         let primary = TestSvr3Client {
             restore_fn: || Err(Error::DataMissing),
+            ..TestSvr3Client::default()
         };
         let fallback = TestSvr3Client {
             restore_fn: || Err(Error::RestoreFailed(31415)),
+            ..TestSvr3Client::default()
         };
         let mut rng = OsRng;
         let result =
-            restore_with_fallback((primary, fallback), "", test_share_set(), &mut rng).await;
+            restore_with_fallback((primary, fallback), "", new_empty_share_set(), &mut rng).await;
         assert_matches!(result, Err(Error::RestoreFailed(31415)));
     }
 
@@ -578,13 +631,77 @@ mod test {
     async fn restore_with_fallback_fallback_success() {
         let primary = TestSvr3Client {
             restore_fn: || Err(Error::DataMissing),
+            ..TestSvr3Client::default()
         };
         let fallback = TestSvr3Client {
             restore_fn: || Ok(test_evaluation_result()),
+            ..TestSvr3Client::default()
         };
         let mut rng = OsRng;
         let result =
-            restore_with_fallback((primary, fallback), "", test_share_set(), &mut rng).await;
+            restore_with_fallback((primary, fallback), "", new_empty_share_set(), &mut rng).await;
         assert_matches!(result, Ok(evaluation_result) => assert_eq!(evaluation_result, test_evaluation_result()));
+    }
+
+    #[tokio::test]
+    async fn migrate_backup_write_error() {
+        let destination = TestSvr3Client {
+            backup_fn: || Err(Error::ConnectionTimedOut),
+            ..TestSvr3Client::default()
+        };
+        let mut rng = OsRng;
+        let result = migrate_backup(
+            (TestSvr3Client::default(), destination),
+            "",
+            make_secret(),
+            nonzero!(42u32),
+            &mut rng,
+        )
+        .await;
+        assert_matches!(result, Err(Error::ConnectionTimedOut));
+    }
+
+    #[tokio::test]
+    async fn migrate_backup_remove_error() {
+        let source = TestSvr3Client {
+            remove_fn: || Err(Error::Protocol("Anything at all".to_string())),
+            ..TestSvr3Client::default()
+        };
+        let destination = TestSvr3Client {
+            backup_fn: || Ok(new_empty_share_set()),
+            ..TestSvr3Client::default()
+        };
+        let mut rng = OsRng;
+        let result = migrate_backup(
+            (source, destination),
+            "",
+            make_secret(),
+            nonzero!(42u32),
+            &mut rng,
+        )
+        .await;
+        assert_matches!(result, Ok(_share_set));
+    }
+
+    #[tokio::test]
+    async fn migrate_backup_remove_success() {
+        let source = TestSvr3Client {
+            remove_fn: || Ok(()),
+            ..TestSvr3Client::default()
+        };
+        let destination = TestSvr3Client {
+            backup_fn: || Ok(new_empty_share_set()),
+            ..TestSvr3Client::default()
+        };
+        let mut rng = OsRng;
+        let result = migrate_backup(
+            (source, destination),
+            "",
+            make_secret(),
+            nonzero!(42u32),
+            &mut rng,
+        )
+        .await;
+        assert_matches!(result, Ok(_share_set));
     }
 }
