@@ -124,12 +124,13 @@ To learn about the Swift build process see [``swift/README.md``](swift/)
 You'll need Node installed to build. If you have [nvm][], you can run `nvm use` to select an
 appropriate version automatically.
 
-We use [`yarn`](https://classic.yarnpkg.com/) as our package manager. The Rust library will automatically be built when you run `yarn install`.
+We use [`yarn`](https://classic.yarnpkg.com/) as our package manager, and `node-gyp` to control building the Rust library.
 
 ```shell
 $ cd node
 $ nvm use
 $ yarn install
+$ yarn node-gyp rebuild  # clean->configure->build
 $ yarn tsc
 $ yarn test
 ```

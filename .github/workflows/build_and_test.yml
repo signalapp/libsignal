@@ -347,6 +347,9 @@ jobs:
     - run: yarn install --frozen-lockfile
       working-directory: node
 
+    - run: yarn node-gyp rebuild
+      working-directory: node
+
     - run: yarn tsc
       working-directory: node
 

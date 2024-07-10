@@ -76,7 +76,7 @@ jobs:
       with:
         node-version-file: '.nvmrc'
 
-    - run: npx yarn install --ignore-scripts --frozen-lockfile
+    - run: npx yarn install --frozen-lockfile
       working-directory: node
 
     - name: Build for arm64
