@@ -434,7 +434,7 @@ fn verify_enclave_source(evidence: &Evidence, endorsements: &SgxEndorsements) ->
     }
 
     // compare isvprodid in report vs collateral
-    let report_isvprodid = evidence.quote.support.qe_report_body.isvprodid.value();
+    let report_isvprodid = evidence.quote.support.qe_report_body.isvprodid.get();
     let collateral_isvprodid = qe_identity.isvprodid;
     if report_isvprodid != collateral_isvprodid {
         return Err(Error::new(format!(
@@ -444,9 +444,8 @@ fn verify_enclave_source(evidence: &Evidence, endorsements: &SgxEndorsements) ->
     }
 
     // compare miscselect from QE identity and masked miscselect from quote’s QE report
-    let qe_report_miscselect = evidence.quote.support.qe_report_body.miscselect.value();
-    if qe_report_miscselect & qe_identity.miscselect_mask.value() != qe_identity.miscselect.value()
-    {
+    let qe_report_miscselect = evidence.quote.support.qe_report_body.miscselect.get();
+    if qe_report_miscselect & qe_identity.miscselect_mask.get() != qe_identity.miscselect.get() {
         return Err(Error::new("qe miscselect mismatch"));
     }
 
@@ -476,7 +475,7 @@ fn verify_enclave_source(evidence: &Evidence, endorsements: &SgxEndorsements) ->
     // Later, we will also lookup the tcb status in the TcbInfo but if
     // the Enclave Identity tcb status isn't up to date, we can fail right
     // away
-    let report_isvsvn = evidence.quote.support.qe_report_body.isvsvn.value();
+    let report_isvsvn = evidence.quote.support.qe_report_body.isvsvn.get();
     let tcb_status = qe_identity.tcb_status(report_isvsvn);
     if tcb_status != &QeTcbStatus::UpToDate {
         return Err(Error::new(format!(

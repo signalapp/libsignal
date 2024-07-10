@@ -301,7 +301,7 @@ pub mod testutils {
             let server_secrets: HashMap<u64, [u8; 32]> = server_ids
                 .iter()
                 .cloned()
-                .map(|sid| (sid, bytemuck::cast::<[u64; 4], [u8; 32]>([sid; 4])))
+                .map(|sid| (sid, zerocopy::transmute!([sid.to_le_bytes(); 4])))
                 .collect();
 
             Self { server_secrets }

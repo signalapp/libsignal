@@ -10,6 +10,7 @@ use std::collections::HashMap;
 
 use crate::dcap::sgx_quote::SgxQuote;
 use crate::dcap::{Error, Expireable};
+use crate::endian::UInt64LE;
 use crate::error::Context;
 use crate::util;
 
@@ -54,51 +55,65 @@ pub(crate) struct CustomClaims<'a> {
     data: &'a [u8],
 }
 
+// include/openenclave/attestation/custom_claims.h
+//
+// oe_custom_claims_header_t
+//     uint64_t version;
+//     uint64_t num_claims;
+#[derive(zerocopy::FromBytes, zerocopy::FromZeroes)]
+#[repr(C)]
+#[allow(dead_code)] // incorrectly identified as never constructed
+struct CustomClaimsHeader {
+    custom_claims_version: UInt64LE,
+    num_claims: UInt64LE,
+}
+// oe_custom_claims_entry_t
+//     uint64_t name_size;
+//     uint64_t value_size;
+//     uint8_t name[];
+//       // name_size bytes follow.
+//       // value_size_bytes follow.
+#[derive(zerocopy::FromBytes, zerocopy::FromZeroes)]
+#[repr(C)]
+#[allow(dead_code)] // incorrectly identified as never constructed
+struct CustomClaimsEntryHeader {
+    name_size: UInt64LE,
+    value_size: UInt64LE,
+}
+
 /// Deserializes an `OpenEnclave` custom claims struct (custom_claims.h)
 impl<'a> TryFrom<&'a [u8]> for CustomClaims<'a> {
     type Error = super::Error;
 
     fn try_from(mut bytes: &'a [u8]) -> Result<Self, Self::Error> {
-        if bytes.len() < 16 {
-            return Err(Error::new("underflow"));
-        }
-
         // keep a reference to the original slice for later hashing
         let claims_data = bytes;
 
-        // include/openenclave/attestation/custom_claims.h
+        let CustomClaimsHeader {
+            custom_claims_version,
+            num_claims,
+        } = util::read_from_bytes(&mut bytes).ok_or_else(|| Error::new("underflow"))?;
+        let num_claims = num_claims.get();
 
-        // oe_custom_claims_header_t
-        //     uint64_t version;
-        //     uint64_t num_claims;
-        let custom_claims_version = util::read_u64_le(&mut bytes);
-        if custom_claims_version != OE_CLAIMS_V1 {
+        if custom_claims_version.get() != OE_CLAIMS_V1 {
             return Err(Error::new("unsupported claims version"));
         }
-
-        let num_claims = util::read_u64_le(&mut bytes);
         if num_claims > 256 {
             return Err(Error::new("too many custom claims"));
         }
         let mut claims = HashMap::with_capacity(num_claims as usize);
 
         for _ in 0..num_claims {
-            // oe_custom_claims_entry_t
-            //     uint64_t name_size;
-            //     uint64_t value_size;
-            //     uint8_t name[];
-            //       // name_size bytes follow.
-            //       // value_size_bytes follow.
+            let CustomClaimsEntryHeader {
+                name_size,
+                value_size,
+            } = util::read_from_bytes(&mut bytes).ok_or_else(|| Error::new("underflow"))?;
+            let name_size = name_size.get();
+            let value_size = value_size.get();
 
-            if bytes.len() < 16 {
-                return Err(Error::new("underflow"));
-            }
-
-            let name_size = util::read_u64_le(&mut bytes);
             if name_size > 1024 {
                 return Err(Error::new("custom claim name too long"));
             }
-            let value_size = util::read_u64_le(&mut bytes);
             if value_size > 1024 * 1024 {
                 return Err(Error::new("custom claim value too long"));
             }

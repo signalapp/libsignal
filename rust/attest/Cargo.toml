@@ -37,6 +37,7 @@ subtle = "2.5"
 thiserror = "1.0.57"
 uuid = "1.1.2"
 x25519-dalek = "2.0.0"
+zerocopy = { version = "0.7.34", features = ["derive"] }
 
 [dev-dependencies]
 assert_matches = "1.5"

@@ -16,7 +16,6 @@ use serde::Deserialize;
 use serde_json::value::RawValue;
 use strum::EnumCount;
 
-use std::intrinsics::transmute;
 use std::time::SystemTime;
 
 use crate::cert_chain::CertChain;
@@ -82,32 +81,25 @@ impl TryFrom<&[u8]> for SgxEndorsements {
     type Error = Error;
 
     fn try_from(mut src: &[u8]) -> super::Result<Self> {
-        if src.len() < std::mem::size_of::<EndorsementsHeader>() {
-            return Err(Error::new("too short"));
-        }
+        let header: EndorsementsHeader =
+            util::read_from_bytes(&mut src).ok_or_else(|| Error::new("too short"))?;
 
-        let header_slice = util::read_bytes(&mut src, std::mem::size_of::<EndorsementsHeader>());
-        let mut header_bytes = [0u8; std::mem::size_of::<EndorsementsHeader>()];
-        header_bytes.copy_from_slice(header_slice);
-
-        let header = EndorsementsHeader::try_from(header_bytes)?;
-
-        if header.version.value() != 1 {
+        if header.version.get() != 1 {
             return Err(Error::new(format!(
                 "unsupported endorsements version {}",
-                header.version.value()
+                header.version.get()
             )));
         }
 
-        if header.enclave_type.value() != 2 {
+        if header.enclave_type.get() != 2 {
             return Err(Error::new(format!(
                 "unsupported enclave type {}",
-                header.enclave_type.value()
+                header.enclave_type.get()
             )));
         }
 
         let offsets_required_size =
-            std::mem::size_of::<u32>() * (header.num_elements.value() as usize);
+            std::mem::size_of::<u32>() * (header.num_elements.get() as usize);
         if src.len() < offsets_required_size {
             return Err(Error::new("not enough data for offsets"));
         }
@@ -267,7 +259,7 @@ fn data_for_field<'a>(field: SgxEndorsementField, offsets: &[usize], data: &'a [
     &data[offsets[index]..offsets[index + 1]]
 }
 
-#[derive(Debug)]
+#[derive(Debug, zerocopy::FromBytes, zerocopy::FromZeroes)]
 #[repr(C)]
 pub(crate) struct EndorsementsHeader {
     // include/openenclave/bits/attestation.h
@@ -288,22 +280,10 @@ pub(crate) struct EndorsementsHeader {
 static_assertions::const_assert_eq!(1, std::mem::align_of::<EndorsementsHeader>());
 static_assertions::const_assert_eq!(16, std::mem::size_of::<EndorsementsHeader>());
 
-impl TryFrom<[u8; std::mem::size_of::<EndorsementsHeader>()]> for EndorsementsHeader {
-    type Error = super::Error;
-
-    fn try_from(src: [u8; std::mem::size_of::<EndorsementsHeader>()]) -> super::Result<Self> {
-        unsafe {
-            Ok(transmute::<
-                [u8; std::mem::size_of::<EndorsementsHeader>()],
-                Self,
-            >(src))
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use hex_literal::hex;
+    use zerocopy::FromBytes;
 
     use super::*;
 
@@ -331,10 +311,10 @@ mod tests {
                 .try_into()
                 .unwrap();
 
-        let header = EndorsementsHeader::try_from(data).expect("failed to parse header");
+        let header = EndorsementsHeader::read_from(&data).expect("failed to parse header");
 
-        assert_eq!(1, header.version.value());
-        assert_eq!(2, header.enclave_type.value()) // oe_enclave_type_t (include/openenclave/bits/types.h)
+        assert_eq!(1, header.version.get());
+        assert_eq!(2, header.enclave_type.get()) // oe_enclave_type_t (include/openenclave/bits/types.h)
     }
 
     #[test]
@@ -661,9 +641,9 @@ pub(crate) struct EnclaveIdentity {
     _issue_date: chrono::DateTime<Utc>,
     pub next_update: chrono::DateTime<Utc>,
     _tcb_evaluation_data_number: u16,
-    #[serde(with = "hex")]
+    #[serde(deserialize_with = "deserialize_u32_hex")]
     pub miscselect: UInt32LE,
-    #[serde(with = "hex")]
+    #[serde(deserialize_with = "deserialize_u32_hex")]
     pub miscselect_mask: UInt32LE,
     #[serde(with = "hex")]
     pub attributes: [u8; 16],
@@ -673,6 +653,14 @@ pub(crate) struct EnclaveIdentity {
     pub mrsigner: [u8; 32],
     pub isvprodid: u16,
     pub tcb_levels: Vec<QeTcbLevel>,
+}
+
+fn deserialize_u32_hex<'de, D>(deserializer: D) -> std::result::Result<UInt32LE, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let value: [u8; 4] = hex::deserialize(deserializer)?;
+    Ok(value.into())
 }
 
 impl EnclaveIdentity {

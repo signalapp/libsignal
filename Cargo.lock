@@ -293,6 +293,7 @@ dependencies = [
  "thiserror",
  "uuid",
  "x25519-dalek",
+ "zerocopy",
 ]
 
 [[package]]
@@ -474,12 +475,6 @@ name = "bumpalo"
 version = "3.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "79296716171880943b8470b5f8d03aa55eb2e645a4874bdbb28adb49162e012c"
-
-[[package]]
-name = "bytemuck"
-version = "1.16.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "78834c15cb5d5efe3452d58b1e8ba890dd62d21907f867f383358198e56ebca5"
 
 [[package]]
 name = "byteorder"
@@ -1950,7 +1945,6 @@ dependencies = [
  "attest",
  "base64 0.21.7",
  "bincode",
- "bytemuck",
  "derive-where",
  "device-transfer",
  "displaydoc",
@@ -2011,7 +2005,6 @@ dependencies = [
 name = "libsignal-bridge-testing"
 version = "0.1.0"
 dependencies = [
- "bytemuck",
  "futures-util",
  "jni 0.21.1",
  "libsignal-bridge-macros",
@@ -2037,7 +2030,6 @@ dependencies = [
  "attest",
  "base64 0.21.7",
  "bincode",
- "bytemuck",
  "cfg-if",
  "derive-where",
  "device-transfer",
@@ -2083,6 +2075,7 @@ dependencies = [
  "tokio-boring",
  "usernames",
  "uuid",
+ "zerocopy",
  "zkgroup",
 ]
 
@@ -2331,7 +2324,6 @@ name = "libsignal-svr3"
 version = "0.1.0"
 dependencies = [
  "assert_matches",
- "bytemuck",
  "criterion",
  "curve25519-dalek",
  "displaydoc",
@@ -2346,6 +2338,7 @@ dependencies = [
  "strum_macros",
  "subtle",
  "test-case",
+ "zerocopy",
 ]
 
 [[package]]
@@ -4978,6 +4971,27 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e17bb3549cc1321ae1296b9cdc2698e2b6cb1992adfa19a8c72e5b7a738f44cd"
 dependencies = [
  "time",
+]
+
+[[package]]
+name = "zerocopy"
+version = "0.7.34"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ae87e3fcd617500e5d106f0380cf7b77f3c6092aae37191433159dda23cfb087"
+dependencies = [
+ "byteorder",
+ "zerocopy-derive",
+]
+
+[[package]]
+name = "zerocopy-derive"
+version = "0.7.34"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "15e934569e47891f7d9411f1a451d947a60e000ab3bd24fbb970f000387d1b3b"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.66",
 ]
 
 [[package]]

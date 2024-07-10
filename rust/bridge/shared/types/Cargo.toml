@@ -61,12 +61,12 @@ uuid = "1.1.2"
 # Enable this for all libsignal app language libraries
 subtle = { version = "2.5", features = ["core_hint_black_box"] }
 
-bytemuck = { version = "1.13.0", optional = true }
 jni = { version = "0.21", package = "jni", optional = true }
 linkme = { version = "0.3.9", optional = true }
 neon = { version = "1.0.0", optional = true, default-features = false, features = ["napi-6"] }
 signal-neon-futures = { path = "../../node/futures", optional = true }
 strum = { version = "0.26", features = ["derive"] }
+zerocopy = { version = "0.7.34", optional = true }
 
 [dev-dependencies]
 assert_matches = "1.5"
@@ -75,5 +75,5 @@ tokio = { version = "1", features = ["test-util", "time", "macros"] }
 
 [features]
 ffi = []
-jni = ["dep:jni", "bytemuck"]
+jni = ["dep:jni", "zerocopy"]
 node = ["neon", "linkme", "signal-neon-futures"]

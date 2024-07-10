@@ -7,7 +7,6 @@ use std::cell::RefCell;
 use std::io;
 
 use async_trait::async_trait;
-use bytemuck::cast_slice_mut;
 
 use super::*;
 
@@ -50,7 +49,12 @@ impl<'a> JniInputStream<'a> {
                 -1 => 0,
                 _ => u32::convert_from(env, &amount_read)? as usize,
             };
-            env.get_byte_array_region(java_buf, 0, cast_slice_mut(&mut buf[..amount_read]))?;
+            env.get_byte_array_region(
+                java_buf,
+                0,
+                zerocopy::FromBytes::mut_slice_from(&mut buf[..amount_read])
+                    .expect("types have same alignment"),
+            )?;
             Ok(amount_read)
         })
     }

@@ -57,7 +57,6 @@ uuid = "1.1.2"
 # Enable this for all libsignal app language libraries
 subtle = { version = "2.5", features = ["core_hint_black_box"] }
 
-bytemuck = { version = "1.13.0", optional = true }
 jni = { version = "0.21", package = "jni", optional = true }
 linkme = { version = "0.3.9", optional = true }
 neon = { version = "1.0.0", optional = true, default-features = false, features = ["napi-6"] }
@@ -72,7 +71,7 @@ tokio = { version = "1", features = ["test-util", "time", "macros"] }
 
 [features]
 ffi = ["libsignal-bridge-types/ffi"]
-jni = ["dep:jni", "bytemuck", "libsignal-bridge-types/jni"]
+jni = ["dep:jni", "libsignal-bridge-types/jni"]
 node = ["neon", "linkme", "signal-neon-futures", "libsignal-bridge-types/node"]
 signal-media = ["dep:signal-media", "libsignal-bridge-types/signal-media"]
 testing-fns = []

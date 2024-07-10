@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+#![deny(unsafe_code)]
+
 pub mod cds2;
 pub mod client_connection;
 pub mod constants;

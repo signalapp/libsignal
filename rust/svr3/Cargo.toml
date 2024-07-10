@@ -21,7 +21,7 @@ subtle = "2.5"
 
 [dev-dependencies]
 assert_matches = "1.5"
-bytemuck = "1.13.0"
+zerocopy = "0.7.34"
 criterion = "0.5"
 hex = "0.4"
 hex-literal = "0.4.1"

@@ -5,7 +5,6 @@
 
 //! Support logic for connecting to an HSM-backed enclave.
 
-#![deny(unsafe_code)]
 #![warn(missing_docs)]
 
 use log::*;
