@@ -438,14 +438,19 @@ pub fn chat_service<T: TransportConnector + 'static>(
     incoming_tx: tokio::sync::mpsc::Sender<ServerEvent<T::Stream>>,
     auth: Auth,
 ) -> Chat<impl ChatServiceWithDebugInfo, impl ChatServiceWithDebugInfo> {
-    let ws_service_connector = ChatOverWebSocketServiceConnector::new(
+    // Cannot reuse the same connector, since they lock on `incoming_tx` internally.
+    let unauth_ws_connector = ChatOverWebSocketServiceConnector::new(
+        WebSocketClientConnector::new(transport_connector.clone(), endpoint.config.clone()),
+        incoming_tx.clone(),
+    );
+    let auth_ws_connector = ChatOverWebSocketServiceConnector::new(
         WebSocketClientConnector::new(transport_connector, endpoint.config.clone()),
         incoming_tx,
     );
     {
         let auth_service =
-            build_authorized_chat_service(&endpoint.manager, &ws_service_connector, auth);
-        let unauth_service = build_anonymous_chat_service(&endpoint.manager, &ws_service_connector);
+            build_authorized_chat_service(&endpoint.manager, &auth_ws_connector, auth);
+        let unauth_service = build_anonymous_chat_service(&endpoint.manager, &unauth_ws_connector);
         Chat {
             auth_service,
             unauth_service,
