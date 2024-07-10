@@ -8,19 +8,21 @@ use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::{Arc, OnceLock};
 use std::time::Duration;
 
-use crate::chat::RemoteAddressInfo;
 use async_trait::async_trait;
 use derive_where::derive_where;
 use displaydoc::Display;
+use static_assertions::const_assert;
 use tokio::sync::Mutex;
 use tokio::time::{timeout_at, Instant};
 use tokio_util::sync::CancellationToken;
 
+use crate::chat::RemoteAddressInfo;
 use crate::infra::connection_manager::{
     ConnectionAttemptOutcome, ConnectionManager, ErrorClass, ErrorClassifier,
 };
 use crate::infra::errors::LogSafeDisplay;
 use crate::infra::{ConnectionInfo, ConnectionParams, HttpRequestDecorator};
+use crate::timeouts::CONNECTION_ROUTE_COOLDOWN_INTERVALS;
 
 // A duration where, if this is all that's left on the timeout, we're more likely to fail than not.
 // Useful for debouncing repeated connection attempts.
@@ -526,7 +528,14 @@ where
                                 sleep_until = *next_attempt_time;
                             }
                             ServiceState::ConnectionTimedOut | ServiceState::Error(_) => {
-                                // keep trying
+                                // Keep trying, but throttle a little in case of early exits
+                                // TODO: In practice, this should only happen when there's a Fatal
+                                // error, in which case retrying won't help and we should really
+                                // shut down the reconnect loop. But part of doing that would be
+                                // making sure the error is reported. Even when that's implemented,
+                                // though, this is a good backstop against bugs.
+                                const_assert!(CONNECTION_ROUTE_COOLDOWN_INTERVALS[0].is_zero());
+                                sleep_until += CONNECTION_ROUTE_COOLDOWN_INTERVALS[1];
                             }
                             ServiceState::Inactive | ServiceState::Active(_, _) => {
                                 // most likely, `disconnect()` was called and we
