@@ -2166,6 +2166,7 @@ dependencies = [
  "mediasan-common",
  "nonzero_ext",
  "num_enum",
+ "once_cell",
  "protobuf",
  "protobuf-codegen",
  "protobuf-json-mapping",

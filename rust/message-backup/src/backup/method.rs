@@ -12,7 +12,13 @@ pub trait Contains<K> {
 
 pub trait Lookup<K, V>: Contains<K> {
     /// Retrieve the value for a key in the map if one is present.
-    fn lookup(&self, key: &K) -> Option<&V>;
+    fn lookup<'a>(&'a self, key: &'a K) -> Option<&'a V>;
+}
+
+/// Like [`Lookup`] but returns a pair of references.
+pub trait LookupPair<K, V1, V2>: Contains<K> {
+    /// Retrieve both values if the key is present.
+    fn lookup_pair<'a>(&'a self, key: &'a K) -> Option<(&'a V1, &'a V2)>;
 }
 
 pub trait Map<K, V>: Contains<K> + Default {

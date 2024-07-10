@@ -6,16 +6,17 @@
 use std::collections::{hash_map, HashMap};
 use std::fmt::Debug;
 
-use chat::ChatItemData;
 use derive_where::derive_where;
 use libsignal_protocol::Aci;
 
 pub(crate) use crate::backup::account_data::{AccountData, AccountDataError};
 use crate::backup::call::{AdHocCall, CallError};
-use crate::backup::chat::{ChatData, ChatError, ChatItemError, PinOrder};
+use crate::backup::chat::{ChatData, ChatError, ChatItemData, ChatItemError, PinOrder};
 use crate::backup::frame::{ChatId, RecipientId};
-use crate::backup::method::{Contains, Lookup, Method, Store, ValidateOnly};
-use crate::backup::recipient::{DestinationKind, RecipientData, RecipientError};
+use crate::backup::method::{Contains, Lookup, LookupPair, Method, Store, ValidateOnly};
+use crate::backup::recipient::{
+    DestinationKind, FullRecipientData, MinimalRecipientData, RecipientError,
+};
 use crate::backup::sticker::{PackId as StickerPackId, StickerPack, StickerPackError};
 use crate::backup::time::Timestamp;
 use crate::proto::backup as proto;
@@ -31,28 +32,56 @@ mod recipient;
 mod sticker;
 mod time;
 
-pub struct PartialBackup<M: Method> {
+pub trait ReferencedTypes {
+    /// Recorded information from a [`proto::Recipient`].
+    type RecipientData: Debug + AsRef<DestinationKind>;
+    /// Resolved data for a [`RecipientId`] in a non-`proto::Recipient` message.
+    type RecipientReference: Clone + Debug;
+
+    /// Produces a reference to a recipient from its ID and data.
+    fn recipient_reference<'a>(
+        id: &'a RecipientId,
+        data: &'a Self::RecipientData,
+    ) -> &'a Self::RecipientReference;
+
+    /// Parse a [`proto::Recipient`] into the in-memory form.
+    ///
+    /// This can't just be a [`TryFromWith`] bound on `Self::RecipientData`
+    /// since we want it to be convertible from any context type with some
+    /// bounds, and Rust doesn't have a way to express that. The closest thing
+    /// would be to define an additional trait that bounds `Self::RecipientData`
+    /// with one method that takes a context type with the `LookupPair` bound,
+    /// but that doesn't seem to provide additional value.
+    fn try_convert_recipient<
+        C: LookupPair<RecipientId, DestinationKind, Self::RecipientReference>,
+    >(
+        recipient: proto::Recipient,
+        context: &C,
+    ) -> Result<Self::RecipientData, RecipientError>;
+}
+
+pub struct PartialBackup<M: Method + ReferencedTypes> {
     meta: BackupMeta,
     account_data: Option<M::Value<AccountData<M>>>,
-    recipients: HashMap<RecipientId, RecipientData<M>>,
+    recipients: HashMap<RecipientId, M::RecipientData>,
     chats: ChatsData<M>,
-    ad_hoc_calls: M::List<AdHocCall>,
+    ad_hoc_calls: M::List<AdHocCall<RecipientId>>,
     sticker_packs: HashMap<StickerPackId, StickerPack<M>>,
 }
 
-pub struct CompletedBackup<M: Method> {
+pub struct CompletedBackup<M: Method + ReferencedTypes> {
     meta: BackupMeta,
     account_data: M::Value<AccountData<M>>,
-    recipients: HashMap<RecipientId, RecipientData<M>>,
+    recipients: HashMap<RecipientId, M::RecipientData>,
     chats: ChatsData<M>,
-    ad_hoc_calls: M::List<AdHocCall>,
+    ad_hoc_calls: M::List<AdHocCall<RecipientId>>,
     sticker_packs: HashMap<StickerPackId, StickerPack<M>>,
 }
 
 #[derive_where(Default)]
-struct ChatsData<M: Method> {
-    pub items: HashMap<ChatId, ChatData<M>>,
-    pub pinned: Vec<(PinOrder, RecipientId)>,
+struct ChatsData<M: Method + ReferencedTypes> {
+    items: HashMap<ChatId, ChatData<M>>,
+    pinned: Vec<(PinOrder, M::RecipientReference)>,
     /// Count of the total number of chat items held across all values in `items`.
     pub chat_items_count: usize,
 }
@@ -61,9 +90,9 @@ struct ChatsData<M: Method> {
 pub struct Backup {
     pub meta: BackupMeta,
     pub account_data: AccountData<Store>,
-    pub recipients: HashMap<RecipientId, RecipientData<Store>>,
+    pub recipients: HashMap<RecipientId, FullRecipientData>,
     pub chats: HashMap<ChatId, ChatData<Store>>,
-    pub ad_hoc_calls: Vec<AdHocCall>,
+    pub ad_hoc_calls: Vec<AdHocCall<RecipientId>>,
     pub sticker_packs: HashMap<StickerPackId, StickerPack<Store>>,
 }
 
@@ -111,7 +140,7 @@ pub enum CompletionError {
     MissingAccountData,
 }
 
-impl<M: Method> TryFrom<PartialBackup<M>> for CompletedBackup<M> {
+impl<M: Method + ReferencedTypes> TryFrom<PartialBackup<M>> for CompletedBackup<M> {
     type Error = CompletionError;
 
     fn try_from(value: PartialBackup<M>) -> Result<Self, Self::Error> {
@@ -243,6 +272,48 @@ trait WithId {
     fn id(&self) -> Self::Id;
 }
 
+impl ReferencedTypes for Store {
+    type RecipientReference = FullRecipientData;
+    type RecipientData = FullRecipientData;
+
+    fn recipient_reference<'a>(
+        _id: &'a RecipientId,
+        data: &'a Self::RecipientData,
+    ) -> &'a Self::RecipientReference {
+        data
+    }
+
+    fn try_convert_recipient<
+        C: LookupPair<RecipientId, DestinationKind, Self::RecipientReference>,
+    >(
+        recipient: proto::Recipient,
+        context: &C,
+    ) -> Result<Self::RecipientData, RecipientError> {
+        recipient.try_into_with(context)
+    }
+}
+
+impl ReferencedTypes for ValidateOnly {
+    type RecipientReference = RecipientId;
+    type RecipientData = MinimalRecipientData;
+
+    fn recipient_reference<'a>(
+        id: &'a RecipientId,
+        _data: &'a Self::RecipientData,
+    ) -> &'a Self::RecipientReference {
+        id
+    }
+
+    fn try_convert_recipient<
+        C: LookupPair<RecipientId, DestinationKind, Self::RecipientReference>,
+    >(
+        recipient: proto::Recipient,
+        context: &C,
+    ) -> Result<Self::RecipientData, RecipientError> {
+        MinimalRecipientData::try_from_with(recipient, context)
+    }
+}
+
 /// recipient {0:?} error: {1}
 #[derive(Debug, displaydoc::Display, thiserror::Error)]
 pub struct RecipientFrameError(RecipientId, RecipientError);
@@ -259,7 +330,7 @@ impl PartialBackup<Store> {
     }
 }
 
-impl<M: Method> PartialBackup<M> {
+impl<M: Method + ReferencedTypes> PartialBackup<M> {
     pub fn new(value: proto::BackupInfo, purpose: Purpose) -> Self {
         let proto::BackupInfo {
             version,
@@ -329,7 +400,7 @@ impl<M: Method> PartialBackup<M> {
     fn add_recipient(&mut self, recipient: proto::Recipient) -> Result<(), RecipientFrameError> {
         let id = recipient.id();
         let err_with_id = |e| RecipientFrameError(id, e);
-        let recipient = recipient.try_into_with(self).map_err(err_with_id)?;
+        let recipient = M::try_convert_recipient(recipient, self).map_err(err_with_id)?;
         match self.recipients.entry(id) {
             hash_map::Entry::Occupied(_) => Err(err_with_id(RecipientError::DuplicateRecipient)),
             hash_map::Entry::Vacant(v) => {
@@ -379,7 +450,7 @@ impl<M: Method> PartialBackup<M> {
     }
 }
 
-impl<M: Method> ChatsData<M> {
+impl<M: Method + ReferencedTypes> ChatsData<M> {
     fn add_chat(&mut self, id: ChatId, chat: ChatData<M>) -> Result<(), ChatFrameError> {
         let Self {
             items,
@@ -391,7 +462,7 @@ impl<M: Method> ChatsData<M> {
             hash_map::Entry::Occupied(_) => Err(ChatFrameError(id, ChatError::DuplicateId)),
             hash_map::Entry::Vacant(v) => {
                 if let Some(pin) = chat.pinned_order {
-                    pinned.push((pin, chat.recipient));
+                    pinned.push((pin, chat.recipient.clone()));
                 }
                 let _ = v.insert(chat);
                 Ok(())
@@ -424,32 +495,47 @@ impl<M: Method> ChatsData<M> {
     }
 }
 
-impl<M: Method> Contains<RecipientId> for PartialBackup<M> {
+impl<M: Method + ReferencedTypes> Contains<RecipientId> for PartialBackup<M> {
     fn contains(&self, key: &RecipientId) -> bool {
         self.recipients.contains(key)
     }
 }
 
-impl<M: Method> Lookup<RecipientId, DestinationKind> for PartialBackup<M> {
-    fn lookup(&self, key: &RecipientId) -> Option<&DestinationKind> {
-        self.recipients.lookup(key)
+impl<M: Method + ReferencedTypes> Lookup<RecipientId, M::RecipientReference> for PartialBackup<M> {
+    fn lookup<'a>(&'a self, key: &'a RecipientId) -> Option<&'a M::RecipientReference> {
+        self.recipients
+            .get(key)
+            .map(|data| M::recipient_reference(key, data))
     }
 }
 
-impl<M: Method> Contains<ChatId> for PartialBackup<M> {
+impl<M: Method + ReferencedTypes> LookupPair<RecipientId, DestinationKind, M::RecipientReference>
+    for PartialBackup<M>
+{
+    fn lookup_pair<'a>(
+        &'a self,
+        key: &'a RecipientId,
+    ) -> Option<(&'a DestinationKind, &'a M::RecipientReference)> {
+        self.recipients
+            .get(key)
+            .map(|data| (data.as_ref(), M::recipient_reference(key, data)))
+    }
+}
+
+impl<M: Method + ReferencedTypes> Contains<ChatId> for PartialBackup<M> {
     fn contains(&self, key: &ChatId) -> bool {
         self.chats.items.contains(key)
     }
 }
 
-impl<M: Method> Contains<PinOrder> for PartialBackup<M> {
+impl<M: Method + ReferencedTypes> Contains<PinOrder> for PartialBackup<M> {
     fn contains(&self, key: &PinOrder) -> bool {
         self.lookup(key).is_some()
     }
 }
 
-impl<M: Method> Lookup<PinOrder, RecipientId> for PartialBackup<M> {
-    fn lookup(&self, key: &PinOrder) -> Option<&RecipientId> {
+impl<M: Method + ReferencedTypes> Lookup<PinOrder, M::RecipientReference> for PartialBackup<M> {
+    fn lookup(&self, key: &PinOrder) -> Option<&M::RecipientReference> {
         // This is a linear search, but the number of pinned chats should be
         // small enough in real backups that it's more efficient than a hash
         // lookup.
@@ -460,7 +546,7 @@ impl<M: Method> Lookup<PinOrder, RecipientId> for PartialBackup<M> {
     }
 }
 
-impl<M: Method> AsRef<BackupMeta> for PartialBackup<M> {
+impl<M: Method + ReferencedTypes> AsRef<BackupMeta> for PartialBackup<M> {
     fn as_ref(&self) -> &BackupMeta {
         &self.meta
     }
@@ -576,7 +662,7 @@ mod test {
         }
     }
 
-    trait TestPartialBackupMethod: Method + Sized {
+    trait TestPartialBackupMethod: Method + ReferencedTypes + Sized {
         fn empty() -> PartialBackup<Self> {
             PartialBackup::new(proto::BackupInfo::new(), Purpose::RemoteBackup)
         }
@@ -599,13 +685,16 @@ mod test {
         }
     }
 
-    impl<M: Method + Sized> TestPartialBackupMethod for M {}
+    impl<M: Method + ReferencedTypes> TestPartialBackupMethod for M {}
 
     #[test_matrix(
         (ValidateOnly::fake(), Store::fake()),
         (proto::Recipient::test_data(), proto::Chat::test_data())
     )]
-    fn rejects_duplicate_id<M: Method>(mut partial: PartialBackup<M>, item: impl Into<FrameItem>) {
+    fn rejects_duplicate_id<M: Method + ReferencedTypes>(
+        mut partial: PartialBackup<M>,
+        item: impl Into<FrameItem>,
+    ) {
         let err = partial.add_frame_item(item.into()).unwrap_err().to_string();
         assert!(err.contains("multiple"), "error was {err}");
     }
@@ -622,7 +711,7 @@ mod test {
         (ValidateOnly::fake(), Store::fake()),
         proto::ChatItem::test_data_wrong_author()
     )]
-    fn rejects_missing_foreign_key<M: Method>(
+    fn rejects_missing_foreign_key<M: Method + ReferencedTypes>(
         mut partial: PartialBackup<M>,
         item: impl Into<FrameItem>,
     ) {
@@ -637,7 +726,7 @@ mod test {
 
     #[test_case(ValidateOnly::empty())]
     #[test_case(Store::empty())]
-    fn rejects_multiple_account_data(mut partial: PartialBackup<impl Method>) {
+    fn rejects_multiple_account_data<M: Method + ReferencedTypes>(mut partial: PartialBackup<M>) {
         partial
             .add_frame_item(proto::AccountData::test_data().into())
             .expect("accepts first");

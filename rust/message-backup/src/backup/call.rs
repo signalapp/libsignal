@@ -4,7 +4,7 @@
 //
 
 use crate::backup::frame::{RecipientId, RingerRecipientId};
-use crate::backup::method::{Contains, Lookup};
+use crate::backup::method::Lookup;
 use crate::backup::recipient::DestinationKind;
 use crate::backup::time::Timestamp;
 use crate::backup::TryFromWith;
@@ -13,10 +13,10 @@ use crate::proto::backup as proto;
 /// Validated version of [`proto::AdHocCall`].
 #[derive(Debug)]
 #[cfg_attr(test, derive(PartialEq))]
-pub struct AdHocCall {
+pub struct AdHocCall<Recipient> {
     pub id: CallId,
     pub timestamp: Timestamp,
-    pub recipient: RecipientId,
+    pub recipient: Recipient,
 }
 
 /// Validated version of [`proto::IndividualCall`].
@@ -33,10 +33,10 @@ pub struct IndividualCall {
 /// Validated version of [`proto::GroupCall`].
 #[derive(Debug)]
 #[cfg_attr(test, derive(PartialEq))]
-pub struct GroupCall {
+pub struct GroupCall<Recipient> {
     pub id: Option<CallId>,
     pub state: GroupCallState,
-    pub started_call_recipient: Option<RecipientId>,
+    pub started_call_recipient: Option<Recipient>,
     pub started_at: Timestamp,
     pub ended_at: Timestamp,
 }
@@ -189,7 +189,7 @@ impl TryFrom<proto::IndividualCall> for IndividualCall {
     }
 }
 
-impl<C: Contains<RecipientId>> TryFromWith<proto::GroupCall, C> for GroupCall {
+impl<C: Lookup<RecipientId, R>, R: Clone> TryFromWith<proto::GroupCall, C> for GroupCall<R> {
     type Error = CallError;
 
     fn try_from_with(call: proto::GroupCall, context: &C) -> Result<Self, Self::Error> {
@@ -203,12 +203,15 @@ impl<C: Contains<RecipientId>> TryFromWith<proto::GroupCall, C> for GroupCall {
             special_fields: _,
         } = call;
 
-        let started_call_recipient = startedCallRecipientId.map(RecipientId);
-        if let Some(id) = started_call_recipient {
-            if !context.contains(&id) {
-                return Err(CallError::UnknownCallStarter(id));
-            }
-        }
+        let started_call_recipient = startedCallRecipientId
+            .map(|id| {
+                let id = RecipientId(id);
+                context
+                    .lookup(&id)
+                    .ok_or(CallError::UnknownCallStarter(id))
+                    .cloned()
+            })
+            .transpose()?;
 
         let ringer_recipient_id = ringerRecipientId.map(|r| RingerRecipientId(RecipientId(r)));
 
@@ -248,7 +251,9 @@ impl<C: Contains<RecipientId>> TryFromWith<proto::GroupCall, C> for GroupCall {
     }
 }
 
-impl<C: Lookup<RecipientId, DestinationKind>> TryFromWith<proto::AdHocCall, C> for AdHocCall {
+impl<C: Lookup<RecipientId, DestinationKind>> TryFromWith<proto::AdHocCall, C>
+    for AdHocCall<RecipientId>
+{
     type Error = CallError;
 
     fn try_from_with(item: proto::AdHocCall, context: &C) -> Result<Self, Self::Error> {
@@ -343,6 +348,7 @@ pub(crate) mod test {
     use protobuf::EnumOrUnknown;
     use test_case::test_case;
 
+    use crate::backup::method::Contains;
     use crate::backup::time::testutil::MillisecondsSinceEpoch;
     use crate::backup::TryIntoWith as _;
 
@@ -501,7 +507,7 @@ pub(crate) mod test {
         let mut call = proto::GroupCall::test_data();
         modifier(&mut call);
         assert_eq!(
-            call.try_into_with(&TestContext).map(|_: GroupCall| ()),
+            call.try_into_with(&TestContext).map(|_: GroupCall<_>| ()),
             expected
         );
     }
@@ -545,7 +551,7 @@ pub(crate) mod test {
         let mut call = proto::AdHocCall::test_data();
         modifier(&mut call);
         assert_eq!(
-            call.try_into_with(&TestContext).map(|_: AdHocCall| ()),
+            call.try_into_with(&TestContext).map(|_: AdHocCall<_>| ()),
             expected
         );
     }

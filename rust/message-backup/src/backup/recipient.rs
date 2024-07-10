@@ -3,7 +3,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::fmt::Debug;
 use std::num::NonZeroU64;
+use std::sync::Arc;
 
 use derive_where::derive_where;
 use itertools::Itertools as _;
@@ -13,9 +15,9 @@ use zkgroup::{GroupMasterKeyBytes, ProfileKeyBytes};
 
 use crate::backup::call::{CallLink, CallLinkError};
 use crate::backup::frame::RecipientId;
-use crate::backup::method::{Lookup, Method};
+use crate::backup::method::{LookupPair, Method, Store, ValidateOnly};
 use crate::backup::time::Timestamp;
-use crate::backup::{TryFromWith, TryIntoWith};
+use crate::backup::{ReferencedTypes, TryFromWith, TryIntoWith};
 use crate::proto::backup as proto;
 use crate::proto::backup::recipient::Destination as RecipientDestination;
 
@@ -52,30 +54,45 @@ pub enum RecipientError {
     DistributionListMemberWrongKind(RecipientId, DestinationKind),
 }
 
-#[derive_where(Debug)]
-#[cfg_attr(test, derive_where(PartialEq; Destination<M>: PartialEq))]
-pub struct RecipientData<M: Method> {
-    pub destination: Destination<M>,
-}
+/// Data kept in-memory from a [`proto::Recipient`] for [`ValidateOnly`] mode.
+///
+/// This is intentionally the minimal amount of data required to validate later
+/// frames.
+#[derive(Debug)]
+#[cfg_attr(test, derive(PartialEq))]
+pub struct MinimalRecipientData(DestinationKind);
+
+/// Data kept in-memory from a [`proto::Recipient`] for [`Store`] mode.
+///
+/// This keeps the full data in memory behind a [`Arc`] so it can be cheaply
+/// cloned when referenced by later frames.
+#[derive(Clone, Debug)]
+pub struct FullRecipientData(Arc<Destination<Store>>);
 
 #[derive_where(Debug)]
 #[cfg_attr(test,
     derive_where(PartialEq;
         M::Value<ContactData>: PartialEq,
         M::Value<GroupData>: PartialEq,
-        M::Value<DistributionListItem>: PartialEq,
+        M::Value<DistributionListItem<M::RecipientReference>>: PartialEq,
         M::Value<CallLink>: PartialEq
     )
 )]
 #[derive(strum::EnumDiscriminants)]
 #[strum_discriminants(name(DestinationKind))]
-pub enum Destination<M: Method> {
+pub enum Destination<M: Method + ReferencedTypes> {
     Contact(M::Value<ContactData>),
     Group(M::Value<GroupData>),
-    DistributionList(M::Value<DistributionListItem>),
+    DistributionList(M::Value<DistributionListItem<M::RecipientReference>>),
     Self_,
     ReleaseNotes,
     CallLink(M::Value<CallLink>),
+}
+
+impl AsRef<DestinationKind> for DestinationKind {
+    fn as_ref(&self) -> &DestinationKind {
+        self
+    }
 }
 
 #[derive(Debug)]
@@ -107,7 +124,7 @@ pub struct GroupData {
 
 #[derive(Debug)]
 #[cfg_attr(test, derive(PartialEq))]
-pub enum DistributionListItem {
+pub enum DistributionListItem<Recipient> {
     Deleted {
         distribution_id: Uuid,
         at: Timestamp,
@@ -117,7 +134,7 @@ pub enum DistributionListItem {
         name: String,
         allow_replies: bool,
         privacy_mode: PrivacyMode,
-        members: Vec<RecipientId>,
+        members: Vec<Recipient>,
     },
 }
 
@@ -136,13 +153,64 @@ pub enum PrivacyMode {
     All,
 }
 
-impl<M: Method> AsRef<DestinationKind> for RecipientData<M> {
+impl AsRef<DestinationKind> for MinimalRecipientData {
     fn as_ref(&self) -> &DestinationKind {
-        let Self { destination } = self;
+        &self.0
+    }
+}
+
+impl<C: LookupPair<RecipientId, DestinationKind, RecipientId>> TryFromWith<proto::Recipient, C>
+    for MinimalRecipientData
+{
+    type Error = RecipientError;
+
+    fn try_from_with(item: proto::Recipient, context: &C) -> Result<Self, Self::Error> {
+        let destination: Destination<ValidateOnly> = item.try_into_with(context)?;
+        Ok(Self(*destination.as_ref()))
+    }
+}
+
+impl FullRecipientData {
+    pub(crate) fn new(data: Destination<Store>) -> Self {
+        Self(Arc::new(data))
+    }
+}
+
+impl AsRef<DestinationKind> for FullRecipientData {
+    fn as_ref(&self) -> &DestinationKind {
+        self.0.as_ref().as_ref()
+    }
+}
+
+impl AsRef<Self> for FullRecipientData {
+    fn as_ref(&self) -> &Self {
+        self
+    }
+}
+
+impl<C: LookupPair<RecipientId, DestinationKind, Self>> TryFromWith<proto::Recipient, C>
+    for FullRecipientData
+{
+    type Error = RecipientError;
+
+    fn try_from_with(item: proto::Recipient, context: &C) -> Result<Self, Self::Error> {
+        item.try_into_with(context).map(Self::new)
+    }
+}
+
+#[cfg(test)]
+impl PartialEq for FullRecipientData {
+    fn eq(&self, other: &Self) -> bool {
+        Arc::ptr_eq(&self.0, &other.0)
+    }
+}
+
+impl<M: Method + ReferencedTypes> AsRef<DestinationKind> for Destination<M> {
+    fn as_ref(&self) -> &DestinationKind {
         // We cheat by returning static references. That's fine since these are
         // just discriminants; they don't represent the actual data from the
         // enum values.
-        match destination {
+        match self {
             Destination::Contact(_) => &DestinationKind::Contact,
             Destination::Group(_) => &DestinationKind::Group,
             Destination::DistributionList(_) => &DestinationKind::DistributionList,
@@ -153,8 +221,10 @@ impl<M: Method> AsRef<DestinationKind> for RecipientData<M> {
     }
 }
 
-impl<M: Method, C: Lookup<RecipientId, DestinationKind>> TryFromWith<proto::Recipient, C>
-    for RecipientData<M>
+impl<
+        M: Method + ReferencedTypes,
+        C: LookupPair<RecipientId, DestinationKind, M::RecipientReference>,
+    > TryFromWith<proto::Recipient, C> for Destination<M>
 {
     type Error = RecipientError;
     fn try_from_with(value: proto::Recipient, context: &C) -> Result<Self, Self::Error> {
@@ -166,7 +236,7 @@ impl<M: Method, C: Lookup<RecipientId, DestinationKind>> TryFromWith<proto::Reci
 
         let destination = destination.ok_or(RecipientError::MissingDestination)?;
 
-        let destination = match destination {
+        Ok(match destination {
             RecipientDestination::Contact(contact) => {
                 Destination::Contact(M::value(contact.try_into()?))
             }
@@ -181,9 +251,7 @@ impl<M: Method, C: Lookup<RecipientId, DestinationKind>> TryFromWith<proto::Reci
             RecipientDestination::CallLink(call_link) => {
                 Destination::CallLink(M::value(call_link.try_into()?))
             }
-        };
-
-        Ok(Self { destination })
+        })
     }
 }
 
@@ -302,8 +370,8 @@ impl TryFrom<proto::Group> for GroupData {
     }
 }
 
-impl<C: Lookup<RecipientId, DestinationKind>> TryFromWith<proto::DistributionListItem, C>
-    for DistributionListItem
+impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R>>
+    TryFromWith<proto::DistributionListItem, C> for DistributionListItem<R>
 {
     type Error = RecipientError;
 
@@ -347,18 +415,18 @@ impl<C: Lookup<RecipientId, DestinationKind>> TryFromWith<proto::DistributionLis
                         .into_iter()
                         .map(|id| {
                             let id = RecipientId(id);
-                            match context.lookup(&id) {
-                                Some(DestinationKind::Contact) => Ok(id),
-                                Some(
-                                    kind @ (DestinationKind::Group
-                                    | DestinationKind::DistributionList
-                                    | DestinationKind::Self_
-                                    | DestinationKind::ReleaseNotes
-                                    | DestinationKind::CallLink),
-                                ) => {
+                            let (kind, recipient_reference) = context
+                                .lookup_pair(&id)
+                                .ok_or(RecipientError::DistributionListMemberUnknown(id))?;
+                            match kind {
+                                DestinationKind::Contact => Ok(recipient_reference.clone()),
+                                kind @ (DestinationKind::Group
+                                | DestinationKind::DistributionList
+                                | DestinationKind::Self_
+                                | DestinationKind::ReleaseNotes
+                                | DestinationKind::CallLink) => {
                                     Err(RecipientError::DistributionListMemberWrongKind(id, *kind))
                                 }
-                                None => Err(RecipientError::DistributionListMemberUnknown(id)),
                             }
                         })
                         .try_collect()?;
@@ -393,10 +461,12 @@ impl TryFrom<proto::distribution_list::PrivacyMode> for PrivacyMode {
 #[cfg(test)]
 mod test {
     use assert_matches::assert_matches;
+    use once_cell::sync::Lazy;
     use protobuf::EnumOrUnknown;
     use test_case::test_case;
 
-    use crate::backup::method::{Contains, Store};
+    use crate::backup::method::{Contains, Lookup, Store};
+    use crate::backup::FullRecipientData;
 
     use super::*;
 
@@ -462,7 +532,34 @@ mod test {
         }
     }
 
+    impl ContactData {
+        fn from_proto_test_data() -> Self {
+            ContactData {
+                aci: Some(Aci::from_uuid_bytes(proto::Contact::TEST_ACI)),
+                pni: Some(Pni::from_uuid_bytes(proto::Contact::TEST_PNI)),
+                profile_key: Some(proto::Contact::TEST_PROFILE_KEY),
+                registration: Registration::NotRegistered {
+                    unregistered_at: None,
+                },
+                username: Some("example.1234".to_owned()),
+                e164: None,
+                blocked: false,
+                visibility: proto::contact::Visibility::VISIBLE,
+                profile_sharing: false,
+                profile_given_name: Some("GivenName".to_owned()),
+                profile_family_name: Some("FamilyName".to_owned()),
+                hide_story: false,
+            }
+        }
+    }
+
     struct TestContext;
+
+    static SELF_RECIPIENT: Lazy<FullRecipientData> =
+        Lazy::new(|| FullRecipientData::new(Destination::Self_));
+    static CONTACT_RECIPIENT: Lazy<FullRecipientData> = Lazy::new(|| {
+        FullRecipientData::new(Destination::Contact(ContactData::from_proto_test_data()))
+    });
 
     impl TestContext {
         const CONTACT_ID: RecipientId = RecipientId(123456789);
@@ -475,11 +572,24 @@ mod test {
         }
     }
 
-    impl Lookup<RecipientId, DestinationKind> for TestContext {
-        fn lookup(&self, key: &RecipientId) -> Option<&DestinationKind> {
+    impl LookupPair<RecipientId, DestinationKind, FullRecipientData> for TestContext {
+        fn lookup_pair<'a>(
+            &'a self,
+            key: &'a RecipientId,
+        ) -> Option<(&'a DestinationKind, &'a FullRecipientData)> {
             match *key {
-                Self::CONTACT_ID => Some(&DestinationKind::Contact),
-                Self::SELF_ID => Some(&DestinationKind::Self_),
+                Self::CONTACT_ID => Some((&DestinationKind::Contact, &CONTACT_RECIPIENT)),
+                Self::SELF_ID => Some((&DestinationKind::Self_, &SELF_RECIPIENT)),
+                _ => None,
+            }
+        }
+    }
+
+    impl Lookup<RecipientId, FullRecipientData> for TestContext {
+        fn lookup(&self, key: &RecipientId) -> Option<&FullRecipientData> {
+            match *key {
+                Self::CONTACT_ID => Some(&CONTACT_RECIPIENT),
+                Self::SELF_ID => Some(&SELF_RECIPIENT),
                 _ => None,
             }
         }
@@ -493,7 +603,7 @@ mod test {
         };
 
         assert_matches!(
-            RecipientData::<Store>::try_from_with(recipient, &TestContext),
+            Destination::<Store>::try_from_with(recipient, &TestContext),
             Err(RecipientError::MissingDestination)
         );
     }
@@ -503,10 +613,8 @@ mod test {
         let recipient = proto::Recipient::test_data();
 
         assert_eq!(
-            RecipientData::<Store>::try_from_with(recipient, &TestContext),
-            Ok(RecipientData {
-                destination: Destination::Self_
-            })
+            Destination::<Store>::try_from_with(recipient, &TestContext),
+            Ok(Destination::Self_)
         )
     }
 
@@ -560,25 +668,8 @@ mod test {
         };
 
         assert_eq!(
-            RecipientData::<Store>::try_from_with(recipient, &TestContext),
-            Ok(RecipientData {
-                destination: Destination::Contact(ContactData {
-                    aci: Some(Aci::from_uuid_bytes(proto::Contact::TEST_ACI)),
-                    pni: Some(Pni::from_uuid_bytes(proto::Contact::TEST_PNI)),
-                    profile_key: Some(proto::Contact::TEST_PROFILE_KEY),
-                    registration: Registration::NotRegistered {
-                        unregistered_at: None
-                    },
-                    username: Some("example.1234".to_owned()),
-                    e164: None,
-                    blocked: false,
-                    visibility: proto::contact::Visibility::VISIBLE,
-                    profile_sharing: false,
-                    profile_given_name: Some("GivenName".to_owned()),
-                    profile_family_name: Some("FamilyName".to_owned()),
-                    hide_story: false,
-                })
-            })
+            Destination::<Store>::try_from_with(recipient, &TestContext),
+            Ok(Destination::Contact(ContactData::from_proto_test_data()))
         )
     }
 
@@ -606,7 +697,7 @@ mod test {
         };
 
         assert_eq!(
-            RecipientData::<Store>::try_from_with(recipient, &TestContext).map(|_| ()),
+            Destination::<Store>::try_from_with(recipient, &TestContext).map(|_| ()),
             expected
         );
     }
@@ -619,16 +710,14 @@ mod test {
         };
 
         assert_eq!(
-            RecipientData::<Store>::try_from_with(recipient, &TestContext),
-            Ok(RecipientData {
-                destination: Destination::Group(GroupData {
-                    master_key: proto::Group::TEST_MASTER_KEY,
-                    story_send_mode: proto::group::StorySendMode::ENABLED,
-                    whitelisted: false,
-                    hide_story: false,
-                    snapshot: None,
-                })
-            })
+            Destination::<Store>::try_from_with(recipient, &TestContext),
+            Ok(Destination::Group(GroupData {
+                master_key: proto::Group::TEST_MASTER_KEY,
+                story_send_mode: proto::group::StorySendMode::ENABLED,
+                whitelisted: false,
+                hide_story: false,
+                snapshot: None,
+            }))
         );
     }
 
@@ -651,7 +740,7 @@ mod test {
         };
 
         assert_eq!(
-            RecipientData::<Store>::try_from_with(recipient, &TestContext).map(|_| ()),
+            Destination::<Store>::try_from_with(recipient, &TestContext).map(|_| ()),
             expected
         );
     }
@@ -664,16 +753,14 @@ mod test {
         };
 
         assert_eq!(
-            RecipientData::<Store>::try_from_with(recipient, &TestContext),
-            Ok(RecipientData {
-                destination: Destination::DistributionList(DistributionListItem::List {
-                    distribution_id: Uuid::from_bytes(proto::DistributionListItem::TEST_UUID),
-                    privacy_mode: PrivacyMode::AllExcept,
-                    name: "".to_owned(),
-                    allow_replies: false,
-                    members: vec![TestContext::CONTACT_ID]
-                })
-            })
+            Destination::<Store>::try_from_with(recipient, &TestContext),
+            Ok(Destination::DistributionList(DistributionListItem::List {
+                distribution_id: Uuid::from_bytes(proto::DistributionListItem::TEST_UUID),
+                privacy_mode: PrivacyMode::AllExcept,
+                name: "".to_owned(),
+                allow_replies: false,
+                members: vec![CONTACT_RECIPIENT.clone()]
+            }))
         );
     }
 
@@ -724,7 +811,7 @@ mod test {
         };
 
         assert_eq!(
-            RecipientData::<Store>::try_from_with(recipient, &TestContext).map(|_| ()),
+            Destination::<Store>::try_from_with(recipient, &TestContext).map(|_| ()),
             expected
         );
     }

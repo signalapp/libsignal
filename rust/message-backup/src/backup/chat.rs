@@ -8,6 +8,8 @@
 // crate, but we want intra-crate privacy.
 #![allow(clippy::manual_non_exhaustive)]
 
+use std::fmt::Debug;
+use std::hash::Hash;
 use std::num::{NonZeroU32, NonZeroU64};
 
 use derive_where::derive_where;
@@ -17,7 +19,7 @@ use crate::backup::frame::RecipientId;
 use crate::backup::method::{Contains, Lookup, Method};
 use crate::backup::sticker::MessageStickerError;
 use crate::backup::time::{Duration, Timestamp};
-use crate::backup::{BackupMeta, CallError, TryFromWith, TryIntoWith as _};
+use crate::backup::{BackupMeta, CallError, ReferencedTypes, TryFromWith, TryIntoWith as _};
 use crate::proto::backup as proto;
 
 mod contact_message;
@@ -67,8 +69,8 @@ pub enum ChatError {
     NoRecipient(RecipientId),
     /// chat item: {0}
     ChatItem(#[from] ChatItemError),
-    /// {0:?} already appeared for {1:?}
-    DuplicatePinnedOrder(PinOrder, RecipientId),
+    /// {0:?} already appeared
+    DuplicatePinnedOrder(PinOrder),
     /// style error: {0}
     Style(#[from] ChatStyleError),
 }
@@ -137,9 +139,12 @@ pub struct InvalidExpiration {
 
 /// Validated version of [`proto::Chat`].
 #[derive_where(Debug)]
-#[cfg_attr(test, derive_where(PartialEq; M::List<ChatItemData<M>>: PartialEq))]
-pub struct ChatData<M: Method> {
-    pub recipient: RecipientId,
+#[cfg_attr(test, derive_where(PartialEq;
+    M::List<ChatItemData<M>>: PartialEq,
+    M::RecipientReference: PartialEq
+))]
+pub struct ChatData<M: Method + ReferencedTypes> {
+    pub recipient: M::RecipientReference,
     pub items: M::List<ChatItemData<M>>,
     pub expiration_timer: Option<Duration>,
     pub mute_until: Option<Timestamp>,
@@ -155,9 +160,12 @@ pub struct PinOrder(NonZeroU32);
 
 /// Validated version of [`proto::ChatItem`].
 #[derive_where(Debug)]
-#[cfg_attr(test, derive_where(PartialEq; ChatItemMessage<M>: PartialEq))]
-pub struct ChatItemData<M: Method> {
-    pub author: RecipientId,
+#[cfg_attr(test, derive_where(PartialEq;
+    ChatItemMessage<M>: PartialEq,
+    M::RecipientReference: PartialEq
+))]
+pub struct ChatItemData<M: Method + ReferencedTypes> {
+    pub author: M::RecipientReference,
     pub message: ChatItemMessage<M>,
     pub revisions: Vec<ChatItemData<M>>,
     pub direction: Direction,
@@ -173,14 +181,17 @@ pub struct ChatItemData<M: Method> {
 
 /// Validated version of [`proto::chat_item::Item`].
 #[derive_where(Debug)]
-#[cfg_attr(test, derive_where(PartialEq; M::BoxedValue<GiftBadge>: PartialEq))]
-pub enum ChatItemMessage<M: Method> {
+#[cfg_attr(test, derive_where(PartialEq;
+    M::BoxedValue<GiftBadge>: PartialEq,
+    M::RecipientReference: PartialEq
+))]
+pub enum ChatItemMessage<M: Method + ReferencedTypes> {
     Standard(StandardMessage),
     Contact(ContactMessage),
     Voice(VoiceMessage),
     Sticker(StickerMessage),
     RemoteDeleted,
-    Update(UpdateMessage),
+    Update(UpdateMessage<M::RecipientReference>),
     PaymentNotification(PaymentNotification),
     GiftBadge(M::BoxedValue<GiftBadge>),
 }
@@ -271,8 +282,10 @@ impl std::fmt::Display for InvalidExpiration {
     }
 }
 
-impl<M: Method, C: Contains<RecipientId> + Lookup<PinOrder, RecipientId>>
-    TryFromWith<proto::Chat, C> for ChatData<M>
+impl<
+        M: Method + ReferencedTypes,
+        C: Lookup<RecipientId, M::RecipientReference> + Lookup<PinOrder, M::RecipientReference>,
+    > TryFromWith<proto::Chat, C> for ChatData<M>
 {
     type Error = ChatError;
 
@@ -291,14 +304,14 @@ impl<M: Method, C: Contains<RecipientId> + Lookup<PinOrder, RecipientId>>
         } = value;
 
         let recipient = RecipientId(recipientId);
-        if !context.contains(&recipient) {
+        let Some(recipient) = context.lookup(&recipient).cloned() else {
             return Err(ChatError::NoRecipient(recipient));
-        }
+        };
 
         let pinned_order = NonZeroU32::new(pinnedOrder).map(PinOrder);
         if let Some(pinned_order) = pinned_order {
-            if let Some(recipient) = context.lookup(&pinned_order) {
-                return Err(ChatError::DuplicatePinnedOrder(pinned_order, *recipient));
+            if let Some(_recipient) = context.lookup(&pinned_order) {
+                return Err(ChatError::DuplicatePinnedOrder(pinned_order));
             }
         };
 
@@ -323,12 +336,14 @@ impl<M: Method, C: Contains<RecipientId> + Lookup<PinOrder, RecipientId>>
     }
 }
 
-impl<R: Contains<RecipientId> + AsRef<BackupMeta>, M: Method> TryFromWith<proto::ChatItem, R>
-    for ChatItemData<M>
+impl<
+        C: Lookup<RecipientId, M::RecipientReference> + AsRef<BackupMeta>,
+        M: Method + ReferencedTypes,
+    > TryFromWith<proto::ChatItem, C> for ChatItemData<M>
 {
     type Error = ChatItemError;
 
-    fn try_from_with(value: proto::ChatItem, context: &R) -> Result<Self, ChatItemError> {
+    fn try_from_with(value: proto::ChatItem, context: &C) -> Result<Self, ChatItemError> {
         let proto::ChatItem {
             chatId: _,
             authorId,
@@ -344,9 +359,9 @@ impl<R: Contains<RecipientId> + AsRef<BackupMeta>, M: Method> TryFromWith<proto:
 
         let author = RecipientId(authorId);
 
-        if !context.contains(&author) {
+        let Some(author) = context.lookup(&author).cloned() else {
             return Err(ChatItemError::AuthorNotFound(author));
-        }
+        };
 
         let message = item
             .ok_or(ChatItemError::MissingItem)?
@@ -524,8 +539,10 @@ impl<R: Contains<RecipientId>> TryFromWith<proto::SendStatus, R> for OutgoingSen
     }
 }
 
-impl<R: Contains<RecipientId> + AsRef<BackupMeta>, M: Method> TryFromWith<proto::chat_item::Item, R>
-    for ChatItemMessage<M>
+impl<
+        R: Lookup<RecipientId, M::RecipientReference> + AsRef<BackupMeta>,
+        M: Method + ReferencedTypes,
+    > TryFromWith<proto::chat_item::Item, R> for ChatItemMessage<M>
 {
     type Error = ChatItemError;
 
@@ -692,7 +709,7 @@ mod test {
         assert_eq!(
             proto::Chat::test_data().try_into_with(&TestContext::default()),
             Ok(ChatData::<Store> {
-                recipient: RecipientId(proto::Recipient::TEST_ID),
+                recipient: TestContext::test_recipient().clone(),
                 items: Vec::default(),
                 expiration_timer: None,
                 mute_until: None,
@@ -720,10 +737,7 @@ mod test {
     #[test_case(with_mute_until, Ok(()))]
     #[test_case(
         duplicate_pinned_order,
-        Err(ChatError::DuplicatePinnedOrder(
-            TestContext::DUPLICATE_PINNED_ORDER,
-            TestContext::DUPLICATE_PINNED_ORDER_RECIPIENT
-        ))
+        Err(ChatError::DuplicatePinnedOrder(TestContext::DUPLICATE_PINNED_ORDER,))
     )]
     fn chat(modifier: fn(&mut proto::Chat), expected: Result<(), ChatError>) {
         let mut chat = proto::Chat::test_data();
@@ -740,7 +754,7 @@ mod test {
         assert_eq!(
             proto::ChatItem::test_data().try_into_with(&TestContext::default()),
             Ok(ChatItemData::<Store> {
-                author: RecipientId(proto::Recipient::TEST_ID),
+                author: TestContext::test_recipient().clone(),
                 message: ChatItemMessage::Standard(StandardMessage::from_proto_test_data()),
                 revisions: vec![],
                 direction: Direction::Incoming {

@@ -4,10 +4,12 @@
 //
 
 use nonzero_ext::nonzero;
+use once_cell::sync::Lazy;
 use protobuf::MessageField;
 
 use crate::backup::frame::RecipientId;
 use crate::backup::method::{Contains, Lookup};
+use crate::backup::recipient::{Destination, FullRecipientData};
 use crate::backup::time::Timestamp;
 use crate::backup::{BackupMeta, Purpose};
 use crate::proto::backup as proto;
@@ -44,9 +46,15 @@ impl Contains<PinOrder> for TestContext {
     }
 }
 
-impl Lookup<PinOrder, RecipientId> for TestContext {
-    fn lookup(&self, key: &PinOrder) -> Option<&RecipientId> {
-        (*key == Self::DUPLICATE_PINNED_ORDER).then_some(&Self::DUPLICATE_PINNED_ORDER_RECIPIENT)
+impl Lookup<RecipientId, FullRecipientData> for TestContext {
+    fn lookup(&self, key: &RecipientId) -> Option<&FullRecipientData> {
+        (key.0 == proto::Recipient::TEST_ID).then_some(&TEST_RECIPIENT)
+    }
+}
+
+impl Lookup<PinOrder, FullRecipientData> for TestContext {
+    fn lookup(&self, key: &PinOrder) -> Option<&FullRecipientData> {
+        (*key == Self::DUPLICATE_PINNED_ORDER).then_some(&TEST_RECIPIENT)
     }
 }
 
@@ -56,9 +64,14 @@ impl AsRef<BackupMeta> for TestContext {
     }
 }
 
+static TEST_RECIPIENT: Lazy<FullRecipientData> =
+    Lazy::new(|| FullRecipientData::new(Destination::Self_));
+
 impl TestContext {
     pub(super) const DUPLICATE_PINNED_ORDER: PinOrder = PinOrder(nonzero!(183324u32));
-    pub(super) const DUPLICATE_PINNED_ORDER_RECIPIENT: RecipientId = RecipientId(183324);
+    pub(super) fn test_recipient() -> &'static FullRecipientData {
+        &TEST_RECIPIENT
+    }
 }
 
 pub(super) const TEST_MESSAGE_TEXT: &str = "test message text";

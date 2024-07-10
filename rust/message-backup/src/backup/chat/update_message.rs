@@ -6,7 +6,7 @@ use crate::backup::call::{GroupCall, IndividualCall};
 use crate::backup::chat::group::GroupChatUpdate;
 use crate::backup::chat::ChatItemError;
 use crate::backup::frame::RecipientId;
-use crate::backup::method::Contains;
+use crate::backup::method::Lookup;
 use crate::backup::time::Duration;
 use crate::backup::{TryFromWith, TryIntoWith as _};
 use crate::proto::backup as proto;
@@ -14,7 +14,7 @@ use crate::proto::backup as proto;
 /// Validated version of [`proto::chat_update_message::Update`].
 #[derive(Debug)]
 #[cfg_attr(test, derive(PartialEq))]
-pub enum UpdateMessage {
+pub enum UpdateMessage<Recipient> {
     Simple(SimpleChatUpdate),
     GroupChange { updates: Vec<GroupChatUpdate> },
     ExpirationTimerChange { expires_in: Duration },
@@ -22,7 +22,7 @@ pub enum UpdateMessage {
     ThreadMerge,
     SessionSwitchover,
     IndividualCall(IndividualCall),
-    GroupCall(GroupCall),
+    GroupCall(GroupCall<Recipient>),
     LearnedProfileUpdate(proto::learned_profile_chat_update::PreviousName),
 }
 
@@ -44,10 +44,12 @@ pub enum SimpleChatUpdate {
     UnsupportedProtocolMessage,
 }
 
-impl<R: Contains<RecipientId>> TryFromWith<proto::ChatUpdateMessage, R> for UpdateMessage {
+impl<C: Lookup<RecipientId, R>, R: Clone> TryFromWith<proto::ChatUpdateMessage, C>
+    for UpdateMessage<R>
+{
     type Error = ChatItemError;
 
-    fn try_from_with(item: proto::ChatUpdateMessage, context: &R) -> Result<Self, Self::Error> {
+    fn try_from_with(item: proto::ChatUpdateMessage, context: &C) -> Result<Self, Self::Error> {
         let proto::ChatUpdateMessage {
             update,
             special_fields: _,
@@ -198,7 +200,7 @@ mod test {
                 special_fields: Default::default()
             }
             .try_into_with(&TestContext::default())
-            .map(|_: UpdateMessage| ()),
+            .map(|_: UpdateMessage<_>| ()),
             expected.map_err(ChatItemError::Call)
         );
     }
@@ -232,7 +234,7 @@ mod test {
             ..Default::default()
         }
         .try_into_with(&TestContext::default())
-        .map(|_: UpdateMessage| ());
+        .map(|_: UpdateMessage<_>| ());
 
         assert_eq!(result, expected)
     }

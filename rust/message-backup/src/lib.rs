@@ -107,7 +107,7 @@ impl<R: AsyncRead + Unpin + VerifyHmac> BackupReader<R> {
         })
     }
 
-    pub async fn collect_all<M: backup::method::Method>(
+    pub async fn collect_all<M: backup::method::Method + backup::ReferencedTypes>(
         self,
     ) -> ReadResult<backup::PartialBackup<M>> {
         let Self {
@@ -151,7 +151,7 @@ impl<R: AsyncRead + AsyncSkip + Unpin> BackupReader<frame::FramesReader<R>> {
     }
 }
 
-async fn read_all_frames<M: backup::method::Method>(
+async fn read_all_frames<M: backup::method::Method + backup::ReferencedTypes>(
     purpose: Purpose,
     mut reader: VarintDelimitedReader<impl AsyncRead + Unpin + VerifyHmac>,
     mut visitor: impl FnMut(&dyn std::fmt::Debug),
