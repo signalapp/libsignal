@@ -2097,6 +2097,7 @@ dependencies = [
  "cpufeatures",
  "futures-util",
  "libsignal-bridge",
+ "libsignal-bridge-testing",
  "libsignal-net",
  "libsignal-protocol",
  "log",

@@ -8,6 +8,8 @@
 
 use futures_util::FutureExt;
 use libsignal_bridge::ffi::*;
+#[allow(unused_imports)]
+use libsignal_bridge_testing::*;
 use libsignal_protocol::*;
 
 use std::ffi::{c_char, c_uchar, c_uint, CString};

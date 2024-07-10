@@ -134,6 +134,7 @@ fi
 echo_then_run cargo build -p libsignal-ffi ${RELEASE_BUILD:+--release} ${VERBOSE:+--verbose} ${CARGO_BUILD_TARGET:+--target $CARGO_BUILD_TARGET} ${FEATURES:+--features "${FEATURES[*]}"} ${BUILD_STD:+-Zbuild-std}
 
 FFI_HEADER_PATH=swift/Sources/SignalFfi/signal_ffi.h
+FFI_TESTING_HEADER_PATH=swift/Sources/SignalFfi/signal_ffi_testing.h
 
 if [[ -n "${SHOULD_CBINDGEN}" ]]; then
   check_cbindgen
@@ -145,12 +146,23 @@ if [[ -n "${SHOULD_CBINDGEN}" ]]; then
       echo 'error: signal_ffi.h not up to date; run' "$0" '--generate-ffi' >&2
       exit 1
     fi
+    echo diff -u "${FFI_TESTING_HEADER_PATH}" "<(cbindgen -q ${RELEASE_BUILD:+--profile release} rust/bridge/shared/testing --config rust/bridge/ffi/cbindgen-testing.toml)"
+    if ! diff -u "${FFI_TESTING_HEADER_PATH}"  <(cbindgen -q ${RELEASE_BUILD:+--profile release} rust/bridge/shared/testing --config rust/bridge/ffi/cbindgen-testing.toml); then
+      echo
+      echo 'error: signal_ffi_testing.h not up to date; run' "$0" '--generate-ffi' >&2
+      exit 1
+    fi
   else
     echo cbindgen ${RELEASE_BUILD:+--profile release} -o "${FFI_HEADER_PATH}" rust/bridge/ffi
     # Use sed to ignore irrelevant cbindgen warnings.
     # ...and then disable the shellcheck warning about literal backticks in single-quotes
     # shellcheck disable=SC2016
     cbindgen ${RELEASE_BUILD:+--profile release} -o "${FFI_HEADER_PATH}" rust/bridge/ffi 2>&1 |
+      sed '/WARN: Missing `\[defines\]` entry for `feature = "ffi"` in cbindgen config\./ d' >&2
+
+    echo cbindgen ${RELEASE_BUILD:+--profile release} -o "${FFI_TESTING_HEADER_PATH}" rust/bridge/shared/testing --config rust/bridge/ffi/cbindgen-testing.toml
+    # shellcheck disable=SC2016
+    cbindgen ${RELEASE_BUILD:+--profile release} -o "${FFI_TESTING_HEADER_PATH}" rust/bridge/shared/testing --config rust/bridge/ffi/cbindgen-testing.toml 2>&1 |
       sed '/WARN: Missing `\[defines\]` entry for `feature = "ffi"` in cbindgen config\./ d' >&2
   fi
 fi

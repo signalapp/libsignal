@@ -22,6 +22,7 @@ testing-fns = ["libsignal-bridge/testing-fns"]
 
 [dependencies]
 libsignal-bridge = { path = "../shared", features = ["ffi"] }
+libsignal-bridge-testing = { path = "../shared/testing", features = ["ffi"] }
 libsignal-net = { path = "../../net" }
 libsignal-protocol = { path = "../../protocol" }
 signal-media = { path = "../../media" }
