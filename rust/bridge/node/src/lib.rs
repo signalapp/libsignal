@@ -15,6 +15,11 @@ use minidump_unwind::Symbolizer;
 use neon::prelude::*;
 use neon::types::buffer::TypedArray;
 
+// Import bridged functions. Without this, the compiler and/or linker are too
+// smart and don't include the symbols in the library.
+#[allow(unused)]
+use libsignal_bridge_testing::*;
+
 mod logging;
 
 #[neon::main]

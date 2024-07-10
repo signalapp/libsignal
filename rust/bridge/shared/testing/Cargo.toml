@@ -29,5 +29,5 @@ strum = { version = "0.26", features = ["derive"] }
 [features]
 ffi = ["libsignal-bridge-types/ffi"]
 jni = ["dep:jni", "libsignal-bridge-types/jni"]
-node = ["libsignal-bridge-types/node"]
+node = ["dep:linkme", "libsignal-bridge-types/node"]
 signal-media = ["libsignal-bridge-types/signal-media"]

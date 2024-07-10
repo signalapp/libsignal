@@ -10,6 +10,9 @@ use libsignal_bridge_macros::bridge_fn;
 use libsignal_bridge_types::support::*;
 use libsignal_bridge_types::*;
 
+#[cfg(feature = "node")]
+pub use libsignal_bridge_types::node;
+
 #[bridge_fn]
 pub fn test_only_fn_returns_123() -> u32 {
     123

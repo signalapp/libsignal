@@ -16,6 +16,7 @@ crate-type = ["cdylib"]
 
 [dependencies]
 libsignal-bridge = { path = "../shared", features = ["node", "signal-media"] }
+libsignal-bridge-testing = { path = "../shared/testing", features = ["node", "signal-media"] }
 libsignal-protocol = { path = "../../protocol" }
 
 futures = { version = "0.3", default-features = false, features = ["executor"] }

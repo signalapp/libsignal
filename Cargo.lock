@@ -2268,6 +2268,7 @@ dependencies = [
  "cmake",
  "futures",
  "libsignal-bridge",
+ "libsignal-bridge-testing",
  "libsignal-protocol",
  "log",
  "log-panics",

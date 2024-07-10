@@ -548,6 +548,7 @@ export function ValidatingMac_Initialize(key: Buffer, chunkSize: number, digests
 export function ValidatingMac_Update(mac: Wrapper<ValidatingMac>, bytes: Buffer, offset: number, length: number): number;
 export function WebpSanitizer_Sanitize(input: SyncInputStream): void;
 export function initLogger(maxLevel: LogLevel, callback: (level: LogLevel, target: string, file: string | null, line: number | null, message: string) => void): void
+export function test_only_fn_returns_123(): number;
 interface Aes256GcmSiv { readonly __type: unique symbol; }
 interface CdsiLookup { readonly __type: unique symbol; }
 interface Chat { readonly __type: unique symbol; }

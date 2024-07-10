@@ -279,6 +279,7 @@ def main() -> None:
             Crate(path=os.path.join(our_abs_dir, '..')),
             Crate(path=os.path.join(our_abs_dir, '..', '..', 'shared'), features=('node', 'signal-media', 'testing-fns')),
             Crate(path=os.path.join(our_abs_dir, '..', '..', 'shared', 'types'), features=('node', 'signal-media')),
+            Crate(path=os.path.join(our_abs_dir, '..', '..', 'shared', 'testing'), features=('node', 'signal-media')),
         ],
         ts_in_path=os.path.join(our_abs_dir, output_file_name + '.in'),
         ts_out_path=os.path.join(our_abs_dir, '..', '..', '..', '..', 'node', output_file_name),
