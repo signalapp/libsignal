@@ -296,12 +296,16 @@ impl DomainConfig {
     pub fn connection_params_with_fallback(&self) -> Vec<ConnectionParams> {
         let direct = self.connection_params();
         let rng = thread_rng();
-        let shuffled_g_params = self
-            .proxy_config_g
-            .shuffled_connection_params(self.proxy_path, rng.clone());
-        let shuffled_f_params = self
-            .proxy_config_f
-            .shuffled_connection_params(self.proxy_path, rng);
+        let shuffled_g_params = self.proxy_config_g.shuffled_connection_params(
+            self.proxy_path,
+            self.confirmation_header_name,
+            rng.clone(),
+        );
+        let shuffled_f_params = self.proxy_config_f.shuffled_connection_params(
+            self.proxy_path,
+            self.confirmation_header_name,
+            rng,
+        );
         let proxy_params = itertools::interleave(shuffled_g_params, shuffled_f_params);
         iter::once(direct).chain(proxy_params).collect()
     }
@@ -332,19 +336,24 @@ impl ProxyConfig {
     pub fn shuffled_connection_params<'a>(
         &'a self,
         proxy_path: &'static str,
+        confirmation_header_name: Option<&'static str>,
         mut rng: impl Rng,
     ) -> impl Iterator<Item = ConnectionParams> + 'a {
         let mut sni_list = self.sni_list.to_vec();
         sni_list.shuffle(&mut rng);
         sni_list.into_iter().map(move |sni| {
-            ConnectionParams::new(
+            let mut result = ConnectionParams::new(
                 self.route_type,
                 sni,
                 self.hostname,
                 nonzero!(443u16),
                 HttpRequestDecorator::PathPrefix(proxy_path).into(),
                 RootCertificates::Native,
-            )
+            );
+            if let Some(header) = confirmation_header_name {
+                result = result.with_confirmation_header(http::HeaderName::from_static(header));
+            }
+            result
         })
     }
 }
@@ -453,4 +462,57 @@ pub const PROD: Env<'static, Svr3Env> = Env {
 
 pub mod constants {
     pub const WEB_SOCKET_PATH: &str = "/v1/websocket/";
+}
+
+#[cfg(test)]
+mod test {
+    use test_case::test_matrix;
+
+    use super::*;
+
+    #[test_matrix([&DOMAIN_CONFIG_CHAT, &DOMAIN_CONFIG_CHAT_STAGING])]
+    fn chat_has_confirmation_header(config: &DomainConfig) {
+        assert_eq!(
+            Some(TIMESTAMP_HEADER_NAME),
+            config
+                .connection_params()
+                .connection_confirmation_header
+                .as_ref()
+                .map(|header| header.as_str())
+        );
+        for params in config.connection_params_with_fallback() {
+            assert_eq!(
+                Some(TIMESTAMP_HEADER_NAME),
+                params
+                    .connection_confirmation_header
+                    .as_ref()
+                    .map(|header| header.as_str()),
+                "{}",
+                params.sni,
+            );
+        }
+    }
+
+    #[test_matrix([&DOMAIN_CONFIG_CDSI, &DOMAIN_CONFIG_CDSI_STAGING])]
+    fn cdsi_has_no_confirmation_header(config: &DomainConfig) {
+        assert_eq!(
+            None,
+            config
+                .connection_params()
+                .connection_confirmation_header
+                .as_ref()
+                .map(|header| header.as_str())
+        );
+        for params in config.connection_params_with_fallback() {
+            assert_eq!(
+                None,
+                params
+                    .connection_confirmation_header
+                    .as_ref()
+                    .map(|header| header.as_str()),
+                "{}",
+                params.sni,
+            );
+        }
+    }
 }
