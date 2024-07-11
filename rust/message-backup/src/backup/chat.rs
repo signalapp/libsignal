@@ -14,7 +14,7 @@ use std::num::{NonZeroU32, NonZeroU64};
 
 use derive_where::derive_where;
 
-use crate::backup::chat::chat_style::{ChatStyle, ChatStyleError};
+use crate::backup::chat::chat_style::{ChatStyle, ChatStyleError, CustomColorId};
 use crate::backup::frame::RecipientId;
 use crate::backup::method::{Contains, Lookup, Method};
 use crate::backup::sticker::MessageStickerError;
@@ -141,14 +141,15 @@ pub struct InvalidExpiration {
 #[derive_where(Debug)]
 #[cfg_attr(test, derive_where(PartialEq;
     M::List<ChatItemData<M>>: PartialEq,
-    M::RecipientReference: PartialEq
+    M::RecipientReference: PartialEq,
+    ChatStyle<M>: PartialEq,
 ))]
 pub struct ChatData<M: Method + ReferencedTypes> {
     pub recipient: M::RecipientReference,
     pub items: M::List<ChatItemData<M>>,
     pub expiration_timer: Option<Duration>,
     pub mute_until: Option<Timestamp>,
-    pub style: Option<ChatStyle>,
+    pub style: Option<ChatStyle<M>>,
     pub pinned_order: Option<PinOrder>,
     pub dont_notify_for_mentions_if_muted: bool,
     pub marked_unread: bool,
@@ -284,7 +285,9 @@ impl std::fmt::Display for InvalidExpiration {
 
 impl<
         M: Method + ReferencedTypes,
-        C: Lookup<RecipientId, M::RecipientReference> + Lookup<PinOrder, M::RecipientReference>,
+        C: Lookup<RecipientId, M::RecipientReference>
+            + Lookup<PinOrder, M::RecipientReference>
+            + Lookup<CustomColorId, M::CustomColorReference>,
     > TryFromWith<proto::Chat, C> for ChatData<M>
 {
     type Error = ChatError;
@@ -315,7 +318,10 @@ impl<
             }
         };
 
-        let style = style.into_option().map(ChatStyle::try_from).transpose()?;
+        let style = style
+            .into_option()
+            .map(|chat_style| chat_style.try_into_with(context))
+            .transpose()?;
 
         let expiration_timer =
             NonZeroU64::new(expirationTimerMs).map(|t| Duration::from_millis(t.get()));

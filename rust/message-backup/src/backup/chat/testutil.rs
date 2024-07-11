@@ -3,10 +3,14 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::sync::Arc;
+
 use nonzero_ext::nonzero;
 use once_cell::sync::Lazy;
 use protobuf::MessageField;
 
+use crate::backup::chat::chat_style::CustomColorId;
+use crate::backup::chat::PinOrder;
 use crate::backup::frame::RecipientId;
 use crate::backup::method::{Contains, Lookup};
 use crate::backup::recipient::{Destination, FullRecipientData};
@@ -14,7 +18,7 @@ use crate::backup::time::Timestamp;
 use crate::backup::{BackupMeta, Purpose};
 use crate::proto::backup as proto;
 
-use super::PinOrder;
+use super::chat_style::CustomChatColor;
 
 pub(super) struct TestContext(pub(super) BackupMeta);
 
@@ -64,11 +68,27 @@ impl AsRef<BackupMeta> for TestContext {
     }
 }
 
+impl Contains<CustomColorId> for TestContext {
+    fn contains(&self, key: &CustomColorId) -> bool {
+        *key == Self::CUSTOM_CHAT_COLOR_ID
+    }
+}
+
+impl Lookup<CustomColorId, Arc<CustomChatColor>> for TestContext {
+    fn lookup<'a>(&'a self, key: &'a CustomColorId) -> Option<&'a Arc<CustomChatColor>> {
+        self.contains(key).then(|| &*TEST_CUSTOM_COLOR)
+    }
+}
+
+static TEST_CUSTOM_COLOR: Lazy<Arc<CustomChatColor>> =
+    Lazy::new(|| Arc::new(CustomChatColor::from_proto_test_data()));
 static TEST_RECIPIENT: Lazy<FullRecipientData> =
     Lazy::new(|| FullRecipientData::new(Destination::Self_));
 
 impl TestContext {
     pub(super) const DUPLICATE_PINNED_ORDER: PinOrder = PinOrder(nonzero!(183324u32));
+    pub(super) const CUSTOM_CHAT_COLOR_ID: CustomColorId = CustomColorId(555);
+
     pub(super) fn test_recipient() -> &'static FullRecipientData {
         &TEST_RECIPIENT
     }

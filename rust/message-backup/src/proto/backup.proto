@@ -75,6 +75,7 @@ message AccountData {
     bool hasCompletedUsernameOnboarding = 16;
     PhoneNumberSharingMode phoneNumberSharingMode = 17;
     ChatStyle defaultChatStyle = 18;
+    repeated ChatStyle.CustomChatColor customChatColors = 19;
   }
 
   message SubscriberData {
@@ -549,6 +550,9 @@ message MessageAttachment {
   FilePointer pointer = 1;
   Flag flag = 2;
   bool wasDownloaded = 3;
+  // Cross-client identifier for this attachment among all attachments on the
+  // owning message. See: SignalService.AttachmentPointer.clientUuid.
+  optional bytes clientUuid = 4;
 }
 
 message FilePointer {
@@ -737,13 +741,14 @@ message SimpleChatUpdate {
     IDENTITY_VERIFIED = 3;
     IDENTITY_DEFAULT = 4; // marking as unverified
     CHANGE_NUMBER = 5;
-    BOOST_REQUEST = 6;
+    RELEASE_CHANNEL_DONATION_REQUEST = 6;
     END_SESSION = 7;
     CHAT_SESSION_REFRESH = 8;
     BAD_DECRYPT = 9;
     PAYMENTS_ACTIVATED = 10;
     PAYMENT_ACTIVATION_REQUEST = 11;
     UNSUPPORTED_PROTOCOL_MESSAGE = 12;
+    REPORTED_SPAM = 13;
   }
 
   Type type = 1;
@@ -1034,6 +1039,15 @@ message ChatStyle {
     repeated float positions = 3; // percent from 0 to 1
   }
 
+  message CustomChatColor {
+    uint32 id = 1;
+
+    oneof color {
+      uint32 solid = 2;
+      Gradient gradient = 3;
+    }
+  }
+
   message AutomaticBubbleColor {
   }
 
@@ -1094,10 +1108,12 @@ message ChatStyle {
   }
 
   oneof bubbleColor {
-    BubbleColorPreset bubbleColorPreset = 3;
-    Gradient bubbleGradient = 4;
-    uint32 bubbleSolidColor = 5;
-    // Bubble setting is automatically determined based on the wallpaper setting.
-    AutomaticBubbleColor autoBubbleColor = 6;
+    // Bubble setting is automatically determined based on the wallpaper setting,
+    // or `SOLID_ULTRAMARINE` for `noWallpaper`
+    AutomaticBubbleColor autoBubbleColor = 3;
+    BubbleColorPreset bubbleColorPreset = 4;
+
+    // See AccountSettings.customChatColors
+    uint32 customColorId = 5;
   }
 }

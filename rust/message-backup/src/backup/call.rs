@@ -4,7 +4,7 @@
 //
 
 use crate::backup::frame::{RecipientId, RingerRecipientId};
-use crate::backup::method::Lookup;
+use crate::backup::method::{Contains, Lookup};
 use crate::backup::recipient::DestinationKind;
 use crate::backup::time::Timestamp;
 use crate::backup::TryFromWith;
@@ -189,7 +189,9 @@ impl TryFrom<proto::IndividualCall> for IndividualCall {
     }
 }
 
-impl<C: Lookup<RecipientId, R>, R: Clone> TryFromWith<proto::GroupCall, C> for GroupCall<R> {
+impl<C: Contains<RecipientId> + Lookup<RecipientId, R>, R: Clone> TryFromWith<proto::GroupCall, C>
+    for GroupCall<R>
+{
     type Error = CallError;
 
     fn try_from_with(call: proto::GroupCall, context: &C) -> Result<Self, Self::Error> {

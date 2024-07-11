@@ -5,12 +5,14 @@
 
 use std::collections::{hash_map, HashMap};
 use std::fmt::Debug;
+use std::sync::Arc;
 
 use derive_where::derive_where;
 use libsignal_protocol::Aci;
 
 pub(crate) use crate::backup::account_data::{AccountData, AccountDataError};
 use crate::backup::call::{AdHocCall, CallError};
+use crate::backup::chat::chat_style::{CustomChatColor, CustomColorId};
 use crate::backup::chat::{ChatData, ChatError, ChatItemData, ChatItemError, PinOrder};
 use crate::backup::frame::{ChatId, RecipientId};
 use crate::backup::method::{Contains, Lookup, LookupPair, Method, Store, ValidateOnly};
@@ -38,6 +40,16 @@ pub trait ReferencedTypes {
     /// Resolved data for a [`RecipientId`] in a non-`proto::Recipient` message.
     type RecipientReference: Clone + Debug;
 
+    /// Recorded information from a [`proto::chat_style::CustomChatColor`].
+    type CustomColorData: Debug + From<CustomChatColor>;
+    /// Resolved data for a [`CustomColorId`] in a non-`CustomChatColor` message.
+    type CustomColorReference: Clone + Debug;
+
+    fn color_reference<'a>(
+        id: &'a CustomColorId,
+        data: &'a Self::CustomColorData,
+    ) -> &'a Self::CustomColorReference;
+
     /// Produces a reference to a recipient from its ID and data.
     fn recipient_reference<'a>(
         id: &'a RecipientId,
@@ -62,7 +74,7 @@ pub trait ReferencedTypes {
 
 pub struct PartialBackup<M: Method + ReferencedTypes> {
     meta: BackupMeta,
-    account_data: Option<M::Value<AccountData<M>>>,
+    account_data: Option<AccountData<M>>,
     recipients: HashMap<RecipientId, M::RecipientData>,
     chats: ChatsData<M>,
     ad_hoc_calls: M::List<AdHocCall<RecipientId>>,
@@ -71,7 +83,7 @@ pub struct PartialBackup<M: Method + ReferencedTypes> {
 
 pub struct CompletedBackup<M: Method + ReferencedTypes> {
     meta: BackupMeta,
-    account_data: M::Value<AccountData<M>>,
+    account_data: AccountData<M>,
     recipients: HashMap<RecipientId, M::RecipientData>,
     chats: ChatsData<M>,
     ad_hoc_calls: M::List<AdHocCall<RecipientId>>,
@@ -276,6 +288,16 @@ impl ReferencedTypes for Store {
     type RecipientReference = FullRecipientData;
     type RecipientData = FullRecipientData;
 
+    type CustomColorData = Arc<CustomChatColor>;
+    type CustomColorReference = Arc<CustomChatColor>;
+
+    fn color_reference<'a>(
+        _id: &'a CustomColorId,
+        data: &'a Self::CustomColorData,
+    ) -> &'a Self::CustomColorReference {
+        data
+    }
+
     fn recipient_reference<'a>(
         _id: &'a RecipientId,
         data: &'a Self::RecipientData,
@@ -296,6 +318,17 @@ impl ReferencedTypes for Store {
 impl ReferencedTypes for ValidateOnly {
     type RecipientReference = RecipientId;
     type RecipientData = MinimalRecipientData;
+
+    /// No need to keep any data for colors.
+    type CustomColorData = ();
+    type CustomColorReference = CustomColorId;
+
+    fn color_reference<'a>(
+        id: &'a CustomColorId,
+        _data: &'a Self::CustomColorData,
+    ) -> &'a Self::CustomColorReference {
+        id
+    }
 
     fn recipient_reference<'a>(
         id: &'a RecipientId,
@@ -393,7 +426,7 @@ impl<M: Method + ReferencedTypes> PartialBackup<M> {
             return Err(ValidationError::MultipleAccountData);
         }
         let account_data = account_data.try_into()?;
-        self.account_data = Some(M::value(account_data));
+        self.account_data = Some(account_data);
         Ok(())
     }
 
@@ -522,6 +555,16 @@ impl<M: Method + ReferencedTypes> LookupPair<RecipientId, DestinationKind, M::Re
     }
 }
 
+impl<M: Method + ReferencedTypes> Lookup<CustomColorId, M::CustomColorReference>
+    for PartialBackup<M>
+{
+    fn lookup<'a>(&'a self, key: &'a CustomColorId) -> Option<&'a M::CustomColorReference> {
+        self.account_data
+            .as_ref()
+            .and_then(|data| data.account_settings.custom_chat_colors.lookup(key))
+    }
+}
+
 impl<M: Method + ReferencedTypes> Contains<ChatId> for PartialBackup<M> {
     fn contains(&self, key: &ChatId) -> bool {
         self.chats.items.contains(key)
@@ -549,6 +592,17 @@ impl<M: Method + ReferencedTypes> Lookup<PinOrder, M::RecipientReference> for Pa
 impl<M: Method + ReferencedTypes> AsRef<BackupMeta> for PartialBackup<M> {
     fn as_ref(&self) -> &BackupMeta {
         &self.meta
+    }
+}
+
+impl<M: Method + ReferencedTypes> Contains<CustomColorId> for PartialBackup<M> {
+    fn contains(&self, key: &CustomColorId) -> bool {
+        self.account_data.as_ref().is_some_and(|account_data| {
+            account_data
+                .account_settings
+                .custom_chat_colors
+                .contains(key)
+        })
     }
 }
 

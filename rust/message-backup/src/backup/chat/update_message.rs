@@ -35,13 +35,14 @@ pub enum SimpleChatUpdate {
     IdentityVerified,
     IdentityDefault,
     ChangeNumber,
-    BoostRequest,
     EndSession,
     ChatSessionRefresh,
     BadDecrypt,
     PaymentsActivated,
     PaymentActivationRequest,
     UnsupportedProtocolMessage,
+    ReleaseChannelDonationRequest,
+    ReportedSpam,
 }
 
 impl<C: Lookup<RecipientId, R>, R: Clone> TryFromWith<proto::ChatUpdateMessage, C>
@@ -71,7 +72,6 @@ impl<C: Lookup<RecipientId, R>, R: Clone> TryFromWith<proto::ChatUpdateMessage, 
                     Type::IDENTITY_VERIFIED => SimpleChatUpdate::IdentityVerified,
                     Type::IDENTITY_DEFAULT => SimpleChatUpdate::IdentityDefault,
                     Type::CHANGE_NUMBER => SimpleChatUpdate::ChangeNumber,
-                    Type::BOOST_REQUEST => SimpleChatUpdate::BoostRequest,
                     Type::END_SESSION => SimpleChatUpdate::EndSession,
                     Type::CHAT_SESSION_REFRESH => SimpleChatUpdate::ChatSessionRefresh,
                     Type::BAD_DECRYPT => SimpleChatUpdate::BadDecrypt,
@@ -80,6 +80,10 @@ impl<C: Lookup<RecipientId, R>, R: Clone> TryFromWith<proto::ChatUpdateMessage, 
                     Type::UNSUPPORTED_PROTOCOL_MESSAGE => {
                         SimpleChatUpdate::UnsupportedProtocolMessage
                     }
+                    Type::RELEASE_CHANNEL_DONATION_REQUEST => {
+                        SimpleChatUpdate::ReleaseChannelDonationRequest
+                    }
+                    Type::REPORTED_SPAM => SimpleChatUpdate::ReportedSpam,
                 }
             }),
             Update::GroupChange(proto::GroupChangeChatUpdate {
