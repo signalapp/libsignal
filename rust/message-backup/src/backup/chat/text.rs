@@ -5,18 +5,18 @@
 
 use libsignal_protocol::Aci;
 
-use crate::backup::uuid_bytes_to_aci;
+use crate::backup::{serialize, uuid_bytes_to_aci};
 use crate::proto::backup as proto;
 
 /// Validated version of [`proto::Text`].
-#[derive(Debug)]
+#[derive(Debug, serde::Serialize)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct MessageText {
     pub text: String,
     pub ranges: Vec<TextRange>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, serde::Serialize)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct TextRange {
     pub start: Option<u32>,
@@ -24,11 +24,11 @@ pub struct TextRange {
     pub effect: TextEffect,
 }
 
-#[derive(Debug)]
+#[derive(Debug, serde::Serialize)]
 #[cfg_attr(test, derive(PartialEq))]
 pub enum TextEffect {
-    MentionAci(Aci),
-    Style(proto::body_range::Style),
+    MentionAci(#[serde(serialize_with = "serialize::service_id_as_string")] Aci),
+    Style(#[serde(serialize_with = "serialize::enum_as_string")] proto::body_range::Style),
 }
 
 #[derive(Debug, displaydoc::Display, thiserror::Error)]

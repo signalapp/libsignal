@@ -6,10 +6,13 @@
 use zkgroup::receipts::ReceiptCredentialPresentation;
 use zkgroup::ZkGroupDeserializationFailure;
 
+use crate::backup::serialize;
 use crate::proto::backup as proto;
 
+#[derive(serde::Serialize)]
 pub struct GiftBadge {
     receipt_credential_presentation: ReceiptCredentialPresentation,
+    #[serde(serialize_with = "serialize::enum_as_string")]
     state: proto::gift_badge::State,
 }
 

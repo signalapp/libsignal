@@ -7,7 +7,7 @@ use crate::backup::time::Timestamp;
 
 use crate::proto::backup as proto;
 
-#[derive(Debug)]
+#[derive(Debug, serde::Serialize)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct LinkPreview {
     pub url: String,

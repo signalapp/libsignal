@@ -5,10 +5,11 @@
 
 use std::fmt::Display;
 
+use crate::backup::serialize;
 use crate::backup::time::Timestamp;
 use crate::proto::backup as proto;
 
-#[derive(Debug)]
+#[derive(Debug, serde::Serialize)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct PaymentNotification {
     pub amount: Option<MobAmount>,
@@ -17,16 +18,17 @@ pub struct PaymentNotification {
     pub details: Option<TransactionDetails>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, serde::Serialize)]
 #[cfg_attr(test, derive(PartialEq))]
 pub enum TransactionDetails {
     Transaction(Transaction),
     FailedTransaction(FailedTransaction),
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, serde::Serialize)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct Transaction {
+    #[serde(serialize_with = "serialize::enum_as_string")]
     pub status: proto::payment_notification::transaction_details::transaction::Status,
     pub identification: Option<Identification>,
     pub timestamp: Option<Timestamp>,
@@ -37,20 +39,23 @@ pub struct Transaction {
 }
 
 /// Wrapper around an arbitrary-precision decimal number
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, serde::Serialize)]
 #[cfg_attr(test, derive(PartialEq))]
+#[serde(transparent)]
 pub struct MobAmount(String);
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, serde::Serialize)]
 #[cfg_attr(test, derive(PartialEq))]
 pub enum Identification {
     Sent { key_images: Vec<Vec<u8>> },
     Received { public_keys: Vec<Vec<u8>> },
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, serde::Serialize)]
 #[cfg_attr(test, derive(PartialEq))]
+#[serde(transparent)]
 pub struct FailedTransaction {
+    #[serde(serialize_with = "serialize::enum_as_string")]
     pub reason: proto::payment_notification::transaction_details::failed_transaction::FailureReason,
 }
 

@@ -139,6 +139,7 @@ pub struct InvalidExpiration {
 
 /// Validated version of [`proto::Chat`].
 #[derive_where(Debug)]
+#[derive(serde::Serialize)]
 #[cfg_attr(test, derive_where(PartialEq;
     M::List<ChatItemData<M>>: PartialEq,
     M::RecipientReference: PartialEq,
@@ -146,6 +147,7 @@ pub struct InvalidExpiration {
 ))]
 pub struct ChatData<M: Method + ReferencedTypes> {
     pub recipient: M::RecipientReference,
+    #[serde(bound(serialize = "M::List<ChatItemData<M>>: serde::Serialize"))]
     pub items: M::List<ChatItemData<M>>,
     pub expiration_timer: Option<Duration>,
     pub mute_until: Option<Timestamp>,
@@ -156,18 +158,21 @@ pub struct ChatData<M: Method + ReferencedTypes> {
     pub archived: bool,
 }
 
-#[derive(Copy, Clone, Debug, Eq, Hash, PartialEq)]
+#[derive(Copy, Clone, Debug, Eq, Hash, PartialEq, serde::Serialize)]
 pub struct PinOrder(NonZeroU32);
 
 /// Validated version of [`proto::ChatItem`].
 #[derive_where(Debug)]
+#[derive(serde::Serialize)]
 #[cfg_attr(test, derive_where(PartialEq;
     ChatItemMessage<M>: PartialEq,
     M::RecipientReference: PartialEq
 ))]
 pub struct ChatItemData<M: Method + ReferencedTypes> {
     pub author: M::RecipientReference,
+    #[serde(bound(serialize = "ChatItemMessage<M>: serde::Serialize"))]
     pub message: ChatItemMessage<M>,
+    // This could be Self: Serialize but that just confuses the compiler.
     pub revisions: Vec<ChatItemData<M>>,
     pub direction: Direction,
     pub expire_start: Option<Timestamp>,
@@ -182,6 +187,7 @@ pub struct ChatItemData<M: Method + ReferencedTypes> {
 
 /// Validated version of [`proto::chat_item::Item`].
 #[derive_where(Debug)]
+#[derive(serde::Serialize)]
 #[cfg_attr(test, derive_where(PartialEq;
     M::BoxedValue<GiftBadge>: PartialEq,
     M::RecipientReference: PartialEq
@@ -194,11 +200,12 @@ pub enum ChatItemMessage<M: Method + ReferencedTypes> {
     RemoteDeleted,
     Update(UpdateMessage<M::RecipientReference>),
     PaymentNotification(PaymentNotification),
+    #[serde(bound(serialize = "M::BoxedValue<GiftBadge>: serde::Serialize"))]
     GiftBadge(M::BoxedValue<GiftBadge>),
 }
 
 /// Validated version of [`proto::Reaction`].
-#[derive(Debug)]
+#[derive(Debug, serde::Serialize)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct Reaction {
     pub emoji: String,
@@ -218,7 +225,7 @@ pub enum ReactionError {
     EmptyEmoji,
 }
 
-#[derive(Debug)]
+#[derive(Debug, serde::Serialize)]
 #[cfg_attr(test, derive(PartialEq))]
 pub enum Direction {
     Incoming {
@@ -231,7 +238,7 @@ pub enum Direction {
     Directionless,
 }
 
-#[derive(Debug)]
+#[derive(Debug, serde::Serialize)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct OutgoingSend {
     pub recipient: RecipientId,
@@ -242,7 +249,7 @@ pub struct OutgoingSend {
     pub sealed_sender: bool,
 }
 
-#[derive(Debug)]
+#[derive(Debug, serde::Serialize)]
 #[cfg_attr(test, derive(PartialEq))]
 pub enum DeliveryStatus {
     Failed,

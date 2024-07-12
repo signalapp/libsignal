@@ -31,6 +31,7 @@ mod file;
 mod frame;
 pub(crate) mod method;
 mod recipient;
+mod serialize;
 mod sticker;
 mod time;
 
@@ -38,12 +39,12 @@ pub trait ReferencedTypes {
     /// Recorded information from a [`proto::Recipient`].
     type RecipientData: Debug + AsRef<DestinationKind>;
     /// Resolved data for a [`RecipientId`] in a non-`proto::Recipient` message.
-    type RecipientReference: Clone + Debug;
+    type RecipientReference: Clone + Debug + serde::Serialize;
 
     /// Recorded information from a [`proto::chat_style::CustomChatColor`].
-    type CustomColorData: Debug + From<CustomChatColor>;
+    type CustomColorData: Debug + From<CustomChatColor> + serde::Serialize;
     /// Resolved data for a [`CustomColorId`] in a non-`CustomChatColor` message.
-    type CustomColorReference: Clone + Debug;
+    type CustomColorReference: Clone + Debug + serde::Serialize;
 
     fn color_reference<'a>(
         id: &'a CustomColorId,
@@ -98,7 +99,7 @@ struct ChatsData<M: Method + ReferencedTypes> {
     pub chat_items_count: usize,
 }
 
-#[derive(Debug)]
+#[derive(Debug, serde::Serialize)]
 pub struct Backup {
     pub meta: BackupMeta,
     pub account_data: AccountData<Store>,
@@ -108,7 +109,7 @@ pub struct Backup {
     pub sticker_packs: HashMap<StickerPackId, StickerPack<Store>>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, serde::Serialize)]
 pub struct BackupMeta {
     /// The version of the backup format being parsed.
     pub version: u64,
@@ -128,6 +129,7 @@ pub struct BackupMeta {
     strum::EnumString,
     strum::Display,
     strum::IntoStaticStr,
+    serde::Serialize,
 )]
 pub enum Purpose {
     /// Intended for immediate transfer from one device to another.

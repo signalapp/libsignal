@@ -12,10 +12,11 @@ use uuid::Uuid;
 
 use crate::proto::backup::{self as proto, FilePointer};
 
-#[derive(Debug)]
+#[derive(Debug, serde::Serialize)]
 #[cfg_attr(test, derive(Default, PartialEq))]
 pub struct VoiceMessageAttachment {
     pub client_uuid: Option<Uuid>,
+    #[serde(skip)]
     _limit_construction_to_module: (),
 }
 

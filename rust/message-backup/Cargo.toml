@@ -40,7 +40,7 @@ derive-where = "1.2.5"
 displaydoc = "0.2.5"
 env_logger = "0.10.0"
 futures = "0.3.29"
-hex = "0.4.3"
+hex = { version = "0.4.3", features = ["serde"] }
 hkdf = "0.12"
 hmac = "0.12"
 itertools = "0.12.0"
@@ -50,6 +50,7 @@ mediasan-common = "0.5.0"
 num_enum = "0.6.1"
 protobuf = "3.3.0"
 protobuf-json-mapping = { version = "3.3.0", optional = true }
+serde = { version = "1.0", features = ["derive", "rc"] }
 serde_json = { version = "1.0", optional = true }
 sha2 = "0.10"
 smallvec = "1.13.2"
@@ -60,7 +61,7 @@ strum = { version = "0.26", features = ["derive"] }
 strum_macros = { version = "0.26.4" }
 subtle = "2.5.0"
 thiserror = "1.0.50"
-uuid = "1.1.2"
+uuid = { version = "1.1.2", features = ["serde"] }
 
 [dev-dependencies]
 libsignal-message-backup = { path = "./", features = ["json"] }

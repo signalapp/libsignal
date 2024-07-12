@@ -46,6 +46,25 @@ fn is_valid_binary_proto(input: Fixture<Vec<u8>>) {
     validate_proto(input.content())
 }
 
+#[dir_test(
+        dir: "$CARGO_MANIFEST_DIR/tests/res/test-cases",
+        glob: "valid/*.binproto",
+        postfix: "serialize"
+        loader: read_file
+    )]
+fn can_serialize_binary_proto(input: Fixture<Vec<u8>>) {
+    let input = Cursor::new(input.content());
+    let reader = BackupReader::new_unencrypted(input, BACKUP_PURPOSE);
+    let result = futures::executor::block_on(reader.read_all())
+        .result
+        .expect("valid backup");
+    // This should not crash.
+    println!(
+        "{}",
+        serde_json::to_string_pretty(&result).expect("can serialize")
+    )
+}
+
 const ENCRYPTED_SOURCE_SUFFIX: &str = ".source.jsonproto";
 #[dir_test(
         dir: "$CARGO_MANIFEST_DIR/tests/res/test-cases",

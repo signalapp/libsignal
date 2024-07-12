@@ -11,7 +11,7 @@ use crate::backup::{TryFromWith, TryIntoWith as _};
 use crate::proto::backup as proto;
 
 /// Validated version of [`proto::ContactMessage`].
-#[derive(Debug)]
+#[derive(Debug, serde::Serialize)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct ContactMessage {
     pub contacts: Vec<ContactAttachment>,
@@ -20,7 +20,7 @@ pub struct ContactMessage {
 }
 
 /// Validated version of [`proto::ContactAttachment`].
-#[derive(Debug)]
+#[derive(Debug, serde::Serialize)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct ContactAttachment {
     pub name: Option<proto::contact_attachment::Name>,
@@ -28,6 +28,7 @@ pub struct ContactAttachment {
     pub email: Vec<proto::contact_attachment::Email>,
     pub address: Vec<proto::contact_attachment::PostalAddress>,
     pub organization: Option<String>,
+    #[serde(skip)]
     _limit_construction_to_module: (),
 }
 

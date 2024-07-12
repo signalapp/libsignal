@@ -86,16 +86,23 @@ where
     }
 }
 
-pub trait Method {
-    type Value<T: Debug>: Debug;
+// The `serde::Serialize` supertrait isn't needed for anything but it simplifies
+// using the `serde::Serialize` derive macro on types that are parameterized
+// over `M: Method`. The macro's heuristic assumes that all type parameters must
+// implement `serde::Serialize`. That's not correct in this case but it's
+// simpler to just roll with it since the no-op implementations can be trivially
+// derived.
+pub trait Method: serde::Serialize {
+    type Value<T: Debug + serde::Serialize>: Debug + serde::Serialize;
     type BoxedValue<T: Debug>: Debug;
     type Map<K: Eq + Hash + Debug, V: Debug>: Map<K, V> + Debug;
     type List<T: Debug>: Extend<T> + Default + Debug;
 
-    fn value<T: Debug>(value: T) -> Self::Value<T>;
+    fn value<T: Debug + serde::Serialize>(value: T) -> Self::Value<T>;
     fn boxed_value<T: Debug>(value: T) -> Self::BoxedValue<T>;
 }
 
+#[derive(serde::Serialize)]
 pub enum ValidateOnly {}
 
 #[derive(Default, Debug)]
@@ -108,24 +115,25 @@ impl<T> Extend<T> for ValidateOnlyList {
 }
 
 impl Method for ValidateOnly {
-    type Value<T: Debug> = ();
+    type Value<T: Debug + serde::Serialize> = ();
     type BoxedValue<T: Debug> = ();
     type Map<K: Eq + Hash + Debug, V: Debug> = HashSet<K>;
     type List<T: Debug> = ValidateOnlyList;
 
-    fn value<T: Debug>(_value: T) -> Self::Value<T> {}
+    fn value<T: Debug + serde::Serialize>(_value: T) -> Self::Value<T> {}
     fn boxed_value<T: Debug>(_value: T) -> Self::BoxedValue<T> {}
 }
 
+#[derive(serde::Serialize)]
 pub enum Store {}
 
 impl Method for Store {
-    type Value<T: Debug> = T;
+    type Value<T: Debug + serde::Serialize> = T;
     type BoxedValue<T: Debug> = Box<T>;
     type Map<K: Eq + Hash + Debug, V: Debug> = HashMap<K, V>;
     type List<T: Debug> = Vec<T>;
 
-    fn value<T: Debug>(value: T) -> Self::Value<T> {
+    fn value<T: Debug + serde::Serialize>(value: T) -> Self::Value<T> {
         value
     }
     fn boxed_value<T: Debug>(value: T) -> Self::BoxedValue<T> {

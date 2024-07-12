@@ -11,7 +11,7 @@ use crate::backup::TryFromWith;
 use crate::proto::backup as proto;
 
 /// Validated version of [`proto::AdHocCall`].
-#[derive(Debug)]
+#[derive(Debug, serde::Serialize)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct AdHocCall<Recipient> {
     pub id: CallId,
@@ -20,7 +20,7 @@ pub struct AdHocCall<Recipient> {
 }
 
 /// Validated version of [`proto::IndividualCall`].
-#[derive(Debug)]
+#[derive(Debug, serde::Serialize)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct IndividualCall {
     pub id: Option<CallId>,
@@ -31,7 +31,7 @@ pub struct IndividualCall {
 }
 
 /// Validated version of [`proto::GroupCall`].
-#[derive(Debug)]
+#[derive(Debug, serde::Serialize)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct GroupCall<Recipient> {
     pub id: Option<CallId>,
@@ -45,7 +45,7 @@ pub struct GroupCall<Recipient> {
 ///
 /// This is not referenced as a foreign key from elsewhere in a backup, but
 /// corresponds to shared state across conversation members for a given call.
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, serde::Serialize)]
 pub struct CallId(u64);
 
 #[derive(Debug, displaydoc::Display, thiserror::Error)]
@@ -78,14 +78,14 @@ pub enum CallLinkError {
     InvalidRootKey(usize),
 }
 
-#[derive(Debug)]
+#[derive(Debug, serde::Serialize)]
 #[cfg_attr(test, derive(PartialEq))]
 pub enum CallType {
     Audio,
     Video,
 }
 
-#[derive(Debug)]
+#[derive(Debug, serde::Serialize)]
 #[cfg_attr(test, derive(PartialEq))]
 pub enum IndividualCallState {
     Accepted,
@@ -94,7 +94,7 @@ pub enum IndividualCallState {
     Missed,
 }
 
-#[derive(Debug)]
+#[derive(Debug, serde::Serialize)]
 #[cfg_attr(test, derive(PartialEq))]
 pub enum GroupCallState {
     /// No ring
@@ -122,7 +122,7 @@ const CALL_LINK_ROOT_KEY_LEN: usize = 16;
 type CallLinkRootKey = [u8; CALL_LINK_ROOT_KEY_LEN];
 
 /// Validated version of [`proto::CallLink`].
-#[derive(Debug)]
+#[derive(Debug, serde::Serialize)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct CallLink {
     pub admin_approval: bool,

@@ -11,17 +11,18 @@ use crate::backup::TryFromWith;
 use crate::proto::backup as proto;
 
 /// Validated version of [`proto::Quote`]
-#[derive(Debug)]
+#[derive(Debug, serde::Serialize)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct Quote {
     pub author: RecipientId,
     pub quote_type: QuoteType,
     pub target_sent_timestamp: Option<Timestamp>,
     pub text: Option<MessageText>,
+    #[serde(skip)]
     _limit_construction_to_module: (),
 }
 
-#[derive(Debug)]
+#[derive(Debug, serde::Serialize)]
 #[cfg_attr(test, derive(PartialEq))]
 pub enum QuoteType {
     Normal,

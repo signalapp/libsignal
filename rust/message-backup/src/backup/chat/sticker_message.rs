@@ -10,7 +10,7 @@ use crate::backup::{TryFromWith, TryIntoWith as _};
 use crate::proto::backup as proto;
 
 /// Validated version of [`proto::StickerMessage`].
-#[derive(Debug)]
+#[derive(Debug, serde::Serialize)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct StickerMessage {
     pub reactions: Vec<Reaction>,

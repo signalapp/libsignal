@@ -15,10 +15,11 @@ use zkgroup::ProfileKeyBytes;
 use crate::backup::chat::chat_style::{ChatStyle, ChatStyleError, CustomColorMap};
 use crate::backup::method::Method;
 use crate::backup::time::Duration;
-use crate::backup::{ReferencedTypes, TryIntoWith as _};
+use crate::backup::{serialize, ReferencedTypes, TryIntoWith as _};
 use crate::proto::backup as proto;
 
 #[derive_where(Debug)]
+#[derive(serde::Serialize)]
 #[cfg_attr(test, derive_where(PartialEq;
     M::Value<ProfileKeyBytes>: PartialEq,
     M::Value<Option<UsernameData>>: PartialEq,
@@ -27,6 +28,10 @@ use crate::proto::backup as proto;
     AccountSettings<M>: PartialEq,
 ))]
 pub struct AccountData<M: Method + ReferencedTypes> {
+    #[serde(
+        with = "hex",
+        bound(serialize = "M::Value<ProfileKeyBytes>: AsRef<[u8]>")
+    )]
     pub profile_key: M::Value<ProfileKeyBytes>,
     pub username: M::Value<Option<UsernameData>>,
     pub given_name: M::Value<String>,
@@ -37,24 +42,29 @@ pub struct AccountData<M: Method + ReferencedTypes> {
     pub backup_subscription: M::Value<Option<Subscription>>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, serde::Serialize)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct UsernameData {
+    #[serde(serialize_with = "serialize::to_string")]
     pub username: Username,
     pub link: Option<UsernameLink>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, serde::Serialize)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct UsernameLink {
+    #[serde(serialize_with = "serialize::enum_as_string")]
     pub color: crate::proto::backup::account_data::username_link::Color,
+    #[serde(serialize_with = "hex::serialize")]
     pub entropy: [u8; USERNAME_LINK_ENTROPY_SIZE],
+    #[serde(serialize_with = "serialize::to_string")]
     pub server_id: Uuid,
 }
 
-#[derive(Debug)]
+#[derive(Debug, serde::Serialize)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct Subscription {
+    #[serde(with = "hex")]
     pub subscriber_id: SubscriberId,
     pub currency_code: String,
     pub manually_canceled: bool,
@@ -64,6 +74,7 @@ const SUBSCRIBER_ID_LENGTH: usize = 32;
 type SubscriberId = [u8; SUBSCRIBER_ID_LENGTH];
 
 #[derive_where(Debug)]
+#[derive(serde::Serialize)]
 #[cfg_attr(test, derive_where(PartialEq;
     M::Value<PhoneSharing>: PartialEq,
     M::Value<Option<bool>>: PartialEq,
@@ -95,7 +106,7 @@ pub struct AccountSettings<M: Method + ReferencedTypes> {
     pub custom_chat_colors: CustomColorMap<M>,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, serde::Serialize)]
 pub enum PhoneSharing {
     WithEverybody,
     WithNobody,

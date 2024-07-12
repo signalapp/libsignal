@@ -12,7 +12,7 @@ use crate::backup::{TryFromWith, TryIntoWith as _};
 use crate::proto::backup as proto;
 
 /// Validated version of [`proto::StandardMessage`].
-#[derive(Debug)]
+#[derive(Debug, serde::Serialize)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct StandardMessage {
     pub text: Option<MessageText>,

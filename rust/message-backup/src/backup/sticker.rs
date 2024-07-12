@@ -15,6 +15,7 @@ use crate::proto::backup as proto;
 
 /// Validated version of [`proto::StickerPack`].
 #[derive_where(Debug)]
+#[derive(serde::Serialize)]
 #[cfg_attr(test, derive_where(PartialEq;
         M::Value<Key>: PartialEq,
     ))]
@@ -23,7 +24,7 @@ pub struct StickerPack<M: Method> {
     _limit_construction_to_module: (),
 }
 
-#[derive(Debug)]
+#[derive(Debug, serde::Serialize)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct MessageSticker {
     pub pack_id: PackId,
@@ -32,10 +33,10 @@ pub struct MessageSticker {
     _limit_construction_to_module: (),
 }
 
-#[derive(Copy, Clone, Debug, Eq, Hash, PartialEq)]
+#[derive(Copy, Clone, Debug, Eq, Hash, PartialEq, serde::Serialize)]
 pub struct PackId([u8; 16]);
 
-#[derive(Copy, Clone, Debug, Eq, Hash, PartialEq)]
+#[derive(Copy, Clone, Debug, Eq, Hash, PartialEq, serde::Serialize)]
 pub struct Key([u8; 32]);
 
 impl<'a> TryFrom<&'a [u8]> for PackId {

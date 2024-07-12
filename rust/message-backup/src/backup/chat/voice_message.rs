@@ -11,7 +11,7 @@ use crate::backup::{TryFromWith, TryIntoWith as _};
 use crate::proto::backup as proto;
 
 /// Validated version of a voice message [`proto::StandardMessage`].
-#[derive(Debug)]
+#[derive(Debug, serde::Serialize)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct VoiceMessage {
     pub quote: Option<Quote>,
