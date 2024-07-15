@@ -1,0 +1,74 @@
+{
+  "meta": {
+    "version": 1,
+    "backup_time": {
+      "secs_since_epoch": 1702944000,
+      "nanos_since_epoch": 0
+    },
+    "purpose": "RemoteBackup"
+  },
+  "account_data": {
+    "profile_key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "username": {
+      "username": "abc.123",
+      "link": {
+        "color": "BLUE",
+        "entropy": "0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c",
+        "server_id": "0a0a0a0a-0a0a-0a0a-0a0a-0a0a0a0a0a0a"
+      }
+    },
+    "given_name": "",
+    "family_name": "",
+    "account_settings": {
+      "phone_number_sharing": "WithEverybody",
+      "read_receipts": false,
+      "sealed_sender_indicators": false,
+      "typing_indicators": false,
+      "link_previews": false,
+      "not_discoverable_by_phone_number": false,
+      "prefer_contact_avatars": false,
+      "display_badges_on_profile": false,
+      "keep_muted_chats_archived": false,
+      "has_set_my_stories_privacy": false,
+      "has_viewed_onboarding_story": false,
+      "stories_disabled": false,
+      "story_view_receipts_enabled": null,
+      "has_seen_group_story_education_sheet": false,
+      "has_completed_username_onboarding": false,
+      "universal_expire_timer": null,
+      "preferred_reaction_emoji": [],
+      "default_chat_style": {
+        "wallpaper": null,
+        "bubble_color": {
+          "Custom": {
+            "Solid": {
+              "color": 123456
+            }
+          }
+        }
+      },
+      "custom_chat_colors": [
+        [
+          333,
+          {
+            "Solid": {
+              "color": 123456
+            }
+          }
+        ]
+      ]
+    },
+    "avatar_url_path": "",
+    "donation_subscription": null,
+    "backup_subscription": {
+      "subscriber_id": "3737373737373737373737373737373737373737373737373737373737373737",
+      "currency_code": "XTS",
+      "manually_canceled": false
+    }
+  },
+  "recipients": [],
+  "chats": [],
+  "ad_hoc_calls": [],
+  "pinned_chats": [],
+  "sticker_packs": []
+}

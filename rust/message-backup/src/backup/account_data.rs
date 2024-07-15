@@ -406,6 +406,8 @@ mod test {
     const FAKE_USERNAME_LINK_ENTROPY: [u8; USERNAME_LINK_ENTROPY_SIZE] = [12; 32];
     const FAKE_USERNAME_SERVER_ID: Uuid = Uuid::from_bytes([10; 16]);
     const FAKE_CUSTOM_COLOR_ID: CustomColorId = proto::chat_style::CustomChatColor::TEST_ID;
+    static FAKE_CUSTOM_COLOR: Lazy<Arc<CustomChatColor>> =
+        Lazy::new(|| Arc::new(CustomChatColor::from_proto_test_data()));
 
     #[test]
     fn account_data_custom_colors_ordering() {
@@ -429,22 +431,17 @@ mod test {
         assert_ne!(with_new_id, with_reversed_ids);
     }
 
-    #[test]
-    fn valid_account_data() {
-        static FAKE_CUSTOM_COLOR: Lazy<Arc<CustomChatColor>> =
-            Lazy::new(|| Arc::new(CustomChatColor::from_proto_test_data()));
-
-        assert_eq!(
-            proto::AccountData::test_data().try_into(),
-            Ok(AccountData::<Store> {
+    impl AccountData<Store> {
+        pub(crate) fn from_proto_test_data() -> Self {
+            Self {
                 profile_key: FAKE_PROFILE_KEY,
                 username: Some(UsernameData {
                     username: Username::new("abc.123").unwrap(),
                     link: Some(UsernameLink {
                         color: proto::account_data::username_link::Color::BLUE,
                         entropy: FAKE_USERNAME_LINK_ENTROPY,
-                        server_id: FAKE_USERNAME_SERVER_ID
-                    })
+                        server_id: FAKE_USERNAME_SERVER_ID,
+                    }),
                 }),
                 given_name: "".to_string(),
                 family_name: "".to_string(),
@@ -452,7 +449,7 @@ mod test {
                     phone_number_sharing: PhoneSharing::WithEverybody,
                     default_chat_style: Some(ChatStyle {
                         wallpaper: None,
-                        bubble_color: BubbleColor::Custom(FAKE_CUSTOM_COLOR.clone())
+                        bubble_color: BubbleColor::Custom(FAKE_CUSTOM_COLOR.clone()),
                     }),
                     read_receipts: false,
                     sealed_sender_indicators: false,
@@ -479,8 +476,16 @@ mod test {
                     manually_canceled: false,
                 }),
                 donation_subscription: None,
-            })
-        )
+            }
+        }
+    }
+
+    #[test]
+    fn valid_account_data() {
+        assert_eq!(
+            proto::AccountData::test_data().try_into(),
+            Ok(AccountData::from_proto_test_data())
+        );
     }
 
     fn invalid_profile_key(target: &mut proto::AccountData) {

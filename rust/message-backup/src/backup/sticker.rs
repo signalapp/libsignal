@@ -33,7 +33,7 @@ pub struct MessageSticker {
     _limit_construction_to_module: (),
 }
 
-#[derive(Copy, Clone, Debug, Eq, Hash, PartialEq, serde::Serialize)]
+#[derive(Copy, Clone, Debug, Eq, Hash, PartialEq, PartialOrd, Ord, serde::Serialize)]
 pub struct PackId([u8; 16]);
 
 #[derive(Copy, Clone, Debug, Eq, Hash, PartialEq, serde::Serialize)]

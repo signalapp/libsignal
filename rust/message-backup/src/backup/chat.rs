@@ -158,7 +158,7 @@ pub struct ChatData<M: Method + ReferencedTypes> {
     pub archived: bool,
 }
 
-#[derive(Copy, Clone, Debug, Eq, Hash, PartialEq, serde::Serialize)]
+#[derive(Copy, Clone, Debug, Eq, Hash, PartialEq, PartialOrd, Ord, serde::Serialize)]
 pub struct PinOrder(NonZeroU32);
 
 /// Validated version of [`proto::ChatItem`].

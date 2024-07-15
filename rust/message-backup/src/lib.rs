@@ -11,7 +11,7 @@ use futures::AsyncRead;
 use mediasan_common::AsyncSkip;
 use protobuf::Message as _;
 
-use crate::backup::method::ValidateOnly;
+use crate::backup::method::{Store, ValidateOnly};
 use crate::backup::{CompletedBackup, Purpose};
 use crate::frame::{
     HmacMismatchError, ReaderFactory, UnvalidatedHmacReader, VerifyHmac, VerifyHmacError,
@@ -94,10 +94,10 @@ impl<R> ReadResult<R> {
 }
 
 impl<R: AsyncRead + Unpin + VerifyHmac> BackupReader<R> {
-    pub async fn read_all(self) -> ReadResult<backup::Backup> {
+    pub async fn read_all(self) -> ReadResult<backup::CompletedBackup<Store>> {
         self.collect_all()
             .await
-            .and_then(|r| Ok(CompletedBackup::try_from(r)?.into()))
+            .and_then(|r| Ok(CompletedBackup::try_from(r)?))
     }
 
     pub async fn validate_all(self) -> ReadResult<()> {

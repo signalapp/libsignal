@@ -35,6 +35,8 @@ impl_from_oneof!(
     Directionless
 );
 
+impl_from_oneof!(chat_item::Item, StandardMessage, StandardMessage);
+
 impl_from_oneof!(frame::Item, AccountData, Account);
 impl_from_oneof!(frame::Item, Recipient, Recipient);
 impl_from_oneof!(frame::Item, Chat, Chat);

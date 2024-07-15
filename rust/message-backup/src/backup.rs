@@ -19,6 +19,7 @@ use crate::backup::method::{Contains, Lookup, LookupPair, Method, Store, Validat
 use crate::backup::recipient::{
     DestinationKind, FullRecipientData, MinimalRecipientData, RecipientError,
 };
+use crate::backup::serialize::SerializeOrder;
 use crate::backup::sticker::{PackId as StickerPackId, StickerPack, StickerPackError};
 use crate::backup::time::Timestamp;
 use crate::proto::backup as proto;
@@ -31,7 +32,7 @@ mod file;
 mod frame;
 pub(crate) mod method;
 mod recipient;
-mod serialize;
+pub mod serialize;
 mod sticker;
 mod time;
 
@@ -39,7 +40,7 @@ pub trait ReferencedTypes {
     /// Recorded information from a [`proto::Recipient`].
     type RecipientData: Debug + AsRef<DestinationKind>;
     /// Resolved data for a [`RecipientId`] in a non-`proto::Recipient` message.
-    type RecipientReference: Clone + Debug + serde::Serialize;
+    type RecipientReference: Clone + Debug + serde::Serialize + SerializeOrder;
 
     /// Recorded information from a [`proto::chat_style::CustomChatColor`].
     type CustomColorData: Debug + From<CustomChatColor> + serde::Serialize;
@@ -78,35 +79,28 @@ pub struct PartialBackup<M: Method + ReferencedTypes> {
     account_data: Option<AccountData<M>>,
     recipients: HashMap<RecipientId, M::RecipientData>,
     chats: ChatsData<M>,
-    ad_hoc_calls: M::List<AdHocCall<RecipientId>>,
+    ad_hoc_calls: M::List<AdHocCall<M::RecipientReference>>,
     sticker_packs: HashMap<StickerPackId, StickerPack<M>>,
 }
 
+#[derive_where(Debug)]
 pub struct CompletedBackup<M: Method + ReferencedTypes> {
     meta: BackupMeta,
     account_data: AccountData<M>,
     recipients: HashMap<RecipientId, M::RecipientData>,
     chats: ChatsData<M>,
-    ad_hoc_calls: M::List<AdHocCall<RecipientId>>,
+    ad_hoc_calls: M::List<AdHocCall<M::RecipientReference>>,
     sticker_packs: HashMap<StickerPackId, StickerPack<M>>,
 }
 
-#[derive_where(Default)]
+pub type Backup = CompletedBackup<Store>;
+
+#[derive_where(Debug, Default)]
 struct ChatsData<M: Method + ReferencedTypes> {
     items: HashMap<ChatId, ChatData<M>>,
     pinned: Vec<(PinOrder, M::RecipientReference)>,
     /// Count of the total number of chat items held across all values in `items`.
     pub chat_items_count: usize,
-}
-
-#[derive(Debug, serde::Serialize)]
-pub struct Backup {
-    pub meta: BackupMeta,
-    pub account_data: AccountData<Store>,
-    pub recipients: HashMap<RecipientId, FullRecipientData>,
-    pub chats: HashMap<ChatId, ChatData<Store>>,
-    pub ad_hoc_calls: Vec<AdHocCall<RecipientId>>,
-    pub sticker_packs: HashMap<StickerPackId, StickerPack<Store>>,
 }
 
 #[derive(Debug, serde::Serialize)]
@@ -177,33 +171,6 @@ impl<M: Method + ReferencedTypes> TryFrom<PartialBackup<M>> for CompletedBackup<
             ad_hoc_calls,
             sticker_packs,
         })
-    }
-}
-
-impl From<CompletedBackup<Store>> for Backup {
-    fn from(value: CompletedBackup<Store>) -> Self {
-        let CompletedBackup {
-            meta,
-            account_data,
-            recipients,
-            chats:
-                ChatsData {
-                    items: chats,
-                    pinned: _,
-                    chat_items_count: _,
-                },
-            ad_hoc_calls,
-            sticker_packs,
-        } = value;
-
-        Self {
-            meta,
-            account_data,
-            recipients,
-            chats,
-            ad_hoc_calls,
-            sticker_packs,
-        }
     }
 }
 
@@ -409,13 +376,11 @@ impl<M: Method + ReferencedTypes> PartialBackup<M> {
     fn add_ad_hoc_call(&mut self, call: proto::AdHocCall) -> Result<(), CallFrameError> {
         let recipient_id = call.recipientId;
         let call_id = call.callId;
-        let call = call
-            .try_into_with(&self.recipients)
-            .map_err(|error| CallFrameError {
-                recipient_id,
-                call_id,
-                error,
-            })?;
+        let call = call.try_into_with(self).map_err(|error| CallFrameError {
+            recipient_id,
+            call_id,
+            error,
+        })?;
         self.ad_hoc_calls.extend(Some(call));
         Ok(())
     }

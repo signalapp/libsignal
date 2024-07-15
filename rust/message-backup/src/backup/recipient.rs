@@ -16,8 +16,9 @@ use zkgroup::{GroupMasterKeyBytes, ProfileKeyBytes};
 use crate::backup::call::{CallLink, CallLinkError};
 use crate::backup::frame::RecipientId;
 use crate::backup::method::{LookupPair, Method, Store, ValidateOnly};
+use crate::backup::serialize::{self, SerializeOrder, UnorderedList};
 use crate::backup::time::Timestamp;
-use crate::backup::{serialize, ReferencedTypes, TryFromWith, TryIntoWith};
+use crate::backup::{ReferencedTypes, TryFromWith, TryIntoWith};
 use crate::proto::backup as proto;
 use crate::proto::backup::recipient::Destination as RecipientDestination;
 
@@ -44,8 +45,6 @@ pub enum RecipientError {
     InvalidCallLink(#[from] CallLinkError),
     /// contact has invalid username
     InvalidContactUsername,
-    /// contact is registered but has unregistered timestamp
-    UnregisteredAtForRegisteredContact,
     /// DistributionList.item is a oneof but is empty
     DistributionListItemMissing,
     /// distribution list member {0:?} is unknown
@@ -139,7 +138,8 @@ pub enum DistributionListItem<Recipient> {
         name: String,
         allow_replies: bool,
         privacy_mode: PrivacyMode,
-        members: Vec<Recipient>,
+        #[serde(bound(serialize = "Recipient: serde::Serialize + SerializeOrder"))]
+        members: UnorderedList<Recipient>,
     },
 }
 
@@ -160,6 +160,13 @@ pub enum PrivacyMode {
 
 impl AsRef<DestinationKind> for MinimalRecipientData {
     fn as_ref(&self) -> &DestinationKind {
+        &self.0
+    }
+}
+
+impl std::ops::Deref for FullRecipientData {
+    type Target = Destination<Store>;
+    fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
@@ -764,7 +771,7 @@ mod test {
                 privacy_mode: PrivacyMode::AllExcept,
                 name: "".to_owned(),
                 allow_replies: false,
-                members: vec![CONTACT_RECIPIENT.clone()]
+                members: vec![CONTACT_RECIPIENT.clone()].into()
             }))
         );
     }

@@ -61,7 +61,7 @@ fn can_serialize_binary_proto(input: Fixture<Vec<u8>>) {
     // This should not crash.
     println!(
         "{}",
-        serde_json::to_string_pretty(&result).expect("can serialize")
+        libsignal_message_backup::backup::serialize::Backup::from(result).to_string_pretty()
     )
 }
 
