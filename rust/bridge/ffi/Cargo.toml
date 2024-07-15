@@ -18,11 +18,11 @@ crate-type = ["staticlib"]
 # Testing the Swift side of this requires compiling with SIGNAL_MEDIA_SUPPORTED enabled for both Swift and C:
 #     swift test -Xswiftc -DSIGNAL_MEDIA_SUPPORTED -Xcc -DSIGNAL_MEDIA_SUPPORTED
 signal-media = ["libsignal-bridge/signal-media"]
-testing-fns = ["libsignal-bridge/testing-fns"]
+testing-fns = ["libsignal-bridge/testing-fns", "dep:libsignal-bridge-testing"]
 
 [dependencies]
 libsignal-bridge = { path = "../shared", features = ["ffi"] }
-libsignal-bridge-testing = { path = "../shared/testing", features = ["ffi"] }
+libsignal-bridge-testing = { path = "../shared/testing", features = ["ffi"], optional = true }
 libsignal-net = { path = "../../net" }
 libsignal-protocol = { path = "../../protocol" }
 signal-media = { path = "../../media" }

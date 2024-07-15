@@ -8,6 +8,7 @@
 
 use futures_util::FutureExt;
 use libsignal_bridge::ffi::*;
+#[cfg(feature = "testing-fns")]
 #[allow(unused_imports)]
 use libsignal_bridge_testing::*;
 use libsignal_protocol::*;
