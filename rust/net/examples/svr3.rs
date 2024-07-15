@@ -22,9 +22,8 @@ use libsignal_net::enclave::PpssSetup;
 use libsignal_net::env::Svr3Env;
 use libsignal_net::infra::tcp_ssl::DirectConnector;
 use libsignal_net::infra::TransportConnector;
-use libsignal_net::svr3::{
-    simple_svr3_connect, Error, OpaqueMaskedShareSet, Svr3Client as _, Svr3Connect,
-};
+use libsignal_net::svr3::traits::*;
+use libsignal_net::svr3::{Error, OpaqueMaskedShareSet};
 
 #[derive(Parser, Debug)]
 struct Args {
@@ -51,7 +50,7 @@ impl Svr3Connect for Svr3Client {
     async fn connect(
         &self,
     ) -> Result<<Svr3Env as PpssSetup<Stream>>::Connections, libsignal_net::enclave::Error> {
-        simple_svr3_connect(&self.env, &self.auth).await
+        self.env.connect_directly(&self.auth).await
     }
 }
 

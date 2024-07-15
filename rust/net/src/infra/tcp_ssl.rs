@@ -51,7 +51,7 @@ pub struct TcpSslConnectorStream(
     >,
 );
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct DirectConnector {
     pub dns_resolver: DnsResolver,
 }

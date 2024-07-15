@@ -393,17 +393,17 @@ pub struct Svr3Env<'a>(
 
 impl<'a> Svr3Env<'a> {
     #[inline]
-    pub fn sgx(&self) -> &EnclaveEndpoint<'a, Sgx> {
+    pub const fn sgx(&self) -> &EnclaveEndpoint<'a, Sgx> {
         &self.0
     }
 
     #[inline]
-    pub fn nitro(&self) -> &EnclaveEndpoint<'a, Nitro> {
+    pub const fn nitro(&self) -> &EnclaveEndpoint<'a, Nitro> {
         &self.1
     }
 
     #[inline]
-    pub fn tpm2snp(&self) -> &EnclaveEndpoint<'a, Tpm2Snp> {
+    pub const fn tpm2snp(&self) -> &EnclaveEndpoint<'a, Tpm2Snp> {
         &self.2
     }
 }

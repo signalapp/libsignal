@@ -17,9 +17,8 @@ use libsignal_net::auth::Auth;
 use libsignal_net::enclave::{self, PpssSetup};
 use libsignal_net::env::Svr3Env;
 use libsignal_net::infra::ws::DefaultStream;
-use libsignal_net::svr3::{
-    simple_svr3_connect, Error, OpaqueMaskedShareSet, Svr3Client, Svr3Connect,
-};
+use libsignal_net::svr3::traits::*;
+use libsignal_net::svr3::{Error, OpaqueMaskedShareSet};
 use libsignal_svr3::EvaluationResult;
 
 use support::*;
@@ -326,7 +325,7 @@ impl Svr3Connect for Client<'_> {
             log::info!("💤 to avoid throttling...");
             tokio::time::sleep(duration).await;
         }
-        simple_svr3_connect(self.env, &self.auth).await
+        self.env.connect_directly(&self.auth).await
     }
 }
 

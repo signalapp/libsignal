@@ -12,9 +12,8 @@ use rand::rngs::OsRng;
 use libsignal_bridge_macros::{bridge_fn, bridge_io};
 use libsignal_bridge_types::net::Svr3Clients;
 use libsignal_net::auth::Auth;
-use libsignal_net::svr3::{
-    self, migrate_backup, restore_with_fallback, OpaqueMaskedShareSet, Svr3Client as _,
-};
+use libsignal_net::svr3::traits::*;
+use libsignal_net::svr3::{self, migrate_backup, restore_with_fallback, OpaqueMaskedShareSet};
 
 pub use libsignal_bridge_types::net::{ConnectionManager, Environment, TokioAsyncContext};
 
@@ -108,7 +107,7 @@ async fn Svr3Migrate(
 
     let clients = Svr3Clients::new(connection_manager, username, enclave_password);
     let share_set = migrate_backup(
-        (clients.previous, clients.current),
+        (&clients.previous, &clients.current),
         &password,
         secret,
         max_tries.into_inner(),
@@ -134,7 +133,7 @@ async fn Svr3Restore(
     // `DataMissing` error, similarly to how the actual migrated-from environment
     // would.
     let restored_secret = restore_with_fallback(
-        (clients.current, clients.previous),
+        (&clients.current, &clients.previous),
         &password,
         share_set,
         &mut rng,

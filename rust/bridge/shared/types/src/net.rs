@@ -20,9 +20,8 @@ use libsignal_net::infra::tcp_ssl::{
 };
 use libsignal_net::infra::{make_ws_config, EndpointConnection};
 use libsignal_net::svr::SvrConnection;
-use libsignal_net::svr3::{
-    Error, OpaqueMaskedShareSet, Svr3Client as Svr3ClientTrait, Svr3Connect,
-};
+use libsignal_net::svr3::traits::*;
+use libsignal_net::svr3::{Error, OpaqueMaskedShareSet};
 use libsignal_net::timeouts::ONE_ROUTE_CONNECTION_TIMEOUT;
 use libsignal_svr3::EvaluationResult;
 use std::marker::PhantomData;
@@ -219,7 +218,7 @@ impl<'a> Svr3Connect for Svr3Client<'a, CurrentVersion> {
 }
 
 #[async_trait]
-impl<'a> Svr3ClientTrait for Svr3Client<'a, PreviousVersion> {
+impl<'a> Backup for Svr3Client<'a, PreviousVersion> {
     async fn backup(
         &self,
         _password: &str,
@@ -229,7 +228,10 @@ impl<'a> Svr3ClientTrait for Svr3Client<'a, PreviousVersion> {
     ) -> Result<OpaqueMaskedShareSet, Error> {
         empty_env::backup().await
     }
+}
 
+#[async_trait]
+impl<'a> Restore for Svr3Client<'a, PreviousVersion> {
     async fn restore(
         &self,
         _password: &str,
@@ -238,11 +240,17 @@ impl<'a> Svr3ClientTrait for Svr3Client<'a, PreviousVersion> {
     ) -> Result<EvaluationResult, Error> {
         empty_env::restore().await
     }
+}
 
+#[async_trait]
+impl<'a> Remove for Svr3Client<'a, PreviousVersion> {
     async fn remove(&self) -> Result<(), Error> {
         empty_env::remove().await
     }
+}
 
+#[async_trait]
+impl<'a> Query for Svr3Client<'a, PreviousVersion> {
     async fn query(&self) -> Result<u32, Error> {
         empty_env::query().await
     }
@@ -251,7 +259,7 @@ impl<'a> Svr3ClientTrait for Svr3Client<'a, PreviousVersion> {
 // These functions define the behavior of the empty `PreviousVersion`
 // when there is no migration going on.
 // When there _is_ migration both current and previous clients should instead
-// implement `Svr3Connect` and use the blanket implementation of `Svr3Client`.
+// implement `Svr3Connect` and use the blanket implementations of the traits.
 mod empty_env {
     use super::*;
 

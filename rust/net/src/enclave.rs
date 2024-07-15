@@ -44,7 +44,7 @@ impl<'a> AsRaftConfig<'a> for &'a RaftConfig {
 }
 
 pub trait EnclaveKind {
-    type RaftConfigType: AsRaftConfig<'static> + Clone + Sync;
+    type RaftConfigType: AsRaftConfig<'static> + Clone + Sync + Send;
     fn url_path(enclave: &[u8]) -> PathAndQuery;
 }
 
