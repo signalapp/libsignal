@@ -63,6 +63,15 @@ class MessageBackupTests: TestCaseBase {
         }
     }
 
+    func testComparableBackup() throws {
+        let bytes = readResource(forName: "canonical-backup.binproto")
+        let backup = try ComparableBackup(purpose: .remoteBackup, length: UInt64(bytes.count), stream: SignalInputStreamAdapter(bytes))
+        let comparableString = backup.comparableString()
+
+        let expected = String(decoding: readResource(forName: "canonical-backup.expected.json"), as: UTF8.self)
+        XCTAssertEqual(comparableString, expected)
+    }
+
     static func validateBackup(bytes: some Collection<UInt8>) throws -> MessageBackupUnknownFields {
         try validateMessageBackup(key: MessageBackupKey.testKey(), purpose: .remoteBackup, length: UInt64(bytes.count), makeStream: { SignalInputStreamAdapter(bytes) })
     }

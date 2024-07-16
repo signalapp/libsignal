@@ -542,6 +542,38 @@ impl SignalNodeError for CancellationError {
     }
 }
 
+impl SignalNodeError for libsignal_message_backup::ReadError {
+    fn throw<'a>(
+        self,
+        cx: &mut impl Context<'a>,
+        module: Handle<'a, JsObject>,
+        operation_name: &str,
+    ) -> JsResult<'a, JsValue> {
+        let libsignal_message_backup::ReadError {
+            error,
+            found_unknown_fields,
+        } = self;
+        let message = error.to_string();
+        let props = cx.empty_object();
+        let unknown_field_messages = found_unknown_fields.convert_into(cx)?;
+        props.set(cx, "unknownFields", unknown_field_messages)?;
+        match new_js_error(
+            cx,
+            module,
+            Some("BackupValidation"),
+            &message,
+            operation_name,
+            Some(props),
+        ) {
+            Some(error) => cx.throw(error),
+            None => {
+                // Make sure we still throw something.
+                cx.throw_error(&message)
+            }
+        }
+    }
+}
+
 /// Represents an error returned by a callback.
 #[derive(Debug)]
 struct CallbackError {

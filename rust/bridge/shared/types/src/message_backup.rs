@@ -58,5 +58,11 @@ pub struct MessageBackupValidationOutcome {
     pub error_message: Option<String>,
     pub found_unknown_fields: Vec<FoundUnknownField>,
 }
-#[cfg(feature = "ffi")]
-ffi_bridge_as_handle!(MessageBackupValidationOutcome);
+bridge_as_handle!(MessageBackupValidationOutcome, jni = false, node = false);
+
+pub struct ComparableBackup {
+    pub backup: libsignal_message_backup::backup::serialize::Backup,
+    pub found_unknown_fields: Vec<FoundUnknownField>,
+}
+
+bridge_as_handle!(ComparableBackup);

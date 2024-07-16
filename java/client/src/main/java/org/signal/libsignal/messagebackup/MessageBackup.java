@@ -33,14 +33,8 @@ public class MessageBackup {
 
   public static enum Purpose {
     // This needs to be kept in sync with the corresponding Rust enum.
-    DEVICE_TRANSFER(0),
-    REMOTE_BACKUP(1);
-
-    private final int value;
-
-    private Purpose(int value) {
-      this.value = value;
-    }
+    DEVICE_TRANSFER,
+    REMOTE_BACKUP,
   }
 
   /**
@@ -71,7 +65,7 @@ public class MessageBackup {
               ValidationError.class,
               () ->
                   Native.MessageBackupValidator_Validate(
-                      keyGuard.nativeHandle(), first, second, streamLength, purpose.value));
+                      keyGuard.nativeHandle(), first, second, streamLength, purpose.ordinal()));
 
       // Rust conversion code is generating an instance of this class.
       @SuppressWarnings("unchecked")

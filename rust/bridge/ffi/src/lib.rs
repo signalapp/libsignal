@@ -154,6 +154,27 @@ pub unsafe extern "C" fn signal_error_get_tries_remaining(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn signal_error_get_unknown_fields(
+    err: *const SignalFfiError,
+    out: *mut StringArray,
+) -> *mut SignalFfiError {
+    let err = AssertUnwindSafe(err);
+    run_ffi_safe(|| {
+        let err = err.as_ref().ok_or(NullPointerError)?;
+        let value = err
+            .provide_unknown_fields()
+            .map_err(|_| {
+                SignalProtocolError::InvalidArgument(format!(
+                    "cannot get unknown_fields from error ({})",
+                    err
+                ))
+            })?
+            .into_boxed_slice();
+        write_result_to(out, value)
+    })
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn signal_error_free(err: *mut SignalFfiError) {
     if !err.is_null() {
         let _boxed_err = Box::from_raw(err);

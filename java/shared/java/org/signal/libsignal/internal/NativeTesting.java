@@ -44,5 +44,10 @@ public final class NativeTesting {
 
   private NativeTesting() {}
 
+  public static native void ComparableBackup_Destroy(long handle);
+  public static native String ComparableBackup_GetComparableString(long backup);
+  public static native Object[] ComparableBackup_GetUnknownFields(long backup);
+  public static native long ComparableBackup_ReadUnencrypted(InputStream stream, long len, int purpose) throws Exception;
+
   public static native int test_only_fn_returns_123();
 }

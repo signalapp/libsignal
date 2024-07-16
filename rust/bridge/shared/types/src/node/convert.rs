@@ -16,6 +16,7 @@ use std::ops::{Deref, DerefMut, RangeInclusive};
 use std::slice;
 
 use crate::io::{InputStream, SyncInputStream};
+use crate::message_backup::MessageBackupValidationOutcome;
 use crate::net::chat::{MakeChatListener, ResponseAndDebugInfo};
 use crate::node::chat::NodeMakeChatListener;
 use crate::support::{extend_lifetime, Array, AsType, FixedLengthBincodeSerializable, Serialized};
@@ -889,7 +890,7 @@ impl<'a> ResultTypeInfo<'a> for () {
     }
 }
 
-impl<'a> ResultTypeInfo<'a> for crate::message_backup::MessageBackupValidationOutcome {
+impl<'a> ResultTypeInfo<'a> for MessageBackupValidationOutcome {
     type ResultType = JsObject;
 
     fn convert_into(self, cx: &mut impl Context<'a>) -> JsResult<'a, Self::ResultType> {
@@ -898,14 +899,21 @@ impl<'a> ResultTypeInfo<'a> for crate::message_backup::MessageBackupValidationOu
             found_unknown_fields,
         } = self;
         let error_message = error_message.convert_into(cx)?;
-        let unknown_field_messages =
-            make_array(cx, found_unknown_fields.into_iter().map(|s| s.to_string()))?;
+        let unknown_field_messages = found_unknown_fields.as_slice().convert_into(cx)?;
 
         let obj = JsObject::new(cx);
         obj.set(cx, "errorMessage", error_message)?;
         obj.set(cx, "unknownFieldMessages", unknown_field_messages)?;
 
         Ok(obj)
+    }
+}
+
+impl<'a> ResultTypeInfo<'a> for &[libsignal_message_backup::FoundUnknownField] {
+    type ResultType = JsArray;
+
+    fn convert_into(self, cx: &mut impl Context<'a>) -> JsResult<'a, Self::ResultType> {
+        make_array(cx, self.iter().map(ToString::to_string))
     }
 }
 
@@ -1454,7 +1462,7 @@ pub fn clone_from_array_of_wrappers<'a, T: BridgeHandle<Strategy = Mutable<T>> +
 #[macro_export]
 macro_rules! node_bridge_as_handle {
     ( $typ:ty as false $(, $($_:tt)*)? ) => {};
-    ( $typ:ty as $node_name:ident ) => {
+    ( $typ:ty as $node_name:ident $(, mut = false)? ) => {
         ::paste::paste! {
             #[doc = "ts: interface " $typ " { readonly __type: unique symbol; }"]
             impl node::BridgeHandle for $typ {

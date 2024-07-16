@@ -16,6 +16,16 @@ SPDX-License-Identifier: AGPL-3.0-only
 #include <stdlib.h>
 #include "signal_ffi.h"
 
+typedef struct SignalComparableBackup SignalComparableBackup;
+
 SignalFfiError *signal_test_only_fn_returns_123(uint32_t *out);
+
+SignalFfiError *signal_comparable_backup_destroy(SignalComparableBackup *p);
+
+SignalFfiError *signal_comparable_backup_read_unencrypted(SignalComparableBackup **out, const SignalInputStream *stream, uint64_t len, uint8_t purpose);
+
+SignalFfiError *signal_comparable_backup_get_comparable_string(const char **out, const SignalComparableBackup *backup);
+
+SignalFfiError *signal_comparable_backup_get_unknown_fields(SignalStringArray *out, const SignalComparableBackup *backup);
 
 #endif /* SIGNAL_FFI_TESTING_H_ */

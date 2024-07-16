@@ -13,12 +13,14 @@ license = "AGPL-3.0-only"
 [dependencies]
 libsignal-bridge-macros = { path = "../macros" }
 libsignal-bridge-types = { path = "../types" }
-libsignal-message-backup = { path = "../../../message-backup" }
+libsignal-message-backup = { path = "../../../message-backup", features = ["json"] }
 
+displaydoc = "0.2"
 futures-util = "0.3.7"
 paste = "1.0"
 scopeguard = "1.0"
 thiserror = "1.0.50"
+tokio = "1"
 
 jni = { version = "0.21", package = "jni", optional = true }
 linkme = { version = "0.3.9", optional = true }
@@ -29,5 +31,5 @@ strum = { version = "0.26", features = ["derive"] }
 [features]
 ffi = ["libsignal-bridge-types/ffi"]
 jni = ["dep:jni", "libsignal-bridge-types/jni"]
-node = ["dep:linkme", "libsignal-bridge-types/node"]
+node = ["dep:linkme", "dep:neon", "libsignal-bridge-types/node"]
 signal-media = ["libsignal-bridge-types/signal-media"]

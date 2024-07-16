@@ -101,6 +101,8 @@ pub enum SignalErrorCode {
 
     AppExpired = 160,
     DeviceDeregistered = 161,
+
+    BackupValidation = 170,
 }
 
 pub trait UpcastAsAny {
@@ -129,6 +131,9 @@ pub trait FfiError: UpcastAsAny + fmt::Debug + Send + 'static {
         Err(WrongErrorKind)
     }
     fn provide_tries_remaining(&self) -> Result<u32, WrongErrorKind> {
+        Err(WrongErrorKind)
+    }
+    fn provide_unknown_fields(&self) -> Result<Vec<String>, WrongErrorKind> {
         Err(WrongErrorKind)
     }
 }
@@ -624,6 +629,24 @@ impl FfiError for signal_media::sanitize::webp::Error {
                 }
             },
         }
+    }
+}
+
+impl FfiError for libsignal_message_backup::ReadError {
+    fn describe(&self) -> String {
+        self.to_string()
+    }
+
+    fn code(&self) -> SignalErrorCode {
+        SignalErrorCode::BackupValidation
+    }
+
+    fn provide_unknown_fields(&self) -> Result<Vec<String>, WrongErrorKind> {
+        Ok(self
+            .found_unknown_fields
+            .iter()
+            .map(ToString::to_string)
+            .collect())
     }
 }
 

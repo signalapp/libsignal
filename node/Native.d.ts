@@ -192,6 +192,9 @@ export function ChatService_unauth_send_and_debug(asyncRuntime: Wrapper<TokioAsy
 export function CiphertextMessage_FromPlaintextContent(m: Wrapper<PlaintextContent>): CiphertextMessage;
 export function CiphertextMessage_Serialize(obj: Wrapper<CiphertextMessage>): Buffer;
 export function CiphertextMessage_Type(msg: Wrapper<CiphertextMessage>): number;
+export function ComparableBackup_GetComparableString(backup: Wrapper<ComparableBackup>): string;
+export function ComparableBackup_GetUnknownFields(backup: Wrapper<ComparableBackup>): string[];
+export function ComparableBackup_ReadUnencrypted(stream: InputStream, len: bigint, purpose: number): Promise<ComparableBackup>;
 export function ConnectionManager_clear_proxy(connectionManager: Wrapper<ConnectionManager>): void;
 export function ConnectionManager_new(environment: number, userAgent: string): ConnectionManager;
 export function ConnectionManager_set_ipv6_enabled(connectionManager: Wrapper<ConnectionManager>, ipv6Enabled: boolean): void;
@@ -553,6 +556,8 @@ interface Aes256GcmSiv { readonly __type: unique symbol; }
 interface CdsiLookup { readonly __type: unique symbol; }
 interface Chat { readonly __type: unique symbol; }
 interface CiphertextMessage { readonly __type: unique symbol; }
+interface ComparableBackup { readonly __type: unique symbol; }
+interface ComparableBackup { readonly __type: unique symbol; }
 interface ConnectionManager { readonly __type: unique symbol; }
 interface DecryptionErrorMessage { readonly __type: unique symbol; }
 interface ExpiringProfileKeyCredential { readonly __type: unique symbol; }

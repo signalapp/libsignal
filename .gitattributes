@@ -5,3 +5,6 @@ acknowledgments/acknowledgments.*.hbs merge text=auto
 # Treat encrypted and unencrypted message backup files as binary
 **/*.binproto binary
 **/*.binproto.encrypted binary
+
+# Avoid Windows line-endings for files compared literally.
+**/*.expected.json text eol=lf

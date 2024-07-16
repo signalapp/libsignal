@@ -60,3 +60,25 @@ describe('MessageBackup', () => {
     });
   });
 });
+
+describe('ComparableBackup', () => {
+  describe('exampleBackup', () => {
+    const input = fs.readFileSync(
+      path.join(__dirname, '../../ts/test/canonical-backup.binproto')
+    );
+
+    it('stringifies to the expected value', async () => {
+      const comparable = await MessageBackup.ComparableBackup.fromUnencrypted(
+        MessageBackup.Purpose.RemoteBackup,
+        new Uint8ArrayInputStream(input),
+        BigInt(input.length)
+      );
+
+      const expectedOutput = fs.readFileSync(
+        path.join(__dirname, '../../ts/test/canonical-backup.expected.json')
+      );
+      const output = comparable.comparableString();
+      assert.equal(output, new String(expectedOutput));
+    });
+  });
+});

@@ -2011,6 +2011,7 @@ dependencies = [
 name = "libsignal-bridge-testing"
 version = "0.1.0"
 dependencies = [
+ "displaydoc",
  "futures-util",
  "jni 0.21.1",
  "libsignal-bridge-macros",
@@ -2023,6 +2024,7 @@ dependencies = [
  "signal-neon-futures",
  "strum",
  "thiserror",
+ "tokio",
 ]
 
 [[package]]

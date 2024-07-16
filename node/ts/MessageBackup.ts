@@ -99,3 +99,68 @@ export async function validate(
     )
   );
 }
+
+/**
+ * An in-memory representation of a backup file used to compare contents.
+ *
+ * When comparing the contents of two backups:
+ *   1. Create a `ComparableBackup` instance for each of the inputs.
+ *   2. Check the `unknownFields()` value; if it's not empty, some parts of the
+ *      backup weren't parsed and won't be compared.
+ *   3. Produce a canonical string for each backup with `comparableString()`.
+ *   4. Compare the canonical string representations.
+ *
+ * The diff of the canonical strings (which may be rather large) will show the
+ * differences between the logical content of the input backup files.
+ */
+export class ComparableBackup {
+  readonly _nativeHandle: Native.ComparableBackup;
+  constructor(handle: Native.ComparableBackup) {
+    this._nativeHandle = handle;
+  }
+
+  /**
+   * Read an unencrypted backup file into memory for comparison.
+   *
+   * @param purpose Whether the backup is intended for device-to-device transfer or remote storage.
+   * @param input An input stream that reads the backup contents.
+   * @param length The exact length of the input stream.
+   * @returns The in-memory representation.
+   * @throws BackupValidationError If an IO error occurs or the input is invalid.
+   */
+  public static async fromUnencrypted(
+    purpose: Purpose,
+    input: InputStream,
+    length: bigint
+  ): Promise<ComparableBackup> {
+    const handle = await Native.ComparableBackup_ReadUnencrypted(
+      input,
+      length,
+      purpose
+    );
+    return new ComparableBackup(handle);
+  }
+
+  /**
+   * Produces a string representation of the contents.
+   *
+   * The returned strings for two backups will be equal if the backups contain
+   * the same logical content. If two backups' strings are not equal, the diff
+   * will show what is different between them.
+   *
+   * @returns a canonical string representation of the backup
+   */
+  public comparableString(): string {
+    return Native.ComparableBackup_GetComparableString(this);
+  }
+
+  /**
+   * Unrecognized protobuf fields present in the backup.
+   *
+   * If this is not empty, some parts of the backup were not recognized and
+   * won't be present in the string representation.
+   */
+  public get unknownFields(): Array<string> {
+    return Native.ComparableBackup_GetUnknownFields(this);
+  }
+}

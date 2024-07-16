@@ -17,3 +17,5 @@ pub use libsignal_bridge_types::node;
 pub fn test_only_fn_returns_123() -> u32 {
     123
 }
+
+pub mod message_backup;

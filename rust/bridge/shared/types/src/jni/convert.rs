@@ -1456,6 +1456,9 @@ macro_rules! jni_result_type {
     (MessageBackupValidationOutcome) => {
         ::jni::objects::JObject<'local>
     };
+    (MessageBackupReadOutcome) => {
+        ::jni::objects::JObject<'local>
+    };
     (LookupResponse) => {
         ::jni::objects::JObject<'local>
     };

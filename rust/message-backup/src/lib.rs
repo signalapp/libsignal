@@ -57,6 +57,30 @@ pub struct ReadResult<B> {
     pub found_unknown_fields: Vec<FoundUnknownField>,
 }
 
+#[derive(Debug, thiserror::Error)]
+#[must_use]
+pub struct ReadError {
+    pub error: Error,
+    pub found_unknown_fields: Vec<FoundUnknownField>,
+}
+
+impl std::fmt::Display for ReadError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self {
+            error,
+            found_unknown_fields,
+        } = self;
+        write!(f, "{error} (with ")?;
+        if found_unknown_fields.is_empty() {
+            write!(f, "no unknown fields")?;
+        } else {
+            write!(f, "unknown fields: ")?;
+            f.debug_list().entries(found_unknown_fields).finish()?;
+        }
+        write!(f, ")")
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct FoundUnknownField {
     pub frame_index: usize,

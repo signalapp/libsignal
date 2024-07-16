@@ -196,6 +196,7 @@ typedef enum {
   SignalErrorCodeSvrRestoreFailed = 151,
   SignalErrorCodeAppExpired = 160,
   SignalErrorCodeDeviceDeregistered = 161,
+  SignalErrorCodeBackupValidation = 170,
 } SignalErrorCode;
 
 /**
@@ -375,6 +376,8 @@ typedef struct {
   SignalOwnedBuffer bytes;
   SignalOwnedBufferOfusize lengths;
 } SignalBytestringArray;
+
+typedef SignalBytestringArray SignalStringArray;
 
 typedef struct {
   const unsigned char *base;
@@ -660,8 +663,6 @@ typedef struct {
 
 typedef SignalFfiChatListenerStruct SignalFfiMakeChatListenerStruct;
 
-typedef SignalBytestringArray SignalStringArray;
-
 typedef int (*SignalRead)(void *ctx, uint8_t *buf, size_t buf_len, size_t *amount_read);
 
 typedef int (*SignalSkip)(void *ctx, uint64_t amount);
@@ -759,6 +760,8 @@ uint32_t signal_error_get_type(const SignalFfiError *err);
 SignalFfiError *signal_error_get_retry_after_seconds(const SignalFfiError *err, uint32_t *out);
 
 SignalFfiError *signal_error_get_tries_remaining(const SignalFfiError *err, uint32_t *out);
+
+SignalFfiError *signal_error_get_unknown_fields(const SignalFfiError *err, SignalStringArray *out);
 
 void signal_error_free(SignalFfiError *err);
 

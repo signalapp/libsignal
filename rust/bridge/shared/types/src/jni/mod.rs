@@ -321,6 +321,33 @@ impl<'env> ConsumableException<'env> {
                 };
             }
 
+            SignalJniError::BackupValidation(ref err) => {
+                // TODO replace with try block once that is stabilized.
+                let throwable = (|| {
+                    let libsignal_message_backup::ReadError {
+                        error,
+                        found_unknown_fields,
+                    } = err;
+
+                    let message = error.to_string().convert_into(env)?;
+                    let found_unknown_fields = found_unknown_fields
+                        .iter()
+                        .map(|field| field.to_string())
+                        .collect::<Vec<_>>()
+                        .into_boxed_slice()
+                        .convert_into(env)?;
+                    new_instance(
+                        env,
+                        ClassName("org.signal.libsignal.messagebackup.ValidationError"),
+                        jni_args!((message => java.lang.String, found_unknown_fields => [java.lang.String]) -> void),
+                    )
+                })();
+                return ConsumableException {
+                    throwable: throwable.map(Into::into),
+                    error: error.into(),
+                };
+            }
+
             SignalJniError::Bridge(BridgeLayerError::NullPointer(_)) => {
                 (ClassName("java.lang.NullPointerException"), error)
             }

@@ -51,6 +51,8 @@ export enum ErrorCode {
   AppExpired,
   DeviceDelinked,
 
+  BackupValidation,
+
   Cancelled,
 }
 
@@ -238,6 +240,11 @@ export type SvrRequestFailedError = LibSignalErrorCommon & {
 export type SvrRestoreFailedError = LibSignalErrorCommon & {
   code: ErrorCode.SvrRestoreFailed;
   readonly triesRemaining: number;
+};
+
+export type BackupValidationError = LibSignalErrorCommon & {
+  code: ErrorCode.BackupValidation;
+  readonly unknownFields: ReadonlyArray<string>;
 };
 
 export type CancellationError = LibSignalErrorCommon & {
