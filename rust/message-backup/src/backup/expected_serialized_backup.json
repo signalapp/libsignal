@@ -45,7 +45,8 @@
               "color": 123456
             }
           }
-        }
+        },
+        "dim_wallpaper_in_dark_mode": true
       },
       "custom_chat_colors": [
         [

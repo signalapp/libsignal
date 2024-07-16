@@ -63,7 +63,7 @@ message AccountData {
     bool linkPreviews = 4;
     bool notDiscoverableByPhoneNumber = 5;
     bool preferContactAvatars = 6;
-    uint32 universalExpireTimer = 7; // 0 means no universal expire timer.
+    uint32 universalExpireTimerSeconds = 7; // 0 means no universal expire timer.
     repeated string preferredReactionEmoji = 8;
     bool displayBadgesOnProfile = 9;
     bool keepMutedChatsArchived = 10;
@@ -565,7 +565,7 @@ message FilePointer {
     optional uint32 cdnNumber = 2;
     bytes key = 3;
     bytes digest = 4;
-    uint32 size = 5;
+    uint64 size = 5;
     // Fallback in case backup tier upload failed.
     optional string transitCdnKey = 6;
     optional uint32 transitCdnNumber = 7;
@@ -757,7 +757,7 @@ message SimpleChatUpdate {
 // For 1:1 chat updates only.
 // For group thread updates use GroupExpirationTimerUpdate.
 message ExpirationTimerChatUpdate {
-  uint32 expiresInMs = 1; // 0 means the expiration timer was disabled
+  uint64 expiresInMs = 1; // 0 means the expiration timer was disabled
 }
 
 message ProfileChangeChatUpdate {
@@ -1023,7 +1023,7 @@ message GroupV2MigrationDroppedMembersUpdate {
 
 // For 1:1 timer updates, use ExpirationTimerChatUpdate.
 message GroupExpirationTimerUpdate {
-  uint32 expiresInMs = 1; // 0 means the expiration timer was disabled
+  uint64 expiresInMs = 1; // 0 means the expiration timer was disabled
   optional bytes updaterAci = 2;
 }
 
@@ -1035,7 +1035,7 @@ message StickerPack {
 message ChatStyle {
   message Gradient {
     uint32 angle = 1; // degrees
-    repeated uint32 colors = 2;
+    repeated fixed32 colors = 2;
     repeated float positions = 3; // percent from 0 to 1
   }
 
@@ -1043,7 +1043,7 @@ message ChatStyle {
     uint32 id = 1;
 
     oneof color {
-      uint32 solid = 2;
+      fixed32 solid = 2;
       Gradient gradient = 3;
     }
   }
@@ -1116,4 +1116,6 @@ message ChatStyle {
     // See AccountSettings.customChatColors
     uint32 customColorId = 5;
   }
+
+  bool dimWallpaperInDarkMode = 7;
 }

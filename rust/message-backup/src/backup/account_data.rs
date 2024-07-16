@@ -294,7 +294,7 @@ impl<M: Method + ReferencedTypes> TryFrom<proto::account_data::AccountSettings>
             storyViewReceiptsEnabled,
             hasSeenGroupStoryEducationSheet,
             hasCompletedUsernameOnboarding,
-            universalExpireTimer,
+            universalExpireTimerSeconds,
             preferredReactionEmoji,
             defaultChatStyle,
             customChatColors,
@@ -317,8 +317,8 @@ impl<M: Method + ReferencedTypes> TryFrom<proto::account_data::AccountSettings>
             .map(|style| style.try_into_with(&custom_chat_colors))
             .transpose()?;
 
-        let universal_expire_timer =
-            NonZeroU32::new(universalExpireTimer).map(|d| Duration::from_millis(d.get().into()));
+        let universal_expire_timer = NonZeroU32::new(universalExpireTimerSeconds)
+            .map(|seconds| Duration::from_millis(1000 * u64::from(seconds.get())));
 
         Ok(Self {
             phone_number_sharing: M::value(phone_number_sharing),
@@ -393,6 +393,7 @@ mod test {
                         FAKE_CUSTOM_COLOR_ID.0,
                     )),
                     wallpaper: None,
+                    dimWallpaperInDarkMode: true,
                     special_fields: Default::default(),
                 })
                 .into(),
@@ -450,6 +451,7 @@ mod test {
                     default_chat_style: Some(ChatStyle {
                         wallpaper: None,
                         bubble_color: BubbleColor::Custom(FAKE_CUSTOM_COLOR.clone()),
+                        dim_wallpaper_in_dark_mode: true,
                     }),
                     read_receipts: false,
                     sealed_sender_indicators: false,

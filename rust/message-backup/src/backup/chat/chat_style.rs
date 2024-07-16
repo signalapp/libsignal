@@ -17,6 +17,7 @@ use crate::proto::backup as proto;
 pub struct ChatStyle<M: ReferencedTypes> {
     pub wallpaper: Option<Wallpaper>,
     pub bubble_color: BubbleColor<M::CustomColorReference>,
+    pub dim_wallpaper_in_dark_mode: bool,
 }
 
 #[derive(Debug, serde::Serialize)]
@@ -154,6 +155,7 @@ impl<C: Lookup<CustomColorId, M::CustomColorReference>, M: ReferencedTypes>
         let proto::ChatStyle {
             wallpaper,
             bubbleColor,
+            dimWallpaperInDarkMode,
             special_fields: _,
         } = value;
 
@@ -166,6 +168,7 @@ impl<C: Lookup<CustomColorId, M::CustomColorReference>, M: ReferencedTypes>
         Ok(Self {
             wallpaper,
             bubble_color,
+            dim_wallpaper_in_dark_mode: dimWallpaperInDarkMode,
         })
     }
 }
@@ -368,6 +371,7 @@ mod test {
                 bubbleColor: Some(proto::chat_style::BubbleColor::AutoBubbleColor(
                     Default::default(),
                 )),
+                dimWallpaperInDarkMode: true,
                 special_fields: Default::default(),
             }
         }
@@ -418,6 +422,7 @@ mod test {
                     enum_value: proto::chat_style::WallpaperPreset::GRADIENT_AQUA
                 })),
                 bubble_color: BubbleColor::Auto,
+                dim_wallpaper_in_dark_mode: true,
             })
         )
     }

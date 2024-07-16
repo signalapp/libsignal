@@ -377,9 +377,9 @@ impl ValidateFrom<Vec<proto::group_invitation_revoked_update::Invitee>> for Vec<
     }
 }
 
-impl ValidateFrom<u32> for Duration {
-    fn validate_from(value: u32) -> Result<Self, GroupUpdateFieldError> {
-        Ok(Self::from_millis(value.into()))
+impl ValidateFrom<u64> for Duration {
+    fn validate_from(value: u64) -> Result<Self, GroupUpdateFieldError> {
+        Ok(Self::from_millis(value))
     }
 }
 

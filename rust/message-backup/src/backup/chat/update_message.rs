@@ -117,7 +117,7 @@ impl<C: Lookup<RecipientId, R>, R: Clone> TryFromWith<proto::ChatUpdateMessage, 
                 expiresInMs,
                 special_fields: _,
             }) => UpdateMessage::ExpirationTimerChange {
-                expires_in: Duration::from_millis(expiresInMs.into()),
+                expires_in: Duration::from_millis(expiresInMs),
             },
             Update::ProfileChange(proto::ProfileChangeChatUpdate {
                 previousName,
