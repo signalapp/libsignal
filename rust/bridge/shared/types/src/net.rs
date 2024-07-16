@@ -4,9 +4,12 @@
 //
 
 use crate::*;
+
 use aes_gcm_siv::aead::rand_core::CryptoRngCore;
 use async_trait::async_trait;
+use futures_util::future::join3;
 use http::uri::PathAndQuery;
+
 use libsignal_net::auth::Auth;
 use libsignal_net::enclave::{
     Cdsi, EnclaveEndpoint, EnclaveEndpointConnection, EnclaveKind, Nitro, PpssSetup, Sgx, Tpm2Snp,
@@ -207,13 +210,13 @@ impl<'a> Svr3Connect for Svr3Client<'a, CurrentVersion> {
             ..
         } = &self.connection_manager;
         let transport_connector = transport_connector.lock().expect("not poisoned").clone();
-        let sgx =
-            SvrConnection::connect(self.auth.clone(), sgx, transport_connector.clone()).await?;
-        let nitro =
-            SvrConnection::connect(self.auth.clone(), nitro, transport_connector.clone()).await?;
-        let tpm2snp =
-            SvrConnection::connect(self.auth.clone(), tpm2snp, transport_connector).await?;
-        Ok((sgx, nitro, tpm2snp))
+        let (sgx, nitro, tpm2snp) = join3(
+            SvrConnection::connect(self.auth.clone(), sgx, transport_connector.clone()),
+            SvrConnection::connect(self.auth.clone(), nitro, transport_connector.clone()),
+            SvrConnection::connect(self.auth.clone(), tpm2snp, transport_connector),
+        )
+        .await;
+        Ok((sgx?, nitro?, tpm2snp?))
     }
 }
 
