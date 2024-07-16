@@ -1,1 +1,1 @@
-../../../../java/client/src/test/resources/org/signal/libsignal/messagebackup/canonical-backup.expected.json
+../../../../rust/message-backup/tests/res/canonical-backup.expected.json

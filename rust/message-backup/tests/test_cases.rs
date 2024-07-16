@@ -65,6 +65,21 @@ fn can_serialize_binary_proto(input: Fixture<Vec<u8>>) {
     )
 }
 
+#[test]
+fn serialized_account_settings_is_valid() {
+    let binproto = include_bytes!("res/canonical-backup.binproto");
+    let expected_canonical_str = include_str!("res/canonical-backup.expected.json");
+
+    let input = Cursor::new(binproto);
+    let reader = BackupReader::new_unencrypted(input, BACKUP_PURPOSE);
+    let result = futures::executor::block_on(reader.read_all())
+        .result
+        .expect("valid backup");
+    let canonical_repr =
+        libsignal_message_backup::backup::serialize::Backup::from(result).to_string_pretty();
+    pretty_assertions::assert_str_eq!(canonical_repr, expected_canonical_str)
+}
+
 const ENCRYPTED_SOURCE_SUFFIX: &str = ".source.jsonproto";
 #[dir_test(
         dir: "$CARGO_MANIFEST_DIR/tests/res/test-cases",

@@ -1,0 +1,61 @@
+{
+  "meta": {
+    "version": 1,
+    "backup_time": {
+      "secs_since_epoch": 1715636551,
+      "nanos_since_epoch": 0
+    },
+    "purpose": "RemoteBackup"
+  },
+  "account_data": {
+    "profile_key": "610291abedc34249489da39a31c9a5cd99cdd26ff58732e268e357ee0075d9d8",
+    "username": {
+      "username": "boba_fett.66",
+      "link": {
+        "color": "OLIVE",
+        "entropy": "65675c73d00eb01005e3bb7c4a47f296cb6554f78981238815e915d824fd2e93",
+        "server_id": "61c101a2-00d5-4217-89c2-0518d8497af0"
+      }
+    },
+    "given_name": "Boba",
+    "family_name": "Fett",
+    "account_settings": {
+      "phone_number_sharing": "WithNobody",
+      "read_receipts": true,
+      "sealed_sender_indicators": true,
+      "typing_indicators": true,
+      "link_previews": false,
+      "not_discoverable_by_phone_number": true,
+      "prefer_contact_avatars": true,
+      "display_badges_on_profile": true,
+      "keep_muted_chats_archived": true,
+      "has_set_my_stories_privacy": true,
+      "has_viewed_onboarding_story": true,
+      "stories_disabled": true,
+      "story_view_receipts_enabled": true,
+      "has_seen_group_story_education_sheet": true,
+      "has_completed_username_onboarding": true,
+      "universal_expire_timer": {
+        "secs": 3600,
+        "nanos": 0
+      },
+      "preferred_reaction_emoji": [
+        "🏎️"
+      ],
+      "default_chat_style": null,
+      "custom_chat_colors": []
+    },
+    "avatar_url_path": "",
+    "donation_subscription": {
+      "subscriber_id": "ecbb68c734331a2ea333cda747c98c4553652261582b4fce5ae0dea84dce6519",
+      "currency_code": "USD",
+      "manually_canceled": true
+    },
+    "backup_subscription": null
+  },
+  "recipients": [],
+  "chats": [],
+  "ad_hoc_calls": [],
+  "pinned_chats": [],
+  "sticker_packs": []
+}
