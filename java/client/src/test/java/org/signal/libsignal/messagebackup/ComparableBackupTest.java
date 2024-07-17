@@ -10,6 +10,7 @@ import static org.junit.Assert.assertEquals;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import org.junit.Test;
 import org.signal.libsignal.util.ResourceReader;
 
@@ -39,6 +40,7 @@ public class ComparableBackupTest {
         new String(
             ComparableBackupTest.class
                 .getResourceAsStream(CANONICAL_BACKUP_STRING_NAME)
-                .readAllBytes()));
+                .readAllBytes(),
+            StandardCharsets.UTF_8));
   }
 }
