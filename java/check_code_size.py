@@ -5,8 +5,9 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 #
 
-import os
+import glob
 import json
+import os
 import subprocess
 import sys
 
@@ -18,6 +19,19 @@ def warn(message: str) -> None:
         print("::warning ::" + message)
     else:
         print("warning: " + message, file=sys.stderr)
+
+
+def measure_stripped_library_size(lib_path: str) -> int:
+    ndk_home = os.environ.get('ANDROID_NDK_HOME')
+    if not ndk_home:
+        raise Exception("must set ANDROID_NDK_HOME to an Android NDK to run this script")
+
+    strip_glob = os.path.join(ndk_home, 'toolchains', 'llvm', 'prebuilt', '*', 'bin', 'llvm-strip')
+    strip = next(glob.iglob(strip_glob), None)
+    if not strip:
+        raise Exception("NDK does not contain llvm-strip (tried {})".format(strip_glob))
+
+    return len(subprocess.check_output([strip, '-o', '-', lib_path]))
 
 
 def print_size_diff(lib_size: int, old_entry: Mapping[str, Any]) -> None:
@@ -72,9 +86,8 @@ def current_origin_main_entry() -> Optional[Mapping[str, Any]]:
 
 our_abs_dir = os.path.dirname(os.path.realpath(__file__))
 
-lib_size = os.path.getsize(os.path.join(
-    our_abs_dir, 'android', 'build', 'intermediates', 'stripped_native_libs', 'release', 'stripReleaseDebugSymbols',
-    'out', 'lib', 'arm64-v8a', 'libsignal_jni.so'))
+lib_size = measure_stripped_library_size(os.path.join(
+    our_abs_dir, 'android', 'src', 'main', 'jniLibs', 'arm64-v8a', 'libsignal_jni.so'))
 
 with open(os.path.join(our_abs_dir, 'code_size.json')) as old_sizes_file:
     old_sizes = json.load(old_sizes_file)
