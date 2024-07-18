@@ -32,6 +32,7 @@ USER libsignal
 ENV HOME /home/libsignal
 ENV USER libsignal
 ENV SHELL /bin/bash
+ENV LANG C.UTF-8
 
 WORKDIR /home/libsignal
 
