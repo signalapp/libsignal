@@ -2100,7 +2100,7 @@ dependencies = [
 
 [[package]]
 name = "libsignal-ffi"
-version = "0.52.3"
+version = "0.52.4"
 dependencies = [
  "cpufeatures",
  "futures-util",
@@ -2115,7 +2115,7 @@ dependencies = [
 
 [[package]]
 name = "libsignal-jni"
-version = "0.52.3"
+version = "0.52.4"
 dependencies = [
  "cfg-if",
  "cpufeatures",
@@ -2131,7 +2131,7 @@ dependencies = [
 
 [[package]]
 name = "libsignal-jni-testing"
-version = "0.52.3"
+version = "0.52.4"
 dependencies = [
  "async-trait",
  "cfg-if",
@@ -2276,7 +2276,7 @@ dependencies = [
 
 [[package]]
 name = "libsignal-node"
-version = "0.52.3"
+version = "0.52.4"
 dependencies = [
  "cmake",
  "futures",
