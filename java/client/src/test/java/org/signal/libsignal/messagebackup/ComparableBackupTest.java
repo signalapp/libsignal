@@ -38,9 +38,8 @@ public class ComparableBackupTest {
     assertEquals(
         backup.getComparableString(),
         new String(
-            ComparableBackupTest.class
-                .getResourceAsStream(CANONICAL_BACKUP_STRING_NAME)
-                .readAllBytes(),
+            ResourceReader.readAll(
+                ComparableBackupTest.class.getResourceAsStream(CANONICAL_BACKUP_STRING_NAME)),
             StandardCharsets.UTF_8));
   }
 }
