@@ -200,10 +200,7 @@ impl<'a> Svr3Connect for Svr3Client<'a, CurrentVersion> {
     type Stream = TcpSslConnectorStream;
     type Env = Svr3Env<'static>;
 
-    async fn connect(
-        &self,
-    ) -> Result<<Self::Env as PpssSetup<Self::Stream>>::Connections, libsignal_net::enclave::Error>
-    {
+    async fn connect(&self) -> <Self::Env as PpssSetup<Self::Stream>>::ConnectionResults {
         let ConnectionManager {
             svr3: (sgx, nitro, tpm2snp),
             transport_connector,
@@ -216,7 +213,7 @@ impl<'a> Svr3Connect for Svr3Client<'a, CurrentVersion> {
             SvrConnection::connect(self.auth.clone(), tpm2snp, transport_connector),
         )
         .await;
-        Ok((sgx?, nitro?, tpm2snp?))
+        (sgx, nitro, tpm2snp)
     }
 }
 

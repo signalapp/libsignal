@@ -47,9 +47,7 @@ impl Svr3Connect for Svr3Client {
     type Stream = Stream;
     type Env = Svr3Env<'static>;
 
-    async fn connect(
-        &self,
-    ) -> Result<<Svr3Env as PpssSetup<Stream>>::Connections, libsignal_net::enclave::Error> {
+    async fn connect(&self) -> <Svr3Env as PpssSetup<Stream>>::ConnectionResults {
         self.env.connect_directly(&self.auth).await
     }
 }

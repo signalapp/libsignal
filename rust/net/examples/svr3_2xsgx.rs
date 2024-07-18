@@ -22,7 +22,7 @@ use rand_core::{CryptoRngCore, OsRng, RngCore};
 
 use libsignal_net::auth::Auth;
 use libsignal_net::enclave::{
-    EnclaveEndpoint, EnclaveEndpointConnection, EndpointParams, Error, MrEnclave, PpssSetup, Sgx,
+    self, EnclaveEndpoint, EnclaveEndpointConnection, EndpointParams, MrEnclave, PpssSetup, Sgx,
     Svr3Flavor,
 };
 use libsignal_net::env::{DomainConfig, PROXY_CONFIG_F_STAGING, PROXY_CONFIG_G};
@@ -73,7 +73,10 @@ where
     S: Send,
 {
     type Stream = <TcpSslTransportConnector as TransportConnector>::Stream;
-    type Connections = (SvrConnection<A, S>, SvrConnection<B, S>);
+    type ConnectionResults = (
+        Result<SvrConnection<A, S>, enclave::Error>,
+        Result<SvrConnection<B, S>, enclave::Error>,
+    );
     type ServerIds = [u64; 2];
 
     fn server_ids() -> Self::ServerIds {
@@ -102,17 +105,16 @@ impl Svr3Connect for Client {
     type Stream = <TcpSslTransportConnector as TransportConnector>::Stream;
     type Env = TwoForTwoEnv<'static, Sgx, Sgx>;
 
-    async fn connect(&self) -> Result<<Self::Env as PpssSetup<Self::Stream>>::Connections, Error> {
+    async fn connect(&self) -> <Self::Env as PpssSetup<Self::Stream>>::ConnectionResults {
         let connector = TcpSslTransportConnector::new(DnsResolver::default());
         let connection_a = EnclaveEndpointConnection::new(&self.env.0, Duration::from_secs(10));
 
-        let a =
-            SvrConnection::connect(self.auth_a.clone(), &connection_a, connector.clone()).await?;
+        let a = SvrConnection::connect(self.auth_a.clone(), &connection_a, connector.clone()).await;
 
         let connection_b = EnclaveEndpointConnection::new(&self.env.1, Duration::from_secs(10));
 
-        let b = SvrConnection::connect(self.auth_b.clone(), &connection_b, connector).await?;
-        Ok((a, b))
+        let b = SvrConnection::connect(self.auth_b.clone(), &connection_b, connector).await;
+        (a, b)
     }
 }
 

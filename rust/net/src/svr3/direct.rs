@@ -20,9 +20,9 @@ const DIRECT_CONNECTION_TIMEOUT: Duration = Duration::from_secs(10);
 /// enclaves kinds.
 #[async_trait]
 pub trait DirectConnect {
-    type Connections;
+    type ConnectionResults;
 
-    async fn connect(&self, auth: &Auth) -> Result<Self::Connections, enclave::Error>;
+    async fn connect(&self, auth: &Auth) -> Self::ConnectionResults;
 }
 
 #[async_trait]
@@ -30,9 +30,9 @@ impl<A> DirectConnect for EnclaveEndpoint<'static, A>
 where
     A: Svr3Flavor + NewHandshake + Sized + Send,
 {
-    type Connections = SvrConnection<A, DefaultStream>;
+    type ConnectionResults = Result<SvrConnection<A, DefaultStream>, enclave::Error>;
 
-    async fn connect(&self, auth: &Auth) -> Result<Self::Connections, enclave::Error> {
+    async fn connect(&self, auth: &Auth) -> Self::ConnectionResults {
         connect_one(self, auth, DirectConnector::default()).await
     }
 }
@@ -43,19 +43,18 @@ where
     A: Svr3Flavor + NewHandshake + Sized + Send,
     B: Svr3Flavor + NewHandshake + Sized + Send,
 {
-    type Connections = (
-        SvrConnection<A, DefaultStream>,
-        SvrConnection<B, DefaultStream>,
+    type ConnectionResults = (
+        Result<SvrConnection<A, DefaultStream>, enclave::Error>,
+        Result<SvrConnection<B, DefaultStream>, enclave::Error>,
     );
 
-    async fn connect(&self, auth: &Auth) -> Result<Self::Connections, enclave::Error> {
+    async fn connect(&self, auth: &Auth) -> Self::ConnectionResults {
         let transport = DirectConnector::default();
-        let (a, b) = futures_util::future::join(
+        futures_util::future::join(
             connect_one(self.0, auth, transport.clone()),
             connect_one(self.1, auth, transport),
         )
-        .await;
-        Ok((a?, b?))
+        .await
     }
 }
 
@@ -71,22 +70,21 @@ where
     B: Svr3Flavor + NewHandshake + Sized + Send,
     C: Svr3Flavor + NewHandshake + Sized + Send,
 {
-    type Connections = (
-        SvrConnection<A, DefaultStream>,
-        SvrConnection<B, DefaultStream>,
-        SvrConnection<C, DefaultStream>,
+    type ConnectionResults = (
+        Result<SvrConnection<A, DefaultStream>, enclave::Error>,
+        Result<SvrConnection<B, DefaultStream>, enclave::Error>,
+        Result<SvrConnection<C, DefaultStream>, enclave::Error>,
     );
 
-    async fn connect(&self, auth: &Auth) -> Result<Self::Connections, enclave::Error> {
+    async fn connect(&self, auth: &Auth) -> Self::ConnectionResults {
         let transport = DirectConnector::default();
 
-        let (a, b, c) = futures_util::future::join3(
+        futures_util::future::join3(
             connect_one(self.0, auth, transport.clone()),
             connect_one(self.1, auth, transport.clone()),
             connect_one(self.2, auth, transport),
         )
-        .await;
-        Ok((a?, b?, c?))
+        .await
     }
 }
 

@@ -66,7 +66,7 @@ impl Svr3Connect for FullClient {
     type Stream = Stream;
     type Env = Svr3Env<'static>;
 
-    async fn connect(&self) -> Result<<Self::Env as PpssSetup<Self::Stream>>::Connections, Error> {
+    async fn connect(&self) -> <Self::Env as PpssSetup<Self::Stream>>::ConnectionResults {
         PREV_ENV.connect_directly(&self.auth).await
     }
 }
@@ -82,7 +82,7 @@ struct SingletonEnv<'a, E: EnclaveKind>(&'a EnclaveEndpoint<'a, E>);
 // This will be our "removing" setup.
 impl<S: Send> PpssSetup<S> for SingletonEnv<'_, Sgx> {
     type Stream = S;
-    type Connections = SvrConnection<Sgx, S>;
+    type ConnectionResults = Result<SvrConnection<Sgx, S>, Error>;
     type ServerIds = [u64; 1];
 
     fn server_ids() -> Self::ServerIds {
@@ -95,7 +95,7 @@ impl Svr3Connect for PartialClient {
     type Stream = Stream;
     type Env = SingletonEnv<'static, Sgx>;
 
-    async fn connect(&self) -> Result<<Self::Env as PpssSetup<Self::Stream>>::Connections, Error> {
+    async fn connect(&self) -> <Self::Env as PpssSetup<Self::Stream>>::ConnectionResults {
         REM_ENV.0.connect(&self.auth).await
     }
 }
@@ -303,9 +303,6 @@ async fn svr3_single_enclave_migration() {
     log::info!("OK");
 
     log::info!("Cleaning up...");
-    // Need to overwrite the values first in order to remove from all enclaves,
-    // otherwise the error from SGX will terminate other remove requests.
-    let _ = prev_client.backup(PASS, secret, TRIES, &mut rng).await;
     let _ = prev_client.remove().await;
     let _ = current_client.remove().await;
     log::info!("DONE");

@@ -452,13 +452,13 @@ where
 pub enum AttestedConnectionError {
     Protocol,
     ClientConnection(attest::client_connection::Error),
-    Sgx(attest::enclave::Error),
+    Attestation(attest::enclave::Error),
     WebSocket(WebSocketServiceError),
 }
 
 impl From<enclave::Error> for AttestedConnectionError {
     fn from(value: attest::enclave::Error) -> Self {
-        Self::Sgx(value)
+        Self::Attestation(value)
     }
 }
 

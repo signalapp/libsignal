@@ -299,7 +299,7 @@ impl From<AttestedConnectionError> for LookupError {
             AttestedConnectionError::ClientConnection(_) => Self::Protocol,
             AttestedConnectionError::WebSocket(e) => Self::WebSocket(e),
             AttestedConnectionError::Protocol => Self::Protocol,
-            AttestedConnectionError::Sgx(e) => Self::AttestationError(e),
+            AttestedConnectionError::Attestation(e) => Self::AttestationError(e),
         }
     }
 }

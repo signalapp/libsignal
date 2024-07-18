@@ -100,53 +100,61 @@ impl Svr3Flavor for Nitro {}
 
 impl Svr3Flavor for Tpm2Snp {}
 
-pub trait IntoConnections {
+pub trait IntoConnectionResults {
     type Stream;
-    type Connections: ArrayIsh<AttestedConnection<Self::Stream>> + Send;
-    fn into_connections(self) -> Self::Connections;
+    type ConnectionResults: ArrayIsh<Result<AttestedConnection<Self::Stream>, Error>> + Send;
+    fn into_connection_results(self) -> Self::ConnectionResults;
 }
 
 pub trait IntoAttestedConnection: Into<AttestedConnection<Self::Stream>> {
     type Stream: Send;
 }
 
-impl<A> IntoConnections for A
+impl<S: Send> IntoAttestedConnection for AttestedConnection<S> {
+    type Stream = S;
+}
+
+impl<A> IntoConnectionResults for Result<A, Error>
 where
     A: IntoAttestedConnection,
 {
     type Stream = A::Stream;
-    type Connections = [AttestedConnection<A::Stream>; 1];
-    fn into_connections(self) -> Self::Connections {
-        [self.into()]
+    type ConnectionResults = [Result<AttestedConnection<Self::Stream>, Error>; 1];
+    fn into_connection_results(self) -> Self::ConnectionResults {
+        [self.map(Into::into)]
     }
 }
 
-impl<A, B> IntoConnections for (A, B)
+impl<A, B> IntoConnectionResults for (Result<A, Error>, Result<B, Error>)
 where
     A: IntoAttestedConnection,
     B: IntoAttestedConnection<Stream = A::Stream>,
 {
     type Stream = A::Stream;
-    type Connections = [AttestedConnection<A::Stream>; 2];
-    fn into_connections(self) -> Self::Connections {
-        [self.0.into(), self.1.into()]
+    type ConnectionResults = [Result<AttestedConnection<Self::Stream>, Error>; 2];
+    fn into_connection_results(self) -> Self::ConnectionResults {
+        [self.0.map(Into::into), self.1.map(Into::into)]
     }
 }
 
-impl<A, B, C> IntoConnections for (A, B, C)
+impl<A, B, C> IntoConnectionResults for (Result<A, Error>, Result<B, Error>, Result<C, Error>)
 where
     A: IntoAttestedConnection,
     B: IntoAttestedConnection<Stream = A::Stream>,
     C: IntoAttestedConnection<Stream = A::Stream>,
 {
     type Stream = A::Stream;
-    type Connections = [AttestedConnection<A::Stream>; 3];
-    fn into_connections(self) -> Self::Connections {
-        [self.0.into(), self.1.into(), self.2.into()]
+    type ConnectionResults = [Result<AttestedConnection<Self::Stream>, Error>; 3];
+    fn into_connection_results(self) -> Self::ConnectionResults {
+        [
+            self.0.map(Into::into),
+            self.1.map(Into::into),
+            self.2.map(Into::into),
+        ]
     }
 }
 
-pub trait ArrayIsh<T>: AsRef<[T]> + AsMut<[T]> {
+pub trait ArrayIsh<T>: AsRef<[T]> + IntoIterator<Item = T> {
     const N: usize;
 }
 
@@ -156,7 +164,7 @@ impl<T, const N: usize> ArrayIsh<T> for [T; N] {
 
 pub trait PpssSetup<S> {
     type Stream;
-    type Connections: IntoConnections<Stream = S> + Send;
+    type ConnectionResults: IntoConnectionResults<Stream = S> + Send;
     type ServerIds: ArrayIsh<u64> + Send;
     const N: usize = Self::ServerIds::N;
     fn server_ids() -> Self::ServerIds;
@@ -164,10 +172,10 @@ pub trait PpssSetup<S> {
 
 impl<S: Send> PpssSetup<S> for Svr3Env<'_> {
     type Stream = S;
-    type Connections = (
-        SvrConnection<Sgx, S>,
-        SvrConnection<Nitro, S>,
-        SvrConnection<Tpm2Snp, S>,
+    type ConnectionResults = (
+        Result<SvrConnection<Sgx, S>, Error>,
+        Result<SvrConnection<Nitro, S>, Error>,
+        Result<SvrConnection<Tpm2Snp, S>, Error>,
     );
     type ServerIds = [u64; 3];
 
@@ -247,7 +255,7 @@ impl From<AttestedConnectionError> for Error {
             AttestedConnectionError::ClientConnection(_) => Self::Protocol,
             AttestedConnectionError::WebSocket(net) => Self::WebSocket(net),
             AttestedConnectionError::Protocol => Self::Protocol,
-            AttestedConnectionError::Sgx(err) => Self::AttestationError(err),
+            AttestedConnectionError::Attestation(err) => Self::AttestationError(err),
         }
     }
 }

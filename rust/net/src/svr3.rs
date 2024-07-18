@@ -4,7 +4,7 @@
 //
 
 use crate::auth::Auth;
-use crate::enclave::{self, PpssSetup};
+use crate::enclave::PpssSetup;
 use crate::env::Svr3Env;
 use crate::infra::errors::LogSafeDisplay;
 use crate::infra::ws::{
@@ -28,14 +28,14 @@ use traits::*;
 const MASKED_SHARE_SET_FORMAT: u8 = 0;
 
 #[derive(Clone)]
-#[cfg_attr(test, derive(Debug, PartialEq, Eq))]
+#[cfg_attr(test, derive(Debug, PartialEq, Eq, Default))]
 pub struct OpaqueMaskedShareSet {
     inner: SerializableMaskedShareSet,
 }
 
 // Non pub version of ppss::MaskedShareSet used for serialization
 #[derive(Clone, Serialize, Deserialize, Debug)]
-#[cfg_attr(test, derive(PartialEq, Eq))]
+#[cfg_attr(test, derive(PartialEq, Eq, Default))]
 struct SerializableMaskedShareSet {
     server_ids: Vec<u64>,
     masked_shares: Vec<[u8; 32]>,
@@ -281,7 +281,7 @@ impl Svr3Env<'static> {
     pub async fn connect_directly(
         &self,
         auth: &Auth,
-    ) -> Result<<Self as PpssSetup<DefaultStream>>::Connections, enclave::Error> {
+    ) -> <Self as PpssSetup<DefaultStream>>::ConnectionResults {
         let endpoints = (self.sgx(), self.nitro(), self.tpm2snp());
         endpoints.connect(auth).await
     }

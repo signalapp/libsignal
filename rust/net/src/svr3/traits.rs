@@ -14,7 +14,6 @@ use rand_core::CryptoRngCore;
 
 use libsignal_svr3::EvaluationResult;
 
-use crate::enclave;
 use crate::enclave::PpssSetup;
 use crate::infra::AsyncDuplexStream;
 
@@ -57,9 +56,7 @@ pub trait Svr3Connect {
     // otherwise S would be an unconstrained generic parameter.
     type Stream;
     type Env: PpssSetup<Self::Stream>;
-    async fn connect(
-        &self,
-    ) -> Result<<Self::Env as PpssSetup<Self::Stream>>::Connections, enclave::Error>;
+    async fn connect(&self) -> <Self::Env as PpssSetup<Self::Stream>>::ConnectionResults;
 }
 
 #[async_trait]
@@ -76,7 +73,7 @@ where
         rng: &mut (impl CryptoRngCore + Send),
     ) -> Result<OpaqueMaskedShareSet, Error> {
         ppss_ops::do_backup::<T::Stream, T::Env>(
-            self.connect().await?,
+            self.connect().await,
             password,
             secret,
             max_tries,
@@ -98,8 +95,7 @@ where
         share_set: OpaqueMaskedShareSet,
         rng: &mut (impl CryptoRngCore + Send),
     ) -> Result<EvaluationResult, Error> {
-        ppss_ops::do_restore::<T::Stream, T::Env>(self.connect().await?, password, share_set, rng)
-            .await
+        ppss_ops::do_restore(self.connect().await, password, share_set, rng).await
     }
 }
 
@@ -110,7 +106,7 @@ where
     T::Stream: AsyncDuplexStream + 'static,
 {
     async fn remove(&self) -> Result<(), Error> {
-        ppss_ops::do_remove::<T::Stream, T::Env>(self.connect().await?).await
+        ppss_ops::do_remove(self.connect().await).await
     }
 }
 
@@ -121,6 +117,6 @@ where
     T::Stream: AsyncDuplexStream + 'static,
 {
     async fn query(&self) -> Result<u32, Error> {
-        ppss_ops::do_query::<T::Stream, T::Env>(self.connect().await?).await
+        ppss_ops::do_query(self.connect().await).await
     }
 }
