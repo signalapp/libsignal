@@ -11,6 +11,7 @@ use libsignal_net::infra::dns::dns_lookup::{DnsLookup, DnsLookupRequest};
 use libsignal_net::infra::dns::dns_transport_doh::DohTransport;
 use libsignal_net::infra::dns::dns_transport_udp::UdpTransport;
 use libsignal_net::infra::{ConnectionParams, HttpRequestDecoratorSeq, RouteType};
+use libsignal_net::utils::ObservableEvent;
 use nonzero_ext::nonzero;
 use std::net::IpAddr;
 use std::sync::Arc;
@@ -45,7 +46,10 @@ async fn main() {
     let custom_resolver = match args.transport {
         Transport::Udp => {
             let ns_address = (IpAddr::V4(ip_addr!(v4, "1.1.1.1")), 53);
-            Either::Left(CustomDnsResolver::<UdpTransport>::new(ns_address))
+            Either::Left(CustomDnsResolver::<UdpTransport>::new(
+                ns_address,
+                &ObservableEvent::default(),
+            ))
         }
         Transport::Doh => {
             let connection_params = ConnectionParams::new(
@@ -56,7 +60,10 @@ async fn main() {
                 HttpRequestDecoratorSeq::default(),
                 RootCertificates::Native,
             );
-            Either::Right(CustomDnsResolver::<DohTransport>::new(connection_params))
+            Either::Right(CustomDnsResolver::<DohTransport>::new(
+                connection_params,
+                &ObservableEvent::default(),
+            ))
         }
     };
 

@@ -24,7 +24,7 @@ use crate::infra::dns::dns_utils::oneshot_broadcast::Receiver;
 use crate::infra::dns::dns_utils::{log_safe_domain, oneshot_broadcast};
 use crate::infra::dns::lookup_result::LookupResult;
 use crate::infra::{ConnectionParams, HttpRequestDecoratorSeq, RouteType};
-use crate::utils;
+use crate::utils::{self, ObservableEvent};
 
 pub mod custom_resolver;
 mod dns_errors;
@@ -59,12 +59,6 @@ pub struct DnsResolver {
     state: Arc<Mutex<DnsResolverState>>,
 }
 
-impl Default for DnsResolver {
-    fn default() -> Self {
-        DnsResolver::new_with_static_fallback(HashMap::new())
-    }
-}
-
 impl DnsResolver {
     #[cfg(test)]
     pub(crate) fn new_custom(lookup_options: Vec<(Box<dyn DnsLookup>, Duration)>) -> Self {
@@ -72,6 +66,10 @@ impl DnsResolver {
             lookup_options: Arc::new(lookup_options),
             state: Default::default(),
         }
+    }
+
+    pub fn new(network_change_event: &ObservableEvent) -> Self {
+        Self::new_with_static_fallback(HashMap::new(), network_change_event)
     }
 
     /// Creates a DNS resolver that will only use a provided static map
@@ -88,7 +86,10 @@ impl DnsResolver {
 
     /// Creates a DNS resolver with a default resolution strategy
     /// to be used for most of the external use cases
-    pub fn new_with_static_fallback(static_map: HashMap<&'static str, LookupResult>) -> Self {
+    pub fn new_with_static_fallback(
+        static_map: HashMap<&'static str, LookupResult>,
+        network_change_event: &ObservableEvent,
+    ) -> Self {
         let connection_params = ConnectionParams::new(
             RouteType::Direct,
             CLOUDFLARE_NS,
@@ -97,7 +98,10 @@ impl DnsResolver {
             HttpRequestDecoratorSeq::default(),
             RootCertificates::Native,
         );
-        let custom_resolver = Box::new(CustomDnsResolver::<DohTransport>::new(connection_params));
+        let custom_resolver = Box::new(CustomDnsResolver::<DohTransport>::new(
+            connection_params,
+            network_change_event,
+        ));
         let fallback_lookups = DNS_FALLBACK_LOOKUP_TIMEOUTS
             .iter()
             .map(|timeout| (custom_resolver.clone() as Box<dyn DnsLookup>, *timeout));

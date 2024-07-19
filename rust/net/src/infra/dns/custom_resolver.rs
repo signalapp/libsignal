@@ -12,6 +12,7 @@ use crate::infra::connection_manager::{
     ConnectionAttemptOutcome, SingleRouteThrottlingConnectionManager,
 };
 use crate::timeouts::{DNS_CALL_BACKGROUND_TIMEOUT, DNS_RESOLUTION_DELAY};
+use crate::utils::{EventSubscription, ObservableEvent};
 use async_trait::async_trait;
 use either::Either;
 use futures_util::stream::BoxStream;
@@ -64,23 +65,59 @@ pub trait DnsTransport: Sized + Send {
     ) -> dns::Result<BoxStream<'static, dns::Result<DnsQueryResult>>>;
 }
 
+struct SharedCacheWithGenerations<K, V> {
+    generation: u64,
+    map: HashMap<K, V>,
+}
+
+impl<K, V> SharedCacheWithGenerations<K, V> {
+    fn clear_and_advance(&mut self) {
+        self.generation += 1;
+        self.map.clear();
+    }
+}
+
+impl<K, V> Default for SharedCacheWithGenerations<K, V> {
+    fn default() -> Self {
+        Self {
+            generation: Default::default(),
+            map: Default::default(),
+        }
+    }
+}
+
 /// A resolver that combines the logic of retrieving results of the DNS queries
 /// over a specific transport and caching those results according to the
 /// records expiration times.
 #[derive(Clone)]
 pub struct CustomDnsResolver<T: DnsTransport> {
     connection_manager: SingleRouteThrottlingConnectionManager<T::ConnectionParameters>,
-    cache: Arc<std::sync::Mutex<HashMap<String, Expiring<LookupResult>>>>,
+    cache: Arc<std::sync::Mutex<SharedCacheWithGenerations<String, Expiring<LookupResult>>>>,
+    _network_change_subscription: Arc<EventSubscription>,
 }
 
 impl<T: DnsTransport + Sync + 'static> CustomDnsResolver<T> {
-    pub fn new(transport_connection_params: T::ConnectionParameters) -> Self {
+    pub fn new(
+        transport_connection_params: T::ConnectionParameters,
+        network_change_event: &ObservableEvent,
+    ) -> Self {
+        let cache = Arc::new(std::sync::Mutex::new(SharedCacheWithGenerations::default()));
+        let cache_for_network_change = Arc::downgrade(&cache);
+        let network_change_subscription = network_change_event.subscribe(Box::new(move || {
+            // We're clearing the cache on network changes because some networks intercept DNS
+            // requests and return IPs that only work within that network.
+            let Some(cache) = cache_for_network_change.upgrade() else {
+                return;
+            };
+            cache.lock().expect("not poisoned").clear_and_advance();
+        }));
         Self {
             connection_manager: SingleRouteThrottlingConnectionManager::new(
                 transport_connection_params,
                 DNS_CALL_BACKGROUND_TIMEOUT,
             ),
-            cache: Default::default(),
+            cache,
+            _network_change_subscription: Arc::new(network_change_subscription),
         }
     }
 
@@ -105,9 +142,9 @@ impl<T: DnsTransport + Sync + 'static> CustomDnsResolver<T> {
 
     fn cache_get(&self, hostname: &str) -> Option<LookupResult> {
         let mut guard = self.cache.lock().expect("not poisoned");
-        match guard.get(hostname) {
+        match guard.map.get(hostname) {
             Some(expiring) if expiring.expiration < Instant::now() => {
-                guard.remove(hostname);
+                guard.map.remove(hostname);
                 None
             }
             Some(expiring) => Some(expiring.data.clone()),
@@ -153,6 +190,7 @@ impl<T: DnsTransport + Sync + 'static> CustomDnsResolver<T> {
         let (ipv4_res_tx, ipv4_res_rx) = oneshot::channel::<DnsIpv4Result>();
         let (ipv6_res_tx, ipv6_res_rx) = oneshot::channel::<DnsIpv6Result>();
         let cache = self.cache.clone();
+        let generation_before_lookup = cache.lock().expect("not poisoned").generation;
         // We're starting this operation on a separate thread because we want to let it run
         // beyond an individual attempt timeout so that even if a result arrived late
         // we could still cache it for the next time.
@@ -250,7 +288,18 @@ impl<T: DnsTransport + Sync + 'static> CustomDnsResolver<T> {
                 (None, None) => None,
             } {
                 let mut guard = cache.lock().expect("not poisoned");
-                guard.insert(request.hostname.to_string(), expiring_entry);
+                // There are two ways the generation could be out of date:
+                // - We started the query, completed the query, and then got a network change.
+                // - We started the query, got a network change, and then completed the query on the
+                //   new network.
+                // In the second case caching the result would still be valid, but trying to
+                // distinguish them is tricky. Not caching just means we might do another lookup
+                // sooner than necessary.
+                if guard.generation == generation_before_lookup {
+                    guard
+                        .map
+                        .insert(request.hostname.to_string(), expiring_entry);
+                }
             };
         });
 
@@ -270,7 +319,7 @@ pub(crate) mod test {
     use crate::infra::dns::lookup_result::LookupResult;
     use crate::infra::{dns, DnsSource};
     use crate::timeouts::CONNECTION_ROUTE_MAX_COOLDOWN;
-    use crate::utils::sleep_until_and_catch_up;
+    use crate::utils::{sleep_and_catch_up, sleep_until_and_catch_up, ObservableEvent};
     use assert_matches::assert_matches;
     use async_trait::async_trait;
     use const_str::ip_addr;
@@ -279,6 +328,7 @@ pub(crate) mod test {
     use std::collections::HashSet;
     use std::iter;
     use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
+    use std::pin::pin;
     use std::sync::atomic::{AtomicU32, Ordering};
     use std::sync::Arc;
     use std::time::Duration;
@@ -325,6 +375,7 @@ pub(crate) mod test {
     pub(crate) struct TestDnsTransportWithResponses<const RESPONSES: usize> {
         queries_count: Arc<AtomicU32>,
         sender_handler: Arc<SenderHandlerFn<[OneshotDnsQueryResultSender; RESPONSES]>>,
+        network_changed_event: Arc<ObservableEvent>,
     }
 
     impl<const RESPONSES: usize> TestDnsTransportWithResponses<RESPONSES> {
@@ -335,10 +386,15 @@ pub(crate) mod test {
                 + Sync
                 + 'static,
         {
-            CustomDnsResolver::new(Self {
-                sender_handler: Arc::new(Box::new(sender_handler)),
-                queries_count: Default::default(),
-            })
+            let network_changed_event = Arc::new(ObservableEvent::new());
+            CustomDnsResolver::new(
+                Self {
+                    sender_handler: Arc::new(Box::new(sender_handler)),
+                    queries_count: Default::default(),
+                    network_changed_event: network_changed_event.clone(),
+                },
+                &network_changed_event,
+            )
         }
 
         pub(crate) fn transport_and_custom_dns_resolver<F>(
@@ -353,8 +409,11 @@ pub(crate) mod test {
             let transport = Self {
                 sender_handler: Arc::new(Box::new(sender_handler)),
                 queries_count: Default::default(),
+                network_changed_event: Arc::new(ObservableEvent::new()),
             };
-            (transport.clone(), CustomDnsResolver::new(transport))
+            let resolver =
+                CustomDnsResolver::new(transport.clone(), &transport.network_changed_event);
+            (transport, resolver)
         }
 
         pub(crate) fn queries_count(&self) -> u32 {
@@ -616,16 +675,20 @@ pub(crate) mod test {
 
     #[tokio::test(start_paused = true)]
     async fn returns_error_if_failed_to_connect_to_transport() {
-        let resolver =
-            CustomDnsResolver::<TestDnsTransportFailingToConnect>::new(Error::TransportRestricted);
+        let resolver = CustomDnsResolver::<TestDnsTransportFailingToConnect>::new(
+            Error::TransportRestricted,
+            &ObservableEvent::default(),
+        );
         let result = resolver.resolve(test_request()).await;
         assert_matches!(result, Err(Error::TransportRestricted));
     }
 
     #[tokio::test(start_paused = true)]
     async fn early_exits_for_cooldown() {
-        let resolver =
-            CustomDnsResolver::<TestDnsTransportFailingToConnect>::new(Error::TransportRestricted);
+        let resolver = CustomDnsResolver::<TestDnsTransportFailingToConnect>::new(
+            Error::TransportRestricted,
+            &ObservableEvent::default(),
+        );
         let result = resolver.resolve(test_request()).await;
         assert_matches!(result, Err(Error::TransportRestricted));
         // First retry has no cooldown.
@@ -649,5 +712,64 @@ pub(crate) mod test {
         });
         let result = resolver.resolve(test_request()).await;
         assert_matches!(result, Err(Error::LookupFailed));
+    }
+
+    #[tokio::test]
+    async fn cache_cleared_on_network_event() {
+        let (transport, resolver) =
+            TestDnsTransportWithTwoResponses::transport_and_custom_dns_resolver(|_, _, txs| {
+                let [tx_1, tx_2] = txs;
+                tx_1.send(ok_query_result_ipv4(NORMAL_TTL, IP_V4_LIST_1))
+                    .unwrap();
+                tx_2.send(ok_query_result_ipv6(NORMAL_TTL, IP_V6_LIST_1))
+                    .unwrap();
+            });
+
+        let result_1 = resolver.resolve(test_request()).await.expect("success");
+        let cached_result = resolver
+            .cache_get(&test_request().hostname)
+            .expect("cached");
+        assert_eq!(Vec::from_iter(result_1), Vec::from_iter(cached_result));
+
+        transport.network_changed_event.fire();
+        assert_matches!(resolver.cache_get(&test_request().hostname), None);
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn outstanding_lookups_before_network_event_do_not_end_up_in_cache() {
+        let timeout = DNS_CALL_BACKGROUND_TIMEOUT / 4;
+        let (resolution_started_tx, mut resolution_started_rx) = oneshot::channel();
+        let resolution_started_tx = std::sync::Mutex::new(Some(resolution_started_tx));
+        let (transport, resolver) =
+            TestDnsTransportWithTwoResponses::transport_and_custom_dns_resolver(
+                move |_, _, txs| {
+                    if let Some(resolution_started_tx) =
+                        resolution_started_tx.lock().expect("not poisoned").take()
+                    {
+                        _ = resolution_started_tx.send(());
+                    }
+                    let [tx_1, tx_2] = txs;
+                    let res_1 = ok_query_result_ipv4(NORMAL_TTL, IP_V4_LIST_1);
+                    let res_2 = ok_query_result_ipv6(NORMAL_TTL, IP_V6_LIST_1);
+                    respond_after_timeout(timeout, tx_1, res_1);
+                    respond_after_timeout(timeout, tx_2, res_2);
+                },
+            );
+
+        let mut lookup = pin!(resolver.resolve(test_request()));
+        while let Err(oneshot::error::TryRecvError::Empty) = resolution_started_rx.try_recv() {
+            let waiting = futures_util::poll!(&mut lookup);
+            assert_matches!(
+                waiting,
+                std::task::Poll::Pending,
+                "should pause at respond_after_timeout"
+            );
+            tokio::task::yield_now().await;
+        }
+
+        transport.network_changed_event.fire();
+        sleep_and_catch_up(timeout).await;
+        lookup.await.expect("success");
+        assert_matches!(resolver.cache_get(&test_request().hostname), None);
     }
 }

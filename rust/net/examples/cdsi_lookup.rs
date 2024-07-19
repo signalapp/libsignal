@@ -8,6 +8,7 @@ use std::time::Duration;
 
 use libsignal_net::infra::connection_manager::ConnectionManager;
 use libsignal_net::infra::dns::DnsResolver;
+use libsignal_net::utils::ObservableEvent;
 use tokio::io::AsyncBufReadExt as _;
 
 use libsignal_net::auth::Auth;
@@ -55,7 +56,8 @@ async fn main() {
     };
     let env = libsignal_net::env::PROD;
     let endpoint_connection = EnclaveEndpointConnection::new(&env.cdsi, Duration::from_secs(10));
-    let transport_connection = TcpSslTransportConnector::new(DnsResolver::default());
+    let transport_connection =
+        TcpSslTransportConnector::new(DnsResolver::new(&ObservableEvent::default()));
     let cdsi_response = cdsi_lookup(
         Auth { username, password },
         &endpoint_connection,

@@ -51,7 +51,7 @@ pub struct TcpSslConnectorStream(
     >,
 );
 
-#[derive(Clone, Default)]
+#[derive(Clone)]
 pub struct DirectConnector {
     pub dns_resolver: DnsResolver,
 }
@@ -539,6 +539,7 @@ mod test {
     use super::*;
     use crate::infra::dns::lookup_result::LookupResult;
     use crate::infra::HttpRequestDecoratorSeq;
+    use crate::utils::ObservableEvent;
     use assert_matches::assert_matches;
     use std::borrow::Cow;
     use std::collections::HashMap;
@@ -549,9 +550,10 @@ mod test {
         let (addr, server) = localhost_http_server();
         let _server_handle = tokio::spawn(server);
 
-        let connector = DirectConnector::new(DnsResolver::new_with_static_fallback(HashMap::from(
-            [(SERVER_HOSTNAME, LookupResult::localhost())],
-        )));
+        let connector = DirectConnector::new(DnsResolver::new_with_static_fallback(
+            HashMap::from([(SERVER_HOSTNAME, LookupResult::localhost())]),
+            &ObservableEvent::default(),
+        ));
         let connection_params = ConnectionParams {
             route_type: RouteType::Test,
             sni: SERVER_HOSTNAME.into(),
@@ -589,10 +591,10 @@ mod test {
 
         // Ensure that the proxy is doing the right thing
         let mut connector = ProxyConnector::new(
-            DnsResolver::new_with_static_fallback(HashMap::from([(
-                PROXY_HOSTNAME,
-                LookupResult::localhost(),
-            )])),
+            DnsResolver::new_with_static_fallback(
+                HashMap::from([(PROXY_HOSTNAME, LookupResult::localhost())]),
+                &ObservableEvent::default(),
+            ),
             (PROXY_HOSTNAME, proxy_addr.port().try_into().unwrap()),
         );
         // Override the SSL certificate for the proxy; since it's self-signed,
@@ -642,10 +644,10 @@ mod test {
 
         // Ensure that the proxy is doing the right thing
         let connector = ProxyConnector::new(
-            DnsResolver::new_with_static_fallback(HashMap::from([(
-                PROXY_HOSTNAME,
-                LookupResult::localhost(),
-            )])),
+            DnsResolver::new_with_static_fallback(
+                HashMap::from([(PROXY_HOSTNAME, LookupResult::localhost())]),
+                &ObservableEvent::default(),
+            ),
             (&modified_proxy_host, proxy_addr.port().try_into().unwrap()),
         );
 
@@ -683,6 +685,7 @@ mod test {
 
         let connector = TcpSslConnector::Invalid(DnsResolver::new_with_static_fallback(
             HashMap::from([(SERVER_HOSTNAME, LookupResult::localhost())]),
+            &ObservableEvent::default(),
         ));
         let connection_params = ConnectionParams {
             route_type: RouteType::Test,

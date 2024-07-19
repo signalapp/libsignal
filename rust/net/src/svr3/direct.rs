@@ -9,10 +9,12 @@ use async_trait::async_trait;
 use crate::auth::Auth;
 use crate::enclave;
 use crate::enclave::{EnclaveEndpoint, EnclaveEndpointConnection, NewHandshake, Svr3Flavor};
+use crate::infra::dns::DnsResolver;
 use crate::infra::tcp_ssl::DirectConnector;
 use crate::infra::ws::DefaultStream;
 use crate::infra::TransportConnector;
 use crate::svr::SvrConnection;
+use crate::utils::ObservableEvent;
 
 const DIRECT_CONNECTION_TIMEOUT: Duration = Duration::from_secs(10);
 
@@ -33,7 +35,8 @@ where
     type ConnectionResults = Result<SvrConnection<A, DefaultStream>, enclave::Error>;
 
     async fn connect(&self, auth: &Auth) -> Self::ConnectionResults {
-        connect_one(self, auth, DirectConnector::default()).await
+        let transport = default_transport();
+        connect_one(self, auth, transport).await
     }
 }
 
@@ -49,7 +52,7 @@ where
     );
 
     async fn connect(&self, auth: &Auth) -> Self::ConnectionResults {
-        let transport = DirectConnector::default();
+        let transport = default_transport();
         futures_util::future::join(
             connect_one(self.0, auth, transport.clone()),
             connect_one(self.1, auth, transport),
@@ -77,7 +80,7 @@ where
     );
 
     async fn connect(&self, auth: &Auth) -> Self::ConnectionResults {
-        let transport = DirectConnector::default();
+        let transport = default_transport();
 
         futures_util::future::join3(
             connect_one(self.0, auth, transport.clone()),
@@ -86,6 +89,10 @@ where
         )
         .await
     }
+}
+
+fn default_transport() -> DirectConnector {
+    DirectConnector::new(DnsResolver::new(&ObservableEvent::new()))
 }
 
 async fn connect_one<Enclave, Transport>(

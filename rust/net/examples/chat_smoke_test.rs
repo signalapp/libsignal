@@ -15,6 +15,7 @@ use libsignal_net::env::Svr3Env;
 use libsignal_net::infra::dns::DnsResolver;
 use libsignal_net::infra::tcp_ssl::DirectConnector;
 use libsignal_net::infra::{make_ws_config, ConnectionParams, EndpointConnection, RouteType};
+use libsignal_net::utils::ObservableEvent;
 use tokio::sync::mpsc;
 
 #[derive(Parser)]
@@ -101,7 +102,8 @@ async fn test_connection(
     connection_params: Vec<ConnectionParams>,
 ) -> Result<(), ChatServiceError> {
     let one_route_connect_timeout = Duration::from_secs(5);
-    let dns_resolver = DnsResolver::new_with_static_fallback(env.static_fallback());
+    let dns_resolver =
+        DnsResolver::new_with_static_fallback(env.static_fallback(), &ObservableEvent::default());
     let transport_connector = DirectConnector::new(dns_resolver);
     let chat_endpoint = PathAndQuery::from_static(WEB_SOCKET_PATH);
     let chat_ws_config = make_ws_config(chat_endpoint, one_route_connect_timeout);

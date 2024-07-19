@@ -26,6 +26,7 @@ use libsignal_net::svr::SvrConnection;
 use libsignal_net::svr3::traits::*;
 use libsignal_net::svr3::{Error, OpaqueMaskedShareSet};
 use libsignal_net::timeouts::ONE_ROUTE_CONNECTION_TIMEOUT;
+use libsignal_net::utils::ObservableEvent;
 use libsignal_svr3::EvaluationResult;
 use std::marker::PhantomData;
 use std::num::{NonZeroU16, NonZeroU32};
@@ -63,6 +64,7 @@ pub struct ConnectionManager {
         EnclaveEndpointConnection<Tpm2Snp, MultiRouteConnectionManager>,
     ),
     transport_connector: std::sync::Mutex<TcpSslConnector>,
+    network_change_event: ObservableEvent,
 }
 
 impl RefUnwindSafe for ConnectionManager {}
@@ -70,8 +72,11 @@ impl RefUnwindSafe for ConnectionManager {}
 impl ConnectionManager {
     pub fn new(environment: Environment, user_agent: String) -> Self {
         log::info!("Initializing connection manager for {}...", &environment);
-        let dns_resolver =
-            DnsResolver::new_with_static_fallback(environment.env().static_fallback());
+        let network_change_event = ObservableEvent::new();
+        let dns_resolver = DnsResolver::new_with_static_fallback(
+            environment.env().static_fallback(),
+            &network_change_event,
+        );
         let transport_connector =
             std::sync::Mutex::new(TcpSslDirectConnector::new(dns_resolver).into());
         let chat_endpoint =
@@ -95,6 +100,7 @@ impl ConnectionManager {
                 Self::endpoint_connection(environment.env().svr3.tpm2snp(), &user_agent),
             ),
             transport_connector,
+            network_change_event,
         }
     }
 
@@ -152,6 +158,10 @@ impl ConnectionManager {
         let params = endpoint.domain_config.connection_params_with_fallback();
         let params = add_user_agent_header(params, user_agent);
         EnclaveEndpointConnection::new_multi(endpoint, params, ONE_ROUTE_CONNECTION_TIMEOUT)
+    }
+
+    pub fn network_changed(&self) {
+        self.network_change_event.fire()
     }
 }
 

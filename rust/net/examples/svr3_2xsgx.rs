@@ -17,6 +17,7 @@ use attest::svr2::RaftConfig;
 use base64::prelude::{Engine, BASE64_STANDARD};
 use clap::Parser;
 use hex_literal::hex;
+use libsignal_net::utils::ObservableEvent;
 use nonzero_ext::nonzero;
 use rand_core::{CryptoRngCore, OsRng, RngCore};
 
@@ -106,7 +107,8 @@ impl Svr3Connect for Client {
     type Env = TwoForTwoEnv<'static, Sgx, Sgx>;
 
     async fn connect(&self) -> <Self::Env as PpssSetup<Self::Stream>>::ConnectionResults {
-        let connector = TcpSslTransportConnector::new(DnsResolver::default());
+        let connector =
+            TcpSslTransportConnector::new(DnsResolver::new(&ObservableEvent::default()));
         let connection_a = EnclaveEndpointConnection::new(&self.env.0, Duration::from_secs(10));
 
         let a = SvrConnection::connect(self.auth_a.clone(), &connection_a, connector.clone()).await;
