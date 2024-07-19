@@ -54,7 +54,7 @@ RUN    unzip -q ${ANDROID_SDK_FILENAME} -d android-sdk \
 RUN    yes | sdkmanager --sdk_root=${ANDROID_HOME} "platforms;${ANDROID_API_LEVELS}" "build-tools;${ANDROID_BUILD_TOOLS_VERSION}" "platform-tools" "ndk;${NDK_VERSION}"
 
 # Pre-download Gradle.
-COPY   java/gradle gradle
+COPY   java/gradle/wrapper gradle/wrapper
 COPY   java/gradlew gradlew
 RUN    ./gradlew --version
 
