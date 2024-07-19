@@ -12,12 +12,16 @@ import shlex
 import shutil
 import subprocess
 import sys
-import tarfile
 
 from typing import List, Optional
 
 
-def maybe_archive_debug_info(*, src_path: str, src_checksum_path: str, dst_path: str, dst_checksum_path: str) -> None:
+def maybe_dump_debug_symbols(*, src_path: str, src_checksum_path: str, dst_path: str, dst_checksum_path: str) -> None:
+    dump_syms = shutil.which('dump_syms')
+    if not dump_syms:
+        print("note: dump_syms not installed; skipping debug info processing")
+        return
+
     with open(src_checksum_path, 'rb') as f:
         digest = hashlib.sha256()
         # Use read1 to use the file object's buffering.
@@ -35,10 +39,8 @@ def maybe_archive_debug_info(*, src_path: str, src_checksum_path: str, dst_path:
     with open(dst_checksum_path, 'w') as f:
         f.write(checksum)
 
-    print("Archiving %s to %s" % (src_path, dst_path))
-    with tarfile.open(dst_path, 'w:bz2') as archive:
-        debug_realpath = os.path.realpath(src_path)
-        archive.add(debug_realpath, arcname=os.path.basename(src_path))
+    print("Dumping debug symbols to %s" % dst_path)
+    subprocess.check_call([dump_syms, src_path, '-o', dst_path])
 
 
 def main(args: Optional[List[str]] = None) -> int:
@@ -181,7 +183,9 @@ def main(args: Optional[List[str]] = None) -> int:
 
     src_path = os.path.join(libs_in, lib_format.format('signal_node'))
     if os.access(src_path, os.R_OK):
-        dst_path = os.path.join(out_dir, 'libsignal_client_%s_%s.node' % (node_os_name, node_arch))
+        dst_base = 'libsignal_client_%s_%s' % (node_os_name, node_arch)
+
+        dst_path = os.path.join(out_dir, dst_base + '.node')
         print("Copying %s to %s" % (src_path, dst_path))
         if not os.path.exists(out_dir):
             os.makedirs(out_dir)
@@ -190,15 +194,11 @@ def main(args: Optional[List[str]] = None) -> int:
         else:
             shutil.copyfile(src_path, dst_path)
 
-        debug_dst_path = os.path.join(
-            out_dir,
-            'libsignal_client_%s_%s-debuginfo.tar.bz2' % (node_os_name, node_arch))
-
-        maybe_archive_debug_info(
+        maybe_dump_debug_symbols(
             src_path=os.path.join(libs_in, debug_format.format('signal_node')),
             src_checksum_path=os.path.join(libs_in, debug_format_for_checksum.format('signal_node')),
-            dst_path=debug_dst_path,
-            dst_checksum_path=debug_dst_path + '.sha256'
+            dst_path=os.path.join(out_dir, dst_base + '-debuginfo.sym'),
+            dst_checksum_path=os.path.join(out_dir, dst_base + '-debuginfo.sha256'),
         )
     else:
         print("ERROR: did not find generated library")

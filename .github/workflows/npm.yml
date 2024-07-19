@@ -67,6 +67,8 @@ jobs:
     - run: brew install protobuf
       if: startsWith(matrix.os, 'macos')
 
+    - run: cargo +stable install dump_syms --no-default-features --features cli
+
     - name: Get Node version from .nvmrc
       id: get-nvm-version
       shell: bash
@@ -134,7 +136,7 @@ jobs:
     - name: Upload debug info
       uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4.3.1
       with:
-        name: Debug info (${{matrix.os}})
+        name: Debug info (ubuntu-docker)
         path: |
           node/*-debuginfo.*
           !node/*.sha256
