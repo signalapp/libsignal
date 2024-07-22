@@ -10,6 +10,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThrows;
 
+import java.nio.ByteBuffer;
 import java.util.Arrays;
 import org.junit.Test;
 import org.signal.libsignal.protocol.util.Hex;
@@ -43,6 +44,15 @@ public class SealedSenderMultiRecipientMessageTest {
     final byte[] expectedContents = Hex.fromStringsCondensedAssert(expectedContentsHexParts);
     assertArrayEquals(expectedContents, message.messageForRecipient(recipient));
     assertEquals(expectedContents.length, message.messageSizeForRecipient(recipient));
+
+    try {
+      byte[] view =
+          SealedSenderMultiRecipientMessage.messageForRecipient(
+              message.serialized(), message.serializedRecipientView(recipient));
+      assertArrayEquals(expectedContents, view);
+    } catch (final Exception e) {
+      throw new AssertionError("Should not have thrown", e);
+    }
   }
 
   @Test
@@ -590,5 +600,97 @@ public class SealedSenderMultiRecipientMessageTest {
     assertThrows(
         InvalidVersionException.class,
         () -> SealedSenderMultiRecipientMessage.parse(new byte[] {0x77}));
+  }
+
+  @Test
+  public void recipientMessageView() throws Exception {
+    byte[] input =
+        Hex.fromStringsCondensedAssert(
+            VERSION_ACI_ONLY,
+            // Count
+            "03",
+            // Recipient 1: UUID, Device ID and Registration ID, Key Material
+            ALICE_UUID_BYTES,
+            "0111aa",
+            ALICE_KEY_MATERIAL,
+            // Recipient 2
+            BOB_UUID_BYTES,
+            "0111bb",
+            BOB_KEY_MATERIAL,
+            // Recipient 3 (note that it's another device of Bob's)
+            BOB_UUID_BYTES,
+            "0333bb",
+            BOB_KEY_MATERIAL,
+            // Shared data
+            SHARED_BYTES);
+
+    final SealedSenderMultiRecipientMessage message =
+        SealedSenderMultiRecipientMessage.parse(input);
+
+    int sharedDataOffset = input.length - SHARED_BYTES.length() / 2;
+
+    SealedSenderMultiRecipientMessage.Recipient alice =
+        message
+            .getRecipients()
+            .get(ServiceId.parseFromBinary(Hex.fromStringCondensedAssert(ALICE_UUID_BYTES)));
+    assertNotNull(alice);
+    int aliceKeyMaterialOffset = 2 + 3 + ALICE_UUID_BYTES.length() / 2;
+    int keyMaterialLength = 48;
+    assertArrayEquals(
+        ByteBuffer.allocate(13)
+            .put((byte) 0x01)
+            .putInt(sharedDataOffset)
+            .putInt(aliceKeyMaterialOffset)
+            .putInt(keyMaterialLength)
+            .array(),
+        message.serializedRecipientView(alice));
+
+    SealedSenderMultiRecipientMessage.Recipient bob =
+        message
+            .getRecipients()
+            .get(ServiceId.parseFromBinary(Hex.fromStringCondensedAssert(BOB_UUID_BYTES)));
+    assertNotNull(bob);
+    int bobKeyMaterialOffset =
+        aliceKeyMaterialOffset + keyMaterialLength + BOB_UUID_BYTES.length() / 2 + 3;
+    assertArrayEquals(
+        ByteBuffer.allocate(13)
+            .put((byte) 0x01)
+            .putInt(sharedDataOffset)
+            .putInt(bobKeyMaterialOffset)
+            .putInt(keyMaterialLength)
+            .array(),
+        message.serializedRecipientView(bob));
+  }
+
+  @Test
+  public void rejectsInvalidRecipientViews() throws Exception {
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> SealedSenderMultiRecipientMessage.messageForRecipient(new byte[0], new byte[0]));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            SealedSenderMultiRecipientMessage.messageForRecipient(
+                new byte[0], ByteBuffer.allocate(14).put((byte) 0x01).array()));
+
+    final ByteBuffer buffer = ByteBuffer.allocate(13);
+    assertThrows(
+        InvalidVersionException.class,
+        () -> SealedSenderMultiRecipientMessage.messageForRecipient(new byte[0], buffer.array()));
+    assertThrows(
+        InvalidVersionException.class,
+        () ->
+            SealedSenderMultiRecipientMessage.messageForRecipient(
+                new byte[0], buffer.clear().put((byte) 0x02).array()));
+    assertThrows(
+        InvalidVersionException.class,
+        () ->
+            SealedSenderMultiRecipientMessage.messageForRecipient(
+                new byte[0], buffer.clear().put((byte) 0x2F).array()));
+    assertThrows(
+        InvalidVersionException.class,
+        () ->
+            SealedSenderMultiRecipientMessage.messageForRecipient(
+                new byte[0], buffer.clear().put((byte) 0x77).array()));
   }
 }
