@@ -241,23 +241,35 @@ jobs:
 
       - run: brew install protobuf
 
-      - name: Build for x86_64-apple-ios
-        run: swift/build_ffi.sh --release
-        env:
-          CARGO_BUILD_TARGET: x86_64-apple-ios
-
       - name: Build for aarch64-apple-ios
         run: swift/build_ffi.sh --release
         env:
           CARGO_BUILD_TARGET: aarch64-apple-ios
+
+      # Build the simulator architectures for completeness.
+      - name: Build for x86_64-apple-ios
+        run: swift/build_ffi.sh --release
+        env:
+          CARGO_BUILD_TARGET: x86_64-apple-ios
 
       - name: Build for aarch64-apple-ios-sim
         run: swift/build_ffi.sh --release
         env:
           CARGO_BUILD_TARGET: aarch64-apple-ios-sim
 
-      - name: Run pod lint
-        run: pod lib lint --verbose --platforms=ios
+      # The simulator build of the CocoaPod is already tested in regular CI as part of `pod lib lint`.
+
+      - name: Set up testing workspace
+        run: pod install
+        working-directory: swift/cocoapods-testing
+
+      - name: Manually build for device
+        run: xcodebuild -scheme LibSignalClient -sdk iphoneos build-for-testing
+        working-directory: swift/cocoapods-testing
+
+      - name: Build in Release for device as well
+        run: xcodebuild -scheme LibSignalClient -sdk iphoneos -configuration Release
+        working-directory: swift/cocoapods-testing
 
   rust-stable-testing:
     name: Rust tests (using latest stable)

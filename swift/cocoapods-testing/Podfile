@@ -1,0 +1,7 @@
+platform :ios, '13'
+
+use_frameworks!
+
+workspace 'Testing'
+
+pod 'LibSignalClient', path: '../../', testspecs: ["Tests"]
