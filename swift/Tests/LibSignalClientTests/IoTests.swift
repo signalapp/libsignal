@@ -8,6 +8,8 @@
 import XCTest
 
 class IoTests: TestCaseBase {
+// These testing endpoints aren't generated in device builds, to save on code size.
+#if !os(iOS) || targetEnvironment(simulator)
     func testReadIntoEmptyBuffer() throws {
         let input = [UInt8]("ABCDEFGHIJKLMNOPQRSTUVWXYZ".utf8)
         let inputStream = SignalInputStreamAdapter(input)
@@ -18,4 +20,5 @@ class IoTests: TestCaseBase {
         }
         XCTAssertEqual(input, output)
     }
+#endif
 }

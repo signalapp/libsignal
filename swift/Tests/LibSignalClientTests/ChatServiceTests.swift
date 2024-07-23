@@ -8,6 +8,9 @@ import Foundation
 import SignalFfi
 import XCTest
 
+// These testing endpoints aren't generated in device builds, to save on code size.
+#if !os(iOS) || targetEnvironment(simulator)
+
 extension ChatService {
     func injectServerRequest(base64: String) {
         self.injectServerRequest(Data(base64Encoded: base64)!)
@@ -28,11 +31,14 @@ extension ChatService {
     }
 }
 
+#endif
+
 final class ChatServiceTests: TestCaseBase {
+    private static let userAgent = "test"
+
 // These testing endpoints aren't generated in device builds, to save on code size.
 #if !os(iOS) || targetEnvironment(simulator)
 
-    private static let userAgent = "test"
     private static let expectedStatus: UInt16 = 200
     private static let expectedMessage = "OK"
     private static let expectedContent = Data("content".utf8)
