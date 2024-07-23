@@ -49,6 +49,12 @@ On a Debian-like system, you can get these extra dependencies through `apt`:
 $ apt-get install clang libclang-dev cmake make protobuf-compiler git
 ```
 
+Additionally, some of the tests in this repository rely on submodules being checked out:
+
+```shell
+$ git submodule update --init
+```
+
 The build currently uses a specific version of the Rust nightly compiler, which
 will be downloaded automatically by cargo. To build and test the basic protocol
 libraries:
@@ -105,13 +111,15 @@ android {
   // ...
   packagingOptions {
     resources {
-      exclude "libsignal_jni.dylib"
-      exclude "signal_jni.dll"
+      excludes += setOf("libsignal_jni*.dylib", "signal_jni*.dll")
     }
   }
   // ...
 }
 ```
+
+You can additionally exclude `libsignal_jni_testing.so` if you do not plan to use any of the APIs
+intended for client testing.
 
 
 ## Swift
