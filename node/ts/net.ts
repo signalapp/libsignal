@@ -158,34 +158,23 @@ export interface ChatServiceListener {
 }
 
 /**
- * Provides API methods to connect and communicate with the Chat Service.
- * Before using either authenticated or unauthenticated channels,
- * a corresponding `connect*` method must be called.
+ * Provides API methods to connect and communicate with the Chat Service over an authenticated channel.
+ * Before sending/receiving requests, a {@link #connect()} method must be called.
  * It's also important to call {@link #disconnect()} method when the instance is no longer needed.
  */
-export class ChatService {
+export class AuthenticatedChatService {
   public readonly chatService: Wrapper<Native.Chat>;
 
   constructor(
     private readonly asyncContext: TokioAsyncContext,
-    connectionManager: ConnectionManager
+    connectionManager: ConnectionManager,
+    username: string,
+    password: string,
+    listener: ChatServiceListener
   ) {
     this.chatService = newNativeHandle(
-      Native.ChatService_new(connectionManager, '', '')
+      Native.ChatService_new(connectionManager, username, password)
     );
-  }
-
-  /**
-   * Sets the listener for server push messages on the authenticated connection.
-   *
-   * Note that this creates a **non-garbage-collectable** reference to `listener`. If `listener`
-   * contains a reference to this ChatService (directly or indirectly), both objects will be kept
-   * alive even with no other references. This may be fine if `listener` is a long-lived object
-   * anyway, but if not, make sure to eventually break the cycle, possibly by calling
-   * {@link #clearListener}.
-   */
-  setListener(listener: ChatServiceListener): void {
-    const asyncContext = this.asyncContext;
     const nativeChatListener = {
       _incoming_message(
         envelope: Buffer,
@@ -212,16 +201,108 @@ export class ChatService {
     );
   }
 
-  clearListener(): void {
-    Native.ChatServer_SetListener(this.asyncContext, this.chatService, null);
+  /**
+   * Initiates termination of the underlying connection to the Chat Service. After the service is
+   * disconnected, it will not attempt to automatically reconnect until you call
+   * {@link #connect()}.
+   *
+   * Note: the same instance of `AuthenticatedChatService` can be reused after {@link #disconnect()} was
+   * called.
+   */
+  disconnect(): Promise<void> {
+    return Native.ChatService_disconnect(this.asyncContext, this.chatService);
+  }
+
+  /**
+   * Initiates establishing of the underlying authenticated connection to the Chat Service. Once the
+   * service is connected, all the requests will be using the established connection. Also, if the
+   * connection is lost for any reason other than the call to {@link #disconnect()}, an automatic
+   * reconnect attempt will be made.
+   *
+   * Calling this method will result in starting to accept incoming requests from the Chat Service.
+   *
+   * @throws {AppExpiredError} if the current app version is too old (as judged by the server).
+   * @throws {DeviceDelinkedError} if the current device has been delinked.
+   * @throws {LibSignalError} with other codes for other failures.
+   */
+  connect(options?: {
+    abortSignal?: AbortSignal;
+  }): Promise<Native.ChatServiceDebugInfo> {
+    return this.asyncContext.makeCancellable(
+      options?.abortSignal,
+      Native.ChatService_connect_auth(this.asyncContext, this.chatService)
+    );
+  }
+
+  /**
+   * Sends request to the Chat Service over an authenticated channel.
+   *
+   * In addition to the response, an object containing debug information about the request flow is
+   * returned.
+   *
+   * @throws {ChatServiceInactive} if you haven't called {@link #connect()} (as a
+   * rejection of the promise).
+   */
+  fetchAndDebug(
+    chatRequest: ChatRequest,
+    options?: { abortSignal?: AbortSignal }
+  ): Promise<Native.ResponseAndDebugInfo> {
+    return this.asyncContext.makeCancellable(
+      options?.abortSignal,
+      Native.ChatService_auth_send_and_debug(
+        this.asyncContext,
+        this.chatService,
+        buildHttpRequest(chatRequest),
+        chatRequest.timeoutMillis ?? DEFAULT_CHAT_REQUEST_TIMEOUT_MILLIS
+      )
+    );
+  }
+
+  /**
+   * Sends request to the Chat Service over an authenticated channel.
+   *
+   * @throws {ChatServiceInactive} if you haven't called {@link #connect()} (as a
+   * rejection of the promise).
+   */
+  fetch(
+    chatRequest: ChatRequest,
+    options?: { abortSignal?: AbortSignal }
+  ): Promise<Native.ChatResponse> {
+    return this.asyncContext.makeCancellable(
+      options?.abortSignal,
+      Native.ChatService_auth_send(
+        this.asyncContext,
+        this.chatService,
+        buildHttpRequest(chatRequest),
+        chatRequest.timeoutMillis ?? DEFAULT_CHAT_REQUEST_TIMEOUT_MILLIS
+      )
+    );
+  }
+}
+
+/**
+ * Provides API methods to connect and communicate with the Chat Service over an unauthenticated channel.
+ * Before sending requests, a {@link #connect()} method must be called.
+ * It's also important to call {@link #disconnect()} method when the instance is no longer needed.
+ */
+export class UnauthenticatedChatService {
+  public readonly chatService: Wrapper<Native.Chat>;
+
+  constructor(
+    private readonly asyncContext: TokioAsyncContext,
+    connectionManager: ConnectionManager
+  ) {
+    this.chatService = newNativeHandle(
+      Native.ChatService_new(connectionManager, '', '')
+    );
   }
 
   /**
    * Initiates termination of the underlying connection to the Chat Service. After the service is
    * disconnected, it will not attempt to automatically reconnect until you call
-   * {@link #connectAuthenticated()} and/or {@link #connectUnauthenticated()}.
+   * {@link #connect()}.
    *
-   * Note: the same instance of `ChatService` can be reused after `disconnect()` was
+   * Note: the same instance of `UnauthenticatedChatService` can be reused after {@link #disconnect()} was
    * called.
    */
   disconnect(): Promise<void> {
@@ -237,7 +318,7 @@ export class ChatService {
    * @throws {AppExpiredError} if the current app version is too old (as judged by the server).
    * @throws {LibSignalError} with other codes for other failures.
    */
-  connectUnauthenticated(options?: {
+  connect(options?: {
     abortSignal?: AbortSignal;
   }): Promise<Native.ChatServiceDebugInfo> {
     return this.asyncContext.makeCancellable(
@@ -247,28 +328,6 @@ export class ChatService {
   }
 
   /**
-   * Initiates establishing of the underlying authenticated connection to the Chat Service. Once the
-   * service is connected, all the requests will be using the established connection. Also, if the
-   * connection is lost for any reason other than the call to {@link #disconnect()}, an automatic
-   * reconnect attempt will be made.
-   *
-   * Calling this method will result in starting to accept incoming requests from the Chat Service.
-   * You should set a listener first using {@link #setListener()}.
-   *
-   * @throws {AppExpiredError} if the current app version is too old (as judged by the server).
-   * @throws {DeviceDelinkedError} if the current device has been delinked.
-   * @throws {LibSignalError} with other codes for other failures.
-   */
-  connectAuthenticated(options?: {
-    abortSignal?: AbortSignal;
-  }): Promise<Native.ChatServiceDebugInfo> {
-    return this.asyncContext.makeCancellable(
-      options?.abortSignal,
-      Native.ChatService_connect_auth(this.asyncContext, this.chatService)
-    );
-  }
-
-  /**
    * Sends request to the Chat Service over an unauthenticated channel.
    *
    * In addition to the response, an object containing debug information about the request flow is
@@ -277,7 +336,7 @@ export class ChatService {
    * @throws {ChatServiceInactive} if you haven't called {@link #connectUnauthenticated()} (as a
    * rejection of the promise).
    */
-  unauthenticatedFetchAndDebug(
+  fetchAndDebug(
     chatRequest: ChatRequest,
     options?: { abortSignal?: AbortSignal }
   ): Promise<Native.ResponseAndDebugInfo> {
@@ -286,7 +345,7 @@ export class ChatService {
       Native.ChatService_unauth_send_and_debug(
         this.asyncContext,
         this.chatService,
-        ChatService.buildHttpRequest(chatRequest),
+        buildHttpRequest(chatRequest),
         chatRequest.timeoutMillis ?? DEFAULT_CHAT_REQUEST_TIMEOUT_MILLIS
       )
     );
@@ -295,10 +354,10 @@ export class ChatService {
   /**
    * Sends request to the Chat Service over an unauthenticated channel.
    *
-   * @throws {ChatServiceInactive} if you haven't called {@link #connectUnauthenticated()} (as a
+   * @throws {ChatServiceInactive} if you haven't called {@link #connect()} (as a
    * rejection of the promise).
    */
-  unauthenticatedFetch(
+  fetch(
     chatRequest: ChatRequest,
     options?: { abortSignal?: AbortSignal }
   ): Promise<Native.ChatResponse> {
@@ -307,72 +366,27 @@ export class ChatService {
       Native.ChatService_unauth_send(
         this.asyncContext,
         this.chatService,
-        ChatService.buildHttpRequest(chatRequest),
+        buildHttpRequest(chatRequest),
         chatRequest.timeoutMillis ?? DEFAULT_CHAT_REQUEST_TIMEOUT_MILLIS
       )
     );
   }
+}
 
-  /**
-   * Sends request to the Chat Service over an authenticated channel.
-   *
-   * In addition to the response, an object containing debug information about the request flow is
-   * returned.
-   *
-   * @throws {ChatServiceInactive} if you haven't called {@link #connectAuthenticated()} (as a
-   * rejection of the promise).
-   */
-  authenticatedFetchAndDebug(
-    chatRequest: ChatRequest,
-    options?: { abortSignal?: AbortSignal }
-  ): Promise<Native.ResponseAndDebugInfo> {
-    return this.asyncContext.makeCancellable(
-      options?.abortSignal,
-      Native.ChatService_auth_send_and_debug(
-        this.asyncContext,
-        this.chatService,
-        ChatService.buildHttpRequest(chatRequest),
-        chatRequest.timeoutMillis ?? DEFAULT_CHAT_REQUEST_TIMEOUT_MILLIS
-      )
-    );
-  }
-
-  /**
-   * Sends request to the Chat Service over an authenticated channel.
-   *
-   * @throws {ChatServiceInactive} if you haven't called {@link #connectAuthenticated()} (as a
-   * rejection of the promise).
-   */
-  authenticatedFetch(
-    chatRequest: ChatRequest,
-    options?: { abortSignal?: AbortSignal }
-  ): Promise<Native.ChatResponse> {
-    return this.asyncContext.makeCancellable(
-      options?.abortSignal,
-      Native.ChatService_auth_send(
-        this.asyncContext,
-        this.chatService,
-        ChatService.buildHttpRequest(chatRequest),
-        chatRequest.timeoutMillis ?? DEFAULT_CHAT_REQUEST_TIMEOUT_MILLIS
-      )
-    );
-  }
-
-  static buildHttpRequest(chatRequest: ChatRequest): {
-    _nativeHandle: Native.HttpRequest;
-  } {
-    const { verb, path, body, headers } = chatRequest;
-    const bodyBuffer: Buffer | null =
-      body !== undefined ? Buffer.from(body) : null;
-    const httpRequest = {
-      _nativeHandle: Native.HttpRequest_new(verb, path, bodyBuffer),
-    };
-    headers.forEach((header) => {
-      const [name, value] = header;
-      Native.HttpRequest_add_header(httpRequest, name, value);
-    });
-    return httpRequest;
-  }
+export function buildHttpRequest(
+  chatRequest: ChatRequest
+): Wrapper<Native.HttpRequest> {
+  const { verb, path, body, headers } = chatRequest;
+  const bodyBuffer: Buffer | null =
+    body !== undefined ? Buffer.from(body) : null;
+  const httpRequest = {
+    _nativeHandle: Native.HttpRequest_new(verb, path, bodyBuffer),
+  };
+  headers.forEach((header) => {
+    const [name, value] = header;
+    Native.HttpRequest_add_header(httpRequest, name, value);
+  });
+  return httpRequest;
 }
 
 export class Net {
@@ -393,10 +407,30 @@ export class Net {
   }
 
   /**
-   * Creates a new instance of {@link ChatService}.
+   * Creates a new instance of {@link AuthenticatedChatService}.
    */
-  public newChatService(): ChatService {
-    return new ChatService(this.asyncContext, this.connectionManager);
+  public newAuthenticatedChatService(
+    username: string,
+    password: string,
+    listener: ChatServiceListener
+  ): AuthenticatedChatService {
+    return new AuthenticatedChatService(
+      this.asyncContext,
+      this.connectionManager,
+      username,
+      password,
+      listener
+    );
+  }
+
+  /**
+   * Creates a new instance of {@link UnauthenticatedChatService}.
+   */
+  public newUnauthenticatedChatService(): UnauthenticatedChatService {
+    return new UnauthenticatedChatService(
+      this.asyncContext,
+      this.connectionManager
+    );
   }
 
   /**

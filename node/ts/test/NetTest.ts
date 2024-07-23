@@ -12,8 +12,8 @@ import { Aci, Pni } from '../Address';
 import * as Native from '../../Native';
 import { ErrorCode, LibSignalErrorBase } from '../Errors';
 import {
+  buildHttpRequest,
   ChatServerMessageAck,
-  ChatService,
   ChatServiceListener,
   Environment,
   Net,
@@ -107,7 +107,7 @@ describe('chat service api', () => {
   ];
 
   it('constructs request object correctly', () => {
-    const request = ChatService.buildHttpRequest({
+    const request = buildHttpRequest({
       verb: verb,
       path: path,
       headers: headers,
@@ -133,7 +133,7 @@ describe('chat service api', () => {
     };
 
     const requestWith = (params: object) =>
-      ChatService.buildHttpRequest({ ...goodRequest, ...params });
+      buildHttpRequest({ ...goodRequest, ...params });
 
     expect(() => requestWith({ verb: '\x00abc' })).throws(TypeError, 'method');
     expect(() => requestWith({ path: '/bad\x00path' }))
@@ -168,8 +168,8 @@ describe('chat service api', () => {
 
     it('can connect unauthenticated', async () => {
       const net = new Net(Environment.Staging, userAgent);
-      const chatService = net.newChatService();
-      await chatService.connectUnauthenticated();
+      const chatService = net.newUnauthenticatedChatService();
+      await chatService.connect();
       await chatService.disconnect();
     }).timeout(10000);
 
@@ -182,8 +182,8 @@ describe('chat service api', () => {
       const [host = PROXY_SERVER, port = '443'] = PROXY_SERVER.split(':', 2);
       net.setProxy(host, parseInt(port, 10));
 
-      const chatService = net.newChatService();
-      await chatService.connectUnauthenticated();
+      const chatService = net.newUnauthenticatedChatService();
+      await chatService.connect();
       await chatService.disconnect();
     }).timeout(10000);
   });
@@ -227,13 +227,12 @@ describe('chat service api', () => {
 
   it('messages from the server are passed to the listener', async () => {
     const net = new Net(Environment.Staging, userAgent);
-    const chat = net.newChatService();
     const listener = {
       onIncomingMessage: sinon.stub(),
       onQueueEmpty: sinon.stub(),
       onConnectionInterrupted: sinon.stub(),
     };
-    chat.setListener(listener);
+    const chat = net.newAuthenticatedChatService('', '', listener);
 
     // a helper function to check that the message has been passed to the listener
     async function check(
@@ -269,7 +268,6 @@ describe('chat service api', () => {
 
   it('messages arrive in order', async () => {
     const net = new Net(Environment.Staging, userAgent);
-    const chat = net.newChatService();
     const completable = new CompletablePromise();
     const callsToMake: Buffer[] = [
       INCOMING_MESSAGE_1,
@@ -305,7 +303,7 @@ describe('chat service api', () => {
         recordCall('_connection_interrupted');
       },
     };
-    chat.setListener(listener);
+    const chat = net.newAuthenticatedChatService('', '', listener);
     callsToMake.forEach((message) =>
       Native.TESTING_ChatService_InjectRawServerRequest(
         chat.chatService,
@@ -315,71 +313,6 @@ describe('chat service api', () => {
     Native.TESTING_ChatService_InjectConnectionInterrupted(chat.chatService);
     await completable.done();
     expect(callsReceived).to.eql(callsExpected);
-  });
-
-  it('listener can be replaced', async () => {
-    const net = new Net(Environment.Staging, userAgent);
-    const chat = net.newChatService();
-    const listener1 = {
-      onIncomingMessage: sinon.stub(),
-      onQueueEmpty: sinon.stub(),
-      onConnectionInterrupted: sinon.stub(),
-    };
-    const listener2 = {
-      onIncomingMessage: sinon.stub(),
-      onQueueEmpty: sinon.stub(),
-      onConnectionInterrupted: sinon.stub(),
-    };
-
-    async function check(
-      serverRequest: Buffer,
-      expectedCalled: sinon.SinonStub,
-      expectedNotCalled: sinon.SinonStub
-    ) {
-      expectedCalled.reset();
-      expectedNotCalled.reset();
-      const completable = new CompletablePromise();
-      expectedCalled.callsFake(completable.resolve);
-      Native.TESTING_ChatService_InjectRawServerRequest(
-        chat.chatService,
-        serverRequest
-      );
-      await completable.done();
-      expect(expectedCalled).to.have.been.calledOnce;
-      expect(expectedNotCalled).to.not.have.been.called;
-    }
-
-    chat.setListener(listener1);
-    await check(
-      INCOMING_MESSAGE_1,
-      listener1.onIncomingMessage,
-      listener2.onIncomingMessage
-    );
-    chat.setListener(listener2);
-    await check(
-      INCOMING_MESSAGE_2,
-      listener2.onIncomingMessage,
-      listener1.onIncomingMessage
-    );
-  });
-
-  it('messages from the server are not lost if the listener is not set', async () => {
-    const net = new Net(Environment.Staging, userAgent);
-    const chat = net.newChatService();
-    const listener = {
-      onIncomingMessage: sinon.stub(),
-      onQueueEmpty: sinon.stub(),
-      onConnectionInterrupted: sinon.stub(),
-    };
-    Native.TESTING_ChatService_InjectRawServerRequest(
-      chat.chatService,
-      INCOMING_MESSAGE_1
-    );
-    chat.setListener(listener);
-    const completable = new CompletablePromise();
-    listener.onIncomingMessage.callsFake(completable.resolve);
-    await completable.done();
-    expect(listener.onIncomingMessage).to.have.been.calledOnce;
   });
 
   it('client can respond with http status code to a server message', () => {
