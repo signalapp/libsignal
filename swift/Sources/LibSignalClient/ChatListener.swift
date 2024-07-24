@@ -13,7 +13,7 @@ public protocol ChatListener: AnyObject {
     ///
     /// If `sendAck` is not called, the server will leave this message in the message queue and
     /// attempt to deliver it again in the future.
-    func chatService(_ chat: ChatService, didReceiveIncomingMessage envelope: Data, serverDeliveryTimestamp: UInt64, sendAck: @escaping () async throws -> Void)
+    func chatService(_ chat: AuthenticatedChatService, didReceiveIncomingMessage envelope: Data, serverDeliveryTimestamp: UInt64, sendAck: @escaping () async throws -> Void)
 
     /// Called when the server indicates that there are no further messages in the message queue.
     ///
@@ -21,7 +21,7 @@ public protocol ChatListener: AnyObject {
     /// that were in the queue *when the connection was established* have been delivered.
     ///
     /// The default implementation of this method does nothing.
-    func chatServiceDidReceiveQueueEmpty(_ chat: ChatService)
+    func chatServiceDidReceiveQueueEmpty(_ chat: AuthenticatedChatService)
 
     /// Called when the client gets disconnected from the server.
     ///
@@ -32,12 +32,12 @@ public protocol ChatListener: AnyObject {
     /// is, you should never see this as the first callback, nor two of these callbacks in a row.
     ///
     /// The default implementation of this method does nothing.
-    func chatServiceConnectionWasInterrupted(_ chat: ChatService)
+    func chatServiceConnectionWasInterrupted(_ chat: AuthenticatedChatService)
 }
 
 extension ChatListener {
-    public func chatServiceDidReceiveQueueEmpty(_: ChatService) {}
-    public func chatServiceConnectionWasInterrupted(_: ChatService) {}
+    public func chatServiceDidReceiveQueueEmpty(_: AuthenticatedChatService) {}
+    public func chatServiceConnectionWasInterrupted(_: AuthenticatedChatService) {}
 }
 
 internal class ChatListenerBridge {
@@ -47,10 +47,10 @@ internal class ChatListenerBridge {
         }
     }
 
-    weak var chatService: ChatService?
+    weak var chatService: AuthenticatedChatService?
     let chatListener: ChatListener
 
-    init(chatService: ChatService, chatListener: ChatListener) {
+    init(chatService: AuthenticatedChatService, chatListener: ChatListener) {
         self.chatService = chatService
         self.chatListener = chatListener
     }

@@ -11,7 +11,7 @@ import XCTest
 // These testing endpoints aren't generated in device builds, to save on code size.
 #if !os(iOS) || targetEnvironment(simulator)
 
-extension ChatService {
+extension AuthenticatedChatService {
     func injectServerRequest(base64: String) {
         self.injectServerRequest(Data(base64Encoded: base64)!)
     }
@@ -142,7 +142,7 @@ final class ChatServiceTests: TestCaseBase {
         let expectedPathAndQuery = "/test"
 
         let request = ChatService.Request(method: expectedMethod, pathAndQuery: expectedPathAndQuery, headers: Self.expectedHeaders, body: Self.expectedContent, timeout: 5)
-        let internalRequest = try ChatService.InternalRequest(request)
+        let internalRequest = try ChatService.Request.InternalRequest(request)
         try internalRequest.withNativeHandle { internalRequest in
             XCTAssertEqual(expectedMethod, try invokeFnReturningString {
                 signal_testing_chat_request_get_method($0, internalRequest)
@@ -176,7 +176,7 @@ final class ChatServiceTests: TestCaseBase {
                 self.connectionInterrupted = connectionInterrupted
             }
 
-            func chatService(_ chat: ChatService, didReceiveIncomingMessage envelope: Data, serverDeliveryTimestamp: UInt64, sendAck: () async throws -> Void) {
+            func chatService(_ chat: AuthenticatedChatService, didReceiveIncomingMessage envelope: Data, serverDeliveryTimestamp: UInt64, sendAck: () async throws -> Void) {
                 // This assumes a little-endian platform.
                 XCTAssertEqual(envelope, withUnsafeBytes(of: serverDeliveryTimestamp) { Data($0) })
                 switch serverDeliveryTimestamp {
@@ -193,13 +193,13 @@ final class ChatServiceTests: TestCaseBase {
                 }
             }
 
-            func chatServiceDidReceiveQueueEmpty(_: ChatService) {
+            func chatServiceDidReceiveQueueEmpty(_: AuthenticatedChatService) {
                 XCTAssertEqual(self.stage, 2)
                 self.stage += 1
                 self.queueEmpty.fulfill()
             }
 
-            func chatServiceConnectionWasInterrupted(_: ChatService) {
+            func chatServiceConnectionWasInterrupted(_: AuthenticatedChatService) {
                 XCTAssertEqual(self.stage, 3)
                 self.stage += 1
                 self.connectionInterrupted.fulfill()
@@ -207,7 +207,7 @@ final class ChatServiceTests: TestCaseBase {
         }
 
         let net = Net(env: .staging, userAgent: Self.userAgent)
-        let chat = net.createChatService(username: "", password: "")
+        let chat = net.createAuthenticatedChatService(username: "", password: "")
         let listener = Listener(
             queueEmpty: expectation(description: "queue empty"),
             firstMessageReceived: expectation(description: "first message received"),
@@ -263,14 +263,14 @@ final class ChatServiceTests: TestCaseBase {
                 expectation.fulfill()
             }
 
-            func chatServiceDidReceiveQueueEmpty(_: ChatService) {}
-            func chatService(_ chat: ChatService, didReceiveIncomingMessage envelope: Data, serverDeliveryTimestamp: UInt64, sendAck: () async throws -> Void) {}
+            func chatServiceDidReceiveQueueEmpty(_: AuthenticatedChatService) {}
+            func chatService(_ chat: AuthenticatedChatService, didReceiveIncomingMessage envelope: Data, serverDeliveryTimestamp: UInt64, sendAck: () async throws -> Void) {}
         }
 
         let net = Net(env: .staging, userAgent: Self.userAgent)
 
         do {
-            let chat = net.createChatService(username: "", password: "")
+            let chat = net.createAuthenticatedChatService(username: "", password: "")
 
             do {
                 let listener = Listener(expectation: expectation(description: "first listener destroyed"))
@@ -300,9 +300,9 @@ final class ChatServiceTests: TestCaseBase {
         }
 
         let net = Net(env: .staging, userAgent: Self.userAgent)
-        let chat = net.createChatService(username: "", password: "")
+        let chat = net.createUnauthenticatedChatService()
         // Just make sure we can connect.
-        try await chat.connectUnauthenticated()
+        try await chat.connect()
         try await chat.disconnect()
     }
 
@@ -324,9 +324,9 @@ final class ChatServiceTests: TestCaseBase {
         }
         try net.setProxy(host: String(host), port: port)
 
-        let chat = net.createChatService(username: "", password: "")
+        let chat = net.createUnauthenticatedChatService()
         // Just make sure we can connect.
-        try await chat.connectUnauthenticated()
+        try await chat.connect()
         try await chat.disconnect()
     }
 
