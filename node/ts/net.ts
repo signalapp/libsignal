@@ -158,11 +158,67 @@ export interface ChatServiceListener {
 }
 
 /**
- * Provides API methods to connect and communicate with the Chat Service over an authenticated channel.
+ * Provides API methods to connect and communicate with the Chat Service.
  * Before sending/receiving requests, a {@link #connect()} method must be called.
  * It's also important to call {@link #disconnect()} method when the instance is no longer needed.
  */
-export class AuthenticatedChatService {
+export type ChatService = {
+  /**
+   * Initiates establishing of the underlying connection to the Chat Service. Once the
+   * service is connected, all the requests will be using the established connection. Also, if the
+   * connection is lost for any reason other than the call to {@link #disconnect()}, an automatic
+   * reconnect attempt will be made.
+   *
+   * Calling this method will result in starting to accept incoming requests from the Chat Service.
+   *
+   * @throws {AppExpiredError} if the current app version is too old (as judged by the server).
+   * @throws {DeviceDelinkedError} if the current device has been delinked.
+   * @throws {LibSignalError} with other codes for other failures.
+   */
+  connect(options?: {
+    abortSignal?: AbortSignal;
+  }): Promise<Native.ChatServiceDebugInfo>;
+
+  /**
+   * Initiates termination of the underlying connection to the Chat Service. After the service is
+   * disconnected, it will not attempt to automatically reconnect until you call
+   * {@link #connect()}.
+   *
+   * Note: the same instance of `ChatService` can be reused after {@link #disconnect()} was
+   * called.
+   */
+  disconnect(): Promise<void>;
+
+  /**
+   * Sends request to the Chat Service.
+   *
+   * In addition to the response, an object containing debug information about the request flow is
+   * returned.
+   *
+   * @throws {ChatServiceInactive} if you haven't called {@link #connect()} (as a
+   * rejection of the promise).
+   */
+  fetchAndDebug(
+    chatRequest: ChatRequest,
+    options?: { abortSignal?: AbortSignal }
+  ): Promise<Native.ResponseAndDebugInfo>;
+
+  /**
+   * Sends request to the Chat Service.
+   *
+   * @throws {ChatServiceInactive} if you haven't called {@link #connect()} (as a
+   * rejection of the promise).
+   */
+  fetch(
+    chatRequest: ChatRequest,
+    options?: { abortSignal?: AbortSignal }
+  ): Promise<Native.ChatResponse>;
+};
+
+/**
+ * Provides API methods to connect and communicate with the Chat Service over an authenticated channel.
+ */
+export class AuthenticatedChatService implements ChatService {
   public readonly chatService: Wrapper<Native.Chat>;
 
   constructor(
@@ -201,30 +257,10 @@ export class AuthenticatedChatService {
     );
   }
 
-  /**
-   * Initiates termination of the underlying connection to the Chat Service. After the service is
-   * disconnected, it will not attempt to automatically reconnect until you call
-   * {@link #connect()}.
-   *
-   * Note: the same instance of `AuthenticatedChatService` can be reused after {@link #disconnect()} was
-   * called.
-   */
   disconnect(): Promise<void> {
     return Native.ChatService_disconnect(this.asyncContext, this.chatService);
   }
 
-  /**
-   * Initiates establishing of the underlying authenticated connection to the Chat Service. Once the
-   * service is connected, all the requests will be using the established connection. Also, if the
-   * connection is lost for any reason other than the call to {@link #disconnect()}, an automatic
-   * reconnect attempt will be made.
-   *
-   * Calling this method will result in starting to accept incoming requests from the Chat Service.
-   *
-   * @throws {AppExpiredError} if the current app version is too old (as judged by the server).
-   * @throws {DeviceDelinkedError} if the current device has been delinked.
-   * @throws {LibSignalError} with other codes for other failures.
-   */
   connect(options?: {
     abortSignal?: AbortSignal;
   }): Promise<Native.ChatServiceDebugInfo> {
@@ -234,15 +270,6 @@ export class AuthenticatedChatService {
     );
   }
 
-  /**
-   * Sends request to the Chat Service over an authenticated channel.
-   *
-   * In addition to the response, an object containing debug information about the request flow is
-   * returned.
-   *
-   * @throws {ChatServiceInactive} if you haven't called {@link #connect()} (as a
-   * rejection of the promise).
-   */
   fetchAndDebug(
     chatRequest: ChatRequest,
     options?: { abortSignal?: AbortSignal }
@@ -258,12 +285,6 @@ export class AuthenticatedChatService {
     );
   }
 
-  /**
-   * Sends request to the Chat Service over an authenticated channel.
-   *
-   * @throws {ChatServiceInactive} if you haven't called {@link #connect()} (as a
-   * rejection of the promise).
-   */
   fetch(
     chatRequest: ChatRequest,
     options?: { abortSignal?: AbortSignal }
@@ -282,10 +303,8 @@ export class AuthenticatedChatService {
 
 /**
  * Provides API methods to connect and communicate with the Chat Service over an unauthenticated channel.
- * Before sending requests, a {@link #connect()} method must be called.
- * It's also important to call {@link #disconnect()} method when the instance is no longer needed.
  */
-export class UnauthenticatedChatService {
+export class UnauthenticatedChatService implements ChatService {
   public readonly chatService: Wrapper<Native.Chat>;
 
   constructor(
@@ -297,27 +316,10 @@ export class UnauthenticatedChatService {
     );
   }
 
-  /**
-   * Initiates termination of the underlying connection to the Chat Service. After the service is
-   * disconnected, it will not attempt to automatically reconnect until you call
-   * {@link #connect()}.
-   *
-   * Note: the same instance of `UnauthenticatedChatService` can be reused after {@link #disconnect()} was
-   * called.
-   */
   disconnect(): Promise<void> {
     return Native.ChatService_disconnect(this.asyncContext, this.chatService);
   }
 
-  /**
-   * Initiates establishing of the underlying unauthenticated connection to the Chat Service. Once
-   * the service is connected, all the requests will be using the established connection. Also, if
-   * the connection is lost for any reason other than the call to {@link #disconnect()}, an
-   * automatic reconnect attempt will be made.
-   *
-   * @throws {AppExpiredError} if the current app version is too old (as judged by the server).
-   * @throws {LibSignalError} with other codes for other failures.
-   */
   connect(options?: {
     abortSignal?: AbortSignal;
   }): Promise<Native.ChatServiceDebugInfo> {
@@ -327,15 +329,6 @@ export class UnauthenticatedChatService {
     );
   }
 
-  /**
-   * Sends request to the Chat Service over an unauthenticated channel.
-   *
-   * In addition to the response, an object containing debug information about the request flow is
-   * returned.
-   *
-   * @throws {ChatServiceInactive} if you haven't called {@link #connectUnauthenticated()} (as a
-   * rejection of the promise).
-   */
   fetchAndDebug(
     chatRequest: ChatRequest,
     options?: { abortSignal?: AbortSignal }
@@ -351,12 +344,6 @@ export class UnauthenticatedChatService {
     );
   }
 
-  /**
-   * Sends request to the Chat Service over an unauthenticated channel.
-   *
-   * @throws {ChatServiceInactive} if you haven't called {@link #connect()} (as a
-   * rejection of the promise).
-   */
   fetch(
     chatRequest: ChatRequest,
     options?: { abortSignal?: AbortSignal }
@@ -408,6 +395,11 @@ export class Net {
 
   /**
    * Creates a new instance of {@link AuthenticatedChatService}.
+   *
+   * Note that created `AuthenticatedChatService` will hold a **non-garbage-collectable** reference to `listener`.
+   * If `listener` contains a strong reference to this ChatService (directly or indirectly), both objects will be kept
+   * alive even with no other references. If such reference cycle is created, it's the responsibility of the caller
+   * to eventually break it (either using a weak reference or by assigning over the strong reference).
    */
   public newAuthenticatedChatService(
     username: string,
