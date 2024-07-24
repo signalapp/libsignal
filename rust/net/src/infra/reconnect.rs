@@ -573,7 +573,7 @@ mod test {
         TIMEOUT_DURATION, TIME_ADVANCE_VALUE,
     };
     use crate::infra::{ConnectionParams, HttpRequestDecoratorSeq, RouteType};
-    use crate::utils::sleep_and_catch_up;
+    use crate::utils::{sleep_and_catch_up, ObservableEvent};
 
     #[derive(Clone, Debug)]
     struct TestService {
@@ -669,6 +669,7 @@ mod test {
         let manager = SingleRouteThrottlingConnectionManager::new(
             example_connection_params(),
             TIMEOUT_DURATION,
+            &ObservableEvent::default(),
         );
         let _ = ServiceWithReconnect::new(connector.clone(), manager, TIMEOUT_DURATION);
         assert_eq!(connector.attempts_made(), 0);
@@ -814,6 +815,7 @@ mod test {
         let manager = SingleRouteThrottlingConnectionManager::new(
             example_connection_params(),
             connection_timeout,
+            &ObservableEvent::default(),
         );
         let service_with_reconnect =
             ServiceWithReconnect::new(connector.clone(), manager, service_with_reconnect_timeout);
@@ -837,6 +839,7 @@ mod test {
         let manager = SingleRouteThrottlingConnectionManager::new(
             example_connection_params(),
             connection_timeout,
+            &ObservableEvent::default(),
         );
         let service_with_reconnect =
             ServiceWithReconnect::new(connector.clone(), manager, service_with_reconnect_timeout);
@@ -1125,6 +1128,7 @@ mod test {
         let manager = SingleRouteThrottlingConnectionManager::new(
             example_connection_params(),
             TIMEOUT_DURATION,
+            &ObservableEvent::default(),
         );
         let service_with_reconnect =
             ServiceWithReconnect::new(connector.clone(), manager, TIMEOUT_DURATION);

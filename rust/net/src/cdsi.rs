@@ -488,6 +488,7 @@ mod test {
         FAKE_ATTESTATION,
     };
     use crate::infra::ws::WebSocketClient;
+    use crate::utils::ObservableEvent;
 
     use super::*;
 
@@ -815,8 +816,11 @@ mod test {
         let connector = InMemoryWarpConnector::new(h2_server);
 
         let env = crate::env::PROD;
-        let endpoint_connection =
-            EnclaveEndpointConnection::new(&env.cdsi, Duration::from_secs(10));
+        let endpoint_connection = EnclaveEndpointConnection::new(
+            &env.cdsi,
+            Duration::from_secs(10),
+            &ObservableEvent::default(),
+        );
         let auth = Auth {
             username: "username".to_string(),
             password: "password".to_string(),

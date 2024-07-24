@@ -115,6 +115,7 @@ impl<T: DnsTransport + Sync + 'static> CustomDnsResolver<T> {
             connection_manager: SingleRouteThrottlingConnectionManager::new(
                 transport_connection_params,
                 DNS_CALL_BACKGROUND_TIMEOUT,
+                network_change_event,
             ),
             cache,
             _network_change_subscription: Arc::new(network_change_subscription),
@@ -386,7 +387,7 @@ pub(crate) mod test {
                 + Sync
                 + 'static,
         {
-            let network_changed_event = Arc::new(ObservableEvent::new());
+            let network_changed_event = Arc::new(ObservableEvent::default());
             CustomDnsResolver::new(
                 Self {
                     sender_handler: Arc::new(Box::new(sender_handler)),
@@ -409,7 +410,7 @@ pub(crate) mod test {
             let transport = Self {
                 sender_handler: Arc::new(Box::new(sender_handler)),
                 queries_count: Default::default(),
-                network_changed_event: Arc::new(ObservableEvent::new()),
+                network_changed_event: Arc::new(ObservableEvent::default()),
             };
             let resolver =
                 CustomDnsResolver::new(transport.clone(), &transport.network_changed_event);

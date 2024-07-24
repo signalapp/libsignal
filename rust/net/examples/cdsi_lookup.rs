@@ -55,9 +55,11 @@ async fn main() {
         ..Default::default()
     };
     let env = libsignal_net::env::PROD;
-    let endpoint_connection = EnclaveEndpointConnection::new(&env.cdsi, Duration::from_secs(10));
+    let network_change_event = ObservableEvent::default();
+    let endpoint_connection =
+        EnclaveEndpointConnection::new(&env.cdsi, Duration::from_secs(10), &network_change_event);
     let transport_connection =
-        TcpSslTransportConnector::new(DnsResolver::new(&ObservableEvent::default()));
+        TcpSslTransportConnector::new(DnsResolver::new(&network_change_event));
     let cdsi_response = cdsi_lookup(
         Auth { username, password },
         &endpoint_connection,

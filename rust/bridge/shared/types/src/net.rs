@@ -92,12 +92,29 @@ impl ConnectionManager {
                 chat_connection_params,
                 ONE_ROUTE_CONNECTION_TIMEOUT,
                 chat_ws_config,
+                &network_change_event,
             ),
-            cdsi: Self::endpoint_connection(&environment.env().cdsi, &user_agent),
+            cdsi: Self::endpoint_connection(
+                &environment.env().cdsi,
+                &user_agent,
+                &network_change_event,
+            ),
             svr3: (
-                Self::endpoint_connection(environment.env().svr3.sgx(), &user_agent),
-                Self::endpoint_connection(environment.env().svr3.nitro(), &user_agent),
-                Self::endpoint_connection(environment.env().svr3.tpm2snp(), &user_agent),
+                Self::endpoint_connection(
+                    environment.env().svr3.sgx(),
+                    &user_agent,
+                    &network_change_event,
+                ),
+                Self::endpoint_connection(
+                    environment.env().svr3.nitro(),
+                    &user_agent,
+                    &network_change_event,
+                ),
+                Self::endpoint_connection(
+                    environment.env().svr3.tpm2snp(),
+                    &user_agent,
+                    &network_change_event,
+                ),
             ),
             transport_connector,
             network_change_event,
@@ -154,10 +171,16 @@ impl ConnectionManager {
     fn endpoint_connection<E: EnclaveKind>(
         endpoint: &EnclaveEndpoint<'static, E>,
         user_agent: &str,
+        network_change_event: &ObservableEvent,
     ) -> EnclaveEndpointConnection<E, MultiRouteConnectionManager> {
         let params = endpoint.domain_config.connection_params_with_fallback();
         let params = add_user_agent_header(params, user_agent);
-        EnclaveEndpointConnection::new_multi(endpoint, params, ONE_ROUTE_CONNECTION_TIMEOUT)
+        EnclaveEndpointConnection::new_multi(
+            endpoint,
+            params,
+            ONE_ROUTE_CONNECTION_TIMEOUT,
+            network_change_event,
+        )
     }
 
     pub fn network_changed(&self) {

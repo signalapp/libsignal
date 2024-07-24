@@ -26,6 +26,7 @@ use crate::infra::{
     make_ws_config, AsyncDuplexStream, ConnectionParams, EndpointConnection, TransportConnector,
 };
 use crate::svr::SvrConnection;
+use crate::utils::ObservableEvent;
 
 pub trait AsRaftConfig<'a> {
     fn as_raft_config(&self) -> Option<&'a RaftConfig>;
@@ -322,12 +323,17 @@ async fn connect_attested<
 }
 
 impl<E: EnclaveKind> EnclaveEndpointConnection<E, SingleRouteThrottlingConnectionManager> {
-    pub fn new(endpoint: &EnclaveEndpoint<'static, E>, connect_timeout: Duration) -> Self {
+    pub fn new(
+        endpoint: &EnclaveEndpoint<'static, E>,
+        connect_timeout: Duration,
+        network_change_event: &ObservableEvent,
+    ) -> Self {
         Self {
             endpoint_connection: EndpointConnection {
                 manager: SingleRouteThrottlingConnectionManager::new(
                     endpoint.domain_config.connection_params(),
                     connect_timeout,
+                    network_change_event,
                 ),
                 config: make_ws_config(
                     E::url_path(endpoint.params.mr_enclave.as_ref()),
@@ -344,6 +350,7 @@ impl<E: EnclaveKind> EnclaveEndpointConnection<E, MultiRouteConnectionManager> {
         endpoint: &EnclaveEndpoint<'static, E>,
         connection_params: impl IntoIterator<Item = ConnectionParams>,
         one_route_connect_timeout: Duration,
+        network_change_event: &ObservableEvent,
     ) -> Self {
         Self {
             endpoint_connection: EndpointConnection::new_multi(
@@ -353,6 +360,7 @@ impl<E: EnclaveKind> EnclaveEndpointConnection<E, MultiRouteConnectionManager> {
                     E::url_path(endpoint.params.mr_enclave.as_ref()),
                     one_route_connect_timeout,
                 ),
+                network_change_event,
             ),
             params: endpoint.params.clone(),
         }
@@ -500,6 +508,7 @@ mod test {
         let result = enclave_connect(SingleRouteThrottlingConnectionManager::new(
             fake_connection_params(),
             CONNECT_TIMEOUT,
+            &ObservableEvent::default(),
         ))
         .await;
         assert_matches!(
@@ -516,6 +525,7 @@ mod test {
             SingleRouteThrottlingConnectionManager::new(
                 fake_connection_params(),
                 CONNECT_TIMEOUT,
+                &ObservableEvent::default(),
             );
             3
         ]))
@@ -531,6 +541,7 @@ mod test {
             SingleRouteThrottlingConnectionManager::new(
                 fake_connection_params(),
                 CONNECT_TIMEOUT,
+                &ObservableEvent::default(),
             );
             3
         ]);

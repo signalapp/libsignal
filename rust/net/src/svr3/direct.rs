@@ -35,8 +35,9 @@ where
     type ConnectionResults = Result<SvrConnection<A, DefaultStream>, enclave::Error>;
 
     async fn connect(&self, auth: &Auth) -> Self::ConnectionResults {
-        let transport = default_transport();
-        connect_one(self, auth, transport).await
+        let network_change_event = ObservableEvent::default();
+        let transport = default_transport(&network_change_event);
+        connect_one(self, auth, transport, &network_change_event).await
     }
 }
 
@@ -52,10 +53,11 @@ where
     );
 
     async fn connect(&self, auth: &Auth) -> Self::ConnectionResults {
-        let transport = default_transport();
+        let network_change_event = ObservableEvent::default();
+        let transport = default_transport(&network_change_event);
         futures_util::future::join(
-            connect_one(self.0, auth, transport.clone()),
-            connect_one(self.1, auth, transport),
+            connect_one(self.0, auth, transport.clone(), &network_change_event),
+            connect_one(self.1, auth, transport, &network_change_event),
         )
         .await
     }
@@ -80,30 +82,33 @@ where
     );
 
     async fn connect(&self, auth: &Auth) -> Self::ConnectionResults {
-        let transport = default_transport();
+        let network_change_event = ObservableEvent::default();
+        let transport = default_transport(&network_change_event);
 
         futures_util::future::join3(
-            connect_one(self.0, auth, transport.clone()),
-            connect_one(self.1, auth, transport.clone()),
-            connect_one(self.2, auth, transport),
+            connect_one(self.0, auth, transport.clone(), &network_change_event),
+            connect_one(self.1, auth, transport.clone(), &network_change_event),
+            connect_one(self.2, auth, transport, &network_change_event),
         )
         .await
     }
 }
 
-fn default_transport() -> DirectConnector {
-    DirectConnector::new(DnsResolver::new(&ObservableEvent::new()))
+fn default_transport(network_change_event: &ObservableEvent) -> DirectConnector {
+    DirectConnector::new(DnsResolver::new(network_change_event))
 }
 
 async fn connect_one<Enclave, Transport>(
     endpoint: &EnclaveEndpoint<'static, Enclave>,
     auth: &Auth,
     connector: Transport,
+    network_change_event: &ObservableEvent,
 ) -> Result<SvrConnection<Enclave, DefaultStream>, enclave::Error>
 where
     Enclave: Svr3Flavor + NewHandshake + Sized,
     Transport: TransportConnector<Stream = DefaultStream>,
 {
-    let ep_connection = EnclaveEndpointConnection::new(endpoint, DIRECT_CONNECTION_TIMEOUT);
+    let ep_connection =
+        EnclaveEndpointConnection::new(endpoint, DIRECT_CONNECTION_TIMEOUT, network_change_event);
     SvrConnection::connect(auth.clone(), &ep_connection, connector).await
 }

@@ -107,13 +107,21 @@ impl Svr3Connect for Client {
     type Env = TwoForTwoEnv<'static, Sgx, Sgx>;
 
     async fn connect(&self) -> <Self::Env as PpssSetup<Self::Stream>>::ConnectionResults {
-        let connector =
-            TcpSslTransportConnector::new(DnsResolver::new(&ObservableEvent::default()));
-        let connection_a = EnclaveEndpointConnection::new(&self.env.0, Duration::from_secs(10));
+        let network_change_event = ObservableEvent::default();
+        let connector = TcpSslTransportConnector::new(DnsResolver::new(&network_change_event));
+        let connection_a = EnclaveEndpointConnection::new(
+            &self.env.0,
+            Duration::from_secs(10),
+            &network_change_event,
+        );
 
         let a = SvrConnection::connect(self.auth_a.clone(), &connection_a, connector.clone()).await;
 
-        let connection_b = EnclaveEndpointConnection::new(&self.env.1, Duration::from_secs(10));
+        let connection_b = EnclaveEndpointConnection::new(
+            &self.env.1,
+            Duration::from_secs(10),
+            &network_change_event,
+        );
 
         let b = SvrConnection::connect(self.auth_b.clone(), &connection_b, connector).await;
         (a, b)

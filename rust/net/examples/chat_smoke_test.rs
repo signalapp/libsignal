@@ -102,13 +102,18 @@ async fn test_connection(
     connection_params: Vec<ConnectionParams>,
 ) -> Result<(), ChatServiceError> {
     let one_route_connect_timeout = Duration::from_secs(5);
+    let network_change_event = ObservableEvent::default();
     let dns_resolver =
-        DnsResolver::new_with_static_fallback(env.static_fallback(), &ObservableEvent::default());
+        DnsResolver::new_with_static_fallback(env.static_fallback(), &network_change_event);
     let transport_connector = DirectConnector::new(dns_resolver);
     let chat_endpoint = PathAndQuery::from_static(WEB_SOCKET_PATH);
     let chat_ws_config = make_ws_config(chat_endpoint, one_route_connect_timeout);
-    let connection =
-        EndpointConnection::new_multi(connection_params, one_route_connect_timeout, chat_ws_config);
+    let connection = EndpointConnection::new_multi(
+        connection_params,
+        one_route_connect_timeout,
+        chat_ws_config,
+        &network_change_event,
+    );
 
     let (incoming_tx, _incoming_rx) = mpsc::channel(1);
     let chat = chat_service(

@@ -479,6 +479,7 @@ pub(crate) mod test {
         use crate::infra::reconnect::{ServiceConnector, ServiceState};
         use crate::infra::test::shared::{NoReconnectService, TIMEOUT_DURATION};
         use crate::infra::{ConnectionParams, RouteType};
+        use crate::utils::ObservableEvent;
 
         #[async_trait]
         impl<C> ChatService for NoReconnectService<C>
@@ -531,7 +532,11 @@ pub(crate) mod test {
                 Default::default(),
                 RootCertificates::Signal,
             );
-            SingleRouteThrottlingConnectionManager::new(connection_params, TIMEOUT_DURATION)
+            SingleRouteThrottlingConnectionManager::new(
+                connection_params,
+                TIMEOUT_DURATION,
+                &ObservableEvent::default(),
+            )
         }
     }
 

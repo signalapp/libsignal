@@ -10,6 +10,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use crate::timeouts::{WS_KEEP_ALIVE_INTERVAL, WS_MAX_IDLE_INTERVAL};
+use crate::utils::ObservableEvent;
 use ::http::uri::PathAndQuery;
 use ::http::Uri;
 use async_trait::async_trait;
@@ -282,6 +283,7 @@ impl EndpointConnection<MultiRouteConnectionManager> {
         connection_params: impl IntoIterator<Item = ConnectionParams>,
         one_route_connect_timeout: Duration,
         config: WebSocketConfig,
+        network_changed_event: &ObservableEvent,
     ) -> Self {
         Self {
             manager: MultiRouteConnectionManager::new(
@@ -291,6 +293,7 @@ impl EndpointConnection<MultiRouteConnectionManager> {
                         SingleRouteThrottlingConnectionManager::new(
                             params,
                             one_route_connect_timeout,
+                            network_changed_event,
                         )
                     })
                     .collect(),
