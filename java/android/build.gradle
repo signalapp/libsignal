@@ -54,6 +54,8 @@ android {
             pickFirst 'lib/*/libsignal_jni.so'
             pickFirst 'lib/*/libsignal_jni_testing.so'
         }
+        // Defer stripping to the Android app project.
+        doNotStrip '**/*.so'
     }
 
     publishing {
