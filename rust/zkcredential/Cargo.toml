@@ -14,7 +14,7 @@ license = "AGPL-3.0-only"
 poksho = { path = "../poksho" }
 
 cfg-if = "1.0.0"
-curve25519-dalek = { version = "4.0", features = ["serde"] }
+curve25519-dalek = { version = "4.1.3", features = ["serde"] }
 derive-where = "1.2.5"
 displaydoc = "0.2"
 lazy_static = "1.4.0"

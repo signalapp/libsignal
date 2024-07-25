@@ -161,22 +161,6 @@ path = "LICENSES/MIT.txt"
 checksum = "b85dcd3e453d05982552c52b5fc9e0bdd6d23c6f8e844b984a88af32570b0cc0"
 
 
-# http-body is embedded in a larger repo
-[http-body.clarify]
-license = "MIT"
-
-[[http-body.clarify.git]]
-path = "LICENSE"
-checksum = "0345e2b98685e3807fd802a2478085dcae35023e3da59b5a00f712504314d83a"
-
-[http-body-util.clarify]
-license = "MIT"
-
-[[http-body-util.clarify.git]]
-path = "LICENSE"
-checksum = "0345e2b98685e3807fd802a2478085dcae35023e3da59b5a00f712504314d83a"
-
-
 # linkme-impl is embedded in a larger repo.
 [linkme-impl.clarify]
 license = "MIT OR Apache-2.0"
@@ -261,14 +245,21 @@ path = "LICENSE.txt"
 checksum = "97647e63047ef75a82ee2928b335df94f45c87e08777dc033393c73294f3a57a"
 
 
+# The rustls-platform-verifier crates are embedded in a larger repo
+[rustls-platform-verifier.clarify]
+license = "MIT OR Apache-2.0"
 
-# tokio-macros is embedded in a larger repo
-[tokio-macros.clarify]
-license = "MIT"
+[[rustls-platform-verifier.clarify.git]]
+path = "LICENSE-MIT"
+checksum = "1c7cf76689c837a68ed8d704994e52a0f2940c087958f860d17f3186afbdcc0c"
 
-[[tokio-macros.clarify.git]]
-path = "LICENSE"
-checksum = "1a594f153f129c2de7b15f3262394bdca3dcc2da40058e3ea435c8473eb1f3a0"
+[rustls-platform-verifier-android.clarify]
+license = "MIT OR Apache-2.0"
+override-git-commit = "v/0.3.2"
+
+[[rustls-platform-verifier-android.clarify.git]]
+path = "LICENSE-MIT"
+checksum = "1c7cf76689c837a68ed8d704994e52a0f2940c087958f860d17f3186afbdcc0c"
 
 
 # webpsan is embedded in a larger repo, and has a tag that doesn't match the revision in Cargo

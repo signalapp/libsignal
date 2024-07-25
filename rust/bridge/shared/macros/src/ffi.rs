@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use heck::SnakeCase;
+use heck::ToSnakeCase;
 use proc_macro2::TokenStream as TokenStream2;
 use quote::*;
 use syn::*;

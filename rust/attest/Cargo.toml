@@ -25,7 +25,7 @@ hex-literal = "0.4.1"
 lazy_static = "1.4.0"
 libc = "0.2"
 log = "0.4"
-prost = "0.12"
+prost = "0.13.1"
 rand_core = { version = "0.6", features = ["getrandom"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0", features = ["raw_value"] }
@@ -45,7 +45,7 @@ snow = { version = "0.9.5", features = ["default-resolver"] }
 test-case = "3.3"
 
 [build-dependencies]
-prost-build = "0.12"
+prost-build = "0.13.1"
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(fuzzing)'] }

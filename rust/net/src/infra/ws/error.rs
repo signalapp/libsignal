@@ -116,7 +116,7 @@ pub struct ProtocolError(#[from] tungstenite::error::ProtocolError);
 
 impl std::fmt::Display for ProtocolError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        use tungstenite::error::ProtocolError;
+        use tungstenite::error::{ProtocolError, SubProtocolError};
         let str = match &self.0 {
             ProtocolError::InvalidHeader(header_name) => {
                 return write!(f, "InvalidHeader: {header_name}")
@@ -128,6 +128,15 @@ impl std::fmt::Display for ProtocolError {
             ProtocolError::MissingUpgradeWebSocketHeader => "MissingUpgradeWebSocketHeader",
             ProtocolError::MissingSecWebSocketVersionHeader => "MissingSecWebSocketVersionHeader",
             ProtocolError::MissingSecWebSocketKey => "MissingSecWebSocketKey",
+            ProtocolError::SecWebSocketSubProtocolError(SubProtocolError::InvalidSubProtocol) => {
+                "InvalidSubProtocol"
+            }
+            ProtocolError::SecWebSocketSubProtocolError(SubProtocolError::NoSubProtocol) => {
+                "NoSubProtocol"
+            }
+            ProtocolError::SecWebSocketSubProtocolError(
+                SubProtocolError::ServerSentSubProtocolNoneRequested,
+            ) => "ServerSentSubProtocolNoneRequested",
             ProtocolError::SecWebSocketAcceptKeyMismatch => "SecWebSocketAcceptKeyMismatch",
             ProtocolError::JunkAfterRequest => "JunkAfterRequest",
             ProtocolError::CustomResponseSuccessful => "CustomResponseSuccessful",

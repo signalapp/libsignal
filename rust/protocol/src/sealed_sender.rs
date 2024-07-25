@@ -1369,7 +1369,7 @@ where
         for (_, mut next_group) in &destinations
             .iter()
             .enumerate()
-            .group_by(|(_i, next)| next.name())
+            .chunk_by(|(_i, next)| next.name())
         {
             let (i, &destination) = next_group
                 .next()

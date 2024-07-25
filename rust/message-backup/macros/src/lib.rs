@@ -5,7 +5,7 @@
 
 use std::borrow::Cow;
 
-use heck::SnakeCase;
+use heck::ToSnakeCase;
 use proc_macro::TokenStream;
 use proc_macro2::{Delimiter, Group, TokenStream as TokenStream2};
 use quote::{quote, ToTokens};
