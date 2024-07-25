@@ -232,7 +232,7 @@ describe('chat service api', () => {
       onQueueEmpty: sinon.stub(),
       onConnectionInterrupted: sinon.stub(),
     };
-    const chat = net.newAuthenticatedChatService('', '', listener);
+    const chat = net.newAuthenticatedChatService('', '', false, listener);
 
     // a helper function to check that the message has been passed to the listener
     async function check(
@@ -303,7 +303,7 @@ describe('chat service api', () => {
         recordCall('_connection_interrupted');
       },
     };
-    const chat = net.newAuthenticatedChatService('', '', listener);
+    const chat = net.newAuthenticatedChatService('', '', false, listener);
     callsToMake.forEach((message) =>
       Native.TESTING_ChatService_InjectRawServerRequest(
         chat.chatService,

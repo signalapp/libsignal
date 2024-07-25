@@ -185,7 +185,7 @@ public final class Native {
   public static native CompletableFuture<Object> ChatService_connect_auth(long asyncRuntime, long chat);
   public static native CompletableFuture<Object> ChatService_connect_unauth(long asyncRuntime, long chat);
   public static native CompletableFuture ChatService_disconnect(long asyncRuntime, long chat);
-  public static native long ChatService_new(long connectionManager, String username, String password);
+  public static native long ChatService_new(long connectionManager, String username, String password, boolean receiveStories);
   public static native CompletableFuture<Object> ChatService_unauth_send(long asyncRuntime, long chat, long httpRequest, int timeoutMillis);
   public static native CompletableFuture<Object> ChatService_unauth_send_and_debug(long asyncRuntime, long chat, long httpRequest, int timeoutMillis);
 

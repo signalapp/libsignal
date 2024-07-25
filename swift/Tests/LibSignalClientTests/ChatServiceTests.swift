@@ -207,7 +207,7 @@ final class ChatServiceTests: TestCaseBase {
         }
 
         let net = Net(env: .staging, userAgent: Self.userAgent)
-        let chat = net.createAuthenticatedChatService(username: "", password: "")
+        let chat = net.createAuthenticatedChatService(username: "", password: "", receiveStories: false)
         let listener = Listener(
             queueEmpty: expectation(description: "queue empty"),
             firstMessageReceived: expectation(description: "first message received"),
@@ -270,7 +270,7 @@ final class ChatServiceTests: TestCaseBase {
         let net = Net(env: .staging, userAgent: Self.userAgent)
 
         do {
-            let chat = net.createAuthenticatedChatService(username: "", password: "")
+            let chat = net.createAuthenticatedChatService(username: "", password: "", receiveStories: false)
 
             do {
                 let listener = Listener(expectation: expectation(description: "first listener destroyed"))

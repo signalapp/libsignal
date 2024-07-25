@@ -226,10 +226,16 @@ export class AuthenticatedChatService implements ChatService {
     connectionManager: ConnectionManager,
     username: string,
     password: string,
+    receiveStories: boolean,
     listener: ChatServiceListener
   ) {
     this.chatService = newNativeHandle(
-      Native.ChatService_new(connectionManager, username, password)
+      Native.ChatService_new(
+        connectionManager,
+        username,
+        password,
+        receiveStories
+      )
     );
     const nativeChatListener = {
       _incoming_message(
@@ -312,7 +318,7 @@ export class UnauthenticatedChatService implements ChatService {
     connectionManager: ConnectionManager
   ) {
     this.chatService = newNativeHandle(
-      Native.ChatService_new(connectionManager, '', '')
+      Native.ChatService_new(connectionManager, '', '', false)
     );
   }
 
@@ -404,6 +410,7 @@ export class Net {
   public newAuthenticatedChatService(
     username: string,
     password: string,
+    receiveStories: boolean,
     listener: ChatServiceListener
   ): AuthenticatedChatService {
     return new AuthenticatedChatService(
@@ -411,6 +418,7 @@ export class Net {
       this.connectionManager,
       username,
       password,
+      receiveStories,
       listener
     );
   }

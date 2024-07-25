@@ -116,8 +116,10 @@ public class Network {
     return this.connectionManager;
   }
 
-  public ChatService createChatService(final String username, final String password) {
-    return new ChatService(tokioAsyncContext, connectionManager, username, password);
+  public ChatService createChatService(
+      final String username, final String password, final boolean receiveStories) {
+    return new ChatService(
+        tokioAsyncContext, connectionManager, username, password, receiveStories);
   }
 
   static class ConnectionManager extends NativeHandleGuard.SimpleOwner {

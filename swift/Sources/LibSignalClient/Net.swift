@@ -118,8 +118,8 @@ public class Net {
         return CdsiLookup(native: handle, asyncContext: self.asyncContext)
     }
 
-    public func createAuthenticatedChatService(username: String, password: String) -> AuthenticatedChatService {
-        return AuthenticatedChatService(tokioAsyncContext: self.asyncContext, connectionManager: self.connectionManager, username: username, password: password)
+    public func createAuthenticatedChatService(username: String, password: String, receiveStories: Bool) -> AuthenticatedChatService {
+        return AuthenticatedChatService(tokioAsyncContext: self.asyncContext, connectionManager: self.connectionManager, username: username, password: password, receiveStories: receiveStories)
     }
 
     public func createUnauthenticatedChatService() -> UnauthenticatedChatService {

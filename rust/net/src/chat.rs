@@ -23,6 +23,7 @@ use crate::utils::basic_authorization;
 
 pub mod chat_reconnect;
 mod error;
+use crate::env::RECEIVE_STORIES_HEADER_NAME;
 use crate::timeouts::MULTI_ROUTE_CONNECTION_TIMEOUT;
 pub use error::ChatServiceError;
 
@@ -391,11 +392,22 @@ fn build_authorized_chat_service(
     connection_manager_ws: &MultiRouteConnectionManager,
     service_connector_ws: &ChatOverWebSocketServiceConnector<impl TransportConnector + 'static>,
     auth: Auth,
+    receive_stories: bool,
 ) -> AuthorizedChatService<impl ChatServiceWithDebugInfo> {
-    let header_auth_decorator = HttpRequestDecorator::Header(
+    let mut header_map = HeaderMap::new();
+    header_map.insert(
         http::header::AUTHORIZATION,
         basic_authorization(&auth.username, &auth.password),
     );
+    header_map.insert(
+        HeaderName::from_static(RECEIVE_STORIES_HEADER_NAME),
+        if receive_stories {
+            HeaderValue::from_static("true")
+        } else {
+            HeaderValue::from_static("false")
+        },
+    );
+    let header_auth_decorator = HttpRequestDecorator::HeaderMap(header_map);
 
     // ws authorized
     let chat_over_ws_auth = ServiceWithReconnect::new(
@@ -437,6 +449,7 @@ pub fn chat_service<T: TransportConnector + 'static>(
     transport_connector: T,
     incoming_tx: tokio::sync::mpsc::Sender<ServerEvent<T::Stream>>,
     auth: Auth,
+    receive_stories: bool,
 ) -> Chat<impl ChatServiceWithDebugInfo, impl ChatServiceWithDebugInfo> {
     // Cannot reuse the same connector, since they lock on `incoming_tx` internally.
     let unauth_ws_connector = ChatOverWebSocketServiceConnector::new(
@@ -448,8 +461,12 @@ pub fn chat_service<T: TransportConnector + 'static>(
         incoming_tx,
     );
     {
-        let auth_service =
-            build_authorized_chat_service(&endpoint.manager, &auth_ws_connector, auth);
+        let auth_service = build_authorized_chat_service(
+            &endpoint.manager,
+            &auth_ws_connector,
+            auth,
+            receive_stories,
+        );
         let unauth_service = build_anonymous_chat_service(&endpoint.manager, &unauth_ws_connector);
         Chat {
             auth_service,

@@ -56,6 +56,8 @@ impl IpType {
 pub enum HttpRequestDecorator {
     /// Adds a specific header to the request
     Header(http::header::HeaderName, http::header::HeaderValue),
+    /// Adds a collection of headers to the request
+    HeaderMap(http::header::HeaderMap),
     /// Prefixes the path portion of the request with the given string.
     PathPrefix(&'static str),
     /// Applies generic decoration logic.
@@ -216,6 +218,11 @@ impl HttpRequestDecorator {
         match self {
             Self::Generic(decorator) => decorator(request_builder),
             Self::Header(name, value) => request_builder.header(name, value),
+            Self::HeaderMap(header_map) => header_map
+                .into_iter()
+                .fold(request_builder, |builder, (name, value)| {
+                    builder.header(name, value)
+                }),
             Self::PathPrefix(prefix) => {
                 let uri = request_builder.uri_ref().expect("request has URI set");
                 let mut parts = (*uri).clone().into_parts();

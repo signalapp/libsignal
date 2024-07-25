@@ -126,7 +126,7 @@ public class ChatServiceTest {
     Assume.assumeNotNull(PROXY_SERVER);
 
     final Network net = new Network(Network.Environment.STAGING, USER_AGENT);
-    final ChatService chat = net.createChatService("", "");
+    final ChatService chat = net.createChatService("", "", false);
     // Just make sure we can connect.
     chat.connectUnauthenticated().get();
     chat.disconnect();
@@ -151,7 +151,7 @@ public class ChatServiceTest {
         throw new IllegalArgumentException("invalid LIBSIGNAL_TESTING_PROXY_SERVER");
     }
 
-    final ChatService chat = net.createChatService("", "");
+    final ChatService chat = net.createChatService("", "", false);
     // Just make sure we can connect.
     chat.connectUnauthenticated().get();
     chat.disconnect();

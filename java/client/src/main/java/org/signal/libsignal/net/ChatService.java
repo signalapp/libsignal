@@ -17,7 +17,7 @@ import org.signal.libsignal.internal.NativeHandleGuard;
  * Represents an API of communication with the Chat Service.
  *
  * <p>An instance of this object is obtained via call to {@link Network#createChatService(String,
- * String)} method.
+ * String, boolean)} method.
  */
 public class ChatService extends NativeHandleGuard.SimpleOwner {
 
@@ -27,11 +27,13 @@ public class ChatService extends NativeHandleGuard.SimpleOwner {
       final TokioAsyncContext tokioAsyncContext,
       final Network.ConnectionManager connectionManager,
       final String username,
-      final String password) {
+      final String password,
+      final boolean receiveStories) {
     super(
         connectionManager.guardedMap(
             connectionManagerHandle ->
-                Native.ChatService_new(connectionManagerHandle, username, password)));
+                Native.ChatService_new(
+                    connectionManagerHandle, username, password, receiveStories)));
     this.tokioAsyncContext = tokioAsyncContext;
   }
 

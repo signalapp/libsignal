@@ -22,6 +22,7 @@ use crate::infra::{
 
 const DEFAULT_HTTPS_PORT: NonZeroU16 = nonzero!(443_u16);
 pub const TIMESTAMP_HEADER_NAME: &str = "x-signal-timestamp";
+pub const RECEIVE_STORIES_HEADER_NAME: &str = "x-signal-receive-stories";
 
 const DOMAIN_CONFIG_CHAT: DomainConfig = DomainConfig {
     hostname: "chat.signal.org",

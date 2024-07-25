@@ -124,6 +124,7 @@ async fn test_connection(
             username: "".to_owned(),
             password: "".to_owned(),
         },
+        false,
     );
 
     chat.connect_unauthenticated().await?;

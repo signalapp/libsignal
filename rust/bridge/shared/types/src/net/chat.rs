@@ -65,7 +65,7 @@ pub struct Chat {
 impl RefUnwindSafe for Chat {}
 
 impl Chat {
-    pub fn new(connection_manager: &ConnectionManager, auth: Auth) -> Self {
+    pub fn new(connection_manager: &ConnectionManager, auth: Auth, receive_stories: bool) -> Self {
         let (incoming_tx, incoming_rx) = mpsc::channel(1);
         let incoming_stream = chat::server_requests::stream_incoming_messages(incoming_rx);
         let synthetic_request_tx = incoming_tx.clone();
@@ -80,6 +80,7 @@ impl Chat {
                     .clone(),
                 incoming_tx,
                 auth,
+                receive_stories,
             )
             .into_dyn(),
             listener: std::sync::Mutex::new(ChatListenerState::Inactive(Box::pin(incoming_stream))),

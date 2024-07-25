@@ -52,14 +52,14 @@ extension ChatService {
 
 /// Represents an API of authenticated communication with the Chat Service.
 ///
-/// An instance of this object is obtained via call to ``Net/createAuthenticatedChatService(username:password:)``.
+/// An instance of this object is obtained via call to ``Net/createAuthenticatedChatService(username:password:receiveStories:)``.
 public class AuthenticatedChatService: NativeHandleOwner, ChatService {
     internal let tokioAsyncContext: TokioAsyncContext
 
-    internal init(tokioAsyncContext: TokioAsyncContext, connectionManager: ConnectionManager, username: String, password: String) {
+    internal init(tokioAsyncContext: TokioAsyncContext, connectionManager: ConnectionManager, username: String, password: String, receiveStories: Bool) {
         var handle: OpaquePointer?
         connectionManager.withNativeHandle { connectionManager in
-            failOnError(signal_chat_service_new(&handle, connectionManager, username, password))
+            failOnError(signal_chat_service_new(&handle, connectionManager, username, password, receiveStories))
         }
         self.tokioAsyncContext = tokioAsyncContext
         super.init(owned: handle!)
@@ -176,7 +176,7 @@ public class UnauthenticatedChatService: NativeHandleOwner, ChatService {
     internal init(tokioAsyncContext: TokioAsyncContext, connectionManager: ConnectionManager) {
         var handle: OpaquePointer?
         connectionManager.withNativeHandle { connectionManager in
-            failOnError(signal_chat_service_new(&handle, connectionManager, "", ""))
+            failOnError(signal_chat_service_new(&handle, connectionManager, "", "", false))
         }
         self.tokioAsyncContext = tokioAsyncContext
         super.init(owned: handle!)

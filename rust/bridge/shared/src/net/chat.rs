@@ -63,8 +63,13 @@ fn ChatService_new(
     connection_manager: &ConnectionManager,
     username: String,
     password: String,
+    receive_stories: bool,
 ) -> Chat {
-    Chat::new(connection_manager, Auth { username, password })
+    Chat::new(
+        connection_manager,
+        Auth { username, password },
+        receive_stories,
+    )
 }
 
 #[bridge_io(TokioAsyncContext)]
@@ -250,7 +255,7 @@ mod test {
             Err(_)
         );
 
-        let chat = ChatService_new(&cm, "".to_string(), "".to_string());
+        let chat = ChatService_new(&cm, "".to_string(), "".to_string(), false);
         assert_matches!(
             ChatService_connect_unauth(&chat).await,
             Err(ChatServiceError::AllConnectionRoutesFailed { .. })
