@@ -3049,7 +3049,7 @@ THE SOFTWARE.
 
 ```
 
-## anstyle-wincon 3.0.4
+## anstyle-wincon 3.0.3
 
 ```
 Copyright (c) 2015 Josh Triplett, 2022 The rust-cli Developers
@@ -3136,7 +3136,7 @@ DEALINGS IN THE SOFTWARE.
 
 ```
 
-## gimli 0.29.0, heck 0.5.0, peeking_take_while 0.1.2, unicode-bidi 0.3.15, unicode-normalization 0.1.23
+## gimli 0.29.0, heck 0.4.1, heck 0.5.0, peeking_take_while 0.1.2, unicode-bidi 0.3.15, unicode-normalization 0.1.23
 
 ```
 Copyright (c) 2015 The Rust Project Developers
@@ -3515,7 +3515,7 @@ DEALINGS IN THE SOFTWARE.
 
 ```
 
-## hashbrown 0.14.5
+## hashbrown 0.12.3, hashbrown 0.14.5
 
 ```
 Copyright (c) 2016 Amanieu d'Antras
@@ -3577,7 +3577,7 @@ DEALINGS IN THE SOFTWARE.
 
 ```
 
-## anstyle-parse 0.2.5
+## anstyle-parse 0.2.4
 
 ```
 Copyright (c) 2016 Joe Wilm and individual contributors
@@ -3821,7 +3821,7 @@ DEALINGS IN THE SOFTWARE.
 
 ```
 
-## indexmap 2.2.6
+## indexmap 1.9.3, indexmap 2.2.6
 
 ```
 Copyright (c) 2016--2017
@@ -4693,7 +4693,7 @@ DEALINGS IN THE SOFTWARE.
 
 ```
 
-## protobuf-codegen 3.5.0, protobuf-json-mapping 3.5.0, protobuf-support 3.5.0, protobuf 3.5.0
+## protobuf-codegen 3.4.0, protobuf-json-mapping 3.4.0, protobuf-parse 3.4.0, protobuf-support 3.4.0, protobuf 3.4.0
 
 ```
 Copyright (c) 2019 Stepan Koltsov
@@ -4715,7 +4715,6 @@ IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
 DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
 OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE
 OR OTHER DEALINGS IN THE SOFTWARE.
-
 ```
 
 ## ppv-lite86 0.2.17
@@ -5242,7 +5241,7 @@ DEALINGS IN THE SOFTWARE.
 
 ```
 
-## anstyle 1.0.8
+## anstyle 1.0.7
 
 ```
 Copyright (c) 2022 The rust-cli Developers
@@ -5454,7 +5453,7 @@ SOFTWARE.
 
 ```
 
-## anstream 0.6.15, anstyle-query 1.1.1, clap 4.5.11, colorchoice 1.0.2, env_filter 0.1.2, env_logger 0.11.5, is_terminal_polyfill 1.70.1, toml_datetime 0.6.7, toml_edit 0.21.1
+## anstream 0.6.14, anstyle-query 1.1.0, clap 4.4.18, colorchoice 1.0.1, env_filter 0.1.1, env_logger 0.11.4, is_terminal_polyfill 1.70.0, toml_datetime 0.6.6, toml_edit 0.21.1
 
 ```
 Copyright (c) Individual contributors
@@ -6184,7 +6183,7 @@ SOFTWARE.
 
 ```
 
-## cesu8 1.1.0, half 2.4.1, pqcrypto-internals 0.2.5, pqcrypto-kyber 0.7.9, pqcrypto-kyber 0.8.1, pqcrypto-traits 0.3.5, protobuf-parse 3.5.0
+## cesu8 1.1.0, half 2.4.1, pqcrypto-internals 0.2.5, pqcrypto-kyber 0.7.9, pqcrypto-kyber 0.8.1, pqcrypto-traits 0.3.5
 
 ```
 MIT License
@@ -6533,7 +6532,7 @@ THE SOFTWARE.
 
 ```
 
-## strsim 0.10.0, strsim 0.11.1
+## strsim 0.10.0
 
 ```
 The MIT License (MIT)
@@ -6671,7 +6670,7 @@ SOFTWARE.
 
 ```
 
-## clap_builder 4.5.11, clap_derive 4.5.11, clap_lex 0.7.2
+## clap_builder 4.4.18, clap_derive 4.4.7, clap_lex 0.6.0
 
 ```
 The MIT License (MIT)
@@ -6954,7 +6953,7 @@ SOFTWARE.
 
 ```
 
-## version_check 0.9.5
+## version_check 0.9.4
 
 ```
 The MIT License (MIT)
