@@ -19,9 +19,12 @@ libsignal-message-backup = { path = "../../../message-backup" }
 libsignal-net = { path = "../../../net" }
 libsignal-protocol = { path = "../../../protocol" }
 libsignal-svr3 = { path = "../../../svr3" }
+signal-chat = { path = "../../../chat" }
 signal-crypto = { path = "../../../crypto" }
+signal-grpc = { path = "../../../grpc" }
 signal-media = { path = "../../../media", optional = true }
 signal-pin = { path = "../../../pin" }
+signal-quic = { path = "../../../quic" }
 usernames = { path = "../../../usernames" }
 zkgroup = { path = "../../../zkgroup" }
 
