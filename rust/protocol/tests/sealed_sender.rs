@@ -90,7 +90,7 @@ fn test_sender_cert() -> Result<(), SignalProtocolError> {
         ServerCertificate::new(1, server_key.public_key, &trust_root.private_key, &mut rng)?;
 
     let device_id: DeviceId = 42.into();
-    let expires = 1605722925;
+    let expires = Timestamp::from_epoch_millis(1605722925);
 
     let sender_cert = SenderCertificate::new(
         "9d0652a3-dcc3-4d11-975f-74d61598733f".to_string(),
@@ -104,7 +104,7 @@ fn test_sender_cert() -> Result<(), SignalProtocolError> {
     )?;
 
     assert!(sender_cert.validate(&trust_root.public_key, expires)?);
-    assert!(!sender_cert.validate(&trust_root.public_key, expires + 1)?); // expired
+    assert!(!sender_cert.validate(&trust_root.public_key, expires.add_millis(1))?); // expired
 
     let mut sender_cert_data = sender_cert.serialized()?.to_vec();
     let sender_cert_bits = sender_cert_data.len() * 8;
@@ -172,7 +172,7 @@ fn test_sealed_sender() -> Result<(), SignalProtocolError> {
         let server_cert =
             ServerCertificate::new(1, server_key.public_key, &trust_root.private_key, &mut rng)?;
 
-        let expires = 1605722925;
+        let expires = Timestamp::from_epoch_millis(1605722925);
 
         let sender_cert = SenderCertificate::new(
             alice_uuid.clone(),
@@ -200,7 +200,7 @@ fn test_sealed_sender() -> Result<(), SignalProtocolError> {
         let bob_ptext = sealed_sender_decrypt(
             &alice_ctext,
             &trust_root.public_key,
-            expires - 1,
+            expires.sub_millis(1),
             Some(bob_e164.clone()),
             bob_uuid.clone(),
             bob_device_id,
@@ -233,7 +233,7 @@ fn test_sealed_sender() -> Result<(), SignalProtocolError> {
         let bob_ptext = sealed_sender_decrypt(
             &alice_ctext,
             &trust_root.public_key,
-            expires + 11,
+            expires.add_millis(11),
             Some(bob_e164.clone()),
             bob_uuid.clone(),
             bob_device_id,
@@ -273,7 +273,7 @@ fn test_sealed_sender() -> Result<(), SignalProtocolError> {
         let bob_ptext = sealed_sender_decrypt(
             &alice_ctext,
             &wrong_trust_root.public_key,
-            expires - 1,
+            expires.sub_millis(1),
             Some(bob_e164.clone()),
             bob_uuid.clone(),
             bob_device_id,
@@ -343,7 +343,7 @@ fn test_sender_key_in_sealed_sender() -> Result<(), SignalProtocolError> {
         let server_cert =
             ServerCertificate::new(1, server_key.public_key, &trust_root.private_key, &mut rng)?;
 
-        let expires = 1605722925;
+        let expires = Timestamp::from_epoch_millis(1605722925);
 
         let sender_cert = SenderCertificate::new(
             alice_uuid.clone(),
@@ -456,7 +456,7 @@ fn test_sealed_sender_multi_recipient() -> Result<(), SignalProtocolError> {
         let server_cert =
             ServerCertificate::new(1, server_key.public_key, &trust_root.private_key, &mut rng)?;
 
-        let expires = 1605722925;
+        let expires = Timestamp::from_epoch_millis(1605722925);
 
         let sender_cert = SenderCertificate::new(
             alice_uuid.clone(),
@@ -507,7 +507,7 @@ fn test_sealed_sender_multi_recipient() -> Result<(), SignalProtocolError> {
         let bob_ptext = sealed_sender_decrypt(
             &bob_ctext,
             &trust_root.public_key,
-            expires - 1,
+            expires.sub_millis(1),
             Some(bob_e164.clone()),
             bob_uuid.clone(),
             bob_device_id,
@@ -572,7 +572,7 @@ fn test_sealed_sender_multi_recipient() -> Result<(), SignalProtocolError> {
         let bob_ptext = sealed_sender_decrypt(
             &bob_ctext,
             &trust_root.public_key,
-            expires + 11,
+            expires.add_millis(11),
             Some(bob_e164.clone()),
             bob_uuid.clone(),
             bob_device_id,
@@ -633,7 +633,7 @@ fn test_sealed_sender_multi_recipient() -> Result<(), SignalProtocolError> {
         let bob_ptext = sealed_sender_decrypt(
             &bob_ctext,
             &wrong_trust_root.public_key,
-            expires - 1,
+            expires.sub_millis(1),
             Some(bob_e164.clone()),
             bob_uuid.clone(),
             bob_device_id,
@@ -662,7 +662,7 @@ fn test_sealed_sender_multi_recipient() -> Result<(), SignalProtocolError> {
 }
 
 #[test]
-fn test_sealed_sender_multi_recipient_new_derivation() -> Result<(), SignalProtocolError> {
+fn test_sealed_sender_multi_recipient_legacy_derivation() -> Result<(), SignalProtocolError> {
     async {
         let mut rng = OsRng;
 
@@ -700,7 +700,7 @@ fn test_sealed_sender_multi_recipient_new_derivation() -> Result<(), SignalProto
         let server_cert =
             ServerCertificate::new(1, server_key.public_key, &trust_root.private_key, &mut rng)?;
 
-        let expires = 1605722925;
+        let expires = Timestamp::from_epoch_millis(1605722925);
 
         let sender_cert = SenderCertificate::new(
             alice_uuid.clone(),
@@ -732,17 +732,18 @@ fn test_sealed_sender_multi_recipient_new_derivation() -> Result<(), SignalProto
         )?;
 
         let recipients = [&bob_uuid_address];
-        let alice_ctext = sealed_sender_multi_recipient_encrypt_using_new_ephemeral_key_derivation(
-            &recipients,
-            &alice_store
-                .session_store
-                .load_existing_sessions(&recipients)?,
-            [],
-            &alice_usmc,
-            &alice_store.identity_store,
-            &mut rng,
-        )
-        .await?;
+        let alice_ctext =
+            sealed_sender_multi_recipient_encrypt_using_legacy_ephemeral_key_derivation(
+                &recipients,
+                &alice_store
+                    .session_store
+                    .load_existing_sessions(&recipients)?,
+                [],
+                &alice_usmc,
+                &alice_store.identity_store,
+                &mut rng,
+            )
+            .await?;
 
         let (recipient_addr, bob_ctext) = extract_single_ssv2_received_message(&alice_ctext);
         assert_eq!(recipient_addr.service_id_string(), bob_uuid);
@@ -750,7 +751,7 @@ fn test_sealed_sender_multi_recipient_new_derivation() -> Result<(), SignalProto
         let bob_ptext = sealed_sender_decrypt(
             &bob_ctext,
             &trust_root.public_key,
-            expires - 1,
+            expires.sub_millis(1),
             Some(bob_e164.clone()),
             bob_uuid.clone(),
             bob_device_id,
@@ -812,7 +813,7 @@ fn test_sealed_sender_multi_recipient_encrypt_with_archived_session(
         let server_cert =
             ServerCertificate::new(1, server_key.public_key, &trust_root.private_key, &mut rng)?;
 
-        let expires = 1605722925;
+        let expires = Timestamp::from_epoch_millis(1605722925);
 
         let sender_cert = SenderCertificate::new(
             alice_uuid.clone(),
@@ -918,7 +919,7 @@ fn test_sealed_sender_multi_recipient_encrypt_with_bad_registration_id(
         let server_cert =
             ServerCertificate::new(1, server_key.public_key, &trust_root.private_key, &mut rng)?;
 
-        let expires = 1605722925;
+        let expires = Timestamp::from_epoch_millis(1605722925);
 
         let sender_cert = SenderCertificate::new(
             alice_uuid.clone(),
@@ -1056,7 +1057,7 @@ fn test_decryption_error_in_sealed_sender() -> Result<(), SignalProtocolError> {
         let server_cert =
             ServerCertificate::new(1, server_key.public_key, &trust_root.private_key, &mut rng)?;
 
-        let expires = 1605722925;
+        let expires = Timestamp::from_epoch_millis(1605722925);
 
         let sender_cert = SenderCertificate::new(
             alice_uuid.clone(),
@@ -1069,10 +1070,11 @@ fn test_decryption_error_in_sealed_sender() -> Result<(), SignalProtocolError> {
             &mut rng,
         )?;
 
+        const ORIGINAL_TIMESTAMP: Timestamp = Timestamp::from_epoch_millis(408);
         let error_message = DecryptionErrorMessage::for_original(
             bob_message.serialize(),
             bob_message.message_type(),
-            408,
+            ORIGINAL_TIMESTAMP,
             5,
         )?;
         let error_message_content = PlaintextContent::from(error_message);
@@ -1106,7 +1108,7 @@ fn test_decryption_error_in_sealed_sender() -> Result<(), SignalProtocolError> {
                 .expect("present");
 
         assert_eq!(bob_error_message.ratchet_key(), Some(original_ratchet_key));
-        assert_eq!(bob_error_message.timestamp(), 408);
+        assert_eq!(bob_error_message.timestamp(), ORIGINAL_TIMESTAMP);
         assert_eq!(bob_error_message.device_id(), 5);
 
         Ok(())
@@ -1160,7 +1162,7 @@ fn test_sealed_sender_multi_recipient_redundant_empty_devices() -> Result<(), Si
             &mut csprng,
         )?;
 
-        let expires = 1605722925;
+        let expires = Timestamp::from_epoch_millis(1605722925);
 
         let sender_cert = SenderCertificate::new(
             alice_uuid.clone(),

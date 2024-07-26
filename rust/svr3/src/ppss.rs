@@ -149,10 +149,10 @@ fn finalize_single_oprf(session: OPRFSession, bytes: &[u8; 32]) -> Result<[u8; 6
 /// is not a canonical encoding of Ristretto point.
 pub fn finalize_oprfs(
     sessions: Vec<OPRFSession>,
-    evaluated_elts: &[[u8; 32]],
+    evaluated_elts: impl IntoIterator<Item = [u8; 32]>,
 ) -> Result<Vec<[u8; 64]>, PPSSError> {
     std::iter::zip(sessions, evaluated_elts)
-        .map(|(session, bytes)| finalize_single_oprf(session, bytes))
+        .map(|(session, bytes)| finalize_single_oprf(session, &bytes))
         .collect()
 }
 
@@ -285,35 +285,35 @@ pub fn restore_secret(
 }
 
 #[cfg(test)]
-mod tests {
+pub mod testutils {
     use std::collections::HashMap;
 
     use super::*;
     use curve25519_dalek::scalar::Scalar;
     use curve25519_dalek::RistrettoPoint;
 
-    struct OPRFServerSet {
+    pub struct OPRFServerSet {
         server_secrets: HashMap<u64, [u8; 32]>,
     }
 
     impl OPRFServerSet {
-        fn new(server_ids: &[u64]) -> Self {
+        pub fn new(server_ids: &[u64]) -> Self {
             let server_secrets: HashMap<u64, [u8; 32]> = server_ids
                 .iter()
                 .cloned()
-                .map(|sid| (sid, bytemuck::cast::<[u64; 4], [u8; 32]>([sid; 4])))
+                .map(|sid| (sid, zerocopy::transmute!([sid.to_le_bytes(); 4])))
                 .collect();
 
             Self { server_secrets }
         }
 
-        fn eval(&self, server_id: &u64, blinded_elt_bytes: &[u8; 32]) -> [u8; 32] {
+        pub fn eval(&self, server_id: &u64, blinded_elt_bytes: &[u8; 32]) -> [u8; 32] {
             let secret = Scalar::from_bytes_mod_order(*self.server_secrets.get(server_id).unwrap());
             oprf_eval_bytes(&secret, blinded_elt_bytes)
         }
     }
 
-    const CONTEXT: &str = "signal-svr3-ppss-test";
+    pub const CONTEXT: &str = "signal-svr3-ppss-test";
 
     fn oprf_eval(secret: &Scalar, blinded_elt: &RistrettoPoint) -> RistrettoPoint {
         secret * blinded_elt
@@ -327,6 +327,12 @@ mod tests {
         let eval_elt = oprf_eval(secret, &blinded_elt);
         eval_elt.compress().to_bytes()
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::testutils::*;
+    use super::*;
 
     #[test]
     fn store_reconstruct_xor_shares() {
@@ -335,50 +341,49 @@ mod tests {
         // set up constants - secret, oprf secrets
         let secret = [42u8; 32];
         let password = "supahsecretpassword";
-
         let server_ids = vec![4u64, 1, 6];
-        let oprf_servers = OPRFServerSet::new(&server_ids);
-        // get the blinds - they are in order of server_id
-        let oprf_init_sessions = begin_oprfs(CONTEXT, &server_ids, password, &mut rng).unwrap();
 
-        // eval the oprfs
-        let eval_elt_bytes: Vec<[u8; 32]> = oprf_init_sessions
-            .iter()
-            .map(|session| oprf_servers.eval(&session.server_id, &session.blinded_elt_bytes))
-            .collect();
+        let masked_shareset = {
+            let oprf_servers = OPRFServerSet::new(&server_ids);
+            // get the blinds - they are in order of server_id
+            let oprfs = begin_oprfs(CONTEXT, &server_ids, password, &mut rng).unwrap();
 
-        let oprf_outputs = finalize_oprfs(oprf_init_sessions, eval_elt_bytes.as_slice())
-            .expect("oprf evaluated element encodings must be canonical");
-        let masked_shareset = backup_secret(
-            CONTEXT,
-            password.as_bytes(),
-            server_ids,
-            oprf_outputs,
-            &secret,
-            &mut rng,
-        )
-        .unwrap();
-
-        // Now reconstruct
-        let oprf_restore_sessions =
-            begin_oprfs(CONTEXT, &masked_shareset.server_ids, password, &mut rng).unwrap();
-
-        // eval the oprfs
-        let restore_eval_elt_bytes: Vec<[u8; 32]> = oprf_restore_sessions
-            .iter()
-            .map(|session| oprf_servers.eval(&session.server_id, &session.blinded_elt_bytes))
-            .collect();
-        let restore_oprf_outputs =
-            finalize_oprfs(oprf_restore_sessions, restore_eval_elt_bytes.as_slice())
+            // eval the oprfs
+            let eval_elt_bytes: Vec<[u8; 32]> = oprfs
+                .iter()
+                .map(|session| oprf_servers.eval(&session.server_id, &session.blinded_elt_bytes))
+                .collect();
+            let outputs = finalize_oprfs(oprfs, eval_elt_bytes)
                 .expect("oprf evaluated element encodings must be canonical");
 
-        let (restored_secret, restored_key) = restore_secret(
-            CONTEXT,
-            password.as_bytes(),
-            restore_oprf_outputs,
-            masked_shareset,
-        )
-        .expect("valid commitment");
+            backup_secret(
+                CONTEXT,
+                password.as_bytes(),
+                server_ids.clone(),
+                outputs,
+                &secret,
+                &mut rng,
+            )
+            .unwrap()
+        };
+
+        let (restored_secret, restored_key) = {
+            let oprf_servers = OPRFServerSet::new(&server_ids);
+            // Now reconstruct
+            let oprfs =
+                begin_oprfs(CONTEXT, &masked_shareset.server_ids, password, &mut rng).unwrap();
+
+            // eval the oprfs
+            let eval_elt_bytes: Vec<[u8; 32]> = oprfs
+                .iter()
+                .map(|session| oprf_servers.eval(&session.server_id, &session.blinded_elt_bytes))
+                .collect();
+            let outputs = finalize_oprfs(oprfs, eval_elt_bytes)
+                .expect("oprf evaluated element encodings must be canonical");
+
+            restore_secret(CONTEXT, password.as_bytes(), outputs, masked_shareset)
+                .expect("valid commitment")
+        };
         assert_eq!(secret, restored_secret);
 
         let r_and_k = derive_key_and_bits_from_secret(&secret, CONTEXT);

@@ -3,9 +3,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use zkgroup::{RandomnessBytes, ReceiptLevel, Timestamp, RANDOMNESS_LEN};
+use zkgroup::{RandomnessBytes, Timestamp, RANDOMNESS_LEN};
 
-const DAY_ALIGNED_TIMESTAMP: Timestamp = 1681344000; // 2023-04-13 00:00:00 UTC
+const DAY_ALIGNED_TIMESTAMP: Timestamp = Timestamp::from_epoch_seconds(1681344000); // 2023-04-13 00:00:00 UTC
 
 #[test]
 fn test_backup_auth_request_response() {
@@ -21,7 +21,7 @@ fn test_backup_auth_request_response() {
 
     // client receives in response to initial request
     let redemption_time: Timestamp = DAY_ALIGNED_TIMESTAMP; // client validates it's day-aligned
-    let receipt_level: ReceiptLevel = 100; // client validates it's their expected receipt level
+    let backup_level = zkgroup::backups::BackupLevel::Messages; // client validates it's a valid backup level
 
     // client generated materials; issuance request
     let request_context =
@@ -33,7 +33,7 @@ fn test_backup_auth_request_response() {
         zkgroup::generic_server_params::GenericServerSecretParams::generate(randomness1);
     let blinded_credential = request.issue(
         redemption_time,
-        receipt_level,
+        backup_level,
         &server_secret_params,
         randomness2,
     );
@@ -41,8 +41,10 @@ fn test_backup_auth_request_response() {
     // client generated materials; issuance response -> redemption request
     let server_public_params = server_secret_params.get_public_params();
     let credential = request_context
-        .receive(blinded_credential, &server_public_params, receipt_level)
+        .receive(blinded_credential, &server_public_params, redemption_time)
         .expect("credential should be valid");
+
+    assert_eq!(credential.backup_level(), backup_level);
 
     let presentation = credential.present(&server_public_params, randomness3);
 

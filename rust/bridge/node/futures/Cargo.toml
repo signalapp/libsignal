@@ -21,8 +21,8 @@ path = "benches/node.rs"
 harness = false
 
 [dependencies]
-neon = { version = "0.10.0", default-features = false, features = ["napi-4", "try-catch-api", "channel-api", "promise-api"] }
 futures-util = "0.3.7"
+neon = { version = "1.0.0", default-features = false, features = ["napi-4"] }
 
 [dev-dependencies]
 signal-neon-futures-tests = { path = "tests-node-module" }

@@ -5,15 +5,12 @@
 
 import { randomBytes } from 'crypto';
 import * as Native from '../../Native';
-import ByteArray from './internal/ByteArray';
 
 import { RANDOM_LENGTH } from './internal/Constants';
 import ServerPublicParams from './ServerPublicParams';
 import NotarySignature from './NotarySignature';
 
-export default class ServerSecretParams extends ByteArray {
-  private readonly __type?: never;
-
+export default class ServerSecretParams {
   static generate(): ServerSecretParams {
     const random = randomBytes(RANDOM_LENGTH);
 
@@ -26,13 +23,19 @@ export default class ServerSecretParams extends ByteArray {
     );
   }
 
-  constructor(contents: Buffer) {
-    super(contents, Native.ServerSecretParams_CheckValidContents);
+  readonly _nativeHandle: Native.ServerSecretParams;
+
+  constructor(contents: Buffer | Native.ServerSecretParams) {
+    if (contents instanceof Buffer) {
+      this._nativeHandle = Native.ServerSecretParams_Deserialize(contents);
+    } else {
+      this._nativeHandle = contents;
+    }
   }
 
   getPublicParams(): ServerPublicParams {
     return new ServerPublicParams(
-      Native.ServerSecretParams_GetPublicParams(this.contents)
+      Native.ServerSecretParams_GetPublicParams(this)
     );
   }
 
@@ -44,11 +47,11 @@ export default class ServerSecretParams extends ByteArray {
 
   signWithRandom(random: Buffer, message: Buffer): NotarySignature {
     return new NotarySignature(
-      Native.ServerSecretParams_SignDeterministic(
-        this.contents,
-        random,
-        message
-      )
+      Native.ServerSecretParams_SignDeterministic(this, random, message)
     );
+  }
+
+  serialize(): Buffer {
+    return Native.ServerSecretParams_Serialize(this);
   }
 }

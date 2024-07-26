@@ -18,8 +18,6 @@ export default class ReceiptCredential extends ByteArray {
   }
 
   getReceiptLevel(): bigint {
-    return Native.ReceiptCredential_GetReceiptLevel(
-      this.contents
-    ).readBigUInt64BE();
+    return Native.ReceiptCredential_GetReceiptLevel(this.contents);
   }
 }

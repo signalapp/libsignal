@@ -17,3 +17,4 @@ uuid = "1.1.2"
 [dev-dependencies]
 hex-literal = "0.4.1"
 proptest = "1.0"
+rand = "0.8"

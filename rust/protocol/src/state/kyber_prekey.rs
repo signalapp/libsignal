@@ -6,7 +6,7 @@
 use crate::proto::storage::SignedPreKeyRecordStructure;
 
 use crate::state::GenericSignedPreKey;
-use crate::{kem, PrivateKey, Result};
+use crate::{kem, PrivateKey, Result, Timestamp};
 
 use std::fmt;
 
@@ -75,7 +75,7 @@ impl KyberPreKeyRecord {
             .as_millis();
         Ok(KyberPreKeyRecord::new(
             id,
-            timestamp.try_into().expect("Timestamp too large"),
+            Timestamp::from_epoch_millis(timestamp.try_into().expect("Timestamp too large")),
             &key_pair,
             &signature,
         ))

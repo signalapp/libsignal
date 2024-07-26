@@ -5,6 +5,7 @@
 
 package org.signal.libsignal.zkgroup.profiles;
 
+import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
 import static org.signal.libsignal.zkgroup.internal.Constants.RANDOM_LENGTH;
 
 import java.security.SecureRandom;
@@ -35,11 +36,13 @@ public class ClientZkProfileOperations {
     secureRandom.nextBytes(random);
 
     byte[] newContents =
-        Native.ServerPublicParams_CreateProfileKeyCredentialRequestContextDeterministic(
-            serverPublicParams.getInternalContentsForJNI(),
-            random,
-            userId.toServiceIdFixedWidthBinary(),
-            profileKey.getInternalContentsForJNI());
+        serverPublicParams.guardedMap(
+            (serverPublicParams) ->
+                Native.ServerPublicParams_CreateProfileKeyCredentialRequestContextDeterministic(
+                    serverPublicParams,
+                    random,
+                    userId.toServiceIdFixedWidthBinary(),
+                    profileKey.getInternalContentsForJNI()));
 
     try {
       return new ProfileKeyCredentialRequestContext(newContents);
@@ -66,11 +69,16 @@ public class ClientZkProfileOperations {
     }
 
     byte[] newContents =
-        Native.ServerPublicParams_ReceiveExpiringProfileKeyCredential(
-            serverPublicParams.getInternalContentsForJNI(),
-            profileKeyCredentialRequestContext.getInternalContentsForJNI(),
-            profileKeyCredentialResponse.getInternalContentsForJNI(),
-            now.getEpochSecond());
+        filterExceptions(
+            VerificationFailedException.class,
+            () ->
+                serverPublicParams.guardedMapChecked(
+                    (publicParams) ->
+                        Native.ServerPublicParams_ReceiveExpiringProfileKeyCredential(
+                            publicParams,
+                            profileKeyCredentialRequestContext.getInternalContentsForJNI(),
+                            profileKeyCredentialResponse.getInternalContentsForJNI(),
+                            now.getEpochSecond())));
 
     try {
       return new ExpiringProfileKeyCredential(newContents);
@@ -93,11 +101,14 @@ public class ClientZkProfileOperations {
     secureRandom.nextBytes(random);
 
     byte[] newContents =
-        Native.ServerPublicParams_CreateExpiringProfileKeyCredentialPresentationDeterministic(
-            serverPublicParams.getInternalContentsForJNI(),
-            random,
-            groupSecretParams.getInternalContentsForJNI(),
-            profileKeyCredential.getInternalContentsForJNI());
+        serverPublicParams.guardedMap(
+            (publicParams) ->
+                Native
+                    .ServerPublicParams_CreateExpiringProfileKeyCredentialPresentationDeterministic(
+                        publicParams,
+                        random,
+                        groupSecretParams.getInternalContentsForJNI(),
+                        profileKeyCredential.getInternalContentsForJNI()));
 
     try {
       return new ProfileKeyCredentialPresentation(newContents);

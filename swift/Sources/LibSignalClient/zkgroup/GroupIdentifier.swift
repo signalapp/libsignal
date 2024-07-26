@@ -4,11 +4,9 @@
 //
 
 public class GroupIdentifier: ByteArray {
+    public static let SIZE: Int = 32
 
-  public static let SIZE: Int = 32
-
-  public required init(contents: [UInt8]) throws {
-    try super.init(newContents: contents, expectedLength: GroupIdentifier.SIZE)
-  }
-
+    public required init(contents: [UInt8]) throws {
+        try super.init(newContents: contents, expectedLength: GroupIdentifier.SIZE)
+    }
 }

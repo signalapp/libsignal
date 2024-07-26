@@ -5,6 +5,8 @@
 
 package org.signal.libsignal.zkgroup.calllinks;
 
+import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
+
 import java.time.Instant;
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.zkgroup.GenericServerSecretParams;
@@ -17,7 +19,9 @@ public final class CallLinkAuthCredentialPresentation extends ByteArray {
 
   public CallLinkAuthCredentialPresentation(byte[] contents) throws InvalidInputException {
     super(contents);
-    Native.CallLinkAuthCredentialPresentation_CheckValidContents(contents);
+    filterExceptions(
+        InvalidInputException.class,
+        () -> Native.CallLinkAuthCredentialPresentation_CheckValidContents(contents));
   }
 
   public void verify(GenericServerSecretParams serverParams, CallLinkPublicParams callLinkParams)
@@ -30,11 +34,14 @@ public final class CallLinkAuthCredentialPresentation extends ByteArray {
       GenericServerSecretParams serverParams,
       CallLinkPublicParams callLinkParams)
       throws VerificationFailedException {
-    Native.CallLinkAuthCredentialPresentation_Verify(
-        getInternalContentsForJNI(),
-        currentTime.getEpochSecond(),
-        serverParams.getInternalContentsForJNI(),
-        callLinkParams.getInternalContentsForJNI());
+    filterExceptions(
+        VerificationFailedException.class,
+        () ->
+            Native.CallLinkAuthCredentialPresentation_Verify(
+                getInternalContentsForJNI(),
+                currentTime.getEpochSecond(),
+                serverParams.getInternalContentsForJNI(),
+                callLinkParams.getInternalContentsForJNI()));
   }
 
   public UuidCiphertext getUserId() {

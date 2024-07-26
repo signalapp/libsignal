@@ -22,9 +22,22 @@ usize_is_size_t = true
 prefix_with_name = true
 
 [export]
-include = ["SignalErrorCode", "FfiDirection", "FfiCiphertextMessageType", "FfiContentHint", "RandomnessBytes"]
+include = [
+    "SignalErrorCode",
+    "FfiDirection",
+    "FfiCiphertextMessageType",
+    "FfiContentHint",
+    "RandomnessBytes",
+]
 exclude = ["TAG_SIZE", "NONCE_SIZE"]
-item_types = ["enums", "functions", "opaque", "structs", "typedefs", "constants"]
+item_types = [
+    "enums",
+    "functions",
+    "opaque",
+    "structs",
+    "typedefs",
+    "constants",
+]
 # FIXME: this doesn't work well with constants in SCREAMING_SNAKE_CASE
 prefix = "Signal"
 renaming_overrides_prefixing = true
@@ -41,11 +54,17 @@ renaming_overrides_prefixing = true
 "FfiContentHint" = "SignalContentHint"
 "FfiInputStreamStruct" = "SignalInputStream"
 "FfiSyncInputStreamStruct" = "SignalSyncInputStream"
+"FfiLookupResponseEntry" = "SignalLookupResponseEntry"
 
 "BorrowedSliceOfc_uchar" = "SignalBorrowedBuffer"
+"BorrowedSliceOfBorrowedSliceOfc_uchar" = "SignalBorrowedSliceOfBuffers"
 "BorrowedMutableSliceOfc_uchar" = "SignalBorrowedMutableBuffer"
 "OwnedBufferOfc_uchar" = "SignalOwnedBuffer"
+"OwnedBufferOfFfiLookupResponseEntry" = "SignalOwnedLookupResponseEntryList"
+"FfiOptionalServiceIdFixedWidthBinaryBytes" = "SignalOptionalServiceIdFixedWidthBinaryBytes"
 "CPromisec_void" = "SignalCPromiseRawPointer"
+
+"RawCancellationId" = "SignalCancellationId"
 
 # Avoid double-prefixing these
 "SignalFfiError" = "SignalFfiError"
@@ -61,9 +80,24 @@ args = "horizontal"
 
 [parse]
 parse_deps = true
-include = ["libsignal-core", "libsignal-protocol", "signal-crypto", "signal-pin", "zkgroup", "signal-media", "mediasan-common", "mp4san", "webpsan"]
-extra_bindings = ["libsignal-bridge", "zkgroup"]
+include = [
+    "libsignal-core",
+    "libsignal-protocol",
+    "libsignal-bridge-types",
+    "signal-crypto",
+    "signal-pin",
+    "zkgroup",
+    "signal-media",
+    "mediasan-common",
+    "mp4san",
+    "webpsan",
+]
+extra_bindings = ["libsignal-bridge", "libsignal-bridge-types", "zkgroup"]
 
 [parse.expand]
 crates = ["libsignal-ffi", "libsignal-bridge"]
-features = ["libsignal-bridge/ffi", "libsignal-bridge/signal-media", "libsignal-bridge/testing-fns"]
+features = [
+    "libsignal-bridge/ffi",
+    "libsignal-bridge/signal-media",
+    "libsignal-bridge/testing-fns",
+]

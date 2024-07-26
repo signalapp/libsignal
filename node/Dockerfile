@@ -8,7 +8,7 @@ FROM --platform=linux/amd64 debian:bullseye-slim
 
 # Install only what's needed to set up Rust and Node.
 # We'll install additional tools at the end to take advantage of Docker's caching of earlier steps.
-RUN apt-get update && apt-get install -y apt-transport-https curl xz-utils
+RUN apt-get update && apt-get install -y apt-transport-https ca-certificates xz-utils
 
 # User-specific setup!
 
@@ -31,20 +31,21 @@ COPY rust-toolchain rust-toolchain
 ENV PATH="/home/libsignal/.cargo/bin:${PATH}"
 ARG RUSTUP_SHA=ad1f8b5199b3b9e231472ed7aa08d2e5d1d539198a15c5b1e53c746aad81d27b
 
-RUN curl -f https://static.rust-lang.org/rustup/archive/1.21.1/x86_64-unknown-linux-gnu/rustup-init -o /tmp/rustup-init \
-    && echo "${RUSTUP_SHA} /tmp/rustup-init" | sha256sum -c - \
-    && chmod a+x /tmp/rustup-init \
-    && /tmp/rustup-init -y --profile minimal --default-toolchain "$(cat rust-toolchain)" \
+ADD --chown=libsignal --chmod=755 --checksum=sha256:${RUSTUP_SHA} \
+    https://static.rust-lang.org/rustup/archive/1.21.1/x86_64-unknown-linux-gnu/rustup-init /tmp/rustup-init
+
+RUN    /tmp/rustup-init -y --profile minimal --default-toolchain "$(cat rust-toolchain)" \
     && rm -rf /tmp/rustup-init
 
 RUN rustup target add aarch64-unknown-linux-gnu
 
 # Node setup
 
-COPY .nvmrc .nvmrc
+ARG NODE_VERSION
 
-RUN curl -f https://nodejs.org/dist/v$(cat .nvmrc)/node-v$(cat .nvmrc)-linux-x64.tar.xz -o ~/node.tar.xz \
-    && tar -xf node.tar.xz \
+ADD --chown=libsignal https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-x64.tar.xz node.tar.xz
+
+RUN tar -xf node.tar.xz \
     && mv node-v* node \
     && rm -f node.tar.xz
 

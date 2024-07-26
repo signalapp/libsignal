@@ -62,9 +62,9 @@ pub(crate) fn bridge_fn(
         #[export_name = concat!(env!("LIBSIGNAL_BRIDGE_FN_PREFIX_JNI"), #name)]
         #[allow(non_snake_case)]
         pub unsafe extern "C" fn #wrapper_name<'local>(
-            mut env: jni::JNIEnv<'local>,
+            mut env: ::jni::JNIEnv<'local>,
             // We only generate static methods.
-            _class: jni::JClass,
+            _class: ::jni::objects::JClass,
             #async_runtime_if_needed
             #(#input_args),*
         ) -> #result_ty {
@@ -94,6 +94,8 @@ fn bridge_fn_body(
 
     let await_if_needed = await_needed.then(|| {
         quote! {
+            #[allow(unused)]
+            use ::futures_util::future::FutureExt as _;
             let __result = __result.now_or_never().unwrap();
         }
     });
@@ -152,7 +154,7 @@ fn bridge_io_body(
         jni::run_ffi_safe(&mut env, |env| {
             #load_async_runtime
             #(#input_saving)*
-            jni::run_future_on_runtime(env, async_runtime, async move {
+            jni::run_future_on_runtime(env, async_runtime, |__cancel| async move {
                 // Wrap the actual work to catch any panics.
                 let __future = jni::catch_unwind(std::panic::AssertUnwindSafe(async {
                     #(#input_loading)*

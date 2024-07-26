@@ -12,7 +12,6 @@ import BackupAuthCredentialRequest from './BackupAuthCredentialRequest';
 import BackupAuthCredentialResponse from './BackupAuthCredentialResponse';
 import BackupAuthCredential from './BackupAuthCredential';
 import GenericServerPublicParams from '../GenericServerPublicParams';
-import { bufferFromBigUInt64BE } from '../internal/BigIntUtil';
 import { Uuid } from '../..';
 
 export default class BackupAuthCredentialRequestContext extends ByteArray {
@@ -45,15 +44,15 @@ export default class BackupAuthCredentialRequestContext extends ByteArray {
 
   receive(
     response: BackupAuthCredentialResponse,
-    params: GenericServerPublicParams,
-    expectedReceiptLevel: bigint
+    redemptionTime: number,
+    params: GenericServerPublicParams
   ): BackupAuthCredential {
     return new BackupAuthCredential(
       Native.BackupAuthCredentialRequestContext_ReceiveResponse(
         this.contents,
         response.contents,
-        params.contents,
-        bufferFromBigUInt64BE(expectedReceiptLevel)
+        redemptionTime,
+        params.contents
       )
     );
   }

@@ -5,6 +5,8 @@
 
 package org.signal.libsignal.protocol.groups.state;
 
+import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
+
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
 import org.signal.libsignal.protocol.InvalidMessageException;
@@ -30,12 +32,14 @@ public class SenderKeyRecord implements NativeHandleGuard.Owner {
 
   // FIXME: This shouldn't be considered a "message".
   public SenderKeyRecord(byte[] serialized) throws InvalidMessageException {
-    this.unsafeHandle = Native.SenderKeyRecord_Deserialize(serialized);
+    this.unsafeHandle =
+        filterExceptions(
+            InvalidMessageException.class, () -> Native.SenderKeyRecord_Deserialize(serialized));
   }
 
   public byte[] serialize() {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return Native.SenderKeyRecord_GetSerialized(guard.nativeHandle());
+      return filterExceptions(() -> Native.SenderKeyRecord_GetSerialized(guard.nativeHandle()));
     }
   }
 

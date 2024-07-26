@@ -5,6 +5,8 @@
 
 package org.signal.libsignal.protocol.message;
 
+import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
+
 import java.util.UUID;
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
@@ -33,37 +35,47 @@ public class SenderKeyMessage implements CiphertextMessage, NativeHandleGuard.Ow
 
   public SenderKeyMessage(byte[] serialized)
       throws InvalidMessageException, InvalidVersionException, LegacyMessageException {
-    unsafeHandle = Native.SenderKeyMessage_Deserialize(serialized);
+    unsafeHandle =
+        filterExceptions(
+            InvalidMessageException.class,
+            InvalidVersionException.class,
+            LegacyMessageException.class,
+            () -> Native.SenderKeyMessage_Deserialize(serialized));
   }
 
   public UUID getDistributionId() {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return Native.SenderKeyMessage_GetDistributionId(guard.nativeHandle());
+      return filterExceptions(
+          () -> Native.SenderKeyMessage_GetDistributionId(guard.nativeHandle()));
     }
   }
 
   public int getChainId() {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return Native.SenderKeyMessage_GetChainId(guard.nativeHandle());
+      return filterExceptions(() -> Native.SenderKeyMessage_GetChainId(guard.nativeHandle()));
     }
   }
 
   public int getIteration() {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return Native.SenderKeyMessage_GetIteration(guard.nativeHandle());
+      return filterExceptions(() -> Native.SenderKeyMessage_GetIteration(guard.nativeHandle()));
     }
   }
 
   public byte[] getCipherText() {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return Native.SenderKeyMessage_GetCipherText(guard.nativeHandle());
+      return filterExceptions(() -> Native.SenderKeyMessage_GetCipherText(guard.nativeHandle()));
     }
   }
 
   public void verifySignature(ECPublicKey signatureKey) throws InvalidMessageException {
     try (NativeHandleGuard guard = new NativeHandleGuard(this);
         NativeHandleGuard keyGuard = new NativeHandleGuard(signatureKey); ) {
-      if (!Native.SenderKeyMessage_VerifySignature(guard.nativeHandle(), keyGuard.nativeHandle())) {
+      if (!filterExceptions(
+          InvalidMessageException.class,
+          () ->
+              Native.SenderKeyMessage_VerifySignature(
+                  guard.nativeHandle(), keyGuard.nativeHandle()))) {
         throw new InvalidMessageException("Invalid signature!");
       }
     }
@@ -72,7 +84,7 @@ public class SenderKeyMessage implements CiphertextMessage, NativeHandleGuard.Ow
   @Override
   public byte[] serialize() {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return Native.SenderKeyMessage_GetSerialized(guard.nativeHandle());
+      return filterExceptions(() -> Native.SenderKeyMessage_GetSerialized(guard.nativeHandle()));
     }
   }
 

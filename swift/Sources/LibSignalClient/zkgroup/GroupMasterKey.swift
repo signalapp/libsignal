@@ -4,11 +4,9 @@
 //
 
 public class GroupMasterKey: ByteArray {
+    public static let SIZE: Int = 32
 
-  public static let SIZE: Int = 32
-
-  public required init(contents: [UInt8]) throws {
-    try super.init(newContents: contents, expectedLength: GroupMasterKey.SIZE)
-  }
-
+    public required init(contents: [UInt8]) throws {
+        try super.init(newContents: contents, expectedLength: GroupMasterKey.SIZE)
+    }
 }

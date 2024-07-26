@@ -25,4 +25,8 @@ extra_bindings = ["libsignal-bridge"]
 
 [parse.expand]
 crates = ["libsignal-jni", "libsignal-bridge"]
-features = ["libsignal-bridge/jni", "libsignal-bridge/signal-media", "libsignal-bridge/testing-fns"]
+features = [
+    "libsignal-bridge/jni",
+    "libsignal-bridge/signal-media",
+    "libsignal-bridge/testing-fns",
+]

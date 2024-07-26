@@ -17,10 +17,10 @@ use boring::x509::crl::X509CRL;
 use boring::x509::X509;
 use lazy_static::lazy_static;
 
+use crate::cert_chain::CertChain;
 use crate::dcap;
-use crate::dcap::cert_chain::CertChain;
-use crate::dcap::Expireable;
 use crate::error::ContextError;
+use crate::expireable::Expireable;
 
 const IAS_ROOT_CERT_DER: &[u8] = include_bytes!("../res/ias-root.cer");
 // Available from https://trustedservices.intel.com/content/CRL/SGX/AttestationReportSigningCA.crl

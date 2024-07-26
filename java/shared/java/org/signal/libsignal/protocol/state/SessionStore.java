@@ -6,6 +6,7 @@
 package org.signal.libsignal.protocol.state;
 
 import java.util.List;
+import org.signal.libsignal.internal.CalledFromNative;
 import org.signal.libsignal.protocol.NoSessionException;
 import org.signal.libsignal.protocol.SignalProtocolAddress;
 
@@ -14,6 +15,7 @@ import org.signal.libsignal.protocol.SignalProtocolAddress;
  *
  * @author Moxie Marlinspike
  */
+@CalledFromNative
 public interface SessionStore {
 
   /**

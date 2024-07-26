@@ -5,6 +5,9 @@
 
 package org.signal.libsignal.grpc;
 
+import org.signal.libsignal.internal.CalledFromNative;
+
+@CalledFromNative
 public interface GrpcReplyListener {
 
   void onReply(SignalRpcReply reply);

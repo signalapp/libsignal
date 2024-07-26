@@ -5,6 +5,7 @@
 
 package org.signal.libsignal.zkgroup.profiles;
 
+import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
 import static org.signal.libsignal.zkgroup.internal.Constants.RANDOM_LENGTH;
 
 import java.security.SecureRandom;
@@ -54,13 +55,18 @@ public class ServerZkProfileOperations {
     secureRandom.nextBytes(random);
 
     byte[] newContents =
-        Native.ServerSecretParams_IssueExpiringProfileKeyCredentialDeterministic(
-            serverSecretParams.getInternalContentsForJNI(),
-            random,
-            profileKeyCredentialRequest.getInternalContentsForJNI(),
-            userId.toServiceIdFixedWidthBinary(),
-            profileKeyCommitment.getInternalContentsForJNI(),
-            expiration.getEpochSecond());
+        filterExceptions(
+            VerificationFailedException.class,
+            () ->
+                serverSecretParams.guardedMapChecked(
+                    (secretParams) ->
+                        Native.ServerSecretParams_IssueExpiringProfileKeyCredentialDeterministic(
+                            secretParams,
+                            random,
+                            profileKeyCredentialRequest.getInternalContentsForJNI(),
+                            userId.toServiceIdFixedWidthBinary(),
+                            profileKeyCommitment.getInternalContentsForJNI(),
+                            expiration.getEpochSecond())));
 
     try {
       return new ExpiringProfileKeyCredentialResponse(newContents);
@@ -82,10 +88,15 @@ public class ServerZkProfileOperations {
       ProfileKeyCredentialPresentation profileKeyCredentialPresentation,
       Instant now)
       throws VerificationFailedException {
-    Native.ServerSecretParams_VerifyProfileKeyCredentialPresentation(
-        serverSecretParams.getInternalContentsForJNI(),
-        groupPublicParams.getInternalContentsForJNI(),
-        profileKeyCredentialPresentation.getInternalContentsForJNI(),
-        now.getEpochSecond());
+    filterExceptions(
+        VerificationFailedException.class,
+        () ->
+            serverSecretParams.guardedRunChecked(
+                (secretParams) ->
+                    Native.ServerSecretParams_VerifyProfileKeyCredentialPresentation(
+                        secretParams,
+                        groupPublicParams.getInternalContentsForJNI(),
+                        profileKeyCredentialPresentation.getInternalContentsForJNI(),
+                        now.getEpochSecond())));
   }
 }

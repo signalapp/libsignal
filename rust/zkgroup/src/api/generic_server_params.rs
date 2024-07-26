@@ -6,25 +6,26 @@
 use partial_default::PartialDefault;
 use serde::{Deserialize, Serialize};
 
-use crate::{RandomnessBytes, ReservedBytes};
+use crate::common::serialization::ReservedByte;
+use crate::RandomnessBytes;
 
 #[derive(Serialize, Deserialize, PartialDefault)]
 pub struct GenericServerSecretParams {
-    reserved: ReservedBytes,
+    version: ReservedByte,
     pub(crate) credential_key: zkcredential::credentials::CredentialKeyPair,
 }
 
 impl GenericServerSecretParams {
     pub fn generate(randomness: RandomnessBytes) -> Self {
         Self {
-            reserved: [0],
+            version: Default::default(),
             credential_key: zkcredential::credentials::CredentialKeyPair::generate(randomness),
         }
     }
 
     pub fn get_public_params(&self) -> GenericServerPublicParams {
         GenericServerPublicParams {
-            reserved: [0],
+            version: self.version,
             credential_key: self.credential_key.public_key().clone(),
         }
     }
@@ -32,6 +33,6 @@ impl GenericServerSecretParams {
 
 #[derive(Serialize, Deserialize, PartialDefault)]
 pub struct GenericServerPublicParams {
-    reserved: ReservedBytes,
+    version: ReservedByte,
     pub(crate) credential_key: zkcredential::credentials::CredentialPublicKey,
 }

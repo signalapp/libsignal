@@ -1,0 +1,13 @@
+org.signal.libsignal.media.GuaranteedSkipInputStream:
+    private static final int SKIP_BUFFER_SIZE
+org.signal.libsignal.metadata.SealedSessionCipher:
+    187:187:static byte[] multiRecipientMessageForSingleRecipient(byte[])
+    188:188:private static synthetic byte[] lambda$multiRecipientMessageForSingleRecipient$3(byte[])
+org.signal.libsignal.metadata.certificate.CertificateValidator:
+    41:48:void validate(org.signal.libsignal.metadata.certificate.ServerCertificate)
+org.signal.libsignal.protocol.ServiceId:
+    private static final byte FIXED_WIDTH_BINARY_LENGTH
+    private static final byte ACI_MARKER
+    private static final byte PNI_MARKER
+org.signal.libsignal.protocol.incrementalmac.IncrementalMacInputStream:
+    private static final int MAX_BUFFER_SIZE

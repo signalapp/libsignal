@@ -3,8 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import SignalFfi
 import Foundation
+import SignalFfi
 
 /// The HsmCodeHashList is a wrapper around a flat UInt8 array to make it more
 /// convenient to send code hashes to initialize the client.
@@ -15,7 +15,7 @@ public struct HsmCodeHashList {
     var codeHashes: [UInt8]
 
     public init() {
-        codeHashes = []
+        self.codeHashes = []
     }
 
     public mutating func append(_ codeHash: [UInt8]) throws {
@@ -23,11 +23,11 @@ public struct HsmCodeHashList {
             fatalError("code hash length must be 32")
         }
 
-        codeHashes.append(contentsOf: codeHash)
+        self.codeHashes.append(contentsOf: codeHash)
     }
 
     func flatten() -> [UInt8] {
-        return codeHashes
+        return self.codeHashes
     }
 }
 
@@ -48,16 +48,17 @@ public struct HsmCodeHashList {
 /// which decrypts and verifies it, passing the plaintext back to the client for processing.
 ///
 public class HsmEnclaveClient: NativeHandleOwner {
-
     public convenience init<Bytes: ContiguousBytes>(publicKey: Bytes, codeHashes: HsmCodeHashList) throws {
         let codeHashBytes = codeHashes.flatten()
 
         let handle: OpaquePointer? = try publicKey.withUnsafeBorrowedBuffer { publicKeyBuffer in
             try codeHashBytes.withUnsafeBorrowedBuffer { codeHashBuffer in
                 var result: OpaquePointer?
-                try checkError(signal_hsm_enclave_client_new(&result,
-                                                             publicKeyBuffer,
-                                                             codeHashBuffer))
+                try checkError(signal_hsm_enclave_client_new(
+                    &result,
+                    publicKeyBuffer,
+                    codeHashBuffer
+                ))
                 return result
             }
         }
@@ -65,7 +66,7 @@ public class HsmEnclaveClient: NativeHandleOwner {
         self.init(owned: handle!)
     }
 
-    internal override class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
+    override internal class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
         return signal_hsm_enclave_client_destroy(handle)
     }
 

@@ -5,15 +5,19 @@
 
 package org.signal.libsignal.protocol.kdf;
 
+import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
+
 import org.signal.libsignal.internal.Native;
 
 public abstract class HKDF {
   public static byte[] deriveSecrets(byte[] inputKeyMaterial, byte[] info, int outputLength) {
-    return Native.HKDF_DeriveSecrets(outputLength, inputKeyMaterial, info, null);
+    return filterExceptions(
+        () -> Native.HKDF_DeriveSecrets(outputLength, inputKeyMaterial, info, null));
   }
 
   public static byte[] deriveSecrets(
       byte[] inputKeyMaterial, byte[] salt, byte[] info, int outputLength) {
-    return Native.HKDF_DeriveSecrets(outputLength, inputKeyMaterial, info, salt);
+    return filterExceptions(
+        () -> Native.HKDF_DeriveSecrets(outputLength, inputKeyMaterial, info, salt));
   }
 }

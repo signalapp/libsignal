@@ -42,8 +42,15 @@ public enum ServiceIdError: Error {
     case wrongServiceIdKind
 }
 
+/// Typed representation of a Signal service ID, which can be one of various types.
+///
+/// Conceptually this is a UUID in a particular "namespace" representing a particular way to reach a
+/// user on the Signal service.
+///
+/// The sort order for ServiceIds is first by kind (ACI, then PNI), then lexicographically by the
+/// bytes of the UUID.
 public class ServiceId {
-    fileprivate var storage: ServiceIdStorage = (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+    private var storage: ServiceIdStorage = (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
 
     fileprivate init(fromFixedWidthBinary storage: ServiceIdStorage) {
         self.storage = storage
@@ -149,7 +156,7 @@ public class ServiceId {
         return try callback(&self.storage)
     }
 
-    internal static func concatenatedFixedWidthBinary(_ serviceIds: [ServiceId]) -> [UInt8] {
+    internal static func concatenatedFixedWidthBinary(_ serviceIds: some Collection<ServiceId>) -> [UInt8] {
         var result = Array(repeating: 0 as UInt8, count: serviceIds.count * MemoryLayout<ServiceIdStorage>.size)
         var offset = 0
         for next in serviceIds {
@@ -165,6 +172,16 @@ public class ServiceId {
 extension ServiceId: Equatable {
     public static func == (_ lhs: ServiceId, _ rhs: ServiceId) -> Bool {
         return lhs.storage == rhs.storage
+    }
+}
+
+extension ServiceId: Comparable {
+    public static func < (_ lhs: ServiceId, _ rhs: ServiceId) -> Bool {
+        return withUnsafeBytes(of: lhs.storage) { lhsBytes in
+            withUnsafeBytes(of: rhs.storage) { rhsBytes in
+                lhsBytes.lexicographicallyPrecedes(rhsBytes)
+            }
+        }
     }
 }
 
@@ -187,7 +204,7 @@ public class Aci: ServiceId {
         super.init(.aci, uuid)
     }
 
-    fileprivate override init(fromFixedWidthBinary bytes: ServiceIdStorage) {
+    override internal init(fromFixedWidthBinary bytes: ServiceIdStorage) {
         super.init(fromFixedWidthBinary: bytes)
     }
 }
@@ -197,7 +214,7 @@ public class Pni: ServiceId {
         super.init(.pni, uuid)
     }
 
-    fileprivate override init(fromFixedWidthBinary bytes: ServiceIdStorage) {
+    override internal init(fromFixedWidthBinary bytes: ServiceIdStorage) {
         super.init(fromFixedWidthBinary: bytes)
     }
 }

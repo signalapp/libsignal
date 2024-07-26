@@ -4,10 +4,11 @@
 //
 
 use libsignal_bridge_macros::*;
+#[cfg(feature = "jni")]
+use libsignal_bridge_types::jni;
 use libsignal_protocol::error::Result;
 use libsignal_protocol::*;
 use static_assertions::const_assert_eq;
-use std::time::{Duration, SystemTime};
 use uuid::Uuid;
 
 // Will be unused when building for Node only.
@@ -24,109 +25,32 @@ pub type KyberKeyPair = kem::KeyPair;
 pub type KyberPublicKey = kem::PublicKey;
 pub type KyberSecretKey = kem::SecretKey;
 
-bridge_handle!(CiphertextMessage, clone = false, jni = false);
-bridge_handle!(DecryptionErrorMessage);
-bridge_handle!(Fingerprint, jni = NumericFingerprintGenerator);
-bridge_handle!(PlaintextContent);
-bridge_handle!(PreKeyBundle);
-bridge_handle!(PreKeyRecord);
-bridge_handle!(PreKeySignalMessage);
-bridge_handle!(PrivateKey, ffi = privatekey, jni = ECPrivateKey);
-bridge_handle!(ProtocolAddress, ffi = address);
-bridge_handle!(PublicKey, ffi = publickey, jni = ECPublicKey);
-bridge_handle!(SenderCertificate);
-bridge_handle!(SenderKeyDistributionMessage);
-bridge_handle!(SenderKeyMessage);
-bridge_handle!(SenderKeyRecord);
-bridge_handle!(ServerCertificate);
-bridge_handle!(SessionRecord, mut = true);
-bridge_handle!(SignalMessage, ffi = message);
-bridge_handle!(SignedPreKeyRecord);
-bridge_handle!(KyberPreKeyRecord);
-bridge_handle!(UnidentifiedSenderMessageContent, clone = false);
-bridge_handle!(SealedSenderDecryptionResult, ffi = false, jni = false);
-bridge_handle!(KyberKeyPair);
-bridge_handle!(KyberPublicKey);
-bridge_handle!(KyberSecretKey);
+pub(crate) use libsignal_protocol::Timestamp;
 
-#[derive(Clone, Copy, Debug)]
-pub(crate) struct Timestamp(u64);
-
-impl Timestamp {
-    pub(crate) fn from_millis(millis: u64) -> Self {
-        Self(millis)
-    }
-
-    pub(crate) fn as_millis(self) -> u64 {
-        self.0
-    }
-
-    fn as_millis_from_unix_epoch(self) -> SystemTime {
-        SystemTime::UNIX_EPOCH + Duration::from_millis(self.as_millis())
-    }
-}
-
-impl From<u64> for Timestamp {
-    fn from(value: u64) -> Self {
-        Self::from_millis(value)
-    }
-}
-
-/// Lazily parses ServiceIds from a buffer of concatenated Service-Id-FixedWidthBinary.
-///
-/// **Reports parse errors by panicking.** All errors represent mistakes on the app side of the
-/// bridge, though; a buffer that really is constructed from concatenating service IDs should never
-/// error.
-#[derive(Clone, Copy, Debug)]
-pub(crate) struct ServiceIdSequence<'a>(&'a [u8]);
-
-impl<'a> ServiceIdSequence<'a> {
-    const SERVICE_ID_FIXED_WIDTH_BINARY_LEN: usize =
-        std::mem::size_of::<ServiceIdFixedWidthBinaryBytes>();
-
-    pub(crate) fn parse(input: &'a [u8]) -> Self {
-        let extra_bytes = input.len() % Self::SERVICE_ID_FIXED_WIDTH_BINARY_LEN;
-        assert!(
-            extra_bytes == 0,
-            concat!(
-                "input should be a concatenated list of Service-Id-FixedWidthBinary, ",
-                "but has length {} ({} extra bytes)"
-            ),
-            input.len(),
-            extra_bytes
-        );
-        Self(input)
-    }
-}
-
-impl Iterator for ServiceIdSequence<'_> {
-    type Item = ServiceId;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.0.is_empty() {
-            None
-        } else {
-            let (next, rest) = self.0.split_at(Self::SERVICE_ID_FIXED_WIDTH_BINARY_LEN);
-            self.0 = rest;
-            Some(
-                ServiceId::parse_from_service_id_fixed_width_binary(
-                    next.try_into().expect("just measured above"),
-                )
-                .expect(concat!(
-                    "input should be a concatenated list of Service-Id-FixedWidthBinary, ",
-                    "but one ServiceId was invalid"
-                )),
-            )
-        }
-    }
-
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        let len = self.0.len() / Self::SERVICE_ID_FIXED_WIDTH_BINARY_LEN;
-        (len, Some(len))
-    }
-}
-
-impl ExactSizeIterator for ServiceIdSequence<'_> {}
+bridge_handle_fns!(CiphertextMessage, clone = false, jni = false);
+bridge_handle_fns!(DecryptionErrorMessage);
+bridge_handle_fns!(Fingerprint, jni = NumericFingerprintGenerator);
+bridge_handle_fns!(PlaintextContent);
+bridge_handle_fns!(PreKeyBundle);
+bridge_handle_fns!(PreKeyRecord);
+bridge_handle_fns!(PreKeySignalMessage);
+bridge_handle_fns!(PrivateKey, ffi = privatekey, jni = ECPrivateKey);
+bridge_handle_fns!(ProtocolAddress, ffi = address);
+bridge_handle_fns!(PublicKey, ffi = publickey, jni = ECPublicKey);
+bridge_handle_fns!(SenderCertificate);
+bridge_handle_fns!(SenderKeyDistributionMessage);
+bridge_handle_fns!(SenderKeyMessage);
+bridge_handle_fns!(SenderKeyRecord);
+bridge_handle_fns!(ServerCertificate);
+bridge_handle_fns!(SessionRecord);
+bridge_handle_fns!(SignalMessage, ffi = message);
+bridge_handle_fns!(SignedPreKeyRecord);
+bridge_handle_fns!(KyberPreKeyRecord);
+bridge_handle_fns!(UnidentifiedSenderMessageContent, clone = false);
+bridge_handle_fns!(SealedSenderDecryptionResult, ffi = false, jni = false);
+bridge_handle_fns!(KyberKeyPair);
+bridge_handle_fns!(KyberPublicKey);
+bridge_handle_fns!(KyberSecretKey);
 
 #[bridge_fn(ffi = false)]
 fn HKDF_DeriveSecrets(
@@ -146,7 +70,7 @@ fn HKDF_DeriveSecrets(
 }
 
 // Alternate implementation to fill an existing buffer.
-#[bridge_fn_void(jni = false, node = false)]
+#[bridge_fn(jni = false, node = false)]
 fn HKDF_Derive(output: &mut [u8], ikm: &[u8], label: &[u8], salt: &[u8]) -> Result<()> {
     hkdf::Hkdf::<sha2::Sha256>::new(Some(salt), ikm)
         .expand(label, output)
@@ -215,8 +139,16 @@ bridge_get!(
     ffi = "publickey_get_public_key_bytes",
     jni = "ECPublicKey_1GetPublicKeyBytes"
 );
-bridge_get!(ProtocolAddress::device_id as DeviceId -> u32, ffi = "address_get_device_id");
-bridge_get!(ProtocolAddress::name as Name -> &str, ffi = "address_get_name");
+
+#[bridge_fn(ffi = "address_get_device_id")]
+fn ProtocolAddress_DeviceId(obj: &ProtocolAddress) -> u32 {
+    obj.device_id().into()
+}
+
+#[bridge_fn(ffi = "address_get_name")]
+fn ProtocolAddress_Name(obj: &ProtocolAddress) -> &str {
+    obj.name()
+}
 
 #[bridge_fn(ffi = "publickey_equals", node = "PublicKey_Equals")]
 fn ECPublicKey_Equals(lhs: &PublicKey, rhs: &PublicKey) -> bool {
@@ -606,7 +538,7 @@ fn DecryptionErrorMessage_ForOriginalMessage(
     DecryptionErrorMessage::for_original(
         original_bytes,
         original_type,
-        original_timestamp.as_millis(),
+        original_timestamp,
         original_sender_device_id,
     )
 }
@@ -697,7 +629,7 @@ bridge_get!(PreKeyBundle::signed_pre_key_id -> u32);
 bridge_get!(PreKeyBundle::pre_key_id -> Option<u32>);
 bridge_get!(PreKeyBundle::pre_key_public -> Option<PublicKey>);
 bridge_get!(PreKeyBundle::signed_pre_key_public -> PublicKey);
-bridge_get!(PreKeyBundle::kyber_pre_key_id -> Option<u32>, ffi = false);
+bridge_get!(PreKeyBundle::kyber_pre_key_id -> Option<u32>);
 #[bridge_fn]
 fn PreKeyBundle_GetKyberPreKeyPublic(bundle: &PreKeyBundle) -> Result<Option<KyberPublicKey>> {
     bundle
@@ -744,7 +676,7 @@ fn SignedPreKeyRecord_New(
     signature: &[u8],
 ) -> SignedPreKeyRecord {
     let keypair = KeyPair::new(*pub_key, *priv_key);
-    SignedPreKeyRecord::new(id.into(), timestamp.as_millis(), &keypair, signature)
+    SignedPreKeyRecord::new(id.into(), timestamp, &keypair, signature)
 }
 
 #[bridge_fn]
@@ -754,7 +686,7 @@ fn KyberPreKeyRecord_New(
     key_pair: &KyberKeyPair,
     signature: &[u8],
 ) -> KyberPreKeyRecord {
-    KyberPreKeyRecord::new(id.into(), timestamp.as_millis(), key_pair, signature)
+    KyberPreKeyRecord::new(id.into(), timestamp, key_pair, signature)
 }
 
 bridge_deserialize!(PreKeyRecord::deserialize);
@@ -811,7 +743,7 @@ fn SenderCertificate_Validate(
     key: &PublicKey,
     time: Timestamp,
 ) -> Result<bool> {
-    cert.validate(key, time.as_millis())
+    cert.validate(key, time)
 }
 
 #[bridge_fn]
@@ -836,7 +768,7 @@ fn SenderCertificate_New(
         sender_e164,
         *sender_key,
         sender_device_id.into(),
-        expiration.as_millis(),
+        expiration,
         signer_cert.clone(),
         signer_key,
         &mut rng,
@@ -1009,14 +941,14 @@ fn SessionRecord_GetSessionVersion(s: &SessionRecord) -> Result<u32> {
     }
 }
 
-#[bridge_fn_void]
+#[bridge_fn]
 fn SessionRecord_ArchiveCurrentState(session_record: &mut SessionRecord) -> Result<()> {
     session_record.archive_current_state()
 }
 
 #[bridge_fn]
 fn SessionRecord_HasUsableSenderChain(s: &SessionRecord, now: Timestamp) -> Result<bool> {
-    s.has_usable_sender_chain(now.as_millis_from_unix_epoch())
+    s.has_usable_sender_chain(now.into())
 }
 
 #[bridge_fn]
@@ -1136,7 +1068,7 @@ fn SessionRecord_InitializeBobSession(
 
 // End SessionRecord testing functions
 
-#[bridge_fn_void(ffi = "process_prekey_bundle")]
+#[bridge_fn(ffi = "process_prekey_bundle")]
 async fn SessionBuilder_ProcessPreKeyBundle(
     bundle: &PreKeyBundle,
     protocol_address: &ProtocolAddress,
@@ -1150,7 +1082,7 @@ async fn SessionBuilder_ProcessPreKeyBundle(
         session_store,
         identity_key_store,
         bundle,
-        now.as_millis_from_unix_epoch(),
+        now.into(),
         &mut csprng,
     )
     .await
@@ -1169,7 +1101,7 @@ async fn SessionCipher_EncryptMessage(
         protocol_address,
         session_store,
         identity_key_store,
-        now.as_millis_from_unix_epoch(),
+        now.into(),
     )
     .await
 }
@@ -1310,7 +1242,7 @@ async fn SealedSender_DecryptMessage(
     sealed_sender_decrypt(
         message,
         trust_root,
-        timestamp.as_millis(),
+        timestamp,
         local_e164,
         local_uuid,
         local_device_id.into(),
@@ -1333,7 +1265,7 @@ async fn SenderKeyDistributionMessage_Create(
     create_sender_key_distribution_message(sender, distribution_id, store, &mut csprng).await
 }
 
-#[bridge_fn_void(
+#[bridge_fn(
     ffi = "process_sender_key_distribution_message",
     jni = "GroupSessionBuilder_1ProcessSenderKeyDistributionMessage"
 )]

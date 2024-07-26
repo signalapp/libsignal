@@ -47,36 +47,6 @@ pub(crate) fn strip_trailing_null_byte(bytes: &mut &[u8]) {
     *bytes = bytes.strip_suffix(&[0]).unwrap_or(bytes);
 }
 
-/// Reads a little-endian u16 from the slice and advances it by 2 bytes.
-///
-/// Note: Caller must ensure the slice is large enough
-pub(crate) fn read_u16_le(bytes: &mut &[u8]) -> u16 {
-    let (u16_bytes, remainder) = bytes.split_at(2);
-    *bytes = remainder;
-
-    u16::from_le_bytes(u16_bytes.try_into().expect("correct size"))
-}
-
-/// Reads a little-endian u32 from the slice and advances it by 4 bytes.
-///
-/// Note: Caller must ensure the slice is large enough
-pub(crate) fn read_u32_le(bytes: &mut &[u8]) -> u32 {
-    let (u32_bytes, remainder) = bytes.split_at(4);
-    *bytes = remainder;
-
-    u32::from_le_bytes(u32_bytes.try_into().expect("correct size"))
-}
-
-/// Reads a little-endian u64 from the slice and advances it by 8 bytes.
-///
-/// Note: Caller must ensure the slice is large enough
-pub(crate) fn read_u64_le(bytes: &mut &[u8]) -> u64 {
-    let (u64_bytes, remainder) = bytes.split_at(8);
-    *bytes = remainder;
-
-    u64::from_le_bytes(u64_bytes.try_into().expect("correct size"))
-}
-
 /// Removes a slice of `size` from the front of `bytes` and returns it
 ///
 /// Note: Caller must ensure that the slice is large enough
@@ -84,6 +54,15 @@ pub(crate) fn read_bytes<'a>(bytes: &mut &'a [u8], size: usize) -> &'a [u8] {
     let (front, rest) = bytes.split_at(size);
     *bytes = rest;
     front
+}
+
+/// Removes `std::mem::size_of<T>()` bytes from the front of `bytes` and returns it as a `T`.
+///
+/// Returns `None` and leaves `bytes` unchanged if it isn't long enough.
+pub(crate) fn read_from_bytes<T: zerocopy::FromBytes>(bytes: &mut &[u8]) -> Option<T> {
+    let front = T::read_from_prefix(bytes)?;
+    *bytes = &bytes[std::mem::size_of::<T>()..];
+    Some(front)
 }
 
 /// Removes a slice of `N` from the front of `bytes` and copies
@@ -118,6 +97,8 @@ pub(crate) fn system_time_to_asn1_time(
 
 #[cfg(test)]
 mod test {
+    use crate::endian::{UInt16LE, UInt32LE, UInt64LE};
+
     use super::*;
 
     #[test]
@@ -137,11 +118,25 @@ mod test {
     }
 
     #[test]
-    fn test_read_u64_le() {
-        let mut one: &[u8] = &[1u8, 0, 0, 0, 0, 0, 0, 0];
+    fn test_read_from_bytes() {
+        let mut input: &[u8] = &[1u8, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 3, 0];
+        #[derive(Debug, PartialEq, zerocopy::FromBytes, zerocopy::FromZeroes)]
+        #[repr(C)]
+        struct Values {
+            one: UInt64LE,
+            two: UInt32LE,
+            three: UInt16LE,
+        }
 
-        assert_eq!(1, read_u64_le(&mut one));
-        assert_eq!(0, one.len());
+        assert_eq!(
+            Some(Values {
+                one: 1.into(),
+                two: 2.into(),
+                three: 3.into(),
+            }),
+            read_from_bytes(&mut input)
+        );
+        assert_eq!(input, &[] as &[u8]);
     }
 
     #[test]

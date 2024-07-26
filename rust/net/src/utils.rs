@@ -6,15 +6,16 @@
 use base64::prelude::{Engine as _, BASE64_STANDARD};
 use futures_util::stream::FuturesUnordered;
 use futures_util::StreamExt;
+use http::HeaderValue;
 use std::future;
 use std::future::Future;
 use std::time::Duration;
 
 /// Constructs the value of the `Authorization` header for the `Basic` auth scheme.
-pub(crate) fn basic_authorization(username: &str, password: &str) -> String {
+pub(crate) fn basic_authorization(username: &str, password: &str) -> HeaderValue {
     let auth = BASE64_STANDARD.encode(format!("{}:{}", username, password).as_bytes());
     let auth = format!("Basic {}", auth);
-    auth
+    HeaderValue::try_from(auth).expect("valid header value")
 }
 
 /// Requires a `Future` to complete before the specified duration has elapsed.
@@ -49,10 +50,34 @@ where
         .await
 }
 
+/// In the tokio time paused test mode, if some logic is supposed to wake up at specific time
+/// and a test wants to make sure it observes the result of that logic without moving
+/// the time past that point, it's not enough to call `sleep()` or `advance()` alone.
+/// The combination of sleeping and advancing by 0 makes sure that all events
+/// (in all tokio threads) scheduled to run at (or before) that specific time are processed.
+///
+/// `sleep_and_catch_up_showcase()` test demonstrates this behavior.
+#[cfg(test)]
+pub(crate) async fn sleep_and_catch_up(duration: Duration) {
+    tokio::time::sleep(duration).await;
+    tokio::time::advance(Duration::ZERO).await
+}
+
+/// See [`sleep_and_catch_up`]
+#[cfg(test)]
+pub(crate) async fn sleep_until_and_catch_up(time: tokio::time::Instant) {
+    tokio::time::sleep_until(time).await;
+    tokio::time::advance(Duration::ZERO).await
+}
+
 #[cfg(test)]
 mod test {
-    use crate::utils::first_ok;
+    use super::*;
+    use std::future::Future;
+    use std::sync::atomic::{AtomicBool, Ordering};
+    use std::sync::Arc;
     use std::time::Duration;
+    use tokio::time;
 
     #[tokio::test(start_paused = true)]
     async fn first_ok_picks_the_result_from_earliest_finished_future() {
@@ -78,6 +103,26 @@ mod test {
         let future_2 = future(10, Err("error 2"));
         let future_3 = future(20, Err("error 3"));
         assert!(first_ok(vec![future_1, future_2, future_3]).await.is_none())
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn sleep_and_catch_up_showcase() {
+        const DURATION: Duration = Duration::from_millis(100);
+
+        async fn test<F: Future<Output = ()>>(sleep_variant: F) -> bool {
+            let flag = Arc::new(AtomicBool::new(false));
+            let flag_clone = flag.clone();
+            tokio::spawn(async move {
+                time::sleep(DURATION).await;
+                flag_clone.store(true, Ordering::Relaxed);
+            });
+            sleep_variant.await;
+            flag.load(Ordering::Relaxed)
+        }
+
+        assert!(!test(time::sleep(DURATION)).await);
+        assert!(!test(time::advance(DURATION)).await);
+        assert!(test(sleep_and_catch_up(DURATION)).await);
     }
 
     async fn future(delay: u64, result: Result<u32, &str>) -> Result<u32, &str> {

@@ -1,0 +1,43 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+indent_size = 2
+indent_style = space
+insert_final_newline = true
+max_line_length = 120
+trim_trailing_whitespace = true
+
+[{*.java,*.java.in}]
+
+[*.proto]
+max_line_length = 80
+
+[*.rs]
+indent_size = 4
+
+[*.gradle]
+indent_size = 4
+
+[{*.markdown,*.md}]
+indent_size = 4
+
+[*.py]
+indent_size = 4
+
+[*.toml]
+indent_size = 4
+
+[{*.js,*.ts,*.ts.in}]
+max_line_length = 80
+
+[*.sh]
+indent_size = 4
+
+[*.swift]
+indent_size = 4
+
+[Makefile]
+indent_style = tab
+indent_size = 4

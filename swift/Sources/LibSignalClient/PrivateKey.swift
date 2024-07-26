@@ -3,8 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import SignalFfi
 import Foundation
+import SignalFfi
 
 public class PrivateKey: ClonableHandleOwner {
     public convenience init<Bytes: ContiguousBytes>(_ bytes: Bytes) throws {
@@ -24,11 +24,11 @@ public class PrivateKey: ClonableHandleOwner {
         }
     }
 
-    internal override class func cloneNativeHandle(_ newHandle: inout OpaquePointer?, currentHandle: OpaquePointer?) -> SignalFfiErrorRef? {
+    override internal class func cloneNativeHandle(_ newHandle: inout OpaquePointer?, currentHandle: OpaquePointer?) -> SignalFfiErrorRef? {
         return signal_privatekey_clone(&newHandle, currentHandle)
     }
 
-    internal override class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
+    override internal class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
         return signal_privatekey_destroy(handle)
     }
 
@@ -73,5 +73,4 @@ public class PrivateKey: ClonableHandleOwner {
             }
         }
     }
-
 }

@@ -17,7 +17,7 @@ use subtle::ConstantTimeEq;
 
 use crate::enclave::{self, Claims, Handshake};
 use crate::proto;
-use crate::svr2::{expected_raft_config, RaftConfig};
+use crate::svr2::RaftConfig;
 use crate::util::SmallMap;
 
 use crate::constants::NITRO_EXPECTED_PCRS;
@@ -55,10 +55,9 @@ pub fn new_handshake(
     mr_enclave: &[u8],
     attestation_msg: &[u8],
     now: SystemTime,
-    raft_config_override: Option<&'static RaftConfig>,
+    expected_raft_config: &'static RaftConfig,
 ) -> Result<Handshake, enclave::Error> {
-    let expected_raft_config = expected_raft_config(mr_enclave, raft_config_override)?;
-    let handshake_start = proto::svr2::ClientHandshakeStart::decode(attestation_msg)?;
+    let handshake_start = proto::svr::ClientHandshakeStart::decode(attestation_msg)?;
     let handshake = Handshake::for_nitro(
         mr_enclave,
         &handshake_start.evidence,
@@ -68,7 +67,7 @@ pub fn new_handshake(
     Ok(handshake)
 }
 
-#[derive(Debug, displaydoc::Display, PartialEq, Eq)]
+#[derive(Debug, displaydoc::Display, thiserror::Error, PartialEq, Eq)]
 pub enum NitroError {
     /// Invalid CBOR
     InvalidCbor,
@@ -89,8 +88,6 @@ pub enum NitroError {
     /// Invalid User Data
     InvalidUserData,
 }
-
-impl std::error::Error for NitroError {}
 
 impl From<ciborium::de::Error<std::io::Error>> for NitroError {
     fn from(_err: ciborium::de::Error<std::io::Error>) -> NitroError {
@@ -385,7 +382,7 @@ impl AttestationDoc {
         };
         let is_valid = context.init(&trust, &certificate, &stack, |ctx| ctx.verify_cert())?;
         if !is_valid {
-            let message = context.error().to_string();
+            let message = context.verify_result().unwrap_err().to_string();
             return Err(NitroError::InvalidCertificate(message));
         }
         Ok(certificate)
@@ -409,12 +406,12 @@ impl AttestationDoc {
     fn extract_attestation_data(
         &self,
         expected_pcrs: &PcrMap,
-    ) -> Result<Option<proto::svr2::AttestationData>, NitroError> {
+    ) -> Result<Option<proto::svr::AttestationData>, NitroError> {
         self.validate_pcrs(expected_pcrs)?;
         self.user_data
             .as_ref()
             .map(|user_data| {
-                proto::svr2::AttestationData::decode(user_data.as_slice())
+                proto::svr::AttestationData::decode(user_data.as_slice())
                     .map_err(|_| NitroError::InvalidUserData)
             })
             .transpose()

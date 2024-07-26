@@ -46,7 +46,7 @@ export default class ClientZkProfileOperations {
   ): ProfileKeyCredentialRequestContext {
     return new ProfileKeyCredentialRequestContext(
       Native.ServerPublicParams_CreateProfileKeyCredentialRequestContextDeterministic(
-        this.serverPublicParams.getContents(),
+        this.serverPublicParams,
         random,
         userId.getServiceIdFixedWidthBinary(),
         profileKey.getContents()
@@ -61,7 +61,7 @@ export default class ClientZkProfileOperations {
   ): ExpiringProfileKeyCredential {
     return new ExpiringProfileKeyCredential(
       Native.ServerPublicParams_ReceiveExpiringProfileKeyCredential(
-        this.serverPublicParams.getContents(),
+        this.serverPublicParams,
         profileKeyCredentialRequestContext.getContents(),
         profileKeyCredentialResponse.getContents(),
         Math.floor(now.getTime() / 1000)
@@ -89,7 +89,7 @@ export default class ClientZkProfileOperations {
   ): ProfileKeyCredentialPresentation {
     return new ProfileKeyCredentialPresentation(
       Native.ServerPublicParams_CreateExpiringProfileKeyCredentialPresentationDeterministic(
-        this.serverPublicParams.getContents(),
+        this.serverPublicParams,
         random,
         groupSecretParams.getContents(),
         profileKeyCredential.getContents()

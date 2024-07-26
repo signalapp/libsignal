@@ -7,14 +7,13 @@ import Foundation
 import SignalFfi
 
 public class BackupAuthCredential: ByteArray {
-
     public required init(contents: [UInt8]) throws {
         try super.init(contents, checkValid: signal_backup_auth_credential_check_valid_contents)
     }
 
     public func present(serverParams: GenericServerPublicParams) -> BackupAuthCredentialPresentation {
         return failOnError {
-            present(serverParams: serverParams, randomness: try .generate())
+            self.present(serverParams: serverParams, randomness: try .generate())
         }
     }
 
@@ -39,6 +38,20 @@ public class BackupAuthCredential: ByteArray {
                     signal_backup_auth_credential_get_backup_id($0, contents)
                 }
             }
+        }
+    }
+
+    public var backupLevel: BackupLevel {
+        return failOnError {
+            let rawValue = try withUnsafeBorrowedBuffer { contents in
+                try invokeFnReturningInteger {
+                    signal_backup_auth_credential_get_backup_level($0, contents)
+                }
+            }
+            guard let backupLevel = BackupLevel(rawValue: rawValue) else {
+                throw SignalError.internalError("Invalid BackupLevel \(rawValue)")
+            }
+            return backupLevel
         }
     }
 }

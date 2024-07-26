@@ -10,6 +10,9 @@ env:
   NDK_VERSION: 25.2.9519653
   RUST_BACKTRACE: 1
   LIBSIGNAL_MINIMUM_SUPPORTED_RUST_VERSION: 1.72
+  # For dev builds, include limited debug info in the output. See
+  # https://doc.rust-lang.org/cargo/reference/profiles.html#debug
+  CARGO_PROFILE_DEV_DEBUG: limited
 
 jobs:
   changes:
@@ -30,7 +33,9 @@ jobs:
       rust_ios: ${{ steps.filter.outputs.rust_ios }}
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      with:
+        submodules: recursive
 
     - uses: dorny/paths-filter@0bc4621a3135347011ad047f9ecf449bf72ce2bd # v3.0
       id: filter
@@ -80,6 +85,8 @@ jobs:
           - '.github/workflows/**'
           - '.gitignore'
           - '.gitattributes'
+          - '.editorconfig'
+          - 'justfile'
 
     - name: Check pattern completeness
       run: echo "::error file=.github/workflows/build_and_test.yml::File not included in any filter" && false
@@ -101,30 +108,45 @@ jobs:
         include:
         - version: nightly
           toolchain: "$(cat rust-toolchain)"
+          cargo-keep-going: "--keep-going"
         - version: stable
           toolchain: "${LIBSIGNAL_MINIMUM_SUPPORTED_RUST_VERSION}"
+          # Remove this switch once our MSRV is at least 1.74, which stablilized the --keep-going flag.
+          cargo-keep-going: ""
+
+    timeout-minutes: 45
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      with:
+        submodules: recursive
 
     - run: sudo apt-get update && sudo apt-get install protobuf-compiler
 
     - run: rustup toolchain install ${{ matrix.toolchain }} --profile minimal --component rustfmt,clippy
 
     - name: Cache locally-built tools
-      uses: actions/cache@v4
+      uses: actions/cache@ab5e6d0c87105b4c9c2047343972218f562e4319 # v4.0.1
       with:
         path: local-tools
-        key: ${{ runner.os }}-local-tools-${{ matrix.version }}-${{ hashFiles('acknowledgments/cargo-about-version') }}
+        key: ${{ runner.os }}-local-tools-${{ matrix.version }}-${{ hashFiles('acknowledgments/cargo-about-version', '.taplo-cli-version') }}
 
     - name: Build cargo-about if needed
       run: cargo +stable install --version $(cat acknowledgments/cargo-about-version) --locked cargo-about --root local-tools
+      if: matrix.version == 'nightly'
+
+    - name: Build taplo-cli if needed
+      run: cargo +stable install --version $(cat .taplo-cli-version) --locked taplo-cli --root local-tools
       if: matrix.version == 'nightly'
 
     # This should be done before anything else
     # because it also checks that the lockfile is up to date.
     - name: Check for duplicate dependencies
       run: ./bin/verify_duplicate_crates
+      if: matrix.version == 'nightly'
+
+    - name: Cargo.toml formatting check
+      run: PATH="$PATH:$PWD/local-tools/bin" taplo format -c .taplo.toml --check
       if: matrix.version == 'nightly'
 
     - name: Rustfmt check
@@ -151,23 +173,30 @@ jobs:
         repo-token: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Build
-      run: cargo +${{ matrix.toolchain }} build --workspace --features libsignal-ffi/signal-media --verbose
+      run: cargo +${{ matrix.toolchain }} build --workspace --features libsignal-ffi/signal-media --verbose ${{ matrix.cargo-keep-going }}
 
     - name: Run tests
-      run: cargo +${{ matrix.toolchain }} test --workspace --all-features --verbose -- --include-ignored
+      run: cargo +${{ matrix.toolchain }} test --workspace --all-features --verbose --no-fail-fast -- --include-ignored
 
     - name: Test run benches
-      run: cargo +${{ matrix.toolchain }} test --workspace --benches --all-features --verbose
+      run: cargo +${{ matrix.toolchain }} test --workspace --benches --all-features --verbose --no-fail-fast
 
     - name: Build bins and examples
-      run: cargo +${{ matrix.toolchain }} build --workspace  --bins --examples --all-features --verbose
+      run: cargo +${{ matrix.toolchain }} build --workspace  --bins --examples --all-features --verbose ${{ matrix.cargo-keep-going }}
 
     - name: Clippy
-      run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+      run: cargo clippy --workspace --all-targets --all-features ${{ matrix.cargo-keep-going }} -- -D warnings
       if: matrix.version == 'nightly'
 
+    - name: cargo clean (reclaim disk space)
+      # Clean the contents of the target directory to avoid running out of disk space during the
+      # doc build.
+      run: cargo clean
+      if: matrix.version == 'stable'
+
     - name: Rust docs
-      run: cargo doc --workspace --all-features
+      run: cargo +${{ matrix.toolchain }} doc --workspace --all-features ${{ matrix.cargo-keep-going }}
+      if: matrix.version == 'stable'
       env:
         RUSTFLAGS: -D warnings
 
@@ -175,15 +204,21 @@ jobs:
     # and crates don't generally support arbitrary nightly versions.
     # See https://github.com/dtolnay/proc-macro2/issues/307 for an example.
 
+    - name: cargo clean (reclaim disk space)
+      # Clean the contents of the target directory to avoid running out of disk space during the
+      # following steps.
+      run: cargo clean
+      if: matrix.version == 'stable'
+
     - name: Check that the protocol fuzz target still builds
-      run: cargo +${{ matrix.toolchain }} check --all-targets
+      run: cargo +${{ matrix.toolchain }} check --all-targets ${{ matrix.cargo-keep-going }}
       working-directory: rust/protocol/fuzz
       env:
         RUSTFLAGS: --cfg fuzzing
       if: matrix.version == 'stable'
 
     - name: Check that the attest fuzz target still builds
-      run: cargo +${{ matrix.toolchain }} check --all-targets
+      run: cargo +${{ matrix.toolchain }} check --all-targets ${{ matrix.cargo-keep-going }}
       working-directory: rust/attest/fuzz
       env:
         RUSTFLAGS: --cfg fuzzing
@@ -208,8 +243,12 @@ jobs:
         - version: stable
           toolchain: "${LIBSIGNAL_MINIMUM_SUPPORTED_RUST_VERSION}"
 
+    timeout-minutes: 45
+
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      with:
+        submodules: recursive
 
     - run: sudo apt-get update && sudo apt-get install gcc-multilib g++-multilib protobuf-compiler
 
@@ -217,7 +256,7 @@ jobs:
 
     - name: Run tests (32-bit)
       # Exclude signal-neon-futures because those tests run Node
-      run: cargo +${{ matrix.toolchain }} test --workspace --all-features --verbose --target i686-unknown-linux-gnu --exclude signal-neon-futures -- --include-ignored
+      run: cargo +${{ matrix.toolchain }} test --workspace --all-features --verbose --target i686-unknown-linux-gnu --exclude signal-neon-futures --no-fail-fast -- --include-ignored
 
   java:
     name: Java
@@ -233,9 +272,14 @@ jobs:
 
     if: ${{ needs.changes.outputs.java == 'true' }}
 
+    timeout-minutes: 45
+
     steps:
-    - uses: actions/checkout@v4
+    - run: echo "JAVA_HOME=$JAVA_HOME_17_X64" >> "$GITHUB_ENV"
+
+    - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
       with:
+        submodules: recursive
         # Download all commits so we can search for the merge base with origin/main.
         fetch-depth: 0
 
@@ -255,7 +299,7 @@ jobs:
     - name: Verify that the JNI bindings are up to date
       run: rust/bridge/jni/bin/gen_java_decl.py --verify
 
-    - run: ./gradlew build assembleDebugAndroidTest android:lintDebug | tee ./gradle-output.txt
+    - run: ./gradlew build assembleDebugAndroidTest android:lintDebug -PandroidArchs=arm,arm64 -PandroidTestingArchs=x86_64 | tee ./gradle-output.txt
       working-directory: java
       shell: bash # Explicitly setting the shell turns on pipefail in GitHub Actions
 
@@ -280,8 +324,12 @@ jobs:
 
     if: ${{ needs.changes.outputs.node == 'true' }}
 
+    timeout-minutes: 45
+
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      with:
+        submodules: recursive
 
     - run: rustup toolchain install $(cat rust-toolchain) --profile minimal
 
@@ -300,7 +348,7 @@ jobs:
     - run: brew install protobuf
       if: matrix.os == 'macos-latest'
 
-    - uses: actions/setup-node@v4
+    - uses: actions/setup-node@60edb5dd545a775178f52524783378180af0d1f8 # v4.0.2
       with:
         node-version-file: '.nvmrc'
 
@@ -309,6 +357,9 @@ jobs:
       if: matrix.os == 'ubuntu-20.04'
 
     - run: yarn install --frozen-lockfile
+      working-directory: node
+
+    - run: yarn node-gyp rebuild
       working-directory: node
 
     - run: yarn tsc
@@ -334,12 +385,18 @@ jobs:
 
     if: ${{ needs.changes.outputs.swift == 'true' }}
 
+    timeout-minutes: 45
+
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      with:
+        submodules: recursive
 
     - run: rustup toolchain install $(cat rust-toolchain) --profile minimal
 
     - run: sudo apt-get update && sudo apt-get install protobuf-compiler
+
+    - run: swift/verify_error_codes.sh
 
     - name: Build libsignal-ffi
       run: swift/build_ffi.sh -d -v --verify-ffi
@@ -348,6 +405,10 @@ jobs:
       run: swift test -v
       working-directory: swift
 
+    - name: Build and run Swift benchmarks (in debug mode)
+      run: swift run -v Benchmarks --allow-debug-build
+      working-directory: swift/Benchmarks
+
     - name: Build Swift package documentation
       run: swift package plugin generate-documentation --analyze --warnings-as-errors
       working-directory: swift
@@ -355,28 +416,30 @@ jobs:
   swift_cocoapod:
     name: Swift CocoaPod
 
-    runs-on: macOS-latest
+    runs-on: macOS-12
 
     needs: changes
 
     if: ${{ needs.changes.outputs.swift == 'true' }}
 
+    timeout-minutes: 45
+
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+        with:
+          submodules: recursive
+
+      - run: brew install protobuf swiftlint
+
+      - name: Check formatting
+        run: swiftformat --swiftversion 5 --reporter github-actions-log --lint .
+        working-directory: swift
 
       - name: Run lint
         run: swiftlint lint --strict --reporter github-actions-logging
         working-directory: swift
 
-      - name: Check out SignalCoreKit
-        uses: actions/checkout@v4
-        with:
-          repository: signalapp/SignalCoreKit
-          path: SignalCoreKit
-
       - run: rustup toolchain install $(cat rust-toolchain) --profile minimal --target x86_64-apple-ios,aarch64-apple-ios-sim
-
-      - run: brew install protobuf
 
       # Build only the targets that `pod lib lint` will test building.
       - name: Build for x86_64-apple-ios
@@ -390,5 +453,4 @@ jobs:
           CARGO_BUILD_TARGET: aarch64-apple-ios-sim
 
       - name: Run pod lint
-        # No import validation because it tries to build unsupported platforms (like 32-bit iOS).
-        run: pod lib lint --verbose --platforms=ios --include-podspecs=SignalCoreKit/SignalCoreKit.podspec --skip-import-validation
+        run: pod lib lint --verbose --platforms=ios

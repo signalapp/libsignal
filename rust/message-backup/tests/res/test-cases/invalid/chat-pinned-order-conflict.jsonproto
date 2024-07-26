@@ -1,0 +1,44 @@
+[
+  {
+    "version": "1",
+    "backupTimeMs": "1705692409729"
+  },
+  {
+    "recipient": {
+      "id": "1",
+      "contact": {
+        "aci": "IiMfftM7TXC2Brinq8Wbvw==",
+        "pni": "kgNIuOIxTxmzIYUp0E+4Og==",
+        "e164": "18045550102",
+        "registered": {},
+        "profileKey": "a9y+KGrHvMM94LKU4dMlFVjFa36zyjxsCv1vcgvjsOs="
+      }
+    }
+  },
+  {
+    "recipient": {
+      "id": "2",
+      "self": {}
+    }
+  },
+  {
+    "recipient": {
+      "id": "3",
+      "releaseNotes": {}
+    }
+  },
+  {
+    "chat": {
+      "id": "1",
+      "recipientId": "2",
+      "pinnedOrder": "5"
+    }
+  },
+  {
+    "chat": {
+      "id": "2",
+      "recipientId": "3",
+      "pinnedOrder": "5"
+    }
+  }
+]

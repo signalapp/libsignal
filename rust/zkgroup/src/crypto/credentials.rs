@@ -212,15 +212,6 @@ pub struct BlindedReceiptCredential {
     pub(crate) S2: RistrettoPoint,
 }
 
-pub(crate) fn convert_to_points_uid_struct(
-    uid: uid_struct::UidStruct,
-    redemption_time: CoarseRedemptionTime,
-) -> Vec<RistrettoPoint> {
-    let system = SystemParams::get_hardcoded();
-    let redemption_time_scalar = encode_redemption_time(redemption_time);
-    vec![uid.M1, uid.M2, redemption_time_scalar * system.G_m3]
-}
-
 pub(crate) fn convert_to_points_aci_pni_timestamp(
     aci: uid_struct::UidStruct,
     pni: uid_struct::UidStruct,
@@ -379,19 +370,6 @@ impl<S: AttrScalars> KeyPair<S> {
     }
 }
 
-impl KeyPair<AuthCredential> {
-    pub fn create_auth_credential(
-        &self,
-        uid: uid_struct::UidStruct,
-        redemption_time: CoarseRedemptionTime,
-        sho: &mut Sho,
-    ) -> AuthCredential {
-        let M = convert_to_points_uid_struct(uid, redemption_time);
-        let (t, U, V) = self.credential_core(&M, sho);
-        AuthCredential { t, U, V }
-    }
-}
-
 impl KeyPair<AuthCredentialWithPni> {
     pub fn create_auth_credential_with_pni(
         &self,
@@ -508,25 +486,43 @@ mod tests {
 
     #[test]
     fn test_mac() {
+        // It doesn't really matter *which* credential we test here, we just want to generally know
+        // we've set things up correctly. (Also, the credentials hardcoded here in zkgroup may
+        // eventually all be superseded by implementations using zkcredential, at which point this
+        // test can be deleted.)
         let mut sho = Sho::new(b"Test_Credentials", b"");
-        let keypair = KeyPair::<AuthCredential>::generate(&mut sho);
+        let keypair = KeyPair::<AuthCredentialWithPni>::generate(&mut sho);
 
         let uid_bytes = TEST_ARRAY_16;
-        let redemption_time = 37;
+        let redemption_time = Timestamp::from_epoch_seconds(37 * SECONDS_PER_DAY);
         let aci = libsignal_core::Aci::from_uuid_bytes(uid_bytes);
-        let uid = uid_struct::UidStruct::from_service_id(aci.into());
-        let credential = keypair.create_auth_credential(uid, redemption_time, &mut sho);
-        let proof = proofs::AuthCredentialIssuanceProof::new(
+        let aci_struct = uid_struct::UidStruct::from_service_id(aci.into());
+        let pni = libsignal_core::Aci::from_uuid_bytes(uid_bytes);
+        let pni_struct = uid_struct::UidStruct::from_service_id(pni.into());
+        let credential = keypair.create_auth_credential_with_pni(
+            aci_struct,
+            pni_struct,
+            redemption_time,
+            &mut sho,
+        );
+        let proof = proofs::AuthCredentialWithPniIssuanceProof::new(
             keypair,
             credential,
-            uid,
+            aci_struct,
+            pni_struct,
             redemption_time,
             &mut sho,
         );
 
         let public_key = keypair.get_public_key();
         proof
-            .verify(public_key, credential, uid, redemption_time)
+            .verify(
+                public_key,
+                credential,
+                aci_struct,
+                pni_struct,
+                redemption_time,
+            )
             .unwrap();
 
         let keypair_bytes = bincode::serialize(&keypair).unwrap();
@@ -543,14 +539,14 @@ mod tests {
         assert!(
             mac_bytes
                 == vec![
-                    0xe0, 0xce, 0x21, 0xfe, 0xb7, 0xc3, 0xb8, 0x62, 0x3a, 0xe6, 0x20, 0xab, 0x3e,
-                    0xe6, 0x5d, 0x94, 0xa3, 0xf3, 0x40, 0x53, 0x31, 0x63, 0xd2, 0x4c, 0x5d, 0x41,
-                    0xa0, 0xd6, 0x7a, 0x40, 0xb3, 0x2, 0x8e, 0x50, 0xa2, 0x7b, 0xd4, 0xda, 0xe9,
-                    0x9d, 0x60, 0x0, 0xdb, 0x97, 0x3d, 0xbc, 0xc5, 0xad, 0xe1, 0x32, 0xbc, 0x56,
-                    0xb0, 0xe1, 0xac, 0x16, 0x7b, 0xb, 0x2c, 0x9, 0xe2, 0xb6, 0xc8, 0x5b, 0x68,
-                    0xc8, 0x8e, 0x7d, 0xfd, 0x58, 0x97, 0x51, 0xe9, 0x8, 0x1f, 0x81, 0xb0, 0x24,
-                    0xea, 0xa0, 0xaf, 0x29, 0x6, 0xed, 0xb3, 0x9, 0x32, 0xed, 0x65, 0x28, 0x2f,
-                    0xa1, 0x79, 0x9e, 0x1, 0x24,
+                    0xf0, 0xf7, 0x41, 0xdd, 0x71, 0xb3, 0x3a, 0x18, 0x67, 0x26, 0x43, 0x15, 0xb0,
+                    0x4, 0x8e, 0xef, 0x31, 0xf0, 0x85, 0x77, 0x43, 0x68, 0x54, 0xf5, 0x91, 0x39,
+                    0xaa, 0xf, 0xb4, 0xca, 0x7c, 0x4, 0xfe, 0x4b, 0x1c, 0xcd, 0x3c, 0xef, 0x74,
+                    0x8, 0xca, 0x30, 0x7f, 0xcb, 0xfd, 0xda, 0xe9, 0xdb, 0xfd, 0xed, 0xbb, 0xec,
+                    0xce, 0x23, 0x2, 0x2, 0xa3, 0xec, 0xaa, 0x96, 0xea, 0xd, 0xac, 0x57, 0x62,
+                    0x8f, 0x6e, 0x51, 0x84, 0x7f, 0xb1, 0x62, 0x39, 0x6, 0xbc, 0x4d, 0x14, 0xed,
+                    0x96, 0xe9, 0x6, 0x27, 0xbd, 0x54, 0xc0, 0x31, 0xdc, 0x92, 0x9e, 0x40, 0x1,
+                    0x33, 0xfc, 0xc5, 0x56, 0x7a,
                 ]
         );
     }

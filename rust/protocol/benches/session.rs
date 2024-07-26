@@ -117,7 +117,7 @@ pub fn session_encrypt_result(c: &mut Criterion) -> Result<(), SignalProtocolErr
             signed_pre_key_id.into(),
             &SignedPreKeyRecord::new(
                 signed_pre_key_id.into(),
-                /*timestamp*/ 42,
+                Timestamp::from_epoch_millis(42),
                 &bob_signed_pre_key_pair,
                 &bob_signed_pre_key_signature,
             ),

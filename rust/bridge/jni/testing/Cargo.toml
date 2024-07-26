@@ -1,0 +1,25 @@
+#
+# Copyright (C) 2024 Signal Messenger, LLC.
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+
+[package]
+name = "libsignal-jni-testing"
+version = "0.52.3"
+authors = ["Signal Messenger LLC"]
+edition = "2021"
+license = "AGPL-3.0-only"
+
+[lib]
+name = "signal_jni_testing"
+crate-type = ["cdylib"]
+
+[dependencies]
+libsignal-bridge-testing = { path = "../../shared/testing", features = ["jni"] }
+
+async-trait = "0.1.41"
+cfg-if = "1.0.0"
+jni = "0.21.0"
+log = { version = "0.4", features = ["release_max_level_info"] }
+log-panics = { version = "2.1.0", features = ["with-backtrace"] }
+rand = "0.8"

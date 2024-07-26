@@ -5,6 +5,8 @@
 
 package org.signal.libsignal.protocol.ecc;
 
+import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
+
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
 import org.signal.libsignal.protocol.InvalidKeyException;
@@ -16,8 +18,10 @@ public class ECPrivateKey implements NativeHandleGuard.Owner {
     return new ECPrivateKey(Native.ECPrivateKey_Generate());
   }
 
-  ECPrivateKey(byte[] privateKey) throws InvalidKeyException {
-    this.unsafeHandle = Native.ECPrivateKey_Deserialize(privateKey);
+  public ECPrivateKey(byte[] privateKey) throws InvalidKeyException {
+    this.unsafeHandle =
+        filterExceptions(
+            InvalidKeyException.class, () -> Native.ECPrivateKey_Deserialize(privateKey));
   }
 
   public ECPrivateKey(long nativeHandle) {
@@ -35,20 +39,21 @@ public class ECPrivateKey implements NativeHandleGuard.Owner {
 
   public byte[] serialize() {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return Native.ECPrivateKey_Serialize(guard.nativeHandle());
+      return filterExceptions(() -> Native.ECPrivateKey_Serialize(guard.nativeHandle()));
     }
   }
 
   public byte[] calculateSignature(byte[] message) {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return Native.ECPrivateKey_Sign(guard.nativeHandle(), message);
+      return filterExceptions(() -> Native.ECPrivateKey_Sign(guard.nativeHandle(), message));
     }
   }
 
   public byte[] calculateAgreement(ECPublicKey other) {
     try (NativeHandleGuard privateKey = new NativeHandleGuard(this);
         NativeHandleGuard publicKey = new NativeHandleGuard(other); ) {
-      return Native.ECPrivateKey_Agree(privateKey.nativeHandle(), publicKey.nativeHandle());
+      return filterExceptions(
+          () -> Native.ECPrivateKey_Agree(privateKey.nativeHandle(), publicKey.nativeHandle()));
     }
   }
 
@@ -58,7 +63,8 @@ public class ECPrivateKey implements NativeHandleGuard.Owner {
 
   public ECPublicKey publicKey() {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return new ECPublicKey(Native.ECPrivateKey_GetPublicKey(guard.nativeHandle()));
+      return new ECPublicKey(
+          filterExceptions(() -> Native.ECPrivateKey_GetPublicKey(guard.nativeHandle())));
     }
   }
 }

@@ -27,6 +27,10 @@ These should usually be prioritized in that order, but adjust the trade-off as n
 
     Low-level objects like ServiceId and ProtocolAddress do not follow this rule; instead, they stringify in fixed formats that are easy to filter from higher-level logs en masse.
 
+- **Logs should be kept minimal on success paths**. It's harder to find significant information in a sea of "operation succeeded!", and in the worst case we'd hit the log size limit sooner. (Clients only keep a few days of logs, and they'll keep even less if the recent logs are taking up too much space.) Even on failure paths, consider how much will end up in client logs, and if it'll be redundant with a higher-level log. Especially when logging in a loop. But don't go too far: it's important to know when certain events happen in relation to earlier or later failures.
+
+    As with the previous rule, this does not apply to the "debug" and "verbose" log levels, which are turned off at compile time in our client library release builds.
+
 
 # Rust
 
@@ -43,6 +47,8 @@ These should usually be prioritized in that order, but adjust the trade-off as n
 - We build with a pinned nightly toolchain, but **we also support stable**. The specific minimum supported version of stable is checked in CI (specifically, at the top of [build_and_test.yml](.github/workflows/build_and_test.yml)). We permit ourselves to bump this as needed, but try not to do so capriciously because we know external people might be in non-rustup scenarios where getting a new stable is tricky. If you need to bump the minimum supported version of stable, make sure the next release has a "breaking" version number.
 
 - **We do not have a changelog file**; we rely on [GitHub displaying all our releases](https://github.com/signalapp/libsignal/releases).
+
+- **Avoid `cargo add`**, or fix up the Cargo.toml afterwards. Some of our dependency lists are organized and `cargo add` doesn't respect that.
 
 - We do not have consistent guidelines for how to do errors in Rust, and the different crates do them differently. :-(
 
@@ -65,6 +71,11 @@ These should usually be prioritized in that order, but adjust the trade-off as n
 - **Put tests in the client/ folder unless they're testing server-only APIs**, so they can be run on both desktop machines and Android devices (and emulators).
 
 - **Write javadocs** unless an API is trivial (or not app-team-facing). Even for internal methods, though, if you do write a comment, make it a doc comment (like for Rust code), because it shows up in IDEs.
+
+- Our Java code gets minified with [Android's R8] tool, which scans for usages of all items (classes, methods, fields) and prunes those that are never used. It can't see usages from Rust code via JNI, so additional annotations are required. **Annotate classes, methods, and fields that are accessed via JNI with `@CalledFromNative`**, which is recognized by the directives in [`libsignal.pro`], to ensure they are kept.
+
+[Android's R8]: https://developer.android.com/build/shrink-code
+[`libsignal.pro`]: ./java/shared/resources/META-INF/proguard/libsignal.pro
 
 
 # Swift

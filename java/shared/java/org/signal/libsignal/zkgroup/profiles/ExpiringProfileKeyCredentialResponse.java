@@ -5,6 +5,8 @@
 
 package org.signal.libsignal.zkgroup.profiles;
 
+import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
+
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.zkgroup.InvalidInputException;
 import org.signal.libsignal.zkgroup.internal.ByteArray;
@@ -12,6 +14,8 @@ import org.signal.libsignal.zkgroup.internal.ByteArray;
 public final class ExpiringProfileKeyCredentialResponse extends ByteArray {
   public ExpiringProfileKeyCredentialResponse(byte[] contents) throws InvalidInputException {
     super(contents);
-    Native.ExpiringProfileKeyCredentialResponse_CheckValidContents(contents);
+    filterExceptions(
+        InvalidInputException.class,
+        () -> Native.ExpiringProfileKeyCredentialResponse_CheckValidContents(contents));
   }
 }

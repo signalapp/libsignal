@@ -5,6 +5,9 @@
 
 package org.signal.libsignal.quic;
 
+import org.signal.libsignal.internal.CalledFromNative;
+
+@CalledFromNative
 public interface QuicCallbackListener {
 
   void onData(byte[] data);

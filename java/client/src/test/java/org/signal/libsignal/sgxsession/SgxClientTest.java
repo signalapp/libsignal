@@ -15,6 +15,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 import org.signal.libsignal.attest.AttestationDataException;
+import org.signal.libsignal.attest.AttestationFailedException;
 import org.signal.libsignal.cds2.Cds2Client;
 import org.signal.libsignal.protocol.util.Hex;
 import org.signal.libsignal.svr2.Svr2Client;
@@ -61,16 +62,16 @@ public class SgxClientTest {
           },
           {
             Hex.fromStringCondensed(
-                "a8a261420a6bb9b61aa25bf8a79e8bd20d7652531feb3381cbffd446d270be95"),
+                "acb1973aa0bbbd14b3b4e06f145497d948fd4a98efc500fcce363b3b743ec482"),
             svr2Handshake,
-            Instant.ofEpochSecond(1683836600),
+            Instant.ofEpochSecond(1709245753),
             ServiceType.SVR2
           }
         });
   }
 
   private SgxClient getClient(byte[] mrenclave, byte[] attestationMsg, Instant currentTime)
-      throws AttestationDataException {
+      throws AttestationDataException, AttestationFailedException {
     switch (serviceType) {
       case SVR2:
         return new Svr2Client(mrenclave, attestationMsg, currentTime);
@@ -81,40 +82,47 @@ public class SgxClientTest {
   }
 
   @Test
-  public void testCreateClient() throws AttestationDataException {
+  public void testCreateClient() throws AttestationDataException, AttestationFailedException {
     SgxClient client = getClient(mrenclave, attestationMsg, validInstant);
     byte[] initialMessage = client.initialRequest();
     assertEquals(48, initialMessage.length);
   }
 
   @Test(expected = AttestationDataException.class)
-  public void testCreateClientFailsWithInvalidMrenclave() throws AttestationDataException {
+  public void testCreateClientFailsWithInvalidMrenclave()
+      throws AttestationDataException, AttestationFailedException {
     byte[] invalidMrenclave = new byte[] {};
     getClient(invalidMrenclave, attestationMsg, validInstant);
   }
 
   @Test(expected = AttestationDataException.class)
-  public void testCreateClientFailsWithInvalidMessage() throws AttestationDataException {
+  public void testCreateClientFailsWithInvalidMessage()
+      throws AttestationDataException, AttestationFailedException {
     byte[] invalidMessage = new byte[0];
     getClient(mrenclave, invalidMessage, validInstant);
   }
 
   @Test(expected = AttestationDataException.class)
-  public void testCreateClientFailsWithInvalidNonEmptyMessage() throws AttestationDataException {
+  public void testCreateClientFailsWithInvalidNonEmptyMessage()
+      throws AttestationDataException, AttestationFailedException {
     byte[] invalidMessage = new byte[] {1};
     getClient(mrenclave, invalidMessage, validInstant);
   }
 
   @Test(expected = IllegalStateException.class)
   public void testEstablishedSendFailsPriorToEstablishment()
-      throws AttestationDataException, SgxCommunicationFailureException {
+      throws AttestationDataException,
+          AttestationFailedException,
+          SgxCommunicationFailureException {
     SgxClient client = getClient(mrenclave, attestationMsg, validInstant);
     client.establishedSend(new byte[] {1, 2, 3});
   }
 
   @Test(expected = IllegalStateException.class)
   public void testEstablishedRecvFailsPriorToEstablishment()
-      throws AttestationDataException, SgxCommunicationFailureException {
+      throws AttestationDataException,
+          AttestationFailedException,
+          SgxCommunicationFailureException {
     SgxClient client = getClient(mrenclave, attestationMsg, validInstant);
     client.establishedRecv(new byte[] {1, 2, 3});
   }

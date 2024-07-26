@@ -101,11 +101,14 @@ impl JniLogger {
 }
 
 impl log::Log for JniLogger {
-    fn enabled(&self, _metadata: &log::Metadata) -> bool {
-        true
+    fn enabled(&self, metadata: &log::Metadata) -> bool {
+        libsignal_bridge::logging::log_enabled_in_apps(metadata)
     }
 
     fn log(&self, record: &log::Record) {
+        if !self.enabled(record.metadata()) {
+            return;
+        }
         if self.log_impl(record).is_err() {
             // Drop the error; it's not like we can log it!
         }
@@ -128,8 +131,7 @@ fn abort_on_panic(f: impl FnOnce()) {
 fn set_max_level_from_java_level(max_level: jint) {
     // Keep this in sync with SignalProtocolLogger.java.
     let level = match max_level {
-        // The jni crate uses trace! in its own implementation.
-        2 => panic!("invalid log level (must be DEBUG or higher for libsignal)"),
+        2 => JavaLogLevel::Verbose,
         3 => JavaLogLevel::Debug,
         4 => JavaLogLevel::Info,
         5 => JavaLogLevel::Warn,

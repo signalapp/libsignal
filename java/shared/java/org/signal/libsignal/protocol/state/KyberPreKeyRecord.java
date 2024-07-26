@@ -5,6 +5,8 @@
 
 package org.signal.libsignal.protocol.state;
 
+import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
+
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
 import org.signal.libsignal.protocol.InvalidMessageException;
@@ -28,36 +30,39 @@ public class KyberPreKeyRecord implements NativeHandleGuard.Owner {
 
   // FIXME: This shouldn't be considered a "message".
   public KyberPreKeyRecord(byte[] serialized) throws InvalidMessageException {
-    this.unsafeHandle = Native.KyberPreKeyRecord_Deserialize(serialized);
+    this.unsafeHandle =
+        filterExceptions(
+            InvalidMessageException.class, () -> Native.KyberPreKeyRecord_Deserialize(serialized));
   }
 
   public int getId() {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return Native.KyberPreKeyRecord_GetId(guard.nativeHandle());
+      return filterExceptions(() -> Native.KyberPreKeyRecord_GetId(guard.nativeHandle()));
     }
   }
 
   public long getTimestamp() {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return Native.KyberPreKeyRecord_GetTimestamp(guard.nativeHandle());
+      return filterExceptions(() -> Native.KyberPreKeyRecord_GetTimestamp(guard.nativeHandle()));
     }
   }
 
   public KEMKeyPair getKeyPair() {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return new KEMKeyPair(Native.KyberPreKeyRecord_GetKeyPair(guard.nativeHandle()));
+      return new KEMKeyPair(
+          filterExceptions(() -> Native.KyberPreKeyRecord_GetKeyPair(guard.nativeHandle())));
     }
   }
 
   public byte[] getSignature() {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return Native.KyberPreKeyRecord_GetSignature(guard.nativeHandle());
+      return filterExceptions(() -> Native.KyberPreKeyRecord_GetSignature(guard.nativeHandle()));
     }
   }
 
   public byte[] serialize() {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return Native.KyberPreKeyRecord_GetSerialized(guard.nativeHandle());
+      return filterExceptions(() -> Native.KyberPreKeyRecord_GetSerialized(guard.nativeHandle()));
     }
   }
 

@@ -163,8 +163,10 @@ impl<M: visit_static::VisitUnknownFields> VisitUnknownFields for M {
 
 /// Extension trait for [`VisitUnknownFields`] with convenience methods.
 pub(crate) trait VisitUnknownFieldsExt {
+    #[allow(dead_code)]
     fn has_unknown_fields(&self) -> bool;
     fn collect_unknown_fields(&self) -> Vec<(Vec<PathPart>, UnknownValue)>;
+    #[allow(dead_code)]
     fn find_unknown_field(&self) -> Option<(Vec<PathPart>, UnknownValue)>;
 }
 

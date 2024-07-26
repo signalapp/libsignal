@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use crate::common::serialization::ReservedByte;
 use crate::common::simple_types::*;
 use crate::crypto;
 use partial_default::PartialDefault;
@@ -10,7 +11,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Copy, Clone, Serialize, Deserialize, PartialDefault)]
 pub struct ExpiringProfileKeyCredential {
-    pub(crate) version: ReservedBytes,
+    pub(crate) reserved: ReservedByte,
     pub(crate) credential: crypto::credentials::ExpiringProfileKeyCredential,
     pub(crate) aci_bytes: UidBytes,
     pub(crate) profile_key_bytes: ProfileKeyBytes,

@@ -3,12 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import SignalFfi
 import Foundation
-
-#if canImport(SignalCoreKit)
-import SignalCoreKit
-#endif
+import SignalFfi
 
 public enum SignalError: Error {
     case invalidState(String)
@@ -24,6 +20,7 @@ public enum SignalError: Error {
     case invalidMessage(String)
     case invalidKey(String)
     case invalidSignature(String)
+    case invalidAttestationData(String)
     case fingerprintVersionMismatch(String)
     case fingerprintParsingError(String)
     case sealedSenderSelfSend(String)
@@ -53,6 +50,18 @@ public enum SignalError: Error {
     case invalidMediaInput(String)
     case unsupportedMediaInput(String)
     case callbackError(String)
+    case webSocketError(String)
+    case connectionTimeoutError(String)
+    case connectionFailed(String)
+    case networkProtocolError(String)
+    case cdsiInvalidToken(String)
+    case rateLimitedError(retryAfter: TimeInterval, message: String)
+    case svrDataMissing(String)
+    case svrRestoreFailed(triesRemaining: UInt32, message: String)
+    case chatServiceInactive(String)
+    case appExpired(String)
+    case deviceDeregistered(String)
+
     case unknown(UInt32, String)
 }
 
@@ -69,6 +78,9 @@ internal func checkError(_ error: SignalFfiErrorRef?) throws {
     defer { signal_error_free(error) }
 
     switch SignalErrorCode(errType) {
+    case SignalErrorCodeCancelled:
+        // Special case: don't use SignalError for this one.
+        throw CancellationError()
     case SignalErrorCodeInvalidState:
         throw SignalError.invalidState(errStr)
     case SignalErrorCodeInternalError:
@@ -99,6 +111,8 @@ internal func checkError(_ error: SignalFfiErrorRef?) throws {
         throw SignalError.invalidKey(errStr)
     case SignalErrorCodeInvalidSignature:
         throw SignalError.invalidSignature(errStr)
+    case SignalErrorCodeInvalidAttestationData:
+        throw SignalError.invalidAttestationData(errStr)
     case SignalErrorCodeFingerprintVersionMismatch:
         throw SignalError.fingerprintVersionMismatch(errStr)
     case SignalErrorCodeUntrustedIdentity:
@@ -159,6 +173,34 @@ internal func checkError(_ error: SignalFfiErrorRef?) throws {
         throw SignalError.unsupportedMediaInput(errStr)
     case SignalErrorCodeCallbackError:
         throw SignalError.callbackError(errStr)
+    case SignalErrorCodeWebSocket:
+        throw SignalError.webSocketError(errStr)
+    case SignalErrorCodeConnectionTimedOut:
+        throw SignalError.connectionTimeoutError(errStr)
+    case SignalErrorCodeConnectionFailed:
+        throw SignalError.connectionFailed(errStr)
+    case SignalErrorCodeNetworkProtocol:
+        throw SignalError.networkProtocolError(errStr)
+    case SignalErrorCodeCdsiInvalidToken:
+        throw SignalError.cdsiInvalidToken(errStr)
+    case SignalErrorCodeRateLimited:
+        let retryAfterSeconds = try invokeFnReturningInteger {
+            signal_error_get_retry_after_seconds(error, $0)
+        }
+        throw SignalError.rateLimitedError(retryAfter: TimeInterval(retryAfterSeconds), message: errStr)
+    case SignalErrorCodeSvrDataMissing:
+        throw SignalError.svrDataMissing(errStr)
+    case SignalErrorCodeSvrRestoreFailed:
+        let triesRemaining = try invokeFnReturningInteger {
+            signal_error_get_tries_remaining(error, $0)
+        }
+        throw SignalError.svrRestoreFailed(triesRemaining: triesRemaining, message: errStr)
+    case SignalErrorCodeChatServiceInactive:
+        throw SignalError.chatServiceInactive(errStr)
+    case SignalErrorCodeAppExpired:
+        throw SignalError.appExpired(errStr)
+    case SignalErrorCodeDeviceDeregistered:
+        throw SignalError.deviceDeregistered(errStr)
     default:
         throw SignalError.unknown(errType, errStr)
     }
@@ -168,14 +210,15 @@ internal func failOnError(_ error: SignalFfiErrorRef?) {
     failOnError { try checkError(error) }
 }
 
-internal func failOnError<Result>(_ fn: () throws -> Result) -> Result {
-#if canImport(SignalCoreKit)
+internal func failOnError<Result>(_ fn: () throws -> Result, file: StaticString = #file, line: UInt32 = #line) -> Result {
     do {
         return try fn()
     } catch {
-        owsFail("unexpected error: \(error)")
+        guard let loggerBridge = LoggerBridge.shared else {
+            fatalError("unexpected error: \(error)", file: file, line: UInt(line))
+        }
+        "unexpected error: \(error)".withCString {
+            loggerBridge.logger.logFatal(file: String(describing: file), line: line, message: $0)
+        }
     }
-#else
-    return try! fn()
-#endif
 }

@@ -41,7 +41,9 @@ targets = [
 ]
 
 workarounds = [
-    "chrono"
+    "chrono",
+    "prost",
+    "ring",
 ]
 
 
@@ -210,6 +212,14 @@ path = "LICENSE"
 checksum = "f78d723e5d254b2037aa633b034dfe314caf37ace39727c66271b119027e5730"
 
 
+[neon.clarify]
+license = "MIT"
+
+[[neon.clarify.git]]
+path = "LICENSE-MIT"
+checksum = "e47f19ffc3ed618c75d166781681b27c30f841f9b5b10fc488150b9128b19cac"
+
+
 # partial-default-derive is embedded in a larger repo
 [partial-default-derive.clarify]
 license = "AGPL-3.0-only"
@@ -226,32 +236,6 @@ license = "MIT"
 [[procfs-core.clarify.git]]
 path = "LICENSE-MIT"
 checksum = "c5bbf39118b0639bf8bd391ae0d7d81f25c1cb4066e0fdae6a405b20fb7ca170"
-
-
-# The prost-* crates are embedded in a larger repo.
-[prost-build.clarify]
-license = "Apache-2.0"
-override-git-commit = "v0.9.0"
-
-[[prost-build.clarify.git]]
-path = "LICENSE"
-checksum = "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2"
-
-[prost-derive.clarify]
-license = "Apache-2.0"
-override-git-commit = "v0.9.0"
-
-[[prost-derive.clarify.git]]
-path = "LICENSE"
-checksum = "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2"
-
-[prost-types.clarify]
-license = "Apache-2.0"
-override-git-commit = "v0.9.0"
-
-[[prost-types.clarify.git]]
-path = "LICENSE"
-checksum = "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2"
 
 
 # The protobuf crates are embedded in a larger repo

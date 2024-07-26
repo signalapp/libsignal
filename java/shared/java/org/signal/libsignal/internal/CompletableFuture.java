@@ -23,6 +23,7 @@ public class CompletableFuture<T> implements Future<T> {
   private Throwable exception;
   private List<ThenApplyCompleter<T>> consumers;
 
+  @CalledFromNative
   public CompletableFuture() {
     this.consumers = new ArrayList<>();
   }
@@ -43,6 +44,7 @@ public class CompletableFuture<T> implements Future<T> {
     return completed;
   }
 
+  @CalledFromNative
   public synchronized boolean complete(T result) {
     if (completed) return false;
 
@@ -58,6 +60,7 @@ public class CompletableFuture<T> implements Future<T> {
     return true;
   }
 
+  @CalledFromNative
   public synchronized boolean completeExceptionally(Throwable throwable) {
     if (completed) return false;
 
@@ -151,6 +154,40 @@ public class CompletableFuture<T> implements Future<T> {
               new ThenApplyCompleter<>(future::complete, future::completeExceptionally));
         },
         CompletableFuture::completeExceptionally);
+  }
+
+  /**
+   * Returns a future of the same type that will execute an action when the original future
+   * completes, successfully or not.
+   *
+   * <p>The action will be invoked with (value, null) for successful completion of the source
+   * future, and (null, throwable) otherwise. If the source future completes exceptionally, the
+   * exception will be propagated to the returned future after executing the provided action. Any
+   * exceptions thrown by action itself are ignored in this case. If the source future succeeds but
+   * provided action throws an exception, this exception will be used to complete the resulting
+   * future exceptionally.
+   */
+  public CompletableFuture<T> whenComplete(BiConsumer<? super T, Throwable> fn) {
+    return this.addChainedFuture(
+        (CompletableFuture<T> future, T value) -> {
+          try {
+            fn.accept(value, null);
+          } catch (Exception e) {
+            future.completeExceptionally(e);
+            return;
+          }
+          future.complete(value);
+        },
+        (CompletableFuture<T> future, Throwable throwable) -> {
+          try {
+            fn.accept(null, throwable);
+          } catch (Exception e) {
+            // Ignore the accept exception, and "re-throw" the original one
+            future.completeExceptionally(throwable);
+            return;
+          }
+          future.completeExceptionally(throwable);
+        });
   }
 
   private <U> CompletableFuture<U> addChainedFuture(

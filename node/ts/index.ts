@@ -1379,7 +1379,7 @@ export class SealedSenderDecryptionResult {
   }
 }
 
-interface CiphertextMessageConvertible {
+export interface CiphertextMessageConvertible {
   asCiphertextMessage(): CiphertextMessage;
 }
 
@@ -1602,7 +1602,7 @@ export function sealedSenderEncrypt(
   return Native.SealedSender_Encrypt(address, content, identityStore);
 }
 
-type SealedSenderMultiRecipientEncryptOptions = {
+export type SealedSenderMultiRecipientEncryptOptions = {
   content: UnidentifiedSenderMessageContent;
   recipients: ProtocolAddress[];
   excludedRecipients?: ServiceId[];

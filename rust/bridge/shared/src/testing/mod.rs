@@ -3,26 +3,33 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use futures_util::FutureExt;
+use futures_util::{AsyncReadExt as _, FutureExt};
+use io::{AsyncInput, InputStream};
 use libsignal_bridge_macros::*;
+use libsignal_bridge_types::support::*;
+use libsignal_bridge_types::*;
 use libsignal_protocol::SignalProtocolError;
 
 use std::future::Future;
-
-use crate::support::*;
-use crate::*;
 
 mod net;
 mod types;
 use types::*;
 
 pub struct NonSuspendingBackgroundThreadRuntime;
-bridge_handle!(
+bridge_as_handle!(
+    NonSuspendingBackgroundThreadRuntime,
+    ffi = testing_NonSuspendingBackgroundThreadRuntime,
+    jni = TESTING_1NonSuspendingBackgroundThreadRuntime
+);
+bridge_handle_fns!(
     NonSuspendingBackgroundThreadRuntime,
     clone = false,
     ffi = testing_NonSuspendingBackgroundThreadRuntime,
     jni = TESTING_1NonSuspendingBackgroundThreadRuntime
 );
+
+impl AsyncRuntimeBase for NonSuspendingBackgroundThreadRuntime {}
 
 impl<F> AsyncRuntime<F> for NonSuspendingBackgroundThreadRuntime
 where
@@ -30,7 +37,14 @@ where
     F::Output: ResultReporter,
     <F::Output as ResultReporter>::Receiver: Send,
 {
-    fn run_future(&self, future: F, completer: <F::Output as ResultReporter>::Receiver) {
+    type Cancellation = std::future::Pending<()>;
+
+    fn run_future(
+        &self,
+        make_future: impl FnOnce(Self::Cancellation) -> F,
+        completer: <F::Output as ResultReporter>::Receiver,
+    ) -> CancellationId {
+        let future = make_future(std::future::pending());
         std::thread::spawn(move || {
             std::panic::catch_unwind(std::panic::AssertUnwindSafe(move || {
                 future
@@ -43,6 +57,7 @@ where
                 std::process::abort()
             })
         });
+        CancellationId::NotSupported
     }
 }
 
@@ -65,7 +80,8 @@ async fn TESTING_FutureFailure(_input: u8) -> Result<i32, SignalProtocolError> {
 pub struct TestingHandleType {
     value: u8,
 }
-bridge_handle!(TestingHandleType);
+bridge_as_handle!(TestingHandleType);
+bridge_handle_fns!(TestingHandleType);
 
 #[bridge_fn]
 fn TESTING_TestingHandleType_getValue(handle: &TestingHandleType) -> u8 {
@@ -81,7 +97,8 @@ async fn TESTING_FutureProducesPointerType(input: u8) -> TestingHandleType {
 pub struct OtherTestingHandleType {
     value: String,
 }
-bridge_handle!(OtherTestingHandleType);
+bridge_as_handle!(OtherTestingHandleType);
+bridge_handle_fns!(OtherTestingHandleType);
 
 #[bridge_fn]
 fn TESTING_OtherTestingHandleType_getValue(handle: &OtherTestingHandleType) -> String {
@@ -184,7 +201,9 @@ struct CustomErrorType;
 impl From<CustomErrorType> for crate::jni::SignalJniError {
     fn from(CustomErrorType: CustomErrorType) -> Self {
         Self::TestingError {
-            exception_class: jni_class_name!(org.signal.libsignal.internal.TestingException),
+            exception_class: crate::jni::ClassName(
+                "org.signal.libsignal.internal.TestingException",
+            ),
         }
     }
 }
@@ -200,4 +219,51 @@ fn TESTING_ReturnStringArray() -> Box<[String]> {
         .map(String::from)
         .into_iter()
         .collect()
+}
+
+#[bridge_fn]
+fn TESTING_ProcessBytestringArray(input: Vec<&[u8]>) -> Box<[Vec<u8>]> {
+    input
+        .into_iter()
+        .map(|x| [x, x].concat())
+        .collect::<Vec<Vec<u8>>>()
+        .into_boxed_slice()
+}
+
+#[bridge_fn]
+async fn TESTING_InputStreamReadIntoZeroLengthSlice(
+    caps_alphabet_input: &mut dyn InputStream,
+) -> Vec<u8> {
+    let mut async_input = AsyncInput::new(caps_alphabet_input, 26);
+    let first = {
+        let mut buf = [0; 10];
+        async_input
+            .read_exact(&mut buf)
+            .await
+            .expect("can read first");
+        buf
+    };
+    {
+        let mut zero_length_array = [0; 0];
+        assert_eq!(
+            async_input
+                .read(&mut zero_length_array)
+                .await
+                .expect("can do zero-length read"),
+            0
+        );
+    }
+    let remainder = {
+        let mut buf = Vec::with_capacity(16);
+        async_input
+            .read_to_end(&mut buf)
+            .await
+            .expect("can read to end");
+        buf
+    };
+
+    assert_eq!(&first, b"ABCDEFGHIJ");
+    assert_eq!(remainder, b"KLMNOPQRSTUVWXYZ");
+
+    first.into_iter().chain(remainder).collect()
 }

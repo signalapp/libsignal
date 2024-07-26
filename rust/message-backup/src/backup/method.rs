@@ -10,10 +10,22 @@ pub trait Contains<K> {
     fn contains(&self, key: &K) -> bool;
 }
 
+pub trait Lookup<K, V>: Contains<K> {
+    /// Retrieve the value for a key in the map if one is present.
+    fn lookup<'a>(&'a self, key: &'a K) -> Option<&'a V>;
+}
+
+/// Like [`Lookup`] but returns a pair of references.
+pub trait LookupPair<K, V1, V2>: Contains<K> {
+    /// Retrieve both values if the key is present.
+    fn lookup_pair<'a>(&'a self, key: &'a K) -> Option<(&'a V1, &'a V2)>;
+}
+
 pub trait Map<K, V>: Contains<K> + Default {
     /// Insert a key and value into the map if the key isn't already present.
     ///
     /// On failure, the map is unmodified.
+    #[allow(dead_code)]
     fn insert(&mut self, key: K, value: V) -> Result<(), KeyExists>;
 }
 
@@ -26,6 +38,18 @@ impl<K: Eq + Hash, V> Map<K, V> for HashMap<K, V> {
                 Ok(())
             }
         }
+    }
+}
+
+impl<K, Q, V, W> Lookup<Q, W> for HashMap<K, V>
+where
+    Q: Eq + Hash,
+    K: Eq + Hash,
+    K: Borrow<Q>,
+    V: AsRef<W>,
+{
+    fn lookup(&self, key: &Q) -> Option<&W> {
+        HashMap::get(self, key).map(AsRef::as_ref)
     }
 }
 
@@ -64,10 +88,12 @@ where
 
 pub trait Method {
     type Value<T: Debug>: Debug;
+    type BoxedValue<T: Debug>: Debug;
     type Map<K: Eq + Hash + Debug, V: Debug>: Map<K, V> + Debug;
     type List<T: Debug>: Extend<T> + Default + Debug;
 
     fn value<T: Debug>(value: T) -> Self::Value<T>;
+    fn boxed_value<T: Debug>(value: T) -> Self::BoxedValue<T>;
 }
 
 pub enum ValidateOnly {}
@@ -83,21 +109,27 @@ impl<T> Extend<T> for ValidateOnlyList {
 
 impl Method for ValidateOnly {
     type Value<T: Debug> = ();
+    type BoxedValue<T: Debug> = ();
     type Map<K: Eq + Hash + Debug, V: Debug> = HashSet<K>;
     type List<T: Debug> = ValidateOnlyList;
 
     fn value<T: Debug>(_value: T) -> Self::Value<T> {}
+    fn boxed_value<T: Debug>(_value: T) -> Self::BoxedValue<T> {}
 }
 
 pub enum Store {}
 
 impl Method for Store {
     type Value<T: Debug> = T;
+    type BoxedValue<T: Debug> = Box<T>;
     type Map<K: Eq + Hash + Debug, V: Debug> = HashMap<K, V>;
     type List<T: Debug> = Vec<T>;
 
     fn value<T: Debug>(value: T) -> Self::Value<T> {
         value
+    }
+    fn boxed_value<T: Debug>(value: T) -> Self::BoxedValue<T> {
+        Box::new(value)
     }
 }
 

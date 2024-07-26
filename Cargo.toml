@@ -1,4 +1,5 @@
 [workspace]
+# When adding new members, consider updating the log filter in rust/bridge/shared/src/logging.rs.
 members = [
     "rust/attest",
     "rust/crypto",
@@ -18,6 +19,7 @@ members = [
     "rust/zkgroup",
     "rust/bridge/ffi",
     "rust/bridge/jni",
+    "rust/bridge/jni/testing",
     "rust/bridge/node",
 ]
 default-members = [
@@ -36,8 +38,8 @@ resolver = "2" # so that our dev-dependency features don't leak into products
 
 [patch.crates-io]
 # Use our fork of curve25519-dalek for zkgroup support.
-curve25519-dalek = { git = 'https://github.com/signalapp/curve25519-dalek', tag = 'signal-curve25519-4.1.1' }
-boring = { git = 'https://github.com/signalapp/boring', branch = 'libsignal' }
+curve25519-dalek = { git = 'https://github.com/signalapp/curve25519-dalek', tag = 'signal-curve25519-4.1.3' }
+boring = { git = 'https://github.com/signalapp/boring', tag = 'signal-v4.6.0' }
 
 [profile.dev.package.argon2]
 opt-level = 2 # signal-signal-pin unit tests are too slow with an unoptimized argon2

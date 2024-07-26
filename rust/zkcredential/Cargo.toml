@@ -13,13 +13,19 @@ license = "AGPL-3.0-only"
 [dependencies]
 poksho = { path = "../poksho" }
 
+cfg-if = "1.0.0"
 curve25519-dalek = { version = "4.0", features = ["serde"] }
 derive-where = "1.2.5"
 displaydoc = "0.2"
 lazy_static = "1.4.0"
 partial-default = { version = "0.1.0", features = ["derive"] }
 serde = { version = "1.0.106", features = ["derive"] }
+sha2 = "0.10"
 subtle = "2.3"
+thiserror = "1.0.57"
+
+# If rayon is enabled, certain operations will use rayon's thread pool.
+rayon = { version = "1.8.0", optional = true }
 
 [dev-dependencies]
 bincode = "1.2.1"
@@ -31,6 +37,10 @@ criterion = "0.5"
 
 # Many of zkcredential's tests live in the zkgroup crate,
 # since zkcredential was designed to work with existing verifiably encrypted attribute types.
+
+[[bench]]
+name = "endorsements"
+harness = false
 
 [[bench]]
 name = "zkcredential_benchmarks"

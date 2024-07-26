@@ -1,0 +1,82 @@
+#
+# Copyright (C) 2024 Signal Messenger, LLC.
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+
+[package]
+name = "libsignal-bridge-types"
+version = "0.1.0"
+authors = ["Signal Messenger LLC"]
+edition = "2021"
+license = "AGPL-3.0-only"
+
+[dependencies]
+attest = { path = "../../../attest" }
+device-transfer = { path = "../../../device-transfer" }
+libsignal-bridge-macros = { path = "../macros" }
+libsignal-core = { path = "../../../core" }
+libsignal-message-backup = { path = "../../../message-backup" }
+libsignal-net = { path = "../../../net" }
+libsignal-protocol = { path = "../../../protocol" }
+libsignal-svr3 = { path = "../../../svr3" }
+signal-chat = { path = "../../../chat" }
+signal-crypto = { path = "../../../crypto" }
+signal-grpc = { path = "../../../grpc" }
+signal-media = { path = "../../../media", optional = true }
+signal-pin = { path = "../../../pin" }
+signal-quic = { path = "../../../quic" }
+usernames = { path = "../../../usernames" }
+zkgroup = { path = "../../../zkgroup" }
+
+aes-gcm-siv = "0.11.1"
+async-trait = "0.1.41"
+atomic-take = "1.1.0"
+base64 = "0.21"
+bincode = "1.0"
+cfg-if = "1.0"
+derive-where = "1.2.5"
+displaydoc = "0.2"
+futures-util = "0.3.30"
+hex = "0.4.3"
+hkdf = "0.12"
+hmac = "0.12.0"
+http = "1.0.0"
+log = "0.4"
+mediasan-common = "0.5.0"
+nonzero_ext = "0.3.0"
+num_enum = "0.6.1"
+once_cell = "1.19.0"
+partial-default = "0.1.0"
+paste = "1.0"
+prost = "0.12.1"
+rand = "0.8"
+rayon = "1.8.0"
+scopeguard = "1.0"
+serde = "1.0"
+serde_derive = { version = "1.0.180", features = ["deserialize_in_place"] }
+sha2 = "0.10"
+static_assertions = "1.1"
+thiserror = "1.0.50"
+tokio = { version = "1", features = ["rt-multi-thread"] }
+tokio-boring = { git = "https://github.com/signalapp/boring", tag = "signal-v4.6.0" }
+uuid = "1.1.2"
+
+# Enable this for all libsignal app language libraries
+subtle = { version = "2.5", features = ["core_hint_black_box"] }
+
+jni = { version = "0.21", package = "jni", optional = true }
+linkme = { version = "0.3.9", optional = true }
+neon = { version = "1.0.0", optional = true, default-features = false, features = ["napi-6"] }
+signal-neon-futures = { path = "../../node/futures", optional = true }
+strum = { version = "0.26", features = ["derive"] }
+zerocopy = { version = "0.7.34", optional = true }
+
+[dev-dependencies]
+assert_matches = "1.5"
+test-case = "3.3.1"
+tokio = { version = "1", features = ["test-util", "time", "macros"] }
+
+[features]
+ffi = []
+jni = ["dep:jni", "zerocopy"]
+node = ["neon", "linkme", "signal-neon-futures"]

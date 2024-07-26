@@ -4,5 +4,6 @@
 //
 module SignalFfi {
 	header "signal_ffi.h"
+	header "signal_ffi_testing.h"
 	link "signal_ffi"
 }

@@ -3,8 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import SignalFfi
 import Foundation
+import SignalFfi
 
 ///
 /// SgxClient provides bindings to interact with a Signal SGX service
@@ -25,8 +25,7 @@ import Foundation
 /// which decrypts and verifies it, passing the plaintext back to the client for processing.
 ///
 public class SgxClient: NativeHandleOwner {
-
-    internal override class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
+    override internal class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
         return signal_sgx_client_state_destroy(handle)
     }
 

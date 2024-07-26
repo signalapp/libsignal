@@ -6,12 +6,13 @@
 use partial_default::PartialDefault;
 use serde::{Deserialize, Serialize};
 
+use crate::common::serialization::ReservedByte;
 use crate::crypto::receipt_struct::ReceiptStruct;
-use crate::{crypto, ReceiptLevel, ReceiptSerialBytes, ReservedBytes, Timestamp};
+use crate::{crypto, ReceiptLevel, ReceiptSerialBytes, Timestamp};
 
 #[derive(Serialize, Deserialize, PartialDefault)]
 pub struct ReceiptCredentialPresentation {
-    pub(crate) reserved: ReservedBytes,
+    pub(crate) reserved: ReservedByte,
     pub(crate) proof: crypto::proofs::ReceiptCredentialPresentationProof,
     pub(crate) receipt_expiration_time: Timestamp,
     pub(crate) receipt_level: ReceiptLevel,

@@ -4,11 +4,9 @@
 //
 
 public class ProfileKeyVersion: ByteArray {
+    public static let SIZE: Int = 64
 
-  public static let SIZE: Int = 64
-
-  public required init(contents: [UInt8]) throws {
-    try super.init(newContents: contents, expectedLength: ProfileKeyVersion.SIZE)
-  }
-
+    public required init(contents: [UInt8]) throws {
+        try super.init(newContents: contents, expectedLength: ProfileKeyVersion.SIZE)
+    }
 }

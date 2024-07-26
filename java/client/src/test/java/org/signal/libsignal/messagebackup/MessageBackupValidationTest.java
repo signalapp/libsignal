@@ -31,6 +31,7 @@ public class MessageBackupValidationTest {
   }
 
   static final String VALID_BACKUP_RESOURCE_NAME = "encryptedbackup.binproto.encrypted";
+  static final MessageBackup.Purpose BACKUP_PURPOSE = MessageBackup.Purpose.REMOTE_BACKUP;
 
   @Test
   public void validBackupFile() throws IOException, ValidationError {
@@ -43,7 +44,8 @@ public class MessageBackupValidationTest {
       length = ResourceReader.readAll(input).length;
     }
     MessageBackupKey key = makeMessageBackupKey();
-    MessageBackup.ValidationResult result = MessageBackup.validate(key, factory, length);
+    MessageBackup.ValidationResult result =
+        MessageBackup.validate(key, BACKUP_PURPOSE, factory, length);
     assertArrayEquals(result.unknownFieldMessages, new String[0]);
   }
 
@@ -59,7 +61,7 @@ public class MessageBackupValidationTest {
         assertThrows(
             ValidationError.class,
             () -> {
-              MessageBackup.validate(key, factory, 0);
+              MessageBackup.validate(key, BACKUP_PURPOSE, factory, 0);
             });
     assertEquals(error.getMessage(), "not enough bytes for an HMAC");
   }
@@ -88,7 +90,7 @@ public class MessageBackupValidationTest {
         assertThrows(
             IOException.class,
             () -> {
-              MessageBackup.validate(key, throwingStreamFactory, length);
+              MessageBackup.validate(key, BACKUP_PURPOSE, throwingStreamFactory, length);
             });
     assertEquals(thrown.getMessage(), ThrowingInputStream.MESSAGE);
   }

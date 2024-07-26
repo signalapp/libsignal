@@ -3,11 +3,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import SignalFfi
 import Foundation
+import SignalFfi
 
 public class SenderKeyMessage: NativeHandleOwner {
-    internal override class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
+    override internal class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
         return signal_sender_key_message_destroy(handle)
     }
 
@@ -70,7 +70,7 @@ public class SenderKeyMessage: NativeHandleOwner {
     }
 
     public func verifySignature(against key: PublicKey) throws -> Bool {
-        var result: Bool = false
+        var result = false
         try withNativeHandles(self, key) { messageHandle, keyHandle in
             try checkError(signal_sender_key_message_verify_signature(&result, messageHandle, keyHandle))
         }

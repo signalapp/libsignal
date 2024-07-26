@@ -337,8 +337,9 @@ describe('SignalClient', () => {
     );
   });
   describe('ServiceId', () => {
+    const testingUuid = '8c78cd2a-16ff-427d-83dc-1a5e36ce713d';
+
     it('handles ACIs', () => {
-      const testingUuid = '8c78cd2a-16ff-427d-83dc-1a5e36ce713d';
       const aci = SignalClient.Aci.fromUuid(testingUuid);
       assert.instanceOf(aci, SignalClient.Aci);
       assert.isTrue(
@@ -377,7 +378,6 @@ describe('SignalClient', () => {
       }
     });
     it('handles PNIs', () => {
-      const testingUuid = '8c78cd2a-16ff-427d-83dc-1a5e36ce713d';
       const pni = SignalClient.Pni.fromUuid(testingUuid);
       assert.instanceOf(pni, SignalClient.Pni);
       assert.isTrue(
@@ -426,6 +426,17 @@ describe('SignalClient', () => {
         SignalClient.ServiceId.parseFromServiceIdBinary(Buffer.of())
       );
       assert.throws(() => SignalClient.ServiceId.parseFromServiceIdString(''));
+    });
+    it('follows the standard ordering', () => {
+      const original = [
+        SignalClient.Aci.fromUuid(uuid.NIL),
+        SignalClient.Aci.fromUuid(testingUuid),
+        SignalClient.Pni.fromUuid(uuid.NIL),
+        SignalClient.Pni.fromUuid(testingUuid),
+      ];
+      const ids = util.shuffled(original);
+      ids.sort(SignalClient.ServiceId.comparator);
+      assert.deepEqual(ids, original);
     });
   });
   describe('ProtocolAddress', () => {

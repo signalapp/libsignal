@@ -6,13 +6,13 @@
 #![allow(clippy::missing_safety_doc)]
 #![deny(clippy::unwrap_used)]
 
-use jni::objects::{JByteArray, JClass, JLongArray, JObject};
+use jni::objects::{JByteArray, JClass, JLongArray, JObject, JString};
 #[cfg(not(target_os = "android"))]
 use jni::objects::{JMap, JValue};
 use jni::JNIEnv;
 
 use libsignal_bridge::jni::*;
-#[cfg(not(target_os = "android"))]
+use libsignal_bridge::net::TokioAsyncContext;
 use libsignal_bridge::{jni_args, jni_class_name};
 use libsignal_protocol::*;
 
@@ -40,21 +40,61 @@ pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_IdentityKeyPa
     })
 }
 
-/// Preload classes used in natively-spawned threads.
+/// Initialize internal data structures.
 ///
-/// This is useful on Android where natively-spawned threads use a
-/// [`ClassLoader`] that doesn't have access to application-defined classes.
-/// Read more [here](https://developer.android.com/training/articles/perf-jni#faq:-why-didnt-findclass-find-my-class).
-///
-/// [`ClassLoader`]: https://docs.oracle.com/javase/8/docs/api/java/lang/ClassLoader.html
+/// Initialization function used to set up internal data structures. This should
+/// be called once when the library is first loaded.
 #[no_mangle]
-pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_preloadClasses<'local>(
+pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_initializeLibrary<'local>(
     mut env: JNIEnv<'local>,
-    _class: JClass<'local>,
+    class: JClass<'local>,
 ) {
     run_ffi_safe(&mut env, |env| {
-        preload_classes(env).map_err(SignalJniError::from)
+        #[cfg(target_os = "android")]
+        save_class_loader(env, &class)?;
+
+        #[cfg(target_os = "android")]
+        set_up_rustls_platform_verifier(env, class)?;
+
+        // Silence the unused variable warning on non-Android.
+        _ = class;
+        _ = env;
+
+        Ok(())
     })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_AsyncLoadClass<'local>(
+    mut env: JNIEnv<'local>,
+    _class: JClass,
+    tokio_context: JObject<'local>,
+    class_name: JString,
+) -> JObject<'local> {
+    struct LoadClassFromName(String);
+
+    impl<'a> ResultTypeInfo<'a> for LoadClassFromName {
+        type ResultType = JClass<'a>;
+
+        fn convert_into(self, env: &mut JNIEnv<'a>) -> Result<Self::ResultType, BridgeLayerError> {
+            find_class(env, ClassName(&self.0)).map_err(Into::into)
+        }
+    }
+
+    run_ffi_safe(&mut env, |env| {
+        let handle = call_method_checked(
+            env,
+            tokio_context,
+            "unsafeNativeHandleWithoutGuard",
+            jni_args!(() -> long),
+        )?;
+        let tokio_context = <&TokioAsyncContext>::convert_from(env, &handle)?;
+        let class_name = env.get_string(&class_name)?.into();
+        run_future_on_runtime(env, tokio_context, |_cancel| async {
+            FutureResultReporter::new(Ok(LoadClassFromName(class_name)), ())
+        })
+    })
+    .into()
 }
 
 #[cfg(not(target_os = "android"))]
@@ -72,9 +112,9 @@ pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_SealedSender_
         let data_as_slice = <&[u8]>::load_from(&mut data_stored);
         let messages = SealedSenderV2SentMessage::parse(data_as_slice)?;
 
-        let recipient_map_object = new_object(
+        let recipient_map_object = new_instance(
             env,
-            jni_class_name!(java.util.LinkedHashMap),
+            ClassName("java.util.LinkedHashMap"),
             jni_args!(() -> void),
         )?;
         let recipient_map: JMap = JMap::from_env(env, &recipient_map_object)?;
@@ -85,15 +125,14 @@ pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_SealedSender_
                 .try_into()
                 .expect("too many recipients"),
             |env| -> SignalJniResult<_> {
-                let recipient_class = env.find_class(jni_class_name!(
-                    org.signal
-                        .libsignal
-                        .protocol
-                        .SealedSenderMultiRecipientMessage
-                        ::Recipient
-                ))?;
+                let recipient_class = find_class(
+                    env,
+                    ClassName(
+                        "org.signal.libsignal.protocol.SealedSenderMultiRecipientMessage$Recipient",
+                    ),
+                )?;
                 let service_id_class =
-                    env.find_class(jni_class_name!(org.signal.libsignal.protocol.ServiceId))?;
+                    find_class(env, ClassName("org.signal.libsignal.protocol.ServiceId"))?;
 
                 let mut excluded_recipient_java_service_ids = vec![];
 
@@ -169,14 +208,9 @@ pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_SealedSender_
 
         let offset_of_shared_bytes = messages.offset_of_shared_bytes();
 
-        Ok(new_object(
+        Ok(new_instance(
             env,
-            jni_class_name!(
-                org.signal
-                    .libsignal
-                    .protocol
-                    .SealedSenderMultiRecipientMessage
-            ),
+            ClassName("org.signal.libsignal.protocol.SealedSenderMultiRecipientMessage"),
             jni_args!((
                 data => [byte],
                 recipient_map => java.util.Map,
@@ -196,4 +230,59 @@ pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_keepAlive(
     _class: JClass,
     _obj: JObject,
 ) {
+}
+
+#[cfg(target_os = "android")]
+fn set_up_rustls_platform_verifier(
+    env: &mut JNIEnv<'_>,
+    class: JClass<'_>,
+) -> Result<(), SignalJniError> {
+    // The "easy" way of setting up rustls-platform-verifier requires an Android Context object.
+    // However, at the time of this writing, the Context was only used to extract a ClassLoader that
+    // can find the rustls-platform-verifier Kotlin classes. We can do that with the Native class's
+    // loader just as well, so we provide `null` for the Context without worrying about it.
+    // (It *is* unfortunate that they're still using jni 0.19 though.
+    // https://github.com/rustls/rustls-platform-verifier/issues/22)
+    struct CachedRuntime {
+        vm: jni19::JavaVM,
+        context: jni19::objects::GlobalRef,
+        class_loader: jni19::objects::GlobalRef,
+    }
+    impl rustls_platform_verifier::android::Runtime for CachedRuntime {
+        fn java_vm(&self) -> &jni19::JavaVM {
+            &self.vm
+        }
+        fn context(&self) -> &jni19::objects::GlobalRef {
+            &self.context
+        }
+        fn class_loader(&self) -> &jni19::objects::GlobalRef {
+            &self.class_loader
+        }
+    }
+
+    let class_loader = call_method_checked(
+        env,
+        class,
+        "getClassLoader",
+        jni_args!(() -> java.lang.ClassLoader),
+    )?;
+
+    // JNIEnv, old or new, is a wrapper around a raw table (C struct) of function pointers.
+    // So it's safe to convert from the old one to the new one.
+    // Note that we can't propagate the errors normally because they are jni19 Errors,
+    // but if there ever *are* any errors we are running inside run_ffi_safe anyway.
+    let jni19_env =
+        unsafe { jni19::JNIEnv::from_raw(env.get_raw() as *mut _) }.expect("valid JNIEnv");
+    // This is expected to be one-time setup, so it's okay that we're leaking a bit of configuration info.
+    rustls_platform_verifier::android::init_external(Box::leak(Box::new(CachedRuntime {
+        vm: jni19_env.get_java_vm().expect("can get VM"),
+        context: jni19_env
+            .new_global_ref(std::ptr::null_mut())
+            .expect("can create global ref to null"),
+        class_loader: jni19_env
+            .new_global_ref(class_loader.as_raw())
+            .expect("can create global ref to class loader"),
+    })));
+
+    Ok(())
 }

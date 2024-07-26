@@ -10,22 +10,16 @@
 
 use derive_where::derive_where;
 
-use crate::backup::method::{Method, Store};
-use crate::backup::WithId;
+use crate::backup::method::Method;
 use crate::proto::backup as proto;
 
 /// Validated version of [`proto::StickerPack`].
 #[derive_where(Debug)]
-#[cfg_attr(test, derive_where(PartialEq; M::Map<StickerId, PackSticker>: PartialEq, M::Value<Key>: PartialEq))]
-pub struct StickerPack<M: Method = Store> {
+#[cfg_attr(test, derive_where(PartialEq;
+        M::Value<Key>: PartialEq,
+    ))]
+pub struct StickerPack<M: Method> {
     pub key: M::Value<Key>,
-    pub stickers: M::Map<StickerId, PackSticker>,
-    _limit_construction_to_module: (),
-}
-
-#[derive(Debug)]
-#[cfg_attr(test, derive(PartialEq))]
-pub struct PackSticker {
     _limit_construction_to_module: (),
 }
 
@@ -34,6 +28,7 @@ pub struct PackSticker {
 pub struct MessageSticker {
     pub pack_id: PackId,
     pub pack_key: Key,
+    pub emoji: Option<String>,
     _limit_construction_to_module: (),
 }
 
@@ -57,16 +52,6 @@ impl TryFrom<Vec<u8>> for Key {
     }
 }
 
-#[derive(Copy, Clone, Debug, Eq, Hash, PartialEq)]
-pub struct StickerId(u32);
-
-impl WithId for proto::StickerPackSticker {
-    type Id = StickerId;
-    fn id(&self) -> Self::Id {
-        StickerId(self.id)
-    }
-}
-
 #[derive(Debug, thiserror::Error, displaydoc::Display)]
 #[cfg_attr(test, derive(PartialEq))]
 pub enum StickerPackError {
@@ -83,16 +68,12 @@ pub enum MessageStickerError {
     InvalidPackKey,
 }
 
-impl TryFrom<proto::StickerPack> for StickerPack {
+impl<M: Method> TryFrom<proto::StickerPack> for StickerPack<M> {
     type Error = StickerPackError;
     fn try_from(value: proto::StickerPack) -> Result<Self, Self::Error> {
         let proto::StickerPack {
             packId: _,
             packKey,
-            stickers,
-            // TODO validate these fields
-            title: _,
-            author: _,
             special_fields: _,
         } = value;
 
@@ -100,30 +81,8 @@ impl TryFrom<proto::StickerPack> for StickerPack {
             .try_into()
             .map_err(|_| StickerPackError::InvalidKey)?;
 
-        let stickers = stickers
-            .into_iter()
-            .map(|sticker| Ok((sticker.id(), sticker.try_into()?)))
-            .collect::<Result<_, _>>()?;
-
         Ok(Self {
-            key,
-            stickers,
-            _limit_construction_to_module: (),
-        })
-    }
-}
-
-impl TryFrom<proto::StickerPackSticker> for PackSticker {
-    type Error = StickerPackError;
-    fn try_from(value: proto::StickerPackSticker) -> Result<Self, Self::Error> {
-        let proto::StickerPackSticker {
-            id: _,
-            // TODO validate these fields
-            emoji: _,
-            special_fields: _,
-        } = value;
-
-        Ok(Self {
+            key: M::value(key),
             _limit_construction_to_module: (),
         })
     }
@@ -137,10 +96,10 @@ impl TryFrom<proto::Sticker> for MessageSticker {
             packId,
             packKey,
             stickerId: _,
+            emoji,
+            special_fields: _,
             // TODO validate these fields
             data: _,
-            emoji: _,
-            special_fields: _,
         } = item;
 
         let pack_id = packId
@@ -155,6 +114,7 @@ impl TryFrom<proto::Sticker> for MessageSticker {
         Ok(Self {
             pack_id,
             pack_key,
+            emoji,
             _limit_construction_to_module: (),
         })
     }
@@ -162,9 +122,9 @@ impl TryFrom<proto::Sticker> for MessageSticker {
 
 #[cfg(test)]
 mod test {
-    use std::collections::HashMap;
-
     use test_case::test_case;
+
+    use crate::backup::method::Store;
 
     use super::*;
 
@@ -178,29 +138,19 @@ mod test {
             Self {
                 packId: Self::TEST_ID_BYTES.into(),
                 packKey: Self::TEST_KEY.into(),
-                stickers: vec![proto::StickerPackSticker::test_data()],
                 ..Default::default()
             }
         }
     }
 
-    impl proto::StickerPackSticker {
-        pub(crate) const TEST_ID: StickerId = StickerId(9988);
-
-        fn test_data() -> Self {
-            Self {
-                id: Self::TEST_ID.0,
-                ..Self::default()
-            }
-        }
-    }
-
     impl proto::Sticker {
+        pub(crate) const TEST_ID: u32 = 9988;
+
         pub(crate) fn test_data() -> Self {
             Self {
                 packId: proto::StickerPack::TEST_ID_BYTES.into(),
                 packKey: proto::StickerPack::TEST_KEY.into(),
-                stickerId: proto::StickerPackSticker::TEST_ID.0,
+                stickerId: Self::TEST_ID,
                 ..Default::default()
             }
         }
@@ -210,14 +160,8 @@ mod test {
     fn valid_sticker_pack() {
         assert_eq!(
             proto::StickerPack::test_data().try_into(),
-            Ok(StickerPack {
+            Ok(StickerPack::<Store> {
                 key: Key(proto::StickerPack::TEST_KEY),
-                stickers: HashMap::from([(
-                    proto::StickerPackSticker::TEST_ID,
-                    PackSticker {
-                        _limit_construction_to_module: (),
-                    }
-                )]),
                 _limit_construction_to_module: ()
             })
         )
@@ -237,24 +181,13 @@ mod test {
         }
     }
 
-    fn invalid_key(pack: &mut impl StickerPackFields) {
-        *pack.pack_key_mut() = vec![0xaa; 45];
-    }
-    fn no_key(pack: &mut impl StickerPackFields) {
-        *pack.pack_key_mut() = vec![];
-    }
-    fn no_stickers(pack: &mut proto::StickerPack) {
-        pack.stickers = vec![];
-    }
-
     #[test_case(invalid_key, Err(StickerPackError::InvalidKey))]
     #[test_case(no_key, Err(StickerPackError::InvalidKey))]
-    #[test_case(no_stickers, Ok(()))]
     fn sticker_pack(mutator: fn(&mut proto::StickerPack), expected: Result<(), StickerPackError>) {
         let mut sticker_pack = proto::StickerPack::test_data();
         mutator(&mut sticker_pack);
 
-        let result = sticker_pack.try_into().map(|_: StickerPack| ());
+        let result = sticker_pack.try_into().map(|_: StickerPack<Store>| ());
         assert_eq!(result, expected);
     }
 
@@ -265,6 +198,7 @@ mod test {
             Ok(MessageSticker {
                 pack_id: proto::StickerPack::TEST_ID,
                 pack_key: Key(proto::StickerPack::TEST_KEY),
+                emoji: None,
                 _limit_construction_to_module: (),
             })
         );
@@ -278,6 +212,12 @@ mod test {
     }
     fn unknown_sticker_id(input: &mut proto::Sticker) {
         input.stickerId = 555555;
+    }
+    fn invalid_key(pack: &mut impl StickerPackFields) {
+        *pack.pack_key_mut() = vec![0xaa; 45];
+    }
+    fn no_key(pack: &mut impl StickerPackFields) {
+        *pack.pack_key_mut() = vec![];
     }
 
     #[test_case(invalid_key, Err(MessageStickerError::InvalidPackKey))]

@@ -5,6 +5,8 @@
 
 package org.signal.libsignal.protocol.message;
 
+import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
+
 import java.util.Optional;
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
@@ -32,19 +34,26 @@ public final class DecryptionErrorMessage implements NativeHandleGuard.Owner {
 
   public DecryptionErrorMessage(byte[] serialized)
       throws InvalidKeyException, InvalidMessageException {
-    this.unsafeHandle = Native.DecryptionErrorMessage_Deserialize(serialized);
+    this.unsafeHandle =
+        filterExceptions(
+            InvalidKeyException.class,
+            InvalidMessageException.class,
+            () -> Native.DecryptionErrorMessage_Deserialize(serialized));
   }
 
   public static DecryptionErrorMessage forOriginalMessage(
       byte[] originalBytes, int messageType, long timestamp, int originalSenderDeviceId) {
     return new DecryptionErrorMessage(
-        Native.DecryptionErrorMessage_ForOriginalMessage(
-            originalBytes, messageType, timestamp, originalSenderDeviceId));
+        filterExceptions(
+            () ->
+                Native.DecryptionErrorMessage_ForOriginalMessage(
+                    originalBytes, messageType, timestamp, originalSenderDeviceId)));
   }
 
   public byte[] serialize() {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return Native.DecryptionErrorMessage_GetSerialized(guard.nativeHandle());
+      return filterExceptions(
+          () -> Native.DecryptionErrorMessage_GetSerialized(guard.nativeHandle()));
     }
   }
 
@@ -61,13 +70,15 @@ public final class DecryptionErrorMessage implements NativeHandleGuard.Owner {
 
   public long getTimestamp() {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return Native.DecryptionErrorMessage_GetTimestamp(guard.nativeHandle());
+      return filterExceptions(
+          () -> Native.DecryptionErrorMessage_GetTimestamp(guard.nativeHandle()));
     }
   }
 
   public int getDeviceId() {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return Native.DecryptionErrorMessage_GetDeviceId(guard.nativeHandle());
+      return filterExceptions(
+          () -> Native.DecryptionErrorMessage_GetDeviceId(guard.nativeHandle()));
     }
   }
 
@@ -75,6 +86,10 @@ public final class DecryptionErrorMessage implements NativeHandleGuard.Owner {
   public static DecryptionErrorMessage extractFromSerializedContent(byte[] serializedContentBytes)
       throws InvalidMessageException {
     return new DecryptionErrorMessage(
-        Native.DecryptionErrorMessage_ExtractFromSerializedContent(serializedContentBytes));
+        filterExceptions(
+            InvalidMessageException.class,
+            () ->
+                Native.DecryptionErrorMessage_ExtractFromSerializedContent(
+                    serializedContentBytes)));
   }
 }

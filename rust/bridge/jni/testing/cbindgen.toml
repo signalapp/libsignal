@@ -1,0 +1,28 @@
+#
+# Copyright (C) 2024 Signal Messenger, LLC.
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+
+language = "C"
+no_includes = true
+documentation = false
+
+[export]
+item_types = ["functions"]
+
+[export.rename]
+"JavaSyncInputStream" = "JavaInputStream"
+
+[fn]
+args = "horizontal"
+sort_by = "Name"
+rename_args = "camelCase"
+
+[parse]
+parse_deps = true
+include = []
+extra_bindings = ["libsignal-bridge", "libsignal-bridge-testing"]
+
+[parse.expand]
+crates = ["libsignal-jni-testing", "libsignal-bridge-testing"]
+features = ["libsignal-bridge-testing/jni"]

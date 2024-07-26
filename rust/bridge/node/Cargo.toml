@@ -5,7 +5,7 @@
 
 [package]
 name = "libsignal-node"
-version = "0.40.1"
+version = "0.52.3"
 authors = ["Signal Messenger LLC"]
 license = "AGPL-3.0-only"
 edition = "2021"
@@ -15,18 +15,17 @@ name = "signal_node"
 crate-type = ["cdylib"]
 
 [dependencies]
-libsignal-protocol = { path = "../../protocol" }
 libsignal-bridge = { path = "../shared", features = ["node", "signal-media"] }
-signal-neon-futures = { path = "futures" }
-neon = { version = "0.10.0", default-features = false, features = ["napi-6", "channel-api"] }
-rand = "0.8"
-log = { version = "0.4", features = ["release_max_level_info"] }
-log-panics = { version = "2.0.0", features = ["with-backtrace"] }
-async-trait = "0.1.41"
+libsignal-bridge-testing = { path = "../shared/testing", features = ["node", "signal-media"] }
+libsignal-protocol = { path = "../../protocol" }
+
 futures = { version = "0.3", default-features = false, features = ["executor"] }
+log = "0.4"
+log-panics = { version = "2.0.0", features = ["with-backtrace"] }
 minidump = { version = "0.20.0", default-features = false }
-minidump-unwind = { version = "0.20.0", default-features = false }
 minidump-processor = { version = "0.20.0", default-features = false }
+minidump-unwind = { version = "0.20.0", default-features = false }
+neon = { version = "1.0.0", default-features = false, features = ["napi-6"] }
 
 [build-dependencies]
 # cmake 0.1.49 breaks no-toolchain Windows cross-compilation using Visual Studio

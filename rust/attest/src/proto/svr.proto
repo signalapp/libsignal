@@ -1,0 +1,53 @@
+//
+// Copyright 2024 Signal Messenger, LLC.
+// SPDX-License-Identifier: AGPL-3.0-only
+//
+syntax = "proto3";
+
+package org.signal.svr;
+
+message ClientHandshakeStart {
+  // Public key associated with this server's enclave. For use in test-only
+  // contexts where attestation is not available
+  // Should not be used in libsignal
+  reserved 1; // bytes test_only_pubkey = 1;
+
+  // Remote-attestation evidence associated with the public key
+  bytes evidence = 2;
+
+  // Endorsements of remote-attestation evidence.
+  bytes endorsement = 3;
+}
+
+
+// RaftGroupConfig is a configuration shared by members of a Raft group.
+// It's created only once, on creation of the Raft group.  From that
+// point forward, it's shared between replicas as they're added to the
+// group, and it's not possible to modify it externally.
+//
+// An attested RaftGroupConfig will be returned as part of the evidence.
+// Clients must validate that the attested configuration matches their
+// expected configuration.
+message RaftGroupConfig {
+
+  // The unique group id for the raft group
+  fixed64 group_id = 1;
+
+  // This raft group will refuse to serve client request with
+  // <min_voting_replicas, and will refuse to add new voting members
+  // when max_voting_replicas has been reached.
+  uint32 min_voting_replicas = 2;
+  uint32 max_voting_replicas = 3;
+  // Anything which, in normal Raft, would require quorum() participants
+  // to push forward will instead require quorum() + super_majority.  Should
+  // there be fewer than quorum() + super_majority total nodes in the Raft,
+  // all Raft nodes will be required.
+  uint32 super_majority = 4;
+}
+
+// Does not belong in SVR2 module, but put here to reuse RaftGroupConfig message
+message AttestationData {
+  bytes public_key = 1;
+  RaftGroupConfig group_config = 2;
+}
+

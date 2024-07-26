@@ -4,17 +4,13 @@
 //
 
 use libsignal_bridge_macros::*;
+use libsignal_bridge_types::grpc::GrpcHeaders;
 use signal_grpc::{GrpcClient, GrpcReply, GrpcReplyListener, Result};
 
 use crate::support::*;
 use crate::*;
 
-use std::collections::HashMap;
-
-#[cfg(all(feature = "jni"))]
-pub struct GrpcHeaders(pub HashMap<String, Vec<String>>);
-
-bridge_handle!(GrpcClient, clone = false, mut = true);
+bridge_handle_fns!(GrpcClient, clone = false);
 
 #[bridge_fn(ffi = false, node = false)]
 pub fn GrpcClient_New(target: String) -> Result<GrpcClient> {
@@ -32,7 +28,7 @@ pub fn GrpcClient_SendDirectMessage(
     grpc_client.send_direct_message(method, url_fragment, body, headers.0)
 }
 
-#[bridge_fn_void(ffi = false, node = false)]
+#[bridge_fn(ffi = false, node = false)]
 pub fn GrpcClient_OpenStream(
     grpc_client: &mut GrpcClient,
     uri: String,
@@ -42,7 +38,7 @@ pub fn GrpcClient_OpenStream(
     grpc_client.open_stream(uri, headers.0, listener)
 }
 
-#[bridge_fn_void(ffi = false, node = false)]
+#[bridge_fn(ffi = false, node = false)]
 pub fn GrpcClient_SendMessageOnStream(
     grpc_client: &mut GrpcClient,
     method: String,

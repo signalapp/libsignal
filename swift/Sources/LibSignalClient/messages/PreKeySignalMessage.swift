@@ -3,11 +3,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import SignalFfi
 import Foundation
+import SignalFfi
 
 public class PreKeySignalMessage: NativeHandleOwner {
-    internal override class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
+    override internal class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
         return signal_pre_key_signal_message_destroy(handle)
     }
 
@@ -50,7 +50,7 @@ public class PreKeySignalMessage: NativeHandleOwner {
             }
         }
 
-        if id == 0xFFFFFFFF {
+        if id == 0xFFFF_FFFF {
             return nil
         } else {
             return id

@@ -39,7 +39,7 @@
 #![warn(missing_docs)]
 
 /// A zkcredential operation failed to verify.
-#[derive(Debug, displaydoc::Display)]
+#[derive(Debug, thiserror::Error, displaydoc::Display)]
 pub struct VerificationFailure;
 
 /// A reasonable size of entropy to request for operations.
@@ -51,6 +51,36 @@ pub const RANDOMNESS_LEN: usize = 32;
 
 pub mod attributes;
 pub mod credentials;
+pub mod endorsements;
 pub mod issuance;
 pub mod presentation;
 pub mod sho;
+
+/// Helper type for implementing [`std::fmt::Debug`].
+///
+/// The `Debug::fmt` implementation for this type prints the wrapped value as
+/// hex bytes.
+pub struct PrintAsHex<T>(pub T);
+
+impl std::fmt::Debug for PrintAsHex<&[u8]> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        for b in self.0 {
+            write!(f, "{b:0x}")?
+        }
+        Ok(())
+    }
+}
+
+impl std::fmt::Debug for PrintAsHex<&curve25519_dalek::ristretto::CompressedRistretto> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        PrintAsHex(self.0.as_bytes().as_slice()).fmt(f)
+    }
+}
+
+impl std::fmt::Debug for PrintAsHex<&[curve25519_dalek::ristretto::CompressedRistretto]> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_list()
+            .entries(self.0.iter().map(PrintAsHex))
+            .finish()
+    }
+}

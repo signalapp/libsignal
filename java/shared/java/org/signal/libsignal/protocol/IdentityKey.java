@@ -5,6 +5,8 @@
 
 package org.signal.libsignal.protocol;
 
+import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
+
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
 import org.signal.libsignal.protocol.ecc.Curve;
@@ -51,8 +53,10 @@ public class IdentityKey {
   public boolean verifyAlternateIdentity(IdentityKey other, byte[] signature) {
     try (NativeHandleGuard guard = new NativeHandleGuard(this.publicKey);
         NativeHandleGuard otherGuard = new NativeHandleGuard(other.publicKey); ) {
-      return Native.IdentityKey_VerifyAlternateIdentity(
-          guard.nativeHandle(), otherGuard.nativeHandle(), signature);
+      return filterExceptions(
+          () ->
+              Native.IdentityKey_VerifyAlternateIdentity(
+                  guard.nativeHandle(), otherGuard.nativeHandle(), signature));
     }
   }
 

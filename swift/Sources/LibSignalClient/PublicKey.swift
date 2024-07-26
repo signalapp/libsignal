@@ -3,8 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import SignalFfi
 import Foundation
+import SignalFfi
 
 public class PublicKey: ClonableHandleOwner {
     public convenience init<Bytes: ContiguousBytes>(_ bytes: Bytes) throws {
@@ -16,11 +16,11 @@ public class PublicKey: ClonableHandleOwner {
         self.init(owned: handle!)
     }
 
-    internal override class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
+    override internal class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
         return signal_publickey_destroy(handle)
     }
 
-    internal override class func cloneNativeHandle(_ newHandle: inout OpaquePointer?, currentHandle: OpaquePointer?) -> SignalFfiErrorRef? {
+    override internal class func cloneNativeHandle(_ newHandle: inout OpaquePointer?, currentHandle: OpaquePointer?) -> SignalFfiErrorRef? {
         return signal_publickey_clone(&newHandle, currentHandle)
     }
 
@@ -44,9 +44,8 @@ public class PublicKey: ClonableHandleOwner {
         }
     }
 
-    public func verifySignature<MessageBytes, SignatureBytes>(message: MessageBytes, signature: SignatureBytes) throws -> Bool
-    where MessageBytes: ContiguousBytes, SignatureBytes: ContiguousBytes {
-        var result: Bool = false
+    public func verifySignature(message: some ContiguousBytes, signature: some ContiguousBytes) throws -> Bool {
+        var result = false
         try withNativeHandle { nativeHandle in
             try message.withUnsafeBorrowedBuffer { messageBuffer in
                 try signature.withUnsafeBorrowedBuffer { signatureBuffer in

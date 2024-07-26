@@ -8,7 +8,6 @@ import LibSignalClient
 import XCTest
 
 class PinTests: TestCaseBase {
-
     func testBadSaltLength() {
         XCTAssertThrowsError(try PinHash(normalizedPin: Array("password".utf8), salt: [0xFF])) {
             guard case SignalError.invalidType(_) = $0 else {
@@ -72,19 +71,19 @@ class PinTests: TestCaseBase {
         )
     }
 
-    func testSvr2PinHash() {
+    func testSvr2PinHash() throws {
         let pin = Array("password".utf8)
         let username = "username"
 
-        // echo a8a261420a6bb9b61aa25bf8a79e8bd20d7652531feb3381cbffd446d270be95 | xxd -r -p | base64
-        let mrenclave = Data(base64Encoded: "qKJhQgprubYaolv4p56L0g12UlMf6zOBy//URtJwvpU=")!
+        // echo acb1973aa0bbbd14b3b4e06f145497d948fd4a98efc500fcce363b3b743ec482 | xxd -r -p | base64
+        let mrenclave = Data(base64Encoded: "rLGXOqC7vRSztOBvFFSX2Uj9SpjvxQD8zjY7O3Q+xII=")!
 
-        // echo "260d1f6d233c9326e8ba744e778b7b127147c7211d9bc3219ab3b7394766c508" | xxd -r -p | base64
-        let knownSalt = Data(base64Encoded: "Jg0fbSM8kybounROd4t7EnFHxyEdm8MhmrO3OUdmxQg=")!
+        // echo "cb44493fd6c83173a5a42e3e7295283771449a054f2dd37e48c87dbc5fdc7a0d" | xxd -r -p | base64
+        let knownSalt = Data(base64Encoded: "y0RJP9bIMXOlpC4+cpUoN3FEmgVPLdN+SMh9vF/ceg0=")!
 
-        let pinHash = try! PinHash(normalizedPin: pin, username: username, mrenclave: mrenclave)
+        let pinHash = try PinHash(normalizedPin: pin, username: username, mrenclave: mrenclave)
 
-        let expectedHash = try! PinHash(normalizedPin: pin, salt: knownSalt)
+        let expectedHash = try PinHash(normalizedPin: pin, salt: knownSalt)
 
         XCTAssertEqual(pinHash.encryptionKey, expectedHash.encryptionKey)
         XCTAssertEqual(pinHash.accessKey, expectedHash.accessKey)

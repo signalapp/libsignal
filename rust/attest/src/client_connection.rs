@@ -10,8 +10,6 @@
 //! with [ClientConnection::send]. Likewise a single received message consisting internally
 //! of one or more noise transport messages can be decrypted with [ClientConnection::recv]
 
-use std::fmt;
-
 pub const NOISE_PATTERN: &str = "Noise_NK_25519_ChaChaPoly_SHA256";
 
 pub(crate) const NOISE_HANDSHAKE_OVERHEAD: usize = 64;
@@ -29,24 +27,10 @@ pub struct ClientConnection {
 /// Result type for client connection.
 pub type Result<T> = std::result::Result<T, Error>;
 
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error, displaydoc::Display)]
 pub enum Error {
-    /// Error in noise protocol.
-    NoiseError(snow::Error),
-}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            Error::NoiseError(n) => write!(f, "Noise error ({})", n),
-        }
-    }
-}
-
-impl From<snow::Error> for Error {
-    fn from(e: snow::Error) -> Self {
-        Error::NoiseError(e)
-    }
+    /// Noise error ({0})
+    NoiseError(#[from] snow::Error),
 }
 
 fn ceil_div(total: usize, chunk_size: usize) -> usize {

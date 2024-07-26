@@ -3,8 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import SignalFfi
 import Foundation
+import SignalFfi
 
 public struct IdentityKey: Equatable {
     public let publicKey: PublicKey
@@ -14,22 +14,21 @@ public struct IdentityKey: Equatable {
     }
 
     public init<Bytes: ContiguousBytes>(bytes: Bytes) throws {
-        publicKey = try PublicKey(bytes)
+        self.publicKey = try PublicKey(bytes)
     }
 
     public func serialize() -> [UInt8] {
-        return publicKey.serialize()
+        return self.publicKey.serialize()
     }
 
     public func verifyAlternateIdentity<Bytes: ContiguousBytes>(_ other: IdentityKey, signature: Bytes) throws -> Bool {
-        var result: Bool = false
+        var result = false
         try withNativeHandles(publicKey, other.publicKey) { selfHandle, otherHandle in
             try signature.withUnsafeBorrowedBuffer { signatureBuffer in
                 try checkError(signal_identitykey_verify_alternate_identity(&result, selfHandle, otherHandle, signatureBuffer))
             }
         }
         return result
-
     }
 }
 
@@ -50,8 +49,8 @@ public struct IdentityKeyPair {
             try checkError(signal_identitykeypair_deserialize(&privkeyPtr, &pubkeyPtr, $0))
         }
 
-        publicKey = PublicKey(owned: pubkeyPtr!)
-        privateKey = PrivateKey(owned: privkeyPtr!)
+        self.publicKey = PublicKey(owned: pubkeyPtr!)
+        self.privateKey = PrivateKey(owned: privkeyPtr!)
     }
 
     public init(publicKey: PublicKey, privateKey: PrivateKey) {
@@ -60,7 +59,7 @@ public struct IdentityKeyPair {
     }
 
     public func serialize() -> [UInt8] {
-        return withNativeHandles(publicKey, privateKey) { publicKey, privateKey in
+        return withNativeHandles(self.publicKey, self.privateKey) { publicKey, privateKey in
             failOnError {
                 try invokeFnReturningArray {
                     signal_identitykeypair_serialize($0, publicKey, privateKey)
@@ -70,11 +69,11 @@ public struct IdentityKeyPair {
     }
 
     public var identityKey: IdentityKey {
-        return IdentityKey(publicKey: publicKey)
+        return IdentityKey(publicKey: self.publicKey)
     }
 
     public func signAlternateIdentity(_ other: IdentityKey) -> [UInt8] {
-        return withNativeHandles(publicKey, privateKey, other.publicKey) { publicKey, privateKey, other in
+        return withNativeHandles(self.publicKey, self.privateKey, other.publicKey) { publicKey, privateKey, other in
             failOnError {
                 try invokeFnReturningArray {
                     signal_identitykeypair_sign_alternate_identity($0, publicKey, privateKey, other)

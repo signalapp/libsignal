@@ -1,5 +1,7 @@
+import groovy.json.JsonSlurper
+
 plugins {
-    id 'com.android.library' version '7.0.0'
+    id 'com.android.library' version '8.3.0'
     id 'maven-publish'
     id 'signing'
 }
@@ -13,21 +15,25 @@ repositories {
 }
 
 android {
-    compileSdkVersion 30
-    buildToolsVersion '30.0.2'
+    namespace 'org.signal.libsignal'
+
+    compileSdk 34
     ndkVersion '25.2.9519653'
 
     defaultConfig {
         minSdkVersion 21
-        targetSdkVersion 30
+        targetSdkVersion 33
         multiDexEnabled true
-        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        testInstrumentationRunner "org.signal.libsignal.util.AndroidJUnitRunner"
+        // Automatically propagate matching environment variables into Java properties.
+        // See the custom AndroidJUnitRunner and TestEnvironment classes for more details.
+        testInstrumentationRunnerArguments["org.signal.libsignal.test.environment"] = collectTestEnvironment()
     }
 
     compileOptions {
         coreLibraryDesugaringEnabled true
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
     }
 
     sourceSets {
@@ -46,11 +52,66 @@ android {
     packagingOptions {
         jniLibs {
             pickFirst 'lib/*/libsignal_jni.so'
+            pickFirst 'lib/*/libsignal_jni_testing.so'
         }
+    }
+
+    publishing {
+        singleVariant('release')
     }
 }
 
+String collectTestEnvironment() {
+    def result = []
+    System.getenv().each { k, v ->
+        if (k.startsWith("LIBSIGNAL_TESTING_")) {
+            // Limit what characters we accept in values.
+            // This is going to get mashed down to a single command-line argument.
+            // (This pattern is only meant to head off likely problems and was not specifically
+            // tested; if you need to use one of these characters, you can remove the check and see
+            // if things Just Work, or tweak our AndroidJUnitRunner to handle different delimiters
+            // or escaping.)
+            if (v.matches(".*[, \t\r\n].*")) {
+                logger.warn("warning: ignoring ${k} for running tests; it contains invalid characters")
+                return
+            }
+            result << "${k}=${v}"
+        }
+    }
+    result.join(",")
+}
+
+// From https://github.com/rustls/rustls-platform-verifier
+File findRustlsPlatformVerifierClasses() {
+    def dependencyText = providers.exec {
+        it.workingDir = new File("../")
+        commandLine("cargo", "metadata", "--format-version", "1")
+    }.standardOutput.asText.get()
+
+    def dependencyJson = new JsonSlurper().parseText(dependencyText)
+    def manifestPath = file(dependencyJson.packages.find { it.name == "rustls-platform-verifier-android" }.manifest_path)
+
+    // Modifications here:
+    // Rather than use the Maven repository in the crates.io source, reference the AAR directly by path.
+    // Then, extract the classes from it so that we have a self-contained library.
+    def aar = fileTree(manifestPath.parentFile).matching {
+        include "maven/rustls/rustls-platform-verifier/*/rustls-platform-verifier-*.aar"
+    }.getSingleFile()
+    def classesJar = zipTree(aar).matching {
+        // Make sure there's nothing in the AAR that we haven't accounted for.
+        // This isn't perfect: there could be something important in AndroidManifest.xml.
+        // But it's likely good enough.
+        exclude "AndroidManifest.xml"
+        exclude "META-INF/com/android/build/gradle/aar-metadata.properties"
+        exclude "R.txt"
+    }.getSingleFile()
+    assert classesJar.name == "classes.jar"
+    return classesJar
+}
+
 dependencies {
+    implementation files(findRustlsPlatformVerifierClasses())
+
     androidTestImplementation "androidx.test:runner:1.4.0"
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'
     coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:1.1.6'
@@ -59,7 +120,7 @@ dependencies {
 
 tasks.register('libsWithDebugSymbols', Zip) {
     from 'src/main/jniLibs'
-    classifier 'debug-symbols'
+    archiveClassifier = 'debug-symbols'
     dependsOn 'makeJniLibraries'
 }
 
@@ -69,22 +130,32 @@ preBuild {
     dependsOn 'makeTestJniLibraries'
 }
 
-task makeJniLibraries(type:Exec) {
-  group 'Rust'
-  description 'Build the JNI libraries for Android'
+String[] archsFromProperty(String prop) {
+    findProperty(prop)?.split(',')?.findAll { it != '' }?.collect { 'android-' + it }
+}
 
-  // Explicitly specify 'bash' for Windows compatibility.
-  commandLine 'bash', '../build_jni.sh', 'android'
-  environment 'ANDROID_NDK_HOME', android.ndkDirectory
+task makeJniLibraries(type:Exec) {
+    group 'Rust'
+    description 'Build the JNI libraries for Android'
+
+    def archs = archsFromProperty('androidArchs') ?: ['android']
+    def debugLevelLogsFlag = project.hasProperty('debugLevelLogs') ? ['--debug-level-logs'] : []
+    // Explicitly specify 'bash' for Windows compatibility.
+    commandLine 'bash', '../build_jni.sh', *debugLevelLogsFlag, *archs
+    environment 'ANDROID_NDK_HOME', android.ndkDirectory
 }
 
 task makeTestJniLibraries(type:Exec) {
-  group 'Rust'
-  description 'Build JNI libraries for Android for testing'
+    group 'Rust'
+    description 'Build JNI libraries for Android for testing'
 
-  // Explicitly specify 'bash' for Windows compatibility.
-  commandLine 'bash', '../build_jni.sh', 'android', '--testing'
-  environment 'ANDROID_NDK_HOME', android.ndkDirectory
+    def archs = archsFromProperty('androidTestingArchs') ?: archsFromProperty('androidArchs') ?: ['android']
+    // While it might make sense for tests to always have debug level logs on,
+    // we would lose most of the shared incremental build between test and non-test that way.
+    def debugLevelLogsFlag = project.hasProperty('debugLevelLogs') ? ['--debug-level-logs'] : []
+    // Explicitly specify 'bash' for Windows compatibility.
+    commandLine 'bash', '../build_jni.sh', '--testing', *debugLevelLogsFlag, *archs
+    environment 'ANDROID_NDK_HOME', android.ndkDirectory
 }
 
 task collectAssets(type:Copy) {

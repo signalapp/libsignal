@@ -7,6 +7,7 @@ package org.signal.libsignal.internal;
 
 import static org.junit.Assert.*;
 
+import java.nio.ByteBuffer;
 import java.util.concurrent.ExecutionException;
 import org.junit.Test;
 
@@ -69,5 +70,22 @@ public class BridgingTest {
   public void testReturnStringArray() {
     assertArrayEquals(
         Native.TESTING_ReturnStringArray(), new String[] {"easy", "as", "ABC", "123"});
+  }
+
+  @Test
+  public void testProcessBytestringArray() {
+    ByteBuffer first = ByteBuffer.allocateDirect(3);
+    first.put(new byte[] {1, 2, 3});
+    ByteBuffer empty = ByteBuffer.allocateDirect(0);
+    ByteBuffer second = ByteBuffer.allocateDirect(3);
+    second.put(new byte[] {4, 5, 6});
+    byte[][] result =
+        Native.TESTING_ProcessBytestringArray(new ByteBuffer[] {first, empty, second});
+    assertArrayEquals(result, new byte[][] {{1, 2, 3, 1, 2, 3}, {}, {4, 5, 6, 4, 5, 6}});
+  }
+
+  @Test
+  public void testProcessEmptyBytestringArray() {
+    assertArrayEquals(Native.TESTING_ProcessBytestringArray(new ByteBuffer[] {}), new byte[][] {});
   }
 }

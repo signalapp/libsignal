@@ -12,9 +12,16 @@ license = "AGPL-3.0-only"
 
 [dependencies]
 curve25519-dalek = "4.0"
-sha2 = "0.10"
-subtle = "2.5"
 hmac = { version = "0.12", features = ["reset"] }
+sha2 = "0.10"
 
 [dev-dependencies]
 hex = "0.4"
+
+# For benchmarking
+criterion = "0.5"
+rand = "0.8"
+
+[[bench]]
+name = "sho"
+harness = false

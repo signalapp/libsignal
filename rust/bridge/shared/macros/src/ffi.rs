@@ -45,8 +45,7 @@ pub(crate) fn bridge_fn(
             }
             let output = result_type(&sig.output);
             quote!(
-                promise: ffi::CPromise<ffi_result_type!(#output)>,
-                promise_context: *const std::ffi::c_void,
+                promise: *mut ffi::CPromise<ffi_result_type!(#output)>,
                 async_runtime: ffi_arg_type!(&#runtime), // note the trailing comma
             )
         }
@@ -91,6 +90,7 @@ fn bridge_fn_body(
     // "Support" async operations by requiring them to complete synchronously.
     let await_if_needed = sig.asyncness.map(|_| {
         quote! {
+            use ::futures_util::future::FutureExt as _;
             let __result = __result.now_or_never().unwrap();
         }
     });
@@ -132,6 +132,9 @@ fn bridge_io_body(
     // This is the best way to understand what we're trying to produce.
 
     let load_async_runtime = generate_code_to_load_input("async_runtime", quote!(&#runtime));
+    let load_promise = quote! {
+        let promise = promise.as_mut().ok_or(ffi::NullPointerError)?;
+    };
 
     let input_saving = input_args.iter().map(|(name, ty)| {
         let name_stored = format_ident!("{}_stored", name);
@@ -157,18 +160,24 @@ fn bridge_io_body(
     quote! {
         ffi::run_ffi_safe(|| {
             #load_async_runtime
+            #load_promise
             #(#input_saving)*
             ffi::run_future_on_runtime(
                 async_runtime,
                 promise,
-                promise_context,
-                async move {
+                |__cancel| async move {
                     let __future = ffi::catch_unwind(std::panic::AssertUnwindSafe(async move {
                         #(#input_loading)*
-                        let __result = #orig_name(#(#input_names),*).await;
-                        // If the original function can't fail, wrap the result in Ok for uniformity.
-                        // See TransformHelper::ok_if_needed.
-                        Ok(TransformHelper(__result).ok_if_needed()?.0)
+                        ::tokio::select! {
+                            __result = #orig_name(#(#input_names),*) => {
+                                // If the original function can't fail, wrap the result in Ok for uniformity.
+                                // See TransformHelper::ok_if_needed.
+                                Ok(TransformHelper(__result).ok_if_needed()?.0)
+                            }
+                            _ = __cancel => {
+                                Err(ffi::FutureCancelled.into())
+                            }
+                        }
                     }));
                     ffi::FutureResultReporter::new(__future.await)
                 }

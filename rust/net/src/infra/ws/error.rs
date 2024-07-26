@@ -7,7 +7,59 @@
 //! [`Error`] type is a mirror of [`tungstenite::error::Error`] whose
 //! [`std::fmt::Display`] impl doesn't contain any user data.
 
-use crate::infra::errors::LogSafeDisplay;
+use std::borrow::Borrow;
+
+use crate::infra::connection_manager::{ErrorClass, ErrorClassifier};
+use crate::infra::errors::{LogSafeDisplay, TransportConnectError};
+
+/// Errors that can occur when connecting a websocket.
+#[derive(Debug, thiserror::Error)]
+pub enum WebSocketConnectError {
+    Transport(#[from] TransportConnectError),
+    Timeout,
+    WebSocketError(tungstenite::Error),
+    /// A special case of [`tungstenite::Error::Http`] where the response is considered to come from
+    /// the Signal servers.
+    ///
+    /// See [`ConnectionParams::connection_confirmation_header`](crate::infra::ConnectionParams::connection_confirmation_header).
+    RejectedByServer(http::Response<Option<Vec<u8>>>),
+}
+
+impl std::fmt::Display for WebSocketConnectError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            WebSocketConnectError::Transport(e) => write!(f, "transport: {e}"),
+            WebSocketConnectError::Timeout => write!(f, "timed out while connecting"),
+            WebSocketConnectError::WebSocketError(e) => {
+                write!(f, "websocket error: {}", Error::from(e))
+            }
+            WebSocketConnectError::RejectedByServer(response) => {
+                write!(
+                    f,
+                    "rejected by server with error code {}",
+                    response.status()
+                )
+            }
+        }
+    }
+}
+
+impl LogSafeDisplay for WebSocketConnectError {}
+
+impl ErrorClassifier for WebSocketConnectError {
+    fn classify(&self) -> ErrorClass {
+        match self {
+            WebSocketConnectError::RejectedByServer(response)
+                // is_client_error means 4XX error. 5XX errors can be intermittent.
+                if response.status().is_client_error() =>
+            {
+                // TODO: handle StatusCode::TOO_MANY_REQUESTS to produce RetryError::WaitUntil(Instant)
+                ErrorClass::Fatal
+            }
+            _ => ErrorClass::Intermittent,
+        }
+    }
+}
 
 /// Mirror of [`tungstenite::error::Error`].
 ///
@@ -21,7 +73,7 @@ pub enum Error {
     Io,
 
     /// Space: {0}
-    Space(SpaceError),
+    Space(#[from] SpaceError),
 
     /// WebSocket protocol error: {0}
     Protocol(#[from] ProtocolError),
@@ -120,8 +172,9 @@ impl std::fmt::Display for HttpFormatError {
     }
 }
 
-impl From<http::Error> for HttpFormatError {
-    fn from(value: http::Error) -> Self {
+impl<E: Borrow<http::Error>> From<E> for HttpFormatError {
+    fn from(value: E) -> Self {
+        let value = value.borrow();
         // Try to figure out the actual error type since there's no enum to
         // exhaustively match on.
         if value.is::<http::status::InvalidStatusCode>() {
@@ -145,13 +198,22 @@ impl From<http::Error> for HttpFormatError {
 impl From<tungstenite::Error> for Error {
     fn from(value: tungstenite::Error) -> Self {
         match value {
+            tungstenite::Error::Protocol(e) => Self::Protocol(ProtocolError::from(e)),
+            e => Self::from(&e),
+        }
+    }
+}
+
+impl<'a> From<&'a tungstenite::Error> for Error {
+    fn from(value: &'a tungstenite::Error) -> Self {
+        match value {
             tungstenite::Error::ConnectionClosed | tungstenite::Error::AlreadyClosed => {
                 Self::Closed
             }
             tungstenite::Error::Io(_) | tungstenite::Error::AttackAttempt => Self::Io,
             tungstenite::Error::Tls(_) => Self::UnexpectedTlsError,
-            tungstenite::Error::Capacity(e) => Self::Space(SpaceError::from(e)),
-            tungstenite::Error::Protocol(e) => Self::Protocol(ProtocolError::from(e)),
+            tungstenite::Error::Capacity(e) => Self::Space(SpaceError::from(*e)),
+            tungstenite::Error::Protocol(e) => Self::Protocol(ProtocolError::from(e.clone())),
             tungstenite::Error::WriteBufferFull(_) => Self::Space(SpaceError::SendQueueFull),
             tungstenite::Error::Utf8 => Self::BadUtf8,
             tungstenite::Error::Url(_) => Self::Url,

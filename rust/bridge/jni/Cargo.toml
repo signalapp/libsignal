@@ -5,7 +5,7 @@
 
 [package]
 name = "libsignal-jni"
-version = "0.40.1"
+version = "0.52.3"
 authors = ["Signal Messenger LLC"]
 edition = "2021"
 license = "AGPL-3.0-only"
@@ -15,14 +15,13 @@ name = "signal_jni"
 crate-type = ["cdylib"]
 
 [dependencies]
+libsignal-bridge = { path = "../shared", features = ["jni", "signal-media"] }
 libsignal-protocol = { path = "../../protocol" }
 signal-crypto = { path = "../../crypto" }
-libsignal-bridge = { path = "../shared", features = ["jni", "signal-media"] }
-async-trait = "0.1.41"
+
 cfg-if = "1.0.0"
 jni = "0.21.0"
-rand = "0.8"
-log = { version = "0.4", features = ["release_max_level_info"] }
+log = "0.4"
 log-panics = { version = "2.1.0", features = ["with-backtrace"] }
 
 [features]
@@ -30,3 +29,7 @@ testing-fns = ["libsignal-bridge/testing-fns"]
 
 [target.aarch64-linux-android.dependencies]
 cpufeatures = "0.2.2" # Make sure 64-bit Android gets optimized crypto
+
+[target.'cfg(target_os = "android")'.dependencies]
+jni19 = { version = "0.19", package = "jni" }
+rustls-platform-verifier = "0.3.1"

@@ -8,15 +8,14 @@
 
 use futures_util::FutureExt;
 use libsignal_bridge::ffi::*;
+#[allow(unused_imports)]
+use libsignal_bridge_testing::*;
 use libsignal_protocol::*;
 
 use std::ffi::{c_char, c_uchar, c_uint, CString};
 use std::panic::AssertUnwindSafe;
 
 pub mod logging;
-mod util;
-
-use crate::util::*;
 
 #[no_mangle]
 pub unsafe extern "C" fn signal_print_ptr(p: *const std::ffi::c_void) {
@@ -43,7 +42,23 @@ pub unsafe extern "C" fn signal_free_buffer(buf: *const c_uchar, buf_len: usize)
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn signal_free_string_array(array: StringArray) {
+pub unsafe extern "C" fn signal_free_list_of_strings(buffer: OwnedBufferOf<CStringPtr>) {
+    let strings = buffer.into_box();
+    for &s in &*strings {
+        signal_free_string(s);
+    }
+    drop(strings);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn signal_free_lookup_response_entry_list(
+    buffer: OwnedBufferOf<crate::FfiCdsiLookupResponseEntry>,
+) {
+    drop(buffer.into_box())
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn signal_free_bytestring_array(array: BytestringArray) {
     drop(array.into_boxed_parts())
 }
 
@@ -53,11 +68,8 @@ pub unsafe extern "C" fn signal_error_get_message(
     out: *mut *const c_char,
 ) -> *mut SignalFfiError {
     let result = (|| {
-        if err.is_null() {
-            return Err(SignalFfiError::NullPointer);
-        }
-        let msg = format!("{}", *err);
-        write_result_to(out, msg)
+        let err = err.as_ref().ok_or(NullPointerError)?;
+        write_result_to(out, err.to_string())
     })();
 
     match result {
@@ -73,21 +85,11 @@ pub unsafe extern "C" fn signal_error_get_address(
 ) -> *mut SignalFfiError {
     let err = AssertUnwindSafe(err);
     run_ffi_safe(|| {
-        let err = err.as_ref().ok_or(SignalFfiError::NullPointer)?;
-        match err {
-            SignalFfiError::Signal(SignalProtocolError::InvalidRegistrationId(addr, _value)) => {
-                write_result_to(out, addr.clone())?;
-            }
-            _ => {
-                return Err(SignalFfiError::Signal(
-                    SignalProtocolError::InvalidArgument(format!(
-                        "cannot get address from error ({})",
-                        err
-                    )),
-                ));
-            }
-        }
-        Ok(())
+        let err = err.as_ref().ok_or(NullPointerError)?;
+        let value = err.provide_address().map_err(|_| {
+            SignalProtocolError::InvalidArgument(format!("cannot get address from error ({})", err))
+        })?;
+        write_result_to(out, value)
     })
 }
 
@@ -98,35 +100,56 @@ pub unsafe extern "C" fn signal_error_get_uuid(
 ) -> *mut SignalFfiError {
     let err = AssertUnwindSafe(err);
     run_ffi_safe(|| {
-        let err = err.as_ref().ok_or(SignalFfiError::NullPointer)?;
-        match err {
-            SignalFfiError::Signal(SignalProtocolError::InvalidSenderKeySession {
-                distribution_id,
-            }) => {
-                write_result_to(out, *distribution_id.as_bytes())?;
-            }
-            _ => {
-                return Err(SignalFfiError::Signal(
-                    SignalProtocolError::InvalidArgument(format!(
-                        "cannot get address from error ({})",
-                        err
-                    )),
-                ));
-            }
-        }
-        Ok(())
+        let err = err.as_ref().ok_or(NullPointerError)?;
+        let value = err.provide_uuid().map_err(|_| {
+            SignalProtocolError::InvalidArgument(format!("cannot get UUID from error ({})", err))
+        })?;
+        write_result_to(out, value.into_bytes())
     })
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn signal_error_get_type(err: *const SignalFfiError) -> u32 {
     match err.as_ref() {
-        Some(err) => {
-            let code: SignalErrorCode = err.into();
-            code as u32
-        }
+        Some(err) => err.code() as u32,
         None => 0,
     }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn signal_error_get_retry_after_seconds(
+    err: *const SignalFfiError,
+    out: *mut u32,
+) -> *mut SignalFfiError {
+    let err = AssertUnwindSafe(err);
+    run_ffi_safe(|| {
+        let err = err.as_ref().ok_or(NullPointerError)?;
+        let value = err.provide_retry_after_seconds().map_err(|_| {
+            SignalProtocolError::InvalidArgument(format!(
+                "cannot get retry_after_seconds from error ({})",
+                err
+            ))
+        })?;
+        write_result_to(out, value)
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn signal_error_get_tries_remaining(
+    err: *const SignalFfiError,
+    out: *mut u32,
+) -> *mut SignalFfiError {
+    let err = AssertUnwindSafe(err);
+    run_ffi_safe(|| {
+        let err = err.as_ref().ok_or(NullPointerError)?;
+        let value = err.provide_tries_remaining().map_err(|_| {
+            SignalProtocolError::InvalidArgument(format!(
+                "cannot get tries_remaining from error ({})",
+                err
+            ))
+        })?;
+        write_result_to(out, value)
+    })
 }
 
 #[no_mangle]
@@ -172,20 +195,18 @@ pub unsafe extern "C" fn signal_sealed_session_cipher_decrypt(
         let mut kyber_pre_key_store = InMemKyberPreKeyStore::new();
         let ctext = ctext.as_slice()?;
         let trust_root = native_handle_cast::<PublicKey>(trust_root)?;
-        let mut identity_store = identity_store.as_ref().ok_or(SignalFfiError::NullPointer)?;
-        let mut session_store = session_store.as_ref().ok_or(SignalFfiError::NullPointer)?;
-        let mut prekey_store = prekey_store.as_ref().ok_or(SignalFfiError::NullPointer)?;
-        let signed_prekey_store = signed_prekey_store
-            .as_ref()
-            .ok_or(SignalFfiError::NullPointer)?;
+        let mut identity_store = identity_store.as_ref().ok_or(NullPointerError)?;
+        let mut session_store = session_store.as_ref().ok_or(NullPointerError)?;
+        let mut prekey_store = prekey_store.as_ref().ok_or(NullPointerError)?;
+        let signed_prekey_store = signed_prekey_store.as_ref().ok_or(NullPointerError)?;
 
         let local_e164 = Option::convert_from(local_e164)?;
-        let local_uuid = Option::convert_from(local_uuid)?.ok_or(SignalFfiError::NullPointer)?;
+        let local_uuid = Option::convert_from(local_uuid)?.ok_or(NullPointerError)?;
 
         let decrypted = sealed_sender_decrypt(
             ctext,
             trust_root,
-            timestamp,
+            Timestamp::from_epoch_millis(timestamp),
             local_e164,
             local_uuid,
             local_device_id.into(),

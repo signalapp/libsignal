@@ -5,6 +5,8 @@
 
 package org.signal.libsignal.zkgroup.calllinks;
 
+import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
+
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.protocol.ServiceId;
 import org.signal.libsignal.protocol.ServiceId.Aci;
@@ -27,7 +29,9 @@ public final class CallLinkSecretParams extends ByteArray {
 
   public CallLinkSecretParams(byte[] contents) throws InvalidInputException {
     super(contents);
-    Native.CallLinkSecretParams_CheckValidContents(contents);
+    filterExceptions(
+        InvalidInputException.class,
+        () -> Native.CallLinkSecretParams_CheckValidContents(contents));
   }
 
   public CallLinkPublicParams getPublicParams() {
@@ -43,8 +47,11 @@ public final class CallLinkSecretParams extends ByteArray {
   public Aci decryptUserId(UuidCiphertext ciphertext) throws VerificationFailedException {
     try {
       return Aci.parseFromFixedWidthBinary(
-          Native.CallLinkSecretParams_DecryptUserId(
-              getInternalContentsForJNI(), ciphertext.getInternalContentsForJNI()));
+          filterExceptions(
+              VerificationFailedException.class,
+              () ->
+                  Native.CallLinkSecretParams_DecryptUserId(
+                      getInternalContentsForJNI(), ciphertext.getInternalContentsForJNI())));
     } catch (ServiceId.InvalidServiceIdException e) {
       throw new VerificationFailedException();
     }

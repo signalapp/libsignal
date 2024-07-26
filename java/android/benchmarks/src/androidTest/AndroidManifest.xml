@@ -1,4 +1,5 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <application
-        android:debuggable="false"/>
+    <application android:debuggable="false">
+        <profileable android:shell="true"/>
+    </application>
 </manifest>

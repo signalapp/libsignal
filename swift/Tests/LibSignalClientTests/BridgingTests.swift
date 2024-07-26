@@ -6,9 +6,9 @@
 // These testing endpoints aren't generated in device builds, to save on code size.
 #if !os(iOS) || targetEnvironment(simulator)
 
-import XCTest
 @testable import LibSignalClient
 import SignalFfi
+import XCTest
 
 private func fakeAsyncRuntime() -> OpaquePointer! {
     OpaquePointer(bitPattern: -1)
@@ -39,8 +39,8 @@ final class BridgingTests: XCTestCase {
         }
 
         do {
-            _ = try await invokeAsyncFunction(returning: Bool.self) {
-                signal_testing_error_on_borrow_io($0, $1, fakeAsyncRuntime(), nil)
+            _ = try await invokeAsyncFunction {
+                signal_testing_error_on_borrow_io($0, fakeAsyncRuntime(), nil)
             }
             XCTFail("should have failed")
         } catch SignalError.invalidArgument(_) {
@@ -64,8 +64,8 @@ final class BridgingTests: XCTestCase {
         }
 
         do {
-            _ = try await invokeAsyncFunction(returning: Bool.self) {
-                signal_testing_panic_on_borrow_io($0, $1, fakeAsyncRuntime(), nil)
+            _ = try await invokeAsyncFunction {
+                signal_testing_panic_on_borrow_io($0, fakeAsyncRuntime(), nil)
             }
             XCTFail("should have failed")
         } catch SignalError.internalError(_) {
@@ -89,8 +89,8 @@ final class BridgingTests: XCTestCase {
         }
 
         do {
-            _ = try await invokeAsyncFunction(returning: Bool.self) {
-                signal_testing_panic_on_load_io($0, $1, fakeAsyncRuntime(), nil, nil)
+            _ = try await invokeAsyncFunction {
+                signal_testing_panic_on_load_io($0, fakeAsyncRuntime(), nil, nil)
             }
             XCTFail("should have failed")
         } catch SignalError.internalError(_) {
@@ -114,8 +114,8 @@ final class BridgingTests: XCTestCase {
         }
 
         do {
-            _ = try await invokeAsyncFunction(returning: Bool.self) {
-                signal_testing_panic_in_body_io($0, $1, fakeAsyncRuntime(), nil)
+            _ = try await invokeAsyncFunction {
+                signal_testing_panic_in_body_io($0, fakeAsyncRuntime(), nil)
             }
             XCTFail("should have failed")
         } catch SignalError.internalError(_) {
@@ -139,8 +139,8 @@ final class BridgingTests: XCTestCase {
         }
 
         do {
-            _ = try await invokeAsyncFunction(returning: UnsafeRawPointer.self) {
-                signal_testing_error_on_return_io($0, $1, fakeAsyncRuntime(), nil)
+            _ = try await invokeAsyncFunction {
+                signal_testing_error_on_return_io($0, fakeAsyncRuntime(), nil)
             }
             XCTFail("should have failed")
         } catch SignalError.invalidArgument(_) {
@@ -164,8 +164,8 @@ final class BridgingTests: XCTestCase {
         }
 
         do {
-            _ = try await invokeAsyncFunction(returning: UnsafeRawPointer.self) {
-                signal_testing_panic_on_return_io($0, $1, fakeAsyncRuntime(), nil)
+            _ = try await invokeAsyncFunction {
+                signal_testing_panic_on_return_io($0, fakeAsyncRuntime(), nil)
             }
             XCTFail("should have failed")
         } catch SignalError.internalError(_) {
@@ -179,6 +179,35 @@ final class BridgingTests: XCTestCase {
             signal_testing_return_string_array($0)
         }
         XCTAssertEqual(array, EXPECTED)
+    }
+
+    func testBytestringArray() throws {
+        let first: [UInt8] = [1, 2, 3]
+        let empty: [UInt8] = []
+        let second: [UInt8] = [4, 5, 6]
+        let result = try first.withUnsafeBytes { first in
+            try empty.withUnsafeBytes { empty in
+                try second.withUnsafeBytes { second in
+                    let slices = [SignalBorrowedBuffer(first), SignalBorrowedBuffer(empty), SignalBorrowedBuffer(second)]
+                    return try slices.withUnsafeBufferPointer { slices in
+                        try invokeFnReturningBytestringArray {
+                            signal_testing_process_bytestring_array($0, SignalBorrowedSliceOfBuffers(base: slices.baseAddress, length: slices.count))
+                        }
+                    }
+                }
+            }
+        }
+        XCTAssertEqual(result, [[1, 2, 3, 1, 2, 3], [], [4, 5, 6, 4, 5, 6]])
+    }
+
+    func testBytestringArrayEmpty() throws {
+        let slices: [SignalBorrowedBuffer] = []
+        let result = try slices.withUnsafeBufferPointer { slices in
+            try invokeFnReturningBytestringArray {
+                signal_testing_process_bytestring_array($0, SignalBorrowedSliceOfBuffers(base: slices.baseAddress, length: slices.count))
+            }
+        }
+        XCTAssertEqual(result, [])
     }
 }
 

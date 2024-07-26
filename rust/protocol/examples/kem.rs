@@ -75,9 +75,9 @@ fn main() {
             public_path,
         } => {
             let key_pair = KeyPair::generate(key_ty.into());
-            std::fs::write(secret_path, &key_pair.secret_key.serialize())
+            std::fs::write(secret_path, key_pair.secret_key.serialize())
                 .expect("can write to file");
-            std::fs::write(public_path, &key_pair.public_key.serialize())
+            std::fs::write(public_path, key_pair.public_key.serialize())
                 .expect("can write to file");
         }
         Command::Encapsulate { public_path } => {

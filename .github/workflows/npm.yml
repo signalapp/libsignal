@@ -3,6 +3,11 @@ name: Publish to NPM
 on:
   workflow_dispatch:
     inputs:
+      dry_run:
+        description: "Just build, don't publish"
+        default: false
+        required: false
+        type: boolean
       npm_tag:
         description: 'NPM tag'
         required: true
@@ -19,18 +24,34 @@ jobs:
 
     strategy:
       matrix:
-        os: [windows-latest, macos-11]
+        os: [windows-latest, macos-12]
         include:
-        - os: macos-11
+        - os: macos-12
           arm64-rust-target: aarch64-apple-darwin
         - os: windows-latest
           arm64-rust-target: aarch64-pc-windows-msvc
-          # This can be removed when we update to a Node version that officially supports win-arm64.
-          custom-arm64-dist-url: https://unofficial-builds.nodejs.org/download/release
         # Ubuntu binaries are built using Docker, below
 
+    timeout-minutes: 45
+
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      with:
+        submodules: recursive
+
+    - name: Checking run eligibility
+      uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+      with:
+        script: |
+          const dryRun = ${{ inputs.dry_run }};
+          const refType = '${{ github.ref_type }}';
+          const refName = '${{ github.ref_name }}';
+          console.log(dryRun
+            ? `Running in 'dry run' mode on '${refName}' ${refType}`
+            : `Running on '${refName}' ${refType}`);
+          if (refType !== 'tag' && !dryRun) {
+            core.setFailed("the action should either be launched on a tag or with a 'dry run' switch");
+          }
 
     - run: rustup toolchain install $(cat rust-toolchain) --profile minimal --target ${{ matrix.arm64-rust-target }}
 
@@ -51,51 +72,79 @@ jobs:
       shell: bash
       run: echo "node-version=$(cat .nvmrc)" >> $GITHUB_OUTPUT
 
-    - uses: actions/setup-node@v4
+    - uses: actions/setup-node@60edb5dd545a775178f52524783378180af0d1f8 # v4.0.24
       with:
         node-version-file: '.nvmrc'
 
-    - run: npx yarn install --ignore-scripts --frozen-lockfile
+    - run: npx yarn install --frozen-lockfile
       working-directory: node
 
     - name: Build for arm64
       run: npx prebuildify --napi -t ${{ steps.get-nvm-version.outputs.node-version }} --arch arm64
       working-directory: node
-      env:
-        npm_config_dist_url: ${{ matrix.custom-arm64-dist-url }}
+
+    - name: Save arm64 debug info
+      run: mv build/Release/*-debuginfo.* .
+      working-directory: node
+      shell: bash
 
     - name: Build for the host (should be x64)
       run: npx prebuildify --napi -t ${{ steps.get-nvm-version.outputs.node-version }}
       working-directory: node
 
+    - name: Save x64 debug info
+      run: mv build/Release/*-debuginfo.* .
+      working-directory: node
+      shell: bash
+
     - name: Upload library
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4.3.1
       with:
         name: libsignal_client (${{matrix.os}})
         path: node/prebuilds/*
+
+    - name: Upload debug info
+      uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4.3.1
+      with:
+        name: Debug info (${{matrix.os}})
+        path: node/*-debuginfo.*
 
   build-docker:
     name: Build (Ubuntu via Docker)
 
     runs-on: ubuntu-latest
 
+    timeout-minutes: 45
+
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      with:
+        submodules: recursive
 
     - run: node/docker-prebuildify.sh
 
     - name: Upload library
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4.3.1
       with:
         name: libsignal_client (ubuntu-docker)
         path: node/prebuilds/*
 
+    - name: Upload debug info
+      uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4.3.1
+      with:
+        name: Debug info (${{matrix.os}})
+        path: node/*-debuginfo.*
+
   verify-rust:
     name: Verify Node bindings
     runs-on: ubuntu-latest
-    
+
+    timeout-minutes: 45
+
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      with:
+        submodules: recursive
 
     - run: rustup toolchain install $(cat rust-toolchain) --profile minimal
 
@@ -111,22 +160,31 @@ jobs:
 
     needs: [build, build-docker, verify-rust]
 
-    steps:
-    - uses: actions/checkout@v4
+    timeout-minutes: 45
 
-    - uses: actions/setup-node@v4
+    steps:
+    - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      with:
+        submodules: recursive
+
+    - uses: actions/setup-node@60edb5dd545a775178f52524783378180af0d1f8 # v4.0.2
       with:
         node-version-file: '.nvmrc'
         registry-url: 'https://registry.npmjs.org/'
 
     - name: Download built libraries
-      id: download
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@c850b930e6ba138125429b7e5c93fc707a7f8427 # v4.1.4
       with:
-        path: artifacts
+        pattern: libsignal_client*
+        path: node/prebuilds
+        merge-multiple: true
 
-    - name: Copy libraries
-      run: mkdir node/prebuilds && mv ${{ steps.download.outputs.download-path }}/*/* node/prebuilds && find node/prebuilds
+    - name: Download debug info
+      uses: actions/download-artifact@c850b930e6ba138125429b7e5c93fc707a7f8427 # v4.1.4
+      with:
+        pattern: Debug info*
+        path: debuginfo
+        merge-multiple: true
 
     - run: yarn install --frozen-lockfile
       working-directory: node
@@ -145,7 +203,16 @@ jobs:
       env:
         PREBUILDS_ONLY: 1
 
-    - run: npm publish --tag ${{ github.event.inputs.npm_tag }} --access public
+    - run: npm publish --tag ${{ github.event.inputs.npm_tag }} --access public ${{ inputs.dry_run && '--dry-run' || ''}}
       working-directory: node
       env:
         NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+    # This step is expected to fail if not run on a tag.
+    - name: Upload debug info to release
+      uses: ncipollo/release-action@66b1844f0b7ef940787c9d128846d5ac09b3881f # v1.14
+      if: ${{ !inputs.dry_run }}
+      with:
+        allowUpdates: true
+        artifactErrorsFailBuild: true
+        artifacts: debuginfo/*-debuginfo.*

@@ -9,23 +9,18 @@ use displaydoc::Display;
 
 use crate::client_connection::ClientConnection;
 use crate::svr2::RaftConfig;
+use crate::tpm2snp::Tpm2Error;
 use crate::{client_connection, dcap, nitro, proto, snow_resolver};
 use prost::Message;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
+/// Failure to attest remote enclave.
+#[error("{message}")]
 pub struct AttestationError {
     message: String,
 }
-
-impl std::fmt::Display for AttestationError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.message.fmt(f)
-    }
-}
-
-impl std::error::Error for AttestationError {}
 
 impl From<dcap::Error> for AttestationError {
     fn from(e: dcap::Error) -> Self {
@@ -36,36 +31,18 @@ impl From<dcap::Error> for AttestationError {
 }
 
 /// Error types for an enclave noise session.
-#[derive(Display, Debug)]
+#[derive(Display, Debug, thiserror::Error)]
 pub enum Error {
     /// failure to attest remote enclave: {0:?}
-    AttestationError(AttestationError),
+    AttestationError(#[from] AttestationError),
     /// failure to communicate on established Noise channel to the enclave: {0}
-    NoiseError(client_connection::Error),
+    NoiseError(#[from] client_connection::Error),
     /// failure to complete Noise handshake to the enclave: {0}
-    NoiseHandshakeError(snow::Error),
+    NoiseHandshakeError(#[from] snow::Error),
     /// attestation data invalid: {reason}
     AttestationDataError { reason: String },
     /// invalid bridge state
     InvalidBridgeStateError,
-}
-
-impl From<snow::Error> for Error {
-    fn from(e: snow::Error) -> Self {
-        Error::NoiseHandshakeError(e)
-    }
-}
-
-impl From<AttestationError> for Error {
-    fn from(err: AttestationError) -> Error {
-        Error::AttestationError(err)
-    }
-}
-
-impl From<client_connection::Error> for Error {
-    fn from(err: client_connection::Error) -> Self {
-        Error::NoiseError(err)
-    }
 }
 
 impl From<prost::DecodeError> for Error {
@@ -90,6 +67,20 @@ impl From<nitro::NitroError> for Error {
     }
 }
 
+impl From<Tpm2Error> for AttestationError {
+    fn from(err: Tpm2Error) -> Self {
+        AttestationError {
+            message: err.to_string(),
+        }
+    }
+}
+
+impl From<Tpm2Error> for Error {
+    fn from(err: Tpm2Error) -> Self {
+        Self::AttestationError(err.into())
+    }
+}
+
 /// A noise handshaker that can be used to build a [client_connection::ClientConnection]
 ///
 /// Callers provide an attestation that must contain the remote enclave's public key. If the
@@ -102,7 +93,7 @@ impl From<nitro::NitroError> for Error {
 /// ```pseudocode
 ///   let websocket = ... open websocket ...
 ///   let attestation_msg = websocket.recv();
-///   let (evidence, endoresments) = parse(attestation_msg);
+///   let (evidence, endorsements) = parse(attestation_msg);
 ///   let mut handshake = Handshake::new(
 ///     mrenclave, evidence, endorsements, acceptable_sw_advisories, current_time)?;
 ///   websocket.send(handshaker.initial_request());
@@ -135,12 +126,25 @@ impl Handshake {
             Box::new(snow_resolver::Resolver),
         )
         .remote_public_key(&claims.public_key)
-        .build_initiator()?;
+        .build_initiator()
+        .map_err(|_| {
+            // The only thing that can go wrong is that claims.public_key is invalid, which isn't a
+            // fault in the Noise handshake. Produce a data error instead to indicate this (and for
+            // simpler exception logic in the apps).
+            //
+            // In practice the current version of Noise does not even check this up front, so we
+            // can't test this. But a future version could and the previous reasoning stands.
+            Error::AttestationDataError {
+                reason: "invalid public key".to_string(),
+            }
+        })?;
         let mut initial_request = vec![0u8; client_connection::NOISE_HANDSHAKE_OVERHEAD];
         // We send an empty message, but the round-trip to the server and back is still required
         // in order to complete the noise handshake. If we needed some initial payload we could
         // add it here in future.
-        let size = handshake.write_message(&[], &mut initial_request)?;
+        let size = handshake
+            .write_message(&[], &mut initial_request)
+            .expect("properly sized");
         initial_request.truncate(size);
         Ok(UnvalidatedHandshake(Self {
             handshake,
@@ -181,7 +185,7 @@ impl UnvalidatedHandshake {
 
 pub struct Claims {
     pub(crate) public_key: Vec<u8>,
-    pub(crate) raft_group_config: Option<proto::svr2::RaftGroupConfig>,
+    pub(crate) raft_group_config: Option<proto::svr::RaftGroupConfig>,
     #[allow(dead_code)]
     pub(crate) custom: HashMap<String, Vec<u8>>,
 }
@@ -196,7 +200,7 @@ impl Claims {
 
         let raft_group_config = claims
             .remove("config")
-            .map(|bytes| proto::svr2::RaftGroupConfig::decode(bytes.as_slice()))
+            .map(|bytes| proto::svr::RaftGroupConfig::decode(bytes.as_slice()))
             .transpose()?;
 
         Ok(Self {
@@ -206,7 +210,7 @@ impl Claims {
         })
     }
 
-    pub fn from_attestation_data(data: proto::svr2::AttestationData) -> Result<Self> {
+    pub fn from_attestation_data(data: proto::svr::AttestationData) -> Result<Self> {
         let raft_group_config = data
             .group_config
             .ok_or_else(|| Error::AttestationDataError {

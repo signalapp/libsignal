@@ -10,7 +10,7 @@ use signal_chat::profile::ProfileClient;
 use crate::support::*;
 use crate::*;
 
-bridge_handle!(ProfileClient, clone = false, mut = true);
+bridge_handle_fns!(ProfileClient, clone = false);
 
 #[bridge_fn(ffi = false, node = false)]
 pub fn ProfileClient_New(target: String) -> Result<ProfileClient> {

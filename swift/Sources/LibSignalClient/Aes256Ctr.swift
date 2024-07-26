@@ -3,8 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import SignalFfi
 import Foundation
+import SignalFfi
 
 public class Aes256Ctr32: NativeHandleOwner {
     public static let keyLength: Int = 32
@@ -27,27 +27,31 @@ public class Aes256Ctr32: NativeHandleOwner {
                 var nonceBufferWithoutCounter = SignalBorrowedBuffer(nonceBytes)
                 nonceBufferWithoutCounter.length -= 4
                 var result: OpaquePointer?
-                try checkError(signal_aes256_ctr32_new(&result,
-                                                       keyBuffer,
-                                                       nonceBufferWithoutCounter,
-                                                       initialCounter))
+                try checkError(signal_aes256_ctr32_new(
+                    &result,
+                    keyBuffer,
+                    nonceBufferWithoutCounter,
+                    initialCounter
+                ))
                 return result
             }
         }
         self.init(owned: handle!)
     }
 
-    internal override class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
+    override internal class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
         return signal_aes256_ctr32_destroy(handle)
     }
 
     public func process(_ message: inout Data) throws {
         try withNativeHandle { nativeHandle in
             try message.withUnsafeMutableBytes { messageBytes in
-                try checkError(signal_aes256_ctr32_process(nativeHandle,
-                                                           SignalBorrowedMutableBuffer(messageBytes),
-                                                           0,
-                                                           UInt32(messageBytes.count)))
+                try checkError(signal_aes256_ctr32_process(
+                    nativeHandle,
+                    SignalBorrowedMutableBuffer(messageBytes),
+                    0,
+                    UInt32(messageBytes.count)
+                ))
             }
         }
     }

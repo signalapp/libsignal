@@ -3,8 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import SignalFfi
 import Foundation
+import SignalFfi
 
 #if canImport(Security)
 import Security
@@ -25,21 +25,33 @@ internal func invokeFnReturningOptionalString(fn: (UnsafeMutablePointer<UnsafePo
     return result
 }
 
-internal func invokeFnReturningStringArray(fn: (UnsafeMutablePointer<SignalStringArray>?) -> SignalFfiErrorRef?) throws -> [String] {
-    var array = SignalFfi.SignalStringArray()
+private func invokeFnReturningSomeBytestringArray<Element>(fn: (UnsafeMutablePointer<SignalBytestringArray>?) -> SignalFfiErrorRef?, transform: (UnsafeBufferPointer<UInt8>) -> Element) throws -> [Element] {
+    var array = SignalFfi.SignalBytestringArray()
     try checkError(fn(&array))
 
-    var bytes = UnsafeBufferPointer(start: array.bytes.base, count: array.bytes.length)
+    var bytes = UnsafeBufferPointer(start: array.bytes.base, count: array.bytes.length)[...]
     let lengths = UnsafeBufferPointer(start: array.lengths.base, count: array.lengths.length)
 
     let result = lengths.map { length in
-        let view = bytes.prefix(length)
-        bytes = UnsafeBufferPointer(rebasing: bytes.suffix(from: length))
-        return String(decoding: view, as: Unicode.UTF8.self)
+        let view = UnsafeBufferPointer(rebasing: bytes.prefix(length))
+        bytes = bytes.dropFirst(length)
+        return transform(view)
     }
 
-    signal_free_string_array(array)
+    signal_free_bytestring_array(array)
     return result
+}
+
+internal func invokeFnReturningStringArray(fn: (UnsafeMutablePointer<SignalStringArray>?) -> SignalFfiErrorRef?) throws -> [String] {
+    return try invokeFnReturningSomeBytestringArray(fn: fn) {
+        String(decoding: $0, as: Unicode.UTF8.self)
+    }
+}
+
+internal func invokeFnReturningBytestringArray(fn: (UnsafeMutablePointer<SignalBytestringArray>?) -> SignalFfiErrorRef?) throws -> [[UInt8]] {
+    return try invokeFnReturningSomeBytestringArray(fn: fn) {
+        Array($0)
+    }
 }
 
 internal func invokeFnReturningArray(fn: (UnsafeMutablePointer<SignalOwnedBuffer>?) -> SignalFfiErrorRef?) throws -> [UInt8] {
@@ -114,7 +126,7 @@ internal func invokeFnReturningInteger<Result: FixedWidthInteger>(fn: (UnsafeMut
 }
 
 internal func invokeFnReturningBool(fn: (UnsafeMutablePointer<Bool>?) -> SignalFfiErrorRef?) throws -> Bool {
-    var output: Bool = false
+    var output = false
     try checkError(fn(&output))
     return output
 }
@@ -161,7 +173,7 @@ internal func fillRandom(_ buffer: UnsafeMutableRawBufferPointer) throws {
 #if canImport(Security)
     let result = SecRandomCopyBytes(kSecRandomDefault, buffer.count, baseAddress)
     guard result == errSecSuccess else {
-      throw SignalError.internalError("SecRandomCopyBytes failed (error code \(result))")
+        throw SignalError.internalError("SecRandomCopyBytes failed (error code \(result))")
     }
 #else
     for i in buffer.indices {
@@ -197,5 +209,11 @@ internal func rethrowCallbackErrors<Store, Result>(_ store: Store, _ body: (Unsa
         }
     } catch SignalError.callbackError(_) where context.error != nil {
         throw context.error!
+    }
+}
+
+extension Collection {
+    public func split(at index: Self.Index) -> (Self.SubSequence, Self.SubSequence) {
+        (self.prefix(upTo: index), self.suffix(from: index))
     }
 }

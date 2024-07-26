@@ -6,9 +6,9 @@
 use ::attest::enclave::Result;
 use ::attest::svr2;
 use libsignal_bridge_macros::*;
+use libsignal_bridge_types::sgx_session::SgxClientState;
 
 use crate::protocol::Timestamp;
-use crate::sgx_session::SgxClientState;
 #[allow(unused_imports)]
 use crate::support::*;
 use crate::*;
@@ -20,7 +20,7 @@ fn new_client(
     attestation_msg: &[u8],
     current_time: std::time::SystemTime,
 ) -> Result<SgxClientState> {
-    SgxClientState::new(svr2::new_handshake(
+    SgxClientState::new(svr2::new_handshake_with_raft_config_lookup(
         mrenclave,
         attestation_msg,
         current_time,
@@ -33,10 +33,5 @@ fn Svr2Client_New(
     attestation_msg: &[u8],
     current_timestamp: Timestamp,
 ) -> Result<SgxClientState> {
-    new_client(
-        mrenclave,
-        attestation_msg,
-        std::time::SystemTime::UNIX_EPOCH
-            + std::time::Duration::from_millis(current_timestamp.as_millis()),
-    )
+    new_client(mrenclave, attestation_msg, current_timestamp.into())
 }

@@ -31,11 +31,11 @@ pub enum UsernameError {
     DiscriminatorTooLarge,
 }
 
-#[derive(displaydoc::Display, Debug)]
+#[derive(displaydoc::Display, Debug, thiserror::Error)]
 /// Username could not be verified
 pub struct ProofVerificationFailure;
 
-#[derive(displaydoc::Display, Debug)]
+#[derive(displaydoc::Display, Debug, thiserror::Error)]
 pub enum UsernameLinkError {
     /// The combined length of all input data is too long
     InputDataTooLong,

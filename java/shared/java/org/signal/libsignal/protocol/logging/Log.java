@@ -8,6 +8,7 @@ package org.signal.libsignal.protocol.logging;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.net.UnknownHostException;
+import org.signal.libsignal.internal.CalledFromNative;
 
 public class Log {
 
@@ -79,6 +80,7 @@ public class Log {
     return sw.toString();
   }
 
+  @CalledFromNative
   private static void log(int priority, String tag, String msg) {
     SignalProtocolLogger logger = SignalProtocolLoggerProvider.getProvider();
 

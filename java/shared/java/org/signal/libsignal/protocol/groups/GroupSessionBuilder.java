@@ -5,6 +5,8 @@
 
 package org.signal.libsignal.protocol.groups;
 
+import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
+
 import java.util.UUID;
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
@@ -46,8 +48,10 @@ public class GroupSessionBuilder {
       SignalProtocolAddress sender, SenderKeyDistributionMessage senderKeyDistributionMessage) {
     try (NativeHandleGuard senderGuard = new NativeHandleGuard(sender);
         NativeHandleGuard skdmGuard = new NativeHandleGuard(senderKeyDistributionMessage); ) {
-      Native.GroupSessionBuilder_ProcessSenderKeyDistributionMessage(
-          senderGuard.nativeHandle(), skdmGuard.nativeHandle(), senderKeyStore);
+      filterExceptions(
+          () ->
+              Native.GroupSessionBuilder_ProcessSenderKeyDistributionMessage(
+                  senderGuard.nativeHandle(), skdmGuard.nativeHandle(), senderKeyStore));
     }
   }
 
@@ -63,8 +67,10 @@ public class GroupSessionBuilder {
   public SenderKeyDistributionMessage create(SignalProtocolAddress sender, UUID distributionId) {
     try (NativeHandleGuard senderGuard = new NativeHandleGuard(sender)) {
       return new SenderKeyDistributionMessage(
-          Native.GroupSessionBuilder_CreateSenderKeyDistributionMessage(
-              senderGuard.nativeHandle(), distributionId, senderKeyStore));
+          filterExceptions(
+              () ->
+                  Native.GroupSessionBuilder_CreateSenderKeyDistributionMessage(
+                      senderGuard.nativeHandle(), distributionId, senderKeyStore)));
     }
   }
 }

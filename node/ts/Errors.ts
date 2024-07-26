@@ -31,6 +31,8 @@ export enum ErrorCode {
   DiscriminatorTooLarge,
 
   IoError,
+  CdsiInvalidToken,
+  InvalidUri,
 
   InvalidMediaInput,
   UnsupportedMediaInput,
@@ -40,6 +42,16 @@ export enum ErrorCode {
   InvalidUsernameLinkEncryptedData,
 
   RateLimitedError,
+
+  SvrDataMissing,
+  SvrRequestFailed,
+  SvrRestoreFailed,
+
+  ChatServiceInactive,
+  AppExpired,
+  DeviceDelinked,
+
+  Cancelled,
 }
 
 export class LibSignalErrorBase extends Error {
@@ -182,6 +194,14 @@ export type IoError = LibSignalErrorCommon & {
   code: ErrorCode.IoError;
 };
 
+export type CdsiInvalidTokenError = LibSignalErrorCommon & {
+  code: ErrorCode.CdsiInvalidToken;
+};
+
+export type InvalidUriError = LibSignalErrorCommon & {
+  code: ErrorCode.InvalidUri;
+};
+
 export type InvalidMediaInputError = LibSignalErrorCommon & {
   code: ErrorCode.InvalidMediaInput;
 };
@@ -193,6 +213,35 @@ export type UnsupportedMediaInputError = LibSignalErrorCommon & {
 export type RateLimitedError = LibSignalErrorBase & {
   code: ErrorCode.RateLimitedError;
   readonly retryAfterSecs: number;
+};
+
+export type ChatServiceInactive = LibSignalErrorBase & {
+  code: ErrorCode.ChatServiceInactive;
+};
+
+export type AppExpiredError = LibSignalErrorBase & {
+  code: ErrorCode.AppExpired;
+};
+
+export type DeviceDelinkedError = LibSignalErrorBase & {
+  code: ErrorCode.DeviceDelinked;
+};
+
+export type SvrDataMissingError = LibSignalErrorBase & {
+  code: ErrorCode.SvrDataMissing;
+};
+
+export type SvrRequestFailedError = LibSignalErrorCommon & {
+  code: ErrorCode.SvrRequestFailed;
+};
+
+export type SvrRestoreFailedError = LibSignalErrorCommon & {
+  code: ErrorCode.SvrRestoreFailed;
+  readonly triesRemaining: number;
+};
+
+export type CancellationError = LibSignalErrorCommon & {
+  code: ErrorCode.Cancelled;
 };
 
 export type LibSignalError =
@@ -220,5 +269,14 @@ export type LibSignalError =
   | InvalidEntropyDataLength
   | InvalidUsernameLinkEncryptedData
   | IoError
+  | CdsiInvalidTokenError
+  | InvalidUriError
   | InvalidMediaInputError
-  | UnsupportedMediaInputError;
+  | SvrDataMissingError
+  | SvrRestoreFailedError
+  | SvrRequestFailedError
+  | UnsupportedMediaInputError
+  | ChatServiceInactive
+  | AppExpiredError
+  | DeviceDelinkedError
+  | CancellationError;

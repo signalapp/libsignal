@@ -18,11 +18,11 @@
 use curve25519_dalek::ristretto::RistrettoPoint;
 use hkdf::Hkdf;
 use partial_default::PartialDefault;
+use poksho::ShoApi;
 use serde::{Deserialize, Serialize};
 use sha2::Sha256;
 
-use poksho::ShoApi;
-
+use crate::common::serialization::ReservedByte;
 use crate::common::sho::Sho;
 use crate::common::simple_types::*;
 use crate::generic_server_params::{GenericServerPublicParams, GenericServerSecretParams};
@@ -45,9 +45,44 @@ impl zkcredential::attributes::RevealedAttribute for BackupIdPoint {
 
 const CREDENTIAL_LABEL: &[u8] = b"20231003_Signal_BackupAuthCredential";
 
+// We make sure we serialize BackupLevel with plenty of room to expand to other
+// u64 values later. But since it fits in a byte today, we stick to just a u8
+// in the in-memory representation.
+#[derive(
+    Copy,
+    Clone,
+    Serialize,
+    Deserialize,
+    PartialEq,
+    Eq,
+    PartialDefault,
+    Debug,
+    num_enum::TryFromPrimitive,
+)]
+#[serde(into = "u64", try_from = "u64")]
+#[repr(u8)]
+pub enum BackupLevel {
+    #[partial_default]
+    Messages = 200,
+    Media = 201,
+}
+
+impl From<BackupLevel> for u64 {
+    fn from(backup_level: BackupLevel) -> Self {
+        backup_level as u64
+    }
+}
+
+impl TryFrom<u64> for BackupLevel {
+    type Error = <BackupLevel as TryFrom<u8>>::Error;
+    fn try_from(value: u64) -> Result<Self, Self::Error> {
+        BackupLevel::try_from(value as u8)
+    }
+}
+
 #[derive(Serialize, Deserialize, PartialDefault)]
 pub struct BackupAuthCredentialRequestContext {
-    reserved: ReservedBytes,
+    reserved: ReservedByte,
     blinded_backup_id: zkcredential::issuance::blind::BlindedPoint,
     // A 16-byte identifier derived from the the backup-key
     backup_id: [u8; 16],
@@ -80,7 +115,7 @@ impl BackupAuthCredentialRequestContext {
             .into();
 
         Self {
-            reserved: [0],
+            reserved: Default::default(),
             blinded_backup_id,
             backup_id,
             key_pair,
@@ -89,7 +124,7 @@ impl BackupAuthCredentialRequestContext {
 
     pub fn get_request(&self) -> BackupAuthCredentialRequest {
         BackupAuthCredentialRequest {
-            reserved: [0],
+            reserved: Default::default(),
             blinded_backup_id: self.blinded_backup_id,
             public_key: *self.key_pair.public_key(),
         }
@@ -98,7 +133,7 @@ impl BackupAuthCredentialRequestContext {
 
 #[derive(Serialize, Deserialize, PartialDefault)]
 pub struct BackupAuthCredentialRequest {
-    reserved: ReservedBytes,
+    reserved: ReservedByte,
     blinded_backup_id: zkcredential::issuance::blind::BlindedPoint,
     public_key: zkcredential::issuance::blind::BlindingPublicKey,
 }
@@ -107,17 +142,17 @@ impl BackupAuthCredentialRequest {
     pub fn issue(
         &self,
         redemption_time: Timestamp,
-        receipt_level: ReceiptLevel,
+        backup_level: BackupLevel,
         params: &GenericServerSecretParams,
         randomness: RandomnessBytes,
     ) -> BackupAuthCredentialResponse {
         BackupAuthCredentialResponse {
-            reserved: [0],
+            reserved: Default::default(),
             redemption_time,
-            receipt_level,
+            backup_level,
             blinded_credential: zkcredential::issuance::IssuanceProofBuilder::new(CREDENTIAL_LABEL)
                 .add_public_attribute(&redemption_time)
-                .add_public_attribute(&receipt_level)
+                .add_public_attribute(&(backup_level as u64))
                 .add_blinded_revealed_attribute(&self.blinded_backup_id)
                 .issue(&params.credential_key, &self.public_key, randomness),
         }
@@ -126,9 +161,12 @@ impl BackupAuthCredentialRequest {
 
 #[derive(Serialize, Deserialize, PartialDefault)]
 pub struct BackupAuthCredentialResponse {
-    reserved: ReservedBytes,
+    reserved: ReservedByte,
+    // In theory, we don't need to store this (AuthCredentialResponse doesn't),
+    // because the redemption time is also passed *outside* the response by chat-server.
+    // But that would change the format.
     redemption_time: Timestamp,
-    receipt_level: ReceiptLevel,
+    backup_level: BackupLevel,
     blinded_credential: zkcredential::issuance::blind::BlindedIssuanceProof,
 }
 
@@ -137,23 +175,21 @@ impl BackupAuthCredentialRequestContext {
         self,
         response: BackupAuthCredentialResponse,
         params: &GenericServerPublicParams,
-        expected_receipt_level: ReceiptLevel,
+        expected_redemption_time: Timestamp,
     ) -> Result<BackupAuthCredential, ZkGroupVerificationFailure> {
-        if response.redemption_time % SECONDS_PER_DAY != 0 {
-            return Err(ZkGroupVerificationFailure);
-        }
-
-        if response.receipt_level != expected_receipt_level {
+        if response.redemption_time != expected_redemption_time
+            || !response.redemption_time.is_day_aligned()
+        {
             return Err(ZkGroupVerificationFailure);
         }
 
         Ok(BackupAuthCredential {
-            reserved: [0],
+            reserved: Default::default(),
             redemption_time: response.redemption_time,
-            receipt_level: response.receipt_level,
+            backup_level: response.backup_level,
             credential: zkcredential::issuance::IssuanceProofBuilder::new(CREDENTIAL_LABEL)
                 .add_public_attribute(&response.redemption_time)
-                .add_public_attribute(&expected_receipt_level)
+                .add_public_attribute(&(response.backup_level as u64))
                 .add_blinded_revealed_attribute(&self.blinded_backup_id)
                 .verify(
                     &params.credential_key,
@@ -168,9 +204,9 @@ impl BackupAuthCredentialRequestContext {
 
 #[derive(Serialize, Deserialize, PartialDefault)]
 pub struct BackupAuthCredential {
-    reserved: ReservedBytes,
+    reserved: ReservedByte,
     redemption_time: Timestamp,
-    receipt_level: ReceiptLevel,
+    backup_level: BackupLevel,
     credential: zkcredential::credentials::Credential,
     backup_id: [u8; 16],
 }
@@ -182,9 +218,9 @@ impl BackupAuthCredential {
         randomness: RandomnessBytes,
     ) -> BackupAuthCredentialPresentation {
         BackupAuthCredentialPresentation {
-            reserved: [0],
+            version: Default::default(),
             redemption_time: self.redemption_time,
-            receipt_level: self.receipt_level,
+            backup_level: self.backup_level,
             backup_id: self.backup_id,
             proof: zkcredential::presentation::PresentationProofBuilder::new(CREDENTIAL_LABEL)
                 .add_revealed_attribute(&BackupIdPoint::new(&self.backup_id))
@@ -195,12 +231,16 @@ impl BackupAuthCredential {
     pub fn backup_id(&self) -> [u8; 16] {
         self.backup_id
     }
+
+    pub fn backup_level(&self) -> BackupLevel {
+        self.backup_level
+    }
 }
 
 #[derive(Serialize, Deserialize, PartialDefault)]
 pub struct BackupAuthCredentialPresentation {
-    reserved: ReservedBytes,
-    receipt_level: ReceiptLevel,
+    version: ReservedByte,
+    backup_level: BackupLevel,
     redemption_time: Timestamp,
     proof: zkcredential::presentation::PresentationProof,
     backup_id: [u8; 16],
@@ -209,32 +249,32 @@ pub struct BackupAuthCredentialPresentation {
 impl BackupAuthCredentialPresentation {
     pub fn verify(
         &self,
-        current_time_in_seconds: Timestamp,
+        current_time: Timestamp,
         server_params: &GenericServerSecretParams,
     ) -> Result<(), ZkGroupVerificationFailure> {
         let acceptable_start_time = self
             .redemption_time
-            .checked_sub(SECONDS_PER_DAY)
+            .checked_sub_seconds(SECONDS_PER_DAY)
             .ok_or(ZkGroupVerificationFailure)?;
         let acceptable_end_time = self
             .redemption_time
-            .checked_add(2 * SECONDS_PER_DAY)
+            .checked_add_seconds(2 * SECONDS_PER_DAY)
             .ok_or(ZkGroupVerificationFailure)?;
 
-        if !(acceptable_start_time..=acceptable_end_time).contains(&current_time_in_seconds) {
+        if !(acceptable_start_time..=acceptable_end_time).contains(&current_time) {
             return Err(ZkGroupVerificationFailure);
         }
 
         zkcredential::presentation::PresentationProofVerifier::new(CREDENTIAL_LABEL)
             .add_public_attribute(&self.redemption_time)
-            .add_public_attribute(&self.receipt_level)
+            .add_public_attribute(&(self.backup_level as u64))
             .add_revealed_attribute(&BackupIdPoint::new(&self.backup_id))
             .verify(&server_params.credential_key, &self.proof)
             .map_err(|_| ZkGroupVerificationFailure)
     }
 
-    pub fn receipt_level(&self) -> ReceiptLevel {
-        self.receipt_level
+    pub fn backup_level(&self) -> BackupLevel {
+        self.backup_level
     }
 
     pub fn backup_id(&self) -> [u8; 16] {
@@ -244,13 +284,13 @@ impl BackupAuthCredentialPresentation {
 
 #[cfg(test)]
 mod tests {
-    use crate::backups::auth_credential::GenericServerSecretParams;
+    use crate::backups::auth_credential::{BackupLevel, GenericServerSecretParams};
     use crate::backups::{
         BackupAuthCredential, BackupAuthCredentialPresentation, BackupAuthCredentialRequestContext,
     };
-    use crate::{RandomnessBytes, Timestamp, RANDOMNESS_LEN, SECONDS_PER_DAY};
+    use crate::{common, RandomnessBytes, Timestamp, RANDOMNESS_LEN, SECONDS_PER_DAY};
 
-    const DAY_ALIGNED_TIMESTAMP: Timestamp = 1681344000; // 2023-04-13 00:00:00 UTC
+    const DAY_ALIGNED_TIMESTAMP: Timestamp = Timestamp::from_epoch_seconds(1681344000); // 2023-04-13 00:00:00 UTC
     const KEY: [u8; 32] = [0x42u8; 32];
     const ACI: uuid::Uuid = uuid::uuid!("c0fc16e4-bae5-4343-9f0d-e7ecf4251343");
     const SERVER_SECRET_RAND: RandomnessBytes = [0xA0; RANDOMNESS_LEN];
@@ -262,8 +302,6 @@ mod tests {
     }
 
     fn generate_credential(redemption_time: Timestamp) -> BackupAuthCredential {
-        let receipt_level = 10;
-
         // client generated materials; issuance request
         let request_context = BackupAuthCredentialRequestContext::new(&KEY, &ACI);
         let request = request_context.get_request();
@@ -271,7 +309,7 @@ mod tests {
         // server generated materials; issuance request -> issuance response
         let blinded_credential = request.issue(
             redemption_time,
-            receipt_level,
+            BackupLevel::Messages,
             &server_secret_params(),
             ISSUE_RAND,
         );
@@ -279,7 +317,7 @@ mod tests {
         // client generated materials; issuance response -> redemption request
         let server_public_params = server_secret_params().get_public_params();
         request_context
-            .receive(blinded_credential, &server_public_params, receipt_level)
+            .receive(blinded_credential, &server_public_params, redemption_time)
             .expect("credential should be valid")
     }
 
@@ -295,13 +333,13 @@ mod tests {
 
         presentation
             .verify(
-                DAY_ALIGNED_TIMESTAMP - SECONDS_PER_DAY - 1,
+                DAY_ALIGNED_TIMESTAMP.sub_seconds(SECONDS_PER_DAY + 1),
                 &server_secret_params(),
             )
             .expect_err("credential should not be valid 24h before redemption time");
         presentation
             .verify(
-                DAY_ALIGNED_TIMESTAMP + 2 * SECONDS_PER_DAY + 1,
+                DAY_ALIGNED_TIMESTAMP.add_seconds(2 * SECONDS_PER_DAY + 1),
                 &server_secret_params(),
             )
             .expect_err("credential should not be valid after expiration (2 days later)");
@@ -327,7 +365,7 @@ mod tests {
         let valid_presentation =
             credential.present(&server_secret_params().get_public_params(), PRESENT_RAND);
         let invalid_presentation = BackupAuthCredentialPresentation {
-            redemption_time: DAY_ALIGNED_TIMESTAMP + 1,
+            redemption_time: DAY_ALIGNED_TIMESTAMP.add_seconds(1),
             ..valid_presentation
         };
         invalid_presentation
@@ -341,7 +379,8 @@ mod tests {
         let valid_presentation =
             credential.present(&server_secret_params().get_public_params(), PRESENT_RAND);
         let invalid_presentation = BackupAuthCredentialPresentation {
-            receipt_level: 999,
+            // Credential was for BackupLevel::Messages
+            backup_level: BackupLevel::Media,
             ..valid_presentation
         };
         invalid_presentation
@@ -350,32 +389,14 @@ mod tests {
     }
 
     #[test]
-    fn test_client_enforces_timestamp_granularity() {
-        let redemption_time: Timestamp = DAY_ALIGNED_TIMESTAMP + 60 * 60; // not on a day boundary!
+    fn test_client_enforces_timestamp() {
+        let redemption_time: Timestamp = DAY_ALIGNED_TIMESTAMP;
 
-        let request_context = BackupAuthCredentialRequestContext::new(&KEY, &ACI);
-        let request = request_context.get_request();
-        let blinded_credential =
-            request.issue(redemption_time, 1, &server_secret_params(), ISSUE_RAND);
-        assert!(
-            request_context
-                .receive(
-                    blinded_credential,
-                    &server_secret_params().get_public_params(),
-                    1
-                )
-                .is_err(),
-            "client should require that timestamp is on a day boundary"
-        );
-    }
-
-    #[test]
-    fn test_client_enforces_receipt_level() {
         let request_context = BackupAuthCredentialRequestContext::new(&KEY, &ACI);
         let request = request_context.get_request();
         let blinded_credential = request.issue(
-            DAY_ALIGNED_TIMESTAMP,
-            1,
+            redemption_time,
+            BackupLevel::Messages,
             &server_secret_params(),
             ISSUE_RAND,
         );
@@ -384,10 +405,55 @@ mod tests {
                 .receive(
                     blinded_credential,
                     &server_secret_params().get_public_params(),
-                    2
+                    redemption_time.add_seconds(SECONDS_PER_DAY),
                 )
                 .is_err(),
-            "client should require receipt level 2"
+            "client should require that timestamp matches its expectation"
         );
+    }
+
+    #[test]
+    fn test_client_enforces_timestamp_granularity() {
+        let redemption_time: Timestamp = DAY_ALIGNED_TIMESTAMP.add_seconds(60 * 60); // not on a day boundary!
+
+        let request_context = BackupAuthCredentialRequestContext::new(&KEY, &ACI);
+        let request = request_context.get_request();
+        let blinded_credential = request.issue(
+            redemption_time,
+            BackupLevel::Messages,
+            &server_secret_params(),
+            ISSUE_RAND,
+        );
+        assert!(
+            request_context
+                .receive(
+                    blinded_credential,
+                    &server_secret_params().get_public_params(),
+                    redemption_time,
+                )
+                .is_err(),
+            "client should require that timestamp is on a day boundary"
+        );
+    }
+
+    #[test]
+    fn test_backup_level_serialization() {
+        let messages_bytes = common::serialization::serialize(&BackupLevel::Messages);
+        let media_byte = common::serialization::serialize(&BackupLevel::Media);
+        assert_eq!(messages_bytes.len(), 8);
+        assert_eq!(media_byte.len(), 8);
+
+        let messages_num: u64 =
+            common::serialization::deserialize(&messages_bytes).expect("valid u64");
+        let media_num: u64 = common::serialization::deserialize(&media_byte).expect("valid u64");
+        assert_eq!(messages_num, 200);
+        assert_eq!(media_num, 201);
+
+        let messages: BackupLevel =
+            common::serialization::deserialize(&messages_bytes).expect("valid level");
+        let media: BackupLevel =
+            common::serialization::deserialize(&media_byte).expect("valid level");
+        assert_eq!(messages, BackupLevel::Messages);
+        assert_eq!(media, BackupLevel::Media);
     }
 }

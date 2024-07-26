@@ -1,5 +1,5 @@
 plugins {
-    id 'com.android.library' version '7.0.0'
+    id 'com.android.library' version '8.3.0'
     id 'androidx.benchmark' version '1.1.1'
 }
 
@@ -10,12 +10,14 @@ repositories {
 }
 
 android {
-    compileSdkVersion 31
+    compileSdk 34
 
     defaultConfig {
         minSdkVersion 21
-        targetSdkVersion 30
+        targetSdkVersion 33
         multiDexEnabled true
+
+        testInstrumentationRunner "androidx.benchmark.junit4.AndroidBenchmarkRunner"
 
         // Uncomment this to build 32-bit-only benchmarks.
         // (Gradle will still build a 64-bit libsignal,
@@ -29,17 +31,17 @@ android {
 
     compileOptions {
         coreLibraryDesugaringEnabled true
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
     }
 
     namespace "org.signal.libsignal.benchmarks"
 }
 
 dependencies {
-    androidTestImplementation "androidx.test:runner:1.4.0"
+    androidTestImplementation "androidx.test:runner:1.5.2"
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'
-    androidTestImplementation 'androidx.benchmark:benchmark-junit4:1.1.1'
+    androidTestImplementation 'androidx.benchmark:benchmark-junit4:1.2.3'
     coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:1.1.6'
     androidTestImplementation project(':android')
 }

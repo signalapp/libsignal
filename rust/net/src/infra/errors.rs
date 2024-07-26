@@ -5,90 +5,107 @@
 
 use std::fmt::Display;
 
-use crate::infra::{certs, dns};
+use tokio_boring::HandshakeError;
+
+use crate::infra::certs;
 
 pub trait LogSafeDisplay: Display {}
 
+/// Errors that can occur during transport-level connection establishment.
 #[derive(displaydoc::Display, Debug, thiserror::Error)]
-#[cfg_attr(test, derive(Eq, PartialEq))]
-pub enum NetError {
-    /// Failed to load certificates
-    CertError,
-    /// DNS lookup failed
-    DnsError,
+pub enum TransportConnectError {
+    /// Invalid configuration for this connection
+    InvalidConfiguration,
     /// Failed to establish TCP connection to any of the IPs
     TcpConnectionFailed,
-    /// SSL error
-    SslError,
-    /// Failed to establish SSL connection
-    SslFailedHandshake,
-    /// `Content-Length` header value is invalid
-    ContentLengthHeaderInvalid,
-    /// Content stream is not consistent with the `Content-Length` header
-    ContentLengthHeaderDoesntMatchDataSize,
-    /// Failed to upgrade to H2
-    Http2FailedHandshake,
-    /// Operation timed out
-    Timeout,
-    /// Failure
-    Failure,
-    /// Failed to decode data received from the server
-    IncomingDataInvalid,
-    /// Request object must contain only ASCII text as header names and values.
-    RequestHasInvalidHeader,
-    /// Received a WebSocket frame of an unexpected type
-    UnexpectedFrameReceived,
-    /// Tried to use closed channel
-    ChannelClosed,
-    /// WebSocket error: {0}
-    WebSocketError(#[from] crate::infra::ws::Error),
-    /// Channel closed due to an error
-    ChannelClosedWithError,
-    /// Channel closed by remote peer
-    ChannelClosedByRemotePeer,
-    /// Channel closed by local peer
-    ChannelClosedByLocalPeer,
-    /// No incoming messages on the WebSocket channel
-    ChannelIdle,
-    /// Service is not connected
-    NoServiceConnection,
-    /// Request message from the server is missing the `id` field
-    ServerRequestMissingId,
-    /// Failed while sending a request from the server to the incoming  messages channel
-    FailedToPassMessageToIncomingChannel,
-    /// An HTTP stream was interrupted while receiving data.
-    HttpInterruptedDuringReceive,
+    /// DNS lookup failed
+    DnsError,
+    /// SSL error: {0}
+    SslError(SslErrorReasons),
+    /// Failed to load certificates
+    CertError,
+    /// Failed to establish SSL connection: {0}
+    SslFailedHandshake(FailedHandshakeReason),
 }
 
-impl LogSafeDisplay for NetError {}
+#[derive(Debug)]
+pub struct SslErrorReasons(boring::error::ErrorStack);
 
-impl From<std::io::Error> for NetError {
-    fn from(value: std::io::Error) -> Self {
-        log::error!("{}", value);
-        NetError::Failure
+impl Display for SslErrorReasons {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_list()
+            .entries(
+                self.0
+                    .errors()
+                    .iter()
+                    .flat_map::<Option<&'static str>, _>(boring::error::Error::reason),
+            )
+            .finish()
     }
 }
 
-impl From<certs::Error> for NetError {
+#[derive(Debug)]
+pub struct FailedHandshakeReason {
+    io: Option<std::io::ErrorKind>,
+    code: Option<boring::ssl::ErrorCode>,
+}
+
+impl<S> From<HandshakeError<S>> for FailedHandshakeReason {
+    fn from(value: HandshakeError<S>) -> Self {
+        log::debug!("handshake error: {value}");
+        let io = value.as_io_error().map(std::io::Error::kind);
+        let code = value.code();
+        Self { io, code }
+    }
+}
+
+impl Display for FailedHandshakeReason {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.io.is_none() && self.code.is_none() {
+            return write!(f, "unknown error");
+        }
+
+        if let Some(code) = self.code {
+            write!(f, "boring SSL error code:{}", code.as_raw())?;
+        }
+
+        if let Some(io) = self.io {
+            write!(f, "IO error: {io}")?
+        }
+
+        Ok(())
+    }
+}
+
+impl From<boring::error::ErrorStack> for TransportConnectError {
+    fn from(value: boring::error::ErrorStack) -> Self {
+        Self::SslError(SslErrorReasons(value))
+    }
+}
+
+impl From<certs::Error> for TransportConnectError {
     fn from(_value: certs::Error) -> Self {
-        NetError::CertError
+        Self::CertError
     }
 }
 
-impl From<dns::Error> for NetError {
-    fn from(_value: dns::Error) -> Self {
-        NetError::DnsError
+impl<S> From<HandshakeError<S>> for TransportConnectError {
+    fn from(error: HandshakeError<S>) -> Self {
+        Self::SslFailedHandshake(FailedHandshakeReason::from(error))
     }
 }
 
-impl From<boring::error::ErrorStack> for NetError {
-    fn from(_value: boring::error::ErrorStack) -> Self {
-        NetError::SslError
-    }
-}
-
-impl From<tungstenite::error::Error> for NetError {
-    fn from(value: tungstenite::error::Error) -> Self {
-        Self::WebSocketError(value.into())
+impl From<TransportConnectError> for std::io::Error {
+    fn from(value: TransportConnectError) -> Self {
+        use std::io::ErrorKind;
+        let kind = match value {
+            TransportConnectError::InvalidConfiguration => ErrorKind::InvalidInput,
+            TransportConnectError::TcpConnectionFailed => ErrorKind::ConnectionRefused,
+            TransportConnectError::SslFailedHandshake(_)
+            | TransportConnectError::SslError(_)
+            | TransportConnectError::CertError => ErrorKind::InvalidData,
+            TransportConnectError::DnsError => ErrorKind::NotFound,
+        };
+        Self::new(kind, value.to_string())
     }
 }

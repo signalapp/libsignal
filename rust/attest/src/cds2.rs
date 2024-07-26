@@ -5,27 +5,20 @@
 
 use std::collections::HashMap;
 
-use hex_literal::hex;
+use crate::constants::ENCLAVE_ID_CDSI_STAGING_AND_PROD;
 use prost::Message;
 
-use crate::dcap::{self, MREnclave};
+use crate::dcap;
 use crate::enclave::{Handshake, Result};
 use crate::proto::cds2;
 use crate::util::SmallMap;
 
 /// Map from MREnclave to intel SW advisories that are known to be mitigated in the
 /// build with that MREnclave value.
-const ACCEPTABLE_SW_ADVISORIES: &SmallMap<MREnclave, &'static [&'static str], 2> =
-    &SmallMap::new([
-        (
-            hex!("7b75dd6e862decef9b37132d54be082441917a7790e82fe44f9cf653de03a75f"),
-            &["INTEL-SA-00657"] as &[&str],
-        ),
-        (
-            hex!("0f6fd79cdfdaa5b2e6337f534d3baf999318b0c462a7ac1f41297a3e4b424a57"),
-            &["INTEL-SA-00615", "INTEL-SA-00657"] as &[&str],
-        ),
-    ]);
+const ACCEPTABLE_SW_ADVISORIES: &SmallMap<&[u8], &'static [&'static str], 1> = &SmallMap::new([(
+    ENCLAVE_ID_CDSI_STAGING_AND_PROD,
+    &["INTEL-SA-00615", "INTEL-SA-00657"] as &[&str],
+)]);
 
 /// SW advisories known to be mitigated by default. If an MREnclave is provided that
 /// is not contained in `ACCEPTABLE_SW_ADVISORIES`, this will be used
@@ -43,7 +36,7 @@ pub fn new_handshake(
         &handshake_start.evidence,
         &handshake_start.endorsement,
         ACCEPTABLE_SW_ADVISORIES
-            .get(mrenclave)
+            .get(&mrenclave)
             .unwrap_or(&DEFAULT_SW_ADVISORIES),
         current_time,
     )?
@@ -62,6 +55,8 @@ pub fn extract_metrics(attestation_msg: &[u8]) -> Result<HashMap<String, i64>> {
 #[cfg(test)]
 mod test {
     use std::time::{Duration, SystemTime};
+
+    use hex_literal::hex;
 
     use super::*;
 

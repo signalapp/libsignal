@@ -34,7 +34,6 @@ tokens_alias!(
     VisitContainerUnknownFields,
     crate::unknown::visit_static::VisitContainerUnknownFields
 );
-tokens_alias!(UnknownFieldVisitor, crate::unknown::UnknownFieldVisitor);
 tokens_alias!(Visitor, crate::unknown::visit_static::Visitor);
 tokens_alias!(PathType, crate::unknown::Path<'_>);
 tokens_alias!(Path, crate::unknown::Path);

@@ -5,6 +5,8 @@
 
 package org.signal.libsignal.crypto;
 
+import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
+
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
 import org.signal.libsignal.protocol.InvalidKeyException;
@@ -16,7 +18,10 @@ public class Aes256GcmDecryption implements NativeHandleGuard.Owner {
 
   public Aes256GcmDecryption(byte[] key, byte[] nonce, byte[] associatedData)
       throws InvalidKeyException {
-    this.unsafeHandle = Native.Aes256GcmDecryption_New(key, nonce, associatedData);
+    this.unsafeHandle =
+        filterExceptions(
+            InvalidKeyException.class,
+            () -> Native.Aes256GcmDecryption_New(key, nonce, associatedData));
   }
 
   @Override
@@ -43,7 +48,8 @@ public class Aes256GcmDecryption implements NativeHandleGuard.Owner {
 
   public boolean verifyTag(byte[] tag) {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      boolean tagOk = Native.Aes256GcmDecryption_VerifyTag(guard.nativeHandle(), tag);
+      boolean tagOk =
+          filterExceptions(() -> Native.Aes256GcmDecryption_VerifyTag(guard.nativeHandle(), tag));
       Native.Aes256GcmDecryption_Destroy(guard.nativeHandle());
       this.unsafeHandle = 0;
       return tagOk;

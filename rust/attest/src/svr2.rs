@@ -3,11 +3,13 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use crate::constants::{ACCEPTABLE_SW_ADVISORIES, DEFAULT_SW_ADVISORIES, EXPECTED_RAFT_CONFIG};
+use crate::constants::{
+    ACCEPTABLE_SW_ADVISORIES, DEFAULT_SW_ADVISORIES, EXPECTED_RAFT_CONFIG_SVR2,
+};
 use prost::Message;
 
 use crate::enclave::{Error, Handshake, Result};
-use crate::proto::svr2;
+use crate::proto::svr;
 
 /// A RaftConfig that can be checked against the attested remote config
 #[derive(Debug)]
@@ -18,8 +20,8 @@ pub struct RaftConfig {
     pub group_id: u64,
 }
 
-impl PartialEq<svr2::RaftGroupConfig> for RaftConfig {
-    fn eq(&self, pb: &svr2::RaftGroupConfig) -> bool {
+impl PartialEq<svr::RaftGroupConfig> for RaftConfig {
+    fn eq(&self, pb: &svr::RaftGroupConfig) -> bool {
         pb.min_voting_replicas == self.min_voting_replicas
             && pb.max_voting_replicas == self.max_voting_replicas
             && pb.super_majority == self.super_majority
@@ -27,38 +29,41 @@ impl PartialEq<svr2::RaftGroupConfig> for RaftConfig {
     }
 }
 
-pub(crate) fn expected_raft_config(
-    mr_enclave: &[u8],
-    config_override: Option<&'static RaftConfig>,
-) -> Result<&'static RaftConfig> {
-    config_override
-        .or_else(|| EXPECTED_RAFT_CONFIG.get(&mr_enclave).copied())
-        .ok_or(Error::AttestationDataError {
-            reason: format!("unknown mrenclave {:?}", mr_enclave),
-        })
-}
 /// Lookup the group id constant associated with the `mrenclave`
 pub fn lookup_groupid(mrenclave: &[u8]) -> Option<u64> {
-    EXPECTED_RAFT_CONFIG
+    EXPECTED_RAFT_CONFIG_SVR2
         .get(&mrenclave)
         .map(|config| config.group_id)
+}
+
+// Must only be used for SVR2 bridging code that does
+// not expose the notion of environment to the clients.
+pub fn new_handshake_with_raft_config_lookup(
+    mrenclave: &[u8],
+    attestation_msg: &[u8],
+    current_time: std::time::SystemTime,
+) -> Result<Handshake> {
+    let expected_raft_config =
+        EXPECTED_RAFT_CONFIG_SVR2
+            .get(&mrenclave)
+            .copied()
+            .ok_or(Error::AttestationDataError {
+                reason: format!("unknown mrenclave {:?}", &mrenclave),
+            })?;
+    new_handshake(
+        mrenclave,
+        attestation_msg,
+        current_time,
+        expected_raft_config,
+    )
 }
 
 pub fn new_handshake(
     mrenclave: &[u8],
     attestation_msg: &[u8],
     current_time: std::time::SystemTime,
+    expected_raft_config: &'static RaftConfig,
 ) -> Result<Handshake> {
-    new_handshake_with_override(mrenclave, attestation_msg, current_time, None)
-}
-
-pub fn new_handshake_with_override(
-    mrenclave: &[u8],
-    attestation_msg: &[u8],
-    current_time: std::time::SystemTime,
-    raft_config_override: Option<&'static RaftConfig>,
-) -> Result<Handshake> {
-    let expected_raft_config = expected_raft_config(mrenclave, raft_config_override)?;
     new_handshake_with_constants(
         mrenclave,
         attestation_msg,
@@ -78,7 +83,7 @@ fn new_handshake_with_constants(
     expected_raft_config: &RaftConfig,
 ) -> Result<Handshake> {
     // Deserialize attestation handshake start.
-    let handshake_start = svr2::ClientHandshakeStart::decode(attestation_msg)?;
+    let handshake_start = svr::ClientHandshakeStart::decode(attestation_msg)?;
     let handshake = Handshake::for_sgx(
         mrenclave,
         &handshake_start.evidence,
@@ -102,18 +107,24 @@ mod tests {
     #[test]
     fn attest_svr2() {
         const HANDSHAKE_BYTES: &[u8] = include_bytes!("../tests/data/svr2handshakestart.data");
-        let current_time = SystemTime::UNIX_EPOCH + Duration::from_secs(1683836600);
+        let current_time = SystemTime::UNIX_EPOCH + Duration::from_secs(1709245753);
         let mrenclave_bytes =
-            hex!("a8a261420a6bb9b61aa25bf8a79e8bd20d7652531feb3381cbffd446d270be95");
-        new_handshake(&mrenclave_bytes, HANDSHAKE_BYTES, current_time).unwrap();
+            hex!("acb1973aa0bbbd14b3b4e06f145497d948fd4a98efc500fcce363b3b743ec482");
+        let raft_config: &RaftConfig = &RaftConfig {
+            min_voting_replicas: 3,
+            max_voting_replicas: 5,
+            super_majority: 0,
+            group_id: 16934825672495360159,
+        };
+        new_handshake(&mrenclave_bytes, HANDSHAKE_BYTES, current_time, raft_config).unwrap();
     }
 
     #[test]
     fn attest_svr2_bad_config() {
         const HANDSHAKE_BYTES: &[u8] = include_bytes!("../tests/data/svr2handshakestart.data");
-        let current_time = SystemTime::UNIX_EPOCH + Duration::from_secs(1683836600);
+        let current_time = SystemTime::UNIX_EPOCH + Duration::from_secs(1709245753);
         let mrenclave_bytes =
-            hex!("a8a261420a6bb9b61aa25bf8a79e8bd20d7652531feb3381cbffd446d270be95");
+            hex!("acb1973aa0bbbd14b3b4e06f145497d948fd4a98efc500fcce363b3b743ec482");
 
         assert!(new_handshake_with_constants(
             &mrenclave_bytes,
@@ -138,7 +149,7 @@ mod tests {
         expected: &RaftConfig,
     ) -> bool {
         expected
-            == &svr2::RaftGroupConfig {
+            == &svr::RaftGroupConfig {
                 min_voting_replicas,
                 max_voting_replicas,
                 super_majority,

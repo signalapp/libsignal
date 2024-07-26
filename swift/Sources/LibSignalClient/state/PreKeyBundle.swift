@@ -3,39 +3,43 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import SignalFfi
 import Foundation
+import SignalFfi
 
 public class PreKeyBundle: NativeHandleOwner {
-    internal override class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
+    override internal class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
         return signal_pre_key_bundle_destroy(handle)
     }
 
     // with a prekey
-    public convenience init<Bytes: ContiguousBytes>(registrationId: UInt32,
-                                                    deviceId: UInt32,
-                                                    prekeyId: UInt32,
-                                                    prekey: PublicKey,
-                                                    signedPrekeyId: UInt32,
-                                                    signedPrekey: PublicKey,
-                                                    signedPrekeySignature: Bytes,
-                                                    identity identityKey: IdentityKey) throws {
+    public convenience init<Bytes: ContiguousBytes>(
+        registrationId: UInt32,
+        deviceId: UInt32,
+        prekeyId: UInt32,
+        prekey: PublicKey,
+        signedPrekeyId: UInt32,
+        signedPrekey: PublicKey,
+        signedPrekeySignature: Bytes,
+        identity identityKey: IdentityKey
+    ) throws {
         var result: OpaquePointer?
         try withNativeHandles(prekey, signedPrekey, identityKey.publicKey) { prekeyHandle, signedPrekeyHandle, identityKeyHandle in
             try signedPrekeySignature.withUnsafeBorrowedBuffer { signedSignatureBuffer in
                 try [].withUnsafeBorrowedBuffer { kyberSignatureBuffer in
-                    try checkError(signal_pre_key_bundle_new(&result,
-                                                             registrationId,
-                                                             deviceId,
-                                                             prekeyId,
-                                                             prekeyHandle,
-                                                             signedPrekeyId,
-                                                             signedPrekeyHandle,
-                                                             signedSignatureBuffer,
-                                                             identityKeyHandle,
-                                                             ~0,
-                                                             nil,
-                                                             kyberSignatureBuffer))
+                    try checkError(signal_pre_key_bundle_new(
+                        &result,
+                        registrationId,
+                        deviceId,
+                        prekeyId,
+                        prekeyHandle,
+                        signedPrekeyId,
+                        signedPrekeyHandle,
+                        signedSignatureBuffer,
+                        identityKeyHandle,
+                        ~0,
+                        nil,
+                        kyberSignatureBuffer
+                    ))
                 }
             }
         }
@@ -43,28 +47,32 @@ public class PreKeyBundle: NativeHandleOwner {
     }
 
     // without a prekey
-    public convenience init<Bytes: ContiguousBytes>(registrationId: UInt32,
-                                                    deviceId: UInt32,
-                                                    signedPrekeyId: UInt32,
-                                                    signedPrekey: PublicKey,
-                                                    signedPrekeySignature: Bytes,
-                                                    identity identityKey: IdentityKey) throws {
+    public convenience init<Bytes: ContiguousBytes>(
+        registrationId: UInt32,
+        deviceId: UInt32,
+        signedPrekeyId: UInt32,
+        signedPrekey: PublicKey,
+        signedPrekeySignature: Bytes,
+        identity identityKey: IdentityKey
+    ) throws {
         var result: OpaquePointer?
         try withNativeHandles(signedPrekey, identityKey.publicKey) { signedPrekeyHandle, identityKeyHandle in
             try signedPrekeySignature.withUnsafeBorrowedBuffer { signedSignatureBuffer in
                 try [].withUnsafeBorrowedBuffer { kyberSignatureBuffer in
-                    try checkError(signal_pre_key_bundle_new(&result,
-                                                             registrationId,
-                                                             deviceId,
-                                                             ~0,
-                                                             nil,
-                                                             signedPrekeyId,
-                                                             signedPrekeyHandle,
-                                                             signedSignatureBuffer,
-                                                             identityKeyHandle,
-                                                             ~0,
-                                                             nil,
-                                                             kyberSignatureBuffer))
+                    try checkError(signal_pre_key_bundle_new(
+                        &result,
+                        registrationId,
+                        deviceId,
+                        ~0,
+                        nil,
+                        signedPrekeyId,
+                        signedPrekeyHandle,
+                        signedSignatureBuffer,
+                        identityKeyHandle,
+                        ~0,
+                        nil,
+                        kyberSignatureBuffer
+                    ))
                 }
             }
         }
@@ -87,23 +95,25 @@ public class PreKeyBundle: NativeHandleOwner {
         kyberPrekeyId: UInt32,
         kyberPrekey: KEMPublicKey,
         kyberPrekeySignature: KEMBytes
-     ) throws {
+    ) throws {
         var result: OpaquePointer?
         try withNativeHandles(prekey, signedPrekey, identityKey.publicKey, kyberPrekey) { prekeyHandle, signedPrekeyHandle, identityKeyHandle, kyberKeyHandle in
             try signedPrekeySignature.withUnsafeBorrowedBuffer { ecSignatureBuffer in
                 try kyberPrekeySignature.withUnsafeBorrowedBuffer { kyberSignatureBuffer in
-                    try checkError(signal_pre_key_bundle_new(&result,
-                                                             registrationId,
-                                                             deviceId,
-                                                             prekeyId,
-                                                             prekeyHandle,
-                                                             signedPrekeyId,
-                                                             signedPrekeyHandle,
-                                                             ecSignatureBuffer,
-                                                             identityKeyHandle,
-                                                             kyberPrekeyId,
-                                                             kyberKeyHandle,
-                                                             kyberSignatureBuffer))
+                    try checkError(signal_pre_key_bundle_new(
+                        &result,
+                        registrationId,
+                        deviceId,
+                        prekeyId,
+                        prekeyHandle,
+                        signedPrekeyId,
+                        signedPrekeyHandle,
+                        ecSignatureBuffer,
+                        identityKeyHandle,
+                        kyberPrekeyId,
+                        kyberKeyHandle,
+                        kyberSignatureBuffer
+                    ))
                 }
             }
         }
@@ -124,23 +134,25 @@ public class PreKeyBundle: NativeHandleOwner {
         kyberPrekeyId: UInt32,
         kyberPrekey: KEMPublicKey,
         kyberPrekeySignature: KEMBytes
-     ) throws {
+    ) throws {
         var result: OpaquePointer?
         try withNativeHandles(signedPrekey, identityKey.publicKey, kyberPrekey) { signedPrekeyHandle, identityKeyHandle, kyberKeyHandle in
             try signedPrekeySignature.withUnsafeBorrowedBuffer { ecSignatureBuffer in
                 try kyberPrekeySignature.withUnsafeBorrowedBuffer { kyberSignatureBuffer in
-                    try checkError(signal_pre_key_bundle_new(&result,
-                                                             registrationId,
-                                                             deviceId,
-                                                             ~0,
-                                                             nil,
-                                                             signedPrekeyId,
-                                                             signedPrekeyHandle,
-                                                             ecSignatureBuffer,
-                                                             identityKeyHandle,
-                                                             kyberPrekeyId,
-                                                             kyberKeyHandle,
-                                                             kyberSignatureBuffer))
+                    try checkError(signal_pre_key_bundle_new(
+                        &result,
+                        registrationId,
+                        deviceId,
+                        ~0,
+                        nil,
+                        signedPrekeyId,
+                        signedPrekeyHandle,
+                        ecSignatureBuffer,
+                        identityKeyHandle,
+                        kyberPrekeyId,
+                        kyberKeyHandle,
+                        kyberSignatureBuffer
+                    ))
                 }
             }
         }
@@ -181,16 +193,11 @@ public class PreKeyBundle: NativeHandleOwner {
         let prekey_id = withNativeHandle { nativeHandle in
             failOnError {
                 try invokeFnReturningInteger {
-                    signal_pre_key_bundle_get_signed_pre_key_id($0, nativeHandle)
+                    signal_pre_key_bundle_get_pre_key_id($0, nativeHandle)
                 }
             }
         }
-
-        if prekey_id == ~0 {
-            return nil
-        } else {
-            return prekey_id
-        }
+        return prekey_id == ~0 ? nil : prekey_id
     }
 
     public var preKeyPublic: PublicKey? {
@@ -232,5 +239,37 @@ public class PreKeyBundle: NativeHandleOwner {
                 }
             }
         }
+    }
+
+    public var kyberPreKeyId: UInt32? {
+        let prekey_id = withNativeHandle { nativeHandle in
+            failOnError {
+                try invokeFnReturningInteger {
+                    signal_pre_key_bundle_get_kyber_pre_key_id($0, nativeHandle)
+                }
+            }
+        }
+        return prekey_id == ~0 ? nil : prekey_id
+    }
+
+    public var kyberPreKeyPublic: KEMPublicKey? {
+        return withNativeHandle { nativeHandle in
+            failOnError {
+                try invokeFnReturningOptionalNativeHandle {
+                    signal_pre_key_bundle_get_kyber_pre_key_public($0, nativeHandle)
+                }
+            }
+        }
+    }
+
+    public var kyberPreKeySignature: [UInt8]? {
+        let result: [UInt8] = withNativeHandle { nativeHandle in
+            failOnError {
+                try invokeFnReturningArray {
+                    signal_pre_key_bundle_get_kyber_pre_key_signature($0, nativeHandle)
+                }
+            }
+        }
+        return result.isEmpty ? nil : result
     }
 }

@@ -8,7 +8,6 @@ import { RANDOM_LENGTH } from '../internal/Constants';
 import * as Native from '../../../Native';
 
 import ServerSecretParams from '../ServerSecretParams';
-import AuthCredentialResponse from './AuthCredentialResponse';
 import AuthCredentialPresentation from './AuthCredentialPresentation';
 import AuthCredentialWithPniResponse from './AuthCredentialWithPniResponse';
 import GroupPublicParams from '../groups/GroupPublicParams';
@@ -19,30 +18,6 @@ export default class ServerZkAuthOperations {
 
   constructor(serverSecretParams: ServerSecretParams) {
     this.serverSecretParams = serverSecretParams;
-  }
-
-  issueAuthCredential(
-    aci: Aci,
-    redemptionTime: number
-  ): AuthCredentialResponse {
-    const random = randomBytes(RANDOM_LENGTH);
-
-    return this.issueAuthCredentialWithRandom(random, aci, redemptionTime);
-  }
-
-  issueAuthCredentialWithRandom(
-    random: Buffer,
-    aci: Aci,
-    redemptionTime: number
-  ): AuthCredentialResponse {
-    return new AuthCredentialResponse(
-      Native.ServerSecretParams_IssueAuthCredentialDeterministic(
-        this.serverSecretParams.getContents(),
-        random,
-        aci.getServiceIdFixedWidthBinary(),
-        redemptionTime
-      )
-    );
   }
 
   issueAuthCredentialWithPniAsServiceId(
@@ -68,7 +43,7 @@ export default class ServerZkAuthOperations {
   ): AuthCredentialWithPniResponse {
     return new AuthCredentialWithPniResponse(
       Native.ServerSecretParams_IssueAuthCredentialWithPniAsServiceIdDeterministic(
-        this.serverSecretParams.getContents(),
+        this.serverSecretParams,
         random,
         aci.getServiceIdFixedWidthBinary(),
         pni.getServiceIdFixedWidthBinary(),
@@ -77,14 +52,14 @@ export default class ServerZkAuthOperations {
     );
   }
 
-  issueAuthCredentialWithPniAsAci(
+  issueAuthCredentialWithPniZkc(
     aci: Aci,
     pni: Pni,
     redemptionTime: number
   ): AuthCredentialWithPniResponse {
     const random = randomBytes(RANDOM_LENGTH);
 
-    return this.issueAuthCredentialWithPniAsAciWithRandom(
+    return this.issueAuthCredentialWithPniZkcWithRandom(
       random,
       aci,
       pni,
@@ -92,15 +67,15 @@ export default class ServerZkAuthOperations {
     );
   }
 
-  issueAuthCredentialWithPniAsAciWithRandom(
+  issueAuthCredentialWithPniZkcWithRandom(
     random: Buffer,
     aci: Aci,
     pni: Pni,
     redemptionTime: number
   ): AuthCredentialWithPniResponse {
     return new AuthCredentialWithPniResponse(
-      Native.ServerSecretParams_IssueAuthCredentialWithPniAsAciDeterministic(
-        this.serverSecretParams.getContents(),
+      Native.ServerSecretParams_IssueAuthCredentialWithPniZkcDeterministic(
+        this.serverSecretParams,
         random,
         aci.getServiceIdFixedWidthBinary(),
         pni.getServiceIdFixedWidthBinary(),
@@ -115,7 +90,7 @@ export default class ServerZkAuthOperations {
     now: Date = new Date()
   ): void {
     Native.ServerSecretParams_VerifyAuthCredentialPresentation(
-      this.serverSecretParams.getContents(),
+      this.serverSecretParams,
       groupPublicParams.getContents(),
       authCredentialPresentation.getContents(),
       Math.floor(now.getTime() / 1000)

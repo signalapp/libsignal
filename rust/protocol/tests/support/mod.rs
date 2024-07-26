@@ -111,7 +111,7 @@ pub async fn create_pre_key_bundle<R: Rng + CryptoRng>(
         )
         .await?;
 
-    let timestamp = csprng.gen();
+    let timestamp = Timestamp::from_epoch_millis(csprng.gen());
 
     store
         .save_signed_pre_key(
@@ -130,7 +130,7 @@ pub async fn create_pre_key_bundle<R: Rng + CryptoRng>(
             kyber_pre_key_id.into(),
             &KyberPreKeyRecord::new(
                 kyber_pre_key_id.into(),
-                43,
+                Timestamp::from_epoch_millis(43),
                 &kyber_pre_key_pair,
                 &kyber_pre_key_signature,
             ),
@@ -309,7 +309,12 @@ impl TestStoreBuilder {
         let pair = KeyPair::generate(&mut self.rng);
         let public = pair.public_key.serialize();
         let signature = self.sign(&public);
-        let record = SignedPreKeyRecord::new(id.into(), 42, &pair, &signature);
+        let record = SignedPreKeyRecord::new(
+            id.into(),
+            Timestamp::from_epoch_millis(42),
+            &pair,
+            &signature,
+        );
         self.store
             .save_signed_pre_key(id.into(), &record)
             .now_or_never()
@@ -333,7 +338,12 @@ impl TestStoreBuilder {
         let pair = kem::KeyPair::generate(kem::KeyType::Kyber1024);
         let public = pair.public_key.serialize();
         let signature = self.sign(&public);
-        let record = KyberPreKeyRecord::new(id.into(), 43, &pair, &signature);
+        let record = KyberPreKeyRecord::new(
+            id.into(),
+            Timestamp::from_epoch_millis(43),
+            &pair,
+            &signature,
+        );
         self.store
             .save_kyber_pre_key(id.into(), &record)
             .now_or_never()

@@ -6,12 +6,13 @@
 use partial_default::PartialDefault;
 use serde::{Deserialize, Serialize};
 
+use crate::common::serialization::ReservedByte;
 use crate::common::simple_types::*;
 use crate::{api, crypto};
 
 #[derive(Serialize, Deserialize, PartialDefault)]
 pub struct ReceiptCredentialRequestContext {
-    pub(crate) reserved: ReservedBytes,
+    pub(crate) reserved: ReservedByte,
     pub(crate) receipt_serial_bytes: ReceiptSerialBytes,
     pub(crate) key_pair: crypto::receipt_credential_request::KeyPair,
     pub(crate) ciphertext_with_secret_nonce:

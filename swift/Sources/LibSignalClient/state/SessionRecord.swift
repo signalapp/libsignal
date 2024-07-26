@@ -3,15 +3,15 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import SignalFfi
 import Foundation
+import SignalFfi
 
 public class SessionRecord: ClonableHandleOwner {
-    internal override class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
+    override internal class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
         return signal_session_record_destroy(handle)
     }
 
-    internal override class func cloneNativeHandle(_ newHandle: inout OpaquePointer?, currentHandle: OpaquePointer?) -> SignalFfiErrorRef? {
+    override internal class func cloneNativeHandle(_ newHandle: inout OpaquePointer?, currentHandle: OpaquePointer?) -> SignalFfiErrorRef? {
         return signal_session_record_clone(&newHandle, currentHandle)
     }
 
@@ -61,7 +61,7 @@ public class SessionRecord: ClonableHandleOwner {
     }
 
     public func currentRatchetKeyMatches(_ key: PublicKey) throws -> Bool {
-        var result: Bool = false
+        var result = false
         try withNativeHandles(self, key) { sessionHandle, keyHandle in
             try checkError(signal_session_record_current_ratchet_key_matches(&result, sessionHandle, keyHandle))
         }

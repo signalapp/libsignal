@@ -5,6 +5,8 @@
 
 package org.signal.libsignal.devicetransfer;
 
+import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
+
 import org.signal.libsignal.internal.Native;
 
 public class DeviceTransferKey {
@@ -19,6 +21,7 @@ public class DeviceTransferKey {
   }
 
   public byte[] generateCertificate(String name, int daysTilExpires) {
-    return Native.DeviceTransfer_GenerateCertificate(this.keyMaterial, name, daysTilExpires);
+    return filterExceptions(
+        () -> Native.DeviceTransfer_GenerateCertificate(this.keyMaterial, name, daysTilExpires));
   }
 }

@@ -4,7 +4,7 @@
 //
 
 /// Error types for pin operations
-#[derive(displaydoc::Display, Debug, Clone, Eq, PartialEq)]
+#[derive(displaydoc::Display, thiserror::Error, Debug, Clone, Eq, PartialEq)]
 pub enum Error {
     /// Argon2 hashing error: {0}
     Argon2Error(argon2::Error),

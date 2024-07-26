@@ -1,0 +1,32 @@
+//
+// Copyright 2024 Signal Messenger, LLC.
+// SPDX-License-Identifier: AGPL-3.0-only
+//
+syntax = "proto3";
+
+package org.signal.svr3;
+
+message ASNPEvidence {
+  // Serialized AttestationData
+  bytes attestation_data = 1;
+
+  // tpm2_quote -c 0x81000003 -l sha256:all -q "<sha256 of attestation_data>" -m msg -s sig -o pcrs --pcrs_format values
+  bytes pcrs = 2;
+  bytes msg = 3;
+  bytes sig = 4;
+
+  // tpm2_nvread -C o 0x01400001
+  bytes snp_report = 5;
+  // runtime_data, in the form used by Azure
+  bytes runtime_data = 6;
+  // tpm2_nvread -C o 0x1C101D0
+  bytes akcert_der = 7;
+}
+
+message ASNPEndorsements {
+  // From https://learn.microsoft.com/en-us/azure/virtual-machines/trusted-launch-faq?tabs=cli%2Cdebianbased#certificates
+  bytes intermediate_der = 1;
+  // From http://169.254.169.254/metadata/THIM/amd/certification
+  bytes vcek_der = 2;
+  bytes ask_der = 3;
+}

@@ -5,6 +5,8 @@
 
 package org.signal.libsignal.protocol.fingerprint;
 
+import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
+
 import org.signal.libsignal.internal.Native;
 
 public class ScannableFingerprint {
@@ -30,6 +32,9 @@ public class ScannableFingerprint {
    */
   public boolean compareTo(byte[] scannedFingerprintData)
       throws FingerprintVersionMismatchException, FingerprintParsingException {
-    return Native.ScannableFingerprint_Compare(this.encodedFingerprint, scannedFingerprintData);
+    return filterExceptions(
+        FingerprintVersionMismatchException.class,
+        FingerprintParsingException.class,
+        () -> Native.ScannableFingerprint_Compare(this.encodedFingerprint, scannedFingerprintData));
   }
 }

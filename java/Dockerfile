@@ -19,7 +19,7 @@ RUN    apt-get update
 
 # Install only what's needed to set up Rust and Android
 # We'll install additional tools at the end to take advantage of Docker's caching of earlier steps.
-RUN    apt-get install -y curl openjdk-11-jdk-headless unzip
+RUN    apt-get install -y openjdk-17-jdk-headless unzip
 
 ARG UID
 ARG GID
@@ -38,15 +38,16 @@ WORKDIR /home/libsignal
 # Android SDK setup...
 ARG ANDROID_SDK_FILENAME=commandlinetools-linux-7583922_latest.zip
 ARG ANDROID_SDK_SHA=124f2d5115eee365df6cf3228ffbca6fc3911d16f8025bebd5b1c6e2fcfa7faf
-ARG ANDROID_API_LEVELS=android-30
-ARG ANDROID_BUILD_TOOLS_VERSION=30.0.2
+ARG ANDROID_API_LEVELS=android-34
+ARG ANDROID_BUILD_TOOLS_VERSION=34.0.0
 ARG NDK_VERSION=25.2.9519653
 ENV ANDROID_HOME /home/libsignal/android-sdk
 ENV PATH ${PATH}:${ANDROID_HOME}/tools:${ANDROID_HOME}/platform-tools:${ANDROID_HOME}/cmdline-tools/bin
 
-RUN    curl -O https://dl.google.com/android/repository/${ANDROID_SDK_FILENAME} \
-    && echo "${ANDROID_SDK_SHA} ${ANDROID_SDK_FILENAME}" | sha256sum -c - \
-    && unzip -q ${ANDROID_SDK_FILENAME} -d android-sdk \
+ADD --chown=libsignal --checksum=sha256:${ANDROID_SDK_SHA} \
+    https://dl.google.com/android/repository/${ANDROID_SDK_FILENAME} ${ANDROID_SDK_FILENAME}
+
+RUN    unzip -q ${ANDROID_SDK_FILENAME} -d android-sdk \
     && rm -rf ${ANDROID_SDK_FILENAME}
 
 RUN    yes | sdkmanager --sdk_root=${ANDROID_HOME} "platforms;${ANDROID_API_LEVELS}" "build-tools;${ANDROID_BUILD_TOOLS_VERSION}" "platform-tools" "ndk;${NDK_VERSION}"
@@ -62,10 +63,10 @@ COPY rust-toolchain rust-toolchain
 ARG RUSTUP_SHA=ad1f8b5199b3b9e231472ed7aa08d2e5d1d539198a15c5b1e53c746aad81d27b
 ENV PATH="/home/libsignal/.cargo/bin:${PATH}"
 
-RUN    curl -f https://static.rust-lang.org/rustup/archive/1.21.1/x86_64-unknown-linux-gnu/rustup-init -o /tmp/rustup-init \
-    && echo "${RUSTUP_SHA} /tmp/rustup-init" | sha256sum -c - \
-    && chmod a+x /tmp/rustup-init \
-    && /tmp/rustup-init -y --profile minimal --default-toolchain "$(cat rust-toolchain)" \
+ADD --chown=libsignal --chmod=755 --checksum=sha256:${RUSTUP_SHA} \
+    https://static.rust-lang.org/rustup/archive/1.21.1/x86_64-unknown-linux-gnu/rustup-init /tmp/rustup-init
+
+RUN    /tmp/rustup-init -y --profile minimal --default-toolchain "$(cat rust-toolchain)" \
     && rm -rf /tmp/rustup-init
 
 RUN    rustup target add armv7-linux-androideabi aarch64-linux-android i686-linux-android x86_64-linux-android

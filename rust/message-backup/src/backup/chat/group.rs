@@ -7,10 +7,15 @@
 // crate, but we want intra-crate privacy.
 #![allow(clippy::manual_non_exhaustive)]
 
+use std::fmt::Debug;
+
+use itertools::Itertools as _;
 use libsignal_protocol::{Aci, Pni, ServiceId};
+use macro_rules_attribute::macro_rules_derive;
 use protobuf::{EnumOrUnknown, Message};
 
 use crate::backup::time::Duration;
+use crate::backup::uuid_bytes_to_aci;
 use crate::proto::backup::{
     self as proto, group_invitation_revoked_update, GenericGroupUpdate, GroupAdminStatusUpdate,
     GroupAnnouncementOnlyChangeUpdate, GroupAttributesAccessLevelChangeUpdate, GroupAvatarUpdate,
@@ -27,45 +32,201 @@ use crate::proto::backup::{
     GroupV2MigrationUpdate, SelfInvitedOtherUserToGroupUpdate, SelfInvitedToGroupUpdate,
 };
 
+/// Implements `TryFrom<$MESSAGE>` for [`GroupChatUpdate`].
+///
+/// This is a custom derive macro (applied via [`macro_rules_derive`]) that is
+/// applied to the enum type `GroupChatUpdate`. It assumes each variant has
+/// named fields that match the corresponding proto input message (excluding the
+/// `special_fields` field). It generates a [`TryFrom::try_from`] implementation
+/// that calls [`ValidateFrom::validate_from`] for each field in sequence. If
+/// they all succeed, the appropriate variant of `GroupChatUpdate` is produced.
+/// Otherwise the first error is returned.
+macro_rules! TryFromProto {
+    ($( #[$attrs:meta] )*
+    pub enum GroupChatUpdate { $(
+        $VariantName:ident $({
+            $($field:ident : $typ:ty,)*
+        })?,
+    )* }) => {
+        // Expand using the next match for each enum variant.
+        $(TryFromProto!($VariantName, $($($field),*)? );)*
+    };
+    ($MESSAGE:ident, $($field:ident),* ) => {
+        impl TryFrom<$MESSAGE> for GroupChatUpdate {
+            type Error = GroupUpdateError;
+            fn try_from(
+                message: $MESSAGE,
+            ) -> Result<Self, Self::Error> {
+                let $MESSAGE {
+                    $($field,)*
+                    special_fields: _
+                    // Don't use .. so that if a field isn't named, the struct
+                    // destructuring will be incomplete.
+                } = message;
+
+                $(
+                    #[allow(non_snake_case)]
+                    let $field = ValidateFrom::validate_from($field).map_err(|field_error| GroupUpdateError {
+                        message: $MESSAGE::NAME,
+                        field_name: stringify!($field),
+                        field_error,
+                    })?;
+                )*
+
+                Ok(GroupChatUpdate::$MESSAGE {$($field),*})
+            }
+        }
+    }
+
+}
+
 /// Validated version of [`proto::group_change_chat_update::update::Update`].
-#[allow(clippy::enum_variant_names)] // names taken from proto message.
+#[allow(clippy::enum_variant_names, non_snake_case)] // names taken from proto message.
 #[derive(Debug)]
+#[macro_rules_derive(TryFromProto)]
 #[cfg_attr(test, derive(PartialEq))]
 pub enum GroupChatUpdate {
-    GenericGroupUpdate,
-    GroupCreationUpdate,
-    GroupNameUpdate,
-    GroupAvatarUpdate,
-    GroupDescriptionUpdate,
-    GroupMembershipAccessLevelChangeUpdate,
-    GroupAttributesAccessLevelChangeUpdate,
-    GroupAnnouncementOnlyChangeUpdate,
-    GroupAdminStatusUpdate,
-    GroupMemberLeftUpdate,
-    GroupMemberRemovedUpdate,
-    SelfInvitedToGroupUpdate,
-    SelfInvitedOtherUserToGroupUpdate,
-    GroupUnknownInviteeUpdate,
-    GroupInvitationAcceptedUpdate,
-    GroupInvitationDeclinedUpdate,
-    GroupMemberJoinedUpdate,
-    GroupMemberAddedUpdate,
-    GroupSelfInvitationRevokedUpdate,
-    GroupInvitationRevokedUpdate,
-    GroupJoinRequestUpdate,
-    GroupJoinRequestApprovalUpdate,
-    GroupJoinRequestCanceledUpdate,
-    GroupInviteLinkResetUpdate,
-    GroupInviteLinkEnabledUpdate,
-    GroupInviteLinkAdminApprovalUpdate,
-    GroupInviteLinkDisabledUpdate,
-    GroupMemberJoinedByLinkUpdate,
+    GenericGroupUpdate {
+        updaterAci: Option<Aci>,
+    },
+    GroupCreationUpdate {
+        updaterAci: Option<Aci>,
+    },
+    GroupNameUpdate {
+        updaterAci: Option<Aci>,
+        newGroupName: NoValidation<Option<String>>,
+    },
+    GroupAvatarUpdate {
+        updaterAci: Option<Aci>,
+        wasRemoved: NoValidation<bool>,
+    },
+    GroupDescriptionUpdate {
+        updaterAci: Option<Aci>,
+        newDescription: NoValidation<Option<String>>,
+    },
+    GroupMembershipAccessLevelChangeUpdate {
+        updaterAci: Option<Aci>,
+        accessLevel: AccessLevel,
+    },
+    GroupAttributesAccessLevelChangeUpdate {
+        updaterAci: Option<Aci>,
+        accessLevel: AccessLevel,
+    },
+    GroupAnnouncementOnlyChangeUpdate {
+        updaterAci: Option<Aci>,
+        isAnnouncementOnly: NoValidation<bool>,
+    },
+    GroupAdminStatusUpdate {
+        updaterAci: Option<Aci>,
+        memberAci: Aci,
+        wasAdminStatusGranted: NoValidation<bool>,
+    },
+    GroupMemberLeftUpdate {
+        aci: Aci,
+    },
+    GroupMemberRemovedUpdate {
+        removerAci: Option<Aci>,
+        removedAci: Aci,
+    },
+    SelfInvitedToGroupUpdate {
+        inviterAci: Option<Aci>,
+    },
+    SelfInvitedOtherUserToGroupUpdate {
+        inviteeServiceId: ServiceId,
+    },
+    GroupUnknownInviteeUpdate {
+        inviterAci: Option<Aci>,
+        inviteeCount: NoValidation<u32>,
+    },
+    GroupInvitationAcceptedUpdate {
+        inviterAci: Option<Aci>,
+        newMemberAci: Aci,
+    },
+    GroupInvitationDeclinedUpdate {
+        inviterAci: Option<Aci>,
+        inviteeAci: Option<Aci>,
+    },
+    GroupMemberJoinedUpdate {
+        newMemberAci: Aci,
+    },
+    GroupMemberAddedUpdate {
+        updaterAci: Option<Aci>,
+        newMemberAci: Aci,
+        inviterAci: Option<Aci>,
+        // TODO check that this field doesn't affect the validity of other fields in
+        // the message.
+        hadOpenInvitation: NoValidation<bool>,
+    },
+    GroupSelfInvitationRevokedUpdate {
+        revokerAci: Option<Aci>,
+    },
+
+    GroupInvitationRevokedUpdate {
+        updaterAci: Option<Aci>,
+        invitees: Vec<Invitee>,
+    },
+    GroupJoinRequestUpdate {
+        requestorAci: Aci,
+    },
+    GroupJoinRequestApprovalUpdate {
+        requestorAci: Aci,
+        updaterAci: Option<Aci>,
+        wasApproved: NoValidation<bool>,
+    },
+    GroupJoinRequestCanceledUpdate {
+        requestorAci: Aci,
+    },
+    GroupInviteLinkResetUpdate {
+        updaterAci: Option<Aci>,
+    },
+
+    GroupInviteLinkEnabledUpdate {
+        updaterAci: Option<Aci>,
+        linkRequiresAdminApproval: NoValidation<bool>,
+    },
+
+    GroupInviteLinkAdminApprovalUpdate {
+        updaterAci: Option<Aci>,
+        linkRequiresAdminApproval: NoValidation<bool>,
+    },
+    GroupInviteLinkDisabledUpdate {
+        updaterAci: Option<Aci>,
+    },
+    GroupMemberJoinedByLinkUpdate {
+        newMemberAci: Aci,
+    },
     GroupV2MigrationUpdate,
     GroupV2MigrationSelfInvitedUpdate,
-    GroupV2MigrationInvitedMembersUpdate,
-    GroupV2MigrationDroppedMembersUpdate,
-    GroupSequenceOfRequestsAndCancelsUpdate,
-    GroupExpirationTimerUpdate,
+    GroupV2MigrationInvitedMembersUpdate {
+        invitedMembersCount: NoValidation<u32>,
+    },
+    GroupV2MigrationDroppedMembersUpdate {
+        droppedMembersCount: NoValidation<u32>,
+    },
+    GroupSequenceOfRequestsAndCancelsUpdate {
+        requestorAci: Aci,
+        count: NoValidation<u32>,
+    },
+    GroupExpirationTimerUpdate {
+        updaterAci: Option<Aci>,
+        expiresInMs: Duration,
+    },
+}
+
+#[derive(Copy, Clone, Debug)]
+#[cfg_attr(test, derive(PartialEq))]
+pub enum AccessLevel {
+    Any,
+    Member,
+    Administrator,
+}
+
+#[derive(Clone, Debug)]
+#[cfg_attr(test, derive(PartialEq))]
+pub struct Invitee {
+    pub inviter: Option<Aci>,
+    pub invitee_aci: Option<Aci>,
+    pub invitee_pni: Option<Pni>,
 }
 
 #[derive(Debug, thiserror::Error, displaydoc::Display)]
@@ -77,6 +238,10 @@ pub struct GroupUpdateError {
     pub field_error: GroupUpdateFieldError,
 }
 
+#[derive(Copy, Clone)]
+#[cfg_attr(test, derive(PartialEq))]
+pub struct NoValidation<T>(T);
+
 #[derive(Debug, thiserror::Error, displaydoc::Display)]
 #[cfg_attr(test, derive(PartialEq))]
 pub enum GroupUpdateFieldError {
@@ -85,7 +250,7 @@ pub enum GroupUpdateFieldError {
     /// invalid binary service ID
     InvalidServiceId,
     /// invitee has {0}
-    Invitee(InviteeError),
+    InvalidInvitee(InviteeError),
     /// accessLevel is {0}
     AccessLevelInvalid(&'static str),
 }
@@ -101,83 +266,108 @@ pub enum InviteeError {
     InviteePni,
 }
 
-enum ValidateFieldValue {
-    IgnoredField,
-    OptionalAci(Option<Vec<u8>>),
-    Aci(Vec<u8>),
-    ExpiresInMs(u32),
-    ServiceId(Vec<u8>),
-    Invitees(Vec<group_invitation_revoked_update::Invitee>),
-    AccessLevel(EnumOrUnknown<proto::GroupV2AccessLevel>),
+/// Module-private crate for conversion to T with error type [`GroupUpdateFieldError`].
+///
+/// Like `TryFrom`, but module-private since the implementations are specific to
+/// group update validation.
+trait ValidateFrom<T>: Sized {
+    fn validate_from(value: T) -> Result<Self, GroupUpdateFieldError>;
 }
 
-impl ValidateFieldValue {
-    /// Produces [`ValidateFieldValue::IgnoredField`].
-    ///
-    /// This exists so that call sites can use `ignore::<T>(x)` to both ignore
-    /// the value `x` and also add a compile-time assertion of its type that
-    /// will break if it changes later.
-    #[inline]
-    fn ignore<T>(_: T) -> Self {
-        Self::IgnoredField
+impl ValidateFrom<Option<Vec<u8>>> for Option<Aci> {
+    fn validate_from(value: Option<Vec<u8>>) -> Result<Self, GroupUpdateFieldError> {
+        value
+            .map(uuid_bytes_to_aci)
+            .transpose()
+            .map_err(|crate::backup::InvalidAci| GroupUpdateFieldError::InvalidAci)
     }
 }
 
-impl ValidateFieldValue {
-    fn check_value(self) -> Result<(), GroupUpdateFieldError> {
-        match self {
-            Self::IgnoredField | Self::OptionalAci(None) => (),
-            Self::OptionalAci(Some(aci)) | Self::Aci(aci) => {
-                let _: Aci = aci
-                    .try_into()
-                    .map(Aci::from_uuid_bytes)
-                    .map_err(|_| GroupUpdateFieldError::InvalidAci)?;
+impl ValidateFrom<Vec<u8>> for Aci {
+    fn validate_from(value: Vec<u8>) -> Result<Self, GroupUpdateFieldError> {
+        uuid_bytes_to_aci(value)
+            .map_err(|crate::backup::InvalidAci| GroupUpdateFieldError::InvalidAci)
+    }
+}
+
+impl ValidateFrom<Vec<u8>> for ServiceId {
+    fn validate_from(value: Vec<u8>) -> Result<Self, GroupUpdateFieldError> {
+        ServiceId::parse_from_service_id_binary(&value)
+            .ok_or(GroupUpdateFieldError::InvalidServiceId)
+    }
+}
+
+impl<T> ValidateFrom<T> for NoValidation<T> {
+    fn validate_from(value: T) -> Result<Self, GroupUpdateFieldError> {
+        Ok(Self(value))
+    }
+}
+
+impl ValidateFrom<EnumOrUnknown<proto::GroupV2AccessLevel>> for AccessLevel {
+    fn validate_from(
+        value: EnumOrUnknown<proto::GroupV2AccessLevel>,
+    ) -> Result<Self, GroupUpdateFieldError> {
+        match value.enum_value_or_default() {
+            proto::GroupV2AccessLevel::UNKNOWN => {
+                Err(GroupUpdateFieldError::AccessLevelInvalid("UNKNOWN"))
             }
-            Self::ExpiresInMs(ms) => {
-                let _: Duration = Duration::from_millis(ms.into());
+            proto::GroupV2AccessLevel::UNSATISFIABLE => {
+                Err(GroupUpdateFieldError::AccessLevelInvalid("UNSATISFIABLE"))
             }
-            Self::ServiceId(id) => {
-                let _: ServiceId = ServiceId::parse_from_service_id_binary(&id)
-                    .ok_or(GroupUpdateFieldError::InvalidServiceId)?;
-            }
-            Self::Invitees(invitees) => invitees
-                .into_iter()
-                .try_for_each(
-                    |group_invitation_revoked_update::Invitee {
-                         inviterAci,
-                         inviteeAci,
-                         inviteePni,
-                         special_fields: _,
-                     }| {
-                        let _: Option<Aci> = inviterAci
-                            .map(|bytes| bytes.try_into().map(Aci::from_uuid_bytes))
-                            .transpose()
-                            .map_err(|_| InviteeError::InviterAci)?;
-                        let _: Option<Aci> = inviteeAci
-                            .map(|bytes| bytes.try_into().map(Aci::from_uuid_bytes))
-                            .transpose()
-                            .map_err(|_| InviteeError::InviteeAci)?;
-                        let _: Option<Pni> = inviteePni
-                            .map(|bytes| bytes.try_into().map(Pni::from_uuid_bytes))
-                            .transpose()
-                            .map_err(|_| InviteeError::InviteePni)?;
-                        Ok::<_, InviteeError>(())
-                    },
-                )
-                .map_err(GroupUpdateFieldError::Invitee)?,
-            Self::AccessLevel(access_level) => match access_level.enum_value_or_default() {
-                proto::GroupV2AccessLevel::UNKNOWN => {
-                    return Err(GroupUpdateFieldError::AccessLevelInvalid("UNKNOWN"))
-                }
-                proto::GroupV2AccessLevel::UNSATISFIABLE => {
-                    return Err(GroupUpdateFieldError::AccessLevelInvalid("UNSATISFIABLE"))
-                }
-                proto::GroupV2AccessLevel::ADMINISTRATOR
-                | proto::GroupV2AccessLevel::ANY
-                | proto::GroupV2AccessLevel::MEMBER => (),
-            },
-        };
-        Ok(())
+            proto::GroupV2AccessLevel::ADMINISTRATOR => Ok(AccessLevel::Administrator),
+            proto::GroupV2AccessLevel::ANY => Ok(AccessLevel::Any),
+            proto::GroupV2AccessLevel::MEMBER => Ok(AccessLevel::Member),
+        }
+    }
+}
+
+impl ValidateFrom<Vec<proto::group_invitation_revoked_update::Invitee>> for Vec<Invitee> {
+    fn validate_from(
+        invitees: Vec<proto::group_invitation_revoked_update::Invitee>,
+    ) -> Result<Self, GroupUpdateFieldError> {
+        invitees
+            .into_iter()
+            .map(TryInto::try_into)
+            .try_collect()
+            .map_err(GroupUpdateFieldError::InvalidInvitee)
+    }
+}
+
+impl ValidateFrom<u32> for Duration {
+    fn validate_from(value: u32) -> Result<Self, GroupUpdateFieldError> {
+        Ok(Self::from_millis(value.into()))
+    }
+}
+
+impl TryFrom<proto::group_invitation_revoked_update::Invitee> for Invitee {
+    type Error = InviteeError;
+
+    fn try_from(
+        value: proto::group_invitation_revoked_update::Invitee,
+    ) -> Result<Self, Self::Error> {
+        let group_invitation_revoked_update::Invitee {
+            inviterAci,
+            inviteeAci,
+            inviteePni,
+            special_fields: _,
+        } = value;
+        let inviter = inviterAci
+            .map(uuid_bytes_to_aci)
+            .transpose()
+            .map_err(|crate::backup::InvalidAci| InviteeError::InviterAci)?;
+        let invitee_aci: Option<Aci> = inviteeAci
+            .map(uuid_bytes_to_aci)
+            .transpose()
+            .map_err(|crate::backup::InvalidAci| InviteeError::InviteeAci)?;
+        let invitee_pni = inviteePni
+            .map(|bytes| bytes.try_into().map(Pni::from_uuid_bytes))
+            .transpose()
+            .map_err(|_| InviteeError::InviteePni)?;
+        Ok(Invitee {
+            inviter,
+            invitee_aci,
+            invitee_pni,
+        })
     }
 }
 
@@ -227,164 +417,11 @@ impl TryFrom<proto::group_change_chat_update::update::Update> for GroupChatUpdat
     }
 }
 
-/// Implements `TryFrom<$message>` for [`GroupChatUpdate`].
-///
-/// The macro takes a sequence of [`ValidateFieldValue`] expressions. The
-/// generated [`TryFrom::try_from`] implementation calls
-/// [`ValidateFieldValue::check_value`] for each one in sequence. If they all
-/// succeed, the appropriate variant of `GroupChatUpdate` is produced. Otherwise
-/// the first error is returned. Invocations of this macro need to list all
-/// fields in `$message` (besides `special_fields`), otherwise compilation will
-/// fail due to inexhaustive pattern matching.
-macro_rules! impl_try_from_with_group_change {
-    ($message:ident, $($value_fn:ident $(::<$field_type:ty>)? ($field:ident)),*) => {
-        impl TryFrom<$message> for GroupChatUpdate {
-            type Error = GroupUpdateError;
-            fn try_from(
-                message: $message,
-            ) -> Result<Self, Self::Error> {
-                let $message {
-                    $($field,)*
-                    special_fields: _
-                    // Don't use .. so that if a field isn't named, the struct
-                    // destructuring  will be incomplete.
-                } = message;
-
-                $(
-                    ValidateFieldValue::$value_fn $(::<$field_type>)? ($field).check_value().map_err(|field_error| GroupUpdateError {
-                        message: $message::NAME,
-                        field_name: stringify!($field),
-                        field_error,
-                    })?;
-                )*
-
-                Ok(GroupChatUpdate::$message)
-            }
-        }
-    };
+impl<T: Debug> Debug for NoValidation<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        Debug::fmt(&self.0, f)
+    }
 }
-
-impl_try_from_with_group_change!(GenericGroupUpdate, OptionalAci(updaterAci));
-impl_try_from_with_group_change!(GroupCreationUpdate, OptionalAci(updaterAci));
-impl_try_from_with_group_change!(
-    GroupNameUpdate,
-    OptionalAci(updaterAci),
-    ignore::<Option<String>>(newGroupName)
-);
-impl_try_from_with_group_change!(
-    GroupAvatarUpdate,
-    OptionalAci(updaterAci),
-    ignore::<bool>(wasRemoved)
-);
-impl_try_from_with_group_change!(
-    GroupDescriptionUpdate,
-    OptionalAci(updaterAci),
-    ignore::<Option<String>>(newDescription)
-);
-impl_try_from_with_group_change!(
-    GroupMembershipAccessLevelChangeUpdate,
-    OptionalAci(updaterAci),
-    AccessLevel(accessLevel)
-);
-impl_try_from_with_group_change!(
-    GroupAttributesAccessLevelChangeUpdate,
-    OptionalAci(updaterAci),
-    AccessLevel(accessLevel)
-);
-impl_try_from_with_group_change!(
-    GroupAnnouncementOnlyChangeUpdate,
-    OptionalAci(updaterAci),
-    ignore::<bool>(isAnnouncementOnly)
-);
-impl_try_from_with_group_change!(
-    GroupAdminStatusUpdate,
-    OptionalAci(updaterAci),
-    Aci(memberAci),
-    ignore::<bool>(wasAdminStatusGranted)
-);
-impl_try_from_with_group_change!(GroupMemberLeftUpdate, Aci(aci));
-impl_try_from_with_group_change!(
-    GroupMemberRemovedUpdate,
-    OptionalAci(removerAci),
-    Aci(removedAci)
-);
-impl_try_from_with_group_change!(SelfInvitedToGroupUpdate, OptionalAci(inviterAci));
-impl_try_from_with_group_change!(
-    SelfInvitedOtherUserToGroupUpdate,
-    ServiceId(inviteeServiceId)
-);
-impl_try_from_with_group_change!(
-    GroupUnknownInviteeUpdate,
-    OptionalAci(inviterAci),
-    ignore::<u32>(inviteeCount)
-);
-impl_try_from_with_group_change!(
-    GroupInvitationAcceptedUpdate,
-    OptionalAci(inviterAci),
-    Aci(newMemberAci)
-);
-impl_try_from_with_group_change!(
-    GroupInvitationDeclinedUpdate,
-    OptionalAci(inviterAci),
-    OptionalAci(inviteeAci)
-);
-impl_try_from_with_group_change!(GroupMemberJoinedUpdate, Aci(newMemberAci));
-impl_try_from_with_group_change!(
-    GroupMemberAddedUpdate,
-    OptionalAci(updaterAci),
-    Aci(newMemberAci),
-    OptionalAci(inviterAci),
-    // TODO check that this field doesn't affect the validity of other fields in
-    // the message.
-    ignore::<bool>(hadOpenInvitation)
-);
-impl_try_from_with_group_change!(GroupSelfInvitationRevokedUpdate, OptionalAci(revokerAci));
-impl_try_from_with_group_change!(
-    GroupInvitationRevokedUpdate,
-    OptionalAci(updaterAci),
-    Invitees(invitees)
-);
-impl_try_from_with_group_change!(GroupJoinRequestUpdate, Aci(requestorAci));
-impl_try_from_with_group_change!(
-    GroupJoinRequestApprovalUpdate,
-    Aci(requestorAci),
-    OptionalAci(updaterAci),
-    ignore::<bool>(wasApproved)
-);
-impl_try_from_with_group_change!(GroupJoinRequestCanceledUpdate, Aci(requestorAci));
-impl_try_from_with_group_change!(GroupInviteLinkResetUpdate, OptionalAci(updaterAci));
-impl_try_from_with_group_change!(
-    GroupInviteLinkEnabledUpdate,
-    OptionalAci(updaterAci),
-    ignore::<bool>(linkRequiresAdminApproval)
-);
-impl_try_from_with_group_change!(
-    GroupInviteLinkAdminApprovalUpdate,
-    OptionalAci(updaterAci),
-    ignore::<bool>(linkRequiresAdminApproval)
-);
-impl_try_from_with_group_change!(GroupInviteLinkDisabledUpdate, OptionalAci(updaterAci));
-impl_try_from_with_group_change!(GroupMemberJoinedByLinkUpdate, Aci(newMemberAci));
-impl_try_from_with_group_change!(GroupV2MigrationUpdate,);
-impl_try_from_with_group_change!(GroupV2MigrationSelfInvitedUpdate,);
-impl_try_from_with_group_change!(
-    GroupV2MigrationInvitedMembersUpdate,
-    ignore::<u32>(invitedMembersCount)
-);
-impl_try_from_with_group_change!(
-    GroupV2MigrationDroppedMembersUpdate,
-    ignore::<u32>(droppedMembersCount)
-);
-impl_try_from_with_group_change!(
-    GroupSequenceOfRequestsAndCancelsUpdate,
-    Aci(requestorAci),
-    ignore::<u32>(count)
-);
-impl_try_from_with_group_change!(
-    GroupExpirationTimerUpdate,
-    OptionalAci(updaterAci),
-    ExpiresInMs(expiresInMs)
-);
 
 #[cfg(test)]
 mod test {
@@ -411,6 +448,21 @@ mod test {
         ]
     }
 
+    fn validated_invitees() -> Vec<Invitee> {
+        vec![
+            Invitee {
+                inviter: None,
+                invitee_aci: None,
+                invitee_pni: None,
+            },
+            Invitee {
+                inviter: Some(ACI),
+                invitee_pni: Some(PNI),
+                invitee_aci: None,
+            },
+        ]
+    }
+
     fn invitee_invalid_aci() -> Vec<group_invitation_revoked_update::Invitee> {
         vec![group_invitation_revoked_update::Invitee {
             inviteeAci: Some(vec![]),
@@ -427,39 +479,36 @@ mod test {
 
     use GroupUpdateFieldError::*;
 
-    #[test_case(ValidateFieldValue::IgnoredField, Ok(()))]
-    #[test_case(ValidateFieldValue::Aci(vec![]), Err(InvalidAci))]
-    #[test_case(ValidateFieldValue::Aci(ACI.service_id_binary()), Ok(()))]
-    #[test_case(ValidateFieldValue::OptionalAci(Some(ACI.service_id_binary())), Ok(()))]
-    #[test_case(ValidateFieldValue::OptionalAci(None), Ok(()))]
-    #[test_case(ValidateFieldValue::OptionalAci(Some(vec![])), Err(InvalidAci))]
-    #[test_case(ValidateFieldValue::Aci(PNI.service_id_binary()), Err(InvalidAci))]
-    #[test_case(ValidateFieldValue::OptionalAci(Some(PNI.service_id_binary())), Err(InvalidAci))]
-    #[test_case(ValidateFieldValue::ServiceId(ACI.service_id_binary()), Ok(()))]
-    #[test_case(ValidateFieldValue::ServiceId(vec![]), Err(InvalidServiceId))]
-    #[test_case(ValidateFieldValue::Invitees(valid_invitees()), Ok(()))]
-    #[test_case(ValidateFieldValue::Invitees(vec![]), Ok(()))]
+    #[test_case(123, Ok(NoValidation(123)); "no validation")]
+    #[test_case(vec![], Err::<Aci, _>(InvalidAci))]
+    #[test_case(ACI.service_id_binary(), Ok(ACI))]
+    #[test_case(Some(ACI.service_id_binary()), Ok(Some(ACI)))]
+    #[test_case(None, Ok(None::<Aci>))]
+    #[test_case(Some(vec![]), Err::<Option<Aci>, _>(InvalidAci))]
+    #[test_case(PNI.service_id_binary(), Err::<Aci, _>(InvalidAci))]
+    #[test_case(Some(PNI.service_id_binary()), Err::<Option<Aci>, _>(InvalidAci))]
+    #[test_case(ACI.service_id_binary(), Ok(ServiceId::Aci(ACI)))]
+    #[test_case(vec![], Err::<ServiceId, _>(InvalidServiceId))]
+    #[test_case(valid_invitees(), Ok(validated_invitees()))]
+    #[test_case(vec![], Ok(vec![]))]
+    #[test_case(invitee_invalid_aci(), Err::<Vec<Invitee>,_>(InvalidInvitee(InviteeError::InviteeAci)))]
     #[test_case(
-        ValidateFieldValue::Invitees(invitee_invalid_aci()),
-        Err(Invitee(InviteeError::InviteeAci))
+        invitee_pni_service_id_binary(),
+        Err::<Vec<Invitee>, _>(InvalidInvitee(InviteeError::InviteePni))
     )]
     #[test_case(
-        ValidateFieldValue::Invitees(invitee_pni_service_id_binary()),
-        Err(Invitee(InviteeError::InviteePni))
+        EnumOrUnknown::default(),
+        Err::<AccessLevel, _>(AccessLevelInvalid("UNKNOWN"))
     )]
     #[test_case(
-        ValidateFieldValue::AccessLevel(EnumOrUnknown::default()),
-        Err(AccessLevelInvalid("UNKNOWN"))
+        proto::GroupV2AccessLevel::UNSATISFIABLE.into(),
+        Err::<AccessLevel, _>(AccessLevelInvalid("UNSATISFIABLE"))
     )]
-    #[test_case(
-        ValidateFieldValue::AccessLevel(proto::GroupV2AccessLevel::UNSATISFIABLE.into()),
-        Err(AccessLevelInvalid("UNSATISFIABLE"))
-    )]
-    fn validate_field_value(
-        field: ValidateFieldValue,
-        expected: Result<(), GroupUpdateFieldError>,
+    fn validate_field_value<V: ValidateFrom<T> + PartialEq + Debug, T>(
+        input: T,
+        expected: Result<V, GroupUpdateFieldError>,
     ) {
-        assert_eq!(field.check_value(), expected)
+        assert_eq!(V::validate_from(input), expected)
     }
 
     #[test]

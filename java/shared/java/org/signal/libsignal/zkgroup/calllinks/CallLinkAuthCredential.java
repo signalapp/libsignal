@@ -5,6 +5,7 @@
 
 package org.signal.libsignal.zkgroup.calllinks;
 
+import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
 import static org.signal.libsignal.zkgroup.internal.Constants.RANDOM_LENGTH;
 
 import java.security.SecureRandom;
@@ -19,7 +20,9 @@ public final class CallLinkAuthCredential extends ByteArray {
 
   public CallLinkAuthCredential(byte[] contents) throws InvalidInputException {
     super(contents);
-    Native.CallLinkAuthCredential_CheckValidContents(contents);
+    filterExceptions(
+        InvalidInputException.class,
+        () -> Native.CallLinkAuthCredential_CheckValidContents(contents));
   }
 
   public CallLinkAuthCredentialPresentation present(
@@ -40,13 +43,15 @@ public final class CallLinkAuthCredential extends ByteArray {
     secureRandom.nextBytes(random);
 
     byte[] newContents =
-        Native.CallLinkAuthCredential_PresentDeterministic(
-            getInternalContentsForJNI(),
-            userId.toServiceIdFixedWidthBinary(),
-            redemptionTime.getEpochSecond(),
-            serverParams.getInternalContentsForJNI(),
-            callLinkParams.getInternalContentsForJNI(),
-            random);
+        filterExceptions(
+            () ->
+                Native.CallLinkAuthCredential_PresentDeterministic(
+                    getInternalContentsForJNI(),
+                    userId.toServiceIdFixedWidthBinary(),
+                    redemptionTime.getEpochSecond(),
+                    serverParams.getInternalContentsForJNI(),
+                    callLinkParams.getInternalContentsForJNI(),
+                    random));
 
     try {
       return new CallLinkAuthCredentialPresentation(newContents);

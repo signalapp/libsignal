@@ -5,6 +5,7 @@
 
 package org.signal.libsignal.zkgroup;
 
+import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
 import static org.signal.libsignal.zkgroup.internal.Constants.RANDOM_LENGTH;
 
 import java.security.SecureRandom;
@@ -32,7 +33,9 @@ public final class GenericServerSecretParams extends ByteArray {
 
   public GenericServerSecretParams(byte[] contents) throws InvalidInputException {
     super(contents);
-    Native.GenericServerSecretParams_CheckValidContents(contents);
+    filterExceptions(
+        InvalidInputException.class,
+        () -> Native.GenericServerSecretParams_CheckValidContents(contents));
   }
 
   public GenericServerPublicParams getPublicParams() {

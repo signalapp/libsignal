@@ -6,7 +6,7 @@
 pub use error::{ProofVerificationFailure, UsernameError};
 pub use username::*;
 
-mod constants;
+pub mod constants;
 mod error;
 mod proto;
 mod username;

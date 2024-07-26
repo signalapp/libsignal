@@ -3,10 +3,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import { assert, use } from 'chai';
+import { assert, expect, use } from 'chai';
 import * as chaiAsPromised from 'chai-as-promised';
 import * as Native from '../../Native';
 import { ErrorCode, LibSignalError, LibSignalErrorBase } from '../Errors';
+import { TokioAsyncContext } from '../net';
+import { setTimeout } from 'timers/promises';
 
 use(chaiAsPromised);
 
@@ -33,5 +35,35 @@ describe('Async runtime not on the Node executor', () => {
       const err = e as LibSignalError;
       assert.equal(err.code, ErrorCode.Generic);
     }
+  });
+});
+
+describe('TokioAsyncContext', () => {
+  it('supports cancellation of running future', async () => {
+    const runtime = new TokioAsyncContext(Native.TokioAsyncContext_new());
+    const abortController = new AbortController();
+    const pending = runtime.makeCancellable(
+      abortController.signal,
+      Native.TESTING_OnlyCompletesByCancellation(runtime)
+    );
+    const timeout = setTimeout(200, 'timed out');
+    assert.equal('timed out', await Promise.race([pending, timeout]));
+    abortController.abort();
+    return expect(pending)
+      .to.eventually.be.rejectedWith(LibSignalErrorBase)
+      .and.have.property('code', ErrorCode.Cancelled);
+  });
+
+  it('supports pre-cancellation of not-yet-running future', async () => {
+    const runtime = new TokioAsyncContext(Native.TokioAsyncContext_new());
+    const abortController = new AbortController();
+    abortController.abort();
+    const pending = runtime.makeCancellable(
+      abortController.signal,
+      Native.TESTING_OnlyCompletesByCancellation(runtime)
+    );
+    return expect(pending)
+      .to.eventually.be.rejectedWith(LibSignalErrorBase)
+      .and.have.property('code', ErrorCode.Cancelled);
   });
 });

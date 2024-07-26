@@ -75,11 +75,14 @@ $ ./gradlew test
 $ ./gradlew build # if you need AAR outputs
 ```
 
+You can pass `-P debugLevelLogs` to Gradle to build without filtering out debug- and verbose-level
+logs from Rust.
+
 Alternately, a build system using Docker is available:
 
 ```shell
 $ cd java
-$ make java_test
+$ make
 ```
 
 When exposing new APIs to Java, you will need to run `rust/bridge/jni/bin/gen_java_decl.py` in
@@ -121,17 +124,18 @@ To learn about the Swift build process see [``swift/README.md``](swift/)
 You'll need Node installed to build. If you have [nvm][], you can run `nvm use` to select an
 appropriate version automatically.
 
-We use [`yarn`](https://classic.yarnpkg.com/) as our package manager. The Rust library will automatically be built when you run `yarn install`.
+We use [`yarn`](https://classic.yarnpkg.com/) as our package manager, and `node-gyp` to control building the Rust library.
 
 ```shell
 $ cd node
 $ nvm use
 $ yarn install
+$ yarn node-gyp rebuild  # clean->configure->build
 $ yarn tsc
 $ yarn test
 ```
 
-When testing changes locally, you can use `yarn build` to do an incremental rebuild of the Rust library.
+When testing changes locally, you can use `yarn build` to do an incremental rebuild of the Rust library. Alternately, `yarn build-with-debug-level-logs` will rebuild without filtering out debug- and verbose-level logs.
 
 When exposing new APIs to Node, you will need to run `rust/bridge/node/bin/gen_ts_decl.py` in
 addition to rebuilding.
@@ -175,6 +179,6 @@ Administration Regulations, Section 740.13) for both object code and source code
 
 ## License
 
-Copyright 2020-2023 Signal Messenger, LLC.
+Copyright 2020-2024 Signal Messenger, LLC
 
-Licensed under the AGPLv3: https://www.gnu.org/licenses/agpl-3.0.html
+Licensed under the GNU AGPLv3: https://www.gnu.org/licenses/agpl-3.0.html

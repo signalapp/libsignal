@@ -18,18 +18,20 @@ if [[ -t 0 ]]; then
     IS_TTY="yes"
 fi
 
-docker build --build-arg "UID=${UID:-501}" --build-arg "GID=${GID:-501}" -t ${DOCKER_IMAGE} -f node/Dockerfile .
+docker build --build-arg "UID=${UID:-501}" --build-arg "GID=${GID:-501}" --build-arg "NODE_VERSION=$(cat .nvmrc)" -t ${DOCKER_IMAGE} -f node/Dockerfile .
 
 # We build both architectures in the same run action to save on intermediates
 # (including downloading dependencies)
 # We run `yarn install` to make sure the correct prebuildify version is used.
 docker run ${IS_TTY:+ -it} --init --rm -v "${PWD}":/home/libsignal/src ${DOCKER_IMAGE} sh -c '
     cd ~/src/node &&
-    npx yarn install --ignore-scripts --frozen-lockfile &&
+    npx yarn install --frozen-lockfile &&
     env CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc \
         CC=aarch64-linux-gnu-gcc \
         CXX=aarch64-linux-gnu-g++ \
         CPATH=/usr/aarch64-linux-gnu/include \
-        npx prebuildify --napi -t $(cat ~/.nvmrc) --arch arm64 &&
-    npx prebuildify --napi -t $(cat ~/.nvmrc) --arch x64
+        npx prebuildify --napi -t $(cat ../.nvmrc) --arch arm64 &&
+    mv build/Release/*-debuginfo.* . &&
+    npx prebuildify --napi -t $(cat ../.nvmrc) --arch x64 &&
+    mv build/Release/*-debuginfo.* .
 '

@@ -6,12 +6,12 @@
 use partial_default::PartialDefault;
 use serde::{Deserialize, Serialize};
 
-use crate::common::simple_types::*;
+use crate::common::serialization::ReservedByte;
 use crate::crypto;
 
 #[derive(Serialize, Deserialize, PartialDefault)]
 pub struct ReceiptCredentialRequest {
-    pub(crate) reserved: ReservedBytes,
+    pub(crate) reserved: ReservedByte,
     pub(crate) public_key: crypto::receipt_credential_request::PublicKey,
     pub(crate) ciphertext: crypto::receipt_credential_request::Ciphertext,
     // Note that unlike ProfileKeyCredentialRequest, we don't have a proof. This is because our only

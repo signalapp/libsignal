@@ -45,7 +45,7 @@ pub struct WrongKindOfServiceIdError {
 /// A service ID with a known type.
 ///
 /// `RAW_KIND` is a raw [ServiceIdKind] (eventually Rust will allow enums as generic parameters).
-#[derive(Clone, Copy, Hash, PartialEq, Eq)]
+#[derive(Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct SpecificServiceId<const RAW_KIND: u8>(Uuid);
 
 impl<const KIND: u8> SpecificServiceId<KIND> {
@@ -157,7 +157,7 @@ pub type ServiceIdFixedWidthBinaryBytes = [u8; 17];
 ///
 /// Conceptually this is a UUID in a particular "namespace" representing a particular way to reach a
 /// user on the Signal service.
-#[derive(Clone, Copy, Hash, PartialEq, Eq)]
+#[derive(Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub enum ServiceId {
     /// An ACI
     Aci(Aci),
@@ -328,6 +328,8 @@ where
 #[cfg(test)]
 mod service_id_tests {
     use proptest::prelude::*;
+    use rand::seq::SliceRandom;
+    use rand::thread_rng;
 
     use std::borrow::Borrow;
 
@@ -603,6 +605,58 @@ mod service_id_tests {
         );
         assert!(ServiceId::parse_from_service_id_string("ACI:{uuid}").is_none());
     }
+
+    #[test]
+    fn ordering() {
+        let test_uuid = uuid::uuid!("8c78cd2a-16ff-427d-83dc-1a5e36ce713d");
+
+        let mut ids: [ServiceId; 4] = [
+            Aci::from_uuid(Uuid::nil()).into(),
+            Aci::from_uuid(test_uuid).into(),
+            Pni::from_uuid(Uuid::nil()).into(),
+            Pni::from_uuid(test_uuid).into(),
+        ];
+        let original = ids;
+        ids.shuffle(&mut thread_rng());
+        ids.sort();
+        assert_eq!(original, ids);
+    }
+
+    #[test]
+    fn ordering_consistency() {
+        proptest!(|(
+            left_uuid_bytes: [u8; 16],
+            left_raw_kind in 0..=1,
+            right_uuid_bytes: [u8; 16],
+            right_raw_kind in 0..=1
+        )| {
+            let service_id_constructor = |raw_type| match raw_type {
+                0 => |uuid: Uuid| ServiceId::Aci(uuid.into()),
+                1 => |uuid: Uuid| ServiceId::Pni(uuid.into()),
+                _ => unreachable!("unexpected raw type {raw_type}"),
+            };
+
+            let left_uuid = Uuid::from_bytes(left_uuid_bytes);
+            let left_service_id = service_id_constructor(left_raw_kind)(left_uuid);
+            let right_uuid = Uuid::from_bytes(right_uuid_bytes);
+            let right_service_id = service_id_constructor(right_raw_kind)(right_uuid);
+
+            assert_eq!(
+                left_service_id.cmp(&right_service_id),
+                left_service_id.service_id_fixed_width_binary()
+                    .cmp(&right_service_id.service_id_fixed_width_binary()),
+                "didn't match Service-Id-FixedWidthBinary ordering ({left_service_id:?} vs {right_service_id:?})",
+            );
+
+            if left_raw_kind == right_raw_kind {
+                assert_eq!(
+                    left_service_id.cmp(&right_service_id),
+                    left_service_id.service_id_string().cmp(&right_service_id.service_id_string()),
+                    "same-kind ServiceIds didn't match Service-Id-String ordering ({left_service_id:?} vs {right_service_id:?})",
+                );
+            }
+        })
+    }
 }
 
 /// The type used in memory to represent a *device*, i.e. a particular Signal client instance which
@@ -641,7 +695,7 @@ impl ProtocolAddress {
     /// Create a new address.
     ///
     /// - `name` defines a user's public identity, and therefore must be globally unique to that
-    /// user.
+    ///   user.
     /// - Each Signal client instance then has its own `device_id`, which must be unique among
     ///   all clients for that user.
     ///

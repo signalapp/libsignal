@@ -60,19 +60,20 @@ public final class BackupAuthTest extends SecureRandomTest {
         GenericServerSecretParams.generate(createSecureRandom(SERVER_SECRET_RANDOM));
     Instant timestamp = Instant.now().truncatedTo(ChronoUnit.DAYS);
     BackupAuthCredentialResponse response =
-        request.issueCredential(timestamp, 1L, serverSecretParams);
+        request.issueCredential(timestamp, BackupLevel.MESSAGES, serverSecretParams);
 
     BackupAuthCredential credential =
-        context.receiveResponse(response, serverSecretParams.getPublicParams(), 1L);
+        context.receiveResponse(response, timestamp, serverSecretParams.getPublicParams());
     Assert.assertArrayEquals(SERIALIZED_BACKUP_ID, credential.getBackupId());
     Assert.assertArrayEquals(
         SERIALIZED_BACKUP_ID,
         credential.present(serverSecretParams.getPublicParams()).getBackupId());
+    Assert.assertEquals(BackupLevel.MESSAGES, credential.getBackupLevel());
   }
 
   @Test
   public void testBackupAuthCredentialIntegration() throws VerificationFailedException {
-    final long receiptLevel = 10L;
+    final BackupLevel backupLevel = BackupLevel.MESSAGES;
 
     // SERVER
     // Generate keys
@@ -90,16 +91,13 @@ public final class BackupAuthTest extends SecureRandomTest {
     Instant timestamp = Instant.now().truncatedTo(ChronoUnit.DAYS);
     BackupAuthCredentialResponse response =
         request.issueCredential(
-            timestamp, receiptLevel, serverSecretParams, createSecureRandom(TEST_ARRAY_32_1));
+            timestamp, backupLevel, serverSecretParams, createSecureRandom(TEST_ARRAY_32_1));
 
     // CLIENT
     // Gets stored credential
     BackupAuthCredential credential =
-        context.receiveResponse(response, serverPublicParams, receiptLevel);
-    Assert.assertThrows(
-        "Wrong receipt level",
-        VerificationFailedException.class,
-        () -> context.receiveResponse(response, serverPublicParams, receiptLevel + 1));
+        context.receiveResponse(response, timestamp, serverPublicParams);
+    Assert.assertEquals(backupLevel, credential.getBackupLevel());
 
     // CLIENT
     // Generates a presentation
@@ -111,7 +109,7 @@ public final class BackupAuthTest extends SecureRandomTest {
     presentation.verify(serverSecretParams);
     presentation.verify(timestamp.plus(1, ChronoUnit.DAYS), serverSecretParams);
     Assert.assertArrayEquals(credential.getBackupId(), presentation.getBackupId());
-    Assert.assertEquals(receiptLevel, presentation.getReceiptLevel());
+    Assert.assertEquals(backupLevel, presentation.getBackupLevel());
 
     Assert.assertThrows(
         "Credential should be expired after 2 days",

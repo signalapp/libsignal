@@ -1,0 +1,25 @@
+#--header "\nCopyright {created.year} Signal Messenger, LLC.\nSPDX-License-Identifier: AGPL-3.0-only\n"
+--disable hoistPatternLet
+# Explicit self is better than implicit self.
+--self insert
+# Some arguments that it considers unused are used in doc comments, and replacing them with '_' is an error.
+--stripunusedargs unnamed-only
+--wraparguments before-first
+--wrapcollections before-first
+# Libsignal is a collection of many languages, remembering specific of each one is hard. Make it explicit.
+--disable redundantinternal
+# Ranges look better without spaces
+--ranges no-space
+# Pragmas should start at the begining of line.
+--ifdef outdent
+--indent 4
+# Patters are not redundant, they show the shape of thing, they show the shape of things.
+--disable redundantPattern
+# Leave try in the innermost position.
+--disable hoistTry
+# Explicit ACL even in extensions.
+--extensionacl "on-declarations"
+# Explicit is better than implicit.
+--disable redundantNilInit
+# Indentation for multi-line string literals.
+--indentstrings true

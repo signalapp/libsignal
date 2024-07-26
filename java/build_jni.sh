@@ -18,53 +18,70 @@ DESKTOP_LIB_DIR=java/shared/resources
 export CARGO_PROFILE_RELEASE_DEBUG=1 # enable line tables
 export CARGO_PROFILE_RELEASE_OPT_LEVEL=s # optimize for size over speed
 
-case "${1:-}" in
-    desktop )
-        # On Linux, cdylibs don't include public symbols from their dependencies,
-        # even if those symbols have been re-exported in the Rust source.
-        # Using LTO works around this at the cost of a slightly slower build.
-        # https://github.com/rust-lang/rfcs/issues/2771
-        export CARGO_PROFILE_RELEASE_LTO=thin
-        echo_then_run cargo build -p libsignal-jni --release --features testing-fns
-        if [[ -z "${CARGO_BUILD_TARGET:-}" ]]; then
-            copy_built_library target/release signal_jni "${DESKTOP_LIB_DIR}/"
-        fi
-        exit
-        ;;
-    android )
-        android_abis=(arm64-v8a armeabi-v7a x86_64 x86)
-        ;;
-    android-arm64 | android-aarch64 )
-        android_abis=(arm64-v8a)
-        ;;
-    android-arm | android-armv7 )
-        android_abis=(armeabi-v7a)
-        ;;
-    android-x86_64 )
-        android_abis=(x86_64)
-        ;;
-    android-x86 | android-i686 )
-        android_abis=(x86)
-        ;;
-    *)
-        echo "Unknown target (use 'desktop', 'android', or 'android-\$ARCH')" >&2
-        exit 2
-        ;;
-esac
-
 BUILD_FOR_TEST=
-case "${2:-}" in
-    --testing )
-        BUILD_FOR_TEST=1
-        ;;
-    '')
-    # If unset, do nothing.
-    ;;
-    *)
-        echo "Unrecognized flag $2; use --testing to compile with test functions" >&2
-        exit 2
-        ;;
-esac
+DEBUG_LEVEL_LOGS=
+while [ "${1:-}" != "" ]; do
+    case "${1:-}" in
+        --testing )
+            BUILD_FOR_TEST=1
+            shift
+            ;;
+        --debug-level-logs )
+            DEBUG_LEVEL_LOGS=1
+            shift
+            ;;
+        -* )
+            echo "Unrecognized flag $1; expected --testing or --debug-level-logs" >&2
+            exit 2
+            ;;
+        *)
+            break
+    esac
+done
+
+if [[ -z "${DEBUG_LEVEL_LOGS:-}" ]]; then
+  FEATURES+=("log/release_max_level_info")
+fi
+
+android_abis=()
+while [ "${1:-}" != "" ]; do
+    case "${1:-}" in
+        desktop )
+            # On Linux, cdylibs don't include public symbols from their dependencies,
+            # even if those symbols have been re-exported in the Rust source.
+            # Using LTO works around this at the cost of a slightly slower build.
+            # https://github.com/rust-lang/rfcs/issues/2771
+            export CARGO_PROFILE_RELEASE_LTO=thin
+            FEATURES+=("testing-fns")
+            echo_then_run cargo build -p libsignal-jni -p libsignal-jni-testing --release ${FEATURES:+--features "${FEATURES[*]}"}
+            if [[ -z "${CARGO_BUILD_TARGET:-}" ]]; then
+                copy_built_library target/release signal_jni "${DESKTOP_LIB_DIR}/"
+                copy_built_library target/release signal_jni_testing "${DESKTOP_LIB_DIR}/"
+            fi
+            exit
+            ;;
+        android )
+            android_abis+=(arm64-v8a armeabi-v7a x86_64 x86)
+            ;;
+        android-arm64 | android-aarch64 )
+            android_abis+=(arm64-v8a)
+            ;;
+        android-arm | android-armv7 )
+            android_abis+=(armeabi-v7a)
+            ;;
+        android-x86_64 )
+            android_abis+=(x86_64)
+            ;;
+        android-x86 | android-i686 )
+            android_abis+=(x86)
+            ;;
+        *)
+            echo "Unknown target '${1:-}' (use 'desktop', 'android', or 'android-\$ARCH')" >&2
+            exit 2
+            ;;
+    esac
+    shift
+done
 
 # Everything from here down is Android-only.
 
@@ -93,7 +110,7 @@ export RUSTFLAGS="--cfg aes_armv8 --cfg polyval_armv8 ${RUSTFLAGS:-}" # Enable A
 export RUSTFLAGS="--cfg curve25519_dalek_bits=\"64\" ${RUSTFLAGS:-}"
 
 if [ $BUILD_FOR_TEST ]; then
-    FEATURES="testing-fns"
+    FEATURES+=("testing-fns")
     ANDROID_LIB_DIR="${ANDROID_LIB_DIR}/../../androidTest/jniLibs"
 fi
 
@@ -120,5 +137,5 @@ target_for_abi() {
 
 for abi in "${android_abis[@]}"; do
     rust_target=$(target_for_abi "$abi")
-    echo_then_run cargo build -p libsignal-jni --release ${FEATURES:+--features $FEATURES} -Z unstable-options --target "$rust_target" --out-dir "${ANDROID_LIB_DIR}/$abi"
+    echo_then_run cargo build -p libsignal-jni -p libsignal-jni-testing --release ${FEATURES:+--features "${FEATURES[*]}"} -Z unstable-options --target "$rust_target" --out-dir "${ANDROID_LIB_DIR}/$abi"
 done

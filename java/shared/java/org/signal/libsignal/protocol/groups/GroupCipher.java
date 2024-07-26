@@ -5,6 +5,8 @@
 
 package org.signal.libsignal.protocol.groups;
 
+import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
+
 import java.util.UUID;
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
@@ -49,8 +51,11 @@ public class GroupCipher {
   public CiphertextMessage encrypt(UUID distributionId, byte[] paddedPlaintext)
       throws NoSessionException {
     try (NativeHandleGuard sender = new NativeHandleGuard(this.sender)) {
-      return Native.GroupCipher_EncryptMessage(
-          sender.nativeHandle(), distributionId, paddedPlaintext, this.senderKeyStore);
+      return filterExceptions(
+          NoSessionException.class,
+          () ->
+              Native.GroupCipher_EncryptMessage(
+                  sender.nativeHandle(), distributionId, paddedPlaintext, this.senderKeyStore));
     }
   }
 
@@ -69,8 +74,14 @@ public class GroupCipher {
           InvalidMessageException,
           NoSessionException {
     try (NativeHandleGuard sender = new NativeHandleGuard(this.sender)) {
-      return Native.GroupCipher_DecryptMessage(
-          sender.nativeHandle(), senderKeyMessageBytes, this.senderKeyStore);
+      return filterExceptions(
+          LegacyMessageException.class,
+          DuplicateMessageException.class,
+          InvalidMessageException.class,
+          NoSessionException.class,
+          () ->
+              Native.GroupCipher_DecryptMessage(
+                  sender.nativeHandle(), senderKeyMessageBytes, this.senderKeyStore));
     }
   }
 }

@@ -5,8 +5,10 @@
 
 package org.signal.libsignal.net;
 
-/** Error thrown by a network failure. */
-public class NetworkException extends Exception {
+import java.io.IOException;
+
+/** Error thrown by a low-level network failure, for example failure to open a TCP connection. */
+public class NetworkException extends IOException {
   public NetworkException(String message) {
     super(message);
   }

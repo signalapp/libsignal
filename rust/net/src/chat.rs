@@ -8,25 +8,25 @@ use std::time::Duration;
 use ::http::uri::PathAndQuery;
 use ::http::{HeaderMap, HeaderName, HeaderValue, StatusCode};
 use async_trait::async_trait;
-use bytes::Bytes;
-use tokio::sync::mpsc;
-use url::Host;
+use futures_util::future::BoxFuture;
 
-use crate::chat::ws::{ChatOverWebSocketServiceConnector, ServerRequest};
-use crate::env::constants::WEB_SOCKET_PATH;
-use crate::env::{WS_KEEP_ALIVE_INTERVAL, WS_MAX_CONNECTION_TIME, WS_MAX_IDLE_TIME};
-use crate::infra::connection_manager::{
-    MultiRouteConnectionManager, SingleRouteThrottlingConnectionManager,
-};
-use crate::infra::errors::NetError;
+use crate::auth::Auth;
+use crate::chat::ws::{ChatOverWebSocketServiceConnector, ServerEvent};
+use crate::infra::connection_manager::MultiRouteConnectionManager;
 use crate::infra::reconnect::{ServiceConnectorWithDecorator, ServiceWithReconnect};
-use crate::infra::ws::{WebSocketClientConnector, WebSocketConfig};
-use crate::infra::{ConnectionParams, HttpRequestDecorator, TransportConnector};
+use crate::infra::ws::WebSocketClientConnector;
+use crate::infra::{
+    ConnectionInfo, EndpointConnection, HttpRequestDecorator, IpType, TransportConnector,
+};
 use crate::proto;
 use crate::utils::basic_authorization;
 
 pub mod chat_reconnect;
-pub mod http;
+mod error;
+use crate::timeouts::MULTI_ROUTE_CONNECTION_TIMEOUT;
+pub use error::ChatServiceError;
+
+pub mod server_requests;
 pub mod ws;
 
 pub type MessageProto = proto::chat_websocket::WebSocketMessage;
@@ -34,16 +34,16 @@ pub type RequestProto = proto::chat_websocket::WebSocketRequestMessage;
 pub type ResponseProto = proto::chat_websocket::WebSocketResponseMessage;
 pub type ChatMessageType = proto::chat_websocket::web_socket_message::Type;
 
-const ROUTE_CONNECTION_TIMEOUT: Duration = Duration::from_secs(1);
-const TOTAL_CONNECTION_TIMEOUT: Duration = Duration::from_secs(3);
-
 #[async_trait]
 pub trait ChatService {
     /// Sends request and gets a response from the Chat Service.
     ///
     /// This API can be represented using different transports (e.g. WebSockets
     /// or HTTP) capable of sending [Request] objects.
-    async fn send(&self, msg: Request, timeout: Duration) -> Result<Response, NetError>;
+    async fn send(&self, msg: Request, timeout: Duration) -> Result<Response, ChatServiceError>;
+
+    /// Establish a connection without sending a request.
+    async fn connect(&self) -> Result<(), ChatServiceError>;
 
     /// If the service is currently holding an open connection, closes that connection.
     ///
@@ -59,44 +59,27 @@ pub trait ChatServiceWithDebugInfo: ChatService {
         &self,
         msg: Request,
         timeout: Duration,
-    ) -> (Result<Response, NetError>, DebugInfo);
+    ) -> (Result<Response, ChatServiceError>, DebugInfo);
+
+    /// Establish a connection without sending a request.
+    async fn connect_and_debug(&self) -> Result<DebugInfo, ChatServiceError>;
 }
 
 pub trait RemoteAddressInfo {
     /// Provides information about the remote address the service is connected to
-    ///
-    /// If IP information is available, implementation should prefer to return [Host::Ipv4] or [Host::Ipv6]
-    /// and only use [Host::Domain] as a fallback.
-    fn remote_address(&self) -> Host;
+    fn connection_info(&self) -> ConnectionInfo;
 }
 
-#[derive(Copy, Clone, Debug)]
-#[repr(u8)]
-pub enum IpType {
-    Unknown = 0,
-    V4 = 1,
-    V6 = 2,
-}
-
-impl From<Host> for IpType {
-    fn from(host: Host) -> Self {
-        match host {
-            Host::Domain(_) => IpType::Unknown,
-            Host::Ipv4(_) => IpType::V4,
-            Host::Ipv6(_) => IpType::V6,
-        }
-    }
-}
-
-#[derive(Copy, Clone, Debug)]
+#[derive(Debug)]
 pub struct DebugInfo {
-    /// Indicates if the connection was active at the time of the call.
-    pub connection_reused: bool,
     /// Number of times a connection had to be established since the service was created.
     pub reconnect_count: u32,
-    /// IP type of the connection that was used for the request. `0`, if information is not available
-    /// or if the connection failed.
+    /// IP type of the connection that was used for the request.
     pub ip_type: IpType,
+    /// Time it took to complete the request.
+    pub duration: Duration,
+    /// Connection information summary.
+    pub connection_info: String,
 }
 
 #[derive(Clone, Debug)]
@@ -107,61 +90,56 @@ pub struct Request {
     pub path: PathAndQuery,
 }
 
-impl Request {
-    pub(crate) fn into_parts(self) -> (PathAndQuery, ::http::request::Builder, Bytes) {
-        let Request {
-            method,
-            body,
-            headers,
-            path,
-        } = self;
-
-        let mut builder = ::http::request::Request::builder().method(method);
-        let headers_map = builder.headers_mut().expect("have headers");
-        headers_map.extend(headers);
-
-        (path, builder, body.map_or_else(Bytes::new, Bytes::from))
-    }
-}
-
 #[derive(Clone, Debug)]
 pub struct Response {
     pub status: StatusCode,
+    pub message: Option<String>,
     pub body: Option<Box<[u8]>>,
     pub headers: HeaderMap,
 }
 
+#[derive(Debug)]
+pub struct ResponseProtoInvalidError;
+
 impl TryFrom<ResponseProto> for Response {
-    type Error = NetError;
+    type Error = ResponseProtoInvalidError;
 
     fn try_from(response_proto: ResponseProto) -> Result<Self, Self::Error> {
         let status = response_proto
             .status()
             .try_into()
-            .map_err(|_| NetError::IncomingDataInvalid)
+            .map_err(|_| ResponseProtoInvalidError)
             .and_then(|status_code| {
-                StatusCode::from_u16(status_code).map_err(|_| NetError::IncomingDataInvalid)
+                StatusCode::from_u16(status_code).map_err(|_| ResponseProtoInvalidError)
             })?;
+        let message = response_proto.message;
         let body = response_proto.body.map(|v| v.into_boxed_slice());
         let headers = response_proto.headers.into_iter().try_fold(
             HeaderMap::new(),
             |mut headers, header_string| {
                 let (name, value) = header_string
                     .split_once(':')
-                    .ok_or(NetError::IncomingDataInvalid)?;
+                    .ok_or(ResponseProtoInvalidError)?;
                 let header_name =
-                    HeaderName::try_from(name).map_err(|_| NetError::IncomingDataInvalid)?;
-                let header_value = HeaderValue::from_str(value.trim())
-                    .map_err(|_| NetError::IncomingDataInvalid)?;
+                    HeaderName::try_from(name).map_err(|_| ResponseProtoInvalidError)?;
+                let header_value =
+                    HeaderValue::from_str(value.trim()).map_err(|_| ResponseProtoInvalidError)?;
                 headers.append(header_name, header_value);
-                Ok::<HeaderMap, NetError>(headers)
+                Ok(headers)
             },
         )?;
         Ok(Response {
             status,
+            message,
             body,
             headers,
         })
+    }
+}
+
+impl From<ResponseProtoInvalidError> for ChatServiceError {
+    fn from(ResponseProtoInvalidError: ResponseProtoInvalidError) -> Self {
+        Self::IncomingDataInvalid
     }
 }
 
@@ -175,21 +153,11 @@ where
     AuthService: ChatServiceWithDebugInfo + Send + Sync,
     UnauthService: ChatServiceWithDebugInfo + Send + Sync,
 {
-    pub fn new(
-        auth_service: AuthorizedChatService<AuthService>,
-        unauth_service: AnonymousChatService<UnauthService>,
-    ) -> Self {
-        Self {
-            auth_service,
-            unauth_service,
-        }
-    }
-
     pub async fn send_authenticated(
         &self,
         msg: Request,
         timeout: Duration,
-    ) -> Result<Response, NetError> {
+    ) -> Result<Response, ChatServiceError> {
         self.auth_service.send(msg, timeout).await
     }
 
@@ -197,7 +165,7 @@ where
         &self,
         msg: Request,
         timeout: Duration,
-    ) -> Result<Response, NetError> {
+    ) -> Result<Response, ChatServiceError> {
         self.unauth_service.send(msg, timeout).await
     }
 
@@ -205,7 +173,7 @@ where
         &self,
         msg: Request,
         timeout: Duration,
-    ) -> (Result<Response, NetError>, DebugInfo) {
+    ) -> (Result<Response, ChatServiceError>, DebugInfo) {
         self.auth_service.send_and_debug(msg, timeout).await
     }
 
@@ -213,8 +181,16 @@ where
         &self,
         msg: Request,
         timeout: Duration,
-    ) -> (Result<Response, NetError>, DebugInfo) {
+    ) -> (Result<Response, ChatServiceError>, DebugInfo) {
         self.unauth_service.send_and_debug(msg, timeout).await
+    }
+
+    pub async fn connect_authenticated(&self) -> Result<DebugInfo, ChatServiceError> {
+        self.auth_service.connect_and_debug().await
+    }
+
+    pub async fn connect_unauthenticated(&self) -> Result<DebugInfo, ChatServiceError> {
+        self.unauth_service.connect_and_debug().await
     }
 
     pub async fn disconnect(&self) {
@@ -236,11 +212,86 @@ where
             auth_service,
             unauth_service,
         } = self;
-        Chat::new(auth_service.into_dyn(), unauth_service.into_dyn())
+        {
+            let auth_service = auth_service.into_dyn();
+            let unauth_service = unauth_service.into_dyn();
+            Chat {
+                auth_service,
+                unauth_service,
+            }
+        }
     }
 }
 
-pub struct AnonymousChatService<T> {
+/// Convenience trait for implementing [`ChatService`] on types that wrap
+/// another implementer of `ChatService`.
+///
+/// Provides a blanket implementation of `ChatService` that delegates all calls
+/// to `self.inner()`, and likewise for [`ChatServiceWithDebugInfo`].
+trait DelegatingChatService {
+    type Inner: ChatService + Send + Sync + ?Sized;
+    fn inner(&self) -> &Self::Inner;
+}
+
+// Implemented without `#[async_trait]` to avoid extra `Box`ing.
+impl<D: DelegatingChatService> ChatService for D {
+    fn send<'life0, 'async_trait>(
+        &'life0 self,
+        msg: Request,
+        timeout: Duration,
+    ) -> BoxFuture<'async_trait, Result<Response, ChatServiceError>>
+    where
+        'life0: 'async_trait,
+        Self: 'async_trait,
+    {
+        self.inner().send(msg, timeout)
+    }
+
+    fn connect<'life0, 'async_trait>(&'life0 self) -> BoxFuture<Result<(), ChatServiceError>>
+    where
+        'life0: 'async_trait,
+        Self: 'async_trait,
+    {
+        self.inner().connect()
+    }
+
+    fn disconnect<'life0, 'async_trait>(&'life0 self) -> BoxFuture<'async_trait, ()>
+    where
+        'life0: 'async_trait,
+        Self: 'async_trait,
+    {
+        self.inner().disconnect()
+    }
+}
+
+impl<D: DelegatingChatService> ChatServiceWithDebugInfo for D
+where
+    D::Inner: ChatServiceWithDebugInfo,
+{
+    fn send_and_debug<'life0, 'async_trait>(
+        &'life0 self,
+        msg: Request,
+        timeout: Duration,
+    ) -> BoxFuture<'async_trait, (Result<Response, ChatServiceError>, DebugInfo)>
+    where
+        'life0: 'async_trait,
+        Self: 'async_trait,
+    {
+        self.inner().send_and_debug(msg, timeout)
+    }
+
+    fn connect_and_debug<'life0, 'async_trait>(
+        &'life0 self,
+    ) -> BoxFuture<'async_trait, Result<DebugInfo, ChatServiceError>>
+    where
+        'life0: 'async_trait,
+        Self: 'async_trait,
+    {
+        self.inner().connect_and_debug()
+    }
+}
+
+struct AnonymousChatService<T> {
     inner: T,
 }
 
@@ -252,35 +303,18 @@ impl<T: ChatServiceWithDebugInfo + Send + Sync + 'static> AnonymousChatService<T
     }
 }
 
-#[async_trait]
-impl<T> ChatService for AnonymousChatService<T>
+impl<T> DelegatingChatService for AnonymousChatService<T>
 where
     T: ChatService + Send + Sync,
 {
-    async fn send(&self, msg: Request, timeout: Duration) -> Result<Response, NetError> {
-        self.inner.send(msg, timeout).await
-    }
+    type Inner = T;
 
-    async fn disconnect(&self) {
-        self.inner.disconnect().await
+    fn inner(&self) -> &Self::Inner {
+        &self.inner
     }
 }
 
-#[async_trait]
-impl<T> ChatServiceWithDebugInfo for AnonymousChatService<T>
-where
-    T: ChatServiceWithDebugInfo + Send + Sync,
-{
-    async fn send_and_debug(
-        &self,
-        msg: Request,
-        timeout: Duration,
-    ) -> (Result<Response, NetError>, DebugInfo) {
-        self.inner.send_and_debug(msg, timeout).await
-    }
-}
-
-pub struct AuthorizedChatService<T> {
+struct AuthorizedChatService<T> {
     inner: T,
 }
 
@@ -292,75 +326,76 @@ impl<T: ChatServiceWithDebugInfo + Send + Sync + 'static> AuthorizedChatService<
     }
 }
 
-#[async_trait]
-impl<T> ChatService for AuthorizedChatService<T>
+impl<T> DelegatingChatService for AuthorizedChatService<T>
 where
     T: ChatService + Send + Sync,
 {
-    async fn send(&self, msg: Request, timeout: Duration) -> Result<Response, NetError> {
-        self.inner.send(msg, timeout).await
-    }
-
-    async fn disconnect(&self) {
-        self.inner.disconnect().await
+    type Inner = T;
+    fn inner(&self) -> &Self::Inner {
+        &self.inner
     }
 }
 
-#[async_trait]
-impl ChatService for Arc<dyn ChatService + Send + Sync> {
-    async fn send(&self, msg: Request, timeout: Duration) -> Result<Response, NetError> {
-        self.as_ref().send(msg, timeout).await
-    }
+impl DelegatingChatService for Arc<dyn ChatService + Send + Sync> {
+    type Inner = dyn ChatService + Send + Sync;
 
-    async fn disconnect(&self) {
-        self.as_ref().disconnect().await
+    fn inner(&self) -> &Self::Inner {
+        self.as_ref()
     }
 }
 
-#[async_trait]
-impl<T> ChatServiceWithDebugInfo for AuthorizedChatService<T>
+/// Wraps a ChatService `T` to automatically call [`disconnect`][ChatService::disconnect] on Drop.
+///
+/// If dropped in a tokio context, the disconnect will happen asynchronously.
+///
+/// Deliberately does *not* implement Clone; this interface only makes sense as a way to impose a
+/// single owner on an underlying cloneable ChatService.
+struct AutoDisconnecting<T: ChatService + Clone + Send + Sync + 'static> {
+    inner: T,
+}
+
+impl<T: ChatService + Clone + Send + Sync + 'static> Drop for AutoDisconnecting<T> {
+    fn drop(&mut self) {
+        if let Ok(handle) = tokio::runtime::Handle::try_current() {
+            let inner = self.inner.clone();
+            handle.spawn(async move { inner.disconnect().await });
+        } else {
+            tokio::runtime::Builder::new_current_thread()
+                .build()
+                .expect("can create ad-hoc runtime")
+                .block_on(self.inner.disconnect())
+        }
+    }
+}
+
+impl<T> DelegatingChatService for AutoDisconnecting<T>
 where
-    T: ChatServiceWithDebugInfo + Send + Sync,
+    T: ChatService + Clone + Send + Sync + 'static,
 {
-    async fn send_and_debug(
-        &self,
-        msg: Request,
-        timeout: Duration,
-    ) -> (Result<Response, NetError>, DebugInfo) {
-        self.inner.send_and_debug(msg, timeout).await
+    type Inner = T;
+
+    fn inner(&self) -> &Self::Inner {
+        &self.inner
     }
 }
 
-#[async_trait]
-impl ChatService for Arc<dyn ChatServiceWithDebugInfo + Send + Sync> {
-    async fn send(&self, msg: Request, timeout: Duration) -> Result<Response, NetError> {
-        self.as_ref().send(msg, timeout).await
-    }
+impl DelegatingChatService for Arc<dyn ChatServiceWithDebugInfo + Send + Sync> {
+    type Inner = dyn ChatServiceWithDebugInfo + Send + Sync;
 
-    async fn disconnect(&self) {
-        self.as_ref().disconnect().await
-    }
-}
-
-#[async_trait]
-impl ChatServiceWithDebugInfo for Arc<dyn ChatServiceWithDebugInfo + Send + Sync> {
-    async fn send_and_debug(
-        &self,
-        msg: Request,
-        timeout: Duration,
-    ) -> (Result<Response, NetError>, DebugInfo) {
-        self.as_ref().send_and_debug(msg, timeout).await
+    fn inner(&self) -> &Self::Inner {
+        self.as_ref()
     }
 }
 
 fn build_authorized_chat_service(
     connection_manager_ws: &MultiRouteConnectionManager,
     service_connector_ws: &ChatOverWebSocketServiceConnector<impl TransportConnector + 'static>,
-    username: String,
-    password: String,
+    auth: Auth,
 ) -> AuthorizedChatService<impl ChatServiceWithDebugInfo> {
-    let header_auth_decorator =
-        HttpRequestDecorator::HeaderAuth(basic_authorization(&username, &password));
+    let header_auth_decorator = HttpRequestDecorator::Header(
+        http::header::AUTHORIZATION,
+        basic_authorization(&auth.username, &auth.password),
+    );
 
     // ws authorized
     let chat_over_ws_auth = ServiceWithReconnect::new(
@@ -369,11 +404,13 @@ fn build_authorized_chat_service(
             header_auth_decorator.clone(),
         ),
         connection_manager_ws.clone(),
-        TOTAL_CONNECTION_TIMEOUT,
+        MULTI_ROUTE_CONNECTION_TIMEOUT,
     );
 
     AuthorizedChatService {
-        inner: chat_over_ws_auth,
+        inner: AutoDisconnecting {
+            inner: chat_over_ws_auth,
+        },
     }
 }
 
@@ -385,58 +422,45 @@ fn build_anonymous_chat_service(
     let chat_over_ws_anonymous = ServiceWithReconnect::new(
         service_connector_ws.clone(),
         connection_manager_ws.clone(),
-        TOTAL_CONNECTION_TIMEOUT,
+        MULTI_ROUTE_CONNECTION_TIMEOUT,
     );
 
     AnonymousChatService {
-        inner: chat_over_ws_anonymous,
+        inner: AutoDisconnecting {
+            inner: chat_over_ws_anonymous,
+        },
     }
 }
 
 pub fn chat_service<T: TransportConnector + 'static>(
-    username: String,
-    password: String,
-    incoming_tx: mpsc::Sender<ServerRequest<T::Stream>>,
+    endpoint: &EndpointConnection<MultiRouteConnectionManager>,
     transport_connector: T,
-    connection_params_list: Vec<ConnectionParams>,
+    incoming_tx: tokio::sync::mpsc::Sender<ServerEvent<T::Stream>>,
+    auth: Auth,
 ) -> Chat<impl ChatServiceWithDebugInfo, impl ChatServiceWithDebugInfo> {
-    let cfg = WebSocketConfig {
-        ws_config: tungstenite::protocol::WebSocketConfig::default(),
-        endpoint: PathAndQuery::from_static(WEB_SOCKET_PATH),
-        max_connection_time: WS_MAX_CONNECTION_TIME,
-        keep_alive_interval: WS_KEEP_ALIVE_INTERVAL,
-        max_idle_time: WS_MAX_IDLE_TIME,
-    };
-
-    let service_connector_ws = ChatOverWebSocketServiceConnector::new(
-        WebSocketClientConnector::new(transport_connector, cfg),
+    // Cannot reuse the same connector, since they lock on `incoming_tx` internally.
+    let unauth_ws_connector = ChatOverWebSocketServiceConnector::new(
+        WebSocketClientConnector::new(transport_connector.clone(), endpoint.config.clone()),
+        incoming_tx.clone(),
+    );
+    let auth_ws_connector = ChatOverWebSocketServiceConnector::new(
+        WebSocketClientConnector::new(transport_connector, endpoint.config.clone()),
         incoming_tx,
     );
-    let connection_manager_ws = multi_route_manager(&connection_params_list);
-
-    Chat::new(
-        build_authorized_chat_service(
-            &connection_manager_ws,
-            &service_connector_ws,
-            username,
-            password,
-        ),
-        build_anonymous_chat_service(&connection_manager_ws, &service_connector_ws),
-    )
-}
-
-fn multi_route_manager(routes: &[ConnectionParams]) -> MultiRouteConnectionManager {
-    let single_route_managers = routes
-        .iter()
-        .map(|cp| SingleRouteThrottlingConnectionManager::new(cp.clone(), ROUTE_CONNECTION_TIMEOUT))
-        .collect();
-    MultiRouteConnectionManager::new(single_route_managers, TOTAL_CONNECTION_TIMEOUT)
+    {
+        let auth_service =
+            build_authorized_chat_service(&endpoint.manager, &auth_ws_connector, auth);
+        let unauth_service = build_anonymous_chat_service(&endpoint.manager, &unauth_ws_connector);
+        Chat {
+            auth_service,
+            unauth_service,
+        }
+    }
 }
 
 #[cfg(test)]
 pub(crate) mod test {
-    use crate::chat::{Response, ResponseProto};
-    use crate::infra::errors::NetError;
+    use crate::chat::{Response, ResponseProto, ResponseProtoInvalidError};
     use assert_matches::assert_matches;
     use http::{HeaderName, HeaderValue};
 
@@ -446,15 +470,15 @@ pub(crate) mod test {
 
         use async_trait::async_trait;
         use http::Method;
+        use nonzero_ext::nonzero;
 
-        use crate::chat::{ChatService, Request, Response};
+        use crate::chat::{ChatService, ChatServiceError, Request, Response};
         use crate::infra::certs::RootCertificates;
         use crate::infra::connection_manager::SingleRouteThrottlingConnectionManager;
-        use crate::infra::dns::DnsResolver;
-        use crate::infra::errors::{LogSafeDisplay, NetError};
+        use crate::infra::errors::LogSafeDisplay;
         use crate::infra::reconnect::{ServiceConnector, ServiceState};
         use crate::infra::test::shared::{NoReconnectService, TIMEOUT_DURATION};
-        use crate::infra::ConnectionParams;
+        use crate::infra::{ConnectionParams, RouteType};
 
         #[async_trait]
         impl<C> ChatService for NoReconnectService<C>
@@ -462,15 +486,24 @@ pub(crate) mod test {
             C: ServiceConnector + Send + Sync + 'static,
             C::Service: ChatService + Clone + Send + Sync + 'static,
             C::Channel: Send + Sync,
-            C::Error: Send + Sync + Debug + LogSafeDisplay,
+            C::ConnectError: Send + Sync + Debug + LogSafeDisplay,
+            C::StartError: Send + Sync + Debug + LogSafeDisplay,
         {
-            async fn send(&self, msg: Request, timeout: Duration) -> Result<Response, NetError> {
+            async fn send(
+                &self,
+                msg: Request,
+                timeout: Duration,
+            ) -> Result<Response, ChatServiceError> {
                 match &*self.inner {
                     ServiceState::Active(service, status) if !status.is_stopped() => {
                         service.clone().send(msg, timeout).await
                     }
-                    _ => Err(NetError::NoServiceConnection),
+                    _ => Err(ChatServiceError::AllConnectionRoutesFailed { attempts: 1 }),
                 }
+            }
+
+            async fn connect(&self) -> Result<(), ChatServiceError> {
+                Ok(())
             }
 
             async fn disconnect(&self) {
@@ -491,12 +524,12 @@ pub(crate) mod test {
 
         pub fn connection_manager() -> SingleRouteThrottlingConnectionManager {
             let connection_params = ConnectionParams::new(
+                RouteType::Test,
                 "test.signal.org",
                 "test.signal.org",
-                443,
+                nonzero!(443u16),
                 Default::default(),
                 RootCertificates::Signal,
-                DnsResolver::default().into(),
             );
             SingleRouteThrottlingConnectionManager::new(connection_params, TIMEOUT_DURATION)
         }
@@ -616,7 +649,7 @@ pub(crate) mod test {
             message: None,
             id: None,
         };
-        let response: Result<Response, NetError> = proto.try_into();
-        assert_matches!(response, Err(NetError::IncomingDataInvalid));
+        let response: Result<Response, _> = proto.try_into();
+        assert_matches!(response, Err(ResponseProtoInvalidError));
     }
 }

@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -13,20 +13,19 @@ use http::header::ToStrError;
 use http::status::StatusCode;
 use prost::Message;
 use tokio::sync::{mpsc, oneshot, Mutex};
+use tokio::time::Instant;
 use tokio_tungstenite::WebSocketStream;
-use url::Host;
 
 use crate::chat::{
-    ChatMessageType, ChatService, MessageProto, RemoteAddressInfo, Request, RequestProto, Response,
-    ResponseProto,
+    ChatMessageType, ChatService, ChatServiceError, MessageProto, RemoteAddressInfo, Request,
+    RequestProto, Response, ResponseProto,
 };
-use crate::infra::errors::NetError;
 use crate::infra::reconnect::{ServiceConnector, ServiceStatus};
 use crate::infra::ws::{
     NextOrClose, TextOrBinary, WebSocketClient, WebSocketClientConnector, WebSocketClientReader,
-    WebSocketClientWriter,
+    WebSocketClientWriter, WebSocketConnectError, WebSocketServiceError,
 };
-use crate::infra::{AsyncDuplexStream, ConnectionParams, TransportConnector};
+use crate::infra::{AsyncDuplexStream, ConnectionInfo, ConnectionParams, TransportConnector};
 use crate::proto::chat_websocket::web_socket_message::Type;
 
 #[derive(Debug, Default, Eq, Hash, PartialEq, Clone, Copy)]
@@ -48,32 +47,56 @@ enum ChatMessage {
 #[derive(Debug)]
 pub struct ResponseSender<S> {
     request_id: u64,
-    writer: WebSocketClientWriter<S>,
+    // Declared with Option for testing ServerRequest handlers.
+    writer: Option<WebSocketClientWriter<S, ChatServiceError>>,
 }
 
 impl<S: AsyncDuplexStream> ResponseSender<S> {
-    pub async fn send_response(self, status_code: StatusCode) -> Result<(), NetError> {
+    pub async fn send_response(self, status_code: StatusCode) -> Result<(), ChatServiceError> {
+        let Some(writer) = self.writer else {
+            return Ok(());
+        };
         let response = response_for_code(self.request_id, status_code);
-        self.writer.send(response.encode_to_vec()).await
+        writer.send(response.encode_to_vec()).await
     }
 }
 
 #[derive(Debug)]
-pub struct ServerRequest<S> {
-    pub request_proto: RequestProto,
-    pub response_sender: ResponseSender<S>,
+pub enum ServerEvent<S> {
+    Request {
+        request_proto: RequestProto,
+        response_sender: ResponseSender<S>,
+    },
+    Stopped,
 }
 
-impl<S: AsyncDuplexStream> ServerRequest<S> {
+impl<S: AsyncDuplexStream> ServerEvent<S> {
     fn new(
         request_proto: RequestProto,
-        writer: WebSocketClientWriter<S>,
-    ) -> Result<Self, NetError> {
-        let request_id = request_proto.id.ok_or(NetError::ServerRequestMissingId)?;
-        Ok(Self {
+        writer: WebSocketClientWriter<S, ChatServiceError>,
+    ) -> Result<Self, ChatServiceError> {
+        let request_id = request_proto
+            .id
+            .ok_or(ChatServiceError::ServerRequestMissingId)?;
+        Ok(Self::Request {
             request_proto,
-            response_sender: ResponseSender { request_id, writer },
+            response_sender: ResponseSender {
+                request_id,
+                writer: Some(writer),
+            },
         })
+    }
+
+    /// Creates a ServerRequest that does nothing when ack'd.
+    pub fn fake(request_proto: RequestProto) -> Self {
+        let request_id = request_proto.id.expect("fake requests still need IDs");
+        Self::Request {
+            request_proto,
+            response_sender: ResponseSender {
+                request_id,
+                writer: None,
+            },
+        }
     }
 }
 
@@ -83,8 +106,19 @@ struct PendingMessagesMap {
     next_id: u64,
 }
 
+struct NoMoreRequests;
+
 impl PendingMessagesMap {
-    fn insert(&mut self, responder: oneshot::Sender<ResponseProto>) -> RequestId {
+    const CANCELLED: u64 = u64::MAX;
+
+    fn insert(
+        &mut self,
+        responder: oneshot::Sender<ResponseProto>,
+    ) -> Result<RequestId, NoMoreRequests> {
+        if self.next_id == Self::CANCELLED {
+            return Err(NoMoreRequests);
+        }
+
         let id = RequestId::new(self.next_id);
         let prev = self.pending.insert(id, responder);
         assert!(
@@ -92,28 +126,33 @@ impl PendingMessagesMap {
             "IDs are picked uniquely and shouldn't wrap around in a reasonable amount of time"
         );
         self.next_id += 1;
-        id
+        Ok(id)
     }
 
     fn remove(&mut self, id: &RequestId) -> Option<oneshot::Sender<ResponseProto>> {
         self.pending.remove(id)
     }
+
+    fn cancel_all(&mut self) {
+        self.next_id = Self::CANCELLED;
+        self.pending.clear();
+    }
 }
 
 #[derive_where(Clone)]
-pub(crate) struct ChatOverWebSocketServiceConnector<T: TransportConnector> {
-    ws_client_connector: WebSocketClientConnector<T>,
-    incoming_tx: mpsc::Sender<ServerRequest<T::Stream>>,
+pub(super) struct ChatOverWebSocketServiceConnector<T: TransportConnector> {
+    ws_client_connector: WebSocketClientConnector<T, ChatServiceError>,
+    incoming_tx: Arc<Mutex<mpsc::Sender<ServerEvent<T::Stream>>>>,
 }
 
 impl<T: TransportConnector> ChatOverWebSocketServiceConnector<T> {
     pub fn new(
-        ws_client_connector: WebSocketClientConnector<T>,
-        incoming_tx: mpsc::Sender<ServerRequest<T::Stream>>,
+        ws_client_connector: WebSocketClientConnector<T, ChatServiceError>,
+        incoming_tx: mpsc::Sender<ServerEvent<T::Stream>>,
     ) -> Self {
         Self {
             ws_client_connector,
-            incoming_tx,
+            incoming_tx: Arc::new(Mutex::new(incoming_tx)),
         }
     }
 }
@@ -121,24 +160,28 @@ impl<T: TransportConnector> ChatOverWebSocketServiceConnector<T> {
 #[async_trait]
 impl<T: TransportConnector> ServiceConnector for ChatOverWebSocketServiceConnector<T> {
     type Service = ChatOverWebSocket<T::Stream>;
-    type Channel = (WebSocketStream<T::Stream>, Host);
-    type Error = NetError;
+    type Channel = (WebSocketStream<T::Stream>, ConnectionInfo);
+    type ConnectError = WebSocketConnectError;
+    type StartError = ChatServiceError;
 
     async fn connect_channel(
         &self,
         connection_params: &ConnectionParams,
-    ) -> Result<Self::Channel, Self::Error> {
+    ) -> Result<Self::Channel, Self::ConnectError> {
         self.ws_client_connector
             .connect_channel(connection_params)
             .await
     }
 
-    fn start_service(&self, channel: Self::Channel) -> (Self::Service, ServiceStatus<Self::Error>) {
+    fn start_service(
+        &self,
+        channel: Self::Channel,
+    ) -> (Self::Service, ServiceStatus<Self::StartError>) {
         let (ws_client, service_status) = self.ws_client_connector.start_service(channel);
         let WebSocketClient {
             ws_client_writer,
             ws_client_reader,
-            remote_address,
+            connection_info,
         } = ws_client;
         let pending_messages: Arc<Mutex<PendingMessagesMap>> = Default::default();
         tokio::spawn(reader_task(
@@ -153,7 +196,7 @@ impl<T: TransportConnector> ServiceConnector for ChatOverWebSocketServiceConnect
                 ws_client_writer,
                 service_status: service_status.clone(),
                 pending_messages,
-                remote_address,
+                connection_info,
             },
             service_status,
         )
@@ -161,24 +204,33 @@ impl<T: TransportConnector> ServiceConnector for ChatOverWebSocketServiceConnect
 }
 
 async fn reader_task<S: AsyncDuplexStream + 'static>(
-    mut ws_client_reader: WebSocketClientReader<S>,
-    ws_client_writer: WebSocketClientWriter<S>,
-    incoming_tx: mpsc::Sender<ServerRequest<S>>,
+    mut ws_client_reader: WebSocketClientReader<S, ChatServiceError>,
+    ws_client_writer: WebSocketClientWriter<S, ChatServiceError>,
+    incoming_tx: Arc<Mutex<mpsc::Sender<ServerEvent<S>>>>,
     pending_messages: Arc<Mutex<PendingMessagesMap>>,
-    service_status: ServiceStatus<NetError>,
+    service_status: ServiceStatus<ChatServiceError>,
 ) {
-    // This variable holds the timestamp of the latest network activity event.
-    // When listening to incoming frames/events, we will explicitly refresh it when needed.
+    const LONG_REQUEST_PROCESSING_THRESHOLD: Duration = Duration::from_millis(500);
+
+    // Hold the ServerEvent Sender exclusively while the reader task is alive. This prevents two
+    // reader tasks from being active at once, interleaving their events. Note that ServerEvents
+    // that don't come from ChatOverWebSocketServiceConnector still won't be synchronized.
+    let incoming_tx = incoming_tx.lock().await;
+
+    let mut previous_request_paths_for_logging =
+        VecDeque::with_capacity(incoming_tx.max_capacity());
+    let mut has_ever_sent_server_event = false;
+
     loop {
         let data = match ws_client_reader.next().await {
             Ok(NextOrClose::Next(TextOrBinary::Binary(data))) => data,
             Ok(NextOrClose::Next(TextOrBinary::Text(_))) => {
                 log::info!("Text frame received on chat websocket");
-                service_status.stop_service_with_error(NetError::UnexpectedFrameReceived);
+                service_status.stop_service_with_error(ChatServiceError::UnexpectedFrameReceived);
                 break;
             }
             Ok(NextOrClose::Close(_)) => {
-                service_status.stop_service_with_error(NetError::ChannelClosed);
+                service_status.stop_service_with_error(WebSocketServiceError::ChannelClosed.into());
                 break;
             }
             Err(e) => {
@@ -190,18 +242,47 @@ async fn reader_task<S: AsyncDuplexStream + 'static>(
         // binary data received
         match decode_and_validate(data.as_slice()) {
             Ok(ChatMessage::Request(req)) => {
-                let server_request = match ServerRequest::new(req, ws_client_writer.clone()) {
+                let request_path = req.path().to_owned();
+                let server_request = match ServerEvent::new(req, ws_client_writer.clone()) {
                     Ok(server_request) => server_request,
                     Err(e) => {
                         service_status.stop_service_with_error(e);
                         break;
                     }
                 };
+
+                let request_send_start = Instant::now();
                 let delivery_result = incoming_tx.send(server_request).await;
+                let request_send_elapsed = request_send_start.elapsed();
+
                 if delivery_result.is_err() {
-                    service_status
-                        .stop_service_with_error(NetError::FailedToPassMessageToIncomingChannel);
+                    service_status.stop_service_with_error(
+                        ChatServiceError::FailedToPassMessageToIncomingChannel,
+                    );
                 }
+
+                if previous_request_paths_for_logging.len() == incoming_tx.max_capacity() {
+                    let previous_request_path = previous_request_paths_for_logging.pop_front();
+                    if request_send_elapsed > LONG_REQUEST_PROCESSING_THRESHOLD {
+                        log::warn!(
+                            concat!(
+                                "processing for previous request {} ({} request(s) ago) took {:?}{}; ",
+                                "this could cause problems for the authenticated connection to the ",
+                                "chat server",
+                            ),
+                            previous_request_path.as_deref().unwrap_or("<none>"),
+                            incoming_tx.max_capacity(),
+                            request_send_elapsed,
+                            if delivery_result.is_err() {
+                                " (after which the channel was closed)"
+                            } else {
+                                ""
+                            },
+                        );
+                    }
+                }
+                previous_request_paths_for_logging.push_back(request_path);
+                has_ever_sent_server_event = true;
             }
             Ok(ChatMessage::Response(id, res)) => {
                 let map = &mut pending_messages.lock().await;
@@ -216,22 +297,36 @@ async fn reader_task<S: AsyncDuplexStream + 'static>(
             }
         }
     }
+
+    if has_ever_sent_server_event {
+        // We only need a Stopped event to separate the events from different connections. If there
+        // haven't been any events from this connection, we don't bother. This also avoids sending
+        // events for the unauth socket, even though it still has to read responses.
+        // (But don't worry about delivery failure here; if no one's listening, the event is
+        // superfluous anyway.)
+        _ = incoming_tx.send(ServerEvent::Stopped).await;
+    }
+
     // before terminating the task, marking channel as inactive
     service_status.stop_service();
+
+    // Clear the pending messages map. These requests don't wait on the service status just in case
+    // a response comes in late; dropping the response senders is how we cancel them.
+    pending_messages.lock().await.cancel_all();
 }
 
 #[derive_where(Clone)]
 #[derive(Debug)]
 pub struct ChatOverWebSocket<S> {
-    ws_client_writer: WebSocketClientWriter<S>,
-    service_status: ServiceStatus<NetError>,
+    ws_client_writer: WebSocketClientWriter<S, ChatServiceError>,
+    service_status: ServiceStatus<ChatServiceError>,
     pending_messages: Arc<Mutex<PendingMessagesMap>>,
-    remote_address: Host,
+    connection_info: ConnectionInfo,
 }
 
 impl<S> RemoteAddressInfo for ChatOverWebSocket<S> {
-    fn remote_address(&self) -> Host {
-        self.remote_address.clone()
+    fn connection_info(&self) -> ConnectionInfo {
+        self.connection_info.clone()
     }
 }
 
@@ -240,10 +335,10 @@ impl<S> ChatService for ChatOverWebSocket<S>
 where
     S: AsyncDuplexStream,
 {
-    async fn send(&self, msg: Request, timeout: Duration) -> Result<Response, NetError> {
+    async fn send(&self, msg: Request, timeout: Duration) -> Result<Response, ChatServiceError> {
         // checking if channel has been closed
         if self.service_status.is_stopped() {
-            return Err(NetError::ChannelClosed);
+            return Err(WebSocketServiceError::ChannelClosed.into());
         }
 
         let (response_tx, response_rx) = oneshot::channel::<ResponseProto>();
@@ -251,26 +346,31 @@ where
         // defining a scope here to release the lock ASAP
         let id = {
             let map = &mut self.pending_messages.lock().await;
+            // It's possible that the service has been stopped between the check above and the
+            // insert below. This accounts for that.
             map.insert(response_tx)
+                .map_err(|_| WebSocketServiceError::ChannelClosed)?
         };
 
-        let msg = request_to_websocket_proto(msg, id)?;
+        let msg = request_to_websocket_proto(msg, id)
+            .map_err(|_| ChatServiceError::RequestHasInvalidHeader)?;
 
         self.ws_client_writer.send(msg.encode_to_vec()).await?;
 
-        let res = tokio::select! {
-            result = response_rx => Ok(result.expect("sender is not dropped before receiver")),
-            _ = tokio::time::sleep(timeout) => Err(NetError::Timeout),
-            _ = self.service_status.stopped() => Err(NetError::ChannelClosed)
+        tokio::select! {
+            result = response_rx => result.map_err(|_| WebSocketServiceError::ChannelClosed.into()),
+            _ = tokio::time::sleep(timeout) => {
+                let map = &mut self.pending_messages.lock().await;
+                map.remove(&id);
+                Err(ChatServiceError::Timeout)
+            },
         }
-        .and_then(|response_proto| response_proto.try_into());
+        .and_then(|response_proto| Ok(response_proto.try_into()?))
+    }
 
-        if res.is_err() {
-            // in case of an error we need to clean up the listener from the `pending_messages` map
-            let map = &mut self.pending_messages.lock().await;
-            map.remove(&id);
-        }
-        res
+    async fn connect(&self) -> Result<(), ChatServiceError> {
+        // ChatServiceOverWebsocket is created connected
+        Ok(())
     }
 
     async fn disconnect(&self) {
@@ -278,8 +378,8 @@ where
     }
 }
 
-fn decode_and_validate(data: &[u8]) -> Result<ChatMessage, NetError> {
-    let msg = MessageProto::decode(data).map_err(|_| NetError::IncomingDataInvalid)?;
+fn decode_and_validate(data: &[u8]) -> Result<ChatMessage, ChatServiceError> {
+    let msg = MessageProto::decode(data).map_err(|_| ChatServiceError::IncomingDataInvalid)?;
     // we want to guarantee that the message is either request or response
     match (
         msg.r#type
@@ -289,10 +389,10 @@ fn decode_and_validate(data: &[u8]) -> Result<ChatMessage, NetError> {
     ) {
         (Some(ChatMessageType::Request), Some(req), None) => Ok(ChatMessage::Request(req)),
         (Some(ChatMessageType::Response), None, Some(res)) => Ok(ChatMessage::Response(
-            RequestId::new(res.id.ok_or(NetError::IncomingDataInvalid)?),
+            RequestId::new(res.id.ok_or(ChatServiceError::IncomingDataInvalid)?),
             res,
         )),
-        _ => Err(NetError::IncomingDataInvalid),
+        _ => Err(ChatServiceError::IncomingDataInvalid),
     }
 }
 
@@ -314,13 +414,12 @@ fn response_for_code(id: u64, code: StatusCode) -> MessageProto {
     }
 }
 
-fn request_to_websocket_proto(msg: Request, id: RequestId) -> Result<MessageProto, NetError> {
+fn request_to_websocket_proto(msg: Request, id: RequestId) -> Result<MessageProto, ToStrError> {
     let headers = msg
         .headers
         .iter()
         .map(|(name, value)| Ok(format!("{name}: {}", value.to_str()?)))
-        .collect::<Result<_, _>>()
-        .map_err(|_: ToStrError| NetError::RequestHasInvalidHeader)?;
+        .collect::<Result<_, _>>()?;
 
     Ok(MessageProto {
         r#type: Some(Type::Request.into()),
@@ -356,14 +455,14 @@ mod test {
     use crate::chat::test::shared::{connection_manager, test_request};
     use crate::chat::ws::{
         decode_and_validate, request_to_websocket_proto, ChatMessage,
-        ChatOverWebSocketServiceConnector, RequestId, ServerRequest,
+        ChatOverWebSocketServiceConnector, ChatServiceError, RequestId, ServerEvent,
     };
     use crate::chat::{ChatMessageType, ChatService, MessageProto, ResponseProto};
-    use crate::infra::errors::NetError;
+
     use crate::infra::test::shared::{
         InMemoryWarpConnector, NoReconnectService, TestError, TIMEOUT_DURATION,
     };
-    use crate::infra::ws::{WebSocketClientConnector, WebSocketConfig};
+    use crate::infra::ws::{WebSocketClientConnector, WebSocketConfig, WebSocketServiceError};
     use crate::proto::chat_websocket::WebSocketMessage;
 
     fn test_ws_config() -> WebSocketConfig {
@@ -529,13 +628,43 @@ mod test {
         let response = ws_chat
             .send(test_request(Method::GET, "/"), TIMEOUT_DURATION)
             .await;
-        assert_matches!(response, Err(NetError::Timeout));
+        assert_matches!(response, Err(ChatServiceError::Timeout));
         validate_server_running(server_res_rx).await;
     }
 
     #[tokio::test(flavor = "current_thread", start_paused = true)]
-    async fn ws_service_fails_request_if_stopped_before_reponse_received() {
-        // creating a server that responds to requests with 200
+    async fn ws_service_request_succeeds_even_if_server_closes_immediately_after() {
+        // creating a server that accepts one request, responds with 200, and then closes
+        let (ws_server, server_res_rx) = ws_warp_filter(move |websocket| async move {
+            let (mut tx, mut rx) = websocket.split();
+            let msg = rx
+                .next()
+                .await
+                .expect("stream should not be closed")
+                .expect("should be Ok");
+            assert!(msg.is_binary(), "not binary: {msg:?}");
+            let request = decode_and_validate(msg.as_bytes()).expect("chat message");
+            let message_proto =
+                response_for_request(&request, StatusCode::OK).expect("not an error");
+            let send_result = tx
+                .send(warp::ws::Message::binary(message_proto.encode_to_vec()))
+                .await;
+            assert_matches!(send_result, Ok(_));
+        });
+
+        let ws_config = test_ws_config();
+        let (ws_chat, _) = create_ws_chat_service(ws_config, ws_server).await;
+
+        let response = ws_chat
+            .send(test_request(Method::GET, "/"), TIMEOUT_DURATION)
+            .await;
+        response.expect("response");
+        validate_server_stopped_successfully(server_res_rx).await;
+    }
+
+    #[tokio::test(flavor = "current_thread", start_paused = true)]
+    async fn ws_service_fails_request_if_stopped_before_response_received() {
+        // creating a server that accepts one request and then closes
         let (ws_server, server_res_rx) = ws_warp_filter(move |websocket| async move {
             let (mut tx, mut rx) = websocket.split();
             let _: warp::ws::Message = rx.next().await.expect("not closed").expect("not an error");
@@ -548,7 +677,12 @@ mod test {
         let response = ws_chat
             .send(test_request(Method::GET, "/"), TIMEOUT_DURATION)
             .await;
-        assert_matches!(response, Err(NetError::ChannelClosed));
+        assert_matches!(
+            response,
+            Err(ChatServiceError::WebSocket(
+                WebSocketServiceError::ChannelClosed
+            ))
+        );
         validate_server_stopped_successfully(server_res_rx).await;
     }
 
@@ -587,16 +721,61 @@ mod test {
         let ws_config = test_ws_config();
         let (_, mut incoming_rx) = create_ws_chat_service(ws_config, ws_server).await;
 
-        let ServerRequest {
-            request_proto: _,
-            response_sender,
-        } = incoming_rx.recv().await.expect("server request");
+        let response_sender = assert_matches!(
+            incoming_rx.recv().await.expect("server request"),
+            ServerEvent::Request {
+                request_proto: _,
+                response_sender
+            } => response_sender
+        );
 
         response_sender
             .send_response(StatusCode::OK)
             .await
             .expect("response sent to back server");
         validate_server_stopped_successfully(server_res_rx).await;
+
+        assert_matches!(
+            incoming_rx.recv().await.expect("server request"),
+            ServerEvent::Stopped
+        );
+    }
+
+    #[tokio::test(flavor = "current_thread", start_paused = true)]
+    async fn ws_service_skips_stop_event_without_requests() {
+        // creating a server that accepts a request, responds, then closes the connection.
+        let (ws_server, server_res_rx) = ws_warp_filter(move |websocket| async move {
+            let (mut tx, mut rx) = websocket.split();
+            let msg = rx
+                .next()
+                .await
+                .expect("stream should not be closed")
+                .expect("should be Ok");
+            assert!(msg.is_binary(), "not binary: {msg:?}");
+            let request = decode_and_validate(msg.as_bytes()).expect("chat message");
+            let message_proto =
+                response_for_request(&request, StatusCode::OK).expect("not an error");
+            let send_result = tx
+                .send(warp::ws::Message::binary(message_proto.encode_to_vec()))
+                .await;
+            assert_matches!(send_result, Ok(_));
+        });
+
+        let ws_config = test_ws_config();
+        let (ws_chat, mut incoming_rx) = create_ws_chat_service(ws_config, ws_server).await;
+
+        // Requests from the client can still get responses without resulting in a Stopped event.
+        let response = ws_chat
+            .send(test_request(Method::GET, "/"), TIMEOUT_DURATION)
+            .await;
+        response.expect("response");
+
+        validate_server_stopped_successfully(server_res_rx).await;
+
+        assert_matches!(
+            incoming_rx.try_recv(),
+            Err(mpsc::error::TryRecvError::Disconnected)
+        );
     }
 
     #[tokio::test(flavor = "current_thread", start_paused = true)]
@@ -664,7 +843,12 @@ mod test {
         let response = ws_chat
             .send(test_request(Method::GET, "/"), TIMEOUT_DURATION)
             .await;
-        assert_matches!(response, Err(NetError::ChannelClosed));
+        assert_matches!(
+            response,
+            Err(ChatServiceError::WebSocket(
+                WebSocketServiceError::ChannelClosed
+            ))
+        );
         validate_server_stopped_successfully(server_res_rx).await;
     }
 
@@ -719,13 +903,13 @@ mod test {
         ws_server: F,
     ) -> (
         NoReconnectService<ChatOverWebSocketServiceConnector<InMemoryWarpConnector<F>>>,
-        Receiver<ServerRequest<DuplexStream>>,
+        Receiver<ServerEvent<DuplexStream>>,
     )
     where
         F: Filter + Clone + Send + Sync + 'static,
         F::Extract: Reply,
     {
-        let (incoming_tx, incoming_rx) = mpsc::channel::<ServerRequest<DuplexStream>>(512);
+        let (incoming_tx, incoming_rx) = mpsc::channel::<ServerEvent<DuplexStream>>(512);
         let ws_connector = ChatOverWebSocketServiceConnector::new(
             WebSocketClientConnector::new(InMemoryWarpConnector::new(ws_server), ws_config),
             incoming_tx,

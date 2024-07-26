@@ -56,16 +56,16 @@ public class SignalInputStreamAdapter<Inner>: SignalInputStream where Inner: Col
     }
 
     public func read(into buffer: UnsafeMutableRawBufferPointer) throws -> Int {
-        let amount = min(buffer.count, inner.count)
-        buffer.copyBytes(from: inner.prefix(amount))
-        inner = inner.dropFirst(amount)
+        let amount = min(buffer.count, self.inner.count)
+        buffer.copyBytes(from: self.inner.prefix(amount))
+        self.inner = self.inner.dropFirst(amount)
         return amount
     }
 
     public func skip(by amount: UInt64) throws {
-        if amount > UInt64(inner.count) {
+        if amount > UInt64(self.inner.count) {
             throw SignalInputStreamError.unexpectedEof
         }
-        inner = inner.dropFirst(Int(amount))
+        self.inner = self.inner.dropFirst(Int(amount))
     }
 }

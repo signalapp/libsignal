@@ -12,7 +12,6 @@
 import * as Native from '../Native';
 import { Aci } from './Address';
 import { InputStream } from './io';
-import { bufferFromBigUInt64BE } from './zkgroup/internal/BigIntUtil';
 
 export type InputStreamFactory = () => InputStream;
 
@@ -66,10 +65,17 @@ export class MessageBackupKey {
   }
 }
 
+// This must match the Rust version of the enum.
+export enum Purpose {
+  DeviceTransfer = 0,
+  RemoteBackup = 1,
+}
+
 /**
  * Validate a backup file
  *
  * @param backupKey The key to use to decrypt the backup contents.
+ * @param purpose Whether the backup is intended for device-to-device transfer or remote storage.
  * @param inputFactory A function that returns new input streams that read the backup contents.
  * @param length The exact length of the input stream.
  * @returns The outcome of validation, including any errors and warnings.
@@ -77,6 +83,7 @@ export class MessageBackupKey {
  */
 export async function validate(
   backupKey: MessageBackupKey,
+  purpose: Purpose,
   inputFactory: InputStreamFactory,
   length: bigint
 ): Promise<ValidationOutcome> {
@@ -87,7 +94,8 @@ export async function validate(
       backupKey,
       firstStream,
       secondStream,
-      bufferFromBigUInt64BE(length)
+      length,
+      purpose
     )
   );
 }

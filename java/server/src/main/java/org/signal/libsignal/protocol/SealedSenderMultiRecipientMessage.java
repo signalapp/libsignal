@@ -100,7 +100,7 @@ public class SealedSenderMultiRecipientMessage {
    * Parses the input as an SSv2 SentMessage.
    *
    * <p>The input is kept alive as long as the result is; it's used to implement {@link
-   * #messageForRecipient}.
+   * #messageForRecipient} and {@link #serialized}.
    *
    * @throws InvalidVersionException if the <em>major</em> version of the sealed sender message is
    *     unrecognized
@@ -121,6 +121,15 @@ public class SealedSenderMultiRecipientMessage {
     this.recipients = recipients;
     this.excludedRecipients = excludedRecipients;
     this.offsetOfSharedData = offsetOfSharedData;
+  }
+
+  /**
+   * Returns the serialized full message data.
+   *
+   * <p>The result is returned by reference; mutate it at your own detriment.
+   */
+  public byte[] serialized() {
+    return fullMessageData;
   }
 
   /**

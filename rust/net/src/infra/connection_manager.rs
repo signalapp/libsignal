@@ -11,25 +11,14 @@ use std::panic::RefUnwindSafe;
 use std::sync::Arc;
 use std::time::Duration;
 
+use crate::timeouts::{CONNECTION_ROUTE_COOLDOWN_INTERVALS, CONNECTION_ROUTE_MAX_COOLDOWN};
 use async_trait::async_trait;
+use itertools::Itertools;
 use tokio::sync::Mutex;
 use tokio::time::{timeout_at, Instant};
 
 use crate::infra::errors::LogSafeDisplay;
 use crate::infra::ConnectionParams;
-
-pub(crate) const MAX_COOLDOWN_INTERVAL: Duration = Duration::from_secs(64);
-
-const COOLDOWN_INTERVALS: [Duration; 8] = [
-    Duration::from_secs(0),
-    Duration::from_secs(1),
-    Duration::from_secs(2),
-    Duration::from_secs(4),
-    Duration::from_secs(8),
-    Duration::from_secs(16),
-    Duration::from_secs(32),
-    MAX_COOLDOWN_INTERVAL,
-];
 
 /// Represents the outcome of the connection attempt
 #[derive(Debug)]
@@ -46,7 +35,7 @@ pub enum ConnectionAttemptOutcome<T, E> {
 }
 
 /// Encapsulates the logic that for every connection attempt decides
-/// whether or not an attempt is to be made in the first place, and, if yes,
+/// whether an attempt is to be made in the first place, and, if yes,
 /// which [ConnectionParams] are to be used for the attempt.
 #[async_trait]
 pub trait ConnectionManager: Clone + Send + Sync {
@@ -56,9 +45,11 @@ pub trait ConnectionManager: Clone + Send + Sync {
     ) -> ConnectionAttemptOutcome<T, E>
     where
         T: Send,
-        E: Send + Debug + LogSafeDisplay,
+        E: Send + Debug + LogSafeDisplay + ErrorClassifier,
         Fun: Fn(&'a ConnectionParams) -> Fut + Send + Sync,
         Fut: Future<Output = Result<T, E>> + Send;
+
+    fn describe_for_logging(&self) -> String;
 }
 
 #[async_trait]
@@ -72,11 +63,15 @@ where
     ) -> ConnectionAttemptOutcome<T, E>
     where
         T: Send,
-        E: Send + Debug + LogSafeDisplay,
+        E: Send + Debug + LogSafeDisplay + ErrorClassifier,
         Fun: Fn(&'a ConnectionParams) -> Fut + Send + Sync,
         Fut: Future<Output = Result<T, E>> + Send,
     {
         (*self).connect_or_wait(connection_fn).await
+    }
+
+    fn describe_for_logging(&self) -> String {
+        (*self).describe_for_logging()
     }
 }
 
@@ -108,13 +103,15 @@ impl ThrottlingConnectionManagerState {
         } else if attempt_start_time > s.latest_attempt || s.consecutive_fails > 0 {
             s.latest_attempt = max(attempt_start_time, s.latest_attempt);
             let idx: usize = s.consecutive_fails.into();
-            let cooldown_interval = COOLDOWN_INTERVALS
+            let cooldown_interval = CONNECTION_ROUTE_COOLDOWN_INTERVALS
                 .get(idx)
-                .unwrap_or(&MAX_COOLDOWN_INTERVAL);
+                .unwrap_or(&CONNECTION_ROUTE_MAX_COOLDOWN);
             s.next_attempt = Instant::now() + *cooldown_interval;
             s.consecutive_fails = min(
                 s.consecutive_fails.saturating_add(1),
-                (COOLDOWN_INTERVALS.len() - 1).try_into().unwrap(),
+                (CONNECTION_ROUTE_COOLDOWN_INTERVALS.len() - 1)
+                    .try_into()
+                    .unwrap(),
             );
         }
         s
@@ -123,11 +120,11 @@ impl ThrottlingConnectionManagerState {
 
 /// A connection manager that only attempts one route (i.e. one [ConnectionParams])
 /// but keeps track of consecutive failed attempts and after each failure waits for a duration
-/// chosen according to [COOLDOWN_INTERVALS] list.
+/// chosen according to [CONNECTION_ROUTE_COOLDOWN_INTERVALS] list.
 #[derive(Clone)]
-pub struct SingleRouteThrottlingConnectionManager {
+pub struct SingleRouteThrottlingConnectionManager<C = ConnectionParams> {
     state: Arc<Mutex<ThrottlingConnectionManagerState>>,
-    connection_params: ConnectionParams,
+    connection_params: C,
     connection_timeout: Duration,
 }
 
@@ -138,15 +135,11 @@ pub struct SingleRouteThrottlingConnectionManager {
 #[derive(Clone)]
 pub struct MultiRouteConnectionManager<M = SingleRouteThrottlingConnectionManager> {
     route_managers: Vec<M>,
-    connection_timeout: Duration,
 }
 
 impl<M> MultiRouteConnectionManager<M> {
-    pub fn new(route_managers: Vec<M>, connection_timeout: Duration) -> Self {
-        Self {
-            route_managers,
-            connection_timeout,
-        }
+    pub fn new(route_managers: Vec<M>) -> Self {
+        Self { route_managers }
     }
 }
 
@@ -169,77 +162,135 @@ where
     ) -> ConnectionAttemptOutcome<T, E>
     where
         T: Send,
-        E: Send + Debug + LogSafeDisplay,
+        E: Send + Debug + LogSafeDisplay + ErrorClassifier,
         Fun: Fn(&'a ConnectionParams) -> Fut + Send + Sync,
         Fut: Future<Output = Result<T, E>> + Send,
     {
-        let now = Instant::now();
-        let deadline = now + self.connection_timeout;
-        let mut earliest_retry = now + MAX_COOLDOWN_INTERVAL;
+        let mut wait_until = None;
         for route_manager in self.route_managers.iter() {
-            loop {
-                let result_or_timeout =
-                    timeout_at(deadline, route_manager.connect_or_wait(&connection_fn)).await;
-                let result = match result_or_timeout {
-                    Ok(r) => r,
-                    Err(_) => return ConnectionAttemptOutcome::TimedOut,
-                };
-                match result {
-                    ConnectionAttemptOutcome::Attempted(Ok(r)) => {
-                        return ConnectionAttemptOutcome::Attempted(Ok(r));
-                    }
-                    ConnectionAttemptOutcome::Attempted(Err(e)) => {
-                        log::debug!("Connection attempt failed with an error: {:?}", e);
-                        log::info!("Connection attempt failed with an error: {}", e);
-                        continue;
-                    }
-                    ConnectionAttemptOutcome::TimedOut => {
-                        log::info!("Connection attempt timed out");
-                        continue;
-                    }
-                    ConnectionAttemptOutcome::WaitUntil(i) => {
-                        if i < earliest_retry {
-                            earliest_retry = i
-                        }
-                        break;
-                    }
+            match retry_connect_until_cooldown(route_manager, &connection_fn).await {
+                Ok(t) => return ConnectionAttemptOutcome::Attempted(Ok(t)),
+                Err(RetryError::WaitUntil(i)) => {
+                    wait_until = Some(
+                        wait_until.map_or(i, |earliest_retry| Instant::min(i, earliest_retry)),
+                    );
                 }
+                Err(RetryError::Fatal(e)) => return ConnectionAttemptOutcome::Attempted(Err(e)),
             }
         }
-        ConnectionAttemptOutcome::WaitUntil(earliest_retry)
+        wait_until.map_or(
+            ConnectionAttemptOutcome::TimedOut,
+            ConnectionAttemptOutcome::WaitUntil,
+        )
+    }
+
+    fn describe_for_logging(&self) -> String {
+        format!(
+            "multi-route: [{}]",
+            self.route_managers
+                .iter()
+                .map(ConnectionManager::describe_for_logging)
+                .join(", ")
+        )
     }
 }
 
-impl SingleRouteThrottlingConnectionManager {
-    pub fn new(connection_params: ConnectionParams, connection_timeout: Duration) -> Self {
+pub enum RetryError<E> {
+    /// Connection can be attempted again at a given Instant
+    WaitUntil(Instant),
+    /// Connection failed due to an issue that retries will not solve
+    Fatal(E),
+}
+
+/// Classification of connection errors by fatality.
+#[cfg_attr(test, derive(Clone, Copy))]
+#[derive(Debug)]
+pub enum ErrorClass {
+    /// Non-fatal, somewhat counterintuitively unreachable server is a non-fatal error at this level
+    /// as other connection parameters can still result in a successful connection.
+    Intermittent,
+    /// Fatal errors with a known retry-after value. For situations when we can reach the server,
+    /// but it replies with a 429-Too Many Requests _and_ a recommended delay before any retries.
+    RetryAt(Instant),
+    /// Server can be reached at a lower level of net stack (TCP), but responds with an error while
+    /// establishing connection at a higher level (HTTP, WebSocket, etc.)
+    Fatal,
+}
+
+pub trait ErrorClassifier {
+    fn classify(&self) -> ErrorClass;
+}
+
+async fn retry_connect_until_cooldown<'a, T, E, Fun, Fut>(
+    route_manager: &'a impl ConnectionManager,
+    connection_fn: &Fun,
+) -> Result<T, RetryError<E>>
+where
+    T: Send,
+    E: Send + Debug + LogSafeDisplay + ErrorClassifier,
+    Fun: Fn(&'a ConnectionParams) -> Fut + Send + Sync,
+    Fut: Future<Output = Result<T, E>> + Send,
+{
+    loop {
+        let result = route_manager.connect_or_wait(connection_fn).await;
+        match result {
+            ConnectionAttemptOutcome::Attempted(Ok(r)) => {
+                return Ok(r);
+            }
+            ConnectionAttemptOutcome::Attempted(Err(e)) => {
+                let log_error = || {
+                    log::debug!("Connection attempt failed with a non-fatal error: {:?}", e);
+                    log::info!(
+                        "Connection attempt failed with an error: {} ({})",
+                        e,
+                        route_manager.describe_for_logging(),
+                    );
+                };
+                match e.classify() {
+                    ErrorClass::Fatal => return Err(RetryError::Fatal(e)),
+                    ErrorClass::Intermittent => {
+                        log_error();
+                        continue;
+                    }
+                    ErrorClass::RetryAt(when) => {
+                        log_error();
+                        return Err(RetryError::WaitUntil(when));
+                    }
+                }
+            }
+            ConnectionAttemptOutcome::TimedOut => {
+                log::info!(
+                    "Connection attempt timed out ({:?})",
+                    route_manager.describe_for_logging()
+                );
+                continue;
+            }
+            ConnectionAttemptOutcome::WaitUntil(i) => return Err(RetryError::WaitUntil(i)),
+        }
+    }
+}
+
+impl<C> SingleRouteThrottlingConnectionManager<C> {
+    pub fn new(connection_params: C, connection_timeout: Duration) -> Self {
         Self {
             connection_params,
             connection_timeout,
             state: Arc::new(Mutex::new(ThrottlingConnectionManagerState {
                 consecutive_fails: 0,
                 next_attempt: Instant::now(),
-                latest_attempt: Instant::now(),
+                latest_attempt: Instant::now() - Duration::from_nanos(1),
             })),
         }
     }
-}
 
-/// Declare &SingleRouteThrottlingConnectionManager unwind-safe.
-///
-/// This is guaranteed by the impl blocks, which only update locked state
-/// atomically to avoid logic errors.
-impl RefUnwindSafe for SingleRouteThrottlingConnectionManager {}
-
-#[async_trait]
-impl ConnectionManager for SingleRouteThrottlingConnectionManager {
-    async fn connect_or_wait<'a, T, E, Fun, Fut>(
+    pub(crate) async fn connect_or_wait<'a, T, E, Fun, Fut>(
         &'a self,
         connection_fn: Fun,
     ) -> ConnectionAttemptOutcome<T, E>
     where
         T: Send,
         E: Send,
-        Fun: Fn(&'a ConnectionParams) -> Fut + Send + Sync,
+        Fun: Fn(&'a C) -> Fut + Send + Sync,
         Fut: Future<Output = Result<T, E>> + Send,
     {
         let state = self.state.lock().await.clone();
@@ -269,21 +320,48 @@ impl ConnectionManager for SingleRouteThrottlingConnectionManager {
     }
 }
 
+/// Declare &SingleRouteThrottlingConnectionManager unwind-safe.
+///
+/// This is guaranteed by the impl blocks, which only update locked state
+/// atomically to avoid logic errors.
+impl RefUnwindSafe for SingleRouteThrottlingConnectionManager {}
+
+#[async_trait]
+impl ConnectionManager for SingleRouteThrottlingConnectionManager {
+    async fn connect_or_wait<'a, T, E, Fun, Fut>(
+        &'a self,
+        connection_fn: Fun,
+    ) -> ConnectionAttemptOutcome<T, E>
+    where
+        T: Send,
+        E: Send,
+        Fun: Fn(&'a ConnectionParams) -> Fut + Send + Sync,
+        Fut: Future<Output = Result<T, E>> + Send,
+    {
+        self.connect_or_wait(connection_fn).await
+    }
+
+    fn describe_for_logging(&self) -> String {
+        self.connection_params.route_type.to_string()
+    }
+}
+
 #[cfg(test)]
 mod test {
     use std::borrow::Borrow;
     use std::future;
+    use std::sync::atomic::{AtomicU16, Ordering};
 
     use assert_matches::assert_matches;
+    use nonzero_ext::nonzero;
     use tokio::time;
 
     use crate::infra::certs::RootCertificates;
-    use crate::infra::dns::DnsResolver;
     use crate::infra::test::shared::{
-        TestError, FEW_ATTEMPTS, LONG_CONNECTION_TIME, MANY_ATTEMPTS, TIMEOUT_DURATION,
-        TIME_ADVANCE_VALUE,
+        ClassifiableTestError, TestError, FEW_ATTEMPTS, LONG_CONNECTION_TIME, MANY_ATTEMPTS,
+        TIMEOUT_DURATION, TIME_ADVANCE_VALUE,
     };
-    use crate::infra::HttpRequestDecoratorSeq;
+    use crate::infra::{HttpRequestDecoratorSeq, RouteType};
 
     use super::*;
 
@@ -381,7 +459,7 @@ mod test {
         assert_matches!(attempt_outcome, ConnectionAttemptOutcome::WaitUntil(_));
 
         // now let's advance the time to the point after the cooldown period
-        time::advance(MAX_COOLDOWN_INTERVAL).await;
+        time::advance(CONNECTION_ROUTE_MAX_COOLDOWN).await;
         let attempt_outcome: ConnectionAttemptOutcome<(), TestError> =
             manager.connect_or_wait(|_| future::ready(Ok(()))).await;
         assert_matches!(attempt_outcome, ConnectionAttemptOutcome::Attempted(Ok(())));
@@ -397,8 +475,7 @@ mod test {
             example_connection_params(ROUTE_2),
             TIMEOUT_DURATION,
         );
-        let multi_route_manager =
-            MultiRouteConnectionManager::new(vec![manager_1, manager_2], Duration::from_secs(2));
+        let multi_route_manager = MultiRouteConnectionManager::new(vec![manager_1, manager_2]);
 
         // route1 is working
         time::advance(TIME_ADVANCE_VALUE).await;
@@ -413,7 +490,7 @@ mod test {
         validate_expected_route(&multi_route_manager, true, ROUTE_2).await;
 
         // and now after a cooldown period, route1 should be used again
-        time::advance(MAX_COOLDOWN_INTERVAL).await;
+        time::advance(CONNECTION_ROUTE_MAX_COOLDOWN).await;
         validate_expected_route(&multi_route_manager, true, ROUTE_1).await;
     }
 
@@ -427,35 +504,204 @@ mod test {
             example_connection_params(ROUTE_1),
             TIMEOUT_DURATION,
         );
-        let multi_route_manager = MultiRouteConnectionManager::new(
-            vec![timing_out_route_manager, manager_1],
-            TIMEOUT_DURATION * 2,
-        );
+        let multi_route_manager =
+            MultiRouteConnectionManager::new(vec![timing_out_route_manager, manager_1]);
 
         time::advance(TIME_ADVANCE_VALUE).await;
         validate_expected_route(&multi_route_manager, true, ROUTE_1).await;
     }
 
-    #[tokio::test(flavor = "current_thread", start_paused = true)]
-    async fn multi_route_manager_times_out() {
-        let timing_out_route_manager_1 = SingleRouteThrottlingConnectionManager::new(
-            example_connection_params(ROUTE_THAT_TIMES_OUT),
-            TIMEOUT_DURATION,
-        );
-        let timing_out_route_manager_2 = SingleRouteThrottlingConnectionManager::new(
-            example_connection_params(ROUTE_THAT_TIMES_OUT),
-            TIMEOUT_DURATION,
-        );
-        let multi_route_manager = MultiRouteConnectionManager::new(
-            vec![timing_out_route_manager_1, timing_out_route_manager_2],
-            TIMEOUT_DURATION * 2,
-        );
+    #[derive(Clone, Debug)]
+    struct CooldownAfterSomeAttempts {
+        attempts_until_cooldown: u16,
+        attempts_made: Arc<AtomicU16>,
+        connection_params: ConnectionParams,
+    }
 
-        time::advance(TIME_ADVANCE_VALUE).await;
-        let attempt_outcome: ConnectionAttemptOutcome<&str, TestError> = multi_route_manager
-            .connect_or_wait(|connection_params| simulate_connect(connection_params, true))
+    impl CooldownAfterSomeAttempts {
+        fn new(attempts_until_cooldown: u16, connection_params: ConnectionParams) -> Self {
+            Self {
+                attempts_until_cooldown,
+                connection_params,
+                attempts_made: Arc::new(Default::default()),
+            }
+        }
+    }
+
+    #[async_trait]
+    impl ConnectionManager for CooldownAfterSomeAttempts {
+        async fn connect_or_wait<'a, T, E, Fun, Fut>(
+            &'a self,
+            connection_fn: Fun,
+        ) -> ConnectionAttemptOutcome<T, E>
+        where
+            T: Send,
+            E: Send + Debug + LogSafeDisplay,
+            Fun: Fn(&'a ConnectionParams) -> Fut + Send + Sync,
+            Fut: Future<Output = Result<T, E>> + Send,
+        {
+            match self.attempts_made.fetch_add(1, Ordering::Relaxed) {
+                n if n < self.attempts_until_cooldown => ConnectionAttemptOutcome::Attempted(
+                    connection_fn(&self.connection_params).await,
+                ),
+                _ => ConnectionAttemptOutcome::WaitUntil(
+                    Instant::now() + CONNECTION_ROUTE_MAX_COOLDOWN,
+                ),
+            }
+        }
+
+        fn describe_for_logging(&self) -> String {
+            format!("{self:?}")
+        }
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn multi_route_manager_retries_the_same_option_until_cooldown() {
+        let route_1 = example_connection_params(ROUTE_1);
+        let route_2 = example_connection_params(ROUTE_2);
+        let route_1_attempts_until_cooldown = 2;
+        let route_2_attempts_until_cooldown = 1;
+        let route_1_manager =
+            CooldownAfterSomeAttempts::new(route_1_attempts_until_cooldown, route_1.clone());
+        let route_2_manager =
+            CooldownAfterSomeAttempts::new(route_2_attempts_until_cooldown, route_2.clone());
+        let multi_route_manager = MultiRouteConnectionManager::new(vec![
+            route_1_manager.clone(),
+            route_2_manager.clone(),
+        ]);
+        let route_1_attempt = AtomicU16::new(1);
+        let res = multi_route_manager
+            .connect_or_wait(|connection_params| {
+                // route_1 only connects when there is one attempt left before the cooldown
+                //
+                // note: route_2 is always healthy, the flag only affects route_1
+                let route_1_healthy = route_1_attempt.fetch_add(1, Ordering::Relaxed)
+                    == route_1_attempts_until_cooldown;
+
+                simulate_connect(
+                    connection_params,
+                    if route_1_healthy {
+                        None
+                    } else {
+                        Some(TestError::Expected)
+                    },
+                )
+            })
             .await;
-        assert_matches!(attempt_outcome, ConnectionAttemptOutcome::TimedOut);
+
+        assert_matches!(res, ConnectionAttemptOutcome::Attempted(Ok(r)) if r == ROUTE_1);
+        assert_eq!(
+            route_1_attempts_until_cooldown,
+            route_1_manager.attempts_made.load(Ordering::Relaxed)
+        );
+        assert_eq!(0, route_2_manager.attempts_made.load(Ordering::Relaxed));
+    }
+
+    #[derive(Copy, Clone, Debug)]
+    struct AlwaysInCooldown {
+        wait: Duration,
+    }
+
+    #[async_trait]
+    impl ConnectionManager for AlwaysInCooldown {
+        async fn connect_or_wait<'a, T, E, Fun, Fut>(
+            &'a self,
+            _connection_fn: Fun,
+        ) -> ConnectionAttemptOutcome<T, E>
+        where
+            T: Send,
+            E: Send + Debug + LogSafeDisplay,
+            Fun: Fn(&'a ConnectionParams) -> Fut + Send + Sync,
+            Fut: Future<Output = Result<T, E>> + Send,
+        {
+            ConnectionAttemptOutcome::WaitUntil(Instant::now() + self.wait)
+        }
+
+        fn describe_for_logging(&self) -> String {
+            format!("{self:?}")
+        }
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn multi_route_manager_attempt_to_connect_until_all_routes_in_cooldown() {
+        let connection_params = example_connection_params(ROUTE_1);
+        let first_manager_attempts_until_cooldown = 5;
+        let second_manager_attempts_until_cooldown = 3;
+        let first_manager = CooldownAfterSomeAttempts::new(
+            first_manager_attempts_until_cooldown,
+            connection_params.clone(),
+        );
+        let second_manager = CooldownAfterSomeAttempts::new(
+            second_manager_attempts_until_cooldown,
+            connection_params,
+        );
+        let multi_route_manager =
+            MultiRouteConnectionManager::new(vec![first_manager.clone(), second_manager.clone()]);
+        let res = multi_route_manager
+            .connect_or_wait(|connection_params| {
+                simulate_connect(connection_params, Some(TestError::Expected))
+            })
+            .await;
+        assert_matches!(res, ConnectionAttemptOutcome::WaitUntil(_));
+        assert_eq!(
+            first_manager_attempts_until_cooldown + 1,
+            first_manager.attempts_made.load(Ordering::Relaxed)
+        );
+        assert_eq!(
+            second_manager_attempts_until_cooldown + 1,
+            second_manager.attempts_made.load(Ordering::Relaxed)
+        );
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn multi_route_manager_propagates_post_connection_failure() {
+        let connection_params = example_connection_params(ROUTE_1);
+        let first_manager_attempts_until_cooldown = 5;
+        let second_manager_attempts_until_cooldown = 3;
+        let first_manager = CooldownAfterSomeAttempts::new(
+            first_manager_attempts_until_cooldown,
+            connection_params.clone(),
+        );
+        let second_manager = CooldownAfterSomeAttempts::new(
+            second_manager_attempts_until_cooldown,
+            connection_params,
+        );
+        let multi_route_manager =
+            MultiRouteConnectionManager::new(vec![first_manager.clone(), second_manager.clone()]);
+        let res = multi_route_manager
+            .connect_or_wait(|connection_params| {
+                simulate_connect(
+                    connection_params,
+                    Some(ClassifiableTestError(ErrorClass::Fatal)),
+                )
+            })
+            .await;
+        assert_matches!(
+            res,
+            ConnectionAttemptOutcome::Attempted(Err(ClassifiableTestError(ErrorClass::Fatal)))
+        );
+        assert_eq!(1, first_manager.attempts_made.load(Ordering::Relaxed));
+        assert_eq!(0, second_manager.attempts_made.load(Ordering::Relaxed));
+    }
+
+    #[tokio::test(flavor = "current_thread", start_paused = true)]
+    async fn multi_route_manager_all_in_cooldown() {
+        const SHORT_DELAY: Duration = Duration::from_secs(5);
+        const LONG_DELAY: Duration = Duration::from_secs(100);
+        let multi_route_manager = MultiRouteConnectionManager::new(vec![
+            AlwaysInCooldown { wait: LONG_DELAY },
+            AlwaysInCooldown { wait: SHORT_DELAY },
+        ]);
+
+        let now = Instant::now();
+        let attempt_outcome: ConnectionAttemptOutcome<&str, TestError> = multi_route_manager
+            .connect_or_wait(|connection_params| {
+                simulate_connect(connection_params, Some(TestError::Expected))
+            })
+            .await;
+        let wait_until =
+            assert_matches!(attempt_outcome, ConnectionAttemptOutcome::WaitUntil(t) => t);
+        assert_eq!(wait_until, now + SHORT_DELAY);
     }
 
     async fn validate_expected_route(
@@ -465,7 +711,15 @@ mod test {
     ) {
         let attempt_outcome: ConnectionAttemptOutcome<&str, TestError> = multi_route_manager
             .connect_or_wait(|connection_params| async move {
-                simulate_connect(connection_params, route1_healthy).await
+                simulate_connect(
+                    connection_params,
+                    if route1_healthy {
+                        None
+                    } else {
+                        Some(TestError::Expected)
+                    },
+                )
+                .await
             })
             .await;
         assert_matches!(
@@ -474,13 +728,13 @@ mod test {
         );
     }
 
-    async fn simulate_connect(
+    async fn simulate_connect<E>(
         connection_params: &ConnectionParams,
-        route1_healthy: bool,
-    ) -> Result<&str, TestError> {
-        let route1_response = match route1_healthy {
-            true => Ok(ROUTE_1),
-            false => Err(TestError::Expected),
+        route1_error: Option<E>,
+    ) -> Result<&str, E> {
+        let route1_response = match route1_error {
+            None => Ok(ROUTE_1),
+            Some(err) => Err(err),
         };
         match connection_params.host.borrow() {
             ROUTE_1 => future::ready(route1_response).await,
@@ -489,18 +743,79 @@ mod test {
                 tokio::time::sleep(LONG_CONNECTION_TIME).await;
                 future::ready(Ok(ROUTE_THAT_TIMES_OUT)).await
             }
-            _ => future::ready(Err(TestError::Unexpected("not configured for the route"))).await,
+            _ => panic!("not configured for the route"),
         }
     }
 
     fn example_connection_params(host: &str) -> ConnectionParams {
         ConnectionParams::new(
+            RouteType::Test,
             host,
             host,
-            443,
+            nonzero!(443u16),
             HttpRequestDecoratorSeq::default(),
             RootCertificates::Signal,
-            DnsResolver::default().into(),
         )
+    }
+
+    #[derive(Clone, Debug)]
+    struct FailingSingle(ConnectionParams);
+
+    #[async_trait]
+    impl ConnectionManager for FailingSingle {
+        async fn connect_or_wait<'a, T, E, Fun, Fut>(
+            &'a self,
+            connection_fn: Fun,
+        ) -> ConnectionAttemptOutcome<T, E>
+        where
+            T: Send,
+            E: Send + Debug + LogSafeDisplay + ErrorClassifier,
+            Fun: Fn(&'a ConnectionParams) -> Fut + Send + Sync,
+            Fut: Future<Output = Result<T, E>> + Send,
+        {
+            ConnectionAttemptOutcome::Attempted(connection_fn(&self.0).await)
+        }
+
+        fn describe_for_logging(&self) -> String {
+            format!("{self:?}")
+        }
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn multi_route_manager_should_short_circuit_on_fatal_errors() {
+        let first_manager = FailingSingle(example_connection_params(ROUTE_1));
+        let second_manager = FailingSingle(example_connection_params(ROUTE_2));
+
+        let multi_route_manager =
+            MultiRouteConnectionManager::new(vec![first_manager.clone(), second_manager.clone()]);
+        let res: ConnectionAttemptOutcome<(), ClassifiableTestError> = multi_route_manager
+            .connect_or_wait(|connection_params| {
+                assert_ne!(
+                    *connection_params.host, *ROUTE_2,
+                    "Should not attempt second route if the first one was fatal"
+                );
+                future::ready(Err(ClassifiableTestError(ErrorClass::Fatal)))
+            })
+            .await;
+        assert_matches!(
+            res,
+            ConnectionAttemptOutcome::Attempted(Err(ClassifiableTestError(ErrorClass::Fatal)))
+        );
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn multi_route_manager_should_respect_retry_after() {
+        let first_manager = FailingSingle(example_connection_params(ROUTE_1));
+
+        let retry_at = Instant::now() + Duration::from_secs(42);
+        let multi_route_manager = MultiRouteConnectionManager::new(vec![first_manager.clone()]);
+        let res: ConnectionAttemptOutcome<(), ClassifiableTestError> = multi_route_manager
+            .connect_or_wait(|_connection_params| {
+                future::ready(Err(ClassifiableTestError(ErrorClass::RetryAt(retry_at))))
+            })
+            .await;
+        assert_matches!(res, ConnectionAttemptOutcome::WaitUntil(instant) => {
+            assert_eq!(instant, retry_at)
+        });
     }
 }

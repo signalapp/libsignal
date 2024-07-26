@@ -10,7 +10,7 @@ use signal_chat::device::DeviceClient;
 use crate::support::*;
 use crate::*;
 
-bridge_handle!(DeviceClient, clone = false, mut = true);
+bridge_handle_fns!(DeviceClient, clone = false);
 
 #[bridge_fn(ffi = false, node = false)]
 pub fn DeviceClient_New(target: String) -> Result<DeviceClient> {

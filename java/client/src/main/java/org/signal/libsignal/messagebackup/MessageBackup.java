@@ -5,6 +5,8 @@
 
 package org.signal.libsignal.messagebackup;
 
+import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.function.Supplier;
@@ -29,9 +31,33 @@ public class MessageBackup {
     public String[] unknownFieldMessages;
   }
 
-  /** Validates an encrypted message backup bundle. */
+  public static enum Purpose {
+    // This needs to be kept in sync with the corresponding Rust enum.
+    DEVICE_TRANSFER(0),
+    REMOTE_BACKUP(1);
+
+    private final int value;
+
+    private Purpose(int value) {
+      this.value = value;
+    }
+  }
+
+  /**
+   * Validates an encrypted message backup bundle.
+   *
+   * <p>Returns an error if the input cannot be read or if validation fails.
+   *
+   * @param key the key to use to decrypt the backup
+   * @param purpose whether the input was created for device-to-device transfer or remote backup
+   * @param streamFactory a factory for <code>InputStream</code>s that produce the input
+   * @param streamLength the number of bytes each <code>InputStream</code> will produce
+   * @return informational result about the successful validation
+   * @throws ValidationError with an error message if the input is invalid
+   * @throws IOException if the input could not be read
+   */
   public static ValidationResult validate(
-      MessageBackupKey key, Supplier<InputStream> streamFactory, long streamLength)
+      MessageBackupKey key, Purpose purpose, Supplier<InputStream> streamFactory, long streamLength)
       throws ValidationError, IOException {
     InputStream first = streamFactory.get();
     InputStream second = streamFactory.get();
@@ -40,8 +66,12 @@ public class MessageBackup {
     try (NativeHandleGuard keyGuard = new NativeHandleGuard(key)) {
 
       Object output =
-          Native.MessageBackupValidator_Validate(
-              keyGuard.nativeHandle(), first, second, streamLength);
+          filterExceptions(
+              IOException.class,
+              ValidationError.class,
+              () ->
+                  Native.MessageBackupValidator_Validate(
+                      keyGuard.nativeHandle(), first, second, streamLength, purpose.value));
 
       // Rust conversion code is generating an instance of this class.
       @SuppressWarnings("unchecked")

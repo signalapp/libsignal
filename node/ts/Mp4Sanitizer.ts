@@ -32,8 +32,12 @@
  */
 
 import * as Native from '../Native';
+import {
+  IoError,
+  InvalidMediaInputError,
+  UnsupportedMediaInputError,
+} from './Errors';
 import { InputStream } from './io';
-import { bufferFromBigUInt64BE } from './zkgroup/internal/BigIntUtil';
 
 export class SanitizedMetadata {
   readonly _nativeHandle: Native.SanitizedMetadata;
@@ -50,7 +54,7 @@ export class SanitizedMetadata {
 
   /**
    * Get the sanitized metadata, if any.
-   * @returns The sanitized metadata, or {@code null} if it didn't need to be sanitized.
+   * @returns The sanitized metadata, or `null` if it didn't need to be sanitized.
    */
   getMetadata(): Buffer | null {
     const metadata = Native.SanitizedMetadata_GetMetadata(this);
@@ -65,8 +69,7 @@ export class SanitizedMetadata {
    * @returns The offset of the media data in the processed input.
    */
   getDataOffset(): bigint {
-    const buffer = Native.SanitizedMetadata_GetDataOffset(this);
-    return buffer.readBigUInt64BE();
+    return Native.SanitizedMetadata_GetDataOffset(this);
   }
 
   /**
@@ -74,8 +77,7 @@ export class SanitizedMetadata {
    * @returns The length of the media data in the processed input.
    */
   getDataLen(): bigint {
-    const buffer = Native.SanitizedMetadata_GetDataLen(this);
-    return buffer.readBigUInt64BE();
+    return Native.SanitizedMetadata_GetDataLen(this);
   }
 }
 
@@ -83,11 +85,11 @@ export class SanitizedMetadata {
  * Sanitize an MP4 input.
  *
  * @param input An MP4 format input stream.
- * @param length The exact length of the input stream.
+ * @param len The exact length of the input stream.
  * @returns The sanitized metadata.
- * @throws IoError If an IO error on the input occurs.
- * @throws InvalidMediaInputError If the input could not be parsed because it was invalid.
- * @throws UnsupportedMediaInputError If the input could not be parsed because it's unsupported in some way.
+ * @throws {IoError} If an IO error on the input occurs.
+ * @throws {InvalidMediaInputError} If the input could not be parsed because it was invalid.
+ * @throws {UnsupportedMediaInputError} If the input could not be parsed because it's unsupported in some way.
  */
 export async function sanitize(
   input: InputStream,
@@ -95,7 +97,7 @@ export async function sanitize(
 ): Promise<SanitizedMetadata> {
   const sanitizedMetadataNativeHandle = await Native.Mp4Sanitizer_Sanitize(
     input,
-    bufferFromBigUInt64BE(len)
+    len
   );
   return SanitizedMetadata._fromNativeHandle(sanitizedMetadataNativeHandle);
 }

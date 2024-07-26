@@ -1,4 +1,12 @@
-#!/usr/bin/env bloaty -d crates -s vm -c
+#!/usr/bin/env -S bloaty -d crates -s vm -c
+#
+# Uses bloaty from https://github.com/google/bloaty. Run as
+#
+#   ./crates_code_size.bloaty target/aarch64-linux-android/release/libsignal_jni.so -- baseline.so
+#
+# where baseline.so is the same file (here, libsignal_jni.so) built at the
+# version to compare against.
+#
 # We use VM size because otherwise the debug sections are included.
 
 custom_data_source: {
@@ -10,6 +18,10 @@ custom_data_source: {
     replacement: "stdlib"
   }
   rewrite: {
+    pattern: "/boring-sys-[^/]+/out/boringssl/"
+    replacement: "BoringSSL"
+  }
+  rewrite: {
     pattern: "/\\.?cargo/registry/src/(github.com|index.crates.io)-[^/]+/([^/]+)-\\d[^/]*/"
     replacement: "\\2"
   }
@@ -18,7 +30,7 @@ custom_data_source: {
     replacement: "\\1"
   }
   rewrite: {
-    pattern: "^(/?([^/]+/)*)src/"
+    pattern: "^(/?([^/]+/)+)src/"
     replacement: "\\1"
   }
   rewrite: {

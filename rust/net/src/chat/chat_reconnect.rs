@@ -10,10 +10,11 @@ use async_trait::async_trait;
 use tokio::time::Instant;
 
 use crate::chat::{
-    ChatService, ChatServiceWithDebugInfo, DebugInfo, IpType, RemoteAddressInfo, Request, Response,
+    ChatService, ChatServiceError, ChatServiceWithDebugInfo, DebugInfo, IpType, RemoteAddressInfo,
+    Request, Response,
 };
-use crate::infra::connection_manager::ConnectionManager;
-use crate::infra::errors::{LogSafeDisplay, NetError};
+use crate::infra::connection_manager::{ConnectionManager, ErrorClassifier};
+use crate::infra::errors::LogSafeDisplay;
 use crate::infra::reconnect::{ServiceConnector, ServiceWithReconnect};
 
 #[async_trait]
@@ -23,14 +24,16 @@ where
     C: ServiceConnector + Send + Sync + 'static,
     C::Service: ChatService + Clone + Sync + Send + 'static,
     C::Channel: Send + Sync,
-    C::Error: Send + Sync + Debug + LogSafeDisplay,
+    C::ConnectError:
+        Send + Sync + Debug + LogSafeDisplay + ErrorClassifier + Into<ChatServiceError>,
+    C::StartError: Send + Sync + Debug + LogSafeDisplay,
 {
-    async fn send(&self, msg: Request, timeout: Duration) -> Result<Response, NetError> {
-        let service = self.service_clone().await;
-        match service {
-            Some(s) => s.send(msg, timeout).await,
-            None => Err(NetError::NoServiceConnection),
-        }
+    async fn send(&self, msg: Request, timeout: Duration) -> Result<Response, ChatServiceError> {
+        self.service().await?.send(msg, timeout).await
+    }
+
+    async fn connect(&self) -> Result<(), ChatServiceError> {
+        Ok(self.connect_from_inactive().await?)
     }
 
     async fn disconnect(&self) {
@@ -45,30 +48,73 @@ where
     C: ServiceConnector + Send + Sync + 'static,
     C::Service: ChatService + RemoteAddressInfo + Clone + Sync + Send + 'static,
     C::Channel: Send + Sync,
-    C::Error: Send + Sync + Debug + LogSafeDisplay,
+    C::ConnectError:
+        Send + Sync + Debug + LogSafeDisplay + ErrorClassifier + Into<ChatServiceError>,
+    C::StartError: Send + Sync + Debug + LogSafeDisplay,
 {
     async fn send_and_debug(
         &self,
         msg: Request,
         timeout: Duration,
-    ) -> (Result<Response, NetError>, DebugInfo) {
-        let deadline = Instant::now() + timeout;
-        let is_connected = self.is_connected(deadline).await;
-        let service = self.service_clone().await;
-        let (response, ip_type) = match service {
-            Some(s) => {
+    ) -> (Result<Response, ChatServiceError>, DebugInfo) {
+        let start = Instant::now();
+        let deadline = start + timeout;
+        let service = self.service().await;
+        let (response, ip_type, connection_info) = match service {
+            Ok(s) => {
+                let method_for_log = msg.method.clone();
+                let path_for_log_without_query = msg.path.path().to_owned();
+
                 let result = s.send(msg, deadline - Instant::now()).await;
-                (result, s.remote_address().into())
+
+                if let Err(e) = &result {
+                    // This is likely partially redundant with whatever logs the caller might do,
+                    // but it ensures the connection info is included.
+                    log::warn!(
+                        "[{} {}] failed to complete request: {} ({})",
+                        method_for_log,
+                        path_for_log_without_query,
+                        e,
+                        s.connection_info().description()
+                    );
+                }
+
+                (
+                    result,
+                    IpType::from_host(&s.connection_info().address),
+                    s.connection_info().description(),
+                )
             }
-            None => (Err(NetError::NoServiceConnection), IpType::Unknown),
+            Err(e) => (Err(e.into()), IpType::Unknown, "".to_string()),
         };
+        let duration = start.elapsed();
+        let reconnect_count = self.reconnect_count();
         (
             response,
             DebugInfo {
-                reconnect_count: self.reconnect_count(),
-                connection_reused: is_connected,
+                reconnect_count,
                 ip_type,
+                duration,
+                connection_info,
             },
         )
+    }
+
+    async fn connect_and_debug(&self) -> Result<DebugInfo, ChatServiceError> {
+        let start = Instant::now();
+
+        self.connect_from_inactive().await?;
+
+        let connection_info = self.connection_info().await?;
+        let ip_type = IpType::from_host(&connection_info.address);
+        let connection_info = connection_info.description();
+        let duration = start.elapsed();
+        let reconnect_count = self.reconnect_count();
+        Ok(DebugInfo {
+            reconnect_count,
+            ip_type,
+            duration,
+            connection_info,
+        })
     }
 }

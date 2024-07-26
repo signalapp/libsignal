@@ -3,26 +3,30 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import SignalFfi
 import Foundation
+import SignalFfi
 
 public class SenderKeyDistributionMessage: NativeHandleOwner {
-    internal override class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
+    override internal class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
         return signal_sender_key_distribution_message_destroy(handle)
     }
 
-    public convenience init(from sender: ProtocolAddress,
-                            distributionId: UUID,
-                            store: SenderKeyStore,
-                            context: StoreContext) throws {
+    public convenience init(
+        from sender: ProtocolAddress,
+        distributionId: UUID,
+        store: SenderKeyStore,
+        context: StoreContext
+    ) throws {
         var result: OpaquePointer?
         try sender.withNativeHandle { senderHandle in
             try withUnsafePointer(to: distributionId.uuid) { distributionId in
                 try withSenderKeyStore(store, context) {
-                    try checkError(signal_sender_key_distribution_message_create(&result,
-                                                                                 senderHandle,
-                                                                                 distributionId,
-                                                                                 $0))
+                    try checkError(signal_sender_key_distribution_message_create(
+                        &result,
+                        senderHandle,
+                        distributionId,
+                        $0
+                    ))
                 }
             }
         }

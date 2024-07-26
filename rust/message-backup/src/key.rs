@@ -68,7 +68,6 @@ impl BackupId {
 pub struct MessageBackupKey {
     pub hmac_key: [u8; MessageBackupKey::HMAC_KEY_LEN],
     pub aes_key: [u8; MessageBackupKey::AES_KEY_LEN],
-    pub iv: [u8; MessageBackupKey::IV_LEN],
 }
 
 /// The data used to encrypt backed-up messages.
@@ -79,9 +78,8 @@ pub struct MessageBackupKey {
 impl MessageBackupKey {
     pub const HMAC_KEY_LEN: usize = 32;
     pub const AES_KEY_LEN: usize = 32;
-    pub const IV_LEN: usize = 16;
 
-    pub const LEN: usize = Self::HMAC_KEY_LEN + Self::AES_KEY_LEN + Self::IV_LEN;
+    pub const LEN: usize = Self::HMAC_KEY_LEN + Self::AES_KEY_LEN;
 
     /// Derives a `MessageBackupKey` from a user's [`BackupKey`] and [`BackupId`].
     pub fn derive(backup_key: &BackupKey, backup_id: &BackupId) -> Self {
@@ -94,13 +92,11 @@ impl MessageBackupKey {
 
         // TODO split into arrays instead of slices when the API for that is
         // stabilized. See https://github.com/rust-lang/rust/issues/90091
-        let (hmac_key, tail) = full_bytes.split_at(Self::HMAC_KEY_LEN);
-        let (aes_key, iv) = tail.split_at(Self::AES_KEY_LEN);
+        let (hmac_key, aes_key) = full_bytes.split_at(Self::HMAC_KEY_LEN);
 
         Self {
             hmac_key: hmac_key.try_into().expect("correct length"),
             aes_key: aes_key.try_into().expect("correct length"),
-            iv: iv.try_into().expect("correct length"),
         }
     }
 }
@@ -122,7 +118,6 @@ pub(crate) mod test {
     pub(crate) const FAKE_MESSAGE_BACKUP_KEY: MessageBackupKey = MessageBackupKey {
         hmac_key: hex!("7624d47e91d7f4de5eae5f00a1662984e3e81177473a3fab60320e4b9c6d6676"),
         aes_key: hex!("44ea4f8a6e9a404c1f98a2c0b18172c9b2171f02137571a8272d671021bfff3f"),
-        iv: hex!("55a3d64f031ee3a35271a12e18077652"),
     };
 
     #[test]

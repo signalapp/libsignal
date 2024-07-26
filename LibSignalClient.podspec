@@ -5,7 +5,7 @@
 
 Pod::Spec.new do |s|
   s.name             = 'LibSignalClient'
-  s.version          = '0.40.1'
+  s.version          = '0.52.3'
   s.summary          = 'A Swift wrapper library for communicating with the Signal messaging service.'
 
   s.homepage         = 'https://github.com/signalapp/libsignal'
@@ -15,8 +15,6 @@ Pod::Spec.new do |s|
 
   s.swift_version    = '5'
   s.platform         = :ios, '13.0'
-
-  s.dependency 'SignalCoreKit'
 
   s.source_files = ['swift/Sources/**/*.swift', 'swift/Sources/**/*.m']
   s.preserve_paths = [
@@ -60,8 +58,13 @@ Pod::Spec.new do |s|
   }
 
   s.script_phases = [
-    { name: 'Download and cache libsignal-ffi',
+    { name: 'Download libsignal-ffi if not in cache',
       execution_position: :before_compile,
+      # It's not *ideal* to check the cache every build, but it's usually just a shasum.
+      # It might be possible to rely on the relative mtimes of the podspec and the fetched archive,
+      # but I wouldn't want to risk a mismatched archive giving us cryptic errors at link or run
+      # time later. This Is Fine.
+      always_out_of_date: '1',
       script: %q(
         set -euo pipefail
         if [ -e "${PODS_TARGET_SRCROOT}/swift/build_ffi.sh" ]; then
@@ -80,11 +83,11 @@ Pod::Spec.new do |s|
         rm -rf "${LIBSIGNAL_FFI_TEMP_DIR}"
         if [ -e "${PODS_TARGET_SRCROOT}/swift/build_ffi.sh" ]; then
           # Local development
-          ln -fhs "${PODS_TARGET_SRCROOT}" "${LIBSIGNAL_FFI_TEMP_DIR}"
+          ln -fns "${PODS_TARGET_SRCROOT}" "${LIBSIGNAL_FFI_TEMP_DIR}"
         elif [ -e "${SCRIPT_INPUT_FILE_0}" ]; then
           mkdir -p "${LIBSIGNAL_FFI_TEMP_DIR}"
           cd "${LIBSIGNAL_FFI_TEMP_DIR}"
-          tar --modification-time -x -f "${SCRIPT_INPUT_FILE_0}"
+          tar -m -x -f "${SCRIPT_INPUT_FILE_0}"
         else
           echo 'error: could not download libsignal_ffi.a; please provide LIBSIGNAL_FFI_PREBUILD_CHECKSUM' >&2
           exit 1
@@ -101,6 +104,12 @@ Pod::Spec.new do |s|
     test_spec.pod_target_xcconfig = {
       # Don't also link into the test target.
       'LIBSIGNAL_FFI_LIB_TO_LINK' => '',
+    }
+
+    # Ideally we'd do this at run time, not configuration time, but CocoaPods doesn't make that easy.
+    # This is good enough.
+    test_spec.scheme = {
+      environment_variables: ENV.select { |name, value| name.start_with?('LIBSIGNAL_TESTING_') }
     }
   end
 end

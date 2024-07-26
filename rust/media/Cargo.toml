@@ -10,7 +10,7 @@ futures-util = "0.3.7"
 mediasan-common = "0.5.0"
 mp4san = { version = "0.5.0", optional = true }
 thiserror = "1.0.38"
-webpsan = { version = "0.5.0", optional = true, default_features = false }
+webpsan = { version = "0.5.0", optional = true, default-features = false }
 
 [features]
 default = ["mp4san", "webpsan"]

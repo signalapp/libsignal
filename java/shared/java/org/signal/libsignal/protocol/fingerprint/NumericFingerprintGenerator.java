@@ -5,6 +5,8 @@
 
 package org.signal.libsignal.protocol.fingerprint;
 
+import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
+
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.protocol.IdentityKey;
 
@@ -45,23 +47,28 @@ public class NumericFingerprintGenerator implements FingerprintGenerator {
       byte[] remoteStableIdentifier,
       final IdentityKey remoteIdentityKey) {
 
-    long handle =
-        Native.NumericFingerprintGenerator_New(
-            this.iterations,
-            version,
-            localStableIdentifier,
-            localIdentityKey.serialize(),
-            remoteStableIdentifier,
-            remoteIdentityKey.serialize());
+    return filterExceptions(
+        () -> {
+          long handle =
+              Native.NumericFingerprintGenerator_New(
+                  this.iterations,
+                  version,
+                  localStableIdentifier,
+                  localIdentityKey.serialize(),
+                  remoteStableIdentifier,
+                  remoteIdentityKey.serialize());
 
-    DisplayableFingerprint displayableFingerprint =
-        new DisplayableFingerprint(Native.NumericFingerprintGenerator_GetDisplayString(handle));
+          DisplayableFingerprint displayableFingerprint =
+              new DisplayableFingerprint(
+                  Native.NumericFingerprintGenerator_GetDisplayString(handle));
 
-    ScannableFingerprint scannableFingerprint =
-        new ScannableFingerprint(Native.NumericFingerprintGenerator_GetScannableEncoding(handle));
+          ScannableFingerprint scannableFingerprint =
+              new ScannableFingerprint(
+                  Native.NumericFingerprintGenerator_GetScannableEncoding(handle));
 
-    Native.NumericFingerprintGenerator_Destroy(handle);
+          Native.NumericFingerprintGenerator_Destroy(handle);
 
-    return new Fingerprint(displayableFingerprint, scannableFingerprint);
+          return new Fingerprint(displayableFingerprint, scannableFingerprint);
+        });
   }
 }

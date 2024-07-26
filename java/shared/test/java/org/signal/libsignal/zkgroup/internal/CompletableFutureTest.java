@@ -10,6 +10,7 @@ import static org.junit.Assert.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.function.BiConsumer;
 import java.util.function.Function;
 import org.junit.Test;
 
@@ -370,5 +371,115 @@ public class CompletableFutureTest {
 
     ExecutionException e = assertThrows(ExecutionException.class, () -> future.get());
     assertEquals(exception, e.getCause());
+  }
+
+  private class CountingBiConsumer<T, U> implements BiConsumer<T, U> {
+    public int acceptCalls = 0;
+    public int successes = 0;
+    public int failures = 0;
+    private BiConsumer<T, U> consumer = (t, u) -> {};
+
+    public CountingBiConsumer() {}
+
+    public CountingBiConsumer(BiConsumer<T, U> sideEffects) {
+      this.consumer = sideEffects;
+    }
+
+    @Override
+    public void accept(T t, U u) {
+      this.acceptCalls += 1;
+      this.successes += t == null ? 0 : 1;
+      this.failures += u == null ? 0 : 1;
+      this.consumer.accept(t, u);
+    }
+  }
+
+  @Test
+  public void testWhenCompleteSuccess() throws Exception {
+    var future = new CompletableFuture<Integer>();
+    var consumer = new CountingBiConsumer<Integer, Throwable>();
+    var chained = future.whenComplete(consumer);
+
+    assertFalse(chained.isDone());
+
+    future.complete(42);
+    assertTrue(chained.isDone());
+    assertEquals(42, chained.get().intValue());
+    assertEquals(1, consumer.acceptCalls);
+    assertEquals(1, consumer.successes);
+    assertEquals(0, consumer.failures);
+  }
+
+  @Test
+  public void testWhenCompleteFailure() throws Exception {
+    var future = new CompletableFuture<Integer>();
+    var consumer = new CountingBiConsumer<Integer, Throwable>();
+    var chained = future.whenComplete(consumer);
+
+    assertFalse(chained.isDone());
+
+    var exception = new RuntimeException();
+    future.completeExceptionally(exception);
+    assertTrue(chained.isDone());
+    assertEquals(1, consumer.acceptCalls);
+    assertEquals(0, consumer.successes);
+    assertEquals(1, consumer.failures);
+    try {
+      chained.get();
+    } catch (ExecutionException ex) {
+      assertEquals(exception, ex.getCause());
+    }
+  }
+
+  @Test
+  public void testWhenCompleteFailureAfterSuccess() throws Exception {
+    var future = new CompletableFuture<Integer>();
+    var exception = new RuntimeException();
+    var consumer =
+        new CountingBiConsumer<Integer, Throwable>(
+            (t, u) -> {
+              throw exception;
+            });
+    var chained = future.whenComplete(consumer);
+
+    assertFalse(chained.isDone());
+
+    future.complete(42);
+    assertTrue(chained.isDone());
+    assertEquals(1, consumer.acceptCalls);
+    assertEquals(1, consumer.successes);
+    assertEquals(0, consumer.failures);
+    try {
+      chained.get();
+    } catch (ExecutionException ex) {
+      assertEquals(exception, ex.getCause());
+    }
+  }
+
+  @Test
+  public void testWhenCompleteFailureAfterFailure() throws Exception {
+    var future = new CompletableFuture<Integer>();
+    var futureException = new RuntimeException();
+    var callbackException = new RuntimeException();
+    var consumer =
+        new CountingBiConsumer<Integer, Throwable>(
+            (t, u) -> {
+              throw callbackException;
+            });
+    var chained = future.whenComplete(consumer);
+
+    assertFalse(chained.isDone());
+
+    future.completeExceptionally(futureException);
+    assertTrue(chained.isDone());
+    assertEquals(1, consumer.acceptCalls);
+    assertEquals(0, consumer.successes);
+    assertEquals(1, consumer.failures);
+    try {
+      chained.get();
+    } catch (ExecutionException ex) {
+      assertEquals(futureException, ex.getCause());
+      assertNotEquals(callbackException, ex.getCause());
+    }
   }
 }

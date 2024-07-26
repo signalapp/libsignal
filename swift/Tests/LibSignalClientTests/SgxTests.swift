@@ -7,7 +7,6 @@ import LibSignalClient
 import XCTest
 
 class SgxTests: TestCaseBase {
-
     enum ServiceType {
         case svr2, cds2
     }
@@ -23,10 +22,10 @@ class SgxTests: TestCaseBase {
 
         (
             ServiceType.svr2,
-            // echo a8a261420a6bb9b61aa25bf8a79e8bd20d7652531feb3381cbffd446d270be95 | xxd -r -p | base64
-            Data(base64Encoded: "qKJhQgprubYaolv4p56L0g12UlMf6zOBy//URtJwvpU=")!,
+            // echo acb1973aa0bbbd14b3b4e06f145497d948fd4a98efc500fcce363b3b743ec482 | xxd -r -p | base64
+            Data(base64Encoded: "rLGXOqC7vRSztOBvFFSX2Uj9SpjvxQD8zjY7O3Q+xII=")!,
             readResource(forName: "svr2handshakestart.data"),
-            Date(timeIntervalSince1970: 1_683_836_600)
+            Date(timeIntervalSince1970: 1_709_245_753)
         ),
     ]
 
@@ -40,7 +39,7 @@ class SgxTests: TestCaseBase {
     }
 
     func testCreateClient() {
-        for (serviceType, mrenclave, attestationMessage, currentDate) in testCases {
+        for (serviceType, mrenclave, attestationMessage, currentDate) in self.testCases {
             let client = try! SgxTests.build(serviceType: serviceType, mrenclave: mrenclave, attestationMessage: attestationMessage, currentDate: currentDate)
             let initialMessage = client.initialRequest()
             XCTAssertEqual(48, initialMessage.count, String(describing: serviceType))
@@ -49,48 +48,54 @@ class SgxTests: TestCaseBase {
 
     func testCreateClientFailsWithInvalidMrenclave() {
         let invalidMrenclave = Data(repeating: 0, count: 0)
-        for (serviceType, _, attestationMessage, currentDate) in testCases {
+        for (serviceType, _, attestationMessage, currentDate) in self.testCases {
             XCTAssertThrowsError(
                 try SgxTests.build(
                     serviceType: serviceType,
                     mrenclave: invalidMrenclave,
                     attestationMessage: attestationMessage,
-                    currentDate: currentDate), String(describing: serviceType))
+                    currentDate: currentDate
+                ), String(describing: serviceType)
+            )
         }
     }
 
     func testCreateClientFailsWithInvalidMessage() {
         let invalidMessage = Data(repeating: 0, count: 0)
-        for (serviceType, mrenclave, _, currentDate) in testCases {
+        for (serviceType, mrenclave, _, currentDate) in self.testCases {
             XCTAssertThrowsError(
                 try SgxTests.build(
                     serviceType: serviceType,
                     mrenclave: mrenclave,
                     attestationMessage: invalidMessage,
-                    currentDate: currentDate), String(describing: serviceType))
+                    currentDate: currentDate
+                ), String(describing: serviceType)
+            )
         }
     }
 
-    func testEstablishedSendFailsPriorToEstablishment() {
+    func testEstablishedSendFailsPriorToEstablishment() throws {
         let plaintext: [UInt8] = [0x01, 0x02, 0x03]
-        for (serviceType, mrenclave, attestationMsg, currentDate) in testCases {
-            let client = try! SgxTests.build(
+        for (serviceType, mrenclave, attestationMsg, currentDate) in self.testCases {
+            let client = try SgxTests.build(
                 serviceType: serviceType,
                 mrenclave: mrenclave,
                 attestationMessage: attestationMsg,
-                currentDate: currentDate)
+                currentDate: currentDate
+            )
             XCTAssertThrowsError(try client.establishedSend(plaintext), String(describing: serviceType))
         }
     }
 
-    func testEstablishedRecvFailsPriorToEstablishment() {
+    func testEstablishedRecvFailsPriorToEstablishment() throws {
         let receivedCiphertext: [UInt8] = [0x01, 0x02, 0x03]
-        for (serviceType, mrenclave, attestationMsg, currentDate) in testCases {
-            let client = try! SgxTests.build(
+        for (serviceType, mrenclave, attestationMsg, currentDate) in self.testCases {
+            let client = try SgxTests.build(
                 serviceType: serviceType,
                 mrenclave: mrenclave,
                 attestationMessage: attestationMsg,
-                currentDate: currentDate)
+                currentDate: currentDate
+            )
             XCTAssertThrowsError(try client.establishedRecv(receivedCiphertext), String(describing: serviceType))
         }
     }

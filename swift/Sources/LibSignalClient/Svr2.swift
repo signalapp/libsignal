@@ -11,15 +11,20 @@ import SignalFfi
 ///
 /// See ``SgxClient``
 public class Svr2Client: SgxClient {
-    public convenience init<MrenclaveBytes, AttestationBytes>(mrenclave: MrenclaveBytes, attestationMessage: AttestationBytes, currentDate: Date) throws
-        where MrenclaveBytes: ContiguousBytes, AttestationBytes: ContiguousBytes {
+    public convenience init(
+        mrenclave: some ContiguousBytes,
+        attestationMessage: some ContiguousBytes,
+        currentDate: Date
+    ) throws {
         let handle: OpaquePointer? = try attestationMessage.withUnsafeBorrowedBuffer { attestationMessageBuffer in
             try mrenclave.withUnsafeBorrowedBuffer { mrenclaveBuffer in
                 var result: OpaquePointer?
-                try checkError(signal_svr2_client_new(&result,
-                        mrenclaveBuffer,
-                        attestationMessageBuffer,
-                        UInt64(currentDate.timeIntervalSince1970 * 1000)))
+                try checkError(signal_svr2_client_new(
+                    &result,
+                    mrenclaveBuffer,
+                    attestationMessageBuffer,
+                    UInt64(currentDate.timeIntervalSince1970 * 1000)
+                ))
                 return result
             }
         }

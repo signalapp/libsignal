@@ -7,7 +7,7 @@ plugins {
 }
 
 allprojects {
-    version = "0.40.1-gluon-1"
+    version = "0.52.3-gluon-1"
     group   = "org.signal"
 }
 
@@ -26,13 +26,17 @@ subprojects {
             options.encoding = 'UTF-8'
             options.compilerArgs += ["-Xlint:deprecation", "-Xlint:fallthrough", "-Xlint:unchecked"]
         }
+        tasks.withType(AbstractArchiveTask) {
+            preserveFileTimestamps = false
+            reproducibleFileOrder = true
+        }
     }
 
     apply plugin: "com.diffplug.spotless"
     spotless {
         java {
             target('**/*.java')
-            targetExclude('**/Native.java')
+            targetExclude('**/Native.java', '**/NativeTesting.java')
             importOrder()
             removeUnusedImports()
 
@@ -47,8 +51,9 @@ task makeJniLibrariesDesktop(type:Exec) {
   group 'Rust'
   description 'Build the JNI libraries'
 
+  def debugLevelLogsFlag = hasProperty('debugLevelLogs') ? ['--debug-level-logs'] : []
   // Explicitly specify 'bash' for Windows compatibility.
-  commandLine 'bash', './build_jni.sh', 'desktop'
+  commandLine 'bash', './build_jni.sh', *debugLevelLogsFlag, 'desktop'
 }
 
 task cargoClean(type:Exec) {
@@ -72,7 +77,7 @@ clean.dependsOn([cargoClean, cleanJni])
 
 // PUBLISHING
 
-ext.setUpSigningKey = { signingExt -> 
+ext.setUpSigningKey = { signingExt ->
     def signingKeyId = findProperty("signingKeyId")
     def signingKey = findProperty("signingKey")
     def signingPassword = findProperty("signingPassword")

@@ -29,7 +29,7 @@ fn bridge_fn_body(orig_name: &Ident, input_args: &[(&Ident, &Type)]) -> TokenStr
             Ok(TransformHelper(success)) =>
                 Ok(node::ResultTypeInfo::convert_into(success, &mut cx)?.upcast()),
             Err(failure) => {
-                let module = cx.this();
+                let module = cx.this()?;
                 node::SignalNodeError::throw(failure, &mut cx, module, stringify!(#orig_name))
             }
         }
@@ -43,7 +43,7 @@ fn bridge_fn_body(orig_name: &Ident, input_args: &[(&Ident, &Type)]) -> TokenStr
 fn generate_code_to_load_input(
     name: impl IdentFragment,
     ty: impl ToTokens,
-    arg_index: i32,
+    arg_index: usize,
 ) -> TokenStream2 {
     let name = format_ident!("{}", name);
     let name_arg = format_ident!("{}_arg", name);
@@ -66,7 +66,7 @@ fn bridge_fn_async_body(
     // Scroll down to the end of the function to see the quote template.
     // This is the best way to understand what we're trying to produce.
 
-    let implicit_arg_count = match kind {
+    let implicit_arg_count: usize = match kind {
         BridgingKind::Regular => 0,
         BridgingKind::Io { .. } => 1,
     };
@@ -143,15 +143,21 @@ fn bridge_fn_async_body(
             &mut cx,
             async_runtime,
             #custom_name,
-            async move {
+            |__cancel| async move {
                 // Wrap the actual work to catch any panics.
                 let __future = node::catch_unwind(std::panic::AssertUnwindSafe(async {
                     #(#input_loading)*
-                    let __result = #orig_name(#(#input_names),*).await;
-                    // If the original function can't fail, wrap the result in Ok for uniformity.
-                    // See TransformHelper::ok_if_needed.
-                    TransformHelper(__result).ok_if_needed().map(|x| x.0)
-                }));
+                    ::tokio::select! {
+                        __result = #orig_name(#(#input_names),*) => {
+                            // If the original function can't fail, wrap the result in Ok for uniformity.
+                            // See TransformHelper::ok_if_needed.
+                            Ok(TransformHelper(__result).ok_if_needed().map(|x| x.0))
+                        }
+                        _ = __cancel => {
+                            Err(node::CancellationError)
+                        }
+                    }
+            }));
                 // Pass the stored inputs to the reporter to finalize them before reporting the result.
                 node::FutureResultReporter::new(
                     __future.await,

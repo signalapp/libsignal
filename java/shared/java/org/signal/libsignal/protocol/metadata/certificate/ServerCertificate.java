@@ -5,6 +5,8 @@
 
 package org.signal.libsignal.metadata.certificate;
 
+import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
+
 import java.util.Optional;
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
@@ -38,38 +40,43 @@ public class ServerCertificate implements NativeHandleGuard.Owner {
     try (NativeHandleGuard serverPublicGuard = new NativeHandleGuard(key);
         NativeHandleGuard trustRootPrivateGuard = new NativeHandleGuard(trustRoot)) {
       this.unsafeHandle =
-          Native.ServerCertificate_New(
-              keyId, serverPublicGuard.nativeHandle(), trustRootPrivateGuard.nativeHandle());
+          filterExceptions(
+              () ->
+                  Native.ServerCertificate_New(
+                      keyId,
+                      serverPublicGuard.nativeHandle(),
+                      trustRootPrivateGuard.nativeHandle()));
     }
   }
 
   public int getKeyId() {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return Native.ServerCertificate_GetKeyId(guard.nativeHandle());
+      return filterExceptions(() -> Native.ServerCertificate_GetKeyId(guard.nativeHandle()));
     }
   }
 
   public ECPublicKey getKey() {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return new ECPublicKey(Native.ServerCertificate_GetKey(guard.nativeHandle()));
+      return new ECPublicKey(
+          filterExceptions(() -> Native.ServerCertificate_GetKey(guard.nativeHandle())));
     }
   }
 
   public byte[] getSerialized() {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return Native.ServerCertificate_GetSerialized(guard.nativeHandle());
+      return filterExceptions(() -> Native.ServerCertificate_GetSerialized(guard.nativeHandle()));
     }
   }
 
   public byte[] getCertificate() {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return Native.ServerCertificate_GetCertificate(guard.nativeHandle());
+      return filterExceptions(() -> Native.ServerCertificate_GetCertificate(guard.nativeHandle()));
     }
   }
 
   public byte[] getSignature() {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return Native.ServerCertificate_GetSignature(guard.nativeHandle());
+      return filterExceptions(() -> Native.ServerCertificate_GetSignature(guard.nativeHandle()));
     }
   }
 
@@ -94,14 +101,16 @@ public class ServerCertificate implements NativeHandleGuard.Owner {
         NativeHandleGuard serverCertificateGuard = new NativeHandleGuard(this);
         NativeHandleGuard serverPrivateGuard = new NativeHandleGuard(signingKey)) {
       return new SenderCertificate(
-          Native.SenderCertificate_New(
-              senderUuid,
-              senderE164.orElse(null),
-              senderDeviceId,
-              identityGuard.nativeHandle(),
-              expiration,
-              serverCertificateGuard.nativeHandle(),
-              serverPrivateGuard.nativeHandle()));
+          filterExceptions(
+              () ->
+                  Native.SenderCertificate_New(
+                      senderUuid,
+                      senderE164.orElse(null),
+                      senderDeviceId,
+                      identityGuard.nativeHandle(),
+                      expiration,
+                      serverCertificateGuard.nativeHandle(),
+                      serverPrivateGuard.nativeHandle())));
     }
   }
 

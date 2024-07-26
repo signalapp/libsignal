@@ -225,7 +225,7 @@ fn group_sealed_sender() -> Result<(), SignalProtocolError> {
             &mut csprng,
         )?;
 
-        let expires = 1605722925;
+        let expires = Timestamp::from_epoch_millis(1605722925);
 
         let sender_cert = SenderCertificate::new(
             alice_uuid.clone(),
@@ -453,7 +453,7 @@ fn group_sealed_sender_multiple_devices() -> Result<(), SignalProtocolError> {
             &mut csprng,
         )?;
 
-        let expires = 1605722925;
+        let expires = Timestamp::from_epoch_millis(1605722925);
 
         let sender_cert = SenderCertificate::new(
             alice_uuid.clone(),
@@ -688,7 +688,7 @@ fn group_sealed_sender_multiple_devices_and_excluded_recipients() -> Result<(), 
             &mut csprng,
         )?;
 
-        let expires = 1605722925;
+        let expires = Timestamp::from_epoch_millis(1605722925);
 
         let sender_cert = SenderCertificate::new(
             alice_uuid.clone(),

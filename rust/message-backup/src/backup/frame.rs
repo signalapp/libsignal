@@ -4,16 +4,14 @@
 //
 
 use crate::backup::WithId;
-use crate::proto::backup::{Call, Chat, Recipient};
+use crate::proto::backup::{Chat, Recipient};
 
 #[derive(Copy, Clone, Debug, Eq, Hash, PartialEq)]
 pub struct RecipientId(pub(super) u64);
 
+/// Foreign key
 #[derive(Copy, Clone, Debug, Eq, Hash, PartialEq)]
 pub struct ChatId(pub(super) u64);
-
-#[derive(Copy, Clone, Debug, Eq, Hash, PartialEq)]
-pub struct CallId(pub(super) u64);
 
 #[derive(Copy, Clone, Debug, Eq, Hash, PartialEq)]
 pub struct RingerRecipientId(pub(super) RecipientId);
@@ -44,4 +42,3 @@ macro_rules! impl_with_id {
 
 impl_with_id!(Chat, ChatId, id);
 impl_with_id!(Recipient, RecipientId, id);
-impl_with_id!(Call, CallId, callId);

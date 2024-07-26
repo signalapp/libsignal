@@ -5,6 +5,9 @@
 
 package org.signal.libsignal.zkgroup.backups;
 
+import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
+
+import java.time.Instant;
 import java.util.UUID;
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.zkgroup.GenericServerPublicParams;
@@ -16,7 +19,9 @@ public final class BackupAuthCredentialRequestContext extends ByteArray {
 
   public BackupAuthCredentialRequestContext(byte[] contents) throws InvalidInputException {
     super(contents);
-    Native.BackupAuthCredentialRequestContext_CheckValidContents(contents);
+    filterExceptions(
+        InvalidInputException.class,
+        () -> Native.BackupAuthCredentialRequestContext_CheckValidContents(contents));
   }
 
   public static BackupAuthCredentialRequestContext create(final byte[] backupKey, final UUID aci) {
@@ -40,16 +45,17 @@ public final class BackupAuthCredentialRequestContext extends ByteArray {
   }
 
   public BackupAuthCredential receiveResponse(
-      BackupAuthCredentialResponse response,
-      GenericServerPublicParams params,
-      long expectedReceiptLevel)
+      BackupAuthCredentialResponse response, Instant timestamp, GenericServerPublicParams params)
       throws VerificationFailedException {
     final byte[] newContents =
-        Native.BackupAuthCredentialRequestContext_ReceiveResponse(
-            getInternalContentsForJNI(),
-            response.getInternalContentsForJNI(),
-            params.getInternalContentsForJNI(),
-            expectedReceiptLevel);
+        filterExceptions(
+            VerificationFailedException.class,
+            () ->
+                Native.BackupAuthCredentialRequestContext_ReceiveResponse(
+                    getInternalContentsForJNI(),
+                    response.getInternalContentsForJNI(),
+                    timestamp.getEpochSecond(),
+                    params.getInternalContentsForJNI()));
 
     try {
       return new BackupAuthCredential(newContents);

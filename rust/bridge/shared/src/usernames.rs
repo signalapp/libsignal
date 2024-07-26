@@ -25,7 +25,7 @@ pub fn Username_Proof(username: String, randomness: &[u8]) -> Result<Vec<u8>, Us
     Username::new(&username)?.proof(randomness)
 }
 
-#[bridge_fn_void]
+#[bridge_fn]
 pub fn Username_Verify(
     proof: &[u8],
     hash: &[u8],

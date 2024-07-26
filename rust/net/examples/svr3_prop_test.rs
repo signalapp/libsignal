@@ -7,17 +7,21 @@ use std::collections::HashMap;
 use std::time::Duration;
 
 use assert_matches::assert_matches;
+use async_trait::async_trait;
 use proptest::prelude::*;
 use proptest::test_runner::Config;
 use proptest_state_machine::{prop_state_machine, ReferenceStateMachine, StateMachineTest};
 use rand_core::OsRng;
 
 use libsignal_net::auth::Auth;
-use libsignal_net::enclave::{EndpointConnection, Nitro, PpssSetup, Sgx};
+use libsignal_net::enclave::{self, PpssSetup};
 use libsignal_net::env::Svr3Env;
-use libsignal_net::infra::TcpSslTransportConnector;
-use libsignal_net::svr::SvrConnection;
-use libsignal_net::svr3::{Error, OpaqueMaskedShareSet, PpssOps as _};
+use libsignal_net::infra::ws::DefaultStream;
+use libsignal_net::svr3::{
+    simple_svr3_connect, Error, OpaqueMaskedShareSet, Svr3Client, Svr3Connect,
+};
+use libsignal_svr3::EvaluationResult;
+
 use support::*;
 
 const MAX_TRIES_LIMIT: u32 = 10;
@@ -124,8 +128,7 @@ pub struct Svr3Storage {
     runtime: tokio::runtime::Runtime,
     env: Svr3Env<'static>,
     current_uid: Option<Uid>,
-    sgx_secret: Secret,
-    nitro_secret: Secret,
+    enclave_secret: Secret,
     share_sets: HashMap<Uid, OpaqueMaskedShareSet>,
     config: SUTConfig,
 }
@@ -241,19 +244,17 @@ impl StateMachineTest for Svr3Storage {
                             "password"
                         };
                         match state.restore(uid, share_set.clone(), password) {
-                            Ok(actual_secret) => {
+                            Ok(evaluation_result) => {
                                 assert_matches!(
                                 ref_state.last_transition_outcome,
                                 TransitionOutcome::Restored(expected_secret) => {
-                                    assert_eq!(actual_secret, expected_secret)
+                                    assert_eq!(evaluation_result.value, expected_secret)
                                 });
                                 log::info!("\tgood restore");
                             }
                             Err(err) => {
                                 match err {
-                                    Error::Logic(libsignal_svr3::Error::Protocol(msg))
-                                        if msg.contains("MISSING") =>
-                                    {
+                                    Error::DataMissing => {
                                         log::info!("\tvalue missing (no more attempts?)");
                                         // "Forget" the share-set value
                                         // This is what a good client would do.
@@ -267,9 +268,7 @@ impl StateMachineTest for Svr3Storage {
                                             "Should have exceeded the tries limit"
                                         );
                                     }
-                                    Error::Logic(libsignal_svr3::Error::Ppss(
-                                        libsignal_svr3::PPSSError::InvalidCommitment,
-                                    )) if expect_bad_commitment => {
+                                    Error::RestoreFailed(_) if expect_bad_commitment => {
                                         log::info!(
                                             "\tbad commitment error (as expected) [{}]",
                                             err
@@ -298,17 +297,47 @@ impl StateMachineTest for Svr3Storage {
     }
 }
 
+struct Client<'a> {
+    auth: Auth,
+    env: &'a Svr3Env<'static>,
+    config: &'a SUTConfig,
+}
+
+impl<'a> Client<'a> {
+    fn new(uid: Uid, storage: &'a Svr3Storage) -> Self {
+        let auth = Auth::from_uid_and_secret(uid, storage.enclave_secret);
+        Self {
+            auth,
+            env: &storage.env,
+            config: &storage.config,
+        }
+    }
+}
+
+#[async_trait]
+impl Svr3Connect for Client<'_> {
+    type Stream = DefaultStream;
+    type Env = Svr3Env<'static>;
+
+    async fn connect(
+        &self,
+    ) -> Result<<Self::Env as PpssSetup<Self::Stream>>::Connections, enclave::Error> {
+        if let Some(duration) = self.config.sleep {
+            log::info!("💤 to avoid throttling...");
+            tokio::time::sleep(duration).await;
+        }
+        simple_svr3_connect(self.env, &self.auth).await
+    }
+}
+
 impl Svr3Storage {
     fn new() -> Self {
-        let sgx_secret = {
-            let b64 = std::env::var("SVR3_SGX_SECRET").expect("SGX secret should be set");
+        let enclave_secret = {
+            let b64 = std::env::var("LIBSIGNAL_TESTING_ENCLAVE_SECRET")
+                .expect("LIBSIGNAL_TESTING_ENCLAVE_SECRET should be set");
             parse_auth_secret(&b64)
         };
 
-        let nitro_secret = {
-            let b64 = std::env::var("SVR3_NITRO_SECRET").expect("Nitro secret should be set");
-            parse_auth_secret(&b64)
-        };
         let runtime = tokio::runtime::Builder::new_multi_thread()
             .enable_all()
             .worker_threads(1)
@@ -318,53 +347,20 @@ impl Svr3Storage {
             runtime,
             env: libsignal_net::env::STAGING.svr3,
             current_uid: None,
-            sgx_secret,
-            nitro_secret,
+            enclave_secret,
             share_sets: HashMap::default(),
             config: SUTConfig::default(),
         }
     }
 
-    async fn connect(&self, uid: Uid) -> <Svr3Env as PpssSetup>::Connections {
-        if let Some(duration) = self.config.sleep {
-            tokio::time::sleep(duration).await;
-        }
-        let sgx_connection = EndpointConnection::new(
-            self.env.sgx(),
-            Duration::from_secs(10),
-            TcpSslTransportConnector,
-        );
-        let sgx_auth = Auth::from_uid_and_secret(uid, self.sgx_secret);
-        let a = SvrConnection::<Sgx>::connect(sgx_auth, &sgx_connection)
-            .await
-            .expect("can attestedly connect to SGX");
-
-        let nitro_connection = EndpointConnection::new(
-            self.env.nitro(),
-            Duration::from_secs(10),
-            TcpSslTransportConnector,
-        );
-        let nitro_auth = Auth::from_uid_and_secret(uid, self.nitro_secret);
-        let b = SvrConnection::<Nitro>::connect(nitro_auth, &nitro_connection)
-            .await
-            .expect("can attestedly connect to Nitro");
-
-        (a, b)
-    }
-
     fn backup(&mut self, uid: Uid, what: Secret, max_tries: u32) -> OpaqueMaskedShareSet {
         self.runtime.block_on(async {
             let mut rng = OsRng;
-            let connections = self.connect(uid).await;
-            Svr3Env::backup(
-                connections,
-                "password",
-                what,
-                max_tries.try_into().unwrap(),
-                &mut rng,
-            )
-            .await
-            .expect("can backup")
+            let client = Client::new(uid, self);
+            client
+                .backup("password", what, max_tries.try_into().unwrap(), &mut rng)
+                .await
+                .expect("can backup")
         })
     }
 
@@ -373,11 +369,11 @@ impl Svr3Storage {
         uid: Uid,
         share_set: OpaqueMaskedShareSet,
         password: &str,
-    ) -> Result<[u8; 32], Error> {
+    ) -> Result<EvaluationResult, Error> {
         self.runtime.block_on(async {
             let mut rng = OsRng;
-            let connections = self.connect(uid).await;
-            Svr3Env::restore(connections, password, share_set, &mut rng).await
+            let client = Client::new(uid, self);
+            client.restore(password, share_set, &mut rng).await
         })
     }
 }
