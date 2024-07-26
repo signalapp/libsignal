@@ -19,7 +19,7 @@ RUN    apt-get update
 
 # Install only what's needed to set up Rust and Android
 # We'll install additional tools at the end to take advantage of Docker's caching of earlier steps.
-RUN    apt-get install -y openjdk-17-jdk-headless unzip
+RUN    apt-get install -y curl openjdk-17-jdk-headless unzip
 
 ARG UID
 ARG GID
