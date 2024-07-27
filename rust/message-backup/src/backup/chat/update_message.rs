@@ -7,6 +7,7 @@ use crate::backup::chat::group::GroupChatUpdate;
 use crate::backup::chat::ChatItemError;
 use crate::backup::frame::RecipientId;
 use crate::backup::method::Lookup;
+use crate::backup::recipient::E164;
 use crate::backup::time::Duration;
 use crate::backup::{TryFromWith, TryIntoWith as _};
 use crate::proto::backup as proto;
@@ -19,8 +20,8 @@ pub enum UpdateMessage<Recipient> {
     GroupChange { updates: Vec<GroupChatUpdate> },
     ExpirationTimerChange { expires_in: Duration },
     ProfileChange { previous: String, new: String },
-    ThreadMerge,
-    SessionSwitchover,
+    ThreadMerge { previous_e164: E164 },
+    SessionSwitchover { e164: E164 },
     IndividualCall(IndividualCall),
     GroupCall(GroupCall<Recipient>),
     LearnedProfileUpdate(proto::learned_profile_chat_update::PreviousName),
@@ -128,15 +129,21 @@ impl<C: Lookup<RecipientId, R>, R: Clone> TryFromWith<proto::ChatUpdateMessage, 
                 new: newName,
             },
             Update::ThreadMerge(proto::ThreadMergeChatUpdate {
+                previousE164,
                 special_fields: _,
-                // TODO validate this field
-                previousE164: _,
-            }) => UpdateMessage::ThreadMerge,
+            }) => {
+                let previous_e164 = previousE164
+                    .try_into()
+                    .map_err(|_| ChatItemError::InvalidE164)?;
+                UpdateMessage::ThreadMerge { previous_e164 }
+            }
             Update::SessionSwitchover(proto::SessionSwitchoverChatUpdate {
+                e164,
                 special_fields: _,
-                // TODO validate this field
-                e164: _,
-            }) => UpdateMessage::SessionSwitchover,
+            }) => {
+                let e164 = e164.try_into().map_err(|_| ChatItemError::InvalidE164)?;
+                UpdateMessage::SessionSwitchover { e164 }
+            }
             Update::IndividualCall(call) => UpdateMessage::IndividualCall(call.try_into()?),
             Update::GroupCall(call) => UpdateMessage::GroupCall(call.try_into_with(context)?),
             Update::LearnedProfileChange(proto::LearnedProfileChatUpdate {
@@ -223,8 +230,14 @@ mod test {
     #[test_case(proto::SimpleChatUpdate::test_data(), Ok(()))]
     #[test_case(proto::ExpirationTimerChatUpdate::default(), Ok(()))]
     #[test_case(proto::ProfileChangeChatUpdate::default(), Ok(()))]
-    #[test_case(proto::ThreadMergeChatUpdate::default(), Ok(()))]
-    #[test_case(proto::SessionSwitchoverChatUpdate::default(), Ok(()))]
+    #[test_case(
+        proto::ThreadMergeChatUpdate::default(),
+        Err(ChatItemError::InvalidE164)
+    )]
+    #[test_case(
+        proto::SessionSwitchoverChatUpdate::default(),
+        Err(ChatItemError::InvalidE164)
+    )]
     #[test_case(
         proto::LearnedProfileChatUpdate::default(),
         Err(ChatItemError::LearnedProfileIsEmpty)

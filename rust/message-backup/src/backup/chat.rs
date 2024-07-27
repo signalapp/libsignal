@@ -128,6 +128,8 @@ pub enum ChatItemError {
     RevisionContainsCall,
     /// learned profile chat update has no e164 or name
     LearnedProfileIsEmpty,
+    /// invalid e164
+    InvalidE164,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -400,8 +402,8 @@ impl<
                             previous: _,
                             new: _,
                         }
-                        | UpdateMessage::ThreadMerge
-                        | UpdateMessage::SessionSwitchover
+                        | UpdateMessage::ThreadMerge { previous_e164: _ }
+                        | UpdateMessage::SessionSwitchover { e164: _ }
                         | UpdateMessage::LearnedProfileUpdate(_) => (),
                     },
                     ChatItemMessage::Standard(_)

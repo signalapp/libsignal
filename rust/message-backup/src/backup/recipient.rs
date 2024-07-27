@@ -31,6 +31,8 @@ pub enum RecipientError {
     MissingDestination,
     /// invalid {0}
     InvalidServiceId(ServiceIdKind),
+    /// invalid e164
+    InvalidE164,
     /// profile key is present but invalid
     InvalidProfileKey,
     /// distribution destination has invalid UUID
@@ -94,6 +96,37 @@ impl AsRef<DestinationKind> for DestinationKind {
     }
 }
 
+/// Represents a phone number in E.164 format.
+///
+/// Due to the changing nature of phone numbers around the world, validation is minimal.
+///
+/// The ordering should be considered arbitrary; a proper ordering of E164s would use a
+/// lexicographic ordering of the decimal digits, but that costs more in CPU. Use the string
+/// representation as a sort key if sorting for human consumption.
+#[derive(Debug, serde::Serialize, PartialEq, Eq, PartialOrd, Ord)]
+#[serde(transparent)]
+pub struct E164(NonZeroU64);
+
+impl TryFrom<u64> for E164 {
+    type Error = <NonZeroU64 as TryFrom<u64>>::Error;
+
+    fn try_from(value: u64) -> Result<Self, Self::Error> {
+        Ok(Self(NonZeroU64::try_from(value)?))
+    }
+}
+
+impl From<E164> for u64 {
+    fn from(value: E164) -> Self {
+        value.0.into()
+    }
+}
+
+impl std::fmt::Display for E164 {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "+{}", self.0)
+    }
+}
+
 #[derive(Debug, serde::Serialize)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct ContactData {
@@ -104,7 +137,7 @@ pub struct ContactData {
     pub profile_key: Option<ProfileKeyBytes>,
     pub username: Option<String>,
     pub registration: Registration,
-    pub e164: Option<u64>,
+    pub e164: Option<E164>,
     pub blocked: bool,
     #[serde(serialize_with = "serialize::enum_as_string")]
     pub visibility: proto::contact::Visibility,
@@ -329,6 +362,11 @@ impl TryFrom<proto::Contact> for ContactData {
             | proto::contact::Visibility::HIDDEN
             | proto::contact::Visibility::HIDDEN_MESSAGE_REQUEST) => v,
         };
+
+        let e164 = e164
+            .map(E164::try_from)
+            .transpose()
+            .map_err(|_| RecipientError::InvalidE164)?;
 
         Ok(Self {
             aci,
@@ -671,6 +709,12 @@ mod test {
     fn visibility_default(input: &mut proto::Contact) {
         input.visibility = EnumOrUnknown::default();
     }
+    fn with_e164(input: &mut proto::Contact) {
+        input.e164 = Some(16505550101);
+    }
+    fn with_invalid_e164(input: &mut proto::Contact) {
+        input.e164 = Some(0);
+    }
 
     #[test]
     fn valid_destination_contact() {
@@ -696,6 +740,8 @@ mod test {
     #[test_case(profile_no_names, Ok(()))]
     #[test_case(visibility_hidden, Ok(()))]
     #[test_case(visibility_default, Ok(()))]
+    #[test_case(with_e164, Ok(()))]
+    #[test_case(with_invalid_e164, Err(RecipientError::InvalidE164))]
     fn destination_contact(
         modifier: fn(&mut proto::Contact),
         expected: Result<(), RecipientError>,
