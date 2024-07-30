@@ -57,6 +57,11 @@ fn ConnectionManager_set_ipv6_enabled(connection_manager: &ConnectionManager, ip
 }
 
 #[bridge_fn]
+fn ConnectionManager_on_network_change(connection_manager: &ConnectionManager) {
+    connection_manager.on_network_change()
+}
+
+#[bridge_fn]
 fn CreateOTP(username: String, secret: &[u8]) -> String {
     Auth::otp(&username, secret, std::time::SystemTime::now())
 }

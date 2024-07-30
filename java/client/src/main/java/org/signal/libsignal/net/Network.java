@@ -66,6 +66,15 @@ public class Network {
     this.connectionManager.clearProxy();
   }
 
+  /**
+   * Notifies libsignal that the network has changed.
+   *
+   * <p>This will lead to, e.g. caches being cleared and cooldowns being reset.
+   */
+  public void onNetworkChange() {
+    connectionManager.guardedRun(Native::ConnectionManager_on_network_change);
+  }
+
   public Svr3 svr3() {
     return this.svr3;
   }

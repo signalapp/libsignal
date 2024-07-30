@@ -197,6 +197,7 @@ export function ComparableBackup_GetUnknownFields(backup: Wrapper<ComparableBack
 export function ComparableBackup_ReadUnencrypted(stream: InputStream, len: bigint, purpose: number): Promise<ComparableBackup>;
 export function ConnectionManager_clear_proxy(connectionManager: Wrapper<ConnectionManager>): void;
 export function ConnectionManager_new(environment: number, userAgent: string): ConnectionManager;
+export function ConnectionManager_on_network_change(connectionManager: Wrapper<ConnectionManager>): void;
 export function ConnectionManager_set_ipv6_enabled(connectionManager: Wrapper<ConnectionManager>, ipv6Enabled: boolean): void;
 export function ConnectionManager_set_proxy(connectionManager: Wrapper<ConnectionManager>, host: string, port: number): void;
 export function CreateCallLinkCredentialPresentation_CheckValidContents(presentationBytes: Buffer): void;

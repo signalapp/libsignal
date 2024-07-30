@@ -124,6 +124,12 @@ final class NetTests: XCTestCase {
             _ = entry.e164
         }
     }
+
+    func testNetworkChangeEvent() throws {
+        // There's no feedback from this, we're just making sure it doesn't normally crash or throw.
+        let net = Net(env: .staging, userAgent: userAgent)
+        try net.networkDidChange()
+    }
 }
 
 final class Svr3Tests: TestCaseBase {

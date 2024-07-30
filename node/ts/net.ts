@@ -468,6 +468,15 @@ export class Net {
     Native.ConnectionManager_clear_proxy(this.connectionManager);
   }
 
+  /**
+   * Notifies libsignal that the network has changed.
+   *
+   * This will lead to, e.g. caches being cleared and cooldowns being reset.
+   */
+  onNetworkChange(): void {
+    Native.ConnectionManager_on_network_change(this.connectionManager);
+  }
+
   async cdsiLookup(
     { username, password }: Readonly<ServiceAuth>,
     {

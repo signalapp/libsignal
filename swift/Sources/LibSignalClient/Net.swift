@@ -50,6 +50,18 @@ public class Net {
         self.connectionManager.clearProxy()
     }
 
+    /// Notifies libsignal that the network has changed.
+    ///
+    /// This will lead to, e.g. caches being cleared and cooldowns being reset.
+    ///
+    /// No errors are expected to be thrown; this is only to make programmer errors
+    /// recoverable for this particular call.
+    public func networkDidChange() throws {
+        try self.connectionManager.withNativeHandle { connectionManager in
+            try checkError(signal_connection_manager_on_network_change(connectionManager))
+        }
+    }
+
     /// Like ``cdsiLookup(auth:request:)`` but with the parameters to ``CdsiLookupRequest`` broken out.
     public func cdsiLookup(
         auth: Auth,

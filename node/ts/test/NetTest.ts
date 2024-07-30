@@ -32,6 +32,14 @@ config.truncateThreshold = 0;
 
 const userAgent = 'test';
 
+describe('Net class', () => {
+  it('handles network change events', () => {
+    // There's no feedback from this, we're just making sure it doesn't normally crash or throw.
+    const net = new Net(Environment.Staging, userAgent);
+    net.onNetworkChange();
+  });
+});
+
 describe('chat service api', () => {
   it('converts errors to native', () => {
     const cases: Array<[string, ErrorCode]> = [

@@ -183,7 +183,7 @@ impl ConnectionManager {
         )
     }
 
-    pub fn network_changed(&self) {
+    pub fn on_network_change(&self) {
         self.network_change_event.fire()
     }
 }
