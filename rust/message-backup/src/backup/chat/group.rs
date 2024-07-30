@@ -180,8 +180,6 @@ pub enum GroupChatUpdate {
         newMemberAci: Aci,
         #[serde(serialize_with = "serialize::optional_service_id_as_string")]
         inviterAci: Option<Aci>,
-        // TODO check that this field doesn't affect the validity of other fields in
-        // the message.
         hadOpenInvitation: NoValidation<bool>,
     },
     GroupSelfInvitationRevokedUpdate {
@@ -297,6 +295,8 @@ pub enum GroupUpdateFieldError {
     InvalidInvitee(InviteeError),
     /// accessLevel is {0}
     AccessLevelInvalid(&'static str),
+    /// inviter ACI is present but hadOpenInvitation is false
+    InviterMismatch,
 }
 
 #[derive(Debug, displaydoc::Display)]
@@ -440,7 +440,29 @@ impl TryFrom<proto::group_change_chat_update::update::Update> for GroupChatUpdat
             Update::GroupInvitationAcceptedUpdate(m) => m.try_into(),
             Update::GroupInvitationDeclinedUpdate(m) => m.try_into(),
             Update::GroupMemberJoinedUpdate(m) => m.try_into(),
-            Update::GroupMemberAddedUpdate(m) => m.try_into(),
+            Update::GroupMemberAddedUpdate(m) => {
+                let result = m.try_into()?;
+
+                let Self::GroupMemberAddedUpdate {
+                    updaterAci: _,
+                    newMemberAci: _,
+                    inviterAci,
+                    hadOpenInvitation,
+                } = result
+                else {
+                    unreachable!("wrong case constructed for GroupChatUpdate");
+                };
+
+                if inviterAci.is_some() && !hadOpenInvitation.0 {
+                    return Err(GroupUpdateError {
+                        message: "GroupMemberAddedUpdate",
+                        field_name: "inviterAci",
+                        field_error: GroupUpdateFieldError::InviterMismatch,
+                    });
+                }
+
+                Ok(result)
+            }
             Update::GroupSelfInvitationRevokedUpdate(m) => m.try_into(),
             Update::GroupInvitationRevokedUpdate(m) => m.try_into(),
             Update::GroupJoinRequestUpdate(m) => m.try_into(),
@@ -573,5 +595,29 @@ mod test {
             err.to_string(),
             "group update: GroupInvitationRevokedUpdate.invitees: invitee has invalid inviter ACI"
         );
+    }
+
+    #[test_case(None, false, Ok(()))]
+    #[test_case(None, true, Ok(()))]
+    #[test_case(Some(ACI), true, Ok(()))]
+    #[test_case(Some(ACI), false, Err(GroupUpdateFieldError::InviterMismatch))]
+    fn group_member_added_inviter_table(
+        inviter: Option<Aci>,
+        had_invitation: bool,
+        expected: Result<(), GroupUpdateFieldError>,
+    ) {
+        let update = group_change_chat_update::update::Update::GroupMemberAddedUpdate(
+            GroupMemberAddedUpdate {
+                newMemberAci: ACI_BYTES.to_vec(),
+                hadOpenInvitation: had_invitation,
+                inviterAci: inviter.map(|aci| aci.service_id_binary()),
+                ..Default::default()
+            },
+        );
+
+        let result = GroupChatUpdate::try_from(update)
+            .map(|_| ())
+            .map_err(|e| e.field_error);
+        assert_eq!(result, expected);
     }
 }
