@@ -16,7 +16,7 @@ ANDROID_LIB_DIR=java/android/src/main/jniLibs
 DESKTOP_LIB_DIR=java/shared/resources
 
 export CARGO_PROFILE_RELEASE_DEBUG=1 # enable line tables
-export CARGO_PROFILE_RELEASE_OPT_LEVEL=s # optimize for size over speed
+export RUSTFLAGS="--cfg aes_armv8 --cfg polyval_armv8 ${RUSTFLAGS:-}" # Enable ARMv8 cryptography acceleration when available
 
 BUILD_FOR_TEST=
 DEBUG_LEVEL_LOGS=
@@ -44,22 +44,66 @@ if [[ -z "${DEBUG_LEVEL_LOGS:-}" ]]; then
 fi
 
 android_abis=()
+
+# usage: build_desktop_for_arch target_triple host_triple
+build_desktop_for_arch () {
+    local RUSTFLAGS
+    local CC
+    local CXX
+    local CPATH
+
+    local cpuarch="${1%%-*}"
+    case "$cpuarch" in
+        x86_64)
+            suffix=amd64
+            ;;
+        aarch64)
+            suffix=aarch64
+            ;;
+        *)
+            echo "building for unknown CPU architecture ${cpuarch}; update build_jni.sh"
+            exit 2
+    esac
+    if [[ "$1" != "$2" ]]; then
+        # Set up cross-compiling flags
+        if [[ "$1" != *-linux-* ]]; then
+            echo "cross-compiling only supported for Linux targets; update build_jni.sh"
+            exit 2
+        fi
+        if [[ "$cpuarch" == aarch64 ]]; then
+            RUSTFLAGS="-C target-feature=+v8.2a ${RUSTFLAGS:-}"
+        fi
+        export "CARGO_TARGET_$(echo "$cpuarch" | tr "[:lower:]" "[:upper:]")_UNKNOWN_LINUX_GNU_LINKER"="${cpuarch}-linux-gnu-gcc"
+        export CC="${cpuarch}-linux-gnu-gcc"
+        export CXX="${cpuarch}-linux-gnu-g++"
+        export CPATH="/usr/${cpuarch}-linux-gnu/include"
+    fi
+    echo_then_run cargo build -p libsignal-jni -p libsignal-jni-testing --release ${FEATURES:+--features "${FEATURES[*]}"} --target "$1"
+    if [[ -z "${CARGO_BUILD_TARGET:-}" ]]; then
+        copy_built_library "target/${1}/release" signal_jni "${DESKTOP_LIB_DIR}/" "signal_jni_${suffix}"
+        copy_built_library "target/${1}/release" signal_jni_testing "${DESKTOP_LIB_DIR}/" "signal_jni_testing_${suffix}"
+    fi
+}
+
 while [ "${1:-}" != "" ]; do
     case "${1:-}" in
-        desktop )
+        desktop | server | server-all )
             # On Linux, cdylibs don't include public symbols from their dependencies,
             # even if those symbols have been re-exported in the Rust source.
             # Using LTO works around this at the cost of a slightly slower build.
             # https://github.com/rust-lang/rfcs/issues/2771
             export CARGO_PROFILE_RELEASE_LTO=thin
             FEATURES+=("testing-fns")
-            echo_then_run cargo build -p libsignal-jni -p libsignal-jni-testing --release ${FEATURES:+--features "${FEATURES[*]}"}
-            if [[ -z "${CARGO_BUILD_TARGET:-}" ]]; then
-                copy_built_library target/release signal_jni "${DESKTOP_LIB_DIR}/"
-                copy_built_library target/release signal_jni_testing "${DESKTOP_LIB_DIR}/"
+            host_triple=$(rustc -vV | sed -n 's|host: ||p')
+            if [[ "$1" == "server-all" ]]; then
+                build_desktop_for_arch x86_64-unknown-linux-gnu "$host_triple"
+                build_desktop_for_arch aarch64-unknown-linux-gnu "$host_triple"
+            else
+                build_desktop_for_arch "$host_triple" "$host_triple"
             fi
             exit
             ;;
+
         android )
             android_abis+=(arm64-v8a armeabi-v7a x86_64 x86)
             ;;
@@ -84,6 +128,7 @@ while [ "${1:-}" != "" ]; do
 done
 
 # Everything from here down is Android-only.
+export CARGO_PROFILE_RELEASE_OPT_LEVEL=s # optimize for size over speed
 
 # Use full LTO and small BoringSSL curve tables to reduce binary size.
 export CFLAGS="-DOPENSSL_SMALL -flto=full ${CFLAGS:-}"
@@ -103,7 +148,6 @@ export CARGO_TARGET_X86_64_LINUX_ANDROID_LINKER="${CC_x86_64_linux_android}"
 export CARGO_TARGET_I686_LINUX_ANDROID_LINKER="${CC_i686_linux_android}"
 
 export TARGET_AR="${ANDROID_TOOLCHAIN_DIR}/llvm-ar"
-export RUSTFLAGS="--cfg aes_armv8 --cfg polyval_armv8 ${RUSTFLAGS:-}" # Enable ARMv8 cryptography acceleration when available
 
 # The 64-bit curve25519-dalek backend is faster than the 32-bit one on at least some armv7a phones.
 # Comment out the following to allow the 32-bit backend on 32-bit targets.

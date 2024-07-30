@@ -55,6 +55,16 @@ task makeJniLibrariesDesktop(type:Exec) {
   commandLine 'bash', './build_jni.sh', *debugLevelLogsFlag, 'desktop'
 }
 
+task makeJniLibrariesServer(type:Exec) {
+  group 'Rust'
+  description 'Build the JNI libraries'
+
+  def debugLevelLogsFlag = hasProperty('debugLevelLogs') ? ['--debug-level-logs'] : []
+  def target = hasProperty('crossCompileServer') ? 'server-all' : 'server'
+
+  commandLine 'bash', './build_jni.sh', *debugLevelLogsFlag, target
+}
+
 task cargoClean(type:Exec) {
   group 'Rust'
   commandLine 'cargo', 'clean'

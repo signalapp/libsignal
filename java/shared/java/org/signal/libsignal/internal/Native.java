@@ -59,18 +59,25 @@ public final class Native {
    * copy it to a temporary file and then load it. This allows the jar to be
    * used even without a shared library existing on the filesystem.
    *
+   * If a version of the library that includes this system's hardware architecture in its name is
+   * present, prefer that to the supplied name (e.g. "libsignal_amd64.so" will be preferred to
+   * "libsignal.so"). This applies only to libraries embedded as a resource, not libraries
+   * installed on the local machine.
+   *
    * Package-private to allow the NativeTest class to load its shared library.
    * This method should only be called from a static initializer.
    */
   static void loadLibrary(String name) throws IOException {
-    String libraryName = System.mapLibraryName(name);
-    try (InputStream in = Native.class.getResourceAsStream("/" + libraryName)) {
-      if (in != null) {
-        copyToTempDirAndLoad(in, libraryName);
-      } else {
-        System.loadLibrary(name);
+    for (String suffix : new String[]{ "_" + System.getProperty("os.arch"), "" }) {
+      final String libraryName = System.mapLibraryName(name + suffix);
+      try (InputStream in = Native.class.getResourceAsStream("/" + libraryName)) {
+        if (in != null) {
+          copyToTempDirAndLoad(in, libraryName);
+          return;
+        }
       }
     }
+    System.loadLibrary(name);
   }
 
   private static void loadNativeCode() {

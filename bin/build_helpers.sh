@@ -37,15 +37,16 @@ check_rust() {
   fi
 }
 
-# usage: copy_built_library target/release signal_node out_dir/libsignal_node.node
-#        copy_built_library target/release signal_jni out_dir/
+# usage: copy_built_library target/release signal_jni out_dir/ signal_jni_amd64
 copy_built_library() {
-  for possible_library_name in "lib$2.dylib" "lib$2.so" "$2.dll"; do
+  for pattern in "libX.dylib" "libX.so" "X.dll"; do
+    possible_library_name="${pattern%X*}${2}${pattern#*X}"
+    possible_augmented_name="${pattern%X*}${4}${pattern#*X}"
     possible_library_path="$1/${possible_library_name}"
     if [ -e "${possible_library_path}" ]; then
       out_dir=$(dirname "$3"x) # trailing x to distinguish directories from files
       echo_then_run mkdir -p "${out_dir}"
-      echo_then_run cp "${possible_library_path}" "$3"
+      echo_then_run cp "${possible_library_path}" "$3/${possible_augmented_name}"
       break
     fi
   done

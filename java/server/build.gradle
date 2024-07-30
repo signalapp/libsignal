@@ -51,8 +51,7 @@ java {
 }
 
 processResources {
-    // TODO: Build a different variant of the JNI library for server.
-    dependsOn ':makeJniLibrariesDesktop'
+    dependsOn ':makeJniLibrariesServer'
 }
 
 // MARK: Publishing
