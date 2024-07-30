@@ -176,6 +176,31 @@ jobs:
           script: ./gradlew android:connectedCheck -x makeJniLibrariesDesktop -x android:makeJniLibraries -x android:makeTestJniLibraries
           working-directory: java
 
+  aarch64:
+    name: AArch64 Linux Tests
+    runs-on: ubuntu-24.04-arm64-2-cores
+    needs: [check-up-to-date]
+    if: ${{ always() && (needs.check-up-to-date.outputs.has-changes || github.event_name != 'schedule') }}
+    timeout-minutes: 60
+
+    steps:
+    - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      with:
+        submodules: recursive
+
+    - run: sudo apt-get update && sudo apt-get install protobuf-compiler
+
+    - run: rustup toolchain install $(cat rust-toolchain) --profile minimal
+
+    # Skip building for Android; that's handled by the previous tests.
+    - run: ./gradlew build -PskipAndroid | tee ./gradle-output.txt
+      working-directory: java
+      shell: bash # Explicitly setting the shell turns on pipefail in GitHub Actions
+
+    # Check for -Xcheck:jni warnings manually; Gradle doesn't capture them for some reason.
+    - run: "! grep WARNING ./gradle-output.txt"
+      working-directory: java
+
   node-docker:
     name: Node (Ubuntu via Docker)
     runs-on: ubuntu-latest
@@ -329,7 +354,7 @@ jobs:
   report_failures:
     name: Report Failures
     runs-on: ubuntu-latest
-    needs: [java-docker, java-reproducibility, android-emulator-tests, node-docker, node-windows-arm64, swift-cocoapod, rust-stable-testing]
+    needs: [java-docker, java-reproducibility, android-emulator-tests, aarch64, node-docker, node-windows-arm64, swift-cocoapod, rust-stable-testing]
     if: ${{ failure() && github.event_name == 'schedule' }}
 
     permissions:
