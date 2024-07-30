@@ -15,7 +15,6 @@ use crate::{crypto, curve, proto, session_cipher};
 use aes_gcm_siv::aead::generic_array::typenum::Unsigned;
 use aes_gcm_siv::{AeadInPlace, Aes256GcmSiv, KeyInit};
 use arrayref::array_ref;
-use curve25519_dalek::scalar::Scalar;
 use indexmap::IndexMap;
 use itertools::Itertools;
 use prost::Message;
@@ -916,7 +915,6 @@ mod sealed_sender_v2 {
 
     // Static byte strings used as part of a MAC in HKDF.
     const LABEL_R: &[u8] = b"Sealed Sender v2: r (2023-08)";
-    const LABEL_R_LEGACY: &[u8] = b"Sealed Sender v2: r";
     const LABEL_K: &[u8] = b"Sealed Sender v2: K";
     const LABEL_DH: &[u8] = b"Sealed Sender v2: DH";
     const LABEL_DH_S: &[u8] = b"Sealed Sender v2: DH-sender";
@@ -925,9 +923,6 @@ mod sealed_sender_v2 {
     pub const CIPHER_KEY_LEN: usize =
         <Aes256GcmSiv as aes_gcm_siv::aead::KeySizeUser>::KeySize::USIZE;
     pub const AUTH_TAG_LEN: usize = 16;
-
-    // Change this to false after all clients have receive support.
-    pub const USE_LEGACY_EPHEMERAL_KEY_DERIVATION_FOR_ENCRYPT: bool = false;
 
     /// An asymmetric and a symmetric cipher key.
     pub(super) struct DerivedKeys {
@@ -949,17 +944,6 @@ mod sealed_sender_v2 {
                 .expand(LABEL_R, &mut r)
                 .expect("valid output length");
             let e = PrivateKey::try_from(&r[..]).expect("valid PrivateKey");
-            KeyPair::try_from(e).expect("can derive public key")
-        }
-
-        /// Derive the ephemeral asymmetric keys using the legacy implementation.
-        pub(super) fn derive_e_legacy(&self) -> KeyPair {
-            let mut r = [0; 64];
-            self.kdf
-                .expand(LABEL_R_LEGACY, &mut r)
-                .expect("valid output length");
-            let e_raw = Scalar::from_bytes_mod_order_wide(&r);
-            let e = PrivateKey::try_from(&e_raw.as_bytes()[..]).expect("valid PrivateKey");
             KeyPair::try_from(e).expect("can derive public key")
         }
 
@@ -1277,34 +1261,6 @@ where
         usmc,
         identity_store,
         rng,
-        sealed_sender_v2::USE_LEGACY_EPHEMERAL_KEY_DERIVATION_FOR_ENCRYPT,
-    )
-    .await
-}
-
-/// For testing only.
-pub async fn sealed_sender_multi_recipient_encrypt_using_legacy_ephemeral_key_derivation<
-    R: Rng + CryptoRng,
-    X: IntoIterator<Item = ServiceId>,
->(
-    destinations: &[&ProtocolAddress],
-    destination_sessions: &[&SessionRecord],
-    excluded_recipients: X,
-    usmc: &UnidentifiedSenderMessageContent,
-    identity_store: &dyn IdentityKeyStore,
-    rng: &mut R,
-) -> Result<Vec<u8>>
-where
-    X::IntoIter: ExactSizeIterator,
-{
-    sealed_sender_multi_recipient_encrypt_impl(
-        destinations,
-        destination_sessions,
-        excluded_recipients,
-        usmc,
-        identity_store,
-        rng,
-        false,
     )
     .await
 }
@@ -1319,7 +1275,6 @@ async fn sealed_sender_multi_recipient_encrypt_impl<
     usmc: &UnidentifiedSenderMessageContent,
     identity_store: &dyn IdentityKeyStore,
     rng: &mut R,
-    should_use_legacy_ephemeral_key_derivation: bool,
 ) -> Result<Vec<u8>>
 where
     X::IntoIter: ExactSizeIterator,
@@ -1335,11 +1290,7 @@ where
 
     let m: [u8; sealed_sender_v2::MESSAGE_KEY_LEN] = rng.gen();
     let keys = sealed_sender_v2::DerivedKeys::new(&m);
-    let e = if should_use_legacy_ephemeral_key_derivation {
-        keys.derive_e_legacy()
-    } else {
-        keys.derive_e()
-    };
+    let e = keys.derive_e();
     let e_pub = &e.public_key;
 
     // Encrypt the shared ciphertext using AES-GCM-SIV.
@@ -1885,18 +1836,7 @@ pub async fn sealed_sender_decrypt_to_usmc(
             )?;
 
             let keys = sealed_sender_v2::DerivedKeys::new(&m);
-            // It is okay that this is not constant time; the only information revealed is whether
-            // the sender is using the new or old derivation for the ephemeral key, combined with
-            // which key the receiver tried first.
-            let mut derive_first_key: fn(_) -> _ = sealed_sender_v2::DerivedKeys::derive_e;
-            let mut derive_second_key: fn(_) -> _ = sealed_sender_v2::DerivedKeys::derive_e_legacy;
-            if sealed_sender_v2::USE_LEGACY_EPHEMERAL_KEY_DERIVATION_FOR_ENCRYPT {
-                std::mem::swap(&mut derive_first_key, &mut derive_second_key);
-            }
-
-            if !bool::from(derive_first_key(&keys).public_key.ct_eq(&ephemeral_public))
-                && !bool::from(derive_second_key(&keys).public_key.ct_eq(&ephemeral_public))
-            {
+            if !bool::from(keys.derive_e().public_key.ct_eq(&ephemeral_public)) {
                 return Err(SignalProtocolError::InvalidSealedSenderMessage(
                     "derived ephemeral key did not match key provided in message".to_string(),
                 ));
