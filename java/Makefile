@@ -11,6 +11,7 @@ default: java_build
 
 DOCKER_IMAGE := libsignal-builder
 DOCKER_TTY_FLAG := $$(test -t 0 && echo -it)
+CROSS_COMPILE_SERVER ?= -PcrossCompileServer
 
 docker_image:
 	cd .. && $(DOCKER) build --build-arg UID=$$(id -u) --build-arg GID=$$(id -g) -t $(DOCKER_IMAGE) -f java/Dockerfile .
@@ -20,7 +21,7 @@ java_build: docker_image
 	$(DOCKER) run $(DOCKER_TTY_FLAG) --init --rm --user $$(id -u):$$(id -g) \
         --env LIBSIGNAL_TESTING_ENCLAVE_SECRET \
         -v `cd .. && pwd`/:/home/libsignal/src $(DOCKER_EXTRA) $(DOCKER_IMAGE) \
-        sh -c "cd src/java; ./gradlew build"
+        sh -c "cd src/java; ./gradlew build $(CROSS_COMPILE_SERVER)"
 
 publish_java: DOCKER_EXTRA = $(shell [ -L build ] && P=$$(readlink build) && echo -v $$P/:$$P )
 publish_java: docker_image
@@ -32,7 +33,7 @@ publish_java: docker_image
 		-e ORG_GRADLE_PROJECT_signingPassword \
 		-e ORG_GRADLE_PROJECT_signingKey \
 		$(DOCKER_IMAGE) \
-		sh -c "cd src/java; ./gradlew publish closeAndReleaseSonatypeStagingRepository"
+		sh -c "cd src/java; ./gradlew publish closeAndReleaseSonatypeStagingRepository $(CROSS_COMPILE_SERVER)"
 
 # We could run these through Docker, but they would have the same result anyway.
 

@@ -13,7 +13,8 @@ cd "${SCRIPT_DIR}"/..
 
 # These paths are relative to the root directory
 ANDROID_LIB_DIR=java/android/src/main/jniLibs
-DESKTOP_LIB_DIR=java/shared/resources
+DESKTOP_LIB_DIR=java/client/src/main/resources
+SERVER_LIB_DIR=java/server/src/main/resources
 
 export CARGO_PROFILE_RELEASE_DEBUG=1 # enable line tables
 export RUSTFLAGS="--cfg aes_armv8 --cfg polyval_armv8 ${RUSTFLAGS:-}" # Enable ARMv8 cryptography acceleration when available
@@ -52,6 +53,7 @@ build_desktop_for_arch () {
     local CXX
     local CPATH
 
+    local lib_dir="${3}/"
     local cpuarch="${1%%-*}"
     case "$cpuarch" in
         x86_64)
@@ -80,13 +82,19 @@ build_desktop_for_arch () {
     fi
     echo_then_run cargo build -p libsignal-jni -p libsignal-jni-testing --release ${FEATURES:+--features "${FEATURES[*]}"} --target "$1"
     if [[ -z "${CARGO_BUILD_TARGET:-}" ]]; then
-        copy_built_library "target/${1}/release" signal_jni "${DESKTOP_LIB_DIR}/" "signal_jni_${suffix}"
-        copy_built_library "target/${1}/release" signal_jni_testing "${DESKTOP_LIB_DIR}/" "signal_jni_testing_${suffix}"
+        copy_built_library "target/${1}/release" signal_jni "$lib_dir" "signal_jni_${suffix}"
+        copy_built_library "target/${1}/release" signal_jni_testing "$lib_dir" "signal_jni_testing_${suffix}"
     fi
 }
 
 while [ "${1:-}" != "" ]; do
     case "${1:-}" in
+        desktop )
+            lib_dir=$DESKTOP_LIB_DIR
+            ;;&
+        server | server-all )
+            lib_dir=$SERVER_LIB_DIR
+            ;;&
         desktop | server | server-all )
             # On Linux, cdylibs don't include public symbols from their dependencies,
             # even if those symbols have been re-exported in the Rust source.
@@ -96,10 +104,10 @@ while [ "${1:-}" != "" ]; do
             FEATURES+=("testing-fns")
             host_triple=$(rustc -vV | sed -n 's|host: ||p')
             if [[ "$1" == "server-all" ]]; then
-                build_desktop_for_arch x86_64-unknown-linux-gnu "$host_triple"
-                build_desktop_for_arch aarch64-unknown-linux-gnu "$host_triple"
+                build_desktop_for_arch x86_64-unknown-linux-gnu "$host_triple" $lib_dir
+                build_desktop_for_arch aarch64-unknown-linux-gnu "$host_triple" $lib_dir
             else
-                build_desktop_for_arch "$host_triple" "$host_triple"
+                build_desktop_for_arch "$host_triple" "$host_triple" $lib_dir
             fi
             exit
             ;;

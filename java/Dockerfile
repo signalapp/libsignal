@@ -70,7 +70,7 @@ ADD --chown=libsignal --chmod=755 --checksum=sha256:${RUSTUP_SHA} \
 RUN    /tmp/rustup-init -y --profile minimal --default-toolchain "$(cat rust-toolchain)" \
     && rm -rf /tmp/rustup-init
 
-RUN    rustup target add armv7-linux-androideabi aarch64-linux-android i686-linux-android x86_64-linux-android
+RUN    rustup target add armv7-linux-androideabi aarch64-linux-android i686-linux-android x86_64-linux-android aarch64-unknown-linux-gnu
 
 # Install the full set of tools now that the long setup steps are done.
 # Note that we temporarily hop back to root to do this.
@@ -80,6 +80,7 @@ USER root
 RUN    apt-get install -y \
                clang \
                cmake \
+               crossbuild-essential-arm64 \
                git \
                gpg-agent \
                libclang-dev \

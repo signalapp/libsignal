@@ -60,7 +60,7 @@ task makeJniLibrariesServer(type:Exec) {
   description 'Build the JNI libraries'
 
   def debugLevelLogsFlag = hasProperty('debugLevelLogs') ? ['--debug-level-logs'] : []
-  def target = hasProperty('crossCompileServer') ? 'server-all' : 'server'
+  def target = project.hasProperty('crossCompileServer') ? 'server-all' : 'server'
 
   commandLine 'bash', './build_jni.sh', *debugLevelLogsFlag, target
 }
@@ -75,7 +75,12 @@ task cleanJni(type: Delete) {
   delete fileTree('./android/src/main/jniLibs') {
     include '**/*.so'
   }
-  delete fileTree('./shared/resources') {
+  delete fileTree('./client/src/main/resources') {
+    include '**/*.so'
+    include '**/*.dylib'
+    include '**/*.dll'
+  }
+  delete fileTree('./server/src/main/resources') {
     include '**/*.so'
     include '**/*.dylib'
     include '**/*.dll'
