@@ -46,9 +46,8 @@ fi
 
 android_abis=()
 
-# usage: build_desktop_for_arch target_triple host_triple
+# usage: build_desktop_for_arch target_triple host_triple output_dir
 build_desktop_for_arch () {
-    local RUSTFLAGS
     local CC
     local CXX
     local CPATH
@@ -68,23 +67,19 @@ build_desktop_for_arch () {
     esac
     if [[ "$1" != "$2" ]]; then
         # Set up cross-compiling flags
-        if [[ "$1" != *-linux-* ]]; then
-            echo "cross-compiling only supported for Linux targets; update build_jni.sh"
-            exit 2
+        if [[ "$1" == *-linux-* && "$2" == *-linux-* && -z "${CC:-}" ]]; then
+            # When cross-compiling *from* Linux *to* Linux,
+            # set up standard cross-compiling environment if not already set
+            echo 'setting Linux cross-compilation options...'
+            export "CARGO_TARGET_$(echo "$cpuarch" | tr "[:lower:]" "[:upper:]")_UNKNOWN_LINUX_GNU_LINKER"="${cpuarch}-linux-gnu-gcc"
+            export CC="${cpuarch}-linux-gnu-gcc"
+            export CXX="${cpuarch}-linux-gnu-g++"
+            export CPATH="/usr/${cpuarch}-linux-gnu/include"
         fi
-        if [[ "$cpuarch" == aarch64 ]]; then
-            RUSTFLAGS="-C target-feature=+v8.2a ${RUSTFLAGS:-}"
-        fi
-        export "CARGO_TARGET_$(echo "$cpuarch" | tr "[:lower:]" "[:upper:]")_UNKNOWN_LINUX_GNU_LINKER"="${cpuarch}-linux-gnu-gcc"
-        export CC="${cpuarch}-linux-gnu-gcc"
-        export CXX="${cpuarch}-linux-gnu-g++"
-        export CPATH="/usr/${cpuarch}-linux-gnu/include"
     fi
     echo_then_run cargo build -p libsignal-jni -p libsignal-jni-testing --release ${FEATURES:+--features "${FEATURES[*]}"} --target "$1"
-    if [[ -z "${CARGO_BUILD_TARGET:-}" ]]; then
-        copy_built_library "target/${1}/release" signal_jni "$lib_dir" "signal_jni_${suffix}"
-        copy_built_library "target/${1}/release" signal_jni_testing "$lib_dir" "signal_jni_testing_${suffix}"
-    fi
+    copy_built_library "target/${1}/release" signal_jni "$lib_dir" "signal_jni_${suffix}"
+    copy_built_library "target/${1}/release" signal_jni_testing "$lib_dir" "signal_jni_testing_${suffix}"
 }
 
 while [ "${1:-}" != "" ]; do
@@ -104,9 +99,11 @@ while [ "${1:-}" != "" ]; do
             host_triple=$(rustc -vV | sed -n 's|host: ||p')
             if [[ "$1" == "server-all" ]]; then
                 build_desktop_for_arch x86_64-unknown-linux-gnu "$host_triple" $lib_dir
-                build_desktop_for_arch aarch64-unknown-linux-gnu "$host_triple" $lib_dir
+                # Enable ARMv8.2 extensions for a production aarch64 server build
+                RUSTFLAGS="-C target-feature=+v8.2a ${RUSTFLAGS:-}" \
+                    build_desktop_for_arch aarch64-unknown-linux-gnu "$host_triple" $lib_dir
             else
-                build_desktop_for_arch "$host_triple" "$host_triple" $lib_dir
+                build_desktop_for_arch "${CARGO_BUILD_TARGET:-$host_triple}" "$host_triple" $lib_dir
             fi
             exit
             ;;
