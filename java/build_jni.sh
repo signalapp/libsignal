@@ -89,13 +89,12 @@ build_desktop_for_arch () {
 
 while [ "${1:-}" != "" ]; do
     case "${1:-}" in
-        desktop )
-            lib_dir=$DESKTOP_LIB_DIR
-            ;;&
-        server | server-all )
-            lib_dir=$SERVER_LIB_DIR
-            ;;&
         desktop | server | server-all )
+            if [[ "$1" == desktop ]]; then
+                lib_dir=$DESKTOP_LIB_DIR
+            else
+                lib_dir=$SERVER_LIB_DIR
+            fi
             # On Linux, cdylibs don't include public symbols from their dependencies,
             # even if those symbols have been re-exported in the Rust source.
             # Using LTO works around this at the cost of a slightly slower build.
