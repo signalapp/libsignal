@@ -24,12 +24,12 @@ jobs:
 
     strategy:
       matrix:
-        os: [windows-latest, macos-12]
+        os: [windows-latest, macos-latest]
         include:
-        - os: macos-12
-          arm64-rust-target: aarch64-apple-darwin
+        - os: macos-latest
+          rust-cross-target: x86_64-apple-darwin
         - os: windows-latest
-          arm64-rust-target: aarch64-pc-windows-msvc
+          rust-cross-target: aarch64-pc-windows-msvc
         # Ubuntu binaries are built using Docker, below
 
     timeout-minutes: 45
@@ -53,7 +53,7 @@ jobs:
             core.setFailed("the action should either be launched on a tag or with a 'dry run' switch");
           }
 
-    - run: rustup toolchain install $(cat rust-toolchain) --profile minimal --target ${{ matrix.arm64-rust-target }}
+    - run: rustup toolchain install $(cat rust-toolchain) --profile minimal --target ${{ matrix.rust-cross-target }}
 
     # install nasm compiler for boring
     - name: (Windows) Install nasm
@@ -90,8 +90,8 @@ jobs:
       working-directory: node
       shell: bash
 
-    - name: Build for the host (should be x64)
-      run: npx prebuildify --napi -t ${{ steps.get-nvm-version.outputs.node-version }}
+    - name: Build for x64
+      run: npx prebuildify --napi -t ${{ steps.get-nvm-version.outputs.node-version }} --arch x64
       working-directory: node
 
     - name: Save x64 debug info
