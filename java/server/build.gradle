@@ -50,6 +50,13 @@ java {
     withJavadocJar()
 }
 
+sourcesJar {
+    // Cut down on artifact size by leaving these out of the sources jar.
+    exclude '*.dll'
+    exclude '*.dylib'
+    exclude '*.so'
+}
+
 processResources {
     dependsOn ':makeJniLibrariesServer'
 }
