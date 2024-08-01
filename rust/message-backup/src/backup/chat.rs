@@ -15,6 +15,7 @@ use std::num::{NonZeroU32, NonZeroU64};
 use derive_where::derive_where;
 
 use crate::backup::chat::chat_style::{ChatStyle, ChatStyleError, CustomColorId};
+use crate::backup::file::{FilePointerError, MessageAttachmentError};
 use crate::backup::frame::RecipientId;
 use crate::backup::method::{Contains, Lookup, Method};
 use crate::backup::sticker::MessageStickerError;
@@ -86,6 +87,8 @@ pub enum ChatItemError {
     MissingItem,
     /// text: {0}
     Text(#[from] TextError),
+    /// long text: {0}
+    LongText(FilePointerError),
     /// quote: {0}
     Quote(#[from] QuoteError),
     /// link preview: {0}
@@ -114,6 +117,8 @@ pub enum ChatItemError {
     NoDirection,
     /// outgoing message {0}
     Outgoing(#[from] OutgoingSendError),
+    /// attachment: {0}
+    Attachment(#[from] MessageAttachmentError),
     /// contact message: {0}
     ContactAttachment(#[from] ContactAttachmentError),
     /// chat update type is UNKNOWN
@@ -202,7 +207,6 @@ pub enum ChatItemMessage<M: Method + ReferencedTypes> {
     RemoteDeleted,
     Update(UpdateMessage<M::RecipientReference>),
     PaymentNotification(PaymentNotification),
-    #[serde(bound(serialize = "M::BoxedValue<GiftBadge>: serde::Serialize"))]
     GiftBadge(M::BoxedValue<GiftBadge>),
 }
 

@@ -4,7 +4,7 @@
 
 use crate::backup::chat::quote::{Quote, QuoteError};
 use crate::backup::chat::{Reaction, ReactionError};
-use crate::backup::file::{VoiceMessageAttachment, VoiceMessageAttachmentError};
+use crate::backup::file::{MessageAttachment, MessageAttachmentError};
 use crate::backup::frame::RecipientId;
 use crate::backup::method::Contains;
 use crate::backup::{TryFromWith, TryIntoWith as _};
@@ -16,7 +16,7 @@ use crate::proto::backup as proto;
 pub struct VoiceMessage {
     pub quote: Option<Quote>,
     pub reactions: Vec<Reaction>,
-    pub attachment: VoiceMessageAttachment,
+    pub attachment: MessageAttachment,
     _limit_construction_to_module: (),
 }
 
@@ -24,11 +24,13 @@ pub struct VoiceMessage {
 #[cfg_attr(test, derive(PartialEq))]
 pub enum VoiceMessageError {
     /// attachment: {0}
-    Attachment(#[from] VoiceMessageAttachmentError),
+    Attachment(#[from] MessageAttachmentError),
     /// has unexpected field {0}
     UnexpectedField(&'static str),
     /// has {0} attachments
     WrongAttachmentsCount(usize),
+    /// attachment should be a VOICE_MESSAGE, but was {0:?}
+    WrongAttachmentType(proto::message_attachment::Flag),
     /// invalid quote: {0}
     Quote(#[from] QuoteError),
     /// invalid reaction: {0}
@@ -60,7 +62,11 @@ impl<R: Contains<RecipientId>> TryFromWith<proto::StandardMessage, R> for VoiceM
         let [attachment] = <[_; 1]>::try_from(attachments)
             .map_err(|attachments| VoiceMessageError::WrongAttachmentsCount(attachments.len()))?;
 
-        let attachment = attachment.try_into()?;
+        let attachment: MessageAttachment = attachment.try_into()?;
+
+        if attachment.flag != proto::message_attachment::Flag::VOICE_MESSAGE {
+            return Err(VoiceMessageError::WrongAttachmentType(attachment.flag));
+        }
 
         let quote = quote
             .into_option()
@@ -98,7 +104,7 @@ mod test {
             Ok(VoiceMessage {
                 quote: Some(Quote::from_proto_test_data()),
                 reactions: vec![Reaction::from_proto_test_data()],
-                attachment: VoiceMessageAttachment::default(),
+                attachment: MessageAttachment::from_proto_voice_message_data(),
                 _limit_construction_to_module: ()
             })
         )

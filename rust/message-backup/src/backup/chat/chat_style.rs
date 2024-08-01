@@ -7,24 +7,27 @@ use std::fmt::Debug;
 use derive_where::derive_where;
 use itertools::Itertools as _;
 
-use crate::backup::method::{Contains, Lookup};
+use crate::backup::file::{FilePointer, FilePointerError};
+use crate::backup::method::{Contains, Lookup, Method};
 use crate::backup::{serialize, ReferencedTypes, TryFromWith, TryIntoWith as _};
 use crate::proto::backup as proto;
 
 #[derive(serde::Serialize)]
 #[derive_where(Debug)]
-#[cfg_attr(test, derive_where(PartialEq; M::CustomColorReference: PartialEq))]
-pub struct ChatStyle<M: ReferencedTypes> {
-    pub wallpaper: Option<Wallpaper>,
+#[cfg_attr(test, derive_where(PartialEq; M::CustomColorReference: PartialEq, Wallpaper<M>: PartialEq))]
+pub struct ChatStyle<M: Method + ReferencedTypes> {
+    #[serde(bound(serialize = "Wallpaper<M>: serde::Serialize"))]
+    pub wallpaper: Option<Wallpaper<M>>,
     pub bubble_color: BubbleColor<M::CustomColorReference>,
     pub dim_wallpaper_in_dark_mode: bool,
 }
 
-#[derive(Debug, serde::Serialize)]
-#[cfg_attr(test, derive(PartialEq))]
-pub enum Wallpaper {
+#[derive(serde::Serialize)]
+#[derive_where(Debug)]
+#[cfg_attr(test, derive_where(PartialEq; M::BoxedValue<FilePointer>: PartialEq))]
+pub enum Wallpaper<M: Method> {
     Preset(WallpaperPreset),
-    Photo,
+    Photo(M::BoxedValue<FilePointer>),
 }
 
 #[derive(Copy, Clone, Debug, serde::Serialize)]
@@ -103,6 +106,8 @@ pub enum ChatStyleError {
     },
     /// wallpaper preset was UNKNOWN
     UnknownPresetWallpaper,
+    /// wallpaper photo: {0}
+    WallpaperPhoto(FilePointerError),
     /// bubble preset was UNKNOWN
     UnknownPresetBubbleColor,
     /// found 0 colors and 0 positions in gradient
@@ -146,7 +151,7 @@ impl<M: ReferencedTypes> Lookup<CustomColorId, M::CustomColorReference> for Cust
     }
 }
 
-impl<C: Lookup<CustomColorId, M::CustomColorReference>, M: ReferencedTypes>
+impl<C: Lookup<CustomColorId, M::CustomColorReference>, M: Method + ReferencedTypes>
     TryFromWith<proto::ChatStyle, C> for ChatStyle<M>
 {
     type Error = ChatStyleError;
@@ -173,7 +178,7 @@ impl<C: Lookup<CustomColorId, M::CustomColorReference>, M: ReferencedTypes>
     }
 }
 
-impl TryFrom<proto::chat_style::Wallpaper> for Wallpaper {
+impl<M: Method> TryFrom<proto::chat_style::Wallpaper> for Wallpaper<M> {
     type Error = ChatStyleError;
 
     fn try_from(value: proto::chat_style::Wallpaper) -> Result<Self, Self::Error> {
@@ -182,11 +187,9 @@ impl TryFrom<proto::chat_style::Wallpaper> for Wallpaper {
                 WallpaperPreset::new(preset.enum_value_or_default())
                     .ok_or(ChatStyleError::UnknownPresetWallpaper)?,
             ),
-            proto::chat_style::Wallpaper::WallpaperPhoto(photo) => {
-                // TODO validate this field.
-                let _photo = photo;
-                Self::Photo
-            }
+            proto::chat_style::Wallpaper::WallpaperPhoto(photo) => Self::Photo(M::boxed_value(
+                photo.try_into().map_err(ChatStyleError::WallpaperPhoto)?,
+            )),
         })
     }
 }
@@ -504,6 +507,12 @@ mod test {
     fn unknown_wallpaper_preset(proto: &mut proto::ChatStyle) {
         proto.set_wallpaperPreset(proto::chat_style::WallpaperPreset::UNKNOWN_WALLPAPER_PRESET);
     }
+    fn wallpaper_photo(proto: &mut proto::ChatStyle) {
+        proto.set_wallpaperPhoto(proto::FilePointer::test_data());
+    }
+    fn invalid_wallpaper_photo(proto: &mut proto::ChatStyle) {
+        proto.set_wallpaperPhoto(proto::FilePointer::default());
+    }
     fn unknown_bubble_preset(proto: &mut proto::ChatStyle) {
         proto.set_bubbleColorPreset(
             proto::chat_style::BubbleColorPreset::UNKNOWN_BUBBLE_COLOR_PRESET,
@@ -517,6 +526,11 @@ mod test {
         Err(ChatStyleError::UnknownCustomColorId(333333333))
     )]
     #[test_case(unknown_wallpaper_preset, Err(ChatStyleError::UnknownPresetWallpaper))]
+    #[test_case(wallpaper_photo, Ok(()))]
+    #[test_case(
+        invalid_wallpaper_photo,
+        Err(ChatStyleError::WallpaperPhoto(FilePointerError::NoLocator))
+    )]
     #[test_case(unknown_bubble_preset, Err(ChatStyleError::UnknownPresetBubbleColor))]
     fn chat_style(
         modifier: fn(&mut proto::ChatStyle),

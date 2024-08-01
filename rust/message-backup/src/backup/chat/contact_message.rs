@@ -5,6 +5,7 @@
 use protobuf::EnumOrUnknown;
 
 use crate::backup::chat::{ChatItemError, Reaction};
+use crate::backup::file::{FilePointer, FilePointerError};
 use crate::backup::frame::RecipientId;
 use crate::backup::method::Contains;
 use crate::backup::{TryFromWith, TryIntoWith as _};
@@ -28,6 +29,7 @@ pub struct ContactAttachment {
     pub email: Vec<proto::contact_attachment::Email>,
     pub address: Vec<proto::contact_attachment::PostalAddress>,
     pub organization: Option<String>,
+    pub avatar: Option<FilePointer>,
     #[serde(skip)]
     _limit_construction_to_module: (),
 }
@@ -37,6 +39,8 @@ pub struct ContactAttachment {
 pub enum ContactAttachmentError {
     /// {0} type is unknown                                                                                                                                                                                                                                                                                                                                                                                                
     UnknownType(&'static str),
+    /// avatar: {0}
+    Avatar(FilePointerError),
 }
 
 impl<R: Contains<RecipientId>> TryFromWith<proto::ContactMessage, R> for ContactMessage {
@@ -77,9 +81,8 @@ impl TryFrom<proto::ContactAttachment> for ContactAttachment {
             email,
             address,
             organization,
+            avatar,
             special_fields: _,
-            // TODO validate this field
-            avatar: _,
         } = value;
 
         if let Some(proto::contact_attachment::Name {
@@ -143,12 +146,19 @@ impl TryFrom<proto::ContactAttachment> for ContactAttachment {
             }
         }
 
+        let avatar = avatar
+            .into_option()
+            .map(FilePointer::try_from)
+            .transpose()
+            .map_err(ContactAttachmentError::Avatar)?;
+
         Ok(ContactAttachment {
             name: name.into_option(),
             number,
             email,
             address,
             organization,
+            avatar,
             _limit_construction_to_module: (),
         })
     }
@@ -197,6 +207,7 @@ mod test {
                 email: vec![],
                 address: vec![],
                 organization: None,
+                avatar: None,
                 _limit_construction_to_module: (),
             }
         }
@@ -214,10 +225,25 @@ mod test {
         )
     }
 
+    fn with_avatar(message: &mut proto::ContactMessage) {
+        message.contact[0].avatar = Some(proto::FilePointer::test_data()).into();
+    }
+
+    fn with_invalid_avatar(message: &mut proto::ContactMessage) {
+        message.contact[0].avatar = Some(proto::FilePointer::default()).into();
+    }
+
     #[test_case(no_reactions, Ok(()))]
     #[test_case(
         invalid_reaction,
         Err(ChatItemError::Reaction(ReactionError::EmptyEmoji))
+    )]
+    #[test_case(with_avatar, Ok(()))]
+    #[test_case(
+        with_invalid_avatar,
+        Err(ChatItemError::ContactAttachment(ContactAttachmentError::Avatar(
+            FilePointerError::NoLocator
+        )))
     )]
     fn contact_message(
         modifier: fn(&mut proto::ContactMessage),

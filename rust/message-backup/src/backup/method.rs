@@ -94,12 +94,12 @@ where
 // derived.
 pub trait Method: serde::Serialize {
     type Value<T: Debug + serde::Serialize>: Debug + serde::Serialize;
-    type BoxedValue<T: Debug>: Debug;
+    type BoxedValue<T: Debug + serde::Serialize>: Debug + serde::Serialize;
     type Map<K: Eq + Hash + Debug, V: Debug>: Map<K, V> + Debug;
     type List<T: Debug>: Extend<T> + Default + Debug;
 
     fn value<T: Debug + serde::Serialize>(value: T) -> Self::Value<T>;
-    fn boxed_value<T: Debug>(value: T) -> Self::BoxedValue<T>;
+    fn boxed_value<T: Debug + serde::Serialize>(value: T) -> Self::BoxedValue<T>;
 }
 
 #[derive(serde::Serialize)]
@@ -116,12 +116,12 @@ impl<T> Extend<T> for ValidateOnlyList {
 
 impl Method for ValidateOnly {
     type Value<T: Debug + serde::Serialize> = ();
-    type BoxedValue<T: Debug> = ();
+    type BoxedValue<T: Debug + serde::Serialize> = ();
     type Map<K: Eq + Hash + Debug, V: Debug> = HashSet<K>;
     type List<T: Debug> = ValidateOnlyList;
 
     fn value<T: Debug + serde::Serialize>(_value: T) -> Self::Value<T> {}
-    fn boxed_value<T: Debug>(_value: T) -> Self::BoxedValue<T> {}
+    fn boxed_value<T: Debug + serde::Serialize>(_value: T) -> Self::BoxedValue<T> {}
 }
 
 #[derive(serde::Serialize)]
@@ -129,14 +129,14 @@ pub enum Store {}
 
 impl Method for Store {
     type Value<T: Debug + serde::Serialize> = T;
-    type BoxedValue<T: Debug> = Box<T>;
+    type BoxedValue<T: Debug + serde::Serialize> = Box<T>;
     type Map<K: Eq + Hash + Debug, V: Debug> = HashMap<K, V>;
     type List<T: Debug> = Vec<T>;
 
     fn value<T: Debug + serde::Serialize>(value: T) -> Self::Value<T> {
         value
     }
-    fn boxed_value<T: Debug>(value: T) -> Self::BoxedValue<T> {
+    fn boxed_value<T: Debug + serde::Serialize>(value: T) -> Self::BoxedValue<T> {
         Box::new(value)
     }
 }

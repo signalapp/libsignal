@@ -10,6 +10,7 @@
 
 use derive_where::derive_where;
 
+use crate::backup::file::{FilePointer, FilePointerError};
 use crate::backup::method::Method;
 use crate::proto::backup as proto;
 
@@ -29,7 +30,9 @@ pub struct StickerPack<M: Method> {
 pub struct MessageSticker {
     pub pack_id: PackId,
     pub pack_key: Key,
+    pub sticker_id: u32,
     pub emoji: Option<String>,
+    pub data: FilePointer,
     _limit_construction_to_module: (),
 }
 
@@ -67,6 +70,10 @@ pub enum MessageStickerError {
     InvalidPackId,
     /// pack key is invalid
     InvalidPackKey,
+    /// missing data pointer
+    MissingDataPointer,
+    /// data pointer: {0}
+    DataPointer(#[from] FilePointerError),
 }
 
 impl<M: Method> TryFrom<proto::StickerPack> for StickerPack<M> {
@@ -96,11 +103,10 @@ impl TryFrom<proto::Sticker> for MessageSticker {
         let proto::Sticker {
             packId,
             packKey,
-            stickerId: _,
+            stickerId,
             emoji,
+            data,
             special_fields: _,
-            // TODO validate these fields
-            data: _,
         } = item;
 
         let pack_id = packId
@@ -112,10 +118,17 @@ impl TryFrom<proto::Sticker> for MessageSticker {
             .try_into()
             .map_err(|_| MessageStickerError::InvalidPackKey)?;
 
+        let data = data
+            .into_option()
+            .ok_or(MessageStickerError::MissingDataPointer)?
+            .try_into()?;
+
         Ok(Self {
             pack_id,
             pack_key,
+            sticker_id: stickerId,
             emoji,
+            data,
             _limit_construction_to_module: (),
         })
     }
@@ -152,6 +165,7 @@ mod test {
                 packId: proto::StickerPack::TEST_ID_BYTES.into(),
                 packKey: proto::StickerPack::TEST_KEY.into(),
                 stickerId: Self::TEST_ID,
+                data: Some(proto::FilePointer::minimal_test_data()).into(),
                 ..Default::default()
             }
         }
@@ -199,7 +213,9 @@ mod test {
             Ok(MessageSticker {
                 pack_id: proto::StickerPack::TEST_ID,
                 pack_key: Key(proto::StickerPack::TEST_KEY),
+                sticker_id: proto::Sticker::TEST_ID,
                 emoji: None,
+                data: FilePointer::default(),
                 _limit_construction_to_module: (),
             })
         );
@@ -220,12 +236,23 @@ mod test {
     fn no_key(pack: &mut impl StickerPackFields) {
         *pack.pack_key_mut() = vec![];
     }
+    fn no_data(input: &mut proto::Sticker) {
+        input.data = None.into();
+    }
+    fn invalid_data(input: &mut proto::Sticker) {
+        input.data = Some(proto::FilePointer::default()).into();
+    }
 
     #[test_case(invalid_key, Err(MessageStickerError::InvalidPackKey))]
     #[test_case(no_key, Err(MessageStickerError::InvalidPackKey))]
     #[test_case(invalid_pack_id, Err(MessageStickerError::InvalidPackId))]
     #[test_case(unknown_sticker_id, Ok(()))]
     #[test_case(unknown_pack_id, Ok(()))]
+    #[test_case(no_data, Err(MessageStickerError::MissingDataPointer))]
+    #[test_case(
+        invalid_data,
+        Err(MessageStickerError::DataPointer(FilePointerError::NoLocator))
+    )]
     fn message_sticker(
         mutator: fn(&mut proto::Sticker),
         expected: Result<(), MessageStickerError>,
