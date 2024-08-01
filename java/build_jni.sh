@@ -44,8 +44,6 @@ if [[ -z "${DEBUG_LEVEL_LOGS:-}" ]]; then
   FEATURES+=("log/release_max_level_info")
 fi
 
-android_abis=()
-
 # usage: build_desktop_for_arch target_triple host_triple output_dir
 build_desktop_for_arch () {
     local CC
@@ -81,6 +79,8 @@ build_desktop_for_arch () {
     copy_built_library "target/${1}/release" signal_jni "$lib_dir" "signal_jni_${suffix}"
     copy_built_library "target/${1}/release" signal_jni_testing "$lib_dir" "signal_jni_testing_${suffix}"
 }
+
+android_abis=()
 
 while [ "${1:-}" != "" ]; do
     case "${1:-}" in
@@ -130,6 +130,11 @@ while [ "${1:-}" != "" ]; do
     esac
     shift
 done
+
+if (( ${#android_abis[@]} == 0 )); then
+    echo "Missing target (use 'desktop', 'android', or 'android-\$ARCH')" >&2
+    exit 2
+fi
 
 # Everything from here down is Android-only.
 export CARGO_PROFILE_RELEASE_OPT_LEVEL=s # optimize for size over speed
