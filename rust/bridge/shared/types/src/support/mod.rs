@@ -41,7 +41,6 @@ pub(crate) unsafe fn extend_lifetime<'a, 'b: 'a, T: ?Sized>(some_ref: &'a T) -> 
 /// Full form:
 ///
 /// ```ignore
-/// # #[macro_use] extern crate libsignal_bridge_types;
 /// # struct Foo;
 /// # #[cfg(ignore_even_when_running_all_tests)]
 /// bridge_as_handle!(Foo, mut = true, ffi = foo, jni = Foo, node = Foo);
@@ -125,7 +124,6 @@ pub use {bridge_as_handle, bridge_handle_fns};
 /// Example:
 ///
 /// ```ignore
-/// # #[macro_use] extern crate libsignal_bridge_macros;
 /// # struct Foo;
 /// # impl Foo {
 /// #     fn try_from(buf: &[u8]) -> Result<Self, ()> {
@@ -160,7 +158,6 @@ macro_rules! bridge_deserialize {
 /// Full form:
 ///
 /// ```ignore
-/// # #[macro_use] extern crate libsignal_bridge_types;
 /// # struct Foo;
 /// impl Foo {
 ///     fn bar(&self) -> &str {
@@ -179,7 +176,6 @@ macro_rules! bridge_deserialize {
 /// Roughly equivalent to
 ///
 /// ```ignore
-/// # #[macro_use] extern crate libsignal_bridge_macros;
 /// # struct Foo;
 /// # impl Foo {
 /// #     fn bar(&self) -> &str {
