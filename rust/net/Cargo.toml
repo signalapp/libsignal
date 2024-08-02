@@ -15,7 +15,7 @@ async-trait = "0.1.41"
 base64 = "0.21"
 bincode = "1.0"
 bitstream-io = "1.10.0"
-boring = { git = "https://github.com/signalapp/boring", tag = "signal-v4.6.0" }
+boring = { git = "https://github.com/signalapp/boring", tag = "signal-v4.9.0" }
 bytes = "1.4.0"
 const-str = { version = "0.5.6", features = ["std"] }
 derive-where = "1.2.7"
@@ -45,7 +45,7 @@ static_assertions = "1.1"
 strum = { version = "0.26", features = ["derive"] }
 thiserror = "1.0.38"
 tokio = { version = "1", features = ["rt", "time", "macros"] }
-tokio-boring = { git = "https://github.com/signalapp/boring", tag = "signal-v4.6.0" }
+tokio-boring = { git = "https://github.com/signalapp/boring", tag = "signal-v4.9.0" }
 tokio-stream = "0.1.14"
 tokio-tungstenite = "0.23.0"
 tokio-util = "0.7.9"

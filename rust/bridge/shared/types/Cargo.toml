@@ -55,7 +55,7 @@ sha2 = "0.10"
 static_assertions = "1.1"
 thiserror = "1.0.50"
 tokio = { version = "1", features = ["rt-multi-thread"] }
-tokio-boring = { git = "https://github.com/signalapp/boring", tag = "signal-v4.6.0" }
+tokio-boring = { git = "https://github.com/signalapp/boring", tag = "signal-v4.9.0" }
 uuid = "1.1.2"
 
 # Enable this for all libsignal app language libraries

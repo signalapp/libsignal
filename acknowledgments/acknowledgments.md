@@ -1922,7 +1922,7 @@ limitations under the License.
 
 ```
 
-## boring 4.6.0
+## boring 4.9.0
 
 ```
 Copyright 2011-2017 Google Inc.
@@ -2357,7 +2357,7 @@ express Statement of Purpose.
    CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 ```
 
-## boring-sys 4.6.0
+## boring-sys 4.9.0
 
 ```
 /* Copyright (c) 2015, Google Inc.
@@ -2728,7 +2728,7 @@ DEALINGS IN THE SOFTWARE.
 
 ```
 
-## boring-sys 4.6.0
+## boring-sys 4.9.0
 
 ```
 Copyright (c) 2014 Alex Crichton
@@ -3287,7 +3287,7 @@ DEALINGS IN THE SOFTWARE.
 
 ```
 
-## boring-sys 4.6.0
+## boring-sys 4.9.0
 
 ```
 Copyright (c) 2015-2016 the fiat-crypto authors (see
@@ -3758,7 +3758,7 @@ SOFTWARE.
 
 ```
 
-## tokio-boring 4.6.0
+## tokio-boring 4.9.0
 
 ```
 Copyright (c) 2016 Tokio contributors
@@ -7031,7 +7031,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-## boring-sys 4.6.0, ring 0.17.8
+## boring-sys 4.9.0, ring 0.17.8
 
 ```
 /* ====================================================================
