@@ -24,7 +24,7 @@ import org.signal.libsignal.protocol.util.Pair;
 public class SealedSenderMultiRecipientMessage {
   private final byte[] fullMessageData;
   private final Map<ServiceId, Recipient> recipients;
-  private final ServiceId[] excludedRecipients;
+  private final List<ServiceId> excludedRecipients;
   private final int offsetOfSharedData;
 
   /**
@@ -116,7 +116,7 @@ public class SealedSenderMultiRecipientMessage {
   private SealedSenderMultiRecipientMessage(
       byte[] fullMessageData,
       Map<ServiceId, Recipient> recipients,
-      ServiceId[] excludedRecipients,
+      List<ServiceId> excludedRecipients,
       int offsetOfSharedData) {
     this.fullMessageData = fullMessageData;
     this.recipients = recipients;
@@ -158,7 +158,7 @@ public class SealedSenderMultiRecipientMessage {
    * <p>The result is returned by reference; mutate it at your own detriment.
    */
   public List<ServiceId> getExcludedRecipients() {
-    return Arrays.asList(excludedRecipients);
+    return excludedRecipients;
   }
 
   /**
@@ -192,7 +192,6 @@ public class SealedSenderMultiRecipientMessage {
   private static final byte SERIALIZED_RECIPIENT_VIEW_VERSION = 0x01;
   private static final byte[] ZERO_DEVICE_IDS = new byte[0];
   private static final short[] ZERO_REGISTRATION_IDS = new short[0];
-  private static final ServiceId[] ZERO_SERVICE_IDs = new ServiceId[0];
 
   /**
    * Returns a serialized view for a particular {@link Recipient}.
@@ -253,7 +252,7 @@ public class SealedSenderMultiRecipientMessage {
             lengthOfRecipientSpecificKeyMaterial);
     final SealedSenderMultiRecipientMessage message =
         new SealedSenderMultiRecipientMessage(
-            fullMessageData, Collections.emptyMap(), ZERO_SERVICE_IDs, offsetOfSharedData);
+            fullMessageData, Collections.emptyMap(), Collections.emptyList(), offsetOfSharedData);
 
     return message.messageForRecipient(recipient);
   }

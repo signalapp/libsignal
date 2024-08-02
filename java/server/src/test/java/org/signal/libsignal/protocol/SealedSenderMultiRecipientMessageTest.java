@@ -10,6 +10,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThrows;
 
+import java.io.ByteArrayOutputStream;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import org.junit.Test;
@@ -600,6 +601,50 @@ public class SealedSenderMultiRecipientMessageTest {
     assertThrows(
         InvalidVersionException.class,
         () -> SealedSenderMultiRecipientMessage.parse(new byte[] {0x77}));
+  }
+
+  @Test
+  public void wayTooManyRecipients() throws Exception {
+    var count = 25000;
+    var zeros = new byte[48];
+    var oneDeviceEntry = Hex.fromStringCondensedAssert("0111aa");
+
+    var input = new ByteArrayOutputStream();
+    input.write(Hex.fromStringCondensedAssert(VERSION_ACI_ONLY));
+    input.write(Hex.fromStringCondensedAssert("a8c301")); // echo 25000 | protoscope -s | xxd
+    for (int i = 0; i < count; ++i) {
+      input.write(zeros, 0, 14);
+      input.write(i & 0xFF);
+      input.write((i >> 8) & 0xFF);
+
+      input.write(oneDeviceEntry);
+      input.write(zeros, 0, 48);
+    }
+    input.write(zeros);
+
+    var message = SealedSenderMultiRecipientMessage.parse(input.toByteArray());
+    assertEquals(message.getRecipients().size(), count);
+  }
+
+  @Test
+  public void wayTooManyExcludedRecipients() throws Exception {
+    var count = 25000;
+    var zeros = new byte[48];
+
+    var input = new ByteArrayOutputStream();
+    input.write(Hex.fromStringCondensedAssert(VERSION_ACI_ONLY));
+    input.write(Hex.fromStringCondensedAssert("a8c301")); // echo 25000 | protoscope -s | xxd
+    for (int i = 0; i < count; ++i) {
+      input.write(zeros, 0, 14);
+      input.write(i & 0xFF);
+      input.write((i >> 8) & 0xFF);
+
+      input.write(0);
+    }
+    input.write(zeros);
+
+    var message = SealedSenderMultiRecipientMessage.parse(input.toByteArray());
+    assertEquals(message.getExcludedRecipients().size(), count);
   }
 
   @Test
