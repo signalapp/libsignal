@@ -47,6 +47,12 @@ impl<T> IntoIterator for UnorderedList<T> {
     }
 }
 
+impl<T> UnorderedList<T> {
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+}
+
 #[cfg(test)]
 impl<T> From<Vec<T>> for UnorderedList<T> {
     fn from(value: Vec<T>) -> Self {

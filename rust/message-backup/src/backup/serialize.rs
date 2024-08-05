@@ -502,7 +502,7 @@ mod test {
                     proto::DistributionList {
                         name: "list".to_owned(),
                         memberRecipientIds: recipient_ids,
-                        privacyMode: proto::distribution_list::PrivacyMode::ALL.into(),
+                        privacyMode: proto::distribution_list::PrivacyMode::ONLY_WITH.into(),
                         ..Default::default()
                     },
                 )),

@@ -43,6 +43,8 @@ pub enum RecipientError {
     ContactRegistrationUnknown,
     /// distribution list has privacy mode UNKNOWN
     DistributionListPrivacyUnknown,
+    /// distribution list has members but has privacy ALL
+    DistributionListPrivacyAllWithNonemptyMembers,
     /// invalid call link: {0}
     InvalidCallLink(#[from] CallLinkError),
     /// contact has invalid username
@@ -170,9 +172,8 @@ pub enum DistributionListItem<Recipient> {
         distribution_id: Uuid,
         name: String,
         allow_replies: bool,
-        privacy_mode: PrivacyMode,
         #[serde(bound(serialize = "Recipient: serde::Serialize + SerializeOrder"))]
-        members: UnorderedList<Recipient>,
+        privacy_mode: PrivacyMode<UnorderedList<Recipient>>,
     },
 }
 
@@ -185,9 +186,9 @@ pub enum Registration {
 
 #[derive(Debug, serde::Serialize)]
 #[cfg_attr(test, derive(PartialEq))]
-pub enum PrivacyMode {
-    OnlyWith,
-    AllExcept,
+pub enum PrivacyMode<RecipientList> {
+    OnlyWith(RecipientList),
+    AllExcept(RecipientList),
     All,
 }
 
@@ -459,9 +460,7 @@ impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R>>
                         special_fields: _,
                     },
                 ) => {
-                    let privacy_mode = PrivacyMode::try_from(privacyMode.enum_value_or_default())?;
-
-                    let members = memberRecipientIds
+                    let members: UnorderedList<R> = memberRecipientIds
                         .into_iter()
                         .map(|id| {
                             let id = RecipientId(id);
@@ -481,30 +480,35 @@ impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R>>
                         })
                         .try_collect()?;
 
+                    let privacy_mode = match privacyMode.enum_value_or_default() {
+                        proto::distribution_list::PrivacyMode::UNKNOWN => {
+                            return Err(RecipientError::DistributionListPrivacyUnknown)
+                        }
+                        proto::distribution_list::PrivacyMode::ONLY_WITH => {
+                            PrivacyMode::OnlyWith(members)
+                        }
+                        proto::distribution_list::PrivacyMode::ALL_EXCEPT => {
+                            PrivacyMode::AllExcept(members)
+                        }
+                        proto::distribution_list::PrivacyMode::ALL => {
+                            if !members.is_empty() {
+                                return Err(
+                                    RecipientError::DistributionListPrivacyAllWithNonemptyMembers,
+                                );
+                            }
+                            PrivacyMode::All
+                        }
+                    };
+
                     Self::List {
                         distribution_id,
                         name,
                         allow_replies: allowReplies,
                         privacy_mode,
-                        members,
                     }
                 }
             },
         )
-    }
-}
-
-impl TryFrom<proto::distribution_list::PrivacyMode> for PrivacyMode {
-    type Error = RecipientError;
-
-    fn try_from(value: proto::distribution_list::PrivacyMode) -> Result<Self, Self::Error> {
-        use proto::distribution_list::PrivacyMode as DistributionPrivacyMode;
-        match value {
-            DistributionPrivacyMode::UNKNOWN => Err(RecipientError::DistributionListPrivacyUnknown),
-            DistributionPrivacyMode::ONLY_WITH => Ok(Self::OnlyWith),
-            DistributionPrivacyMode::ALL_EXCEPT => Ok(Self::AllExcept),
-            DistributionPrivacyMode::ALL => Ok(Self::All),
-        }
     }
 }
 
@@ -814,10 +818,9 @@ mod test {
             Destination::<Store>::try_from_with(recipient, &TestContext),
             Ok(Destination::DistributionList(DistributionListItem::List {
                 distribution_id: Uuid::from_bytes(proto::DistributionListItem::TEST_UUID),
-                privacy_mode: PrivacyMode::AllExcept,
+                privacy_mode: PrivacyMode::AllExcept(vec![CONTACT_RECIPIENT.clone()].into()),
                 name: "".to_owned(),
                 allow_replies: false,
-                members: vec![CONTACT_RECIPIENT.clone()].into()
             }))
         );
     }
@@ -839,6 +842,10 @@ mod test {
             .memberRecipientIds
             .push(TestContext::SELF_ID.0);
     }
+    fn privacy_mode_all_with_nonempty_members(input: &mut proto::DistributionListItem) {
+        input.mut_distributionList().privacyMode =
+            proto::distribution_list::PrivacyMode::ALL.into();
+    }
 
     #[test_case(invalid_distribution_id, Err(RecipientError::InvalidDistributionId))]
     #[test_case(
@@ -855,6 +862,10 @@ mod test {
             TestContext::SELF_ID,
             DestinationKind::Self_
         ))
+    )]
+    #[test_case(
+        privacy_mode_all_with_nonempty_members,
+        Err(RecipientError::DistributionListPrivacyAllWithNonemptyMembers)
     )]
     fn destination_distribution_list(
         modifier: fn(&mut proto::DistributionListItem),
