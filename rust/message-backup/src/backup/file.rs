@@ -8,6 +8,7 @@
 // outside this crate, but we want intra-crate privacy.
 #![allow(clippy::manual_non_exhaustive)]
 
+use hex::ToHex as _;
 use uuid::Uuid;
 
 use crate::backup::serialize;
@@ -18,10 +19,10 @@ use crate::proto::backup as proto;
 #[cfg_attr(test, derive(Default, PartialEq))]
 pub enum AttachmentLocator {
     Backup {
-        media_name: String,
         cdn_number: Option<u32>,
         key: Vec<u8>,
         digest: Vec<u8>,
+        is_thumbnail: bool,
         size: u64,
         transit_cdn_key: Option<String>,
         transit_cdn_number: Option<u32>,
@@ -53,6 +54,8 @@ pub enum AttachmentLocatorError {
     TransitCdnMismatch,
     /// transitCdnKey was present but empty
     MissingTransitCdnKey,
+    /// mediaName isn't digest encoded as hex (maybe with "_thumbnail" suffix)
+    InvalidMediaName,
 }
 
 impl TryFrom<proto::file_pointer::Locator> for AttachmentLocator {
@@ -86,11 +89,19 @@ impl TryFrom<proto::file_pointer::Locator> for AttachmentLocator {
                     return Err(AttachmentLocatorError::MissingTransitCdnKey);
                 }
 
+                let (is_thumbnail, media_name) = match mediaName.strip_suffix("_thumbnail") {
+                    Some(media_name) => (true, media_name),
+                    None => (false, &*mediaName),
+                };
+                if !media_name.eq_ignore_ascii_case(&digest.encode_hex::<String>()) {
+                    return Err(AttachmentLocatorError::InvalidMediaName);
+                }
+
                 Ok(Self::Backup {
-                    media_name: mediaName,
                     cdn_number: cdnNumber,
                     key,
                     digest,
+                    is_thumbnail,
                     size,
                     transit_cdn_key: transitCdnKey,
                     transit_cdn_number: transitCdnNumber,
@@ -272,7 +283,7 @@ mod test {
     impl proto::file_pointer::BackupLocator {
         fn test_data() -> Self {
             Self {
-                mediaName: "1234567890".into(),
+                mediaName: "5678".into(),
                 cdnNumber: Some(3),
                 key: hex!("1234").into(),
                 digest: hex!("5678").into(),
@@ -284,8 +295,29 @@ mod test {
         }
     }
 
+    #[test]
+    fn valid_backup_locator() {
+        assert_eq!(
+            proto::file_pointer::Locator::BackupLocator(
+                proto::file_pointer::BackupLocator::test_data()
+            )
+            .try_into(),
+            Ok(AttachmentLocator::Backup {
+                cdn_number: Some(3),
+                key: vec![0x12, 0x34],
+                digest: vec![0x56, 0x78],
+                is_thumbnail: false,
+                size: 123,
+                transit_cdn_key: Some("ABCDEFG".into()),
+                transit_cdn_number: Some(2),
+            })
+        )
+    }
+
     #[test_case(|_| {} => Ok(()); "valid")]
     #[test_case(|x| x.mediaName = "".into() => Err(AttachmentLocatorError::MissingMediaName); "no mediaName")]
+    #[test_case(|x| x.mediaName = "1234".into() => Err(AttachmentLocatorError::InvalidMediaName); "invalid mediaName")]
+    #[test_case(|x| x.mediaName = "5678_thumbnail".into() => Ok(()); "thumbnail mediaName")]
     #[test_case(|x| x.cdnNumber = None => Ok(()); "no cdnNumber")]
     #[test_case(|x| x.key = vec![] => Err(AttachmentLocatorError::MissingKey); "no key")]
     #[test_case(|x| x.digest = vec![] => Err(AttachmentLocatorError::MissingDigest); "no digest")]
