@@ -1,10 +1,6 @@
 {
   "meta": {
     "version": 1,
-    "backup_time": {
-      "secs_since_epoch": 1715636551,
-      "nanos_since_epoch": 0
-    },
     "purpose": "RemoteBackup"
   },
   "account_data": {

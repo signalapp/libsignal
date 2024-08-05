@@ -108,6 +108,9 @@ pub struct BackupMeta {
     /// The version of the backup format being parsed.
     pub version: u64,
     /// When the backup process started.
+    ///
+    /// Omitted from the canonical backup string, so that subsequent backups can be compared.
+    #[serde(skip)]
     pub backup_time: Timestamp,
     /// What purpose the backup was intended for.
     pub purpose: Purpose,
