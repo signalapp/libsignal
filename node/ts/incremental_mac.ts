@@ -39,11 +39,11 @@ export class DigestingWritable extends stream.Writable {
   _write(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/explicit-module-boundary-types
     chunk: any,
-    _encoding: BufferEncoding,
+    encoding: BufferEncoding,
     callback: (error?: Error | null) => void
   ): void {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-    const buffer = Buffer.from(chunk, 'binary');
+    const buffer = Buffer.from(chunk, encoding);
     const next_digest = Native.IncrementalMac_Update(
       this,
       buffer,
@@ -83,11 +83,11 @@ export class ValidatingWritable extends stream.Writable {
   _write(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/explicit-module-boundary-types
     chunk: any,
-    _encoding: BufferEncoding,
+    encoding: BufferEncoding,
     callback: (error?: Error | null) => void
   ): void {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-    const buffer = Buffer.from(chunk, 'binary');
+    const buffer = Buffer.from(chunk, encoding);
     const validBytes = Native.ValidatingMac_Update(
       this,
       buffer,
