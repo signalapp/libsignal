@@ -166,6 +166,11 @@ jobs:
       run: PATH="$PATH:$PWD/local-tools/bin" ./bin/regenerate_acknowledgments.sh && git diff --name-status --exit-code acknowledgments
       if: matrix.version == 'nightly'
 
+    - name: Check backup.proto matches test cases
+      run: diff -u src/proto/backup.proto tests/res/Signal-Message-Backup-Tests/Backup.proto
+      working-directory: rust/message-backup/
+      if: matrix.version == 'nightly'
+
     - name: Build
       run: cargo +${{ matrix.toolchain }} build --workspace --features libsignal-ffi/signal-media --verbose ${{ matrix.cargo-keep-going }}
 
