@@ -50,6 +50,8 @@
     "backup_subscription": null
   },
   "recipients": [
+    "Self_",
+    "ReleaseNotes",
     {
       "DistributionList": {
         "List": {
@@ -59,9 +61,7 @@
           "privacy_mode": "All"
         }
       }
-    },
-    "Self_",
-    "ReleaseNotes"
+    }
   ],
   "chats": [],
   "ad_hoc_calls": [],

@@ -204,11 +204,11 @@ impl SerializeOrder for FullRecipientData {
             }
         } else {
             let discriminant = |value: &Destination<_>| match value {
-                Destination::Contact(_) => 0,
-                Destination::Group(_) => 1,
-                Destination::DistributionList(_) => 2,
-                Destination::Self_ => 3,
-                Destination::ReleaseNotes => 4,
+                Destination::Self_ => 0,
+                Destination::ReleaseNotes => 1,
+                Destination::Contact(_) => 2,
+                Destination::Group(_) => 3,
+                Destination::DistributionList(_) => 4,
                 Destination::CallLink(_) => 5,
             };
             discriminant(lhs).cmp(&discriminant(rhs))
