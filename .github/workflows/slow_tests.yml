@@ -29,7 +29,7 @@ jobs:
 
   java-docker:
     name: Java (Docker)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-4-cores
     needs: [check-up-to-date]
     if: ${{ always() && (needs.check-up-to-date.outputs.has-changes || github.event_name != 'schedule') }}
     timeout-minutes: 60
@@ -60,7 +60,7 @@ jobs:
 
   java-docker-secondary:
     name: Java (Secondary Docker)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-4-cores
     needs: [check-up-to-date]
     if: ${{ always() && (needs.check-up-to-date.outputs.has-changes || github.event_name != 'schedule') }}
     timeout-minutes: 60
