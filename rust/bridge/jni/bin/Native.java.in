@@ -68,7 +68,12 @@ public final class Native {
    * This method should only be called from a static initializer.
    */
   static void loadLibrary(String name) throws IOException {
-    for (String suffix : new String[]{ "_" + System.getProperty("os.arch"), "" }) {
+    String arch = System.getProperty("os.arch");
+    // Special-case: some Java implementations use "x86_64", but OpenJDK uses "amd64".
+    if (arch == "x86_64") {
+      arch = "amd64";
+    }
+    for (String suffix : new String[]{ "_" + arch, "" }) {
       final String libraryName = System.mapLibraryName(name + suffix);
       try (InputStream in = Native.class.getResourceAsStream("/" + libraryName)) {
         if (in != null) {
