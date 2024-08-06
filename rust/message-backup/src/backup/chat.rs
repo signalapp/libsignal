@@ -18,6 +18,7 @@ use crate::backup::chat::chat_style::{ChatStyle, ChatStyleError, CustomColorId};
 use crate::backup::file::{FilePointerError, MessageAttachmentError};
 use crate::backup::frame::RecipientId;
 use crate::backup::method::{Contains, Lookup, Method};
+use crate::backup::serialize::SerializeOrder;
 use crate::backup::sticker::MessageStickerError;
 use crate::backup::time::{Duration, Timestamp};
 use crate::backup::{BackupMeta, CallError, ReferencedTypes, TryFromWith, TryIntoWith as _};
@@ -212,14 +213,23 @@ pub enum ChatItemMessage<M: Method + ReferencedTypes> {
 
 /// Validated version of [`proto::Reaction`].
 #[derive(Debug, serde::Serialize)]
-#[cfg_attr(test, derive(PartialEq))]
+#[cfg_attr(test, derive(PartialEq, Clone))]
 pub struct Reaction {
     pub emoji: String,
+    // This field is not generated consistently on all platforms, so we only use it to sort
+    // containers of Reactions.
+    #[serde(skip)]
     pub sort_order: u64,
     pub author: RecipientId,
     pub sent_timestamp: Timestamp,
     pub received_timestamp: Option<Timestamp>,
     _limit_construction_to_module: (),
+}
+
+impl SerializeOrder for Reaction {
+    fn serialize_cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.sort_order.cmp(&other.sort_order)
+    }
 }
 
 #[derive(Debug, thiserror::Error, displaydoc::Display)]

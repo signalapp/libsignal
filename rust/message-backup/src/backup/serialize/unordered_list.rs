@@ -14,7 +14,7 @@ use crate::backup::serialize::SerializeOrder;
 #[derive(Clone, Debug)]
 #[derive_where(Default)]
 #[cfg_attr(test, derive(PartialEq))]
-pub struct UnorderedList<T>(Vec<T>);
+pub struct UnorderedList<T>(pub(crate) Vec<T>);
 
 impl<T> serde::Serialize for UnorderedList<T>
 where

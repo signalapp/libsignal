@@ -5,6 +5,7 @@
 use crate::backup::chat::{ChatItemError, Reaction};
 use crate::backup::frame::RecipientId;
 use crate::backup::method::Contains;
+use crate::backup::serialize::UnorderedList;
 use crate::backup::sticker::MessageSticker;
 use crate::backup::{TryFromWith, TryIntoWith as _};
 use crate::proto::backup as proto;
@@ -13,7 +14,7 @@ use crate::proto::backup as proto;
 #[derive(Debug, serde::Serialize)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct StickerMessage {
-    pub reactions: Vec<Reaction>,
+    pub reactions: UnorderedList<Reaction>,
     pub sticker: MessageSticker,
     _limit_construction_to_module: (),
 }

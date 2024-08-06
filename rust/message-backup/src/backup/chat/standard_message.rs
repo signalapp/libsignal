@@ -9,6 +9,7 @@ use crate::backup::chat::{ChatItemError, Reaction};
 use crate::backup::file::{FilePointer, MessageAttachment};
 use crate::backup::frame::RecipientId;
 use crate::backup::method::Contains;
+use crate::backup::serialize::UnorderedList;
 use crate::backup::{TryFromWith, TryIntoWith as _};
 use crate::proto::backup as proto;
 
@@ -19,7 +20,7 @@ pub struct StandardMessage {
     pub text: Option<MessageText>,
     pub quote: Option<Quote>,
     pub attachments: Vec<MessageAttachment>,
-    pub reactions: Vec<Reaction>,
+    pub reactions: UnorderedList<Reaction>,
     pub link_previews: Vec<LinkPreview>,
     pub long_text: Option<FilePointer>,
     _limit_construction_to_module: (),
@@ -84,6 +85,7 @@ mod test {
     use protobuf::MessageField;
 
     use crate::backup::chat::testutil::{ProtoHasField, TestContext};
+    use crate::backup::time::{Duration, Timestamp};
 
     use super::*;
 
@@ -114,7 +116,7 @@ mod test {
         pub(crate) fn from_proto_test_data() -> Self {
             Self {
                 text: Some(MessageText::from_proto_test_data()),
-                reactions: vec![Reaction::from_proto_test_data()],
+                reactions: vec![Reaction::from_proto_test_data()].into(),
                 attachments: vec![MessageAttachment::from_proto_test_data()],
                 quote: Some(Quote::from_proto_test_data()),
                 long_text: Some(FilePointer::default()),
@@ -147,6 +149,52 @@ mod test {
         assert_eq!(
             proto::StandardMessage::test_data().try_into_with(&TestContext::default()),
             Ok(StandardMessage::from_proto_test_data())
+        );
+    }
+
+    #[test]
+    fn reactions_are_sorted_when_serialized() {
+        let reaction1 = Reaction {
+            sent_timestamp: Timestamp::test_value(),
+            ..Reaction::from_proto_test_data()
+        };
+        let reaction2 = Reaction {
+            sent_timestamp: Timestamp::test_value() + Duration::from_millis(1000),
+            ..Reaction::from_proto_test_data()
+        };
+
+        let message1 = StandardMessage {
+            reactions: vec![
+                Reaction {
+                    sort_order: 10,
+                    ..reaction1.clone()
+                },
+                Reaction {
+                    sort_order: 20,
+                    ..reaction2.clone()
+                },
+            ]
+            .into(),
+            ..StandardMessage::from_proto_test_data()
+        };
+        let message2 = StandardMessage {
+            reactions: vec![
+                Reaction {
+                    sort_order: 200,
+                    ..reaction2
+                },
+                Reaction {
+                    sort_order: 100,
+                    ..reaction1
+                },
+            ]
+            .into(),
+            ..StandardMessage::from_proto_test_data()
+        };
+
+        assert_eq!(
+            serde_json::to_string_pretty(&message1).expect("valid"),
+            serde_json::to_string_pretty(&message2).expect("valid"),
         );
     }
 }

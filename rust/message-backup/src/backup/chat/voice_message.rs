@@ -7,6 +7,7 @@ use crate::backup::chat::{Reaction, ReactionError};
 use crate::backup::file::{MessageAttachment, MessageAttachmentError};
 use crate::backup::frame::RecipientId;
 use crate::backup::method::Contains;
+use crate::backup::serialize::UnorderedList;
 use crate::backup::{TryFromWith, TryIntoWith as _};
 use crate::proto::backup as proto;
 
@@ -15,7 +16,7 @@ use crate::proto::backup as proto;
 #[cfg_attr(test, derive(PartialEq))]
 pub struct VoiceMessage {
     pub quote: Option<Quote>,
-    pub reactions: Vec<Reaction>,
+    pub reactions: UnorderedList<Reaction>,
     pub attachment: MessageAttachment,
     _limit_construction_to_module: (),
 }
@@ -103,7 +104,7 @@ mod test {
                 .try_into_with(&TestContext::default()),
             Ok(VoiceMessage {
                 quote: Some(Quote::from_proto_test_data()),
-                reactions: vec![Reaction::from_proto_test_data()],
+                reactions: vec![Reaction::from_proto_test_data()].into(),
                 attachment: MessageAttachment::from_proto_voice_message_data(),
                 _limit_construction_to_module: ()
             })
