@@ -49,7 +49,20 @@
     },
     "backup_subscription": null
   },
-  "recipients": [],
+  "recipients": [
+    {
+      "DistributionList": {
+        "List": {
+          "distribution_id": "00000000-0000-0000-0000-000000000000",
+          "name": "My Story",
+          "allow_replies": true,
+          "privacy_mode": "All"
+        }
+      }
+    },
+    "Self_",
+    "ReleaseNotes"
+  ],
   "chats": [],
   "ad_hoc_calls": [],
   "pinned_chats": [],
