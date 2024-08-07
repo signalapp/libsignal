@@ -16,6 +16,7 @@ use libsignal_net::auth::Auth;
 use libsignal_net::chat::{
     self, ChatServiceError, DebugInfo as ChatServiceDebugInfo, Request, Response as ChatResponse,
 };
+use libsignal_net::infra::ws::WebSocketServiceError;
 
 use crate::support::*;
 use crate::*;
@@ -172,19 +173,35 @@ async fn ChatService_auth_send_and_debug(
 }
 
 #[bridge_fn(jni = false)]
-fn ChatServer_SetListener(
+fn ChatService_SetListenerAuth(
     runtime: &TokioAsyncContext,
     chat: &Chat,
     make_listener: Option<&dyn MakeChatListener>,
 ) {
     let Some(maker) = make_listener else {
-        chat.clear_listener();
+        chat.clear_listener_auth();
         return;
     };
 
     let listener = maker.make_listener();
 
-    chat.set_listener(listener, runtime)
+    chat.set_listener_auth(listener, runtime)
+}
+
+#[bridge_fn(jni = false, ffi = false)]
+fn ChatService_SetListenerUnauth(
+    runtime: &TokioAsyncContext,
+    chat: &Chat,
+    make_listener: Option<&dyn MakeChatListener>,
+) {
+    let Some(maker) = make_listener else {
+        chat.clear_listener_unauth();
+        return;
+    };
+
+    let listener = maker.make_listener();
+
+    chat.set_listener_unauth(listener, runtime)
 }
 
 #[cfg(feature = "testing-fns")]
@@ -201,7 +218,9 @@ fn TESTING_ChatService_InjectRawServerRequest(chat: &Chat, bytes: &[u8]) {
 #[bridge_fn]
 fn TESTING_ChatService_InjectConnectionInterrupted(chat: &Chat) {
     chat.synthetic_request_tx
-        .blocking_send(chat::ws::ServerEvent::Stopped)
+        .blocking_send(chat::ws::ServerEvent::Stopped(ChatServiceError::WebSocket(
+            WebSocketServiceError::ChannelClosed,
+        )))
         .expect("not closed");
 }
 

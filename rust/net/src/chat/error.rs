@@ -100,7 +100,6 @@ impl<E: LogSafeDisplay + Into<ChatServiceError>> From<reconnect::ReconnectError<
                 Self::AllConnectionRoutesFailed { attempts }
             }
             reconnect::ReconnectError::RejectedByServer(e) => e.into(),
-            reconnect::ReconnectError::Inactive => Self::ServiceInactive,
         }
     }
 }

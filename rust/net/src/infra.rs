@@ -340,13 +340,12 @@ pub(crate) mod test {
         use derive_where::derive_where;
         use displaydoc::Display;
         use tokio::io::DuplexStream;
+        use tokio_util::sync::CancellationToken;
         use warp::{Filter, Reply};
 
         use crate::infra::connection_manager::{ConnectionManager, ErrorClass, ErrorClassifier};
         use crate::infra::errors::{LogSafeDisplay, TransportConnectError};
-        use crate::infra::reconnect::{
-            ServiceConnector, ServiceInitializer, ServiceState, ServiceStatus,
-        };
+        use crate::infra::reconnect::{ServiceConnector, ServiceInitializer, ServiceState};
         use crate::infra::{
             Alpn, ConnectionInfo, ConnectionParams, DnsSource, RouteType, StreamAndInfo,
             TransportConnector,
@@ -462,7 +461,7 @@ pub(crate) mod test {
 
         #[derive_where(Clone)]
         pub(crate) struct NoReconnectService<C: ServiceConnector> {
-            pub(crate) inner: Arc<ServiceState<C::Service, C::ConnectError, C::StartError>>,
+            pub(crate) inner: Arc<ServiceState<C::Service, C::ConnectError>>,
         }
 
         impl<C> NoReconnectService<C>
@@ -484,9 +483,9 @@ pub(crate) mod test {
                 }
             }
 
-            pub(crate) fn service_status(&self) -> Option<&ServiceStatus<C::StartError>> {
+            pub(crate) fn service_status(&self) -> Option<&CancellationToken> {
                 match &*self.inner {
-                    ServiceState::Active(_, status) => Some(status),
+                    ServiceState::Active(_, service_cancellation) => Some(service_cancellation),
                     _ => None,
                 }
             }

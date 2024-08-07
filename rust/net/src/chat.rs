@@ -447,18 +447,19 @@ fn build_anonymous_chat_service(
 pub fn chat_service<T: TransportConnector + 'static>(
     endpoint: &EndpointConnection<MultiRouteConnectionManager>,
     transport_connector: T,
-    incoming_tx: tokio::sync::mpsc::Sender<ServerEvent<T::Stream>>,
+    incoming_auth_tx: tokio::sync::mpsc::Sender<ServerEvent<T::Stream>>,
+    incoming_unauth_tx: tokio::sync::mpsc::Sender<ServerEvent<T::Stream>>,
     auth: Auth,
     receive_stories: bool,
 ) -> Chat<impl ChatServiceWithDebugInfo, impl ChatServiceWithDebugInfo> {
     // Cannot reuse the same connector, since they lock on `incoming_tx` internally.
     let unauth_ws_connector = ChatOverWebSocketServiceConnector::new(
         WebSocketClientConnector::new(transport_connector.clone(), endpoint.config.clone()),
-        incoming_tx.clone(),
+        incoming_unauth_tx,
     );
     let auth_ws_connector = ChatOverWebSocketServiceConnector::new(
         WebSocketClientConnector::new(transport_connector, endpoint.config.clone()),
-        incoming_tx,
+        incoming_auth_tx,
     );
     {
         let auth_service = build_authorized_chat_service(
@@ -513,7 +514,7 @@ pub(crate) mod test {
                 timeout: Duration,
             ) -> Result<Response, ChatServiceError> {
                 match &*self.inner {
-                    ServiceState::Active(service, status) if !status.is_stopped() => {
+                    ServiceState::Active(service, status) if !status.is_cancelled() => {
                         service.clone().send(msg, timeout).await
                     }
                     _ => Err(ChatServiceError::AllConnectionRoutesFailed { attempts: 1 }),
@@ -526,7 +527,7 @@ pub(crate) mod test {
 
             async fn disconnect(&self) {
                 if let ServiceState::Active(_, status) = &*self.inner {
-                    status.stop_service()
+                    status.cancel()
                 }
             }
         }

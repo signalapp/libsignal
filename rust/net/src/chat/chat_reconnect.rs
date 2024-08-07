@@ -33,7 +33,7 @@ where
     }
 
     async fn connect(&self) -> Result<(), ChatServiceError> {
-        Ok(self.connect_from_inactive().await?)
+        Ok(self.connect().await?)
     }
 
     async fn disconnect(&self) {
@@ -103,7 +103,7 @@ where
     async fn connect_and_debug(&self) -> Result<DebugInfo, ChatServiceError> {
         let start = Instant::now();
 
-        self.connect_from_inactive().await?;
+        self.connect().await?;
 
         let connection_info = self.connection_info().await?;
         let ip_type = IpType::from_host(&connection_info.address);

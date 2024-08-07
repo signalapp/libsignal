@@ -7,6 +7,7 @@ use super::*;
 
 use crate::net::chat::{ChatListener, MakeChatListener, ServerMessageAck};
 
+use libsignal_net::chat::ChatServiceError;
 use std::ffi::{c_uchar, c_void};
 
 type ReceivedIncomingMessage = extern "C" fn(
@@ -76,7 +77,8 @@ impl ChatListener for ChatListenerStruct {
         (self.0.received_queue_empty)(self.0.ctx)
     }
 
-    fn connection_interrupted(&mut self) {
+    // TODO: pass `_disconnect_cause` to `connection_interrupted`
+    fn connection_interrupted(&mut self, _disconnect_cause: ChatServiceError) {
         (self.0.connection_interrupted)(self.0.ctx)
     }
 }

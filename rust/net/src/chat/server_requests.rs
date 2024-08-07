@@ -28,7 +28,7 @@ pub enum ServerMessage {
         send_ack: ResponseEnvelopeSender,
     },
     /// Not actually a message, but an event processed as part of the message stream.
-    Stopped,
+    Stopped(ChatServiceError),
 }
 
 impl std::fmt::Debug for ServerMessage {
@@ -46,7 +46,10 @@ impl std::fmt::Debug for ServerMessage {
                 .field("envelope", &format_args!("{} bytes", envelope.len()))
                 .field("server_delivery_timestamp", server_delivery_timestamp)
                 .finish(),
-            Self::Stopped => write!(f, "Stopped"),
+            Self::Stopped(error) => f
+                .debug_struct("ConnectionInterrupted")
+                .field("reason", error)
+                .finish(),
         }
     }
 }
@@ -55,7 +58,7 @@ pub fn stream_incoming_messages(
     receiver: mpsc::Receiver<ServerEvent<impl AsyncDuplexStream + 'static>>,
 ) -> impl Stream<Item = ServerMessage> {
     ReceiverStream::new(receiver).filter_map(|request| match request {
-        ServerEvent::Stopped => Some(ServerMessage::Stopped),
+        ServerEvent::Stopped(error) => Some(ServerMessage::Stopped(error)),
         ServerEvent::Request {
             request_proto,
             response_sender,

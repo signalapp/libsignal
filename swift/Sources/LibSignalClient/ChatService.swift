@@ -81,9 +81,9 @@ public class AuthenticatedChatService: NativeHandleOwner, ChatService {
             withNativeHandle { chatService in
                 if let listener {
                     var listenerStruct = ChatListenerBridge(chatService: self, chatListener: listener).makeListenerStruct()
-                    failOnError(signal_chat_server_set_listener(tokioAsyncContext, chatService, &listenerStruct))
+                    failOnError(signal_chat_service_set_listener_auth(tokioAsyncContext, chatService, &listenerStruct))
                 } else {
-                    failOnError(signal_chat_server_set_listener(tokioAsyncContext, chatService, nil))
+                    failOnError(signal_chat_service_set_listener_auth(tokioAsyncContext, chatService, nil))
                 }
             }
         }

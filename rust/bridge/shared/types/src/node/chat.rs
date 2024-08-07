@@ -5,6 +5,7 @@
 
 use crate::net::chat::{ChatListener, MakeChatListener, ServerMessageAck};
 use crate::node::ResultTypeInfo;
+use libsignal_net::chat::ChatServiceError;
 use libsignal_protocol::Timestamp;
 use neon::context::FunctionContext;
 use neon::event::Channel;
@@ -53,7 +54,8 @@ impl ChatListener for NodeChatListener {
         });
     }
 
-    fn connection_interrupted(&mut self) {
+    // TODO: pass `_disconnect_cause` to `_connection_interrupted`
+    fn connection_interrupted(&mut self, _disconnect_cause: ChatServiceError) {
         let callback_object_shared = self.callback_object.clone();
         self.js_channel.send(move |mut cx| {
             let callback = callback_object_shared.to_inner(&mut cx);

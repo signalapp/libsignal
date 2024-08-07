@@ -19,12 +19,13 @@ use http::uri::PathAndQuery;
 use tokio::sync::Mutex;
 use tokio::time::Instant;
 use tokio_tungstenite::WebSocketStream;
+use tokio_util::sync::CancellationToken;
 use tungstenite::handshake::client::generate_key;
 use tungstenite::protocol::CloseFrame;
 use tungstenite::{http, Message};
 
 use crate::infra::errors::LogSafeDisplay;
-use crate::infra::reconnect::{ServiceConnector, ServiceStatus};
+use crate::infra::reconnect::ServiceConnector;
 use crate::infra::ws::error::{HttpFormatError, ProtocolError, SpaceError};
 use crate::infra::{
     Alpn, AsyncDuplexStream, ConnectionInfo, ConnectionParams, StreamAndInfo, TransportConnector,
@@ -145,10 +146,7 @@ where
         .map_err(Into::into)
     }
 
-    fn start_service(
-        &self,
-        channel: Self::Channel,
-    ) -> (Self::Service, ServiceStatus<Self::StartError>) {
+    fn start_service(&self, channel: Self::Channel) -> (Self::Service, CancellationToken) {
         start_ws_service(
             channel.0,
             channel.1,
@@ -163,19 +161,20 @@ fn start_ws_service<S: AsyncDuplexStream, E>(
     connection_info: ConnectionInfo,
     keep_alive_interval: Duration,
     max_idle_time: Duration,
-) -> (WebSocketClient<S, E>, ServiceStatus<E>) {
-    let service_status = ServiceStatus::default();
+) -> (WebSocketClient<S, E>, CancellationToken) {
+    let service_cancellation = CancellationToken::new();
     let (ws_sink, ws_stream) = channel.split();
     let ws_client_writer = WebSocketClientWriter {
         ws_sink: Arc::new(Mutex::new(ws_sink)),
-        service_status: service_status.clone(),
+        service_cancellation: service_cancellation.clone(),
+        error_type: Default::default(),
     };
     let ws_client_reader = WebSocketClientReader {
         ws_stream,
         keep_alive_interval,
         max_idle_time,
         ws_writer: ws_client_writer.clone(),
-        service_status: service_status.clone(),
+        service_cancellation: service_cancellation.clone(),
         last_frame_received: Instant::now(),
         last_keepalive_sent: Instant::now(),
     };
@@ -185,7 +184,7 @@ fn start_ws_service<S: AsyncDuplexStream, E>(
             ws_client_reader,
             connection_info,
         },
-        service_status,
+        service_cancellation,
     )
 }
 
@@ -193,7 +192,8 @@ fn start_ws_service<S: AsyncDuplexStream, E>(
 #[derive(Debug)]
 pub(crate) struct WebSocketClientWriter<S, E> {
     ws_sink: Arc<Mutex<SplitSink<WebSocketStream<S>, Message>>>,
-    service_status: ServiceStatus<E>,
+    service_cancellation: CancellationToken,
+    error_type: PhantomData<E>,
 }
 
 impl<S: AsyncDuplexStream, E> WebSocketClientWriter<S, E>
@@ -201,7 +201,7 @@ where
     WebSocketServiceError: Into<E>,
 {
     pub async fn send(&self, message: impl Into<Message>) -> Result<(), E> {
-        run_and_update_status(&self.service_status, || {
+        run_and_update_status(&self.service_cancellation, || {
             async {
                 let mut guard = self.ws_sink.lock().await;
                 guard.send(message.into()).await?;
@@ -218,7 +218,7 @@ where
 pub(crate) struct WebSocketClientReader<S, E> {
     ws_stream: SplitStream<WebSocketStream<S>>,
     ws_writer: WebSocketClientWriter<S, E>,
-    service_status: ServiceStatus<E>,
+    service_cancellation: CancellationToken,
     keep_alive_interval: Duration,
     max_idle_time: Duration,
     last_frame_received: Instant,
@@ -236,7 +236,7 @@ where
             IdleTimeout,
             StopService,
         }
-        run_and_update_status(&self.service_status, || async {
+        run_and_update_status(&self.service_cancellation, || async {
             loop {
                 // first, waiting for the next lifecycle action
                 let next_ping_time = self.last_keepalive_sent + self.keep_alive_interval;
@@ -245,7 +245,7 @@ where
                     maybe_message = self.ws_stream.next() => Event::Message(maybe_message),
                     _ = tokio::time::sleep_until(next_ping_time) => Event::SendKeepAlive,
                     _ = tokio::time::sleep_until(idle_timeout_time) => Event::IdleTimeout,
-                    _ = self.service_status.stopped() => Event::StopService,
+                    _ = self.service_cancellation.cancelled() => Event::StopService,
                 } {
                     Event::SendKeepAlive => {
                         self.ws_writer.send(Message::Ping(vec![])).await?;
@@ -281,7 +281,7 @@ where
                     Message::Binary(b) => return Ok(NextOrClose::Next(b.into())),
                     Message::Ping(_) | Message::Pong(_) => continue,
                     Message::Close(close_frame) => {
-                        self.service_status.stop_service();
+                        self.service_cancellation.cancel();
                         return Ok(NextOrClose::Close(close_frame));
                     }
                     Message::Frame(_) => unreachable!("only for sending"),
@@ -292,18 +292,21 @@ where
     }
 }
 
-async fn run_and_update_status<T, F, Ft, E>(service_status: &ServiceStatus<E>, f: F) -> Result<T, E>
+async fn run_and_update_status<T, F, Ft, E>(
+    service_status: &CancellationToken,
+    f: F,
+) -> Result<T, E>
 where
     WebSocketServiceError: Into<E>,
     F: FnOnce() -> Ft,
     Ft: Future<Output = Result<T, E>>,
 {
-    if service_status.is_stopped() {
+    if service_status.is_cancelled() {
         return Err(WebSocketServiceError::ChannelClosed.into());
     }
     let result = f().await;
     if result.is_err() {
-        service_status.stop_service();
+        service_status.cancel();
     }
     result.map_err(Into::into)
 }

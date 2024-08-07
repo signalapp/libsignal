@@ -176,9 +176,13 @@ describe('chat service api', () => {
 
     it('can connect unauthenticated', async () => {
       const net = new Net(Environment.Staging, userAgent);
-      const chatService = net.newUnauthenticatedChatService();
+      const listener = {
+        onConnectionInterrupted: sinon.stub(),
+      };
+      const chatService = net.newUnauthenticatedChatService(listener);
       await chatService.connect();
       await chatService.disconnect();
+      expect(listener.onConnectionInterrupted).to.have.been.calledOnce;
     }).timeout(10000);
 
     it('can connect through a proxy server', async () => {
@@ -190,9 +194,13 @@ describe('chat service api', () => {
       const [host = PROXY_SERVER, port = '443'] = PROXY_SERVER.split(':', 2);
       net.setProxy(host, parseInt(port, 10));
 
-      const chatService = net.newUnauthenticatedChatService();
+      const listener = {
+        onConnectionInterrupted: sinon.stub(),
+      };
+      const chatService = net.newUnauthenticatedChatService(listener);
       await chatService.connect();
       await chatService.disconnect();
+      expect(listener.onConnectionInterrupted).to.have.been.calledOnce;
     }).timeout(10000);
   });
 

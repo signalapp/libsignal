@@ -115,11 +115,13 @@ async fn test_connection(
         &network_change_event,
     );
 
-    let (incoming_tx, _incoming_rx) = mpsc::channel(1);
+    let (incoming_auth_tx, _incoming_rx) = mpsc::channel(1);
+    let (incoming_unauth_tx, _incoming_rx) = mpsc::channel(1);
     let chat = chat_service(
         &connection,
         transport_connector,
-        incoming_tx,
+        incoming_auth_tx,
+        incoming_unauth_tx,
         Auth {
             username: "".to_owned(),
             password: "".to_owned(),

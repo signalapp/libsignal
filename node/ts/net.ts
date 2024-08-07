@@ -122,7 +122,17 @@ export class ChatServerMessageAck {
   }
 }
 
-export interface ChatServiceListener {
+export interface ConnectionEventsListener {
+  /**
+   * Called when the client gets disconnected from the server.
+   *
+   * This includes both deliberate disconnects as well as unexpected socket closures that will be
+   * automatically retried.
+   */
+  onConnectionInterrupted(): void;
+}
+
+export interface ChatServiceListener extends ConnectionEventsListener {
   /**
    * Called when the server delivers an incoming message to the client.
    *
@@ -144,17 +154,6 @@ export interface ChatServiceListener {
    * were in the queue *when the connection was established* have been delivered.
    */
   onQueueEmpty(): void;
-
-  /**
-   * Called when the client gets disconnected from the server.
-   *
-   * This includes both deliberate disconnects as well as unexpected socket closures that will be
-   * automatically retried.
-   *
-   * Will not be called if no other requests have been invoked for this connection attempt. That is,
-   * you should never see this as the first callback, nor two of these callbacks in a row.
-   */
-  onConnectionInterrupted(): void;
 }
 
 /**
@@ -256,7 +255,7 @@ export class AuthenticatedChatService implements ChatService {
         listener.onConnectionInterrupted();
       },
     };
-    Native.ChatServer_SetListener(
+    Native.ChatService_SetListenerAuth(
       asyncContext,
       this.chatService,
       nativeChatListener
@@ -315,10 +314,31 @@ export class UnauthenticatedChatService implements ChatService {
 
   constructor(
     private readonly asyncContext: TokioAsyncContext,
-    connectionManager: ConnectionManager
+    connectionManager: ConnectionManager,
+    listener: ConnectionEventsListener
   ) {
     this.chatService = newNativeHandle(
       Native.ChatService_new(connectionManager, '', '', false)
+    );
+    const nativeChatListener = {
+      _incoming_message(
+        _envelope: Buffer,
+        _timestamp: number,
+        _ack: ServerMessageAck
+      ): void {
+        throw new Error('Event not supported on unauthenticated connection');
+      },
+      _queue_empty(): void {
+        throw new Error('Event not supported on unauthenticated connection');
+      },
+      _connection_interrupted(): void {
+        listener.onConnectionInterrupted();
+      },
+    };
+    Native.ChatService_SetListenerUnauth(
+      asyncContext,
+      this.chatService,
+      nativeChatListener
     );
   }
 
@@ -426,10 +446,13 @@ export class Net {
   /**
    * Creates a new instance of {@link UnauthenticatedChatService}.
    */
-  public newUnauthenticatedChatService(): UnauthenticatedChatService {
+  public newUnauthenticatedChatService(
+    listener: ConnectionEventsListener
+  ): UnauthenticatedChatService {
     return new UnauthenticatedChatService(
       this.asyncContext,
-      this.connectionManager
+      this.connectionManager,
+      listener
     );
   }
 

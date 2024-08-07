@@ -15,7 +15,9 @@ use http::status::InvalidStatusCode;
 use http::uri::{InvalidUri, PathAndQuery};
 use http::{HeaderMap, HeaderName, HeaderValue};
 use libsignal_net::auth::Auth;
-use libsignal_net::chat::{self, DebugInfo as ChatServiceDebugInfo, Response as ChatResponse};
+use libsignal_net::chat::{
+    self, ChatServiceError, DebugInfo as ChatServiceDebugInfo, Response as ChatResponse,
+};
 use libsignal_protocol::Timestamp;
 use tokio::sync::{mpsc, oneshot};
 
@@ -57,7 +59,8 @@ pub struct Chat {
         Arc<dyn chat::ChatServiceWithDebugInfo + Send + Sync>,
         Arc<dyn chat::ChatServiceWithDebugInfo + Send + Sync>,
     >,
-    listener: std::sync::Mutex<ChatListenerState>,
+    listener_auth: std::sync::Mutex<ChatListenerState>,
+    listener_unauth: std::sync::Mutex<ChatListenerState>,
     pub synthetic_request_tx:
         mpsc::Sender<chat::ws::ServerEvent<libsignal_net::infra::tcp_ssl::TcpSslConnectorStream>>,
 }
@@ -66,9 +69,14 @@ impl RefUnwindSafe for Chat {}
 
 impl Chat {
     pub fn new(connection_manager: &ConnectionManager, auth: Auth, receive_stories: bool) -> Self {
-        let (incoming_tx, incoming_rx) = mpsc::channel(1);
-        let incoming_stream = chat::server_requests::stream_incoming_messages(incoming_rx);
-        let synthetic_request_tx = incoming_tx.clone();
+        let (incoming_auth_tx, incoming_auth_rx) = mpsc::channel(1);
+        let incoming_stream_auth =
+            chat::server_requests::stream_incoming_messages(incoming_auth_rx);
+        let synthetic_request_tx = incoming_auth_tx.clone();
+
+        let (incoming_unauth_tx, incoming_unauth_rx) = mpsc::channel(1);
+        let incoming_stream_unauth =
+            chat::server_requests::stream_incoming_messages(incoming_unauth_rx);
 
         Chat {
             service: chat::chat_service(
@@ -78,22 +86,44 @@ impl Chat {
                     .lock()
                     .expect("not poisoned")
                     .clone(),
-                incoming_tx,
+                incoming_auth_tx,
+                incoming_unauth_tx,
                 auth,
                 receive_stories,
             )
             .into_dyn(),
-            listener: std::sync::Mutex::new(ChatListenerState::Inactive(Box::pin(incoming_stream))),
+            listener_auth: std::sync::Mutex::new(ChatListenerState::Inactive(Box::pin(
+                incoming_stream_auth,
+            ))),
+            listener_unauth: std::sync::Mutex::new(ChatListenerState::Inactive(Box::pin(
+                incoming_stream_unauth,
+            ))),
             synthetic_request_tx,
         }
     }
 
-    pub fn set_listener(&self, listener: Box<dyn ChatListener>, runtime: &TokioAsyncContext) {
+    pub fn set_listener_auth(&self, listener: Box<dyn ChatListener>, runtime: &TokioAsyncContext) {
+        Chat::set_listener(listener, &self.listener_auth, runtime);
+    }
+
+    pub fn set_listener_unauth(
+        &self,
+        listener: Box<dyn ChatListener>,
+        runtime: &TokioAsyncContext,
+    ) {
+        Chat::set_listener(listener, &self.listener_unauth, runtime);
+    }
+
+    fn set_listener(
+        listener: Box<dyn ChatListener>,
+        listener_state: &std::sync::Mutex<ChatListenerState>,
+        runtime: &TokioAsyncContext,
+    ) {
         use futures_util::future::Either;
 
         let (cancel_tx, cancel_rx) = oneshot::channel::<()>();
 
-        let mut guard = self.listener.lock().expect("unpoisoned");
+        let mut guard = listener_state.lock().expect("unpoisoned");
         let request_stream_future =
             match std::mem::replace(&mut *guard, ChatListenerState::CurrentlyBeingMutated) {
                 ChatListenerState::Inactive(request_stream) => {
@@ -125,8 +155,12 @@ impl Chat {
         drop(guard);
     }
 
-    pub fn clear_listener(&self) {
-        self.listener.lock().expect("unpoisoned").cancel();
+    pub fn clear_listener_auth(&self) {
+        self.listener_auth.lock().expect("unpoisoned").cancel();
+    }
+
+    pub fn clear_listener_unauth(&self) {
+        self.listener_unauth.lock().expect("unpoisoned").cancel();
     }
 }
 
@@ -204,7 +238,7 @@ pub trait ChatListener: Send {
         ack: ServerMessageAck,
     );
     fn received_queue_empty(&mut self);
-    fn connection_interrupted(&mut self);
+    fn connection_interrupted(&mut self, disconnect_cause: ChatServiceError);
 }
 
 impl dyn ChatListener {
@@ -223,7 +257,9 @@ impl dyn ChatListener {
                 ServerMessageAck::new(send_ack),
             ),
             chat::server_requests::ServerMessage::QueueEmpty => self.received_queue_empty(),
-            chat::server_requests::ServerMessage::Stopped => self.connection_interrupted(),
+            chat::server_requests::ServerMessage::Stopped(error) => {
+                self.connection_interrupted(error)
+            }
         }
     }
 
