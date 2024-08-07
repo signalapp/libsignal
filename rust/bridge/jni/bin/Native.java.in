@@ -70,7 +70,7 @@ public final class Native {
   static void loadLibrary(String name) throws IOException {
     String arch = System.getProperty("os.arch");
     // Special-case: some Java implementations use "x86_64", but OpenJDK uses "amd64".
-    if (arch == "x86_64") {
+    if ("x86_64".equals(arch)) {
       arch = "amd64";
     }
     for (String suffix : new String[]{ "_" + arch, "" }) {
