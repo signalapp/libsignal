@@ -575,7 +575,6 @@ typedef struct {
 } SignalCPromiseFfiCdsiLookupResponse;
 
 typedef struct {
-  uint32_t reconnect_count;
   uint8_t raw_ip_type;
   double duration_secs;
   const char *connection_info;

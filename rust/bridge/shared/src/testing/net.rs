@@ -211,7 +211,6 @@ fn TESTING_ChatServiceResponseConvert(
 #[bridge_fn]
 fn TESTING_ChatServiceDebugInfoConvert() -> Result<ChatServiceDebugInfo, ChatServiceError> {
     Ok(ChatServiceDebugInfo {
-        reconnect_count: 2,
         ip_type: IpType::V4,
         duration: Duration::from_millis(200),
         connection_info: "connection_info".to_string(),

@@ -1060,14 +1060,10 @@ impl<'a> ResultTypeInfo<'a> for libsignal_net::chat::DebugInfo {
 
     fn convert_into(self, env: &mut JNIEnv<'a>) -> Result<Self::ResultType, BridgeLayerError> {
         let Self {
-            reconnect_count,
             ip_type,
             duration,
             connection_info,
         } = self;
-
-        // reconnect count as i32
-        let reconnect_count_i32: i32 = reconnect_count.try_into().expect("within i32 range");
 
         // ip type as code
         let ip_type_byte = ip_type as i8;
@@ -1082,7 +1078,6 @@ impl<'a> ResultTypeInfo<'a> for libsignal_net::chat::DebugInfo {
             env,
             ClassName("org.signal.libsignal.net.ChatService$DebugInfo"),
             jni_args!((
-                reconnect_count_i32 => int,
                 ip_type_byte => byte,
                 duration_ms => int,
                 connection_info_string => java.lang.String,

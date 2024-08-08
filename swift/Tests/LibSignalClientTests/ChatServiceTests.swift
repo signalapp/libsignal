@@ -72,7 +72,6 @@ final class ChatServiceTests: TestCaseBase {
         var rawDebugInfo = SignalFfiChatServiceDebugInfo()
         try checkError(signal_testing_chat_service_debug_info_convert(&rawDebugInfo))
         let debugInfo = ChatService.DebugInfo(consuming: rawDebugInfo)
-        XCTAssertEqual(2, debugInfo.reconnectCount)
         XCTAssertEqual(.ipv4, debugInfo.ipType)
         XCTAssertEqual(0.2, debugInfo.duration)
         XCTAssertEqual("connection_info", debugInfo.connectionInfo)
@@ -89,7 +88,6 @@ final class ChatServiceTests: TestCaseBase {
         XCTAssertEqual(Self.expectedContent, response.body)
 
         let debugInfo = ChatService.DebugInfo(consuming: rawResponseAndDebugInfo.debug_info)
-        XCTAssertEqual(2, debugInfo.reconnectCount)
         XCTAssertEqual(.ipv4, debugInfo.ipType)
         XCTAssertEqual(0.2, debugInfo.duration)
         XCTAssertEqual("connection_info", debugInfo.connectionInfo)

@@ -88,11 +88,9 @@ where
             Err(e) => (Err(e.into()), IpType::Unknown, "".to_string()),
         };
         let duration = start.elapsed();
-        let reconnect_count = self.reconnect_count();
         (
             response,
             DebugInfo {
-                reconnect_count,
                 ip_type,
                 duration,
                 connection_info,
@@ -109,9 +107,7 @@ where
         let ip_type = IpType::from_host(&connection_info.address);
         let connection_info = connection_info.description();
         let duration = start.elapsed();
-        let reconnect_count = self.reconnect_count();
         Ok(DebugInfo {
-            reconnect_count,
             ip_type,
             duration,
             connection_info,

@@ -252,11 +252,10 @@ public class ChatService extends NativeHandleGuard.SimpleOwner {
 
   public record Response(int status, String message, Map<String, String> headers, byte[] body) {}
 
-  public record DebugInfo(
-      int reconnectCount, IpType ipType, int durationMs, String connectionInfo) {
+  public record DebugInfo(IpType ipType, int durationMs, String connectionInfo) {
     @CalledFromNative
-    DebugInfo(int reconnectCount, byte ipTypeCode, int durationMs, String connectionInfo) {
-      this(reconnectCount, IpType.values()[ipTypeCode], durationMs, connectionInfo);
+    DebugInfo(byte ipTypeCode, int durationMs, String connectionInfo) {
+      this(IpType.values()[ipTypeCode], durationMs, connectionInfo);
     }
   }
 

@@ -4,7 +4,6 @@
 //
 
 use std::fmt::Debug;
-use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -181,7 +180,6 @@ where
 }
 
 pub(crate) struct ServiceWithReconnectData<C: ServiceConnector, M> {
-    reconnect_count: AtomicU32,
     state: Mutex<ServiceState<C::Service, C::ConnectError>>,
     service_initializer: ServiceInitializer<C, M>,
     connection_timeout: Duration,
@@ -267,13 +265,8 @@ where
                 state: Mutex::new(ServiceState::Inactive),
                 service_initializer: ServiceInitializer::new(service_connector, connection_manager),
                 connection_timeout,
-                reconnect_count: AtomicU32::new(0),
             }),
         }
-    }
-
-    pub(crate) fn reconnect_count(&self) -> u32 {
-        self.data.reconnect_count.load(Ordering::Relaxed)
     }
 
     pub(crate) async fn connect(&self) -> Result<(), ReconnectError<C::ConnectError>> {

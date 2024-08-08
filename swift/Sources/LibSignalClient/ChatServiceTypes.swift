@@ -110,13 +110,11 @@ public struct ChatResponse: Equatable {
 }
 
 public struct ChatServiceDebugInfo: Equatable {
-    public var reconnectCount: UInt32
     public var ipType: IpType
     public var duration: TimeInterval
     public var connectionInfo: String
 
-    public init(reconnectCount: UInt32, ipType: IpType, duration: TimeInterval, connectionInfo: String) {
-        self.reconnectCount = reconnectCount
+    public init(ipType: IpType, duration: TimeInterval, connectionInfo: String) {
         self.ipType = ipType
         self.duration = duration
         self.connectionInfo = connectionInfo
@@ -125,7 +123,6 @@ public struct ChatServiceDebugInfo: Equatable {
     internal init(consuming rawDebugInfo: SignalFfiChatServiceDebugInfo) {
         var rawDebugInfo = rawDebugInfo
         defer { rawDebugInfo.free() }
-        self.reconnectCount = rawDebugInfo.reconnect_count
         self.ipType = IpType(rawValue: rawDebugInfo.raw_ip_type) ?? .unknown
         self.duration = rawDebugInfo.duration_secs
         self.connectionInfo = String(cString: rawDebugInfo.connection_info)

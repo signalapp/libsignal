@@ -702,14 +702,12 @@ impl ResultTypeInfo for libsignal_net::chat::DebugInfo {
 
     fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
         let Self {
-            reconnect_count,
             ip_type,
             duration,
             connection_info,
         } = self;
 
         Ok(FfiChatServiceDebugInfo {
-            reconnect_count,
             raw_ip_type: ip_type as u8,
             duration_secs: duration.as_secs_f64(),
             connection_info: connection_info.convert_into()?,
