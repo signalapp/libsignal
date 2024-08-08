@@ -188,7 +188,7 @@ fn ChatService_SetListenerAuth(
     chat.set_listener_auth(listener, runtime)
 }
 
-#[bridge_fn(jni = false, ffi = false)]
+#[bridge_fn(jni = false)]
 fn ChatService_SetListenerUnauth(
     runtime: &TokioAsyncContext,
     chat: &Chat,

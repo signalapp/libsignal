@@ -6,7 +6,22 @@
 import Foundation
 import SignalFfi
 
-public protocol ChatListener: AnyObject {
+public protocol ConnectionEventsListener<Service>: AnyObject {
+    associatedtype Service: AnyObject
+
+    /// Called when the client gets disconnected from the server.
+    ///
+    /// This includes both deliberate disconnects as well as unexpected socket closures.
+    ///
+    /// The default implementation of this method does nothing.
+    func connectionWasInterrupted(_ service: Service)
+}
+
+extension ConnectionEventsListener {
+    func connectionWasInterrupted(_: Service) {}
+}
+
+public protocol ChatListener: ConnectionEventsListener<AuthenticatedChatService> {
     /// Called when the server delivers an incoming message to the client.
     ///
     /// `serverDeliveryTimestamp` is in milliseconds.
@@ -22,22 +37,10 @@ public protocol ChatListener: AnyObject {
     ///
     /// The default implementation of this method does nothing.
     func chatServiceDidReceiveQueueEmpty(_ chat: AuthenticatedChatService)
-
-    /// Called when the client gets disconnected from the server.
-    ///
-    /// This includes both deliberate disconnects as well as unexpected socket closures that will be
-    /// automatically retried.
-    ///
-    /// Will not be called if no other requests have been invoked for this connection attempt. That
-    /// is, you should never see this as the first callback, nor two of these callbacks in a row.
-    ///
-    /// The default implementation of this method does nothing.
-    func chatServiceConnectionWasInterrupted(_ chat: AuthenticatedChatService)
 }
 
 extension ChatListener {
     public func chatServiceDidReceiveQueueEmpty(_: AuthenticatedChatService) {}
-    public func chatServiceConnectionWasInterrupted(_: AuthenticatedChatService) {}
 }
 
 internal class ChatListenerBridge {
@@ -48,9 +51,9 @@ internal class ChatListenerBridge {
     }
 
     weak var chatService: AuthenticatedChatService?
-    let chatListener: ChatListener
+    let chatListener: any ChatListener
 
-    init(chatService: AuthenticatedChatService, chatListener: ChatListener) {
+    init(chatService: AuthenticatedChatService, chatListener: any ChatListener) {
         self.chatService = chatService
         self.chatListener = chatListener
     }
@@ -92,7 +95,48 @@ internal class ChatListenerBridge {
                 return
             }
 
-            bridge.chatListener.chatServiceConnectionWasInterrupted(chatService)
+            bridge.chatListener.connectionWasInterrupted(chatService)
+        }
+
+        return .init(
+            ctx: Unmanaged.passRetained(self).toOpaque(),
+            received_incoming_message: receivedIncomingMessage,
+            received_queue_empty: receivedQueueEmpty,
+            connection_interrupted: connectionInterrupted,
+            destroy: { rawCtx in
+                _ = Unmanaged<AnyObject>.fromOpaque(rawCtx!).takeRetainedValue()
+            }
+        )
+    }
+}
+
+internal final class UnauthConnectionEventsListenerBridge {
+    weak var chatService: UnauthenticatedChatService?
+    let listener: any ConnectionEventsListener<UnauthenticatedChatService>
+
+    init(chatService: UnauthenticatedChatService, listener: any ConnectionEventsListener<UnauthenticatedChatService>) {
+        self.chatService = chatService
+        self.listener = listener
+    }
+
+    /// Creates an **owned** callback struct from this object.
+    ///
+    /// The resulting struct must eventually have its `destroy` callback invoked with its `ctx` as argument,
+    /// or the ChatListenerBridge object used to construct it (`self`) will be leaked.
+    func makeListenerStruct() -> SignalFfiChatListenerStruct {
+        let receivedIncomingMessage: SignalReceivedIncomingMessage = { _, _, _, _ in
+            fatalError("not used for the unauth listener")
+        }
+        let receivedQueueEmpty: SignalReceivedQueueEmpty = { _ in
+            fatalError("not used for the unauth listener")
+        }
+        let connectionInterrupted: SignalConnectionInterrupted = { rawCtx in
+            let bridge = Unmanaged<UnauthConnectionEventsListenerBridge>.fromOpaque(rawCtx!).takeUnretainedValue()
+            guard let chatService = bridge.chatService else {
+                return
+            }
+
+            bridge.listener.connectionWasInterrupted(chatService)
         }
 
         return .init(

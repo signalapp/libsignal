@@ -190,6 +190,22 @@ public class UnauthenticatedChatService: NativeHandleOwner, ChatService {
         return signal_chat_destroy(handle)
     }
 
+    /// Sets (or clears) the listener for connection events.
+    ///
+    /// Takes ownership of the listener; be careful this doesn't lead to a reference cycle (unless the owner lives forever anyway).
+    public func setListener(_ listener: (any ConnectionEventsListener<UnauthenticatedChatService>)?) {
+        self.tokioAsyncContext.withNativeHandle { tokioAsyncContext in
+            withNativeHandle { chatService in
+                if let listener {
+                    var listenerStruct = UnauthConnectionEventsListenerBridge(chatService: self, listener: listener).makeListenerStruct()
+                    failOnError(signal_chat_service_set_listener_unauth(tokioAsyncContext, chatService, &listenerStruct))
+                } else {
+                    failOnError(signal_chat_service_set_listener_unauth(tokioAsyncContext, chatService, nil))
+                }
+            }
+        }
+    }
+
     /// Initiates establishing of the underlying unauthenticated connection to the Chat Service. Once
     /// the service is connected, all the requests will be using the established connection. Also,
     /// if the connection is lost for any reason other than the call to ``disconnect()``, an
