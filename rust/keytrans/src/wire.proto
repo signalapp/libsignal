@@ -1,0 +1,133 @@
+syntax = "proto3";
+package signal.keytrans.wire;
+
+message PrefixProof {
+    repeated bytes proof = 1;
+    uint32 counter = 2;
+}
+
+// TreeHead contains the operator's signature on the most recent version of the
+// log.
+message TreeHead {
+    uint64 tree_size = 1;
+    int64 timestamp = 2;
+    bytes signature = 3;
+}
+
+// AuditorTreeHead is provided to end-users when third-party auditing is used,
+// as evidence that the log is behaving honestly.
+message AuditorTreeHead {
+    TreeHead tree_head = 1;
+    optional bytes root_value = 2;
+    repeated bytes consistency = 3;
+}
+
+// FullTreeHead wraps a basic TreeHead with additional information that may be
+// needed for validation.
+message FullTreeHead {
+    TreeHead tree_head = 1;
+    repeated bytes distinguished = 2;
+    repeated bytes consistency = 3;
+    optional AuditorTreeHead auditor_tree_head = 4;
+}
+
+// ProofStep is the output of one step of a binary search through the log.
+message ProofStep {
+    PrefixProof prefix = 1;
+    bytes commitment = 2;
+}
+
+// SearchProof contains the output of a binary search through the log.
+message SearchProof {
+    uint64 pos = 1;
+    repeated ProofStep steps = 2;
+    repeated bytes inclusion = 3;
+}
+
+// UpdateValue wraps the new value for a key with an optional signature from the
+// service provider.
+message UpdateValue {
+    // optional bytes signature = 1; TODO
+    bytes value = 2;
+}
+
+// Consistency specifies the parameters of the consistency proof(s) that should
+// be returned.
+message Consistency {
+    uint64 last = 1;
+    optional uint64 distinguished = 2;
+}
+
+// SearchRequest comes from a user that wishes to lookup a key.
+message SearchRequest {
+    string search_key = 1;
+    optional uint32 version = 2;
+    optional Consistency consistency = 3;
+}
+
+// SearchResponse is the output of executing a search on the tree.
+message SearchResponse {
+    FullTreeHead tree_head = 1;
+    bytes vrf_proof = 2;
+    SearchProof search = 3;
+
+    bytes opening = 4;
+    UpdateValue value = 5;
+}
+
+// UpdateRequest comes from a user that wishes to update a key.
+message UpdateRequest {
+    string search_key = 1;
+    bytes value = 2;
+    optional Consistency consistency = 3;
+}
+
+// UpdateResponse is the output of executing an update on the tree.
+message UpdateResponse {
+    FullTreeHead tree_head = 1;
+    bytes vrf_proof = 2;
+    SearchProof search = 3;
+
+    bytes opening = 4;
+    // optional bytes signature = 5; TODO
+}
+
+// MonitorKey is a single key that the user would like to monitor.
+message MonitorKey {
+    string search_key = 1;
+    repeated uint64 entries = 2;
+}
+
+// MonitorRequest comes from a user that wishes to monitor a set of keys.
+message MonitorRequest {
+    repeated MonitorKey owned_keys = 1;
+    repeated MonitorKey contact_keys = 2;
+    optional Consistency consistency = 3;
+}
+
+// MonitorProof proves that a single key has been correctly managed in the log.
+message MonitorProof {
+    repeated ProofStep steps = 1;
+}
+
+// MonitorResponse is the output of a monitoring operation.
+message MonitorResponse {
+    FullTreeHead tree_head = 1;
+    repeated MonitorProof owned_proofs = 2;
+    repeated MonitorProof contact_proofs = 3;
+    repeated bytes inclusion = 4;
+}
+
+// StoredTreeHead is an encoded tree head stored on-disk.
+message StoredTreeHead {
+    TreeHead tree_head = 1;
+    bytes root = 2;
+}
+
+// StoredMonitoringData is encoded monitoring data stored on-disk.
+message StoredMonitoringData {
+    bytes index = 1;
+    uint64 pos = 2;
+    map<uint64, uint32> ptrs = 3;
+    bool owned = 4;
+}

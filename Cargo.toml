@@ -4,6 +4,7 @@ members = [
     "rust/attest",
     "rust/crypto",
     "rust/device-transfer",
+    "rust/keytrans",
     "rust/media",
     "rust/message-backup",
     "rust/net",
