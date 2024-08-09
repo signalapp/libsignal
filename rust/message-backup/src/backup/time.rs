@@ -6,10 +6,10 @@
 use std::ops::Add;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, serde::Serialize)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Timestamp(SystemTime);
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, serde::Serialize)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Duration(std::time::Duration);
 
 impl Timestamp {
@@ -34,12 +34,39 @@ impl Timestamp {
     }
 }
 
+impl serde::Serialize for Timestamp {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let offset = self
+            .0
+            .duration_since(UNIX_EPOCH)
+            .expect("should not be possible to construct a Timestamp older than UNIX_EPOCH");
+        serde::Serialize::serialize(&Duration(offset), serializer)
+    }
+}
+
 impl Duration {
     pub(super) const ZERO: Self = Self(std::time::Duration::ZERO);
     pub(super) const TWELVE_HOURS: Self = Self(std::time::Duration::from_secs(60 * 60 * 12));
 
     pub(super) const fn from_millis(millis: u64) -> Self {
         Self(std::time::Duration::from_millis(millis))
+    }
+}
+
+impl serde::Serialize for Duration {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        assert!(
+            self.0.as_millis() * 1_000_000 == self.0.as_nanos(),
+            "should not be possible to construct a Duration with sub-millisecond precision ({:?})",
+            self.0
+        );
+        self.0.as_millis().serialize(serializer)
     }
 }
 

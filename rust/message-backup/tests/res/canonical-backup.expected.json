@@ -31,10 +31,7 @@
       "story_view_receipts_enabled": true,
       "has_seen_group_story_education_sheet": true,
       "has_completed_username_onboarding": true,
-      "universal_expire_timer": {
-        "secs": 3600,
-        "nanos": 0
-      },
+      "universal_expire_timer": 3600000,
       "preferred_reaction_emoji": [
         "🏎️"
       ],
