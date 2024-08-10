@@ -70,7 +70,7 @@ pub struct BubbleColorPreset {
 }
 
 #[derive(Copy, Clone, Debug, Eq, Hash, PartialEq, serde::Serialize)]
-pub struct CustomColorId(pub(crate) u32);
+pub struct CustomColorId(pub(crate) u64);
 
 #[derive(Debug, serde::Serialize)]
 #[cfg_attr(test, derive(PartialEq))]
@@ -115,9 +115,9 @@ pub enum ChatStyleError {
     /// bubble gradient position is invalid: {0}
     InvalidBubbleGradientPosition(f32),
     /// referenced unknown custom color ID {0:?}
-    UnknownCustomColorId(u32),
+    UnknownCustomColorId(u64),
     /// duplicate custom color ID {0}
-    DuplicateCustomChatColorId(u32),
+    DuplicateCustomChatColorId(u64),
 }
 
 impl<M: ReferencedTypes> TryFrom<Vec<proto::chat_style::CustomChatColor>> for CustomColorMap<M> {

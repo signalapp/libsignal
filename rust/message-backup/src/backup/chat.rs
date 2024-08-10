@@ -260,20 +260,25 @@ pub struct OutgoingSend {
     pub recipient: RecipientId,
     pub status: DeliveryStatus,
     pub last_status_update: Timestamp,
-    pub network_failure: bool,
-    pub identity_key_mismatch: bool,
-    pub sealed_sender: bool,
+}
+
+#[derive(Debug, serde::Serialize)]
+#[cfg_attr(test, derive(PartialEq))]
+pub enum DeliveryFailureReason {
+    Unknown,
+    Network,
+    IdentityKeyMismatch,
 }
 
 #[derive(Debug, serde::Serialize)]
 #[cfg_attr(test, derive(PartialEq))]
 pub enum DeliveryStatus {
-    Failed,
+    Failed(DeliveryFailureReason),
     Pending,
-    Sent,
-    Delivered,
-    Read,
-    Viewed,
+    Sent { sealed_sender: bool },
+    Delivered { sealed_sender: bool },
+    Read { sealed_sender: bool },
+    Viewed { sealed_sender: bool },
     Skipped,
 }
 
@@ -282,8 +287,8 @@ pub enum DeliveryStatus {
 pub enum OutgoingSendError {
     /// send status has unknown recipient {0:?}
     UnknownRecipient(RecipientId),
-    /// send status is unknown
-    SendStatusUnknown,
+    /// send status is missing
+    SendStatusMissing,
 }
 
 impl std::fmt::Display for InvalidExpiration {
@@ -526,11 +531,8 @@ impl<R: Contains<RecipientId>> TryFromWith<proto::SendStatus, R> for OutgoingSen
     fn try_from_with(item: proto::SendStatus, context: &R) -> Result<Self, Self::Error> {
         let proto::SendStatus {
             recipientId,
+            timestamp,
             deliveryStatus,
-            lastStatusUpdateTimestamp,
-            networkFailure,
-            identityKeyMismatch,
-            sealedSender,
             special_fields: _,
         } = item;
 
@@ -540,30 +542,64 @@ impl<R: Contains<RecipientId>> TryFromWith<proto::SendStatus, R> for OutgoingSen
             return Err(OutgoingSendError::UnknownRecipient(recipient));
         }
 
-        use proto::send_status::Status;
-        let status = match deliveryStatus.enum_value_or_default() {
-            Status::UNKNOWN => return Err(OutgoingSendError::SendStatusUnknown),
-            Status::FAILED => DeliveryStatus::Failed,
-            Status::PENDING => DeliveryStatus::Pending,
-            Status::SENT => DeliveryStatus::Sent,
-            Status::DELIVERED => DeliveryStatus::Delivered,
-            Status::READ => DeliveryStatus::Read,
-            Status::VIEWED => DeliveryStatus::Viewed,
-            Status::SKIPPED => DeliveryStatus::Skipped,
+        let Some(status) = deliveryStatus else {
+            return Err(OutgoingSendError::SendStatusMissing);
         };
 
-        let last_status_update = Timestamp::from_millis(
-            lastStatusUpdateTimestamp,
-            "SendStatus.lastStatusUpdateTimestamp",
-        );
+        use proto::send_status;
+        let status = match status {
+            send_status::DeliveryStatus::Pending(send_status::Pending { special_fields: _ }) => {
+                DeliveryStatus::Pending
+            }
+            send_status::DeliveryStatus::Sent(send_status::Sent {
+                sealedSender,
+                special_fields: _,
+            }) => DeliveryStatus::Sent {
+                sealed_sender: sealedSender,
+            },
+            send_status::DeliveryStatus::Delivered(send_status::Delivered {
+                sealedSender,
+                special_fields: _,
+            }) => DeliveryStatus::Delivered {
+                sealed_sender: sealedSender,
+            },
+            send_status::DeliveryStatus::Read(send_status::Read {
+                sealedSender,
+                special_fields: _,
+            }) => DeliveryStatus::Read {
+                sealed_sender: sealedSender,
+            },
+            send_status::DeliveryStatus::Viewed(send_status::Viewed {
+                sealedSender,
+                special_fields: _,
+            }) => DeliveryStatus::Viewed {
+                sealed_sender: sealedSender,
+            },
+            send_status::DeliveryStatus::Skipped(send_status::Skipped { special_fields: _ }) => {
+                DeliveryStatus::Skipped
+            }
+            send_status::DeliveryStatus::Failed(send_status::Failed {
+                reason,
+                special_fields: _,
+            }) => {
+                // Note that we treat truly unknown enum values here as the default; that's already
+                // checked separately.
+                DeliveryStatus::Failed(match reason.enum_value_or_default() {
+                    send_status::failed::FailureReason::UNKNOWN => DeliveryFailureReason::Unknown,
+                    send_status::failed::FailureReason::NETWORK => DeliveryFailureReason::Network,
+                    send_status::failed::FailureReason::IDENTITY_KEY_MISMATCH => {
+                        DeliveryFailureReason::IdentityKeyMismatch
+                    }
+                })
+            }
+        };
+
+        let last_status_update = Timestamp::from_millis(timestamp, "SendStatus.timestamp");
 
         Ok(Self {
             recipient,
             status,
             last_status_update,
-            network_failure: networkFailure,
-            identity_key_mismatch: identityKeyMismatch,
-            sealed_sender: sealedSender,
         })
     }
 }
@@ -655,7 +691,7 @@ mod test {
 
     use assert_matches::assert_matches;
 
-    use protobuf::{EnumOrUnknown, SpecialFields};
+    use protobuf::SpecialFields;
     use test_case::test_case;
 
     use crate::backup::chat::testutil::TestContext;
@@ -727,7 +763,9 @@ mod test {
         fn test_data() -> Self {
             Self {
                 recipientId: proto::Recipient::TEST_ID,
-                deliveryStatus: proto::send_status::Status::PENDING.into(),
+                deliveryStatus: Some(proto::send_status::DeliveryStatus::Pending(
+                    proto::send_status::Pending::default(),
+                )),
                 ..Default::default()
             }
         }
@@ -816,7 +854,26 @@ mod test {
         message.directionalDetails = Some(
             proto::chat_item::OutgoingMessageDetails {
                 sendStatus: vec![proto::SendStatus {
-                    deliveryStatus: EnumOrUnknown::default(),
+                    deliveryStatus: None,
+                    ..proto::SendStatus::test_data()
+                }],
+                ..proto::chat_item::OutgoingMessageDetails::test_data()
+            }
+            .into(),
+        );
+    }
+    fn outgoing_send_status_failed(message: &mut proto::ChatItem) {
+        message.directionalDetails = Some(
+            proto::chat_item::OutgoingMessageDetails {
+                sendStatus: vec![proto::SendStatus {
+                    deliveryStatus: Some(proto::send_status::DeliveryStatus::Failed(
+                        proto::send_status::Failed {
+                            // Unlike many other UNKNOWN cases in Backup.proto, this one is
+                            // considered valid; the other cases are just being more specific.
+                            reason: proto::send_status::failed::FailureReason::UNKNOWN.into(),
+                            ..Default::default()
+                        },
+                    )),
                     ..proto::SendStatus::test_data()
                 }],
                 ..proto::chat_item::OutgoingMessageDetails::test_data()
@@ -845,8 +902,9 @@ mod test {
     #[test_case(outgoing_valid, Ok(()))]
     #[test_case(
         outgoing_send_status_unknown,
-        Err(ChatItemError::Outgoing(OutgoingSendError::SendStatusUnknown))
+        Err(ChatItemError::Outgoing(OutgoingSendError::SendStatusMissing))
     )]
+    #[test_case(outgoing_send_status_failed, Ok(()))]
     #[test_case(
         outgoing_unknown_recipient,
         Err(ChatItemError::Outgoing(OutgoingSendError::UnknownRecipient(RecipientId(0xffff))))

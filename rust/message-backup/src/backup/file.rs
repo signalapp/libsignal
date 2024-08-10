@@ -23,7 +23,7 @@ pub enum AttachmentLocator {
         key: Vec<u8>,
         digest: Vec<u8>,
         is_thumbnail: bool,
-        size: u64,
+        size: u32,
         transit_cdn_key: Option<String>,
         transit_cdn_number: Option<u32>,
     },
@@ -33,7 +33,7 @@ pub enum AttachmentLocator {
         upload_timestamp: Timestamp,
         key: Vec<u8>,
         digest: Vec<u8>,
-        size: u64,
+        size: u32,
     },
     #[cfg_attr(test, default)]
     Invalid,
@@ -137,7 +137,7 @@ impl TryFrom<proto::file_pointer::Locator> for AttachmentLocator {
                     upload_timestamp,
                     key,
                     digest,
-                    size: size.into(),
+                    size,
                 })
             }
             proto::file_pointer::Locator::InvalidAttachmentLocator(

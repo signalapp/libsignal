@@ -44,6 +44,9 @@ pub enum SimpleChatUpdate {
     UnsupportedProtocolMessage,
     ReleaseChannelDonationRequest,
     ReportedSpam,
+    Blocked,
+    Unblocked,
+    MessageRequestAccepted,
 }
 
 impl<C: Lookup<RecipientId, R>, R: Clone> TryFromWith<proto::ChatUpdateMessage, C>
@@ -85,6 +88,9 @@ impl<C: Lookup<RecipientId, R>, R: Clone> TryFromWith<proto::ChatUpdateMessage, 
                         SimpleChatUpdate::ReleaseChannelDonationRequest
                     }
                     Type::REPORTED_SPAM => SimpleChatUpdate::ReportedSpam,
+                    Type::BLOCKED => SimpleChatUpdate::Blocked,
+                    Type::UNBLOCKED => SimpleChatUpdate::Unblocked,
+                    Type::MESSAGE_REQUEST_ACCEPTED => SimpleChatUpdate::MessageRequestAccepted,
                 }
             }),
             Update::GroupChange(proto::GroupChangeChatUpdate {
