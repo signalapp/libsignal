@@ -11,7 +11,7 @@ use derive_where::derive_where;
 use itertools::Itertools as _;
 use libsignal_core::{Aci, Pni, ServiceIdKind};
 use uuid::Uuid;
-use zkgroup::{GroupMasterKeyBytes, ProfileKeyBytes};
+use zkgroup::ProfileKeyBytes;
 
 use crate::backup::call::{CallLink, CallLinkError};
 use crate::backup::frame::RecipientId;
@@ -21,6 +21,9 @@ use crate::backup::time::Timestamp;
 use crate::backup::{ReferencedTypes, TryFromWith, TryIntoWith};
 use crate::proto::backup as proto;
 use crate::proto::backup::recipient::Destination as RecipientDestination;
+
+mod group;
+use group::*;
 
 #[derive(Debug, thiserror::Error, displaydoc::Display)]
 #[cfg_attr(test, derive(PartialEq))]
@@ -147,18 +150,6 @@ pub struct ContactData {
     pub profile_given_name: Option<String>,
     pub profile_family_name: Option<String>,
     pub hide_story: bool,
-}
-
-#[derive(Debug, serde::Serialize)]
-#[cfg_attr(test, derive(PartialEq))]
-pub struct GroupData {
-    pub master_key: GroupMasterKeyBytes,
-    pub whitelisted: bool,
-    pub hide_story: bool,
-    #[serde(serialize_with = "serialize::enum_as_string")]
-    pub story_send_mode: proto::group::StorySendMode,
-    #[serde(serialize_with = "serialize::optional_proto_message_as_bytes")]
-    pub snapshot: Option<Box<proto::group::GroupSnapshot>>,
 }
 
 #[derive(Debug, serde::Serialize)]
@@ -386,41 +377,6 @@ impl TryFrom<proto::Contact> for ContactData {
     }
 }
 
-impl TryFrom<proto::Group> for GroupData {
-    type Error = RecipientError;
-    fn try_from(value: proto::Group) -> Result<Self, Self::Error> {
-        let proto::Group {
-            masterKey,
-            whitelisted,
-            hideStory,
-            storySendMode,
-            snapshot,
-            special_fields: _,
-        } = value;
-
-        let master_key = masterKey
-            .try_into()
-            .map_err(|_| RecipientError::InvalidMasterKey)?;
-
-        let story_send_mode = match storySendMode.enum_value_or_default() {
-            s @ (proto::group::StorySendMode::DEFAULT
-            | proto::group::StorySendMode::DISABLED
-            | proto::group::StorySendMode::ENABLED) => s,
-        };
-
-        // TODO consider additional group snapshot validation.
-        let snapshot = snapshot.0;
-
-        Ok(GroupData {
-            master_key,
-            whitelisted,
-            hide_story: hideStory,
-            story_send_mode,
-            snapshot,
-        })
-    }
-}
-
 impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R>>
     TryFromWith<proto::DistributionListItem, C> for DistributionListItem<R>
 {
@@ -518,6 +474,7 @@ mod test {
     use once_cell::sync::Lazy;
     use protobuf::EnumOrUnknown;
     use test_case::test_case;
+    use zkgroup::GroupMasterKeyBytes;
 
     use crate::backup::method::{Contains, Lookup, Store};
     use crate::backup::FullRecipientData;
