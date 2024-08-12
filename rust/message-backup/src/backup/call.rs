@@ -74,10 +74,10 @@ pub enum CallError {
 pub enum CallLinkError {
     /// call link restrictions is UNKNOWN
     UnknownRestrictions,
-    /// expected {CALL_LINK_ADMIN_KEY_LEN:?}-byte admin key, found {0} bytes
-    InvalidAdminKey(usize),
     /// expected {CALL_LINK_ROOT_KEY_LEN:?}-byte root key, found {0} bytes
     InvalidRootKey(usize),
+    /// admin key was present but empty
+    InvalidAdminKey,
 }
 
 #[derive(Debug, serde::Serialize)]
@@ -117,9 +117,6 @@ pub enum GroupCallState {
     OutgoingRing,
 }
 
-const CALL_LINK_ADMIN_KEY_LEN: usize = 32;
-type CallLinkAdminKey = [u8; CALL_LINK_ADMIN_KEY_LEN];
-
 const CALL_LINK_ROOT_KEY_LEN: usize = 16;
 type CallLinkRootKey = [u8; CALL_LINK_ROOT_KEY_LEN];
 
@@ -129,7 +126,7 @@ type CallLinkRootKey = [u8; CALL_LINK_ROOT_KEY_LEN];
 pub struct CallLink {
     pub admin_approval: bool,
     pub root_key: CallLinkRootKey,
-    pub admin_key: Option<CallLinkAdminKey>,
+    pub admin_key: Option<Vec<u8>>,
     pub expiration: Timestamp,
     pub name: String,
 }
@@ -320,12 +317,12 @@ impl TryFrom<proto::CallLink> for CallLink {
             .try_into()
             .map_err(|key: Vec<u8>| CallLinkError::InvalidRootKey(key.len()))?;
 
-        let admin_key = adminKey
-            .map(|key| {
-                key.try_into()
-                    .map_err(|key: Vec<u8>| CallLinkError::InvalidAdminKey(key.len()))
-            })
-            .transpose()?;
+        let admin_key = {
+            if adminKey.as_deref() == Some(&[]) {
+                return Err(CallLinkError::InvalidAdminKey);
+            }
+            adminKey
+        };
 
         let admin_approval = {
             use proto::call_link::Restrictions;
@@ -404,7 +401,7 @@ pub(crate) mod test {
     }
 
     const TEST_CALL_LINK_ROOT_KEY: CallLinkRootKey = [b'R'; 16];
-    const TEST_CALL_LINK_ADMIN_KEY: CallLinkAdminKey = [b'A'; 32];
+    const TEST_CALL_LINK_ADMIN_KEY: &[u8] = &[b'A'];
     impl proto::CallLink {
         fn test_data() -> Self {
             Self {
@@ -580,7 +577,7 @@ pub(crate) mod test {
             Ok(CallLink {
                 admin_approval: false,
                 root_key: TEST_CALL_LINK_ROOT_KEY,
-                admin_key: Some(TEST_CALL_LINK_ADMIN_KEY),
+                admin_key: Some(TEST_CALL_LINK_ADMIN_KEY.to_vec()),
                 expiration: Timestamp::test_value(),
                 name: "".to_string(),
             })
@@ -591,7 +588,7 @@ pub(crate) mod test {
         call.rootKey = vec![123];
     }
     fn invalid_admin_key(call: &mut proto::CallLink) {
-        call.adminKey = Some(vec![123])
+        call.adminKey = Some(vec![])
     }
     fn no_admin_key(call: &mut proto::CallLink) {
         call.adminKey = None;
@@ -601,7 +598,7 @@ pub(crate) mod test {
     }
 
     #[test_case(invalid_root_key, Err(CallLinkError::InvalidRootKey(1)))]
-    #[test_case(invalid_admin_key, Err(CallLinkError::InvalidAdminKey(1)))]
+    #[test_case(invalid_admin_key, Err(CallLinkError::InvalidAdminKey))]
     #[test_case(no_admin_key, Ok(()))]
     #[test_case(unknown_restrictions, Err(CallLinkError::UnknownRestrictions))]
     fn call_link(modifier: impl FnOnce(&mut proto::CallLink), expected: Result<(), CallLinkError>) {
