@@ -649,10 +649,9 @@ message Quote {
 
   optional uint64 targetSentTimestamp = 1; // null if the target message could not be found at time of quote insert
   uint64 authorId = 2;
-  optional string text = 3;
+  optional Text text = 3;
   repeated QuotedAttachment attachments = 4;
-  repeated BodyRange bodyRanges = 5;
-  Type type = 6;
+  Type type = 5;
 }
 
 message BodyRange {
@@ -729,6 +728,7 @@ message IndividualCall {
   Direction direction = 3;
   State state = 4;
   uint64 startedCallTimestamp = 5;
+  bool read = 6;
 }
 
 message GroupCall {
@@ -760,6 +760,7 @@ message GroupCall {
   uint64 startedCallTimestamp = 5;
   // The time the call ended. 0 indicates an unknown time.
   uint64 endedCallTimestamp = 6;
+  bool read = 7;
 }
 
 message SimpleChatUpdate {

@@ -30,6 +30,7 @@ pub struct IndividualCall {
     pub state: IndividualCallState,
     pub outgoing: bool,
     pub started_at: Timestamp,
+    pub read: bool,
 }
 
 /// Validated version of [`proto::GroupCall`].
@@ -41,6 +42,7 @@ pub struct GroupCall<Recipient> {
     pub started_call_recipient: Option<Recipient>,
     pub started_at: Timestamp,
     pub ended_at: Timestamp,
+    pub read: bool,
 }
 
 /// An identifier for a call.
@@ -141,6 +143,7 @@ impl TryFrom<proto::IndividualCall> for IndividualCall {
             state,
             direction,
             startedCallTimestamp,
+            read,
             special_fields: _,
         } = call;
 
@@ -184,6 +187,7 @@ impl TryFrom<proto::IndividualCall> for IndividualCall {
             state,
             started_at,
             outgoing,
+            read,
         })
     }
 }
@@ -201,6 +205,7 @@ impl<C: Contains<RecipientId> + Lookup<RecipientId, R>, R: Clone> TryFromWith<pr
             ringerRecipientId,
             startedCallRecipientId,
             endedCallTimestamp,
+            read,
             special_fields: _,
         } = call;
 
@@ -248,6 +253,7 @@ impl<C: Contains<RecipientId> + Lookup<RecipientId, R>, R: Clone> TryFromWith<pr
             started_call_recipient,
             started_at,
             ended_at,
+            read,
         })
     }
 }
@@ -365,6 +371,7 @@ pub(crate) mod test {
                 type_: proto::individual_call::Type::VIDEO_CALL.into(),
                 direction: proto::individual_call::Direction::OUTGOING.into(),
                 startedCallTimestamp: MillisecondsSinceEpoch::TEST_VALUE.0,
+                read: true,
                 ..Default::default()
             }
         }
@@ -378,6 +385,7 @@ pub(crate) mod test {
                 state: proto::group_call::State::ACCEPTED.into(),
                 startedCallTimestamp: MillisecondsSinceEpoch::TEST_VALUE.0,
                 endedCallTimestamp: MillisecondsSinceEpoch::TEST_VALUE.0 + 1000,
+                read: true,
                 ..Default::default()
             }
         }
@@ -458,6 +466,7 @@ pub(crate) mod test {
                 state: IndividualCallState::Accepted,
                 outgoing: true,
                 started_at: Timestamp::test_value(),
+                read: true,
             })
         );
     }

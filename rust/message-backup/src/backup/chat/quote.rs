@@ -48,8 +48,6 @@ pub enum QuoteError {
     AuthorNotFound(RecipientId),
     /// "type" is unknown
     TypeUnknown,
-    /// "text" is missing but "bodyRanges" is not empty
-    BodyRangesWithoutText,
     /// text error: {0}
     Text(#[from] TextError),
     /// attachment thumbnail: {0}
@@ -67,7 +65,6 @@ impl<R: Contains<RecipientId>> TryFromWith<proto::Quote, R> for Quote {
             type_,
             targetSentTimestamp,
             text,
-            bodyRanges,
             attachments,
             special_fields: _,
         } = item;
@@ -85,18 +82,7 @@ impl<R: Contains<RecipientId>> TryFromWith<proto::Quote, R> for Quote {
             proto::quote::Type::GIFTBADGE => QuoteType::GiftBadge,
         };
 
-        let text = match text {
-            None if !bodyRanges.is_empty() => return Err(QuoteError::BodyRangesWithoutText),
-            None => None,
-            Some(text) => Some(
-                proto::Text {
-                    body: text,
-                    bodyRanges,
-                    special_fields: Default::default(),
-                }
-                .try_into()?,
-            ),
-        };
+        let text = text.into_option().map(|text| text.try_into()).transpose()?;
 
         let attachments = attachments
             .into_iter()
@@ -205,19 +191,12 @@ mod test {
 
     impl proto::Quote {
         pub(crate) fn test_data() -> Self {
-            let proto::Text {
-                body,
-                bodyRanges,
-                special_fields: _,
-            } = proto::Text::test_data();
-
             Self {
                 authorId: proto::Recipient::TEST_ID,
                 type_: proto::quote::Type::NORMAL.into(),
                 targetSentTimestamp: Some(MillisecondsSinceEpoch::TEST_VALUE.0),
                 attachments: vec![proto::quote::QuotedAttachment::test_data()],
-                text: Some(body),
-                bodyRanges,
+                text: Some(proto::Text::test_data()).into(),
                 ..Default::default()
             }
         }
