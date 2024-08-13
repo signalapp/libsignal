@@ -2,6 +2,9 @@
 // Copyright 2024 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
+
+#![cfg_attr(not(test), warn(clippy::unwrap_used))]
+
 mod commitments;
 mod guide;
 mod implicit;

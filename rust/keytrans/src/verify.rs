@@ -302,7 +302,7 @@ fn verify_timestamp(
     } = allowed_range;
     let now = SystemTime::now()
         .duration_since(UNIX_EPOCH)
-        .unwrap()
+        .expect("valid system time")
         .as_millis() as i128;
     let delta = now - timestamp as i128;
     let format_message = |s: &str| match description {
@@ -447,10 +447,7 @@ async fn verify_search_internal(
     }
 
     // Evaluate the inclusion proof to get a candidate root value.
-    let mut ids: Vec<u64> = leaves.keys().cloned().collect();
-    ids.sort();
-
-    let values: Vec<[u8; 32]> = ids.iter().map(|id| *leaves.get(id).unwrap()).collect();
+    let (ids, values) = into_sorted_pairs(leaves);
 
     let inclusion_proof = get_hash_proof(&search_proof.inclusion)?;
     let root = evaluate_batch_proof(&ids, tree_size, &values, &inclusion_proof)?;
@@ -563,10 +560,7 @@ pub async fn verify_monitor(
             }
         }
     } else {
-        let mut ids: Vec<u64> = mpa.leaves.keys().cloned().collect();
-        ids.sort();
-
-        let values: Vec<[u8; 32]> = ids.iter().map(|id| *mpa.leaves.get(id).unwrap()).collect();
+        let (ids, values) = into_sorted_pairs(mpa.leaves);
 
         evaluate_batch_proof(&ids, tree_size, &values, &inclusion_proof)?
     };
@@ -829,7 +823,9 @@ impl MonitoringDataWrapper {
 
     async fn save(self, storage: &mut dyn LogStore, search_key: &str) -> Result<()> {
         if self.changed {
-            storage.set_data(search_key, self.inner.unwrap()).await?
+            if let Some(data) = self.inner {
+                storage.set_data(search_key, data).await?
+            }
         }
         Ok(())
     }
@@ -886,10 +882,7 @@ pub async fn truncate_search_response(
         result.expect("truncate_search_response called with search response that is not verified");
 
     // Evaluate the inclusion proof to get root value.
-    let mut ids: Vec<u64> = leaves.keys().cloned().collect();
-    ids.sort();
-
-    let values: Vec<[u8; 32]> = ids.iter().map(|id| *leaves.get(id).unwrap()).collect();
+    let (ids, values) = into_sorted_pairs(leaves);
 
     let inclusion_proof = get_hash_proof(&search_proof.inclusion)?;
 
@@ -900,6 +893,12 @@ pub async fn truncate_search_response(
     let root = truncate_batch_proof(early_stop, &ids, &values, &inclusion_proof)?;
 
     Ok((result_id + 1, root))
+}
+
+fn into_sorted_pairs<K: Ord + Copy, V>(map: HashMap<K, V>) -> (Vec<K>, Vec<V>) {
+    let mut pairs = map.into_iter().collect::<Vec<_>>();
+    pairs.sort_by_key(|pair| pair.0);
+    pairs.into_iter().unzip()
 }
 
 #[cfg(test)]

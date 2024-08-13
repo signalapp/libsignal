@@ -36,7 +36,7 @@ fn encode_to_curve_try_and_increment(salt: &[u8], data: &[u8]) -> EdwardsPoint {
         hasher.update([i, DOMAIN_SEPARATOR_BACK]);
 
         let r = hasher.finalize_reset();
-        match CompressedEdwardsY(r[..32].try_into().unwrap()).decompress() {
+        match CompressedEdwardsY(r[..32].try_into().expect("hash has enough bytes")).decompress() {
             Some(pt) => return pt.mul_by_cofactor(),
             None => i += 1,
         }
@@ -52,7 +52,7 @@ fn generate_challenge(pts: [&[u8; 32]; 5]) -> [u8; 16] {
     hasher.update([DOMAIN_SEPARATOR_BACK]);
     let c = hasher.finalize();
 
-    c[..16].try_into().unwrap()
+    c[..16].try_into().expect("hash has enough bytes")
 }
 
 fn proof_to_hash(gamma: &EdwardsPoint) -> [u8; 32] {
@@ -62,7 +62,7 @@ fn proof_to_hash(gamma: &EdwardsPoint) -> [u8; 32] {
     hasher.update([DOMAIN_SEPARATOR_BACK]);
     let index = hasher.finalize();
 
-    index[..32].try_into().unwrap()
+    index[..32].try_into().expect("hash has enough bytes")
 }
 
 /// PublicKey holds a VRF public key.
@@ -91,24 +91,20 @@ impl PublicKey {
     /// the index if so.
     pub fn proof_to_hash(&self, m: &[u8], proof: &[u8; 80]) -> Result<[u8; 32]> {
         // Decode proof into its component parts: gamma, c, and s.
-        let gamma = match CompressedEdwardsY(proof[..32].try_into().unwrap()).decompress() {
-            Some(pt) => pt,
-            None => return Err(Error::InvalidProof),
-        };
+        let gamma = CompressedEdwardsY(proof[..32].try_into().expect("proof has enough bytes"))
+            .decompress()
+            .ok_or(Error::InvalidProof)?;
 
         let mut c_bytes = [0u8; 32];
         c_bytes[..16].copy_from_slice(&proof[32..48]);
-        let c = Scalar::from_canonical_bytes(c_bytes);
-        if c.is_none().into() {
-            return Err(Error::InvalidProof);
-        }
-        let c = -(c.unwrap());
+        let c = -Scalar::from_canonical_bytes(c_bytes)
+            .into_option()
+            .ok_or(Error::InvalidProof)?;
 
-        let s = Scalar::from_canonical_bytes(proof[48..80].try_into().unwrap());
-        if s.is_none().into() {
-            return Err(Error::InvalidProof);
-        }
-        let s = s.unwrap();
+        let s =
+            Scalar::from_canonical_bytes(proof[48..80].try_into().expect("proof has enough bytes"))
+                .into_option()
+                .ok_or(Error::InvalidProof)?;
 
         // H = encode_to_curve_try_and_increment(pk, m)
         // U = [s]B - [c]Y
@@ -122,7 +118,7 @@ impl PublicKey {
         let c_prime = generate_challenge([
             &self.compressed,
             &h.compress().0,
-            proof[..32].try_into().unwrap(),
+            proof[..32].try_into().expect("proof has enough bytes"),
             &u.compress().0,
             &v.compress().0,
         ]);

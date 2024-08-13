@@ -19,7 +19,7 @@ pub fn commit(search_key: &[u8], data: &[u8], nonce: &[u8; 16]) -> Vec<u8> {
     // a serialized public key. Neither should reach 2^32 bound.
     let data_len: u32 = data.len().try_into().expect("data too large");
 
-    let mut mac = HmacSha256::new_from_slice(FIXED_KEY).unwrap();
+    let mut mac = HmacSha256::new_from_slice(FIXED_KEY).expect("can create hmac from fixed key");
     mac.update(nonce);
     mac.update(&key_len.to_be_bytes());
     mac.update(search_key);
