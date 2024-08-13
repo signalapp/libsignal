@@ -66,8 +66,9 @@ public class FilterExceptions {
   }
 
   private static AssertionError reportUnexpectedException(Exception e) {
-    Log.e("libsignal", "Unexpected checked exception " + e.getClass(), e);
-    return new AssertionError(e);
+    String message = "Unexpected checked exception " + e.getClass();
+    Log.e("libsignal", message, e);
+    return new AssertionError(message, e);
   }
 
   /**
