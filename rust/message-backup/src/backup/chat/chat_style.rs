@@ -495,53 +495,34 @@ mod test {
         assert_eq!(result, Err(expected_err))
     }
 
-    fn no_wallpaper(proto: &mut proto::ChatStyle) {
-        proto.wallpaper = None;
-    }
-    fn no_bubble_color(proto: &mut proto::ChatStyle) {
-        proto.bubbleColor = None;
-    }
-    fn invalid_custom_color_id(proto: &mut proto::ChatStyle) {
-        proto.set_customColorId(333333333);
-    }
-    fn unknown_wallpaper_preset(proto: &mut proto::ChatStyle) {
-        proto.set_wallpaperPreset(proto::chat_style::WallpaperPreset::UNKNOWN_WALLPAPER_PRESET);
-    }
-    fn wallpaper_photo(proto: &mut proto::ChatStyle) {
-        proto.set_wallpaperPhoto(proto::FilePointer::test_data());
-    }
-    fn invalid_wallpaper_photo(proto: &mut proto::ChatStyle) {
-        proto.set_wallpaperPhoto(proto::FilePointer::default());
-    }
-    fn unknown_bubble_preset(proto: &mut proto::ChatStyle) {
-        proto.set_bubbleColorPreset(
-            proto::chat_style::BubbleColorPreset::UNKNOWN_BUBBLE_COLOR_PRESET,
-        );
-    }
-
-    #[test_case(no_wallpaper, Ok(()))]
-    #[test_case(no_bubble_color, Err(ChatStyleError::NoBubbleColor))]
+    #[test_case(|x| x.wallpaper = None => Ok(()); "no wallpaper")]
+    #[test_case(|x| x.bubbleColor = None => Err(ChatStyleError::NoBubbleColor); "no bubble color")]
     #[test_case(
-        invalid_custom_color_id,
-        Err(ChatStyleError::UnknownCustomColorId(333333333))
+        |x| x.set_customColorId(333333333) =>
+        Err(ChatStyleError::UnknownCustomColorId(333333333));
+        "invalid custom color id"
     )]
-    #[test_case(unknown_wallpaper_preset, Err(ChatStyleError::UnknownPresetWallpaper))]
-    #[test_case(wallpaper_photo, Ok(()))]
     #[test_case(
-        invalid_wallpaper_photo,
-        Err(ChatStyleError::WallpaperPhoto(FilePointerError::NoLocator))
+        |x| x.set_wallpaperPreset(proto::chat_style::WallpaperPreset::UNKNOWN_WALLPAPER_PRESET) =>
+        Err(ChatStyleError::UnknownPresetWallpaper);
+        "unknown wallpaper preset"
     )]
-    #[test_case(unknown_bubble_preset, Err(ChatStyleError::UnknownPresetBubbleColor))]
-    fn chat_style(
-        modifier: fn(&mut proto::ChatStyle),
-        expected_result: Result<(), ChatStyleError>,
-    ) {
+    #[test_case(|x| x.set_wallpaperPhoto(proto::FilePointer::test_data()) => Ok(()); "wallpaper photo")]
+    #[test_case(
+        |x| x.set_wallpaperPhoto(proto::FilePointer::default()) =>
+        Err(ChatStyleError::WallpaperPhoto(FilePointerError::NoLocator));
+        "invalid wallpaper photo"
+    )]
+    #[test_case(
+        |x| x.set_bubbleColorPreset(proto::chat_style::BubbleColorPreset::UNKNOWN_BUBBLE_COLOR_PRESET) =>
+        Err(ChatStyleError::UnknownPresetBubbleColor);
+        "unknown bubble preset"
+    )]
+    fn chat_style(modifier: fn(&mut proto::ChatStyle)) -> Result<(), ChatStyleError> {
         let mut proto = proto::ChatStyle::test_data();
         modifier(&mut proto);
-        let result = proto
+        proto
             .try_into_with(&TestContext::default())
-            .map(|_: ChatStyle<Store>| ());
-
-        assert_eq!(result, expected_result)
+            .map(|_: ChatStyle<Store>| ())
     }
 }

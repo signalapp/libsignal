@@ -51,9 +51,7 @@ impl<R: Contains<RecipientId>> TryFromWith<proto::StickerMessage, R> for Sticker
 mod test {
     use test_case::test_case;
 
-    use crate::backup::chat::testutil::{
-        invalid_reaction, no_reactions, ProtoHasField, TestContext,
-    };
+    use crate::backup::chat::testutil::TestContext;
     use crate::backup::chat::ReactionError;
 
     use super::*;
@@ -68,27 +66,14 @@ mod test {
         }
     }
 
-    impl ProtoHasField<Vec<proto::Reaction>> for proto::StickerMessage {
-        fn get_field_mut(&mut self) -> &mut Vec<proto::Reaction> {
-            &mut self.reactions
-        }
-    }
-
-    #[test_case(no_reactions, Ok(()))]
-    #[test_case(
-        invalid_reaction,
-        Err(ChatItemError::Reaction(ReactionError::EmptyEmoji))
-    )]
-    fn sticker_message(
-        modifier: fn(&mut proto::StickerMessage),
-        expected: Result<(), ChatItemError>,
-    ) {
+    #[test_case(|x| x.reactions.clear() => Ok(()); "no reactions")]
+    #[test_case(|x| x.reactions.push(Default::default()) => Err(ChatItemError::Reaction(ReactionError::EmptyEmoji)); "invalid reaction")]
+    fn sticker_message(modifier: fn(&mut proto::StickerMessage)) -> Result<(), ChatItemError> {
         let mut message = proto::StickerMessage::test_data();
         modifier(&mut message);
 
-        let result = message
+        message
             .try_into_with(&TestContext::default())
-            .map(|_: StickerMessage| ());
-        assert_eq!(result, expected);
+            .map(|_: StickerMessage| ())
     }
 }

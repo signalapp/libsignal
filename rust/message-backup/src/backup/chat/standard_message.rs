@@ -82,9 +82,7 @@ impl<R: Contains<RecipientId>> TryFromWith<proto::StandardMessage, R> for Standa
 
 #[cfg(test)]
 mod test {
-    use protobuf::MessageField;
-
-    use crate::backup::chat::testutil::{ProtoHasField, TestContext};
+    use crate::backup::chat::testutil::TestContext;
     use crate::backup::time::{Duration, Timestamp};
 
     use super::*;
@@ -123,24 +121,6 @@ mod test {
                 link_previews: vec![],
                 _limit_construction_to_module: (),
             }
-        }
-    }
-
-    impl ProtoHasField<Vec<proto::Reaction>> for proto::StandardMessage {
-        fn get_field_mut(&mut self) -> &mut Vec<proto::Reaction> {
-            &mut self.reactions
-        }
-    }
-
-    impl ProtoHasField<MessageField<proto::Quote>> for proto::StandardMessage {
-        fn get_field_mut(&mut self) -> &mut MessageField<proto::Quote> {
-            &mut self.quote
-        }
-    }
-
-    impl ProtoHasField<Vec<proto::MessageAttachment>> for proto::StandardMessage {
-        fn get_field_mut(&mut self) -> &mut Vec<proto::MessageAttachment> {
-            &mut self.attachments
         }
     }
 

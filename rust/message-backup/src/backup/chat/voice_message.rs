@@ -91,9 +91,7 @@ impl<R: Contains<RecipientId>> TryFromWith<proto::StandardMessage, R> for VoiceM
 mod test {
     use test_case::test_case;
 
-    use crate::backup::chat::testutil::{
-        extra_attachment, invalid_reaction, no_attachments, no_quote, no_reactions, TestContext,
-    };
+    use crate::backup::chat::testutil::TestContext;
 
     use super::*;
 
@@ -111,24 +109,17 @@ mod test {
         )
     }
 
-    #[test_case(no_reactions, Ok(()))]
-    #[test_case(
-        invalid_reaction,
-        Err(VoiceMessageError::Reaction(ReactionError::EmptyEmoji))
-    )]
-    #[test_case(no_quote, Ok(()))]
-    #[test_case(no_attachments, Err(VoiceMessageError::WrongAttachmentsCount(0)))]
-    #[test_case(extra_attachment, Err(VoiceMessageError::WrongAttachmentsCount(2)))]
-    fn voice_message(
-        modifier: fn(&mut proto::StandardMessage),
-        expected: Result<(), VoiceMessageError>,
-    ) {
+    #[test_case(|x| x.reactions.clear() => Ok(()); "no reactions")]
+    #[test_case(|x| x.reactions.push(proto::Reaction::default()) => Err(VoiceMessageError::Reaction(ReactionError::EmptyEmoji)); "invalid reaction")]
+    #[test_case(|x| x.quote = None.into() => Ok(()); "no quote")]
+    #[test_case(|x| x.attachments.clear() => Err(VoiceMessageError::WrongAttachmentsCount(0)); "no attachments")]
+    #[test_case(|x| x.attachments.push(proto::MessageAttachment::default()) => Err(VoiceMessageError::WrongAttachmentsCount(2)); "extra attachment")]
+    fn voice_message(modifier: fn(&mut proto::StandardMessage)) -> Result<(), VoiceMessageError> {
         let mut message = proto::StandardMessage::test_voice_message_data();
         modifier(&mut message);
 
-        let result = message
+        message
             .try_into_with(&TestContext::default())
-            .map(|_: VoiceMessage| ());
-        assert_eq!(result, expected);
+            .map(|_: VoiceMessage| ())
     }
 }

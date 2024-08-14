@@ -169,9 +169,7 @@ impl TryFrom<proto::ContactAttachment> for ContactAttachment {
 mod test {
     use test_case::test_case;
 
-    use crate::backup::chat::testutil::{
-        invalid_reaction, no_reactions, ProtoHasField, TestContext,
-    };
+    use crate::backup::chat::testutil::TestContext;
     use crate::backup::chat::ReactionError;
 
     use super::*;
@@ -191,12 +189,6 @@ mod test {
             Self {
                 ..Default::default()
             }
-        }
-    }
-
-    impl ProtoHasField<Vec<proto::Reaction>> for proto::ContactMessage {
-        fn get_field_mut(&mut self) -> &mut Vec<proto::Reaction> {
-            &mut self.reactions
         }
     }
 
@@ -226,36 +218,26 @@ mod test {
         )
     }
 
-    fn with_avatar(message: &mut proto::ContactMessage) {
-        message.contact[0].avatar = Some(proto::FilePointer::test_data()).into();
-    }
-
-    fn with_invalid_avatar(message: &mut proto::ContactMessage) {
-        message.contact[0].avatar = Some(proto::FilePointer::default()).into();
-    }
-
-    #[test_case(no_reactions, Ok(()))]
+    #[test_case(|x| x.reactions.clear() => Ok(()); "no reactions")]
     #[test_case(
-        invalid_reaction,
-        Err(ChatItemError::Reaction(ReactionError::EmptyEmoji))
+        |x| x.reactions.push(proto::Reaction::default()) =>
+        Err(ChatItemError::Reaction(ReactionError::EmptyEmoji));
+        "invalid reaction"
     )]
-    #[test_case(with_avatar, Ok(()))]
+    #[test_case(|x| x.contact[0].avatar = Some(proto::FilePointer::test_data()).into() => Ok(()); "with avatar")]
     #[test_case(
-        with_invalid_avatar,
+        |x| x.contact[0].avatar = Some(proto::FilePointer::default()).into() =>
         Err(ChatItemError::ContactAttachment(ContactAttachmentError::Avatar(
             FilePointerError::NoLocator
-        )))
+        )));
+        "with invalid avatar"
     )]
-    fn contact_message(
-        modifier: fn(&mut proto::ContactMessage),
-        expected: Result<(), ChatItemError>,
-    ) {
+    fn contact_message(modifier: fn(&mut proto::ContactMessage)) -> Result<(), ChatItemError> {
         let mut message = proto::ContactMessage::test_data();
         modifier(&mut message);
 
-        let result = message
+        message
             .try_into_with(&TestContext::default())
-            .map(|_: ContactMessage| ());
-        assert_eq!(result, expected);
+            .map(|_: ContactMessage| ())
     }
 }

@@ -490,93 +490,47 @@ mod test {
         );
     }
 
-    fn invalid_profile_key(target: &mut proto::AccountData) {
-        target.profileKey.clear();
-    }
-    fn invalid_username(target: &mut proto::AccountData) {
-        target.username = Some("invalid".to_string());
-    }
-    fn no_username(target: &mut proto::AccountData) {
-        target.username = None;
-        target.usernameLink = None.into();
-    }
-    fn no_username_link(target: &mut proto::AccountData) {
-        target.usernameLink = None.into();
-    }
-    fn username_link_unknown_color(target: &mut proto::AccountData) {
-        target.usernameLink.as_mut().unwrap().color = EnumOrUnknown::default();
-    }
-    fn username_link_without_username(target: &mut proto::AccountData) {
-        target.username = None;
-        target.usernameLink = Some(target.usernameLink.take().unwrap()).into();
-    }
-    fn no_account_settings(target: &mut proto::AccountData) {
-        target.accountSettings = None.into();
-    }
-    fn invalid_subscriber_id(target: &mut proto::AccountData) {
-        target.backupsSubscriberData.as_mut().unwrap().subscriberId = vec![123];
-    }
-    fn empty_subscriber_id(target: &mut proto::AccountData) {
-        target.backupsSubscriberData.as_mut().unwrap().subscriberId = vec![];
-    }
-    fn empty_subscriber_currency(target: &mut proto::AccountData) {
-        target.backupsSubscriberData.as_mut().unwrap().currencyCode = "".to_owned();
-    }
-    fn no_subscriptions(target: &mut proto::AccountData) {
-        target.backupsSubscriberData = None.into();
-        target.donationSubscriberData = None.into();
-    }
-    fn account_data_default_style_invalid_custom_color(target: &mut proto::AccountData) {
-        target
-            .accountSettings
-            .as_mut()
-            .unwrap()
-            .customChatColors
-            .clear();
-    }
-
-    #[test_case(invalid_profile_key, Err(AccountDataError::InvalidProfileKey))]
+    #[test_case(|x| x.profileKey.clear() => Err(AccountDataError::InvalidProfileKey); "invalid_profile_key")]
     #[test_case(
-        invalid_username,
-        Err(AccountDataError::InvalidUsername(UsernameError::MissingSeparator))
+        |x| x.username = Some("invalid".to_string()) => Err(AccountDataError::InvalidUsername(UsernameError::MissingSeparator));
+        "invalid username"
     )]
-    #[test_case(no_username, Ok(()))]
-    #[test_case(no_username_link, Ok(()))]
-    #[test_case(username_link_unknown_color, Ok(()))]
-    #[test_case(
-        username_link_without_username,
-        Err(AccountDataError::UsernameLinkWithoutUsername)
+    #[test_case(|x| {
+            x.username = None;
+            x.usernameLink = None.into();
+        } => Ok(()); "no username")]
+    #[test_case(|x| x.usernameLink = None.into() => Ok(()); "no username link")]
+    #[test_case(|x| x.usernameLink.as_mut().unwrap().color = EnumOrUnknown::default() => Ok(()); "username_link_unknown_color")]
+    #[test_case( |x| {
+            x.username = None;
+            x.usernameLink = Some(x.usernameLink.take().unwrap()).into();
+        } => Err(AccountDataError::UsernameLinkWithoutUsername);
+        "username_link_without_username"
     )]
-    #[test_case(no_account_settings, Err(AccountDataError::MissingSettings))]
-    #[test_case(
-        invalid_subscriber_id,
-        Err(AccountDataError::BackupSubscription(SubscriptionError::InvalidSubscriberId(1)))
+    #[test_case(|x| x.accountSettings = None.into() => Err(AccountDataError::MissingSettings); "no_account_settings")]
+    #[test_case(|x| x.backupsSubscriberData.as_mut().unwrap().subscriberId = vec![123] =>
+        Err(AccountDataError::BackupSubscription(SubscriptionError::InvalidSubscriberId(1)));
+        "invalid_subscriber_id")]
+    #[test_case(|x| x.backupsSubscriberData.as_mut().unwrap().subscriberId = vec![] =>
+        Err(AccountDataError::BackupSubscription(SubscriptionError::InvalidSubscriberId(0)));
+        "empty_subscriber_id")]
+    #[test_case(|x| x.backupsSubscriberData.as_mut().unwrap().currencyCode = "".to_owned() =>
+        Err(AccountDataError::BackupSubscription(SubscriptionError::EmptyCurrency));
+        "empty_subscriber_currency")]
+    #[test_case(|x| {
+            x.backupsSubscriberData = None.into();
+            x.donationSubscriberData = None.into();
+        } => Ok(()); "no_subscriptions"
     )]
     #[test_case(
-        empty_subscriber_id,
-        Err(AccountDataError::BackupSubscription(SubscriptionError::InvalidSubscriberId(0)))
+        |x| x.accountSettings.as_mut().unwrap().customChatColors.clear() =>
+        Err(AccountDataError::ChatStyle(ChatStyleError::UnknownCustomColorId(FAKE_CUSTOM_COLOR_ID.0)));
+        "account_data_default_style_invalid_custom_color"
     )]
-    #[test_case(
-        empty_subscriber_currency,
-        Err(AccountDataError::BackupSubscription(SubscriptionError::EmptyCurrency))
-    )]
-    #[test_case(no_subscriptions, Ok(()))]
-    #[test_case(
-        account_data_default_style_invalid_custom_color,
-        Err(AccountDataError::ChatStyle(ChatStyleError::UnknownCustomColorId(
-            FAKE_CUSTOM_COLOR_ID.0
-        )))
-    )]
-    fn with(
-        modifier: impl FnOnce(&mut proto::AccountData),
-        expected: Result<(), AccountDataError>,
-    ) {
+    fn with(modifier: fn(&mut proto::AccountData)) -> Result<(), AccountDataError> {
         let mut data = proto::AccountData::test_data();
         modifier(&mut data);
 
-        assert_eq!(
-            AccountData::<ValidateOnly>::try_from(data).map(|_| ()),
-            expected
-        )
+        AccountData::<ValidateOnly>::try_from(data).map(|_| ())
     }
 }

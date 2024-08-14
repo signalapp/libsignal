@@ -789,31 +789,18 @@ mod test {
         );
     }
 
-    fn duplicate_pinned_order(message: &mut proto::Chat) {
-        message.pinnedOrder = TestContext::DUPLICATE_PINNED_ORDER.0.get();
-    }
-
-    fn with_expiration_timer(chat: &mut proto::Chat) {
-        chat.expirationTimerMs = 123456;
-    }
-    fn with_mute_until(chat: &mut proto::Chat) {
-        chat.muteUntilMs = MillisecondsSinceEpoch::TEST_VALUE.0;
-    }
-
-    #[test_case(with_expiration_timer, Ok(()))]
-    #[test_case(with_mute_until, Ok(()))]
+    #[test_case(|x| x.expirationTimerMs = 123456 => Ok(()); "with_expiration_timer")]
+    #[test_case(|x| x.muteUntilMs = MillisecondsSinceEpoch::TEST_VALUE.0 => Ok(()); "with mute until")]
     #[test_case(
-        duplicate_pinned_order,
-        Err(ChatError::DuplicatePinnedOrder(TestContext::DUPLICATE_PINNED_ORDER,))
+        |x| x.pinnedOrder = TestContext::DUPLICATE_PINNED_ORDER.0.get() =>
+        Err(ChatError::DuplicatePinnedOrder(TestContext::DUPLICATE_PINNED_ORDER,));
+        "duplicate_pinned_order"
     )]
-    fn chat(modifier: fn(&mut proto::Chat), expected: Result<(), ChatError>) {
+    fn chat(modifier: fn(&mut proto::Chat)) -> Result<(), ChatError> {
         let mut chat = proto::Chat::test_data();
         modifier(&mut chat);
-        assert_eq!(
-            chat.try_into_with(&TestContext::default())
-                .map(|_: ChatData::<Store>| ()),
-            expected
-        );
+        chat.try_into_with(&TestContext::default())
+            .map(|_: ChatData<Store>| ())
     }
 
     #[test]
@@ -840,18 +827,10 @@ mod test {
         )
     }
 
-    fn unknown_author(message: &mut proto::ChatItem) {
-        message.authorId = 0xffff;
-    }
-    fn no_direction(message: &mut proto::ChatItem) {
-        message.directionalDetails = None;
-    }
-    fn outgoing_valid(message: &mut proto::ChatItem) {
-        message.directionalDetails =
-            Some(proto::chat_item::OutgoingMessageDetails::test_data().into());
-    }
-    fn outgoing_send_status_unknown(message: &mut proto::ChatItem) {
-        message.directionalDetails = Some(
+    #[test_case(|x| x.authorId = 0xffff => Err(ChatItemError::AuthorNotFound(RecipientId(0xffff))); "unknown_author")]
+    #[test_case(|x| x.directionalDetails = None => Err(ChatItemError::NoDirection); "no_direction")]
+    #[test_case(|x| x.directionalDetails = Some(proto::chat_item::OutgoingMessageDetails::test_data().into()) => Ok(()); "outgoing_valid")]
+    #[test_case(|x| x.directionalDetails = Some(
             proto::chat_item::OutgoingMessageDetails {
                 sendStatus: vec![proto::SendStatus {
                     deliveryStatus: None,
@@ -860,10 +839,9 @@ mod test {
                 ..proto::chat_item::OutgoingMessageDetails::test_data()
             }
             .into(),
-        );
-    }
-    fn outgoing_send_status_failed(message: &mut proto::ChatItem) {
-        message.directionalDetails = Some(
+        ) => Err(ChatItemError::Outgoing(OutgoingSendError::SendStatusMissing)); "outgoing_send_status_unknown"
+    )]
+    #[test_case(|x| x.directionalDetails = Some(
             proto::chat_item::OutgoingMessageDetails {
                 sendStatus: vec![proto::SendStatus {
                     deliveryStatus: Some(proto::send_status::DeliveryStatus::Failed(
@@ -878,11 +856,10 @@ mod test {
                 }],
                 ..proto::chat_item::OutgoingMessageDetails::test_data()
             }
-            .into(),
-        );
-    }
-    fn outgoing_unknown_recipient(message: &mut proto::ChatItem) {
-        message.directionalDetails = Some(
+            .into()
+        ) => Ok(()); "outgoing send status failed")]
+    #[test_case(
+        |x| x.directionalDetails = Some(
             proto::chat_item::OutgoingMessageDetails {
                 sendStatus: vec![proto::SendStatus {
                     recipientId: 0xffff,
@@ -891,32 +868,15 @@ mod test {
                 ..proto::chat_item::OutgoingMessageDetails::test_data()
             }
             .into(),
-        );
-    }
-
-    #[test_case(
-        unknown_author,
-        Err(ChatItemError::AuthorNotFound(RecipientId(0xffff)))
+        ) => Err(ChatItemError::Outgoing(OutgoingSendError::UnknownRecipient(RecipientId(0xffff)))); "outgoing_unknown_recipient"
     )]
-    #[test_case(no_direction, Err(ChatItemError::NoDirection))]
-    #[test_case(outgoing_valid, Ok(()))]
-    #[test_case(
-        outgoing_send_status_unknown,
-        Err(ChatItemError::Outgoing(OutgoingSendError::SendStatusMissing))
-    )]
-    #[test_case(outgoing_send_status_failed, Ok(()))]
-    #[test_case(
-        outgoing_unknown_recipient,
-        Err(ChatItemError::Outgoing(OutgoingSendError::UnknownRecipient(RecipientId(0xffff))))
-    )]
-    fn chat_item(modifier: fn(&mut proto::ChatItem), expected: Result<(), ChatItemError>) {
+    fn chat_item(modifier: fn(&mut proto::ChatItem)) -> Result<(), ChatItemError> {
         let mut message = proto::ChatItem::test_data();
         modifier(&mut message);
 
-        let result = message
+        message
             .try_into_with(&TestContext::default())
-            .map(|_: ChatItemData<Store>| ());
-        assert_eq!(result, expected);
+            .map(|_: ChatItemData<Store>| ())
     }
 
     #[test]
@@ -927,24 +887,18 @@ mod test {
         )
     }
 
-    fn invalid_author_id(input: &mut proto::Reaction) {
-        input.authorId = proto::Recipient::TEST_ID + 2;
-    }
-
-    fn no_received_timestamp(input: &mut proto::Reaction) {
-        input.receivedTimestamp = None;
-    }
-
-    #[test_case(invalid_author_id, Err(ReactionError::AuthorNotFound(RecipientId(proto::Recipient::TEST_ID + 2))))]
-    #[test_case(no_received_timestamp, Ok(()))]
-    fn reaction(modifier: fn(&mut proto::Reaction), expected: Result<(), ReactionError>) {
+    #[test_case(
+        |x| x.authorId = proto::Recipient::TEST_ID + 2 => Err(ReactionError::AuthorNotFound(RecipientId(proto::Recipient::TEST_ID + 2)));
+        "invalid_author_id"
+    )]
+    #[test_case(|x| x.receivedTimestamp = None => Ok(()); "no_received_timestamp")]
+    fn reaction(modifier: fn(&mut proto::Reaction)) -> Result<(), ReactionError> {
         let mut reaction = proto::Reaction::test_data();
         modifier(&mut reaction);
 
-        let result = reaction
+        reaction
             .try_into_with(&TestContext::default())
-            .map(|_: Reaction| ());
-        assert_eq!(result, expected);
+            .map(|_: Reaction| ())
     }
 
     #[test_case(Purpose::DeviceTransfer, 3600, Ok(()))]

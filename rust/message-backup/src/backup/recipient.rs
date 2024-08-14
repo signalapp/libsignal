@@ -672,54 +672,6 @@ mod test {
         )
     }
 
-    fn no_aci(input: &mut proto::Contact) {
-        input.aci = None;
-    }
-    fn no_pni(input: &mut proto::Contact) {
-        input.pni = None;
-    }
-    fn no_aci_or_pni(input: &mut proto::Contact) {
-        no_aci(input);
-        no_pni(input);
-    }
-    fn no_profile_key(input: &mut proto::Contact) {
-        input.profileKey = None;
-    }
-    fn invalid_aci(input: &mut proto::Contact) {
-        input.aci = Some(Vec::from_iter(
-            proto::Contact::TEST_ACI.into_iter().chain([0xaa]),
-        ));
-    }
-    fn invalid_pni(input: &mut proto::Contact) {
-        input.pni = Some(Vec::from_iter(
-            proto::Contact::TEST_PNI.into_iter().chain([0xaa]),
-        ));
-    }
-    fn invalid_profile_key(input: &mut proto::Contact) {
-        input.profileKey = Some(Vec::from_iter(
-            proto::Contact::TEST_PROFILE_KEY.into_iter().chain([0xaa]),
-        ));
-    }
-    fn registration_unknown(input: &mut proto::Contact) {
-        input.registration = None;
-    }
-    fn profile_no_names(input: &mut proto::Contact) {
-        input.profileGivenName = None;
-        input.profileFamilyName = None;
-    }
-    fn visibility_hidden(input: &mut proto::Contact) {
-        input.visibility = proto::contact::Visibility::HIDDEN.into();
-    }
-    fn visibility_default(input: &mut proto::Contact) {
-        input.visibility = EnumOrUnknown::default();
-    }
-    fn with_e164(input: &mut proto::Contact) {
-        input.e164 = Some(16505550101);
-    }
-    fn with_invalid_e164(input: &mut proto::Contact) {
-        input.e164 = Some(0);
-    }
-
     #[test]
     fn valid_destination_contact() {
         let recipient = proto::Recipient {
@@ -733,23 +685,20 @@ mod test {
         )
     }
 
-    #[test_case(no_aci, Ok(()))]
-    #[test_case(no_pni, Ok(()))]
-    #[test_case(no_aci_or_pni, Ok(()))]
-    #[test_case(invalid_aci, Err(RecipientError::InvalidServiceId(ServiceIdKind::Aci)))]
-    #[test_case(invalid_pni, Err(RecipientError::InvalidServiceId(ServiceIdKind::Pni)))]
-    #[test_case(no_profile_key, Ok(()))]
-    #[test_case(invalid_profile_key, Err(RecipientError::InvalidProfileKey))]
-    #[test_case(registration_unknown, Err(RecipientError::ContactRegistrationUnknown))]
-    #[test_case(profile_no_names, Ok(()))]
-    #[test_case(visibility_hidden, Ok(()))]
-    #[test_case(visibility_default, Ok(()))]
-    #[test_case(with_e164, Ok(()))]
-    #[test_case(with_invalid_e164, Err(RecipientError::InvalidE164))]
-    fn destination_contact(
-        modifier: fn(&mut proto::Contact),
-        expected: Result<(), RecipientError>,
-    ) {
+    #[test_case(|x| x.aci = None => Ok(()); "no_aci")]
+    #[test_case(|x| x.pni = None => Ok(()); "no_pni")]
+    #[test_case(|x| {x.aci = None; x.pni = None} => Ok(()); "no_aci_or_pni")]
+    #[test_case(|x| x.aci.as_mut().unwrap().push(0xaa) => Err(RecipientError::InvalidServiceId(ServiceIdKind::Aci)); "invalid_aci")]
+    #[test_case(|x| x.pni.as_mut().unwrap().push(0xaa) => Err(RecipientError::InvalidServiceId(ServiceIdKind::Pni)); "invalid_pni")]
+    #[test_case(|x| x.profileKey = None => Ok(()); "no_profile_key")]
+    #[test_case(|x| x.profileKey.as_mut().unwrap().push(0xaa) => Err(RecipientError::InvalidProfileKey); "invalid_profile_key")]
+    #[test_case(|x| x.registration = None => Err(RecipientError::ContactRegistrationUnknown); "registration_unknown")]
+    #[test_case(|x| {x.profileGivenName = None; x.profileFamilyName = None} => Ok(()); "profile_no_names")]
+    #[test_case(|x| x.visibility = proto::contact::Visibility::HIDDEN.into() => Ok(()); "visibility_hidden")]
+    #[test_case(|x| x.visibility = EnumOrUnknown::default() => Ok(()); "visibility_default")]
+    #[test_case(|x| x.e164 = Some(16505550101) => Ok(()); "with_e164")]
+    #[test_case(|x| x.e164 = Some(0) => Err(RecipientError::InvalidE164); "with_invalid_e164")]
+    fn destination_contact(modifier: fn(&mut proto::Contact)) -> Result<(), RecipientError> {
         let mut contact = proto::Contact::test_data();
         modifier(&mut contact);
 
@@ -758,10 +707,7 @@ mod test {
             ..proto::Recipient::test_data()
         };
 
-        assert_eq!(
-            Destination::<Store>::try_from_with(recipient, &TestContext).map(|_| ()),
-            expected
-        );
+        Destination::<Store>::try_from_with(recipient, &TestContext).map(|_| ())
     }
 
     #[test]
@@ -783,16 +729,9 @@ mod test {
         );
     }
 
-    fn invalid_master_key(input: &mut proto::Group) {
-        input.masterKey = vec![];
-    }
-    fn default_story_send_mode(input: &mut proto::Group) {
-        input.storySendMode = Default::default();
-    }
-
-    #[test_case(invalid_master_key, Err(RecipientError::InvalidMasterKey))]
-    #[test_case(default_story_send_mode, Ok(()))]
-    fn destination_group(modifier: fn(&mut proto::Group), expected: Result<(), RecipientError>) {
+    #[test_case(|x| x.masterKey = vec![] => Err(RecipientError::InvalidMasterKey); "invalid master key")]
+    #[test_case(|x| x.storySendMode = Default::default() => Ok(()); "default story send mode")]
+    fn destination_group(modifier: fn(&mut proto::Group)) -> Result<(), RecipientError> {
         let mut group = proto::Group::test_data();
         modifier(&mut group);
 
@@ -801,10 +740,7 @@ mod test {
             ..proto::Recipient::test_data()
         };
 
-        assert_eq!(
-            Destination::<Store>::try_from_with(recipient, &TestContext).map(|_| ()),
-            expected
-        );
+        Destination::<Store>::try_from_with(recipient, &TestContext).map(|_| ())
     }
 
     #[test]
@@ -827,50 +763,33 @@ mod test {
 
     const UNKNOWN_RECIPIENT_ID: RecipientId = RecipientId(9999999999);
 
-    fn invalid_distribution_id(input: &mut proto::DistributionListItem) {
-        input.distributionId = vec![0x55; proto::DistributionListItem::TEST_UUID.len() * 2];
-    }
-    fn privacy_mode_unknown(input: &mut proto::DistributionListItem) {
-        input.mut_distributionList().privacyMode = EnumOrUnknown::default();
-    }
-    fn unknown_member(input: &mut proto::DistributionListItem) {
-        input.mut_distributionList().memberRecipientIds = vec![UNKNOWN_RECIPIENT_ID.0];
-    }
-    fn member_is_not_a_contact(input: &mut proto::DistributionListItem) {
-        input
-            .mut_distributionList()
-            .memberRecipientIds
-            .push(TestContext::SELF_ID.0);
-    }
-    fn privacy_mode_all_with_nonempty_members(input: &mut proto::DistributionListItem) {
-        input.mut_distributionList().privacyMode =
-            proto::distribution_list::PrivacyMode::ALL.into();
-    }
-
-    #[test_case(invalid_distribution_id, Err(RecipientError::InvalidDistributionId))]
     #[test_case(
-        privacy_mode_unknown,
-        Err(RecipientError::DistributionListPrivacyUnknown)
+        |x| x.distributionId = vec![0x55; proto::DistributionListItem::TEST_UUID.len() * 2] => Err(RecipientError::InvalidDistributionId);
+        "invalid_distribution_id"
     )]
     #[test_case(
-        unknown_member,
-        Err(RecipientError::DistributionListMemberUnknown(UNKNOWN_RECIPIENT_ID))
+        |x| x.mut_distributionList().privacyMode = EnumOrUnknown::default() =>
+        Err(RecipientError::DistributionListPrivacyUnknown);
+        "privacy_mode_unknown"
     )]
     #[test_case(
-        member_is_not_a_contact,
-        Err(RecipientError::DistributionListMemberWrongKind(
-            TestContext::SELF_ID,
-            DestinationKind::Self_
-        ))
+        |x| x.mut_distributionList().memberRecipientIds.push(UNKNOWN_RECIPIENT_ID.0) =>
+        Err(RecipientError::DistributionListMemberUnknown(UNKNOWN_RECIPIENT_ID));
+        "unknown_member"
     )]
     #[test_case(
-        privacy_mode_all_with_nonempty_members,
-        Err(RecipientError::DistributionListPrivacyAllWithNonemptyMembers)
+        |x| x.mut_distributionList().memberRecipientIds.push(TestContext::SELF_ID.0) =>
+        Err(RecipientError::DistributionListMemberWrongKind(TestContext::SELF_ID, DestinationKind::Self_));
+        "member_is_not_a_contact"
+    )]
+    #[test_case(
+        |x| x.mut_distributionList().privacyMode = proto::distribution_list::PrivacyMode::ALL.into() =>
+        Err(RecipientError::DistributionListPrivacyAllWithNonemptyMembers);
+        "privacy_mode_all_with_nonempty_members"
     )]
     fn destination_distribution_list(
         modifier: fn(&mut proto::DistributionListItem),
-        expected: Result<(), RecipientError>,
-    ) {
+    ) -> Result<(), RecipientError> {
         let mut distribution_list = proto::DistributionListItem::test_data();
         modifier(&mut distribution_list);
 
@@ -879,9 +798,6 @@ mod test {
             ..proto::Recipient::test_data()
         };
 
-        assert_eq!(
-            Destination::<Store>::try_from_with(recipient, &TestContext).map(|_| ()),
-            expected
-        );
+        Destination::<Store>::try_from_with(recipient, &TestContext).map(|_| ())
     }
 }

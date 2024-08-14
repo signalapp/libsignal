@@ -7,7 +7,6 @@ use std::sync::Arc;
 
 use nonzero_ext::nonzero;
 use once_cell::sync::Lazy;
-use protobuf::MessageField;
 
 use crate::backup::chat::chat_style::CustomColorId;
 use crate::backup::chat::PinOrder;
@@ -95,29 +94,3 @@ impl TestContext {
 }
 
 pub(super) const TEST_MESSAGE_TEXT: &str = "test message text";
-
-pub(super) trait ProtoHasField<T> {
-    fn get_field_mut(&mut self) -> &mut T;
-}
-
-pub(super) fn no_reactions(message: &mut impl ProtoHasField<Vec<proto::Reaction>>) {
-    message.get_field_mut().clear()
-}
-
-pub(super) fn invalid_reaction(message: &mut impl ProtoHasField<Vec<proto::Reaction>>) {
-    message.get_field_mut().push(proto::Reaction::default());
-}
-
-pub(super) fn no_quote(input: &mut impl ProtoHasField<MessageField<proto::Quote>>) {
-    *input.get_field_mut() = None.into();
-}
-
-pub(super) fn no_attachments(input: &mut impl ProtoHasField<Vec<proto::MessageAttachment>>) {
-    input.get_field_mut().clear();
-}
-
-pub(super) fn extra_attachment(input: &mut impl ProtoHasField<Vec<proto::MessageAttachment>>) {
-    input
-        .get_field_mut()
-        .push(proto::MessageAttachment::default());
-}

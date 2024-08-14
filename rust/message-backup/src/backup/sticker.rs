@@ -182,28 +182,13 @@ mod test {
         )
     }
 
-    trait StickerPackFields {
-        fn pack_key_mut(&mut self) -> &mut Vec<u8>;
-    }
-    impl StickerPackFields for proto::StickerPack {
-        fn pack_key_mut(&mut self) -> &mut Vec<u8> {
-            &mut self.packKey
-        }
-    }
-    impl StickerPackFields for proto::Sticker {
-        fn pack_key_mut(&mut self) -> &mut Vec<u8> {
-            &mut self.packKey
-        }
-    }
-
-    #[test_case(invalid_key, Err(StickerPackError::InvalidKey))]
-    #[test_case(no_key, Err(StickerPackError::InvalidKey))]
-    fn sticker_pack(mutator: fn(&mut proto::StickerPack), expected: Result<(), StickerPackError>) {
+    #[test_case(|x| x.packKey = vec![0xaa; 45] => Err(StickerPackError::InvalidKey); "invalid key")]
+    #[test_case(|x| x.packKey = vec![] => Err(StickerPackError::InvalidKey); "no key")]
+    fn sticker_pack(mutator: fn(&mut proto::StickerPack)) -> Result<(), StickerPackError> {
         let mut sticker_pack = proto::StickerPack::test_data();
         mutator(&mut sticker_pack);
 
-        let result = sticker_pack.try_into().map(|_: StickerPack<Store>| ());
-        assert_eq!(result, expected);
+        sticker_pack.try_into().map(|_: StickerPack<Store>| ())
     }
 
     #[test]
@@ -221,46 +206,21 @@ mod test {
         );
     }
 
-    fn invalid_pack_id(input: &mut proto::Sticker) {
-        input.packId = vec![123; 3];
-    }
-    fn unknown_pack_id(input: &mut proto::Sticker) {
-        input.packId = vec![0xff; 16];
-    }
-    fn unknown_sticker_id(input: &mut proto::Sticker) {
-        input.stickerId = 555555;
-    }
-    fn invalid_key(pack: &mut impl StickerPackFields) {
-        *pack.pack_key_mut() = vec![0xaa; 45];
-    }
-    fn no_key(pack: &mut impl StickerPackFields) {
-        *pack.pack_key_mut() = vec![];
-    }
-    fn no_data(input: &mut proto::Sticker) {
-        input.data = None.into();
-    }
-    fn invalid_data(input: &mut proto::Sticker) {
-        input.data = Some(proto::FilePointer::default()).into();
-    }
-
-    #[test_case(invalid_key, Err(MessageStickerError::InvalidPackKey))]
-    #[test_case(no_key, Err(MessageStickerError::InvalidPackKey))]
-    #[test_case(invalid_pack_id, Err(MessageStickerError::InvalidPackId))]
-    #[test_case(unknown_sticker_id, Ok(()))]
-    #[test_case(unknown_pack_id, Ok(()))]
-    #[test_case(no_data, Err(MessageStickerError::MissingDataPointer))]
+    #[test_case(|x| x.packKey = vec![0xaa; 45] => Err(MessageStickerError::InvalidPackKey); "invalid key")]
+    #[test_case(|x| x.packKey = vec![] => Err(MessageStickerError::InvalidPackKey); "no key")]
+    #[test_case(|x| x.packId = vec![123; 3] => Err(MessageStickerError::InvalidPackId); "invalid pack ID")]
+    #[test_case(|x| x.stickerId = 555555 => Ok(()); "unknown sticker ID")]
+    #[test_case(|x| x.packId = vec![0xff; 16] => Ok(()); "unknown pack ID")]
+    #[test_case(|x| x.data = None.into() => Err(MessageStickerError::MissingDataPointer); "no data")]
     #[test_case(
-        invalid_data,
-        Err(MessageStickerError::DataPointer(FilePointerError::NoLocator))
+        |x| x.data = Some(proto::FilePointer::default()).into() =>
+        Err(MessageStickerError::DataPointer(FilePointerError::NoLocator));
+        "invalid data"
     )]
-    fn message_sticker(
-        mutator: fn(&mut proto::Sticker),
-        expected: Result<(), MessageStickerError>,
-    ) {
+    fn message_sticker(mutator: fn(&mut proto::Sticker)) -> Result<(), MessageStickerError> {
         let mut sticker = proto::Sticker::test_data();
         mutator(&mut sticker);
 
-        let result = sticker.try_into().map(|_: MessageSticker| ());
-        assert_eq!(result, expected);
+        sticker.try_into().map(|_: MessageSticker| ())
     }
 }

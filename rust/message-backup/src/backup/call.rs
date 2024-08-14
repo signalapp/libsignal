@@ -448,30 +448,6 @@ pub(crate) mod test {
         }
     }
 
-    trait InvalidCallType {
-        fn unknown_type(call: &mut Self);
-    }
-
-    trait InvalidCallState {
-        fn unknown_state(call: &mut Self);
-    }
-
-    impl InvalidCallType for proto::IndividualCall {
-        fn unknown_type(call: &mut Self) {
-            call.type_ = EnumOrUnknown::default();
-        }
-    }
-
-    impl InvalidCallState for proto::IndividualCall {
-        fn unknown_state(call: &mut Self) {
-            call.state = EnumOrUnknown::default();
-        }
-    }
-
-    fn unknown_direction(call: &mut proto::IndividualCall) {
-        call.direction = EnumOrUnknown::default();
-    }
-
     #[test]
     fn valid_individual_call() {
         assert_eq!(
@@ -486,58 +462,25 @@ pub(crate) mod test {
         );
     }
 
-    #[test_case(InvalidCallType::unknown_type, Err(CallError::UnknownType))]
-    #[test_case(InvalidCallState::unknown_state, Err(CallError::UnknownState))]
-    #[test_case(unknown_direction, Err(CallError::UnknownDirection))]
-    fn individual_call(
-        modifier: impl FnOnce(&mut proto::IndividualCall),
-        expected: Result<(), CallError>,
-    ) {
+    #[test_case(|x| x.type_ = EnumOrUnknown::default() => Err(CallError::UnknownType); "unknown type")]
+    #[test_case(|x| x.state = EnumOrUnknown::default() => Err(CallError::UnknownState); "unknown state")]
+    #[test_case(|x| x.direction = EnumOrUnknown::default() => Err(CallError::UnknownDirection); "unknown_direction")]
+    fn individual_call(modifier: fn(&mut proto::IndividualCall)) -> Result<(), CallError> {
         let mut call = proto::IndividualCall::test_data();
         modifier(&mut call);
-        assert_eq!(call.try_into().map(|_: IndividualCall| ()), expected);
+        call.try_into().map(|_: IndividualCall| ())
     }
 
-    fn no_ringer_id(call: &mut proto::GroupCall) {
-        call.ringerRecipientId = None;
-    }
-    fn wrong_wringer_id(call: &mut proto::GroupCall) {
-        call.ringerRecipientId = Some(NONEXISTENT_RECIPIENT.0);
-    }
-
-    impl InvalidCallState for proto::GroupCall {
-        fn unknown_state(call: &mut Self) {
-            call.state = EnumOrUnknown::default();
-        }
-    }
-
-    #[test_case(no_ringer_id, Ok(()))]
+    #[test_case(|x| x.ringerRecipientId = None => Ok(()); "no_ringer_id")]
     #[test_case(
-        wrong_wringer_id,
-        Err(CallError::NoRingerRecipient(RingerRecipientId(NONEXISTENT_RECIPIENT)))
+        |x| x.ringerRecipientId = Some(NONEXISTENT_RECIPIENT.0) => Err(CallError::NoRingerRecipient(RingerRecipientId(NONEXISTENT_RECIPIENT)));
+        "wrong_wringer_id"
     )]
-    #[test_case(InvalidCallState::unknown_state, Err(CallError::UnknownState))]
-    fn group_call(modifier: impl FnOnce(&mut proto::GroupCall), expected: Result<(), CallError>) {
+    #[test_case(|x| x.state = EnumOrUnknown::default() => Err(CallError::UnknownState); "unknown_state")]
+    fn group_call(modifier: fn(&mut proto::GroupCall)) -> Result<(), CallError> {
         let mut call = proto::GroupCall::test_data();
         modifier(&mut call);
-        assert_eq!(
-            call.try_into_with(&TestContext).map(|_: GroupCall<_>| ()),
-            expected
-        );
-    }
-
-    impl InvalidCallState for proto::AdHocCall {
-        fn unknown_state(call: &mut Self) {
-            call.state = EnumOrUnknown::default();
-        }
-    }
-
-    fn invalid_ad_hoc_recipient(call: &mut proto::AdHocCall) {
-        call.recipientId = NONEXISTENT_RECIPIENT.0;
-    }
-
-    fn ad_hoc_recipient_not_call(call: &mut proto::AdHocCall) {
-        call.recipientId = proto::Recipient::TEST_ID;
+        call.try_into_with(&TestContext).map(|_: GroupCall<_>| ())
     }
 
     #[test]
@@ -552,22 +495,19 @@ pub(crate) mod test {
         );
     }
 
-    #[test_case(InvalidCallState::unknown_state, Err(CallError::UnknownState))]
+    #[test_case(|x| x.state = EnumOrUnknown::default() => Err(CallError::UnknownState); "unknown state")]
     #[test_case(
-        invalid_ad_hoc_recipient,
-        Err(CallError::NoAdHocRecipient(NONEXISTENT_RECIPIENT))
+        |x| x.recipientId = NONEXISTENT_RECIPIENT.0 => Err(CallError::NoAdHocRecipient(NONEXISTENT_RECIPIENT));
+        "invalid_ad_hoc_recipient"
     )]
     #[test_case(
-        ad_hoc_recipient_not_call,
-        Err(CallError::InvalidAdHocRecipient(RecipientId(proto::Recipient::TEST_ID)))
+        |x| x.recipientId = proto::Recipient::TEST_ID => Err(CallError::InvalidAdHocRecipient(RecipientId(proto::Recipient::TEST_ID)));
+        "ad_hoc_recipient_not_call"
     )]
-    fn ad_hoc_call(modifier: impl FnOnce(&mut proto::AdHocCall), expected: Result<(), CallError>) {
+    fn ad_hoc_call(modifier: impl FnOnce(&mut proto::AdHocCall)) -> Result<(), CallError> {
         let mut call = proto::AdHocCall::test_data();
         modifier(&mut call);
-        assert_eq!(
-            call.try_into_with(&TestContext).map(|_: AdHocCall<_>| ()),
-            expected
-        );
+        call.try_into_with(&TestContext).map(|_: AdHocCall<_>| ())
     }
 
     #[test]
@@ -584,26 +524,13 @@ pub(crate) mod test {
         );
     }
 
-    fn invalid_root_key(call: &mut proto::CallLink) {
-        call.rootKey = vec![123];
-    }
-    fn invalid_admin_key(call: &mut proto::CallLink) {
-        call.adminKey = Some(vec![])
-    }
-    fn no_admin_key(call: &mut proto::CallLink) {
-        call.adminKey = None;
-    }
-    fn unknown_restrictions(call: &mut proto::CallLink) {
-        call.restrictions = EnumOrUnknown::default();
-    }
-
-    #[test_case(invalid_root_key, Err(CallLinkError::InvalidRootKey(1)))]
-    #[test_case(invalid_admin_key, Err(CallLinkError::InvalidAdminKey))]
-    #[test_case(no_admin_key, Ok(()))]
-    #[test_case(unknown_restrictions, Err(CallLinkError::UnknownRestrictions))]
-    fn call_link(modifier: impl FnOnce(&mut proto::CallLink), expected: Result<(), CallLinkError>) {
+    #[test_case(|x| x.rootKey = vec![123] => Err(CallLinkError::InvalidRootKey(1)); "invalid_root_key")]
+    #[test_case(|x| x.adminKey = Some(vec![]) => Err(CallLinkError::InvalidAdminKey); "invalid_admin_key")]
+    #[test_case(|x| x.adminKey = None => Ok(()); "no_admin_key")]
+    #[test_case(|x| x.restrictions = EnumOrUnknown::default() => Err(CallLinkError::UnknownRestrictions); "unknown_restrictions")]
+    fn call_link(modifier: fn(&mut proto::CallLink)) -> Result<(), CallLinkError> {
         let mut link = proto::CallLink::test_data();
         modifier(&mut link);
-        assert_eq!(link.try_into().map(|_: CallLink| ()), expected);
+        link.try_into().map(|_: CallLink| ())
     }
 }

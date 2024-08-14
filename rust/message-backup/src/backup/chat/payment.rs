@@ -297,33 +297,16 @@ mod test {
         );
     }
 
-    fn invalid_amount(notification: &mut proto::PaymentNotification) {
-        notification.amountMob = Some("abc".to_string());
-    }
-    fn invalid_fee(notification: &mut proto::PaymentNotification) {
-        notification.feeMob = Some("0.five".to_string());
-    }
-    fn no_amount(notification: &mut proto::PaymentNotification) {
-        notification.amountMob = None;
-    }
-    fn no_fee(notification: &mut proto::PaymentNotification) {
-        notification.feeMob = None;
-    }
-
-    #[test_case(invalid_amount, Err(PaymentError::InvalidAmount))]
-    #[test_case(invalid_fee, Err(PaymentError::InvalidFee))]
-    #[test_case(no_amount, Ok(()))]
-    #[test_case(no_fee, Ok(()))]
+    #[test_case(|x| x.amountMob = Some("abc".to_string()) => Err(PaymentError::InvalidAmount); "invalid amount")]
+    #[test_case(|x| x.feeMob = Some("0.five".to_string()) => Err(PaymentError::InvalidFee); "invalid fee")]
+    #[test_case(|x| x.amountMob = None => Ok(()); "no amount")]
+    #[test_case(|x| x.feeMob = None => Ok(()); "no fee")]
     fn payment_notification(
         modifier: fn(&mut proto::PaymentNotification),
-        expected: Result<(), PaymentError>,
-    ) {
+    ) -> Result<(), PaymentError> {
         let mut notification = proto::PaymentNotification::test_data();
         modifier(&mut notification);
-        assert_eq!(
-            notification.try_into().map(|_: PaymentNotification| ()),
-            expected
-        )
+        notification.try_into().map(|_: PaymentNotification| ())
     }
 
     impl proto::payment_notification::transaction_details::Transaction {
