@@ -12,7 +12,7 @@ use uuid::Uuid;
 use crate::backup::account_data::AccountData;
 use crate::backup::call::AdHocCall;
 use crate::backup::chat::text::{TextEffect, TextRange};
-use crate::backup::chat::ChatData;
+use crate::backup::chat::{ChatData, OutgoingSend};
 use crate::backup::frame::RecipientId;
 use crate::backup::method::Store;
 use crate::backup::recipient::{DistributionListItem, FullRecipientData};
@@ -239,6 +239,14 @@ impl SerializeOrder for TextRange {
                 discriminant(&self.effect).cmp(&discriminant(&other.effect))
             }
         }
+    }
+}
+
+impl SerializeOrder for OutgoingSend {
+    fn serialize_cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.recipient
+            .serialize_cmp(&other.recipient)
+            .then_with(|| self.last_status_update.cmp(&other.last_status_update))
     }
 }
 

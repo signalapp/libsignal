@@ -18,7 +18,7 @@ use crate::backup::chat::chat_style::{ChatStyle, ChatStyleError, CustomColorId};
 use crate::backup::file::{FilePointerError, MessageAttachmentError};
 use crate::backup::frame::RecipientId;
 use crate::backup::method::{Contains, Lookup, Method};
-use crate::backup::serialize::SerializeOrder;
+use crate::backup::serialize::{SerializeOrder, UnorderedList};
 use crate::backup::sticker::MessageStickerError;
 use crate::backup::time::{Duration, Timestamp};
 use crate::backup::{BackupMeta, CallError, ReferencedTypes, TryFromWith, TryIntoWith as _};
@@ -250,12 +250,12 @@ pub enum Direction {
         read: bool,
         sealed_sender: bool,
     },
-    Outgoing(Vec<OutgoingSend>),
+    Outgoing(UnorderedList<OutgoingSend>),
     Directionless,
 }
 
 #[derive(Debug, serde::Serialize)]
-#[cfg_attr(test, derive(PartialEq))]
+#[cfg_attr(test, derive(PartialEq, Clone))]
 pub struct OutgoingSend {
     pub recipient: RecipientId,
     pub status: DeliveryStatus,
@@ -263,7 +263,7 @@ pub struct OutgoingSend {
 }
 
 #[derive(Debug, serde::Serialize)]
-#[cfg_attr(test, derive(PartialEq))]
+#[cfg_attr(test, derive(PartialEq, Clone))]
 pub enum DeliveryFailureReason {
     Unknown,
     Network,
@@ -271,7 +271,7 @@ pub enum DeliveryFailureReason {
 }
 
 #[derive(Debug, serde::Serialize)]
-#[cfg_attr(test, derive(PartialEq))]
+#[cfg_attr(test, derive(PartialEq, Clone))]
 pub enum DeliveryStatus {
     Failed(DeliveryFailureReason),
     Pending,
@@ -958,6 +958,30 @@ mod test {
         assert_matches!(
             ChatItemData::<Store>::try_from_with(item, &TestContext::default()),
             Err(ChatItemError::ExpirationMismatch)
+        );
+    }
+
+    #[test]
+    fn outgoing_sends_are_sorted_when_serialized() {
+        let send1 = OutgoingSend {
+            recipient: RecipientId(1),
+            status: DeliveryStatus::Pending,
+            last_status_update: Timestamp::test_value(),
+        };
+        let send2 = OutgoingSend {
+            recipient: RecipientId(2),
+            status: DeliveryStatus::Sent {
+                sealed_sender: true,
+            },
+            last_status_update: Timestamp::test_value(),
+        };
+
+        let message1 = Direction::Outgoing(vec![send1.clone(), send2.clone()].into());
+        let message2 = Direction::Outgoing(vec![send2, send1].into());
+
+        assert_eq!(
+            serde_json::to_string_pretty(&message1).expect("valid"),
+            serde_json::to_string_pretty(&message2).expect("valid"),
         );
     }
 }
