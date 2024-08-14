@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::collections::BTreeMap;
 use std::fmt::Debug;
 
 use derive_where::derive_where;
@@ -69,7 +70,7 @@ pub struct BubbleColorPreset {
     enum_value: proto::chat_style::BubbleColorPreset,
 }
 
-#[derive(Copy, Clone, Debug, Eq, Hash, PartialEq, serde::Serialize)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize)]
 pub struct CustomColorId(pub(crate) u64);
 
 #[derive(Debug, serde::Serialize)]
@@ -88,9 +89,17 @@ pub enum CustomChatColor {
 ///
 /// Uses a `Vec` internally since the list is expected to be small.
 #[derive_where(Debug, Default)]
-#[derive(serde::Serialize)]
 #[cfg_attr(test, derive_where(PartialEq; M::CustomColorData: PartialEq))]
 pub struct CustomColorMap<M: ReferencedTypes>(Vec<(CustomColorId, M::CustomColorData)>);
+
+impl<M: ReferencedTypes> serde::Serialize for CustomColorMap<M> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        BTreeMap::from_iter(self.0.iter().map(|(id, data)| (*id, data))).serialize(serializer)
+    }
+}
 
 #[derive(Debug, thiserror::Error, displaydoc::Display)]
 #[cfg_attr(test, derive(PartialEq))]
@@ -359,6 +368,8 @@ impl BubbleGradientColor {
 
 #[cfg(test)]
 mod test {
+    use std::sync::Arc;
+
     use test_case::test_case;
 
     use crate::backup::chat::chat_style::Color;
@@ -524,5 +535,23 @@ mod test {
         proto
             .try_into_with(&TestContext::default())
             .map(|_: ChatStyle<Store>| ())
+    }
+
+    #[test]
+    fn custom_color_map_sorts_when_serializing() {
+        let color1 = Arc::new(CustomChatColor::Solid { color: Color(100) });
+        let color2 = Arc::new(CustomChatColor::Solid { color: Color(22) });
+
+        let map1 = CustomColorMap::<Store>(vec![
+            (CustomColorId(1), color1.clone()),
+            (CustomColorId(2), color2.clone()),
+        ]);
+        let map2 =
+            CustomColorMap::<Store>(vec![(CustomColorId(2), color2), (CustomColorId(1), color1)]);
+
+        assert_eq!(
+            serde_json::to_string_pretty(&map1).expect("valid"),
+            serde_json::to_string_pretty(&map2).expect("valid"),
+        );
     }
 }

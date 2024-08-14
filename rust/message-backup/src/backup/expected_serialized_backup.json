@@ -44,16 +44,13 @@
         },
         "dim_wallpaper_in_dark_mode": true
       },
-      "custom_chat_colors": [
-        [
-          333,
-          {
-            "Solid": {
-              "color": 123456
-            }
+      "custom_chat_colors": {
+        "333": {
+          "Solid": {
+            "color": 123456
           }
-        ]
-      ]
+        }
+      }
     },
     "avatar_url_path": "",
     "donation_subscription": null,
