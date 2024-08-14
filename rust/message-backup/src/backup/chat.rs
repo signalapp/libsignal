@@ -53,7 +53,7 @@ use sticker_message::*;
 #[cfg(test)]
 mod testutil;
 
-mod text;
+pub(crate) mod text;
 use text::*;
 
 mod update_message;

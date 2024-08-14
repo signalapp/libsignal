@@ -4,12 +4,14 @@
 //
 
 use libsignal_protocol::ServiceId;
+use protobuf::Enum as _;
 use serde::ser::{SerializeStruct as _, SerializeTupleVariant as _};
 use serde::{Serialize, Serializer};
 use uuid::Uuid;
 
 use crate::backup::account_data::AccountData;
 use crate::backup::call::AdHocCall;
+use crate::backup::chat::text::{TextEffect, TextRange};
 use crate::backup::chat::ChatData;
 use crate::backup::frame::RecipientId;
 use crate::backup::method::Store;
@@ -212,6 +214,30 @@ impl SerializeOrder for FullRecipientData {
                 Destination::CallLink(_) => 5,
             };
             discriminant(lhs).cmp(&discriminant(rhs))
+        }
+    }
+}
+
+impl SerializeOrder for TextRange {
+    fn serialize_cmp(&self, other: &Self) -> std::cmp::Ordering {
+        // Order by start, then by length...
+        match (self.start, self.length).cmp(&(other.start, other.length)) {
+            result @ (std::cmp::Ordering::Less | std::cmp::Ordering::Greater) => {
+                return result;
+            }
+            std::cmp::Ordering::Equal => {}
+        }
+        // ...and only look at the effect if the range part is identical.
+        match (&self.effect, &other.effect) {
+            (TextEffect::MentionAci(left), TextEffect::MentionAci(right)) => left.cmp(right),
+            (TextEffect::Style(left), TextEffect::Style(right)) => left.value().cmp(&right.value()),
+            _ => {
+                let discriminant = |value: &TextEffect| match value {
+                    TextEffect::MentionAci(_) => 0,
+                    TextEffect::Style(_) => 1,
+                };
+                discriminant(&self.effect).cmp(&discriminant(&other.effect))
+            }
         }
     }
 }

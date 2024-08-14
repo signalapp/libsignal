@@ -5,7 +5,8 @@
 
 use libsignal_protocol::Aci;
 
-use crate::backup::{serialize, uuid_bytes_to_aci};
+use crate::backup::serialize::{self, UnorderedList};
+use crate::backup::uuid_bytes_to_aci;
 use crate::proto::backup as proto;
 
 /// Validated version of [`proto::Text`].
@@ -13,11 +14,11 @@ use crate::proto::backup as proto;
 #[cfg_attr(test, derive(PartialEq))]
 pub struct MessageText {
     pub text: String,
-    pub ranges: Vec<TextRange>,
+    pub ranges: UnorderedList<TextRange>,
 }
 
 #[derive(Debug, serde::Serialize)]
-#[cfg_attr(test, derive(PartialEq))]
+#[cfg_attr(test, derive(PartialEq, Clone))]
 pub struct TextRange {
     pub start: Option<u32>,
     pub length: Option<u32>,
@@ -25,7 +26,7 @@ pub struct TextRange {
 }
 
 #[derive(Debug, serde::Serialize)]
-#[cfg_attr(test, derive(PartialEq))]
+#[cfg_attr(test, derive(PartialEq, Clone))]
 pub enum TextEffect {
     MentionAci(#[serde(serialize_with = "serialize::service_id_as_string")] Aci),
     Style(#[serde(serialize_with = "serialize::enum_as_string")] proto::body_range::Style),
@@ -112,7 +113,8 @@ mod test {
                     start: Some(2),
                     length: Some(5),
                     effect: TextEffect::Style(proto::body_range::Style::MONOSPACE),
-                }],
+                }]
+                .into(),
             }
         }
     }
@@ -122,6 +124,34 @@ mod test {
         assert_eq!(
             proto::Text::test_data().try_into(),
             Ok(MessageText::from_proto_test_data())
+        );
+    }
+
+    #[test]
+    fn ranges_are_sorted_when_serialized() {
+        let range1 = TextRange {
+            start: Some(2),
+            length: Some(5),
+            effect: TextEffect::Style(proto::body_range::Style::MONOSPACE),
+        };
+        let range2 = TextRange {
+            start: Some(10),
+            length: Some(2),
+            effect: TextEffect::Style(proto::body_range::Style::BOLD),
+        };
+
+        let message1 = MessageText {
+            ranges: vec![range1.clone(), range2.clone()].into(),
+            ..MessageText::from_proto_test_data()
+        };
+        let message2 = MessageText {
+            ranges: vec![range2, range1].into(),
+            ..MessageText::from_proto_test_data()
+        };
+
+        assert_eq!(
+            serde_json::to_string_pretty(&message1).expect("valid"),
+            serde_json::to_string_pretty(&message2).expect("valid"),
         );
     }
 }
