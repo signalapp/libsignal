@@ -4,18 +4,22 @@
 //
 
 use criterion::{criterion_group, criterion_main, Criterion};
-use libsignal_protocol::KeyPair;
+use libsignal_protocol::{KeyPair,KeyTuple};
 use rand::{thread_rng, Rng};
 
 pub fn generation(c: &mut Criterion) {
     let rng = &mut thread_rng();
     c.bench_function("generation", |b| b.iter(|| KeyPair::generate(rng)));
 }
-
+pub fn generation_moderation(c: &mut Criterion) {
+    let rng = &mut thread_rng();
+    c.bench_function("generation session key and inspection key for moderation", |b| b.iter(|| KeyTuple::generate(rng)));
+}
 pub fn key_agreement(c: &mut Criterion) {
     let rng = &mut thread_rng();
     let alice_key = KeyPair::generate(rng);
     let bob_key = KeyPair::generate(rng);
+    let agreed_key = alice_key.calculate_agreement(&bob_key.public_key).unwrap();
 
     c.bench_function("key agreement", |b| {
         b.iter(|| alice_key.calculate_agreement(&bob_key.public_key).unwrap())
@@ -44,6 +48,6 @@ pub fn signatures(c: &mut Criterion) {
     });
 }
 
-criterion_group!(benches, generation, key_agreement, signatures);
+criterion_group!(benches, generation,generation_moderation);
 
 criterion_main!(benches);

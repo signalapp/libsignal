@@ -49,7 +49,7 @@ pub use libsignal_core::{
     Aci, DeviceId, Pni, ProtocolAddress, ServiceId, ServiceIdFixedWidthBinaryBytes, ServiceIdKind,
 };
 
-pub use curve::{KeyPair, PrivateKey, PublicKey};
+pub use curve::{KeyPair, PrivateKey, PublicKey, KeyTuple};
 pub use error::SignalProtocolError;
 pub use fingerprint::{DisplayableFingerprint, Fingerprint, ScannableFingerprint};
 pub use group_cipher::{

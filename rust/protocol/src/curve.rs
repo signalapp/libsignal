@@ -13,6 +13,7 @@ use std::fmt;
 
 use arrayref::array_ref;
 use curve25519_dalek::scalar;
+//use futures_util::future::Inspect;
 use rand::{CryptoRng, Rng};
 use subtle::ConstantTimeEq;
 
@@ -295,11 +296,35 @@ impl TryFrom<&[u8]> for PrivateKey {
         Self::deserialize(value)
     }
 }
+#[derive(Copy, Clone)]
+pub struct KeyTuple {
+    pub public_key: PublicKey,
+    pub private_key: PrivateKey,
+    pub inspection: rand::rngs::OsRng,
+}
+impl KeyTuple {
+    pub fn generate<R: Rng + CryptoRng>(csprng: &mut R) -> Self {
+        let private_key = curve25519::PrivateKey::new(csprng);
+        let public_key = PublicKey::from(PublicKeyData::DjbPublicKey(
+            private_key.derive_public_key_bytes(),
+        ));
+        let private_key = PrivateKey::from(PrivateKeyData::DjbPrivateKey(
+            private_key.private_key_bytes(),
+        ));
+        let inspection = rand::rngs::OsRng;
+        Self {
+            public_key,
+            private_key,
+            inspection,
+        }
+    }
+}
 
 #[derive(Copy, Clone)]
 pub struct KeyPair {
     pub public_key: PublicKey,
     pub private_key: PrivateKey,
+
 }
 
 impl KeyPair {
