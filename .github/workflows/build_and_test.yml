@@ -190,7 +190,7 @@ jobs:
     - name: cargo clean (reclaim disk space)
       # Clean the contents of the target directory to avoid running out of disk space during the
       # doc build.
-      run: cargo clean
+      run: cargo +stable clean
       if: matrix.version == 'stable'
 
     - name: Rust docs
@@ -206,7 +206,7 @@ jobs:
     - name: cargo clean (reclaim disk space)
       # Clean the contents of the target directory to avoid running out of disk space during the
       # following steps.
-      run: cargo clean
+      run: cargo +stable clean
       if: matrix.version == 'stable'
 
     - name: Check that the protocol fuzz target still builds
