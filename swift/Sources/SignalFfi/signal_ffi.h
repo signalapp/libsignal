@@ -20,8 +20,6 @@ SPDX-License-Identifier: AGPL-3.0-only
  */
 #define SignalFourCC_ENCODED_LEN 4
 
-#define SignalBoxHeader_MAX_SIZE 32
-
 #define SignalNUM_AUTH_CRED_ATTRIBUTES 3
 
 #define SignalNUM_PROFILE_KEY_CRED_ATTRIBUTES 4
@@ -263,10 +261,9 @@ typedef struct SignalProtocolAddress SignalProtocolAddress;
 
 typedef struct SignalPublicKey SignalPublicKey;
 
-/**
- * Sanitized metadata returned by the sanitizer.
- */
+#if defined(SIGNAL_MEDIA_SUPPORTED)
 typedef struct SignalSanitizedMetadata SignalSanitizedMetadata;
+#endif
 
 typedef struct SignalSenderCertificate SignalSenderCertificate;
 
@@ -1780,4 +1777,4 @@ SignalFfiError *signal_testing_chat_request_get_header_value(const char **out, c
 
 SignalFfiError *signal_testing_chat_request_get_body(SignalOwnedBuffer *out, const SignalHttpRequest *request);
 
-#endif /* SIGNAL_FFI_H_ */
+#endif  /* SIGNAL_FFI_H_ */

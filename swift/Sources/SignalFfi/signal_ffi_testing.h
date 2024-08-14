@@ -28,4 +28,4 @@ SignalFfiError *signal_comparable_backup_get_comparable_string(const char **out,
 
 SignalFfiError *signal_comparable_backup_get_unknown_fields(SignalStringArray *out, const SignalComparableBackup *backup);
 
-#endif /* SIGNAL_FFI_TESTING_H_ */
+#endif  /* SIGNAL_FFI_TESTING_H_ */

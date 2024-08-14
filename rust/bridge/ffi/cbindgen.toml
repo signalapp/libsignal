@@ -89,8 +89,6 @@ include = [
     "zkgroup",
     "signal-media",
     "mediasan-common",
-    "mp4san",
-    "webpsan",
 ]
 extra_bindings = ["libsignal-bridge", "libsignal-bridge-types", "zkgroup"]
 

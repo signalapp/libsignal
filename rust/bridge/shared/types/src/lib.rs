@@ -47,8 +47,10 @@ pub mod message_backup;
 pub mod io;
 
 #[cfg(feature = "signal-media")]
-mod media {
-    use signal_media::sanitize::mp4::SanitizedMetadata;
+pub mod media {
+    // Wrapper struct for cbindgen
+    #[derive(Clone, Debug)]
+    pub struct SanitizedMetadata(pub signal_media::sanitize::mp4::SanitizedMetadata);
 
     use crate::*;
 
