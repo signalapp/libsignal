@@ -11,6 +11,7 @@ use uuid::Uuid;
 
 use crate::backup::account_data::AccountData;
 use crate::backup::call::AdHocCall;
+use crate::backup::chat::group::Invitee;
 use crate::backup::chat::text::{TextEffect, TextRange};
 use crate::backup::chat::{ChatData, OutgoingSend};
 use crate::backup::frame::RecipientId;
@@ -247,6 +248,16 @@ impl SerializeOrder for OutgoingSend {
         self.recipient
             .serialize_cmp(&other.recipient)
             .then_with(|| self.last_status_update.cmp(&other.last_status_update))
+    }
+}
+
+impl SerializeOrder for Invitee {
+    fn serialize_cmp(&self, other: &Self) -> std::cmp::Ordering {
+        (self.invitee_aci, self.invitee_pni, self.inviter).cmp(&(
+            other.invitee_aci,
+            other.invitee_pni,
+            other.inviter,
+        ))
     }
 }
 

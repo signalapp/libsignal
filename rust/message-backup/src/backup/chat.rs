@@ -32,7 +32,7 @@ pub(crate) mod chat_style;
 mod gift_badge;
 use gift_badge::*;
 
-mod group;
+pub(crate) mod group;
 use group::*;
 
 mod link;

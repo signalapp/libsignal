@@ -14,6 +14,7 @@ use libsignal_protocol::{Aci, Pni, ServiceId};
 use macro_rules_attribute::macro_rules_derive;
 use protobuf::{EnumOrUnknown, Message};
 
+use crate::backup::serialize::UnorderedList;
 use crate::backup::time::Duration;
 use crate::backup::{serialize, uuid_bytes_to_aci};
 use crate::proto::backup::{
@@ -190,7 +191,7 @@ pub enum GroupChatUpdate {
     GroupInvitationRevokedUpdate {
         #[serde(serialize_with = "serialize::optional_service_id_as_string")]
         updaterAci: Option<Aci>,
-        invitees: Vec<Invitee>,
+        invitees: UnorderedList<Invitee>,
     },
     GroupJoinRequestUpdate {
         #[serde(serialize_with = "serialize::service_id_as_string")]
@@ -365,7 +366,7 @@ impl ValidateFrom<EnumOrUnknown<proto::GroupV2AccessLevel>> for AccessLevel {
     }
 }
 
-impl ValidateFrom<Vec<proto::group_invitation_revoked_update::Invitee>> for Vec<Invitee> {
+impl ValidateFrom<Vec<proto::group_invitation_revoked_update::Invitee>> for UnorderedList<Invitee> {
     fn validate_from(
         invitees: Vec<proto::group_invitation_revoked_update::Invitee>,
     ) -> Result<Self, GroupUpdateFieldError> {
@@ -514,7 +515,7 @@ mod test {
         ]
     }
 
-    fn validated_invitees() -> Vec<Invitee> {
+    fn validated_invitees() -> UnorderedList<Invitee> {
         vec![
             Invitee {
                 inviter: None,
@@ -527,6 +528,7 @@ mod test {
                 invitee_aci: None,
             },
         ]
+        .into()
     }
 
     fn invitee_invalid_aci() -> Vec<group_invitation_revoked_update::Invitee> {
@@ -556,11 +558,11 @@ mod test {
     #[test_case(ACI.service_id_binary(), Ok(ServiceId::Aci(ACI)))]
     #[test_case(vec![], Err::<ServiceId, _>(InvalidServiceId))]
     #[test_case(valid_invitees(), Ok(validated_invitees()))]
-    #[test_case(vec![], Ok(vec![]))]
-    #[test_case(invitee_invalid_aci(), Err::<Vec<Invitee>,_>(InvalidInvitee(InviteeError::InviteeAci)))]
+    #[test_case(vec![], Ok(UnorderedList::from(vec![])))]
+    #[test_case(invitee_invalid_aci(), Err::<UnorderedList<Invitee>,_>(InvalidInvitee(InviteeError::InviteeAci)))]
     #[test_case(
         invitee_pni_service_id_binary(),
-        Err::<Vec<Invitee>, _>(InvalidInvitee(InviteeError::InviteePni))
+        Err::<UnorderedList<Invitee>, _>(InvalidInvitee(InviteeError::InviteePni))
     )]
     #[test_case(
         EnumOrUnknown::default(),
