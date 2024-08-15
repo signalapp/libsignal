@@ -8,5 +8,6 @@ mod version;
 
 pub use address::{
     Aci, DeviceId, Pni, ProtocolAddress, ServiceId, ServiceIdFixedWidthBinaryBytes, ServiceIdKind,
+    WrongKindOfServiceIdError,
 };
 pub use version::VERSION;
