@@ -11,7 +11,7 @@
 //! SVR, so that a restorer can reconstruct the `BackupId`.
 
 use hkdf::Hkdf;
-use libsignal_protocol::Aci;
+use libsignal_core::Aci;
 use sha2::Sha256;
 
 /// Primary key for backups that is used to derive other keys.

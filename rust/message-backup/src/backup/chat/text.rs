@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use libsignal_protocol::Aci;
+use libsignal_core::Aci;
 
 use crate::backup::serialize::{self, UnorderedList};
 use crate::backup::uuid_bytes_to_aci;

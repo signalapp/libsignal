@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use libsignal_protocol::ServiceId;
+use libsignal_core::ServiceId;
 use protobuf::Enum as _;
 use serde::ser::{SerializeStruct as _, SerializeTupleVariant as _};
 use serde::{Serialize, Serializer};

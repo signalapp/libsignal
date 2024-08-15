@@ -9,10 +9,10 @@ use std::io::Read as _;
 use clap::builder::TypedValueParser;
 use clap::Parser;
 use clap_stdin::FileOrStdin;
+use libsignal_core::Aci;
 use libsignal_message_backup::args::{parse_aci, parse_hex_bytes};
 use libsignal_message_backup::frame::{CursorFactory, FramesReader};
 use libsignal_message_backup::key::{BackupKey, MessageBackupKey};
-use libsignal_protocol::Aci;
 
 const DEFAULT_ACI: Aci = Aci::from_uuid_bytes([0x11; 16]);
 const DEFAULT_MASTER_KEY: [u8; 32] = [b'M'; 32];

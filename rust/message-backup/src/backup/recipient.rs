@@ -9,7 +9,7 @@ use std::sync::Arc;
 
 use derive_where::derive_where;
 use itertools::Itertools as _;
-use libsignal_protocol::{Aci, Pni, ServiceIdKind};
+use libsignal_core::{Aci, Pni, ServiceIdKind};
 use uuid::Uuid;
 use zkgroup::{GroupMasterKeyBytes, ProfileKeyBytes};
 

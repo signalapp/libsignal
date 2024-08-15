@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use libsignal_protocol::Aci;
+use libsignal_core::Aci;
 
 #[derive(Debug, thiserror::Error)]
 pub enum ParseHexError<const N: usize> {

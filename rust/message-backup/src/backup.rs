@@ -8,7 +8,7 @@ use std::fmt::Debug;
 use std::sync::Arc;
 
 use derive_where::derive_where;
-use libsignal_protocol::Aci;
+use libsignal_core::Aci;
 
 pub(crate) use crate::backup::account_data::{AccountData, AccountDataError};
 use crate::backup::call::{AdHocCall, CallError};

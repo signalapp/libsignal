@@ -10,7 +10,7 @@
 use std::fmt::Debug;
 
 use itertools::Itertools as _;
-use libsignal_protocol::{Aci, Pni, ServiceId};
+use libsignal_core::{Aci, Pni, ServiceId};
 use macro_rules_attribute::macro_rules_derive;
 use protobuf::{EnumOrUnknown, Message};
 
