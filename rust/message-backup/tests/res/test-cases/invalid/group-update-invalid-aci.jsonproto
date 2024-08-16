@@ -13,7 +13,8 @@
     "recipient": {
       "id": "2",
       "group": {
-        "masterKey": "YWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWE="
+        "masterKey": "YWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWE=",
+        "snapshot": {}
       }
     }
   },

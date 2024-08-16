@@ -22,7 +22,7 @@ use crate::backup::{ReferencedTypes, TryFromWith, TryIntoWith};
 use crate::proto::backup as proto;
 use crate::proto::backup::recipient::Destination as RecipientDestination;
 
-mod group;
+pub(crate) mod group;
 use group::*;
 
 #[derive(Debug, thiserror::Error, displaydoc::Display)]
@@ -40,8 +40,8 @@ pub enum RecipientError {
     InvalidProfileKey,
     /// distribution destination has invalid UUID
     InvalidDistributionId,
-    /// master key has wrong number of bytes
-    InvalidMasterKey,
+    /// invalid group: {0}
+    InvalidGroup(#[from] GroupError),
     /// contact registered value is UNKNOWN
     ContactRegistrationUnknown,
     /// distribution list has privacy mode UNKNOWN
@@ -474,7 +474,6 @@ mod test {
     use once_cell::sync::Lazy;
     use protobuf::EnumOrUnknown;
     use test_case::test_case;
-    use zkgroup::GroupMasterKeyBytes;
 
     use crate::backup::method::{Contains, Lookup, Store};
     use crate::backup::FullRecipientData;
@@ -510,18 +509,6 @@ mod test {
                 profileFamilyName: Some("FamilyName".to_owned()),
 
                 ..Default::default()
-            }
-        }
-    }
-
-    impl proto::Group {
-        const TEST_MASTER_KEY: GroupMasterKeyBytes = [0x33; 32];
-
-        fn test_data() -> Self {
-            Self {
-                masterKey: Self::TEST_MASTER_KEY.into(),
-                storySendMode: proto::group::StorySendMode::ENABLED.into(),
-                ..Self::default()
             }
         }
     }
@@ -676,17 +663,11 @@ mod test {
 
         assert_eq!(
             Destination::<Store>::try_from_with(recipient, &TestContext),
-            Ok(Destination::Group(GroupData {
-                master_key: proto::Group::TEST_MASTER_KEY,
-                story_send_mode: proto::group::StorySendMode::ENABLED,
-                whitelisted: false,
-                hide_story: false,
-                snapshot: None,
-            }))
+            Ok(Destination::Group(GroupData::from_proto_test_data()))
         );
     }
 
-    #[test_case(|x| x.masterKey = vec![] => Err(RecipientError::InvalidMasterKey); "invalid master key")]
+    #[test_case(|x| x.masterKey = vec![] => Err(RecipientError::InvalidGroup(GroupError::InvalidMasterKey)); "invalid master key")]
     #[test_case(|x| x.storySendMode = Default::default() => Ok(()); "default story send mode")]
     fn destination_group(modifier: fn(&mut proto::Group)) -> Result<(), RecipientError> {
         let mut group = proto::Group::test_data();

@@ -101,32 +101,6 @@ pub(crate) fn enum_as_string<S: Serializer>(
     format!("{source:?}").serialize(serializer)
 }
 
-/// Serializes [`protobuf::Message`] types as hex-encoded protobuf wire format.
-pub(crate) fn optional_proto_message_as_bytes<S: Serializer, M: protobuf::Message>(
-    message: &Option<impl std::ops::Deref<Target = M>>,
-    serializer: S,
-) -> Result<S::Ok, S::Error> {
-    struct MessageAsHexBytes<T>(T);
-    impl<T: protobuf::Message> Serialize for MessageAsHexBytes<&'_ T> {
-        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where
-            S: Serializer,
-        {
-            let mut bytes = Vec::new();
-            self.0
-                .write_to_vec(&mut bytes)
-                .map_err(<S::Error as serde::ser::Error>::custom)?;
-
-            hex::serialize(bytes, serializer)
-        }
-    }
-
-    message
-        .as_deref()
-        .map(MessageAsHexBytes)
-        .serialize(serializer)
-}
-
 /// Serialization helper for [`UnorderedList`].
 ///
 /// Like [`std::cmp::Ord`] but only for use during serialization.
