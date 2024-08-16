@@ -13,7 +13,7 @@ use futures_util::future::BoxFuture;
 use crate::auth::Auth;
 use crate::chat::ws::{ChatOverWebSocketServiceConnector, ServerEvent};
 use crate::infra::connection_manager::MultiRouteConnectionManager;
-use crate::infra::reconnect::{ServiceConnectorWithDecorator, ServiceWithReconnect};
+use crate::infra::service::{Service, ServiceConnectorWithDecorator};
 use crate::infra::ws::WebSocketClientConnector;
 use crate::infra::{
     ConnectionInfo, EndpointConnection, HttpRequestDecorator, IpType, TransportConnector,
@@ -21,7 +21,6 @@ use crate::infra::{
 use crate::proto;
 use crate::utils::basic_authorization;
 
-pub mod chat_reconnect;
 mod error;
 use crate::env::RECEIVE_STORIES_HEADER_NAME;
 use crate::timeouts::MULTI_ROUTE_CONNECTION_TIMEOUT;
@@ -29,6 +28,7 @@ pub use error::ChatServiceError;
 
 pub mod noise;
 pub mod server_requests;
+pub mod service;
 pub mod ws;
 
 pub type MessageProto = proto::chat_websocket::WebSocketMessage;
@@ -409,7 +409,7 @@ fn build_authorized_chat_service(
     let header_auth_decorator = HttpRequestDecorator::HeaderMap(header_map);
 
     // ws authorized
-    let chat_over_ws_auth = ServiceWithReconnect::new(
+    let chat_over_ws_auth = Service::new(
         ServiceConnectorWithDecorator::new(
             service_connector_ws.clone(),
             header_auth_decorator.clone(),
@@ -430,7 +430,7 @@ fn build_anonymous_chat_service(
     service_connector_ws: &ChatOverWebSocketServiceConnector<impl TransportConnector + 'static>,
 ) -> AnonymousChatService<impl ChatServiceWithDebugInfo> {
     // ws anonymous
-    let chat_over_ws_anonymous = ServiceWithReconnect::new(
+    let chat_over_ws_anonymous = Service::new(
         service_connector_ws.clone(),
         connection_manager_ws.clone(),
         MULTI_ROUTE_CONNECTION_TIMEOUT,
@@ -493,7 +493,7 @@ pub(crate) mod test {
         use crate::infra::certs::RootCertificates;
         use crate::infra::connection_manager::SingleRouteThrottlingConnectionManager;
         use crate::infra::errors::LogSafeDisplay;
-        use crate::infra::reconnect::{ServiceConnector, ServiceState};
+        use crate::infra::service::{ServiceConnector, ServiceState};
         use crate::infra::test::shared::{NoReconnectService, TIMEOUT_DURATION};
         use crate::infra::{ConnectionParams, RouteType};
         use crate::utils::ObservableEvent;
@@ -505,7 +505,6 @@ pub(crate) mod test {
             C::Service: ChatService + Clone + Send + Sync + 'static,
             C::Channel: Send + Sync,
             C::ConnectError: Send + Sync + Debug + LogSafeDisplay,
-            C::StartError: Send + Sync + Debug + LogSafeDisplay,
         {
             async fn send(
                 &self,

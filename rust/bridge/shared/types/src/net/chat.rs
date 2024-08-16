@@ -26,12 +26,12 @@ use crate::support::*;
 use crate::*;
 
 enum ChatListenerState {
-    Inactive(BoxStream<'static, chat::server_requests::ServerMessage>),
+    Inactive(BoxStream<'static, chat::server_requests::ServerEvent>),
     Active {
-        handle: tokio::task::JoinHandle<BoxStream<'static, chat::server_requests::ServerMessage>>,
+        handle: tokio::task::JoinHandle<BoxStream<'static, chat::server_requests::ServerEvent>>,
         cancel: oneshot::Sender<()>,
     },
-    Cancelled(tokio::task::JoinHandle<BoxStream<'static, chat::server_requests::ServerMessage>>),
+    Cancelled(tokio::task::JoinHandle<BoxStream<'static, chat::server_requests::ServerEvent>>),
     CurrentlyBeingMutated,
 }
 
@@ -244,9 +244,9 @@ pub trait ChatListener: Send {
 impl dyn ChatListener {
     /// A helper to translate from the libsignal-net enum to the separate callback methods in this
     /// trait.
-    fn received_server_request(&mut self, request: chat::server_requests::ServerMessage) {
+    fn received_server_request(&mut self, request: chat::server_requests::ServerEvent) {
         match request {
-            chat::server_requests::ServerMessage::IncomingMessage {
+            chat::server_requests::ServerEvent::IncomingMessage {
                 request_id: _,
                 envelope,
                 server_delivery_timestamp,
@@ -256,8 +256,8 @@ impl dyn ChatListener {
                 server_delivery_timestamp,
                 ServerMessageAck::new(send_ack),
             ),
-            chat::server_requests::ServerMessage::QueueEmpty => self.received_queue_empty(),
-            chat::server_requests::ServerMessage::Stopped(error) => {
+            chat::server_requests::ServerEvent::QueueEmpty => self.received_queue_empty(),
+            chat::server_requests::ServerEvent::Stopped(error) => {
                 self.connection_interrupted(error)
             }
         }
@@ -274,12 +274,12 @@ impl dyn ChatListener {
         self: Box<dyn ChatListener>,
         request_stream_future: impl Future<
             Output = Result<
-                BoxStream<'static, chat::server_requests::ServerMessage>,
+                BoxStream<'static, chat::server_requests::ServerEvent>,
                 ::tokio::task::JoinError,
             >,
         >,
         mut cancel_rx: oneshot::Receiver<()>,
-    ) -> BoxStream<'static, chat::server_requests::ServerMessage> {
+    ) -> BoxStream<'static, chat::server_requests::ServerEvent> {
         // This is normally done implicitly inside tokio::task::spawn[_blocking], but we do it
         // explicitly here to get a panic right away rather than only when the first request comes
         // in.

@@ -17,7 +17,7 @@ use crate::infra::connection_manager::{
     ConnectionManager, MultiRouteConnectionManager, SingleRouteThrottlingConnectionManager,
 };
 use crate::infra::errors::LogSafeDisplay;
-use crate::infra::reconnect::{ServiceConnectorWithDecorator, ServiceInitializer, ServiceState};
+use crate::infra::service::{ServiceConnectorWithDecorator, ServiceInitializer, ServiceState};
 use crate::infra::ws::{
     AttestedConnection, AttestedConnectionError, WebSocketClientConnector, WebSocketConnectError,
     WebSocketServiceError,

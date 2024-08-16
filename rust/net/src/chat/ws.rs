@@ -21,7 +21,7 @@ use crate::chat::{
     ChatMessageType, ChatService, ChatServiceError, MessageProto, RemoteAddressInfo, Request,
     RequestProto, Response, ResponseProto,
 };
-use crate::infra::reconnect::ServiceConnector;
+use crate::infra::service::ServiceConnector;
 use crate::infra::ws::{
     NextOrClose, TextOrBinary, WebSocketClient, WebSocketClientConnector, WebSocketClientReader,
     WebSocketClientWriter, WebSocketConnectError, WebSocketServiceError,
@@ -163,7 +163,6 @@ impl<T: TransportConnector> ServiceConnector for ChatOverWebSocketServiceConnect
     type Service = ChatOverWebSocket<T::Stream>;
     type Channel = (WebSocketStream<T::Stream>, ConnectionInfo);
     type ConnectError = WebSocketConnectError;
-    type StartError = ChatServiceError;
 
     async fn connect_channel(
         &self,

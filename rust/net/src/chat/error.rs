@@ -5,7 +5,7 @@
 
 use crate::infra::connection_manager::{ErrorClass, ErrorClassifier};
 use crate::infra::errors::{LogSafeDisplay, TransportConnectError};
-use crate::infra::reconnect;
+use crate::infra::service;
 use crate::infra::ws::{WebSocketConnectError, WebSocketServiceError};
 
 #[derive(Debug, thiserror::Error, displaydoc::Display)]
@@ -88,27 +88,27 @@ impl From<WebSocketConnectError> for ChatServiceError {
     }
 }
 
-impl<E: LogSafeDisplay + Into<ChatServiceError>> From<reconnect::ReconnectError<E>>
+impl<E: LogSafeDisplay + Into<ChatServiceError>> From<service::ConnectError<E>>
     for ChatServiceError
 {
-    fn from(e: reconnect::ReconnectError<E>) -> Self {
+    fn from(e: service::ConnectError<E>) -> Self {
         match e {
-            reconnect::ReconnectError::Timeout { attempts } => {
+            service::ConnectError::Timeout { attempts } => {
                 Self::TimeoutEstablishingConnection { attempts }
             }
-            reconnect::ReconnectError::AllRoutesFailed { attempts } => {
+            service::ConnectError::AllRoutesFailed { attempts } => {
                 Self::AllConnectionRoutesFailed { attempts }
             }
-            reconnect::ReconnectError::RejectedByServer(e) => e.into(),
+            service::ConnectError::RejectedByServer(e) => e.into(),
         }
     }
 }
 
-impl From<reconnect::StateError> for ChatServiceError {
-    fn from(e: reconnect::StateError) -> Self {
+impl From<service::StateError> for ChatServiceError {
+    fn from(e: service::StateError) -> Self {
         match e {
-            reconnect::StateError::Inactive => Self::ServiceInactive,
-            reconnect::StateError::ServiceUnavailable => Self::ServiceUnavailable,
+            service::StateError::Inactive => Self::ServiceInactive,
+            service::StateError::ServiceUnavailable => Self::ServiceUnavailable,
         }
     }
 }

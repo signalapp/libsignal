@@ -15,10 +15,10 @@ use crate::chat::{
 };
 use crate::infra::connection_manager::{ConnectionManager, ErrorClassifier};
 use crate::infra::errors::LogSafeDisplay;
-use crate::infra::reconnect::{ServiceConnector, ServiceWithReconnect};
+use crate::infra::service::{Service, ServiceConnector};
 
 #[async_trait]
-impl<C, M> ChatService for ServiceWithReconnect<C, M>
+impl<C, M> ChatService for Service<C, M>
 where
     M: ConnectionManager + 'static,
     C: ServiceConnector + Send + Sync + 'static,
@@ -26,7 +26,6 @@ where
     C::Channel: Send + Sync,
     C::ConnectError:
         Send + Sync + Debug + LogSafeDisplay + ErrorClassifier + Into<ChatServiceError>,
-    C::StartError: Send + Sync + Debug + LogSafeDisplay,
 {
     async fn send(&self, msg: Request, timeout: Duration) -> Result<Response, ChatServiceError> {
         self.service().await?.send(msg, timeout).await
@@ -42,7 +41,7 @@ where
 }
 
 #[async_trait]
-impl<C, M> ChatServiceWithDebugInfo for ServiceWithReconnect<C, M>
+impl<C, M> ChatServiceWithDebugInfo for Service<C, M>
 where
     M: ConnectionManager + 'static,
     C: ServiceConnector + Send + Sync + 'static,
@@ -50,7 +49,6 @@ where
     C::Channel: Send + Sync,
     C::ConnectError:
         Send + Sync + Debug + LogSafeDisplay + ErrorClassifier + Into<ChatServiceError>,
-    C::StartError: Send + Sync + Debug + LogSafeDisplay,
 {
     async fn send_and_debug(
         &self,

@@ -30,7 +30,7 @@ pub mod dns;
 pub mod errors;
 mod http_client;
 pub mod noise;
-pub(crate) mod reconnect;
+pub(crate) mod service;
 pub mod tcp_ssl;
 pub mod ws;
 
@@ -346,7 +346,7 @@ pub(crate) mod test {
 
         use crate::infra::connection_manager::{ConnectionManager, ErrorClass, ErrorClassifier};
         use crate::infra::errors::{LogSafeDisplay, TransportConnectError};
-        use crate::infra::reconnect::{ServiceConnector, ServiceInitializer, ServiceState};
+        use crate::infra::service::{ServiceConnector, ServiceInitializer, ServiceState};
         use crate::infra::{
             Alpn, ConnectionInfo, ConnectionParams, DnsSource, RouteType, StreamAndInfo,
             TransportConnector,

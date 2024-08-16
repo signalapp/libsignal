@@ -25,7 +25,7 @@ use tungstenite::protocol::CloseFrame;
 use tungstenite::{http, Message};
 
 use crate::infra::errors::LogSafeDisplay;
-use crate::infra::reconnect::ServiceConnector;
+use crate::infra::service::ServiceConnector;
 use crate::infra::ws::error::{HttpFormatError, ProtocolError, SpaceError};
 use crate::infra::{
     Alpn, AsyncDuplexStream, ConnectionInfo, ConnectionParams, StreamAndInfo, TransportConnector,
@@ -128,7 +128,6 @@ where
     type Service = WebSocketClient<T::Stream, E>;
     type Channel = (WebSocketStream<T::Stream>, ConnectionInfo);
     type ConnectError = WebSocketConnectError;
-    type StartError = E;
 
     async fn connect_channel(
         &self,
