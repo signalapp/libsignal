@@ -8,6 +8,7 @@ use std::num::NonZeroU32;
 use prost::Message;
 use rand_core::CryptoRngCore;
 
+mod client;
 mod oprf;
 mod ppss;
 pub use ppss::{MaskedShareSet, OPRFSession};
