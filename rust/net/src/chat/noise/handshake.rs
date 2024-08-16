@@ -44,21 +44,33 @@ enum SendRequest {
 #[strum_discriminants(name(HandshakeAuthKind))]
 pub(super) enum HandshakeAuth<'k> {
     IK {
-        server_public_key: &'k [u8],
-        client_private_key: &'k [u8],
+        server_public_key: &'k [u8; STATIC_KEY_LEN],
+        client_private_key: &'k [u8; EPHEMERAL_KEY_LEN],
     },
     NK {
-        server_public_key: &'k [u8],
+        server_public_key: &'k [u8; STATIC_KEY_LEN],
     },
+}
+
+impl HandshakeAuthKind {
+    /// The number of bytes required in a [Noise handshake message] for this handshake type.
+    ///
+    /// [Noise handshake message]: https://noiseprotocol.org/noise.html#message-format
+    pub(super) fn handshake_message_len(&self) -> usize {
+        match self {
+            Self::IK => EPHEMERAL_KEY_LEN + STATIC_KEY_LEN + STATIC_KEY_AEAD_TAG_LEN,
+            Self::NK => EPHEMERAL_KEY_LEN,
+        }
+    }
 }
 
 pub const IK_NOISE_PATTERN: &str = "Noise_IK_25519_ChaChaPoly_BLAKE2b";
 pub const NK_NOISE_PATTERN: &str = "Noise_NK_25519_ChaChaPoly_BLAKE2b";
 
-const EPHEMERAL_KEY_LEN: usize = 32;
-const STATIC_KEY_LEN: usize = 32;
-const STATIC_KEY_AEAD_TAG_LEN: usize = 16;
-pub(crate) const PAYLOAD_AEAD_TAG_LEN: usize = 16;
+pub(super) const EPHEMERAL_KEY_LEN: usize = 32;
+pub(super) const STATIC_KEY_LEN: usize = 32;
+pub(super) const STATIC_KEY_AEAD_TAG_LEN: usize = 16;
+pub(super) const PAYLOAD_AEAD_TAG_LEN: usize = 16;
 
 impl<S> Handshaker<S> {
     pub fn new(
@@ -67,6 +79,10 @@ impl<S> Handshaker<S> {
         initial_payload: Option<&[u8]>,
     ) -> Result<Self, snow::Error> {
         let pattern_kind = HandshakeAuthKind::from(&pattern);
+        let payload = initial_payload.unwrap_or_default();
+        let initial_message_len =
+            pattern_kind.handshake_message_len() + payload.len() + PAYLOAD_AEAD_TAG_LEN;
+
         let resolver = Box::new(attest::snow_resolver::Resolver);
         let mut handshake = match pattern {
             HandshakeAuth::IK {
@@ -82,14 +98,6 @@ impl<S> Handshaker<S> {
                     .build_initiator()?
             }
         };
-        let payload = initial_payload.unwrap_or_default();
-        let initial_message_len = match pattern {
-            HandshakeAuth::IK { .. } => {
-                EPHEMERAL_KEY_LEN + STATIC_KEY_LEN + STATIC_KEY_AEAD_TAG_LEN
-            }
-            HandshakeAuth::NK { .. } => EPHEMERAL_KEY_LEN,
-        } + payload.len()
-            + PAYLOAD_AEAD_TAG_LEN;
 
         let mut initial_message = vec![0; initial_message_len];
         handshake.write_message(payload, &mut initial_message)?;
@@ -290,7 +298,7 @@ mod test {
         let mut handshake = Handshaker::new(
             a,
             HandshakeAuth::NK {
-                server_public_key: &server_keypair.public,
+                server_public_key: &server_keypair.public.try_into().unwrap(),
             },
             Some(EXTRA_PAYLOAD),
         )

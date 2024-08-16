@@ -16,34 +16,35 @@ use zerocopy::{AsBytes, FromBytes, FromZeroes};
 
 use crate::infra::noise::{NoiseStream, Transport};
 
-use super::handshake::{HandshakeAuth, Handshaker};
+use super::handshake::{HandshakeAuth, Handshaker, EPHEMERAL_KEY_LEN, STATIC_KEY_LEN};
 use super::SendError;
 
 /// A Noise-encrypted stream that wraps an underlying block-based [`Transport`].
 ///
-/// The stream type `S` must implement `Transport`, and `B` serves as the buffer
-/// type, and should implement `AsRef<[u8]>`.
-pub struct EncryptedStream<S, B> {
-    inner: Inner<S, B>,
+/// The stream type `S` must implement `Transport`.
+pub struct EncryptedStream<S> {
+    inner: Inner<S>,
 }
 
 /// How to identify the client to the server.
 #[derive(Clone, Debug, PartialEq)]
-pub enum Authorization<B> {
+pub enum Authorization {
     /// Authenticate as the provided account/device to a known server.
     Authenticated {
         aci: Aci,
         device_id: u8,
-        server_public_key: B,
-        client_private_key: B,
+        server_public_key: [u8; STATIC_KEY_LEN],
+        client_private_key: [u8; EPHEMERAL_KEY_LEN],
     },
     /// Connect to a known server as an anonymous client.
-    Anonymous { server_public_key: B },
+    Anonymous {
+        server_public_key: [u8; STATIC_KEY_LEN],
+    },
 }
 
-impl<S, B> EncryptedStream<S, B> {
+impl<S> EncryptedStream<S> {
     /// Creates a new stream over the provided transport with the given identification.
-    pub fn new(authorization: Authorization<B>, transport: S) -> Self {
+    pub fn new(authorization: Authorization, transport: S) -> Self {
         Self {
             inner: Inner::Nascent {
                 auth: authorization,
@@ -54,10 +55,10 @@ impl<S, B> EncryptedStream<S, B> {
     }
 }
 
-enum Inner<S, B> {
+enum Inner<S> {
     /// Initial state, before any bytes have been sent or received.
     Nascent {
-        auth: Authorization<B>,
+        auth: Authorization,
         /// `Option`al so that the value can be taken during state transitions, otherwise always `Some`.
         transport: Option<S>,
         buffer_policy: NascentBuffer,
@@ -81,7 +82,7 @@ enum NascentBuffer {
     NoInitialPayload,
 }
 
-impl<S: Transport + Unpin, B: AsRef<[u8]> + Unpin> AsyncRead for EncryptedStream<S, B> {
+impl<S: Transport + Unpin> AsyncRead for EncryptedStream<S> {
     fn poll_read(
         mut self: Pin<&mut Self>,
         cx: &mut Context<'_>,
@@ -148,7 +149,7 @@ impl InitialPayloadAuth {
     }
 }
 
-impl<S: Transport + Unpin, B: AsRef<[u8]> + Unpin> AsyncWrite for EncryptedStream<S, B> {
+impl<S: Transport + Unpin> AsyncWrite for EncryptedStream<S> {
     fn poll_write(
         mut self: Pin<&mut Self>,
         cx: &mut Context<'_>,
@@ -243,8 +244,8 @@ impl<S: Transport + Unpin, B: AsRef<[u8]> + Unpin> AsyncWrite for EncryptedStrea
     }
 }
 
-fn start_handshake<B: AsRef<[u8]>, S>(
-    auth: &Authorization<B>,
+fn start_handshake<S>(
+    auth: &Authorization,
     transport: &mut Option<S>,
 ) -> Result<Handshaker<S>, SendError> {
     let (pattern, initial_payload) = match &auth {
@@ -253,28 +254,21 @@ fn start_handshake<B: AsRef<[u8]>, S>(
             device_id,
             server_public_key,
             client_private_key,
-        } => {
-            let (server_public_key, client_private_key) =
-                (server_public_key.as_ref(), client_private_key.as_ref());
-            let initial_payload = InitialPayloadAuth::new(*aci, *device_id);
-
-            (
-                HandshakeAuth::IK {
-                    server_public_key,
-                    client_private_key,
-                },
-                initial_payload.as_bytes().into(),
-            )
-        }
+        } => (
+            HandshakeAuth::IK {
+                server_public_key,
+                client_private_key,
+            },
+            Some(InitialPayloadAuth::new(*aci, *device_id)),
+        ),
         Authorization::Anonymous { server_public_key } => {
-            let server_public_key = server_public_key.as_ref();
-            (HandshakeAuth::NK { server_public_key }, vec![])
+            (HandshakeAuth::NK { server_public_key }, None)
         }
     };
     Handshaker::new(
         transport.take().expect("always Some in Nascent state"),
         pattern,
-        initial_payload.as_bytes().into(),
+        initial_payload.as_ref().map(AsBytes::as_bytes),
     )
     .map_err(SendError::Noise)
 }
@@ -446,8 +440,8 @@ mod test {
             Authorization::Authenticated {
                 aci: ACI,
                 device_id: DEVICE_ID,
-                server_public_key: server_keypair.public,
-                client_private_key: client_keypair.private,
+                server_public_key: server_keypair.public.try_into().unwrap(),
+                client_private_key: client_keypair.private.try_into().unwrap(),
             },
             b,
         );
@@ -494,7 +488,7 @@ mod test {
 
         let mut client = EncryptedStream::new(
             Authorization::Anonymous {
-                server_public_key: server_keypair.public,
+                server_public_key: server_keypair.public.try_into().unwrap(),
             },
             b,
         );
@@ -550,7 +544,7 @@ mod test {
 
         let mut client = EncryptedStream::new(
             Authorization::Anonymous {
-                server_public_key: server_keypair.public,
+                server_public_key: server_keypair.public.try_into().unwrap(),
             },
             b,
         );
@@ -580,7 +574,7 @@ mod test {
 
         let client = EncryptedStream::new(
             Authorization::Anonymous {
-                server_public_key: server_keypair.public,
+                server_public_key: server_keypair.public.try_into().unwrap(),
             },
             a,
         );
@@ -640,7 +634,7 @@ mod test {
 
         let mut client = EncryptedStream::new(
             Authorization::Anonymous {
-                server_public_key: server_keypair.public,
+                server_public_key: server_keypair.public.try_into().unwrap(),
             },
             a,
         );
@@ -719,7 +713,7 @@ mod test {
 
         let client = EncryptedStream::new(
             Authorization::Anonymous {
-                server_public_key: server_keypair.public,
+                server_public_key: server_keypair.public.try_into().unwrap(),
             },
             a,
         );
