@@ -27,6 +27,7 @@ hex = "0.4"
 hex-literal = "0.4.1"
 nonzero_ext = "0.3.0"
 test-case = "3.2.1"
+proptest = "1.0"
 
 [build-dependencies]
 prost-build = "0.13.1"
