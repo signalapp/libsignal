@@ -35,6 +35,9 @@ use crate::utils::timeout;
 pub mod error;
 pub use error::{Error, WebSocketConnectError};
 
+mod noise;
+pub use noise::WebSocketTransport;
+
 #[derive(Debug, Clone)]
 pub struct WebSocketConfig {
     pub ws_config: tungstenite::protocol::WebSocketConfig,

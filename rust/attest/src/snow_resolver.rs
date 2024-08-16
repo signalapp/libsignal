@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use blake2::{Blake2b, Blake2b512};
 use chacha20poly1305::{AeadInPlace, ChaCha20Poly1305, KeyInit};
 use rand_core::{CryptoRng, RngCore};
 use sha2::{Digest, Sha256};
@@ -118,6 +119,39 @@ impl Hash for HashSHA256 {
 
 // Based on snow's resolvers/default.rs
 #[derive(Default)]
+struct HashBLAKE2b {
+    hasher: Blake2b512,
+}
+
+impl Hash for HashBLAKE2b {
+    fn name(&self) -> &'static str {
+        "BLAKE2b"
+    }
+
+    fn block_len(&self) -> usize {
+        128
+    }
+
+    fn hash_len(&self) -> usize {
+        64
+    }
+
+    fn reset(&mut self) {
+        self.hasher = Blake2b::default();
+    }
+
+    fn input(&mut self, data: &[u8]) {
+        self.hasher.update(data);
+    }
+
+    fn result(&mut self, out: &mut [u8]) {
+        let hash = self.hasher.finalize_reset();
+        out[..64].copy_from_slice(&hash);
+    }
+}
+
+// Based on snow's resolvers/default.rs
+#[derive(Default)]
 struct CipherChaChaPoly {
     key: [u8; 32],
 }
@@ -197,6 +231,7 @@ impl CryptoResolver for Resolver {
     fn resolve_hash(&self, choice: &HashChoice) -> Option<Box<dyn Hash>> {
         match choice {
             HashChoice::SHA256 => Some(Box::<HashSHA256>::default()),
+            HashChoice::Blake2b => Some(Box::<HashBLAKE2b>::default()),
             _ => panic!("{:?} not supported", choice),
         }
     }

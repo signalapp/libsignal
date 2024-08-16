@@ -16,6 +16,7 @@ boring = { git = "https://github.com/signalapp/boring", tag = "signal-v4.9.0", d
 asn1 = "0.16.1"
 base64 = "0.21"
 bitflags = "2.3.3"
+blake2 = "0.10"
 chacha20poly1305 = "0.10.1"
 chrono = { version = "0.4", features = ["serde"] }
 ciborium = "0.2"

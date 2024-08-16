@@ -29,6 +29,7 @@ pub mod connection_manager;
 pub mod dns;
 pub mod errors;
 mod http_client;
+pub mod noise;
 pub(crate) mod reconnect;
 pub mod tcp_ssl;
 pub mod ws;

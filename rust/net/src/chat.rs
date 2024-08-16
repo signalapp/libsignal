@@ -27,6 +27,7 @@ use crate::env::RECEIVE_STORIES_HEADER_NAME;
 use crate::timeouts::MULTI_ROUTE_CONNECTION_TIMEOUT;
 pub use error::ChatServiceError;
 
+pub mod noise;
 pub mod server_requests;
 pub mod ws;
 

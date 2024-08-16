@@ -14,6 +14,7 @@ pub mod hsm_enclave;
 pub mod ias;
 pub mod nitro;
 pub mod sgx_session;
+pub mod snow_resolver;
 pub mod svr2;
 pub mod tpm2snp;
 
@@ -22,5 +23,4 @@ mod endian;
 mod error;
 mod expireable;
 mod proto;
-mod snow_resolver;
 mod util;

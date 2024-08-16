@@ -219,6 +219,40 @@ pub(crate) async fn sleep_until_and_catch_up(time: tokio::time::Instant) {
 }
 
 #[cfg(test)]
+pub(crate) mod testutil {
+    use std::sync::atomic::AtomicUsize;
+    use std::sync::Arc;
+
+    /// Usable as a [Waker](std::task::Waker) for async polling.
+    #[derive(Debug, Default)]
+    pub(crate) struct TestWaker {
+        wake_count: AtomicUsize,
+    }
+
+    impl TestWaker {
+        pub(crate) fn was_woken(&self) -> bool {
+            self.wake_count() != 0
+        }
+        pub(crate) fn wake_count(&self) -> usize {
+            self.wake_count.load(std::sync::atomic::Ordering::SeqCst)
+        }
+        pub(crate) fn as_waker(self: &Arc<Self>) -> std::task::Waker {
+            std::task::Waker::from(Arc::clone(self))
+        }
+    }
+
+    impl std::task::Wake for TestWaker {
+        fn wake(self: Arc<Self>) {
+            self.wake_by_ref()
+        }
+        fn wake_by_ref(self: &Arc<Self>) {
+            self.wake_count
+                .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        }
+    }
+}
+
+#[cfg(test)]
 mod test {
     use super::*;
 

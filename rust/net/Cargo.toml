@@ -41,6 +41,7 @@ rustls-platform-verifier = "0.3.1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 sha2 = "0.10.8"
+snow = { version = "0.9.5", default-features = false }
 static_assertions = "1.1"
 strum = { version = "0.26", features = ["derive"] }
 thiserror = "1.0.38"
@@ -52,6 +53,7 @@ tokio-util = "0.7.9"
 tungstenite = { version = "0.23.0", features = ["url"] }
 url = "2.4.1"
 uuid = "1.1.2"
+zerocopy = { version = "0.7", features = ["derive"] }
 
 [build-dependencies]
 prost-build = "0.13.1"
