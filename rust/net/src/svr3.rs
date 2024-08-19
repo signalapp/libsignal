@@ -3,15 +3,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use crate::auth::Auth;
-use crate::enclave::PpssSetup;
-use crate::env::Svr3Env;
 use crate::infra::errors::LogSafeDisplay;
-use crate::infra::ws::{
-    AttestedConnectionError, DefaultStream, WebSocketConnectError, WebSocketServiceError,
-};
+use crate::infra::ws::{AttestedConnectionError, WebSocketConnectError, WebSocketServiceError};
 use bincode::Options as _;
-use direct::DirectConnect;
 use libsignal_svr3::{EvaluationResult, MaskedShareSet};
 use rand_core::CryptoRngCore;
 use serde::{Deserialize, Serialize};
@@ -275,15 +269,24 @@ where
     Ok(share_set)
 }
 
-impl Svr3Env<'static> {
-    /// Simplest way to connect to an SVR3 Environment in integration tests, command
-    /// line tools, and examples.
-    pub async fn connect_directly(
-        &self,
-        auth: &Auth,
-    ) -> <Self as PpssSetup<DefaultStream>>::ConnectionResults {
-        let endpoints = (self.sgx(), self.nitro(), self.tpm2snp());
-        endpoints.connect(auth).await
+#[cfg(feature = "test-support")]
+pub mod test_support {
+    use crate::auth::Auth;
+    use crate::enclave::PpssSetup;
+    use crate::env::Svr3Env;
+    use crate::infra::ws::DefaultStream;
+    use crate::svr3::direct::DirectConnect as _;
+
+    impl Svr3Env<'static> {
+        /// Simplest way to connect to an SVR3 Environment in integration tests, command
+        /// line tools, and examples.
+        pub async fn connect_directly(
+            &self,
+            auth: &Auth,
+        ) -> <Self as PpssSetup<DefaultStream>>::ConnectionResults {
+            let endpoints = (self.sgx(), self.nitro(), self.tpm2snp());
+            endpoints.connect(auth).await
+        }
     }
 }
 

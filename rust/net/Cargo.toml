@@ -5,6 +5,9 @@ edition = "2021"
 authors = ["Signal Messenger LLC"]
 license = "AGPL-3.0-only"
 
+[features]
+test-support = []
+
 [dependencies]
 attest = { path = "../attest" }
 libsignal-core = { path = "../core" }
@@ -75,3 +78,19 @@ tls-parser = "0.11.0"
 tokio = { version = "1", features = ["test-util", "io-std", "rt-multi-thread"] }
 url = "2.4.1"
 warp = { version = "0.3.6", features = ["tls"] }
+
+[[example]]
+name = "svr3"
+required-features = ["test-support"]
+
+[[example]]
+name = "svr3_prop_test"
+required-features = ["test-support"]
+
+[[example]]
+name = "chat_smoke_test"
+required-features = ["test-support"]
+
+[[test]]
+name = "svr3_migration"
+required-features = ["test-support"]

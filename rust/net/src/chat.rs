@@ -475,6 +475,63 @@ pub fn chat_service<T: TransportConnector + 'static>(
     }
 }
 
+#[cfg(feature = "test-support")]
+pub mod test_support {
+    use std::sync::Arc;
+    use std::time::Duration;
+
+    use http::uri::PathAndQuery;
+    use tokio::sync::mpsc;
+
+    use crate::auth::Auth;
+    use crate::chat::{Chat, ChatServiceWithDebugInfo};
+    use crate::env::constants::WEB_SOCKET_PATH;
+    use crate::env::{Env, Svr3Env};
+    use crate::infra::dns::DnsResolver;
+    use crate::infra::tcp_ssl::DirectConnector;
+    use crate::infra::{make_ws_config, ConnectionParams, EndpointConnection};
+    use crate::utils::ObservableEvent;
+
+    use super::*;
+
+    pub type AnyChat = Chat<
+        Arc<dyn ChatServiceWithDebugInfo + Send + Sync>,
+        Arc<dyn ChatServiceWithDebugInfo + Send + Sync>,
+    >;
+
+    pub fn simple_chat_service(
+        env: &Env<'static, Svr3Env<'static>>,
+        auth: Auth,
+        connection_params: Vec<ConnectionParams>,
+    ) -> AnyChat {
+        let one_route_connect_timeout = Duration::from_secs(5);
+        let network_change_event = ObservableEvent::default();
+        let dns_resolver =
+            DnsResolver::new_with_static_fallback(env.static_fallback(), &network_change_event);
+        let transport_connector = DirectConnector::new(dns_resolver);
+        let chat_endpoint = PathAndQuery::from_static(WEB_SOCKET_PATH);
+        let chat_ws_config = make_ws_config(chat_endpoint, one_route_connect_timeout);
+        let connection = EndpointConnection::new_multi(
+            connection_params,
+            one_route_connect_timeout,
+            chat_ws_config,
+            &network_change_event,
+        );
+
+        let (incoming_auth_tx, _incoming_rx) = mpsc::channel(1);
+        let (incoming_unauth_tx, _incoming_rx) = mpsc::channel(1);
+        chat_service(
+            &connection,
+            transport_connector,
+            incoming_auth_tx,
+            incoming_unauth_tx,
+            auth,
+            false,
+        )
+        .into_dyn()
+    }
+}
+
 #[cfg(test)]
 pub(crate) mod test {
     use crate::chat::{Response, ResponseProto, ResponseProtoInvalidError};

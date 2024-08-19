@@ -4,19 +4,14 @@
 //
 
 use std::process::ExitCode;
-use std::time::Duration;
 
 use clap::{Args, Parser, ValueEnum};
-use http::uri::PathAndQuery;
+
 use libsignal_net::auth::Auth;
-use libsignal_net::chat::{chat_service, ChatServiceError};
-use libsignal_net::env::constants::WEB_SOCKET_PATH;
+use libsignal_net::chat::test_support::simple_chat_service;
+use libsignal_net::chat::ChatServiceError;
 use libsignal_net::env::Svr3Env;
-use libsignal_net::infra::dns::DnsResolver;
-use libsignal_net::infra::tcp_ssl::DirectConnector;
-use libsignal_net::infra::{make_ws_config, ConnectionParams, EndpointConnection, RouteType};
-use libsignal_net::utils::ObservableEvent;
-use tokio::sync::mpsc;
+use libsignal_net::infra::{ConnectionParams, RouteType};
 
 #[derive(Parser)]
 struct Config {
@@ -101,33 +96,7 @@ async fn test_connection(
     env: &libsignal_net::env::Env<'static, Svr3Env<'static>>,
     connection_params: Vec<ConnectionParams>,
 ) -> Result<(), ChatServiceError> {
-    let one_route_connect_timeout = Duration::from_secs(5);
-    let network_change_event = ObservableEvent::default();
-    let dns_resolver =
-        DnsResolver::new_with_static_fallback(env.static_fallback(), &network_change_event);
-    let transport_connector = DirectConnector::new(dns_resolver);
-    let chat_endpoint = PathAndQuery::from_static(WEB_SOCKET_PATH);
-    let chat_ws_config = make_ws_config(chat_endpoint, one_route_connect_timeout);
-    let connection = EndpointConnection::new_multi(
-        connection_params,
-        one_route_connect_timeout,
-        chat_ws_config,
-        &network_change_event,
-    );
-
-    let (incoming_auth_tx, _incoming_rx) = mpsc::channel(1);
-    let (incoming_unauth_tx, _incoming_rx) = mpsc::channel(1);
-    let chat = chat_service(
-        &connection,
-        transport_connector,
-        incoming_auth_tx,
-        incoming_unauth_tx,
-        Auth {
-            username: "".to_owned(),
-            password: "".to_owned(),
-        },
-        false,
-    );
+    let chat = simple_chat_service(env, Auth::default(), connection_params);
 
     chat.connect_unauthenticated().await?;
     chat.disconnect().await;

@@ -28,6 +28,7 @@ impl<T: HttpBasicAuth> From<T> for HttpRequestDecorator {
 /// - username is a "hex(uid)"
 /// - password is a "timestamp:hex(otp(uid, timestamp, secret))"
 #[derive(Clone)]
+#[cfg_attr(feature = "test-support", derive(Default))]
 pub struct Auth {
     pub username: String,
     pub password: String,
