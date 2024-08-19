@@ -5,8 +5,7 @@
 
 use std::io::Error as IoError;
 use std::pin::Pin;
-use std::sync::Arc;
-use std::task::{ready, Context, Poll, Wake, Waker};
+use std::task::{ready, Context, Poll};
 
 use futures_util::FutureExt;
 use libsignal_core::Aci;
@@ -17,6 +16,7 @@ use zerocopy::{AsBytes, FromBytes, FromZeroes};
 use crate::infra::noise::{NoiseStream, Transport};
 
 use super::handshake::{HandshakeAuth, Handshaker, EPHEMERAL_KEY_LEN, STATIC_KEY_LEN};
+use super::waker::SharedWakers;
 use super::SendError;
 
 /// A Noise-encrypted stream that wraps an underlying block-based [`Transport`].
@@ -72,7 +72,7 @@ enum Inner<S> {
         /// polling context for the handshaker. It holds wakers from read and
         /// write tasks an ensures that if the handshaker makes progress, both
         /// read and write tasks get woken up.
-        wakers: Arc<SharedWakers>,
+        wakers: SharedWakers,
     },
     /// Communicating over an established bidirectional stream.
     Established(NoiseStream<S>),
@@ -112,9 +112,8 @@ impl<S: Transport + Unpin> AsyncRead for EncryptedStream<S> {
                 // context whose waker that will awake both, instead of the
                 // context passed in from above.
                 wakers.save_reader_from(cx);
-                let delegating_waker = Waker::from(Arc::clone(&*wakers));
                 let stream =
-                    ready!(handshaker.poll_unpin(&mut Context::from_waker(&delegating_waker)))?;
+                    ready!(handshaker.poll_unpin(&mut Context::from_waker(wakers.as_ref())))?;
 
                 // The handshake finished, now move to the next state. We need
                 // to wake the writer task if there is one. We don't need to
@@ -179,9 +178,8 @@ impl<S: Transport + Unpin> AsyncWrite for EncryptedStream<S> {
                 // Poll the handshaker with a context whose waker will wake both
                 // read and write tasks. Record the waker from the write task polling here first.
                 wakers.save_writer_from(cx);
-                let delegating_waker = Waker::from(Arc::clone(&*wakers));
                 let stream: NoiseStream<_> =
-                    ready!(handshaker.poll_unpin(&mut Context::from_waker(&delegating_waker)))?;
+                    ready!(handshaker.poll_unpin(&mut Context::from_waker(wakers.as_ref())))?;
 
                 // The handshake finished, now move to the next state. We need
                 // to wake the reader task if there is one. We don't need to
@@ -216,8 +214,7 @@ impl<S: Transport + Unpin> AsyncWrite for EncryptedStream<S> {
             },
             Inner::Handshake { handshaker, wakers } => {
                 wakers.save_writer_from(cx);
-                let delegating_waker = Waker::from(Arc::clone(&*wakers));
-                Pin::new(handshaker).poll_flush(&mut Context::from_waker(&delegating_waker))
+                Pin::new(handshaker).poll_flush(&mut Context::from_waker(wakers.as_ref()))
             }
             Inner::Established(stream) => Pin::new(stream).poll_flush(cx),
         }
@@ -236,8 +233,7 @@ impl<S: Transport + Unpin> AsyncWrite for EncryptedStream<S> {
             }
             Inner::Handshake { handshaker, wakers } => {
                 wakers.save_writer_from(cx);
-                let delegating_waker = Waker::from(Arc::clone(&*wakers));
-                handshaker.poll_shutdown(&mut Context::from_waker(&delegating_waker))
+                handshaker.poll_shutdown(&mut Context::from_waker(wakers.as_ref()))
             }
             Inner::Established(stream) => Pin::new(stream).poll_shutdown(cx),
         }
@@ -271,67 +267,6 @@ fn start_handshake<S>(
         initial_payload.as_ref().map(AsBytes::as_bytes),
     )
     .map_err(SendError::Noise)
-}
-
-/// Implements [`Wake`] by delegating to the held wakers.
-#[derive(Default)]
-struct SharedWakers(std::sync::Mutex<ReadWriteWakers>);
-
-impl SharedWakers {
-    fn with_lock<R>(&self, f: impl FnOnce(&mut ReadWriteWakers) -> R) -> R {
-        f(&mut self.0.lock().expect("not poisoned"))
-    }
-
-    fn save_writer_from(&self, cx: &mut Context<'_>) {
-        self.with_lock(|wakers| wakers.write.save_from(cx.waker()))
-    }
-    fn save_reader_from(&self, cx: &mut Context<'_>) {
-        self.with_lock(|wakers| wakers.read.save_from(cx.waker()))
-    }
-    fn wake_writer(&self) {
-        self.with_lock(|wakers| wakers.write.take()).wake_if_some()
-    }
-    fn wake_reader(&self) {
-        self.with_lock(|wakers| wakers.read.take()).wake_if_some()
-    }
-}
-
-#[derive(Default)]
-struct ReadWriteWakers {
-    read: Option<Waker>,
-    write: Option<Waker>,
-}
-
-impl Wake for SharedWakers {
-    fn wake(self: Arc<Self>) {
-        let ReadWriteWakers { read, write } = self.with_lock(std::mem::take);
-        read.wake_if_some();
-        write.wake_if_some();
-    }
-}
-
-/// Convenience trait for working with [`Option<Waker>`]s.
-trait WakerExt {
-    /// Logically equivalent to `*self = Some(waker.clone())`
-    fn save_from(&mut self, waker: &Waker);
-
-    /// If `self` is `Some(waker)`, wakes `waker`.
-    fn wake_if_some(self);
-}
-
-impl WakerExt for Option<Waker> {
-    fn save_from(&mut self, waker: &Waker) {
-        match self {
-            Some(saved) => saved.clone_from(waker),
-            None => *self = Some(waker.clone()),
-        };
-    }
-
-    fn wake_if_some(self) {
-        if let Some(waker) = self {
-            waker.wake()
-        }
-    }
 }
 
 #[cfg(test)]

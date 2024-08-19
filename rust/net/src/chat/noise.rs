@@ -4,6 +4,7 @@
 //
 
 mod encrypted_stream;
+mod waker;
 pub use encrypted_stream::{Authorization, EncryptedStream};
 
 mod handshake;
