@@ -227,7 +227,7 @@ jobs:
   rust32:
     name: Rust (32-bit testing)
 
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
 
     needs: changes
 
@@ -340,7 +340,7 @@ jobs:
       shell: cmd
 
     - run: sudo apt-get update && sudo apt-get install protobuf-compiler
-      if: matrix.os == 'ubuntu-latest'
+      if: matrix.os == 'ubuntu-20.04'
 
     - run: choco install protoc
       if: matrix.os == 'windows-latest'
