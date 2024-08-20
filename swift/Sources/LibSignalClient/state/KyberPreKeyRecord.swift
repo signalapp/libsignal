@@ -69,32 +69,26 @@ public class KyberPreKeyRecord: ClonableHandleOwner {
         }
     }
 
-    public var keyPair: KEMKeyPair {
-        return withNativeHandle { nativeHandle in
-            failOnError {
-                try invokeFnReturningNativeHandle {
-                    signal_kyber_pre_key_record_get_key_pair($0, nativeHandle)
-                }
+    public func keyPair() throws -> KEMKeyPair {
+        return try withNativeHandle { nativeHandle in
+            try invokeFnReturningNativeHandle {
+                signal_kyber_pre_key_record_get_key_pair($0, nativeHandle)
             }
         }
     }
 
-    public var publicKey: KEMPublicKey {
-        return withNativeHandle { nativeHandle in
-            failOnError {
-                try invokeFnReturningNativeHandle {
-                    signal_kyber_pre_key_record_get_public_key($0, nativeHandle)
-                }
+    public func publicKey() throws -> KEMPublicKey {
+        return try withNativeHandle { nativeHandle in
+            try invokeFnReturningNativeHandle {
+                signal_kyber_pre_key_record_get_public_key($0, nativeHandle)
             }
         }
     }
 
-    public var secretKey: KEMSecretKey {
-        return withNativeHandle { nativeHandle in
-            failOnError {
-                try invokeFnReturningNativeHandle {
-                    signal_kyber_pre_key_record_get_secret_key($0, nativeHandle)
-                }
+    public func secretKey() throws -> KEMSecretKey {
+        return try withNativeHandle { nativeHandle in
+            try invokeFnReturningNativeHandle {
+                signal_kyber_pre_key_record_get_secret_key($0, nativeHandle)
             }
         }
     }

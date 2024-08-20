@@ -77,22 +77,18 @@ public class SignedPreKeyRecord: ClonableHandleOwner {
         }
     }
 
-    public var publicKey: PublicKey {
-        return withNativeHandle { nativeHandle in
-            failOnError {
-                try invokeFnReturningNativeHandle {
-                    signal_signed_pre_key_record_get_public_key($0, nativeHandle)
-                }
+    public func publicKey() throws -> PublicKey {
+        return try withNativeHandle { nativeHandle in
+            try invokeFnReturningNativeHandle {
+                signal_signed_pre_key_record_get_public_key($0, nativeHandle)
             }
         }
     }
 
-    public var privateKey: PrivateKey {
-        return withNativeHandle { nativeHandle in
-            failOnError {
-                try invokeFnReturningNativeHandle {
-                    signal_signed_pre_key_record_get_private_key($0, nativeHandle)
-                }
+    public func privateKey() throws -> PrivateKey {
+        return try withNativeHandle { nativeHandle in
+            try invokeFnReturningNativeHandle {
+                signal_signed_pre_key_record_get_private_key($0, nativeHandle)
             }
         }
     }
