@@ -13,10 +13,9 @@ use crate::guide::{InvalidState, ProofGuide};
 use crate::implicit::{full_monitoring_path, monitoring_path};
 use crate::log::{evaluate_batch_proof, truncate_batch_proof, verify_consistency_proof};
 use crate::prefix::{evaluate as evaluate_prefix, MalformedProof};
+use crate::store::{LogStore, LogStoreError};
 use crate::wire::*;
-use crate::{
-    guide, log, vrf, DeploymentMode, LogStore, LogStoreError, MonitoringData, PublicConfig,
-};
+use crate::{guide, log, vrf, DeploymentMode, MonitoringData, PublicConfig};
 
 /// The range of allowed timestamp values relative to "now".
 /// The timestamps will have to be in [now - max_behind .. now + max_ahead]
@@ -159,7 +158,8 @@ fn verify_tree_head_signature(
 
 /// Checks that a FullTreeHead structure is valid. It stores the tree head for
 /// later requests if it succeeds.
-async fn verify_full_tree_head(
+fn verify_full_tree_head(
+    config: &PublicConfig,
     storage: &mut dyn LogStore,
     fth: &FullTreeHead,
     root: [u8; 32],
@@ -169,7 +169,7 @@ async fn verify_full_tree_head(
     // 1. Verify the proof in FullTreeHead.consistency, if one is expected.
     // 3. Verify that the timestamp and tree_size fields of the TreeHead are
     //    greater than or equal to what they were before.
-    match storage.get_last_tree_head().await? {
+    match storage.get_last_tree_head()? {
         None => {
             if !fth.consistency.is_empty() {
                 return Err(Error::VerificationFailed(
@@ -211,20 +211,14 @@ async fn verify_full_tree_head(
     };
 
     // 2. Verify the signature in TreeHead.signature.
-    let public_config = storage.public_config().await?;
-    verify_tree_head_signature(
-        &public_config,
-        &tree_head,
-        &root,
-        &public_config.signature_key,
-    )?;
+    verify_tree_head_signature(config, &tree_head, &root, &config.signature_key)?;
 
     // 3. Verify that the timestamp in TreeHead is sufficiently recent.
     verify_timestamp(tree_head.timestamp, ALLOWED_TIMESTAMP_RANGE, None)?;
 
     // 4. If third-party auditing is used, verify auditor_tree_head with the
     //    steps described in Section 11.2.
-    if let DeploymentMode::ThirdPartyAuditing(auditor_key) = public_config.mode {
+    if let DeploymentMode::ThirdPartyAuditing(auditor_key) = config.mode {
         let auditor_tree_head = get_proto_field(&fth.auditor_tree_head)?;
         let auditor_head = get_proto_field(&auditor_tree_head.tree_head)?;
 
@@ -265,7 +259,7 @@ async fn verify_full_tree_head(
                 *auditor_root,
                 root,
             )?;
-            verify_tree_head_signature(&public_config, auditor_head, auditor_root, &auditor_key)?;
+            verify_tree_head_signature(config, auditor_head, auditor_root, &auditor_key)?;
         } else {
             if !auditor_tree_head.consistency.is_empty() {
                 return Err(Error::VerificationFailed(
@@ -277,11 +271,11 @@ async fn verify_full_tree_head(
                     "explicit root value provided when not expected".to_string(),
                 ));
             }
-            verify_tree_head_signature(&public_config, auditor_head, &root, &auditor_key)?;
+            verify_tree_head_signature(config, auditor_head, &root, &auditor_key)?;
         }
     }
 
-    Ok(storage.set_last_tree_head(tree_head, root).await?)
+    Ok(storage.set_last_tree_head(tree_head, root)?)
 }
 
 /// The range of allowed timestamp values relative to "now".
@@ -322,7 +316,7 @@ fn verify_timestamp(
 
 /// Checks that the provided FullTreeHead has a valid consistency proof relative
 /// to the provided distinguished head.
-pub async fn verify_distinguished(
+pub fn verify_distinguished(
     storage: &mut dyn LogStore,
     fth: &FullTreeHead,
     distinguished_size: u64,
@@ -330,7 +324,7 @@ pub async fn verify_distinguished(
 ) -> Result<()> {
     let tree_size = get_proto_field(&fth.tree_head)?.tree_size;
 
-    let root = match storage.get_last_tree_head().await? {
+    let root = match storage.get_last_tree_head()? {
         Some((tree_head, root)) if tree_head.tree_size == tree_size => root,
         _ => {
             return Err(Error::VerificationFailed(
@@ -360,13 +354,18 @@ pub async fn verify_distinguished(
     )?)
 }
 
-fn evaluate_vrf_proof(proof: &[u8], vrf_key: vrf::PublicKey, search_key: &str) -> Result<[u8; 32]> {
+fn evaluate_vrf_proof(
+    proof: &[u8],
+    vrf_key: &vrf::PublicKey,
+    search_key: &str,
+) -> Result<[u8; 32]> {
     let proof = proof.try_into().map_err(|_| MalformedProof)?;
     Ok(vrf_key.proof_to_hash(search_key.as_bytes(), proof)?)
 }
 
 /// The shared implementation of verify_search and verify_update.
-async fn verify_search_internal(
+fn verify_search_internal(
+    config: &PublicConfig,
     storage: &mut dyn LogStore,
     req: &SearchRequest,
     res: &SearchResponse,
@@ -374,9 +373,7 @@ async fn verify_search_internal(
 ) -> Result<()> {
     // NOTE: Update this function in tandem with truncate_search_response.
 
-    let public_config = storage.public_config().await?;
-
-    let index = evaluate_vrf_proof(&res.vrf_proof, public_config.vrf_key, &req.search_key)?;
+    let index = evaluate_vrf_proof(&res.vrf_proof, &config.vrf_key, &req.search_key)?;
 
     // Evaluate the search proof.
     let full_tree_head = get_proto_field(&res.tree_head)?;
@@ -453,7 +450,7 @@ async fn verify_search_internal(
     let root = evaluate_batch_proof(&ids, tree_size, &values, &inclusion_proof)?;
 
     // Verify the tree head with the candidate root.
-    verify_full_tree_head(storage, full_tree_head, root).await?;
+    verify_full_tree_head(config, storage, full_tree_head, root)?;
 
     // Update stored monitoring data.
     let size = if req.search_key == "distinguished" {
@@ -465,35 +462,38 @@ async fn verify_search_internal(
     };
     let ver = get_proto_field(&result_step.prefix)?.counter;
 
-    let mut mdw = MonitoringDataWrapper::load(storage, &req.search_key).await?;
-    if monitor || public_config.mode == DeploymentMode::ContactMonitoring {
+    let mut mdw = MonitoringDataWrapper::load(storage, &req.search_key)?;
+    if monitor || config.mode == DeploymentMode::ContactMonitoring {
         mdw.start_monitoring(&index, search_proof.pos, result_id, ver, monitor);
     }
     mdw.check_search_consistency(size, &index, search_proof.pos, result_id, ver, monitor)?;
     mdw.update(size, &steps)?;
-    mdw.save(storage, &req.search_key).await
+    mdw.save(storage, &req.search_key)
 }
 
 /// Checks that the output of a Search operation is valid and updates the
 /// client's stored data. `res.value.value` may only be consumed by the
 /// application if this function returns successfully.
-pub async fn verify_search(
+pub fn verify_search(
+    config: &PublicConfig,
     storage: &mut dyn LogStore,
     req: &SearchRequest,
     res: &SearchResponse,
     force_monitor: bool,
 ) -> Result<()> {
-    verify_search_internal(storage, req, res, force_monitor).await
+    verify_search_internal(config, storage, req, res, force_monitor)
 }
 
 /// Checks that the output of an Update operation is valid and updates the
 /// client's stored data.
-pub async fn verify_update(
+pub fn verify_update(
+    config: &PublicConfig,
     storage: &mut dyn LogStore,
     req: &UpdateRequest,
     res: &UpdateResponse,
 ) -> Result<()> {
     verify_search_internal(
+        config,
         storage,
         &SearchRequest {
             search_key: req.search_key.clone(),
@@ -512,12 +512,12 @@ pub async fn verify_update(
         },
         true,
     )
-    .await
 }
 
 /// Checks that the output of a Monitor operation is valid and updates the
 /// client's stored data.
-pub async fn verify_monitor(
+pub fn verify_monitor(
+    config: &PublicConfig,
     storage: &mut dyn LogStore,
     req: &MonitorRequest,
     res: &MonitorResponse,
@@ -542,10 +542,10 @@ pub async fn verify_monitor(
     let mut mpa = MonitorProofAcc::new(tree_size);
     // TODO: futures_util::future::join_all() maybe?
     for (key, proof) in req.owned_keys.iter().zip(res.owned_proofs.iter()) {
-        mpa.process(storage, key, proof).await?;
+        mpa.process(storage, key, proof)?;
     }
     for (key, proof) in req.contact_keys.iter().zip(res.contact_proofs.iter()) {
-        mpa.process(storage, key, proof).await?;
+        mpa.process(storage, key, proof)?;
     }
 
     // Evaluate the inclusion proof to get a candidate root value.
@@ -566,7 +566,7 @@ pub async fn verify_monitor(
     };
 
     // Verify the tree head with the candidate root.
-    verify_full_tree_head(storage, full_tree_head, root).await?;
+    verify_full_tree_head(config, storage, full_tree_head, root)?;
 
     // Update monitoring data.
     for (key, entry) in req
@@ -592,9 +592,9 @@ pub async fn verify_monitor(
         } else {
             tree_size
         };
-        let mut mdw = MonitoringDataWrapper::load(storage, &key.search_key).await?;
+        let mut mdw = MonitoringDataWrapper::load(storage, &key.search_key)?;
         mdw.update(size, entry)?;
-        mdw.save(storage, &key.search_key).await?;
+        mdw.save(storage, &key.search_key)?;
     }
 
     Ok(())
@@ -619,7 +619,7 @@ impl MonitorProofAcc {
         }
     }
 
-    async fn process(
+    fn process(
         &mut self,
         storage: &mut dyn LogStore,
         key: &MonitorKey,
@@ -627,7 +627,7 @@ impl MonitorProofAcc {
     ) -> Result<()> {
         // Get the existing monitoring data from storage and check that it
         // matches the request.
-        let data = storage.get_data(&key.search_key).await?.ok_or_else(|| {
+        let data = storage.get_data(&key.search_key)?.ok_or_else(|| {
             Error::VerificationFailed(
                 "unable to process monitoring response for unknown search key".to_string(),
             )
@@ -678,9 +678,9 @@ struct MonitoringDataWrapper {
 }
 
 impl MonitoringDataWrapper {
-    async fn load(storage: &mut dyn LogStore, search_key: &str) -> Result<Self> {
+    fn load(storage: &mut dyn LogStore, search_key: &str) -> Result<Self> {
         Ok(Self {
-            inner: storage.get_data(search_key).await?,
+            inner: storage.get_data(search_key)?,
             changed: false,
         })
     }
@@ -821,10 +821,10 @@ impl MonitoringDataWrapper {
         Ok(())
     }
 
-    async fn save(self, storage: &mut dyn LogStore, search_key: &str) -> Result<()> {
+    fn save(self, storage: &mut dyn LogStore, search_key: &str) -> Result<()> {
         if self.changed {
             if let Some(data) = self.inner {
-                storage.set_data(search_key, data).await?
+                storage.set_data(search_key, data)?
             }
         }
         Ok(())
@@ -835,16 +835,14 @@ impl MonitoringDataWrapper {
 /// being searched for in `SearchResponse` was sequenced.
 ///
 /// Most validation is skipped so the SearchResponse MUST already be verified.
-pub async fn truncate_search_response(
-    storage: &mut dyn LogStore,
+pub fn truncate_search_response(
+    config: &PublicConfig,
     req: &SearchRequest,
     res: &SearchResponse,
 ) -> Result<(u64, [u8; 32])> {
     // NOTE: Update this function in tandem with verify_search_internal.
 
-    let public_config = storage.public_config().await?;
-
-    let index = evaluate_vrf_proof(&res.vrf_proof, public_config.vrf_key, &req.search_key)?;
+    let index = evaluate_vrf_proof(&res.vrf_proof, &config.vrf_key, &req.search_key)?;
 
     // Evaluate the SearchProof to find the terminal leaf.
     let full_tree_head = get_proto_field(&res.tree_head)?;

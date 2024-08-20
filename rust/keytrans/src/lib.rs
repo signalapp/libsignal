@@ -11,20 +11,18 @@ mod implicit;
 mod left_balanced;
 mod log;
 mod prefix;
+mod store;
 mod verify;
 mod vrf;
 mod wire;
 
 use std::collections::HashMap;
 
-use async_trait::async_trait;
 use ed25519_dalek::VerifyingKey as SigPublicKey;
-use prost::{DecodeError, Message};
-
-pub use verify::{
+pub use store::LogStore;
+use verify::{
     truncate_search_response, verify_distinguished, verify_monitor, verify_search, verify_update,
 };
-use vrf::PublicKey as VrfPublicKey;
 pub use wire::{
     Consistency, FullTreeHead, MonitorKey, MonitorRequest, MonitorResponse, SearchRequest,
     SearchResponse, TreeHead, UpdateRequest, UpdateResponse, UpdateValue,
@@ -62,7 +60,83 @@ impl DeploymentMode {
 pub struct PublicConfig {
     pub mode: DeploymentMode,
     pub signature_key: SigPublicKey,
-    pub vrf_key: VrfPublicKey,
+    pub vrf_key: vrf::PublicKey,
+}
+
+/// Key transparency main API entrypoint
+pub struct KeyTransparency {
+    /// Key transparency system configuration
+    pub config: PublicConfig,
+    /// Abstract key transparency data store
+    pub store: dyn LogStore,
+}
+
+impl KeyTransparency {
+    /// Checks that the output of a Search operation is valid and updates the
+    /// client's stored data. `res.value.value` may only be consumed by the
+    /// application if this function returns successfully.
+    pub fn verify_search(
+        &mut self,
+        request: &SearchRequest,
+        response: &SearchResponse,
+        force_monitor: bool,
+    ) -> Result<(), verify::Error> {
+        verify_search(
+            &self.config,
+            &mut self.store,
+            request,
+            response,
+            force_monitor,
+        )
+    }
+
+    /// Checks that the provided FullTreeHead has a valid consistency proof relative
+    /// to the provided distinguished head.
+    pub fn verify_distinguished(
+        &mut self,
+        full_tree_head: &FullTreeHead,
+        distinguished_size: u64,
+        distinguished_root: [u8; 32],
+    ) -> Result<(), verify::Error> {
+        verify_distinguished(
+            &mut self.store,
+            full_tree_head,
+            distinguished_size,
+            distinguished_root,
+        )
+    }
+
+    /// Returns the TreeHead that would've been issued immediately after the value
+    /// being searched for in `SearchResponse` was sequenced.
+    ///
+    /// Most validation is skipped so the SearchResponse MUST already be verified.
+    pub fn truncate_search_response(
+        &mut self,
+        request: &SearchRequest,
+        response: &SearchResponse,
+    ) -> Result<(u64, [u8; 32]), verify::Error> {
+        truncate_search_response(&self.config, request, response)
+    }
+
+    /// Checks that the output of a Monitor operation is valid and updates the
+    /// client's stored data.
+    pub fn verify_monitor(
+        &mut self,
+        request: &MonitorRequest,
+        response: &MonitorResponse,
+    ) -> Result<(), verify::Error> {
+        verify_monitor(&self.config, &mut self.store, request, response)
+    }
+
+    /// Checks that the output of an Update operation is valid and updates the
+    /// client's stored data.
+    pub fn verify_update(
+        &mut self,
+        request: &UpdateRequest,
+        response: &UpdateResponse,
+    ) -> Result<(), verify::Error> {
+        verify_update(&self.config, &mut self.store, request, response)
+    }
 }
 
 /// MonitoringData is the structure retained for each key in the KT server being
@@ -89,120 +163,5 @@ impl MonitoringData {
         let mut out: Vec<u64> = self.ptrs.keys().copied().collect();
         out.sort();
         out
-    }
-}
-
-/// Log store operation failed: {0}
-#[derive(Debug, displaydoc::Display)]
-pub struct LogStoreError(String);
-
-impl From<DecodeError> for LogStoreError {
-    fn from(err: DecodeError) -> Self {
-        Self(err.to_string())
-    }
-}
-
-/// LogStore is the trait implemented by clients for storing local monitoring
-/// data specific to a single log.
-#[async_trait(?Send)]
-pub trait LogStore {
-    async fn public_config(&self) -> Result<PublicConfig, LogStoreError>;
-
-    async fn get_last_tree_head(&self) -> Result<Option<(TreeHead, [u8; 32])>, LogStoreError>;
-    async fn set_last_tree_head(
-        &mut self,
-        head: TreeHead,
-        root: [u8; 32],
-    ) -> Result<(), LogStoreError>;
-
-    async fn get_data(&self, key: &str) -> Result<Option<MonitoringData>, LogStoreError>;
-    async fn set_data(&mut self, key: &str, data: MonitoringData) -> Result<(), LogStoreError>;
-}
-
-/// SimplifiedLogStore is a simpler version of the LogStore trait that clients
-/// can implement to avoid needing to deal with serialization themselves.
-#[async_trait(?Send)]
-pub trait SimplifiedLogStore {
-    async fn public_config(&self) -> Result<PublicConfig, LogStoreError>;
-
-    async fn get_raw_tree_head(&self) -> Result<Option<Vec<u8>>, LogStoreError>;
-    async fn set_raw_tree_head(&mut self, data: &[u8]) -> Result<(), LogStoreError>;
-
-    async fn get_raw_data(&self, key: &str) -> Result<Option<Vec<u8>>, LogStoreError>;
-    async fn set_raw_data(
-        &mut self,
-        key: &str,
-        data: &[u8],
-        next_monitor: u64,
-    ) -> Result<(), LogStoreError>;
-    async fn list_keys(&self) -> Result<Vec<String>, LogStoreError>;
-
-    fn as_log_store(&mut self) -> &mut dyn LogStore;
-}
-
-#[async_trait(?Send)]
-impl<T: SimplifiedLogStore + ?Sized> LogStore for T {
-    async fn public_config(&self) -> Result<PublicConfig, LogStoreError> {
-        self.public_config().await
-    }
-
-    async fn get_last_tree_head(&self) -> Result<Option<(TreeHead, [u8; 32])>, LogStoreError> {
-        self.get_raw_tree_head()
-            .await?
-            .map(|data| {
-                let stored = wire::StoredTreeHead::decode(data.as_slice())?;
-                let tree_head = stored
-                    .tree_head
-                    .ok_or_else(|| LogStoreError("malformed tree head found".to_string()))?;
-                let root = stored
-                    .root
-                    .try_into()
-                    .map_err(|_| LogStoreError("malformed root found".to_string()))?;
-                Ok((tree_head, root))
-            })
-            .transpose()
-    }
-
-    async fn set_last_tree_head(
-        &mut self,
-        head: TreeHead,
-        root: [u8; 32],
-    ) -> Result<(), LogStoreError> {
-        let raw = wire::StoredTreeHead {
-            tree_head: Some(head),
-            root: root.to_vec(),
-        }
-        .encode_to_vec();
-        self.set_raw_tree_head(&raw).await
-    }
-
-    async fn get_data(&self, key: &str) -> Result<Option<MonitoringData>, LogStoreError> {
-        self.get_raw_data(key)
-            .await?
-            .map(|data| {
-                let stored = wire::StoredMonitoringData::decode(data.as_slice())?;
-                Ok(MonitoringData {
-                    index: stored
-                        .index
-                        .try_into()
-                        .map_err(|_| LogStoreError("malformed index found".to_string()))?,
-                    pos: stored.pos,
-                    ptrs: stored.ptrs,
-                    owned: stored.owned,
-                })
-            })
-            .transpose()
-    }
-
-    async fn set_data(&mut self, key: &str, data: MonitoringData) -> Result<(), LogStoreError> {
-        let next_monitor = data.next_monitor();
-        let raw = wire::StoredMonitoringData {
-            index: data.index.to_vec(),
-            pos: data.pos,
-            ptrs: data.ptrs,
-            owned: data.owned,
-        }
-        .encode_to_vec();
-        self.set_raw_data(key, &raw, next_monitor).await
     }
 }
