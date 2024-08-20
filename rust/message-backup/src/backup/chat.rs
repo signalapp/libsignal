@@ -223,7 +223,6 @@ pub struct Reaction<Recipient> {
     #[serde(bound(serialize = "Recipient: serde::Serialize"))]
     pub author: Recipient,
     pub sent_timestamp: Timestamp,
-    pub received_timestamp: Option<Timestamp>,
     _limit_construction_to_module: (),
 }
 
@@ -663,7 +662,6 @@ impl<R: Clone, C: Lookup<RecipientId, R>> TryFromWith<proto::Reaction, C> for Re
         let proto::Reaction {
             authorId,
             sentTimestamp,
-            receivedTimestamp,
             emoji,
             sortOrder,
             special_fields: _,
@@ -679,15 +677,12 @@ impl<R: Clone, C: Lookup<RecipientId, R>> TryFromWith<proto::Reaction, C> for Re
         };
 
         let sent_timestamp = Timestamp::from_millis(sentTimestamp, "Reaction.sentTimestamp");
-        let received_timestamp = receivedTimestamp
-            .map(|timestamp| Timestamp::from_millis(timestamp, "Reaction.receivedTimestamp"));
 
         Ok(Self {
             emoji,
             sort_order: sortOrder,
             author,
             sent_timestamp,
-            received_timestamp,
             _limit_construction_to_module: (),
         })
     }
@@ -740,7 +735,6 @@ mod test {
                 sortOrder: 3,
                 authorId: proto::Recipient::TEST_ID,
                 sentTimestamp: MillisecondsSinceEpoch::TEST_VALUE.0,
-                receivedTimestamp: Some(MillisecondsSinceEpoch::TEST_VALUE.0),
                 ..Default::default()
             }
         }
@@ -753,7 +747,6 @@ mod test {
                 sort_order: 3,
                 author: TestContext::test_recipient().clone(),
                 sent_timestamp: Timestamp::test_value(),
-                received_timestamp: Some(Timestamp::test_value()),
                 _limit_construction_to_module: (),
             }
         }
@@ -900,7 +893,6 @@ mod test {
         |x| x.authorId = proto::Recipient::TEST_ID + 2 => Err(ReactionError::AuthorNotFound(RecipientId(proto::Recipient::TEST_ID + 2)));
         "invalid_author_id"
     )]
-    #[test_case(|x| x.receivedTimestamp = None => Ok(()); "no_received_timestamp")]
     fn reaction(modifier: fn(&mut proto::Reaction)) -> Result<(), ReactionError> {
         let mut reaction = proto::Reaction::test_data();
         modifier(&mut reaction);

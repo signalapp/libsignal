@@ -3,6 +3,7 @@ syntax = "proto3";
 package signal.backup;
 
 option java_package = "org.thoughtcrime.securesms.backup.v2.proto";
+option swift_prefix = "BackupProto_";
 
 message BackupInfo {
   uint64 version = 1;
@@ -677,11 +678,9 @@ message Reaction {
   string emoji = 1;
   uint64 authorId = 2;
   uint64 sentTimestamp = 3;
-  // Optional because some clients may not track this data
-  optional uint64 receivedTimestamp = 4;
   // A higher sort order means that a reaction is more recent. Some clients may export this as
   // incrementing numbers (e.g. 1, 2, 3), others as timestamps.
-  uint64 sortOrder = 5;
+  uint64 sortOrder = 4;
 }
 
 message ChatUpdateMessage {
