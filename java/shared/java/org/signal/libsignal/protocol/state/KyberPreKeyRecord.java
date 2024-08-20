@@ -9,6 +9,7 @@ import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
 
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
+import org.signal.libsignal.protocol.InvalidKeyException;
 import org.signal.libsignal.protocol.InvalidMessageException;
 import org.signal.libsignal.protocol.kem.KEMKeyPair;
 
@@ -47,10 +48,12 @@ public class KyberPreKeyRecord implements NativeHandleGuard.Owner {
     }
   }
 
-  public KEMKeyPair getKeyPair() {
+  public KEMKeyPair getKeyPair() throws InvalidKeyException {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
       return new KEMKeyPair(
-          filterExceptions(() -> Native.KyberPreKeyRecord_GetKeyPair(guard.nativeHandle())));
+          filterExceptions(
+              InvalidKeyException.class,
+              () -> Native.KyberPreKeyRecord_GetKeyPair(guard.nativeHandle())));
     }
   }
 

@@ -9,6 +9,7 @@ import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
 
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
+import org.signal.libsignal.protocol.InvalidKeyException;
 import org.signal.libsignal.protocol.InvalidMessageException;
 import org.signal.libsignal.protocol.ecc.ECKeyPair;
 import org.signal.libsignal.protocol.ecc.ECPrivateKey;
@@ -51,9 +52,10 @@ public class SignedPreKeyRecord implements NativeHandleGuard.Owner {
     }
   }
 
-  public ECKeyPair getKeyPair() {
+  public ECKeyPair getKeyPair() throws InvalidKeyException {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
       return filterExceptions(
+          InvalidKeyException.class,
           () -> {
             ECPublicKey publicKey =
                 new ECPublicKey(Native.SignedPreKeyRecord_GetPublicKey(guard.nativeHandle()));
