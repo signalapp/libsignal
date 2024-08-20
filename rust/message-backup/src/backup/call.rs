@@ -357,7 +357,6 @@ pub(crate) mod test {
     use protobuf::EnumOrUnknown;
     use test_case::test_case;
 
-    use crate::backup::method::Contains;
     use crate::backup::time::testutil::MillisecondsSinceEpoch;
     use crate::backup::time::Duration;
     use crate::backup::TryIntoWith as _;
@@ -426,15 +425,6 @@ pub(crate) mod test {
     }
 
     struct TestContext;
-
-    impl Contains<RecipientId> for TestContext {
-        fn contains(&self, key: &RecipientId) -> bool {
-            matches!(
-                key,
-                &RecipientId(proto::Recipient::TEST_ID) | &TEST_CALL_LINK_RECIPIENT_ID
-            )
-        }
-    }
 
     impl Lookup<RecipientId, DestinationKind> for TestContext {
         fn lookup(&self, key: &RecipientId) -> Option<&DestinationKind> {

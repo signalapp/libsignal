@@ -15,7 +15,7 @@ use crate::backup::call::{AdHocCall, CallError};
 use crate::backup::chat::chat_style::{CustomChatColor, CustomColorId};
 use crate::backup::chat::{ChatData, ChatError, ChatItemData, ChatItemError, PinOrder};
 use crate::backup::frame::{ChatId, RecipientId};
-use crate::backup::method::{Contains, Lookup, LookupPair, Method, Store, ValidateOnly};
+use crate::backup::method::{Lookup, LookupPair, Method, Store, ValidateOnly};
 use crate::backup::recipient::{
     DestinationKind, FullRecipientData, MinimalRecipientData, RecipientError,
 };
@@ -498,12 +498,6 @@ impl<M: Method + ReferencedTypes> ChatsData<M> {
     }
 }
 
-impl<M: Method + ReferencedTypes> Contains<RecipientId> for PartialBackup<M> {
-    fn contains(&self, key: &RecipientId) -> bool {
-        self.recipients.contains(key)
-    }
-}
-
 impl<M: Method + ReferencedTypes> Lookup<RecipientId, M::RecipientReference> for PartialBackup<M> {
     fn lookup<'a>(&'a self, key: &'a RecipientId) -> Option<&'a M::RecipientReference> {
         self.recipients
@@ -535,18 +529,6 @@ impl<M: Method + ReferencedTypes> Lookup<CustomColorId, M::CustomColorReference>
     }
 }
 
-impl<M: Method + ReferencedTypes> Contains<ChatId> for PartialBackup<M> {
-    fn contains(&self, key: &ChatId) -> bool {
-        self.chats.items.contains(key)
-    }
-}
-
-impl<M: Method + ReferencedTypes> Contains<PinOrder> for PartialBackup<M> {
-    fn contains(&self, key: &PinOrder) -> bool {
-        self.lookup(key).is_some()
-    }
-}
-
 impl<M: Method + ReferencedTypes> Lookup<PinOrder, M::RecipientReference> for PartialBackup<M> {
     fn lookup(&self, key: &PinOrder) -> Option<&M::RecipientReference> {
         // This is a linear search, but the number of pinned chats should be
@@ -562,17 +544,6 @@ impl<M: Method + ReferencedTypes> Lookup<PinOrder, M::RecipientReference> for Pa
 impl<M: Method + ReferencedTypes> AsRef<BackupMeta> for PartialBackup<M> {
     fn as_ref(&self) -> &BackupMeta {
         &self.meta
-    }
-}
-
-impl<M: Method + ReferencedTypes> Contains<CustomColorId> for PartialBackup<M> {
-    fn contains(&self, key: &CustomColorId) -> bool {
-        self.account_data.as_ref().is_some_and(|account_data| {
-            account_data
-                .account_settings
-                .custom_chat_colors
-                .contains(key)
-        })
     }
 }
 

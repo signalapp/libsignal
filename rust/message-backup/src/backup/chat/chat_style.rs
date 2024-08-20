@@ -9,7 +9,7 @@ use derive_where::derive_where;
 use itertools::Itertools as _;
 
 use crate::backup::file::{FilePointer, FilePointerError};
-use crate::backup::method::{Contains, Lookup, Method};
+use crate::backup::method::{Lookup, Method};
 use crate::backup::{serialize, ReferencedTypes, TryFromWith, TryIntoWith as _};
 use crate::proto::backup as proto;
 
@@ -92,6 +92,19 @@ pub enum CustomChatColor {
 #[cfg_attr(test, derive_where(PartialEq; M::CustomColorData: PartialEq))]
 pub struct CustomColorMap<M: ReferencedTypes>(Vec<(CustomColorId, M::CustomColorData)>);
 
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+struct KeyExists;
+
+impl<M: ReferencedTypes> CustomColorMap<M> {
+    fn insert(&mut self, key: CustomColorId, value: M::CustomColorData) -> Result<(), KeyExists> {
+        if self.0.iter().any(|(id, _data)| id == &key) {
+            return Err(KeyExists);
+        }
+        self.0.push((key, value));
+        Ok(())
+    }
+}
+
 impl<M: ReferencedTypes> serde::Serialize for CustomColorMap<M> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -137,18 +150,11 @@ impl<M: ReferencedTypes> TryFrom<Vec<proto::chat_style::CustomChatColor>> for Cu
             .into_iter()
             .try_fold(Self::default(), |mut colors, custom_color| {
                 let (id, custom_color) = TryFrom::try_from(custom_color)?;
-                if colors.contains(&id) {
-                    return Err(ChatStyleError::DuplicateCustomChatColorId(id.0));
-                }
-                colors.0.push((id, custom_color.into()));
+                colors
+                    .insert(id, custom_color.into())
+                    .map_err(|KeyExists| ChatStyleError::DuplicateCustomChatColorId(id.0))?;
                 Ok(colors)
             })
-    }
-}
-
-impl<M: ReferencedTypes> Contains<CustomColorId> for CustomColorMap<M> {
-    fn contains(&self, key: &CustomColorId) -> bool {
-        self.0.iter().any(|(id, _value)| id == key)
     }
 }
 

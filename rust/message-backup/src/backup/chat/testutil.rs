@@ -11,7 +11,7 @@ use once_cell::sync::Lazy;
 use crate::backup::chat::chat_style::CustomColorId;
 use crate::backup::chat::PinOrder;
 use crate::backup::frame::RecipientId;
-use crate::backup::method::{Contains, Lookup};
+use crate::backup::method::Lookup;
 use crate::backup::recipient::{Destination, FullRecipientData};
 use crate::backup::time::Timestamp;
 use crate::backup::{BackupMeta, Purpose};
@@ -37,18 +37,6 @@ impl BackupMeta {
     }
 }
 
-impl Contains<RecipientId> for TestContext {
-    fn contains(&self, key: &RecipientId) -> bool {
-        key == &RecipientId(proto::Recipient::TEST_ID)
-    }
-}
-
-impl Contains<PinOrder> for TestContext {
-    fn contains(&self, key: &PinOrder) -> bool {
-        Self::lookup(self, key).is_some()
-    }
-}
-
 impl Lookup<RecipientId, FullRecipientData> for TestContext {
     fn lookup(&self, key: &RecipientId) -> Option<&FullRecipientData> {
         (key.0 == proto::Recipient::TEST_ID).then_some(&TEST_RECIPIENT)
@@ -67,15 +55,9 @@ impl AsRef<BackupMeta> for TestContext {
     }
 }
 
-impl Contains<CustomColorId> for TestContext {
-    fn contains(&self, key: &CustomColorId) -> bool {
-        *key == Self::CUSTOM_CHAT_COLOR_ID
-    }
-}
-
 impl Lookup<CustomColorId, Arc<CustomChatColor>> for TestContext {
     fn lookup<'a>(&'a self, key: &'a CustomColorId) -> Option<&'a Arc<CustomChatColor>> {
-        self.contains(key).then(|| &*TEST_CUSTOM_COLOR)
+        (*key == Self::CUSTOM_CHAT_COLOR_ID).then(|| &*TEST_CUSTOM_COLOR)
     }
 }
 

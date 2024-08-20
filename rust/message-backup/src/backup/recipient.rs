@@ -475,7 +475,7 @@ mod test {
     use protobuf::EnumOrUnknown;
     use test_case::test_case;
 
-    use crate::backup::method::{Contains, Lookup, Store};
+    use crate::backup::method::{Lookup, Store};
     use crate::backup::FullRecipientData;
 
     use super::*;
@@ -562,12 +562,6 @@ mod test {
     impl TestContext {
         const CONTACT_ID: RecipientId = RecipientId(123456789);
         const SELF_ID: RecipientId = RecipientId(1111111111);
-    }
-
-    impl Contains<RecipientId> for TestContext {
-        fn contains(&self, key: &RecipientId) -> bool {
-            key == &Self::CONTACT_ID || key == &Self::SELF_ID
-        }
     }
 
     impl LookupPair<RecipientId, DestinationKind, FullRecipientData> for TestContext {
