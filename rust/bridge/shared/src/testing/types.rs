@@ -8,6 +8,9 @@ use libsignal_protocol::SignalProtocolError;
 
 use crate::*;
 
+#[cfg(feature = "jni")]
+use crate::jni::HandleJniError;
+
 /// A syntactic wrapper for a type that allows it to ignored by the macros in ffi/convert.rs and
 /// jni/convert.rs, and by gen_ts_decl.py.
 ///
@@ -73,7 +76,9 @@ impl<'storage, 'param: 'storage, 'context: 'param> jni::ArgTypeInfo<'storage, 'p
         env: &mut jni::JNIEnv<'context>,
         _foreign: &'param Self::ArgType,
     ) -> Result<Self::StoredType, jni::BridgeLayerError> {
-        Ok(Self::AttachedToJVM(env.get_java_vm()?))
+        Ok(Self::AttachedToJVM(
+            env.get_java_vm().expect_no_exceptions()?,
+        ))
     }
 
     fn load_from(_stored: &'storage mut Self::StoredType) -> Self {

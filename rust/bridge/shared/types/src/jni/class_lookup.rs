@@ -6,7 +6,7 @@ use jni::objects::{GlobalRef, JClass, JObject, JValue};
 use jni::JNIEnv;
 use once_cell::sync::OnceCell;
 
-use crate::jni::{BridgeLayerError, ThrownException};
+use crate::jni::{BridgeLayerError, HandleJniError};
 
 static CACHED_CLASS_LOADER: OnceCell<GlobalRef> = OnceCell::new();
 
@@ -28,7 +28,7 @@ pub fn save_class_loader(
             "getClassLoader",
             jni_args!(() -> java.lang.ClassLoader),
         )
-        .and_then(|class_loader| Ok(env.new_global_ref(class_loader)?))
+        .and_then(|class_loader| env.new_global_ref(class_loader).expect_no_exceptions())
     })?;
     Ok(())
 }
@@ -55,22 +55,11 @@ pub fn find_class<'output>(
 ) -> Result<JClass<'output>, BridgeLayerError> {
     let Some(class_loader) = CACHED_CLASS_LOADER.get() else {
         let jni_name = jni_name_from_binary_name(class_name);
-        return real_jni_find_class(env, &jni_name).or_else(|e| {
-            let exception = env.exception_occurred()?;
-            Err(if !exception.is_null() {
-                env.exception_clear()?;
-                BridgeLayerError::CallbackException(
-                    "FindClass",
-                    ThrownException::new(env, exception)?,
-                )
-            } else {
-                e.into()
-            })
-        });
+        return real_jni_find_class(env, &jni_name).check_exceptions(env, "FindClass");
     };
 
     let ClassName(name) = class_name;
-    let binary_name = env.new_string(name)?;
+    let binary_name = env.new_string(name).check_exceptions(env, "FindClass")?;
     let class = super::call_method_checked(
         env,
         class_loader,

@@ -34,10 +34,10 @@ impl<T: for<'a> ResultTypeInfo<'a> + std::panic::UnwindSafe> FutureCompleter<T> 
     ///
     /// `future` is expected to refer to a CompletableFuture instance, and will
     /// have methods called on it that match the signatures on CompletableFuture.
-    pub fn new(env: &mut JNIEnv, future: &JObject) -> jni::errors::Result<Self> {
+    pub fn new(env: &mut JNIEnv, future: &JObject) -> Result<Self, BridgeLayerError> {
         Ok(Self {
-            jvm: env.get_java_vm()?,
-            future: env.new_global_ref(future)?,
+            jvm: env.get_java_vm().expect_no_exceptions()?,
+            future: env.new_global_ref(future).expect_no_exceptions()?,
             complete_signature: PhantomData,
         })
     }

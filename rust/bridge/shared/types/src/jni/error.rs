@@ -280,12 +280,6 @@ impl From<BridgeLayerError> for SignalJniError {
     }
 }
 
-impl From<jni::errors::Error> for BridgeLayerError {
-    fn from(e: jni::errors::Error) -> BridgeLayerError {
-        BridgeLayerError::Jni(e)
-    }
-}
-
 impl From<Svr3Error> for SignalJniError {
     fn from(err: Svr3Error) -> Self {
         match err {
@@ -305,12 +299,6 @@ impl From<Svr3Error> for SignalJniError {
             | Svr3Error::RestoreFailed(_)
             | Svr3Error::DataMissing => SignalJniError::Svr3(err),
         }
-    }
-}
-
-impl From<jni::errors::Error> for SignalJniError {
-    fn from(e: jni::errors::Error) -> SignalJniError {
-        BridgeLayerError::from(e).into()
     }
 }
 
@@ -370,13 +358,17 @@ impl ThrownException {
     ) -> Result<Self, BridgeLayerError> {
         assert!(!throwable.as_ref().is_null());
         Ok(Self {
-            jvm: env.get_java_vm()?,
-            exception_ref: env.new_global_ref(throwable.as_ref())?,
+            jvm: env.get_java_vm().expect_no_exceptions()?,
+            exception_ref: env
+                .new_global_ref(throwable.as_ref())
+                .expect_no_exceptions()?,
         })
     }
 
     pub fn class_name(&self, env: &mut JNIEnv) -> Result<String, BridgeLayerError> {
-        let class_type = env.get_object_class(self.exception_ref.as_obj())?;
+        let class_type = env
+            .get_object_class(self.exception_ref.as_obj())
+            .check_exceptions(env, "ThrownException::class_name")?;
         let class_name: JObject = call_method_checked(
             env,
             class_type,
@@ -384,7 +376,10 @@ impl ThrownException {
             jni_args!(() -> java.lang.String),
         )?;
 
-        Ok(env.get_string(&JString::from(class_name))?.into())
+        Ok(env
+            .get_string(&JString::from(class_name))
+            .check_exceptions(env, "ThrownException::class_name")?
+            .into())
     }
 
     pub fn message(&self, env: &mut JNIEnv) -> Result<String, BridgeLayerError> {
@@ -394,7 +389,10 @@ impl ThrownException {
             "getMessage",
             jni_args!(() -> java.lang.String),
         )?;
-        Ok(env.get_string(&JString::from(message))?.into())
+        Ok(env
+            .get_string(&JString::from(message))
+            .check_exceptions(env, "ThrownException::class_name")?
+            .into())
     }
 }
 
@@ -431,3 +429,60 @@ impl fmt::Debug for ThrownException {
 }
 
 impl std::error::Error for ThrownException {}
+
+pub trait HandleJniError<T> {
+    fn check_exceptions(
+        self,
+        env: &mut JNIEnv<'_>,
+        context: &'static str,
+    ) -> Result<T, BridgeLayerError>;
+
+    fn expect_no_exceptions(self) -> Result<T, BridgeLayerError>;
+}
+
+impl<T> HandleJniError<T> for Result<T, jni::errors::Error> {
+    fn check_exceptions(
+        self,
+        env: &mut JNIEnv<'_>,
+        context: &'static str,
+    ) -> Result<T, BridgeLayerError> {
+        // Do the bulk of the work in a non-generic helper function.
+        fn check_error(
+            e: jni::errors::Error,
+            env: &mut JNIEnv<'_>,
+            context: &'static str,
+        ) -> Result<std::convert::Infallible, BridgeLayerError> {
+            // Returning a Result is convenient because it lets us use ?, but it is always an error,
+            // so we use Infallible as the success type, which can't be instantiated.
+            if matches!(e, jni::errors::Error::JavaException) {
+                let throwable = env.exception_occurred().expect_no_exceptions()?;
+                if **throwable != *JObject::null() {
+                    env.exception_clear().expect_no_exceptions()?;
+                    return Err(BridgeLayerError::CallbackException(
+                        context,
+                        ThrownException::new(env, throwable)?,
+                    ));
+                }
+                log::warn!(
+                    "'{context}' produced a Java exception, but it has already been cleared from the JVM state"
+                );
+            }
+            Err(BridgeLayerError::Jni(e))
+        }
+
+        self.map_err(|e| match check_error(e, env, context) {
+            Ok(_) => unreachable!(),
+            Err(e) => e,
+        })
+    }
+
+    fn expect_no_exceptions(self) -> Result<T, BridgeLayerError> {
+        self.map_err(|e| {
+            assert!(
+                !matches!(e, jni::errors::Error::JavaException),
+                "catching Java exceptions is not supported here"
+            );
+            BridgeLayerError::Jni(e)
+        })
+    }
+}

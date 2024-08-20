@@ -28,15 +28,18 @@ pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_IdentityKeyPa
     data: JByteArray,
 ) -> JLongArray<'local> {
     run_ffi_safe(&mut env, |env| {
-        let data = env.convert_byte_array(data)?;
+        let data = env
+            .convert_byte_array(data)
+            .check_exceptions(env, "deserialize")?;
         let key = IdentityKeyPair::try_from(data.as_ref())?;
 
         let public_key_handle = key.identity_key().public_key().convert_into(env)?;
         let private_key_handle = key.private_key().convert_into(env)?;
         let tuple = [public_key_handle, private_key_handle];
 
-        let result = env.new_long_array(2)?;
-        env.set_long_array_region(&result, 0, &tuple)?;
+        let result = env.new_long_array(2).check_exceptions(env, "deserialize")?;
+        env.set_long_array_region(&result, 0, &tuple)
+            .check_exceptions(env, "deserialize")?;
         Ok(result)
     })
 }
@@ -90,7 +93,10 @@ pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_AsyncLoadClas
             jni_args!(() -> long),
         )?;
         let tokio_context = <&TokioAsyncContext>::convert_from(env, &handle)?;
-        let class_name = env.get_string(&class_name)?.into();
+        let class_name = env
+            .get_string(&class_name)
+            .check_exceptions(env, "AsyncLoadClass")?
+            .into();
         run_future_on_runtime(env, tokio_context, |_cancel| async {
             FutureResultReporter::new(Ok(LoadClassFromName(class_name)), ())
         })
@@ -109,7 +115,8 @@ pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_SealedSender_
 ) -> JObject<'local> {
     run_ffi_safe(&mut env, |env| {
         let mut data_stored =
-            unsafe { env.get_array_elements(&data, jni::objects::ReleaseMode::NoCopyBack)? };
+            unsafe { env.get_array_elements(&data, jni::objects::ReleaseMode::NoCopyBack) }
+                .check_exceptions(env, "MultiRecipientParseSentMessage")?;
         let data_as_slice = <&[u8]>::load_from(&mut data_stored);
         let messages = SealedSenderV2SentMessage::parse(data_as_slice)?;
 
@@ -118,18 +125,19 @@ pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_SealedSender_
             ClassName("java.util.LinkedHashMap"),
             jni_args!(() -> void),
         )?;
-        let recipient_map: JMap = JMap::from_env(env, &recipient_map_object)?;
+        let recipient_map: JMap = JMap::from_env(env, &recipient_map_object)
+            .check_exceptions(env, "MultiRecipientParseSentMessage")?;
 
-        let recipient_class = find_class(
-            env,
-            ClassName("org.signal.libsignal.protocol.SealedSenderMultiRecipientMessage$Recipient"),
-        )?;
+        let recipient_class_name =
+            ClassName("org.signal.libsignal.protocol.SealedSenderMultiRecipientMessage$Recipient");
+        let recipient_class = find_class(env, recipient_class_name)?;
         let service_id_class =
             find_class(env, ClassName("org.signal.libsignal.protocol.ServiceId"))?;
 
         let excluded_recipients_list_object =
             new_instance(env, ClassName("java.util.ArrayList"), jni_args!(() -> void))?;
-        let excluded_recipients_list = JList::from_env(env, &excluded_recipients_list_object)?;
+        let excluded_recipients_list = JList::from_env(env, &excluded_recipients_list_object)
+            .check_exceptions(env, "java.util.List")?;
 
         for (service_id, recipient) in &messages.recipients {
             let java_service_id_bytes = AutoLocal::new(service_id.convert_into(env)?, env);
@@ -146,7 +154,9 @@ pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_SealedSender_
             );
 
             if recipient.devices.is_empty() {
-                excluded_recipients_list.add(env, &java_service_id)?;
+                excluded_recipients_list
+                    .add(env, &java_service_id)
+                    .check_exceptions(env, "add")?;
                 continue;
             }
 
@@ -160,12 +170,18 @@ pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_SealedSender_
                     )
                 })
                 .unzip();
-            let java_device_ids = AutoLocal::new(env.byte_array_from_slice(&device_ids)?, env);
-            let java_registration_ids = AutoLocal::new(
-                env.new_short_array(registration_ids.len().try_into().expect("too many devices"))?,
+            let java_device_ids = AutoLocal::new(
+                env.byte_array_from_slice(&device_ids)
+                    .check_exceptions(env, "MultiRecipientParseSentMessage")?,
                 env,
             );
-            env.set_short_array_region(&java_registration_ids, 0, &registration_ids)?;
+            let java_registration_ids = AutoLocal::new(
+                env.new_short_array(registration_ids.len().try_into().expect("too many devices"))
+                    .check_exceptions(env, "MultiRecipientParseSentMessage")?,
+                env,
+            );
+            env.set_short_array_region(&java_registration_ids, 0, &registration_ids)
+                .check_exceptions(env, "MultiRecipientParseSentMessage")?;
 
             let range = messages.range_for_recipient_key_material(recipient);
 
@@ -179,11 +195,14 @@ pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_SealedSender_
                         range.start.try_into().expect("data too large") => int,
                         range.len().try_into().expect("data too large") => int,
                     ) -> void),
-                )?,
+                )
+                .check_exceptions(env, recipient_class_name.0)?,
                 env,
             );
 
-            recipient_map.put(env, &java_service_id, &java_recipient)?;
+            recipient_map
+                .put(env, &java_service_id, &java_recipient)
+                .check_exceptions(env, "put")?;
         }
 
         let offset_of_shared_bytes = messages.offset_of_shared_bytes();
