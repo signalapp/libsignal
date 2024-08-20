@@ -6,17 +6,18 @@ use crate::backup::chat::quote::{Quote, QuoteError};
 use crate::backup::chat::{Reaction, ReactionError};
 use crate::backup::file::{MessageAttachment, MessageAttachmentError};
 use crate::backup::frame::RecipientId;
-use crate::backup::method::Contains;
-use crate::backup::serialize::UnorderedList;
+use crate::backup::method::Lookup;
+use crate::backup::serialize::{SerializeOrder, UnorderedList};
 use crate::backup::{TryFromWith, TryIntoWith as _};
 use crate::proto::backup as proto;
 
 /// Validated version of a voice message [`proto::StandardMessage`].
 #[derive(Debug, serde::Serialize)]
 #[cfg_attr(test, derive(PartialEq))]
-pub struct VoiceMessage {
-    pub quote: Option<Quote>,
-    pub reactions: UnorderedList<Reaction>,
+pub struct VoiceMessage<Recipient> {
+    pub quote: Option<Quote<Recipient>>,
+    #[serde(bound(serialize = "Recipient: serde::Serialize + SerializeOrder"))]
+    pub reactions: UnorderedList<Reaction<Recipient>>,
     pub attachment: MessageAttachment,
     _limit_construction_to_module: (),
 }
@@ -38,10 +39,12 @@ pub enum VoiceMessageError {
     Reaction(#[from] ReactionError),
 }
 
-impl<R: Contains<RecipientId>> TryFromWith<proto::StandardMessage, R> for VoiceMessage {
+impl<R: Clone, C: Lookup<RecipientId, R>> TryFromWith<proto::StandardMessage, C>
+    for VoiceMessage<R>
+{
     type Error = VoiceMessageError;
 
-    fn try_from_with(item: proto::StandardMessage, context: &R) -> Result<Self, Self::Error> {
+    fn try_from_with(item: proto::StandardMessage, context: &C) -> Result<Self, Self::Error> {
         let proto::StandardMessage {
             quote,
             reactions,
@@ -92,6 +95,7 @@ mod test {
     use test_case::test_case;
 
     use crate::backup::chat::testutil::TestContext;
+    use crate::backup::recipient::FullRecipientData;
 
     use super::*;
 
@@ -120,6 +124,6 @@ mod test {
 
         message
             .try_into_with(&TestContext::default())
-            .map(|_: VoiceMessage| ())
+            .map(|_: VoiceMessage<FullRecipientData>| ())
     }
 }

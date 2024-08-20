@@ -17,7 +17,7 @@ use derive_where::derive_where;
 use crate::backup::chat::chat_style::{ChatStyle, ChatStyleError, CustomColorId};
 use crate::backup::file::{FilePointerError, MessageAttachmentError};
 use crate::backup::frame::RecipientId;
-use crate::backup::method::{Contains, Lookup, Method};
+use crate::backup::method::{Lookup, Method};
 use crate::backup::serialize::{SerializeOrder, UnorderedList};
 use crate::backup::sticker::MessageStickerError;
 use crate::backup::time::{Duration, Timestamp};
@@ -182,7 +182,7 @@ pub struct ChatItemData<M: Method + ReferencedTypes> {
     pub message: ChatItemMessage<M>,
     // This could be Self: Serialize but that just confuses the compiler.
     pub revisions: Vec<ChatItemData<M>>,
-    pub direction: Direction,
+    pub direction: Direction<M::RecipientReference>,
     pub expire_start: Option<Timestamp>,
     pub expires_in: Option<Duration>,
     pub sent_at: Timestamp,
@@ -201,10 +201,10 @@ pub struct ChatItemData<M: Method + ReferencedTypes> {
     M::RecipientReference: PartialEq
 ))]
 pub enum ChatItemMessage<M: Method + ReferencedTypes> {
-    Standard(StandardMessage),
-    Contact(ContactMessage),
-    Voice(VoiceMessage),
-    Sticker(StickerMessage),
+    Standard(StandardMessage<M::RecipientReference>),
+    Contact(ContactMessage<M::RecipientReference>),
+    Voice(VoiceMessage<M::RecipientReference>),
+    Sticker(StickerMessage<M::RecipientReference>),
     RemoteDeleted,
     Update(UpdateMessage<M::RecipientReference>),
     PaymentNotification(PaymentNotification),
@@ -214,21 +214,24 @@ pub enum ChatItemMessage<M: Method + ReferencedTypes> {
 /// Validated version of [`proto::Reaction`].
 #[derive(Debug, serde::Serialize)]
 #[cfg_attr(test, derive(PartialEq, Clone))]
-pub struct Reaction {
+pub struct Reaction<Recipient> {
     pub emoji: String,
     // This field is not generated consistently on all platforms, so we only use it to sort
     // containers of Reactions.
     #[serde(skip)]
     pub sort_order: u64,
-    pub author: RecipientId,
+    #[serde(bound(serialize = "Recipient: serde::Serialize"))]
+    pub author: Recipient,
     pub sent_timestamp: Timestamp,
     pub received_timestamp: Option<Timestamp>,
     _limit_construction_to_module: (),
 }
 
-impl SerializeOrder for Reaction {
+impl<Recipient: SerializeOrder> SerializeOrder for Reaction<Recipient> {
     fn serialize_cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.sort_order.cmp(&other.sort_order)
+        self.sort_order
+            .cmp(&other.sort_order)
+            .then_with(|| self.author.serialize_cmp(&other.author))
     }
 }
 
@@ -243,21 +246,25 @@ pub enum ReactionError {
 
 #[derive(Debug, serde::Serialize)]
 #[cfg_attr(test, derive(PartialEq))]
-pub enum Direction {
+pub enum Direction<Recipient> {
     Incoming {
         sent: Timestamp,
         received: Timestamp,
         read: bool,
         sealed_sender: bool,
     },
-    Outgoing(UnorderedList<OutgoingSend>),
+    Outgoing(
+        #[serde(bound(serialize = "Recipient: serde::Serialize + SerializeOrder"))]
+        UnorderedList<OutgoingSend<Recipient>>,
+    ),
     Directionless,
 }
 
 #[derive(Debug, serde::Serialize)]
 #[cfg_attr(test, derive(PartialEq, Clone))]
-pub struct OutgoingSend {
-    pub recipient: RecipientId,
+pub struct OutgoingSend<Recipient> {
+    #[serde(bound(serialize = "Recipient: serde::Serialize"))]
+    pub recipient: Recipient,
     pub status: DeliveryStatus,
     pub last_status_update: Timestamp,
 }
@@ -483,12 +490,14 @@ impl<
     }
 }
 
-impl<R: Contains<RecipientId>> TryFromWith<proto::chat_item::DirectionalDetails, R> for Direction {
+impl<R: Clone, C: Lookup<RecipientId, R>> TryFromWith<proto::chat_item::DirectionalDetails, C>
+    for Direction<R>
+{
     type Error = ChatItemError;
 
     fn try_from_with(
         item: proto::chat_item::DirectionalDetails,
-        context: &R,
+        context: &C,
     ) -> Result<Self, Self::Error> {
         use proto::chat_item::*;
         match item {
@@ -525,10 +534,10 @@ impl<R: Contains<RecipientId>> TryFromWith<proto::chat_item::DirectionalDetails,
         }
     }
 }
-impl<R: Contains<RecipientId>> TryFromWith<proto::SendStatus, R> for OutgoingSend {
+impl<R: Clone, C: Lookup<RecipientId, R>> TryFromWith<proto::SendStatus, C> for OutgoingSend<R> {
     type Error = OutgoingSendError;
 
-    fn try_from_with(item: proto::SendStatus, context: &R) -> Result<Self, Self::Error> {
+    fn try_from_with(item: proto::SendStatus, context: &C) -> Result<Self, Self::Error> {
         let proto::SendStatus {
             recipientId,
             timestamp,
@@ -536,11 +545,10 @@ impl<R: Contains<RecipientId>> TryFromWith<proto::SendStatus, R> for OutgoingSen
             special_fields: _,
         } = item;
 
-        let recipient = RecipientId(recipientId);
-
-        if !context.contains(&recipient) {
-            return Err(OutgoingSendError::UnknownRecipient(recipient));
-        }
+        let recipient_id = RecipientId(recipientId);
+        let Some(recipient) = context.lookup(&recipient_id).cloned() else {
+            return Err(OutgoingSendError::UnknownRecipient(recipient_id));
+        };
 
         let Some(status) = deliveryStatus else {
             return Err(OutgoingSendError::SendStatusMissing);
@@ -648,10 +656,10 @@ impl<
     }
 }
 
-impl<R: Contains<RecipientId>> TryFromWith<proto::Reaction, R> for Reaction {
+impl<R: Clone, C: Lookup<RecipientId, R>> TryFromWith<proto::Reaction, C> for Reaction<R> {
     type Error = ReactionError;
 
-    fn try_from_with(item: proto::Reaction, context: &R) -> Result<Self, Self::Error> {
+    fn try_from_with(item: proto::Reaction, context: &C) -> Result<Self, Self::Error> {
         let proto::Reaction {
             authorId,
             sentTimestamp,
@@ -665,10 +673,10 @@ impl<R: Contains<RecipientId>> TryFromWith<proto::Reaction, R> for Reaction {
             return Err(ReactionError::EmptyEmoji);
         }
 
-        let author = RecipientId(authorId);
-        if !context.contains(&author) {
-            return Err(ReactionError::AuthorNotFound(author));
-        }
+        let author_id = RecipientId(authorId);
+        let Some(author) = context.lookup(&author_id).cloned() else {
+            return Err(ReactionError::AuthorNotFound(author_id));
+        };
 
         let sent_timestamp = Timestamp::from_millis(sentTimestamp, "Reaction.sentTimestamp");
         let received_timestamp = receivedTimestamp
@@ -696,6 +704,7 @@ mod test {
 
     use crate::backup::chat::testutil::TestContext;
     use crate::backup::method::Store;
+    use crate::backup::recipient::FullRecipientData;
     use crate::backup::time::testutil::MillisecondsSinceEpoch;
     use crate::backup::Purpose;
 
@@ -737,12 +746,12 @@ mod test {
         }
     }
 
-    impl Reaction {
+    impl Reaction<FullRecipientData> {
         pub(crate) fn from_proto_test_data() -> Self {
             Self {
                 emoji: "📲".to_string(),
                 sort_order: 3,
-                author: RecipientId(proto::Recipient::TEST_ID),
+                author: TestContext::test_recipient().clone(),
                 sent_timestamp: Timestamp::test_value(),
                 received_timestamp: Some(Timestamp::test_value()),
                 _limit_construction_to_module: (),
@@ -898,7 +907,7 @@ mod test {
 
         reaction
             .try_into_with(&TestContext::default())
-            .map(|_: Reaction| ())
+            .map(|_: Reaction<FullRecipientData>| ())
     }
 
     #[test_case(Purpose::DeviceTransfer, 3600, Ok(()))]

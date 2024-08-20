@@ -7,17 +7,18 @@ use protobuf::EnumOrUnknown;
 use crate::backup::chat::{ChatItemError, Reaction};
 use crate::backup::file::{FilePointer, FilePointerError};
 use crate::backup::frame::RecipientId;
-use crate::backup::method::Contains;
-use crate::backup::serialize::UnorderedList;
+use crate::backup::method::Lookup;
+use crate::backup::serialize::{SerializeOrder, UnorderedList};
 use crate::backup::{TryFromWith, TryIntoWith as _};
 use crate::proto::backup as proto;
 
 /// Validated version of [`proto::ContactMessage`].
 #[derive(Debug, serde::Serialize)]
 #[cfg_attr(test, derive(PartialEq))]
-pub struct ContactMessage {
+pub struct ContactMessage<Recipient> {
     pub contacts: Vec<ContactAttachment>,
-    pub reactions: UnorderedList<Reaction>,
+    #[serde(bound(serialize = "Recipient: serde::Serialize + SerializeOrder"))]
+    pub reactions: UnorderedList<Reaction<Recipient>>,
     _limit_construction_to_module: (),
 }
 
@@ -44,10 +45,12 @@ pub enum ContactAttachmentError {
     Avatar(FilePointerError),
 }
 
-impl<R: Contains<RecipientId>> TryFromWith<proto::ContactMessage, R> for ContactMessage {
+impl<R: Clone, C: Lookup<RecipientId, R>> TryFromWith<proto::ContactMessage, C>
+    for ContactMessage<R>
+{
     type Error = ChatItemError;
 
-    fn try_from_with(item: proto::ContactMessage, context: &R) -> Result<Self, Self::Error> {
+    fn try_from_with(item: proto::ContactMessage, context: &C) -> Result<Self, Self::Error> {
         let proto::ContactMessage {
             reactions,
             contact,
@@ -171,6 +174,7 @@ mod test {
 
     use crate::backup::chat::testutil::TestContext;
     use crate::backup::chat::ReactionError;
+    use crate::backup::recipient::FullRecipientData;
 
     use super::*;
 
@@ -238,6 +242,6 @@ mod test {
 
         message
             .try_into_with(&TestContext::default())
-            .map(|_: ContactMessage| ())
+            .map(|_: ContactMessage<FullRecipientData>| ())
     }
 }

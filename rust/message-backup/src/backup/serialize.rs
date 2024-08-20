@@ -217,7 +217,7 @@ impl SerializeOrder for TextRange {
     }
 }
 
-impl SerializeOrder for OutgoingSend {
+impl<R: SerializeOrder> SerializeOrder for OutgoingSend<R> {
     fn serialize_cmp(&self, other: &Self) -> std::cmp::Ordering {
         self.recipient
             .serialize_cmp(&other.recipient)

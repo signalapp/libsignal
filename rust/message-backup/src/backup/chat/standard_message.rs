@@ -8,28 +8,31 @@ use crate::backup::chat::text::MessageText;
 use crate::backup::chat::{ChatItemError, Reaction};
 use crate::backup::file::{FilePointer, MessageAttachment};
 use crate::backup::frame::RecipientId;
-use crate::backup::method::Contains;
-use crate::backup::serialize::UnorderedList;
+use crate::backup::method::Lookup;
+use crate::backup::serialize::{SerializeOrder, UnorderedList};
 use crate::backup::{TryFromWith, TryIntoWith as _};
 use crate::proto::backup as proto;
 
 /// Validated version of [`proto::StandardMessage`].
 #[derive(Debug, serde::Serialize)]
 #[cfg_attr(test, derive(PartialEq))]
-pub struct StandardMessage {
+pub struct StandardMessage<Recipient> {
     pub text: Option<MessageText>,
-    pub quote: Option<Quote>,
+    pub quote: Option<Quote<Recipient>>,
     pub attachments: Vec<MessageAttachment>,
-    pub reactions: UnorderedList<Reaction>,
+    #[serde(bound(serialize = "Recipient: serde::Serialize + SerializeOrder"))]
+    pub reactions: UnorderedList<Reaction<Recipient>>,
     pub link_previews: Vec<LinkPreview>,
     pub long_text: Option<FilePointer>,
     _limit_construction_to_module: (),
 }
 
-impl<R: Contains<RecipientId>> TryFromWith<proto::StandardMessage, R> for StandardMessage {
+impl<R: Clone, C: Lookup<RecipientId, R>> TryFromWith<proto::StandardMessage, C>
+    for StandardMessage<R>
+{
     type Error = ChatItemError;
 
-    fn try_from_with(item: proto::StandardMessage, context: &R) -> Result<Self, Self::Error> {
+    fn try_from_with(item: proto::StandardMessage, context: &C) -> Result<Self, Self::Error> {
         let proto::StandardMessage {
             text,
             quote,
@@ -83,6 +86,7 @@ impl<R: Contains<RecipientId>> TryFromWith<proto::StandardMessage, R> for Standa
 #[cfg(test)]
 mod test {
     use crate::backup::chat::testutil::TestContext;
+    use crate::backup::recipient::FullRecipientData;
     use crate::backup::time::{Duration, Timestamp};
 
     use super::*;
@@ -110,7 +114,7 @@ mod test {
         }
     }
 
-    impl StandardMessage {
+    impl StandardMessage<FullRecipientData> {
         pub(crate) fn from_proto_test_data() -> Self {
             Self {
                 text: Some(MessageText::from_proto_test_data()),

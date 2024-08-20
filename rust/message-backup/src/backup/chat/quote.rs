@@ -6,7 +6,7 @@
 use crate::backup::chat::text::{MessageText, TextError};
 use crate::backup::file::{MessageAttachment, MessageAttachmentError};
 use crate::backup::frame::RecipientId;
-use crate::backup::method::Contains;
+use crate::backup::method::Lookup;
 use crate::backup::time::Timestamp;
 use crate::backup::TryFromWith;
 use crate::proto::backup as proto;
@@ -14,8 +14,9 @@ use crate::proto::backup as proto;
 /// Validated version of [`proto::Quote`]
 #[derive(Debug, serde::Serialize)]
 #[cfg_attr(test, derive(PartialEq))]
-pub struct Quote {
-    pub author: RecipientId,
+pub struct Quote<Recipient> {
+    #[serde(bound(serialize = "Recipient: serde::Serialize"))]
+    pub author: Recipient,
     pub quote_type: QuoteType,
     pub target_sent_timestamp: Option<Timestamp>,
     pub attachments: Vec<QuotedAttachment>,
@@ -56,10 +57,10 @@ pub enum QuoteError {
     AttachmentThumbnailWrongFlag(proto::message_attachment::Flag),
 }
 
-impl<R: Contains<RecipientId>> TryFromWith<proto::Quote, R> for Quote {
+impl<R: Clone, C: Lookup<RecipientId, R>> TryFromWith<proto::Quote, C> for Quote<R> {
     type Error = QuoteError;
 
-    fn try_from_with(item: proto::Quote, context: &R) -> Result<Self, Self::Error> {
+    fn try_from_with(item: proto::Quote, context: &C) -> Result<Self, Self::Error> {
         let proto::Quote {
             authorId,
             type_,
@@ -69,10 +70,10 @@ impl<R: Contains<RecipientId>> TryFromWith<proto::Quote, R> for Quote {
             special_fields: _,
         } = item;
 
-        let author = RecipientId(authorId);
-        if !context.contains(&author) {
-            return Err(QuoteError::AuthorNotFound(author));
-        }
+        let author_id = RecipientId(authorId);
+        let Some(author) = context.lookup(&author_id).cloned() else {
+            return Err(QuoteError::AuthorNotFound(author_id));
+        };
 
         let target_sent_timestamp = targetSentTimestamp
             .map(|timestamp| Timestamp::from_millis(timestamp, "Quote.targetSentTimestamp"));
@@ -140,6 +141,8 @@ impl TryFrom<proto::quote::QuotedAttachment> for QuotedAttachment {
 mod test {
     use test_case::test_case;
 
+    use crate::backup::chat::testutil::TestContext;
+    use crate::backup::recipient::FullRecipientData;
     use crate::backup::time::testutil::MillisecondsSinceEpoch;
 
     use super::*;
@@ -202,11 +205,11 @@ mod test {
         }
     }
 
-    impl Quote {
+    impl Quote<FullRecipientData> {
         pub(crate) fn from_proto_test_data() -> Self {
             Self {
                 text: Some(MessageText::from_proto_test_data()),
-                author: RecipientId(proto::Recipient::TEST_ID),
+                author: TestContext::test_recipient().clone(),
                 quote_type: QuoteType::Normal,
                 target_sent_timestamp: Some(Timestamp::test_value()),
                 attachments: vec![QuotedAttachment::from_proto_test_data()],

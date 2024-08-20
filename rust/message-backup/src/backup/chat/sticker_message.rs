@@ -4,8 +4,8 @@
 
 use crate::backup::chat::{ChatItemError, Reaction};
 use crate::backup::frame::RecipientId;
-use crate::backup::method::Contains;
-use crate::backup::serialize::UnorderedList;
+use crate::backup::method::Lookup;
+use crate::backup::serialize::{SerializeOrder, UnorderedList};
 use crate::backup::sticker::MessageSticker;
 use crate::backup::{TryFromWith, TryIntoWith as _};
 use crate::proto::backup as proto;
@@ -13,16 +13,19 @@ use crate::proto::backup as proto;
 /// Validated version of [`proto::StickerMessage`].
 #[derive(Debug, serde::Serialize)]
 #[cfg_attr(test, derive(PartialEq))]
-pub struct StickerMessage {
-    pub reactions: UnorderedList<Reaction>,
+pub struct StickerMessage<Recipient> {
+    #[serde(bound(serialize = "Recipient: serde::Serialize + SerializeOrder"))]
+    pub reactions: UnorderedList<Reaction<Recipient>>,
     pub sticker: MessageSticker,
     _limit_construction_to_module: (),
 }
 
-impl<R: Contains<RecipientId>> TryFromWith<proto::StickerMessage, R> for StickerMessage {
+impl<R: Clone, C: Lookup<RecipientId, R>> TryFromWith<proto::StickerMessage, C>
+    for StickerMessage<R>
+{
     type Error = ChatItemError;
 
-    fn try_from_with(item: proto::StickerMessage, context: &R) -> Result<Self, Self::Error> {
+    fn try_from_with(item: proto::StickerMessage, context: &C) -> Result<Self, Self::Error> {
         let proto::StickerMessage {
             reactions,
             sticker,
@@ -53,6 +56,7 @@ mod test {
 
     use crate::backup::chat::testutil::TestContext;
     use crate::backup::chat::ReactionError;
+    use crate::backup::recipient::FullRecipientData;
 
     use super::*;
 
@@ -74,6 +78,6 @@ mod test {
 
         message
             .try_into_with(&TestContext::default())
-            .map(|_: StickerMessage| ())
+            .map(|_: StickerMessage<FullRecipientData>| ())
     }
 }
