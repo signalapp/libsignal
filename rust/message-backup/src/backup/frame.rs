@@ -13,21 +13,6 @@ pub struct RecipientId(pub(super) u64);
 #[derive(Copy, Clone, Debug, Eq, Hash, PartialEq, serde::Serialize)]
 pub struct ChatId(pub(super) u64);
 
-#[derive(Copy, Clone, Debug, Eq, Hash, PartialEq, serde::Serialize)]
-pub struct RingerRecipientId(pub(super) RecipientId);
-
-impl From<RingerRecipientId> for RecipientId {
-    fn from(value: RingerRecipientId) -> Self {
-        value.0
-    }
-}
-
-impl PartialEq<RecipientId> for RingerRecipientId {
-    fn eq(&self, other: &RecipientId) -> bool {
-        &self.0 == other
-    }
-}
-
 macro_rules! impl_with_id {
     ($proto:ty, $id:ident, $id_field:ident) => {
         impl WithId for $proto {
