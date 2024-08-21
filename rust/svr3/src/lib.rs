@@ -17,6 +17,7 @@ mod errors;
 pub use errors::{Error, ErrorStatus, OPRFError, PPSSError};
 mod proto;
 use proto::svr3::{self, create_response, evaluate_response, query_response};
+pub use proto::svr4::response4::Status as V4Status;
 
 const SECRET_BYTES: usize = 32;
 const CONTEXT: &str = "Signal_SVR3_20231121_PPSS_Context";

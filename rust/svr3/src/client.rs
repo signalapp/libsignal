@@ -16,7 +16,7 @@ use rand_core::CryptoRngCore;
 use sha2::{Digest, Sha512};
 
 use crate::errors::Error;
-use crate::proto::svr4::{self, request4};
+use crate::proto::svr4;
 
 /// Make a request to remove a record from SVR4.
 pub fn make_remove4_request() -> Vec<u8> {
@@ -131,7 +131,7 @@ impl Backup4 {
         Ok(Self {
             requests: (0usize..server_ids.len())
                 .map(|i| svr4::Request4 {
-                    inner: Some(svr4::request4::Inner::Create(request4::Create {
+                    inner: Some(svr4::request4::Inner::Create(svr4::request4::Create {
                         version,
                         max_tries: max_tries.get(),
                         oprf_secretshare: oprf_keyshares[i].to_bytes().to_vec(),
@@ -167,7 +167,22 @@ pub struct Restore2 {
     server_ids: Vec<u64>,
     input: [u8; 64],
     auth_pt: RistrettoPoint,
+    tries_remaining: Option<u32>,
     pub requests: Vec<Vec<u8>>,
+}
+
+fn status_error<I: Iterator<Item = i32>>(statuses: I) -> Result<(), Error> {
+    match statuses
+        .map(svr4::response4::Status::try_from)
+        .find(|s| !matches!(s, Ok(svr4::response4::Status::Ok)))
+    {
+        // We found no non-OK status, everything is hunky dory.
+        None => Ok(()),
+        // We found a valid non-OK status, wrap it in an error.
+        Some(Ok(s)) => Err(Error::BadResponseStatus4(s)),
+        // We found a status we can't recognize, return a generic BadResponse error.
+        _ => Err(Error::BadResponse),
+    }
 }
 
 impl Restore1 {
@@ -177,7 +192,7 @@ impl Restore1 {
             requests: server_ids
                 .iter()
                 .map(|_| svr4::Request4 {
-                    inner: Some(svr4::request4::Inner::Restore1(request4::Restore1 {
+                    inner: Some(svr4::request4::Inner::Restore1(svr4::request4::Restore1 {
                         blinded: (input_hash_pt(&input) * blind)
                             .compress()
                             .to_bytes()
@@ -198,18 +213,40 @@ impl Restore1 {
         rng: &mut R,
     ) -> Result<Restore2, Error> {
         if responses1_bytes.len() != self.server_ids.len() {
-            return Err(Error::BadData);
+            return Err(Error::NumServers {
+                servers: self.server_ids.len(),
+                got: responses1_bytes.len(),
+            });
         }
         let responses1 = responses1_bytes
             .iter()
-            .map(|b| svr4::Response4::decode(b.as_ref()).map_err(|_| Error::BadData))
+            .map(|b| svr4::Response4::decode(b.as_ref()).map_err(|_| Error::BadResponse))
             .map(|rr| match rr?.inner {
                 Some(svr4::response4::Inner::Restore1(r)) => Ok(r),
-                _ => Err(Error::BadData),
+                _ => Err(Error::BadResponse),
             })
             .collect::<Result<Vec<_>, _>>()?;
+        let tries_remaining = responses1
+            .iter()
+            .filter(|rr| {
+                matches!(
+                    rr.status(),
+                    // These errors will decrement #tries, others will not.
+                    // We only care about returning #tries_remaining in a case
+                    // where it's decremented.
+                    svr4::response4::Status::Ok | svr4::response4::Status::Error
+                )
+            })
+            .map(|rr| rr.tries_remaining)
+            .min();
+        status_error(responses1.iter().map(|r| r.status)).map_err(|e| match tries_remaining {
+            Some(tr) => Error::RestoreFailed(tr),
+            None => e,
+        })?;
 
-        let version = self.version_to_use(&responses1).ok_or(Error::BadResponse)?;
+        let version = self
+            .version_to_use(&responses1)
+            .ok_or(Error::NoUsableVersion)?;
         let auths = self.auths_with_version(version, &responses1)?;
         let sum: RistrettoPoint = auths
             .iter()
@@ -249,7 +286,7 @@ impl Restore1 {
                 .iter()
                 .map(|(sk, _pk)| sk * proof_scalar_base + rand)
                 .map(|proof_scalar| svr4::Request4 {
-                    inner: Some(svr4::request4::Inner::Restore2(request4::Restore2 {
+                    inner: Some(svr4::request4::Inner::Restore2(svr4::request4::Restore2 {
                         auth_point: proof_pt_bytes.to_vec(),
                         auth_scalar: proof_scalar.as_bytes().to_vec(),
                         version,
@@ -260,6 +297,7 @@ impl Restore1 {
             server_ids: self.server_ids,
             input: self.input,
             auth_pt,
+            tries_remaining,
         })
     }
 
@@ -305,7 +343,7 @@ impl Restore1 {
             }
         }
         if out.len() != responses1.len() {
-            Err(Error::BadResponse)
+            Err(Error::NoUsableVersion)
         } else {
             Ok(out)
         }
@@ -315,20 +353,30 @@ impl Restore1 {
 impl Restore2 {
     pub fn restore(self, responses2_bytes: &[Vec<u8>]) -> Result<Output4, Error> {
         if responses2_bytes.len() != self.server_ids.len() {
-            return Err(Error::BadData);
+            return Err(Error::NumServers {
+                servers: self.server_ids.len(),
+                got: responses2_bytes.len(),
+            });
         }
         let responses2 = responses2_bytes
             .iter()
-            .map(|b| svr4::Response4::decode(b.as_ref()).map_err(|_| Error::BadData))
+            .map(|b| svr4::Response4::decode(b.as_ref()).map_err(|_| Error::BadResponse))
             .map(|rr| match rr?.inner {
                 Some(svr4::response4::Inner::Restore2(r)) => Ok(r),
-                _ => Err(Error::BadData),
+                _ => Err(Error::BadResponse),
             })
             .collect::<Result<Vec<svr4::response4::Restore2>, _>>()?;
+        status_error(responses2.iter().map(|r| r.status)).map_err(|e| {
+            match self.tries_remaining {
+                Some(tr) => Error::RestoreFailed(tr),
+                None => e,
+            }
+        })?;
+
         let mut s_enc = [0u8; 32];
         for resp in responses2.iter() {
             if resp.encryption_secretshare.len() != s_enc.len() {
-                return Err(Error::BadData);
+                return Err(Error::BadResponse);
             }
             for (i, c) in resp.encryption_secretshare.iter().enumerate() {
                 s_enc[i] ^= c;
@@ -448,7 +496,6 @@ mod test {
         /// Take in restore1 request, return restore1 response
         fn restore1(&mut self, req_bytes: &[u8]) -> Vec<u8> {
             let req = match svr4::Request4::decode(req_bytes)
-                .map_err(|_| Error::BadData)
                 .expect("decode Request4")
                 .inner
             {
@@ -479,7 +526,7 @@ mod test {
             svr4::Response4 {
                 inner: Some(svr4::response4::Inner::Restore1(
                     svr4::response4::Restore1 {
-                        status: svr4::response4::restore1::Status::Ok.into(),
+                        status: svr4::response4::Status::Ok.into(),
                         tries_remaining: self.tries,
                         auth: auths,
                     },
@@ -512,7 +559,7 @@ mod test {
             svr4::Response4 {
                 inner: Some(svr4::response4::Inner::Restore2(
                     svr4::response4::Restore2 {
-                        status: svr4::response4::restore2::Status::Ok.into(),
+                        status: svr4::response4::Status::Ok.into(),
                         encryption_secretshare: state.encryption_secretshare.to_vec(),
                     },
                 )),
