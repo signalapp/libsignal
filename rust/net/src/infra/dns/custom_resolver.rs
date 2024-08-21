@@ -7,6 +7,7 @@ use std::cmp::min;
 use std::collections::HashMap;
 use std::net::{Ipv4Addr, Ipv6Addr};
 use std::sync::Arc;
+use std::time::Duration;
 
 use crate::infra::connection_manager::{
     ConnectionAttemptOutcome, SingleRouteThrottlingConnectionManager,
@@ -30,6 +31,9 @@ use crate::infra::{dns, DnsSource};
 pub type DnsIpv4Result = Expiring<Vec<Ipv4Addr>>;
 pub type DnsIpv6Result = Expiring<Vec<Ipv6Addr>>;
 pub type DnsQueryResult = Either<DnsIpv4Result, DnsIpv6Result>;
+
+/// Artificially limit DNS lookup results, so we don't get stuck on stale info with a bad TTL field.
+const MAX_CACHE_TTL: Duration = Duration::from_secs(5 * 60);
 
 /// Implementors of this trait encapsulate the logic of sending queries to the DNS server
 /// and receiving resposnes.
@@ -273,7 +277,7 @@ impl<T: DnsTransport + Sync + 'static> CustomDnsResolver<T> {
             }
 
             // update cache
-            if let Some(expiring_entry) = match (maybe_ipv4_res, maybe_ipv6_res) {
+            if let Some(mut expiring_entry) = match (maybe_ipv4_res, maybe_ipv6_res) {
                 (Some(ipv4_res), Some(ipv6_res)) => Some(Expiring {
                     data: LookupResult::new(DnsSource::Cache, ipv4_res.data, ipv6_res.data),
                     expiration: min(ipv4_res.expiration, ipv6_res.expiration),
@@ -288,6 +292,10 @@ impl<T: DnsTransport + Sync + 'static> CustomDnsResolver<T> {
                 }),
                 (None, None) => None,
             } {
+                // Clamp cached TTLs.
+                expiring_entry.expiration =
+                    min(expiring_entry.expiration, started_at + MAX_CACHE_TTL);
+
                 let mut guard = cache.lock().expect("not poisoned");
                 // There are two ways the generation could be out of date:
                 // - We started the query, completed the query, and then got a network change.
@@ -310,33 +318,31 @@ impl<T: DnsTransport + Sync + 'static> CustomDnsResolver<T> {
 
 #[cfg(test)]
 pub(crate) mod test {
-    use crate::infra::dns::custom_resolver::{
-        CustomDnsResolver, DnsQueryResult, DnsTransport, DNS_CALL_BACKGROUND_TIMEOUT,
-        DNS_RESOLUTION_DELAY,
-    };
-    use crate::infra::dns::dns_errors::Error;
-    use crate::infra::dns::dns_lookup::DnsLookupRequest;
-    use crate::infra::dns::dns_types::Expiring;
-    use crate::infra::dns::lookup_result::LookupResult;
-    use crate::infra::{dns, DnsSource};
-    use crate::timeouts::CONNECTION_ROUTE_MAX_COOLDOWN;
-    use crate::utils::{sleep_and_catch_up, sleep_until_and_catch_up, ObservableEvent};
-    use assert_matches::assert_matches;
-    use async_trait::async_trait;
-    use const_str::ip_addr;
-    use futures_util::stream::{BoxStream, FuturesUnordered};
-    use futures_util::FutureExt;
+    use super::*;
+
     use std::collections::HashSet;
     use std::iter;
-    use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
+    use std::net::IpAddr;
     use std::pin::pin;
     use std::sync::atomic::{AtomicU32, Ordering};
-    use std::sync::Arc;
-    use std::time::Duration;
-    use tokio::sync::oneshot;
-    use tokio::time::Instant;
 
-    const NORMAL_TTL: Duration = Duration::from_secs(300);
+    use assert_matches::assert_matches;
+    use const_str::ip_addr;
+    use futures_util::stream::FuturesUnordered;
+    use futures_util::FutureExt;
+
+    use crate::timeouts::CONNECTION_ROUTE_MAX_COOLDOWN;
+    use crate::utils::{sleep_and_catch_up, sleep_until_and_catch_up};
+
+    // Remove this when Rust figures out how to make arbitrary Div impls const.
+    const fn div_duration(input: Duration, divisor: u32) -> Duration {
+        match input.checked_div(divisor) {
+            Some(v) => v,
+            None => unreachable!(),
+        }
+    }
+
+    const NORMAL_TTL: Duration = div_duration(MAX_CACHE_TTL, 4);
     const IP_V4_LIST_1: &[Ipv4Addr] = &[ip_addr!(v4, "2.2.2.2"), ip_addr!(v4, "2.2.2.3")];
     const IP_V4_LIST_2: &[Ipv4Addr] = &[ip_addr!(v4, "2.2.2.4"), ip_addr!(v4, "2.2.2.5")];
     const IP_V6_LIST_1: &[Ipv6Addr] = &[ip_addr!(v6, "::1"), ip_addr!(v6, "::2")];
@@ -636,6 +642,38 @@ pub(crate) mod test {
         let result_2 = resolver.resolve(test_request()).await;
         tokio::time::sleep(NORMAL_TTL).await;
         // third request should go to the name server again and have different results
+        let result_3 = resolver.resolve(test_request()).await;
+
+        assert_eq!(2, transport.queries_count());
+        assert_lookup_result_content_equal(&result_1.unwrap(), IP_V4_LIST_1, IP_V6_LIST_1);
+        assert_lookup_result_content_equal(&result_2.unwrap(), IP_V4_LIST_1, IP_V6_LIST_1);
+        assert_lookup_result_content_equal(&result_3.unwrap(), IP_V4_LIST_2, IP_V6_LIST_2);
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn cache_ttl_limited() {
+        const LONG_TTL: Duration = MAX_CACHE_TTL.saturating_mul(10);
+
+        let (transport, resolver) =
+            TestDnsTransportWithTwoResponses::transport_and_custom_dns_resolver(|_, q_num, txs| {
+                let [tx_1, tx_2] = txs;
+                let (ipv4s, ipv6s) = if q_num == 1 {
+                    (IP_V4_LIST_1, IP_V6_LIST_1)
+                } else {
+                    (IP_V4_LIST_2, IP_V6_LIST_2)
+                };
+                tx_1.send(ok_query_result_ipv4(LONG_TTL, ipv4s)).unwrap();
+                tx_2.send(ok_query_result_ipv6(LONG_TTL, ipv6s)).unwrap();
+            });
+
+        // first request goes to the name server
+        let result_1 = resolver.resolve(test_request()).await;
+        tokio::time::sleep(MAX_CACHE_TTL / 2).await;
+        // second request should be cached as we only waited for half of the ttl limit
+        let result_2 = resolver.resolve(test_request()).await;
+        tokio::time::sleep(MAX_CACHE_TTL).await;
+        // third request should go to the name server again and have different results,
+        // even though we're still within LONG_TTL.
         let result_3 = resolver.resolve(test_request()).await;
 
         assert_eq!(2, transport.queries_count());
