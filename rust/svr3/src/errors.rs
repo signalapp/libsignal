@@ -9,7 +9,7 @@ pub use crate::ppss::PPSSError;
 use crate::proto::svr4;
 use prost::DecodeError;
 
-#[derive(Debug, displaydoc::Display)]
+#[derive(Debug, displaydoc::Display, PartialEq)]
 pub enum Error {
     /// OPRF error: {0}
     Oprf(OPRFError),

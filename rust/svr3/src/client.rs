@@ -171,18 +171,16 @@ pub struct Restore2 {
     pub requests: Vec<Vec<u8>>,
 }
 
-fn status_error<I: Iterator<Item = i32>>(statuses: I) -> Result<(), Error> {
-    match statuses
-        .map(svr4::response4::Status::try_from)
-        .find(|s| !matches!(s, Ok(svr4::response4::Status::Ok)))
-    {
-        // We found no non-OK status, everything is hunky dory.
-        None => Ok(()),
-        // We found a valid non-OK status, wrap it in an error.
-        Some(Ok(s)) => Err(Error::BadResponseStatus4(s)),
-        // We found a status we can't recognize, return a generic BadResponse error.
-        _ => Err(Error::BadResponse),
+fn status_error(s: i32) -> Result<(), Error> {
+    match svr4::response4::Status::try_from(s) {
+        Ok(svr4::response4::Status::Ok) => Ok(()),
+        Ok(s) => Err(Error::BadResponseStatus4(s)),
+        Err(_) => Err(Error::BadResponse),
     }
+}
+
+fn status_errors<I: Iterator<Item = i32>>(statuses: &mut I) -> Result<(), Error> {
+    statuses.try_for_each(status_error)
 }
 
 impl Restore1 {
@@ -239,10 +237,12 @@ impl Restore1 {
             })
             .map(|rr| rr.tries_remaining)
             .min();
-        status_error(responses1.iter().map(|r| r.status)).map_err(|e| match tries_remaining {
-            Some(tr) => Error::RestoreFailed(tr),
-            None => e,
-        })?;
+        status_errors(&mut responses1.iter().map(|r| r.status)).map_err(
+            |e| match tries_remaining {
+                Some(tr) => Error::RestoreFailed(tr),
+                None => e,
+            },
+        )?;
 
         let version = self
             .version_to_use(&responses1)
@@ -366,7 +366,7 @@ impl Restore2 {
                 _ => Err(Error::BadResponse),
             })
             .collect::<Result<Vec<svr4::response4::Restore2>, _>>()?;
-        status_error(responses2.iter().map(|r| r.status)).map_err(|e| {
+        status_errors(&mut responses2.iter().map(|r| r.status)).map_err(|e| {
             match self.tries_remaining {
                 Some(tr) => Error::RestoreFailed(tr),
                 None => e,
@@ -389,13 +389,325 @@ impl Restore2 {
     }
 }
 
+enum RotationAction {
+    DoNothing,
+    Commit(u64),
+    Rollback(u64),
+}
+
+/// RotationMachineState defines a simple state machine for performing
+/// a client-initiated rotation.  Clients start in the InitialQuery state
+/// and attempt to achieve the Done state.  The following are the
+/// "happy path" state transitions, assuming no errors.  There is also
+/// an implied possible state transition from any state to the Done state
+/// should an error be encountered.
+///    ┌────────────┐        ┌───────────┐
+///  ─►│InitialQuery│───────►│FixPrevious│
+///    └───┬────────┘        └─────┬─────┘
+///        │                       │
+///        │     ┌───────────┐     │
+///        └────►│RotateStart│◄────┘
+///              └──┬────────┘
+///                 ▼
+///              ┌────────────┐
+///              │RotateCommit│
+///              └──┬─────────┘
+///                 ▼
+///              ┌────┐
+///              │Done│
+///              └────┘
+/// State transitions occur on the RotationMachine's `handle_responses`
+/// call, which receives responses from servers and determines what to
+/// do next.
+enum RotationMachineState {
+    /// Perform an initial `Query` call on all servers, to see if any
+    /// are in a partial state due to a previous key rotation attempt.
+    /// Assume that a previous rotation from version 1->2 has been
+    /// attempted, with two backends.  We could be in any of the following
+    /// states:
+    ///
+    ///   a) backendA { curr=1 new=2 }  backendB { curr=1 }       // rotation attempted on A, failed before starting B
+    ///   b) backendA { curr=1 new=2 }  backendB { curr=1 new=2 } // rotation started on A and B, but never rolled forward
+    ///   c) backendA { curr=2 }        backendB { curr=1 new=2 } // rotation started on A and B, committed on A
+    ///   d) backendA { curr=2 }        backendB { curr=2 }       // rotation committed on A and B
+    ///
+    /// Note: no ordering of backends or their responses is implied or required.
+    ///
+    /// In state (a), the correct action is to roll back backendA, since
+    /// backendB does not have the version 2 data and thus cannot be
+    /// rolled forwards.  In cases (b, c), all backends
+    /// have the newer version 2 data, and should be rolled forwards
+    /// with Commit calls.  In case (d), all backends have a singular
+    /// version, so no fixes are required and we can immediately attempt
+    /// to RotateStart.
+    InitialQuery,
+    /// Perform the necessary fix actions determined by InitialQuery,
+    /// some combination of DoNothing, Commit, and Rollback.  For servers
+    /// that don't need anything done, we send a Query just so we have
+    /// something to send them.
+    FixPrevious(Vec<RotationAction>),
+    /// Start our actual rotation, using the stored new (random) version
+    /// number.  This creates new key deltas for OPRF and Encryption keys
+    /// and provides them to the backing servers.
+    RotateStart(u64),
+    /// Commit the version we created with RotateStart, rolling all backends
+    /// forward to the new version. If this succeeds, all servers will be
+    /// at the new version.
+    RotateCommit(u64),
+    /// There's nothing more to do, either because we hit an unrecoverable
+    /// error or because we've completed successfully.
+    Done,
+}
+
+/// RotationMachine is a simple state machine that attempts to perform
+/// a client-initiated key rotation on the underlying SVR servers.
+/// See the RotationMachineState documentation for more details.
+///
+/// Usage:
+///   let servers = ...;
+///   let mut machine = RotationMachine::new(servers.ids(), ...);
+///   while !machine.is_done() {
+///     let requests = machine.requests();
+///     let responses = servers.send(requests).await_responses();
+///     machine.handle_responses(responses)?;
+///   }
+///
+/// Important:  The order of request and response vectors matter: if
+/// server.ids()[1] is X, then requests[1] is meant for server X
+/// and responses[1] should be the response received from X.
+struct RotationMachine<'a> {
+    pub server_ids: &'a [u64],
+    rng: &'a mut dyn CryptoRngCore,
+    state: RotationMachineState,
+}
+
+impl<'a> RotationMachine<'a> {
+    pub fn new<R: CryptoRngCore>(server_ids: &'a [u64], rng: &'a mut R) -> Self {
+        Self {
+            server_ids,
+            rng,
+            state: RotationMachineState::InitialQuery,
+        }
+    }
+
+    /// Returns true when the state machine is done and no more requests should be sent.
+    pub fn is_done(&self) -> bool {
+        matches!(self.state, RotationMachineState::Done)
+    }
+
+    /// Returns the next set of requests to send to servers.
+    pub fn requests(&mut self) -> Vec<Vec<u8>> {
+        match &self.state {
+            RotationMachineState::InitialQuery => self.initial_query_requests(),
+            RotationMachineState::FixPrevious(actions) => self.fix_previous_requests(actions),
+            RotationMachineState::RotateStart(version) => self.rotate_start_requests(*version),
+            RotationMachineState::RotateCommit(version) => self.rotate_commit_requests(*version),
+            RotationMachineState::Done => {
+                panic!("requests should not be called when done");
+            }
+        }
+    }
+
+    fn initial_query_requests(&mut self) -> Vec<Vec<u8>> {
+        self.server_ids
+            .iter()
+            .map(|_| svr4::Request4 {
+                inner: Some(svr4::request4::Inner::Query(svr4::request4::Query {})),
+            })
+            .map(|rr| rr.encode_to_vec())
+            .collect::<Vec<_>>()
+    }
+
+    fn fix_previous_requests(&self, actions: &[RotationAction]) -> Vec<Vec<u8>> {
+        assert!(actions.len() == self.server_ids.len());
+        actions
+            .iter()
+            .map(|a| svr4::Request4 {
+                inner: match a {
+                    RotationAction::DoNothing => {
+                        Some(svr4::request4::Inner::Query(svr4::request4::Query {}))
+                    }
+                    RotationAction::Rollback(version) => {
+                        Some(svr4::request4::Inner::RotateRollback(
+                            svr4::request4::RotateRollback { version: *version },
+                        ))
+                    }
+                    RotationAction::Commit(version) => Some(svr4::request4::Inner::RotateCommit(
+                        svr4::request4::RotateCommit { version: *version },
+                    )),
+                },
+            })
+            .map(|rr| rr.encode_to_vec())
+            .collect::<Vec<_>>()
+    }
+
+    fn rotate_start_requests(&mut self, version: u64) -> Vec<Vec<u8>> {
+        let n = NonZeroUsize::new(self.server_ids.len()).unwrap();
+        let oprf_secretshares = scalars_summing_to(n, &Scalar::ZERO, &mut self.rng);
+        let mut encryption_secretshares = bytes_xoring_to(n, &[0u8; 32], &mut self.rng);
+        encryption_secretshares
+            .drain(..)
+            .enumerate()
+            .map(|(i, enc_share)| svr4::Request4 {
+                inner: Some(svr4::request4::Inner::RotateStart(
+                    svr4::request4::RotateStart {
+                        version,
+                        oprf_secretshare_delta: oprf_secretshares[i].to_bytes().to_vec(),
+                        encryption_secretshare_delta: enc_share,
+                    },
+                )),
+            })
+            .map(|rr| rr.encode_to_vec())
+            .collect::<Vec<_>>()
+    }
+
+    fn rotate_commit_requests(&self, version: u64) -> Vec<Vec<u8>> {
+        self.server_ids
+            .iter()
+            .map(|_| svr4::Request4 {
+                inner: Some(svr4::request4::Inner::RotateCommit(
+                    svr4::request4::RotateCommit { version },
+                )),
+            })
+            .map(|rr| rr.encode_to_vec())
+            .collect::<Vec<_>>()
+    }
+
+    /// Called with the responses received from passing `requests()` to servers.
+    /// Will update state internally.  Any error will update state to `Done`.
+    pub fn handle_responses(&mut self, responses: &[Vec<u8>]) -> Result<(), Error> {
+        if responses.len() != self.server_ids.len() {
+            return Err(Error::BadData);
+        }
+        let out = match self.state {
+            RotationMachineState::InitialQuery => self.initial_query_responses(responses),
+            RotationMachineState::FixPrevious(_) => self.fix_previous_responses(responses),
+            RotationMachineState::RotateStart(version) => {
+                self.rotate_start_responses(responses, version)
+            }
+            RotationMachineState::RotateCommit(_) => self.rotate_commit_responses(responses),
+            RotationMachineState::Done => {
+                panic!("responses() called when state is done");
+            }
+        };
+        if out.is_err() {
+            // If we encountered an error, we're kaput.
+            self.state = RotationMachineState::Done;
+        }
+        out
+    }
+
+    fn initial_query_responses(&mut self, responses: &[Vec<u8>]) -> Result<(), Error> {
+        let resps = responses
+            .iter()
+            .map(|b| svr4::Response4::decode(b.as_ref()).map_err(|_| Error::BadData))
+            .map(|rr| match rr?.inner {
+                Some(svr4::response4::Inner::Query(r)) => match status_error(r.status) {
+                    Ok(()) => Ok(r),
+                    Err(e) => Err(e),
+                },
+                _ => Err(Error::BadData),
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+
+        let first = resps[0];
+        // Utility function to check that a version is in all responses.
+        let version_in_all_responses = |v: u64| -> bool {
+            resps
+                .iter()
+                .filter(|r| r.version == v || r.new_version == v)
+                .count()
+                == resps.len()
+        };
+        // Find a version that's common across all responses.  We prefer
+        // a newer version than an old one, and we rely on the fact that
+        // if a version exists in ALL responses, it must exist in the FIRST
+        // response, so we can just check first.new_version, then first.version.
+        let canonical_version =
+            if first.new_version != 0 && version_in_all_responses(first.new_version) {
+                first.new_version
+            } else if version_in_all_responses(first.version) {
+                first.version
+            } else {
+                return Err(Error::BadData);
+            };
+        // See what we need to do to make this version canonical
+        // everywhere:
+        let mut action_required = false;
+        let actions = resps
+            .iter()
+            .map(|r| {
+                if r.new_version == canonical_version {
+                    action_required = true;
+                    RotationAction::Commit(canonical_version)
+                } else if r.new_version != 0 {
+                    action_required = true;
+                    RotationAction::Rollback(r.new_version)
+                } else {
+                    RotationAction::DoNothing
+                }
+            })
+            .collect::<Vec<_>>();
+        if action_required {
+            self.state = RotationMachineState::FixPrevious(actions);
+        } else {
+            self.state = RotationMachineState::RotateStart(self.rng.next_u64());
+        }
+        Ok(())
+    }
+
+    fn fix_previous_responses(&mut self, responses: &[Vec<u8>]) -> Result<(), Error> {
+        responses
+            .iter()
+            .map(|b| svr4::Response4::decode(b.as_ref()).map_err(|_| Error::BadData))
+            .try_for_each(|rr| match rr?.inner {
+                Some(svr4::response4::Inner::Query(r)) => status_error(r.status),
+                Some(svr4::response4::Inner::RotateCommit(r)) => status_error(r.status),
+                Some(svr4::response4::Inner::RotateRollback(r)) => status_error(r.status),
+                _ => Err(Error::BadResponse),
+            })?;
+        self.state = RotationMachineState::RotateStart(self.rng.next_u64());
+        Ok(())
+    }
+
+    fn rotate_start_responses(&mut self, responses: &[Vec<u8>], version: u64) -> Result<(), Error> {
+        let _resps = responses
+            .iter()
+            .map(|b| svr4::Response4::decode(b.as_ref()).map_err(|_| Error::BadData))
+            .map(|rr| match rr?.inner {
+                Some(svr4::response4::Inner::RotateStart(r)) => match status_error(r.status) {
+                    Ok(()) => Ok(r),
+                    Err(e) => Err(e),
+                },
+                _ => Err(Error::BadData),
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        assert!(version != 0);
+        self.state = RotationMachineState::RotateCommit(version);
+        Ok(())
+    }
+
+    fn rotate_commit_responses(&mut self, responses: &[Vec<u8>]) -> Result<(), Error> {
+        responses
+            .iter()
+            .map(|b| svr4::Response4::decode(b.as_ref()).map_err(|_| Error::BadData))
+            .try_for_each(|rr| match rr?.inner {
+                Some(svr4::response4::Inner::RotateCommit(r)) => status_error(r.status),
+                _ => Err(Error::BadResponse),
+            })?;
+        self.state = RotationMachineState::Done;
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
     use curve25519_dalek::scalar::Scalar;
     use nonzero_ext::nonzero;
     use proptest::proptest;
-    use rand_core::OsRng;
+    use rand_core::{CryptoRng, OsRng, RngCore};
+    use test_case::test_case;
 
     fn to_ristretto_scalar(b: &[u8]) -> Option<Scalar> {
         Scalar::from_canonical_bytes(b.try_into().ok()?).into_option()
@@ -604,5 +916,712 @@ mod test {
             .restore(&restore2_responses)
             .expect("call restored");
         assert_eq!(backup.output, got);
+    }
+
+    /// Deterministic RNG for testing
+    struct IncrementingRng {
+        v: u64,
+    }
+
+    impl CryptoRng for IncrementingRng {}
+    impl RngCore for IncrementingRng {
+        fn next_u32(&mut self) -> u32 {
+            self.v += 1;
+            self.v as u32
+        }
+        fn next_u64(&mut self) -> u64 {
+            self.v += 1;
+            self.v
+        }
+        fn fill_bytes(&mut self, dest: &mut [u8]) {
+            for d in dest.iter_mut() {
+                self.v += 1;
+                *d = self.v as u8;
+            }
+        }
+        fn try_fill_bytes(&mut self, dest: &mut [u8]) -> Result<(), rand_core::Error> {
+            self.fill_bytes(dest);
+            Ok(())
+        }
+    }
+
+    #[test_case(
+        vec![
+            (
+                vec![
+                    svr4::Request4{
+                      inner: Some(svr4::request4::Inner::Query(
+                        svr4::request4::Query{})),
+                    },
+                    svr4::Request4{
+                      inner: Some(svr4::request4::Inner::Query(
+                        svr4::request4::Query{})),
+                    },
+                ],
+                vec![
+                    svr4::Response4{
+                        inner: Some(svr4::response4::Inner::Query(svr4::response4::Query{
+                            status: svr4::response4::Status::Ok.into(),
+                            tries_remaining: 3,
+                            version: 111,
+                            new_version: 0,
+                        })),
+                    },
+                    svr4::Response4{
+                        inner: Some(svr4::response4::Inner::Query(svr4::response4::Query{
+                            status: svr4::response4::Status::Ok.into(),
+                            tries_remaining: 3,
+                            version: 111,
+                            new_version: 0,
+                        })),
+                    },
+                ],
+            ),
+            (
+                vec![
+                    svr4::Request4{
+                      inner: Some(svr4::request4::Inner::RotateStart(
+                        svr4::request4::RotateStart{
+                            version: 1,
+                            oprf_secretshare_delta: vec![43u8, 45, 186, 46, 151, 152, 176, 15, 92, 27, 218, 124, 96, 244, 158, 211, 155, 38, 174, 109, 24, 63, 216, 33, 6, 216, 75, 18, 75, 181, 36, 0],
+                            encryption_secretshare_delta: vec![66u8, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97],
+                        })),
+                    },
+                    svr4::Request4{
+                      inner: Some(svr4::request4::Inner::RotateStart(
+                        svr4::request4::RotateStart{
+                          version: 1,
+                          oprf_secretshare_delta: vec![194u8, 166, 59, 46, 131, 202, 97, 72, 122, 129, 29, 38, 126, 5, 64, 65, 100, 217, 81, 146, 231, 192, 39, 222, 249, 39, 180, 237, 180, 74, 219, 15],
+                          encryption_secretshare_delta: vec![66u8, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97],
+                        })),
+                    },
+                ],
+                vec![
+                    svr4::Response4{
+                        inner: Some(svr4::response4::Inner::RotateStart(svr4::response4::RotateStart{
+                            status: svr4::response4::Status::Ok.into(),
+                        })),
+                    },
+                    svr4::Response4{
+                        inner: Some(svr4::response4::Inner::RotateStart(svr4::response4::RotateStart{
+                            status: svr4::response4::Status::Ok.into(),
+                        })),
+                    },
+                ],
+            ),
+            (
+                vec![
+                    svr4::Request4{
+                      inner: Some(svr4::request4::Inner::RotateCommit(
+                        svr4::request4::RotateCommit{
+                            version: 1,
+                        })),
+                    },
+                    svr4::Request4{
+                      inner: Some(svr4::request4::Inner::RotateCommit(
+                        svr4::request4::RotateCommit{
+                          version: 1,
+                        })),
+                    },
+                ],
+                vec![
+                    svr4::Response4{
+                        inner: Some(svr4::response4::Inner::RotateCommit(svr4::response4::RotateCommit{
+                            status: svr4::response4::Status::Ok.into(),
+                        })),
+                    },
+                    svr4::Response4{
+                        inner: Some(svr4::response4::Inner::RotateCommit(svr4::response4::RotateCommit{
+                            status: svr4::response4::Status::Ok.into(),
+                        })),
+                    },
+                ],
+            ),
+        ], Ok(()); "when the initial state is immediately ready for rotation"
+    )]
+    #[test_case(
+        vec![
+            (
+                vec![
+                    svr4::Request4{
+                      inner: Some(svr4::request4::Inner::Query(
+                        svr4::request4::Query{})),
+                    },
+                    svr4::Request4{
+                      inner: Some(svr4::request4::Inner::Query(
+                        svr4::request4::Query{})),
+                    },
+                ],
+                vec![
+                    svr4::Response4{
+                        inner: Some(svr4::response4::Inner::Query(svr4::response4::Query{
+                            status: svr4::response4::Status::Ok.into(),
+                            tries_remaining: 3,
+                            version: 333,
+                            new_version: 111,
+                        })),
+                    },
+                    svr4::Response4{
+                        inner: Some(svr4::response4::Inner::Query(svr4::response4::Query{
+                            status: svr4::response4::Status::Ok.into(),
+                            tries_remaining: 3,
+                            version: 111,
+                            new_version: 222,
+                        })),
+                    },
+                ],
+            ),
+            (
+                vec![
+                    svr4::Request4{
+                      inner: Some(svr4::request4::Inner::RotateCommit(
+                        svr4::request4::RotateCommit{version: 111})),
+                    },
+                    svr4::Request4{
+                      inner: Some(svr4::request4::Inner::RotateRollback(
+                        svr4::request4::RotateRollback{version: 222})),
+                    },
+                ],
+                vec![
+                    svr4::Response4{
+                        inner: Some(svr4::response4::Inner::RotateCommit(svr4::response4::RotateCommit{
+                            status: svr4::response4::Status::Ok.into(),
+                        })),
+                    },
+                    svr4::Response4{
+                        inner: Some(svr4::response4::Inner::RotateRollback(svr4::response4::RotateRollback{
+                            status: svr4::response4::Status::Ok.into(),
+                        })),
+                    },
+                ],
+            ),
+            (
+                vec![
+                    svr4::Request4{
+                      inner: Some(svr4::request4::Inner::RotateStart(
+                        svr4::request4::RotateStart{
+                            version: 1,
+                            oprf_secretshare_delta: vec![43u8, 45, 186, 46, 151, 152, 176, 15, 92, 27, 218, 124, 96, 244, 158, 211, 155, 38, 174, 109, 24, 63, 216, 33, 6, 216, 75, 18, 75, 181, 36, 0],
+                            encryption_secretshare_delta: vec![66u8, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97],
+                        })),
+                    },
+                    svr4::Request4{
+                      inner: Some(svr4::request4::Inner::RotateStart(
+                        svr4::request4::RotateStart{
+                          version: 1,
+                          oprf_secretshare_delta: vec![194u8, 166, 59, 46, 131, 202, 97, 72, 122, 129, 29, 38, 126, 5, 64, 65, 100, 217, 81, 146, 231, 192, 39, 222, 249, 39, 180, 237, 180, 74, 219, 15],
+                          encryption_secretshare_delta: vec![66u8, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97],
+                        })),
+                    },
+                ],
+                vec![
+                    svr4::Response4{
+                        inner: Some(svr4::response4::Inner::RotateStart(svr4::response4::RotateStart{
+                            status: svr4::response4::Status::Ok.into(),
+                        })),
+                    },
+                    svr4::Response4{
+                        inner: Some(svr4::response4::Inner::RotateStart(svr4::response4::RotateStart{
+                            status: svr4::response4::Status::Ok.into(),
+                        })),
+                    },
+                ],
+            ),
+            (
+                vec![
+                    svr4::Request4{
+                      inner: Some(svr4::request4::Inner::RotateCommit(
+                        svr4::request4::RotateCommit{
+                            version: 1,
+                        })),
+                    },
+                    svr4::Request4{
+                      inner: Some(svr4::request4::Inner::RotateCommit(
+                        svr4::request4::RotateCommit{
+                          version: 1,
+                        })),
+                    },
+                ],
+                vec![
+                    svr4::Response4{
+                        inner: Some(svr4::response4::Inner::RotateCommit(svr4::response4::RotateCommit{
+                            status: svr4::response4::Status::Ok.into(),
+                        })),
+                    },
+                    svr4::Response4{
+                        inner: Some(svr4::response4::Inner::RotateCommit(svr4::response4::RotateCommit{
+                            status: svr4::response4::Status::Ok.into(),
+                        })),
+                    },
+                ],
+            ),
+        ], Ok(()); "when we need to fix the current state before starting our own rotation"
+    )]
+    #[test_case(
+        vec![
+            (
+                vec![
+                    svr4::Request4{
+                      inner: Some(svr4::request4::Inner::Query(
+                        svr4::request4::Query{})),
+                    },
+                    svr4::Request4{
+                      inner: Some(svr4::request4::Inner::Query(
+                        svr4::request4::Query{})),
+                    },
+                ],
+                vec![
+                    svr4::Response4{
+                        inner: Some(svr4::response4::Inner::Query(svr4::response4::Query{
+                            status: svr4::response4::Status::Ok.into(),
+                            tries_remaining: 3,
+                            version: 333,
+                            new_version: 111,
+                        })),
+                    },
+                    svr4::Response4{
+                        inner: Some(svr4::response4::Inner::Query(svr4::response4::Query{
+                            status: svr4::response4::Status::Ok.into(),
+                            tries_remaining: 3,
+                            version: 333,
+                            new_version: 111,
+                        })),
+                    },
+                ],
+            ),
+            (
+                vec![
+                    svr4::Request4{
+                      inner: Some(svr4::request4::Inner::RotateCommit(
+                        svr4::request4::RotateCommit{version: 111})),
+                    },
+                    svr4::Request4{
+                      inner: Some(svr4::request4::Inner::RotateCommit(
+                        svr4::request4::RotateCommit{version: 111})),
+                    },
+                ],
+                vec![
+                    svr4::Response4{
+                        inner: Some(svr4::response4::Inner::RotateCommit(svr4::response4::RotateCommit{
+                            status: svr4::response4::Status::Ok.into(),
+                        })),
+                    },
+                    svr4::Response4{
+                        inner: Some(svr4::response4::Inner::RotateRollback(svr4::response4::RotateRollback{
+                            status: svr4::response4::Status::Ok.into(),
+                        })),
+                    },
+                ],
+            ),
+            (
+                vec![
+                    svr4::Request4{
+                      inner: Some(svr4::request4::Inner::RotateStart(
+                        svr4::request4::RotateStart{
+                            version: 1,
+                            oprf_secretshare_delta: vec![43u8, 45, 186, 46, 151, 152, 176, 15, 92, 27, 218, 124, 96, 244, 158, 211, 155, 38, 174, 109, 24, 63, 216, 33, 6, 216, 75, 18, 75, 181, 36, 0],
+                            encryption_secretshare_delta: vec![66u8, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97],
+                        })),
+                    },
+                    svr4::Request4{
+                      inner: Some(svr4::request4::Inner::RotateStart(
+                        svr4::request4::RotateStart{
+                          version: 1,
+                          oprf_secretshare_delta: vec![194u8, 166, 59, 46, 131, 202, 97, 72, 122, 129, 29, 38, 126, 5, 64, 65, 100, 217, 81, 146, 231, 192, 39, 222, 249, 39, 180, 237, 180, 74, 219, 15],
+                          encryption_secretshare_delta: vec![66u8, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97],
+                        })),
+                    },
+                ],
+                vec![
+                    svr4::Response4{
+                        inner: Some(svr4::response4::Inner::RotateStart(svr4::response4::RotateStart{
+                            status: svr4::response4::Status::Ok.into(),
+                        })),
+                    },
+                    svr4::Response4{
+                        inner: Some(svr4::response4::Inner::RotateStart(svr4::response4::RotateStart{
+                            status: svr4::response4::Status::Ok.into(),
+                        })),
+                    },
+                ],
+            ),
+            (
+                vec![
+                    svr4::Request4{
+                      inner: Some(svr4::request4::Inner::RotateCommit(
+                        svr4::request4::RotateCommit{
+                            version: 1,
+                        })),
+                    },
+                    svr4::Request4{
+                      inner: Some(svr4::request4::Inner::RotateCommit(
+                        svr4::request4::RotateCommit{
+                          version: 1,
+                        })),
+                    },
+                ],
+                vec![
+                    svr4::Response4{
+                        inner: Some(svr4::response4::Inner::RotateCommit(svr4::response4::RotateCommit{
+                            status: svr4::response4::Status::Ok.into(),
+                        })),
+                    },
+                    svr4::Response4{
+                        inner: Some(svr4::response4::Inner::RotateCommit(svr4::response4::RotateCommit{
+                            status: svr4::response4::Status::Ok.into(),
+                        })),
+                    },
+                ],
+            ),
+        ], Ok(()); "when version and new_version match across all replicas"
+    )]
+    #[test_case(
+        vec![
+            (
+                vec![
+                    svr4::Request4{
+                      inner: Some(svr4::request4::Inner::Query(
+                        svr4::request4::Query{})),
+                    },
+                    svr4::Request4{
+                      inner: Some(svr4::request4::Inner::Query(
+                        svr4::request4::Query{})),
+                    },
+                ],
+                vec![
+                    svr4::Response4{
+                        inner: Some(svr4::response4::Inner::Query(svr4::response4::Query{
+                            status: svr4::response4::Status::Ok.into(),
+                            tries_remaining: 3,
+                            version: 333,
+                            new_version: 111,
+                        })),
+                    },
+                    svr4::Response4{
+                        inner: Some(svr4::response4::Inner::Query(svr4::response4::Query{
+                            status: svr4::response4::Status::Missing.into(),
+                            tries_remaining: 0,
+                            version: 0,
+                            new_version: 0,
+                        })),
+                    },
+                ],
+            ),
+        ], Err(Error::BadResponseStatus4(svr4::response4::Status::Missing)); "when the initial query returns an error"
+    )]
+    #[test_case(
+        vec![
+            (
+                vec![
+                    svr4::Request4{
+                      inner: Some(svr4::request4::Inner::Query(
+                        svr4::request4::Query{})),
+                    },
+                    svr4::Request4{
+                      inner: Some(svr4::request4::Inner::Query(
+                        svr4::request4::Query{})),
+                    },
+                ],
+                vec![
+                    svr4::Response4{
+                        inner: Some(svr4::response4::Inner::Query(svr4::response4::Query{
+                            status: svr4::response4::Status::Ok.into(),
+                            tries_remaining: 3,
+                            version: 333,
+                            new_version: 111,
+                        })),
+                    },
+                    svr4::Response4{
+                        inner: Some(svr4::response4::Inner::Query(svr4::response4::Query{
+                            status: svr4::response4::Status::Ok.into(),
+                            tries_remaining: 3,
+                            version: 111,
+                            new_version: 222,
+                        })),
+                    },
+                ],
+            ),
+            (
+                vec![
+                    svr4::Request4{
+                      inner: Some(svr4::request4::Inner::RotateCommit(
+                        svr4::request4::RotateCommit{version: 111})),
+                    },
+                    svr4::Request4{
+                      inner: Some(svr4::request4::Inner::RotateRollback(
+                        svr4::request4::RotateRollback{version: 222})),
+                    },
+                ],
+                vec![
+                    svr4::Response4{
+                        inner: Some(svr4::response4::Inner::RotateCommit(svr4::response4::RotateCommit{
+                            status: svr4::response4::Status::NotRotating.into(),
+                        })),
+                    },
+                    svr4::Response4{
+                        inner: Some(svr4::response4::Inner::RotateRollback(svr4::response4::RotateRollback{
+                            status: svr4::response4::Status::Ok.into(),
+                        })),
+                    },
+                ],
+            ),
+        ], Err(Error::BadResponseStatus4(svr4::response4::Status::NotRotating)); "when rotation fixing returns an error"
+    )]
+    #[test_case(
+        vec![
+            (
+                vec![
+                    svr4::Request4{
+                      inner: Some(svr4::request4::Inner::Query(
+                        svr4::request4::Query{})),
+                    },
+                    svr4::Request4{
+                      inner: Some(svr4::request4::Inner::Query(
+                        svr4::request4::Query{})),
+                    },
+                ],
+                vec![
+                    svr4::Response4{
+                        inner: Some(svr4::response4::Inner::Query(svr4::response4::Query{
+                            status: svr4::response4::Status::Ok.into(),
+                            tries_remaining: 3,
+                            version: 333,
+                            new_version: 111,
+                        })),
+                    },
+                    svr4::Response4{
+                        inner: Some(svr4::response4::Inner::Query(svr4::response4::Query{
+                            status: svr4::response4::Status::Ok.into(),
+                            tries_remaining: 3,
+                            version: 333,
+                            new_version: 111,
+                        })),
+                    },
+                ],
+            ),
+            (
+                vec![
+                    svr4::Request4{
+                      inner: Some(svr4::request4::Inner::RotateCommit(
+                        svr4::request4::RotateCommit{version: 111})),
+                    },
+                    svr4::Request4{
+                      inner: Some(svr4::request4::Inner::RotateCommit(
+                        svr4::request4::RotateCommit{version: 111})),
+                    },
+                ],
+                vec![
+                    svr4::Response4{
+                        inner: Some(svr4::response4::Inner::RotateCommit(svr4::response4::RotateCommit{
+                            status: svr4::response4::Status::Ok.into(),
+                        })),
+                    },
+                    svr4::Response4{
+                        inner: Some(svr4::response4::Inner::RotateRollback(svr4::response4::RotateRollback{
+                            status: svr4::response4::Status::Ok.into(),
+                        })),
+                    },
+                ],
+            ),
+            (
+                vec![
+                    svr4::Request4{
+                      inner: Some(svr4::request4::Inner::RotateStart(
+                        svr4::request4::RotateStart{
+                            version: 1,
+                            oprf_secretshare_delta: vec![43u8, 45, 186, 46, 151, 152, 176, 15, 92, 27, 218, 124, 96, 244, 158, 211, 155, 38, 174, 109, 24, 63, 216, 33, 6, 216, 75, 18, 75, 181, 36, 0],
+                            encryption_secretshare_delta: vec![66u8, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97],
+                        })),
+                    },
+                    svr4::Request4{
+                      inner: Some(svr4::request4::Inner::RotateStart(
+                        svr4::request4::RotateStart{
+                          version: 1,
+                          oprf_secretshare_delta: vec![194u8, 166, 59, 46, 131, 202, 97, 72, 122, 129, 29, 38, 126, 5, 64, 65, 100, 217, 81, 146, 231, 192, 39, 222, 249, 39, 180, 237, 180, 74, 219, 15],
+                          encryption_secretshare_delta: vec![66u8, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97],
+                        })),
+                    },
+                ],
+                vec![
+                    svr4::Response4{
+                        inner: Some(svr4::response4::Inner::RotateStart(svr4::response4::RotateStart{
+                            status: svr4::response4::Status::Ok.into(),
+                        })),
+                    },
+                    svr4::Response4{
+                        inner: Some(svr4::response4::Inner::RotateStart(svr4::response4::RotateStart{
+                            status: svr4::response4::Status::AlreadyRotating.into(),
+                        })),
+                    },
+                ],
+            ),
+        ], Err(Error::BadResponseStatus4(svr4::response4::Status::AlreadyRotating)); "when rotation start returns an error"
+    )]
+    #[test_case(
+        vec![
+            (
+                vec![
+                    svr4::Request4{
+                      inner: Some(svr4::request4::Inner::Query(
+                        svr4::request4::Query{})),
+                    },
+                    svr4::Request4{
+                      inner: Some(svr4::request4::Inner::Query(
+                        svr4::request4::Query{})),
+                    },
+                ],
+                vec![
+                    svr4::Response4{
+                        inner: Some(svr4::response4::Inner::Query(svr4::response4::Query{
+                            status: svr4::response4::Status::Ok.into(),
+                            tries_remaining: 3,
+                            version: 333,
+                            new_version: 111,
+                        })),
+                    },
+                    svr4::Response4{
+                        inner: Some(svr4::response4::Inner::Query(svr4::response4::Query{
+                            status: svr4::response4::Status::Ok.into(),
+                            tries_remaining: 3,
+                            version: 333,
+                            new_version: 111,
+                        })),
+                    },
+                ],
+            ),
+            (
+                vec![
+                    svr4::Request4{
+                      inner: Some(svr4::request4::Inner::RotateCommit(
+                        svr4::request4::RotateCommit{version: 111})),
+                    },
+                    svr4::Request4{
+                      inner: Some(svr4::request4::Inner::RotateCommit(
+                        svr4::request4::RotateCommit{version: 111})),
+                    },
+                ],
+                vec![
+                    svr4::Response4{
+                        inner: Some(svr4::response4::Inner::RotateCommit(svr4::response4::RotateCommit{
+                            status: svr4::response4::Status::Ok.into(),
+                        })),
+                    },
+                    svr4::Response4{
+                        inner: Some(svr4::response4::Inner::RotateRollback(svr4::response4::RotateRollback{
+                            status: svr4::response4::Status::Ok.into(),
+                        })),
+                    },
+                ],
+            ),
+            (
+                vec![
+                    svr4::Request4{
+                      inner: Some(svr4::request4::Inner::RotateStart(
+                        svr4::request4::RotateStart{
+                            version: 1,
+                            oprf_secretshare_delta: vec![43u8, 45, 186, 46, 151, 152, 176, 15, 92, 27, 218, 124, 96, 244, 158, 211, 155, 38, 174, 109, 24, 63, 216, 33, 6, 216, 75, 18, 75, 181, 36, 0],
+                            encryption_secretshare_delta: vec![66u8, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97],
+                        })),
+                    },
+                    svr4::Request4{
+                      inner: Some(svr4::request4::Inner::RotateStart(
+                        svr4::request4::RotateStart{
+                          version: 1,
+                          oprf_secretshare_delta: vec![194u8, 166, 59, 46, 131, 202, 97, 72, 122, 129, 29, 38, 126, 5, 64, 65, 100, 217, 81, 146, 231, 192, 39, 222, 249, 39, 180, 237, 180, 74, 219, 15],
+                          encryption_secretshare_delta: vec![66u8, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97],
+                        })),
+                    },
+                ],
+                vec![
+                    svr4::Response4{
+                        inner: Some(svr4::response4::Inner::RotateStart(svr4::response4::RotateStart{
+                            status: svr4::response4::Status::Ok.into(),
+                        })),
+                    },
+                    svr4::Response4{
+                        inner: Some(svr4::response4::Inner::RotateStart(svr4::response4::RotateStart{
+                            status: svr4::response4::Status::Ok.into(),
+                        })),
+                    },
+                ],
+            ),
+            (
+                vec![
+                    svr4::Request4{
+                      inner: Some(svr4::request4::Inner::RotateCommit(
+                        svr4::request4::RotateCommit{
+                            version: 1,
+                        })),
+                    },
+                    svr4::Request4{
+                      inner: Some(svr4::request4::Inner::RotateCommit(
+                        svr4::request4::RotateCommit{
+                          version: 1,
+                        })),
+                    },
+                ],
+                vec![
+                    svr4::Response4{
+                        inner: Some(svr4::response4::Inner::RotateCommit(svr4::response4::RotateCommit{
+                            status: svr4::response4::Status::Ok.into(),
+                        })),
+                    },
+                    svr4::Response4{
+                        inner: Some(svr4::response4::Inner::RotateCommit(svr4::response4::RotateCommit{
+                            status: svr4::response4::Status::NotRotating.into(),
+                        })),
+                    },
+                ],
+            ),
+        ], Err(Error::BadResponseStatus4(svr4::response4::Status::NotRotating)); "when rotate commit returns an error"
+    )]
+    /// This test runs a series of steps against the rotation machine,
+    /// where at each step it checks the expected requests, then passes in
+    /// the provided responses.  All but the last set of responses is
+    /// expected to run without error.  The last set of responses is
+    /// expected to return `result`, and after the last step the machine
+    /// is expected to report `is_done()`.
+    fn rotate_machine_success(
+        steps: Vec<(Vec<svr4::Request4>, Vec<svr4::Response4>)>,
+        result: Result<(), Error>,
+    ) {
+        let server_ids = [666u64, 333u64]; // these numbers shouldn't matter
+        for s in steps.iter() {
+            assert!(s.0.len() == server_ids.len());
+            assert!(s.1.len() == server_ids.len());
+        }
+
+        let mut rng = IncrementingRng { v: 0 };
+        let mut machine = RotationMachine::new(&server_ids, &mut rng);
+
+        for step in 0..steps.len() {
+            println!("STEP {}", step);
+            assert!(!machine.is_done());
+            let (expected_requests, received_responses) = &steps[step];
+            // Requests should all initially be Queries
+            let got_requests = machine
+                .requests()
+                .iter()
+                .map(|b| svr4::Request4::decode(b.as_ref()).map_err(|_| Error::BadData))
+                .collect::<Result<Vec<_>, _>>()
+                .unwrap();
+            println!("REQUESTS:\n\t{:?}", got_requests);
+            assert_eq!(&got_requests, expected_requests);
+
+            println!("RESPONSES:\n\t{:?}", received_responses);
+            // Respond with provided responses
+            let got = machine.handle_responses(
+                &received_responses
+                    .iter()
+                    .map(|rr| rr.encode_to_vec())
+                    .collect::<Vec<_>>(),
+            );
+            if step == steps.len() - 1 {
+                assert_eq!(got, result);
+            } else {
+                assert_eq!(got, Ok(()));
+            }
+        }
+        assert!(machine.is_done());
     }
 }

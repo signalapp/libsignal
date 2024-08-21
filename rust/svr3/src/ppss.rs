@@ -18,7 +18,7 @@ use subtle::ConstantTimeEq;
 use crate::oprf;
 use crate::oprf::errors::OPRFError;
 
-#[derive(Display, Debug)]
+#[derive(Display, Debug, PartialEq)]
 pub enum PPSSError {
     /// Invalid commitment, cannot reconstruct secret.
     InvalidCommitment,

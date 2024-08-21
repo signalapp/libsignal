@@ -103,11 +103,6 @@ message Response4 {
   }
 
   message Query {
-    enum Status {
-      UNSET = 0;
-      OK = 1;
-      MISSING = 2;
-    }
     Status status = 1;
     uint32 tries_remaining = 2;
     fixed64 version = 3;
