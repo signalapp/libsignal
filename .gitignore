@@ -21,8 +21,11 @@ java/.gradle
 java/local.properties
 java/android/src/*/jniLibs
 java/android/src/main/assets/acknowledgments
-java/shared/resources/*.dylib
-java/shared/resources/*.so
-java/shared/resources/*.dll
+java/client/src/main/resources/*.dylib
+java/client/src/main/resources/*.so
+java/client/src/main/resources/*.dll
+java/server/src/main/resources/*.dylib
+java/server/src/main/resources/*.so
+java/server/src/main/resources/*.dll
 
 .DS_Store
