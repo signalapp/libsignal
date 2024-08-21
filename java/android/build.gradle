@@ -86,7 +86,7 @@ String collectTestEnvironment() {
 // From https://github.com/rustls/rustls-platform-verifier
 File findRustlsPlatformVerifierClasses() {
     def dependencyText = providers.exec {
-        it.workingDir = new File("../")
+        it.workingDir = project.rootDir.parentFile
         commandLine("cargo", "metadata", "--format-version", "1")
     }.standardOutput.asText.get()
 
