@@ -1,7 +1,7 @@
 import groovy.json.JsonSlurper
 
 plugins {
-    id 'com.android.library' version '8.3.0'
+    id 'com.android.library' version '8.4.1'
     id 'maven-publish'
     id 'signing'
 }
