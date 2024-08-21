@@ -87,7 +87,7 @@ String collectTestEnvironment() {
 File findRustlsPlatformVerifierClasses() {
     def dependencyText = providers.exec {
         it.workingDir = project.rootDir.parentFile
-        commandLine("cargo", "metadata", "--format-version", "1")
+        commandLine("bash", "java/find_cargo.sh", "metadata", "--format-version", "1")
     }.standardOutput.asText.get()
 
     def dependencyJson = new JsonSlurper().parseText(dependencyText)
