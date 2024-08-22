@@ -22,7 +22,7 @@ jobs:
       # Needed for google-github-actions/auth.
       id-token: 'write'
 
-    runs-on: macos-12
+    runs-on: macos-latest
 
     timeout-minutes: 45
 
