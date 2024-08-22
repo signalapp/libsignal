@@ -13,7 +13,7 @@ use curve25519_dalek::ristretto::{CompressedRistretto, RistrettoPoint};
 use curve25519_dalek::scalar::Scalar;
 use prost::Message;
 use rand_core::CryptoRngCore;
-use sha2::{Digest, Sha512};
+use sha2::{Sha256, Sha512};
 
 use crate::errors::Error;
 use crate::proto::svr4;
@@ -58,12 +58,12 @@ fn bytes_xoring_to<R: CryptoRngCore>(n: NonZeroUsize, b: &[u8], rng: &mut R) -> 
 }
 
 /// Key Derivation Function used throughout the rest of this code.
-fn kdf(input1: &[u8], input2: &[u8]) -> [u8; 64] {
-    // TODO: implement actual KDF
-    let mut h = Sha512::new();
-    h.update(input1);
-    h.update(input2);
-    h.finalize().into()
+fn kdf(info: &[u8], input1: &[u8], input2: &[u8], out: &mut [u8]) {
+    assert!(out.len() == 32 || out.len() == 64);
+    let concat_input: Vec<u8> = [input1, input2].concat();
+    let h = hkdf::Hkdf::<Sha256>::new(None, &concat_input);
+    h.expand(info, out)
+        .expect("all output lengths used are valid for key derivation");
 }
 
 /// Return a set of (private, public) auth commitments based on the auth secret.
@@ -75,7 +75,11 @@ fn auth_commitments(
     let k_auth = auth_secret(input, auth_pt);
     server_ids
         .iter()
-        .map(|id| kdf(&k_auth, &id.to_be_bytes()))
+        .map(|id| {
+            let mut k = [0u8; 64];
+            kdf(b"SignalSVR4Server", &k_auth, &id.to_be_bytes(), &mut k);
+            k
+        })
         .map(|k| Scalar::hash_from_bytes::<Sha512>(&k))
         .map(|s| (s, RISTRETTO_BASEPOINT_TABLE * &s))
         .collect()
@@ -87,8 +91,15 @@ fn auth_pt(input: &[u8; 64], k_oprf: &Scalar) -> RistrettoPoint {
 }
 
 /// Returns the secret used for authentication.
-fn auth_secret(input: &[u8; 64], auth_pt: &RistrettoPoint) -> [u8; 64] {
-    kdf(input, &auth_pt.compress().to_bytes())
+fn auth_secret(input: &[u8; 64], auth_pt: &RistrettoPoint) -> [u8; 32] {
+    let mut out = [0u8; 32];
+    kdf(
+        b"SignalSVR4Authorization",
+        input,
+        &auth_pt.compress().to_bytes(),
+        &mut out,
+    );
+    out
 }
 
 /// Return a RistrettoPoint created from our input.
@@ -152,8 +163,16 @@ impl Backup4 {
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct Output4 {
-    k_auth: [u8; 64],
+    k_auth: [u8; 32],
     s_enc: [u8; 32],
+}
+
+impl Output4 {
+    pub fn encryption_key(&self) -> [u8; 32] {
+        let mut out = [0u8; 32];
+        kdf(b"SignalSVR4Encryption", &self.s_enc, &self.k_auth, &mut out);
+        out
+    }
 }
 
 pub struct Restore1 {
@@ -704,6 +723,7 @@ impl<'a> RotationMachine<'a> {
 mod test {
     use super::*;
     use curve25519_dalek::scalar::Scalar;
+    use hex_literal::hex;
     use nonzero_ext::nonzero;
     use proptest::proptest;
     use rand_core::{CryptoRng, OsRng, RngCore};
@@ -741,6 +761,18 @@ mod test {
             assert_eq!(got, want);
             assert_eq!(out.len(), n);
         });
+    }
+
+    #[test]
+    fn output_to_encryption() {
+        let o = Output4 {
+            s_enc: [0u8; 32],
+            k_auth: [0u8; 32],
+        };
+        assert_eq!(
+            o.encryption_key(),
+            hex!("6856f1b34cbc3b086d01e8e98f89f99a6323aa6ccd853be2064b0827c69a4e3c"),
+        );
     }
 
     /// TestServer implements the server-side for a single-user interaction.
