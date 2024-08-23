@@ -3,9 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use futures_util::{stream, StreamExt};
 use std::collections::HashMap;
-use std::future;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
@@ -55,15 +53,30 @@ impl Default for DnsResolverState {
 
 #[derive(Clone)]
 pub struct DnsResolver {
-    lookup_options: Arc<Vec<(Box<dyn DnsLookup>, Duration)>>,
+    lookup_options: Arc<[LookupOption]>,
     state: Arc<Mutex<DnsResolverState>>,
+}
+
+/// A single DNS resolution strategy that can be tried.
+struct LookupOption {
+    lookup: Box<dyn DnsLookup>,
+    /// How long to wait for the lookup to finish before giving up on it.
+    timeout_after: Duration,
 }
 
 impl DnsResolver {
     #[cfg(test)]
-    pub(crate) fn new_custom(lookup_options: Vec<(Box<dyn DnsLookup>, Duration)>) -> Self {
+    fn new_custom(lookup_options: Vec<(Box<dyn DnsLookup>, Duration)>) -> Self {
+        let lookup_options = lookup_options
+            .into_iter()
+            .map(|(lookup, timeout_after)| LookupOption {
+                lookup,
+                timeout_after,
+            })
+            .collect();
+
         DnsResolver {
-            lookup_options: Arc::new(lookup_options),
+            lookup_options,
             state: Default::default(),
         }
     }
@@ -76,10 +89,10 @@ impl DnsResolver {
     /// to resolve DNS lookups
     pub(crate) fn new_from_static_map(static_map: HashMap<&'static str, LookupResult>) -> Self {
         DnsResolver {
-            lookup_options: Arc::new(vec![(
-                Box::new(StaticDnsMap(static_map)),
-                Duration::from_millis(1),
-            )]),
+            lookup_options: Arc::new([LookupOption {
+                lookup: Box::new(StaticDnsMap(static_map)),
+                timeout_after: Duration::from_millis(1),
+            }]),
             state: Default::default(),
         }
     }
@@ -104,15 +117,25 @@ impl DnsResolver {
         ));
         let fallback_lookups = DNS_FALLBACK_LOOKUP_TIMEOUTS
             .iter()
-            .map(|timeout| (custom_resolver.clone() as Box<dyn DnsLookup>, *timeout));
+            .copied()
+            .map(|timeout_after| LookupOption {
+                lookup: custom_resolver.clone(),
+                timeout_after,
+            });
 
-        let mut lookup_options: Vec<(Box<dyn DnsLookup>, Duration)> =
-            Vec::with_capacity(fallback_lookups.len() + 2);
-        lookup_options.push((Box::new(SystemDnsLookup), DNS_SYSTEM_LOOKUP_TIMEOUT));
-        lookup_options.extend(fallback_lookups);
-        lookup_options.push((Box::new(StaticDnsMap(static_map)), Duration::from_secs(1)));
+        let lookup_options = [LookupOption {
+            lookup: Box::new(SystemDnsLookup),
+            timeout_after: DNS_SYSTEM_LOOKUP_TIMEOUT,
+        }]
+        .into_iter()
+        .chain(fallback_lookups)
+        .chain([LookupOption {
+            lookup: Box::new(StaticDnsMap(static_map)),
+            timeout_after: Duration::from_secs(1),
+        }])
+        .collect();
         DnsResolver {
-            lookup_options: Arc::new(lookup_options),
+            lookup_options,
             state: Default::default(),
         }
     }
@@ -162,26 +185,28 @@ impl DnsResolver {
                 hostname: Arc::from(hostname.as_str()),
                 ipv6_enabled,
             };
-            let sequence = self_clone
-                .lookup_options
-                .iter()
-                .map(|(lookup, timeout)| attempt(request.clone(), lookup.as_ref(), *timeout));
 
-            let result = stream::iter(sequence)
-                .then(|task| task)
-                .boxed()
-                .filter_map(|result| future::ready(result.ok()))
-                .next()
-                .await
-                .ok_or(Error::LookupFailed)
-                .and_then(|res| match ipv6_enabled {
-                    true => Ok(res),
-                    false if res.ipv4.is_empty() => Err(Error::RequestedIpTypeNotFound),
-                    false => Ok(LookupResult {
-                        ipv6: vec![],
-                        ..res
-                    }),
-                });
+            let perform_lookups = async {
+                for lookup_option in self_clone.lookup_options.iter() {
+                    match lookup_option.attempt(request.clone()).await {
+                        Ok(lookup_result) => return Ok(lookup_result),
+                        Err(_) => {
+                            // If a lookup option fails, move on to the next option.
+                        }
+                    }
+                }
+                Err(Error::LookupFailed)
+            };
+
+            let result = perform_lookups.await.and_then(|res| match ipv6_enabled {
+                true => Ok(res),
+                false if res.ipv4.is_empty() => Err(Error::RequestedIpTypeNotFound),
+                false => Ok(LookupResult {
+                    ipv6: vec![],
+                    ..res
+                }),
+            });
+
             self_clone.clear_in_flight_map(hostname.as_str());
             if result_sender.send(result).is_err() {
                 log::debug!(
@@ -198,32 +223,35 @@ impl DnsResolver {
     }
 }
 
-async fn attempt<T: DnsLookup + ?Sized>(
-    request: DnsLookupRequest,
-    lookup_strategy: &T,
-    timeout: Duration,
-) -> Result<LookupResult> {
-    let started_at = Instant::now();
-    let log_safe_domain = log_safe_domain(&request.hostname).to_string();
-    let result = utils::timeout(timeout, Error::Timeout, lookup_strategy.dns_lookup(request)).await;
-    match &result {
-        Ok(_) => {
-            log::debug!(
-                "Resolved domain [{}] after {:?}",
-                log_safe_domain,
-                started_at.elapsed(),
-            );
+impl LookupOption {
+    async fn attempt(&self, request: DnsLookupRequest) -> Result<LookupResult> {
+        let Self {
+            lookup,
+            timeout_after,
+        } = self;
+        let started_at = Instant::now();
+        let log_safe_domain = log_safe_domain(&request.hostname).to_string();
+        let result =
+            utils::timeout(*timeout_after, Error::Timeout, lookup.dns_lookup(request)).await;
+        match &result {
+            Ok(_) => {
+                log::debug!(
+                    "Resolved domain [{}] after {:?}",
+                    log_safe_domain,
+                    started_at.elapsed(),
+                );
+            }
+            Err(error) => {
+                log::warn!(
+                    "Failed to resolve domain [{}] after {:?}: {}",
+                    log_safe_domain,
+                    started_at.elapsed(),
+                    error,
+                );
+            }
         }
-        Err(error) => {
-            log::warn!(
-                "Failed to resolve domain [{}] after {:?}: {}",
-                log_safe_domain,
-                started_at.elapsed(),
-                error,
-            );
-        }
+        result
     }
-    result
 }
 
 #[cfg(test)]
@@ -341,7 +369,7 @@ mod test {
     }
 
     #[tokio::test(start_paused = true)]
-    async fn test_dns_loopup_without_fallback() {
+    async fn test_dns_lookup_without_fallback() {
         let dns_resolver = DnsResolver::new_custom(vec![(
             TestLookup::standard_responses(Duration::ZERO),
             ATTEMPT_TIMEOUT,
@@ -376,7 +404,7 @@ mod test {
     }
 
     #[tokio::test(start_paused = true)]
-    async fn test_dns_loopup_fallback() {
+    async fn test_dns_lookup_fallback() {
         let static_dns_map = StaticDnsMap(HashMap::from([
             (FALLBACK_ONLY_DOMAIN, (IPV4, IPV6).into()),
             (TIMING_OUT_DOMAIN, (IPV4, IPV6).into()),
@@ -405,7 +433,7 @@ mod test {
     }
 
     #[tokio::test]
-    async fn test_dns_loopup_ipv6_disabled() {
+    async fn test_dns_lookup_ipv6_disabled() {
         let static_dns_map =
             StaticDnsMap(HashMap::from([(FALLBACK_ONLY_DOMAIN, (IPV4, IPV6).into())]));
         let dns_resolver = DnsResolver::new_custom(vec![
