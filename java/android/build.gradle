@@ -50,10 +50,6 @@ android {
     }
 
     packagingOptions {
-        jniLibs {
-            pickFirst 'lib/*/libsignal_jni.so'
-            pickFirst 'lib/*/libsignal_jni_testing.so'
-        }
         // Defer stripping to the Android app project.
         doNotStrip '**/*.so'
     }
@@ -123,7 +119,6 @@ dependencies {
 preBuild {
     dependsOn 'collectAssets'
     dependsOn 'makeJniLibraries'
-    dependsOn 'makeTestJniLibraries'
 }
 
 String[] archsFromProperty(String prop) {
@@ -136,21 +131,9 @@ task makeJniLibraries(type:Exec) {
 
     def archs = archsFromProperty('androidArchs') ?: ['android']
     def debugLevelLogsFlag = project.hasProperty('debugLevelLogs') ? ['--debug-level-logs'] : []
+    def debugFlag = project.hasProperty('debugRust') ? ['--debug'] : []
     // Explicitly specify 'bash' for Windows compatibility.
-    commandLine 'bash', '../build_jni.sh', *debugLevelLogsFlag, *archs
-    environment 'ANDROID_NDK_HOME', android.ndkDirectory
-}
-
-task makeTestJniLibraries(type:Exec) {
-    group 'Rust'
-    description 'Build JNI libraries for Android for testing'
-
-    def archs = archsFromProperty('androidTestingArchs') ?: archsFromProperty('androidArchs') ?: ['android']
-    // While it might make sense for tests to always have debug level logs on,
-    // we would lose most of the shared incremental build between test and non-test that way.
-    def debugLevelLogsFlag = project.hasProperty('debugLevelLogs') ? ['--debug-level-logs'] : []
-    // Explicitly specify 'bash' for Windows compatibility.
-    commandLine 'bash', '../build_jni.sh', '--testing', *debugLevelLogsFlag, *archs
+    commandLine 'bash', '../build_jni.sh', *debugLevelLogsFlag, *debugFlag, *archs
     environment 'ANDROID_NDK_HOME', android.ndkDirectory
 }
 

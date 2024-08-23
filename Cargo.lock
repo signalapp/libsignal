@@ -2019,16 +2019,24 @@ dependencies = [
 name = "libsignal-bridge-testing"
 version = "0.1.0"
 dependencies = [
+ "attest",
  "futures-util",
+ "http 1.1.0",
  "jni 0.21.1",
  "libsignal-bridge-macros",
  "libsignal-bridge-types",
  "libsignal-message-backup",
+ "libsignal-net",
+ "libsignal-protocol",
  "linkme",
  "neon",
+ "nonzero_ext",
  "paste",
+ "prost",
  "scopeguard",
+ "strum",
  "tokio",
+ "uuid",
 ]
 
 [[package]]

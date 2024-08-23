@@ -1,5 +1,5 @@
 //
-// Copyright 2023 Signal Messenger, LLC.
+// Copyright 2022 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
@@ -12,9 +12,7 @@ use libsignal_protocol::SignalProtocolError;
 
 use std::future::Future;
 
-mod net;
-mod types;
-use types::*;
+use crate::types::*;
 
 pub struct NonSuspendingBackgroundThreadRuntime;
 bridge_as_handle!(

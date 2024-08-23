@@ -8,18 +8,20 @@ use std::time::Duration;
 
 use http::{HeaderMap, HeaderName, HeaderValue, StatusCode};
 use libsignal_bridge_macros::*;
-use libsignal_bridge_types::net::chat::{HttpRequest, ResponseAndDebugInfo};
+use libsignal_bridge_types::net::chat::{
+    Chat, HttpRequest, ResponseAndDebugInfo, ServerMessageAck,
+};
 use libsignal_bridge_types::net::TokioAsyncContext;
 use libsignal_net::cdsi::{LookupError, LookupResponse, LookupResponseEntry, E164};
 use libsignal_net::chat::{
-    ChatServiceError, DebugInfo as ChatServiceDebugInfo, Response as ChatResponse,
+    self, ChatServiceError, DebugInfo as ChatServiceDebugInfo, Response as ChatResponse,
 };
+use libsignal_net::infra::ws::WebSocketServiceError;
 use libsignal_net::infra::IpType;
 use libsignal_protocol::{Aci, Pni};
 use nonzero_ext::nonzero;
 use uuid::Uuid;
 
-use crate::support::*;
 use crate::*;
 
 #[bridge_io(TokioAsyncContext)]
@@ -256,4 +258,27 @@ fn TESTING_ChatRequestGetBody(request: &HttpRequest) -> Vec<u8> {
         .clone()
         .map(|b| b.into_vec())
         .unwrap_or_default()
+}
+
+#[bridge_fn]
+fn TESTING_ChatService_InjectRawServerRequest(chat: &Chat, bytes: &[u8]) {
+    let request_proto = <chat::RequestProto as prost::Message>::decode(bytes)
+        .expect("invalid protobuf cannot use this endpoint to test");
+    chat.synthetic_request_tx
+        .blocking_send(chat::ws::ServerEvent::fake(request_proto))
+        .expect("not closed");
+}
+
+#[bridge_fn]
+fn TESTING_ChatService_InjectConnectionInterrupted(chat: &Chat) {
+    chat.synthetic_request_tx
+        .blocking_send(chat::ws::ServerEvent::Stopped(ChatServiceError::WebSocket(
+            WebSocketServiceError::ChannelClosed,
+        )))
+        .expect("not closed");
+}
+
+#[bridge_fn(jni = false, ffi = false)]
+fn TESTING_ServerMessageAck_Create() -> ServerMessageAck {
+    ServerMessageAck::new(Box::new(|_| Box::pin(std::future::ready(Ok(())))))
 }

@@ -19,20 +19,15 @@ SERVER_LIB_DIR=java/server/src/main/resources
 export CARGO_PROFILE_RELEASE_DEBUG=1 # enable line tables
 export RUSTFLAGS="--cfg aes_armv8 --cfg polyval_armv8 ${RUSTFLAGS:-}" # Enable ARMv8 cryptography acceleration when available
 
-BUILD_FOR_TEST=
 DEBUG_LEVEL_LOGS=
 while [ "${1:-}" != "" ]; do
     case "${1:-}" in
-        --testing )
-            BUILD_FOR_TEST=1
-            shift
-            ;;
         --debug-level-logs )
             DEBUG_LEVEL_LOGS=1
             shift
             ;;
         -* )
-            echo "Unrecognized flag $1; expected --testing or --debug-level-logs" >&2
+            echo "Unrecognized flag $1; expected --debug-level-logs" >&2
             exit 2
             ;;
         *)
@@ -75,6 +70,7 @@ build_desktop_for_arch () {
             export CPATH="/usr/${cpuarch}-linux-gnu/include"
         fi
     fi
+
     echo_then_run cargo build -p libsignal-jni -p libsignal-jni-testing --release ${FEATURES:+--features "${FEATURES[*]}"} --target "$1"
     copy_built_library "target/${1}/release" signal_jni "$lib_dir" "signal_jni_${suffix}"
     copy_built_library "target/${1}/release" signal_jni_testing "$lib_dir" "signal_jni_testing_${suffix}"
@@ -95,7 +91,6 @@ while [ "${1:-}" != "" ]; do
             # Using LTO works around this at the cost of a slightly slower build.
             # https://github.com/rust-lang/rfcs/issues/2771
             export CARGO_PROFILE_RELEASE_LTO=thin
-            FEATURES+=("testing-fns")
             host_triple=$(rustc -vV | sed -n 's|host: ||p')
             if [[ "$1" == "server-all" ]]; then
                 build_desktop_for_arch x86_64-unknown-linux-gnu "$host_triple" $lib_dir
@@ -161,11 +156,6 @@ export TARGET_AR="${ANDROID_TOOLCHAIN_DIR}/llvm-ar"
 # The 64-bit curve25519-dalek backend is faster than the 32-bit one on at least some armv7a phones.
 # Comment out the following to allow the 32-bit backend on 32-bit targets.
 export RUSTFLAGS="--cfg curve25519_dalek_bits=\"64\" ${RUSTFLAGS:-}"
-
-if [ $BUILD_FOR_TEST ]; then
-    FEATURES+=("testing-fns")
-    ANDROID_LIB_DIR="${ANDROID_LIB_DIR}/../../androidTest/jniLibs"
-fi
 
 target_for_abi() {
     case "$1" in

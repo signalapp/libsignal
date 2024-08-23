@@ -24,9 +24,6 @@ jni = { workspace = true }
 log = { workspace = true }
 log-panics = { workspace = true, features = ["with-backtrace"] }
 
-[features]
-testing-fns = ["libsignal-bridge/testing-fns"]
-
 [target.aarch64-linux-android.dependencies]
 cpufeatures = "0.2.2" # Make sure 64-bit Android gets optimized crypto
 

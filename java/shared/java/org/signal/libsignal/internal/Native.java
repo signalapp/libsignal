@@ -397,8 +397,6 @@ public final class Native {
   public static native byte[] NumericFingerprintGenerator_GetScannableEncoding(long obj) throws Exception;
   public static native long NumericFingerprintGenerator_New(int iterations, int version, byte[] localIdentifier, byte[] localKey, byte[] remoteIdentifier, byte[] remoteKey) throws Exception;
 
-  public static native void OtherTestingHandleType_Destroy(long handle);
-
   public static native byte[] PinHash_AccessKey(long ph);
   public static native void PinHash_Destroy(long handle);
   public static native byte[] PinHash_EncryptionKey(long ph);
@@ -647,51 +645,6 @@ public final class Native {
   public static native CompletableFuture<Void> Svr3Remove(long asyncRuntime, long connectionManager, String username, String enclavePassword);
 
   public static native CompletableFuture<byte[]> Svr3Restore(long asyncRuntime, long connectionManager, String password, byte[] shareSet, String username, String enclavePassword);
-
-  public static native void TESTING_CdsiLookupErrorConvert(String errorDescription) throws Exception;
-  public static native CompletableFuture<Object> TESTING_CdsiLookupResponseConvert(long asyncRuntime);
-  public static native byte[] TESTING_ChatRequestGetBody(long request);
-  public static native String TESTING_ChatRequestGetHeaderValue(long request, String headerName);
-  public static native String TESTING_ChatRequestGetMethod(long request);
-  public static native String TESTING_ChatRequestGetPath(long request);
-  public static native Object TESTING_ChatServiceDebugInfoConvert() throws Exception;
-  public static native void TESTING_ChatServiceErrorConvert(String errorDescription) throws Exception;
-  public static native Object TESTING_ChatServiceResponseAndDebugInfoConvert() throws Exception;
-  public static native Object TESTING_ChatServiceResponseConvert(boolean bodyPresent) throws Exception;
-  public static native void TESTING_ChatService_InjectConnectionInterrupted(long chat);
-  public static native void TESTING_ChatService_InjectRawServerRequest(long chat, byte[] bytes);
-  public static native void TESTING_ErrorOnBorrowAsync(Object input);
-  public static native CompletableFuture TESTING_ErrorOnBorrowIo(long asyncRuntime, Object input);
-  public static native void TESTING_ErrorOnBorrowSync(Object input);
-  public static native Object TESTING_ErrorOnReturnAsync(Object needsCleanup);
-  public static native CompletableFuture<Object> TESTING_ErrorOnReturnIo(long asyncRuntime, Object needsCleanup);
-  public static native Object TESTING_ErrorOnReturnSync(Object needsCleanup);
-  public static native CompletableFuture<Integer> TESTING_FutureFailure(long asyncRuntime, int input);
-  public static native CompletableFuture<Long> TESTING_FutureProducesOtherPointerType(long asyncRuntime, String input);
-  public static native CompletableFuture<Long> TESTING_FutureProducesPointerType(long asyncRuntime, int input);
-  public static native CompletableFuture<Integer> TESTING_FutureSuccess(long asyncRuntime, int input);
-  public static native CompletableFuture<Void> TESTING_FutureThrowsCustomErrorType(long asyncRuntime);
-  public static native byte[] TESTING_InputStreamReadIntoZeroLengthSlice(InputStream capsAlphabetInput);
-  public static native void TESTING_NonSuspendingBackgroundThreadRuntime_Destroy(long handle);
-  public static native CompletableFuture TESTING_OnlyCompletesByCancellation(long asyncRuntime);
-  public static native String TESTING_OtherTestingHandleType_getValue(long handle);
-  public static native void TESTING_PanicInBodyAsync(Object input);
-  public static native CompletableFuture TESTING_PanicInBodyIo(long asyncRuntime, Object input);
-  public static native void TESTING_PanicInBodySync(Object input);
-  public static native void TESTING_PanicOnBorrowAsync(Object input);
-  public static native CompletableFuture TESTING_PanicOnBorrowIo(long asyncRuntime, Object input);
-  public static native void TESTING_PanicOnBorrowSync(Object input);
-  public static native void TESTING_PanicOnLoadAsync(Object needsCleanup, Object input);
-  public static native CompletableFuture TESTING_PanicOnLoadIo(long asyncRuntime, Object needsCleanup, Object input);
-  public static native void TESTING_PanicOnLoadSync(Object needsCleanup, Object input);
-  public static native Object TESTING_PanicOnReturnAsync(Object needsCleanup);
-  public static native CompletableFuture<Object> TESTING_PanicOnReturnIo(long asyncRuntime, Object needsCleanup);
-  public static native Object TESTING_PanicOnReturnSync(Object needsCleanup);
-  public static native byte[][] TESTING_ProcessBytestringArray(ByteBuffer[] input);
-  public static native Object[] TESTING_ReturnStringArray();
-  public static native int TESTING_TestingHandleType_getValue(long handle);
-
-  public static native void TestingHandleType_Destroy(long handle);
 
   public static native void TokioAsyncContext_Destroy(long handle);
   public static native void TokioAsyncContext_cancel(long context, long rawCancellationId);

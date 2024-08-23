@@ -62,7 +62,6 @@ renaming_overrides_prefixing = true
 "OwnedBufferOfc_uchar" = "SignalOwnedBuffer"
 "OwnedBufferOfFfiLookupResponseEntry" = "SignalOwnedLookupResponseEntryList"
 "FfiOptionalServiceIdFixedWidthBinaryBytes" = "SignalOptionalServiceIdFixedWidthBinaryBytes"
-"CPromisec_void" = "SignalCPromiseRawPointer"
 
 "RawCancellationId" = "SignalCancellationId"
 
@@ -94,8 +93,4 @@ extra_bindings = ["libsignal-bridge", "libsignal-bridge-types", "zkgroup"]
 
 [parse.expand]
 crates = ["libsignal-ffi", "libsignal-bridge"]
-features = [
-    "libsignal-bridge/ffi",
-    "libsignal-bridge/signal-media",
-    "libsignal-bridge/testing-fns",
-]
+features = ["libsignal-bridge/ffi", "libsignal-bridge/signal-media"]

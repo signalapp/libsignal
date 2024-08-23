@@ -14,62 +14,69 @@ import org.junit.Test;
 public class BridgingTest {
   @Test
   public void testErrorOnBorrow() throws Exception {
-    assertThrows(IllegalArgumentException.class, () -> Native.TESTING_ErrorOnBorrowSync(null));
-    assertThrows(IllegalArgumentException.class, () -> Native.TESTING_ErrorOnBorrowAsync(null));
     assertThrows(
-        IllegalArgumentException.class, () -> Native.TESTING_ErrorOnBorrowIo(-1, null).get());
+        IllegalArgumentException.class, () -> NativeTesting.TESTING_ErrorOnBorrowSync(null));
+    assertThrows(
+        IllegalArgumentException.class, () -> NativeTesting.TESTING_ErrorOnBorrowAsync(null));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> NativeTesting.TESTING_ErrorOnBorrowIo(-1, null).get());
   }
 
   @Test
   public void testPanicOnBorrow() throws Exception {
-    assertThrows(AssertionError.class, () -> Native.TESTING_PanicOnBorrowSync(null));
-    assertThrows(AssertionError.class, () -> Native.TESTING_PanicOnBorrowAsync(null));
-    assertThrows(AssertionError.class, () -> Native.TESTING_PanicOnBorrowIo(-1, null).get());
+    assertThrows(AssertionError.class, () -> NativeTesting.TESTING_PanicOnBorrowSync(null));
+    assertThrows(AssertionError.class, () -> NativeTesting.TESTING_PanicOnBorrowAsync(null));
+    assertThrows(AssertionError.class, () -> NativeTesting.TESTING_PanicOnBorrowIo(-1, null).get());
   }
 
   @Test
   public void testPanicOnLoad() throws Exception {
-    assertThrows(AssertionError.class, () -> Native.TESTING_PanicOnLoadSync(null, null));
-    assertThrows(AssertionError.class, () -> Native.TESTING_PanicOnLoadAsync(null, null));
+    assertThrows(AssertionError.class, () -> NativeTesting.TESTING_PanicOnLoadSync(null, null));
+    assertThrows(AssertionError.class, () -> NativeTesting.TESTING_PanicOnLoadAsync(null, null));
     ExecutionException e =
         assertThrows(
-            ExecutionException.class, () -> Native.TESTING_PanicOnLoadIo(-1, null, null).get());
+            ExecutionException.class,
+            () -> NativeTesting.TESTING_PanicOnLoadIo(-1, null, null).get());
     assertTrue(e.getCause().toString(), e.getCause() instanceof AssertionError);
   }
 
   @Test
   public void testPanicInBody() throws Exception {
-    assertThrows(AssertionError.class, () -> Native.TESTING_PanicInBodySync(null));
-    assertThrows(AssertionError.class, () -> Native.TESTING_PanicInBodyAsync(null));
+    assertThrows(AssertionError.class, () -> NativeTesting.TESTING_PanicInBodySync(null));
+    assertThrows(AssertionError.class, () -> NativeTesting.TESTING_PanicInBodyAsync(null));
     ExecutionException e =
-        assertThrows(ExecutionException.class, () -> Native.TESTING_PanicInBodyIo(-1, null).get());
+        assertThrows(
+            ExecutionException.class, () -> NativeTesting.TESTING_PanicInBodyIo(-1, null).get());
     assertTrue(e.getCause().toString(), e.getCause() instanceof AssertionError);
   }
 
   @Test
   public void testErrorOnReturn() throws Exception {
-    assertThrows(IllegalArgumentException.class, () -> Native.TESTING_ErrorOnReturnSync(null));
-    assertThrows(IllegalArgumentException.class, () -> Native.TESTING_ErrorOnReturnAsync(null));
+    assertThrows(
+        IllegalArgumentException.class, () -> NativeTesting.TESTING_ErrorOnReturnSync(null));
+    assertThrows(
+        IllegalArgumentException.class, () -> NativeTesting.TESTING_ErrorOnReturnAsync(null));
     ExecutionException e =
         assertThrows(
-            ExecutionException.class, () -> Native.TESTING_ErrorOnReturnIo(-1, null).get());
+            ExecutionException.class, () -> NativeTesting.TESTING_ErrorOnReturnIo(-1, null).get());
     assertTrue(e.getCause().toString(), e.getCause() instanceof IllegalArgumentException);
   }
 
   @Test
   public void testPanicOnReturn() throws Exception {
-    assertThrows(AssertionError.class, () -> Native.TESTING_PanicOnReturnSync(null));
-    assertThrows(AssertionError.class, () -> Native.TESTING_PanicOnReturnAsync(null));
+    assertThrows(AssertionError.class, () -> NativeTesting.TESTING_PanicOnReturnSync(null));
+    assertThrows(AssertionError.class, () -> NativeTesting.TESTING_PanicOnReturnAsync(null));
     ExecutionException e =
         assertThrows(
-            ExecutionException.class, () -> Native.TESTING_PanicOnReturnIo(-1, null).get());
+            ExecutionException.class, () -> NativeTesting.TESTING_PanicOnReturnIo(-1, null).get());
     assertTrue(e.getCause().toString(), e.getCause() instanceof AssertionError);
   }
 
   @Test
   public void testReturnStringArray() {
     assertArrayEquals(
-        Native.TESTING_ReturnStringArray(), new String[] {"easy", "as", "ABC", "123"});
+        NativeTesting.TESTING_ReturnStringArray(), new String[] {"easy", "as", "ABC", "123"});
   }
 
   @Test
@@ -80,12 +87,13 @@ public class BridgingTest {
     ByteBuffer second = ByteBuffer.allocateDirect(3);
     second.put(new byte[] {4, 5, 6});
     byte[][] result =
-        Native.TESTING_ProcessBytestringArray(new ByteBuffer[] {first, empty, second});
+        NativeTesting.TESTING_ProcessBytestringArray(new ByteBuffer[] {first, empty, second});
     assertArrayEquals(result, new byte[][] {{1, 2, 3, 1, 2, 3}, {}, {4, 5, 6, 4, 5, 6}});
   }
 
   @Test
   public void testProcessEmptyBytestringArray() {
-    assertArrayEquals(Native.TESTING_ProcessBytestringArray(new ByteBuffer[] {}), new byte[][] {});
+    assertArrayEquals(
+        NativeTesting.TESTING_ProcessBytestringArray(new ByteBuffer[] {}), new byte[][] {});
   }
 }

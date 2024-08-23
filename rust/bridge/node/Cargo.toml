@@ -31,6 +31,3 @@ neon = { version = "1.0.0", default-features = false, features = ["napi-6"] }
 # cmake 0.1.49 breaks no-toolchain Windows cross-compilation using Visual Studio
 # https://github.com/rust-lang/cmake-rs/pull/158#issuecomment-1544695163
 cmake = ">= 0.1, < 0.1.49"
-
-[features]
-testing-fns = ["libsignal-bridge/testing-fns"]

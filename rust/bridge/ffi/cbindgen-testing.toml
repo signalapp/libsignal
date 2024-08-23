@@ -24,7 +24,24 @@ usize_is_size_t = true
 prefix_with_name = true
 
 [export]
-exclude = ["TAG_SIZE", "NONCE_SIZE"]
+exclude = [
+    # Already in signal_ffi.h
+    "BorrowedSliceOfc_uchar",
+    "BorrowedSliceOfBorrowedSliceOfc_uchar",
+    "BytestringArray",
+    "CPromisebool",
+    "CPromiseFfiCdsiLookupResponse",
+    "FfiCdsiLookupResponse",
+    "FfiCdsiLookupResponseEntry",
+    "FfiChatResponse",
+    "FfiChatServiceDebugInfo",
+    "FfiInputStreamStruct",
+    "FfiResponseAndDebugInfo",
+    "OwnedBufferOfCStringPtr",
+    "OwnedBufferOfc_uchar",
+    "OwnedBufferOfFfiCdsiLookupResponseEntry",
+    "OwnedBufferOfusize",
+]
 item_types = [
     "enums",
     "functions",
@@ -40,6 +57,14 @@ renaming_overrides_prefixing = true
 [export.rename]
 "FfiInputStreamStruct" = "SignalInputStream"
 
+"BorrowedSliceOfc_uchar" = "SignalBorrowedBuffer"
+"BorrowedSliceOfBorrowedSliceOfc_uchar" = "SignalBorrowedSliceOfBuffers"
+"BorrowedMutableSliceOfc_uchar" = "SignalBorrowedMutableBuffer"
+"OwnedBufferOfc_uchar" = "SignalOwnedBuffer"
+"OwnedBufferOfFfiLookupResponseEntry" = "SignalOwnedLookupResponseEntryList"
+
+"CPromisec_void" = "SignalCPromiseRawPointer"
+
 # Avoid double-prefixing these
 "SignalFfiError" = "SignalFfiError"
 "SignalErrorCode" = "SignalErrorCode"
@@ -53,8 +78,7 @@ args = "horizontal"
 
 [parse]
 parse_deps = true
-include = []
-extra_bindings = ["libsignal-bridge-testing", "libsignal-bridge-types"]
+include = ["libsignal-bridge-types"]
 
 [parse.expand]
 crates = ["libsignal-bridge-testing"]

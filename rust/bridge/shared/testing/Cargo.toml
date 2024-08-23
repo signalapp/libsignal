@@ -11,14 +11,22 @@ edition = "2021"
 license = "AGPL-3.0-only"
 
 [dependencies]
+attest = { path = "../../../attest" }
 libsignal-bridge-macros = { path = "../macros" }
 libsignal-bridge-types = { path = "../types" }
 libsignal-message-backup = { path = "../../../message-backup", features = ["json"] }
+libsignal-net = { path = "../../../net" }
+libsignal-protocol = { path = "../../../protocol" }
 
 futures-util = { workspace = true }
+http = { workspace = true }
+nonzero_ext = { workspace = true }
 paste = { workspace = true }
+prost = { workspace = true }
 scopeguard = { workspace = true }
+strum = { workspace = true, features = ["derive"] }
 tokio = { workspace = true }
+uuid = { workspace = true }
 
 jni = { workspace = true, optional = true }
 linkme = { workspace = true, optional = true }

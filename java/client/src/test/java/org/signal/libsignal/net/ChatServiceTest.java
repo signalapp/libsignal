@@ -12,7 +12,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import org.junit.Assume;
 import org.junit.Test;
-import org.signal.libsignal.internal.Native;
+import org.signal.libsignal.internal.NativeTesting;
 import org.signal.libsignal.util.TestEnvironment;
 
 public class ChatServiceTest {
@@ -34,14 +34,14 @@ public class ChatServiceTest {
   public void testConvertResponse() throws Exception {
     // empty body
     final ChatService.Response response1 =
-        (ChatService.Response) Native.TESTING_ChatServiceResponseConvert(false);
+        (ChatService.Response) NativeTesting.TESTING_ChatServiceResponseConvert(false);
     assertEquals(EXPECTED_STATUS, response1.status());
     assertEquals(EXPECTED_MESSAGE, response1.message());
     assertArrayEquals(new byte[0], response1.body());
     assertEquals(EXPECTED_HEADERS, response1.headers());
 
     final ChatService.Response response2 =
-        (ChatService.Response) Native.TESTING_ChatServiceResponseConvert(true);
+        (ChatService.Response) NativeTesting.TESTING_ChatServiceResponseConvert(true);
     assertEquals(EXPECTED_STATUS, response2.status());
     assertEquals(EXPECTED_MESSAGE, response2.message());
     assertArrayEquals(EXPECTED_CONTENT, response2.body());
@@ -51,7 +51,7 @@ public class ChatServiceTest {
   @Test
   public void testConvertDebugInfo() throws Exception {
     final ChatService.DebugInfo debugInfo =
-        (ChatService.DebugInfo) Native.TESTING_ChatServiceDebugInfoConvert();
+        (ChatService.DebugInfo) NativeTesting.TESTING_ChatServiceDebugInfoConvert();
     assertEquals(IpType.IPv4, debugInfo.ipType());
     assertEquals(200, debugInfo.durationMs());
     assertEquals("connection_info", debugInfo.connectionInfo());
@@ -60,7 +60,8 @@ public class ChatServiceTest {
   @Test
   public void testConvertResponseAndDebugInfo() throws Exception {
     final ChatService.ResponseAndDebugInfo responseAndDebugInfo =
-        (ChatService.ResponseAndDebugInfo) Native.TESTING_ChatServiceResponseAndDebugInfoConvert();
+        (ChatService.ResponseAndDebugInfo)
+            NativeTesting.TESTING_ChatServiceResponseAndDebugInfoConvert();
 
     final ChatService.Response response = responseAndDebugInfo.response();
     assertEquals(EXPECTED_STATUS, response.status());
@@ -95,7 +96,7 @@ public class ChatServiceTest {
     return assertThrows(
         "for " + errorDescription,
         expectedErrorType,
-        () -> Native.TESTING_ChatServiceErrorConvert(errorDescription));
+        () -> NativeTesting.TESTING_ChatServiceErrorConvert(errorDescription));
   }
 
   @Test
@@ -106,14 +107,17 @@ public class ChatServiceTest {
         new ChatService.Request(
             expectedMethod, expectedPathAndQuery, EXPECTED_HEADERS, EXPECTED_CONTENT, 5000);
     final ChatService.InternalRequest internal = ChatService.buildInternalRequest(request);
-    assertEquals(expectedMethod, internal.guardedMap(Native::TESTING_ChatRequestGetMethod));
-    assertEquals(expectedPathAndQuery, internal.guardedMap(Native::TESTING_ChatRequestGetPath));
-    assertArrayEquals(EXPECTED_CONTENT, internal.guardedMap(Native::TESTING_ChatRequestGetBody));
+    assertEquals(expectedMethod, internal.guardedMap(NativeTesting::TESTING_ChatRequestGetMethod));
+    assertEquals(
+        expectedPathAndQuery, internal.guardedMap(NativeTesting::TESTING_ChatRequestGetPath));
+    assertArrayEquals(
+        EXPECTED_CONTENT, internal.guardedMap(NativeTesting::TESTING_ChatRequestGetBody));
     EXPECTED_HEADERS.forEach(
         (name, value) ->
             assertEquals(
                 value,
-                internal.guardedMap(h -> Native.TESTING_ChatRequestGetHeaderValue(h, name))));
+                internal.guardedMap(
+                    h -> NativeTesting.TESTING_ChatRequestGetHeaderValue(h, name))));
   }
 
   @Test

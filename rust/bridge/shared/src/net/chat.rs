@@ -3,7 +3,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use std::future;
 use std::time::Duration;
 
 use http::uri::InvalidUri;
@@ -16,7 +15,6 @@ use libsignal_net::auth::Auth;
 use libsignal_net::chat::{
     self, ChatServiceError, DebugInfo as ChatServiceDebugInfo, Request, Response as ChatResponse,
 };
-use libsignal_net::infra::ws::WebSocketServiceError;
 
 use crate::support::*;
 use crate::*;
@@ -202,32 +200,6 @@ fn ChatService_SetListenerUnauth(
     let listener = maker.make_listener();
 
     chat.set_listener_unauth(listener, runtime)
-}
-
-#[cfg(feature = "testing-fns")]
-#[bridge_fn]
-fn TESTING_ChatService_InjectRawServerRequest(chat: &Chat, bytes: &[u8]) {
-    let request_proto = <chat::RequestProto as prost::Message>::decode(bytes)
-        .expect("invalid protobuf cannot use this endpoint to test");
-    chat.synthetic_request_tx
-        .blocking_send(chat::ws::ServerEvent::fake(request_proto))
-        .expect("not closed");
-}
-
-#[cfg(feature = "testing-fns")]
-#[bridge_fn]
-fn TESTING_ChatService_InjectConnectionInterrupted(chat: &Chat) {
-    chat.synthetic_request_tx
-        .blocking_send(chat::ws::ServerEvent::Stopped(ChatServiceError::WebSocket(
-            WebSocketServiceError::ChannelClosed,
-        )))
-        .expect("not closed");
-}
-
-#[cfg(feature = "testing-fns")]
-#[bridge_fn(jni = false, ffi = false)]
-fn TESTING_ServerMessageAck_Create() -> ServerMessageAck {
-    ServerMessageAck::new(Box::new(|_| Box::pin(future::ready(Ok(())))))
 }
 
 bridge_handle_fns!(ServerMessageAck, clone = false);

@@ -9,7 +9,7 @@ import static org.junit.Assert.assertArrayEquals;
 
 import java.io.ByteArrayInputStream;
 import org.junit.Test;
-import org.signal.libsignal.internal.Native;
+import org.signal.libsignal.internal.NativeTesting;
 
 public class InputStreamTest {
 
@@ -17,6 +17,7 @@ public class InputStreamTest {
   public void testReadIntoEmptyBuffer() {
     byte[] data = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".getBytes();
     assertArrayEquals(
-        Native.TESTING_InputStreamReadIntoZeroLengthSlice(new ByteArrayInputStream(data)), data);
+        NativeTesting.TESTING_InputStreamReadIntoZeroLengthSlice(new ByteArrayInputStream(data)),
+        data);
   }
 }

@@ -41,7 +41,7 @@ IGNORE_THIS_WARNING = re.compile(
     r"WARN: Missing `\[defines\]` entry for `feature = \".*\"` in cbindgen config\.|"
     r"WARN: Missing `\[defines\]` entry for `target_os = \"android\"` in cbindgen config\.|"
     r"WARN: Missing `\[defines\]` entry for `ios_device_as_detected_in_build_rs` in cbindgen config\.|"
-    r"WARN: Skip libsignal-bridge::.+ - \(not `(?:pub|no_mangle)`\)\.|"
+    r"WARN: Skip libsignal-bridge(-testing)?::.+ - \(not `(pub|no_mangle)`\)\.|"
     r"WARN: Couldn't find path for Array\(Path\(GenericPath \{ .+ \}\), Name\(\"LEN\"\)\), skipping associated constants|"
     r"WARN: Cannot find a mangling for generic path GenericPath { path: Path { name: \"JavaCompletableFuture\" }.+|"
     r"WARN: Cannot find a mangling for generic path GenericPath { path: Path { name: \"Throwing\" }.+"

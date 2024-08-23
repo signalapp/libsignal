@@ -93,7 +93,7 @@ def main(args: Optional[List[str]] = None) -> int:
 
     out_dir = options.out_dir.strip('"') or os.path.join('build', configuration_name)
 
-    features = ['testing-fns']
+    features = []
     if 'npm_config_libsignal_debug_level_logs' not in os.environ:
         features.append('log/release_max_level_info')
 

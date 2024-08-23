@@ -32,7 +32,7 @@ export CFLAGS_x86_64_apple_ios_macabi="--target=x86_64-apple-ios-macabi ${CFLAGS
 
 FEATURES=()
 if [[ "${CARGO_BUILD_TARGET:-}" != "aarch64-apple-ios" ]]; then
-  FEATURES+=("testing-fns")
+  FEATURES+=("libsignal-bridge-testing")
 fi
 
 usage() {
