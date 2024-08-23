@@ -77,7 +77,12 @@ fn auth_commitments(
         .iter()
         .map(|id| {
             let mut k = [0u8; 64];
-            kdf(b"SignalSVR4Server", &k_auth, &id.to_be_bytes(), &mut k);
+            kdf(
+                b"Signal_SVR_ServerAuthorizationKey_20240823",
+                &k_auth,
+                &id.to_be_bytes(),
+                &mut k,
+            );
             k
         })
         .map(|k| Scalar::hash_from_bytes::<Sha512>(&k))
@@ -94,7 +99,7 @@ fn auth_pt(input: &[u8; 64], k_oprf: &Scalar) -> RistrettoPoint {
 fn auth_secret(input: &[u8; 64], auth_pt: &RistrettoPoint) -> [u8; 32] {
     let mut out = [0u8; 32];
     kdf(
-        b"SignalSVR4Authorization",
+        b"Signal_SVR_MasterAuthorizationKey_20240823",
         input,
         &auth_pt.compress().to_bytes(),
         &mut out,
@@ -170,7 +175,12 @@ pub struct Output4 {
 impl Output4 {
     pub fn encryption_key(&self) -> [u8; 32] {
         let mut out = [0u8; 32];
-        kdf(b"SignalSVR4Encryption", &self.s_enc, &self.k_auth, &mut out);
+        kdf(
+            b"Signal_SVR_EncryptionKey_20240823",
+            &self.s_enc,
+            &self.k_auth,
+            &mut out,
+        );
         out
     }
 }
@@ -771,7 +781,7 @@ mod test {
         };
         assert_eq!(
             o.encryption_key(),
-            hex!("6856f1b34cbc3b086d01e8e98f89f99a6323aa6ccd853be2064b0827c69a4e3c"),
+            hex!("f609185c9b5bba163a2a413ae11fd5ce6932f5ab7c47b5c0915579568741657b"),
         );
     }
 
