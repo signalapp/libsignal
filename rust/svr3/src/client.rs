@@ -175,16 +175,16 @@ impl Output4 {
     }
 }
 
-pub struct Restore1 {
-    server_ids: Vec<u64>,
-    input: [u8; 64],
+pub struct Restore1<'a> {
+    server_ids: &'a [u64],
+    input: &'a [u8; 64],
     blind: Scalar,
     pub requests: Vec<Vec<u8>>,
 }
 
-pub struct Restore2 {
-    server_ids: Vec<u64>,
-    input: [u8; 64],
+pub struct Restore2<'a> {
+    server_ids: &'a [u64],
+    input: &'a [u8; 64],
     auth_pt: RistrettoPoint,
     tries_remaining: Option<u32>,
     pub requests: Vec<Vec<u8>>,
@@ -202,15 +202,15 @@ fn status_errors<I: Iterator<Item = i32>>(statuses: &mut I) -> Result<(), Error>
     statuses.try_for_each(status_error)
 }
 
-impl Restore1 {
-    pub fn new<R: CryptoRngCore>(server_ids: &[u64], input: [u8; 64], rng: &mut R) -> Self {
+impl<'a> Restore1<'a> {
+    pub fn new<R: CryptoRngCore>(server_ids: &'a [u64], input: &'a [u8; 64], rng: &mut R) -> Self {
         let blind = Scalar::random(rng);
         Restore1 {
             requests: server_ids
                 .iter()
                 .map(|_| svr4::Request4 {
                     inner: Some(svr4::request4::Inner::Restore1(svr4::request4::Restore1 {
-                        blinded: (input_hash_pt(&input) * blind)
+                        blinded: (input_hash_pt(input) * blind)
                             .compress()
                             .to_bytes()
                             .to_vec(),
@@ -218,7 +218,7 @@ impl Restore1 {
                 })
                 .map(|rr| rr.encode_to_vec())
                 .collect(),
-            server_ids: server_ids.to_vec(),
+            server_ids,
             blind,
             input,
         }
@@ -228,7 +228,7 @@ impl Restore1 {
         self,
         responses1_bytes: &[Vec<u8>],
         rng: &mut R,
-    ) -> Result<Restore2, Error> {
+    ) -> Result<Restore2<'a>, Error> {
         if responses1_bytes.len() != self.server_ids.len() {
             return Err(Error::NumServers {
                 servers: self.server_ids.len(),
@@ -295,7 +295,7 @@ impl Restore1 {
 
         // Now, we use auth_pt to recompute auth commitments, which we send
         // back to the server, proving we have the correct value for `input`.
-        let auth_commitments = auth_commitments(&self.server_ids, &self.input, &auth_pt);
+        let auth_commitments = auth_commitments(self.server_ids, self.input, &auth_pt);
         let rand = Scalar::random(rng);
         let proof_pt_bytes = (RISTRETTO_BASEPOINT_TABLE * &rand).compress().to_bytes();
         let proof_scalar_base = Scalar::hash_from_bytes::<Sha512>(&proof_pt_bytes);
@@ -341,11 +341,11 @@ impl Restore1 {
 
     /// Return a set of Auths, one from each response, that all have the
     /// given version, or an Error::BadResponse if they're not found.
-    fn auths_with_version<'a>(
+    fn auths_with_version<'b>(
         &self,
         version: u64,
-        responses1: &'a [svr4::response4::Restore1],
-    ) -> Result<Vec<&'a svr4::response4::restore1::Auth>, Error> {
+        responses1: &'b [svr4::response4::Restore1],
+    ) -> Result<Vec<&'b svr4::response4::restore1::Auth>, Error> {
         let mut out = Vec::with_capacity(responses1.len());
         for r1 in responses1 {
             for auth in &r1.auth {
@@ -369,7 +369,7 @@ impl Restore1 {
     }
 }
 
-impl Restore2 {
+impl<'a> Restore2<'a> {
     pub fn restore(self, responses2_bytes: &[Vec<u8>]) -> Result<Output4, Error> {
         if responses2_bytes.len() != self.server_ids.len() {
             return Err(Error::NumServers {
@@ -403,7 +403,7 @@ impl Restore2 {
         }
         Ok(Output4 {
             s_enc,
-            k_auth: auth_secret(&self.input, &self.auth_pt),
+            k_auth: auth_secret(self.input, &self.auth_pt),
         })
     }
 }
@@ -930,7 +930,7 @@ mod test {
         }
 
         // Restoring existing backup.
-        let restore1 = Restore1::new(&server_ids, input, &mut rng);
+        let restore1 = Restore1::new(&server_ids, &input, &mut rng);
         let restore1_responses = servers
             .iter_mut()
             .zip(&restore1.requests)
