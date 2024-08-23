@@ -68,7 +68,7 @@ impl TransportConnector for DirectConnector {
         let StreamAndInfo(tcp_stream, remote_address) = connect_tcp(
             &self.dns_resolver,
             connection_params.route_type,
-            &connection_params.sni,
+            &connection_params.host,
             connection_params.port,
         )
         .await?;
@@ -559,7 +559,7 @@ mod test {
         let connection_params = ConnectionParams {
             route_type: RouteType::Test,
             sni: SERVER_HOSTNAME.into(),
-            host: addr.ip().to_string().into(),
+            host: SERVER_HOSTNAME.into(),
             port: addr.port().try_into().expect("bound port"),
             http_request_decorator: HttpRequestDecoratorSeq::default(),
             certs: RootCertificates::FromDer(Cow::Borrowed(SERVER_CERTIFICATE.cert.der())),

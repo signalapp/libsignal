@@ -2,6 +2,16 @@
 // Copyright 2024 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
+use std::collections::HashMap;
+use std::net::{Ipv4Addr, Ipv6Addr};
+use std::sync::Arc;
+
+use async_trait::async_trait;
+use bytes::Bytes;
+use const_str::ip_addr;
+use futures_util::stream::{BoxStream, FuturesUnordered};
+use http::uri::PathAndQuery;
+use http::{HeaderValue, Method};
 
 use crate::infra::dns::custom_resolver::{DnsQueryResult, DnsTransport};
 use crate::infra::dns::dns_errors::Error;
@@ -13,16 +23,6 @@ use crate::infra::dns::{dns_message, DnsResolver};
 use crate::infra::http_client::{http2_client, AggregatingHttp2Client};
 use crate::infra::tcp_ssl::DirectConnector;
 use crate::infra::{dns, ConnectionParams, DnsSource};
-use async_trait::async_trait;
-use bytes::Bytes;
-use const_str::ip_addr;
-use futures_util::stream::{BoxStream, FuturesUnordered};
-use http::request::Builder;
-use http::uri::PathAndQuery;
-use http::Method;
-use std::collections::HashMap;
-use std::net::{Ipv4Addr, Ipv6Addr};
-use std::sync::Arc;
 
 pub const CLOUDFLARE_NS: &str = "1.1.1.1";
 pub const MAX_RESPONSE_SIZE: usize = 10240;
@@ -110,16 +110,17 @@ impl DohTransport {
         // https://datatracker.ietf.org/doc/html/rfc8484#section-4.1
         let request_message =
             dns_message::create_request_with_id(0, &request.hostname, resource_type)?;
-        let builder = Builder::new()
-            .method(Method::POST)
-            .header(http::header::ACCEPT, "application/dns-message")
-            .header(http::header::CONTENT_TYPE, "application/dns-message");
 
         let (response_parts, response_body) = self
             .http_client
             .send_request_aggregate_response(
                 PathAndQuery::from_static("/dns-query"),
-                builder,
+                Method::POST,
+                [
+                    (http::header::ACCEPT, "application/dns-message"),
+                    (http::header::CONTENT_TYPE, "application/dns-message"),
+                ]
+                .map(|(header, value)| (header, HeaderValue::from_static(value))),
                 Bytes::from(request_message),
             )
             .await
