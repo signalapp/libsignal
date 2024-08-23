@@ -7,7 +7,7 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
-  NDK_VERSION: 25.2.9519653
+  NDK_VERSION: 27.0.12077973
   RUST_BACKTRACE: 1
   LIBSIGNAL_MINIMUM_SUPPORTED_RUST_VERSION: 1.72
   # For dev builds, include limited debug info in the output. See
