@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use curve25519_dalek::scalar::Scalar;
+use curve25519_dalek_signal::scalar::Scalar;
 use serde::{Deserialize, Serialize};
 
 use crate::common::sho::Sho;

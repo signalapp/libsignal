@@ -6,8 +6,8 @@ edition = "2021"
 license = "AGPL-3.0-only"
 
 [dependencies]
-boring = { version = "4.6.0", default-features = false }
-libc = "0.2"
+boring = { workspace = true }
+libc = { workspace = true }
 
 [dev-dependencies]
-hex = "0.4"
+hex = { workspace = true }

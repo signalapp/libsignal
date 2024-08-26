@@ -38,7 +38,7 @@ impl std::fmt::Display for svr4::response4::Status {
 }
 
 /// Represents an erroneous SVR3 response status
-#[derive(Debug, strum_macros::Display, PartialEq)]
+#[derive(Debug, strum::Display, PartialEq)]
 pub enum ErrorStatus {
     Unset,
     Missing,

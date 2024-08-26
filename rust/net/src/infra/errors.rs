@@ -5,7 +5,7 @@
 
 use std::fmt::Display;
 
-use tokio_boring::HandshakeError;
+use tokio_boring_signal::HandshakeError;
 
 use crate::infra::certs;
 
@@ -29,7 +29,7 @@ pub enum TransportConnectError {
 }
 
 #[derive(Debug)]
-pub struct SslErrorReasons(boring::error::ErrorStack);
+pub struct SslErrorReasons(boring_signal::error::ErrorStack);
 
 impl Display for SslErrorReasons {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -38,7 +38,7 @@ impl Display for SslErrorReasons {
                 self.0
                     .errors()
                     .iter()
-                    .flat_map::<Option<&'static str>, _>(boring::error::Error::reason),
+                    .flat_map::<Option<&'static str>, _>(boring_signal::error::Error::reason),
             )
             .finish()
     }
@@ -47,7 +47,7 @@ impl Display for SslErrorReasons {
 #[derive(Debug)]
 pub struct FailedHandshakeReason {
     io: Option<std::io::ErrorKind>,
-    code: Option<boring::ssl::ErrorCode>,
+    code: Option<boring_signal::ssl::ErrorCode>,
 }
 
 impl<S> From<HandshakeError<S>> for FailedHandshakeReason {
@@ -77,8 +77,8 @@ impl Display for FailedHandshakeReason {
     }
 }
 
-impl From<boring::error::ErrorStack> for TransportConnectError {
-    fn from(value: boring::error::ErrorStack) -> Self {
+impl From<boring_signal::error::ErrorStack> for TransportConnectError {
+    fn from(value: boring_signal::error::ErrorStack) -> Self {
         Self::SslError(SslErrorReasons(value))
     }
 }

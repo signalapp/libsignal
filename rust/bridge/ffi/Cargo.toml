@@ -27,9 +27,9 @@ libsignal-net = { path = "../../net" }
 libsignal-protocol = { path = "../../protocol" }
 signal-media = { path = "../../media" }
 
-futures-util = "0.3"
-log = "0.4"
-log-panics = { version = "2.1.0", features = ["with-backtrace"] }
+futures-util = { workspace = true }
+log = { workspace = true }
+log-panics = { workspace = true, features = ["with-backtrace"] }
 
 [target.aarch64-apple-ios.dependencies]
 cpufeatures = "0.2.1" # Make sure iOS gets optimized crypto.

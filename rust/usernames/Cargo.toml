@@ -15,27 +15,27 @@ license = "AGPL-3.0-only"
 poksho = { path = "../poksho" }
 signal-crypto = { path = "../crypto" }
 
-curve25519-dalek = { version = "4.1.3", features = ["digest"] }
-displaydoc = "0.2"
-hkdf = "0.12"
-hmac = "0.12"
-lazy_static = "1.4.0"
-log = "0.4"
-prost = "0.13.1"
-rand = "0.8"
-sha2 = "0.10"
-subtle = "2.5.0"
-thiserror = "1.0.40"
+curve25519-dalek = { workspace = true, features = ["digest"] }
+displaydoc = { workspace = true }
+hkdf = { workspace = true }
+hmac = { workspace = true }
+lazy_static = { workspace = true }
+log = { workspace = true }
+prost = { workspace = true }
+rand = { workspace = true }
+sha2 = { workspace = true }
+subtle = { workspace = true }
+thiserror = { workspace = true }
 
 [dev-dependencies]
 zkgroup = { path = "../zkgroup" }
 
-proptest = "1.0"
-criterion = "0.5"
+proptest = { workspace = true }
+criterion = { workspace = true }
 
 [[bench]]
 name = "usernames_benchmarks"
 harness = false
 
 [build-dependencies]
-prost-build = "0.13.1"
+prost-build = { workspace = true }

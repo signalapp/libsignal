@@ -3,10 +3,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use boring::bn::BigNum;
-use boring::ec::EcKeyRef;
-use boring::ecdsa::{EcdsaSig, EcdsaSigRef};
-use boring::pkey::Public;
+use boring_signal::bn::BigNum;
+use boring_signal::ec::EcKeyRef;
+use boring_signal::ecdsa::{EcdsaSig, EcdsaSigRef};
+use boring_signal::pkey::Public;
 use sha2::Digest;
 
 /// Deserialize a 64 byte ECDSA Signature

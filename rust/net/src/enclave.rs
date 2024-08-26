@@ -439,7 +439,7 @@ mod test {
     use async_trait::async_trait;
     use nonzero_ext::nonzero;
     use tokio::net::TcpStream;
-    use tokio_boring::SslStream;
+    use tokio_boring_signal::SslStream;
 
     use crate::auth::Auth;
     use crate::infra::connection_manager::ConnectionAttemptOutcome;

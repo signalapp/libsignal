@@ -5,7 +5,7 @@
 
 use std::time::SystemTime;
 
-use boring::asn1::Asn1Time;
+use boring_signal::asn1::Asn1Time;
 use libc::time_t;
 
 /// A replacement for [`std::collections::HashMap`] that performs linear lookups.

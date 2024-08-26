@@ -9,7 +9,7 @@ use crate::common::errors::*;
 use crate::common::sho::*;
 use crate::crypto::uid_struct;
 
-use curve25519_dalek::ristretto::RistrettoPoint;
+use curve25519_dalek_signal::ristretto::RistrettoPoint;
 use lazy_static::lazy_static;
 use partial_default::PartialDefault;
 use serde::{Deserialize, Serialize};

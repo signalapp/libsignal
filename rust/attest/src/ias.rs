@@ -8,13 +8,13 @@ use std::error::Error;
 use std::string::ToString;
 use std::time::SystemTime;
 
-use boring::error::ErrorStack;
-use boring::hash::MessageDigest;
-use boring::nid::Nid;
-use boring::rsa::Padding;
-use boring::sign::Verifier;
-use boring::x509::crl::X509CRL;
-use boring::x509::X509;
+use boring_signal::error::ErrorStack;
+use boring_signal::hash::MessageDigest;
+use boring_signal::nid::Nid;
+use boring_signal::rsa::Padding;
+use boring_signal::sign::Verifier;
+use boring_signal::x509::crl::X509CRL;
+use boring_signal::x509::X509;
 use lazy_static::lazy_static;
 
 use crate::cert_chain::CertChain;
@@ -134,7 +134,7 @@ impl CertChain {
 
 #[cfg(test)]
 mod test {
-    use boring::base64::decode_block;
+    use boring_signal::base64::decode_block;
     use chrono::DateTime;
     use std::time::Duration;
 

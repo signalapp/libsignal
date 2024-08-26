@@ -18,8 +18,8 @@ crate-type = ["cdylib"]
 [dependencies]
 signal-neon-futures = { path = ".." }
 
-futures-util = "0.3.7"
-neon = { version = "1.0.0", default-features = false, features = ["napi-1"] }
+futures-util = { workspace = true }
+neon = { workspace = true, default-features = false, features = ["napi-1"] }
 
 [features]
 # Enable default-panic-hook to get backtraces of panics.

@@ -26,36 +26,36 @@ usernames = { path = "../../usernames" }
 zkgroup = { path = "../../zkgroup" }
 
 aes-gcm-siv = "0.11.1"
-base64 = "0.21"
-bincode = "1.0"
-futures-util = "0.3.7"
-hkdf = "0.12"
-hmac = "0.12.0"
-http = "1.0.0"
-log = "0.4"
-nonzero_ext = "0.3.0"
-paste = "1.0"
-prost = "0.13.1"
-rand = "0.8"
-scopeguard = "1.0"
-sha2 = "0.10"
-static_assertions = "1.1"
-tokio = { version = "1", features = ["rt-multi-thread"] }
-uuid = "1.1.2"
+base64 = { workspace = true }
+bincode = { workspace = true }
+futures-util = { workspace = true }
+hkdf = { workspace = true }
+hmac = { workspace = true }
+http = { workspace = true }
+log = { workspace = true }
+nonzero_ext = { workspace = true }
+paste = { workspace = true }
+prost = { workspace = true }
+rand = { workspace = true }
+scopeguard = { workspace = true }
+sha2 = { workspace = true }
+static_assertions = { workspace = true }
+tokio = { workspace = true, features = ["rt-multi-thread"] }
+uuid = { workspace = true }
 
 # Enable this for all libsignal app language libraries
-subtle = { version = "2.5", features = ["core_hint_black_box"] }
+subtle = { workspace = true, features = ["core_hint_black_box"] }
 
-jni = { version = "0.21", package = "jni", optional = true }
-linkme = { version = "0.3.9", optional = true }
-neon = { version = "1.0.0", optional = true, default-features = false, features = ["napi-6"] }
-strum = { version = "0.26", features = ["derive"] }
+jni = { workspace = true, optional = true }
+linkme = { workspace = true, optional = true }
+neon = { workspace = true, optional = true, default-features = false, features = ["napi-6"] }
+strum = { workspace = true, features = ["derive"] }
 
 [dev-dependencies]
-assert_matches = "1.5"
-test-case = "3.3.1"
-testing_logger = "0.1.1"
-tokio = { version = "1", features = ["test-util", "time", "macros"] }
+assert_matches = { workspace = true }
+test-case = { workspace = true }
+testing_logger = { workspace = true }
+tokio = { workspace = true, features = ["test-util", "time", "macros"] }
 
 [features]
 ffi = ["libsignal-bridge-types/ffi"]

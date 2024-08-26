@@ -479,7 +479,7 @@ impl From<attest::client_connection::Error> for AttestedConnectionError {
     }
 }
 
-pub type DefaultStream = tokio_boring::SslStream<tokio::net::TcpStream>;
+pub type DefaultStream = tokio_boring_signal::SslStream<tokio::net::TcpStream>;
 
 /// Encrypted connection to an attested host.
 #[derive(Debug)]

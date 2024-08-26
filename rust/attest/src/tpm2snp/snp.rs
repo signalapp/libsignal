@@ -4,10 +4,10 @@
 //
 
 use base64::prelude::{Engine as _, BASE64_URL_SAFE_NO_PAD};
-use boring::bn::BigNum;
-use boring::ecdsa::EcdsaSig;
-use boring::pkey::{PKey, Public};
-use boring::rsa::Rsa;
+use boring_signal::bn::BigNum;
+use boring_signal::ecdsa::EcdsaSig;
+use boring_signal::pkey::{PKey, Public};
+use boring_signal::rsa::Rsa;
 use sha2::{Digest as _, Sha256, Sha384};
 use subtle::ConstantTimeEq as _;
 

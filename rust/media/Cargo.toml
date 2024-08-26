@@ -6,10 +6,10 @@ edition = "2021"
 license = "AGPL-3.0-only"
 
 [dependencies]
-futures-util = "0.3.7"
-mediasan-common = "0.5.0"
+futures-util = { workspace = true }
+mediasan-common = { workspace = true }
 mp4san = { version = "0.5.0", optional = true }
-thiserror = "1.0.38"
+thiserror = { workspace = true }
 webpsan = { version = "0.5.0", optional = true, default-features = false }
 
 [features]

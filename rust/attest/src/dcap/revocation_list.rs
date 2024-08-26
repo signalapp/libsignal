@@ -4,8 +4,8 @@
 //
 
 use crate::dcap::{Error, Expireable, Result};
-use boring::nid::Nid;
-use boring::x509::crl::{X509CRLRef, X509CRL};
+use boring_signal::nid::Nid;
+use boring_signal::x509::crl::{X509CRLRef, X509CRL};
 use std::collections::HashSet;
 use std::time::SystemTime;
 

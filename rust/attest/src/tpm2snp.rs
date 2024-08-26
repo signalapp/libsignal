@@ -4,10 +4,10 @@
 //
 use std::time::SystemTime;
 
-use boring::pkey::{PKey, Public};
-use boring::rsa::Rsa;
-use boring::x509::store::X509StoreBuilder;
-use boring::x509::X509;
+use boring_signal::pkey::{PKey, Public};
+use boring_signal::rsa::Rsa;
+use boring_signal::x509::store::X509StoreBuilder;
+use boring_signal::x509::X509;
 use prost::Message;
 
 use crate::cert_chain::{self, CertChain};
@@ -178,8 +178,8 @@ fn verify_vcek_cert(
     }
 }
 
-impl From<boring::error::ErrorStack> for Error {
-    fn from(_err: boring::error::ErrorStack) -> Error {
+impl From<boring_signal::error::ErrorStack> for Error {
+    fn from(_err: boring_signal::error::ErrorStack) -> Error {
         Error::AttestationDataError {
             reason: "Invalid certificate".to_string(),
         }

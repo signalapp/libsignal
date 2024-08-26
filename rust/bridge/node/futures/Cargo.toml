@@ -21,8 +21,8 @@ path = "benches/node.rs"
 harness = false
 
 [dependencies]
-futures-util = "0.3.7"
-neon = { version = "1.0.0", default-features = false, features = ["napi-4"] }
+futures-util = { workspace = true }
+neon = { workspace = true, features = ["napi-4"] }
 
 [dev-dependencies]
 signal-neon-futures-tests = { path = "tests-node-module" }

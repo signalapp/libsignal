@@ -7,7 +7,7 @@
 //!
 //! Has to live in zkgroup because they implement zkcredential traits on zkgroup types.
 
-use curve25519_dalek::ristretto::RistrettoPoint;
+use curve25519_dalek_signal::ristretto::RistrettoPoint;
 use poksho::{ShoApi, ShoSha256};
 use serde::{Deserialize, Serialize};
 use zkcredential::attributes::{Attribute, Domain, RevealedAttribute};
@@ -453,8 +453,8 @@ struct InverseUidDecryptionKey;
 impl zkcredential::attributes::Domain for InverseUidDecryptionKey {
     type Attribute = uid_encryption::Ciphertext;
     const ID: &'static str = "InverseUidEncryptionDomain_20231011";
-    fn G_a() -> [curve25519_dalek::RistrettoPoint; 2] {
-        static STORAGE: std::sync::OnceLock<[curve25519_dalek::RistrettoPoint; 2]> =
+    fn G_a() -> [curve25519_dalek_signal::RistrettoPoint; 2] {
+        static STORAGE: std::sync::OnceLock<[curve25519_dalek_signal::RistrettoPoint; 2]> =
             std::sync::OnceLock::new();
         *zkcredential::attributes::derive_default_generator_points::<Self>(&STORAGE)
     }

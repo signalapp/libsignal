@@ -29,55 +29,55 @@ usernames = { path = "../usernames" }
 zkcredential = { path = "../zkcredential", features = ["rayon"] }
 zkgroup = { path = "../zkgroup" }
 
-aes = "0.8.3"
-arrayvec = "0.7.4"
+aes = { workspace = true }
+arrayvec = { workspace = true }
 async-compression = { version = "0.4.5", features = ["futures-io", "gzip"] }
-async-trait = "0.1.41"
-cbc = "0.1.2"
-clap = { version = "4.2.1", features = ["derive"] }
+async-trait = { workspace = true }
+cbc = { workspace = true }
+clap = { workspace = true, features = ["derive"] }
 clap-stdin = "0.3.0"
-derive-where = "1.2.5"
-displaydoc = "0.2.5"
-env_logger = "0.11.4"
-futures = "0.3.29"
-hex = { version = "0.4.3", features = ["serde"] }
-hkdf = "0.12"
-hmac = "0.12"
-itertools = "0.13.0"
-log = "0.4"
+derive-where = { workspace = true }
+displaydoc = { workspace = true }
+env_logger = { workspace = true }
+futures = { workspace = true }
+hex = { workspace = true, features = ["serde"] }
+hkdf = { workspace = true }
+hmac = { workspace = true }
+itertools = { workspace = true }
+log = { workspace = true }
 macro_rules_attribute = "0.2.0"
-mediasan-common = "0.5.0"
-num_enum = "0.7.2"
+mediasan-common = { workspace = true }
+num_enum = { workspace = true }
 protobuf = "3.3.0"
 protobuf-json-mapping = { version = "3.3.0", optional = true }
-serde = { version = "1.0", features = ["derive", "rc"] }
-serde_json = { version = "1.0", optional = true, features = ["preserve_order"] }
-sha2 = "0.10"
-strum = { version = "0.26", features = ["derive"] }
+serde = { workspace = true, features = ["derive", "rc"] }
+serde_json = { workspace = true, optional = true, features = ["preserve_order"] }
+sha2 = { workspace = true }
+strum = { workspace = true, features = ["derive"] }
 # This isn't strictly necessary but we need at least this version to avoid
 # warnings from the latest nightly rustc. Remove this when the referenced strum
 # version has at least this version as a dependency.
 strum_macros = { version = "0.26.4" }
-subtle = "2.5.0"
-thiserror = "1.0.50"
-uuid = { version = "1.1.2", features = ["serde"] }
+subtle = { workspace = true }
+thiserror = { workspace = true }
+uuid = { workspace = true, features = ["serde"] }
 
 [dev-dependencies]
 libsignal-message-backup = { path = "./", features = ["json"] }
 signal-crypto = { path = "../crypto" }
 
-array-concat = "0.5.2"
+array-concat = { workspace = true }
 assert_cmd = "2.0.13"
-assert_matches = "1.5.0"
+assert_matches = { workspace = true }
 dir-test = "0.2.0"
-futures = { version = "0.3.29", features = ["executor"] }
-hex-literal = "0.4.1"
+futures = { workspace = true, features = ["executor"] }
+hex-literal = { workspace = true }
 json5 = "0.4.1"
-nonzero_ext = "0.3.0"
-once_cell = "1.19"
-test-case = "3.3.1"
+nonzero_ext = { workspace = true }
+once_cell = { workspace = true }
+test-case = { workspace = true }
 test-log = "0.2.14"
-testing_logger = "0.1.1"
+testing_logger = { workspace = true }
 pretty_assertions = "1.4.0"
 
 [build-dependencies]

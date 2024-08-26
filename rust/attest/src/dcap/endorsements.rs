@@ -8,9 +8,9 @@
 //! through the Intel Provisioning Certification Service (PCS), or a cache (PCCS).
 //! For specification of the json data structures within the OE structures,
 //! see <https://api.portal.trustedservices.intel.com/documentation>
-use boring::ec::EcKeyRef;
-use boring::ecdsa::{EcdsaSig, EcdsaSigRef};
-use boring::pkey::Public;
+use boring_signal::ec::EcKeyRef;
+use boring_signal::ecdsa::{EcdsaSig, EcdsaSigRef};
+use boring_signal::pkey::Public;
 use chrono::Utc;
 use serde::Deserialize;
 use serde_json::value::RawValue;

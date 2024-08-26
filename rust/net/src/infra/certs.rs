@@ -5,10 +5,10 @@
 
 use std::borrow::Cow;
 
-use boring::error::ErrorStack;
-use boring::ssl::{SslAlert, SslConnectorBuilder, SslVerifyError, SslVerifyMode};
-use boring::x509::store::X509StoreBuilder;
-use boring::x509::X509;
+use boring_signal::error::ErrorStack;
+use boring_signal::ssl::{SslAlert, SslConnectorBuilder, SslVerifyError, SslVerifyMode};
+use boring_signal::x509::store::X509StoreBuilder;
+use boring_signal::x509::X509;
 use rustls::client::danger::ServerCertVerifier;
 
 const SIGNAL_ROOT_CERT_DER: &[u8] = include_bytes!("../../res/signal.cer");
@@ -93,7 +93,7 @@ fn set_up_platform_verifier(
 
         // The rest of the chain should be valid intermediate certificates.
         let intermediates: Vec<_> = cert_chain
-            .collect::<Result<_, boring::error::ErrorStack>>()
+            .collect::<Result<_, boring_signal::error::ErrorStack>>()
             .map_err(|_| SslVerifyError::Invalid(SslAlert::BAD_CERTIFICATE))?;
 
         // We don't do our own OCSP. Either the platform will do its own checks, or it won't.
@@ -168,7 +168,7 @@ mod test {
     use std::sync::Arc;
 
     use assert_matches::assert_matches;
-    use boring::ssl::{ErrorCode, SslConnector, SslMethod};
+    use boring_signal::ssl::{ErrorCode, SslConnector, SslMethod};
     use rustls::RootCertStore;
     use tokio::net::TcpStream;
 
@@ -201,7 +201,7 @@ mod test {
         .expect("valid");
 
         let transport = TcpStream::connect(addr).await.expect("can connect");
-        let connection = tokio_boring::connect(
+        let connection = tokio_boring_signal::connect(
             ssl.build().configure().expect("valid"),
             SERVER_HOSTNAME,
             transport,
@@ -236,7 +236,7 @@ mod test {
 
         let transport = TcpStream::connect(addr).await.expect("can connect");
         assert_matches!(
-            tokio_boring::connect(
+            tokio_boring_signal::connect(
                 ssl.build().configure().expect("valid"),
                 SERVER_HOSTNAME,
                 transport,

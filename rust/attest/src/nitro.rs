@@ -5,11 +5,11 @@
 use std::collections::HashMap;
 use std::time::SystemTime;
 
-use boring::bn::BigNum;
-use boring::ecdsa::EcdsaSig;
-use boring::stack;
-use boring::x509::store::X509StoreBuilder;
-use boring::x509::{X509StoreContext, X509};
+use boring_signal::bn::BigNum;
+use boring_signal::ecdsa::EcdsaSig;
+use boring_signal::stack;
+use boring_signal::x509::store::X509StoreBuilder;
+use boring_signal::x509::{X509StoreContext, X509};
 use ciborium::value::{Integer, Value};
 use prost::{DecodeError, Message};
 use sha2::{Digest, Sha384};
@@ -95,8 +95,8 @@ impl From<ciborium::de::Error<std::io::Error>> for NitroError {
     }
 }
 
-impl From<boring::error::ErrorStack> for NitroError {
-    fn from(err: boring::error::ErrorStack) -> NitroError {
+impl From<boring_signal::error::ErrorStack> for NitroError {
+    fn from(err: boring_signal::error::ErrorStack) -> NitroError {
         NitroError::InvalidCertificate(err.to_string())
     }
 }

@@ -9,11 +9,11 @@ use std::sync::Arc;
 
 use crate::timeouts::TCP_CONNECTION_ATTEMPT_DELAY;
 use async_trait::async_trait;
-use boring::ssl::{ConnectConfiguration, SslConnector, SslMethod};
+use boring_signal::ssl::{ConnectConfiguration, SslConnector, SslMethod};
 use futures_util::TryFutureExt;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::net::TcpStream;
-use tokio_boring::SslStream;
+use tokio_boring_signal::SslStream;
 use tokio_util::either::Either;
 
 use crate::infra::certs::RootCertificates;
@@ -130,7 +130,9 @@ impl TransportConnector for ProxyConnector {
                     self.proxy_port
                 );
                 let ssl_config = ssl_config(&self.proxy_certs, &self.proxy_host, None)?;
-                Either::Left(tokio_boring::connect(ssl_config, &self.proxy_host, tcp_stream).await?)
+                Either::Left(
+                    tokio_boring_signal::connect(ssl_config, &self.proxy_host, tcp_stream).await?,
+                )
             }
             ShouldUseTls::No => {
                 log::debug!(
@@ -209,7 +211,7 @@ async fn connect_tls<S: AsyncRead + AsyncWrite + Unpin>(
 ) -> Result<SslStream<S>, TransportConnectError> {
     let ssl_config = ssl_config(&connection_params.certs, &connection_params.sni, Some(alpn))?;
 
-    Ok(tokio_boring::connect(ssl_config, &connection_params.sni, transport).await?)
+    Ok(tokio_boring_signal::connect(ssl_config, &connection_params.sni, transport).await?)
 }
 
 async fn connect_tcp(
@@ -349,9 +351,9 @@ pub(crate) mod testutil {
     use std::net::{Ipv6Addr, SocketAddr};
 
     use assert_matches::assert_matches;
-    use boring::pkey::PKey;
-    use boring::ssl::{SslAcceptor, SslMethod};
-    use boring::x509::X509;
+    use boring_signal::pkey::PKey;
+    use boring_signal::ssl::{SslAcceptor, SslMethod};
+    use boring_signal::x509::X509;
     use lazy_static::lazy_static;
     use rcgen::CertifiedKey;
     use tls_parser::{ClientHello, TlsExtension, TlsMessage, TlsMessageHandshake, TlsPlaintext};
@@ -458,7 +460,7 @@ pub(crate) mod testutil {
                 let (tcp_stream, _remote_addr) =
                     tcp_listener.accept().await.expect("incoming connection");
                 let mut input_stream = if let Some(ssl_acceptor) = &ssl_acceptor {
-                    let ssl_stream = tokio_boring::accept(ssl_acceptor, tcp_stream)
+                    let ssl_stream = tokio_boring_signal::accept(ssl_acceptor, tcp_stream)
                         .await
                         .expect("handshake successful");
 

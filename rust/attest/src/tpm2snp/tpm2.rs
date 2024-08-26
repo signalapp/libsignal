@@ -3,9 +3,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use boring::hash::MessageDigest;
-use boring::sign::Verifier;
-use boring::x509::X509;
+use boring_signal::hash::MessageDigest;
+use boring_signal::sign::Verifier;
+use boring_signal::x509::X509;
 use sha2::{Digest, Sha256};
 use subtle::ConstantTimeEq;
 

@@ -15,7 +15,7 @@
 //! The BackupAuthCredential has the additional constraint that it should be deterministically reproducible. Rather than a randomly
 //! seeded blinding key pair, the key pair is derived from, you guessed it, the client's master key.
 
-use curve25519_dalek::ristretto::RistrettoPoint;
+use curve25519_dalek_signal::ristretto::RistrettoPoint;
 use hkdf::Hkdf;
 use partial_default::PartialDefault;
 use poksho::ShoApi;

@@ -19,9 +19,9 @@ libsignal-bridge = { path = "../shared", features = ["node", "signal-media"] }
 libsignal-bridge-testing = { path = "../shared/testing", features = ["node", "signal-media"] }
 libsignal-protocol = { path = "../../protocol" }
 
-futures = { version = "0.3", default-features = false, features = ["executor"] }
-log = "0.4"
-log-panics = { version = "2.0.0", features = ["with-backtrace"] }
+futures = { workspace = true }
+log = { workspace = true }
+log-panics = { workspace = true, features = ["with-backtrace"] }
 minidump = { version = "0.20.0", default-features = false }
 minidump-processor = { version = "0.20.0", default-features = false }
 minidump-unwind = { version = "0.20.0", default-features = false }

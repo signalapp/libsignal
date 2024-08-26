@@ -8,8 +8,8 @@ use std::collections::HashMap;
 use crate::dcap::{Error, Result};
 use crate::error::Context;
 use asn1::{oid, ObjectIdentifier, SequenceOf};
-use boring::asn1::Asn1ObjectRef;
-use boring::nid::Nid;
+use boring_signal::asn1::Asn1ObjectRef;
+use boring_signal::nid::Nid;
 
 pub const SGX_EXTENSIONS_OID: &str = "1.2.840.113741.1.13.1";
 const _SGX_EXTENSIONS_OID_OID: ObjectIdentifier = oid!(1, 2, 840, 113741, 1, 13, 1);

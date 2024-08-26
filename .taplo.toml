@@ -6,7 +6,7 @@ indent_string = '    '
 
 [[rule]]
 include = ["**/Cargo.toml"]
-keys = ["dependencies"]
+keys = ["dependencies", "workspace.dependencies"]
 
 [rule.formatting]
 reorder_keys = true

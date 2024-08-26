@@ -13,7 +13,7 @@ use libsignal_core::{Aci, Pni};
 use prost::Message as _;
 use thiserror::Error;
 use tokio::net::TcpStream;
-use tokio_boring::SslStream;
+use tokio_boring_signal::SslStream;
 use tungstenite::protocol::frame::coding::CloseCode;
 use tungstenite::protocol::CloseFrame;
 use uuid::Uuid;

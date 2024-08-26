@@ -2125,10 +2125,8 @@ dependencies = [
 name = "libsignal-jni-testing"
 version = "0.56.0"
 dependencies = [
- "jni 0.21.1",
  "libsignal-bridge-testing",
  "log",
- "log-panics",
 ]
 
 [[package]]
@@ -2357,7 +2355,7 @@ dependencies = [
  "prost-build",
  "rand_core",
  "sha2",
- "strum_macros",
+ "strum",
  "subtle",
  "test-case",
  "zerocopy",
@@ -3897,6 +3895,7 @@ dependencies = [
  "hex-literal",
  "hkdf",
  "hmac",
+ "rand_core",
  "sha2",
  "static_assertions",
  "thiserror",
