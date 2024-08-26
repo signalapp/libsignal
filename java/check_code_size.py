@@ -34,16 +34,11 @@ def measure_stripped_library_size(lib_path: str) -> int:
     return len(subprocess.check_output([strip, '-o', '-', lib_path]))
 
 
-def print_size_diff(lib_size: int, old_entry: Mapping[str, Any]) -> None:
+def print_size_diff(lib_size: int, old_entry: Mapping[str, Any], *, warn_on_jump: bool = True) -> None:
     delta = lib_size - old_entry['size']
     delta_fraction = (float(delta) / old_entry['size'])
-    message = "current build is {0}% larger than {1} (current: {2} bytes, {1}: {3} bytes)".format(
-        int(delta_fraction * 100),
-        old_entry['version'],
-        lib_size,
-        old_entry['size']
-    )
-    if delta_fraction > 0.10:
+    message = f"current build is {delta} bytes ({int(delta_fraction * 100)}%) larger than {old_entry['version']}"
+    if warn_on_jump and delta > 100_000:
         warn(message)
     else:
         print(message)
@@ -93,11 +88,12 @@ with open(os.path.join(our_abs_dir, 'code_size.json')) as old_sizes_file:
     old_sizes = json.load(old_sizes_file)
 
 most_recent_tag_entry = old_sizes[-1]
-print_size_diff(lib_size, most_recent_tag_entry)
-
 origin_main_entry = current_origin_main_entry()
 if origin_main_entry is not None:
+    print_size_diff(lib_size, most_recent_tag_entry, warn_on_jump=False)
     print_size_diff(lib_size, origin_main_entry)
+else:
+    print_size_diff(lib_size, most_recent_tag_entry)
 
 
 def print_plot(sizes: List[Mapping[str, Any]]) -> None:
