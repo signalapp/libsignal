@@ -120,12 +120,6 @@ dependencies {
     api project(':client')
 }
 
-tasks.register('libsWithDebugSymbols', Zip) {
-    from 'src/main/jniLibs'
-    archiveClassifier = 'debug-symbols'
-    dependsOn 'makeJniLibraries'
-}
-
 preBuild {
     dependsOn 'collectAssets'
     dependsOn 'makeJniLibraries'
@@ -174,7 +168,6 @@ afterEvaluate {
             mavenJava(MavenPublication) {
                 artifactId = archivesBaseName
                 from components.release
-                artifact libsWithDebugSymbols
 
                 pom {
                     name = archivesBaseName
