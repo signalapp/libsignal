@@ -76,7 +76,7 @@ async fn main() {
         },
         "socks4" | "socks4a" => {
             let username = proxy_url.username();
-            let user_id = (username.is_empty()).then(|| username.to_owned());
+            let user_id = (!username.is_empty()).then(|| username.to_owned());
             protocol = Protocol::Socks4 { user_id };
             resolve_hostname_locally = !scheme.ends_with('a');
         }
