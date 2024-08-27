@@ -26,6 +26,8 @@ pub enum TransportConnectError {
     CertError,
     /// Failed to establish SSL connection: {0}
     SslFailedHandshake(FailedHandshakeReason),
+    /// Proxy handshake failed
+    ProxyProtocol,
 }
 
 #[derive(Debug)]
@@ -103,7 +105,8 @@ impl From<TransportConnectError> for std::io::Error {
             TransportConnectError::TcpConnectionFailed => ErrorKind::ConnectionRefused,
             TransportConnectError::SslFailedHandshake(_)
             | TransportConnectError::SslError(_)
-            | TransportConnectError::CertError => ErrorKind::InvalidData,
+            | TransportConnectError::CertError
+            | TransportConnectError::ProxyProtocol => ErrorKind::InvalidData,
             TransportConnectError::DnsError => ErrorKind::NotFound,
         };
         Self::new(kind, value.to_string())

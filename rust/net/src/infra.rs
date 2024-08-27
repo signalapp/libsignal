@@ -170,6 +170,8 @@ pub enum DnsSource {
     SystemLookup,
     /// The result was resolved from a preconfigured static entry.
     Static,
+    /// The result came from delegating to a remote resource.
+    Delegated,
     /// Test-only value
     #[cfg(test)]
     Test,
@@ -187,6 +189,8 @@ pub enum RouteType {
     ProxyG,
     /// Connection over a custom TLS proxy
     TlsProxy,
+    /// Connection over a SOCKS proxy
+    SocksProxy,
     /// Test-only value
     #[cfg(test)]
     Test,
@@ -240,7 +244,8 @@ impl HttpRequestDecorator {
     }
 }
 
-pub struct StreamAndInfo<T>(T, ConnectionInfo);
+#[derive(Debug)]
+pub struct StreamAndInfo<T>(pub T, pub ConnectionInfo);
 
 impl<T> StreamAndInfo<T> {
     fn map_stream<U>(self, f: impl FnOnce(T) -> U) -> StreamAndInfo<U> {

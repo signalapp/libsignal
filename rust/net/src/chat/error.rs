@@ -69,6 +69,9 @@ impl From<WebSocketConnectError> for ChatServiceError {
                 TransportConnectError::CertError => {
                     WebSocketServiceError::Other("failed to load certificates")
                 }
+                TransportConnectError::ProxyProtocol => {
+                    WebSocketServiceError::Other("proxy protocol error")
+                }
             }
             .into(),
             WebSocketConnectError::Timeout => Self::Timeout,

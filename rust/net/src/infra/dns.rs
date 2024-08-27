@@ -4,10 +4,11 @@
 //
 
 use std::collections::HashMap;
+use std::net::Ipv6Addr;
+use std::str::FromStr as _;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use crate::timeouts::{DNS_FALLBACK_LOOKUP_TIMEOUTS, DNS_SYSTEM_LOOKUP_TIMEOUT};
 use nonzero_ext::nonzero;
 use oneshot_broadcast::Sender;
 use tokio::time::Instant;
@@ -22,6 +23,7 @@ use crate::infra::dns::dns_utils::oneshot_broadcast::Receiver;
 use crate::infra::dns::dns_utils::{log_safe_domain, oneshot_broadcast};
 use crate::infra::dns::lookup_result::LookupResult;
 use crate::infra::{ConnectionParams, HttpRequestDecoratorSeq, RouteType};
+use crate::timeouts::{DNS_FALLBACK_LOOKUP_TIMEOUTS, DNS_SYSTEM_LOOKUP_TIMEOUT};
 use crate::utils::{self, ObservableEvent};
 
 pub mod custom_resolver;
@@ -149,6 +151,22 @@ impl DnsResolver {
     }
 
     pub async fn lookup_ip(&self, hostname: &str) -> Result<LookupResult> {
+        let parse_as_ip_addr = hostname.parse().ok().or_else(|| {
+            let hostname = hostname.strip_prefix('[')?;
+            let hostname = hostname.strip_suffix(']')?;
+            Ipv6Addr::from_str(hostname).ok().map(std::net::IpAddr::V6)
+        });
+        if let Some(addr) = parse_as_ip_addr {
+            let (ipv4, ipv6) = match addr {
+                std::net::IpAddr::V4(ip) => (vec![ip], vec![]),
+                std::net::IpAddr::V6(ip) => (vec![], vec![ip]),
+            };
+            return Ok(LookupResult {
+                source: super::DnsSource::Static,
+                ipv4,
+                ipv6,
+            });
+        }
         match self.start_or_join_lookup(hostname).val().await {
             Ok(r) => r,
             Err(_) => {

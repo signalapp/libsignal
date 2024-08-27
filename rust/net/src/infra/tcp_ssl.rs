@@ -5,7 +5,6 @@
 
 use std::net::IpAddr;
 use std::num::NonZeroU16;
-use std::sync::Arc;
 
 use crate::timeouts::TCP_CONNECTION_ATTEMPT_DELAY;
 use async_trait::async_trait;
@@ -19,15 +18,18 @@ use tokio_util::either::Either;
 use crate::infra::certs::RootCertificates;
 use crate::infra::dns::DnsResolver;
 use crate::infra::errors::TransportConnectError;
+use crate::infra::tcp_ssl::proxy::tls::TlsProxyConnector;
 use crate::infra::{
     Alpn, ConnectionInfo, ConnectionParams, RouteType, StreamAndInfo, TransportConnector,
 };
 use crate::utils::first_ok;
 
+pub mod proxy;
+
 #[derive(Clone)]
 pub enum TcpSslConnector {
     Direct(DirectConnector),
-    Proxied(ProxyConnector),
+    Proxied(TlsProxyConnector),
     /// Used when configuring one of the other kinds of connector isn't possible, perhaps because
     /// invalid configuration options were provided.
     Invalid(DnsResolver),
@@ -47,7 +49,7 @@ impl TcpSslConnector {
 pub struct TcpSslConnectorStream(
     Either<
         <DirectConnector as TransportConnector>::Stream,
-        <ProxyConnector as TransportConnector>::Stream,
+        <TlsProxyConnector as TransportConnector>::Stream,
     >,
 );
 
@@ -84,110 +86,9 @@ impl DirectConnector {
         Self { dns_resolver }
     }
 
-    pub fn with_proxy(&self, proxy_addr: (&str, NonZeroU16)) -> ProxyConnector {
+    pub fn with_proxy(&self, proxy_addr: (&str, NonZeroU16)) -> TlsProxyConnector {
         let Self { dns_resolver } = self;
-        ProxyConnector::new(dns_resolver.clone(), proxy_addr)
-    }
-}
-
-#[derive(Clone)]
-pub struct ProxyConnector {
-    pub dns_resolver: DnsResolver,
-    proxy_host: Arc<str>,
-    proxy_port: NonZeroU16,
-    proxy_certs: RootCertificates,
-    use_tls_for_proxy: ShouldUseTls,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum ShouldUseTls {
-    No,
-    Yes,
-}
-
-#[async_trait]
-impl TransportConnector for ProxyConnector {
-    type Stream = SslStream<Either<SslStream<TcpStream>, TcpStream>>;
-
-    async fn connect(
-        &self,
-        connection_params: &ConnectionParams,
-        alpn: Alpn,
-    ) -> Result<StreamAndInfo<Self::Stream>, TransportConnectError> {
-        let StreamAndInfo(tcp_stream, remote_address) = connect_tcp(
-            &self.dns_resolver,
-            connection_params.route_type,
-            &self.proxy_host,
-            self.proxy_port,
-        )
-        .await?;
-
-        let inner_stream = match self.use_tls_for_proxy {
-            ShouldUseTls::Yes => {
-                log::debug!(
-                    "connecting to proxy {}:{}",
-                    self.proxy_host,
-                    self.proxy_port
-                );
-                let ssl_config = ssl_config(&self.proxy_certs, &self.proxy_host, None)?;
-                Either::Left(
-                    tokio_boring_signal::connect(ssl_config, &self.proxy_host, tcp_stream).await?,
-                )
-            }
-            ShouldUseTls::No => {
-                log::debug!(
-                    "connecting to proxy {}:{} using TCP",
-                    self.proxy_host,
-                    self.proxy_port
-                );
-                Either::Right(tcp_stream)
-            }
-        };
-
-        let tls_stream = connect_tls(inner_stream, connection_params, alpn).await?;
-
-        Ok(StreamAndInfo(
-            tls_stream,
-            ConnectionInfo {
-                route_type: RouteType::TlsProxy,
-                ..remote_address
-            },
-        ))
-    }
-}
-
-impl ProxyConnector {
-    pub fn new(dns_resolver: DnsResolver, (proxy_host, proxy_port): (&str, NonZeroU16)) -> Self {
-        let (use_tls_for_proxy, actual_host) = Self::parse_host_for_tls_opt_out(proxy_host);
-
-        Self {
-            dns_resolver,
-            proxy_host: actual_host.into(),
-            proxy_port,
-            // We don't bundle roots of trust for all the SSL proxies, just the
-            // Signal servers. It's fine to use the system SSL trust roots;
-            // even if the outer connection is not secure, the inner connection
-            // is also TLS-encrypted.
-            proxy_certs: RootCertificates::Native,
-            use_tls_for_proxy,
-        }
-    }
-
-    pub fn set_proxy(&mut self, (host, port): (&str, NonZeroU16)) {
-        let (use_tls_for_proxy, actual_host) = Self::parse_host_for_tls_opt_out(host);
-
-        self.proxy_host = actual_host.into();
-        self.proxy_port = port;
-        self.use_tls_for_proxy = use_tls_for_proxy;
-    }
-
-    fn parse_host_for_tls_opt_out(proxy_host: &str) -> (ShouldUseTls, &str) {
-        // Special case for testing: UNENCRYPTED_FOR_TESTING@foo.bar connects over TCP instead of TLS.
-        if let Some(("UNENCRYPTED_FOR_TESTING", host)) = proxy_host.split_once('@') {
-            (ShouldUseTls::No, host)
-        } else {
-            (ShouldUseTls::Yes, proxy_host)
-        }
+        TlsProxyConnector::new(dns_resolver.clone(), proxy_addr)
     }
 }
 
@@ -339,8 +240,8 @@ impl From<DirectConnector> for TcpSslConnector {
     }
 }
 
-impl From<ProxyConnector> for TcpSslConnector {
-    fn from(value: ProxyConnector) -> Self {
+impl From<TlsProxyConnector> for TcpSslConnector {
+    fn from(value: TlsProxyConnector) -> Self {
         Self::Proxied(value)
     }
 }
@@ -350,17 +251,9 @@ pub(crate) mod testutil {
     use std::future::Future;
     use std::net::{Ipv6Addr, SocketAddr};
 
-    use assert_matches::assert_matches;
-    use boring_signal::pkey::PKey;
-    use boring_signal::ssl::{SslAcceptor, SslMethod};
-    use boring_signal::x509::X509;
     use lazy_static::lazy_static;
     use rcgen::CertifiedKey;
-    use tls_parser::{ClientHello, TlsExtension, TlsMessage, TlsMessageHandshake, TlsPlaintext};
-    use tokio::io::{
-        AsyncBufReadExt, AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt, BufStream,
-    };
-    use tokio_util::either::Either;
+    use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
     use warp::Filter;
 
     pub(crate) const SERVER_HOSTNAME: &str = "test-server.signal.org.local";
@@ -409,129 +302,6 @@ pub(crate) mod testutil {
 
         assert_eq!(lines.first(), Some("HTTP/1.1 200 OK").as_ref(), "{lines:?}");
         assert_eq!(lines.last(), Some(FAKE_RESPONSE).as_ref(), "{lines:?}");
-    }
-
-    pub(crate) const PROXY_HOSTNAME: &str = "test-proxy.signal.org.local";
-
-    lazy_static! {
-        pub(crate) static ref PROXY_CERTIFICATE: CertifiedKey =
-            rcgen::generate_simple_self_signed([PROXY_HOSTNAME.to_string()]).expect("can generate");
-    }
-
-    /// Starts a TLS server that proxies TLS connections to an upstream server.
-    ///
-    /// Proxies TLS connections with `upstream_sni` to `upstream_addr`.
-    pub(super) fn localhost_tls_proxy(
-        upstream_sni: &'static str,
-        upstream_addr: SocketAddr,
-    ) -> (SocketAddr, impl Future<Output = ()>) {
-        // TODO(https://github.com/rust-lang/rust/issues/31436): use a `try`
-        // block instead of immediately-invoked closure.
-        let ssl_acceptor = (|| {
-            let mut builder = SslAcceptor::mozilla_intermediate_v5(SslMethod::tls_server())?;
-            builder.set_certificate(X509::from_der(PROXY_CERTIFICATE.cert.der())?.as_ref())?;
-            builder.set_private_key(
-                PKey::private_key_from_der(PROXY_CERTIFICATE.key_pair.serialized_der())?.as_ref(),
-            )?;
-            // If the cert can be loaded, build the thing.
-            builder.check_private_key().map(|()| builder.build())
-        })()
-        .expect("can configure acceptor");
-
-        localhost_tls_proxy_with_ssl_acceptor(upstream_sni, upstream_addr, Some(ssl_acceptor))
-    }
-
-    /// Starts a TLS server that proxies TLS connections to an upstream server.
-    ///
-    /// Proxies TLS connections with `upstream_sni` to `upstream_addr`.
-    ///
-    /// If `ssl_acceptor` is `None`, expects the "outer" connection to be plain TCP rather than TLS.
-    pub(crate) fn localhost_tls_proxy_with_ssl_acceptor(
-        upstream_sni: &'static str,
-        upstream_addr: SocketAddr,
-        ssl_acceptor: Option<SslAcceptor>,
-    ) -> (SocketAddr, impl Future<Output = ()>) {
-        let listener = std::net::TcpListener::bind((Ipv6Addr::LOCALHOST, 0)).expect("can bind");
-        listener.set_nonblocking(true).expect("can set nonblocking");
-        let listen_addr = listener.local_addr().expect("is bound to local addr");
-        let tcp_listener = tokio::net::TcpListener::from_std(listener).expect("can use std socket");
-        let proxy = async move {
-            loop {
-                let (tcp_stream, _remote_addr) =
-                    tcp_listener.accept().await.expect("incoming connection");
-                let mut input_stream = if let Some(ssl_acceptor) = &ssl_acceptor {
-                    let ssl_stream = tokio_boring_signal::accept(ssl_acceptor, tcp_stream)
-                        .await
-                        .expect("handshake successful");
-
-                    let (sni_names, ssl_stream) = parse_sni_from_stream(ssl_stream).await;
-                    assert_eq!(sni_names, &[upstream_sni]);
-                    Either::Left(ssl_stream)
-                } else {
-                    Either::Right(tcp_stream)
-                };
-
-                // Now connect to the upstream and then proxy for the life of the connection.
-                let mut upstream_stream = tokio::net::TcpStream::connect(upstream_addr)
-                    .await
-                    .expect("can connect to upstream");
-                tokio::io::copy_bidirectional(&mut input_stream, &mut upstream_stream)
-                    .await
-                    .expect("can proxy");
-            }
-        };
-
-        (listen_addr, proxy)
-    }
-
-    /// Read SNI names from TCP handshake on a stream.
-    ///
-    /// Consumes the stream and returns a new one with the same contents.
-    pub(super) async fn parse_sni_from_stream<S: AsyncRead + AsyncWrite + Unpin>(
-        stream: S,
-    ) -> (Vec<String>, BufStream<S>) {
-        /// Minimum acceptable size for a TCP segment.
-        ///
-        /// The first TLS frame sent by the client should fit within this.
-        const TCP_MIN_MSS: usize = 576;
-
-        let mut stream = tokio::io::BufStream::with_capacity(TCP_MIN_MSS, TCP_MIN_MSS, stream);
-
-        let first_record = loop {
-            // We're intentionally reading from the buffer without marking the
-            // bytes as consumed so that when the stream is passed back to the
-            // caller they can read them too.
-            let buffer = stream.fill_buf().await.expect("can read");
-            match tls_parser::parse_tls_plaintext(buffer) {
-                Ok((_, record)) => break record,
-                Err(tls_parser::Err::Incomplete(_)) => continue,
-                Err(e) => panic!("failed to parse TLS: {e}"),
-            }
-        };
-
-        let TlsPlaintext { hdr: _, msg } = first_record;
-        let msg = msg.first().expect("nonempty messages");
-        let client_hello = assert_matches!(
-            msg,
-            TlsMessage::Handshake(TlsMessageHandshake::ClientHello(hello)) => hello
-        );
-        let (_, client_hello_extensions) = tls_parser::parse_tls_client_hello_extensions(
-            client_hello.ext().expect("has extensions"),
-        )
-        .expect("can parse extensions");
-        let sni = client_hello_extensions
-            .into_iter()
-            .find_map(|ex| match ex {
-                TlsExtension::SNI(sni) => Some(sni),
-                _ => None,
-            })
-            .expect("has SNI extension");
-        let names = sni
-            .into_iter()
-            .map(|(_sni_type, name)| String::from_utf8(Vec::from(name)).expect("SNI name is UTF-8"))
-            .collect();
-
-        (names, stream)
     }
 }
 
@@ -583,103 +353,6 @@ mod test {
         );
 
         make_http_request_response_over(stream).await
-    }
-
-    #[tokio::test]
-    async fn connect_through_proxy() {
-        let (addr, server) = localhost_http_server();
-        let _server_handle = tokio::spawn(server);
-
-        let (proxy_addr, proxy) = localhost_tls_proxy(SERVER_HOSTNAME, addr);
-        let _proxy_handle = tokio::spawn(proxy);
-
-        // Ensure that the proxy is doing the right thing
-        let mut connector = ProxyConnector::new(
-            DnsResolver::new_from_static_map(HashMap::from([(
-                PROXY_HOSTNAME,
-                LookupResult::localhost(),
-            )])),
-            (PROXY_HOSTNAME, proxy_addr.port().try_into().unwrap()),
-        );
-        // Override the SSL certificate for the proxy; since it's self-signed,
-        // it won't work with the default config.
-        let default_root_cert = std::mem::replace(
-            &mut connector.proxy_certs,
-            RootCertificates::FromDer(Cow::Borrowed(PROXY_CERTIFICATE.cert.der())),
-        );
-        assert_matches!(default_root_cert, RootCertificates::Native);
-
-        let connection_params = ConnectionParams {
-            route_type: RouteType::Test,
-            sni: SERVER_HOSTNAME.into(),
-            host: "localhost".to_string().into(),
-            port: addr.port().try_into().expect("bound port"),
-            http_request_decorator: HttpRequestDecoratorSeq::default(),
-            certs: RootCertificates::FromDer(Cow::Borrowed(SERVER_CERTIFICATE.cert.der())),
-            connection_confirmation_header: None,
-        };
-
-        let StreamAndInfo(stream, info) = connector
-            .connect(&connection_params, Alpn::Http1_1)
-            .await
-            .expect("can connect");
-
-        assert_eq!(
-            info,
-            ConnectionInfo {
-                address: url::Host::Ipv6(Ipv6Addr::LOCALHOST),
-                dns_source: crate::infra::DnsSource::Static,
-                route_type: RouteType::TlsProxy,
-            }
-        );
-
-        make_http_request_response_over(stream).await;
-    }
-
-    #[tokio::test]
-    async fn connect_through_unencrypted_proxy() {
-        let (addr, server) = localhost_http_server();
-        let _server_handle = tokio::spawn(server);
-
-        let modified_proxy_host = format!("UNENCRYPTED_FOR_TESTING@{PROXY_HOSTNAME}");
-        let (proxy_addr, proxy) =
-            localhost_tls_proxy_with_ssl_acceptor(SERVER_HOSTNAME, addr, None);
-        let _proxy_handle = tokio::spawn(proxy);
-
-        // Ensure that the proxy is doing the right thing
-        let connector = ProxyConnector::new(
-            DnsResolver::new_from_static_map(HashMap::from([(
-                PROXY_HOSTNAME,
-                LookupResult::localhost(),
-            )])),
-            (&modified_proxy_host, proxy_addr.port().try_into().unwrap()),
-        );
-
-        let connection_params = ConnectionParams {
-            route_type: RouteType::Test,
-            sni: SERVER_HOSTNAME.into(),
-            host: "localhost".to_string().into(),
-            port: addr.port().try_into().expect("bound port"),
-            http_request_decorator: HttpRequestDecoratorSeq::default(),
-            certs: RootCertificates::FromDer(Cow::Borrowed(SERVER_CERTIFICATE.cert.der())),
-            connection_confirmation_header: None,
-        };
-
-        let StreamAndInfo(stream, info) = connector
-            .connect(&connection_params, Alpn::Http1_1)
-            .await
-            .expect("can connect");
-
-        assert_eq!(
-            info,
-            ConnectionInfo {
-                address: url::Host::Ipv6(Ipv6Addr::LOCALHOST),
-                dns_source: crate::infra::DnsSource::Static,
-                route_type: RouteType::TlsProxy
-            }
-        );
-
-        make_http_request_response_over(stream).await;
     }
 
     #[tokio::test]

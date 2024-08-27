@@ -50,6 +50,7 @@ strum = { workspace = true, features = ["derive"] }
 thiserror = { workspace = true }
 tokio = { workspace = true, features = ["rt", "time", "macros"] }
 tokio-boring-signal = { workspace = true }
+tokio-socks = "0.5.2"
 tokio-stream = "0.1.14"
 tokio-tungstenite = "0.23.0"
 tokio-util = "0.7.9"
@@ -73,6 +74,7 @@ proptest = { workspace = true }
 proptest-state-machine = "0.1.0"
 rcgen = "0.13.0"
 snow = { workspace = true, features = ["default-resolver"] }
+socks5-server = "0.10.1"
 test-case = { workspace = true }
 tls-parser = "0.11.0"
 tokio = { workspace = true, features = [

@@ -2262,6 +2262,7 @@ dependencies = [
  "serde_json",
  "sha2",
  "snow",
+ "socks5-server",
  "static_assertions",
  "strum",
  "test-case",
@@ -2269,6 +2270,7 @@ dependencies = [
  "tls-parser",
  "tokio",
  "tokio-boring",
+ "tokio-socks",
  "tokio-stream",
  "tokio-tungstenite 0.23.1",
  "tokio-util",
@@ -3969,6 +3971,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "socks5-proto"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3d91431c4672e25e372ef46bc554be8f315068c03608f99267a71ad32a12e8c4"
+dependencies = [
+ "bytes",
+ "thiserror",
+ "tokio",
+]
+
+[[package]]
+name = "socks5-server"
+version = "0.10.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5223c26981806584cc38c74fddf58808dbdcf4724890471ced69e7a2e8d86345"
+dependencies = [
+ "async-trait",
+ "bytes",
+ "socks5-proto",
+ "tokio",
+]
+
+[[package]]
 name = "spin"
 version = "0.9.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4285,6 +4310,18 @@ checksum = "775e0c0f0adb3a2f22a00c4745d728b479985fc15ee7ca6a2608388c5569860f"
 dependencies = [
  "rustls 0.22.4",
  "rustls-pki-types",
+ "tokio",
+]
+
+[[package]]
+name = "tokio-socks"
+version = "0.5.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0d4770b8024672c1101b3f6733eab95b18007dbe0847a8afe341fcf79e06043f"
+dependencies = [
+ "either",
+ "futures-util",
+ "thiserror",
  "tokio",
 ]
 

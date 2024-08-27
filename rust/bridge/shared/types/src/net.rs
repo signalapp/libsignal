@@ -17,9 +17,9 @@ use libsignal_net::enclave::{
 use libsignal_net::env::{add_user_agent_header, Env, Svr3Env};
 use libsignal_net::infra::connection_manager::MultiRouteConnectionManager;
 use libsignal_net::infra::dns::DnsResolver;
+use libsignal_net::infra::tcp_ssl::proxy::tls::TlsProxyConnector as TcpSslProxyConnector;
 use libsignal_net::infra::tcp_ssl::{
-    DirectConnector as TcpSslDirectConnector, ProxyConnector as TcpSslProxyConnector,
-    TcpSslConnector, TcpSslConnectorStream,
+    DirectConnector as TcpSslDirectConnector, TcpSslConnector, TcpSslConnectorStream,
 };
 use libsignal_net::infra::{make_ws_config, EndpointConnection};
 use libsignal_net::svr::SvrConnection;

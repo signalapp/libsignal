@@ -172,9 +172,9 @@ mod test {
     use rustls::RootCertStore;
     use tokio::net::TcpStream;
 
+    use crate::infra::tcp_ssl::proxy::testutil::PROXY_CERTIFICATE;
     use crate::infra::tcp_ssl::testutil::{
-        localhost_http_server, make_http_request_response_over, PROXY_CERTIFICATE,
-        SERVER_CERTIFICATE, SERVER_HOSTNAME,
+        localhost_http_server, make_http_request_response_over, SERVER_CERTIFICATE, SERVER_HOSTNAME,
     };
 
     use super::*;
