@@ -72,7 +72,7 @@ lazy_static = { workspace = true }
 proptest = { workspace = true }
 proptest-state-machine = "0.1.0"
 rcgen = "0.13.0"
-snow = { workspace = true }
+snow = { workspace = true, features = ["default-resolver"] }
 test-case = { workspace = true }
 tls-parser = "0.11.0"
 tokio = { workspace = true, features = [

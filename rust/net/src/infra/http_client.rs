@@ -3,10 +3,13 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::net::IpAddr;
+use std::str::FromStr;
+
 use bytes::Bytes;
 use http::response::Parts;
 use http::uri::PathAndQuery;
-use http::{HeaderName, HeaderValue, Version};
+use http::HeaderMap;
 use http_body_util::{BodyExt, Full, Limited};
 use hyper::client::conn::http2;
 use hyper_util::rt::{TokioExecutor, TokioIo};
@@ -45,24 +48,33 @@ impl AggregatingHttp2Client {
         &self,
         path_and_query: PathAndQuery,
         method: http::Method,
-        headers: impl IntoIterator<Item = (HeaderName, HeaderValue)>,
+        headers: HeaderMap,
         body: Bytes,
     ) -> Result<(Parts, Bytes), HttpError> {
-        let uri = format!(
-            "https://{}:{}{}",
-            url::Host::parse(&self.connection_params.host)
-                .map_err(|_| HttpError::SendRequestError)?,
-            self.connection_params.port,
-            path_and_query
-        );
+        // If the input is a stringified IP address, use that as the host.
+        // Otherwise use the hostname that the client provided.
+        let ip_addr_host = IpAddr::from_str(&self.connection_params.host)
+            .ok()
+            .map(|ip| match ip {
+                IpAddr::V4(ip) => format!("{ip}"),
+                IpAddr::V6(ip) => format!("[{ip}]"),
+            });
+
+        let host = ip_addr_host
+            .as_deref()
+            .unwrap_or(&self.connection_params.host);
+
+        let port = self.connection_params.port;
+        let uri = format!("https://{host}:{port}{path_and_query}");
         let mut request_builder = http::Request::builder()
             .method(method)
             .uri(uri)
-            .version(Version::HTTP_2);
+            .version(http::Version::HTTP_2);
 
         request_builder
             .headers_mut()
-            .expect("new builder")
+            // This can fail if the builder is invalid.
+            .ok_or(HttpError::FailedToCreateRequest)?
             .extend(headers);
         let request_builder = self
             .connection_params
@@ -156,7 +168,8 @@ mod test {
     use std::net::{Ipv6Addr, SocketAddr};
     use std::num::NonZeroU16;
 
-    use http::{Method, StatusCode};
+    use assert_matches::assert_matches;
+    use http::{HeaderName, HeaderValue, Method, StatusCode};
     use warp::Filter as _;
 
     use crate::infra::dns::lookup_result::LookupResult;
@@ -244,10 +257,10 @@ mod test {
             .send_request_aggregate_response(
                 "/request/path".parse().unwrap(),
                 Method::POST,
-                [(
+                HeaderMap::from_iter([(
                     HeaderName::from_static("test-header"),
                     HeaderValue::from_static("test-value"),
-                )],
+                )]),
                 Bytes::new(),
             )
             .await
@@ -273,5 +286,54 @@ mod test {
         );
 
         assert_eq!(response_body, FAKE_RESPONSE);
+    }
+
+    /// Make sure that the code doesn't crash if a client passes in an invalid
+    /// hostname.
+    #[tokio::test]
+    async fn http_client_invalid_hostname() {
+        let _ = env_logger::try_init();
+
+        let (request_info_send, _) = std::sync::mpsc::channel();
+
+        let (server_addr, server) = localhost_https_server_with_fake_response(request_info_send);
+        tokio::spawn(server);
+
+        const INVALID_HOSTNAME: &str = "invalid hostname &&?";
+        let connector = DirectConnector::new(DnsResolver::new_from_static_map(HashMap::from([(
+            INVALID_HOSTNAME,
+            LookupResult::localhost(),
+        )])));
+        let client = http2_client(
+            &connector,
+            ConnectionParams {
+                route_type: crate::infra::RouteType::Direct,
+                sni: SERVER_HOSTNAME.into(),
+                host: INVALID_HOSTNAME.into(),
+                port: NonZeroU16::new(server_addr.port()).unwrap(),
+                http_request_decorator: HttpRequestDecoratorSeq::default(),
+                certs: crate::infra::certs::RootCertificates::FromDer(Cow::Borrowed(
+                    SERVER_CERTIFICATE.cert.der(),
+                )),
+                connection_confirmation_header: None,
+            },
+            MAX_RESPONSE_SIZE,
+        )
+        .await
+        .expect("can connect");
+
+        let result = client
+            .send_request_aggregate_response(
+                "/request/path".parse().unwrap(),
+                Method::POST,
+                HeaderMap::from_iter([(
+                    HeaderName::from_static("test-header"),
+                    HeaderValue::from_static("test-value"),
+                )]),
+                Bytes::new(),
+            )
+            .await;
+
+        assert_matches!(result, Err(HttpError::FailedToCreateRequest));
     }
 }

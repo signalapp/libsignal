@@ -120,7 +120,9 @@ impl DohTransport {
                     (http::header::ACCEPT, "application/dns-message"),
                     (http::header::CONTENT_TYPE, "application/dns-message"),
                 ]
-                .map(|(header, value)| (header, HeaderValue::from_static(value))),
+                .map(|(header, value)| (header, HeaderValue::from_static(value)))
+                .into_iter()
+                .collect(),
                 Bytes::from(request_message),
             )
             .await
