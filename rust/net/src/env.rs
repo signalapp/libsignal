@@ -20,6 +20,7 @@ use crate::infra::dns::lookup_result::LookupResult;
 use crate::infra::host::Host;
 use crate::infra::{
     ConnectionParams, DnsSource, HttpRequestDecorator, HttpRequestDecoratorSeq, RouteType,
+    TransportConnectionParams,
 };
 
 const DEFAULT_HTTPS_PORT: NonZeroU16 = nonzero!(443_u16);
@@ -286,12 +287,14 @@ impl DomainConfig {
             let hostname = self.hostname.into();
             ConnectionParams {
                 route_type: RouteType::Direct,
-                sni: Arc::clone(&hostname),
-                tcp_host: Host::Domain(Arc::clone(&hostname)),
+                transport: TransportConnectionParams {
+                    sni: Arc::clone(&hostname),
+                    tcp_host: Host::Domain(Arc::clone(&hostname)),
+                    port: self.port,
+                    certs: self.cert.clone(),
+                },
                 http_host: hostname,
-                port: self.port,
                 http_request_decorator: HttpRequestDecoratorSeq::default(),
-                certs: self.cert.clone(),
                 connection_confirmation_header: None,
             }
         };
@@ -360,12 +363,14 @@ impl ProxyConfig {
             let sni_and_dns_host = sni.into();
             ConnectionParams {
                 route_type: self.route_type,
-                sni: Arc::clone(&sni_and_dns_host),
-                tcp_host: Host::Domain(sni_and_dns_host),
+                transport: TransportConnectionParams {
+                    sni: Arc::clone(&sni_and_dns_host),
+                    tcp_host: Host::Domain(sni_and_dns_host),
+                    port: nonzero!(443u16),
+                    certs: RootCertificates::Native,
+                },
                 http_host: self.http_host.into(),
-                port: nonzero!(443u16),
                 http_request_decorator: HttpRequestDecorator::PathPrefix(proxy_path).into(),
-                certs: RootCertificates::Native,
                 connection_confirmation_header: confirmation_header_name
                     .map(http::HeaderName::from_static),
             }
@@ -503,7 +508,7 @@ mod test {
                     .as_ref()
                     .map(|header| header.as_str()),
                 "{}",
-                params.sni,
+                params.transport.sni,
             );
         }
     }
@@ -526,7 +531,7 @@ mod test {
                     .as_ref()
                     .map(|header| header.as_str()),
                 "{}",
-                params.sni,
+                params.transport.sni,
             );
         }
     }

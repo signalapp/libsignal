@@ -27,6 +27,8 @@ use crate::infra::{ConnectionParams, HttpRequestDecoratorSeq, RouteType};
 use crate::timeouts::{DNS_FALLBACK_LOOKUP_TIMEOUTS, DNS_SYSTEM_LOOKUP_TIMEOUT};
 use crate::utils::{self, ObservableEvent};
 
+use super::TransportConnectionParams;
+
 pub mod custom_resolver;
 mod dns_errors;
 pub mod dns_lookup;
@@ -119,12 +121,14 @@ impl DnsResolver {
         let host = CLOUDFLARE_NS.into();
         let connection_params = ConnectionParams {
             route_type: RouteType::Direct,
-            port: nonzero!(443u16),
-            tcp_host: Host::Domain(Arc::clone(&host)),
             http_host: Arc::clone(&host),
-            sni: host,
+            transport: TransportConnectionParams {
+                port: nonzero!(443u16),
+                tcp_host: Host::Domain(Arc::clone(&host)),
+                sni: host,
+                certs: RootCertificates::Native,
+            },
             http_request_decorator: HttpRequestDecoratorSeq::default(),
-            certs: RootCertificates::Native,
             connection_confirmation_header: None,
         };
         let custom_resolver = Box::new(CustomDnsResolver::<DohTransport>::new(

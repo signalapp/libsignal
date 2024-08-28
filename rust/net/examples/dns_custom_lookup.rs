@@ -11,7 +11,9 @@ use libsignal_net::infra::dns::dns_lookup::{DnsLookup, DnsLookupRequest};
 use libsignal_net::infra::dns::dns_transport_doh::DohTransport;
 use libsignal_net::infra::dns::dns_transport_udp::UdpTransport;
 use libsignal_net::infra::host::Host;
-use libsignal_net::infra::{ConnectionParams, HttpRequestDecoratorSeq, RouteType};
+use libsignal_net::infra::{
+    ConnectionParams, HttpRequestDecoratorSeq, RouteType, TransportConnectionParams,
+};
 use libsignal_net::utils::ObservableEvent;
 use nonzero_ext::nonzero;
 use std::net::IpAddr;
@@ -56,13 +58,15 @@ async fn main() {
             let host = "1.1.1.1".into();
             let connection_params = ConnectionParams {
                 route_type: RouteType::Direct,
-                sni: Arc::clone(&host),
-                tcp_host: Host::Ip(ip_addr!("1.1.1.1")),
-                http_host: host,
-                port: nonzero!(443u16),
                 http_request_decorator: HttpRequestDecoratorSeq::default(),
-                certs: RootCertificates::Native,
                 connection_confirmation_header: None,
+                transport: TransportConnectionParams {
+                    sni: Arc::clone(&host),
+                    tcp_host: Host::Ip(ip_addr!("1.1.1.1")),
+                    port: nonzero!(443u16),
+                    certs: RootCertificates::Native,
+                },
+                http_host: host,
             };
             Either::Right(CustomDnsResolver::<DohTransport>::new(
                 connection_params,

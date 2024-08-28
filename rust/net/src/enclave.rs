@@ -446,7 +446,9 @@ mod test {
     use crate::infra::connection_manager::ConnectionAttemptOutcome;
     use crate::infra::errors::TransportConnectError;
     use crate::infra::host::Host;
-    use crate::infra::{Alpn, HttpRequestDecoratorSeq, RouteType, StreamAndInfo};
+    use crate::infra::{
+        Alpn, HttpRequestDecoratorSeq, RouteType, StreamAndInfo, TransportConnectionParams,
+    };
 
     use super::*;
 
@@ -459,7 +461,7 @@ mod test {
 
         async fn connect(
             &self,
-            _connection_params: &ConnectionParams,
+            _connection_params: &TransportConnectionParams,
             _alpn: Alpn,
         ) -> Result<StreamAndInfo<Self::Stream>, TransportConnectError> {
             Err(TransportConnectError::TcpConnectionFailed)
@@ -497,12 +499,14 @@ mod test {
     fn fake_connection_params() -> ConnectionParams {
         ConnectionParams {
             route_type: RouteType::Direct,
-            sni: Arc::from("fake-sni"),
-            tcp_host: Host::Domain("fake".into()),
-            http_host: Arc::from("fake-http"),
-            port: nonzero!(1234u16),
+            transport: TransportConnectionParams {
+                sni: Arc::from("fake-sni"),
+                tcp_host: Host::Domain("fake".into()),
+                port: nonzero!(1234u16),
+                certs: crate::infra::certs::RootCertificates::Native,
+            },
             http_request_decorator: HttpRequestDecoratorSeq::default(),
-            certs: crate::infra::certs::RootCertificates::Native,
+            http_host: Arc::from("fake-http"),
             connection_confirmation_header: None,
         }
     }

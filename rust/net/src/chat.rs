@@ -554,7 +554,7 @@ pub(crate) mod test {
         use crate::infra::host::Host;
         use crate::infra::service::{ServiceConnector, ServiceState};
         use crate::infra::test::shared::{NoReconnectService, TIMEOUT_DURATION};
-        use crate::infra::{ConnectionParams, RouteType};
+        use crate::infra::{ConnectionParams, RouteType, TransportConnectionParams};
         use crate::utils::ObservableEvent;
 
         #[async_trait]
@@ -604,12 +604,14 @@ pub(crate) mod test {
                 let host = Host::Domain(Arc::clone(&hostname));
                 ConnectionParams {
                     route_type: RouteType::Test,
-                    sni: Arc::clone(&hostname),
-                    tcp_host: host,
+                    transport: TransportConnectionParams {
+                        sni: Arc::clone(&hostname),
+                        tcp_host: host,
+                        port: nonzero!(443u16),
+                        certs: RootCertificates::Signal,
+                    },
                     http_host: hostname,
-                    port: nonzero!(443u16),
                     http_request_decorator: Default::default(),
-                    certs: RootCertificates::Signal,
                     connection_confirmation_header: None,
                 }
             };

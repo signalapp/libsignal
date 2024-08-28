@@ -17,7 +17,7 @@ use crate::infra::errors::TransportConnectError;
 use crate::infra::host::Host;
 use crate::infra::tcp_ssl::{connect_tcp, connect_tls, ssl_config};
 use crate::infra::{
-    Alpn, ConnectionInfo, ConnectionParams, RouteType, StreamAndInfo, TransportConnector,
+    Alpn, ConnectionInfo, RouteType, StreamAndInfo, TransportConnectionParams, TransportConnector,
 };
 
 /// A [`TransportConnector`] that proxies through a TLS server.
@@ -50,12 +50,12 @@ impl TransportConnector for TlsProxyConnector {
 
     async fn connect(
         &self,
-        connection_params: &ConnectionParams,
+        connection_params: &TransportConnectionParams,
         alpn: Alpn,
     ) -> Result<StreamAndInfo<Self::Stream>, TransportConnectError> {
         let StreamAndInfo(tcp_stream, remote_address) = connect_tcp(
             &self.dns_resolver,
-            connection_params.route_type,
+            RouteType::TlsProxy,
             self.proxy_host.as_deref(),
             self.proxy_port,
         )
@@ -151,7 +151,6 @@ mod test {
     use crate::infra::tcp_ssl::proxy::testutil::{
         localhost_tcp_proxy, localhost_tls_proxy, PROXY_CERTIFICATE, PROXY_HOSTNAME,
     };
-    use crate::infra::HttpRequestDecoratorSeq;
 
     #[tokio::test]
     async fn connect_through_proxy() {
@@ -180,15 +179,11 @@ mod test {
         );
         assert_matches!(default_root_cert, RootCertificates::Native);
 
-        let connection_params = ConnectionParams {
-            route_type: RouteType::Test,
+        let connection_params = TransportConnectionParams {
             sni: SERVER_HOSTNAME.into(),
             tcp_host: Host::Domain("localhost".into()),
-            http_host: "unused".into(),
             port: addr.port().try_into().expect("bound port"),
-            http_request_decorator: HttpRequestDecoratorSeq::default(),
             certs: RootCertificates::FromDer(Cow::Borrowed(SERVER_CERTIFICATE.cert.der())),
-            connection_confirmation_header: None,
         };
 
         let StreamAndInfo(stream, info) = connector
@@ -227,15 +222,11 @@ mod test {
             (modified_proxy_host, proxy_addr.port().try_into().unwrap()),
         );
 
-        let connection_params = ConnectionParams {
-            route_type: RouteType::Test,
+        let connection_params = TransportConnectionParams {
             sni: SERVER_HOSTNAME.into(),
             tcp_host: Host::Domain("localhost".into()),
-            http_host: "unused".into(),
             port: addr.port().try_into().expect("bound port"),
-            http_request_decorator: HttpRequestDecoratorSeq::default(),
             certs: RootCertificates::FromDer(Cow::Borrowed(SERVER_CERTIFICATE.cert.der())),
-            connection_confirmation_header: None,
         };
 
         let StreamAndInfo(stream, info) = connector

@@ -90,21 +90,15 @@ impl HttpRequestDecoratorSeq {
 pub struct ConnectionParams {
     /// High-level classification of the route (mostly for logging)
     pub route_type: RouteType,
-    /// Host name to be used in the TLS handshake SNI field.
-    pub sni: Arc<str>,
-    /// Host name used for DNS resolution.
-    pub tcp_host: Host<Arc<str>>,
     /// Host name used in the HTTP headers.
     pub http_host: Arc<str>,
-    /// Port to connect to.
-    pub port: NonZeroU16,
     /// Applied to all HTTP requests.
     pub http_request_decorator: HttpRequestDecoratorSeq,
-    /// Trusted certificates for this connection.
-    pub certs: RootCertificates,
     /// If present, differentiates HTTP responses that actually come from the remote endpoint from
     /// those produced by an intermediate server.
     pub connection_confirmation_header: Option<http::HeaderName>,
+    /// Transport-level connection configuration
+    pub transport: TransportConnectionParams,
 }
 
 impl ConnectionParams {
@@ -114,15 +108,23 @@ impl ConnectionParams {
         self
     }
 
-    pub fn with_certs(mut self, certs: RootCertificates) -> Self {
-        self.certs = certs;
-        self
-    }
-
     pub fn with_confirmation_header(mut self, header: http::HeaderName) -> Self {
         self.connection_confirmation_header = Some(header);
         self
     }
+}
+
+/// Contains all information required to establish a TLS connection to a remote endpoint.
+#[derive(Clone, Debug)]
+pub struct TransportConnectionParams {
+    /// Host name to be used in the TLS handshake SNI field.
+    pub sni: Arc<str>,
+    /// Host name used for DNS resolution.
+    pub tcp_host: Host<Arc<str>>,
+    /// Port to connect to.
+    pub port: NonZeroU16,
+    /// Trusted certificates for this connection.
+    pub certs: RootCertificates,
 }
 
 #[derive(Debug, Clone)]
@@ -248,7 +250,7 @@ pub trait TransportConnector: Clone + Send + Sync {
 
     async fn connect(
         &self,
-        connection_params: &ConnectionParams,
+        connection_params: &TransportConnectionParams,
         alpn: Alpn,
     ) -> Result<StreamAndInfo<Self::Stream>, TransportConnectError>;
 }
@@ -339,7 +341,7 @@ pub(crate) mod test {
         use crate::infra::host::Host;
         use crate::infra::service::{ServiceConnector, ServiceInitializer, ServiceState};
         use crate::infra::{
-            Alpn, ConnectionInfo, ConnectionParams, DnsSource, RouteType, StreamAndInfo,
+            Alpn, ConnectionInfo, DnsSource, RouteType, StreamAndInfo, TransportConnectionParams,
             TransportConnector,
         };
 
@@ -430,7 +432,7 @@ pub(crate) mod test {
 
             async fn connect(
                 &self,
-                connection_params: &ConnectionParams,
+                connection_params: &TransportConnectionParams,
                 _alpn: Alpn,
             ) -> Result<StreamAndInfo<Self::Stream>, TransportConnectError> {
                 let (client, server) = tokio::io::duplex(1024);

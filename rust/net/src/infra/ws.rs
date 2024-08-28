@@ -321,7 +321,7 @@ async fn connect_websocket<T: TransportConnector>(
     transport_connector: &T,
 ) -> Result<(WebSocketStream<T::Stream>, ConnectionInfo), WebSocketConnectError> {
     let StreamAndInfo(ssl_stream, remote_address) = transport_connector
-        .connect(connection_params, Alpn::Http1_1)
+        .connect(&connection_params.transport, Alpn::Http1_1)
         .await?;
 
     // we need to explicitly create upgrade request
@@ -339,7 +339,7 @@ async fn connect_websocket<T: TransportConnector>(
         .header("Sec-WebSocket-Key", generate_key())
         .uri(
             http::uri::Builder::new()
-                .authority(connection_params.tcp_host.to_string())
+                .authority(connection_params.http_host.to_string())
                 .path_and_query(endpoint)
                 .scheme("wss")
                 .build()
@@ -798,7 +798,7 @@ mod test {
     use test_case::test_matrix;
 
     use crate::infra::certs::RootCertificates;
-    use crate::infra::{HttpRequestDecoratorSeq, RouteType};
+    use crate::infra::{HttpRequestDecoratorSeq, RouteType, TransportConnectionParams};
 
     use super::testutil::*;
     use super::*;
@@ -979,12 +979,14 @@ mod test {
         let hostname = hostname.into();
         ConnectionParams {
             route_type: RouteType::Test,
-            sni: Arc::clone(&hostname),
-            tcp_host: Host::Domain(Arc::clone(&hostname)),
+            transport: TransportConnectionParams {
+                sni: Arc::clone(&hostname),
+                tcp_host: Host::Domain(Arc::clone(&hostname)),
+                port: nonzero!(443u16),
+                certs: RootCertificates::Signal,
+            },
             http_host: hostname,
-            port: nonzero!(443u16),
             http_request_decorator: HttpRequestDecoratorSeq::default(),
-            certs: RootCertificates::Signal,
             connection_confirmation_header: None,
         }
     }

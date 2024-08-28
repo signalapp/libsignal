@@ -9,7 +9,9 @@ use libsignal_net::infra::dns::custom_resolver::DnsTransport;
 use libsignal_net::infra::dns::dns_lookup::DnsLookupRequest;
 use libsignal_net::infra::dns::dns_transport_doh::DohTransport;
 use libsignal_net::infra::host::Host;
-use libsignal_net::infra::{ConnectionParams, HttpRequestDecoratorSeq, RouteType};
+use libsignal_net::infra::{
+    ConnectionParams, HttpRequestDecoratorSeq, RouteType, TransportConnectionParams,
+};
 use std::convert::Infallible;
 use std::num::NonZeroU16;
 use std::sync::Arc;
@@ -45,12 +47,14 @@ async fn main() {
     let host = args.ns_address.to_string().into();
     let connection_params = ConnectionParams {
         route_type: RouteType::Direct,
-        sni: Arc::clone(&host),
-        tcp_host: args.ns_address,
-        http_host: host,
-        port: NonZeroU16::try_from(args.ns_port).expect("valid port value"),
         http_request_decorator: HttpRequestDecoratorSeq::default(),
-        certs: RootCertificates::Native,
+        transport: TransportConnectionParams {
+            sni: Arc::clone(&host),
+            tcp_host: args.ns_address,
+            port: NonZeroU16::try_from(args.ns_port).expect("valid port value"),
+            certs: RootCertificates::Native,
+        },
+        http_host: host,
         connection_confirmation_header: None,
     };
 

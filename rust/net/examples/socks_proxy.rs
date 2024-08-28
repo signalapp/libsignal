@@ -15,9 +15,7 @@ use libsignal_net::infra::certs::RootCertificates;
 use libsignal_net::infra::dns::DnsResolver;
 use libsignal_net::infra::host::Host;
 use libsignal_net::infra::tcp_ssl::proxy::socks::{Protocol, SocksConnector};
-use libsignal_net::infra::{
-    Alpn, ConnectionParams, HttpRequestDecoratorSeq, RouteType, StreamAndInfo, TransportConnector,
-};
+use libsignal_net::infra::{Alpn, StreamAndInfo, TransportConnectionParams, TransportConnector};
 use url::Url;
 
 #[derive(Clone, Debug, Parser)]
@@ -89,15 +87,11 @@ async fn main() {
     let Target(host, port) = target;
 
     let host_name = host.to_string().into();
-    let connection_params = ConnectionParams {
-        route_type: RouteType::SocksProxy,
+    let connection_params = TransportConnectionParams {
         sni: Arc::clone(&host_name),
-        http_host: host_name,
         tcp_host: host,
         port,
-        http_request_decorator: HttpRequestDecoratorSeq::default(),
         certs: RootCertificates::Native,
-        connection_confirmation_header: None,
     };
     let StreamAndInfo(mut connection, info) = connector
         .connect(&connection_params, Alpn::Http1_1)

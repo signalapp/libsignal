@@ -50,7 +50,7 @@ impl AggregatingHttp2Client {
     ) -> Result<(Parts, Bytes), HttpError> {
         let uri = format!(
             "https://{}:{}{}",
-            self.connection_params.http_host, self.connection_params.port, path_and_query
+            self.connection_params.http_host, self.connection_params.transport.port, path_and_query
         );
         let mut request_builder = http::Request::builder()
             .method(method)
@@ -118,7 +118,7 @@ pub(crate) async fn http2_client<C: TransportConnector>(
     max_response_size: usize,
 ) -> Result<AggregatingHttp2Client, HttpError> {
     let StreamAndInfo(ssl_stream, info) = transport_connector
-        .connect(&connection_params, Alpn::Http2)
+        .connect(&connection_params.transport, Alpn::Http2)
         .await
         .map_err(|e| {
             log::error!("error: {}", e);
@@ -164,7 +164,7 @@ mod test {
     use crate::infra::host::Host;
     use crate::infra::tcp_ssl::testutil::{SERVER_CERTIFICATE, SERVER_HOSTNAME};
     use crate::infra::tcp_ssl::DirectConnector;
-    use crate::infra::HttpRequestDecoratorSeq;
+    use crate::infra::{HttpRequestDecoratorSeq, TransportConnectionParams};
 
     use super::*;
 
@@ -228,14 +228,16 @@ mod test {
             &connector,
             ConnectionParams {
                 route_type: crate::infra::RouteType::Direct,
-                sni: SERVER_HOSTNAME.into(),
-                tcp_host: Host::Domain(Arc::clone(&host)),
+                transport: TransportConnectionParams {
+                    sni: SERVER_HOSTNAME.into(),
+                    tcp_host: Host::Domain(Arc::clone(&host)),
+                    port: NonZeroU16::new(server_addr.port()).unwrap(),
+                    certs: crate::infra::certs::RootCertificates::FromDer(Cow::Borrowed(
+                        SERVER_CERTIFICATE.cert.der(),
+                    )),
+                },
                 http_host: host,
-                port: NonZeroU16::new(server_addr.port()).unwrap(),
                 http_request_decorator: HttpRequestDecoratorSeq::default(),
-                certs: crate::infra::certs::RootCertificates::FromDer(Cow::Borrowed(
-                    SERVER_CERTIFICATE.cert.der(),
-                )),
                 connection_confirmation_header: None,
             },
             MAX_RESPONSE_SIZE,
@@ -299,14 +301,16 @@ mod test {
             &connector,
             ConnectionParams {
                 route_type: crate::infra::RouteType::Direct,
-                sni: SERVER_HOSTNAME.into(),
-                tcp_host: Host::Domain(Arc::clone(&host)),
+                transport: TransportConnectionParams {
+                    sni: SERVER_HOSTNAME.into(),
+                    tcp_host: Host::Domain(Arc::clone(&host)),
+                    port: NonZeroU16::new(server_addr.port()).unwrap(),
+                    certs: crate::infra::certs::RootCertificates::FromDer(Cow::Borrowed(
+                        SERVER_CERTIFICATE.cert.der(),
+                    )),
+                },
                 http_host: host,
-                port: NonZeroU16::new(server_addr.port()).unwrap(),
                 http_request_decorator: HttpRequestDecoratorSeq::default(),
-                certs: crate::infra::certs::RootCertificates::FromDer(Cow::Borrowed(
-                    SERVER_CERTIFICATE.cert.der(),
-                )),
                 connection_confirmation_header: None,
             },
             MAX_RESPONSE_SIZE,

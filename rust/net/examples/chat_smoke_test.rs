@@ -68,7 +68,7 @@ async fn main() -> ExitCode {
     let mut any_failures = false;
     if config.try_all_routes {
         for route in connection_params {
-            log::info!("trying {} ({})", route.sni, route.route_type);
+            log::info!("trying {} ({})", route.transport.sni, route.route_type);
             test_connection(&env, vec![route])
                 .await
                 .unwrap_or_else(|e| {

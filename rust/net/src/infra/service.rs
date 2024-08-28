@@ -144,8 +144,8 @@ where
             .connect_or_wait(|connection_params| {
                 log::debug!(
                     "trying to connect to {}:{}",
-                    connection_params.tcp_host,
-                    connection_params.port
+                    connection_params.transport.tcp_host,
+                    connection_params.transport.port
                 );
                 self.service_connector.connect_channel(connection_params)
             })
@@ -405,7 +405,9 @@ mod test {
         ClassifiableTestError, LONG_CONNECTION_TIME, NORMAL_CONNECTION_TIME, TIMEOUT_DURATION,
         TIME_ADVANCE_VALUE,
     };
-    use crate::infra::{ConnectionParams, HttpRequestDecoratorSeq, RouteType};
+    use crate::infra::{
+        ConnectionParams, HttpRequestDecoratorSeq, RouteType, TransportConnectionParams,
+    };
     use crate::utils::{sleep_and_catch_up, ObservableEvent};
 
     #[derive(Clone, Debug)]
@@ -473,12 +475,14 @@ mod test {
         let host = "chat.signal.org".into();
         ConnectionParams {
             route_type: RouteType::Test,
-            sni: Arc::clone(&host),
-            tcp_host: Host::Domain(Arc::clone(&host)),
+            transport: TransportConnectionParams {
+                sni: Arc::clone(&host),
+                tcp_host: Host::Domain(Arc::clone(&host)),
+                port: nonzero!(443u16),
+                certs: RootCertificates::Signal,
+            },
             http_host: host,
-            port: nonzero!(443u16),
             http_request_decorator: HttpRequestDecoratorSeq::default(),
-            certs: RootCertificates::Signal,
             connection_confirmation_header: None,
         }
     }

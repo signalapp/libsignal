@@ -22,7 +22,8 @@ use crate::infra::dns::DnsResolver;
 use crate::infra::errors::TransportConnectError;
 use crate::infra::host::Host;
 use crate::infra::{
-    Alpn, ConnectionInfo, ConnectionParams, DnsSource, RouteType, StreamAndInfo, TransportConnector,
+    Alpn, ConnectionInfo, DnsSource, RouteType, StreamAndInfo, TransportConnectionParams,
+    TransportConnector,
 };
 
 #[derive(Clone)]
@@ -53,7 +54,7 @@ impl TransportConnector for SocksConnector {
 
     async fn connect(
         &self,
-        connection_params: &ConnectionParams,
+        connection_params: &TransportConnectionParams,
         alpn: Alpn,
     ) -> Result<StreamAndInfo<Self::Stream>, TransportConnectError> {
         let Self {
@@ -75,7 +76,7 @@ impl TransportConnector for SocksConnector {
 
         let StreamAndInfo(tcp_stream, remote_address) = crate::infra::tcp_ssl::connect_tcp(
             dns_resolver,
-            connection_params.route_type,
+            RouteType::SocksProxy,
             proxy_host.as_deref(),
             *proxy_port,
         )
@@ -226,7 +227,6 @@ mod test {
     use crate::infra::host::Host;
     use crate::infra::tcp_ssl::proxy::testutil::{TcpServer, TlsServer, PROXY_HOSTNAME};
     use crate::infra::tcp_ssl::testutil::{SERVER_CERTIFICATE, SERVER_HOSTNAME};
-    use crate::infra::HttpRequestDecoratorSeq;
 
     use super::*;
 
@@ -396,17 +396,13 @@ mod test {
             ])),
         };
 
-        let connection_params = ConnectionParams {
-            route_type: RouteType::SocksProxy,
+        let connection_params = TransportConnectionParams {
             sni: SERVER_HOSTNAME.into(),
             tcp_host: target_host,
-            http_host: SERVER_HOSTNAME.into(),
             port: NonZeroU16::new(tls_server.tcp.listen_addr.port()).unwrap(),
-            http_request_decorator: HttpRequestDecoratorSeq::default(),
             certs: crate::infra::certs::RootCertificates::FromDer(std::borrow::Cow::Borrowed(
                 SERVER_CERTIFICATE.cert.der(),
             )),
-            connection_confirmation_header: None,
         };
         let mut connect = connector.connect(&connection_params, Alpn::Http1_1);
 
@@ -523,17 +519,13 @@ mod test {
             ])),
         };
 
-        let connection_params = ConnectionParams {
-            route_type: RouteType::SocksProxy,
+        let connection_params = TransportConnectionParams {
             sni: SERVER_HOSTNAME.into(),
             tcp_host: Host::Domain(SERVER_HOSTNAME.into()),
-            http_host: SERVER_HOSTNAME.into(),
             port: NonZeroU16::new(tls_server.tcp.listen_addr.port()).unwrap(),
-            http_request_decorator: HttpRequestDecoratorSeq::default(),
             certs: crate::infra::certs::RootCertificates::FromDer(std::borrow::Cow::Borrowed(
                 SERVER_CERTIFICATE.cert.der(),
             )),
-            connection_confirmation_header: None,
         };
         let connect = connector.connect(&connection_params, Alpn::Http1_1);
 

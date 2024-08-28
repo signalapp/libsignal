@@ -21,7 +21,7 @@ use crate::infra::dns::DnsResolver;
 use crate::infra::errors::TransportConnectError;
 use crate::infra::tcp_ssl::proxy::tls::TlsProxyConnector;
 use crate::infra::{
-    Alpn, ConnectionInfo, ConnectionParams, RouteType, StreamAndInfo, TransportConnector,
+    Alpn, ConnectionInfo, RouteType, StreamAndInfo, TransportConnectionParams, TransportConnector,
 };
 use crate::utils::first_ok;
 
@@ -65,12 +65,12 @@ impl TransportConnector for DirectConnector {
 
     async fn connect(
         &self,
-        connection_params: &ConnectionParams,
+        connection_params: &TransportConnectionParams,
         alpn: Alpn,
     ) -> Result<StreamAndInfo<Self::Stream>, TransportConnectError> {
         let StreamAndInfo(tcp_stream, remote_address) = connect_tcp(
             &self.dns_resolver,
-            connection_params.route_type,
+            RouteType::Direct,
             connection_params.tcp_host.as_deref(),
             connection_params.port,
         )
@@ -108,7 +108,7 @@ fn ssl_config(
 
 async fn connect_tls<S: AsyncRead + AsyncWrite + Unpin>(
     transport: S,
-    connection_params: &ConnectionParams,
+    connection_params: &TransportConnectionParams,
     alpn: Alpn,
 ) -> Result<SslStream<S>, TransportConnectError> {
     let ssl_config = ssl_config(&connection_params.certs, &connection_params.sni, Some(alpn))?;
@@ -224,7 +224,7 @@ impl TransportConnector for TcpSslConnector {
 
     async fn connect(
         &self,
-        connection_params: &ConnectionParams,
+        connection_params: &TransportConnectionParams,
         alpn: Alpn,
     ) -> Result<StreamAndInfo<Self::Stream>, TransportConnectError> {
         match self {
@@ -327,7 +327,6 @@ mod test {
 
     use crate::infra::dns::lookup_result::LookupResult;
     use crate::infra::host::Host;
-    use crate::infra::HttpRequestDecoratorSeq;
 
     #[test_case(true; "resolved hostname")]
     #[test_case(false; "by IP")]
@@ -340,18 +339,14 @@ mod test {
             SERVER_HOSTNAME,
             LookupResult::localhost(),
         )])));
-        let connection_params = ConnectionParams {
-            route_type: RouteType::Test,
+        let connection_params = TransportConnectionParams {
             sni: SERVER_HOSTNAME.into(),
             tcp_host: match use_hostname {
                 true => Host::Domain(SERVER_HOSTNAME.into()),
                 false => addr.ip().into(),
             },
-            http_host: "unused".into(),
             port: addr.port().try_into().expect("bound port"),
-            http_request_decorator: HttpRequestDecoratorSeq::default(),
             certs: RootCertificates::FromDer(Cow::Borrowed(SERVER_CERTIFICATE.cert.der())),
-            connection_confirmation_header: None,
         };
 
         let StreamAndInfo(stream, info) = connector
@@ -364,7 +359,7 @@ mod test {
             ConnectionInfo {
                 address: Host::Ip(Ipv6Addr::LOCALHOST.into()),
                 dns_source: crate::infra::DnsSource::Static,
-                route_type: RouteType::Test,
+                route_type: RouteType::Direct,
             }
         );
 
@@ -379,15 +374,11 @@ mod test {
         let connector = TcpSslConnector::Invalid(DnsResolver::new_from_static_map(HashMap::from(
             [(SERVER_HOSTNAME, LookupResult::localhost())],
         )));
-        let connection_params = ConnectionParams {
-            route_type: RouteType::Test,
+        let connection_params = TransportConnectionParams {
             sni: SERVER_HOSTNAME.into(),
             tcp_host: Host::Ip(addr.ip()),
-            http_host: "unused".into(),
             port: addr.port().try_into().expect("bound port"),
-            http_request_decorator: HttpRequestDecoratorSeq::default(),
             certs: RootCertificates::FromDer(Cow::Borrowed(SERVER_CERTIFICATE.cert.der())),
-            connection_confirmation_header: None,
         };
 
         match connector.connect(&connection_params, Alpn::Http1_1).await {

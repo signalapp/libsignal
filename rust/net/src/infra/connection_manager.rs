@@ -441,7 +441,7 @@ mod test {
         ClassifiableTestError, TestError, FEW_ATTEMPTS, LONG_CONNECTION_TIME, MANY_ATTEMPTS,
         TIMEOUT_DURATION, TIME_ADVANCE_VALUE,
     };
-    use crate::infra::{HttpRequestDecoratorSeq, RouteType};
+    use crate::infra::{HttpRequestDecoratorSeq, RouteType, TransportConnectionParams};
 
     use super::*;
 
@@ -963,7 +963,7 @@ mod test {
             None => Ok(ROUTE_1),
             Some(err) => Err(err),
         };
-        let domain = match &connection_params.tcp_host {
+        let domain = match &connection_params.transport.tcp_host {
             Host::Domain(domain) => &**domain,
             h => panic!("unexpected host {h}"),
         };
@@ -982,12 +982,14 @@ mod test {
         let host = host.into();
         ConnectionParams {
             route_type: RouteType::Test,
-            sni: Arc::clone(&host),
-            tcp_host: Host::Domain(Arc::clone(&host)),
+            transport: TransportConnectionParams {
+                sni: Arc::clone(&host),
+                tcp_host: Host::Domain(Arc::clone(&host)),
+                certs: RootCertificates::Signal,
+                port: nonzero!(443u16),
+            },
             http_host: host,
-            port: nonzero!(443u16),
             http_request_decorator: HttpRequestDecoratorSeq::default(),
-            certs: RootCertificates::Signal,
             connection_confirmation_header: None,
         }
     }
@@ -1025,7 +1027,7 @@ mod test {
         let res: ConnectionAttemptOutcome<(), ClassifiableTestError> = multi_route_manager
             .connect_or_wait(|connection_params| {
                 assert_ne!(
-                    connection_params.tcp_host.as_deref(),
+                    connection_params.transport.tcp_host.as_deref(),
                     Host::Domain(ROUTE_2),
                     "Should not attempt second route if the first one was fatal"
                 );
