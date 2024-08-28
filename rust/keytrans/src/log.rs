@@ -431,8 +431,9 @@ pub fn verify_consistency_proof(
 
 #[cfg(test)]
 mod test {
-    use super::*;
     use hex_literal::hex;
+
+    use super::*;
 
     #[test]
     fn test_evaluate_batch_proof() {

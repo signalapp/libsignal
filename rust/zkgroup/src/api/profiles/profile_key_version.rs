@@ -3,9 +3,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use crate::common::simple_types::*;
 use serde::ser::SerializeTuple;
 use serde::{Serialize, Serializer};
+
+use crate::common::simple_types::*;
 
 #[derive(Copy, Clone)]
 pub struct ProfileKeyVersion {

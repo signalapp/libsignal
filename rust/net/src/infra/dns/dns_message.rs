@@ -3,17 +3,19 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use crate::infra::dns::dns_types::Expiring;
-use crate::infra::dns::ResourceType;
-use bitstream_io::{
-    BigEndian, BitRead, BitReader, BitWrite, BitWriter, ByteRead, ByteReader, ByteWrite, ByteWriter,
-};
 use std::cmp::{max, min};
 use std::io;
 use std::io::Cursor;
 use std::net::{Ipv4Addr, Ipv6Addr};
 use std::time::Duration;
+
+use bitstream_io::{
+    BigEndian, BitRead, BitReader, BitWrite, BitWriter, ByteRead, ByteReader, ByteWrite, ByteWriter,
+};
 use tokio::time::Instant;
+
+use crate::infra::dns::dns_types::Expiring;
+use crate::infra::dns::ResourceType;
 
 pub(crate) const QCLASS_IN: u16 = 1;
 const POINTER_MASK: u8 = 0xC0;
@@ -265,8 +267,10 @@ fn read_name_to_vec<R: io::Read>(
 
 #[cfg(test)]
 mod test {
-    use super::*;
-    use crate::infra::dns::dns_types::ResourceType;
+    use std::iter;
+    use std::str::FromStr;
+    use std::time::Duration;
+
     use assert_matches::assert_matches;
     use const_str::{concat_bytes, ip_addr};
     use hickory_proto::op::{MessageType, ResponseCode};
@@ -274,10 +278,10 @@ mod test {
     use hickory_proto::rr::{Name, RData, RecordType};
     use hickory_proto::serialize::binary::BinEncodable;
     use itertools::Itertools;
-    use std::iter;
-    use std::str::FromStr;
-    use std::time::Duration;
     use tokio::time::Instant;
+
+    use super::*;
+    use crate::infra::dns::dns_types::ResourceType;
 
     const REQUEST_ID: u16 = 0xABCD;
     const VALID_DOMAIN: &str = "chat.signal.org";

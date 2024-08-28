@@ -5,8 +5,9 @@
 
 // implements the "innerpad" SHO/SHA256 proposal
 
-use sha2::{Digest, Sha256};
 use std::cmp;
+
+use sha2::{Digest, Sha256};
 
 use crate::shoapi::ShoApi;
 

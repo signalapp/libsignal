@@ -22,9 +22,10 @@ use crate::proto;
 use crate::utils::basic_authorization;
 
 mod error;
+pub use error::ChatServiceError;
+
 use crate::env::RECEIVE_STORIES_HEADER_NAME;
 use crate::timeouts::MULTI_ROUTE_CONNECTION_TIMEOUT;
-pub use error::ChatServiceError;
 
 pub mod noise;
 pub mod server_requests;
@@ -483,6 +484,7 @@ pub mod test_support {
     use http::uri::PathAndQuery;
     use tokio::sync::mpsc;
 
+    use super::*;
     use crate::auth::Auth;
     use crate::chat::{Chat, ChatServiceWithDebugInfo};
     use crate::env::constants::WEB_SOCKET_PATH;
@@ -491,8 +493,6 @@ pub mod test_support {
     use crate::infra::tcp_ssl::DirectConnector;
     use crate::infra::{make_ws_config, ConnectionParams, EndpointConnection};
     use crate::utils::ObservableEvent;
-
-    use super::*;
 
     pub type AnyChat = Chat<
         Arc<dyn ChatServiceWithDebugInfo + Send + Sync>,
@@ -534,9 +534,10 @@ pub mod test_support {
 
 #[cfg(test)]
 pub(crate) mod test {
-    use crate::chat::{Response, ResponseProto, ResponseProtoInvalidError};
     use assert_matches::assert_matches;
     use http::{HeaderName, HeaderValue};
+
+    use crate::chat::{Response, ResponseProto, ResponseProtoInvalidError};
 
     pub(crate) mod shared {
         use std::fmt::Debug;

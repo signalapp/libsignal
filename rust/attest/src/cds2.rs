@@ -5,9 +5,9 @@
 
 use std::collections::HashMap;
 
-use crate::constants::ENCLAVE_ID_CDSI_STAGING_AND_PROD;
 use prost::Message;
 
+use crate::constants::ENCLAVE_ID_CDSI_STAGING_AND_PROD;
 use crate::dcap;
 use crate::enclave::{Handshake, Result};
 use crate::proto::cds2;

@@ -60,12 +60,11 @@ use serde::{Deserialize, Serialize};
 
 use crate::attributes::{Attribute, RevealedAttribute};
 use crate::credentials::{Credential, CredentialKeyPair, CredentialPublicKey, NUM_SUPPORTED_ATTRS};
+#[cfg(doc)]
+use crate::issuance::IssuanceProof;
 use crate::issuance::IssuanceProofBuilder;
 use crate::sho::ShoExt;
 use crate::{VerificationFailure, RANDOMNESS_LEN};
-
-#[cfg(doc)]
-use crate::issuance::IssuanceProof;
 
 /// Marker trait used by [`BlindedPoint`] and [`BlindedAttribute`].
 ///

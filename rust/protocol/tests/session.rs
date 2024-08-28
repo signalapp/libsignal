@@ -4,11 +4,11 @@
 //
 mod support;
 
+use std::time::{Duration, SystemTime};
+
 use futures_util::FutureExt;
 use libsignal_protocol::*;
 use rand::rngs::OsRng;
-
-use std::time::{Duration, SystemTime};
 use support::*;
 
 type TestResult = Result<(), SignalProtocolError>;

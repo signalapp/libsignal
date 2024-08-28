@@ -2,8 +2,9 @@
 // Copyright 2023 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
-use super::util::expand_message_xmd_sha512;
 use curve25519_dalek::ristretto::RistrettoPoint;
+
+use super::util::expand_message_xmd_sha512;
 
 const HASH_TO_GROUP_DST: &str = "HashToGroup-OPRFV1-\0-ristretto255-SHA512";
 
@@ -16,12 +17,13 @@ pub fn hash_to_group(data: &[u8]) -> RistrettoPoint {
 
 #[cfg(test)]
 pub mod tests {
-    use crate::oprf::errors::OPRFError;
-    use crate::oprf::util::{expand_message_xmd_sha512, i2osp_u16};
     use curve25519_dalek::constants;
     use curve25519_dalek::ristretto::RistrettoPoint;
     use curve25519_dalek::scalar::Scalar;
     use hex_literal::hex;
+
+    use crate::oprf::errors::OPRFError;
+    use crate::oprf::util::{expand_message_xmd_sha512, i2osp_u16};
 
     const DERIVE_KEYPAIR_DST: &str = "DeriveKeyPairOPRFV1-\0-ristretto255-SHA512";
 

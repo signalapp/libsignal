@@ -94,10 +94,9 @@ impl<R: Clone, C: Lookup<RecipientId, R>> TryFromWith<proto::StandardMessage, C>
 mod test {
     use test_case::test_case;
 
+    use super::*;
     use crate::backup::chat::testutil::TestContext;
     use crate::backup::recipient::FullRecipientData;
-
-    use super::*;
 
     #[test]
     fn valid_voice_message() {

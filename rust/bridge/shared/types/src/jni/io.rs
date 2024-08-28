@@ -9,7 +9,6 @@ use std::io;
 use async_trait::async_trait;
 
 use super::*;
-
 use crate::io::{InputStream, InputStreamRead, SyncInputStream};
 
 pub type JavaInputStream<'a> = JObject<'a>;

@@ -11,12 +11,11 @@ use boring_signal::x509::X509;
 use prost::Message;
 
 use crate::cert_chain::{self, CertChain};
+use crate::constants::TPM2SNP_EXPECTED_PCRS;
 use crate::enclave::{Claims, Error, Handshake, Result, UnvalidatedHandshake};
 use crate::expireable::Expireable as _;
 use crate::proto::{svr, svr3};
 use crate::svr2::RaftConfig;
-
-use crate::constants::TPM2SNP_EXPECTED_PCRS;
 
 mod snp;
 mod tpm2;
@@ -224,9 +223,11 @@ fn verify_tpm2_quote<'a>(
 
 #[cfg(test)]
 mod test {
-    use super::*;
-    use hex_literal::hex;
     use std::time::Duration;
+
+    use hex_literal::hex;
+
+    use super::*;
 
     #[test]
     fn full_tpm2snp_attestation() {

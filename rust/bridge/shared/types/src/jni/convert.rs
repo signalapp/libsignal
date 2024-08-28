@@ -3,23 +3,21 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::num::ParseIntError;
+use std::ops::Deref;
+
 use jni::objects::{AutoLocal, JByteBuffer, JMap, JObjectArray};
 use jni::sys::{jbyte, JNI_FALSE, JNI_TRUE};
 use jni::JNIEnv;
 use libsignal_net::cdsi::LookupResponseEntry;
 use libsignal_protocol::*;
-
 use paste::paste;
 
-use std::num::ParseIntError;
-use std::ops::Deref;
-
+use super::*;
 use crate::io::{InputStream, SyncInputStream};
 use crate::message_backup::MessageBackupValidationOutcome;
 use crate::net::chat::ResponseAndDebugInfo;
 use crate::support::{Array, AsType, FixedLengthBincodeSerializable, Serialized};
-
-use super::*;
 
 /// Converts arguments from their JNI form to their Rust form.
 ///

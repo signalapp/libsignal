@@ -172,11 +172,10 @@ impl TryFrom<proto::ContactAttachment> for ContactAttachment {
 mod test {
     use test_case::test_case;
 
+    use super::*;
     use crate::backup::chat::testutil::TestContext;
     use crate::backup::chat::ReactionError;
     use crate::backup::recipient::FullRecipientData;
-
-    use super::*;
 
     impl proto::ContactMessage {
         fn test_data() -> Self {

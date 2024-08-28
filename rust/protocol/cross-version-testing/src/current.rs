@@ -3,11 +3,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use libsignal_protocol_current::*;
-
 use std::time::SystemTime;
 
 use futures_util::FutureExt;
+use libsignal_protocol_current::*;
 use rand::{thread_rng, Rng};
 
 fn address(id: &str) -> ProtocolAddress {

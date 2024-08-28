@@ -36,9 +36,10 @@ pub fn verify(search_key: &[u8], commitment: &[u8], data: &[u8], nonce: &[u8; 16
 
 #[cfg(test)]
 mod test {
-    use super::*;
     use hex_literal::hex;
     use test_case::test_case;
+
+    use super::*;
 
     #[test_case(&[], &[], &hex!("edc3f59798cd87f2f48ec8836e2b6ef425cde9ab121ffdefc93d769db7cebabf") ; "empty")]
     #[test_case(b"foo", b"bar", &hex!("25df431e884358826fe66f96d65702580104240abd63fa741d9ea3f32914bbf5") ; "case_1")]

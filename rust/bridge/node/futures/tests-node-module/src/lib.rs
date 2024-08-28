@@ -3,9 +3,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::sync::Arc;
+
 use neon::prelude::*;
 use signal_neon_futures::*;
-use std::sync::Arc;
 
 mod panics_and_throws;
 use panics_and_throws::*;

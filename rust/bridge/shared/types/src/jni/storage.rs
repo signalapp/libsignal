@@ -5,9 +5,10 @@
 
 use std::cell::RefCell;
 
-use super::*;
 use async_trait::async_trait;
 use uuid::Uuid;
+
+use super::*;
 
 pub type JavaIdentityKeyStore<'a> = JObject<'a>;
 pub type JavaPreKeyStore<'a> = JObject<'a>;

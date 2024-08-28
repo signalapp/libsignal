@@ -6,11 +6,10 @@
 use libsignal_core::{Aci, ServiceId, WrongKindOfServiceIdError};
 use zkgroup::ProfileKeyBytes;
 
+use super::GroupError;
 use crate::backup::serialize::{self, SerializeOrder};
 use crate::backup::time::Timestamp;
 use crate::proto::backup as proto;
-
-use super::GroupError;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
 pub enum Role {
@@ -255,9 +254,8 @@ mod tests {
     use libsignal_core::{Pni, ServiceIdKind};
     use test_case::test_case;
 
-    use crate::backup::time::testutil::MillisecondsSinceEpoch;
-
     use super::*;
+    use crate::backup::time::testutil::MillisecondsSinceEpoch;
 
     impl proto::group::Member {
         pub(crate) fn test_data() -> Self {

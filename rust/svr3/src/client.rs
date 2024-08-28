@@ -731,13 +731,14 @@ impl<'a> RotationMachine<'a> {
 
 #[cfg(test)]
 mod test {
-    use super::*;
     use curve25519_dalek::scalar::Scalar;
     use hex_literal::hex;
     use nonzero_ext::nonzero;
     use proptest::proptest;
     use rand_core::{CryptoRng, OsRng, RngCore};
     use test_case::test_case;
+
+    use super::*;
 
     fn to_ristretto_scalar(b: &[u8]) -> Option<Scalar> {
         Scalar::from_canonical_bytes(b.try_into().ok()?).into_option()

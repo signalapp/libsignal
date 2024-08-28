@@ -6,9 +6,8 @@
 use std::collections::HashMap;
 use std::ops::ControlFlow;
 
-use protobuf::{EnumOrUnknown, MessageField, SpecialFields, UnknownFields};
-
 pub(crate) use libsignal_message_backup_macros::VisitUnknownFields;
+use protobuf::{EnumOrUnknown, MessageField, SpecialFields, UnknownFields};
 
 use crate::unknown::{MapKey, Part, Path, UnknownFieldVisitor, UnknownValue};
 

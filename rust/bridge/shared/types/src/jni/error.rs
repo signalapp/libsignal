@@ -2,16 +2,15 @@
 // Copyright 2020-2021 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
-use http::uri::InvalidUri;
 use std::fmt;
 use std::io::{Error as IoError, ErrorKind as IoErrorKind};
 use std::time::Duration;
 
-use jni::objects::{GlobalRef, JObject, JString, JThrowable};
-use jni::{JNIEnv, JavaVM};
-
 use attest::hsm_enclave::Error as HsmEnclaveError;
 use device_transfer::Error as DeviceTransferError;
+use http::uri::InvalidUri;
+use jni::objects::{GlobalRef, JObject, JString, JThrowable};
+use jni::{JNIEnv, JavaVM};
 use libsignal_net::chat::ChatServiceError;
 use libsignal_net::infra::ws::{WebSocketConnectError, WebSocketServiceError};
 use libsignal_protocol::*;
@@ -20,10 +19,9 @@ use signal_pin::Error as PinError;
 use usernames::{UsernameError, UsernameLinkError};
 use zkgroup::{ZkGroupDeserializationFailure, ZkGroupVerificationFailure};
 
+use super::*;
 use crate::net::cdsi::CdsiError;
 use crate::support::describe_panic;
-
-use super::*;
 
 /// The top-level error type for when something goes wrong.
 #[derive(Debug, thiserror::Error)]

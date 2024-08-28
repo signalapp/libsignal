@@ -5,16 +5,15 @@
 
 pub(crate) mod curve25519;
 
-use crate::{Result, SignalProtocolError};
-
 use std::cmp::Ordering;
-
 use std::fmt;
 
 use arrayref::array_ref;
 use curve25519_dalek::scalar;
 use rand::{CryptoRng, Rng};
 use subtle::ConstantTimeEq;
+
+use crate::{Result, SignalProtocolError};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum KeyType {

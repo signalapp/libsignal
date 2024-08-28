@@ -3,13 +3,13 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use ::attest::svr2::lookup_groupid;
+use ::signal_pin::{local_pin_hash, verify_local_pin_hash, PinHash, Result};
 use libsignal_bridge_macros::*;
+use signal_pin::Error;
 
 use crate::support::*;
 use crate::*;
-use ::attest::svr2::lookup_groupid;
-use ::signal_pin::{local_pin_hash, verify_local_pin_hash, PinHash, Result};
-use signal_pin::Error;
 
 bridge_handle_fns!(PinHash, node = false);
 

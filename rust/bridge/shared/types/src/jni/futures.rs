@@ -3,12 +3,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use super::*;
-use crate::support::{AsyncRuntime, ResultReporter};
+use std::future::Future;
 
 use futures_util::{FutureExt, TryFutureExt};
 
-use std::future::Future;
+use super::*;
+use crate::support::{AsyncRuntime, ResultReporter};
 
 /// Used to complete a Java CompletableFuture from any thread.
 pub struct FutureCompleter<T> {

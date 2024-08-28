@@ -11,8 +11,6 @@ use std::panic::RefUnwindSafe;
 use std::sync::Arc;
 use std::time::Duration;
 
-use crate::timeouts::{CONNECTION_ROUTE_COOLDOWN_INTERVALS, CONNECTION_ROUTE_MAX_COOLDOWN};
-use crate::utils::{EventSubscription, ObservableEvent};
 use async_trait::async_trait;
 use itertools::Itertools;
 use tokio::sync::Mutex;
@@ -20,6 +18,8 @@ use tokio::time::{timeout_at, Instant};
 
 use crate::infra::errors::LogSafeDisplay;
 use crate::infra::ConnectionParams;
+use crate::timeouts::{CONNECTION_ROUTE_COOLDOWN_INTERVALS, CONNECTION_ROUTE_MAX_COOLDOWN};
+use crate::utils::{EventSubscription, ObservableEvent};
 
 /// Represents the outcome of the connection attempt
 #[derive(Debug)]
@@ -435,6 +435,7 @@ mod test {
     use nonzero_ext::nonzero;
     use tokio::time;
 
+    use super::*;
     use crate::infra::certs::RootCertificates;
     use crate::infra::host::Host;
     use crate::infra::test::shared::{
@@ -442,8 +443,6 @@ mod test {
         TIMEOUT_DURATION, TIME_ADVANCE_VALUE,
     };
     use crate::infra::{HttpRequestDecoratorSeq, RouteType, TransportConnectionParams};
-
-    use super::*;
 
     const ROUTE_THAT_TIMES_OUT: &str = "timeout.signal.org";
 

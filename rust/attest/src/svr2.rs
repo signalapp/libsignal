@@ -3,11 +3,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use prost::Message;
+
 use crate::constants::{
     ACCEPTABLE_SW_ADVISORIES, DEFAULT_SW_ADVISORIES, EXPECTED_RAFT_CONFIG_SVR2,
 };
-use prost::Message;
-
 use crate::enclave::{Error, Handshake, Result};
 use crate::proto::svr;
 

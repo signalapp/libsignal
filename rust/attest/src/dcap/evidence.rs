@@ -5,8 +5,9 @@
 
 //! DCAP quote (Open Enclave "evidence"), ported from Open Enclave headers in v0.17.7.
 
-use sha2::Digest;
 use std::collections::HashMap;
+
+use sha2::Digest;
 
 use crate::dcap::sgx_quote::SgxQuote;
 use crate::dcap::{Error, Expireable};
@@ -152,9 +153,10 @@ impl CustomClaims<'_> {
 
 #[cfg(test)]
 mod test {
+    use hex_literal::hex;
+
     use super::*;
     use crate::dcap::MREnclave;
-    use hex_literal::hex;
 
     const EXPECTED_MRENCLAVE: MREnclave =
         hex!("337ac97ce088a132daeb1308ea3159f807de4a827e875b2c90ce21bf4751196f");

@@ -203,7 +203,6 @@ mod test {
     use test_case::{test_case, test_matrix};
 
     use super::*;
-
     use crate::proto::test as proto;
 
     trait ProtoWireCast {

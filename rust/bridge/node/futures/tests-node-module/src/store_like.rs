@@ -3,11 +3,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use futures_util::try_join;
-use neon::prelude::*;
 use std::panic::AssertUnwindSafe;
 use std::sync::Arc;
 
+use futures_util::try_join;
+use neon::prelude::*;
 use signal_neon_futures::*;
 
 struct NameStore {

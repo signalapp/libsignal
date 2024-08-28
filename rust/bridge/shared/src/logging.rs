@@ -45,9 +45,9 @@ pub fn log_enabled_in_apps(metadata: &log::Metadata) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     use test_case::test_matrix;
+
+    use super::*;
 
     #[test_matrix([
         "libsignal_foo",

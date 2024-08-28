@@ -2,14 +2,15 @@
 // Copyright 2024 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
+use std::net::IpAddr;
+use std::str::FromStr;
+use std::sync::Arc;
+
 use clap::Parser;
 use futures_util::StreamExt;
 use libsignal_net::infra::dns::custom_resolver::DnsTransport;
 use libsignal_net::infra::dns::dns_lookup::DnsLookupRequest;
 use libsignal_net::infra::dns::dns_transport_udp::UdpTransport;
-use std::net::IpAddr;
-use std::str::FromStr;
-use std::sync::Arc;
 
 #[derive(Parser, Debug)]
 struct Args {

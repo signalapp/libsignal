@@ -54,11 +54,10 @@ impl<R: Clone, C: Lookup<RecipientId, R>> TryFromWith<proto::StickerMessage, C>
 mod test {
     use test_case::test_case;
 
+    use super::*;
     use crate::backup::chat::testutil::TestContext;
     use crate::backup::chat::ReactionError;
     use crate::backup::recipient::FullRecipientData;
-
-    use super::*;
 
     impl proto::StickerMessage {
         pub(crate) fn test_data() -> Self {

@@ -18,9 +18,8 @@ use signal_pin::Error as PinError;
 use usernames::{UsernameError, UsernameLinkError};
 use zkgroup::{ZkGroupDeserializationFailure, ZkGroupVerificationFailure};
 
-use crate::support::describe_panic;
-
 use super::{FutureCancelled, NullPointerError, UnexpectedPanic};
+use crate::support::describe_panic;
 
 #[derive(Debug)]
 #[repr(C)]

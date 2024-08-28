@@ -10,11 +10,6 @@ use std::net::{Ipv4Addr, Ipv6Addr};
 use std::sync::Arc;
 use std::time::Duration;
 
-use crate::infra::connection_manager::{
-    ConnectionAttemptOutcome, SingleRouteThrottlingConnectionManager,
-};
-use crate::timeouts::{DNS_CALL_BACKGROUND_TIMEOUT, DNS_RESOLUTION_DELAY};
-use crate::utils::{EventSubscription, ObservableEvent};
 use async_trait::async_trait;
 use either::Either;
 use futures_util::stream::BoxStream;
@@ -22,12 +17,17 @@ use futures_util::StreamExt;
 use tokio::sync::oneshot;
 use tokio::time::Instant;
 
+use crate::infra::connection_manager::{
+    ConnectionAttemptOutcome, SingleRouteThrottlingConnectionManager,
+};
 use crate::infra::dns::dns_errors::Error;
 use crate::infra::dns::dns_lookup::DnsLookupRequest;
 use crate::infra::dns::dns_types::Expiring;
 use crate::infra::dns::dns_utils::{log_safe_domain, results_within_interval};
 use crate::infra::dns::lookup_result::LookupResult;
 use crate::infra::{dns, DnsSource};
+use crate::timeouts::{DNS_CALL_BACKGROUND_TIMEOUT, DNS_RESOLUTION_DELAY};
+use crate::utils::{EventSubscription, ObservableEvent};
 
 pub type DnsIpv4Result = Expiring<Vec<Ipv4Addr>>;
 pub type DnsIpv6Result = Expiring<Vec<Ipv6Addr>>;
@@ -320,8 +320,6 @@ impl<T: DnsTransport + Sync + 'static> CustomDnsResolver<T> {
 
 #[cfg(test)]
 pub(crate) mod test {
-    use super::*;
-
     use std::collections::HashSet;
     use std::iter;
     use std::net::IpAddr;
@@ -333,6 +331,7 @@ pub(crate) mod test {
     use futures_util::stream::FuturesUnordered;
     use futures_util::FutureExt;
 
+    use super::*;
     use crate::timeouts::CONNECTION_ROUTE_MAX_COOLDOWN;
     use crate::utils::{sleep_and_catch_up, sleep_until_and_catch_up};
 

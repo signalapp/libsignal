@@ -3,11 +3,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::future::Future;
+use std::panic::{catch_unwind, AssertUnwindSafe, UnwindSafe};
+
 use futures_util::FutureExt;
 use neon::prelude::*;
 use neon::types::JsPromise;
-use std::future::Future;
-use std::panic::{catch_unwind, AssertUnwindSafe, UnwindSafe};
 
 use crate::executor::{AssertSendSafe, ChannelEx};
 use crate::util::describe_panic;

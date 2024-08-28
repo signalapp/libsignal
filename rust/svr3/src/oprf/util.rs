@@ -5,8 +5,9 @@
 use std::cmp;
 use std::convert::{TryFrom, TryInto};
 
-use super::errors::OPRFError;
 use sha2::{Digest, Sha512};
+
+use super::errors::OPRFError;
 
 const SHA512_BLOCK_BYTES: usize = 128usize;
 const SHA512_OUTPUT_BYTES: usize = 64usize;

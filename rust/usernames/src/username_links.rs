@@ -6,9 +6,8 @@
 use hmac::Mac;
 use prost::Message;
 use rand::{CryptoRng, Rng};
-use subtle::ConstantTimeEq;
-
 use signal_crypto::{aes_256_cbc_decrypt, aes_256_cbc_encrypt};
+use subtle::ConstantTimeEq;
 
 use crate::constants::{
     USERNAME_LINK_ENTROPY_SIZE, USERNAME_LINK_HMAC_LEN, USERNAME_LINK_IV_SIZE,
@@ -109,9 +108,8 @@ fn random_bytes<const SIZE: usize, R: Rng + CryptoRng>(rng: &mut R) -> [u8; SIZE
 mod test {
     use rand::rngs::OsRng;
 
-    use crate::constants::{DISCRIMINATOR_RANGES, MAX_NICKNAME_LENGTH};
-
     use super::*;
+    use crate::constants::{DISCRIMINATOR_RANGES, MAX_NICKNAME_LENGTH};
 
     const TEST_CTEXT_SIZE: usize = 32;
 

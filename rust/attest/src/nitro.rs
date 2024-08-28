@@ -15,12 +15,11 @@ use prost::{DecodeError, Message};
 use sha2::{Digest, Sha384};
 use subtle::ConstantTimeEq;
 
+use crate::constants::NITRO_EXPECTED_PCRS;
 use crate::enclave::{self, Claims, Handshake};
 use crate::proto;
 use crate::svr2::RaftConfig;
 use crate::util::SmallMap;
-
-use crate::constants::NITRO_EXPECTED_PCRS;
 
 // A type for Platform Configuration Register values
 // They are Sha-384 hashes, 48 byte long.

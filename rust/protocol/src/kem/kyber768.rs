@@ -3,16 +3,14 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use crate::Result;
-
-use pqcrypto_traits::kem::{Ciphertext, PublicKey, SecretKey, SharedSecret};
-
 use pqcrypto_kyber::ffi::{
     PQCLEAN_KYBER768_CLEAN_CRYPTO_BYTES, PQCLEAN_KYBER768_CLEAN_CRYPTO_CIPHERTEXTBYTES,
     PQCLEAN_KYBER768_CLEAN_CRYPTO_PUBLICKEYBYTES, PQCLEAN_KYBER768_CLEAN_CRYPTO_SECRETKEYBYTES,
 };
+use pqcrypto_traits::kem::{Ciphertext, PublicKey, SecretKey, SharedSecret};
 
 use super::{KeyMaterial, Public, Secret};
+use crate::Result;
 
 pub(crate) struct Parameters;
 

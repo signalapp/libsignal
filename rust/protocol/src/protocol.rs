@@ -3,17 +3,17 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use crate::state::{KyberPreKeyId, PreKeyId, SignedPreKeyId};
-use crate::{
-    kem, proto, IdentityKey, PrivateKey, PublicKey, Result, SignalProtocolError, Timestamp,
-};
-
 use hmac::{Hmac, Mac};
 use prost::Message;
 use rand::{CryptoRng, Rng};
 use sha2::Sha256;
 use subtle::ConstantTimeEq;
 use uuid::Uuid;
+
+use crate::state::{KyberPreKeyId, PreKeyId, SignedPreKeyId};
+use crate::{
+    kem, proto, IdentityKey, PrivateKey, PublicKey, Result, SignalProtocolError, Timestamp,
+};
 
 pub(crate) const CIPHERTEXT_MESSAGE_CURRENT_VERSION: u8 = 4;
 // Backward compatible, lacking Kyber keys, version
@@ -897,11 +897,11 @@ pub fn extract_decryption_error_message_from_serialized_content(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::KeyPair;
-
     use rand::rngs::OsRng;
     use rand::{CryptoRng, Rng};
+
+    use super::*;
+    use crate::KeyPair;
 
     fn create_signal_message<T>(csprng: &mut T) -> Result<SignalMessage>
     where

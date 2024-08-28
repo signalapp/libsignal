@@ -642,10 +642,9 @@ pub(crate) mod testutil {
     use tokio::io::DuplexStream;
     use tokio_tungstenite::WebSocketStream;
 
+    use super::*;
     use crate::infra::{AsyncDuplexStream, DnsSource, RouteType};
     use crate::timeouts::{WS_KEEP_ALIVE_INTERVAL, WS_MAX_IDLE_INTERVAL};
-
-    use super::*;
 
     pub(crate) async fn fake_websocket(
     ) -> (WebSocketStream<DuplexStream>, WebSocketStream<DuplexStream>) {
@@ -797,11 +796,10 @@ mod test {
     use nonzero_ext::nonzero;
     use test_case::test_matrix;
 
-    use crate::infra::certs::RootCertificates;
-    use crate::infra::{HttpRequestDecoratorSeq, RouteType, TransportConnectionParams};
-
     use super::testutil::*;
     use super::*;
+    use crate::infra::certs::RootCertificates;
+    use crate::infra::{HttpRequestDecoratorSeq, RouteType, TransportConnectionParams};
 
     impl<T: Debug> NextOrClose<T> {
         pub(crate) fn unwrap_next(self) -> T

@@ -13,6 +13,7 @@ use nonzero_ext::nonzero;
 use oneshot_broadcast::Sender;
 use tokio::time::Instant;
 
+use super::TransportConnectionParams;
 use crate::infra::certs::RootCertificates;
 use crate::infra::dns::custom_resolver::CustomDnsResolver;
 use crate::infra::dns::dns_errors::Error;
@@ -26,8 +27,6 @@ use crate::infra::host::Host;
 use crate::infra::{ConnectionParams, HttpRequestDecoratorSeq, RouteType};
 use crate::timeouts::{DNS_FALLBACK_LOOKUP_TIMEOUTS, DNS_SYSTEM_LOOKUP_TIMEOUT};
 use crate::utils::{self, ObservableEvent};
-
-use super::TransportConnectionParams;
 
 pub mod custom_resolver;
 mod dns_errors;
@@ -292,7 +291,6 @@ impl LookupOption {
 
 #[cfg(test)]
 mod test {
-    use super::*;
     use std::collections::HashMap;
     use std::future;
     use std::net::{Ipv4Addr, Ipv6Addr};
@@ -303,6 +301,7 @@ mod test {
     use async_trait::async_trait;
     use const_str::ip_addr;
 
+    use super::*;
     use crate::infra::dns::dns_lookup::DnsLookupRequest;
     use crate::infra::dns::{DnsLookup, DnsResolver, Error, LookupResult, StaticDnsMap};
     use crate::infra::DnsSource;

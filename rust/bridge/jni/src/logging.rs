@@ -3,12 +3,13 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::panic::{catch_unwind, AssertUnwindSafe};
+use std::process::abort;
+
 use jni::objects::{AutoLocal, GlobalRef, JClass, JObject, JValue};
 use jni::sys::jint;
 use jni::{JNIEnv, JavaVM};
 use libsignal_bridge::{describe_panic, jni_args};
-use std::panic::{catch_unwind, AssertUnwindSafe};
-use std::process::abort;
 
 // Keep this in sync with SignalProtocolLogger.java, as well as the list below.
 #[derive(Clone, Copy)]

@@ -6,10 +6,9 @@
 #[allow(unused_imports)]
 use libsignal_protocol::SignalProtocolError;
 
-use crate::*;
-
 #[cfg(feature = "jni")]
 use crate::jni::HandleJniError;
+use crate::*;
 
 /// A syntactic wrapper for a type that allows it to ignored by the macros in ffi/convert.rs and
 /// jni/convert.rs, and by gen_ts_decl.py.

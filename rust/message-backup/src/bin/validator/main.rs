@@ -8,7 +8,6 @@ use std::io::Read as _;
 use clap::{Args, Parser};
 use futures::io::AllowStdIo;
 use futures::AsyncRead;
-
 use libsignal_core::Aci;
 use libsignal_message_backup::args::{parse_aci, parse_hex_bytes};
 use libsignal_message_backup::backup::Purpose;

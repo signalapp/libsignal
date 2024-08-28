@@ -221,10 +221,11 @@ async fn ServerMessageAck_SendStatus(
 
 #[cfg(test)]
 mod test {
-    use super::*;
-    use crate::net::{ConnectionManager, ConnectionManager_set_proxy, Environment};
     use assert_matches::assert_matches;
     use libsignal_net::chat::ChatServiceError;
+
+    use super::*;
+    use crate::net::{ConnectionManager, ConnectionManager_set_proxy, Environment};
 
     // Normally we would write this test in the app languages, but it depends on timeouts.
     // Using a paused tokio runtime auto-advances time when there's no other work to be done.

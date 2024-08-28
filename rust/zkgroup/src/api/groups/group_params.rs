@@ -3,17 +3,18 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use aes_gcm_siv::aead::generic_array::GenericArray;
+use aes_gcm_siv::aead::Aead;
+use aes_gcm_siv::{Aes256GcmSiv, KeyInit};
+use partial_default::PartialDefault;
+use serde::{Deserialize, Serialize};
+
 use crate::common::constants::*;
 use crate::common::errors::*;
 use crate::common::serialization::ReservedByte;
 use crate::common::sho::*;
 use crate::common::simple_types::*;
 use crate::{api, crypto};
-use aes_gcm_siv::aead::generic_array::GenericArray;
-use aes_gcm_siv::aead::Aead;
-use aes_gcm_siv::{Aes256GcmSiv, KeyInit};
-use partial_default::PartialDefault;
-use serde::{Deserialize, Serialize};
 
 #[derive(Copy, Clone, Serialize, Deserialize, Default)]
 pub struct GroupMasterKey {

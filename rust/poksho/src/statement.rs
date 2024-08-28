@@ -5,18 +5,10 @@
 use std::borrow::Cow;
 use std::collections::HashMap;
 
-use crate::args::*;
-use crate::errors::*;
-use crate::proof::*;
-use crate::scalar::*;
-use crate::shoapi::ShoApi;
-use crate::shohmacsha256::ShoHmacSha256;
-use crate::simple_types::*;
 use curve25519_dalek::constants::RISTRETTO_BASEPOINT_POINT;
 use curve25519_dalek::ristretto::RistrettoPoint;
 use curve25519_dalek::scalar::Scalar;
 use curve25519_dalek::traits::MultiscalarMul;
-
 // POKSHO implements the "Sigma protocol for arbitrary linear relations" described in section
 // 19.5.3 of https://crypto.stanford.edu/~dabo/cryptobook/BonehShoup_0_4.pdf
 //
@@ -97,8 +89,15 @@ use curve25519_dalek::traits::MultiscalarMul;
 //  ---
 //  for index=0..total number of scalars:
 //   RistrettoScalar
-
 use PokshoError::*;
+
+use crate::args::*;
+use crate::errors::*;
+use crate::proof::*;
+use crate::scalar::*;
+use crate::shoapi::ShoApi;
+use crate::shohmacsha256::ShoHmacSha256;
+use crate::simple_types::*;
 
 type ScalarIndex = u8;
 type PointIndex = u8;

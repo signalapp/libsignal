@@ -332,9 +332,8 @@ mod test {
     use libsignal_core::Aci;
     use test_case::test_case;
 
-    use crate::proto::backup::group::access_control::AccessRequired;
-
     use super::*;
+    use crate::proto::backup::group::access_control::AccessRequired;
 
     impl proto::Group {
         pub(crate) const TEST_MASTER_KEY: GroupMasterKeyBytes = [0x33; 32];

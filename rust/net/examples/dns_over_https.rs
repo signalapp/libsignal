@@ -2,6 +2,10 @@
 // Copyright 2024 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
+use std::convert::Infallible;
+use std::num::NonZeroU16;
+use std::sync::Arc;
+
 use clap::Parser;
 use futures_util::StreamExt;
 use libsignal_net::infra::certs::RootCertificates;
@@ -12,9 +16,6 @@ use libsignal_net::infra::host::Host;
 use libsignal_net::infra::{
     ConnectionParams, HttpRequestDecoratorSeq, RouteType, TransportConnectionParams,
 };
-use std::convert::Infallible;
-use std::num::NonZeroU16;
-use std::sync::Arc;
 
 #[derive(Parser, Debug)]
 struct Args {

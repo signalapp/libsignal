@@ -7,9 +7,7 @@
 //! [`bincode::serialize`].
 
 use base64::prelude::{Engine, BASE64_STANDARD};
-
 use rand::Rng;
-
 use zkgroup::generic_server_params::GenericServerSecretParams;
 use zkgroup::RANDOMNESS_LEN;
 

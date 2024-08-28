@@ -7,9 +7,9 @@
 
 //! Types for identifying an individual Signal client instance.
 
-use uuid::Uuid;
-
 use std::fmt;
+
+use uuid::Uuid;
 
 /// Known types of [ServiceId].
 #[derive(Clone, Copy, Hash, PartialEq, Eq, num_enum::IntoPrimitive, num_enum::TryFromPrimitive)]
@@ -331,11 +331,11 @@ where
 
 #[cfg(test)]
 mod service_id_tests {
+    use std::borrow::Borrow;
+
     use proptest::prelude::*;
     use rand::seq::SliceRandom;
     use rand::thread_rng;
-
-    use std::borrow::Borrow;
 
     use super::*;
 

@@ -357,11 +357,10 @@ pub(crate) mod test {
     use protobuf::EnumOrUnknown;
     use test_case::test_case;
 
+    use super::*;
     use crate::backup::time::testutil::MillisecondsSinceEpoch;
     use crate::backup::time::Duration;
     use crate::backup::TryIntoWith as _;
-
-    use super::*;
 
     impl proto::IndividualCall {
         const TEST_ID: CallId = CallId(33333);

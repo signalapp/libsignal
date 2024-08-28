@@ -3,10 +3,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use libsignal_protocol::*;
-
 use std::ops::Deref;
 
+use libsignal_protocol::*;
 pub use neon::context::Context;
 pub use neon::prelude::*;
 pub use neon::types::buffer::TypedArray;

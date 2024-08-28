@@ -6,16 +6,15 @@
 
 use std::time::Duration;
 
-use libsignal_net::infra::connection_manager::ConnectionManager;
-use libsignal_net::infra::dns::DnsResolver;
-use libsignal_net::utils::ObservableEvent;
-use tokio::io::AsyncBufReadExt as _;
-
 use libsignal_net::auth::Auth;
 use libsignal_net::cdsi::{CdsiConnection, LookupError, LookupRequest, LookupResponse};
 use libsignal_net::enclave::{Cdsi, EnclaveEndpointConnection};
+use libsignal_net::infra::connection_manager::ConnectionManager;
+use libsignal_net::infra::dns::DnsResolver;
 use libsignal_net::infra::tcp_ssl::DirectConnector as TcpSslTransportConnector;
 use libsignal_net::infra::TransportConnector;
+use libsignal_net::utils::ObservableEvent;
+use tokio::io::AsyncBufReadExt as _;
 
 async fn cdsi_lookup(
     auth: Auth,

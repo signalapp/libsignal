@@ -353,11 +353,10 @@ impl serde::Serialize for proto::learned_profile_chat_update::PreviousName {
 #[cfg(test)]
 mod test {
 
+    use super::*;
     use crate::backup::frame::ChatId;
     use crate::backup::time::Timestamp;
     use crate::proto::backup as proto;
-
-    use super::*;
 
     impl proto::BackupInfo {
         fn test_data() -> Self {

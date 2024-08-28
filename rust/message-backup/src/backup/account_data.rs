@@ -353,10 +353,9 @@ mod test {
     use test_case::test_case;
     use uuid::Uuid;
 
+    use super::*;
     use crate::backup::chat::chat_style::{BubbleColor, CustomChatColor, CustomColorId};
     use crate::backup::method::{Store, ValidateOnly};
-
-    use super::*;
 
     impl proto::AccountData {
         pub(crate) fn test_data() -> Self {

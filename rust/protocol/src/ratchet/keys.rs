@@ -3,10 +3,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::fmt;
+
 use arrayref::array_ref;
 
 use crate::{crypto, PrivateKey, PublicKey, Result};
-use std::fmt;
 
 pub(crate) struct MessageKeys {
     cipher_key: [u8; 32],

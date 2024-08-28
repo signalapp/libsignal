@@ -3,9 +3,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use curve25519_dalek::scalar::Scalar;
+
 use crate::scalar::*;
 use crate::simple_types::*;
-use curve25519_dalek::scalar::Scalar;
 
 // We use compact Schnorr signatures, sending the challenge instead of commitments
 pub struct Proof {

@@ -3,10 +3,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use crate::infra::DnsSource;
 use std::iter::Map;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 use std::vec::IntoIter;
+
+use crate::infra::DnsSource;
 
 #[derive(Debug, Clone)]
 pub struct LookupResult {
@@ -59,10 +60,12 @@ impl LookupResult {
 
 #[cfg(test)]
 mod test {
+    use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
+
+    use const_str::ip_addr;
+
     use crate::infra::dns::lookup_result::LookupResult;
     use crate::infra::DnsSource;
-    use const_str::ip_addr;
-    use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 
     #[test]
     fn lookup_result_iterates_in_the_right_order() {

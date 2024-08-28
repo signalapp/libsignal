@@ -3,10 +3,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::result::Result;
+
 use aes::cipher::block_padding::Pkcs7;
 use aes::cipher::{BlockDecryptMut, BlockEncryptMut, KeyIvInit};
 use aes::Aes256;
-use std::result::Result;
 
 #[derive(Debug, displaydoc::Display, thiserror::Error)]
 pub enum EncryptionError {
@@ -51,8 +52,9 @@ pub fn aes_256_cbc_decrypt(
 
 #[cfg(test)]
 mod test {
-    use super::*;
     use hex_literal::hex;
+
+    use super::*;
 
     #[test]
     fn aes_cbc_test() {

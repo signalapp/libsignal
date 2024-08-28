@@ -12,11 +12,10 @@ use libsignal_protocol::*;
 use paste::paste;
 use uuid::Uuid;
 
+use super::*;
 use crate::io::{InputStream, SyncInputStream};
 use crate::net::chat::MakeChatListener;
 use crate::support::{extend_lifetime, AsType, FixedLengthBincodeSerializable, Serialized};
-
-use super::*;
 
 /// Converts arguments from their FFI form to their Rust form.
 ///

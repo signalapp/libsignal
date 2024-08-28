@@ -2,6 +2,9 @@
 // Copyright 2024 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
+use std::net::IpAddr;
+use std::sync::Arc;
+
 use clap::{Parser, ValueEnum};
 use const_str::ip_addr;
 use either::{for_both, Either};
@@ -16,8 +19,6 @@ use libsignal_net::infra::{
 };
 use libsignal_net::utils::ObservableEvent;
 use nonzero_ext::nonzero;
-use std::net::IpAddr;
-use std::sync::Arc;
 use tokio::time::Instant;
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum, Debug)]

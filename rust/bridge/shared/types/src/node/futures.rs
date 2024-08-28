@@ -10,11 +10,10 @@ use futures_util::FutureExt;
 use neon::types::{Deferred, JsBigInt};
 use signal_neon_futures::ChannelEx;
 
+use super::*;
 use crate::support::{
     describe_panic, AsyncRuntime, AsyncRuntimeBase, CancellationId, ResultReporter,
 };
-
-use super::*;
 
 #[derive(Debug, thiserror::Error, displaydoc::Display)]
 /// Promise cancelled

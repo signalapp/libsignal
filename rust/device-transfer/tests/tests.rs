@@ -4,14 +4,12 @@
 //
 
 use std::cmp::Ordering;
-
 use std::time::{Duration, SystemTime};
 
 use boring::asn1::Asn1Time;
 use boring::pkey::PKey;
 use boring::rsa::Padding;
 use boring::x509::X509;
-
 use device_transfer::*;
 
 #[test]

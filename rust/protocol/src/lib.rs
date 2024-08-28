@@ -43,13 +43,8 @@ mod storage;
 mod timestamp;
 mod utils;
 
-use error::Result;
-
-pub use libsignal_core::{
-    Aci, DeviceId, Pni, ProtocolAddress, ServiceId, ServiceIdFixedWidthBinaryBytes, ServiceIdKind,
-};
-
 pub use curve::{KeyPair, PrivateKey, PublicKey};
+use error::Result;
 pub use error::SignalProtocolError;
 pub use fingerprint::{DisplayableFingerprint, Fingerprint, ScannableFingerprint};
 pub use group_cipher::{
@@ -57,6 +52,9 @@ pub use group_cipher::{
     process_sender_key_distribution_message,
 };
 pub use identity_key::{IdentityKey, IdentityKeyPair};
+pub use libsignal_core::{
+    Aci, DeviceId, Pni, ProtocolAddress, ServiceId, ServiceIdFixedWidthBinaryBytes, ServiceIdKind,
+};
 pub use protocol::{
     extract_decryption_error_message_from_serialized_content, CiphertextMessage,
     CiphertextMessageType, DecryptionErrorMessage, KyberPayload, PlaintextContent,

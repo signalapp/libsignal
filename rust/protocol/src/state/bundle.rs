@@ -3,9 +3,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::clone::Clone;
+
 use crate::state::{PreKeyId, SignedPreKeyId};
 use crate::{kem, DeviceId, IdentityKey, KyberPreKeyId, PublicKey, Result, SignalProtocolError};
-use std::clone::Clone;
 
 #[derive(Clone)]
 struct SignedPreKey {

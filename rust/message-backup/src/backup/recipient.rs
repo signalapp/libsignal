@@ -475,10 +475,9 @@ mod test {
     use protobuf::EnumOrUnknown;
     use test_case::test_case;
 
+    use super::*;
     use crate::backup::method::{Lookup, Store};
     use crate::backup::FullRecipientData;
-
-    use super::*;
 
     impl proto::Recipient {
         pub(crate) const TEST_ID: u64 = 11111;

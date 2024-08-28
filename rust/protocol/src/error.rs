@@ -3,14 +3,14 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use crate::curve::KeyType;
-use crate::kem;
+use std::panic::UnwindSafe;
 
 use displaydoc::Display;
 use thiserror::Error;
 use uuid::Uuid;
 
-use std::panic::UnwindSafe;
+use crate::curve::KeyType;
+use crate::kem;
 
 pub type Result<T> = std::result::Result<T, SignalProtocolError>;
 

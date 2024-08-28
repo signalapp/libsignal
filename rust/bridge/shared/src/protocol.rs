@@ -3,6 +3,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+// Will be unused when building for Node only.
+#[allow(unused_imports)]
+use futures_util::FutureExt;
 use libsignal_bridge_macros::*;
 #[cfg(feature = "jni")]
 use libsignal_bridge_types::jni;
@@ -10,10 +13,6 @@ use libsignal_protocol::error::Result;
 use libsignal_protocol::*;
 use static_assertions::const_assert_eq;
 use uuid::Uuid;
-
-// Will be unused when building for Node only.
-#[allow(unused_imports)]
-use futures_util::FutureExt;
 
 use crate::support::*;
 use crate::*;

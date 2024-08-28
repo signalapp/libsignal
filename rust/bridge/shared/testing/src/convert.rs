@@ -3,14 +3,14 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::future::Future;
+
 use futures_util::{AsyncReadExt as _, FutureExt};
 use io::{AsyncInput, InputStream};
 use libsignal_bridge_macros::*;
 use libsignal_bridge_types::support::*;
 use libsignal_bridge_types::*;
 use libsignal_protocol::SignalProtocolError;
-
-use std::future::Future;
 
 use crate::types::*;
 

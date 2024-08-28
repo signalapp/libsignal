@@ -4,10 +4,11 @@
 //
 use std::fmt;
 
+use prost::DecodeError;
+
 pub use crate::oprf::errors::OPRFError;
 pub use crate::ppss::PPSSError;
 use crate::proto::svr4;
-use prost::DecodeError;
 
 #[derive(Debug, displaydoc::Display, PartialEq)]
 pub enum Error {

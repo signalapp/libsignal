@@ -109,9 +109,10 @@ pub mod oneshot_broadcast {
 
 #[cfg(test)]
 mod test {
+    use assert_matches::assert_matches;
+
     use super::oneshot_broadcast::SendError;
     use super::*;
-    use assert_matches::assert_matches;
 
     #[tokio::test]
     async fn oneshot_broadcast_completes_for_multiple_receivers() {

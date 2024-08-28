@@ -5,16 +5,16 @@
 
 #![allow(non_snake_case)]
 
+use curve25519_dalek_signal::ristretto::RistrettoPoint;
+use curve25519_dalek_signal::scalar::Scalar;
+use lazy_static::lazy_static;
+use partial_default::PartialDefault;
+use serde::{Deserialize, Serialize};
+
 use crate::common::constants::*;
 use crate::common::sho::*;
 use crate::common::simple_types::*;
 use crate::crypto::profile_key_struct;
-use curve25519_dalek_signal::ristretto::RistrettoPoint;
-use curve25519_dalek_signal::scalar::Scalar;
-use partial_default::PartialDefault;
-use serde::{Deserialize, Serialize};
-
-use lazy_static::lazy_static;
 
 lazy_static! {
     static ref SYSTEM_PARAMS: SystemParams =

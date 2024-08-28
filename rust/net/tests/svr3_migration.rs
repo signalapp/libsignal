@@ -34,9 +34,6 @@ use std::sync::Arc;
 use assert_matches::assert_matches;
 use async_trait::async_trait;
 use base64::prelude::{Engine as _, BASE64_STANDARD};
-use nonzero_ext::nonzero;
-use rand_core::{CryptoRngCore, OsRng};
-
 use libsignal_net::auth::Auth;
 use libsignal_net::enclave::{EnclaveEndpoint, EnclaveKind, Error, PpssSetup, Sgx};
 use libsignal_net::env::Svr3Env;
@@ -47,6 +44,8 @@ use libsignal_net::svr3::direct::DirectConnect;
 use libsignal_net::svr3::traits::*;
 use libsignal_net::svr3::{migrate_backup, restore_with_fallback, OpaqueMaskedShareSet};
 use libsignal_svr3::EvaluationResult;
+use nonzero_ext::nonzero;
+use rand_core::{CryptoRngCore, OsRng};
 
 const PASS: &str = "password";
 const TRIES: NonZeroU32 = nonzero!(10u32);

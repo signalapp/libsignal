@@ -3,11 +3,13 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use crate::dcap::{Error, Expireable, Result};
-use boring_signal::nid::Nid;
-use boring_signal::x509::crl::{X509CRLRef, X509CRL};
 use std::collections::HashSet;
 use std::time::SystemTime;
+
+use boring_signal::nid::Nid;
+use boring_signal::x509::crl::{X509CRLRef, X509CRL};
+
+use crate::dcap::{Error, Expireable, Result};
 
 #[derive(Debug)]
 pub(crate) struct RevocationList {

@@ -3,10 +3,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use crate::error::{Error, Result};
 use aes::cipher::typenum::Unsigned;
 use aes::cipher::{InnerIvInit, KeyInit, StreamCipher, StreamCipherSeek};
 use aes::Aes256;
+
+use crate::error::{Error, Result};
 
 /// A wrapper around [`ctr::Ctr32BE`] that uses a smaller nonce and supports an initial counter.
 pub struct Aes256Ctr32(ctr::Ctr32BE<Aes256>);

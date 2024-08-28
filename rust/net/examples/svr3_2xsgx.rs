@@ -17,10 +17,6 @@ use attest::svr2::RaftConfig;
 use base64::prelude::{Engine, BASE64_STANDARD};
 use clap::Parser;
 use hex_literal::hex;
-use libsignal_net::utils::ObservableEvent;
-use nonzero_ext::nonzero;
-use rand_core::{CryptoRngCore, OsRng, RngCore};
-
 use libsignal_net::auth::Auth;
 use libsignal_net::enclave::{
     self, EnclaveEndpoint, EnclaveEndpointConnection, EndpointParams, MrEnclave, PpssSetup, Sgx,
@@ -34,6 +30,9 @@ use libsignal_net::infra::TransportConnector;
 use libsignal_net::svr::SvrConnection;
 use libsignal_net::svr3::traits::*;
 use libsignal_net::svr3::OpaqueMaskedShareSet;
+use libsignal_net::utils::ObservableEvent;
+use nonzero_ext::nonzero;
+use rand_core::{CryptoRngCore, OsRng, RngCore};
 
 const TEST_SERVER_CERT: RootCertificates = RootCertificates::FromDer(Cow::Borrowed(
     include_bytes!("../res/sgx_test_server_cert.cer"),

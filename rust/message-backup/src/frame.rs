@@ -221,20 +221,17 @@ async fn hmac_sha256(
 #[cfg(test)]
 mod test {
     use aes::cipher::crypto_common::rand_core::{OsRng, RngCore as _};
-    use futures::io::ErrorKind;
-
     use array_concat::concat_arrays;
     use assert_matches::assert_matches;
     use async_compression::futures::write::GzipEncoder;
     use futures::executor::block_on;
-    use futures::io::Cursor;
+    use futures::io::{Cursor, ErrorKind};
     use futures::AsyncWriteExt;
     use hex_literal::hex;
     use test_case::test_case;
 
-    use crate::key::test::FAKE_MESSAGE_BACKUP_KEY;
-
     use super::*;
+    use crate::key::test::FAKE_MESSAGE_BACKUP_KEY;
 
     #[test]
     fn frame_from_raw_too_short() {

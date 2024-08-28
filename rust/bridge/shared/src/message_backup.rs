@@ -7,7 +7,6 @@ use libsignal_bridge_macros::*;
 use libsignal_bridge_types::message_backup::*;
 use libsignal_message_backup::backup::Purpose;
 use libsignal_message_backup::frame::LimitedReaderFactory;
-
 use libsignal_message_backup::{BackupReader, ReadResult};
 use libsignal_protocol::Aci;
 

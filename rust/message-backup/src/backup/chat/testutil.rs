@@ -8,6 +8,7 @@ use std::sync::Arc;
 use nonzero_ext::nonzero;
 use once_cell::sync::Lazy;
 
+use super::chat_style::CustomChatColor;
 use crate::backup::chat::chat_style::CustomColorId;
 use crate::backup::chat::PinOrder;
 use crate::backup::frame::RecipientId;
@@ -16,8 +17,6 @@ use crate::backup::recipient::{Destination, FullRecipientData};
 use crate::backup::time::Timestamp;
 use crate::backup::{BackupMeta, Purpose};
 use crate::proto::backup as proto;
-
-use super::chat_style::CustomChatColor;
 
 pub(super) struct TestContext(pub(super) BackupMeta);
 

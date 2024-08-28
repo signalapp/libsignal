@@ -141,11 +141,10 @@ impl TryFrom<proto::quote::QuotedAttachment> for QuotedAttachment {
 mod test {
     use test_case::test_case;
 
+    use super::*;
     use crate::backup::chat::testutil::TestContext;
     use crate::backup::recipient::FullRecipientData;
     use crate::backup::time::testutil::MillisecondsSinceEpoch;
-
-    use super::*;
 
     impl proto::quote::QuotedAttachment {
         fn test_data() -> Self {

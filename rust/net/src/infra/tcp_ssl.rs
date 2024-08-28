@@ -6,8 +6,6 @@
 use std::num::NonZeroU16;
 use std::sync::Arc;
 
-use crate::infra::host::Host;
-use crate::timeouts::TCP_CONNECTION_ATTEMPT_DELAY;
 use async_trait::async_trait;
 use boring_signal::ssl::{ConnectConfiguration, SslConnector, SslMethod};
 use futures_util::TryFutureExt;
@@ -19,10 +17,12 @@ use tokio_util::either::Either;
 use crate::infra::certs::RootCertificates;
 use crate::infra::dns::DnsResolver;
 use crate::infra::errors::TransportConnectError;
+use crate::infra::host::Host;
 use crate::infra::tcp_ssl::proxy::tls::TlsProxyConnector;
 use crate::infra::{
     Alpn, ConnectionInfo, RouteType, StreamAndInfo, TransportConnectionParams, TransportConnector,
 };
+use crate::timeouts::TCP_CONNECTION_ATTEMPT_DELAY;
 use crate::utils::first_ok;
 
 pub mod proxy;
@@ -315,9 +315,6 @@ pub(crate) mod testutil {
 
 #[cfg(test)]
 mod test {
-    use super::testutil::*;
-    use super::*;
-
     use std::borrow::Cow;
     use std::collections::HashMap;
     use std::net::Ipv6Addr;
@@ -325,6 +322,8 @@ mod test {
     use assert_matches::assert_matches;
     use test_case::test_case;
 
+    use super::testutil::*;
+    use super::*;
     use crate::infra::dns::lookup_result::LookupResult;
     use crate::infra::host::Host;
 

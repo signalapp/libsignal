@@ -224,11 +224,10 @@ mod test {
     use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
     use tokio::join;
 
+    use super::*;
     use crate::infra::host::Host;
     use crate::infra::tcp_ssl::proxy::testutil::{TcpServer, TlsServer, PROXY_HOSTNAME};
     use crate::infra::tcp_ssl::testutil::{SERVER_CERTIFICATE, SERVER_HOSTNAME};
-
-    use super::*;
 
     /// Authentication method.
     #[derive(Default)]

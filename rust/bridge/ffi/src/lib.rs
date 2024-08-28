@@ -6,15 +6,15 @@
 #![allow(clippy::missing_safety_doc)]
 #![warn(clippy::unwrap_used)]
 
+use std::ffi::{c_char, c_uchar, c_uint, CString};
+use std::panic::AssertUnwindSafe;
+
 use futures_util::FutureExt;
 use libsignal_bridge::ffi::*;
 #[cfg(feature = "libsignal-bridge-testing")]
 #[allow(unused_imports)]
 use libsignal_bridge_testing::*;
 use libsignal_protocol::*;
-
-use std::ffi::{c_char, c_uchar, c_uint, CString};
-use std::panic::AssertUnwindSafe;
 
 pub mod logging;
 

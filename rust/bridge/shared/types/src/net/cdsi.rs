@@ -8,7 +8,6 @@ use libsignal_net::cdsi::{self, CdsiConnection, ClientResponseCollector, Token};
 use libsignal_net::infra::tcp_ssl::TcpSslConnectorStream;
 
 use crate::net::ConnectionManager;
-
 use crate::*;
 
 #[cfg(feature = "jni")]

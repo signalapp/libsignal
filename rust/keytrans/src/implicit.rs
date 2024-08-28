@@ -119,9 +119,9 @@ pub fn next_monitor(entries: &[u64]) -> u64 {
 
 #[cfg(test)]
 mod test {
-    use super::*;
-
     use proptest::prelude::*;
+
+    use super::*;
 
     #[derive(Clone, Debug)]
     struct StartAndN {

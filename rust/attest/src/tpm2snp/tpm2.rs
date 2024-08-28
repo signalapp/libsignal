@@ -358,10 +358,11 @@ impl<'a> View<'a> {
 
 #[cfg(test)]
 mod test {
-    use super::*;
     use assert_matches::assert_matches;
     use hex_literal::hex;
     use test_case::test_case;
+
+    use super::*;
 
     const VALID_SIGNATURE: &[u8] = include_bytes!("../../tests/data/tpm2_valid_signature.dat");
     const VALID_REPORT: &[u8] = include_bytes!("../../tests/data/tpm2_valid_report.dat");

@@ -3,25 +3,24 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use neon::prelude::*;
-use neon::types::JsBigInt;
-use paste::paste;
 use std::cell::RefCell;
 use std::collections::hash_map::DefaultHasher;
-
 use std::fmt::Display;
 use std::hash::Hasher;
 use std::num::ParseIntError;
 use std::ops::{Deref, DerefMut, RangeInclusive};
 use std::slice;
 
+use neon::prelude::*;
+use neon::types::JsBigInt;
+use paste::paste;
+
+use super::*;
 use crate::io::{InputStream, SyncInputStream};
 use crate::message_backup::MessageBackupValidationOutcome;
 use crate::net::chat::{MakeChatListener, ResponseAndDebugInfo};
 use crate::node::chat::NodeMakeChatListener;
 use crate::support::{extend_lifetime, Array, AsType, FixedLengthBincodeSerializable, Serialized};
-
-use super::*;
 
 /// Converts arguments from their JavaScript form to their Rust form.
 ///

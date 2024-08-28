@@ -7,11 +7,10 @@
 
 #![warn(missing_docs)]
 
-use crate::{proto, KeyPair, PrivateKey, PublicKey, Result, SignalProtocolError};
-
+use prost::Message;
 use rand::{CryptoRng, Rng};
 
-use prost::Message;
+use crate::{proto, KeyPair, PrivateKey, PublicKey, Result, SignalProtocolError};
 
 // Used for domain separation between alternate-identity signatures and other key-to-key signatures.
 const ALTERNATE_IDENTITY_SIGNATURE_PREFIX_1: &[u8] = &[0xFF; 32];
@@ -198,9 +197,9 @@ impl From<IdentityKeyPair> for KeyPair {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     use rand::rngs::OsRng;
+
+    use super::*;
 
     #[test]
     fn test_identity_key_from() {

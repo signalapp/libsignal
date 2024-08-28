@@ -10,11 +10,10 @@ use std::str::FromStr;
 use curve25519_dalek::ristretto::{CompressedRistretto, RistrettoPoint};
 use curve25519_dalek::scalar::Scalar;
 use lazy_static::lazy_static;
-use rand::Rng;
-use sha2::{Digest, Sha512};
-
 use poksho::args::{PointArgs, ScalarArgs};
 use poksho::{PokshoError, Statement};
+use rand::Rng;
+use sha2::{Digest, Sha512};
 
 use crate::constants::{
     BASE_POINTS, CANDIDATES_PER_RANGE, DISCRIMINATOR_RANGES, MAX_NICKNAME_LENGTH,

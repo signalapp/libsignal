@@ -693,17 +693,15 @@ mod test {
     use std::time::UNIX_EPOCH;
 
     use assert_matches::assert_matches;
-
     use protobuf::SpecialFields;
     use test_case::test_case;
 
+    use super::*;
     use crate::backup::chat::testutil::TestContext;
     use crate::backup::method::Store;
     use crate::backup::recipient::FullRecipientData;
     use crate::backup::time::testutil::MillisecondsSinceEpoch;
     use crate::backup::Purpose;
-
-    use super::*;
 
     impl proto::ChatItem {
         pub(crate) fn test_data() -> Self {

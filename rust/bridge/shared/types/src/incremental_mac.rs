@@ -4,7 +4,6 @@
 //
 
 use hmac::Hmac;
-
 use libsignal_protocol::incremental_mac::{Incremental, Validating};
 
 use crate::*;

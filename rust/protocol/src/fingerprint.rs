@@ -3,13 +3,15 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use crate::{proto, IdentityKey, Result, SignalProtocolError};
+use std::fmt;
+use std::fmt::Write;
+
 use prost::Message;
 use sha2::digest::Digest;
 use sha2::Sha512;
-use std::fmt;
-use std::fmt::Write;
 use subtle::ConstantTimeEq;
+
+use crate::{proto, IdentityKey, Result, SignalProtocolError};
 
 #[derive(Debug, Clone)]
 pub struct DisplayableFingerprint {
@@ -212,8 +214,9 @@ impl Fingerprint {
 
 #[cfg(test)]
 mod test {
-    use super::*;
     use hex_literal::hex;
+
+    use super::*;
 
     const ALICE_IDENTITY: &[u8] =
         &hex!("0506863bc66d02b40d27b8d49ca7c09e9239236f9d7d25d6fcca5ce13c7064d868");
@@ -355,8 +358,9 @@ mod test {
     fn fingerprint_matching_identifiers() -> Result<()> {
         // testMatchingFingerprints
 
-        use crate::IdentityKeyPair;
         use rand::rngs::OsRng;
+
+        use crate::IdentityKeyPair;
 
         let a_key_pair = IdentityKeyPair::generate(&mut OsRng);
         let b_key_pair = IdentityKeyPair::generate(&mut OsRng);
@@ -411,8 +415,9 @@ mod test {
 
     #[test]
     fn fingerprint_mismatching_fingerprints() -> Result<()> {
-        use crate::IdentityKeyPair;
         use rand::rngs::OsRng;
+
+        use crate::IdentityKeyPair;
 
         let a_key_pair = IdentityKeyPair::generate(&mut OsRng);
         let b_key_pair = IdentityKeyPair::generate(&mut OsRng);
@@ -460,8 +465,9 @@ mod test {
 
     #[test]
     fn fingerprint_mismatching_identifiers() -> Result<()> {
-        use crate::IdentityKeyPair;
         use rand::rngs::OsRng;
+
+        use crate::IdentityKeyPair;
 
         let a_key_pair = IdentityKeyPair::generate(&mut OsRng);
         let b_key_pair = IdentityKeyPair::generate(&mut OsRng);

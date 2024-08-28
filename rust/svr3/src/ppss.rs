@@ -6,13 +6,14 @@
 //! Implements the Password Protected secret Sharing (PPSS) scheme of
 //! [JKKX16](https://eprint.iacr.org/2016/144.pdf) using XOR-based secret sharing.
 
+use std::convert::TryInto;
+
 use curve25519_dalek::ristretto::CompressedRistretto;
 use curve25519_dalek::Scalar;
 use displaydoc::Display;
 use hkdf::Hkdf;
 use rand_core::CryptoRngCore;
 use sha2::{Digest, Sha256};
-use std::convert::TryInto;
 use subtle::ConstantTimeEq;
 
 use crate::oprf;
@@ -288,9 +289,10 @@ pub fn restore_secret(
 pub mod testutils {
     use std::collections::HashMap;
 
-    use super::*;
     use curve25519_dalek::scalar::Scalar;
     use curve25519_dalek::RistrettoPoint;
+
+    use super::*;
 
     pub struct OPRFServerSet {
         server_secrets: HashMap<u64, [u8; 32]>,

@@ -446,7 +446,6 @@ mod test {
         ChatOverWebSocketServiceConnector, ChatServiceError, RequestId, ServerEvent,
     };
     use crate::chat::{ChatMessageType, ChatService, MessageProto, ResponseProto};
-
     use crate::infra::test::shared::{
         InMemoryWarpConnector, NoReconnectService, TestError, TIMEOUT_DURATION,
     };

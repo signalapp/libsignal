@@ -5,13 +5,14 @@
 
 #![allow(non_snake_case)]
 
-use crate::common::sho::*;
-use crate::common::simple_types::*;
 use curve25519_dalek_signal::ristretto::RistrettoPoint;
 use libsignal_core::ServiceId;
 use partial_default::PartialDefault;
 use serde::{Deserialize, Serialize};
 use sha2::Sha256;
+
+use crate::common::sho::*;
+use crate::common::simple_types::*;
 
 #[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize, PartialDefault)]
 pub struct UidStruct {

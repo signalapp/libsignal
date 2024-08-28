@@ -3,13 +3,14 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use partial_default::PartialDefault;
+use serde::{Deserialize, Serialize, Serializer};
+
 use crate::common::constants::*;
 use crate::common::errors::*;
 use crate::common::serialization::VersionByte;
 use crate::common::simple_types::*;
 use crate::{api, crypto};
-use partial_default::PartialDefault;
-use serde::{Deserialize, Serialize, Serializer};
 
 #[derive(Serialize, Deserialize, PartialDefault)]
 pub struct ProfileKeyCredentialPresentationV1 {

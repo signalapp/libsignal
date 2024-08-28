@@ -99,9 +99,8 @@ pub(super) mod testutil {
 mod test {
     use test_case::{test_case, test_matrix};
 
-    use crate::backup::time::testutil::{MillisecondsSinceEpoch, FIXED_DATE};
-
     use super::*;
+    use crate::backup::time::testutil::{MillisecondsSinceEpoch, FIXED_DATE};
 
     impl Timestamp {
         pub(crate) fn test_value() -> Self {

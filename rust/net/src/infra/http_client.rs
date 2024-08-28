@@ -159,14 +159,13 @@ mod test {
     use http::{HeaderName, HeaderValue, Method, StatusCode};
     use warp::Filter as _;
 
+    use super::*;
     use crate::infra::dns::lookup_result::LookupResult;
     use crate::infra::dns::DnsResolver;
     use crate::infra::host::Host;
     use crate::infra::tcp_ssl::testutil::{SERVER_CERTIFICATE, SERVER_HOSTNAME};
     use crate::infra::tcp_ssl::DirectConnector;
     use crate::infra::{HttpRequestDecoratorSeq, TransportConnectionParams};
-
-    use super::*;
 
     const FAKE_RESPONSE: &str = "RESPONSE";
     const FAKE_RESPONSE_HEADER: (HeaderName, HeaderValue) = (

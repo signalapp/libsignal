@@ -6,12 +6,12 @@
 use std::collections::HashMap;
 
 use displaydoc::Display;
+use prost::Message;
 
 use crate::client_connection::ClientConnection;
 use crate::svr2::RaftConfig;
 use crate::tpm2snp::Tpm2Error;
 use crate::{client_connection, dcap, nitro, proto, snow_resolver};
-use prost::Message;
 
 pub type Result<T> = std::result::Result<T, Error>;
 

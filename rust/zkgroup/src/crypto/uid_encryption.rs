@@ -5,16 +5,16 @@
 
 #![allow(non_snake_case)]
 
-use crate::common::errors::*;
-use crate::common::sho::*;
-use crate::crypto::uid_struct;
-
 use curve25519_dalek_signal::ristretto::RistrettoPoint;
 use lazy_static::lazy_static;
 use partial_default::PartialDefault;
 use serde::{Deserialize, Serialize};
 use subtle::{ConditionallySelectable, ConstantTimeEq};
 use zkcredential::attributes::Attribute;
+
+use crate::common::errors::*;
+use crate::common::sho::*;
+use crate::crypto::uid_struct;
 
 lazy_static! {
     static ref SYSTEM_PARAMS: SystemParams =

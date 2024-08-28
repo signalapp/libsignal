@@ -3,6 +3,14 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
+use std::sync::Arc;
+
+use async_trait::async_trait;
+use futures_util::stream::BoxStream;
+use futures_util::{stream, StreamExt};
+use tokio::net::UdpSocket;
+
 use crate::infra::dns::custom_resolver::{DnsQueryResult, DnsTransport};
 use crate::infra::dns::dns_errors::Error;
 use crate::infra::dns::dns_lookup::DnsLookupRequest;
@@ -10,12 +18,6 @@ use crate::infra::dns::dns_message;
 use crate::infra::dns::dns_message::{parse_a_record, parse_aaaa_record, MAX_DNS_UDP_MESSAGE_LEN};
 use crate::infra::dns::dns_types::ResourceType;
 use crate::infra::{dns, DnsSource};
-use async_trait::async_trait;
-use futures_util::stream::BoxStream;
-use futures_util::{stream, StreamExt};
-use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
-use std::sync::Arc;
-use tokio::net::UdpSocket;
 
 const A_REQUEST_ID: u16 = 0;
 const AAAA_REQUEST_ID: u16 = 1;

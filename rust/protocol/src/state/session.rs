@@ -9,12 +9,10 @@ use std::time::{Duration, SystemTime};
 use prost::Message;
 use subtle::ConstantTimeEq;
 
-use crate::ratchet::{ChainKey, MessageKeys, RootKey};
-use crate::{kem, IdentityKey, KeyPair, PrivateKey, PublicKey, SignalProtocolError};
-
-use crate::consts;
 use crate::proto::storage::{session_structure, RecordStructure, SessionStructure};
+use crate::ratchet::{ChainKey, MessageKeys, RootKey};
 use crate::state::{KyberPreKeyId, PreKeyId, SignedPreKeyId};
+use crate::{consts, kem, IdentityKey, KeyPair, PrivateKey, PublicKey, SignalProtocolError};
 
 /// A distinct error type to keep from accidentally propagating deserialization errors.
 #[derive(Debug)]

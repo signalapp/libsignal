@@ -3,10 +3,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use ::attest::ias;
 use libsignal_bridge_macros::*;
 
 use crate::*;
-use ::attest::ias;
 
 #[bridge_fn(jni = false, node = false)]
 pub fn verify_signature(

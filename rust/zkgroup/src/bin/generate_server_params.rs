@@ -3,10 +3,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use base64::prelude::{Engine, BASE64_STANDARD};
-
 use std::io::Read;
 
+use base64::prelude::{Engine, BASE64_STANDARD};
 use rand::Rng;
 use zkgroup::{ServerSecretParams, RANDOMNESS_LEN};
 

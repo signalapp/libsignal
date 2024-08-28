@@ -3,12 +3,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use libsignal_protocol::*;
-use static_assertions::const_assert_eq;
-
 // Will be unused when building for Node only.
 #[allow(unused_imports)]
 use futures_util::FutureExt;
+use libsignal_protocol::*;
+use static_assertions::const_assert_eq;
 
 use crate::*;
 

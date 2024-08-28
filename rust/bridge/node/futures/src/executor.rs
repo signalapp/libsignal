@@ -3,11 +3,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use neon::prelude::*;
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::{Arc, Mutex};
 use std::task::{Poll, Wake};
+
+use neon::prelude::*;
 
 /// Adds support for executing futures on a Neon [Channel][].
 ///

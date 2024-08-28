@@ -10,9 +10,6 @@ use std::string::ToString;
 use std::sync::Arc;
 use std::time::Duration;
 
-use crate::infra::host::Host;
-use crate::timeouts::{WS_KEEP_ALIVE_INTERVAL, WS_MAX_IDLE_INTERVAL};
-use crate::utils::ObservableEvent;
 use ::http::uri::PathAndQuery;
 use ::http::Uri;
 use async_trait::async_trait;
@@ -23,7 +20,10 @@ use crate::infra::connection_manager::{
     MultiRouteConnectionManager, SingleRouteThrottlingConnectionManager,
 };
 use crate::infra::errors::TransportConnectError;
+use crate::infra::host::Host;
 use crate::infra::ws::WebSocketConfig;
+use crate::timeouts::{WS_KEEP_ALIVE_INTERVAL, WS_MAX_IDLE_INTERVAL};
+use crate::utils::ObservableEvent;
 
 pub mod certs;
 pub mod connection_manager;

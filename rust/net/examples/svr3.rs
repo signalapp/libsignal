@@ -14,9 +14,6 @@ use async_trait::async_trait;
 use base64::prelude::{Engine, BASE64_STANDARD};
 use clap::Parser;
 use colored::Colorize as _;
-use nonzero_ext::nonzero;
-use rand_core::{CryptoRngCore, OsRng, RngCore};
-
 use libsignal_net::auth::Auth;
 use libsignal_net::enclave::PpssSetup;
 use libsignal_net::env::Svr3Env;
@@ -24,6 +21,8 @@ use libsignal_net::infra::tcp_ssl::DirectConnector;
 use libsignal_net::infra::TransportConnector;
 use libsignal_net::svr3::traits::*;
 use libsignal_net::svr3::{Error, OpaqueMaskedShareSet};
+use nonzero_ext::nonzero;
+use rand_core::{CryptoRngCore, OsRng, RngCore};
 
 #[derive(Parser, Debug)]
 struct Args {

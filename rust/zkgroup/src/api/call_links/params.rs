@@ -3,13 +3,13 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use partial_default::PartialDefault;
+use serde::{Deserialize, Serialize};
+
 use crate::common::errors::*;
 use crate::common::serialization::ReservedByte;
 use crate::common::sho::*;
-
 use crate::{api, crypto};
-use partial_default::PartialDefault;
-use serde::{Deserialize, Serialize};
 
 #[derive(Copy, Clone, Serialize, Deserialize, PartialDefault)]
 pub struct CallLinkSecretParams {

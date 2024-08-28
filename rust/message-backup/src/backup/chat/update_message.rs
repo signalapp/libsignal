@@ -167,11 +167,10 @@ mod test {
     use assert_matches::assert_matches;
     use test_case::test_case;
 
+    use super::*;
     use crate::backup::call::CallError;
     use crate::backup::chat::testutil::TestContext;
     use crate::proto::backup::chat_update_message::Update as ChatUpdateProto;
-
-    use super::*;
 
     impl proto::SimpleChatUpdate {
         pub(crate) fn test_data() -> Self {

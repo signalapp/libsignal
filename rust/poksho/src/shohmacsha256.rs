@@ -3,9 +3,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::cmp;
+
 use hmac::{Hmac, Mac};
 use sha2::Sha256;
-use std::cmp;
 
 use crate::shoapi::ShoApi;
 

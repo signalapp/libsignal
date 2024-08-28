@@ -3,12 +3,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use super::*;
-
-use crate::net::chat::{ChatListener, MakeChatListener, ServerMessageAck};
+use std::ffi::{c_uchar, c_void};
 
 use libsignal_net::chat::ChatServiceError;
-use std::ffi::{c_uchar, c_void};
+
+use super::*;
+use crate::net::chat::{ChatListener, MakeChatListener, ServerMessageAck};
 
 type ReceivedIncomingMessage = extern "C" fn(
     ctx: *mut c_void,

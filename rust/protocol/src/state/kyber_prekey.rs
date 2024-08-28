@@ -3,12 +3,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use crate::proto::storage::SignedPreKeyRecordStructure;
+use std::fmt;
 
+use crate::proto::storage::SignedPreKeyRecordStructure;
 use crate::state::GenericSignedPreKey;
 use crate::{kem, PrivateKey, Result, Timestamp};
-
-use std::fmt;
 
 /// A unique identifier selecting among this client's known signed pre-keys.
 #[derive(Copy, Clone, Debug, Hash, Eq, PartialEq, Ord, PartialOrd)]

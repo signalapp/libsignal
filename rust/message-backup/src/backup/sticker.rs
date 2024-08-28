@@ -138,9 +138,8 @@ impl TryFrom<proto::Sticker> for MessageSticker {
 mod test {
     use test_case::test_case;
 
-    use crate::backup::method::Store;
-
     use super::*;
+    use crate::backup::method::Store;
 
     impl proto::StickerPack {
         pub(crate) const TEST_ID: PackId = PackId(Self::TEST_ID_BYTES);

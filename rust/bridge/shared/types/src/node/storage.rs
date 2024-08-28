@@ -3,13 +3,14 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use super::*;
+use std::cell::RefCell;
+use std::sync::Arc;
 
 use async_trait::async_trait;
 use signal_neon_futures::*;
-use std::cell::RefCell;
-use std::sync::Arc;
 use uuid::Uuid;
+
+use super::*;
 
 pub struct NodePreKeyStore {
     js_channel: Channel,

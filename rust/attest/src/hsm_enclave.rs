@@ -7,8 +7,9 @@
 
 #![warn(missing_docs)]
 
-use log::*;
 use std::fmt;
+
+use log::*;
 
 use crate::{client_connection, snow_resolver};
 

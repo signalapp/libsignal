@@ -228,9 +228,8 @@ impl AuthCredentialWithPniZkcPresentation {
 mod test {
     use zkcredential::RANDOMNESS_LEN;
 
-    use crate::SECONDS_PER_DAY;
-
     use super::*;
+    use crate::SECONDS_PER_DAY;
 
     #[test]
     fn issue_receive_present() {

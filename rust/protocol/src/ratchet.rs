@@ -6,12 +6,13 @@
 mod keys;
 mod params;
 
+use rand::{CryptoRng, Rng};
+
 pub(crate) use self::keys::{ChainKey, MessageKeys, RootKey};
 pub use self::params::{AliceSignalProtocolParameters, BobSignalProtocolParameters};
 use crate::protocol::{CIPHERTEXT_MESSAGE_CURRENT_VERSION, CIPHERTEXT_MESSAGE_PRE_KYBER_VERSION};
 use crate::state::SessionState;
 use crate::{KeyPair, Result, SessionRecord};
-use rand::{CryptoRng, Rng};
 
 fn derive_keys(has_kyber: bool, secret_input: &[u8]) -> (RootKey, ChainKey) {
     let label = if has_kyber {

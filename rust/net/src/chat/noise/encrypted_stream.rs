@@ -13,11 +13,10 @@ use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 use uuid::Uuid;
 use zerocopy::{AsBytes, FromBytes, FromZeroes};
 
-use crate::infra::noise::{NoiseStream, Transport};
-
 use super::handshake::{HandshakeAuth, Handshaker, EPHEMERAL_KEY_LEN, STATIC_KEY_LEN};
 use super::waker::SharedWakers;
 use super::SendError;
+use crate::infra::noise::{NoiseStream, Transport};
 
 /// A Noise-encrypted stream that wraps an underlying block-based [`Transport`].
 ///
@@ -281,7 +280,6 @@ mod test {
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
     use super::*;
-
     use crate::chat::noise::handshake::PAYLOAD_AEAD_TAG_LEN;
     use crate::infra::noise::testutil::{echo_forever, TestStream};
     use crate::utils::testutil::TestWaker;

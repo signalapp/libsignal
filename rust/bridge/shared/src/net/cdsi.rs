@@ -10,7 +10,6 @@ use libsignal_bridge_types::net::cdsi::{CdsiLookup, LookupRequest};
 use libsignal_bridge_types::net::{ConnectionManager, TokioAsyncContext};
 use libsignal_net::auth::Auth;
 use libsignal_net::cdsi::{self, AciAndAccessKey, LookupResponse, E164};
-
 use libsignal_protocol::{Aci, SignalProtocolError};
 
 use crate::support::*;

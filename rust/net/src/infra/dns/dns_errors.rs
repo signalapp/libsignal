@@ -3,9 +3,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::io;
+
 use crate::infra::dns::dns_message;
 use crate::infra::dns::dns_message::MAX_DNS_UDP_MESSAGE_LEN;
-use std::io;
 
 #[derive(displaydoc::Display, Debug, thiserror::Error, Clone)]
 pub enum Error {

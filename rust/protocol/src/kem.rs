@@ -56,14 +56,14 @@ mod kyber768;
 #[cfg(feature = "mlkem1024")]
 mod mlkem1024;
 
-use crate::{Result, SignalProtocolError};
+use std::marker::PhantomData;
+use std::ops::Deref;
 
 use derive_where::derive_where;
 use displaydoc::Display;
-
-use std::marker::PhantomData;
-use std::ops::Deref;
 use subtle::ConstantTimeEq;
+
+use crate::{Result, SignalProtocolError};
 
 type SharedSecret = Box<[u8]>;
 

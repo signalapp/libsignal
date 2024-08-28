@@ -8,11 +8,6 @@ use std::time::Duration;
 
 use assert_matches::assert_matches;
 use async_trait::async_trait;
-use proptest::prelude::*;
-use proptest::test_runner::Config;
-use proptest_state_machine::{prop_state_machine, ReferenceStateMachine, StateMachineTest};
-use rand_core::OsRng;
-
 use libsignal_net::auth::Auth;
 use libsignal_net::enclave::PpssSetup;
 use libsignal_net::env::Svr3Env;
@@ -20,7 +15,10 @@ use libsignal_net::infra::ws::DefaultStream;
 use libsignal_net::svr3::traits::*;
 use libsignal_net::svr3::{Error, OpaqueMaskedShareSet};
 use libsignal_svr3::EvaluationResult;
-
+use proptest::prelude::*;
+use proptest::test_runner::Config;
+use proptest_state_machine::{prop_state_machine, ReferenceStateMachine, StateMachineTest};
+use rand_core::OsRng;
 use support::*;
 
 const MAX_TRIES_LIMIT: u32 = 10;

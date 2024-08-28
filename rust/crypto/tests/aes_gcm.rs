@@ -3,10 +3,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::collections::HashMap;
+
 use hex_literal::hex;
 use rand::Rng;
 use serde::Deserialize;
-use std::collections::HashMap;
 
 #[allow(dead_code)]
 #[derive(Deserialize, Debug)]

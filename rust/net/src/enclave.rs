@@ -442,6 +442,7 @@ mod test {
     use tokio::net::TcpStream;
     use tokio_boring_signal::SslStream;
 
+    use super::*;
     use crate::auth::Auth;
     use crate::infra::connection_manager::ConnectionAttemptOutcome;
     use crate::infra::errors::TransportConnectError;
@@ -449,8 +450,6 @@ mod test {
     use crate::infra::{
         Alpn, HttpRequestDecoratorSeq, RouteType, StreamAndInfo, TransportConnectionParams,
     };
-
-    use super::*;
 
     #[derive(Clone, Debug)]
     struct AlwaysFailingConnector;

@@ -8,6 +8,8 @@
 //! through the Intel Provisioning Certification Service (PCS), or a cache (PCCS).
 //! For specification of the json data structures within the OE structures,
 //! see <https://api.portal.trustedservices.intel.com/documentation>
+use std::time::SystemTime;
+
 use boring_signal::ec::EcKeyRef;
 use boring_signal::ecdsa::{EcdsaSig, EcdsaSigRef};
 use boring_signal::pkey::Public;
@@ -15,8 +17,6 @@ use chrono::Utc;
 use serde::Deserialize;
 use serde_json::value::RawValue;
 use strum::EnumCount;
-
-use std::time::SystemTime;
 
 use crate::cert_chain::CertChain;
 use crate::dcap::ecdsa::{deserialize_ecdsa_signature, EcdsaSigned};

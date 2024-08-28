@@ -7,15 +7,13 @@ use std::convert::TryInto as _;
 use std::num::{NonZeroU16, NonZeroU32};
 
 use base64::prelude::{Engine, BASE64_STANDARD};
-use rand::rngs::OsRng;
-
 use libsignal_bridge_macros::{bridge_fn, bridge_io};
 use libsignal_bridge_types::net::Svr3Clients;
+pub use libsignal_bridge_types::net::{ConnectionManager, Environment, TokioAsyncContext};
 use libsignal_net::auth::Auth;
 use libsignal_net::svr3::traits::*;
 use libsignal_net::svr3::{self, migrate_backup, restore_with_fallback, OpaqueMaskedShareSet};
-
-pub use libsignal_bridge_types::net::{ConnectionManager, Environment, TokioAsyncContext};
+use rand::rngs::OsRng;
 
 use crate::support::*;
 use crate::*;
@@ -162,8 +160,9 @@ async fn Svr3Remove(
 
 #[cfg(test)]
 mod test {
-    use super::*;
     use test_case::test_case;
+
+    use super::*;
 
     #[test_case(Environment::Staging; "staging")]
     #[test_case(Environment::Prod; "prod")]

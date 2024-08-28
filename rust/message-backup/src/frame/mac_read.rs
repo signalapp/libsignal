@@ -51,9 +51,8 @@ mod test {
     use hmac::{Hmac, Mac as _};
     use sha2::Sha256;
 
-    use crate::frame::HMAC_LEN;
-
     use super::*;
+    use crate::frame::HMAC_LEN;
 
     #[test]
     fn mac_read() {

@@ -3,14 +3,15 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use base64::prelude::{Engine as _, BASE64_STANDARD};
-use futures_util::stream::FuturesUnordered;
-use futures_util::StreamExt;
-use http::HeaderValue;
 use std::future;
 use std::future::Future;
 use std::sync::Arc;
 use std::time::Duration;
+
+use base64::prelude::{Engine as _, BASE64_STANDARD};
+use futures_util::stream::FuturesUnordered;
+use futures_util::StreamExt;
+use http::HeaderValue;
 
 /// Constructs the value of the `Authorization` header for the `Basic` auth scheme.
 pub(crate) fn basic_authorization(username: &str, password: &str) -> HeaderValue {
@@ -254,8 +255,6 @@ pub(crate) mod testutil {
 
 #[cfg(test)]
 mod test {
-    use super::*;
-
     use std::future::Future;
     use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
     use std::sync::Arc;
@@ -263,6 +262,8 @@ mod test {
 
     use assert_matches::assert_matches;
     use tokio::time;
+
+    use super::*;
 
     #[tokio::test(start_paused = true)]
     async fn first_ok_picks_the_result_from_earliest_finished_future() {

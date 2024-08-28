@@ -5,13 +5,13 @@
 
 mod support;
 
+use std::time::SystemTime;
+
 use futures_util::FutureExt;
 use libsignal_protocol::*;
 use rand::rngs::OsRng;
 use rand::seq::SliceRandom;
 use rand::Rng;
-
-use std::time::SystemTime;
 use support::*;
 use uuid::Uuid;
 

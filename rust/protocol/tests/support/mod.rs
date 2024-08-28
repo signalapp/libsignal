@@ -7,13 +7,13 @@
 // APIs will always be considered dead code.
 #![allow(dead_code)]
 
+use std::ops::RangeFrom;
+use std::time::SystemTime;
+
 use futures_util::FutureExt;
 use libsignal_protocol::*;
 use rand::rngs::OsRng;
 use rand::{CryptoRng, Rng};
-
-use std::ops::RangeFrom;
-use std::time::SystemTime;
 
 // Deliberately not reusing the constants from `protocol`.
 pub(crate) const PRE_KYBER_MESSAGE_VERSION: u32 = 3;

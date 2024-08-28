@@ -8,6 +8,8 @@
 use curve25519_dalek_signal::constants::RISTRETTO_BASEPOINT_POINT;
 use curve25519_dalek_signal::ristretto::RistrettoPoint;
 use curve25519_dalek_signal::scalar::Scalar;
+use hex_literal::hex;
+use lazy_static::lazy_static;
 use partial_default::PartialDefault;
 use serde::{Deserialize, Serialize};
 
@@ -22,9 +24,6 @@ use crate::crypto::{
 use crate::{
     NUM_AUTH_CRED_ATTRIBUTES, NUM_PROFILE_KEY_CRED_ATTRIBUTES, NUM_RECEIPT_CRED_ATTRIBUTES,
 };
-
-use hex_literal::hex;
-use lazy_static::lazy_static;
 
 lazy_static! {
     static ref SYSTEM_PARAMS: SystemParams =
@@ -472,10 +471,9 @@ impl BlindedReceiptCredentialWithSecretNonce {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use crate::common::constants::*;
     use crate::crypto::proofs;
-
-    use super::*;
 
     #[test]
     fn test_system() {

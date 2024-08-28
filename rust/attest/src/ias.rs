@@ -134,9 +134,10 @@ impl CertChain {
 
 #[cfg(test)]
 mod test {
+    use std::time::Duration;
+
     use boring_signal::base64::decode_block;
     use chrono::DateTime;
-    use std::time::Duration;
 
     use super::*;
 

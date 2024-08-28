@@ -8,15 +8,10 @@ use libsignal_bridge_types::media::SanitizedMetadata;
 use signal_media::sanitize::{mp4, webp};
 
 use crate::io::{AsyncInput, InputStream, SyncInput, SyncInputStream};
-
 // Not used by the Java bridge.
 #[allow(unused_imports)]
 use crate::support::*;
 use crate::*;
-
-// Will be unused when building for Node only.
-#[allow(unused_imports)]
-use futures_util::FutureExt;
 
 bridge_handle_fns!(SanitizedMetadata);
 

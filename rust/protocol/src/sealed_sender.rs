@@ -3,14 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use crate::{
-    message_encrypt, Aci, CiphertextMessageType, DeviceId, Direction, IdentityKey, IdentityKeyPair,
-    IdentityKeyStore, KeyPair, KyberPreKeyStore, PreKeySignalMessage, PreKeyStore, PrivateKey,
-    ProtocolAddress, PublicKey, Result, ServiceId, ServiceIdFixedWidthBinaryBytes, SessionRecord,
-    SessionStore, SignalMessage, SignalProtocolError, SignedPreKeyStore, Timestamp,
-};
-
-use crate::{crypto, curve, proto, session_cipher};
+use std::ops::Range;
+use std::time::SystemTime;
 
 use aes_gcm_siv::aead::generic_array::typenum::Unsigned;
 use aes_gcm_siv::{AeadInPlace, Aes256GcmSiv, KeyInit};
@@ -18,13 +12,17 @@ use arrayref::array_ref;
 use indexmap::IndexMap;
 use itertools::Itertools;
 use prost::Message;
+use proto::sealed_sender::unidentified_sender_message::message::Type as ProtoMessageType;
 use rand::{CryptoRng, Rng};
 use subtle::ConstantTimeEq;
 
-use proto::sealed_sender::unidentified_sender_message::message::Type as ProtoMessageType;
-
-use std::ops::Range;
-use std::time::SystemTime;
+use crate::{
+    crypto, curve, message_encrypt, proto, session_cipher, Aci, CiphertextMessageType, DeviceId,
+    Direction, IdentityKey, IdentityKeyPair, IdentityKeyStore, KeyPair, KyberPreKeyStore,
+    PreKeySignalMessage, PreKeyStore, PrivateKey, ProtocolAddress, PublicKey, Result, ServiceId,
+    ServiceIdFixedWidthBinaryBytes, SessionRecord, SessionStore, SignalMessage,
+    SignalProtocolError, SignedPreKeyStore, Timestamp,
+};
 
 #[derive(Debug, Clone)]
 pub struct ServerCertificate {
@@ -603,10 +601,10 @@ impl UnidentifiedSenderMessage {
 }
 
 mod sealed_sender_v1 {
-    use super::*;
-
     #[cfg(test)]
     use std::fmt;
+
+    use super::*;
 
     /// A symmetric cipher key and a MAC key, along with a "chain key" consumed in
     /// [`StaticKeys::calculate`].

@@ -494,9 +494,8 @@ impl<T: Debug> Debug for NoValidation<T> {
 mod test {
     use test_case::test_case;
 
-    use crate::proto::backup::{group_change_chat_update, group_invitation_revoked_update};
-
     use super::*;
+    use crate::proto::backup::{group_change_chat_update, group_invitation_revoked_update};
 
     const ACI_BYTES: [u8; 16] = [0xaa; 16];
     const ACI: Aci = Aci::from_uuid_bytes(ACI_BYTES);

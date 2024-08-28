@@ -2,11 +2,10 @@
 // Copyright 2023 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
-use criterion::{criterion_group, criterion_main, Criterion};
-
-use libsignal_protocol::kem::{KeyPair, KeyType};
-
 use std::hint::black_box;
+
+use criterion::{criterion_group, criterion_main, Criterion};
+use libsignal_protocol::kem::{KeyPair, KeyType};
 
 fn bench_kem(c: &mut Criterion) {
     for key_type in [KeyType::Kyber768, KeyType::Kyber1024] {

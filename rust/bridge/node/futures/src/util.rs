@@ -3,8 +3,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use neon::prelude::*;
 use std::any::Any;
+
+use neon::prelude::*;
 
 // See https://github.com/rust-lang/rfcs/issues/1389
 pub(crate) fn describe_panic(any: &Box<dyn Any + Send>) -> String {

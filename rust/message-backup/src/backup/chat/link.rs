@@ -5,7 +5,6 @@
 
 use crate::backup::file::{FilePointer, FilePointerError};
 use crate::backup::time::Timestamp;
-
 use crate::proto::backup as proto;
 
 #[derive(Debug, serde::Serialize)]
@@ -60,9 +59,8 @@ impl TryFrom<proto::LinkPreview> for LinkPreview {
 mod test {
     use test_case::test_case;
 
-    use crate::backup::time::testutil::MillisecondsSinceEpoch;
-
     use super::*;
+    use crate::backup::time::testutil::MillisecondsSinceEpoch;
 
     impl proto::LinkPreview {
         fn test_data() -> Self {

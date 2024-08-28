@@ -12,13 +12,8 @@
 //! 3. Manipulate the default evidence/endorsements
 //! 4. Create the final evidence/endorsements with [`FakeAttestation::sign`]
 
-use crate::cert_chain::testutil::TestCert;
-use crate::cert_chain::CertChain;
-use crate::dcap::ecdsa::EcdsaSigned;
-use crate::dcap::endorsements::SgxEndorsements;
-use crate::dcap::evidence::Evidence;
-use crate::dcap::revocation_list::RevocationList;
-use crate::dcap::{attest_impl, Attestation};
+use std::time::SystemTime;
+
 use boring_signal::asn1::{Asn1Integer, Asn1IntegerRef};
 use boring_signal::bn::{BigNum, BigNumContext};
 use boring_signal::ec::{EcGroup, EcKey, EcKeyRef};
@@ -28,7 +23,13 @@ use boring_signal::nid::Nid;
 use boring_signal::pkey::{PKey, Private, Public};
 use chrono::Utc;
 
-use std::time::SystemTime;
+use crate::cert_chain::testutil::TestCert;
+use crate::cert_chain::CertChain;
+use crate::dcap::ecdsa::EcdsaSigned;
+use crate::dcap::endorsements::SgxEndorsements;
+use crate::dcap::evidence::Evidence;
+use crate::dcap::revocation_list::RevocationList;
+use crate::dcap::{attest_impl, Attestation};
 
 const EVIDENCE_BYTES: &[u8] = include_bytes!("../../tests/data/dcap.evidence");
 const ENDORSEMENT_BYTES: &[u8] = include_bytes!("../../tests/data/dcap.endorsements");

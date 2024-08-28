@@ -3,15 +3,16 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use crate::common::constants::*;
-use crate::common::errors::*;
-use crate::common::sho::*;
-use crate::common::simple_types::*;
 use curve25519_dalek_signal::constants::RISTRETTO_BASEPOINT_POINT;
 use curve25519_dalek_signal::ristretto::RistrettoPoint;
 use curve25519_dalek_signal::scalar::Scalar;
 use partial_default::PartialDefault;
 use serde::{Deserialize, Serialize};
+
+use crate::common::constants::*;
+use crate::common::errors::*;
+use crate::common::sho::*;
+use crate::common::simple_types::*;
 
 #[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize, PartialDefault)]
 pub struct KeyPair {

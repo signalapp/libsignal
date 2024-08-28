@@ -362,9 +362,8 @@ mod sender_key_record_add_sender_key_state_tests {
     use itertools::Itertools;
     use rand::rngs::OsRng;
 
-    use crate::KeyPair;
-
     use super::*;
+    use crate::KeyPair;
 
     fn random_public_key() -> PublicKey {
         KeyPair::generate(&mut OsRng).public_key

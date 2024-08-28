@@ -6,7 +6,6 @@
 use std::process::ExitCode;
 
 use clap::{Args, Parser, ValueEnum};
-
 use libsignal_net::auth::Auth;
 use libsignal_net::chat::test_support::simple_chat_service;
 use libsignal_net::chat::ChatServiceError;

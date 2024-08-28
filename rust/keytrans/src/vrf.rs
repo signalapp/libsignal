@@ -136,8 +136,9 @@ impl PublicKey {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use hex_literal::hex;
+
+    use super::*;
 
     struct TestVector {
         pk: [u8; 32],

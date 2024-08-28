@@ -3,13 +3,14 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use crate::*;
+use std::marker::PhantomData;
+use std::num::{NonZeroU16, NonZeroU32};
+use std::panic::RefUnwindSafe;
 
 use aes_gcm_siv::aead::rand_core::CryptoRngCore;
 use async_trait::async_trait;
 use futures_util::future::join3;
 use http::uri::PathAndQuery;
-
 use libsignal_net::auth::Auth;
 use libsignal_net::enclave::{
     Cdsi, EnclaveEndpoint, EnclaveEndpointConnection, EnclaveKind, Nitro, PpssSetup, Sgx, Tpm2Snp,
@@ -29,9 +30,8 @@ use libsignal_net::svr3::{Error, OpaqueMaskedShareSet};
 use libsignal_net::timeouts::ONE_ROUTE_CONNECTION_TIMEOUT;
 use libsignal_net::utils::ObservableEvent;
 use libsignal_svr3::EvaluationResult;
-use std::marker::PhantomData;
-use std::num::{NonZeroU16, NonZeroU32};
-use std::panic::RefUnwindSafe;
+
+use crate::*;
 
 pub mod cdsi;
 pub mod chat;
@@ -328,9 +328,10 @@ mod empty_env {
 
 #[cfg(test)]
 mod test {
-    use super::*;
     use assert_matches::assert_matches;
     use test_case::test_case;
+
+    use super::*;
 
     #[test_case(Environment::Staging; "staging")]
     #[test_case(Environment::Prod; "prod")]

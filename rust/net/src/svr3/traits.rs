@@ -10,14 +10,12 @@
 use std::num::NonZeroU32;
 
 use async_trait::async_trait;
+use libsignal_svr3::EvaluationResult;
 use rand_core::CryptoRngCore;
 
-use libsignal_svr3::EvaluationResult;
-
+use super::{ppss_ops, Error, OpaqueMaskedShareSet};
 use crate::enclave::PpssSetup;
 use crate::infra::AsyncDuplexStream;
-
-use super::{ppss_ops, Error, OpaqueMaskedShareSet};
 
 #[async_trait]
 pub trait Backup {

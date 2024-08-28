@@ -3,17 +3,19 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use crate::infra::dns::custom_resolver::{CustomDnsResolver, DnsTransport};
-use crate::infra::dns::dns_errors::Error;
-use crate::infra::dns::lookup_result::LookupResult;
-use crate::infra::{dns, DnsSource};
-use async_trait::async_trait;
-use either::Either;
-use itertools::Itertools;
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::net::SocketAddr;
 use std::sync::Arc;
+
+use async_trait::async_trait;
+use either::Either;
+use itertools::Itertools;
+
+use crate::infra::dns::custom_resolver::{CustomDnsResolver, DnsTransport};
+use crate::infra::dns::dns_errors::Error;
+use crate::infra::dns::lookup_result::LookupResult;
+use crate::infra::{dns, DnsSource};
 
 #[derive(Clone, Debug)]
 pub struct DnsLookupRequest {

@@ -3,17 +3,16 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use libsignal_bridge_macros::*;
-
-#[allow(unused_imports)]
-use crate::support::*;
-use crate::*;
-
 #[allow(unused_imports)]
 use ::usernames::{
     create_for_username, decrypt_username, NicknameLimits, Username, UsernameError,
     UsernameLinkError,
 };
+use libsignal_bridge_macros::*;
+
+#[allow(unused_imports)]
+use crate::support::*;
+use crate::*;
 
 #[bridge_fn]
 pub fn Username_Hash(username: String) -> Result<[u8; 32], UsernameError> {

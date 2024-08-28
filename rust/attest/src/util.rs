@@ -97,9 +97,8 @@ pub(crate) fn system_time_to_asn1_time(
 
 #[cfg(test)]
 mod test {
-    use crate::endian::{UInt16LE, UInt32LE, UInt64LE};
-
     use super::*;
+    use crate::endian::{UInt16LE, UInt32LE, UInt64LE};
 
     #[test]
     fn test_strip_trailing_null_byte() {

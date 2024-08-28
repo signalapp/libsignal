@@ -3,11 +3,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use crate::{Error, Result};
-
 use hmac::{Hmac, Mac};
 use sha1::Sha1;
 use sha2::{Digest, Sha256, Sha512};
+
+use crate::{Error, Result};
 
 #[derive(Clone)]
 pub enum CryptographicMac {

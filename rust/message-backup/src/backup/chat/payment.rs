@@ -258,9 +258,8 @@ mod test {
 
     use test_case::test_case;
 
-    use crate::backup::time::testutil::MillisecondsSinceEpoch;
-
     use super::*;
+    use crate::backup::time::testutil::MillisecondsSinceEpoch;
 
     impl FromStr for MobAmount {
         type Err = ParseError;

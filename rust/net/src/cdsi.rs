@@ -480,17 +480,15 @@ mod test {
     use uuid::Uuid;
     use warp::Filter as _;
 
+    use super::*;
     use crate::auth::Auth;
     use crate::infra::test::shared::InMemoryWarpConnector;
-
     use crate::infra::ws::testutil::{
         fake_websocket, mock_connection_info, run_attested_server, AttestedServerOutput,
         FAKE_ATTESTATION,
     };
     use crate::infra::ws::WebSocketClient;
     use crate::utils::ObservableEvent;
-
-    use super::*;
 
     #[test]
     fn parse_lookup_response_entries() {

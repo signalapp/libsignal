@@ -289,14 +289,13 @@ impl ErrorStatus {
 mod test {
     use assert_matches::assert_matches;
     use nonzero_ext::nonzero;
-    use prost::Message;
-    use rand_core::{OsRng, RngCore};
-    use test_case::test_case;
-
     use oprf::ciphersuite::hash_to_group;
     use ppss::testutils::OPRFServerSet;
     use ppss::{backup_secret, begin_oprfs, finalize_oprfs};
+    use prost::Message;
     use proto::svr3;
+    use rand_core::{OsRng, RngCore};
+    use test_case::test_case;
 
     use super::*;
 

@@ -4,13 +4,12 @@
 //
 
 mod support;
-use support::*;
+use std::time::SystemTime;
 
 use futures_util::FutureExt;
 use libsignal_protocol::*;
 use rand::rngs::OsRng;
-
-use std::time::SystemTime;
+use support::*;
 use uuid::Uuid;
 
 #[test]

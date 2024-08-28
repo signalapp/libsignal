@@ -5,8 +5,9 @@
 //! Implements the Prefix Tree.
 use std::result::Result;
 
-use crate::wire::PrefixProof as SearchResult;
 use sha2::{Digest as _, Sha256};
+
+use crate::wire::PrefixProof as SearchResult;
 
 const KEY_LENGTH: usize = 32;
 

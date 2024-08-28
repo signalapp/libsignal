@@ -3,14 +3,16 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use crate::infra::errors::LogSafeDisplay;
-use crate::infra::ws::{AttestedConnectionError, WebSocketConnectError, WebSocketServiceError};
+use std::num::NonZeroU32;
+
 use bincode::Options as _;
 use libsignal_svr3::{EvaluationResult, MaskedShareSet};
 use rand_core::CryptoRngCore;
 use serde::{Deserialize, Serialize};
-use std::num::NonZeroU32;
 use thiserror::Error;
+
+use crate::infra::errors::LogSafeDisplay;
+use crate::infra::ws::{AttestedConnectionError, WebSocketConnectError, WebSocketServiceError};
 
 mod ppss_ops;
 
@@ -295,12 +297,12 @@ pub mod test_support {
 
 #[cfg(test)]
 mod test {
-    use super::*;
-
     use assert_matches::assert_matches;
     use async_trait::async_trait;
     use nonzero_ext::nonzero;
     use rand_core::{OsRng, RngCore};
+
+    use super::*;
 
     fn new_empty_share_set() -> OpaqueMaskedShareSet {
         OpaqueMaskedShareSet {

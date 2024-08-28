@@ -5,16 +5,15 @@
 
 use std::time::SystemTime;
 
-use crate::{
-    kem, Direction, IdentityKeyStore, KeyPair, KyberPreKeyId, KyberPreKeyStore, PreKeyBundle,
-    PreKeyId, PreKeySignalMessage, PreKeyStore, ProtocolAddress, Result, SessionRecord,
-    SessionStore, SignalProtocolError, SignedPreKeyStore,
-};
+use rand::{CryptoRng, Rng};
 
-use crate::ratchet;
 use crate::ratchet::{AliceSignalProtocolParameters, BobSignalProtocolParameters};
 use crate::state::GenericSignedPreKey;
-use rand::{CryptoRng, Rng};
+use crate::{
+    kem, ratchet, Direction, IdentityKeyStore, KeyPair, KyberPreKeyId, KyberPreKeyStore,
+    PreKeyBundle, PreKeyId, PreKeySignalMessage, PreKeyStore, ProtocolAddress, Result,
+    SessionRecord, SessionStore, SignalProtocolError, SignedPreKeyStore,
+};
 
 #[derive(Default)]
 pub struct PreKeysUsed {

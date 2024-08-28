@@ -130,9 +130,8 @@ mod test {
     use hmac::{Hmac, Mac};
     use sha2::Sha256;
 
-    use crate::hash::{local_pin_hash, verify_local_pin_hash, PinHash};
-
     use super::*;
+    use crate::hash::{local_pin_hash, verify_local_pin_hash, PinHash};
 
     fn hmac_sha256(key: &[u8], data: &[u8]) -> [u8; 32] {
         type HmacSha256 = Hmac<Sha256>;

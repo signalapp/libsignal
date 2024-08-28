@@ -22,7 +22,6 @@
 // Curve signing key, using the NIST p-256 curve.
 
 use std::collections::HashMap;
-
 use std::time::SystemTime;
 
 use boring_signal::asn1::{Asn1Time, Asn1TimeRef};
@@ -651,12 +650,12 @@ mod test {
 
     use std::time::{Duration, SystemTime};
 
-    use crate::dcap::endorsements::{QeTcbLevel, TcbInfoVersion};
-    use crate::dcap::fakes::FakeAttestation;
     use boring_signal::bn::BigNum;
     use hex_literal::hex;
 
     use super::*;
+    use crate::dcap::endorsements::{QeTcbLevel, TcbInfoVersion};
+    use crate::dcap::fakes::FakeAttestation;
 
     const EXPECTED_MRENCLAVE: MREnclave =
         hex!("337ac97ce088a132daeb1308ea3159f807de4a827e875b2c90ce21bf4751196f");

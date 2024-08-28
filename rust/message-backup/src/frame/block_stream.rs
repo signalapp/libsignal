@@ -127,10 +127,11 @@ impl<R: AsyncRead + Unpin, const N: usize> ExactReadBlockStream<N, R> {
 
 #[cfg(test)]
 mod test {
-    use super::*;
     use assert_matches::assert_matches;
     use futures::executor::block_on;
     use futures::{FutureExt, StreamExt, TryStreamExt as _};
+
+    use super::*;
 
     #[test]
     fn empty() {

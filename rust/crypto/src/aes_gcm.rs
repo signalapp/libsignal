@@ -3,13 +3,14 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use crate::{Aes256Ctr32, Error, Result};
 use aes::cipher::generic_array::GenericArray;
 use aes::cipher::{BlockEncrypt, KeyInit};
 use aes::Aes256;
 use ghash::universal_hash::UniversalHash;
 use ghash::GHash;
 use subtle::ConstantTimeEq;
+
+use crate::{Aes256Ctr32, Error, Result};
 
 pub const TAG_SIZE: usize = 16;
 pub const NONCE_SIZE: usize = 12;

@@ -137,15 +137,14 @@ impl TlsProxyConnector {
 
 #[cfg(test)]
 mod test {
-    use super::super::super::testutil::*;
-    use super::*;
-
     use std::borrow::Cow;
     use std::collections::HashMap;
     use std::net::Ipv6Addr;
 
     use assert_matches::assert_matches;
 
+    use super::super::super::testutil::*;
+    use super::*;
     use crate::infra::dns::lookup_result::LookupResult;
     use crate::infra::host::Host;
     use crate::infra::tcp_ssl::proxy::testutil::{

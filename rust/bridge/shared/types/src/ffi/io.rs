@@ -9,9 +9,8 @@ use std::io;
 use async_trait::async_trait;
 use libsignal_protocol::SignalProtocolError;
 
-use crate::io::{InputStream, InputStreamRead, SyncInputStream};
-
 use super::CallbackError;
+use crate::io::{InputStream, InputStreamRead, SyncInputStream};
 
 type Read =
     extern "C" fn(ctx: *mut c_void, buf: *mut u8, buf_len: usize, amount_read: *mut usize) -> c_int;

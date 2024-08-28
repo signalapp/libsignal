@@ -7,17 +7,18 @@
 //!
 //! These implementations are purely in-memory, and therefore most likely useful for testing.
 
+use std::borrow::Cow;
+use std::collections::HashMap;
+
+use async_trait::async_trait;
+use uuid::Uuid;
+
 use crate::storage::traits;
 use crate::{
     IdentityKey, IdentityKeyPair, KyberPreKeyId, KyberPreKeyRecord, PreKeyId, PreKeyRecord,
     ProtocolAddress, Result, SenderKeyRecord, SessionRecord, SignalProtocolError, SignedPreKeyId,
     SignedPreKeyRecord,
 };
-
-use async_trait::async_trait;
-use std::borrow::Cow;
-use std::collections::HashMap;
-use uuid::Uuid;
 
 /// Reference implementation of [traits::IdentityKeyStore].
 #[derive(Clone)]

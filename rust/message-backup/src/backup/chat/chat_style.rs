@@ -405,11 +405,10 @@ mod test {
 
     use test_case::test_case;
 
+    use super::*;
     use crate::backup::chat::chat_style::Color;
     use crate::backup::chat::testutil::TestContext;
     use crate::backup::method::Store;
-
-    use super::*;
 
     impl proto::ChatStyle {
         fn test_data() -> Self {

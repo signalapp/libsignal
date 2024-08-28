@@ -11,9 +11,8 @@ use std::task::{ready, Poll};
 use futures_util::{SinkExt as _, StreamExt as _};
 use snow::HandshakeState;
 
-use crate::infra::noise::{NoiseStream, Transport};
-
 use super::SendError;
+use crate::infra::noise::{NoiseStream, Transport};
 
 /// Future that performs a Noise handshake over a [`Transport`].
 pub(super) struct Handshaker<S> {
@@ -271,10 +270,9 @@ mod test {
     use futures_util::FutureExt;
     use test_case::test_case;
 
+    use super::*;
     use crate::infra::noise::testutil::TestStream;
     use crate::utils::testutil::TestWaker;
-
-    use super::*;
 
     #[test_case(false; "flush")]
     #[test_case(true; "shutdown")]

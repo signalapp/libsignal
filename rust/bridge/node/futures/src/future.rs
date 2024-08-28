@@ -3,7 +3,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use neon::prelude::*;
 use std::future::Future;
 use std::marker::PhantomData;
 use std::mem;
@@ -11,6 +10,8 @@ use std::panic::{catch_unwind, resume_unwind, AssertUnwindSafe};
 use std::pin::Pin;
 use std::sync::{Arc, Mutex, Weak};
 use std::task::{Poll, Waker};
+
+use neon::prelude::*;
 
 use crate::result::*;
 use crate::util::call_method;

@@ -5,7 +5,6 @@
 
 use futures_util::FutureExt;
 use libsignal_protocol_v21::*;
-
 use rand_v7::{thread_rng, Rng};
 
 fn address(id: &str) -> ProtocolAddress {

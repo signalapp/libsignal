@@ -4,18 +4,16 @@
 //
 
 use ::zkgroup;
-
 use partial_default::PartialDefault;
-
 use serde::Deserialize;
 use zkgroup::groups::*;
 use zkgroup::profiles::*;
 use zkgroup::receipts::*;
+pub use zkgroup::Timestamp;
 use zkgroup::*;
 
 use crate::support::*;
 use crate::*;
-pub use zkgroup::Timestamp;
 
 /// Checks that `bytes` can be deserialized as a `T` using our standard bincode settings.
 pub fn validate_serialization<'a, T: Deserialize<'a> + PartialDefault>(

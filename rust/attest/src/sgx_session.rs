@@ -110,9 +110,8 @@ pub mod testutil {
 mod tests {
     use std::time::{Duration, SystemTime};
 
-    use crate::client_connection;
-
     use super::*;
+    use crate::client_connection;
 
     #[test]
     fn test_clock_skew() {

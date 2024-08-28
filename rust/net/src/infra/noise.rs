@@ -294,10 +294,9 @@ mod test {
     use testutil::echo_forever;
     use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
 
-    use crate::utils::testutil::TestWaker;
-
     use super::testutil::TestStream;
     use super::*;
+    use crate::utils::testutil::TestWaker;
 
     fn new_handshaken_pair() -> Result<(TransportState, TransportState), snow::Error> {
         const PATTERN: &str = "Noise_NN_25519_ChaChaPoly_SHA256";

@@ -389,8 +389,6 @@ mod test {
     use std::sync::{Arc, Mutex};
     use std::time::Duration;
 
-    use crate::infra::host::Host;
-    use crate::timeouts::CONNECTION_ROUTE_MAX_COOLDOWN;
     use assert_matches::assert_matches;
     use async_trait::async_trait;
     use futures_util::FutureExt;
@@ -401,6 +399,7 @@ mod test {
     use super::*;
     use crate::infra::certs::RootCertificates;
     use crate::infra::connection_manager::SingleRouteThrottlingConnectionManager;
+    use crate::infra::host::Host;
     use crate::infra::test::shared::{
         ClassifiableTestError, LONG_CONNECTION_TIME, NORMAL_CONNECTION_TIME, TIMEOUT_DURATION,
         TIME_ADVANCE_VALUE,
@@ -408,6 +407,7 @@ mod test {
     use crate::infra::{
         ConnectionParams, HttpRequestDecoratorSeq, RouteType, TransportConnectionParams,
     };
+    use crate::timeouts::CONNECTION_ROUTE_MAX_COOLDOWN;
     use crate::utils::{sleep_and_catch_up, ObservableEvent};
 
     #[derive(Clone, Debug)]

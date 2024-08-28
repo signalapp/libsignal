@@ -9,7 +9,12 @@ use std::marker::PhantomData;
 use attest::enclave::Error as EnclaveError;
 use attest::hsm_enclave::Error as HsmEnclaveError;
 use device_transfer::Error as DeviceTransferError;
+pub use jni::objects::{
+    AutoElements, JByteArray, JClass, JLongArray, JObject, JObjectArray, JString, ReleaseMode,
+};
 use jni::objects::{GlobalRef, JThrowable, JValue, JValueOwned};
+pub use jni::sys::{jboolean, jint, jlong};
+pub use jni::JNIEnv;
 use jni::JavaVM;
 use libsignal_net::infra::ws::WebSocketServiceError;
 use libsignal_net::svr3::Error as Svr3Error;
@@ -19,12 +24,6 @@ use signal_pin::Error as PinError;
 use usernames::{UsernameError, UsernameLinkError};
 
 use crate::net::cdsi::CdsiError;
-
-pub use jni::objects::{
-    AutoElements, JByteArray, JClass, JLongArray, JObject, JObjectArray, JString, ReleaseMode,
-};
-pub use jni::sys::{jboolean, jint, jlong};
-pub use jni::JNIEnv;
 
 #[macro_use]
 mod args;

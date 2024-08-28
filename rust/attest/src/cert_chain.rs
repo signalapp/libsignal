@@ -3,14 +3,14 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::time::SystemTime;
+
 use boring_signal::ec::EcKey;
 use boring_signal::pkey::Public;
 use boring_signal::stack::{Stack, Stackable};
 use boring_signal::x509::crl::X509CRLRef;
 use boring_signal::x509::store::X509StoreRef;
 use boring_signal::x509::{X509StoreContext, X509};
-
-use std::time::SystemTime;
 
 use crate::error::ContextError;
 use crate::expireable::Expireable;
@@ -162,7 +162,7 @@ impl Expireable for CertChain {
 #[cfg(test)]
 /// Utilities for creating test certificates / crls
 pub mod testutil {
-    use super::CertChain;
+    use std::borrow::Borrow;
 
     use boring_signal::asn1::{Asn1Integer, Asn1IntegerRef, Asn1Time};
     use boring_signal::bn::{BigNum, MsbOption};
@@ -173,7 +173,8 @@ pub mod testutil {
     use boring_signal::x509::crl::{X509CRLBuilder, X509Revoked, X509CRL};
     use boring_signal::x509::extension::BasicConstraints;
     use boring_signal::x509::{X509Name, X509};
-    use std::borrow::Borrow;
+
+    use super::CertChain;
 
     /// generate EC private key
     fn pkey() -> PKey<Private> {
@@ -309,14 +310,14 @@ pub mod testutil {
 
 #[cfg(test)]
 mod test {
-    use super::testutil::*;
-    use super::*;
-
     use assert_matches::assert_matches;
     use boring_signal::nid::Nid;
     use boring_signal::x509::store::{X509Store, X509StoreBuilder};
     use boring_signal::x509::verify::X509VerifyFlags;
     use boring_signal::x509::X509Ref;
+
+    use super::testutil::*;
+    use super::*;
 
     fn names(certs: &[X509]) -> Vec<String> {
         certs

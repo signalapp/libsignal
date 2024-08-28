@@ -3,12 +3,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use super::*;
+use std::ffi::{c_int, c_uint, c_void};
 
 use async_trait::async_trait;
 use uuid::Uuid;
 
-use std::ffi::{c_int, c_uint, c_void};
+use super::*;
 
 type GetIdentityKeyPair =
     extern "C" fn(store_ctx: *mut c_void, keyp: *mut *mut PrivateKey) -> c_int;

@@ -34,9 +34,9 @@ pub mod zkgroup;
 // Desktop does not use SVR
 #[cfg(any(feature = "jni", feature = "ffi"))]
 mod pin {
-    use crate::*;
-
     use ::signal_pin::PinHash;
+
+    use crate::*;
 
     bridge_as_handle!(PinHash, node = false);
 }

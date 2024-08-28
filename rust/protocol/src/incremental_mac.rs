@@ -144,9 +144,8 @@ mod test {
     use sha2::digest::OutputSizeUser;
     use sha2::Sha256;
 
-    use crate::crypto::hmac_sha256;
-
     use super::*;
+    use crate::crypto::hmac_sha256;
 
     const TEST_HMAC_KEY: &[u8] =
         &hex!("a83481457efecc69ad1342e21d9c0297f71debbf5c9304b4c1b2e433c1a78f98");

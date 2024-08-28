@@ -276,9 +276,8 @@ mod test {
     use hex_literal::hex;
     use test_case::test_case;
 
-    use crate::backup::time::testutil::MillisecondsSinceEpoch;
-
     use super::*;
+    use crate::backup::time::testutil::MillisecondsSinceEpoch;
 
     impl proto::file_pointer::BackupLocator {
         fn test_data() -> Self {
