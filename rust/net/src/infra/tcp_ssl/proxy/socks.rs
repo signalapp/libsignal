@@ -5,8 +5,9 @@
 
 use std::borrow::Cow;
 use std::fmt::Display;
-use std::net::{IpAddr, SocketAddr};
+use std::net::IpAddr;
 use std::num::NonZeroU16;
+use std::sync::Arc;
 
 use async_trait::async_trait;
 use tokio::io::{AsyncRead, AsyncWrite};
@@ -19,13 +20,14 @@ use tokio_util::either::Either;
 use crate::infra::dns::lookup_result::LookupResult;
 use crate::infra::dns::DnsResolver;
 use crate::infra::errors::TransportConnectError;
+use crate::infra::host::Host;
 use crate::infra::{
     Alpn, ConnectionInfo, ConnectionParams, DnsSource, RouteType, StreamAndInfo, TransportConnector,
 };
 
 #[derive(Clone)]
 pub struct SocksConnector {
-    pub proxy_host: String,
+    pub proxy_host: Host<Arc<str>>,
     pub proxy_port: NonZeroU16,
     pub protocol: Protocol,
     pub resolve_hostname_locally: bool,
@@ -64,7 +66,7 @@ impl TransportConnector for SocksConnector {
         log::info!("establishing connection to host over SOCKS proxy");
         log::debug!(
             "establishing connection to {} over SOCKS proxy",
-            connection_params.host
+            connection_params.tcp_host
         );
 
         let which_protocol = ProtocolKind::from(protocol);
@@ -74,7 +76,7 @@ impl TransportConnector for SocksConnector {
         let StreamAndInfo(tcp_stream, remote_address) = crate::infra::tcp_ssl::connect_tcp(
             dns_resolver,
             connection_params.route_type,
-            proxy_host,
+            proxy_host.as_deref(),
             *proxy_port,
         )
         .await?;
@@ -83,34 +85,35 @@ impl TransportConnector for SocksConnector {
             .expect("can retrieve addr info")
             .is_ipv6();
 
-        let (target, dns_source) = if *resolve_hostname_locally {
-            let LookupResult { source, ipv4, ipv6 } = dns_resolver
-                .lookup_ip(&connection_params.host)
-                .await
-                .map_err(|_| TransportConnectError::DnsError)?;
-            let ipv4 = ipv4.into_iter().map(IpAddr::from);
-            let ipv6 = ipv6.into_iter().map(IpAddr::from);
+        let (target, dns_source) = match &connection_params.tcp_host {
+            Host::Ip(ip) => (
+                TargetAddr::Ip((*ip, connection_params.port.get()).into()),
+                DnsSource::Static,
+            ),
+            Host::Domain(host) if *resolve_hostname_locally => {
+                let LookupResult { source, ipv4, ipv6 } = dns_resolver
+                    .lookup_ip(host)
+                    .await
+                    .map_err(|_| TransportConnectError::DnsError)?;
+                let ipv4 = ipv4.into_iter().map(IpAddr::from);
+                let ipv6 = ipv6.into_iter().map(IpAddr::from);
 
-            // Prefer the same address family as is being used to connect to the proxy.
-            let address = if is_ipv6 {
-                ipv6.chain(ipv4).next()
-            } else {
-                ipv4.chain(ipv6).next()
+                // Prefer the same address family as is being used to connect to the proxy.
+                let address = if is_ipv6 {
+                    ipv6.chain(ipv4).next()
+                } else {
+                    ipv4.chain(ipv6).next()
+                }
+                .ok_or(TransportConnectError::DnsError)?;
+                (
+                    TargetAddr::Ip((address, connection_params.port.get()).into()),
+                    source,
+                )
             }
-            .ok_or(TransportConnectError::DnsError)?;
-            (
-                TargetAddr::Ip((address, connection_params.port.get()).into()),
-                source,
-            )
-        } else {
-            let domain = match connection_params.host.parse().ok() {
-                Some(addr) => TargetAddr::Ip(SocketAddr::new(addr, connection_params.port.get())),
-                None => TargetAddr::Domain(
-                    Cow::Borrowed(&*connection_params.host),
-                    connection_params.port.get(),
-                ),
-            };
-            (domain, DnsSource::Delegated)
+            Host::Domain(host) => (
+                TargetAddr::Domain(Cow::Borrowed(host), connection_params.port.get()),
+                DnsSource::Delegated,
+            ),
         };
 
         log::info!("performing proxy handshake");
@@ -219,8 +222,8 @@ mod test {
     use test_case::test_matrix;
     use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
     use tokio::join;
-    use url::Host;
 
+    use crate::infra::host::Host;
     use crate::infra::tcp_ssl::proxy::testutil::{TcpServer, TlsServer, PROXY_HOSTNAME};
     use crate::infra::tcp_ssl::testutil::{SERVER_CERTIFICATE, SERVER_HOSTNAME};
     use crate::infra::HttpRequestDecoratorSeq;
@@ -364,19 +367,24 @@ mod test {
 
         let tls_server = TlsServer::new(TcpServer::bind_localhost(), &SERVER_CERTIFICATE);
         let target_host = match target_addr {
-            HostnameTarget => SERVER_HOSTNAME.to_owned(),
-            IpTarget => tls_server.tcp.listen_addr.ip().to_string(),
+            HostnameTarget => Host::Domain(SERVER_HOSTNAME.into()),
+            IpTarget => Host::Ip(tls_server.tcp.listen_addr.ip()),
         };
         let expected_client_target_addr = match (target_addr, resolve_hostname) {
             (HostnameTarget, ResolveRemotely) => socks5_server::proto::Address::DomainAddress(
-                target_host.as_bytes().into(),
+                target_host.to_string().into(),
                 tls_server.tcp.listen_addr.port(),
             ),
             _ => socks5_server::proto::Address::SocketAddress(tls_server.tcp.listen_addr),
         };
+        let expected_dns_source = match (target_addr, resolve_hostname) {
+            (HostnameTarget, ResolveLocally) => DnsSource::Static,
+            (HostnameTarget, ResolveRemotely) => DnsSource::Delegated,
+            (IpTarget, _) => DnsSource::Static,
+        };
 
         let connector = SocksConnector {
-            proxy_host: PROXY_HOSTNAME.into(),
+            proxy_host: Host::Domain(PROXY_HOSTNAME.into()),
             proxy_port: NonZeroU16::new(proxy.0.local_addr().unwrap().port()).unwrap(),
             protocol: Protocol::Socks5 {
                 username_password: proxy_credentials.clone(),
@@ -391,7 +399,8 @@ mod test {
         let connection_params = ConnectionParams {
             route_type: RouteType::SocksProxy,
             sni: SERVER_HOSTNAME.into(),
-            host: target_host.into(),
+            tcp_host: target_host,
+            http_host: SERVER_HOSTNAME.into(),
             port: NonZeroU16::new(tls_server.tcp.listen_addr.port()).unwrap(),
             http_request_decorator: HttpRequestDecoratorSeq::default(),
             certs: crate::infra::certs::RootCertificates::FromDer(std::borrow::Cow::Borrowed(
@@ -450,14 +459,8 @@ mod test {
             client_info,
             ConnectionInfo {
                 route_type: RouteType::SocksProxy,
-                dns_source: match resolve_hostname {
-                    ResolveLocally => DnsSource::Static,
-                    ResolveRemotely => DnsSource::Delegated,
-                },
-                address: match tls_server.tcp.listen_addr.ip() {
-                    IpAddr::V4(ip) => Host::<String>::Ipv4(ip),
-                    IpAddr::V6(ip) => Host::<String>::Ipv6(ip),
-                }
+                dns_source: expected_dns_source,
+                address: Host::Ip(tls_server.tcp.listen_addr.ip())
             }
         );
 
@@ -508,7 +511,7 @@ mod test {
         let proxy_credentials = ("abc".to_owned(), "password".to_owned());
 
         let connector = SocksConnector {
-            proxy_host: "localhost".to_string(),
+            proxy_host: Host::Domain("localhost".into()),
             proxy_port: NonZeroU16::new(proxy.0.local_addr().unwrap().port()).unwrap(),
             protocol: Protocol::Socks5 {
                 username_password: Some(proxy_credentials.clone()),
@@ -523,7 +526,8 @@ mod test {
         let connection_params = ConnectionParams {
             route_type: RouteType::SocksProxy,
             sni: SERVER_HOSTNAME.into(),
-            host: SERVER_HOSTNAME.into(),
+            tcp_host: Host::Domain(SERVER_HOSTNAME.into()),
+            http_host: SERVER_HOSTNAME.into(),
             port: NonZeroU16::new(tls_server.tcp.listen_addr.port()).unwrap(),
             http_request_decorator: HttpRequestDecoratorSeq::default(),
             certs: crate::infra::certs::RootCertificates::FromDer(std::borrow::Cow::Borrowed(

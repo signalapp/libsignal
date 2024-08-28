@@ -144,7 +144,7 @@ where
             .connect_or_wait(|connection_params| {
                 log::debug!(
                     "trying to connect to {}:{}",
-                    connection_params.host,
+                    connection_params.tcp_host,
                     connection_params.port
                 );
                 self.service_connector.connect_channel(connection_params)
@@ -389,6 +389,7 @@ mod test {
     use std::sync::{Arc, Mutex};
     use std::time::Duration;
 
+    use crate::infra::host::Host;
     use crate::timeouts::CONNECTION_ROUTE_MAX_COOLDOWN;
     use assert_matches::assert_matches;
     use async_trait::async_trait;
@@ -469,14 +470,17 @@ mod test {
     }
 
     fn example_connection_params() -> ConnectionParams {
-        ConnectionParams::new(
-            RouteType::Test,
-            "chat.signal.org",
-            "chat.signal.org",
-            nonzero!(443u16),
-            HttpRequestDecoratorSeq::default(),
-            RootCertificates::Signal,
-        )
+        let host = "chat.signal.org".into();
+        ConnectionParams {
+            route_type: RouteType::Test,
+            sni: Arc::clone(&host),
+            tcp_host: Host::Domain(Arc::clone(&host)),
+            http_host: host,
+            port: nonzero!(443u16),
+            http_request_decorator: HttpRequestDecoratorSeq::default(),
+            certs: RootCertificates::Signal,
+            connection_confirmation_header: None,
+        }
     }
 
     #[tokio::test]

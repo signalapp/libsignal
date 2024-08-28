@@ -9,6 +9,7 @@
 //! each individual operation, as implied by `Svr3Client` trait.
 use std::collections::VecDeque;
 use std::num::NonZeroU32;
+use std::sync::Arc;
 
 use futures_util::future::join_all;
 use rand_core::CryptoRngCore;
@@ -16,6 +17,7 @@ use rand_core::CryptoRngCore;
 use libsignal_svr3::{make_remove_request, Backup, EvaluationResult, Query, Restore};
 
 use crate::enclave::{ArrayIsh, IntoConnectionResults, PpssSetup};
+use crate::infra::host::Host;
 use crate::infra::ws::{run_attested_interaction, AttestedConnection, NextOrClose};
 use crate::infra::AsyncDuplexStream;
 
@@ -130,7 +132,7 @@ pub async fn do_query<S: AsyncDuplexStream + 'static>(
 
 struct ConnectionContext<S> {
     connections: Vec<AttestedConnection<S>>,
-    addresses: Vec<url::Host>,
+    addresses: Vec<Host<Arc<str>>>,
     errors: VecDeque<Error>,
 }
 
@@ -158,7 +160,7 @@ impl<S: AsyncDuplexStream + 'static> ConnectionContext<S> {
 
 fn collect_responses<'a>(
     results: impl IntoIterator<Item = NextOrClose<Vec<u8>>>,
-    addresses: impl IntoIterator<Item = &'a url::Host>,
+    addresses: impl IntoIterator<Item = &'a Host<impl AsRef<str> + 'a>>,
 ) -> Result<Vec<Vec<u8>>, Error> {
     results
         .into_iter()

@@ -7,6 +7,7 @@ use std::collections::HashMap;
 use std::iter;
 use std::net::{Ipv4Addr, Ipv6Addr};
 use std::num::NonZeroU16;
+use std::sync::Arc;
 
 use const_str::ip_addr;
 use nonzero_ext::nonzero;
@@ -16,6 +17,7 @@ use rand::{thread_rng, Rng};
 use crate::enclave::{Cdsi, EnclaveEndpoint, EndpointParams, MrEnclave, Nitro, Sgx, Tpm2Snp};
 use crate::infra::certs::RootCertificates;
 use crate::infra::dns::lookup_result::LookupResult;
+use crate::infra::host::Host;
 use crate::infra::{
     ConnectionParams, DnsSource, HttpRequestDecorator, HttpRequestDecoratorSeq, RouteType,
 };
@@ -182,7 +184,7 @@ pub const DOMAIN_CONFIG_SVR3_TPM2SNP_STAGING: DomainConfig = DomainConfig {
 
 pub const PROXY_CONFIG_F_PROD: ProxyConfig = ProxyConfig {
     route_type: RouteType::ProxyF,
-    hostname: "reflector-signal.global.ssl.fastly.net",
+    http_host: "reflector-signal.global.ssl.fastly.net",
     sni_list: &[
         "github.githubassets.com",
         "pinterest.com",
@@ -192,7 +194,7 @@ pub const PROXY_CONFIG_F_PROD: ProxyConfig = ProxyConfig {
 
 pub const PROXY_CONFIG_F_STAGING: ProxyConfig = ProxyConfig {
     route_type: RouteType::ProxyF,
-    hostname: "reflector-staging-signal.global.ssl.fastly.net",
+    http_host: "reflector-staging-signal.global.ssl.fastly.net",
     sni_list: &[
         "github.githubassets.com",
         "pinterest.com",
@@ -202,7 +204,7 @@ pub const PROXY_CONFIG_F_STAGING: ProxyConfig = ProxyConfig {
 
 pub const PROXY_CONFIG_G: ProxyConfig = ProxyConfig {
     route_type: RouteType::ProxyG,
-    hostname: "reflector-nrgwuv7kwq-uc.a.run.app",
+    http_host: "reflector-nrgwuv7kwq-uc.a.run.app",
     sni_list: &[
         "www.google.com",
         "android.clients.google.com",
@@ -279,15 +281,20 @@ impl DomainConfig {
         )
     }
 
-    pub fn connection_params(&self) -> ConnectionParams {
-        let result = ConnectionParams::new(
-            RouteType::Direct,
-            self.hostname,
-            self.hostname,
-            self.port,
-            HttpRequestDecoratorSeq::default(),
-            self.cert.clone(),
-        );
+    pub fn direct_connection_params(&self) -> ConnectionParams {
+        let result = {
+            let hostname = self.hostname.into();
+            ConnectionParams {
+                route_type: RouteType::Direct,
+                sni: Arc::clone(&hostname),
+                tcp_host: Host::Domain(Arc::clone(&hostname)),
+                http_host: hostname,
+                port: self.port,
+                http_request_decorator: HttpRequestDecoratorSeq::default(),
+                certs: self.cert.clone(),
+                connection_confirmation_header: None,
+            }
+        };
         if let Some(header) = &self.confirmation_header_name {
             return result.with_confirmation_header(http::HeaderName::from_static(header));
         }
@@ -295,7 +302,7 @@ impl DomainConfig {
     }
 
     pub fn connection_params_with_fallback(&self) -> Vec<ConnectionParams> {
-        let direct = self.connection_params();
+        let direct = self.direct_connection_params();
         let rng = thread_rng();
         let shuffled_g_params = self.proxy_config_g.shuffled_connection_params(
             self.proxy_path,
@@ -329,7 +336,9 @@ pub fn add_user_agent_header(
 #[derive(Clone)]
 pub struct ProxyConfig {
     route_type: RouteType,
-    hostname: &'static str,
+    /// The value of the HTTP Host header
+    http_host: &'static str,
+    /// Domain names to use for DNS resolution and TLS SNI.
     sni_list: &'static [&'static str],
 }
 
@@ -342,19 +351,24 @@ impl ProxyConfig {
     ) -> impl Iterator<Item = ConnectionParams> + 'a {
         let mut sni_list = self.sni_list.to_vec();
         sni_list.shuffle(&mut rng);
+
         sni_list.into_iter().map(move |sni| {
-            let mut result = ConnectionParams::new(
-                self.route_type,
-                sni,
-                self.hostname,
-                nonzero!(443u16),
-                HttpRequestDecorator::PathPrefix(proxy_path).into(),
-                RootCertificates::Native,
-            );
-            if let Some(header) = confirmation_header_name {
-                result = result.with_confirmation_header(http::HeaderName::from_static(header));
+            // We want to use the SNI name as the hostname for DNS lookup and
+            // for the TLS connection. Then, once an encrypted connection is
+            // established, the actual hostname should be used for the HTTP
+            // header.
+            let sni_and_dns_host = sni.into();
+            ConnectionParams {
+                route_type: self.route_type,
+                sni: Arc::clone(&sni_and_dns_host),
+                tcp_host: Host::Domain(sni_and_dns_host),
+                http_host: self.http_host.into(),
+                port: nonzero!(443u16),
+                http_request_decorator: HttpRequestDecorator::PathPrefix(proxy_path).into(),
+                certs: RootCertificates::Native,
+                connection_confirmation_header: confirmation_header_name
+                    .map(http::HeaderName::from_static),
             }
-            result
         })
     }
 }
@@ -476,7 +490,7 @@ mod test {
         assert_eq!(
             Some(TIMESTAMP_HEADER_NAME),
             config
-                .connection_params()
+                .direct_connection_params()
                 .connection_confirmation_header
                 .as_ref()
                 .map(|header| header.as_str())
@@ -499,7 +513,7 @@ mod test {
         assert_eq!(
             None,
             config
-                .connection_params()
+                .direct_connection_params()
                 .connection_confirmation_header
                 .as_ref()
                 .map(|header| header.as_str())

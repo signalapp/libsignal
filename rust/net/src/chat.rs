@@ -540,6 +540,7 @@ pub(crate) mod test {
 
     pub(crate) mod shared {
         use std::fmt::Debug;
+        use std::sync::Arc;
         use std::time::Duration;
 
         use async_trait::async_trait;
@@ -550,6 +551,7 @@ pub(crate) mod test {
         use crate::infra::certs::RootCertificates;
         use crate::infra::connection_manager::SingleRouteThrottlingConnectionManager;
         use crate::infra::errors::LogSafeDisplay;
+        use crate::infra::host::Host;
         use crate::infra::service::{ServiceConnector, ServiceState};
         use crate::infra::test::shared::{NoReconnectService, TIMEOUT_DURATION};
         use crate::infra::{ConnectionParams, RouteType};
@@ -597,14 +599,20 @@ pub(crate) mod test {
         }
 
         pub fn connection_manager() -> SingleRouteThrottlingConnectionManager {
-            let connection_params = ConnectionParams::new(
-                RouteType::Test,
-                "test.signal.org",
-                "test.signal.org",
-                nonzero!(443u16),
-                Default::default(),
-                RootCertificates::Signal,
-            );
+            let connection_params = {
+                let hostname = "test.signal.org".into();
+                let host = Host::Domain(Arc::clone(&hostname));
+                ConnectionParams {
+                    route_type: RouteType::Test,
+                    sni: Arc::clone(&hostname),
+                    tcp_host: host,
+                    http_host: hostname,
+                    port: nonzero!(443u16),
+                    http_request_decorator: Default::default(),
+                    certs: RootCertificates::Signal,
+                    connection_confirmation_header: None,
+                }
+            };
             SingleRouteThrottlingConnectionManager::new(
                 connection_params,
                 TIMEOUT_DURATION,

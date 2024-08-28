@@ -5,6 +5,7 @@
 
 use std::cmp::min;
 use std::collections::HashMap;
+use std::fmt::Debug;
 use std::net::{Ipv4Addr, Ipv6Addr};
 use std::sync::Arc;
 use std::time::Duration;
@@ -38,9 +39,9 @@ const MAX_CACHE_TTL: Duration = Duration::from_secs(5 * 60);
 /// Implementors of this trait encapsulate the logic of sending queries to the DNS server
 /// and receiving resposnes.
 #[async_trait]
-pub trait DnsTransport: Sized + Send {
+pub trait DnsTransport: Debug + Sized + Send {
     /// Type of the connection parameters data structure for this DNS transport
-    type ConnectionParameters: Clone + Send + 'static;
+    type ConnectionParameters: Clone + Debug + Send + 'static;
 
     /// Returns the name of the DNS source
     fn dns_source() -> DnsSource;
@@ -69,6 +70,7 @@ pub trait DnsTransport: Sized + Send {
     ) -> dns::Result<BoxStream<'static, dns::Result<DnsQueryResult>>>;
 }
 
+#[derive(Debug)]
 struct SharedCacheWithGenerations<K, V> {
     generation: u64,
     map: HashMap<K, V>,
@@ -93,7 +95,7 @@ impl<K, V> Default for SharedCacheWithGenerations<K, V> {
 /// A resolver that combines the logic of retrieving results of the DNS queries
 /// over a specific transport and caching those results according to the
 /// records expiration times.
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct CustomDnsResolver<T: DnsTransport> {
     connection_manager: SingleRouteThrottlingConnectionManager<T::ConnectionParameters>,
     cache: Arc<std::sync::Mutex<SharedCacheWithGenerations<String, Expiring<LookupResult>>>>,
@@ -348,7 +350,7 @@ pub(crate) mod test {
     const IP_V6_LIST_1: &[Ipv6Addr] = &[ip_addr!(v6, "::1"), ip_addr!(v6, "::2")];
     const IP_V6_LIST_2: &[Ipv6Addr] = &[ip_addr!(v6, "::3"), ip_addr!(v6, "::4")];
 
-    #[derive(Clone)]
+    #[derive(Clone, Debug)]
     struct TestDnsTransportFailingToConnect;
 
     #[async_trait]
@@ -383,6 +385,16 @@ pub(crate) mod test {
         queries_count: Arc<AtomicU32>,
         sender_handler: Arc<SenderHandlerFn<[OneshotDnsQueryResultSender; RESPONSES]>>,
         network_changed_event: Arc<ObservableEvent>,
+    }
+
+    impl<const RESPONSES: usize> Debug for TestDnsTransportWithResponses<RESPONSES> {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            f.debug_struct("TestDnsTransportWithResponses")
+                .field("queries_count", &self.queries_count)
+                .field("sender_handler", &"_")
+                .field("network_changed_event", &"_")
+                .finish()
+        }
     }
 
     impl<const RESPONSES: usize> TestDnsTransportWithResponses<RESPONSES> {

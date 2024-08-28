@@ -14,6 +14,7 @@ use tokio_util::either::Either;
 use crate::infra::certs::RootCertificates;
 use crate::infra::dns::DnsResolver;
 use crate::infra::errors::TransportConnectError;
+use crate::infra::host::Host;
 use crate::infra::tcp_ssl::{connect_tcp, connect_tls, ssl_config};
 use crate::infra::{
     Alpn, ConnectionInfo, ConnectionParams, RouteType, StreamAndInfo, TransportConnector,
@@ -28,10 +29,10 @@ use crate::infra::{
 ///
 /// An example implementation of such a target service can be found at
 /// https://github.com/signalapp/Signal-TLS-Proxy.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct TlsProxyConnector {
     pub dns_resolver: DnsResolver,
-    proxy_host: Arc<str>,
+    proxy_host: Host<Arc<str>>,
     proxy_port: NonZeroU16,
     pub(crate) proxy_certs: RootCertificates,
     use_tls_for_proxy: ShouldUseTls,
@@ -55,7 +56,7 @@ impl TransportConnector for TlsProxyConnector {
         let StreamAndInfo(tcp_stream, remote_address) = connect_tcp(
             &self.dns_resolver,
             connection_params.route_type,
-            &self.proxy_host,
+            self.proxy_host.as_deref(),
             self.proxy_port,
         )
         .await?;
@@ -67,10 +68,11 @@ impl TransportConnector for TlsProxyConnector {
                     self.proxy_host,
                     self.proxy_port
                 );
-                let ssl_config = ssl_config(&self.proxy_certs, &self.proxy_host, None)?;
-                Either::Left(
-                    tokio_boring_signal::connect(ssl_config, &self.proxy_host, tcp_stream).await?,
-                )
+                // This won't always work, but it's enough to connect to proxies
+                // by hostnames.
+                let sni = self.proxy_host.to_string();
+                let ssl_config = ssl_config(&self.proxy_certs, &sni, None)?;
+                Either::Left(tokio_boring_signal::connect(ssl_config, &sni, tcp_stream).await?)
             }
             ShouldUseTls::No => {
                 log::debug!(
@@ -95,12 +97,15 @@ impl TransportConnector for TlsProxyConnector {
 }
 
 impl TlsProxyConnector {
-    pub fn new(dns_resolver: DnsResolver, (proxy_host, proxy_port): (&str, NonZeroU16)) -> Self {
+    pub fn new(
+        dns_resolver: DnsResolver,
+        (proxy_host, proxy_port): (Host<Arc<str>>, NonZeroU16),
+    ) -> Self {
         let (use_tls_for_proxy, actual_host) = Self::parse_host_for_tls_opt_out(proxy_host);
 
         Self {
             dns_resolver,
-            proxy_host: actual_host.into(),
+            proxy_host: actual_host,
             proxy_port,
             // We don't bundle roots of trust for all the SSL proxies, just the
             // Signal servers. It's fine to use the system SSL trust roots;
@@ -111,21 +116,22 @@ impl TlsProxyConnector {
         }
     }
 
-    pub fn set_proxy(&mut self, (host, port): (&str, NonZeroU16)) {
+    pub fn set_proxy(&mut self, (host, port): (Host<Arc<str>>, NonZeroU16)) {
         let (use_tls_for_proxy, actual_host) = Self::parse_host_for_tls_opt_out(host);
 
-        self.proxy_host = actual_host.into();
+        self.proxy_host = actual_host.to_owned();
         self.proxy_port = port;
         self.use_tls_for_proxy = use_tls_for_proxy;
     }
 
-    fn parse_host_for_tls_opt_out(proxy_host: &str) -> (ShouldUseTls, &str) {
-        // Special case for testing: UNENCRYPTED_FOR_TESTING@foo.bar connects over TCP instead of TLS.
-        if let Some(("UNENCRYPTED_FOR_TESTING", host)) = proxy_host.split_once('@') {
-            (ShouldUseTls::No, host)
-        } else {
-            (ShouldUseTls::Yes, proxy_host)
+    fn parse_host_for_tls_opt_out(proxy_host: Host<Arc<str>>) -> (ShouldUseTls, Host<Arc<str>>) {
+        if let Host::Domain(domain) = &proxy_host {
+            if let Some(host) = domain.strip_prefix("UNENCRYPTED_FOR_TESTING@") {
+                return (ShouldUseTls::No, Host::Domain(host.into()));
+            }
         }
+
+        (ShouldUseTls::Yes, proxy_host)
     }
 }
 
@@ -141,6 +147,7 @@ mod test {
     use assert_matches::assert_matches;
 
     use crate::infra::dns::lookup_result::LookupResult;
+    use crate::infra::host::Host;
     use crate::infra::tcp_ssl::proxy::testutil::{
         localhost_tcp_proxy, localhost_tls_proxy, PROXY_CERTIFICATE, PROXY_HOSTNAME,
     };
@@ -160,7 +167,10 @@ mod test {
                 PROXY_HOSTNAME,
                 LookupResult::localhost(),
             )])),
-            (PROXY_HOSTNAME, proxy_addr.port().try_into().unwrap()),
+            (
+                Host::Domain(PROXY_HOSTNAME.into()),
+                proxy_addr.port().try_into().unwrap(),
+            ),
         );
         // Override the SSL certificate for the proxy; since it's self-signed,
         // it won't work with the default config.
@@ -173,7 +183,8 @@ mod test {
         let connection_params = ConnectionParams {
             route_type: RouteType::Test,
             sni: SERVER_HOSTNAME.into(),
-            host: "localhost".to_string().into(),
+            tcp_host: Host::Domain("localhost".into()),
+            http_host: "unused".into(),
             port: addr.port().try_into().expect("bound port"),
             http_request_decorator: HttpRequestDecoratorSeq::default(),
             certs: RootCertificates::FromDer(Cow::Borrowed(SERVER_CERTIFICATE.cert.der())),
@@ -188,7 +199,7 @@ mod test {
         assert_eq!(
             info,
             ConnectionInfo {
-                address: url::Host::Ipv6(Ipv6Addr::LOCALHOST),
+                address: Host::Ip(Ipv6Addr::LOCALHOST.into()),
                 dns_source: crate::infra::DnsSource::Static,
                 route_type: RouteType::TlsProxy,
             }
@@ -202,7 +213,8 @@ mod test {
         let (addr, server) = localhost_http_server();
         let _server_handle = tokio::spawn(server);
 
-        let modified_proxy_host = format!("UNENCRYPTED_FOR_TESTING@{PROXY_HOSTNAME}");
+        let modified_proxy_host =
+            Host::Domain(format!("UNENCRYPTED_FOR_TESTING@{PROXY_HOSTNAME}").into());
         let (proxy_addr, proxy) = localhost_tcp_proxy(addr);
         let _proxy_handle = tokio::spawn(proxy);
 
@@ -212,13 +224,14 @@ mod test {
                 PROXY_HOSTNAME,
                 LookupResult::localhost(),
             )])),
-            (&modified_proxy_host, proxy_addr.port().try_into().unwrap()),
+            (modified_proxy_host, proxy_addr.port().try_into().unwrap()),
         );
 
         let connection_params = ConnectionParams {
             route_type: RouteType::Test,
             sni: SERVER_HOSTNAME.into(),
-            host: "localhost".to_string().into(),
+            tcp_host: Host::Domain("localhost".into()),
+            http_host: "unused".into(),
             port: addr.port().try_into().expect("bound port"),
             http_request_decorator: HttpRequestDecoratorSeq::default(),
             certs: RootCertificates::FromDer(Cow::Borrowed(SERVER_CERTIFICATE.cert.der())),
@@ -233,7 +246,7 @@ mod test {
         assert_eq!(
             info,
             ConnectionInfo {
-                address: url::Host::Ipv6(Ipv6Addr::LOCALHOST),
+                address: Host::Ip(Ipv6Addr::LOCALHOST.into()),
                 dns_source: crate::infra::DnsSource::Static,
                 route_type: RouteType::TlsProxy
             }

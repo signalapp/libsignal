@@ -13,6 +13,7 @@ use std::sync::Arc;
 use clap::Parser;
 use libsignal_net::infra::certs::RootCertificates;
 use libsignal_net::infra::dns::DnsResolver;
+use libsignal_net::infra::host::Host;
 use libsignal_net::infra::tcp_ssl::proxy::socks::{Protocol, SocksConnector};
 use libsignal_net::infra::{
     Alpn, ConnectionParams, HttpRequestDecoratorSeq, RouteType, StreamAndInfo, TransportConnector,
@@ -26,31 +27,18 @@ struct Args {
     target: Target,
 }
 
-#[derive(Debug)]
-struct Target(tokio_socks::TargetAddr<'static>);
-
-impl Clone for Target {
-    fn clone(&self) -> Self {
-        Self(match &self.0 {
-            tokio_socks::TargetAddr::Ip(ip) => tokio_socks::TargetAddr::Ip(*ip),
-            tokio_socks::TargetAddr::Domain(domain, port) => {
-                tokio_socks::TargetAddr::Domain(domain.clone(), *port)
-            }
-        })
-    }
-}
+#[derive(Clone, Debug)]
+struct Target(Host<Arc<str>>, NonZeroU16);
 
 fn parse_target(target: &str) -> Result<Target, &'static str> {
     if let Ok(target) = SocketAddr::from_str(target) {
-        return Ok(Target(tokio_socks::TargetAddr::Ip(target)));
+        let port = NonZeroU16::new(target.port()).ok_or("expected nonzero port")?;
+        return Ok(Target(Host::Ip(target.ip()), port));
     }
 
     let (domain, port) = target.split_once(':').ok_or("expected host:port")?;
-    let port = u16::from_str(port).map_err(|_| "expected numeric port")?;
-    Ok(Target(tokio_socks::TargetAddr::Domain(
-        std::borrow::Cow::Owned(domain.to_owned()),
-        port,
-    )))
+    let port = NonZeroU16::from_str(port).map_err(|_| "expected valid port")?;
+    Ok(Target(Host::Domain(domain.into()), port))
 }
 
 #[tokio::main]
@@ -83,10 +71,7 @@ async fn main() {
         proto => panic!("unsupported protocol {proto:?}"),
     };
 
-    let proxy_host = proxy_url
-        .host_str()
-        .expect("proxy host was not provided")
-        .to_owned();
+    let proxy_host = proxy_url.host_str().expect("proxy host was not provided");
     let proxy_port = proxy_url
         .port()
         .expect("proxy port was not provided")
@@ -94,24 +79,22 @@ async fn main() {
         .expect("proxy port was zero");
 
     let connector = SocksConnector {
-        proxy_host,
+        proxy_host: Host::parse_as_ip_or_domain(proxy_host),
         proxy_port,
         protocol,
         resolve_hostname_locally,
         dns_resolver: DnsResolver::new(&Default::default()),
     };
 
-    let (host, port) = match target.0 {
-        tokio_socks::TargetAddr::Ip(ip) => (ip.ip().to_string(), ip.port()),
-        tokio_socks::TargetAddr::Domain(domain, port) => (domain.to_string(), port),
-    };
+    let Target(host, port) = target;
 
-    let host = host.into();
+    let host_name = host.to_string().into();
     let connection_params = ConnectionParams {
         route_type: RouteType::SocksProxy,
-        sni: Arc::clone(&host),
-        host,
-        port: NonZeroU16::new(port).expect("target port was zero"),
+        sni: Arc::clone(&host_name),
+        http_host: host_name,
+        tcp_host: host,
+        port,
         http_request_decorator: HttpRequestDecoratorSeq::default(),
         certs: RootCertificates::Native,
         connection_confirmation_header: None,

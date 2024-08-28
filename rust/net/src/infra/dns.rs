@@ -22,6 +22,7 @@ use crate::infra::dns::dns_types::ResourceType;
 use crate::infra::dns::dns_utils::oneshot_broadcast::Receiver;
 use crate::infra::dns::dns_utils::{log_safe_domain, oneshot_broadcast};
 use crate::infra::dns::lookup_result::LookupResult;
+use crate::infra::host::Host;
 use crate::infra::{ConnectionParams, HttpRequestDecoratorSeq, RouteType};
 use crate::timeouts::{DNS_FALLBACK_LOOKUP_TIMEOUTS, DNS_SYSTEM_LOOKUP_TIMEOUT};
 use crate::utils::{self, ObservableEvent};
@@ -44,6 +45,15 @@ struct DnsResolverState {
     in_flight_lookups: HashMap<String, Receiver<Result<LookupResult>>>,
 }
 
+impl std::fmt::Debug for DnsResolverState {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("DnsResolverState")
+            .field("ipv6_enabled", &self.ipv6_enabled)
+            .field("in_flight_lookups", &self.in_flight_lookups.keys())
+            .finish()
+    }
+}
+
 impl Default for DnsResolverState {
     fn default() -> Self {
         Self {
@@ -53,13 +63,14 @@ impl Default for DnsResolverState {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct DnsResolver {
     lookup_options: Arc<[LookupOption]>,
     state: Arc<Mutex<DnsResolverState>>,
 }
 
 /// A single DNS resolution strategy that can be tried.
+#[derive(Debug)]
 struct LookupOption {
     lookup: Box<dyn DnsLookup>,
     /// How long to wait for the lookup to finish before giving up on it.
@@ -105,14 +116,17 @@ impl DnsResolver {
         static_map: HashMap<&'static str, LookupResult>,
         network_change_event: &ObservableEvent,
     ) -> Self {
-        let connection_params = ConnectionParams::new(
-            RouteType::Direct,
-            CLOUDFLARE_NS,
-            CLOUDFLARE_NS,
-            nonzero!(443u16),
-            HttpRequestDecoratorSeq::default(),
-            RootCertificates::Native,
-        );
+        let host = CLOUDFLARE_NS.into();
+        let connection_params = ConnectionParams {
+            route_type: RouteType::Direct,
+            port: nonzero!(443u16),
+            tcp_host: Host::Domain(Arc::clone(&host)),
+            http_host: Arc::clone(&host),
+            sni: host,
+            http_request_decorator: HttpRequestDecoratorSeq::default(),
+            certs: RootCertificates::Native,
+            connection_confirmation_header: None,
+        };
         let custom_resolver = Box::new(CustomDnsResolver::<DohTransport>::new(
             connection_params,
             network_change_event,
@@ -320,7 +334,7 @@ mod test {
         }
     }
 
-    #[derive(Clone)]
+    #[derive(Clone, Debug)]
     struct TestLookup {
         delay: Duration,
         custom_domain_result: Result<LookupResult>,

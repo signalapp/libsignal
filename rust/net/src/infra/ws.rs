@@ -25,6 +25,7 @@ use tungstenite::protocol::CloseFrame;
 use tungstenite::{http, Message};
 
 use crate::infra::errors::LogSafeDisplay;
+use crate::infra::host::Host;
 use crate::infra::service::ServiceConnector;
 use crate::infra::ws::error::{HttpFormatError, ProtocolError, SpaceError};
 use crate::infra::{
@@ -329,7 +330,7 @@ async fn connect_websocket<T: TransportConnector>(
         .method("GET")
         .header(
             http::header::HOST,
-            http::HeaderValue::from_str(&connection_params.host)
+            http::HeaderValue::from_str(&connection_params.http_host)
                 .expect("valid `HOST` header value"),
         )
         .header("Connection", "Upgrade")
@@ -338,7 +339,7 @@ async fn connect_websocket<T: TransportConnector>(
         .header("Sec-WebSocket-Key", generate_key())
         .uri(
             http::uri::Builder::new()
-                .authority(connection_params.host.to_string())
+                .authority(connection_params.tcp_host.to_string())
                 .path_and_query(endpoint)
                 .scheme("wss")
                 .build()
@@ -489,7 +490,7 @@ pub struct AttestedConnection<S> {
 }
 
 impl<S> AttestedConnection<S> {
-    pub(crate) fn remote_address(&self) -> &url::Host {
+    pub(crate) fn remote_address(&self) -> &Host<Arc<str>> {
         &self.websocket.connection_info.address
     }
 }
@@ -662,7 +663,7 @@ pub(crate) mod testutil {
         ConnectionInfo {
             route_type: RouteType::Test,
             dns_source: DnsSource::Test,
-            address: url::Host::Domain("localhost".to_string()),
+            address: Host::Domain("localhost".into()),
         }
     }
 
@@ -974,15 +975,18 @@ mod test {
         );
     }
 
-    fn example_connection_params(host: &str) -> ConnectionParams {
-        ConnectionParams::new(
-            RouteType::Test,
-            host,
-            host,
-            nonzero!(443u16),
-            HttpRequestDecoratorSeq::default(),
-            RootCertificates::Signal,
-        )
+    fn example_connection_params(hostname: &str) -> ConnectionParams {
+        let hostname = hostname.into();
+        ConnectionParams {
+            route_type: RouteType::Test,
+            sni: Arc::clone(&hostname),
+            tcp_host: Host::Domain(Arc::clone(&hostname)),
+            http_host: hostname,
+            port: nonzero!(443u16),
+            http_request_decorator: HttpRequestDecoratorSeq::default(),
+            certs: RootCertificates::Signal,
+            connection_confirmation_header: None,
+        }
     }
 
     #[test_matrix([None, Some("x-pinky-promise")])]

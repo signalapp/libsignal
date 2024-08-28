@@ -11,6 +11,7 @@ use async_trait::async_trait;
 use either::Either;
 use itertools::Itertools;
 use std::collections::HashMap;
+use std::fmt::Debug;
 use std::net::SocketAddr;
 use std::sync::Arc;
 
@@ -21,16 +22,16 @@ pub struct DnsLookupRequest {
 }
 
 #[async_trait]
-pub trait DnsLookup: Send + Sync {
+pub trait DnsLookup: Debug + Send + Sync {
     async fn dns_lookup(&self, request: DnsLookupRequest) -> dns::Result<LookupResult>;
 }
 
 /// Performs DNS lookup using system resolver
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct SystemDnsLookup;
 
 /// Performs DNS lookup in a map of statically configured, non-expiring entries
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct StaticDnsMap(pub HashMap<&'static str, LookupResult>);
 
 #[async_trait]

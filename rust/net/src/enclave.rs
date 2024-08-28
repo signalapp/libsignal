@@ -331,7 +331,7 @@ impl<E: EnclaveKind> EnclaveEndpointConnection<E, SingleRouteThrottlingConnectio
         Self {
             endpoint_connection: EndpointConnection {
                 manager: SingleRouteThrottlingConnectionManager::new(
-                    endpoint.domain_config.connection_params(),
+                    endpoint.domain_config.direct_connection_params(),
                     connect_timeout,
                     network_change_event,
                 ),
@@ -434,6 +434,7 @@ impl NewHandshake for Tpm2Snp {
 #[cfg(test)]
 mod test {
     use std::fmt::Debug;
+    use std::sync::Arc;
 
     use assert_matches::assert_matches;
     use async_trait::async_trait;
@@ -444,6 +445,7 @@ mod test {
     use crate::auth::Auth;
     use crate::infra::connection_manager::ConnectionAttemptOutcome;
     use crate::infra::errors::TransportConnectError;
+    use crate::infra::host::Host;
     use crate::infra::{Alpn, HttpRequestDecoratorSeq, RouteType, StreamAndInfo};
 
     use super::*;
@@ -493,14 +495,16 @@ mod test {
     }
 
     fn fake_connection_params() -> ConnectionParams {
-        ConnectionParams::new(
-            RouteType::Direct,
-            "fake",
-            "fake-sni",
-            nonzero!(1234u16),
-            HttpRequestDecoratorSeq::default(),
-            crate::infra::certs::RootCertificates::Native,
-        )
+        ConnectionParams {
+            route_type: RouteType::Direct,
+            sni: Arc::from("fake-sni"),
+            tcp_host: Host::Domain("fake".into()),
+            http_host: Arc::from("fake-http"),
+            port: nonzero!(1234u16),
+            http_request_decorator: HttpRequestDecoratorSeq::default(),
+            certs: crate::infra::certs::RootCertificates::Native,
+            connection_confirmation_header: None,
+        }
     }
 
     #[tokio::test]

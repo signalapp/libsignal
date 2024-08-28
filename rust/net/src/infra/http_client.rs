@@ -3,9 +3,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use std::net::IpAddr;
-use std::str::FromStr;
-
 use bytes::Bytes;
 use http::response::Parts;
 use http::uri::PathAndQuery;
@@ -51,21 +48,10 @@ impl AggregatingHttp2Client {
         headers: HeaderMap,
         body: Bytes,
     ) -> Result<(Parts, Bytes), HttpError> {
-        // If the input is a stringified IP address, use that as the host.
-        // Otherwise use the hostname that the client provided.
-        let ip_addr_host = IpAddr::from_str(&self.connection_params.host)
-            .ok()
-            .map(|ip| match ip {
-                IpAddr::V4(ip) => format!("{ip}"),
-                IpAddr::V6(ip) => format!("[{ip}]"),
-            });
-
-        let host = ip_addr_host
-            .as_deref()
-            .unwrap_or(&self.connection_params.host);
-
-        let port = self.connection_params.port;
-        let uri = format!("https://{host}:{port}{path_and_query}");
+        let uri = format!(
+            "https://{}:{}{}",
+            self.connection_params.http_host, self.connection_params.port, path_and_query
+        );
         let mut request_builder = http::Request::builder()
             .method(method)
             .uri(uri)
@@ -167,6 +153,7 @@ mod test {
     use std::future::Future;
     use std::net::{Ipv6Addr, SocketAddr};
     use std::num::NonZeroU16;
+    use std::sync::Arc;
 
     use assert_matches::assert_matches;
     use http::{HeaderName, HeaderValue, Method, StatusCode};
@@ -174,6 +161,7 @@ mod test {
 
     use crate::infra::dns::lookup_result::LookupResult;
     use crate::infra::dns::DnsResolver;
+    use crate::infra::host::Host;
     use crate::infra::tcp_ssl::testutil::{SERVER_CERTIFICATE, SERVER_HOSTNAME};
     use crate::infra::tcp_ssl::DirectConnector;
     use crate::infra::HttpRequestDecoratorSeq;
@@ -235,12 +223,14 @@ mod test {
             FAKE_HOSTNAME,
             LookupResult::localhost(),
         )])));
+        let host = FAKE_HOSTNAME.into();
         let client = http2_client(
             &connector,
             ConnectionParams {
                 route_type: crate::infra::RouteType::Direct,
                 sni: SERVER_HOSTNAME.into(),
-                host: FAKE_HOSTNAME.into(),
+                tcp_host: Host::Domain(Arc::clone(&host)),
+                http_host: host,
                 port: NonZeroU16::new(server_addr.port()).unwrap(),
                 http_request_decorator: HttpRequestDecoratorSeq::default(),
                 certs: crate::infra::certs::RootCertificates::FromDer(Cow::Borrowed(
@@ -304,12 +294,14 @@ mod test {
             INVALID_HOSTNAME,
             LookupResult::localhost(),
         )])));
+        let host = INVALID_HOSTNAME.into();
         let client = http2_client(
             &connector,
             ConnectionParams {
                 route_type: crate::infra::RouteType::Direct,
                 sni: SERVER_HOSTNAME.into(),
-                host: INVALID_HOSTNAME.into(),
+                tcp_host: Host::Domain(Arc::clone(&host)),
+                http_host: host,
                 port: NonZeroU16::new(server_addr.port()).unwrap(),
                 http_request_decorator: HttpRequestDecoratorSeq::default(),
                 certs: crate::infra::certs::RootCertificates::FromDer(Cow::Borrowed(

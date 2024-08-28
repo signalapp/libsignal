@@ -172,7 +172,7 @@ impl ThrottlingConnectionManagerState {
 /// A connection manager that only attempts one route (i.e. one [ConnectionParams])
 /// but keeps track of consecutive failed attempts and after each failure waits for a duration
 /// chosen according to [CONNECTION_ROUTE_COOLDOWN_INTERVALS] list.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct SingleRouteThrottlingConnectionManager<C = ConnectionParams> {
     state: Arc<Mutex<ThrottlingConnectionManagerState>>,
     connection_params: C,
@@ -428,7 +428,6 @@ impl ConnectionManager for SingleRouteThrottlingConnectionManager {
 
 #[cfg(test)]
 mod test {
-    use std::borrow::Borrow;
     use std::future;
     use std::sync::atomic::{AtomicU16, Ordering};
 
@@ -437,6 +436,7 @@ mod test {
     use tokio::time;
 
     use crate::infra::certs::RootCertificates;
+    use crate::infra::host::Host;
     use crate::infra::test::shared::{
         ClassifiableTestError, TestError, FEW_ATTEMPTS, LONG_CONNECTION_TIME, MANY_ATTEMPTS,
         TIMEOUT_DURATION, TIME_ADVANCE_VALUE,
@@ -963,7 +963,11 @@ mod test {
             None => Ok(ROUTE_1),
             Some(err) => Err(err),
         };
-        match connection_params.host.borrow() {
+        let domain = match &connection_params.tcp_host {
+            Host::Domain(domain) => &**domain,
+            h => panic!("unexpected host {h}"),
+        };
+        match domain {
             ROUTE_1 => future::ready(route1_response).await,
             ROUTE_2 => future::ready(Ok(ROUTE_2)).await,
             ROUTE_THAT_TIMES_OUT => {
@@ -975,14 +979,17 @@ mod test {
     }
 
     fn example_connection_params(host: &str) -> ConnectionParams {
-        ConnectionParams::new(
-            RouteType::Test,
-            host,
-            host,
-            nonzero!(443u16),
-            HttpRequestDecoratorSeq::default(),
-            RootCertificates::Signal,
-        )
+        let host = host.into();
+        ConnectionParams {
+            route_type: RouteType::Test,
+            sni: Arc::clone(&host),
+            tcp_host: Host::Domain(Arc::clone(&host)),
+            http_host: host,
+            port: nonzero!(443u16),
+            http_request_decorator: HttpRequestDecoratorSeq::default(),
+            certs: RootCertificates::Signal,
+            connection_confirmation_header: None,
+        }
     }
 
     #[derive(Clone, Debug)]
@@ -1018,7 +1025,8 @@ mod test {
         let res: ConnectionAttemptOutcome<(), ClassifiableTestError> = multi_route_manager
             .connect_or_wait(|connection_params| {
                 assert_ne!(
-                    *connection_params.host, *ROUTE_2,
+                    connection_params.tcp_host.as_deref(),
+                    Host::Domain(ROUTE_2),
                     "Should not attempt second route if the first one was fatal"
                 );
                 future::ready(Err(ClassifiableTestError(ErrorClass::Fatal)))

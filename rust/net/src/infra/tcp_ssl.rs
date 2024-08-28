@@ -3,9 +3,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use std::net::IpAddr;
 use std::num::NonZeroU16;
+use std::sync::Arc;
 
+use crate::infra::host::Host;
 use crate::timeouts::TCP_CONNECTION_ATTEMPT_DELAY;
 use async_trait::async_trait;
 use boring_signal::ssl::{ConnectConfiguration, SslConnector, SslMethod};
@@ -26,7 +27,7 @@ use crate::utils::first_ok;
 
 pub mod proxy;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum TcpSslConnector {
     Direct(DirectConnector),
     Proxied(TlsProxyConnector),
@@ -53,7 +54,7 @@ pub struct TcpSslConnectorStream(
     >,
 );
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct DirectConnector {
     pub dns_resolver: DnsResolver,
 }
@@ -70,7 +71,7 @@ impl TransportConnector for DirectConnector {
         let StreamAndInfo(tcp_stream, remote_address) = connect_tcp(
             &self.dns_resolver,
             connection_params.route_type,
-            &connection_params.host,
+            connection_params.tcp_host.as_deref(),
             connection_params.port,
         )
         .await?;
@@ -86,7 +87,7 @@ impl DirectConnector {
         Self { dns_resolver }
     }
 
-    pub fn with_proxy(&self, proxy_addr: (&str, NonZeroU16)) -> TlsProxyConnector {
+    pub fn with_proxy(&self, proxy_addr: (Host<Arc<str>>, NonZeroU16)) -> TlsProxyConnector {
         let Self { dns_resolver } = self;
         TlsProxyConnector::new(dns_resolver.clone(), proxy_addr)
     }
@@ -118,13 +119,26 @@ async fn connect_tls<S: AsyncRead + AsyncWrite + Unpin>(
 async fn connect_tcp(
     dns_resolver: &DnsResolver,
     route_type: RouteType,
-    host: &str,
+    host: Host<&str>,
     port: NonZeroU16,
 ) -> Result<StreamAndInfo<TcpStream>, TransportConnectError> {
-    let dns_lookup = dns_resolver
-        .lookup_ip(host)
-        .await
-        .map_err(|_| TransportConnectError::DnsError)?;
+    let dns_lookup = match host {
+        Host::Ip(ip) => {
+            let (ipv4, ipv6) = match ip {
+                std::net::IpAddr::V4(v4) => (vec![v4], vec![]),
+                std::net::IpAddr::V6(v6) => (vec![], vec![v6]),
+            };
+            crate::infra::dns::lookup_result::LookupResult {
+                source: crate::infra::DnsSource::Static,
+                ipv4,
+                ipv6,
+            }
+        }
+        Host::Domain(domain) => dns_resolver
+            .lookup_ip(domain)
+            .await
+            .map_err(|_| TransportConnectError::DnsError)?,
+    };
 
     if dns_lookup.is_empty() {
         return Err(TransportConnectError::DnsError);
@@ -148,16 +162,17 @@ async fn connect_tcp(
             }
             TcpStream::connect((ip, port.into()))
                 .inspect_err(|e| {
-                    log::debug!("failed to connect to IP [{}] with an error: {:?}", ip, e)
+                    log::debug!("failed to connect to IP [{ip}] with an error: {e:?}");
                 })
                 .await
                 .map(|r| {
+                    log::debug!("successfully connected to IP [{ip}]");
                     StreamAndInfo(
                         r,
                         ConnectionInfo {
                             route_type,
                             dns_source,
-                            address: ip_addr_to_host(ip),
+                            address: ip.into(),
                         },
                     )
                 })
@@ -167,13 +182,6 @@ async fn connect_tcp(
     first_ok(staggered_futures)
         .await
         .ok_or(TransportConnectError::TcpConnectionFailed)
-}
-
-fn ip_addr_to_host(ip: IpAddr) -> url::Host {
-    match ip {
-        IpAddr::V4(v4) => url::Host::Ipv4(v4),
-        IpAddr::V6(v6) => url::Host::Ipv6(v6),
-    }
 }
 
 impl AsyncRead for TcpSslConnectorStream {
@@ -315,12 +323,16 @@ mod test {
     use std::net::Ipv6Addr;
 
     use assert_matches::assert_matches;
+    use test_case::test_case;
 
     use crate::infra::dns::lookup_result::LookupResult;
+    use crate::infra::host::Host;
     use crate::infra::HttpRequestDecoratorSeq;
 
+    #[test_case(true; "resolved hostname")]
+    #[test_case(false; "by IP")]
     #[tokio::test]
-    async fn connect_to_server() {
+    async fn connect_to_server(use_hostname: bool) {
         let (addr, server) = localhost_http_server();
         let _server_handle = tokio::spawn(server);
 
@@ -331,7 +343,11 @@ mod test {
         let connection_params = ConnectionParams {
             route_type: RouteType::Test,
             sni: SERVER_HOSTNAME.into(),
-            host: SERVER_HOSTNAME.into(),
+            tcp_host: match use_hostname {
+                true => Host::Domain(SERVER_HOSTNAME.into()),
+                false => addr.ip().into(),
+            },
+            http_host: "unused".into(),
             port: addr.port().try_into().expect("bound port"),
             http_request_decorator: HttpRequestDecoratorSeq::default(),
             certs: RootCertificates::FromDer(Cow::Borrowed(SERVER_CERTIFICATE.cert.der())),
@@ -346,7 +362,7 @@ mod test {
         assert_eq!(
             info,
             ConnectionInfo {
-                address: url::Host::Ipv6(Ipv6Addr::LOCALHOST),
+                address: Host::Ip(Ipv6Addr::LOCALHOST.into()),
                 dns_source: crate::infra::DnsSource::Static,
                 route_type: RouteType::Test,
             }
@@ -366,7 +382,8 @@ mod test {
         let connection_params = ConnectionParams {
             route_type: RouteType::Test,
             sni: SERVER_HOSTNAME.into(),
-            host: addr.ip().to_string().into(),
+            tcp_host: Host::Ip(addr.ip()),
+            http_host: "unused".into(),
             port: addr.port().try_into().expect("bound port"),
             http_request_decorator: HttpRequestDecoratorSeq::default(),
             certs: RootCertificates::FromDer(Cow::Borrowed(SERVER_CERTIFICATE.cert.der())),

@@ -17,6 +17,7 @@ use libsignal_net::enclave::{
 use libsignal_net::env::{add_user_agent_header, Env, Svr3Env};
 use libsignal_net::infra::connection_manager::MultiRouteConnectionManager;
 use libsignal_net::infra::dns::DnsResolver;
+use libsignal_net::infra::host::Host;
 use libsignal_net::infra::tcp_ssl::proxy::tls::TlsProxyConnector as TcpSslProxyConnector;
 use libsignal_net::infra::tcp_ssl::{
     DirectConnector as TcpSslDirectConnector, TcpSslConnector, TcpSslConnectorStream,
@@ -122,9 +123,9 @@ impl ConnectionManager {
     }
 
     pub fn set_proxy(&self, host: &str, port: Option<NonZeroU16>) -> Result<(), std::io::Error> {
+        let host = Host::parse_as_ip_or_domain(host);
+
         let mut guard = self.transport_connector.lock().expect("not poisoned");
-        // We take port as an i32 because Java 'short' is signed and thus can't represent all port
-        // numbers, and we want too-large port numbers to be handled the same way as 0.
         match port {
             Some(port) => {
                 let proxy_addr = (host, port);
@@ -328,11 +329,21 @@ mod empty_env {
 #[cfg(test)]
 mod test {
     use super::*;
+    use assert_matches::assert_matches;
     use test_case::test_case;
 
     #[test_case(Environment::Staging; "staging")]
     #[test_case(Environment::Prod; "prod")]
     fn can_create_connection_manager(env: Environment) {
         let _ = ConnectionManager::new(env, "test-user-agent".to_string());
+    }
+
+    #[test]
+    fn connection_manager_invalid_after_invalid_host_port() {
+        let manager = ConnectionManager::new(Environment::Staging, "test-user-agent".to_owned());
+        // This is not a valid port and so should make the ConnectionManager "invalid".
+        assert_matches!(manager.set_proxy("proxy.host", None), Err(e) if e.kind() == std::io::ErrorKind::InvalidInput);
+        let transport_connector = manager.transport_connector.lock().expect("not poisoned");
+        assert_matches!(&*transport_connector, TcpSslConnector::Invalid(_))
     }
 }

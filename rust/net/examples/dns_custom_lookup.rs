@@ -10,6 +10,7 @@ use libsignal_net::infra::dns::custom_resolver::CustomDnsResolver;
 use libsignal_net::infra::dns::dns_lookup::{DnsLookup, DnsLookupRequest};
 use libsignal_net::infra::dns::dns_transport_doh::DohTransport;
 use libsignal_net::infra::dns::dns_transport_udp::UdpTransport;
+use libsignal_net::infra::host::Host;
 use libsignal_net::infra::{ConnectionParams, HttpRequestDecoratorSeq, RouteType};
 use libsignal_net::utils::ObservableEvent;
 use nonzero_ext::nonzero;
@@ -52,14 +53,17 @@ async fn main() {
             ))
         }
         Transport::Doh => {
-            let connection_params = ConnectionParams::new(
-                RouteType::Direct,
-                "1.1.1.1",
-                "1.1.1.1",
-                nonzero!(443u16),
-                HttpRequestDecoratorSeq::default(),
-                RootCertificates::Native,
-            );
+            let host = "1.1.1.1".into();
+            let connection_params = ConnectionParams {
+                route_type: RouteType::Direct,
+                sni: Arc::clone(&host),
+                tcp_host: Host::Ip(ip_addr!("1.1.1.1")),
+                http_host: host,
+                port: nonzero!(443u16),
+                http_request_decorator: HttpRequestDecoratorSeq::default(),
+                certs: RootCertificates::Native,
+                connection_confirmation_header: None,
+            };
             Either::Right(CustomDnsResolver::<DohTransport>::new(
                 connection_params,
                 &ObservableEvent::default(),

@@ -3,19 +3,20 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::net::IpAddr;
 use std::num::NonZeroU16;
 use std::str::FromStr;
 use std::string::ToString;
 use std::sync::Arc;
 use std::time::Duration;
 
+use crate::infra::host::Host;
 use crate::timeouts::{WS_KEEP_ALIVE_INTERVAL, WS_MAX_IDLE_INTERVAL};
 use crate::utils::ObservableEvent;
 use ::http::uri::PathAndQuery;
 use ::http::Uri;
 use async_trait::async_trait;
 use tokio::io::{AsyncRead, AsyncWrite};
-use url::Host;
 
 use crate::infra::certs::RootCertificates;
 use crate::infra::connection_manager::{
@@ -28,6 +29,7 @@ pub mod certs;
 pub mod connection_manager;
 pub mod dns;
 pub mod errors;
+pub mod host;
 mod http_client;
 pub mod noise;
 pub(crate) mod service;
@@ -43,11 +45,11 @@ pub enum IpType {
 }
 
 impl IpType {
-    pub(crate) fn from_host(host: &Host) -> Self {
+    pub(crate) fn from_host<S>(host: &Host<S>) -> Self {
         match host {
             Host::Domain(_) => IpType::Unknown,
-            Host::Ipv4(_) => IpType::V4,
-            Host::Ipv6(_) => IpType::V6,
+            Host::Ip(IpAddr::V4(_)) => IpType::V4,
+            Host::Ip(IpAddr::V6(_)) => IpType::V6,
         }
     }
 }
@@ -88,10 +90,12 @@ impl HttpRequestDecoratorSeq {
 pub struct ConnectionParams {
     /// High-level classification of the route (mostly for logging)
     pub route_type: RouteType,
-    /// Host name to be used in the TLS handshake.
+    /// Host name to be used in the TLS handshake SNI field.
     pub sni: Arc<str>,
-    /// Host name used for DNS resolution and in the HTTP request headers.
-    pub host: Arc<str>,
+    /// Host name used for DNS resolution.
+    pub tcp_host: Host<Arc<str>>,
+    /// Host name used in the HTTP headers.
+    pub http_host: Arc<str>,
     /// Port to connect to.
     pub port: NonZeroU16,
     /// Applied to all HTTP requests.
@@ -104,25 +108,6 @@ pub struct ConnectionParams {
 }
 
 impl ConnectionParams {
-    pub fn new(
-        route_type: RouteType,
-        sni: &str,
-        host: &str,
-        port: NonZeroU16,
-        http_request_decorator: HttpRequestDecoratorSeq,
-        certs: RootCertificates,
-    ) -> Self {
-        Self {
-            route_type,
-            sni: Arc::from(sni),
-            host: Arc::from(host),
-            port,
-            http_request_decorator,
-            certs,
-            connection_confirmation_header: None,
-        }
-    }
-
     pub fn with_decorator(mut self, decorator: HttpRequestDecorator) -> Self {
         let HttpRequestDecoratorSeq(decorators) = &mut self.http_request_decorator;
         decorators.push(decorator);
@@ -151,9 +136,9 @@ pub struct ConnectionInfo {
 
     /// Address that was used to establish the connection
     ///
-    /// If IP information is available, it's recommended to use [Host::Ipv4] or [Host::Ipv6]
-    /// and only use [Host::Domain] as a fallback.
-    pub address: Host,
+    /// If IP information is available, it's recommended to use [Host::Ip] and
+    /// only use [Host::Domain] as a fallback.
+    pub address: Host<Arc<str>>,
 }
 
 /// Source for the result of a hostname lookup.
@@ -351,6 +336,7 @@ pub(crate) mod test {
 
         use crate::infra::connection_manager::{ConnectionManager, ErrorClass, ErrorClassifier};
         use crate::infra::errors::{LogSafeDisplay, TransportConnectError};
+        use crate::infra::host::Host;
         use crate::infra::service::{ServiceConnector, ServiceInitializer, ServiceState};
         use crate::infra::{
             Alpn, ConnectionInfo, ConnectionParams, DnsSource, RouteType, StreamAndInfo,
@@ -360,7 +346,7 @@ pub(crate) mod test {
         #[test]
         fn connection_info_description() {
             let connection_info = ConnectionInfo {
-                address: url::Host::Domain("test.signal.org".to_string()),
+                address: Host::Domain("test.signal.org".into()),
                 dns_source: DnsSource::SystemLookup,
                 route_type: RouteType::Test,
             };
@@ -459,7 +445,7 @@ pub(crate) mod test {
                     ConnectionInfo {
                         route_type: RouteType::Test,
                         dns_source: DnsSource::Test,
-                        address: url::Host::Domain(connection_params.host.to_string()),
+                        address: connection_params.tcp_host.clone(),
                     },
                 ))
             }
