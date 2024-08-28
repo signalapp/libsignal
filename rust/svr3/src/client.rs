@@ -57,14 +57,22 @@ fn bytes_xoring_to<R: CryptoRngCore>(n: NonZeroUsize, b: &[u8], rng: &mut R) -> 
     v
 }
 
-/// Key Derivation Function used throughout the rest of this code.
-fn kdf(info: &[u8], input1: &[u8], input2: &[u8], out: &mut [u8]) {
-    assert!(out.len() == 32 || out.len() == 64);
-    let concat_input: Vec<u8> = [input1, input2].concat();
-    let h = hkdf::Hkdf::<Sha256>::new(None, &concat_input);
-    h.expand(info, out)
-        .expect("all output lengths used are valid for key derivation");
+trait KdfLength<const N: usize> {
+    /// Key Derivation Function used throughout the rest of this code.
+    fn make(info: &[u8], input1: &[u8], input2: &[u8]) -> [u8; N] {
+        let mut out = [0; N];
+        let concat_input: Vec<u8> = [input1, input2].concat();
+        let h = hkdf::Hkdf::<Sha256>::new(None, &concat_input);
+        h.expand(info, &mut out)
+            .expect("all output lengths used are valid for key derivation");
+        out
+    }
 }
+
+enum Kdf {}
+
+impl KdfLength<32> for Kdf {}
+impl KdfLength<64> for Kdf {}
 
 /// Return a set of (private, public) auth commitments based on the auth secret.
 fn auth_commitments(
@@ -76,16 +84,13 @@ fn auth_commitments(
     server_ids
         .iter()
         .map(|id| {
-            let mut k = [0u8; 64];
-            kdf(
+            Kdf::make(
                 b"Signal_SVR_ServerAuthorizationKey_20240823",
                 &k_auth,
                 &id.to_be_bytes(),
-                &mut k,
-            );
-            k
+            )
         })
-        .map(|k| Scalar::hash_from_bytes::<Sha512>(&k))
+        .map(|k: [u8; 64]| Scalar::hash_from_bytes::<Sha512>(&k))
         .map(|s| (s, RISTRETTO_BASEPOINT_TABLE * &s))
         .collect()
 }
@@ -97,14 +102,11 @@ fn auth_pt(input: &[u8; 64], k_oprf: &Scalar) -> RistrettoPoint {
 
 /// Returns the secret used for authentication.
 fn auth_secret(input: &[u8; 64], auth_pt: &RistrettoPoint) -> [u8; 32] {
-    let mut out = [0u8; 32];
-    kdf(
+    Kdf::make(
         b"Signal_SVR_MasterAuthorizationKey_20240823",
         input,
         &auth_pt.compress().to_bytes(),
-        &mut out,
-    );
-    out
+    )
 }
 
 /// Return a RistrettoPoint created from our input.
@@ -174,14 +176,11 @@ pub struct Output4 {
 
 impl Output4 {
     pub fn encryption_key(&self) -> [u8; 32] {
-        let mut out = [0u8; 32];
-        kdf(
+        Kdf::make(
             b"Signal_SVR_EncryptionKey_20240823",
             &self.s_enc,
             &self.k_auth,
-            &mut out,
-        );
-        out
+        )
     }
 }
 
