@@ -10,6 +10,7 @@ use itertools::Itertools as _;
 
 use crate::backup::file::{FilePointer, FilePointerError};
 use crate::backup::method::{Lookup, Method};
+use crate::backup::serialize::{SerializeOrder, UnorderedList};
 use crate::backup::{serialize, ReferencedTypes, TryFromWith, TryIntoWith as _};
 use crate::proto::backup as proto;
 
@@ -36,6 +37,17 @@ pub enum Wallpaper<M: Method> {
 #[serde(transparent)]
 pub struct Color(u32);
 
+impl TryFrom<u32> for Color {
+    type Error = ChatStyleError;
+
+    fn try_from(value: u32) -> Result<Self, Self::Error> {
+        if value >> 24 != 0xFF {
+            return Err(ChatStyleError::ChatColorNotOpaque(value));
+        }
+        Ok(Self(value))
+    }
+}
+
 #[derive(Debug, serde::Serialize)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct WallpaperPreset {
@@ -57,8 +69,15 @@ pub enum BubbleColor<CustomColor> {
 pub struct BubbleGradientColor {
     pub color: Color,
     /// guaranteed to be in the range `[0, 1]`
-    #[allow(unused)]
     position: f32,
+}
+
+impl SerializeOrder for BubbleGradientColor {
+    fn serialize_cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.position
+            .partial_cmp(&other.position)
+            .expect("validated to be non-NaN")
+    }
 }
 
 #[derive(Debug, serde::Serialize)]
@@ -78,7 +97,7 @@ pub struct CustomColorId(pub(crate) u64);
 pub enum CustomChatColor {
     Gradient {
         angle: u32,
-        colors: Vec<BubbleGradientColor>,
+        colors: UnorderedList<BubbleGradientColor>,
     },
     Solid {
         color: Color,
@@ -134,8 +153,12 @@ pub enum ChatStyleError {
     UnknownPresetBubbleColor,
     /// found 0 colors and 0 positions in gradient
     GradientEmpty,
+    /// chat color was not opaque (ARGB 0x{0:08X})
+    ChatColorNotOpaque(u32),
     /// bubble gradient position is invalid: {0}
     InvalidBubbleGradientPosition(f32),
+    /// only simple gradients from 0.0 to 1.0 are permitted
+    UnsupportedGradient,
     /// referenced unknown custom color ID {0:?}
     UnknownCustomColorId(u64),
     /// duplicate custom color ID {0}
@@ -271,28 +294,31 @@ impl TryFrom<proto::chat_style::custom_chat_color::Color> for CustomChatColor {
 
                 let color_count = colors.len();
                 let position_count = positions.len();
-                let colors = if color_count != position_count {
-                    return Err(ChatStyleError::GradientLengthMismatch {
-                        color_count,
-                        position_count,
-                    });
-                } else if color_count == 0 {
-                    return Err(ChatStyleError::GradientEmpty);
-                } else {
-                    colors
+                let colors = match color_count {
+                    _ if color_count != position_count => {
+                        return Err(ChatStyleError::GradientLengthMismatch {
+                            color_count,
+                            position_count,
+                        });
+                    }
+                    0 => {
+                        return Err(ChatStyleError::GradientEmpty);
+                    }
+                    2 if positions == [0.0, 1.0] || positions == [1.0, 0.0] => colors
                         .into_iter()
                         .zip(positions)
-                        .map(|(color, position)| {
-                            BubbleGradientColor::new(color, position)
-                                .ok_or(ChatStyleError::InvalidBubbleGradientPosition(position))
-                        })
-                        .try_collect()?
+                        .map(|(color, position)| BubbleGradientColor::new(color, position))
+                        .try_collect()?,
+                    _ => {
+                        // For now, only allow simple gradients with exactly two colors, at 0.0 and 1.0.
+                        return Err(ChatStyleError::UnsupportedGradient);
+                    }
                 };
 
                 CustomChatColor::Gradient { angle, colors }
             }
             ColorProto::Solid(color) => CustomChatColor::Solid {
-                color: Color(color),
+                color: Color::try_from(color)?,
             },
         })
     }
@@ -364,11 +390,12 @@ impl BubbleColorPreset {
 }
 
 impl BubbleGradientColor {
-    fn new(color: u32, position: f32) -> Option<Self> {
-        (0.0..=1.0).contains(&position).then_some(Self {
-            color: Color(color),
-            position,
-        })
+    fn new(color: u32, position: f32) -> Result<Self, ChatStyleError> {
+        let color = Color::try_from(color)?;
+        if !(0.0..=1.0).contains(&position) {
+            return Err(ChatStyleError::InvalidBubbleGradientPosition(position));
+        }
+        Ok(Self { color, position })
     }
 }
 
@@ -410,7 +437,9 @@ mod test {
         pub(crate) fn test_data() -> Self {
             Self {
                 id: Self::TEST_ID.0,
-                color: Some(proto::chat_style::custom_chat_color::Color::Solid(123456)),
+                color: Some(proto::chat_style::custom_chat_color::Color::Solid(
+                    0xFF123456,
+                )),
                 special_fields: Default::default(),
             }
         }
@@ -419,7 +448,7 @@ mod test {
     impl CustomChatColor {
         pub(crate) fn from_proto_test_data() -> Self {
             Self::Solid {
-                color: Color(123456),
+                color: Color(0xFF123456),
             }
         }
     }
@@ -452,17 +481,24 @@ mod test {
         assert_eq!(
             proto::chat_style::custom_chat_color::Color::Gradient(proto::chat_style::Gradient {
                 angle: 123,
-                colors: vec![555],
-                positions: vec![0.5],
+                colors: vec![0xFF005555, 0xFF009999],
+                positions: vec![1.0, 0.0],
                 special_fields: Default::default(),
             })
             .try_into(),
             Ok(CustomChatColor::Gradient {
                 angle: 123,
-                colors: vec![BubbleGradientColor {
-                    color: Color(555),
-                    position: 0.5
-                }]
+                colors: vec![
+                    BubbleGradientColor {
+                        color: Color(0xFF005555),
+                        position: 1.0,
+                    },
+                    BubbleGradientColor {
+                        color: Color(0xFF009999),
+                        position: 0.0,
+                    },
+                ]
+                .into(),
             })
         );
     }
@@ -480,7 +516,7 @@ mod test {
 
     fn uneven_gradient(proto: &mut proto::chat_style::CustomChatColor) {
         proto.set_gradient(proto::chat_style::Gradient {
-            colors: vec![1; 3],
+            colors: vec![0xFFFFFFFF; 3],
             positions: vec![0.0; 2],
             ..Default::default()
         });
@@ -490,15 +526,27 @@ mod test {
     }
     fn invalid_gradient_position(proto: &mut proto::chat_style::CustomChatColor) {
         proto.set_gradient(proto::chat_style::Gradient {
-            colors: vec![1],
-            positions: vec![-1.0],
+            colors: vec![0xFFFFFFFF, 0xFF000000],
+            positions: vec![-1.0, 1.0],
             ..Default::default()
         });
+    }
+    fn complex_gradient(proto: &mut proto::chat_style::CustomChatColor) {
+        proto.set_gradient(proto::chat_style::Gradient {
+            colors: vec![0xFFFFFFFF, 0xFF000000, 0xFFFFFFFF],
+            positions: vec![0.0, 0.5, 1.0],
+            ..Default::default()
+        });
+    }
+    fn non_opaque_color(proto: &mut proto::chat_style::CustomChatColor) {
+        proto.set_solid(0);
     }
 
     #[test_case(uneven_gradient, ChatStyleError::GradientLengthMismatch {color_count: 3, position_count: 2})]
     #[test_case(empty_gradient, ChatStyleError::GradientEmpty)]
-    #[test_case(invalid_gradient_position, ChatStyleError::InvalidBubbleGradientPosition(-1.0))]
+    #[test_case(complex_gradient, ChatStyleError::UnsupportedGradient)]
+    #[test_case(invalid_gradient_position, ChatStyleError::UnsupportedGradient)]
+    #[test_case(non_opaque_color, ChatStyleError::ChatColorNotOpaque(0))]
     fn custom_color(
         modifier: fn(&mut proto::chat_style::CustomChatColor),
         expected_err: ChatStyleError,
