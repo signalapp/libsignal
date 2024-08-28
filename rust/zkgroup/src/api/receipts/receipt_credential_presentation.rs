@@ -10,6 +10,9 @@ use crate::common::serialization::ReservedByte;
 use crate::crypto::receipt_struct::ReceiptStruct;
 use crate::{crypto, ReceiptLevel, ReceiptSerialBytes, Timestamp};
 
+// Note that this type appears in gift badge messages, and thus in backups.
+// Therefore it must be possible to at least deserialize any past versions of it,
+// though they don't have to still be considered valid.
 #[derive(Serialize, Deserialize, PartialDefault)]
 pub struct ReceiptCredentialPresentation {
     pub(crate) reserved: ReservedByte,

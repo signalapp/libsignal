@@ -6,36 +6,66 @@
 use zkgroup::receipts::ReceiptCredentialPresentation;
 use zkgroup::ZkGroupDeserializationFailure;
 
-use crate::backup::serialize;
 use crate::proto::backup as proto;
 
 #[derive(serde::Serialize)]
-pub struct GiftBadge {
-    receipt_credential_presentation: ReceiptCredentialPresentation,
-    #[serde(serialize_with = "serialize::enum_as_string")]
-    state: proto::gift_badge::State,
+#[allow(clippy::large_enum_variant)] // The container is a BoxedValue already.
+pub enum GiftBadge {
+    Valid {
+        receipt_credential_presentation: ReceiptCredentialPresentation,
+        state: GiftBadgeState,
+    },
+    Failed,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy, serde::Serialize)]
+pub enum GiftBadgeState {
+    Unopened,
+    Opened,
+    Redeemed,
 }
 
 impl std::fmt::Debug for GiftBadge {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("GiftBadge")
-            .field(
-                "receipt_credential_presentation",
-                &zkcredential::PrintAsHex(
-                    zkgroup::serialize(&self.receipt_credential_presentation).as_slice(),
-                ),
-            )
-            .field("state", &self.state)
-            .finish()
+        match self {
+            Self::Valid {
+                receipt_credential_presentation,
+                state,
+            } => f
+                .debug_struct("Valid")
+                .field(
+                    "receipt_credential_presentation",
+                    &zkcredential::PrintAsHex(
+                        zkgroup::serialize(&receipt_credential_presentation).as_slice(),
+                    ),
+                )
+                .field("state", state)
+                .finish(),
+            Self::Failed => write!(f, "Failed"),
+        }
     }
 }
 
 #[cfg(test)]
 impl PartialEq for GiftBadge {
     fn eq(&self, other: &Self) -> bool {
-        zkgroup::serialize(&self.receipt_credential_presentation)
-            == zkgroup::serialize(&other.receipt_credential_presentation)
-            && self.state == other.state
+        match (self, other) {
+            (Self::Failed, Self::Failed) => true,
+            (
+                Self::Valid {
+                    receipt_credential_presentation: lhs_presentation,
+                    state: lhs_state,
+                },
+                Self::Valid {
+                    receipt_credential_presentation: rhs_presentation,
+                    state: rhs_state,
+                },
+            ) => {
+                zkgroup::serialize(&lhs_presentation) == zkgroup::serialize(&rhs_presentation)
+                    && lhs_state == rhs_state
+            }
+            (_, _) => false,
+        }
     }
 }
 
@@ -44,6 +74,8 @@ impl PartialEq for GiftBadge {
 pub enum GiftBadgeError {
     /// receipt credential presentation failed to deserialize
     InvalidReceiptCredentialPresentation,
+    /// state was FAILED but presentation was non-empty
+    FailedStateWithNonEmptyPresentation,
 }
 
 impl TryFrom<proto::GiftBadge> for GiftBadge {
@@ -56,17 +88,25 @@ impl TryFrom<proto::GiftBadge> for GiftBadge {
             special_fields: _,
         } = value;
 
+        use proto::gift_badge::State;
+        let state = match state.enum_value_or_default() {
+            State::UNOPENED => GiftBadgeState::Unopened,
+            State::OPENED => GiftBadgeState::Opened,
+            State::REDEEMED => GiftBadgeState::Redeemed,
+            State::FAILED => {
+                if !receiptCredentialPresentation.is_empty() {
+                    return Err(GiftBadgeError::FailedStateWithNonEmptyPresentation);
+                }
+                return Ok(GiftBadge::Failed);
+            }
+        };
+
         let receipt_credential_presentation = zkgroup::deserialize(&receiptCredentialPresentation)
             .map_err(|_: ZkGroupDeserializationFailure| {
                 GiftBadgeError::InvalidReceiptCredentialPresentation
             })?;
 
-        use proto::gift_badge::State;
-        let state = match state.enum_value_or_default() {
-            s @ (State::UNOPENED | State::OPENED | State::REDEEMED | State::FAILED) => s,
-        };
-
-        Ok(Self {
+        Ok(Self::Valid {
             receipt_credential_presentation,
             state,
         })
@@ -75,6 +115,7 @@ impl TryFrom<proto::GiftBadge> for GiftBadge {
 
 #[cfg(test)]
 mod test {
+    use test_case::test_case;
     use zkgroup::RANDOMNESS_LEN;
 
     use super::*;
@@ -113,21 +154,22 @@ mod test {
     fn valid_gift_badge() {
         assert_eq!(
             proto::GiftBadge::test_data().try_into(),
-            Ok(GiftBadge {
+            Ok(GiftBadge::Valid {
                 receipt_credential_presentation: proto::GiftBadge::test_data_presentation(),
-                state: proto::gift_badge::State::REDEEMED,
+                state: GiftBadgeState::Redeemed,
             })
         );
     }
 
-    #[test]
-    fn invalid_presentation() {
-        let mut badge = proto::GiftBadge::test_data();
-        badge.receiptCredentialPresentation = vec![];
-
-        assert_eq!(
-            GiftBadge::try_from(badge),
-            Err(GiftBadgeError::InvalidReceiptCredentialPresentation)
-        );
+    #[test_case(|x| x.receiptCredentialPresentation = vec![] => Err(GiftBadgeError::InvalidReceiptCredentialPresentation); "invalid presentation")]
+    #[test_case(|x| x.state = proto::gift_badge::State::FAILED.into() => Err(GiftBadgeError::FailedStateWithNonEmptyPresentation); "FAILED with presentation")]
+    #[test_case(|x| {
+        x.state = proto::gift_badge::State::FAILED.into();
+        x.receiptCredentialPresentation = vec![];
+    } => Ok(()); "FAILED with no presentation")]
+    fn gift_badge(modifier: impl FnOnce(&mut proto::GiftBadge)) -> Result<(), GiftBadgeError> {
+        let mut gift_badge = proto::GiftBadge::test_data();
+        modifier(&mut gift_badge);
+        GiftBadge::try_from(gift_badge).map(|_| ())
     }
 }
