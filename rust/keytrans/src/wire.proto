@@ -60,7 +60,7 @@ message Consistency {
 
 // SearchRequest comes from a user that wishes to lookup a key.
 message SearchRequest {
-    string search_key = 1;
+    bytes search_key = 1;
     optional uint32 version = 2;
     optional Consistency consistency = 3;
 }
@@ -77,7 +77,7 @@ message SearchResponse {
 
 // UpdateRequest comes from a user that wishes to update a key.
 message UpdateRequest {
-    string search_key = 1;
+    bytes search_key = 1;
     bytes value = 2;
     optional Consistency consistency = 3;
 }
@@ -94,7 +94,7 @@ message UpdateResponse {
 
 // MonitorKey is a single key that the user would like to monitor.
 message MonitorKey {
-    string search_key = 1;
+    bytes search_key = 1;
     repeated uint64 entries = 2;
 }
 

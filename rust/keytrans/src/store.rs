@@ -22,8 +22,8 @@ pub trait LogStore {
     fn get_last_tree_head(&self) -> Result<Option<(TreeHead, [u8; 32])>, LogStoreError>;
     fn set_last_tree_head(&mut self, head: TreeHead, root: [u8; 32]) -> Result<(), LogStoreError>;
 
-    fn get_data(&self, key: &str) -> Result<Option<MonitoringData>, LogStoreError>;
-    fn set_data(&mut self, key: &str, data: MonitoringData) -> Result<(), LogStoreError>;
+    fn get_data(&self, key: &[u8]) -> Result<Option<MonitoringData>, LogStoreError>;
+    fn set_data(&mut self, key: &[u8], data: MonitoringData) -> Result<(), LogStoreError>;
 }
 
 /// SimplifiedLogStore is a simpler version of the LogStore trait that clients
@@ -32,10 +32,10 @@ trait SimplifiedLogStore {
     fn get_raw_tree_head(&self) -> Result<Option<Vec<u8>>, LogStoreError>;
     fn set_raw_tree_head(&mut self, data: &[u8]) -> Result<(), LogStoreError>;
 
-    fn get_raw_data(&self, key: &str) -> Result<Option<Vec<u8>>, LogStoreError>;
+    fn get_raw_data(&self, key: &[u8]) -> Result<Option<Vec<u8>>, LogStoreError>;
     fn set_raw_data(
         &mut self,
-        key: &str,
+        key: &[u8],
         data: &[u8],
         next_monitor: u64,
     ) -> Result<(), LogStoreError>;
@@ -67,7 +67,7 @@ impl<T: SimplifiedLogStore + ?Sized> LogStore for T {
         self.set_raw_tree_head(&raw)
     }
 
-    fn get_data(&self, key: &str) -> Result<Option<MonitoringData>, LogStoreError> {
+    fn get_data(&self, key: &[u8]) -> Result<Option<MonitoringData>, LogStoreError> {
         self.get_raw_data(key)?
             .map(|data| {
                 let stored = wire::StoredMonitoringData::decode(data.as_slice())?;
@@ -84,7 +84,7 @@ impl<T: SimplifiedLogStore + ?Sized> LogStore for T {
             .transpose()
     }
 
-    fn set_data(&mut self, key: &str, data: MonitoringData) -> Result<(), LogStoreError> {
+    fn set_data(&mut self, key: &[u8], data: MonitoringData) -> Result<(), LogStoreError> {
         let next_monitor = data.next_monitor();
         let raw = wire::StoredMonitoringData {
             index: data.index.to_vec(),

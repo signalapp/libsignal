@@ -163,6 +163,7 @@ fn verify_full_tree_head(
     storage: &mut dyn LogStore,
     fth: &FullTreeHead,
     root: [u8; 32],
+    now: SystemTime,
 ) -> Result<()> {
     let tree_head = get_proto_field(&fth.tree_head)?.clone();
 
@@ -214,7 +215,7 @@ fn verify_full_tree_head(
     verify_tree_head_signature(config, &tree_head, &root, &config.signature_key)?;
 
     // 3. Verify that the timestamp in TreeHead is sufficiently recent.
-    verify_timestamp(tree_head.timestamp, ALLOWED_TIMESTAMP_RANGE, None)?;
+    verify_timestamp(tree_head.timestamp, ALLOWED_TIMESTAMP_RANGE, None, now)?;
 
     // 4. If third-party auditing is used, verify auditor_tree_head with the
     //    steps described in Section 11.2.
@@ -227,6 +228,7 @@ fn verify_full_tree_head(
             auditor_head.timestamp,
             ALLOWED_AUDITOR_TIMESTAMP_RANGE,
             Some("auditor"),
+            now,
         )?;
 
         // 3. Verify that TreeHead.tree_size is sufficiently close to the most
@@ -289,12 +291,13 @@ fn verify_timestamp(
     timestamp: i64,
     allowed_range: &TimestampRange,
     description: Option<&str>,
+    now: SystemTime,
 ) -> Result<()> {
     let TimestampRange {
         max_behind,
         max_ahead,
     } = allowed_range;
-    let now = SystemTime::now()
+    let now = now
         .duration_since(UNIX_EPOCH)
         .expect("valid system time")
         .as_millis() as i128;
@@ -357,10 +360,10 @@ pub fn verify_distinguished(
 fn evaluate_vrf_proof(
     proof: &[u8],
     vrf_key: &vrf::PublicKey,
-    search_key: &str,
+    search_key: &[u8],
 ) -> Result<[u8; 32]> {
     let proof = proof.try_into().map_err(|_| MalformedProof)?;
-    Ok(vrf_key.proof_to_hash(search_key.as_bytes(), proof)?)
+    Ok(vrf_key.proof_to_hash(search_key, proof)?)
 }
 
 /// The shared implementation of verify_search and verify_update.
@@ -370,6 +373,7 @@ fn verify_search_internal(
     req: &SearchRequest,
     res: &SearchResponse,
     monitor: bool,
+    now: SystemTime,
 ) -> Result<()> {
     // NOTE: Update this function in tandem with truncate_search_response.
 
@@ -432,12 +436,7 @@ fn verify_search_internal(
         .try_into()
         .map_err(|_| Error::VerificationFailed("malformed opening".to_string()))?;
 
-    if !verify_commitment(
-        req.search_key.as_bytes(),
-        &result_step.commitment,
-        &value,
-        opening,
-    ) {
+    if !verify_commitment(&req.search_key, &result_step.commitment, &value, opening) {
         return Err(Error::VerificationFailed(
             "failed to verify commitment opening".to_string(),
         ));
@@ -450,10 +449,10 @@ fn verify_search_internal(
     let root = evaluate_batch_proof(&ids, tree_size, &values, &inclusion_proof)?;
 
     // Verify the tree head with the candidate root.
-    verify_full_tree_head(config, storage, full_tree_head, root)?;
+    verify_full_tree_head(config, storage, full_tree_head, root, now)?;
 
     // Update stored monitoring data.
-    let size = if req.search_key == "distinguished" {
+    let size = if req.search_key == b"distinguished" {
         // Make sure we don't update monitoring data based on parts of the tree
         // that we don't intend to retain.
         result_id + 1
@@ -481,7 +480,7 @@ pub fn verify_search(
     res: &SearchResponse,
     force_monitor: bool,
 ) -> Result<()> {
-    verify_search_internal(config, storage, req, res, force_monitor)
+    verify_search_internal(config, storage, req, res, force_monitor, SystemTime::now())
 }
 
 /// Checks that the output of an Update operation is valid and updates the
@@ -511,6 +510,7 @@ pub fn verify_update(
             }),
         },
         true,
+        SystemTime::now(),
     )
 }
 
@@ -566,7 +566,7 @@ pub fn verify_monitor(
     };
 
     // Verify the tree head with the candidate root.
-    verify_full_tree_head(config, storage, full_tree_head, root)?;
+    verify_full_tree_head(config, storage, full_tree_head, root, SystemTime::now())?;
 
     // Update monitoring data.
     for (key, entry) in req
@@ -575,7 +575,7 @@ pub fn verify_monitor(
         .chain(req.contact_keys.iter())
         .zip(mpa.entries.iter())
     {
-        let size = if key.search_key == "distinguished" {
+        let size = if key.search_key == b"distinguished" {
             // Generally an effort has been made to avoid referencing the
             // "distinguished" key in the core keytrans library, but it
             // simplifies things here:
@@ -678,7 +678,7 @@ struct MonitoringDataWrapper {
 }
 
 impl MonitoringDataWrapper {
-    fn load(storage: &mut dyn LogStore, search_key: &str) -> Result<Self> {
+    fn load(storage: &mut dyn LogStore, search_key: &[u8]) -> Result<Self> {
         Ok(Self {
             inner: storage.get_data(search_key)?,
             changed: false,
@@ -821,7 +821,7 @@ impl MonitoringDataWrapper {
         Ok(())
     }
 
-    fn save(self, storage: &mut dyn LogStore, search_key: &str) -> Result<()> {
+    fn save(self, storage: &mut dyn LogStore, search_key: &[u8]) -> Result<()> {
         if self.changed {
             if let Some(data) = self.inner {
                 storage.set_data(search_key, data)?
@@ -901,10 +901,15 @@ fn into_sorted_pairs<K: Ord + Copy, V>(map: HashMap<K, V>) -> (Vec<K>, Vec<V>) {
 
 #[cfg(test)]
 mod test {
+    use std::result::Result;
+
     use assert_matches::assert_matches;
+    use hex_literal::hex;
+    use prost::Message as _;
     use test_case::test_case;
 
     use super::*;
+    use crate::wire;
 
     const MAX_AHEAD: Duration = Duration::from_secs(42);
     const MAX_BEHIND: Duration = Duration::from_secs(42);
@@ -925,7 +930,7 @@ mod test {
     fn verify_timestamps_error(time: SystemTime) {
         let ts = make_timestamp(time);
         assert_matches!(
-            verify_timestamp(ts, TIMESTAMP_RANGE, None),
+            verify_timestamp(ts, TIMESTAMP_RANGE, None, SystemTime::now()),
             Err(Error::VerificationFailed(_))
         );
     }
@@ -935,6 +940,64 @@ mod test {
     #[test_case(SystemTime::now() - MAX_BEHIND + ONE_SECOND; "just behind enough")]
     fn verify_timestamps_success(time: SystemTime) {
         let ts = make_timestamp(time);
-        assert_matches!(verify_timestamp(ts, TIMESTAMP_RANGE, None), Ok(()));
+        assert_matches!(
+            verify_timestamp(ts, TIMESTAMP_RANGE, None, SystemTime::now()),
+            Ok(())
+        );
+    }
+
+    struct NullLogStore;
+
+    impl LogStore for NullLogStore {
+        fn get_last_tree_head(&self) -> Result<Option<(wire::TreeHead, [u8; 32])>, LogStoreError> {
+            Ok(None)
+        }
+
+        fn set_last_tree_head(
+            &mut self,
+            _head: wire::TreeHead,
+            _root: [u8; 32],
+        ) -> Result<(), LogStoreError> {
+            Ok(())
+        }
+
+        fn get_data(&self, _key: &[u8]) -> Result<Option<MonitoringData>, LogStoreError> {
+            Ok(None)
+        }
+
+        fn set_data(&mut self, _key: &[u8], _data: MonitoringData) -> Result<(), LogStoreError> {
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn can_verify_search_response() {
+        let sig_key = VerifyingKey::from_bytes(&hex!(
+            "61eae8fe6373577e6473c5bb65a43b4d86190d78b2e5dc48fa6f253253438fb9"
+        ))
+        .unwrap();
+        let vrf_key = vrf::PublicKey::try_from(hex!(
+            "ee964d1552c57c4b8dd9b3f409e6cfd7fb3691966014dbe89f652de7d0a67ca2"
+        ))
+        .unwrap();
+        let request = wire::SearchRequest::decode(
+            hex!("0a10b81b5b821e8d4eec8ec5e6513834a9f31a020804").as_slice(),
+        )
+        .unwrap();
+        let response = {
+            let bytes = include_bytes!("../res/kt-search-response.dat");
+            wire::SearchResponse::decode(bytes.as_slice()).unwrap()
+        };
+        let valid_at = SystemTime::UNIX_EPOCH + Duration::from_secs(1724796478);
+        let config = PublicConfig {
+            mode: DeploymentMode::ContactMonitoring,
+            signature_key: sig_key,
+            vrf_key,
+        };
+        let mut store = NullLogStore;
+        assert_matches!(
+            verify_search_internal(&config, &mut store, &request, &response, false, valid_at),
+            Ok(())
+        )
     }
 }
