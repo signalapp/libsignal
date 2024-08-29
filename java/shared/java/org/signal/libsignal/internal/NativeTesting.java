@@ -40,6 +40,7 @@ public final class NativeTesting {
 
   static {
     loadNativeCode();
+    initializeLibrary();
   }
 
   private NativeTesting() {}
@@ -95,6 +96,8 @@ public final class NativeTesting {
   public static native int TESTING_TestingHandleType_getValue(long handle);
 
   public static native void TestingHandleType_Destroy(long handle);
+
+  public static native void initializeLibrary();
 
   public static native int test_only_fn_returns_123();
 }

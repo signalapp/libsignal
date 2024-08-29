@@ -2133,7 +2133,9 @@ dependencies = [
 name = "libsignal-jni-testing"
 version = "0.56.0"
 dependencies = [
+ "jni 0.21.1",
  "libsignal-bridge-testing",
+ "libsignal-bridge-types",
  "log",
 ]
 

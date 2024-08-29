@@ -16,5 +16,7 @@ crate-type = ["cdylib"]
 
 [dependencies]
 libsignal-bridge-testing = { path = "../../shared/testing", features = ["jni"] }
+libsignal-bridge-types = { path = "../../shared/types", features = ["jni"] }
 
+jni = { workspace = true }
 log = { workspace = true }
