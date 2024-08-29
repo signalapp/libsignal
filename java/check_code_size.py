@@ -11,7 +11,9 @@ import os
 import subprocess
 import sys
 
-from typing import Any, List, Mapping, Optional
+from typing import Any, Callable, Iterable, List, Mapping, Optional, TypeVar
+
+T = TypeVar('T')
 
 
 def warn(message: str) -> None:
@@ -46,29 +48,35 @@ def print_size_diff(lib_size: int, old_entry: Mapping[str, Any], *, warn_on_jump
 
 def current_origin_main_entry() -> Optional[Mapping[str, Any]]:
     try:
-        most_recent_main = subprocess.run(["git", "merge-base", "HEAD", "origin/main"], capture_output=True, check=True).stdout.decode().strip()
+        if os.environ.get('GITHUB_EVENT_NAME') == 'push':
+            base_ref = os.environ.get('GITHUB_REF_NAME', 'HEAD^')
+            most_recent_commit = subprocess.run(["git", "rev-parse", "HEAD^"], capture_output=True, check=True).stdout.decode().strip()
+        else:
+            base_ref = os.environ.get('GITHUB_BASE_REF', 'main')
+            remote_name = os.environ.get('CHECK_CODE_SIZE_REMOTE', 'origin')
+            most_recent_commit = subprocess.run(["git", "merge-base", "HEAD", f"{remote_name}/{base_ref}"], capture_output=True, check=True).stdout.decode().strip()
 
         repo_path = os.environ.get('GITHUB_REPOSITORY')
         if repo_path is None:
             repo_path = subprocess.run(["gh", "repo", "view", "--json", "nameWithOwner", "-q", ".nameWithOwner"], capture_output=True, check=True).stdout.decode().strip()
 
-        runs_info = subprocess.run(["gh", "api", "--method=GET", f"repos/{repo_path}/actions/runs", "-f", f"head_sha={most_recent_main}"], capture_output=True, check=True).stdout
+        runs_info = subprocess.run(["gh", "api", "--method=GET", f"repos/{repo_path}/actions/runs", "-f", f"head_sha={most_recent_commit}"], capture_output=True, check=True).stdout
         runs_json = json.loads(runs_info)
 
         run_id = [run['id'] for run in runs_json['workflow_runs'] if run['name'] == 'Build and Test'][0]
 
-        run_jobs = subprocess.run(["gh", "run", "view", f"{run_id}", "--json", "jobs"], capture_output=True, check=True).stdout
+        run_jobs = subprocess.run(["gh", "run", "view", "-R", repo_path, f"{run_id}", "--json", "jobs"], capture_output=True, check=True).stdout
         jobs_json = json.loads(run_jobs)
 
         job_id = [job['databaseId'] for job in jobs_json['jobs'] if job['name'] == "Java"][0]
 
-        job_logs = subprocess.run(["gh", "run", "view", "--job", f"{job_id}", "--log"], capture_output=True, check=True).stdout.decode()
+        job_logs = subprocess.run(["gh", "run", "view", "-R", repo_path, "--job", f"{job_id}", "--log"], capture_output=True, check=True).stdout.decode()
 
         for line in job_logs.splitlines():
-            if "check_code_size.py" in line and "current build" in line:
-                (_, after) = line.split("(current: ", maxsplit=1)
-                (bytes_count, _) = after.split(" ", maxsplit=1)
-                return {'size': int(bytes_count), 'version': most_recent_main[:6] + ' (main)'}
+            if "check_code_size.py" in line and "current: *" in line:
+                (_, after) = line.split("(", maxsplit=1)
+                (bytes_count, _) = after.split(" bytes)", maxsplit=1)
+                return {'size': int(bytes_count), 'version': f"{most_recent_commit[:6]} ({base_ref})"}
 
     except Exception as e:
         print("skipping checking current origin/main:", e, file=sys.stderr)
@@ -96,17 +104,25 @@ else:
     print_size_diff(lib_size, most_recent_tag_entry)
 
 
+# Typing this properly requires a bunch of helpers in Python 3.9,
+# and we don't have a strict type at the use site anyway.
+def max_map(items: Iterable[T], transform: Callable[[T], Any]) -> Any:
+    return transform(max(items, key=transform))
+
+
 def print_plot(sizes: List[Mapping[str, Any]]) -> None:
-    highest_size = max(recent_sizes, key=lambda x: x['size'])['size']
+    highest_size = max_map(recent_sizes, lambda x: x['size'])
+    version_width = max_map(recent_sizes, lambda x: len(x['version']))
 
     scale = 1.0 * 1024 * 1024
     while scale < highest_size:
         scale *= 2
     scale /= 20
+    plot_width = int(highest_size / scale) + 1
 
     for entry in sizes:
         bucket = int(entry['size'] / scale) + 1
-        print('{:>14}: {} ({} bytes)'.format(entry['version'], '*' * bucket, entry['size']))
+        print('{:>{}}: {:<{}} ({} bytes)'.format(entry['version'], version_width, '*' * bucket, plot_width, entry['size']))
 
 
 recent_sizes = old_sizes[-10:]
