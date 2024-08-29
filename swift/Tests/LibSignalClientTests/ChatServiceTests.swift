@@ -360,20 +360,4 @@ final class ChatServiceTests: TestCaseBase {
             // Okay
         }
     }
-
-    // swiftlint:disable:next todo
-    // TODO: Remove this when we update our builder to have Xcode 14.3 or later.
-    // We're shadowing the real XCTestCase.fulfillment(of:timeout:enforceOrder:) with an ad-hoc implementation from
-    // https://github.com/swiftlang/swift-corelibs-xctest/issues/436#issuecomment-1703589930
-    func fulfillment(of expectations: [XCTestExpectation], timeout seconds: TimeInterval = .infinity) async {
-        return await withCheckedContinuation { continuation in
-            // This function operates by blocking a background thread instead of one owned by libdispatch or by the
-            // Swift runtime (as used by Swift concurrency.) To ensure we use a thread owned by neither subsystem, use
-            // Foundation's Thread.detachNewThread(_:).
-            Thread.detachNewThread { [self] in
-                wait(for: expectations, timeout: seconds)
-                continuation.resume()
-            }
-        }
-    }
 }
