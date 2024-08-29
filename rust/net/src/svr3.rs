@@ -6,7 +6,7 @@
 use std::num::NonZeroU32;
 
 use bincode::Options as _;
-use libsignal_svr3::{EvaluationResult, MaskedShareSet};
+use libsignal_svr3::{EvaluationResult, MaskedSecret};
 use rand_core::CryptoRngCore;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -29,31 +29,28 @@ pub struct OpaqueMaskedShareSet {
     inner: SerializableMaskedShareSet,
 }
 
-// Non pub version of ppss::MaskedShareSet used for serialization
+// Non pub version of svr3::MaskedSecret used for serialization
 #[derive(Clone, Serialize, Deserialize, Debug)]
 #[cfg_attr(test, derive(PartialEq, Eq, Default))]
 struct SerializableMaskedShareSet {
     server_ids: Vec<u64>,
-    masked_shares: Vec<[u8; 32]>,
-    commitment: [u8; 32],
+    masked_secret: [u8; 32],
 }
 
-impl From<MaskedShareSet> for SerializableMaskedShareSet {
-    fn from(value: MaskedShareSet) -> Self {
+impl From<MaskedSecret> for SerializableMaskedShareSet {
+    fn from(value: MaskedSecret) -> Self {
         Self {
             server_ids: value.server_ids,
-            masked_shares: value.masked_shares,
-            commitment: value.commitment,
+            masked_secret: value.masked_secret,
         }
     }
 }
 
 impl SerializableMaskedShareSet {
-    fn into(self) -> MaskedShareSet {
-        MaskedShareSet {
+    fn into(self) -> MaskedSecret {
+        MaskedSecret {
             server_ids: self.server_ids,
-            masked_shares: self.masked_shares,
-            commitment: self.commitment,
+            masked_secret: self.masked_secret,
         }
     }
 }
@@ -72,12 +69,12 @@ pub enum DeserializeError {
 impl LogSafeDisplay for DeserializeError {}
 
 impl OpaqueMaskedShareSet {
-    fn new(inner: MaskedShareSet) -> Self {
+    fn new(inner: MaskedSecret) -> Self {
         Self {
             inner: inner.into(),
         }
     }
-    fn into_inner(self) -> MaskedShareSet {
+    fn into_inner(self) -> MaskedSecret {
         self.inner.into()
     }
 
@@ -308,8 +305,7 @@ mod test {
         OpaqueMaskedShareSet {
             inner: SerializableMaskedShareSet {
                 server_ids: vec![],
-                masked_shares: vec![],
-                commitment: [0; 32],
+                masked_secret: [0u8; 32],
             },
         }
     }

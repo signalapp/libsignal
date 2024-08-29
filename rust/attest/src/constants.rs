@@ -13,10 +13,11 @@ pub const ENCLAVE_ID_CDSI_STAGING_AND_PROD: &[u8] =
     &hex!("0f6fd79cdfdaa5b2e6337f534d3baf999318b0c462a7ac1f41297a3e4b424a57");
 pub const ENCLAVE_ID_SVR2_STAGING: &[u8] =
     &hex!("acb1973aa0bbbd14b3b4e06f145497d948fd4a98efc500fcce363b3b743ec482");
+
 pub const ENCLAVE_ID_SVR3_SGX_STAGING: &[u8] =
-    &hex!("29cd5aa268da2412ae14e9de2168608c9b22daadfd7effa2029abac02289e691");
-pub const ENCLAVE_ID_SVR3_NITRO_STAGING: &[u8] = b"ffe631d7.52b91975.a4544fb5";
-pub const ENCLAVE_ID_SVR3_TPM2SNP_STAGING: &[u8] = b"0.20240703.193412";
+    &hex!("64fd0ab571f2de73665befed1f34862e17cdd3d58201e335be2f68b3f985180f");
+pub const ENCLAVE_ID_SVR3_NITRO_STAGING: &[u8] = b"e651a442.52b91975.5c89712f";
+pub const ENCLAVE_ID_SVR3_TPM2SNP_STAGING: &[u8] = b"0.20240824.003942";
 
 pub const ENCLAVE_ID_SVR3_SGX_PROD: &[u8] =
     &hex!("0899bf951b57f27b5cd3d2dd4dbe5a144a4a62154853a4e352ac2c93ecfe6a2c");
@@ -30,9 +31,9 @@ pub(crate) const NITRO_EXPECTED_PCRS: SmallMap<&'static [u8], nitro::PcrMap, 1> 
     (
         ENCLAVE_ID_SVR3_NITRO_STAGING,
         SmallMap::new([
-             (0, hex!("ffe631d7b726c672480ddde425f3ed9cbdaafa354dc6a85277dde6bfca56e93fafd66052f1dd93bf5f240c5a55fb2cb1")),
+             (0, hex!("e651a442efc3be65a893c7ea3211d3a826b5c0b2102a224df9b42b6a7c0306b8e67553beed4069db0192224a644d80bc")),
              (1, hex!("52b919754e1643f4027eeee8ec39cc4a2cb931723de0c93ce5cc8d407467dc4302e86490c01c0d755acfe10dbf657546")),
-             (2, hex!("a4544fb5e5f416c08c4aca4c3f14efaf8d16d7ddc39d15f17b3b02605ef6e3a834553a0901fbce8716cc0de8caea028d")),
+             (2, hex!("5c89712fd49d4cbebfa1c7f7c59e19a2f94203938647348ebd0dfd20ce3e17b9c7447d3e4856348a89d3c96b5a747a35")),
         ]),
     ),
 ]);
@@ -47,8 +48,8 @@ pub(crate) const TPM2SNP_EXPECTED_PCRS: SmallMap<&'static [u8], &'static tpm2snp
             (3,  hex!("3d458cfe55cc03ea1f443f1562beec8df51c75e14a9fcf9a7234a13f198e7969")),
             (4,  hex!("6038382cdf539eb64d05c804c510e22b81e2c71fb171c9616ab14504f3654bb1")),
             (7,  hex!("590471a4fbd0c881c4fdc6349bc697e4df18c660c3ae3de9cb29028f8ef77280")),
-            (8,  hex!("7ea60a57d8d6b5c522dabeb55a3fa15aed6df65ae470b43865042e39be26ac06")),
-            (9,  hex!("95abd7aab524ef6b25f18f58a8b7f7e5b6eb285686fa8b7b28ccd39a73ac8d30")),
+            (8,  hex!("de28c40baca9bdb2024cd5e7a0af223396f8459b2bb14b5edce90ff78bc83c93")),
+            (9,  hex!("27117054ad1ca7d2daf5f6dbbc5fb7c3268f460afe6a2933d32d34968a13b12a")),
             (11, hex!("0000000000000000000000000000000000000000000000000000000000000000")),
             (12, hex!("0000000000000000000000000000000000000000000000000000000000000000")),
             (13, hex!("0000000000000000000000000000000000000000000000000000000000000000")),
@@ -101,16 +102,16 @@ pub const RAFT_CONFIG_SVR3_SGX_STAGING: &RaftConfig = &RaftConfig {
     min_voting_replicas: 3,
     max_voting_replicas: 9,
     super_majority: 0,
-    group_id: 15742431669367858463,
+    group_id: 2598856512118716214,
 };
 pub const RAFT_CONFIG_SVR3_NITRO_STAGING: &RaftConfig = &RaftConfig {
-    group_id: 10298929430185113734,
+    group_id: 12784208226750162631,
     min_voting_replicas: 3,
     max_voting_replicas: 9,
     super_majority: 0,
 };
 pub const RAFT_CONFIG_SVR3_TPM2SNP_STAGING: &RaftConfig = &RaftConfig {
-    group_id: 2579018130363863974,
+    group_id: 15331762113118535803,
     min_voting_replicas: 3,
     max_voting_replicas: 9,
     super_majority: 0,

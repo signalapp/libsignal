@@ -12,7 +12,7 @@ use std::num::NonZeroU32;
 use std::sync::Arc;
 
 use futures_util::future::join_all;
-use libsignal_svr3::{make_remove_request, Backup, EvaluationResult, Query, Restore};
+use libsignal_svr3::{Backup4, EvaluationResult, MaskedSecret, Query4, Remove4, Restore1};
 use rand_core::CryptoRngCore;
 
 use super::{Error, OpaqueMaskedShareSet};
@@ -31,14 +31,20 @@ pub async fn do_backup<S: AsyncDuplexStream + 'static, Env: PpssSetup<S>>(
     let ConnectionContext {
         mut connections,
         addresses,
-        mut errors,
+        errors,
     } = ConnectionContext::new(connect_results);
-    if let Some(err) = errors.pop_front() {
+    if let Some(err) = errors.into_iter().next() {
         return Err(err);
     }
 
     let server_ids = Env::server_ids();
-    let backup = Backup::new(server_ids.as_ref(), password, secret, max_tries, rng)?;
+    let backup = Backup4::new(
+        server_ids.as_ref(),
+        password.as_bytes(),
+        &secret,
+        max_tries,
+        rng,
+    )?;
     let futures = connections
         .iter_mut()
         .zip(&backup.requests)
@@ -47,9 +53,8 @@ pub async fn do_backup<S: AsyncDuplexStream + 'static, Env: PpssSetup<S>>(
         .await
         .into_iter()
         .collect::<Result<Vec<_>, _>>();
-    let responses = collect_responses(results?, addresses.iter())?;
-    let share_set = backup.finalize(rng, &responses)?;
-    Ok(OpaqueMaskedShareSet::new(share_set))
+    collect_responses(results?, addresses.iter())?;
+    Ok(OpaqueMaskedShareSet::new(backup.masked_secret))
 }
 
 pub async fn do_restore<S: AsyncDuplexStream + 'static>(
@@ -61,23 +66,46 @@ pub async fn do_restore<S: AsyncDuplexStream + 'static>(
     let ConnectionContext {
         mut connections,
         addresses,
-        mut errors,
+        errors,
     } = ConnectionContext::new(connect_results);
-    if let Some(err) = errors.pop_front() {
+    if let Some(err) = errors.into_iter().next() {
         return Err(err);
     }
 
-    let restore = Restore::new(password, share_set.into_inner(), rng)?;
-    let futures = connections
-        .iter_mut()
-        .zip(&restore.requests)
-        .map(|(connection, request)| run_attested_interaction(connection, request));
-    let results = join_all(futures)
-        .await
-        .into_iter()
-        .collect::<Result<Vec<_>, _>>();
-    let responses = collect_responses(results?, addresses.iter())?;
-    Ok(restore.finalize(&responses)?)
+    let masked_secret: MaskedSecret = share_set.into_inner();
+
+    let restore1 = Restore1::new(masked_secret.server_ids.as_ref(), password.as_bytes(), rng);
+    let responses1 = {
+        let futures = connections
+            .iter_mut()
+            .zip(&restore1.requests)
+            .map(|(connection, request)| run_attested_interaction(connection, request));
+        let results = join_all(futures)
+            .await
+            .into_iter()
+            .collect::<Result<Vec<_>, _>>();
+        collect_responses(results?, addresses.iter())?
+    };
+
+    let restore2 = restore1.restore2(&responses1, rng)?;
+    let tries_remaining = restore2.tries_remaining;
+    let responses2 = {
+        let futures = connections
+            .iter_mut()
+            .zip(&restore2.requests)
+            .map(|(connection, request)| run_attested_interaction(connection, request));
+        let results = join_all(futures)
+            .await
+            .into_iter()
+            .collect::<Result<Vec<_>, _>>();
+        collect_responses(results?, addresses.iter())?
+    };
+    let output = restore2.restore(&responses2)?;
+
+    Ok(EvaluationResult {
+        value: output.unmask_secret(&masked_secret.masked_secret),
+        tries_remaining,
+    })
 }
 
 pub async fn do_remove<S: AsyncDuplexStream + 'static>(
@@ -93,9 +121,11 @@ pub async fn do_remove<S: AsyncDuplexStream + 'static>(
         // and proceed to work with the successful connections.
         log::debug!("Connection failure '{:?}' will be ignored.", &err);
     }
+
     let futures = connections
         .iter_mut()
-        .map(|connection| run_attested_interaction(connection, make_remove_request()));
+        .zip(Remove4::requests())
+        .map(|(connection, request)| run_attested_interaction(connection, request));
     let results = join_all(futures)
         .await
         .into_iter()
@@ -110,22 +140,22 @@ pub async fn do_query<S: AsyncDuplexStream + 'static>(
     let ConnectionContext {
         mut connections,
         addresses,
-        mut errors,
+        errors,
     } = ConnectionContext::new(connect_results);
-    if let Some(err) = errors.pop_front() {
+    if let Some(err) = errors.into_iter().next() {
         return Err(err);
     }
 
     let futures = connections
         .iter_mut()
-        .zip(Query::requests())
+        .zip(Query4::requests())
         .map(|(connection, request)| run_attested_interaction(connection, request));
     let results = join_all(futures)
         .await
         .into_iter()
         .collect::<Result<Vec<_>, _>>();
     let responses = collect_responses(results?, addresses.iter())?;
-    Ok(Query::finalize(&responses)?)
+    Ok(Query4::finalize(&responses)?)
 }
 
 struct ConnectionContext<S> {

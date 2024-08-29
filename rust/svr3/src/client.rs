@@ -18,12 +18,59 @@ use sha2::{Sha256, Sha512};
 use crate::errors::Error;
 use crate::proto::svr4;
 
-/// Make a request to remove a record from SVR4.
-pub fn make_remove4_request() -> Vec<u8> {
-    svr4::Request4 {
-        inner: Some(svr4::request4::Inner::Remove(svr4::request4::Remove {})),
+/// Perfrom array XOR: into ^= from
+fn arr_xor(from: &[u8], into: &mut [u8]) {
+    assert_eq!(from.len(), into.len());
+    for (dst, src) in std::iter::zip(into, from) {
+        *dst ^= src;
     }
-    .encode_to_vec()
+}
+
+pub struct Query4 {}
+
+impl Query4 {
+    // Using `impl Iterator<...>` makes libsignal-net fail to build in Rust 1.72
+    pub fn requests() -> std::iter::Repeat<Vec<u8>> {
+        std::iter::repeat(
+            svr4::Request4 {
+                inner: Some(svr4::request4::Inner::Query(svr4::request4::Query {})),
+            }
+            .encode_to_vec(),
+        )
+    }
+
+    pub fn finalize(responses: &[Vec<u8>]) -> Result<u32, Error> {
+        assert!(!responses.is_empty());
+        responses
+            .iter()
+            .map(|b| svr4::Response4::decode(b.as_ref()).map_err(|_| Error::BadData))
+            .map(|rr| match rr?.inner {
+                Some(svr4::response4::Inner::Query(r)) => match status_error(r.status) {
+                    Ok(()) => Ok(r.tries_remaining),
+                    Err(e) => Err(e),
+                },
+                _ => Err(Error::BadData),
+            })
+            // Get the min tries_remaining while short circuiting on errors.
+            // Should never actually return u32::MAX, since there should be at least one
+            // response, which will either be an error (returning an error overall)
+            // or a value less than MAX.
+            .try_fold(u32::MAX, |acc, tr| Ok(std::cmp::min(acc, tr?)))
+    }
+}
+
+pub struct Remove4 {}
+
+impl Remove4 {
+    // Using `impl Iterator<...>` makes libsignal-net fail to build in Rust 1.72
+    pub fn requests() -> std::iter::Repeat<Vec<u8>> {
+        std::iter::repeat(
+            svr4::Request4 {
+                inner: Some(svr4::request4::Inner::Remove(svr4::request4::Remove {})),
+            }
+            .encode_to_vec(),
+        )
+    }
 }
 
 /// Returns a list of `n` scalars which are chosen randomly but
@@ -49,9 +96,7 @@ fn bytes_xoring_to<R: CryptoRngCore>(n: NonZeroUsize, b: &[u8], rng: &mut R) -> 
     .collect();
     let mut xor: Vec<u8> = b.into();
     for vec in v.iter() {
-        for (i, c) in vec.iter().enumerate() {
-            xor[i] ^= c;
-        }
+        arr_xor(vec, &mut xor);
     }
     v.push(xor);
     v
@@ -118,19 +163,35 @@ fn to_ristretto_pt(b: &[u8]) -> Option<RistrettoPoint> {
     CompressedRistretto::from_slice(b).ok()?.decompress()
 }
 
+/// Given a set of password bytes from the client that may be in any
+/// format or any length, generate a deterministic 64-byte key
+/// for use in Backup/Restore operations.
+fn password_to_uniform_input(passwd: &[u8]) -> [u8; 64] {
+    Kdf::make(b"Signal_SVR_InputFromPassword_20240823", passwd, b"")
+}
+
 pub struct Backup4 {
     pub requests: Vec<Vec<u8>>,
     pub output: Output4,
+    pub masked_secret: MaskedSecret,
+}
+
+/// Contains everything necessary to restore a secret given a password.
+pub struct MaskedSecret {
+    pub server_ids: Vec<u64>,
+    pub masked_secret: [u8; 32],
 }
 
 impl Backup4 {
     pub fn new<R: CryptoRngCore>(
         server_ids: &[u64],
-        input: [u8; 64],
+        password: &[u8],
+        secret: &[u8; 32],
         max_tries: NonZeroU32,
         rng: &mut R,
     ) -> Result<Self, Error> {
         assert!(!server_ids.is_empty());
+        let input = password_to_uniform_input(password);
         let k_oprf = Scalar::random(rng);
 
         let mut s_enc = [0u8; 32];
@@ -144,7 +205,11 @@ impl Backup4 {
 
         let auth_pt = auth_pt(&input, &k_oprf);
         let auth_commitments = auth_commitments(server_ids, &input, &auth_pt);
-        let version = rng.next_u64();
+        let version = rng.next_u32();
+        let output = Output4 {
+            k_auth: auth_secret(&input, &auth_pt),
+            s_enc,
+        };
 
         Ok(Self {
             requests: (0usize..server_ids.len())
@@ -160,10 +225,11 @@ impl Backup4 {
                 })
                 .map(|cr| cr.encode_to_vec())
                 .collect(),
-            output: Output4 {
-                k_auth: auth_secret(&input, &auth_pt),
-                s_enc,
+            masked_secret: MaskedSecret {
+                server_ids: server_ids.to_vec(),
+                masked_secret: output.mask_secret(secret),
             },
+            output,
         })
     }
 }
@@ -182,20 +248,28 @@ impl Output4 {
             &self.k_auth,
         )
     }
+    pub fn mask_secret(&self, secret: &[u8; 32]) -> [u8; 32] {
+        let mut out = self.encryption_key();
+        arr_xor(secret, &mut out);
+        out
+    }
+    pub fn unmask_secret(&self, masked_secret: &[u8; 32]) -> [u8; 32] {
+        self.mask_secret(masked_secret) // masking and unmasking are the same function
+    }
 }
 
 pub struct Restore1<'a> {
     server_ids: &'a [u64],
-    input: &'a [u8; 64],
+    input: [u8; 64],
     blind: Scalar,
     pub requests: Vec<Vec<u8>>,
 }
 
 pub struct Restore2<'a> {
     server_ids: &'a [u64],
-    input: &'a [u8; 64],
+    input: [u8; 64],
     auth_pt: RistrettoPoint,
-    tries_remaining: Option<u32>,
+    pub tries_remaining: u32,
     pub requests: Vec<Vec<u8>>,
 }
 
@@ -212,14 +286,15 @@ fn status_errors<I: Iterator<Item = i32>>(statuses: &mut I) -> Result<(), Error>
 }
 
 impl<'a> Restore1<'a> {
-    pub fn new<R: CryptoRngCore>(server_ids: &'a [u64], input: &'a [u8; 64], rng: &mut R) -> Self {
+    pub fn new<R: CryptoRngCore>(server_ids: &'a [u64], password: &[u8], rng: &mut R) -> Self {
         let blind = Scalar::random(rng);
+        let input = password_to_uniform_input(password);
         Restore1 {
             requests: server_ids
                 .iter()
                 .map(|_| svr4::Request4 {
                     inner: Some(svr4::request4::Inner::Restore1(svr4::request4::Restore1 {
-                        blinded: (input_hash_pt(input) * blind)
+                        blinded: (input_hash_pt(&input) * blind)
                             .compress()
                             .to_bytes()
                             .to_vec(),
@@ -304,7 +379,7 @@ impl<'a> Restore1<'a> {
 
         // Now, we use auth_pt to recompute auth commitments, which we send
         // back to the server, proving we have the correct value for `input`.
-        let auth_commitments = auth_commitments(self.server_ids, self.input, &auth_pt);
+        let auth_commitments = auth_commitments(self.server_ids, &self.input, &auth_pt);
         let rand = Scalar::random(rng);
         let proof_pt_bytes = (RISTRETTO_BASEPOINT_TABLE * &rand).compress().to_bytes();
         let proof_scalar_base = Scalar::hash_from_bytes::<Sha512>(&proof_pt_bytes);
@@ -325,14 +400,15 @@ impl<'a> Restore1<'a> {
             server_ids: self.server_ids,
             input: self.input,
             auth_pt,
-            tries_remaining,
+            tries_remaining: tries_remaining
+                .expect("all responses had to be OK, so we should have this"),
         })
     }
 
     /// Given a set of responses, each of which have some number of Auths,
     /// return a version that is available in all responses, if such a
     /// one exists.
-    fn version_to_use(&self, responses1: &[svr4::response4::Restore1]) -> Option<u64> {
+    fn version_to_use(&self, responses1: &[svr4::response4::Restore1]) -> Option<u32> {
         let mut versions = BTreeMap::new();
         for r1 in responses1 {
             for auth in &r1.auth {
@@ -352,7 +428,7 @@ impl<'a> Restore1<'a> {
     /// given version, or an Error::BadResponse if they're not found.
     fn auths_with_version<'b>(
         &self,
-        version: u64,
+        version: u32,
         responses1: &'b [svr4::response4::Restore1],
     ) -> Result<Vec<&'b svr4::response4::restore1::Auth>, Error> {
         let mut out = Vec::with_capacity(responses1.len());
@@ -394,33 +470,27 @@ impl<'a> Restore2<'a> {
                 _ => Err(Error::BadResponse),
             })
             .collect::<Result<Vec<svr4::response4::Restore2>, _>>()?;
-        status_errors(&mut responses2.iter().map(|r| r.status)).map_err(|e| {
-            match self.tries_remaining {
-                Some(tr) => Error::RestoreFailed(tr),
-                None => e,
-            }
-        })?;
+        status_errors(&mut responses2.iter().map(|r| r.status))
+            .map_err(|_| Error::RestoreFailed(self.tries_remaining))?;
 
         let mut s_enc = [0u8; 32];
         for resp in responses2.iter() {
             if resp.encryption_secretshare.len() != s_enc.len() {
                 return Err(Error::BadResponse);
             }
-            for (i, c) in resp.encryption_secretshare.iter().enumerate() {
-                s_enc[i] ^= c;
-            }
+            arr_xor(&resp.encryption_secretshare, &mut s_enc);
         }
         Ok(Output4 {
             s_enc,
-            k_auth: auth_secret(self.input, &self.auth_pt),
+            k_auth: auth_secret(&self.input, &self.auth_pt),
         })
     }
 }
 
 enum RotationAction {
     DoNothing,
-    Commit(u64),
-    Rollback(u64),
+    Commit(u32),
+    Rollback(u32),
 }
 
 /// RotationMachineState defines a simple state machine for performing
@@ -477,11 +547,11 @@ enum RotationMachineState {
     /// Start our actual rotation, using the stored new (random) version
     /// number.  This creates new key deltas for OPRF and Encryption keys
     /// and provides them to the backing servers.
-    RotateStart(u64),
+    RotateStart(u32),
     /// Commit the version we created with RotateStart, rolling all backends
     /// forward to the new version. If this succeeds, all servers will be
     /// at the new version.
-    RotateCommit(u64),
+    RotateCommit(u32),
     /// There's nothing more to do, either because we hit an unrecoverable
     /// error or because we've completed successfully.
     Done,
@@ -569,7 +639,7 @@ impl<'a> RotationMachine<'a> {
             .collect::<Vec<_>>()
     }
 
-    fn rotate_start_requests(&mut self, version: u64) -> Vec<Vec<u8>> {
+    fn rotate_start_requests(&mut self, version: u32) -> Vec<Vec<u8>> {
         let n = NonZeroUsize::new(self.server_ids.len()).unwrap();
         let oprf_secretshares = scalars_summing_to(n, &Scalar::ZERO, &mut self.rng);
         let mut encryption_secretshares = bytes_xoring_to(n, &[0u8; 32], &mut self.rng);
@@ -589,7 +659,7 @@ impl<'a> RotationMachine<'a> {
             .collect::<Vec<_>>()
     }
 
-    fn rotate_commit_requests(&self, version: u64) -> Vec<Vec<u8>> {
+    fn rotate_commit_requests(&self, version: u32) -> Vec<Vec<u8>> {
         self.server_ids
             .iter()
             .map(|_| svr4::Request4 {
@@ -640,7 +710,7 @@ impl<'a> RotationMachine<'a> {
 
         let first = resps[0];
         // Utility function to check that a version is in all responses.
-        let version_in_all_responses = |v: u64| -> bool {
+        let version_in_all_responses = |v: u32| -> bool {
             resps
                 .iter()
                 .filter(|r| r.version == v || r.new_version == v)
@@ -679,7 +749,7 @@ impl<'a> RotationMachine<'a> {
         if action_required {
             self.state = RotationMachineState::FixPrevious(actions);
         } else {
-            self.state = RotationMachineState::RotateStart(self.rng.next_u64());
+            self.state = RotationMachineState::RotateStart(self.rng.next_u32());
         }
         Ok(())
     }
@@ -694,11 +764,11 @@ impl<'a> RotationMachine<'a> {
                 Some(svr4::response4::Inner::RotateRollback(r)) => status_error(r.status),
                 _ => Err(Error::BadResponse),
             })?;
-        self.state = RotationMachineState::RotateStart(self.rng.next_u64());
+        self.state = RotationMachineState::RotateStart(self.rng.next_u32());
         Ok(())
     }
 
-    fn rotate_start_responses(&mut self, responses: &[Vec<u8>], version: u64) -> Result<(), Error> {
+    fn rotate_start_responses(&mut self, responses: &[Vec<u8>], version: u32) -> Result<(), Error> {
         let _resps = responses
             .iter()
             .map(|b| svr4::Response4::decode(b.as_ref()).map_err(|_| Error::BadData))
@@ -788,7 +858,7 @@ mod test {
     /// TestServer implements the server-side for a single-user interaction.
     struct TestServer {
         tries: u32,
-        versions: BTreeMap<u64, TestServerVersion>,
+        versions: BTreeMap<u32, TestServerVersion>,
     }
 
     /// TestServerVersion holds a single version's data for a single user.
@@ -930,17 +1000,19 @@ mod test {
             .iter()
             .map(|_| TestServer::new())
             .collect::<Vec<_>>();
-        let input = [2u8; 64];
+        let password = [2u8; 67]; // can be arbitrary length
 
         // Create a new backup
-        let backup =
-            Backup4::new(&server_ids, input, nonzero!(10u32), &mut rng).expect("create Backup4");
+        let secret = [3u8; 32];
+        let backup = Backup4::new(&server_ids, &password, &secret, nonzero!(10u32), &mut rng)
+            .expect("create Backup4");
         for (server, req) in servers.iter_mut().zip(backup.requests) {
             server.create(&req);
         }
+        let masked_secret = backup.masked_secret;
 
         // Restoring existing backup.
-        let restore1 = Restore1::new(&server_ids, &input, &mut rng);
+        let restore1 = Restore1::new(&server_ids, &password, &mut rng);
         let restore1_responses = servers
             .iter_mut()
             .zip(&restore1.requests)
@@ -958,6 +1030,10 @@ mod test {
             .restore(&restore2_responses)
             .expect("call restored");
         assert_eq!(backup.output, got);
+        assert_eq!(
+            secret,
+            backup.output.unmask_secret(&masked_secret.masked_secret)
+        );
     }
 
     /// Deterministic RNG for testing
