@@ -97,6 +97,7 @@ pub enum SignalErrorCode {
 
     SvrDataMissing = 150,
     SvrRestoreFailed = 151,
+    SvrRotationMachineTooManySteps = 152,
 
     AppExpired = 160,
     DeviceDeregistered = 161,
@@ -490,7 +491,10 @@ impl FfiError for Svr3Error {
             Self::Service(e) => format!("WebSocket error: {e}"),
             Self::Protocol(e) => format!("Protocol error: {e}"),
             Self::AttestationError(inner) => inner.describe(),
-            Self::RequestFailed(_) | Self::RestoreFailed(_) | Self::DataMissing => {
+            Self::RequestFailed(_)
+            | Self::RestoreFailed(_)
+            | Self::DataMissing
+            | Self::RotationMachineTooManySteps => {
                 format!("SVR error: {self}")
             }
         }
@@ -511,6 +515,7 @@ impl FfiError for Svr3Error {
             Self::RequestFailed(_) => SignalErrorCode::UnknownError,
             Self::RestoreFailed(_) => SignalErrorCode::SvrRestoreFailed,
             Self::DataMissing => SignalErrorCode::SvrDataMissing,
+            Self::RotationMachineTooManySteps => SignalErrorCode::SvrRotationMachineTooManySteps,
         }
     }
 

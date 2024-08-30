@@ -12,7 +12,10 @@ use std::num::NonZeroU32;
 use std::sync::Arc;
 
 use futures_util::future::join_all;
-use libsignal_svr3::{Backup4, EvaluationResult, MaskedSecret, Query4, Remove4, Restore1};
+use libsignal_svr3::{
+    Backup4, EvaluationResult, MaskedSecret, Query4, Remove4, Restore1, RotationMachine,
+    MAX_ROTATION_STEPS,
+};
 use rand_core::CryptoRngCore;
 
 use super::{Error, OpaqueMaskedShareSet};
@@ -156,6 +159,46 @@ pub async fn do_query<S: AsyncDuplexStream + 'static>(
         .collect::<Result<Vec<_>, _>>();
     let responses = collect_responses(results?, addresses.iter())?;
     Ok(Query4::finalize(&responses)?)
+}
+
+pub async fn do_rotate<S: AsyncDuplexStream + 'static>(
+    connect_results: impl IntoConnectionResults<Stream = S>,
+    share_set: OpaqueMaskedShareSet,
+    rng: &mut (impl CryptoRngCore + Send),
+) -> Result<(), Error> {
+    let ConnectionContext {
+        mut connections,
+        addresses,
+        errors,
+    } = ConnectionContext::new(connect_results);
+    if let Some(err) = errors.into_iter().next() {
+        return Err(err);
+    }
+    let masked_secret: MaskedSecret = share_set.into_inner();
+
+    let mut rotation_machine = RotationMachine::new(masked_secret.server_ids.as_ref(), rng);
+
+    for _ in 0..MAX_ROTATION_STEPS {
+        if rotation_machine.is_done() {
+            break;
+        }
+        let requests = rotation_machine.requests();
+        let futures = connections
+            .iter_mut()
+            .zip(&requests)
+            .map(|(connection, request)| run_attested_interaction(connection, request));
+        let results = join_all(futures)
+            .await
+            .into_iter()
+            .collect::<Result<Vec<_>, _>>();
+        let responses = collect_responses(results?, addresses.iter())?;
+        rotation_machine.handle_responses(responses.as_ref())?;
+    }
+    if rotation_machine.is_done() {
+        Ok(())
+    } else {
+        Err(Error::RotationMachineTooManySteps)
+    }
 }
 
 struct ConnectionContext<S> {

@@ -295,7 +295,8 @@ impl From<Svr3Error> for SignalJniError {
             Svr3Error::Protocol(_)
             | Svr3Error::RequestFailed(_)
             | Svr3Error::RestoreFailed(_)
-            | Svr3Error::DataMissing => SignalJniError::Svr3(err),
+            | Svr3Error::DataMissing
+            | Svr3Error::RotationMachineTooManySteps => SignalJniError::Svr3(err),
         }
     }
 }

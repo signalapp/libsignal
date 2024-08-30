@@ -493,6 +493,8 @@ enum RotationAction {
     Rollback(u32),
 }
 
+pub const MAX_ROTATION_STEPS: usize = 4;
+
 /// RotationMachineState defines a simple state machine for performing
 /// a client-initiated rotation.  Clients start in the InitialQuery state
 /// and attempt to achieve the Done state.  The following are the
@@ -573,14 +575,14 @@ enum RotationMachineState {
 /// Important:  The order of request and response vectors matter: if
 /// server.ids()[1] is X, then requests[1] is meant for server X
 /// and responses[1] should be the response received from X.
-struct RotationMachine<'a> {
+pub struct RotationMachine<'a> {
     pub server_ids: &'a [u64],
-    rng: &'a mut dyn CryptoRngCore,
+    rng: &'a mut (dyn CryptoRngCore + Send),
     state: RotationMachineState,
 }
 
 impl<'a> RotationMachine<'a> {
-    pub fn new<R: CryptoRngCore>(server_ids: &'a [u64], rng: &'a mut R) -> Self {
+    pub fn new<R: CryptoRngCore + Send>(server_ids: &'a [u64], rng: &'a mut R) -> Self {
         Self {
             server_ids,
             rng,

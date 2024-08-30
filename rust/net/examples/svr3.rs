@@ -91,6 +91,16 @@ async fn main() {
     };
     println!("{}: {}", "Share set".cyan(), hex::encode(&share_set_bytes));
 
+    {
+        println!("{}", "Rotating secret".cyan());
+        let opaque_share_set =
+            OpaqueMaskedShareSet::deserialize(&share_set_bytes).expect("can deserialize");
+        client
+            .rotate(opaque_share_set, &mut rng)
+            .await
+            .expect("can rotate");
+    };
+
     let restored = {
         let opaque_share_set =
             OpaqueMaskedShareSet::deserialize(&share_set_bytes).expect("can deserialize");

@@ -136,6 +136,7 @@ const INVALID_MEDIA_INPUT: &str = "InvalidMediaInput";
 const IO_ERROR: &str = "IoError";
 const RATE_LIMITED_ERROR: &str = "RateLimitedError";
 const SVR3_DATA_MISSING: &str = "SvrDataMissing";
+const SVR3_ROTATION_MACHINE_STEPS: &str = "SvrRotationMachineTooManySteps";
 const SVR3_REQUEST_FAILED: &str = "SvrRequestFailed";
 const SVR3_RESTORE_FAILED: &str = "SvrRestoreFailed";
 const UNSUPPORTED_MEDIA_INPUT: &str = "UnsupportedMediaInput";
@@ -504,6 +505,7 @@ impl SignalNodeError for libsignal_net::svr3::Error {
             ),
             Svr3Error::DataMissing => (Some(SVR3_DATA_MISSING), None),
             Svr3Error::Protocol(_) => (None, None),
+            Svr3Error::RotationMachineTooManySteps => (Some(SVR3_ROTATION_MACHINE_STEPS), None),
         };
 
         let message = self.to_string();

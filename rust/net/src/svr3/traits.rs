@@ -49,6 +49,15 @@ pub trait Remove {
 }
 
 #[async_trait]
+pub trait Rotate {
+    async fn rotate(
+        &self,
+        share_set: OpaqueMaskedShareSet,
+        rng: &mut (impl CryptoRngCore + Send),
+    ) -> Result<(), Error>;
+}
+
+#[async_trait]
 pub trait Svr3Connect {
     // Stream is needed for the blanket implementation,
     // otherwise S would be an unconstrained generic parameter.
@@ -116,5 +125,20 @@ where
 {
     async fn query(&self) -> Result<u32, Error> {
         ppss_ops::do_query(self.connect().await).await
+    }
+}
+
+#[async_trait]
+impl<T> Rotate for T
+where
+    T: Svr3Connect + Sync,
+    T::Stream: AsyncDuplexStream + 'static,
+{
+    async fn rotate(
+        &self,
+        share_set: OpaqueMaskedShareSet,
+        rng: &mut (impl CryptoRngCore + Send),
+    ) -> Result<(), Error> {
+        ppss_ops::do_rotate(self.connect().await, share_set, rng).await
     }
 }

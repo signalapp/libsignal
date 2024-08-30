@@ -146,6 +146,8 @@ pub enum Error {
     DataMissing,
     /// Connect timed out
     ConnectionTimedOut,
+    /// Rotation machine took too many steps
+    RotationMachineTooManySteps,
 }
 
 impl From<DeserializeError> for Error {

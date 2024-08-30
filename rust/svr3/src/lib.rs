@@ -16,7 +16,9 @@ pub use ppss::{MaskedShareSet, OPRFSession};
 mod errors;
 pub use errors::{Error, ErrorStatus, OPRFError, PPSSError};
 mod proto;
-pub use client::{Backup4, MaskedSecret, Query4, Remove4, Restore1, Restore2};
+pub use client::{
+    Backup4, MaskedSecret, Query4, Remove4, Restore1, Restore2, RotationMachine, MAX_ROTATION_STEPS,
+};
 use proto::svr3::{self, create_response, evaluate_response, query_response};
 pub use proto::svr4::response4::Status as V4Status;
 

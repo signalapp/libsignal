@@ -58,6 +58,7 @@ public enum SignalError: Error {
     case rateLimitedError(retryAfter: TimeInterval, message: String)
     case svrDataMissing(String)
     case svrRestoreFailed(triesRemaining: UInt32, message: String)
+    case svrRotationMachineTooManySteps(String)
     case chatServiceInactive(String)
     case appExpired(String)
     case deviceDeregistered(String)
@@ -196,6 +197,8 @@ internal func checkError(_ error: SignalFfiErrorRef?) throws {
             signal_error_get_tries_remaining(error, $0)
         }
         throw SignalError.svrRestoreFailed(triesRemaining: triesRemaining, message: errStr)
+    case SignalErrorCodeSvrRotationMachineTooManySteps:
+        throw SignalError.svrRotationMachineTooManySteps(errStr)
     case SignalErrorCodeChatServiceInactive:
         throw SignalError.chatServiceInactive(errStr)
     case SignalErrorCodeAppExpired:
