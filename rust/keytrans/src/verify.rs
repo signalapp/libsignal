@@ -172,7 +172,7 @@ fn verify_full_tree_head(
     //    greater than or equal to what they were before.
     match storage.get_last_tree_head()? {
         None => {
-            if !fth.consistency.is_empty() {
+            if !fth.last.is_empty() {
                 return Err(Error::VerificationFailed(
                     "consistency proof provided when not expected".to_string(),
                 ));
@@ -189,7 +189,7 @@ fn verify_full_tree_head(
                     "current timestamp is less than previous timestamp".to_string(),
                 ));
             }
-            if !fth.consistency.is_empty() {
+            if !fth.last.is_empty() {
                 return Err(Error::VerificationFailed(
                     "consistency proof provided when not expected".to_string(),
                 ));
@@ -206,7 +206,7 @@ fn verify_full_tree_head(
                     "current timestamp is less than previous timestamp".to_string(),
                 ));
             }
-            let proof = get_hash_proof(&fth.consistency)?;
+            let proof = get_hash_proof(&fth.last)?;
             verify_consistency_proof(last.tree_size, tree_head.tree_size, &proof, last_root, root)?
         }
     };
@@ -586,9 +586,8 @@ pub fn verify_monitor(
             // don't update monitoring data based on parts of the tree that we
             // don't intend to retain.
             req.consistency
-                .as_ref()
+                .and_then(|consistency| consistency.last)
                 .ok_or(Error::VerificationFailed("monitoring request malformed: consistency field expected when monitoring distinguished key".to_string()))?
-                .last
         } else {
             tree_size
         };

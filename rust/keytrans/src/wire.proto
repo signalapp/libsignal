@@ -26,8 +26,8 @@ message AuditorTreeHead {
 // needed for validation.
 message FullTreeHead {
     TreeHead tree_head = 1;
-    repeated bytes distinguished = 2;
-    repeated bytes consistency = 3;
+    repeated bytes last = 2;
+    repeated bytes distinguished = 3;
     optional AuditorTreeHead auditor_tree_head = 4;
 }
 
@@ -54,7 +54,7 @@ message UpdateValue {
 // Consistency specifies the parameters of the consistency proof(s) that should
 // be returned.
 message Consistency {
-    uint64 last = 1;
+    optional uint64 last = 1;
     optional uint64 distinguished = 2;
 }
 
@@ -62,7 +62,7 @@ message Consistency {
 message SearchRequest {
     bytes search_key = 1;
     optional uint32 version = 2;
-    optional Consistency consistency = 3;
+    Consistency consistency = 3;
 }
 
 // SearchResponse is the output of executing a search on the tree.
@@ -79,7 +79,7 @@ message SearchResponse {
 message UpdateRequest {
     bytes search_key = 1;
     bytes value = 2;
-    optional Consistency consistency = 3;
+    Consistency consistency = 3;
 }
 
 // UpdateResponse is the output of executing an update on the tree.
@@ -102,7 +102,7 @@ message MonitorKey {
 message MonitorRequest {
     repeated MonitorKey owned_keys = 1;
     repeated MonitorKey contact_keys = 2;
-    optional Consistency consistency = 3;
+    Consistency consistency = 3;
 }
 
 // MonitorProof proves that a single key has been correctly managed in the log.
