@@ -6,16 +6,10 @@ use std::fmt;
 
 use prost::DecodeError;
 
-pub use crate::oprf::errors::OPRFError;
-pub use crate::ppss::PPSSError;
 use crate::proto::svr4;
 
 #[derive(Debug, displaydoc::Display, PartialEq)]
 pub enum Error {
-    /// OPRF error: {0}
-    Oprf(OPRFError),
-    /// PPSS error: {0}, {1} tries remaining
-    Ppss(PPSSError, u32),
     /// Invalid protobuf
     BadData,
     /// Unexpected or missing server response
@@ -48,12 +42,6 @@ pub enum ErrorStatus {
 }
 
 impl std::error::Error for Error {}
-
-impl From<OPRFError> for Error {
-    fn from(err: OPRFError) -> Self {
-        Self::Oprf(err)
-    }
-}
 
 impl From<DecodeError> for Error {
     fn from(_err: DecodeError) -> Self {

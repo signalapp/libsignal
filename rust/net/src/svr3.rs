@@ -164,17 +164,14 @@ impl From<attest::enclave::Error> for Error {
 
 impl From<libsignal_svr3::Error> for Error {
     fn from(err: libsignal_svr3::Error) -> Self {
-        use libsignal_svr3::{Error as LogicError, PPSSError};
+        use libsignal_svr3::Error as LogicError;
         match err {
-            LogicError::Ppss(PPSSError::InvalidCommitment, tries_remaining)
-            | LogicError::RestoreFailed(tries_remaining) => Self::RestoreFailed(tries_remaining),
+            LogicError::RestoreFailed(tries_remaining) => Self::RestoreFailed(tries_remaining),
             LogicError::BadResponseStatus(libsignal_svr3::ErrorStatus::Missing)
             | LogicError::BadResponseStatus4(libsignal_svr3::V4Status::Missing) => {
                 Self::DataMissing
             }
-            LogicError::Oprf(_)
-            | LogicError::Ppss(_, _)
-            | LogicError::BadData
+            LogicError::BadData
             | LogicError::BadResponse
             | LogicError::NumServers { .. }
             | LogicError::NoUsableVersion
