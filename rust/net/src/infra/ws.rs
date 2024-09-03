@@ -39,15 +39,32 @@ pub use error::{Error, WebSocketConnectError};
 mod noise;
 pub use noise::WebSocketTransport;
 
+/// Configuration for a websocket connection.
 #[derive(Debug, Clone)]
 pub struct WebSocketConfig {
+    /// Protocol-level configuration.
     pub ws_config: tungstenite::protocol::WebSocketConfig,
+    /// The HTTP path to use when establishing the websocket connection.
     pub endpoint: PathAndQuery,
+    /// How long to wait after the request before timing out the connection.
+    ///
+    /// The amount of time after sending the request with the [`Upgrade`]
+    /// header on HTTP/1.1, or [`CONNECT`] method on HTTP/2, before which the
+    /// server should be assumed to be unavailable and the connection defunct.
+    ///
+    /// [`Upgrade`]: http::header::UPGRADE
+    /// [`CONNECT`]: http::method::Method::CONNECT
     pub max_connection_time: Duration,
+    /// How often to send [`Ping`] frames on the connection.
+    ///
+    /// [`Ping`]: tungstenite::Message::Ping
     pub keep_alive_interval: Duration,
+    /// How long to allow the connection to be idle before the server is assumed
+    /// to have become unavailable.
     pub max_idle_time: Duration,
 }
 
+/// [`ServiceConnector`] for services that wrap a websocket connection.
 #[derive_where(Clone; T)]
 pub(crate) struct WebSocketClientConnector<T, E> {
     transport_connector: T,

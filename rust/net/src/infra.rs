@@ -244,6 +244,11 @@ pub trait AsyncDuplexStream: AsyncRead + AsyncWrite + Unpin + Send + Sync {}
 
 impl<S: AsyncRead + AsyncWrite + Unpin + Send + Sync> AsyncDuplexStream for S {}
 
+/// Establishes TCP/TLS connections to remote destinations.
+///
+/// Given a destination in the form of [`TransportConnectionParams`],
+/// establishes a TLS handshake with the remote target, possibly through one or
+/// more intermediary proxies.
 #[async_trait]
 pub trait TransportConnector: Clone + Send + Sync {
     type Stream: AsyncDuplexStream + 'static;

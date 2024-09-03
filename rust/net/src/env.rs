@@ -261,16 +261,34 @@ pub(crate) const ENDPOINT_PARAMS_SVR3_TPM2SNP_PROD: EndpointParams<'static, Tpm2
         raft_config: attest::constants::RAFT_CONFIG_SVR3_TPM2SNP_PROD,
     };
 
+/// Configuration for a target network resource, like `chat.signal.org`.
 #[derive(Clone)]
 pub struct DomainConfig {
+    /// The domain name of the resource.
     pub hostname: &'static str,
+    /// The port for the resource.
     pub port: NonZeroU16,
+    /// A path prefix to prepend to any requests sent through a proxy.
+    ///
+    /// This affects requests sent through the [`Self::proxy_config_f`] or
+    /// [`Self::proxy_config_g`] proxies.
     pub proxy_path: &'static str,
+    /// Static IPv4 addresses to try if domain name resolution fails.
     pub ip_v4: &'static [Ipv4Addr],
+    /// Static IPv6 addresses to try if domain name resolution fails.
     pub ip_v6: &'static [Ipv6Addr],
+    /// Which certificates to use when connecting to the resource.
     pub cert: RootCertificates,
+    /// A header to look for that indicates that the resource was reached.
+    ///
+    /// If this is `Some()`, then the presence of the header in an HTTP response
+    /// indicates that the response came from the resource, not from a proxy or
+    /// load balancer.
     pub confirmation_header_name: Option<&'static str>,
+
+    /// The addresses for the Fastly proxy.
     pub proxy_config_f: ProxyConfig,
+    /// The addresses for the Google proxy.
     pub proxy_config_g: ProxyConfig,
 }
 

@@ -43,7 +43,16 @@ pub(crate) enum ServiceState<T, CE> {
     ConnectionTimedOut,
 }
 
-/// Represents the logic needed to establish a connection over some transport.
+/// Creates connections to a "service" representing a remote resource accessible over HTTPS.
+///
+/// Implementers split the creation of a connection into two phases:
+/// 1. creating a channel to the remote resource.
+/// 2. creating a local "service" for the remote resource.
+///
+/// Once the channel is established, creating the service is an infallible
+/// operation. Requests or queries sent to the service can still fail later, but
+/// the service is guaranteed to exist.
+///
 /// See [crate::chat::http::ChatOverHttp2ServiceConnector]
 /// and [crate::chat::ws::ChatOverWebSocketServiceConnector]
 #[async_trait]
@@ -52,11 +61,17 @@ pub(crate) trait ServiceConnector: Clone {
     type Channel;
     type ConnectError;
 
+    /// Attempts to establish a channel to the given remote resource.
     async fn connect_channel(
         &self,
         connection_params: &ConnectionParams,
     ) -> Result<Self::Channel, Self::ConnectError>;
 
+    /// Creates a local "service" that interacts with the resource at the end of
+    /// the channel.
+    ///
+    /// The returned service can be destroyed by cancelling it with the returned
+    /// [`CancellationToken`].
     fn start_service(&self, channel: Self::Channel) -> (Self::Service, CancellationToken);
 }
 
@@ -81,6 +96,7 @@ where
     }
 }
 
+/// [`ServiceConnector`] implementation that decorates all outgoing requests.
 #[derive(Clone)]
 pub(crate) struct ServiceConnectorWithDecorator<C> {
     inner: C,
@@ -117,6 +133,11 @@ where
     }
 }
 
+/// Describes a remote resource and how to attempt to connect to it.
+///
+/// Combines a [`ConnectionManager`] and [`ServiceConnector`]; the former
+/// chooses the target for connecting to, and the latter describes how to
+/// establish a connection to that target.
 pub(crate) struct ServiceInitializer<C, M> {
     service_connector: C,
     connection_manager: M,
@@ -182,6 +203,12 @@ pub(crate) struct ServiceInner<C: ServiceConnector, M> {
     connection_timeout: Duration,
 }
 
+/// A cheaply-clonable object that wraps a [`ServiceConnector`] and its created
+/// service.
+///
+/// The service can be connected to and disconnected from. The
+/// [`Service::service`] method can be used to obtain the
+/// [`ServiceConnector::Service`] for the wrapped connector.
 #[derive(Clone)]
 pub(crate) struct Service<C: ServiceConnector, M> {
     data: Arc<ServiceInner<C, M>>,

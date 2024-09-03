@@ -35,9 +35,11 @@ pub enum ConnectionAttemptOutcome<T, E> {
     WaitUntil(Instant),
 }
 
-/// Encapsulates the logic that for every connection attempt decides
-/// whether an attempt is to be made in the first place, and, if yes,
-/// which [ConnectionParams] are to be used for the attempt.
+/// Policy object that decides how and when to connect.
+///
+/// Encapsulates the logic that, for a given connection attempt, decides whether
+/// an attempt is to be made in the first place, and, if yes, which
+/// [`ConnectionParams`] are to be used for the attempt.
 #[async_trait]
 pub trait ConnectionManager: Clone + Send + Sync {
     async fn connect_or_wait<'a, T, E, Fun, Fut>(
