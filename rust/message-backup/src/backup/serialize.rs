@@ -423,7 +423,6 @@ mod test {
     fn make_contact(name: &str, index: u8) -> proto::Contact {
         proto::Contact {
             aci: Some(Uuid::from_bytes([index; 16]).as_bytes().to_vec()),
-            pni: Some(Uuid::from_bytes([index | 0xF0; 16]).as_bytes().to_vec()),
             profileGivenName: Some(name.to_owned()),
             registration: Some(proto::contact::Registration::Registered(
                 proto::contact::Registered {

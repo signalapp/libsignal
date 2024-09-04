@@ -42,6 +42,10 @@ pub enum RecipientError {
     InvalidDistributionId,
     /// invalid group: {0}
     InvalidGroup(#[from] GroupError),
+    /// contact has neither an ACI, nor a PNI, nor an e164
+    ContactHasNoIdentifiers,
+    /// contact has a PNI but no e164
+    PniWithoutE164,
     /// contact registered value is UNKNOWN
     ContactRegistrationUnknown,
     /// distribution list has privacy mode UNKNOWN
@@ -360,6 +364,12 @@ impl TryFrom<proto::Contact> for ContactData {
             .transpose()
             .map_err(|_| RecipientError::InvalidE164)?;
 
+        match (&aci, &pni, &e164) {
+            (None, None, None) => Err(RecipientError::ContactHasNoIdentifiers),
+            (_, Some(_), None) => Err(RecipientError::PniWithoutE164),
+            _ => Ok(()),
+        }?;
+
         Ok(Self {
             aci,
             pni,
@@ -471,6 +481,7 @@ impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R>>
 #[cfg(test)]
 mod test {
     use assert_matches::assert_matches;
+    use nonzero_ext::nonzero;
     use once_cell::sync::Lazy;
     use protobuf::EnumOrUnknown;
     use test_case::test_case;
@@ -494,11 +505,13 @@ mod test {
         pub(crate) const TEST_ACI: [u8; 16] = [0xaa; 16];
         pub(crate) const TEST_PNI: [u8; 16] = [0xba; 16];
         pub(crate) const TEST_PROFILE_KEY: ProfileKeyBytes = [0x36; 32];
+        pub(crate) const TEST_E164: E164 = E164(nonzero!(16505550101u64));
 
         fn test_data() -> Self {
             Self {
                 aci: Some(Self::TEST_ACI.into()),
                 pni: Some(Self::TEST_PNI.into()),
+                e164: Some(Self::TEST_E164.into()),
                 profileKey: Some(Self::TEST_PROFILE_KEY.into()),
                 registration: Some(proto::contact::Registration::NotRegistered(
                     Default::default(),
@@ -539,7 +552,7 @@ mod test {
                     unregistered_at: None,
                 },
                 username: Some("example.1234".to_owned()),
-                e164: None,
+                e164: Some(proto::Contact::TEST_E164),
                 blocked: false,
                 visibility: proto::contact::Visibility::VISIBLE,
                 profile_sharing: false,
@@ -625,6 +638,8 @@ mod test {
     #[test_case(|x| x.aci = None => Ok(()); "no_aci")]
     #[test_case(|x| x.pni = None => Ok(()); "no_pni")]
     #[test_case(|x| {x.aci = None; x.pni = None} => Ok(()); "no_aci_or_pni")]
+    #[test_case(|x| {x.pni = None; x.e164 = None} => Ok(()); "no_pni_or_e164")]
+    #[test_case(|x| {x.aci = None; x.pni = None; x.e164 = None} => Err(RecipientError::ContactHasNoIdentifiers); "no_aci_or_pni_or_e164")]
     #[test_case(|x| x.aci.as_mut().unwrap().push(0xaa) => Err(RecipientError::InvalidServiceId(ServiceIdKind::Aci)); "invalid_aci")]
     #[test_case(|x| x.pni.as_mut().unwrap().push(0xaa) => Err(RecipientError::InvalidServiceId(ServiceIdKind::Pni)); "invalid_pni")]
     #[test_case(|x| x.profileKey = None => Ok(()); "no_profile_key")]
@@ -633,8 +648,8 @@ mod test {
     #[test_case(|x| {x.profileGivenName = None; x.profileFamilyName = None} => Ok(()); "profile_no_names")]
     #[test_case(|x| x.visibility = proto::contact::Visibility::HIDDEN.into() => Ok(()); "visibility_hidden")]
     #[test_case(|x| x.visibility = EnumOrUnknown::default() => Ok(()); "visibility_default")]
-    #[test_case(|x| x.e164 = Some(16505550101) => Ok(()); "with_e164")]
     #[test_case(|x| x.e164 = Some(0) => Err(RecipientError::InvalidE164); "with_invalid_e164")]
+    #[test_case(|x| x.e164 = None => Err(RecipientError::PniWithoutE164); "no_e164")]
     fn destination_contact(modifier: fn(&mut proto::Contact)) -> Result<(), RecipientError> {
         let mut contact = proto::Contact::test_data();
         modifier(&mut contact);
