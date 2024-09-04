@@ -116,6 +116,8 @@ pub enum ChatItemError {
     GiftBadge(#[from] GiftBadgeError),
     /// ChatItem.directionalDetails is a oneof but is empty
     NoDirection,
+    /// directionless ChatItem wasn't an update message
+    DirectionlessMessage,
     /// outgoing message {0}
     Outgoing(#[from] OutgoingSendError),
     /// attachment: {0}
@@ -410,6 +412,12 @@ impl<
         let direction = directionalDetails
             .ok_or(ChatItemError::NoDirection)?
             .try_into_with(context)?;
+
+        match (&direction, &message) {
+            (Direction::Directionless, ChatItemMessage::Update(_)) => Ok(()),
+            (Direction::Directionless, _) => Err(ChatItemError::DirectionlessMessage),
+            (_, _) => Ok(()),
+        }?;
 
         let revisions: Vec<_> = revisions
             .into_iter()
@@ -870,6 +878,17 @@ mod test {
             .into(),
         ) => Err(ChatItemError::Outgoing(OutgoingSendError::UnknownRecipient(RecipientId(0xffff)))); "outgoing_unknown_recipient"
     )]
+    #[test_case(|x| x.directionalDetails = Some(proto::chat_item::DirectionlessMessageDetails::default().into()) => Err(ChatItemError::DirectionlessMessage); "directionless_non_update")]
+    #[test_case(|x| {
+        x.directionalDetails = Some(proto::chat_item::DirectionlessMessageDetails::default().into());
+        x.set_updateMessage(proto::ChatUpdateMessage {
+            update: Some(proto::chat_update_message::Update::SimpleUpdate(proto::SimpleChatUpdate {
+                type_: proto::simple_chat_update::Type::JOINED_SIGNAL.into(),
+                ..Default::default()
+            })),
+            ..Default::default()
+        });
+    } => Ok(()); "directionless_update")]
     fn chat_item(modifier: fn(&mut proto::ChatItem)) -> Result<(), ChatItemError> {
         let mut message = proto::ChatItem::test_data();
         modifier(&mut message);
