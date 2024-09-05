@@ -2,6 +2,7 @@
 // Copyright 2021 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
+
 use std::fmt;
 
 use libsignal_net::chat::ChatServiceError;
@@ -23,48 +24,54 @@ fn node_registerErrors(mut cx: FunctionContext) -> JsResult<JsValue> {
 }
 node_register!(registerErrors);
 
-fn new_js_error<'a>(
-    cx: &mut impl Context<'a>,
+fn no_extra_properties<'a>(cx: &mut impl Context<'a>) -> JsResult<'a, JsValue> {
+    Ok(cx.undefined().upcast())
+}
+
+fn optional_extra_properties<'a, C: Context<'a>, F: FnOnce(&mut C) -> JsResult<'a, JsValue>>(
+    f: Option<F>,
+) -> impl FnOnce(&mut C) -> JsResult<'a, JsValue> {
+    |cx| match f {
+        None => no_extra_properties(cx),
+        Some(f) => f(cx),
+    }
+}
+
+fn new_js_error<'a, C: Context<'a>>(
+    cx: &mut C,
     module: Handle<'a, JsObject>,
     name: Option<&str>,
     message: &str,
     operation: &str,
-    extra_props: Option<Handle<'a, JsObject>>,
-) -> Option<Handle<'a, JsObject>> {
+    make_extra_props: impl FnOnce(&mut C) -> JsResult<'a, JsValue>,
+) -> Handle<'a, JsError> {
     let result = cx.try_catch(|cx| {
         let errors_module: Handle<JsObject> = module.get(cx, ERRORS_PROPERTY_NAME)?;
         let error_class: Handle<JsFunction> = errors_module.get(cx, ERROR_CLASS_NAME)?;
         let name_arg = match name {
-            Some(name) => cx.string(name).upcast(),
+            Some(name) => cx.string(name).upcast::<JsValue>(),
             None => cx.undefined().upcast(),
         };
-        let extra_props_arg = match extra_props {
-            Some(props) => props.upcast(),
-            None => cx.undefined().upcast(),
-        };
+        let extra_props_arg = make_extra_props(cx)?;
 
-        let args: &[Handle<JsValue>] = &[
-            cx.string(message).upcast(),
+        let args = (
+            cx.string(message),
             name_arg,
-            cx.string(operation).upcast(),
+            cx.string(operation),
             extra_props_arg,
-        ];
-        error_class.construct(cx, args)
+        );
+        error_class.construct_with(cx).args(args).apply(cx)
     });
-    match result {
-        Ok(error_instance) => Some(error_instance),
-        Err(failure) => {
-            log::warn!(
-                "could not construct {}: {}",
-                name.unwrap_or("LibSignalError"),
-                failure
-                    .to_string(cx)
-                    .map(|s| s.value(cx))
-                    .unwrap_or_else(|_| "(could not print error)".to_owned())
-            );
-            None
-        }
-    }
+    result.unwrap_or_else(|failure| {
+        let failure_str = failure.to_string(cx).map(|s| s.value(cx)).ok();
+        let failure_msg = failure_str.as_deref().unwrap_or("(could not print error)");
+
+        let name = name.unwrap_or("LibSignalError");
+        log::warn!("could not construct {name}: {failure_msg}");
+
+        // Make sure we still throw something.
+        JsError::error(cx, message).expect("JsError::error only returns Ok")
+    })
 }
 
 /// [`std::error::Error`] implementer that wraps a thrown value.
@@ -115,20 +122,21 @@ impl std::fmt::Display for ThrownException {
 impl std::error::Error for ThrownException {}
 
 pub trait SignalNodeError: Sized + fmt::Display {
-    fn throw<'a>(
+    fn into_throwable<'a, C: Context<'a>>(
         self,
-        cx: &mut impl Context<'a>,
+        cx: &mut C,
         module: Handle<'a, JsObject>,
         operation_name: &str,
-    ) -> JsResult<'a, JsValue> {
+    ) -> Handle<'a, JsError> {
         let message = self.to_string();
-        match new_js_error(cx, module, None, &message, operation_name, None) {
-            Some(error) => cx.throw(error),
-            None => {
-                // Make sure we still throw something.
-                cx.throw_error(&message)
-            }
-        }
+        new_js_error(
+            cx,
+            module,
+            None,
+            &message,
+            operation_name,
+            no_extra_properties,
+        )
     }
 }
 
@@ -141,99 +149,96 @@ const SVR3_REQUEST_FAILED: &str = "SvrRequestFailed";
 const SVR3_RESTORE_FAILED: &str = "SvrRestoreFailed";
 const UNSUPPORTED_MEDIA_INPUT: &str = "UnsupportedMediaInput";
 
-impl SignalNodeError for neon::result::Throw {
-    fn throw<'a>(
-        self,
-        _cx: &mut impl Context<'a>,
-        _module: Handle<'a, JsObject>,
-        _operation_name: &str,
-    ) -> JsResult<'a, JsValue> {
-        Err(self)
-    }
-}
-
 impl SignalNodeError for SignalProtocolError {
-    fn throw<'a>(
+    fn into_throwable<'a, C: Context<'a>>(
         self,
-        cx: &mut impl Context<'a>,
+        cx: &mut C,
         module: Handle<'a, JsObject>,
         operation_name: &str,
-    ) -> JsResult<'a, JsValue> {
-        // Check for some dedicated error types first.
-        let custom_error = match &self {
+    ) -> Handle<'a, JsError> {
+        let message = self.to_string();
+        match self {
             SignalProtocolError::DuplicatedMessage(..) => new_js_error(
                 cx,
                 module,
                 Some("DuplicatedMessage"),
-                &self.to_string(),
+                &message,
                 operation_name,
-                None,
+                no_extra_properties,
             ),
             SignalProtocolError::SealedSenderSelfSend => new_js_error(
                 cx,
                 module,
                 Some("SealedSenderSelfSend"),
-                &self.to_string(),
+                &message,
                 operation_name,
-                None,
+                no_extra_properties,
             ),
             SignalProtocolError::UntrustedIdentity(addr) => {
-                let props = cx.empty_object();
-                let addr_string = cx.string(addr.name());
-                props.set(cx, "_addr", addr_string)?;
+                let make_extra_props = |cx: &mut C| {
+                    let props = cx.empty_object();
+                    let addr_string = cx.string(addr.name());
+                    props.set(cx, "_addr", addr_string)?;
+                    Ok(props.upcast())
+                };
                 new_js_error(
                     cx,
                     module,
                     Some("UntrustedIdentity"),
-                    &self.to_string(),
+                    &message,
                     operation_name,
-                    Some(props),
+                    make_extra_props,
                 )
             }
             SignalProtocolError::InvalidRegistrationId(addr, _value) => {
-                let props = cx.empty_object();
-                let addr = addr.clone().convert_into(cx)?;
-                props.set(cx, "_addr", addr)?;
+                let make_extra_props = |cx: &mut C| {
+                    let props = cx.empty_object();
+                    let addr = addr.clone().convert_into(cx)?;
+                    props.set(cx, "_addr", addr)?;
+                    Ok(props.upcast())
+                };
                 new_js_error(
                     cx,
                     module,
                     Some("InvalidRegistrationId"),
-                    &self.to_string(),
+                    &message,
                     operation_name,
-                    Some(props),
+                    make_extra_props,
                 )
             }
             SignalProtocolError::InvalidSessionStructure(..) => new_js_error(
                 cx,
                 module,
                 Some("InvalidSession"),
-                &self.to_string(),
+                &message,
                 operation_name,
-                None,
+                no_extra_properties,
             ),
             SignalProtocolError::InvalidSenderKeySession { distribution_id } => {
-                let props = cx.empty_object();
-                let distribution_id_str =
-                    cx.string(format!("{:x}", distribution_id.as_hyphenated()));
-                props.set(cx, "distribution_id", distribution_id_str)?;
+                let make_extra_props = |cx: &mut C| {
+                    let props = cx.empty_object();
+                    let distribution_id_str =
+                        cx.string(format!("{:x}", distribution_id.as_hyphenated()));
+                    props.set(cx, "distribution_id", distribution_id_str)?;
+                    Ok(props.upcast())
+                };
                 new_js_error(
                     cx,
                     module,
                     Some("InvalidSenderKeySession"),
-                    &self.to_string(),
+                    &message,
                     operation_name,
-                    Some(props),
+                    make_extra_props,
                 )
             }
-            _ => new_js_error(cx, module, None, &self.to_string(), operation_name, None),
-        };
-
-        match custom_error {
-            Some(error) => cx.throw(error),
-            None => {
-                // Make sure we still throw something.
-                cx.throw_error(self.to_string())
-            }
+            _ => new_js_error(
+                cx,
+                module,
+                None,
+                &message,
+                operation_name,
+                no_extra_properties,
+            ),
         }
     }
 }
@@ -251,12 +256,12 @@ impl SignalNodeError for zkgroup::ZkGroupVerificationFailure {}
 impl SignalNodeError for zkgroup::ZkGroupDeserializationFailure {}
 
 impl SignalNodeError for usernames::UsernameError {
-    fn throw<'a>(
+    fn into_throwable<'a, C: Context<'a>>(
         self,
-        cx: &mut impl Context<'a>,
+        cx: &mut C,
         module: Handle<'a, JsObject>,
         operation_name: &str,
-    ) -> JsResult<'a, JsValue> {
+    ) -> Handle<'a, JsError> {
         let name = match &self {
             Self::BadNicknameCharacter => "BadNicknameCharacter",
             Self::NicknameTooShort => "NicknameTooShort",
@@ -272,25 +277,26 @@ impl SignalNodeError for usernames::UsernameError {
             Self::DiscriminatorTooLarge => "DiscriminatorTooLarge",
         };
         let message = self.to_string();
-        match new_js_error(cx, module, Some(name), &message, operation_name, None) {
-            Some(error) => cx.throw(error),
-            None => {
-                // Make sure we still throw something.
-                cx.throw_error(message)
-            }
-        }
+        new_js_error(
+            cx,
+            module,
+            Some(name),
+            &message,
+            operation_name,
+            no_extra_properties,
+        )
     }
 }
 
 impl SignalNodeError for usernames::ProofVerificationFailure {}
 
 impl SignalNodeError for usernames::UsernameLinkError {
-    fn throw<'a>(
+    fn into_throwable<'a, C: Context<'a>>(
         self,
-        cx: &mut impl Context<'a>,
+        cx: &mut C,
         module: Handle<'a, JsObject>,
         operation_name: &str,
-    ) -> JsResult<'a, JsValue> {
+    ) -> Handle<'a, JsError> {
         let name = match &self {
             Self::InputDataTooLong => Some("InputDataTooLong"),
             Self::InvalidEntropyDataLength => Some("InvalidEntropyDataLength"),
@@ -300,23 +306,24 @@ impl SignalNodeError for usernames::UsernameLinkError {
             | Self::InvalidDecryptedDataStructure => Some("InvalidUsernameLinkEncryptedData"),
         };
         let message = self.to_string();
-        match new_js_error(cx, module, name, &message, operation_name, None) {
-            Some(error) => cx.throw(error),
-            None => {
-                // Make sure we still throw something.
-                cx.throw_error(message)
-            }
-        }
+        new_js_error(
+            cx,
+            module,
+            name,
+            &message,
+            operation_name,
+            no_extra_properties,
+        )
     }
 }
 
 impl SignalNodeError for Mp4Error {
-    fn throw<'a>(
+    fn into_throwable<'a, C: Context<'a>>(
         self,
-        cx: &mut impl Context<'a>,
+        cx: &mut C,
         module: Handle<'a, JsObject>,
         operation_name: &str,
-    ) -> JsResult<'a, JsValue> {
+    ) -> Handle<'a, JsError> {
         let name = match &self {
             Mp4Error::Io(_) => IO_ERROR,
             Mp4Error::Parse(err) => match err.kind {
@@ -330,23 +337,24 @@ impl SignalNodeError for Mp4Error {
             },
         };
         let message = self.to_string();
-        match new_js_error(cx, module, Some(name), &message, operation_name, None) {
-            Some(error) => cx.throw(error),
-            None => {
-                // Make sure we still throw something.
-                cx.throw_error(&message)
-            }
-        }
+        new_js_error(
+            cx,
+            module,
+            Some(name),
+            &message,
+            operation_name,
+            no_extra_properties,
+        )
     }
 }
 
 impl SignalNodeError for WebpError {
-    fn throw<'a>(
+    fn into_throwable<'a, C: Context<'a>>(
         self,
-        cx: &mut impl Context<'a>,
+        cx: &mut C,
         module: Handle<'a, JsObject>,
         operation_name: &str,
-    ) -> JsResult<'a, JsValue> {
+    ) -> Handle<'a, JsError> {
         let name = match &self {
             WebpError::Io(_) => IO_ERROR,
             WebpError::Parse(err) => match err.kind {
@@ -361,23 +369,24 @@ impl SignalNodeError for WebpError {
             },
         };
         let message = self.to_string();
-        match new_js_error(cx, module, Some(name), &message, operation_name, None) {
-            Some(error) => cx.throw(error),
-            None => {
-                // Make sure we still throw something.
-                cx.throw_error(&message)
-            }
-        }
+        new_js_error(
+            cx,
+            module,
+            Some(name),
+            &message,
+            operation_name,
+            no_extra_properties,
+        )
     }
 }
 
 impl SignalNodeError for std::io::Error {
-    fn throw<'a>(
+    fn into_throwable<'a, C: Context<'a>>(
         mut self,
-        cx: &mut impl Context<'a>,
+        cx: &mut C,
         _module: Handle<'a, JsObject>,
         _operation_name: &str,
-    ) -> JsResult<'a, JsValue> {
+    ) -> Handle<'a, JsError> {
         let exception = (self.kind() == std::io::ErrorKind::Other)
             .then(|| {
                 self.get_mut()
@@ -386,24 +395,22 @@ impl SignalNodeError for std::io::Error {
             .flatten()
             .map(std::mem::take);
 
-        match exception {
-            Some(ThrownException::Error(e)) => {
-                let inner = e.into_inner(cx);
-                cx.throw(inner)
-            }
-            Some(ThrownException::String(s)) => cx.throw_error(s),
-            None => cx.throw_error(self.to_string()),
-        }
+        let error_string = match exception {
+            Some(ThrownException::Error(e)) => return e.into_inner(cx),
+            Some(ThrownException::String(s)) => s,
+            None => self.to_string(),
+        };
+        JsError::error(cx, error_string).expect("JsError::error always returns Ok")
     }
 }
 
 impl SignalNodeError for libsignal_net::chat::ChatServiceError {
-    fn throw<'a>(
+    fn into_throwable<'a, C: Context<'a>>(
         self,
-        cx: &mut impl Context<'a>,
+        cx: &mut C,
         module: Handle<'a, JsObject>,
         operation_name: &str,
-    ) -> JsResult<'a, JsValue> {
+    ) -> Handle<'a, JsError> {
         let name = match self {
             ChatServiceError::ServiceInactive => Some("ChatServiceInactive"),
             ChatServiceError::AppExpired => Some("AppExpired"),
@@ -412,55 +419,57 @@ impl SignalNodeError for libsignal_net::chat::ChatServiceError {
             _ => Some(IO_ERROR),
         };
         let message = self.to_string();
-        match new_js_error(cx, module, name, &message, operation_name, None) {
-            Some(error) => cx.throw(error),
-            None => {
-                // Make sure we still throw something.
-                cx.throw_error(message)
-            }
-        }
+        new_js_error(
+            cx,
+            module,
+            name,
+            &message,
+            operation_name,
+            no_extra_properties,
+        )
     }
 }
 
 impl SignalNodeError for http::uri::InvalidUri {
-    fn throw<'a>(
+    fn into_throwable<'a, C: Context<'a>>(
         self,
-        cx: &mut impl Context<'a>,
+        cx: &mut C,
         module: Handle<'a, JsObject>,
         operation_name: &str,
-    ) -> JsResult<'a, JsValue> {
+    ) -> Handle<'a, JsError> {
         let name = Some("InvalidUri");
         let message = self.to_string();
-        match new_js_error(cx, module, name, &message, operation_name, None) {
-            Some(error) => cx.throw(error),
-            None => {
-                // Make sure we still throw something.
-                cx.throw_error(message)
-            }
-        }
+        new_js_error(
+            cx,
+            module,
+            name,
+            &message,
+            operation_name,
+            no_extra_properties,
+        )
     }
 }
 
 impl SignalNodeError for libsignal_net::cdsi::LookupError {
-    fn throw<'a>(
+    fn into_throwable<'a, C: Context<'a>>(
         self,
-        cx: &mut impl Context<'a>,
+        cx: &mut C,
         module: Handle<'a, JsObject>,
         operation_name: &str,
-    ) -> JsResult<'a, JsValue> {
-        let (name, extra_props) = match self {
+    ) -> Handle<'a, JsError> {
+        let (name, make_extra_props) = match self {
             Self::RateLimited {
                 retry_after_seconds,
             } => (
                 Some(RATE_LIMITED_ERROR),
-                Some({
+                Some(move |cx: &mut C| {
                     let props = cx.empty_object();
                     let retry_after = retry_after_seconds.convert_into(cx)?;
                     props.set(cx, "retryAfterSecs", retry_after)?;
-                    props
+                    Ok(props.upcast())
                 }),
             ),
-            Self::AttestationError(e) => return e.throw(cx, module, operation_name),
+            Self::AttestationError(e) => return e.into_throwable(cx, module, operation_name),
             Self::InvalidArgument { server_reason: _ } => (None, None),
             Self::InvalidToken => (Some("CdsiInvalidToken"), None),
             Self::ConnectionTimedOut
@@ -472,35 +481,39 @@ impl SignalNodeError for libsignal_net::cdsi::LookupError {
             | Self::Server { reason: _ } => (Some(IO_ERROR), None),
         };
         let message = self.to_string();
-        new_js_error(cx, module, name, &message, operation_name, extra_props)
-            .map(|e| cx.throw(e))
-            // Make sure we still throw something.
-            .unwrap_or_else(|| cx.throw_error(&message))
+        new_js_error(
+            cx,
+            module,
+            name,
+            &message,
+            operation_name,
+            optional_extra_properties(make_extra_props),
+        )
     }
 }
 
 impl SignalNodeError for libsignal_net::svr3::Error {
-    fn throw<'a>(
+    fn into_throwable<'a, C: Context<'a>>(
         self,
-        cx: &mut impl Context<'a>,
+        cx: &mut C,
         module: Handle<'a, JsObject>,
         operation_name: &str,
-    ) -> JsResult<'a, JsValue> {
-        let (name, props) = match self {
+    ) -> Handle<'a, JsError> {
+        let (name, make_props) = match self {
             Svr3Error::Service(_) | Svr3Error::ConnectionTimedOut | Svr3Error::Connect(_) => {
                 (Some(IO_ERROR), None)
             }
             Svr3Error::AttestationError(inner) => {
-                return inner.throw(cx, module, operation_name);
+                return inner.into_throwable(cx, module, operation_name);
             }
             Svr3Error::RequestFailed(_) => (Some(SVR3_REQUEST_FAILED), None),
             Svr3Error::RestoreFailed(tries_remaining) => (
                 Some(SVR3_RESTORE_FAILED),
-                Some({
+                Some(move |cx: &mut C| {
                     let props = cx.empty_object();
                     let tries_remaining = tries_remaining.convert_into(cx)?;
                     props.set(cx, "triesRemaining", tries_remaining)?;
-                    props
+                    Ok(props.upcast())
                 }),
             ),
             Svr3Error::DataMissing => (Some(SVR3_DATA_MISSING), None),
@@ -509,70 +522,62 @@ impl SignalNodeError for libsignal_net::svr3::Error {
         };
 
         let message = self.to_string();
-        match new_js_error(cx, module, name, &message, operation_name, props) {
-            Some(error) => cx.throw(error),
-            None => {
-                // Make sure we still throw something.
-                cx.throw_error(message)
-            }
-        }
+        new_js_error(
+            cx,
+            module,
+            name,
+            &message,
+            operation_name,
+            optional_extra_properties(make_props),
+        )
     }
 }
 
 impl SignalNodeError for CancellationError {
-    fn throw<'a>(
+    fn into_throwable<'a, C: Context<'a>>(
         self,
-        cx: &mut impl Context<'a>,
+        cx: &mut C,
         module: Handle<'a, JsObject>,
         operation_name: &str,
-    ) -> JsResult<'a, JsValue> {
+    ) -> Handle<'a, JsError> {
         let message = self.to_string();
-        match new_js_error(
+        new_js_error(
             cx,
             module,
             Some("Cancelled"),
             &message,
             operation_name,
-            None,
-        ) {
-            Some(error) => cx.throw(error),
-            None => {
-                // Make sure we still throw something.
-                cx.throw_error(&message)
-            }
-        }
+            no_extra_properties,
+        )
     }
 }
 
 impl SignalNodeError for libsignal_message_backup::ReadError {
-    fn throw<'a>(
+    fn into_throwable<'a, C: Context<'a>>(
         self,
-        cx: &mut impl Context<'a>,
+        cx: &mut C,
         module: Handle<'a, JsObject>,
         operation_name: &str,
-    ) -> JsResult<'a, JsValue> {
+    ) -> Handle<'a, JsError> {
         let libsignal_message_backup::ReadError {
             error,
             found_unknown_fields,
         } = self;
         let message = error.to_string();
-        let props = cx.empty_object();
-        let unknown_field_messages = found_unknown_fields.convert_into(cx)?;
-        props.set(cx, "unknownFields", unknown_field_messages)?;
-        match new_js_error(
+        let make_props = |cx: &mut C| {
+            let props = cx.empty_object();
+            let unknown_field_messages = found_unknown_fields.convert_into(cx)?;
+            props.set(cx, "unknownFields", unknown_field_messages)?;
+            Ok(props.upcast())
+        };
+        new_js_error(
             cx,
             module,
             Some("BackupValidation"),
             &message,
             operation_name,
-            Some(props),
-        ) {
-            Some(error) => cx.throw(error),
-            None => {
-                // Make sure we still throw something.
-                cx.throw_error(&message)
-            }
-        }
+            make_props,
+        )
     }
 }
 

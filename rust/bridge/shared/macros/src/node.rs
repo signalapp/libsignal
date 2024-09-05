@@ -30,7 +30,8 @@ fn bridge_fn_body(orig_name: &Ident, input_args: &[(&Ident, &Type)]) -> TokenStr
                 Ok(node::ResultTypeInfo::convert_into(success, &mut cx)?.upcast()),
             Err(failure) => {
                 let module = cx.this()?;
-                node::SignalNodeError::throw(failure, &mut cx, module, stringify!(#orig_name))
+                let throwable = node::SignalNodeError::into_throwable(failure, &mut cx, module, stringify!(#orig_name));
+                neon::context::Context::throw(&mut cx, throwable)?
             }
         }
     }
