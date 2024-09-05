@@ -1,0 +1,391 @@
+// Includes at least one message for each of the "simple chat updates",
+// excluding "release notes" messages that aren't supported on all platforms
+// yet.
+[
+  {
+    "backupTimeMs": 123456,
+    "version": 1
+  },
+  {
+    "account": {
+      "profileKey": "YQKRq+3DQklInaOaMcmlzZnN0m/1hzLiaONX7gB12dg=",
+      "givenName": "Boba",
+      "familyName": "Fett",
+      "avatarUrlPath": "",
+      "accountSettings": {
+        "readReceipts": false,
+        "sealedSenderIndicators": true,
+        "typingIndicators": false,
+        "linkPreviews": false,
+        "notDiscoverableByPhoneNumber": false,
+        "preferContactAvatars": false,
+        "universalExpireTimerSeconds": 0,
+        "preferredReactionEmoji": [],
+        "displayBadgesOnProfile": false,
+        "keepMutedChatsArchived": false,
+        "hasSetMyStoriesPrivacy": false,
+        "hasViewedOnboardingStory": false,
+        "storiesDisabled": false,
+        "storyViewReceiptsEnabled": false,
+        "hasSeenGroupStoryEducationSheet": false,
+        "hasCompletedUsernameOnboarding": false,
+        "phoneNumberSharingMode": "NOBODY"
+      }
+    }
+  },
+  {
+    "recipient": {
+      "id": 1,
+      "self": {}
+    }
+  },
+  {
+    "recipient": {
+      "id": 2,
+      "releaseNotes": {}
+    }
+  },
+  {
+    "recipient": {
+      "id": 3,
+      "distributionList": {
+        "distributionId": "AAAAAAAAAAAAAAAAAAAAAA==",
+        "distributionList": {
+          "allowReplies": true,
+          "memberRecipientIds": [],
+          "name": "My Story",
+          "privacyMode": "ALL"
+        }
+      }
+    }
+  },
+  {
+    "recipient": {
+      "id": 4,
+      "contact": {
+        "aci": "X4xWjQEZR72BqruHybcZlQ==",
+        "profileKey": "YtHHVK+Wo4nPcVpWhC3roMEDu2Tw6kYc9JpLRMq1Q94=",
+        "profileSharing": true,
+        "profileFamilyName": "Solo",
+        "profileGivenName": "Han",
+        "registered": {},
+        "hideStory": false,
+      }
+    }
+  },
+  {
+    "recipient": {
+      "id": 5,
+      "group": {
+        "masterKey": "IK0/LD6QONKivit6q8/V+S0MjoV4MMQl4rw2w0Ez76U=",
+        "whitelisted": true,
+        "hideStory": false,
+        "storySendMode": "DEFAULT",
+        "snapshot": {
+          "title": {
+            "title": "My Cool Group"
+          },
+          "description": {
+            "descriptionText": "Blorp"
+          },
+          "disappearingMessagesTimer": {
+            "disappearingMessagesDuration": 0
+          },
+          "accessControl": {
+            "attributes": "MEMBER",
+            "members": "MEMBER",
+            "addFromInviteLink": "UNSATISFIABLE",
+          },
+          "version": 12,
+          "members": [],
+          "inviteLinkPassword": "",
+          "announcements_only": false
+        }
+      }
+    }
+  },
+  // 1:1 chat with "Han Solo"
+  {
+    "chat": {
+      "id": 1,
+      "recipientId": 4
+    }
+  },
+  // Group chat with "My Cool Group"
+  {
+    "chat": {
+      "id": 2,
+      "recipientId": 5,
+      "archived": false,
+      "pinnedOrder": 0,
+      "expirationTimerMs": 0,
+      "muteUntilMs": 0,
+      "markedUnread": false,
+      "dontNotifyForMentionsIfMuted": false,
+    }
+  },
+  {
+    "chatItem": {
+      "authorId": 4,
+      "chatId": 1,
+      "dateSent": 1,
+      "directionless": {},
+      "updateMessage": {
+        "simpleUpdate": {
+          "type": "JOINED_SIGNAL"
+        }
+      }
+    }
+  },
+  {
+    "chatItem": {
+      "authorId": 4,
+      "chatId": 1,
+      "dateSent": 2,
+      "directionless": {},
+      "updateMessage": {
+        "simpleUpdate": {
+          "type": "IDENTITY_UPDATE"
+        }
+      }
+    }
+  },
+  {
+    "chatItem": {
+      "authorId": 4,
+      "chatId": 1,
+      "dateSent": 3,
+      "directionless": {},
+      "updateMessage": {
+        "simpleUpdate": {
+          "type": "IDENTITY_VERIFIED"
+        }
+      }
+    }
+  },
+  {
+    "chatItem": {
+      "authorId": 4,
+      "chatId": 1,
+      "dateSent": 4,
+      "directionless": {},
+      "updateMessage": {
+        "simpleUpdate": {
+          "type": "IDENTITY_DEFAULT"
+        }
+      }
+    }
+  },
+  {
+    "chatItem": {
+      "authorId": 4,
+      "chatId": 1,
+      "dateSent": 6,
+      "directionless": {},
+      "updateMessage": {
+        "simpleUpdate": {
+          "type": "CHANGE_NUMBER"
+        }
+      }
+    }
+  },
+  {
+    "chatItem": {
+      "authorId": 4,
+      "chatId": 1,
+      "dateSent": 7,
+      "directionless": {},
+      "updateMessage": {
+        "simpleUpdate": {
+          "type": "END_SESSION"
+        }
+      }
+    }
+  },
+  {
+    "chatItem": {
+      "authorId": 4,
+      "chatId": 1,
+      "dateSent": 8,
+      "directionless": {},
+      "updateMessage": {
+        "simpleUpdate": {
+          "type": "CHAT_SESSION_REFRESH"
+        }
+      }
+    }
+  },
+  {
+    "chatItem": {
+      "authorId": 4,
+      "chatId": 1,
+      "dateSent": 9,
+      "directionless": {},
+      "updateMessage": {
+        "simpleUpdate": {
+          "type": "BAD_DECRYPT"
+        }
+      }
+    }
+  },
+  {
+    "chatItem": {
+      "authorId": 4,
+      "chatId": 1,
+      "dateSent": 10,
+      "directionless": {},
+      "updateMessage": {
+        "simpleUpdate": {
+          "type": "PAYMENTS_ACTIVATED"
+        }
+      }
+    }
+  },
+  {
+    "chatItem": {
+      "authorId": 1,
+      "chatId": 1,
+      "dateSent": 11,
+      "directionless": {},
+      "updateMessage": {
+        "simpleUpdate": {
+          "type": "PAYMENTS_ACTIVATED"
+        }
+      }
+    }
+  },
+  {
+    "chatItem": {
+      "authorId": 4,
+      "chatId": 1,
+      "dateSent": 12,
+      "directionless": {},
+      "updateMessage": {
+        "simpleUpdate": {
+          "type": "PAYMENT_ACTIVATION_REQUEST"
+        }
+      }
+    }
+  },
+  {
+    "chatItem": {
+      "authorId": 1,
+      "chatId": 1,
+      "dateSent": 13,
+      "directionless": {},
+      "updateMessage": {
+        "simpleUpdate": {
+          "type": "PAYMENT_ACTIVATION_REQUEST"
+        }
+      }
+    }
+  },
+  {
+    "chatItem": {
+      "authorId": 4,
+      "chatId": 1,
+      "dateSent": 14,
+      "directionless": {},
+      "updateMessage": {
+        "simpleUpdate": {
+          "type": "UNSUPPORTED_PROTOCOL_MESSAGE"
+        }
+      }
+    }
+  },
+  {
+    "chatItem": {
+      "authorId": 1,
+      "chatId": 1,
+      "dateSent": 14,
+      "directionless": {},
+      "updateMessage": {
+        "simpleUpdate": {
+          "type": "UNSUPPORTED_PROTOCOL_MESSAGE"
+        }
+      }
+    }
+  },
+  {
+    "chatItem": {
+      "authorId": 1,
+      "chatId": 1,
+      "dateSent": 15,
+      "directionless": {},
+      "updateMessage": {
+        "simpleUpdate": {
+          "type": "REPORTED_SPAM"
+        }
+      }
+    }
+  },
+  // In the 1:1 chat
+  {
+    "chatItem": {
+      "authorId": 1,
+      "chatId": 1,
+      "dateSent": 16,
+      "directionless": {},
+      "updateMessage": {
+        "simpleUpdate": {
+          "type": "BLOCKED"
+        }
+      }
+    }
+  },
+  // In the 1:1 chat
+  {
+    "chatItem": {
+      "authorId": 1,
+      "chatId": 1,
+      "dateSent": 17,
+      "directionless": {},
+      "updateMessage": {
+        "simpleUpdate": {
+          "type": "UNBLOCKED"
+        }
+      }
+    }
+  },
+  // In the group chat
+  {
+    "chatItem": {
+      "authorId": 1,
+      "chatId": 2,
+      "dateSent": 18,
+      "directionless": {},
+      "updateMessage": {
+        "simpleUpdate": {
+          "type": "BLOCKED"
+        }
+      }
+    }
+  },
+  // In the group chat
+  {
+    "chatItem": {
+      "authorId": 1,
+      "chatId": 2,
+      "dateSent": 19,
+      "directionless": {},
+      "updateMessage": {
+        "simpleUpdate": {
+          "type": "UNBLOCKED"
+        }
+      }
+    }
+  },
+  {
+    "chatItem": {
+      "authorId": 1,
+      "chatId": 1,
+      "dateSent": 20,
+      "directionless": {},
+      "updateMessage": {
+        "simpleUpdate": {
+          "type": "MESSAGE_REQUEST_ACCEPTED"
+        }
+      }
+    }
+  },
+]

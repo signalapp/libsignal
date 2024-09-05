@@ -38,22 +38,17 @@ fn is_valid_json_proto(input: Fixture<&str>) {
 
 #[dir_test(
         dir: "$CARGO_MANIFEST_DIR/tests/res/test-cases",
-        glob: "valid/*.binproto",
-        postfix: "binproto"
-        loader: read_file
-    )]
-fn is_valid_binary_proto(input: Fixture<Vec<u8>>) {
-    validate_proto(input.content())
-}
-
-#[dir_test(
-        dir: "$CARGO_MANIFEST_DIR/tests/res/test-cases",
-        glob: "valid/*.binproto",
+        glob: "valid/*.jsonproto",
         postfix: "serialize"
-        loader: read_file
     )]
-fn can_serialize_binary_proto(input: Fixture<Vec<u8>>) {
-    let input = Cursor::new(input.content());
+fn can_serialize_json_proto(input: Fixture<&str>) {
+    let json_contents = input.into_content();
+    let json_contents = json5::from_str(json_contents).expect("invalid JSON");
+    let json_array = assert_matches!(json_contents, serde_json::Value::Array(contents) => contents);
+    let binproto =
+        libsignal_message_backup::backup::convert_from_json(json_array).expect("failed to convert");
+
+    let input = Cursor::new(&binproto);
     let reader = BackupReader::new_unencrypted(input, BACKUP_PURPOSE);
     let result = futures::executor::block_on(reader.read_all())
         .result
@@ -208,10 +203,6 @@ fn invalid_jsonproto(input: Fixture<PathBuf>) {
         std::fs::read_to_string(&expected_path).expect("can't load expected contents");
 
     assert_eq!(text, expected_text);
-}
-
-fn read_file(path: &str) -> Vec<u8> {
-    std::fs::read(path).expect("can read")
 }
 
 fn write_expected_output() -> bool {

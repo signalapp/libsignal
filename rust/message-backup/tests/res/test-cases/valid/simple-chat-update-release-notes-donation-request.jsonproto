@@ -1,0 +1,80 @@
+// Includes "release notes" simple chat updates.
+[
+  {
+    "backupTimeMs": "123456",
+    "version": "1"
+  },
+  {
+    "account": {
+      "profileKey": "YQKRq+3DQklInaOaMcmlzZnN0m/1hzLiaONX7gB12dg=",
+      "givenName": "Boba",
+      "familyName": "Fett",
+      "avatarUrlPath": "",
+      "accountSettings": {
+        "readReceipts": false,
+        "sealedSenderIndicators": true,
+        "typingIndicators": false,
+        "linkPreviews": false,
+        "notDiscoverableByPhoneNumber": false,
+        "preferContactAvatars": false,
+        "universalExpireTimerSeconds": 0,
+        "preferredReactionEmoji": [],
+        "displayBadgesOnProfile": false,
+        "keepMutedChatsArchived": false,
+        "hasSetMyStoriesPrivacy": false,
+        "hasViewedOnboardingStory": false,
+        "storiesDisabled": false,
+        "storyViewReceiptsEnabled": false,
+        "hasSeenGroupStoryEducationSheet": false,
+        "hasCompletedUsernameOnboarding": false,
+        "phoneNumberSharingMode": "NOBODY"
+      }
+    }
+  },
+  {
+    "recipient": {
+      "id": "1",
+      "self": {}
+    }
+  },
+  {
+    "recipient": {
+      "id": "2",
+      "releaseNotes": {}
+    }
+  },
+  {
+    "recipient": {
+      "id": "3",
+      "distributionList": {
+        "distributionId": "AAAAAAAAAAAAAAAAAAAAAA==",
+        "distributionList": {
+          "allowReplies": true,
+          "memberRecipientIds": [],
+          "name": "My Story",
+          "privacyMode": "ALL"
+        }
+      }
+    }
+  },
+  // Release Notes channel
+  {
+    "chat": {
+      "id": "1",
+      "recipientId": "2"
+    }
+  },
+  {
+    "chatItem": {
+      "authorId": "2",
+      "chatId": "1",
+      "dateSent": "5",
+      "directionless": {},
+      "updateMessage": {
+        "simpleUpdate": {
+          "type": "RELEASE_CHANNEL_DONATION_REQUEST"
+        }
+      }
+    }
+  },
+]

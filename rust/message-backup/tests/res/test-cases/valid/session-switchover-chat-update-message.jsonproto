@@ -1,0 +1,93 @@
+// Includes a "session switchover" chat update message.
+[
+  {
+    "backupTimeMs": "123456",
+    "version": "1"
+  },
+  {
+    "account": {
+      "profileKey": "YQKRq+3DQklInaOaMcmlzZnN0m/1hzLiaONX7gB12dg=",
+      "givenName": "Boba",
+      "familyName": "Fett",
+      "avatarUrlPath": "",
+      "accountSettings": {
+        "readReceipts": false,
+        "sealedSenderIndicators": true,
+        "typingIndicators": false,
+        "linkPreviews": false,
+        "notDiscoverableByPhoneNumber": false,
+        "preferContactAvatars": false,
+        "universalExpireTimerSeconds": 0,
+        "preferredReactionEmoji": [],
+        "displayBadgesOnProfile": false,
+        "keepMutedChatsArchived": false,
+        "hasSetMyStoriesPrivacy": false,
+        "hasViewedOnboardingStory": false,
+        "storiesDisabled": false,
+        "storyViewReceiptsEnabled": false,
+        "hasSeenGroupStoryEducationSheet": false,
+        "hasCompletedUsernameOnboarding": false,
+        "phoneNumberSharingMode": "NOBODY"
+      }
+    }
+  },
+  {
+    "recipient": {
+      "id": "1",
+      "self": {}
+    }
+  },
+  {
+    "recipient": {
+      "id": "2",
+      "releaseNotes": {}
+    }
+  },
+  {
+    "recipient": {
+      "id": "3",
+      "distributionList": {
+        "distributionId": "AAAAAAAAAAAAAAAAAAAAAA==",
+        "distributionList": {
+          "allowReplies": true,
+          "memberRecipientIds": [],
+          "name": "My Story",
+          "privacyMode": "ALL"
+        }
+      }
+    }
+  },
+  {
+    "recipient": {
+      "id": "4",
+      "contact": {
+        "aci": "X4xWjQEZR72BqruHybcZlQ==",
+        "profileKey": "YtHHVK+Wo4nPcVpWhC3roMEDu2Tw6kYc9JpLRMq1Q94=",
+        "profileSharing": true,
+        "profileFamilyName": "Solo",
+        "profileGivenName": "Han",
+        "registered": {},
+        "hideStory": false,
+      }
+    }
+  },
+  {
+    "chat": {
+      "id": "1",
+      "recipientId": "4"
+    }
+  },
+  {
+    "chatItem": {
+      "authorId": "4",
+      "chatId": "1",
+      "dateSent": "1",
+      "directionless": {},
+      "updateMessage": {
+        "sessionSwitchover": {
+          "e164": 17735550199
+        }
+      }
+    }
+  },
+]

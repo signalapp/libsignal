@@ -1,0 +1,168 @@
+// Includes an outgoing message, some with edits.
+[
+  {
+    "backupTimeMs": 123456,
+    "version": 1
+  },
+  {
+    "account": {
+      "profileKey": "YQKRq+3DQklInaOaMcmlzZnN0m/1hzLiaONX7gB12dg=",
+      "givenName": "Boba",
+      "familyName": "Fett",
+      "avatarUrlPath": "",
+      "accountSettings": {
+        "readReceipts": false,
+        "sealedSenderIndicators": true,
+        "typingIndicators": false,
+        "linkPreviews": false,
+        "notDiscoverableByPhoneNumber": false,
+        "preferContactAvatars": false,
+        "universalExpireTimerSeconds": 0,
+        "preferredReactionEmoji": [],
+        "displayBadgesOnProfile": false,
+        "keepMutedChatsArchived": false,
+        "hasSetMyStoriesPrivacy": false,
+        "hasViewedOnboardingStory": false,
+        "storiesDisabled": false,
+        "storyViewReceiptsEnabled": false,
+        "hasSeenGroupStoryEducationSheet": false,
+        "hasCompletedUsernameOnboarding": false,
+        "phoneNumberSharingMode": "NOBODY"
+      }
+    }
+  },
+  {
+    "recipient": {
+      "id": 1,
+      "self": {}
+    }
+  },
+  {
+    "recipient": {
+      "id": 2,
+      "releaseNotes": {}
+    }
+  },
+  {
+    "recipient": {
+      "id": 3,
+      "distributionList": {
+        "distributionId": "AAAAAAAAAAAAAAAAAAAAAA==",
+        "distributionList": {
+          "allowReplies": true,
+          "memberRecipientIds": [],
+          "name": "My Story",
+          "privacyMode": "ALL"
+        }
+      }
+    }
+  },
+  {
+    "recipient": {
+      "id": 4,
+      "contact": {
+        "aci": "X4xWjQEZR72BqruHybcZlQ==",
+        "profileKey": "YtHHVK+Wo4nPcVpWhC3roMEDu2Tw6kYc9JpLRMq1Q94=",
+        "profileSharing": true,
+        "profileFamilyName": "Solo",
+        "profileGivenName": "Han",
+        "registered": {},
+        "hideStory": false,
+      }
+    }
+  },
+  {
+    "chat": {
+      "id": 1,
+      "recipientId": 4, // 1:1 chat with Han
+      "archived": false,
+      "pinnedOrder": 0,
+      "expirationTimerMs": 0,
+      "muteUntilMs": 0,
+      "markedUnread": false,
+      "dontNotifyForMentionsIfMuted": false,
+    }
+  },
+  // An outgoing chat item that goes through a couple edits that update the body ranges.
+  {
+    "chatItem": {
+      "authorId": 1,
+      "chatId": 1,
+      "dateSent": 3000,
+      "outgoing": {
+        "sendStatus": [
+          {
+            "recipientId": 4,
+            "timestamp": 3001,
+            "sent": {
+              "sealedSender": true
+            }
+          }
+        ]
+      },
+      "standardMessage": {
+        "text": {
+          "body": "Latest revision",
+        },
+        "reactions": [
+          {
+            "emoji": "👀",
+            "authorId": 1, // Self-react
+            "sentTimestamp": 101,
+            "sortOrder": 1
+          },
+          {
+            "emoji": "🥂",
+            "authorId": 4,
+            "sentTimestamp": 102,
+            "sortOrder": 2
+          }
+        ]
+      },
+      "revisions": [
+        {
+          "authorId": 1,
+          "chatId": 1,
+          "dateSent": 1000,
+          "outgoing": {
+            "sendStatus": [
+              {
+                "recipientId": 4,
+                "timestamp": 1001,
+                "read": {
+                  "sealedSender": true
+                }
+              }
+            ]
+          },
+          "standardMessage": {
+            "text": {
+              "body": "Original message",
+            }
+          }
+        },
+        {
+          "authorId": 1,
+          "chatId": 1,
+          "dateSent": 2000,
+          "outgoing": {
+            "sendStatus": [
+              {
+                "recipientId": 4,
+                "timestamp": 2001,
+                "delivered": {
+                  "sealedSender": true
+                }
+              }
+            ]
+          },
+          "standardMessage": {
+            "text": {
+              "body": "First revision"
+            }
+          }
+        }
+      ]
+    }
+  },
+]

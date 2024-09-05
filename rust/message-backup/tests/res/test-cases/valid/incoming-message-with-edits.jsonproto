@@ -1,0 +1,237 @@
+// Includes incoming messages, some with edits.
+[
+  {
+    "backupTimeMs": "123456",
+    "version": "1"
+  },
+  {
+    "account": {
+      "profileKey": "YQKRq+3DQklInaOaMcmlzZnN0m/1hzLiaONX7gB12dg=",
+      "givenName": "Boba",
+      "familyName": "Fett",
+      "avatarUrlPath": "",
+      "accountSettings": {
+        "readReceipts": false,
+        "sealedSenderIndicators": true,
+        "typingIndicators": false,
+        "linkPreviews": false,
+        "notDiscoverableByPhoneNumber": false,
+        "preferContactAvatars": false,
+        "universalExpireTimerSeconds": 0,
+        "preferredReactionEmoji": [],
+        "displayBadgesOnProfile": false,
+        "keepMutedChatsArchived": false,
+        "hasSetMyStoriesPrivacy": false,
+        "hasViewedOnboardingStory": false,
+        "storiesDisabled": false,
+        "storyViewReceiptsEnabled": false,
+        "hasSeenGroupStoryEducationSheet": false,
+        "hasCompletedUsernameOnboarding": false,
+        "phoneNumberSharingMode": "NOBODY"
+      }
+    }
+  },
+  {
+    "recipient": {
+      "id": "1",
+      "self": {}
+    }
+  },
+  {
+    "recipient": {
+      "id": "2",
+      "releaseNotes": {}
+    }
+  },
+  {
+    "recipient": {
+      "id": "3",
+      "distributionList": {
+        "distributionId": "AAAAAAAAAAAAAAAAAAAAAA==",
+        "distributionList": {
+          "allowReplies": true,
+          "memberRecipientIds": [],
+          "name": "My Story",
+          "privacyMode": "ALL"
+        }
+      }
+    }
+  },
+  {
+    "recipient": {
+      "id": "4",
+      "contact": {
+        "aci": "X4xWjQEZR72BqruHybcZlQ==",
+        "profileKey": "YtHHVK+Wo4nPcVpWhC3roMEDu2Tw6kYc9JpLRMq1Q94=",
+        "profileSharing": true,
+        "profileFamilyName": "Solo",
+        "profileGivenName": "Han",
+        "registered": {},
+        "hideStory": false,
+      }
+    }
+  },
+  {
+    "recipient": {
+      "id": "5",
+      "contact": {
+        "aci": "CujGyCcHTqeyJHQXIn04kA==",
+        "profileKey": "cM4PAiE6xclFBl2wesio4S/tpbDfZHFpYf7BBAsnZI4=",
+        "profileSharing": true,
+        "profileFamilyName": "Bacca",
+        "profileGivenName": "Chew",
+        "registered": {},
+        "hideStory": false,
+      }
+    }
+  },
+  {
+    "recipient": {
+      "id": 6,
+      "group": {
+        "masterKey": "IK0/LD6QONKivit6q8/V+S0MjoV4MMQl4rw2w0Ez76U=",
+        "whitelisted": true,
+        "hideStory": false,
+        "storySendMode": "DEFAULT",
+        "snapshot": {
+          "title": {
+            "title": "Millenium Falcon Mechanics"
+          },
+          "description": {
+            "descriptionText": "Just people in search of a plasma spanner"
+          },
+          "disappearingMessagesTimer": {
+            "disappearingMessagesDuration": 0
+          },
+          "accessControl": {
+            "attributes": "MEMBER",
+            "members": "MEMBER",
+            "addFromInviteLink": "UNSATISFIABLE",
+          },
+          "version": 12,
+          "members": [
+            {
+              "userId": "CujGyCcHTqeyJHQXIn04kA==", // Chewie's ACI
+              "role": "ADMINISTRATOR",
+              "profileKey": "cM4PAiE6xclFBl2wesio4S/tpbDfZHFpYf7BBAsnZI4=",
+              "joinedAtVersion": 0,
+            },
+            {
+              "userId": "X4xWjQEZR72BqruHybcZlQ==", // Han's ACI
+              "role": "ADMINISTRATOR",
+              "profileKey": "YtHHVK+Wo4nPcVpWhC3roMEDu2Tw6kYc9JpLRMq1Q94=",
+              "joinedAtVersion": 0,
+            },
+          ],
+          "inviteLinkPassword": "",
+          "announcements_only": false
+        }
+      }
+    }
+  },
+  {
+    "chat": {
+      "id": 1,
+      "recipientId": 6, // Group recipient
+      "archived": false,
+      "pinnedOrder": 0,
+      "expirationTimerMs": 0,
+      "muteUntilMs": 0,
+      "markedUnread": false,
+      "dontNotifyForMentionsIfMuted": false,
+    }
+  },
+  // An incoming chat item that goes through a couple edits that update the body ranges.
+  {
+    "chatItem": {
+      "authorId": 4, // Han Solo
+      "chatId": 1, // Group chat with Han and Chewie (but not us; we must have left)
+      "dateSent": 3000,
+      "incoming": {
+        "dateReceived": 3002, // Dates corresponding to the newest edit.
+        "dateServerSent": 3001,
+        "read": true,
+        "sealedSender": true,
+      },
+      "standardMessage": {
+        "text": {
+          "body": "Latest revision: ￼",
+          "bodyRanges": [
+            {
+              "start": 17,
+              "length": 1,
+              "mentionAci": "CujGyCcHTqeyJHQXIn04kA==",
+            },
+            {
+              "start": 0, // The word "Latest"
+              "length": 6,
+              "style": "ITALIC",
+            }
+          ]
+        },
+        "reactions": [
+          {
+            "emoji": "👀",
+            "authorId": 1,
+            "sentTimestamp": 101,
+            "sortOrder": 1
+          },
+          {
+            "emoji": "🥂",
+            "authorId": 4, // Self-react
+            "sentTimestamp": 102,
+            "sortOrder": 2
+          }
+        ]
+      },
+      "revisions": [
+        {
+          "authorId": 4,
+          "chatId": 1,
+          "dateSent": 1000,
+          "incoming": {
+            "dateReceived": 1002,
+            "dateServerSent": 1001,
+            "read": true,
+            "sealedSender": true,
+          },
+          "standardMessage": {
+            "text": {
+              "body": "Original message",
+              "bodyRanges": [
+                {
+                  "start": 9, // The word "message"
+                  "length": 7,
+                  "style": "ITALIC",
+                }
+              ]
+            }
+          }
+        },
+        {
+          "authorId": 4,
+          "chatId": 1,
+          "dateSent": 2000,
+          "incoming": {
+            "dateReceived": 2002,
+            "dateServerSent": 2001,
+            "read": true,
+            "sealedSender": true,
+          },
+          "standardMessage": {
+            "text": {
+              "body": "First revision: ￼",
+              "bodyRanges": [
+                {
+                  "start": 16,
+                  "length": 1,
+                  "mentionAci": "CujGyCcHTqeyJHQXIn04kA==",
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  },
+]

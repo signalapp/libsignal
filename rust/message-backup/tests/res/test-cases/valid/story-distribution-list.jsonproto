@@ -1,0 +1,136 @@
+[
+  {
+    "backupTimeMs": "1717075506993",
+    "version": "1"
+  },
+  {
+    "account": {
+      "accountSettings": {
+        "displayBadgesOnProfile": true,
+        "hasSeenGroupStoryEducationSheet": true,
+        "hasSetMyStoriesPrivacy": true,
+        "hasViewedOnboardingStory": true,
+        "linkPreviews": true,
+        "phoneNumberSharingMode": "NOBODY",
+        "readReceipts": true,
+        "storyViewReceiptsEnabled": true,
+        "typingIndicators": true
+      },
+      "givenName": "User A",
+      "profileKey": "o1dR4GmMYarDp9Nof/lWorlnXUIz2Q85X/5deikxPio="
+    }
+  },
+  {
+    "recipient": {
+      "id": "1",
+      "self": {}
+    }
+  },
+  {
+    "recipient": {
+      "id": "2",
+      "releaseNotes": {}
+    }
+  },
+  {
+    "recipient": {
+      "id": "3",
+      "contact": {
+        "aci": "VVxXlxwxS8aBGSQJ1tL0sA==",
+        "profileGivenName": "Han Solo",
+        "profileKey": "BSQ4Cl4xfTKwrRZzKGaxbL9rGa/ZYz2KP4NxaRYiYcE=",
+        "registered": {}
+      }
+    }
+  },
+  {
+    "recipient": {
+      "id": "4",
+      "contact": {
+        "aci": "VVtXlxwxS8aBGSQJ1tL0sA==",
+        "e164": "15555550001",
+        "pni": "VVpXlxwxS8aBGSQJ1tL0sA==",
+        "profileSharing": true,
+        "registered": {}
+      }
+    }
+  },
+  {
+    "recipient": {
+      "id": "5",
+      "contact": {
+        "aci": "VVhXlxwxS8aBGSQJ1tL0sA==",
+        "e164": "15555550002",
+        "pni": "VVlXlxwxS8aBGSQJ1tL0sA==",
+        "profileSharing": true,
+        "registered": {}
+      }
+    }
+  },
+  {
+    "recipient": {
+      "id": "6",
+      "distributionList": {
+        "distributionId": "AAAAAAAAAAAAAAAAAAAAAA==",
+        "distributionList": {
+          "allowReplies": true,
+          "memberRecipientIds": [
+            "4"
+          ],
+          "name": "My Story",
+          "privacyMode": "ALL_EXCEPT"
+        }
+      }
+    }
+  },
+  {
+    "recipient": {
+      "id": "7",
+      "distributionList": {
+        "deletionTimestamp": "1715633599374",
+        "distributionId": "Vo1p4wr9Rz+onvgV+ig7Og=="
+      }
+    }
+  },
+ {
+    "recipient": {
+      "id": "8",
+      "distributionList": {
+        "deletionTimestamp": "1715633599370",
+        "distributionId": "VVVXlxwxS8aBGSQJ1tL0sA=="
+      }
+    }
+  },
+  {
+    "recipient": {
+      "id": "9",
+      "distributionList": {
+        "distributionId": "me/ptJ9tRnyCWu/eg9uP7Q==",
+        "distributionList": {
+          "allowReplies": true,
+          "memberRecipientIds": [
+            "4",
+            "5"
+          ],
+          "name": "Mandalorians",
+          "privacyMode": "ALL_EXCEPT"
+        }
+      }
+    }
+  },
+  {
+    "recipient": {
+      "id": "10",
+      "distributionList": {
+        "distributionId": "ZYoHlxwxS8aBGSQJ1tL0sA==",
+        "distributionList": {
+          "memberRecipientIds": [
+            "4"
+          ],
+          "name": "Hutts",
+          "privacyMode": "ONLY_WITH"
+        }
+      }
+    }
+  }
+]
