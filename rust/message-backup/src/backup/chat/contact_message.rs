@@ -7,7 +7,8 @@ use protobuf::EnumOrUnknown;
 use crate::backup::chat::{ChatItemError, Reaction};
 use crate::backup::file::{FilePointer, FilePointerError};
 use crate::backup::frame::RecipientId;
-use crate::backup::method::Lookup;
+use crate::backup::method::LookupPair;
+use crate::backup::recipient::DestinationKind;
 use crate::backup::serialize::{SerializeOrder, UnorderedList};
 use crate::backup::{TryFromWith, TryIntoWith as _};
 use crate::proto::backup as proto;
@@ -45,7 +46,7 @@ pub enum ContactAttachmentError {
     Avatar(FilePointerError),
 }
 
-impl<R: Clone, C: Lookup<RecipientId, R>> TryFromWith<proto::ContactMessage, C>
+impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R>> TryFromWith<proto::ContactMessage, C>
     for ContactMessage<R>
 {
     type Error = ChatItemError;
@@ -172,9 +173,9 @@ mod test {
     use test_case::test_case;
 
     use super::*;
-    use crate::backup::testutil::TestContext;
     use crate::backup::chat::ReactionError;
     use crate::backup::recipient::FullRecipientData;
+    use crate::backup::testutil::TestContext;
 
     impl proto::ContactMessage {
         fn test_data() -> Self {

@@ -99,6 +99,18 @@ pub enum Destination<M: Method + ReferencedTypes> {
     CallLink(M::Value<CallLink>),
 }
 
+impl DestinationKind {
+    pub fn is_individual(&self) -> bool {
+        match self {
+            DestinationKind::Contact | DestinationKind::Self_ => true,
+            DestinationKind::Group
+            | DestinationKind::DistributionList
+            | DestinationKind::ReleaseNotes
+            | DestinationKind::CallLink => false,
+        }
+    }
+}
+
 impl AsRef<DestinationKind> for DestinationKind {
     fn as_ref(&self) -> &DestinationKind {
         self
@@ -430,17 +442,17 @@ impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R>>
                         .into_iter()
                         .map(|id| {
                             let id = RecipientId(id);
-                            let (kind, recipient_reference) = context
+                            let (&kind, recipient_reference) = context
                                 .lookup_pair(&id)
                                 .ok_or(RecipientError::DistributionListMemberUnknown(id))?;
                             match kind {
                                 DestinationKind::Contact => Ok(recipient_reference.clone()),
-                                kind @ (DestinationKind::Group
+                                DestinationKind::Group
                                 | DestinationKind::DistributionList
                                 | DestinationKind::Self_
                                 | DestinationKind::ReleaseNotes
-                                | DestinationKind::CallLink) => {
-                                    Err(RecipientError::DistributionListMemberWrongKind(id, *kind))
+                                | DestinationKind::CallLink => {
+                                    Err(RecipientError::DistributionListMemberWrongKind(id, kind))
                                 }
                             }
                         })

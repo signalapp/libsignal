@@ -8,7 +8,8 @@ use crate::backup::chat::text::MessageText;
 use crate::backup::chat::{ChatItemError, Reaction};
 use crate::backup::file::{FilePointer, MessageAttachment};
 use crate::backup::frame::RecipientId;
-use crate::backup::method::Lookup;
+use crate::backup::method::LookupPair;
+use crate::backup::recipient::DestinationKind;
 use crate::backup::serialize::{SerializeOrder, UnorderedList};
 use crate::backup::{TryFromWith, TryIntoWith as _};
 use crate::proto::backup as proto;
@@ -27,8 +28,8 @@ pub struct StandardMessage<Recipient> {
     _limit_construction_to_module: (),
 }
 
-impl<R: Clone, C: Lookup<RecipientId, R>> TryFromWith<proto::StandardMessage, C>
-    for StandardMessage<R>
+impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R>>
+    TryFromWith<proto::StandardMessage, C> for StandardMessage<R>
 {
     type Error = ChatItemError;
 
@@ -86,8 +87,8 @@ impl<R: Clone, C: Lookup<RecipientId, R>> TryFromWith<proto::StandardMessage, C>
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::backup::testutil::TestContext;
     use crate::backup::recipient::FullRecipientData;
+    use crate::backup::testutil::TestContext;
     use crate::backup::time::{Duration, Timestamp};
 
     impl proto::StandardMessage {

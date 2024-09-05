@@ -17,7 +17,8 @@ use derive_where::derive_where;
 use crate::backup::chat::chat_style::{ChatStyle, ChatStyleError, CustomColorId};
 use crate::backup::file::{FilePointerError, MessageAttachmentError};
 use crate::backup::frame::RecipientId;
-use crate::backup::method::{Lookup, Method};
+use crate::backup::method::{Lookup, LookupPair, Method};
+use crate::backup::recipient::DestinationKind;
 use crate::backup::serialize::{SerializeOrder, UnorderedList};
 use crate::backup::sticker::MessageStickerError;
 use crate::backup::time::{Duration, Timestamp};
@@ -66,6 +67,8 @@ pub enum ChatError {
     DuplicateId,
     /// no record for {0:?}
     NoRecipient(RecipientId),
+    /// cannot have a chat with recipient {0:?}, a {1:?}
+    InvalidRecipient(RecipientId, DestinationKind),
     /// chat item: {0}
     ChatItem(#[from] ChatItemError),
     /// {0:?} already appeared
@@ -81,6 +84,8 @@ pub enum ChatItemError {
     NoChatForItem,
     /// no record for chat item author {0:?}
     AuthorNotFound(RecipientId),
+    /// chat item author {0:?} is a {1:?}
+    InvalidAuthor(RecipientId, DestinationKind),
     /// ChatItem.item is a oneof but is empty
     MissingItem,
     /// text: {0}
@@ -238,6 +243,8 @@ impl<Recipient: SerializeOrder> SerializeOrder for Reaction<Recipient> {
 pub enum ReactionError {
     /// unknown author {0:?}
     AuthorNotFound(RecipientId),
+    /// author {0:?} was a {1:?}, not a contact or self
+    InvalidAuthor(RecipientId, DestinationKind),
     /// "emoji" is an empty string
     EmptyEmoji,
 }
@@ -292,6 +299,8 @@ pub enum DeliveryStatus {
 pub enum OutgoingSendError {
     /// send status has unknown recipient {0:?}
     UnknownRecipient(RecipientId),
+    /// send status recipient {0:?} is a {1:?}, not a contact or self
+    InvalidRecipient(RecipientId, DestinationKind),
     /// send status is missing
     SendStatusMissing,
 }
@@ -318,7 +327,7 @@ impl std::fmt::Display for InvalidExpiration {
 
 impl<
         M: Method + ReferencedTypes,
-        C: Lookup<RecipientId, M::RecipientReference>
+        C: LookupPair<RecipientId, DestinationKind, M::RecipientReference>
             + Lookup<PinOrder, M::RecipientReference>
             + Lookup<CustomColorId, M::CustomColorReference>,
     > TryFromWith<proto::Chat, C> for ChatData<M>
@@ -339,10 +348,19 @@ impl<
             special_fields: _,
         } = value;
 
-        let recipient = RecipientId(recipientId);
-        let Some(recipient) = context.lookup(&recipient).cloned() else {
-            return Err(ChatError::NoRecipient(recipient));
+        let recipient_id = RecipientId(recipientId);
+        let Some((&kind, recipient)) = context.lookup_pair(&recipient_id) else {
+            return Err(ChatError::NoRecipient(recipient_id));
         };
+        let recipient = match kind {
+            DestinationKind::Contact
+            | DestinationKind::Group
+            | DestinationKind::Self_
+            | DestinationKind::ReleaseNotes => Ok(recipient.clone()),
+            DestinationKind::DistributionList | DestinationKind::CallLink => {
+                Err(ChatError::InvalidRecipient(recipient_id, kind))
+            }
+        }?;
 
         let pinned_order = NonZeroU32::new(pinnedOrder).map(PinOrder);
         if let Some(pinned_order) = pinned_order {
@@ -376,7 +394,7 @@ impl<
 }
 
 impl<
-        C: Lookup<RecipientId, M::RecipientReference> + AsRef<BackupMeta>,
+        C: LookupPair<RecipientId, DestinationKind, M::RecipientReference> + AsRef<BackupMeta>,
         M: Method + ReferencedTypes,
     > TryFromWith<proto::ChatItem, C> for ChatItemData<M>
 {
@@ -396,11 +414,23 @@ impl<
             special_fields: _,
         } = value;
 
-        let author = RecipientId(authorId);
+        let author_id = RecipientId(authorId);
 
-        let Some(author) = context.lookup(&author).cloned() else {
-            return Err(ChatItemError::AuthorNotFound(author));
+        let Some((&author_kind, author)) = context.lookup_pair(&author_id) else {
+            return Err(ChatItemError::AuthorNotFound(author_id));
         };
+        let author = match author_kind {
+            DestinationKind::Contact | DestinationKind::Self_ | DestinationKind::ReleaseNotes => {
+                Ok(author.clone())
+            }
+            // Even update messages in groups are still attributed to self (if not a specific
+            // author)
+            DestinationKind::Group
+            | DestinationKind::DistributionList
+            | DestinationKind::CallLink => {
+                Err(ChatItemError::InvalidAuthor(author_id, author_kind))
+            }
+        }?;
 
         let message = item
             .ok_or(ChatItemError::MissingItem)?
@@ -494,8 +524,8 @@ impl<
     }
 }
 
-impl<R: Clone, C: Lookup<RecipientId, R>> TryFromWith<proto::chat_item::DirectionalDetails, C>
-    for Direction<R>
+impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R>>
+    TryFromWith<proto::chat_item::DirectionalDetails, C> for Direction<R>
 {
     type Error = ChatItemError;
 
@@ -538,7 +568,9 @@ impl<R: Clone, C: Lookup<RecipientId, R>> TryFromWith<proto::chat_item::Directio
         }
     }
 }
-impl<R: Clone, C: Lookup<RecipientId, R>> TryFromWith<proto::SendStatus, C> for OutgoingSend<R> {
+impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R>> TryFromWith<proto::SendStatus, C>
+    for OutgoingSend<R>
+{
     type Error = OutgoingSendError;
 
     fn try_from_with(item: proto::SendStatus, context: &C) -> Result<Self, Self::Error> {
@@ -550,9 +582,13 @@ impl<R: Clone, C: Lookup<RecipientId, R>> TryFromWith<proto::SendStatus, C> for 
         } = item;
 
         let recipient_id = RecipientId(recipientId);
-        let Some(recipient) = context.lookup(&recipient_id).cloned() else {
+        let Some((&kind, recipient)) = context.lookup_pair(&recipient_id) else {
             return Err(OutgoingSendError::UnknownRecipient(recipient_id));
         };
+        if !kind.is_individual() {
+            return Err(OutgoingSendError::InvalidRecipient(recipient_id, kind));
+        }
+        let recipient = recipient.clone();
 
         let Some(status) = deliveryStatus else {
             return Err(OutgoingSendError::SendStatusMissing);
@@ -617,7 +653,7 @@ impl<R: Clone, C: Lookup<RecipientId, R>> TryFromWith<proto::SendStatus, C> for 
 }
 
 impl<
-        R: Lookup<RecipientId, M::RecipientReference> + AsRef<BackupMeta>,
+        R: LookupPair<RecipientId, DestinationKind, M::RecipientReference> + AsRef<BackupMeta>,
         M: Method + ReferencedTypes,
     > TryFromWith<proto::chat_item::Item, R> for ChatItemMessage<M>
 {
@@ -660,7 +696,9 @@ impl<
     }
 }
 
-impl<R: Clone, C: Lookup<RecipientId, R>> TryFromWith<proto::Reaction, C> for Reaction<R> {
+impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R>> TryFromWith<proto::Reaction, C>
+    for Reaction<R>
+{
     type Error = ReactionError;
 
     fn try_from_with(item: proto::Reaction, context: &C) -> Result<Self, Self::Error> {
@@ -677,9 +715,13 @@ impl<R: Clone, C: Lookup<RecipientId, R>> TryFromWith<proto::Reaction, C> for Re
         }
 
         let author_id = RecipientId(authorId);
-        let Some(author) = context.lookup(&author_id).cloned() else {
+        let Some((&author_kind, author)) = context.lookup_pair(&author_id) else {
             return Err(ReactionError::AuthorNotFound(author_id));
         };
+        if !author_kind.is_individual() {
+            return Err(ReactionError::InvalidAuthor(author_id, author_kind));
+        }
+        let author = author.clone();
 
         let sent_timestamp = Timestamp::from_millis(sentTimestamp, "Reaction.sentTimestamp");
 
@@ -801,6 +843,12 @@ mod test {
         Err(ChatError::DuplicatePinnedOrder(TestContext::DUPLICATE_PINNED_ORDER,));
         "duplicate_pinned_order"
     )]
+    #[test_case(|x| {
+        x.recipientId = TestContext::CALL_LINK_ID.0;
+    } => Err(ChatError::InvalidRecipient(TestContext::CALL_LINK_ID, DestinationKind::CallLink)); "call link chat")]
+    #[test_case(|x| {
+        x.recipientId = 0;
+    } => Err(ChatError::NoRecipient(RecipientId(0))); "unknown recipient")]
     fn chat(modifier: fn(&mut proto::Chat)) -> Result<(), ChatError> {
         let mut chat = proto::Chat::test_data();
         modifier(&mut chat);
@@ -833,6 +881,7 @@ mod test {
     }
 
     #[test_case(|x| x.authorId = 0xffff => Err(ChatItemError::AuthorNotFound(RecipientId(0xffff))); "unknown_author")]
+    #[test_case(|x| x.authorId = TestContext::GROUP_ID.0 => Err(ChatItemError::InvalidAuthor(TestContext::GROUP_ID, DestinationKind::Group)); "invalid author")]
     #[test_case(|x| x.directionalDetails = None => Err(ChatItemError::NoDirection); "no_direction")]
     #[test_case(|x| x.directionalDetails = Some(proto::chat_item::OutgoingMessageDetails::test_data().into()) => Ok(()); "outgoing_valid")]
     #[test_case(|x| x.directionalDetails = Some(
@@ -875,6 +924,18 @@ mod test {
             .into(),
         ) => Err(ChatItemError::Outgoing(OutgoingSendError::UnknownRecipient(RecipientId(0xffff)))); "outgoing_unknown_recipient"
     )]
+    #[test_case(
+        |x| x.directionalDetails = Some(
+            proto::chat_item::OutgoingMessageDetails {
+                sendStatus: vec![proto::SendStatus {
+                    recipientId: TestContext::GROUP_ID.0,
+                    ..proto::SendStatus::test_data()
+                }],
+                ..proto::chat_item::OutgoingMessageDetails::test_data()
+            }
+            .into(),
+        ) => Err(ChatItemError::Outgoing(OutgoingSendError::InvalidRecipient(TestContext::GROUP_ID, DestinationKind::Group))); "outgoing invalid recipient"
+    )]
     #[test_case(|x| x.directionalDetails = Some(proto::chat_item::DirectionlessMessageDetails::default().into()) => Err(ChatItemError::DirectionlessMessage); "directionless_non_update")]
     #[test_case(|x| {
         x.directionalDetails = Some(proto::chat_item::DirectionlessMessageDetails::default().into());
@@ -905,7 +966,11 @@ mod test {
 
     #[test_case(
         |x| x.authorId = proto::Recipient::TEST_ID + 2 => Err(ReactionError::AuthorNotFound(RecipientId(proto::Recipient::TEST_ID + 2)));
-        "invalid_author_id"
+        "unknown author id"
+    )]
+    #[test_case(
+        |x| x.authorId = TestContext::GROUP_ID.0 => Err(ReactionError::InvalidAuthor(TestContext::GROUP_ID, DestinationKind::Group));
+        "invalid author id"
     )]
     fn reaction(modifier: fn(&mut proto::Reaction)) -> Result<(), ReactionError> {
         let mut reaction = proto::Reaction::test_data();

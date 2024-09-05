@@ -6,7 +6,8 @@
 use crate::backup::chat::text::{MessageText, TextError};
 use crate::backup::file::{MessageAttachment, MessageAttachmentError};
 use crate::backup::frame::RecipientId;
-use crate::backup::method::Lookup;
+use crate::backup::method::LookupPair;
+use crate::backup::recipient::DestinationKind;
 use crate::backup::time::Timestamp;
 use crate::backup::TryFromWith;
 use crate::proto::backup as proto;
@@ -47,6 +48,8 @@ pub struct QuotedAttachment {
 pub enum QuoteError {
     /// has unknown author {0:?}
     AuthorNotFound(RecipientId),
+    /// author {0:?} is a {1:?}, not a contact or self
+    InvalidAuthor(RecipientId, DestinationKind),
     /// "type" is unknown
     TypeUnknown,
     /// text error: {0}
@@ -57,7 +60,9 @@ pub enum QuoteError {
     AttachmentThumbnailWrongFlag(proto::message_attachment::Flag),
 }
 
-impl<R: Clone, C: Lookup<RecipientId, R>> TryFromWith<proto::Quote, C> for Quote<R> {
+impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R>> TryFromWith<proto::Quote, C>
+    for Quote<R>
+{
     type Error = QuoteError;
 
     fn try_from_with(item: proto::Quote, context: &C) -> Result<Self, Self::Error> {
@@ -71,9 +76,21 @@ impl<R: Clone, C: Lookup<RecipientId, R>> TryFromWith<proto::Quote, C> for Quote
         } = item;
 
         let author_id = RecipientId(authorId);
-        let Some(author) = context.lookup(&author_id).cloned() else {
+        let Some((&author_kind, author)) = context.lookup_pair(&author_id) else {
             return Err(QuoteError::AuthorNotFound(author_id));
         };
+        let author = match author_kind {
+            DestinationKind::Contact
+            | DestinationKind::Self_
+            // As of Sep 2024, the release notes channel doesn't currently quote messages,
+            // but there's no reason it couldn't.
+            | DestinationKind::ReleaseNotes => {
+                Ok(author.clone())
+            }
+            DestinationKind::Group
+            | DestinationKind::DistributionList
+            | DestinationKind::CallLink => Err(QuoteError::InvalidAuthor(author_id, author_kind)),
+        }?;
 
         let target_sent_timestamp = targetSentTimestamp
             .map(|timestamp| Timestamp::from_millis(timestamp, "Quote.targetSentTimestamp"));
@@ -142,8 +159,8 @@ mod test {
     use test_case::test_case;
 
     use super::*;
-    use crate::backup::testutil::TestContext;
     use crate::backup::recipient::FullRecipientData;
+    use crate::backup::testutil::TestContext;
     use crate::backup::time::testutil::MillisecondsSinceEpoch;
 
     impl proto::quote::QuotedAttachment {
@@ -215,5 +232,17 @@ mod test {
                 _limit_construction_to_module: (),
             }
         }
+    }
+
+    #[test_case(|_| {} => Ok(()); "valid")]
+    #[test_case(|x| x.authorId = 0 => Err(QuoteError::AuthorNotFound(RecipientId(0))); "unknown author")]
+    #[test_case(|x| {
+        x.authorId = TestContext::GROUP_ID.0
+    } => Err(QuoteError::InvalidAuthor(TestContext::GROUP_ID, DestinationKind::Group)); "invalid author")]
+    #[test_case(|x| x.type_ = proto::quote::Type::UNKNOWN.into() => Err(QuoteError::TypeUnknown); "unknown type")]
+    fn quote(modifier: impl FnOnce(&mut proto::Quote)) -> Result<(), QuoteError> {
+        let mut attachment = proto::Quote::test_data();
+        modifier(&mut attachment);
+        Quote::try_from_with(attachment, &TestContext::default()).map(|_| ())
     }
 }

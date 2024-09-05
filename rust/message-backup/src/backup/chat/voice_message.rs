@@ -6,7 +6,8 @@ use crate::backup::chat::quote::{Quote, QuoteError};
 use crate::backup::chat::{Reaction, ReactionError};
 use crate::backup::file::{MessageAttachment, MessageAttachmentError};
 use crate::backup::frame::RecipientId;
-use crate::backup::method::Lookup;
+use crate::backup::method::LookupPair;
+use crate::backup::recipient::DestinationKind;
 use crate::backup::serialize::{SerializeOrder, UnorderedList};
 use crate::backup::{TryFromWith, TryIntoWith as _};
 use crate::proto::backup as proto;
@@ -39,8 +40,8 @@ pub enum VoiceMessageError {
     Reaction(#[from] ReactionError),
 }
 
-impl<R: Clone, C: Lookup<RecipientId, R>> TryFromWith<proto::StandardMessage, C>
-    for VoiceMessage<R>
+impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R>>
+    TryFromWith<proto::StandardMessage, C> for VoiceMessage<R>
 {
     type Error = VoiceMessageError;
 
@@ -95,8 +96,8 @@ mod test {
     use test_case::test_case;
 
     use super::*;
-    use crate::backup::testutil::TestContext;
     use crate::backup::recipient::FullRecipientData;
+    use crate::backup::testutil::TestContext;
 
     #[test]
     fn valid_voice_message() {

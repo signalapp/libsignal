@@ -6,7 +6,7 @@
 use std::fmt::Debug;
 
 use crate::backup::frame::RecipientId;
-use crate::backup::method::{Lookup, LookupPair};
+use crate::backup::method::LookupPair;
 use crate::backup::recipient::DestinationKind;
 use crate::backup::time::Timestamp;
 use crate::backup::TryFromWith;
@@ -58,8 +58,12 @@ pub struct CallId(u64);
 pub enum CallError {
     /// call starter {0:?} not found,
     UnknownCallStarter(RecipientId),
+    /// call starter {0:?} is a {1:?}, not a contact or self
+    InvalidCallStarter(RecipientId, DestinationKind),
     /// no record for ringer {0:?}
     NoRingerRecipient(RecipientId),
+    /// ringer {0:?} is a {1:?}, not a contact or self
+    InvalidRingerRecipient(RecipientId, DestinationKind),
     /// no record for ad-hoc {0:?}
     NoAdHocRecipient(RecipientId),
     /// ad-hoc recipient {0:?} is not a call link
@@ -193,7 +197,9 @@ impl TryFrom<proto::IndividualCall> for IndividualCall {
     }
 }
 
-impl<C: Lookup<RecipientId, R>, R: Clone> TryFromWith<proto::GroupCall, C> for GroupCall<R> {
+impl<C: LookupPair<RecipientId, DestinationKind, R>, R: Clone> TryFromWith<proto::GroupCall, C>
+    for GroupCall<R>
+{
     type Error = CallError;
 
     fn try_from_with(call: proto::GroupCall, context: &C) -> Result<Self, Self::Error> {
@@ -211,20 +217,26 @@ impl<C: Lookup<RecipientId, R>, R: Clone> TryFromWith<proto::GroupCall, C> for G
         let started_call_recipient = startedCallRecipientId
             .map(|id| {
                 let id = RecipientId(id);
-                context
-                    .lookup(&id)
-                    .ok_or(CallError::UnknownCallStarter(id))
-                    .cloned()
+                let (&starter_kind, starter) = context
+                    .lookup_pair(&id)
+                    .ok_or(CallError::UnknownCallStarter(id))?;
+                if !starter_kind.is_individual() {
+                    return Err(CallError::InvalidCallStarter(id, starter_kind));
+                }
+                Ok(starter.clone())
             })
             .transpose()?;
 
         let ringer_recipient = ringerRecipientId
             .map(|id| {
                 let id = RecipientId(id);
-                context
-                    .lookup(&id)
-                    .ok_or(CallError::NoRingerRecipient(id))
-                    .cloned()
+                let (&ringer_kind, ringer) = context
+                    .lookup_pair(&id)
+                    .ok_or(CallError::NoRingerRecipient(id))?;
+                if !ringer_kind.is_individual() {
+                    return Err(CallError::InvalidRingerRecipient(id, ringer_kind));
+                }
+                Ok(ringer.clone())
             })
             .transpose()?;
 
@@ -423,17 +435,19 @@ pub(crate) mod test {
         }
     }
 
-    struct TestContext;
-
-    impl Lookup<RecipientId, DestinationKind> for TestContext {
-        fn lookup(&self, key: &RecipientId) -> Option<&DestinationKind> {
-            match key {
-                RecipientId(proto::Recipient::TEST_ID) => Some(&DestinationKind::Contact),
-                &TEST_CALL_LINK_RECIPIENT_ID => Some(&DestinationKind::CallLink),
-                _ => None,
+    impl CallLink {
+        pub(crate) fn from_proto_test_data() -> Self {
+            Self {
+                admin_approval: false,
+                root_key: TEST_CALL_LINK_ROOT_KEY,
+                admin_key: Some(TEST_CALL_LINK_ADMIN_KEY.to_vec()),
+                expiration: Timestamp::test_value(),
+                name: "".to_string(),
             }
         }
     }
+
+    struct TestContext;
 
     impl LookupPair<RecipientId, DestinationKind, RecipientId> for TestContext {
         fn lookup_pair<'a>(
@@ -480,7 +494,7 @@ pub(crate) mod test {
                 id: None,
                 state: GroupCallState::Accepted,
                 started_call_recipient: None,
-                ringer_recipient: Some(DestinationKind::Contact),
+                ringer_recipient: Some(RecipientId(proto::Recipient::TEST_ID)),
                 started_at: Timestamp::test_value(),
                 ended_at: Timestamp::test_value() + Duration::from_millis(1000),
                 read: true,
@@ -488,11 +502,22 @@ pub(crate) mod test {
         );
     }
 
-    #[test_case(|x| x.ringerRecipientId = None => Ok(()); "no_ringer_id")]
-    #[test_case(
-        |x| x.ringerRecipientId = Some(NONEXISTENT_RECIPIENT.0) => Err(CallError::NoRingerRecipient(NONEXISTENT_RECIPIENT));
-        "wrong_wringer_id"
-    )]
+    #[test_case(|x| x.ringerRecipientId = None => Ok(()); "no ringer")]
+    #[test_case(|x| {
+        x.ringerRecipientId = Some(NONEXISTENT_RECIPIENT.0)
+    } => Err(CallError::NoRingerRecipient(NONEXISTENT_RECIPIENT)); "nonexistent ringer")]
+    #[test_case(|x| {
+        x.ringerRecipientId = Some(TEST_CALL_LINK_RECIPIENT_ID.0)
+    } => Err(CallError::InvalidRingerRecipient(TEST_CALL_LINK_RECIPIENT_ID, DestinationKind::CallLink)); "invalid ringer")]
+    #[test_case(|x| {
+        x.startedCallRecipientId = Some(proto::Recipient::TEST_ID)
+    } => Ok(()); "has call starter")]
+    #[test_case(|x| {
+        x.startedCallRecipientId = Some(NONEXISTENT_RECIPIENT.0)
+    } => Err(CallError::UnknownCallStarter(NONEXISTENT_RECIPIENT)); "nonexistent call starter")]
+    #[test_case(|x| {
+        x.startedCallRecipientId = Some(TEST_CALL_LINK_RECIPIENT_ID.0)
+    } => Err(CallError::InvalidCallStarter(TEST_CALL_LINK_RECIPIENT_ID, DestinationKind::CallLink)); "invalid call starter")]
     #[test_case(|x| x.state = EnumOrUnknown::default() => Err(CallError::UnknownState); "unknown_state")]
     fn group_call(modifier: fn(&mut proto::GroupCall)) -> Result<(), CallError> {
         let mut call = proto::GroupCall::test_data();
@@ -531,13 +556,7 @@ pub(crate) mod test {
     fn valid_call_link() {
         assert_eq!(
             proto::CallLink::test_data().try_into(),
-            Ok(CallLink {
-                admin_approval: false,
-                root_key: TEST_CALL_LINK_ROOT_KEY,
-                admin_key: Some(TEST_CALL_LINK_ADMIN_KEY.to_vec()),
-                expiration: Timestamp::test_value(),
-                name: "".to_string(),
-            })
+            Ok(CallLink::from_proto_test_data())
         );
     }
 

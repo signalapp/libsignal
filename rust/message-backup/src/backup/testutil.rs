@@ -8,6 +8,7 @@ use std::sync::Arc;
 use nonzero_ext::nonzero;
 use once_cell::sync::Lazy;
 
+use crate::backup::call::CallLink;
 use crate::backup::chat::chat_style::{CustomChatColor, CustomColorId};
 use crate::backup::chat::PinOrder;
 use crate::backup::frame::RecipientId;
@@ -40,11 +41,14 @@ static CONTACT_RECIPIENT: Lazy<FullRecipientData> =
     Lazy::new(|| FullRecipientData::new(Destination::Contact(ContactData::from_proto_test_data())));
 static GROUP_RECIPIENT: Lazy<FullRecipientData> =
     Lazy::new(|| FullRecipientData::new(Destination::Group(GroupData::from_proto_test_data())));
+static CALL_LINK_RECIPIENT: Lazy<FullRecipientData> =
+    Lazy::new(|| FullRecipientData::new(Destination::CallLink(CallLink::from_proto_test_data())));
 
 impl TestContext {
     pub(super) const CONTACT_ID: RecipientId = RecipientId(123456789);
     pub(super) const SELF_ID: RecipientId = RecipientId(1111111111);
     pub(super) const GROUP_ID: RecipientId = RecipientId(7000000);
+    pub(super) const CALL_LINK_ID: RecipientId = RecipientId(0xCA77);
 }
 
 impl LookupPair<RecipientId, DestinationKind, FullRecipientData> for TestContext {
@@ -56,14 +60,9 @@ impl LookupPair<RecipientId, DestinationKind, FullRecipientData> for TestContext
             Self::CONTACT_ID => Some((&DestinationKind::Contact, &CONTACT_RECIPIENT)),
             Self::SELF_ID => Some((&DestinationKind::Self_, &SELF_RECIPIENT)),
             Self::GROUP_ID => Some((&DestinationKind::Group, &GROUP_RECIPIENT)),
+            Self::CALL_LINK_ID => Some((&DestinationKind::CallLink, &CALL_LINK_RECIPIENT)),
             _ => None,
         }
-    }
-}
-
-impl Lookup<RecipientId, FullRecipientData> for TestContext {
-    fn lookup<'a>(&'a self, key: &'a RecipientId) -> Option<&'a FullRecipientData> {
-        self.lookup_pair(key).map(|(_kind, data)| data)
     }
 }
 

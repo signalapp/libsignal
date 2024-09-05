@@ -4,7 +4,8 @@
 
 use crate::backup::chat::{ChatItemError, Reaction};
 use crate::backup::frame::RecipientId;
-use crate::backup::method::Lookup;
+use crate::backup::method::LookupPair;
+use crate::backup::recipient::DestinationKind;
 use crate::backup::serialize::{SerializeOrder, UnorderedList};
 use crate::backup::sticker::MessageSticker;
 use crate::backup::{TryFromWith, TryIntoWith as _};
@@ -20,7 +21,7 @@ pub struct StickerMessage<Recipient> {
     _limit_construction_to_module: (),
 }
 
-impl<R: Clone, C: Lookup<RecipientId, R>> TryFromWith<proto::StickerMessage, C>
+impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R>> TryFromWith<proto::StickerMessage, C>
     for StickerMessage<R>
 {
     type Error = ChatItemError;
@@ -55,9 +56,9 @@ mod test {
     use test_case::test_case;
 
     use super::*;
-    use crate::backup::testutil::TestContext;
     use crate::backup::chat::ReactionError;
     use crate::backup::recipient::FullRecipientData;
+    use crate::backup::testutil::TestContext;
 
     impl proto::StickerMessage {
         pub(crate) fn test_data() -> Self {
