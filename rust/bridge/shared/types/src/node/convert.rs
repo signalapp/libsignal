@@ -660,7 +660,7 @@ impl<'storage, 'context: 'storage> ArgTypeInfo<'storage, 'context>
         cx: &mut FunctionContext<'context>,
         foreign: Handle<'context, Self::ArgType>,
     ) -> NeonResult<Self::StoredType> {
-        Ok(NodeMakeChatListener::new(cx, foreign))
+        NodeMakeChatListener::new(cx, foreign)
     }
 
     fn load_from(stored: &'storage mut Self::StoredType) -> Self {

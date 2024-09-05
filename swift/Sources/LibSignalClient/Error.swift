@@ -60,6 +60,7 @@ public enum SignalError: Error {
     case svrRestoreFailed(triesRemaining: UInt32, message: String)
     case svrRotationMachineTooManySteps(String)
     case chatServiceInactive(String)
+    case chatServiceIntentionallyDisconnected(String)
     case appExpired(String)
     case deviceDeregistered(String)
     case backupValidation(unknownFields: [String], message: String)
@@ -201,6 +202,8 @@ internal func checkError(_ error: SignalFfiErrorRef?) throws {
         throw SignalError.svrRotationMachineTooManySteps(errStr)
     case SignalErrorCodeChatServiceInactive:
         throw SignalError.chatServiceInactive(errStr)
+    case SignalErrorCodeChatServiceIntentionallyDisconnected:
+        throw SignalError.chatServiceIntentionallyDisconnected(errStr)
     case SignalErrorCodeAppExpired:
         throw SignalError.appExpired(errStr)
     case SignalErrorCodeDeviceDeregistered:

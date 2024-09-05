@@ -75,34 +75,35 @@ pub enum SignalErrorCode {
     UsernameLinkInvalidEntropyDataLength = 127,
     UsernameLinkInvalid = 128,
 
-    UsernameDiscriminatorCannotBeEmpty = 140,
-    UsernameDiscriminatorCannotBeZero = 141,
-    UsernameDiscriminatorCannotBeSingleDigit = 142,
-    UsernameDiscriminatorCannotHaveLeadingZeros = 143,
-    UsernameDiscriminatorTooLarge = 144,
+    UsernameDiscriminatorCannotBeEmpty = 130,
+    UsernameDiscriminatorCannotBeZero = 131,
+    UsernameDiscriminatorCannotBeSingleDigit = 132,
+    UsernameDiscriminatorCannotHaveLeadingZeros = 133,
+    UsernameDiscriminatorTooLarge = 134,
 
-    IoError = 130,
+    IoError = 140,
     #[allow(dead_code)]
-    InvalidMediaInput = 131,
+    InvalidMediaInput = 141,
     #[allow(dead_code)]
-    UnsupportedMediaInput = 132,
+    UnsupportedMediaInput = 142,
 
-    ConnectionTimedOut = 133,
-    NetworkProtocol = 134,
-    RateLimited = 135,
-    WebSocket = 136,
-    CdsiInvalidToken = 137,
-    ConnectionFailed = 138,
-    ChatServiceInactive = 139,
+    ConnectionTimedOut = 143,
+    NetworkProtocol = 144,
+    RateLimited = 145,
+    WebSocket = 146,
+    CdsiInvalidToken = 147,
+    ConnectionFailed = 148,
+    ChatServiceInactive = 149,
+    ChatServiceIntentionallyDisconnected = 150,
 
-    SvrDataMissing = 150,
-    SvrRestoreFailed = 151,
-    SvrRotationMachineTooManySteps = 152,
+    SvrDataMissing = 160,
+    SvrRestoreFailed = 161,
+    SvrRotationMachineTooManySteps = 162,
 
-    AppExpired = 160,
-    DeviceDeregistered = 161,
+    AppExpired = 170,
+    DeviceDeregistered = 171,
 
-    BackupValidation = 170,
+    BackupValidation = 180,
 }
 
 pub trait UpcastAsAny {
@@ -546,6 +547,9 @@ impl FfiError for ChatServiceError {
             Self::ServiceInactive => "Chat service inactive".to_owned(),
             Self::AppExpired => "App expired".to_owned(),
             Self::DeviceDeregistered => "Device deregistered or delinked".to_owned(),
+            Self::ServiceIntentionallyDisconnected => {
+                "Chat service explicitly disconnected".to_owned()
+            }
         }
     }
 
@@ -567,6 +571,9 @@ impl FfiError for ChatServiceError {
             Self::ServiceInactive => SignalErrorCode::ChatServiceInactive,
             Self::AppExpired => SignalErrorCode::AppExpired,
             Self::DeviceDeregistered => SignalErrorCode::DeviceDeregistered,
+            Self::ServiceIntentionallyDisconnected => {
+                SignalErrorCode::ChatServiceIntentionallyDisconnected
+            }
         }
     }
 }

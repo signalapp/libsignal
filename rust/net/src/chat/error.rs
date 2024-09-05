@@ -36,6 +36,8 @@ pub enum ChatServiceError {
     ServiceInactive,
     /// Service is unavailable due to the lost connection
     ServiceUnavailable,
+    /// Service was disconnected by an intentional local call
+    ServiceIntentionallyDisconnected,
 }
 
 impl LogSafeDisplay for ChatServiceError {}

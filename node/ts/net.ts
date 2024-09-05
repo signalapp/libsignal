@@ -126,10 +126,11 @@ export interface ConnectionEventsListener {
   /**
    * Called when the client gets disconnected from the server.
    *
-   * This includes both deliberate disconnects as well as unexpected socket closures that will be
-   * automatically retried.
+   * This includes both deliberate disconnects as well as unexpected socket
+   * closures. If the closure was not due to a deliberate disconnect, the error
+   * will be provided.
    */
-  onConnectionInterrupted(): void;
+  onConnectionInterrupted(cause: LibSignalError | null): void;
 }
 
 export interface ChatServiceListener extends ConnectionEventsListener {
@@ -251,8 +252,8 @@ export class AuthenticatedChatService implements ChatService {
       _queue_empty(): void {
         listener.onQueueEmpty();
       },
-      _connection_interrupted(): void {
-        listener.onConnectionInterrupted();
+      _connection_interrupted(cause: LibSignalError | null): void {
+        listener.onConnectionInterrupted(cause);
       },
     };
     Native.ChatService_SetListenerAuth(
@@ -331,8 +332,8 @@ export class UnauthenticatedChatService implements ChatService {
       _queue_empty(): void {
         throw new Error('Event not supported on unauthenticated connection');
       },
-      _connection_interrupted(): void {
-        listener.onConnectionInterrupted();
+      _connection_interrupted(cause: LibSignalError | null): void {
+        listener.onConnectionInterrupted(cause);
       },
     };
     Native.ChatService_SetListenerUnauth(

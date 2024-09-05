@@ -204,4 +204,6 @@ SignalFfiError *signal_testing_chat_service_inject_raw_server_request(const Sign
 
 SignalFfiError *signal_testing_chat_service_inject_connection_interrupted(const SignalChat *chat);
 
+SignalFfiError *signal_testing_chat_service_inject_intentional_disconnect(const SignalChat *chat);
+
 #endif  /* SIGNAL_FFI_TESTING_H_ */

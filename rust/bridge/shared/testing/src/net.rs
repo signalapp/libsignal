@@ -151,6 +151,7 @@ make_error_testing_enum! {
         AllConnectionRoutesFailed => AllConnectionRoutesFailed,
         ServiceInactive => ServiceInactive,
         ServiceUnavailable => ServiceUnavailable,
+        ServiceIntentionallyDisconnected => ServiceIntentionallyDisconnected,
     }
 }
 
@@ -185,6 +186,9 @@ fn TESTING_ChatServiceErrorConvert(
         }
         TestingChatServiceError::ServiceInactive => ChatServiceError::ServiceInactive,
         TestingChatServiceError::ServiceUnavailable => ChatServiceError::ServiceUnavailable,
+        TestingChatServiceError::ServiceIntentionallyDisconnected => {
+            ChatServiceError::ServiceIntentionallyDisconnected
+        }
     })
 }
 
@@ -275,6 +279,15 @@ fn TESTING_ChatService_InjectConnectionInterrupted(chat: &Chat) {
         .blocking_send(chat::ws::ServerEvent::Stopped(ChatServiceError::WebSocket(
             WebSocketServiceError::ChannelClosed,
         )))
+        .expect("not closed");
+}
+
+#[bridge_fn]
+fn TESTING_ChatService_InjectIntentionalDisconnect(chat: &Chat) {
+    chat.synthetic_request_tx
+        .blocking_send(chat::ws::ServerEvent::Stopped(
+            ChatServiceError::ServiceIntentionallyDisconnected,
+        ))
         .expect("not closed");
 }
 

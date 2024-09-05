@@ -23,6 +23,7 @@ import {
 import { randomBytes } from 'crypto';
 import { ChatResponse } from '../../Native';
 import { CompletablePromise } from './util';
+import { fail } from 'assert';
 
 use(chaiAsPromised);
 use(sinonChai);
@@ -290,15 +291,23 @@ describe('chat service api', () => {
       INVALID_MESSAGE,
       INCOMING_MESSAGE_2,
     ];
-    const callsReceived: string[] = [];
-    const callsExpected: string[] = [
-      '_incoming_message',
-      '_queue_empty',
-      '_incoming_message',
-      '_connection_interrupted',
+    const callsReceived: [string, (object | null)[]][] = [];
+    const callsExpected: [string, ((value: object | null) => void)[]][] = [
+      ['_incoming_message', []],
+      ['_queue_empty', []],
+      ['_incoming_message', []],
+      [
+        '_connection_interrupted',
+        [
+          (error: object | null) =>
+            expect(error)
+              .instanceOf(LibSignalErrorBase)
+              .property('code', ErrorCode.IoError),
+        ],
+      ],
     ];
-    const recordCall = function (name: string) {
-      callsReceived.push(name);
+    const recordCall = function (name: string, ...args: (object | null)[]) {
+      callsReceived.push([name, args]);
       if (callsReceived.length == callsExpected.length) {
         completable.complete();
       }
@@ -314,8 +323,8 @@ describe('chat service api', () => {
       onQueueEmpty(): void {
         recordCall('_queue_empty');
       },
-      onConnectionInterrupted(): void {
-        recordCall('_connection_interrupted');
+      onConnectionInterrupted(cause: object | null): void {
+        recordCall('_connection_interrupted', cause);
       },
     };
     const chat = net.newAuthenticatedChatService('', '', false, listener);
@@ -327,7 +336,43 @@ describe('chat service api', () => {
     );
     Native.TESTING_ChatService_InjectConnectionInterrupted(chat.chatService);
     await completable.done();
-    expect(callsReceived).to.eql(callsExpected);
+
+    expect(callsReceived).to.have.lengthOf(callsExpected.length);
+    callsReceived.forEach((element, index) => {
+      const [call, args] = element;
+      const [expectedCall, expectedArgs] = callsExpected[index];
+      expect(call).to.eql(expectedCall);
+      expect(args.length).to.eql(expectedArgs.length);
+      args.map((arg, i) => {
+        expectedArgs[i](arg);
+      });
+    });
+  });
+
+  it('listener gets null cause for intentional disconnect', async () => {
+    const net = new Net(Environment.Staging, userAgent);
+    const completable = new CompletablePromise();
+    const connectionInterruptedReasons: (object | null)[] = [];
+    const listener: ChatServiceListener = {
+      onIncomingMessage(
+        _envelope: Buffer,
+        _timestamp: number,
+        _ack: ChatServerMessageAck
+      ): void {
+        fail('unexpected call');
+      },
+      onQueueEmpty(): void {
+        fail('unexpected call');
+      },
+      onConnectionInterrupted(cause: object | null): void {
+        connectionInterruptedReasons.push(cause);
+        completable.complete();
+      },
+    };
+    const chat = net.newAuthenticatedChatService('', '', false, listener);
+    Native.TESTING_ChatService_InjectIntentionalDisconnect(chat.chatService);
+    await completable.done();
+    expect(connectionInterruptedReasons).to.eql([null]);
   });
 
   it('client can respond with http status code to a server message', () => {

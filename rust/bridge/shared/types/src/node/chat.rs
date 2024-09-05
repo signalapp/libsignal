@@ -11,15 +11,21 @@ use neon::context::FunctionContext;
 use neon::event::Channel;
 use neon::handle::{Handle, Root};
 use neon::prelude::{Context, Finalize, JsObject, Object};
+use neon::result::NeonResult;
 use signal_neon_futures::call_method;
 
 use crate::net::chat::{ChatListener, MakeChatListener, ServerMessageAck};
-use crate::node::ResultTypeInfo;
+use crate::node::{ResultTypeInfo, SignalNodeError as _};
 
 #[derive(Clone)]
 pub struct NodeChatListener {
     js_channel: Channel,
-    callback_object: Arc<Root<JsObject>>,
+    roots: Arc<Roots>,
+}
+
+struct Roots {
+    callback_object: Root<JsObject>,
+    module: Root<JsObject>,
 }
 
 impl ChatListener for NodeChatListener {
@@ -29,8 +35,9 @@ impl ChatListener for NodeChatListener {
         timestamp: Timestamp,
         ack: ServerMessageAck,
     ) {
-        let callback_object_shared = self.callback_object.clone();
+        let roots_shared = self.roots.clone();
         self.js_channel.send(move |mut cx| {
+            let callback_object_shared = &roots_shared.callback_object;
             let callback = callback_object_shared.to_inner(&mut cx);
             let ack = ack.convert_into(&mut cx)?;
             let timestamp = timestamp.convert_into(&mut cx)?.upcast();
@@ -41,28 +48,41 @@ impl ChatListener for NodeChatListener {
                 "_incoming_message",
                 [envelope, timestamp, ack],
             )?;
-            callback_object_shared.finalize(&mut cx);
+            roots_shared.finalize(&mut cx);
             Ok(())
         });
     }
 
     fn received_queue_empty(&mut self) {
-        let callback_object_shared = self.callback_object.clone();
+        let roots_shared = self.roots.clone();
         self.js_channel.send(move |mut cx| {
+            let callback_object_shared = &roots_shared.callback_object;
             let callback = callback_object_shared.to_inner(&mut cx);
             let _result = call_method(&mut cx, callback, "_queue_empty", [])?;
-            callback_object_shared.finalize(&mut cx);
+            roots_shared.finalize(&mut cx);
             Ok(())
         });
     }
 
-    // TODO: pass `_disconnect_cause` to `_connection_interrupted`
-    fn connection_interrupted(&mut self, _disconnect_cause: ChatServiceError) {
-        let callback_object_shared = self.callback_object.clone();
+    fn connection_interrupted(&mut self, disconnect_cause: ChatServiceError) {
+        let disconnect_cause = match disconnect_cause {
+            ChatServiceError::ServiceIntentionallyDisconnected => None,
+            c => Some(c),
+        };
+        let roots_shared = self.roots.clone();
         self.js_channel.send(move |mut cx| {
-            let callback = callback_object_shared.to_inner(&mut cx);
-            let _result = call_method(&mut cx, callback, "_connection_interrupted", [])?;
-            callback_object_shared.finalize(&mut cx);
+            let Roots {
+                callback_object,
+                module,
+            } = &*roots_shared;
+            let module = module.to_inner(&mut cx);
+            let cause = disconnect_cause
+                .map(|cause| cause.into_throwable(&mut cx, module, "connection_interrupted"))
+                .convert_into(&mut cx)?;
+
+            let callback = callback_object.to_inner(&mut cx);
+            let _result = call_method(&mut cx, callback, "_connection_interrupted", [cause])?;
+            roots_shared.finalize(&mut cx);
             Ok(())
         });
     }
@@ -73,15 +93,21 @@ pub struct NodeMakeChatListener {
 }
 
 impl NodeMakeChatListener {
-    pub(crate) fn new(cx: &mut FunctionContext, callbacks: Handle<JsObject>) -> Self {
+    pub(crate) fn new(cx: &mut FunctionContext, callbacks: Handle<JsObject>) -> NeonResult<Self> {
         let mut channel = cx.channel();
         channel.unref(cx);
-        Self {
+
+        let module = cx.this::<JsObject>()?;
+
+        Ok(Self {
             listener: NodeChatListener {
                 js_channel: channel,
-                callback_object: Arc::new(callbacks.root(cx)),
+                roots: Arc::new(Roots {
+                    callback_object: callbacks.root(cx),
+                    module: module.root(cx),
+                }),
             },
-        }
+        })
     }
 }
 
@@ -94,7 +120,14 @@ impl MakeChatListener for NodeMakeChatListener {
 impl Finalize for NodeMakeChatListener {
     fn finalize<'a, C: neon::prelude::Context<'a>>(self, cx: &mut C) {
         log::info!("finalize NodeMakeChatListener");
-        self.listener.callback_object.finalize(cx);
+        self.listener.roots.finalize(cx);
         log::info!("finalize NodeMakeChatListener done");
+    }
+}
+
+impl Finalize for Roots {
+    fn finalize<'a, C: neon::prelude::Context<'a>>(self, cx: &mut C) {
+        self.callback_object.finalize(cx);
+        self.module.finalize(cx);
     }
 }

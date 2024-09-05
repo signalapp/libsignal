@@ -326,7 +326,7 @@ where
     async fn send(&self, msg: Request, timeout: Duration) -> Result<Response, ChatServiceError> {
         // checking if channel has been closed
         if self.service_cancellation.is_cancelled() {
-            return Err(WebSocketServiceError::ChannelClosed.into());
+            return Err(ChatServiceError::ServiceIntentionallyDisconnected);
         }
 
         let (response_tx, response_rx) = oneshot::channel::<ResponseProto>();
