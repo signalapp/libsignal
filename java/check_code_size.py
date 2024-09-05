@@ -78,8 +78,10 @@ def current_origin_main_entry() -> Optional[Mapping[str, Any]]:
                 (bytes_count, _) = after.split(" bytes)", maxsplit=1)
                 return {'size': int(bytes_count), 'version': f"{most_recent_commit[:6]} ({base_ref})"}
 
+        print(f"skipping checking current {base_ref} (most recent run did not include check_code_size.py)", file=sys.stderr)
+
     except Exception as e:
-        print("skipping checking current origin/main:", e, file=sys.stderr)
+        print(f"skipping checking current {base_ref}: {e}", file=sys.stderr)
         if isinstance(e, subprocess.CalledProcessError):
             print("stdout:", e.stdout.decode(), file=sys.stderr)
             print("stderr:", e.stderr.decode(), file=sys.stderr)
