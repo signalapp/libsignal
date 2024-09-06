@@ -134,8 +134,14 @@ pub enum ChatItemError {
     ExpirationMismatch,
     /// expiration too soon: {0}
     InvalidExpiration(#[from] InvalidExpiration),
+    /// revisions of message from author {0:?} contained message from author {1:?}
+    RevisionWithMismatchedAuthor(RecipientId, RecipientId),
+    /// revisions of {0:?} message contained {1:?} message
+    RevisionWithMismatchedDirection(DirectionDiscriminants, DirectionDiscriminants),
     /// revisions contains a ChatItem with a call message
     RevisionContainsCall,
+    /// nested revisions
+    RevisionContainsRevisions,
     /// learned profile chat update has no e164 or name
     LearnedProfileIsEmpty,
     /// invalid e164
@@ -249,7 +255,7 @@ pub enum ReactionError {
     EmptyEmoji,
 }
 
-#[derive(Debug, serde::Serialize)]
+#[derive(Debug, serde::Serialize, strum::EnumDiscriminants)]
 #[cfg_attr(test, derive(PartialEq))]
 pub enum Direction<Recipient> {
     Incoming {
@@ -449,7 +455,24 @@ impl<
         let revisions: Vec<_> = revisions
             .into_iter()
             .map(|rev| {
+                // We have to test this on the raw IDs because RecipientReference isn't necessarily
+                // comparable.
+                if author_id.0 != rev.authorId {
+                    return Err(ChatItemError::RevisionWithMismatchedAuthor(
+                        author_id,
+                        RecipientId(rev.authorId),
+                    ));
+                }
+
                 let item: ChatItemData<M> = rev.try_into_with(context)?;
+                if DirectionDiscriminants::from(&direction)
+                    != DirectionDiscriminants::from(&item.direction)
+                {
+                    return Err(ChatItemError::RevisionWithMismatchedDirection(
+                        DirectionDiscriminants::from(&direction),
+                        DirectionDiscriminants::from(&item.direction),
+                    ));
+                }
                 match &item.message {
                     ChatItemMessage::Update(update) => match update {
                         UpdateMessage::GroupCall(_) | UpdateMessage::IndividualCall(_) => {
@@ -473,7 +496,10 @@ impl<
                     | ChatItemMessage::Sticker(_)
                     | ChatItemMessage::GiftBadge(_)
                     | ChatItemMessage::RemoteDeleted => (),
-                };
+                }
+                if !item.revisions.is_empty() {
+                    return Err(ChatItemError::RevisionContainsRevisions);
+                }
                 Ok(item)
             })
             .collect::<Result<_, _>>()?;
@@ -947,6 +973,25 @@ mod test {
             ..Default::default()
         });
     } => Ok(()); "directionless_update")]
+    #[test_case(|x| x.revisions.push(proto::ChatItem::test_data()) => Ok(()); "revision")]
+    #[test_case(|x| {
+        x.revisions.push(proto::ChatItem {
+            authorId: 0,
+            ..proto::ChatItem::test_data()
+        })
+    } => Err(ChatItemError::RevisionWithMismatchedAuthor(TestContext::SELF_ID, RecipientId(0))); "revision mismatched author")]
+    #[test_case(|x| {
+        x.revisions.push(proto::ChatItem {
+            directionalDetails: Some(proto::chat_item::OutgoingMessageDetails::test_data().into()),
+            ..proto::ChatItem::test_data()
+        })
+    } => Err(ChatItemError::RevisionWithMismatchedDirection(DirectionDiscriminants::Incoming, DirectionDiscriminants::Outgoing)); "revision mismatched direction")]
+    #[test_case(|x| {
+        x.revisions.push(proto::ChatItem {
+            revisions: vec![proto::ChatItem::test_data()],
+            ..proto::ChatItem::test_data()
+        })
+    } => Err(ChatItemError::RevisionContainsRevisions); "revision recursion")]
     fn chat_item(modifier: fn(&mut proto::ChatItem)) -> Result<(), ChatItemError> {
         let mut message = proto::ChatItem::test_data();
         modifier(&mut message);
