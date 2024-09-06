@@ -86,7 +86,7 @@ impl<R: Clone, C: Lookup<RecipientId, R>> TryFromWith<proto::StandardMessage, C>
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::backup::chat::testutil::TestContext;
+    use crate::backup::testutil::TestContext;
     use crate::backup::recipient::FullRecipientData;
     use crate::backup::time::{Duration, Timestamp};
 

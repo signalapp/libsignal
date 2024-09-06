@@ -409,12 +409,12 @@ mod test {
 
     impl Renumbered for RecipientId {
         fn renumbered(self) -> Self {
-            RecipientId(1000 + self.0)
+            RecipientId(1000 - self.0)
         }
     }
     impl Renumbered for ChatId {
         fn renumbered(self) -> Self {
-            ChatId(1000 + self.0)
+            ChatId(1000 - self.0)
         }
     }
 
@@ -493,11 +493,11 @@ mod test {
 
     const FIRST_CONTACT_CHAT_ID: ChatId = ChatId(1);
     const SECOND_CONTACT_CHAT_ID: ChatId = ChatId(2);
-    const DISTRIBUTION_LIST_CHAT_ID: ChatId = ChatId(3);
+    const GROUP_CHAT_ID: ChatId = ChatId(3);
 
     const FIRST_CONTACT_ID: RecipientId = RecipientId(100);
     const SECOND_CONTACT_ID: RecipientId = RecipientId(101);
-    const DISTRIBUTION_LIST_ID: RecipientId = RecipientId(102);
+    const GROUP_ID: RecipientId = RecipientId(102);
 
     #[test]
     fn shuffled_chats_and_recipient_ids() {
@@ -509,21 +509,15 @@ mod test {
         let first_contact = make_contact("first", 1);
         let second_contact = make_contact("second", 2);
 
-        let distribution_id = Uuid::from_bytes([0xdd; 16]).as_bytes().to_vec();
-        let distribution_list = |recipient_ids| {
-            proto::recipient::Destination::DistributionList(proto::DistributionListItem {
-                distributionId: distribution_id.clone(),
-                item: Some(proto::distribution_list_item::Item::DistributionList(
-                    proto::DistributionList {
-                        name: "list".to_owned(),
-                        memberRecipientIds: recipient_ids,
-                        privacyMode: proto::distribution_list::PrivacyMode::ONLY_WITH.into(),
-                        ..Default::default()
-                    },
-                )),
-                special_fields: Default::default(),
+        let group = proto::recipient::Destination::Group(proto::Group {
+            masterKey: [0x47; zkgroup::GROUP_MASTER_KEY_LEN].into(),
+            snapshot: Some(proto::group::GroupSnapshot {
+                // present but empty, technically a valid group
+                ..Default::default()
             })
-        };
+            .into(),
+            ..Default::default()
+        });
 
         let chat_frames = vec![
             // Chat with FIRST_CONTACT
@@ -535,30 +529,18 @@ mod test {
             make_chat(SECOND_CONTACT_CHAT_ID, SECOND_CONTACT_ID),
             make_chat_item(SECOND_CONTACT_CHAT_ID, SECOND_CONTACT_ID, "second message"),
             // Chat with DISTRIBUTION_LIST
-            make_recipient(
-                DISTRIBUTION_LIST_ID,
-                &distribution_list(vec![FIRST_CONTACT_ID.0, SECOND_CONTACT_ID.0]),
-            ),
-            make_chat(DISTRIBUTION_LIST_CHAT_ID, DISTRIBUTION_LIST_ID),
-            make_chat_item(DISTRIBUTION_LIST_CHAT_ID, FIRST_CONTACT_ID, "third message"),
+            make_recipient(GROUP_ID, &group),
+            make_chat(GROUP_CHAT_ID, GROUP_ID),
+            make_chat_item(GROUP_CHAT_ID, FIRST_CONTACT_ID, "third message"),
         ];
 
         let chat_frames_reordered_and_numbered = vec![
             // Recipients first, in a different order
             make_recipient(SECOND_CONTACT_ID.renumbered(), &second_contact),
             make_recipient(FIRST_CONTACT_ID.renumbered(), &first_contact),
-            make_recipient(
-                DISTRIBUTION_LIST_ID.renumbered(),
-                &distribution_list(vec![
-                    SECOND_CONTACT_ID.renumbered().0,
-                    FIRST_CONTACT_ID.renumbered().0,
-                ]),
-            ),
+            make_recipient(GROUP_ID.renumbered(), &group),
             // Then the chats with those recipients
-            make_chat(
-                DISTRIBUTION_LIST_CHAT_ID.renumbered(),
-                DISTRIBUTION_LIST_ID.renumbered(),
-            ),
+            make_chat(GROUP_CHAT_ID.renumbered(), GROUP_ID.renumbered()),
             make_chat(
                 SECOND_CONTACT_CHAT_ID.renumbered(),
                 SECOND_CONTACT_ID.renumbered(),
@@ -579,7 +561,7 @@ mod test {
                 "second message",
             ),
             make_chat_item(
-                DISTRIBUTION_LIST_CHAT_ID.renumbered(),
+                GROUP_CHAT_ID.renumbered(),
                 FIRST_CONTACT_ID.renumbered(),
                 "third message",
             ),

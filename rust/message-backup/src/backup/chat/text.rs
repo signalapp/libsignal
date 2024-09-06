@@ -85,7 +85,7 @@ impl TryFrom<proto::Text> for MessageText {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::backup::chat::testutil::TEST_MESSAGE_TEXT;
+    use crate::backup::testutil::TEST_MESSAGE_TEXT;
 
     impl proto::Text {
         pub(crate) fn test_data() -> Self {

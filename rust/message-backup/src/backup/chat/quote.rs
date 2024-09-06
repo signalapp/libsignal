@@ -142,7 +142,7 @@ mod test {
     use test_case::test_case;
 
     use super::*;
-    use crate::backup::chat::testutil::TestContext;
+    use crate::backup::testutil::TestContext;
     use crate::backup::recipient::FullRecipientData;
     use crate::backup::time::testutil::MillisecondsSinceEpoch;
 

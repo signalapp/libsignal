@@ -482,16 +482,15 @@ impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R>>
 mod test {
     use assert_matches::assert_matches;
     use nonzero_ext::nonzero;
-    use once_cell::sync::Lazy;
     use protobuf::EnumOrUnknown;
     use test_case::test_case;
 
     use super::*;
-    use crate::backup::method::{Lookup, Store};
-    use crate::backup::FullRecipientData;
+    use crate::backup::method::Store;
+    use crate::backup::testutil::TestContext;
 
     impl proto::Recipient {
-        pub(crate) const TEST_ID: u64 = 11111;
+        pub(crate) const TEST_ID: u64 = TestContext::SELF_ID.0;
         pub(crate) fn test_data() -> Self {
             Self {
                 id: Self::TEST_ID,
@@ -543,7 +542,7 @@ mod test {
     }
 
     impl ContactData {
-        fn from_proto_test_data() -> Self {
+        pub(crate) fn from_proto_test_data() -> Self {
             ContactData {
                 aci: Some(Aci::from_uuid_bytes(proto::Contact::TEST_ACI)),
                 pni: Some(Pni::from_uuid_bytes(proto::Contact::TEST_PNI)),
@@ -563,42 +562,6 @@ mod test {
         }
     }
 
-    struct TestContext;
-
-    static SELF_RECIPIENT: Lazy<FullRecipientData> =
-        Lazy::new(|| FullRecipientData::new(Destination::Self_));
-    static CONTACT_RECIPIENT: Lazy<FullRecipientData> = Lazy::new(|| {
-        FullRecipientData::new(Destination::Contact(ContactData::from_proto_test_data()))
-    });
-
-    impl TestContext {
-        const CONTACT_ID: RecipientId = RecipientId(123456789);
-        const SELF_ID: RecipientId = RecipientId(1111111111);
-    }
-
-    impl LookupPair<RecipientId, DestinationKind, FullRecipientData> for TestContext {
-        fn lookup_pair<'a>(
-            &'a self,
-            key: &'a RecipientId,
-        ) -> Option<(&'a DestinationKind, &'a FullRecipientData)> {
-            match *key {
-                Self::CONTACT_ID => Some((&DestinationKind::Contact, &CONTACT_RECIPIENT)),
-                Self::SELF_ID => Some((&DestinationKind::Self_, &SELF_RECIPIENT)),
-                _ => None,
-            }
-        }
-    }
-
-    impl Lookup<RecipientId, FullRecipientData> for TestContext {
-        fn lookup(&self, key: &RecipientId) -> Option<&FullRecipientData> {
-            match *key {
-                Self::CONTACT_ID => Some(&CONTACT_RECIPIENT),
-                Self::SELF_ID => Some(&SELF_RECIPIENT),
-                _ => None,
-            }
-        }
-    }
-
     #[test]
     fn requires_destination() {
         let recipient = proto::Recipient {
@@ -607,7 +570,7 @@ mod test {
         };
 
         assert_matches!(
-            Destination::<Store>::try_from_with(recipient, &TestContext),
+            Destination::<Store>::try_from_with(recipient, &TestContext::default()),
             Err(RecipientError::MissingDestination)
         );
     }
@@ -617,7 +580,7 @@ mod test {
         let recipient = proto::Recipient::test_data();
 
         assert_eq!(
-            Destination::<Store>::try_from_with(recipient, &TestContext),
+            Destination::<Store>::try_from_with(recipient, &TestContext::default()),
             Ok(Destination::Self_)
         )
     }
@@ -630,7 +593,7 @@ mod test {
         };
 
         assert_eq!(
-            Destination::<Store>::try_from_with(recipient, &TestContext),
+            Destination::<Store>::try_from_with(recipient, &TestContext::default()),
             Ok(Destination::Contact(ContactData::from_proto_test_data()))
         )
     }
@@ -659,7 +622,7 @@ mod test {
             ..proto::Recipient::test_data()
         };
 
-        Destination::<Store>::try_from_with(recipient, &TestContext).map(|_| ())
+        Destination::<Store>::try_from_with(recipient, &TestContext::default()).map(|_| ())
     }
 
     #[test]
@@ -670,7 +633,7 @@ mod test {
         };
 
         assert_eq!(
-            Destination::<Store>::try_from_with(recipient, &TestContext),
+            Destination::<Store>::try_from_with(recipient, &TestContext::default()),
             Ok(Destination::Group(GroupData::from_proto_test_data()))
         );
     }
@@ -686,7 +649,7 @@ mod test {
             ..proto::Recipient::test_data()
         };
 
-        Destination::<Store>::try_from_with(recipient, &TestContext).map(|_| ())
+        Destination::<Store>::try_from_with(recipient, &TestContext::default()).map(|_| ())
     }
 
     #[test]
@@ -697,10 +660,12 @@ mod test {
         };
 
         assert_eq!(
-            Destination::<Store>::try_from_with(recipient, &TestContext),
+            Destination::<Store>::try_from_with(recipient, &TestContext::default()),
             Ok(Destination::DistributionList(DistributionListItem::List {
                 distribution_id: Uuid::from_bytes(proto::DistributionListItem::TEST_UUID),
-                privacy_mode: PrivacyMode::AllExcept(vec![CONTACT_RECIPIENT.clone()].into()),
+                privacy_mode: PrivacyMode::AllExcept(
+                    vec![TestContext::contact_recipient().clone()].into()
+                ),
                 name: "".to_owned(),
                 allow_replies: false,
             }))
@@ -744,6 +709,6 @@ mod test {
             ..proto::Recipient::test_data()
         };
 
-        Destination::<Store>::try_from_with(recipient, &TestContext).map(|_| ())
+        Destination::<Store>::try_from_with(recipient, &TestContext::default()).map(|_| ())
     }
 }

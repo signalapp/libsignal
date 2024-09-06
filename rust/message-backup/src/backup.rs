@@ -36,6 +36,9 @@ pub mod serialize;
 mod sticker;
 mod time;
 
+#[cfg(test)]
+mod testutil;
+
 pub trait ReferencedTypes {
     /// Recorded information from a [`proto::Recipient`].
     type RecipientData: Debug + AsRef<DestinationKind>;

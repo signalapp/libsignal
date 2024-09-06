@@ -50,9 +50,6 @@ use standard_message::*;
 mod sticker_message;
 use sticker_message::*;
 
-#[cfg(test)]
-mod testutil;
-
 pub(crate) mod text;
 use text::*;
 
@@ -169,7 +166,7 @@ pub struct ChatData<M: Method + ReferencedTypes> {
 }
 
 #[derive(Copy, Clone, Debug, Eq, Hash, PartialEq, PartialOrd, Ord, serde::Serialize)]
-pub struct PinOrder(NonZeroU32);
+pub struct PinOrder(pub(super) NonZeroU32);
 
 /// Validated version of [`proto::ChatItem`].
 #[derive_where(Debug)]
@@ -705,9 +702,9 @@ mod test {
     use test_case::test_case;
 
     use super::*;
-    use crate::backup::chat::testutil::TestContext;
     use crate::backup::method::Store;
     use crate::backup::recipient::FullRecipientData;
+    use crate::backup::testutil::TestContext;
     use crate::backup::time::testutil::MillisecondsSinceEpoch;
     use crate::backup::Purpose;
 

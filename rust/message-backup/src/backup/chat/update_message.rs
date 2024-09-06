@@ -169,7 +169,7 @@ mod test {
 
     use super::*;
     use crate::backup::call::CallError;
-    use crate::backup::chat::testutil::TestContext;
+    use crate::backup::testutil::TestContext;
     use crate::proto::backup::chat_update_message::Update as ChatUpdateProto;
 
     impl proto::SimpleChatUpdate {

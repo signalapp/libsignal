@@ -407,7 +407,7 @@ mod test {
 
     use super::*;
     use crate::backup::chat::chat_style::Color;
-    use crate::backup::chat::testutil::TestContext;
+    use crate::backup::testutil::TestContext;
     use crate::backup::method::Store;
 
     impl proto::ChatStyle {
