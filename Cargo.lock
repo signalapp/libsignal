@@ -279,6 +279,7 @@ dependencies = [
  "hex-literal",
  "lazy_static",
  "libc",
+ "libcrux-ml-kem",
  "log",
  "prost",
  "prost-build",
@@ -1497,6 +1498,43 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e5274423e17b7c9fc20b6e7e208532f9b19825d82dfd615708b70edd83df41f1"
 
 [[package]]
+name = "hax-lib"
+version = "0.1.0-pre.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1b4c24729b7608f3a2f2b798b503e18ca3d46b5287e85e42c3e2a81a6431c20e"
+dependencies = [
+ "hax-lib-macros",
+ "num-bigint",
+ "num-traits 0.2.19",
+]
+
+[[package]]
+name = "hax-lib-macros"
+version = "0.1.0-pre.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2e537b6582ecf0d2bc9761b6c129840c9a039263e71b933850af8e24d5e3a840"
+dependencies = [
+ "hax-lib-macros-types",
+ "proc-macro-error",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.72",
+]
+
+[[package]]
+name = "hax-lib-macros-types"
+version = "0.1.0-pre.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1025439d93a495700d7099f7bd2285845837def514b2f97b2f8a4cd93fab5bd9"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "serde",
+ "serde_json",
+ "uuid",
+]
+
+[[package]]
 name = "headers"
 version = "0.3.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1943,6 +1981,45 @@ name = "libc"
 version = "0.2.155"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "97b3888a4aecf77e811145cadf6eef5901f4782c53886191b2f693f24761847c"
+
+[[package]]
+name = "libcrux-intrinsics"
+version = "0.0.2-alpha.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9995f4888b0bbcb4bab293c271ac6f5a4fa6a06f76576cb2c31063ba618d9914"
+
+[[package]]
+name = "libcrux-ml-kem"
+version = "0.0.2-alpha.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6cac73db2e2fa0382c2f37632e0d1e188201175deda0158b49a2632bc8deefe1"
+dependencies = [
+ "hax-lib",
+ "libcrux-intrinsics",
+ "libcrux-platform",
+ "libcrux-sha3",
+ "rand_core",
+]
+
+[[package]]
+name = "libcrux-platform"
+version = "0.0.2-pre.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "647e39666194b11df17c19451d1154b9be79df98b9821532560c2ecad0cf3410"
+dependencies = [
+ "libc",
+]
+
+[[package]]
+name = "libcrux-sha3"
+version = "0.0.2-alpha.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ee374451378a5b7ec908373d03a78cbf050c387cd1996a50724d88a392f4d1a5"
+dependencies = [
+ "hax-lib",
+ "libcrux-intrinsics",
+ "libcrux-platform",
+]
 
 [[package]]
 name = "libloading"
@@ -3191,6 +3268,30 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6d37c51ca738a55da99dc0c4a34860fd675453b8b36209178c2249bb13651284"
 dependencies = [
  "toml_edit",
+]
+
+[[package]]
+name = "proc-macro-error"
+version = "1.0.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "da25490ff9892aab3fcf7c36f08cfb902dd3e71ca0f9f9517bea02a73a5ce38c"
+dependencies = [
+ "proc-macro-error-attr",
+ "proc-macro2",
+ "quote",
+ "syn 1.0.109",
+ "version_check",
+]
+
+[[package]]
+name = "proc-macro-error-attr"
+version = "1.0.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a1be40180e52ecc98ad80b184934baf3d0d29f979574e439af5a55274b35f869"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "version_check",
 ]
 
 [[package]]
@@ -4628,6 +4729,7 @@ version = "1.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "81dfa00651efa65069b0b6b651f4aaa31ba9e3c3ce0137aaad053604ee7e0314"
 dependencies = [
+ "getrandom",
  "serde",
  "sha1_smol",
 ]

@@ -13,7 +13,7 @@
 use std::time::Duration;
 
 use crate::dcap::{self, MREnclave};
-use crate::enclave::{Claims, Error, Handshake, Result, UnvalidatedHandshake};
+use crate::enclave::{Claims, Error, Handshake, HandshakeType, Result, UnvalidatedHandshake};
 
 const INVALID_EVIDENCE: &str = "Evidence does not fit expected format";
 const INVALID_ENDORSEMENT: &str = "Endorsement does not fit expected format";
@@ -30,6 +30,7 @@ impl Handshake {
         endorsements: &[u8],
         acceptable_sw_advisories: &[&str],
         current_time: std::time::SystemTime,
+        handshake_type: HandshakeType,
     ) -> Result<UnvalidatedHandshake> {
         if evidence.is_empty() {
             return Err(Error::AttestationDataError {
@@ -58,7 +59,7 @@ impl Handshake {
             current_time + SKEW_ADJUSTMENT,
         )?;
 
-        Self::with_claims(Claims::from_custom_claims(claims)?)
+        Self::with_claims(Claims::from_custom_claims(claims)?, handshake_type)
     }
 }
 
@@ -101,6 +102,7 @@ pub mod testutil {
             ENDORSEMENT_BYTES,
             &[],
             current_time,
+            HandshakeType::PreQuantum,
         )?
         .skip_raft_validation())
     }
@@ -124,6 +126,7 @@ mod tests {
                 testutil::ENDORSEMENT_BYTES,
                 &[],
                 time,
+                HandshakeType::PreQuantum,
             );
             assert_eq!(result.is_ok(), expect_success);
         };

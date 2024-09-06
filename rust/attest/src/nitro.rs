@@ -16,7 +16,7 @@ use sha2::{Digest, Sha384};
 use subtle::ConstantTimeEq;
 
 use crate::constants::NITRO_EXPECTED_PCRS;
-use crate::enclave::{self, Claims, Handshake};
+use crate::enclave::{self, Claims, Handshake, HandshakeType};
 use crate::proto;
 use crate::svr2::RaftConfig;
 use crate::util::SmallMap;
@@ -45,8 +45,11 @@ impl Handshake {
         let doc = cose_sign1.extract_attestation_doc(now)?;
         let attestation_data = doc.extract_attestation_data(expected_pcrs)?;
         let attestation_data = attestation_data.ok_or(NitroError::UserDataMissing)?;
-        Self::with_claims(Claims::from_attestation_data(attestation_data)?)?
-            .validate(expected_raft_config)
+        Self::with_claims(
+            Claims::from_attestation_data(attestation_data)?,
+            HandshakeType::PostQuantum,
+        )?
+        .validate(expected_raft_config)
     }
 }
 

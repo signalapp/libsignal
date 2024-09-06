@@ -12,7 +12,7 @@ use prost::Message;
 
 use crate::cert_chain::{self, CertChain};
 use crate::constants::TPM2SNP_EXPECTED_PCRS;
-use crate::enclave::{Claims, Error, Handshake, Result, UnvalidatedHandshake};
+use crate::enclave::{Claims, Error, Handshake, HandshakeType, Result, UnvalidatedHandshake};
 use crate::expireable::Expireable as _;
 use crate::proto::{svr, svr3};
 use crate::svr2::RaftConfig;
@@ -51,7 +51,7 @@ impl Handshake {
         let endorsements = svr3::AsnpEndorsements::decode(endorsements)?;
         let attestation_data = attest(enclave, &evidence, &endorsements, now)?;
         let claims = Claims::from_attestation_data(attestation_data)?;
-        Handshake::with_claims(claims)
+        Handshake::with_claims(claims, HandshakeType::PostQuantum)
     }
 }
 

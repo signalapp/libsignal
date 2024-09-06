@@ -9,7 +9,7 @@ use prost::Message;
 
 use crate::constants::ENCLAVE_ID_CDSI_STAGING_AND_PROD;
 use crate::dcap;
-use crate::enclave::{Handshake, Result};
+use crate::enclave::{Handshake, HandshakeType, Result};
 use crate::proto::cds2;
 use crate::util::SmallMap;
 
@@ -39,6 +39,7 @@ pub fn new_handshake(
             .get(&mrenclave)
             .unwrap_or(&DEFAULT_SW_ADVISORIES),
         current_time,
+        HandshakeType::PreQuantum,
     )?
     .skip_raft_validation())
 }

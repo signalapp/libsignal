@@ -53,6 +53,8 @@ pub trait Svr3Flavor: EnclaveKind {}
 
 pub enum Cdsi {}
 
+pub enum SgxPreQuantum {}
+
 pub enum Sgx {}
 
 pub enum Nitro {}
@@ -63,6 +65,13 @@ impl EnclaveKind for Cdsi {
     type RaftConfigType = ();
     fn url_path(enclave: &[u8]) -> PathAndQuery {
         PathAndQuery::try_from(format!("/v1/{}/discovery", hex::encode(enclave))).unwrap()
+    }
+}
+
+impl EnclaveKind for SgxPreQuantum {
+    type RaftConfigType = &'static RaftConfig;
+    fn url_path(enclave: &[u8]) -> PathAndQuery {
+        PathAndQuery::try_from(format!("/v1/{}", hex::encode(enclave))).unwrap()
     }
 }
 
@@ -367,6 +376,24 @@ impl<E: EnclaveKind> EnclaveEndpointConnection<E, MultiRouteConnectionManager> {
     }
 }
 
+impl NewHandshake for SgxPreQuantum {
+    fn new_handshake(
+        params: &EndpointParams<Self>,
+        attestation_message: &[u8],
+    ) -> enclave::Result<enclave::Handshake> {
+        attest::svr2::new_handshake(
+            params.mr_enclave.as_ref(),
+            attestation_message,
+            SystemTime::now(),
+            params
+                .raft_config
+                .as_raft_config()
+                .expect("Raft config must be present for SGX"),
+            enclave::HandshakeType::PreQuantum,
+        )
+    }
+}
+
 impl NewHandshake for Sgx {
     fn new_handshake(
         params: &EndpointParams<Self>,
@@ -380,6 +407,7 @@ impl NewHandshake for Sgx {
                 .raft_config
                 .as_raft_config()
                 .expect("Raft config must be present for SGX"),
+            enclave::HandshakeType::PostQuantum,
         )
     }
 }

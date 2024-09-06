@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use ::attest::enclave::Result;
+use ::attest::enclave::{HandshakeType, Result};
 use ::attest::svr2;
 use libsignal_bridge_macros::*;
 use libsignal_bridge_types::sgx_session::SgxClientState;
@@ -24,6 +24,7 @@ fn new_client(
         mrenclave,
         attestation_msg,
         current_time,
+        HandshakeType::PreQuantum,
     )?)
 }
 

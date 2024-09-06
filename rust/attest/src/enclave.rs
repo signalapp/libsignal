@@ -81,6 +81,11 @@ impl From<Tpm2Error> for Error {
     }
 }
 
+pub enum HandshakeType {
+    PreQuantum,
+    PostQuantum,
+}
+
 /// A noise handshaker that can be used to build a [client_connection::ClientConnection]
 ///
 /// Callers provide an attestation that must contain the remote enclave's public key. If the
@@ -120,9 +125,13 @@ impl Handshake {
         Ok(ClientConnection { transport })
     }
 
-    pub(crate) fn with_claims(claims: Claims) -> Result<UnvalidatedHandshake> {
+    pub(crate) fn with_claims(claims: Claims, typ: HandshakeType) -> Result<UnvalidatedHandshake> {
+        let pattern = match typ {
+            HandshakeType::PreQuantum => client_connection::NOISE_PATTERN,
+            HandshakeType::PostQuantum => client_connection::NOISE_PATTERN_HFS,
+        };
         let mut handshake = snow::Builder::with_resolver(
-            client_connection::NOISE_PATTERN.parse().expect("valid"),
+            pattern.parse().expect("valid"),
             Box::new(snow_resolver::Resolver),
         )
         .remote_public_key(&claims.public_key)

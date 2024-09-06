@@ -24,6 +24,7 @@ hex = { workspace = true, features = ["serde"] }
 hex-literal = { workspace = true }
 lazy_static = { workspace = true }
 libc = { workspace = true }
+libcrux-ml-kem = { version = "0.0.2-alpha.3", features = ["mlkem1024"] }
 log = { workspace = true }
 prost = { workspace = true }
 rand_core = { workspace = true }

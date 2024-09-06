@@ -5,12 +5,13 @@
 
 use blake2::{Blake2b, Blake2b512};
 use chacha20poly1305::{AeadInPlace, ChaCha20Poly1305, KeyInit};
+use libcrux_ml_kem::mlkem1024;
 use rand_core::{CryptoRng, RngCore};
 use sha2::{Digest, Sha256};
 use snow::error::Error as SnowError;
-use snow::params::{CipherChoice, DHChoice, HashChoice};
+use snow::params::{CipherChoice, DHChoice, HashChoice, KemChoice};
 use snow::resolvers::CryptoResolver;
-use snow::types::{Cipher, Dh, Hash, Random};
+use snow::types::{Cipher, Dh, Hash, Kem, Random};
 use x25519_dalek as x25519;
 
 const TAGLEN: usize = 16;
@@ -214,6 +215,87 @@ impl Cipher for CipherChaChaPoly {
     }
 }
 
+// Struct and implementation copied from snow/src/resolvers/default.rs
+struct Kyber1024 {
+    pubkey: mlkem1024::MlKem1024PublicKey,
+    privkey: mlkem1024::MlKem1024PrivateKey,
+}
+
+impl Default for Kyber1024 {
+    fn default() -> Self {
+        Self {
+            pubkey: mlkem1024::MlKem1024PublicKey::from(
+                [0u8; mlkem1024::MlKem1024PublicKey::len()],
+            ),
+            privkey: mlkem1024::MlKem1024PrivateKey::from(
+                [0u8; mlkem1024::MlKem1024PrivateKey::len()],
+            ),
+        }
+    }
+}
+
+impl Kem for Kyber1024 {
+    fn name(&self) -> &'static str {
+        "Kyber1024"
+    }
+
+    /// The length in bytes of a public key for this primitive.
+    fn pub_len(&self) -> usize {
+        mlkem1024::MlKem1024PublicKey::len()
+    }
+
+    /// The length in bytes the Kem cipherthext for this primitive.
+    fn ciphertext_len(&self) -> usize {
+        mlkem1024::MlKem1024Ciphertext::len()
+    }
+
+    /// Shared secret length in bytes that this Kem encapsulates.
+    fn shared_secret_len(&self) -> usize {
+        libcrux_ml_kem::SHARED_SECRET_SIZE
+    }
+
+    /// Generate a new private key.
+    fn generate(&mut self, rng: &mut dyn Random) {
+        let mut randomness = [0u8; 64];
+        rng.fill_bytes(&mut randomness);
+        let keypair = mlkem1024::generate_key_pair(randomness);
+        (self.privkey, self.pubkey) = keypair.into_parts();
+    }
+
+    /// Get the public key.
+    fn pubkey(&self) -> &[u8] {
+        self.pubkey.as_ref()
+    }
+
+    /// Generate a shared secret and encapsulate it using this Kem.
+    fn encapsulate(
+        &self,
+        pubkey: &[u8],
+        shared_secret_out: &mut [u8],
+        ciphertext_out: &mut [u8],
+    ) -> Result<(usize, usize), ()> {
+        let mlkem_pubkey = mlkem1024::validate_public_key(
+            mlkem1024::MlKem1024PublicKey::try_from(pubkey).map_err(|_| ())?,
+        )
+        .ok_or(())?;
+        // We don't get a RNG passed in, so currently we use OsRng directly:
+        let mut randomness = [0u8; 32];
+        rand_core::OsRng.fill_bytes(&mut randomness);
+        let (ciphertext, shared_secret) = mlkem1024::encapsulate(&mlkem_pubkey, randomness);
+        shared_secret_out.copy_from_slice(shared_secret.as_ref());
+        ciphertext_out.copy_from_slice(ciphertext.as_ref());
+        Ok((shared_secret.len(), mlkem1024::MlKem1024Ciphertext::len()))
+    }
+
+    /// Decapsulate a ciphertext producing a shared secret.
+    fn decapsulate(&self, ciphertext: &[u8], shared_secret_out: &mut [u8]) -> Result<usize, ()> {
+        let ciphertext = mlkem1024::MlKem1024Ciphertext::try_from(ciphertext).map_err(|_| ())?;
+        let shared_secret = mlkem1024::decapsulate(&self.privkey, &ciphertext);
+        shared_secret_out.copy_from_slice(shared_secret.as_ref());
+        Ok(libcrux_ml_kem::SHARED_SECRET_SIZE)
+    }
+}
+
 pub struct Resolver;
 
 impl CryptoResolver for Resolver {
@@ -240,6 +322,12 @@ impl CryptoResolver for Resolver {
         match choice {
             CipherChoice::ChaChaPoly => Some(Box::<CipherChaChaPoly>::default()),
             _ => panic!("{:?} not supported", choice),
+        }
+    }
+
+    fn resolve_kem(&self, choice: &KemChoice) -> Option<Box<dyn Kem>> {
+        match choice {
+            KemChoice::Kyber1024 => Some(Box::new(Kyber1024::default())),
         }
     }
 }

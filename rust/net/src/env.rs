@@ -14,7 +14,9 @@ use nonzero_ext::nonzero;
 use rand::seq::SliceRandom;
 use rand::{thread_rng, Rng};
 
-use crate::enclave::{Cdsi, EnclaveEndpoint, EndpointParams, MrEnclave, Nitro, Sgx, Tpm2Snp};
+use crate::enclave::{
+    Cdsi, EnclaveEndpoint, EndpointParams, MrEnclave, Nitro, Sgx, SgxPreQuantum, Tpm2Snp,
+};
 use crate::infra::certs::RootCertificates;
 use crate::infra::dns::lookup_result::LookupResult;
 use crate::infra::host::Host;
@@ -220,10 +222,11 @@ pub(crate) const ENDPOINT_PARAMS_CDSI_STAGING: EndpointParams<'static, Cdsi> = E
     raft_config: (),
 };
 
-pub(crate) const ENDPOINT_PARAMS_SVR2_STAGING: EndpointParams<'static, Sgx> = EndpointParams {
-    mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVR2_STAGING),
-    raft_config: attest::constants::RAFT_CONFIG_SVR2_STAGING,
-};
+pub(crate) const ENDPOINT_PARAMS_SVR2_STAGING: EndpointParams<'static, SgxPreQuantum> =
+    EndpointParams {
+        mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVR2_STAGING),
+        raft_config: attest::constants::RAFT_CONFIG_SVR2_STAGING,
+    };
 pub(crate) const ENDPOINT_PARAMS_SVR3_SGX_STAGING: EndpointParams<'static, Sgx> = EndpointParams {
     mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVR3_SGX_STAGING),
     raft_config: attest::constants::RAFT_CONFIG_SVR3_SGX_STAGING,
@@ -243,10 +246,11 @@ pub(crate) const ENDPOINT_PARAMS_CDSI_PROD: EndpointParams<'static, Cdsi> = Endp
     mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_CDSI_STAGING_AND_PROD),
     raft_config: (),
 };
-pub(crate) const ENDPOINT_PARAMS_SVR2_PROD: EndpointParams<'static, Sgx> = EndpointParams {
-    mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVR2_PROD),
-    raft_config: attest::constants::RAFT_CONFIG_SVR2_PROD,
-};
+pub(crate) const ENDPOINT_PARAMS_SVR2_PROD: EndpointParams<'static, SgxPreQuantum> =
+    EndpointParams {
+        mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVR2_PROD),
+        raft_config: attest::constants::RAFT_CONFIG_SVR2_PROD,
+    };
 pub(crate) const ENDPOINT_PARAMS_SVR3_SGX_PROD: EndpointParams<'static, Sgx> = EndpointParams {
     mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVR3_SGX_PROD),
     raft_config: attest::constants::RAFT_CONFIG_SVR3_SGX_PROD,
@@ -398,7 +402,7 @@ impl ProxyConfig {
 
 pub struct Env<'a, Svr3> {
     pub cdsi: EnclaveEndpoint<'a, Cdsi>,
-    pub svr2: EnclaveEndpoint<'a, Sgx>,
+    pub svr2: EnclaveEndpoint<'a, SgxPreQuantum>,
     pub svr3: Svr3,
     pub chat_domain_config: DomainConfig,
 }

@@ -11,8 +11,9 @@
 //! of one or more noise transport messages can be decrypted with [ClientConnection::recv]
 
 pub const NOISE_PATTERN: &str = "Noise_NK_25519_ChaChaPoly_SHA256";
+pub const NOISE_PATTERN_HFS: &str = "Noise_NKhfs_25519+Kyber1024_ChaChaPoly_SHA256";
 
-pub(crate) const NOISE_HANDSHAKE_OVERHEAD: usize = 64;
+pub(crate) const NOISE_HANDSHAKE_OVERHEAD: usize = 64 + /* post-quantum kyber1024: */ 1568;
 
 pub(crate) const NOISE_TRANSPORT_PER_PACKET_MAX: usize = 65535;
 pub(crate) const NOISE_TRANSPORT_PER_PAYLOAD_OVERHEAD: usize = 16;
