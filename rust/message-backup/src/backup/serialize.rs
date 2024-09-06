@@ -246,7 +246,6 @@ impl serde::Serialize for proto::contact_attachment::Name {
             prefix,
             suffix,
             middleName,
-            displayName,
             special_fields: _,
         } = self;
         let mut ser = serializer.serialize_struct("Name", 6)?;
@@ -255,7 +254,6 @@ impl serde::Serialize for proto::contact_attachment::Name {
         ser.serialize_field("prefix", prefix)?;
         ser.serialize_field("suffix", suffix)?;
         ser.serialize_field("middleName", middleName)?;
-        ser.serialize_field("displayName", displayName)?;
         ser.end()
     }
 }
