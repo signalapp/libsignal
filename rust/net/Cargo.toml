@@ -76,6 +76,7 @@ rcgen = "0.13.0"
 snow = { workspace = true, features = ["default-resolver"] }
 socks5-server = "0.10.1"
 test-case = { workspace = true }
+test-log = "0.2.16"
 tls-parser = "0.11.0"
 tokio = { workspace = true, features = [
     "test-util",

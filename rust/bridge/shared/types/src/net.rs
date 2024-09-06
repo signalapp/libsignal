@@ -10,7 +10,6 @@ use std::panic::RefUnwindSafe;
 use aes_gcm_siv::aead::rand_core::CryptoRngCore;
 use async_trait::async_trait;
 use futures_util::future::join3;
-use http::uri::PathAndQuery;
 use libsignal_net::auth::Auth;
 use libsignal_net::enclave::{
     Cdsi, EnclaveEndpoint, EnclaveEndpointConnection, EnclaveKind, Nitro, PpssSetup, Sgx, Tpm2Snp,
@@ -23,7 +22,7 @@ use libsignal_net::infra::tcp_ssl::proxy::tls::TlsProxyConnector as TcpSslProxyC
 use libsignal_net::infra::tcp_ssl::{
     DirectConnector as TcpSslDirectConnector, TcpSslConnector, TcpSslConnectorStream,
 };
-use libsignal_net::infra::{make_ws_config, EndpointConnection};
+use libsignal_net::infra::EndpointConnection;
 use libsignal_net::svr::SvrConnection;
 use libsignal_net::svr3::traits::*;
 use libsignal_net::svr3::{Error, OpaqueMaskedShareSet};
@@ -80,21 +79,13 @@ impl ConnectionManager {
         );
         let transport_connector =
             std::sync::Mutex::new(TcpSslDirectConnector::new(dns_resolver).into());
-        let chat_endpoint =
-            PathAndQuery::from_static(libsignal_net::env::constants::WEB_SOCKET_PATH);
-        let chat_connection_params = environment
-            .env()
-            .chat_domain_config
-            .connection_params_with_fallback();
-        let chat_connection_params = add_user_agent_header(chat_connection_params, &user_agent);
-        let chat_ws_config = make_ws_config(chat_endpoint, ONE_ROUTE_CONNECTION_TIMEOUT);
+        let chat = libsignal_net::chat::endpoint_connection(
+            &environment.env().chat_domain_config,
+            &user_agent,
+            &network_change_event,
+        );
         Self {
-            chat: EndpointConnection::new_multi(
-                chat_connection_params,
-                ONE_ROUTE_CONNECTION_TIMEOUT,
-                chat_ws_config,
-                &network_change_event,
-            ),
+            chat,
             cdsi: Self::endpoint_connection(
                 &environment.env().cdsi,
                 &user_agent,

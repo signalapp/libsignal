@@ -292,8 +292,8 @@ where
                 return Ok(r);
             }
             ConnectionAttemptOutcome::Attempted(Err(e)) => {
-                let log_error = || {
-                    log::debug!("Connection attempt failed with a non-fatal error: {:?}", e);
+                let log_error = |when: &'static str| {
+                    log::debug!("Connection attempt failed with a non-fatal error: {e:?}, will retry {when}");
                     log::info!(
                         "Connection attempt failed with an error: {} ({})",
                         e,
@@ -303,11 +303,11 @@ where
                 match e.classify() {
                     ErrorClass::Fatal => return Err(RetryError::Fatal(e)),
                     ErrorClass::Intermittent => {
-                        log_error();
+                        log_error("immediately");
                         continue;
                     }
                     ErrorClass::RetryAt(when) => {
-                        log_error();
+                        log_error("soon");
                         return Err(RetryError::WaitUntil(when));
                     }
                 }

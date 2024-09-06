@@ -2276,6 +2276,7 @@ dependencies = [
  "static_assertions",
  "strum",
  "test-case",
+ "test-log",
  "thiserror",
  "tls-parser",
  "tokio",

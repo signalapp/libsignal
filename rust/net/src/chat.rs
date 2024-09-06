@@ -16,7 +16,8 @@ use crate::infra::connection_manager::MultiRouteConnectionManager;
 use crate::infra::service::{Service, ServiceConnectorWithDecorator};
 use crate::infra::ws::WebSocketClientConnector;
 use crate::infra::{
-    ConnectionInfo, EndpointConnection, HttpRequestDecorator, IpType, TransportConnector,
+    make_ws_config, ConnectionInfo, EndpointConnection, HttpRequestDecorator, IpType,
+    TransportConnector,
 };
 use crate::proto;
 use crate::utils::basic_authorization;
@@ -24,8 +25,8 @@ use crate::utils::basic_authorization;
 mod error;
 pub use error::ChatServiceError;
 
-use crate::env::RECEIVE_STORIES_HEADER_NAME;
-use crate::timeouts::MULTI_ROUTE_CONNECTION_TIMEOUT;
+use crate::env::{add_user_agent_header, DomainConfig, RECEIVE_STORIES_HEADER_NAME};
+use crate::timeouts::{MULTI_ROUTE_CONNECTION_TIMEOUT, ONE_ROUTE_CONNECTION_TIMEOUT};
 
 pub mod noise;
 pub mod server_requests;
@@ -474,6 +475,23 @@ pub fn chat_service<T: TransportConnector + 'static>(
             unauth_service,
         }
     }
+}
+
+pub fn endpoint_connection(
+    chat_domain_config: &DomainConfig,
+    user_agent: &str,
+    network_change_event: &crate::utils::ObservableEvent,
+) -> EndpointConnection<MultiRouteConnectionManager> {
+    let chat_endpoint = PathAndQuery::from_static(crate::env::constants::WEB_SOCKET_PATH);
+    let chat_connection_params = chat_domain_config.connection_params_with_fallback();
+    let chat_connection_params = add_user_agent_header(chat_connection_params, user_agent);
+    let chat_ws_config = make_ws_config(chat_endpoint, ONE_ROUTE_CONNECTION_TIMEOUT);
+    EndpointConnection::new_multi(
+        chat_connection_params,
+        ONE_ROUTE_CONNECTION_TIMEOUT,
+        chat_ws_config,
+        network_change_event,
+    )
 }
 
 #[cfg(feature = "test-support")]
