@@ -17,7 +17,7 @@ type ReceivedIncomingMessage = extern "C" fn(
     cleanup: *mut ServerMessageAck,
 );
 type ReceivedQueueEmpty = extern "C" fn(ctx: *mut c_void);
-type ConnectionInterrupted = extern "C" fn(ctx: *mut c_void);
+type ConnectionInterrupted = extern "C" fn(ctx: *mut c_void, error: *mut SignalFfiError);
 type DestroyChatListener = extern "C" fn(ctx: *mut c_void);
 
 /// Callbacks for [`ChatListener`].
@@ -77,8 +77,14 @@ impl ChatListener for ChatListenerStruct {
         (self.0.received_queue_empty)(self.0.ctx)
     }
 
-    // TODO: pass `_disconnect_cause` to `connection_interrupted`
-    fn connection_interrupted(&mut self, _disconnect_cause: ChatServiceError) {
-        (self.0.connection_interrupted)(self.0.ctx)
+    fn connection_interrupted(&mut self, disconnect_cause: ChatServiceError) {
+        let error = match disconnect_cause {
+            ChatServiceError::ServiceIntentionallyDisconnected => None,
+            c => Some(Box::new(SignalFfiError::from(c))),
+        };
+        (self.0.connection_interrupted)(
+            self.0.ctx,
+            error.map_or(std::ptr::null_mut(), Box::into_raw),
+        )
     }
 }

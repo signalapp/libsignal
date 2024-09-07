@@ -634,7 +634,7 @@ typedef void (*SignalReceivedIncomingMessage)(void *ctx, SignalOwnedBuffer envel
 
 typedef void (*SignalReceivedQueueEmpty)(void *ctx);
 
-typedef void (*SignalConnectionInterrupted)(void *ctx);
+typedef void (*SignalConnectionInterrupted)(void *ctx, SignalFfiError *error);
 
 typedef void (*SignalDestroyChatListener)(void *ctx);
 

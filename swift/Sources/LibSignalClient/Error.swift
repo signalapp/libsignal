@@ -70,6 +70,19 @@ public enum SignalError: Error {
 
 internal typealias SignalFfiErrorRef = OpaquePointer
 
+internal func convertError(_ error: SignalFfiErrorRef?) -> Error? {
+    // It would be *slightly* more efficient for checkError to call convertError,
+    // instead of the other way around. However, then it would be harder to implement
+    // checkError, since some of the conversion operations can themselves throw.
+    // So this is more maintainable.
+    do {
+        try checkError(error)
+        return nil
+    } catch let thrownError {
+        return thrownError
+    }
+}
+
 internal func checkError(_ error: SignalFfiErrorRef?) throws {
     guard let error = error else { return }
 

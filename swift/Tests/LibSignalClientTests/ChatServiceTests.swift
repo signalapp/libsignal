@@ -197,8 +197,9 @@ final class ChatServiceTests: TestCaseBase {
                 self.queueEmpty.fulfill()
             }
 
-            func connectionWasInterrupted(_: AuthenticatedChatService) {
+            func connectionWasInterrupted(_: AuthenticatedChatService, error: Error?) {
                 XCTAssertEqual(self.stage, 3)
+                XCTAssertNotNil(error)
                 self.stage += 1
                 self.connectionInterrupted.fulfill()
             }
@@ -263,6 +264,7 @@ final class ChatServiceTests: TestCaseBase {
 
             func chatServiceDidReceiveQueueEmpty(_: AuthenticatedChatService) {}
             func chatService(_ chat: AuthenticatedChatService, didReceiveIncomingMessage envelope: Data, serverDeliveryTimestamp: UInt64, sendAck: () async throws -> Void) {}
+            func connectionWasInterrupted(_ service: AuthenticatedChatService, error: Error?) {}
         }
 
         let net = Net(env: .staging, userAgent: Self.userAgent)
@@ -298,7 +300,8 @@ final class ChatServiceTests: TestCaseBase {
             self.expectation = expectation
         }
 
-        func connectionWasInterrupted(_: UnauthenticatedChatService) {
+        func connectionWasInterrupted(_: UnauthenticatedChatService, error: Error?) {
+            XCTAssertNil(error)
             self.expectation.fulfill()
         }
     }

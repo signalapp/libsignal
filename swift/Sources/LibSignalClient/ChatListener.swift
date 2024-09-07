@@ -12,13 +12,7 @@ public protocol ConnectionEventsListener<Service>: AnyObject {
     /// Called when the client gets disconnected from the server.
     ///
     /// This includes both deliberate disconnects as well as unexpected socket closures.
-    ///
-    /// The default implementation of this method does nothing.
-    func connectionWasInterrupted(_ service: Service)
-}
-
-extension ConnectionEventsListener {
-    func connectionWasInterrupted(_: Service) {}
+    func connectionWasInterrupted(_ service: Service, error: Error?)
 }
 
 public protocol ChatListener: ConnectionEventsListener<AuthenticatedChatService> {
@@ -89,13 +83,15 @@ internal class ChatListenerBridge {
 
             bridge.chatListener.chatServiceDidReceiveQueueEmpty(chatService)
         }
-        let connectionInterrupted: SignalConnectionInterrupted = { rawCtx in
+        let connectionInterrupted: SignalConnectionInterrupted = { rawCtx, maybeError in
             let bridge = Unmanaged<ChatListenerBridge>.fromOpaque(rawCtx!).takeUnretainedValue()
             guard let chatService = bridge.chatService else {
                 return
             }
 
-            bridge.chatListener.connectionWasInterrupted(chatService)
+            let error = convertError(maybeError)
+
+            bridge.chatListener.connectionWasInterrupted(chatService, error: error)
         }
 
         return .init(
@@ -130,13 +126,15 @@ internal final class UnauthConnectionEventsListenerBridge {
         let receivedQueueEmpty: SignalReceivedQueueEmpty = { _ in
             fatalError("not used for the unauth listener")
         }
-        let connectionInterrupted: SignalConnectionInterrupted = { rawCtx in
+        let connectionInterrupted: SignalConnectionInterrupted = { rawCtx, maybeError in
             let bridge = Unmanaged<UnauthConnectionEventsListenerBridge>.fromOpaque(rawCtx!).takeUnretainedValue()
             guard let chatService = bridge.chatService else {
                 return
             }
 
-            bridge.listener.connectionWasInterrupted(chatService)
+            let error = convertError(maybeError)
+
+            bridge.listener.connectionWasInterrupted(chatService, error: error)
         }
 
         return .init(
