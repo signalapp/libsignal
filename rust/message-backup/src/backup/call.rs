@@ -9,7 +9,7 @@ use crate::backup::frame::RecipientId;
 use crate::backup::method::LookupPair;
 use crate::backup::recipient::DestinationKind;
 use crate::backup::time::Timestamp;
-use crate::backup::TryFromWith;
+use crate::backup::{serialize, TryFromWith};
 use crate::proto::backup as proto;
 
 /// Validated version of [`proto::AdHocCall`].
@@ -132,7 +132,9 @@ type CallLinkRootKey = [u8; CALL_LINK_ROOT_KEY_LEN];
 #[cfg_attr(test, derive(PartialEq))]
 pub struct CallLink {
     pub admin_approval: bool,
+    #[serde(with = "hex")]
     pub root_key: CallLinkRootKey,
+    #[serde(serialize_with = "serialize::optional_hex")]
     pub admin_key: Option<Vec<u8>>,
     pub expiration: Timestamp,
     pub name: String,

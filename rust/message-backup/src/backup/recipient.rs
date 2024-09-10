@@ -155,6 +155,7 @@ pub struct ContactData {
     pub aci: Option<Aci>,
     #[serde(serialize_with = "serialize::optional_service_id_as_string")]
     pub pni: Option<Pni>,
+    #[serde(serialize_with = "serialize::optional_hex")]
     pub profile_key: Option<ProfileKeyBytes>,
     pub username: Option<String>,
     pub registration: Registration,

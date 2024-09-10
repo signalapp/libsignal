@@ -58,6 +58,15 @@
           "privacy_mode": "All"
         }
       }
+    },
+    {
+      "CallLink": {
+        "admin_approval": true,
+        "root_key": "2cafce03c40a90049c0f73f295ffd340",
+        "admin_key": "b472fcc0ecbe9f1ad4db4bbf0303d59734193ebbd401bf068b42587a91b987b9",
+        "expiration": 1725926400000,
+        "name": "Team Meeting"
+      }
     }
   ],
   "chats": [],

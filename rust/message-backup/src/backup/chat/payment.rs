@@ -34,7 +34,9 @@ pub struct Transaction {
     pub timestamp: Option<Timestamp>,
     pub block_timestamp: Option<Timestamp>,
     pub block_index: Option<u64>,
+    #[serde(serialize_with = "serialize::optional_hex")]
     pub transaction: Option<Vec<u8>>,
+    #[serde(serialize_with = "serialize::optional_hex")]
     pub receipt: Option<Vec<u8>>,
 }
 
@@ -47,7 +49,9 @@ pub struct MobAmount(String);
 #[derive(Clone, Debug, serde::Serialize)]
 #[cfg_attr(test, derive(PartialEq))]
 pub enum Identification {
+    #[serde(serialize_with = "serialize::list_of_hex")]
     Sent { key_images: Vec<Vec<u8>> },
+    #[serde(serialize_with = "serialize::list_of_hex")]
     Received { public_keys: Vec<Vec<u8>> },
 }
 

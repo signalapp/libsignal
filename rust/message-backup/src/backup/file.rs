@@ -20,7 +20,9 @@ use crate::proto::backup as proto;
 pub enum AttachmentLocator {
     Backup {
         cdn_number: Option<u32>,
+        #[serde(with = "hex")]
         key: Vec<u8>,
+        #[serde(with = "hex")]
         digest: Vec<u8>,
         is_thumbnail: bool,
         size: u32,
@@ -31,7 +33,9 @@ pub enum AttachmentLocator {
         cdn_key: String,
         cdn_number: u32,
         upload_timestamp: Timestamp,
+        #[serde(with = "hex")]
         key: Vec<u8>,
+        #[serde(with = "hex")]
         digest: Vec<u8>,
         size: u32,
     },
@@ -152,6 +156,7 @@ impl TryFrom<proto::file_pointer::Locator> for AttachmentLocator {
 pub struct FilePointer {
     pub locator: AttachmentLocator,
     pub content_type: Option<String>,
+    #[serde(serialize_with = "serialize::optional_hex")]
     pub incremental_mac: Option<Vec<u8>>,
     pub incremental_mac_chunk_size: Option<u32>,
     pub file_name: Option<String>,

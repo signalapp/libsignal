@@ -37,10 +37,10 @@ pub struct MessageSticker {
 }
 
 #[derive(Copy, Clone, Debug, Eq, Hash, PartialEq, PartialOrd, Ord, serde::Serialize)]
-pub struct PackId([u8; 16]);
+pub struct PackId(#[serde(with = "hex")] [u8; 16]);
 
 #[derive(Copy, Clone, Debug, Eq, Hash, PartialEq, serde::Serialize)]
-pub struct Key([u8; 32]);
+pub struct Key(#[serde(with = "hex")] [u8; 32]);
 
 impl<'a> TryFrom<&'a [u8]> for PackId {
     type Error = <&'a [u8] as TryInto<[u8; 16]>>::Error;

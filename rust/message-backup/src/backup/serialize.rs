@@ -101,6 +101,24 @@ pub(crate) fn enum_as_string<S: Serializer>(
     format!("{source:?}").serialize(serializer)
 }
 
+/// Serializes an optional bytestring as hex.
+pub(crate) fn optional_hex<S: Serializer>(
+    value: &Option<impl AsRef<[u8]>>,
+    serializer: S,
+) -> Result<S::Ok, S::Error> {
+    value.as_ref().map(hex::encode).serialize(serializer)
+}
+
+/// Serializes an optional bytestring as hex.
+pub(crate) fn list_of_hex<S: Serializer>(
+    value: &[impl AsRef<[u8]>],
+    serializer: S,
+) -> Result<S::Ok, S::Error> {
+    // From the implementation of Serialize for [T],
+    // https://docs.rs/serde/1.0.210/src/serde/ser/impls.rs.html#175-186
+    serializer.collect_seq(value.iter().map(hex::encode))
+}
+
 /// Serialization helper for [`UnorderedList`].
 ///
 /// Like [`std::cmp::Ord`] but only for use during serialization.

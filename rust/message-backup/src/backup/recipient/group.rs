@@ -280,6 +280,7 @@ impl TryFrom<proto::group::GroupSnapshot> for GroupSnapshot {
 #[derive(Debug, serde::Serialize)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct GroupData {
+    #[serde(with = "hex")]
     pub master_key: GroupMasterKeyBytes,
     pub whitelisted: bool,
     pub hide_story: bool,
