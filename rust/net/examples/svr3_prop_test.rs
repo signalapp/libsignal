@@ -74,6 +74,7 @@ impl Svr3Cell {
 pub enum Transition {
     SetUid(Uid),
     Backup(Secret, u32),
+    Rotate,
     Restore,
     RestoreWithBadPassword,
 }
@@ -149,6 +150,7 @@ impl ReferenceStateMachine for InMemoryStorage {
             2 => backup_pair().prop_map(|(secret, max_tries)| Transition::Backup(secret, max_tries)),
             3 => Just(Transition::Restore),
             1 => Just(Transition::RestoreWithBadPassword),
+            3 => Just(Transition::Rotate),
         ]
         .boxed()
     }
@@ -167,6 +169,10 @@ impl ReferenceStateMachine for InMemoryStorage {
                     .data
                     .insert(state.uid.unwrap(), Svr3Cell::new(*secret, *tries_left));
                 state.last_transition_outcome = TransitionOutcome::Nothing;
+            }
+            Transition::Rotate => {
+                // Nothing to do in the model for rotation
+                log::info!("MODEL: rotate");
             }
             Transition::Restore | Transition::RestoreWithBadPassword => {
                 let expect_bad_commitment =
@@ -227,6 +233,19 @@ impl StateMachineTest for Svr3Storage {
                 let uid = state.current_uid.expect("uid must be set");
                 let share_set = state.backup(uid, secret, tries_left);
                 let _ = state.share_sets.insert(uid, share_set);
+            }
+            Transition::Rotate => {
+                log::info!("SUT: rotate ->");
+                let uid = state.current_uid.expect("uid must be set");
+                match state.share_sets.get(&uid) {
+                    Some(share_set) => match state.rotate(uid, share_set.clone()) {
+                        Ok(()) => log::info!("\tsuccess"),
+                        Err(err) => log::info!("\terror: {}", err),
+                    },
+                    None => {
+                        log::info!("\tNothing to rotate.");
+                    }
+                }
             }
             Transition::Restore | Transition::RestoreWithBadPassword => {
                 let expect_bad_commitment =
@@ -369,6 +388,14 @@ impl Svr3Storage {
             let mut rng = OsRng;
             let client = Client::new(uid, self);
             client.restore(password, share_set, &mut rng).await
+        })
+    }
+
+    fn rotate(&mut self, uid: Uid, share_set: OpaqueMaskedShareSet) -> Result<(), Error> {
+        self.runtime.block_on(async {
+            let mut rng = OsRng;
+            let client = Client::new(uid, self);
+            client.rotate(share_set, &mut rng).await
         })
     }
 }

@@ -90,25 +90,38 @@ async fn main() {
         opaque_share_set.serialize().expect("can serialize")
     };
     println!("{}: {}", "Share set".cyan(), hex::encode(&share_set_bytes));
+    let opaque_share_set =
+        OpaqueMaskedShareSet::deserialize(&share_set_bytes).expect("can deserialize");
+
+    {
+        println!("{}", "Restoring before rotation...".cyan());
+        let restored = client
+            .restore(&args.password, opaque_share_set.clone(), &mut rng)
+            .await
+            .expect("can multi restore");
+        assert_eq!(secret, restored.value);
+        println!(
+            "{}: {}",
+            "Restored secret".cyan(),
+            &hex::encode(restored.value)
+        );
+        assert_eq!(tries.get() - 1, restored.tries_remaining);
+        println!("{}: {}", "Tries remaining".cyan(), restored.tries_remaining);
+    }
 
     {
         println!("{}", "Rotating secret".cyan());
-        let opaque_share_set =
-            OpaqueMaskedShareSet::deserialize(&share_set_bytes).expect("can deserialize");
         client
-            .rotate(opaque_share_set, &mut rng)
+            .rotate(opaque_share_set.clone(), &mut rng)
             .await
             .expect("can rotate");
     };
 
-    let restored = {
-        let opaque_share_set =
-            OpaqueMaskedShareSet::deserialize(&share_set_bytes).expect("can deserialize");
-        client
-            .restore(&args.password, opaque_share_set, &mut rng)
-            .await
-            .expect("can mutli restore")
-    };
+    println!("{}", "Restoring after rotation...".cyan());
+    let restored = client
+        .restore(&args.password, opaque_share_set.clone(), &mut rng)
+        .await
+        .expect("can multi restore");
     assert_eq!(secret, restored.value);
     println!(
         "{}: {}",
@@ -116,7 +129,7 @@ async fn main() {
         &hex::encode(restored.value)
     );
 
-    assert_eq!(tries.get() - 1, restored.tries_remaining);
+    assert_eq!(tries.get() - 2, restored.tries_remaining);
     println!("{}: {}", "Tries remaining".cyan(), restored.tries_remaining);
 
     println!("{}...", "Querying...".cyan());
@@ -127,10 +140,8 @@ async fn main() {
     client.remove().await.expect("can remove");
     // The next attempt to restore should fail
     {
-        let opaque_share_set =
-            OpaqueMaskedShareSet::deserialize(&share_set_bytes).expect("can deserialize");
         let failed_restore_result = client
-            .restore(&args.password, opaque_share_set, &mut rng)
+            .restore(&args.password, opaque_share_set.clone(), &mut rng)
             .await;
         assert_matches!(failed_restore_result, Err(Error::DataMissing));
     }
