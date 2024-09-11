@@ -86,6 +86,10 @@ pub enum ChatItemError {
     AuthorNotFound(RecipientId),
     /// chat item author {0:?} is a {1:?}
     InvalidAuthor(RecipientId, DestinationKind),
+    /// incoming message authored by self
+    IncomingMessageFromSelf,
+    /// outgoing message authored by {1:?} {0:?}
+    OutgoingMessageFrom(RecipientId, DestinationKind),
     /// ChatItem.item is a oneof but is empty
     MissingItem,
     /// text: {0}
@@ -420,30 +424,43 @@ impl<
             special_fields: _,
         } = value;
 
+        let direction = directionalDetails
+            .ok_or(ChatItemError::NoDirection)?
+            .try_into_with(context)?;
+
         let author_id = RecipientId(authorId);
 
         let Some((&author_kind, author)) = context.lookup_pair(&author_id) else {
             return Err(ChatItemError::AuthorNotFound(author_id));
         };
-        let author = match author_kind {
-            DestinationKind::Contact | DestinationKind::Self_ | DestinationKind::ReleaseNotes => {
-                Ok(author.clone())
-            }
+        let author = match (author_kind, &direction) {
             // Even update messages in groups are still attributed to self (if not a specific
             // author)
-            DestinationKind::Group
-            | DestinationKind::DistributionList
-            | DestinationKind::CallLink => {
-                Err(ChatItemError::InvalidAuthor(author_id, author_kind))
+            (
+                DestinationKind::Group
+                | DestinationKind::DistributionList
+                | DestinationKind::CallLink,
+                _,
+            ) => Err(ChatItemError::InvalidAuthor(author_id, author_kind)),
+
+            (DestinationKind::Self_, Direction::Incoming { .. }) => {
+                Err(ChatItemError::IncomingMessageFromSelf)
             }
+
+            (DestinationKind::Contact | DestinationKind::ReleaseNotes, Direction::Outgoing(_)) => {
+                Err(ChatItemError::OutgoingMessageFrom(author_id, author_kind))
+            }
+
+            (DestinationKind::Self_, Direction::Outgoing(_))
+            | (DestinationKind::Contact, Direction::Incoming { .. })
+            | (DestinationKind::ReleaseNotes, Direction::Incoming { .. })
+            | (DestinationKind::Self_, Direction::Directionless)
+            | (DestinationKind::Contact, Direction::Directionless)
+            | (DestinationKind::ReleaseNotes, Direction::Directionless) => Ok(author.clone()),
         }?;
 
         let message = item
             .ok_or(ChatItemError::MissingItem)?
-            .try_into_with(context)?;
-
-        let direction = directionalDetails
-            .ok_or(ChatItemError::NoDirection)?
             .try_into_with(context)?;
 
         match (&direction, &message) {
@@ -780,7 +797,7 @@ mod test {
         pub(crate) fn test_data() -> Self {
             Self {
                 chatId: proto::Chat::TEST_ID,
-                authorId: proto::Recipient::TEST_ID,
+                authorId: TestContext::CONTACT_ID.0,
                 item: Some(proto::chat_item::Item::StandardMessage(
                     proto::StandardMessage::test_data(),
                 )),
@@ -887,7 +904,7 @@ mod test {
         assert_eq!(
             proto::ChatItem::test_data().try_into_with(&TestContext::default()),
             Ok(ChatItemData::<Store> {
-                author: TestContext::test_recipient().clone(),
+                author: TestContext::contact_recipient().clone(),
                 message: ChatItemMessage::Standard(StandardMessage::from_proto_test_data()),
                 revisions: vec![],
                 direction: Direction::Incoming {
@@ -909,7 +926,10 @@ mod test {
     #[test_case(|x| x.authorId = 0xffff => Err(ChatItemError::AuthorNotFound(RecipientId(0xffff))); "unknown_author")]
     #[test_case(|x| x.authorId = TestContext::GROUP_ID.0 => Err(ChatItemError::InvalidAuthor(TestContext::GROUP_ID, DestinationKind::Group)); "invalid author")]
     #[test_case(|x| x.directionalDetails = None => Err(ChatItemError::NoDirection); "no_direction")]
-    #[test_case(|x| x.directionalDetails = Some(proto::chat_item::OutgoingMessageDetails::test_data().into()) => Ok(()); "outgoing_valid")]
+    #[test_case(|x| {
+        x.authorId = TestContext::SELF_ID.0;
+        x.directionalDetails = Some(proto::chat_item::OutgoingMessageDetails::test_data().into());
+    } => Ok(()); "outgoing_valid")]
     #[test_case(|x| x.directionalDetails = Some(
             proto::chat_item::OutgoingMessageDetails {
                 sendStatus: vec![proto::SendStatus {
@@ -921,7 +941,9 @@ mod test {
             .into(),
         ) => Err(ChatItemError::Outgoing(OutgoingSendError::SendStatusMissing)); "outgoing_send_status_unknown"
     )]
-    #[test_case(|x| x.directionalDetails = Some(
+    #[test_case(|x| {
+        x.authorId = TestContext::SELF_ID.0;
+        x.directionalDetails = Some(
             proto::chat_item::OutgoingMessageDetails {
                 sendStatus: vec![proto::SendStatus {
                     deliveryStatus: Some(proto::send_status::DeliveryStatus::Failed(
@@ -937,7 +959,8 @@ mod test {
                 ..proto::chat_item::OutgoingMessageDetails::test_data()
             }
             .into()
-        ) => Ok(()); "outgoing send status failed")]
+        );
+    } => Ok(()); "outgoing send status failed")]
     #[test_case(
         |x| x.directionalDetails = Some(
             proto::chat_item::OutgoingMessageDetails {
@@ -979,13 +1002,20 @@ mod test {
             authorId: 0,
             ..proto::ChatItem::test_data()
         })
-    } => Err(ChatItemError::RevisionWithMismatchedAuthor(TestContext::SELF_ID, RecipientId(0))); "revision mismatched author")]
+    } => Err(ChatItemError::RevisionWithMismatchedAuthor(TestContext::CONTACT_ID, RecipientId(0))); "revision mismatched author")]
     #[test_case(|x| {
         x.revisions.push(proto::ChatItem {
-            directionalDetails: Some(proto::chat_item::OutgoingMessageDetails::test_data().into()),
+            directionalDetails: Some(proto::chat_item::DirectionlessMessageDetails::default().into()),
+            item: Some(proto::chat_item::Item::UpdateMessage(proto::ChatUpdateMessage {
+                update: Some(proto::chat_update_message::Update::SimpleUpdate(proto::SimpleChatUpdate {
+                    type_: proto::simple_chat_update::Type::JOINED_SIGNAL.into(),
+                    ..Default::default()
+                })),
+                ..Default::default()
+            })),
             ..proto::ChatItem::test_data()
         })
-    } => Err(ChatItemError::RevisionWithMismatchedDirection(DirectionDiscriminants::Incoming, DirectionDiscriminants::Outgoing)); "revision mismatched direction")]
+    } => Err(ChatItemError::RevisionWithMismatchedDirection(DirectionDiscriminants::Incoming, DirectionDiscriminants::Directionless)); "revision mismatched direction")]
     #[test_case(|x| {
         x.revisions.push(proto::ChatItem {
             revisions: vec![proto::ChatItem::test_data()],

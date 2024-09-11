@@ -510,6 +510,19 @@ mod test {
                 ..Default::default()
             }
         }
+        pub(crate) fn test_data_contact() -> Self {
+            Self {
+                id: TestContext::CONTACT_ID.0,
+                destination: Some(proto::recipient::Destination::Contact(proto::Contact {
+                    aci: Some([0xaa; 16].into()),
+                    registration: Some(
+                        proto::contact::Registration::Registered(Default::default()),
+                    ),
+                    ..Default::default()
+                })),
+                ..Default::default()
+            }
+        }
     }
 
     impl proto::Contact {

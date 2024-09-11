@@ -669,6 +669,8 @@ mod test {
             Self::fake_with([
                 proto::Recipient::test_data().into(),
                 proto::Chat::test_data().into(),
+                proto::Recipient::test_data_contact().into(),
+                // References both SELF_ID and CONTACT_ID
                 proto::ChatItem::test_data().into(),
             ])
         }
@@ -744,6 +746,9 @@ mod test {
             .expect("valid account data");
         partial
             .add_recipient(proto::Recipient::test_data())
+            .expect("valid recipient");
+        partial
+            .add_recipient(proto::Recipient::test_data_contact())
             .expect("valid recipient");
 
         const CHAT_IDS: std::ops::RangeInclusive<u64> = 1..=2;
