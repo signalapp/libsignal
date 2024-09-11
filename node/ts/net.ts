@@ -252,8 +252,8 @@ export class AuthenticatedChatService implements ChatService {
       _queue_empty(): void {
         listener.onQueueEmpty();
       },
-      _connection_interrupted(cause: LibSignalError | null): void {
-        listener.onConnectionInterrupted(cause);
+      _connection_interrupted(cause: Error | null): void {
+        listener.onConnectionInterrupted(cause as LibSignalError | null);
       },
     };
     Native.ChatService_SetListenerAuth(

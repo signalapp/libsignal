@@ -3,8 +3,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import { LibSignalError } from './ts/Errors';
-
 // WARNING: this file was automatically generated
 
 type Uuid = Buffer;
@@ -122,7 +120,10 @@ export abstract class ChatListener {
     ack: ServerMessageAck
   ): void;
   _queue_empty(): void;
-  _connection_interrupted(reason: LibSignalError | null): void;
+  _connection_interrupted(
+    // A LibSignalError or null, but not naming the type to avoid circular import dependencies.
+    reason: Error | null
+  ): void;
 }
 
 export abstract class MakeChatListener extends ChatListener {}
