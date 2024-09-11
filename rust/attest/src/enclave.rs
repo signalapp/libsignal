@@ -120,9 +120,13 @@ impl Handshake {
     /// Completes client connection initiation, returns a valid client connection.
     pub fn complete(mut self, initial_received: &[u8]) -> Result<ClientConnection> {
         self.handshake.read_message(initial_received, &mut [])?;
+        let handshake_hash = self.handshake.get_handshake_hash().to_vec();
         let transport = self.handshake.into_transport_mode()?;
         log::info!("Successfully completed attested connection");
-        Ok(ClientConnection { transport })
+        Ok(ClientConnection {
+            handshake_hash,
+            transport,
+        })
     }
 
     pub(crate) fn with_claims(claims: Claims, typ: HandshakeType) -> Result<UnvalidatedHandshake> {

@@ -90,7 +90,11 @@ pub async fn do_restore<S: AsyncDuplexStream + 'static>(
         collect_responses(results?, addresses.iter())?
     };
 
-    let restore2 = restore1.restore2(&responses1, rng)?;
+    let handshake_hashes = connections
+        .iter()
+        .map(|c| c.handshake_hash())
+        .collect::<Vec<_>>();
+    let restore2 = restore1.restore2(&responses1, &handshake_hashes, rng)?;
     let tries_remaining = restore2.tries_remaining;
     let responses2 = {
         let futures = connections
@@ -106,7 +110,7 @@ pub async fn do_restore<S: AsyncDuplexStream + 'static>(
     let output = restore2.restore(&responses2)?;
 
     Ok(EvaluationResult {
-        value: output.unmask_secret(&masked_secret.masked_secret),
+        value: output.unmask_secret(&masked_secret.masked_secret)?,
         tries_remaining,
     })
 }

@@ -12,7 +12,8 @@ use curve25519_dalek::ristretto::{CompressedRistretto, RistrettoPoint};
 use curve25519_dalek::scalar::Scalar;
 use prost::Message;
 use rand_core::CryptoRngCore;
-use sha2::{Sha256, Sha512};
+use sha2::{Digest, Sha256, Sha512};
+use signal_crypto::{Aes256GcmDecryption, Aes256GcmEncryption};
 
 use crate::proto::svr4;
 
@@ -201,7 +202,7 @@ pub struct Backup4 {
 /// Contains everything necessary to restore a secret given a password.
 pub struct MaskedSecret {
     pub server_ids: Vec<u64>,
-    pub masked_secret: [u8; 32],
+    pub masked_secret: Vec<u8>,
 }
 
 impl Backup4 {
@@ -249,7 +250,7 @@ impl Backup4 {
                 .collect(),
             masked_secret: MaskedSecret {
                 server_ids: server_ids.to_vec(),
-                masked_secret: output.mask_secret(secret),
+                masked_secret: output.mask_secret(secret, rng),
             },
             output,
         })
@@ -270,13 +271,48 @@ impl Output4 {
             &self.k_auth,
         )
     }
-    pub fn mask_secret(&self, secret: &[u8; 32]) -> [u8; 32] {
-        let mut out = self.encryption_key();
-        arr_xor(secret, &mut out);
-        out
+    pub fn mask_secret<R: CryptoRngCore>(&self, secret: &[u8; 32], rng: &mut R) -> Vec<u8> {
+        let mut masked_secret = vec![
+                0u8;
+                // masked_secret will be:  NONCE || ENCRYPTED_SECRET || TAG
+                Aes256GcmEncryption::NONCE_SIZE + secret.len() + Aes256GcmEncryption::TAG_SIZE
+            ];
+        let nonce = {
+            let nonce = &mut masked_secret[..Aes256GcmEncryption::NONCE_SIZE];
+            rng.fill_bytes(nonce);
+            nonce
+        };
+        let mut enc = Aes256GcmEncryption::new(&self.encryption_key(), nonce, b"")
+            .expect("key and nonce should be valid");
+        {
+            let encrypted_secret =
+                &mut masked_secret[Aes256GcmEncryption::NONCE_SIZE..][..secret.len()];
+            encrypted_secret.copy_from_slice(secret);
+            enc.encrypt(encrypted_secret);
+        }
+        let tag = &mut masked_secret[Aes256GcmEncryption::NONCE_SIZE + secret.len()..];
+        tag.copy_from_slice(&enc.compute_tag());
+        masked_secret
     }
-    pub fn unmask_secret(&self, masked_secret: &[u8; 32]) -> [u8; 32] {
-        self.mask_secret(masked_secret) // masking and unmasking are the same function
+    pub fn unmask_secret(&self, masked_secret: &[u8]) -> Result<[u8; 32], Error> {
+        let mut secret = [0u8; 32];
+        if masked_secret.len()
+            != Aes256GcmDecryption::NONCE_SIZE + secret.len() + Aes256GcmDecryption::TAG_SIZE
+        {
+            return Err(Error::BadData);
+        }
+        let (nonce, encrypted_secret, tag) = (
+            &masked_secret[..Aes256GcmDecryption::NONCE_SIZE],
+            &masked_secret
+                [Aes256GcmDecryption::NONCE_SIZE..Aes256GcmDecryption::NONCE_SIZE + secret.len()],
+            &masked_secret[Aes256GcmDecryption::NONCE_SIZE + secret.len()..],
+        );
+        secret.copy_from_slice(encrypted_secret);
+        let mut dec = Aes256GcmDecryption::new(&self.encryption_key(), nonce, b"")
+            .expect("key and nonce shoould be valid");
+        dec.decrypt(&mut secret);
+        dec.verify_tag(tag).map_err(|_| Error::BadData)?;
+        Ok(secret)
     }
 }
 
@@ -333,9 +369,12 @@ impl<'a> Restore1<'a> {
     pub fn restore2<R: CryptoRngCore>(
         self,
         responses1_bytes: &[Vec<u8>],
+        handshake_hashes: &[&[u8]],
         rng: &mut R,
     ) -> Result<Restore2<'a>, Error> {
-        if responses1_bytes.len() != self.server_ids.len() {
+        if responses1_bytes.len() != self.server_ids.len()
+            || handshake_hashes.len() != self.server_ids.len()
+        {
             return Err(Error::NumServers {
                 servers: self.server_ids.len(),
                 got: responses1_bytes.len(),
@@ -404,12 +443,25 @@ impl<'a> Restore1<'a> {
         let auth_commitments = auth_commitments(self.server_ids, &self.input, &auth_pt);
         let rand = Scalar::random(rng);
         let proof_pt_bytes = (RISTRETTO_BASEPOINT_TABLE * &rand).compress().to_bytes();
-        let proof_scalar_base = Scalar::hash_from_bytes::<Sha512>(&proof_pt_bytes);
+        let blinded_pt_bytes = (input_hash_pt(&self.input) * self.blind)
+            .compress()
+            .to_bytes();
 
         Ok(Restore2 {
             requests: auth_commitments
                 .iter()
-                .map(|(sk, _pk)| sk * proof_scalar_base + rand)
+                .zip(handshake_hashes)
+                .map(|((sk, _pk), handshake_hash)| {
+                    let hash = {
+                        let mut sha512 = Sha512::new();
+                        sha512.update(proof_pt_bytes.as_slice());
+                        sha512.update(blinded_pt_bytes.as_slice());
+                        sha512.update(handshake_hash);
+                        sha512
+                    };
+                    let proof_scalar_base = Scalar::from_hash(hash);
+                    sk * proof_scalar_base + rand
+                })
                 .map(|proof_scalar| svr4::Request4 {
                     inner: Some(svr4::request4::Inner::Restore2(svr4::request4::Restore2 {
                         auth_point: proof_pt_bytes.to_vec(),
@@ -883,6 +935,7 @@ mod test {
     struct TestServer {
         tries: u32,
         versions: BTreeMap<u32, TestServerVersion>,
+        restore1_blinded: Vec<u8>,
     }
 
     /// TestServerVersion holds a single version's data for a single user.
@@ -916,6 +969,7 @@ mod test {
             Self {
                 tries: 0,
                 versions: BTreeMap::new(),
+                restore1_blinded: vec![],
             }
         }
 
@@ -954,6 +1008,7 @@ mod test {
             };
             assert!(self.tries > 0);
             self.tries -= 1;
+            self.restore1_blinded = req.blinded.to_vec();
 
             let userhash_pt = RistrettoPoint::from_uniform_bytes(&self.hashed_user_id());
             let blinded = to_ristretto_pt(&req.blinded).expect("decode blinded");
@@ -984,7 +1039,7 @@ mod test {
         }
 
         /// Take in restore2 request, return restore2 response
-        fn restore2(&self, req_bytes: &[u8]) -> Vec<u8> {
+        fn restore2(&self, req_bytes: &[u8], handshake_hash: &[u8]) -> Vec<u8> {
             let req = match svr4::Request4::decode(req_bytes)
                 .expect("decode Request4")
                 .inner
@@ -998,7 +1053,13 @@ mod test {
             let auth_scalar = to_ristretto_scalar(&req.auth_scalar).expect("decode auth_scalar");
             let auth_point = to_ristretto_pt(&req.auth_point).expect("decode auth_pt");
 
-            let scalar_hash = Scalar::hash_from_bytes::<Sha512>(&req.auth_point);
+            let scalar_hash_bytes: Vec<u8> = [
+                &req.auth_point as &[_],
+                &self.restore1_blinded,
+                handshake_hash,
+            ]
+            .concat();
+            let scalar_hash = Scalar::hash_from_bytes::<Sha512>(&scalar_hash_bytes);
             let lhs = RISTRETTO_BASEPOINT_TABLE * &auth_scalar;
             let rhs = state.auth_commitment * scalar_hash + auth_point;
 
@@ -1034,6 +1095,7 @@ mod test {
             server.create(&req);
         }
         let masked_secret = backup.masked_secret;
+        let handshake_hashes = [&[1u8; 32][..], &[2u8; 32][..], &[3u8; 32][..]];
 
         // Restoring existing backup.
         let restore1 = Restore1::new(&server_ids, &password, &mut rng);
@@ -1043,12 +1105,13 @@ mod test {
             .map(|(server, req)| server.restore1(req))
             .collect::<Vec<_>>();
         let restore2 = restore1
-            .restore2(&restore1_responses, &mut rng)
+            .restore2(&restore1_responses, &handshake_hashes, &mut rng)
             .expect("call requests2");
         let restore2_responses = servers
             .iter_mut()
             .zip(&restore2.requests)
-            .map(|(server, req)| server.restore2(req))
+            .zip(&handshake_hashes)
+            .map(|((server, req), hh)| server.restore2(req, hh))
             .collect::<Vec<_>>();
         let got = restore2
             .restore(&restore2_responses)
@@ -1056,7 +1119,10 @@ mod test {
         assert_eq!(backup.output, got);
         assert_eq!(
             secret,
-            backup.output.unmask_secret(&masked_secret.masked_secret)
+            backup
+                .output
+                .unmask_secret(&masked_secret.masked_secret)
+                .expect("unmask")
         );
     }
 

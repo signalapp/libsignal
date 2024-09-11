@@ -2432,6 +2432,7 @@ dependencies = [
 name = "libsignal-svr3"
 version = "0.1.0"
 dependencies = [
+ "aes-gcm-siv",
  "assert_matches",
  "criterion",
  "curve25519-dalek",
@@ -2445,6 +2446,7 @@ dependencies = [
  "prost-build",
  "rand_core",
  "sha2",
+ "signal-crypto",
  "strum",
  "subtle",
  "test-case",

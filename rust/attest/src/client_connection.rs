@@ -22,6 +22,7 @@ pub(crate) const NOISE_TRANSPORT_PER_PAYLOAD_MAX: usize =
 
 #[derive(Debug)]
 pub struct ClientConnection {
+    pub handshake_hash: Vec<u8>,
     pub transport: snow::TransportState,
 }
 

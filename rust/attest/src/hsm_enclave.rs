@@ -135,11 +135,15 @@ impl ClientConnectionEstablishment {
         if !self.trusted_code_hashes.contains(&received_hash) {
             return Err(Error::TrustedCodeError);
         }
+        let handshake_hash = self.hs.get_handshake_hash().to_vec();
         let transport = self.hs.into_transport_mode()?;
         log::info!(
             "Successfully completed HSM-enclave connection to codehash {:x?}",
             received_hash
         );
-        Ok(client_connection::ClientConnection { transport })
+        Ok(client_connection::ClientConnection {
+            handshake_hash,
+            transport,
+        })
     }
 }

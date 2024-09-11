@@ -47,10 +47,13 @@ enum WriteBufferPolicy {
 impl<S> NoiseStream<S> {
     /// Creates a new `NoiseStream` for an already-established transport that
     /// reads and writes to the provided stream/sink.
-    pub fn new(inner: S, transport: TransportState) -> Self {
+    pub fn new(inner: S, transport: TransportState, handshake_hash: Vec<u8>) -> Self {
         Self {
             inner,
-            transport: ClientConnection { transport },
+            transport: ClientConnection {
+                handshake_hash,
+                transport,
+            },
             read: Read::default(),
             write: Write::default(),
         }
@@ -321,8 +324,8 @@ mod test {
     fn new_stream_pair() -> (NoiseStream<impl Transport>, NoiseStream<impl Transport>) {
         let (transport_a, transport_b) = new_handshaken_pair().unwrap();
         let (a, b) = TestStream::new_pair(100);
-        let a = NoiseStream::new(a, transport_a);
-        let b = NoiseStream::new(b, transport_b);
+        let a = NoiseStream::new(a, transport_a, vec![0u8; 32]);
+        let b = NoiseStream::new(b, transport_b, vec![0u8; 32]);
         (a, b)
     }
 
@@ -362,7 +365,7 @@ mod test {
     async fn read_returns_inner_error() {
         let (transport, _) = new_handshaken_pair().unwrap();
         let (inner, mut other) = TestStream::new_pair(100);
-        let mut stream = NoiseStream::new(inner, transport);
+        let mut stream = NoiseStream::new(inner, transport, vec![0u8; 32]);
         stream.write_all(b"ababcdcdefef").await.unwrap();
 
         other
@@ -377,7 +380,7 @@ mod test {
     async fn returns_write_error() {
         let (transport, _) = new_handshaken_pair().unwrap();
         let (inner, other) = TestStream::new_pair(100);
-        let mut stream = NoiseStream::new(inner, transport);
+        let mut stream = NoiseStream::new(inner, transport, vec![0u8; 32]);
 
         // Drop the read end. With nobody to receive sent bytes, the write to
         // the underlying channel should fail.
@@ -445,7 +448,7 @@ mod test {
             remaining: 2,
             inner,
         };
-        let mut stream = NoiseStream::new(inner, transport);
+        let mut stream = NoiseStream::new(inner, transport, vec![0u8; 32]);
 
         let _echo_task = tokio::spawn(echo_forever(other, other_transport));
 
@@ -475,8 +478,8 @@ mod test {
         const CHANNEL_SIZE: usize = 2;
         let (transport_a, transport_b) = new_handshaken_pair().unwrap();
         let (a, b) = TestStream::new_pair(CHANNEL_SIZE);
-        let mut a = NoiseStream::new(a, transport_a);
-        let mut b = NoiseStream::new(b, transport_b);
+        let mut a = NoiseStream::new(a, transport_a, vec![0u8; 32]);
+        let mut b = NoiseStream::new(b, transport_b, vec![0u8; 32]);
 
         assert_matches!(a.write(b"first message").now_or_never(), Some(Ok(13)));
         assert_matches!(a.write(b"second message").now_or_never(), Some(Ok(14)));

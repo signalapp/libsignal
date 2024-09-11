@@ -21,7 +21,10 @@ pub mod direct;
 pub mod traits;
 use traits::*;
 
-const MASKED_SHARE_SET_FORMAT: u8 = 0;
+// Versions:
+//   0: XOR'd secret
+//   1: AES-GCM encrypted secret
+const MASKED_SHARE_SET_FORMAT: u8 = 1;
 
 #[derive(Clone)]
 #[cfg_attr(test, derive(Debug, PartialEq, Eq, Default))]
@@ -34,7 +37,7 @@ pub struct OpaqueMaskedShareSet {
 #[cfg_attr(test, derive(PartialEq, Eq, Default))]
 struct SerializableMaskedShareSet {
     server_ids: Vec<u64>,
-    masked_secret: [u8; 32],
+    masked_secret: Vec<u8>,
 }
 
 impl From<MaskedSecret> for SerializableMaskedShareSet {
@@ -304,7 +307,7 @@ mod test {
         OpaqueMaskedShareSet {
             inner: SerializableMaskedShareSet {
                 server_ids: vec![],
-                masked_secret: [0u8; 32],
+                masked_secret: vec![],
             },
         }
     }

@@ -510,6 +510,10 @@ impl<S> AttestedConnection<S> {
     pub(crate) fn remote_address(&self) -> &Host<Arc<str>> {
         &self.websocket.connection_info.address
     }
+
+    pub(crate) fn handshake_hash(&self) -> &[u8] {
+        &self.client_connection.handshake_hash
+    }
 }
 
 impl<S> AsMut<AttestedConnection<S>> for AttestedConnection<S> {

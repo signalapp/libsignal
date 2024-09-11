@@ -252,9 +252,11 @@ impl<S: Transport + Unpin> Future for Handshaker<S> {
                     transport,
                     handshake,
                 } = self.inner.take().expect("just checked above");
+                let handshake_hash = handshake.get_handshake_hash().to_vec();
                 Poll::Ready(Ok(NoiseStream::new(
                     transport,
                     handshake.into_transport_mode()?,
+                    handshake_hash,
                 )))
             }
         }
