@@ -42,8 +42,11 @@ When exposing new APIs to Swift, you will need to add the `--generate-ffi` flag 
 2. Use `swift build` and `swift test` as usual from within the `swift/` directory.
 
 When exposing new APIs to Swift, you will need to add the `--generate-ffi` flag to your
-`build_ffi.sh` invocation.
+`build_ffi.sh` invocation. This requires installing the `cbindgen` Rust tool:
 
+```shell
+$ cargo +stable install cbindgen
+```
 
 ## Use as a Swift Package
 

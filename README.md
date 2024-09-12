@@ -49,12 +49,6 @@ On a Debian-like system, you can get these extra dependencies through `apt`:
 $ apt-get install clang libclang-dev cmake make protobuf-compiler git
 ```
 
-Additionally, some of the tests in this repository rely on submodules being checked out:
-
-```shell
-$ git submodule update --init
-```
-
 The build currently uses a specific version of the Rust nightly compiler, which
 will be downloaded automatically by cargo. To build and test the basic protocol
 libraries:
@@ -65,6 +59,9 @@ $ cargo build
 $ cargo test
 ...
 ```
+
+When making a PR that adjusts dependencies, you'll need to regenerate our acknowledgments files.
+See [``acknowledgments/README.md``](acknowledgments/).
 
 ## Java/Android
 
@@ -92,7 +89,11 @@ $ make
 ```
 
 When exposing new APIs to Java, you will need to run `rust/bridge/jni/bin/gen_java_decl.py` in
-addition to rebuilding.
+addition to rebuilding. This requires installing the `cbindgen` Rust tool:
+
+```shell
+$ cargo +stable install cbindgen
+```
 
 ### Maven Central
 
