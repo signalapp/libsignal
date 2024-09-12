@@ -28,7 +28,7 @@
     "prepack": "cp ../acknowledgments/acknowledgments.md dist"
   },
   "dependencies": {
-    "node-gyp-build": "^4.2.3",
+    "node-gyp-build": "^4.8.0",
     "type-fest": "^4.26.0",
     "uuid": "^8.3.0"
   },
