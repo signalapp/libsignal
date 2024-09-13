@@ -29,3 +29,4 @@ java/server/src/main/resources/*.so
 java/server/src/main/resources/*.dll
 
 .DS_Store
+Brewfile.lock.json
