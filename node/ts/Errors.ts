@@ -100,6 +100,10 @@ export class LibSignalErrorBase extends Error {
         throw new TypeError(`cannot get address from this error (${this})`);
     }
   }
+
+  public toString(): string {
+    return `${this.name} - ${this.operation}: ${this.message}`;
+  }
 }
 
 export type LibSignalErrorCommon = Omit<LibSignalErrorBase, 'addr'>;
