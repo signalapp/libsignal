@@ -267,7 +267,7 @@ version = "0.1.0"
 dependencies = [
  "asn1",
  "assert_matches",
- "base64 0.21.7",
+ "base64 0.22.1",
  "bitflags",
  "blake2",
  "boring",
@@ -2044,7 +2044,7 @@ dependencies = [
  "aes-gcm-siv",
  "assert_matches",
  "attest",
- "base64 0.21.7",
+ "base64 0.22.1",
  "bincode",
  "device-transfer",
  "futures-util",
@@ -2306,7 +2306,7 @@ dependencies = [
  "assert_matches",
  "async-trait",
  "attest",
- "base64 0.21.7",
+ "base64 0.22.1",
  "bincode",
  "bitstream-io",
  "boring",
@@ -5265,7 +5265,7 @@ name = "zkgroup"
 version = "0.9.0"
 dependencies = [
  "aes-gcm-siv",
- "base64 0.21.7",
+ "base64 0.22.1",
  "bincode",
  "criterion",
  "curve25519-dalek",

@@ -7358,7 +7358,7 @@ THE SOFTWARE.
 			<key>License</key>
 			<string>MIT License</string>
 			<key>Title</key>
-			<string>base64 0.21.7, base64 0.22.1</string>
+			<string>base64 0.22.1</string>
 			<key>Type</key>
 			<string>PSGroupSpecifier</string>
 		</dict>
