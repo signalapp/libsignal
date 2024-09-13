@@ -158,6 +158,22 @@ async fn Svr3Remove(
     client.remove().await
 }
 
+#[bridge_io(TokioAsyncContext, node = false)]
+async fn Svr3Rotate(
+    connection_manager: &ConnectionManager,
+    share_set: Box<[u8]>,
+    username: String,         // hex-encoded uid
+    enclave_password: String, // timestamp:otp(...)
+) -> Result<(), svr3::Error> {
+    // Secret rotation assumes that any migration that needed to happen already
+    // happened, and, just like with `backup`, it is always performed on the
+    // current set of SVR3 enclaves.
+    let client = Svr3Clients::new(connection_manager, username, enclave_password).current;
+    let mut rng = OsRng;
+    let share_set = OpaqueMaskedShareSet::deserialize(&share_set)?;
+    client.rotate(share_set, &mut rng).await
+}
+
 #[cfg(test)]
 mod test {
     use test_case::test_case;

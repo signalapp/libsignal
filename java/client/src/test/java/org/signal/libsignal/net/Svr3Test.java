@@ -96,6 +96,23 @@ public class Svr3Test {
   }
 
   @Test
+  public void restoreAfterRotate() throws Exception {
+    final int tries = 10;
+    byte[] shareSet =
+        state.net().svr3().backup(STORED_SECRET, TEST_PASSWORD, tries, state.auth()).get();
+    Svr3.RestoredSecret restored =
+        state
+            .net()
+            .svr3()
+            .rotate(shareSet, state.auth())
+            .thenCompose(
+                ignored -> state.net().svr3().restore(TEST_PASSWORD, shareSet, state.auth()))
+            .get();
+    assertEquals(Hex.toStringCondensed(STORED_SECRET), Hex.toStringCondensed(restored.value()));
+    assertEquals(tries - 1, restored.triesRemaining());
+  }
+
+  @Test
   public void removeSomethingThatNeverWas() throws Exception {
     state.net().svr3().remove(state.auth()).get();
   }

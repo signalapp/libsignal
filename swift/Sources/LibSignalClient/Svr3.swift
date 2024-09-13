@@ -293,6 +293,61 @@ public class Svr3Client {
             }
         }
     }
+
+    /// Rotate the secret stored in SVR3.
+    ///
+    /// This operation will not invalidate the share set stored on the client.
+    /// It needs to be called periodically to further protect the secret from
+    /// "harvest now decrypt later" attacks.
+    ///
+    /// Secret rotation is a multi-step process and may require multiple round
+    /// trips to the server, however it is guaranteed to not hang indefinitely
+    /// and will bail out after a predefined number of attempts.
+    ///
+    /// - Parameters:
+    ///   - shareSet: A serialized masked share set returned by
+    ///     ``backup(_:password:maxTries:auth:)``.
+    ///   - auth: An instance of ``Auth`` containing the username and password
+    ///     obtained from the Chat Server. The password is an OTP which is
+    ///     generally good for about 15 minutes, therefore it can be reused for
+    ///     the subsequent calls to either backup or restore that are not too
+    ///     far apart in time.
+    ///
+    /// - Throws:
+    ///   On error, throws a ``SignalError``. Expected error cases are
+    ///   - `SignalError.networkError` for a network-level connectivity issue,
+    ///     including connection timeout.
+    ///   - `SignalError.networkProtocolError` for an SVR3 or attested
+    ///     connection protocol issue.
+    ///
+    /// ## Notes:
+    ///   - Error messages are log-safe and do not contain any sensitive data.
+    ///   - Failures caused by the network issues (including a connection
+    ///     timeout) can, in general, be retried, although there is already a
+    ///     retry-with-backoff mechanism inside libsignal used to connect to the
+    ///     SVR3 servers. Other exceptions are caused by the bad input or data
+    ///     missing on the server. They are therefore non-actionable and are
+    ///     guaranteed to be thrown again when retried.
+    ///   - Failure to complete the secret rotation in a predefined number of
+    ///     attempts can (but does not have to) be retried. Failure to rotate
+    ///     does not invalidate any data and the next scheduled rotation will be
+    ///     able to complete the process.
+    public func rotate(shareSet: some ContiguousBytes, auth: Auth) async throws {
+        _ = try await self.asyncContext.invokeAsyncFunction { promise, asyncContext in
+            self.connectionManager.withNativeHandle { connectionManager in
+                shareSet.withUnsafeBorrowedBuffer { shareSetBuffer in
+                    signal_svr3_rotate(
+                        promise,
+                        asyncContext,
+                        connectionManager,
+                        shareSetBuffer,
+                        auth.username,
+                        auth.password
+                    )
+                }
+            }
+        }
+    }
 }
 
 public struct RestoredSecret {

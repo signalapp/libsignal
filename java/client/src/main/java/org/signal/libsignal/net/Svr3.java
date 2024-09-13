@@ -264,6 +264,61 @@ public final class Svr3 {
     }
   }
 
+  /**
+   * Rotate the secret stored in SVR3.
+   *
+   * <p>This operation will not invalidate the share set stored on the client. It needs to be called
+   * periodically to further protect the secret from "harvest now decrypt later" attacks.
+   *
+   * <p>Secret rotation is a multi-step process and may require multiple round trips to the server,
+   * however it is guaranteed to not hang indefinitely and will bail out after a predefined number
+   * of attempts.
+   *
+   * <p>Failure to complete the secret rotation in a predefined number of attempts can (but does not
+   * have to) be retried. Failure to rotate does not invalidate any data and the next scheduled
+   * rotation will be able to complete the process.
+   *
+   * <p>As noted above due to the asynchronous nature of the API all the expected errors will only
+   * be thrown when the Future is awaited, and furthermore will be wrapped in {@link
+   * java.util.concurrent.ExecutionException}.
+   *
+   * <p>Exception messages are log-safe and do not contain any sensitive data.
+   *
+   * @param auth an instance of {@link org.signal.libsignal.net.EnclaveAuth} containing the username
+   *     and password obtained from the Chat Server. The password is an OTP which is generally good
+   *     for about 15 minutes, therefore it can be reused for the subsequent calls to either backup
+   *     or restore that are not too far apart in time.
+   * @param shareSet a serialized masked share set returned by a call to {@link #backup}.
+   * @return an instance of {@link org.signal.libsignal.internal.CompletableFuture} successful
+   *     completion of which will mean the secret has been rotated.
+   * @throws {@link org.signal.libsignal.net.NetworkException} in case of network connection errors,
+   *     like connect timeout.
+   * @throws {@link org.signal.libsignal.net.NetworkProtocolException} more specifically in cases
+   *     when connection cannot be established on a higher level of the network stack. For example,
+   *     receiving an error HTTP status code.
+   * @throws {@link org.signal.libsignal.attest.AttestationDataException} when the server
+   *     attestation document is malformed or incomplete.
+   * @throws {@link org.signal.libsignal.attest.AttestationFailedException} when an attempt to
+   *     validate the server attestation document fails.
+   * @throws {@link org.signal.libsignal.sgxsession.SgxCommunicationFailureException} when a Noise
+   *     connection error happens.
+   * @throws {@link org.signal.libsignal.svr.SvrException} when the de-serialization of a masked
+   *     share set fails, or when all the attempts to rotate the secret fail.
+   */
+  public final CompletableFuture<Void> rotate(byte[] shareSet, EnclaveAuth auth) {
+    try (NativeHandleGuard asyncRuntime = new NativeHandleGuard(this.network.getAsyncContext());
+        NativeHandleGuard connectionManager =
+            new NativeHandleGuard(this.network.getConnectionManager())) {
+
+      return Native.Svr3Rotate(
+          asyncRuntime.nativeHandle(),
+          connectionManager.nativeHandle(),
+          shareSet,
+          auth.username,
+          auth.password);
+    }
+  }
+
   /** The value containing restored secret returned from {@link #restore}. */
   public record RestoredSecret(int triesRemaining, byte[] value) {
 

@@ -397,6 +397,27 @@ final class Svr3Tests: TestCaseBase {
         XCTAssertEqual(restoredSecret.value, self.storedSecret)
         XCTAssertEqual(restoredSecret.triesRemaining, tries - 1)
     }
+
+    func testRestoreAfterRotate() async throws {
+        let tries = UInt32(10)
+
+        let shareSet = try await state!.net.svr3.backup(
+            self.storedSecret,
+            password: "password",
+            maxTries: tries,
+            auth: self.state!.auth
+        )
+
+        _ = try await self.state!.net.svr3.rotate(shareSet: shareSet, auth: self.state!.auth)
+
+        let restoredSecret = try await state!.net.svr3.restore(
+            password: "password",
+            shareSet: shareSet,
+            auth: self.state!.auth
+        )
+        XCTAssertEqual(restoredSecret.value, self.storedSecret)
+        XCTAssertEqual(restoredSecret.triesRemaining, tries - 1)
+    }
 }
 
 #endif

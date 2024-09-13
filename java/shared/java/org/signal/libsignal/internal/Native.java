@@ -646,6 +646,8 @@ public final class Native {
 
   public static native CompletableFuture<byte[]> Svr3Restore(long asyncRuntime, long connectionManager, String password, byte[] shareSet, String username, String enclavePassword);
 
+  public static native CompletableFuture<Void> Svr3Rotate(long asyncRuntime, long connectionManager, byte[] shareSet, String username, String enclavePassword);
+
   public static native void TokioAsyncContext_Destroy(long handle);
   public static native void TokioAsyncContext_cancel(long context, long rawCancellationId);
   public static native long TokioAsyncContext_new();

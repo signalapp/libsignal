@@ -281,6 +281,17 @@ impl<'a> Query for Svr3Client<'a, PreviousVersion> {
     }
 }
 
+#[async_trait]
+impl<'a> Rotate for Svr3Client<'a, PreviousVersion> {
+    async fn rotate(
+        &self,
+        _share_set: OpaqueMaskedShareSet,
+        _rng: &mut (impl CryptoRngCore + Send),
+    ) -> Result<(), Error> {
+        empty_env::rotate().await
+    }
+}
+
 // These functions define the behavior of the empty `PreviousVersion`
 // when there is no migration going on.
 // When there _is_ migration both current and previous clients should instead
@@ -314,6 +325,10 @@ mod empty_env {
 
     pub async fn query() -> Result<u32, Error> {
         Err(Error::DataMissing)
+    }
+
+    pub async fn rotate() -> Result<(), Error> {
+        Ok(())
     }
 }
 
