@@ -12,6 +12,6 @@ fn main() {
         // We could disable rust-lld instead but then we'd lose out on the faster
         // link times, so pass additional flags to the linker instead. See
         // https://github.com/dtolnay/linkme/issues/94
-        println!("cargo::rustc-link-arg=-znostart-stop-gc");
+        println!("cargo:rustc-link-arg=-znostart-stop-gc");
     }
 }
