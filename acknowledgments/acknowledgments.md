@@ -5760,7 +5760,7 @@ DEALINGS IN THE SOFTWARE.
 
 ```
 
-## breakpad-symbols 0.20.0, minidump-common 0.20.0, minidump-processor 0.20.0, minidump-unwind 0.20.0, minidump 0.20.0
+## breakpad-symbols 0.21.2, minidump-common 0.21.2, minidump-processor 0.21.2, minidump-unwind 0.21.2, minidump 0.21.2
 
 ```
 MIT License
@@ -6300,7 +6300,7 @@ SOFTWARE.
 
 ```
 
-## cachemap2 0.2.0
+## cachemap2 0.3.0
 
 ```
 MIT License
