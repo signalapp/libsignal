@@ -69,7 +69,7 @@ class MessageBackupTests: TestCaseBase {
         let backup = try ComparableBackup(purpose: .remoteBackup, length: UInt64(bytes.count), stream: SignalInputStreamAdapter(bytes))
         let comparableString = backup.comparableString()
 
-        let expected = String(decoding: readResource(forName: "canonical-backup.expected.json"), as: UTF8.self)
+        let expected = String(data: readResource(forName: "canonical-backup.expected.json"), encoding: .utf8)!
         XCTAssertEqual(comparableString, expected)
     }
 #endif

@@ -91,8 +91,10 @@ public struct ChatResponse: Equatable {
                 fatalError("header returned without colon")
             }
             let nameCount = UnsafePointer(colonPtr) - rawHeader
-            let name = UnsafeBufferPointer(start: rawHeader, count: nameCount).withMemoryRebound(to: UInt8.self) {
-                String(decoding: $0, as: UTF8.self)
+            guard let name = UnsafeBufferPointer(start: rawHeader, count: nameCount).withMemoryRebound(to: UInt8.self, {
+                String(bytes: $0, encoding: .utf8)
+            }) else {
+                fatalError("non-UTF-8 header name not rejected by Rust")
             }
             let value = String(cString: colonPtr + 1)
             return (name, value)
