@@ -9,7 +9,7 @@ env:
   CARGO_TERM_COLOR: always
   NDK_VERSION: 27.0.12077973
   RUST_BACKTRACE: 1
-  LIBSIGNAL_MINIMUM_SUPPORTED_RUST_VERSION: 1.72
+  LIBSIGNAL_MINIMUM_SUPPORTED_RUST_VERSION: 1.75
   # For dev builds, include limited debug info in the output. See
   # https://doc.rust-lang.org/cargo/reference/profiles.html#debug
   CARGO_PROFILE_DEV_DEBUG: limited

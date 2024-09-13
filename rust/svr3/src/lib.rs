@@ -52,8 +52,7 @@ fn arr_xor(from: &[u8], into: &mut [u8]) {
 pub struct Query4 {}
 
 impl Query4 {
-    // Using `impl Iterator<...>` makes libsignal-net fail to build in Rust 1.72
-    pub fn requests() -> std::iter::Repeat<Vec<u8>> {
+    pub fn requests() -> impl Iterator<Item = Vec<u8>> {
         std::iter::repeat(
             svr4::Request4 {
                 inner: Some(svr4::request4::Inner::Query(svr4::request4::Query {})),
@@ -85,8 +84,7 @@ impl Query4 {
 pub struct Remove4 {}
 
 impl Remove4 {
-    // Using `impl Iterator<...>` makes libsignal-net fail to build in Rust 1.72
-    pub fn requests() -> std::iter::Repeat<Vec<u8>> {
+    pub fn requests() -> impl Iterator<Item = Vec<u8>> {
         std::iter::repeat(
             svr4::Request4 {
                 inner: Some(svr4::request4::Inner::Remove(svr4::request4::Remove {})),
