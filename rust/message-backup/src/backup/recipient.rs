@@ -58,6 +58,8 @@ pub enum RecipientError {
     InvalidCallLink(#[from] CallLinkError),
     /// contact has invalid username
     InvalidContactUsername,
+    /// DistributionList for My Story should not be deleted
+    CannotDeleteMyStory,
     /// DistributionList.item is a oneof but is empty
     DistributionListItemMissing,
     /// distribution list member {0:?} is unknown
@@ -414,6 +416,8 @@ impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R>>
             special_fields: _,
         } = value;
 
+        const MY_STORY_UUID: Uuid = Uuid::nil();
+
         let distribution_id = Uuid::from_bytes(
             distributionId
                 .try_into()
@@ -423,6 +427,10 @@ impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R>>
         Ok(
             match item.ok_or(RecipientError::DistributionListItemMissing)? {
                 proto::distribution_list_item::Item::DeletionTimestamp(deletion_timestamp) => {
+                    if distribution_id == MY_STORY_UUID {
+                        return Err(RecipientError::CannotDeleteMyStory);
+                    }
+
                     let at = Timestamp::from_millis(
                         deletion_timestamp,
                         "DistributionList.deletionTimestamp",
@@ -461,7 +469,6 @@ impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R>>
                         })
                         .try_collect()?;
 
-                    const MY_STORY_UUID: Uuid = Uuid::nil();
                     let privacy_mode = match (
                         privacyMode.enum_value_or_default(),
                         distribution_id == MY_STORY_UUID,
@@ -510,6 +517,7 @@ mod test {
     use super::*;
     use crate::backup::method::Store;
     use crate::backup::testutil::TestContext;
+    use crate::backup::time::testutil::MillisecondsSinceEpoch;
 
     impl proto::Recipient {
         pub(crate) const TEST_ID: u64 = TestContext::SELF_ID.0;
@@ -741,6 +749,14 @@ mod test {
         x.distributionId = proto::DistributionListItem::TEST_CUSTOM_UUID.into();
         x.mut_distributionList().privacyMode = proto::distribution_list::PrivacyMode::ONLY_WITH.into();
     } => Ok(()); "valid_privacy_mode_for_custom_story")]
+    #[test_case(
+        |x| x.set_deletionTimestamp(MillisecondsSinceEpoch::TEST_VALUE.0) => Err(RecipientError::CannotDeleteMyStory);
+        "deletion"
+    )]
+    #[test_case(|x| {
+        x.distributionId = proto::DistributionListItem::TEST_CUSTOM_UUID.into();
+        x.set_deletionTimestamp(MillisecondsSinceEpoch::TEST_VALUE.0);
+    } => Ok(()); "valid_deletion")]
     fn destination_distribution_list(
         modifier: fn(&mut proto::DistributionListItem),
     ) -> Result<(), RecipientError> {
