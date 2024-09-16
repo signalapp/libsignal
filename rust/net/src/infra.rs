@@ -338,13 +338,14 @@ pub(crate) mod test {
         use derive_where::derive_where;
         use displaydoc::Display;
         use tokio::io::DuplexStream;
-        use tokio_util::sync::CancellationToken;
         use warp::{Filter, Reply};
 
         use crate::infra::connection_manager::{ConnectionManager, ErrorClass, ErrorClassifier};
         use crate::infra::errors::{LogSafeDisplay, TransportConnectError};
         use crate::infra::host::Host;
-        use crate::infra::service::{ServiceConnector, ServiceInitializer, ServiceState};
+        use crate::infra::service::{
+            CancellationToken, ServiceConnector, ServiceInitializer, ServiceState,
+        };
         use crate::infra::{
             Alpn, ConnectionInfo, DnsSource, RouteType, StreamAndInfo, TransportConnectionParams,
             TransportConnector,

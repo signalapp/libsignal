@@ -9,19 +9,19 @@ use std::time::Duration;
 
 use async_trait::async_trait;
 use derive_where::derive_where;
+use futures_util::FutureExt;
 use http::header::ToStrError;
 use http::status::StatusCode;
 use prost::Message;
 use tokio::sync::{mpsc, oneshot, Mutex};
 use tokio::time::Instant;
 use tokio_tungstenite::WebSocketStream;
-use tokio_util::sync::CancellationToken;
 
 use crate::chat::{
     ChatMessageType, ChatService, ChatServiceError, MessageProto, RemoteAddressInfo, Request,
     RequestProto, Response, ResponseProto,
 };
-use crate::infra::service::ServiceConnector;
+use crate::infra::service::{CancellationReason, CancellationToken, ServiceConnector};
 use crate::infra::ws::{
     NextOrClose, TextOrBinary, WebSocketClient, WebSocketClientConnector, WebSocketClientReader,
     WebSocketClientWriter, WebSocketConnectError, WebSocketServiceError,
@@ -222,15 +222,25 @@ async fn reader_task<S: AsyncDuplexStream + 'static>(
             Ok(NextOrClose::Next(TextOrBinary::Binary(data))) => data,
             Ok(NextOrClose::Next(TextOrBinary::Text(_))) => {
                 log::info!("Text frame received on chat websocket");
-                service_cancellation.cancel();
+                service_cancellation.cancel(CancellationReason::ProtocolError);
                 break ChatServiceError::UnexpectedFrameReceived;
             }
             Ok(NextOrClose::Close(_)) => {
-                service_cancellation.cancel();
+                if service_cancellation.cancelled().now_or_never()
+                    == Some(CancellationReason::ExplicitDisconnect)
+                {
+                    break ChatServiceError::ServiceIntentionallyDisconnected;
+                }
+                service_cancellation.cancel(CancellationReason::RemoteClose);
                 break WebSocketServiceError::ChannelClosed.into();
             }
             Err(e) => {
-                service_cancellation.cancel();
+                if service_cancellation.cancelled().now_or_never()
+                    == Some(CancellationReason::ExplicitDisconnect)
+                {
+                    break ChatServiceError::ServiceIntentionallyDisconnected;
+                }
+                service_cancellation.cancel(CancellationReason::ServiceError);
                 break e;
             }
         };
@@ -242,7 +252,7 @@ async fn reader_task<S: AsyncDuplexStream + 'static>(
                 let server_request = match ServerEvent::new(req, ws_client_writer.clone()) {
                     Ok(server_request) => server_request,
                     Err(e) => {
-                        service_cancellation.cancel();
+                        service_cancellation.cancel(CancellationReason::ProtocolError);
                         break e;
                     }
                 };
@@ -252,7 +262,7 @@ async fn reader_task<S: AsyncDuplexStream + 'static>(
                 let request_send_elapsed = request_send_start.elapsed();
 
                 if delivery_result.is_err() {
-                    service_cancellation.cancel();
+                    service_cancellation.cancel(CancellationReason::RemoteClose);
                     break ChatServiceError::FailedToPassMessageToIncomingChannel;
                 }
 
@@ -287,7 +297,7 @@ async fn reader_task<S: AsyncDuplexStream + 'static>(
                 }
             }
             Err(e) => {
-                service_cancellation.cancel();
+                service_cancellation.cancel(CancellationReason::ProtocolError);
                 break e;
             }
         }
@@ -296,7 +306,7 @@ async fn reader_task<S: AsyncDuplexStream + 'static>(
     _ = incoming_tx.send(ServerEvent::Stopped(error)).await;
 
     // before terminating the task, marking channel as inactive
-    service_cancellation.cancel();
+    service_cancellation.cancel(CancellationReason::RemoteClose);
 
     // Clear the pending messages map. These requests don't wait on the service status just in case
     // a response comes in late; dropping the response senders is how we cancel them.
@@ -362,7 +372,8 @@ where
     }
 
     async fn disconnect(&self) {
-        self.service_cancellation.cancel()
+        self.service_cancellation
+            .cancel(CancellationReason::ExplicitDisconnect)
     }
 }
 
@@ -446,6 +457,7 @@ mod test {
         ChatOverWebSocketServiceConnector, ChatServiceError, RequestId, ServerEvent,
     };
     use crate::chat::{ChatMessageType, ChatService, MessageProto, ResponseProto};
+    use crate::infra::service::CancellationReason;
     use crate::infra::test::shared::{
         InMemoryWarpConnector, NoReconnectService, TestError, TIMEOUT_DURATION,
     };
@@ -593,7 +605,7 @@ mod test {
         // now we're disconnecting manually in which case we expect a `Stopped` event
         // with `ChatServiceError::WebSocket(WebSocketServiceError::ChannelClosed)` error
         let service_status = ws_chat.service_status().expect("some status");
-        service_status.cancel();
+        service_status.cancel(CancellationReason::ProtocolError);
         service_status.cancelled().await;
         let event = incoming_rx.recv().await;
         assert_matches!(

@@ -11,7 +11,6 @@ use async_trait::async_trait;
 use displaydoc::Display;
 use tokio::sync::Mutex;
 use tokio::time::{timeout_at, Instant};
-use tokio_util::sync::CancellationToken;
 
 use crate::chat::RemoteAddressInfo;
 use crate::infra::connection_manager::{
@@ -42,6 +41,18 @@ pub(crate) enum ServiceState<T, CE> {
     /// Last connection attempt timed out.
     ConnectionTimedOut,
 }
+
+mod cancel_token;
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) enum CancellationReason {
+    ExplicitDisconnect,
+    ServiceError,
+    RemoteClose,
+    ProtocolError,
+}
+
+pub(crate) type CancellationToken = cancel_token::CancellationToken<CancellationReason>;
 
 /// Creates connections to a "service" representing a remote resource accessible over HTTPS.
 ///
@@ -398,7 +409,7 @@ where
     pub(crate) async fn disconnect(&self) {
         let mut guard = self.data.state.lock().await;
         if let ServiceState::Active(_, service_status) = &*guard {
-            service_status.cancel();
+            service_status.cancel(CancellationReason::ExplicitDisconnect);
         }
         *guard = ServiceState::Inactive;
         log::info!("service disconnected");

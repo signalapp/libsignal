@@ -174,15 +174,22 @@ describe('chat service api', () => {
       }
     });
 
-    it('can connect unauthenticated', async () => {
-      const net = new Net(Environment.Staging, userAgent);
+    const connectChatUnauthenticated = async (net: Net) => {
+      const onInterrupted = sinon.promise();
       const listener = {
-        onConnectionInterrupted: sinon.stub(),
+        onConnectionInterrupted: (...args: [unknown]) =>
+          onInterrupted.resolve(args),
       };
       const chatService = net.newUnauthenticatedChatService(listener);
       await chatService.connect();
       await chatService.disconnect();
-      expect(listener.onConnectionInterrupted).to.have.been.calledOnce;
+      await onInterrupted;
+      expect(onInterrupted.resolvedValue).to.eql([null]);
+    };
+
+    it('can connect unauthenticated', async () => {
+      const net = new Net(Environment.Staging, userAgent);
+      await connectChatUnauthenticated(net);
     }).timeout(10000);
 
     it('can connect through a proxy server', async () => {
@@ -193,14 +200,7 @@ describe('chat service api', () => {
       const net = new Net(Environment.Production, userAgent);
       const [host = PROXY_SERVER, port = '443'] = PROXY_SERVER.split(':', 2);
       net.setProxy(host, parseInt(port, 10));
-
-      const listener = {
-        onConnectionInterrupted: sinon.stub(),
-      };
-      const chatService = net.newUnauthenticatedChatService(listener);
-      await chatService.connect();
-      await chatService.disconnect();
-      expect(listener.onConnectionInterrupted).to.have.been.calledOnce;
+      await connectChatUnauthenticated(net);
     }).timeout(10000);
   });
 

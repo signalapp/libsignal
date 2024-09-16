@@ -19,14 +19,13 @@ use http::uri::PathAndQuery;
 use tokio::sync::Mutex;
 use tokio::time::Instant;
 use tokio_tungstenite::WebSocketStream;
-use tokio_util::sync::CancellationToken;
 use tungstenite::handshake::client::generate_key;
 use tungstenite::protocol::CloseFrame;
 use tungstenite::{http, Message};
 
 use crate::infra::errors::LogSafeDisplay;
 use crate::infra::host::Host;
-use crate::infra::service::ServiceConnector;
+use crate::infra::service::{CancellationReason, CancellationToken, ServiceConnector};
 use crate::infra::ws::error::{HttpFormatError, ProtocolError, SpaceError};
 use crate::infra::{
     Alpn, AsyncDuplexStream, ConnectionInfo, ConnectionParams, StreamAndInfo, TransportConnector,
@@ -301,7 +300,8 @@ where
                     Message::Binary(b) => return Ok(NextOrClose::Next(b.into())),
                     Message::Ping(_) | Message::Pong(_) => continue,
                     Message::Close(close_frame) => {
-                        self.service_cancellation.cancel();
+                        self.service_cancellation
+                            .cancel(CancellationReason::RemoteClose);
                         return Ok(NextOrClose::Close(close_frame));
                     }
                     Message::Frame(_) => unreachable!("only for sending"),
@@ -326,7 +326,7 @@ where
     }
     let result = f().await;
     if result.is_err() {
-        service_status.cancel();
+        service_status.cancel(CancellationReason::ServiceError);
     }
     result.map_err(Into::into)
 }

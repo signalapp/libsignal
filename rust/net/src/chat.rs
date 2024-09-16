@@ -571,7 +571,7 @@ pub(crate) mod test {
         use crate::infra::connection_manager::SingleRouteThrottlingConnectionManager;
         use crate::infra::errors::LogSafeDisplay;
         use crate::infra::host::Host;
-        use crate::infra::service::{ServiceConnector, ServiceState};
+        use crate::infra::service::{CancellationReason, ServiceConnector, ServiceState};
         use crate::infra::test::shared::{NoReconnectService, TIMEOUT_DURATION};
         use crate::infra::{ConnectionParams, RouteType, TransportConnectionParams};
         use crate::utils::ObservableEvent;
@@ -603,7 +603,7 @@ pub(crate) mod test {
 
             async fn disconnect(&self) {
                 if let ServiceState::Active(_, status) = &*self.inner {
-                    status.cancel()
+                    status.cancel(CancellationReason::ExplicitDisconnect)
                 }
             }
         }
