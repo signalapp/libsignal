@@ -50,6 +50,8 @@ pub enum RecipientError {
     ContactRegistrationUnknown,
     /// distribution list has privacy mode UNKNOWN
     DistributionListPrivacyUnknown,
+    /// distribution list has privacy mode {0:?} but is not "My Story"
+    DistributionListPrivacyInvalid(proto::distribution_list::PrivacyMode),
     /// distribution list has members but has privacy ALL
     DistributionListPrivacyAllWithNonemptyMembers,
     /// invalid call link: {0}
@@ -459,23 +461,30 @@ impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R>>
                         })
                         .try_collect()?;
 
-                    let privacy_mode = match privacyMode.enum_value_or_default() {
-                        proto::distribution_list::PrivacyMode::UNKNOWN => {
+                    const MY_STORY_UUID: Uuid = Uuid::nil();
+                    let privacy_mode = match (
+                        privacyMode.enum_value_or_default(),
+                        distribution_id == MY_STORY_UUID,
+                    ) {
+                        (proto::distribution_list::PrivacyMode::UNKNOWN, _) => {
                             return Err(RecipientError::DistributionListPrivacyUnknown)
                         }
-                        proto::distribution_list::PrivacyMode::ONLY_WITH => {
+                        (proto::distribution_list::PrivacyMode::ONLY_WITH, _) => {
                             PrivacyMode::OnlyWith(members)
                         }
-                        proto::distribution_list::PrivacyMode::ALL_EXCEPT => {
+                        (proto::distribution_list::PrivacyMode::ALL_EXCEPT, true) => {
                             PrivacyMode::AllExcept(members)
                         }
-                        proto::distribution_list::PrivacyMode::ALL => {
+                        (proto::distribution_list::PrivacyMode::ALL, true) => {
                             if !members.is_empty() {
                                 return Err(
                                     RecipientError::DistributionListPrivacyAllWithNonemptyMembers,
                                 );
                             }
                             PrivacyMode::All
+                        }
+                        (privacy, false) => {
+                            return Err(RecipientError::DistributionListPrivacyInvalid(privacy));
                         }
                     };
 
@@ -551,10 +560,10 @@ mod test {
     }
 
     impl proto::DistributionListItem {
-        const TEST_UUID: [u8; 16] = [0x99; 16];
+        const TEST_CUSTOM_UUID: [u8; 16] = [0x99; 16];
         fn test_data() -> Self {
             Self {
-                distributionId: Self::TEST_UUID.into(),
+                distributionId: Uuid::nil().into(),
                 item: Some(proto::distribution_list_item::Item::DistributionList(
                     proto::DistributionList {
                         privacyMode: proto::distribution_list::PrivacyMode::ALL_EXCEPT.into(),
@@ -688,7 +697,7 @@ mod test {
         assert_eq!(
             Destination::<Store>::try_from_with(recipient, &TestContext::default()),
             Ok(Destination::DistributionList(DistributionListItem::List {
-                distribution_id: Uuid::from_bytes(proto::DistributionListItem::TEST_UUID),
+                distribution_id: Uuid::nil(),
                 privacy_mode: PrivacyMode::AllExcept(
                     vec![TestContext::contact_recipient().clone()].into()
                 ),
@@ -701,7 +710,7 @@ mod test {
     const UNKNOWN_RECIPIENT_ID: RecipientId = RecipientId(9999999999);
 
     #[test_case(
-        |x| x.distributionId = vec![0x55; proto::DistributionListItem::TEST_UUID.len() * 2] => Err(RecipientError::InvalidDistributionId);
+        |x| x.distributionId = vec![0x55; 50] => Err(RecipientError::InvalidDistributionId);
         "invalid_distribution_id"
     )]
     #[test_case(
@@ -724,6 +733,14 @@ mod test {
         Err(RecipientError::DistributionListPrivacyAllWithNonemptyMembers);
         "privacy_mode_all_with_nonempty_members"
     )]
+    #[test_case(
+        |x| x.distributionId = proto::DistributionListItem::TEST_CUSTOM_UUID.into() => Err(RecipientError::DistributionListPrivacyInvalid(proto::distribution_list::PrivacyMode::ALL_EXCEPT));
+        "privacy_mode_for_custom_story"
+    )]
+    #[test_case(|x| {
+        x.distributionId = proto::DistributionListItem::TEST_CUSTOM_UUID.into();
+        x.mut_distributionList().privacyMode = proto::distribution_list::PrivacyMode::ONLY_WITH.into();
+    } => Ok(()); "valid_privacy_mode_for_custom_story")]
     fn destination_distribution_list(
         modifier: fn(&mut proto::DistributionListItem),
     ) -> Result<(), RecipientError> {
