@@ -2,17 +2,15 @@
 // Copyright 2024 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
-//! An example program demonstrating the backup and restore capabilities of a built-in Svr3Env.
+//! An integration test validating the availability and proper functioning of a
+//! built-in Svr3Env pointing at the staging deployment.
 //!
-//! One would need to provide a valid auth secret value used to authenticate to the enclave,
-//! as well as the password that will be used to protect the data being stored. Since the
-//! actual stored secret data needs to be exactly 32 bytes long, it is generated randomly
-//! at each invocation instead of being passed via the command line.
+//! A valid auth secret value used to authenticate to the enclave needs to be
+//! provided in LIBSIGNAL_TESTING_ENCLAVE_SECRET environment variable.
 
 use assert_matches::assert_matches;
 use async_trait::async_trait;
 use base64::prelude::{Engine, BASE64_STANDARD};
-use clap::Parser;
 use colored::Colorize as _;
 use libsignal_net::auth::Auth;
 use libsignal_net::enclave::PpssSetup;
@@ -24,15 +22,7 @@ use libsignal_net::svr3::{Error, OpaqueMaskedShareSet};
 use nonzero_ext::nonzero;
 use rand_core::{CryptoRngCore, OsRng, RngCore};
 
-#[derive(Parser, Debug)]
-struct Args {
-    /// base64 encoding of the auth secret for enclaves
-    #[arg(long)]
-    enclave_secret: Option<String>,
-    /// Password to be used to protect the data
-    #[arg(long)]
-    password: String,
-}
+const PASSWORD: &str = "pA$$w0Rd";
 
 struct Svr3Client {
     env: Svr3Env<'static>,
@@ -51,17 +41,15 @@ impl Svr3Connect for Svr3Client {
     }
 }
 
-#[tokio::main]
-async fn main() {
+#[tokio::test]
+async fn svr3_integration() {
     init_logger();
-    let args = Args::parse();
 
-    let enclave_secret: [u8; 32] = {
-        let b64 = &args
-            .enclave_secret
-            .or_else(|| std::env::var("LIBSIGNAL_TESTING_ENCLAVE_SECRET").ok())
-            .expect("Enclave secret is not set");
-        parse_auth_secret(b64)
+    let Some(enclave_secret) = get_enclave_secret() else {
+        println!(
+            "LIBSIGNAL_TESTING_ENCLAVE_SECRET environment variable is not set. The test will be ignored."
+        );
+        return;
     };
 
     let mut rng = OsRng;
@@ -84,7 +72,7 @@ async fn main() {
 
     let share_set_bytes = {
         let opaque_share_set = client
-            .backup(&args.password, secret, tries, &mut rng)
+            .backup(PASSWORD, secret, tries, &mut rng)
             .await
             .expect("can multi backup");
         opaque_share_set.serialize().expect("can serialize")
@@ -96,7 +84,7 @@ async fn main() {
     {
         println!("{}", "Restoring before rotation...".cyan());
         let restored = client
-            .restore(&args.password, opaque_share_set.clone(), &mut rng)
+            .restore(PASSWORD, opaque_share_set.clone(), &mut rng)
             .await
             .expect("can multi restore");
         assert_eq!(secret, restored.value);
@@ -118,10 +106,12 @@ async fn main() {
     };
 
     println!("{}", "Restoring after rotation...".cyan());
-    let restored = client
-        .restore(&args.password, opaque_share_set.clone(), &mut rng)
-        .await
-        .expect("can multi restore");
+    let restored = {
+        client
+            .restore(PASSWORD, opaque_share_set.clone(), &mut rng)
+            .await
+            .expect("can multi restore")
+    };
     assert_eq!(secret, restored.value);
     println!(
         "{}: {}",
@@ -140,9 +130,7 @@ async fn main() {
     client.remove().await.expect("can remove");
     // The next attempt to restore should fail
     {
-        let failed_restore_result = client
-            .restore(&args.password, opaque_share_set.clone(), &mut rng)
-            .await;
+        let failed_restore_result = client.restore(PASSWORD, opaque_share_set, &mut rng).await;
         assert_matches!(failed_restore_result, Err(Error::DataMissing));
     }
     println!("{}.", "Done".green());
@@ -164,4 +152,10 @@ fn parse_auth_secret(b64: &str) -> [u8; 32] {
 
 fn init_logger() {
     let _ = env_logger::builder().is_test(true).try_init();
+}
+
+fn get_enclave_secret() -> Option<[u8; 32]> {
+    std::env::var("LIBSIGNAL_TESTING_ENCLAVE_SECRET")
+        .map(|b64| parse_auth_secret(&b64))
+        .ok()
 }

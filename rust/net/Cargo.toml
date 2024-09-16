@@ -86,15 +86,15 @@ tokio = { workspace = true, features = [
 warp = { version = "0.3.6", features = ["tls"] }
 
 [[example]]
-name = "svr3"
-required-features = ["test-support"]
-
-[[example]]
 name = "svr3_prop_test"
 required-features = ["test-support"]
 
 [[example]]
 name = "chat_smoke_test"
+required-features = ["test-support"]
+
+[[test]]
+name = "svr3"
 required-features = ["test-support"]
 
 [[test]]
