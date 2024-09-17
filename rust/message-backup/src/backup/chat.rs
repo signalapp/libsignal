@@ -69,6 +69,8 @@ pub enum ChatError {
     NoRecipient(RecipientId),
     /// cannot have a chat with recipient {0:?}, a {1:?}
     InvalidRecipient(RecipientId, DestinationKind),
+    /// chat with {0:?} has an expirationTimerMs but no expireTimerVersion
+    MissingExpireTimerVersion(RecipientId),
     /// chat item: {0}
     ChatItem(#[from] ChatItemError),
     /// {0:?} already appeared
@@ -172,6 +174,7 @@ pub struct ChatData<M: Method + ReferencedTypes> {
     #[serde(bound(serialize = "M::List<ChatItemData<M>>: serde::Serialize"))]
     pub items: M::List<ChatItemData<M>>,
     pub expiration_timer: Option<Duration>,
+    pub expiration_timer_version: u32,
     pub mute_until: Option<Timestamp>,
     pub style: Option<ChatStyle<M>>,
     pub pinned_order: Option<PinOrder>,
@@ -349,6 +352,7 @@ impl<
             id: _,
             recipientId,
             expirationTimerMs,
+            expireTimerVersion,
             muteUntilMs,
             pinnedOrder,
             archived,
@@ -389,9 +393,15 @@ impl<
         let mute_until = NonZeroU64::new(muteUntilMs)
             .map(|t| Timestamp::from_millis(t.get(), "Chat.muteUntilMs"));
 
+        if expiration_timer.is_some() && expireTimerVersion == 0 {
+            return Err(ChatError::MissingExpireTimerVersion(recipient_id));
+        }
+        let expiration_timer_version = expireTimerVersion;
+
         Ok(Self {
             recipient,
             expiration_timer,
+            expiration_timer_version,
             mute_until,
             items: Default::default(),
             style,
@@ -869,6 +879,7 @@ mod test {
                 recipient: TestContext::test_recipient().clone(),
                 items: Vec::default(),
                 expiration_timer: None,
+                expiration_timer_version: 0,
                 mute_until: None,
                 style: None,
                 pinned_order: None,
@@ -879,7 +890,12 @@ mod test {
         );
     }
 
-    #[test_case(|x| x.expirationTimerMs = 123456 => Ok(()); "with_expiration_timer")]
+    #[test_case(|x| {
+        x.expirationTimerMs = 123456;
+        x.expireTimerVersion = 3;
+     } => Ok(()); "with_expiration_timer")]
+    #[test_case(|x| x.expirationTimerMs = 123456 => Err(ChatError::MissingExpireTimerVersion(TestContext::SELF_ID)); "with_expiration_timer_only")]
+    #[test_case(|x| x.expireTimerVersion = 3 => Ok(()); "with_expire_timer_version_only")]
     #[test_case(|x| x.muteUntilMs = MillisecondsSinceEpoch::TEST_VALUE.0 => Ok(()); "with mute until")]
     #[test_case(
         |x| x.pinnedOrder = TestContext::DUPLICATE_PINNED_ORDER.0.get() =>

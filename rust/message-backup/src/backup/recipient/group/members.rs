@@ -4,7 +4,6 @@
 //
 
 use libsignal_core::{Aci, ServiceId, WrongKindOfServiceIdError};
-use zkgroup::ProfileKeyBytes;
 
 use super::GroupError;
 use crate::backup::serialize::{self, SerializeOrder};
@@ -23,8 +22,6 @@ pub struct GroupMember {
     #[serde(serialize_with = "serialize::service_id_as_string")]
     pub user_id: Aci,
     pub role: Role,
-    #[serde(with = "hex")]
-    pub profile_key: ProfileKeyBytes,
     pub joined_at_version: u32,
     pub(super) _limit_construction_to_module: (),
 }
@@ -42,7 +39,6 @@ impl TryFrom<proto::group::Member> for GroupMember {
         let proto::group::Member {
             userId,
             role,
-            profileKey,
             joinedAtVersion,
             special_fields: _,
         } = value;
@@ -61,14 +57,11 @@ impl TryFrom<proto::group::Member> for GroupMember {
             proto::group::member::Role::DEFAULT => Role::Default,
             proto::group::member::Role::ADMINISTRATOR => Role::Administrator,
         };
-        let profile_key = ProfileKeyBytes::try_from(profileKey)
-            .map_err(|_| GroupError::MemberInvalidProfileKey)?;
         let joined_at_version = joinedAtVersion;
 
         Ok(GroupMember {
             user_id,
             role,
-            profile_key,
             joined_at_version,
             _limit_construction_to_module: (),
         })
@@ -108,7 +101,6 @@ impl TryFrom<proto::group::MemberPendingProfileKey> for GroupMemberPendingProfil
         let proto::group::Member {
             userId,
             role,
-            profileKey,
             joinedAtVersion,
             special_fields: _,
         } = member
@@ -125,9 +117,6 @@ impl TryFrom<proto::group::MemberPendingProfileKey> for GroupMemberPendingProfil
             proto::group::member::Role::DEFAULT => Role::Default,
             proto::group::member::Role::ADMINISTRATOR => Role::Administrator,
         };
-        if !profileKey.is_empty() {
-            return Err(GroupError::MemberPendingProfileKeyHasProfileKey);
-        }
         let joined_at_version = joinedAtVersion;
 
         let added_by_user_id = ServiceId::parse_from_service_id_binary(&addedByUserId)
@@ -162,8 +151,6 @@ impl TryFrom<proto::group::MemberPendingProfileKey> for GroupMemberPendingProfil
 pub struct GroupMemberPendingAdminApproval {
     #[serde(serialize_with = "serialize::service_id_as_string")]
     pub user_id: Aci,
-    #[serde(with = "hex")]
-    pub profile_key: ProfileKeyBytes,
     pub timestamp: Timestamp,
     pub(super) _limit_construction_to_module: (),
 }
@@ -180,7 +167,6 @@ impl TryFrom<proto::group::MemberPendingAdminApproval> for GroupMemberPendingAdm
     fn try_from(member: proto::group::MemberPendingAdminApproval) -> Result<Self, Self::Error> {
         let proto::group::MemberPendingAdminApproval {
             userId,
-            profileKey,
             timestamp,
             special_fields: _,
         } = member;
@@ -196,13 +182,10 @@ impl TryFrom<proto::group::MemberPendingAdminApproval> for GroupMemberPendingAdm
                     found: e.actual,
                 },
             )?;
-        let profile_key = ProfileKeyBytes::try_from(profileKey)
-            .map_err(|_| GroupError::MemberInvalidProfileKey)?;
         let timestamp = Timestamp::from_millis(timestamp, "MemberPendingAdminApproval");
 
         Ok(GroupMemberPendingAdminApproval {
             user_id,
-            profile_key,
             timestamp,
             _limit_construction_to_module: (),
         })
@@ -262,7 +245,6 @@ mod tests {
             Self {
                 userId: proto::Contact::TEST_ACI.to_vec(),
                 role: proto::group::member::Role::DEFAULT.into(),
-                profileKey: proto::Contact::TEST_PROFILE_KEY.to_vec(),
                 joinedAtVersion: 1,
                 ..Default::default()
             }
@@ -274,7 +256,6 @@ mod tests {
             Self {
                 user_id: Aci::from_uuid_bytes(proto::Contact::TEST_ACI),
                 role: Role::Default,
-                profile_key: proto::Contact::TEST_PROFILE_KEY,
                 joined_at_version: 1,
                 _limit_construction_to_module: (),
             }
@@ -293,7 +274,6 @@ mod tests {
     #[test_case(|x| x.userId = vec![] => Err(GroupError::MemberInvalidServiceId { which: "member" }); "empty userId")]
     #[test_case(|x| x.role = proto::group::member::Role::ADMINISTRATOR.into() => Ok(()); "administrator")]
     #[test_case(|x| x.role = proto::group::member::Role::UNKNOWN.into() => Err(GroupError::MemberRoleUnknown); "role unknown")]
-    #[test_case(|x| x.profileKey = vec![] => Err(GroupError::MemberInvalidProfileKey); "empty profileKey")]
     fn member(modifier: impl FnOnce(&mut proto::group::Member)) -> Result<(), GroupError> {
         let mut member = proto::group::Member::test_data();
         modifier(&mut member);
@@ -305,11 +285,7 @@ mod tests {
 
         pub(crate) fn test_data() -> Self {
             Self {
-                member: Some(proto::group::Member {
-                    profileKey: vec![],
-                    ..proto::group::Member::test_data()
-                })
-                .into(),
+                member: Some(proto::group::Member::test_data()).into(),
                 timestamp: MillisecondsSinceEpoch::TEST_VALUE.0,
                 addedByUserId: Self::INVITER_ACI.to_vec(),
                 ..Default::default()
@@ -348,7 +324,6 @@ mod tests {
     #[test_case(|x| x.member.as_mut().unwrap().userId = vec![] => Err(GroupError::MemberInvalidServiceId { which: "invited member" }); "empty userId")]
     #[test_case(|x| x.member.as_mut().unwrap().role = proto::group::member::Role::ADMINISTRATOR.into() => Ok(()); "administrator")]
     #[test_case(|x| x.member.as_mut().unwrap().role = proto::group::member::Role::UNKNOWN.into() => Err(GroupError::MemberRoleUnknown); "role unknown")]
-    #[test_case(|x| x.member.as_mut().unwrap().profileKey = proto::Contact::TEST_PROFILE_KEY.to_vec() => Err(GroupError::MemberPendingProfileKeyHasProfileKey); "valid profileKey")]
     #[test_case(|x| x.addedByUserId = Pni::from_uuid_bytes(proto::Contact::TEST_PNI).service_id_binary() => Err(GroupError::MemberInvalidAci { which: "inviter", found: ServiceIdKind::Pni }); "PNI inviter")]
     #[test_case(|x| x.addedByUserId = vec![] => Err(GroupError::MemberInvalidServiceId { which: "inviter" }); "empty inviter")]
     #[test_case(|x| x.addedByUserId = proto::Contact::TEST_ACI.to_vec() => Err(GroupError::MemberPendingProfileKeyWasInvitedBySelf); "self-invite")]
@@ -364,7 +339,6 @@ mod tests {
         pub(crate) fn test_data() -> Self {
             Self {
                 userId: proto::Contact::TEST_ACI.to_vec(),
-                profileKey: proto::Contact::TEST_PROFILE_KEY.to_vec(),
                 timestamp: MillisecondsSinceEpoch::TEST_VALUE.0,
                 ..Default::default()
             }
@@ -375,7 +349,6 @@ mod tests {
         pub(crate) fn from_proto_test_data() -> Self {
             Self {
                 user_id: Aci::from_uuid_bytes(proto::Contact::TEST_ACI),
-                profile_key: proto::Contact::TEST_PROFILE_KEY,
                 timestamp: Timestamp::test_value(),
                 _limit_construction_to_module: (),
             }
@@ -395,7 +368,6 @@ mod tests {
 
     #[test_case(|x| x.userId = Pni::from_uuid_bytes(proto::Contact::TEST_PNI).service_id_binary() => Err(GroupError::MemberInvalidAci { which: "requesting member", found: ServiceIdKind::Pni }); "PNI userId")]
     #[test_case(|x| x.userId = vec![] => Err(GroupError::MemberInvalidServiceId { which: "requesting member" }); "empty userId")]
-    #[test_case(|x| x.profileKey = vec![] => Err(GroupError::MemberInvalidProfileKey); "empty profileKey")]
     fn member_pending_admin_approval(
         modifier: impl FnOnce(&mut proto::group::MemberPendingAdminApproval),
     ) -> Result<(), GroupError> {

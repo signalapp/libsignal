@@ -113,13 +113,11 @@
             {
               "userId": "CujGyCcHTqeyJHQXIn04kA==", // Chewie's ACI
               "role": "ADMINISTRATOR",
-              "profileKey": "cM4PAiE6xclFBl2wesio4S/tpbDfZHFpYf7BBAsnZI4=",
               "joinedAtVersion": 0,
             },
             {
               "userId": "X4xWjQEZR72BqruHybcZlQ==", // Han's ACI
               "role": "ADMINISTRATOR",
-              "profileKey": "YtHHVK+Wo4nPcVpWhC3roMEDu2Tw6kYc9JpLRMq1Q94=",
               "joinedAtVersion": 0,
             },
           ],
