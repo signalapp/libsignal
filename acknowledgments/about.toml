@@ -161,6 +161,36 @@ path = "LICENSES/MIT.txt"
 checksum = "b85dcd3e453d05982552c52b5fc9e0bdd6d23c6f8e844b984a88af32570b0cc0"
 
 
+# The libcrux crates are embedded in a larger repo.
+[libcrux-intrinsics.clarify]
+license = "Apache-2.0"
+
+[[libcrux-intrinsics.clarify.git]]
+path = "LICENSE"
+checksum = "c517c468fc7f8d83319dd8b3743923f6891e0dfbaf7c57a874758c8f39b98564"
+
+[libcrux-ml-kem.clarify]
+license = "Apache-2.0"
+
+[[libcrux-ml-kem.clarify.git]]
+path = "LICENSE"
+checksum = "c517c468fc7f8d83319dd8b3743923f6891e0dfbaf7c57a874758c8f39b98564"
+
+[libcrux-platform.clarify]
+license = "Apache-2.0"
+
+[[libcrux-platform.clarify.git]]
+path = "LICENSE"
+checksum = "c517c468fc7f8d83319dd8b3743923f6891e0dfbaf7c57a874758c8f39b98564"
+
+[libcrux-sha3.clarify]
+license = "Apache-2.0"
+
+[[libcrux-sha3.clarify.git]]
+path = "LICENSE"
+checksum = "c517c468fc7f8d83319dd8b3743923f6891e0dfbaf7c57a874758c8f39b98564"
+
+
 # linkme-impl is embedded in a larger repo.
 [linkme-impl.clarify]
 license = "MIT OR Apache-2.0"
@@ -222,27 +252,13 @@ path = "LICENSE-MIT"
 checksum = "c5bbf39118b0639bf8bd391ae0d7d81f25c1cb4066e0fdae6a405b20fb7ca170"
 
 
-# The protobuf crates are embedded in a larger repo
+# protobuf-parse has an addendum for the standard Google protobufs
 [protobuf-parse.clarify]
 license = "MIT"
 
-[[protobuf-parse.clarify.git]]
+[[protobuf-parse.clarify.files]]
 path = "LICENSE.txt"
-checksum = "97647e63047ef75a82ee2928b335df94f45c87e08777dc033393c73294f3a57a"
-
-[protobuf-support.clarify]
-license = "MIT"
-
-[[protobuf-support.clarify.git]]
-path = "LICENSE.txt"
-checksum = "97647e63047ef75a82ee2928b335df94f45c87e08777dc033393c73294f3a57a"
-
-[protobuf-json-mapping.clarify]
-license = "MIT"
-
-[[protobuf-json-mapping.clarify.git]]
-path = "LICENSE.txt"
-checksum = "97647e63047ef75a82ee2928b335df94f45c87e08777dc033393c73294f3a57a"
+checksum = "ea240b0b1a772a073d2f8941f2145dd8f0b5b2d83c700107a84a1f7eb8ac7af1"
 
 
 # The rustls-platform-verifier crates are embedded in a larger repo

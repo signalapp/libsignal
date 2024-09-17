@@ -12,6 +12,8 @@ pub const DNS_FALLBACK_LOOKUP_TIMEOUTS: &[Duration] = &[
 /// and one of them produced a result, we'll wait this time interval
 /// to let the other query complete before proceeding
 pub const DNS_RESOLUTION_DELAY: Duration = Duration::from_millis(50);
+/// How long before the DNS resolver should give up on a query entirely.
+///
 /// When making a DNS query, a caller is given a result future that it may or may not
 /// await on until the result is ready (callers will likely await with a timeout).
 /// Regardless of the caller's behavior, DNS resolver will wait this time interval

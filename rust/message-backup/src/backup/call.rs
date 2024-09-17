@@ -424,7 +424,7 @@ pub(crate) mod test {
     }
 
     const TEST_CALL_LINK_ROOT_KEY: CallLinkRootKey = [b'R'; 16];
-    const TEST_CALL_LINK_ADMIN_KEY: &[u8] = &[b'A'];
+    const TEST_CALL_LINK_ADMIN_KEY: &[u8] = b"A";
     impl proto::CallLink {
         fn test_data() -> Self {
             Self {

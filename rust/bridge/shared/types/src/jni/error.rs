@@ -470,6 +470,12 @@ impl<T> HandleJniError<T> for Result<T, jni::errors::Error> {
         }
 
         self.map_err(|e| match check_error(e, env, context) {
+            // min_exhaustive_patterns was stabilized in 1.82-nightly, which made the
+            // unreachable_patterns lint much more aggressive. The lint was turned back down in
+            // 1.83-nightly and 1.82-beta, but our pinned nightly is between the two changes.
+            // We can remove the allow when we update our nightly toolchain (but we may eventually
+            // have to put it back). We can remove the entire match arm when our MSRV is 1.82+.
+            #[allow(unreachable_patterns)]
             Ok(_) => unreachable!(),
             Err(e) => e,
         })

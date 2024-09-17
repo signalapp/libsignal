@@ -171,8 +171,9 @@ impl ThrottlingConnectionManagerState {
     }
 }
 
-/// A connection manager that only attempts one route (i.e. one [ConnectionParams])
-/// but keeps track of consecutive failed attempts and after each failure waits for a duration
+/// A connection manager that only attempts one route (i.e. one [ConnectionParams]).
+///
+/// It keeps track of consecutive failed attempts and after each failure waits for a duration
 /// chosen according to [CONNECTION_ROUTE_COOLDOWN_INTERVALS] list.
 #[derive(Clone, Debug)]
 pub struct SingleRouteThrottlingConnectionManager<C = ConnectionParams> {
@@ -182,8 +183,9 @@ pub struct SingleRouteThrottlingConnectionManager<C = ConnectionParams> {
     _network_changed_subscription: Arc<EventSubscription>,
 }
 
-/// A connection manager that holds a list of [SingleRouteThrottlingConnectionManager] instances
-/// and iterates over them until it can find one that results in a successful connection attempt.
+/// A connection manager that holds a list of [SingleRouteThrottlingConnectionManager] instances.
+///
+/// It iterates over them until it can find one that results in a successful connection attempt.
 /// If none did, it will return [ConnectionAttemptOutcome::WaitUntil] with the minimum possible
 /// cooldown time (based on cooldown times returned by all throttling connection managers).
 #[derive(Clone)]

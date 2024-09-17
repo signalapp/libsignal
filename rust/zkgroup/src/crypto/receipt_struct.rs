@@ -10,7 +10,9 @@ use crate::common::sho::Sho;
 use crate::common::simple_types::{ReceiptLevel, ReceiptSerialBytes, Timestamp};
 
 /// The full set of information known by the client after receiving the credential response from
-/// the issuing server. It will all be shared with the credential presentation. Initially the
+/// the issuing server.
+///
+/// This information will all be shared with the credential presentation. Initially the
 /// client only knows the receipt_serial_bytes which is randomly generated. receipt_serial_bytes
 /// should never be shared with the issuing service in unencrypted form.
 ///

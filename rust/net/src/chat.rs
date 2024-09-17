@@ -249,7 +249,9 @@ impl<D: DelegatingChatService> ChatService for D {
         self.inner().send(msg, timeout)
     }
 
-    fn connect<'life0, 'async_trait>(&'life0 self) -> BoxFuture<Result<(), ChatServiceError>>
+    fn connect<'life0, 'async_trait>(
+        &'life0 self,
+    ) -> BoxFuture<'life0, Result<(), ChatServiceError>>
     where
         'life0: 'async_trait,
         Self: 'async_trait,
