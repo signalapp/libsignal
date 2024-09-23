@@ -25,6 +25,7 @@
     "test": "mocha --recursive dist/test --require source-map-support/register",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
     "format": "p() { prettier ${@:- --write} '**/*.{css,js,json,md,scss,ts,tsx}' ../rust/bridge/node/bin/Native.d.ts.in; }; p",
+    "format-check": "p() { prettier ${@:- --check} '**/*.{css,js,json,md,scss,ts,tsx}' ../rust/bridge/node/bin/Native.d.ts.in; }; p",
     "prepack": "cp ../acknowledgments/acknowledgments.md dist"
   },
   "dependencies": {
