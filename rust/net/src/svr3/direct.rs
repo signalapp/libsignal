@@ -5,16 +5,16 @@
 use std::time::Duration;
 
 use async_trait::async_trait;
+use libsignal_net_infra::dns::DnsResolver;
+use libsignal_net_infra::tcp_ssl::DirectConnector;
+use libsignal_net_infra::utils::ObservableEvent;
+use libsignal_net_infra::ws::DefaultStream;
+use libsignal_net_infra::TransportConnector;
 
 use crate::auth::Auth;
 use crate::enclave;
 use crate::enclave::{EnclaveEndpoint, EnclaveEndpointConnection, NewHandshake, Svr3Flavor};
-use crate::infra::dns::DnsResolver;
-use crate::infra::tcp_ssl::DirectConnector;
-use crate::infra::ws::DefaultStream;
-use crate::infra::TransportConnector;
 use crate::svr::SvrConnection;
-use crate::utils::ObservableEvent;
 
 const DIRECT_CONNECTION_TIMEOUT: Duration = Duration::from_secs(10);
 

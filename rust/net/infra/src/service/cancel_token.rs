@@ -13,17 +13,17 @@ use tokio::sync::watch::{Receiver as WatchReceiver, Sender as WatchSender};
 /// to cancel the token, the first one wins.
 #[derive_where(Clone)]
 #[derive(Debug)]
-pub(crate) struct CancellationToken<T> {
+pub struct CancellationToken<T> {
     sender: WatchSender<Option<T>>,
     receiver: WatchReceiver<Option<T>>,
 }
 
 impl<T> CancellationToken<T> {
-    pub(crate) fn new() -> Self {
+    pub fn new() -> Self {
         Self::default()
     }
 
-    pub(crate) fn is_cancelled(&self) -> bool {
+    pub fn is_cancelled(&self) -> bool {
         self.receiver.borrow().is_some()
     }
 
@@ -32,7 +32,7 @@ impl<T> CancellationToken<T> {
     /// If the token was already cancelled this has no effect. Otherwise any
     /// tasks waiting on [`Self::cancelled`] are woken up and will read the
     /// provided reason.
-    pub(crate) fn cancel(&self, reason: T) {
+    pub fn cancel(&self, reason: T) {
         self.sender.send_if_modified(|existing| {
             if existing.is_some() {
                 return false;
@@ -43,7 +43,7 @@ impl<T> CancellationToken<T> {
     }
 
     /// Waits for some token to cancel, then returns the reason.
-    pub(crate) async fn cancelled(&self) -> T
+    pub async fn cancelled(&self) -> T
     where
         T: Clone,
     {

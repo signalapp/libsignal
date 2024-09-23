@@ -7,7 +7,7 @@ use std::iter::Map;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 use std::vec::IntoIter;
 
-use crate::infra::DnsSource;
+use crate::DnsSource;
 
 #[derive(Debug, Clone)]
 pub struct LookupResult {
@@ -64,8 +64,8 @@ mod test {
 
     use const_str::ip_addr;
 
-    use crate::infra::dns::lookup_result::LookupResult;
-    use crate::infra::DnsSource;
+    use crate::dns::lookup_result::LookupResult;
+    use crate::DnsSource;
 
     #[test]
     fn lookup_result_iterates_in_the_right_order() {

@@ -12,7 +12,7 @@ use libsignal_net::enclave::EnclaveEndpointConnection;
 use libsignal_net::env::STAGING;
 use libsignal_net::infra::dns::DnsResolver;
 use libsignal_net::infra::tcp_ssl::DirectConnector;
-use libsignal_net::utils::ObservableEvent;
+use libsignal_net::infra::utils::ObservableEvent;
 use rand_core::{OsRng, RngCore};
 
 #[tokio::test]

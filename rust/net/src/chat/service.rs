@@ -7,15 +7,14 @@ use std::fmt::Debug;
 use std::time::Duration;
 
 use async_trait::async_trait;
+use libsignal_net_infra::connection_manager::{ConnectionManager, ErrorClassifier};
+use libsignal_net_infra::errors::LogSafeDisplay;
+use libsignal_net_infra::service::{RemoteAddressInfo, Service, ServiceConnector};
 use tokio::time::Instant;
 
 use crate::chat::{
-    ChatService, ChatServiceError, ChatServiceWithDebugInfo, DebugInfo, IpType, RemoteAddressInfo,
-    Request, Response,
+    ChatService, ChatServiceError, ChatServiceWithDebugInfo, DebugInfo, IpType, Request, Response,
 };
-use crate::infra::connection_manager::{ConnectionManager, ErrorClassifier};
-use crate::infra::errors::LogSafeDisplay;
-use crate::infra::service::{Service, ServiceConnector};
 
 #[async_trait]
 impl<C, M> ChatService for Service<C, M>

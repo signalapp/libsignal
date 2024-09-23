@@ -14,10 +14,10 @@ use libsignal_net::infra::dns::dns_lookup::{DnsLookup, DnsLookupRequest};
 use libsignal_net::infra::dns::dns_transport_doh::DohTransport;
 use libsignal_net::infra::dns::dns_transport_udp::UdpTransport;
 use libsignal_net::infra::host::Host;
+use libsignal_net::infra::utils::ObservableEvent;
 use libsignal_net::infra::{
     ConnectionParams, HttpRequestDecoratorSeq, RouteType, TransportConnectionParams,
 };
-use libsignal_net::utils::ObservableEvent;
 use nonzero_ext::nonzero;
 use tokio::time::Instant;
 

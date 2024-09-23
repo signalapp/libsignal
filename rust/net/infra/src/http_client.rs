@@ -11,7 +11,7 @@ use http_body_util::{BodyExt, Full, Limited};
 use hyper::client::conn::http2;
 use hyper_util::rt::{TokioExecutor, TokioIo};
 
-use crate::infra::{Alpn, ConnectionParams, StreamAndInfo, TransportConnector};
+use crate::{Alpn, ConnectionParams, StreamAndInfo, TransportConnector};
 
 #[derive(displaydoc::Display, Debug)]
 pub enum HttpError {
@@ -160,12 +160,12 @@ mod test {
     use warp::Filter as _;
 
     use super::*;
-    use crate::infra::dns::lookup_result::LookupResult;
-    use crate::infra::dns::DnsResolver;
-    use crate::infra::host::Host;
-    use crate::infra::tcp_ssl::testutil::{SERVER_CERTIFICATE, SERVER_HOSTNAME};
-    use crate::infra::tcp_ssl::DirectConnector;
-    use crate::infra::{HttpRequestDecoratorSeq, TransportConnectionParams};
+    use crate::dns::lookup_result::LookupResult;
+    use crate::dns::DnsResolver;
+    use crate::host::Host;
+    use crate::tcp_ssl::testutil::{SERVER_CERTIFICATE, SERVER_HOSTNAME};
+    use crate::tcp_ssl::DirectConnector;
+    use crate::{HttpRequestDecoratorSeq, TransportConnectionParams};
 
     const FAKE_RESPONSE: &str = "RESPONSE";
     const FAKE_RESPONSE_HEADER: (HeaderName, HeaderValue) = (
@@ -226,12 +226,12 @@ mod test {
         let client = http2_client(
             &connector,
             ConnectionParams {
-                route_type: crate::infra::RouteType::Direct,
+                route_type: crate::RouteType::Direct,
                 transport: TransportConnectionParams {
                     sni: SERVER_HOSTNAME.into(),
                     tcp_host: Host::Domain(Arc::clone(&host)),
                     port: NonZeroU16::new(server_addr.port()).unwrap(),
-                    certs: crate::infra::certs::RootCertificates::FromDer(Cow::Borrowed(
+                    certs: crate::certs::RootCertificates::FromDer(Cow::Borrowed(
                         SERVER_CERTIFICATE.cert.der(),
                     )),
                 },
@@ -299,12 +299,12 @@ mod test {
         let client = http2_client(
             &connector,
             ConnectionParams {
-                route_type: crate::infra::RouteType::Direct,
+                route_type: crate::RouteType::Direct,
                 transport: TransportConnectionParams {
                     sni: SERVER_HOSTNAME.into(),
                     tcp_host: Host::Domain(Arc::clone(&host)),
                     port: NonZeroU16::new(server_addr.port()).unwrap(),
-                    certs: crate::infra::certs::RootCertificates::FromDer(Cow::Borrowed(
+                    certs: crate::certs::RootCertificates::FromDer(Cow::Borrowed(
                         SERVER_CERTIFICATE.cert.der(),
                     )),
                 },

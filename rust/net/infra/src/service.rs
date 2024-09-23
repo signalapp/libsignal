@@ -12,12 +12,11 @@ use displaydoc::Display;
 use tokio::sync::Mutex;
 use tokio::time::{timeout_at, Instant};
 
-use crate::chat::RemoteAddressInfo;
-use crate::infra::connection_manager::{
+use crate::connection_manager::{
     ConnectionAttemptOutcome, ConnectionManager, ErrorClass, ErrorClassifier,
 };
-use crate::infra::errors::LogSafeDisplay;
-use crate::infra::{ConnectionInfo, ConnectionParams, HttpRequestDecorator};
+use crate::errors::LogSafeDisplay;
+use crate::{ConnectionInfo, ConnectionParams, HttpRequestDecorator};
 
 // A duration where, if this is all that's left on the timeout, we're more likely to fail than not.
 // Useful for debouncing repeated connection attempts.
@@ -26,7 +25,7 @@ const MINIMUM_CONNECTION_TIME: Duration = Duration::from_millis(500);
 /// For a service that needs to go through some initialization procedure
 /// before it's ready for use, this enum describes its possible states.
 #[derive(Debug)]
-pub(crate) enum ServiceState<T, CE> {
+pub enum ServiceState<T, CE> {
     /// Service was not explicitly activated.
     Inactive,
     /// Contains an instance of the service which is initialized and ready to use.
@@ -45,14 +44,19 @@ pub(crate) enum ServiceState<T, CE> {
 mod cancel_token;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub(crate) enum CancellationReason {
+pub enum CancellationReason {
     ExplicitDisconnect,
     ServiceError,
     RemoteClose,
     ProtocolError,
 }
 
-pub(crate) type CancellationToken = cancel_token::CancellationToken<CancellationReason>;
+pub type CancellationToken = cancel_token::CancellationToken<CancellationReason>;
+
+pub trait RemoteAddressInfo {
+    /// Provides information about the remote address the service is connected to
+    fn connection_info(&self) -> ConnectionInfo;
+}
 
 /// Creates connections to a "service" representing a remote resource accessible over HTTPS.
 ///
@@ -67,7 +71,7 @@ pub(crate) type CancellationToken = cancel_token::CancellationToken<Cancellation
 /// See [crate::chat::http::ChatOverHttp2ServiceConnector]
 /// and [crate::chat::ws::ChatOverWebSocketServiceConnector]
 #[async_trait]
-pub(crate) trait ServiceConnector: Clone {
+pub trait ServiceConnector: Clone {
     type Service;
     type Channel;
     type ConnectError;
@@ -109,13 +113,13 @@ where
 
 /// [`ServiceConnector`] implementation that decorates all outgoing requests.
 #[derive(Clone)]
-pub(crate) struct ServiceConnectorWithDecorator<C> {
+pub struct ServiceConnectorWithDecorator<C> {
     inner: C,
     decorator: HttpRequestDecorator,
 }
 
 impl<C: ServiceConnector> ServiceConnectorWithDecorator<C> {
-    pub(crate) fn new(inner: C, decorator: HttpRequestDecorator) -> Self {
+    pub fn new(inner: C, decorator: HttpRequestDecorator) -> Self {
         Self { inner, decorator }
     }
 }
@@ -149,7 +153,7 @@ where
 /// Combines a [`ConnectionManager`] and [`ServiceConnector`]; the former
 /// chooses the target for connecting to, and the latter describes how to
 /// establish a connection to that target.
-pub(crate) struct ServiceInitializer<C, M> {
+pub struct ServiceInitializer<C, M> {
     service_connector: C,
     connection_manager: M,
 }
@@ -162,14 +166,14 @@ where
     C::Channel: Send + Sync,
     C::ConnectError: Send + Sync + Debug + LogSafeDisplay + ErrorClassifier,
 {
-    pub(crate) fn new(service_connector: C, connection_manager: M) -> Self {
+    pub fn new(service_connector: C, connection_manager: M) -> Self {
         Self {
             service_connector,
             connection_manager,
         }
     }
 
-    pub(crate) async fn connect(&self) -> ServiceState<C::Service, C::ConnectError> {
+    pub async fn connect(&self) -> ServiceState<C::Service, C::ConnectError> {
         log::debug!("attempting a connection");
         let connection_attempt_result = self
             .connection_manager
@@ -221,12 +225,12 @@ pub(crate) struct ServiceInner<C: ServiceConnector, M> {
 /// [`Service::service`] method can be used to obtain the
 /// [`ServiceConnector::Service`] for the wrapped connector.
 #[derive(Clone)]
-pub(crate) struct Service<C: ServiceConnector, M> {
+pub struct Service<C: ServiceConnector, M> {
     data: Arc<ServiceInner<C, M>>,
 }
 
 #[derive(Debug, Display)]
-pub(crate) enum ConnectError<E: LogSafeDisplay> {
+pub enum ConnectError<E: LogSafeDisplay> {
     /// Operation timed out
     Timeout { attempts: u16 },
     /// All attempted routes failed to connect
@@ -247,7 +251,7 @@ impl<E: LogSafeDisplay> ErrorClassifier for ConnectError<E> {
 }
 
 #[derive(Debug, Display)]
-pub(crate) enum StateError {
+pub enum StateError {
     /// Service is in the inactive state
     Inactive,
     /// Service is unavailable due to the lost connection
@@ -276,7 +280,7 @@ where
     C: ServiceConnector,
     C::Service: RemoteAddressInfo,
 {
-    pub(crate) async fn connection_info(&self) -> Result<ConnectionInfo, StateError> {
+    pub async fn connection_info(&self) -> Result<ConnectionInfo, StateError> {
         self.map_service(|s| s.connection_info().clone()).await
     }
 }
@@ -289,11 +293,7 @@ where
     C::Channel: Send + Sync,
     C::ConnectError: Send + Sync + Debug + LogSafeDisplay + ErrorClassifier,
 {
-    pub(crate) fn new(
-        service_connector: C,
-        connection_manager: M,
-        connection_timeout: Duration,
-    ) -> Self {
+    pub fn new(service_connector: C, connection_manager: M, connection_timeout: Duration) -> Self {
         Self {
             data: Arc::new(ServiceInner {
                 state: Mutex::new(ServiceState::Inactive),
@@ -303,7 +303,7 @@ where
         }
     }
 
-    pub(crate) async fn connect(&self) -> Result<(), ConnectError<C::ConnectError>> {
+    pub async fn connect(&self) -> Result<(), ConnectError<C::ConnectError>> {
         self.do_connect().await
     }
 
@@ -406,7 +406,7 @@ where
         }
     }
 
-    pub(crate) async fn disconnect(&self) {
+    pub async fn disconnect(&self) {
         let mut guard = self.data.state.lock().await;
         if let ServiceState::Active(_, service_status) = &*guard {
             service_status.cancel(CancellationReason::ExplicitDisconnect);
@@ -415,7 +415,7 @@ where
         log::info!("service disconnected");
     }
 
-    pub(crate) async fn service(&self) -> Result<C::Service, StateError> {
+    pub async fn service(&self) -> Result<C::Service, StateError> {
         self.map_service(|service| service.clone()).await
     }
 }
@@ -435,18 +435,16 @@ mod test {
     use tokio::time::Instant;
 
     use super::*;
-    use crate::infra::certs::RootCertificates;
-    use crate::infra::connection_manager::SingleRouteThrottlingConnectionManager;
-    use crate::infra::host::Host;
-    use crate::infra::test::shared::{
+    use crate::certs::RootCertificates;
+    use crate::connection_manager::SingleRouteThrottlingConnectionManager;
+    use crate::host::Host;
+    use crate::testutil::{
         ClassifiableTestError, LONG_CONNECTION_TIME, NORMAL_CONNECTION_TIME, TIMEOUT_DURATION,
         TIME_ADVANCE_VALUE,
     };
-    use crate::infra::{
-        ConnectionParams, HttpRequestDecoratorSeq, RouteType, TransportConnectionParams,
-    };
     use crate::timeouts::CONNECTION_ROUTE_MAX_COOLDOWN;
     use crate::utils::{sleep_and_catch_up, ObservableEvent};
+    use crate::{ConnectionParams, HttpRequestDecoratorSeq, RouteType, TransportConnectionParams};
 
     #[derive(Clone, Debug)]
     struct TestService;
@@ -517,7 +515,7 @@ mod test {
                 sni: Arc::clone(&host),
                 tcp_host: Host::Domain(Arc::clone(&host)),
                 port: nonzero!(443u16),
-                certs: RootCertificates::Signal,
+                certs: RootCertificates::Native,
             },
             http_host: host,
             http_request_decorator: HttpRequestDecoratorSeq::default(),

@@ -10,6 +10,13 @@ use std::str::FromStr;
 
 use http::StatusCode;
 use libsignal_core::{Aci, Pni};
+use libsignal_net_infra::connection_manager::ConnectionManager;
+use libsignal_net_infra::errors::TransportConnectError;
+use libsignal_net_infra::ws::{
+    AttestedConnection, AttestedConnectionError, NextOrClose, WebSocketConnectError,
+    WebSocketServiceError,
+};
+use libsignal_net_infra::{AsyncDuplexStream, HttpBasicAuth, TransportConnector};
 use prost::Message as _;
 use thiserror::Error;
 use tokio::net::TcpStream;
@@ -18,15 +25,7 @@ use tungstenite::protocol::frame::coding::CloseCode;
 use tungstenite::protocol::CloseFrame;
 use uuid::Uuid;
 
-use crate::auth::HttpBasicAuth;
 use crate::enclave::{Cdsi, EnclaveEndpointConnection};
-use crate::infra::connection_manager::ConnectionManager;
-use crate::infra::errors::TransportConnectError;
-use crate::infra::ws::{
-    AttestedConnection, AttestedConnectionError, NextOrClose, WebSocketConnectError,
-    WebSocketServiceError,
-};
-use crate::infra::{AsyncDuplexStream, TransportConnector};
 use crate::proto::cds2::{ClientRequest, ClientResponse};
 
 trait FixedLengthSerializable {
@@ -474,6 +473,13 @@ mod test {
 
     use assert_matches::assert_matches;
     use hex_literal::hex;
+    use libsignal_net_infra::testutil::InMemoryWarpConnector;
+    use libsignal_net_infra::utils::ObservableEvent;
+    use libsignal_net_infra::ws::testutil::{
+        fake_websocket, mock_connection_info, run_attested_server, AttestedServerOutput,
+        FAKE_ATTESTATION,
+    };
+    use libsignal_net_infra::ws::WebSocketClient;
     use nonzero_ext::nonzero;
     use tungstenite::protocol::frame::coding::CloseCode;
     use tungstenite::protocol::CloseFrame;
@@ -482,13 +488,6 @@ mod test {
 
     use super::*;
     use crate::auth::Auth;
-    use crate::infra::test::shared::InMemoryWarpConnector;
-    use crate::infra::ws::testutil::{
-        fake_websocket, mock_connection_info, run_attested_server, AttestedServerOutput,
-        FAKE_ATTESTATION,
-    };
-    use crate::infra::ws::WebSocketClient;
-    use crate::utils::ObservableEvent;
 
     #[test]
     fn parse_lookup_response_entries() {

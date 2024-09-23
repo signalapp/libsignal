@@ -1,5 +1,5 @@
 //
-// Copyright 2023 Signal Messenger, LLC.
+// Copyright 2024 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
@@ -15,25 +15,27 @@ use ::http::Uri;
 use async_trait::async_trait;
 use tokio::io::{AsyncRead, AsyncWrite};
 
-use crate::infra::certs::RootCertificates;
-use crate::infra::connection_manager::{
+use crate::certs::RootCertificates;
+use crate::connection_manager::{
     MultiRouteConnectionManager, SingleRouteThrottlingConnectionManager,
 };
-use crate::infra::errors::TransportConnectError;
-use crate::infra::host::Host;
-use crate::infra::ws::WebSocketConfig;
+use crate::errors::TransportConnectError;
+use crate::host::Host;
 use crate::timeouts::{WS_KEEP_ALIVE_INTERVAL, WS_MAX_IDLE_INTERVAL};
-use crate::utils::ObservableEvent;
+use crate::utils::{basic_authorization, ObservableEvent};
+use crate::ws::WebSocketConfig;
 
 pub mod certs;
 pub mod connection_manager;
 pub mod dns;
 pub mod errors;
 pub mod host;
-mod http_client;
+pub mod http_client;
 pub mod noise;
-pub(crate) mod service;
+pub mod service;
 pub mod tcp_ssl;
+pub mod timeouts;
+pub mod utils;
 pub mod ws;
 
 #[derive(Copy, Clone, Debug)]
@@ -45,7 +47,7 @@ pub enum IpType {
 }
 
 impl IpType {
-    pub(crate) fn from_host<S>(host: &Host<S>) -> Self {
+    pub fn from_host<S>(host: &Host<S>) -> Self {
         match host {
             Host::Domain(_) => IpType::Unknown,
             Host::Ip(IpAddr::V4(_)) => IpType::V4,
@@ -79,6 +81,20 @@ impl From<HttpRequestDecorator> for HttpRequestDecoratorSeq {
 impl HttpRequestDecoratorSeq {
     pub fn add(&mut self, decorator: HttpRequestDecorator) {
         self.0.push(decorator)
+    }
+}
+
+pub trait HttpBasicAuth {
+    fn username(&self) -> &str;
+    fn password(&self) -> &str;
+}
+
+impl<T: HttpBasicAuth> From<T> for HttpRequestDecorator {
+    fn from(value: T) -> Self {
+        HttpRequestDecorator::Header(
+            http::header::AUTHORIZATION,
+            basic_authorization(value.username(), value.password()),
+        )
     }
 }
 
@@ -160,7 +176,7 @@ pub enum DnsSource {
     /// The result came from delegating to a remote resource.
     Delegated,
     /// Test-only value
-    #[cfg(test)]
+    #[cfg(any(test, feature = "testutils"))]
     Test,
 }
 
@@ -179,7 +195,7 @@ pub enum RouteType {
     /// Connection over a SOCKS proxy
     SocksProxy,
     /// Test-only value
-    #[cfg(test)]
+    #[cfg(any(test, feature = "testutils"))]
     Test,
 }
 
@@ -321,175 +337,183 @@ pub fn make_ws_config(
     }
 }
 
+#[cfg(any(test, feature = "testutils"))]
+pub mod testutil {
+    use std::fmt::Debug;
+    use std::io;
+    use std::sync::Arc;
+    use std::time::Duration;
+
+    use async_trait::async_trait;
+    use derive_where::derive_where;
+    use displaydoc::Display;
+    use tokio::io::DuplexStream;
+    use warp::{Filter, Reply};
+
+    use crate::connection_manager::{ConnectionManager, ErrorClass, ErrorClassifier};
+    use crate::errors::{LogSafeDisplay, TransportConnectError};
+    use crate::service::{CancellationToken, ServiceConnector, ServiceInitializer, ServiceState};
+    use crate::{
+        Alpn, ConnectionInfo, DnsSource, RouteType, StreamAndInfo, TransportConnectionParams,
+        TransportConnector,
+    };
+
+    #[derive(Debug, Display)]
+    pub enum TestError {
+        /// expected error
+        Expected,
+        /// unexpected error
+        Unexpected(&'static str),
+    }
+
+    impl ErrorClassifier for TestError {
+        fn classify(&self) -> ErrorClass {
+            ErrorClass::Intermittent
+        }
+    }
+
+    impl LogSafeDisplay for TestError {}
+
+    // This could be Copy, but we don't want to rely on *all* errors being Copy, or only test
+    // that case.
+    #[cfg(test)]
+    #[derive(Debug, Clone)]
+    pub(crate) struct ClassifiableTestError(pub ErrorClass);
+
+    #[cfg(test)]
+    impl ErrorClassifier for ClassifiableTestError {
+        fn classify(&self) -> ErrorClass {
+            self.0
+        }
+    }
+
+    #[cfg(test)]
+    impl std::fmt::Display for ClassifiableTestError {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            write!(f, "{:?}", self.0)
+        }
+    }
+
+    #[cfg(test)]
+    impl LogSafeDisplay for ClassifiableTestError {}
+
+    // the choice of the constant value is dictated by a vague notion of being
+    // "not too many, but also not just once or twice"
+    #[cfg(test)]
+    pub(crate) const FEW_ATTEMPTS: u16 = 3;
+
+    #[cfg(test)]
+    pub(crate) const MANY_ATTEMPTS: u16 = 1000;
+
+    pub const TIMEOUT_DURATION: Duration = Duration::from_millis(1000);
+
+    #[cfg(test)]
+    pub(crate) const NORMAL_CONNECTION_TIME: Duration = Duration::from_millis(200);
+
+    #[cfg(test)]
+    pub(crate) const LONG_CONNECTION_TIME: Duration = Duration::from_secs(10);
+
+    // we need to advance time in tests by some value not to run into the scenario
+    // of attempts starting at the same time, but also by not too much so that we
+    // don't step over the cool down time
+    #[cfg(test)]
+    pub(crate) const TIME_ADVANCE_VALUE: Duration = Duration::from_millis(5);
+
+    #[derive(Clone)]
+    pub struct InMemoryWarpConnector<F> {
+        filter: F,
+    }
+
+    impl<F> InMemoryWarpConnector<F> {
+        pub fn new(filter: F) -> Self {
+            Self { filter }
+        }
+    }
+
+    #[async_trait]
+    impl<F> TransportConnector for InMemoryWarpConnector<F>
+    where
+        F: Filter + Clone + Send + Sync + 'static,
+        F::Extract: Reply,
+    {
+        type Stream = DuplexStream;
+
+        async fn connect(
+            &self,
+            connection_params: &TransportConnectionParams,
+            _alpn: Alpn,
+        ) -> Result<StreamAndInfo<Self::Stream>, TransportConnectError> {
+            let (client, server) = tokio::io::duplex(1024);
+            let routes = self.filter.clone();
+            tokio::spawn(async {
+                let one_element_iter =
+                    futures_util::stream::iter(vec![Ok::<DuplexStream, io::Error>(server)]);
+                warp::serve(routes).run_incoming(one_element_iter).await;
+            });
+            Ok(StreamAndInfo(
+                client,
+                ConnectionInfo {
+                    route_type: RouteType::Test,
+                    dns_source: DnsSource::Test,
+                    address: connection_params.tcp_host.clone(),
+                },
+            ))
+        }
+    }
+
+    #[derive_where(Clone)]
+    pub struct NoReconnectService<C: ServiceConnector> {
+        pub inner: Arc<ServiceState<C::Service, C::ConnectError>>,
+    }
+
+    impl<C> NoReconnectService<C>
+    where
+        C: ServiceConnector + Send + Sync + 'static,
+        C::Service: Clone + Send + Sync + 'static,
+        C::Channel: Send + Sync,
+        C::ConnectError: Send + Sync + Debug + LogSafeDisplay + ErrorClassifier,
+    {
+        pub async fn start<M>(service_connector: C, connection_manager: M) -> Self
+        where
+            M: ConnectionManager + 'static,
+        {
+            let status = ServiceInitializer::new(service_connector, connection_manager)
+                .connect()
+                .await;
+            Self {
+                inner: Arc::new(status),
+            }
+        }
+
+        pub fn service_status(&self) -> Option<&CancellationToken> {
+            match &*self.inner {
+                ServiceState::Active(_, service_cancellation) => Some(service_cancellation),
+                _ => None,
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 pub(crate) mod test {
     use http::Request;
 
-    use crate::infra::HttpRequestDecorator;
+    use crate::host::Host;
     use crate::utils::basic_authorization;
+    use crate::{ConnectionInfo, DnsSource, HttpRequestDecorator, RouteType};
 
-    pub(crate) mod shared {
-        use std::fmt::Debug;
-        use std::io;
-        use std::sync::Arc;
-        use std::time::Duration;
-
-        use async_trait::async_trait;
-        use derive_where::derive_where;
-        use displaydoc::Display;
-        use tokio::io::DuplexStream;
-        use warp::{Filter, Reply};
-
-        use crate::infra::connection_manager::{ConnectionManager, ErrorClass, ErrorClassifier};
-        use crate::infra::errors::{LogSafeDisplay, TransportConnectError};
-        use crate::infra::host::Host;
-        use crate::infra::service::{
-            CancellationToken, ServiceConnector, ServiceInitializer, ServiceState,
-        };
-        use crate::infra::{
-            Alpn, ConnectionInfo, DnsSource, RouteType, StreamAndInfo, TransportConnectionParams,
-            TransportConnector,
+    #[test]
+    fn connection_info_description() {
+        let connection_info = ConnectionInfo {
+            address: Host::Domain("test.signal.org".into()),
+            dns_source: DnsSource::SystemLookup,
+            route_type: RouteType::Test,
         };
 
-        #[test]
-        fn connection_info_description() {
-            let connection_info = ConnectionInfo {
-                address: Host::Domain("test.signal.org".into()),
-                dns_source: DnsSource::SystemLookup,
-                route_type: RouteType::Test,
-            };
-
-            assert_eq!(
-                connection_info.description(),
-                "route=test;dns_source=systemlookup;ip_type=Unknown"
-            );
-        }
-
-        #[derive(Debug, Display)]
-        pub(crate) enum TestError {
-            /// expected error
-            Expected,
-            /// unexpected error
-            Unexpected(&'static str),
-        }
-
-        impl ErrorClassifier for TestError {
-            fn classify(&self) -> ErrorClass {
-                ErrorClass::Intermittent
-            }
-        }
-
-        impl LogSafeDisplay for TestError {}
-
-        // This could be Copy, but we don't want to rely on *all* errors being Copy, or only test
-        // that case.
-        #[derive(Debug, Clone)]
-        pub(crate) struct ClassifiableTestError(pub ErrorClass);
-
-        impl ErrorClassifier for ClassifiableTestError {
-            fn classify(&self) -> ErrorClass {
-                self.0
-            }
-        }
-
-        impl std::fmt::Display for ClassifiableTestError {
-            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                write!(f, "{:?}", self.0)
-            }
-        }
-
-        impl LogSafeDisplay for ClassifiableTestError {}
-
-        // the choice of the constant value is dictated by a vague notion of being
-        // "not too many, but also not just once or twice"
-        pub(crate) const FEW_ATTEMPTS: u16 = 3;
-
-        pub(crate) const MANY_ATTEMPTS: u16 = 1000;
-
-        pub(crate) const TIMEOUT_DURATION: Duration = Duration::from_millis(1000);
-
-        pub(crate) const NORMAL_CONNECTION_TIME: Duration = Duration::from_millis(200);
-
-        pub(crate) const LONG_CONNECTION_TIME: Duration = Duration::from_secs(10);
-
-        // we need to advance time in tests by some value not to run into the scenario
-        // of attempts starting at the same time, but also by not too much so that we
-        // don't step over the cool down time
-        pub(crate) const TIME_ADVANCE_VALUE: Duration = Duration::from_millis(5);
-
-        #[derive(Clone)]
-        pub(crate) struct InMemoryWarpConnector<F> {
-            filter: F,
-        }
-
-        impl<F> InMemoryWarpConnector<F> {
-            pub fn new(filter: F) -> Self {
-                Self { filter }
-            }
-        }
-
-        #[async_trait]
-        impl<F> TransportConnector for InMemoryWarpConnector<F>
-        where
-            F: Filter + Clone + Send + Sync + 'static,
-            F::Extract: Reply,
-        {
-            type Stream = DuplexStream;
-
-            async fn connect(
-                &self,
-                connection_params: &TransportConnectionParams,
-                _alpn: Alpn,
-            ) -> Result<StreamAndInfo<Self::Stream>, TransportConnectError> {
-                let (client, server) = tokio::io::duplex(1024);
-                let routes = self.filter.clone();
-                tokio::spawn(async {
-                    let one_element_iter =
-                        futures_util::stream::iter(vec![Ok::<DuplexStream, io::Error>(server)]);
-                    warp::serve(routes).run_incoming(one_element_iter).await;
-                });
-                Ok(StreamAndInfo(
-                    client,
-                    ConnectionInfo {
-                        route_type: RouteType::Test,
-                        dns_source: DnsSource::Test,
-                        address: connection_params.tcp_host.clone(),
-                    },
-                ))
-            }
-        }
-
-        #[derive_where(Clone)]
-        pub(crate) struct NoReconnectService<C: ServiceConnector> {
-            pub(crate) inner: Arc<ServiceState<C::Service, C::ConnectError>>,
-        }
-
-        impl<C> NoReconnectService<C>
-        where
-            C: ServiceConnector + Send + Sync + 'static,
-            C::Service: Clone + Send + Sync + 'static,
-            C::Channel: Send + Sync,
-            C::ConnectError: Send + Sync + Debug + LogSafeDisplay + ErrorClassifier,
-        {
-            pub(crate) async fn start<M>(service_connector: C, connection_manager: M) -> Self
-            where
-                M: ConnectionManager + 'static,
-            {
-                let status = ServiceInitializer::new(service_connector, connection_manager)
-                    .connect()
-                    .await;
-                Self {
-                    inner: Arc::new(status),
-                }
-            }
-
-            pub(crate) fn service_status(&self) -> Option<&CancellationToken> {
-                match &*self.inner {
-                    ServiceState::Active(_, service_cancellation) => Some(service_cancellation),
-                    _ => None,
-                }
-            }
-        }
+        assert_eq!(
+            connection_info.description(),
+            "route=test;dns_source=systemlookup;ip_type=Unknown"
+        );
     }
 
     #[test]

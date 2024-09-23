@@ -14,19 +14,19 @@ use oneshot_broadcast::Sender;
 use tokio::time::Instant;
 
 use super::TransportConnectionParams;
-use crate::infra::certs::RootCertificates;
-use crate::infra::dns::custom_resolver::CustomDnsResolver;
-use crate::infra::dns::dns_errors::Error;
-use crate::infra::dns::dns_lookup::{DnsLookup, DnsLookupRequest, StaticDnsMap, SystemDnsLookup};
-use crate::infra::dns::dns_transport_doh::{DohTransport, CLOUDFLARE_NS};
-use crate::infra::dns::dns_types::ResourceType;
-use crate::infra::dns::dns_utils::oneshot_broadcast::Receiver;
-use crate::infra::dns::dns_utils::{log_safe_domain, oneshot_broadcast};
-use crate::infra::dns::lookup_result::LookupResult;
-use crate::infra::host::Host;
-use crate::infra::{ConnectionParams, HttpRequestDecoratorSeq, RouteType};
+use crate::certs::RootCertificates;
+use crate::dns::custom_resolver::CustomDnsResolver;
+use crate::dns::dns_errors::Error;
+use crate::dns::dns_lookup::{DnsLookup, DnsLookupRequest, StaticDnsMap, SystemDnsLookup};
+use crate::dns::dns_transport_doh::{DohTransport, CLOUDFLARE_NS};
+use crate::dns::dns_types::ResourceType;
+use crate::dns::dns_utils::oneshot_broadcast::Receiver;
+use crate::dns::dns_utils::{log_safe_domain, oneshot_broadcast};
+use crate::dns::lookup_result::LookupResult;
+use crate::host::Host;
 use crate::timeouts::{DNS_FALLBACK_LOOKUP_TIMEOUTS, DNS_SYSTEM_LOOKUP_TIMEOUT};
 use crate::utils::{self, ObservableEvent};
+use crate::{ConnectionParams, HttpRequestDecoratorSeq, RouteType};
 
 pub mod custom_resolver;
 mod dns_errors;
@@ -302,10 +302,10 @@ mod test {
     use const_str::ip_addr;
 
     use super::*;
-    use crate::infra::dns::dns_lookup::DnsLookupRequest;
-    use crate::infra::dns::{DnsLookup, DnsResolver, Error, LookupResult, StaticDnsMap};
-    use crate::infra::DnsSource;
+    use crate::dns::dns_lookup::DnsLookupRequest;
+    use crate::dns::{DnsLookup, DnsResolver, Error, LookupResult, StaticDnsMap};
     use crate::utils::sleep_and_catch_up;
+    use crate::DnsSource;
 
     const IPV4: Ipv4Addr = ip_addr!(v4, "1.1.1.1");
     const IPV6: Ipv6Addr = ip_addr!(v6, "::1");

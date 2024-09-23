@@ -9,10 +9,10 @@ use std::pin::Pin;
 use std::task::{ready, Poll};
 
 use futures_util::{SinkExt as _, StreamExt as _};
+use libsignal_net_infra::noise::{NoiseStream, Transport};
 use snow::HandshakeState;
 
 use super::SendError;
-use crate::infra::noise::{NoiseStream, Transport};
 
 /// Future that performs a Noise handshake over a [`Transport`].
 pub(super) struct Handshaker<S> {
@@ -270,11 +270,11 @@ mod test {
 
     use assert_matches::assert_matches;
     use futures_util::FutureExt;
+    use libsignal_net_infra::noise::testutil::TestStream;
+    use libsignal_net_infra::utils::testutil::TestWaker;
     use test_case::test_case;
 
     use super::*;
-    use crate::infra::noise::testutil::TestStream;
-    use crate::utils::testutil::TestWaker;
 
     #[test_case(false; "flush")]
     #[test_case(true; "shutdown")]

@@ -171,7 +171,7 @@ impl<S: Transport + Unpin> AsyncWrite for NoiseStream<S> {
     }
 }
 
-#[cfg(test)]
+#[cfg(any(test, feature = "testutils"))]
 pub mod testutil {
     use futures_util::{Sink, Stream};
     use tokio_util::sync::PollSender;
@@ -264,7 +264,7 @@ pub mod testutil {
 
     /// Returns a future that echoes incoming payloads back to the same
     /// transport.
-    pub(crate) async fn echo_forever(
+    pub async fn echo_forever(
         mut transport: impl Transport + Unpin,
         mut server_state: snow::TransportState,
     ) {

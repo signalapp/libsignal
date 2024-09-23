@@ -23,14 +23,14 @@ use tungstenite::handshake::client::generate_key;
 use tungstenite::protocol::CloseFrame;
 use tungstenite::{http, Message};
 
-use crate::infra::errors::LogSafeDisplay;
-use crate::infra::host::Host;
-use crate::infra::service::{CancellationReason, CancellationToken, ServiceConnector};
-use crate::infra::ws::error::{HttpFormatError, ProtocolError, SpaceError};
-use crate::infra::{
+use crate::errors::LogSafeDisplay;
+use crate::host::Host;
+use crate::service::{CancellationReason, CancellationToken, ServiceConnector};
+use crate::utils::timeout;
+use crate::ws::error::{HttpFormatError, ProtocolError, SpaceError};
+use crate::{
     Alpn, AsyncDuplexStream, ConnectionInfo, ConnectionParams, StreamAndInfo, TransportConnector,
 };
-use crate::utils::timeout;
 
 pub mod error;
 pub use error::{Error, WebSocketConnectError};
@@ -65,14 +65,14 @@ pub struct WebSocketConfig {
 
 /// [`ServiceConnector`] for services that wrap a websocket connection.
 #[derive_where(Clone; T)]
-pub(crate) struct WebSocketClientConnector<T, E> {
+pub struct WebSocketClientConnector<T, E> {
     transport_connector: T,
     cfg: WebSocketConfig,
     service_error_type: PhantomData<E>,
 }
 
 impl<T: TransportConnector, E> WebSocketClientConnector<T, E> {
-    pub(crate) fn new(transport_connector: T, cfg: WebSocketConfig) -> Self {
+    pub fn new(transport_connector: T, cfg: WebSocketConfig) -> Self {
         Self {
             transport_connector,
             cfg,
@@ -209,7 +209,7 @@ fn start_ws_service<S: AsyncDuplexStream, E>(
 
 #[derive_where(Clone)]
 #[derive(Debug)]
-pub(crate) struct WebSocketClientWriter<S, E> {
+pub struct WebSocketClientWriter<S, E> {
     ws_sink: Arc<Mutex<SplitSink<WebSocketStream<S>, Message>>>,
     service_cancellation: CancellationToken,
     error_type: PhantomData<E>,
@@ -234,7 +234,7 @@ where
 }
 
 #[derive(Debug)]
-pub(crate) struct WebSocketClientReader<S, E> {
+pub struct WebSocketClientReader<S, E> {
     ws_stream: SplitStream<WebSocketStream<S>>,
     ws_writer: WebSocketClientWriter<S, E>,
     service_cancellation: CancellationToken,
@@ -248,7 +248,7 @@ impl<S: AsyncDuplexStream, E> WebSocketClientReader<S, E>
 where
     WebSocketServiceError: Into<E>,
 {
-    pub(crate) async fn next(&mut self) -> Result<NextOrClose<TextOrBinary>, E> {
+    pub async fn next(&mut self) -> Result<NextOrClose<TextOrBinary>, E> {
         enum Event {
             Message(Option<Result<Message, tungstenite::Error>>),
             SendKeepAlive,
@@ -399,8 +399,8 @@ fn handle_ws_error(
     }
 }
 
-#[cfg_attr(test, derive(Clone, Debug, Eq, PartialEq))]
-pub(crate) enum TextOrBinary {
+#[cfg_attr(any(test, feature = "testutils"), derive(Clone, Debug, Eq, PartialEq))]
+pub enum TextOrBinary {
     Text(String),
     Binary(Vec<u8>),
 }
@@ -429,27 +429,15 @@ impl From<TextOrBinary> for Message {
 /// Wrapper for a websocket that can be used to send [`TextOrBinary`] messages.
 #[derive(Debug)]
 pub struct WebSocketClient<S, E> {
-    pub(crate) ws_client_writer: WebSocketClientWriter<S, E>,
-    pub(crate) ws_client_reader: WebSocketClientReader<S, E>,
-    pub(crate) connection_info: ConnectionInfo,
+    pub ws_client_writer: WebSocketClientWriter<S, E>,
+    pub ws_client_reader: WebSocketClientReader<S, E>,
+    pub connection_info: ConnectionInfo,
 }
 
 impl<S: AsyncDuplexStream, E> WebSocketClient<S, E>
 where
     WebSocketServiceError: Into<E>,
 {
-    #[cfg(test)]
-    pub(crate) fn new_fake(channel: WebSocketStream<S>, connection_info: ConnectionInfo) -> Self {
-        const VERY_LARGE_TIMEOUT: Duration = Duration::from_secs(u32::MAX as u64);
-        let (client, _service_status) = start_ws_service(
-            channel,
-            connection_info,
-            VERY_LARGE_TIMEOUT,
-            VERY_LARGE_TIMEOUT,
-        );
-        client
-    }
-
     /// Sends a request on the connection.
     ///
     /// An error is returned if the send fails.
@@ -457,7 +445,7 @@ where
         self.ws_client_writer.send(item).await
     }
 
-    #[cfg(test)]
+    #[cfg(any(test, feature = "testutils"))]
     pub(crate) async fn close(self, close: Option<CloseFrame<'static>>) -> Result<(), E> {
         self.ws_client_writer.send(Message::Close(close)).await
     }
@@ -507,11 +495,11 @@ pub struct AttestedConnection<S> {
 }
 
 impl<S> AttestedConnection<S> {
-    pub(crate) fn remote_address(&self) -> &Host<Arc<str>> {
+    pub fn remote_address(&self) -> &Host<Arc<str>> {
         &self.websocket.connection_info.address
     }
 
-    pub(crate) fn handshake_hash(&self) -> &[u8] {
+    pub fn handshake_hash(&self) -> &[u8] {
         &self.client_connection.handshake_hash
     }
 }
@@ -522,7 +510,7 @@ impl<S> AsMut<AttestedConnection<S>> for AttestedConnection<S> {
     }
 }
 
-pub(crate) async fn run_attested_interaction<
+pub async fn run_attested_interaction<
     C: AsMut<AttestedConnection<S>>,
     B: AsRef<[u8]>,
     S: AsyncDuplexStream,
@@ -536,8 +524,8 @@ pub(crate) async fn run_attested_interaction<
 }
 
 #[derive(Clone, Eq, PartialEq)]
-#[cfg_attr(test, derive(Debug))]
-pub(crate) enum NextOrClose<T> {
+#[cfg_attr(any(test, feature = "testutils"), derive(Debug))]
+pub enum NextOrClose<T> {
     Next(T),
     Close(Option<CloseFrame<'static>>),
 }
@@ -566,7 +554,7 @@ where
     S: AsyncDuplexStream,
 {
     /// Connect to remote host and verify remote attestation.
-    pub(crate) async fn connect(
+    pub async fn connect(
         mut websocket: WebSocketClient<S, WebSocketServiceError>,
         new_handshake: impl FnOnce(&[u8]) -> enclave::Result<enclave::Handshake>,
     ) -> Result<Self, AttestedConnectionError> {
@@ -578,7 +566,7 @@ where
         })
     }
 
-    pub(crate) async fn send(
+    pub async fn send(
         &mut self,
         request: impl prost::Message,
     ) -> Result<(), AttestedConnectionError> {
@@ -586,7 +574,7 @@ where
         self.send_bytes(request).await
     }
 
-    pub(crate) async fn send_bytes<B: AsRef<[u8]>>(
+    pub async fn send_bytes<B: AsRef<[u8]>>(
         &mut self,
         bytes: B,
     ) -> Result<(), AttestedConnectionError> {
@@ -597,7 +585,7 @@ where
             .map_err(Into::into)
     }
 
-    pub(crate) async fn receive<T: prost::Message + Default>(
+    pub async fn receive<T: prost::Message + Default>(
         &mut self,
     ) -> Result<NextOrClose<T>, AttestedConnectionError> {
         let received = match self.receive_bytes().await? {
@@ -609,9 +597,7 @@ where
             .map(NextOrClose::Next)
     }
 
-    pub(crate) async fn receive_bytes(
-        &mut self,
-    ) -> Result<NextOrClose<Vec<u8>>, AttestedConnectionError> {
+    pub async fn receive_bytes(&mut self) -> Result<NextOrClose<Vec<u8>>, AttestedConnectionError> {
         let received = self.websocket.receive().await?;
         let received = match received {
             NextOrClose::Close(frame) => return Ok(NextOrClose::Close(frame)),
@@ -658,17 +644,17 @@ async fn authenticate<S: AsyncDuplexStream>(
 }
 
 /// Test utilities related to websockets.
-#[cfg(test)]
-pub(crate) mod testutil {
+#[cfg(any(test, feature = "testutils"))]
+pub mod testutil {
     use tokio::io::DuplexStream;
     use tokio_tungstenite::WebSocketStream;
 
     use super::*;
-    use crate::infra::{AsyncDuplexStream, DnsSource, RouteType};
     use crate::timeouts::{WS_KEEP_ALIVE_INTERVAL, WS_MAX_IDLE_INTERVAL};
+    use crate::{AsyncDuplexStream, DnsSource, RouteType};
 
-    pub(crate) async fn fake_websocket(
-    ) -> (WebSocketStream<DuplexStream>, WebSocketStream<DuplexStream>) {
+    pub async fn fake_websocket() -> (WebSocketStream<DuplexStream>, WebSocketStream<DuplexStream>)
+    {
         let (client, server) = tokio::io::duplex(1024);
         let req = url::Url::parse("ws://localhost:8080/").unwrap();
         let client_future = tokio_tungstenite::client_async(req, client);
@@ -679,7 +665,7 @@ pub(crate) mod testutil {
         (server_stream, client_stream)
     }
 
-    pub(crate) fn mock_connection_info() -> ConnectionInfo {
+    pub fn mock_connection_info() -> ConnectionInfo {
         ConnectionInfo {
             route_type: RouteType::Test,
             dns_source: DnsSource::Test,
@@ -687,7 +673,7 @@ pub(crate) mod testutil {
         }
     }
 
-    pub(crate) fn websocket_test_client<S: AsyncDuplexStream>(
+    pub fn websocket_test_client<S: AsyncDuplexStream>(
         channel: WebSocketStream<S>,
     ) -> WebSocketClient<S, WebSocketServiceError> {
         start_ws_service(
@@ -699,30 +685,55 @@ pub(crate) mod testutil {
         .0
     }
 
-    pub(crate) const FAKE_ATTESTATION: &[u8] =
+    impl<S: AsyncDuplexStream, E> WebSocketClient<S, E> {
+        pub fn new_fake(channel: WebSocketStream<S>, connection_info: ConnectionInfo) -> Self {
+            const VERY_LARGE_TIMEOUT: Duration = Duration::from_secs(u32::MAX as u64);
+            let (client, _service_status) = start_ws_service(
+                channel,
+                connection_info,
+                VERY_LARGE_TIMEOUT,
+                VERY_LARGE_TIMEOUT,
+            );
+            client
+        }
+    }
+
+    pub const FAKE_ATTESTATION: &[u8] =
         include_bytes!("../../../attest/tests/data/svr2handshakestart.data");
 
     /// Response to an incoming frame.
     ///
     /// Zero or one frames to reply with followed by an optional close.
     #[derive(Default)]
-    pub(crate) struct AttestedServerOutput {
-        pub(crate) message: Option<Vec<u8>>,
-        pub(crate) close_after: Option<Option<CloseFrame<'static>>>,
+    pub struct AttestedServerOutput {
+        pub message: Option<Vec<u8>>,
+        pub close_after: Option<Option<CloseFrame<'static>>>,
     }
 
     impl AttestedServerOutput {
-        pub(crate) fn message(contents: Vec<u8>) -> Self {
+        pub fn message(contents: Vec<u8>) -> Self {
             Self {
                 message: Some(contents),
                 ..Default::default()
             }
         }
 
-        pub(crate) fn close(frame: Option<CloseFrame<'static>>) -> Self {
+        pub fn close(frame: Option<CloseFrame<'static>>) -> Self {
             Self {
                 close_after: Some(frame),
                 ..Default::default()
+            }
+        }
+    }
+
+    impl<T: Debug> NextOrClose<T> {
+        pub(crate) fn unwrap_next(self) -> T
+        where
+            T: Debug,
+        {
+            match self {
+                Self::Next(t) => t,
+                s @ Self::Close(_) => panic!("unwrap called on {s:?}"),
             }
         }
     }
@@ -734,7 +745,7 @@ pub(crate) mod testutil {
     /// incoming event, and the returned value is sent to the peer. If the
     /// callback returns an [`AttestedServerOutput`] with `close_after:
     /// Some(_)`, the connection is terminated and this future resolves.
-    pub(crate) async fn run_attested_server(
+    pub async fn run_attested_server(
         websocket: WebSocketStream<impl AsyncDuplexStream>,
         private_key: impl AsRef<[u8]>,
         mut on_message: impl FnMut(NextOrClose<Vec<u8>>) -> AttestedServerOutput,
@@ -819,20 +830,8 @@ mod test {
 
     use super::testutil::*;
     use super::*;
-    use crate::infra::certs::RootCertificates;
-    use crate::infra::{HttpRequestDecoratorSeq, RouteType, TransportConnectionParams};
-
-    impl<T: Debug> NextOrClose<T> {
-        pub(crate) fn unwrap_next(self) -> T
-        where
-            T: Debug,
-        {
-            match self {
-                Self::Next(t) => t,
-                s @ Self::Close(_) => panic!("unwrap called on {s:?}"),
-            }
-        }
-    }
+    use crate::certs::RootCertificates;
+    use crate::{HttpRequestDecoratorSeq, RouteType, TransportConnectionParams};
 
     const MESSAGE_TEXT: &str = "text";
 
@@ -1002,7 +1001,7 @@ mod test {
                 sni: Arc::clone(&hostname),
                 tcp_host: Host::Domain(Arc::clone(&hostname)),
                 port: nonzero!(443u16),
-                certs: RootCertificates::Signal,
+                certs: RootCertificates::Native,
             },
             http_host: hostname,
             http_request_decorator: HttpRequestDecoratorSeq::default(),

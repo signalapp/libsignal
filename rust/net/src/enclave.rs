@@ -10,23 +10,25 @@ use attest::svr2::RaftConfig;
 use attest::{cds2, enclave, nitro, tpm2snp};
 use derive_where::derive_where;
 use http::uri::PathAndQuery;
-
-use crate::auth::HttpBasicAuth;
-use crate::env::{DomainConfig, Svr3Env};
-use crate::infra::connection_manager::{
+use libsignal_net_infra::connection_manager::{
     ConnectionManager, MultiRouteConnectionManager, SingleRouteThrottlingConnectionManager,
 };
-use crate::infra::errors::LogSafeDisplay;
-use crate::infra::service::{ServiceConnectorWithDecorator, ServiceInitializer, ServiceState};
-use crate::infra::ws::{
+use libsignal_net_infra::errors::LogSafeDisplay;
+use libsignal_net_infra::service::{
+    ServiceConnectorWithDecorator, ServiceInitializer, ServiceState,
+};
+use libsignal_net_infra::utils::ObservableEvent;
+use libsignal_net_infra::ws::{
     AttestedConnection, AttestedConnectionError, WebSocketClientConnector, WebSocketConnectError,
     WebSocketServiceError,
 };
-use crate::infra::{
-    make_ws_config, AsyncDuplexStream, ConnectionParams, EndpointConnection, TransportConnector,
+use libsignal_net_infra::{
+    make_ws_config, AsyncDuplexStream, ConnectionParams, EndpointConnection, HttpBasicAuth,
+    TransportConnector,
 };
+
+use crate::env::{DomainConfig, Svr3Env};
 use crate::svr::SvrConnection;
-use crate::utils::ObservableEvent;
 
 pub trait AsRaftConfig<'a> {
     fn as_raft_config(&self) -> Option<&'a RaftConfig>;
@@ -466,18 +468,18 @@ mod test {
 
     use assert_matches::assert_matches;
     use async_trait::async_trait;
+    use libsignal_net_infra::connection_manager::ConnectionAttemptOutcome;
+    use libsignal_net_infra::errors::TransportConnectError;
+    use libsignal_net_infra::host::Host;
+    use libsignal_net_infra::{
+        Alpn, HttpRequestDecoratorSeq, RouteType, StreamAndInfo, TransportConnectionParams,
+    };
     use nonzero_ext::nonzero;
     use tokio::net::TcpStream;
     use tokio_boring_signal::SslStream;
 
     use super::*;
     use crate::auth::Auth;
-    use crate::infra::connection_manager::ConnectionAttemptOutcome;
-    use crate::infra::errors::TransportConnectError;
-    use crate::infra::host::Host;
-    use crate::infra::{
-        Alpn, HttpRequestDecoratorSeq, RouteType, StreamAndInfo, TransportConnectionParams,
-    };
 
     #[derive(Clone, Debug)]
     struct AlwaysFailingConnector;
@@ -530,7 +532,7 @@ mod test {
                 sni: Arc::from("fake-sni"),
                 tcp_host: Host::Domain("fake".into()),
                 port: nonzero!(1234u16),
-                certs: crate::infra::certs::RootCertificates::Native,
+                certs: libsignal_net_infra::certs::RootCertificates::Native,
             },
             http_request_decorator: HttpRequestDecoratorSeq::default(),
             http_host: Arc::from("fake-http"),

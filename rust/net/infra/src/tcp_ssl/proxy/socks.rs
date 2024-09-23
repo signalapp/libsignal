@@ -17,11 +17,11 @@ use tokio_socks::tcp::{Socks4Stream, Socks5Stream};
 use tokio_socks::TargetAddr;
 use tokio_util::either::Either;
 
-use crate::infra::dns::lookup_result::LookupResult;
-use crate::infra::dns::DnsResolver;
-use crate::infra::errors::TransportConnectError;
-use crate::infra::host::Host;
-use crate::infra::{
+use crate::dns::lookup_result::LookupResult;
+use crate::dns::DnsResolver;
+use crate::errors::TransportConnectError;
+use crate::host::Host;
+use crate::{
     Alpn, ConnectionInfo, DnsSource, RouteType, StreamAndInfo, TransportConnectionParams,
     TransportConnector,
 };
@@ -74,7 +74,7 @@ impl TransportConnector for SocksConnector {
         log::info!("connecting to {which_protocol:?} proxy over TCP");
         log::debug!("connecting to {which_protocol:?} proxy at {proxy_host}:{proxy_port} over TCP");
 
-        let StreamAndInfo(tcp_stream, remote_address) = crate::infra::tcp_ssl::connect_tcp(
+        let StreamAndInfo(tcp_stream, remote_address) = crate::tcp_ssl::connect_tcp(
             dns_resolver,
             RouteType::SocksProxy,
             proxy_host.as_deref(),
@@ -130,8 +130,7 @@ impl TransportConnector for SocksConnector {
             })?;
 
         log::debug!("connecting TLS through proxy");
-        let stream =
-            crate::infra::tcp_ssl::connect_tls(socks_stream, connection_params, alpn).await?;
+        let stream = crate::tcp_ssl::connect_tls(socks_stream, connection_params, alpn).await?;
 
         log::info!("connection through SOCKS proxy established successfully");
         Ok(StreamAndInfo(
@@ -225,9 +224,9 @@ mod test {
     use tokio::join;
 
     use super::*;
-    use crate::infra::host::Host;
-    use crate::infra::tcp_ssl::proxy::testutil::{TcpServer, TlsServer, PROXY_HOSTNAME};
-    use crate::infra::tcp_ssl::testutil::{SERVER_CERTIFICATE, SERVER_HOSTNAME};
+    use crate::host::Host;
+    use crate::tcp_ssl::proxy::testutil::{TcpServer, TlsServer, PROXY_HOSTNAME};
+    use crate::tcp_ssl::testutil::{SERVER_CERTIFICATE, SERVER_HOSTNAME};
 
     /// Authentication method.
     #[derive(Default)]
@@ -399,7 +398,7 @@ mod test {
             sni: SERVER_HOSTNAME.into(),
             tcp_host: target_host,
             port: NonZeroU16::new(tls_server.tcp.listen_addr.port()).unwrap(),
-            certs: crate::infra::certs::RootCertificates::FromDer(std::borrow::Cow::Borrowed(
+            certs: crate::certs::RootCertificates::FromDer(std::borrow::Cow::Borrowed(
                 SERVER_CERTIFICATE.cert.der(),
             )),
         };
@@ -522,7 +521,7 @@ mod test {
             sni: SERVER_HOSTNAME.into(),
             tcp_host: Host::Domain(SERVER_HOSTNAME.into()),
             port: NonZeroU16::new(tls_server.tcp.listen_addr.port()).unwrap(),
-            certs: crate::infra::certs::RootCertificates::FromDer(std::borrow::Cow::Borrowed(
+            certs: crate::certs::RootCertificates::FromDer(std::borrow::Cow::Borrowed(
                 SERVER_CERTIFICATE.cert.der(),
             )),
         };

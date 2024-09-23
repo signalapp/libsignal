@@ -6,13 +6,14 @@
 use std::num::NonZeroU32;
 
 use bincode::Options as _;
+use libsignal_net_infra::errors::LogSafeDisplay;
+use libsignal_net_infra::ws::{
+    AttestedConnectionError, WebSocketConnectError, WebSocketServiceError,
+};
 use libsignal_svr3::{EvaluationResult, MaskedSecret};
 use rand_core::CryptoRngCore;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
-
-use crate::infra::errors::LogSafeDisplay;
-use crate::infra::ws::{AttestedConnectionError, WebSocketConnectError, WebSocketServiceError};
 
 mod ppss_ops;
 
@@ -275,10 +276,11 @@ where
 
 #[cfg(feature = "test-support")]
 pub mod test_support {
+    use libsignal_net_infra::ws::DefaultStream;
+
     use crate::auth::Auth;
     use crate::enclave::PpssSetup;
     use crate::env::Svr3Env;
-    use crate::infra::ws::DefaultStream;
     use crate::svr3::direct::DirectConnect as _;
 
     impl Svr3Env<'static> {

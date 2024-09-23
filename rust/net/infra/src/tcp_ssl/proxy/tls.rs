@@ -11,12 +11,12 @@ use tokio::net::TcpStream;
 use tokio_boring_signal::SslStream;
 use tokio_util::either::Either;
 
-use crate::infra::certs::RootCertificates;
-use crate::infra::dns::DnsResolver;
-use crate::infra::errors::TransportConnectError;
-use crate::infra::host::Host;
-use crate::infra::tcp_ssl::{connect_tcp, connect_tls, ssl_config};
-use crate::infra::{
+use crate::certs::RootCertificates;
+use crate::dns::DnsResolver;
+use crate::errors::TransportConnectError;
+use crate::host::Host;
+use crate::tcp_ssl::{connect_tcp, connect_tls, ssl_config};
+use crate::{
     Alpn, ConnectionInfo, RouteType, StreamAndInfo, TransportConnectionParams, TransportConnector,
 };
 
@@ -145,9 +145,9 @@ mod test {
 
     use super::super::super::testutil::*;
     use super::*;
-    use crate::infra::dns::lookup_result::LookupResult;
-    use crate::infra::host::Host;
-    use crate::infra::tcp_ssl::proxy::testutil::{
+    use crate::dns::lookup_result::LookupResult;
+    use crate::host::Host;
+    use crate::tcp_ssl::proxy::testutil::{
         localhost_tcp_proxy, localhost_tls_proxy, PROXY_CERTIFICATE, PROXY_HOSTNAME,
     };
 
@@ -194,7 +194,7 @@ mod test {
             info,
             ConnectionInfo {
                 address: Host::Ip(Ipv6Addr::LOCALHOST.into()),
-                dns_source: crate::infra::DnsSource::Static,
+                dns_source: crate::DnsSource::Static,
                 route_type: RouteType::TlsProxy,
             }
         );
@@ -237,7 +237,7 @@ mod test {
             info,
             ConnectionInfo {
                 address: Host::Ip(Ipv6Addr::LOCALHOST.into()),
-                dns_source: crate::infra::DnsSource::Static,
+                dns_source: crate::DnsSource::Static,
                 route_type: RouteType::TlsProxy
             }
         );

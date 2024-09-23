@@ -12,21 +12,25 @@ use derive_where::derive_where;
 use futures_util::FutureExt;
 use http::header::ToStrError;
 use http::status::StatusCode;
+use libsignal_net_infra::service::{
+    CancellationReason, CancellationToken, RemoteAddressInfo, ServiceConnector,
+};
+use libsignal_net_infra::ws::{
+    NextOrClose, TextOrBinary, WebSocketClient, WebSocketClientConnector, WebSocketClientReader,
+    WebSocketClientWriter, WebSocketConnectError, WebSocketServiceError,
+};
+use libsignal_net_infra::{
+    AsyncDuplexStream, ConnectionInfo, ConnectionParams, TransportConnector,
+};
 use prost::Message;
 use tokio::sync::{mpsc, oneshot, Mutex};
 use tokio::time::Instant;
 use tokio_tungstenite::WebSocketStream;
 
 use crate::chat::{
-    ChatMessageType, ChatService, ChatServiceError, MessageProto, RemoteAddressInfo, Request,
-    RequestProto, Response, ResponseProto,
+    ChatMessageType, ChatService, ChatServiceError, MessageProto, Request, RequestProto, Response,
+    ResponseProto,
 };
-use crate::infra::service::{CancellationReason, CancellationToken, ServiceConnector};
-use crate::infra::ws::{
-    NextOrClose, TextOrBinary, WebSocketClient, WebSocketClientConnector, WebSocketClientReader,
-    WebSocketClientWriter, WebSocketConnectError, WebSocketServiceError,
-};
-use crate::infra::{AsyncDuplexStream, ConnectionInfo, ConnectionParams, TransportConnector};
 use crate::proto::chat_websocket::web_socket_message::Type;
 
 #[derive(Debug, Default, Eq, Hash, PartialEq, Clone, Copy)]
@@ -444,6 +448,13 @@ mod test {
     use futures_util::{SinkExt, StreamExt};
     use http::uri::PathAndQuery;
     use http::{Method, StatusCode};
+    use libsignal_net_infra::service::CancellationReason;
+    use libsignal_net_infra::testutil::{
+        InMemoryWarpConnector, NoReconnectService, TestError, TIMEOUT_DURATION,
+    };
+    use libsignal_net_infra::ws::{
+        WebSocketClientConnector, WebSocketConfig, WebSocketServiceError,
+    };
     use prost::Message;
     use tokio::io::DuplexStream;
     use tokio::sync::mpsc::Receiver;
@@ -457,11 +468,6 @@ mod test {
         ChatOverWebSocketServiceConnector, ChatServiceError, RequestId, ServerEvent,
     };
     use crate::chat::{ChatMessageType, ChatService, MessageProto, ResponseProto};
-    use crate::infra::service::CancellationReason;
-    use crate::infra::test::shared::{
-        InMemoryWarpConnector, NoReconnectService, TestError, TIMEOUT_DURATION,
-    };
-    use crate::infra::ws::{WebSocketClientConnector, WebSocketConfig, WebSocketServiceError};
     use crate::proto::chat_websocket::WebSocketMessage;
 
     fn test_ws_config() -> WebSocketConfig {

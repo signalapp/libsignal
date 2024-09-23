@@ -11,8 +11,6 @@ use boring_signal::x509::store::X509StoreBuilder;
 use boring_signal::x509::X509;
 use rustls::client::danger::ServerCertVerifier;
 
-const SIGNAL_ROOT_CERT_DER: &[u8] = include_bytes!("../../res/signal.cer");
-
 #[derive(thiserror::Error, Debug, displaydoc::Display)]
 pub enum Error {
     /// Bad certificate
@@ -30,7 +28,6 @@ impl From<ErrorStack> for Error {
 #[derive(Debug, Clone)]
 pub enum RootCertificates {
     Native,
-    Signal,
     FromDer(Cow<'static, [u8]>),
 }
 
@@ -54,7 +51,6 @@ impl RootCertificates {
                 }
                 return set_up_platform_verifier(connector, host_name, verifier);
             }
-            RootCertificates::Signal => SIGNAL_ROOT_CERT_DER,
             RootCertificates::FromDer(der) => der,
         };
         let mut store_builder = X509StoreBuilder::new()?;
@@ -173,8 +169,8 @@ mod test {
     use tokio::net::TcpStream;
 
     use super::*;
-    use crate::infra::tcp_ssl::proxy::testutil::PROXY_CERTIFICATE;
-    use crate::infra::tcp_ssl::testutil::{
+    use crate::tcp_ssl::proxy::testutil::PROXY_CERTIFICATE;
+    use crate::tcp_ssl::testutil::{
         localhost_http_server, make_http_request_response_over, SERVER_CERTIFICATE, SERVER_HOSTNAME,
     };
 

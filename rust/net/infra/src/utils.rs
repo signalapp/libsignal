@@ -14,7 +14,7 @@ use futures_util::StreamExt;
 use http::HeaderValue;
 
 /// Constructs the value of the `Authorization` header for the `Basic` auth scheme.
-pub(crate) fn basic_authorization(username: &str, password: &str) -> HeaderValue {
+pub fn basic_authorization(username: &str, password: &str) -> HeaderValue {
     let auth = BASE64_STANDARD.encode(format!("{}:{}", username, password).as_bytes());
     let auth = format!("Basic {}", auth);
     HeaderValue::try_from(auth).expect("valid header value")
@@ -219,25 +219,25 @@ pub(crate) async fn sleep_until_and_catch_up(time: tokio::time::Instant) {
     tokio::time::advance(Duration::ZERO).await
 }
 
-#[cfg(test)]
-pub(crate) mod testutil {
+#[cfg(any(test, feature = "testutils"))]
+pub mod testutil {
     use std::sync::atomic::AtomicUsize;
     use std::sync::Arc;
 
     /// Usable as a [Waker](std::task::Waker) for async polling.
     #[derive(Debug, Default)]
-    pub(crate) struct TestWaker {
+    pub struct TestWaker {
         wake_count: AtomicUsize,
     }
 
     impl TestWaker {
-        pub(crate) fn was_woken(&self) -> bool {
+        pub fn was_woken(&self) -> bool {
             self.wake_count() != 0
         }
-        pub(crate) fn wake_count(&self) -> usize {
+        pub fn wake_count(&self) -> usize {
             self.wake_count.load(std::sync::atomic::Ordering::SeqCst)
         }
-        pub(crate) fn as_waker(self: &Arc<Self>) -> std::task::Waker {
+        pub fn as_waker(self: &Arc<Self>) -> std::task::Waker {
             std::task::Waker::from(Arc::clone(self))
         }
     }
@@ -264,6 +264,7 @@ mod test {
     use tokio::time;
 
     use super::*;
+    use crate::utils::sleep_and_catch_up;
 
     #[tokio::test(start_paused = true)]
     async fn first_ok_picks_the_result_from_earliest_finished_future() {

@@ -22,12 +22,12 @@ use libsignal_net::infra::tcp_ssl::proxy::tls::TlsProxyConnector as TcpSslProxyC
 use libsignal_net::infra::tcp_ssl::{
     DirectConnector as TcpSslDirectConnector, TcpSslConnector, TcpSslConnectorStream,
 };
+use libsignal_net::infra::timeouts::ONE_ROUTE_CONNECTION_TIMEOUT;
+use libsignal_net::infra::utils::ObservableEvent;
 use libsignal_net::infra::EndpointConnection;
 use libsignal_net::svr::SvrConnection;
 use libsignal_net::svr3::traits::*;
 use libsignal_net::svr3::{Error, OpaqueMaskedShareSet};
-use libsignal_net::timeouts::ONE_ROUTE_CONNECTION_TIMEOUT;
-use libsignal_net::utils::ObservableEvent;
 use libsignal_svr3::EvaluationResult;
 
 use crate::*;

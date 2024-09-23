@@ -103,7 +103,7 @@ fn into_io_error(e: tungstenite::Error) -> IoError {
     let (error_kind, error) = match e {
         tungstenite::Error::Io(io_error) => return io_error,
         e @ (tungstenite::Error::ConnectionClosed | tungstenite::Error::AlreadyClosed) => {
-            (IoErrorKind::BrokenPipe, crate::infra::ws::Error::from(e))
+            (IoErrorKind::BrokenPipe, crate::ws::Error::from(e))
         }
         e @ (tungstenite::Error::Tls(_)
         | tungstenite::Error::Capacity(_)

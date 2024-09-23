@@ -9,24 +9,22 @@ use ::http::uri::PathAndQuery;
 use ::http::{HeaderMap, HeaderName, HeaderValue, StatusCode};
 use async_trait::async_trait;
 use futures_util::future::BoxFuture;
+use libsignal_net_infra::connection_manager::MultiRouteConnectionManager;
+use libsignal_net_infra::service::{Service, ServiceConnectorWithDecorator};
+use libsignal_net_infra::timeouts::{MULTI_ROUTE_CONNECTION_TIMEOUT, ONE_ROUTE_CONNECTION_TIMEOUT};
+use libsignal_net_infra::utils::{basic_authorization, ObservableEvent};
+use libsignal_net_infra::ws::WebSocketClientConnector;
+use libsignal_net_infra::{
+    make_ws_config, EndpointConnection, HttpRequestDecorator, IpType, TransportConnector,
+};
 
 use crate::auth::Auth;
 use crate::chat::ws::{ChatOverWebSocketServiceConnector, ServerEvent};
-use crate::infra::connection_manager::MultiRouteConnectionManager;
-use crate::infra::service::{Service, ServiceConnectorWithDecorator};
-use crate::infra::ws::WebSocketClientConnector;
-use crate::infra::{
-    make_ws_config, ConnectionInfo, EndpointConnection, HttpRequestDecorator, IpType,
-    TransportConnector,
-};
+use crate::env::{add_user_agent_header, DomainConfig, RECEIVE_STORIES_HEADER_NAME};
 use crate::proto;
-use crate::utils::basic_authorization;
 
 mod error;
 pub use error::ChatServiceError;
-
-use crate::env::{add_user_agent_header, DomainConfig, RECEIVE_STORIES_HEADER_NAME};
-use crate::timeouts::{MULTI_ROUTE_CONNECTION_TIMEOUT, ONE_ROUTE_CONNECTION_TIMEOUT};
 
 pub mod noise;
 pub mod server_requests;
@@ -67,11 +65,6 @@ pub trait ChatServiceWithDebugInfo: ChatService {
 
     /// Establish a connection without sending a request.
     async fn connect_and_debug(&self) -> Result<DebugInfo, ChatServiceError>;
-}
-
-pub trait RemoteAddressInfo {
-    /// Provides information about the remote address the service is connected to
-    fn connection_info(&self) -> ConnectionInfo;
 }
 
 #[derive(Debug)]
@@ -482,7 +475,7 @@ pub fn chat_service<T: TransportConnector + 'static>(
 pub fn endpoint_connection(
     chat_domain_config: &DomainConfig,
     user_agent: &str,
-    network_change_event: &crate::utils::ObservableEvent,
+    network_change_event: &ObservableEvent,
 ) -> EndpointConnection<MultiRouteConnectionManager> {
     let chat_endpoint = PathAndQuery::from_static(crate::env::constants::WEB_SOCKET_PATH);
     let chat_connection_params = chat_domain_config.connection_params_with_fallback();
@@ -502,6 +495,9 @@ pub mod test_support {
     use std::time::Duration;
 
     use http::uri::PathAndQuery;
+    use libsignal_net_infra::dns::DnsResolver;
+    use libsignal_net_infra::tcp_ssl::DirectConnector;
+    use libsignal_net_infra::{make_ws_config, ConnectionParams, EndpointConnection};
     use tokio::sync::mpsc;
 
     use super::*;
@@ -509,10 +505,6 @@ pub mod test_support {
     use crate::chat::{Chat, ChatServiceWithDebugInfo};
     use crate::env::constants::WEB_SOCKET_PATH;
     use crate::env::{Env, Svr3Env};
-    use crate::infra::dns::DnsResolver;
-    use crate::infra::tcp_ssl::DirectConnector;
-    use crate::infra::{make_ws_config, ConnectionParams, EndpointConnection};
-    use crate::utils::ObservableEvent;
 
     pub type AnyChat = Chat<
         Arc<dyn ChatServiceWithDebugInfo + Send + Sync>,
@@ -566,17 +558,17 @@ pub(crate) mod test {
 
         use async_trait::async_trait;
         use http::Method;
+        use libsignal_net_infra::connection_manager::SingleRouteThrottlingConnectionManager;
+        use libsignal_net_infra::errors::LogSafeDisplay;
+        use libsignal_net_infra::host::Host;
+        use libsignal_net_infra::service::{CancellationReason, ServiceConnector, ServiceState};
+        use libsignal_net_infra::testutil::{NoReconnectService, TIMEOUT_DURATION};
+        use libsignal_net_infra::utils::ObservableEvent;
+        use libsignal_net_infra::{ConnectionParams, RouteType, TransportConnectionParams};
         use nonzero_ext::nonzero;
 
+        use crate::certs::SIGNAL_ROOT_CERTIFICATES;
         use crate::chat::{ChatService, ChatServiceError, Request, Response};
-        use crate::infra::certs::RootCertificates;
-        use crate::infra::connection_manager::SingleRouteThrottlingConnectionManager;
-        use crate::infra::errors::LogSafeDisplay;
-        use crate::infra::host::Host;
-        use crate::infra::service::{CancellationReason, ServiceConnector, ServiceState};
-        use crate::infra::test::shared::{NoReconnectService, TIMEOUT_DURATION};
-        use crate::infra::{ConnectionParams, RouteType, TransportConnectionParams};
-        use crate::utils::ObservableEvent;
 
         #[async_trait]
         impl<C> ChatService for NoReconnectService<C>
@@ -629,7 +621,7 @@ pub(crate) mod test {
                         sni: Arc::clone(&hostname),
                         tcp_host: host,
                         port: nonzero!(443u16),
-                        certs: RootCertificates::Signal,
+                        certs: SIGNAL_ROOT_CERTIFICATES,
                     },
                     http_host: hostname,
                     http_request_decorator: Default::default(),

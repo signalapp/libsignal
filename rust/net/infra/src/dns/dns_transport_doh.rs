@@ -13,16 +13,16 @@ use futures_util::stream::{BoxStream, FuturesUnordered};
 use http::uri::PathAndQuery;
 use http::{HeaderValue, Method};
 
-use crate::infra::dns::custom_resolver::{DnsQueryResult, DnsTransport};
-use crate::infra::dns::dns_errors::Error;
-use crate::infra::dns::dns_lookup::DnsLookupRequest;
-use crate::infra::dns::dns_message::{parse_a_record, parse_aaaa_record};
-use crate::infra::dns::dns_types::ResourceType;
-use crate::infra::dns::lookup_result::LookupResult;
-use crate::infra::dns::{dns_message, DnsResolver};
-use crate::infra::http_client::{http2_client, AggregatingHttp2Client};
-use crate::infra::tcp_ssl::DirectConnector;
-use crate::infra::{dns, ConnectionParams, DnsSource};
+use crate::dns::custom_resolver::{DnsQueryResult, DnsTransport};
+use crate::dns::dns_errors::Error;
+use crate::dns::dns_lookup::DnsLookupRequest;
+use crate::dns::dns_message::{parse_a_record, parse_aaaa_record};
+use crate::dns::dns_types::ResourceType;
+use crate::dns::lookup_result::LookupResult;
+use crate::dns::{dns_message, DnsResolver};
+use crate::http_client::{http2_client, AggregatingHttp2Client};
+use crate::tcp_ssl::DirectConnector;
+use crate::{dns, ConnectionParams, DnsSource};
 
 pub const CLOUDFLARE_NS: &str = "1.1.1.1";
 pub const MAX_RESPONSE_SIZE: usize = 10240;

@@ -3,10 +3,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use crate::infra::connection_manager::{ErrorClass, ErrorClassifier};
-use crate::infra::errors::{LogSafeDisplay, TransportConnectError};
-use crate::infra::service;
-use crate::infra::ws::{WebSocketConnectError, WebSocketServiceError};
+use libsignal_net_infra::connection_manager::{ErrorClass, ErrorClassifier};
+use libsignal_net_infra::errors::{LogSafeDisplay, TransportConnectError};
+use libsignal_net_infra::service;
+use libsignal_net_infra::ws::{WebSocketConnectError, WebSocketServiceError};
 
 #[derive(Debug, thiserror::Error, displaydoc::Display)]
 pub enum ChatServiceError {

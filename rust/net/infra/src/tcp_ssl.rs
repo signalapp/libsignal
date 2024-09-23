@@ -14,16 +14,16 @@ use tokio::net::TcpStream;
 use tokio_boring_signal::SslStream;
 use tokio_util::either::Either;
 
-use crate::infra::certs::RootCertificates;
-use crate::infra::dns::DnsResolver;
-use crate::infra::errors::TransportConnectError;
-use crate::infra::host::Host;
-use crate::infra::tcp_ssl::proxy::tls::TlsProxyConnector;
-use crate::infra::{
-    Alpn, ConnectionInfo, RouteType, StreamAndInfo, TransportConnectionParams, TransportConnector,
-};
+use crate::certs::RootCertificates;
+use crate::dns::DnsResolver;
+use crate::errors::TransportConnectError;
+use crate::host::Host;
+use crate::tcp_ssl::proxy::tls::TlsProxyConnector;
 use crate::timeouts::TCP_CONNECTION_ATTEMPT_DELAY;
 use crate::utils::first_ok;
+use crate::{
+    Alpn, ConnectionInfo, RouteType, StreamAndInfo, TransportConnectionParams, TransportConnector,
+};
 
 pub mod proxy;
 
@@ -128,8 +128,8 @@ async fn connect_tcp(
                 std::net::IpAddr::V4(v4) => (vec![v4], vec![]),
                 std::net::IpAddr::V6(v6) => (vec![], vec![v6]),
             };
-            crate::infra::dns::lookup_result::LookupResult {
-                source: crate::infra::DnsSource::Static,
+            crate::dns::lookup_result::LookupResult {
+                source: crate::DnsSource::Static,
                 ipv4,
                 ipv6,
             }
@@ -324,8 +324,8 @@ mod test {
 
     use super::testutil::*;
     use super::*;
-    use crate::infra::dns::lookup_result::LookupResult;
-    use crate::infra::host::Host;
+    use crate::dns::lookup_result::LookupResult;
+    use crate::host::Host;
 
     #[test_case(true; "resolved hostname")]
     #[test_case(false; "by IP")]
@@ -357,7 +357,7 @@ mod test {
             info,
             ConnectionInfo {
                 address: Host::Ip(Ipv6Addr::LOCALHOST.into()),
-                dns_source: crate::infra::DnsSource::Static,
+                dns_source: crate::DnsSource::Static,
                 route_type: RouteType::Direct,
             }
         );

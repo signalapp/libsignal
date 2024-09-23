@@ -12,17 +12,16 @@
 # and then document them here.
 #
 # jni: v0.19 is used by rustls-platform-verifier on Android, v0.21 by us
-# pqcrypto-kyber: v0.7 is what we shipped PQXDH on, v0.8 contains the NIST standard version
 EXPECTED="
 jni v0.19.0
-jni v0.21.1
-pqcrypto-kyber v0.7.9
-pqcrypto-kyber v0.8.1"
+jni v0.21.1"
 
 check_cargo_tree() {
     # Only check the mobile targets, where we care most about code size.
-    cargo tree --quiet --duplicates --edges normal,no-proc-macro \
-        --workspace --all-features --locked \
+    cargo tree \
+        -p libsignal-node -p libsignal-jni -p libsignal-ffi \
+        --quiet --duplicates --edges normal,no-proc-macro \
+        --all-features --locked \
         --target aarch64-apple-ios \
         --target armv7-linux-androideabi \
         --target aarch64-linux-android \

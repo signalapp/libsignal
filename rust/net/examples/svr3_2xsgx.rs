@@ -26,11 +26,11 @@ use libsignal_net::env::{DomainConfig, PROXY_CONFIG_F_STAGING, PROXY_CONFIG_G};
 use libsignal_net::infra::certs::RootCertificates;
 use libsignal_net::infra::dns::DnsResolver;
 use libsignal_net::infra::tcp_ssl::DirectConnector as TcpSslTransportConnector;
+use libsignal_net::infra::utils::ObservableEvent;
 use libsignal_net::infra::TransportConnector;
 use libsignal_net::svr::SvrConnection;
 use libsignal_net::svr3::traits::*;
 use libsignal_net::svr3::OpaqueMaskedShareSet;
-use libsignal_net::utils::ObservableEvent;
 use nonzero_ext::nonzero;
 use rand_core::{CryptoRngCore, OsRng, RngCore};
 

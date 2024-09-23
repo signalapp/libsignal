@@ -10,19 +10,20 @@ use std::num::NonZeroU16;
 use std::sync::Arc;
 
 use const_str::ip_addr;
+use libsignal_net_infra::certs::RootCertificates;
+use libsignal_net_infra::dns::lookup_result::LookupResult;
+use libsignal_net_infra::host::Host;
+use libsignal_net_infra::{
+    ConnectionParams, DnsSource, HttpRequestDecorator, HttpRequestDecoratorSeq, RouteType,
+    TransportConnectionParams,
+};
 use nonzero_ext::nonzero;
 use rand::seq::SliceRandom;
 use rand::{thread_rng, Rng};
 
+use crate::certs::SIGNAL_ROOT_CERTIFICATES;
 use crate::enclave::{
     Cdsi, EnclaveEndpoint, EndpointParams, MrEnclave, Nitro, Sgx, SgxPreQuantum, Tpm2Snp,
-};
-use crate::infra::certs::RootCertificates;
-use crate::infra::dns::lookup_result::LookupResult;
-use crate::infra::host::Host;
-use crate::infra::{
-    ConnectionParams, DnsSource, HttpRequestDecorator, HttpRequestDecoratorSeq, RouteType,
-    TransportConnectionParams,
 };
 
 const DEFAULT_HTTPS_PORT: NonZeroU16 = nonzero!(443_u16);
@@ -40,7 +41,7 @@ const DOMAIN_CONFIG_CHAT: DomainConfig = DomainConfig {
         ip_addr!(v6, "2600:9000:a507:ab6d:4ce3:2f58:25d7:9cbf"),
         ip_addr!(v6, "2600:9000:a61f:527c:d5eb:a431:5239:3232"),
     ],
-    cert: RootCertificates::Signal,
+    cert: SIGNAL_ROOT_CERTIFICATES,
     proxy_path: "/service",
     confirmation_header_name: Some(TIMESTAMP_HEADER_NAME),
     proxy_config_f: PROXY_CONFIG_F_PROD,
@@ -58,7 +59,7 @@ const DOMAIN_CONFIG_CHAT_STAGING: DomainConfig = DomainConfig {
         ip_addr!(v6, "2600:9000:a507:ab6d:7b25:2580:8bd6:3b93"),
         ip_addr!(v6, "2600:9000:a61f:527c:2215:cd9:bac6:a2f8"),
     ],
-    cert: RootCertificates::Signal,
+    cert: SIGNAL_ROOT_CERTIFICATES,
     proxy_path: "/service-staging",
     confirmation_header_name: Some(TIMESTAMP_HEADER_NAME),
     proxy_config_f: PROXY_CONFIG_F_STAGING,
@@ -70,7 +71,7 @@ const DOMAIN_CONFIG_CDSI: DomainConfig = DomainConfig {
     port: DEFAULT_HTTPS_PORT,
     ip_v4: &[ip_addr!(v4, "40.122.45.194")],
     ip_v6: &[ip_addr!(v6, "2603:1030:7::1")],
-    cert: RootCertificates::Signal,
+    cert: SIGNAL_ROOT_CERTIFICATES,
     proxy_path: "/cdsi",
     confirmation_header_name: None,
     proxy_config_f: PROXY_CONFIG_F_PROD,
@@ -82,7 +83,7 @@ const DOMAIN_CONFIG_CDSI_STAGING: DomainConfig = DomainConfig {
     port: DEFAULT_HTTPS_PORT,
     ip_v4: &[ip_addr!(v4, "104.43.162.137")],
     ip_v6: &[ip_addr!(v6, "2603:1030:7::732")],
-    cert: RootCertificates::Signal,
+    cert: SIGNAL_ROOT_CERTIFICATES,
     proxy_path: "/cdsi-staging",
     confirmation_header_name: None,
     proxy_config_f: PROXY_CONFIG_F_STAGING,
@@ -94,7 +95,7 @@ const DOMAIN_CONFIG_SVR2: DomainConfig = DomainConfig {
     port: DEFAULT_HTTPS_PORT,
     ip_v4: &[ip_addr!(v4, "20.66.40.69")],
     ip_v6: &[],
-    cert: RootCertificates::Signal,
+    cert: SIGNAL_ROOT_CERTIFICATES,
     proxy_path: "/svr2",
     confirmation_header_name: None,
     proxy_config_f: PROXY_CONFIG_F_PROD,
@@ -106,7 +107,7 @@ const DOMAIN_CONFIG_SVR2_STAGING: DomainConfig = DomainConfig {
     port: DEFAULT_HTTPS_PORT,
     ip_v4: &[ip_addr!(v4, "20.253.229.239")],
     ip_v6: &[],
-    cert: RootCertificates::Signal,
+    cert: SIGNAL_ROOT_CERTIFICATES,
     proxy_path: "/svr2-staging",
     confirmation_header_name: None,
     proxy_config_f: PROXY_CONFIG_F_STAGING,
@@ -118,7 +119,7 @@ const DOMAIN_CONFIG_SVR3_SGX: DomainConfig = DomainConfig {
     port: DEFAULT_HTTPS_PORT,
     ip_v4: &[ip_addr!(v4, "40.112.138.96")],
     ip_v6: &[],
-    cert: RootCertificates::Signal,
+    cert: SIGNAL_ROOT_CERTIFICATES,
     proxy_path: "/svr3-sgx",
     confirmation_header_name: None,
     proxy_config_f: PROXY_CONFIG_F_PROD,
@@ -130,7 +131,7 @@ const DOMAIN_CONFIG_SVR3_SGX_STAGING: DomainConfig = DomainConfig {
     port: DEFAULT_HTTPS_PORT,
     ip_v4: &[ip_addr!(v4, "13.88.63.29")],
     ip_v6: &[],
-    cert: RootCertificates::Signal,
+    cert: SIGNAL_ROOT_CERTIFICATES,
     proxy_path: "/svr3-sgx-staging",
     confirmation_header_name: None,
     proxy_config_f: PROXY_CONFIG_F_STAGING,
@@ -142,7 +143,7 @@ const DOMAIN_CONFIG_SVR3_NITRO: DomainConfig = DomainConfig {
     port: DEFAULT_HTTPS_PORT,
     ip_v4: &[ip_addr!(v4, "75.2.91.98")],
     ip_v6: &[],
-    cert: RootCertificates::Signal,
+    cert: SIGNAL_ROOT_CERTIFICATES,
     proxy_path: "/svr3-nitro",
     confirmation_header_name: None,
     proxy_config_f: PROXY_CONFIG_F_PROD,
@@ -154,7 +155,7 @@ const DOMAIN_CONFIG_SVR3_NITRO_STAGING: DomainConfig = DomainConfig {
     port: DEFAULT_HTTPS_PORT,
     ip_v4: &[ip_addr!(v4, "75.2.86.85"), ip_addr!(v4, "99.83.239.137")],
     ip_v6: &[],
-    cert: RootCertificates::Signal,
+    cert: SIGNAL_ROOT_CERTIFICATES,
     proxy_path: "/svr3-nitro-staging",
     confirmation_header_name: None,
     proxy_config_f: PROXY_CONFIG_F_STAGING,
@@ -166,7 +167,7 @@ pub const DOMAIN_CONFIG_SVR3_TPM2SNP: DomainConfig = DomainConfig {
     port: DEFAULT_HTTPS_PORT,
     ip_v4: &[ip_addr!(v4, "34.144.241.251")],
     ip_v6: &[],
-    cert: RootCertificates::Signal,
+    cert: SIGNAL_ROOT_CERTIFICATES,
     proxy_path: "/svr3-tpm2snp",
     confirmation_header_name: None,
     proxy_config_f: PROXY_CONFIG_F_PROD,
@@ -178,7 +179,7 @@ pub const DOMAIN_CONFIG_SVR3_TPM2SNP_STAGING: DomainConfig = DomainConfig {
     port: DEFAULT_HTTPS_PORT,
     ip_v4: &[ip_addr!(v4, "13.88.30.76")],
     ip_v6: &[],
-    cert: RootCertificates::Signal,
+    cert: SIGNAL_ROOT_CERTIFICATES,
     proxy_path: "/svr3-tpm2snp-staging",
     confirmation_header_name: None,
     proxy_config_f: PROXY_CONFIG_F_STAGING,

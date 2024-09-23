@@ -5,8 +5,8 @@
 
 use std::io;
 
-use crate::infra::dns::dns_message;
-use crate::infra::dns::dns_message::MAX_DNS_UDP_MESSAGE_LEN;
+use crate::dns::dns_message;
+use crate::dns::dns_message::MAX_DNS_UDP_MESSAGE_LEN;
 
 #[derive(displaydoc::Display, Debug, thiserror::Error, Clone)]
 pub enum Error {

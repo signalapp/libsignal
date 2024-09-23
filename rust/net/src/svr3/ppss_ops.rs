@@ -12,6 +12,9 @@ use std::num::NonZeroU32;
 use std::sync::Arc;
 
 use futures_util::future::join_all;
+use libsignal_net_infra::host::Host;
+use libsignal_net_infra::ws::{run_attested_interaction, AttestedConnection, NextOrClose};
+use libsignal_net_infra::AsyncDuplexStream;
 use libsignal_svr3::{
     Backup4, EvaluationResult, MaskedSecret, Query4, Remove4, Restore1, RotationMachine,
     MAX_ROTATION_STEPS,
@@ -20,9 +23,6 @@ use rand_core::CryptoRngCore;
 
 use super::{Error, OpaqueMaskedShareSet};
 use crate::enclave::{ArrayIsh, IntoConnectionResults, PpssSetup};
-use crate::infra::host::Host;
-use crate::infra::ws::{run_attested_interaction, AttestedConnection, NextOrClose};
-use crate::infra::AsyncDuplexStream;
 
 pub async fn do_backup<S: AsyncDuplexStream + 'static, Env: PpssSetup<S>>(
     connect_results: Env::ConnectionResults,
@@ -250,12 +250,12 @@ fn collect_responses<'a>(
 mod test {
     use assert_matches::assert_matches;
     use attest::nitro::NitroError;
+    use libsignal_net_infra::ws::DefaultStream;
     use nonzero_ext::nonzero;
     use rand_core::OsRng;
 
     use super::*;
     use crate::enclave::Error;
-    use crate::infra::ws::DefaultStream;
 
     struct TestEnv;
 

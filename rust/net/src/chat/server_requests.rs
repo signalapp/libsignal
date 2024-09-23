@@ -5,6 +5,7 @@
 
 use futures_util::future::BoxFuture;
 use futures_util::Stream;
+use libsignal_net_infra::AsyncDuplexStream;
 use libsignal_protocol::Timestamp;
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
@@ -13,7 +14,6 @@ use tokio_stream::StreamExt as _;
 use crate::chat::ws::ServerEvent as WsServerEvent;
 use crate::chat::ChatServiceError;
 use crate::env::TIMESTAMP_HEADER_NAME;
-use crate::infra::AsyncDuplexStream;
 
 pub type ResponseEnvelopeSender = Box<
     dyn FnOnce(http::StatusCode) -> BoxFuture<'static, Result<(), ChatServiceError>> + Send + Sync,

@@ -9,8 +9,8 @@
 
 use std::borrow::Borrow;
 
-use crate::infra::connection_manager::{ErrorClass, ErrorClassifier};
-use crate::infra::errors::{LogSafeDisplay, TransportConnectError};
+use crate::connection_manager::{ErrorClass, ErrorClassifier};
+use crate::errors::{LogSafeDisplay, TransportConnectError};
 
 /// Errors that can occur when connecting a websocket.
 #[derive(Debug, thiserror::Error)]
@@ -21,7 +21,7 @@ pub enum WebSocketConnectError {
     /// A special case of [`tungstenite::Error::Http`] where the response is considered to come from
     /// the Signal servers.
     ///
-    /// See [`ConnectionParams::connection_confirmation_header`](crate::infra::ConnectionParams::connection_confirmation_header).
+    /// See [`ConnectionParams::connection_confirmation_header`](crate::ConnectionParams::connection_confirmation_header).
     RejectedByServer(http::Response<Option<Vec<u8>>>),
 }
 

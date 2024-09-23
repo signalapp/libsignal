@@ -12,8 +12,8 @@ use libsignal_net::enclave::{Cdsi, EnclaveEndpointConnection};
 use libsignal_net::infra::connection_manager::ConnectionManager;
 use libsignal_net::infra::dns::DnsResolver;
 use libsignal_net::infra::tcp_ssl::DirectConnector as TcpSslTransportConnector;
+use libsignal_net::infra::utils::ObservableEvent;
 use libsignal_net::infra::TransportConnector;
-use libsignal_net::utils::ObservableEvent;
 use tokio::io::AsyncBufReadExt as _;
 
 async fn cdsi_lookup(
@@ -24,7 +24,7 @@ async fn cdsi_lookup(
     timeout: Duration,
 ) -> Result<LookupResponse, LookupError> {
     let connected = CdsiConnection::connect(endpoint, transport_connector, auth).await?;
-    let (_token, remaining_response) = libsignal_net::utils::timeout(
+    let (_token, remaining_response) = libsignal_net::infra::utils::timeout(
         timeout,
         LookupError::ConnectionTimedOut,
         connected.send_request(request),

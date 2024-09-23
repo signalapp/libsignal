@@ -9,6 +9,7 @@ use std::task::{ready, Context, Poll};
 
 use futures_util::FutureExt;
 use libsignal_core::Aci;
+use libsignal_net_infra::noise::{NoiseStream, Transport};
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 use uuid::Uuid;
 use zerocopy::{AsBytes, FromBytes, FromZeroes};
@@ -16,7 +17,6 @@ use zerocopy::{AsBytes, FromBytes, FromZeroes};
 use super::handshake::{HandshakeAuth, Handshaker, EPHEMERAL_KEY_LEN, STATIC_KEY_LEN};
 use super::waker::SharedWakers;
 use super::SendError;
-use crate::infra::noise::{NoiseStream, Transport};
 
 /// A Noise-encrypted stream that wraps an underlying block-based [`Transport`].
 ///
@@ -277,12 +277,12 @@ mod test {
     use const_str::concat;
     use futures_util::{pin_mut, SinkExt, StreamExt};
     use hex_literal::hex;
+    use libsignal_net_infra::noise::testutil::{echo_forever, TestStream};
+    use libsignal_net_infra::utils::testutil::TestWaker;
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
     use super::*;
     use crate::chat::noise::handshake::PAYLOAD_AEAD_TAG_LEN;
-    use crate::infra::noise::testutil::{echo_forever, TestStream};
-    use crate::utils::testutil::TestWaker;
 
     async fn authenticating_server_handshake<S: Transport + Unpin>(
         transport: &mut S,

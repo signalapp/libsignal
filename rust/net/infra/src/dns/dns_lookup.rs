@@ -12,10 +12,10 @@ use async_trait::async_trait;
 use either::Either;
 use itertools::Itertools;
 
-use crate::infra::dns::custom_resolver::{CustomDnsResolver, DnsTransport};
-use crate::infra::dns::dns_errors::Error;
-use crate::infra::dns::lookup_result::LookupResult;
-use crate::infra::{dns, DnsSource};
+use crate::dns::custom_resolver::{CustomDnsResolver, DnsTransport};
+use crate::dns::dns_errors::Error;
+use crate::dns::lookup_result::LookupResult;
+use crate::{dns, DnsSource};
 
 #[derive(Clone, Debug)]
 pub struct DnsLookupRequest {

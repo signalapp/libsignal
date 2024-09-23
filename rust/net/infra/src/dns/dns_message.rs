@@ -14,8 +14,8 @@ use bitstream_io::{
 };
 use tokio::time::Instant;
 
-use crate::infra::dns::dns_types::Expiring;
-use crate::infra::dns::ResourceType;
+use crate::dns::dns_types::Expiring;
+use crate::dns::ResourceType;
 
 pub(crate) const QCLASS_IN: u16 = 1;
 const POINTER_MASK: u8 = 0xC0;
@@ -281,7 +281,7 @@ mod test {
     use tokio::time::Instant;
 
     use super::*;
-    use crate::infra::dns::dns_types::ResourceType;
+    use crate::dns::dns_types::ResourceType;
 
     const REQUEST_ID: u16 = 0xABCD;
     const VALID_DOMAIN: &str = "chat.signal.org";

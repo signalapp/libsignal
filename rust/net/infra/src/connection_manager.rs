@@ -16,10 +16,10 @@ use itertools::Itertools;
 use tokio::sync::Mutex;
 use tokio::time::{timeout_at, Instant};
 
-use crate::infra::errors::LogSafeDisplay;
-use crate::infra::ConnectionParams;
+use crate::errors::LogSafeDisplay;
 use crate::timeouts::{CONNECTION_ROUTE_COOLDOWN_INTERVALS, CONNECTION_ROUTE_MAX_COOLDOWN};
 use crate::utils::{EventSubscription, ObservableEvent};
+use crate::ConnectionParams;
 
 /// Represents the outcome of the connection attempt
 #[derive(Debug)]
@@ -259,7 +259,7 @@ pub enum RetryError<E> {
 }
 
 /// Classification of connection errors by fatality.
-#[cfg_attr(test, derive(Clone, Copy))]
+#[cfg_attr(any(test, feature = "testutils"), derive(Clone, Copy))]
 #[derive(Debug)]
 pub enum ErrorClass {
     /// Non-fatal, somewhat counterintuitively unreachable server is a non-fatal error at this level
@@ -440,13 +440,13 @@ mod test {
     use tokio::time;
 
     use super::*;
-    use crate::infra::certs::RootCertificates;
-    use crate::infra::host::Host;
-    use crate::infra::test::shared::{
+    use crate::certs::RootCertificates;
+    use crate::host::Host;
+    use crate::testutil::{
         ClassifiableTestError, TestError, FEW_ATTEMPTS, LONG_CONNECTION_TIME, MANY_ATTEMPTS,
         TIMEOUT_DURATION, TIME_ADVANCE_VALUE,
     };
-    use crate::infra::{HttpRequestDecoratorSeq, RouteType, TransportConnectionParams};
+    use crate::{HttpRequestDecoratorSeq, RouteType, TransportConnectionParams};
 
     const ROUTE_THAT_TIMES_OUT: &str = "timeout.signal.org";
 
@@ -988,7 +988,7 @@ mod test {
             transport: TransportConnectionParams {
                 sni: Arc::clone(&host),
                 tcp_host: Host::Domain(Arc::clone(&host)),
-                certs: RootCertificates::Signal,
+                certs: RootCertificates::Native,
                 port: nonzero!(443u16),
             },
             http_host: host,

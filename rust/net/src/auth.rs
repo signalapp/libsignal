@@ -5,24 +5,8 @@
 use std::time::SystemTime;
 
 use hmac::{Hmac, Mac};
+use libsignal_net_infra::HttpBasicAuth;
 use sha2::Sha256;
-
-use crate::infra::HttpRequestDecorator;
-use crate::utils::basic_authorization;
-
-pub trait HttpBasicAuth {
-    fn username(&self) -> &str;
-    fn password(&self) -> &str;
-}
-
-impl<T: HttpBasicAuth> From<T> for HttpRequestDecorator {
-    fn from(value: T) -> Self {
-        HttpRequestDecorator::Header(
-            http::header::AUTHORIZATION,
-            basic_authorization(value.username(), value.password()),
-        )
-    }
-}
 
 /// username and password as returned by the chat server's /auth endpoints.
 /// - username is a "hex(uid)"

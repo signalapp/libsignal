@@ -17,17 +17,15 @@ use futures_util::StreamExt;
 use tokio::sync::oneshot;
 use tokio::time::Instant;
 
-use crate::infra::connection_manager::{
-    ConnectionAttemptOutcome, SingleRouteThrottlingConnectionManager,
-};
-use crate::infra::dns::dns_errors::Error;
-use crate::infra::dns::dns_lookup::DnsLookupRequest;
-use crate::infra::dns::dns_types::Expiring;
-use crate::infra::dns::dns_utils::{log_safe_domain, results_within_interval};
-use crate::infra::dns::lookup_result::LookupResult;
-use crate::infra::{dns, DnsSource};
+use crate::connection_manager::{ConnectionAttemptOutcome, SingleRouteThrottlingConnectionManager};
+use crate::dns::dns_errors::Error;
+use crate::dns::dns_lookup::DnsLookupRequest;
+use crate::dns::dns_types::Expiring;
+use crate::dns::dns_utils::{log_safe_domain, results_within_interval};
+use crate::dns::lookup_result::LookupResult;
 use crate::timeouts::{DNS_CALL_BACKGROUND_TIMEOUT, DNS_RESOLUTION_DELAY};
 use crate::utils::{EventSubscription, ObservableEvent};
+use crate::{dns, DnsSource};
 
 pub type DnsIpv4Result = Expiring<Vec<Ipv4Addr>>;
 pub type DnsIpv6Result = Expiring<Vec<Ipv6Addr>>;
