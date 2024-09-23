@@ -304,7 +304,7 @@ jobs:
 
   rust-stable-testing:
     name: Rust tests (using latest stable)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-4-cores
     needs: [check-up-to-date]
     if: ${{ always() && (needs.check-up-to-date.outputs.has-changes || github.event_name != 'schedule') }}
     timeout-minutes: 45
@@ -332,19 +332,9 @@ jobs:
       env:
         RUST_LOG: debug
 
-    - name: cargo clean (reclaim disk space)
-      # Clean the contents of the target directory to avoid running out of disk space during the
-      # following steps.
-      run: cargo +stable clean
-
     - name: Run tests (32-bit)
       # Exclude signal-neon-futures because those tests run Node
       run: cargo +stable test --workspace --all-features --verbose --target i686-unknown-linux-gnu --exclude signal-neon-futures --no-fail-fast -- --include-ignored
-
-    - name: cargo clean again (reclaim disk space)
-      # Clean the contents of the target directory to avoid running out of disk space during the
-      # following steps.
-      run: cargo +stable clean
 
     - name: Run libsignal-protocol cross-version tests
       run: cargo +stable test --no-fail-fast

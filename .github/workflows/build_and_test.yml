@@ -95,7 +95,7 @@ jobs:
   rust:
     name: Rust
 
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-4-cores
 
     needs: changes
 
@@ -182,12 +182,6 @@ jobs:
       run: cargo clippy --workspace --all-targets --all-features ${{ matrix.cargo-keep-going }} -- -D warnings
       if: matrix.version == 'nightly'
 
-    - name: cargo clean (reclaim disk space)
-      # Clean the contents of the target directory to avoid running out of disk space during the
-      # doc build.
-      run: cargo +stable clean
-      if: matrix.version == 'stable'
-
     - name: Rust docs
       run: cargo +${{ matrix.toolchain }} doc --workspace --all-features ${{ matrix.cargo-keep-going }}
       if: matrix.version == 'stable'
@@ -197,12 +191,6 @@ jobs:
     # We check the fuzz targets on stable because they don't have lockfiles,
     # and crates don't generally support arbitrary nightly versions.
     # See https://github.com/dtolnay/proc-macro2/issues/307 for an example.
-
-    - name: cargo clean (reclaim disk space)
-      # Clean the contents of the target directory to avoid running out of disk space during the
-      # following steps.
-      run: cargo +stable clean
-      if: matrix.version == 'stable'
 
     - name: Check that the protocol fuzz target still builds
       run: cargo +${{ matrix.toolchain }} check --all-targets ${{ matrix.cargo-keep-going }}
@@ -255,7 +243,7 @@ jobs:
   java:
     name: Java
 
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-4-cores
 
     needs: changes
 
