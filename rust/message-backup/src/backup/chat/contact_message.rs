@@ -2,24 +2,26 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+#[cfg(test)]
+use derive_where::derive_where;
 use protobuf::EnumOrUnknown;
 
-use crate::backup::chat::{ChatItemError, Reaction};
+use crate::backup::chat::{ChatItemError, ReactionSet};
 use crate::backup::file::{FilePointer, FilePointerError};
 use crate::backup::frame::RecipientId;
 use crate::backup::method::LookupPair;
 use crate::backup::recipient::DestinationKind;
-use crate::backup::serialize::{SerializeOrder, UnorderedList};
+use crate::backup::serialize::SerializeOrder;
 use crate::backup::{TryFromWith, TryIntoWith as _};
 use crate::proto::backup as proto;
 
 /// Validated version of [`proto::ContactMessage`].
 #[derive(Debug, serde::Serialize)]
-#[cfg_attr(test, derive(PartialEq))]
+#[cfg_attr(test, derive_where(PartialEq; Recipient: PartialEq + SerializeOrder))]
 pub struct ContactMessage<Recipient> {
     pub contacts: Vec<ContactAttachment>,
     #[serde(bound(serialize = "Recipient: serde::Serialize + SerializeOrder"))]
-    pub reactions: UnorderedList<Reaction<Recipient>>,
+    pub reactions: ReactionSet<Recipient>,
     _limit_construction_to_module: (),
 }
 
@@ -58,10 +60,7 @@ impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R>> TryFromWith<proto
             special_fields: _,
         } = item;
 
-        let reactions = reactions
-            .into_iter()
-            .map(|r| r.try_into_with(context))
-            .collect::<Result<_, _>>()?;
+        let reactions = reactions.try_into_with(context)?;
 
         let contacts = contact
             .into_iter()
@@ -173,7 +172,7 @@ mod test {
     use test_case::test_case;
 
     use super::*;
-    use crate::backup::chat::ReactionError;
+    use crate::backup::chat::{Reaction, ReactionError};
     use crate::backup::recipient::FullRecipientData;
     use crate::backup::testutil::TestContext;
 
@@ -215,7 +214,10 @@ mod test {
             proto::ContactMessage::test_data().try_into_with(&TestContext::default()),
             Ok(ContactMessage {
                 contacts: vec![ContactAttachment::from_proto_test_data()],
-                reactions: vec![Reaction::from_proto_test_data()].into(),
+                reactions: ReactionSet::from_iter([(
+                    TestContext::SELF_ID,
+                    Reaction::from_proto_test_data(),
+                )]),
                 _limit_construction_to_module: ()
             })
         )

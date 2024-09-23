@@ -2,21 +2,24 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use crate::backup::chat::{ChatItemError, Reaction};
+#[cfg(test)]
+use derive_where::derive_where;
+
+use crate::backup::chat::{ChatItemError, ReactionSet};
 use crate::backup::frame::RecipientId;
 use crate::backup::method::LookupPair;
 use crate::backup::recipient::DestinationKind;
-use crate::backup::serialize::{SerializeOrder, UnorderedList};
+use crate::backup::serialize::SerializeOrder;
 use crate::backup::sticker::MessageSticker;
 use crate::backup::{TryFromWith, TryIntoWith as _};
 use crate::proto::backup as proto;
 
 /// Validated version of [`proto::StickerMessage`].
 #[derive(Debug, serde::Serialize)]
-#[cfg_attr(test, derive(PartialEq))]
+#[cfg_attr(test, derive_where(PartialEq; Recipient: PartialEq + SerializeOrder))]
 pub struct StickerMessage<Recipient> {
     #[serde(bound(serialize = "Recipient: serde::Serialize + SerializeOrder"))]
-    pub reactions: UnorderedList<Reaction<Recipient>>,
+    pub reactions: ReactionSet<Recipient>,
     pub sticker: MessageSticker,
     _limit_construction_to_module: (),
 }
@@ -33,10 +36,7 @@ impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R>> TryFromWith<proto
             special_fields: _,
         } = item;
 
-        let reactions = reactions
-            .into_iter()
-            .map(|r| r.try_into_with(context))
-            .collect::<Result<_, _>>()?;
+        let reactions = reactions.try_into_with(context)?;
 
         let sticker = sticker
             .into_option()

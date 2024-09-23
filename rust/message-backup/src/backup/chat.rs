@@ -45,6 +45,9 @@ use payment::*;
 mod quote;
 use quote::*;
 
+mod reactions;
+use reactions::*;
+
 mod standard_message;
 use standard_message::*;
 
@@ -226,40 +229,6 @@ pub enum ChatItemMessage<M: Method + ReferencedTypes> {
     Update(UpdateMessage<M::RecipientReference>),
     PaymentNotification(PaymentNotification),
     GiftBadge(M::BoxedValue<GiftBadge>),
-}
-
-/// Validated version of [`proto::Reaction`].
-#[derive(Debug, serde::Serialize)]
-#[cfg_attr(test, derive(PartialEq, Clone))]
-pub struct Reaction<Recipient> {
-    pub emoji: String,
-    // This field is not generated consistently on all platforms, so we only use it to sort
-    // containers of Reactions.
-    #[serde(skip)]
-    pub sort_order: u64,
-    #[serde(bound(serialize = "Recipient: serde::Serialize"))]
-    pub author: Recipient,
-    pub sent_timestamp: Timestamp,
-    _limit_construction_to_module: (),
-}
-
-impl<Recipient: SerializeOrder> SerializeOrder for Reaction<Recipient> {
-    fn serialize_cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.sort_order
-            .cmp(&other.sort_order)
-            .then_with(|| self.author.serialize_cmp(&other.author))
-    }
-}
-
-#[derive(Debug, thiserror::Error, displaydoc::Display)]
-#[cfg_attr(test, derive(PartialEq))]
-pub enum ReactionError {
-    /// unknown author {0:?}
-    AuthorNotFound(RecipientId),
-    /// author {0:?} was a {1:?}, not a contact or self
-    InvalidAuthor(RecipientId, DestinationKind),
-    /// "emoji" is an empty string
-    EmptyEmoji,
 }
 
 #[derive(Debug, serde::Serialize, strum::EnumDiscriminants)]
@@ -749,45 +718,6 @@ impl<
     }
 }
 
-impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R>> TryFromWith<proto::Reaction, C>
-    for Reaction<R>
-{
-    type Error = ReactionError;
-
-    fn try_from_with(item: proto::Reaction, context: &C) -> Result<Self, Self::Error> {
-        let proto::Reaction {
-            authorId,
-            sentTimestamp,
-            emoji,
-            sortOrder,
-            special_fields: _,
-        } = item;
-
-        if emoji.is_empty() {
-            return Err(ReactionError::EmptyEmoji);
-        }
-
-        let author_id = RecipientId(authorId);
-        let Some((&author_kind, author)) = context.lookup_pair(&author_id) else {
-            return Err(ReactionError::AuthorNotFound(author_id));
-        };
-        if !author_kind.is_individual() {
-            return Err(ReactionError::InvalidAuthor(author_id, author_kind));
-        }
-        let author = author.clone();
-
-        let sent_timestamp = Timestamp::from_millis(sentTimestamp, "Reaction.sentTimestamp");
-
-        Ok(Self {
-            emoji,
-            sort_order: sortOrder,
-            author,
-            sent_timestamp,
-            _limit_construction_to_module: (),
-        })
-    }
-}
-
 #[cfg(test)]
 mod test {
     use std::time::UNIX_EPOCH;
@@ -798,7 +728,6 @@ mod test {
 
     use super::*;
     use crate::backup::method::Store;
-    use crate::backup::recipient::FullRecipientData;
     use crate::backup::testutil::TestContext;
     use crate::backup::time::testutil::MillisecondsSinceEpoch;
     use crate::backup::Purpose;
@@ -822,30 +751,6 @@ mod test {
                 expiresInMs: 12 * 60 * 60 * 1000,
                 dateSent: MillisecondsSinceEpoch::TEST_VALUE.0,
                 ..Default::default()
-            }
-        }
-    }
-
-    impl proto::Reaction {
-        pub(crate) fn test_data() -> Self {
-            Self {
-                emoji: "📲".to_string(),
-                sortOrder: 3,
-                authorId: proto::Recipient::TEST_ID,
-                sentTimestamp: MillisecondsSinceEpoch::TEST_VALUE.0,
-                ..Default::default()
-            }
-        }
-    }
-
-    impl Reaction<FullRecipientData> {
-        pub(crate) fn from_proto_test_data() -> Self {
-            Self {
-                emoji: "📲".to_string(),
-                sort_order: 3,
-                author: TestContext::test_recipient().clone(),
-                sent_timestamp: Timestamp::test_value(),
-                _limit_construction_to_module: (),
             }
         }
     }
@@ -1045,31 +950,6 @@ mod test {
         message
             .try_into_with(&TestContext::default())
             .map(|_: ChatItemData<Store>| ())
-    }
-
-    #[test]
-    fn valid_reaction() {
-        assert_eq!(
-            proto::Reaction::test_data().try_into_with(&TestContext::default()),
-            Ok(Reaction::from_proto_test_data())
-        )
-    }
-
-    #[test_case(
-        |x| x.authorId = proto::Recipient::TEST_ID + 2 => Err(ReactionError::AuthorNotFound(RecipientId(proto::Recipient::TEST_ID + 2)));
-        "unknown author id"
-    )]
-    #[test_case(
-        |x| x.authorId = TestContext::GROUP_ID.0 => Err(ReactionError::InvalidAuthor(TestContext::GROUP_ID, DestinationKind::Group));
-        "invalid author id"
-    )]
-    fn reaction(modifier: fn(&mut proto::Reaction)) -> Result<(), ReactionError> {
-        let mut reaction = proto::Reaction::test_data();
-        modifier(&mut reaction);
-
-        reaction
-            .try_into_with(&TestContext::default())
-            .map(|_: Reaction<FullRecipientData>| ())
     }
 
     #[test_case(Purpose::DeviceTransfer, 3600, Ok(()))]

@@ -4,6 +4,7 @@
 //
 
 use derive_where::derive_where;
+use itertools::Itertools;
 
 use crate::backup::serialize::SerializeOrder;
 
@@ -24,7 +25,7 @@ where
     where
         S: serde::Serializer,
     {
-        let mut items: Vec<_> = self.0.iter().collect();
+        let mut items = self.0.iter().collect_vec();
         items.sort_by(|l, r| l.serialize_cmp(r));
 
         serializer.collect_seq(items)

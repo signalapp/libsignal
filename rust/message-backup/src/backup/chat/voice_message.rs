@@ -2,23 +2,26 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+#[cfg(test)]
+use derive_where::derive_where;
+
 use crate::backup::chat::quote::{Quote, QuoteError};
-use crate::backup::chat::{Reaction, ReactionError};
+use crate::backup::chat::{ReactionError, ReactionSet};
 use crate::backup::file::{MessageAttachment, MessageAttachmentError};
 use crate::backup::frame::RecipientId;
 use crate::backup::method::LookupPair;
 use crate::backup::recipient::DestinationKind;
-use crate::backup::serialize::{SerializeOrder, UnorderedList};
+use crate::backup::serialize::SerializeOrder;
 use crate::backup::{TryFromWith, TryIntoWith as _};
 use crate::proto::backup as proto;
 
 /// Validated version of a voice message [`proto::StandardMessage`].
 #[derive(Debug, serde::Serialize)]
-#[cfg_attr(test, derive(PartialEq))]
+#[cfg_attr(test, derive_where(PartialEq; Recipient: PartialEq + SerializeOrder))]
 pub struct VoiceMessage<Recipient> {
     pub quote: Option<Quote<Recipient>>,
     #[serde(bound(serialize = "Recipient: serde::Serialize + SerializeOrder"))]
-    pub reactions: UnorderedList<Reaction<Recipient>>,
+    pub reactions: ReactionSet<Recipient>,
     pub attachment: MessageAttachment,
     _limit_construction_to_module: (),
 }
@@ -77,10 +80,8 @@ impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R>>
             .into_option()
             .map(|q| q.try_into_with(context))
             .transpose()?;
-        let reactions = reactions
-            .into_iter()
-            .map(|r| r.try_into_with(context))
-            .collect::<Result<_, _>>()?;
+
+        let reactions = reactions.try_into_with(context)?;
 
         Ok(Self {
             reactions,
@@ -96,6 +97,7 @@ mod test {
     use test_case::test_case;
 
     use super::*;
+    use crate::backup::chat::Reaction;
     use crate::backup::recipient::FullRecipientData;
     use crate::backup::testutil::TestContext;
 
@@ -106,7 +108,10 @@ mod test {
                 .try_into_with(&TestContext::default()),
             Ok(VoiceMessage {
                 quote: Some(Quote::from_proto_test_data()),
-                reactions: vec![Reaction::from_proto_test_data()].into(),
+                reactions: ReactionSet::from_iter([(
+                    TestContext::SELF_ID,
+                    Reaction::from_proto_test_data(),
+                )]),
                 attachment: MessageAttachment::from_proto_voice_message_data(),
                 _limit_construction_to_module: ()
             })
