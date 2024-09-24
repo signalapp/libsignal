@@ -17,6 +17,7 @@ signal-crypto = { path = "../crypto" }
 aes = { workspace = true, features = ["zeroize"] }
 aes-gcm-siv = { workspace = true }
 arrayref = "0.3.6"
+assert_matches = "1.5"
 async-trait = { workspace = true }
 ctr = { workspace = true, features = ["zeroize"] }
 curve25519-dalek = { workspace = true, features = ["digest"] }

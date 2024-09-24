@@ -2413,6 +2413,7 @@ dependencies = [
  "aes",
  "aes-gcm-siv",
  "arrayref",
+ "assert_matches",
  "async-trait",
  "clap",
  "criterion",

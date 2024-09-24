@@ -59,7 +59,7 @@ pub async fn group_encrypt<R: Rng + CryptoRng>(
         &signing_key,
     )?;
 
-    sender_key_state.set_sender_chain_key(sender_chain_key.next());
+    sender_key_state.set_sender_chain_key(sender_chain_key.next()?);
 
     sender_key_store
         .store_sender_key(sender, distribution_id, &record)
@@ -112,10 +112,10 @@ fn get_sender_key(
 
     while sender_chain_key.iteration() < iteration {
         state.add_sender_message_key(&sender_chain_key.sender_message_key());
-        sender_chain_key = sender_chain_key.next();
+        sender_chain_key = sender_chain_key.next()?;
     }
 
-    state.set_sender_chain_key(sender_chain_key.next());
+    state.set_sender_chain_key(sender_chain_key.next()?);
     Ok(sender_chain_key.sender_message_key())
 }
 
