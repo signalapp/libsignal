@@ -219,7 +219,7 @@ export type ChatService = {
  * Provides API methods to connect and communicate with the Chat Service over an authenticated channel.
  */
 export class AuthenticatedChatService implements ChatService {
-  public readonly chatService: Wrapper<Native.Chat>;
+  public readonly chatService: Wrapper<Native.AuthChat>;
 
   constructor(
     private readonly asyncContext: TokioAsyncContext,
@@ -230,7 +230,7 @@ export class AuthenticatedChatService implements ChatService {
     listener: ChatServiceListener
   ) {
     this.chatService = newNativeHandle(
-      Native.ChatService_new(
+      Native.ChatService_new_auth(
         connectionManager,
         username,
         password,
@@ -264,7 +264,10 @@ export class AuthenticatedChatService implements ChatService {
   }
 
   disconnect(): Promise<void> {
-    return Native.ChatService_disconnect(this.asyncContext, this.chatService);
+    return Native.ChatService_disconnect_auth(
+      this.asyncContext,
+      this.chatService
+    );
   }
 
   connect(options?: {
@@ -311,7 +314,7 @@ export class AuthenticatedChatService implements ChatService {
  * Provides API methods to connect and communicate with the Chat Service over an unauthenticated channel.
  */
 export class UnauthenticatedChatService implements ChatService {
-  public readonly chatService: Wrapper<Native.Chat>;
+  public readonly chatService: Wrapper<Native.UnauthChat>;
 
   constructor(
     private readonly asyncContext: TokioAsyncContext,
@@ -319,7 +322,7 @@ export class UnauthenticatedChatService implements ChatService {
     listener: ConnectionEventsListener
   ) {
     this.chatService = newNativeHandle(
-      Native.ChatService_new(connectionManager, '', '', false)
+      Native.ChatService_new_unauth(connectionManager)
     );
     const nativeChatListener = {
       _incoming_message(
@@ -344,7 +347,10 @@ export class UnauthenticatedChatService implements ChatService {
   }
 
   disconnect(): Promise<void> {
-    return Native.ChatService_disconnect(this.asyncContext, this.chatService);
+    return Native.ChatService_disconnect_unauth(
+      this.asyncContext,
+      this.chatService
+    );
   }
 
   connect(options?: {

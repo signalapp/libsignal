@@ -136,6 +136,8 @@ public final class Native {
 
   public static native Object AsyncLoadClass(Object tokioContext, String className);
 
+  public static native void AuthChat_Destroy(long handle);
+
   public static native void AuthCredentialPresentation_CheckValidContents(byte[] presentationBytes) throws Exception;
   public static native byte[] AuthCredentialPresentation_GetPniCiphertext(byte[] presentationBytes);
   public static native long AuthCredentialPresentation_GetRedemptionTime(byte[] presentationBytes);
@@ -196,12 +198,12 @@ public final class Native {
   public static native CompletableFuture<Object> ChatService_auth_send_and_debug(long asyncRuntime, long chat, long httpRequest, int timeoutMillis);
   public static native CompletableFuture<Object> ChatService_connect_auth(long asyncRuntime, long chat);
   public static native CompletableFuture<Object> ChatService_connect_unauth(long asyncRuntime, long chat);
-  public static native CompletableFuture ChatService_disconnect(long asyncRuntime, long chat);
-  public static native long ChatService_new(long connectionManager, String username, String password, boolean receiveStories);
+  public static native CompletableFuture ChatService_disconnect_auth(long asyncRuntime, long chat);
+  public static native CompletableFuture ChatService_disconnect_unauth(long asyncRuntime, long chat);
+  public static native long ChatService_new_auth(long connectionManager, String username, String password, boolean receiveStories);
+  public static native long ChatService_new_unauth(long connectionManager);
   public static native CompletableFuture<Object> ChatService_unauth_send(long asyncRuntime, long chat, long httpRequest, int timeoutMillis);
   public static native CompletableFuture<Object> ChatService_unauth_send_and_debug(long asyncRuntime, long chat, long httpRequest, int timeoutMillis);
-
-  public static native void Chat_Destroy(long handle);
 
   public static native void ConnectionManager_Destroy(long handle);
   public static native void ConnectionManager_clear_proxy(long connectionManager);
@@ -651,6 +653,8 @@ public final class Native {
   public static native void TokioAsyncContext_Destroy(long handle);
   public static native void TokioAsyncContext_cancel(long context, long rawCancellationId);
   public static native long TokioAsyncContext_new();
+
+  public static native void UnauthChat_Destroy(long handle);
 
   public static native long UnidentifiedSenderMessageContent_Deserialize(byte[] data) throws Exception;
   public static native void UnidentifiedSenderMessageContent_Destroy(long handle);

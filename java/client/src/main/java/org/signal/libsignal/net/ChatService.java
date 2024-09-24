@@ -29,11 +29,10 @@ public class ChatService extends NativeHandleGuard.SimpleOwner {
       final String username,
       final String password,
       final boolean receiveStories) {
+    // For now, ignore anything to do with authenticated connections.
     super(
         connectionManager.guardedMap(
-            connectionManagerHandle ->
-                Native.ChatService_new(
-                    connectionManagerHandle, username, password, receiveStories)));
+            connectionManagerHandle -> Native.ChatService_new_unauth(connectionManagerHandle)));
     this.tokioAsyncContext = tokioAsyncContext;
   }
 
@@ -53,7 +52,7 @@ public class ChatService extends NativeHandleGuard.SimpleOwner {
         asyncContextHandle ->
             guardedMap(
                 chatServiceHandle ->
-                    Native.ChatService_disconnect(asyncContextHandle, chatServiceHandle)));
+                    Native.ChatService_disconnect_unauth(asyncContextHandle, chatServiceHandle)));
   }
 
   /**
@@ -73,12 +72,7 @@ public class ChatService extends NativeHandleGuard.SimpleOwner {
    *     error).
    */
   public CompletableFuture<DebugInfo> connectAuthenticated() {
-    return tokioAsyncContext.guardedMap(
-        asyncContextHandle ->
-            guardedMap(
-                chatServiceHandle ->
-                    Native.ChatService_connect_auth(asyncContextHandle, chatServiceHandle)
-                        .thenApply(o -> (DebugInfo) o)));
+    throw new UnsupportedOperationException("not yet implemented on Android");
   }
 
   /**
@@ -169,17 +163,7 @@ public class ChatService extends NativeHandleGuard.SimpleOwner {
    */
   public CompletableFuture<Response> authenticatedSend(final Request req)
       throws MalformedURLException {
-    final InternalRequest internalRequest = buildInternalRequest(req);
-    try (final NativeHandleGuard asyncContextHandle = new NativeHandleGuard(tokioAsyncContext);
-        final NativeHandleGuard chatServiceHandle = new NativeHandleGuard(this);
-        final NativeHandleGuard requestHandle = new NativeHandleGuard(internalRequest)) {
-      return Native.ChatService_auth_send(
-              asyncContextHandle.nativeHandle(),
-              chatServiceHandle.nativeHandle(),
-              requestHandle.nativeHandle(),
-              req.timeoutMillis)
-          .thenApply(o -> (Response) o);
-    }
+    throw new UnsupportedOperationException("not yet implemented on Android");
   }
 
   /**
@@ -199,17 +183,7 @@ public class ChatService extends NativeHandleGuard.SimpleOwner {
    */
   public CompletableFuture<ResponseAndDebugInfo> authenticatedSendAndDebug(final Request req)
       throws MalformedURLException {
-    final InternalRequest internalRequest = buildInternalRequest(req);
-    try (final NativeHandleGuard asyncContextHandle = new NativeHandleGuard(tokioAsyncContext);
-        final NativeHandleGuard chatServiceHandle = new NativeHandleGuard(this);
-        final NativeHandleGuard requestHandle = new NativeHandleGuard(internalRequest)) {
-      return Native.ChatService_auth_send_and_debug(
-              asyncContextHandle.nativeHandle(),
-              chatServiceHandle.nativeHandle(),
-              requestHandle.nativeHandle(),
-              req.timeoutMillis)
-          .thenApply(o -> (ResponseAndDebugInfo) o);
-    }
+    throw new UnsupportedOperationException("not yet implemented on Android");
   }
 
   static InternalRequest buildInternalRequest(final Request req) throws MalformedURLException {
@@ -221,7 +195,7 @@ public class ChatService extends NativeHandleGuard.SimpleOwner {
 
   @Override
   protected void release(final long nativeHandle) {
-    Native.Chat_Destroy(nativeHandle);
+    Native.UnauthChat_Destroy(nativeHandle);
   }
 
   static class InternalRequest extends NativeHandleGuard.SimpleOwner {

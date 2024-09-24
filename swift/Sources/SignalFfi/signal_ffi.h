@@ -212,7 +212,9 @@ typedef struct SignalAes256GcmSiv SignalAes256GcmSiv;
 
 typedef struct SignalCdsiLookup SignalCdsiLookup;
 
-typedef struct SignalChat SignalChat;
+typedef struct SignalChatAuthChatService SignalChatAuthChatService;
+
+typedef struct SignalChatUnauthChatService SignalChatUnauthChatService;
 
 typedef struct SignalCiphertextMessage SignalCiphertextMessage;
 
@@ -566,6 +568,10 @@ typedef struct {
   const void *context;
   SignalCancellationId cancellation_id;
 } SignalCPromiseFfiCdsiLookupResponse;
+
+typedef SignalChatAuthChatService SignalAuthChat;
+
+typedef SignalChatUnauthChatService SignalUnauthChat;
 
 typedef struct {
   uint8_t raw_ip_type;
@@ -1491,7 +1497,9 @@ SignalFfiError *signal_cdsi_lookup_token(SignalOwnedBuffer *out, const SignalCds
 
 SignalFfiError *signal_cdsi_lookup_complete(SignalCPromiseFfiCdsiLookupResponse *promise, const SignalTokioAsyncContext *async_runtime, const SignalCdsiLookup *lookup);
 
-SignalFfiError *signal_chat_destroy(SignalChat *p);
+SignalFfiError *signal_auth_chat_destroy(SignalAuthChat *p);
+
+SignalFfiError *signal_unauth_chat_destroy(SignalUnauthChat *p);
 
 SignalFfiError *signal_http_request_destroy(SignalHttpRequest *p);
 
@@ -1501,25 +1509,29 @@ SignalFfiError *signal_http_request_new_without_body(SignalHttpRequest **out, co
 
 SignalFfiError *signal_http_request_add_header(const SignalHttpRequest *request, const char *name, const char *value);
 
-SignalFfiError *signal_chat_service_new(SignalChat **out, const SignalConnectionManager *connection_manager, const char *username, const char *password, bool receive_stories);
+SignalFfiError *signal_chat_service_new_unauth(SignalUnauthChat **out, const SignalConnectionManager *connection_manager);
 
-SignalFfiError *signal_chat_service_disconnect(SignalCPromisebool *promise, const SignalTokioAsyncContext *async_runtime, const SignalChat *chat);
+SignalFfiError *signal_chat_service_new_auth(SignalAuthChat **out, const SignalConnectionManager *connection_manager, const char *username, const char *password, bool receive_stories);
 
-SignalFfiError *signal_chat_service_connect_unauth(SignalCPromiseFfiChatServiceDebugInfo *promise, const SignalTokioAsyncContext *async_runtime, const SignalChat *chat);
+SignalFfiError *signal_chat_service_disconnect_unauth(SignalCPromisebool *promise, const SignalTokioAsyncContext *async_runtime, const SignalUnauthChat *chat);
 
-SignalFfiError *signal_chat_service_connect_auth(SignalCPromiseFfiChatServiceDebugInfo *promise, const SignalTokioAsyncContext *async_runtime, const SignalChat *chat);
+SignalFfiError *signal_chat_service_disconnect_auth(SignalCPromisebool *promise, const SignalTokioAsyncContext *async_runtime, const SignalAuthChat *chat);
 
-SignalFfiError *signal_chat_service_unauth_send(SignalCPromiseFfiChatResponse *promise, const SignalTokioAsyncContext *async_runtime, const SignalChat *chat, const SignalHttpRequest *http_request, uint32_t timeout_millis);
+SignalFfiError *signal_chat_service_connect_unauth(SignalCPromiseFfiChatServiceDebugInfo *promise, const SignalTokioAsyncContext *async_runtime, const SignalUnauthChat *chat);
 
-SignalFfiError *signal_chat_service_unauth_send_and_debug(SignalCPromiseFfiResponseAndDebugInfo *promise, const SignalTokioAsyncContext *async_runtime, const SignalChat *chat, const SignalHttpRequest *http_request, uint32_t timeout_millis);
+SignalFfiError *signal_chat_service_connect_auth(SignalCPromiseFfiChatServiceDebugInfo *promise, const SignalTokioAsyncContext *async_runtime, const SignalAuthChat *chat);
 
-SignalFfiError *signal_chat_service_auth_send(SignalCPromiseFfiChatResponse *promise, const SignalTokioAsyncContext *async_runtime, const SignalChat *chat, const SignalHttpRequest *http_request, uint32_t timeout_millis);
+SignalFfiError *signal_chat_service_unauth_send(SignalCPromiseFfiChatResponse *promise, const SignalTokioAsyncContext *async_runtime, const SignalUnauthChat *chat, const SignalHttpRequest *http_request, uint32_t timeout_millis);
 
-SignalFfiError *signal_chat_service_auth_send_and_debug(SignalCPromiseFfiResponseAndDebugInfo *promise, const SignalTokioAsyncContext *async_runtime, const SignalChat *chat, const SignalHttpRequest *http_request, uint32_t timeout_millis);
+SignalFfiError *signal_chat_service_unauth_send_and_debug(SignalCPromiseFfiResponseAndDebugInfo *promise, const SignalTokioAsyncContext *async_runtime, const SignalUnauthChat *chat, const SignalHttpRequest *http_request, uint32_t timeout_millis);
 
-SignalFfiError *signal_chat_service_set_listener_auth(const SignalTokioAsyncContext *runtime, const SignalChat *chat, const SignalFfiMakeChatListenerStruct *make_listener);
+SignalFfiError *signal_chat_service_auth_send(SignalCPromiseFfiChatResponse *promise, const SignalTokioAsyncContext *async_runtime, const SignalAuthChat *chat, const SignalHttpRequest *http_request, uint32_t timeout_millis);
 
-SignalFfiError *signal_chat_service_set_listener_unauth(const SignalTokioAsyncContext *runtime, const SignalChat *chat, const SignalFfiMakeChatListenerStruct *make_listener);
+SignalFfiError *signal_chat_service_auth_send_and_debug(SignalCPromiseFfiResponseAndDebugInfo *promise, const SignalTokioAsyncContext *async_runtime, const SignalAuthChat *chat, const SignalHttpRequest *http_request, uint32_t timeout_millis);
+
+SignalFfiError *signal_chat_service_set_listener_auth(const SignalTokioAsyncContext *runtime, const SignalAuthChat *chat, const SignalFfiMakeChatListenerStruct *make_listener);
+
+SignalFfiError *signal_chat_service_set_listener_unauth(const SignalTokioAsyncContext *runtime, const SignalUnauthChat *chat, const SignalFfiMakeChatListenerStruct *make_listener);
 
 SignalFfiError *signal_server_message_ack_destroy(SignalServerMessageAck *p);
 

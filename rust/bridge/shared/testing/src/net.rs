@@ -9,7 +9,7 @@ use std::time::Duration;
 use http::{HeaderMap, HeaderName, HeaderValue, StatusCode};
 use libsignal_bridge_macros::*;
 use libsignal_bridge_types::net::chat::{
-    Chat, HttpRequest, ResponseAndDebugInfo, ServerMessageAck,
+    AuthChat, HttpRequest, ResponseAndDebugInfo, ServerMessageAck,
 };
 use libsignal_bridge_types::net::TokioAsyncContext;
 use libsignal_core::E164;
@@ -266,7 +266,7 @@ fn TESTING_ChatRequestGetBody(request: &HttpRequest) -> Vec<u8> {
 }
 
 #[bridge_fn]
-fn TESTING_ChatService_InjectRawServerRequest(chat: &Chat, bytes: &[u8]) {
+fn TESTING_ChatService_InjectRawServerRequest(chat: &AuthChat, bytes: &[u8]) {
     let request_proto = <chat::RequestProto as prost::Message>::decode(bytes)
         .expect("invalid protobuf cannot use this endpoint to test");
     chat.synthetic_request_tx
@@ -275,7 +275,7 @@ fn TESTING_ChatService_InjectRawServerRequest(chat: &Chat, bytes: &[u8]) {
 }
 
 #[bridge_fn]
-fn TESTING_ChatService_InjectConnectionInterrupted(chat: &Chat) {
+fn TESTING_ChatService_InjectConnectionInterrupted(chat: &AuthChat) {
     chat.synthetic_request_tx
         .blocking_send(chat::ws::ServerEvent::Stopped(ChatServiceError::WebSocket(
             WebSocketServiceError::ChannelClosed,
@@ -284,7 +284,7 @@ fn TESTING_ChatService_InjectConnectionInterrupted(chat: &Chat) {
 }
 
 #[bridge_fn]
-fn TESTING_ChatService_InjectIntentionalDisconnect(chat: &Chat) {
+fn TESTING_ChatService_InjectIntentionalDisconnect(chat: &AuthChat) {
     chat.synthetic_request_tx
         .blocking_send(chat::ws::ServerEvent::Stopped(
             ChatServiceError::ServiceIntentionallyDisconnected,

@@ -19,7 +19,8 @@ use libsignal_net::chat::{
 use crate::support::*;
 use crate::*;
 
-bridge_handle_fns!(Chat, clone = false);
+bridge_handle_fns!(AuthChat, clone = false);
+bridge_handle_fns!(UnauthChat, clone = false);
 bridge_handle_fns!(HttpRequest, clone = false);
 
 #[bridge_fn(ffi = false)]
@@ -58,13 +59,18 @@ fn HttpRequest_add_header(
 }
 
 #[bridge_fn]
-fn ChatService_new(
+fn ChatService_new_unauth(connection_manager: &ConnectionManager) -> UnauthChat {
+    Chat::new_unauth(connection_manager)
+}
+
+#[bridge_fn]
+fn ChatService_new_auth(
     connection_manager: &ConnectionManager,
     username: String,
     password: String,
     receive_stories: bool,
-) -> Chat {
-    Chat::new(
+) -> AuthChat {
+    Chat::new_auth(
         connection_manager,
         Auth { username, password },
         receive_stories,
@@ -72,23 +78,32 @@ fn ChatService_new(
 }
 
 #[bridge_io(TokioAsyncContext)]
-async fn ChatService_disconnect(chat: &Chat) {
-    chat.service.disconnect().await
+async fn ChatService_disconnect_unauth(chat: &UnauthChat) {
+    chat.service.0.disconnect().await
 }
 
 #[bridge_io(TokioAsyncContext)]
-async fn ChatService_connect_unauth(chat: &Chat) -> Result<ChatServiceDebugInfo, ChatServiceError> {
-    chat.service.connect_unauthenticated().await
+async fn ChatService_disconnect_auth(chat: &AuthChat) {
+    chat.service.0.disconnect().await
 }
 
 #[bridge_io(TokioAsyncContext)]
-async fn ChatService_connect_auth(chat: &Chat) -> Result<ChatServiceDebugInfo, ChatServiceError> {
-    chat.service.connect_authenticated().await
+async fn ChatService_connect_unauth(
+    chat: &UnauthChat,
+) -> Result<ChatServiceDebugInfo, ChatServiceError> {
+    chat.service.0.connect_unauthenticated().await
+}
+
+#[bridge_io(TokioAsyncContext)]
+async fn ChatService_connect_auth(
+    chat: &AuthChat,
+) -> Result<ChatServiceDebugInfo, ChatServiceError> {
+    chat.service.0.connect_authenticated().await
 }
 
 #[bridge_io(TokioAsyncContext)]
 async fn ChatService_unauth_send(
-    chat: &Chat,
+    chat: &UnauthChat,
     http_request: &HttpRequest,
     timeout_millis: u32,
 ) -> Result<ChatResponse, ChatServiceError> {
@@ -100,13 +115,14 @@ async fn ChatService_unauth_send(
         body: http_request.body.clone(),
     };
     chat.service
+        .0
         .send_unauthenticated(request, Duration::from_millis(timeout_millis.into()))
         .await
 }
 
 #[bridge_io(TokioAsyncContext)]
 async fn ChatService_unauth_send_and_debug(
-    chat: &Chat,
+    chat: &UnauthChat,
     http_request: &HttpRequest,
     timeout_millis: u32,
 ) -> Result<ResponseAndDebugInfo, ChatServiceError> {
@@ -119,6 +135,7 @@ async fn ChatService_unauth_send_and_debug(
     };
     let (result, debug_info) = chat
         .service
+        .0
         .send_unauthenticated_and_debug(request, Duration::from_millis(timeout_millis.into()))
         .await;
 
@@ -130,7 +147,7 @@ async fn ChatService_unauth_send_and_debug(
 
 #[bridge_io(TokioAsyncContext)]
 async fn ChatService_auth_send(
-    chat: &Chat,
+    chat: &AuthChat,
     http_request: &HttpRequest,
     timeout_millis: u32,
 ) -> Result<ChatResponse, ChatServiceError> {
@@ -142,13 +159,14 @@ async fn ChatService_auth_send(
         body: http_request.body.clone(),
     };
     chat.service
+        .0
         .send_authenticated(request, Duration::from_millis(timeout_millis.into()))
         .await
 }
 
 #[bridge_io(TokioAsyncContext)]
 async fn ChatService_auth_send_and_debug(
-    chat: &Chat,
+    chat: &AuthChat,
     http_request: &HttpRequest,
     timeout_millis: u32,
 ) -> Result<ResponseAndDebugInfo, ChatServiceError> {
@@ -161,6 +179,7 @@ async fn ChatService_auth_send_and_debug(
     };
     let (result, debug_info) = chat
         .service
+        .0
         .send_authenticated_and_debug(request, Duration::from_millis(timeout_millis.into()))
         .await;
 
@@ -173,33 +192,33 @@ async fn ChatService_auth_send_and_debug(
 #[bridge_fn(jni = false)]
 fn ChatService_SetListenerAuth(
     runtime: &TokioAsyncContext,
-    chat: &Chat,
+    chat: &AuthChat,
     make_listener: Option<&dyn MakeChatListener>,
 ) {
     let Some(maker) = make_listener else {
-        chat.clear_listener_auth();
+        chat.clear_listener();
         return;
     };
 
     let listener = maker.make_listener();
 
-    chat.set_listener_auth(listener, runtime)
+    chat.set_listener(listener, runtime)
 }
 
 #[bridge_fn(jni = false)]
 fn ChatService_SetListenerUnauth(
     runtime: &TokioAsyncContext,
-    chat: &Chat,
+    chat: &UnauthChat,
     make_listener: Option<&dyn MakeChatListener>,
 ) {
     let Some(maker) = make_listener else {
-        chat.clear_listener_unauth();
+        chat.clear_listener();
         return;
     };
 
     let listener = maker.make_listener();
 
-    chat.set_listener_unauth(listener, runtime)
+    chat.set_listener(listener, runtime)
 }
 
 bridge_handle_fns!(ServerMessageAck, clone = false);
@@ -247,7 +266,7 @@ mod test {
             Err(_)
         );
 
-        let chat = ChatService_new(&cm, "".to_string(), "".to_string(), false);
+        let chat = ChatService_new_unauth(&cm);
         assert_matches!(
             ChatService_connect_unauth(&chat).await,
             Err(ChatServiceError::AllConnectionRoutesFailed { .. })

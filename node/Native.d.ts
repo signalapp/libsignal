@@ -182,16 +182,18 @@ export function Cds2ClientState_New(mrenclave: Buffer, attestationMsg: Buffer, c
 export function CdsiLookup_complete(asyncRuntime: Wrapper<TokioAsyncContext>, lookup: Wrapper<CdsiLookup>): Promise<LookupResponse>;
 export function CdsiLookup_new(asyncRuntime: Wrapper<TokioAsyncContext>, connectionManager: Wrapper<ConnectionManager>, username: string, password: string, request: Wrapper<LookupRequest>): Promise<CdsiLookup>;
 export function CdsiLookup_token(lookup: Wrapper<CdsiLookup>): Buffer;
-export function ChatService_SetListenerAuth(runtime: Wrapper<TokioAsyncContext>, chat: Wrapper<Chat>, makeListener: MakeChatListener | null): void;
-export function ChatService_SetListenerUnauth(runtime: Wrapper<TokioAsyncContext>, chat: Wrapper<Chat>, makeListener: MakeChatListener | null): void;
-export function ChatService_auth_send(asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<Chat>, httpRequest: Wrapper<HttpRequest>, timeoutMillis: number): Promise<ChatResponse>;
-export function ChatService_auth_send_and_debug(asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<Chat>, httpRequest: Wrapper<HttpRequest>, timeoutMillis: number): Promise<ResponseAndDebugInfo>;
-export function ChatService_connect_auth(asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<Chat>): Promise<ChatServiceDebugInfo>;
-export function ChatService_connect_unauth(asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<Chat>): Promise<ChatServiceDebugInfo>;
-export function ChatService_disconnect(asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<Chat>): Promise<void>;
-export function ChatService_new(connectionManager: Wrapper<ConnectionManager>, username: string, password: string, receiveStories: boolean): Chat;
-export function ChatService_unauth_send(asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<Chat>, httpRequest: Wrapper<HttpRequest>, timeoutMillis: number): Promise<ChatResponse>;
-export function ChatService_unauth_send_and_debug(asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<Chat>, httpRequest: Wrapper<HttpRequest>, timeoutMillis: number): Promise<ResponseAndDebugInfo>;
+export function ChatService_SetListenerAuth(runtime: Wrapper<TokioAsyncContext>, chat: Wrapper<AuthChat>, makeListener: MakeChatListener | null): void;
+export function ChatService_SetListenerUnauth(runtime: Wrapper<TokioAsyncContext>, chat: Wrapper<UnauthChat>, makeListener: MakeChatListener | null): void;
+export function ChatService_auth_send(asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<AuthChat>, httpRequest: Wrapper<HttpRequest>, timeoutMillis: number): Promise<ChatResponse>;
+export function ChatService_auth_send_and_debug(asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<AuthChat>, httpRequest: Wrapper<HttpRequest>, timeoutMillis: number): Promise<ResponseAndDebugInfo>;
+export function ChatService_connect_auth(asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<AuthChat>): Promise<ChatServiceDebugInfo>;
+export function ChatService_connect_unauth(asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<UnauthChat>): Promise<ChatServiceDebugInfo>;
+export function ChatService_disconnect_auth(asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<AuthChat>): Promise<void>;
+export function ChatService_disconnect_unauth(asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<UnauthChat>): Promise<void>;
+export function ChatService_new_auth(connectionManager: Wrapper<ConnectionManager>, username: string, password: string, receiveStories: boolean): AuthChat;
+export function ChatService_new_unauth(connectionManager: Wrapper<ConnectionManager>): UnauthChat;
+export function ChatService_unauth_send(asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<UnauthChat>, httpRequest: Wrapper<HttpRequest>, timeoutMillis: number): Promise<ChatResponse>;
+export function ChatService_unauth_send_and_debug(asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<UnauthChat>, httpRequest: Wrapper<HttpRequest>, timeoutMillis: number): Promise<ResponseAndDebugInfo>;
 export function CiphertextMessage_FromPlaintextContent(m: Wrapper<PlaintextContent>): CiphertextMessage;
 export function CiphertextMessage_Serialize(obj: Wrapper<CiphertextMessage>): Buffer;
 export function CiphertextMessage_Type(msg: Wrapper<CiphertextMessage>): number;
@@ -500,9 +502,9 @@ export function TESTING_ChatServiceDebugInfoConvert(): ChatServiceDebugInfo;
 export function TESTING_ChatServiceErrorConvert(errorDescription: string): void;
 export function TESTING_ChatServiceResponseAndDebugInfoConvert(): ResponseAndDebugInfo;
 export function TESTING_ChatServiceResponseConvert(bodyPresent: boolean): ChatResponse;
-export function TESTING_ChatService_InjectConnectionInterrupted(chat: Wrapper<Chat>): void;
-export function TESTING_ChatService_InjectIntentionalDisconnect(chat: Wrapper<Chat>): void;
-export function TESTING_ChatService_InjectRawServerRequest(chat: Wrapper<Chat>, bytes: Buffer): void;
+export function TESTING_ChatService_InjectConnectionInterrupted(chat: Wrapper<AuthChat>): void;
+export function TESTING_ChatService_InjectIntentionalDisconnect(chat: Wrapper<AuthChat>): void;
+export function TESTING_ChatService_InjectRawServerRequest(chat: Wrapper<AuthChat>, bytes: Buffer): void;
 export function TESTING_ErrorOnBorrowAsync(_input: null): Promise<void>;
 export function TESTING_ErrorOnBorrowIo(asyncRuntime: Wrapper<NonSuspendingBackgroundThreadRuntime>, _input: null): Promise<void>;
 export function TESTING_ErrorOnBorrowSync(_input: null): void;
@@ -558,8 +560,8 @@ export function WebpSanitizer_Sanitize(input: SyncInputStream): void;
 export function initLogger(maxLevel: LogLevel, callback: (level: LogLevel, target: string, file: string | null, line: number | null, message: string) => void): void
 export function test_only_fn_returns_123(): number;
 interface Aes256GcmSiv { readonly __type: unique symbol; }
+interface AuthChat { readonly __type: unique symbol; }
 interface CdsiLookup { readonly __type: unique symbol; }
-interface Chat { readonly __type: unique symbol; }
 interface CiphertextMessage { readonly __type: unique symbol; }
 interface ComparableBackup { readonly __type: unique symbol; }
 interface ComparableBackup { readonly __type: unique symbol; }
@@ -615,6 +617,7 @@ interface SignalMessage { readonly __type: unique symbol; }
 interface SignedPreKeyRecord { readonly __type: unique symbol; }
 interface TestingHandleType { readonly __type: unique symbol; }
 interface TokioAsyncContext { readonly __type: unique symbol; }
+interface UnauthChat { readonly __type: unique symbol; }
 interface UnidentifiedSenderMessageContent { readonly __type: unique symbol; }
 interface UuidCiphertext { readonly __type: unique symbol; }
 interface ValidatingMac { readonly __type: unique symbol; }

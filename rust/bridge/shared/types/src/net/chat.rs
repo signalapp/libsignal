@@ -54,76 +54,51 @@ impl ChatListenerState {
     }
 }
 
-pub struct Chat {
-    pub service: chat::Chat<
-        Arc<dyn chat::ChatServiceWithDebugInfo + Send + Sync>,
-        Arc<dyn chat::ChatServiceWithDebugInfo + Send + Sync>,
-    >,
-    listener_auth: std::sync::Mutex<ChatListenerState>,
-    listener_unauth: std::sync::Mutex<ChatListenerState>,
+pub struct Chat<T> {
+    pub service: T,
+    listener: std::sync::Mutex<ChatListenerState>,
     pub synthetic_request_tx:
         mpsc::Sender<chat::ws::ServerEvent<libsignal_net::infra::tcp_ssl::TcpSslConnectorStream>>,
 }
 
-impl RefUnwindSafe for Chat {}
+type MpscPair<T> = (mpsc::Sender<T>, mpsc::Receiver<T>);
+type ServerEventStreamPair =
+    MpscPair<chat::ws::ServerEvent<libsignal_net::infra::tcp_ssl::TcpSslConnectorStream>>;
 
-impl Chat {
-    pub fn new(connection_manager: &ConnectionManager, auth: Auth, receive_stories: bool) -> Self {
-        let (incoming_auth_tx, incoming_auth_rx) = mpsc::channel(1);
-        let incoming_stream_auth =
-            chat::server_requests::stream_incoming_messages(incoming_auth_rx);
-        let synthetic_request_tx = incoming_auth_tx.clone();
+// These two types are the same for now, but might not be in the future.
+pub struct AuthChatService(
+    pub  chat::Chat<
+        Arc<dyn chat::ChatServiceWithDebugInfo + Send + Sync>,
+        Arc<dyn chat::ChatServiceWithDebugInfo + Send + Sync>,
+    >,
+);
+pub struct UnauthChatService(
+    pub  chat::Chat<
+        Arc<dyn chat::ChatServiceWithDebugInfo + Send + Sync>,
+        Arc<dyn chat::ChatServiceWithDebugInfo + Send + Sync>,
+    >,
+);
 
-        let (incoming_unauth_tx, incoming_unauth_rx) = mpsc::channel(1);
-        let incoming_stream_unauth =
-            chat::server_requests::stream_incoming_messages(incoming_unauth_rx);
+impl RefUnwindSafe for AuthChatService {}
+impl RefUnwindSafe for UnauthChatService {}
 
-        Chat {
-            service: chat::chat_service(
-                &connection_manager.chat,
-                connection_manager
-                    .transport_connector
-                    .lock()
-                    .expect("not poisoned")
-                    .clone(),
-                incoming_auth_tx,
-                incoming_unauth_tx,
-                auth,
-                receive_stories,
-            )
-            .into_dyn(),
-            listener_auth: std::sync::Mutex::new(ChatListenerState::Inactive(Box::pin(
-                incoming_stream_auth,
-            ))),
-            listener_unauth: std::sync::Mutex::new(ChatListenerState::Inactive(Box::pin(
-                incoming_stream_unauth,
-            ))),
-            synthetic_request_tx,
+impl<T> Chat<T> {
+    fn new(service: T, (incoming_tx, incoming_rx): ServerEventStreamPair) -> Self {
+        let incoming_stream = chat::server_requests::stream_incoming_messages(incoming_rx);
+
+        Self {
+            service,
+            listener: std::sync::Mutex::new(ChatListenerState::Inactive(Box::pin(incoming_stream))),
+            synthetic_request_tx: incoming_tx,
         }
     }
 
-    pub fn set_listener_auth(&self, listener: Box<dyn ChatListener>, runtime: &TokioAsyncContext) {
-        Chat::set_listener(listener, &self.listener_auth, runtime);
-    }
-
-    pub fn set_listener_unauth(
-        &self,
-        listener: Box<dyn ChatListener>,
-        runtime: &TokioAsyncContext,
-    ) {
-        Chat::set_listener(listener, &self.listener_unauth, runtime);
-    }
-
-    fn set_listener(
-        listener: Box<dyn ChatListener>,
-        listener_state: &std::sync::Mutex<ChatListenerState>,
-        runtime: &TokioAsyncContext,
-    ) {
+    pub fn set_listener(&self, listener: Box<dyn ChatListener>, runtime: &TokioAsyncContext) {
         use futures_util::future::Either;
 
         let (cancel_tx, cancel_rx) = oneshot::channel::<()>();
 
-        let mut guard = listener_state.lock().expect("unpoisoned");
+        let mut guard = self.listener.lock().expect("unpoisoned");
         let request_stream_future =
             match std::mem::replace(&mut *guard, ChatListenerState::CurrentlyBeingMutated) {
                 ChatListenerState::Inactive(request_stream) => {
@@ -155,14 +130,76 @@ impl Chat {
         drop(guard);
     }
 
-    pub fn clear_listener_auth(&self) {
-        self.listener_auth.lock().expect("unpoisoned").cancel();
-    }
-
-    pub fn clear_listener_unauth(&self) {
-        self.listener_unauth.lock().expect("unpoisoned").cancel();
+    pub fn clear_listener(&self) {
+        self.listener.lock().expect("unpoisoned").cancel();
     }
 }
+
+impl Chat<AuthChatService> {
+    pub fn new_auth(
+        connection_manager: &ConnectionManager,
+        auth: Auth,
+        receive_stories: bool,
+    ) -> Self {
+        let (incoming_auth_tx, incoming_auth_rx) = mpsc::channel(1);
+        let synthetic_request_tx = incoming_auth_tx.clone();
+
+        let (incoming_unauth_tx, _incoming_unauth_rx) = mpsc::channel(1);
+
+        let service = chat::chat_service(
+            &connection_manager.chat,
+            connection_manager
+                .transport_connector
+                .lock()
+                .expect("not poisoned")
+                .clone(),
+            incoming_auth_tx,
+            incoming_unauth_tx,
+            auth,
+            receive_stories,
+        )
+        .into_dyn();
+
+        Self::new(
+            AuthChatService(service),
+            (synthetic_request_tx, incoming_auth_rx),
+        )
+    }
+}
+
+impl Chat<UnauthChatService> {
+    pub fn new_unauth(connection_manager: &ConnectionManager) -> Self {
+        let (incoming_auth_tx, _incoming_auth_rx) = mpsc::channel(1);
+        let (incoming_unauth_tx, incoming_unauth_rx) = mpsc::channel(1);
+        let synthetic_request_tx = incoming_unauth_tx.clone();
+
+        let service = chat::chat_service(
+            &connection_manager.chat,
+            connection_manager
+                .transport_connector
+                .lock()
+                .expect("not poisoned")
+                .clone(),
+            incoming_auth_tx,
+            incoming_unauth_tx,
+            // These will be unused because the auth service won't ever be connected.
+            Auth {
+                username: String::new(),
+                password: String::new(),
+            },
+            false,
+        )
+        .into_dyn();
+
+        Self::new(
+            UnauthChatService(service),
+            (synthetic_request_tx, incoming_unauth_rx),
+        )
+    }
+}
+
+pub type UnauthChat = Chat<UnauthChatService>;
+pub type AuthChat = Chat<AuthChatService>;
 
 pub struct HttpRequest {
     pub method: http::Method,
@@ -176,7 +213,8 @@ pub struct ResponseAndDebugInfo {
     pub debug_info: ChatServiceDebugInfo,
 }
 
-bridge_as_handle!(Chat);
+bridge_as_handle!(UnauthChat);
+bridge_as_handle!(AuthChat);
 bridge_as_handle!(HttpRequest);
 
 /// Newtype wrapper for implementing [`TryFrom`]`

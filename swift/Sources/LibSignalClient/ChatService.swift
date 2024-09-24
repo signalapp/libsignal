@@ -59,7 +59,7 @@ public class AuthenticatedChatService: NativeHandleOwner, ChatService {
     internal init(tokioAsyncContext: TokioAsyncContext, connectionManager: ConnectionManager, username: String, password: String, receiveStories: Bool) {
         var handle: OpaquePointer?
         connectionManager.withNativeHandle { connectionManager in
-            failOnError(signal_chat_service_new(&handle, connectionManager, username, password, receiveStories))
+            failOnError(signal_chat_service_new_auth(&handle, connectionManager, username, password, receiveStories))
         }
         self.tokioAsyncContext = tokioAsyncContext
         super.init(owned: handle!)
@@ -70,7 +70,7 @@ public class AuthenticatedChatService: NativeHandleOwner, ChatService {
     }
 
     override internal class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
-        return signal_chat_destroy(handle)
+        return signal_auth_chat_destroy(handle)
     }
 
     /// Sets (or clears) the listener for server push messages.
@@ -122,7 +122,7 @@ public class AuthenticatedChatService: NativeHandleOwner, ChatService {
     public func disconnect() async throws {
         _ = try await self.tokioAsyncContext.invokeAsyncFunction { promise, tokioAsyncContext in
             withNativeHandle { chatService in
-                signal_chat_service_disconnect(promise, tokioAsyncContext, chatService)
+                signal_chat_service_disconnect_auth(promise, tokioAsyncContext, chatService)
             }
         }
     }
@@ -176,7 +176,7 @@ public class UnauthenticatedChatService: NativeHandleOwner, ChatService {
     internal init(tokioAsyncContext: TokioAsyncContext, connectionManager: ConnectionManager) {
         var handle: OpaquePointer?
         connectionManager.withNativeHandle { connectionManager in
-            failOnError(signal_chat_service_new(&handle, connectionManager, "", "", false))
+            failOnError(signal_chat_service_new_unauth(&handle, connectionManager))
         }
         self.tokioAsyncContext = tokioAsyncContext
         super.init(owned: handle!)
@@ -187,7 +187,7 @@ public class UnauthenticatedChatService: NativeHandleOwner, ChatService {
     }
 
     override internal class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
-        return signal_chat_destroy(handle)
+        return signal_unauth_chat_destroy(handle)
     }
 
     /// Sets (or clears) the listener for connection events.
@@ -234,7 +234,7 @@ public class UnauthenticatedChatService: NativeHandleOwner, ChatService {
     public func disconnect() async throws {
         _ = try await self.tokioAsyncContext.invokeAsyncFunction { promise, tokioAsyncContext in
             withNativeHandle { chatService in
-                signal_chat_service_disconnect(promise, tokioAsyncContext, chatService)
+                signal_chat_service_disconnect_unauth(promise, tokioAsyncContext, chatService)
             }
         }
     }

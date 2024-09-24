@@ -16,7 +16,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 #include <stdlib.h>
 #include "signal_ffi.h"
 
-typedef struct SignalChat SignalChat;
+typedef struct SignalChatAuthChatService SignalChatAuthChatService;
 
 typedef struct SignalComparableBackup SignalComparableBackup;
 
@@ -103,6 +103,8 @@ typedef struct {
 } SignalCPromiseRawPointer;
 
 typedef SignalBytestringArray SignalStringArray;
+
+typedef SignalChatAuthChatService SignalAuthChat;
 
 SignalFfiError *signal_test_only_fn_returns_123(uint32_t *out);
 
@@ -200,10 +202,10 @@ SignalFfiError *signal_testing_chat_request_get_header_value(const char **out, c
 
 SignalFfiError *signal_testing_chat_request_get_body(SignalOwnedBuffer *out, const SignalHttpRequest *request);
 
-SignalFfiError *signal_testing_chat_service_inject_raw_server_request(const SignalChat *chat, SignalBorrowedBuffer bytes);
+SignalFfiError *signal_testing_chat_service_inject_raw_server_request(const SignalAuthChat *chat, SignalBorrowedBuffer bytes);
 
-SignalFfiError *signal_testing_chat_service_inject_connection_interrupted(const SignalChat *chat);
+SignalFfiError *signal_testing_chat_service_inject_connection_interrupted(const SignalAuthChat *chat);
 
-SignalFfiError *signal_testing_chat_service_inject_intentional_disconnect(const SignalChat *chat);
+SignalFfiError *signal_testing_chat_service_inject_intentional_disconnect(const SignalAuthChat *chat);
 
 #endif  /* SIGNAL_FFI_TESTING_H_ */
