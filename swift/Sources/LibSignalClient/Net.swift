@@ -368,7 +368,7 @@ extension CdsiLookupResponseEntry: CdsiLookupResponseEntryProtocol {
     }
 }
 
-extension CdsiLookupResponseEntry: Equatable {
+extension CdsiLookupResponseEntry: Swift.Equatable {
     public static func == (lhs: Self, rhs: Self) -> Bool {
         lhs.aci == rhs.aci && lhs.pni == rhs.pni && lhs.e164 == rhs.e164
     }
