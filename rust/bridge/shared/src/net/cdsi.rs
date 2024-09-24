@@ -8,8 +8,9 @@ use std::convert::TryInto as _;
 use libsignal_bridge_macros::{bridge_fn, bridge_io};
 use libsignal_bridge_types::net::cdsi::{CdsiLookup, LookupRequest};
 use libsignal_bridge_types::net::{ConnectionManager, TokioAsyncContext};
+use libsignal_core::E164;
 use libsignal_net::auth::Auth;
-use libsignal_net::cdsi::{self, AciAndAccessKey, LookupResponse, E164};
+use libsignal_net::cdsi::{self, AciAndAccessKey, LookupResponse};
 use libsignal_protocol::{Aci, SignalProtocolError};
 
 use crate::support::*;

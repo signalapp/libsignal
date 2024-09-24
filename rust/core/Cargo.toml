@@ -15,6 +15,7 @@ num_enum = { workspace = true }
 uuid = { workspace = true }
 
 [dev-dependencies]
+assert_matches = { workspace = true }
 hex-literal = { workspace = true }
 proptest = { workspace = true }
 rand = { workspace = true }

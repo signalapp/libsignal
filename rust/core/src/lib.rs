@@ -4,10 +4,12 @@
 //
 
 mod address;
+mod e164;
 mod version;
 
 pub use address::{
     Aci, DeviceId, Pni, ProtocolAddress, ServiceId, ServiceIdFixedWidthBinaryBytes, ServiceIdKind,
     WrongKindOfServiceIdError,
 };
+pub use e164::E164;
 pub use version::VERSION;

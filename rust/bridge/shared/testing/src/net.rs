@@ -12,7 +12,8 @@ use libsignal_bridge_types::net::chat::{
     Chat, HttpRequest, ResponseAndDebugInfo, ServerMessageAck,
 };
 use libsignal_bridge_types::net::TokioAsyncContext;
-use libsignal_net::cdsi::{LookupError, LookupResponse, LookupResponseEntry, E164};
+use libsignal_core::E164;
+use libsignal_net::cdsi::{LookupError, LookupResponse, LookupResponseEntry};
 use libsignal_net::chat::{
     self, ChatServiceError, DebugInfo as ChatServiceDebugInfo, Response as ChatResponse,
 };

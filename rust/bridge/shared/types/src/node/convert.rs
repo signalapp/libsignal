@@ -338,7 +338,7 @@ impl SimpleArgTypeInfo for libsignal_protocol::Pni {
     }
 }
 
-impl SimpleArgTypeInfo for libsignal_net::cdsi::E164 {
+impl SimpleArgTypeInfo for libsignal_core::E164 {
     type ArgType = <String as SimpleArgTypeInfo>::ArgType;
     fn convert_from(cx: &mut FunctionContext, e164: Handle<Self::ArgType>) -> NeonResult<Self> {
         let e164 = String::convert_from(cx, e164)?;

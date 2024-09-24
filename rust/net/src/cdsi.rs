@@ -4,12 +4,10 @@
 //
 
 use std::default::Default;
-use std::fmt::Display;
-use std::num::{NonZeroU64, ParseIntError};
 use std::str::FromStr;
 
 use http::StatusCode;
-use libsignal_core::{Aci, Pni};
+use libsignal_core::{Aci, Pni, E164};
 use libsignal_net_infra::connection_manager::ConnectionManager;
 use libsignal_net_infra::errors::TransportConnectError;
 use libsignal_net_infra::ws::{
@@ -51,44 +49,11 @@ impl<It: ExactSizeIterator<Item = T>, T: FixedLengthSerializable> CollectSeriali
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub struct E164(NonZeroU64);
-
-impl E164 {
-    pub const fn new(number: NonZeroU64) -> Self {
-        Self(number)
-    }
-
-    fn from_serialized(bytes: [u8; E164::SERIALIZED_LEN]) -> Option<Self> {
-        NonZeroU64::new(u64::from_be_bytes(bytes)).map(Self)
-    }
-}
-
-impl From<E164> for NonZeroU64 {
-    fn from(value: E164) -> Self {
-        value.0
-    }
-}
-
-impl FromStr for E164 {
-    type Err = ParseIntError;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let s = s.strip_prefix('+').unwrap_or(s);
-        NonZeroU64::from_str(s).map(Self)
-    }
-}
-
-impl Display for E164 {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "+{}", self.0)
-    }
-}
-
 impl FixedLengthSerializable for E164 {
     const SERIALIZED_LEN: usize = 8;
 
     fn serialize_into(&self, target: &mut [u8]) {
-        target.copy_from_slice(&self.0.get().to_be_bytes())
+        target.copy_from_slice(&self.to_be_bytes())
     }
 }
 
@@ -226,7 +191,7 @@ impl LookupResponseEntry {
         // instead of expect() on the output.
         let (e164_bytes, record) = record.split_at(E164::SERIALIZED_LEN);
         let e164_bytes = <&[u8; E164::SERIALIZED_LEN]>::try_from(e164_bytes).expect("split at len");
-        let e164 = E164::from_serialized(*e164_bytes)?;
+        let e164 = E164::from_be_bytes(*e164_bytes)?;
         let (pni_bytes, aci_bytes) = record.split_at(Uuid::SERIALIZED_LEN);
 
         let pni = non_nil_uuid(pni_bytes.try_into().expect("split at len"));
@@ -469,6 +434,7 @@ fn err_for_close(CloseFrame { code, reason }: CloseFrame<'_>) -> Option<LookupEr
 
 #[cfg(test)]
 mod test {
+    use std::num::NonZeroU64;
     use std::time::Duration;
 
     use assert_matches::assert_matches;
@@ -534,7 +500,7 @@ mod test {
     fn serialize_e164s() {
         let e164s: Vec<E164> = (18005551001..)
             .take(5)
-            .map(|n| E164(NonZeroU64::new(n).unwrap()))
+            .map(|n| E164::new(NonZeroU64::new(n).unwrap()))
             .collect();
         let serialized = e164s.into_iter().collect_serialized();
 
@@ -587,7 +553,7 @@ mod test {
         const RESPONSE_RECORD: LookupResponseEntry = LookupResponseEntry {
             aci: Some(Aci::from_uuid_bytes([b'a'; 16])),
             pni: Some(Pni::from_uuid_bytes([b'p'; 16])),
-            e164: E164(nonzero!(18005550101u64)),
+            e164: E164::new(nonzero!(18005550101u64)),
         };
 
         fn receive_frame(&mut self, frame: &[u8]) -> AttestedServerOutput {

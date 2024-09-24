@@ -2088,6 +2088,7 @@ dependencies = [
  "jni 0.21.1",
  "libsignal-bridge-macros",
  "libsignal-bridge-types",
+ "libsignal-core",
  "libsignal-message-backup",
  "libsignal-net",
  "libsignal-protocol",
@@ -2154,6 +2155,7 @@ dependencies = [
 name = "libsignal-core"
 version = "0.1.0"
 dependencies = [
+ "assert_matches",
  "hex-literal",
  "num_enum",
  "proptest",

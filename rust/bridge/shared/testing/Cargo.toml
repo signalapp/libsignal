@@ -14,6 +14,7 @@ license = "AGPL-3.0-only"
 attest = { path = "../../../attest" }
 libsignal-bridge-macros = { path = "../macros" }
 libsignal-bridge-types = { path = "../types" }
+libsignal-core = { path = "../../../core" }
 libsignal-message-backup = { path = "../../../message-backup", features = ["json"] }
 libsignal-net = { path = "../../../net" }
 libsignal-protocol = { path = "../../../protocol" }

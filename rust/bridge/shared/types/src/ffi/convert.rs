@@ -309,7 +309,7 @@ impl SimpleArgTypeInfo for libsignal_protocol::Pni {
     }
 }
 
-impl SimpleArgTypeInfo for libsignal_net::cdsi::E164 {
+impl SimpleArgTypeInfo for libsignal_core::E164 {
     type ArgType = <String as SimpleArgTypeInfo>::ArgType;
     fn convert_from(e164: Self::ArgType) -> SignalFfiResult<Self> {
         let e164 = String::convert_from(e164)?;

@@ -272,7 +272,7 @@ impl<'a> SimpleArgTypeInfo<'a> for uuid::Uuid {
     }
 }
 
-impl<'a> SimpleArgTypeInfo<'a> for libsignal_net::cdsi::E164 {
+impl<'a> SimpleArgTypeInfo<'a> for libsignal_core::E164 {
     type ArgType = <String as SimpleArgTypeInfo<'a>>::ArgType;
     fn convert_from(
         env: &mut JNIEnv<'a>,
