@@ -618,7 +618,7 @@ mod sender_chain_key_iteration_tests {
 
             assert!(
                 seen_seeds.insert(next_seed),
-                "Seed has already been seed before for iteration {i}"
+                "Seed has already been seen before for iteration {i}"
             );
             assert_eq!(next_chain_key.iteration(), INITIAL_ITERATION + i);
 
