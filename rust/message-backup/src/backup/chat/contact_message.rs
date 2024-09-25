@@ -97,6 +97,7 @@ impl TryFrom<proto::ContactAttachment> for ContactAttachment {
             prefix: _,
             suffix: _,
             middleName: _,
+            nickname: _,
             special_fields: _,
         }) = name.as_ref()
         {}
