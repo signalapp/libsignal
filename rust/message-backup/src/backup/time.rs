@@ -49,10 +49,14 @@ impl serde::Serialize for Timestamp {
 
 impl Duration {
     pub(super) const ZERO: Self = Self(std::time::Duration::ZERO);
-    pub(super) const TWELVE_HOURS: Self = Self(std::time::Duration::from_secs(60 * 60 * 12));
 
     pub(super) const fn from_millis(millis: u64) -> Self {
         Self(std::time::Duration::from_millis(millis))
+    }
+
+    pub(super) const fn from_hours(hours: u64) -> Self {
+        // std::time::Duration::from_hours isn't stable yet, but it's the same as this.
+        Self(std::time::Duration::from_secs(60 * 60 * hours))
     }
 }
 

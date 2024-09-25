@@ -139,7 +139,7 @@ pub enum ChatItemError {
     ChatUpdateUnknown,
     /// voice message: {0}
     VoiceMessage(#[from] VoiceMessageError),
-    /// found exactly one of expiration start date and duration
+    /// item has expiration start date but no duration
     ExpirationMismatch,
     /// expiration too soon: {0}
     InvalidExpiration(#[from] InvalidExpiration),
@@ -212,6 +212,8 @@ pub struct ChatItemData<M: Method + ReferencedTypes> {
     pub total_chat_item_order_index: usize,
     _limit_construction_to_module: (),
 }
+
+const MAX_REMOTE_BACKUP_DISAPPEARING_MESSAGE_TIME: Duration = Duration::from_hours(24);
 
 /// Validated version of [`proto::chat_item::Item`].
 #[derive_where(Debug)]
@@ -507,27 +509,33 @@ impl<
             .map(Into::into)
             .map(Duration::from_millis);
 
-        let expires_at = match (expire_start, expires_in) {
-            (Some(expire_start), Some(expires_in)) => Some(expire_start + expires_in),
-            (None, None) => None,
-            (Some(_), None) | (None, Some(_)) => return Err(ChatItemError::ExpirationMismatch),
-        };
+        match (expire_start, expires_in) {
+            (None, None) => {
+                // Not a disappearing message.
+            }
+            (Some(_), None) => return Err(ChatItemError::ExpirationMismatch),
+            (None, Some(_)) => {
+                // A disappearing message that hasn't been viewed yet.
+            }
+            (Some(expire_start), Some(expires_in)) => {
+                let expires_at = expire_start + expires_in;
+                // Ensure that ephemeral content that's due to expire soon isn't backed up.
+                let backup_time = context.as_ref().backup_time;
+                let allowed_expire_at = backup_time
+                    + match context.as_ref().purpose {
+                        crate::backup::Purpose::DeviceTransfer => Duration::ZERO,
+                        crate::backup::Purpose::RemoteBackup => {
+                            MAX_REMOTE_BACKUP_DISAPPEARING_MESSAGE_TIME
+                        }
+                    };
 
-        if let Some(expires_at) = expires_at {
-            // Ensure that ephemeral content that's due to expire soon isn't backed up.
-            let backup_time = context.as_ref().backup_time;
-            let allowed_expire_at = backup_time
-                + match context.as_ref().purpose {
-                    crate::backup::Purpose::DeviceTransfer => Duration::ZERO,
-                    crate::backup::Purpose::RemoteBackup => Duration::TWELVE_HOURS,
-                };
-
-            if expires_at < allowed_expire_at {
-                return Err(InvalidExpiration {
-                    expires_at,
-                    backup_time,
+                if expires_at < allowed_expire_at {
+                    return Err(InvalidExpiration {
+                        expires_at,
+                        backup_time,
+                    }
+                    .into());
                 }
-                .into());
             }
         }
 
@@ -748,7 +756,7 @@ mod test {
                     },
                 )),
                 expireStartDate: MillisecondsSinceEpoch::TEST_VALUE.0,
-                expiresInMs: 12 * 60 * 60 * 1000,
+                expiresInMs: 24 * 60 * 60 * 1000,
                 dateSent: MillisecondsSinceEpoch::TEST_VALUE.0,
                 ..Default::default()
             }
@@ -835,7 +843,7 @@ mod test {
                     sealed_sender: false,
                 },
                 expire_start: Some(Timestamp::test_value()),
-                expires_in: Some(Duration::TWELVE_HOURS),
+                expires_in: Some(MAX_REMOTE_BACKUP_DISAPPEARING_MESSAGE_TIME),
                 sent_at: Timestamp::test_value(),
                 sms: false,
                 total_chat_item_order_index: 0,
@@ -1001,7 +1009,7 @@ mod test {
     }
 
     #[test]
-    fn mismatch_between_expiration_start_and_duration_presence() {
+    fn expiration_start_without_duration() {
         let mut item = proto::ChatItem::test_data();
         assert_ne!(item.expireStartDate, 0);
         item.expiresInMs = 0;
@@ -1009,6 +1017,19 @@ mod test {
         assert_matches!(
             ChatItemData::<Store>::try_from_with(item, &TestContext::default()),
             Err(ChatItemError::ExpirationMismatch)
+        );
+    }
+
+    #[test]
+    fn expiration_duration_without_start() {
+        let mut item = proto::ChatItem::test_data();
+        assert_ne!(item.expiresInMs, 0);
+        item.expireStartDate = 0;
+
+        // This one is okay, it's an expiring message that hasn't been viewed yet.
+        assert_matches!(
+            ChatItemData::<Store>::try_from_with(item, &TestContext::default()),
+            Ok(_)
         );
     }
 
