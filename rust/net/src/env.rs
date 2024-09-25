@@ -21,7 +21,7 @@ use nonzero_ext::nonzero;
 use rand::seq::SliceRandom;
 use rand::{thread_rng, Rng};
 
-use crate::certs::SIGNAL_ROOT_CERTIFICATES;
+use crate::certs::{PROXY_G_ROOT_CERTIFICATES, SIGNAL_ROOT_CERTIFICATES};
 use crate::enclave::{
     Cdsi, EnclaveEndpoint, EndpointParams, MrEnclave, Nitro, Sgx, SgxPreQuantum, Tpm2Snp,
 };
@@ -194,6 +194,7 @@ pub const PROXY_CONFIG_F_PROD: ProxyConfig = ProxyConfig {
         "pinterest.com",
         "www.redditstatic.com",
     ],
+    certs: RootCertificates::Native,
 };
 
 pub const PROXY_CONFIG_F_STAGING: ProxyConfig = ProxyConfig {
@@ -204,6 +205,7 @@ pub const PROXY_CONFIG_F_STAGING: ProxyConfig = ProxyConfig {
         "pinterest.com",
         "www.redditstatic.com",
     ],
+    certs: RootCertificates::Native,
 };
 
 pub const PROXY_CONFIG_G: ProxyConfig = ProxyConfig {
@@ -216,6 +218,7 @@ pub const PROXY_CONFIG_G: ProxyConfig = ProxyConfig {
         "clients4.google.com",
         "inbox.google.com",
     ],
+    certs: PROXY_G_ROOT_CERTIFICATES,
 };
 
 pub(crate) const ENDPOINT_PARAMS_CDSI_STAGING: EndpointParams<'static, Cdsi> = EndpointParams {
@@ -366,6 +369,8 @@ pub struct ProxyConfig {
     http_host: &'static str,
     /// Domain names to use for DNS resolution and TLS SNI.
     sni_list: &'static [&'static str],
+    /// TLS root certificates to use.
+    certs: RootCertificates,
 }
 
 impl ProxyConfig {
@@ -390,7 +395,7 @@ impl ProxyConfig {
                     sni: Arc::clone(&sni_and_dns_host),
                     tcp_host: Host::Domain(sni_and_dns_host),
                     port: nonzero!(443u16),
-                    certs: RootCertificates::Native,
+                    certs: self.certs.clone(),
                 },
                 http_host: self.http_host.into(),
                 http_request_decorator: HttpRequestDecorator::PathPrefix(proxy_path).into(),

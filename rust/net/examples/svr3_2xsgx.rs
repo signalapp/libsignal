@@ -9,7 +9,7 @@
 //! as well as the password that will be used to protect the data being stored. Since the
 //! actual stored secret data needs to be exactly 32 bytes long, it is generated randomly
 //! at each invocation instead of being passed via the command line.
-use std::borrow::Cow;
+
 use std::time::Duration;
 
 use async_trait::async_trait;
@@ -34,9 +34,8 @@ use libsignal_net::svr3::OpaqueMaskedShareSet;
 use nonzero_ext::nonzero;
 use rand_core::{CryptoRngCore, OsRng, RngCore};
 
-const TEST_SERVER_CERT: RootCertificates = RootCertificates::FromDer(Cow::Borrowed(
-    include_bytes!("../res/sgx_test_server_cert.cer"),
-));
+const TEST_SERVER_CERT: RootCertificates =
+    RootCertificates::FromStaticDers(&[include_bytes!("../res/sgx_test_server_cert.cer")]);
 const TEST_SERVER_RAFT_CONFIG: &RaftConfig = &RaftConfig {
     min_voting_replicas: 1,
     max_voting_replicas: 3,
