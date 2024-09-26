@@ -270,6 +270,8 @@ jobs:
 
     - run: sudo apt-get update && sudo apt-get install protobuf-compiler
 
+    - run: cargo +stable install cbindgen
+
     - run: rustup toolchain install $(cat rust-toolchain) --profile minimal --target aarch64-linux-android,armv7-linux-androideabi,x86_64-linux-android,i686-linux-android
 
     - name: Verify that the JNI bindings are up to date
@@ -371,6 +373,8 @@ jobs:
     - run: rustup toolchain install $(cat rust-toolchain) --profile minimal
 
     - run: sudo apt-get update && sudo apt-get install protobuf-compiler
+
+    - run: cargo +stable install cbindgen
 
     - run: swift/verify_error_codes.sh
 
