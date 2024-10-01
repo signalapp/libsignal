@@ -11,6 +11,8 @@ use boring_signal::x509::store::X509StoreBuilder;
 use boring_signal::x509::X509;
 use rustls::client::danger::ServerCertVerifier;
 
+use crate::host::Host;
+
 #[derive(thiserror::Error, Debug, displaydoc::Display)]
 pub enum Error {
     /// Bad certificate
@@ -36,7 +38,7 @@ impl RootCertificates {
     pub fn apply_to_connector(
         &self,
         connector: &mut SslConnectorBuilder,
-        host_name: &str,
+        host: Host<&str>,
     ) -> Result<(), Error> {
         // See below.
         let lifetime_extended_single_der: &[u8];
@@ -53,7 +55,7 @@ impl RootCertificates {
                     // dependency on ring.
                     verifier.set_provider(rustls::crypto::ring::default_provider().into())
                 }
-                return set_up_platform_verifier(connector, host_name, verifier);
+                return set_up_platform_verifier(connector, host, verifier);
             }
             RootCertificates::FromStaticDers(ders) => ders,
             RootCertificates::FromDer(der) => {
@@ -76,12 +78,15 @@ impl RootCertificates {
 /// callback](boring::ssl::SslContextBuilder::set_custom_verify_callback).
 fn set_up_platform_verifier(
     connector: &mut SslConnectorBuilder,
-    host_name: &str,
+    host: Host<&str>,
     verifier: impl ServerCertVerifier + 'static,
 ) -> Result<(), Error> {
-    let host_as_server_name = rustls::pki_types::ServerName::try_from(host_name)
-        .map_err(|_| Error::BadHostname)?
-        .to_owned();
+    let host_as_server_name = match host {
+        Host::Domain(host_name) => rustls::pki_types::ServerName::try_from(host_name)
+            .map_err(|_| Error::BadHostname)?
+            .to_owned(),
+        Host::Ip(ip) => rustls::pki_types::ServerName::IpAddress(ip.into()),
+    };
 
     connector.set_custom_verify_callback(SslVerifyMode::PEER, move |ssl| {
         // Get the certificate chain, lazily convert each certificate to DER (as expected by rustls).
@@ -202,7 +207,7 @@ mod test {
         let mut ssl = SslConnector::builder(SslMethod::tls_client()).expect("valid");
         set_up_platform_verifier(
             &mut ssl,
-            SERVER_HOSTNAME,
+            Host::Domain(SERVER_HOSTNAME),
             Arc::into_inner(verifier).expect("only one referent"),
         )
         .expect("valid");
@@ -236,7 +241,7 @@ mod test {
         let mut ssl = SslConnector::builder(SslMethod::tls_client()).expect("valid");
         set_up_platform_verifier(
             &mut ssl,
-            SERVER_HOSTNAME,
+            Host::Domain(SERVER_HOSTNAME),
             Arc::into_inner(verifier).expect("only one referent"),
         )
         .expect("valid");

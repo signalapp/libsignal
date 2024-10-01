@@ -70,9 +70,15 @@ impl TransportConnector for TlsProxyConnector {
                 );
                 // This won't always work, but it's enough to connect to proxies
                 // by hostnames.
-                let sni = self.proxy_host.to_string();
-                let ssl_config = ssl_config(&self.proxy_certs, &sni, None)?;
-                Either::Left(tokio_boring_signal::connect(ssl_config, &sni, tcp_stream).await?)
+                let ssl_config = ssl_config(&self.proxy_certs, self.proxy_host.as_deref(), None)?;
+                Either::Left(
+                    tokio_boring_signal::connect(
+                        ssl_config,
+                        &self.proxy_host.to_string(),
+                        tcp_stream,
+                    )
+                    .await?,
+                )
             }
             ShouldUseTls::No => {
                 log::debug!(

@@ -95,11 +95,11 @@ impl DirectConnector {
 
 fn ssl_config(
     certs: &RootCertificates,
-    host_name: &str,
+    host: Host<&str>,
     alpn: Option<Alpn>,
 ) -> Result<ConnectConfiguration, TransportConnectError> {
     let mut ssl = SslConnector::builder(SslMethod::tls_client())?;
-    certs.apply_to_connector(&mut ssl, host_name)?;
+    certs.apply_to_connector(&mut ssl, host)?;
     if let Some(alpn) = alpn {
         ssl.set_alpn_protos(alpn.as_ref())?;
     }
@@ -111,7 +111,11 @@ async fn connect_tls<S: AsyncRead + AsyncWrite + Unpin>(
     connection_params: &TransportConnectionParams,
     alpn: Alpn,
 ) -> Result<SslStream<S>, TransportConnectError> {
-    let ssl_config = ssl_config(&connection_params.certs, &connection_params.sni, Some(alpn))?;
+    let ssl_config = ssl_config(
+        &connection_params.certs,
+        Host::Domain(&connection_params.sni),
+        Some(alpn),
+    )?;
 
     Ok(tokio_boring_signal::connect(ssl_config, &connection_params.sni, transport).await?)
 }
