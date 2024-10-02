@@ -342,7 +342,7 @@ impl<E: EnclaveKind> EnclaveEndpointConnection<E, SingleRouteThrottlingConnectio
         Self {
             endpoint_connection: EndpointConnection {
                 manager: SingleRouteThrottlingConnectionManager::new(
-                    endpoint.domain_config.direct_connection_params(),
+                    endpoint.domain_config.connect.direct_connection_params(),
                     connect_timeout,
                     network_change_event,
                 ),

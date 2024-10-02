@@ -80,7 +80,7 @@ impl ConnectionManager {
         let transport_connector =
             std::sync::Mutex::new(TcpSslDirectConnector::new(dns_resolver).into());
         let chat = libsignal_net::chat::endpoint_connection(
-            &environment.env().chat_domain_config,
+            &environment.env().chat_domain_config.connect,
             &user_agent,
             &network_change_event,
         );
@@ -165,7 +165,10 @@ impl ConnectionManager {
         user_agent: &str,
         network_change_event: &ObservableEvent,
     ) -> EnclaveEndpointConnection<E, MultiRouteConnectionManager> {
-        let params = endpoint.domain_config.connection_params_with_fallback();
+        let params = endpoint
+            .domain_config
+            .connect
+            .connection_params_with_fallback();
         let params = add_user_agent_header(params, user_agent);
         EnclaveEndpointConnection::new_multi(
             endpoint,

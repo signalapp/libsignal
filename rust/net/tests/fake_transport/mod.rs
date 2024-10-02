@@ -7,7 +7,7 @@ use futures_util::stream::StreamExt as _;
 use futures_util::Stream;
 use libsignal_net::auth::Auth;
 use libsignal_net::chat::{chat_service, Chat, ChatServiceWithDebugInfo};
-use libsignal_net::env::DomainConfig;
+use libsignal_net::env::{ConnectionConfig, DomainConfig};
 use libsignal_net::infra::connection_manager::MultiRouteConnectionManager;
 use libsignal_net::infra::errors::TransportConnectError;
 use libsignal_net::infra::host::Host;
@@ -36,15 +36,18 @@ pub fn allow_proxy_hosts(
     domain_config: &DomainConfig,
 ) -> impl Iterator<Item = (FakeTransportTarget, Behavior)> {
     let DomainConfig {
-        proxy_config_f,
-        proxy_config_g,
-        port: _,
-        hostname: _,
         ip_v4: _,
         ip_v6: _,
-        cert: _,
-        proxy_path: _,
-        confirmation_header_name: _,
+        connect:
+            ConnectionConfig {
+                proxy_config_f,
+                proxy_config_g,
+                port: _,
+                hostname: _,
+                cert: _,
+                proxy_path: _,
+                confirmation_header_name: _,
+            },
     } = domain_config;
     let allow_targets = [proxy_config_f, proxy_config_g]
         .into_iter()
@@ -71,15 +74,18 @@ pub fn error_all_hosts_after(
     error: fn() -> TransportConnectError,
 ) -> impl Iterator<Item = (FakeTransportTarget, Behavior)> {
     let DomainConfig {
-        proxy_config_f,
-        proxy_config_g,
-        hostname,
         ip_v4,
         ip_v6,
-        port,
-        cert: _,
-        proxy_path: _,
-        confirmation_header_name: _,
+        connect:
+            ConnectionConfig {
+                proxy_config_f,
+                proxy_config_g,
+                hostname,
+                port,
+                cert: _,
+                proxy_path: _,
+                confirmation_header_name: _,
+            },
     } = domain_config;
     let direct_hosts = ip_v4
         .iter()
@@ -131,7 +137,7 @@ impl FakeDeps {
     ) {
         let (transport_connector, incoming_streams) = FakeTransportConnector::new([]);
         let endpoint_connection = libsignal_net::chat::endpoint_connection(
-            chat_domain_config,
+            &chat_domain_config.connect,
             "libsignal test",
             &ObservableEvent::new(),
         );

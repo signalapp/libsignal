@@ -50,7 +50,10 @@ async fn main() -> ExitCode {
         Environment::Production => libsignal_net::env::PROD,
     };
 
-    let mut connection_params = env.chat_domain_config.connection_params_with_fallback();
+    let mut connection_params = env
+        .chat_domain_config
+        .connect
+        .connection_params_with_fallback();
     match config.route {
         Some(Route { proxy_g: true, .. }) => {
             connection_params.retain(|c| c.route_type == RouteType::ProxyG)

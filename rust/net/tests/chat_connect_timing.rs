@@ -75,7 +75,7 @@ async fn transport_connects_but_websocket_never_responds() {
     let chat_domain_config = STAGING.chat_domain_config;
     let (deps, incoming_streams) = FakeDeps::new(&chat_domain_config);
     deps.transport_connector.set_behaviors([(
-        chat_domain_config.direct_connection_params().into(),
+        chat_domain_config.connect.direct_connection_params().into(),
         Behavior::ReturnStream(vec![]),
     )]);
     let chat = deps.make_chat();

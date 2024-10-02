@@ -20,7 +20,7 @@ use libsignal_net_infra::{
 
 use crate::auth::Auth;
 use crate::chat::ws::{ChatOverWebSocketServiceConnector, ServerEvent};
-use crate::env::{add_user_agent_header, DomainConfig, RECEIVE_STORIES_HEADER_NAME};
+use crate::env::{add_user_agent_header, ConnectionConfig, RECEIVE_STORIES_HEADER_NAME};
 use crate::proto;
 
 mod error;
@@ -468,12 +468,12 @@ pub fn chat_service<T: TransportConnector + 'static>(
 }
 
 pub fn endpoint_connection(
-    chat_domain_config: &DomainConfig,
+    connection_config: &ConnectionConfig,
     user_agent: &str,
     network_change_event: &ObservableEvent,
 ) -> EndpointConnection<MultiRouteConnectionManager> {
     let chat_endpoint = PathAndQuery::from_static(crate::env::constants::WEB_SOCKET_PATH);
-    let chat_connection_params = chat_domain_config.connection_params_with_fallback();
+    let chat_connection_params = connection_config.connection_params_with_fallback();
     let chat_connection_params = add_user_agent_header(chat_connection_params, user_agent);
     let chat_ws_config = make_ws_config(chat_endpoint, ONE_ROUTE_CONNECTION_TIMEOUT);
     EndpointConnection::new_multi(
