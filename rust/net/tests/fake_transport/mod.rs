@@ -40,20 +40,19 @@ pub fn allow_proxy_hosts(
         ip_v6: _,
         connect:
             ConnectionConfig {
-                proxy_config_f,
-                proxy_config_g,
                 port: _,
                 hostname: _,
                 cert: _,
-                proxy_path: _,
                 confirmation_header_name: _,
+                proxy,
             },
     } = domain_config;
-    let allow_targets = [proxy_config_f, proxy_config_g]
-        .into_iter()
+    let allow_targets = proxy
+        .configs
+        .iter()
         .flat_map(|config| {
             config
-                .shuffled_connection_params("", None, OsRng)
+                .shuffled_connection_params("", None, &mut OsRng)
                 .map(|params| params.transport)
         })
         .map(|params| FakeTransportTarget {
@@ -78,12 +77,10 @@ pub fn error_all_hosts_after(
         ip_v6,
         connect:
             ConnectionConfig {
-                proxy_config_f,
-                proxy_config_g,
+                proxy,
                 hostname,
                 port,
                 cert: _,
-                proxy_path: _,
                 confirmation_header_name: _,
             },
     } = domain_config;
@@ -95,11 +92,12 @@ pub fn error_all_hosts_after(
         .chain([Host::Domain((*hostname).into())])
         .map(|host| FakeTransportTarget { host, port: *port });
 
-    let targets = [proxy_config_f, proxy_config_g]
-        .into_iter()
+    let targets = proxy
+        .configs
+        .iter()
         .flat_map(|config| {
             config
-                .shuffled_connection_params("", None, OsRng)
+                .shuffled_connection_params("", None, &mut OsRng)
                 .map(|params| params.transport)
         })
         .map(|params| FakeTransportTarget {

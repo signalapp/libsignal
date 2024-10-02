@@ -43,10 +43,11 @@ const DOMAIN_CONFIG_CHAT: DomainConfig = DomainConfig {
         hostname: "chat.signal.org",
         port: DEFAULT_HTTPS_PORT,
         cert: SIGNAL_ROOT_CERTIFICATES,
-        proxy_path: "/service",
         confirmation_header_name: Some(TIMESTAMP_HEADER_NAME),
-        proxy_config_f: PROXY_CONFIG_F_PROD,
-        proxy_config_g: PROXY_CONFIG_G,
+        proxy: ConnectionProxyConfig {
+            path_prefix: "/service",
+            configs: [PROXY_CONFIG_F_PROD, PROXY_CONFIG_G],
+        },
     },
 };
 
@@ -63,10 +64,11 @@ const DOMAIN_CONFIG_CHAT_STAGING: DomainConfig = DomainConfig {
         hostname: "chat.staging.signal.org",
         port: DEFAULT_HTTPS_PORT,
         cert: SIGNAL_ROOT_CERTIFICATES,
-        proxy_path: "/service-staging",
         confirmation_header_name: Some(TIMESTAMP_HEADER_NAME),
-        proxy_config_f: PROXY_CONFIG_F_STAGING,
-        proxy_config_g: PROXY_CONFIG_G,
+        proxy: ConnectionProxyConfig {
+            path_prefix: "/service-staging",
+            configs: [PROXY_CONFIG_F_STAGING, PROXY_CONFIG_G],
+        },
     },
 };
 
@@ -75,10 +77,11 @@ const DOMAIN_CONFIG_CDSI: DomainConfig = DomainConfig {
         hostname: "cdsi.signal.org",
         port: DEFAULT_HTTPS_PORT,
         cert: SIGNAL_ROOT_CERTIFICATES,
-        proxy_path: "/cdsi",
         confirmation_header_name: None,
-        proxy_config_f: PROXY_CONFIG_F_PROD,
-        proxy_config_g: PROXY_CONFIG_G,
+        proxy: ConnectionProxyConfig {
+            path_prefix: "/cdsi",
+            configs: [PROXY_CONFIG_F_PROD, PROXY_CONFIG_G],
+        },
     },
     ip_v4: &[ip_addr!(v4, "40.122.45.194")],
     ip_v6: &[ip_addr!(v6, "2603:1030:7::1")],
@@ -89,10 +92,11 @@ const DOMAIN_CONFIG_CDSI_STAGING: DomainConfig = DomainConfig {
         hostname: "cdsi.staging.signal.org",
         port: DEFAULT_HTTPS_PORT,
         cert: SIGNAL_ROOT_CERTIFICATES,
-        proxy_path: "/cdsi-staging",
         confirmation_header_name: None,
-        proxy_config_f: PROXY_CONFIG_F_STAGING,
-        proxy_config_g: PROXY_CONFIG_G,
+        proxy: ConnectionProxyConfig {
+            path_prefix: "/cdsi-staging",
+            configs: [PROXY_CONFIG_F_STAGING, PROXY_CONFIG_G],
+        },
     },
     ip_v4: &[ip_addr!(v4, "104.43.162.137")],
     ip_v6: &[ip_addr!(v6, "2603:1030:7::732")],
@@ -103,10 +107,11 @@ const DOMAIN_CONFIG_SVR2: DomainConfig = DomainConfig {
         hostname: "svr2.signal.org",
         port: DEFAULT_HTTPS_PORT,
         cert: SIGNAL_ROOT_CERTIFICATES,
-        proxy_path: "/svr2",
         confirmation_header_name: None,
-        proxy_config_f: PROXY_CONFIG_F_PROD,
-        proxy_config_g: PROXY_CONFIG_G,
+        proxy: ConnectionProxyConfig {
+            path_prefix: "/svr2",
+            configs: [PROXY_CONFIG_F_PROD, PROXY_CONFIG_G],
+        },
     },
     ip_v4: &[ip_addr!(v4, "20.66.40.69")],
     ip_v6: &[],
@@ -117,10 +122,11 @@ const DOMAIN_CONFIG_SVR2_STAGING: DomainConfig = DomainConfig {
         hostname: "svr2.staging.signal.org",
         port: DEFAULT_HTTPS_PORT,
         cert: SIGNAL_ROOT_CERTIFICATES,
-        proxy_path: "/svr2-staging",
         confirmation_header_name: None,
-        proxy_config_f: PROXY_CONFIG_F_STAGING,
-        proxy_config_g: PROXY_CONFIG_G,
+        proxy: ConnectionProxyConfig {
+            path_prefix: "/svr2-staging",
+            configs: [PROXY_CONFIG_F_STAGING, PROXY_CONFIG_G],
+        },
     },
     ip_v4: &[ip_addr!(v4, "20.253.229.239")],
     ip_v6: &[],
@@ -131,10 +137,11 @@ const DOMAIN_CONFIG_SVR3_SGX: DomainConfig = DomainConfig {
         hostname: "backend1.svr3.signal.org",
         port: DEFAULT_HTTPS_PORT,
         cert: SIGNAL_ROOT_CERTIFICATES,
-        proxy_path: "/svr3-sgx",
         confirmation_header_name: None,
-        proxy_config_f: PROXY_CONFIG_F_PROD,
-        proxy_config_g: PROXY_CONFIG_G,
+        proxy: ConnectionProxyConfig {
+            path_prefix: "/svr3-sgx",
+            configs: [PROXY_CONFIG_F_PROD, PROXY_CONFIG_G],
+        },
     },
     ip_v4: &[ip_addr!(v4, "40.112.138.96")],
     ip_v6: &[],
@@ -145,10 +152,11 @@ const DOMAIN_CONFIG_SVR3_SGX_STAGING: DomainConfig = DomainConfig {
         hostname: "backend1.svr3.staging.signal.org",
         port: DEFAULT_HTTPS_PORT,
         cert: SIGNAL_ROOT_CERTIFICATES,
-        proxy_path: "/svr3-sgx-staging",
         confirmation_header_name: None,
-        proxy_config_f: PROXY_CONFIG_F_STAGING,
-        proxy_config_g: PROXY_CONFIG_G,
+        proxy: ConnectionProxyConfig {
+            path_prefix: "/svr3-sgx-staging",
+            configs: [PROXY_CONFIG_F_STAGING, PROXY_CONFIG_G],
+        },
     },
     ip_v4: &[ip_addr!(v4, "13.88.63.29")],
     ip_v6: &[],
@@ -159,10 +167,11 @@ const DOMAIN_CONFIG_SVR3_NITRO: DomainConfig = DomainConfig {
         hostname: "backend2.svr3.signal.org",
         port: DEFAULT_HTTPS_PORT,
         cert: SIGNAL_ROOT_CERTIFICATES,
-        proxy_path: "/svr3-nitro",
         confirmation_header_name: None,
-        proxy_config_f: PROXY_CONFIG_F_PROD,
-        proxy_config_g: PROXY_CONFIG_G,
+        proxy: ConnectionProxyConfig {
+            path_prefix: "/svr3-nitro",
+            configs: [PROXY_CONFIG_F_PROD, PROXY_CONFIG_G],
+        },
     },
     ip_v4: &[ip_addr!(v4, "75.2.91.98")],
     ip_v6: &[],
@@ -173,10 +182,11 @@ const DOMAIN_CONFIG_SVR3_NITRO_STAGING: DomainConfig = DomainConfig {
         hostname: "backend2.svr3.staging.signal.org",
         port: DEFAULT_HTTPS_PORT,
         cert: SIGNAL_ROOT_CERTIFICATES,
-        proxy_path: "/svr3-nitro-staging",
         confirmation_header_name: None,
-        proxy_config_f: PROXY_CONFIG_F_STAGING,
-        proxy_config_g: PROXY_CONFIG_G,
+        proxy: ConnectionProxyConfig {
+            path_prefix: "/svr3-nitro-staging",
+            configs: [PROXY_CONFIG_F_STAGING, PROXY_CONFIG_G],
+        },
     },
     ip_v4: &[ip_addr!(v4, "75.2.86.85"), ip_addr!(v4, "99.83.239.137")],
     ip_v6: &[],
@@ -187,10 +197,11 @@ pub const DOMAIN_CONFIG_SVR3_TPM2SNP: DomainConfig = DomainConfig {
         hostname: "backend3.svr3.signal.org",
         port: DEFAULT_HTTPS_PORT,
         cert: SIGNAL_ROOT_CERTIFICATES,
-        proxy_path: "/svr3-tpm2snp",
         confirmation_header_name: None,
-        proxy_config_f: PROXY_CONFIG_F_PROD,
-        proxy_config_g: PROXY_CONFIG_G,
+        proxy: ConnectionProxyConfig {
+            path_prefix: "/svr3-tpm2snp",
+            configs: [PROXY_CONFIG_F_PROD, PROXY_CONFIG_G],
+        },
     },
     ip_v4: &[ip_addr!(v4, "34.144.241.251")],
     ip_v6: &[],
@@ -201,10 +212,11 @@ pub const DOMAIN_CONFIG_SVR3_TPM2SNP_STAGING: DomainConfig = DomainConfig {
         hostname: "backend3.svr3.staging.signal.org",
         port: DEFAULT_HTTPS_PORT,
         cert: SIGNAL_ROOT_CERTIFICATES,
-        proxy_path: "/svr3-tpm2snp-staging",
         confirmation_header_name: None,
-        proxy_config_f: PROXY_CONFIG_F_STAGING,
-        proxy_config_g: PROXY_CONFIG_G,
+        proxy: ConnectionProxyConfig {
+            path_prefix: "/svr3-tpm2snp-staging",
+            configs: [PROXY_CONFIG_F_STAGING, PROXY_CONFIG_G],
+        },
     },
     ip_v4: &[ip_addr!(v4, "13.88.30.76")],
     ip_v6: &[],
@@ -310,11 +322,6 @@ pub struct ConnectionConfig {
     pub hostname: &'static str,
     /// The port for the resource.
     pub port: NonZeroU16,
-    /// A path prefix to prepend to any requests sent through a proxy.
-    ///
-    /// This affects requests sent through the [`Self::proxy_config_f`] or
-    /// [`Self::proxy_config_g`] proxies.
-    pub proxy_path: &'static str,
     /// Which certificates to use when connecting to the resource.
     pub cert: RootCertificates,
     /// A header to look for that indicates that the resource was reached.
@@ -324,10 +331,17 @@ pub struct ConnectionConfig {
     /// load balancer.
     pub confirmation_header_name: Option<&'static str>,
 
-    /// The addresses for the Fastly proxy.
-    pub proxy_config_f: ProxyConfig,
-    /// The addresses for the Google proxy.
-    pub proxy_config_g: ProxyConfig,
+    /// Additional configuration for connecting to the resource through a proxy
+    /// if a direct connection fails.
+    pub proxy: ConnectionProxyConfig,
+}
+
+#[derive(Clone)]
+pub struct ConnectionProxyConfig {
+    /// A path prefix to prepend to any requests sent through the proxy.
+    pub path_prefix: &'static str,
+    /// The addresses for the proxies.
+    pub configs: [ProxyConfig; 2],
 }
 
 impl DomainConfig {
@@ -364,18 +378,18 @@ impl ConnectionConfig {
 
     pub fn connection_params_with_fallback(&self) -> Vec<ConnectionParams> {
         let direct = self.direct_connection_params();
-        let rng = thread_rng();
-        let shuffled_g_params = self.proxy_config_g.shuffled_connection_params(
-            self.proxy_path,
-            self.confirmation_header_name,
-            rng.clone(),
-        );
-        let shuffled_f_params = self.proxy_config_f.shuffled_connection_params(
-            self.proxy_path,
-            self.confirmation_header_name,
-            rng,
-        );
-        let proxy_params = itertools::interleave(shuffled_g_params, shuffled_f_params);
+        let mut rng = thread_rng();
+        // TODO use array::each_ref() once MSRV >= 1.77
+        let [params_a, params_b] = &self.proxy.configs;
+        let [params_a, params_b] = [params_a, params_b].map(|config| {
+            config.shuffled_connection_params(
+                self.proxy.path_prefix,
+                self.confirmation_header_name,
+                &mut rng,
+            )
+        });
+
+        let proxy_params = itertools::interleave(params_a, params_b);
         iter::once(direct).chain(proxy_params).collect()
     }
 }
@@ -406,30 +420,34 @@ pub struct ProxyConfig {
 }
 
 impl ProxyConfig {
-    pub fn shuffled_connection_params<'a>(
-        &'a self,
+    pub fn shuffled_connection_params(
+        &self,
         proxy_path: &'static str,
         confirmation_header_name: Option<&'static str>,
-        mut rng: impl Rng,
-    ) -> impl Iterator<Item = ConnectionParams> + 'a {
+        rng: &mut impl Rng,
+    ) -> impl Iterator<Item = ConnectionParams> {
+        let route_type = self.route_type;
+        let http_host = Arc::from(self.http_host);
+        let certs = self.certs.clone();
+
         let mut sni_list = self.sni_list.to_vec();
-        sni_list.shuffle(&mut rng);
+        sni_list.shuffle(rng);
 
         sni_list.into_iter().map(move |sni| {
             // We want to use the SNI name as the hostname for DNS lookup and
             // for the TLS connection. Then, once an encrypted connection is
             // established, the actual hostname should be used for the HTTP
             // header.
-            let sni_and_dns_host = sni.into();
+            let sni_and_dns_host = (*sni).into();
             ConnectionParams {
-                route_type: self.route_type,
+                route_type,
                 transport: TransportConnectionParams {
                     sni: Arc::clone(&sni_and_dns_host),
                     tcp_host: Host::Domain(sni_and_dns_host),
                     port: nonzero!(443u16),
-                    certs: self.certs.clone(),
+                    certs: certs.clone(),
                 },
-                http_host: self.http_host.into(),
+                http_host: Arc::clone(&http_host),
                 http_request_decorator: HttpRequestDecorator::PathPrefix(proxy_path).into(),
                 connection_confirmation_header: confirmation_header_name
                     .map(http::HeaderName::from_static),
