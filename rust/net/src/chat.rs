@@ -390,26 +390,21 @@ fn build_authorized_chat_service(
     auth: Auth,
     receive_stories: bool,
 ) -> AuthorizedChatService<impl ChatServiceWithDebugInfo> {
-    let mut header_map = HeaderMap::new();
-    header_map.insert(
-        http::header::AUTHORIZATION,
-        basic_authorization(&auth.username, &auth.password),
-    );
-    header_map.insert(
-        HeaderName::from_static(RECEIVE_STORIES_HEADER_NAME),
-        if receive_stories {
-            HeaderValue::from_static("true")
-        } else {
-            HeaderValue::from_static("false")
-        },
-    );
-    let header_auth_decorator = HttpRequestDecorator::HeaderMap(header_map);
-
+    let header_map = HeaderMap::from_iter([
+        (
+            http::header::AUTHORIZATION,
+            basic_authorization(&auth.username, &auth.password),
+        ),
+        (
+            HeaderName::from_static(RECEIVE_STORIES_HEADER_NAME),
+            HeaderValue::from_static(if receive_stories { "true" } else { "false" }),
+        ),
+    ]);
     // ws authorized
     let chat_over_ws_auth = Service::new(
         ServiceConnectorWithDecorator::new(
             service_connector_ws.clone(),
-            header_auth_decorator.clone(),
+            HttpRequestDecorator::Headers(header_map),
         ),
         connection_manager_ws.clone(),
         MULTI_ROUTE_CONNECTION_TIMEOUT,

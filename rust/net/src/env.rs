@@ -354,7 +354,7 @@ pub fn add_user_agent_header(
 ) -> Vec<ConnectionParams> {
     let with_lib_version = format!("{} libsignal/{}", user_agent, libsignal_core::VERSION);
     connection_params_list.iter_mut().for_each(|cp| {
-        cp.http_request_decorator.add(HttpRequestDecorator::Header(
+        cp.http_request_decorator.add(HttpRequestDecorator::header(
             http::header::USER_AGENT,
             http::header::HeaderValue::try_from(&with_lib_version).expect("valid header string"),
         ));

@@ -13,6 +13,7 @@ use std::time::Duration;
 use ::http::uri::PathAndQuery;
 use ::http::Uri;
 use async_trait::async_trait;
+use http::{HeaderMap, HeaderName, HeaderValue};
 use tokio::io::{AsyncRead, AsyncWrite};
 
 use crate::certs::RootCertificates;
@@ -59,10 +60,8 @@ impl IpType {
 /// A collection of commonly used decorators for HTTP requests.
 #[derive(Clone, Debug)]
 pub enum HttpRequestDecorator {
-    /// Adds a specific header to the request
-    Header(http::header::HeaderName, http::header::HeaderValue),
     /// Adds a collection of headers to the request
-    HeaderMap(http::header::HeaderMap),
+    Headers(http::header::HeaderMap),
     /// Prefixes the path portion of the request with the given string.
     PathPrefix(&'static str),
     /// Applies generic decoration logic.
@@ -91,7 +90,7 @@ pub trait HttpBasicAuth {
 
 impl<T: HttpBasicAuth> From<T> for HttpRequestDecorator {
     fn from(value: T) -> Self {
-        HttpRequestDecorator::Header(
+        HttpRequestDecorator::header(
             http::header::AUTHORIZATION,
             basic_authorization(value.username(), value.password()),
         )
@@ -222,11 +221,16 @@ impl HttpRequestDecoratorSeq {
 }
 
 impl HttpRequestDecorator {
+    /// Convenience constructor for [`HttpRequestDecorator::Headers`] with a map
+    /// with one entry.
+    pub fn header(name: HeaderName, value: HeaderValue) -> Self {
+        Self::Headers(HeaderMap::from_iter([(name, value)]))
+    }
+
     fn decorate_request(&self, request_builder: http::request::Builder) -> http::request::Builder {
         match self {
             Self::Generic(decorator) => decorator(request_builder),
-            Self::Header(name, value) => request_builder.header(name, value),
-            Self::HeaderMap(header_map) => header_map
+            Self::Headers(header_map) => header_map
                 .into_iter()
                 .fold(request_builder, |builder, (name, value)| {
                     builder.header(name, value)
@@ -536,7 +540,7 @@ pub(crate) mod test {
     fn test_header_auth_decorator() {
         let expected = "Basic dXNybm06cHNzd2Q=";
         let builder = Request::get("https://chat.signal.org/");
-        let builder = HttpRequestDecorator::Header(
+        let builder = HttpRequestDecorator::header(
             http::header::AUTHORIZATION,
             basic_authorization("usrnm", "psswd"),
         )
