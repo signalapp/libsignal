@@ -116,17 +116,17 @@ mod tests {
         let current_time = SystemTime::UNIX_EPOCH + Duration::from_secs(1709245753);
         let mrenclave_bytes =
             hex!("acb1973aa0bbbd14b3b4e06f145497d948fd4a98efc500fcce363b3b743ec482");
-        let raft_config: &RaftConfig = &RaftConfig {
-            min_voting_replicas: 3,
-            max_voting_replicas: 5,
-            super_majority: 0,
-            group_id: 16934825672495360159,
-        };
-        new_handshake(
+        new_handshake_with_constants(
             &mrenclave_bytes,
             HANDSHAKE_BYTES,
             current_time,
-            raft_config,
+            &["INTEL-SA-00615", "INTEL-SA-00657"] as &[&str],
+            &RaftConfig {
+                min_voting_replicas: 3,
+                max_voting_replicas: 5,
+                super_majority: 0,
+                group_id: 16934825672495360159,
+            },
             HandshakeType::PreQuantum,
         )
         .unwrap();
