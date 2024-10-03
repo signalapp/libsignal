@@ -270,7 +270,7 @@ mod test {
 
     use assert_matches::assert_matches;
     use futures_util::FutureExt;
-    use libsignal_net_infra::noise::testutil::TestStream;
+    use libsignal_net_infra::testutil::TestStream;
     use libsignal_net_infra::utils::testutil::TestWaker;
     use test_case::test_case;
 

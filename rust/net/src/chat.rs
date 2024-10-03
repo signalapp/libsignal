@@ -484,7 +484,7 @@ pub fn endpoint_connection(
     )
 }
 
-#[cfg(feature = "test-support")]
+#[cfg(feature = "test-util")]
 pub mod test_support {
     use std::sync::Arc;
     use std::time::Duration;

@@ -274,7 +274,7 @@ where
     Ok(share_set)
 }
 
-#[cfg(feature = "test-support")]
+#[cfg(feature = "test-util")]
 pub mod test_support {
     use libsignal_net_infra::ws::DefaultStream;
 

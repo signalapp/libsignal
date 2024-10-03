@@ -399,7 +399,8 @@ fn handle_ws_error(
     }
 }
 
-#[cfg_attr(any(test, feature = "testutils"), derive(Clone, Debug, Eq, PartialEq))]
+#[derive(Debug)]
+#[cfg_attr(any(test, feature = "test-util"), derive(Clone, Eq, PartialEq))]
 pub enum TextOrBinary {
     Text(String),
     Binary(Vec<u8>),
@@ -445,7 +446,7 @@ where
         self.ws_client_writer.send(item).await
     }
 
-    #[cfg(any(test, feature = "testutils"))]
+    #[cfg(any(test, feature = "test-util"))]
     pub(crate) async fn close(self, close: Option<CloseFrame<'static>>) -> Result<(), E> {
         self.ws_client_writer.send(Message::Close(close)).await
     }
@@ -524,7 +525,7 @@ pub async fn run_attested_interaction<
 }
 
 #[derive(Clone, Eq, PartialEq)]
-#[cfg_attr(any(test, feature = "testutils"), derive(Debug))]
+#[cfg_attr(any(test, feature = "test-util"), derive(Debug))]
 pub enum NextOrClose<T> {
     Next(T),
     Close(Option<CloseFrame<'static>>),
@@ -644,7 +645,7 @@ async fn authenticate<S: AsyncDuplexStream>(
 }
 
 /// Test utilities related to websockets.
-#[cfg(any(test, feature = "testutils"))]
+#[cfg(any(test, feature = "test-util"))]
 pub mod testutil {
     use tokio::io::DuplexStream;
     use tokio_tungstenite::WebSocketStream;

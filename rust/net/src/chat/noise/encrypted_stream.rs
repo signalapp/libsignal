@@ -277,7 +277,8 @@ mod test {
     use const_str::concat;
     use futures_util::{pin_mut, SinkExt, StreamExt};
     use hex_literal::hex;
-    use libsignal_net_infra::noise::testutil::{echo_forever, TestStream};
+    use libsignal_net_infra::noise::testutil::echo_forever;
+    use libsignal_net_infra::testutil::TestStream;
     use libsignal_net_infra::utils::testutil::TestWaker;
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
 

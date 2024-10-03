@@ -38,6 +38,7 @@ pub mod tcp_ssl;
 pub mod timeouts;
 pub mod utils;
 pub mod ws;
+pub mod ws2;
 
 #[derive(Copy, Clone, Debug)]
 #[repr(u8)]
@@ -175,7 +176,7 @@ pub enum DnsSource {
     /// The result came from delegating to a remote resource.
     Delegated,
     /// Test-only value
-    #[cfg(any(test, feature = "testutils"))]
+    #[cfg(any(test, feature = "test-util"))]
     Test,
 }
 
@@ -194,7 +195,7 @@ pub enum RouteType {
     /// Connection over a SOCKS proxy
     SocksProxy,
     /// Test-only value
-    #[cfg(any(test, feature = "testutils"))]
+    #[cfg(any(test, feature = "test-util"))]
     Test,
 }
 
@@ -341,17 +342,23 @@ pub fn make_ws_config(
     }
 }
 
-#[cfg(any(test, feature = "testutils"))]
+#[cfg(any(test, feature = "test-util"))]
 pub mod testutil {
     use std::fmt::Debug;
     use std::io;
+    use std::io::{Error as IoError, ErrorKind as IoErrorKind};
+    use std::pin::Pin;
     use std::sync::Arc;
+    use std::task::{Context, Poll};
     use std::time::Duration;
 
     use async_trait::async_trait;
     use derive_where::derive_where;
     use displaydoc::Display;
+    use futures_util::stream::FusedStream;
+    use futures_util::{Sink, SinkExt as _, Stream};
     use tokio::io::DuplexStream;
+    use tokio_util::sync::PollSender;
     use warp::{Filter, Reply};
 
     use crate::connection_manager::{ConnectionManager, ErrorClass, ErrorClassifier};
@@ -494,6 +501,84 @@ pub mod testutil {
                 ServiceState::Active(_, service_cancellation) => Some(service_cancellation),
                 _ => None,
             }
+        }
+    }
+
+    /// Trivial [`Sink`] and [`Stream`] implementation over a pair of buffered channels.
+    pub struct TestStream<T, E> {
+        rx: tokio::sync::mpsc::Receiver<Result<T, E>>,
+        tx: PollSender<Result<T, E>>,
+    }
+
+    impl<T: Send, E: Send> TestStream<T, E> {
+        pub fn new_pair(channel_size: usize) -> (Self, Self) {
+            let [lch, rch] = [(); 2].map(|()| tokio::sync::mpsc::channel(channel_size));
+            let l = Self {
+                rx: lch.1,
+                tx: PollSender::new(rch.0),
+            };
+            let r = Self {
+                rx: rch.1,
+                tx: PollSender::new(lch.0),
+            };
+            (l, r)
+        }
+
+        pub async fn send_error(&mut self, error: E) -> Result<(), Option<E>> {
+            self.tx.send(Err(error)).await.map_err(|e| {
+                e.into_inner().map(|r| match r {
+                    Ok(_) => unreachable!("sent item was an error"),
+                    Err(e) => e,
+                })
+            })
+        }
+        pub fn rx_is_closed(&self) -> bool {
+            self.rx.is_closed()
+        }
+    }
+
+    impl<T: Send, E: Send> Stream for TestStream<T, E> {
+        type Item = Result<T, E>;
+
+        fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+            self.get_mut().rx.poll_recv(cx)
+        }
+    }
+
+    impl<T: Send, E: Send> FusedStream for TestStream<T, E> {
+        fn is_terminated(&self) -> bool {
+            self.rx.is_closed() && self.rx.is_empty()
+        }
+    }
+
+    impl<T: Send, E: Send + From<IoError>> Sink<T> for TestStream<T, E> {
+        type Error = E;
+
+        fn poll_ready(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+            self.get_mut().tx.poll_ready_unpin(cx).map_err(|_| {
+                IoError::new(IoErrorKind::Other, "poll_reserve for send failed").into()
+            })
+        }
+
+        fn start_send(self: Pin<&mut Self>, item: T) -> Result<(), Self::Error> {
+            self.get_mut()
+                .tx
+                .start_send_unpin(Ok(item))
+                .map_err(|_| IoError::new(IoErrorKind::Other, "send failed").into())
+        }
+
+        fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+            self.get_mut()
+                .tx
+                .poll_flush_unpin(cx)
+                .map_err(|_| IoError::new(IoErrorKind::Other, "flush failed").into())
+        }
+
+        fn poll_close(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+            self.get_mut()
+                .tx
+                .poll_close_unpin(cx)
+                .map_err(|_| IoError::new(IoErrorKind::Other, "close failed").into())
         }
     }
 }

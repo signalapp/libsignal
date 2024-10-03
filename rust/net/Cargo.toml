@@ -6,7 +6,7 @@ authors = ["Signal Messenger LLC"]
 license = "AGPL-3.0-only"
 
 [features]
-test-support = []
+test-util = []
 
 [dependencies]
 attest = { path = "../attest" }
@@ -42,7 +42,7 @@ strum = { workspace = true, features = ["derive"] }
 thiserror = { workspace = true }
 tokio = { workspace = true, features = ["rt", "time", "macros"] }
 tokio-boring-signal = { workspace = true }
-tokio-stream = "0.1.14"
+tokio-stream = { workspace = true }
 tokio-tungstenite = "0.23.0"
 tungstenite = { version = "0.23.0", features = ["url"] }
 url = "2.4.1"
@@ -54,7 +54,7 @@ prost-build = { workspace = true }
 
 [dev-dependencies]
 assert_matches = { workspace = true }
-libsignal-net-infra = { path = "./infra", features = ["testutils"] }
+libsignal-net-infra = { path = "./infra", features = ["test-util"] }
 clap = { workspace = true, features = ["derive"] }
 colored = "2.1"
 env_logger = { workspace = true }
@@ -73,16 +73,16 @@ warp = { version = "0.3.6", features = ["tls"] }
 
 [[example]]
 name = "svr3_prop_test"
-required-features = ["test-support"]
+required-features = ["test-util"]
 
 [[example]]
 name = "chat_smoke_test"
-required-features = ["test-support"]
+required-features = ["test-util"]
 
 [[test]]
 name = "svr3"
-required-features = ["test-support"]
+required-features = ["test-util"]
 
 [[test]]
 name = "svr3_migration"
-required-features = ["test-support"]
+required-features = ["test-util"]

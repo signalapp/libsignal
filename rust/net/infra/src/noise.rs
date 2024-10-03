@@ -171,96 +171,9 @@ impl<S: Transport + Unpin> AsyncWrite for NoiseStream<S> {
     }
 }
 
-#[cfg(any(test, feature = "testutils"))]
+#[cfg(any(test, feature = "test-util"))]
 pub mod testutil {
-    use futures_util::{Sink, Stream};
-    use tokio_util::sync::PollSender;
-
     use super::*;
-
-    /// Trivial [`Transport`] implementation over a pair of buffered channels.
-    pub struct TestStream {
-        rx: tokio::sync::mpsc::Receiver<Result<Bytes, IoError>>,
-        tx: PollSender<Result<Bytes, IoError>>,
-    }
-
-    impl TestStream {
-        pub fn new_pair(channel_size: usize) -> (Self, Self) {
-            let [lch, rch] = [(); 2].map(|()| tokio::sync::mpsc::channel(channel_size));
-            let l = Self {
-                rx: lch.1,
-                tx: PollSender::new(rch.0),
-            };
-            let r = Self {
-                rx: rch.1,
-                tx: PollSender::new(lch.0),
-            };
-            (l, r)
-        }
-
-        pub async fn send_error(&mut self, error: IoError) -> Result<(), Option<IoError>> {
-            self.tx.send(Err(error)).await.map_err(|e| {
-                e.into_inner()
-                    .map(|r| r.expect_err("sent item was an error"))
-            })
-        }
-        pub fn rx_is_closed(&self) -> bool {
-            self.rx.is_closed()
-        }
-    }
-
-    impl Stream for TestStream {
-        type Item = Result<Bytes, IoError>;
-
-        fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-            self.get_mut().rx.poll_recv(cx)
-        }
-    }
-
-    impl FusedStream for TestStream {
-        fn is_terminated(&self) -> bool {
-            self.rx.is_closed() && self.rx.is_empty()
-        }
-    }
-
-    impl Sink<Bytes> for TestStream {
-        type Error = IoError;
-
-        fn poll_ready(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-            self.get_mut()
-                .tx
-                .poll_ready_unpin(cx)
-                .map_err(|_| IoError::new(IoErrorKind::Other, "poll_reserve for send failed"))
-        }
-
-        fn start_send(self: Pin<&mut Self>, item: Bytes) -> Result<(), Self::Error> {
-            self.get_mut()
-                .tx
-                .start_send_unpin(Ok(item))
-                .map_err(|_| IoError::new(IoErrorKind::Other, "send failed"))
-        }
-
-        fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-            self.get_mut()
-                .tx
-                .poll_flush_unpin(cx)
-                .map_err(|_| IoError::new(IoErrorKind::Other, "flush failed"))
-        }
-
-        fn poll_close(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-            self.get_mut()
-                .tx
-                .poll_close_unpin(cx)
-                .map_err(|_| IoError::new(IoErrorKind::Other, "close failed"))
-        }
-    }
-
-    impl Drop for TestStream {
-        fn drop(&mut self) {
-            let ptr = &*self as *const Self;
-            log::debug!("dropping {ptr:x?}");
-        }
-    }
 
     /// Returns a future that echoes incoming payloads back to the same
     /// transport.
@@ -297,8 +210,8 @@ mod test {
     use testutil::echo_forever;
     use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
 
-    use super::testutil::TestStream;
     use super::*;
+    use crate::testutil::TestStream;
     use crate::utils::testutil::TestWaker;
 
     fn new_handshaken_pair() -> Result<(TransportState, TransportState), snow::Error> {

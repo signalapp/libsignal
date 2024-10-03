@@ -12,7 +12,7 @@ use sha2::Sha256;
 /// - username is a "hex(uid)"
 /// - password is a "timestamp:hex(otp(uid, timestamp, secret))"
 #[derive(Clone)]
-#[cfg_attr(feature = "test-support", derive(Default))]
+#[cfg_attr(feature = "test-util", derive(Default))]
 pub struct Auth {
     pub username: String,
     pub password: String,

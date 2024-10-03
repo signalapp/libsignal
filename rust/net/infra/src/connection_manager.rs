@@ -259,7 +259,7 @@ pub enum RetryError<E> {
 }
 
 /// Classification of connection errors by fatality.
-#[cfg_attr(any(test, feature = "testutils"), derive(Clone, Copy))]
+#[cfg_attr(any(test, feature = "test-util"), derive(Clone, Copy))]
 #[derive(Debug)]
 pub enum ErrorClass {
     /// Non-fatal, somewhat counterintuitively unreachable server is a non-fatal error at this level

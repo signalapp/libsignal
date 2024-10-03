@@ -219,7 +219,7 @@ pub(crate) async fn sleep_until_and_catch_up(time: tokio::time::Instant) {
     tokio::time::advance(Duration::ZERO).await
 }
 
-#[cfg(any(test, feature = "testutils"))]
+#[cfg(any(test, feature = "test-util"))]
 pub mod testutil {
     use std::sync::atomic::AtomicUsize;
     use std::sync::Arc;
