@@ -328,7 +328,7 @@ jobs:
       run: cargo +stable build --workspace  --bins --examples --all-features --verbose --keep-going
 
     - name: Run libsignal-net smoke tests
-      run: cargo +stable run --example chat_smoke_test -p libsignal-net --features="test-support" -- --try-all-routes staging
+      run: cargo +stable run --example chat_smoke_test -p libsignal-net --features="test-util" -- --try-all-routes staging
       env:
         RUST_LOG: debug
 
