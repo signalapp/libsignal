@@ -60,6 +60,9 @@ use text::*;
 mod update_message;
 use update_message::*;
 
+mod view_once_message;
+use view_once_message::*;
+
 mod voice_message;
 use voice_message::*;
 
@@ -125,6 +128,8 @@ pub enum ChatItemError {
     StickerMessage(#[from] MessageStickerError),
     /// gift badge: {0}
     GiftBadge(#[from] GiftBadgeError),
+    /// view-once message: {0}
+    ViewOnce(#[from] ViewOnceMessageError),
     /// ChatItem.directionalDetails is a oneof but is empty
     NoDirection,
     /// directionless ChatItem wasn't an update message
@@ -231,6 +236,7 @@ pub enum ChatItemMessage<M: Method + ReferencedTypes> {
     Update(UpdateMessage<M::RecipientReference>),
     PaymentNotification(PaymentNotification),
     GiftBadge(M::BoxedValue<GiftBadge>),
+    ViewOnce(ViewOnceMessage<M::RecipientReference>),
 }
 
 #[derive(Debug, serde::Serialize, strum::EnumDiscriminants)]
@@ -493,7 +499,8 @@ impl<
                     | ChatItemMessage::PaymentNotification(_)
                     | ChatItemMessage::Sticker(_)
                     | ChatItemMessage::GiftBadge(_)
-                    | ChatItemMessage::RemoteDeleted => (),
+                    | ChatItemMessage::RemoteDeleted
+                    | ChatItemMessage::ViewOnce(_) => (),
                 }
                 if !item.revisions.is_empty() {
                     return Err(ChatItemError::RevisionContainsRevisions);
@@ -722,6 +729,9 @@ impl<
                 ChatItemMessage::PaymentNotification(message.try_into()?)
             }
             Item::GiftBadge(badge) => ChatItemMessage::GiftBadge(M::boxed_value(badge.try_into()?)),
+            Item::ViewOnceMessage(message) => {
+                ChatItemMessage::ViewOnce(message.try_into_with(recipients)?)
+            }
         })
     }
 }
