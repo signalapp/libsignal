@@ -749,6 +749,12 @@ describe('ZKGroup', () => {
       );
       assert.equal(backupLevel, credential.getBackupLevel());
       assertArrayEquals(SERIALIZED_BACKUP_ID, credential.getBackupId());
+
+      const presentation = credential.present(
+        serverSecretParams.getPublicParams()
+      );
+      assert.equal(backupLevel, presentation.getBackupLevel());
+      assertArrayEquals(SERIALIZED_BACKUP_ID, presentation.getBackupId());
     });
 
     it('testIntegration', () => {

@@ -153,6 +153,8 @@ export function AuthCredentialPresentation_GetUuidCiphertext(presentationBytes: 
 export function AuthCredentialWithPniResponse_CheckValidContents(bytes: Buffer): void;
 export function AuthCredentialWithPni_CheckValidContents(bytes: Buffer): void;
 export function BackupAuthCredentialPresentation_CheckValidContents(presentationBytes: Buffer): void;
+export function BackupAuthCredentialPresentation_GetBackupId(presentationBytes: Buffer): Buffer;
+export function BackupAuthCredentialPresentation_GetBackupLevel(presentationBytes: Buffer): number;
 export function BackupAuthCredentialPresentation_Verify(presentationBytes: Buffer, now: Timestamp, serverParamsBytes: Buffer): void;
 export function BackupAuthCredentialRequestContext_CheckValidContents(contextBytes: Buffer): void;
 export function BackupAuthCredentialRequestContext_GetRequest(contextBytes: Buffer): Buffer;

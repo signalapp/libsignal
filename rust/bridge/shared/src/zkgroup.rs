@@ -1024,14 +1024,14 @@ fn BackupAuthCredentialPresentation_Verify(
     presentation.verify(now, &server_params)
 }
 
-#[bridge_fn(ffi = false, node = false)]
+#[bridge_fn(ffi = false)]
 fn BackupAuthCredentialPresentation_GetBackupId(presentation_bytes: &[u8]) -> [u8; 16] {
     let presentation = bincode::deserialize::<BackupAuthCredentialPresentation>(presentation_bytes)
         .expect("should have been parsed previously");
     presentation.backup_id()
 }
 
-#[bridge_fn(ffi = false, node = false)]
+#[bridge_fn(ffi = false)]
 fn BackupAuthCredentialPresentation_GetBackupLevel(presentation_bytes: &[u8]) -> u8 {
     let presentation = bincode::deserialize::<BackupAuthCredentialPresentation>(presentation_bytes)
         .expect("should have been parsed previously");
