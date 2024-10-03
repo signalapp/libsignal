@@ -15,15 +15,17 @@ license = "AGPL-3.0-only"
 argon2 = { version = "0.5.0", features = ["zeroize"] }
 displaydoc = { workspace = true }
 hkdf = { workspace = true }
+rand = { workspace = true }
 rand_core = { workspace = true, features = ["getrandom"] }
 sha2 = { workspace = true }
 static_assertions = { workspace = true }
 thiserror = { workspace = true }
 
 [dev-dependencies]
+criterion = { workspace = true }
 hex-literal = { workspace = true }
 hmac = { workspace = true, features = ["reset"] }
-criterion = { workspace = true }
+proptest = { workspace = true }
 
 
 [[bench]]

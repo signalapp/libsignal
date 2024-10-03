@@ -4035,6 +4035,8 @@ dependencies = [
  "hex-literal",
  "hkdf",
  "hmac",
+ "proptest",
+ "rand",
  "rand_core",
  "sha2",
  "static_assertions",
