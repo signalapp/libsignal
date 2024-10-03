@@ -6,7 +6,7 @@
 use ::attest::svr2::lookup_groupid;
 use ::signal_pin::{local_pin_hash, verify_local_pin_hash, PinHash, Result};
 use libsignal_bridge_macros::*;
-use signal_pin::Error;
+use signal_pin::{AccountEntropyPool, Error};
 
 use crate::support::*;
 use crate::*;
@@ -51,4 +51,9 @@ pub fn Pin_LocalHash(pin: &[u8]) -> Result<String> {
 #[bridge_fn(node = false)]
 pub fn Pin_VerifyLocalHash(encoded_hash: String, pin: &[u8]) -> Result<bool> {
     verify_local_pin_hash(&encoded_hash, pin)
+}
+
+#[bridge_fn(node = false, ffi = false)]
+pub fn AccountEntropyPool_Generate() -> String {
+    AccountEntropyPool::generate(&mut rand::thread_rng()).to_string()
 }

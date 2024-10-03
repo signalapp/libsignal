@@ -115,6 +115,8 @@ public final class Native {
    */
   public static native void keepAlive(Object obj);
 
+  public static native String AccountEntropyPool_Generate();
+
   public static native void Aes256Ctr32_Destroy(long handle);
   public static native long Aes256Ctr32_New(byte[] key, byte[] nonce, int initialCtr) throws Exception;
   public static native void Aes256Ctr32_Process(long ctr, byte[] data, int offset, int length);
