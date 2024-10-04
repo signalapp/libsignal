@@ -1788,10 +1788,22 @@ describe('SignalClient', () => {
         assert.equal(err.name, 'InvalidRegistrationId');
         assert.equal(err.code, SignalClient.ErrorCode.InvalidRegistrationId);
         assert.exists(err.stack); // Make sure we're still getting the benefits of Error.
-        const registrationIdErr =
-          err as SignalClient.InvalidRegistrationIdError;
-        assert.equal(registrationIdErr.addr.name(), bAddress.name());
-        assert.equal(registrationIdErr.addr.deviceId(), bAddress.deviceId());
+
+        // Note: This is not a Chai assert; Chai doesn't yet support TypeScript assert functions for
+        // type narrowing. But we already checked the code above.
+        assert(err.is(SignalClient.ErrorCode.InvalidRegistrationId));
+        assert.equal(err.addr.name(), bAddress.name());
+        assert.equal(err.addr.deviceId(), bAddress.deviceId());
+
+        // We can also narrow directly from the original thrown value. (But we didn't do that
+        // earlier because we wanted to check all the properties individually.)
+        assert(
+          SignalClient.LibSignalErrorBase.is(
+            e,
+            SignalClient.ErrorCode.InvalidRegistrationId
+          )
+        );
+        assert.equal(e.addr.name(), bAddress.name());
       }
     });
 
@@ -2211,5 +2223,26 @@ describe('SignalClient', () => {
     assert(
       secondary.publicKey.verifyAlternateIdentity(primary.publicKey, signature)
     );
+  });
+
+  it('includes all error codes in LibSignalError', () => {
+    // This is a compilation test only.
+    type MissingCodes = Exclude<
+      SignalClient.ErrorCode,
+      SignalClient.LibSignalError['code']
+    >;
+    function _check(
+      hasMissingCode: MissingCodes extends never ? never : unknown
+    ): MissingCodes {
+      // If the following line errors with something like...
+      //
+      //     Type 'unknown' is not assignable to type 'ErrorCode.RateLimitedError | ErrorCode.BackupValidation'.
+      //
+      // ...that means `MissingCode extends never` was false, i.e. there were codes missing from the
+      // LibSignalError union. Fortunately, the error message also tells you what they are.
+      // (We ought to have been able to write this as `const missing: never = someMissingCodesValue`
+      // or similar, but TypeScript 5.3 doesn't show the missing cases in the diagnostic that way.)
+      return hasMissingCode;
+    }
   });
 });
