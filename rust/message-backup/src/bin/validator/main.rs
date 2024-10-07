@@ -189,16 +189,16 @@ impl<'a> From<&'a FilenameOrContents> for AsyncReaderFactory<'a> {
 impl<'a> ReaderFactory for AsyncReaderFactory<'a> {
     type Reader = SeekSkipAdapter<
         futures::future::Either<
-            AllowStdIo<std::fs::File>,
+            futures::io::BufReader<AllowStdIo<std::fs::File>>,
             <CursorFactory<&'a [u8]> as ReaderFactory>::Reader,
         >,
     >;
 
     fn make_reader(&mut self) -> futures::io::Result<Self::Reader> {
         match self {
-            AsyncReaderFactory::File(f) => f
-                .make_reader()
-                .map(|SeekSkipAdapter(f)| futures::future::Either::Left(f)),
+            AsyncReaderFactory::File(f) => f.make_reader().map(|SeekSkipAdapter(f)| {
+                futures::future::Either::Left(futures::io::BufReader::new(f))
+            }),
             AsyncReaderFactory::Cursor(c) => c.make_reader().map(futures::future::Either::Right),
         }
         .map(SeekSkipAdapter)
