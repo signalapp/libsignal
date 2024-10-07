@@ -52,6 +52,12 @@ These should usually be prioritized in that order, but adjust the trade-off as n
 
 - We do not have consistent guidelines for how to do errors in Rust, and the different crates do them differently. :-(
 
+- When profiling on an aarch64 device, you need to **explicitly enable hardware AES support** in the `aes` crate:
+
+        RUSTFLAGS="--cfg aes_armv8 ${RUSTFLAGS:-}"
+
+    These are automatically detected on x86_64, but will require an opt-in for aarch64 until we can update to `aes 0.9` or newer (not out yet at the time of this writing). All our app library build scripts set this themselves, but doing a manual `cargo build --release` will not.
+
 
 ## Async
 

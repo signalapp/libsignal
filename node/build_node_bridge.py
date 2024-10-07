@@ -114,7 +114,7 @@ def main(args: Optional[List[str]] = None) -> int:
     # https://github.com/rust-lang/rfcs/issues/2771
     cargo_env['CARGO_PROFILE_RELEASE_LTO'] = 'thin'
     # Enable ARMv8 cryptography acceleration when available
-    cargo_env['RUSTFLAGS'] += ' --cfg aes_armv8 --cfg polyval_armv8'
+    cargo_env['RUSTFLAGS'] += ' --cfg aes_armv8'
 
     # If set (below), will post-process the build library using this instead of just `cp`-ing it.
     objcopy = None

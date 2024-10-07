@@ -17,7 +17,7 @@ DESKTOP_LIB_DIR=java/client/src/main/resources
 SERVER_LIB_DIR=java/server/src/main/resources
 
 export CARGO_PROFILE_RELEASE_DEBUG=1 # enable line tables
-export RUSTFLAGS="--cfg aes_armv8 --cfg polyval_armv8 ${RUSTFLAGS:-}" # Enable ARMv8 cryptography acceleration when available
+export RUSTFLAGS="--cfg aes_armv8 ${RUSTFLAGS:-}" # Enable ARMv8 cryptography acceleration when available
 
 DEBUG_LEVEL_LOGS=
 while [ "${1:-}" != "" ]; do

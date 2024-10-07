@@ -15,7 +15,7 @@ export CARGO_PROFILE_RELEASE_DEBUG=1 # enable line tables
 
 if [[ -n "${CARGO_BUILD_TARGET:-}" ]]; then
   # Avoid overriding RUSTFLAGS for host builds, because that resets the incremental build.
-  export RUSTFLAGS="--cfg aes_armv8 --cfg polyval_armv8 ${RUSTFLAGS:-}" # Enable ARMv8 cryptography acceleration when available
+  export RUSTFLAGS="--cfg aes_armv8 ${RUSTFLAGS:-}" # Enable ARMv8 cryptography acceleration when available
 fi
 
 if [[ "${CARGO_BUILD_TARGET:-}" =~ -ios(-sim|-macabi)?$ ]]; then
