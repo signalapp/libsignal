@@ -179,6 +179,11 @@ pub struct InvalidExpiration {
 ))]
 pub struct ChatData<M: Method + ReferencedTypes> {
     pub recipient: M::RecipientReference,
+    // This list can get quite large (when using the Store method), to the point that reallocation
+    // times start showing up in benchmarks of the `validator` CLI tool. However, experiments with a
+    // custom "segmented list" type (roughly `Vec<Vec<ChatItemData>>`) showed that there wasn't too
+    // much time to be gained here; while we can move less data around on reallocation, ultimately
+    // large backups just have a lot of ChatItems to push, one at a time.
     #[serde(bound(serialize = "M::List<ChatItemData<M>>: serde::Serialize"))]
     pub items: M::List<ChatItemData<M>>,
     pub expiration_timer: Option<Duration>,
