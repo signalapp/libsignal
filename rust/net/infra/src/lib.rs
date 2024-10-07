@@ -342,6 +342,15 @@ pub fn make_ws_config(
     }
 }
 
+/// Extracts and parses the `Retry-After` header.
+///
+/// Returns raw seconds rather than `Duration` to guarantee the smaller range.
+///
+/// Does not support the "http-date" form of the header.
+pub fn extract_retry_after_seconds(headers: &http::header::HeaderMap) -> Option<u32> {
+    headers.get("retry-after")?.to_str().ok()?.parse().ok()
+}
+
 #[cfg(any(test, feature = "test-util"))]
 pub mod testutil {
     use std::fmt::Debug;

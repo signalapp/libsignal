@@ -285,9 +285,10 @@ impl From<Svr3Error> for SignalJniError {
                 WebSocketConnectError::Timeout => SignalJniError::ConnectTimedOut,
                 WebSocketConnectError::Transport(e) => SignalJniError::Io(e.into()),
                 WebSocketConnectError::WebSocketError(e) => WebSocketServiceError::from(e).into(),
-                WebSocketConnectError::RejectedByServer(response) => {
-                    WebSocketServiceError::Http(response).into()
-                }
+                WebSocketConnectError::RejectedByServer {
+                    response,
+                    received_at: _,
+                } => WebSocketServiceError::Http(response).into(),
             },
             Svr3Error::ConnectionTimedOut => SignalJniError::ConnectTimedOut,
             Svr3Error::Service(inner) => inner.into(),

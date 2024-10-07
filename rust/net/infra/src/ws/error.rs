@@ -8,9 +8,13 @@
 //! [`std::fmt::Display`] impl doesn't contain any user data.
 
 use std::borrow::Borrow;
+use std::time::Duration;
+
+use tokio::time::Instant;
 
 use crate::connection_manager::{ErrorClass, ErrorClassifier};
 use crate::errors::{LogSafeDisplay, TransportConnectError};
+use crate::extract_retry_after_seconds;
 
 /// Errors that can occur when connecting a websocket.
 #[derive(Debug, thiserror::Error)]
@@ -22,7 +26,10 @@ pub enum WebSocketConnectError {
     /// the Signal servers.
     ///
     /// See [`ConnectionParams::connection_confirmation_header`](crate::ConnectionParams::connection_confirmation_header).
-    RejectedByServer(http::Response<Option<Vec<u8>>>),
+    RejectedByServer {
+        response: http::Response<Option<Vec<u8>>>,
+        received_at: Instant,
+    },
 }
 
 impl std::fmt::Display for WebSocketConnectError {
@@ -33,7 +40,10 @@ impl std::fmt::Display for WebSocketConnectError {
             WebSocketConnectError::WebSocketError(e) => {
                 write!(f, "websocket error: {}", Error::from(e))
             }
-            WebSocketConnectError::RejectedByServer(response) => {
+            WebSocketConnectError::RejectedByServer {
+                response,
+                received_at: _,
+            } => {
                 write!(
                     f,
                     "rejected by server with error code {}",
@@ -48,16 +58,29 @@ impl LogSafeDisplay for WebSocketConnectError {}
 
 impl ErrorClassifier for WebSocketConnectError {
     fn classify(&self) -> ErrorClass {
-        match self {
-            WebSocketConnectError::RejectedByServer(response)
-                // is_client_error means 4XX error. 5XX errors can be intermittent.
-                if response.status().is_client_error() =>
-            {
-                // TODO: handle StatusCode::TOO_MANY_REQUESTS to produce RetryError::WaitUntil(Instant)
-                ErrorClass::Fatal
-            }
-            _ => ErrorClass::Intermittent,
+        let WebSocketConnectError::RejectedByServer {
+            response,
+            received_at,
+        } = self
+        else {
+            // If we didn't make it to the server, we should retry.
+            return ErrorClass::Intermittent;
+        };
+
+        // Retry-After takes precedence over everything else.
+        if let Some(retry_after_seconds) = extract_retry_after_seconds(response.headers()) {
+            return ErrorClass::RetryAt(
+                *received_at + Duration::from_secs(retry_after_seconds.into()),
+            );
         }
+
+        // If we're rejected based on the request (4xx), there's no point in retrying.
+        if response.status().is_client_error() {
+            return ErrorClass::Fatal;
+        }
+
+        // Otherwise, assume we have a server problem (5xx), and retry.
+        ErrorClass::Intermittent
     }
 }
 

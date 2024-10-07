@@ -294,7 +294,7 @@ where
                 return Ok(r);
             }
             ConnectionAttemptOutcome::Attempted(Err(e)) => {
-                let log_error = |when: &'static str| {
+                let log_error = |e: &E, when: &'static str| {
                     log::debug!("Connection attempt failed with a non-fatal error: {e:?}, will retry {when}");
                     log::info!(
                         "Connection attempt failed with an error: {} ({})",
@@ -305,12 +305,18 @@ where
                 match e.classify() {
                     ErrorClass::Fatal => return Err(RetryError::Fatal(e)),
                     ErrorClass::Intermittent => {
-                        log_error("immediately");
+                        log_error(&e, "immediately");
                         continue;
                     }
                     ErrorClass::RetryAt(when) => {
-                        log_error("soon");
-                        return Err(RetryError::WaitUntil(when));
+                        log_error(&e, "soon");
+                        // A RetryAt means that this route *should* work, and no route will work
+                        // sooner than this. So we don't return.
+                        // FIXME: This isn't ideal, because there might be a higher-level timeout
+                        // that gives up, and that higher-level operation won't be informed of the
+                        // RetryAt. We can revisit that in the ws2 implementation.
+                        tokio::time::sleep_until(when).await;
+                        continue;
                     }
                 }
             }
@@ -1051,11 +1057,18 @@ mod test {
         let multi_route_manager = MultiRouteConnectionManager::new(vec![first_manager.clone()]);
         let res: ConnectionAttemptOutcome<(), ClassifiableTestError> = multi_route_manager
             .connect_or_wait(|_connection_params| {
-                future::ready(Err(ClassifiableTestError(ErrorClass::RetryAt(retry_at))))
+                let e = if Instant::now() < retry_at {
+                    ClassifiableTestError(ErrorClass::RetryAt(retry_at))
+                } else {
+                    ClassifiableTestError(ErrorClass::Fatal)
+                };
+                future::ready(Err(e))
             })
             .await;
-        assert_matches!(res, ConnectionAttemptOutcome::WaitUntil(instant) => {
-            assert_eq!(instant, retry_at)
-        });
+        assert_matches!(
+            res,
+            ConnectionAttemptOutcome::Attempted(Err(ClassifiableTestError(ErrorClass::Fatal)))
+        );
+        assert_eq!(Instant::now(), retry_at);
     }
 }

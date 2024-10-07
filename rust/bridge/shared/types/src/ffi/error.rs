@@ -485,7 +485,7 @@ impl FfiError for Svr3Error {
             Self::Connect(WebSocketConnectError::Transport(e)) => format!("IO error: {e}"),
             Self::Connect(
                 e @ (WebSocketConnectError::WebSocketError(_)
-                | WebSocketConnectError::RejectedByServer(_)),
+                | WebSocketConnectError::RejectedByServer { .. }),
             ) => {
                 format!("WebSocket error: {e}")
             }
@@ -507,7 +507,7 @@ impl FfiError for Svr3Error {
                 WebSocketConnectError::Transport(_) => SignalErrorCode::IoError,
                 WebSocketConnectError::Timeout => SignalErrorCode::ConnectionTimedOut,
                 WebSocketConnectError::WebSocketError(_)
-                | WebSocketConnectError::RejectedByServer(_) => SignalErrorCode::WebSocket,
+                | WebSocketConnectError::RejectedByServer { .. } => SignalErrorCode::WebSocket,
             },
             Self::Service(_) => SignalErrorCode::WebSocket,
             Self::ConnectionTimedOut => SignalErrorCode::ConnectionTimedOut,

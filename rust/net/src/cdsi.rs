@@ -4,7 +4,6 @@
 //
 
 use std::default::Default;
-use std::str::FromStr;
 
 use http::StatusCode;
 use libsignal_core::{Aci, Pni, E164};
@@ -14,7 +13,9 @@ use libsignal_net_infra::ws::{
     AttestedConnection, AttestedConnectionError, NextOrClose, WebSocketConnectError,
     WebSocketServiceError,
 };
-use libsignal_net_infra::{AsyncDuplexStream, HttpBasicAuth, TransportConnector};
+use libsignal_net_infra::{
+    extract_retry_after_seconds, AsyncDuplexStream, HttpBasicAuth, TransportConnector,
+};
 use prost::Message as _;
 use thiserror::Error;
 use tokio::net::TcpStream;
@@ -275,13 +276,13 @@ impl From<crate::enclave::Error> for LookupError {
             Error::WebSocketConnect(err) => match err {
                 WebSocketConnectError::Timeout => Self::ConnectionTimedOut,
                 WebSocketConnectError::Transport(e) => Self::ConnectTransport(e),
-                WebSocketConnectError::RejectedByServer(response) => {
+                WebSocketConnectError::RejectedByServer {
+                    response,
+                    received_at: _,
+                } => {
                     if response.status() == StatusCode::TOO_MANY_REQUESTS {
-                        let retry_after_header = response.headers().get("retry-after");
-
-                        if let Some(retry_after_seconds) = retry_after_header
-                            .and_then(|value| value.to_str().ok())
-                            .and_then(|str| u32::from_str(str).ok())
+                        if let Some(retry_after_seconds) =
+                            extract_retry_after_seconds(response.headers())
                         {
                             return Self::RateLimited {
                                 retry_after_seconds,
