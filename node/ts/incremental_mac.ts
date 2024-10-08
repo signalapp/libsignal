@@ -7,6 +7,8 @@ import * as Native from '../Native';
 import * as stream from 'stream';
 import { LibSignalErrorBase } from './Errors';
 
+type CallbackType = (error?: Error | null) => void;
+
 export type ChunkSizeChoice =
   | { kind: 'everyN'; n: number }
   | { kind: 'chunksOf'; dataSize: number };
@@ -19,6 +21,9 @@ export function inferChunkSize(dataSize: number): ChunkSizeChoice {
   return { kind: 'chunksOf', dataSize: dataSize };
 }
 
+/**
+ * @deprecated Use the DigestingPassThrough instead
+ */
 export class DigestingWritable extends stream.Writable {
   _nativeHandle: Native.IncrementalMac;
 
@@ -40,7 +45,7 @@ export class DigestingWritable extends stream.Writable {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/explicit-module-boundary-types
     chunk: any,
     encoding: BufferEncoding,
-    callback: (error?: Error | null) => void
+    callback: CallbackType
   ): void {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
     const buffer = Buffer.from(chunk, encoding);
@@ -56,12 +61,57 @@ export class DigestingWritable extends stream.Writable {
     callback();
   }
 
-  _final(callback: (error?: Error | null) => void): void {
+  _final(callback: CallbackType): void {
     this._digests.push(Native.IncrementalMac_Finalize(this));
     callback();
   }
 }
 
+export class DigestingPassThrough extends stream.Transform {
+  private digester: DigestingWritable;
+
+  constructor(key: Buffer, sizeChoice: ChunkSizeChoice) {
+    super();
+    this.digester = new DigestingWritable(key, sizeChoice);
+
+    // We handle errors coming from write/end
+    this.digester.on('error', () => {
+      /* noop */
+    });
+  }
+
+  getFinalDigest(): Buffer {
+    return this.digester.getFinalDigest();
+  }
+
+  public override _transform(
+    data: Buffer,
+    enc: BufferEncoding,
+    callback: CallbackType
+  ): void {
+    this.digester.write(data, enc, (err) => {
+      if (err) {
+        return callback(err);
+      }
+      this.push(data);
+      callback();
+    });
+  }
+
+  public override _final(callback: CallbackType): void {
+    this.digester.end((err?: Error) => {
+      if (err) {
+        return callback(err);
+      }
+
+      callback();
+    });
+  }
+}
+
+/**
+ * @deprecated Use the ValidatingPassThrough instead
+ */
 export class ValidatingWritable extends stream.Writable {
   _nativeHandle: Native.ValidatingMac;
 
@@ -84,7 +134,7 @@ export class ValidatingWritable extends stream.Writable {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/explicit-module-boundary-types
     chunk: any,
     encoding: BufferEncoding,
-    callback: (error?: Error | null) => void
+    callback: CallbackType
   ): void {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
     const buffer = Buffer.from(chunk, encoding);
@@ -102,7 +152,7 @@ export class ValidatingWritable extends stream.Writable {
     }
   }
 
-  _final(callback: (error?: Error | null) => void): void {
+  _final(callback: CallbackType): void {
     const validBytes = Native.ValidatingMac_Finalize(this);
     if (validBytes >= 0) {
       this._validatedBytes += validBytes;
@@ -110,6 +160,86 @@ export class ValidatingWritable extends stream.Writable {
     } else {
       callback(makeVerificationError('Corrupted input data (finalize)'));
     }
+  }
+}
+
+export class ValidatingPassThrough extends stream.Transform {
+  private validator: ValidatingWritable;
+  private buffer = new Array<Buffer>();
+
+  constructor(key: Buffer, sizeChoice: ChunkSizeChoice, digest: Buffer) {
+    super();
+    this.validator = new ValidatingWritable(key, sizeChoice, digest);
+
+    // We handle errors coming from write/end
+    this.validator.on('error', () => {
+      /* noop */
+    });
+  }
+
+  public override _transform(
+    data: Buffer,
+    enc: BufferEncoding,
+    callback: CallbackType
+  ): void {
+    const start = this.validator.validatedSize();
+    this.validator.write(data, enc, (err) => {
+      if (err) {
+        return callback(err);
+      }
+
+      this.buffer.push(data);
+
+      const end = this.validator.validatedSize();
+      const readySize = end - start;
+
+      // Fully buffer
+      if (readySize === 0) {
+        return callback(null);
+      }
+
+      const { buffer } = this;
+      this.buffer = [];
+      let validated = 0;
+      for (const chunk of buffer) {
+        validated += chunk.byteLength;
+
+        // Buffered chunk is fully validated - push it without slicing
+        if (validated <= readySize) {
+          this.push(chunk);
+          continue;
+        }
+
+        // Validation boundary lies within the chunk, split it
+        const notValidated = validated - readySize;
+        this.push(chunk.subarray(0, -notValidated));
+        this.buffer.push(chunk.subarray(-notValidated));
+
+        // Technically this chunk must be the last chunk so we could break,
+        // but for consistency keep looping.
+      }
+      callback(null);
+    });
+  }
+
+  public override _final(callback: CallbackType): void {
+    const start = this.validator.validatedSize();
+    this.validator.end((err?: Error) => {
+      if (err) {
+        return callback(err);
+      }
+
+      const end = this.validator.validatedSize();
+      const readySize = end - start;
+      const buffer = Buffer.concat(this.buffer);
+      this.buffer = [];
+      if (buffer.byteLength !== readySize) {
+        return callback(new Error('Stream not fully processed'));
+      }
+      this.push(buffer);
+
+      callback(null);
+    });
   }
 }
 
