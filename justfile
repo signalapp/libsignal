@@ -34,6 +34,7 @@ check-pre-commit:
     just check-format-all
     (cd node && yarn lint)
     (cd swift && ./verify_error_codes.sh)
+    (cd swift && swiftlint lint --strict)
     cargo test --workspace --all-features --verbose --no-fail-fast -- --include-ignored
     cargo clippy --workspace --all-targets --all-features --keep-going -- -D warnings
     @printf "\e[32mBasic pre-commit checks passed! ✅ Hopefully good to push! 🤞\e[0m\n"
