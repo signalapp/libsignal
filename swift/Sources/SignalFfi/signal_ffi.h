@@ -1559,6 +1559,8 @@ SignalFfiError *signal_pin_local_hash(const char **out, SignalBorrowedBuffer pin
 
 SignalFfiError *signal_pin_verify_local_hash(bool *out, const char *encoded_hash, SignalBorrowedBuffer pin);
 
+SignalFfiError *signal_account_entropy_pool_generate(const char **out);
+
 SignalFfiError *signal_svr2_client_new(SignalSgxClientState **out, SignalBorrowedBuffer mrenclave, SignalBorrowedBuffer attestation_msg, uint64_t current_timestamp);
 
 SignalFfiError *signal_incremental_mac_destroy(SignalIncrementalMac *p);

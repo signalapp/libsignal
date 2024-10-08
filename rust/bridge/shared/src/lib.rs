@@ -40,9 +40,9 @@ pub mod ias;
 
 pub mod net;
 
-// Desktop does not use SVR
-#[cfg(any(feature = "jni", feature = "ffi"))]
 mod pin;
+
+// Desktop does not use SVR
 #[cfg(any(feature = "jni", feature = "ffi"))]
 mod svr2;
 

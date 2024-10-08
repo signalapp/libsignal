@@ -114,3 +114,19 @@ public class PinHash: NativeHandleOwner {
         self.init(owned: result!)
     }
 }
+
+/// The randomly-generated user-memorized entropy used to derive the backup key, with other possible future uses.
+public enum AccountEntropyPool {
+    /// Generate a new entropy pool and return the cannonical string representation.
+    ///
+    /// This pool contains log_2(36^64) = ~330 bits of cryptographic quality randomness.
+    ///
+    /// - returns: A 64 character string containing randomly chosen digits from [a-z0-9].
+    public static func generate() -> String {
+        return failOnError {
+            try invokeFnReturningString {
+                signal_account_entropy_pool_generate($0)
+            }
+        }
+    }
+}
