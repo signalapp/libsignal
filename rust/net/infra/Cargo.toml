@@ -50,6 +50,7 @@ assert_matches = { workspace = true }
 env_logger = { workspace = true }
 hickory-proto = "0.24.1"
 lazy_static = { workspace = true }
+pretty_assertions = { workspace = true }
 rcgen = "0.13.0"
 snow = { workspace = true, features = ["default-resolver"] }
 socks5-server = "0.10.1"

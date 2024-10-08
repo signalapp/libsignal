@@ -2370,6 +2370,7 @@ dependencies = [
  "log",
  "nonzero_ext",
  "pin-project",
+ "pretty_assertions",
  "prost",
  "rcgen",
  "rustls 0.23.13",

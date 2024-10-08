@@ -78,7 +78,7 @@ once_cell = { workspace = true }
 test-case = { workspace = true }
 test-log = "0.2.14"
 testing_logger = { workspace = true }
-pretty_assertions = "1.4.0"
+pretty_assertions = { workspace = true }
 
 [build-dependencies]
 protobuf = "3.3.0"

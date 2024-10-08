@@ -37,7 +37,7 @@ pub struct SocksConnector {
     pub dns_resolver: DnsResolver,
 }
 
-#[derive(Clone, Debug, strum::EnumDiscriminants)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, strum::EnumDiscriminants)]
 #[strum_discriminants(name(ProtocolKind))]
 pub enum Protocol {
     Socks4 {

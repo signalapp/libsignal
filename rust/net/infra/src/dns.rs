@@ -38,6 +38,7 @@ mod dns_types;
 mod dns_utils;
 pub mod lookup_result;
 
+pub type DnsError = Error;
 pub type Result<T> = std::result::Result<T, Error>;
 
 struct DnsResolverState {
