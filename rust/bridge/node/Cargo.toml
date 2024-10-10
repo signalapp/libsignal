@@ -5,7 +5,7 @@
 
 [package]
 name = "libsignal-node"
-version = "0.58.2"
+version = "0.58.3"
 authors = ["Signal Messenger LLC"]
 license = "AGPL-3.0-only"
 edition = "2021"
