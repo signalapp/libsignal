@@ -998,6 +998,8 @@ mod test {
             search_key: [b"a", aci.as_bytes().as_slice()].concat(),
             version: None,
             consistency: None,
+            mapped_value: vec![],
+            unidentified_access_key: None,
         };
         let response = {
             let bytes = include_bytes!("../res/kt-search-response.dat");
