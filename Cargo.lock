@@ -2209,6 +2209,7 @@ name = "libsignal-keytrans"
 version = "0.0.1"
 dependencies = [
  "assert_matches",
+ "criterion",
  "curve25519-dalek",
  "displaydoc",
  "ed25519-dalek",
