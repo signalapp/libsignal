@@ -63,6 +63,12 @@ message SearchRequest {
     bytes search_key = 1;
     optional uint32 version = 2;
     Consistency consistency = 3;
+    // The value that the search key maps to in the transparency log.
+    // This will be ACI if the search key is a phone number or username hash,
+    // and ACI identity key if the search key is an ACI.
+    // If the client is looking up the distinguished key, this field may be empty.
+    bytes mapped_value = 4;
+    optional bytes unidentified_access_key = 5;
 }
 
 // SearchResponse is the output of executing a search on the tree.

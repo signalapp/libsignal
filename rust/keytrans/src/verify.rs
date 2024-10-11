@@ -498,6 +498,8 @@ pub fn verify_update(
             search_key: req.search_key.clone(),
             version: None,
             consistency: req.consistency,
+            mapped_value: vec![],
+            unidentified_access_key: None,
         },
         &SearchResponse {
             tree_head: res.tree_head.clone(),
