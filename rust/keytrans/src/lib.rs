@@ -11,18 +11,18 @@ mod implicit;
 mod left_balanced;
 mod log;
 mod prefix;
-mod store;
 mod verify;
 mod vrf;
 mod wire;
 
 use std::collections::HashMap;
+use std::time::SystemTime;
 
-use ed25519_dalek::VerifyingKey as SigPublicKey;
-pub use store::LogStore;
+pub use ed25519_dalek::VerifyingKey;
 use verify::{
     truncate_search_response, verify_distinguished, verify_monitor, verify_search, verify_update,
 };
+pub use vrf::PublicKey as VrfPublicKey;
 pub use wire::{
     Consistency, FullTreeHead, MonitorKey, MonitorRequest, MonitorResponse, SearchRequest,
     SearchResponse, TreeHead, UpdateRequest, UpdateResponse, UpdateValue,
@@ -32,8 +32,8 @@ pub use wire::{
 #[derive(PartialEq, Clone, Copy)]
 pub enum DeploymentMode {
     ContactMonitoring,
-    ThirdPartyManagement(SigPublicKey),
-    ThirdPartyAuditing(SigPublicKey),
+    ThirdPartyManagement(VerifyingKey),
+    ThirdPartyAuditing(VerifyingKey),
 }
 
 impl DeploymentMode {
@@ -45,7 +45,7 @@ impl DeploymentMode {
         }
     }
 
-    fn get_associated_key(&self) -> Option<&SigPublicKey> {
+    fn get_associated_key(&self) -> Option<&VerifyingKey> {
         match self {
             DeploymentMode::ContactMonitoring => None,
             DeploymentMode::ThirdPartyManagement(key) => Some(key),
@@ -54,12 +54,47 @@ impl DeploymentMode {
     }
 }
 
+pub type TreeRoot = [u8; 32];
+pub type LastTreeHead = (TreeHead, TreeRoot);
+
+#[derive(Default, Debug)]
+pub struct SearchContext {
+    last_tree_head: Option<LastTreeHead>,
+    data: Option<MonitoringData>,
+}
+
+#[derive(Default, Debug)]
+pub struct MonitorContext {
+    last_tree_head: Option<LastTreeHead>,
+    data: HashMap<Vec<u8>, MonitoringData>,
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub enum DataUpdate<T> {
+    Unchanged,
+    Changed(T),
+}
+
+#[derive(Debug)]
+pub struct SearchUpdate {
+    pub tree_head: TreeHead,
+    pub tree_root: TreeRoot,
+    pub data: DataUpdate<MonitoringData>,
+}
+
+#[derive(Debug)]
+pub struct MonitorUpdate<'a> {
+    pub tree_head: TreeHead,
+    pub tree_root: TreeRoot,
+    pub data: Vec<(&'a [u8], DataUpdate<MonitoringData>)>,
+}
+
 /// PublicConfig wraps the cryptographic keys needed to interact with a
 /// transparency tree.
 #[derive(Clone)]
 pub struct PublicConfig {
     pub mode: DeploymentMode,
-    pub signature_key: SigPublicKey,
+    pub signature_key: VerifyingKey,
     pub vrf_key: vrf::PublicKey,
 }
 
@@ -67,8 +102,6 @@ pub struct PublicConfig {
 pub struct KeyTransparency {
     /// Key transparency system configuration
     pub config: PublicConfig,
-    /// Abstract key transparency data store
-    pub store: dyn LogStore,
 }
 
 impl KeyTransparency {
@@ -77,17 +110,13 @@ impl KeyTransparency {
     /// application if this function returns successfully.
     pub fn verify_search(
         &mut self,
-        request: &SearchRequest,
-        response: &SearchResponse,
+        request: SearchRequest,
+        response: SearchResponse,
+        context: SearchContext,
         force_monitor: bool,
-    ) -> Result<(), verify::Error> {
-        verify_search(
-            &self.config,
-            &mut self.store,
-            request,
-            response,
-            force_monitor,
-        )
+        now: SystemTime,
+    ) -> Result<SearchUpdate, verify::Error> {
+        verify_search(&self.config, request, response, context, force_monitor, now)
     }
 
     /// Checks that the provided FullTreeHead has a valid consistency proof relative
@@ -97,12 +126,13 @@ impl KeyTransparency {
         full_tree_head: &FullTreeHead,
         distinguished_size: u64,
         distinguished_root: [u8; 32],
+        last_tree_head: Option<LastTreeHead>,
     ) -> Result<(), verify::Error> {
         verify_distinguished(
-            &mut self.store,
             full_tree_head,
             distinguished_size,
             distinguished_root,
+            last_tree_head,
         )
     }
 
@@ -120,12 +150,14 @@ impl KeyTransparency {
 
     /// Checks that the output of a Monitor operation is valid and updates the
     /// client's stored data.
-    pub fn verify_monitor(
-        &mut self,
-        request: &MonitorRequest,
-        response: &MonitorResponse,
-    ) -> Result<(), verify::Error> {
-        verify_monitor(&self.config, &mut self.store, request, response)
+    pub fn verify_monitor<'a>(
+        &'a mut self,
+        request: &'a MonitorRequest,
+        response: &'a MonitorResponse,
+        context: MonitorContext,
+        now: SystemTime,
+    ) -> Result<MonitorUpdate<'a>, verify::Error> {
+        verify_monitor(&self.config, request, response, context, now)
     }
 
     /// Checks that the output of an Update operation is valid and updates the
@@ -134,13 +166,16 @@ impl KeyTransparency {
         &mut self,
         request: &UpdateRequest,
         response: &UpdateResponse,
-    ) -> Result<(), verify::Error> {
-        verify_update(&self.config, &mut self.store, request, response)
+        context: SearchContext,
+        now: SystemTime,
+    ) -> Result<SearchUpdate, verify::Error> {
+        verify_update(&self.config, request, response, context, now)
     }
 }
 
 /// MonitoringData is the structure retained for each key in the KT server being
 /// monitored.
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub struct MonitoringData {
     /// The VRF output on the search key.
     pub index: [u8; 32],

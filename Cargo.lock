@@ -2212,6 +2212,7 @@ dependencies = [
  "curve25519-dalek",
  "displaydoc",
  "ed25519-dalek",
+ "hex",
  "hex-literal",
  "hmac",
  "proptest",
@@ -2219,6 +2220,7 @@ dependencies = [
  "prost-build",
  "sha2",
  "test-case",
+ "uuid",
 ]
 
 [[package]]

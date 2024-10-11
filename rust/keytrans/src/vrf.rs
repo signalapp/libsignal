@@ -129,7 +129,7 @@ impl PublicKey {
         Ok(proof_to_hash(&gamma))
     }
 
-    pub fn as_bytes(&self) -> &[u8] {
+    pub fn as_bytes(&self) -> &[u8; 32] {
         &self.compressed
     }
 }

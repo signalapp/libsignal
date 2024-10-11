@@ -23,6 +23,8 @@ prost-build = { workspace = true }
 
 [dev-dependencies]
 assert_matches = { workspace = true }
+hex = { workspace = true }
 hex-literal = { workspace = true }
 proptest = { workspace = true }
 test-case = { workspace = true }
+uuid = { workspace = true }

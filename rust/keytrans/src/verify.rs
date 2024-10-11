@@ -13,9 +13,11 @@ use crate::guide::{InvalidState, ProofGuide};
 use crate::implicit::{full_monitoring_path, monitoring_path};
 use crate::log::{evaluate_batch_proof, truncate_batch_proof, verify_consistency_proof};
 use crate::prefix::{evaluate as evaluate_prefix, MalformedProof};
-use crate::store::{LogStore, LogStoreError};
 use crate::wire::*;
-use crate::{guide, log, vrf, DeploymentMode, MonitoringData, PublicConfig};
+use crate::{
+    guide, log, vrf, DataUpdate, DeploymentMode, LastTreeHead, MonitorContext, MonitorUpdate,
+    MonitoringData, PublicConfig, SearchContext, SearchUpdate,
+};
 
 /// The range of allowed timestamp values relative to "now".
 /// The timestamps will have to be in [now - max_behind .. now + max_ahead]
@@ -41,8 +43,6 @@ pub enum Error {
     ValueTooLong,
     /// Verification failed: {0}
     VerificationFailed(String),
-    /// Storage operation failed: {0}
-    StorageFailure(String),
 }
 
 impl From<log::Error> for Error {
@@ -66,12 +66,6 @@ impl From<guide::InvalidState> for Error {
 impl From<MalformedProof> for Error {
     fn from(err: MalformedProof) -> Self {
         Self::VerificationFailed(err.to_string())
-    }
-}
-
-impl From<LogStoreError> for Error {
-    fn from(err: LogStoreError) -> Self {
-        Self::StorageFailure(err.to_string())
     }
 }
 
@@ -149,7 +143,7 @@ fn verify_tree_head_signature(
 ) -> Result<()> {
     let raw = marshal_tree_head_tbs(head.tree_size, head.timestamp, root, config)?;
     let sig = Signature::from_slice(&head.signature).map_err(|_| {
-        Error::VerificationFailed("failed to verify tree head signature".to_string())
+        Error::VerificationFailed("failed to verify tree head signature (bad format)".to_string())
     })?;
     verifying_key
         .verify(&raw, &sig)
@@ -160,17 +154,17 @@ fn verify_tree_head_signature(
 /// later requests if it succeeds.
 fn verify_full_tree_head(
     config: &PublicConfig,
-    storage: &mut dyn LogStore,
     fth: &FullTreeHead,
     root: [u8; 32],
+    last_tree_head: Option<LastTreeHead>,
     now: SystemTime,
-) -> Result<()> {
-    let tree_head = get_proto_field(&fth.tree_head)?.clone();
+) -> Result<LastTreeHead> {
+    let tree_head = get_proto_field(&fth.tree_head)?;
 
     // 1. Verify the proof in FullTreeHead.consistency, if one is expected.
     // 3. Verify that the timestamp and tree_size fields of the TreeHead are
     //    greater than or equal to what they were before.
-    match storage.get_last_tree_head()? {
+    match last_tree_head {
         None => {
             if !fth.last.is_empty() {
                 return Err(Error::VerificationFailed(
@@ -212,7 +206,7 @@ fn verify_full_tree_head(
     };
 
     // 2. Verify the signature in TreeHead.signature.
-    verify_tree_head_signature(config, &tree_head, &root, &config.signature_key)?;
+    verify_tree_head_signature(config, tree_head, &root, &config.signature_key)?;
 
     // 3. Verify that the timestamp in TreeHead is sufficiently recent.
     verify_timestamp(tree_head.timestamp, ALLOWED_TIMESTAMP_RANGE, None, now)?;
@@ -277,7 +271,7 @@ fn verify_full_tree_head(
         }
     }
 
-    Ok(storage.set_last_tree_head(tree_head, root)?)
+    Ok((tree_head.clone(), root))
 }
 
 /// The range of allowed timestamp values relative to "now".
@@ -320,14 +314,14 @@ fn verify_timestamp(
 /// Checks that the provided FullTreeHead has a valid consistency proof relative
 /// to the provided distinguished head.
 pub fn verify_distinguished(
-    storage: &mut dyn LogStore,
     fth: &FullTreeHead,
     distinguished_size: u64,
     distinguished_root: [u8; 32],
+    last_tree_head: Option<LastTreeHead>,
 ) -> Result<()> {
     let tree_size = get_proto_field(&fth.tree_head)?.tree_size;
 
-    let root = match storage.get_last_tree_head()? {
+    let root = match last_tree_head {
         Some((tree_head, root)) if tree_head.tree_size == tree_size => root,
         _ => {
             return Err(Error::VerificationFailed(
@@ -369,25 +363,37 @@ fn evaluate_vrf_proof(
 /// The shared implementation of verify_search and verify_update.
 fn verify_search_internal(
     config: &PublicConfig,
-    storage: &mut dyn LogStore,
-    req: &SearchRequest,
-    res: &SearchResponse,
+    req: SearchRequest,
+    res: SearchResponse,
+    context: SearchContext,
     monitor: bool,
     now: SystemTime,
-) -> Result<()> {
+) -> Result<SearchUpdate> {
     // NOTE: Update this function in tandem with truncate_search_response.
+    let SearchRequest {
+        search_key,
+        version,
+        ..
+    } = req;
+    let SearchResponse {
+        tree_head,
+        vrf_proof,
+        search,
+        opening,
+        value,
+    } = res;
 
-    let index = evaluate_vrf_proof(&res.vrf_proof, &config.vrf_key, &req.search_key)?;
+    let index = evaluate_vrf_proof(&vrf_proof, &config.vrf_key, &search_key)?;
 
     // Evaluate the search proof.
-    let full_tree_head = get_proto_field(&res.tree_head)?;
+    let full_tree_head = get_proto_field(&tree_head)?;
     let tree_size = {
         let tree_head = get_proto_field(&full_tree_head.tree_head)?;
         tree_head.tree_size
     };
-    let search_proof = get_proto_field(&res.search)?;
+    let search_proof = get_proto_field(&search)?;
 
-    let guide = ProofGuide::new(req.version, search_proof.pos, tree_size);
+    let guide = ProofGuide::new(version, search_proof.pos, tree_size);
 
     let mut i = 0;
     let mut leaves = HashMap::new();
@@ -429,14 +435,13 @@ fn verify_search_internal(
     })?;
     let result_step = &search_proof.steps[result_i];
 
-    let value = marshal_update_value(&get_proto_field(&res.value)?.value)?;
-    let opening = res
-        .opening
+    let value = marshal_update_value(&get_proto_field(&value)?.value)?;
+    let opening = opening
         .as_slice()
         .try_into()
         .map_err(|_| Error::VerificationFailed("malformed opening".to_string()))?;
 
-    if !verify_commitment(&req.search_key, &result_step.commitment, &value, opening) {
+    if !verify_commitment(&search_key, &result_step.commitment, &value, opening) {
         return Err(Error::VerificationFailed(
             "failed to verify commitment opening".to_string(),
         ));
@@ -448,11 +453,17 @@ fn verify_search_internal(
     let inclusion_proof = get_hash_proof(&search_proof.inclusion)?;
     let root = evaluate_batch_proof(&ids, tree_size, &values, &inclusion_proof)?;
 
+    let SearchContext {
+        last_tree_head,
+        data,
+    } = context;
+
     // Verify the tree head with the candidate root.
-    verify_full_tree_head(config, storage, full_tree_head, root, now)?;
+    let updated_tree_head =
+        verify_full_tree_head(config, full_tree_head, root, last_tree_head, now)?;
 
     // Update stored monitoring data.
-    let size = if req.search_key == b"distinguished" {
+    let size = if search_key == b"distinguished" {
         // Make sure we don't update monitoring data based on parts of the tree
         // that we don't intend to retain.
         result_id + 1
@@ -461,13 +472,17 @@ fn verify_search_internal(
     };
     let ver = get_proto_field(&result_step.prefix)?.counter;
 
-    let mut mdw = MonitoringDataWrapper::load(storage, &req.search_key)?;
+    let mut mdw = MonitoringDataWrapper::new(data);
     if monitor || config.mode == DeploymentMode::ContactMonitoring {
         mdw.start_monitoring(&index, search_proof.pos, result_id, ver, monitor);
     }
     mdw.check_search_consistency(size, &index, search_proof.pos, result_id, ver, monitor)?;
     mdw.update(size, &steps)?;
-    mdw.save(storage, &req.search_key)
+    Ok(SearchUpdate {
+        tree_head: updated_tree_head.0,
+        tree_root: updated_tree_head.1,
+        data: mdw.into_data_update(),
+    })
 }
 
 /// Checks that the output of a Search operation is valid and updates the
@@ -475,33 +490,34 @@ fn verify_search_internal(
 /// application if this function returns successfully.
 pub fn verify_search(
     config: &PublicConfig,
-    storage: &mut dyn LogStore,
-    req: &SearchRequest,
-    res: &SearchResponse,
+    req: SearchRequest,
+    res: SearchResponse,
+    context: SearchContext,
     force_monitor: bool,
-) -> Result<()> {
-    verify_search_internal(config, storage, req, res, force_monitor, SystemTime::now())
+    now: SystemTime,
+) -> Result<SearchUpdate> {
+    verify_search_internal(config, req, res, context, force_monitor, now)
 }
 
 /// Checks that the output of an Update operation is valid and updates the
 /// client's stored data.
 pub fn verify_update(
     config: &PublicConfig,
-    storage: &mut dyn LogStore,
     req: &UpdateRequest,
     res: &UpdateResponse,
-) -> Result<()> {
+    context: SearchContext,
+    now: SystemTime,
+) -> Result<SearchUpdate> {
     verify_search_internal(
         config,
-        storage,
-        &SearchRequest {
+        SearchRequest {
             search_key: req.search_key.clone(),
             version: None,
             consistency: req.consistency,
             mapped_value: vec![],
             unidentified_access_key: None,
         },
-        &SearchResponse {
+        SearchResponse {
             tree_head: res.tree_head.clone(),
             vrf_proof: res.vrf_proof.clone(),
             search: res.search.clone(),
@@ -511,19 +527,21 @@ pub fn verify_update(
                 value: req.value.clone(),
             }),
         },
+        context,
         true,
-        SystemTime::now(),
+        now,
     )
 }
 
 /// Checks that the output of a Monitor operation is valid and updates the
 /// client's stored data.
-pub fn verify_monitor(
-    config: &PublicConfig,
-    storage: &mut dyn LogStore,
-    req: &MonitorRequest,
-    res: &MonitorResponse,
-) -> Result<()> {
+pub fn verify_monitor<'a>(
+    config: &'a PublicConfig,
+    req: &'a MonitorRequest,
+    res: &'a MonitorResponse,
+    context: MonitorContext,
+    now: SystemTime,
+) -> Result<MonitorUpdate<'a>> {
     // Verify proof responses are the expected lengths.
     if req.owned_keys.len() != res.owned_proofs.len() {
         return Err(Error::VerificationFailed(
@@ -540,14 +558,18 @@ pub fn verify_monitor(
     let tree_head = get_proto_field(&full_tree_head.tree_head)?;
     let tree_size = tree_head.tree_size;
 
-    // Process all of the individual MonitorProof structures.
+    let MonitorContext {
+        last_tree_head,
+        data,
+    } = context;
+
+    // Process all the individual MonitorProof structures.
     let mut mpa = MonitorProofAcc::new(tree_size);
-    // TODO: futures_util::future::join_all() maybe?
     for (key, proof) in req.owned_keys.iter().zip(res.owned_proofs.iter()) {
-        mpa.process(storage, key, proof)?;
+        mpa.process(&data, key, proof)?;
     }
     for (key, proof) in req.contact_keys.iter().zip(res.contact_proofs.iter()) {
-        mpa.process(storage, key, proof)?;
+        mpa.process(&data, key, proof)?;
     }
 
     // Evaluate the inclusion proof to get a candidate root value.
@@ -568,13 +590,20 @@ pub fn verify_monitor(
     };
 
     // Verify the tree head with the candidate root.
-    verify_full_tree_head(config, storage, full_tree_head, root, SystemTime::now())?;
+    let updated_tree_head =
+        verify_full_tree_head(config, full_tree_head, root, last_tree_head, now)?;
 
+    let MonitorRequest {
+        owned_keys,
+        contact_keys,
+        consistency,
+    } = req;
+
+    let mut data_updates = Vec::with_capacity(owned_keys.len() + contact_keys.len());
     // Update monitoring data.
-    for (key, entry) in req
-        .owned_keys
+    for (key, entry) in owned_keys
         .iter()
-        .chain(req.contact_keys.iter())
+        .chain(contact_keys.iter())
         .zip(mpa.entries.iter())
     {
         let size = if key.search_key == b"distinguished" {
@@ -587,18 +616,23 @@ pub fn verify_monitor(
             // when monitoring the "distinguished" key, we need to make sure we
             // don't update monitoring data based on parts of the tree that we
             // don't intend to retain.
-            req.consistency
+            consistency
                 .and_then(|consistency| consistency.last)
                 .ok_or(Error::VerificationFailed("monitoring request malformed: consistency field expected when monitoring distinguished key".to_string()))?
         } else {
             tree_size
         };
-        let mut mdw = MonitoringDataWrapper::load(storage, &key.search_key)?;
+        let data = data.get(&key.search_key).cloned();
+        let mut mdw = MonitoringDataWrapper::new(data);
         mdw.update(size, entry)?;
-        mdw.save(storage, &key.search_key)?;
+        data_updates.push((key.search_key.as_slice(), mdw.into_data_update()));
     }
 
-    Ok(())
+    Ok(MonitorUpdate {
+        tree_head: updated_tree_head.0,
+        tree_root: updated_tree_head.1,
+        data: data_updates,
+    })
 }
 
 struct MonitorProofAcc {
@@ -622,13 +656,13 @@ impl MonitorProofAcc {
 
     fn process(
         &mut self,
-        storage: &mut dyn LogStore,
+        monitoring_data: &HashMap<Vec<u8>, MonitoringData>,
         key: &MonitorKey,
         proof: &MonitorProof,
     ) -> Result<()> {
         // Get the existing monitoring data from storage and check that it
         // matches the request.
-        let data = storage.get_data(&key.search_key)?.ok_or_else(|| {
+        let data = monitoring_data.get(&key.search_key).ok_or_else(|| {
             Error::VerificationFailed(
                 "unable to process monitoring response for unknown search key".to_string(),
             )
@@ -679,11 +713,11 @@ struct MonitoringDataWrapper {
 }
 
 impl MonitoringDataWrapper {
-    fn load(storage: &mut dyn LogStore, search_key: &[u8]) -> Result<Self> {
-        Ok(Self {
-            inner: storage.get_data(search_key)?,
+    fn new(monitoring_data: Option<MonitoringData>) -> Self {
+        Self {
+            inner: monitoring_data,
             changed: false,
-        })
+        }
     }
 
     /// Adds a key to the database of keys to monitor, if it's not already
@@ -822,13 +856,13 @@ impl MonitoringDataWrapper {
         Ok(())
     }
 
-    fn save(self, storage: &mut dyn LogStore, search_key: &[u8]) -> Result<()> {
+    fn into_data_update(self) -> DataUpdate<MonitoringData> {
         if self.changed {
             if let Some(data) = self.inner {
-                storage.set_data(search_key, data)?
+                return DataUpdate::Changed(data);
             }
         }
-        Ok(())
+        DataUpdate::Unchanged
     }
 }
 
@@ -902,8 +936,6 @@ fn into_sorted_pairs<K: Ord + Copy, V>(map: HashMap<K, V>) -> (Vec<K>, Vec<V>) {
 
 #[cfg(test)]
 mod test {
-    use std::result::Result;
-
     use assert_matches::assert_matches;
     use hex_literal::hex;
     use prost::Message as _;
@@ -947,58 +979,66 @@ mod test {
         );
     }
 
-    struct NullLogStore;
-
-    impl LogStore for NullLogStore {
-        fn get_last_tree_head(&self) -> Result<Option<(wire::TreeHead, [u8; 32])>, LogStoreError> {
-            Ok(None)
-        }
-
-        fn set_last_tree_head(
-            &mut self,
-            _head: wire::TreeHead,
-            _root: [u8; 32],
-        ) -> Result<(), LogStoreError> {
-            Ok(())
-        }
-
-        fn get_data(&self, _key: &[u8]) -> Result<Option<MonitoringData>, LogStoreError> {
-            Ok(None)
-        }
-
-        fn set_data(&mut self, _key: &[u8], _data: MonitoringData) -> Result<(), LogStoreError> {
-            Ok(())
-        }
-    }
-
     #[test]
     fn can_verify_search_response() {
         let sig_key = VerifyingKey::from_bytes(&hex!(
-            "61eae8fe6373577e6473c5bb65a43b4d86190d78b2e5dc48fa6f253253438fb9"
+            "12a21ad60d5a3978e19a3b0baa8c35c55a20e10d45f39e5cb34bf6e1b3cce432"
         ))
         .unwrap();
         let vrf_key = vrf::PublicKey::try_from(hex!(
-            "ee964d1552c57c4b8dd9b3f409e6cfd7fb3691966014dbe89f652de7d0a67ca2"
+            "1e71563470c1b8a6e0aadf280b6aa96f8ad064674e69b80292ee46d1ab655fcf"
         ))
         .unwrap();
-        let request = wire::SearchRequest::decode(
-            hex!("0a10b81b5b821e8d4eec8ec5e6513834a9f31a020804").as_slice(),
-        )
+        let auditor_key = VerifyingKey::from_bytes(&hex!(
+            "1123b13ee32479ae6af5739e5d687b51559abf7684120511f68cde7a21a0e755"
+        ))
         .unwrap();
+        let aci = uuid::uuid!("84fd7196-b3fa-4d4d-bbf8-8f1cdf2b7cea");
+        let request = wire::SearchRequest {
+            search_key: [b"a", aci.as_bytes().as_slice()].concat(),
+            version: None,
+            consistency: None,
+        };
         let response = {
             let bytes = include_bytes!("../res/kt-search-response.dat");
             wire::SearchResponse::decode(bytes.as_slice()).unwrap()
         };
-        let valid_at = SystemTime::UNIX_EPOCH + Duration::from_secs(1724796478);
+        let valid_at = SystemTime::UNIX_EPOCH + Duration::from_secs(1724279958);
         let config = PublicConfig {
-            mode: DeploymentMode::ContactMonitoring,
+            mode: DeploymentMode::ThirdPartyAuditing(auditor_key),
             signature_key: sig_key,
             vrf_key,
         };
-        let mut store = NullLogStore;
+
+        let last_tree_head =
+            TreeHead {
+                tree_size: 7154,
+                timestamp: 1724279941691,
+                signature: hex!("385a2eee61b2a0ef463251e8f0301389c3a334a0146bc6f2cb9b35938d9c16ba99223a651e963fab86e64e02484e49b5718dd826aafe7c3e38dfe53226220603").to_vec(),
+            };
+        let last_root = hex!("1a7ff40e291a276bdcb63d97fe363edfc1c209971e06a806b82d16cbdcb38611");
+        let expected_data_update = MonitoringData {
+            index: hex!("28fb992ac153f6d44485cc242b5e4b0d51aa0f0b31548b1a65161feebbb8d84d"),
+            pos: 5594,
+            ptrs: HashMap::from([(6143, 0)]),
+            owned: true,
+        };
         assert_matches!(
-            verify_search_internal(&config, &mut store, &request, &response, false, valid_at),
-            Ok(())
-        )
+            verify_search_internal(&config, request.clone(), response.clone(), SearchContext::default(), true, valid_at),
+            Ok(update) => {
+                assert_eq!(update.tree_head, last_tree_head);
+                assert_eq!(update.tree_root, last_root);
+                assert_eq!(update.data, DataUpdate::Changed(expected_data_update));
+            }
+        );
+        assert_matches!(
+            verify_search_internal(&config, request.clone(), response.clone(), SearchContext::default(), false, valid_at),
+            Ok(update) => {
+                assert_eq!(update.tree_head, last_tree_head);
+                assert_eq!(update.tree_root, last_root);
+                // When monitor == false there should be no data update
+                assert_eq!(update.data, DataUpdate::Unchanged);
+            }
+        );
     }
 }
