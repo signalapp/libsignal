@@ -146,6 +146,8 @@ pub enum ChatItemError {
     VoiceMessage(#[from] VoiceMessageError),
     /// item has expiration start date but no duration
     ExpirationMismatch,
+    /// item has been read/sent but expiration timer has not started
+    ExpirationNotStarted,
     /// expiration too soon: {0}
     InvalidExpiration(#[from] InvalidExpiration),
     /// revisions of message from author {0:?} contained message from author {1:?}
@@ -527,7 +529,34 @@ impl<
             }
             (Some(_), None) => return Err(ChatItemError::ExpirationMismatch),
             (None, Some(_)) => {
-                // A disappearing message that hasn't been viewed yet.
+                let should_have_started = match &direction {
+                    Direction::Incoming {
+                        sent: _,
+                        received: _,
+                        read,
+                        sealed_sender: _,
+                    } => *read,
+                    Direction::Outgoing(outgoing) => {
+                        outgoing.0.iter().all(|send| match send.status {
+                            DeliveryStatus::Failed(_) => false,
+                            DeliveryStatus::Pending => false,
+
+                            // The timer starts when the "sent" checkmark shows up.
+                            DeliveryStatus::Sent { .. } => true,
+                            DeliveryStatus::Delivered { .. } => true,
+                            DeliveryStatus::Read { .. } => true,
+                            DeliveryStatus::Viewed { .. } => true,
+                            DeliveryStatus::Skipped => true,
+                        })
+                    }
+                    Direction::Directionless => {
+                        // "read" state isn't tracked, so we have to conservatively allow this.
+                        false
+                    }
+                };
+                if should_have_started {
+                    return Err(ChatItemError::ExpirationNotStarted);
+                }
             }
             (Some(expire_start), Some(expires_in)) => {
                 let expires_at = expire_start + expires_in;
@@ -1043,8 +1072,45 @@ mod test {
 
         // This one is okay, it's an expiring message that hasn't been viewed yet.
         assert_matches!(
-            ChatItemData::<Store>::try_from_with(item, &TestContext::default()),
+            ChatItemData::<Store>::try_from_with(item.clone(), &TestContext::default()),
             Ok(_)
+        );
+
+        // But not once it's been viewed.
+        let incoming = assert_matches!(
+            &mut item.directionalDetails,
+            Some(proto::chat_item::DirectionalDetails::Incoming(incoming)) => incoming,
+            "ChatItem::test_data is an unread incoming message"
+        );
+        incoming.read = true;
+        assert_matches!(
+            ChatItemData::<Store>::try_from_with(item.clone(), &TestContext::default()),
+            Err(ChatItemError::ExpirationNotStarted)
+        );
+
+        // And if it's outgoing, it's okay as long as a recipient is Pending...
+        item.authorId = TestContext::SELF_ID.0;
+        item.directionalDetails =
+            Some(proto::chat_item::OutgoingMessageDetails::test_data().into());
+        assert_matches!(
+            ChatItemData::<Store>::try_from_with(item.clone(), &TestContext::default()),
+            Ok(_)
+        );
+
+        // ...but not if sent.
+        let outgoing = assert_matches!(
+            &mut item.directionalDetails,
+            Some(proto::chat_item::DirectionalDetails::Outgoing(outgoing)) => outgoing,
+            "just set to an Outgoing message"
+        );
+        assert!(
+            outgoing.sendStatus[0].has_pending(),
+            "OutgoingMessageDetails::test_data is Pending by default"
+        );
+        outgoing.sendStatus[0].set_sent(proto::send_status::Sent::default());
+        assert_matches!(
+            ChatItemData::<Store>::try_from_with(item, &TestContext::default()),
+            Err(ChatItemError::ExpirationNotStarted)
         );
     }
 
