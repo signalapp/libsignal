@@ -13,7 +13,7 @@ license = "AGPL-3.0-only"
 workspace = true
 
 [dependencies]
-signal-crypto = { path = "../crypto" }
+signal-crypto = { workspace = true }
 
 aes-gcm-siv = { workspace = true }
 curve25519-dalek = { workspace = true, features = ["rand_core"] }

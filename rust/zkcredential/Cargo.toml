@@ -14,7 +14,7 @@ license = "AGPL-3.0-only"
 workspace = true
 
 [dependencies]
-poksho = { path = "../poksho" }
+poksho = { workspace = true }
 
 cfg-if = { workspace = true }
 curve25519-dalek = { workspace = true, features = ["serde"] }

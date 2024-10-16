@@ -18,9 +18,9 @@ name = "signal_jni"
 crate-type = ["cdylib"]
 
 [dependencies]
-libsignal-bridge = { path = "../shared", features = ["jni", "signal-media"] }
-libsignal-protocol = { path = "../../protocol" }
-signal-crypto = { path = "../../crypto" }
+libsignal-bridge = { workspace = true, features = ["jni", "signal-media"] }
+libsignal-protocol = { workspace = true }
+signal-crypto = { workspace = true }
 
 cfg-if = { workspace = true }
 jni = { workspace = true }

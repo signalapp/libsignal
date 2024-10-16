@@ -15,8 +15,8 @@ license = "AGPL-3.0-only"
 workspace = true
 
 [dependencies]
-poksho = { path = "../poksho" }
-signal-crypto = { path = "../crypto" }
+poksho = { workspace = true }
+signal-crypto = { workspace = true }
 
 curve25519-dalek = { workspace = true, features = ["digest"] }
 displaydoc = { workspace = true }
@@ -31,7 +31,7 @@ subtle = { workspace = true }
 thiserror = { workspace = true }
 
 [dev-dependencies]
-zkgroup = { path = "../zkgroup" }
+zkgroup = { workspace = true }
 
 criterion = { workspace = true }
 proptest = { workspace = true }

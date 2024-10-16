@@ -25,13 +25,13 @@ name = "binproto_to_json"
 required-features = ["json"]
 
 [dependencies]
-libsignal-account-keys = { path = "../account-keys" }
-libsignal-core = { path = "../core" }
+libsignal-account-keys = { workspace = true }
+libsignal-core = { workspace = true }
 libsignal-message-backup-macros = { path = "macros" }
-signal-crypto = { path = "../crypto" }
-usernames = { path = "../usernames" }
-zkcredential = { path = "../zkcredential", features = ["rayon"] }
-zkgroup = { path = "../zkgroup" }
+signal-crypto = { workspace = true }
+usernames = { workspace = true }
+zkcredential = { workspace = true, features = ["rayon"] }
+zkgroup = { workspace = true }
 
 aes = { workspace = true }
 arrayvec = { workspace = true }
@@ -68,7 +68,7 @@ uuid = { workspace = true, features = ["serde"] }
 
 [dev-dependencies]
 libsignal-message-backup = { path = "./", features = ["json"] }
-signal-crypto = { path = "../crypto" }
+signal-crypto = { workspace = true }
 
 array-concat = { workspace = true }
 assert_cmd = "2.0.13"

@@ -12,7 +12,7 @@ workspace = true
 test-util = ["dep:warp", "snow/default-resolver"]
 
 [dependencies]
-attest = { path = "../../attest" }
+attest = { workspace = true }
 
 async-trait = { workspace = true }
 base64 = { workspace = true }

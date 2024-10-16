@@ -14,8 +14,8 @@ license = "AGPL-3.0-only"
 workspace = true
 
 [dependencies]
-libsignal-core = { path = "../core" }
-signal-crypto = { path = "../crypto" }
+libsignal-core = { workspace = true }
+signal-crypto = { workspace = true }
 
 aes = { workspace = true, features = ["zeroize"] }
 aes-gcm-siv = { workspace = true }

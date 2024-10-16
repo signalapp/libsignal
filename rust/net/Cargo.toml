@@ -12,11 +12,11 @@ test-util = []
 workspace = true
 
 [dependencies]
-attest = { path = "../attest" }
-libsignal-core = { path = "../core" }
+attest = { workspace = true }
+libsignal-core = { workspace = true }
 libsignal-net-infra = { path = "./infra" }
-libsignal-protocol = { path = "../protocol" }
-libsignal-svr3 = { path = "../svr3" }
+libsignal-protocol = { workspace = true }
+libsignal-svr3 = { workspace = true }
 
 async-trait = { workspace = true }
 base64 = { workspace = true }

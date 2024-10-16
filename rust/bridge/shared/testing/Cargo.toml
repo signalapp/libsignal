@@ -14,13 +14,13 @@ license = "AGPL-3.0-only"
 workspace = true
 
 [dependencies]
-attest = { path = "../../../attest" }
-libsignal-bridge-macros = { path = "../macros" }
-libsignal-bridge-types = { path = "../types" }
-libsignal-core = { path = "../../../core" }
-libsignal-message-backup = { path = "../../../message-backup", features = ["json"] }
-libsignal-net = { path = "../../../net" }
-libsignal-protocol = { path = "../../../protocol" }
+attest = { workspace = true }
+libsignal-bridge-macros = { workspace = true }
+libsignal-bridge-types = { workspace = true }
+libsignal-core = { workspace = true }
+libsignal-message-backup = { workspace = true, features = ["json"] }
+libsignal-net = { workspace = true }
+libsignal-protocol = { workspace = true }
 
 futures-util = { workspace = true }
 http = { workspace = true }

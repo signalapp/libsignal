@@ -18,8 +18,8 @@ name = "signal_jni_testing"
 crate-type = ["cdylib"]
 
 [dependencies]
-libsignal-bridge-testing = { path = "../../shared/testing", features = ["jni"] }
-libsignal-bridge-types = { path = "../../shared/types", features = ["jni"] }
+libsignal-bridge-testing = { workspace = true, features = ["jni"] }
+libsignal-bridge-types = { workspace = true, features = ["jni"] }
 
 jni = { workspace = true }
 log = { workspace = true }

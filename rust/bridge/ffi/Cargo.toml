@@ -23,11 +23,11 @@ crate-type = ["staticlib"]
 signal-media = ["libsignal-bridge/signal-media"]
 
 [dependencies]
-libsignal-bridge = { path = "../shared", features = ["ffi"] }
-libsignal-bridge-testing = { path = "../shared/testing", features = ["ffi"], optional = true }
-libsignal-net = { path = "../../net" }
-libsignal-protocol = { path = "../../protocol" }
-signal-media = { path = "../../media" }
+libsignal-bridge = { workspace = true, features = ["ffi"] }
+libsignal-bridge-testing = { workspace = true, features = ["ffi"], optional = true }
+libsignal-net = { workspace = true }
+libsignal-protocol = { workspace = true }
+signal-media = { workspace = true }
 
 futures-util = { workspace = true }
 log = { workspace = true }

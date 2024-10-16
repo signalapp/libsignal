@@ -14,18 +14,18 @@ license = "AGPL-3.0-only"
 workspace = true
 
 [dependencies]
-attest = { path = "../../../attest" }
-device-transfer = { path = "../../../device-transfer" }
-libsignal-account-keys = { path = "../../../account-keys" }
-libsignal-core = { path = "../../../core" }
-libsignal-message-backup = { path = "../../../message-backup" }
-libsignal-net = { path = "../../../net" }
-libsignal-protocol = { path = "../../../protocol" }
-libsignal-svr3 = { path = "../../../svr3" }
-signal-crypto = { path = "../../../crypto" }
-signal-media = { path = "../../../media", optional = true }
-usernames = { path = "../../../usernames" }
-zkgroup = { path = "../../../zkgroup" }
+attest = { workspace = true }
+device-transfer = { workspace = true }
+libsignal-account-keys = { workspace = true }
+libsignal-core = { workspace = true }
+libsignal-message-backup = { workspace = true }
+libsignal-net = { workspace = true }
+libsignal-protocol = { workspace = true }
+libsignal-svr3 = { workspace = true }
+signal-crypto = { workspace = true }
+signal-media = { workspace = true, optional = true }
+usernames = { workspace = true }
+zkgroup = { workspace = true }
 
 aes-gcm-siv = { workspace = true }
 async-trait = { workspace = true }
@@ -55,7 +55,7 @@ subtle = { workspace = true, features = ["core_hint_black_box"] }
 jni = { workspace = true, optional = true }
 linkme = { workspace = true, optional = true }
 neon = { workspace = true, optional = true, default-features = false, features = ["napi-6"] }
-signal-neon-futures = { path = "../../node/futures", optional = true }
+signal-neon-futures = { workspace = true, optional = true }
 strum = { workspace = true }
 zerocopy = { workspace = true, optional = true }
 

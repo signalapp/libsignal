@@ -18,9 +18,9 @@ name = "signal_node"
 crate-type = ["cdylib"]
 
 [dependencies]
-libsignal-bridge = { path = "../shared", features = ["node", "signal-media"] }
-libsignal-bridge-testing = { path = "../shared/testing", features = ["node", "signal-media"] }
-libsignal-protocol = { path = "../../protocol" }
+libsignal-bridge = { workspace = true, features = ["node", "signal-media"] }
+libsignal-bridge-testing = { workspace = true, features = ["node", "signal-media"] }
+libsignal-protocol = { workspace = true }
 
 futures = { workspace = true }
 log = { workspace = true }
