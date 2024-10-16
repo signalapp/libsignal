@@ -2024,6 +2024,27 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4ec2a862134d2a7d32d7983ddcdd1c4923530833c9f2ea1a44fc5fa473989058"
 
 [[package]]
+name = "libsignal-account-keys"
+version = "0.1.0"
+dependencies = [
+ "argon2",
+ "criterion",
+ "displaydoc",
+ "hex-literal",
+ "hkdf",
+ "hmac",
+ "libsignal-core",
+ "partial-default",
+ "proptest",
+ "rand",
+ "rand_core",
+ "serde",
+ "sha2",
+ "static_assertions",
+ "thiserror",
+]
+
+[[package]]
 name = "libsignal-bridge"
 version = "0.1.0"
 dependencies = [
@@ -2038,6 +2059,7 @@ dependencies = [
  "hmac",
  "http 1.1.0",
  "jni 0.21.1",
+ "libsignal-account-keys",
  "libsignal-bridge-macros",
  "libsignal-bridge-types",
  "libsignal-core",
@@ -2055,7 +2077,6 @@ dependencies = [
  "sha2",
  "signal-crypto",
  "signal-media",
- "signal-pin",
  "static_assertions",
  "strum",
  "subtle",
@@ -2119,6 +2140,7 @@ dependencies = [
  "hmac",
  "http 1.1.0",
  "jni 0.21.1",
+ "libsignal-account-keys",
  "libsignal-core",
  "libsignal-message-backup",
  "libsignal-net",
@@ -2138,7 +2160,6 @@ dependencies = [
  "signal-crypto",
  "signal-media",
  "signal-neon-futures",
- "signal-pin",
  "static_assertions",
  "strum",
  "subtle",
@@ -2249,6 +2270,7 @@ dependencies = [
  "hmac",
  "itertools 0.13.0",
  "json5",
+ "libsignal-account-keys",
  "libsignal-core",
  "libsignal-message-backup",
  "libsignal-message-backup-macros",
@@ -4032,24 +4054,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "signal-pin"
-version = "0.1.0"
-dependencies = [
- "argon2",
- "criterion",
- "displaydoc",
- "hex-literal",
- "hkdf",
- "hmac",
- "proptest",
- "rand",
- "rand_core",
- "sha2",
- "static_assertions",
- "thiserror",
-]
-
-[[package]]
 name = "signature"
 version = "2.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5325,6 +5329,7 @@ dependencies = [
  "hex-literal",
  "hkdf",
  "lazy_static",
+ "libsignal-account-keys",
  "libsignal-core",
  "num_enum",
  "partial-default",

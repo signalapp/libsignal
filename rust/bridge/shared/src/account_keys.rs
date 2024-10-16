@@ -4,9 +4,9 @@
 //
 
 use ::attest::svr2::lookup_groupid;
-use ::signal_pin::{local_pin_hash, verify_local_pin_hash, PinHash, Result};
+use ::libsignal_account_keys::{local_pin_hash, verify_local_pin_hash, PinHash, Result};
+use libsignal_account_keys::{AccountEntropyPool, Error};
 use libsignal_bridge_macros::*;
-use signal_pin::{AccountEntropyPool, Error};
 
 use crate::support::*;
 use crate::*;

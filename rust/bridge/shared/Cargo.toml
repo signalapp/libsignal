@@ -13,6 +13,7 @@ license = "AGPL-3.0-only"
 [dependencies]
 attest = { path = "../../attest" }
 device-transfer = { path = "../../device-transfer" }
+libsignal-account-keys = { path = "../../account-keys" }
 libsignal-bridge-macros = { path = "macros" }
 libsignal-bridge-types = { path = "types" }
 libsignal-core = { path = "../../core" }
@@ -21,7 +22,6 @@ libsignal-net = { path = "../../net" }
 libsignal-protocol = { path = "../../protocol" }
 signal-crypto = { path = "../../crypto" }
 signal-media = { path = "../../media", optional = true }
-signal-pin = { path = "../../pin" }
 usernames = { path = "../../usernames" }
 zkgroup = { path = "../../zkgroup" }
 

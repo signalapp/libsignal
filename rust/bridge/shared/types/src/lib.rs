@@ -34,7 +34,7 @@ pub mod zkgroup;
 // Desktop does not use SVR
 #[cfg(any(feature = "jni", feature = "ffi"))]
 mod pin {
-    use ::signal_pin::PinHash;
+    use ::libsignal_account_keys::PinHash;
 
     use crate::*;
 

@@ -80,14 +80,14 @@ args = "horizontal"
 [parse]
 parse_deps = true
 include = [
+    "libsignal-account-keys",
+    "libsignal-bridge-types",
     "libsignal-core",
     "libsignal-protocol",
-    "libsignal-bridge-types",
-    "signal-crypto",
-    "signal-pin",
-    "zkgroup",
-    "signal-media",
     "mediasan-common",
+    "signal-crypto",
+    "signal-media",
+    "zkgroup",
 ]
 extra_bindings = ["libsignal-bridge", "libsignal-bridge-types", "zkgroup"]
 

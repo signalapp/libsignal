@@ -893,7 +893,10 @@ fn CallLinkAuthCredentialPresentation_GetUserId(
 
 #[bridge_fn]
 fn BackupAuthCredentialRequestContext_New(backup_key: &[u8; 32], uuid: Uuid) -> Vec<u8> {
-    let context = BackupAuthCredentialRequestContext::new(backup_key, &uuid);
+    let context = BackupAuthCredentialRequestContext::new(
+        &libsignal_account_keys::BackupKey(*backup_key),
+        uuid.into(),
+    );
     zkgroup::serialize(&context)
 }
 
@@ -978,7 +981,7 @@ fn BackupAuthCredential_CheckValidContents(
 fn BackupAuthCredential_GetBackupId(credential_bytes: &[u8]) -> [u8; 16] {
     let credential = bincode::deserialize::<BackupAuthCredential>(credential_bytes)
         .expect("should have been parsed previously");
-    credential.backup_id()
+    credential.backup_id().0
 }
 
 #[bridge_fn]
@@ -1028,7 +1031,7 @@ fn BackupAuthCredentialPresentation_Verify(
 fn BackupAuthCredentialPresentation_GetBackupId(presentation_bytes: &[u8]) -> [u8; 16] {
     let presentation = bincode::deserialize::<BackupAuthCredentialPresentation>(presentation_bytes)
         .expect("should have been parsed previously");
-    presentation.backup_id()
+    presentation.backup_id().0
 }
 
 #[bridge_fn(ffi = false)]

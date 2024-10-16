@@ -9,12 +9,12 @@ use std::io::{Error as IoError, ErrorKind as IoErrorKind};
 use attest::enclave::Error as EnclaveError;
 use attest::hsm_enclave::Error as HsmEnclaveError;
 use device_transfer::Error as DeviceTransferError;
+use libsignal_account_keys::Error as PinError;
 use libsignal_net::chat::ChatServiceError;
 use libsignal_net::infra::ws::WebSocketConnectError;
 use libsignal_net::svr3::Error as Svr3Error;
 use libsignal_protocol::*;
 use signal_crypto::Error as SignalCryptoError;
-use signal_pin::Error as PinError;
 use usernames::{UsernameError, UsernameLinkError};
 use zkgroup::{ZkGroupDeserializationFailure, ZkGroupVerificationFailure};
 

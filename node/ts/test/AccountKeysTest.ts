@@ -4,7 +4,7 @@
 //
 
 import { assert } from 'chai';
-import * as pin from '../pin';
+import * as AccountKeys from '../AccountKeys';
 import * as util from './util';
 
 util.initLogger();
@@ -18,7 +18,7 @@ describe('Pin', () => {
         const generatedEntropyPools = new Set<string>();
 
         for (let i = 0; i < NUM_TEST_ITERATIONS; i++) {
-          const pool = pin.AccountEntropyPool.generate();
+          const pool = AccountKeys.AccountEntropyPool.generate();
           assert.isFalse(
             generatedEntropyPools.has(pool),
             `${pool} was generated twice`
@@ -30,7 +30,7 @@ describe('Pin', () => {
       it('returns only strings consisting of 64 characters a-z and 0-9', () => {
         const validCharactersRegex = /^[a-z0-9]{64}$/;
         for (let i = 0; i < NUM_TEST_ITERATIONS; i++) {
-          const pool = pin.AccountEntropyPool.generate();
+          const pool = AccountKeys.AccountEntropyPool.generate();
           assert.match(
             pool,
             validCharactersRegex,

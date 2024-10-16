@@ -669,7 +669,7 @@ For more information on this, and how to apply and follow the GNU AGPL, see
 
 ```
 
-## attest 0.1.0, libsignal-ffi 0.58.3, libsignal-jni 0.58.3, libsignal-jni-testing 0.58.3, libsignal-node 0.58.3, signal-neon-futures 0.1.0, signal-neon-futures-tests 0.1.0, libsignal-bridge 0.1.0, libsignal-bridge-macros 0.1.0, libsignal-bridge-testing 0.1.0, libsignal-bridge-types 0.1.0, libsignal-core 0.1.0, signal-crypto 0.1.0, device-transfer 0.1.0, libsignal-keytrans 0.0.1, signal-media 0.1.0, libsignal-message-backup 0.1.0, libsignal-message-backup-macros 0.1.0, libsignal-net 0.1.0, libsignal-net-infra 0.1.0, signal-pin 0.1.0, poksho 0.7.0, libsignal-protocol 0.1.0, libsignal-svr3 0.1.0, usernames 0.1.0, zkcredential 0.1.0, zkgroup 0.9.0
+## libsignal-account-keys 0.1.0, attest 0.1.0, libsignal-ffi 0.58.3, libsignal-jni 0.58.3, libsignal-jni-testing 0.58.3, libsignal-node 0.58.3, signal-neon-futures 0.1.0, signal-neon-futures-tests 0.1.0, libsignal-bridge 0.1.0, libsignal-bridge-macros 0.1.0, libsignal-bridge-testing 0.1.0, libsignal-bridge-types 0.1.0, libsignal-core 0.1.0, signal-crypto 0.1.0, device-transfer 0.1.0, libsignal-keytrans 0.0.1, signal-media 0.1.0, libsignal-message-backup 0.1.0, libsignal-message-backup-macros 0.1.0, libsignal-net 0.1.0, libsignal-net-infra 0.1.0, poksho 0.7.0, libsignal-protocol 0.1.0, libsignal-svr3 0.1.0, usernames 0.1.0, zkcredential 0.1.0, zkgroup 0.9.0
 
 ```
 GNU AFFERO GENERAL PUBLIC LICENSE

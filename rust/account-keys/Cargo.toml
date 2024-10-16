@@ -4,19 +4,23 @@
 #
 
 [package]
-name = "signal-pin"
+name = "libsignal-account-keys"
 authors = ["Signal Messenger LLC"]
 version = "0.1.0"
 edition = "2021"
-description = "A library for operating on signal pins"
+description = "Operations for various account-associated keys"
 license = "AGPL-3.0-only"
 
 [dependencies]
+libsignal-core = { path = "../core" }
+
 argon2 = { version = "0.5.0", features = ["zeroize"] }
 displaydoc = { workspace = true }
 hkdf = { workspace = true }
+partial-default = { workspace = true, features = ["derive"] }
 rand = { workspace = true }
 rand_core = { workspace = true, features = ["getrandom"] }
+serde = { workspace = true, optional = true, features = ["derive"] }
 sha2 = { workspace = true }
 static_assertions = { workspace = true }
 thiserror = { workspace = true }

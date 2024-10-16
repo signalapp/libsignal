@@ -16,11 +16,9 @@
 //! seeded blinding key pair, the key pair is derived from, you guessed it, the client's master key.
 
 use curve25519_dalek_signal::ristretto::RistrettoPoint;
-use hkdf::Hkdf;
 use partial_default::PartialDefault;
 use poksho::ShoApi;
 use serde::{Deserialize, Serialize};
-use sha2::Sha256;
 
 use crate::common::serialization::ReservedByte;
 use crate::common::sho::Sho;
@@ -32,8 +30,8 @@ use crate::{ZkGroupVerificationFailure, SECONDS_PER_DAY};
 struct BackupIdPoint(RistrettoPoint);
 
 impl BackupIdPoint {
-    fn new(backup_id: &[u8; 16]) -> Self {
-        Self(Sho::new(b"20231003_Signal_BackupId", backup_id).get_point())
+    fn new(backup_id: &libsignal_account_keys::BackupId) -> Self {
+        Self(Sho::new(b"20231003_Signal_BackupId", &backup_id.0).get_point())
     }
 }
 
@@ -84,29 +82,18 @@ impl TryFrom<u64> for BackupLevel {
 pub struct BackupAuthCredentialRequestContext {
     reserved: ReservedByte,
     blinded_backup_id: zkcredential::issuance::blind::BlindedPoint,
-    // A 16-byte identifier derived from the the backup-key
-    backup_id: [u8; 16],
+    backup_id: libsignal_account_keys::BackupId,
     key_pair: zkcredential::issuance::blind::BlindingKeyPair,
 }
 
 impl BackupAuthCredentialRequestContext {
-    /// Create a BackupAuthCredentialRequestContext
-    ///
-    /// # Arguments
-    /// * backup_key - A 32-byte key derived from the client master key
-    /// * uuid - The client's account identifier
-    pub fn new(backup_key: &[u8; 32], uuid: &uuid::Uuid) -> Self {
-        let uuid_bytes = uuid.as_bytes();
-
+    pub fn new(backup_key: &libsignal_account_keys::BackupKey, aci: libsignal_core::Aci) -> Self {
         // derive the backup-id (blinded in the issuance request, revealed at verification)
-        let mut backup_id = [0u8; 16];
-        Hkdf::<Sha256>::new(Some(uuid_bytes), backup_key)
-            .expand(b"20231003_Signal_Backups_GenerateBackupId", &mut backup_id)
-            .expect("should expand");
+        let backup_id = backup_key.derive_backup_id(&aci);
 
         let mut sho = poksho::ShoHmacSha256::new(b"20231003_Signal_BackupAuthCredentialRequest");
-        sho.absorb_and_ratchet(uuid_bytes);
-        sho.absorb_and_ratchet(backup_key);
+        sho.absorb_and_ratchet(uuid::Uuid::from(aci).as_bytes());
+        sho.absorb_and_ratchet(&backup_key.0);
 
         let key_pair = zkcredential::issuance::blind::BlindingKeyPair::generate(&mut sho);
 
@@ -208,7 +195,7 @@ pub struct BackupAuthCredential {
     redemption_time: Timestamp,
     backup_level: BackupLevel,
     credential: zkcredential::credentials::Credential,
-    backup_id: [u8; 16],
+    backup_id: libsignal_account_keys::BackupId,
 }
 
 impl BackupAuthCredential {
@@ -228,7 +215,7 @@ impl BackupAuthCredential {
         }
     }
 
-    pub fn backup_id(&self) -> [u8; 16] {
+    pub fn backup_id(&self) -> libsignal_account_keys::BackupId {
         self.backup_id
     }
 
@@ -243,7 +230,7 @@ pub struct BackupAuthCredentialPresentation {
     backup_level: BackupLevel,
     redemption_time: Timestamp,
     proof: zkcredential::presentation::PresentationProof,
-    backup_id: [u8; 16],
+    backup_id: libsignal_account_keys::BackupId,
 }
 
 impl BackupAuthCredentialPresentation {
@@ -277,7 +264,7 @@ impl BackupAuthCredentialPresentation {
         self.backup_level
     }
 
-    pub fn backup_id(&self) -> [u8; 16] {
+    pub fn backup_id(&self) -> libsignal_account_keys::BackupId {
         self.backup_id
     }
 }
@@ -291,7 +278,7 @@ mod tests {
     use crate::{common, RandomnessBytes, Timestamp, RANDOMNESS_LEN, SECONDS_PER_DAY};
 
     const DAY_ALIGNED_TIMESTAMP: Timestamp = Timestamp::from_epoch_seconds(1681344000); // 2023-04-13 00:00:00 UTC
-    const KEY: [u8; 32] = [0x42u8; 32];
+    const KEY: libsignal_account_keys::BackupKey = libsignal_account_keys::BackupKey([0x42u8; 32]);
     const ACI: uuid::Uuid = uuid::uuid!("c0fc16e4-bae5-4343-9f0d-e7ecf4251343");
     const SERVER_SECRET_RAND: RandomnessBytes = [0xA0; RANDOMNESS_LEN];
     const ISSUE_RAND: RandomnessBytes = [0xA1; RANDOMNESS_LEN];
@@ -303,7 +290,7 @@ mod tests {
 
     fn generate_credential(redemption_time: Timestamp) -> BackupAuthCredential {
         // client generated materials; issuance request
-        let request_context = BackupAuthCredentialRequestContext::new(&KEY, &ACI);
+        let request_context = BackupAuthCredentialRequestContext::new(&KEY, ACI.into());
         let request = request_context.get_request();
 
         // server generated materials; issuance request -> issuance response
@@ -351,7 +338,7 @@ mod tests {
         let valid_presentation =
             credential.present(&server_secret_params().get_public_params(), PRESENT_RAND);
         let invalid_presentation = BackupAuthCredentialPresentation {
-            backup_id: *b"a fake backup-id",
+            backup_id: libsignal_account_keys::BackupId(*b"a fake backup-id"),
             ..valid_presentation
         };
         invalid_presentation
@@ -392,7 +379,7 @@ mod tests {
     fn test_client_enforces_timestamp() {
         let redemption_time: Timestamp = DAY_ALIGNED_TIMESTAMP;
 
-        let request_context = BackupAuthCredentialRequestContext::new(&KEY, &ACI);
+        let request_context = BackupAuthCredentialRequestContext::new(&KEY, ACI.into());
         let request = request_context.get_request();
         let blinded_credential = request.issue(
             redemption_time,
@@ -416,7 +403,7 @@ mod tests {
     fn test_client_enforces_timestamp_granularity() {
         let redemption_time: Timestamp = DAY_ALIGNED_TIMESTAMP.add_seconds(60 * 60); // not on a day boundary!
 
-        let request_context = BackupAuthCredentialRequestContext::new(&KEY, &ACI);
+        let request_context = BackupAuthCredentialRequestContext::new(&KEY, ACI.into());
         let request = request_context.get_request();
         let blinded_credential = request.issue(
             redemption_time,

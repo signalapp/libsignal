@@ -40,7 +40,7 @@ pub mod ias;
 
 pub mod net;
 
-mod pin;
+mod account_keys;
 
 // Desktop does not use SVR
 #[cfg(any(feature = "jni", feature = "ffi"))]

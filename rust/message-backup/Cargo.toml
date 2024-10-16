@@ -22,6 +22,7 @@ name = "binproto_to_json"
 required-features = ["json"]
 
 [dependencies]
+libsignal-account-keys = { path = "../account-keys" }
 libsignal-core = { path = "../core" }
 libsignal-message-backup-macros = { path = "macros" }
 signal-crypto = { path = "../crypto" }

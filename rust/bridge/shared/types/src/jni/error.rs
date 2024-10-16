@@ -11,11 +11,11 @@ use device_transfer::Error as DeviceTransferError;
 use http::uri::InvalidUri;
 use jni::objects::{GlobalRef, JObject, JString, JThrowable};
 use jni::{JNIEnv, JavaVM};
+use libsignal_account_keys::Error as PinError;
 use libsignal_net::chat::ChatServiceError;
 use libsignal_net::infra::ws::{WebSocketConnectError, WebSocketServiceError};
 use libsignal_protocol::*;
 use signal_crypto::Error as SignalCryptoError;
-use signal_pin::Error as PinError;
 use usernames::{UsernameError, UsernameLinkError};
 use zkgroup::{ZkGroupDeserializationFailure, ZkGroupVerificationFailure};
 

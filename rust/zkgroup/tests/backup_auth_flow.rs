@@ -14,10 +14,10 @@ fn test_backup_auth_request_response() {
     let randomness3: RandomnessBytes = [0x45u8; RANDOMNESS_LEN];
 
     // client derives this from the their master key
-    let backup_key: [u8; 32] = [0x46u8; 32];
+    let backup_key = libsignal_account_keys::BackupKey([0x46u8; 32]);
 
     // known by the client and the issuing server (out of band), unknown to the verifying server
-    let aci: uuid::Uuid = uuid::uuid!("c0fc16e4-bae5-4343-9f0d-e7ecf4251343");
+    let aci: libsignal_core::Aci = uuid::uuid!("c0fc16e4-bae5-4343-9f0d-e7ecf4251343").into();
 
     // client receives in response to initial request
     let redemption_time: Timestamp = DAY_ALIGNED_TIMESTAMP; // client validates it's day-aligned
@@ -25,7 +25,7 @@ fn test_backup_auth_request_response() {
 
     // client generated materials; issuance request
     let request_context =
-        zkgroup::backups::BackupAuthCredentialRequestContext::new(&backup_key, &aci);
+        zkgroup::backups::BackupAuthCredentialRequestContext::new(&backup_key, aci);
     let request = request_context.get_request();
 
     // server generated materials; issuance request -> issuance response

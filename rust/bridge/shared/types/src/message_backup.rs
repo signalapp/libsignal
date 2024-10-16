@@ -3,8 +3,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use libsignal_account_keys::BackupKey;
 use libsignal_message_backup::frame::ValidationError as FrameValidationError;
-use libsignal_message_backup::key::{BackupKey, MessageBackupKey as MessageBackupKeyInner};
+use libsignal_message_backup::key::MessageBackupKey as MessageBackupKeyInner;
 use libsignal_message_backup::parse::ParseError;
 use libsignal_message_backup::{Error, FoundUnknownField};
 use libsignal_protocol::Aci;

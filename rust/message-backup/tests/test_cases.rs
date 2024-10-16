@@ -10,10 +10,11 @@ use assert_matches::assert_matches;
 use dir_test::{dir_test, Fixture};
 use futures::io::Cursor;
 use futures::AsyncRead;
+use libsignal_account_keys::BackupKey;
 use libsignal_core::Aci;
 use libsignal_message_backup::backup::Purpose;
 use libsignal_message_backup::frame::{FileReaderFactory, VerifyHmac};
-use libsignal_message_backup::key::{BackupKey, MessageBackupKey};
+use libsignal_message_backup::key::MessageBackupKey;
 use libsignal_message_backup::{BackupReader, ReadResult};
 
 const BACKUP_PURPOSE: Purpose = Purpose::RemoteBackup;

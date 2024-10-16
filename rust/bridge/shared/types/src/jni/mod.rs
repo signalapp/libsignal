@@ -16,11 +16,11 @@ use jni::objects::{GlobalRef, JThrowable, JValue, JValueOwned};
 pub use jni::sys::{jboolean, jint, jlong};
 pub use jni::JNIEnv;
 use jni::JavaVM;
+use libsignal_account_keys::Error as PinError;
 use libsignal_net::infra::ws::WebSocketServiceError;
 use libsignal_net::svr3::Error as Svr3Error;
 use libsignal_protocol::*;
 use signal_crypto::Error as SignalCryptoError;
-use signal_pin::Error as PinError;
 use usernames::{UsernameError, UsernameLinkError};
 
 use crate::net::cdsi::CdsiError;
