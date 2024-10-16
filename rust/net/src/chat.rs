@@ -30,6 +30,7 @@ pub mod noise;
 pub mod server_requests;
 pub mod service;
 pub mod ws;
+pub mod ws2;
 
 pub type MessageProto = proto::chat_websocket::WebSocketMessage;
 pub type RequestProto = proto::chat_websocket::WebSocketRequestMessage;
@@ -86,6 +87,7 @@ pub struct Request {
 }
 
 #[derive(Clone, Debug)]
+#[cfg_attr(test, derive(PartialEq))]
 pub struct Response {
     pub status: StatusCode,
     pub message: Option<String>,

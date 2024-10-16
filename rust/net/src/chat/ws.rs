@@ -398,8 +398,7 @@ fn decode_and_validate(data: &[u8]) -> Result<ChatMessage, ChatServiceError> {
         _ => Err(ChatServiceError::IncomingDataInvalid),
     }
 }
-
-fn response_for_code(id: u64, code: StatusCode) -> MessageProto {
+pub(super) fn response_for_code(id: u64, code: StatusCode) -> MessageProto {
     MessageProto {
         r#type: Some(Type::Response.into()),
         response: Some(ResponseProto {

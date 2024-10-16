@@ -15,6 +15,7 @@ use tungstenite::protocol::frame::coding::CloseCode;
 use tungstenite::protocol::CloseFrame;
 use tungstenite::Message;
 
+use crate::errors::LogSafeDisplay;
 use crate::ws::TextOrBinary;
 
 /// Configuration values for managing the connected websocket.
@@ -180,7 +181,10 @@ pub enum Outcome<C, F> {
     Finished(F),
 }
 
-impl<S, R> Connection<S, R> {
+impl<S, R, SendMeta> Connection<S, R>
+where
+    R: Stream<Item = (TextOrBinary, SendMeta)>,
+{
     pub fn new(stream: S, outgoing_rx: R, config: Config) -> Self {
         Self {
             stream,
@@ -213,15 +217,12 @@ impl<S, R> Connection<S, R> {
     /// and some metadata that will be returned to the caller if an outgoing
     /// message is actually sent. Simple use cases can simply use `|m| (m, ())`
     /// to pass through an input `TextOrBinary` unmodified.
-    pub async fn handle_next_event<F, SendMeta>(
+    pub async fn handle_next_event(
         self: Pin<&mut Self>,
-        mut convert_msg: F,
     ) -> Outcome<MessageEvent<SendMeta>, Result<(), NextEventError>>
     where
         S: Stream<Item = Result<Message, tungstenite::Error>>
             + Sink<Message, Error = tungstenite::Error>,
-        R: Stream,
-        F: FnMut(R::Item) -> (TextOrBinary, SendMeta),
     {
         let ConnectionProj {
             mut stream,
@@ -333,8 +334,7 @@ impl<S, R> Connection<S, R> {
                     NextEventError::CloseFailed(e)
                 }))
             }
-            Event::ToSend(message) => {
-                let (message, meta) = convert_msg(message);
+            Event::ToSend((message, meta)) => {
                 let event = match stream.send(message.into()).await {
                     Ok(()) => {
                         *last_sent_to_server = Instant::now();
@@ -407,6 +407,7 @@ impl<S, R> Connection<S, R> {
     }
 }
 
+impl LogSafeDisplay for TungsteniteSendError {}
 impl Display for TungsteniteSendError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -552,23 +553,6 @@ mod test {
     /// A long enough period of time that it's functionally "forever".
     const FOREVER: Duration = Duration::from_secs(10000000000);
 
-    impl<S, R> Connection<S, R> {
-        /// Calls `handle_next_event` with a passthrough `convert_msg`.
-        ///
-        /// This is just a convenience method for testing.
-        pub(crate) async fn simple_handle_next_event(
-            self: Pin<&mut Self>,
-        ) -> Outcome<MessageEvent<()>, Result<(), NextEventError>>
-        where
-            S: Stream<Item = Result<Message, tungstenite::Error>>
-                + Sink<Message, Error = tungstenite::Error>
-                + Unpin,
-            R: Stream<Item = TextOrBinary>,
-        {
-            self.handle_next_event(|msg| (msg, ())).await
-        }
-    }
-
     #[tokio::test(start_paused = true)]
     async fn sends_outgoing_messages() {
         let (mut ws_server, ws_client) = TestStream::new_pair(1);
@@ -589,16 +573,11 @@ mod test {
 
         let sent_message = TextOrBinary::Text(SENT_MESSAGE.to_string());
         outgoing_tx
-            .send(sent_message.clone())
+            .send((sent_message.clone(), SENT_META))
             .await
             .expect("can send to connection");
 
-        let result = connection
-            .handle_next_event(|msg| {
-                assert_eq!(msg, sent_message);
-                (msg, SENT_META)
-            })
-            .await;
+        let result = connection.handle_next_event().await;
         assert_matches!(
             result,
             Outcome::Continue(MessageEvent::SentMessage(SENT_META))
@@ -612,10 +591,10 @@ mod test {
     #[tokio::test(start_paused = true)]
     async fn receives_incoming_messages() {
         let (mut ws_server, ws_client) = TestStream::new_pair(5);
-        let (_outgoing_tx, outgoing_rx) = mpsc::channel(1);
+        let outgoing_rx = futures_util::stream::pending::<(_, ())>();
         let connection = Connection::new(
             ws_client,
-            ReceiverStream::new(outgoing_rx),
+            outgoing_rx,
             Config {
                 local_idle_timeout: FOREVER,
                 remote_idle_ping_timeout: FOREVER,
@@ -639,21 +618,21 @@ mod test {
             .expect("can send all");
 
         assert_matches!(
-            connection.as_mut().simple_handle_next_event().await,
+            connection.as_mut().handle_next_event().await,
             Outcome::Continue(MessageEvent::ReceivedMessage(TextOrBinary::Text(text))) if text == "first message");
         assert_matches!(
-            connection.as_mut().simple_handle_next_event().await,
+            connection.as_mut().handle_next_event().await,
             Outcome::Continue(MessageEvent::ReceivedMessage(TextOrBinary::Binary(bin))) if bin == b"second message");
         assert_matches!(
-            connection.as_mut().simple_handle_next_event().await,
+            connection.as_mut().handle_next_event().await,
             Outcome::Continue(MessageEvent::ReceivedPingPong)
         );
         assert_matches!(
-            connection.as_mut().simple_handle_next_event().await,
+            connection.as_mut().handle_next_event().await,
             Outcome::Continue(MessageEvent::ReceivedPingPong)
         );
         assert_matches!(
-            connection.as_mut().simple_handle_next_event().await,
+            connection.as_mut().handle_next_event().await,
             Outcome::Finished(Ok(()))
         );
     }
@@ -677,22 +656,20 @@ mod test {
         // receiver is dropped.
 
         outgoing_tx
-            .send("successfully sent")
+            .send(("successfully sent".to_string().into(), ()))
             .await
             .expect("can send");
-        outgoing_tx.send("fail to sent").await.expect("can send");
+        outgoing_tx
+            .send(("fail to sent".to_string().into(), ()))
+            .await
+            .expect("can send");
 
         assert_matches!(
-            connection
-                .as_mut()
-                .handle_next_event(|msg| (msg.to_string().into(), ()))
-                .await,
+            connection.as_mut().handle_next_event().await,
             Outcome::Continue(_)
         );
 
-        let second_send = connection
-            .as_mut()
-            .handle_next_event(|msg| (msg.to_string().into(), ()));
+        let second_send = connection.as_mut().handle_next_event();
         // Limit the lifetime of second_send by pinning it inside this block.
         // The value won't get dropped until the end of the block, so without
         // this the reference to `connection` below would be a second mutable
@@ -722,9 +699,7 @@ mod test {
 
         // Since the server hung up, the client should now be done.
         assert_matches!(
-            connection
-                .handle_next_event(|msg| (msg.to_string().into(), ()))
-                .await,
+            connection.handle_next_event().await,
             Outcome::Finished(Err(NextEventError::UnexpectedConnectionClose))
         );
     }
@@ -732,7 +707,7 @@ mod test {
     #[tokio::test(start_paused = true)]
     async fn terminates_gracefully_after_outgoing_close() {
         let (_ws_server, ws_client) = TestStream::new_pair(1);
-        let (outgoing_tx, outgoing_rx) = mpsc::channel(1);
+        let (outgoing_tx, outgoing_rx) = mpsc::channel::<(_, ())>(1);
         let connection = Connection::new(
             ws_client,
             ReceiverStream::new(outgoing_rx),
@@ -746,7 +721,7 @@ mod test {
 
         drop(outgoing_tx);
         assert_matches!(
-            connection.simple_handle_next_event().await,
+            connection.handle_next_event().await,
             Outcome::Finished(Ok(()))
         )
     }
@@ -754,10 +729,10 @@ mod test {
     #[tokio::test(start_paused = true)]
     async fn handles_remote_close_with_error() {
         let (mut ws_server, ws_client) = TestStream::new_pair(5);
-        let (_outgoing_tx, outgoing_rx) = mpsc::channel(1);
+        let outgoing_rx = futures_util::stream::pending::<(_, ())>();
         let connection = Connection::new(
             ws_client,
-            ReceiverStream::new(outgoing_rx),
+            outgoing_rx,
             Config {
                 local_idle_timeout: FOREVER,
                 remote_idle_ping_timeout: FOREVER,
@@ -775,7 +750,7 @@ mod test {
             .expect("can send");
 
         assert_matches!(
-            connection.as_mut().simple_handle_next_event().await,
+            connection.as_mut().handle_next_event().await,
             Outcome::Finished(Err(NextEventError::AbnormalServerClose {
                 code: CloseCode::Away,
                 ..
@@ -786,10 +761,10 @@ mod test {
     #[tokio::test(start_paused = true)]
     async fn handles_error_from_remote() {
         let (mut ws_server, ws_client) = TestStream::new_pair(5);
-        let (_outgoing_tx, outgoing_rx) = mpsc::channel(1);
+        let outgoing_rx = futures_util::stream::pending::<(_, ())>();
         let connection = Connection::new(
             ws_client,
-            ReceiverStream::new(outgoing_rx),
+            outgoing_rx,
             Config {
                 local_idle_timeout: FOREVER,
                 remote_idle_ping_timeout: FOREVER,
@@ -807,7 +782,7 @@ mod test {
             .expect("can send");
 
         assert_matches!(
-            connection.as_mut().simple_handle_next_event().await,
+            connection.as_mut().handle_next_event().await,
             Outcome::Finished(Err(NextEventError::ReceiveError(TungsteniteReceiveError::Io(err))))
             if err.kind() == IoErrorKind::ConnectionReset);
     }
@@ -817,10 +792,10 @@ mod test {
         const LOCAL_IDLE_TIMEOUT: Duration = Duration::from_secs(123);
 
         let (mut ws_server, ws_client) = TestStream::new_pair(1);
-        let (_outgoing_tx, outgoing_rx) = mpsc::channel(1);
+        let outgoing_rx = futures_util::stream::pending::<(_, ())>();
         let connection = Connection::new(
             ws_client,
-            ReceiverStream::new(outgoing_rx),
+            outgoing_rx,
             Config {
                 local_idle_timeout: LOCAL_IDLE_TIMEOUT,
                 remote_idle_ping_timeout: FOREVER,
@@ -832,7 +807,7 @@ mod test {
         // Without anything in the incoming pipe, this should time out after the
         // specified idle time.
         let start = Instant::now();
-        let result = connection.as_mut().simple_handle_next_event().await;
+        let result = connection.as_mut().handle_next_event().await;
 
         assert_eq!(Instant::now() - start, LOCAL_IDLE_TIMEOUT);
         assert_matches!(result, Outcome::Continue(MessageEvent::SentPing));
@@ -843,7 +818,7 @@ mod test {
 
         // After some more time passes, another ping should be sent. It should
         // be different from the first!
-        let result = connection.simple_handle_next_event().await;
+        let result = connection.handle_next_event().await;
         assert_matches!(result, Outcome::Continue(MessageEvent::SentPing));
 
         let second_ping = ws_server.next().now_or_never().expect("now");
@@ -859,10 +834,10 @@ mod test {
         const REMOTE_DISCONNECT_TIMEOUT: Duration = Duration::from_secs(20);
 
         let (_ws_server, ws_client) = TestStream::new_pair(10);
-        let (_outgoing_tx, outgoing_rx) = mpsc::channel(1);
+        let outgoing_rx = futures_util::stream::pending::<(_, ())>();
         let connection = Connection::new(
             ws_client,
-            ReceiverStream::new(outgoing_rx),
+            outgoing_rx,
             Config {
                 remote_idle_ping_timeout: REMOTE_IDLE_PING_TIMEOUT,
                 remote_idle_disconnect_timeout: REMOTE_DISCONNECT_TIMEOUT,
@@ -873,12 +848,12 @@ mod test {
 
         let start = Instant::now();
         // The ping timeout gets hit first.
-        let result = connection.as_mut().simple_handle_next_event().await;
+        let result = connection.as_mut().handle_next_event().await;
         assert_eq!(Instant::now() - start, REMOTE_IDLE_PING_TIMEOUT);
         assert_matches!(result, Outcome::Continue(MessageEvent::SentPing));
 
         // The server never responds so the call times out.
-        let result = connection.simple_handle_next_event().await;
+        let result = connection.handle_next_event().await;
         assert_matches!(
             result,
             Outcome::Finished(Err(NextEventError::ServerIdleTimeout(
@@ -906,7 +881,7 @@ mod test {
         );
         pin_mut!(connection);
 
-        let handle_first = connection.as_mut().simple_handle_next_event();
+        let handle_first = connection.as_mut().handle_next_event();
 
         // After the client waits for a while, the server sends a message before
         // the timeout. That resets the remote idle timeout.
@@ -926,23 +901,23 @@ mod test {
         tokio::time::advance(REMOTE_IDLE_TIMEOUT / 2).await;
         // The client sends a message, but that doesn't reset the remote timeout.
         outgoing_tx
-            .send(TextOrBinary::Text("from the client".to_string()))
+            .send((TextOrBinary::Text("from the client".to_string()), ()))
             .await
             .expect("can send to connection");
         let result = connection
             .as_mut()
-            .simple_handle_next_event()
+            .handle_next_event()
             .now_or_never()
             .expect("sent message");
         assert_matches!(result, Outcome::Continue(MessageEvent::SentMessage(())));
 
         // The server isn't saying anything so we send a ping.
-        let result = connection.as_mut().simple_handle_next_event().await;
+        let result = connection.as_mut().handle_next_event().await;
         assert_eq!(Instant::now() - server_last_seen_at, REMOTE_IDLE_TIMEOUT);
         assert_matches!(result, Outcome::Continue(MessageEvent::SentPing));
 
         // The server still doesn't respond, so after a longer period of time we disconnect.
-        let result = connection.as_mut().simple_handle_next_event().await;
+        let result = connection.as_mut().handle_next_event().await;
         assert_matches!(
             result,
             Outcome::Finished(Err(NextEventError::ServerIdleTimeout(

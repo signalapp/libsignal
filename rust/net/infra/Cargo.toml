@@ -29,7 +29,7 @@ indexmap = { workspace = true }
 itertools = { workspace = true }
 log = { workspace = true }
 nonzero_ext = { workspace = true }
-pin-project = "1.1.5"
+pin-project = { workspace = true }
 prost = { workspace = true }
 rustls = { version = "0.23.4", default-features = false, features = ["ring", "std", "tls12"] }
 rustls-platform-verifier = { workspace = true }
