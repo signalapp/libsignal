@@ -56,10 +56,6 @@ snow = { workspace = true, features = ["default-resolver"] }
 socks5-server = "0.10.1"
 test-case = { workspace = true }
 tls-parser = "0.11.0"
-tokio = { workspace = true, features = [
-    "test-util",
-    "io-std",
-    "rt-multi-thread",
-] }
+tokio = { workspace = true, features = ["test-util", "io-std", "rt-multi-thread"] }
 tokio-stream = { workspace = true }
 warp = { version = "0.3.6", features = ["tls"] }

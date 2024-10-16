@@ -30,8 +30,8 @@ thiserror = { workspace = true }
 [dev-dependencies]
 zkgroup = { path = "../zkgroup" }
 
-proptest = { workspace = true }
 criterion = { workspace = true }
+proptest = { workspace = true }
 
 [[bench]]
 name = "usernames_benchmarks"

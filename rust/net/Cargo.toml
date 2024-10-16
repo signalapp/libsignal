@@ -58,21 +58,17 @@ prost-build = { workspace = true }
 
 [dev-dependencies]
 assert_matches = { workspace = true }
-libsignal-net-infra = { path = "./infra", features = ["test-util"] }
 clap = { workspace = true, features = ["derive"] }
 colored = "2.1"
 env_logger = { workspace = true }
 hex-literal = { workspace = true }
+libsignal-net-infra = { path = "./infra", features = ["test-util"] }
 proptest = { workspace = true }
 proptest-state-machine = "0.1.0"
 snow = { workspace = true, features = ["default-resolver"] }
 test-case = { workspace = true }
 test-log = "0.2.16"
-tokio = { workspace = true, features = [
-    "test-util",
-    "io-std",
-    "rt-multi-thread",
-] }
+tokio = { workspace = true, features = ["test-util", "io-std", "rt-multi-thread"] }
 warp = { version = "0.3.6", features = ["tls"] }
 
 [[example]]

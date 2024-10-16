@@ -24,13 +24,13 @@ subtle = { workspace = true }
 
 [dev-dependencies]
 assert_matches = { workspace = true }
-zerocopy = { workspace = true }
 criterion = { workspace = true }
 hex = { workspace = true }
 hex-literal = { workspace = true }
 nonzero_ext = { workspace = true }
-test-case = { workspace = true }
 proptest = { workspace = true }
+test-case = { workspace = true }
+zerocopy = { workspace = true }
 
 [build-dependencies]
 prost-build = { workspace = true }
