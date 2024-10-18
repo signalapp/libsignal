@@ -56,8 +56,8 @@ impl From<u8> for KeyFormat {
 
 /// Generate a private key of size `bits` and export to a specified format.
 pub fn create_rsa_private_key(bits: usize, key_format: KeyFormat) -> Result<Vec<u8>, Error> {
-    let rsa = Rsa::generate(bits as u32)
-        .map_err(|_| Error::InternalError("RSA key generation failed"))?;
+    let bits = u32::try_from(bits).map_err(|_| Error::InternalError("invalid key size"))?;
+    let rsa = Rsa::generate(bits).map_err(|_| Error::InternalError("RSA key generation failed"))?;
     let key =
         PKey::from_rsa(rsa).map_err(|_| Error::InternalError("Private key generation failed"))?;
     private_key_to_der(key, key_format)

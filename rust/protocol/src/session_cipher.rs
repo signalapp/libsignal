@@ -37,7 +37,10 @@ pub async fn message_encrypt(
 
     let sender_ephemeral = session_state.sender_ratchet_key()?;
     let previous_counter = session_state.previous_counter();
-    let session_version = session_state.session_version()? as u8;
+    let session_version = session_state
+        .session_version()?
+        .try_into()
+        .map_err(|_| SignalProtocolError::InvalidSessionStructure("version does not fit in u8"))?;
 
     let local_identity_key = session_state.local_identity_key()?;
     let their_identity_key = session_state.remote_identity_key()?.ok_or_else(|| {

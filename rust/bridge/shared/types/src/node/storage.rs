@@ -490,6 +490,11 @@ impl NodeIdentityKeyStore {
         })
         .then(|cx, result| match result {
             Ok(value) => match value.downcast::<JsNumber, _>(cx) {
+                // FIXME: Rust doesn't provide a convenient validation for f64->u32.
+                // We could do it manually, but really registration IDs have more constraints than
+                // just fitting in a u32. For now, we'll ignore those issues; a valid implementation
+                // should not have problems here anyway.
+                #[allow(clippy::cast_possible_truncation)]
                 Ok(b) => Ok(b.value(cx) as u32),
                 Err(_) => Err("unexpected result from _getLocalRegistrationId".into()),
             },

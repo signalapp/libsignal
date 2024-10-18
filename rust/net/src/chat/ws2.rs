@@ -1440,12 +1440,14 @@ mod test {
         ]
         .map(|r| r.expect("received incoming event"));
 
+        let raw_status_for_index = |index| 200 + u16::try_from(index).unwrap();
+
         // Validate the received events and send a response for each.
         for (index, event) in received_events.into_iter().enumerate() {
             let (proto, responder) = assert_matches!(event, ListenerEvent::ReceivedMessage(proto, responder) => (proto, responder));
             assert_eq!(proto, incoming_requests[index]);
             responder
-                .send_response(StatusCode::from_u16(index as u16 + 200).unwrap())
+                .send_response(StatusCode::from_u16(raw_status_for_index(index)).unwrap())
                 .expect("can send response");
         }
 
@@ -1453,7 +1455,7 @@ mod test {
             .into_iter()
             .enumerate()
             .map(|(index, request)| {
-                let status = 200 + index as u16;
+                let status = raw_status_for_index(index);
                 ResponseProto {
                     id: request.id,
                     status: Some(status.into()),

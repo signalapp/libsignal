@@ -37,9 +37,11 @@ impl<'a> JniInputStream<'a> {
 
     fn do_read(&self, buf: &mut [u8]) -> SignalJniResult<usize> {
         self.env.borrow_mut().with_local_frame(8, "read", |env| {
-            let java_buf = env
-                .new_byte_array(buf.len() as i32)
-                .check_exceptions(env, "read")?;
+            let amount = buf
+                .len()
+                .try_into()
+                .expect("cannot read into a buffer bigger than i32::MAX");
+            let java_buf = env.new_byte_array(amount).check_exceptions(env, "read")?;
             let amount_read: jint = call_method_checked(
                 env,
                 self.stream,

@@ -800,8 +800,7 @@ mod test {
     #[tokio::test(flavor = "current_thread", start_paused = true)]
     async fn ws_service_correctly_handles_multiple_in_flight_requests() {
         // creating a server that responds to requests with 200 after some request processing time
-        const REQUEST_PROCESSING_DURATION: Duration =
-            Duration::from_millis(TIMEOUT_DURATION.as_millis() as u64 / 2);
+        let request_processing_duration = TIMEOUT_DURATION / 2;
         let start = Instant::now();
         let (ws_server, _) = ws_warp_filter(move |websocket| async move {
             let (tx, mut rx) = websocket.split();
@@ -814,7 +813,7 @@ mod test {
                     response_for_request(&request, StatusCode::OK).expect("response");
                 let shared_sender = shared_sender.clone();
                 tokio::spawn(async move {
-                    tokio::time::sleep(REQUEST_PROCESSING_DURATION).await;
+                    tokio::time::sleep(request_processing_duration).await;
                     let mut sender = shared_sender.lock().await;
                     let _ignore_result = (*sender)
                         .send(warp::ws::Message::binary(response_proto.encode_to_vec()))
@@ -842,7 +841,7 @@ mod test {
 
         // And now making sure that both requests were in fact processed asynchronously,
         // i.e. one was not blocked on the other.
-        assert_eq!(start + REQUEST_PROCESSING_DURATION, Instant::now());
+        assert_eq!(start + request_processing_duration, Instant::now());
     }
 
     #[tokio::test(flavor = "current_thread", start_paused = true)]

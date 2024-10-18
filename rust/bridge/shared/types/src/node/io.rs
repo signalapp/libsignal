@@ -88,7 +88,10 @@ impl Finalize for NodeInputStream {
 #[async_trait(?Send)]
 impl InputStream for NodeInputStream {
     fn read<'out, 'a: 'out>(&'a self, buf: &mut [u8]) -> IoResult<InputStreamRead<'out>> {
-        let amount = buf.len() as u32;
+        let amount = buf
+            .len()
+            .try_into()
+            .expect("cannot read into a buffer bigger than u32::MAX");
         Ok(InputStreamRead::Pending(Box::pin(
             self.do_read(amount)
                 .map_err(|err| IoError::new(IoErrorKind::Other, err)),
@@ -125,7 +128,10 @@ impl SyncInputStream for NodeSyncInputStream<'_> {
         if (buffer_remaining as u64) < amount {
             return Err(IoErrorKind::UnexpectedEof.into());
         }
-        self.pos.set(self.pos.get() + amount as usize);
+        self.pos.set(
+            self.pos.get()
+                + usize::try_from(amount).expect("checking against buffer_remaining is sufficient"),
+        );
         Ok(())
     }
 }

@@ -8,6 +8,9 @@ license = "AGPL-3.0-only"
 [features]
 test-util = []
 
+[lints]
+workspace = true
+
 [dependencies]
 attest = { path = "../attest" }
 libsignal-core = { path = "../core" }

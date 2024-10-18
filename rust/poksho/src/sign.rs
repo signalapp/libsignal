@@ -52,7 +52,11 @@ mod tests {
     use super::*;
 
     #[test]
-    #[allow(clippy::needless_range_loop, clippy::unwrap_used)]
+    #[allow(
+        clippy::cast_possible_truncation,
+        clippy::needless_range_loop,
+        clippy::unwrap_used
+    )]
     fn test_signature() {
         let mut block64 = [0u8; 64];
         let mut block32 = [0u8; 32];

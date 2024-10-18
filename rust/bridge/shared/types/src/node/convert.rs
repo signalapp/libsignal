@@ -258,6 +258,7 @@ pub(super) const MAX_SAFE_JS_INTEGER: f64 = 9007199254740991.0;
 /// [`Number.MAX_SAFE_INTEGER`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/MAX_SAFE_INTEGER
 impl SimpleArgTypeInfo for crate::protocol::Timestamp {
     type ArgType = JsNumber;
+    #[allow(clippy::cast_possible_truncation)]
     fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {
         let value = foreign.value(cx);
         if !can_convert_js_number_to_int(value, 0.0..=MAX_SAFE_JS_INTEGER) {
@@ -272,6 +273,7 @@ impl SimpleArgTypeInfo for crate::protocol::Timestamp {
 /// [`Number.MAX_SAFE_INTEGER`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/MAX_SAFE_INTEGER
 impl SimpleArgTypeInfo for crate::zkgroup::Timestamp {
     type ArgType = JsNumber;
+    #[allow(clippy::cast_possible_truncation)]
     fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {
         let value = foreign.value(cx);
         if !can_convert_js_number_to_int(value, 0.0..=MAX_SAFE_JS_INTEGER) {
@@ -1072,6 +1074,7 @@ macro_rules! full_range_integer {
         #[doc = "Converts all valid integer values for the type."]
         impl SimpleArgTypeInfo for $typ {
             type ArgType = JsNumber;
+            #[allow(clippy::cast_possible_truncation)]
             fn convert_from(
                 cx: &mut FunctionContext,
                 foreign: Handle<Self::ArgType>,

@@ -11,6 +11,9 @@ edition = "2021"
 description = "A zero-knowledge group library"
 license = "AGPL-3.0-only"
 
+[lints]
+workspace = true
+
 [dependencies]
 libsignal-account-keys = { path = "../account-keys", features = ["serde"] }
 libsignal-core = { path = "../core" }
@@ -43,6 +46,7 @@ uuid = { workspace = true }
 base64 = { workspace = true, optional = true }
 
 [dev-dependencies]
+assert_matches = { workspace = true }
 uuid = { workspace = true, features = ["v5"] }
 
 # For benchmarking

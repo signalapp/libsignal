@@ -29,6 +29,11 @@ pub async fn group_encrypt<R: Rng + CryptoRng>(
         .sender_key_state_mut()
         .map_err(|_| SignalProtocolError::InvalidSenderKeySession { distribution_id })?;
 
+    let message_version = sender_key_state
+        .message_version()
+        .try_into()
+        .map_err(|_| SignalProtocolError::InvalidSenderKeySession { distribution_id })?;
+
     let sender_chain_key = sender_key_state
         .sender_chain_key()
         .ok_or(SignalProtocolError::InvalidSenderKeySession { distribution_id })?;
@@ -50,7 +55,7 @@ pub async fn group_encrypt<R: Rng + CryptoRng>(
         .map_err(|_| SignalProtocolError::InvalidSenderKeySession { distribution_id })?;
 
     let skm = SenderKeyMessage::new(
-        sender_key_state.message_version() as u8,
+        message_version,
         distribution_id,
         sender_key_state.chain_id(),
         message_keys.iteration(),
@@ -272,9 +277,13 @@ pub async fn create_sender_key_distribution_message<R: Rng + CryptoRng>(
     let sender_chain_key = state
         .sender_chain_key()
         .ok_or(SignalProtocolError::InvalidSenderKeySession { distribution_id })?;
+    let message_version = state
+        .message_version()
+        .try_into()
+        .map_err(|_| SignalProtocolError::InvalidSenderKeySession { distribution_id })?;
 
     SenderKeyDistributionMessage::new(
-        state.message_version() as u8,
+        message_version,
         distribution_id,
         state.chain_id(),
         sender_chain_key.iteration(),

@@ -34,6 +34,14 @@ default-members = [
 ]
 resolver = "2" # so that our dev-dependency features don't leak into products
 
+[workspace.lints.clippy]
+# Prefer TryFrom between integers unless truncation is desired.
+# For converting between floats and integers, there may not be an alternative.
+cast_possible_truncation = "warn"
+
+[workspace.lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(fuzzing)'] }
+
 [workspace.dependencies]
 # Our forks of some dependencies, accessible as xxx_signal so that usages of them are obvious in source code. Crates
 # that want to use the real things can depend on those directly.

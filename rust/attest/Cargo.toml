@@ -10,6 +10,9 @@ authors = ["Signal Messenger LLC"]
 edition = "2021"
 license = "AGPL-3.0-only"
 
+[lints]
+workspace = true
+
 [dependencies]
 asn1 = { workspace = true }
 base64 = { workspace = true }
@@ -47,6 +50,3 @@ test-case = { workspace = true }
 
 [build-dependencies]
 prost-build = { workspace = true }
-
-[lints.rust]
-unexpected_cfgs = { level = "warn", check-cfg = ['cfg(fuzzing)'] }

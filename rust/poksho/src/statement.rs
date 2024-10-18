@@ -300,11 +300,9 @@ impl Statement {
             Some(index) => Ok(*index),
             None => {
                 assert!(self.scalar_map.len() == self.scalar_vec.len());
-                let new_index = self.scalar_map.len();
-                if new_index > 255 {
+                let Ok(new_index) = self.scalar_map.len().try_into() else {
                     return Err(BadArgs);
-                }
-                let new_index = new_index as u8;
+                };
                 self.scalar_map.insert(scalar_name.clone(), new_index);
                 self.scalar_vec.push(scalar_name.clone());
                 Ok(new_index)
@@ -321,11 +319,9 @@ impl Statement {
             Some(index) => Ok(*index),
             None => {
                 assert!(self.point_map.len() == self.point_vec.len());
-                let new_index = self.point_map.len();
-                if new_index > 255 {
+                let Ok(new_index) = self.point_map.len().try_into() else {
                     return Err(BadArgs);
-                }
-                let new_index = new_index as u8;
+                };
                 self.point_map.insert(point_name.clone(), new_index);
                 self.point_vec.push(point_name.clone());
                 Ok(new_index)
@@ -334,20 +330,21 @@ impl Statement {
     }
 
     fn to_bytes(&self) -> Vec<u8> {
-        assert!(
-            self.equations.len() <= 255
-                && self.scalar_map.len() <= 256
-                && self.point_map.len() <= 256
-        );
-        let mut v = vec![self.equations.len() as u8];
+        let equation_count =
+            u8::try_from(self.equations.len()).expect("number of equations fits in a byte");
+        let scalar_count =
+            u8::try_from(self.scalar_map.len()).expect("number of scalars fits in a byte");
+        let point_count =
+            u8::try_from(self.point_map.len()).expect("number of points fits in a byte");
+        let mut v = vec![equation_count];
         for Equation { lhs, rhs } in &self.equations {
-            assert!(*lhs as usize <= self.point_map.len());
-            assert!(rhs.len() <= 255);
+            assert!(*lhs <= point_count);
             v.push(*lhs);
-            v.push(rhs.len() as u8);
+            let term_count = u8::try_from(rhs.len()).expect("number of terms fits in a byte");
+            v.push(term_count);
             for Term { scalar, point } in rhs {
-                assert!((*scalar as usize) < self.scalar_map.len());
-                assert!((*point as usize) < self.point_map.len());
+                assert!(*scalar < scalar_count);
+                assert!(*point < point_count);
                 v.push(*scalar);
                 v.push(*point);
             }
@@ -459,6 +456,7 @@ mod tests {
 
     #[test]
     #[allow(
+        clippy::cast_possible_truncation,
         clippy::needless_range_loop,
         clippy::redundant_clone,
         clippy::unwrap_used

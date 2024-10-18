@@ -24,7 +24,7 @@ use crate::common::serialization::ReservedByte;
 use crate::common::sho::Sho;
 use crate::common::simple_types::*;
 use crate::generic_server_params::{GenericServerPublicParams, GenericServerSecretParams};
-use crate::{ZkGroupVerificationFailure, SECONDS_PER_DAY};
+use crate::{ZkGroupDeserializationFailure, ZkGroupVerificationFailure, SECONDS_PER_DAY};
 
 #[derive(Serialize, Deserialize, Clone, Copy)]
 struct BackupIdPoint(RistrettoPoint);
@@ -72,9 +72,14 @@ impl From<BackupLevel> for u64 {
 }
 
 impl TryFrom<u64> for BackupLevel {
-    type Error = <BackupLevel as TryFrom<u8>>::Error;
+    // Unfortunately u8::try_from and TryFromPrimitive have different Error types.
+    // But we shouldn't be passing invalid BackupLevels anyway.
+    type Error = ZkGroupDeserializationFailure;
     fn try_from(value: u64) -> Result<Self, Self::Error> {
-        BackupLevel::try_from(value as u8)
+        u8::try_from(value)
+            .ok()
+            .and_then(|v| BackupLevel::try_from(v).ok())
+            .ok_or(ZkGroupDeserializationFailure::new::<Self>())
     }
 }
 
@@ -271,6 +276,8 @@ impl BackupAuthCredentialPresentation {
 
 #[cfg(test)]
 mod tests {
+    use assert_matches::assert_matches;
+
     use crate::backups::auth_credential::{BackupLevel, GenericServerSecretParams};
     use crate::backups::{
         BackupAuthCredential, BackupAuthCredentialPresentation, BackupAuthCredentialRequestContext,
@@ -442,5 +449,11 @@ mod tests {
             common::serialization::deserialize(&media_byte).expect("valid level");
         assert_eq!(messages, BackupLevel::Messages);
         assert_eq!(media, BackupLevel::Media);
+    }
+
+    #[test]
+    fn test_backup_level_validation() {
+        // Check that the u64 level isn't just truncated to u8.
+        assert_matches!(BackupLevel::try_from(0x100000000000u64 + 200u64), Err(_));
     }
 }

@@ -436,6 +436,7 @@ mod test {
     use super::*;
 
     #[test]
+    #[allow(clippy::cast_possible_truncation)]
     fn test_evaluate_batch_proof() {
         let mut values = [[0u8; 32]; 6];
         let mut proof = [[0u8; 32]; 7];

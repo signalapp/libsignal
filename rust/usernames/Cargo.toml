@@ -11,6 +11,9 @@ edition = "2021"
 description = "A zero-knowledge usernames library"
 license = "AGPL-3.0-only"
 
+[lints]
+workspace = true
+
 [dependencies]
 poksho = { path = "../poksho" }
 signal-crypto = { path = "../crypto" }

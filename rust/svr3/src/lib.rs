@@ -1131,6 +1131,7 @@ mod test {
 
     impl CryptoRng for IncrementingRng {}
     impl RngCore for IncrementingRng {
+        #[allow(clippy::cast_possible_truncation)]
         fn next_u32(&mut self) -> u32 {
             self.v += 1;
             self.v as u32
@@ -1139,6 +1140,7 @@ mod test {
             self.v += 1;
             self.v
         }
+        #[allow(clippy::cast_possible_truncation)]
         fn fill_bytes(&mut self, dest: &mut [u8]) {
             for d in dest.iter_mut() {
                 self.v += 1;

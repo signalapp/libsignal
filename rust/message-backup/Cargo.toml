@@ -9,6 +9,9 @@ edition = "2021"
 authors = ["Signal Messenger LLC"]
 license = "AGPL-3.0-only"
 
+[lints]
+workspace = true
+
 [features]
 # Enables code to allow conversion of backups to and from JSON.
 json = ["dep:serde_json", "dep:protobuf-json-mapping"]

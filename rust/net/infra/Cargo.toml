@@ -5,6 +5,9 @@ edition = "2021"
 authors = ["Signal Messenger LLC"]
 license = "AGPL-3.0-only"
 
+[lints]
+workspace = true
+
 [features]
 test-util = ["dep:warp", "snow/default-resolver"]
 

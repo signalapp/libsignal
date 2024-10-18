@@ -136,6 +136,8 @@ fn gzip_compress(contents: Vec<u8>) -> Vec<u8> {
 fn pad_gzipped_bucketed(out: &mut Vec<u8>) {
     const BASE: f64 = 1.05;
     let len = u32::try_from(out.len()).expect("backup < 4GB");
+
+    #[allow(clippy::cast_possible_truncation)]
     let padded_len = {
         let exp = f64::log(len.into(), BASE).ceil();
         u32::max(541, BASE.powf(exp).floor() as u32)

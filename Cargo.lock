@@ -5323,6 +5323,7 @@ name = "zkgroup"
 version = "0.9.0"
 dependencies = [
  "aes-gcm-siv",
+ "assert_matches",
  "base64 0.22.1",
  "bincode",
  "criterion",
