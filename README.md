@@ -12,7 +12,7 @@ as a Java, Swift, or TypeScript library. The underlying implementations are writ
 - zkgroup: Functionality for [zero-knowledge groups][] and related features available in Signal.
 - zkcredential: An abstraction for the sort of zero-knowledge credentials used by zkgroup, based on the paper "[The Signal Private Group System][]" by Chase, Perrin, and Zaverucha.
 - poksho: Utilities for implementing zero-knowledge proofs (such as those used by zkgroup); stands for "proof-of-knowledge, stateful-hash-object".
-- pin: Functionality for consistently using [PINs][] as passwords in Signal's Secure Value Recovery system.
+- account-keys: Functionality for consistently using [PINs][] as passwords in Signal's Secure Value Recovery system, as well as other account-wide key operations.
 - usernames: Functionality for username generation, hashing, and proofs.
 - media: Utilities for manipulating media.
 
