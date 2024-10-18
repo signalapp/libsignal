@@ -359,7 +359,7 @@ impl Svr3Storage {
             .expect("can build runtime");
         Self {
             runtime,
-            env: libsignal_net::env::STAGING.svr3,
+            env: libsignal_net::env::PROD.svr3,
             current_uid: None,
             enclave_secret,
             share_sets: HashMap::default(),

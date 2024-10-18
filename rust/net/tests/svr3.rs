@@ -61,7 +61,7 @@ async fn svr3_integration() {
     };
 
     let client = {
-        let env = libsignal_net::env::STAGING.svr3;
+        let env = libsignal_net::env::PROD.svr3;
         let auth = Auth::from_uid_and_secret(uid, enclave_secret);
         Svr3Client { env, auth }
     };

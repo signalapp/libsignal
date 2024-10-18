@@ -44,7 +44,7 @@ public class Svr3Test {
     String username = randomBytesHex(16);
     String otp = Native.CreateOTPFromBase64(username, ENCLAVE_SECRET);
     var auth = new EnclaveAuth(username, otp);
-    var net = new Network(Network.Environment.STAGING, USER_AGENT);
+    var net = new Network(Network.Environment.PRODUCTION, USER_AGENT);
     this.state = new State(auth, net);
   }
 

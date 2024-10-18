@@ -522,7 +522,10 @@ describe('SVR3', () => {
   }
 
   beforeEach(() => {
-    state = { auth: make_auth(), net: new Net(Environment.Staging, userAgent) };
+    state = {
+      auth: make_auth(),
+      net: new Net(Environment.Production, userAgent),
+    };
   });
 
   afterEach(() => {

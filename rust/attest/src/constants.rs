@@ -22,16 +22,16 @@ pub const ENCLAVE_ID_SVR3_NITRO_STAGING: &[u8] = b"5d16a1fd.52b91975.6c355155";
 pub const ENCLAVE_ID_SVR3_TPM2SNP_STAGING: &[u8] = b"0.20240911.184407";
 
 pub const ENCLAVE_ID_SVR3_SGX_PROD: &[u8] =
-    &hex!("0899bf951b57f27b5cd3d2dd4dbe5a144a4a62154853a4e352ac2c93ecfe6a2c");
-pub const ENCLAVE_ID_SVR3_NITRO_PROD: &[u8] = ENCLAVE_ID_SVR3_NITRO_STAGING;
-pub const ENCLAVE_ID_SVR3_TPM2SNP_PROD: &[u8] = ENCLAVE_ID_SVR3_TPM2SNP_STAGING;
+    &hex!("38e01eff4fe357dc0b0e8ef7a44b4abc5489fbccba3a78780f3872c277f62bf3");
+pub const ENCLAVE_ID_SVR3_NITRO_PROD: &[u8] = b"c4f21f2c.52b91975.6b055bb7";
+pub const ENCLAVE_ID_SVR3_TPM2SNP_PROD: &[u8] = b"0.20241002.210040";
 
 pub const ENCLAVE_ID_SVR2_PROD_OLD: &[u8] =
     &hex!("a6622ad4656e1abcd0bc0ff17c229477747d2ded0495c4ebee7ed35c1789fa97");
 pub const ENCLAVE_ID_SVR2_PROD: &[u8] =
     &hex!("9314436a9a144992bb3680770ea5fd7934a7ffd29257844a33763a238903d570");
 
-pub(crate) const NITRO_EXPECTED_PCRS: SmallMap<&'static [u8], nitro::PcrMap, 1> = SmallMap::new([
+pub(crate) const NITRO_EXPECTED_PCRS: SmallMap<&'static [u8], nitro::PcrMap, 2> = SmallMap::new([
     (
         ENCLAVE_ID_SVR3_NITRO_STAGING,
         SmallMap::new([
@@ -40,12 +40,21 @@ pub(crate) const NITRO_EXPECTED_PCRS: SmallMap<&'static [u8], nitro::PcrMap, 1> 
              (2, hex!("6c35515508b8d289dd0ffae75c0e6ee57662bdd46d316a623573d9913cf76a4c603924d3f3484478f94757628756763e")),
         ]),
     ),
+    (
+        ENCLAVE_ID_SVR3_NITRO_PROD,
+        SmallMap::new([
+             (0, hex!("c4f21f2c7a39f6c95fcb7f81bf3ee4cc28bcb0500936e3b94554c4b8859b5c548e3d3c95806360f9f630a225681e4c7b")),
+             (1, hex!("52b919754e1643f4027eeee8ec39cc4a2cb931723de0c93ce5cc8d407467dc4302e86490c01c0d755acfe10dbf657546")),
+             (2, hex!("6b055bb7d25f5145bb97bf026bf5572b638e43f842dafa844260dadfe2872a363c088e63652105cd2d027d919ce4ddb5")),
+        ]),
+    ),
 ]);
 
 // Manually format the following to keep the indexes and hexstrings on the same line.
 #[rustfmt::skip]
-pub(crate) const TPM2SNP_EXPECTED_PCRS: SmallMap<&'static [u8], &'static tpm2snp::PcrMap, 1> =
-    SmallMap::new([(
+pub(crate) const TPM2SNP_EXPECTED_PCRS: SmallMap<&'static [u8], &'static tpm2snp::PcrMap, 2> =
+    SmallMap::new([
+    (
         ENCLAVE_ID_SVR3_TPM2SNP_STAGING,
         &[
             (2,  hex!("3d458cfe55cc03ea1f443f1562beec8df51c75e14a9fcf9a7234a13f198e7969")),
@@ -59,7 +68,23 @@ pub(crate) const TPM2SNP_EXPECTED_PCRS: SmallMap<&'static [u8], &'static tpm2snp
             (13, hex!("0000000000000000000000000000000000000000000000000000000000000000")),
             (14, hex!("b9c97933fe323334271a718fdf2966e0609afcb793f3b68aaf18fc31ea39dc0a")),
         ],
-    )]);
+    ),
+    (
+        ENCLAVE_ID_SVR3_TPM2SNP_PROD,
+        &[
+            (2,  hex!("3d458cfe55cc03ea1f443f1562beec8df51c75e14a9fcf9a7234a13f198e7969")),
+            (3,  hex!("3d458cfe55cc03ea1f443f1562beec8df51c75e14a9fcf9a7234a13f198e7969")),
+            (4,  hex!("aacb8d01b0f00333bb7b98ebdc101b898bd9fa877ab6ec5813729e2d1334560a")),
+            (7,  hex!("571a65e29a131cbdb8d5784031ac9f154a248ae52e56578895f717e5334f3561")),
+            (8,  hex!("829400ec08ce2f9aec73cb7ab6836ce94b7929d4dbbff4541d18dd4f26534cfc")),
+            (9,  hex!("17b4f456f32223b5c8ddb627219089a727e6c18aa72d64f11c87e45909afc00d")),
+            (11, hex!("0000000000000000000000000000000000000000000000000000000000000000")),
+            (12, hex!("0000000000000000000000000000000000000000000000000000000000000000")),
+            (13, hex!("0000000000000000000000000000000000000000000000000000000000000000")),
+            (14, hex!("b9c97933fe323334271a718fdf2966e0609afcb793f3b68aaf18fc31ea39dc0a")),
+        ],
+    ),
+    ]);
 
 /// Map from MREnclave to intel SW advisories that are known to be mitigated in the
 /// build with that MREnclave value
@@ -141,22 +166,22 @@ pub const RAFT_CONFIG_SVR3_TPM2SNP_STAGING: &RaftConfig = &RaftConfig {
     super_majority: 0,
 };
 pub const RAFT_CONFIG_SVR3_SGX_PROD: &RaftConfig = &RaftConfig {
-    min_voting_replicas: 4,
+    min_voting_replicas: 1,
     max_voting_replicas: 13,
-    super_majority: 2,
-    group_id: 9590812984166600424,
+    super_majority: 0,
+    group_id: 17439944065385053815,
 };
 pub const RAFT_CONFIG_SVR3_NITRO_PROD: &RaftConfig = &RaftConfig {
-    group_id: 13958530449904196066,
-    min_voting_replicas: 4,
+    group_id: 17667891639367205628,
+    min_voting_replicas: 1,
     max_voting_replicas: 13,
-    super_majority: 2,
+    super_majority: 0,
 };
 pub const RAFT_CONFIG_SVR3_TPM2SNP_PROD: &RaftConfig = &RaftConfig {
-    group_id: 6022122590068091690,
-    min_voting_replicas: 4,
+    group_id: 14421743284166957665,
+    min_voting_replicas: 1,
     max_voting_replicas: 13,
-    super_majority: 2,
+    super_majority: 0,
 };
 
 // This is left here primarily to support SVR2 bridging code that does

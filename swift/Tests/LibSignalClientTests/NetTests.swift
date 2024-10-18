@@ -151,7 +151,7 @@ final class Svr3Tests: TestCaseBase {
 
     override func setUpWithError() throws {
         let username = randomBytes(16).hexString
-        let net = Net(env: .staging, userAgent: userAgent)
+        let net = Net(env: .production, userAgent: userAgent)
         let auth = try Auth(username: username, enclaveSecret: self.getEnclaveSecret())
         self.state = State(auth: auth, net: net)
     }

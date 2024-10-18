@@ -50,7 +50,7 @@ use rand_core::{CryptoRngCore, OsRng};
 const PASS: &str = "password";
 const TRIES: NonZeroU32 = nonzero!(10u32);
 
-const PREV_ENV: Svr3Env = libsignal_net::env::STAGING.svr3;
+const PREV_ENV: Svr3Env = libsignal_net::env::PROD.svr3;
 const REM_ENV: SingletonEnv<'static, Sgx> = SingletonEnv(PREV_ENV.sgx());
 
 type Stream = <DirectConnector as TransportConnector>::Stream;
