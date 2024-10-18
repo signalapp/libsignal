@@ -15,6 +15,8 @@ use futures_util::{pin_mut, Sink, Stream, StreamExt as _};
 use http::uri::PathAndQuery;
 use http::{Method, StatusCode};
 use itertools::Itertools as _;
+use libsignal_net_infra::ws::WebSocketServiceError;
+pub use libsignal_net_infra::ws2::FinishReason;
 use libsignal_net_infra::ws2::Outcome;
 use pin_project::pin_project;
 use prost::Message as _;
@@ -24,7 +26,9 @@ use tokio::time::Duration;
 use tokio_stream::wrappers::{ReceiverStream, UnboundedReceiverStream};
 use tungstenite::Message;
 
-use crate::chat::{ChatMessageType, MessageProto, Request, RequestProto, Response, ResponseProto};
+use crate::chat::{
+    ChatMessageType, ChatServiceError, MessageProto, Request, RequestProto, Response, ResponseProto,
+};
 use crate::infra::ws::TextOrBinary;
 use crate::infra::ws2::{MessageEvent, NextEventError, TungsteniteSendError};
 
@@ -83,7 +87,7 @@ pub enum ListenerEvent {
     /// If the connection was gracefully closed, `Ok(())` is contained.
     /// Otherwise the [`FinishError`] describes why the connection was
     /// unexpectedly closed.
-    Finished(Result<(), FinishError>),
+    Finished(Result<FinishReason, FinishError>),
 }
 
 /// Error that can occur during a [`Chat::send`] operation.
@@ -211,7 +215,10 @@ impl Chat {
         let mut guard = self.state.lock().await;
         // Take the existing state and leave a cheap-to-construct temporary
         // state there.
-        let state = std::mem::replace(&mut *guard, TaskState::Finished(Ok(())));
+        let state = std::mem::replace(
+            &mut *guard,
+            TaskState::Finished(Ok(FinishReason::LocalDisconnect)),
+        );
 
         let new_state = match state {
             TaskState::MaybeStillRunning {
@@ -330,13 +337,13 @@ enum TaskState {
     MaybeStillRunning {
         request_tx: mpsc::Sender<OutgoingRequest>,
         response_tx: mpsc::UnboundedSender<OutgoingResponse>,
-        task: JoinHandle<Result<(), TaskErrorState>>,
+        task: JoinHandle<Result<FinishReason, TaskErrorState>>,
     },
     /// The task has been signalled to end and should be terminating soon, but
     /// not necessarily immediately.
-    SignaledToEnd(JoinHandle<Result<(), TaskErrorState>>),
+    SignaledToEnd(JoinHandle<Result<FinishReason, TaskErrorState>>),
     /// The task has ended with the given state.
-    Finished(Result<(), TaskErrorState>),
+    Finished(Result<FinishReason, TaskErrorState>),
 }
 
 struct InFlightRequests {
@@ -608,7 +615,7 @@ async fn spawned_task_body<I: InnerConnection>(
     connection: ConnectionImpl<I>,
     listener: Arc<Mutex<ListenerState>>,
     weak_response_tx: mpsc::WeakUnboundedSender<OutgoingResponse>,
-) -> Result<(), TaskErrorState> {
+) -> Result<FinishReason, TaskErrorState> {
     pin_mut!(connection);
     let tokio_rt = tokio::runtime::Handle::current();
 
@@ -672,7 +679,7 @@ async fn send_request(
                     reason: "task was already signalled to end",
                 })
             }
-            TaskState::Finished(Ok(())) => {
+            TaskState::Finished(Ok(_reason)) => {
                 return Err(SendError::Disconnected {
                     reason: "task already ended gracefully",
                 })
@@ -712,7 +719,7 @@ async fn send_request(
         // should be a short wait.
         let finished_state = wait_for_task_to_finish(&mut guard).await.as_ref();
 
-        let send_error = finished_state.map_or_else(SendError::from, |()| {
+        let send_error = finished_state.map_or_else(SendError::from, |_reason| {
             // The task exited successfully but our send still didn't go
             // through, so return an error.
             SendError::Disconnected {
@@ -727,7 +734,7 @@ async fn send_request(
 ///
 /// This (asynchronously) blocks on joining the task! Do not call this function
 /// unless the task is already known to be exiting.
-async fn wait_for_task_to_finish(state: &mut TaskState) -> &Result<(), TaskErrorState> {
+async fn wait_for_task_to_finish(state: &mut TaskState) -> &Result<FinishReason, TaskErrorState> {
     let task = match state {
         TaskState::MaybeStillRunning {
             task,
@@ -828,7 +835,9 @@ trait InnerConnection {
     /// Blocks until an event is available, then returns it.
     fn handle_next_event(
         self: Pin<&mut Self>,
-    ) -> impl Future<Output = Outcome<MessageEvent<OutgoingMeta>, Result<(), NextEventError>>> + Send;
+    ) -> impl Future<
+        Output = Outcome<MessageEvent<OutgoingMeta>, Result<FinishReason, NextEventError>>,
+    > + Send;
 }
 
 impl<S, R> InnerConnection for crate::infra::ws2::Connection<S, R>
@@ -840,8 +849,9 @@ where
 {
     fn handle_next_event(
         self: Pin<&mut Self>,
-    ) -> impl Future<Output = Outcome<MessageEvent<OutgoingMeta>, Result<(), NextEventError>>> + Send
-    {
+    ) -> impl Future<
+        Output = Outcome<MessageEvent<OutgoingMeta>, Result<FinishReason, NextEventError>>,
+    > + Send {
         crate::infra::ws2::Connection::handle_next_event(self)
     }
 }
@@ -849,7 +859,7 @@ where
 impl<I: InnerConnection> ConnectionImpl<I> {
     async fn handle_one_event(
         self: Pin<&mut Self>,
-    ) -> Outcome<Option<IncomingEvent>, Result<(), TaskExitError>> {
+    ) -> Outcome<Option<IncomingEvent>, Result<FinishReason, TaskExitError>> {
         let ConnectionImplProj {
             mut inner,
             requests_in_flight,
@@ -862,10 +872,10 @@ impl<I: InnerConnection> ConnectionImpl<I> {
 
     fn handle_inner_response(
         requests_in_flight: &mut InFlightRequests,
-        event: Outcome<MessageEvent<OutgoingMeta>, Result<(), NextEventError>>,
-    ) -> Outcome<Option<IncomingEvent>, Result<(), TaskExitError>> {
+        event: Outcome<MessageEvent<OutgoingMeta>, Result<FinishReason, NextEventError>>,
+    ) -> Outcome<Option<IncomingEvent>, Result<FinishReason, TaskExitError>> {
         match event {
-            Outcome::Finished(Ok(())) => return Outcome::Finished(Ok(())),
+            Outcome::Finished(Ok(finish)) => return Outcome::Finished(Ok(finish)),
             Outcome::Finished(Err(err)) => {
                 return Outcome::Finished(Err(TaskExitError::WebsocketError(err)))
             }
@@ -882,7 +892,11 @@ impl<I: InnerConnection> ConnectionImpl<I> {
             }
             Outcome::Continue(MessageEvent::SendFailed(meta, send_error)) => {
                 let task_exit_status = match &send_error {
-                    TungsteniteSendError::ConnectionAlreadyClosed => Ok(()),
+                    TungsteniteSendError::ConnectionAlreadyClosed => {
+                        // We should never hit this if the disconnect is
+                        // initiated locally.
+                        Ok(FinishReason::RemoteDisconnect)
+                    }
                     TungsteniteSendError::Io(error) => Err(TaskExitError::SendIo(error.kind())),
                     TungsteniteSendError::MessageTooLarge { size, max_size } => {
                         Err(TaskExitError::SendTooLarge {
@@ -1113,6 +1127,36 @@ impl From<&TungsteniteSendError> for SendError {
     }
 }
 
+impl From<TaskExitError> for ChatServiceError {
+    fn from(value: TaskExitError) -> Self {
+        ChatServiceError::WebSocket(match value {
+            TaskExitError::WebsocketError(err) => match err {
+                NextEventError::PingFailed(tungstenite_error)
+                | NextEventError::CloseFailed(tungstenite_error) => tungstenite_error.into(),
+                NextEventError::ReceiveError(tungstenite_error) => tungstenite_error.into(),
+                NextEventError::UnexpectedConnectionClose
+                | NextEventError::AbnormalServerClose { .. } => {
+                    WebSocketServiceError::ChannelClosed
+                }
+                NextEventError::ServerIdleTimeout(_duration) => {
+                    WebSocketServiceError::ChannelIdleTooLong
+                }
+            },
+            TaskExitError::SendIo(error_kind) => {
+                WebSocketServiceError::Io(std::io::Error::new(error_kind, "[redacted]"))
+            }
+            TaskExitError::SendTooLarge { size, max_size } => WebSocketServiceError::Capacity(
+                libsignal_net_infra::ws::error::SpaceError::Capacity(
+                    tungstenite::error::CapacityError::MessageTooLong { size, max_size },
+                ),
+            ),
+            TaskExitError::SendProtocol(protocol_error) => {
+                WebSocketServiceError::Protocol(protocol_error)
+            }
+        })
+    }
+}
+
 #[cfg(test)]
 mod test {
     use std::io::Error as IoError;
@@ -1136,7 +1180,7 @@ mod test {
         type FakeTxRxChannels = (
             mpsc::UnboundedReceiver<OutgoingMessage>,
             mpsc::UnboundedSender<
-                OutcomeOrPanic<MessageEvent<OutgoingMeta>, Result<(), NextEventError>>,
+                OutcomeOrPanic<MessageEvent<OutgoingMeta>, Result<FinishReason, NextEventError>>,
             >,
         );
 
@@ -1187,7 +1231,7 @@ mod test {
 
             outgoing_events: Option<mpsc::UnboundedSender<OutgoingMessage>>,
             incoming_events: mpsc::UnboundedReceiver<
-                OutcomeOrPanic<MessageEvent<OutgoingMeta>, Result<(), NextEventError>>,
+                OutcomeOrPanic<MessageEvent<OutgoingMeta>, Result<FinishReason, NextEventError>>,
             >,
         }
 
@@ -1200,7 +1244,8 @@ mod test {
         {
             async fn handle_next_event(
                 self: Pin<&mut Self>,
-            ) -> Outcome<MessageEvent<OutgoingMeta>, Result<(), NextEventError>> {
+            ) -> Outcome<MessageEvent<OutgoingMeta>, Result<FinishReason, NextEventError>>
+            {
                 let FakeInnerConnectionProj {
                     outgoing_events,
                     mut outgoing_tx,
@@ -1249,7 +1294,7 @@ mod test {
         struct IntoFakeInnerConnection {
             outgoing_events: mpsc::UnboundedSender<OutgoingMessage>,
             incoming_events: mpsc::UnboundedReceiver<
-                OutcomeOrPanic<MessageEvent<OutgoingMeta>, Result<(), NextEventError>>,
+                OutcomeOrPanic<MessageEvent<OutgoingMeta>, Result<FinishReason, NextEventError>>,
             >,
         }
 
@@ -1545,14 +1590,19 @@ mod test {
         // frame after the client requested a disconnect" or "the server sent a
         // Close frame unprompted". Either way, the task should exit and hang up
         // on the event stream.
+        let finish_reason = if remote_initiated {
+            FinishReason::RemoteDisconnect
+        } else {
+            FinishReason::LocalDisconnect
+        };
         inner_responses
-            .send(Outcome::Finished(Ok(())).into())
+            .send(Outcome::Finished(Ok(finish_reason)).into())
             .expect("not hung up on");
 
         assert_matches!(inner_events.recv().await, None);
         assert_matches!(
             received_events_rx.recv().await,
-            Some(ListenerEvent::Finished(Ok(())))
+            Some(ListenerEvent::Finished(Ok(reason))) if reason == finish_reason
         );
         assert_matches!(
             responder.send_response(StatusCode::OK),
@@ -1676,11 +1726,11 @@ mod test {
         chat.set_listener(received_events_tx.into_event_listener());
 
         inner_responses
-            .send(Outcome::Finished(Ok(())).into())
+            .send(Outcome::Finished(Ok(FinishReason::RemoteDisconnect)).into())
             .expect("can send");
         assert_matches!(
             received_events_rx.recv().await,
-            Some(ListenerEvent::Finished(Ok(())))
+            Some(ListenerEvent::Finished(Ok(FinishReason::RemoteDisconnect)))
         );
     }
 

@@ -16,7 +16,7 @@ use tungstenite::protocol::CloseFrame;
 use tungstenite::Message;
 
 use crate::errors::LogSafeDisplay;
-use crate::ws::TextOrBinary;
+use crate::ws::{TextOrBinary, WebSocketServiceError};
 
 /// Configuration values for managing the connected websocket.
 pub struct Config {
@@ -135,6 +135,19 @@ pub enum MessageEvent<Meta> {
     ReceivedPingPong,
 }
 
+/// Why the task finished.
+///
+/// This can't necessarily be precise since there are network delays and
+/// queueing involved and so a "simultaneous" disconnect can result in each side
+/// seeing a different outcome.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum FinishReason {
+    /// The local end disconnected first.
+    LocalDisconnect,
+    /// The remote end disconnected first.
+    RemoteDisconnect,
+}
+
 /// Errors that can occur when sending.
 ///
 /// This is a subset of the cases in [`tungstenite::Error`] that can be returned
@@ -219,7 +232,7 @@ where
     /// to pass through an input `TextOrBinary` unmodified.
     pub async fn handle_next_event(
         self: Pin<&mut Self>,
-    ) -> Outcome<MessageEvent<SendMeta>, Result<(), NextEventError>>
+    ) -> Outcome<MessageEvent<SendMeta>, Result<FinishReason, NextEventError>>
     where
         S: Stream<Item = Result<Message, tungstenite::Error>>
             + Sink<Message, Error = tungstenite::Error>,
@@ -329,10 +342,13 @@ where
                 // The client has been closed, so there aren't any more messages
                 // coming in. Tell the server we're done.
                 let result = stream.send(Message::Close(None)).await;
-                Outcome::Finished(result.map_err(|e| {
-                    let e = TungsteniteSendError::from(TungsteniteError::from(e));
-                    NextEventError::CloseFailed(e)
-                }))
+                Outcome::Finished(match result {
+                    Ok(()) => Ok(FinishReason::LocalDisconnect),
+                    Err(e) => Err({
+                        let e = TungsteniteSendError::from(TungsteniteError::from(e));
+                        NextEventError::CloseFailed(e)
+                    }),
+                })
             }
             Event::ToSend((message, meta)) => {
                 let event = match stream.send(message.into()).await {
@@ -369,7 +385,7 @@ where
                     | Message::Close(Some(CloseFrame {
                         code: CloseCode::Normal,
                         ..
-                    })) => Outcome::Finished(Ok(())),
+                    })) => Outcome::Finished(Ok(FinishReason::RemoteDisconnect)),
                     Message::Close(Some(CloseFrame { code, reason })) => {
                         Outcome::Finished(Err(NextEventError::AbnormalServerClose {
                             code,
@@ -462,6 +478,20 @@ impl From<TungsteniteError> for TungsteniteSendError {
         }
     }
 }
+impl From<TungsteniteSendError> for TungsteniteError {
+    fn from(value: TungsteniteSendError) -> Self {
+        match value {
+            TungsteniteSendError::ConnectionAlreadyClosed => Self::ConnectionClosed,
+            TungsteniteSendError::Io(error) => Self::Io(error),
+            TungsteniteSendError::MessageTooLarge { size, max_size } => {
+                Self::CapacityErrorMessageTooLarge { size, max_size }
+            }
+            TungsteniteSendError::WebSocketProtocol(protocol_error) => {
+                Self::Protocol(protocol_error)
+            }
+        }
+    }
+}
 
 impl From<TungsteniteError> for TungsteniteReceiveError {
     fn from(value: TungsteniteError) -> Self {
@@ -481,6 +511,53 @@ impl From<TungsteniteError> for TungsteniteReceiveError {
                 unreachable!("can only be produced in start_send")
             }
             TungsteniteError::Utf8 => unreachable!("no UTF-8 validation happens on send"),
+        }
+    }
+}
+impl From<TungsteniteReceiveError> for TungsteniteError {
+    fn from(value: TungsteniteReceiveError) -> Self {
+        match value {
+            TungsteniteReceiveError::Io(error) => Self::Io(error),
+            TungsteniteReceiveError::MessageTooLarge { size, max_size } => {
+                Self::CapacityErrorMessageTooLarge { size, max_size }
+            }
+            TungsteniteReceiveError::WebSocketProtocol(protocol_error) => {
+                Self::Protocol(protocol_error)
+            }
+            TungsteniteReceiveError::ServerSentInvalidUtf8 => Self::Utf8,
+        }
+    }
+}
+
+impl From<TungsteniteSendError> for WebSocketServiceError {
+    fn from(value: TungsteniteSendError) -> Self {
+        TungsteniteError::from(value).into()
+    }
+}
+
+impl From<TungsteniteReceiveError> for WebSocketServiceError {
+    fn from(value: TungsteniteReceiveError) -> Self {
+        TungsteniteError::from(value).into()
+    }
+}
+
+impl From<TungsteniteError> for WebSocketServiceError {
+    fn from(value: TungsteniteError) -> Self {
+        match value {
+            TungsteniteError::AlreadyClosed | TungsteniteError::ConnectionClosed => {
+                Self::ChannelClosed
+            }
+            TungsteniteError::Io(error) => Self::Io(error),
+            TungsteniteError::CapacityErrorMessageTooLarge { size, max_size } => {
+                Self::Capacity(crate::ws::error::SpaceError::Capacity(
+                    tungstenite::error::CapacityError::MessageTooLong { size, max_size },
+                ))
+            }
+            TungsteniteError::Protocol(protocol_error) => Self::Protocol(protocol_error),
+            TungsteniteError::WriteBufferFull => {
+                Self::Capacity(crate::ws::error::SpaceError::SendQueueFull)
+            }
+            TungsteniteError::Utf8 => Self::Other("UTF-8 error"),
         }
     }
 }
@@ -633,7 +710,7 @@ mod test {
         );
         assert_matches!(
             connection.as_mut().handle_next_event().await,
-            Outcome::Finished(Ok(()))
+            Outcome::Finished(Ok(FinishReason::RemoteDisconnect))
         );
     }
 
@@ -722,7 +799,7 @@ mod test {
         drop(outgoing_tx);
         assert_matches!(
             connection.handle_next_event().await,
-            Outcome::Finished(Ok(()))
+            Outcome::Finished(Ok(FinishReason::LocalDisconnect))
         )
     }
 

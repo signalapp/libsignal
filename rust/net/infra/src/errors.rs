@@ -29,6 +29,7 @@ pub enum TransportConnectError {
     /// Proxy handshake failed
     ProxyProtocol,
 }
+impl LogSafeDisplay for TransportConnectError {}
 
 #[derive(Debug)]
 pub struct SslErrorReasons(boring_signal::error::ErrorStack);
@@ -61,6 +62,7 @@ impl<S> From<HandshakeError<S>> for FailedHandshakeReason {
     }
 }
 
+impl LogSafeDisplay for FailedHandshakeReason {}
 impl Display for FailedHandshakeReason {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if self.io.is_none() && self.code.is_none() {
