@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::num::NonZeroU16;
 use std::str::FromStr;
 use std::time::Duration;
 
@@ -11,7 +12,7 @@ use libsignal_bridge_macros::*;
 use libsignal_bridge_types::net::chat::{
     AuthChat, HttpRequest, ResponseAndDebugInfo, ServerMessageAck,
 };
-use libsignal_bridge_types::net::TokioAsyncContext;
+use libsignal_bridge_types::net::{ConnectionManager, TokioAsyncContext};
 use libsignal_core::E164;
 use libsignal_net::cdsi::{LookupError, LookupResponse, LookupResponseEntry};
 use libsignal_net::chat::{
@@ -295,4 +296,28 @@ fn TESTING_ChatService_InjectIntentionalDisconnect(chat: &AuthChat) {
 #[bridge_fn(jni = false, ffi = false)]
 fn TESTING_ServerMessageAck_Create() -> ServerMessageAck {
     ServerMessageAck::new(Box::new(|_| Box::pin(std::future::ready(Ok(())))))
+}
+
+#[bridge_fn(jni = false, ffi = false)]
+fn TESTING_ConnectionManager_newLocalOverride(
+    userAgent: String,
+    chatPort: AsType<NonZeroU16, u16>,
+    cdsiPort: AsType<NonZeroU16, u16>,
+    svr2Port: AsType<NonZeroU16, u16>,
+    svr3SgxPort: AsType<NonZeroU16, u16>,
+    svr3NitroPort: AsType<NonZeroU16, u16>,
+    svr3Tpm2SnpPort: AsType<NonZeroU16, u16>,
+    rootCertificateDer: &[u8],
+) -> ConnectionManager {
+    let ports = net_env::LocalhostEnvPortConfig {
+        chat_port: chatPort.into_inner(),
+        cdsi_port: cdsiPort.into_inner(),
+        svr2_port: svr2Port.into_inner(),
+        svr3_sgx_port: svr3SgxPort.into_inner(),
+        svr3_nitro_port: svr3NitroPort.into_inner(),
+        svr3_tpm2_snp_port: svr3Tpm2SnpPort.into_inner(),
+    };
+
+    let env = net_env::localhost_test_env_with_ports(ports, rootCertificateDer);
+    ConnectionManager::new_from_static_environment(env, userAgent.as_str())
 }

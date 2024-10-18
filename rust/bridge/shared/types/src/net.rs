@@ -70,43 +70,32 @@ pub struct ConnectionManager {
 impl RefUnwindSafe for ConnectionManager {}
 
 impl ConnectionManager {
-    pub fn new(environment: Environment, user_agent: String) -> Self {
+    pub fn new(environment: Environment, user_agent: &str) -> Self {
         log::info!("Initializing connection manager for {}...", &environment);
+        Self::new_from_static_environment(environment.env(), user_agent)
+    }
+
+    pub fn new_from_static_environment(
+        env: Env<'static, Svr3Env<'static>>,
+        user_agent: &str,
+    ) -> Self {
         let network_change_event = ObservableEvent::new();
-        let dns_resolver = DnsResolver::new_with_static_fallback(
-            environment.env().static_fallback(),
-            &network_change_event,
-        );
+        let dns_resolver =
+            DnsResolver::new_with_static_fallback(env.static_fallback(), &network_change_event);
         let transport_connector =
             std::sync::Mutex::new(TcpSslDirectConnector::new(dns_resolver).into());
         let chat = libsignal_net::chat::endpoint_connection(
-            &environment.env().chat_domain_config.connect,
-            &user_agent,
+            &env.chat_domain_config.connect,
+            user_agent,
             &network_change_event,
         );
         Self {
             chat,
-            cdsi: Self::endpoint_connection(
-                &environment.env().cdsi,
-                &user_agent,
-                &network_change_event,
-            ),
+            cdsi: Self::endpoint_connection(&env.cdsi, user_agent, &network_change_event),
             svr3: (
-                Self::endpoint_connection(
-                    environment.env().svr3.sgx(),
-                    &user_agent,
-                    &network_change_event,
-                ),
-                Self::endpoint_connection(
-                    environment.env().svr3.nitro(),
-                    &user_agent,
-                    &network_change_event,
-                ),
-                Self::endpoint_connection(
-                    environment.env().svr3.tpm2snp(),
-                    &user_agent,
-                    &network_change_event,
-                ),
+                Self::endpoint_connection(env.svr3.sgx(), user_agent, &network_change_event),
+                Self::endpoint_connection(env.svr3.nitro(), user_agent, &network_change_event),
+                Self::endpoint_connection(env.svr3.tpm2snp(), user_agent, &network_change_event),
             ),
             transport_connector,
             network_change_event,
@@ -345,12 +334,12 @@ mod test {
     #[test_case(Environment::Staging; "staging")]
     #[test_case(Environment::Prod; "prod")]
     fn can_create_connection_manager(env: Environment) {
-        let _ = ConnectionManager::new(env, "test-user-agent".to_string());
+        let _ = ConnectionManager::new(env, "test-user-agent");
     }
 
     #[test]
     fn connection_manager_invalid_after_invalid_host_port() {
-        let manager = ConnectionManager::new(Environment::Staging, "test-user-agent".to_owned());
+        let manager = ConnectionManager::new(Environment::Staging, "test-user-agent");
         // This is not a valid port and so should make the ConnectionManager "invalid".
         assert_matches!(manager.set_proxy("proxy.host", None), Err(e) if e.kind() == std::io::ErrorKind::InvalidInput);
         let transport_connector = manager.transport_connector.lock().expect("not poisoned");

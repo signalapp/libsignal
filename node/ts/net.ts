@@ -409,6 +409,25 @@ export function buildHttpRequest(
   return httpRequest;
 }
 
+export type NetConstructorOptions = Readonly<
+  | {
+      localTestServer?: false;
+      env: Environment;
+      userAgent: string;
+    }
+  | {
+      localTestServer: true;
+      userAgent: string;
+      TESTING_localServer_chatPort: number;
+      TESTING_localServer_cdsiPort: number;
+      TESTING_localServer_svr2Port: number;
+      TESTING_localServer_svr3SgxPort: number;
+      TESTING_localServer_svr3NitroPort: number;
+      TESTING_localServer_svr3Tpm2SnpPort: number;
+      TESTING_localServer_rootCertificateDer: Buffer;
+    }
+>;
+
 export class Net {
   private readonly asyncContext: TokioAsyncContext;
   private readonly connectionManager: ConnectionManager;
@@ -418,11 +437,27 @@ export class Net {
    */
   svr3: Svr3Client;
 
-  constructor(env: Environment, userAgent: string) {
+  constructor(options: NetConstructorOptions) {
     this.asyncContext = new TokioAsyncContext(Native.TokioAsyncContext_new());
-    this.connectionManager = newNativeHandle(
-      Native.ConnectionManager_new(env, userAgent)
-    );
+
+    if (options.localTestServer) {
+      this.connectionManager = newNativeHandle(
+        Native.TESTING_ConnectionManager_newLocalOverride(
+          options.userAgent,
+          options.TESTING_localServer_chatPort,
+          options.TESTING_localServer_cdsiPort,
+          options.TESTING_localServer_svr2Port,
+          options.TESTING_localServer_svr3SgxPort,
+          options.TESTING_localServer_svr3NitroPort,
+          options.TESTING_localServer_svr3Tpm2SnpPort,
+          options.TESTING_localServer_rootCertificateDer
+        )
+      );
+    } else {
+      this.connectionManager = newNativeHandle(
+        Native.ConnectionManager_new(options.env, options.userAgent)
+      );
+    }
     this.svr3 = new Svr3ClientImpl(this.asyncContext, this.connectionManager);
   }
 

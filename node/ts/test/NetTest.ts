@@ -36,7 +36,10 @@ const userAgent = 'test';
 describe('Net class', () => {
   it('handles network change events', () => {
     // There's no feedback from this, we're just making sure it doesn't normally crash or throw.
-    const net = new Net(Environment.Staging, userAgent);
+    const net = new Net({
+      env: Environment.Production,
+      userAgent: userAgent,
+    });
     net.onNetworkChange();
   });
 });
@@ -159,7 +162,10 @@ describe('chat service api', () => {
 
   it('invalid proxies are rejected', () => {
     // The default TLS proxy config doesn't support staging, so we connect to production.
-    const net = new Net(Environment.Production, userAgent);
+    const net = new Net({
+      env: Environment.Production,
+      userAgent: userAgent,
+    });
     expect(() => net.setProxy('signalfoundation.org', 0)).throws(Error);
     expect(() => net.setProxy('signalfoundation.org', 100_000)).throws(Error);
     expect(() => net.setProxy('signalfoundation.org', -1)).throws(Error);
@@ -188,7 +194,10 @@ describe('chat service api', () => {
     };
 
     it('can connect unauthenticated', async () => {
-      const net = new Net(Environment.Staging, userAgent);
+      const net = new Net({
+        env: Environment.Production,
+        userAgent: userAgent,
+      });
       await connectChatUnauthenticated(net);
     }).timeout(10000);
 
@@ -197,7 +206,10 @@ describe('chat service api', () => {
       assert(PROXY_SERVER, 'checked above');
 
       // The default TLS proxy config doesn't support staging, so we connect to production.
-      const net = new Net(Environment.Production, userAgent);
+      const net = new Net({
+        env: Environment.Production,
+        userAgent: userAgent,
+      });
       const [host = PROXY_SERVER, port = '443'] = PROXY_SERVER.split(':', 2);
       net.setProxy(host, parseInt(port, 10));
       await connectChatUnauthenticated(net);
@@ -242,7 +254,10 @@ describe('chat service api', () => {
   const INVALID_MESSAGE = Buffer.from('CgNQVVQSCC9pbnZhbGlkIAo=', 'base64');
 
   it('messages from the server are passed to the listener', async () => {
-    const net = new Net(Environment.Staging, userAgent);
+    const net = new Net({
+      env: Environment.Production,
+      userAgent: userAgent,
+    });
     const listener = {
       onIncomingMessage: sinon.stub(),
       onQueueEmpty: sinon.stub(),
@@ -283,7 +298,10 @@ describe('chat service api', () => {
   });
 
   it('messages arrive in order', async () => {
-    const net = new Net(Environment.Staging, userAgent);
+    const net = new Net({
+      env: Environment.Production,
+      userAgent: userAgent,
+    });
     const completable = new CompletablePromise();
     const callsToMake: Buffer[] = [
       INCOMING_MESSAGE_1,
@@ -350,7 +368,10 @@ describe('chat service api', () => {
   });
 
   it('listener gets null cause for intentional disconnect', async () => {
-    const net = new Net(Environment.Staging, userAgent);
+    const net = new Net({
+      env: Environment.Production,
+      userAgent: userAgent,
+    });
     const completable = new CompletablePromise();
     const connectionInterruptedReasons: (object | null)[] = [];
     const listener: ChatServiceListener = {
@@ -524,7 +545,10 @@ describe('SVR3', () => {
   beforeEach(() => {
     state = {
       auth: make_auth(),
-      net: new Net(Environment.Production, userAgent),
+      net: new Net({
+        env: Environment.Production,
+        userAgent: userAgent,
+      }),
     };
   });
 

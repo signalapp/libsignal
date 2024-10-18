@@ -29,7 +29,7 @@ fn ConnectionManager_new(
     environment: AsType<Environment, u8>,
     user_agent: String,
 ) -> ConnectionManager {
-    ConnectionManager::new(environment.into_inner(), user_agent)
+    ConnectionManager::new(environment.into_inner(), user_agent.as_str())
 }
 
 #[bridge_fn]
@@ -183,6 +183,6 @@ mod test {
     #[test_case(Environment::Staging; "staging")]
     #[test_case(Environment::Prod; "prod")]
     fn can_create_connection_manager(env: Environment) {
-        let _ = ConnectionManager::new(env, "test-user-agent".to_string());
+        let _ = ConnectionManager::new(env, "test-user-agent");
     }
 }

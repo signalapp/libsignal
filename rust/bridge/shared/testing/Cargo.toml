@@ -22,6 +22,7 @@ libsignal-message-backup = { workspace = true, features = ["json"] }
 libsignal-net = { workspace = true }
 libsignal-protocol = { workspace = true }
 
+const-str = { workspace = true, features = ["std"] }
 futures-util = { workspace = true }
 http = { workspace = true }
 nonzero_ext = { workspace = true }

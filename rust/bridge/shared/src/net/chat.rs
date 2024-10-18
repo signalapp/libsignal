@@ -250,7 +250,7 @@ mod test {
     // Using a paused tokio runtime auto-advances time when there's no other work to be done.
     #[tokio::test(start_paused = true)]
     async fn cannot_connect_through_invalid_proxy() {
-        let cm = ConnectionManager::new(Environment::Staging, "test-user-agent".to_string());
+        let cm = ConnectionManager::new(Environment::Staging, "test-user-agent");
 
         assert_matches!(
             ConnectionManager_set_proxy(&cm, "signalfoundation.org".to_string(), 0),

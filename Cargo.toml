@@ -90,6 +90,7 @@ chacha20poly1305 = "0.10.1"
 chrono = "0.4"
 ciborium = "0.2"
 clap = "4.4.11"
+const-str = { version = "0.5.6" }
 criterion = "0.5"
 ctr = "0.9.2"
 curve25519-dalek = "4.1.3"

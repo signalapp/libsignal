@@ -2104,6 +2104,7 @@ name = "libsignal-bridge-testing"
 version = "0.1.0"
 dependencies = [
  "attest",
+ "const-str",
  "futures-util",
  "http 1.1.0",
  "jni 0.21.1",

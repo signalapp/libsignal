@@ -20,4 +20,5 @@ pub fn test_only_fn_returns_123() -> u32 {
 pub mod convert;
 pub mod message_backup;
 pub mod net;
+pub mod net_env;
 pub mod types;

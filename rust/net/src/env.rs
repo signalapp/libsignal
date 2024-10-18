@@ -44,10 +44,10 @@ const DOMAIN_CONFIG_CHAT: DomainConfig = DomainConfig {
         port: DEFAULT_HTTPS_PORT,
         cert: SIGNAL_ROOT_CERTIFICATES,
         confirmation_header_name: Some(TIMESTAMP_HEADER_NAME),
-        proxy: ConnectionProxyConfig {
+        proxy: Some(ConnectionProxyConfig {
             path_prefix: "/service",
             configs: [PROXY_CONFIG_F_PROD, PROXY_CONFIG_G],
-        },
+        }),
     },
 };
 
@@ -65,10 +65,10 @@ const DOMAIN_CONFIG_CHAT_STAGING: DomainConfig = DomainConfig {
         port: DEFAULT_HTTPS_PORT,
         cert: SIGNAL_ROOT_CERTIFICATES,
         confirmation_header_name: Some(TIMESTAMP_HEADER_NAME),
-        proxy: ConnectionProxyConfig {
+        proxy: Some(ConnectionProxyConfig {
             path_prefix: "/service-staging",
             configs: [PROXY_CONFIG_F_STAGING, PROXY_CONFIG_G],
-        },
+        }),
     },
 };
 
@@ -78,10 +78,10 @@ const DOMAIN_CONFIG_CDSI: DomainConfig = DomainConfig {
         port: DEFAULT_HTTPS_PORT,
         cert: SIGNAL_ROOT_CERTIFICATES,
         confirmation_header_name: None,
-        proxy: ConnectionProxyConfig {
+        proxy: Some(ConnectionProxyConfig {
             path_prefix: "/cdsi",
             configs: [PROXY_CONFIG_F_PROD, PROXY_CONFIG_G],
-        },
+        }),
     },
     ip_v4: &[ip_addr!(v4, "40.122.45.194")],
     ip_v6: &[ip_addr!(v6, "2603:1030:7::1")],
@@ -93,10 +93,10 @@ const DOMAIN_CONFIG_CDSI_STAGING: DomainConfig = DomainConfig {
         port: DEFAULT_HTTPS_PORT,
         cert: SIGNAL_ROOT_CERTIFICATES,
         confirmation_header_name: None,
-        proxy: ConnectionProxyConfig {
+        proxy: Some(ConnectionProxyConfig {
             path_prefix: "/cdsi-staging",
             configs: [PROXY_CONFIG_F_STAGING, PROXY_CONFIG_G],
-        },
+        }),
     },
     ip_v4: &[ip_addr!(v4, "104.43.162.137")],
     ip_v6: &[ip_addr!(v6, "2603:1030:7::732")],
@@ -108,10 +108,10 @@ const DOMAIN_CONFIG_SVR2: DomainConfig = DomainConfig {
         port: DEFAULT_HTTPS_PORT,
         cert: SIGNAL_ROOT_CERTIFICATES,
         confirmation_header_name: None,
-        proxy: ConnectionProxyConfig {
+        proxy: Some(ConnectionProxyConfig {
             path_prefix: "/svr2",
             configs: [PROXY_CONFIG_F_PROD, PROXY_CONFIG_G],
-        },
+        }),
     },
     ip_v4: &[ip_addr!(v4, "20.66.40.69")],
     ip_v6: &[],
@@ -123,10 +123,10 @@ const DOMAIN_CONFIG_SVR2_STAGING: DomainConfig = DomainConfig {
         port: DEFAULT_HTTPS_PORT,
         cert: SIGNAL_ROOT_CERTIFICATES,
         confirmation_header_name: None,
-        proxy: ConnectionProxyConfig {
+        proxy: Some(ConnectionProxyConfig {
             path_prefix: "/svr2-staging",
             configs: [PROXY_CONFIG_F_STAGING, PROXY_CONFIG_G],
-        },
+        }),
     },
     ip_v4: &[ip_addr!(v4, "20.253.229.239")],
     ip_v6: &[],
@@ -138,10 +138,10 @@ const DOMAIN_CONFIG_SVR3_SGX: DomainConfig = DomainConfig {
         port: DEFAULT_HTTPS_PORT,
         cert: SIGNAL_ROOT_CERTIFICATES,
         confirmation_header_name: None,
-        proxy: ConnectionProxyConfig {
+        proxy: Some(ConnectionProxyConfig {
             path_prefix: "/svr3-sgx",
             configs: [PROXY_CONFIG_F_PROD, PROXY_CONFIG_G],
-        },
+        }),
     },
     ip_v4: &[ip_addr!(v4, "40.112.138.96")],
     ip_v6: &[],
@@ -153,10 +153,10 @@ const DOMAIN_CONFIG_SVR3_SGX_STAGING: DomainConfig = DomainConfig {
         port: DEFAULT_HTTPS_PORT,
         cert: SIGNAL_ROOT_CERTIFICATES,
         confirmation_header_name: None,
-        proxy: ConnectionProxyConfig {
+        proxy: Some(ConnectionProxyConfig {
             path_prefix: "/svr3-sgx-staging",
             configs: [PROXY_CONFIG_F_STAGING, PROXY_CONFIG_G],
-        },
+        }),
     },
     ip_v4: &[ip_addr!(v4, "13.88.63.29")],
     ip_v6: &[],
@@ -168,10 +168,10 @@ const DOMAIN_CONFIG_SVR3_NITRO: DomainConfig = DomainConfig {
         port: DEFAULT_HTTPS_PORT,
         cert: SIGNAL_ROOT_CERTIFICATES,
         confirmation_header_name: None,
-        proxy: ConnectionProxyConfig {
+        proxy: Some(ConnectionProxyConfig {
             path_prefix: "/svr3-nitro",
             configs: [PROXY_CONFIG_F_PROD, PROXY_CONFIG_G],
-        },
+        }),
     },
     ip_v4: &[ip_addr!(v4, "75.2.91.98")],
     ip_v6: &[],
@@ -183,10 +183,10 @@ const DOMAIN_CONFIG_SVR3_NITRO_STAGING: DomainConfig = DomainConfig {
         port: DEFAULT_HTTPS_PORT,
         cert: SIGNAL_ROOT_CERTIFICATES,
         confirmation_header_name: None,
-        proxy: ConnectionProxyConfig {
+        proxy: Some(ConnectionProxyConfig {
             path_prefix: "/svr3-nitro-staging",
             configs: [PROXY_CONFIG_F_STAGING, PROXY_CONFIG_G],
-        },
+        }),
     },
     ip_v4: &[ip_addr!(v4, "75.2.86.85"), ip_addr!(v4, "99.83.239.137")],
     ip_v6: &[],
@@ -198,10 +198,10 @@ pub const DOMAIN_CONFIG_SVR3_TPM2SNP: DomainConfig = DomainConfig {
         port: DEFAULT_HTTPS_PORT,
         cert: SIGNAL_ROOT_CERTIFICATES,
         confirmation_header_name: None,
-        proxy: ConnectionProxyConfig {
+        proxy: Some(ConnectionProxyConfig {
             path_prefix: "/svr3-tpm2snp",
             configs: [PROXY_CONFIG_F_PROD, PROXY_CONFIG_G],
-        },
+        }),
     },
     ip_v4: &[ip_addr!(v4, "34.144.241.251")],
     ip_v6: &[],
@@ -213,10 +213,10 @@ pub const DOMAIN_CONFIG_SVR3_TPM2SNP_STAGING: DomainConfig = DomainConfig {
         port: DEFAULT_HTTPS_PORT,
         cert: SIGNAL_ROOT_CERTIFICATES,
         confirmation_header_name: None,
-        proxy: ConnectionProxyConfig {
+        proxy: Some(ConnectionProxyConfig {
             path_prefix: "/svr3-tpm2snp-staging",
             configs: [PROXY_CONFIG_F_STAGING, PROXY_CONFIG_G],
-        },
+        }),
     },
     ip_v4: &[ip_addr!(v4, "13.88.30.76")],
     ip_v6: &[],
@@ -325,7 +325,7 @@ pub struct ConnectionConfig {
 
     /// Additional configuration for connecting to the resource through a proxy
     /// if a direct connection fails.
-    pub proxy: ConnectionProxyConfig,
+    pub proxy: Option<ConnectionProxyConfig>,
 }
 
 #[derive(Clone)]
@@ -370,19 +370,23 @@ impl ConnectionConfig {
 
     pub fn connection_params_with_fallback(&self) -> Vec<ConnectionParams> {
         let direct = self.direct_connection_params();
-        let mut rng = thread_rng();
-        // TODO use array::each_ref() once MSRV >= 1.77
-        let [params_a, params_b] = &self.proxy.configs;
-        let [params_a, params_b] = [params_a, params_b].map(|config| {
-            config.shuffled_connection_params(
-                self.proxy.path_prefix,
-                self.confirmation_header_name,
-                &mut rng,
-            )
-        });
+        if let Some(proxy) = &self.proxy {
+            let mut rng = thread_rng();
+            // TODO use array::each_ref() once MSRV >= 1.77
+            let [params_a, params_b] = &proxy.configs;
+            let [params_a, params_b] = [params_a, params_b].map(|config| {
+                config.shuffled_connection_params(
+                    proxy.path_prefix,
+                    self.confirmation_header_name,
+                    &mut rng,
+                )
+            });
 
-        let proxy_params = itertools::interleave(params_a, params_b);
-        iter::once(direct).chain(proxy_params).collect()
+            let proxy_params = itertools::interleave(params_a, params_b);
+            iter::once(direct).chain(proxy_params).collect()
+        } else {
+            iter::once(direct).collect()
+        }
     }
 }
 
@@ -482,6 +486,14 @@ pub struct Svr3Env<'a>(
 );
 
 impl<'a> Svr3Env<'a> {
+    pub const fn new(
+        sgx: EnclaveEndpoint<'a, Sgx>,
+        nitro: EnclaveEndpoint<'a, Nitro>,
+        tpm2snp: EnclaveEndpoint<'a, Tpm2Snp>,
+    ) -> Self {
+        Self(sgx, nitro, tpm2snp)
+    }
+
     #[inline]
     pub const fn sgx(&self) -> &EnclaveEndpoint<'a, Sgx> {
         &self.0

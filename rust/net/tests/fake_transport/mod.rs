@@ -48,16 +48,20 @@ pub fn allow_proxy_hosts(
             },
     } = domain_config;
     let allow_targets = proxy
-        .configs
         .iter()
-        .flat_map(|config| {
-            config
-                .shuffled_connection_params("", None, &mut OsRng)
-                .map(|params| params.transport)
-        })
-        .map(|params| FakeTransportTarget {
-            host: params.tcp_host,
-            port: params.port,
+        .flat_map(|proxy| {
+            proxy
+                .configs
+                .iter()
+                .flat_map(|config| {
+                    config
+                        .shuffled_connection_params("", None, &mut OsRng)
+                        .map(|params| params.transport)
+                })
+                .map(|params| FakeTransportTarget {
+                    host: params.tcp_host,
+                    port: params.port,
+                })
         })
         .collect::<Vec<_>>();
 
@@ -93,8 +97,8 @@ pub fn error_all_hosts_after(
         .map(|host| FakeTransportTarget { host, port: *port });
 
     let targets = proxy
-        .configs
         .iter()
+        .flat_map(|config| config.configs.iter())
         .flat_map(|config| {
             config
                 .shuffled_connection_params("", None, &mut OsRng)

@@ -52,10 +52,10 @@ const TEST_SERVER_DOMAIN_CONFIG: DomainConfig = DomainConfig {
         port: nonzero!(443_u16),
         cert: TEST_SERVER_CERT,
         confirmation_header_name: None,
-        proxy: ConnectionProxyConfig {
+        proxy: Some(ConnectionProxyConfig {
             path_prefix: "/svr3-test",
             configs: [PROXY_CONFIG_F_STAGING, PROXY_CONFIG_G],
-        },
+        }),
     },
 };
 const TEST_SERVER_ENDPOINT_PARAMS: EndpointParams<'static, Sgx> = EndpointParams {

@@ -19,7 +19,7 @@ base64 = { workspace = true }
 bitstream-io = "1.10.0"
 boring-signal = { workspace = true }
 bytes = "1.4.0"
-const-str = { version = "0.5.6", features = ["std"] }
+const-str = { workspace = true, features = ["std"] }
 derive-where = { workspace = true }
 displaydoc = { workspace = true }
 either = "1.10.0"
