@@ -92,7 +92,10 @@ pub struct BackupAuthCredentialRequestContext {
 }
 
 impl BackupAuthCredentialRequestContext {
-    pub fn new(backup_key: &libsignal_account_keys::BackupKey, aci: libsignal_core::Aci) -> Self {
+    pub fn new<const VERSION: u8>(
+        backup_key: &libsignal_account_keys::BackupKey<VERSION>,
+        aci: libsignal_core::Aci,
+    ) -> Self {
         // derive the backup-id (blinded in the issuance request, revealed at verification)
         let backup_id = backup_key.derive_backup_id(&aci);
 

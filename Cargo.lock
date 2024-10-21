@@ -2028,6 +2028,7 @@ name = "libsignal-account-keys"
 version = "0.1.0"
 dependencies = [
  "argon2",
+ "assert_matches",
  "criterion",
  "displaydoc",
  "hex-literal",

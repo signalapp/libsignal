@@ -20,6 +20,8 @@ use libsignal_message_backup::{BackupReader, ReadResult};
 const BACKUP_PURPOSE: Purpose = Purpose::RemoteBackup;
 
 const ACI: Aci = Aci::from_uuid_bytes([0x11; 16]);
+// TODO: Replace this with an AccountEntropyPool (in string form) when the app language tests are
+// ready to do so as well.
 const MASTER_KEY: [u8; 32] = [b'M'; 32];
 const IV: [u8; 16] = [b'I'; 16];
 
@@ -87,6 +89,7 @@ fn encrypted_proto_matches_source(input: Fixture<PathBuf>) {
     let path = input.into_content();
     let expected_source_path = format!("{}{ENCRYPTED_SOURCE_SUFFIX}", path.to_str().unwrap());
 
+    #[allow(deprecated)]
     let backup_key = BackupKey::derive_from_master_key(&MASTER_KEY);
     let key = MessageBackupKey::derive(&backup_key, &backup_key.derive_backup_id(&ACI));
     println!("hmac key: {}", hex::encode(key.hmac_key));
@@ -138,6 +141,7 @@ fn encrypted_proto_matches_source(input: Fixture<PathBuf>) {
 fn is_valid_encrypted_proto(input: Fixture<PathBuf>) {
     let path = input.content();
 
+    #[allow(deprecated)]
     let backup_key = BackupKey::derive_from_master_key(&MASTER_KEY);
     let key = MessageBackupKey::derive(&backup_key, &backup_key.derive_backup_id(&ACI));
     println!("hmac key: {}", hex::encode(key.hmac_key));

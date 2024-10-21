@@ -893,10 +893,9 @@ fn CallLinkAuthCredentialPresentation_GetUserId(
 
 #[bridge_fn]
 fn BackupAuthCredentialRequestContext_New(backup_key: &[u8; 32], uuid: Uuid) -> Vec<u8> {
-    let context = BackupAuthCredentialRequestContext::new(
-        &libsignal_account_keys::BackupKey(*backup_key),
-        uuid.into(),
-    );
+    let backup_key: libsignal_account_keys::BackupKeyV0 =
+        libsignal_account_keys::BackupKey(*backup_key);
+    let context = BackupAuthCredentialRequestContext::new(&backup_key, uuid.into());
     zkgroup::serialize(&context)
 }
 

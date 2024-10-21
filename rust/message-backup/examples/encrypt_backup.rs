@@ -5,6 +5,7 @@
 
 use std::fmt::Display;
 use std::io::{stdout, Read as _, Write};
+use std::str::FromStr as _;
 
 use aes::cipher::block_padding::Pkcs7;
 use aes::cipher::crypto_common::rand_core::{OsRng, RngCore};
@@ -17,14 +18,15 @@ use clap_stdin::FileOrStdin;
 use futures::io::Cursor;
 use futures::AsyncReadExt;
 use hmac::Mac;
-use libsignal_account_keys::BackupKey;
+use libsignal_account_keys::{AccountEntropyPool, BackupKey};
 use libsignal_core::Aci;
 use libsignal_message_backup::args::{parse_aci, parse_hex_bytes};
 use libsignal_message_backup::key::MessageBackupKey;
 use sha2::Sha256;
 
 const DEFAULT_ACI: Aci = Aci::from_uuid_bytes([0x11; 16]);
-const DEFAULT_MASTER_KEY: [u8; 32] = [b'M'; 32];
+const DEFAULT_ACCOUNT_ENTROPY: &str =
+    "mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm";
 
 #[derive(Parser)]
 /// Compresses and encrypts an unencrypted backup file.
@@ -40,13 +42,13 @@ struct CliArgs {
     )]
     aci: WrapCliArg<Aci>,
 
-    /// master key used (with the ACI) to derive the backup keys
-    #[arg(
-        long,
-        value_parser=parse_hex_bytes::<32>.map(WrapCliArg),
-        default_value_t=WrapCliArg(DEFAULT_MASTER_KEY)
-    )]
-    master_key: WrapCliArg<[u8; BackupKey::MASTER_KEY_LEN]>,
+    /// account entropy pool used (with the ACI) to derive the backup keys
+    #[arg(long, conflicts_with = "master_key")]
+    account_entropy: Option<String>,
+
+    /// master key used (with the ACI) to derive the backup keys (deprecated)
+    #[arg(long, conflicts_with="account_entropy", value_parser=parse_hex_bytes::<32>.map(WrapCliArg))]
+    master_key: Option<WrapCliArg<[u8; BackupKey::MASTER_KEY_LEN]>>,
 
     #[arg(long, value_parser=parse_hex_bytes::<16>.map(WrapCliArg))]
     iv: Option<WrapCliArg<[u8; 16]>>,
@@ -59,15 +61,31 @@ struct CliArgs {
 fn main() {
     let CliArgs {
         filename,
-        master_key: WrapCliArg(master_key),
+        account_entropy,
+        master_key,
         aci: WrapCliArg(aci),
         iv,
         pad_bucketed,
     } = CliArgs::parse();
 
-    let backup_key = BackupKey::derive_from_master_key(&master_key);
-    let backup_id = backup_key.derive_backup_id(&aci);
-    let key = MessageBackupKey::derive(&backup_key, &backup_id);
+    let key = match (account_entropy, master_key) {
+        (Some(_), Some(_)) => unreachable!("enforced by clap"),
+        (None, Some(WrapCliArg(master_key))) => {
+            #[allow(deprecated)]
+            let backup_key = BackupKey::derive_from_master_key(&master_key);
+            let backup_id = backup_key.derive_backup_id(&aci);
+            MessageBackupKey::derive(&backup_key, &backup_id)
+        }
+        (entropy_arg, None) => {
+            let entropy_str = entropy_arg.as_deref().unwrap_or(DEFAULT_ACCOUNT_ENTROPY);
+            let account_entropy =
+                AccountEntropyPool::from_str(entropy_str).expect("valid account-entropy");
+            let backup_key = BackupKey::derive_from_account_entropy_pool(&account_entropy);
+            let backup_id = backup_key.derive_backup_id(&aci);
+            MessageBackupKey::derive(&backup_key, &backup_id)
+        }
+    };
+
     let iv = iv.map(|WrapCliArg(iv)| iv).unwrap_or_else(|| {
         let mut iv = [0; 16];
         OsRng.fill_bytes(&mut iv);

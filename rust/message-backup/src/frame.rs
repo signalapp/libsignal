@@ -264,7 +264,7 @@ mod test {
     fn frame_failed_decrypt() {
         const BYTES: [u8; 26] = *b"abcdefghijklmnopqrstuvwxyz";
         const VALID_HMAC: [u8; HMAC_LEN] =
-            hex!("bb6f4845da4d7538006dbc639cd06a56768eec45eeecefb65058de79247f4393");
+            hex!("11d842ed6afa2db9e0e8d6957a27d0100ed86cf77f39da90a7677dc93ca7f3f8");
         // Garbage, but with a valid HMAC appended.
         let frame_bytes: [u8; 58] = concat_arrays!(BYTES, VALID_HMAC);
 

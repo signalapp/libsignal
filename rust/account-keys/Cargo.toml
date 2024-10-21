@@ -29,6 +29,7 @@ static_assertions = { workspace = true }
 thiserror = { workspace = true }
 
 [dev-dependencies]
+assert_matches = { workspace = true }
 criterion = { workspace = true }
 hex-literal = { workspace = true }
 hmac = { workspace = true, features = ["reset"] }

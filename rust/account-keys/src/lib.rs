@@ -40,16 +40,70 @@ impl fmt::Display for AccountEntropyPool {
     }
 }
 
+impl fmt::Debug for AccountEntropyPool {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{self}")
+    }
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum InvalidAccountEntropyPool {
+    WrongLength(usize),
+    InvalidCharacter(char),
+}
+
+impl fmt::Display for InvalidAccountEntropyPool {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            InvalidAccountEntropyPool::WrongLength(len) => write!(
+                f,
+                "expected {} ASCII characters, got {} bytes",
+                AccountEntropyPool::LENGTH,
+                len
+            ),
+            InvalidAccountEntropyPool::InvalidCharacter(c) => write!(f, "invalid character {c:?}"),
+        }
+    }
+}
+
+impl str::FromStr for AccountEntropyPool {
+    type Err = InvalidAccountEntropyPool;
+
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        let Ok(entropy_pool) = <[u8; Self::LENGTH]>::try_from(s.as_bytes()) else {
+            return Err(InvalidAccountEntropyPool::WrongLength(s.len()));
+        };
+
+        // Using is_ascii_digit and is_ascii_lowercase generates more efficient code than
+        // ALPHABET.contains.
+        if let Some(invalid_pos) = entropy_pool
+            .iter()
+            .position(|c| !c.is_ascii_digit() && !c.is_ascii_lowercase())
+        {
+            return Err(InvalidAccountEntropyPool::InvalidCharacter(
+                s[invalid_pos..]
+                    .chars()
+                    .next()
+                    .expect("found in byte representation"),
+            ));
+        }
+
+        Ok(Self { entropy_pool })
+    }
+}
+
 #[cfg(test)]
 mod tests {
     mod account_entropy_pool_tests {
         use std::collections::HashSet;
+        use std::str::FromStr as _;
 
+        use assert_matches::assert_matches;
         use proptest::prelude::*;
         use rand::rngs::StdRng;
         use rand::SeedableRng;
 
-        use crate::AccountEntropyPool;
+        use crate::{AccountEntropyPool, InvalidAccountEntropyPool};
 
         fn test_rng(seed: u64) -> impl Rng {
             StdRng::seed_from_u64(seed)
@@ -80,6 +134,22 @@ mod tests {
                     "{entropy_pool} has already been seen."
                 );
             }
+        }
+
+        #[test]
+        fn parse() {
+            assert_matches!(
+                AccountEntropyPool::from_str(std::str::from_utf8(&[b'm'; 64]).expect("ascii")),
+                Ok(AccountEntropyPool { entropy_pool }) if entropy_pool == [b'm'; AccountEntropyPool::LENGTH]
+            );
+            assert_matches!(
+                AccountEntropyPool::from_str("abc"),
+                Err(InvalidAccountEntropyPool::WrongLength(3))
+            );
+            assert_matches!(
+                AccountEntropyPool::from_str(std::str::from_utf8(&[b' '; 64]).expect("ascii")),
+                Err(InvalidAccountEntropyPool::InvalidCharacter(' '))
+            );
         }
     }
 }

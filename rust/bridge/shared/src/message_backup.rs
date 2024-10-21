@@ -24,7 +24,7 @@ bridge_handle_fns!(
 
 #[bridge_fn]
 fn MessageBackupKey_New(master_key: &[u8; 32], aci: Aci) -> MessageBackupKey {
-    MessageBackupKey::new(master_key, aci)
+    MessageBackupKey::from_master_key(master_key, aci)
 }
 
 #[bridge_fn(jni = false, node = false)]

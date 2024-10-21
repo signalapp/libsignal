@@ -29,7 +29,7 @@ include = [
     "FfiContentHint",
     "RandomnessBytes",
 ]
-exclude = ["TAG_SIZE", "NONCE_SIZE"]
+exclude = ["TAG_SIZE", "NONCE_SIZE", "VERSION"]
 item_types = [
     "enums",
     "functions",
