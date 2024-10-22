@@ -20,6 +20,9 @@ use crate::errors::TransportConnectError;
 use crate::host::Host;
 use crate::tcp_ssl::proxy::tls::TlsProxyConnector;
 use crate::timeouts::TCP_CONNECTION_ATTEMPT_DELAY;
+#[cfg(feature = "dev-util")]
+#[allow(unused_imports)]
+use crate::utils::development_only_enable_nss_standard_debug_interop;
 use crate::utils::first_ok;
 use crate::{
     Alpn, ConnectionInfo, RouteType, StreamAndInfo, TransportConnectionParams, TransportConnector,
@@ -103,6 +106,14 @@ fn ssl_config(
     if let Some(alpn) = alpn {
         ssl.set_alpn_protos(alpn.as_ref())?;
     }
+    // Uncomment and build with the feature "dev-util" to enable NSS-standard
+    //   debugging support for e.g. Wireshark.
+    // This is already built into BoringSSL and RustTLS, so there is no added risk here,
+    //   but we need to provide a callback manually for it to work for us.
+    // See: https://udn.realityripple.com/docs/Mozilla/Projects/NSS/Key_Log_Format
+    // #[cfg(feature = "dev-util")]
+    // development_only_enable_nss_standard_debug_interop(&mut ssl)?;
+
     Ok(ssl.build().configure()?)
 }
 

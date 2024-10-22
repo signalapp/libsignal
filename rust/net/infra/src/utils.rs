@@ -3,15 +3,20 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use std::future;
+use std::fs::OpenOptions;
 use std::future::Future;
-use std::sync::Arc;
+use std::io::Write;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
+use std::{env, future};
 
 use base64::prelude::{Engine as _, BASE64_STANDARD};
 use futures_util::stream::FuturesUnordered;
 use futures_util::StreamExt;
 use http::HeaderValue;
+use once_cell::sync::OnceCell;
+
+use crate::errors::TransportConnectError;
 
 /// Constructs the value of the `Authorization` header for the `Basic` auth scheme.
 pub fn basic_authorization(username: &str, password: &str) -> HeaderValue {
@@ -217,6 +222,43 @@ pub(crate) async fn sleep_and_catch_up(duration: Duration) {
 pub(crate) async fn sleep_until_and_catch_up(time: tokio::time::Instant) {
     tokio::time::sleep_until(time).await;
     tokio::time::advance(Duration::ZERO).await
+}
+
+// We allow dead code here just to make sure this method does not bit rot. It is
+// compiled as part of the unit tests, but is only called manually by developers.
+#[cfg(feature = "dev-util")]
+#[allow(dead_code)]
+pub(crate) fn development_only_enable_nss_standard_debug_interop(
+    ssl: &mut boring_signal::ssl::SslConnectorBuilder,
+) -> Result<(), TransportConnectError> {
+    log::warn!(
+        "NSS TLS debugging enabled! If you don't expect this, report to security@signal.org"
+    );
+    if let Ok(keylog_path) = env::var("SSLKEYLOGFILE") {
+        // This copies the behavior from BoringSSL where the connection will fail if
+        //  SSLKEYLOGFILE is set but the file cannot be created. See:
+        //  https://boringssl.googlesource.com/boringssl/+/refs/heads/master/tool/client.cc#400
+        static FILE_OPEN_MUTEX: OnceCell<Mutex<std::fs::File>> = OnceCell::new();
+
+        let file_mutex = FILE_OPEN_MUTEX
+            .get_or_try_init(|| {
+                OpenOptions::new()
+                    .append(true)
+                    .create(true)
+                    .open(keylog_path)
+                    .map(Mutex::new)
+            })
+            .map_err(|_| TransportConnectError::ClientAbort)?;
+
+        ssl.set_keylog_callback(move |_ssl_ref, keylogfile_formatted_line| {
+            let mut file = file_mutex
+                .lock()
+                .expect("no earlier panic while lock was held");
+            let _ = writeln!(file, "{keylogfile_formatted_line}");
+            let _ = file.flush();
+        });
+    }
+    Ok(())
 }
 
 #[cfg(any(test, feature = "test-util"))]

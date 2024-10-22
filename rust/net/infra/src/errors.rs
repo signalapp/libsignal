@@ -28,6 +28,8 @@ pub enum TransportConnectError {
     SslFailedHandshake(FailedHandshakeReason),
     /// Proxy handshake failed
     ProxyProtocol,
+    /// Abort due to local error
+    ClientAbort,
 }
 impl LogSafeDisplay for TransportConnectError {}
 
@@ -110,6 +112,7 @@ impl From<TransportConnectError> for std::io::Error {
             | TransportConnectError::CertError
             | TransportConnectError::ProxyProtocol => ErrorKind::InvalidData,
             TransportConnectError::DnsError => ErrorKind::NotFound,
+            TransportConnectError::ClientAbort => ErrorKind::ConnectionAborted,
         };
         Self::new(kind, value.to_string())
     }

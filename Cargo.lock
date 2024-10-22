@@ -2400,6 +2400,7 @@ dependencies = [
  "lazy_static",
  "log",
  "nonzero_ext",
+ "once_cell",
  "pin-project",
  "pretty_assertions",
  "prost",

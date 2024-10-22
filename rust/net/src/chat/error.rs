@@ -74,6 +74,9 @@ impl From<WebSocketConnectError> for ChatServiceError {
                 TransportConnectError::ProxyProtocol => {
                     WebSocketServiceError::Other("proxy protocol error")
                 }
+                TransportConnectError::ClientAbort => {
+                    WebSocketServiceError::Other("client abort error")
+                }
             }
             .into(),
             WebSocketConnectError::Timeout => Self::Timeout,

@@ -10,6 +10,7 @@ workspace = true
 
 [features]
 test-util = ["dep:warp", "snow/default-resolver"]
+dev-util = []
 
 [dependencies]
 attest = { workspace = true }
@@ -32,6 +33,7 @@ indexmap = { workspace = true }
 itertools = { workspace = true }
 log = { workspace = true }
 nonzero_ext = { workspace = true }
+once_cell = { workspace = true }
 pin-project = { workspace = true }
 prost = { workspace = true }
 rustls = { version = "0.23.4", default-features = false, features = ["ring", "std", "tls12"] }
