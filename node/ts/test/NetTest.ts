@@ -470,7 +470,12 @@ describe('cdsi lookup', () => {
         [
           'Protocol',
           ErrorCode.IoError,
-          'protocol error after establishing a connection',
+          'protocol error after establishing a connection: failed to decode frame as protobuf',
+        ],
+        [
+          'CdsiProtocol',
+          ErrorCode.IoError,
+          'CDS protocol: no token found in response',
         ],
         [
           'AttestationDataError',

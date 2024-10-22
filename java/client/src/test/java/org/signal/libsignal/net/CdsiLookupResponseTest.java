@@ -56,6 +56,7 @@ public class CdsiLookupResponseTest {
   public void cdsiLookupErrorConvert() {
     assertLookupErrorIs(
         "Protocol", CdsiProtocolException.class, "Protocol error after establishing a connection");
+    assertLookupErrorIs("CdsiProtocol", CdsiProtocolException.class, "Response token was missing");
     assertLookupErrorIs(
         "AttestationDataError",
         AttestationDataException.class,

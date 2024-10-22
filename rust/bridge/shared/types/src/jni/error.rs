@@ -12,6 +12,7 @@ use http::uri::InvalidUri;
 use jni::objects::{GlobalRef, JObject, JString, JThrowable};
 use jni::{JNIEnv, JavaVM};
 use libsignal_account_keys::Error as PinError;
+use libsignal_net::cdsi::CdsiProtocolError;
 use libsignal_net::chat::ChatServiceError;
 use libsignal_net::infra::ws::{WebSocketConnectError, WebSocketServiceError};
 use libsignal_protocol::*;
@@ -259,7 +260,10 @@ impl From<libsignal_net::cdsi::LookupError> for SignalJniError {
                 ))
             }
             LookupError::InvalidResponse => CdsiError::InvalidResponse,
-            LookupError::Protocol => CdsiError::Protocol,
+            LookupError::EnclaveProtocol(_) => CdsiError::Protocol,
+            LookupError::CdsiProtocol(CdsiProtocolError::NoTokenInResponse) => {
+                CdsiError::NoTokenInResponse
+            }
             LookupError::RateLimited {
                 retry_after_seconds,
             } => CdsiError::RateLimited {

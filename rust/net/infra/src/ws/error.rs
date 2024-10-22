@@ -7,10 +7,11 @@
 //! [`Error`] type is a mirror of [`tungstenite::error::Error`] whose
 //! [`std::fmt::Display`] impl doesn't contain any user data.
 
-use std::borrow::Borrow;
+use std::borrow::{Borrow, Cow};
 use std::time::Duration;
 
 use tokio::time::Instant;
+use tungstenite::protocol::CloseFrame;
 
 use crate::connection_manager::{ErrorClass, ErrorClassifier};
 use crate::errors::{LogSafeDisplay, TransportConnectError};
@@ -81,6 +82,33 @@ impl ErrorClassifier for WebSocketConnectError {
 
         // Otherwise, assume we have a server problem (5xx), and retry.
         ErrorClass::Intermittent
+    }
+}
+
+/// The connection was unexpectedly closed.
+///
+/// If a [`CloseFrame`] was sent, it is included.
+#[derive(Debug)]
+pub struct UnexpectedCloseError(Option<CloseFrame<'static>>);
+
+impl std::fmt::Display for UnexpectedCloseError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("unexpected close: ")?;
+        match &self.0 {
+            Some(close) => write!(f, "{close}"),
+            None => f.write_str("[no close frame]"),
+        }
+    }
+}
+
+impl LogSafeDisplay for UnexpectedCloseError {}
+
+impl From<Option<CloseFrame<'_>>> for UnexpectedCloseError {
+    fn from(value: Option<CloseFrame<'_>>) -> Self {
+        Self(value.map(|CloseFrame { code, reason }| CloseFrame {
+            code,
+            reason: Cow::Owned(reason.into_owned()),
+        }))
     }
 }
 

@@ -49,7 +49,12 @@ final class NetTests: XCTestCase {
         do {
             try failWithError("Protocol")
         } catch SignalError.networkProtocolError(let message) {
-            XCTAssertEqual(message, "Protocol error: protocol error after establishing a connection")
+            XCTAssertEqual(message, "Protocol error: protocol error after establishing a connection: failed to decode frame as protobuf")
+        }
+        do {
+            try failWithError("CdsiProtocol")
+        } catch SignalError.networkProtocolError(let message) {
+            XCTAssertEqual(message, "Protocol error: CDS protocol: no token found in response")
         }
         do {
             try failWithError("AttestationDataError")

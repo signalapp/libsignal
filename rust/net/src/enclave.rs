@@ -19,8 +19,8 @@ use libsignal_net_infra::service::{
 };
 use libsignal_net_infra::utils::ObservableEvent;
 use libsignal_net_infra::ws::{
-    AttestedConnection, AttestedConnectionError, WebSocketClientConnector, WebSocketConnectError,
-    WebSocketServiceError,
+    AttestedConnection, AttestedConnectionError, AttestedProtocolError, WebSocketClientConnector,
+    WebSocketConnectError, WebSocketServiceError,
 };
 use libsignal_net_infra::{
     make_ws_config, AsyncDuplexStream, ConnectionParams, EndpointConnection, HttpBasicAuth,
@@ -251,8 +251,8 @@ pub enum Error {
     WebSocketConnect(#[from] WebSocketConnectError),
     /// Network error: {0}
     WebSocket(#[from] WebSocketServiceError),
-    /// Protocol error after establishing a connection
-    Protocol,
+    /// Protocol error after establishing a connection: {0}
+    Protocol(AttestedProtocolError),
     /// Enclave attestation failed: {0}
     AttestationError(attest::enclave::Error),
     /// Connection timeout
@@ -264,9 +264,8 @@ impl LogSafeDisplay for Error {}
 impl From<AttestedConnectionError> for Error {
     fn from(value: AttestedConnectionError) -> Self {
         match value {
-            AttestedConnectionError::ClientConnection(_) => Self::Protocol,
             AttestedConnectionError::WebSocket(net) => Self::WebSocket(net),
-            AttestedConnectionError::Protocol => Self::Protocol,
+            AttestedConnectionError::Protocol(error) => Self::Protocol(error),
             AttestedConnectionError::Attestation(err) => Self::AttestationError(err),
         }
     }

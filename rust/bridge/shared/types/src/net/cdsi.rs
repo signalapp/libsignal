@@ -26,6 +26,8 @@ pub enum CdsiError {
     ParseError,
     /// Request token was invalid
     InvalidToken,
+    /// Response token was missing
+    NoTokenInResponse,
     /// Server error: {reason}
     Server { reason: &'static str },
 }

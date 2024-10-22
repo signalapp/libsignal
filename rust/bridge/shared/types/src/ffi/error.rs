@@ -436,7 +436,11 @@ impl FfiError for IoError {
 impl FfiError for libsignal_net::cdsi::LookupError {
     fn describe(&self) -> String {
         match self {
-            Self::Protocol | Self::InvalidResponse | Self::ParseError | Self::Server { .. } => {
+            Self::CdsiProtocol(_)
+            | Self::EnclaveProtocol(_)
+            | Self::InvalidResponse
+            | Self::ParseError
+            | Self::Server { .. } => {
                 format!("Protocol error: {self}")
             }
             Self::AttestationError(e) => e.describe(),
@@ -453,9 +457,11 @@ impl FfiError for libsignal_net::cdsi::LookupError {
 
     fn code(&self) -> SignalErrorCode {
         match self {
-            Self::Protocol | Self::InvalidResponse | Self::ParseError | Self::Server { .. } => {
-                SignalErrorCode::NetworkProtocol
-            }
+            Self::CdsiProtocol(_)
+            | Self::EnclaveProtocol(_)
+            | Self::InvalidResponse
+            | Self::ParseError
+            | Self::Server { .. } => SignalErrorCode::NetworkProtocol,
             Self::AttestationError(e) => e.code(),
             Self::RateLimited { .. } => SignalErrorCode::RateLimited,
             Self::InvalidToken => SignalErrorCode::CdsiInvalidToken,

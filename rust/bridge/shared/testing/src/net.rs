@@ -14,11 +14,11 @@ use libsignal_bridge_types::net::chat::{
 };
 use libsignal_bridge_types::net::{ConnectionManager, TokioAsyncContext};
 use libsignal_core::E164;
-use libsignal_net::cdsi::{LookupError, LookupResponse, LookupResponseEntry};
+use libsignal_net::cdsi::{CdsiProtocolError, LookupError, LookupResponse, LookupResponseEntry};
 use libsignal_net::chat::{
     self, ChatServiceError, DebugInfo as ChatServiceDebugInfo, Response as ChatResponse,
 };
-use libsignal_net::infra::ws::WebSocketServiceError;
+use libsignal_net::infra::ws::{AttestedProtocolError, WebSocketServiceError};
 use libsignal_net::infra::IpType;
 use libsignal_protocol::{Aci, Pni};
 use nonzero_ext::nonzero;
@@ -91,7 +91,8 @@ macro_rules! make_error_testing_enum {
 
 make_error_testing_enum! {
     enum TestingCdsiLookupError for LookupError {
-        Protocol => Protocol,
+        EnclaveProtocol => Protocol,
+        CdsiProtocol => CdsiProtocol,
         AttestationError => AttestationDataError,
         InvalidResponse => InvalidResponse,
         RateLimited => RetryAfter42Seconds,
@@ -112,7 +113,12 @@ fn TESTING_CdsiLookupErrorConvert(
     error_description: AsType<TestingCdsiLookupError, String>,
 ) -> Result<(), LookupError> {
     Err(match error_description.into_inner() {
-        TestingCdsiLookupError::Protocol => LookupError::Protocol,
+        TestingCdsiLookupError::Protocol => {
+            LookupError::EnclaveProtocol(AttestedProtocolError::ProtobufDecode)
+        }
+        TestingCdsiLookupError::CdsiProtocol => {
+            LookupError::CdsiProtocol(CdsiProtocolError::NoTokenInResponse)
+        }
         TestingCdsiLookupError::AttestationDataError => {
             LookupError::AttestationError(attest::enclave::Error::AttestationDataError {
                 reason: "fake reason".into(),

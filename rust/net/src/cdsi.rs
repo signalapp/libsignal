@@ -5,13 +5,14 @@
 
 use std::default::Default;
 
+use futures_util::TryFutureExt as _;
 use http::StatusCode;
 use libsignal_core::{Aci, Pni, E164};
 use libsignal_net_infra::connection_manager::ConnectionManager;
-use libsignal_net_infra::errors::TransportConnectError;
+use libsignal_net_infra::errors::{LogSafeDisplay, TransportConnectError};
 use libsignal_net_infra::ws::{
-    AttestedConnection, AttestedConnectionError, NextOrClose, WebSocketConnectError,
-    WebSocketServiceError,
+    AttestedConnection, AttestedConnectionError, AttestedProtocolError, NextOrClose,
+    WebSocketConnectError, WebSocketServiceError,
 };
 use libsignal_net_infra::{
     extract_retry_after_seconds, AsyncDuplexStream, HttpBasicAuth, TransportConnector,
@@ -234,8 +235,6 @@ impl<S> AsMut<AttestedConnection<S>> for CdsiConnection<S> {
 /// Anything that can go wrong during a CDSI lookup.
 #[derive(Debug, Error, displaydoc::Display)]
 pub enum LookupError {
-    /// protocol error after establishing a connection
-    Protocol,
     /// SGX attestation failed.
     AttestationError(attest::enclave::Error),
     /// invalid response received from the server
@@ -246,6 +245,8 @@ pub enum LookupError {
     InvalidToken,
     /// failed to parse the response from the server
     ParseError,
+    /// protocol error after establishing a connection: {0}
+    EnclaveProtocol(AttestedProtocolError),
     /// transport failed: {0}
     ConnectTransport(TransportConnectError),
     /// websocket error: {0}
@@ -256,14 +257,21 @@ pub enum LookupError {
     InvalidArgument { server_reason: String },
     /// server error: {reason}
     Server { reason: &'static str },
+    /// CDS protocol: {0}
+    CdsiProtocol(CdsiProtocolError),
+}
+
+#[derive(Debug, Error, displaydoc::Display)]
+pub enum CdsiProtocolError {
+    /// no token found in response
+    NoTokenInResponse,
 }
 
 impl From<AttestedConnectionError> for LookupError {
     fn from(value: AttestedConnectionError) -> Self {
         match value {
-            AttestedConnectionError::ClientConnection(_) => Self::Protocol,
             AttestedConnectionError::WebSocket(e) => Self::WebSocket(e),
-            AttestedConnectionError::Protocol => Self::Protocol,
+            AttestedConnectionError::Protocol(error) => Self::EnclaveProtocol(error),
             AttestedConnectionError::Attestation(e) => Self::AttestationError(e),
         }
     }
@@ -295,7 +303,7 @@ impl From<crate::enclave::Error> for LookupError {
             },
             Error::AttestationError(err) => Self::AttestationError(err),
             Error::WebSocket(err) => Self::WebSocket(err),
-            Error::Protocol => Self::Protocol,
+            Error::Protocol(error) => Self::EnclaveProtocol(error),
             Error::ConnectionTimedOut => Self::ConnectionTimedOut,
         }
     }
@@ -303,7 +311,7 @@ impl From<crate::enclave::Error> for LookupError {
 
 impl From<prost::DecodeError> for LookupError {
     fn from(_value: prost::DecodeError) -> Self {
-        Self::Protocol
+        Self::EnclaveProtocol(AttestedProtocolError::ProtobufDecode)
     }
 }
 
@@ -327,7 +335,15 @@ impl<S: AsyncDuplexStream> CdsiConnection<S> {
         C: ConnectionManager,
         T: TransportConnector<Stream = S>,
     {
-        let connection = endpoint.connect(auth, transport_connector).await?;
+        log::info!("connecting to CDSI endpoint");
+        let connection = endpoint
+            .connect(auth, transport_connector)
+            .inspect_err(|e| {
+                log::warn!("CDSI connection failed: {e}");
+            })
+            .await?;
+
+        log::info!("successfully established attested connection to CDSI endpoint");
         Ok(Self(connection))
     }
 
@@ -335,15 +351,19 @@ impl<S: AsyncDuplexStream> CdsiConnection<S> {
         mut self,
         request: LookupRequest,
     ) -> Result<(Token, ClientResponseCollector<S>), LookupError> {
-        self.0.send(request.into_client_request()).await?;
-        let token_response: ClientResponse = self.0.receive().await?.next_or_else(|close| {
-            close
-                .and_then(err_for_close)
-                .unwrap_or(LookupError::Protocol)
-        })?;
+        let request_info = LookupRequestDebugInfo::from(&request);
+        let request = request.into_client_request().encode_to_vec();
+        log::info!(
+            "sending {}-byte initial request: {request_info}",
+            request.len()
+        );
+        self.0.send_bytes(request).await?;
+        let token_response: ClientResponse = self.0.receive().await?.next_or_else(err_for_close)?;
 
         if token_response.token.is_empty() {
-            return Err(LookupError::Protocol);
+            return Err(LookupError::CdsiProtocol(
+                CdsiProtocolError::NoTokenInResponse,
+            ));
         }
 
         Ok((
@@ -363,11 +383,8 @@ impl<S: AsyncDuplexStream> ClientResponseCollector<S> {
         };
 
         connection.0.send(token_ack).await?;
-        let mut response: ClientResponse = connection.0.receive().await?.next_or_else(|close| {
-            close
-                .and_then(err_for_close)
-                .unwrap_or(LookupError::Protocol)
-        })?;
+        let mut response: ClientResponse =
+            connection.0.receive().await?.next_or_else(err_for_close)?;
         loop {
             match connection.0.receive_bytes().await? {
                 NextOrClose::Next(decoded) => {
@@ -381,13 +398,56 @@ impl<S: AsyncDuplexStream> ClientResponseCollector<S> {
                         code: CloseCode::Normal,
                         reason: _,
                     }),
-                ) => break,
-                NextOrClose::Close(Some(close)) => {
-                    return Err(err_for_close(close).unwrap_or(LookupError::Protocol))
+                ) => {
+                    log::info!("finished CDSI lookup");
+                    break;
                 }
+                NextOrClose::Close(Some(close)) => return Err(err_for_close(Some(close))),
             }
         }
         Ok(response.try_into()?)
+    }
+}
+
+/// For logging information about an initiated CDSI request.
+struct LookupRequestDebugInfo {
+    new_e164s: usize,
+    prev_e164s: usize,
+    acis_and_access_keys: usize,
+    return_acis_without_uaks: bool,
+    token: usize,
+}
+
+impl std::fmt::Display for LookupRequestDebugInfo {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("LookupRequestDebugInfo")
+            .field("new_e164s", &self.new_e164s)
+            .field("prev_e164s", &self.prev_e164s)
+            .field("acis_and_access_keys", &self.acis_and_access_keys)
+            .field("return_acis_without_uaks", &self.return_acis_without_uaks)
+            .field("token", &self.token)
+            .finish()
+    }
+}
+
+impl LogSafeDisplay for LookupRequestDebugInfo {}
+
+impl From<&LookupRequest> for LookupRequestDebugInfo {
+    fn from(value: &LookupRequest) -> Self {
+        let LookupRequest {
+            new_e164s,
+            prev_e164s,
+            acis_and_access_keys,
+            return_acis_without_uaks,
+            token,
+        } = value;
+        Self {
+            new_e164s: new_e164s.len(),
+            prev_e164s: prev_e164s.len(),
+            acis_and_access_keys: acis_and_access_keys.len(),
+            return_acis_without_uaks: *return_acis_without_uaks,
+            token: token.len(),
+        }
     }
 }
 
@@ -406,29 +466,42 @@ enum CdsiCloseCode {
 ///
 /// Returns `Some(err)` if there is a relevant `LookupError` value for the
 /// provided close frame. Otherwise returns `None`.
-fn err_for_close(CloseFrame { code, reason }: CloseFrame<'_>) -> Option<LookupError> {
+fn err_for_close(close: Option<CloseFrame<'_>>) -> LookupError {
+    fn unexpected_close(close: Option<CloseFrame<'_>>) -> LookupError {
+        LookupError::EnclaveProtocol(AttestedProtocolError::UnexpectedClose(close.into()))
+    }
+
+    let Some(CloseFrame { code, reason }) = &close else {
+        log::warn!("got unexpected connection close without a Close frame");
+        return unexpected_close(close);
+    };
+
     let Ok(code) = CdsiCloseCode::try_from(u16::from(code)) else {
-        log::warn!("got unexpected websocket error code: {code}",);
-        return None;
+        log::warn!("got unexpected websocket error code: {code}");
+        return unexpected_close(close);
     };
 
     match code {
-        CdsiCloseCode::InvalidArgument => Some(LookupError::InvalidArgument {
-            server_reason: reason.into_owned(),
-        }),
-        CdsiCloseCode::InvalidToken => Some(LookupError::InvalidToken),
+        CdsiCloseCode::InvalidArgument => LookupError::InvalidArgument {
+            server_reason: reason.clone().into_owned(),
+        },
+        CdsiCloseCode::InvalidToken => LookupError::InvalidToken,
         CdsiCloseCode::RateLimitExceeded => {
-            let RateLimitExceededResponse {
+            let Some(RateLimitExceededResponse {
                 retry_after_seconds,
-            } = serde_json::from_str(&reason).ok()?;
-            Some(LookupError::RateLimited {
+            }) = serde_json::from_str(reason).ok()
+            else {
+                log::warn!("failed to parse rate limit from reason");
+                return unexpected_close(close);
+            };
+            LookupError::RateLimited {
                 retry_after_seconds,
-            })
+            }
         }
         CdsiCloseCode::ServerInternalError | CdsiCloseCode::ServerUnavailable => {
-            Some(LookupError::Server {
+            LookupError::Server {
                 reason: code.into(),
-            })
+            }
         }
     }
 }

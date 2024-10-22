@@ -191,7 +191,7 @@ impl From<super::svr::Error> for Error {
         match err {
             SvrError::WebSocketConnect(inner) => Self::Connect(inner),
             SvrError::WebSocket(inner) => Self::Service(inner),
-            SvrError::Protocol => Self::Protocol("General SVR protocol error".to_string()),
+            SvrError::Protocol(error) => Self::Protocol(error.to_string()),
             SvrError::AttestationError(inner) => Self::AttestationError(inner),
             SvrError::ConnectionTimedOut => Self::ConnectionTimedOut,
         }

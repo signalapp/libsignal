@@ -27,7 +27,7 @@ use crate::errors::LogSafeDisplay;
 use crate::host::Host;
 use crate::service::{CancellationReason, CancellationToken, ServiceConnector};
 use crate::utils::timeout;
-use crate::ws::error::{HttpFormatError, ProtocolError, SpaceError};
+use crate::ws::error::{HttpFormatError, ProtocolError, SpaceError, UnexpectedCloseError};
 use crate::{
     Alpn, AsyncDuplexStream, ConnectionInfo, ConnectionParams, StreamAndInfo, TransportConnector,
 };
@@ -469,10 +469,19 @@ where
     }
 }
 
+#[derive(Debug, thiserror::Error, displaydoc::Display)]
+pub enum AttestedProtocolError {
+    /// failed to decode frame as protobuf
+    ProtobufDecode,
+    /// received a text websocket frame
+    TextFrame,
+    /// {0}
+    UnexpectedClose(UnexpectedCloseError),
+}
+
 #[derive(Debug)]
 pub enum AttestedConnectionError {
-    Protocol,
-    ClientConnection(attest::client_connection::Error),
+    Protocol(AttestedProtocolError),
     Attestation(attest::enclave::Error),
     WebSocket(WebSocketServiceError),
 }
@@ -491,7 +500,7 @@ impl From<WebSocketServiceError> for AttestedConnectionError {
 
 impl From<attest::client_connection::Error> for AttestedConnectionError {
     fn from(value: attest::client_connection::Error) -> Self {
-        Self::ClientConnection(value)
+        Self::Attestation(value.into())
     }
 }
 
@@ -603,7 +612,7 @@ where
             NextOrClose::Next(b) => b,
         };
         T::decode(received.as_ref())
-            .map_err(|_| AttestedConnectionError::Protocol)
+            .map_err(|_| AttestedConnectionError::Protocol(AttestedProtocolError::ProtobufDecode))
             .map(NextOrClose::Next)
     }
 
@@ -623,7 +632,9 @@ where
 impl TextOrBinary {
     fn try_into_binary(self) -> Result<Vec<u8>, AttestedConnectionError> {
         match self {
-            TextOrBinary::Text(_) => Err(AttestedConnectionError::Protocol),
+            TextOrBinary::Text(_) => Err(AttestedConnectionError::Protocol(
+                AttestedProtocolError::TextFrame,
+            )),
             TextOrBinary::Binary(b) => Ok(b),
         }
     }
@@ -999,7 +1010,7 @@ mod test {
         // Decoding a vec as a 32-bit float shouldn't work.
         assert_matches!(
             connection.receive::<f32>().await.expect_err("wrong type"),
-            AttestedConnectionError::Protocol
+            AttestedConnectionError::Protocol(AttestedProtocolError::ProtobufDecode)
         );
     }
 

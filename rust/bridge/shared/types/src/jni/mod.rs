@@ -592,6 +592,7 @@ impl<'env> ConsumableException<'env> {
                 CdsiError::InvalidResponse
                 | CdsiError::ParseError
                 | CdsiError::Protocol
+                | CdsiError::NoTokenInResponse
                 | CdsiError::Server { reason: _ },
             ) => (
                 ClassName("org.signal.libsignal.net.CdsiProtocolException"),
