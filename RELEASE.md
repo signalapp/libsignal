@@ -18,7 +18,7 @@ bin/regenerate_acknowledgments.sh # include the new version number in the acknow
 
 ## 2. Record the code size for the Java library
 
-On GitHub, under the Java tests for the most recent commit, copy the code size computed in the "java/check_code_size.py" step into a new entry in java/code_size.json.
+On GitHub, under the Java tests for the most recent commit, copy the code size computed for the "current" commit in the "java/check_code_size.py" step into a new entry in java/code_size.json.
 
 ## 3. Commit the version change and tag with release notes
 

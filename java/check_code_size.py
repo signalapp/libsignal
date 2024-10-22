@@ -46,6 +46,11 @@ def print_size_diff(lib_size: int, old_entry: Mapping[str, Any], *, warn_on_jump
         print(message)
 
 
+def print_size_for_release(lib_size: int) -> None:
+    message = f"if this this commit marks a release, update code_size.json with {lib_size}"
+    print(message)
+
+
 def current_origin_main_entry() -> Optional[Mapping[str, Any]]:
     try:
         if os.environ.get('GITHUB_EVENT_NAME') == 'push':
@@ -104,6 +109,7 @@ if origin_main_entry is not None:
     print_size_diff(lib_size, origin_main_entry)
 else:
     print_size_diff(lib_size, most_recent_tag_entry)
+print_size_for_release(lib_size)
 
 
 # Typing this properly requires a bunch of helpers in Python 3.9,
