@@ -4,8 +4,8 @@
 //
 
 // This must match the Rust version of the enum.
-enum BackupLevel {
-  Free = 200,
-  Paid = 201,
+enum BackupCredentialType {
+  Messages = 1,
+  Media = 2,
 }
-export default BackupLevel;
+export default BackupCredentialType;

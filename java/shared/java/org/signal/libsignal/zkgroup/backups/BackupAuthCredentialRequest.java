@@ -30,11 +30,15 @@ public final class BackupAuthCredentialRequest extends ByteArray {
    * @param timestamp Must be a round number of days. Use {@link Instant#truncatedTo} to ensure
    *     this.
    * @param backupLevel The {@link BackupLevel} that this credential is authorized for
+   * @param type The type of upload the credential will be used for
    * @param params The params that will be used by the verifying server to verify this credential.
    */
   public BackupAuthCredentialResponse issueCredential(
-      Instant timestamp, BackupLevel backupLevel, GenericServerSecretParams params) {
-    return issueCredential(timestamp, backupLevel, params, new SecureRandom());
+      Instant timestamp,
+      BackupLevel backupLevel,
+      BackupCredentialType type,
+      GenericServerSecretParams params) {
+    return issueCredential(timestamp, backupLevel, type, params, new SecureRandom());
   }
 
   /**
@@ -46,12 +50,14 @@ public final class BackupAuthCredentialRequest extends ByteArray {
    * @param timestamp Must be a round number of days. Use {@link Instant#truncatedTo} to ensure
    *     this.
    * @param backupLevel The {@link BackupLevel} that this credential is authorized for
+   * @param type The type of upload the credential will be used for
    * @param params The params that will be used by the verifying server to verify this credential.
    * @param secureRandom Used to hide the server's secrets and make the issued credential unique.
    */
   public BackupAuthCredentialResponse issueCredential(
       Instant timestamp,
       BackupLevel backupLevel,
+      BackupCredentialType type,
       GenericServerSecretParams params,
       SecureRandom secureRandom) {
     byte[] random = new byte[RANDOM_LENGTH];
@@ -62,6 +68,7 @@ public final class BackupAuthCredentialRequest extends ByteArray {
             getInternalContentsForJNI(),
             timestamp.getEpochSecond(),
             backupLevel.getValue(),
+            type.getValue(),
             params.getInternalContentsForJNI(),
             random);
 

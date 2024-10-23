@@ -12,6 +12,7 @@ import { RANDOM_LENGTH } from '../internal/Constants';
 import GenericServerSecretParams from '../GenericServerSecretParams';
 import BackupAuthCredentialResponse from './BackupAuthCredentialResponse';
 import BackupLevel from './BackupLevel';
+import BackupCredentialType from './BackupCredentialType';
 
 export default class BackupAuthCredentialRequest extends ByteArray {
   private readonly __type?: never;
@@ -23,12 +24,14 @@ export default class BackupAuthCredentialRequest extends ByteArray {
   issueCredential(
     timestamp: number,
     backupLevel: BackupLevel,
+    type: BackupCredentialType,
     params: GenericServerSecretParams
   ): BackupAuthCredentialResponse {
     const random = randomBytes(RANDOM_LENGTH);
     return this.issueCredentialWithRandom(
       timestamp,
       backupLevel,
+      type,
       params,
       random
     );
@@ -37,6 +40,7 @@ export default class BackupAuthCredentialRequest extends ByteArray {
   issueCredentialWithRandom(
     timestamp: number,
     backupLevel: BackupLevel,
+    type: BackupCredentialType,
     params: GenericServerSecretParams,
     random: Buffer
   ): BackupAuthCredentialResponse {
@@ -45,6 +49,7 @@ export default class BackupAuthCredentialRequest extends ByteArray {
         this.contents,
         timestamp,
         backupLevel,
+        type,
         params.contents,
         random
       )

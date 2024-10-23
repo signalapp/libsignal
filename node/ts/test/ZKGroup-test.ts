@@ -61,6 +61,7 @@ import {
 } from '../zkgroup/';
 import { Aci, Pni } from '../Address';
 import { LibSignalErrorBase, Uuid } from '..';
+import BackupCredentialType from '../zkgroup/backups/BackupCredentialType';
 
 const SECONDS_PER_DAY = 86400;
 
@@ -707,6 +708,7 @@ describe('ZKGroup', () => {
   });
 
   describe('BackupAuthCredential', () => {
+    // Chosen randomly
     const SERVER_SECRET_RANDOM = hexToBuffer(
       '6987b92bdea075d3f8b42b39d780a5be0bc264874a18e11cac694e4fe28f6cca'
     );
@@ -715,16 +717,19 @@ describe('ZKGroup', () => {
     );
     const TEST_USER_ID: Uuid = 'e74beed0-e70f-4cfd-abbb-7e3eb333bbac';
 
+    // These are expectations; if the contents of a credential or derivation of a backup ID changes,
+    // they will need to be updated.
     const SERIALIZED_BACKUP_ID = hexToBuffer(
-      'e3926f11ddd143e6dd0f20bfcb08349e'
+      '52b899ef83125719d3daa9a4edcc0aff'
     );
     const SERIALIZED_REQUEST_CREDENTIAL = Buffer.from(
-      'AISCxQa8OsFqphsQPxqtzJk5+jndpE3SJG6bfazQB3994Aersq2yNRgcARBoedBeoEfKIXdty6X7l6+TiPFAqDvojRSO8xaZOpKJOvWSDJIGn6EeMl2jOjx+IQg8d8M0AQ==',
+      'AISCxQa8OsFqphsQPxqtzJk5+jndpE3SJG6bfazQB3999KZFdtnpcIjx/0DPYbLJRbLQmz1ZXnueq5HPo9ewpEjojRSO8xaZOpKJOvWSDJIGn6EeMl2jOjx+IQg8d8M0AQ==',
       'base64'
     );
 
     it('testDeterministic', () => {
-      const backupLevel = BackupLevel.Messages;
+      const backupLevel = BackupLevel.Free;
+      const credentialType = BackupCredentialType.Messages;
       const context = BackupAuthCredentialRequestContext.create(
         BACKUP_KEY,
         TEST_USER_ID
@@ -740,6 +745,7 @@ describe('ZKGroup', () => {
       const response = request.issueCredential(
         startOfDay,
         backupLevel,
+        credentialType,
         serverSecretParams
       );
       const credential = context.receive(
@@ -748,6 +754,7 @@ describe('ZKGroup', () => {
         serverSecretParams.getPublicParams()
       );
       assert.equal(backupLevel, credential.getBackupLevel());
+      assert.equal(credentialType, credential.getType());
       assertArrayEquals(SERIALIZED_BACKUP_ID, credential.getBackupId());
 
       const presentation = credential.present(
@@ -758,7 +765,8 @@ describe('ZKGroup', () => {
     });
 
     it('testIntegration', () => {
-      const backupLevel = BackupLevel.Messages;
+      const backupLevel = BackupLevel.Free;
+      const credentialType = BackupCredentialType.Messages;
 
       const serverSecretParams =
         GenericServerSecretParams.generateWithRandom(SERVER_SECRET_RANDOM);
@@ -777,6 +785,7 @@ describe('ZKGroup', () => {
       const response = request.issueCredentialWithRandom(
         startOfDay,
         backupLevel,
+        credentialType,
         serverSecretParams,
         TEST_ARRAY_32_1
       );
@@ -788,6 +797,7 @@ describe('ZKGroup', () => {
         serverPublicParams
       );
       assert.equal(backupLevel, credential.getBackupLevel());
+      assert.equal(credentialType, credential.getType());
       const presentation = credential.presentWithRandom(
         serverPublicParams,
         TEST_ARRAY_32_2

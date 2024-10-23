@@ -152,6 +152,7 @@ public final class Native {
   public static native void BackupAuthCredentialPresentation_CheckValidContents(byte[] presentationBytes) throws Exception;
   public static native byte[] BackupAuthCredentialPresentation_GetBackupId(byte[] presentationBytes);
   public static native int BackupAuthCredentialPresentation_GetBackupLevel(byte[] presentationBytes);
+  public static native int BackupAuthCredentialPresentation_GetType(byte[] presentationBytes);
   public static native void BackupAuthCredentialPresentation_Verify(byte[] presentationBytes, long now, byte[] serverParamsBytes) throws Exception;
 
   public static native void BackupAuthCredentialRequestContext_CheckValidContents(byte[] contextBytes) throws Exception;
@@ -160,13 +161,14 @@ public final class Native {
   public static native byte[] BackupAuthCredentialRequestContext_ReceiveResponse(byte[] contextBytes, byte[] responseBytes, long expectedRedemptionTime, byte[] paramsBytes) throws Exception;
 
   public static native void BackupAuthCredentialRequest_CheckValidContents(byte[] requestBytes) throws Exception;
-  public static native byte[] BackupAuthCredentialRequest_IssueDeterministic(byte[] requestBytes, long redemptionTime, int backupLevel, byte[] paramsBytes, byte[] randomness);
+  public static native byte[] BackupAuthCredentialRequest_IssueDeterministic(byte[] requestBytes, long redemptionTime, int backupLevel, int credentialType, byte[] paramsBytes, byte[] randomness);
 
   public static native void BackupAuthCredentialResponse_CheckValidContents(byte[] responseBytes) throws Exception;
 
   public static native void BackupAuthCredential_CheckValidContents(byte[] paramsBytes) throws Exception;
   public static native byte[] BackupAuthCredential_GetBackupId(byte[] credentialBytes);
   public static native int BackupAuthCredential_GetBackupLevel(byte[] credentialBytes);
+  public static native int BackupAuthCredential_GetType(byte[] credentialBytes);
   public static native byte[] BackupAuthCredential_PresentDeterministic(byte[] credentialBytes, byte[] serverParamsBytes, byte[] randomness) throws Exception;
 
   public static native void CallLinkAuthCredentialPresentation_CheckValidContents(byte[] presentationBytes) throws Exception;

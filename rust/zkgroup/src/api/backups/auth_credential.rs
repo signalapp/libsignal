@@ -43,9 +43,10 @@ impl zkcredential::attributes::RevealedAttribute for BackupIdPoint {
 
 const CREDENTIAL_LABEL: &[u8] = b"20231003_Signal_BackupAuthCredential";
 
-// We make sure we serialize BackupLevel with plenty of room to expand to other
-// u64 values later. But since it fits in a byte today, we stick to just a u8
-// in the in-memory representation.
+// We make sure we serialize BackupLevel and BackupType with plenty of room to expand to other u64
+// values later. But since they fit in a byte today, we stick to just a u8 in the in-memory and
+// bridge representation.
+
 #[derive(
     Copy,
     Clone,
@@ -61,8 +62,8 @@ const CREDENTIAL_LABEL: &[u8] = b"20231003_Signal_BackupAuthCredential";
 #[repr(u8)]
 pub enum BackupLevel {
     #[partial_default]
-    Messages = 200,
-    Media = 201,
+    Free = 200,
+    Paid = 201,
 }
 
 impl From<BackupLevel> for u64 {
@@ -79,6 +80,43 @@ impl TryFrom<u64> for BackupLevel {
         u8::try_from(value)
             .ok()
             .and_then(|v| BackupLevel::try_from(v).ok())
+            .ok_or(ZkGroupDeserializationFailure::new::<Self>())
+    }
+}
+
+#[derive(
+    Copy,
+    Clone,
+    Serialize,
+    Deserialize,
+    PartialEq,
+    Eq,
+    PartialDefault,
+    Debug,
+    num_enum::TryFromPrimitive,
+)]
+#[serde(into = "u64", try_from = "u64")]
+#[repr(u8)]
+pub enum BackupCredentialType {
+    #[partial_default]
+    Messages = 1,
+    Media = 2,
+}
+
+impl From<BackupCredentialType> for u64 {
+    fn from(credential_type: BackupCredentialType) -> Self {
+        credential_type as u64
+    }
+}
+
+impl TryFrom<u64> for BackupCredentialType {
+    // Unfortunately u8::try_from and TryFromPrimitive have different Error types.
+    // But we shouldn't be passing invalid BackupTypes anyway.
+    type Error = ZkGroupDeserializationFailure;
+    fn try_from(value: u64) -> Result<Self, Self::Error> {
+        u8::try_from(value)
+            .ok()
+            .and_then(|v| BackupCredentialType::try_from(v).ok())
             .ok_or(ZkGroupDeserializationFailure::new::<Self>())
     }
 }
@@ -138,6 +176,7 @@ impl BackupAuthCredentialRequest {
         &self,
         redemption_time: Timestamp,
         backup_level: BackupLevel,
+        credential_type: BackupCredentialType,
         params: &GenericServerSecretParams,
         randomness: RandomnessBytes,
     ) -> BackupAuthCredentialResponse {
@@ -145,9 +184,11 @@ impl BackupAuthCredentialRequest {
             reserved: Default::default(),
             redemption_time,
             backup_level,
+            credential_type,
             blinded_credential: zkcredential::issuance::IssuanceProofBuilder::new(CREDENTIAL_LABEL)
                 .add_public_attribute(&redemption_time)
-                .add_public_attribute(&(backup_level as u64))
+                .add_public_attribute(&u64::from(backup_level))
+                .add_public_attribute(&u64::from(credential_type))
                 .add_blinded_revealed_attribute(&self.blinded_backup_id)
                 .issue(&params.credential_key, &self.public_key, randomness),
         }
@@ -162,6 +203,7 @@ pub struct BackupAuthCredentialResponse {
     // But that would change the format.
     redemption_time: Timestamp,
     backup_level: BackupLevel,
+    credential_type: BackupCredentialType,
     blinded_credential: zkcredential::issuance::blind::BlindedIssuanceProof,
 }
 
@@ -182,9 +224,11 @@ impl BackupAuthCredentialRequestContext {
             reserved: Default::default(),
             redemption_time: response.redemption_time,
             backup_level: response.backup_level,
+            credential_type: response.credential_type,
             credential: zkcredential::issuance::IssuanceProofBuilder::new(CREDENTIAL_LABEL)
                 .add_public_attribute(&response.redemption_time)
-                .add_public_attribute(&(response.backup_level as u64))
+                .add_public_attribute(&u64::from(response.backup_level))
+                .add_public_attribute(&u64::from(response.credential_type))
                 .add_blinded_revealed_attribute(&self.blinded_backup_id)
                 .verify(
                     &params.credential_key,
@@ -202,6 +246,7 @@ pub struct BackupAuthCredential {
     reserved: ReservedByte,
     redemption_time: Timestamp,
     backup_level: BackupLevel,
+    credential_type: BackupCredentialType,
     credential: zkcredential::credentials::Credential,
     backup_id: libsignal_account_keys::BackupId,
 }
@@ -216,6 +261,7 @@ impl BackupAuthCredential {
             version: Default::default(),
             redemption_time: self.redemption_time,
             backup_level: self.backup_level,
+            credential_type: self.credential_type,
             backup_id: self.backup_id,
             proof: zkcredential::presentation::PresentationProofBuilder::new(CREDENTIAL_LABEL)
                 .add_revealed_attribute(&BackupIdPoint::new(&self.backup_id))
@@ -230,12 +276,17 @@ impl BackupAuthCredential {
     pub fn backup_level(&self) -> BackupLevel {
         self.backup_level
     }
+
+    pub fn credential_type(&self) -> BackupCredentialType {
+        self.credential_type
+    }
 }
 
 #[derive(Serialize, Deserialize, PartialDefault)]
 pub struct BackupAuthCredentialPresentation {
     version: ReservedByte,
     backup_level: BackupLevel,
+    credential_type: BackupCredentialType,
     redemption_time: Timestamp,
     proof: zkcredential::presentation::PresentationProof,
     backup_id: libsignal_account_keys::BackupId,
@@ -262,7 +313,8 @@ impl BackupAuthCredentialPresentation {
 
         zkcredential::presentation::PresentationProofVerifier::new(CREDENTIAL_LABEL)
             .add_public_attribute(&self.redemption_time)
-            .add_public_attribute(&(self.backup_level as u64))
+            .add_public_attribute(&u64::from(self.backup_level))
+            .add_public_attribute(&u64::from(self.credential_type))
             .add_revealed_attribute(&BackupIdPoint::new(&self.backup_id))
             .verify(&server_params.credential_key, &self.proof)
             .map_err(|_| ZkGroupVerificationFailure)
@@ -270,6 +322,10 @@ impl BackupAuthCredentialPresentation {
 
     pub fn backup_level(&self) -> BackupLevel {
         self.backup_level
+    }
+
+    pub fn credential_type(&self) -> BackupCredentialType {
+        self.credential_type
     }
 
     pub fn backup_id(&self) -> libsignal_account_keys::BackupId {
@@ -281,10 +337,7 @@ impl BackupAuthCredentialPresentation {
 mod tests {
     use assert_matches::assert_matches;
 
-    use crate::backups::auth_credential::{BackupLevel, GenericServerSecretParams};
-    use crate::backups::{
-        BackupAuthCredential, BackupAuthCredentialPresentation, BackupAuthCredentialRequestContext,
-    };
+    use super::*;
     use crate::{common, RandomnessBytes, Timestamp, RANDOMNESS_LEN, SECONDS_PER_DAY};
 
     const DAY_ALIGNED_TIMESTAMP: Timestamp = Timestamp::from_epoch_seconds(1681344000); // 2023-04-13 00:00:00 UTC
@@ -306,7 +359,8 @@ mod tests {
         // server generated materials; issuance request -> issuance response
         let blinded_credential = request.issue(
             redemption_time,
-            BackupLevel::Messages,
+            BackupLevel::Free,
+            BackupCredentialType::Messages,
             &server_secret_params(),
             ISSUE_RAND,
         );
@@ -377,7 +431,7 @@ mod tests {
             credential.present(&server_secret_params().get_public_params(), PRESENT_RAND);
         let invalid_presentation = BackupAuthCredentialPresentation {
             // Credential was for BackupLevel::Messages
-            backup_level: BackupLevel::Media,
+            backup_level: BackupLevel::Paid,
             ..valid_presentation
         };
         invalid_presentation
@@ -393,7 +447,8 @@ mod tests {
         let request = request_context.get_request();
         let blinded_credential = request.issue(
             redemption_time,
-            BackupLevel::Messages,
+            BackupLevel::Free,
+            BackupCredentialType::Messages,
             &server_secret_params(),
             ISSUE_RAND,
         );
@@ -417,7 +472,8 @@ mod tests {
         let request = request_context.get_request();
         let blinded_credential = request.issue(
             redemption_time,
-            BackupLevel::Messages,
+            BackupLevel::Free,
+            BackupCredentialType::Messages,
             &server_secret_params(),
             ISSUE_RAND,
         );
@@ -435,28 +491,30 @@ mod tests {
 
     #[test]
     fn test_backup_level_serialization() {
-        let messages_bytes = common::serialization::serialize(&BackupLevel::Messages);
-        let media_byte = common::serialization::serialize(&BackupLevel::Media);
-        assert_eq!(messages_bytes.len(), 8);
-        assert_eq!(media_byte.len(), 8);
+        let free_bytes = common::serialization::serialize(&BackupLevel::Free);
+        let paid_bytes = common::serialization::serialize(&BackupLevel::Paid);
+        assert_eq!(free_bytes.len(), 8);
+        assert_eq!(paid_bytes.len(), 8);
 
-        let messages_num: u64 =
-            common::serialization::deserialize(&messages_bytes).expect("valid u64");
-        let media_num: u64 = common::serialization::deserialize(&media_byte).expect("valid u64");
-        assert_eq!(messages_num, 200);
-        assert_eq!(media_num, 201);
+        let free_num: u64 = common::serialization::deserialize(&free_bytes).expect("valid u64");
+        let paid_num: u64 = common::serialization::deserialize(&paid_bytes).expect("valid u64");
+        assert_eq!(free_num, 200);
+        assert_eq!(paid_num, 201);
 
-        let messages: BackupLevel =
-            common::serialization::deserialize(&messages_bytes).expect("valid level");
-        let media: BackupLevel =
-            common::serialization::deserialize(&media_byte).expect("valid level");
-        assert_eq!(messages, BackupLevel::Messages);
-        assert_eq!(media, BackupLevel::Media);
+        let free: BackupLevel =
+            common::serialization::deserialize(&free_bytes).expect("valid level");
+        let paid: BackupLevel =
+            common::serialization::deserialize(&paid_bytes).expect("valid level");
+        assert_eq!(free, BackupLevel::Free);
+        assert_eq!(paid, BackupLevel::Paid);
     }
 
     #[test]
     fn test_backup_level_validation() {
         // Check that the u64 level isn't just truncated to u8.
-        assert_matches!(BackupLevel::try_from(0x100000000000u64 + 200u64), Err(_));
+        assert_matches!(
+            BackupLevel::try_from(0x100000000000u64 + u64::from(BackupLevel::Free)),
+            Err(_)
+        );
     }
 }

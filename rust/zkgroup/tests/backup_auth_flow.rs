@@ -24,7 +24,8 @@ fn test_backup_auth_request_response() {
 
     // client receives in response to initial request
     let redemption_time: Timestamp = DAY_ALIGNED_TIMESTAMP; // client validates it's day-aligned
-    let backup_level = zkgroup::backups::BackupLevel::Messages; // client validates it's a valid backup level
+    let backup_level = zkgroup::backups::BackupLevel::Free; // client validates it's a valid backup level
+    let credential_type = zkgroup::backups::BackupCredentialType::Messages; // client validates it's for the right set of files
 
     // client generated materials; issuance request
     let request_context =
@@ -37,6 +38,7 @@ fn test_backup_auth_request_response() {
     let blinded_credential = request.issue(
         redemption_time,
         backup_level,
+        credential_type,
         &server_secret_params,
         randomness2,
     );
@@ -48,6 +50,7 @@ fn test_backup_auth_request_response() {
         .expect("credential should be valid");
 
     assert_eq!(credential.backup_level(), backup_level);
+    assert_eq!(credential.credential_type(), credential_type);
 
     let presentation = credential.present(&server_public_params, randomness3);
 

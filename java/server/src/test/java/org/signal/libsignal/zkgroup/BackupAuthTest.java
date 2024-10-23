@@ -23,6 +23,7 @@ import org.signal.libsignal.zkgroup.backups.*;
  */
 public final class BackupAuthTest extends SecureRandomTest {
 
+  // Chosen randomly
   private static final UUID TEST_USER_ID = UUID.fromString("e74beed0-e70f-4cfd-abbb-7e3eb333bbac");
 
   private static final byte[] BACKUP_KEY =
@@ -41,12 +42,14 @@ public final class BackupAuthTest extends SecureRandomTest {
       Hex.fromStringCondensedAssert(
           "8e3f24cb0a7e7614c7b4ab04ba8a145f108c53c4b10a096aa4503ae1e0c9f661");
 
+  // These are expectations; if the contents of a credential or derivation of a backup ID changes,
+  // they will need to be updated.
   private static final byte[] SERIALIZED_BACKUP_ID =
-      Hex.fromStringCondensedAssert("e3926f11ddd143e6dd0f20bfcb08349e");
+      Hex.fromStringCondensedAssert("52b899ef83125719d3daa9a4edcc0aff");
   private static final byte[] SERIALIZED_REQUEST_CREDENTIAL =
       Base64.getDecoder()
           .decode(
-              "AISCxQa8OsFqphsQPxqtzJk5+jndpE3SJG6bfazQB3994Aersq2yNRgcARBoedBeoEfKIXdty6X7l6+TiPFAqDvojRSO8xaZOpKJOvWSDJIGn6EeMl2jOjx+IQg8d8M0AQ=="
+              "AISCxQa8OsFqphsQPxqtzJk5+jndpE3SJG6bfazQB3999KZFdtnpcIjx/0DPYbLJRbLQmz1ZXnueq5HPo9ewpEjojRSO8xaZOpKJOvWSDJIGn6EeMl2jOjx+IQg8d8M0AQ=="
                   .getBytes(StandardCharsets.UTF_8));
 
   @Test
@@ -60,7 +63,8 @@ public final class BackupAuthTest extends SecureRandomTest {
         GenericServerSecretParams.generate(createSecureRandom(SERVER_SECRET_RANDOM));
     Instant timestamp = Instant.now().truncatedTo(ChronoUnit.DAYS);
     BackupAuthCredentialResponse response =
-        request.issueCredential(timestamp, BackupLevel.MESSAGES, serverSecretParams);
+        request.issueCredential(
+            timestamp, BackupLevel.FREE, BackupCredentialType.MESSAGES, serverSecretParams);
 
     BackupAuthCredential credential =
         context.receiveResponse(response, timestamp, serverSecretParams.getPublicParams());
@@ -68,12 +72,14 @@ public final class BackupAuthTest extends SecureRandomTest {
     Assert.assertArrayEquals(
         SERIALIZED_BACKUP_ID,
         credential.present(serverSecretParams.getPublicParams()).getBackupId());
-    Assert.assertEquals(BackupLevel.MESSAGES, credential.getBackupLevel());
+    Assert.assertEquals(BackupLevel.FREE, credential.getBackupLevel());
+    Assert.assertEquals(BackupCredentialType.MESSAGES, credential.getType());
   }
 
   @Test
   public void testBackupAuthCredentialIntegration() throws VerificationFailedException {
-    final BackupLevel backupLevel = BackupLevel.MESSAGES;
+    final BackupLevel backupLevel = BackupLevel.FREE;
+    final BackupCredentialType credentialType = BackupCredentialType.MESSAGES;
 
     // SERVER
     // Generate keys
@@ -91,13 +97,18 @@ public final class BackupAuthTest extends SecureRandomTest {
     Instant timestamp = Instant.now().truncatedTo(ChronoUnit.DAYS);
     BackupAuthCredentialResponse response =
         request.issueCredential(
-            timestamp, backupLevel, serverSecretParams, createSecureRandom(TEST_ARRAY_32_1));
+            timestamp,
+            backupLevel,
+            credentialType,
+            serverSecretParams,
+            createSecureRandom(TEST_ARRAY_32_1));
 
     // CLIENT
     // Gets stored credential
     BackupAuthCredential credential =
         context.receiveResponse(response, timestamp, serverPublicParams);
     Assert.assertEquals(backupLevel, credential.getBackupLevel());
+    Assert.assertEquals(credentialType, credential.getType());
 
     // CLIENT
     // Generates a presentation
@@ -110,6 +121,7 @@ public final class BackupAuthTest extends SecureRandomTest {
     presentation.verify(timestamp.plus(1, ChronoUnit.DAYS), serverSecretParams);
     Assert.assertArrayEquals(credential.getBackupId(), presentation.getBackupId());
     Assert.assertEquals(backupLevel, presentation.getBackupLevel());
+    Assert.assertEquals(credentialType, presentation.getType());
 
     Assert.assertThrows(
         "Credential should be expired after 2 days",

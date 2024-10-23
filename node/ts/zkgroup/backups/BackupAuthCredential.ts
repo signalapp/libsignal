@@ -12,6 +12,7 @@ import { RANDOM_LENGTH } from '../internal/Constants';
 import GenericServerPublicParams from '../GenericServerPublicParams';
 import BackupAuthCredentialPresentation from './BackupAuthCredentialPresentation';
 import BackupLevel from './BackupLevel';
+import BackupCredentialType from './BackupCredentialType';
 
 export default class BackupAuthCredential extends ByteArray {
   private readonly __type?: never;
@@ -48,6 +49,14 @@ export default class BackupAuthCredential extends ByteArray {
     const n: number = Native.BackupAuthCredential_GetBackupLevel(this.contents);
     if (!(n in BackupLevel)) {
       throw new TypeError(`Invalid BackupLevel ${n}`);
+    }
+    return n;
+  }
+
+  getType(): BackupCredentialType {
+    const n: number = Native.BackupAuthCredential_GetType(this.contents);
+    if (!(n in BackupCredentialType)) {
+      throw new TypeError(`Invalid BackupCredentialType ${n}`);
     }
     return n;
   }

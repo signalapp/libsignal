@@ -8,6 +8,7 @@ import * as Native from '../../../Native';
 
 import GenericServerSecretParams from '../GenericServerSecretParams';
 import BackupLevel from './BackupLevel';
+import BackupCredentialType from './BackupCredentialType';
 
 export default class BackupAuthCredentialPresentation extends ByteArray {
   private readonly __type?: never;
@@ -37,6 +38,16 @@ export default class BackupAuthCredentialPresentation extends ByteArray {
     );
     if (!(n in BackupLevel)) {
       throw new TypeError(`Invalid BackupLevel ${n}`);
+    }
+    return n;
+  }
+
+  getType(): BackupCredentialType {
+    const n: number = Native.BackupAuthCredentialPresentation_GetType(
+      this.contents
+    );
+    if (!(n in BackupCredentialType)) {
+      throw new TypeError(`Invalid BackupCredentialType ${n}`);
     }
     return n;
   }

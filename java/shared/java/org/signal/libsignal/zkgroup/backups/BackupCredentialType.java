@@ -5,14 +5,14 @@
 
 package org.signal.libsignal.zkgroup.backups;
 
-public enum BackupLevel {
+public enum BackupCredentialType {
   // This must match the Rust version of the enum.
-  FREE(200),
-  PAID(201);
+  MESSAGES(1),
+  MEDIA(2);
 
   private final int value;
 
-  BackupLevel(int value) {
+  BackupCredentialType(int value) {
     this.value = value;
   }
 
@@ -20,13 +20,13 @@ public enum BackupLevel {
     return this.value;
   }
 
-  public static BackupLevel fromValue(int value) {
+  public static BackupCredentialType fromValue(int value) {
     // A linear scan is simpler than a hash lookup for a set of values this small.
-    for (final var backupLevel : BackupLevel.values()) {
-      if (backupLevel.getValue() == value) {
-        return backupLevel;
+    for (final var credentialType : BackupCredentialType.values()) {
+      if (credentialType.getValue() == value) {
+        return credentialType;
       }
     }
-    throw new IllegalArgumentException("Invalid backup level: " + value);
+    throw new IllegalArgumentException("Invalid backup credential type: " + value);
   }
 }

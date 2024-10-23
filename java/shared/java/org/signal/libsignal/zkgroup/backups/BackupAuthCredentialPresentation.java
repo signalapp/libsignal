@@ -46,4 +46,9 @@ public final class BackupAuthCredentialPresentation extends ByteArray {
     return BackupLevel.fromValue(
         Native.BackupAuthCredentialPresentation_GetBackupLevel(getInternalContentsForJNI()));
   }
+
+  public BackupCredentialType getType() {
+    return BackupCredentialType.fromValue(
+        Native.BackupAuthCredentialPresentation_GetType(getInternalContentsForJNI()));
+  }
 }

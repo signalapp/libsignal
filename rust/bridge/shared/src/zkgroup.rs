@@ -4,6 +4,7 @@
 //
 
 use ::zkgroup;
+use backups::BackupCredentialType;
 use libsignal_bridge_macros::*;
 use libsignal_bridge_types::zkgroup::validate_serialization;
 use libsignal_protocol::{Aci, Pni, ServiceId};
@@ -893,7 +894,7 @@ fn CallLinkAuthCredentialPresentation_GetUserId(
 
 #[bridge_fn]
 fn BackupAuthCredentialRequestContext_New(backup_key: &[u8; 32], uuid: Uuid) -> Vec<u8> {
-    let backup_key: libsignal_account_keys::BackupKeyV0 =
+    let backup_key: libsignal_account_keys::BackupKey =
         libsignal_account_keys::BackupKey(*backup_key);
     let context = BackupAuthCredentialRequestContext::new(&backup_key, uuid.into());
     zkgroup::serialize(&context)
@@ -927,6 +928,7 @@ fn BackupAuthCredentialRequest_IssueDeterministic(
     request_bytes: &[u8],
     redemption_time: Timestamp,
     backup_level: AsType<BackupLevel, u8>,
+    credential_type: AsType<BackupCredentialType, u8>,
     params_bytes: &[u8],
     randomness: &[u8; RANDOMNESS_LEN],
 ) -> Vec<u8> {
@@ -938,6 +940,7 @@ fn BackupAuthCredentialRequest_IssueDeterministic(
     let response = request.issue(
         redemption_time,
         backup_level.into_inner(),
+        credential_type.into_inner(),
         &params,
         *randomness,
     );
@@ -991,6 +994,13 @@ fn BackupAuthCredential_GetBackupLevel(credential_bytes: &[u8]) -> u8 {
 }
 
 #[bridge_fn]
+fn BackupAuthCredential_GetType(credential_bytes: &[u8]) -> u8 {
+    let credential = bincode::deserialize::<BackupAuthCredential>(credential_bytes)
+        .expect("should have been parsed previously");
+    credential.credential_type() as u8
+}
+
+#[bridge_fn]
 fn BackupAuthCredential_PresentDeterministic(
     credential_bytes: &[u8],
     server_params_bytes: &[u8],
@@ -1038,6 +1048,13 @@ fn BackupAuthCredentialPresentation_GetBackupLevel(presentation_bytes: &[u8]) ->
     let presentation = bincode::deserialize::<BackupAuthCredentialPresentation>(presentation_bytes)
         .expect("should have been parsed previously");
     presentation.backup_level() as u8
+}
+
+#[bridge_fn(ffi = false)]
+fn BackupAuthCredentialPresentation_GetType(presentation_bytes: &[u8]) -> u8 {
+    let presentation = bincode::deserialize::<BackupAuthCredentialPresentation>(presentation_bytes)
+        .expect("should have been parsed previously");
+    presentation.credential_type() as u8
 }
 
 #[bridge_fn]

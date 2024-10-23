@@ -54,4 +54,18 @@ public class BackupAuthCredential: ByteArray {
             return backupLevel
         }
     }
+
+    public var type: BackupCredentialType {
+        return failOnError {
+            let rawValue = try withUnsafeBorrowedBuffer { contents in
+                try invokeFnReturningInteger {
+                    signal_backup_auth_credential_get_type($0, contents)
+                }
+            }
+            guard let type = BackupCredentialType(rawValue: rawValue) else {
+                throw SignalError.internalError("Invalid BackupCredentialType \(rawValue)")
+            }
+            return type
+        }
+    }
 }
