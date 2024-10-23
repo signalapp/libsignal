@@ -143,3 +143,124 @@ impl From<HttpVersion> for Alpn {
         }
     }
 }
+
+#[cfg(test)]
+mod test {
+    use itertools::Itertools;
+
+    use super::*;
+    use crate::route::{DirectTcpRouteProvider, TlsRouteProvider};
+
+    #[derive(Copy, Clone, Debug, Default)]
+    struct FakeProvider;
+
+    impl RouteProvider for FakeProvider {
+        type Route = ();
+
+        fn routes(&self) -> impl Iterator<Item = Self::Route> + '_ {
+            std::iter::once(())
+        }
+    }
+
+    #[test]
+    fn http_provider_route_order() {
+        const DIRECT_TCP_PORT: NonZeroU16 = nonzero!(1234u16);
+        let provider = HttpsProvider {
+            direct_host_header: "direct-host".into(),
+            direct_http_version: HttpVersion::Http2,
+            domain_front: DomainFrontRouteProvider {
+                fronts: vec![
+                    DomainFrontConfig {
+                        http_host: "front-host-1".into(),
+                        sni_list: vec!["front-sni-1a".into(), "front-sni-1b".into()],
+                    },
+                    DomainFrontConfig {
+                        http_host: "front-host-2".into(),
+                        sni_list: vec!["front-sni-2".into()],
+                    },
+                ],
+                http_version: HttpVersion::Http1_1,
+            },
+            inner: TlsRouteProvider {
+                sni: Some("direct-host".into()),
+                certs: RootCertificates::Native,
+                inner: DirectTcpRouteProvider {
+                    dns_hostname: "direct-tcp-host".into(),
+                    port: DIRECT_TCP_PORT,
+                },
+            },
+        };
+
+        let routes = provider.routes().collect_vec();
+
+        assert_eq!(
+            routes,
+            [
+                HttpsTlsRoute {
+                    fragment: HttpRouteFragment {
+                        host_header: "direct-host".into()
+                    },
+                    inner: TlsRoute {
+                        fragment: TlsRouteFragment {
+                            root_certs: RootCertificates::Native,
+                            sni: Some("direct-host".into()),
+                            alpn: Some(Alpn::Http2)
+                        },
+                        inner: TcpRoute {
+                            address: UnresolvedHost("direct-tcp-host".into()),
+                            port: DIRECT_TCP_PORT,
+                        },
+                    },
+                },
+                HttpsTlsRoute {
+                    fragment: HttpRouteFragment {
+                        host_header: "front-host-1".into()
+                    },
+                    inner: TlsRoute {
+                        fragment: TlsRouteFragment {
+                            root_certs: RootCertificates::Native,
+                            sni: Some("front-sni-1a".into()),
+                            alpn: Some(Alpn::Http1_1)
+                        },
+                        inner: TcpRoute {
+                            address: UnresolvedHost("front-sni-1a".into()),
+                            port: DEFAULT_HTTPS_PORT
+                        },
+                    }
+                },
+                HttpsTlsRoute {
+                    fragment: HttpRouteFragment {
+                        host_header: "front-host-1".into()
+                    },
+                    inner: TlsRoute {
+                        fragment: TlsRouteFragment {
+                            root_certs: RootCertificates::Native,
+                            sni: Some("front-sni-1b".into()),
+                            alpn: Some(Alpn::Http1_1)
+                        },
+                        inner: TcpRoute {
+                            address: UnresolvedHost("front-sni-1b".into()),
+                            port: DEFAULT_HTTPS_PORT
+                        },
+                    }
+                },
+                HttpsTlsRoute {
+                    fragment: HttpRouteFragment {
+                        host_header: "front-host-2".into()
+                    },
+                    inner: TlsRoute {
+                        fragment: TlsRouteFragment {
+                            root_certs: RootCertificates::Native,
+                            sni: Some("front-sni-2".into()),
+                            alpn: Some(Alpn::Http1_1)
+                        },
+                        inner: TcpRoute {
+                            address: UnresolvedHost("front-sni-2".into()),
+                            port: DEFAULT_HTTPS_PORT
+                        },
+                    }
+                }
+            ]
+        );
+    }
+}

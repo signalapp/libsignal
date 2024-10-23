@@ -34,9 +34,11 @@ pub trait RouteProvider {
     /// The type of route being produced.
     type Route;
 
-    /// Produces an iterator over routes.
+    /// Produces a sequence of routes in priority order.
     ///
-    /// The iterator is allowed to borrow from `self` as an optimization.
+    /// The routes must be produced in the order in which connection attempts
+    /// should be made. The iterator is allowed to borrow from `self` as an
+    /// optimization.
     fn routes(&self) -> impl Iterator<Item = Self::Route> + '_;
 }
 

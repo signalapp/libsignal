@@ -10,7 +10,7 @@ use std::sync::Arc;
 
 use either::Either;
 use futures_util::stream::FuturesUnordered;
-use futures_util::{FutureExt as _, TryStreamExt};
+use futures_util::{FutureExt as _, TryStreamExt as _};
 use itertools::Itertools;
 
 use crate::dns::lookup_result::LookupResult;
@@ -53,47 +53,79 @@ impl Resolver for DnsResolver {
 ///
 /// Asynchronously resolves all routes and produces the resolved routes. Since
 /// DNS resolution for a given host can produce multiple addresses, the output
-/// is a sequence of routes.
+/// is a sequence of routes in the order in which connections should be
+/// attempted.
 pub async fn resolve_route<R: ResolveHostnames + Clone + 'static>(
     dns: &impl Resolver,
     route: R,
-) -> Result<impl Iterator<Item = R::Resolved> + Debug, DnsError> {
+) -> Result<impl Iterator<Item = R::Resolved> + Debug, DnsError>
+where
+    R::Resolved: Debug,
+{
     let to_resolve = route.hostnames().map(|UnresolvedHost(hostname)| {
         dns.lookup_ip(hostname)
             .map(|result| result.map(|lookup| (Arc::clone(hostname), lookup)))
     });
 
-    let futures = FuturesUnordered::from_iter(to_resolve);
+    let resolved = FuturesUnordered::from_iter(to_resolve)
+        .try_collect::<Vec<_>>()
+        .await?;
 
-    let resolved: Vec<_> = futures.try_collect().await?;
-
-    // Squash each of the resolved (host, lookup result) pairs into an iterator
-    // over (host, IP addr). This gives us an iterator of iterators.
-    let host_ip_candidates = resolved.into_iter().map(|(hostname, lookup_result)| {
-        lookup_result
-            .into_iter()
-            .map(move |ip| (Arc::clone(&hostname), ip))
-    });
-
-    // Produce the set of all possible resolutions of each of the host names to
-    // IP addresses.
-    let all_resolutions = host_ip_candidates.multi_cartesian_product();
+    let resolutions = resolved
+        .into_iter()
+        .map(|(hostname, result)| std::iter::repeat(hostname).zip(result))
+        .multi_cartesian_product();
 
     // Produce a new resolution of the input route for each of the possible
     // resolutions of the hostnames that it contained.
-    let resolved_routes = all_resolutions.map(move |host_to_ip| {
+    let [mut v4_routes, mut v6_routes, mut other_routes] = [(); 3].map(|_| Vec::new());
+    for host_to_ip in resolutions {
+        let mut route_ip_version = RouteIpVersion::None;
         let lookup_hostname = |hostname: &str| {
             // This is a linear search through a list but it should be small; no
             // route contains more than a few hostnames.
-            host_to_ip
+            let addr = host_to_ip
                 .iter()
                 .find_map(|(h, ip)| (**h == *hostname).then_some(*ip))
-                .expect("earlier lookup was successful")
-        };
-        route.clone().resolve(lookup_hostname)
-    });
+                .expect("earlier lookup was successful");
 
+            route_ip_version.update_from(&addr);
+            addr
+        };
+        let resolved = route.clone().resolve(lookup_hostname);
+        let destination = match route_ip_version {
+            RouteIpVersion::V4 => &mut v4_routes,
+            RouteIpVersion::V6 => &mut v6_routes,
+            RouteIpVersion::None | RouteIpVersion::Mixed => &mut other_routes,
+        };
+        destination.push(resolved);
+    }
+
+    let resolved_routes = itertools::interleave(v6_routes, v4_routes).chain(other_routes);
     Ok(resolved_routes)
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+enum RouteIpVersion {
+    None,
+    V4,
+    V6,
+    Mixed,
+}
+
+impl RouteIpVersion {
+    fn update_from(&mut self, addr: &IpAddr) {
+        *self = match (*self, addr) {
+            (RouteIpVersion::V4, IpAddr::V6(_)) | (RouteIpVersion::V6, IpAddr::V4(_)) => {
+                RouteIpVersion::Mixed
+            }
+            (RouteIpVersion::None, IpAddr::V4(_)) => RouteIpVersion::V4,
+            (RouteIpVersion::None, IpAddr::V6(_)) => RouteIpVersion::V6,
+            (v @ RouteIpVersion::V4, IpAddr::V4(_))
+            | (v @ RouteIpVersion::V6, IpAddr::V6(_))
+            | (v @ RouteIpVersion::Mixed, _) => v,
+        }
+    }
 }
 
 impl ResolveHostnames for UnresolvedHost {
@@ -409,11 +441,11 @@ mod test {
         let result = resolve.await.expect("finished");
 
         pretty_assertions::assert_eq!(
-            HashSet::<Vec<_>>::from_iter(result),
-            HashSet::from_iter([
+            result.collect_vec(),
+            [
                 vec![ip_addr!("::1111"), ip_addr!("::3333"), ip_addr!("::2222")],
                 vec![ip_addr!("::1111"), ip_addr!("::3333"), ip_addr!("5.5.5.5")]
-            ])
+            ],
         );
     }
 
@@ -482,14 +514,14 @@ mod test {
             fragment: http_fragment.clone(),
         };
 
-        let resolved = HashSet::from_iter(
-            resolve_route(&dns, unresolved_route)
-                .now_or_never()
-                .expect("all resolution is static")
-                .expect("all hostnames are resolvable"),
-        );
+        let resolved = resolve_route(&dns, unresolved_route)
+            .now_or_never()
+            .expect("all resolution is static")
+            .expect("all hostnames are resolvable")
+            .collect_vec();
 
-        let expected_routes = HashSet::from([
+        let expected_routes = [
+            // IPv6 only
             HttpsTlsRoute {
                 inner: TlsRoute {
                     inner: DirectOrProxyRoute::Proxy(socks_route(
@@ -500,6 +532,28 @@ mod test {
                 },
                 fragment: http_fragment.clone(),
             },
+            // IPv4 only
+            HttpsTlsRoute {
+                inner: TlsRoute {
+                    inner: DirectOrProxyRoute::Proxy(socks_route(
+                        ip_addr!("10.10.10.10"),
+                        ip_addr!("1.2.3.4"),
+                    )),
+                    fragment: tls_fragment.clone(),
+                },
+                fragment: http_fragment.clone(),
+            },
+            HttpsTlsRoute {
+                inner: TlsRoute {
+                    inner: DirectOrProxyRoute::Proxy(socks_route(
+                        ip_addr!("10.10.10.10"),
+                        ip_addr!("1.2.3.5"),
+                    )),
+                    fragment: tls_fragment.clone(),
+                },
+                fragment: http_fragment.clone(),
+            },
+            // Mixed
             HttpsTlsRoute {
                 inner: TlsRoute {
                     inner: DirectOrProxyRoute::Proxy(socks_route(
@@ -530,27 +584,7 @@ mod test {
                 },
                 fragment: http_fragment.clone(),
             },
-            HttpsTlsRoute {
-                inner: TlsRoute {
-                    inner: DirectOrProxyRoute::Proxy(socks_route(
-                        ip_addr!("10.10.10.10"),
-                        ip_addr!("1.2.3.4"),
-                    )),
-                    fragment: tls_fragment.clone(),
-                },
-                fragment: http_fragment.clone(),
-            },
-            HttpsTlsRoute {
-                inner: TlsRoute {
-                    inner: DirectOrProxyRoute::Proxy(socks_route(
-                        ip_addr!("10.10.10.10"),
-                        ip_addr!("1.2.3.5"),
-                    )),
-                    fragment: tls_fragment.clone(),
-                },
-                fragment: http_fragment.clone(),
-            },
-        ]);
+        ];
 
         pretty_assertions::assert_eq!(resolved, expected_routes);
     }

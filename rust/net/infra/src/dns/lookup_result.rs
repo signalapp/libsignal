@@ -23,6 +23,7 @@ impl IntoIterator for LookupResult {
         Map<IntoIter<Ipv4Addr>, fn(Ipv4Addr) -> IpAddr>,
     >;
 
+    /// Returns an iterator that interleaves IPv6 and IPv4 addresses.
     fn into_iter(self) -> Self::IntoIter {
         let v6_into_ipaddr: fn(Ipv6Addr) -> IpAddr = IpAddr::V6;
         let v4_into_ipaddr: fn(Ipv4Addr) -> IpAddr = IpAddr::V4;
