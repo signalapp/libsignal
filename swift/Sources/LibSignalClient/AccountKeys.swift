@@ -47,7 +47,7 @@ public func verifyLocalPin<Bytes: ContiguousBytes>(_ pin: Bytes, againstEncodedH
 }
 
 /// A hash of the pin that can be used to interact with a Secure Value Recovery service.
-public class PinHash: NativeHandleOwner {
+public class PinHash: NativeHandleOwner, @unchecked Sendable {
     override internal class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
         return signal_pin_hash_destroy(handle)
     }

@@ -6,7 +6,7 @@
 import Foundation
 import SignalFfi
 
-public enum SizeChoice {
+public enum SizeChoice: Sendable {
     case bytes(UInt32)
     case chunkOf(UInt32)
 

@@ -6,7 +6,7 @@
 import Foundation
 import SignalFfi
 
-public struct Username {
+public struct Username: Sendable {
     public let value: String
     public let hash: [UInt8]
 

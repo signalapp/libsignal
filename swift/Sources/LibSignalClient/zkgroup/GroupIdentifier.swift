@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-public class GroupIdentifier: ByteArray {
+public class GroupIdentifier: ByteArray, @unchecked Sendable {
     public static let SIZE: Int = 32
 
     public required init(contents: [UInt8]) throws {

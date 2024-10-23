@@ -10,11 +10,11 @@
 import SignalFfi
 import XCTest
 
-extension SignalCPromiseTestingHandleType: PromiseStruct {
+extension SignalCPromiseTestingHandleType: LibSignalClient.PromiseStruct {
     public typealias Result = OpaquePointer
 }
 
-extension SignalCPromiseOtherTestingHandleType: PromiseStruct {
+extension SignalCPromiseOtherTestingHandleType: LibSignalClient.PromiseStruct {
     public typealias Result = OpaquePointer
 }
 

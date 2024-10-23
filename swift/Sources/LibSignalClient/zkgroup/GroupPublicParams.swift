@@ -6,7 +6,7 @@
 import Foundation
 import SignalFfi
 
-public class GroupPublicParams: ByteArray {
+public class GroupPublicParams: ByteArray, @unchecked Sendable {
     public required init(contents: [UInt8]) throws {
         try super.init(contents, checkValid: signal_group_public_params_check_valid_contents)
     }

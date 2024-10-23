@@ -6,7 +6,7 @@
 import Foundation
 import SignalFfi
 
-public class GenericServerSecretParams: ByteArray {
+public class GenericServerSecretParams: ByteArray, @unchecked Sendable {
     public static func generate() -> Self {
         return failOnError {
             self.generate(randomness: try .generate())

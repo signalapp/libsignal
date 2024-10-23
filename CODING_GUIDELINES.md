@@ -67,6 +67,10 @@ These should usually be prioritized in that order, but adjust the trade-off as n
 
     More background here: "[Why doesn't tokio::select! require FusedFuture?](https://users.rust-lang.org/t/why-doesnt-tokio-select-require-fusedfuture/46975)"
 
+- When bridging async APIs that use `#[bridge_io]`, **remember that the arguments and results will cross thread/queue/actor boundaries**, even in Node where there's only one JavaScript thread. Most of the time Rust's own Send/Sync checking will prevent this from being a problem, but whatever types are passed across the bridge layer will be unchecked, and you, the author of the code, will have to think about whether it's a problem (on both sides of the bridge). Usually it won't be! Value types like C structs and immutable Java objects are fine, it's only mutable objects and raw pointers where you have to be careful.
+
+    Async APIs that do not use `#[bridge_io]` are always run on the calling thread: for Java and Swift, they are run to completion immediately, and for Node they are run by being scheduled on the JavaScript microtask queue. However, in theory any calls back into app code could still lead to reentrant use, and any borrowed Rust objects might be accessed from other threads while the operation is ongoing.
+
 
 # Java
 
@@ -92,7 +96,14 @@ These should usually be prioritized in that order, but adjust the trade-off as n
 
 - To make sure that error messages get into logs, we use the `failOnError` helper instead of `try!` for forcing an unwrap on the result of an operation that can throw an error.
 
+- [`Sendable`][] is a part of Swift's concurrency-checking model similar to Rust's `Send` and `Sync`. In general, **any `public` struct or enum should be marked `Sendable`** unless it wraps something that isn't Sendable (or if it's an enum just used for namespacing). You don't have to do this for non-public structs and enums; Swift will infer whether they are Sendable within the library automatically.
+
+    Classes are trickier: a class that will forever be immutable is safe to mark `Sendable`, as is a class whose methods are designed to be called from multiple threads (often shortened to "this class is thread-safe"). However, unless you can make the class `final` *and* it doesn't have a superclass that's non-`Sendable`, the compiler won't be able to check it for you, and you'll have to write `@unchecked Sendable` instead. Be careful that this really is safe, and that we won't ever want to introduce mutating operations! It's easier to add Sendable later than to remove it, so err on the side of not including it.
+
+    As an approximation, `Sendable` in Swift is *roughly* equivalent to Rust's `Send` for value types (e.g. structs) and `Sync` for reference types (e.g. classes), because every reference in Swift has an implicit `Arc` around it.
+
 [DocC syntax]: https://www.swift.org/documentation/docc/writing-symbol-documentation-in-your-source-files
+[`Sendable`]: https://developer.apple.com/documentation/swift/sendable
 
 
 # TypeScript

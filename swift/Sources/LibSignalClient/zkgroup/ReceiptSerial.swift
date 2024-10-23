@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-public class ReceiptSerial: ByteArray {
+public class ReceiptSerial: ByteArray, @unchecked Sendable {
     public static let SIZE: Int = 16
 
     public required init(contents: [UInt8]) throws {

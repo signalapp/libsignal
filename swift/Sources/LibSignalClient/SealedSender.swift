@@ -34,7 +34,7 @@ public func sealedSenderEncrypt<Bytes: ContiguousBytes>(
 }
 
 public class UnidentifiedSenderMessageContent: NativeHandleOwner {
-    public struct ContentHint: RawRepresentable, Hashable {
+    public struct ContentHint: RawRepresentable, Hashable, Sendable {
         public var rawValue: UInt32
         public init(rawValue: UInt32) {
             self.rawValue = rawValue
@@ -227,7 +227,7 @@ internal func sealedSenderMultiRecipientMessageForSingleRecipient(_ message: [UI
     }
 }
 
-public struct SealedSenderAddress: Hashable {
+public struct SealedSenderAddress: Hashable, Sendable {
     public var e164: String?
     public var uuidString: String
     public var deviceId: UInt32
@@ -252,7 +252,7 @@ public struct SealedSenderAddress: Hashable {
     }
 }
 
-public struct SealedSenderResult {
+public struct SealedSenderResult: Sendable {
     public var message: [UInt8]
     public var sender: SealedSenderAddress
 }

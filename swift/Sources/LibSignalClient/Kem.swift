@@ -6,7 +6,7 @@
 import Foundation
 import SignalFfi
 
-public class KEMKeyPair: ClonableHandleOwner {
+public class KEMKeyPair: ClonableHandleOwner, @unchecked Sendable {
     public static func generate() -> KEMKeyPair {
         return failOnError {
             try invokeFnReturningNativeHandle {
@@ -44,7 +44,7 @@ public class KEMKeyPair: ClonableHandleOwner {
     }
 }
 
-public class KEMPublicKey: ClonableHandleOwner {
+public class KEMPublicKey: ClonableHandleOwner, @unchecked Sendable {
     public convenience init<Bytes: ContiguousBytes>(_ bytes: Bytes) throws {
         let handle: OpaquePointer? = try bytes.withUnsafeBorrowedBuffer {
             var result: OpaquePointer?
@@ -85,7 +85,7 @@ extension KEMPublicKey: Equatable {
     }
 }
 
-public class KEMSecretKey: ClonableHandleOwner {
+public class KEMSecretKey: ClonableHandleOwner, @unchecked Sendable {
     public convenience init<Bytes: ContiguousBytes>(_ bytes: Bytes) throws {
         let handle: OpaquePointer? = try bytes.withUnsafeBorrowedBuffer {
             var result: OpaquePointer?

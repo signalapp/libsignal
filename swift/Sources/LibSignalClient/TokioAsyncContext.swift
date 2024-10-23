@@ -6,7 +6,7 @@
 import Foundation
 import SignalFfi
 
-internal class TokioAsyncContext: NativeHandleOwner {
+internal class TokioAsyncContext: NativeHandleOwner, @unchecked Sendable {
     convenience init() {
         var handle: OpaquePointer?
         failOnError(signal_tokio_async_context_new(&handle))
@@ -19,7 +19,9 @@ internal class TokioAsyncContext: NativeHandleOwner {
 
     /// A thread-safe helper for translating Swift task cancellations into calls to
     /// `signal_tokio_async_context_cancel`.
-    private class CancellationHandoffHelper {
+    private final class CancellationHandoffHelper: @unchecked Sendable {
+        // We'd like to remove the `@unchecked` above but Swift 5.10 still complains about
+        // 'state' being mutable despite `nonisolated(unsafe)`.
         enum State {
             case initial
             case started(SignalCancellationId)
@@ -28,8 +30,8 @@ internal class TokioAsyncContext: NativeHandleOwner {
 
         // Emulates Rust's `Mutex<State>` (and the containing class is providing an `Arc`)
         // Unfortunately, doing this in Swift requires a separate allocation for the lock today.
-        var state: State = .initial
-        var lock = NSLock()
+        nonisolated(unsafe) var state: State = .initial
+        let lock = NSLock()
 
         let context: TokioAsyncContext
 

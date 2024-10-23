@@ -6,7 +6,7 @@
 import Foundation
 import SignalFfi
 
-public enum Direction {
+public enum Direction: Sendable {
     case sending
     case receiving
 }

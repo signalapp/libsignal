@@ -12,7 +12,7 @@ import SignalFfi
 /// eventually be verified by the chat server in the form of ``GroupSendFullToken``s. See
 /// ``GroupSendEndorsement`` for a full description of the endorsement flow from the client's
 /// perspective.
-public class GroupSendEndorsementsResponse: ByteArray {
+public class GroupSendEndorsementsResponse: ByteArray, @unchecked Sendable {
     public required init(contents: [UInt8]) throws {
         try super.init(contents, checkValid: signal_group_send_endorsements_response_check_valid_contents)
     }
@@ -70,7 +70,7 @@ public class GroupSendEndorsementsResponse: ByteArray {
     /// The result of the `receive` operations on ``GroupSendEndorsementsResponse``. Contains an
     /// endorsement for each member of the group, in the same order they were originally provided,
     /// plus a combined endorsement for "everyone but me", intended for multi-recipient sends.
-    public struct ReceivedEndorsements {
+    public struct ReceivedEndorsements: Sendable {
         public var endorsements: [GroupSendEndorsement]
         public var combinedEndorsement: GroupSendEndorsement
     }

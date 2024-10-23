@@ -12,7 +12,7 @@ public class Net {
     ///
     /// The services running in each environment are distinct, and operations
     /// for one do not affect the other.
-    public enum Environment: UInt8 {
+    public enum Environment: UInt8, Sendable {
         // This needs to be kept in sync with the Rust version of the enum.
 
         /// Signal's staging environment.
@@ -145,7 +145,7 @@ public class Net {
 /// Authentication information used for connecting to CDSI servers.
 ///
 /// This corresponds to the username/password pair provided by the chat service.
-public struct Auth {
+public struct Auth: Sendable {
     public let username: String
     public let password: String
     public init(username: String, password: String) {
@@ -164,7 +164,7 @@ extension Auth {
     }
 }
 
-public struct AciAndAccessKey {
+public struct AciAndAccessKey: Sendable {
     public let aci: Aci
     public let accessKey: Data
     public init(aci: Aci, accessKey: Data) {

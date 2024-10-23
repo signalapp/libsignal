@@ -6,7 +6,7 @@
 import Foundation
 import SignalFfi
 
-public class PrivateKey: ClonableHandleOwner {
+public class PrivateKey: ClonableHandleOwner, @unchecked Sendable {
     public convenience init<Bytes: ContiguousBytes>(_ bytes: Bytes) throws {
         let handle: OpaquePointer? = try bytes.withUnsafeBorrowedBuffer {
             var result: OpaquePointer?

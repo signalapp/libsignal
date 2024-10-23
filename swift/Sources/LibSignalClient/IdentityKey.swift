@@ -6,7 +6,7 @@
 import Foundation
 import SignalFfi
 
-public struct IdentityKey: Equatable {
+public struct IdentityKey: Equatable, Sendable {
     public let publicKey: PublicKey
 
     public init(publicKey: PublicKey) {
@@ -32,7 +32,7 @@ public struct IdentityKey: Equatable {
     }
 }
 
-public struct IdentityKeyPair {
+public struct IdentityKeyPair: Sendable {
     public let publicKey: PublicKey
     public let privateKey: PrivateKey
 

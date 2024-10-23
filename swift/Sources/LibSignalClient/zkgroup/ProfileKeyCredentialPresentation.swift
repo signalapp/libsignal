@@ -6,7 +6,7 @@
 import Foundation
 import SignalFfi
 
-public class ProfileKeyCredentialPresentation: ByteArray {
+public class ProfileKeyCredentialPresentation: ByteArray, @unchecked Sendable {
     public required init(contents: [UInt8]) throws {
         try super.init(contents, checkValid: signal_profile_key_credential_presentation_check_valid_contents)
     }

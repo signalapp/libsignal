@@ -6,11 +6,11 @@
 import Foundation
 import SignalFfi
 
-public struct DisplayableFingerprint {
+public struct DisplayableFingerprint: Sendable {
     public let formatted: String
 }
 
-public struct ScannableFingerprint {
+public struct ScannableFingerprint: Sendable {
     public let encoding: [UInt8]
 
     /// Returns `true` if this fingerprint matches the fingerprint encoding `other`, `false` if not.
@@ -28,7 +28,7 @@ public struct ScannableFingerprint {
     }
 }
 
-public struct Fingerprint {
+public struct Fingerprint: Sendable {
     public let scannable: ScannableFingerprint
     public let displayable: DisplayableFingerprint
 
@@ -38,7 +38,7 @@ public struct Fingerprint {
     }
 }
 
-public struct NumericFingerprintGenerator {
+public struct NumericFingerprintGenerator: Sendable {
     private let iterations: Int
 
     public init(iterations: Int) {

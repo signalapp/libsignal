@@ -6,13 +6,13 @@
 import Foundation
 import SignalFfi
 
-public enum KeyFormat: UInt8, CaseIterable {
+public enum KeyFormat: UInt8, CaseIterable, Sendable {
     // PKCS#8 is the default for backward compatibility
     case pkcs8 = 0
     case keySpecific = 1
 }
 
-public struct DeviceTransferKey {
+public struct DeviceTransferKey: Sendable {
     public let privateKey: [UInt8]
 
     public static func generate(formattedAs keyFormat: KeyFormat = .pkcs8) -> Self {

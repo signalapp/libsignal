@@ -11,7 +11,7 @@ import SignalFfi
 ///
 /// A client specifies one or more code signatures it's willing to talk to. These are
 /// known as code hashes and are arrays of bytes.
-public struct HsmCodeHashList {
+public struct HsmCodeHashList: Sendable {
     var codeHashes: [UInt8]
 
     public init() {

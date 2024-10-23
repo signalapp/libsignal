@@ -6,7 +6,7 @@
 import Foundation
 import SignalFfi
 
-public class CreateCallLinkCredential: ByteArray {
+public class CreateCallLinkCredential: ByteArray, @unchecked Sendable {
     public required init(contents: [UInt8]) throws {
         try super.init(contents, checkValid: signal_create_call_link_credential_check_valid_contents)
     }

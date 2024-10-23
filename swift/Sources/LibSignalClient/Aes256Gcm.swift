@@ -6,7 +6,7 @@
 import Foundation
 import SignalFfi
 
-public struct Aes256GcmEncryptedData {
+public struct Aes256GcmEncryptedData: Sendable {
     public static let keyLength: Int = 32
     public static let nonceLength: Int = 12
     public static let authenticationTagLength: Int = 16

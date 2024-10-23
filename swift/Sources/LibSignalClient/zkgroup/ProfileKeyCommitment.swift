@@ -6,7 +6,7 @@
 import Foundation
 import SignalFfi
 
-public class ProfileKeyCommitment: ByteArray {
+public class ProfileKeyCommitment: ByteArray, @unchecked Sendable {
     public required init(contents: [UInt8]) throws {
         try super.init(contents, checkValid: signal_profile_key_commitment_check_valid_contents)
     }

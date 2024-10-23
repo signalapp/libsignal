@@ -6,7 +6,7 @@
 import Foundation
 import SignalFfi
 
-public class ProfileKey: ByteArray {
+public class ProfileKey: ByteArray, @unchecked Sendable {
     public static let SIZE: Int = 32
 
     public required init(contents: [UInt8]) throws {

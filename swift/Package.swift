@@ -1,4 +1,4 @@
-// swift-tools-version:5.2
+// swift-tools-version:5.9
 
 //
 // Copyright 2020-2021 Signal Messenger, LLC.
@@ -27,11 +27,13 @@ let package = Package(
         .systemLibrary(name: "SignalFfi"),
         .target(
             name: "LibSignalClient",
-            dependencies: ["SignalFfi"]
+            dependencies: ["SignalFfi"],
+            swiftSettings: [.enableExperimentalFeature("StrictConcurrency")]
         ),
         .testTarget(
             name: "LibSignalClientTests",
             dependencies: ["LibSignalClient"],
+            swiftSettings: [.enableExperimentalFeature("StrictConcurrency")],
             linkerSettings: [.unsafeFlags(["-L\(rustBuildDir)"])]
         ),
     ]

@@ -6,7 +6,7 @@
 import Foundation
 import SignalFfi
 
-public class ReceiptCredentialRequestContext: ByteArray {
+public class ReceiptCredentialRequestContext: ByteArray, @unchecked Sendable {
     public required init(contents: [UInt8]) throws {
         try super.init(contents, checkValid: signal_receipt_credential_request_context_check_valid_contents)
     }

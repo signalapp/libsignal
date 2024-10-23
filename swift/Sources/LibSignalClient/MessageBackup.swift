@@ -6,7 +6,7 @@
 import Foundation
 import SignalFfi
 
-public class MessageBackupKey: NativeHandleOwner {
+public class MessageBackupKey: NativeHandleOwner, @unchecked Sendable {
     @available(*, deprecated, message: "Use init(accountEntropy:aci:) instead")
     public convenience init(masterKey: [UInt8], aci: Aci) throws {
         let masterKey = try ByteArray(newContents: masterKey, expectedLength: 32)
@@ -61,7 +61,7 @@ public class MessageBackupKey: NativeHandleOwner {
     }
 }
 
-public enum MessageBackupPurpose: UInt8 {
+public enum MessageBackupPurpose: UInt8, Sendable {
     // This needs to be kept in sync with the Rust version of the enum.
     case deviceTransfer = 0, remoteBackup = 1
 }
@@ -107,7 +107,7 @@ public struct MessageBackupValidationError: Error {
 }
 
 /// Unknown fields encountered while validating.
-public struct MessageBackupUnknownFields {
+public struct MessageBackupUnknownFields: Sendable {
     public let fields: [String]
 }
 

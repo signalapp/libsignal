@@ -65,6 +65,9 @@ pub struct FutureResultReporter<T: ResultTypeInfo>(SignalFfiResult<T>);
 
 impl<T: ResultTypeInfo> FutureResultReporter<T> {
     pub fn new(result: SignalFfiResult<T>) -> Self {
+        // We're going to pass the value through C; if any cleanup needs to be done, it'll be done
+        // manually on the C/Swift side.
+        assert!(!std::mem::needs_drop::<T::ResultType>());
         Self(result)
     }
 }
@@ -84,7 +87,12 @@ impl<T: ResultTypeInfo + std::panic::UnwindSafe> ResultReporter for FutureResult
         });
 
         match result {
-            Ok(value) => (promise.complete)(std::ptr::null_mut(), &value, promise.context),
+            Ok(value) => {
+                // Imitate Swift's `sending` here: we might be passing the value by pointer,
+                // but we must not use it or anything it references after that.
+                (promise.complete)(std::ptr::null_mut(), &value, promise.context);
+                std::mem::forget(value);
+            }
             Err(err) => (promise.complete)(
                 Box::into_raw(Box::new(err)),
                 std::ptr::null(),

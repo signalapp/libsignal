@@ -6,7 +6,7 @@
 import Foundation
 import SignalFfi
 
-public class UuidCiphertext: ByteArray {
+public class UuidCiphertext: ByteArray, @unchecked Sendable {
     public required init(contents: [UInt8]) throws {
         try super.init(contents, checkValid: signal_uuid_ciphertext_check_valid_contents)
     }

@@ -99,8 +99,8 @@ internal class LoggerBridge {
         self.logger = logger
     }
 
-    private static var globalLoggerLock = NSLock()
-    private static var _globalLogger: LoggerBridge? = nil
+    private static let globalLoggerLock = NSLock()
+    private nonisolated(unsafe) static var _globalLogger: LoggerBridge? = nil
 
     internal fileprivate(set) static var shared: LoggerBridge? {
         // Ideally we would use NSLock.withLock here, but that's not available on Linux,

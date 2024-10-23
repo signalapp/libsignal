@@ -6,12 +6,12 @@
 import Foundation
 import SignalFfi
 
-public enum IpType: UInt8 {
+public enum IpType: UInt8, Sendable {
     // Must be kept in sync with libsignal-net's IpType.
     case unknown, ipv4, ipv6
 }
 
-public struct ChatRequest: Equatable {
+public struct ChatRequest: Equatable, Sendable {
     public var method: String
     public var pathAndQuery: String
     public var headers: [String: String]
@@ -63,7 +63,7 @@ public struct ChatRequest: Equatable {
     }
 }
 
-public struct ChatResponse: Equatable {
+public struct ChatResponse: Equatable, Sendable {
     public var status: UInt16
     public var message: String
     public var headers: [String: String]
@@ -111,7 +111,7 @@ public struct ChatResponse: Equatable {
     }
 }
 
-public struct ChatServiceDebugInfo: Equatable {
+public struct ChatServiceDebugInfo: Equatable, Sendable {
     public var ipType: IpType
     public var duration: TimeInterval
     public var connectionInfo: String

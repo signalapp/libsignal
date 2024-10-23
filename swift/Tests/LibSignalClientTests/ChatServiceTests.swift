@@ -159,7 +159,10 @@ final class ChatServiceTests: TestCaseBase {
         }
     }
 
+    @MainActor // Necessary for waitForExpectations
     func testListenerCallbacks() throws {
+        precondition(Thread.isMainThread, "test invocation must respect MainActor")
+
         class Listener: ChatListener {
             var stage = 0
             let queueEmpty: XCTestExpectation
@@ -251,7 +254,10 @@ final class ChatServiceTests: TestCaseBase {
 
 #endif
 
+    @MainActor // Necessary for waitForExpectations
     func testListenerCleanup() throws {
+        precondition(Thread.isMainThread, "test invocation must respect MainActor")
+
         class Listener: ChatListener {
             let expectation: XCTestExpectation
             init(expectation: XCTestExpectation) {

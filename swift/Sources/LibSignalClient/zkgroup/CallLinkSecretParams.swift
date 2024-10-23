@@ -6,7 +6,7 @@
 import Foundation
 import SignalFfi
 
-public class CallLinkSecretParams: ByteArray {
+public class CallLinkSecretParams: ByteArray, @unchecked Sendable {
     public static func deriveFromRootKey<RootKey: ContiguousBytes>(_ rootKey: RootKey) -> CallLinkSecretParams {
         return failOnError {
             try rootKey.withUnsafeBorrowedBuffer { rootKey in

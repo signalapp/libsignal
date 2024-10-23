@@ -5,7 +5,7 @@
 
 import SignalFfi
 
-public struct Randomness {
+public struct Randomness: Sendable {
     public var bytes: SignalRandomnessBytes
 
     public init(_ bytes: SignalRandomnessBytes) {

@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-public class ProfileKeyVersion: ByteArray {
+public class ProfileKeyVersion: ByteArray, @unchecked Sendable {
     public static let SIZE: Int = 64
 
     public required init(contents: [UInt8]) throws {

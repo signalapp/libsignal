@@ -6,7 +6,7 @@
 import Foundation
 import SignalFfi
 
-public class ServerCertificate: NativeHandleOwner {
+public class ServerCertificate: NativeHandleOwner, @unchecked Sendable {
     public convenience init<Bytes: ContiguousBytes>(_ bytes: Bytes) throws {
         let handle: OpaquePointer? = try bytes.withUnsafeBorrowedBuffer {
             var result: OpaquePointer?
@@ -80,7 +80,7 @@ public class ServerCertificate: NativeHandleOwner {
     }
 }
 
-public class SenderCertificate: NativeHandleOwner {
+public class SenderCertificate: NativeHandleOwner, @unchecked Sendable {
     public convenience init<Bytes: ContiguousBytes>(_ bytes: Bytes) throws {
         let handle: OpaquePointer? = try bytes.withUnsafeBorrowedBuffer {
             var result: OpaquePointer?

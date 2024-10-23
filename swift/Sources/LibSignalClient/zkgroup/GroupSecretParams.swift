@@ -6,7 +6,7 @@
 import Foundation
 import SignalFfi
 
-public class GroupSecretParams: ByteArray {
+public class GroupSecretParams: ByteArray, @unchecked Sendable {
     public static func generate() throws -> GroupSecretParams {
         return try self.generate(randomness: Randomness.generate())
     }

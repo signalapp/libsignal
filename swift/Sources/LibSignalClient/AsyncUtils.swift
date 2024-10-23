@@ -64,9 +64,15 @@ extension SignalCPromiseOwnedBufferOfc_uchar: PromiseStruct {
 ///
 /// Not for direct use, see Completer instead.
 private class CompleterBase {
-    let completeUnsafe: (_ error: SignalFfiErrorRef?, _ valuePtr: UnsafeRawPointer?) -> Void
+#if compiler(>=6.0)
+    typealias RawCompletion = @Sendable (_ error: SignalFfiErrorRef?, _ valuePtr: sending UnsafeRawPointer?) -> Void
+#else
+    typealias RawCompletion = @Sendable (_ error: SignalFfiErrorRef?, _ valuePtr: UnsafeRawPointer?) -> Void
+#endif
 
-    init(completeUnsafe: @escaping (SignalFfiErrorRef?, UnsafeRawPointer?) -> Void) {
+    let completeUnsafe: RawCompletion
+
+    init(completeUnsafe: @escaping RawCompletion) {
         self.completeUnsafe = completeUnsafe
     }
 }
@@ -85,15 +91,18 @@ private class CompleterBase {
 private class Completer<Promise: PromiseStruct>: CompleterBase {
     init(continuation: CheckedContinuation<Promise.Result, Error>) {
         super.init { error, valuePtr in
-            continuation.resume(with: Result {
+            do {
                 try checkError(error)
                 guard let valuePtr else {
                     throw SignalError.internalError("produced neither an error nor a value")
                 }
                 // This is the part that preserves the type:
                 // we assume that whatever pointer we've been handed does in fact point to a Promise.Result.
-                return valuePtr.load(as: Promise.Result.self)
-            })
+                let value = valuePtr.load(as: Promise.Result.self)
+                continuation.resume(returning: value)
+            } catch {
+                continuation.resume(throwing: error)
+            }
         }
     }
 
@@ -103,7 +112,11 @@ private class Completer<Promise: PromiseStruct>: CompleterBase {
     /// You must ensure that either the callback is called, or the result is passed to
     /// ``cleanUpUncompletedPromiseStruct(_:)``.
     func makePromiseStruct() -> Promise {
+#if compiler(>=6.0)
+        typealias RawPromiseCallback = @convention(c) (_ error: SignalFfiErrorRef?, _ value: sending UnsafeRawPointer?, _ context: UnsafeRawPointer?) -> Void
+#else
         typealias RawPromiseCallback = @convention(c) (_ error: SignalFfiErrorRef?, _ value: UnsafeRawPointer?, _ context: UnsafeRawPointer?) -> Void
+#endif
         let completeOpaque: RawPromiseCallback = { error, value, context in
             let completer: CompleterBase = Unmanaged.fromOpaque(context!).takeRetainedValue()
             completer.completeUnsafe(error, value)
@@ -113,6 +126,9 @@ private class Completer<Promise: PromiseStruct>: CompleterBase {
         // so we can treat `completeOpaque` as a promise callback for any type.
         // We know it's the *correct* type (for this completer specifically!)
         // because of how `self.completeUnsafe` is initialized.
+        // And while we are casting away `sending`,
+        // we know that Rust is already enforcing that the `bridge_fn` result is allowed to hop threads (Send),
+        // and that it won't use or escape the C representation of that result besides passing it to the callback.
         // So first we build a promise struct---it doesn't matter which one---by reinterpreting the callback...
         typealias RawPointerPromiseCallback = @convention(c) (_ error: SignalFfiErrorRef?, _ value: UnsafePointer<UnsafeRawPointer?>?, _ context: UnsafeRawPointer?) -> Void
         let rawPromiseStruct = SignalCPromiseRawPointer(complete: unsafeBitCast(completeOpaque, to: RawPointerPromiseCallback.self), context: Unmanaged.passRetained(self).toOpaque(), cancellation_id: 0)

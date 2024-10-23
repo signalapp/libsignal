@@ -5,7 +5,7 @@
 
 import SignalFfi
 
-public class ProtocolAddress: ClonableHandleOwner {
+public class ProtocolAddress: ClonableHandleOwner, @unchecked Sendable {
     public convenience init(name: String, deviceId: UInt32) throws {
         var handle: OpaquePointer?
         try checkError(signal_address_new(

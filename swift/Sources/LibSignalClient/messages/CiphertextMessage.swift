@@ -6,7 +6,7 @@
 import SignalFfi
 
 public class CiphertextMessage: NativeHandleOwner {
-    public struct MessageType: RawRepresentable, Hashable {
+    public struct MessageType: RawRepresentable, Hashable, Sendable {
         public var rawValue: UInt8
         public init(rawValue: UInt8) {
             self.rawValue = rawValue

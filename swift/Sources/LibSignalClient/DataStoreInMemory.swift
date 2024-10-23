@@ -6,7 +6,7 @@
 import Foundation
 
 /// A dummy StoreContext usable with InMemorySignalProtocolStore.
-public struct NullContext: StoreContext {
+public struct NullContext: StoreContext, Sendable {
     public init() {}
 }
 

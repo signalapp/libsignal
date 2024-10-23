@@ -350,7 +350,7 @@ public class Svr3Client {
     }
 }
 
-public struct RestoredSecret {
+public struct RestoredSecret: Sendable {
     public let value: [UInt8]
     public let triesRemaining: UInt32
 

@@ -32,7 +32,7 @@ internal func != (_ lhs: ServiceIdStorage, _ rhs: ServiceIdStorage) -> Bool {
     return !(lhs == rhs)
 }
 
-public enum ServiceIdKind: UInt8 {
+public enum ServiceIdKind: UInt8, Sendable {
     case aci = 0
     case pni = 1
 }
@@ -49,7 +49,7 @@ public enum ServiceIdError: Error {
 ///
 /// The sort order for ServiceIds is first by kind (ACI, then PNI), then lexicographically by the
 /// bytes of the UUID.
-public class ServiceId {
+public class ServiceId: @unchecked Sendable {
     private var storage: ServiceIdStorage = (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
 
     fileprivate init(fromFixedWidthBinary storage: ServiceIdStorage) {
@@ -199,7 +199,7 @@ extension ServiceId: CustomDebugStringConvertible {
     }
 }
 
-public class Aci: ServiceId {
+public class Aci: ServiceId, @unchecked Sendable {
     public init(fromUUID uuid: UUID) {
         super.init(.aci, uuid)
     }
@@ -209,7 +209,7 @@ public class Aci: ServiceId {
     }
 }
 
-public class Pni: ServiceId {
+public class Pni: ServiceId, @unchecked Sendable {
     public init(fromUUID uuid: UUID) {
         super.init(.pni, uuid)
     }
