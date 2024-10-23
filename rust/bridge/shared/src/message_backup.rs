@@ -23,8 +23,21 @@ bridge_handle_fns!(
 );
 
 #[bridge_fn]
-fn MessageBackupKey_New(master_key: &[u8; 32], aci: Aci) -> MessageBackupKey {
+fn MessageBackupKey_FromMasterKey(master_key: &[u8; 32], aci: Aci) -> MessageBackupKey {
     MessageBackupKey::from_master_key(master_key, aci)
+}
+
+#[bridge_fn]
+fn MessageBackupKey_FromAccountEntropyPool(account_entropy: String, aci: Aci) -> MessageBackupKey {
+    MessageBackupKey::from_account_entropy_pool(&account_entropy, aci)
+}
+
+#[bridge_fn]
+fn MessageBackupKey_FromBackupKeyAndBackupId(
+    backup_key: &[u8; 32],
+    backup_id: &[u8; 16],
+) -> MessageBackupKey {
+    MessageBackupKey::from_backup_key_and_backup_id(backup_key, backup_id)
 }
 
 #[bridge_fn(jni = false, node = false)]

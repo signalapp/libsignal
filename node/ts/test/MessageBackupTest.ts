@@ -10,14 +10,14 @@ import { Aci } from '../Address';
 import { Uint8ArrayInputStream, ErrorInputStream } from './ioutil';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { LogLevel } from '..';
+import { hkdf, LogLevel } from '..';
 
 util.initLogger(LogLevel.Trace);
 
 describe('MessageBackup', () => {
-  const masterKey = Buffer.from(new Uint8Array(32).fill('M'.charCodeAt(0)));
+  const accountEntropy = 'm'.repeat(64);
   const aci = Aci.fromUuidBytes(new Uint8Array(16).fill(0x11));
-  const testKey = new MessageBackup.MessageBackupKey(masterKey, aci);
+  const testKey = new MessageBackup.MessageBackupKey({ accountEntropy, aci });
   const purpose = MessageBackup.Purpose.RemoteBackup;
 
   describe('validate', () => {
@@ -33,6 +33,35 @@ describe('MessageBackup', () => {
         BigInt(input.length)
       );
       assert.equal(outcome.errorMessage, null);
+
+      // If we manually derive the test key's backup key and ID, we should get the same outcome.
+      const backupKey = hkdf(
+        32,
+        Buffer.from(accountEntropy, 'utf8'),
+        Buffer.from('20240801_SIGNAL_BACKUP_KEY', 'utf8'),
+        null
+      );
+      const backupId = hkdf(
+        16,
+        backupKey,
+        Buffer.concat([
+          Buffer.from('20241007_SIGNAL_MESSAGE_STORE_BACKUP_ID:', 'utf8'),
+          aci.getServiceIdBinary(),
+        ]),
+        null
+      );
+      const testKeyFromBackupId = new MessageBackup.MessageBackupKey({
+        backupKey,
+        backupId,
+      });
+
+      const outcome2 = await MessageBackup.validate(
+        testKeyFromBackupId,
+        purpose,
+        () => new Uint8ArrayInputStream(input),
+        BigInt(input.length)
+      );
+      assert.equal(outcome2.errorMessage, null);
     });
 
     it('produces an error message on empty input', async () => {

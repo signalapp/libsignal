@@ -7,12 +7,45 @@ import Foundation
 import SignalFfi
 
 public class MessageBackupKey: NativeHandleOwner {
+    @available(*, deprecated, message: "Use init(accountEntropy:aci:) instead")
     public convenience init(masterKey: [UInt8], aci: Aci) throws {
         let masterKey = try ByteArray(newContents: masterKey, expectedLength: 32)
         let handle = try masterKey.withUnsafePointerToSerialized { masterKey in
             try aci.withPointerToFixedWidthBinary { aci in
                 var outputHandle: OpaquePointer?
-                try checkError(signal_message_backup_key_new(&outputHandle, masterKey, aci))
+                try checkError(signal_message_backup_key_from_master_key(&outputHandle, masterKey, aci))
+                return outputHandle
+            }
+        }
+        self.init(owned: handle!)
+    }
+
+    /// Derives a `MessageBackupKey` from the given account entropy pool.
+    ///
+    /// `accountEntropy` must be a **validated** account entropy pool;
+    /// passing an arbitrary String here is considered a programmer error.
+    public convenience init(accountEntropy: String, aci: Aci) throws {
+        let handle = try aci.withPointerToFixedWidthBinary { aci in
+            var outputHandle: OpaquePointer?
+            try checkError(signal_message_backup_key_from_account_entropy_pool(&outputHandle, accountEntropy, aci))
+            return outputHandle
+        }
+        self.init(owned: handle!)
+    }
+
+    /// Derives a `MessageBackupKey` from the given backup key and ID.
+    ///
+    /// Used when reading from a local backup, which may have been created with a different ACI.
+    ///
+    /// This uses AccountEntropyPool-based key derivation rules;
+    /// it cannot be used to read a backup created from a master key.
+    public convenience init(backupKey: [UInt8], backupId: [UInt8]) throws {
+        let backupKey = try ByteArray(newContents: backupKey, expectedLength: 32)
+        let backupId = try ByteArray(newContents: backupId, expectedLength: 16)
+        let handle = try backupKey.withUnsafePointerToSerialized { backupKey in
+            try backupId.withUnsafePointerToSerialized { backupId in
+                var outputHandle: OpaquePointer?
+                try checkError(signal_message_backup_key_from_backup_key_and_backup_id(&outputHandle, backupKey, backupId))
                 return outputHandle
             }
         }

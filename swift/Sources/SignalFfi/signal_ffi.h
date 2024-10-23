@@ -1589,7 +1589,11 @@ SignalFfiError *signal_message_backup_key_destroy(SignalMessageBackupKey *p);
 
 SignalFfiError *signal_message_backup_validation_outcome_destroy(SignalMessageBackupValidationOutcome *p);
 
-SignalFfiError *signal_message_backup_key_new(SignalMessageBackupKey **out, const uint8_t (*master_key)[32], const SignalServiceIdFixedWidthBinaryBytes *aci);
+SignalFfiError *signal_message_backup_key_from_master_key(SignalMessageBackupKey **out, const uint8_t (*master_key)[32], const SignalServiceIdFixedWidthBinaryBytes *aci);
+
+SignalFfiError *signal_message_backup_key_from_account_entropy_pool(SignalMessageBackupKey **out, const char *account_entropy, const SignalServiceIdFixedWidthBinaryBytes *aci);
+
+SignalFfiError *signal_message_backup_key_from_backup_key_and_backup_id(SignalMessageBackupKey **out, const uint8_t (*backup_key)[32], const uint8_t (*backup_id)[16]);
 
 SignalFfiError *signal_message_backup_validation_outcome_get_error_message(const char **out, const SignalMessageBackupValidationOutcome *outcome);
 

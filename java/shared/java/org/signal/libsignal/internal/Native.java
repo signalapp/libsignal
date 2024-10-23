@@ -390,7 +390,9 @@ public final class Native {
   public static native void LookupRequest_setToken(long request, byte[] token);
 
   public static native void MessageBackupKey_Destroy(long handle);
-  public static native long MessageBackupKey_New(byte[] masterKey, byte[] aci);
+  public static native long MessageBackupKey_FromAccountEntropyPool(String accountEntropy, byte[] aci);
+  public static native long MessageBackupKey_FromBackupKeyAndBackupId(byte[] backupKey, byte[] backupId);
+  public static native long MessageBackupKey_FromMasterKey(byte[] masterKey, byte[] aci);
 
   public static native Object MessageBackupValidator_Validate(long key, InputStream firstStream, InputStream secondStream, long len, int purpose) throws Exception;
 

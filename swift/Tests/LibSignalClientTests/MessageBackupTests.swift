@@ -13,6 +13,14 @@ class MessageBackupTests: TestCaseBase {
 
         let outcome = try Self.validateBackup(bytes: validBackupContents)
         XCTAssertEqual(outcome.fields, [])
+
+        // Verify that the key can also be created from a backup ID and produce the same result.
+        _ = try validateMessageBackup(
+            key: MessageBackupKey.testKeyFromBackupId(),
+            purpose: .remoteBackup,
+            length: UInt64(validBackupContents.count),
+            makeStream: { SignalInputStreamAdapter(validBackupContents) }
+        )
     }
 
     func testInvalidInput() throws {
@@ -81,11 +89,34 @@ class MessageBackupTests: TestCaseBase {
 
 extension MessageBackupKey {
     public static func testKey() -> MessageBackupKey {
-        let masterKey = Array(repeating: Character("M").asciiValue!, count: 32)
+        let accountEntropy = String(repeating: "m", count: 64)
         let uuid: uuid_t = (
             0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11
         )
         let aci = Aci(fromUUID: UUID(uuid: uuid))
-        return try! MessageBackupKey(masterKey: masterKey, aci: aci)
+        return try! MessageBackupKey(accountEntropy: accountEntropy, aci: aci)
+    }
+
+    public static func testKeyFromBackupId() -> MessageBackupKey {
+        let accountEntropy = String(repeating: "m", count: 64)
+        let uuid: uuid_t = (
+            0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11
+        )
+        let aci = Aci(fromUUID: UUID(uuid: uuid))
+
+        let backupKey = try! hkdf(
+            outputLength: 32,
+            inputKeyMaterial: Array(accountEntropy.utf8),
+            salt: [],
+            info: Array("20240801_SIGNAL_BACKUP_KEY".utf8)
+        )
+        let backupId = try! hkdf(
+            outputLength: 16,
+            inputKeyMaterial: backupKey,
+            salt: [],
+            info: Array("20241007_SIGNAL_MESSAGE_STORE_BACKUP_ID:".utf8) + aci.serviceIdBinary
+        )
+
+        return try! MessageBackupKey(backupKey: backupKey, backupId: backupId)
     }
 }

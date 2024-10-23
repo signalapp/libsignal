@@ -20,9 +20,8 @@ use libsignal_message_backup::{BackupReader, ReadResult};
 const BACKUP_PURPOSE: Purpose = Purpose::RemoteBackup;
 
 const ACI: Aci = Aci::from_uuid_bytes([0x11; 16]);
-// TODO: Replace this with an AccountEntropyPool (in string form) when the app language tests are
-// ready to do so as well.
-const MASTER_KEY: [u8; 32] = [b'M'; 32];
+const RAW_ACCOUNT_ENTROPY_POOL: &str =
+    "mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm";
 const IV: [u8; 16] = [b'I'; 16];
 
 #[dir_test(
@@ -89,8 +88,9 @@ fn encrypted_proto_matches_source(input: Fixture<PathBuf>) {
     let path = input.into_content();
     let expected_source_path = format!("{}{ENCRYPTED_SOURCE_SUFFIX}", path.to_str().unwrap());
 
-    #[allow(deprecated)]
-    let backup_key = BackupKey::derive_from_master_key(&MASTER_KEY);
+    let backup_key = BackupKey::derive_from_account_entropy_pool(
+        &RAW_ACCOUNT_ENTROPY_POOL.parse().expect("valid"),
+    );
     let key = MessageBackupKey::derive(&backup_key, &backup_key.derive_backup_id(&ACI));
     println!("hmac key: {}", hex::encode(key.hmac_key));
     println!("aes key: {}", hex::encode(key.aes_key));
@@ -107,8 +107,8 @@ fn encrypted_proto_matches_source(input: Fixture<PathBuf>) {
         .args([
             "--aci",
             &ACI.service_id_string(),
-            "--master-key",
-            &hex::encode(MASTER_KEY),
+            "--account-entropy",
+            RAW_ACCOUNT_ENTROPY_POOL,
             "--iv",
             &hex::encode(IV),
             "-",
@@ -141,8 +141,9 @@ fn encrypted_proto_matches_source(input: Fixture<PathBuf>) {
 fn is_valid_encrypted_proto(input: Fixture<PathBuf>) {
     let path = input.content();
 
-    #[allow(deprecated)]
-    let backup_key = BackupKey::derive_from_master_key(&MASTER_KEY);
+    let backup_key = BackupKey::derive_from_account_entropy_pool(
+        &RAW_ACCOUNT_ENTROPY_POOL.parse().expect("valid"),
+    );
     let key = MessageBackupKey::derive(&backup_key, &backup_key.derive_backup_id(&ACI));
     println!("hmac key: {}", hex::encode(key.hmac_key));
     println!("aes key: {}", hex::encode(key.aes_key));
@@ -162,8 +163,8 @@ fn is_valid_encrypted_proto(input: Fixture<PathBuf>) {
         .args([
             "--aci",
             &ACI.service_id_string(),
-            "--master-key",
-            &hex::encode(MASTER_KEY),
+            "--account-entropy",
+            RAW_ACCOUNT_ENTROPY_POOL,
             "--purpose",
             BACKUP_PURPOSE.into(),
             path.to_str().unwrap(),

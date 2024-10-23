@@ -3,7 +3,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use libsignal_account_keys::BackupKey;
+use std::str::FromStr as _;
+
+use libsignal_account_keys::{AccountEntropyPool, BackupId, BackupKey, BACKUP_KEY_LEN};
 use libsignal_message_backup::frame::ValidationError as FrameValidationError;
 use libsignal_message_backup::key::MessageBackupKey as MessageBackupKeyInner;
 use libsignal_message_backup::parse::ParseError;
@@ -19,6 +21,29 @@ impl MessageBackupKey {
         #[allow(deprecated)]
         let backup_key = BackupKey::derive_from_master_key(master_key);
         let backup_id = backup_key.derive_backup_id(&aci);
+        Self(MessageBackupKeyInner::derive(&backup_key, &backup_id))
+    }
+
+    pub fn from_account_entropy_pool(account_entropy: &str, aci: Aci) -> Self {
+        let entropy = AccountEntropyPool::from_str(account_entropy)
+            .expect("should only pass validated entropy pool here");
+        let backup_key = BackupKey::derive_from_account_entropy_pool(&entropy);
+        let backup_id = backup_key.derive_backup_id(&aci);
+        Self(MessageBackupKeyInner::derive(&backup_key, &backup_id))
+    }
+
+    /// Used when reading from a local backup, where we might not have the ACI.
+    ///
+    /// We could take an account entropy pool here as well, but the backup ID is protected by a key
+    /// derived from the main backup key, so the caller will have already done the work to derive it
+    /// anyway.
+    pub fn from_backup_key_and_backup_id(
+        backup_key: &[u8; BACKUP_KEY_LEN],
+        backup_id: &[u8; BackupId::LEN],
+    ) -> Self {
+        // The explicit type forces the latest version of the key derivation scheme.
+        let backup_key: BackupKey = BackupKey(*backup_key);
+        let backup_id = BackupId(*backup_id);
         Self(MessageBackupKeyInner::derive(&backup_key, &backup_id))
     }
 }

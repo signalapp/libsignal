@@ -46,6 +46,17 @@ export class ValidationOutcome {
   }
 }
 
+export type MessageBackupKeyInput = Readonly<
+  | {
+      accountEntropy: string;
+      aci: Aci;
+    }
+  | {
+      backupKey: Buffer;
+      backupId: Buffer;
+    }
+>;
+
 /**
  * Key used to encrypt and decrypt a message backup bundle.
  */
@@ -53,15 +64,48 @@ export class MessageBackupKey {
   readonly _nativeHandle: Native.MessageBackupKey;
 
   /**
-   * Create a public key from the given master key and ACI.
+   * Create a backup bundle key from the given master key and ACI.
    *
    * `masterKeyBytes` should contain exactly 32 bytes.
+   *
+   * @deprecated Use AccountEntropyPool instead.
    */
-  public constructor(masterKeyBytes: Buffer, aci: Aci) {
-    this._nativeHandle = Native.MessageBackupKey_New(
-      masterKeyBytes,
-      aci.getServiceIdFixedWidthBinary()
-    );
+  public constructor(masterKeyBytes: Buffer, aci: Aci);
+  /**
+   * Create a backup bundle key from an account entropy pool and ACI.
+   *
+   * ...or from a backup key and ID, used when reading from a local backup, which may have been
+   * created with a different ACI. This still uses AccountEntropyPool-based key derivation rules; it
+   * cannot be used to read a backup created from a master key.
+   *
+   * The account entropy pool must be **validated**; passing an arbitrary string here is considered
+   * a programmer error. Similarly, passing a backup key or ID of the wrong length is also an error.
+   */
+  public constructor(input: MessageBackupKeyInput);
+
+  public constructor(
+    inputOrMasterKeyBytes: Buffer | MessageBackupKeyInput,
+    maybeAci?: Aci
+  ) {
+    if (inputOrMasterKeyBytes instanceof Buffer) {
+      if (maybeAci === undefined) throw new Error('missing ACI parameter');
+      this._nativeHandle = Native.MessageBackupKey_FromMasterKey(
+        inputOrMasterKeyBytes,
+        maybeAci.getServiceIdFixedWidthBinary()
+      );
+    } else if ('accountEntropy' in inputOrMasterKeyBytes) {
+      const { accountEntropy, aci } = inputOrMasterKeyBytes;
+      this._nativeHandle = Native.MessageBackupKey_FromAccountEntropyPool(
+        accountEntropy,
+        aci.getServiceIdFixedWidthBinary()
+      );
+    } else {
+      const { backupKey, backupId } = inputOrMasterKeyBytes;
+      this._nativeHandle = Native.MessageBackupKey_FromBackupKeyAndBackupId(
+        backupKey,
+        backupId
+      );
+    }
   }
 }
 
