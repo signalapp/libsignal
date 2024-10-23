@@ -3,20 +3,15 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use std::fs::OpenOptions;
+use std::future;
 use std::future::Future;
-use std::io::Write;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use std::time::Duration;
-use std::{env, future};
 
 use base64::prelude::{Engine as _, BASE64_STANDARD};
 use futures_util::stream::FuturesUnordered;
 use futures_util::StreamExt;
 use http::HeaderValue;
-use once_cell::sync::OnceCell;
-
-use crate::errors::TransportConnectError;
 
 /// Constructs the value of the `Authorization` header for the `Basic` auth scheme.
 pub fn basic_authorization(username: &str, password: &str) -> HeaderValue {
@@ -230,11 +225,19 @@ pub(crate) async fn sleep_until_and_catch_up(time: tokio::time::Instant) {
 #[allow(dead_code)]
 pub(crate) fn development_only_enable_nss_standard_debug_interop(
     ssl: &mut boring_signal::ssl::SslConnectorBuilder,
-) -> Result<(), TransportConnectError> {
+) -> Result<(), crate::errors::TransportConnectError> {
+    use std::fs::OpenOptions;
+    use std::io::Write as _;
+    use std::sync::Mutex;
+
+    use once_cell::sync::OnceCell;
+
+    use crate::errors::TransportConnectError;
+
     log::warn!(
         "NSS TLS debugging enabled! If you don't expect this, report to security@signal.org"
     );
-    if let Ok(keylog_path) = env::var("SSLKEYLOGFILE") {
+    if let Ok(keylog_path) = std::env::var("SSLKEYLOGFILE") {
         // This copies the behavior from BoringSSL where the connection will fail if
         //  SSLKEYLOGFILE is set but the file cannot be created. See:
         //  https://boringssl.googlesource.com/boringssl/+/refs/heads/master/tool/client.cc#400
