@@ -8,6 +8,7 @@ use std::fmt::Debug;
 use std::sync::Arc;
 
 use derive_where::derive_where;
+use libsignal_account_keys::BACKUP_KEY_LEN;
 use libsignal_core::Aci;
 
 pub(crate) use crate::backup::account_data::{AccountData, AccountDataError};
@@ -19,7 +20,7 @@ use crate::backup::method::{Lookup, LookupPair, Method, Store, ValidateOnly};
 use crate::backup::recipient::{
     DestinationKind, FullRecipientData, MinimalRecipientData, RecipientError,
 };
-use crate::backup::serialize::SerializeOrder;
+use crate::backup::serialize::{backup_key_as_hex, SerializeOrder};
 use crate::backup::sticker::{PackId as StickerPackId, StickerPack, StickerPackError};
 use crate::backup::time::Timestamp;
 use crate::proto::backup as proto;
@@ -115,6 +116,9 @@ pub struct BackupMeta {
     /// Omitted from the canonical backup string, so that subsequent backups can be compared.
     #[serde(skip)]
     pub backup_time: Timestamp,
+    /// The key used to encrypt and upload media associated with this backup.
+    #[serde(serialize_with = "backup_key_as_hex")]
+    pub media_root_backup_key: libsignal_account_keys::BackupKey,
     /// What purpose the backup was intended for.
     pub purpose: Purpose,
 }
@@ -184,6 +188,8 @@ impl<M: Method + ReferencedTypes> TryFrom<PartialBackup<M>> for CompletedBackup<
 pub enum ValidationError {
     /// Frame.item is a oneof but has no value
     EmptyFrame,
+    /// BackupInfo error: {0}
+    BackupInfoError(#[from] MetadataError),
     /// multiple AccountData frames found
     MultipleAccountData,
     /// AccountData error: {0}
@@ -326,40 +332,58 @@ impl ReferencedTypes for ValidateOnly {
 #[derive(Debug, displaydoc::Display, thiserror::Error)]
 pub struct RecipientFrameError(RecipientId, RecipientError);
 
+#[derive(Debug, displaydoc::Display, thiserror::Error)]
+pub enum MetadataError {
+    /// invalid mediaRootBackupKey (expected {BACKUP_KEY_LEN:?} bytes, got {0:?})
+    InvalidMediaRootBackupKey(usize),
+}
+
 impl PartialBackup<ValidateOnly> {
-    pub fn new_validator(value: proto::BackupInfo, purpose: Purpose) -> Self {
+    pub fn new_validator(
+        value: proto::BackupInfo,
+        purpose: Purpose,
+    ) -> Result<Self, ValidationError> {
         Self::new(value, purpose)
     }
 }
 
 impl PartialBackup<Store> {
-    pub fn new_store(value: proto::BackupInfo, purpose: Purpose) -> Self {
+    pub fn new_store(value: proto::BackupInfo, purpose: Purpose) -> Result<Self, ValidationError> {
         Self::new(value, purpose)
     }
 }
 
 impl<M: Method + ReferencedTypes> PartialBackup<M> {
-    pub fn new(value: proto::BackupInfo, purpose: Purpose) -> Self {
+    pub fn new(value: proto::BackupInfo, purpose: Purpose) -> Result<Self, ValidationError> {
         let proto::BackupInfo {
             version,
             backupTimeMs,
+            mediaRootBackupKey,
             special_fields: _,
         } = value;
+
+        let media_root_backup_key = libsignal_account_keys::BackupKey(
+            mediaRootBackupKey
+                .as_slice()
+                .try_into()
+                .map_err(|_| MetadataError::InvalidMediaRootBackupKey(mediaRootBackupKey.len()))?,
+        );
 
         let meta = BackupMeta {
             version,
             backup_time: Timestamp::from_millis(backupTimeMs, "BackupInfo.backupTimeMs"),
+            media_root_backup_key,
             purpose,
         };
 
-        Self {
+        Ok(Self {
             meta,
             account_data: None,
             recipients: Default::default(),
             chats: Default::default(),
             ad_hoc_calls: Default::default(),
             sticker_packs: HashMap::new(),
-        }
+        })
     }
 
     pub fn add_frame(&mut self, frame: proto::Frame) -> Result<(), ValidationError> {
@@ -662,7 +686,11 @@ mod test {
 
     trait TestPartialBackupMethod: Method + ReferencedTypes + Sized {
         fn empty() -> PartialBackup<Self> {
-            PartialBackup::new(proto::BackupInfo::new(), Purpose::RemoteBackup)
+            let proto = proto::BackupInfo {
+                mediaRootBackupKey: vec![0; BACKUP_KEY_LEN],
+                ..Default::default()
+            };
+            PartialBackup::new(proto, Purpose::RemoteBackup).expect("valid")
         }
 
         fn fake() -> PartialBackup<Self> {

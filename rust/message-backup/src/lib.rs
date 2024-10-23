@@ -198,7 +198,7 @@ async fn read_all_frames<M: backup::method::Method + backup::ReferencedTypes>(
     visitor(&backup_info);
     add_found_unknown(backup_info.collect_unknown_fields(), 0);
 
-    let mut backup = backup::PartialBackup::new(backup_info, purpose);
+    let mut backup = backup::PartialBackup::new(backup_info, purpose)?;
     let mut frame_index = 1;
 
     while let Some(frame) = reader.read_next().await? {

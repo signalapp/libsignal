@@ -119,6 +119,13 @@ pub(crate) fn list_of_hex<S: Serializer>(
     serializer.collect_seq(value.iter().map(hex::encode))
 }
 
+pub(crate) fn backup_key_as_hex<S: Serializer>(
+    value: &libsignal_account_keys::BackupKey,
+    serializer: S,
+) -> Result<S::Ok, S::Error> {
+    hex::encode(value.0).serialize(serializer)
+}
+
 /// Serialization helper for [`UnorderedList`].
 ///
 /// Like [`std::cmp::Ord`] but only for use during serialization.
@@ -381,6 +388,7 @@ mod test {
             Self {
                 version: 1,
                 backupTimeMs: 1715636551000,
+                mediaRootBackupKey: vec![0xab; libsignal_account_keys::BACKUP_KEY_LEN],
                 special_fields: Default::default(),
             }
         }
@@ -392,7 +400,8 @@ mod test {
         let mut reader = crate::backup::PartialBackup::new(
             proto::BackupInfo::test_data(),
             crate::backup::Purpose::RemoteBackup,
-        );
+        )
+        .expect("valid metadata");
         for frame in frames {
             reader.add_frame(frame).expect("valid frame")
         }
@@ -406,6 +415,9 @@ mod test {
                 version: 1,
                 backup_time: Timestamp::test_value(),
                 purpose: crate::backup::Purpose::RemoteBackup,
+                media_root_backup_key: libsignal_account_keys::BackupKey(
+                    [0xab; libsignal_account_keys::BACKUP_KEY_LEN],
+                ),
             },
             account_data: AccountData::from_proto_test_data(),
             recipients: UnorderedList::default(),

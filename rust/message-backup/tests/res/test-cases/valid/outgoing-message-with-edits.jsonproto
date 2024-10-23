@@ -2,7 +2,8 @@
 [
   {
     "backupTimeMs": 123456,
-    "version": 1
+    "version": 1,
+    "mediaRootBackupKey": "q6urq6urq6urq6urq6urq6urq6urq6urq6urq6urq6s=",
   },
   {
     "account": {

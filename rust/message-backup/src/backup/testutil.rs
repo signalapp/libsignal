@@ -31,6 +31,9 @@ impl BackupMeta {
         Self {
             backup_time: Timestamp::test_value(),
             purpose: Purpose::RemoteBackup,
+            media_root_backup_key: libsignal_account_keys::BackupKey(
+                [0xab; libsignal_account_keys::BACKUP_KEY_LEN],
+            ),
             version: 0,
         }
     }

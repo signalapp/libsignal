@@ -1032,6 +1032,9 @@ mod test {
         let meta = BackupMeta {
             backup_time,
             purpose: backup_purpose,
+            media_root_backup_key: libsignal_account_keys::BackupKey(
+                [0; libsignal_account_keys::BACKUP_KEY_LEN],
+            ),
             version: 0,
         };
 
