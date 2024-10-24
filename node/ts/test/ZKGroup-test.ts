@@ -58,10 +58,10 @@ import {
   ReceiptCredentialRequestContext,
   ReceiptCredentialResponse,
   BackupLevel,
+  BackupCredentialType,
 } from '../zkgroup/';
 import { Aci, Pni } from '../Address';
 import { LibSignalErrorBase, Uuid } from '..';
-import BackupCredentialType from '../zkgroup/backups/BackupCredentialType';
 
 const SECONDS_PER_DAY = 86400;
 
