@@ -12,8 +12,12 @@ use core::{fmt, str};
 pub use backup::*;
 pub use error::{Error, Result};
 pub use hash::{local_pin_hash, verify_local_pin_hash, PinHash};
+use hkdf::Hkdf;
 use rand::distributions::Slice;
 use rand::Rng;
+use sha2::Sha256;
+
+pub const SVR_KEY_LEN: usize = 32;
 
 // The randomly-generated user-memorized entropy backing the "Backup Key"
 pub struct AccountEntropyPool {
@@ -29,6 +33,14 @@ impl AccountEntropyPool {
         let alphabet_dist = Slice::new(Self::ALPHABET).unwrap();
         let entropy_pool: [u8; Self::LENGTH] = std::array::from_fn(|_| *rng.sample(alphabet_dist));
         Self { entropy_pool }
+    }
+
+    pub fn derive_svr_key(&self) -> [u8; SVR_KEY_LEN] {
+        let mut key = [0; BACKUP_KEY_LEN];
+        Hkdf::<Sha256>::new(None, &self.entropy_pool)
+            .expand(b"20240801_SIGNAL_SVR_MASTER_KEY", &mut key)
+            .expect("valid length");
+        key
     }
 }
 

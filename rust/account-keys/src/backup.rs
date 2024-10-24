@@ -12,16 +12,20 @@
 
 use hkdf::Hkdf;
 use libsignal_core::Aci;
+use libsignal_protocol::PrivateKey;
 use partial_default::PartialDefault;
 use sha2::Sha256;
 
-use crate::AccountEntropyPool;
+use crate::{AccountEntropyPool, SVR_KEY_LEN};
 
 const V0: u8 = 0;
 const V1: u8 = 1;
 const LATEST: u8 = V1;
 
 pub const BACKUP_KEY_LEN: usize = 32;
+pub const LOCAL_BACKUP_METADATA_KEY_LEN: usize = 32;
+pub const MEDIA_ID_LEN: usize = 15;
+pub const MEDIA_ENCRYPTION_KEY_LEN: usize = 32 + 32; // HMAC key + AES-CBC key
 
 /// Primary key for backups that is used to derive other keys.
 ///
@@ -38,7 +42,7 @@ pub type BackupKeyV0 = BackupKey<V0>;
 
 impl BackupKey<V0> {
     pub const VERSION: u8 = V0;
-    pub const MASTER_KEY_LEN: usize = 32;
+    pub const MASTER_KEY_LEN: usize = SVR_KEY_LEN;
 
     /// Derive a `BackupKey` from the provided master key.
     #[deprecated = "Use AccountEntropyPool instead"]
@@ -67,6 +71,46 @@ impl BackupKey<V1> {
             .expand(b"20240801_SIGNAL_BACKUP_KEY", &mut key)
             .expect("valid length");
         Self(key)
+    }
+
+    pub fn derive_ec_key(&self, aci: &Aci) -> PrivateKey {
+        const INFO: &[u8] = b"20241024_SIGNAL_BACKUP_ID_KEYPAIR:";
+        let mut private_key_bytes = [0; 32];
+        Hkdf::<Sha256>::new(None, &self.0)
+            .expand_multi_info(&[INFO, &aci.service_id_binary()], &mut private_key_bytes)
+            .expect("valid length");
+        libsignal_protocol::PrivateKey::deserialize(&private_key_bytes)
+            .expect("correctly generated")
+    }
+
+    pub fn derive_local_backup_metadata_key(&self) -> [u8; LOCAL_BACKUP_METADATA_KEY_LEN] {
+        const INFO: &[u8] = b"20241011_SIGNAL_LOCAL_BACKUP_METADATA_KEY";
+        let mut bytes = [0; LOCAL_BACKUP_METADATA_KEY_LEN];
+        Hkdf::<Sha256>::new(None, &self.0)
+            .expand(INFO, &mut bytes)
+            .expect("valid length");
+        bytes
+    }
+
+    pub fn derive_media_id(&self, media_name: &str) -> [u8; MEDIA_ID_LEN] {
+        const INFO: &[u8] = b"20241007_SIGNAL_BACKUP_MEDIA_ID:";
+        let mut bytes = [0; MEDIA_ID_LEN];
+        Hkdf::<Sha256>::new(None, &self.0)
+            .expand_multi_info(&[INFO, media_name.as_bytes()], &mut bytes)
+            .expect("valid length");
+        bytes
+    }
+
+    pub fn derive_media_encryption_key_data(
+        &self,
+        media_id: &[u8; MEDIA_ID_LEN],
+    ) -> [u8; MEDIA_ENCRYPTION_KEY_LEN] {
+        const INFO: &[u8] = b"20241007_SIGNAL_BACKUP_ENCRYPT_MEDIA:";
+        let mut bytes = [0; MEDIA_ENCRYPTION_KEY_LEN];
+        Hkdf::<Sha256>::new(None, &self.0)
+            .expand_multi_info(&[INFO, media_id], &mut bytes)
+            .expect("valid length");
+        bytes
     }
 }
 

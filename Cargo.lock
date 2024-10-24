@@ -2028,6 +2028,7 @@ dependencies = [
  "hkdf",
  "hmac",
  "libsignal-core",
+ "libsignal-protocol",
  "partial-default",
  "proptest",
  "rand",

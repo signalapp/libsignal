@@ -16,6 +16,7 @@ workspace = true
 
 [dependencies]
 libsignal-core = { workspace = true }
+libsignal-protocol = { workspace = true }
 
 argon2 = { version = "0.5.0", features = ["zeroize"] }
 displaydoc = { workspace = true }
