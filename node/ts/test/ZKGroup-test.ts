@@ -720,10 +720,10 @@ describe('ZKGroup', () => {
     // These are expectations; if the contents of a credential or derivation of a backup ID changes,
     // they will need to be updated.
     const SERIALIZED_BACKUP_ID = hexToBuffer(
-      '52b899ef83125719d3daa9a4edcc0aff'
+      'a28962c7f9ac910f66e4bcb33f2cef06'
     );
     const SERIALIZED_REQUEST_CREDENTIAL = Buffer.from(
-      'AISCxQa8OsFqphsQPxqtzJk5+jndpE3SJG6bfazQB3999KZFdtnpcIjx/0DPYbLJRbLQmz1ZXnueq5HPo9ewpEjojRSO8xaZOpKJOvWSDJIGn6EeMl2jOjx+IQg8d8M0AQ==',
+      'AISCxQa8OsFqphsQPxqtzJk5+jndpE3SJG6bfazQB399rN6N8Dv5DAwvY4N36Uj0qGf0cV5a/8rf5nkxLeVNnF3ojRSO8xaZOpKJOvWSDJIGn6EeMl2jOjx+IQg8d8M0AQ==',
       'base64'
     );
 

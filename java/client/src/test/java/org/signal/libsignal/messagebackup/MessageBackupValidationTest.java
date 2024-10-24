@@ -43,7 +43,7 @@ public class MessageBackupValidationTest {
         HKDF.deriveSecrets(
             backupKey,
             ByteUtil.combine(
-                "20241007_SIGNAL_MESSAGE_STORE_BACKUP_ID:".getBytes(StandardCharsets.UTF_8),
+                "20241024_SIGNAL_BACKUP_ID:".getBytes(StandardCharsets.UTF_8),
                 aci.toServiceIdBinary()),
             16);
     return new MessageBackupKey(backupKey, backupId);

@@ -431,8 +431,8 @@ class ZKGroupTests: TestCaseBase {
 
         // These are expectations; if the contents of a credential or derivation of a backup ID
         // changes, they will need to be updated.
-        let serializedBackupID: [UInt8] = [0x52, 0xB8, 0x99, 0xEF, 0x83, 0x12, 0x57, 0x19, 0xD3, 0xDA, 0xA9, 0xA4, 0xED, 0xCC, 0x0A, 0xFF]
-        let serializedRequestCredential = Data(base64Encoded: "AISCxQa8OsFqphsQPxqtzJk5+jndpE3SJG6bfazQB3999KZFdtnpcIjx/0DPYbLJRbLQmz1ZXnueq5HPo9ewpEjojRSO8xaZOpKJOvWSDJIGn6EeMl2jOjx+IQg8d8M0AQ==")!
+        let serializedBackupID: [UInt8] = [0xA2, 0x89, 0x62, 0xC7, 0xF9, 0xAC, 0x91, 0x0F, 0x66, 0xE4, 0xBC, 0xB3, 0x3F, 0x2C, 0xEF, 0x06]
+        let serializedRequestCredential = Data(base64Encoded: "AISCxQa8OsFqphsQPxqtzJk5+jndpE3SJG6bfazQB399rN6N8Dv5DAwvY4N36Uj0qGf0cV5a/8rf5nkxLeVNnF3ojRSO8xaZOpKJOvWSDJIGn6EeMl2jOjx+IQg8d8M0AQ==")!
 
         let backupLevel = BackupLevel.free
         let credentialType = BackupCredentialType.messages

@@ -84,8 +84,8 @@ pub(crate) mod test {
     /// This is derived from [`FAKE_ACCOUNT_ENTROPY_POOL`] and [`FAKE_ACI`] (verified in
     /// [`message_backup_key_known`] below).
     pub(crate) const FAKE_MESSAGE_BACKUP_KEY: MessageBackupKey = MessageBackupKey {
-        hmac_key: hex!("5f3fc1a9beb99f55ec449725566fe43388b72c2a0edacb86e4ec93ee41cbdec4"),
-        aes_key: hex!("f9af75f032c3c8e570584f6ac8298a65864e049c61b7c03d5e61b5f56b43c38c"),
+        hmac_key: hex!("f425e22a607c529717e1e1b29f9fe139f9d1c7e7d01e371c7753c544a3026649"),
+        aes_key: hex!("e143f4ad5668d8bfed2f88562f0693f53bda2c0e55c9d71730f30e24695fd6df"),
     };
 
     #[test]

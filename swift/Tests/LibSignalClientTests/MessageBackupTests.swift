@@ -114,7 +114,7 @@ extension MessageBackupKey {
             outputLength: 16,
             inputKeyMaterial: backupKey,
             salt: [],
-            info: Array("20241007_SIGNAL_MESSAGE_STORE_BACKUP_ID:".utf8) + aci.serviceIdBinary
+            info: Array("20241024_SIGNAL_BACKUP_ID:".utf8) + aci.serviceIdBinary
         )
 
         return try! MessageBackupKey(backupKey: backupKey, backupId: backupId)

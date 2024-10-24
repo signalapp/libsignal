@@ -45,7 +45,7 @@ describe('MessageBackup', () => {
         16,
         backupKey,
         Buffer.concat([
-          Buffer.from('20241007_SIGNAL_MESSAGE_STORE_BACKUP_ID:', 'utf8'),
+          Buffer.from('20241024_SIGNAL_BACKUP_ID:', 'utf8'),
           aci.getServiceIdBinary(),
         ]),
         null

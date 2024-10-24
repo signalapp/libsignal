@@ -91,7 +91,7 @@ impl<const VERSION: u8> BackupKey<VERSION> {
             V1 => {
                 // If this key was derived from an account entropy pool, use the current ID
                 // generation scheme.
-                const INFO: &[u8] = b"20241007_SIGNAL_MESSAGE_STORE_BACKUP_ID:";
+                const INFO: &[u8] = b"20241024_SIGNAL_BACKUP_ID:";
 
                 Hkdf::<Sha256>::new(None, &self.0)
                     .expand_multi_info(&[INFO, &aci.service_id_binary()], &mut bytes)
@@ -170,7 +170,7 @@ pub(crate) mod test {
         let key = BackupKey::derive_from_account_entropy_pool(&FAKE_ACCOUNT_ENTROPY_POOL);
         let id = key.derive_backup_id(&FAKE_ACI);
 
-        const EXPECTED_ID_BYTES: [u8; BackupId::LEN] = hex!("eb6296b86178c767d0d4c25449dd564c");
+        const EXPECTED_ID_BYTES: [u8; BackupId::LEN] = hex!("8a624fbc45379043f39f1391cddc5fe8");
         assert_eq!(id, BackupId(EXPECTED_ID_BYTES), "got {id:02x?}");
     }
 }
