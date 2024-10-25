@@ -22,6 +22,16 @@ class IncrementalMacTests: TestCaseBase {
         XCTAssertEqual(self.TEST_DIGEST, digest)
     }
 
+    func testIncrementalDigestChunkSizeAbsolute() throws {
+        let mac = try IncrementalMacContext(key: TEST_KEY, chunkSize: CHUNK_SIZE)
+        XCTAssertEqual(32, mac.chunkSizeInBytes)
+    }
+
+    func testIncrementalDigestChunkSizeInferred() throws {
+        let mac = try IncrementalMacContext(key: TEST_KEY, chunkSize: .chunkOf(42))
+        XCTAssertEqual(65536, mac.chunkSizeInBytes)
+    }
+
     func testIncrementalValidationSuccess() throws {
         let mac = try ValidatingMacContext(key: TEST_KEY, chunkSize: CHUNK_SIZE, expectingDigest: TEST_DIGEST)
         for d in self.TEST_INPUT {

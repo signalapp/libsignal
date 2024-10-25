@@ -25,6 +25,8 @@ public enum SizeChoice: Sendable {
 public class IncrementalMacContext: NativeHandleOwner {
     private var _digest: Data = .init()
 
+    public private(set) var chunkSizeInBytes: UInt32 = 0
+
     public convenience init<Key: ContiguousBytes>(key: Key, chunkSize sizeChoice: SizeChoice) throws {
         let chunkSize = try sizeChoice.sizeInBytes()
         let handle: OpaquePointer? = try key.withUnsafeBorrowedBuffer { keyBuffer in
@@ -33,6 +35,7 @@ public class IncrementalMacContext: NativeHandleOwner {
             return macHandle
         }
         self.init(owned: handle!)
+        self.chunkSizeInBytes = chunkSize
     }
 
     override internal class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
