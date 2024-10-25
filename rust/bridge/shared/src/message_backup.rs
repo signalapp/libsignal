@@ -40,6 +40,16 @@ fn MessageBackupKey_FromBackupKeyAndBackupId(
     MessageBackupKey::from_backup_key_and_backup_id(backup_key, backup_id)
 }
 
+#[bridge_fn]
+fn MessageBackupKey_GetHmacKey(key: &MessageBackupKey) -> [u8; 32] {
+    key.0.hmac_key
+}
+
+#[bridge_fn]
+fn MessageBackupKey_GetAesKey(key: &MessageBackupKey) -> [u8; 32] {
+    key.0.aes_key
+}
+
 #[bridge_fn(jni = false, node = false)]
 fn MessageBackupValidationOutcome_getErrorMessage(
     outcome: &MessageBackupValidationOutcome,

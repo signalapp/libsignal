@@ -107,6 +107,16 @@ export class MessageBackupKey {
       );
     }
   }
+
+  /** An HMAC key used to sign a backup file. */
+  public get hmacKey(): Buffer {
+    return Native.MessageBackupKey_GetHmacKey(this);
+  }
+
+  /** An AES-256-CBC key used to encrypt a backup file. */
+  public get aesKey(): Buffer {
+    return Native.MessageBackupKey_GetAesKey(this);
+  }
 }
 
 // This must match the Rust version of the enum.

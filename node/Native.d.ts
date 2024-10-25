@@ -314,6 +314,8 @@ export function LookupRequest_setToken(request: Wrapper<LookupRequest>, token: B
 export function MessageBackupKey_FromAccountEntropyPool(accountEntropy: string, aci: Buffer): MessageBackupKey;
 export function MessageBackupKey_FromBackupKeyAndBackupId(backupKey: Buffer, backupId: Buffer): MessageBackupKey;
 export function MessageBackupKey_FromMasterKey(masterKey: Buffer, aci: Buffer): MessageBackupKey;
+export function MessageBackupKey_GetAesKey(key: Wrapper<MessageBackupKey>): Buffer;
+export function MessageBackupKey_GetHmacKey(key: Wrapper<MessageBackupKey>): Buffer;
 export function MessageBackupValidator_Validate(key: Wrapper<MessageBackupKey>, firstStream: InputStream, secondStream: InputStream, len: bigint, purpose: number): Promise<MessageBackupValidationOutcome>;
 export function MinidumpToJSONString(buffer: Buffer): string;
 export function Mp4Sanitizer_Sanitize(input: InputStream, len: bigint): Promise<SanitizedMetadata>;

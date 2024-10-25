@@ -59,6 +59,28 @@ public class MessageBackupKey: NativeHandleOwner, @unchecked Sendable {
     override internal class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
         signal_message_backup_key_destroy(handle)
     }
+
+    /// An HMAC key used to sign a backup file.
+    public var hmacKey: [UInt8] {
+        failOnError {
+            try withNativeHandle { keyHandle in
+                try invokeFnReturningFixedLengthArray {
+                    signal_message_backup_key_get_hmac_key($0, keyHandle)
+                }
+            }
+        }
+    }
+
+    /// An AES-256-CBC key used to encrypt a backup file.
+    public var aesKey: [UInt8] {
+        failOnError {
+            try withNativeHandle { keyHandle in
+                try invokeFnReturningFixedLengthArray {
+                    signal_message_backup_key_get_aes_key($0, keyHandle)
+                }
+            }
+        }
+    }
 }
 
 public enum MessageBackupPurpose: UInt8, Sendable {

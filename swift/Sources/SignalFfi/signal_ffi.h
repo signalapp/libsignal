@@ -1597,6 +1597,10 @@ SignalFfiError *signal_message_backup_key_from_account_entropy_pool(SignalMessag
 
 SignalFfiError *signal_message_backup_key_from_backup_key_and_backup_id(SignalMessageBackupKey **out, const uint8_t (*backup_key)[32], const uint8_t (*backup_id)[16]);
 
+SignalFfiError *signal_message_backup_key_get_hmac_key(uint8_t (*out)[32], const SignalMessageBackupKey *key);
+
+SignalFfiError *signal_message_backup_key_get_aes_key(uint8_t (*out)[32], const SignalMessageBackupKey *key);
+
 SignalFfiError *signal_message_backup_validation_outcome_get_error_message(const char **out, const SignalMessageBackupValidationOutcome *outcome);
 
 SignalFfiError *signal_message_backup_validation_outcome_get_unknown_fields(SignalStringArray *out, const SignalMessageBackupValidationOutcome *outcome);

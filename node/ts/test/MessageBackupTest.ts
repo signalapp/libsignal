@@ -64,6 +64,13 @@ describe('MessageBackup', () => {
       assert.equal(outcome2.errorMessage, null);
     });
 
+    it('provides its HMAC and AES keys', () => {
+      // Just check some basic expectations.
+      assert.equal(32, testKey.hmacKey.length);
+      assert.equal(32, testKey.aesKey.length);
+      assert.isFalse(testKey.hmacKey.equals(testKey.aesKey));
+    });
+
     it('produces an error message on empty input', async () => {
       const outcome = await MessageBackup.validate(
         testKey,

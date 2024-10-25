@@ -23,6 +23,14 @@ class MessageBackupTests: TestCaseBase {
         )
     }
 
+    func testMessageBackupKeyParts() {
+        let testKey = MessageBackupKey.testKey()
+        // Just check some basic expectations.
+        XCTAssertEqual(32, testKey.hmacKey.count)
+        XCTAssertEqual(32, testKey.aesKey.count)
+        XCTAssertNotEqual(testKey.hmacKey, testKey.aesKey)
+    }
+
     func testInvalidInput() throws {
         // Start with a valid file, then overwrite some bytes
         var bytes = readResource(forName: "new_account.binproto.encrypted")

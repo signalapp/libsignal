@@ -54,5 +54,19 @@ public class MessageBackupKey implements NativeHandleGuard.Owner {
     Native.MessageBackupKey_Destroy(this.nativeHandle);
   }
 
+  /** An HMAC key used to sign a backup file. */
+  public byte[] getHmacKey() {
+    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
+      return Native.MessageBackupKey_GetHmacKey(guard.nativeHandle());
+    }
+  }
+
+  /** An AES-256-CBC key used to encrypt a backup file. */
+  public byte[] getAesKey() {
+    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
+      return Native.MessageBackupKey_GetAesKey(guard.nativeHandle());
+    }
+  }
+
   private long nativeHandle;
 }

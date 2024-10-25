@@ -7,6 +7,7 @@ package org.signal.libsignal.messagebackup;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
@@ -14,6 +15,7 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.UUID;
 import java.util.function.Supplier;
 import org.junit.Test;
@@ -72,6 +74,17 @@ public class MessageBackupValidationTest {
     MessageBackup.ValidationResult result2 =
         MessageBackup.validate(keyFromBackupId, BACKUP_PURPOSE, factory, length);
     assertArrayEquals(result2.unknownFieldMessages, new String[0]);
+  }
+
+  @Test
+  public void messageBackupKeyPartsSmokeTest() {
+    MessageBackupKey key = makeMessageBackupKey();
+    // Just check some basic expectations.
+    byte[] hmacKey = key.getHmacKey();
+    byte[] aesKey = key.getAesKey();
+    assertEquals(32, hmacKey.length);
+    assertEquals(32, aesKey.length);
+    assertFalse(Arrays.equals(hmacKey, aesKey));
   }
 
   @Test

@@ -395,6 +395,8 @@ public final class Native {
   public static native long MessageBackupKey_FromAccountEntropyPool(String accountEntropy, byte[] aci);
   public static native long MessageBackupKey_FromBackupKeyAndBackupId(byte[] backupKey, byte[] backupId);
   public static native long MessageBackupKey_FromMasterKey(byte[] masterKey, byte[] aci);
+  public static native byte[] MessageBackupKey_GetAesKey(long key);
+  public static native byte[] MessageBackupKey_GetHmacKey(long key);
 
   public static native Object MessageBackupValidator_Validate(long key, InputStream firstStream, InputStream secondStream, long len, int purpose) throws Exception;
 
