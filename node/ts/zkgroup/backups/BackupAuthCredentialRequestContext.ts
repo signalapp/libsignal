@@ -12,7 +12,7 @@ import BackupAuthCredentialRequest from './BackupAuthCredentialRequest';
 import BackupAuthCredentialResponse from './BackupAuthCredentialResponse';
 import BackupAuthCredential from './BackupAuthCredential';
 import GenericServerPublicParams from '../GenericServerPublicParams';
-import { Uuid } from '../..';
+import type { Uuid } from '../..';
 
 export default class BackupAuthCredentialRequestContext extends ByteArray {
   private readonly __type?: never;
