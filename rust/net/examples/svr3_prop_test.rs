@@ -11,7 +11,6 @@ use async_trait::async_trait;
 use libsignal_net::auth::Auth;
 use libsignal_net::enclave::PpssSetup;
 use libsignal_net::env::Svr3Env;
-use libsignal_net::infra::ws::DefaultStream;
 use libsignal_net::svr3::traits::*;
 use libsignal_net::svr3::{Error, OpaqueMaskedShareSet};
 use libsignal_svr3::EvaluationResult;
@@ -332,10 +331,9 @@ impl<'a> Client<'a> {
 
 #[async_trait]
 impl Svr3Connect for Client<'_> {
-    type Stream = DefaultStream;
     type Env = Svr3Env<'static>;
 
-    async fn connect(&self) -> <Self::Env as PpssSetup<Self::Stream>>::ConnectionResults {
+    async fn connect(&self) -> <Self::Env as PpssSetup>::ConnectionResults {
         if let Some(duration) = self.config.sleep {
             log::info!("💤 to avoid throttling...");
             tokio::time::sleep(duration).await;

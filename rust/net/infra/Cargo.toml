@@ -44,6 +44,7 @@ thiserror = { workspace = true }
 tokio = { workspace = true, features = ["rt", "time", "macros"] }
 tokio-boring-signal = { workspace = true }
 tokio-socks = "0.5.2"
+tokio-stream = { workspace = true }
 tokio-tungstenite = "0.23.0"
 tokio-util = "0.7.9"
 tungstenite = { version = "0.23.0", features = ["url"] }
@@ -62,5 +63,4 @@ socks5-server = "0.10.1"
 test-case = { workspace = true }
 tls-parser = "0.11.0"
 tokio = { workspace = true, features = ["test-util", "io-std", "rt-multi-thread"] }
-tokio-stream = { workspace = true }
 warp = { version = "0.3.6", features = ["tls"] }

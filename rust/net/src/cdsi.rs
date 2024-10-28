@@ -10,17 +10,13 @@ use http::StatusCode;
 use libsignal_core::{Aci, Pni, E164};
 use libsignal_net_infra::connection_manager::ConnectionManager;
 use libsignal_net_infra::errors::{LogSafeDisplay, TransportConnectError};
-use libsignal_net_infra::ws::{
-    AttestedConnection, AttestedConnectionError, AttestedProtocolError, NextOrClose,
-    WebSocketConnectError, WebSocketServiceError,
+use libsignal_net_infra::ws::{NextOrClose, WebSocketConnectError, WebSocketServiceError};
+use libsignal_net_infra::ws2::attested::{
+    AttestedConnection, AttestedConnectionError, AttestedProtocolError,
 };
-use libsignal_net_infra::{
-    extract_retry_after_seconds, AsyncDuplexStream, HttpBasicAuth, TransportConnector,
-};
+use libsignal_net_infra::{extract_retry_after_seconds, HttpBasicAuth, TransportConnector};
 use prost::Message as _;
 use thiserror::Error;
-use tokio::net::TcpStream;
-use tokio_boring_signal::SslStream;
 use tungstenite::protocol::frame::coding::CloseCode;
 use tungstenite::protocol::CloseFrame;
 use uuid::Uuid;
@@ -224,10 +220,10 @@ impl FixedLengthSerializable for LookupResponseEntry {
 }
 
 #[cfg_attr(test, derive(Debug))]
-pub struct CdsiConnection<S>(AttestedConnection<S>);
+pub struct CdsiConnection(AttestedConnection);
 
-impl<S> AsMut<AttestedConnection<S>> for CdsiConnection<S> {
-    fn as_mut(&mut self) -> &mut AttestedConnection<S> {
+impl AsMut<AttestedConnection> for CdsiConnection {
+    fn as_mut(&mut self) -> &mut AttestedConnection {
         &mut self.0
     }
 }
@@ -322,9 +318,9 @@ struct RateLimitExceededResponse {
 }
 
 #[cfg_attr(test, derive(Debug))]
-pub struct ClientResponseCollector<S = SslStream<TcpStream>>(CdsiConnection<S>);
+pub struct ClientResponseCollector(CdsiConnection);
 
-impl<S: AsyncDuplexStream> CdsiConnection<S> {
+impl CdsiConnection {
     /// Connect to remote host and verify remote attestation.
     pub async fn connect<C, T>(
         endpoint: &EnclaveEndpointConnection<Cdsi, C>,
@@ -333,10 +329,10 @@ impl<S: AsyncDuplexStream> CdsiConnection<S> {
     ) -> Result<Self, LookupError>
     where
         C: ConnectionManager,
-        T: TransportConnector<Stream = S>,
+        T: TransportConnector,
     {
         log::info!("connecting to CDSI endpoint");
-        let connection = endpoint
+        let (connection, _info) = endpoint
             .connect(auth, transport_connector)
             .inspect_err(|e| {
                 log::warn!("CDSI connection failed: {e}");
@@ -350,14 +346,14 @@ impl<S: AsyncDuplexStream> CdsiConnection<S> {
     pub async fn send_request(
         mut self,
         request: LookupRequest,
-    ) -> Result<(Token, ClientResponseCollector<S>), LookupError> {
+    ) -> Result<(Token, ClientResponseCollector), LookupError> {
         let request_info = LookupRequestDebugInfo::from(&request);
         let request = request.into_client_request().encode_to_vec();
         log::info!(
             "sending {}-byte initial request: {request_info}",
             request.len()
         );
-        self.0.send_bytes(request).await?;
+        self.0.send_bytes(&request).await?;
         let token_response: ClientResponse = self.0.receive().await?.next_or_else(err_for_close)?;
 
         if token_response.token.is_empty() {
@@ -373,7 +369,7 @@ impl<S: AsyncDuplexStream> CdsiConnection<S> {
     }
 }
 
-impl<S: AsyncDuplexStream> ClientResponseCollector<S> {
+impl ClientResponseCollector {
     pub async fn collect(self) -> Result<LookupResponse, LookupError> {
         let Self(mut connection) = self;
 
@@ -515,11 +511,10 @@ mod test {
     use hex_literal::hex;
     use libsignal_net_infra::testutil::InMemoryWarpConnector;
     use libsignal_net_infra::utils::ObservableEvent;
-    use libsignal_net_infra::ws::testutil::{
-        fake_websocket, mock_connection_info, run_attested_server, AttestedServerOutput,
-        FAKE_ATTESTATION,
+    use libsignal_net_infra::ws::testutil::fake_websocket;
+    use libsignal_net_infra::ws2::attested::testutil::{
+        run_attested_server, AttestedServerOutput, FAKE_ATTESTATION,
     };
-    use libsignal_net_infra::ws::WebSocketClient;
     use nonzero_ext::nonzero;
     use tungstenite::protocol::frame::coding::CloseCode;
     use tungstenite::protocol::CloseFrame;
@@ -701,6 +696,12 @@ mod test {
         }
     }
 
+    const FAKE_WS_CONFIG: libsignal_net_infra::ws2::Config = libsignal_net_infra::ws2::Config {
+        local_idle_timeout: Duration::from_secs(5),
+        remote_idle_ping_timeout: Duration::from_secs(100),
+        remote_idle_disconnect_timeout: Duration::from_secs(100),
+    };
+
     #[tokio::test]
     async fn lookup_success() {
         let (server, client) = fake_websocket().await;
@@ -712,9 +713,8 @@ mod test {
             fake_server,
         ));
 
-        let ws_client = WebSocketClient::new_fake(client, mock_connection_info());
         let cdsi_connection = CdsiConnection(
-            AttestedConnection::connect(ws_client, |fake_attestation| {
+            AttestedConnection::connect(client, FAKE_WS_CONFIG, |fake_attestation| {
                 assert_eq!(fake_attestation, FAKE_ATTESTATION);
                 attest::sgx_session::testutil::handshake_from_tests_data()
             })
@@ -767,9 +767,8 @@ mod test {
             fake_server,
         ));
 
-        let ws_client = WebSocketClient::new_fake(client, mock_connection_info());
         let cdsi_connection = CdsiConnection(
-            AttestedConnection::connect(ws_client, |fake_attestation| {
+            AttestedConnection::connect(client, FAKE_WS_CONFIG, |fake_attestation| {
                 assert_eq!(fake_attestation, FAKE_ATTESTATION);
                 attest::sgx_session::testutil::handshake_from_tests_data()
             })
@@ -814,9 +813,8 @@ mod test {
             fake_server,
         ));
 
-        let ws_client = WebSocketClient::new_fake(client, mock_connection_info());
         let cdsi_connection = CdsiConnection(
-            AttestedConnection::connect(ws_client, |fake_attestation| {
+            AttestedConnection::connect(client, FAKE_WS_CONFIG, |fake_attestation| {
                 assert_eq!(fake_attestation, FAKE_ATTESTATION);
                 attest::sgx_session::testutil::handshake_from_tests_data()
             })
@@ -891,9 +889,8 @@ mod test {
             fake_server,
         ));
 
-        let ws_client = WebSocketClient::new_fake(client, mock_connection_info());
         let cdsi_connection = CdsiConnection(
-            AttestedConnection::connect(ws_client, |fake_attestation| {
+            AttestedConnection::connect(client, FAKE_WS_CONFIG, |fake_attestation| {
                 assert_eq!(fake_attestation, FAKE_ATTESTATION);
                 attest::sgx_session::testutil::handshake_from_tests_data()
             })

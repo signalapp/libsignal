@@ -15,8 +15,6 @@ use colored::Colorize as _;
 use libsignal_net::auth::Auth;
 use libsignal_net::enclave::PpssSetup;
 use libsignal_net::env::Svr3Env;
-use libsignal_net::infra::tcp_ssl::DirectConnector;
-use libsignal_net::infra::TransportConnector;
 use libsignal_net::svr3::traits::*;
 use libsignal_net::svr3::{Error, OpaqueMaskedShareSet};
 use nonzero_ext::nonzero;
@@ -29,14 +27,11 @@ struct Svr3Client {
     auth: Auth,
 }
 
-type Stream = <DirectConnector as TransportConnector>::Stream;
-
 #[async_trait]
 impl Svr3Connect for Svr3Client {
-    type Stream = Stream;
     type Env = Svr3Env<'static>;
 
-    async fn connect(&self) -> <Svr3Env as PpssSetup<Stream>>::ConnectionResults {
+    async fn connect(&self) -> <Svr3Env as PpssSetup>::ConnectionResults {
         self.env.connect_directly(&self.auth).await
     }
 }

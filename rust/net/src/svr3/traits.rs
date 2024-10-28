@@ -10,7 +10,6 @@
 use std::num::NonZeroU32;
 
 use async_trait::async_trait;
-use libsignal_net_infra::AsyncDuplexStream;
 use libsignal_svr3::EvaluationResult;
 use rand_core::CryptoRngCore;
 
@@ -59,18 +58,14 @@ pub trait Rotate {
 
 #[async_trait]
 pub trait Svr3Connect {
-    // Stream is needed for the blanket implementation,
-    // otherwise S would be an unconstrained generic parameter.
-    type Stream;
-    type Env: PpssSetup<Self::Stream>;
-    async fn connect(&self) -> <Self::Env as PpssSetup<Self::Stream>>::ConnectionResults;
+    type Env: PpssSetup;
+    async fn connect(&self) -> <Self::Env as PpssSetup>::ConnectionResults;
 }
 
 #[async_trait]
 impl<T> Backup for T
 where
     T: Svr3Connect + Sync,
-    T::Stream: AsyncDuplexStream + 'static,
 {
     async fn backup(
         &self,
@@ -79,14 +74,7 @@ where
         max_tries: NonZeroU32,
         rng: &mut (impl CryptoRngCore + Send),
     ) -> Result<OpaqueMaskedShareSet, Error> {
-        ppss_ops::do_backup::<T::Stream, T::Env>(
-            self.connect().await,
-            password,
-            secret,
-            max_tries,
-            rng,
-        )
-        .await
+        ppss_ops::do_backup::<T::Env>(self.connect().await, password, secret, max_tries, rng).await
     }
 }
 
@@ -94,7 +82,6 @@ where
 impl<T> Restore for T
 where
     T: Svr3Connect + Sync,
-    T::Stream: AsyncDuplexStream + 'static,
 {
     async fn restore(
         &self,
@@ -110,7 +97,6 @@ where
 impl<T> Remove for T
 where
     T: Svr3Connect + Sync,
-    T::Stream: AsyncDuplexStream + 'static,
 {
     async fn remove(&self) -> Result<(), Error> {
         ppss_ops::do_remove(self.connect().await).await
@@ -121,7 +107,6 @@ where
 impl<T> Query for T
 where
     T: Svr3Connect + Sync,
-    T::Stream: AsyncDuplexStream + 'static,
 {
     async fn query(&self) -> Result<u32, Error> {
         ppss_ops::do_query(self.connect().await).await
@@ -132,7 +117,6 @@ where
 impl<T> Rotate for T
 where
     T: Svr3Connect + Sync,
-    T::Stream: AsyncDuplexStream + 'static,
 {
     async fn rotate(
         &self,

@@ -179,11 +179,13 @@ impl<T: TransportConnector> ServiceConnector for ChatOverWebSocketServiceConnect
 
     fn start_service(&self, channel: Self::Channel) -> (Self::Service, CancellationToken) {
         let (ws_client, service_status) = self.ws_client_connector.start_service(channel);
-        let WebSocketClient {
-            ws_client_writer,
-            ws_client_reader,
+        let (
+            WebSocketClient {
+                ws_client_writer,
+                ws_client_reader,
+            },
             connection_info,
-        } = ws_client;
+        ) = ws_client;
         let pending_messages: Arc<Mutex<PendingMessagesMap>> = Default::default();
         tokio::spawn(reader_task(
             ws_client_reader,

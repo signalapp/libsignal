@@ -4,6 +4,7 @@
 //
 
 use std::marker::PhantomData;
+use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 
 use attest::svr2::RaftConfig;
@@ -14,17 +15,21 @@ use libsignal_net_infra::connection_manager::{
     ConnectionManager, MultiRouteConnectionManager, SingleRouteThrottlingConnectionManager,
 };
 use libsignal_net_infra::errors::LogSafeDisplay;
+use libsignal_net_infra::host::Host;
+use libsignal_net_infra::route::WebSocketRouteFragment;
 use libsignal_net_infra::service::{
     ServiceConnectorWithDecorator, ServiceInitializer, ServiceState,
 };
 use libsignal_net_infra::utils::ObservableEvent;
 use libsignal_net_infra::ws::{
-    AttestedConnection, AttestedConnectionError, AttestedProtocolError, WebSocketClientConnector,
-    WebSocketConnectError, WebSocketServiceError,
+    WebSocketConnectError, WebSocketServiceError, WebSocketStreamConnector,
+};
+use libsignal_net_infra::ws2::attested::{
+    AttestedConnection, AttestedConnectionError, AttestedProtocolError,
 };
 use libsignal_net_infra::{
-    make_ws_config, AsyncDuplexStream, ConnectionParams, EndpointConnection, HttpBasicAuth,
-    TransportConnector,
+    make_ws_config, AsyncDuplexStream, ConnectionInfo, ConnectionParams, EndpointConnection,
+    HttpBasicAuth, TransportConnector,
 };
 
 use crate::env::{DomainConfig, Svr3Env};
@@ -112,26 +117,22 @@ impl Svr3Flavor for Nitro {}
 
 impl Svr3Flavor for Tpm2Snp {}
 
+type ConnectionAndHost = (AttestedConnection, Host<Arc<str>>);
+
 pub trait IntoConnectionResults {
-    type Stream;
-    type ConnectionResults: ArrayIsh<Result<AttestedConnection<Self::Stream>, Error>> + Send;
+    type ConnectionResults: ArrayIsh<Result<ConnectionAndHost, Error>> + Send;
     fn into_connection_results(self) -> Self::ConnectionResults;
 }
 
-pub trait IntoAttestedConnection: Into<AttestedConnection<Self::Stream>> {
-    type Stream: Send;
-}
+pub trait IntoAttestedConnection: Into<ConnectionAndHost> {}
 
-impl<S: Send> IntoAttestedConnection for AttestedConnection<S> {
-    type Stream = S;
-}
+impl IntoAttestedConnection for ConnectionAndHost {}
 
 impl<A> IntoConnectionResults for Result<A, Error>
 where
     A: IntoAttestedConnection,
 {
-    type Stream = A::Stream;
-    type ConnectionResults = [Result<AttestedConnection<Self::Stream>, Error>; 1];
+    type ConnectionResults = [Result<ConnectionAndHost, Error>; 1];
     fn into_connection_results(self) -> Self::ConnectionResults {
         [self.map(Into::into)]
     }
@@ -140,10 +141,9 @@ where
 impl<A, B> IntoConnectionResults for (Result<A, Error>, Result<B, Error>)
 where
     A: IntoAttestedConnection,
-    B: IntoAttestedConnection<Stream = A::Stream>,
+    B: IntoAttestedConnection,
 {
-    type Stream = A::Stream;
-    type ConnectionResults = [Result<AttestedConnection<Self::Stream>, Error>; 2];
+    type ConnectionResults = [Result<ConnectionAndHost, Error>; 2];
     fn into_connection_results(self) -> Self::ConnectionResults {
         [self.0.map(Into::into), self.1.map(Into::into)]
     }
@@ -152,11 +152,10 @@ where
 impl<A, B, C> IntoConnectionResults for (Result<A, Error>, Result<B, Error>, Result<C, Error>)
 where
     A: IntoAttestedConnection,
-    B: IntoAttestedConnection<Stream = A::Stream>,
-    C: IntoAttestedConnection<Stream = A::Stream>,
+    B: IntoAttestedConnection,
+    C: IntoAttestedConnection,
 {
-    type Stream = A::Stream;
-    type ConnectionResults = [Result<AttestedConnection<Self::Stream>, Error>; 3];
+    type ConnectionResults = [Result<ConnectionAndHost, Error>; 3];
     fn into_connection_results(self) -> Self::ConnectionResults {
         [
             self.0.map(Into::into),
@@ -174,20 +173,18 @@ impl<T, const N: usize> ArrayIsh<T> for [T; N] {
     const N: usize = N;
 }
 
-pub trait PpssSetup<S> {
-    type Stream;
-    type ConnectionResults: IntoConnectionResults<Stream = S> + Send;
+pub trait PpssSetup {
+    type ConnectionResults: IntoConnectionResults + Send;
     type ServerIds: ArrayIsh<u64> + Send;
     const N: usize = Self::ServerIds::N;
     fn server_ids() -> Self::ServerIds;
 }
 
-impl<S: Send> PpssSetup<S> for Svr3Env<'_> {
-    type Stream = S;
+impl PpssSetup for Svr3Env<'_> {
     type ConnectionResults = (
-        Result<SvrConnection<Sgx, S>, Error>,
-        Result<SvrConnection<Nitro, S>, Error>,
-        Result<SvrConnection<Tpm2Snp, S>, Error>,
+        Result<SvrConnection<Sgx>, Error>,
+        Result<SvrConnection<Nitro>, Error>,
+        Result<SvrConnection<Tpm2Snp>, Error>,
     );
     type ServerIds = [u64; 3];
 
@@ -276,7 +273,7 @@ impl<E: EnclaveKind + NewHandshake, C: ConnectionManager> EnclaveEndpointConnect
         &self,
         auth: impl HttpBasicAuth,
         transport_connector: T,
-    ) -> Result<AttestedConnection<S>, Error>
+    ) -> Result<(AttestedConnection, ConnectionInfo), Error>
     where
         C: ConnectionManager,
     {
@@ -298,27 +295,27 @@ impl<E: EnclaveKind + NewHandshake, C: ConnectionManager> EnclaveEndpointConnect
 ///
 /// Making the handshaker a concrete type (via `&dyn`) prevents this from being
 /// instantiated multiple times and duplicated in the generated code.
-async fn connect_attested<
-    C: ConnectionManager,
-    T: TransportConnector<Stream = S>,
-    S: AsyncDuplexStream,
->(
+async fn connect_attested<C: ConnectionManager, T: TransportConnector>(
     endpoint_connection: &EndpointConnection<C>,
     auth: impl HttpBasicAuth,
     transport_connector: T,
     do_handshake: &(dyn Sync + Fn(&[u8]) -> enclave::Result<enclave::Handshake>),
-) -> Result<AttestedConnection<S>, Error> {
+) -> Result<(AttestedConnection, ConnectionInfo), Error> {
     let auth_decorator = auth.into();
     let connector = ServiceConnectorWithDecorator::new(
-        WebSocketClientConnector::<_, WebSocketServiceError>::new(
+        WebSocketStreamConnector::new(
             transport_connector,
-            endpoint_connection.config.clone(),
+            WebSocketRouteFragment {
+                ws_config: endpoint_connection.config.ws_config,
+                endpoint: endpoint_connection.config.endpoint.clone(),
+            },
+            endpoint_connection.config.max_connection_time,
         ),
         auth_decorator,
     );
     let service_initializer = ServiceInitializer::new(connector, &endpoint_connection.manager);
     let connection_attempt_result = service_initializer.connect().await;
-    let websocket = match connection_attempt_result {
+    let (websocket, connection_info) = match connection_attempt_result {
         ServiceState::Active(websocket, _) => Ok(websocket),
         ServiceState::Error(e) => Err(Error::WebSocketConnect(e)),
         ServiceState::Cooldown(_) | ServiceState::ConnectionTimedOut => {
@@ -328,8 +325,13 @@ async fn connect_attested<
             unreachable!("can't be returned by the initializer")
         }
     }?;
-    let attested = AttestedConnection::connect(websocket, do_handshake).await?;
-    Ok(attested)
+    let attested = AttestedConnection::connect(
+        websocket,
+        endpoint_connection.config.ws2_config(),
+        do_handshake,
+    )
+    .await?;
+    Ok((attested, connection_info))
 }
 
 impl<E: EnclaveKind> EnclaveEndpointConnection<E, SingleRouteThrottlingConnectionManager> {
@@ -500,7 +502,7 @@ mod test {
 
     async fn enclave_connect<C: ConnectionManager>(
         manager: C,
-    ) -> Result<AttestedConnection<SslStream<TcpStream>>, Error> {
+    ) -> Result<AttestedConnection, Error> {
         let mr_enclave = MrEnclave::new(b"abcdef".as_slice());
         let connection = EnclaveEndpointConnection {
             endpoint_connection: EndpointConnection {
@@ -522,6 +524,7 @@ mod test {
                 AlwaysFailingConnector,
             )
             .await
+            .map(|(connection, _info)| connection)
     }
 
     fn fake_connection_params() -> ConnectionParams {

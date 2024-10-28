@@ -1151,7 +1151,7 @@ impl From<TaskExitError> for ChatServiceError {
                 ),
             ),
             TaskExitError::SendProtocol(protocol_error) => {
-                WebSocketServiceError::Protocol(protocol_error)
+                WebSocketServiceError::Protocol(protocol_error.into())
             }
         })
     }

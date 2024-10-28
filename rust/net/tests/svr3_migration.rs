@@ -37,8 +37,6 @@ use base64::prelude::{Engine as _, BASE64_STANDARD};
 use libsignal_net::auth::Auth;
 use libsignal_net::enclave::{EnclaveEndpoint, EnclaveKind, Error, PpssSetup, Sgx};
 use libsignal_net::env::Svr3Env;
-use libsignal_net::infra::tcp_ssl::DirectConnector;
-use libsignal_net::infra::TransportConnector;
 use libsignal_net::svr::SvrConnection;
 use libsignal_net::svr3::direct::DirectConnect;
 use libsignal_net::svr3::traits::*;
@@ -53,8 +51,6 @@ const TRIES: NonZeroU32 = nonzero!(10u32);
 const PREV_ENV: Svr3Env = libsignal_net::env::PROD.svr3;
 const REM_ENV: SingletonEnv<'static, Sgx> = SingletonEnv(PREV_ENV.sgx());
 
-type Stream = <DirectConnector as TransportConnector>::Stream;
-
 #[derive(Clone)]
 struct FullClient {
     auth: Auth,
@@ -62,10 +58,9 @@ struct FullClient {
 
 #[async_trait]
 impl Svr3Connect for FullClient {
-    type Stream = Stream;
     type Env = Svr3Env<'static>;
 
-    async fn connect(&self) -> <Self::Env as PpssSetup<Self::Stream>>::ConnectionResults {
+    async fn connect(&self) -> <Self::Env as PpssSetup>::ConnectionResults {
         PREV_ENV.connect_directly(&self.auth).await
     }
 }
@@ -79,9 +74,8 @@ struct PartialClient {
 struct SingletonEnv<'a, E: EnclaveKind>(&'a EnclaveEndpoint<'a, E>);
 
 // This will be our "removing" setup.
-impl<S: Send> PpssSetup<S> for SingletonEnv<'_, Sgx> {
-    type Stream = S;
-    type ConnectionResults = Result<SvrConnection<Sgx, S>, Error>;
+impl PpssSetup for SingletonEnv<'_, Sgx> {
+    type ConnectionResults = Result<SvrConnection<Sgx>, Error>;
     type ServerIds = [u64; 1];
 
     fn server_ids() -> Self::ServerIds {
@@ -91,10 +85,9 @@ impl<S: Send> PpssSetup<S> for SingletonEnv<'_, Sgx> {
 
 #[async_trait]
 impl Svr3Connect for PartialClient {
-    type Stream = Stream;
     type Env = SingletonEnv<'static, Sgx>;
 
-    async fn connect(&self) -> <Self::Env as PpssSetup<Self::Stream>>::ConnectionResults {
+    async fn connect(&self) -> <Self::Env as PpssSetup>::ConnectionResults {
         REM_ENV.0.connect(&self.auth).await
     }
 }

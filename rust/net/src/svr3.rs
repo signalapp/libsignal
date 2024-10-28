@@ -7,9 +7,8 @@ use std::num::NonZeroU32;
 
 use bincode::Options as _;
 use libsignal_net_infra::errors::LogSafeDisplay;
-use libsignal_net_infra::ws::{
-    AttestedConnectionError, WebSocketConnectError, WebSocketServiceError,
-};
+use libsignal_net_infra::ws::{WebSocketConnectError, WebSocketServiceError};
+use libsignal_net_infra::ws2::attested::AttestedConnectionError;
 use libsignal_svr3::{EvaluationResult, MaskedSecret};
 use rand_core::CryptoRngCore;
 use serde::{Deserialize, Serialize};
@@ -276,7 +275,6 @@ where
 
 #[cfg(feature = "test-util")]
 pub mod test_support {
-    use libsignal_net_infra::ws::DefaultStream;
 
     use crate::auth::Auth;
     use crate::enclave::PpssSetup;
@@ -289,7 +287,7 @@ pub mod test_support {
         pub async fn connect_directly(
             &self,
             auth: &Auth,
-        ) -> <Self as PpssSetup<DefaultStream>>::ConnectionResults {
+        ) -> <Self as PpssSetup>::ConnectionResults {
             let endpoints = (self.sgx(), self.nitro(), self.tpm2snp());
             endpoints.connect(auth).await
         }

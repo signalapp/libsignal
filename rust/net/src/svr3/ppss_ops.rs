@@ -13,8 +13,8 @@ use std::sync::Arc;
 
 use futures_util::future::join_all;
 use libsignal_net_infra::host::Host;
-use libsignal_net_infra::ws::{run_attested_interaction, AttestedConnection, NextOrClose};
-use libsignal_net_infra::AsyncDuplexStream;
+use libsignal_net_infra::ws::NextOrClose;
+use libsignal_net_infra::ws2::attested::{run_attested_interaction, AttestedConnection};
 use libsignal_svr3::{
     Backup4, EvaluationResult, MaskedSecret, Query4, Remove4, Restore1, RotationMachine,
     MAX_ROTATION_STEPS,
@@ -24,7 +24,7 @@ use rand_core::CryptoRngCore;
 use super::{Error, OpaqueMaskedShareSet};
 use crate::enclave::{ArrayIsh, IntoConnectionResults, PpssSetup};
 
-pub async fn do_backup<S: AsyncDuplexStream + 'static, Env: PpssSetup<S>>(
+pub async fn do_backup<Env: PpssSetup>(
     connect_results: Env::ConnectionResults,
     password: &str,
     secret: [u8; 32],
@@ -60,8 +60,8 @@ pub async fn do_backup<S: AsyncDuplexStream + 'static, Env: PpssSetup<S>>(
     Ok(OpaqueMaskedShareSet::new(backup.masked_secret))
 }
 
-pub async fn do_restore<S: AsyncDuplexStream + 'static>(
-    connect_results: impl IntoConnectionResults<Stream = S>,
+pub async fn do_restore(
+    connect_results: impl IntoConnectionResults,
     password: &str,
     share_set: OpaqueMaskedShareSet,
     rng: &mut (impl CryptoRngCore + Send),
@@ -115,9 +115,7 @@ pub async fn do_restore<S: AsyncDuplexStream + 'static>(
     })
 }
 
-pub async fn do_remove<S: AsyncDuplexStream + 'static>(
-    connect_results: impl IntoConnectionResults<Stream = S>,
-) -> Result<(), Error> {
+pub async fn do_remove(connect_results: impl IntoConnectionResults) -> Result<(), Error> {
     let ConnectionContext {
         mut connections,
         addresses,
@@ -141,9 +139,7 @@ pub async fn do_remove<S: AsyncDuplexStream + 'static>(
     Ok(())
 }
 
-pub async fn do_query<S: AsyncDuplexStream + 'static>(
-    connect_results: impl IntoConnectionResults<Stream = S>,
-) -> Result<u32, Error> {
+pub async fn do_query(connect_results: impl IntoConnectionResults) -> Result<u32, Error> {
     let ConnectionContext {
         mut connections,
         addresses,
@@ -165,8 +161,8 @@ pub async fn do_query<S: AsyncDuplexStream + 'static>(
     Ok(Query4::finalize(&responses)?)
 }
 
-pub async fn do_rotate<S: AsyncDuplexStream + 'static>(
-    connect_results: impl IntoConnectionResults<Stream = S>,
+pub async fn do_rotate(
+    connect_results: impl IntoConnectionResults,
     share_set: OpaqueMaskedShareSet,
     rng: &mut (impl CryptoRngCore + Send),
 ) -> Result<(), Error> {
@@ -205,21 +201,21 @@ pub async fn do_rotate<S: AsyncDuplexStream + 'static>(
     }
 }
 
-struct ConnectionContext<S> {
-    connections: Vec<AttestedConnection<S>>,
+struct ConnectionContext {
+    connections: Vec<AttestedConnection>,
     addresses: Vec<Host<Arc<str>>>,
     errors: VecDeque<Error>,
 }
 
-impl<S: AsyncDuplexStream + 'static> ConnectionContext<S> {
-    fn new<Arr: IntoConnectionResults<Stream = S>>(connect_results: Arr) -> Self {
+impl ConnectionContext {
+    fn new<Arr: IntoConnectionResults>(connect_results: Arr) -> Self {
         let mut connections = Vec::with_capacity(Arr::ConnectionResults::N);
         let mut addresses = Vec::with_capacity(Arr::ConnectionResults::N);
         let mut errors = VecDeque::with_capacity(Arr::ConnectionResults::N);
         for connect_result in connect_results.into_connection_results().into_iter() {
             match connect_result {
-                Ok(connection) => {
-                    addresses.push(connection.remote_address().clone());
+                Ok((connection, remote_address)) => {
+                    addresses.push(remote_address);
                     connections.push(connection);
                 }
                 Err(err) => errors.push_back(err.into()),
@@ -250,7 +246,6 @@ fn collect_responses<'a>(
 mod test {
     use assert_matches::assert_matches;
     use attest::nitro::NitroError;
-    use libsignal_net_infra::ws::DefaultStream;
     use nonzero_ext::nonzero;
     use rand_core::OsRng;
 
@@ -259,8 +254,7 @@ mod test {
 
     struct TestEnv;
 
-    impl PpssSetup<DefaultStream> for TestEnv {
-        type Stream = DefaultStream;
+    impl PpssSetup for TestEnv {
         type ConnectionResults = NotConnectedResults;
         type ServerIds = [u64; 2];
 
@@ -272,8 +266,7 @@ mod test {
     struct NotConnectedResults;
 
     impl IntoConnectionResults for NotConnectedResults {
-        type Stream = DefaultStream;
-        type ConnectionResults = [Result<AttestedConnection<DefaultStream>, Error>; 2];
+        type ConnectionResults = [Result<(AttestedConnection, Host<Arc<str>>), Error>; 2];
 
         fn into_connection_results(self) -> Self::ConnectionResults {
             [
@@ -286,14 +279,8 @@ mod test {
     #[tokio::test]
     async fn do_backup_fails_with_the_first_error() {
         let mut rng = OsRng;
-        let result = do_backup::<DefaultStream, TestEnv>(
-            NotConnectedResults,
-            "",
-            [0; 32],
-            nonzero!(1u32),
-            &mut rng,
-        )
-        .await;
+        let result =
+            do_backup::<TestEnv>(NotConnectedResults, "", [0; 32], nonzero!(1u32), &mut rng).await;
         assert_matches!(result, Err(crate::svr3::Error::ConnectionTimedOut));
     }
 

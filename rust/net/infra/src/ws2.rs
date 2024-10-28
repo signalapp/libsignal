@@ -18,6 +18,8 @@ use tungstenite::Message;
 use crate::errors::LogSafeDisplay;
 use crate::ws::{TextOrBinary, WebSocketServiceError};
 
+pub mod attested;
+
 /// Configuration values for managing the connected websocket.
 pub struct Config {
     /// How long to wait after the last outgoing message before sending a
@@ -553,7 +555,7 @@ impl From<TungsteniteError> for WebSocketServiceError {
                     tungstenite::error::CapacityError::MessageTooLong { size, max_size },
                 ))
             }
-            TungsteniteError::Protocol(protocol_error) => Self::Protocol(protocol_error),
+            TungsteniteError::Protocol(protocol_error) => Self::Protocol(protocol_error.into()),
             TungsteniteError::WriteBufferFull => {
                 Self::Capacity(crate::ws::error::SpaceError::SendQueueFull)
             }

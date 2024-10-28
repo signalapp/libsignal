@@ -32,7 +32,7 @@ impl<A> DirectConnect for EnclaveEndpoint<'static, A>
 where
     A: Svr3Flavor + NewHandshake + Sized + Send,
 {
-    type ConnectionResults = Result<SvrConnection<A, DefaultStream>, enclave::Error>;
+    type ConnectionResults = Result<SvrConnection<A>, enclave::Error>;
 
     async fn connect(&self, auth: &Auth) -> Self::ConnectionResults {
         let network_change_event = ObservableEvent::default();
@@ -48,8 +48,8 @@ where
     B: Svr3Flavor + NewHandshake + Sized + Send,
 {
     type ConnectionResults = (
-        Result<SvrConnection<A, DefaultStream>, enclave::Error>,
-        Result<SvrConnection<B, DefaultStream>, enclave::Error>,
+        Result<SvrConnection<A>, enclave::Error>,
+        Result<SvrConnection<B>, enclave::Error>,
     );
 
     async fn connect(&self, auth: &Auth) -> Self::ConnectionResults {
@@ -76,9 +76,9 @@ where
     C: Svr3Flavor + NewHandshake + Sized + Send,
 {
     type ConnectionResults = (
-        Result<SvrConnection<A, DefaultStream>, enclave::Error>,
-        Result<SvrConnection<B, DefaultStream>, enclave::Error>,
-        Result<SvrConnection<C, DefaultStream>, enclave::Error>,
+        Result<SvrConnection<A>, enclave::Error>,
+        Result<SvrConnection<B>, enclave::Error>,
+        Result<SvrConnection<C>, enclave::Error>,
     );
 
     async fn connect(&self, auth: &Auth) -> Self::ConnectionResults {
@@ -103,7 +103,7 @@ async fn connect_one<Enclave, Transport>(
     auth: &Auth,
     connector: Transport,
     network_change_event: &ObservableEvent,
-) -> Result<SvrConnection<Enclave, DefaultStream>, enclave::Error>
+) -> Result<SvrConnection<Enclave>, enclave::Error>
 where
     Enclave: Svr3Flavor + NewHandshake + Sized,
     Transport: TransportConnector<Stream = DefaultStream>,

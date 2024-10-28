@@ -19,9 +19,7 @@ use libsignal_net::infra::connection_manager::MultiRouteConnectionManager;
 use libsignal_net::infra::dns::DnsResolver;
 use libsignal_net::infra::host::Host;
 use libsignal_net::infra::tcp_ssl::proxy::tls::TlsProxyConnector as TcpSslProxyConnector;
-use libsignal_net::infra::tcp_ssl::{
-    DirectConnector as TcpSslDirectConnector, TcpSslConnector, TcpSslConnectorStream,
-};
+use libsignal_net::infra::tcp_ssl::{DirectConnector as TcpSslDirectConnector, TcpSslConnector};
 use libsignal_net::infra::timeouts::ONE_ROUTE_CONNECTION_TIMEOUT;
 use libsignal_net::infra::utils::ObservableEvent;
 use libsignal_net::infra::EndpointConnection;
@@ -214,10 +212,9 @@ impl<'a> Svr3Clients<'a> {
 
 #[async_trait]
 impl<'a> Svr3Connect for Svr3Client<'a, CurrentVersion> {
-    type Stream = TcpSslConnectorStream;
     type Env = Svr3Env<'static>;
 
-    async fn connect(&self) -> <Self::Env as PpssSetup<Self::Stream>>::ConnectionResults {
+    async fn connect(&self) -> <Self::Env as PpssSetup>::ConnectionResults {
         let ConnectionManager {
             svr3: (sgx, nitro, tpm2snp),
             transport_connector,

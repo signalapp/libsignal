@@ -29,7 +29,6 @@ use libsignal_net::infra::certs::RootCertificates;
 use libsignal_net::infra::dns::DnsResolver;
 use libsignal_net::infra::tcp_ssl::DirectConnector as TcpSslTransportConnector;
 use libsignal_net::infra::utils::ObservableEvent;
-use libsignal_net::infra::TransportConnector;
 use libsignal_net::svr::SvrConnection;
 use libsignal_net::svr3::traits::*;
 use libsignal_net::svr3::OpaqueMaskedShareSet;
@@ -70,16 +69,14 @@ where
     A: Svr3Flavor,
     B: Svr3Flavor;
 
-impl<'a, A, B, S> PpssSetup<S> for TwoForTwoEnv<'a, A, B>
+impl<'a, A, B> PpssSetup for TwoForTwoEnv<'a, A, B>
 where
     A: Svr3Flavor + Send,
     B: Svr3Flavor + Send,
-    S: Send,
 {
-    type Stream = <TcpSslTransportConnector as TransportConnector>::Stream;
     type ConnectionResults = (
-        Result<SvrConnection<A, S>, enclave::Error>,
-        Result<SvrConnection<B, S>, enclave::Error>,
+        Result<SvrConnection<A>, enclave::Error>,
+        Result<SvrConnection<B>, enclave::Error>,
     );
     type ServerIds = [u64; 2];
 
@@ -106,10 +103,9 @@ struct Client {
 
 #[async_trait]
 impl Svr3Connect for Client {
-    type Stream = <TcpSslTransportConnector as TransportConnector>::Stream;
     type Env = TwoForTwoEnv<'static, Sgx, Sgx>;
 
-    async fn connect(&self) -> <Self::Env as PpssSetup<Self::Stream>>::ConnectionResults {
+    async fn connect(&self) -> <Self::Env as PpssSetup>::ConnectionResults {
         let network_change_event = ObservableEvent::default();
         let connector = TcpSslTransportConnector::new(DnsResolver::new(&network_change_event));
         let connection_a = EnclaveEndpointConnection::new(

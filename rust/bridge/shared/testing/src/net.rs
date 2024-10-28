@@ -18,7 +18,8 @@ use libsignal_net::cdsi::{CdsiProtocolError, LookupError, LookupResponse, Lookup
 use libsignal_net::chat::{
     self, ChatServiceError, DebugInfo as ChatServiceDebugInfo, Response as ChatResponse,
 };
-use libsignal_net::infra::ws::{AttestedProtocolError, WebSocketServiceError};
+use libsignal_net::infra::ws::WebSocketServiceError;
+use libsignal_net::infra::ws2::attested::AttestedProtocolError;
 use libsignal_net::infra::IpType;
 use libsignal_protocol::{Aci, Pni};
 use nonzero_ext::nonzero;
