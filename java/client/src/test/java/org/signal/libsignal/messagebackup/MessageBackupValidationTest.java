@@ -48,7 +48,11 @@ public class MessageBackupValidationTest {
                 "20241024_SIGNAL_BACKUP_ID:".getBytes(StandardCharsets.UTF_8),
                 aci.toServiceIdBinary()),
             16);
-    return new MessageBackupKey(backupKey, backupId);
+    try {
+      return new MessageBackupKey(new BackupKey(backupKey), backupId);
+    } catch (Exception e) {
+      throw new AssertionError(e);
+    }
   }
 
   static final String VALID_BACKUP_RESOURCE_NAME = "encryptedbackup.binproto.encrypted";

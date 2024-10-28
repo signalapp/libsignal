@@ -10,6 +10,7 @@
  */
 
 import * as Native from '../Native';
+import { BackupKey } from './AccountKeys';
 import { Aci } from './Address';
 import { InputStream } from './io';
 
@@ -52,7 +53,7 @@ export type MessageBackupKeyInput = Readonly<
       aci: Aci;
     }
   | {
-      backupKey: Buffer;
+      backupKey: BackupKey | Buffer;
       backupId: Buffer;
     }
 >;
@@ -100,7 +101,11 @@ export class MessageBackupKey {
         aci.getServiceIdFixedWidthBinary()
       );
     } else {
-      const { backupKey, backupId } = inputOrMasterKeyBytes;
+      const { backupId } = inputOrMasterKeyBytes;
+      let { backupKey } = inputOrMasterKeyBytes;
+      if (backupKey instanceof BackupKey) {
+        backupKey = backupKey.contents;
+      }
       this._nativeHandle = Native.MessageBackupKey_FromBackupKeyAndBackupId(
         backupKey,
         backupId

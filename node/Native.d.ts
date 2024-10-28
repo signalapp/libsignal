@@ -143,6 +143,8 @@ type Serialized<T> = Buffer;
 export function registerErrors(errorsModule: Record<string, unknown>): void;
 
 export const enum LogLevel { Error = 1, Warn, Info, Debug, Trace }
+export function AccountEntropyPool_DeriveBackupKey(accountEntropy: string): Buffer;
+export function AccountEntropyPool_DeriveSvrKey(accountEntropy: string): Buffer;
 export function AccountEntropyPool_Generate(): string;
 export function Aes256GcmSiv_Decrypt(aesGcmSiv: Wrapper<Aes256GcmSiv>, ctext: Buffer, nonce: Buffer, associatedData: Buffer): Buffer;
 export function Aes256GcmSiv_Encrypt(aesGcmSivObj: Wrapper<Aes256GcmSiv>, ptext: Buffer, nonce: Buffer, associatedData: Buffer): Buffer;
@@ -170,6 +172,11 @@ export function BackupAuthCredential_GetBackupId(credentialBytes: Buffer): Buffe
 export function BackupAuthCredential_GetBackupLevel(credentialBytes: Buffer): number;
 export function BackupAuthCredential_GetType(credentialBytes: Buffer): number;
 export function BackupAuthCredential_PresentDeterministic(credentialBytes: Buffer, serverParamsBytes: Buffer, randomness: Buffer): Buffer;
+export function BackupKey_DeriveBackupId(backupKey: Buffer, aci: Buffer): Buffer;
+export function BackupKey_DeriveEcKey(backupKey: Buffer, aci: Buffer): PrivateKey;
+export function BackupKey_DeriveLocalBackupMetadataKey(backupKey: Buffer): Buffer;
+export function BackupKey_DeriveMediaEncryptionKey(backupKey: Buffer, mediaId: Buffer): Buffer;
+export function BackupKey_DeriveMediaId(backupKey: Buffer, mediaName: string): Buffer;
 export function CallLinkAuthCredentialPresentation_CheckValidContents(presentationBytes: Buffer): void;
 export function CallLinkAuthCredentialPresentation_GetUserId(presentationBytes: Buffer): Serialized<UuidCiphertext>;
 export function CallLinkAuthCredentialPresentation_Verify(presentationBytes: Buffer, now: Timestamp, serverParamsBytes: Buffer, callLinkParamsBytes: Buffer): void;

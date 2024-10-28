@@ -5,11 +5,18 @@
 
 package org.signal.libsignal.messagebackup;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.UUID;
 import org.junit.Test;
+import org.signal.libsignal.protocol.ServiceId.Aci;
 
 public class AccountEntropyPoolTest {
   @Test
@@ -22,5 +29,45 @@ public class AccountEntropyPoolTest {
       assertTrue("Pool contains invalid characters: " + pool, pool.matches("[a-z0-9]+"));
       assertTrue("Duplicate pool generated: " + pool, generatedEntropyPools.add(pool));
     }
+  }
+
+  @Test
+  public void testKeyDerivations() throws Exception {
+    var pool = AccountEntropyPool.generate();
+
+    var svrKey = AccountEntropyPool.deriveSvrKey(pool);
+    assertEquals(32, svrKey.length);
+
+    var backupKey = AccountEntropyPool.deriveBackupKey(pool);
+    assertEquals(32, backupKey.serialize().length);
+
+    var randomKey = BackupKey.generateRandom();
+    assertNotEquals(backupKey, randomKey);
+
+    var aci = new Aci(new UUID(0x1111111111111111L, 0x1111111111111111L));
+    var otherAci = new Aci(UUID.randomUUID());
+
+    var backupId = backupKey.deriveBackupId(aci);
+    assertEquals(16, backupId.length);
+    assertFalse(Arrays.equals(backupId, randomKey.deriveBackupId(aci)));
+    assertFalse(Arrays.equals(backupId, backupKey.deriveBackupId(otherAci)));
+
+    var ecKey = backupKey.deriveEcKey(aci);
+    assertFalse(Arrays.equals(ecKey.serialize(), randomKey.deriveEcKey(aci).serialize()));
+    assertFalse(Arrays.equals(ecKey.serialize(), backupKey.deriveEcKey(otherAci).serialize()));
+
+    var localMetadataKey = backupKey.deriveLocalBackupMetadataKey();
+    assertEquals(32, localMetadataKey.length);
+
+    var mediaId = backupKey.deriveMediaId("example.jpg");
+    assertEquals(15, mediaId.length);
+
+    var mediaKey = backupKey.deriveMediaEncryptionKey(mediaId);
+    assertEquals(32 + 32, mediaKey.length);
+
+    assertThrows(
+        "invalid media ID",
+        IllegalArgumentException.class,
+        () -> backupKey.deriveMediaEncryptionKey(new byte[1]));
   }
 }

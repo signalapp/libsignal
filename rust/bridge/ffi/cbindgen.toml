@@ -89,7 +89,12 @@ include = [
     "signal-media",
     "zkgroup",
 ]
-extra_bindings = ["libsignal-bridge", "libsignal-bridge-types", "zkgroup"]
+extra_bindings = [
+    "libsignal-account-keys",
+    "libsignal-bridge",
+    "libsignal-bridge-types",
+    "zkgroup",
+]
 
 [parse.expand]
 crates = ["libsignal-ffi", "libsignal-bridge"]

@@ -115,6 +115,8 @@ public final class Native {
    */
   public static native void keepAlive(Object obj);
 
+  public static native byte[] AccountEntropyPool_DeriveBackupKey(String accountEntropy);
+  public static native byte[] AccountEntropyPool_DeriveSvrKey(String accountEntropy);
   public static native String AccountEntropyPool_Generate();
 
   public static native void Aes256Ctr32_Destroy(long handle);
@@ -170,6 +172,12 @@ public final class Native {
   public static native int BackupAuthCredential_GetBackupLevel(byte[] credentialBytes);
   public static native int BackupAuthCredential_GetType(byte[] credentialBytes);
   public static native byte[] BackupAuthCredential_PresentDeterministic(byte[] credentialBytes, byte[] serverParamsBytes, byte[] randomness) throws Exception;
+
+  public static native byte[] BackupKey_DeriveBackupId(byte[] backupKey, byte[] aci);
+  public static native long BackupKey_DeriveEcKey(byte[] backupKey, byte[] aci);
+  public static native byte[] BackupKey_DeriveLocalBackupMetadataKey(byte[] backupKey);
+  public static native byte[] BackupKey_DeriveMediaEncryptionKey(byte[] backupKey, byte[] mediaId);
+  public static native byte[] BackupKey_DeriveMediaId(byte[] backupKey, String mediaName);
 
   public static native void CallLinkAuthCredentialPresentation_CheckValidContents(byte[] presentationBytes) throws Exception;
   public static native byte[] CallLinkAuthCredentialPresentation_GetUserId(byte[] presentationBytes);

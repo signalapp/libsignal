@@ -88,21 +88,4 @@ class PinTests: TestCaseBase {
         XCTAssertEqual(pinHash.encryptionKey, expectedHash.encryptionKey)
         XCTAssertEqual(pinHash.accessKey, expectedHash.accessKey)
     }
-
-    func testAccountEntropyPool() {
-        let numTestIterations = 100
-        var generatedEntropyPools = Set<String>()
-        // generate() must return exactly 64 characters consisting only of a-z and 0-9.
-        let validCharacters = Set<Character>("abcdefghijklmnopqrstuvwxyz0123456789")
-
-        for _ in 0..<numTestIterations {
-            let pool = AccountEntropyPool.generate()
-
-            XCTAssertTrue(generatedEntropyPools.insert(pool).inserted, "Generated pool should be unique, got repeat: \(pool)")
-            XCTAssertEqual(pool.count, 64, "Pool \(pool) is not the right length")
-            for c in pool {
-                XCTAssertTrue(validCharacters.contains(c), "Generated pool \(pool) contains invalid character \(c)")
-            }
-        }
-    }
 }

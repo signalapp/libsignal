@@ -3,10 +3,13 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::str::FromStr as _;
+
 use ::attest::svr2::lookup_groupid;
-use ::libsignal_account_keys::{local_pin_hash, verify_local_pin_hash, PinHash, Result};
-use libsignal_account_keys::{AccountEntropyPool, Error};
+use libsignal_account_keys::*;
 use libsignal_bridge_macros::*;
+use libsignal_core::Aci;
+use libsignal_protocol::PrivateKey;
 
 use crate::support::*;
 use crate::*;
@@ -56,4 +59,62 @@ pub fn Pin_VerifyLocalHash(encoded_hash: String, pin: &[u8]) -> Result<bool> {
 #[bridge_fn]
 pub fn AccountEntropyPool_Generate() -> String {
     AccountEntropyPool::generate(&mut rand::thread_rng()).to_string()
+}
+
+#[bridge_fn]
+pub fn AccountEntropyPool_DeriveSvrKey(account_entropy: String) -> [u8; SVR_KEY_LEN] {
+    let entropy = AccountEntropyPool::from_str(&account_entropy)
+        .expect("should only pass validated entropy pool here");
+    entropy.derive_svr_key()
+}
+
+#[bridge_fn]
+pub fn AccountEntropyPool_DeriveBackupKey(account_entropy: String) -> [u8; BACKUP_KEY_LEN] {
+    let entropy = AccountEntropyPool::from_str(&account_entropy)
+        .expect("should only pass validated entropy pool here");
+    let backup_key = BackupKey::derive_from_account_entropy_pool(&entropy);
+    backup_key.0
+}
+
+#[bridge_fn]
+pub fn BackupKey_DeriveBackupId(backup_key: &[u8; BACKUP_KEY_LEN], aci: Aci) -> [u8; 16] {
+    // The explicit type forces the latest version of the key derivation scheme.
+    let backup_key: BackupKey = BackupKey(*backup_key);
+    backup_key.derive_backup_id(&aci).0
+}
+
+#[bridge_fn]
+pub fn BackupKey_DeriveEcKey(backup_key: &[u8; BACKUP_KEY_LEN], aci: Aci) -> PrivateKey {
+    // The explicit type forces the latest version of the key derivation scheme.
+    let backup_key: BackupKey = BackupKey(*backup_key);
+    backup_key.derive_ec_key(&aci)
+}
+
+#[bridge_fn]
+pub fn BackupKey_DeriveLocalBackupMetadataKey(
+    backup_key: &[u8; BACKUP_KEY_LEN],
+) -> [u8; LOCAL_BACKUP_METADATA_KEY_LEN] {
+    // The explicit type forces the latest version of the key derivation scheme.
+    let backup_key: BackupKey = BackupKey(*backup_key);
+    backup_key.derive_local_backup_metadata_key()
+}
+
+#[bridge_fn]
+pub fn BackupKey_DeriveMediaId(
+    backup_key: &[u8; BACKUP_KEY_LEN],
+    media_name: String,
+) -> [u8; MEDIA_ID_LEN] {
+    // The explicit type forces the latest version of the key derivation scheme.
+    let backup_key: BackupKey = BackupKey(*backup_key);
+    backup_key.derive_media_id(&media_name)
+}
+
+#[bridge_fn]
+pub fn BackupKey_DeriveMediaEncryptionKey(
+    backup_key: &[u8; BACKUP_KEY_LEN],
+    media_id: &[u8; MEDIA_ID_LEN],
+) -> [u8; MEDIA_ENCRYPTION_KEY_LEN] {
+    // The explicit type forces the latest version of the key derivation scheme.
+    let backup_key: BackupKey = BackupKey(*backup_key);
+    backup_key.derive_media_encryption_key_data(media_id)
 }

@@ -11,6 +11,7 @@ import { Uint8ArrayInputStream, ErrorInputStream } from './ioutil';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { hkdf, LogLevel } from '..';
+import { BackupKey } from '../AccountKeys';
 
 util.initLogger(LogLevel.Trace);
 
@@ -51,7 +52,7 @@ describe('MessageBackup', () => {
         null
       );
       const testKeyFromBackupId = new MessageBackup.MessageBackupKey({
-        backupKey,
+        backupKey: new BackupKey(backupKey),
         backupId,
       });
 

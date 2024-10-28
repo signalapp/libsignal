@@ -1,0 +1,75 @@
+//
+// Copyright 2024 Signal Messenger, LLC.
+// SPDX-License-Identifier: AGPL-3.0-only
+//
+
+package org.signal.libsignal.messagebackup;
+
+import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
+
+import java.security.SecureRandom;
+import org.signal.libsignal.internal.Native;
+import org.signal.libsignal.protocol.ServiceId.Aci;
+import org.signal.libsignal.protocol.ecc.ECPrivateKey;
+import org.signal.libsignal.zkgroup.InvalidInputException;
+import org.signal.libsignal.zkgroup.internal.ByteArray;
+
+/**
+ * The randomly-generated user-memorized entropy used to derive the backup key, with other possible
+ * future uses.
+ */
+public class BackupKey extends ByteArray {
+  public static final int SIZE = 32;
+
+  public BackupKey(byte[] contents) throws InvalidInputException {
+    super(contents, SIZE);
+  }
+
+  /**
+   * Generates a random backup key.
+   *
+   * <p>Useful for tests and for the media root backup key, which is not derived from anything else.
+   *
+   * @see AccountEntropyPool#deriveBackupKey
+   */
+  public static BackupKey generateRandom() {
+    SecureRandom secureRandom = new SecureRandom();
+    byte[] bytes = new byte[BackupKey.SIZE];
+    secureRandom.nextBytes(bytes);
+    return filterExceptions(() -> new BackupKey(bytes));
+  }
+
+  /** Derives the backup ID to use given the current device's ACI. */
+  public byte[] deriveBackupId(Aci aci) {
+    return Native.BackupKey_DeriveBackupId(
+        this.getInternalContentsForJNI(), aci.toServiceIdFixedWidthBinary());
+  }
+
+  /** Derives the backup EC key to use given the current device's ACI. */
+  public ECPrivateKey deriveEcKey(Aci aci) {
+    return new ECPrivateKey(
+        Native.BackupKey_DeriveEcKey(
+            this.getInternalContentsForJNI(), aci.toServiceIdFixedWidthBinary()));
+  }
+
+  /** Derives the AES key used for encrypted fields in local backup metadata. */
+  public byte[] deriveLocalBackupMetadataKey() {
+    return Native.BackupKey_DeriveLocalBackupMetadataKey(this.getInternalContentsForJNI());
+  }
+
+  /** Derives the ID for uploading media with the name {@code mediaName}. */
+  public byte[] deriveMediaId(String mediaName) {
+    return Native.BackupKey_DeriveMediaId(this.getInternalContentsForJNI(), mediaName);
+  }
+
+  /**
+   * Derives the composite encryption key for uploading media with the given ID.
+   *
+   * <p>This is a concatenation of an HMAC key (32 bytes) and an AES-CBC key (also 32 bytes).
+   *
+   * <p>Throws {@link IllegalArgumentException} if the media ID is invalid.
+   */
+  public byte[] deriveMediaEncryptionKey(byte[] mediaId) {
+    return Native.BackupKey_DeriveMediaEncryptionKey(this.getInternalContentsForJNI(), mediaId);
+  }
+}

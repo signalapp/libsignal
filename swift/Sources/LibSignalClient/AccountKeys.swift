@@ -117,7 +117,7 @@ public class PinHash: NativeHandleOwner, @unchecked Sendable {
 
 /// The randomly-generated user-memorized entropy used to derive the backup key, with other possible future uses.
 public enum AccountEntropyPool {
-    /// Generate a new entropy pool and return the cannonical string representation.
+    /// Generate a new entropy pool and return the canonical string representation.
     ///
     /// This pool contains log_2(36^64) = ~330 bits of cryptographic quality randomness.
     ///
@@ -126,6 +126,111 @@ public enum AccountEntropyPool {
         return failOnError {
             try invokeFnReturningString {
                 signal_account_entropy_pool_generate($0)
+            }
+        }
+    }
+
+    /// Derives an SVR key from the given account entropy pool.
+    ///
+    /// `accountEntropyPool` must be a **validated** account entropy pool;
+    /// passing an arbitrary String here is considered a programmer error.
+    public static func deriveSvrKey(_ accountEntropyPool: String) throws -> [UInt8] {
+        try invokeFnReturningFixedLengthArray {
+            signal_account_entropy_pool_derive_svr_key($0, accountEntropyPool)
+        }
+    }
+
+    /// Derives a backup key from the given account entropy pool.
+    ///
+    /// `accountEntropyPool` must be a **validated** account entropy pool;
+    /// passing an arbitrary String here is considered a programmer error.
+    ///
+    /// - SeeAlso: ``BackupKey/generateRandom()``
+    public static func deriveBackupKey(_ accountEntropyPool: String) throws -> BackupKey {
+        try invokeFnReturningSerialized {
+            signal_account_entropy_pool_derive_backup_key($0, accountEntropyPool)
+        }
+    }
+}
+
+/// A key used for many aspects of backups.
+public class BackupKey: ByteArray, @unchecked Sendable {
+    public static let SIZE = 32
+
+    /// Throws if `contents` is not ``SIZE`` (32) bytes.
+    public required init(contents: [UInt8]) throws {
+        try super.init(newContents: contents, expectedLength: Self.SIZE)
+    }
+
+    /// Generates a random backup key.
+    ///
+    /// Useful for tests and for the media root backup key, which is not derived from anything else.
+    ///
+    /// - SeeAlso: ``AccountEntropyPool/deriveBackupKey(_:)``
+    public static func generateRandom() -> BackupKey {
+        failOnError {
+            var bytes: [UInt8] = Array(repeating: 0, count: Self.SIZE)
+            try bytes.withUnsafeMutableBytes { try fillRandom($0) }
+            return try BackupKey(contents: bytes)
+        }
+    }
+
+    /// Derives the backup ID to use given the current device's ACI.
+    public func deriveBackupId(aci: Aci) -> [UInt8] {
+        failOnError {
+            try withUnsafePointerToSerialized { backupKey in
+                try aci.withPointerToFixedWidthBinary { aci in
+                    try invokeFnReturningFixedLengthArray {
+                        signal_backup_key_derive_backup_id($0, backupKey, aci)
+                    }
+                }
+            }
+        }
+    }
+
+    /// Derives the backup EC key to use given the current device's ACI.
+    public func deriveEcKey(aci: Aci) -> PrivateKey {
+        failOnError {
+            try withUnsafePointerToSerialized { backupKey in
+                try aci.withPointerToFixedWidthBinary { aci in
+                    try invokeFnReturningNativeHandle {
+                        signal_backup_key_derive_ec_key($0, backupKey, aci)
+                    }
+                }
+            }
+        }
+    }
+
+    /// Derives the AES key used for encrypted fields in local backup metadata.
+    public func deriveLocalBackupMetadataKey() -> [UInt8] {
+        failOnError {
+            try withUnsafePointerToSerialized { backupKey in
+                try invokeFnReturningFixedLengthArray {
+                    signal_backup_key_derive_local_backup_metadata_key($0, backupKey)
+                }
+            }
+        }
+    }
+
+    /// Derives the ID for uploading media with the name `mediaName`.
+    public func deriveMediaId(_ mediaName: String) throws -> [UInt8] {
+        try withUnsafePointerToSerialized { backupKey in
+            try invokeFnReturningFixedLengthArray {
+                signal_backup_key_derive_media_id($0, backupKey, mediaName)
+            }
+        }
+    }
+
+    /// Derives the composite encryption key for uploading media with the given ID.
+    ///
+    /// This is a concatenation of an HMAC key (32 bytes) and an AES-CBC key (also 32 bytes).
+    public func deriveMediaEncryptionKey(_ mediaId: [UInt8]) throws -> [UInt8] {
+        let mediaId = try ByteArray(newContents: mediaId, expectedLength: 15)
+        return try withUnsafePointerToSerialized { backupKey in
+            try mediaId.withUnsafePointerToSerialized { mediaId in
+                try invokeFnReturningFixedLengthArray {
+                    signal_backup_key_derive_media_encryption_key($0, backupKey, mediaId)
+                }
             }
         }
     }

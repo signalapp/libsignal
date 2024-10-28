@@ -11,7 +11,11 @@
  * @module AccountKeys
  */
 
+import * as crypto from 'node:crypto';
 import * as Native from '../Native';
+import ByteArray from './zkgroup/internal/ByteArray';
+import { Aci } from './Address';
+import { PrivateKey } from './EcKeys';
 
 /**
  * The randomly-generated user-memorized entropy used to derive the backup key,
@@ -21,12 +25,95 @@ import * as Native from '../Native';
  */
 export class AccountEntropyPool {
   /**
-   * Randomly generates an Account Entropy Pool and returns the cannonical string
+   * Randomly generates an Account Entropy Pool and returns the canonical string
    *  representation of that pool.
    *
    * @returns cryptographically random 64 character string of characters a-z, 0-9
    */
   public static generate(): string {
     return Native.AccountEntropyPool_Generate();
+  }
+
+  /**
+   * Derives an SVR key from the given account entropy pool.
+   *
+   * `accountEntropyPool` must be a **validated** account entropy pool;
+   * passing an arbitrary string here is considered a programmer error.
+   */
+  public static deriveSvrKey(accountEntropyPool: string): Buffer {
+    return Native.AccountEntropyPool_DeriveSvrKey(accountEntropyPool);
+  }
+
+  /**
+   * Derives a backup key from the given account entropy pool.
+   *
+   * `accountEntropyPool` must be a **validated** account entropy pool;
+   * passing an arbitrary string here is considered a programmer error.
+   *
+   * @see {@link BackupKey.generateRandom}
+   */
+  public static deriveBackupKey(accountEntropyPool: string): BackupKey {
+    return new BackupKey(
+      Native.AccountEntropyPool_DeriveBackupKey(accountEntropyPool)
+    );
+  }
+}
+
+/** A key used for many aspects of backups. */
+export class BackupKey extends ByteArray {
+  private readonly __type?: never;
+  static SIZE = 32;
+
+  constructor(contents: Buffer) {
+    super(contents, BackupKey.checkLength(BackupKey.SIZE));
+  }
+
+  /**
+   * Generates a random backup key.
+   *
+   * Useful for tests and for the media root backup key, which is not derived from anything else.
+   *
+   * @see {@link AccountEntropyPool.deriveBackupKey}
+   */
+  public static generateRandom(): BackupKey {
+    const bytes = crypto.randomBytes(BackupKey.SIZE);
+    return new BackupKey(bytes);
+  }
+
+  /** Derives the backup ID to use given the current device's ACI. */
+  public deriveBackupId(aci: Aci): Buffer {
+    return Native.BackupKey_DeriveBackupId(
+      this.contents,
+      aci.getServiceIdFixedWidthBinary()
+    );
+  }
+
+  /** Derives the backup EC key to use given the current device's ACI. */
+  public deriveEcKey(aci: Aci): PrivateKey {
+    return PrivateKey._fromNativeHandle(
+      Native.BackupKey_DeriveEcKey(
+        this.contents,
+        aci.getServiceIdFixedWidthBinary()
+      )
+    );
+  }
+
+  /** Derives the AES key used for encrypted fields in local backup metadata. */
+  public deriveLocalBackupMetadataKey(): Buffer {
+    return Native.BackupKey_DeriveLocalBackupMetadataKey(this.contents);
+  }
+
+  /** Derives the ID for uploading media with the name `mediaName`. */
+  public deriveMediaId(mediaName: string): Buffer {
+    return Native.BackupKey_DeriveMediaId(this.contents, mediaName);
+  }
+
+  /**
+   * Derives the composite encryption key for uploading media with the given ID.
+   *
+   * This is a concatenation of an HMAC key (32 bytes) and an AES-CBC key (also 32 bytes).
+   */
+  public deriveMediaEncryptionKey(mediaId: Buffer): Buffer {
+    return Native.BackupKey_DeriveMediaEncryptionKey(this.contents, mediaId);
   }
 }

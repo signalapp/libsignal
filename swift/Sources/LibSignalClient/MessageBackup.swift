@@ -39,8 +39,7 @@ public class MessageBackupKey: NativeHandleOwner, @unchecked Sendable {
     ///
     /// This uses AccountEntropyPool-based key derivation rules;
     /// it cannot be used to read a backup created from a master key.
-    public convenience init(backupKey: [UInt8], backupId: [UInt8]) throws {
-        let backupKey = try ByteArray(newContents: backupKey, expectedLength: 32)
+    public convenience init(backupKey: BackupKey, backupId: [UInt8]) throws {
         let backupId = try ByteArray(newContents: backupId, expectedLength: 16)
         let handle = try backupKey.withUnsafePointerToSerialized { backupKey in
             try backupId.withUnsafePointerToSerialized { backupId in
@@ -50,6 +49,12 @@ public class MessageBackupKey: NativeHandleOwner, @unchecked Sendable {
             }
         }
         self.init(owned: handle!)
+    }
+
+    @available(*, deprecated, message: "Use the overload that takes a strongly-typed BackupKey instead")
+    public convenience init(backupKey: [UInt8], backupId: [UInt8]) throws {
+        let backupKey = try BackupKey(contents: backupKey)
+        try self.init(backupKey: backupKey, backupId: backupId)
     }
 
     internal required init(owned handle: OpaquePointer) {

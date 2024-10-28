@@ -5,6 +5,8 @@
 
 package org.signal.libsignal.messagebackup;
 
+import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
+
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
 import org.signal.libsignal.protocol.ServiceId.Aci;
@@ -40,8 +42,18 @@ public class MessageBackupKey implements NativeHandleGuard.Owner {
    * <p>This uses AccountEntropyPool-based key derivation rules; it cannot be used to read a backup
    * created from a master key.
    */
+  public MessageBackupKey(BackupKey backupKey, byte[] backupId) {
+    this.nativeHandle =
+        Native.MessageBackupKey_FromBackupKeyAndBackupId(
+            backupKey.getInternalContentsForJNI(), backupId);
+  }
+
+  /**
+   * @deprecated Use the overload that takes a strongly-typed BackupKey instead.
+   */
+  @Deprecated
   public MessageBackupKey(byte[] backupKey, byte[] backupId) {
-    this.nativeHandle = Native.MessageBackupKey_FromBackupKeyAndBackupId(backupKey, backupId);
+    this(filterExceptions(() -> new BackupKey(backupKey)), backupId);
   }
 
   @Override
