@@ -254,6 +254,39 @@ impl Chat {
         };
     }
 
+    /// Returns `true` if the websocket is known to be connected.
+    ///
+    /// If this returns `false`, the websocket is either disconnected or in the
+    /// process of being disconnected. A return value of `true` does not
+    /// guarantee the next [`Chat::send`] operation will be successful.
+    pub async fn is_connected(&self) -> bool {
+        let mut guard = self.state.lock().await;
+
+        match &mut *guard {
+            TaskState::SignaledToEnd(_) | TaskState::Finished(_) => false,
+            TaskState::MaybeStillRunning {
+                request_tx: _,
+                response_tx: _,
+                task,
+            } => {
+                if !task.is_finished() {
+                    return true;
+                }
+
+                // The task finished but it wasn't observed yet. Since we're
+                // here, we should update the state. This `await` will finish
+                // immediately since the task is already finished!
+                let finish_reason = task
+                    .await
+                    .unwrap_or_else(|e| Err(TaskErrorState::Panic(e.into_panic())));
+
+                *guard = TaskState::Finished(finish_reason);
+
+                false
+            }
+        }
+    }
+
     fn new_inner(
         into_inner_connection: impl IntoInnerConnection,
         initial_request_id: u64,
@@ -1334,6 +1367,7 @@ mod test {
     #[test_log::test(tokio::test(start_paused = true))]
     async fn sends_requests_and_receives_responses() {
         let (chat, (mut chat_events, inner_responses)) = fake::new_chat();
+        assert!(chat.is_connected().await);
 
         const REQUEST_PATHS: [&str; 3] = ["/first", "/second", "/third"];
         let request_headers = HeaderMap::from_iter([(
@@ -1615,6 +1649,7 @@ mod test {
         let (chat, (mut inner_events, _inner_responses)) = fake::new_chat();
 
         chat.disconnect().await;
+        assert!(!chat.is_connected().await);
 
         // The client should send a disconnect to the server.
         assert_matches!(inner_events.recv().await, None);
@@ -1715,6 +1750,7 @@ mod test {
 
         // After a failed send, the service gets disconnected.
         assert_matches!(chat_events.recv().await, None);
+        assert!(!chat.is_connected().await);
     }
 
     #[test_log::test(tokio::test(start_paused = true))]
@@ -1732,6 +1768,20 @@ mod test {
             received_events_rx.recv().await,
             Some(ListenerEvent::Finished(Ok(FinishReason::RemoteDisconnect)))
         );
+    }
+
+    #[test_log::test(tokio::test(start_paused = true))]
+    async fn is_not_connected_after_remote_close() {
+        let (chat, (_inner_events, inner_responses)) = fake::new_chat();
+
+        inner_responses
+            .send(Outcome::Finished(Ok(FinishReason::RemoteDisconnect)).into())
+            .expect("can send");
+
+        // Let the other task run so the response can be propagated to the task.
+        tokio::task::yield_now().await;
+
+        assert!(!chat.is_connected().await);
     }
 
     #[test_case(MessageProto::default(); "empty message")]
