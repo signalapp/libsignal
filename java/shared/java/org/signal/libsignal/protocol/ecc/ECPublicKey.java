@@ -12,22 +12,20 @@ import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
 import org.signal.libsignal.protocol.InvalidKeyException;
 
-public class ECPublicKey implements Comparable<ECPublicKey>, NativeHandleGuard.Owner {
+public class ECPublicKey extends NativeHandleGuard.SimpleOwner implements Comparable<ECPublicKey> {
 
   public static final int KEY_SIZE = 33;
 
-  private final long unsafeHandle;
-
   public ECPublicKey(byte[] serialized, int offset) throws InvalidKeyException {
-    this.unsafeHandle =
+    this(
         filterExceptions(
-            InvalidKeyException.class, () -> Native.ECPublicKey_Deserialize(serialized, offset));
+            InvalidKeyException.class, () -> Native.ECPublicKey_Deserialize(serialized, offset)));
   }
 
   public ECPublicKey(byte[] serialized) throws InvalidKeyException {
-    this.unsafeHandle =
+    this(
         filterExceptions(
-            InvalidKeyException.class, () -> Native.ECPublicKey_Deserialize(serialized, 0));
+            InvalidKeyException.class, () -> Native.ECPublicKey_Deserialize(serialized, 0)));
   }
 
   public static ECPublicKey fromPublicKeyBytes(byte[] key) throws InvalidKeyException {
@@ -46,16 +44,17 @@ public class ECPublicKey implements Comparable<ECPublicKey>, NativeHandleGuard.O
   }
 
   public ECPublicKey(long nativeHandle) {
+    super(nativeHandle);
     if (nativeHandle == 0) {
       throw new NullPointerException();
     }
-    this.unsafeHandle = nativeHandle;
   }
 
   @Override
-  @SuppressWarnings("deprecation")
-  protected void finalize() {
-    Native.ECPublicKey_Destroy(this.unsafeHandle);
+  protected void release(long nativeHandle) {
+    if (nativeHandle != 0) {
+      Native.ECPublicKey_Destroy(nativeHandle);
+    }
   }
 
   public boolean verifySignature(byte[] message, byte[] signature) {
@@ -80,10 +79,6 @@ public class ECPublicKey implements Comparable<ECPublicKey>, NativeHandleGuard.O
   public int getType() {
     byte[] serialized = this.serialize();
     return serialized[0];
-  }
-
-  public long unsafeNativeHandleWithoutGuard() {
-    return this.unsafeHandle;
   }
 
   @Override
