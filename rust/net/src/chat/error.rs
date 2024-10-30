@@ -8,6 +8,8 @@ use libsignal_net_infra::errors::{LogSafeDisplay, TransportConnectError};
 use libsignal_net_infra::service;
 use libsignal_net_infra::ws::{WebSocketConnectError, WebSocketServiceError};
 
+use crate::ws::WebSocketServiceConnectError;
+
 #[derive(Debug, thiserror::Error, displaydoc::Display)]
 pub enum ChatServiceError {
     /// websocket error: {0}
@@ -48,44 +50,46 @@ impl From<WebSocketServiceError> for ChatServiceError {
     }
 }
 
-impl From<WebSocketConnectError> for ChatServiceError {
-    fn from(e: WebSocketConnectError) -> Self {
+impl From<WebSocketServiceConnectError> for ChatServiceError {
+    fn from(e: WebSocketServiceConnectError) -> Self {
         if !matches!(e.classify(), ErrorClass::Fatal) {
             log::warn!(
                 "intermittent WebSocketConnectError should be retried, not returned as a ChatServiceError ({e})"
             );
         }
         match e {
-            WebSocketConnectError::Transport(e) => match e {
-                TransportConnectError::InvalidConfiguration => {
-                    WebSocketServiceError::Other("invalid configuration")
+            WebSocketServiceConnectError::Connect(e, _) => match e {
+                WebSocketConnectError::Transport(e) => match e {
+                    TransportConnectError::InvalidConfiguration => {
+                        WebSocketServiceError::Other("invalid configuration")
+                    }
+                    TransportConnectError::TcpConnectionFailed => {
+                        WebSocketServiceError::Other("TCP connection failed")
+                    }
+                    TransportConnectError::DnsError => WebSocketServiceError::Other("DNS error"),
+                    TransportConnectError::SslError(_)
+                    | TransportConnectError::SslFailedHandshake(_) => {
+                        WebSocketServiceError::Other("TLS failure")
+                    }
+                    TransportConnectError::CertError => {
+                        WebSocketServiceError::Other("failed to load certificates")
+                    }
+                    TransportConnectError::ProxyProtocol => {
+                        WebSocketServiceError::Other("proxy protocol error")
+                    }
+                    TransportConnectError::ClientAbort => {
+                        WebSocketServiceError::Other("client abort error")
+                    }
                 }
-                TransportConnectError::TcpConnectionFailed => {
-                    WebSocketServiceError::Other("TCP connection failed")
-                }
-                TransportConnectError::DnsError => WebSocketServiceError::Other("DNS error"),
-                TransportConnectError::SslError(_)
-                | TransportConnectError::SslFailedHandshake(_) => {
-                    WebSocketServiceError::Other("TLS failure")
-                }
-                TransportConnectError::CertError => {
-                    WebSocketServiceError::Other("failed to load certificates")
-                }
-                TransportConnectError::ProxyProtocol => {
-                    WebSocketServiceError::Other("proxy protocol error")
-                }
-                TransportConnectError::ClientAbort => {
-                    WebSocketServiceError::Other("client abort error")
-                }
-            }
-            .into(),
-            WebSocketConnectError::Timeout => Self::Timeout,
-            WebSocketConnectError::WebSocketError(e) => Self::WebSocket(e.into()),
-            WebSocketConnectError::RejectedByServer {
+                .into(),
+                WebSocketConnectError::Timeout => Self::Timeout,
+                WebSocketConnectError::WebSocketError(e) => Self::WebSocket(e.into()),
+            },
+            WebSocketServiceConnectError::RejectedByServer {
                 response,
                 received_at: _,
             } if response.status() == 499 => Self::AppExpired,
-            WebSocketConnectError::RejectedByServer {
+            WebSocketServiceConnectError::RejectedByServer {
                 response,
                 received_at: _,
             } if response.status() == 403 => {
@@ -93,7 +97,7 @@ impl From<WebSocketConnectError> for ChatServiceError {
                 // but unidentified sockets should never produce a 403 anyway.
                 Self::DeviceDeregistered
             }
-            WebSocketConnectError::RejectedByServer {
+            WebSocketServiceConnectError::RejectedByServer {
                 response,
                 received_at: _,
             } => Self::WebSocket(WebSocketServiceError::Http(response)),

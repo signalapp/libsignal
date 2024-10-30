@@ -13,6 +13,7 @@ use libsignal_account_keys::Error as PinError;
 use libsignal_net::chat::ChatServiceError;
 use libsignal_net::infra::ws::WebSocketConnectError;
 use libsignal_net::svr3::Error as Svr3Error;
+use libsignal_net::ws::WebSocketServiceConnectError;
 use libsignal_protocol::*;
 use signal_crypto::Error as SignalCryptoError;
 use usernames::{UsernameError, UsernameLinkError};
@@ -485,13 +486,23 @@ impl FfiError for libsignal_net::cdsi::LookupError {
 impl FfiError for Svr3Error {
     fn describe(&self) -> String {
         match self {
-            Self::Connect(WebSocketConnectError::Timeout) | Self::ConnectionTimedOut => {
-                "Connect timed out".to_owned()
+            Self::Connect(WebSocketServiceConnectError::Connect(
+                WebSocketConnectError::Timeout,
+                _,
+            ))
+            | Self::ConnectionTimedOut => "Connect timed out".to_owned(),
+            Self::Connect(WebSocketServiceConnectError::Connect(
+                WebSocketConnectError::Transport(e),
+                _,
+            )) => {
+                format!("IO error: {e}")
             }
-            Self::Connect(WebSocketConnectError::Transport(e)) => format!("IO error: {e}"),
             Self::Connect(
-                e @ (WebSocketConnectError::WebSocketError(_)
-                | WebSocketConnectError::RejectedByServer { .. }),
+                e @ (WebSocketServiceConnectError::Connect(
+                    WebSocketConnectError::WebSocketError(_),
+                    _,
+                )
+                | WebSocketServiceConnectError::RejectedByServer { .. }),
             ) => {
                 format!("WebSocket error: {e}")
             }
@@ -510,10 +521,12 @@ impl FfiError for Svr3Error {
     fn code(&self) -> SignalErrorCode {
         match self {
             Self::Connect(e) => match e {
-                WebSocketConnectError::Transport(_) => SignalErrorCode::IoError,
-                WebSocketConnectError::Timeout => SignalErrorCode::ConnectionTimedOut,
-                WebSocketConnectError::WebSocketError(_)
-                | WebSocketConnectError::RejectedByServer { .. } => SignalErrorCode::WebSocket,
+                WebSocketServiceConnectError::RejectedByServer { .. } => SignalErrorCode::WebSocket,
+                WebSocketServiceConnectError::Connect(e, _) => match e {
+                    WebSocketConnectError::Transport(_) => SignalErrorCode::IoError,
+                    WebSocketConnectError::Timeout => SignalErrorCode::ConnectionTimedOut,
+                    WebSocketConnectError::WebSocketError(_) => SignalErrorCode::WebSocket,
+                },
             },
             Self::Service(_) => SignalErrorCode::WebSocket,
             Self::ConnectionTimedOut => SignalErrorCode::ConnectionTimedOut,

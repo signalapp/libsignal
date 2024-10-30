@@ -7,7 +7,7 @@ use std::num::NonZeroU32;
 
 use bincode::Options as _;
 use libsignal_net_infra::errors::LogSafeDisplay;
-use libsignal_net_infra::ws::{WebSocketConnectError, WebSocketServiceError};
+use libsignal_net_infra::ws::WebSocketServiceError;
 use libsignal_net_infra::ws2::attested::AttestedConnectionError;
 use libsignal_svr3::{EvaluationResult, MaskedSecret};
 use rand_core::CryptoRngCore;
@@ -20,6 +20,8 @@ pub mod direct;
 
 pub mod traits;
 use traits::*;
+
+use crate::ws::WebSocketServiceConnectError;
 
 // Versions:
 //   0: XOR'd secret
@@ -129,7 +131,7 @@ impl OpaqueMaskedShareSet {
 #[ignore_extra_doc_attributes]
 pub enum Error {
     /// Connection error: {0}
-    Connect(WebSocketConnectError),
+    Connect(WebSocketServiceConnectError),
     /// Network error: {0}
     Service(#[from] WebSocketServiceError),
     /// Protocol error after establishing a connection: {0}

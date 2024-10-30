@@ -436,40 +436,9 @@ async fn connect_websocket<T: TransportConnector>(
         ssl_stream,
         Some(ws_config),
     )
-    .await
-    .map_err(|e| {
-        // Because of the `await`, it's possible some time has already elapsed since the response
-        // came in, but this is the first chance we have to process it. A late timestamp means a
-        // more conservative retry period, that's all.
-        handle_ws_error(connection_params, e, Instant::now())
-    })?;
+    .await?;
 
     Ok((ws_stream, remote_address))
-}
-
-fn handle_ws_error(
-    connection_params: &ConnectionParams,
-    error: tungstenite::Error,
-    received_at: Instant,
-) -> WebSocketConnectError {
-    match error {
-        tungstenite::Error::Http(response)
-            if connection_params
-                .connection_confirmation_header
-                .as_ref()
-                .map(|header| response.headers().contains_key(header))
-                .unwrap_or(true) =>
-        {
-            // Promote any HTTP error to an explicit rejection if
-            // - the confirmation header is present in the response, or
-            // - there's no header to check
-            WebSocketConnectError::RejectedByServer {
-                response,
-                received_at,
-            }
-        }
-        e => WebSocketConnectError::WebSocketError(e),
-    }
 }
 
 #[derive(Debug)]
@@ -602,14 +571,9 @@ pub mod testutil {
 mod test {
     use assert_matches::assert_matches;
     use futures_util::{pin_mut, poll};
-    use nonzero_ext::nonzero;
-    use test_case::test_matrix;
 
     use super::testutil::*;
     use super::*;
-    use crate::certs::RootCertificates;
-    use crate::host::Host;
-    use crate::{HttpRequestDecoratorSeq, RouteType, TransportConnectionParams};
 
     const MESSAGE_TEXT: &str = "text";
 
@@ -683,78 +647,5 @@ mod test {
         // Hang up.
         drop(server);
         assert_matches!(handle.await.expect("joined"), Ok(()));
-    }
-
-    fn example_connection_params(hostname: &str) -> ConnectionParams {
-        let hostname = hostname.into();
-        ConnectionParams {
-            route_type: RouteType::Test,
-            transport: TransportConnectionParams {
-                sni: Arc::clone(&hostname),
-                tcp_host: Host::Domain(Arc::clone(&hostname)),
-                port: nonzero!(443u16),
-                certs: RootCertificates::Native,
-            },
-            http_host: hostname,
-            http_request_decorator: HttpRequestDecoratorSeq::default(),
-            connection_confirmation_header: None,
-        }
-    }
-
-    #[test_matrix([None, Some("x-pinky-promise")])]
-    fn classify_errors(confirmation_header: Option<&'static str>) {
-        let now = Instant::now();
-        let connection_params = example_connection_params("example.signal.org");
-        let connection_params = if let Some(header) = confirmation_header {
-            connection_params.with_confirmation_header(http::HeaderName::from_static(header))
-        } else {
-            connection_params
-        };
-
-        let non_http_error = handle_ws_error(
-            &connection_params,
-            tungstenite::Error::Io(std::io::ErrorKind::BrokenPipe.into()),
-            now,
-        );
-        assert_matches!(
-            non_http_error,
-            WebSocketConnectError::WebSocketError(tungstenite::Error::Io(_))
-        );
-
-        let mut response_4xx = http::Response::new(None);
-        *response_4xx.status_mut() = http::StatusCode::BAD_REQUEST;
-
-        let http_4xx_error = handle_ws_error(
-            &connection_params,
-            tungstenite::Error::Http(response_4xx.clone()),
-            now,
-        );
-        if connection_params.connection_confirmation_header.is_some() {
-            assert_matches!(
-                http_4xx_error,
-                WebSocketConnectError::WebSocketError(tungstenite::Error::Http(_))
-            );
-        } else {
-            assert_matches!(
-                http_4xx_error,
-                WebSocketConnectError::RejectedByServer { response: _, received_at } if received_at == now
-            );
-        }
-
-        if let Some(header) = &connection_params.connection_confirmation_header {
-            response_4xx
-                .headers_mut()
-                .append(header, http::HeaderValue::from_static("1"));
-
-            let error_with_header = handle_ws_error(
-                &connection_params,
-                tungstenite::Error::Http(response_4xx.clone()),
-                now,
-            );
-            assert_matches!(
-                error_with_header,
-                WebSocketConnectError::RejectedByServer { response: _, received_at } if received_at == now
-            );
-        }
     }
 }

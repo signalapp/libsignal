@@ -17,7 +17,7 @@ use libsignal_net_infra::service::{
 };
 use libsignal_net_infra::ws::{
     NextOrClose, TextOrBinary, WebSocketClient, WebSocketClientConnector, WebSocketClientReader,
-    WebSocketClientWriter, WebSocketConnectError, WebSocketServiceError,
+    WebSocketClientWriter, WebSocketServiceError,
 };
 use libsignal_net_infra::{
     AsyncDuplexStream, ConnectionInfo, ConnectionParams, TransportConnector,
@@ -32,6 +32,7 @@ use crate::chat::{
     ResponseProto,
 };
 use crate::proto::chat_websocket::web_socket_message::Type;
+use crate::ws::{WebSocketServiceConnectError, WebSocketServiceConnector};
 
 #[derive(Debug, Default, Eq, Hash, PartialEq, Clone, Copy)]
 struct RequestId {
@@ -146,7 +147,7 @@ impl PendingMessagesMap {
 
 #[derive_where(Clone)]
 pub(super) struct ChatOverWebSocketServiceConnector<T: TransportConnector> {
-    ws_client_connector: WebSocketClientConnector<T, ChatServiceError>,
+    ws_client_connector: WebSocketServiceConnector<WebSocketClientConnector<T, ChatServiceError>>,
     incoming_tx: Arc<Mutex<mpsc::Sender<ServerEvent<T::Stream>>>>,
 }
 
@@ -156,7 +157,7 @@ impl<T: TransportConnector> ChatOverWebSocketServiceConnector<T> {
         incoming_tx: mpsc::Sender<ServerEvent<T::Stream>>,
     ) -> Self {
         Self {
-            ws_client_connector,
+            ws_client_connector: WebSocketServiceConnector::new(ws_client_connector),
             incoming_tx: Arc::new(Mutex::new(incoming_tx)),
         }
     }
@@ -166,7 +167,7 @@ impl<T: TransportConnector> ChatOverWebSocketServiceConnector<T> {
 impl<T: TransportConnector> ServiceConnector for ChatOverWebSocketServiceConnector<T> {
     type Service = ChatOverWebSocket<T::Stream>;
     type Channel = (WebSocketStream<T::Stream>, ConnectionInfo);
-    type ConnectError = WebSocketConnectError;
+    type ConnectError = WebSocketServiceConnectError;
 
     async fn connect_channel(
         &self,

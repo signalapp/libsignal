@@ -15,6 +15,7 @@ use libsignal_account_keys::Error as PinError;
 use libsignal_net::cdsi::CdsiProtocolError;
 use libsignal_net::chat::ChatServiceError;
 use libsignal_net::infra::ws::{WebSocketConnectError, WebSocketServiceError};
+use libsignal_net::ws::WebSocketServiceConnectError;
 use libsignal_protocol::*;
 use signal_crypto::Error as SignalCryptoError;
 use usernames::{UsernameError, UsernameLinkError};
@@ -286,10 +287,14 @@ impl From<Svr3Error> for SignalJniError {
     fn from(err: Svr3Error) -> Self {
         match err {
             Svr3Error::Connect(inner) => match inner {
-                WebSocketConnectError::Timeout => SignalJniError::ConnectTimedOut,
-                WebSocketConnectError::Transport(e) => SignalJniError::Io(e.into()),
-                WebSocketConnectError::WebSocketError(e) => WebSocketServiceError::from(e).into(),
-                WebSocketConnectError::RejectedByServer {
+                WebSocketServiceConnectError::Connect(e, _) => match e {
+                    WebSocketConnectError::Timeout => SignalJniError::ConnectTimedOut,
+                    WebSocketConnectError::Transport(e) => SignalJniError::Io(e.into()),
+                    WebSocketConnectError::WebSocketError(e) => {
+                        WebSocketServiceError::from(e).into()
+                    }
+                },
+                WebSocketServiceConnectError::RejectedByServer {
                     response,
                     received_at: _,
                 } => WebSocketServiceError::Http(response).into(),

@@ -23,6 +23,7 @@ use uuid::Uuid;
 
 use crate::enclave::{Cdsi, EnclaveEndpointConnection};
 use crate::proto::cds2::{ClientRequest, ClientResponse};
+use crate::ws::WebSocketServiceConnectError;
 
 trait FixedLengthSerializable {
     const SERIALIZED_LEN: usize;
@@ -278,9 +279,7 @@ impl From<crate::enclave::Error> for LookupError {
         use crate::enclave::Error;
         match value {
             Error::WebSocketConnect(err) => match err {
-                WebSocketConnectError::Timeout => Self::ConnectionTimedOut,
-                WebSocketConnectError::Transport(e) => Self::ConnectTransport(e),
-                WebSocketConnectError::RejectedByServer {
+                WebSocketServiceConnectError::RejectedByServer {
                     response,
                     received_at: _,
                 } => {
@@ -295,7 +294,11 @@ impl From<crate::enclave::Error> for LookupError {
                     }
                     Self::WebSocket(WebSocketServiceError::Http(response))
                 }
-                WebSocketConnectError::WebSocketError(e) => Self::WebSocket(e.into()),
+                WebSocketServiceConnectError::Connect(e, _) => match e {
+                    WebSocketConnectError::Timeout => Self::ConnectionTimedOut,
+                    WebSocketConnectError::Transport(e) => Self::ConnectTransport(e),
+                    WebSocketConnectError::WebSocketError(e) => Self::WebSocket(e.into()),
+                },
             },
             Error::AttestationError(err) => Self::AttestationError(err),
             Error::WebSocket(err) => Self::WebSocket(err),

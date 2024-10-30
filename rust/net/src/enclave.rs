@@ -21,9 +21,7 @@ use libsignal_net_infra::service::{
     ServiceConnectorWithDecorator, ServiceInitializer, ServiceState,
 };
 use libsignal_net_infra::utils::ObservableEvent;
-use libsignal_net_infra::ws::{
-    WebSocketConnectError, WebSocketServiceError, WebSocketStreamConnector,
-};
+use libsignal_net_infra::ws::{WebSocketServiceError, WebSocketStreamConnector};
 use libsignal_net_infra::ws2::attested::{
     AttestedConnection, AttestedConnectionError, AttestedProtocolError,
 };
@@ -34,6 +32,7 @@ use libsignal_net_infra::{
 
 use crate::env::{DomainConfig, Svr3Env};
 use crate::svr::SvrConnection;
+use crate::ws::{WebSocketServiceConnectError, WebSocketServiceConnector};
 
 pub trait AsRaftConfig<'a> {
     fn as_raft_config(&self) -> Option<&'a RaftConfig>;
@@ -245,7 +244,7 @@ pub struct EnclaveEndpointConnection<E: EnclaveKind, C> {
 #[derive(Debug, thiserror::Error, displaydoc::Display)]
 pub enum Error {
     /// websocket error: {0}
-    WebSocketConnect(#[from] WebSocketConnectError),
+    WebSocketConnect(#[from] WebSocketServiceConnectError),
     /// Network error: {0}
     WebSocket(#[from] WebSocketServiceError),
     /// Protocol error after establishing a connection: {0}
@@ -313,6 +312,7 @@ async fn connect_attested<C: ConnectionManager, T: TransportConnector>(
         ),
         auth_decorator,
     );
+    let connector = WebSocketServiceConnector::new(connector);
     let service_initializer = ServiceInitializer::new(connector, &endpoint_connection.manager);
     let connection_attempt_result = service_initializer.connect().await;
     let (websocket, connection_info) = match connection_attempt_result {
@@ -472,6 +472,7 @@ mod test {
     use libsignal_net_infra::connection_manager::ConnectionAttemptOutcome;
     use libsignal_net_infra::errors::TransportConnectError;
     use libsignal_net_infra::host::Host;
+    use libsignal_net_infra::ws::WebSocketConnectError;
     use libsignal_net_infra::{
         Alpn, HttpRequestDecoratorSeq, RouteType, StreamAndInfo, TransportConnectionParams,
     };
@@ -552,9 +553,12 @@ mod test {
         .await;
         assert_matches!(
             result,
-            Err(Error::WebSocketConnect(WebSocketConnectError::Transport(
-                TransportConnectError::TcpConnectionFailed
-            )))
+            Err(Error::WebSocketConnect(
+                WebSocketServiceConnectError::Connect(
+                    WebSocketConnectError::Transport(TransportConnectError::TcpConnectionFailed),
+                    _
+                )
+            ))
         );
     }
 
@@ -594,7 +598,7 @@ mod test {
                 .expect("didn't finish setup after many iterations");
             match connection_manager
                 .connect_or_wait(|_conn_params| {
-                    std::future::ready(Err::<(), _>(WebSocketConnectError::Timeout))
+                    std::future::ready(Err::<(), _>(WebSocketServiceConnectError::timeout()))
                 })
                 .await
             {
