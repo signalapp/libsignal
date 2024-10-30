@@ -6,6 +6,9 @@
 import Foundation
 import SignalFfi
 
+/// Key used to encrypt and decrypt a message backup bundle.
+///
+/// - SeeAlso: ``BackupKey``
 public class MessageBackupKey: NativeHandleOwner, @unchecked Sendable {
     @available(*, deprecated, message: "Use init(accountEntropy:aci:) instead")
     public convenience init(masterKey: [UInt8], aci: Aci) throws {

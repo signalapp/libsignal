@@ -11,6 +11,11 @@ import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
 import org.signal.libsignal.protocol.ServiceId.Aci;
 
+/**
+ * Key used to encrypt and decrypt a message backup bundle.
+ *
+ * @see BackupKey
+ */
 public class MessageBackupKey implements NativeHandleGuard.Owner {
 
   /**

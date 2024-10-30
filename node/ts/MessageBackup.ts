@@ -60,6 +60,8 @@ export type MessageBackupKeyInput = Readonly<
 
 /**
  * Key used to encrypt and decrypt a message backup bundle.
+ *
+ * @see {@link BackupKey}
  */
 export class MessageBackupKey {
   readonly _nativeHandle: Native.MessageBackupKey;

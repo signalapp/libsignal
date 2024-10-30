@@ -59,7 +59,13 @@ export class AccountEntropyPool {
   }
 }
 
-/** A key used for many aspects of backups. */
+/**
+ * A key used for many aspects of backups.
+ *
+ * Clients are typically concerned with two long-lived keys: a "messages" key (sometimes called "the
+ * root backup key" or just "the backup key") that's derived from an {@link AccountEntropyPool}, and
+ * a "media" key (formally the "media root backup key") that's not derived from anything else.
+ */
 export class BackupKey extends ByteArray {
   private readonly __type?: never;
   static SIZE = 32;
@@ -80,7 +86,11 @@ export class BackupKey extends ByteArray {
     return new BackupKey(bytes);
   }
 
-  /** Derives the backup ID to use given the current device's ACI. */
+  /**
+   * Derives the backup ID to use given the current device's ACI.
+   *
+   * Used for both message and media backups.
+   */
   public deriveBackupId(aci: Aci): Buffer {
     return Native.BackupKey_DeriveBackupId(
       this.contents,
@@ -88,7 +98,11 @@ export class BackupKey extends ByteArray {
     );
   }
 
-  /** Derives the backup EC key to use given the current device's ACI. */
+  /**
+   * Derives the backup EC key to use given the current device's ACI.
+   *
+   * Used for both message and media backups.
+   */
   public deriveEcKey(aci: Aci): PrivateKey {
     return PrivateKey._fromNativeHandle(
       Native.BackupKey_DeriveEcKey(
@@ -98,12 +112,20 @@ export class BackupKey extends ByteArray {
     );
   }
 
-  /** Derives the AES key used for encrypted fields in local backup metadata. */
+  /**
+   * Derives the AES key used for encrypted fields in local backup metadata.
+   *
+   * Only relevant for message backup keys.
+   */
   public deriveLocalBackupMetadataKey(): Buffer {
     return Native.BackupKey_DeriveLocalBackupMetadataKey(this.contents);
   }
 
-  /** Derives the ID for uploading media with the name `mediaName`. */
+  /**
+   * Derives the ID for uploading media with the name `mediaName`.
+   *
+   * Only relevant for media backup keys.
+   */
   public deriveMediaId(mediaName: string): Buffer {
     return Native.BackupKey_DeriveMediaId(this.contents, mediaName);
   }
@@ -112,6 +134,8 @@ export class BackupKey extends ByteArray {
    * Derives the composite encryption key for re-encrypting media with the given ID.
    *
    * This is a concatenation of an HMAC key (32 bytes) and an AES-CBC key (also 32 bytes).
+   *
+   * Only relevant for media backup keys.
    */
   public deriveMediaEncryptionKey(mediaId: Buffer): Buffer {
     return Native.BackupKey_DeriveMediaEncryptionKey(this.contents, mediaId);
@@ -122,6 +146,8 @@ export class BackupKey extends ByteArray {
    * tier" CDN.
    *
    * This is a concatenation of an HMAC key (32 bytes) and an AES-CBC key (also 32 bytes).
+   *
+   * Only relevant for media backup keys.
    */
   public deriveThumbnailTransitEncryptionKey(mediaId: Buffer): Buffer {
     return Native.BackupKey_DeriveThumbnailTransitEncryptionKey(

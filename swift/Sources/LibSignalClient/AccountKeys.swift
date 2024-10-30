@@ -154,6 +154,10 @@ public enum AccountEntropyPool {
 }
 
 /// A key used for many aspects of backups.
+///
+/// Clients are typically concerned with two long-lived keys: a "messages" key (sometimes called
+/// "the root backup key" or just "the backup key") that's derived from an ``AccountEntropyPool``,
+/// and a "media" key (formally the "media root backup key") that's not derived from anything else.
 public class BackupKey: ByteArray, @unchecked Sendable {
     public static let SIZE = 32
 
@@ -176,6 +180,8 @@ public class BackupKey: ByteArray, @unchecked Sendable {
     }
 
     /// Derives the backup ID to use given the current device's ACI.
+    ///
+    /// Used for both messages and media backups.
     public func deriveBackupId(aci: Aci) -> [UInt8] {
         failOnError {
             try withUnsafePointerToSerialized { backupKey in
@@ -189,6 +195,8 @@ public class BackupKey: ByteArray, @unchecked Sendable {
     }
 
     /// Derives the backup EC key to use given the current device's ACI.
+    ///
+    /// Used for both messages and media backups.
     public func deriveEcKey(aci: Aci) -> PrivateKey {
         failOnError {
             try withUnsafePointerToSerialized { backupKey in
@@ -202,6 +210,8 @@ public class BackupKey: ByteArray, @unchecked Sendable {
     }
 
     /// Derives the AES key used for encrypted fields in local backup metadata.
+    ///
+    /// Only relevant for message backup keys.
     public func deriveLocalBackupMetadataKey() -> [UInt8] {
         failOnError {
             try withUnsafePointerToSerialized { backupKey in
@@ -213,6 +223,8 @@ public class BackupKey: ByteArray, @unchecked Sendable {
     }
 
     /// Derives the ID for uploading media with the name `mediaName`.
+    ///
+    /// Only relevant for media backup keys.
     public func deriveMediaId(_ mediaName: String) throws -> [UInt8] {
         try withUnsafePointerToSerialized { backupKey in
             try invokeFnReturningFixedLengthArray {
@@ -224,6 +236,8 @@ public class BackupKey: ByteArray, @unchecked Sendable {
     /// Derives the composite encryption key for re-encrypting media with the given ID.
     ///
     /// This is a concatenation of an HMAC key (32 bytes) and an AES-CBC key (also 32 bytes).
+    ///
+    /// Only relevant for media backup keys.
     public func deriveMediaEncryptionKey(_ mediaId: [UInt8]) throws -> [UInt8] {
         let mediaId = try ByteArray(newContents: mediaId, expectedLength: 15)
         return try withUnsafePointerToSerialized { backupKey in
@@ -238,6 +252,8 @@ public class BackupKey: ByteArray, @unchecked Sendable {
     /// Derives the composite encryption key for uploading thumbnails with the given ID to the "transit tier" CDN.
     ///
     /// This is a concatenation of an HMAC key (32 bytes) and an AES-CBC key (also 32 bytes).
+    ///
+    /// Only relevant for media backup keys.
     public func deriveThumbnailTransitEncryptionKey(_ mediaId: [UInt8]) throws -> [UInt8] {
         let mediaId = try ByteArray(newContents: mediaId, expectedLength: 15)
         return try withUnsafePointerToSerialized { backupKey in
