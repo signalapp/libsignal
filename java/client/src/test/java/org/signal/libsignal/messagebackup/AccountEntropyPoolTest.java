@@ -6,17 +6,16 @@
 package org.signal.libsignal.messagebackup;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.Test;
 import org.signal.libsignal.protocol.ServiceId.Aci;
+import org.signal.libsignal.protocol.util.Hex;
 
 public class AccountEntropyPoolTest {
   @Test
@@ -49,12 +48,18 @@ public class AccountEntropyPoolTest {
 
     var backupId = backupKey.deriveBackupId(aci);
     assertEquals(16, backupId.length);
-    assertFalse(Arrays.equals(backupId, randomKey.deriveBackupId(aci)));
-    assertFalse(Arrays.equals(backupId, backupKey.deriveBackupId(otherAci)));
+    assertNotEquals(
+        Hex.toStringCondensed(backupId), Hex.toStringCondensed(randomKey.deriveBackupId(aci)));
+    assertNotEquals(
+        Hex.toStringCondensed(backupId), Hex.toStringCondensed(backupKey.deriveBackupId(otherAci)));
 
     var ecKey = backupKey.deriveEcKey(aci);
-    assertFalse(Arrays.equals(ecKey.serialize(), randomKey.deriveEcKey(aci).serialize()));
-    assertFalse(Arrays.equals(ecKey.serialize(), backupKey.deriveEcKey(otherAci).serialize()));
+    assertNotEquals(
+        Hex.toStringCondensed(ecKey.serialize()),
+        Hex.toStringCondensed(randomKey.deriveEcKey(aci).serialize()));
+    assertNotEquals(
+        Hex.toStringCondensed(ecKey.serialize()),
+        Hex.toStringCondensed(backupKey.deriveEcKey(otherAci).serialize()));
 
     var localMetadataKey = backupKey.deriveLocalBackupMetadataKey();
     assertEquals(32, localMetadataKey.length);
@@ -69,5 +74,9 @@ public class AccountEntropyPoolTest {
         "invalid media ID",
         IllegalArgumentException.class,
         () -> backupKey.deriveMediaEncryptionKey(new byte[1]));
+
+    var thumbnailKey = backupKey.deriveThumbnailTransitEncryptionKey(mediaId);
+    assertEquals(32 + 32, thumbnailKey.length);
+    assertNotEquals(Hex.toStringCondensed(thumbnailKey), Hex.toStringCondensed(mediaKey));
   }
 }

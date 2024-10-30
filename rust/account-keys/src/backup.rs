@@ -112,6 +112,18 @@ impl BackupKey<V1> {
             .expect("valid length");
         bytes
     }
+
+    pub fn derive_thumbnail_transit_encryption_key_data(
+        &self,
+        media_id: &[u8; MEDIA_ID_LEN],
+    ) -> [u8; MEDIA_ENCRYPTION_KEY_LEN] {
+        const INFO: &[u8] = b"20241030_SIGNAL_BACKUP_ENCRYPT_THUMBNAIL:";
+        let mut bytes = [0; MEDIA_ENCRYPTION_KEY_LEN];
+        Hkdf::<Sha256>::new(None, &self.0)
+            .expand_multi_info(&[INFO, media_id], &mut bytes)
+            .expect("valid length");
+        bytes
+    }
 }
 
 impl<const VERSION: u8> BackupKey<VERSION> {

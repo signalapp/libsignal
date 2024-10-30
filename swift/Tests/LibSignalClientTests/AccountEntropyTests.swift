@@ -67,5 +67,10 @@ class AccountEntropyTests: TestCaseBase {
             default: XCTFail("unexpected error: \(error)")
             }
         }
+
+        // This media ID wasn't for a thumbnail, but the API doesn't (can't) check that.
+        let thumbnailKey = try! backupKey.deriveThumbnailTransitEncryptionKey(mediaId)
+        XCTAssertEqual(32 + 32, thumbnailKey.count)
+        XCTAssertNotEqual(mediaKey, thumbnailKey)
     }
 }

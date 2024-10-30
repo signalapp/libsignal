@@ -221,7 +221,7 @@ public class BackupKey: ByteArray, @unchecked Sendable {
         }
     }
 
-    /// Derives the composite encryption key for uploading media with the given ID.
+    /// Derives the composite encryption key for re-encrypting media with the given ID.
     ///
     /// This is a concatenation of an HMAC key (32 bytes) and an AES-CBC key (also 32 bytes).
     public func deriveMediaEncryptionKey(_ mediaId: [UInt8]) throws -> [UInt8] {
@@ -230,6 +230,20 @@ public class BackupKey: ByteArray, @unchecked Sendable {
             try mediaId.withUnsafePointerToSerialized { mediaId in
                 try invokeFnReturningFixedLengthArray {
                     signal_backup_key_derive_media_encryption_key($0, backupKey, mediaId)
+                }
+            }
+        }
+    }
+
+    /// Derives the composite encryption key for uploading thumbnails with the given ID to the "transit tier" CDN.
+    ///
+    /// This is a concatenation of an HMAC key (32 bytes) and an AES-CBC key (also 32 bytes).
+    public func deriveThumbnailTransitEncryptionKey(_ mediaId: [UInt8]) throws -> [UInt8] {
+        let mediaId = try ByteArray(newContents: mediaId, expectedLength: 15)
+        return try withUnsafePointerToSerialized { backupKey in
+            try mediaId.withUnsafePointerToSerialized { mediaId in
+                try invokeFnReturningFixedLengthArray {
+                    signal_backup_key_derive_thumbnail_transit_encryption_key($0, backupKey, mediaId)
                 }
             }
         }

@@ -109,11 +109,24 @@ export class BackupKey extends ByteArray {
   }
 
   /**
-   * Derives the composite encryption key for uploading media with the given ID.
+   * Derives the composite encryption key for re-encrypting media with the given ID.
    *
    * This is a concatenation of an HMAC key (32 bytes) and an AES-CBC key (also 32 bytes).
    */
   public deriveMediaEncryptionKey(mediaId: Buffer): Buffer {
     return Native.BackupKey_DeriveMediaEncryptionKey(this.contents, mediaId);
+  }
+
+  /**
+   * Derives the composite encryption key for uploading thumbnails with the given ID to the "transit
+   * tier" CDN.
+   *
+   * This is a concatenation of an HMAC key (32 bytes) and an AES-CBC key (also 32 bytes).
+   */
+  public deriveThumbnailTransitEncryptionKey(mediaId: Buffer): Buffer {
+    return Native.BackupKey_DeriveThumbnailTransitEncryptionKey(
+      this.contents,
+      mediaId
+    );
   }
 }

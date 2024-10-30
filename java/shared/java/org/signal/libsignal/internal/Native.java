@@ -178,6 +178,7 @@ public final class Native {
   public static native byte[] BackupKey_DeriveLocalBackupMetadataKey(byte[] backupKey);
   public static native byte[] BackupKey_DeriveMediaEncryptionKey(byte[] backupKey, byte[] mediaId);
   public static native byte[] BackupKey_DeriveMediaId(byte[] backupKey, String mediaName);
+  public static native byte[] BackupKey_DeriveThumbnailTransitEncryptionKey(byte[] backupKey, byte[] mediaId);
 
   public static native void CallLinkAuthCredentialPresentation_CheckValidContents(byte[] presentationBytes) throws Exception;
   public static native byte[] CallLinkAuthCredentialPresentation_GetUserId(byte[] presentationBytes);

@@ -118,3 +118,13 @@ pub fn BackupKey_DeriveMediaEncryptionKey(
     let backup_key: BackupKey = BackupKey(*backup_key);
     backup_key.derive_media_encryption_key_data(media_id)
 }
+
+#[bridge_fn]
+pub fn BackupKey_DeriveThumbnailTransitEncryptionKey(
+    backup_key: &[u8; BACKUP_KEY_LEN],
+    media_id: &[u8; MEDIA_ID_LEN],
+) -> [u8; MEDIA_ENCRYPTION_KEY_LEN] {
+    // The explicit type forces the latest version of the key derivation scheme.
+    let backup_key: BackupKey = BackupKey(*backup_key);
+    backup_key.derive_thumbnail_transit_encryption_key_data(media_id)
+}

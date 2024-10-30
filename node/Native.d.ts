@@ -177,6 +177,7 @@ export function BackupKey_DeriveEcKey(backupKey: Buffer, aci: Buffer): PrivateKe
 export function BackupKey_DeriveLocalBackupMetadataKey(backupKey: Buffer): Buffer;
 export function BackupKey_DeriveMediaEncryptionKey(backupKey: Buffer, mediaId: Buffer): Buffer;
 export function BackupKey_DeriveMediaId(backupKey: Buffer, mediaName: string): Buffer;
+export function BackupKey_DeriveThumbnailTransitEncryptionKey(backupKey: Buffer, mediaId: Buffer): Buffer;
 export function CallLinkAuthCredentialPresentation_CheckValidContents(presentationBytes: Buffer): void;
 export function CallLinkAuthCredentialPresentation_GetUserId(presentationBytes: Buffer): Serialized<UuidCiphertext>;
 export function CallLinkAuthCredentialPresentation_Verify(presentationBytes: Buffer, now: Timestamp, serverParamsBytes: Buffer, callLinkParamsBytes: Buffer): void;
