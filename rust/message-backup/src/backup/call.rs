@@ -79,8 +79,6 @@ pub enum CallError {
 #[derive(Debug, displaydoc::Display, thiserror::Error)]
 #[cfg_attr(test, derive(PartialEq))]
 pub enum CallLinkError {
-    /// call link restrictions is UNKNOWN
-    UnknownRestrictions,
     /// expected {CALL_LINK_ROOT_KEY_LEN:?}-byte root key, found {0} bytes
     InvalidRootKey(usize),
     /// admin key was present but empty
@@ -131,7 +129,8 @@ type CallLinkRootKey = [u8; CALL_LINK_ROOT_KEY_LEN];
 #[derive(Debug, serde::Serialize)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct CallLink {
-    pub admin_approval: bool,
+    #[serde(serialize_with = "serialize::enum_as_string")]
+    pub restrictions: proto::call_link::Restrictions,
     #[serde(with = "hex")]
     pub root_key: CallLinkRootKey,
     #[serde(serialize_with = "serialize::optional_hex")]
@@ -346,19 +345,13 @@ impl TryFrom<proto::CallLink> for CallLink {
             adminKey
         };
 
-        let admin_approval = {
-            use proto::call_link::Restrictions;
-            match restrictions.enum_value_or_default() {
-                Restrictions::UNKNOWN => return Err(CallLinkError::UnknownRestrictions),
-                Restrictions::NONE => false,
-                Restrictions::ADMIN_APPROVAL => true,
-            }
-        };
+        // Any unknown values will be warned about elsewhere.
+        let restrictions = restrictions.enum_value_or(proto::call_link::Restrictions::UNKNOWN);
         let expiration = Timestamp::from_millis(expirationMs, "CallLink.expirationMs");
 
         Ok(Self {
             root_key,
-            admin_approval,
+            restrictions,
             admin_key,
             expiration,
             name,
@@ -440,7 +433,7 @@ pub(crate) mod test {
     impl CallLink {
         pub(crate) fn from_proto_test_data() -> Self {
             Self {
-                admin_approval: false,
+                restrictions: proto::call_link::Restrictions::NONE,
                 root_key: TEST_CALL_LINK_ROOT_KEY,
                 admin_key: Some(TEST_CALL_LINK_ADMIN_KEY.to_vec()),
                 expiration: Timestamp::test_value(),
@@ -565,7 +558,8 @@ pub(crate) mod test {
     #[test_case(|x| x.rootKey = vec![123] => Err(CallLinkError::InvalidRootKey(1)); "invalid_root_key")]
     #[test_case(|x| x.adminKey = Some(vec![]) => Err(CallLinkError::InvalidAdminKey); "invalid_admin_key")]
     #[test_case(|x| x.adminKey = None => Ok(()); "no_admin_key")]
-    #[test_case(|x| x.restrictions = EnumOrUnknown::default() => Err(CallLinkError::UnknownRestrictions); "unknown_restrictions")]
+    #[test_case(|x| x.restrictions = proto::call_link::Restrictions::UNKNOWN.into() => Ok(()); "unknown_restrictions")]
+    #[test_case(|x| x.restrictions = EnumOrUnknown::from_i32(1000) => Ok(()); "unknown_restrictions_value")]
     fn call_link(modifier: fn(&mut proto::CallLink)) -> Result<(), CallLinkError> {
         let mut link = proto::CallLink::test_data();
         modifier(&mut link);
