@@ -17,8 +17,8 @@ use crate::dns::lookup_result::LookupResult;
 use crate::dns::{DnsError, DnsResolver};
 use crate::host::Host;
 use crate::route::{
-    ConnectionProxyRoute, DirectOrProxyRoute, HttpsTlsRoute, SocksTarget, TcpRoute, TlsRoute,
-    UnresolvedHost, WebSocketRoute,
+    ConnectionProxyRoute, DirectOrProxyRoute, HttpsTlsRoute, SocksRoute, SocksTarget, TcpRoute,
+    TlsRoute, UnresolvedHost, WebSocketRoute,
 };
 
 /// A route with hostnames that can be resolved.
@@ -228,31 +228,47 @@ impl<A: ResolveHostnames> ResolveHostnames for ConnectionProxyRoute<A> {
     fn hostnames(&self) -> impl Iterator<Item = &UnresolvedHost> {
         match self {
             Self::Tls { proxy } => Either::Left(proxy.hostnames()),
-            Self::Socks {
-                proxy,
-                target_addr,
-                target_port: _,
-                protocol: _,
-            } => Either::Right(proxy.hostnames().chain(target_addr.hostnames())),
+            Self::Socks(socks) => Either::Right(socks.hostnames()),
         }
     }
 
-    fn resolve(self, mut lookup: impl FnMut(&str) -> IpAddr) -> Self::Resolved {
+    fn resolve(self, lookup: impl FnMut(&str) -> IpAddr) -> Self::Resolved {
         match self {
             ConnectionProxyRoute::Tls { proxy } => ConnectionProxyRoute::Tls {
                 proxy: proxy.resolve(lookup),
             },
-            ConnectionProxyRoute::Socks {
-                proxy,
-                target_addr,
-                target_port,
-                protocol,
-            } => ConnectionProxyRoute::Socks {
-                proxy: proxy.resolve(&mut lookup),
-                target_addr: target_addr.resolve(lookup),
-                target_port,
-                protocol,
-            },
+            ConnectionProxyRoute::Socks(socks) => {
+                ConnectionProxyRoute::Socks(socks.resolve(lookup))
+            }
+        }
+    }
+}
+
+impl<A: ResolveHostnames> ResolveHostnames for SocksRoute<A> {
+    type Resolved = SocksRoute<A::Resolved>;
+
+    fn hostnames(&self) -> impl Iterator<Item = &UnresolvedHost> {
+        let Self {
+            proxy,
+            target_addr,
+            target_port: _,
+            protocol: _,
+        } = self;
+        proxy.hostnames().chain(target_addr.hostnames())
+    }
+
+    fn resolve(self, mut lookup: impl FnMut(&str) -> IpAddr) -> Self::Resolved {
+        let Self {
+            proxy,
+            target_addr,
+            target_port,
+            protocol,
+        } = self;
+        SocksRoute {
+            proxy: proxy.resolve(&mut lookup),
+            target_addr: target_addr.resolve(lookup),
+            target_port,
+            protocol,
         }
     }
 }
@@ -273,7 +289,7 @@ mod test {
     use crate::certs::RootCertificates;
     use crate::host::Host;
     use crate::route::{
-        DirectOrProxyRoute, HttpRouteFragment, HttpsServiceRoute, TlsRouteFragment,
+        DirectOrProxyRoute, HttpRouteFragment, HttpsServiceRoute, SocksRoute, TlsRouteFragment,
     };
     use crate::tcp_ssl::proxy::socks;
     use crate::DnsSource;
@@ -490,7 +506,7 @@ mod test {
         };
 
         fn socks_route<A>(proxy: A, target: A) -> ConnectionProxyRoute<A> {
-            ConnectionProxyRoute::Socks {
+            ConnectionProxyRoute::Socks(SocksRoute {
                 proxy: TcpRoute {
                     address: proxy,
                     port: PROXY_PORT,
@@ -500,7 +516,7 @@ mod test {
                 protocol: socks::Protocol::Socks5 {
                     username_password: None,
                 },
-            }
+            })
         }
 
         let unresolved_route: HttpsServiceRoute<_> = HttpsTlsRoute {

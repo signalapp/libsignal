@@ -16,16 +16,17 @@ use crate::route::{
 use crate::tcp_ssl::proxy::socks;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct SocksRoute<Addr> {
+    pub proxy: TcpRoute<Addr>,
+    pub target_addr: SocksTarget<Addr>,
+    pub target_port: NonZeroU16,
+    pub protocol: socks::Protocol,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum ConnectionProxyRoute<Addr> {
-    Tls {
-        proxy: TlsRoute<TcpRoute<Addr>>,
-    },
-    Socks {
-        proxy: TcpRoute<Addr>,
-        target_addr: SocksTarget<Addr>,
-        target_port: NonZeroU16,
-        protocol: socks::Protocol,
-    },
+    Tls { proxy: TlsRoute<TcpRoute<Addr>> },
+    Socks(SocksRoute<Addr>),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -64,6 +65,12 @@ pub enum ConnectionProxyConfig {
 pub struct ConnectionProxyRouteProvider<P> {
     pub(crate) proxy: ConnectionProxyConfig,
     pub(crate) inner: P,
+}
+
+impl<P> ConnectionProxyRouteProvider<P> {
+    pub fn new(proxy: ConnectionProxyConfig, inner: P) -> Self {
+        Self { proxy, inner }
+    }
 }
 
 type DirectOrProxyReplacement =
@@ -158,15 +165,17 @@ where
                     port: *proxy_port,
                 };
                 let routes = inner.routes().map(move |route| {
-                    route.replace(|TcpRoute { address, port }| ConnectionProxyRoute::Socks {
-                        proxy: proxy.clone(),
-                        protocol: protocol.clone(),
-                        target_addr: if *resolve_hostname_locally {
-                            SocksTarget::ResolvedLocally(Host::Domain(address))
-                        } else {
-                            SocksTarget::ResolvedRemotely { name: address.0 }
-                        },
-                        target_port: port,
+                    route.replace(|TcpRoute { address, port }| {
+                        ConnectionProxyRoute::Socks(SocksRoute {
+                            proxy: proxy.clone(),
+                            protocol: protocol.clone(),
+                            target_addr: if *resolve_hostname_locally {
+                                SocksTarget::ResolvedLocally(Host::Domain(address))
+                            } else {
+                                SocksTarget::ResolvedRemotely { name: address.0 }
+                            },
+                            target_port: port,
+                        })
                     })
                 });
                 Either::Right(routes)

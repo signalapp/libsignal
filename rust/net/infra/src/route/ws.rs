@@ -24,6 +24,12 @@ pub struct WebSocketProvider<P> {
     pub(crate) inner: P,
 }
 
+impl<P> WebSocketProvider<P> {
+    pub fn new(fragment: WebSocketRouteFragment, inner: P) -> Self {
+        Self { fragment, inner }
+    }
+}
+
 impl<P: RouteProvider> RouteProvider for WebSocketProvider<P> {
     type Route = WebSocketRoute<P::Route>;
 

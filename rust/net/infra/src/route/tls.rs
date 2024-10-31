@@ -25,6 +25,12 @@ pub struct TlsRouteProvider<P> {
     pub(crate) inner: P,
 }
 
+impl<T> TlsRouteProvider<T> {
+    pub fn new(certs: RootCertificates, sni: Option<Arc<str>>, inner: T) -> Self {
+        Self { sni, certs, inner }
+    }
+}
+
 /// Sets the [`Alpn`] value for a route or route fragment.
 pub(crate) trait SetAlpn {
     /// Sets the `Alpn` for `self`.

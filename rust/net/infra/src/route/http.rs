@@ -50,11 +50,36 @@ pub enum HttpVersion {
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct DomainFrontConfig {
+pub struct DomainFrontConfig {
     /// The value of the HTTP Host header
     pub(crate) http_host: Arc<str>,
     /// Domain names to use for DNS resolution and TLS SNI.
     pub(crate) sni_list: Vec<Arc<str>>,
+}
+
+impl<F, P> HttpsProvider<F, P> {
+    pub fn new(
+        direct_host: Arc<str>,
+        direct_version: HttpVersion,
+        domain_front: F,
+        inner: P,
+    ) -> Self {
+        Self {
+            direct_host_header: direct_host,
+            direct_http_version: direct_version,
+            domain_front,
+            inner,
+        }
+    }
+}
+
+impl DomainFrontRouteProvider {
+    pub fn new(http_version: HttpVersion, fronts: Vec<DomainFrontConfig>) -> Self {
+        Self {
+            fronts,
+            http_version,
+        }
+    }
 }
 
 impl RouteProvider for DomainFrontRouteProvider {

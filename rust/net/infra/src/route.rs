@@ -23,8 +23,6 @@ pub use tls::*;
 mod ws;
 pub use ws::*;
 
-use crate::host::Host;
-
 /// Produces routes to a destination.
 ///
 /// A "route" here is a path to a target destination of some kind. It does not
@@ -71,7 +69,7 @@ pub struct SimpleRoute<Fragment, Inner> {
 }
 
 pub type HttpsServiceRoute<Addr> =
-    HttpsTlsRoute<TlsRoute<DirectOrProxyRoute<TcpRoute<Addr>, ConnectionProxyRoute<Host<Addr>>>>>;
+    HttpsTlsRoute<TlsRoute<DirectOrProxyRoute<TcpRoute<Addr>, ConnectionProxyRoute<Addr>>>>;
 pub type WebSocketServiceRoute<Addr> = WebSocketRoute<HttpsServiceRoute<Addr>>;
 
 #[cfg(test)]
@@ -285,7 +283,7 @@ mod test {
                 sni: Some("direct-sni".into()),
                 alpn: None,
             },
-            inner: ConnectionProxyRoute::Socks {
+            inner: ConnectionProxyRoute::Socks(SocksRoute {
                 proxy: TcpRoute {
                     address: Host::Domain(UnresolvedHost("socks-proxy".into())),
                     port: PROXY_PORT,
@@ -295,7 +293,7 @@ mod test {
                 },
                 target_port: TARGET_PORT,
                 protocol: SOCKS_PROTOCOL,
-            },
+            }),
         }];
         assert_eq!(routes, expected_routes);
     }

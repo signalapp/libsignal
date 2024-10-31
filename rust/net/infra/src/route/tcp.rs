@@ -27,6 +27,15 @@ pub struct DirectTcpRouteProvider {
     pub(crate) port: NonZeroU16,
 }
 
+impl DirectTcpRouteProvider {
+    pub fn new(hostname: Arc<str>, port: NonZeroU16) -> Self {
+        Self {
+            dns_hostname: hostname,
+            port,
+        }
+    }
+}
+
 impl RouteProvider for DirectTcpRouteProvider {
     type Route = TcpRoute<UnresolvedHost>;
 
