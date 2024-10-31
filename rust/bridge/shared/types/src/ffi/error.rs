@@ -569,6 +569,9 @@ impl FfiError for ChatServiceError {
             Self::ServiceIntentionallyDisconnected => {
                 "Chat service explicitly disconnected".to_owned()
             }
+            Self::RetryLater {
+                retry_after_seconds,
+            } => format!("Rate limited; try again after {retry_after_seconds}s"),
         }
     }
 
@@ -593,6 +596,15 @@ impl FfiError for ChatServiceError {
             Self::ServiceIntentionallyDisconnected => {
                 SignalErrorCode::ChatServiceIntentionallyDisconnected
             }
+            Self::RetryLater { .. } => SignalErrorCode::RateLimited,
+        }
+    }
+    fn provide_retry_after_seconds(&self) -> Result<u32, WrongErrorKind> {
+        match self {
+            ChatServiceError::RetryLater {
+                retry_after_seconds,
+            } => Ok(*retry_after_seconds),
+            _ => Err(WrongErrorKind),
         }
     }
 }

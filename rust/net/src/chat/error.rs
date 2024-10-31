@@ -3,10 +3,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use libsignal_net_infra::connection_manager::{ErrorClass, ErrorClassifier};
 use libsignal_net_infra::errors::{LogSafeDisplay, TransportConnectError};
-use libsignal_net_infra::service;
 use libsignal_net_infra::ws::{WebSocketConnectError, WebSocketServiceError};
+use libsignal_net_infra::{extract_retry_after_seconds, service};
 
 use crate::ws::WebSocketServiceConnectError;
 
@@ -40,6 +39,8 @@ pub enum ChatServiceError {
     ServiceUnavailable,
     /// Service was disconnected by an intentional local call
     ServiceIntentionallyDisconnected,
+    /// Service is unavailable now, try again after {retry_after_seconds}s
+    RetryLater { retry_after_seconds: u32 },
 }
 
 impl LogSafeDisplay for ChatServiceError {}
@@ -52,11 +53,6 @@ impl From<WebSocketServiceError> for ChatServiceError {
 
 impl From<WebSocketServiceConnectError> for ChatServiceError {
     fn from(e: WebSocketServiceConnectError) -> Self {
-        if !matches!(e.classify(), ErrorClass::Fatal) {
-            log::warn!(
-                "intermittent WebSocketConnectError should be retried, not returned as a ChatServiceError ({e})"
-            );
-        }
         match e {
             WebSocketServiceConnectError::Connect(e, _) => match e {
                 WebSocketConnectError::Transport(e) => match e {
@@ -88,19 +84,23 @@ impl From<WebSocketServiceConnectError> for ChatServiceError {
             WebSocketServiceConnectError::RejectedByServer {
                 response,
                 received_at: _,
-            } if response.status() == 499 => Self::AppExpired,
-            WebSocketServiceConnectError::RejectedByServer {
-                response,
-                received_at: _,
-            } if response.status() == 403 => {
-                // Technically this only applies to identified sockets,
-                // but unidentified sockets should never produce a 403 anyway.
-                Self::DeviceDeregistered
+            } => {
+                // Retry-After takes precedence over everything else.
+                if let Some(retry_after_seconds) = extract_retry_after_seconds(response.headers()) {
+                    return Self::RetryLater {
+                        retry_after_seconds,
+                    };
+                }
+                match response.status().as_u16() {
+                    499 => Self::AppExpired,
+                    403 => {
+                        // Technically this only applies to identified sockets,
+                        // but unidentified sockets should never produce a 403 anyway.
+                        Self::DeviceDeregistered
+                    }
+                    _ => Self::WebSocket(WebSocketServiceError::Http(response)),
+                }
             }
-            WebSocketServiceConnectError::RejectedByServer {
-                response,
-                received_at: _,
-            } => Self::WebSocket(WebSocketServiceError::Http(response)),
         }
     }
 }

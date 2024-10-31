@@ -9,6 +9,7 @@ import static org.junit.Assert.*;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.Map;
 import org.junit.Assume;
 import org.junit.Test;
@@ -85,6 +86,9 @@ public class ChatServiceTest {
     assertChatServiceErrorIs("IncomingDataInvalid", ChatServiceException.class);
     assertChatServiceErrorIs("Timeout", ChatServiceException.class);
     assertChatServiceErrorIs("TimeoutEstablishingConnection", ChatServiceException.class);
+    RetryLaterException retryLater =
+        assertChatServiceErrorIs("RetryAfter42Seconds", RetryLaterException.class);
+    assertEquals(retryLater.duration, Duration.ofSeconds(42));
 
     // These two are more of internal errors, but they should never happen anyway.
     assertChatServiceErrorIs("FailedToPassMessageToIncomingChannel", ChatServiceException.class);

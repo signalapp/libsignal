@@ -46,7 +46,7 @@ describe('Net class', () => {
 
 describe('chat service api', () => {
   it('converts errors to native', () => {
-    const cases: Array<[string, ErrorCode]> = [
+    const cases: Array<[string, ErrorCode | object]> = [
       ['AppExpired', ErrorCode.AppExpired],
       ['DeviceDeregistered', ErrorCode.DeviceDelinked],
       ['ServiceInactive', ErrorCode.ChatServiceInactive],
@@ -57,18 +57,25 @@ describe('chat service api', () => {
       ['IncomingDataInvalid', ErrorCode.IoError],
       ['Timeout', ErrorCode.IoError],
       ['TimeoutEstablishingConnection', ErrorCode.IoError],
+      [
+        'RetryAfter42Seconds',
+        {
+          code: ErrorCode.RateLimitedError,
+          retryAfterSecs: 42,
+        },
+      ],
 
       // These two are more of internal errors, but they should never happen anyway.
       ['FailedToPassMessageToIncomingChannel', ErrorCode.IoError],
       ['RequestHasInvalidHeader', ErrorCode.IoError],
     ];
     cases.forEach((testCase) => {
-      const [name, expectedCode] = testCase;
+      const [name, expectation] = testCase;
       expect(() => Native.TESTING_ChatServiceErrorConvert(name))
         .throws(LibSignalErrorBase)
-        .to.include({
-          code: expectedCode,
-        });
+        .to.include(
+          expectation instanceof Object ? expectation : { code: expectation }
+        );
     });
   });
 

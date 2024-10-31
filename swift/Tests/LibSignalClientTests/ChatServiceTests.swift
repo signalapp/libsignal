@@ -133,6 +133,11 @@ final class ChatServiceTests: TestCaseBase {
         do {
             try failWithError("RequestHasInvalidHeader")
         } catch SignalError.internalError(_) {}
+        do {
+            try failWithError("RetryAfter42Seconds")
+        } catch SignalError.rateLimitedError(retryAfter: 42, let message) {
+            XCTAssertEqual(message, "Rate limited; try again after 42s")
+        }
     }
 
     func testConstructRequest() throws {

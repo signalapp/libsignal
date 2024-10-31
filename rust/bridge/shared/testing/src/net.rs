@@ -161,6 +161,7 @@ make_error_testing_enum! {
         ServiceInactive => ServiceInactive,
         ServiceUnavailable => ServiceUnavailable,
         ServiceIntentionallyDisconnected => ServiceIntentionallyDisconnected,
+        RetryLater => RetryAfter42Seconds,
     }
 }
 
@@ -198,6 +199,9 @@ fn TESTING_ChatServiceErrorConvert(
         TestingChatServiceError::ServiceIntentionallyDisconnected => {
             ChatServiceError::ServiceIntentionallyDisconnected
         }
+        TestingChatServiceError::RetryAfter42Seconds => ChatServiceError::RetryLater {
+            retry_after_seconds: 42,
+        },
     })
 }
 

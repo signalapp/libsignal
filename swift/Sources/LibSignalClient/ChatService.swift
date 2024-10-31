@@ -101,6 +101,8 @@ public class AuthenticatedChatService: NativeHandleOwner, ChatService {
     ///   the server).
     /// - Throws: ``SignalError/deviceDeregistered(_:)`` if the current device has been deregistered
     ///   or delinked.
+    /// - Throws: ``SignalError/rateLimitedError(_:, _:)`` if the server
+    ///   response indicates the request should be tried again after some time.
     /// - Throws: Other ``SignalError``s for other kinds of failures.
     @discardableResult
     public func connect() async throws -> DebugInfo {
@@ -213,6 +215,8 @@ public class UnauthenticatedChatService: NativeHandleOwner, ChatService {
     ///
     /// - Throws: ``SignalError/appExpired(_:)`` if the current app version is too old (as judged by
     ///   the server).
+    /// - Throws: ``SignalError/rateLimitedError(_:, _:)`` if the server
+    ///   response indicates the request should be tried again after some time.
     /// - Throws: Other ``SignalError``s for other kinds of failures.
     @discardableResult
     public func connect() async throws -> DebugInfo {

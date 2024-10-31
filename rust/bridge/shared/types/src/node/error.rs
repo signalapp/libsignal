@@ -411,12 +411,28 @@ impl SignalNodeError for libsignal_net::chat::ChatServiceError {
         module: Handle<'a, JsObject>,
         operation_name: &str,
     ) -> Handle<'a, JsError> {
-        let name = match self {
-            ChatServiceError::ServiceInactive => Some("ChatServiceInactive"),
-            ChatServiceError::AppExpired => Some("AppExpired"),
-            ChatServiceError::DeviceDeregistered => Some("DeviceDelinked"),
+        let (name, properties) = match self {
+            ChatServiceError::ServiceInactive => (Some("ChatServiceInactive"), None),
+            ChatServiceError::AppExpired => (Some("AppExpired"), None),
+            ChatServiceError::DeviceDeregistered => (Some("DeviceDelinked"), None),
+            ChatServiceError::RetryLater {
+                retry_after_seconds,
+            } => rate_limited_error(retry_after_seconds),
+            ChatServiceError::WebSocket(_)
+            | ChatServiceError::UnexpectedFrameReceived
+            | ChatServiceError::ServerRequestMissingId
+            | ChatServiceError::FailedToPassMessageToIncomingChannel
+            | ChatServiceError::IncomingDataInvalid
+            | ChatServiceError::RequestHasInvalidHeader
+            | ChatServiceError::Timeout
+            | ChatServiceError::TimeoutEstablishingConnection { attempts: _ }
+            | ChatServiceError::AllConnectionRoutesFailed { attempts: _ }
+            | ChatServiceError::ServiceUnavailable
+            | ChatServiceError::ServiceIntentionallyDisconnected =>
             // TODO: Distinguish retryable errors from proper failures?
-            _ => Some(IO_ERROR),
+            {
+                (Some(IO_ERROR), None)
+            }
         };
         let message = self.to_string();
         new_js_error(
@@ -425,7 +441,7 @@ impl SignalNodeError for libsignal_net::chat::ChatServiceError {
             name,
             &message,
             operation_name,
-            no_extra_properties,
+            optional_extra_properties(properties),
         )
     }
 }
@@ -460,15 +476,7 @@ impl SignalNodeError for libsignal_net::cdsi::LookupError {
         let (name, make_extra_props) = match self {
             Self::RateLimited {
                 retry_after_seconds,
-            } => (
-                Some(RATE_LIMITED_ERROR),
-                Some(move |cx: &mut C| {
-                    let props = cx.empty_object();
-                    let retry_after = retry_after_seconds.convert_into(cx)?;
-                    props.set(cx, "retryAfterSecs", retry_after)?;
-                    Ok(props.upcast())
-                }),
-            ),
+            } => rate_limited_error(retry_after_seconds),
             Self::AttestationError(e) => return e.into_throwable(cx, module, operation_name),
             Self::InvalidArgument { server_reason: _ } => (None, None),
             Self::InvalidToken => (Some("CdsiInvalidToken"), None),
@@ -491,6 +499,23 @@ impl SignalNodeError for libsignal_net::cdsi::LookupError {
             optional_extra_properties(make_extra_props),
         )
     }
+}
+
+fn rate_limited_error<'a, C: Context<'a>>(
+    retry_after_seconds: u32,
+) -> (
+    Option<&'a str>,
+    Option<impl Fn(&mut C) -> Result<Handle<'a, JsValue>, neon::result::Throw>>,
+) {
+    (
+        Some(RATE_LIMITED_ERROR),
+        Some(move |cx: &mut C| {
+            let props = cx.empty_object();
+            let retry_after = retry_after_seconds.convert_into(cx)?;
+            props.set(cx, "retryAfterSecs", retry_after)?;
+            Ok(props.upcast())
+        }),
+    )
 }
 
 impl SignalNodeError for libsignal_net::svr3::Error {

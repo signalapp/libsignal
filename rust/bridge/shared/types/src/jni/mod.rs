@@ -297,11 +297,7 @@ impl<'env> ConsumableException<'env> {
                     .as_secs()
                     .try_into()
                     .expect("duration < lifetime of the universe");
-                let throwable = new_instance(
-                    env,
-                    ClassName("org.signal.libsignal.net.RetryLaterException"),
-                    jni_args!((retry_after_seconds => long) -> void),
-                );
+                let throwable = retry_later_exception(env, retry_after_seconds);
 
                 return ConsumableException {
                     throwable: throwable.map(Into::into),
@@ -641,22 +637,41 @@ impl<'env> ConsumableException<'env> {
 
             SignalJniError::InvalidUri(_) => (ClassName("java.net.MalformedURLException"), error),
 
-            SignalJniError::ChatService(ChatServiceError::ServiceInactive) => (
-                ClassName("org.signal.libsignal.net.ChatServiceInactiveException"),
-                error,
-            ),
-            SignalJniError::ChatService(ChatServiceError::AppExpired) => (
-                ClassName("org.signal.libsignal.net.AppExpiredException"),
-                error,
-            ),
-            SignalJniError::ChatService(ChatServiceError::DeviceDeregistered) => (
-                ClassName("org.signal.libsignal.net.DeviceDeregisteredException"),
-                error,
-            ),
-            SignalJniError::ChatService(_) => (
-                ClassName("org.signal.libsignal.net.ChatServiceException"),
-                error,
-            ),
+            SignalJniError::ChatService(ref chat) => {
+                let class = match chat {
+                    ChatServiceError::RetryLater {
+                        retry_after_seconds,
+                    } => {
+                        return ConsumableException {
+                            throwable: retry_later_exception(env, *retry_after_seconds),
+                            error: error.into(),
+                        }
+                    }
+                    ChatServiceError::ServiceInactive => {
+                        ClassName("org.signal.libsignal.net.ChatServiceInactiveException")
+                    }
+                    ChatServiceError::AppExpired => {
+                        ClassName("org.signal.libsignal.net.AppExpiredException")
+                    }
+                    ChatServiceError::DeviceDeregistered => {
+                        ClassName("org.signal.libsignal.net.DeviceDeregisteredException")
+                    }
+                    ChatServiceError::WebSocket(_)
+                    | ChatServiceError::UnexpectedFrameReceived
+                    | ChatServiceError::ServerRequestMissingId
+                    | ChatServiceError::FailedToPassMessageToIncomingChannel
+                    | ChatServiceError::IncomingDataInvalid
+                    | ChatServiceError::RequestHasInvalidHeader
+                    | ChatServiceError::Timeout
+                    | ChatServiceError::TimeoutEstablishingConnection { attempts: _ }
+                    | ChatServiceError::AllConnectionRoutesFailed { attempts: _ }
+                    | ChatServiceError::ServiceUnavailable
+                    | ChatServiceError::ServiceIntentionallyDisconnected => {
+                        ClassName("org.signal.libsignal.net.ChatServiceException")
+                    }
+                };
+                (class, error)
+            }
 
             SignalJniError::TestingError { exception_class } => (exception_class, error),
         };
@@ -673,6 +688,18 @@ impl<'env> ConsumableException<'env> {
             error: error.into(),
         }
     }
+}
+
+fn retry_later_exception<'env>(
+    env: &mut JNIEnv<'env>,
+    retry_after_seconds: u32,
+) -> Result<JThrowable<'env>, BridgeLayerError> {
+    new_instance(
+        env,
+        ClassName("org.signal.libsignal.net.RetryLaterException"),
+        jni_args!((retry_after_seconds.into() => long) -> void),
+    )
+    .map(Into::into)
 }
 
 impl From<&'static str> for ConsumableExceptionError {

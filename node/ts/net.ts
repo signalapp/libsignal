@@ -11,6 +11,7 @@ import {
   ChatServiceInactive,
   DeviceDelinkedError,
   IoError,
+  RateLimitedError,
   SvrDataMissingError,
   SvrRestoreFailedError,
   SvrRequestFailedError,
@@ -173,6 +174,7 @@ export type ChatService = {
    *
    * @throws {AppExpiredError} if the current app version is too old (as judged by the server).
    * @throws {DeviceDelinkedError} if the current device has been delinked.
+   * @throws {RateLimitedError} if the device should wait, then retry.
    * @throws {LibSignalError} with other codes for other failures.
    */
   connect(options?: {
