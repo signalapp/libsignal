@@ -336,24 +336,24 @@ jobs:
       run: rust/bridge/node/bin/gen_ts_decl.py --verify
       if: matrix.os == 'ubuntu-latest'
 
-    - run: yarn install --frozen-lockfile
+    - run: npm ci
       working-directory: node
 
-    - run: yarn node-gyp rebuild
+    - run: npx node-gyp rebuild
       working-directory: node
 
-    - run: yarn tsc
+    - run: npm run tsc
       working-directory: node
 
-    - run: yarn lint
+    - run: npm run lint
       if: matrix.os == 'ubuntu-latest'
       working-directory: node
 
-    - run: yarn format -c
+    - run: npm run format -c
       if: matrix.os == 'ubuntu-latest'
       working-directory: node
 
-    - run: yarn test
+    - run: npm run test
       working-directory: node
 
   swift_package:

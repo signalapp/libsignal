@@ -162,18 +162,18 @@ To learn about the Swift build process see [``swift/README.md``](swift/)
 You'll need Node installed to build. If you have [nvm][], you can run `nvm use` to select an
 appropriate version automatically.
 
-We use [`yarn`](https://classic.yarnpkg.com/) as our package manager, and `node-gyp` to control building the Rust library.
+We use `npm` as our package manager, and `node-gyp` to control building the Rust library.
 
 ```shell
 $ cd node
 $ nvm use
-$ yarn install
-$ yarn node-gyp rebuild  # clean->configure->build
-$ yarn tsc
-$ yarn test
+$ npm install
+$ npx node-gyp rebuild  # clean->configure->build
+$ npm run tsc
+$ npm run test
 ```
 
-When testing changes locally, you can use `yarn build` to do an incremental rebuild of the Rust library. Alternately, `yarn build-with-debug-level-logs` will rebuild without filtering out debug- and verbose-level logs.
+When testing changes locally, you can use `npm run build` to do an incremental rebuild of the Rust library. Alternately, `npm run build-with-debug-level-logs` will rebuild without filtering out debug- and verbose-level logs.
 
 When exposing new APIs to Node, you will need to run `rust/bridge/node/bin/gen_ts_decl.py` in
 addition to rebuilding.

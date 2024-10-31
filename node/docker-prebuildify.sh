@@ -22,10 +22,10 @@ docker build --build-arg "UID=${UID:-501}" --build-arg "GID=${GID:-501}" --build
 
 # We build both architectures in the same run action to save on intermediates
 # (including downloading dependencies)
-# We run `yarn install` to make sure the correct prebuildify version is used.
+# We run `npm ci` to make sure the correct prebuildify version is used.
 docker run ${IS_TTY:+ -it} --init --rm -v "${PWD}":/home/libsignal/src ${DOCKER_IMAGE} sh -c '
     cd ~/src/node &&
-    npx yarn install --frozen-lockfile &&
+    npm ci &&
     env CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc \
         CC=aarch64-linux-gnu-gcc \
         CXX=aarch64-linux-gnu-g++ \

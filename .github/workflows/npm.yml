@@ -78,7 +78,7 @@ jobs:
       with:
         node-version-file: '.nvmrc'
 
-    - run: npx yarn install --frozen-lockfile
+    - run: npm ci
       working-directory: node
 
     - name: Build for arm64
@@ -196,19 +196,19 @@ jobs:
         path: debuginfo
         merge-multiple: true
 
-    - run: yarn install --frozen-lockfile
+    - run: npm ci
       working-directory: node
 
-    - run: yarn tsc
+    - run: npm run tsc
       working-directory: node
 
-    - run: yarn lint
+    - run: npm run lint
       working-directory: node
 
-    - run: yarn format -c
+    - run: npm run format -c
       working-directory: node
 
-    - run: yarn test
+    - run: npm run test
       working-directory: node
       env:
         PREBUILDS_ONLY: 1

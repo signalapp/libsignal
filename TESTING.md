@@ -8,7 +8,7 @@ For the most part, libsignal is tested using each language's usual testing infra
 % ./gradlew client:test server:test android:connectedAndroidTest
 
 # Node
-% yarn build && yarn tsc && yarn test
+% npm run build && npm run tsc && npm run test
 
 # Swift
 % ./build_ffi.sh --generate-ffi && swift test

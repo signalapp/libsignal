@@ -219,7 +219,7 @@ jobs:
       with:
         submodules: recursive
     - run: node/docker-prebuildify.sh
-    - run: yarn tsc && yarn test
+    - run: npm run tsc && npm run test
       working-directory: node
       env:
         PREBUILDS_ONLY: 1
@@ -250,7 +250,7 @@ jobs:
     - uses: actions/setup-node@60edb5dd545a775178f52524783378180af0d1f8 # v4.0.2
       with:
         node-version-file: '.nvmrc'
-    - run: npx yarn install --frozen-lockfile
+    - run: npm ci
       working-directory: node
     - name: Build for arm64
       run: npx prebuildify --napi -t ${{ steps.get-nvm-version.outputs.node-version }} --arch arm64

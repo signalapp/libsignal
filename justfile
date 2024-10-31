@@ -18,7 +18,7 @@ format-all:
     cargo fmt
     taplo fmt
     (cd swift && swiftformat --swiftversion 5 .)
-    (cd node && yarn format)
+    (cd node && npm run format)
     (cd java && ./gradlew spotlessApply)
 
 # Same as format-all, but does not actually make changes; merely fails if code is not yet formatted.
@@ -26,13 +26,13 @@ check-format-all:
     cargo fmt --all -- --check
     taplo fmt --check
     (cd swift && swiftformat --swiftversion 5 . --lint)
-    (cd node && yarn format-check)
+    (cd node && npm run format-check)
     (cd java && ./gradlew spotlessCheck)
 
 # Runs some quick local checks; useful to make sure CI will not fail immediately after push.
 check-pre-commit:
     just check-format-all
-    (cd node && yarn lint)
+    (cd node && npm run lint)
     (cd swift && ./verify_error_codes.sh)
     (cd swift && swiftlint lint --strict)
     cargo test --workspace --all-features --verbose --no-fail-fast -- --include-ignored
