@@ -19,7 +19,7 @@
 			<key>License</key>
 			<string>{{name}}</string>
 			<key>Title</key>
-			<string>{{#each used_by}}{{#unless @first}}, {{/unless}}{{crate.name}} {{crate.version}}{{/each}}</string>
+			<string>{{#each used_by}}{{#unless @first}}, {{/unless}}{{crate.name}}{{#if crate.source}} {{crate.version}}{{/if}}{{/each}}</string>
 			<key>Type</key>
 			<string>PSGroupSpecifier</string>
 		</dict>
