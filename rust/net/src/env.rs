@@ -225,14 +225,22 @@ pub const DOMAIN_CONFIG_SVR3_TPM2SNP_STAGING: DomainConfig = DomainConfig {
 pub const PROXY_CONFIG_F_PROD: ProxyConfig = ProxyConfig {
     route_type: RouteType::ProxyF,
     http_host: "reflector-signal.global.ssl.fastly.net",
-    sni_list: &["splashthat.com", "slate.com", "www.redditstatic.com"],
+    sni_list: &[
+        "github.githubassets.com",
+        "pinterest.com",
+        "www.redditstatic.com",
+    ],
     certs: RootCertificates::Native,
 };
 
 pub const PROXY_CONFIG_F_STAGING: ProxyConfig = ProxyConfig {
     route_type: RouteType::ProxyF,
     http_host: "reflector-staging-signal.global.ssl.fastly.net",
-    sni_list: &["splashthat.com", "slate.com", "www.redditstatic.com"],
+    sni_list: &[
+        "github.githubassets.com",
+        "pinterest.com",
+        "www.redditstatic.com",
+    ],
     certs: RootCertificates::Native,
 };
 
