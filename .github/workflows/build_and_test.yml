@@ -285,9 +285,11 @@ jobs:
     - run: "! grep WARNING ./gradle-output.txt"
       working-directory: java
 
-    - run: java/check_code_size.py
+    - run: java/check_code_size.py | tee ./check_code_size-output.txt
       env:
         GH_TOKEN: ${{ github.token }}
+
+    - run: grep -v -F '***' ./check_code_size-output.txt >> $GITHUB_STEP_SUMMARY
 
   node:
     name: Node
