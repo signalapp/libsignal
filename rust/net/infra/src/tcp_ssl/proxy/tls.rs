@@ -15,6 +15,7 @@ use crate::certs::RootCertificates;
 use crate::dns::DnsResolver;
 use crate::errors::TransportConnectError;
 use crate::host::Host;
+use crate::route::ConnectionProxyConfig;
 use crate::tcp_ssl::{connect_tcp, connect_tls, ssl_config};
 use crate::{
     Alpn, ConnectionInfo, RouteType, StreamAndInfo, TransportConnectionParams, TransportConnector,
@@ -138,6 +139,27 @@ impl TlsProxyConnector {
         }
 
         (ShouldUseTls::Yes, proxy_host)
+    }
+
+    pub(crate) fn as_route_config(&self) -> ConnectionProxyConfig {
+        let Self {
+            dns_resolver: _,
+            proxy_host,
+            proxy_port,
+            proxy_certs,
+            use_tls_for_proxy,
+        } = self;
+        match use_tls_for_proxy {
+            ShouldUseTls::Yes => ConnectionProxyConfig::TlsProxy {
+                proxy_host: proxy_host.clone(),
+                proxy_port: *proxy_port,
+                proxy_certs: proxy_certs.clone(),
+            },
+            ShouldUseTls::No => ConnectionProxyConfig::TcpProxy {
+                proxy_host: proxy_host.clone(),
+                proxy_port: *proxy_port,
+            },
+        }
     }
 }
 

@@ -227,7 +227,8 @@ impl<A: ResolveHostnames> ResolveHostnames for ConnectionProxyRoute<A> {
 
     fn hostnames(&self) -> impl Iterator<Item = &UnresolvedHost> {
         match self {
-            Self::Tls { proxy } => Either::Left(proxy.hostnames()),
+            Self::Tls { proxy } => Either::Left(Either::Left(proxy.hostnames())),
+            Self::Tcp { proxy } => Either::Left(Either::Right(proxy.hostnames())),
             Self::Socks(socks) => Either::Right(socks.hostnames()),
         }
     }
@@ -235,6 +236,9 @@ impl<A: ResolveHostnames> ResolveHostnames for ConnectionProxyRoute<A> {
     fn resolve(self, lookup: impl FnMut(&str) -> IpAddr) -> Self::Resolved {
         match self {
             ConnectionProxyRoute::Tls { proxy } => ConnectionProxyRoute::Tls {
+                proxy: proxy.resolve(lookup),
+            },
+            ConnectionProxyRoute::Tcp { proxy } => ConnectionProxyRoute::Tcp {
                 proxy: proxy.resolve(lookup),
             },
             ConnectionProxyRoute::Socks(socks) => {

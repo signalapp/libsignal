@@ -18,6 +18,7 @@ use crate::certs::RootCertificates;
 use crate::dns::DnsResolver;
 use crate::errors::TransportConnectError;
 use crate::host::Host;
+use crate::route::ConnectionProxyConfig;
 use crate::tcp_ssl::proxy::tls::TlsProxyConnector;
 use crate::timeouts::TCP_CONNECTION_ATTEMPT_DELAY;
 #[cfg(feature = "dev-util")]
@@ -47,6 +48,22 @@ impl TcpSslConnector {
             TcpSslConnector::Invalid(resolver) => resolver,
         };
         dns_resolver.set_ipv6_enabled(ipv6_enabled);
+    }
+}
+
+pub struct InvalidProxyConfig;
+
+impl TryFrom<&TcpSslConnector> for Option<ConnectionProxyConfig> {
+    type Error = InvalidProxyConfig;
+
+    fn try_from(value: &TcpSslConnector) -> Result<Self, Self::Error> {
+        match value {
+            TcpSslConnector::Direct(_) => Ok(None),
+            TcpSslConnector::Proxied(tls_proxy_connector) => {
+                Ok(Some(tls_proxy_connector.as_route_config()))
+            }
+            TcpSslConnector::Invalid(_) => Err(InvalidProxyConfig),
+        }
     }
 }
 

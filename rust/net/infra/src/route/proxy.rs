@@ -25,7 +25,13 @@ pub struct SocksRoute<Addr> {
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum ConnectionProxyRoute<Addr> {
-    Tls { proxy: TlsRoute<TcpRoute<Addr>> },
+    Tls {
+        proxy: TlsRoute<TcpRoute<Addr>>,
+    },
+    /// TCP proxy without encryption, only for testing.
+    Tcp {
+        proxy: TcpRoute<Addr>,
+    },
     Socks(SocksRoute<Addr>),
 }
 
@@ -53,6 +59,10 @@ pub enum ConnectionProxyConfig {
         proxy_host: Host<Arc<str>>,
         proxy_port: NonZeroU16,
         proxy_certs: RootCertificates,
+    },
+    TcpProxy {
+        proxy_host: Host<Arc<str>>,
+        proxy_port: NonZeroU16,
     },
     Socks {
         proxy_host: Host<Arc<str>>,
@@ -178,7 +188,27 @@ where
                         })
                     })
                 });
-                Either::Right(routes)
+                Either::Right(Either::Left(routes))
+            }
+
+            ConnectionProxyConfig::TcpProxy {
+                proxy_host,
+                proxy_port,
+            } => {
+                let tcp = TcpRoute {
+                    address: match proxy_host {
+                        Host::Ip(ip) => Host::Ip(*ip),
+                        Host::Domain(domain) => Host::Domain(UnresolvedHost(Arc::clone(domain))),
+                    },
+                    port: *proxy_port,
+                };
+
+                let routes = inner.routes().map(move |route| {
+                    route.replace(|_: TcpRoute<UnresolvedHost>| ConnectionProxyRoute::Tcp {
+                        proxy: tcp.clone(),
+                    })
+                });
+                Either::Right(Either::Right(routes))
             }
         }
     }
