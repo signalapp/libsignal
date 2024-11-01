@@ -35,7 +35,7 @@ mod dns_message;
 pub mod dns_transport_doh;
 pub mod dns_transport_udp;
 mod dns_types;
-mod dns_utils;
+pub(crate) mod dns_utils;
 pub mod lookup_result;
 
 pub type DnsError = Error;

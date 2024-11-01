@@ -14,6 +14,9 @@ pub use proxy::*;
 mod resolve;
 pub use resolve::*;
 
+mod schedule;
+pub use schedule::*;
+
 mod tcp;
 pub use tcp::*;
 

@@ -22,6 +22,11 @@ use crate::route::{
 };
 
 /// A route with hostnames that can be resolved.
+///
+/// This should be implemented for routes that contain [`UnresolvedHost`] values
+/// (including in nested types). Most implementations will be almost completely
+/// straightforward delegations to inner types. At the bottom is
+/// `UnresolvedHost`, which implements this trait.
 pub trait ResolveHostnames {
     /// The new route type with no unresolved hostnames.
     type Resolved;
@@ -36,7 +41,23 @@ pub trait ResolveHostnames {
     fn resolve(self, lookup: impl FnMut(&str) -> IpAddr) -> Self::Resolved;
 }
 
+/// A route that has had all its hostnames resolved to IP addresses.
+pub trait ResolvedRoute {
+    /// The IP address of the host that this route connects directly to.
+    ///
+    /// For a route that communicates through a proxy, this will be the address
+    /// of the proxy. Otherwise it will be the IP address of the target.
+    fn immediate_target(&self) -> &IpAddr;
+}
+
+/// Asynchronous resolver for individual names.
+///
+/// This exists mostly as an abstraction over [`DnsResolver`] for the purposes
+/// of mocking during tests.
 pub trait Resolver {
+    /// Asynchronously looks up a single domain name.
+    ///
+    /// Returns a [`Future`] that resolves to the result of the lookup.
     fn lookup_ip(
         &self,
         hostname: &str,
@@ -49,6 +70,15 @@ impl Resolver for DnsResolver {
     }
 }
 
+/// The output of [`resolve_route`] on successful resolution.
+///
+/// The actual type isn't important, but writing it out lets the compiler infer
+/// that the type implements [`Debug`] when `R` does.
+type ResolveRouteIter<R> = std::iter::Chain<
+    itertools::Interleave<std::vec::IntoIter<R>, std::vec::IntoIter<R>>,
+    std::vec::IntoIter<R>,
+>;
+
 /// Resolves all unresolved hostnames in the given route.
 ///
 /// Asynchronously resolves all routes and produces the resolved routes. Since
@@ -58,13 +88,12 @@ impl Resolver for DnsResolver {
 pub async fn resolve_route<R: ResolveHostnames + Clone + 'static>(
     dns: &impl Resolver,
     route: R,
-) -> Result<impl Iterator<Item = R::Resolved> + Debug, DnsError>
-where
-    R::Resolved: Debug,
-{
+) -> Result<ResolveRouteIter<R::Resolved>, (Arc<str>, DnsError)> {
     let to_resolve = route.hostnames().map(|UnresolvedHost(hostname)| {
-        dns.lookup_ip(hostname)
-            .map(|result| result.map(|lookup| (Arc::clone(hostname), lookup)))
+        dns.lookup_ip(hostname).map(|result| match result {
+            Ok(lookup) => Ok((Arc::clone(hostname), lookup)),
+            Err(e) => Err((Arc::clone(hostname), e)),
+        })
     });
 
     let resolved = FuturesUnordered::from_iter(to_resolve)
@@ -277,6 +306,58 @@ impl<A: ResolveHostnames> ResolveHostnames for SocksRoute<A> {
     }
 }
 
+macro_rules! impl_resolved_route {
+    ($typ:ident, $delegate_field:ident) => {
+        impl<A: ResolvedRoute> ResolvedRoute for $typ<A> {
+            fn immediate_target(&self) -> &IpAddr {
+                self.$delegate_field.immediate_target()
+            }
+        }
+    };
+}
+
+impl ResolvedRoute for IpAddr {
+    fn immediate_target(&self) -> &IpAddr {
+        self
+    }
+}
+
+impl_resolved_route!(TcpRoute, address);
+impl_resolved_route!(TlsRoute, inner);
+impl_resolved_route!(HttpsTlsRoute, inner);
+impl_resolved_route!(WebSocketRoute, inner);
+
+impl<D: ResolvedRoute, P: ResolvedRoute> ResolvedRoute for DirectOrProxyRoute<D, P> {
+    fn immediate_target(&self) -> &IpAddr {
+        match self {
+            DirectOrProxyRoute::Direct(d) => d.immediate_target(),
+            DirectOrProxyRoute::Proxy(p) => p.immediate_target(),
+        }
+    }
+}
+
+impl<A: ResolvedRoute> ResolvedRoute for ConnectionProxyRoute<A> {
+    fn immediate_target(&self) -> &IpAddr {
+        match self {
+            ConnectionProxyRoute::Tls { proxy } => proxy.immediate_target(),
+            ConnectionProxyRoute::Tcp { proxy } => proxy.immediate_target(),
+            ConnectionProxyRoute::Socks(proxy) => proxy.immediate_target(),
+        }
+    }
+}
+
+impl<A: ResolvedRoute> ResolvedRoute for SocksRoute<A> {
+    fn immediate_target(&self) -> &IpAddr {
+        let Self {
+            proxy,
+            target_addr: _,
+            target_port: _,
+            protocol: _,
+        } = self;
+        proxy.immediate_target()
+    }
+}
+
 #[cfg(test)]
 mod test {
     use std::collections::{HashMap, HashSet};
@@ -365,6 +446,12 @@ mod test {
         }
     }
 
+    impl<A: ResolvedRoute> ResolvedRoute for Vec<A> {
+        fn immediate_target(&self) -> &IpAddr {
+            self.first().unwrap().immediate_target()
+        }
+    }
+
     #[tokio::test]
     async fn returns_error_on_resolution_failure() {
         let (resolver, mut responders) = FakeResolver::new();
@@ -384,7 +471,7 @@ mod test {
         assert_eq!(responder.hostname(), "hostname");
         responder.respond(Err(DnsError::NoData));
 
-        assert_matches!(resolve.await, Err(DnsError::NoData));
+        assert_matches!(resolve.await, Err((_, DnsError::NoData)));
     }
 
     #[tokio::test]

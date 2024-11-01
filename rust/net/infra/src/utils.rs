@@ -13,6 +13,8 @@ use futures_util::stream::FuturesUnordered;
 use futures_util::StreamExt;
 use http::HeaderValue;
 
+pub(crate) mod binary_heap;
+
 /// Constructs the value of the `Authorization` header for the `Basic` auth scheme.
 pub fn basic_authorization(username: &str, password: &str) -> HeaderValue {
     let auth = BASE64_STANDARD.encode(format!("{}:{}", username, password).as_bytes());

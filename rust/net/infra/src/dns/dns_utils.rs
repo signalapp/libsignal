@@ -52,10 +52,10 @@ where
 }
 
 pub(crate) fn log_safe_domain(domain: &str) -> &str {
-    if domain.ends_with(SIGNAL_DOMAIN_SUFFIX) {
-        domain
-    } else {
-        "REDACTED"
+    match domain {
+        "localhost" => domain,
+        d if d.ends_with(SIGNAL_DOMAIN_SUFFIX) => d,
+        _ => "REDACTED",
     }
 }
 
