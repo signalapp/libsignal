@@ -5,8 +5,8 @@
   "license": "AGPL-3.0-only",
   "dependencies": {},
   "scripts": {
-    "test": "yarn install && mocha --recursive test",
-    "bench": "yarn install && node bench.js"
+    "test": "npm install && mocha --recursive test",
+    "bench": "npm install && node bench.js"
   },
   "devDependencies": {
     "benchmark": "^2.1.4",

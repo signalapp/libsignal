@@ -36,18 +36,19 @@ pub fn run(action: &str) {
     std::fs::copy(library_path, &node_library_path).expect("can copy to temporary directory");
 
     let test_cases = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/node-tests");
-    let status = Command::new("yarn")
+    let status = Command::new("npm")
+        .arg("run")
         .arg(action)
         .env("SIGNAL_NEON_FUTURES_TEST_LIB", &node_library_path)
         .env("MALLOC_PERTURB_", "1") // Add glibc and macOS use-after-free detection.
         .env("MALLOC_SCRIBBLE", "1")
         .current_dir(&test_cases)
         .status()
-        .expect("failed to run `yarn test`");
+        .expect("failed to run `npm run test`");
     if !status.success() {
         eprintln!(
-            "\nSIGNAL_NEON_FUTURES_TEST_LIB={:?} yarn --cwd {:?} {}\n",
-            node_library_path, test_cases, action
+            "\ncd {:?} && SIGNAL_NEON_FUTURES_TEST_LIB={:?} npm run {}\n",
+            test_cases, node_library_path, action
         );
         panic!("Node tests failed");
     }
