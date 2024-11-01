@@ -99,7 +99,7 @@ pub enum SendError {
     /// an OS-level I/O error occurred
     Io(IoErrorKind),
     /// the message is larger than the configured limit
-    MessageTooLarge { size: usize },
+    MessageTooLarge { size: usize, max_size: usize },
     /// a protocol-level error occurred: {0}
     Protocol(tungstenite::error::ProtocolError),
     /// the response protobuf was malformed
@@ -1152,8 +1152,11 @@ impl From<&TungsteniteSendError> for SendError {
             TungsteniteSendError::ConnectionAlreadyClosed => SendError::Disconnected {
                 reason: "task failure due to send failure",
             },
-            TungsteniteSendError::MessageTooLarge { size, max_size: _ } => {
-                SendError::MessageTooLarge { size: *size }
+            TungsteniteSendError::MessageTooLarge { size, max_size } => {
+                SendError::MessageTooLarge {
+                    size: *size,
+                    max_size: *max_size,
+                }
             }
             TungsteniteSendError::WebSocketProtocol(e) => SendError::Protocol(e.clone()),
         }
@@ -1187,6 +1190,31 @@ impl From<TaskExitError> for ChatServiceError {
                 WebSocketServiceError::Protocol(protocol_error.into())
             }
         })
+    }
+}
+
+impl From<SendError> for ChatServiceError {
+    fn from(value: SendError) -> Self {
+        match value {
+            SendError::Disconnected { reason: _ } => ChatServiceError::ServiceInactive,
+            SendError::Io(error_kind) => {
+                ChatServiceError::WebSocket(WebSocketServiceError::Io(error_kind.into()))
+            }
+            SendError::MessageTooLarge { size, max_size } => {
+                ChatServiceError::WebSocket(WebSocketServiceError::Capacity(
+                    libsignal_net_infra::ws::error::SpaceError::Capacity(
+                        tungstenite::error::CapacityError::MessageTooLong { size, max_size },
+                    ),
+                ))
+            }
+            SendError::Protocol(protocol_error) => {
+                ChatServiceError::WebSocket(WebSocketServiceError::Protocol(protocol_error.into()))
+            }
+            SendError::InvalidResponse => ChatServiceError::IncomingDataInvalid,
+            SendError::InvalidRequest(InvalidRequestError::InvalidHeader) => {
+                ChatServiceError::RequestHasInvalidHeader
+            }
+        }
     }
 }
 

@@ -5,7 +5,6 @@
 
 use futures_util::future::BoxFuture;
 use futures_util::Stream;
-use http::StatusCode;
 use libsignal_net_infra::ws::WebSocketServiceError;
 use libsignal_net_infra::AsyncDuplexStream;
 use libsignal_protocol::Timestamp;
@@ -21,13 +20,13 @@ pub type ResponseEnvelopeSender = Box<
     dyn FnOnce(http::StatusCode) -> BoxFuture<'static, Result<(), ChatServiceError>> + Send + Sync,
 >;
 
-pub enum ServerEvent<F = ResponseEnvelopeSender> {
+pub enum ServerEvent {
     QueueEmpty,
     IncomingMessage {
         request_id: u64,
         envelope: Vec<u8>,
         server_delivery_timestamp: Timestamp,
-        send_ack: F,
+        send_ack: ResponseEnvelopeSender,
     },
     Stopped(ChatServiceError),
 }
@@ -84,16 +83,17 @@ pub fn stream_incoming_messages(
     })
 }
 
-impl TryFrom<ws2::ListenerEvent>
-    for ServerEvent<Box<dyn FnOnce(StatusCode) -> Result<(), ws2::SendError> + Send>>
-{
+impl TryFrom<ws2::ListenerEvent> for ServerEvent {
     type Error = ServerEventError;
 
     fn try_from(value: ws2::ListenerEvent) -> Result<Self, Self::Error> {
         match value {
             ws2::ListenerEvent::ReceivedMessage(proto, responder) => {
                 convert_received_message(proto, || {
-                    Box::new(move |status| responder.send_response(status)) as Box<_>
+                    Box::new(move |status| {
+                        // TODO remove this async when it's no longer necessary.
+                        Box::pin(async move { Ok(responder.send_response(status)?) })
+                    })
                 })
             }
 
@@ -122,17 +122,17 @@ impl<S: AsyncDuplexStream + 'static> TryFrom<WsServerEvent<S>> for ServerEvent {
             WsServerEvent::Request {
                 request_proto,
                 response_sender,
-            } => convert_received_message::<ResponseEnvelopeSender>(request_proto, || {
+            } => convert_received_message(request_proto, || {
                 Box::new(|status| Box::pin(response_sender.send_response(status)))
             }),
         }
     }
 }
 
-fn convert_received_message<S>(
+fn convert_received_message(
     proto: crate::proto::chat_websocket::WebSocketRequestMessage,
-    make_send_ack: impl FnOnce() -> S,
-) -> Result<ServerEvent<S>, ServerEventError> {
+    make_send_ack: impl FnOnce() -> ResponseEnvelopeSender,
+) -> Result<ServerEvent, ServerEventError> {
     let RequestProto {
         verb,
         path,
