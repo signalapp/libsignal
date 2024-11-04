@@ -32,7 +32,7 @@ pub enum AttachmentLocator {
     Transit {
         cdn_key: String,
         cdn_number: u32,
-        upload_timestamp: Timestamp,
+        upload_timestamp: Option<Timestamp>,
         #[serde(with = "hex")]
         key: Vec<u8>,
         #[serde(with = "hex")]
@@ -132,8 +132,9 @@ impl TryFrom<proto::file_pointer::Locator> for AttachmentLocator {
                     return Err(AttachmentLocatorError::MissingDigest);
                 }
 
-                let upload_timestamp =
-                    Timestamp::from_millis(uploadTimestamp, "AttachmentLocator.uploadTimestamp");
+                let upload_timestamp = uploadTimestamp.map(|upload_timestamp| {
+                    Timestamp::from_millis(upload_timestamp, "AttachmentLocator.uploadTimestamp")
+                });
 
                 Ok(Self::Transit {
                     cdn_key: cdnKey,
@@ -347,7 +348,7 @@ mod test {
             Self {
                 cdnKey: "ABCDEFG".into(),
                 cdnNumber: 3,
-                uploadTimestamp: MillisecondsSinceEpoch::TEST_VALUE.0,
+                uploadTimestamp: Some(MillisecondsSinceEpoch::TEST_VALUE.0),
                 key: hex!("1234").into(),
                 digest: hex!("5678").into(),
                 size: 123,

@@ -250,7 +250,7 @@ pub enum ChatItemMessage<M: Method + ReferencedTypes> {
 #[cfg_attr(test, derive(PartialEq))]
 pub enum Direction<Recipient> {
     Incoming {
-        sent: Timestamp,
+        sent: Option<Timestamp>,
         received: Timestamp,
         read: bool,
         sealed_sender: bool,
@@ -613,8 +613,8 @@ impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R>>
                 read,
                 sealedSender,
             }) => {
-                let sent =
-                    Timestamp::from_millis(dateServerSent, "DirectionalDetails.dateServerSent");
+                let sent = dateServerSent
+                    .map(|sent| Timestamp::from_millis(sent, "DirectionalDetails.dateServerSent"));
                 let received =
                     Timestamp::from_millis(dateReceived, "DirectionalDetails.dateReceived");
                 Ok(Self::Incoming {
@@ -795,7 +795,7 @@ mod test {
                 directionalDetails: Some(proto::chat_item::DirectionalDetails::Incoming(
                     proto::chat_item::IncomingMessageDetails {
                         dateReceived: MillisecondsSinceEpoch::TEST_VALUE.0,
-                        dateServerSent: MillisecondsSinceEpoch::TEST_VALUE.0,
+                        dateServerSent: Some(MillisecondsSinceEpoch::TEST_VALUE.0),
                         ..Default::default()
                     },
                 )),
@@ -882,7 +882,7 @@ mod test {
                 revisions: vec![],
                 direction: Direction::Incoming {
                     received: Timestamp::test_value(),
-                    sent: Timestamp::test_value(),
+                    sent: Some(Timestamp::test_value()),
                     read: false,
                     sealed_sender: false,
                 },
