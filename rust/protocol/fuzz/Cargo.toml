@@ -11,6 +11,10 @@ cargo-fuzz = true
 [dependencies]
 libsignal-protocol = { path = ".." }
 
+# This isn't used directly, but v1.4.0 has a bug that breaks compilation for
+# older Rust versions. Once https://github.com/rust-fuzz/arbitrary/issues/202 is
+# resolved and a new version is released we can remove this dependency.
+arbitrary = "~1.3"
 env_logger = "0.11.4"
 futures-util = "0.3.7"
 libfuzzer-sys = "0.4"
