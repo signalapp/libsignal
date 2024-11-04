@@ -4,14 +4,17 @@
 //
 
 use std::collections::HashMap;
+use std::fmt::Debug;
 use std::future::Future;
 use std::hash::Hash;
 use std::pin::Pin;
 use std::sync::Arc;
 
+use derive_where::derive_where;
 use futures_util::stream::{FusedStream, FuturesUnordered};
 use futures_util::{Stream, StreamExt};
 use pin_project::pin_project;
+use rangemap::RangeSet;
 use tokio::time::{Duration, Instant};
 
 use crate::dns::dns_utils::log_safe_domain;
@@ -54,9 +57,9 @@ pub struct ResolveMeta {
 /// [`RouteDelayPolicy`] provided).
 #[derive(Debug)]
 #[pin_project(project=ScheduleProj)]
-pub struct Schedule<S, R, M, SP> {
+pub struct Schedule<S, R, SP> {
     #[pin]
-    resolver_stream: QueuedStream<SwapPairStream<S>, MinKeyValueQueue<M, ResolvedRoutes<R>>>,
+    resolver_stream: MinKeyValueQueueStream<SwapPairStream<S>, ResolveMeta, ResolvedRoutes<R>>,
     scoring_policy: SP,
 
     delayed_individual_routes: MinKeyValueQueue<Instant, R>,
@@ -127,15 +130,21 @@ impl RouteResolver {
     }
 }
 
-impl<S, R, M, SP> Schedule<S, R, M, SP>
+impl<S, R, SP> Schedule<S, R, SP>
 where
-    M: Ord,
-    S: FusedStream<Item = (ResolvedRoutes<R>, M)>,
+    S: FusedStream<Item = (ResolvedRoutes<R>, ResolveMeta)>,
     SP: RouteDelayPolicy<R>,
 {
-    pub fn new(resolver_stream: S, previous_attempts: SP) -> Self {
+    pub fn new(
+        resolver_stream: S,
+        previous_attempts: SP,
+        out_of_order_debounce_time: Duration,
+    ) -> Self {
         Self {
-            resolver_stream: QueuedStream::new(SwapPairStream(resolver_stream)),
+            resolver_stream: MinKeyValueQueueStream::new(
+                SwapPairStream(resolver_stream),
+                out_of_order_debounce_time,
+            ),
             delayed_individual_routes: MinKeyValueQueue::new(),
             scoring_policy: previous_attempts,
             individual_routes_sleep: tokio::time::sleep(Duration::ZERO),
@@ -478,35 +487,83 @@ fn eagerly_resolve_each<'r, R: ResolveHostnames + Clone + 'static>(
 
 /// A [`Stream`] that sorts the input as much as possible.
 ///
-/// Wraps the input `Stream` in a stream that eagerly pulls from the input when
-/// polled and reorders items by the provided sorting function. If cached items
-/// are available, they are emitted first. When sorting, the minimal item is
-/// emitted first.
-#[derive(Debug)]
+/// Wraps the input `Stream` in a stream that eagerly pulls key-value pairs from
+/// the input when polled and attempts to emit them in order by key. If the pair
+/// with the next key in the sequence is not available, waits up to the
+/// configured debounce duration before yielding the pair with the smallest
+/// available key.
+#[derive_where(Debug; S: Debug, V: Debug, K: Ord + Clone + Debug)]
 #[pin_project(project=TryPickMinProj)]
-struct QueuedStream<S, Q> {
+struct MinKeyValueQueueStream<S, K, V> {
     #[pin]
     input: S,
-    heap: Q,
+    #[pin]
+    debounce_sleep: tokio::time::Sleep,
+
+    heap: MinKeyValueQueue<K, V>,
+    debounce_time: Duration,
+    debouncing: bool,
+    missing_keys: RangeSet<K>,
 }
 
-impl<S: FusedStream, Q: Default> QueuedStream<S, Q> {
-    fn new(input: S) -> Self {
+trait SequentialKey: Ord + Copy {
+    const MIN: Self;
+    const MAX: Self;
+    fn seq_next(&self) -> Self;
+}
+
+impl SequentialKey for usize {
+    const MIN: Self = usize::MIN;
+    const MAX: Self = usize::MAX;
+    fn seq_next(&self) -> Self {
+        self + 1
+    }
+}
+
+impl SequentialKey for ResolveMeta {
+    const MIN: Self = ResolveMeta {
+        original_group_index: SequentialKey::MIN,
+    };
+    const MAX: Self = ResolveMeta {
+        original_group_index: SequentialKey::MAX,
+    };
+    fn seq_next(&self) -> Self {
         Self {
-            input,
-            heap: Default::default(),
+            original_group_index: self.original_group_index.seq_next(),
         }
     }
 }
 
-impl<S: FusedStream, Q: Queue<Item = S::Item>> Stream for QueuedStream<S, Q> {
+impl<S: FusedStream<Item = (K, V)>, K: SequentialKey, V> MinKeyValueQueueStream<S, K, V> {
+    fn new(input: S, debounce_time: Duration) -> Self {
+        Self {
+            input,
+            heap: Default::default(),
+            debounce_time,
+            debounce_sleep: tokio::time::sleep(Duration::ZERO),
+            debouncing: false,
+            missing_keys: RangeSet::from([K::MIN..K::MAX]),
+        }
+    }
+}
+
+impl<S: FusedStream<Item = (K, V)>, K: SequentialKey, V> Stream
+    for MinKeyValueQueueStream<S, K, V>
+{
     type Item = S::Item;
 
     fn poll_next(
         mut self: Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Option<Self::Item>> {
-        let TryPickMinProj { mut input, heap } = self.as_mut().project();
+        let TryPickMinProj {
+            mut input,
+            heap,
+            mut debounce_sleep,
+            debounce_time,
+            debouncing,
+            missing_keys,
+        } = self.as_mut().project();
         if input.is_terminated() {
             return std::task::Poll::Ready(heap.pop());
         }
@@ -524,19 +581,52 @@ impl<S: FusedStream, Q: Queue<Item = S::Item>> Stream for QueuedStream<S, Q> {
             }
         }
 
-        // All the results of already-finished pending futures are in the
-        // queue. Return one of those if there is one.
-        if let Some(item) = heap.pop() {
-            return std::task::Poll::Ready(Some(item));
+        // If execution has reached this point, the input stream is not
+        // terminated and all the results of already-finished pending futures
+        // are in the queue.
+
+        let Some((key, _)) = heap.peek() else {
+            // Nothing to do but wait for the next item from the stream.
+            return std::task::Poll::Pending;
+        };
+
+        if missing_keys
+            .first()
+            .is_some_and(|smallest| key <= &smallest.start)
+        {
+            // There might have been a debounce in progress before some elements
+            // got added to the queue. Cancel that if so.
+            *debouncing = false;
+
+            missing_keys.remove((*key)..key.seq_next());
+            return std::task::Poll::Ready(heap.pop());
         }
 
-        std::task::Poll::Pending
+        // The first item in the heap is not the next one in order. If we're
+        // not debouncing, we should start.
+        if !*debouncing {
+            *debouncing = true;
+            debounce_sleep
+                .as_mut()
+                .reset(Instant::now() + *debounce_time);
+        }
+
+        match debounce_sleep.as_mut().poll(cx) {
+            std::task::Poll::Ready(()) => {
+                *debouncing = false;
+                missing_keys.remove((*key)..key.seq_next());
+                std::task::Poll::Ready(heap.pop())
+            }
+            std::task::Poll::Pending => std::task::Poll::Pending,
+        }
     }
 }
 
-impl<S: FusedStream<Item = T>, T, Q: Queue<Item = T>> FusedStream for QueuedStream<S, Q> {
+impl<S: FusedStream<Item = (K, V)>, K: SequentialKey, V> FusedStream
+    for MinKeyValueQueueStream<S, K, V>
+{
     fn is_terminated(&self) -> bool {
-        let Self { input, heap } = self;
+        let Self { input, heap, .. } = self;
         input.is_terminated() && heap.is_empty()
     }
 }
@@ -546,9 +636,11 @@ mod test {
     use std::collections::{HashMap, HashSet};
     use std::net::IpAddr;
 
+    use assert_matches::assert_matches;
     use const_str::ip_addr;
     use itertools::Itertools as _;
     use proptest::proptest;
+    use tokio_stream::wrappers::UnboundedReceiverStream;
 
     use super::*;
     use crate::dns::lookup_result::LookupResult;
@@ -584,16 +676,13 @@ mod test {
         }
     }
 
-    impl<S, R, M, SP> Schedule<S, R, M, SP>
+    impl<S, R, SP> Schedule<S, R, SP>
     where
-        M: Ord,
-        S: FusedStream<Item = (ResolvedRoutes<R>, M)>,
+        S: FusedStream<Item = (ResolvedRoutes<R>, ResolveMeta)>,
         SP: RouteDelayPolicy<R>,
     {
         pub fn as_stream<'a>(self: Pin<&'a mut Self>) -> impl Stream<Item = R> + 'a
-        where
-            M: 'a,
-        {
+where {
             let schedule = self;
             futures_util::stream::unfold(schedule, |mut schedule| async {
                 schedule.as_mut().next().await.map(|r| (r, schedule))
@@ -616,7 +705,7 @@ mod test {
         let unresolved_routes = [FakeRoute(UnresolvedHost("domain-name".into()))];
 
         let resolve = resolver.resolve(unresolved_routes.into_iter(), &name_resolver);
-        let schedule = Schedule::new(resolve.fuse(), NoDelay);
+        let schedule = Schedule::new(resolve.fuse(), NoDelay, Duration::ZERO);
 
         let start_at = Instant::now();
         let schedule = std::pin::pin!(schedule);
@@ -664,7 +753,11 @@ mod test {
         ];
 
         let resolve = resolver.resolve(unresolved_routes.into_iter(), &name_resolver);
-        let schedule = Schedule::new(futures_util::StreamExt::fuse(resolve), NoDelay);
+        let schedule = Schedule::new(
+            futures_util::StreamExt::fuse(resolve),
+            NoDelay,
+            Duration::ZERO,
+        );
 
         let start_at = Instant::now();
         let schedule = std::pin::pin!(schedule);
@@ -820,5 +913,80 @@ mod test {
             delays.iter().map(Duration::as_secs).collect_vec(),
             [6, 5, 4, 3, 1, 0]
         );
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn min_kvq_stream_debounce() {
+        use std::task::Poll;
+
+        use futures_util::poll;
+
+        let (source_tx, source_rx) = tokio::sync::mpsc::unbounded_channel();
+        const DEBOUNCE: Duration = Duration::from_secs(1);
+        let mut stream =
+            MinKeyValueQueueStream::new(UnboundedReceiverStream::new(source_rx).fuse(), DEBOUNCE);
+        let mut stream = std::pin::pin!(stream);
+
+        // Poll with no items.
+        assert_matches!(poll!(stream.as_mut().next()), Poll::Pending);
+
+        // Does not wait to return the next item.
+        let _ = source_tx.send((0, 'a'));
+        let _ = source_tx.send((5, 'f'));
+        assert_matches!(poll!(stream.as_mut().next()), Poll::Ready(Some((0, 'a'))));
+
+        // Does not skip a key immediately.
+        assert_matches!(poll!(stream.as_mut().next()), Poll::Pending);
+
+        // But if you wait long enough, it will happen.
+        let start = Instant::now();
+        assert_matches!(stream.as_mut().next().await, Some((5, 'f')));
+        assert_eq!(start.elapsed(), DEBOUNCE);
+
+        let _ = source_tx.send((1, 'b'));
+        let _ = source_tx.send((3, 'd'));
+        let _ = source_tx.send((9, 'j'));
+
+        // If the next in-order element arrives, it will be returned immediately.
+        assert_matches!(poll!(stream.as_mut().next()), Poll::Ready(Some((1, 'b'))));
+
+        // Interrupting a debounce and then resuming won't reset the debounce timeout.
+        let start = Instant::now();
+        assert_matches!(
+            tokio::time::timeout(DEBOUNCE / 2, stream.as_mut().next()).await,
+            Err(_timeout)
+        );
+        assert_matches!(stream.as_mut().next().await, Some((3, 'd')));
+        assert_eq!(start.elapsed(), DEBOUNCE);
+
+        // If the next element arrives during a debounce period, it will be
+        // returned immediately.
+        let start = Instant::now();
+        let mut stream_mut = stream.as_mut();
+        tokio::join!(stream_mut.next(), async {
+            tokio::time::sleep(DEBOUNCE / 2).await;
+            let _ = source_tx.send((2, 'c'));
+        });
+        assert_eq!(start.elapsed(), DEBOUNCE / 2);
+        // Then the debounce period will be restarted.
+        let start = Instant::now();
+        assert_matches!(stream.as_mut().next().await, Some((9, 'j')));
+        assert_eq!(start.elapsed(), DEBOUNCE);
+
+        // If the next in-order elements arrive, they will be returned immediately.
+        let _ = source_tx.send((4, 'e'));
+        let _ = source_tx.send((6, 'g'));
+        assert_matches!(poll!(stream.as_mut().next()), Poll::Ready(Some((4, 'e'))));
+        assert_matches!(poll!(stream.as_mut().next()), Poll::Ready(Some((6, 'g'))));
+
+        // If elements arrive out of order, they will be sorted during the next poll.
+        let _ = source_tx.send((8, 'i'));
+        let _ = source_tx.send((7, 'h'));
+        drop(source_tx);
+
+        assert_matches!(poll!(stream.as_mut().next()), Poll::Ready(Some((7, 'h'))));
+        assert_matches!(poll!(stream.as_mut().next()), Poll::Ready(Some((8, 'i'))));
+        assert!(stream.is_terminated());
+        assert_matches!(poll!(stream.as_mut().next()), Poll::Ready(None));
     }
 }

@@ -36,6 +36,7 @@ nonzero_ext = { workspace = true }
 once_cell = { workspace = true }
 pin-project = { workspace = true }
 prost = { workspace = true }
+rangemap = "1.5.1"
 rustls = { version = "0.23.4", default-features = false, features = ["ring", "std", "tls12"] }
 rustls-platform-verifier = { workspace = true }
 snow = { workspace = true }
