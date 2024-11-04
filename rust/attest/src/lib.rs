@@ -11,7 +11,6 @@ pub mod constants;
 pub mod dcap;
 pub mod enclave;
 pub mod hsm_enclave;
-pub mod ias;
 pub mod nitro;
 pub mod sgx_session;
 pub mod snow_resolver;

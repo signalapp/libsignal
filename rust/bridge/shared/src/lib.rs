@@ -35,9 +35,6 @@ mod sgx_session;
 
 pub mod zkgroup;
 
-#[cfg(feature = "ffi")]
-pub mod ias;
-
 pub mod net;
 
 mod account_keys;
