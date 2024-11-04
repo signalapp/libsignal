@@ -125,9 +125,13 @@ public class Network {
     return this.connectionManager;
   }
 
-  public ChatService createChatService(
+  public UnauthenticatedChatService createUnauthChatService() {
+    return new UnauthenticatedChatService(tokioAsyncContext, connectionManager);
+  }
+
+  public AuthenticatedChatService createAuthChatService(
       final String username, final String password, final boolean receiveStories) {
-    return new ChatService(
+    return new AuthenticatedChatService(
         tokioAsyncContext, connectionManager, username, password, receiveStories);
   }
 
