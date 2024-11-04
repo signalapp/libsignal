@@ -12,8 +12,8 @@ import org.signal.libsignal.internal.Native;
  * Represents an unauthenticated (i.e. hopefully anonymous) communication channel with the
  * ChatService.
  *
- * <p>Generally created by the factory method Network.createUnauthChatService() rather than
- * instantiated directly.
+ * <p>Created by the factory method Network.createUnauthChatService() rather than instantiated
+ * directly.
  */
 public class UnauthenticatedChatService extends ChatService {
   UnauthenticatedChatService(

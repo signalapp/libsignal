@@ -11,8 +11,8 @@ import org.signal.libsignal.internal.Native;
 /**
  * Represents an authenticated communication channel with the ChatService.
  *
- * <p>Generally created by the factory method Network.createAuthChatService() rather than
- * instantiated directly.
+ * <p>Created by the factory method Network.createAuthChatService() rather than instantiated
+ * directly.
  */
 public class AuthenticatedChatService extends ChatService {
   AuthenticatedChatService(
