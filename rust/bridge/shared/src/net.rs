@@ -55,6 +55,14 @@ fn ConnectionManager_set_ipv6_enabled(connection_manager: &ConnectionManager, ip
 }
 
 #[bridge_fn]
+fn ConnectionManager_set_censorship_circumvention_enabled(
+    connection_manager: &ConnectionManager,
+    enabled: bool,
+) {
+    connection_manager.set_censorship_circumvention_enabled(enabled)
+}
+
+#[bridge_fn]
 fn ConnectionManager_on_network_change(connection_manager: &ConnectionManager) {
     connection_manager.on_network_change()
 }

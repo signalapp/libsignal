@@ -58,8 +58,12 @@ impl CdsiLookup {
             .lock()
             .expect("not poisoned")
             .clone();
-        let connected =
-            CdsiConnection::connect(&connection_manager.cdsi, transport_connector, auth).await?;
+        let endpoints = connection_manager
+            .endpoints
+            .lock()
+            .expect("not poisoned")
+            .clone();
+        let connected = CdsiConnection::connect(&endpoints.cdsi, transport_connector, auth).await?;
         let (token, remaining_response) = connected.send_request(request).await?;
 
         Ok(CdsiLookup {

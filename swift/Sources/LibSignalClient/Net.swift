@@ -37,6 +37,9 @@ public class Net {
     /// Sets a domain name and port to be used to proxy all new outgoing connections. The proxy can
     /// be overridden by calling this method again or unset by calling ``Net/clearProxy()``.
     ///
+    /// Existing connections and services will continue with the setting they were created with.
+    /// (In particular, changing this setting will not affect any existing ``ChatService``s.)
+    ///
     /// - Throws: if the host or port is not structurally valid, such as a port of 0.
     public func setProxy(host: String, port: UInt16) throws {
         try self.connectionManager.setProxy(host: host, port: port)
@@ -46,8 +49,22 @@ public class Net {
     ///
     /// Clears any proxy configuration set via ``Net/setProxy(host:port:)``. If
     /// none was set, calling this method is a no-op.
+    ///
+    /// Existing connections and services will continue with the setting they were created with.
+    /// (In particular, changing this setting will not affect any existing ``ChatService``s.)
     public func clearProxy() {
         self.connectionManager.clearProxy()
+    }
+
+    /// Enables or disables censorship circumvention for all new connections (until changed).
+    ///
+    /// If CC is enabled, *new* connections and services may try additional routes to the Signal servers.
+    /// Existing connections and services will continue with the setting they were created with.
+    /// (In particular, changing this setting will not affect any existing ``ChatService``s.)
+    ///
+    /// CC is off by default.
+    public func setCensorshipCircumventionEnabled(_ enabled: Bool) {
+        self.connectionManager.setCensorshipCircumventionEnabled(enabled)
     }
 
     /// Notifies libsignal that the network has changed.
@@ -181,6 +198,12 @@ internal class ConnectionManager: NativeHandleOwner {
     internal func clearProxy() {
         self.withNativeHandle {
             failOnError(signal_connection_manager_clear_proxy($0))
+        }
+    }
+
+    internal func setCensorshipCircumventionEnabled(_ enabled: Bool) {
+        self.withNativeHandle {
+            failOnError(signal_connection_manager_set_censorship_circumvention_enabled($0, enabled))
         }
     }
 

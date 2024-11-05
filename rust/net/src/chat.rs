@@ -486,10 +486,15 @@ pub fn chat_service<T: TransportConnector + 'static>(
 pub fn endpoint_connection(
     connection_config: &ConnectionConfig,
     user_agent: &str,
+    include_fallback: bool,
     network_change_event: &ObservableEvent,
 ) -> EndpointConnection<MultiRouteConnectionManager> {
     let chat_endpoint = PathAndQuery::from_static(crate::env::constants::WEB_SOCKET_PATH);
-    let chat_connection_params = connection_config.connection_params_with_fallback();
+    let chat_connection_params = if include_fallback {
+        connection_config.connection_params_with_fallback()
+    } else {
+        vec![connection_config.direct_connection_params()]
+    };
     let chat_connection_params = add_user_agent_header(chat_connection_params, user_agent);
     let chat_ws_config = make_ws_config(chat_endpoint, ONE_ROUTE_CONNECTION_TIMEOUT);
     EndpointConnection::new_multi(

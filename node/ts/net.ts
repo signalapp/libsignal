@@ -513,6 +513,23 @@ export class Net {
   }
 
   /**
+   * Enables or disables censorship circumvention for all new connections (until changed).
+   *
+   * If CC is enabled, *new* connections and services may try additional routes to the Signal
+   * servers. Existing connections and services will continue with the setting they were created
+   * with. (In particular, changing this setting will not affect any existing
+   * {@link ChatService ChatServices}.)
+   *
+   * CC is off by default.
+   */
+  public setCensorshipCircumventionEnabled(enabled: boolean): void {
+    Native.ConnectionManager_set_censorship_circumvention_enabled(
+      this.connectionManager,
+      enabled
+    );
+  }
+
+  /**
    * Sets the proxy host to be used for all new connections (until overridden).
    *
    * Sets a domain name and port to be used to proxy all new outgoing

@@ -6,6 +6,7 @@
 use std::marker::PhantomData;
 use std::num::{NonZeroU16, NonZeroU32};
 use std::panic::RefUnwindSafe;
+use std::sync::Arc;
 
 use aes_gcm_siv::aead::rand_core::CryptoRngCore;
 use async_trait::async_trait;
@@ -53,14 +54,94 @@ impl Environment {
     }
 }
 
-pub struct ConnectionManager {
+type Svr3EndpointConnections = (
+    EnclaveEndpointConnection<Sgx, MultiRouteConnectionManager>,
+    EnclaveEndpointConnection<Nitro, MultiRouteConnectionManager>,
+    EnclaveEndpointConnection<Tpm2Snp, MultiRouteConnectionManager>,
+);
+
+struct EndpointConnections {
     chat: EndpointConnection<MultiRouteConnectionManager>,
     cdsi: EnclaveEndpointConnection<Cdsi, MultiRouteConnectionManager>,
-    svr3: (
-        EnclaveEndpointConnection<Sgx, MultiRouteConnectionManager>,
-        EnclaveEndpointConnection<Nitro, MultiRouteConnectionManager>,
-        EnclaveEndpointConnection<Tpm2Snp, MultiRouteConnectionManager>,
-    ),
+    svr3: Svr3EndpointConnections,
+}
+
+impl EndpointConnections {
+    fn new(
+        env: &Env<'static, Svr3Env<'static>>,
+        user_agent: &str,
+        use_fallbacks: bool,
+        network_change_event: &ObservableEvent,
+    ) -> Self {
+        log::info!(
+            "Creating endpoint connections (fallbacks {}) for {} and others",
+            if use_fallbacks { "enabled" } else { "disabled" },
+            // Note: this is *not* using log_safe_domain, because it is always the direct route.
+            // Either it's chat.signal.org, chat.staging.signal.org, or something that indicates
+            // testing. (Or the person running this isn't Signal.)
+            env.chat_domain_config.connect.hostname
+        );
+        let chat = libsignal_net::chat::endpoint_connection(
+            &env.chat_domain_config.connect,
+            user_agent,
+            use_fallbacks,
+            network_change_event,
+        );
+        let cdsi =
+            Self::endpoint_connection(&env.cdsi, user_agent, use_fallbacks, network_change_event);
+        let svr3 = (
+            Self::endpoint_connection(
+                env.svr3.sgx(),
+                user_agent,
+                use_fallbacks,
+                network_change_event,
+            ),
+            Self::endpoint_connection(
+                env.svr3.nitro(),
+                user_agent,
+                use_fallbacks,
+                network_change_event,
+            ),
+            Self::endpoint_connection(
+                env.svr3.tpm2snp(),
+                user_agent,
+                use_fallbacks,
+                network_change_event,
+            ),
+        );
+        Self { chat, cdsi, svr3 }
+    }
+
+    fn endpoint_connection<E: EnclaveKind>(
+        endpoint: &EnclaveEndpoint<'static, E>,
+        user_agent: &str,
+        include_fallback: bool,
+        network_change_event: &ObservableEvent,
+    ) -> EnclaveEndpointConnection<E, MultiRouteConnectionManager> {
+        let params = if include_fallback {
+            endpoint
+                .domain_config
+                .connect
+                .connection_params_with_fallback()
+        } else {
+            vec![endpoint.domain_config.connect.direct_connection_params()]
+        };
+        let params = add_user_agent_header(params, user_agent);
+        EnclaveEndpointConnection::new_multi(
+            endpoint,
+            params,
+            ONE_ROUTE_CONNECTION_TIMEOUT,
+            network_change_event,
+        )
+    }
+}
+
+pub struct ConnectionManager {
+    env: Env<'static, Svr3Env<'static>>,
+    user_agent: String,
+    // We could split this up to a separate mutex on each kind of connection,
+    // but we don't hold it for very long anyway (just enough to clone the Arc).
+    endpoints: std::sync::Mutex<Arc<EndpointConnections>>,
     transport_connector: std::sync::Mutex<TcpSslConnector>,
     network_change_event: ObservableEvent,
 }
@@ -82,19 +163,13 @@ impl ConnectionManager {
             DnsResolver::new_with_static_fallback(env.static_fallback(), &network_change_event);
         let transport_connector =
             std::sync::Mutex::new(TcpSslDirectConnector::new(dns_resolver).into());
-        let chat = libsignal_net::chat::endpoint_connection(
-            &env.chat_domain_config.connect,
-            user_agent,
-            &network_change_event,
+        let endpoints = std::sync::Mutex::new(
+            EndpointConnections::new(&env, user_agent, false, &network_change_event).into(),
         );
         Self {
-            chat,
-            cdsi: Self::endpoint_connection(&env.cdsi, user_agent, &network_change_event),
-            svr3: (
-                Self::endpoint_connection(env.svr3.sgx(), user_agent, &network_change_event),
-                Self::endpoint_connection(env.svr3.nitro(), user_agent, &network_change_event),
-                Self::endpoint_connection(env.svr3.tpm2snp(), user_agent, &network_change_event),
-            ),
+            env,
+            user_agent: user_agent.to_owned(),
+            endpoints,
             transport_connector,
             network_change_event,
         }
@@ -147,22 +222,18 @@ impl ConnectionManager {
         guard.set_ipv6_enabled(ipv6_enabled);
     }
 
-    fn endpoint_connection<E: EnclaveKind>(
-        endpoint: &EnclaveEndpoint<'static, E>,
-        user_agent: &str,
-        network_change_event: &ObservableEvent,
-    ) -> EnclaveEndpointConnection<E, MultiRouteConnectionManager> {
-        let params = endpoint
-            .domain_config
-            .connect
-            .connection_params_with_fallback();
-        let params = add_user_agent_header(params, user_agent);
-        EnclaveEndpointConnection::new_multi(
-            endpoint,
-            params,
-            ONE_ROUTE_CONNECTION_TIMEOUT,
-            network_change_event,
-        )
+    /// Resets the endpoint connections to include or exclude censorship circumvention routes.
+    ///
+    /// This is not itself a network change event; existing working connections are expected to
+    /// continue to work, and existing failing connections will continue to fail.
+    pub fn set_censorship_circumvention_enabled(&self, enabled: bool) {
+        let new_endpoints = EndpointConnections::new(
+            &self.env,
+            &self.user_agent,
+            enabled,
+            &self.network_change_event,
+        );
+        *self.endpoints.lock().expect("not poisoned") = Arc::new(new_endpoints);
     }
 
     pub fn on_network_change(&self) {
@@ -216,11 +287,13 @@ impl<'a> Svr3Connect for Svr3Client<'a, CurrentVersion> {
 
     async fn connect(&self) -> <Self::Env as PpssSetup>::ConnectionResults {
         let ConnectionManager {
-            svr3: (sgx, nitro, tpm2snp),
+            endpoints,
             transport_connector,
             ..
         } = &self.connection_manager;
         let transport_connector = transport_connector.lock().expect("not poisoned").clone();
+        let endpoints = endpoints.lock().expect("not poisoned").clone();
+        let (sgx, nitro, tpm2snp) = &endpoints.svr3;
         let (sgx, nitro, tpm2snp) = join3(
             SvrConnection::connect(self.auth.clone(), sgx, transport_connector.clone()),
             SvrConnection::connect(self.auth.clone(), nitro, transport_connector.clone()),

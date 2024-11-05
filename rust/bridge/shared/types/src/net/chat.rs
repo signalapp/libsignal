@@ -146,8 +146,14 @@ impl Chat<AuthChatService> {
 
         let (incoming_unauth_tx, _incoming_unauth_rx) = mpsc::channel(1);
 
+        let endpoints = connection_manager
+            .endpoints
+            .lock()
+            .expect("not poisoned")
+            .clone();
+
         let service = chat::chat_service(
-            &connection_manager.chat,
+            &endpoints.chat,
             connection_manager
                 .transport_connector
                 .lock()
@@ -173,8 +179,14 @@ impl Chat<UnauthChatService> {
         let (incoming_unauth_tx, incoming_unauth_rx) = mpsc::channel(1);
         let synthetic_request_tx = incoming_unauth_tx.clone();
 
+        let endpoints = connection_manager
+            .endpoints
+            .lock()
+            .expect("not poisoned")
+            .clone();
+
         let service = chat::chat_service(
-            &connection_manager.chat,
+            &endpoints.chat,
             connection_manager
                 .transport_connector
                 .lock()

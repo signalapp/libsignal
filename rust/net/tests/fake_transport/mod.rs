@@ -141,6 +141,7 @@ impl FakeDeps {
         let endpoint_connection = libsignal_net::chat::endpoint_connection(
             &chat_domain_config.connect,
             "libsignal test",
+            true,
             &ObservableEvent::new(),
         );
 

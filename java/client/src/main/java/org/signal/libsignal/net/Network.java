@@ -49,6 +49,10 @@ public class Network {
    * <p>Sets a domain name and port to be used to proxy all new outgoing connections. The proxy can
    * be overridden by calling this method again or unset by calling {@link #clearProxy}.
    *
+   * <p>Existing connections and services will continue with the setting they were created with. (In
+   * particular, changing this setting will not affect any existing {@link ChatService
+   * ChatServices}.)
+   *
    * @throws IOException if the host or port are not (structurally) valid, such as a port that
    *     doesn't fit in u16.
    */
@@ -61,9 +65,27 @@ public class Network {
    *
    * <p>Clears any proxy configuration set via {@link #setProxy}. If none was set, calling this
    * method is a no-op.
+   *
+   * <p>Existing connections and services will continue with the setting they were created with. (In
+   * particular, changing this setting will not affect any existing {@link ChatService
+   * ChatServices}.)
    */
   public void clearProxy() {
     this.connectionManager.clearProxy();
+  }
+
+  /**
+   * Enables or disables censorship circumvention for all new connections (until changed).
+   *
+   * <p>If CC is enabled, <em>new</em> connections and services may try additional routes to the
+   * Signal servers. Existing connections and services will continue with the setting they were
+   * created with. (In particular, changing this setting will not affect any existing {@link
+   * ChatService ChatServices}.)
+   *
+   * <p>CC is off by default.
+   */
+  public void setCensorshipCircumventionEnabled(boolean enabled) {
+    this.connectionManager.setCensorshipCircumventionEnabled(enabled);
   }
 
   /**
@@ -148,6 +170,10 @@ public class Network {
 
     private void clearProxy() {
       guardedRun(Native::ConnectionManager_clear_proxy);
+    }
+
+    private void setCensorshipCircumventionEnabled(boolean enabled) {
+      guardedRun(h -> Native.ConnectionManager_set_censorship_circumvention_enabled(h, enabled));
     }
 
     @Override

@@ -1473,6 +1473,8 @@ SignalFfiError *signal_connection_manager_set_proxy(const SignalConnectionManage
 
 SignalFfiError *signal_connection_manager_clear_proxy(const SignalConnectionManager *connection_manager);
 
+SignalFfiError *signal_connection_manager_set_censorship_circumvention_enabled(const SignalConnectionManager *connection_manager, bool enabled);
+
 SignalFfiError *signal_connection_manager_on_network_change(const SignalConnectionManager *connection_manager);
 
 SignalFfiError *signal_create_otp(const char **out, const char *username, SignalBorrowedBuffer secret);
