@@ -164,16 +164,16 @@ final class ChatServiceTests: TestCaseBase {
         }
     }
 
-    @MainActor // Necessary for waitForExpectations
-    func testListenerCallbacks() throws {
-        precondition(Thread.isMainThread, "test invocation must respect MainActor")
-
+    func testListenerCallbacks() async throws {
         class Listener: ChatListener {
-            var stage = 0
             let queueEmpty: XCTestExpectation
             let firstMessageReceived: XCTestExpectation
             let secondMessageReceived: XCTestExpectation
             let connectionInterrupted: XCTestExpectation
+
+            var expectations: [XCTestExpectation] {
+                [self.firstMessageReceived, self.secondMessageReceived, self.queueEmpty, self.connectionInterrupted]
+            }
 
             init(queueEmpty: XCTestExpectation, firstMessageReceived: XCTestExpectation, secondMessageReceived: XCTestExpectation, connectionInterrupted: XCTestExpectation) {
                 self.queueEmpty = queueEmpty
@@ -187,12 +187,8 @@ final class ChatServiceTests: TestCaseBase {
                 XCTAssertEqual(envelope, withUnsafeBytes(of: serverDeliveryTimestamp) { Data($0) })
                 switch serverDeliveryTimestamp {
                 case 1000:
-                    XCTAssertEqual(self.stage, 0)
-                    self.stage += 1
                     self.firstMessageReceived.fulfill()
                 case 2000:
-                    XCTAssertEqual(self.stage, 1)
-                    self.stage += 1
                     self.secondMessageReceived.fulfill()
                 default:
                     XCTFail("unexpected message")
@@ -200,15 +196,11 @@ final class ChatServiceTests: TestCaseBase {
             }
 
             func chatServiceDidReceiveQueueEmpty(_: AuthenticatedChatService) {
-                XCTAssertEqual(self.stage, 2)
-                self.stage += 1
                 self.queueEmpty.fulfill()
             }
 
             func connectionWasInterrupted(_: AuthenticatedChatService, error: Error?) {
-                XCTAssertEqual(self.stage, 3)
                 XCTAssertNotNil(error)
-                self.stage += 1
                 self.connectionInterrupted.fulfill()
             }
         }
@@ -253,16 +245,12 @@ final class ChatServiceTests: TestCaseBase {
 
         chat.injectConnectionInterrupted()
 
-        waitForExpectations(timeout: 2)
-        XCTAssertEqual(listener.stage, 4)
+        await self.fulfillment(of: listener.expectations, timeout: 2, enforceOrder: true)
     }
 
 #endif
 
-    @MainActor // Necessary for waitForExpectations
-    func testListenerCleanup() throws {
-        precondition(Thread.isMainThread, "test invocation must respect MainActor")
-
+    func testListenerCleanup() async throws {
         class Listener: ChatListener {
             let expectation: XCTestExpectation
             init(expectation: XCTestExpectation) {
@@ -279,29 +267,37 @@ final class ChatServiceTests: TestCaseBase {
         }
 
         let net = Net(env: .staging, userAgent: Self.userAgent)
+        var expectations: [XCTestExpectation] = []
 
         do {
             let chat = net.createAuthenticatedChatService(username: "", password: "", receiveStories: false)
 
             do {
-                let listener = Listener(expectation: expectation(description: "first listener destroyed"))
+                let expectation = expectation(description: "first listener destroyed")
+                expectations.append(expectation)
+                let listener = Listener(expectation: expectation)
                 chat.setListener(listener)
             }
             do {
-                let listener = Listener(expectation: expectation(description: "second listener destroyed"))
+                let expectation = expectation(description: "second listener destroyed")
+                expectations.append(expectation)
+                let listener = Listener(expectation: expectation)
                 chat.setListener(listener)
             }
             // Clearing the listener has a separate implementation, so let's make sure both get destroyed.
             chat.setListener(nil)
-            waitForExpectations(timeout: 2)
+            await fulfillment(of: expectations, timeout: 2, enforceOrder: true)
+            expectations.removeAll()
 
             do {
-                let listener = Listener(expectation: expectation(description: "third listener destroyed"))
+                let expectation = expectation(description: "third listener destroyed")
+                expectations.append(expectation)
+                let listener = Listener(expectation: expectation)
                 chat.setListener(listener)
             }
         }
         // If we destroy the ChatService, we should also clean up the listener.
-        waitForExpectations(timeout: 2)
+        await fulfillment(of: expectations, timeout: 2, enforceOrder: true)
     }
 
     final class ExpectDisconnectListener: ConnectionEventsListener {
