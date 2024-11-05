@@ -23,7 +23,7 @@ use crate::connection_manager::{
 use crate::errors::TransportConnectError;
 use crate::host::Host;
 use crate::timeouts::{WS_KEEP_ALIVE_INTERVAL, WS_MAX_IDLE_INTERVAL};
-use crate::utils::{basic_authorization, ObservableEvent};
+use crate::utils::ObservableEvent;
 use crate::ws::WebSocketConfig;
 
 pub mod certs;
@@ -85,17 +85,19 @@ impl HttpRequestDecoratorSeq {
     }
 }
 
-pub trait HttpBasicAuth {
-    fn username(&self) -> &str;
-    fn password(&self) -> &str;
+pub trait AsHttpHeader {
+    const HEADER_NAME: HeaderName;
+
+    fn header_value(&self) -> HeaderValue;
+
+    fn as_header(&self) -> (HeaderName, HeaderValue) {
+        (Self::HEADER_NAME, self.header_value())
+    }
 }
 
-impl<T: HttpBasicAuth> From<T> for HttpRequestDecorator {
+impl<T: AsHttpHeader> From<T> for HttpRequestDecorator {
     fn from(value: T) -> Self {
-        HttpRequestDecorator::header(
-            http::header::AUTHORIZATION,
-            basic_authorization(value.username(), value.password()),
-        )
+        HttpRequestDecorator::header(T::HEADER_NAME, value.header_value())
     }
 }
 
@@ -113,7 +115,7 @@ pub struct ConnectionParams {
     pub http_request_decorator: HttpRequestDecoratorSeq,
     /// If present, differentiates HTTP responses that actually come from the remote endpoint from
     /// those produced by an intermediate server.
-    pub connection_confirmation_header: Option<http::HeaderName>,
+    pub connection_confirmation_header: Option<HeaderName>,
     /// Transport-level connection configuration
     pub transport: TransportConnectionParams,
 }
@@ -125,7 +127,7 @@ impl ConnectionParams {
         self
     }
 
-    pub fn with_confirmation_header(mut self, header: http::HeaderName) -> Self {
+    pub fn with_confirmation_header(mut self, header: HeaderName) -> Self {
         self.connection_confirmation_header = Some(header);
         self
     }

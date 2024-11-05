@@ -14,13 +14,14 @@ use libsignal_net_infra::ws::{NextOrClose, WebSocketConnectError, WebSocketServi
 use libsignal_net_infra::ws2::attested::{
     AttestedConnection, AttestedConnectionError, AttestedProtocolError,
 };
-use libsignal_net_infra::{extract_retry_after_seconds, HttpBasicAuth, TransportConnector};
+use libsignal_net_infra::{extract_retry_after_seconds, TransportConnector};
 use prost::Message as _;
 use thiserror::Error;
 use tungstenite::protocol::frame::coding::CloseCode;
 use tungstenite::protocol::CloseFrame;
 use uuid::Uuid;
 
+use crate::auth::Auth;
 use crate::enclave::{Cdsi, EnclaveEndpointConnection};
 use crate::proto::cds2::{ClientRequest, ClientResponse};
 use crate::ws::WebSocketServiceConnectError;
@@ -328,7 +329,7 @@ impl CdsiConnection {
     pub async fn connect<C, T>(
         endpoint: &EnclaveEndpointConnection<Cdsi, C>,
         transport_connector: T,
-        auth: impl HttpBasicAuth,
+        auth: Auth,
     ) -> Result<Self, LookupError>
     where
         C: ConnectionManager,

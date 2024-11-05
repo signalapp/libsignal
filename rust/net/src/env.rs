@@ -10,12 +10,13 @@ use std::num::NonZeroU16;
 use std::sync::Arc;
 
 use const_str::ip_addr;
+use http::HeaderValue;
 use libsignal_net_infra::certs::RootCertificates;
 use libsignal_net_infra::dns::lookup_result::LookupResult;
 use libsignal_net_infra::host::Host;
 use libsignal_net_infra::{
-    ConnectionParams, DnsSource, HttpRequestDecorator, HttpRequestDecoratorSeq, RouteType,
-    TransportConnectionParams,
+    AsHttpHeader, ConnectionParams, DnsSource, HttpRequestDecorator, HttpRequestDecoratorSeq,
+    RouteType, TransportConnectionParams,
 };
 use nonzero_ext::nonzero;
 use rand::seq::SliceRandom;
@@ -28,7 +29,6 @@ use crate::enclave::{
 
 const DEFAULT_HTTPS_PORT: NonZeroU16 = nonzero!(443_u16);
 pub const TIMESTAMP_HEADER_NAME: &str = "x-signal-timestamp";
-pub const RECEIVE_STORIES_HEADER_NAME: &str = "x-signal-receive-stories";
 
 const DOMAIN_CONFIG_CHAT: DomainConfig = DomainConfig {
     ip_v4: &[
@@ -398,16 +398,32 @@ impl ConnectionConfig {
     }
 }
 
+pub struct UserAgent(HeaderValue);
+
+impl UserAgent {
+    pub fn with_libsignal_version(user_agent: &str) -> Self {
+        let with_lib_version = format!("{} libsignal/{}", user_agent, libsignal_core::VERSION);
+        Self(HeaderValue::try_from(&with_lib_version).expect("valid header string"))
+    }
+}
+
+impl AsHttpHeader for UserAgent {
+    const HEADER_NAME: http::HeaderName = http::header::USER_AGENT;
+
+    fn header_value(&self) -> HeaderValue {
+        self.0.clone()
+    }
+}
+
 pub fn add_user_agent_header(
     mut connection_params_list: Vec<ConnectionParams>,
     user_agent: &str,
 ) -> Vec<ConnectionParams> {
-    let with_lib_version = format!("{} libsignal/{}", user_agent, libsignal_core::VERSION);
+    let agent = UserAgent::with_libsignal_version(user_agent);
+    let (name, value) = agent.as_header();
     connection_params_list.iter_mut().for_each(|cp| {
-        cp.http_request_decorator.add(HttpRequestDecorator::header(
-            http::header::USER_AGENT,
-            http::header::HeaderValue::try_from(&with_lib_version).expect("valid header string"),
-        ));
+        cp.http_request_decorator
+            .add(HttpRequestDecorator::header(name.clone(), value.clone()));
     });
     connection_params_list
 }

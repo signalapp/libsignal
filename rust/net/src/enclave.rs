@@ -27,9 +27,10 @@ use libsignal_net_infra::ws2::attested::{
 };
 use libsignal_net_infra::{
     make_ws_config, AsyncDuplexStream, ConnectionInfo, ConnectionParams, EndpointConnection,
-    HttpBasicAuth, TransportConnector,
+    TransportConnector,
 };
 
+use crate::auth::Auth;
 use crate::env::{DomainConfig, Svr3Env};
 use crate::svr::SvrConnection;
 use crate::ws::{WebSocketServiceConnectError, WebSocketServiceConnector};
@@ -270,7 +271,7 @@ impl From<AttestedConnectionError> for Error {
 impl<E: EnclaveKind + NewHandshake, C: ConnectionManager> EnclaveEndpointConnection<E, C> {
     pub(crate) async fn connect<S: AsyncDuplexStream, T: TransportConnector<Stream = S>>(
         &self,
-        auth: impl HttpBasicAuth,
+        auth: Auth,
         transport_connector: T,
     ) -> Result<(AttestedConnection, ConnectionInfo), Error>
     where
@@ -296,7 +297,7 @@ impl<E: EnclaveKind + NewHandshake, C: ConnectionManager> EnclaveEndpointConnect
 /// instantiated multiple times and duplicated in the generated code.
 async fn connect_attested<C: ConnectionManager, T: TransportConnector>(
     endpoint_connection: &EndpointConnection<C>,
-    auth: impl HttpBasicAuth,
+    auth: Auth,
     transport_connector: T,
     do_handshake: &(dyn Sync + Fn(&[u8]) -> enclave::Result<enclave::Handshake>),
 ) -> Result<(AttestedConnection, ConnectionInfo), Error> {

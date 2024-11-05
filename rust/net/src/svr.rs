@@ -9,8 +9,9 @@ use std::sync::Arc;
 use libsignal_net_infra::connection_manager::ConnectionManager;
 use libsignal_net_infra::host::Host;
 use libsignal_net_infra::ws2::attested::AttestedConnection;
-use libsignal_net_infra::{HttpBasicAuth, TransportConnector};
+use libsignal_net_infra::TransportConnector;
 
+use crate::auth::Auth;
 pub use crate::enclave::Error;
 use crate::enclave::{EnclaveEndpointConnection, IntoAttestedConnection, NewHandshake, Svr3Flavor};
 
@@ -33,7 +34,7 @@ where
     E: Svr3Flavor + NewHandshake + Sized,
 {
     pub async fn connect<C, T>(
-        auth: impl HttpBasicAuth,
+        auth: Auth,
         connection: &EnclaveEndpointConnection<E, C>,
         transport_connector: T,
     ) -> Result<Self, Error>

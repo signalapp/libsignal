@@ -12,15 +12,16 @@ use futures_util::future::BoxFuture;
 use libsignal_net_infra::connection_manager::MultiRouteConnectionManager;
 use libsignal_net_infra::service::{Service, ServiceConnectorWithDecorator};
 use libsignal_net_infra::timeouts::{MULTI_ROUTE_CONNECTION_TIMEOUT, ONE_ROUTE_CONNECTION_TIMEOUT};
-use libsignal_net_infra::utils::{basic_authorization, ObservableEvent};
+use libsignal_net_infra::utils::ObservableEvent;
 use libsignal_net_infra::ws::WebSocketClientConnector;
 use libsignal_net_infra::{
-    make_ws_config, EndpointConnection, HttpRequestDecorator, IpType, TransportConnector,
+    make_ws_config, AsHttpHeader, EndpointConnection, HttpRequestDecorator, IpType,
+    TransportConnector,
 };
 
 use crate::auth::Auth;
 use crate::chat::ws::{ChatOverWebSocketServiceConnector, ServerEvent};
-use crate::env::{add_user_agent_header, ConnectionConfig, RECEIVE_STORIES_HEADER_NAME};
+use crate::env::{add_user_agent_header, ConnectionConfig};
 use crate::proto;
 
 mod error;
@@ -36,6 +37,8 @@ pub type MessageProto = proto::chat_websocket::WebSocketMessage;
 pub type RequestProto = proto::chat_websocket::WebSocketRequestMessage;
 pub type ResponseProto = proto::chat_websocket::WebSocketResponseMessage;
 pub type ChatMessageType = proto::chat_websocket::web_socket_message::Type;
+
+const RECEIVE_STORIES_HEADER_NAME: &str = "x-signal-receive-stories";
 
 #[async_trait]
 pub trait ChatService {
@@ -386,6 +389,23 @@ impl DelegatingChatService for Arc<dyn ChatServiceWithDebugInfo + Send + Sync> {
     }
 }
 
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+pub struct ReceiveStories(bool);
+
+impl From<bool> for ReceiveStories {
+    fn from(value: bool) -> Self {
+        Self(value)
+    }
+}
+
+impl AsHttpHeader for ReceiveStories {
+    const HEADER_NAME: HeaderName = HeaderName::from_static(RECEIVE_STORIES_HEADER_NAME);
+
+    fn header_value(&self) -> HeaderValue {
+        HeaderValue::from_static(if self.0 { "true" } else { "false" })
+    }
+}
+
 fn build_authorized_chat_service(
     connection_manager_ws: &MultiRouteConnectionManager,
     service_connector_ws: &ChatOverWebSocketServiceConnector<impl TransportConnector + 'static>,
@@ -393,14 +413,8 @@ fn build_authorized_chat_service(
     receive_stories: bool,
 ) -> AuthorizedChatService<impl ChatServiceWithDebugInfo> {
     let header_map = HeaderMap::from_iter([
-        (
-            http::header::AUTHORIZATION,
-            basic_authorization(&auth.username, &auth.password),
-        ),
-        (
-            HeaderName::from_static(RECEIVE_STORIES_HEADER_NAME),
-            HeaderValue::from_static(if receive_stories { "true" } else { "false" }),
-        ),
+        auth.as_header(),
+        ReceiveStories(receive_stories).as_header(),
     ]);
     // ws authorized
     let chat_over_ws_auth = Service::new(

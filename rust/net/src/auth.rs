@@ -5,7 +5,8 @@
 use std::time::SystemTime;
 
 use hmac::{Hmac, Mac};
-use libsignal_net_infra::HttpBasicAuth;
+use libsignal_net_infra::utils::basic_authorization;
+use libsignal_net_infra::AsHttpHeader;
 use sha2::Sha256;
 
 /// username and password as returned by the chat server's /auth endpoints.
@@ -44,12 +45,10 @@ impl Auth {
     }
 }
 
-impl HttpBasicAuth for Auth {
-    fn username(&self) -> &str {
-        &self.username
-    }
-
-    fn password(&self) -> &str {
-        &self.password
+impl AsHttpHeader for Auth {
+    const HEADER_NAME: http::HeaderName = http::header::AUTHORIZATION;
+    fn header_value(&self) -> http::HeaderValue {
+        let Self { username, password } = self;
+        basic_authorization(username, password)
     }
 }
