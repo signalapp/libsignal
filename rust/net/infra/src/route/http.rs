@@ -20,6 +20,7 @@ pub const DEFAULT_HTTPS_PORT: NonZeroU16 = nonzero!(443u16);
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct HttpRouteFragment {
     pub host_header: Arc<str>,
+    pub path_prefix: Arc<str>,
 }
 
 pub type HttpsTlsRoute<T> = SimpleRoute<HttpRouteFragment, T>;
@@ -52,9 +53,13 @@ pub enum HttpVersion {
 #[derive(Clone, Debug)]
 pub struct DomainFrontConfig {
     /// The value of the HTTP Host header
-    pub(crate) http_host: Arc<str>,
+    pub http_host: Arc<str>,
     /// Domain names to use for DNS resolution and TLS SNI.
-    pub(crate) sni_list: Vec<Arc<str>>,
+    pub sni_list: Vec<Arc<str>>,
+    /// The certs to use for establishing a TLS connection.
+    pub root_certs: RootCertificates,
+    /// A string to prepend to the path of outgoing HTTP requests.
+    pub path_prefix: Arc<str>,
 }
 
 impl<F, P> HttpsProvider<F, P> {
@@ -95,6 +100,8 @@ impl RouteProvider for DomainFrontRouteProvider {
             |DomainFrontConfig {
                  http_host,
                  sni_list,
+                 root_certs,
+                 path_prefix,
              }| {
                 sni_list.iter().map(|sni| HttpsTlsRoute {
                     inner: TlsRoute {
@@ -103,13 +110,14 @@ impl RouteProvider for DomainFrontRouteProvider {
                             port: DEFAULT_HTTPS_PORT,
                         },
                         fragment: TlsRouteFragment {
-                            root_certs: RootCertificates::Native,
+                            root_certs: root_certs.clone(),
                             sni: Some(Arc::clone(sni)),
                             alpn: Some((*http_version).into()),
                         },
                     },
                     fragment: HttpRouteFragment {
                         host_header: Arc::clone(http_host),
+                        path_prefix: Arc::clone(path_prefix),
                     },
                 })
             },
@@ -140,6 +148,7 @@ where
                 HttpsTlsRoute {
                     fragment: HttpRouteFragment {
                         host_header: Arc::clone(direct_host_header),
+                        path_prefix: "".into(),
                     },
                     inner,
                 }
@@ -198,10 +207,14 @@ mod test {
                     DomainFrontConfig {
                         http_host: "front-host-1".into(),
                         sni_list: vec!["front-sni-1a".into(), "front-sni-1b".into()],
+                        root_certs: RootCertificates::Native,
+                        path_prefix: "/prefix-1".into(),
                     },
                     DomainFrontConfig {
                         http_host: "front-host-2".into(),
                         sni_list: vec!["front-sni-2".into()],
+                        root_certs: RootCertificates::Native,
+                        path_prefix: "/prefix-2".into(),
                     },
                 ],
                 http_version: HttpVersion::Http1_1,
@@ -223,7 +236,8 @@ mod test {
             [
                 HttpsTlsRoute {
                     fragment: HttpRouteFragment {
-                        host_header: "direct-host".into()
+                        host_header: "direct-host".into(),
+                        path_prefix: "".into(),
                     },
                     inner: TlsRoute {
                         fragment: TlsRouteFragment {
@@ -239,7 +253,8 @@ mod test {
                 },
                 HttpsTlsRoute {
                     fragment: HttpRouteFragment {
-                        host_header: "front-host-1".into()
+                        host_header: "front-host-1".into(),
+                        path_prefix: "/prefix-1".into(),
                     },
                     inner: TlsRoute {
                         fragment: TlsRouteFragment {
@@ -255,7 +270,8 @@ mod test {
                 },
                 HttpsTlsRoute {
                     fragment: HttpRouteFragment {
-                        host_header: "front-host-1".into()
+                        host_header: "front-host-1".into(),
+                        path_prefix: "/prefix-1".into(),
                     },
                     inner: TlsRoute {
                         fragment: TlsRouteFragment {
@@ -271,7 +287,8 @@ mod test {
                 },
                 HttpsTlsRoute {
                     fragment: HttpRouteFragment {
-                        host_header: "front-host-2".into()
+                        host_header: "front-host-2".into(),
+                        path_prefix: "/prefix-2".into(),
                     },
                     inner: TlsRoute {
                         fragment: TlsRouteFragment {

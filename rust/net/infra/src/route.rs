@@ -81,6 +81,7 @@ mod test {
     use std::num::NonZeroU16;
 
     use ::http::uri::PathAndQuery;
+    use ::http::HeaderMap;
     use itertools::Itertools as _;
     use nonzero_ext::nonzero;
     use tungstenite::protocol::WebSocketConfig;
@@ -95,6 +96,7 @@ mod test {
         static ref WS_ENDPOINT: PathAndQuery =  PathAndQuery::from_static("/ws-path");
     }
     const ROOT_CERTS: RootCertificates = RootCertificates::FromDer(Cow::Borrowed(b"cert"));
+    const PROXY_ROOT_CERTS: RootCertificates = RootCertificates::FromDer(Cow::Borrowed(b"proxy"));
 
     #[test]
     fn websocket_routes() {
@@ -103,6 +105,7 @@ mod test {
         let provider = WebSocketProvider {
             fragment: WebSocketRouteFragment {
                 ws_config: WebSocketConfig::default(),
+                headers: HeaderMap::default(),
                 endpoint: WS_ENDPOINT.clone(),
             },
             inner: HttpsProvider {
@@ -110,8 +113,10 @@ mod test {
                 direct_http_version: HttpVersion::Http1_1,
                 domain_front: DomainFrontRouteProvider {
                     fronts: vec![DomainFrontConfig {
+                        root_certs: PROXY_ROOT_CERTS,
                         http_host: "front-host".into(),
                         sni_list: vec!["front-sni1".into(), "front-sni2".into()],
+                        path_prefix: "/front-host-path-prefix".into(),
                     }],
                     http_version: HttpVersion::Http2,
                 },
@@ -132,11 +137,13 @@ mod test {
             WebSocketRoute {
                 fragment: WebSocketRouteFragment {
                     ws_config: WebSocketConfig::default(),
+                    headers: HeaderMap::default(),
                     endpoint: WS_ENDPOINT.clone(),
                 },
                 inner: HttpsTlsRoute {
                     fragment: HttpRouteFragment {
                         host_header: "http-host".into(),
+                        path_prefix: "".into(),
                     },
                     inner: TlsRoute {
                         fragment: TlsRouteFragment {
@@ -154,15 +161,17 @@ mod test {
             WebSocketRoute {
                 fragment: WebSocketRouteFragment {
                     ws_config: WebSocketConfig::default(),
+                    headers: HeaderMap::default(),
                     endpoint: WS_ENDPOINT.clone(),
                 },
                 inner: HttpsTlsRoute {
                     fragment: HttpRouteFragment {
                         host_header: "front-host".into(),
+                        path_prefix: "/front-host-path-prefix".into(),
                     },
                     inner: TlsRoute {
                         fragment: TlsRouteFragment {
-                            root_certs: RootCertificates::Native,
+                            root_certs: PROXY_ROOT_CERTS,
                             sni: Some("front-sni1".into()),
                             alpn: Some(Alpn::Http2),
                         },
@@ -176,15 +185,17 @@ mod test {
             WebSocketRoute {
                 fragment: WebSocketRouteFragment {
                     ws_config: WebSocketConfig::default(),
+                    headers: HeaderMap::default(),
                     endpoint: WS_ENDPOINT.clone(),
                 },
                 inner: HttpsTlsRoute {
                     fragment: HttpRouteFragment {
                         host_header: "front-host".into(),
+                        path_prefix: "/front-host-path-prefix".into(),
                     },
                     inner: TlsRoute {
                         fragment: TlsRouteFragment {
-                            root_certs: RootCertificates::Native,
+                            root_certs: PROXY_ROOT_CERTS,
                             sni: Some("front-sni2".into()),
                             alpn: Some(Alpn::Http2),
                         },

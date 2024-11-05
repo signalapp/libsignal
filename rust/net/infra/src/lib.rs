@@ -60,7 +60,7 @@ impl IpType {
 }
 
 /// A collection of commonly used decorators for HTTP requests.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum HttpRequestDecorator {
     /// Adds a collection of headers to the request
     Headers(http::header::HeaderMap),

@@ -11,23 +11,25 @@ use attest::svr2::RaftConfig;
 use attest::{cds2, enclave, nitro, tpm2snp};
 use derive_where::derive_where;
 use http::uri::PathAndQuery;
+use http::HeaderMap;
 use libsignal_net_infra::connection_manager::{
     ConnectionManager, MultiRouteConnectionManager, SingleRouteThrottlingConnectionManager,
 };
 use libsignal_net_infra::errors::LogSafeDisplay;
 use libsignal_net_infra::host::Host;
-use libsignal_net_infra::route::WebSocketRouteFragment;
-use libsignal_net_infra::service::{
-    ServiceConnectorWithDecorator, ServiceInitializer, ServiceState,
+use libsignal_net_infra::route::{
+    DirectTcpRouteProvider, DomainFrontRouteProvider, HttpsProvider, TlsRouteProvider,
+    WebSocketProvider, WebSocketRouteFragment,
 };
+use libsignal_net_infra::service::{ServiceInitializer, ServiceState};
 use libsignal_net_infra::utils::ObservableEvent;
 use libsignal_net_infra::ws::{WebSocketServiceError, WebSocketStreamConnector};
 use libsignal_net_infra::ws2::attested::{
     AttestedConnection, AttestedConnectionError, AttestedProtocolError,
 };
 use libsignal_net_infra::{
-    make_ws_config, AsyncDuplexStream, ConnectionInfo, ConnectionParams, EndpointConnection,
-    TransportConnector,
+    make_ws_config, AsHttpHeader as _, AsyncDuplexStream, ConnectionInfo, ConnectionParams,
+    EndpointConnection, TransportConnector,
 };
 
 use crate::auth::Auth;
@@ -291,6 +293,28 @@ impl<E: EnclaveKind + NewHandshake, C: ConnectionManager> EnclaveEndpointConnect
     }
 }
 
+impl<'a, E: EnclaveKind> EnclaveEndpoint<'a, E> {
+    pub fn route_provider(
+        &self,
+    ) -> WebSocketProvider<
+        HttpsProvider<DomainFrontRouteProvider, TlsRouteProvider<DirectTcpRouteProvider>>,
+    > {
+        let Self {
+            domain_config,
+            params,
+        } = self;
+        let http_provider = domain_config.connect.route_provider();
+
+        let ws_fragment = WebSocketRouteFragment {
+            ws_config: Default::default(),
+            endpoint: E::url_path(params.mr_enclave.as_ref()),
+            headers: Default::default(),
+        };
+
+        WebSocketProvider::new(ws_fragment, http_provider)
+    }
+}
+
 /// Create an `AttestedConnection`.
 ///
 /// Making the handshaker a concrete type (via `&dyn`) prevents this from being
@@ -301,17 +325,14 @@ async fn connect_attested<C: ConnectionManager, T: TransportConnector>(
     transport_connector: T,
     do_handshake: &(dyn Sync + Fn(&[u8]) -> enclave::Result<enclave::Handshake>),
 ) -> Result<(AttestedConnection, ConnectionInfo), Error> {
-    let auth_decorator = auth.into();
-    let connector = ServiceConnectorWithDecorator::new(
-        WebSocketStreamConnector::new(
-            transport_connector,
-            WebSocketRouteFragment {
-                ws_config: endpoint_connection.config.ws_config,
-                endpoint: endpoint_connection.config.endpoint.clone(),
-            },
-            endpoint_connection.config.max_connection_time,
-        ),
-        auth_decorator,
+    let connector = WebSocketStreamConnector::new(
+        transport_connector,
+        WebSocketRouteFragment {
+            ws_config: endpoint_connection.config.ws_config,
+            endpoint: endpoint_connection.config.endpoint.clone(),
+            headers: HeaderMap::from_iter([auth.as_header()]),
+        },
+        endpoint_connection.config.max_connection_time,
     );
     let connector = WebSocketServiceConnector::new(connector);
     let service_initializer = ServiceInitializer::new(connector, &endpoint_connection.manager);

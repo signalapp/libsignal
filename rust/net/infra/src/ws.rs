@@ -27,7 +27,8 @@ use crate::service::{CancellationReason, CancellationToken, ServiceConnector};
 use crate::utils::timeout;
 use crate::ws::error::{HttpFormatError, ProtocolError, SpaceError};
 use crate::{
-    Alpn, AsyncDuplexStream, ConnectionInfo, ConnectionParams, StreamAndInfo, TransportConnector,
+    Alpn, AsyncDuplexStream, ConnectionInfo, ConnectionParams, HttpRequestDecorator, StreamAndInfo,
+    TransportConnector,
 };
 
 pub mod error;
@@ -83,6 +84,7 @@ impl<T: TransportConnector, E> WebSocketClientConnector<T, E> {
             service_connector: WebSocketStreamConnector::new(
                 transport_connector,
                 WebSocketRouteFragment {
+                    headers: Default::default(),
                     ws_config,
                     endpoint,
                 },
@@ -221,10 +223,18 @@ where
         &self,
         connection_params: &ConnectionParams,
     ) -> Result<Self::Channel, Self::ConnectError> {
+        let WebSocketRouteFragment {
+            ws_config,
+            endpoint,
+            headers,
+        } = &self.fragment;
+        let connection_params = connection_params
+            .clone()
+            .with_decorator(HttpRequestDecorator::Headers(headers.clone()));
         let connect_future = connect_websocket(
-            connection_params,
-            self.fragment.endpoint.clone(),
-            self.fragment.ws_config,
+            &connection_params,
+            endpoint.clone(),
+            *ws_config,
             &self.transport_connector,
         );
         timeout(

@@ -14,6 +14,10 @@ use http::HeaderValue;
 use libsignal_net_infra::certs::RootCertificates;
 use libsignal_net_infra::dns::lookup_result::LookupResult;
 use libsignal_net_infra::host::Host;
+use libsignal_net_infra::route::{
+    DirectTcpRouteProvider, DomainFrontConfig, DomainFrontRouteProvider, HttpVersion,
+    HttpsProvider, TlsRouteProvider,
+};
 use libsignal_net_infra::{
     AsHttpHeader, ConnectionParams, DnsSource, HttpRequestDecorator, HttpRequestDecoratorSeq,
     RouteType, TransportConnectionParams,
@@ -395,6 +399,59 @@ impl ConnectionConfig {
         } else {
             iter::once(direct).collect()
         }
+    }
+
+    pub fn route_provider(
+        &self,
+    ) -> HttpsProvider<DomainFrontRouteProvider, TlsRouteProvider<DirectTcpRouteProvider>> {
+        let Self {
+            hostname,
+            port,
+            cert,
+            confirmation_header_name: _,
+            proxy,
+        } = self;
+        let domain_front_configs = proxy
+            .as_ref()
+            .map(
+                |ConnectionProxyConfig {
+                     path_prefix,
+                     configs,
+                 }| {
+                    let fronting_path_prefix = Arc::from(*path_prefix);
+                    let make_proxy_config = move |config: &ProxyConfig| {
+                        let ProxyConfig {
+                            route_type: _,
+                            http_host,
+                            sni_list,
+                            certs,
+                        } = config;
+                        DomainFrontConfig {
+                            root_certs: certs.clone(),
+                            http_host: (*http_host).into(),
+                            sni_list: sni_list.iter().map(|sni| (*sni).into()).collect(),
+                            path_prefix: Arc::clone(&fronting_path_prefix),
+                        }
+                    };
+                    configs.iter().map(make_proxy_config)
+                },
+            )
+            .into_iter()
+            .flatten()
+            .collect();
+
+        let hostname = Arc::<str>::from(*hostname);
+
+        HttpsProvider::new(
+            Arc::clone(&hostname),
+            HttpVersion::Http1_1,
+            DomainFrontRouteProvider::new(HttpVersion::Http1_1, domain_front_configs),
+            TlsRouteProvider::new(
+                cert.clone(),
+                Some(Arc::clone(&hostname)),
+                DirectTcpRouteProvider::new(hostname, *port),
+            ),
+        )
     }
 }
 

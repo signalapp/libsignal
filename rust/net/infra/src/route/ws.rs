@@ -4,6 +4,7 @@
 //
 
 use http::uri::PathAndQuery;
+use http::HeaderMap;
 use tungstenite::protocol::WebSocketConfig;
 
 use crate::route::{ReplaceFragment, RouteProvider, SimpleRoute};
@@ -14,6 +15,14 @@ pub struct WebSocketRouteFragment {
     pub ws_config: WebSocketConfig,
     /// The HTTP path to use when establishing the websocket connection.
     pub endpoint: PathAndQuery,
+    /// Request headers to include in the HTTP request establishing the connection.
+    pub headers: HeaderMap,
+}
+
+impl AsMut<WebSocketRouteFragment> for WebSocketRouteFragment {
+    fn as_mut(&mut self) -> &mut WebSocketRouteFragment {
+        self
+    }
 }
 
 pub type WebSocketRoute<H> = SimpleRoute<WebSocketRouteFragment, H>;
