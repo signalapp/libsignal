@@ -41,6 +41,11 @@ fn MessageBackupKey_FromBackupKeyAndBackupId(
     MessageBackupKey::from_backup_key_and_backup_id(backup_key, backup_id)
 }
 
+#[bridge_fn(ffi = false, node = false)]
+fn MessageBackupKey_FromParts(hmac_key: &[u8; 32], aes_key: &[u8; 32]) -> MessageBackupKey {
+    MessageBackupKey::from_parts(*hmac_key, *aes_key)
+}
+
 #[bridge_fn]
 fn MessageBackupKey_GetHmacKey(key: &MessageBackupKey) -> [u8; 32] {
     key.0.hmac_key

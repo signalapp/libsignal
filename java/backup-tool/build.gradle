@@ -1,0 +1,23 @@
+plugins {
+    id 'application'
+}
+
+repositories {
+    google()
+    mavenCentral()
+    mavenLocal()
+}
+
+application {
+    mainClass = "BackupTool"
+}
+
+dependencies {
+    implementation project(':client')
+    implementation 'info.picocli:picocli:4.7.6'
+    annotationProcessor 'info.picocli:picocli-codegen:4.7.6'
+}
+
+compileJava {
+    options.compilerArgs += ["-Aproject=${project.group}/${project.name}"] // recommended by picocli
+}

@@ -46,6 +46,13 @@ impl MessageBackupKey {
         let backup_id = BackupId(*backup_id);
         Self(MessageBackupKeyInner::derive(&backup_key, &backup_id))
     }
+
+    pub fn from_parts(
+        hmac_key: [u8; MessageBackupKeyInner::HMAC_KEY_LEN],
+        aes_key: [u8; MessageBackupKeyInner::AES_KEY_LEN],
+    ) -> Self {
+        Self(MessageBackupKeyInner { hmac_key, aes_key })
+    }
 }
 
 bridge_as_handle!(MessageBackupKey);

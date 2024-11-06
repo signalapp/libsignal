@@ -18,6 +18,10 @@ import org.signal.libsignal.protocol.ServiceId.Aci;
  */
 public class MessageBackupKey implements NativeHandleGuard.Owner {
 
+  private MessageBackupKey(long nativeHandle) {
+    this.nativeHandle = nativeHandle;
+  }
+
   /**
    * @deprecated Use AccountEntropyPool instead.
    */
@@ -59,6 +63,16 @@ public class MessageBackupKey implements NativeHandleGuard.Owner {
   @Deprecated
   public MessageBackupKey(byte[] backupKey, byte[] backupId) {
     this(filterExceptions(() -> new BackupKey(backupKey)), backupId);
+  }
+
+  /**
+   * Constructs a MessageBackupKey from the individual keys that make it up.
+   *
+   * <p>Will throw an unchecked exception if the keys are the wrong length; you're expected to only
+   * use this with keys previously derived by this class (or its equivalent in another language).
+   */
+  public static MessageBackupKey fromParts(byte[] hmacKey, byte[] aesKey) {
+    return new MessageBackupKey(Native.MessageBackupKey_FromParts(hmacKey, aesKey));
   }
 
   @Override
