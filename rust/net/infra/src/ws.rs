@@ -486,6 +486,7 @@ pub struct WebSocketClient<S, E> {
     pub ws_client_reader: WebSocketClientReader<S, E>,
 }
 
+#[cfg(any(test, feature = "test-util"))]
 impl<S: AsyncDuplexStream, E> WebSocketClient<S, E>
 where
     WebSocketServiceError: Into<E>,
@@ -497,7 +498,6 @@ where
         self.ws_client_writer.send(item).await
     }
 
-    #[cfg(any(test, feature = "test-util"))]
     pub(crate) async fn close(self, close: Option<CloseFrame<'static>>) -> Result<(), E> {
         self.ws_client_writer.send(Message::Close(close)).await
     }

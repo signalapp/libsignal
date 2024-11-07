@@ -165,17 +165,6 @@ impl AsMut<Self> for AttestedConnection {
     }
 }
 
-impl TextOrBinary {
-    fn try_into_binary(self) -> Result<Vec<u8>, AttestedConnectionError> {
-        match self {
-            TextOrBinary::Text(_) => Err(AttestedConnectionError::Protocol(
-                AttestedProtocolError::TextFrame,
-            )),
-            TextOrBinary::Binary(b) => Ok(b),
-        }
-    }
-}
-
 #[derive(Debug)]
 struct WsClient {
     outgoing_tx: mpsc::Sender<(TextOrBinary, oneshot::Sender<Result<(), SendError>>)>,
@@ -530,6 +519,17 @@ pub mod testutil {
             match self {
                 Self::Next(t) => t,
                 s @ Self::Close(_) => panic!("unwrap called on {s:?}"),
+            }
+        }
+    }
+
+    impl TextOrBinary {
+        pub fn try_into_binary(self) -> Result<Vec<u8>, AttestedConnectionError> {
+            match self {
+                TextOrBinary::Text(_) => Err(AttestedConnectionError::Protocol(
+                    AttestedProtocolError::TextFrame,
+                )),
+                TextOrBinary::Binary(b) => Ok(b),
             }
         }
     }
