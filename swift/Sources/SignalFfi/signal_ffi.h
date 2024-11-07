@@ -445,7 +445,7 @@ typedef struct {
   SignalStoreSignedPreKey store_signed_pre_key;
 } SignalSignedPreKeyStore;
 
-typedef void (*SignalLogCallback)(void *ctx, const char *target, SignalLogLevel level, const char *file, uint32_t line, const char *message);
+typedef void (*SignalLogCallback)(void *ctx, SignalLogLevel level, const char *file, uint32_t line, const char *message);
 
 typedef void (*SignalLogFlushCallback)(void *ctx);
 

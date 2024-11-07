@@ -42,7 +42,6 @@ impl From<LogLevel> for log::Level {
 
 pub type LogCallback = extern "C" fn(
     ctx: *mut c_void,
-    target: *const c_char,
     level: LogLevel,
     file: *const c_char,
     line: u32,
@@ -73,7 +72,6 @@ impl log::Log for FfiLogger {
             return;
         }
 
-        let target = CString::new(record.target()).expect("no 0 bytes in log target");
         let file = record
             .file()
             .map(|file| CString::new(file).expect("no 0 bytes in file"));
@@ -83,7 +81,6 @@ impl log::Log for FfiLogger {
         });
         (self.log)(
             self.ctx,
-            target.as_ptr(),
             record.level().into(),
             file.as_ref()
                 .map(|file| file.as_ptr())
