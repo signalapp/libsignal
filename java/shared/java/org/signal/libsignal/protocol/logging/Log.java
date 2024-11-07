@@ -80,12 +80,16 @@ public class Log {
     return sw.toString();
   }
 
-  @CalledFromNative
   private static void log(int priority, String tag, String msg) {
     SignalProtocolLogger logger = SignalProtocolLoggerProvider.getProvider();
 
     if (logger != null) {
       logger.log(priority, tag, msg);
     }
+  }
+
+  @CalledFromNative
+  private static void logFromRust(int priority, String msg) {
+    log(priority, "libsignal", msg);
   }
 }

@@ -83,13 +83,11 @@ impl JniLogger {
             record.args(),
         );
         let message = AutoLocal::new(env.new_string(message)?, &env);
-        let module = AutoLocal::new(env.new_string("libsignal")?, &env);
         let args = jni_args!((
             level.into() => int,
-            module => java.lang.String,
             message => java.lang.String,
         ) -> void);
-        let result = env.call_static_method(&self.logger_class, "log", args.sig, &args.args);
+        let result = env.call_static_method(&self.logger_class, "logFromRust", args.sig, &args.args);
 
         let throwable = env.exception_occurred()?;
         if **throwable == *JObject::null() {
