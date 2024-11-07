@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use futures_util::io::BufReader;
 use libsignal_bridge_macros::*;
 use libsignal_bridge_types::message_backup::*;
 use libsignal_message_backup::backup::Purpose;
@@ -77,8 +78,9 @@ async fn MessageBackupValidator_Validate(
     purpose: AsType<Purpose, u8>,
 ) -> Result<MessageBackupValidationOutcome, std::io::Error> {
     let streams = [
-        AsyncInput::new(first_stream, len),
-        AsyncInput::new(second_stream, len),
+        // The first stream is read in bulk, so buffering doesn't gain us anything.
+        BufReader::with_capacity(0, AsyncInput::new(first_stream, len)),
+        BufReader::new(AsyncInput::new(second_stream, len)),
     ];
     let factory = LimitedReaderFactory::new(streams);
 
