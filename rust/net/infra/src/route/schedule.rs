@@ -62,7 +62,7 @@ pub struct Schedule<S, R, SP> {
     resolver_stream: MinKeyValueQueueStream<SwapPairStream<S>, ResolveMeta, ResolvedRoutes<R>>,
     scoring_policy: SP,
 
-    delayed_individual_routes: MinKeyValueQueue<Instant, R>,
+    delayed_individual_routes: MinKeyValueQueue<IndividualRouteKey, R>,
     #[pin]
     individual_routes_sleep: tokio::time::Sleep,
 }
@@ -176,8 +176,8 @@ where
             resolver_stream.filter(|value| std::future::ready(!value.1.routes.is_empty()));
 
         loop {
-            let next_from_individual_routes = delayed_individual_routes.peek().map(|(time, _)| {
-                individual_routes_sleep.as_mut().reset(*time);
+            let next_from_individual_routes = delayed_individual_routes.peek().map(|(key, _)| {
+                individual_routes_sleep.as_mut().reset(key.time);
                 individual_routes_sleep.as_mut()
             });
 
@@ -196,13 +196,23 @@ where
 
             match event {
                 Event::PulledFromResolver(Some(value)) => {
-                    let (_penalty, routes) = value;
+                    let (
+                        ResolveMeta {
+                            original_group_index,
+                        },
+                        routes,
+                    ) = value;
                     let now = Instant::now();
                     delayed_individual_routes.extend(routes.into_iter().enumerate().map(
                         |(i, r)| {
                             let delay = HAPPY_EYEBALLS_DELAY * u32::try_from(i).unwrap_or(u32::MAX)
                                 + scoring_policy.compute_delay(&r, now);
-                            (now + delay, r)
+                            let key = IndividualRouteKey {
+                                original_group_index,
+                                resolved_index: i,
+                                time: now + delay,
+                            };
+                            (key, r)
                         },
                     ));
 
@@ -395,6 +405,13 @@ impl ConnectionOutcomeParams {
         // it > 1.
         max_delay.mul_f32(factor.clamp(0.0, 1.0))
     }
+}
+
+#[derive(Copy, Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
+struct IndividualRouteKey {
+    time: Instant,
+    original_group_index: usize,
+    resolved_index: usize,
 }
 
 /// [`Stream`] that maps elements `(a, b)` in the wrapped stream to `(b, a)`.
@@ -634,12 +651,14 @@ impl<S: FusedStream<Item = (K, V)>, K: SequentialKey, V> FusedStream
 #[cfg(test)]
 mod test {
     use std::collections::{HashMap, HashSet};
-    use std::net::IpAddr;
+    use std::net::{IpAddr, Ipv4Addr};
 
     use assert_matches::assert_matches;
     use const_str::ip_addr;
+    use futures_util::FutureExt as _;
     use itertools::Itertools as _;
     use proptest::proptest;
+    use tokio::sync::mpsc;
     use tokio_stream::wrappers::UnboundedReceiverStream;
 
     use super::*;
@@ -988,5 +1007,91 @@ where {
         assert_matches!(poll!(stream.as_mut().next()), Poll::Ready(Some((8, 'i'))));
         assert!(stream.is_terminated());
         assert_matches!(poll!(stream.as_mut().next()), Poll::Ready(None));
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn schedule_waits_for_first() {
+        const DEBOUNCE_TIME: Duration = Duration::from_secs(1);
+        let (resolver_stream_tx, resolver_stream_rx) = mpsc::unbounded_channel();
+
+        let resolver_stream = UnboundedReceiverStream::new(resolver_stream_rx);
+        let delay_policy = NoDelay;
+
+        let mut schedule = Schedule::new(resolver_stream.fuse(), delay_policy, DEBOUNCE_TIME);
+        let schedule = std::pin::pin!(schedule);
+
+        let mut next = schedule.next();
+        let mut next = std::pin::pin!(next);
+
+        // With no inputs, polling won't complete.
+        assert_matches!(next.as_mut().now_or_never(), None);
+
+        // until we send the first input
+        resolver_stream_tx
+            .send((
+                ResolvedRoutes {
+                    routes: vec![FakeRoute(ip_addr!("1.1.1.1"))],
+                },
+                ResolveMeta {
+                    original_group_index: 0,
+                },
+            ))
+            .unwrap();
+
+        assert_matches!(next.now_or_never(), Some(Some(FakeRoute(IpAddr::V4(_)))));
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn schedule_respects_order_of_routes_in_groups() {
+        const DEBOUNCE_TIME: Duration = Duration::from_secs(1);
+
+        const ROUTE_GROUP_COUNT: u8 = 3;
+        const ADDRS_PER_ROUTE: u8 = 2;
+
+        let delay_policy = NoDelay;
+        let resolver_stream = futures_util::stream::iter((0..ROUTE_GROUP_COUNT).map(|i| {
+            let routes = (100..(100 + ADDRS_PER_ROUTE))
+                .map(|x| FakeRoute(IpAddr::V4(Ipv4Addr::new(i, 0, 0, x))))
+                .collect();
+            (
+                ResolvedRoutes { routes },
+                ResolveMeta {
+                    original_group_index: i.into(),
+                },
+            )
+        }));
+
+        let mut schedule = Schedule::new(resolver_stream.fuse(), delay_policy, DEBOUNCE_TIME);
+        let schedule = std::pin::pin!(schedule);
+        let mut schedule = schedule.as_stream();
+        let mut schedule = std::pin::pin!(schedule);
+
+        // This schedule has all its inputs ready immediately and won't delay
+        // the first route in each group, so they should be ready immediately.
+        let immediate_route_schedule: Vec<_> =
+            std::iter::from_fn(|| schedule.next().now_or_never().flatten()).collect_vec();
+
+        assert_eq!(
+            immediate_route_schedule,
+            [
+                FakeRoute(ip_addr!("0.0.0.100")),
+                FakeRoute(ip_addr!("1.0.0.100")),
+                FakeRoute(ip_addr!("2.0.0.100")),
+            ]
+        );
+
+        // If we wait for a small bit we will see the second wave of routes.
+        let start = Instant::now();
+        let remaining_route_schedule: Vec<_> = schedule.collect().await;
+        assert_eq!(start.elapsed(), HAPPY_EYEBALLS_DELAY);
+
+        assert_eq!(
+            remaining_route_schedule,
+            vec![
+                FakeRoute(ip_addr!("0.0.0.101")),
+                FakeRoute(ip_addr!("1.0.0.101")),
+                FakeRoute(ip_addr!("2.0.0.101")),
+            ]
+        );
     }
 }
