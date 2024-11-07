@@ -9,6 +9,8 @@ import java.io.FileNotFoundException;
 import java.util.concurrent.Callable;
 import org.signal.libsignal.messagebackup.MessageBackup;
 import org.signal.libsignal.messagebackup.MessageBackupKey;
+import org.signal.libsignal.protocol.logging.SignalProtocolLogger;
+import org.signal.libsignal.protocol.logging.SignalProtocolLoggerProvider;
 import org.signal.libsignal.protocol.util.Hex;
 import picocli.CommandLine;
 import picocli.CommandLine.Option;
@@ -30,6 +32,14 @@ class BackupTool implements Callable<Integer> {
 
   @Override
   public Integer call() throws Exception {
+    SignalProtocolLoggerProvider.initializeLogging(SignalProtocolLogger.INFO);
+    SignalProtocolLoggerProvider.setProvider(
+        new SignalProtocolLogger() {
+          public void log(int priority, String tag, String message) {
+            System.err.println(priority + " " + message);
+          }
+        });
+
     byte[] hmacKey = Hex.fromStringCondensed(this.hmacKey);
     byte[] aesKey = Hex.fromStringCondensed(this.aesKey);
     var backupKey = MessageBackupKey.fromParts(hmacKey, aesKey);
