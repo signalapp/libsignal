@@ -21,7 +21,7 @@ use crate::backup::method::{Lookup, LookupPair, Method};
 use crate::backup::recipient::DestinationKind;
 use crate::backup::serialize::{SerializeOrder, UnorderedList};
 use crate::backup::sticker::MessageStickerError;
-use crate::backup::time::{Duration, Timestamp};
+use crate::backup::time::{Duration, Timestamp, TimestampOrForever};
 use crate::backup::{BackupMeta, CallError, ReferencedTypes, TryFromWith, TryIntoWith as _};
 use crate::proto::backup as proto;
 
@@ -190,7 +190,7 @@ pub struct ChatData<M: Method + ReferencedTypes> {
     pub items: M::List<ChatItemData<M>>,
     pub expiration_timer: Option<Duration>,
     pub expiration_timer_version: u32,
-    pub mute_until: Option<Timestamp>,
+    pub mute_until: Option<TimestampOrForever>,
     pub style: Option<ChatStyle<M>>,
     pub pinned_order: Option<PinOrder>,
     pub dont_notify_for_mentions_if_muted: bool,
@@ -374,8 +374,9 @@ impl<
 
         let expiration_timer =
             NonZeroU64::new(expirationTimerMs).map(|t| Duration::from_millis(t.get()));
+
         let mute_until = NonZeroU64::new(muteUntilMs)
-            .map(|t| Timestamp::from_millis(t.get(), "Chat.muteUntilMs"));
+            .map(|t| TimestampOrForever::from_millis(t.get(), "Chat.muteUntilMs"));
 
         if expiration_timer.is_some() && expireTimerVersion == 0 {
             return Err(ChatError::MissingExpireTimerVersion(recipient_id));

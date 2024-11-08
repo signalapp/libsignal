@@ -9,6 +9,12 @@ use std::time::{SystemTime, UNIX_EPOCH};
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Timestamp(SystemTime);
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, serde::Serialize)]
+pub enum TimestampOrForever {
+    Timestamp(Timestamp),
+    Forever,
+}
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Duration(std::time::Duration);
 
@@ -44,6 +50,19 @@ impl serde::Serialize for Timestamp {
             .duration_since(UNIX_EPOCH)
             .expect("should not be possible to construct a Timestamp older than UNIX_EPOCH");
         serde::Serialize::serialize(&Duration(offset), serializer)
+    }
+}
+
+impl TimestampOrForever {
+    const FOREVER_MS: u64 = i64::MAX as u64; // As used for Chat.muteUntilMs.
+
+    #[track_caller]
+    pub fn from_millis(since_epoch: u64, context: &'static str) -> Self {
+        if since_epoch >= Self::FOREVER_MS {
+            Self::Forever
+        } else {
+            Self::Timestamp(Timestamp::from_millis(since_epoch, context))
+        }
     }
 }
 
