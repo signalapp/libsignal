@@ -9,6 +9,7 @@
 
 import collections
 import fileinput
+import subprocess
 import sys
 import re
 import os
@@ -61,6 +62,9 @@ def main() -> int:
             new_version = new_version[1:]
         for (path, pattern) in VERSION_FILES:
             update_version(path, pattern, new_version)
+        # It's hard to update the package-lock.json file in a straightforward way with regexes, so use the appropriate
+        # tool.
+        subprocess.run(['npm', 'install', '--package-lock-only'], cwd='node')
 
         return 0
 
