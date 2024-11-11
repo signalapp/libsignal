@@ -271,6 +271,11 @@ impl ServiceId {
             ServiceId::Pni(pni) => pni.into(),
         }
     }
+
+    /// Constructs a [ProtocolAddress] from this service ID and a device ID.
+    pub fn to_protocol_address(&self, device_id: DeviceId) -> ProtocolAddress {
+        ProtocolAddress::new(self.service_id_string(), device_id)
+    }
 }
 
 impl fmt::Debug for ServiceId {
