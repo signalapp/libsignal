@@ -12,6 +12,7 @@ use crate::backup::frame::RecipientId;
 use crate::backup::method::LookupPair;
 use crate::backup::recipient::DestinationKind;
 use crate::backup::serialize::SerializeOrder;
+use crate::backup::time::ReportUnusualTimestamp;
 use crate::backup::{TryFromWith, TryIntoWith as _};
 use crate::proto::backup as proto;
 
@@ -48,8 +49,8 @@ pub enum ContactAttachmentError {
     Avatar(FilePointerError),
 }
 
-impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R>> TryFromWith<proto::ContactMessage, C>
-    for ContactMessage<R>
+impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R> + ReportUnusualTimestamp>
+    TryFromWith<proto::ContactMessage, C> for ContactMessage<R>
 {
     type Error = ChatItemError;
 
@@ -64,7 +65,7 @@ impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R>> TryFromWith<proto
 
         let contacts = contact
             .into_iter()
-            .map(|c| c.try_into())
+            .map(|c| c.try_into_with(context))
             .collect::<Result<_, _>>()?;
 
         Ok(Self {
@@ -75,10 +76,10 @@ impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R>> TryFromWith<proto
     }
 }
 
-impl TryFrom<proto::ContactAttachment> for ContactAttachment {
+impl<C: ReportUnusualTimestamp> TryFromWith<proto::ContactAttachment, C> for ContactAttachment {
     type Error = ContactAttachmentError;
 
-    fn try_from(value: proto::ContactAttachment) -> Result<Self, Self::Error> {
+    fn try_from_with(value: proto::ContactAttachment, context: &C) -> Result<Self, Self::Error> {
         let proto::ContactAttachment {
             name,
             number,
@@ -152,7 +153,7 @@ impl TryFrom<proto::ContactAttachment> for ContactAttachment {
 
         let avatar = avatar
             .into_option()
-            .map(FilePointer::try_from)
+            .map(|file| FilePointer::try_from_with(file, context))
             .transpose()
             .map_err(ContactAttachmentError::Avatar)?;
 

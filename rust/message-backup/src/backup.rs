@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::cell::RefCell;
 use std::collections::{hash_map, HashMap};
 use std::fmt::Debug;
 use std::sync::Arc;
@@ -22,7 +23,9 @@ use crate::backup::recipient::{
 };
 use crate::backup::serialize::{backup_key_as_hex, SerializeOrder};
 use crate::backup::sticker::{PackId as StickerPackId, StickerPack, StickerPackError};
-use crate::backup::time::Timestamp;
+use crate::backup::time::{
+    ReportUnusualTimestamp, Timestamp, TimestampIssue, UnusualTimestampTracker,
+};
 use crate::proto::backup as proto;
 use crate::proto::backup::frame::Item as FrameItem;
 
@@ -71,7 +74,7 @@ pub trait ReferencedTypes {
     /// with one method that takes a context type with the `LookupPair` bound,
     /// but that doesn't seem to provide additional value.
     fn try_convert_recipient<
-        C: LookupPair<RecipientId, DestinationKind, Self::RecipientReference>,
+        C: LookupPair<RecipientId, DestinationKind, Self::RecipientReference> + ReportUnusualTimestamp,
     >(
         recipient: proto::Recipient,
         context: &C,
@@ -85,6 +88,8 @@ pub struct PartialBackup<M: Method + ReferencedTypes> {
     chats: ChatsData<M>,
     ad_hoc_calls: M::List<AdHocCall<M::RecipientReference>>,
     sticker_packs: HashMap<StickerPackId, StickerPack<M>>,
+    /// Stored here so PartialBackup can be the only context necessary for processing backup frames.
+    unusual_timestamp_tracker: RefCell<UnusualTimestampTracker>,
 }
 
 #[derive_where(Debug)]
@@ -169,6 +174,7 @@ impl<M: Method + ReferencedTypes> TryFrom<PartialBackup<M>> for CompletedBackup<
             chats,
             ad_hoc_calls,
             sticker_packs,
+            unusual_timestamp_tracker: _,
         } = value;
 
         let account_data = account_data.ok_or(CompletionError::MissingAccountData)?;
@@ -220,7 +226,7 @@ pub struct CallFrameError {
 ///
 /// Implements fallible conversions from `T` into `Self` with an additional
 /// "context" argument.
-trait TryFromWith<T, C>: Sized {
+trait TryFromWith<T, C: ?Sized>: Sized {
     type Error;
 
     /// Uses additional context to convert `item` into an instance of `Self`.
@@ -234,7 +240,7 @@ trait TryFromWith<T, C>: Sized {
 /// This trait is blanket-implemented for types that implement [`TryFromWith`].
 /// Its only purpose is to offer the more convenient `x.try_into_with(c)` as
 /// opposed to `Y::try_from_with(x, c)`.
-trait TryIntoWith<T, C>: Sized {
+trait TryIntoWith<T, C: ?Sized>: Sized {
     type Error;
 
     /// Uses additional context to convert `self` into an instance of `T`.
@@ -243,7 +249,7 @@ trait TryIntoWith<T, C>: Sized {
     fn try_into_with(self, context: &C) -> Result<T, Self::Error>;
 }
 
-impl<A, B: TryFromWith<A, C>, C> TryIntoWith<B, C> for A {
+impl<A, B: TryFromWith<A, C>, C: ?Sized> TryIntoWith<B, C> for A {
     type Error = B::Error;
     fn try_into_with(self, context: &C) -> Result<B, Self::Error> {
         B::try_from_with(self, context)
@@ -287,7 +293,7 @@ impl ReferencedTypes for Store {
     }
 
     fn try_convert_recipient<
-        C: LookupPair<RecipientId, DestinationKind, Self::RecipientReference>,
+        C: LookupPair<RecipientId, DestinationKind, Self::RecipientReference> + ReportUnusualTimestamp,
     >(
         recipient: proto::Recipient,
         context: &C,
@@ -319,7 +325,7 @@ impl ReferencedTypes for ValidateOnly {
     }
 
     fn try_convert_recipient<
-        C: LookupPair<RecipientId, DestinationKind, Self::RecipientReference>,
+        C: LookupPair<RecipientId, DestinationKind, Self::RecipientReference> + ReportUnusualTimestamp,
     >(
         recipient: proto::Recipient,
         context: &C,
@@ -362,6 +368,8 @@ impl<M: Method + ReferencedTypes> PartialBackup<M> {
             special_fields: _,
         } = value;
 
+        let unusual_timestamp_tracker: RefCell<UnusualTimestampTracker> = Default::default();
+
         let media_root_backup_key = libsignal_account_keys::BackupKey(
             mediaRootBackupKey
                 .as_slice()
@@ -371,7 +379,11 @@ impl<M: Method + ReferencedTypes> PartialBackup<M> {
 
         let meta = BackupMeta {
             version,
-            backup_time: Timestamp::from_millis(backupTimeMs, "BackupInfo.backupTimeMs"),
+            backup_time: Timestamp::from_millis(
+                backupTimeMs,
+                "BackupInfo.backupTimeMs",
+                &unusual_timestamp_tracker,
+            ),
             media_root_backup_key,
             purpose,
         };
@@ -383,6 +395,7 @@ impl<M: Method + ReferencedTypes> PartialBackup<M> {
             chats: Default::default(),
             ad_hoc_calls: Default::default(),
             sticker_packs: HashMap::new(),
+            unusual_timestamp_tracker,
         })
     }
 
@@ -422,7 +435,7 @@ impl<M: Method + ReferencedTypes> PartialBackup<M> {
         if self.account_data.is_some() {
             return Err(ValidationError::MultipleAccountData);
         }
-        let account_data = account_data.try_into()?;
+        let account_data = account_data.try_into_with(self)?;
         self.account_data = Some(account_data);
         Ok(())
     }
@@ -571,6 +584,14 @@ impl<M: Method + ReferencedTypes> Lookup<PinOrder, M::RecipientReference> for Pa
 impl<M: Method + ReferencedTypes> AsRef<BackupMeta> for PartialBackup<M> {
     fn as_ref(&self) -> &BackupMeta {
         &self.meta
+    }
+}
+
+impl<M: Method + ReferencedTypes> ReportUnusualTimestamp for PartialBackup<M> {
+    #[track_caller]
+    fn report(&self, since_epoch: u64, context: &'static str, issue: TimestampIssue) {
+        self.unusual_timestamp_tracker
+            .report(since_epoch, context, issue);
     }
 }
 

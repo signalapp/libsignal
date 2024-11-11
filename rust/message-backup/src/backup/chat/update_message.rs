@@ -8,7 +8,7 @@ use crate::backup::chat::ChatItemError;
 use crate::backup::frame::RecipientId;
 use crate::backup::method::LookupPair;
 use crate::backup::recipient::{DestinationKind, E164};
-use crate::backup::time::Duration;
+use crate::backup::time::{Duration, ReportUnusualTimestamp};
 use crate::backup::{TryFromWith, TryIntoWith as _};
 use crate::proto::backup as proto;
 
@@ -49,7 +49,7 @@ pub enum SimpleChatUpdate {
     MessageRequestAccepted,
 }
 
-impl<C: LookupPair<RecipientId, DestinationKind, R>, R: Clone>
+impl<C: LookupPair<RecipientId, DestinationKind, R> + ReportUnusualTimestamp, R: Clone>
     TryFromWith<proto::ChatUpdateMessage, C> for UpdateMessage<R>
 {
     type Error = ChatItemError;
@@ -150,7 +150,9 @@ impl<C: LookupPair<RecipientId, DestinationKind, R>, R: Clone>
                 let e164 = e164.try_into().map_err(|_| ChatItemError::InvalidE164)?;
                 UpdateMessage::SessionSwitchover { e164 }
             }
-            Update::IndividualCall(call) => UpdateMessage::IndividualCall(call.try_into()?),
+            Update::IndividualCall(call) => {
+                UpdateMessage::IndividualCall(call.try_into_with(context)?)
+            }
             Update::GroupCall(call) => UpdateMessage::GroupCall(call.try_into_with(context)?),
             Update::LearnedProfileChange(proto::LearnedProfileChatUpdate {
                 previousName,

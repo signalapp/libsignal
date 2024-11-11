@@ -2289,7 +2289,6 @@ dependencies = [
  "subtle",
  "test-case",
  "test-log",
- "testing_logger",
  "thiserror",
  "usernames",
  "uuid",

@@ -12,6 +12,7 @@ use crate::backup::frame::RecipientId;
 use crate::backup::method::LookupPair;
 use crate::backup::recipient::DestinationKind;
 use crate::backup::serialize::SerializeOrder;
+use crate::backup::time::ReportUnusualTimestamp;
 use crate::backup::{TryFromWith, TryIntoWith as _};
 use crate::proto::backup as proto;
 
@@ -43,7 +44,7 @@ pub enum VoiceMessageError {
     Reaction(#[from] ReactionError),
 }
 
-impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R>>
+impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R> + ReportUnusualTimestamp>
     TryFromWith<proto::StandardMessage, C> for VoiceMessage<R>
 {
     type Error = VoiceMessageError;
@@ -70,7 +71,7 @@ impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R>>
         let [attachment] = <[_; 1]>::try_from(attachments)
             .map_err(|attachments| VoiceMessageError::WrongAttachmentsCount(attachments.len()))?;
 
-        let attachment: MessageAttachment = attachment.try_into()?;
+        let attachment: MessageAttachment = attachment.try_into_with(context)?;
 
         if attachment.flag != proto::message_attachment::Flag::VOICE_MESSAGE {
             return Err(VoiceMessageError::WrongAttachmentType(attachment.flag));

@@ -4,7 +4,8 @@
 //
 
 use crate::backup::file::{FilePointer, FilePointerError};
-use crate::backup::time::Timestamp;
+use crate::backup::time::{ReportUnusualTimestamp, Timestamp};
+use crate::backup::TryFromWith;
 use crate::proto::backup as proto;
 
 #[derive(Debug, serde::Serialize)]
@@ -24,10 +25,10 @@ pub enum LinkPreviewError {
     Image(FilePointerError),
 }
 
-impl TryFrom<proto::LinkPreview> for LinkPreview {
+impl<C: ReportUnusualTimestamp> TryFromWith<proto::LinkPreview, C> for LinkPreview {
     type Error = LinkPreviewError;
 
-    fn try_from(value: proto::LinkPreview) -> Result<Self, Self::Error> {
+    fn try_from_with(value: proto::LinkPreview, context: &C) -> Result<Self, Self::Error> {
         let proto::LinkPreview {
             url,
             title,
@@ -37,11 +38,11 @@ impl TryFrom<proto::LinkPreview> for LinkPreview {
             special_fields: _,
         } = value;
 
-        let date = date.map(|d| Timestamp::from_millis(d, "LinkPreview.date"));
+        let date = date.map(|d| Timestamp::from_millis(d, "LinkPreview.date", context));
 
         let image = image
             .into_option()
-            .map(FilePointer::try_from)
+            .map(|file| FilePointer::try_from_with(file, context))
             .transpose()
             .map_err(LinkPreviewError::Image)?;
 
@@ -60,6 +61,7 @@ mod test {
     use test_case::test_case;
 
     use super::*;
+    use crate::backup::testutil::TestContext;
     use crate::backup::time::testutil::MillisecondsSinceEpoch;
 
     impl proto::LinkPreview {
@@ -88,6 +90,6 @@ mod test {
     ) -> Result<(), LinkPreviewError> {
         let mut locator = proto::LinkPreview::test_data();
         modifier(&mut locator);
-        LinkPreview::try_from(locator).map(|_| ())
+        LinkPreview::try_from_with(locator, &TestContext::default()).map(|_| ())
     }
 }

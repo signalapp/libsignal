@@ -5,8 +5,8 @@
 
 use std::fmt::Display;
 
-use crate::backup::serialize;
-use crate::backup::time::Timestamp;
+use crate::backup::time::{ReportUnusualTimestamp, Timestamp};
+use crate::backup::{serialize, TryFromWith, TryIntoWith};
 use crate::proto::backup as proto;
 
 #[derive(Debug, serde::Serialize)]
@@ -85,10 +85,10 @@ pub enum TransactionError {
     IdentificationContainsBoth,
 }
 
-impl TryFrom<proto::PaymentNotification> for PaymentNotification {
+impl<C: ReportUnusualTimestamp> TryFromWith<proto::PaymentNotification, C> for PaymentNotification {
     type Error = PaymentError;
 
-    fn try_from(value: proto::PaymentNotification) -> Result<Self, Self::Error> {
+    fn try_from_with(value: proto::PaymentNotification, context: &C) -> Result<Self, Self::Error> {
         let proto::PaymentNotification {
             amountMob,
             feeMob,
@@ -116,9 +116,9 @@ impl TryFrom<proto::PaymentNotification> for PaymentNotification {
                  }| {
                     use proto::payment_notification::transaction_details::Payment;
                     match payment.ok_or(PaymentError::NoTransactionDetailsPayment)? {
-                        Payment::Transaction(transaction) => {
-                            transaction.try_into().map(TransactionDetails::Transaction)
-                        }
+                        Payment::Transaction(transaction) => transaction
+                            .try_into_with(context)
+                            .map(TransactionDetails::Transaction),
                         Payment::FailedTransaction(failed) => {
                             failed.try_into().map(TransactionDetails::FailedTransaction)
                         }
@@ -137,11 +137,14 @@ impl TryFrom<proto::PaymentNotification> for PaymentNotification {
     }
 }
 
-impl TryFrom<proto::payment_notification::transaction_details::Transaction> for Transaction {
+impl<C: ReportUnusualTimestamp>
+    TryFromWith<proto::payment_notification::transaction_details::Transaction, C> for Transaction
+{
     type Error = TransactionError;
 
-    fn try_from(
+    fn try_from_with(
         value: proto::payment_notification::transaction_details::Transaction,
+        context: &C,
     ) -> Result<Self, Self::Error> {
         use proto::payment_notification::transaction_details::transaction::Status;
         use proto::payment_notification::transaction_details::{
@@ -186,9 +189,10 @@ impl TryFrom<proto::payment_notification::transaction_details::Transaction> for 
             )
             .transpose()?;
 
-        let timestamp = timestamp.map(|t| Timestamp::from_millis(t, "Transaction.timestamp"));
-        let block_timestamp =
-            blockTimestamp.map(|t| Timestamp::from_millis(t, "Transaction.blockTimestamp"));
+        let timestamp =
+            timestamp.map(|t| Timestamp::from_millis(t, "Transaction.timestamp", context));
+        let block_timestamp = blockTimestamp
+            .map(|t| Timestamp::from_millis(t, "Transaction.blockTimestamp", context));
 
         Ok(Self {
             status,
@@ -263,6 +267,7 @@ mod test {
     use test_case::test_case;
 
     use super::*;
+    use crate::backup::testutil::TestContext;
     use crate::backup::time::testutil::MillisecondsSinceEpoch;
 
     impl FromStr for MobAmount {
@@ -290,7 +295,7 @@ mod test {
     #[test]
     fn valid_payment_notification() {
         assert_eq!(
-            proto::PaymentNotification::test_data().try_into(),
+            proto::PaymentNotification::test_data().try_into_with(&TestContext::default()),
             Ok(PaymentNotification {
                 amount: Some("123".parse().unwrap()),
                 fee: Some("0".parse().unwrap()),
@@ -309,7 +314,9 @@ mod test {
     ) -> Result<(), PaymentError> {
         let mut notification = proto::PaymentNotification::test_data();
         modifier(&mut notification);
-        notification.try_into().map(|_: PaymentNotification| ())
+        notification
+            .try_into_with(&TestContext::default())
+            .map(|_: PaymentNotification| ())
     }
 
     impl proto::payment_notification::transaction_details::Transaction {
@@ -345,7 +352,8 @@ mod test {
     #[test]
     fn valid_transaction() {
         assert_eq!(
-            proto::payment_notification::transaction_details::Transaction::test_data().try_into(),
+            proto::payment_notification::transaction_details::Transaction::test_data()
+                .try_into_with(&TestContext::default()),
             Ok(Transaction {
                 status:
                     proto::payment_notification::transaction_details::transaction::Status::INITIAL,
@@ -383,7 +391,10 @@ mod test {
         let mut transaction =
             proto::payment_notification::transaction_details::Transaction::test_data();
         modifier(transaction.mobileCoinIdentification.as_mut().unwrap());
-        assert_eq!(Transaction::try_from(transaction), Err(expected_err));
+        assert_eq!(
+            Transaction::try_from_with(transaction, &TestContext::default()),
+            Err(expected_err)
+        );
     }
 
     #[test_case("12", Ok(()); "no decimal")]

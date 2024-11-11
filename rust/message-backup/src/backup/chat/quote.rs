@@ -8,7 +8,7 @@ use crate::backup::file::{MessageAttachment, MessageAttachmentError};
 use crate::backup::frame::RecipientId;
 use crate::backup::method::LookupPair;
 use crate::backup::recipient::DestinationKind;
-use crate::backup::time::Timestamp;
+use crate::backup::time::{ReportUnusualTimestamp, Timestamp};
 use crate::backup::TryFromWith;
 use crate::proto::backup as proto;
 
@@ -60,8 +60,8 @@ pub enum QuoteError {
     AttachmentThumbnailWrongFlag(proto::message_attachment::Flag),
 }
 
-impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R>> TryFromWith<proto::Quote, C>
-    for Quote<R>
+impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R> + ReportUnusualTimestamp>
+    TryFromWith<proto::Quote, C> for Quote<R>
 {
     type Error = QuoteError;
 
@@ -92,8 +92,9 @@ impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R>> TryFromWith<proto
             | DestinationKind::CallLink => Err(QuoteError::InvalidAuthor(author_id, author_kind)),
         }?;
 
-        let target_sent_timestamp = targetSentTimestamp
-            .map(|timestamp| Timestamp::from_millis(timestamp, "Quote.targetSentTimestamp"));
+        let target_sent_timestamp = targetSentTimestamp.map(|timestamp| {
+            Timestamp::from_millis(timestamp, "Quote.targetSentTimestamp", context)
+        });
         let quote_type = match type_.enum_value_or_default() {
             proto::quote::Type::UNKNOWN => return Err(QuoteError::TypeUnknown),
             proto::quote::Type::NORMAL => QuoteType::Normal,
@@ -104,7 +105,7 @@ impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R>> TryFromWith<proto
 
         let attachments = attachments
             .into_iter()
-            .map(QuotedAttachment::try_from)
+            .map(|attachment| QuotedAttachment::try_from_with(attachment, context))
             .collect::<Result<_, _>>()?;
 
         Ok(Self {
@@ -118,10 +119,15 @@ impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R>> TryFromWith<proto
     }
 }
 
-impl TryFrom<proto::quote::QuotedAttachment> for QuotedAttachment {
+impl<C: ReportUnusualTimestamp> TryFromWith<proto::quote::QuotedAttachment, C>
+    for QuotedAttachment
+{
     type Error = QuoteError;
 
-    fn try_from(value: proto::quote::QuotedAttachment) -> Result<Self, Self::Error> {
+    fn try_from_with(
+        value: proto::quote::QuotedAttachment,
+        context: &C,
+    ) -> Result<Self, Self::Error> {
         let proto::quote::QuotedAttachment {
             contentType,
             fileName,
@@ -131,7 +137,7 @@ impl TryFrom<proto::quote::QuotedAttachment> for QuotedAttachment {
 
         let thumbnail = thumbnail
             .into_option()
-            .map(MessageAttachment::try_from)
+            .map(|thumbnail| MessageAttachment::try_from_with(thumbnail, context))
             .transpose()?;
 
         if let Some(thumbnail) = &thumbnail {
@@ -205,7 +211,7 @@ mod test {
     ) -> Result<(), QuoteError> {
         let mut attachment = proto::quote::QuotedAttachment::test_data();
         modifier(&mut attachment);
-        QuotedAttachment::try_from(attachment).map(|_| ())
+        QuotedAttachment::try_from_with(attachment, &TestContext::default()).map(|_| ())
     }
 
     impl proto::Quote {

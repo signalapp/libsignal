@@ -14,6 +14,7 @@ use crate::backup::frame::RecipientId;
 use crate::backup::method::LookupPair;
 use crate::backup::recipient::DestinationKind;
 use crate::backup::serialize::SerializeOrder;
+use crate::backup::time::ReportUnusualTimestamp;
 use crate::backup::{TryFromWith, TryIntoWith as _};
 use crate::proto::backup as proto;
 
@@ -31,7 +32,7 @@ pub struct StandardMessage<Recipient> {
     _limit_construction_to_module: (),
 }
 
-impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R>>
+impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R> + ReportUnusualTimestamp>
     TryFromWith<proto::StandardMessage, C> for StandardMessage<R>
 {
     type Error = ChatItemError;
@@ -58,18 +59,18 @@ impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R>>
 
         let link_previews = linkPreview
             .into_iter()
-            .map(LinkPreview::try_from)
+            .map(|preview| LinkPreview::try_from_with(preview, context))
             .collect::<Result<_, _>>()?;
 
         let long_text = longText
             .into_option()
-            .map(FilePointer::try_from)
+            .map(|file| FilePointer::try_from_with(file, context))
             .transpose()
             .map_err(ChatItemError::LongText)?;
 
         let attachments = attachments
             .into_iter()
-            .map(MessageAttachment::try_from)
+            .map(|attachment| MessageAttachment::try_from_with(attachment, context))
             .collect::<Result<_, _>>()?;
 
         Ok(Self {

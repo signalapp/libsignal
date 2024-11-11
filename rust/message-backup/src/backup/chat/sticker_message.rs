@@ -11,6 +11,7 @@ use crate::backup::method::LookupPair;
 use crate::backup::recipient::DestinationKind;
 use crate::backup::serialize::SerializeOrder;
 use crate::backup::sticker::MessageSticker;
+use crate::backup::time::ReportUnusualTimestamp;
 use crate::backup::{TryFromWith, TryIntoWith as _};
 use crate::proto::backup as proto;
 
@@ -24,8 +25,8 @@ pub struct StickerMessage<Recipient> {
     _limit_construction_to_module: (),
 }
 
-impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R>> TryFromWith<proto::StickerMessage, C>
-    for StickerMessage<R>
+impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R> + ReportUnusualTimestamp>
+    TryFromWith<proto::StickerMessage, C> for StickerMessage<R>
 {
     type Error = ChatItemError;
 
@@ -41,7 +42,7 @@ impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R>> TryFromWith<proto
         let sticker = sticker
             .into_option()
             .ok_or(ChatItemError::StickerMessageMissingSticker)?
-            .try_into()?;
+            .try_into_with(context)?;
 
         Ok(Self {
             reactions,

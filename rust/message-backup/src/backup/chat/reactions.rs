@@ -11,7 +11,7 @@ use crate::backup::frame::RecipientId;
 use crate::backup::method::LookupPair;
 use crate::backup::recipient::DestinationKind;
 use crate::backup::serialize::SerializeOrder;
-use crate::backup::time::Timestamp;
+use crate::backup::time::{ReportUnusualTimestamp, Timestamp};
 use crate::backup::{TryFromWith, TryIntoWith};
 use crate::proto::backup as proto;
 
@@ -51,8 +51,8 @@ pub enum ReactionError {
     EmptyEmoji,
 }
 
-impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R>> TryFromWith<proto::Reaction, C>
-    for Reaction<R>
+impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R> + ReportUnusualTimestamp>
+    TryFromWith<proto::Reaction, C> for Reaction<R>
 {
     type Error = ReactionError;
 
@@ -78,7 +78,8 @@ impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R>> TryFromWith<proto
         }
         let author = author.clone();
 
-        let sent_timestamp = Timestamp::from_millis(sentTimestamp, "Reaction.sentTimestamp");
+        let sent_timestamp =
+            Timestamp::from_millis(sentTimestamp, "Reaction.sentTimestamp", context);
 
         Ok(Self {
             emoji,
@@ -95,8 +96,8 @@ pub struct ReactionSet<Recipient> {
     reactions: HashMap<RecipientId, Reaction<Recipient>>,
 }
 
-impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R>> TryFromWith<Vec<proto::Reaction>, C>
-    for ReactionSet<R>
+impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R> + ReportUnusualTimestamp>
+    TryFromWith<Vec<proto::Reaction>, C> for ReactionSet<R>
 {
     type Error = ReactionError;
 

@@ -15,7 +15,7 @@ use crate::backup::frame::RecipientId;
 use crate::backup::method::{Lookup, LookupPair};
 use crate::backup::recipient::group::GroupData;
 use crate::backup::recipient::{ContactData, Destination, DestinationKind, FullRecipientData};
-use crate::backup::time::Timestamp;
+use crate::backup::time::{ReportUnusualTimestamp, Timestamp, TimestampIssue};
 use crate::backup::{BackupMeta, Purpose};
 
 pub(super) struct TestContext(pub(super) BackupMeta);
@@ -84,6 +84,12 @@ impl AsRef<BackupMeta> for TestContext {
 impl Lookup<CustomColorId, Arc<CustomChatColor>> for TestContext {
     fn lookup<'a>(&'a self, key: &'a CustomColorId) -> Option<&'a Arc<CustomChatColor>> {
         (*key == Self::CUSTOM_CHAT_COLOR_ID).then(|| &*TEST_CUSTOM_COLOR)
+    }
+}
+
+impl ReportUnusualTimestamp for TestContext {
+    fn report(&self, _since_epoch: u64, _context: &'static str, _issue: TimestampIssue) {
+        // Do nothing when not specifically testing timestamps.
     }
 }
 

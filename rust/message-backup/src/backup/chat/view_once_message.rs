@@ -11,6 +11,7 @@ use crate::backup::frame::RecipientId;
 use crate::backup::method::LookupPair;
 use crate::backup::recipient::DestinationKind;
 use crate::backup::serialize::SerializeOrder;
+use crate::backup::time::ReportUnusualTimestamp;
 use crate::backup::{TryFromWith, TryIntoWith as _};
 use crate::proto::backup as proto;
 
@@ -33,7 +34,7 @@ pub enum ViewOnceMessageError {
     Reaction(#[from] ReactionError),
 }
 
-impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R>>
+impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R> + ReportUnusualTimestamp>
     TryFromWith<proto::ViewOnceMessage, C> for ViewOnceMessage<R>
 {
     type Error = ViewOnceMessageError;
@@ -47,7 +48,7 @@ impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R>>
 
         let attachment = attachment
             .into_option()
-            .map(MessageAttachment::try_from)
+            .map(|attachment| MessageAttachment::try_from_with(attachment, context))
             .transpose()?;
 
         let reactions = reactions.try_into_with(context)?;

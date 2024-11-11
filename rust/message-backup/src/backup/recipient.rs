@@ -17,7 +17,7 @@ use crate::backup::call::{CallLink, CallLinkError};
 use crate::backup::frame::RecipientId;
 use crate::backup::method::{LookupPair, Method, Store, ValidateOnly};
 use crate::backup::serialize::{self, SerializeOrder, UnorderedList};
-use crate::backup::time::Timestamp;
+use crate::backup::time::{ReportUnusualTimestamp, Timestamp};
 use crate::backup::{ReferencedTypes, TryFromWith, TryIntoWith};
 use crate::proto::backup as proto;
 use crate::proto::backup::recipient::Destination as RecipientDestination;
@@ -217,8 +217,8 @@ impl std::ops::Deref for FullRecipientData {
     }
 }
 
-impl<C: LookupPair<RecipientId, DestinationKind, RecipientId>> TryFromWith<proto::Recipient, C>
-    for MinimalRecipientData
+impl<C: LookupPair<RecipientId, DestinationKind, RecipientId> + ReportUnusualTimestamp>
+    TryFromWith<proto::Recipient, C> for MinimalRecipientData
 {
     type Error = RecipientError;
 
@@ -246,8 +246,8 @@ impl AsRef<Self> for FullRecipientData {
     }
 }
 
-impl<C: LookupPair<RecipientId, DestinationKind, Self>> TryFromWith<proto::Recipient, C>
-    for FullRecipientData
+impl<C: LookupPair<RecipientId, DestinationKind, Self> + ReportUnusualTimestamp>
+    TryFromWith<proto::Recipient, C> for FullRecipientData
 {
     type Error = RecipientError;
 
@@ -281,7 +281,7 @@ impl<M: Method + ReferencedTypes> AsRef<DestinationKind> for Destination<M> {
 
 impl<
         M: Method + ReferencedTypes,
-        C: LookupPair<RecipientId, DestinationKind, M::RecipientReference>,
+        C: LookupPair<RecipientId, DestinationKind, M::RecipientReference> + ReportUnusualTimestamp,
     > TryFromWith<proto::Recipient, C> for Destination<M>
 {
     type Error = RecipientError;
@@ -296,9 +296,11 @@ impl<
 
         Ok(match destination {
             RecipientDestination::Contact(contact) => {
-                Destination::Contact(M::value(contact.try_into()?))
+                Destination::Contact(M::value(contact.try_into_with(context)?))
             }
-            RecipientDestination::Group(group) => Destination::Group(M::value(group.try_into()?)),
+            RecipientDestination::Group(group) => {
+                Destination::Group(M::value(group.try_into_with(context)?))
+            }
             RecipientDestination::DistributionList(list) => {
                 Destination::DistributionList(M::value(list.try_into_with(context)?))
             }
@@ -307,15 +309,15 @@ impl<
                 Destination::ReleaseNotes
             }
             RecipientDestination::CallLink(call_link) => {
-                Destination::CallLink(M::value(call_link.try_into()?))
+                Destination::CallLink(M::value(call_link.try_into_with(context)?))
             }
         })
     }
 }
 
-impl TryFrom<proto::Contact> for ContactData {
+impl<C: ReportUnusualTimestamp> TryFromWith<proto::Contact, C> for ContactData {
     type Error = RecipientError;
-    fn try_from(value: proto::Contact) -> Result<Self, Self::Error> {
+    fn try_from_with(value: proto::Contact, context: &C) -> Result<Self, Self::Error> {
         let proto::Contact {
             aci,
             pni,
@@ -362,7 +364,11 @@ impl TryFrom<proto::Contact> for ContactData {
                 special_fields: _,
             }) => Registration::NotRegistered {
                 unregistered_at: NonZeroU64::new(unregisteredTimestamp).map(|u| {
-                    Timestamp::from_millis(u.get(), "Contact.notRegistered.unregisteredTimestamp")
+                    Timestamp::from_millis(
+                        u.get(),
+                        "Contact.notRegistered.unregisteredTimestamp",
+                        context,
+                    )
                 }),
             },
             proto::contact::Registration::Registered(proto::contact::Registered {
@@ -404,7 +410,7 @@ impl TryFrom<proto::Contact> for ContactData {
     }
 }
 
-impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R>>
+impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R> + ReportUnusualTimestamp>
     TryFromWith<proto::DistributionListItem, C> for DistributionListItem<R>
 {
     type Error = RecipientError;
@@ -434,6 +440,7 @@ impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R>>
                     let at = Timestamp::from_millis(
                         deletion_timestamp,
                         "DistributionList.deletionTimestamp",
+                        context,
                     );
                     Self::Deleted {
                         distribution_id,

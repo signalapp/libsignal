@@ -12,6 +12,8 @@ use derive_where::derive_where;
 
 use crate::backup::file::{FilePointer, FilePointerError};
 use crate::backup::method::Method;
+use crate::backup::time::ReportUnusualTimestamp;
+use crate::backup::{TryFromWith, TryIntoWith};
 use crate::proto::backup as proto;
 
 /// Validated version of [`proto::StickerPack`].
@@ -96,10 +98,10 @@ impl<M: Method> TryFrom<proto::StickerPack> for StickerPack<M> {
     }
 }
 
-impl TryFrom<proto::Sticker> for MessageSticker {
+impl<C: ReportUnusualTimestamp> TryFromWith<proto::Sticker, C> for MessageSticker {
     type Error = MessageStickerError;
 
-    fn try_from(item: proto::Sticker) -> Result<Self, Self::Error> {
+    fn try_from_with(item: proto::Sticker, context: &C) -> Result<Self, Self::Error> {
         let proto::Sticker {
             packId,
             packKey,
@@ -121,7 +123,7 @@ impl TryFrom<proto::Sticker> for MessageSticker {
         let data = data
             .into_option()
             .ok_or(MessageStickerError::MissingDataPointer)?
-            .try_into()?;
+            .try_into_with(context)?;
 
         Ok(Self {
             pack_id,
@@ -140,6 +142,7 @@ mod test {
 
     use super::*;
     use crate::backup::method::Store;
+    use crate::backup::testutil::TestContext;
 
     impl proto::StickerPack {
         pub(crate) const TEST_ID: PackId = PackId(Self::TEST_ID_BYTES);
@@ -193,7 +196,7 @@ mod test {
     #[test]
     fn valid_message_sticker() {
         assert_eq!(
-            proto::Sticker::test_data().try_into(),
+            proto::Sticker::test_data().try_into_with(&TestContext::default()),
             Ok(MessageSticker {
                 pack_id: proto::StickerPack::TEST_ID,
                 pack_key: Key(proto::StickerPack::TEST_KEY),
@@ -220,6 +223,8 @@ mod test {
         let mut sticker = proto::Sticker::test_data();
         mutator(&mut sticker);
 
-        sticker.try_into().map(|_: MessageSticker| ())
+        sticker
+            .try_into_with(&TestContext::default())
+            .map(|_: MessageSticker| ())
     }
 }

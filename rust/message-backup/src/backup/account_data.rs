@@ -14,8 +14,8 @@ use zkgroup::ProfileKeyBytes;
 
 use crate::backup::chat::chat_style::{ChatStyle, ChatStyleError, CustomColorMap};
 use crate::backup::method::Method;
-use crate::backup::time::Duration;
-use crate::backup::{serialize, ReferencedTypes, TryIntoWith as _};
+use crate::backup::time::{Duration, ReportUnusualTimestamp};
+use crate::backup::{serialize, ReferencedTypes, TryFromWith, TryIntoWith};
 use crate::proto::backup as proto;
 
 #[derive_where(Debug)]
@@ -148,9 +148,11 @@ pub enum SubscriptionError {
     EmptyCurrency,
 }
 
-impl<M: Method + ReferencedTypes> TryFrom<proto::AccountData> for AccountData<M> {
+impl<M: Method + ReferencedTypes, C: ReportUnusualTimestamp> TryFromWith<proto::AccountData, C>
+    for AccountData<M>
+{
     type Error = AccountDataError;
-    fn try_from(proto: proto::AccountData) -> Result<Self, Self::Error> {
+    fn try_from_with(proto: proto::AccountData, context: &C) -> Result<Self, Self::Error> {
         let proto::AccountData {
             profileKey,
             username,
@@ -180,7 +182,7 @@ impl<M: Method + ReferencedTypes> TryFrom<proto::AccountData> for AccountData<M>
         let account_settings = accountSettings
             .into_option()
             .ok_or(AccountDataError::MissingSettings)?
-            .try_into()?;
+            .try_into_with(context)?;
 
         let donation_subscription = donationSubscriberData
             .into_option()
@@ -272,12 +274,15 @@ impl TryFrom<proto::account_data::UsernameLink> for UsernameLink {
     }
 }
 
-impl<M: Method + ReferencedTypes> TryFrom<proto::account_data::AccountSettings>
-    for AccountSettings<M>
+impl<M: Method + ReferencedTypes, C: ReportUnusualTimestamp>
+    TryFromWith<proto::account_data::AccountSettings, C> for AccountSettings<M>
 {
     type Error = AccountDataError;
 
-    fn try_from(value: proto::account_data::AccountSettings) -> Result<Self, Self::Error> {
+    fn try_from_with(
+        value: proto::account_data::AccountSettings,
+        context: &C,
+    ) -> Result<Self, Self::Error> {
         let proto::account_data::AccountSettings {
             phoneNumberSharingMode,
             readReceipts,
@@ -314,7 +319,7 @@ impl<M: Method + ReferencedTypes> TryFrom<proto::account_data::AccountSettings>
 
         let default_chat_style = defaultChatStyle
             .into_option()
-            .map(|style| style.try_into_with(&custom_chat_colors))
+            .map(|style| ChatStyle::try_from_proto(style, &custom_chat_colors, context))
             .transpose()?;
 
         let universal_expire_timer = NonZeroU32::new(universalExpireTimerSeconds)
@@ -356,6 +361,7 @@ mod test {
     use super::*;
     use crate::backup::chat::chat_style::{BubbleColor, CustomChatColor, CustomColorId};
     use crate::backup::method::{Store, ValidateOnly};
+    use crate::backup::testutil::TestContext;
 
     impl proto::AccountData {
         pub(crate) fn test_data() -> Self {
@@ -425,9 +431,12 @@ mod test {
             data.customChatColors.reverse();
             data
         };
-        let with_new_id: AccountSettings<Store> = with_new_id.try_into().expect("valid settings");
-        let with_reversed_ids: AccountSettings<Store> =
-            with_reversed_ids.try_into().expect("valid settings");
+        let with_new_id: AccountSettings<Store> = with_new_id
+            .try_into_with(&TestContext::default())
+            .expect("valid settings");
+        let with_reversed_ids: AccountSettings<Store> = with_reversed_ids
+            .try_into_with(&TestContext::default())
+            .expect("valid settings");
         assert_ne!(with_new_id, with_reversed_ids);
     }
 
@@ -484,7 +493,7 @@ mod test {
     #[test]
     fn valid_account_data() {
         assert_eq!(
-            proto::AccountData::test_data().try_into(),
+            proto::AccountData::test_data().try_into_with(&TestContext::default()),
             Ok(AccountData::from_proto_test_data())
         );
     }
@@ -530,6 +539,6 @@ mod test {
         let mut data = proto::AccountData::test_data();
         modifier(&mut data);
 
-        AccountData::<ValidateOnly>::try_from(data).map(|_| ())
+        AccountData::<ValidateOnly>::try_from_with(data, &TestContext::default()).map(|_| ())
     }
 }

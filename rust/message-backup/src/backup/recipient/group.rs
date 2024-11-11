@@ -13,7 +13,8 @@ use libsignal_core::ServiceIdKind;
 use zkgroup::GroupMasterKeyBytes;
 
 use crate::backup::serialize::{self, UnorderedList};
-use crate::backup::time::Duration;
+use crate::backup::time::{Duration, ReportUnusualTimestamp};
+use crate::backup::{TryFromWith, TryIntoWith};
 use crate::proto::backup as proto;
 
 mod members;
@@ -94,10 +95,10 @@ impl proto::group::group_attribute_blob::Content {
     }
 }
 
-impl TryFrom<proto::group::GroupSnapshot> for GroupSnapshot {
+impl<C: ReportUnusualTimestamp> TryFromWith<proto::group::GroupSnapshot, C> for GroupSnapshot {
     type Error = GroupError;
 
-    fn try_from(value: proto::group::GroupSnapshot) -> Result<Self, Self::Error> {
+    fn try_from_with(value: proto::group::GroupSnapshot, context: &C) -> Result<Self, Self::Error> {
         let proto::group::GroupSnapshot {
             title,
             description,
@@ -244,17 +245,17 @@ impl TryFrom<proto::group::GroupSnapshot> for GroupSnapshot {
 
         let members_pending_profile_key = membersPendingProfileKey
             .into_iter()
-            .map(GroupMemberPendingProfileKey::try_from)
+            .map(|m| GroupMemberPendingProfileKey::try_from_with(m, context))
             .try_collect()?;
 
         let members_pending_admin_approval = membersPendingAdminApproval
             .into_iter()
-            .map(GroupMemberPendingAdminApproval::try_from)
+            .map(|m| GroupMemberPendingAdminApproval::try_from_with(m, context))
             .try_collect()?;
 
         let members_banned = members_banned
             .into_iter()
-            .map(GroupMemberBanned::try_from)
+            .map(|m| GroupMemberBanned::try_from_with(m, context))
             .try_collect()?;
 
         Ok(Self {
@@ -290,9 +291,9 @@ pub struct GroupData {
     _limit_construction_to_module: (),
 }
 
-impl TryFrom<proto::Group> for GroupData {
+impl<C: ReportUnusualTimestamp> TryFromWith<proto::Group, C> for GroupData {
     type Error = GroupError;
-    fn try_from(value: proto::Group) -> Result<Self, Self::Error> {
+    fn try_from_with(value: proto::Group, context: &C) -> Result<Self, Self::Error> {
         let proto::Group {
             masterKey,
             whitelisted,
@@ -315,7 +316,7 @@ impl TryFrom<proto::Group> for GroupData {
         let snapshot = snapshot
             .into_option()
             .ok_or(GroupError::MissingSnapshot)?
-            .try_into()?;
+            .try_into_with(context)?;
 
         Ok(GroupData {
             master_key,
@@ -334,6 +335,7 @@ mod test {
     use test_case::test_case;
 
     use super::*;
+    use crate::backup::testutil::TestContext;
     use crate::proto::backup::group::access_control::AccessRequired;
 
     impl proto::Group {
@@ -435,7 +437,8 @@ mod test {
     #[test]
     fn valid_group() {
         assert_eq!(
-            GroupData::try_from(proto::Group::test_data()).expect("valid"),
+            GroupData::try_from_with(proto::Group::test_data(), &TestContext::default())
+                .expect("valid"),
             GroupData::from_proto_test_data(),
         )
     }
@@ -445,7 +448,7 @@ mod test {
     fn group_data(modifier: impl FnOnce(&mut proto::Group)) -> Result<(), GroupError> {
         let mut group = proto::Group::test_data();
         modifier(&mut group);
-        GroupData::try_from(group).map(|_| ())
+        GroupData::try_from_with(group, &TestContext::default()).map(|_| ())
     }
 
     #[test_case(|x| x.title = None.into() => Ok(()); "missing title")]
@@ -468,7 +471,7 @@ mod test {
     ) -> Result<(), GroupError> {
         let mut group = proto::Group::test_data().snapshot.unwrap();
         modifier(&mut group);
-        GroupSnapshot::try_from(group).map(|_| ())
+        GroupSnapshot::try_from_with(group, &TestContext::default()).map(|_| ())
     }
 
     #[test]

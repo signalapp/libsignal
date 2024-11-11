@@ -21,7 +21,7 @@ use crate::backup::method::{Lookup, LookupPair, Method};
 use crate::backup::recipient::DestinationKind;
 use crate::backup::serialize::{SerializeOrder, UnorderedList};
 use crate::backup::sticker::MessageStickerError;
-use crate::backup::time::{Duration, Timestamp, TimestampOrForever};
+use crate::backup::time::{Duration, ReportUnusualTimestamp, Timestamp, TimestampOrForever};
 use crate::backup::{BackupMeta, CallError, ReferencedTypes, TryFromWith, TryIntoWith as _};
 use crate::proto::backup as proto;
 
@@ -326,7 +326,8 @@ impl<
         M: Method + ReferencedTypes,
         C: LookupPair<RecipientId, DestinationKind, M::RecipientReference>
             + Lookup<PinOrder, M::RecipientReference>
-            + Lookup<CustomColorId, M::CustomColorReference>,
+            + Lookup<CustomColorId, M::CustomColorReference>
+            + ReportUnusualTimestamp,
     > TryFromWith<proto::Chat, C> for ChatData<M>
 {
     type Error = ChatError;
@@ -369,14 +370,14 @@ impl<
 
         let style = style
             .into_option()
-            .map(|chat_style| chat_style.try_into_with(context))
+            .map(|style| ChatStyle::try_from_proto(style, context, context))
             .transpose()?;
 
         let expiration_timer =
             NonZeroU64::new(expirationTimerMs).map(|t| Duration::from_millis(t.get()));
 
         let mute_until = NonZeroU64::new(muteUntilMs)
-            .map(|t| TimestampOrForever::from_millis(t.get(), "Chat.muteUntilMs"));
+            .map(|t| TimestampOrForever::from_millis(t.get(), "Chat.muteUntilMs", context));
 
         if expiration_timer.is_some() && expireTimerVersion == 0 {
             return Err(ChatError::MissingExpireTimerVersion(recipient_id));
@@ -399,7 +400,9 @@ impl<
 }
 
 impl<
-        C: LookupPair<RecipientId, DestinationKind, M::RecipientReference> + AsRef<BackupMeta>,
+        C: LookupPair<RecipientId, DestinationKind, M::RecipientReference>
+            + AsRef<BackupMeta>
+            + ReportUnusualTimestamp,
         M: Method + ReferencedTypes,
     > TryFromWith<proto::ChatItem, C> for ChatItemData<M>
 {
@@ -517,9 +520,9 @@ impl<
             })
             .collect::<Result<_, _>>()?;
 
-        let sent_at = Timestamp::from_millis(dateSent, "ChatItem.dateSent");
+        let sent_at = Timestamp::from_millis(dateSent, "ChatItem.dateSent", context);
         let expire_start = NonZeroU64::new(expireStartDate)
-            .map(|date| Timestamp::from_millis(date.into(), "ChatItem.expireStartDate"));
+            .map(|date| Timestamp::from_millis(date.into(), "ChatItem.expireStartDate", context));
         let expires_in = NonZeroU64::new(expiresInMs)
             .map(Into::into)
             .map(Duration::from_millis);
@@ -596,7 +599,7 @@ impl<
     }
 }
 
-impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R>>
+impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R> + ReportUnusualTimestamp>
     TryFromWith<proto::chat_item::DirectionalDetails, C> for Direction<R>
 {
     type Error = ChatItemError;
@@ -614,10 +617,14 @@ impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R>>
                 read,
                 sealedSender,
             }) => {
-                let sent = dateServerSent
-                    .map(|sent| Timestamp::from_millis(sent, "DirectionalDetails.dateServerSent"));
-                let received =
-                    Timestamp::from_millis(dateReceived, "DirectionalDetails.dateReceived");
+                let sent = dateServerSent.map(|sent| {
+                    Timestamp::from_millis(sent, "DirectionalDetails.dateServerSent", context)
+                });
+                let received = Timestamp::from_millis(
+                    dateReceived,
+                    "DirectionalDetails.dateReceived",
+                    context,
+                );
                 Ok(Self::Incoming {
                     received,
                     sent,
@@ -640,8 +647,8 @@ impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R>>
         }
     }
 }
-impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R>> TryFromWith<proto::SendStatus, C>
-    for OutgoingSend<R>
+impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R> + ReportUnusualTimestamp>
+    TryFromWith<proto::SendStatus, C> for OutgoingSend<R>
 {
     type Error = OutgoingSendError;
 
@@ -714,7 +721,7 @@ impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R>> TryFromWith<proto
             }
         };
 
-        let last_status_update = Timestamp::from_millis(timestamp, "SendStatus.timestamp");
+        let last_status_update = Timestamp::from_millis(timestamp, "SendStatus.timestamp", context);
 
         Ok(Self {
             recipient,
@@ -725,13 +732,15 @@ impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R>> TryFromWith<proto
 }
 
 impl<
-        R: LookupPair<RecipientId, DestinationKind, M::RecipientReference> + AsRef<BackupMeta>,
+        C: LookupPair<RecipientId, DestinationKind, M::RecipientReference>
+            + AsRef<BackupMeta>
+            + ReportUnusualTimestamp,
         M: Method + ReferencedTypes,
-    > TryFromWith<proto::chat_item::Item, R> for ChatItemMessage<M>
+    > TryFromWith<proto::chat_item::Item, C> for ChatItemMessage<M>
 {
     type Error = ChatItemError;
 
-    fn try_from_with(value: proto::chat_item::Item, recipients: &R) -> Result<Self, Self::Error> {
+    fn try_from_with(value: proto::chat_item::Item, context: &C) -> Result<Self, Self::Error> {
         use proto::chat_item::Item;
 
         Ok(match value {
@@ -743,29 +752,29 @@ impl<
                 );
 
                 if is_voice_message {
-                    ChatItemMessage::Voice(message.try_into_with(recipients)?)
+                    ChatItemMessage::Voice(message.try_into_with(context)?)
                 } else {
-                    ChatItemMessage::Standard(message.try_into_with(recipients)?)
+                    ChatItemMessage::Standard(message.try_into_with(context)?)
                 }
             }
             Item::ContactMessage(message) => {
-                ChatItemMessage::Contact(message.try_into_with(recipients)?)
+                ChatItemMessage::Contact(message.try_into_with(context)?)
             }
             Item::StickerMessage(message) => {
-                ChatItemMessage::Sticker(message.try_into_with(recipients)?)
+                ChatItemMessage::Sticker(message.try_into_with(context)?)
             }
             Item::RemoteDeletedMessage(proto::RemoteDeletedMessage { special_fields: _ }) => {
                 ChatItemMessage::RemoteDeleted
             }
             Item::UpdateMessage(message) => {
-                ChatItemMessage::Update(message.try_into_with(recipients)?)
+                ChatItemMessage::Update(message.try_into_with(context)?)
             }
             Item::PaymentNotification(message) => {
-                ChatItemMessage::PaymentNotification(message.try_into()?)
+                ChatItemMessage::PaymentNotification(message.try_into_with(context)?)
             }
             Item::GiftBadge(badge) => ChatItemMessage::GiftBadge(M::boxed_value(badge.try_into()?)),
             Item::ViewOnceMessage(message) => {
-                ChatItemMessage::ViewOnce(message.try_into_with(recipients)?)
+                ChatItemMessage::ViewOnce(message.try_into_with(context)?)
             }
         })
     }

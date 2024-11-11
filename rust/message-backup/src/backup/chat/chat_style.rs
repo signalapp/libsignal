@@ -11,6 +11,7 @@ use itertools::Itertools as _;
 use crate::backup::file::{FilePointer, FilePointerError};
 use crate::backup::method::{Lookup, Method};
 use crate::backup::serialize::{SerializeOrder, UnorderedList};
+use crate::backup::time::ReportUnusualTimestamp;
 use crate::backup::{serialize, ReferencedTypes, TryFromWith, TryIntoWith as _};
 use crate::proto::backup as proto;
 
@@ -189,12 +190,12 @@ impl<M: ReferencedTypes> Lookup<CustomColorId, M::CustomColorReference> for Cust
     }
 }
 
-impl<C: Lookup<CustomColorId, M::CustomColorReference>, M: Method + ReferencedTypes>
-    TryFromWith<proto::ChatStyle, C> for ChatStyle<M>
-{
-    type Error = ChatStyleError;
-
-    fn try_from_with(value: proto::ChatStyle, context: &C) -> Result<Self, Self::Error> {
+impl<M: Method + ReferencedTypes> ChatStyle<M> {
+    pub fn try_from_proto(
+        value: proto::ChatStyle,
+        color_map: &impl Lookup<CustomColorId, M::CustomColorReference>,
+        context: &dyn ReportUnusualTimestamp,
+    ) -> Result<Self, ChatStyleError> {
         let proto::ChatStyle {
             wallpaper,
             bubbleColor,
@@ -202,11 +203,11 @@ impl<C: Lookup<CustomColorId, M::CustomColorReference>, M: Method + ReferencedTy
             special_fields: _,
         } = value;
 
-        let wallpaper = wallpaper.map(TryInto::try_into).transpose()?;
+        let wallpaper = wallpaper.map(|w| w.try_into_with(context)).transpose()?;
 
         let bubble_color = bubbleColor
             .ok_or(ChatStyleError::NoBubbleColor)?
-            .try_into_with(context)?;
+            .try_into_with(color_map)?;
 
         Ok(Self {
             wallpaper,
@@ -216,17 +217,24 @@ impl<C: Lookup<CustomColorId, M::CustomColorReference>, M: Method + ReferencedTy
     }
 }
 
-impl<M: Method> TryFrom<proto::chat_style::Wallpaper> for Wallpaper<M> {
+impl<C: ReportUnusualTimestamp + ?Sized, M: Method> TryFromWith<proto::chat_style::Wallpaper, C>
+    for Wallpaper<M>
+{
     type Error = ChatStyleError;
 
-    fn try_from(value: proto::chat_style::Wallpaper) -> Result<Self, Self::Error> {
+    fn try_from_with(
+        value: proto::chat_style::Wallpaper,
+        context: &C,
+    ) -> Result<Self, Self::Error> {
         Ok(match value {
             proto::chat_style::Wallpaper::WallpaperPreset(preset) => Self::Preset(
                 WallpaperPreset::new(preset.enum_value_or_default())
                     .ok_or(ChatStyleError::UnknownPresetWallpaper)?,
             ),
             proto::chat_style::Wallpaper::WallpaperPhoto(photo) => Self::Photo(M::boxed_value(
-                photo.try_into().map_err(ChatStyleError::WallpaperPhoto)?,
+                photo
+                    .try_into_with(context)
+                    .map_err(ChatStyleError::WallpaperPhoto)?,
             )),
         })
     }
@@ -463,8 +471,9 @@ mod test {
 
     #[test]
     fn valid_chat_style() {
+        let test_context = TestContext::default();
         assert_eq!(
-            proto::ChatStyle::test_data().try_into_with(&TestContext::default()),
+            ChatStyle::try_from_proto(proto::ChatStyle::test_data(), &test_context, &test_context),
             Ok(ChatStyle::<Store> {
                 wallpaper: Some(Wallpaper::Preset(WallpaperPreset {
                     enum_value: proto::chat_style::WallpaperPreset::GRADIENT_AQUA
@@ -585,9 +594,8 @@ mod test {
     fn chat_style(modifier: fn(&mut proto::ChatStyle)) -> Result<(), ChatStyleError> {
         let mut proto = proto::ChatStyle::test_data();
         modifier(&mut proto);
-        proto
-            .try_into_with(&TestContext::default())
-            .map(|_: ChatStyle<Store>| ())
+        let test_context = TestContext::default();
+        ChatStyle::try_from_proto(proto, &test_context, &test_context).map(|_: ChatStyle<Store>| ())
     }
 
     #[test]

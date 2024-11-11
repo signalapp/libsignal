@@ -11,8 +11,8 @@
 use hex::ToHex as _;
 use uuid::Uuid;
 
-use crate::backup::serialize;
-use crate::backup::time::Timestamp;
+use crate::backup::time::{ReportUnusualTimestamp, Timestamp};
+use crate::backup::{serialize, TryFromWith, TryIntoWith};
 use crate::proto::backup as proto;
 
 #[derive(Debug, serde::Serialize)]
@@ -62,10 +62,15 @@ pub enum AttachmentLocatorError {
     InvalidMediaName,
 }
 
-impl TryFrom<proto::file_pointer::Locator> for AttachmentLocator {
+impl<C: ReportUnusualTimestamp + ?Sized> TryFromWith<proto::file_pointer::Locator, C>
+    for AttachmentLocator
+{
     type Error = AttachmentLocatorError;
 
-    fn try_from(value: proto::file_pointer::Locator) -> Result<Self, Self::Error> {
+    fn try_from_with(
+        value: proto::file_pointer::Locator,
+        context: &C,
+    ) -> Result<Self, Self::Error> {
         match value {
             proto::file_pointer::Locator::BackupLocator(proto::file_pointer::BackupLocator {
                 mediaName,
@@ -133,7 +138,11 @@ impl TryFrom<proto::file_pointer::Locator> for AttachmentLocator {
                 }
 
                 let upload_timestamp = uploadTimestamp.map(|upload_timestamp| {
-                    Timestamp::from_millis(upload_timestamp, "AttachmentLocator.uploadTimestamp")
+                    Timestamp::from_millis(
+                        upload_timestamp,
+                        "AttachmentLocator.uploadTimestamp",
+                        &context,
+                    )
                 });
 
                 Ok(Self::Transit {
@@ -182,10 +191,10 @@ pub enum FilePointerError {
     IncrementalMacMismatch,
 }
 
-impl TryFrom<proto::FilePointer> for FilePointer {
+impl<C: ReportUnusualTimestamp + ?Sized> TryFromWith<proto::FilePointer, C> for FilePointer {
     type Error = FilePointerError;
 
-    fn try_from(value: proto::FilePointer) -> Result<Self, Self::Error> {
+    fn try_from_with(value: proto::FilePointer, context: &C) -> Result<Self, Self::Error> {
         let proto::FilePointer {
             locator,
             contentType,
@@ -199,7 +208,9 @@ impl TryFrom<proto::FilePointer> for FilePointer {
             special_fields: _,
         } = value;
 
-        let locator = locator.ok_or(FilePointerError::NoLocator)?.try_into()?;
+        let locator = locator
+            .ok_or(FilePointerError::NoLocator)?
+            .try_into_with(context)?;
 
         if incrementalMac.is_some() != incrementalMacChunkSize.is_some() {
             return Err(FilePointerError::IncrementalMacMismatch);
@@ -246,10 +257,12 @@ pub enum MessageAttachmentError {
     InvalidUuid,
 }
 
-impl TryFrom<proto::MessageAttachment> for MessageAttachment {
+impl<C: ReportUnusualTimestamp + ?Sized> TryFromWith<proto::MessageAttachment, C>
+    for MessageAttachment
+{
     type Error = MessageAttachmentError;
 
-    fn try_from(value: proto::MessageAttachment) -> Result<Self, Self::Error> {
+    fn try_from_with(value: proto::MessageAttachment, context: &C) -> Result<Self, Self::Error> {
         let proto::MessageAttachment {
             pointer,
             flag,
@@ -266,7 +279,7 @@ impl TryFrom<proto::MessageAttachment> for MessageAttachment {
         let pointer = pointer
             .into_option()
             .ok_or(MessageAttachmentError::NoFilePointer)?
-            .try_into()?;
+            .try_into_with(context)?;
 
         Ok(MessageAttachment {
             pointer,
@@ -283,6 +296,7 @@ mod test {
     use test_case::test_case;
 
     use super::*;
+    use crate::backup::testutil::TestContext;
     use crate::backup::time::testutil::MillisecondsSinceEpoch;
 
     impl proto::file_pointer::BackupLocator {
@@ -306,7 +320,7 @@ mod test {
             proto::file_pointer::Locator::BackupLocator(
                 proto::file_pointer::BackupLocator::test_data()
             )
-            .try_into(),
+            .try_into_with(&TestContext::default()),
             Ok(AttachmentLocator::Backup {
                 cdn_number: Some(3),
                 key: vec![0x12, 0x34],
@@ -339,8 +353,11 @@ mod test {
     ) -> Result<(), AttachmentLocatorError> {
         let mut locator = proto::file_pointer::BackupLocator::test_data();
         modifier(&mut locator);
-        AttachmentLocator::try_from(proto::file_pointer::Locator::BackupLocator(locator))
-            .map(|_| ())
+        AttachmentLocator::try_from_with(
+            proto::file_pointer::Locator::BackupLocator(locator),
+            &TestContext::default(),
+        )
+        .map(|_| ())
     }
 
     impl proto::file_pointer::AttachmentLocator {
@@ -367,8 +384,11 @@ mod test {
     ) -> Result<(), AttachmentLocatorError> {
         let mut locator = proto::file_pointer::AttachmentLocator::test_data();
         modifier(&mut locator);
-        AttachmentLocator::try_from(proto::file_pointer::Locator::AttachmentLocator(locator))
-            .map(|_| ())
+        AttachmentLocator::try_from_with(
+            proto::file_pointer::Locator::AttachmentLocator(locator),
+            &TestContext::default(),
+        )
+        .map(|_| ())
     }
 
     impl proto::FilePointer {
@@ -435,7 +455,7 @@ mod test {
     ) -> Result<(), FilePointerError> {
         let mut pointer = proto::FilePointer::test_data();
         modifier(&mut pointer);
-        FilePointer::try_from(pointer).map(|_| ())
+        FilePointer::try_from_with(pointer, &TestContext::default()).map(|_| ())
     }
 
     impl proto::MessageAttachment {
