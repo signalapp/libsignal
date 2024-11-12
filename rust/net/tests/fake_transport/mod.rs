@@ -7,7 +7,7 @@ use futures_util::stream::StreamExt as _;
 use futures_util::Stream;
 use libsignal_net::auth::Auth;
 use libsignal_net::chat::{chat_service, Chat, ChatServiceWithDebugInfo};
-use libsignal_net::env::{ConnectionConfig, DomainConfig};
+use libsignal_net::env::{ConnectionConfig, DomainConfig, UserAgent};
 use libsignal_net::infra::connection_manager::MultiRouteConnectionManager;
 use libsignal_net::infra::errors::TransportConnectError;
 use libsignal_net::infra::host::Host;
@@ -140,7 +140,7 @@ impl FakeDeps {
         let (transport_connector, incoming_streams) = FakeTransportConnector::new([]);
         let endpoint_connection = libsignal_net::chat::endpoint_connection(
             &chat_domain_config.connect,
-            "libsignal test",
+            &UserAgent::with_libsignal_version("libsignal test"),
             true,
             &ObservableEvent::new(),
         );

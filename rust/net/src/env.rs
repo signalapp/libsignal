@@ -474,9 +474,8 @@ impl AsHttpHeader for UserAgent {
 
 pub fn add_user_agent_header(
     mut connection_params_list: Vec<ConnectionParams>,
-    user_agent: &str,
+    agent: &UserAgent,
 ) -> Vec<ConnectionParams> {
-    let agent = UserAgent::with_libsignal_version(user_agent);
     let (name, value) = agent.as_header();
     connection_params_list.iter_mut().for_each(|cp| {
         cp.http_request_decorator

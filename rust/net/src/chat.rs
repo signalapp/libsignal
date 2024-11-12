@@ -21,7 +21,7 @@ use libsignal_net_infra::{
 
 use crate::auth::Auth;
 use crate::chat::ws::{ChatOverWebSocketServiceConnector, ServerEvent};
-use crate::env::{add_user_agent_header, ConnectionConfig};
+use crate::env::{add_user_agent_header, ConnectionConfig, UserAgent};
 use crate::proto;
 
 mod error;
@@ -485,7 +485,7 @@ pub fn chat_service<T: TransportConnector + 'static>(
 
 pub fn endpoint_connection(
     connection_config: &ConnectionConfig,
-    user_agent: &str,
+    user_agent: &UserAgent,
     include_fallback: bool,
     network_change_event: &ObservableEvent,
 ) -> EndpointConnection<MultiRouteConnectionManager> {

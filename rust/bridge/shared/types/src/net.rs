@@ -15,7 +15,7 @@ use libsignal_net::auth::Auth;
 use libsignal_net::enclave::{
     Cdsi, EnclaveEndpoint, EnclaveEndpointConnection, EnclaveKind, Nitro, PpssSetup, Sgx, Tpm2Snp,
 };
-use libsignal_net::env::{add_user_agent_header, Env, Svr3Env};
+use libsignal_net::env::{add_user_agent_header, Env, Svr3Env, UserAgent};
 use libsignal_net::infra::connection_manager::MultiRouteConnectionManager;
 use libsignal_net::infra::dns::DnsResolver;
 use libsignal_net::infra::host::Host;
@@ -81,30 +81,31 @@ impl EndpointConnections {
             // testing. (Or the person running this isn't Signal.)
             env.chat_domain_config.connect.hostname
         );
+        let user_agent = UserAgent::with_libsignal_version(user_agent);
         let chat = libsignal_net::chat::endpoint_connection(
             &env.chat_domain_config.connect,
-            user_agent,
+            &user_agent,
             use_fallbacks,
             network_change_event,
         );
         let cdsi =
-            Self::endpoint_connection(&env.cdsi, user_agent, use_fallbacks, network_change_event);
+            Self::endpoint_connection(&env.cdsi, &user_agent, use_fallbacks, network_change_event);
         let svr3 = (
             Self::endpoint_connection(
                 env.svr3.sgx(),
-                user_agent,
+                &user_agent,
                 use_fallbacks,
                 network_change_event,
             ),
             Self::endpoint_connection(
                 env.svr3.nitro(),
-                user_agent,
+                &user_agent,
                 use_fallbacks,
                 network_change_event,
             ),
             Self::endpoint_connection(
                 env.svr3.tpm2snp(),
-                user_agent,
+                &user_agent,
                 use_fallbacks,
                 network_change_event,
             ),
@@ -114,7 +115,7 @@ impl EndpointConnections {
 
     fn endpoint_connection<E: EnclaveKind>(
         endpoint: &EnclaveEndpoint<'static, E>,
-        user_agent: &str,
+        user_agent: &UserAgent,
         include_fallback: bool,
         network_change_event: &ObservableEvent,
     ) -> EnclaveEndpointConnection<E, MultiRouteConnectionManager> {
