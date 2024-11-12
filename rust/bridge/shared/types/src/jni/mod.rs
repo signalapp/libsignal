@@ -29,6 +29,9 @@ use crate::net::cdsi::CdsiError;
 mod args;
 pub use args::*;
 
+mod chat;
+pub use chat::*;
+
 mod class_lookup;
 pub use class_lookup::*;
 

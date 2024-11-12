@@ -16,7 +16,7 @@ use paste::paste;
 use super::*;
 use crate::io::{InputStream, SyncInputStream};
 use crate::message_backup::MessageBackupValidationOutcome;
-use crate::net::chat::ResponseAndDebugInfo;
+use crate::net::chat::{MakeChatListener, ResponseAndDebugInfo};
 use crate::support::{Array, AsType, FixedLengthBincodeSerializable, Serialized};
 
 /// Converts arguments from their JNI form to their Rust form.
@@ -443,6 +443,28 @@ macro_rules! bridge_trait {
                     stored
                 }
             }
+
+            impl<'storage, 'param: 'storage, 'context: 'param> ArgTypeInfo<'storage, 'param, 'context>
+                for Option<&'storage dyn $name>
+            {
+                type ArgType = JObject<'context>;
+                type StoredType = Option<[<Jni $name>]<'storage>>;
+                fn borrow(
+                    env: &mut JNIEnv<'context>,
+                    store: &'param Self::ArgType,
+                ) -> Result<Self::StoredType, BridgeLayerError> {
+                    if store.is_null() {
+                        Ok(None)
+                    } else {
+                        Ok(Some([<Jni $name>]::new(env, store)?))
+                    }
+                }
+                fn load_from(
+                    stored: &'storage mut Self::StoredType,
+                ) -> Self {
+                    stored.as_ref().map(|x| x as &'storage dyn $name)
+                }
+            }
         }
     };
 }
@@ -455,6 +477,7 @@ bridge_trait!(SignedPreKeyStore);
 bridge_trait!(KyberPreKeyStore);
 bridge_trait!(InputStream);
 bridge_trait!(SyncInputStream);
+bridge_trait!(MakeChatListener);
 
 /// A translation from a Java interface where the implementing class wraps the Rust handle.
 impl<'a> SimpleArgTypeInfo<'a> for CiphertextMessageRef<'a> {
@@ -1372,6 +1395,9 @@ macro_rules! jni_arg_type {
         ::jni::objects::JLongArray<'local>
     };
     (&mut dyn $typ:ty) => {
+        ::paste::paste!(jni::[<Java $typ>]<'local>)
+    };
+    (Option<&dyn $typ:ty>) => {
         ::paste::paste!(jni::[<Java $typ>]<'local>)
     };
     (& $typ:ty) => {

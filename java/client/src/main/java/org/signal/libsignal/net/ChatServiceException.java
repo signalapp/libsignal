@@ -12,4 +12,8 @@ public class ChatServiceException extends IOException {
   public ChatServiceException(String message) {
     super(message);
   }
+
+  public ChatServiceException(String message, Throwable cause) {
+    super(message, cause);
+  }
 }

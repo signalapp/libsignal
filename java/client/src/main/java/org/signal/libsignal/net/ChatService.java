@@ -5,6 +5,7 @@
 
 package org.signal.libsignal.net;
 
+import java.lang.ref.WeakReference;
 import java.net.MalformedURLException;
 import java.util.Map;
 import java.util.function.Function;
@@ -13,17 +14,75 @@ import org.signal.libsignal.internal.CompletableFuture;
 import org.signal.libsignal.internal.FilterExceptions;
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
+import org.signal.libsignal.net.internal.MakeChatListener;
 
 /** Represents an API of communication with the Chat Service. */
 public abstract class ChatService extends NativeHandleGuard.SimpleOwner {
   private final TokioAsyncContext tokioAsyncContext;
+  protected final ChatListener chatListener;
 
   ChatService(
       final TokioAsyncContext tokioAsyncContext,
       final Network.ConnectionManager connectionManager,
-      Function<Long, Long> chatServiceCreateWrapper) {
+      Function<Long, Long> chatServiceCreateWrapper,
+      ChatListener chatListener) {
     super(connectionManager.guardedMap(chatServiceCreateWrapper::apply));
     this.tokioAsyncContext = tokioAsyncContext;
+    this.chatListener = chatListener;
+
+    if (chatListener != null) {
+      var listenerBridge = new ListenerBridge(this);
+      tokioAsyncContext.guardedRun(
+          asyncContextHandle ->
+              guardedRun(
+                  chatServiceHandle ->
+                      setListenerWrapper(asyncContextHandle, chatServiceHandle, listenerBridge)));
+    }
+  }
+
+  private static final class ListenerBridge implements MakeChatListener {
+    // Stored as a weak reference because otherwise we'll have a reference cycle:
+    // - After setting a listener, Rust has a GC GlobalRef to this ListenerBridge
+    // - This field is a normal Java reference to the ChatService
+    // - ChatService owns the Rust ChatService object
+    private final WeakReference<ChatService> chat;
+
+    ListenerBridge(ChatService chat) {
+      this.chat = new WeakReference<>(chat);
+    }
+
+    public void onIncomingMessage(
+        byte[] envelope, long serverDeliveryTimestamp, long sendAckHandle) {
+      ChatService chat = this.chat.get();
+      if (chat == null) return;
+      if (chat.chatListener == null) return;
+
+      chat.chatListener.onIncomingMessage(
+          chat,
+          envelope,
+          serverDeliveryTimestamp,
+          new ChatListener.ServerMessageAck(chat.tokioAsyncContext, sendAckHandle));
+    }
+
+    public void onQueueEmpty() {
+      ChatService chat = this.chat.get();
+      if (chat == null) return;
+      if (chat.chatListener == null) return;
+
+      chat.chatListener.onQueueEmpty(chat);
+    }
+
+    public void onConnectionInterrupted(Throwable disconnectReason) {
+      ChatService chat = this.chat.get();
+      if (chat == null) return;
+      if (chat.chatListener == null) return;
+
+      ChatServiceException disconnectReasonChatServiceException =
+          (disconnectReason instanceof ChatServiceException)
+              ? (ChatServiceException) disconnectReason
+              : new ChatServiceException("OtherDisconnectReason", disconnectReason);
+      chat.chatListener.onConnectionInterrupted(chat, disconnectReasonChatServiceException);
+    }
   }
 
   /**
@@ -136,6 +195,11 @@ public abstract class ChatService extends NativeHandleGuard.SimpleOwner {
       long nativeChatServiceHandle,
       long nativeRequestHandle,
       int timeoutMillis);
+
+  protected abstract void setListenerWrapper(
+      long nativeAsyncContextHandle,
+      long nativeChatServiceHandle,
+      MakeChatListener makeChatListener);
 
   static InternalRequest buildInternalRequest(final Request req) throws MalformedURLException {
     final InternalRequest result =

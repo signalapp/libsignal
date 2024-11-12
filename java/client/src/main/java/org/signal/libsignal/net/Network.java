@@ -147,14 +147,17 @@ public class Network {
     return this.connectionManager;
   }
 
-  public UnauthenticatedChatService createUnauthChatService() {
-    return new UnauthenticatedChatService(tokioAsyncContext, connectionManager);
+  public UnauthenticatedChatService createUnauthChatService(ChatListener listener) {
+    return new UnauthenticatedChatService(tokioAsyncContext, connectionManager, listener);
   }
 
   public AuthenticatedChatService createAuthChatService(
-      final String username, final String password, final boolean receiveStories) {
+      final String username,
+      final String password,
+      final boolean receiveStories,
+      ChatListener listener) {
     return new AuthenticatedChatService(
-        tokioAsyncContext, connectionManager, username, password, receiveStories);
+        tokioAsyncContext, connectionManager, username, password, receiveStories, listener);
   }
 
   static class ConnectionManager extends NativeHandleGuard.SimpleOwner {

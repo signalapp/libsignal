@@ -7,6 +7,7 @@ package org.signal.libsignal.net;
 
 import org.signal.libsignal.internal.CompletableFuture;
 import org.signal.libsignal.internal.Native;
+import org.signal.libsignal.net.internal.MakeChatListener;
 
 /**
  * Represents an authenticated communication channel with the ChatService.
@@ -20,13 +21,15 @@ public class AuthenticatedChatService extends ChatService {
       final Network.ConnectionManager connectionManager,
       final String username,
       final String password,
-      final boolean receiveStories) {
+      final boolean receiveStories,
+      ChatListener chatListener) {
     super(
         tokioAsyncContext,
         connectionManager,
         (connectionManagerHandle) ->
             Native.ChatService_new_auth(
-                connectionManagerHandle, username, password, receiveStories));
+                connectionManagerHandle, username, password, receiveStories),
+        chatListener);
   }
 
   // Implementing these abstract methods from ChatService allows UnauthenticatedChatService
@@ -67,5 +70,14 @@ public class AuthenticatedChatService extends ChatService {
   @Override
   protected void release(long nativeChatServiceHandle) {
     Native.AuthChat_Destroy(nativeChatServiceHandle);
+  }
+
+  @Override
+  protected void setListenerWrapper(
+      long nativeAsyncContextHandle,
+      long nativeChatServiceHandle,
+      MakeChatListener makeChatListener) {
+    Native.ChatService_SetListenerAuth(
+        nativeAsyncContextHandle, nativeChatServiceHandle, makeChatListener);
   }
 }

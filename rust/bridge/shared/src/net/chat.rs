@@ -189,7 +189,7 @@ async fn ChatService_auth_send_and_debug(
     })
 }
 
-#[bridge_fn(jni = false)]
+#[bridge_fn]
 fn ChatService_SetListenerAuth(
     runtime: &TokioAsyncContext,
     chat: &AuthChat,
@@ -205,7 +205,7 @@ fn ChatService_SetListenerAuth(
     chat.set_listener(listener, runtime)
 }
 
-#[bridge_fn(jni = false)]
+#[bridge_fn]
 fn ChatService_SetListenerUnauth(
     runtime: &TokioAsyncContext,
     chat: &UnauthChat,
