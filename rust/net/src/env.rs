@@ -448,7 +448,7 @@ impl ConnectionConfig {
             DomainFrontRouteProvider::new(HttpVersion::Http1_1, domain_front_configs),
             TlsRouteProvider::new(
                 cert.clone(),
-                Some(Arc::clone(&hostname)),
+                Host::Domain(Arc::clone(&hostname)),
                 DirectTcpRouteProvider::new(hostname, *port),
             ),
         )

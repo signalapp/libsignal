@@ -6,13 +6,14 @@
 use std::sync::Arc;
 
 use crate::certs::RootCertificates;
+use crate::host::Host;
 use crate::route::{ReplaceFragment, RouteProvider, SimpleRoute};
 use crate::Alpn;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct TlsRouteFragment {
     pub root_certs: RootCertificates,
-    pub sni: Option<Arc<str>>,
+    pub sni: Host<Arc<str>>,
     pub alpn: Option<Alpn>,
 }
 
@@ -20,13 +21,13 @@ pub type TlsRoute<T> = SimpleRoute<TlsRouteFragment, T>;
 
 #[derive(Debug)]
 pub struct TlsRouteProvider<P> {
-    pub(crate) sni: Option<Arc<str>>,
+    pub(crate) sni: Host<Arc<str>>,
     pub(crate) certs: RootCertificates,
     pub(crate) inner: P,
 }
 
 impl<T> TlsRouteProvider<T> {
-    pub fn new(certs: RootCertificates, sni: Option<Arc<str>>, inner: T) -> Self {
+    pub fn new(certs: RootCertificates, sni: Host<Arc<str>>, inner: T) -> Self {
         Self { sni, certs, inner }
     }
 }
@@ -75,5 +76,14 @@ impl<T> SetAlpn for TlsRoute<T> {
 impl SetAlpn for TlsRouteFragment {
     fn set_alpn(&mut self, alpn: Alpn) {
         self.alpn = Some(alpn);
+    }
+}
+
+impl<T, H> From<&TlsRoute<T>> for Host<H>
+where
+    for<'a> &'a T: Into<Host<H>>,
+{
+    fn from(value: &TlsRoute<T>) -> Self {
+        (&value.inner).into()
     }
 }

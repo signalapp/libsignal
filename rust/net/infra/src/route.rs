@@ -5,6 +5,9 @@
 
 use std::sync::Arc;
 
+mod connect;
+pub use connect::*;
+
 mod http;
 pub use http::*;
 
@@ -75,6 +78,12 @@ pub type HttpsServiceRoute<Addr> =
     HttpsTlsRoute<TlsRoute<DirectOrProxyRoute<TcpRoute<Addr>, ConnectionProxyRoute<Addr>>>>;
 pub type WebSocketServiceRoute<Addr> = WebSocketRoute<HttpsServiceRoute<Addr>>;
 
+impl From<Arc<str>> for UnresolvedHost {
+    fn from(value: Arc<str>) -> Self {
+        Self(value)
+    }
+}
+
 #[cfg(test)]
 mod test {
     use std::borrow::Cow;
@@ -121,7 +130,7 @@ mod test {
                     http_version: HttpVersion::Http2,
                 },
                 inner: TlsRouteProvider {
-                    sni: Some("sni-name".into()),
+                    sni: Host::Domain("sni-name".into()),
                     certs: ROOT_CERTS.clone(),
                     inner: DirectTcpRouteProvider {
                         dns_hostname: "target-host".into(),
@@ -148,7 +157,7 @@ mod test {
                     inner: TlsRoute {
                         fragment: TlsRouteFragment {
                             root_certs: ROOT_CERTS.clone(),
-                            sni: Some("sni-name".into()),
+                            sni: Host::Domain("sni-name".into()),
                             alpn: Some(Alpn::Http1_1),
                         },
                         inner: TcpRoute {
@@ -172,7 +181,7 @@ mod test {
                     inner: TlsRoute {
                         fragment: TlsRouteFragment {
                             root_certs: PROXY_ROOT_CERTS,
-                            sni: Some("front-sni1".into()),
+                            sni: Host::Domain("front-sni1".into()),
                             alpn: Some(Alpn::Http2),
                         },
                         inner: TcpRoute {
@@ -196,7 +205,7 @@ mod test {
                     inner: TlsRoute {
                         fragment: TlsRouteFragment {
                             root_certs: PROXY_ROOT_CERTS,
-                            sni: Some("front-sni2".into()),
+                            sni: Host::Domain("front-sni2".into()),
                             alpn: Some(Alpn::Http2),
                         },
                         inner: TcpRoute {
@@ -218,7 +227,7 @@ mod test {
         const PROXY_CERTS: RootCertificates = RootCertificates::FromDer(Cow::Borrowed(b"proxy"));
 
         let direct_provider = TlsRouteProvider {
-            sni: Some("direct-sni".into()),
+            sni: Host::Domain("direct-sni".into()),
             certs: ROOT_CERTS.clone(),
             inner: DirectTcpRouteProvider {
                 dns_hostname: "direct-target".into(),
@@ -242,7 +251,7 @@ mod test {
             vec![TlsRoute {
                 fragment: TlsRouteFragment {
                     root_certs: ROOT_CERTS.clone(),
-                    sni: Some("direct-sni".into()),
+                    sni: Host::Domain("direct-sni".into()),
                     alpn: None,
                 },
                 inner: ConnectionProxyRoute::Tls {
@@ -253,7 +262,7 @@ mod test {
                         },
                         fragment: TlsRouteFragment {
                             root_certs: PROXY_CERTS.clone(),
-                            sni: Some("tls-proxy".into()),
+                            sni: Host::Domain("tls-proxy".into()),
                             alpn: None,
                         },
                     },
@@ -271,7 +280,7 @@ mod test {
         };
 
         let direct_provider = TlsRouteProvider {
-            sni: Some("direct-sni".into()),
+            sni: Host::Domain("direct-sni".into()),
             certs: ROOT_CERTS.clone(),
             inner: DirectTcpRouteProvider {
                 dns_hostname: "direct-target".into(),
@@ -294,7 +303,7 @@ mod test {
         let expected_routes = vec![TlsRoute {
             fragment: TlsRouteFragment {
                 root_certs: ROOT_CERTS.clone(),
-                sni: Some("direct-sni".into()),
+                sni: Host::Domain("direct-sni".into()),
                 alpn: None,
             },
             inner: ConnectionProxyRoute::Socks(SocksRoute {

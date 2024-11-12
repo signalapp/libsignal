@@ -134,10 +134,7 @@ where
             } => {
                 let tls_fragment = TlsRouteFragment {
                     root_certs: proxy_certs.clone(),
-                    sni: match proxy_host {
-                        Host::Ip(_) => None,
-                        Host::Domain(domain) => Some(Arc::clone(domain)),
-                    },
+                    sni: proxy_host.clone(),
                     alpn: None,
                 };
 

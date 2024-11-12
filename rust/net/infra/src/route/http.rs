@@ -9,6 +9,7 @@ use std::sync::Arc;
 use nonzero_ext::nonzero;
 
 use crate::certs::RootCertificates;
+use crate::host::Host;
 use crate::route::{
     ReplaceFragment, RouteProvider, SetAlpn, SimpleRoute, TcpRoute, TlsRoute, TlsRouteFragment,
     UnresolvedHost,
@@ -111,7 +112,7 @@ impl RouteProvider for DomainFrontRouteProvider {
                         },
                         fragment: TlsRouteFragment {
                             root_certs: root_certs.clone(),
-                            sni: Some(Arc::clone(sni)),
+                            sni: Host::Domain(Arc::clone(sni)),
                             alpn: Some((*http_version).into()),
                         },
                     },
@@ -220,7 +221,7 @@ mod test {
                 http_version: HttpVersion::Http1_1,
             },
             inner: TlsRouteProvider {
-                sni: Some("direct-host".into()),
+                sni: Host::Domain("direct-host".into()),
                 certs: RootCertificates::Native,
                 inner: DirectTcpRouteProvider {
                     dns_hostname: "direct-tcp-host".into(),
@@ -242,7 +243,7 @@ mod test {
                     inner: TlsRoute {
                         fragment: TlsRouteFragment {
                             root_certs: RootCertificates::Native,
-                            sni: Some("direct-host".into()),
+                            sni: Host::Domain("direct-host".into()),
                             alpn: Some(Alpn::Http2)
                         },
                         inner: TcpRoute {
@@ -259,7 +260,7 @@ mod test {
                     inner: TlsRoute {
                         fragment: TlsRouteFragment {
                             root_certs: RootCertificates::Native,
-                            sni: Some("front-sni-1a".into()),
+                            sni: Host::Domain("front-sni-1a".into()),
                             alpn: Some(Alpn::Http1_1)
                         },
                         inner: TcpRoute {
@@ -276,7 +277,7 @@ mod test {
                     inner: TlsRoute {
                         fragment: TlsRouteFragment {
                             root_certs: RootCertificates::Native,
-                            sni: Some("front-sni-1b".into()),
+                            sni: Host::Domain("front-sni-1b".into()),
                             alpn: Some(Alpn::Http1_1)
                         },
                         inner: TcpRoute {
@@ -293,7 +294,7 @@ mod test {
                     inner: TlsRoute {
                         fragment: TlsRouteFragment {
                             root_certs: RootCertificates::Native,
-                            sni: Some("front-sni-2".into()),
+                            sni: Host::Domain("front-sni-2".into()),
                             alpn: Some(Alpn::Http1_1)
                         },
                         inner: TcpRoute {

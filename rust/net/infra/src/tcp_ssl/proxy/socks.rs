@@ -5,6 +5,7 @@
 
 use std::borrow::Cow;
 use std::fmt::Display;
+use std::future::Future;
 use std::net::IpAddr;
 use std::num::NonZeroU16;
 use std::sync::Arc;
@@ -21,6 +22,7 @@ use crate::dns::lookup_result::LookupResult;
 use crate::dns::DnsResolver;
 use crate::errors::TransportConnectError;
 use crate::host::Host;
+use crate::route::{Connector, ConnectorExt as _, SocksRoute, TcpRoute};
 use crate::{
     Alpn, ConnectionInfo, DnsSource, RouteType, StreamAndInfo, TransportConnectionParams,
     TransportConnector,
@@ -48,9 +50,11 @@ pub enum Protocol {
     },
 }
 
+pub type SocksStream = Either<Socks5Stream<TcpStream>, Socks4Stream<TcpStream>>;
+
 #[async_trait]
 impl TransportConnector for SocksConnector {
-    type Stream = SslStream<Either<Socks5Stream<TcpStream>, Socks4Stream<TcpStream>>>;
+    type Stream = SslStream<SocksStream>;
 
     async fn connect(
         &self,
@@ -64,6 +68,7 @@ impl TransportConnector for SocksConnector {
             proxy_port,
             dns_resolver,
         } = self;
+
         log::info!("establishing connection to host over SOCKS proxy");
         log::debug!(
             "establishing connection to {} over SOCKS proxy",
@@ -141,6 +146,60 @@ impl TransportConnector for SocksConnector {
                 address: remote_address.address,
             },
         ))
+    }
+}
+
+impl Connector<SocksRoute<IpAddr>, ()> for super::StatelessProxied {
+    type Connection = SocksStream;
+
+    type Error = TransportConnectError;
+
+    fn connect_over(
+        &self,
+        (): (),
+        route: SocksRoute<IpAddr>,
+    ) -> impl Future<Output = Result<Self::Connection, Self::Error>> + Send {
+        let SocksRoute {
+            protocol,
+            proxy,
+            target_addr,
+            target_port,
+        } = route;
+
+        async move {
+            log::info!("establishing connection to host over SOCKS proxy");
+            log::debug!(
+                "establishing connection to {:?} over SOCKS proxy",
+                target_addr
+            );
+
+            log::info!("connecting to {protocol:?} proxy over TCP");
+            let TcpRoute {
+                address: proxy_host,
+                port: proxy_port,
+            } = &proxy;
+            log::debug!("connecting to {protocol:?} proxy at {proxy_host}:{proxy_port} over TCP");
+
+            let target = match &target_addr {
+                crate::route::SocksTarget::ResolvedLocally(ip) => {
+                    TargetAddr::Ip((*ip, target_port.get()).into())
+                }
+                crate::route::SocksTarget::ResolvedRemotely { name } => {
+                    TargetAddr::Domain(Cow::Borrowed(name), target_port.get())
+                }
+            };
+
+            let stream = super::super::StatelessDirect
+                .connect(proxy)
+                .await
+                .map_err(|_: std::io::Error| TransportConnectError::TcpConnectionFailed)?;
+            log::info!("performing proxy handshake");
+            log::debug!("performing proxy handshake with {target:?}");
+            protocol
+                .connect_to_proxy(stream, target)
+                .await
+                .map_err(|_: tokio_socks::Error| TransportConnectError::ProxyProtocol)
+        }
     }
 }
 

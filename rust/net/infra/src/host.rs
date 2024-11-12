@@ -60,6 +60,18 @@ impl<S> Host<S> {
 
         Self::Domain(s.into())
     }
+
+    /// Transforms the `Domain` variant with the provided function.
+    ///
+    /// Like `Option::map`; this produces a new `Host` by applying `f` to the
+    /// `Domain` value if there is one, otherwise keeping the `Ip` value
+    /// untouched.
+    pub fn map_domain<T>(self, f: impl FnOnce(S) -> T) -> Host<T> {
+        match self {
+            Host::Ip(ip_addr) => Host::Ip(ip_addr),
+            Host::Domain(d) => Host::Domain(f(d)),
+        }
+    }
 }
 
 impl<S> From<Host<S>> for url::Host<S> {

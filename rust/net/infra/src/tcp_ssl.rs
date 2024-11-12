@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::future::Future;
+use std::net::IpAddr;
 use std::num::NonZeroU16;
 use std::sync::Arc;
 
@@ -18,7 +20,9 @@ use crate::certs::RootCertificates;
 use crate::dns::DnsResolver;
 use crate::errors::TransportConnectError;
 use crate::host::Host;
-use crate::route::ConnectionProxyConfig;
+use crate::route::{
+    ConnectionProxyConfig, Connector, ConnectorExt as _, TcpRoute, TlsRouteFragment,
+};
 use crate::tcp_ssl::proxy::tls::TlsProxyConnector;
 use crate::timeouts::TCP_CONNECTION_ATTEMPT_DELAY;
 #[cfg(feature = "dev-util")]
@@ -26,7 +30,8 @@ use crate::timeouts::TCP_CONNECTION_ATTEMPT_DELAY;
 use crate::utils::development_only_enable_nss_standard_debug_interop;
 use crate::utils::first_ok;
 use crate::{
-    Alpn, ConnectionInfo, RouteType, StreamAndInfo, TransportConnectionParams, TransportConnector,
+    Alpn, AsyncDuplexStream, ConnectionInfo, RouteType, StreamAndInfo, TransportConnectionParams,
+    TransportConnector,
 };
 
 pub mod proxy;
@@ -79,6 +84,9 @@ pub struct DirectConnector {
     pub dns_resolver: DnsResolver,
 }
 
+#[derive(Debug, Default)]
+pub struct StatelessDirect;
+
 #[async_trait]
 impl TransportConnector for DirectConnector {
     type Stream = SslStream<TcpStream>;
@@ -113,6 +121,59 @@ impl DirectConnector {
     }
 }
 
+impl Connector<TcpRoute<IpAddr>, ()> for StatelessDirect {
+    type Connection = TcpStream;
+
+    type Error = std::io::Error;
+
+    fn connect_over(
+        &self,
+        (): (),
+        route: TcpRoute<IpAddr>,
+    ) -> impl Future<Output = Result<Self::Connection, Self::Error>> {
+        let TcpRoute { address, port } = route;
+
+        TcpStream::connect((address, port.get()))
+    }
+}
+
+impl<Inner> Connector<TlsRouteFragment, Inner> for StatelessDirect
+where
+    Inner: AsyncDuplexStream,
+{
+    type Connection = tokio_boring_signal::SslStream<Inner>;
+
+    type Error = TransportConnectError;
+
+    fn connect_over(
+        &self,
+        inner: Inner,
+        fragment: TlsRouteFragment,
+    ) -> impl Future<Output = Result<Self::Connection, Self::Error>> + Send {
+        let TlsRouteFragment {
+            root_certs,
+            sni,
+            alpn,
+        } = fragment;
+        let host = sni;
+
+        let ssl_config =
+            ssl_config(&root_certs, host.as_deref(), alpn).map_err(TransportConnectError::from);
+
+        async move {
+            let domain = match &host {
+                Host::Ip(ip_addr) => either::Either::Left(ip_addr.to_string()),
+                Host::Domain(domain) => either::Either::Right(&**domain),
+            };
+            let ssl_config = ssl_config?;
+
+            tokio_boring_signal::connect(ssl_config, &domain, inner)
+                .await
+                .map_err(TransportConnectError::from)
+        }
+    }
+}
+
 fn ssl_config(
     certs: &RootCertificates,
     host: Host<&str>,
@@ -134,18 +195,18 @@ fn ssl_config(
     Ok(ssl.build().configure()?)
 }
 
-async fn connect_tls<S: AsyncRead + AsyncWrite + Unpin>(
+async fn connect_tls<S: AsyncDuplexStream>(
     transport: S,
     connection_params: &TransportConnectionParams,
     alpn: Alpn,
 ) -> Result<SslStream<S>, TransportConnectError> {
-    let ssl_config = ssl_config(
-        &connection_params.certs,
-        Host::Domain(&connection_params.sni),
-        Some(alpn),
-    )?;
+    let route = TlsRouteFragment {
+        root_certs: connection_params.certs.clone(),
+        sni: Host::Domain(Arc::clone(&connection_params.sni)),
+        alpn: Some(alpn),
+    };
 
-    Ok(tokio_boring_signal::connect(ssl_config, &connection_params.sni, transport).await?)
+    StatelessDirect.connect_over(transport, route).await
 }
 
 async fn connect_tcp(
@@ -186,13 +247,17 @@ async fn connect_tcp(
     // First, for each resolved IP address, constructing a future
     // that incorporates the delay based on its position in the list.
     // This way we can start all futures at once and simply wait for the first one to complete successfully.
+    let connector = StatelessDirect;
     let staggered_futures = dns_lookup.into_iter().enumerate().map(|(idx, ip)| {
         let delay = TCP_CONNECTION_ATTEMPT_DELAY * idx.try_into().unwrap();
+        let connector = &connector;
         async move {
             if !delay.is_zero() {
                 tokio::time::sleep(delay).await;
             }
-            TcpStream::connect((ip, port.into()))
+            let route = TcpRoute { address: ip, port };
+            connector
+                .connect(route)
                 .inspect_err(|e| {
                     log::debug!("failed to connect to IP [{ip}] with an error: {e:?}");
                 })

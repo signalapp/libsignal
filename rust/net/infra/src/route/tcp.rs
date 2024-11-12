@@ -3,9 +3,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::net::IpAddr;
 use std::num::NonZeroU16;
 use std::sync::Arc;
 
+use crate::host::Host;
 use crate::route::{ReplaceFragment, RouteProvider, UnresolvedHost};
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -19,6 +21,12 @@ impl<A> ReplaceFragment<Self> for TcpRoute<A> {
 
     fn replace<T>(self, make_fragment: impl FnOnce(Self) -> T) -> Self::Replacement<T> {
         make_fragment(self)
+    }
+}
+
+impl<D> From<&TcpRoute<IpAddr>> for Host<D> {
+    fn from(value: &TcpRoute<IpAddr>) -> Self {
+        Host::Ip(value.address)
     }
 }
 

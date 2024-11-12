@@ -593,7 +593,7 @@ mod test {
 
         let tls_fragment = TlsRouteFragment {
             root_certs: RootCertificates::Native,
-            sni: None,
+            sni: Host::Domain("target-domain".into()),
             alpn: None,
         };
 

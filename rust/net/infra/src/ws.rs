@@ -22,7 +22,7 @@ use tungstenite::protocol::CloseFrame;
 use tungstenite::{http, Message};
 
 use crate::errors::LogSafeDisplay;
-use crate::route::WebSocketRouteFragment;
+use crate::route::{Connector, HttpRouteFragment, WebSocketRouteFragment};
 use crate::service::{CancellationReason, CancellationToken, ServiceConnector};
 use crate::utils::timeout;
 use crate::ws::error::{HttpFormatError, ProtocolError, SpaceError};
@@ -141,6 +141,80 @@ pub enum WebSocketServiceError {
     HttpFormat(http::Error),
     Url(tungstenite::error::UrlError),
     Other(&'static str),
+}
+
+/// Stateless [`Connector`] implementation for websocket-over-HTTPS routes.
+#[derive(Default)]
+pub struct Stateless;
+
+/// Connects a websocket on top of an existing connection.
+///
+/// This can't just take as the route type a [`WebSocketRouteFragment`] because
+/// there are HTTP-level fields that also affect connection establishment.
+/// Conversely, a [`Connector`] for just a [`HttpRouteFragment`] doesn't make
+/// sense because there's no HTTP-level handshaking that establishes an HTTP
+/// connection (before HTTP/2).
+impl<Inner> Connector<(WebSocketRouteFragment, HttpRouteFragment), Inner> for Stateless
+where
+    Inner: AsyncDuplexStream,
+{
+    type Connection = tokio_tungstenite::WebSocketStream<Inner>;
+
+    type Error = tungstenite::Error;
+
+    fn connect_over(
+        &self,
+        inner: Inner,
+        route: (WebSocketRouteFragment, HttpRouteFragment),
+    ) -> impl std::future::Future<Output = Result<Self::Connection, Self::Error>> + Send {
+        let (
+            WebSocketRouteFragment {
+                ws_config,
+                endpoint,
+                headers,
+            },
+            HttpRouteFragment {
+                host_header,
+                path_prefix,
+            },
+        ) = route;
+
+        let uri_path = if path_prefix.is_empty() {
+            Ok(endpoint)
+        } else {
+            PathAndQuery::from_maybe_shared(format!("{path_prefix}{endpoint}"))
+        };
+
+        async move {
+            let uri = http::uri::Builder::new()
+                .path_and_query(uri_path?)
+                .authority(&*host_header)
+                .scheme("wss")
+                .build()?;
+
+            let mut builder = http::Request::builder();
+            *builder.headers_mut().expect("no headers, so not invalid") = headers;
+
+            let request = builder
+                .header(http::header::HOST, &*host_header)
+                .uri(uri)
+                .method(http::Method::GET)
+                .header(http::header::CONNECTION, "Upgrade")
+                .header(http::header::UPGRADE, "websocket")
+                .header(http::header::SEC_WEBSOCKET_VERSION, "13")
+                .header(
+                    http::header::SEC_WEBSOCKET_KEY,
+                    tungstenite::handshake::client::generate_key(),
+                )
+                .body(())?;
+
+            let (stream, _response) =
+                tokio_tungstenite::client_async_with_config(request, inner, Some(ws_config))
+                    .await?;
+
+            Ok(stream)
+        }
+    }
 }
 
 impl LogSafeDisplay for WebSocketServiceError {}
@@ -544,6 +618,7 @@ impl<T> NextOrClose<T> {
 pub mod testutil {
     use tokio::io::DuplexStream;
     use tokio_tungstenite::WebSocketStream;
+    use tungstenite::protocol::WebSocketConfig;
 
     use super::*;
     use crate::timeouts::{WS_KEEP_ALIVE_INTERVAL, WS_MAX_IDLE_INTERVAL};
@@ -552,11 +627,23 @@ pub mod testutil {
     pub async fn fake_websocket() -> (WebSocketStream<DuplexStream>, WebSocketStream<DuplexStream>)
     {
         let (client, server) = tokio::io::duplex(1024);
-        let req = url::Url::parse("ws://localhost:8080/").unwrap();
-        let client_future = tokio_tungstenite::client_async(req, client);
+        let client_future = Stateless.connect_over(
+            client,
+            (
+                WebSocketRouteFragment {
+                    ws_config: WebSocketConfig::default(),
+                    endpoint: PathAndQuery::from_static("/"),
+                    headers: Default::default(),
+                },
+                HttpRouteFragment {
+                    host_header: "localhost".into(),
+                    path_prefix: "".into(),
+                },
+            ),
+        );
         let server_future = tokio_tungstenite::accept_async(server);
         let (client_res, server_res) = tokio::join!(client_future, server_future);
-        let (client_stream, _) = client_res.unwrap();
+        let client_stream = client_res.unwrap();
         let server_stream = server_res.unwrap();
         (server_stream, client_stream)
     }

@@ -3,8 +3,70 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::future::Future;
+use std::net::IpAddr;
+
+use futures_util::TryFutureExt;
+use tokio::net::TcpStream;
+use tokio_boring_signal::SslStream;
+use tokio_util::either::Either;
+
+use crate::errors::TransportConnectError;
+use crate::route::{ConnectionProxyRoute, Connector, ConnectorExt as _, TlsRoute};
+use crate::tcp_ssl::proxy::socks::SocksStream;
+
 pub mod socks;
 pub mod tls;
+
+/// Stateless [`Connector`] impl for [`ConnectionProxyRoute`].
+#[derive(Debug, Default)]
+pub struct StatelessProxied;
+
+impl Connector<ConnectionProxyRoute<IpAddr>, ()> for StatelessProxied {
+    type Connection = Either<SslStream<TcpStream>, Either<TcpStream, SocksStream>>;
+
+    type Error = TransportConnectError;
+
+    fn connect_over(
+        &self,
+        (): (),
+        route: ConnectionProxyRoute<IpAddr>,
+    ) -> impl Future<Output = Result<Self::Connection, Self::Error>> + Send {
+        match route {
+            ConnectionProxyRoute::Tls { proxy } => {
+                let TlsRoute {
+                    fragment: tls_fragment,
+                    inner,
+                } = proxy;
+
+                let connector = super::StatelessDirect;
+                Either::Left(async move {
+                    let tcp = connector
+                        .connect(inner)
+                        .await
+                        .map_err(|_: std::io::Error| TransportConnectError::TcpConnectionFailed)?;
+                    connector
+                        .connect_over(tcp, tls_fragment)
+                        .await
+                        .map(Either::Left)
+                })
+            }
+            ConnectionProxyRoute::Tcp { proxy } => {
+                let connector = super::StatelessDirect;
+                Either::Right(Either::Left(async move {
+                    match connector.connect(proxy).await {
+                        Ok(connection) => Ok(Either::Right(Either::Left(connection))),
+                        Err(_io_error) => Err(TransportConnectError::TcpConnectionFailed),
+                    }
+                }))
+            }
+            ConnectionProxyRoute::Socks(route) => Either::Right(Either::Right(
+                self.connect(route)
+                    .map_ok(|connection| Either::Right(Either::Right(connection))),
+            )),
+        }
+    }
+}
 
 #[cfg(test)]
 pub(crate) mod testutil {
