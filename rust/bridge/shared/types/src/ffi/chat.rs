@@ -8,7 +8,7 @@ use std::ffi::{c_uchar, c_void};
 use libsignal_net::chat::ChatServiceError;
 
 use super::*;
-use crate::net::chat::{ChatListener, MakeChatListener, ServerMessageAck};
+use crate::net::chat::{ChatListener, ServerMessageAck};
 
 type ReceivedIncomingMessage = extern "C" fn(
     ctx: *mut c_void,
@@ -25,8 +25,15 @@ type DestroyChatListener = extern "C" fn(ctx: *mut c_void);
 /// Callbacks will be serialized (i.e. two calls will not come in at the same time), but may not
 /// always happen on the same thread. Calls should be responded to promptly to avoid blocking later
 /// messages.
+///
+/// # Safety
+///
+/// This type contains raw pointers. Code that constructs an instance of this type must ensure
+/// memory safety assuming that
+/// - the callback function pointer fields are called with `ctx` as an argument;
+/// - the `destroy` function pointer field is called with `ctx` as an argument;
+/// - no function pointer fields are called after `destroy` is called.
 #[repr(C)]
-#[derive(Copy, Clone)]
 pub struct FfiChatListenerStruct {
     ctx: *mut c_void,
     received_incoming_message: ReceivedIncomingMessage,
@@ -35,17 +42,38 @@ pub struct FfiChatListenerStruct {
     destroy: DestroyChatListener,
 }
 
-pub type FfiMakeChatListenerStruct = FfiChatListenerStruct;
+impl FfiChatListenerStruct {
+    /// Turns `self` into a type-erased [`ChatListener`].
+    ///
+    /// Takes ownership of the memory behind [`FfiChatListenerStruct::ctx`] and
+    /// produces a type-erased `ChatListener` that implements the trait methods
+    /// by delegating to the respective callbacks in `self`.
+    ///
+    /// # Safety
+    ///
+    /// The caller must ensure that this method is called at most once on an
+    /// `FfiChatListenerStruct`.
+    pub(crate) unsafe fn make_listener(&self) -> Box<dyn ChatListener> {
+        let FfiChatListenerStruct {
+            ctx,
+            received_incoming_message,
+            received_queue_empty,
+            connection_interrupted,
+            destroy,
+        } = *self;
+        Box::new(ChatListenerStruct(FfiChatListenerStruct {
+            ctx,
+            received_incoming_message,
+            received_queue_empty,
+            connection_interrupted,
+            destroy,
+        }))
+    }
+}
 
 // SAFETY: Chat listeners are used from multiple threads. It's up to the creator of the C struct to
 // make sure `ctx` is appropriate for this.
 unsafe impl Send for FfiChatListenerStruct {}
-
-impl MakeChatListener for &FfiChatListenerStruct {
-    fn make_listener(&self) -> Box<dyn ChatListener> {
-        Box::new(ChatListenerStruct(**self))
-    }
-}
 
 struct ChatListenerStruct(FfiChatListenerStruct);
 

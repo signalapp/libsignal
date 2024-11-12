@@ -14,7 +14,7 @@ use uuid::Uuid;
 
 use super::*;
 use crate::io::{InputStream, SyncInputStream};
-use crate::net::chat::MakeChatListener;
+use crate::net::chat::ChatListener;
 use crate::support::{extend_lifetime, AsType, FixedLengthBincodeSerializable, Serialized};
 
 /// Converts arguments from their FFI form to their Rust form.
@@ -385,7 +385,18 @@ bridge_trait!(SignedPreKeyStore);
 bridge_trait!(KyberPreKeyStore);
 bridge_trait!(InputStream);
 bridge_trait!(SyncInputStream);
-bridge_trait!(MakeChatListener);
+
+impl<'a> ArgTypeInfo<'a> for Option<Box<dyn ChatListener>> {
+    type ArgType = *const FfiChatListenerStruct;
+    type StoredType = Option<Box<dyn ChatListener>>;
+    #[allow(clippy::not_unsafe_ptr_arg_deref)]
+    fn borrow(foreign: Self::ArgType) -> SignalFfiResult<Self::StoredType> {
+        Ok(unsafe { foreign.as_ref().map(|f| f.make_listener()) })
+    }
+    fn load_from(stored: &'a mut Self::StoredType) -> Self {
+        stored.take()
+    }
+}
 
 impl<T: ResultTypeInfo, E> ResultTypeInfo for Result<T, E>
 where
@@ -851,6 +862,7 @@ macro_rules! ffi_arg_type {
     (&mut $typ:ty) => (*mut $typ);
     (Option<& $typ:ty>) => (*const $typ);
     (Box<[u8]>) => (ffi::BorrowedSliceOf<std::ffi::c_uchar>);
+    (Option<Box<dyn $typ:ty> >) => (*const ::paste::paste!(ffi::[<Ffi $typ Struct>]));
 
     (Ignored<$typ:ty>) => (*const std::ffi::c_void);
     (AsType<$typ:ident, $bridged:ident>) => (ffi_arg_type!($bridged));

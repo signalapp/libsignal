@@ -193,14 +193,12 @@ async fn ChatService_auth_send_and_debug(
 fn ChatService_SetListenerAuth(
     runtime: &TokioAsyncContext,
     chat: &AuthChat,
-    make_listener: Option<&dyn MakeChatListener>,
+    listener: Option<Box<dyn ChatListener>>,
 ) {
-    let Some(maker) = make_listener else {
+    let Some(listener) = listener else {
         chat.clear_listener();
         return;
     };
-
-    let listener = maker.make_listener();
 
     chat.set_listener(listener, runtime)
 }
@@ -209,14 +207,12 @@ fn ChatService_SetListenerAuth(
 fn ChatService_SetListenerUnauth(
     runtime: &TokioAsyncContext,
     chat: &UnauthChat,
-    make_listener: Option<&dyn MakeChatListener>,
+    listener: Option<Box<dyn ChatListener>>,
 ) {
-    let Some(maker) = make_listener else {
+    let Some(listener) = listener else {
         chat.clear_listener();
         return;
     };
-
-    let listener = maker.make_listener();
 
     chat.set_listener(listener, runtime)
 }

@@ -7,7 +7,7 @@ package org.signal.libsignal.net;
 
 import org.signal.libsignal.internal.CompletableFuture;
 import org.signal.libsignal.internal.Native;
-import org.signal.libsignal.net.internal.MakeChatListener;
+import org.signal.libsignal.net.internal.BridgeChatListener;
 
 /**
  * Represents an unauthenticated (i.e. hopefully anonymous) communication channel with the
@@ -68,8 +68,8 @@ public class UnauthenticatedChatService extends ChatService {
   protected void setListenerWrapper(
       long nativeAsyncContextHandle,
       long nativeChatServiceHandle,
-      MakeChatListener makeChatListener) {
+      BridgeChatListener bridgeChatListener) {
     Native.ChatService_SetListenerUnauth(
-        nativeAsyncContextHandle, nativeChatServiceHandle, makeChatListener);
+        nativeAsyncContextHandle, nativeChatServiceHandle, bridgeChatListener);
   }
 }

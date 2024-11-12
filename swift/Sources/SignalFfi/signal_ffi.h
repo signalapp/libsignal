@@ -664,6 +664,14 @@ typedef void (*SignalDestroyChatListener)(void *ctx);
  * Callbacks will be serialized (i.e. two calls will not come in at the same time), but may not
  * always happen on the same thread. Calls should be responded to promptly to avoid blocking later
  * messages.
+ *
+ * # Safety
+ *
+ * This type contains raw pointers. Code that constructs an instance of this type must ensure
+ * memory safety assuming that
+ * - the callback function pointer fields are called with `ctx` as an argument;
+ * - the `destroy` function pointer field is called with `ctx` as an argument;
+ * - no function pointer fields are called after `destroy` is called.
  */
 typedef struct {
   void *ctx;
@@ -672,8 +680,6 @@ typedef struct {
   SignalConnectionInterrupted connection_interrupted;
   SignalDestroyChatListener destroy;
 } SignalFfiChatListenerStruct;
-
-typedef SignalFfiChatListenerStruct SignalFfiMakeChatListenerStruct;
 
 typedef int (*SignalRead)(void *ctx, uint8_t *buf, size_t buf_len, size_t *amount_read);
 
@@ -1545,9 +1551,9 @@ SignalFfiError *signal_chat_service_auth_send(SignalCPromiseFfiChatResponse *pro
 
 SignalFfiError *signal_chat_service_auth_send_and_debug(SignalCPromiseFfiResponseAndDebugInfo *promise, const SignalTokioAsyncContext *async_runtime, const SignalAuthChat *chat, const SignalHttpRequest *http_request, uint32_t timeout_millis);
 
-SignalFfiError *signal_chat_service_set_listener_auth(const SignalTokioAsyncContext *runtime, const SignalAuthChat *chat, const SignalFfiMakeChatListenerStruct *make_listener);
+SignalFfiError *signal_chat_service_set_listener_auth(const SignalTokioAsyncContext *runtime, const SignalAuthChat *chat, const SignalFfiChatListenerStruct *listener);
 
-SignalFfiError *signal_chat_service_set_listener_unauth(const SignalTokioAsyncContext *runtime, const SignalUnauthChat *chat, const SignalFfiMakeChatListenerStruct *make_listener);
+SignalFfiError *signal_chat_service_set_listener_unauth(const SignalTokioAsyncContext *runtime, const SignalUnauthChat *chat, const SignalFfiChatListenerStruct *listener);
 
 SignalFfiError *signal_server_message_ack_destroy(SignalServerMessageAck *p);
 

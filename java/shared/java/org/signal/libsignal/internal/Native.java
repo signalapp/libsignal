@@ -16,7 +16,7 @@ import org.signal.libsignal.protocol.state.KyberPreKeyStore;
 import org.signal.libsignal.protocol.groups.state.SenderKeyStore;
 import org.signal.libsignal.protocol.logging.Log;
 import org.signal.libsignal.protocol.logging.SignalProtocolLogger;
-import org.signal.libsignal.net.internal.MakeChatListener;
+import org.signal.libsignal.net.internal.BridgeChatListener;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -208,8 +208,8 @@ public final class Native {
   public static native CompletableFuture<Long> CdsiLookup_new(long asyncRuntime, long connectionManager, String username, String password, long request);
   public static native byte[] CdsiLookup_token(long lookup);
 
-  public static native void ChatService_SetListenerAuth(long runtime, long chat, MakeChatListener makeListener);
-  public static native void ChatService_SetListenerUnauth(long runtime, long chat, MakeChatListener makeListener);
+  public static native void ChatService_SetListenerAuth(long runtime, long chat, BridgeChatListener listener);
+  public static native void ChatService_SetListenerUnauth(long runtime, long chat, BridgeChatListener listener);
   public static native CompletableFuture<Object> ChatService_auth_send(long asyncRuntime, long chat, long httpRequest, int timeoutMillis);
   public static native CompletableFuture<Object> ChatService_auth_send_and_debug(long asyncRuntime, long chat, long httpRequest, int timeoutMillis);
   public static native CompletableFuture<Object> ChatService_connect_auth(long asyncRuntime, long chat);

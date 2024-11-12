@@ -18,8 +18,8 @@ use paste::paste;
 use super::*;
 use crate::io::{InputStream, SyncInputStream};
 use crate::message_backup::MessageBackupValidationOutcome;
-use crate::net::chat::{MakeChatListener, ResponseAndDebugInfo};
-use crate::node::chat::NodeMakeChatListener;
+use crate::net::chat::{ChatListener, ResponseAndDebugInfo};
+use crate::node::chat::NodeChatListener;
 use crate::support::{extend_lifetime, Array, AsType, FixedLengthBincodeSerializable, Serialized};
 
 /// Converts arguments from their JavaScript form to their Rust form.
@@ -652,21 +652,19 @@ bridge_trait!(SignedPreKeyStore);
 bridge_trait!(KyberPreKeyStore);
 bridge_trait!(InputStream);
 
-impl<'storage, 'context: 'storage> ArgTypeInfo<'storage, 'context>
-    for &'storage dyn MakeChatListener
-{
+impl<'storage, 'context: 'storage> ArgTypeInfo<'storage, 'context> for Box<dyn ChatListener> {
     type ArgType = JsObject;
-    type StoredType = NodeMakeChatListener;
+    type StoredType = NodeChatListener;
 
     fn borrow(
         cx: &mut FunctionContext<'context>,
         foreign: Handle<'context, Self::ArgType>,
     ) -> NeonResult<Self::StoredType> {
-        NodeMakeChatListener::new(cx, foreign)
+        NodeChatListener::new(cx, foreign)
     }
 
     fn load_from(stored: &'storage mut Self::StoredType) -> Self {
-        stored
+        stored.make_listener()
     }
 }
 

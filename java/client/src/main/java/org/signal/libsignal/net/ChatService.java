@@ -14,7 +14,7 @@ import org.signal.libsignal.internal.CompletableFuture;
 import org.signal.libsignal.internal.FilterExceptions;
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
-import org.signal.libsignal.net.internal.MakeChatListener;
+import org.signal.libsignal.net.internal.BridgeChatListener;
 
 /** Represents an API of communication with the Chat Service. */
 public abstract class ChatService extends NativeHandleGuard.SimpleOwner {
@@ -40,7 +40,7 @@ public abstract class ChatService extends NativeHandleGuard.SimpleOwner {
     }
   }
 
-  private static final class ListenerBridge implements MakeChatListener {
+  private static final class ListenerBridge implements BridgeChatListener {
     // Stored as a weak reference because otherwise we'll have a reference cycle:
     // - After setting a listener, Rust has a GC GlobalRef to this ListenerBridge
     // - This field is a normal Java reference to the ChatService
@@ -199,7 +199,7 @@ public abstract class ChatService extends NativeHandleGuard.SimpleOwner {
   protected abstract void setListenerWrapper(
       long nativeAsyncContextHandle,
       long nativeChatServiceHandle,
-      MakeChatListener makeChatListener);
+      BridgeChatListener bridgeChatListener);
 
   static InternalRequest buildInternalRequest(final Request req) throws MalformedURLException {
     final InternalRequest result =

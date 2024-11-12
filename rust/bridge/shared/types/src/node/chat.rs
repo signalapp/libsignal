@@ -14,7 +14,7 @@ use neon::prelude::{Context, Finalize, JsObject, Object};
 use neon::result::NeonResult;
 use signal_neon_futures::call_method;
 
-use crate::net::chat::{ChatListener, MakeChatListener, ServerMessageAck};
+use crate::net::chat::{ChatListener, ServerMessageAck};
 use crate::node::{ResultTypeInfo, SignalNodeError as _};
 
 #[derive(Clone)]
@@ -88,11 +88,7 @@ impl ChatListener for NodeChatListener {
     }
 }
 
-pub struct NodeMakeChatListener {
-    listener: NodeChatListener,
-}
-
-impl NodeMakeChatListener {
+impl NodeChatListener {
     pub(crate) fn new(cx: &mut FunctionContext, callbacks: Handle<JsObject>) -> NeonResult<Self> {
         let mut channel = cx.channel();
         channel.unref(cx);
@@ -100,28 +96,24 @@ impl NodeMakeChatListener {
         let module = cx.this::<JsObject>()?;
 
         Ok(Self {
-            listener: NodeChatListener {
-                js_channel: channel,
-                roots: Arc::new(Roots {
-                    callback_object: callbacks.root(cx),
-                    module: module.root(cx),
-                }),
-            },
+            js_channel: channel,
+            roots: Arc::new(Roots {
+                callback_object: callbacks.root(cx),
+                module: module.root(cx),
+            }),
         })
     }
-}
 
-impl MakeChatListener for NodeMakeChatListener {
-    fn make_listener(&self) -> Box<dyn ChatListener> {
-        Box::new(self.listener.clone())
+    pub(crate) fn make_listener(&self) -> Box<dyn ChatListener> {
+        Box::new(self.clone())
     }
 }
 
-impl Finalize for NodeMakeChatListener {
+impl Finalize for NodeChatListener {
     fn finalize<'a, C: neon::prelude::Context<'a>>(self, cx: &mut C) {
-        log::info!("finalize NodeMakeChatListener");
-        self.listener.roots.finalize(cx);
-        log::info!("finalize NodeMakeChatListener done");
+        log::info!("finalize NodeChatListener");
+        self.roots.finalize(cx);
+        log::info!("finalize NodeChatListener done");
     }
 }
 

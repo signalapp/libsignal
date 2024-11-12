@@ -16,7 +16,7 @@ use paste::paste;
 use super::*;
 use crate::io::{InputStream, SyncInputStream};
 use crate::message_backup::MessageBackupValidationOutcome;
-use crate::net::chat::{MakeChatListener, ResponseAndDebugInfo};
+use crate::net::chat::{ChatListener, ResponseAndDebugInfo};
 use crate::support::{Array, AsType, FixedLengthBincodeSerializable, Serialized};
 
 /// Converts arguments from their JNI form to their Rust form.
@@ -477,7 +477,26 @@ bridge_trait!(SignedPreKeyStore);
 bridge_trait!(KyberPreKeyStore);
 bridge_trait!(InputStream);
 bridge_trait!(SyncInputStream);
-bridge_trait!(MakeChatListener);
+
+impl<'storage, 'param: 'storage, 'context: 'param> ArgTypeInfo<'storage, 'param, 'context>
+    for Option<Box<dyn ChatListener>>
+{
+    type ArgType = JObject<'context>;
+    type StoredType = Option<JniBridgeChatListener>;
+    fn borrow(
+        env: &mut JNIEnv<'context>,
+        store: &'param Self::ArgType,
+    ) -> Result<Self::StoredType, BridgeLayerError> {
+        if store.is_null() {
+            Ok(None)
+        } else {
+            Ok(Some(JniBridgeChatListener::new(env, store)?))
+        }
+    }
+    fn load_from(stored: &'storage mut Self::StoredType) -> Self {
+        stored.take().map(|j| j.into_listener())
+    }
+}
 
 /// A translation from a Java interface where the implementing class wraps the Rust handle.
 impl<'a> SimpleArgTypeInfo<'a> for CiphertextMessageRef<'a> {
@@ -1354,6 +1373,9 @@ macro_rules! jni_arg_type {
     };
     (Option<&[u8]>) => {
         ::jni::objects::JByteArray<'local>
+    };
+    (Option<Box<dyn ChatListener> >) =>{
+        jni::JavaBridgeChatListener<'local>
     };
     (&mut [u8]) => {
         ::jni::objects::JByteArray<'local>

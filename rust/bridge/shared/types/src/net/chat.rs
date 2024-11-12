@@ -380,13 +380,6 @@ impl dyn ChatListener {
     }
 }
 
-/// Separated from [`ChatListener`] to make the allocation explicit.
-///
-/// This simplifies the handling in `bridge_fn` signatures.
-pub trait MakeChatListener {
-    fn make_listener(&self) -> Box<dyn ChatListener>;
-}
-
 /// Wraps a named type and a single-use guard around [`chat::server_requests::AckEnvelopeFuture`].
 pub struct ServerMessageAck {
     inner: AtomicTake<chat::server_requests::ResponseEnvelopeSender>,

@@ -4,44 +4,37 @@
 //
 
 use super::*;
-use crate::net::chat::{ChatListener, MakeChatListener, ServerMessageAck};
+use crate::net::chat::{ChatListener, ServerMessageAck};
 
-pub type JavaMakeChatListener<'a> = JObject<'a>;
+pub type JavaBridgeChatListener<'a> = JObject<'a>;
 
-pub struct JniChatListener {
-    vm: JavaVM,
-    listener: GlobalRef,
-}
+pub struct JniBridgeChatListener(JniChatListener);
 
-pub type JniMakeChatListener<'unused> = JniChatListener;
-
-impl Clone for JniChatListener {
-    fn clone(&self) -> Self {
-        Self {
-            // The next release of the JNI crate should make JavaVM implement Clone.
-            // https://github.com/jni-rs/jni-rs/issues/503
-            vm: unsafe {
-                JavaVM::from_raw(self.vm.get_java_vm_pointer())
-                    .expect("copied from existing pointer")
-            },
-            listener: self.listener.clone(),
-        }
-    }
-}
-
-impl JniChatListener {
+impl JniBridgeChatListener {
     pub fn new(env: &mut JNIEnv<'_>, listener: &JObject) -> Result<Self, BridgeLayerError> {
         check_jobject_type(
             env,
             listener,
-            ClassName("org.signal.libsignal.net.internal.MakeChatListener"),
+            ClassName("org.signal.libsignal.net.internal.BridgeChatListener"),
         )?;
-        Ok(Self {
+        Ok(Self(JniChatListener {
             vm: env.get_java_vm().expect("can get VM"),
             listener: env.new_global_ref(listener).expect("can get env"),
-        })
+        }))
     }
 
+    pub(crate) fn into_listener(self) -> Box<dyn ChatListener> {
+        let Self(listener) = self;
+        Box::new(listener)
+    }
+}
+
+struct JniChatListener {
+    vm: JavaVM,
+    listener: GlobalRef,
+}
+
+impl JniChatListener {
     fn attach_and_log_on_error(
         &self,
         name: &'static str,
@@ -57,12 +50,6 @@ impl JniChatListener {
                 log::error!("failed to report {name}: {e}")
             }
         }
-    }
-}
-
-impl MakeChatListener for JniChatListener {
-    fn make_listener(&self) -> Box<dyn ChatListener> {
-        Box::new(self.clone())
     }
 }
 

@@ -7,7 +7,7 @@ package org.signal.libsignal.net;
 
 import org.signal.libsignal.internal.CompletableFuture;
 import org.signal.libsignal.internal.Native;
-import org.signal.libsignal.net.internal.MakeChatListener;
+import org.signal.libsignal.net.internal.BridgeChatListener;
 
 /**
  * Represents an authenticated communication channel with the ChatService.
@@ -76,8 +76,8 @@ public class AuthenticatedChatService extends ChatService {
   protected void setListenerWrapper(
       long nativeAsyncContextHandle,
       long nativeChatServiceHandle,
-      MakeChatListener makeChatListener) {
+      BridgeChatListener bridgeChatListener) {
     Native.ChatService_SetListenerAuth(
-        nativeAsyncContextHandle, nativeChatServiceHandle, makeChatListener);
+        nativeAsyncContextHandle, nativeChatServiceHandle, bridgeChatListener);
   }
 }

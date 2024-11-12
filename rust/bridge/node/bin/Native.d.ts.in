@@ -126,8 +126,6 @@ export abstract class ChatListener {
   ): void;
 }
 
-export abstract class MakeChatListener extends ChatListener {}
-
 type Wrapper<T> = Readonly<{
   _nativeHandle: T;
 }>;
