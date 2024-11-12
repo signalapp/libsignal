@@ -68,3 +68,9 @@ tokio = { workspace = true, features = ["test-util", "time", "macros"] }
 ffi = []
 jni = ["dep:jni", "zerocopy"]
 node = ["neon", "linkme", "signal-neon-futures"]
+
+[target.'cfg(not(windows))'.dependencies]
+# sha2's asm implementation uses standalone .S files that aren't compiled correctly on Windows.
+# This will be fixed in sha2 0.11, which also removes the "asm" feature and turns it on by default.
+# So when sha2 0.11 is released, this section will go away.
+sha2 = { workspace = true, features = ["asm"] }
