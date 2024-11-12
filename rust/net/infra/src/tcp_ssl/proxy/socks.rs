@@ -189,10 +189,7 @@ impl Connector<SocksRoute<IpAddr>, ()> for super::StatelessProxied {
                 }
             };
 
-            let stream = super::super::StatelessDirect
-                .connect(proxy)
-                .await
-                .map_err(|_: std::io::Error| TransportConnectError::TcpConnectionFailed)?;
+            let stream = super::super::StatelessDirect.connect(proxy).await?;
             log::info!("performing proxy handshake");
             log::debug!("performing proxy handshake with {target:?}");
             protocol

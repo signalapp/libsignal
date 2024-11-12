@@ -12,11 +12,15 @@ use derive_where::derive_where;
 use futures_util::TryFutureExt;
 use tokio_util::either::Either;
 
+use crate::errors::TransportConnectError;
 use crate::route::{
     ConnectionProxyRoute, DirectOrProxyRoute, HttpRouteFragment, HttpsTlsRoute, TcpRoute, TlsRoute,
     TlsRouteFragment, WebSocketRoute, WebSocketRouteFragment, WebSocketServiceRoute,
 };
 use crate::ws::WebSocketConnectError;
+
+mod throttle;
+pub use throttle::*;
 
 /// Establishes a connection to a route over an inner transport.
 pub trait Connector<R, Inner> {
@@ -77,12 +81,14 @@ pub struct ComposedConnector<Outer, Inner, Error> {
 
 /// Stateless connector that connects [`WebSocketServiceRoute<IpAddr>`]s.
 pub type StatelessWebSocketConnector = WebSocketHttpConnector;
+/// Stateless connector that connects [`TlsTransportRoute<IpAddr>`](super::TlsTransportRoute)s.
+pub type StatelessTransportConnector = TransportConnector;
 
 type TcpConnector = crate::tcp_ssl::StatelessDirect;
 type DirectProxyConnector =
-    DirectOrProxy<TcpConnector, crate::tcp_ssl::proxy::StatelessProxied, WebSocketConnectError>;
+    DirectOrProxy<TcpConnector, crate::tcp_ssl::proxy::StatelessProxied, TransportConnectError>;
 type TransportConnector =
-    ComposedConnector<crate::tcp_ssl::StatelessDirect, DirectProxyConnector, WebSocketConnectError>;
+    ComposedConnector<crate::tcp_ssl::StatelessDirect, DirectProxyConnector, TransportConnectError>;
 type WebSocketHttpConnector =
     ComposedConnector<crate::ws::Stateless, TransportConnector, WebSocketConnectError>;
 

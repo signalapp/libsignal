@@ -124,7 +124,7 @@ impl DirectConnector {
 impl Connector<TcpRoute<IpAddr>, ()> for StatelessDirect {
     type Connection = TcpStream;
 
-    type Error = std::io::Error;
+    type Error = TransportConnectError;
 
     fn connect_over(
         &self,
@@ -134,6 +134,7 @@ impl Connector<TcpRoute<IpAddr>, ()> for StatelessDirect {
         let TcpRoute { address, port } = route;
 
         TcpStream::connect((address, port.get()))
+            .map_err(|_e| TransportConnectError::TcpConnectionFailed)
     }
 }
 

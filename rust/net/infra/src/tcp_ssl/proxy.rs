@@ -41,10 +41,7 @@ impl Connector<ConnectionProxyRoute<IpAddr>, ()> for StatelessProxied {
 
                 let connector = super::StatelessDirect;
                 Either::Left(async move {
-                    let tcp = connector
-                        .connect(inner)
-                        .await
-                        .map_err(|_: std::io::Error| TransportConnectError::TcpConnectionFailed)?;
+                    let tcp = connector.connect(inner).await?;
                     connector
                         .connect_over(tcp, tls_fragment)
                         .await
