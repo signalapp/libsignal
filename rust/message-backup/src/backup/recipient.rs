@@ -389,7 +389,10 @@ impl<C: ReportUnusualTimestamp> TryFromWith<proto::Contact, C> for ContactData {
 
         match (&aci, &pni, &e164) {
             (None, None, None) => Err(RecipientError::ContactHasNoIdentifiers),
-            (_, Some(_), None) => Err(RecipientError::PniWithoutE164),
+            // There are a few scenarios where a client can learn of a PNI directly,
+            // such as a group's invite list. If we decide not to back up such PNIs
+            // as Contacts, we can re-enable this check:
+            // (_, Some(_), None) => Err(RecipientError::PniWithoutE164),
             _ => Ok(()),
         }?;
 
@@ -662,7 +665,7 @@ mod test {
     #[test_case(|x| x.visibility = proto::contact::Visibility::HIDDEN.into() => Ok(()); "visibility_hidden")]
     #[test_case(|x| x.visibility = EnumOrUnknown::default() => Ok(()); "visibility_default")]
     #[test_case(|x| x.e164 = Some(0) => Err(RecipientError::InvalidE164); "with_invalid_e164")]
-    #[test_case(|x| x.e164 = None => Err(RecipientError::PniWithoutE164); "no_e164")]
+    #[test_case(|x| x.e164 = None => Ok(()); "no_e164")]
     fn destination_contact(modifier: fn(&mut proto::Contact)) -> Result<(), RecipientError> {
         let mut contact = proto::Contact::test_data();
         modifier(&mut contact);
