@@ -33,7 +33,7 @@ publish_java: docker_image
 		-e ORG_GRADLE_PROJECT_signingPassword \
 		-e ORG_GRADLE_PROJECT_signingKey \
 		$(DOCKER_IMAGE) \
-		sh -c "cd src/java; ./gradlew publish closeAndReleaseSonatypeStagingRepository $(CROSS_COMPILE_SERVER)"
+		sh -c "cd src/java; ./gradlew publish closeAndReleaseStagingRepositories $(CROSS_COMPILE_SERVER)"
 
 # We could run these through Docker, but they would have the same result anyway.
 
