@@ -31,6 +31,7 @@ pub struct Quote<Recipient> {
 pub enum QuoteType {
     Normal,
     GiftBadge,
+    ViewOnce,
 }
 
 #[derive(Debug, serde::Serialize)]
@@ -98,7 +99,8 @@ impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R> + ReportUnusualTim
         let quote_type = match type_.enum_value_or_default() {
             proto::quote::Type::UNKNOWN => return Err(QuoteError::TypeUnknown),
             proto::quote::Type::NORMAL => QuoteType::Normal,
-            proto::quote::Type::GIFTBADGE => QuoteType::GiftBadge,
+            proto::quote::Type::GIFT_BADGE => QuoteType::GiftBadge,
+            proto::quote::Type::VIEW_ONCE => QuoteType::ViewOnce,
         };
 
         let text = text.into_option().map(|text| text.try_into()).transpose()?;

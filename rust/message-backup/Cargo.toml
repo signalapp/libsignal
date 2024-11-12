@@ -28,6 +28,7 @@ required-features = ["json"]
 libsignal-account-keys = { workspace = true }
 libsignal-core = { workspace = true }
 libsignal-message-backup-macros = { path = "macros" }
+libsignal-protocol = { workspace = true }
 signal-crypto = { workspace = true }
 usernames = { workspace = true }
 zkcredential = { workspace = true, features = ["rayon"] }

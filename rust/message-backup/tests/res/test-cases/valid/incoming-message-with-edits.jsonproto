@@ -133,9 +133,6 @@
       "id": 1,
       "recipientId": 6, // Group recipient
       "archived": false,
-      "pinnedOrder": 0,
-      "expirationTimerMs": 0,
-      "muteUntilMs": 0,
       "markedUnread": false,
       "dontNotifyForMentionsIfMuted": false,
     }

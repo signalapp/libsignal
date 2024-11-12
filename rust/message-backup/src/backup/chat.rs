@@ -10,7 +10,7 @@
 
 use std::fmt::Debug;
 use std::hash::Hash;
-use std::num::{NonZeroU32, NonZeroU64};
+use std::num::NonZeroU32;
 
 use derive_where::derive_where;
 
@@ -361,7 +361,8 @@ impl<
             }
         }?;
 
-        let pinned_order = NonZeroU32::new(pinnedOrder).map(PinOrder);
+        // For compatibility with earlier backups, allow 0 as "unpinned" for now.
+        let pinned_order = pinnedOrder.and_then(NonZeroU32::new).map(PinOrder);
         if let Some(pinned_order) = pinned_order {
             if let Some(_recipient) = context.lookup(&pinned_order) {
                 return Err(ChatError::DuplicatePinnedOrder(pinned_order));
@@ -373,11 +374,10 @@ impl<
             .map(|style| ChatStyle::try_from_proto(style, context, context))
             .transpose()?;
 
-        let expiration_timer =
-            NonZeroU64::new(expirationTimerMs).map(|t| Duration::from_millis(t.get()));
+        let expiration_timer = expirationTimerMs.map(Duration::from_millis);
 
-        let mute_until = NonZeroU64::new(muteUntilMs)
-            .map(|t| TimestampOrForever::from_millis(t.get(), "Chat.muteUntilMs", context));
+        let mute_until =
+            muteUntilMs.map(|t| TimestampOrForever::from_millis(t, "Chat.muteUntilMs", context));
 
         if expiration_timer.is_some() && expireTimerVersion == 0 {
             return Err(ChatError::MissingExpireTimerVersion(recipient_id));
@@ -521,11 +521,9 @@ impl<
             .collect::<Result<_, _>>()?;
 
         let sent_at = Timestamp::from_millis(dateSent, "ChatItem.dateSent", context);
-        let expire_start = NonZeroU64::new(expireStartDate)
-            .map(|date| Timestamp::from_millis(date.into(), "ChatItem.expireStartDate", context));
-        let expires_in = NonZeroU64::new(expiresInMs)
-            .map(Into::into)
-            .map(Duration::from_millis);
+        let expire_start = expireStartDate
+            .map(|date| Timestamp::from_millis(date, "ChatItem.expireStartDate", context));
+        let expires_in = expiresInMs.map(Into::into).map(Duration::from_millis);
 
         match (expire_start, expires_in) {
             (None, None) => {
@@ -809,8 +807,8 @@ mod test {
                         ..Default::default()
                     },
                 )),
-                expireStartDate: MillisecondsSinceEpoch::TEST_VALUE.0,
-                expiresInMs: 24 * 60 * 60 * 1000,
+                expireStartDate: Some(MillisecondsSinceEpoch::TEST_VALUE.0),
+                expiresInMs: Some(24 * 60 * 60 * 1000),
                 dateSent: MillisecondsSinceEpoch::TEST_VALUE.0,
                 ..Default::default()
             }
@@ -858,15 +856,15 @@ mod test {
     }
 
     #[test_case(|x| {
-        x.expirationTimerMs = 123456;
+        x.expirationTimerMs = Some(123456);
         x.expireTimerVersion = 3;
      } => Ok(()); "with_expiration_timer")]
-    #[test_case(|x| x.expirationTimerMs = 123456 => Err(ChatError::MissingExpireTimerVersion(TestContext::SELF_ID)); "with_expiration_timer_only")]
+    #[test_case(|x| x.expirationTimerMs = Some(123456) => Err(ChatError::MissingExpireTimerVersion(TestContext::SELF_ID)); "with_expiration_timer_only")]
     #[test_case(|x| x.expireTimerVersion = 3 => Ok(()); "with_expire_timer_version_only")]
-    #[test_case(|x| x.muteUntilMs = MillisecondsSinceEpoch::TEST_VALUE.0 => Ok(()); "with mute until")]
+    #[test_case(|x| x.muteUntilMs = Some(MillisecondsSinceEpoch::TEST_VALUE.0) => Ok(()); "with mute until")]
     #[test_case(
-        |x| x.pinnedOrder = TestContext::DUPLICATE_PINNED_ORDER.0.get() =>
-        Err(ChatError::DuplicatePinnedOrder(TestContext::DUPLICATE_PINNED_ORDER,));
+        |x| x.pinnedOrder = Some(TestContext::DUPLICATE_PINNED_ORDER.0.get()) =>
+        Err(ChatError::DuplicatePinnedOrder(TestContext::DUPLICATE_PINNED_ORDER));
         "duplicate_pinned_order"
     )]
     #[test_case(|x| {
@@ -1050,14 +1048,16 @@ mod test {
 
         let mut item = proto::ChatItem::test_data();
 
-        item.expireStartDate = received_at
-            .into_inner()
-            .duration_since(UNIX_EPOCH)
-            .expect("valid")
-            .as_millis()
-            .try_into()
-            .unwrap();
-        item.expiresInMs = until_expiration_ms;
+        item.expireStartDate = Some(
+            received_at
+                .into_inner()
+                .duration_since(UNIX_EPOCH)
+                .expect("valid")
+                .as_millis()
+                .try_into()
+                .unwrap(),
+        );
+        item.expiresInMs = Some(until_expiration_ms);
 
         let result = ChatItemData::<Store>::try_from_with(item, &TestContext(meta))
             .map(|_| ())
@@ -1068,8 +1068,8 @@ mod test {
     #[test]
     fn expiration_start_without_duration() {
         let mut item = proto::ChatItem::test_data();
-        assert_ne!(item.expireStartDate, 0);
-        item.expiresInMs = 0;
+        assert!(item.expireStartDate.is_some());
+        item.expiresInMs = None;
 
         assert_matches!(
             ChatItemData::<Store>::try_from_with(item, &TestContext::default()),
@@ -1080,8 +1080,8 @@ mod test {
     #[test]
     fn expiration_duration_without_start() {
         let mut item = proto::ChatItem::test_data();
-        assert_ne!(item.expiresInMs, 0);
-        item.expireStartDate = 0;
+        assert!(item.expiresInMs.is_some());
+        item.expireStartDate = None;
 
         // This one is okay, it's an expiring message that hasn't been viewed yet.
         assert_matches!(

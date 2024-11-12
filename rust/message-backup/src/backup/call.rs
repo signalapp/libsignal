@@ -42,7 +42,7 @@ pub struct GroupCall<Recipient> {
     pub started_call_recipient: Option<Recipient>,
     pub ringer_recipient: Option<Recipient>,
     pub started_at: Timestamp,
-    pub ended_at: Timestamp,
+    pub ended_at: Option<Timestamp>,
     pub read: bool,
 }
 
@@ -261,8 +261,9 @@ impl<C: LookupPair<RecipientId, DestinationKind, R> + ReportUnusualTimestamp, R:
             "GroupCall.startedCallTimestamp",
             context,
         );
-        let ended_at =
-            Timestamp::from_millis(endedCallTimestamp, "GroupCall.endedCallTimestamp", context);
+        let ended_at = endedCallTimestamp.map(|ended_at| {
+            Timestamp::from_millis(ended_at, "GroupCall.endedCallTimestamp", context)
+        });
         let id = callId.map(CallId);
 
         Ok(Self {
@@ -397,7 +398,7 @@ pub(crate) mod test {
                 ringerRecipientId: Some(proto::Recipient::TEST_ID),
                 state: proto::group_call::State::ACCEPTED.into(),
                 startedCallTimestamp: MillisecondsSinceEpoch::TEST_VALUE.0,
-                endedCallTimestamp: MillisecondsSinceEpoch::TEST_VALUE.0 + 1000,
+                endedCallTimestamp: Some(MillisecondsSinceEpoch::TEST_VALUE.0 + 1000),
                 read: true,
                 ..Default::default()
             }
@@ -507,7 +508,7 @@ pub(crate) mod test {
                 started_call_recipient: None,
                 ringer_recipient: Some(RecipientId(proto::Recipient::TEST_ID)),
                 started_at: Timestamp::test_value(),
-                ended_at: Timestamp::test_value() + Duration::from_millis(1000),
+                ended_at: Some(Timestamp::test_value() + Duration::from_millis(1000)),
                 read: true,
             })
         );
@@ -530,6 +531,7 @@ pub(crate) mod test {
         x.startedCallRecipientId = Some(TEST_CALL_LINK_RECIPIENT_ID.0)
     } => Err(CallError::InvalidCallStarter(TEST_CALL_LINK_RECIPIENT_ID, DestinationKind::CallLink)); "invalid call starter")]
     #[test_case(|x| x.state = EnumOrUnknown::default() => Err(CallError::UnknownState); "unknown_state")]
+    #[test_case(|x| x.endedCallTimestamp = None => Ok(()); "no end timestamp")]
     fn group_call(modifier: fn(&mut proto::GroupCall)) -> Result<(), CallError> {
         let mut call = proto::GroupCall::test_data();
         modifier(&mut call);

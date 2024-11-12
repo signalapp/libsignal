@@ -126,6 +126,16 @@ pub(crate) fn backup_key_as_hex<S: Serializer>(
     hex::encode(value.0).serialize(serializer)
 }
 
+pub(crate) fn optional_identity_key_hex<S: Serializer>(
+    value: &Option<libsignal_protocol::IdentityKey>,
+    serializer: S,
+) -> Result<S::Ok, S::Error> {
+    value
+        .as_ref()
+        .map(|key| key.serialize())
+        .serialize(serializer)
+}
+
 /// Serialization helper for [`UnorderedList`].
 ///
 /// Like [`std::cmp::Ord`] but only for use during serialization.

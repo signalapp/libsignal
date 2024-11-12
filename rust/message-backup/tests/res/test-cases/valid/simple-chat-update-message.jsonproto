@@ -118,9 +118,6 @@
       "id": 2,
       "recipientId": 5,
       "archived": false,
-      "pinnedOrder": 0,
-      "expirationTimerMs": 0,
-      "muteUntilMs": 0,
       "markedUnread": false,
       "dontNotifyForMentionsIfMuted": false,
     }

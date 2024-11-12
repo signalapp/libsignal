@@ -2270,6 +2270,7 @@ dependencies = [
  "libsignal-core",
  "libsignal-message-backup",
  "libsignal-message-backup-macros",
+ "libsignal-protocol",
  "log",
  "macro_rules_attribute",
  "mediasan-common",

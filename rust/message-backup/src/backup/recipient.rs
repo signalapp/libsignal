@@ -10,6 +10,7 @@ use std::sync::Arc;
 use derive_where::derive_where;
 use itertools::Itertools as _;
 use libsignal_core::{Aci, Pni, ServiceIdKind};
+use libsignal_protocol::IdentityKey;
 use uuid::Uuid;
 use zkgroup::ProfileKeyBytes;
 
@@ -38,6 +39,10 @@ pub enum RecipientError {
     InvalidE164,
     /// profile key is present but invalid
     InvalidProfileKey,
+    /// identity key is present but invalid
+    InvalidIdentityKey,
+    /// missing identity key for contact marked {0:?}
+    MissingIdentityKey(proto::contact::IdentityState),
     /// distribution destination has invalid UUID
     InvalidDistributionId,
     /// invalid group: {0}
@@ -171,6 +176,10 @@ pub struct ContactData {
     pub profile_given_name: Option<String>,
     pub profile_family_name: Option<String>,
     pub hide_story: bool,
+    #[serde(serialize_with = "serialize::optional_identity_key_hex")]
+    pub identity_key: Option<IdentityKey>,
+    #[serde(serialize_with = "serialize::enum_as_string")]
+    pub identity_state: proto::contact::IdentityState,
 }
 
 #[derive(Debug, serde::Serialize)]
@@ -331,6 +340,8 @@ impl<C: ReportUnusualTimestamp> TryFromWith<proto::Contact, C> for ContactData {
             profileGivenName,
             profileFamilyName,
             hideStory,
+            identityKey,
+            identityState,
             special_fields: _,
         } = value;
 
@@ -396,6 +407,22 @@ impl<C: ReportUnusualTimestamp> TryFromWith<proto::Contact, C> for ContactData {
             _ => Ok(()),
         }?;
 
+        let identity_key = identityKey
+            .map(|bytes| IdentityKey::decode(&bytes))
+            .transpose()
+            .map_err(|_| RecipientError::InvalidIdentityKey)?;
+
+        let identity_state = match identityState.enum_value_or_default() {
+            v @ proto::contact::IdentityState::DEFAULT => v,
+            v @ (proto::contact::IdentityState::VERIFIED
+            | proto::contact::IdentityState::UNVERIFIED) => {
+                if identity_key.is_none() {
+                    return Err(RecipientError::MissingIdentityKey(v));
+                }
+                v
+            }
+        };
+
         Ok(Self {
             aci,
             pni,
@@ -409,6 +436,8 @@ impl<C: ReportUnusualTimestamp> TryFromWith<proto::Contact, C> for ContactData {
             profile_given_name: profileGivenName,
             profile_family_name: profileFamilyName,
             hide_story: hideStory,
+            identity_key,
+            identity_state,
         })
     }
 }
@@ -519,6 +548,7 @@ impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R> + ReportUnusualTim
 
 #[cfg(test)]
 mod test {
+    use array_concat::concat_arrays;
     use assert_matches::assert_matches;
     use nonzero_ext::nonzero;
     use protobuf::EnumOrUnknown;
@@ -558,6 +588,8 @@ mod test {
         pub(crate) const TEST_PNI: [u8; 16] = [0xba; 16];
         pub(crate) const TEST_PROFILE_KEY: ProfileKeyBytes = [0x36; 32];
         pub(crate) const TEST_E164: E164 = E164(nonzero!(16505550101u64));
+        pub(crate) const TEST_IDENTITY_KEY_BYTES: [u8; 33] =
+            concat_arrays!([0x05 /*type byte*/], [0x01; 32]);
 
         fn test_data() -> Self {
             Self {
@@ -571,6 +603,8 @@ mod test {
                 username: Some("example.1234".to_owned()),
                 profileGivenName: Some("GivenName".to_owned()),
                 profileFamilyName: Some("FamilyName".to_owned()),
+                identityKey: Some(Self::TEST_IDENTITY_KEY_BYTES.to_vec()),
+                identityState: proto::contact::IdentityState::VERIFIED.into(),
 
                 ..Default::default()
             }
@@ -611,6 +645,10 @@ mod test {
                 profile_given_name: Some("GivenName".to_owned()),
                 profile_family_name: Some("FamilyName".to_owned()),
                 hide_story: false,
+                identity_key: Some(
+                    IdentityKey::decode(&proto::Contact::TEST_IDENTITY_KEY_BYTES).expect("valid"),
+                ),
+                identity_state: proto::contact::IdentityState::VERIFIED,
             }
         }
     }
@@ -666,6 +704,18 @@ mod test {
     #[test_case(|x| x.visibility = EnumOrUnknown::default() => Ok(()); "visibility_default")]
     #[test_case(|x| x.e164 = Some(0) => Err(RecipientError::InvalidE164); "with_invalid_e164")]
     #[test_case(|x| x.e164 = None => Ok(()); "no_e164")]
+    #[test_case(|x| x.identityState = proto::contact::IdentityState::UNVERIFIED.into() => Ok(()); "identity_unverified")]
+    #[test_case(|x| x.identityState = proto::contact::IdentityState::DEFAULT.into() => Ok(()); "identity_default")]
+    #[test_case(|x| x.identityKey = None => Err(RecipientError::MissingIdentityKey(proto::contact::IdentityState::VERIFIED)); "missing_identity_verified")]
+    #[test_case(|x| {
+        x.identityKey = None;
+        x.identityState = proto::contact::IdentityState::UNVERIFIED.into();
+    } => Err(RecipientError::MissingIdentityKey(proto::contact::IdentityState::UNVERIFIED)); "missing_identity_unverified")]
+    #[test_case(|x| {
+        x.identityKey = None;
+        x.identityState = proto::contact::IdentityState::DEFAULT.into();
+    } => Ok(()); "missing_identity_default")]
+    #[test_case(|x| x.identityKey = Some(vec![]) => Err(RecipientError::InvalidIdentityKey); "invalid_identity_key")]
     fn destination_contact(modifier: fn(&mut proto::Contact)) -> Result<(), RecipientError> {
         let mut contact = proto::Contact::test_data();
         modifier(&mut contact);
