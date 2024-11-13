@@ -36,6 +36,10 @@ android {
     }
 
     namespace "org.signal.libsignal.benchmarks"
+
+    packagingOptions {
+        doNotStrip '**/*.so'
+    }
 }
 
 dependencies {
