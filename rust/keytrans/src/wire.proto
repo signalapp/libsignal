@@ -124,6 +124,76 @@ message MonitorResponse {
     repeated bytes inclusion = 4;
 }
 
+
+/**
+ * ChatSearchResponse contains search proofs for each of the requested identifiers.
+ * Callers should use the top-level `FullTreeHead` for verification;
+ * the `FullTreeHead` field on the individual `SearchResponse`s will be empty.
+ */
+// This message is not used in the crate, but is simply reexported for convenience.
+message ChatSearchResponse {
+    /**
+     * A signed representation of the log tree's current state along with some
+     * additional information necessary for validation such as a consistency proof and an auditor-signed tree head.
+     */
+    FullTreeHead tree_head = 1;
+    /**
+     * The ACI search response is always provided.
+     */
+    CondensedTreeSearchResponse aci = 2;
+    /**
+     * This response is only provided if all of the conditions are met:
+     * - the E164 exists in the log
+     * - its mapped ACI matches the one provided in the request
+     * - the account associated with the ACI is discoverable
+     * - the unidentified access key provided in E164SearchRequest matches the one on the account
+     */
+    optional CondensedTreeSearchResponse e164 = 3;
+    /**
+     * This response is only provided if the username hash exists in the log and
+     * its mapped ACI matches the one provided in the request.
+     */
+    optional CondensedTreeSearchResponse username_hash = 4;
+}
+
+/**
+ * DistinguishedResponse contains the tree head and search proof for the most
+ * recent `distinguished` key in the log.
+ */
+message ChatDistinguishedResponse {
+  /**
+   * A signed representation of the log tree's current state along with some
+   * additional information necessary for validation such as a consistency proof and an auditor-signed tree head.
+   */
+  FullTreeHead tree_head = 1;
+  /**
+   * This search response is always provided.
+   */
+  CondensedTreeSearchResponse distinguished = 2;
+}
+
+message CondensedTreeSearchResponse {
+  /**
+   * A proof that is combined with the original requested identifier and the VRF public key
+   * and outputs whether the proof is valid, and if so, the commitment index.
+   */
+  bytes vrf_proof = 1;
+  /**
+   * A proof that the binary search for the given identifier was done correctly.
+   */
+  SearchProof search = 2;
+  /**
+   * A 32-byte value computed based on the log position of the identifier
+   * and a random 32 byte key that is only known by the key transparency service.
+   * It is provided so that clients can recompute and verify the commitment.
+   */
+  bytes opening = 3;
+  /**
+   * The new or updated value that the identifier maps to.
+   */
+  UpdateValue value = 4;
+}
+
 // StoredTreeHead is an encoded tree head stored on-disk.
 message StoredTreeHead {
     TreeHead tree_head = 1;

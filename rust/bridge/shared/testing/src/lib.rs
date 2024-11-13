@@ -18,6 +18,7 @@ pub fn test_only_fn_returns_123() -> u32 {
 }
 
 pub mod convert;
+mod keytrans;
 pub mod message_backup;
 pub mod net;
 #[cfg(feature = "node")]

@@ -26,6 +26,10 @@ public class NativeHandleGuard implements AutoCloseable {
    */
   public interface Owner {
     long unsafeNativeHandleWithoutGuard();
+
+    default NativeHandleGuard guard() {
+      return new NativeHandleGuard(this);
+    }
   }
 
   public abstract static class SimpleOwner implements Owner {

@@ -5,6 +5,8 @@ org.signal.libsignal.metadata.SealedSessionCipher:
     188:188:private static synthetic byte[] lambda$multiRecipientMessageForSingleRecipient$3(byte[])
 org.signal.libsignal.metadata.certificate.CertificateValidator:
     41:48:void validate(org.signal.libsignal.metadata.certificate.ServerCertificate)
+org.signal.libsignal.net.KeyTransparency:
+    11:11:KeyTransparency()
 org.signal.libsignal.protocol.ServiceId:
     private static final byte FIXED_WIDTH_BINARY_LENGTH
     private static final byte ACI_MARKER

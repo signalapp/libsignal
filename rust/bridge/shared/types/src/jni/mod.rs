@@ -18,6 +18,7 @@ pub use jni::JNIEnv;
 use jni::JavaVM;
 use libsignal_account_keys::Error as PinError;
 use libsignal_net::infra::ws::WebSocketServiceError;
+use libsignal_net::keytrans::Error as KeyTransNetError;
 use libsignal_net::svr3::Error as Svr3Error;
 use libsignal_protocol::*;
 use signal_crypto::Error as SignalCryptoError;
@@ -366,7 +367,8 @@ impl<'env> ConsumableException<'env> {
             | SignalJniError::SignalCrypto(SignalCryptoError::InvalidInputSize)
             | SignalJniError::SignalCrypto(SignalCryptoError::InvalidNonceSize)
             | SignalJniError::Bridge(BridgeLayerError::BadArgument(_))
-            | SignalJniError::Bridge(BridgeLayerError::IncorrectArrayLength { .. }) => {
+            | SignalJniError::Bridge(BridgeLayerError::IncorrectArrayLength { .. })
+            | SignalJniError::KeyTransparency(KeyTransNetError::DecodingFailed(_)) => {
                 (ClassName("java.lang.IllegalArgumentException"), error)
             }
 
@@ -671,6 +673,22 @@ impl<'env> ConsumableException<'env> {
                     | ChatServiceError::ServiceUnavailable
                     | ChatServiceError::ServiceIntentionallyDisconnected => {
                         ClassName("org.signal.libsignal.net.ChatServiceException")
+                    }
+                };
+                (class, error)
+            }
+
+            SignalJniError::KeyTransparency(ref inner) => {
+                let class = match inner {
+                    KeyTransNetError::DecodingFailed(_) => {
+                        unreachable!("should have been handled separately")
+                    }
+                    KeyTransNetError::ChatServiceError(_)
+                    | KeyTransNetError::RequestFailed(_)
+                    | KeyTransNetError::VerificationFailed(_)
+                    | KeyTransNetError::InvalidResponse(_)
+                    | KeyTransNetError::InvalidRequest(_) => {
+                        ClassName("org.signal.libsignal.net.KeyTransparencyException")
                     }
                 };
                 (class, error)

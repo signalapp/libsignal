@@ -55,6 +55,7 @@ pub enum SignalJniError {
     TestingError {
         exception_class: ClassName<'static>,
     },
+    KeyTransparency(libsignal_net::keytrans::Error),
 }
 
 /// Subset of errors that can happen in the bridge layer.
@@ -104,6 +105,7 @@ impl fmt::Display for SignalJniError {
             SignalJniError::TestingError { exception_class } => {
                 write!(f, "TestingError({})", exception_class)
             }
+            SignalJniError::KeyTransparency(e) => write!(f, "{}", e),
         }
     }
 }
@@ -307,6 +309,19 @@ impl From<Svr3Error> for SignalJniError {
             | Svr3Error::RestoreFailed(_)
             | Svr3Error::DataMissing
             | Svr3Error::RotationMachineTooManySteps => SignalJniError::Svr3(err),
+        }
+    }
+}
+
+impl From<KeyTransNetError> for SignalJniError {
+    fn from(err: KeyTransNetError) -> Self {
+        match err {
+            KeyTransNetError::ChatServiceError(e) => SignalJniError::ChatService(e),
+            KeyTransNetError::RequestFailed(_)
+            | KeyTransNetError::VerificationFailed(_)
+            | KeyTransNetError::InvalidResponse(_)
+            | KeyTransNetError::InvalidRequest(_)
+            | KeyTransNetError::DecodingFailed(_) => SignalJniError::KeyTransparency(err),
         }
     }
 }

@@ -45,6 +45,7 @@ pub mod incremental_mac;
 pub mod message_backup;
 
 pub mod io;
+pub mod keytrans;
 
 #[cfg(feature = "signal-media")]
 pub mod media {

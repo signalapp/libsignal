@@ -19,7 +19,9 @@ public class Network {
     STAGING(0),
     PRODUCTION(1);
 
-    private final int value;
+    // Intentionally package-private to be used in KeyTransparencyClient, without exposing it to the
+    // whole world.
+    final int value;
 
     Environment(int value) {
       this.value = value;
@@ -161,8 +163,11 @@ public class Network {
   }
 
   static class ConnectionManager extends NativeHandleGuard.SimpleOwner {
+    private final Environment environment;
+
     private ConnectionManager(Environment env, String userAgent) {
       super(Native.ConnectionManager_new(env.value, userAgent));
+      this.environment = env;
     }
 
     private void setProxy(String host, int port) throws IOException {
@@ -173,6 +178,10 @@ public class Network {
 
     private void clearProxy() {
       guardedRun(Native::ConnectionManager_clear_proxy);
+    }
+
+    public Environment environment() {
+      return this.environment;
     }
 
     private void setCensorshipCircumventionEnabled(boolean enabled) {

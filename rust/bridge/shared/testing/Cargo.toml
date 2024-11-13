@@ -18,12 +18,14 @@ attest = { workspace = true }
 libsignal-bridge-macros = { workspace = true }
 libsignal-bridge-types = { workspace = true }
 libsignal-core = { workspace = true }
+libsignal-keytrans = { workspace = true }
 libsignal-message-backup = { workspace = true, features = ["json"] }
 libsignal-net = { workspace = true }
 libsignal-protocol = { workspace = true }
 
 const-str = { workspace = true, features = ["std"] }
 futures-util = { workspace = true }
+hex-literal = { workspace = true }
 http = { workspace = true }
 nonzero_ext = { workspace = true }
 paste = { workspace = true }

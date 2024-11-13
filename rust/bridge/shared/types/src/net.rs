@@ -46,7 +46,7 @@ pub enum Environment {
 }
 
 impl Environment {
-    fn env<'a>(self) -> Env<'a, Svr3Env<'a>> {
+    pub fn env<'a>(self) -> Env<'a, Svr3Env<'a>> {
         match self {
             Self::Staging => libsignal_net::env::STAGING,
             Self::Prod => libsignal_net::env::PROD,

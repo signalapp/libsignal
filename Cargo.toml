@@ -48,6 +48,7 @@ attest = { path = "rust/attest" }
 device-transfer = { path = "rust/device-transfer" }
 libsignal-account-keys = { path = "rust/account-keys" }
 libsignal-core = { path = "rust/core" }
+libsignal-keytrans = { path = "rust/keytrans" }
 libsignal-message-backup = { path = "rust/message-backup" }
 libsignal-net = { path = "rust/net" }
 libsignal-protocol = { path = "rust/protocol" }

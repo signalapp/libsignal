@@ -20,6 +20,7 @@ libsignal-account-keys = { workspace = true }
 libsignal-bridge-macros = { workspace = true }
 libsignal-bridge-types = { workspace = true }
 libsignal-core = { workspace = true }
+libsignal-keytrans = { workspace = true }
 libsignal-message-backup = { workspace = true }
 libsignal-net = { workspace = true }
 libsignal-protocol = { workspace = true }

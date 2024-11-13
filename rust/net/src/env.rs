@@ -10,7 +10,9 @@ use std::num::NonZeroU16;
 use std::sync::Arc;
 
 use const_str::ip_addr;
+use hex_literal::hex;
 use http::HeaderValue;
+use libsignal_keytrans::{DeploymentMode, PublicConfig, VerifyingKey, VrfPublicKey};
 use libsignal_net_infra::certs::RootCertificates;
 use libsignal_net_infra::dns::lookup_result::LookupResult;
 use libsignal_net_infra::host::Host;
@@ -309,6 +311,13 @@ pub(crate) const ENDPOINT_PARAMS_SVR3_TPM2SNP_PROD: EndpointParams<'static, Tpm2
         raft_config: attest::constants::RAFT_CONFIG_SVR3_TPM2SNP_PROD,
     };
 
+const KEYTRANS_SIGNING_KEY_MATERIAL_STAGING: &[u8; 32] =
+    &hex!("12a21ad60d5a3978e19a3b0baa8c35c55a20e10d45f39e5cb34bf6e1b3cce432");
+const KEYTRANS_VRF_KEY_MATERIAL_STAGING: &[u8; 32] =
+    &hex!("1e71563470c1b8a6e0aadf280b6aa96f8ad064674e69b80292ee46d1ab655fcf");
+const KEYTRANS_AUDITOR_KEY_MATERIAL_STAGING: &[u8; 32] =
+    &hex!("1123b13ee32479ae6af5739e5d687b51559abf7684120511f68cde7a21a0e755");
+
 /// Configuration for a target network resource, like `chat.signal.org`.
 #[derive(Clone)]
 pub struct DomainConfig {
@@ -346,6 +355,12 @@ pub struct ConnectionProxyConfig {
     pub path_prefix: &'static str,
     /// The addresses for the proxies.
     pub configs: [ProxyConfig; 2],
+}
+
+pub struct KeyTransConfig {
+    pub signing_key_material: &'static [u8; 32],
+    pub vrf_key_material: &'static [u8; 32],
+    pub auditor_key_material: &'static [u8; 32],
 }
 
 impl DomainConfig {
@@ -532,11 +547,33 @@ impl ProxyConfig {
     }
 }
 
+impl From<KeyTransConfig> for PublicConfig {
+    fn from(src: KeyTransConfig) -> Self {
+        let KeyTransConfig {
+            signing_key_material,
+            vrf_key_material,
+            auditor_key_material,
+        } = src;
+        let signature_key =
+            VerifyingKey::from_bytes(signing_key_material).expect("valid signing key material");
+        let auditor_key =
+            VerifyingKey::from_bytes(auditor_key_material).expect("valid auditor key material");
+        let vrf_key = VrfPublicKey::try_from(*vrf_key_material).expect("valid VRF key material");
+        Self {
+            mode: DeploymentMode::ThirdPartyAuditing(auditor_key),
+            signature_key,
+            vrf_key,
+        }
+    }
+}
+
 pub struct Env<'a, Svr3> {
     pub cdsi: EnclaveEndpoint<'a, Cdsi>,
     pub svr2: EnclaveEndpoint<'a, SgxPreQuantum>,
     pub svr3: Svr3,
     pub chat_domain_config: DomainConfig,
+    // TODO: make non-optional when the public endpoints are up
+    pub keytrans_config: Option<KeyTransConfig>,
 }
 
 impl<'a> Env<'a, Svr3Env<'a>> {
@@ -547,6 +584,7 @@ impl<'a> Env<'a, Svr3Env<'a>> {
             svr2,
             svr3,
             chat_domain_config,
+            ..
         } = self;
         HashMap::from([
             cdsi.domain_config.static_fallback(),
@@ -614,6 +652,11 @@ pub const STAGING: Env<'static, Svr3Env> = Env {
             params: ENDPOINT_PARAMS_SVR3_TPM2SNP_STAGING,
         },
     ),
+    keytrans_config: Some(KeyTransConfig {
+        signing_key_material: KEYTRANS_SIGNING_KEY_MATERIAL_STAGING,
+        vrf_key_material: KEYTRANS_VRF_KEY_MATERIAL_STAGING,
+        auditor_key_material: KEYTRANS_AUDITOR_KEY_MATERIAL_STAGING,
+    }),
 };
 
 pub const PROD: Env<'static, Svr3Env> = Env {
@@ -640,6 +683,7 @@ pub const PROD: Env<'static, Svr3Env> = Env {
             params: ENDPOINT_PARAMS_SVR3_TPM2SNP_PROD,
         },
     ),
+    keytrans_config: None,
 };
 
 pub mod constants {

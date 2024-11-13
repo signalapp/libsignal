@@ -36,7 +36,7 @@ public class Svr3Test {
 
   @Before
   public void before() {
-    // These tests require access to staging SVR3, and will be ignored if the
+    // These tests require access to the SVR3 instances, and will be ignored if the
     // secret is not provided.
     Assume.assumeNotNull(ENCLAVE_SECRET);
     // Generating a random username for each test run to minimize the
@@ -168,7 +168,7 @@ public class Svr3Test {
   public void badShareSet() throws Exception {
     byte[] shareSet =
         state.net().svr3().backup(STORED_SECRET, TEST_PASSWORD, 1, state.auth()).get();
-    shareSet[0] ^= 0xff;
+    shareSet[0] ^= (byte) 0xff;
     try {
       state.net().svr3().restore(TEST_PASSWORD, shareSet, state.auth()).get();
     } catch (ExecutionException ex) {

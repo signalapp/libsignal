@@ -9,6 +9,7 @@ pub mod certs;
 pub mod chat;
 pub mod enclave;
 pub mod env;
+pub mod keytrans;
 pub mod proto;
 pub mod svr;
 pub mod svr3;

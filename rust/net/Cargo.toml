@@ -14,6 +14,7 @@ workspace = true
 [dependencies]
 attest = { workspace = true }
 libsignal-core = { workspace = true }
+libsignal-keytrans = { workspace = true }
 libsignal-net-infra = { path = "./infra" }
 libsignal-protocol = { workspace = true }
 libsignal-svr3 = { workspace = true }
@@ -28,9 +29,11 @@ displaydoc = { workspace = true }
 either = "1.10.0"
 futures-util = { workspace = true }
 hex = { workspace = true }
+hex-literal = { workspace = true }
 hmac = { workspace = true }
 http = { workspace = true }
 itertools = { workspace = true }
+lazy_static = { workspace = true }
 log = { workspace = true }
 nonzero_ext = { workspace = true }
 num_enum = { workspace = true }

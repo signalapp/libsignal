@@ -15,8 +15,8 @@ use crate::log::{evaluate_batch_proof, truncate_batch_proof, verify_consistency_
 use crate::prefix::{evaluate as evaluate_prefix, MalformedProof};
 use crate::wire::*;
 use crate::{
-    guide, log, vrf, DataUpdate, DeploymentMode, LastTreeHead, MonitorContext, MonitorUpdate,
-    MonitoringData, PublicConfig, SearchContext, SearchUpdate,
+    guide, log, vrf, DeploymentMode, LastTreeHead, LocalStateUpdate, MonitorContext,
+    MonitoringData, PublicConfig, SearchContext, SlimSearchRequest,
 };
 
 /// The range of allowed timestamp values relative to "now".
@@ -44,6 +44,8 @@ pub enum Error {
     /// Verification failed: {0}
     VerificationFailed(String),
 }
+
+impl std::error::Error for Error {}
 
 impl From<log::Error> for Error {
     fn from(err: log::Error) -> Self {
@@ -363,17 +365,16 @@ fn evaluate_vrf_proof(
 /// The shared implementation of verify_search and verify_update.
 fn verify_search_internal(
     config: &PublicConfig,
-    req: SearchRequest,
+    req: SlimSearchRequest,
     res: SearchResponse,
     context: SearchContext,
     monitor: bool,
     now: SystemTime,
-) -> Result<SearchUpdate> {
+) -> Result<LocalStateUpdate> {
     // NOTE: Update this function in tandem with truncate_search_response.
-    let SearchRequest {
+    let SlimSearchRequest {
         search_key,
         version,
-        ..
     } = req;
     let SearchResponse {
         tree_head,
@@ -478,10 +479,17 @@ fn verify_search_internal(
     }
     mdw.check_search_consistency(size, &index, search_proof.pos, result_id, ver, monitor)?;
     mdw.update(size, &steps)?;
-    Ok(SearchUpdate {
+
+    let monitoring_data_updates = mdw
+        .into_data_update()
+        .into_iter()
+        .map(|update| (search_key.clone(), update))
+        .collect();
+
+    Ok(LocalStateUpdate {
         tree_head: updated_tree_head.0,
         tree_root: updated_tree_head.1,
-        data: mdw.into_data_update(),
+        monitors: monitoring_data_updates,
     })
 }
 
@@ -490,12 +498,12 @@ fn verify_search_internal(
 /// application if this function returns successfully.
 pub fn verify_search(
     config: &PublicConfig,
-    req: SearchRequest,
+    req: SlimSearchRequest,
     res: SearchResponse,
     context: SearchContext,
     force_monitor: bool,
     now: SystemTime,
-) -> Result<SearchUpdate> {
+) -> Result<LocalStateUpdate> {
     verify_search_internal(config, req, res, context, force_monitor, now)
 }
 
@@ -507,15 +515,12 @@ pub fn verify_update(
     res: &UpdateResponse,
     context: SearchContext,
     now: SystemTime,
-) -> Result<SearchUpdate> {
+) -> Result<LocalStateUpdate> {
     verify_search_internal(
         config,
-        SearchRequest {
+        SlimSearchRequest {
             search_key: req.search_key.clone(),
             version: None,
-            consistency: req.consistency,
-            mapped_value: vec![],
-            unidentified_access_key: None,
         },
         SearchResponse {
             tree_head: res.tree_head.clone(),
@@ -541,7 +546,7 @@ pub fn verify_monitor<'a>(
     res: &'a MonitorResponse,
     context: MonitorContext,
     now: SystemTime,
-) -> Result<MonitorUpdate<'a>> {
+) -> Result<LocalStateUpdate> {
     // Verify proof responses are the expected lengths.
     if req.owned_keys.len() != res.owned_proofs.len() {
         return Err(Error::VerificationFailed(
@@ -625,13 +630,16 @@ pub fn verify_monitor<'a>(
         let data = data.get(&key.search_key).cloned();
         let mut mdw = MonitoringDataWrapper::new(data);
         mdw.update(size, entry)?;
-        data_updates.push((key.search_key.as_slice(), mdw.into_data_update()));
+
+        if let Some(data_update) = mdw.into_data_update() {
+            data_updates.push((key.search_key.clone(), data_update));
+        }
     }
 
-    Ok(MonitorUpdate {
+    Ok(LocalStateUpdate {
         tree_head: updated_tree_head.0,
         tree_root: updated_tree_head.1,
-        data: data_updates,
+        monitors: data_updates,
     })
 }
 
@@ -750,9 +758,8 @@ impl MonitoringDataWrapper {
         version: u32,
         owned: bool,
     ) -> Result<()> {
-        let data = match self.inner.as_mut() {
-            Some(data) => data,
-            None => return Ok(()),
+        let Some(data) = self.inner.as_mut() else {
+            return Ok(());
         };
 
         if *index != data.index {
@@ -805,9 +812,8 @@ impl MonitoringDataWrapper {
     /// verify_full_tree_head has succeeded to ensure that we don't store updated
     /// monitoring data tied to a tree head that isn't valid.
     fn update(&mut self, tree_size: u64, entries: &HashMap<u64, ProofStep>) -> Result<()> {
-        let data = match self.inner.as_mut() {
-            Some(data) => data,
-            None => return Ok(()),
+        let Some(data) = self.inner.as_mut() else {
+            return Ok(());
         };
 
         let mut changed = false;
@@ -856,13 +862,8 @@ impl MonitoringDataWrapper {
         Ok(())
     }
 
-    fn into_data_update(self) -> DataUpdate<MonitoringData> {
-        if self.changed {
-            if let Some(data) = self.inner {
-                return DataUpdate::Changed(data);
-            }
-        }
-        DataUpdate::Unchanged
+    fn into_data_update(self) -> Option<MonitoringData> {
+        self.inner.filter(|_| self.changed)
     }
 }
 
@@ -1026,20 +1027,21 @@ mod test {
             owned: true,
         };
         assert_matches!(
-            verify_search_internal(&config, request.clone(), response.clone(), SearchContext::default(), true, valid_at),
+            verify_search_internal(&config, request.clone().into(), response.clone(), SearchContext::default(), true, valid_at),
             Ok(update) => {
                 assert_eq!(update.tree_head, last_tree_head);
                 assert_eq!(update.tree_root, last_root);
-                assert_eq!(update.data, DataUpdate::Changed(expected_data_update));
+                assert_eq!(update.monitors.len(), 1);
+                assert_eq!(update.monitors[0].1, expected_data_update);
             }
         );
         assert_matches!(
-            verify_search_internal(&config, request.clone(), response.clone(), SearchContext::default(), false, valid_at),
+            verify_search_internal(&config, request.into(), response.clone(), SearchContext::default(), false, valid_at),
             Ok(update) => {
                 assert_eq!(update.tree_head, last_tree_head);
                 assert_eq!(update.tree_root, last_root);
                 // When monitor == false there should be no data update
-                assert_eq!(update.data, DataUpdate::Unchanged);
+                assert!(update.monitors.is_empty());
             }
         );
     }

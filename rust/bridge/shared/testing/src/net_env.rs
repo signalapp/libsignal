@@ -117,5 +117,6 @@ pub(crate) fn localhost_test_env_with_ports(
                 params: DUMMY_TPM2SNP_ENDPOINT_PARAMS,
             },
         ),
+        keytrans_config: None,
     }
 }

@@ -280,9 +280,23 @@ impl<'a> SimpleArgTypeInfo<'a> for libsignal_core::E164 {
     ) -> Result<Self, BridgeLayerError> {
         let e164 = String::convert_from(env, foreign)?;
         let e164 = e164.parse().map_err(|_: ParseIntError| {
-            BridgeLayerError::BadArgument(format!("{e164} is not an e164"))
+            BridgeLayerError::BadArgument(format!("'{e164}' is not an e164"))
         })?;
         Ok(e164)
+    }
+}
+
+impl<'a> SimpleArgTypeInfo<'a> for Option<libsignal_core::E164> {
+    type ArgType = <String as SimpleArgTypeInfo<'a>>::ArgType;
+    fn convert_from(
+        env: &mut JNIEnv<'a>,
+        foreign: &Self::ArgType,
+    ) -> Result<Self, BridgeLayerError> {
+        if foreign.is_null() {
+            return Ok(None);
+        }
+        let res = libsignal_core::E164::convert_from(env, foreign)?;
+        Ok(Some(res))
     }
 }
 
@@ -297,6 +311,21 @@ impl<'a> SimpleArgTypeInfo<'a> for Box<[u8]> {
             .convert_byte_array(foreign)
             .check_exceptions(env, "Box<[u8]>::convert_from")?;
         Ok(vec.into_boxed_slice())
+    }
+}
+
+impl<'a> SimpleArgTypeInfo<'a> for Option<Box<[u8]>> {
+    type ArgType = JByteArray<'a>;
+
+    fn convert_from(
+        env: &mut JNIEnv<'a>,
+        foreign: &Self::ArgType,
+    ) -> Result<Self, BridgeLayerError> {
+        if foreign.is_null() {
+            return Ok(None);
+        }
+        let res = Box::<[u8]>::convert_from(env, foreign)?;
+        Ok(Some(res))
     }
 }
 
@@ -914,6 +943,51 @@ impl<'a> ResultTypeInfo<'a> for Pni {
     }
 }
 
+macro_rules! impl_result_type_info_for_option {
+    ($typ:ty) => {
+        impl<'a> ResultTypeInfo<'a> for Option<$typ> {
+            type ResultType = <$typ as ResultTypeInfo<'a>>::ResultType;
+            fn convert_into(
+                self,
+                env: &mut JNIEnv<'a>,
+            ) -> Result<Self::ResultType, BridgeLayerError> {
+                match self {
+                    None => Ok(Self::ResultType::default()),
+                    Some(inner) => inner.convert_into(env),
+                }
+            }
+        }
+    };
+}
+
+impl_result_type_info_for_option!(Aci);
+impl_result_type_info_for_option!(Pni);
+
+impl<'a> ResultTypeInfo<'a> for (Vec<u8>, Vec<u8>) {
+    type ResultType = JObjectArray<'a>;
+
+    fn convert_into(self, env: &mut JNIEnv<'a>) -> Result<Self::ResultType, BridgeLayerError> {
+        let key = env
+            .byte_array_from_slice(&self.0)
+            .check_exceptions(env, "search key to jByteArray")?;
+        let value = env
+            .byte_array_from_slice(&self.1)
+            .check_exceptions(env, "monitoring data to jByteArray")?;
+        let pair = env
+            .new_object_array(2, jni_signature!([byte]), JavaObject::null())
+            .check_exceptions(env, "new_object_array")?;
+
+        env.set_object_array_element(&pair, 0, key)
+            .check_exceptions(env, "set key")?;
+        env.set_object_array_element(&pair, 1, value)
+            .check_exceptions(env, "set value")?;
+        Ok(pair)
+    }
+}
+
+type PairOfByteVecs = (Vec<u8>, Vec<u8>);
+impl_result_type_info_for_option!(PairOfByteVecs);
+
 impl<'a, T> SimpleArgTypeInfo<'a> for Serialized<T>
 where
     T: FixedLengthBincodeSerializable
@@ -1386,6 +1460,9 @@ macro_rules! jni_arg_type {
     (Box<[u8]>) => {
         ::jni::objects::JByteArray<'local>
     };
+    (Option<Box<[u8]> >) => {
+        ::jni::objects::JByteArray<'local>
+    };
     (ServiceId) => {
         ::jni::objects::JByteArray<'local>
     };
@@ -1408,6 +1485,9 @@ macro_rules! jni_arg_type {
         $crate::jni::JavaUUID<'local>
     };
     (E164) => {
+        ::jni::objects::JString<'local>
+    };
+    (Option<E164>) => {
         ::jni::objects::JString<'local>
     };
     (jni::CiphertextMessageRef) => {
@@ -1520,6 +1600,9 @@ macro_rules! jni_result_type {
     };
     (Vec<u8>) => {
         ::jni::objects::JByteArray<'local>
+    };
+    ((Vec<u8>, Vec<u8>)) => {
+        ::jni::objects::JObjectArray<'local>
     };
     (&[String]) => {
         ::jni::objects::JObjectArray<'local>

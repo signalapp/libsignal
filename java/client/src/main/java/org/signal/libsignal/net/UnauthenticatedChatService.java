@@ -17,11 +17,26 @@ import org.signal.libsignal.net.internal.BridgeChatListener;
  * directly.
  */
 public class UnauthenticatedChatService extends ChatService {
+  final Network.Environment environment;
+  private final KeyTransparencyClient keyTransparencyClient;
+
   UnauthenticatedChatService(
       final TokioAsyncContext tokioAsyncContext,
       final Network.ConnectionManager connectionManager,
       ChatListener listener) {
     super(tokioAsyncContext, connectionManager, Native::ChatService_new_unauth, listener);
+    this.environment = connectionManager.environment();
+    this.keyTransparencyClient = new KeyTransparencyClient(this, tokioAsyncContext);
+  }
+
+  /**
+   * High-level key transparency subsystem client on top using {@code this} to communicate with the
+   * chat server.
+   *
+   * @return an instance of {@link KeyTransparencyClient}
+   */
+  public KeyTransparencyClient keyTransparencyClient() {
+    return this.keyTransparencyClient;
   }
 
   // Implementing these abstract methods from ChatService allows UnauthenticatedChatService
