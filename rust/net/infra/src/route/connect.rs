@@ -15,7 +15,8 @@ use tokio_util::either::Either;
 use crate::errors::TransportConnectError;
 use crate::route::{
     ConnectionProxyRoute, DirectOrProxyRoute, HttpRouteFragment, HttpsTlsRoute, TcpRoute, TlsRoute,
-    TlsRouteFragment, WebSocketRoute, WebSocketRouteFragment, WebSocketServiceRoute,
+    TlsRouteFragment, TransportRoute, WebSocketRoute, WebSocketRouteFragment,
+    WebSocketServiceRoute,
 };
 use crate::ws::WebSocketConnectError;
 
@@ -79,9 +80,9 @@ pub struct ComposedConnector<Outer, Inner, Error> {
     _error: PhantomData<Error>,
 }
 
-/// Stateless connector that connects [`WebSocketServiceRoute<IpAddr>`]s.
+/// Stateless connector that connects [`WebSocketServiceRoute`]s.
 pub type StatelessWebSocketConnector = WebSocketHttpConnector;
-/// Stateless connector that connects [`TlsTransportRoute<IpAddr>`](super::TlsTransportRoute)s.
+/// Stateless connector that connects [`TransportRoute`]s.
 pub type StatelessTransportConnector = TransportConnector;
 
 type TcpConnector = crate::tcp_ssl::StatelessDirect;
@@ -100,11 +101,8 @@ const _: () = {
         DirectProxyConnector,
         DirectOrProxyRoute<TcpRoute<IpAddr>, ConnectionProxyRoute<IpAddr>>,
     >();
-    assert_is_connector::<
-        TransportConnector,
-        TlsRoute<DirectOrProxyRoute<TcpRoute<IpAddr>, ConnectionProxyRoute<IpAddr>>>,
-    >();
-    assert_is_connector::<WebSocketHttpConnector, WebSocketServiceRoute<IpAddr>>();
+    assert_is_connector::<TransportConnector, TransportRoute>();
+    assert_is_connector::<WebSocketHttpConnector, WebSocketServiceRoute>();
 };
 
 impl<O, I, E> ComposedConnector<O, I, E> {
@@ -248,6 +246,20 @@ where
                     .map_err(Into::into),
             ),
         }
+    }
+}
+
+impl<C: Connector<R, Inner>, R, Inner> Connector<R, Inner> for &C {
+    type Connection = C::Connection;
+
+    type Error = C::Error;
+
+    fn connect_over(
+        &self,
+        over: Inner,
+        route: R,
+    ) -> impl Future<Output = Result<Self::Connection, Self::Error>> + Send {
+        (*self).connect_over(over, route)
     }
 }
 

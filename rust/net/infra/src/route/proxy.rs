@@ -47,6 +47,9 @@ pub enum DirectOrProxyRoute<D, P> {
     Proxy(P),
 }
 
+/// [`RouteProvider`] implementation that returns [`DirectOrProxyRoute`]s.
+///
+/// Constructs routes that either connect directly or through a proxy.
 #[derive(Clone, Debug, PartialEq)]
 pub enum DirectOrProxyProvider<D, P> {
     Direct(D),
@@ -75,6 +78,21 @@ pub enum ConnectionProxyConfig {
 pub struct ConnectionProxyRouteProvider<P> {
     pub(crate) proxy: ConnectionProxyConfig,
     pub(crate) inner: P,
+}
+
+impl<D> DirectOrProxyProvider<D, ConnectionProxyRouteProvider<D>> {
+    /// Convenience constructor for a provider that creates proxied routes if a
+    /// config is provided.
+    ///
+    /// Returns `Self::Direct(direct)` if no proxy config is given, otherwise
+    /// `Self::Proxy` with a `ConnectionProxyRouteProvider` wrapped around
+    /// `direct`.
+    pub fn maybe_proxied(direct: D, proxy_config: Option<ConnectionProxyConfig>) -> Self {
+        match proxy_config {
+            Some(proxy) => Self::Proxy(ConnectionProxyRouteProvider::new(proxy, direct)),
+            None => Self::Direct(direct),
+        }
+    }
 }
 
 impl<P> ConnectionProxyRouteProvider<P> {

@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::net::IpAddr;
 use std::sync::Arc;
 
 mod connect;
@@ -28,6 +29,8 @@ pub use tls::*;
 
 mod ws;
 pub use ws::*;
+
+use crate::host::Host;
 
 /// Produces routes to a destination.
 ///
@@ -74,9 +77,23 @@ pub struct SimpleRoute<Fragment, Inner> {
     pub inner: Inner,
 }
 
-pub type HttpsServiceRoute<Addr> =
-    HttpsTlsRoute<TlsRoute<DirectOrProxyRoute<TcpRoute<Addr>, ConnectionProxyRoute<Addr>>>>;
-pub type WebSocketServiceRoute<Addr> = WebSocketRoute<HttpsServiceRoute<Addr>>;
+/// Transport-level route that contains [`UnresolvedHost`] addresses.
+pub type UnresolvedTransportRoute = TlsRoute<
+    DirectOrProxyRoute<TcpRoute<UnresolvedHost>, ConnectionProxyRoute<Host<UnresolvedHost>>>,
+>;
+/// [`HttpsTlsRoute`] that contains [`UnresolvedHost`] addresses.
+pub type UnresolvedHttpsServiceRoute = HttpsTlsRoute<UnresolvedTransportRoute>;
+
+/// [`WebSocketRoute`] that contains [`UnresolvedHost`] addresses.
+pub type UnresolvedWebsocketServiceRoute = WebSocketRoute<HttpsTlsRoute<UnresolvedTransportRoute>>;
+
+/// Transport-level route that contains [`IpAddr`]s.
+pub type TransportRoute =
+    TlsRoute<DirectOrProxyRoute<TcpRoute<IpAddr>, ConnectionProxyRoute<IpAddr>>>;
+/// [`HttpsTlsRoute`] that contains [`IpAddr`]s.
+pub type HttpsServiceRoute = HttpsTlsRoute<TransportRoute>;
+/// [`WebSocketRoute`] that contains [`IpAddr`]s.
+pub type WebSocketServiceRoute = WebSocketRoute<HttpsServiceRoute>;
 
 impl From<Arc<str>> for UnresolvedHost {
     fn from(value: Arc<str>) -> Self {

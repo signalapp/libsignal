@@ -374,7 +374,8 @@ mod test {
     use crate::certs::RootCertificates;
     use crate::host::Host;
     use crate::route::{
-        DirectOrProxyRoute, HttpRouteFragment, HttpsServiceRoute, SocksRoute, TlsRouteFragment,
+        DirectOrProxyRoute, HttpRouteFragment, SocksRoute, TlsRouteFragment,
+        UnresolvedHttpsServiceRoute,
     };
     use crate::tcp_ssl::proxy::socks;
     use crate::DnsSource;
@@ -611,7 +612,7 @@ mod test {
             })
         }
 
-        let unresolved_route: HttpsServiceRoute<_> = HttpsTlsRoute {
+        let unresolved_route: UnresolvedHttpsServiceRoute = HttpsTlsRoute {
             inner: TlsRoute {
                 inner: DirectOrProxyRoute::Proxy(socks_route(
                     Host::Domain(UnresolvedHost("proxy-domain".into())),
