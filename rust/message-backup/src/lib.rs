@@ -7,6 +7,8 @@
 //!
 //! Contains code to read and validate message backup files.
 
+use std::time::Duration;
+
 use futures::AsyncRead;
 use mediasan_common::AsyncSkip;
 use protobuf::Message as _;
@@ -133,7 +135,10 @@ impl<R: AsyncRead + Unpin + VerifyHmac> BackupReader<R> {
 
     pub async fn collect_all<M: backup::method::Method + backup::ReferencedTypes>(
         self,
-    ) -> ReadResult<backup::PartialBackup<M>> {
+    ) -> ReadResult<backup::PartialBackup<M>>
+    where
+        backup::PartialBackup<M>: Send,
+    {
         let Self {
             reader,
             visitor,
@@ -178,37 +183,111 @@ impl<R: AsyncRead + AsyncSkip + Unpin> BackupReader<frame::FramesReader<R>> {
 async fn read_all_frames<M: backup::method::Method + backup::ReferencedTypes>(
     purpose: Purpose,
     mut reader: VarintDelimitedReader<impl AsyncRead + Unpin + VerifyHmac>,
-    mut visitor: impl FnMut(&dyn std::fmt::Debug),
-    unknown_fields: &mut impl Extend<FoundUnknownField>,
-) -> Result<backup::PartialBackup<M>, Error> {
-    let mut add_found_unknown = |found_unknown: Vec<_>, index| {
-        let iter = found_unknown
-            .into_iter()
-            .map(|(path, value)| FoundUnknownField {
-                frame_index: index,
-                path,
-                value,
-            });
-        unknown_fields.extend(iter);
-    };
+    mut visitor: impl FnMut(&dyn std::fmt::Debug) + Send + 'static,
+    unknown_fields: &mut Vec<FoundUnknownField>,
+) -> Result<backup::PartialBackup<M>, Error>
+where
+    backup::PartialBackup<M>: Send,
+{
+    let add_found_unknown =
+        |unknown_fields: &mut Vec<FoundUnknownField>, found_unknown: Vec<_>, index| {
+            let iter = found_unknown
+                .into_iter()
+                .map(|(path, value)| FoundUnknownField {
+                    frame_index: index,
+                    path,
+                    value,
+                });
+            unknown_fields.extend(iter);
+        };
 
     let first = reader.read_next().await?.ok_or(Error::NoFrames)?;
     let backup_info = proto::backup::BackupInfo::parse_from_bytes(&first)?;
 
     visitor(&backup_info);
-    add_found_unknown(backup_info.collect_unknown_fields(), 0);
+    add_found_unknown(unknown_fields, backup_info.collect_unknown_fields(), 0);
 
     let mut backup = backup::PartialBackup::new(backup_info, purpose)?;
-    let mut frame_index = 1;
 
-    while let Some(frame) = reader.read_next().await? {
-        let frame_proto = proto::backup::Frame::parse_from_bytes(&frame)?;
-        visitor(&frame_proto);
-        add_found_unknown(frame_proto.collect_unknown_fields(), frame_index);
-        frame_index += 1;
+    // From here on we split the work into two separate threads:
+    // - this thread, which reads frames from the reader
+    // - the "frame-processing thread", which parses and validates frames
+    // Processing frames is faster than reading them, so the channel between threads shouldn't fill
+    // up, but just in case there's a bound on the channel for the processing thread to apply
+    // backpressure. Why not split the pipeline more evenly? Above VarintDelimitedReader, we have a
+    // bytestream; only below it do we have data divided into chunks *known* to correspond to units
+    // of work.
+    const FRAMES_IN_FLIGHT: usize = 20;
+    let (frame_tx, frame_rx) = std::sync::mpsc::sync_channel::<Box<[u8]>>(FRAMES_IN_FLIGHT);
 
-        backup.add_frame(frame_proto)?
+    let frame_processing_thread = std::thread::Builder::new()
+        .name("libsignal-backup-processing".to_owned())
+        .spawn(move || {
+            let mut unknown_fields = vec![];
+            let mut frame_index = 1;
+
+            // Continue until all frames have been read from the stream...
+            loop {
+                let frame = loop {
+                    match frame_rx.try_recv() {
+                        Ok(frame) => break frame,
+                        Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                            // ...as signalled by the sender being dropped.
+                            return Ok::<_, Error>((backup, unknown_fields));
+                        }
+                        Err(std::sync::mpsc::TryRecvError::Empty) => {
+                            // Rather than doing a blocking read, just sleep quickly to let the
+                            // other side catch up. This turns out to be faster than waiting for a
+                            // proper wake from the reader side, at the cost of a bit of CPU.
+                            // Yielding rather than sleeping *does* make the process even faster,
+                            // but there's a possibility of getting in a hot spin loop.
+                            std::thread::sleep(Duration::from_nanos(100));
+                        }
+                    }
+                };
+
+                let frame_proto = proto::backup::Frame::parse_from_bytes(&frame)?;
+                visitor(&frame_proto);
+                add_found_unknown(
+                    &mut unknown_fields,
+                    frame_proto.collect_unknown_fields(),
+                    frame_index,
+                );
+                frame_index += 1;
+
+                backup.add_frame(frame_proto)?;
+            }
+        })
+        .expect("can create threads");
+
+    'outer: while let Some(mut buf) = reader.read_next().await? {
+        // Try to send to the processing thread in a spin-loop.
+        // Normally the processing thread is faster than the reader thread, so this should only spin
+        // a few times before success, which is faster than going to sleep and waiting to be woken.
+        loop {
+            buf = match frame_tx.try_send(buf) {
+                Ok(()) => break,
+                Err(std::sync::mpsc::TrySendError::Disconnected(_)) => {
+                    // If the frame-processing thread ends early, there must have been an error in
+                    // an earlier frame. In that case, no point in continuing to read.
+                    break 'outer;
+                }
+                Err(std::sync::mpsc::TrySendError::Full(buf)) => {
+                    std::thread::yield_now();
+                    buf
+                }
+            }
+        }
     }
+    // Let the frame-processing thread know there's nothing more to read.
+    drop(frame_tx);
+
+    let (backup, inner_unknown_fields) = match frame_processing_thread.join() {
+        Ok(Ok(success)) => success,
+        Ok(Err(validation_error)) => return Err(validation_error),
+        Err(panic) => std::panic::resume_unwind(panic),
+    };
+    unknown_fields.extend(inner_unknown_fields);
 
     // Before reporting success, check that the HMAC still matches. This
     // prevents TOC/TOU issues.
