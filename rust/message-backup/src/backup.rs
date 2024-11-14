@@ -17,6 +17,7 @@ use crate::backup::call::{AdHocCall, CallError};
 use crate::backup::chat::chat_style::{CustomChatColor, CustomColorId};
 use crate::backup::chat::{ChatData, ChatError, ChatItemData, ChatItemError, PinOrder};
 use crate::backup::frame::{ChatId, RecipientId};
+use crate::backup::map::IntMap;
 use crate::backup::method::{Lookup, LookupPair, Method, Store, ValidateOnly};
 use crate::backup::recipient::{
     DestinationKind, FullRecipientData, MinimalRecipientData, RecipientError,
@@ -34,6 +35,7 @@ mod call;
 mod chat;
 mod file;
 mod frame;
+mod map;
 pub(crate) mod method;
 mod recipient;
 pub mod serialize;
@@ -84,7 +86,7 @@ pub trait ReferencedTypes {
 pub struct PartialBackup<M: Method + ReferencedTypes> {
     meta: BackupMeta,
     account_data: Option<AccountData<M>>,
-    recipients: HashMap<RecipientId, M::RecipientData>,
+    recipients: IntMap<RecipientId, M::RecipientData>,
     chats: ChatsData<M>,
     ad_hoc_calls: M::List<AdHocCall<M::RecipientReference>>,
     sticker_packs: HashMap<StickerPackId, StickerPack<M>>,
@@ -96,7 +98,7 @@ pub struct PartialBackup<M: Method + ReferencedTypes> {
 pub struct CompletedBackup<M: Method + ReferencedTypes> {
     meta: BackupMeta,
     account_data: AccountData<M>,
-    recipients: HashMap<RecipientId, M::RecipientData>,
+    recipients: IntMap<RecipientId, M::RecipientData>,
     chats: ChatsData<M>,
     ad_hoc_calls: M::List<AdHocCall<M::RecipientReference>>,
     sticker_packs: HashMap<StickerPackId, StickerPack<M>>,
@@ -106,7 +108,7 @@ pub type Backup = CompletedBackup<Store>;
 
 #[derive_where(Debug, Default)]
 struct ChatsData<M: Method + ReferencedTypes> {
-    items: HashMap<ChatId, ChatData<M>>,
+    items: IntMap<ChatId, ChatData<M>>,
     pinned: Vec<(PinOrder, M::RecipientReference)>,
     /// Count of the total number of chat items held across all values in `items`.
     pub chat_items_count: usize,
@@ -394,7 +396,7 @@ impl<M: Method + ReferencedTypes> PartialBackup<M> {
             recipients: Default::default(),
             chats: Default::default(),
             ad_hoc_calls: Default::default(),
-            sticker_packs: HashMap::new(),
+            sticker_packs: Default::default(),
             unusual_timestamp_tracker,
         })
     }
@@ -445,8 +447,8 @@ impl<M: Method + ReferencedTypes> PartialBackup<M> {
         let err_with_id = |e| RecipientFrameError(id, e);
         let recipient = M::try_convert_recipient(recipient, self).map_err(err_with_id)?;
         match self.recipients.entry(id) {
-            hash_map::Entry::Occupied(_) => Err(err_with_id(RecipientError::DuplicateRecipient)),
-            hash_map::Entry::Vacant(v) => {
+            intmap::Entry::Occupied(_) => Err(err_with_id(RecipientError::DuplicateRecipient)),
+            intmap::Entry::Vacant(v) => {
                 let _ = v.insert(recipient);
                 Ok(())
             }
@@ -502,8 +504,8 @@ impl<M: Method + ReferencedTypes> ChatsData<M> {
         } = self;
 
         match items.entry(id) {
-            hash_map::Entry::Occupied(_) => Err(ChatFrameError(id, ChatError::DuplicateId)),
-            hash_map::Entry::Vacant(v) => {
+            intmap::Entry::Occupied(_) => Err(ChatFrameError(id, ChatError::DuplicateId)),
+            intmap::Entry::Vacant(v) => {
                 if let Some(pin) = chat.pinned_order {
                     pinned.push((pin, chat.recipient.clone()));
                 }
@@ -680,6 +682,8 @@ fn uuid_bytes_to_aci(bytes: Vec<u8>) -> Result<Aci, InvalidAci> {
 
 #[cfg(test)]
 mod test {
+    use std::collections::HashMap;
+
     use assert_matches::assert_matches;
     use test_case::{test_case, test_matrix};
 
@@ -826,10 +830,10 @@ mod test {
             .expect("valid completed backup")
             .chats
             .items
-            .into_iter()
-            .map(|(chat_id, items)| {
+            .into_iter_with_raw_keys()
+            .map(|(raw_chat_id, items)| {
                 (
-                    chat_id,
+                    raw_chat_id,
                     items
                         .items
                         .into_iter()
@@ -837,11 +841,11 @@ mod test {
                         .collect(),
                 )
             })
-            .collect::<HashMap<ChatId, Vec<usize>>>();
+            .collect::<HashMap<u64, Vec<usize>>>();
 
         assert_eq!(
             chat_order_indices,
-            HashMap::from([(ChatId(1), vec![0, 2, 4]), (ChatId(2), vec![1, 3, 5])])
+            HashMap::from([(1, vec![0, 2, 4]), (2, vec![1, 3, 5])])
         );
     }
 }

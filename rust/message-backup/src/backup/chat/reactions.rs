@@ -3,11 +3,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use std::collections::HashMap;
-
+use derive_where::derive_where;
 use itertools::Itertools;
 
 use crate::backup::frame::RecipientId;
+use crate::backup::map::IntMap;
 use crate::backup::method::LookupPair;
 use crate::backup::recipient::DestinationKind;
 use crate::backup::serialize::SerializeOrder;
@@ -92,8 +92,9 @@ impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R> + ReportUnusualTim
 }
 
 #[derive(Debug)]
+#[derive_where(Default)]
 pub struct ReactionSet<Recipient> {
-    reactions: HashMap<RecipientId, Reaction<Recipient>>,
+    reactions: IntMap<RecipientId, Reaction<Recipient>>,
 }
 
 impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R> + ReportUnusualTimestamp>
@@ -102,7 +103,7 @@ impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R> + ReportUnusualTim
     type Error = ReactionError;
 
     fn try_from_with(items: Vec<proto::Reaction>, context: &C) -> Result<Self, Self::Error> {
-        let mut reactions = HashMap::with_capacity(items.len());
+        let mut reactions = IntMap::with_capacity(items.len());
 
         for item in items {
             let author_id = RecipientId(item.authorId);
@@ -135,7 +136,7 @@ where
 impl<R> FromIterator<(RecipientId, Reaction<R>)> for ReactionSet<R> {
     fn from_iter<T: IntoIterator<Item = (RecipientId, Reaction<R>)>>(iter: T) -> Self {
         Self {
-            reactions: HashMap::from_iter(iter),
+            reactions: IntMap::from_iter(iter),
         }
     }
 }

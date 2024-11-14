@@ -9,7 +9,6 @@
 #![allow(clippy::manual_non_exhaustive)]
 
 use std::fmt::Debug;
-use std::hash::Hash;
 use std::num::NonZeroU32;
 
 use derive_where::derive_where;

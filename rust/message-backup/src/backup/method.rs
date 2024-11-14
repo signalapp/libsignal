@@ -1,3 +1,8 @@
+//
+// Copyright (C) 2024 Signal Messenger, LLC.
+// SPDX-License-Identifier: AGPL-3.0-only
+//
+
 use std::borrow::Borrow;
 use std::collections::HashMap;
 use std::fmt::Debug;

@@ -48,6 +48,7 @@ futures = { workspace = true }
 hex = { workspace = true, features = ["serde"] }
 hkdf = { workspace = true }
 hmac = { workspace = true }
+intmap = "2.0.0"
 itertools = { workspace = true }
 log = { workspace = true }
 macro_rules_attribute = "0.2.0"
