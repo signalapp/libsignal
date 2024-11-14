@@ -141,7 +141,7 @@ sha2 = "0.10"
 snow = { version = "0.9.6", default-features = false, features = ["hfs"] }
 static_assertions = "1.1"
 strum = "0.26"
-subtle = "2.5"
+subtle = "2.6"
 syn = "2.0"
 syn-mid = "0.6"
 test-case = "3.3"
