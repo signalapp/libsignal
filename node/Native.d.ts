@@ -135,6 +135,10 @@ interface MessageBackupValidationOutcome {
   unknownFieldMessages: Array<string>;
 }
 
+interface CancellablePromise<T> extends Promise<T> {
+  _cancellationToken: bigint
+}
+
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 type Serialized<T> = Buffer;
 
@@ -190,21 +194,21 @@ export function CallLinkSecretParams_DecryptUserId(paramsBytes: Buffer, userId: 
 export function CallLinkSecretParams_DeriveFromRootKey(rootKey: Buffer): Buffer;
 export function CallLinkSecretParams_GetPublicParams(paramsBytes: Buffer): Buffer;
 export function Cds2ClientState_New(mrenclave: Buffer, attestationMsg: Buffer, currentTimestamp: Timestamp): SgxClientState;
-export function CdsiLookup_complete(asyncRuntime: Wrapper<TokioAsyncContext>, lookup: Wrapper<CdsiLookup>): Promise<LookupResponse>;
-export function CdsiLookup_new(asyncRuntime: Wrapper<TokioAsyncContext>, connectionManager: Wrapper<ConnectionManager>, username: string, password: string, request: Wrapper<LookupRequest>): Promise<CdsiLookup>;
+export function CdsiLookup_complete(asyncRuntime: Wrapper<TokioAsyncContext>, lookup: Wrapper<CdsiLookup>): CancellablePromise<LookupResponse>;
+export function CdsiLookup_new(asyncRuntime: Wrapper<TokioAsyncContext>, connectionManager: Wrapper<ConnectionManager>, username: string, password: string, request: Wrapper<LookupRequest>): CancellablePromise<CdsiLookup>;
 export function CdsiLookup_token(lookup: Wrapper<CdsiLookup>): Buffer;
 export function ChatService_SetListenerAuth(runtime: Wrapper<TokioAsyncContext>, chat: Wrapper<AuthChat>, listener: ChatListener | null): void;
 export function ChatService_SetListenerUnauth(runtime: Wrapper<TokioAsyncContext>, chat: Wrapper<UnauthChat>, listener: ChatListener | null): void;
-export function ChatService_auth_send(asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<AuthChat>, httpRequest: Wrapper<HttpRequest>, timeoutMillis: number): Promise<ChatResponse>;
-export function ChatService_auth_send_and_debug(asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<AuthChat>, httpRequest: Wrapper<HttpRequest>, timeoutMillis: number): Promise<ResponseAndDebugInfo>;
-export function ChatService_connect_auth(asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<AuthChat>): Promise<ChatServiceDebugInfo>;
-export function ChatService_connect_unauth(asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<UnauthChat>): Promise<ChatServiceDebugInfo>;
-export function ChatService_disconnect_auth(asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<AuthChat>): Promise<void>;
-export function ChatService_disconnect_unauth(asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<UnauthChat>): Promise<void>;
+export function ChatService_auth_send(asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<AuthChat>, httpRequest: Wrapper<HttpRequest>, timeoutMillis: number): CancellablePromise<ChatResponse>;
+export function ChatService_auth_send_and_debug(asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<AuthChat>, httpRequest: Wrapper<HttpRequest>, timeoutMillis: number): CancellablePromise<ResponseAndDebugInfo>;
+export function ChatService_connect_auth(asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<AuthChat>): CancellablePromise<ChatServiceDebugInfo>;
+export function ChatService_connect_unauth(asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<UnauthChat>): CancellablePromise<ChatServiceDebugInfo>;
+export function ChatService_disconnect_auth(asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<AuthChat>): CancellablePromise<void>;
+export function ChatService_disconnect_unauth(asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<UnauthChat>): CancellablePromise<void>;
 export function ChatService_new_auth(connectionManager: Wrapper<ConnectionManager>, username: string, password: string, receiveStories: boolean): AuthChat;
 export function ChatService_new_unauth(connectionManager: Wrapper<ConnectionManager>): UnauthChat;
-export function ChatService_unauth_send(asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<UnauthChat>, httpRequest: Wrapper<HttpRequest>, timeoutMillis: number): Promise<ChatResponse>;
-export function ChatService_unauth_send_and_debug(asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<UnauthChat>, httpRequest: Wrapper<HttpRequest>, timeoutMillis: number): Promise<ResponseAndDebugInfo>;
+export function ChatService_unauth_send(asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<UnauthChat>, httpRequest: Wrapper<HttpRequest>, timeoutMillis: number): CancellablePromise<ChatResponse>;
+export function ChatService_unauth_send_and_debug(asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<UnauthChat>, httpRequest: Wrapper<HttpRequest>, timeoutMillis: number): CancellablePromise<ResponseAndDebugInfo>;
 export function CiphertextMessage_FromPlaintextContent(m: Wrapper<PlaintextContent>): CiphertextMessage;
 export function CiphertextMessage_Serialize(obj: Wrapper<CiphertextMessage>): Buffer;
 export function CiphertextMessage_Type(msg: Wrapper<CiphertextMessage>): number;
@@ -445,7 +449,7 @@ export function ServerCertificate_GetKeyId(obj: Wrapper<ServerCertificate>): num
 export function ServerCertificate_GetSerialized(obj: Wrapper<ServerCertificate>): Buffer;
 export function ServerCertificate_GetSignature(obj: Wrapper<ServerCertificate>): Buffer;
 export function ServerCertificate_New(keyId: number, serverKey: Wrapper<PublicKey>, trustRoot: Wrapper<PrivateKey>): ServerCertificate;
-export function ServerMessageAck_SendStatus(asyncRuntime: Wrapper<TokioAsyncContext>, ack: Wrapper<ServerMessageAck>, status: number): Promise<void>;
+export function ServerMessageAck_SendStatus(asyncRuntime: Wrapper<TokioAsyncContext>, ack: Wrapper<ServerMessageAck>, status: number): CancellablePromise<void>;
 export function ServerPublicParams_CreateAuthCredentialWithPniPresentationDeterministic(serverPublicParams: Wrapper<ServerPublicParams>, randomness: Buffer, groupSecretParams: Serialized<GroupSecretParams>, authCredentialWithPniBytes: Buffer): Buffer;
 export function ServerPublicParams_CreateExpiringProfileKeyCredentialPresentationDeterministic(serverPublicParams: Wrapper<ServerPublicParams>, randomness: Buffer, groupSecretParams: Serialized<GroupSecretParams>, profileKeyCredential: Serialized<ExpiringProfileKeyCredential>): Buffer;
 export function ServerPublicParams_CreateProfileKeyCredentialRequestContextDeterministic(serverPublicParams: Wrapper<ServerPublicParams>, randomness: Buffer, userId: Buffer, profileKey: Serialized<ProfileKey>): Serialized<ProfileKeyCredentialRequestContext>;
@@ -505,11 +509,11 @@ export function SignedPreKeyRecord_GetSignature(obj: Wrapper<SignedPreKeyRecord>
 export function SignedPreKeyRecord_GetTimestamp(obj: Wrapper<SignedPreKeyRecord>): Timestamp;
 export function SignedPreKeyRecord_New(id: number, timestamp: Timestamp, pubKey: Wrapper<PublicKey>, privKey: Wrapper<PrivateKey>, signature: Buffer): SignedPreKeyRecord;
 export function SignedPreKeyRecord_Serialize(obj: Wrapper<SignedPreKeyRecord>): Buffer;
-export function Svr3Backup(asyncRuntime: Wrapper<TokioAsyncContext>, connectionManager: Wrapper<ConnectionManager>, secret: Buffer, password: string, maxTries: number, username: string, enclavePassword: string): Promise<Buffer>;
-export function Svr3Remove(asyncRuntime: Wrapper<TokioAsyncContext>, connectionManager: Wrapper<ConnectionManager>, username: string, enclavePassword: string): Promise<void>;
-export function Svr3Restore(asyncRuntime: Wrapper<TokioAsyncContext>, connectionManager: Wrapper<ConnectionManager>, password: string, shareSet: Buffer, username: string, enclavePassword: string): Promise<Buffer>;
+export function Svr3Backup(asyncRuntime: Wrapper<TokioAsyncContext>, connectionManager: Wrapper<ConnectionManager>, secret: Buffer, password: string, maxTries: number, username: string, enclavePassword: string): CancellablePromise<Buffer>;
+export function Svr3Remove(asyncRuntime: Wrapper<TokioAsyncContext>, connectionManager: Wrapper<ConnectionManager>, username: string, enclavePassword: string): CancellablePromise<void>;
+export function Svr3Restore(asyncRuntime: Wrapper<TokioAsyncContext>, connectionManager: Wrapper<ConnectionManager>, password: string, shareSet: Buffer, username: string, enclavePassword: string): CancellablePromise<Buffer>;
 export function TESTING_CdsiLookupErrorConvert(errorDescription: string): void;
-export function TESTING_CdsiLookupResponseConvert(asyncRuntime: Wrapper<TokioAsyncContext>): Promise<LookupResponse>;
+export function TESTING_CdsiLookupResponseConvert(asyncRuntime: Wrapper<TokioAsyncContext>): CancellablePromise<LookupResponse>;
 export function TESTING_ChatRequestGetBody(request: Wrapper<HttpRequest>): Buffer;
 export function TESTING_ChatRequestGetHeaderValue(request: Wrapper<HttpRequest>, headerName: string): string;
 export function TESTING_ChatRequestGetMethod(request: Wrapper<HttpRequest>): string;
@@ -523,30 +527,30 @@ export function TESTING_ChatService_InjectIntentionalDisconnect(chat: Wrapper<Au
 export function TESTING_ChatService_InjectRawServerRequest(chat: Wrapper<AuthChat>, bytes: Buffer): void;
 export function TESTING_ConnectionManager_newLocalOverride(userAgent: string, chatPort: number, cdsiPort: number, svr2Port: number, svr3SgxPort: number, svr3NitroPort: number, svr3Tpm2SnpPort: number, rootCertificateDer: Buffer): ConnectionManager;
 export function TESTING_ErrorOnBorrowAsync(_input: null): Promise<void>;
-export function TESTING_ErrorOnBorrowIo(asyncRuntime: Wrapper<NonSuspendingBackgroundThreadRuntime>, _input: null): Promise<void>;
+export function TESTING_ErrorOnBorrowIo(asyncRuntime: Wrapper<NonSuspendingBackgroundThreadRuntime>, _input: null): CancellablePromise<void>;
 export function TESTING_ErrorOnBorrowSync(_input: null): void;
 export function TESTING_ErrorOnReturnAsync(_needsCleanup: null): Promise<null>;
-export function TESTING_ErrorOnReturnIo(asyncRuntime: Wrapper<NonSuspendingBackgroundThreadRuntime>, _needsCleanup: null): Promise<null>;
+export function TESTING_ErrorOnReturnIo(asyncRuntime: Wrapper<NonSuspendingBackgroundThreadRuntime>, _needsCleanup: null): CancellablePromise<null>;
 export function TESTING_ErrorOnReturnSync(_needsCleanup: null): null;
-export function TESTING_FutureFailure(asyncRuntime: Wrapper<NonSuspendingBackgroundThreadRuntime>, _input: number): Promise<number>;
-export function TESTING_FutureProducesOtherPointerType(asyncRuntime: Wrapper<NonSuspendingBackgroundThreadRuntime>, input: string): Promise<OtherTestingHandleType>;
-export function TESTING_FutureProducesPointerType(asyncRuntime: Wrapper<NonSuspendingBackgroundThreadRuntime>, input: number): Promise<TestingHandleType>;
-export function TESTING_FutureSuccess(asyncRuntime: Wrapper<NonSuspendingBackgroundThreadRuntime>, input: number): Promise<number>;
+export function TESTING_FutureFailure(asyncRuntime: Wrapper<NonSuspendingBackgroundThreadRuntime>, _input: number): CancellablePromise<number>;
+export function TESTING_FutureProducesOtherPointerType(asyncRuntime: Wrapper<NonSuspendingBackgroundThreadRuntime>, input: string): CancellablePromise<OtherTestingHandleType>;
+export function TESTING_FutureProducesPointerType(asyncRuntime: Wrapper<NonSuspendingBackgroundThreadRuntime>, input: number): CancellablePromise<TestingHandleType>;
+export function TESTING_FutureSuccess(asyncRuntime: Wrapper<NonSuspendingBackgroundThreadRuntime>, input: number): CancellablePromise<number>;
 export function TESTING_InputStreamReadIntoZeroLengthSlice(capsAlphabetInput: InputStream): Promise<Buffer>;
 export function TESTING_NonSuspendingBackgroundThreadRuntime_New(): NonSuspendingBackgroundThreadRuntime;
-export function TESTING_OnlyCompletesByCancellation(asyncRuntime: Wrapper<TokioAsyncContext>): Promise<void>;
+export function TESTING_OnlyCompletesByCancellation(asyncRuntime: Wrapper<TokioAsyncContext>): CancellablePromise<void>;
 export function TESTING_OtherTestingHandleType_getValue(handle: Wrapper<OtherTestingHandleType>): string;
 export function TESTING_PanicInBodyAsync(_input: null): Promise<void>;
-export function TESTING_PanicInBodyIo(asyncRuntime: Wrapper<NonSuspendingBackgroundThreadRuntime>, _input: null): Promise<void>;
+export function TESTING_PanicInBodyIo(asyncRuntime: Wrapper<NonSuspendingBackgroundThreadRuntime>, _input: null): CancellablePromise<void>;
 export function TESTING_PanicInBodySync(_input: null): void;
 export function TESTING_PanicOnBorrowAsync(_input: null): Promise<void>;
-export function TESTING_PanicOnBorrowIo(asyncRuntime: Wrapper<NonSuspendingBackgroundThreadRuntime>, _input: null): Promise<void>;
+export function TESTING_PanicOnBorrowIo(asyncRuntime: Wrapper<NonSuspendingBackgroundThreadRuntime>, _input: null): CancellablePromise<void>;
 export function TESTING_PanicOnBorrowSync(_input: null): void;
 export function TESTING_PanicOnLoadAsync(_needsCleanup: null, _input: null): Promise<void>;
-export function TESTING_PanicOnLoadIo(asyncRuntime: Wrapper<NonSuspendingBackgroundThreadRuntime>, _needsCleanup: null, _input: null): Promise<void>;
+export function TESTING_PanicOnLoadIo(asyncRuntime: Wrapper<NonSuspendingBackgroundThreadRuntime>, _needsCleanup: null, _input: null): CancellablePromise<void>;
 export function TESTING_PanicOnLoadSync(_needsCleanup: null, _input: null): void;
 export function TESTING_PanicOnReturnAsync(_needsCleanup: null): Promise<null>;
-export function TESTING_PanicOnReturnIo(asyncRuntime: Wrapper<NonSuspendingBackgroundThreadRuntime>, _needsCleanup: null): Promise<null>;
+export function TESTING_PanicOnReturnIo(asyncRuntime: Wrapper<NonSuspendingBackgroundThreadRuntime>, _needsCleanup: null): CancellablePromise<null>;
 export function TESTING_PanicOnReturnSync(_needsCleanup: null): null;
 export function TESTING_ProcessBytestringArray(input: Buffer[]): Buffer[];
 export function TESTING_ReturnStringArray(): string[];

@@ -81,13 +81,9 @@ export class TokioAsyncContext {
 
   makeCancellable<T>(
     abortSignal: AbortSignal | undefined,
-    promise: Promise<T>
+    promise: Native.CancellablePromise<T>
   ): Promise<T> {
-    if (
-      abortSignal !== undefined &&
-      '_cancellationToken' in promise &&
-      typeof promise._cancellationToken === 'bigint'
-    ) {
+    if (abortSignal !== undefined) {
       const cancellationToken = promise._cancellationToken;
       const cancel = () => {
         Native.TokioAsyncContext_cancel(this, cancellationToken);

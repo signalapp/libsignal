@@ -136,6 +136,10 @@ def translate_to_ts(typ: str) -> str:
         assert typ.endswith('>')
         return 'Promise<' + translate_to_ts(typ[8:-1]) + '>'
 
+    if typ.startswith('CancellablePromise<'):
+        assert typ.endswith('>')
+        return 'CancellablePromise<' + translate_to_ts(typ[19:-1]) + '>'
+
     if typ.startswith('AsType<'):
         assert typ.endswith('>')
         assert ',' in typ
