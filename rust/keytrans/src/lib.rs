@@ -11,24 +11,24 @@ mod implicit;
 mod left_balanced;
 mod log;
 mod prefix;
+mod proto;
 mod verify;
 mod vrf;
-mod wire;
 
 use std::collections::HashMap;
 use std::time::SystemTime;
 
 pub use ed25519_dalek::VerifyingKey;
+pub use proto::{
+    CondensedTreeSearchResponse, DistinguishedResponse as ChatDistinguishedResponse, FullTreeHead,
+    MonitorRequest, MonitorResponse, SearchResponse as ChatSearchResponse, StoredMonitoringData,
+    StoredTreeHead, TreeHead, TreeSearchRequest, TreeSearchResponse, UpdateRequest, UpdateResponse,
+};
 pub use verify::Error;
 use verify::{
     truncate_search_response, verify_distinguished, verify_monitor, verify_search, verify_update,
 };
 pub use vrf::PublicKey as VrfPublicKey;
-pub use wire::{
-    ChatDistinguishedResponse, ChatSearchResponse, CondensedTreeSearchResponse, FullTreeHead,
-    MonitorRequest, MonitorResponse, SearchRequest, SearchResponse, StoredMonitoringData,
-    StoredTreeHead, TreeHead, UpdateRequest, UpdateResponse,
-};
 
 /// DeploymentMode specifies the way that a transparency log is deployed.
 #[derive(PartialEq, Clone, Copy)]
@@ -145,9 +145,9 @@ impl SlimSearchRequest {
     }
 }
 
-impl From<SearchRequest> for SlimSearchRequest {
-    fn from(request: SearchRequest) -> Self {
-        let SearchRequest {
+impl From<TreeSearchRequest> for SlimSearchRequest {
+    fn from(request: TreeSearchRequest) -> Self {
+        let TreeSearchRequest {
             search_key,
             version,
             ..
@@ -172,7 +172,7 @@ impl KeyTransparency {
     pub fn verify_search(
         &self,
         request: SlimSearchRequest,
-        response: SearchResponse,
+        response: TreeSearchResponse,
         context: SearchContext,
         force_monitor: bool,
         now: SystemTime,
@@ -210,8 +210,8 @@ impl KeyTransparency {
     /// Most validation is skipped so the SearchResponse MUST already be verified.
     pub fn truncate_search_response(
         &self,
-        request: &SearchRequest,
-        response: &SearchResponse,
+        request: &TreeSearchRequest,
+        response: &TreeSearchResponse,
     ) -> Result<(u64, [u8; 32]), verify::Error> {
         truncate_search_response(&self.config, request, response)
     }

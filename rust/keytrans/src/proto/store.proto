@@ -1,0 +1,22 @@
+//
+// Copyright 2024 Signal Messenger, LLC.
+// SPDX-License-Identifier: AGPL-3.0-only
+//
+syntax = "proto3";
+package signal.keytrans;
+
+import "wire.proto";
+
+// StoredTreeHead is an encoded tree head stored on-disk.
+message StoredTreeHead {
+  TreeHead tree_head = 1;
+  bytes root = 2;
+}
+
+// StoredMonitoringData is encoded monitoring data stored on-disk.
+message StoredMonitoringData {
+  bytes index = 1;
+  uint64 pos = 2;
+  map<uint64, uint32> ptrs = 3;
+  bool owned = 4;
+}

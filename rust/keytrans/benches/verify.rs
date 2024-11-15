@@ -8,8 +8,8 @@ use std::time::{Duration, SystemTime};
 use criterion::{criterion_group, criterion_main, Criterion};
 use hex_literal::hex;
 use libsignal_keytrans::{
-    DeploymentMode, KeyTransparency, PublicConfig, SearchContext, SearchResponse,
-    SlimSearchRequest, VerifyingKey, VrfPublicKey,
+    DeploymentMode, KeyTransparency, PublicConfig, SearchContext, SlimSearchRequest,
+    TreeSearchResponse, VerifyingKey, VrfPublicKey,
 };
 use prost::Message as _;
 
@@ -33,7 +33,7 @@ fn bench_verify_search(c: &mut Criterion) {
     };
     let response = {
         let bytes = include_bytes!("../res/kt-search-response.dat");
-        SearchResponse::decode(bytes.as_slice()).unwrap()
+        TreeSearchResponse::decode(bytes.as_slice()).unwrap()
     };
     let valid_at = SystemTime::UNIX_EPOCH + Duration::from_secs(1724279958);
     let kt = KeyTransparency {

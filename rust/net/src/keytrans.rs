@@ -16,8 +16,8 @@ use http::uri::PathAndQuery;
 use libsignal_core::{Aci, E164};
 use libsignal_keytrans::{
     ChatDistinguishedResponse, ChatSearchResponse, CondensedTreeSearchResponse, KeyTransparency,
-    LastTreeHead, LocalStateUpdate, MonitoringData, SearchContext, SearchResponse,
-    SlimSearchRequest, StoredMonitoringData, StoredTreeHead, VerifiedSearchResult,
+    LastTreeHead, LocalStateUpdate, MonitoringData, SearchContext, SlimSearchRequest,
+    StoredMonitoringData, StoredTreeHead, TreeSearchResponse, VerifiedSearchResult,
 };
 use libsignal_protocol::{IdentityKey, PublicKey};
 use prost::{DecodeError, Message};
@@ -108,9 +108,9 @@ impl TryFrom<chat::Response> for RawChatSerializedResponse {
 }
 
 struct TypedChatSearchResponse {
-    aci_search_response: SearchResponse,
-    e164_search_response: Option<SearchResponse>,
-    username_hash_search_response: Option<SearchResponse>,
+    aci_search_response: TreeSearchResponse,
+    e164_search_response: Option<TreeSearchResponse>,
+    username_hash_search_response: Option<TreeSearchResponse>,
 }
 
 impl TryFrom<RawChatSerializedResponse> for TypedChatSearchResponse {
@@ -130,14 +130,14 @@ impl TryFrom<RawChatSerializedResponse> for TypedChatSearchResponse {
         // and sends a single tree head in a top-level field.
         // libsignal-keytrans, however, operates on individual responses,
         // therefore to match the two we need to repopulate the tree head value.
-        let prepare_full_response = |condensed: CondensedTreeSearchResponse| -> SearchResponse {
+        let prepare_full_response = |condensed: CondensedTreeSearchResponse| -> TreeSearchResponse {
             let CondensedTreeSearchResponse {
                 vrf_proof,
                 search,
                 opening,
                 value,
             } = condensed;
-            SearchResponse {
+            TreeSearchResponse {
                 tree_head: Some(common_tree_head.clone()),
                 vrf_proof,
                 search,
@@ -473,7 +473,7 @@ impl<'a> Kt<'a> {
             value,
         } = distinguished.ok_or(Error::InvalidResponse("search response must be present"))?;
         // TODO: this should be gone when tree_head is stripped in the next proto update
-        let search_response = SearchResponse {
+        let search_response = TreeSearchResponse {
             tree_head: Some(tree_head),
             vrf_proof,
             search,

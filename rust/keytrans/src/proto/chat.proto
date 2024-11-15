@@ -1,0 +1,55 @@
+//
+// Copyright 2024 Signal Messenger, LLC.
+// SPDX-License-Identifier: AGPL-3.0-only
+//
+syntax = "proto3";
+package signal.keytrans;
+
+import "wire.proto";
+
+/**
+ * ChatSearchResponse contains search proofs for each of the requested identifiers.
+ * Callers should use the top-level `FullTreeHead` for verification;
+ * the `FullTreeHead` field on the individual `SearchResponse`s will be empty.
+ */
+// This message is not used in the crate, but is simply reexported for convenience.
+message SearchResponse {
+  /**
+   * A signed representation of the log tree's current state along with some
+   * additional information necessary for validation such as a consistency proof and an auditor-signed tree head.
+   */
+  FullTreeHead tree_head = 1;
+  /**
+   * The ACI search response is always provided.
+   */
+  CondensedTreeSearchResponse aci = 2;
+  /**
+   * This response is only provided if all of the conditions are met:
+   * - the E164 exists in the log
+   * - its mapped ACI matches the one provided in the request
+   * - the account associated with the ACI is discoverable
+   * - the unidentified access key provided in E164SearchRequest matches the one on the account
+   */
+  optional CondensedTreeSearchResponse e164 = 3;
+  /**
+   * This response is only provided if the username hash exists in the log and
+   * its mapped ACI matches the one provided in the request.
+   */
+  optional CondensedTreeSearchResponse username_hash = 4;
+}
+
+/**
+ * DistinguishedResponse contains the tree head and search proof for the most
+ * recent `distinguished` key in the log.
+ */
+message DistinguishedResponse {
+  /**
+   * A signed representation of the log tree's current state along with some
+   * additional information necessary for validation such as a consistency proof and an auditor-signed tree head.
+   */
+  FullTreeHead tree_head = 1;
+  /**
+   * This search response is always provided.
+   */
+  CondensedTreeSearchResponse distinguished = 2;
+}

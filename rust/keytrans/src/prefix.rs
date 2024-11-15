@@ -7,7 +7,7 @@ use std::result::Result;
 
 use sha2::{Digest as _, Sha256};
 
-use crate::wire::PrefixProof as SearchResult;
+use crate::proto::PrefixProof as SearchResult;
 
 const KEY_LENGTH: usize = 32;
 

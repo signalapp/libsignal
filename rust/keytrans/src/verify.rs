@@ -13,7 +13,7 @@ use crate::guide::{InvalidState, ProofGuide};
 use crate::implicit::{full_monitoring_path, monitoring_path};
 use crate::log::{evaluate_batch_proof, truncate_batch_proof, verify_consistency_proof};
 use crate::prefix::{evaluate as evaluate_prefix, MalformedProof};
-use crate::wire::*;
+use crate::proto::*;
 use crate::{
     guide, log, vrf, DeploymentMode, LastTreeHead, LocalStateUpdate, MonitorContext,
     MonitoringData, PublicConfig, SearchContext, SlimSearchRequest,
@@ -366,7 +366,7 @@ fn evaluate_vrf_proof(
 fn verify_search_internal(
     config: &PublicConfig,
     req: SlimSearchRequest,
-    res: SearchResponse,
+    res: TreeSearchResponse,
     context: SearchContext,
     monitor: bool,
     now: SystemTime,
@@ -376,7 +376,7 @@ fn verify_search_internal(
         search_key,
         version,
     } = req;
-    let SearchResponse {
+    let TreeSearchResponse {
         tree_head,
         vrf_proof,
         search,
@@ -499,7 +499,7 @@ fn verify_search_internal(
 pub fn verify_search(
     config: &PublicConfig,
     req: SlimSearchRequest,
-    res: SearchResponse,
+    res: TreeSearchResponse,
     context: SearchContext,
     force_monitor: bool,
     now: SystemTime,
@@ -522,7 +522,7 @@ pub fn verify_update(
             search_key: req.search_key.clone(),
             version: None,
         },
-        SearchResponse {
+        TreeSearchResponse {
             tree_head: res.tree_head.clone(),
             vrf_proof: res.vrf_proof.clone(),
             search: res.search.clone(),
@@ -548,14 +548,9 @@ pub fn verify_monitor<'a>(
     now: SystemTime,
 ) -> Result<LocalStateUpdate> {
     // Verify proof responses are the expected lengths.
-    if req.owned_keys.len() != res.owned_proofs.len() {
+    if req.keys.len() != res.proofs.len() {
         return Err(Error::VerificationFailed(
-            "monitoring response is malformed: wrong number of owned key proofs".to_string(),
-        ));
-    }
-    if req.contact_keys.len() != res.contact_proofs.len() {
-        return Err(Error::VerificationFailed(
-            "monitoring response is malformed: wrong number of contact key proofs".to_string(),
+            "monitoring response is malformed: wrong number of key proofs".to_string(),
         ));
     }
 
@@ -570,10 +565,7 @@ pub fn verify_monitor<'a>(
 
     // Process all the individual MonitorProof structures.
     let mut mpa = MonitorProofAcc::new(tree_size);
-    for (key, proof) in req.owned_keys.iter().zip(res.owned_proofs.iter()) {
-        mpa.process(&data, key, proof)?;
-    }
-    for (key, proof) in req.contact_keys.iter().zip(res.contact_proofs.iter()) {
+    for (key, proof) in req.keys.iter().zip(res.proofs.iter()) {
         mpa.process(&data, key, proof)?;
     }
 
@@ -598,19 +590,11 @@ pub fn verify_monitor<'a>(
     let updated_tree_head =
         verify_full_tree_head(config, full_tree_head, root, last_tree_head, now)?;
 
-    let MonitorRequest {
-        owned_keys,
-        contact_keys,
-        consistency,
-    } = req;
+    let MonitorRequest { keys, consistency } = req;
 
-    let mut data_updates = Vec::with_capacity(owned_keys.len() + contact_keys.len());
+    let mut data_updates = Vec::with_capacity(keys.len());
     // Update monitoring data.
-    for (key, entry) in owned_keys
-        .iter()
-        .chain(contact_keys.iter())
-        .zip(mpa.entries.iter())
-    {
+    for (key, entry) in keys.iter().zip(mpa.entries.iter()) {
         let size = if key.search_key == b"distinguished" {
             // Generally an effort has been made to avoid referencing the
             // "distinguished" key in the core keytrans library, but it
@@ -868,13 +852,13 @@ impl MonitoringDataWrapper {
 }
 
 /// Returns the TreeHead that would've been issued immediately after the value
-/// being searched for in `SearchResponse` was sequenced.
+/// being searched for in `TreeSearchResponse` was sequenced.
 ///
-/// Most validation is skipped so the SearchResponse MUST already be verified.
+/// Most validation is skipped so the TreeSearchResponse MUST already be verified.
 pub fn truncate_search_response(
     config: &PublicConfig,
-    req: &SearchRequest,
-    res: &SearchResponse,
+    req: &TreeSearchRequest,
+    res: &TreeSearchResponse,
 ) -> Result<(u64, [u8; 32])> {
     // NOTE: Update this function in tandem with verify_search_internal.
 
@@ -943,7 +927,6 @@ mod test {
     use test_case::test_case;
 
     use super::*;
-    use crate::wire;
 
     const MAX_AHEAD: Duration = Duration::from_secs(42);
     const MAX_BEHIND: Duration = Duration::from_secs(42);
@@ -995,16 +978,14 @@ mod test {
         ))
         .unwrap();
         let aci = uuid::uuid!("84fd7196-b3fa-4d4d-bbf8-8f1cdf2b7cea");
-        let request = wire::SearchRequest {
+        let request = TreeSearchRequest {
             search_key: [b"a", aci.as_bytes().as_slice()].concat(),
             version: None,
             consistency: None,
-            mapped_value: vec![],
-            unidentified_access_key: None,
         };
         let response = {
             let bytes = include_bytes!("../res/kt-search-response.dat");
-            wire::SearchResponse::decode(bytes.as_slice()).unwrap()
+            TreeSearchResponse::decode(bytes.as_slice()).unwrap()
         };
         let valid_at = SystemTime::UNIX_EPOCH + Duration::from_secs(1724279958);
         let config = PublicConfig {
