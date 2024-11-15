@@ -29,7 +29,7 @@ use crate::route::{
 /// `UnresolvedHost`, which implements this trait.
 pub trait ResolveHostnames {
     /// The new route type with no unresolved hostnames.
-    type Resolved;
+    type Resolved: ResolvedRoute;
 
     /// Enumerates all the unresolved hostnames in `self`.
     fn hostnames(&self) -> impl Iterator<Item = &UnresolvedHost>;
@@ -233,24 +233,6 @@ impl<D: ResolveHostnames, P: ResolveHostnames> ResolveHostnames for DirectOrProx
     }
 }
 
-impl<A: ResolveHostnames> ResolveHostnames for SocksTarget<A> {
-    type Resolved = SocksTarget<A::Resolved>;
-
-    fn hostnames(&self) -> impl Iterator<Item = &UnresolvedHost> {
-        match self {
-            SocksTarget::ResolvedLocally(a) => Either::Left(a.hostnames()),
-            SocksTarget::ResolvedRemotely { name: _ } => Either::Right(std::iter::empty()),
-        }
-    }
-
-    fn resolve(self, lookup: impl FnMut(&str) -> IpAddr) -> Self::Resolved {
-        match self {
-            SocksTarget::ResolvedLocally(a) => SocksTarget::ResolvedLocally(a.resolve(lookup)),
-            SocksTarget::ResolvedRemotely { name } => SocksTarget::ResolvedRemotely { name },
-        }
-    }
-}
-
 impl<A: ResolveHostnames> ResolveHostnames for ConnectionProxyRoute<A> {
     type Resolved = ConnectionProxyRoute<A::Resolved>;
 
@@ -287,7 +269,10 @@ impl<A: ResolveHostnames> ResolveHostnames for SocksRoute<A> {
             target_port: _,
             protocol: _,
         } = self;
-        proxy.hostnames().chain(target_addr.hostnames())
+        proxy.hostnames().chain(match target_addr {
+            SocksTarget::ResolvedLocally(addr) => Either::Left(addr.hostnames()),
+            SocksTarget::ResolvedRemotely { name: _ } => Either::Right(std::iter::empty()),
+        })
     }
 
     fn resolve(self, mut lookup: impl FnMut(&str) -> IpAddr) -> Self::Resolved {
@@ -297,9 +282,15 @@ impl<A: ResolveHostnames> ResolveHostnames for SocksRoute<A> {
             target_port,
             protocol,
         } = self;
+        let target_addr = match target_addr {
+            SocksTarget::ResolvedLocally(addr) => {
+                SocksTarget::ResolvedLocally(addr.resolve(&mut lookup))
+            }
+            SocksTarget::ResolvedRemotely { name } => SocksTarget::ResolvedRemotely { name },
+        };
         SocksRoute {
-            proxy: proxy.resolve(&mut lookup),
-            target_addr: target_addr.resolve(lookup),
+            proxy: proxy.resolve(lookup),
+            target_addr,
             target_port,
             protocol,
         }
@@ -358,44 +349,28 @@ impl<A: ResolvedRoute> ResolvedRoute for SocksRoute<A> {
     }
 }
 
-#[cfg(test)]
-mod test {
-    use std::collections::{HashMap, HashSet};
-    use std::num::NonZeroU16;
-
-    use assert_matches::assert_matches;
-    use const_str::ip_addr;
-    use futures_util::{pin_mut, FutureExt as _, Stream, StreamExt as _};
-    use nonzero_ext::nonzero;
+#[cfg(any(test, feature = "test-util"))]
+pub mod testutils {
+    use futures_util::Stream;
     use tokio::sync::{mpsc, oneshot};
     use tokio_stream::wrappers::UnboundedReceiverStream;
 
     use super::*;
-    use crate::certs::RootCertificates;
-    use crate::host::Host;
-    use crate::route::{
-        DirectOrProxyRoute, HttpRouteFragment, SocksRoute, TlsRouteFragment,
-        UnresolvedHttpsServiceRoute,
-    };
-    use crate::tcp_ssl::proxy::socks;
-    use crate::DnsSource;
-
-    const PROXY_PORT: NonZeroU16 = nonzero!(444u16);
-    const TARGET_PORT: NonZeroU16 = nonzero!(888u16);
 
     /// Implementation of [`Resolver`] that gets results from
     /// [`FakeResponder`]s.
-    struct FakeResolver {
+    pub struct FakeResolver {
         request_tx: mpsc::UnboundedSender<FakeResponder>,
     }
 
-    struct FakeResponder {
+    #[derive(Debug)]
+    pub struct FakeResponder {
         hostname: String,
         result_sender: oneshot::Sender<Result<LookupResult, DnsError>>,
     }
 
     impl FakeResolver {
-        fn new() -> (FakeResolver, impl Stream<Item = FakeResponder> + Unpin) {
+        pub fn new() -> (FakeResolver, impl Stream<Item = FakeResponder> + Unpin) {
             let (request_tx, request_rx) = mpsc::unbounded_channel();
             (
                 FakeResolver { request_tx },
@@ -424,13 +399,38 @@ mod test {
     }
 
     impl FakeResponder {
-        fn hostname(&self) -> &str {
+        pub fn hostname(&self) -> &str {
             &self.hostname
         }
-        fn respond(self, result: Result<LookupResult, DnsError>) {
+        pub fn respond(self, result: Result<LookupResult, DnsError>) {
             let _ignore_error = self.result_sender.send(result);
         }
     }
+}
+
+#[cfg(test)]
+mod test {
+    use std::collections::{HashMap, HashSet};
+    use std::num::NonZeroU16;
+
+    use assert_matches::assert_matches;
+    use const_str::ip_addr;
+    use futures_util::{pin_mut, FutureExt as _, StreamExt as _};
+    use nonzero_ext::nonzero;
+
+    use super::*;
+    use crate::certs::RootCertificates;
+    use crate::host::Host;
+    use crate::route::resolve::testutils::{FakeResolver, FakeResponder};
+    use crate::route::{
+        DirectOrProxyRoute, HttpRouteFragment, SocksRoute, TlsRouteFragment,
+        UnresolvedHttpsServiceRoute,
+    };
+    use crate::tcp_ssl::proxy::socks;
+    use crate::DnsSource;
+
+    const PROXY_PORT: NonZeroU16 = nonzero!(444u16);
+    const TARGET_PORT: NonZeroU16 = nonzero!(888u16);
 
     /// Let us use a `Vec` for testing [`resolve_route`] instead of a real route
     /// type that would require us to specify a bunch of unnecessary extra

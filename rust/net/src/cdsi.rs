@@ -14,15 +14,16 @@ use libsignal_net_infra::ws::{NextOrClose, WebSocketConnectError, WebSocketServi
 use libsignal_net_infra::ws2::attested::{
     AttestedConnection, AttestedConnectionError, AttestedProtocolError,
 };
-use libsignal_net_infra::{extract_retry_after_seconds, TransportConnector};
+use libsignal_net_infra::{extract_retry_after_seconds, AsyncDuplexStream, TransportConnector};
 use prost::Message as _;
 use thiserror::Error;
+use tokio_tungstenite::WebSocketStream;
 use tungstenite::protocol::frame::coding::CloseCode;
 use tungstenite::protocol::CloseFrame;
 use uuid::Uuid;
 
 use crate::auth::Auth;
-use crate::enclave::{Cdsi, EnclaveEndpointConnection};
+use crate::enclave::{Cdsi, EnclaveEndpointConnection, EndpointParams, NewHandshake as _};
 use crate::proto::cds2::{ClientRequest, ClientResponse};
 use crate::ws::WebSocketServiceConnectError;
 
@@ -344,6 +345,18 @@ impl CdsiConnection {
             .await?;
 
         log::info!("successfully established attested connection to CDSI endpoint");
+        Ok(Self(connection))
+    }
+
+    pub async fn connect_over(
+        ws: WebSocketStream<impl AsyncDuplexStream + 'static>,
+        params: &EndpointParams<'_, Cdsi>,
+        ws_config: crate::infra::ws2::Config,
+    ) -> Result<Self, LookupError> {
+        let connection = AttestedConnection::connect(ws, ws_config, move |attestation_message| {
+            Cdsi::new_handshake(params, attestation_message)
+        })
+        .await?;
         Ok(Self(connection))
     }
 

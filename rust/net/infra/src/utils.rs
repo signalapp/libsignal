@@ -3,7 +3,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use std::future;
 use std::future::Future;
 use std::sync::Arc;
 use std::time::Duration;
@@ -14,6 +13,7 @@ use futures_util::StreamExt;
 use http::HeaderValue;
 
 pub(crate) mod binary_heap;
+pub mod future;
 
 /// Constructs the value of the `Authorization` header for the `Basic` auth scheme.
 pub fn basic_authorization(username: &str, password: &str) -> HeaderValue {
@@ -49,7 +49,7 @@ where
     I: IntoIterator<Item = F>,
 {
     FuturesUnordered::from_iter(futures)
-        .filter_map(|result| future::ready(result.ok()))
+        .filter_map(|result| std::future::ready(result.ok()))
         .next()
         .await
 }

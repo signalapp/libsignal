@@ -3,14 +3,28 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::hash::Hash;
 use std::net::IpAddr;
+use std::ops::ControlFlow;
 use std::sync::Arc;
+use std::time::Duration;
+
+use futures_util::stream::FuturesUnordered;
+use futures_util::{FutureExt, StreamExt};
+use tokio::time::Instant;
+use tokio_util::either::Either;
+
+use crate::host::Host;
+use crate::utils::future::SomeOrPending;
 
 mod connect;
 pub use connect::*;
 
 mod http;
 pub use http::*;
+
+pub mod provider;
+pub use crate::route::provider::RouteProviderExt;
 
 mod proxy;
 pub use proxy::*;
@@ -30,7 +44,9 @@ pub use tls::*;
 mod ws;
 pub use ws::*;
 
-use crate::host::Host;
+/// How long to hold back a route that gets resolved before its predecessor
+/// before trying to connect with it anyway.
+const OUT_OF_ORDER_RESOLUTION_DEBOUNCE_TIME: Duration = Duration::from_secs(5);
 
 /// Produces routes to a destination.
 ///
@@ -50,7 +66,7 @@ pub trait RouteProvider {
 }
 
 /// A hostname in a route that can later be resolved to IP addresses.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct UnresolvedHost(Arc<str>);
 
 /// Allows replacing part of a route.
@@ -95,26 +111,265 @@ pub type HttpsServiceRoute = HttpsTlsRoute<TransportRoute>;
 /// [`WebSocketRoute`] that contains [`IpAddr`]s.
 pub type WebSocketServiceRoute = WebSocketRoute<HttpsServiceRoute>;
 
+/// Error for [`connect`].
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum ConnectError<E> {
+    /// The route provider did not produce any routes.
+    NoResolvedRoutes,
+    /// All attempts to connect failed, but none fatally.
+    AllAttemptsFailed,
+    /// An attempt to connect failed fatally.
+    FatalConnect(E),
+}
+
+/// Recorded success and failure information from [`connect`].
+///
+/// This should be used to update the internal state of the delay policy after
+/// the connection attempt completes.
+#[must_use]
+#[derive(Debug, PartialEq)]
+pub struct OutcomeUpdates<R> {
+    /// A list of routes for which connection attempts finished, and the
+    /// respective statuses.
+    outcomes: Vec<(R, AttemptOutcome)>,
+    /// The time at which the connect attempt finished.
+    finished_at: Instant,
+}
+
+/// Attempt to connect to routes from the given [`RouteProvider`].
+///
+/// Generates the sequence of routes from the given `RouteProvider` and then
+/// attempts to connect to them. The order in which connetion attempts are made
+/// depends on recorded state from previous connection attempts and the order in
+/// which the unresolved routes get resolved. The first successful connection
+/// attempt is returned, along with a set of updates that should be used to
+/// update the provided `RouteDelayPolicy` implementer.
+///
+/// When a connection attempt fails, the error is passed to the provided
+/// callback to determine whether it is severe enough to fail the entire
+/// connection attempt. An example of such a fatal error would be if the remote
+/// server is reachable but immediately closes the connection with an HTTP 4xx
+/// error.
+///
+/// The `Future` returned by this function resolves when all connection attempts
+/// are exhausted or a one of them produces a fatal error.
+pub async fn connect<R, P, C, FatalError>(
+    route_resolver: &RouteResolver,
+    delay_policy: &impl RouteDelayPolicy<R>,
+    route_provider: P,
+    resolver: &impl Resolver,
+    connector: C,
+    mut on_error: impl FnMut(C::Error) -> ControlFlow<FatalError>,
+) -> (
+    Result<C::Connection, ConnectError<FatalError>>,
+    OutcomeUpdates<R>,
+)
+where
+    R: Clone,
+    C: Connector<R, ()>,
+    P: RouteProvider,
+    P::Route: ResolveHostnames<Resolved = R> + Clone + 'static,
+    R: ResolvedRoute,
+{
+    let ordered_routes = route_provider.routes();
+    let resolver_stream = route_resolver.resolve(ordered_routes, resolver);
+    let schedule = Some(Schedule::new(
+        resolver_stream,
+        delay_policy,
+        OUT_OF_ORDER_RESOLUTION_DEBOUNCE_TIME,
+    ));
+    let mut schedule = std::pin::pin!(schedule);
+
+    let mut sleep_until_start_next_connection = tokio::time::sleep(Duration::ZERO);
+    let mut sleep_until_start_next_connection = std::pin::pin!(sleep_until_start_next_connection);
+
+    // Whether the Schedule should be polled for its next route.
+    let mut poll_schedule_for_next = true;
+    let mut connects_in_progress = FuturesUnordered::new();
+    let mut outcomes = Vec::new();
+
+    #[derive(Debug)]
+    enum Event<C, R> {
+        StartNextConnection,
+        ConnectionAttemptFinished(C),
+        NextRouteAvailable(R),
+    }
+
+    let outcome = loop {
+        // If there's still a Schedule to pull from, poll it for more routes
+        // or sleep until that's supposed to start.
+        let poll_or_wait = schedule.as_mut().as_pin_mut().map(|schedule| {
+            if poll_schedule_for_next {
+                Either::Left(schedule.next().map(Event::NextRouteAvailable))
+            } else {
+                Either::Right(
+                    sleep_until_start_next_connection
+                        .as_mut()
+                        .map(|()| Event::StartNextConnection),
+                )
+            }
+        });
+
+        // Wait for the next in-progress connection attempt to finish, if
+        // there are any
+        let next_connect_in_progress = (!connects_in_progress.is_empty()).then(|| {
+            connects_in_progress
+                .next()
+                .map(|o| o.expect("checked non-empty"))
+        });
+
+        // If there aren't any connection attempts in progress and there
+        // also aren't gonna be any more, we've run out of possibilities.
+        if poll_or_wait.is_none() && next_connect_in_progress.is_none() {
+            break Err(ConnectError::AllAttemptsFailed);
+        }
+
+        let event = tokio::select! {
+            event = SomeOrPending::from(poll_or_wait) => event,
+            c = SomeOrPending::from(next_connect_in_progress) => Event::ConnectionAttemptFinished(c),
+        };
+
+        match event {
+            Event::StartNextConnection => {
+                poll_schedule_for_next = true;
+            }
+
+            Event::NextRouteAvailable(Some(route)) => {
+                connects_in_progress.push(async {
+                    let started = Instant::now();
+                    let result = connector.connect(route.clone()).await;
+                    (route, result, started)
+                });
+                poll_schedule_for_next = false;
+
+                sleep_until_start_next_connection
+                    .as_mut()
+                    .reset(Instant::now() + pull_next_route_delay(&connects_in_progress));
+            }
+            Event::NextRouteAvailable(None) => {
+                // The Schedule is empty, so make sure it's not polled again.
+                schedule.set(None);
+                poll_schedule_for_next = false;
+            }
+            Event::ConnectionAttemptFinished((route, result, started)) => {
+                let make_outcome = |result| (route, AttemptOutcome { started, result });
+                match result.map_err(&mut on_error) {
+                    Ok(connection) => {
+                        // We've got a successful connection!
+                        outcomes.push(make_outcome(Ok(())));
+                        break Ok(connection);
+                    }
+                    Err(ControlFlow::Continue(())) => {
+                        // Record the non-fatal error outcome and move on.
+                        outcomes.push(make_outcome(Err(UnsuccessfulOutcome)));
+                    }
+                    Err(ControlFlow::Break(fatal_err)) => {
+                        // This isn't a route-level error, it's a
+                        // service-level error. It doesn't necessarily mean
+                        // the route is bad, so don't record the
+                        // unsuccessful attempt.
+                        break Err(ConnectError::FatalConnect(fatal_err));
+                    }
+                }
+            }
+        }
+    };
+    (
+        outcome,
+        OutcomeUpdates {
+            outcomes,
+            finished_at: Instant::now(),
+        },
+    )
+}
+
+const PER_CONNECTION_WAIT_DURATION: Duration = Duration::from_millis(500);
+
+fn pull_next_route_delay<F>(connects_in_progress: &FuturesUnordered<F>) -> Duration {
+    let connections_factor = connects_in_progress.len().try_into().unwrap_or(u32::MAX);
+
+    PER_CONNECTION_WAIT_DURATION * connections_factor
+}
+
+impl<R: RouteProvider> RouteProvider for &R {
+    type Route = R::Route;
+
+    fn routes(&self) -> impl Iterator<Item = Self::Route> + '_ {
+        R::routes(self)
+    }
+}
+
 impl From<Arc<str>> for UnresolvedHost {
     fn from(value: Arc<str>) -> Self {
         Self(value)
     }
 }
 
+#[cfg(any(test, feature = "test-util"))]
+pub mod testutils {
+    use std::net::IpAddr;
+
+    pub use super::resolve::testutils::*;
+    use super::*;
+
+    #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+    pub struct FakeRoute<A>(pub A);
+
+    impl<A: ResolveHostnames> ResolveHostnames for FakeRoute<A> {
+        type Resolved = FakeRoute<A::Resolved>;
+
+        fn hostnames(&self) -> impl Iterator<Item = &UnresolvedHost> {
+            self.0.hostnames()
+        }
+
+        fn resolve(self, lookup: impl FnMut(&str) -> IpAddr) -> Self::Resolved {
+            FakeRoute(self.0.resolve(lookup))
+        }
+    }
+
+    impl<A: ResolvedRoute> ResolvedRoute for FakeRoute<A> {
+        fn immediate_target(&self) -> &IpAddr {
+            self.0.immediate_target()
+        }
+    }
+
+    /// [`RouteDelayPolicy`] that always returns a delay of zero.
+    #[derive(Copy, Clone, Debug)]
+    pub struct NoDelay;
+
+    impl<R> RouteDelayPolicy<R> for NoDelay {
+        fn compute_delay(&self, _route: &R, _now: Instant) -> Duration {
+            Duration::ZERO
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
     use std::borrow::Cow;
+    use std::convert::Infallible;
+    use std::fmt::Debug;
+    use std::future::Future;
+    use std::net::{IpAddr, Ipv4Addr};
     use std::num::NonZeroU16;
 
     use ::http::uri::PathAndQuery;
     use ::http::HeaderMap;
+    use assert_matches::assert_matches;
+    use const_str::ip_addr;
+    use futures_util::{Stream, StreamExt};
     use itertools::Itertools as _;
     use nonzero_ext::nonzero;
+    use tokio::sync::{mpsc, oneshot};
+    use tokio_stream::wrappers::UnboundedReceiverStream;
     use tungstenite::protocol::WebSocketConfig;
 
     use super::*;
     use crate::certs::RootCertificates;
+    use crate::dns::lookup_result::LookupResult;
     use crate::host::Host;
+    use crate::route::resolve::testutils::FakeResolver;
+    use crate::route::testutils::{FakeRoute, NoDelay};
     use crate::tcp_ssl::proxy::socks;
     use crate::Alpn;
 
@@ -362,5 +617,220 @@ mod test {
                 >,
             >,
         >();
+    }
+
+    #[derive(Debug, PartialEq)]
+    struct FakeConnection<R>(R);
+
+    #[derive(Debug, PartialEq)]
+    struct FakeConnectError;
+
+    #[derive(Debug)]
+    struct FakeConnector<R> {
+        outgoing: mpsc::UnboundedSender<FakeConnectResponder<R>>,
+    }
+
+    #[derive(Debug)]
+    struct FakeConnectResponder<R>(
+        R,
+        oneshot::Sender<Result<FakeConnection<R>, FakeConnectError>>,
+    );
+
+    impl<R: Debug> FakeConnectResponder<R> {
+        fn route(&self) -> &R {
+            &self.0
+        }
+        fn respond(self, result: Result<(), FakeConnectError>) {
+            self.1
+                .send(result.map(|()| FakeConnection(self.0)))
+                .expect("not dropped")
+        }
+    }
+
+    impl<R> FakeConnector<R> {
+        fn new() -> (Self, impl Stream<Item = FakeConnectResponder<R>>) {
+            let (outgoing, incoming) = mpsc::unbounded_channel();
+
+            (Self { outgoing }, UnboundedReceiverStream::new(incoming))
+        }
+    }
+
+    impl<R: Send> Connector<R, ()> for FakeConnector<R> {
+        type Connection = FakeConnection<R>;
+        type Error = FakeConnectError;
+
+        fn connect_over(
+            &self,
+            (): (),
+            route: R,
+        ) -> impl Future<Output = Result<Self::Connection, Self::Error>> + Send {
+            let (sender, receiver) = oneshot::channel();
+            self.outgoing
+                .send(FakeConnectResponder(route, sender))
+                .unwrap();
+            receiver.map(|r| r.unwrap())
+        }
+    }
+
+    impl<R: Clone> RouteProvider for Vec<R> {
+        type Route = R;
+
+        fn routes(&self) -> impl Iterator<Item = Self::Route> + '_ {
+            self.iter().cloned()
+        }
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn connect_slows_down_after_starting_a_connection() {
+        const HOSTNAMES: &[(&str, Ipv4Addr)] = &[
+            ("A", ip_addr!(v4, "1.1.1.1")),
+            ("B", ip_addr!(v4, "2.2.2.2")),
+            ("C", ip_addr!(v4, "3.3.3.3")),
+            ("D", ip_addr!(v4, "4.4.4.4")),
+            ("E", ip_addr!(v4, "5.5.5.5")),
+            ("F", ip_addr!(v4, "6.6.6.6")),
+            ("G", ip_addr!(v4, "7.7.7.7")),
+        ];
+        let (connector, mut connection_responders) = FakeConnector::new();
+        let outcomes = NoDelay;
+        let (resolver, mut resolution_responders) = FakeResolver::new();
+
+        let _connection_task = tokio::spawn(async move {
+            connect(
+                &RouteResolver::default(),
+                &outcomes,
+                HOSTNAMES
+                    .iter()
+                    .map(|(h, _addr)| FakeRoute(UnresolvedHost::from(Arc::from(*h))))
+                    .collect_vec(),
+                &resolver,
+                connector,
+                |_err: FakeConnectError| ControlFlow::<Infallible>::Continue(()),
+            )
+            .await
+        });
+
+        // We should see all routes resolved in parallel. If we let those finish
+        // immediately we should start seeing connection attempts.
+        for (host, addr) in HOSTNAMES {
+            let responder = resolution_responders.next().await.unwrap();
+            assert_eq!(responder.hostname(), *host);
+            responder.respond(Ok(LookupResult::new(
+                crate::DnsSource::Test,
+                vec![*addr],
+                vec![],
+            )));
+        }
+
+        // Let the task run so it can kick off some connection attempts.
+        tokio::task::yield_now().await;
+
+        let connections_in_progress: Vec<_> =
+            std::iter::from_fn(|| connection_responders.next().now_or_never().flatten()).collect();
+
+        assert_eq!(
+            connections_in_progress
+                .iter()
+                .map(|responder| responder.route().0)
+                .collect_vec(),
+            HOSTNAMES[..1]
+                .iter()
+                .map(|(_, addr)| IpAddr::V4(*addr))
+                .collect_vec()
+        );
+
+        // There shouldn't be any more connections in progress.
+        assert_matches!(
+            futures_util::poll!(connection_responders.next()),
+            std::task::Poll::Pending
+        );
+
+        let start = Instant::now();
+        // If, however, we wait a little longer, we will see another one!
+        let next_connection = connection_responders.next().await.unwrap();
+        assert_eq!(next_connection.route().0, IpAddr::V4(HOSTNAMES[1].1));
+        assert_eq!(start.elapsed(), PER_CONNECTION_WAIT_DURATION);
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn connect_takes_first_successful() {
+        const HOSTNAMES: &[(&str, Ipv4Addr)] = &[
+            ("A", ip_addr!(v4, "1.1.1.1")),
+            ("B", ip_addr!(v4, "2.2.2.2")),
+            ("C", ip_addr!(v4, "3.3.3.3")),
+            ("D", ip_addr!(v4, "4.4.4.4")),
+            ("E", ip_addr!(v4, "5.5.5.5")),
+            ("F", ip_addr!(v4, "6.6.6.6")),
+            ("G", ip_addr!(v4, "7.7.7.7")),
+        ];
+
+        let (connector, mut connection_responders) = FakeConnector::<FakeRoute<IpAddr>>::new();
+        let outcomes = NoDelay;
+        let (resolver, mut resolution_responders) = FakeResolver::new();
+
+        const SUCCESSFUL_ROUTE_INDEX: usize = 4;
+
+        let _connect_task = tokio::spawn(async move {
+            while let Some(responder) = connection_responders.next().await {
+                // Simulate the connection taking some time to succeed or fail.
+                const SIMULATED_CONNECTION_DELAY: Duration = Duration::from_secs(1);
+
+                let should_succeed =
+                    responder.route().0 == IpAddr::V4(HOSTNAMES[SUCCESSFUL_ROUTE_INDEX].1);
+                tokio::task::spawn(async move {
+                    tokio::time::sleep(SIMULATED_CONNECTION_DELAY).await;
+                    responder.respond(should_succeed.then_some(()).ok_or(FakeConnectError));
+                });
+            }
+        });
+        let _resolve_task = tokio::spawn(async move {
+            // The routes should be sent for resolution in order.
+            for (host, addr) in HOSTNAMES {
+                let responder = resolution_responders.next().await.unwrap();
+                assert_eq!(responder.hostname(), *host);
+                responder.respond(Ok(LookupResult::new(
+                    crate::DnsSource::Test,
+                    vec![*addr],
+                    vec![],
+                )));
+            }
+        });
+
+        let (result, updates) = connect(
+            &RouteResolver::default(),
+            &outcomes,
+            HOSTNAMES
+                .iter()
+                .map(|(h, _addr)| FakeRoute(UnresolvedHost::from(Arc::from(*h))))
+                .collect_vec(),
+            &resolver,
+            connector,
+            |_err: FakeConnectError| ControlFlow::<Infallible>::Continue(()),
+        )
+        .await;
+
+        assert_eq!(
+            result,
+            Ok(FakeConnection(FakeRoute(IpAddr::V4(
+                HOSTNAMES[SUCCESSFUL_ROUTE_INDEX].1
+            ))))
+        );
+
+        let update_outcomes = updates
+            .outcomes
+            .into_iter()
+            .map(|(r, a)| (r, a.result))
+            .collect_vec();
+        assert_eq!(
+            update_outcomes,
+            HOSTNAMES[..SUCCESSFUL_ROUTE_INDEX]
+                .iter()
+                .map(|(_, ip)| (FakeRoute(IpAddr::V4(*ip)), Err(UnsuccessfulOutcome)))
+                .chain(std::iter::once({
+                    let (_, ip) = HOSTNAMES[SUCCESSFUL_ROUTE_INDEX];
+                    (FakeRoute(IpAddr::V4(ip)), Ok(()))
+                }))
+                .collect_vec()
+        );
     }
 }

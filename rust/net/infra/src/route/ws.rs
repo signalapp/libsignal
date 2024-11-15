@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::hash::Hash;
+
 use http::uri::PathAndQuery;
 use http::HeaderMap;
 use tungstenite::protocol::WebSocketConfig;
@@ -66,12 +68,33 @@ impl<R: ReplaceFragment<S>, S> ReplaceFragment<S> for WebSocketRoute<R> {
 /// implement [`PartialEq`].
 impl PartialEq for WebSocketRouteFragment {
     fn eq(&self, other: &Self) -> bool {
-        self.endpoint == other.endpoint && ws_config_eq(self.ws_config, other.ws_config)
+        let Self {
+            ws_config,
+            endpoint,
+            headers,
+        } = self;
+        endpoint == &other.endpoint
+            && headers == &other.headers
+            && ws_config_eq(ws_config, &other.ws_config)
+    }
+}
+
+impl Eq for WebSocketRouteFragment {}
+
+impl std::hash::Hash for WebSocketRouteFragment {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        let Self {
+            ws_config,
+            endpoint,
+            headers: _,
+        } = self;
+        ws_config_hash(ws_config, state);
+        endpoint.hash(state);
     }
 }
 
 #[allow(deprecated)]
-fn ws_config_eq(lhs: WebSocketConfig, rhs: WebSocketConfig) -> bool {
+fn ws_config_eq(lhs: &WebSocketConfig, rhs: &WebSocketConfig) -> bool {
     let WebSocketConfig {
         max_send_queue,
         write_buffer_size,
@@ -81,10 +104,29 @@ fn ws_config_eq(lhs: WebSocketConfig, rhs: WebSocketConfig) -> bool {
         accept_unmasked_frames,
     } = lhs;
 
-    max_send_queue == rhs.max_send_queue
-        && write_buffer_size == rhs.write_buffer_size
-        && max_write_buffer_size == rhs.max_write_buffer_size
-        && max_message_size == rhs.max_message_size
-        && max_frame_size == rhs.max_frame_size
-        && accept_unmasked_frames == rhs.accept_unmasked_frames
+    max_send_queue == &rhs.max_send_queue
+        && write_buffer_size == &rhs.write_buffer_size
+        && max_write_buffer_size == &rhs.max_write_buffer_size
+        && max_message_size == &rhs.max_message_size
+        && max_frame_size == &rhs.max_frame_size
+        && accept_unmasked_frames == &rhs.accept_unmasked_frames
+}
+
+#[allow(deprecated)]
+fn ws_config_hash(ws: &WebSocketConfig, state: &mut impl std::hash::Hasher) {
+    let WebSocketConfig {
+        max_send_queue,
+        write_buffer_size,
+        max_write_buffer_size,
+        max_message_size,
+        max_frame_size,
+        accept_unmasked_frames,
+    } = ws;
+
+    max_send_queue.hash(state);
+    write_buffer_size.hash(state);
+    max_write_buffer_size.hash(state);
+    max_message_size.hash(state);
+    max_frame_size.hash(state);
+    accept_unmasked_frames.hash(state);
 }

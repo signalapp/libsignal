@@ -21,6 +21,7 @@ use crate::dns::dns_utils::log_safe_domain;
 use crate::dns::DnsError;
 use crate::route::{ResolveHostnames, ResolvedRoute, Resolver};
 use crate::utils::binary_heap::{MinKeyValueQueue, Queue};
+use crate::utils::future::SomeOrPending;
 
 /// Resolves routes with domain names to equivalent routes with IP addresses.
 ///
@@ -81,6 +82,12 @@ pub struct ConnectionOutcomeParams {
     pub count_growth_factor: f32,
     pub max_count: u8,
     pub max_delay: Duration,
+}
+
+impl Default for RouteResolver {
+    fn default() -> Self {
+        Self { allow_ipv6: true }
+    }
 }
 
 impl RouteResolver {
@@ -237,6 +244,7 @@ where
     }
 }
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct AttemptOutcome {
     pub started: Instant,
     pub result: Result<(), UnsuccessfulOutcome>,
@@ -246,6 +254,7 @@ pub struct AttemptOutcome {
 ///
 /// Right now the cause of the failure is unimportant, though if that changes in
 /// the future this should be made an `enum`.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct UnsuccessfulOutcome;
 
 impl<R: Hash + Eq + Clone> ConnectionOutcomes<R> {
@@ -436,24 +445,6 @@ impl<S: Stream<Item = (A, B)>, A, B> Stream for SwapPairStream<S> {
 impl<S: FusedStream<Item = (A, B)>, A, B> FusedStream for SwapPairStream<S> {
     fn is_terminated(&self) -> bool {
         self.0.is_terminated()
-    }
-}
-
-/// [`Future`] that delegates to the inner `F: Future` or never resolves.
-#[pin_project]
-struct SomeOrPending<F>(#[pin] Option<F>);
-
-impl<F: Future> Future for SomeOrPending<F> {
-    type Output = F::Output;
-
-    fn poll(
-        self: Pin<&mut Self>,
-        cx: &mut std::task::Context<'_>,
-    ) -> std::task::Poll<Self::Output> {
-        match self.project().0.as_pin_mut() {
-            Some(f) => f.poll(cx),
-            None => std::task::Poll::Pending,
-        }
     }
 }
 
@@ -663,45 +654,16 @@ mod test {
 
     use super::*;
     use crate::dns::lookup_result::LookupResult;
+    use crate::route::testutils::{FakeRoute, NoDelay};
     use crate::route::UnresolvedHost;
     use crate::DnsSource;
-
-    struct NoDelay;
-
-    impl<R> RouteDelayPolicy<R> for NoDelay {
-        fn compute_delay(&self, _route: &R, _now: Instant) -> Duration {
-            Duration::ZERO
-        }
-    }
-
-    #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-    struct FakeRoute<A>(A);
-
-    impl<A: ResolveHostnames> ResolveHostnames for FakeRoute<A> {
-        type Resolved = FakeRoute<A::Resolved>;
-
-        fn hostnames(&self) -> impl Iterator<Item = &UnresolvedHost> {
-            self.0.hostnames()
-        }
-
-        fn resolve(self, lookup: impl FnMut(&str) -> IpAddr) -> Self::Resolved {
-            FakeRoute(self.0.resolve(lookup))
-        }
-    }
-
-    impl<A: ResolvedRoute> ResolvedRoute for FakeRoute<A> {
-        fn immediate_target(&self) -> &IpAddr {
-            self.0.immediate_target()
-        }
-    }
 
     impl<S, R, SP> Schedule<S, R, SP>
     where
         S: FusedStream<Item = (ResolvedRoutes<R>, ResolveMeta)>,
         SP: RouteDelayPolicy<R>,
     {
-        pub fn as_stream<'a>(self: Pin<&'a mut Self>) -> impl Stream<Item = R> + 'a
-where {
+        pub fn as_stream<'a>(self: Pin<&'a mut Self>) -> impl Stream<Item = R> + 'a {
             let schedule = self;
             futures_util::stream::unfold(schedule, |mut schedule| async {
                 schedule.as_mut().next().await.map(|r| (r, schedule))
