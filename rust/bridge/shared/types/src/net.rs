@@ -7,11 +7,13 @@ use std::marker::PhantomData;
 use std::num::{NonZeroU16, NonZeroU32};
 use std::panic::RefUnwindSafe;
 use std::sync::Arc;
+use std::time::Duration;
 
 use aes_gcm_siv::aead::rand_core::CryptoRngCore;
 use async_trait::async_trait;
 use futures_util::future::join3;
 use libsignal_net::auth::Auth;
+use libsignal_net::connect_state::ConnectState;
 use libsignal_net::enclave::{
     Cdsi, EnclaveEndpoint, EnclaveEndpointConnection, EnclaveKind, Nitro, PpssSetup, Sgx, Tpm2Snp,
 };
@@ -19,6 +21,7 @@ use libsignal_net::env::{add_user_agent_header, Env, Svr3Env, UserAgent};
 use libsignal_net::infra::connection_manager::MultiRouteConnectionManager;
 use libsignal_net::infra::dns::DnsResolver;
 use libsignal_net::infra::host::Host;
+use libsignal_net::infra::route::ConnectionOutcomeParams;
 use libsignal_net::infra::tcp_ssl::proxy::tls::TlsProxyConnector as TcpSslProxyConnector;
 use libsignal_net::infra::tcp_ssl::{DirectConnector as TcpSslDirectConnector, TcpSslConnector};
 use libsignal_net::infra::timeouts::ONE_ROUTE_CONNECTION_TIMEOUT;
@@ -53,6 +56,15 @@ impl Environment {
         }
     }
 }
+const CONNECT_PARAMS: ConnectionOutcomeParams = {
+    ConnectionOutcomeParams {
+        age_cutoff: Duration::from_secs(5 * 60),
+        cooldown_growth_factor: 10.0,
+        max_count: 5,
+        max_delay: Duration::from_secs(30),
+        count_growth_factor: 10.0,
+    }
+};
 
 type Svr3EndpointConnections = (
     EnclaveEndpointConnection<Sgx, MultiRouteConnectionManager>,
@@ -69,7 +81,7 @@ struct EndpointConnections {
 impl EndpointConnections {
     fn new(
         env: &Env<'static, Svr3Env<'static>>,
-        user_agent: &str,
+        user_agent: &UserAgent,
         use_fallbacks: bool,
         network_change_event: &ObservableEvent,
     ) -> Self {
@@ -81,31 +93,30 @@ impl EndpointConnections {
             // testing. (Or the person running this isn't Signal.)
             env.chat_domain_config.connect.hostname
         );
-        let user_agent = UserAgent::with_libsignal_version(user_agent);
         let chat = libsignal_net::chat::endpoint_connection(
             &env.chat_domain_config.connect,
-            &user_agent,
+            user_agent,
             use_fallbacks,
             network_change_event,
         );
         let cdsi =
-            Self::endpoint_connection(&env.cdsi, &user_agent, use_fallbacks, network_change_event);
+            Self::endpoint_connection(&env.cdsi, user_agent, use_fallbacks, network_change_event);
         let svr3 = (
             Self::endpoint_connection(
                 env.svr3.sgx(),
-                &user_agent,
+                user_agent,
                 use_fallbacks,
                 network_change_event,
             ),
             Self::endpoint_connection(
                 env.svr3.nitro(),
-                &user_agent,
+                user_agent,
                 use_fallbacks,
                 network_change_event,
             ),
             Self::endpoint_connection(
                 env.svr3.tpm2snp(),
-                &user_agent,
+                user_agent,
                 use_fallbacks,
                 network_change_event,
             ),
@@ -139,7 +150,9 @@ impl EndpointConnections {
 
 pub struct ConnectionManager {
     env: Env<'static, Svr3Env<'static>>,
-    user_agent: String,
+    user_agent: UserAgent,
+    dns_resolver: DnsResolver,
+    connect: ::tokio::sync::RwLock<ConnectState>,
     // We could split this up to a separate mutex on each kind of connection,
     // but we don't hold it for very long anyway (just enough to clone the Arc).
     endpoints: std::sync::Mutex<Arc<EndpointConnections>>,
@@ -160,17 +173,21 @@ impl ConnectionManager {
         user_agent: &str,
     ) -> Self {
         let network_change_event = ObservableEvent::new();
+        let user_agent = UserAgent::with_libsignal_version(user_agent);
+
         let dns_resolver =
             DnsResolver::new_with_static_fallback(env.static_fallback(), &network_change_event);
         let transport_connector =
-            std::sync::Mutex::new(TcpSslDirectConnector::new(dns_resolver).into());
+            std::sync::Mutex::new(TcpSslDirectConnector::new(dns_resolver.clone()).into());
         let endpoints = std::sync::Mutex::new(
-            EndpointConnections::new(&env, user_agent, false, &network_change_event).into(),
+            EndpointConnections::new(&env, &user_agent, false, &network_change_event).into(),
         );
         Self {
             env,
-            user_agent: user_agent.to_owned(),
             endpoints,
+            user_agent,
+            connect: ConnectState::new(CONNECT_PARAMS),
+            dns_resolver,
             transport_connector,
             network_change_event,
         }
@@ -221,6 +238,7 @@ impl ConnectionManager {
     pub fn set_ipv6_enabled(&self, ipv6_enabled: bool) {
         let mut guard = self.transport_connector.lock().expect("not poisoned");
         guard.set_ipv6_enabled(ipv6_enabled);
+        self.connect.blocking_write().route_resolver.allow_ipv6 = ipv6_enabled;
     }
 
     /// Resets the endpoint connections to include or exclude censorship circumvention routes.

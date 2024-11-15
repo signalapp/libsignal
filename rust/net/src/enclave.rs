@@ -270,6 +270,12 @@ impl From<AttestedConnectionError> for Error {
     }
 }
 
+impl<E: EnclaveKind, C> EnclaveEndpointConnection<E, C> {
+    pub fn ws2_config(&self) -> libsignal_net_infra::ws2::Config {
+        self.endpoint_connection.config.ws2_config()
+    }
+}
+
 impl<E: EnclaveKind + NewHandshake, C: ConnectionManager> EnclaveEndpointConnection<E, C> {
     pub(crate) async fn connect<S: AsyncDuplexStream, T: TransportConnector<Stream = S>>(
         &self,

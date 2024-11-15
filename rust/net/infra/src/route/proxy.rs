@@ -56,7 +56,7 @@ pub enum DirectOrProxyProvider<D, P> {
     Proxy(P),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum ConnectionProxyConfig {
     TlsProxy {
         proxy_host: Host<Arc<str>>,

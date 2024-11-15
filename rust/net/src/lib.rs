@@ -7,6 +7,7 @@ pub mod auth;
 pub mod cdsi;
 pub mod certs;
 pub mod chat;
+pub mod connect_state;
 pub mod enclave;
 pub mod env;
 pub mod keytrans;

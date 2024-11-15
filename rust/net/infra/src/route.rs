@@ -131,9 +131,9 @@ pub enum ConnectError<E> {
 pub struct OutcomeUpdates<R> {
     /// A list of routes for which connection attempts finished, and the
     /// respective statuses.
-    outcomes: Vec<(R, AttemptOutcome)>,
+    pub outcomes: Vec<(R, AttemptOutcome)>,
     /// The time at which the connect attempt finished.
-    finished_at: Instant,
+    pub finished_at: Instant,
 }
 
 /// Attempt to connect to routes from the given [`RouteProvider`].

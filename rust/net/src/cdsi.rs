@@ -6,23 +6,25 @@
 use std::default::Default;
 
 use futures_util::TryFutureExt as _;
-use http::StatusCode;
+use http::{HeaderName, StatusCode};
 use libsignal_core::{Aci, Pni, E164};
 use libsignal_net_infra::connection_manager::ConnectionManager;
+use libsignal_net_infra::dns::DnsResolver;
 use libsignal_net_infra::errors::{LogSafeDisplay, TransportConnectError};
+use libsignal_net_infra::route::{RouteProvider, UnresolvedWebsocketServiceRoute};
 use libsignal_net_infra::ws::{NextOrClose, WebSocketConnectError, WebSocketServiceError};
 use libsignal_net_infra::ws2::attested::{
     AttestedConnection, AttestedConnectionError, AttestedProtocolError,
 };
-use libsignal_net_infra::{extract_retry_after_seconds, AsyncDuplexStream, TransportConnector};
+use libsignal_net_infra::{extract_retry_after_seconds, TransportConnector};
 use prost::Message as _;
 use thiserror::Error;
-use tokio_tungstenite::WebSocketStream;
 use tungstenite::protocol::frame::coding::CloseCode;
 use tungstenite::protocol::CloseFrame;
 use uuid::Uuid;
 
 use crate::auth::Auth;
+use crate::connect_state::ConnectState;
 use crate::enclave::{Cdsi, EnclaveEndpointConnection, EndpointParams, NewHandshake as _};
 use crate::proto::cds2::{ClientRequest, ClientResponse};
 use crate::ws::WebSocketServiceConnectError;
@@ -348,14 +350,24 @@ impl CdsiConnection {
         Ok(Self(connection))
     }
 
-    pub async fn connect_over(
-        ws: WebSocketStream<impl AsyncDuplexStream + 'static>,
-        params: &EndpointParams<'_, Cdsi>,
+    pub async fn connect_with(
+        connect: &tokio::sync::RwLock<ConnectState>,
+        resolver: &DnsResolver,
+        route_provider: impl RouteProvider<Route = UnresolvedWebsocketServiceRoute>,
+        confirmation_header_name: Option<HeaderName>,
         ws_config: crate::infra::ws2::Config,
+        params: &EndpointParams<'_, Cdsi>,
+        auth: Auth,
     ) -> Result<Self, LookupError> {
-        let connection = AttestedConnection::connect(ws, ws_config, move |attestation_message| {
-            Cdsi::new_handshake(params, attestation_message)
-        })
+        let connection = ConnectState::connect_attested_ws(
+            connect,
+            route_provider,
+            auth,
+            resolver,
+            confirmation_header_name,
+            ws_config,
+            move |attestation_message| Cdsi::new_handshake(params, attestation_message),
+        )
         .await?;
         Ok(Self(connection))
     }
