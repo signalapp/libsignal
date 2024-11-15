@@ -22,7 +22,7 @@ pub use ed25519_dalek::VerifyingKey;
 pub use proto::{
     CondensedTreeSearchResponse, DistinguishedResponse as ChatDistinguishedResponse, FullTreeHead,
     MonitorRequest, MonitorResponse, SearchResponse as ChatSearchResponse, StoredMonitoringData,
-    StoredTreeHead, TreeHead, TreeSearchRequest, TreeSearchResponse, UpdateRequest, UpdateResponse,
+    StoredTreeHead, TreeHead, UpdateRequest, UpdateResponse,
 };
 pub use verify::Error;
 use verify::{
@@ -145,16 +145,22 @@ impl SlimSearchRequest {
     }
 }
 
-impl From<TreeSearchRequest> for SlimSearchRequest {
-    fn from(request: TreeSearchRequest) -> Self {
-        let TreeSearchRequest {
-            search_key,
-            version,
-            ..
-        } = request;
+/// Self-sufficient key transparency search response.
+///
+/// In order to produce a consistent result chat server returns three [`CondensedTreeSearchResponse`]
+/// with a single [`FullTreeHead`], however each such response is individually verifiable. This type
+/// re-creates the original self-sufficient search response.
+#[derive(Clone, Debug)]
+pub struct FullSearchResponse<'a> {
+    pub condensed: CondensedTreeSearchResponse,
+    pub tree_head: &'a FullTreeHead,
+}
+
+impl<'a> FullSearchResponse<'a> {
+    pub fn new(condensed: CondensedTreeSearchResponse, tree_head: &'a FullTreeHead) -> Self {
         Self {
-            search_key,
-            version,
+            condensed,
+            tree_head,
         }
     }
 }
@@ -172,12 +178,12 @@ impl KeyTransparency {
     pub fn verify_search(
         &self,
         request: SlimSearchRequest,
-        response: TreeSearchResponse,
+        response: FullSearchResponse,
         context: SearchContext,
         force_monitor: bool,
         now: SystemTime,
     ) -> Result<VerifiedSearchResult, verify::Error> {
-        let unverified_value = response.value.as_ref().map(|v| v.value.clone());
+        let unverified_value = response.condensed.value.as_ref().map(|v| v.value.clone());
         let state_update =
             verify_search(&self.config, request, response, context, force_monitor, now)?;
         Ok(VerifiedSearchResult {
@@ -210,8 +216,8 @@ impl KeyTransparency {
     /// Most validation is skipped so the SearchResponse MUST already be verified.
     pub fn truncate_search_response(
         &self,
-        request: &TreeSearchRequest,
-        response: &TreeSearchResponse,
+        request: &SlimSearchRequest,
+        response: &FullSearchResponse,
     ) -> Result<(u64, [u8; 32]), verify::Error> {
         truncate_search_response(&self.config, request, response)
     }

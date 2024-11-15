@@ -15,9 +15,9 @@ use http::header::{ACCEPT, CONTENT_TYPE};
 use http::uri::PathAndQuery;
 use libsignal_core::{Aci, E164};
 use libsignal_keytrans::{
-    ChatDistinguishedResponse, ChatSearchResponse, CondensedTreeSearchResponse, KeyTransparency,
-    LastTreeHead, LocalStateUpdate, MonitoringData, SearchContext, SlimSearchRequest,
-    StoredMonitoringData, StoredTreeHead, TreeSearchResponse, VerifiedSearchResult,
+    ChatDistinguishedResponse, ChatSearchResponse, CondensedTreeSearchResponse, FullSearchResponse,
+    FullTreeHead, KeyTransparency, LastTreeHead, LocalStateUpdate, MonitoringData, SearchContext,
+    SlimSearchRequest, StoredMonitoringData, StoredTreeHead, VerifiedSearchResult,
 };
 use libsignal_protocol::{IdentityKey, PublicKey};
 use prost::{DecodeError, Message};
@@ -107,59 +107,39 @@ impl TryFrom<chat::Response> for RawChatSerializedResponse {
     }
 }
 
+// Differs from [`ChatSearchResponse`] by establishing proper optionality of fields.
 struct TypedChatSearchResponse {
-    aci_search_response: TreeSearchResponse,
-    e164_search_response: Option<TreeSearchResponse>,
-    username_hash_search_response: Option<TreeSearchResponse>,
+    full_tree_head: FullTreeHead,
+    aci_search_response: CondensedTreeSearchResponse,
+    e164_search_response: Option<CondensedTreeSearchResponse>,
+    username_hash_search_response: Option<CondensedTreeSearchResponse>,
 }
 
 impl TryFrom<RawChatSerializedResponse> for TypedChatSearchResponse {
     type Error = Error;
 
     fn try_from(raw: RawChatSerializedResponse) -> Result<Self> {
-        let chat_search_response: ChatSearchResponse = raw
+        let ChatSearchResponse {
+            tree_head,
+            aci,
+            e164,
+            username_hash,
+        } = raw
             .serialized_response
             .ok_or(Error::InvalidResponse("serializedResponse is missing"))
             .and_then(decode_response)?;
 
-        let common_tree_head = chat_search_response
-            .tree_head
-            .ok_or(Error::InvalidResponse("must have TreeHead"))?;
+        let tree_head = tree_head.ok_or(Error::InvalidResponse("must contain the tree head"))?;
 
-        // Chat server strips the tree heads from individual search responses
-        // and sends a single tree head in a top-level field.
-        // libsignal-keytrans, however, operates on individual responses,
-        // therefore to match the two we need to repopulate the tree head value.
-        let prepare_full_response = |condensed: CondensedTreeSearchResponse| -> TreeSearchResponse {
-            let CondensedTreeSearchResponse {
-                vrf_proof,
-                search,
-                opening,
-                value,
-            } = condensed;
-            TreeSearchResponse {
-                tree_head: Some(common_tree_head.clone()),
-                vrf_proof,
-                search,
-                opening,
-                value,
-            }
-        };
+        let aci_search_response = aci.ok_or(Error::InvalidResponse(
+            "must contain the ACI search response",
+        ))?;
 
-        let aci_search_response = chat_search_response
-            .aci
-            .map(prepare_full_response)
-            .ok_or(Error::InvalidResponse("must have ACI search response"))?;
-
-        let e164_search_response = chat_search_response.e164.map(prepare_full_response);
-
-        let username_hash_search_response = chat_search_response
-            .username_hash
-            .map(prepare_full_response);
         Ok(Self {
+            full_tree_head: tree_head,
             aci_search_response,
-            e164_search_response,
-            username_hash_search_response,
+            e164_search_response: e164,
+            username_hash_search_response: username_hash,
         })
     }
 }
@@ -408,6 +388,8 @@ impl<'a> Kt<'a> {
                 (Some(request), Some(response)) => {
                     let data = monitor.map(MonitoringData::from);
                     let context = make_single_context(data);
+                    let response =
+                        FullSearchResponse::new(response, &search_response.full_tree_head);
                     self.inner
                         .verify_search(request, response, context, true, now)?
                 }
@@ -466,20 +448,9 @@ impl<'a> Kt<'a> {
             .and_then(ChatDistinguishedResponse::try_from)?;
 
         let tree_head = tree_head.ok_or(Error::InvalidResponse("tree head must be present"))?;
-        let CondensedTreeSearchResponse {
-            vrf_proof,
-            search,
-            opening,
-            value,
-        } = distinguished.ok_or(Error::InvalidResponse("search response must be present"))?;
-        // TODO: this should be gone when tree_head is stripped in the next proto update
-        let search_response = TreeSearchResponse {
-            tree_head: Some(tree_head),
-            vrf_proof,
-            search,
-            opening,
-            value,
-        };
+        let condensed_response =
+            distinguished.ok_or(Error::InvalidResponse("search response must be present"))?;
+        let search_response = FullSearchResponse::new(condensed_response, &tree_head);
 
         let slim_search_request = SlimSearchRequest::new(b"distinguished".to_vec());
 

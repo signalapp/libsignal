@@ -62,23 +62,6 @@ message Consistency {
   optional uint64 distinguished = 2;
 }
 
-// TreeSearchRequest comes from a user that wishes to lookup a key.
-message TreeSearchRequest {
-  bytes search_key = 1;
-  optional uint32 version = 2;
-  Consistency consistency = 3;
-}
-
-// TreeSearchResponse is the output of executing a search on the tree.
-message TreeSearchResponse {
-  FullTreeHead tree_head = 1;
-  bytes vrf_proof = 2;
-  SearchProof search = 3;
-
-  bytes opening = 4;
-  UpdateValue value = 5;
-}
-
 message CondensedTreeSearchResponse {
   /**
    * A proof that is combined with the original requested identifier and the VRF public key
