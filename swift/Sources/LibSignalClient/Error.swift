@@ -63,7 +63,6 @@ public enum SignalError: Error {
     case chatServiceIntentionallyDisconnected(String)
     case appExpired(String)
     case deviceDeregistered(String)
-    case backupValidation(unknownFields: [String], message: String)
 
     case unknown(UInt32, String)
 }
@@ -225,7 +224,11 @@ internal func checkError(_ error: SignalFfiErrorRef?) throws {
         let unknownFields = try invokeFnReturningStringArray {
             signal_error_get_unknown_fields(error, $0)
         }
-        throw SignalError.backupValidation(unknownFields: unknownFields, message: errStr)
+        // Special case: we have a dedicated type for this one.
+        throw MessageBackupValidationError(
+            errorMessage: errStr,
+            unknownFields: MessageBackupUnknownFields(fields: unknownFields)
+        )
     default:
         throw SignalError.unknown(errType, errStr)
     }

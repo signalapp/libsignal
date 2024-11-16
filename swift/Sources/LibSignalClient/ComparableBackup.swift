@@ -29,8 +29,8 @@ public class ComparableBackup: NativeHandleOwner {
     ///  - stream: An InputStream that produces the backup contents.
     ///
     /// - Throws:
-    ///  - `SignalError.ioError`: If an IO error on the input occurs.
-    ///  - `SignalError.backupValidation`: If validation of the input fails.
+    ///  - ``SignalError/ioError(_:)``: If an IO error on the input occurs.
+    ///  - ``MessageBackupValidationError``: If validation of the input fails.
     public convenience init(purpose: MessageBackupPurpose, length: UInt64, stream: SignalInputStream) throws {
         var handle: OpaquePointer?
         try checkError(
