@@ -37,8 +37,7 @@ public class CdsiLookupRequest: NativeHandleOwner {
         e164s: [String],
         prevE164s: [String],
         acisAndAccessKeys: [AciAndAccessKey],
-        token: Data?,
-        returnAcisWithoutUaks: Bool
+        token: Data?
     ) throws {
         self.init()
         try self.withNativeHandle { handle in
@@ -66,9 +65,25 @@ public class CdsiLookupRequest: NativeHandleOwner {
                 }
                 self.hasToken = true
             }
-
-            try checkError(signal_lookup_request_set_return_acis_without_uaks(handle, returnAcisWithoutUaks))
         }
+    }
+
+    /// Creates a new `CdsiLookupRequest` with the provided data.
+    ///
+    /// Phone numbers should be passed in as string-encoded numeric values,
+    /// optionally with a leading `+` character.
+    ///
+    /// - Throws: a ``SignalError`` if any of the arguments are invalid,
+    /// including the phone numbers or the access keys.
+    @available(*, deprecated, message: "returnAcisWithoutUaks is deprecated; use the overload that does not have it as an argument")
+    public convenience init(
+        e164s: [String],
+        prevE164s: [String],
+        acisAndAccessKeys: [AciAndAccessKey],
+        token: Data?,
+        returnAcisWithoutUaks: Bool
+    ) throws {
+        try self.init(e164s: e164s, prevE164s: prevE164s, acisAndAccessKeys: acisAndAccessKeys, token: token)
     }
 
     override internal class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {

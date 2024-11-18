@@ -88,7 +88,6 @@ pub struct LookupRequest {
     pub new_e164s: Vec<E164>,
     pub prev_e164s: Vec<E164>,
     pub acis_and_access_keys: Vec<AciAndAccessKey>,
-    pub return_acis_without_uaks: bool,
     pub token: Box<[u8]>,
 }
 
@@ -98,7 +97,6 @@ impl LookupRequest {
             new_e164s,
             prev_e164s,
             acis_and_access_keys,
-            return_acis_without_uaks,
             token,
         } = self;
 
@@ -110,7 +108,6 @@ impl LookupRequest {
             aci_uak_pairs,
             new_e164s,
             prev_e164s,
-            return_acis_without_uaks,
             token: token.into_vec(),
             token_ack: false,
             // TODO: use these for supporting non-desktop client requirements.
@@ -439,7 +436,6 @@ struct LookupRequestDebugInfo {
     new_e164s: usize,
     prev_e164s: usize,
     acis_and_access_keys: usize,
-    return_acis_without_uaks: bool,
     token: usize,
 }
 
@@ -449,7 +445,6 @@ impl std::fmt::Display for LookupRequestDebugInfo {
             .field("new_e164s", &self.new_e164s)
             .field("prev_e164s", &self.prev_e164s)
             .field("acis_and_access_keys", &self.acis_and_access_keys)
-            .field("return_acis_without_uaks", &self.return_acis_without_uaks)
             .field("token", &self.token)
             .finish()
     }
@@ -463,14 +458,12 @@ impl From<&LookupRequest> for LookupRequestDebugInfo {
             new_e164s,
             prev_e164s,
             acis_and_access_keys,
-            return_acis_without_uaks,
             token,
         } = value;
         Self {
             new_e164s: new_e164s.len(),
             prev_e164s: prev_e164s.len(),
             acis_and_access_keys: acis_and_access_keys.len(),
-            return_acis_without_uaks: *return_acis_without_uaks,
             token: token.len(),
         }
     }

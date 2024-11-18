@@ -56,11 +56,6 @@ fn LookupRequest_addAciAndAccessKey(
     Ok(())
 }
 
-#[bridge_fn]
-fn LookupRequest_setReturnAcisWithoutUaks(request: &LookupRequest, return_acis_without_uaks: bool) {
-    request.lock().return_acis_without_uaks = return_acis_without_uaks;
-}
-
 bridge_handle_fns!(CdsiLookup, clone = false);
 
 #[bridge_io(TokioAsyncContext)]

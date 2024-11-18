@@ -36,6 +36,9 @@ export type ServiceAuth = {
 export type CDSRequestOptionsType = {
   e164s: Array<string>;
   acisAndAccessKeys: Array<{ aci: string; accessKey: string }>;
+  /**
+   * @deprecated this option is ignored by the server.
+   */
   returnAcisWithoutUaks: boolean;
   abortSignal?: AbortSignal;
 };
@@ -562,7 +565,6 @@ export class Net {
     {
       e164s,
       acisAndAccessKeys,
-      returnAcisWithoutUaks,
       abortSignal,
     }: ReadonlyDeep<CDSRequestOptionsType>
   ): Promise<CDSResponseType<string, string>> {
@@ -578,11 +580,6 @@ export class Net {
         Buffer.from(accessKeyStr, 'base64')
       );
     });
-
-    Native.LookupRequest_setReturnAcisWithoutUaks(
-      request,
-      returnAcisWithoutUaks
-    );
 
     const lookup = await this.asyncContext.makeCancellable(
       abortSignal,

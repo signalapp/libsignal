@@ -116,8 +116,7 @@ final class NetTests: XCTestCase {
             e164s: [],
             prevE164s: [],
             acisAndAccessKeys: [],
-            token: nil,
-            returnAcisWithoutUaks: false
+            token: nil
         )
         let net = Net(env: .staging, userAgent: userAgent)
 

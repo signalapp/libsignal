@@ -81,7 +81,6 @@ async fn main() {
     let request = LookupRequest {
         new_e164s,
         acis_and_access_keys: vec![],
-        return_acis_without_uaks: true,
         ..Default::default()
     };
 

@@ -136,7 +136,7 @@ interface MessageBackupValidationOutcome {
 }
 
 interface CancellablePromise<T> extends Promise<T> {
-  _cancellationToken: bigint
+  _cancellationToken: bigint;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -320,7 +320,6 @@ export function LookupRequest_addAciAndAccessKey(request: Wrapper<LookupRequest>
 export function LookupRequest_addE164(request: Wrapper<LookupRequest>, e164: string): void;
 export function LookupRequest_addPreviousE164(request: Wrapper<LookupRequest>, e164: string): void;
 export function LookupRequest_new(): LookupRequest;
-export function LookupRequest_setReturnAcisWithoutUaks(request: Wrapper<LookupRequest>, returnAcisWithoutUaks: boolean): void;
 export function LookupRequest_setToken(request: Wrapper<LookupRequest>, token: Buffer): void;
 export function MessageBackupKey_FromAccountEntropyPool(accountEntropy: string, aci: Buffer): MessageBackupKey;
 export function MessageBackupKey_FromBackupKeyAndBackupId(backupKey: Buffer, backupId: Buffer): MessageBackupKey;

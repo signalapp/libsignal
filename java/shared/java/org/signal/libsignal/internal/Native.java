@@ -410,7 +410,6 @@ public final class Native {
   public static native void LookupRequest_addE164(long request, String e164);
   public static native void LookupRequest_addPreviousE164(long request, String e164);
   public static native long LookupRequest_new();
-  public static native void LookupRequest_setReturnAcisWithoutUaks(long request, boolean returnAcisWithoutUaks);
   public static native void LookupRequest_setToken(long request, byte[] token);
 
   public static native void MessageBackupKey_Destroy(long handle);

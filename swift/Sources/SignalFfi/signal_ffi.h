@@ -1509,8 +1509,6 @@ SignalFfiError *signal_lookup_request_set_token(const SignalLookupRequest *reque
 
 SignalFfiError *signal_lookup_request_add_aci_and_access_key(const SignalLookupRequest *request, const SignalServiceIdFixedWidthBinaryBytes *aci, SignalBorrowedBuffer access_key);
 
-SignalFfiError *signal_lookup_request_set_return_acis_without_uaks(const SignalLookupRequest *request, bool return_acis_without_uaks);
-
 SignalFfiError *signal_cdsi_lookup_destroy(SignalCdsiLookup *p);
 
 SignalFfiError *signal_cdsi_lookup_new(SignalCPromiseCdsiLookup *promise, const SignalTokioAsyncContext *async_runtime, const SignalConnectionManager *connection_manager, const char *username, const char *password, const SignalLookupRequest *request);
