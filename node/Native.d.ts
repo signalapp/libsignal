@@ -332,6 +332,9 @@ export function MessageBackupKey_GetHmacKey(key: Wrapper<MessageBackupKey>): Buf
 export function MessageBackupValidator_Validate(key: Wrapper<MessageBackupKey>, firstStream: InputStream, secondStream: InputStream, len: bigint, purpose: number): Promise<MessageBackupValidationOutcome>;
 export function MinidumpToJSONString(buffer: Buffer): string;
 export function Mp4Sanitizer_Sanitize(input: InputStream, len: bigint): Promise<SanitizedMetadata>;
+export function OnlineBackupValidator_AddFrame(backup: Wrapper<OnlineBackupValidator>, frame: Buffer): void;
+export function OnlineBackupValidator_Finalize(backup: Wrapper<OnlineBackupValidator>): void;
+export function OnlineBackupValidator_New(backupInfoFrame: Buffer, purpose: number): OnlineBackupValidator;
 export function PlaintextContent_Deserialize(data: Buffer): PlaintextContent;
 export function PlaintextContent_FromDecryptionErrorMessage(m: Wrapper<DecryptionErrorMessage>): PlaintextContent;
 export function PlaintextContent_GetBody(obj: Wrapper<PlaintextContent>): Buffer;
@@ -606,6 +609,7 @@ interface KyberSecretKey { readonly __type: unique symbol; }
 interface LookupRequest { readonly __type: unique symbol; }
 interface MessageBackupKey { readonly __type: unique symbol; }
 interface NonSuspendingBackgroundThreadRuntime { readonly __type: unique symbol; }
+interface OnlineBackupValidator { readonly __type: unique symbol; }
 interface OtherTestingHandleType { readonly __type: unique symbol; }
 interface PlaintextContent { readonly __type: unique symbol; }
 interface PreKeyBundle { readonly __type: unique symbol; }

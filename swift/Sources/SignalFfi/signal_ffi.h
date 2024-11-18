@@ -256,6 +256,8 @@ typedef struct SignalMessageBackupKey SignalMessageBackupKey;
 
 typedef struct SignalMessageBackupValidationOutcome SignalMessageBackupValidationOutcome;
 
+typedef struct SignalOnlineBackupValidator SignalOnlineBackupValidator;
+
 typedef struct SignalPinHash SignalPinHash;
 
 typedef struct SignalPlaintextContent SignalPlaintextContent;
@@ -1636,6 +1638,14 @@ SignalFfiError *signal_message_backup_validation_outcome_get_error_message(const
 SignalFfiError *signal_message_backup_validation_outcome_get_unknown_fields(SignalStringArray *out, const SignalMessageBackupValidationOutcome *outcome);
 
 SignalFfiError *signal_message_backup_validator_validate(SignalMessageBackupValidationOutcome **out, const SignalMessageBackupKey *key, const SignalInputStream *first_stream, const SignalInputStream *second_stream, uint64_t len, uint8_t purpose);
+
+SignalFfiError *signal_online_backup_validator_destroy(SignalOnlineBackupValidator *p);
+
+SignalFfiError *signal_online_backup_validator_new(SignalOnlineBackupValidator **out, SignalBorrowedBuffer backup_info_frame, uint8_t purpose);
+
+SignalFfiError *signal_online_backup_validator_add_frame(SignalOnlineBackupValidator *backup, SignalBorrowedBuffer frame);
+
+SignalFfiError *signal_online_backup_validator_finalize(SignalOnlineBackupValidator *backup);
 
 SignalFfiError *signal_username_hash(uint8_t (*out)[32], const char *username);
 

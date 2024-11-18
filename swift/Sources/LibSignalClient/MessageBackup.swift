@@ -107,8 +107,10 @@ public enum MessageBackupPurpose: UInt8, Sendable {
 /// - Returns: an object describing the validation outcome.
 ///
 /// - Throws:
-///  - `SignalError.ioError`: If an IO error on the input occurs.
-///  - `MessageBackupValidationError`: If validation fails
+///  - ``SignalError/ioError(_:)``: If an IO error on the input occurs.
+///  - ``MessageBackupValidationError``: If validation fails
+///
+/// - SeeAlso: ``OnlineBackupValidator``
 public func validateMessageBackup(
     key: MessageBackupKey, purpose: MessageBackupPurpose, length: UInt64, makeStream: () throws -> SignalInputStream
 ) throws -> MessageBackupUnknownFields {
@@ -126,6 +128,72 @@ public func validateMessageBackup(
         throw MessageBackupValidationError(errorMessage: errorMessage, unknownFields: outcome.unknownFields)
     }
     return outcome.unknownFields
+}
+
+/// An alternative to ``validateMessageBackup(key:purpose:length:makeStream:)`` that validates a backup frame-by-frame.
+///
+/// This is much faster than using `validateMessageBackup(...)` because it bypasses the decryption and decompression steps, but that also means it's validating less. Don't forget to call `finalize()`!
+///
+/// Unlike `validateMessageBackup(...)`, unknown fields are treated as "soft" errors and logged, rather than collected and returned to the app for processing.
+///
+/// # Example
+///
+/// ```
+/// let validator = try OnlineBackupValidator(
+///     backupInfo: backupInfoProto.serialize(),
+///     purpose: .deviceTransfer)
+/// repeat {
+///   // ...generate Frames...
+///   try validator.addFrame(frameProto.serialize())
+/// }
+/// try validator.finalize() // don't forget this!
+/// ```
+public class OnlineBackupValidator: NativeHandleOwner {
+    /// Initializes an OnlineBackupValidator from the given BackupInfo protobuf message.
+    ///
+    /// "Soft" errors will be logged, including unrecognized fields in the protobuf.
+    ///
+    /// - Throws: ``MessageBackupValidationError`` on error.
+    public convenience init<Bytes: ContiguousBytes>(backupInfo: Bytes, purpose: MessageBackupPurpose) throws {
+        let handle = try backupInfo.withUnsafeBorrowedBuffer { backupInfo in
+            var outputHandle: OpaquePointer?
+            try checkError(signal_online_backup_validator_new(&outputHandle, backupInfo, purpose.rawValue))
+            return outputHandle!
+        }
+        self.init(owned: handle)
+    }
+
+    internal required init(owned handle: OpaquePointer) {
+        super.init(owned: handle)
+    }
+
+    override internal class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
+        signal_online_backup_validator_destroy(handle)
+    }
+
+    /// Processes a single Frame protobuf message.
+    ///
+    /// "Soft" errors will be logged, including unrecognized fields in the protobuf.
+    ///
+    /// - Throws: ``MessageBackupValidationError`` on error.
+    public func addFrame<Bytes: ContiguousBytes>(_ frame: Bytes) throws {
+        try withNativeHandle { handle in
+            try frame.withUnsafeBorrowedBuffer { frame in
+                try checkError(signal_online_backup_validator_add_frame(handle, frame))
+            }
+        }
+    }
+
+    /// Marks that a backup is complete, and does any final checks that require whole-file knowledge.
+    ///
+    /// "Soft" errors will be logged.
+    ///
+    /// - Throws: ``MessageBackupValidationError`` on error.
+    public func finalize() throws {
+        try withNativeHandle { handle in
+            try checkError(signal_online_backup_validator_finalize(handle))
+        }
+    }
 }
 
 /// The outcome of a failed validation attempt.

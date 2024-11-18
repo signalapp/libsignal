@@ -432,6 +432,11 @@ public final class Native {
   public static native byte[] NumericFingerprintGenerator_GetScannableEncoding(long obj) throws Exception;
   public static native long NumericFingerprintGenerator_New(int iterations, int version, byte[] localIdentifier, byte[] localKey, byte[] remoteIdentifier, byte[] remoteKey) throws Exception;
 
+  public static native void OnlineBackupValidator_AddFrame(long backup, byte[] frame) throws Exception;
+  public static native void OnlineBackupValidator_Destroy(long handle);
+  public static native void OnlineBackupValidator_Finalize(long backup) throws Exception;
+  public static native long OnlineBackupValidator_New(byte[] backupInfoFrame, int purpose) throws Exception;
+
   public static native byte[] PinHash_AccessKey(long ph);
   public static native void PinHash_Destroy(long handle);
   public static native byte[] PinHash_EncryptionKey(long ph);

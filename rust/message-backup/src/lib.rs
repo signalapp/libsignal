@@ -66,6 +66,19 @@ pub struct ReadError {
     pub found_unknown_fields: Vec<FoundUnknownField>,
 }
 
+impl ReadError {
+    /// Creates a `ReadError` without including any unknown field info.
+    ///
+    /// Not a `From` implementation to remind callers not to *discard* unknown field info they may
+    /// have.
+    pub fn with_error_only(error: Error) -> Self {
+        Self {
+            error,
+            found_unknown_fields: vec![],
+        }
+    }
+}
+
 impl std::fmt::Display for ReadError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self {
@@ -246,16 +259,9 @@ where
                     }
                 };
 
-                let frame_proto = proto::backup::Frame::parse_from_bytes(&frame)?;
-                visitor(&frame_proto);
-                add_found_unknown(
-                    &mut unknown_fields,
-                    frame_proto.collect_unknown_fields(),
-                    frame_index,
-                );
+                let these_unknown_fields = backup.parse_and_add_frame(&frame, &mut visitor)?;
+                add_found_unknown(&mut unknown_fields, these_unknown_fields, frame_index);
                 frame_index += 1;
-
-                backup.add_frame(frame_proto)?;
             }
         })
         .expect("can create threads");
@@ -294,6 +300,42 @@ where
     reader.into_inner().verify_hmac().await?;
 
     Ok(backup)
+}
+
+impl<M: backup::method::Method + backup::ReferencedTypes> backup::PartialBackup<M> {
+    pub fn by_parsing(
+        raw_backup_info: &[u8],
+        purpose: Purpose,
+        mut visitor: impl FnMut(&dyn std::fmt::Debug) + Send,
+    ) -> Result<Self, crate::Error> {
+        let backup_info_proto = proto::backup::BackupInfo::parse_from_bytes(raw_backup_info)?;
+        visitor(&backup_info_proto);
+        for (path, value) in backup_info_proto.collect_unknown_fields() {
+            // This API doesn't have a good way to report unknown fields; logging is the best we can
+            // do if we don't want a fatal error.
+            log::warn!(
+                "BackupInfo proto: {}",
+                FoundUnknownField {
+                    frame_index: 0,
+                    path,
+                    value
+                }
+            );
+        }
+        Ok(Self::new(backup_info_proto, purpose)?)
+    }
+
+    pub fn parse_and_add_frame(
+        &mut self,
+        raw_frame: &[u8],
+        mut visitor: impl FnMut(&dyn std::fmt::Debug) + Send,
+    ) -> Result<Vec<(Vec<PathPart>, UnknownValue)>, crate::Error> {
+        let frame_proto = proto::backup::Frame::parse_from_bytes(raw_frame)?;
+        visitor(&frame_proto);
+        let unknown_fields = frame_proto.collect_unknown_fields();
+        self.add_frame(frame_proto)?;
+        Ok(unknown_fields)
+    }
 }
 
 impl From<VerifyHmacError> for Error {

@@ -141,6 +141,8 @@ export enum Purpose {
  * @param length The exact length of the input stream.
  * @returns The outcome of validation, including any errors and warnings.
  * @throws IoError If an IO error on the input occurs.
+ *
+ * @see OnlineBackupValidator
  */
 export async function validate(
   backupKey: MessageBackupKey,
@@ -159,6 +161,65 @@ export async function validate(
       purpose
     )
   );
+}
+
+/**
+ * An alternative to {@link validate()} that validates a backup frame-by-frame.
+ *
+ * This is much faster than using `validate()` because it bypasses the decryption and decompression
+ * steps, but that also means it's validating less. Don't forget to call `finalize()`!
+ *
+ * Unlike `validate()`, unknown fields are treated as "soft" errors and logged, rather than
+ * collected and returned to the app for processing.
+ *
+ * # Example
+ *
+ * ```
+ * const validator = new OnlineBackupValidator(
+ *     backupInfoProto.serialize(),
+ *     Purpose.deviceTransfer)
+ * repeat {
+ *   // ...generate Frames...
+ *   validator.addFrame(frameProto.serialize())
+ * }
+ * validator.finalize() // don't forget this!
+ * ```
+ */
+export class OnlineBackupValidator {
+  readonly _nativeHandle: Native.OnlineBackupValidator;
+
+  /**
+   * Initializes an OnlineBackupValidator from the given BackupInfo protobuf message.
+   *
+   * "Soft" errors will be logged, including unrecognized fields in the protobuf.
+   *
+   * @throws BackupValidationError on error
+   */
+  constructor(backupInfo: Buffer, purpose: Purpose) {
+    this._nativeHandle = Native.OnlineBackupValidator_New(backupInfo, purpose);
+  }
+
+  /**
+   * Processes a single Frame protobuf message.
+   *
+   * "Soft" errors will be logged, including unrecognized fields in the protobuf.
+   *
+   * @throws BackupValidationError on error
+   */
+  addFrame(frame: Buffer): void {
+    Native.OnlineBackupValidator_AddFrame(this, frame);
+  }
+
+  /**
+   * Marks that a backup is complete, and does any final checks that require whole-file knowledge.
+   *
+   * "Soft" errors will be logged.
+   *
+   * @throws BackupValidationError on error
+   */
+  finalize(): void {
+    Native.OnlineBackupValidator_Finalize(this);
+  }
 }
 
 /**

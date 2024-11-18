@@ -18,7 +18,8 @@ use crate::backup::chat::chat_style::{CustomChatColor, CustomColorId};
 use crate::backup::chat::{ChatData, ChatError, ChatItemData, ChatItemError, PinOrder};
 use crate::backup::frame::{ChatId, RecipientId};
 use crate::backup::map::IntMap;
-use crate::backup::method::{Lookup, LookupPair, Method, Store, ValidateOnly};
+use crate::backup::method::{Lookup, LookupPair, Method};
+pub use crate::backup::method::{Store, ValidateOnly};
 use crate::backup::recipient::{
     DestinationKind, FullRecipientData, MinimalRecipientData, RecipientError,
 };

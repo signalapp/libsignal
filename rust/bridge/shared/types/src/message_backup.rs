@@ -9,7 +9,7 @@ use libsignal_account_keys::{AccountEntropyPool, BackupId, BackupKey, BACKUP_KEY
 use libsignal_message_backup::frame::ValidationError as FrameValidationError;
 use libsignal_message_backup::key::MessageBackupKey as MessageBackupKeyInner;
 use libsignal_message_backup::parse::ParseError;
-use libsignal_message_backup::{Error, FoundUnknownField};
+use libsignal_message_backup::{backup, Error, FoundUnknownField};
 use libsignal_protocol::Aci;
 
 use crate::*;
@@ -95,8 +95,58 @@ pub struct MessageBackupValidationOutcome {
 bridge_as_handle!(MessageBackupValidationOutcome, jni = false, node = false);
 
 pub struct ComparableBackup {
-    pub backup: libsignal_message_backup::backup::serialize::Backup,
+    pub backup: backup::serialize::Backup,
     pub found_unknown_fields: Vec<FoundUnknownField>,
 }
 
 bridge_as_handle!(ComparableBackup);
+
+pub struct OnlineBackupValidator {
+    backup: Option<backup::PartialBackup<backup::ValidateOnly>>,
+}
+
+impl OnlineBackupValidator {
+    pub fn from_backup_info_frame(
+        backup_info: &[u8],
+        purpose: backup::Purpose,
+    ) -> Result<Self, Error> {
+        Ok(Self {
+            backup: Some(backup::PartialBackup::by_parsing(
+                backup_info,
+                purpose,
+                |_| (),
+            )?),
+        })
+    }
+
+    pub fn get_mut(&mut self) -> &mut backup::PartialBackup<backup::ValidateOnly> {
+        self.backup
+            .as_mut()
+            .expect("OnlineBackupValidator has not yet been finalized")
+    }
+
+    pub fn finalize(&mut self) -> Result<(), Error> {
+        let partial_backup = self
+            .backup
+            .take()
+            .expect("OnlineBackupValidator has not yet been finalized");
+        _ = backup::CompletedBackup::try_from(partial_backup)?;
+        Ok(())
+    }
+}
+
+// This isn't strictly correct; OnlineBackupValidator *does* contain interior mutability.
+// However, because it only allows `&mut` access to its state, it can't be an issue in practice.
+// (`bridge_fn` doesn't know that and so it expects RefUnwindSafe simply for being passed as a pointer.)
+impl std::panic::RefUnwindSafe for OnlineBackupValidator {}
+static_assertions::assert_impl_all!(OnlineBackupValidator: std::panic::UnwindSafe);
+
+bridge_as_handle!(OnlineBackupValidator, mut = true);
+
+impl Drop for OnlineBackupValidator {
+    fn drop(&mut self) {
+        if self.backup.is_some() {
+            log::warn!("OnlineBackupValidator is dropped without calling finalize");
+        }
+    }
+}

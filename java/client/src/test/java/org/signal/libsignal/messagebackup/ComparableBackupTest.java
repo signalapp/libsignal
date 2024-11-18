@@ -20,7 +20,7 @@ public class ComparableBackupTest {
   static final String CANONICAL_BACKUP_PROTO_NAME = "canonical-backup.binproto";
   static final String CANONICAL_BACKUP_STRING_NAME = "canonical-backup.expected.json";
 
-  private static InputStream getCanonicalBackupInputStream() {
+  static InputStream getCanonicalBackupInputStream() {
     return ComparableBackupTest.class.getResourceAsStream(CANONICAL_BACKUP_PROTO_NAME);
   }
 

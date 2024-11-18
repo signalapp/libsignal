@@ -8,7 +8,7 @@ use libsignal_bridge_macros::*;
 use libsignal_bridge_types::message_backup::*;
 use libsignal_message_backup::backup::Purpose;
 use libsignal_message_backup::frame::LimitedReaderFactory;
-use libsignal_message_backup::{BackupReader, ReadResult};
+use libsignal_message_backup::{BackupReader, FoundUnknownField, ReadError, ReadResult};
 use libsignal_protocol::Aci;
 
 use crate::io::{AsyncInput, InputStream};
@@ -113,4 +113,44 @@ async fn MessageBackupValidator_Validate(
         error_message,
         found_unknown_fields,
     })
+}
+
+bridge_handle_fns!(OnlineBackupValidator, clone = false);
+
+#[bridge_fn]
+fn OnlineBackupValidator_New(
+    backup_info_frame: &[u8],
+    purpose: AsType<Purpose, u8>,
+) -> Result<OnlineBackupValidator, ReadError> {
+    OnlineBackupValidator::from_backup_info_frame(backup_info_frame, purpose.into_inner())
+        .map_err(ReadError::with_error_only)
+}
+
+#[bridge_fn]
+fn OnlineBackupValidator_AddFrame(
+    backup: &mut OnlineBackupValidator,
+    frame: &[u8],
+) -> Result<(), ReadError> {
+    let unknown_fields = backup
+        .get_mut()
+        .parse_and_add_frame(frame, |_| ())
+        .map_err(ReadError::with_error_only)?;
+
+    for (path, value) in unknown_fields {
+        log::warn!(
+            "{}",
+            FoundUnknownField {
+                frame_index: 0,
+                path,
+                value,
+            }
+        );
+    }
+
+    Ok(())
+}
+
+#[bridge_fn]
+fn OnlineBackupValidator_Finalize(backup: &mut OnlineBackupValidator) -> Result<(), ReadError> {
+    backup.finalize().map_err(ReadError::with_error_only)
 }

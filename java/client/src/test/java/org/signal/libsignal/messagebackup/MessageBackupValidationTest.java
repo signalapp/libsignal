@@ -22,6 +22,7 @@ import org.junit.Test;
 import org.signal.libsignal.protocol.ServiceId.Aci;
 import org.signal.libsignal.protocol.kdf.HKDF;
 import org.signal.libsignal.protocol.util.ByteUtil;
+import org.signal.libsignal.util.Base64;
 import org.signal.libsignal.util.ResourceReader;
 
 public class MessageBackupValidationTest {
@@ -78,6 +79,63 @@ public class MessageBackupValidationTest {
     MessageBackup.ValidationResult result2 =
         MessageBackup.validate(keyFromBackupId, BACKUP_PURPOSE, factory, length);
     assertArrayEquals(result2.unknownFieldMessages, new String[0]);
+  }
+
+  @Test
+  public void onlineValidation() throws IOException, ValidationError {
+    final InputStream input = ComparableBackupTest.getCanonicalBackupInputStream();
+
+    final int backupInfoLength = input.read();
+    assertFalse("unexpected EOF", backupInfoLength == -1);
+    assertTrue("single-byte varint", backupInfoLength < 0x80);
+    final byte[] backupInfo = new byte[backupInfoLength];
+    assertEquals("unexpected EOF", input.read(backupInfo), backupInfoLength);
+    final OnlineBackupValidator backup = new OnlineBackupValidator(backupInfo, BACKUP_PURPOSE);
+
+    int frameLength;
+    while ((frameLength = input.read()) != -1) {
+      // Tiny varint parser, only supports two bytes.
+      if (frameLength >= 0x80) {
+        final int secondByte = input.read();
+        assertFalse("unexpected EOF", secondByte == -1);
+        assertTrue("at most a two-byte varint", secondByte < 0x80);
+        frameLength -= 0x80;
+        frameLength |= secondByte << 7;
+      }
+      final byte[] frame = new byte[frameLength];
+      assertEquals("unexpected EOF", input.read(frame), frameLength);
+      backup.addFrame(frame);
+    }
+
+    backup.close();
+  }
+
+  @Test
+  public void onlineValidatorRejectsInvalidBackupInfo() {
+    assertThrows(
+        ValidationError.class, () -> new OnlineBackupValidator(new byte[0], BACKUP_PURPOSE));
+  }
+
+  // The following payload was generated via protoscope.
+  // % protoscope -s | base64
+  // The fields are described by Backup.proto.
+  //
+  // 1: 1
+  // 2: 1731715200000
+  // 3: {`00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff`}
+  private static byte[] VALID_BACKUP_INFO =
+      Base64.decode("CAEQgOiTkrMyGiAAESIzRFVmd4iZqrvM3e7/ABEiM0RVZneImaq7zN3u/w==");
+
+  @Test
+  public void onlineValidatorRejectsInvalidFrame() throws ValidationError {
+    final var backup = new OnlineBackupValidator(VALID_BACKUP_INFO, BACKUP_PURPOSE);
+    assertThrows(ValidationError.class, () -> backup.addFrame(new byte[0]));
+  }
+
+  @Test
+  public void onlineValidatorRejectsInvalidAtClose() throws ValidationError {
+    final var backup = new OnlineBackupValidator(VALID_BACKUP_INFO, BACKUP_PURPOSE);
+    assertThrows(ValidationError.class, () -> backup.close());
   }
 
   @Test

@@ -79,6 +79,29 @@ class MessageBackupTests: TestCaseBase {
         }
     }
 
+    func testOnlineValidatorInvalidBackupInfo() throws {
+        XCTAssertThrowsError(try OnlineBackupValidator(backupInfo: [], purpose: .remoteBackup))
+    }
+
+    // The following payload was generated via protoscope.
+    // % protoscope -s | base64
+    // The fields are described by Backup.proto.
+    //
+    // 1: 1
+    // 2: 1731715200000
+    // 3: {`00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff`}
+    private let VALID_BACKUP_INFO: Data = .init(base64Encoded: "CAEQgOiTkrMyGiAAESIzRFVmd4iZqrvM3e7/ABEiM0RVZneImaq7zN3u/w==")!
+
+    func testOnlineValidatorInvalidFrame() throws {
+        let backup = try OnlineBackupValidator(backupInfo: VALID_BACKUP_INFO, purpose: .remoteBackup)
+        XCTAssertThrowsError(try backup.addFrame([]))
+    }
+
+    func testOnlineValidatorInvalidFinalize() throws {
+        let backup = try OnlineBackupValidator(backupInfo: VALID_BACKUP_INFO, purpose: .remoteBackup)
+        XCTAssertThrowsError(try backup.finalize())
+    }
+
 #if !os(iOS) || targetEnvironment(simulator)
     func testComparableBackup() throws {
         let bytes = readResource(forName: "canonical-backup.binproto")
@@ -87,6 +110,35 @@ class MessageBackupTests: TestCaseBase {
 
         let expected = String(data: readResource(forName: "canonical-backup.expected.json"), encoding: .utf8)!
         XCTAssertEqual(comparableString, expected)
+    }
+
+    func testOnlineValidation() throws {
+        var bytes = readResource(forName: "canonical-backup.binproto")
+
+        let backupInfoLength = Int(bytes[0])
+        XCTAssertLessThan(backupInfoLength, 0x80, "single-byte varint")
+        let backupInfo = bytes.dropFirst(1).prefix(backupInfoLength)
+        XCTAssertEqual(backupInfo.count, backupInfoLength, "unexpected EOF")
+        let backup = try OnlineBackupValidator(backupInfo: backupInfo, purpose: .remoteBackup)
+        bytes = bytes[backupInfo.endIndex...]
+
+        while var frameLength = bytes.first.map({ Int($0) }) {
+            bytes = bytes.dropFirst()
+            // Tiny varint parser, only supports two bytes.
+            if frameLength >= 0x80 {
+                let secondByte = Int(bytes.first!)
+                XCTAssertLessThan(secondByte, 0x80, "at most a two-byte varint")
+                frameLength -= 0x80
+                frameLength |= secondByte << 7
+                bytes = bytes.dropFirst()
+            }
+            let frame = bytes.prefix(frameLength)
+            XCTAssertEqual(frame.count, frameLength, "unexpected EOF")
+            try backup.addFrame(frame)
+            bytes = bytes[frame.endIndex...]
+        }
+
+        try backup.finalize()
     }
 #endif
 

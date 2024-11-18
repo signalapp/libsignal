@@ -49,6 +49,7 @@ public class MessageBackup {
    * @return informational result about the successful validation
    * @throws ValidationError with an error message if the input is invalid
    * @throws IOException if the input could not be read
+   * @see OnlineBackupValidator
    */
   public static ValidationResult validate(
       MessageBackupKey key, Purpose purpose, Supplier<InputStream> streamFactory, long streamLength)

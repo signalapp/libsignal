@@ -12,6 +12,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { hkdf, LogLevel } from '..';
 import { BackupKey } from '../AccountKeys';
+import { Readable } from 'node:stream';
 
 util.initLogger(LogLevel.Trace);
 
@@ -98,17 +99,17 @@ describe('MessageBackup', () => {
   });
 });
 
+const exampleBackup = fs.readFileSync(
+  path.join(__dirname, '../../ts/test/canonical-backup.binproto')
+);
+
 describe('ComparableBackup', () => {
   describe('exampleBackup', () => {
-    const input = fs.readFileSync(
-      path.join(__dirname, '../../ts/test/canonical-backup.binproto')
-    );
-
     it('stringifies to the expected value', async () => {
       const comparable = await MessageBackup.ComparableBackup.fromUnencrypted(
         MessageBackup.Purpose.RemoteBackup,
-        new Uint8ArrayInputStream(input),
-        BigInt(input.length)
+        new Uint8ArrayInputStream(exampleBackup),
+        BigInt(exampleBackup.length)
       );
 
       const expectedOutput = fs.readFileSync(
@@ -117,5 +118,83 @@ describe('ComparableBackup', () => {
       const output = comparable.comparableString();
       assert.equal(output, new String(expectedOutput));
     });
+  });
+});
+
+describe('OnlineBackupValidator', () => {
+  it('can read frames from a valid file', () => {
+    // `Readable.read` normally returns `any`, because it supports settable encodings.
+    // Here we override that `read` member with one that always produces a Buffer,
+    // for more convenient use in the test. Note that this is unchecked.
+    type ReadableUsingBuffer = Omit<Readable, 'read'> & {
+      read(size: number): Buffer;
+    };
+    const input: ReadableUsingBuffer = new Readable();
+    input.push(exampleBackup);
+    input.push(null);
+
+    const backupInfoLength = input.read(1)[0];
+    assert.isBelow(backupInfoLength, 0x80, 'single-byte varint');
+    const backupInfo = input.read(backupInfoLength);
+    assert.equal(backupInfo.length, backupInfoLength, 'unexpected EOF');
+    const backup = new MessageBackup.OnlineBackupValidator(
+      backupInfo,
+      MessageBackup.Purpose.RemoteBackup
+    );
+
+    let frameLengthBuf;
+    while ((frameLengthBuf = input.read(1))) {
+      let frameLength = frameLengthBuf[0];
+      // Tiny varint parser, only supports two bytes.
+      if (frameLength >= 0x80) {
+        const secondByte = input.read(1)[0];
+        assert.isBelow(secondByte, 0x80, 'at most a two-byte varint');
+        frameLength -= 0x80;
+        frameLength |= secondByte << 7;
+      }
+      const frame = input.read(frameLength);
+      assert.equal(frame.length, frameLength, 'unexpected EOF');
+      backup.addFrame(frame);
+    }
+
+    backup.finalize();
+  });
+
+  it('rejects invalid BackupInfo', () => {
+    assert.throws(
+      () =>
+        new MessageBackup.OnlineBackupValidator(
+          Buffer.of(),
+          MessageBackup.Purpose.RemoteBackup
+        )
+    );
+  });
+
+  // The following payload was generated via protoscope.
+  // % protoscope -s | base64
+  // The fields are described by Backup.proto.
+  //
+  // 1: 1
+  // 2: 1731715200000
+  // 3: {`00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff`}
+  const VALID_BACKUP_INFO: Buffer = Buffer.from(
+    'CAEQgOiTkrMyGiAAESIzRFVmd4iZqrvM3e7/ABEiM0RVZneImaq7zN3u/w==',
+    'base64'
+  );
+
+  it('rejects invalid Frames', () => {
+    const backup = new MessageBackup.OnlineBackupValidator(
+      VALID_BACKUP_INFO,
+      MessageBackup.Purpose.RemoteBackup
+    );
+    assert.throws(() => backup.addFrame(Buffer.of()));
+  });
+
+  it('rejects invalid backups on finalize', () => {
+    const backup = new MessageBackup.OnlineBackupValidator(
+      VALID_BACKUP_INFO,
+      MessageBackup.Purpose.RemoteBackup
+    );
+    assert.throws(() => backup.finalize());
   });
 });
