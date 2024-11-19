@@ -26,11 +26,21 @@ public class ServerZkAuthOperations {
     this.serverSecretParams = serverSecretParams;
   }
 
+  /**
+   * @deprecated These credentials are no longer supported by the server; use {@link
+   *     #issueAuthCredentialWithPniZkc} instead.
+   */
+  @Deprecated
   public AuthCredentialWithPniResponse issueAuthCredentialWithPniAsServiceId(
       Aci aci, Pni pni, Instant redemptionTime) {
     return issueAuthCredentialWithPniAsServiceId(new SecureRandom(), aci, pni, redemptionTime);
   }
 
+  /**
+   * @deprecated These credentials are no longer supported by the server; use {@link
+   *     #issueAuthCredentialWithPniZkc} instead.
+   */
+  @Deprecated
   public AuthCredentialWithPniResponse issueAuthCredentialWithPniAsServiceId(
       SecureRandom secureRandom, Aci aci, Pni pni, Instant redemptionTime) {
     byte[] random = new byte[RANDOM_LENGTH];

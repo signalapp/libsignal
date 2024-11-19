@@ -13,10 +13,12 @@ public class ServerZkAuthOperations {
         self.serverSecretParams = serverSecretParams
     }
 
+    @available(*, deprecated, message: "these credentials are no longer supported by the server; use issueAuthCredentialWithPniZkc instead")
     public func issueAuthCredentialWithPniAsServiceId(aci: Aci, pni: Pni, redemptionTime: UInt64) throws -> AuthCredentialWithPniResponse {
         return try self.issueAuthCredentialWithPniAsServiceId(randomness: Randomness.generate(), aci: aci, pni: pni, redemptionTime: redemptionTime)
     }
 
+    @available(*, deprecated, message: "these credentials are no longer supported by the server; use issueAuthCredentialWithPniZkc instead")
     public func issueAuthCredentialWithPniAsServiceId(randomness: Randomness, aci: Aci, pni: Pni, redemptionTime: UInt64) throws -> AuthCredentialWithPniResponse {
         return try self.serverSecretParams.withNativeHandle { serverSecretParams in
             try randomness.withUnsafePointerToBytes { randomness in

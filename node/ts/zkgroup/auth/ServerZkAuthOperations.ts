@@ -20,6 +20,9 @@ export default class ServerZkAuthOperations {
     this.serverSecretParams = serverSecretParams;
   }
 
+  /**
+   * @deprecated These credentials are no longer supported by the server; use `issueAuthCredentialWithPniZkc` instead.
+   */
   issueAuthCredentialWithPniAsServiceId(
     aci: Aci,
     pni: Pni,
@@ -35,6 +38,9 @@ export default class ServerZkAuthOperations {
     );
   }
 
+  /**
+   * @deprecated These credentials are no longer supported by the server; use `issueAuthCredentialWithPniZkc` instead.
+   */
   issueAuthCredentialWithPniAsServiceIdWithRandom(
     random: Buffer,
     aci: Aci,
