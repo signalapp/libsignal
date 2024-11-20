@@ -11,42 +11,45 @@ type Uuid = Buffer;
 /// what's important is that it's an integer less than Number.MAX_SAFE_INTEGER.
 type Timestamp = number;
 
-interface LookupResponse {
+// Rust code produces or consumes values that conform to these interface
+// definitions. They must be kept in sync to prevent bridging errors.
+
+type LookupResponse = {
   entries: Map<string, LookupResponseEntry>;
   debugPermitsUsed: number;
 }
 
-interface LookupResponseEntry {
+type LookupResponseEntry = {
   readonly aci: string | undefined;
   readonly pni: string | undefined;
 }
 
-interface ChatResponse {
+type ChatResponse = {
   status: number;
   message: string | undefined;
   headers: ReadonlyArray<[string, string]>;
   body: Buffer | undefined;
 }
 
-interface ChatServiceDebugInfo {
+type ChatServiceDebugInfo = {
   ipType: number;
   durationMillis: number;
   connectionInfo: string;
 }
 
-interface ResponseAndDebugInfo {
+type ResponseAndDebugInfo = {
   response: ChatResponse;
   debugInfo: ChatServiceDebugInfo;
 }
 
-interface SealedSenderMultiRecipientMessageRecipient {
+type SealedSenderMultiRecipientMessageRecipient = {
   deviceIds: number[];
   registrationIds: number[];
   rangeOffset: number;
   rangeLen: number;
 }
 
-interface SealedSenderMultiRecipientMessage {
+type SealedSenderMultiRecipientMessage = {
   recipientMap: {
     [serviceId: string]: SealedSenderMultiRecipientMessageRecipient;
   };
@@ -54,7 +57,7 @@ interface SealedSenderMultiRecipientMessage {
   offsetOfSharedData: number;
 }
 
-export abstract class IdentityKeyStore {
+type IdentityKeyStore = {
   _getIdentityKey(): Promise<PrivateKey>;
   _getLocalRegistrationId(): Promise<number>;
   _saveIdentity(name: ProtocolAddress, key: PublicKey): Promise<boolean>;
@@ -66,18 +69,18 @@ export abstract class IdentityKeyStore {
   _getIdentity(name: ProtocolAddress): Promise<PublicKey | null>;
 }
 
-export abstract class SessionStore {
+type SessionStore = {
   _saveSession(addr: ProtocolAddress, record: SessionRecord): Promise<void>;
   _getSession(addr: ProtocolAddress): Promise<SessionRecord | null>;
 }
 
-export abstract class PreKeyStore {
+type PreKeyStore = {
   _savePreKey(preKeyId: number, record: PreKeyRecord): Promise<void>;
   _getPreKey(preKeyId: number): Promise<PreKeyRecord>;
   _removePreKey(preKeyId: number): Promise<void>;
 }
 
-export abstract class SignedPreKeyStore {
+type SignedPreKeyStore = {
   _saveSignedPreKey(
     signedPreKeyId: number,
     record: SignedPreKeyRecord
@@ -85,7 +88,7 @@ export abstract class SignedPreKeyStore {
   _getSignedPreKey(signedPreKeyId: number): Promise<SignedPreKeyRecord>;
 }
 
-export abstract class KyberPreKeyStore {
+type KyberPreKeyStore = {
   _saveKyberPreKey(
     kyberPreKeyId: number,
     record: KyberPreKeyRecord
@@ -94,7 +97,7 @@ export abstract class KyberPreKeyStore {
   _markKyberPreKeyUsed(kyberPreKeyId: number): Promise<void>;
 }
 
-export abstract class SenderKeyStore {
+type SenderKeyStore = {
   _saveSenderKey(
     sender: ProtocolAddress,
     distributionId: Uuid,
@@ -106,14 +109,14 @@ export abstract class SenderKeyStore {
   ): Promise<SenderKeyRecord | null>;
 }
 
-export abstract class InputStream {
+type InputStream = {
   _read(amount: number): Promise<Buffer>;
   _skip(amount: number): Promise<void>;
 }
 
-export abstract class SyncInputStream extends Buffer {}
+type SyncInputStream = Buffer;
 
-export abstract class ChatListener {
+type ChatListener = {
   _incoming_message(
     envelope: Buffer,
     timestamp: number,
@@ -130,12 +133,12 @@ type Wrapper<T> = Readonly<{
   _nativeHandle: T;
 }>;
 
-interface MessageBackupValidationOutcome {
+type MessageBackupValidationOutcome = {
   errorMessage: string | null;
   unknownFieldMessages: Array<string>;
 }
 
-interface CancellablePromise<T> extends Promise<T> {
+type CancellablePromise<T> = Promise<T> & {
   _cancellationToken: bigint;
 }
 
