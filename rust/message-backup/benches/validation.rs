@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 use futures::io::{BufReader, Cursor};
 use futures::AsyncRead;
 use libsignal_account_keys::BackupKey;
@@ -26,9 +26,6 @@ use generation::*;
 const DEFAULT_ACI: Aci = Aci::from_uuid_bytes([0x11; 16]);
 const DEFAULT_ACCOUNT_ENTROPY: &str =
     "mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm";
-
-const NUMBER_OF_CONVERSATIONS: usize = 100;
-const NUMBER_OF_MESSAGES: usize = 20_000;
 
 /// An [`AsyncRead`] implementation that [yields][] for every callback.
 ///
@@ -90,9 +87,15 @@ fn cursor_without_appended_hash(backup: &[u8]) -> Cursor<&'_ [u8]> {
     Cursor::new(&backup[..backup.len() - sha2::Sha256::output_size()])
 }
 
-fn hmac_only(c: &mut Criterion) {
-    let backup = generate_backup(NUMBER_OF_CONVERSATIONS, NUMBER_OF_MESSAGES);
+fn benchmark_multiple_backup_sizes(mut body: impl FnMut(usize, &[u8])) {
+    const MESSAGES_PER_CONVERSATION: usize = 200;
+    for size in [30, 100, 300] {
+        let backup = generate_backup(size, MESSAGES_PER_CONVERSATION * size);
+        body(size, &backup);
+    }
+}
 
+fn hmac_only(c: &mut Criterion) {
     let backup_key =
         BackupKey::derive_from_account_entropy_pool(&DEFAULT_ACCOUNT_ENTROPY.parse().unwrap());
     let message_backup_key =
@@ -104,29 +107,29 @@ fn hmac_only(c: &mut Criterion) {
             .expect("success");
     }
 
-    c.benchmark_group("MacReader")
-        .bench_function("direct", |b| {
+    let mut group = c.benchmark_group("MacReader");
+    benchmark_multiple_backup_sizes(|size, backup| {
+        group.bench_function(BenchmarkId::new("direct", size), |b| {
             b.iter(|| {
                 process(
-                    cursor_without_appended_hash(&backup),
-                    &message_backup_key.hmac_key,
-                )
-            })
-        })
-        .bench_function("YieldingReader", |b| {
-            b.iter(|| {
-                process(
-                    YieldingReader(cursor_without_appended_hash(&backup)),
+                    cursor_without_appended_hash(backup),
                     &message_backup_key.hmac_key,
                 )
             })
         });
+
+        group.bench_function(BenchmarkId::new("YieldingReader", size), |b| {
+            b.iter(|| {
+                process(
+                    YieldingReader(cursor_without_appended_hash(backup)),
+                    &message_backup_key.hmac_key,
+                )
+            })
+        });
+    });
 }
 
 fn decrypt_only(c: &mut Criterion) {
-    let backup = generate_backup(NUMBER_OF_CONVERSATIONS, NUMBER_OF_MESSAGES);
-    let iv = &backup[..AES_IV_SIZE].try_into().unwrap();
-
     let backup_key =
         BackupKey::derive_from_account_entropy_pool(&DEFAULT_ACCOUNT_ENTROPY.parse().unwrap());
     let message_backup_key =
@@ -142,30 +145,32 @@ fn decrypt_only(c: &mut Criterion) {
             .expect("success");
     }
 
-    c.benchmark_group("Aes256CbcReader")
-        .bench_function("direct", |b| {
+    let mut group = c.benchmark_group("Aes256CbcReader");
+    benchmark_multiple_backup_sizes(|size, backup| {
+        let iv = backup[..AES_IV_SIZE].try_into().unwrap();
+
+        group.bench_function(BenchmarkId::new("direct", size), |b| {
             b.iter(|| {
                 process(
-                    cursor_without_appended_hash(&backup),
+                    cursor_without_appended_hash(backup),
                     &message_backup_key.aes_key,
-                    iv,
-                )
-            })
-        })
-        .bench_function("YieldingReader", |b| {
-            b.iter(|| {
-                process(
-                    YieldingReader(cursor_without_appended_hash(&backup)),
-                    &message_backup_key.aes_key,
-                    iv,
+                    &iv,
                 )
             })
         });
+        group.bench_function(BenchmarkId::new("YieldingReader", size), |b| {
+            b.iter(|| {
+                process(
+                    YieldingReader(cursor_without_appended_hash(backup)),
+                    &message_backup_key.aes_key,
+                    &iv,
+                )
+            })
+        });
+    });
 }
 
 fn decrypt_and_decompress_and_hmac(c: &mut Criterion) {
-    let backup = generate_backup(NUMBER_OF_CONVERSATIONS, NUMBER_OF_MESSAGES);
-
     let backup_key =
         BackupKey::derive_from_account_entropy_pool(&DEFAULT_ACCOUNT_ENTROPY.parse().unwrap());
     let message_backup_key =
@@ -183,11 +188,12 @@ fn decrypt_and_decompress_and_hmac(c: &mut Criterion) {
         })
     }
 
-    c.benchmark_group("FramesReader")
-        .bench_function("direct", |b| {
-            b.iter(|| process(CursorFactory::new(&backup), &message_backup_key))
-        })
-        .bench_function("YieldingReader", |b| {
+    let mut group = c.benchmark_group("FramesReader");
+    benchmark_multiple_backup_sizes(|size, backup| {
+        group.bench_function(BenchmarkId::new("direct", size), |b| {
+            b.iter(|| process(CursorFactory::new(backup), &message_backup_key))
+        });
+        group.bench_function(BenchmarkId::new("YieldingReader", size), |b| {
             b.iter(|| {
                 process(
                     YieldingReader(CursorFactory::new(&backup)),
@@ -195,11 +201,10 @@ fn decrypt_and_decompress_and_hmac(c: &mut Criterion) {
                 )
             })
         });
+    });
 }
 
 fn decrypt_and_decompress_and_hmac_and_segment(c: &mut Criterion) {
-    let backup = generate_backup(NUMBER_OF_CONVERSATIONS, NUMBER_OF_MESSAGES);
-
     let backup_key =
         BackupKey::derive_from_account_entropy_pool(&DEFAULT_ACCOUNT_ENTROPY.parse().unwrap());
     let message_backup_key =
@@ -221,42 +226,42 @@ fn decrypt_and_decompress_and_hmac_and_segment(c: &mut Criterion) {
         })
     }
 
-    c.benchmark_group("FramesReader + VarintDelimitedReader")
-        .bench_function("direct", |b| {
-            b.iter(|| process(CursorFactory::new(&backup), &message_backup_key, |r| r))
-        })
-        .bench_function("direct + BufReader", |b| {
+    let mut group = c.benchmark_group("FramesReader + VarintDelimitedReader");
+    benchmark_multiple_backup_sizes(|size, backup| {
+        group.bench_function(BenchmarkId::new("direct", size), |b| {
+            b.iter(|| process(CursorFactory::new(backup), &message_backup_key, |r| r))
+        });
+        group.bench_function(BenchmarkId::new("direct + BufReader", size), |b| {
             b.iter(|| {
                 process(
-                    CursorFactory::new(&backup),
-                    &message_backup_key,
-                    BufReader::new,
-                )
-            })
-        })
-        .bench_function("YieldingReader", |b| {
-            b.iter(|| {
-                process(
-                    YieldingReader(CursorFactory::new(&backup)),
-                    &message_backup_key,
-                    |r| r,
-                )
-            })
-        })
-        .bench_function("YieldingReader + BufReader", |b| {
-            b.iter(|| {
-                process(
-                    YieldingReader(CursorFactory::new(&backup)),
+                    CursorFactory::new(backup),
                     &message_backup_key,
                     BufReader::new,
                 )
             })
         });
+        group.bench_function(BenchmarkId::new("YieldingReader", size), |b| {
+            b.iter(|| {
+                process(
+                    YieldingReader(CursorFactory::new(backup)),
+                    &message_backup_key,
+                    |r| r,
+                )
+            })
+        });
+        group.bench_function(BenchmarkId::new("YieldingReader + BufReader", size), |b| {
+            b.iter(|| {
+                process(
+                    YieldingReader(CursorFactory::new(backup)),
+                    &message_backup_key,
+                    BufReader::new,
+                )
+            })
+        });
+    });
 }
 
 fn decrypt_and_decompress_and_hmac_and_segment_and_parse(c: &mut Criterion) {
-    let backup = generate_backup(NUMBER_OF_CONVERSATIONS, NUMBER_OF_MESSAGES);
-
     let backup_key =
         BackupKey::derive_from_account_entropy_pool(&DEFAULT_ACCOUNT_ENTROPY.parse().unwrap());
     let message_backup_key =
@@ -287,42 +292,42 @@ fn decrypt_and_decompress_and_hmac_and_segment_and_parse(c: &mut Criterion) {
         })
     }
 
-    c.benchmark_group("FramesReader + VarintDelimitedReader + Frame::parse")
-        .bench_function("direct", |b| {
-            b.iter(|| process(CursorFactory::new(&backup), &message_backup_key, |r| r))
-        })
-        .bench_function("direct + BufReader", |b| {
+    let mut group = c.benchmark_group("FramesReader + VarintDelimitedReader + Frame::parse");
+    benchmark_multiple_backup_sizes(|size, backup| {
+        group.bench_function(BenchmarkId::new("direct", size), |b| {
+            b.iter(|| process(CursorFactory::new(backup), &message_backup_key, |r| r))
+        });
+        group.bench_function(BenchmarkId::new("direct + BufReader", size), |b| {
             b.iter(|| {
                 process(
-                    CursorFactory::new(&backup),
-                    &message_backup_key,
-                    BufReader::new,
-                )
-            })
-        })
-        .bench_function("YieldingReader", |b| {
-            b.iter(|| {
-                process(
-                    YieldingReader(CursorFactory::new(&backup)),
-                    &message_backup_key,
-                    |r| r,
-                )
-            })
-        })
-        .bench_function("YieldingReader + BufReader", |b| {
-            b.iter(|| {
-                process(
-                    YieldingReader(CursorFactory::new(&backup)),
+                    CursorFactory::new(backup),
                     &message_backup_key,
                     BufReader::new,
                 )
             })
         });
+        group.bench_function(BenchmarkId::new("YieldingReader", size), |b| {
+            b.iter(|| {
+                process(
+                    YieldingReader(CursorFactory::new(backup)),
+                    &message_backup_key,
+                    |r| r,
+                )
+            })
+        });
+        group.bench_function(BenchmarkId::new("YieldingReader + BufReader", size), |b| {
+            b.iter(|| {
+                process(
+                    YieldingReader(CursorFactory::new(backup)),
+                    &message_backup_key,
+                    BufReader::new,
+                )
+            })
+        });
+    });
 }
 
 fn decrypt_and_decompress_and_hmac_and_segment_and_parse_and_validate(c: &mut Criterion) {
-    let backup = generate_backup(NUMBER_OF_CONVERSATIONS, NUMBER_OF_MESSAGES);
-
     let backup_key =
         BackupKey::derive_from_account_entropy_pool(&DEFAULT_ACCOUNT_ENTROPY.parse().unwrap());
     let message_backup_key =
@@ -356,42 +361,42 @@ fn decrypt_and_decompress_and_hmac_and_segment_and_parse_and_validate(c: &mut Cr
         })
     }
 
-    c.benchmark_group("FramesReader + VarintDelimitedReader + PartialBackup")
-        .bench_function("direct", |b| {
-            b.iter(|| process(CursorFactory::new(&backup), &message_backup_key, |r| r))
-        })
-        .bench_function("direct + BufReader", |b| {
+    let mut group = c.benchmark_group("FramesReader + VarintDelimitedReader + PartialBackup");
+    benchmark_multiple_backup_sizes(|size, backup| {
+        group.bench_function(BenchmarkId::new("direct", size), |b| {
+            b.iter(|| process(CursorFactory::new(backup), &message_backup_key, |r| r))
+        });
+        group.bench_function(BenchmarkId::new("direct + BufReader", size), |b| {
             b.iter(|| {
                 process(
-                    CursorFactory::new(&backup),
-                    &message_backup_key,
-                    BufReader::new,
-                )
-            })
-        })
-        .bench_function("YieldingReader", |b| {
-            b.iter(|| {
-                process(
-                    YieldingReader(CursorFactory::new(&backup)),
-                    &message_backup_key,
-                    |r| r,
-                )
-            })
-        })
-        .bench_function("YieldingReader + BufReader", |b| {
-            b.iter(|| {
-                process(
-                    YieldingReader(CursorFactory::new(&backup)),
+                    CursorFactory::new(backup),
                     &message_backup_key,
                     BufReader::new,
                 )
             })
         });
+        group.bench_function(BenchmarkId::new("YieldingReader", size), |b| {
+            b.iter(|| {
+                process(
+                    YieldingReader(CursorFactory::new(backup)),
+                    &message_backup_key,
+                    |r| r,
+                )
+            })
+        });
+        group.bench_function(BenchmarkId::new("YieldingReader + BufReader", size), |b| {
+            b.iter(|| {
+                process(
+                    YieldingReader(CursorFactory::new(backup)),
+                    &message_backup_key,
+                    BufReader::new,
+                )
+            })
+        });
+    });
 }
 
 fn validate_using_full_backup_reader(c: &mut Criterion) {
-    let backup = generate_backup(NUMBER_OF_CONVERSATIONS, NUMBER_OF_MESSAGES);
-
     let backup_key =
         BackupKey::derive_from_account_entropy_pool(&DEFAULT_ACCOUNT_ENTROPY.parse().unwrap());
     let message_backup_key =
@@ -416,18 +421,20 @@ fn validate_using_full_backup_reader(c: &mut Criterion) {
         })
     }
 
-    c.benchmark_group("BackupReader")
-        .bench_function("direct", |b| {
-            b.iter(|| process(CursorFactory::new(&backup), &message_backup_key))
-        })
-        .bench_function("YieldingReader", |b| {
+    let mut group = c.benchmark_group("BackupReader");
+    benchmark_multiple_backup_sizes(|size, backup| {
+        group.bench_function(BenchmarkId::new("direct", size), |b| {
+            b.iter(|| process(CursorFactory::new(backup), &message_backup_key))
+        });
+        group.bench_function(BenchmarkId::new("YieldingReader", size), |b| {
             b.iter(|| {
                 process(
-                    YieldingReader(CursorFactory::new(&backup)),
+                    YieldingReader(CursorFactory::new(backup)),
                     &message_backup_key,
                 )
             })
         });
+    });
 }
 
 criterion_group!(
