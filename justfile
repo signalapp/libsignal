@@ -16,6 +16,10 @@ generate-ffi:
 generate-node:
     rust/bridge/node/bin/gen_ts_decl.py
 
+alias generate-java := generate-jni
+alias generate-swift := generate-ffi
+alias generate-ts := generate-node
+
 # Regenerate bridge code for all three app languages.
 generate-bridge: generate-jni generate-node generate-ffi
 
@@ -23,10 +27,14 @@ format-jni:
     (cd java && ./gradlew spotlessApply)
 
 format-ffi:
-    (cd swift && swiftformat --swiftversion 5 . --lint)
+    (cd swift && swiftformat --swiftversion 5 .)
 
 format-node:
     (cd node && npm run format)
+
+alias format-java := format-jni
+alias format-swift := format-ffi
+alias format-ts := format-node
 
 # Auto-format code in Java, Rust, Swift, and TypeScript
 format-all: format-jni format-ffi format-node
