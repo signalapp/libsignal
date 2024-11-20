@@ -86,6 +86,17 @@ message AccountData {
     bool manuallyCancelled = 3;
   }
 
+  message IAPSubscriberData {
+    bytes subscriberId = 1;
+
+    oneof iapSubscriptionId {
+      // Identifies an Android Play Store IAP subscription.
+      string purchaseToken = 2;
+      // Identifies an iOS App Store IAP subscription.
+      uint64 originalTransactionId = 3;
+    }
+  }
+
   bytes profileKey = 1;
   optional string username = 2;
   UsernameLink usernameLink = 3;
@@ -93,8 +104,9 @@ message AccountData {
   string familyName = 5;
   string avatarUrlPath = 6;
   SubscriberData donationSubscriberData = 7;
-  SubscriberData backupsSubscriberData = 8;
+  reserved /*backupsSubscriberData*/ 8; // A deprecated format
   AccountSettings accountSettings = 9;
+  IAPSubscriberData backupsSubscriberData = 10;
 }
 
 message Recipient {

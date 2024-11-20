@@ -25,6 +25,7 @@ use crate::proto::backup as proto;
     M::Value<Option<UsernameData>>: PartialEq,
     M::Value<String>: PartialEq,
     M::Value<Option<Subscription>>: PartialEq,
+    M::Value<Option<IapSubscriberData>>: PartialEq,
     AccountSettings<M>: PartialEq,
 ))]
 pub struct AccountData<M: Method + ReferencedTypes> {
@@ -39,7 +40,7 @@ pub struct AccountData<M: Method + ReferencedTypes> {
     pub account_settings: AccountSettings<M>,
     pub avatar_url_path: M::Value<String>,
     pub donation_subscription: M::Value<Option<Subscription>>,
-    pub backup_subscription: M::Value<Option<Subscription>>,
+    pub backup_subscription: M::Value<Option<IapSubscriberData>>,
 }
 
 #[derive(Debug, serde::Serialize)]
@@ -72,6 +73,21 @@ pub struct Subscription {
 
 const SUBSCRIBER_ID_LENGTH: usize = 32;
 type SubscriberId = [u8; SUBSCRIBER_ID_LENGTH];
+
+#[derive(Debug, serde::Serialize)]
+#[cfg_attr(test, derive(PartialEq))]
+pub struct IapSubscriberData {
+    #[serde(with = "hex")]
+    pub subscriber_id: SubscriberId,
+    pub subscription_id: IapSubscriptionId,
+}
+
+#[derive(Debug, serde::Serialize)]
+#[cfg_attr(test, derive(PartialEq))]
+pub enum IapSubscriptionId {
+    PlayStorePurchaseToken(String),
+    IosAppStoreOriginalTransactionId(u64),
+}
 
 #[derive_where(Debug)]
 #[derive(serde::Serialize)]
@@ -146,6 +162,8 @@ pub enum SubscriptionError {
     InvalidSubscriberId(usize),
     /// subscriber ID was present but not the currency code
     EmptyCurrency,
+    /// missing IAP subscription ID
+    MissingIapSubscriptionId,
 }
 
 impl<M: Method + ReferencedTypes, C: ReportUnusualTimestamp> TryFromWith<proto::AccountData, C>
@@ -191,7 +209,7 @@ impl<M: Method + ReferencedTypes, C: ReportUnusualTimestamp> TryFromWith<proto::
             .map_err(AccountDataError::DonationSubscription)?;
         let backup_subscription = backupsSubscriberData
             .into_option()
-            .map(Subscription::try_from)
+            .map(IapSubscriberData::try_from)
             .transpose()
             .map_err(AccountDataError::BackupSubscription)?;
 
@@ -231,6 +249,41 @@ impl TryFrom<proto::account_data::SubscriberData> for Subscription {
             subscriber_id,
             currency_code,
             manually_canceled: manuallyCancelled,
+        })
+    }
+}
+
+impl TryFrom<proto::account_data::IAPSubscriberData> for IapSubscriberData {
+    type Error = SubscriptionError;
+
+    fn try_from(value: proto::account_data::IAPSubscriberData) -> Result<Self, Self::Error> {
+        let proto::account_data::IAPSubscriberData {
+            subscriberId,
+            iapSubscriptionId,
+            special_fields: _,
+        } = value;
+        let subscriber_id = subscriberId
+            .try_into()
+            .map_err(|id: Vec<u8>| SubscriptionError::InvalidSubscriberId(id.len()))?;
+
+        let subscription_id = {
+            use proto::account_data::iapsubscriber_data::IapSubscriptionId as ProtoIapSubscriptionId;
+            match iapSubscriptionId.ok_or(SubscriptionError::MissingIapSubscriptionId)? {
+                ProtoIapSubscriptionId::PurchaseToken(token) => {
+                    if token.is_empty() {
+                        return Err(SubscriptionError::MissingIapSubscriptionId);
+                    }
+                    IapSubscriptionId::PlayStorePurchaseToken(token)
+                }
+                ProtoIapSubscriptionId::OriginalTransactionId(id) => {
+                    IapSubscriptionId::IosAppStoreOriginalTransactionId(id)
+                }
+            }
+        };
+
+        Ok(IapSubscriberData {
+            subscriber_id,
+            subscription_id,
         })
     }
 }
@@ -376,12 +429,13 @@ mod test {
                     ..Default::default()
                 })
                 .into(),
-                backupsSubscriberData: Some(proto::account_data::SubscriberData {
+                backupsSubscriberData: Some(proto::account_data::IAPSubscriberData {
                     subscriberId: FAKE_SUBSCRIBER_ID.to_vec(),
-                    currencyCode: "XTS".to_string(),
+                    iapSubscriptionId: Some(
+                        proto::account_data::iapsubscriber_data::IapSubscriptionId::OriginalTransactionId(5)
+                    ),
                     ..Default::default()
-                })
-                .into(),
+                }).into(),
                 ..Default::default()
             }
         }
@@ -480,10 +534,9 @@ mod test {
                     custom_chat_colors: CustomColorMap::from_proto_test_data(),
                 },
                 avatar_url_path: "".to_string(),
-                backup_subscription: Some(Subscription {
+                backup_subscription: Some(IapSubscriberData {
                     subscriber_id: FAKE_SUBSCRIBER_ID,
-                    currency_code: "XTS".to_string(),
-                    manually_canceled: false,
+                    subscription_id: IapSubscriptionId::IosAppStoreOriginalTransactionId(5),
                 }),
                 donation_subscription: None,
             }
@@ -522,14 +575,20 @@ mod test {
     #[test_case(|x| x.backupsSubscriberData.as_mut().unwrap().subscriberId = vec![] =>
         Err(AccountDataError::BackupSubscription(SubscriptionError::InvalidSubscriberId(0)));
         "empty_subscriber_id")]
-    #[test_case(|x| x.backupsSubscriberData.as_mut().unwrap().currencyCode = "".to_owned() =>
-        Err(AccountDataError::BackupSubscription(SubscriptionError::EmptyCurrency));
-        "empty_subscriber_currency")]
+    #[test_case(|x| x.backupsSubscriberData.as_mut().unwrap().iapSubscriptionId = None =>
+        Err(AccountDataError::BackupSubscription(SubscriptionError::MissingIapSubscriptionId));
+        "missing_subscriber_iap_id")]
     #[test_case(|x| {
             x.backupsSubscriberData = None.into();
             x.donationSubscriberData = None.into();
         } => Ok(()); "no_subscriptions"
     )]
+    #[test_case(|x| {
+        x.donationSubscriberData = Some(proto::account_data::SubscriberData {
+            subscriberId: FAKE_SUBSCRIBER_ID.into(),
+            ..Default::default()
+        }).into();
+    } => Err(AccountDataError::DonationSubscription(SubscriptionError::EmptyCurrency)); "empty_subscriber_currency")]
     #[test_case(
         |x| x.accountSettings.as_mut().unwrap().customChatColors.clear() =>
         Err(AccountDataError::ChatStyle(ChatStyleError::UnknownCustomColorId(FAKE_CUSTOM_COLOR_ID.0)));

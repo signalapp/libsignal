@@ -57,8 +57,9 @@
     "donation_subscription": null,
     "backup_subscription": {
       "subscriber_id": "3737373737373737373737373737373737373737373737373737373737373737",
-      "currency_code": "XTS",
-      "manually_canceled": false
+      "subscription_id": {
+        "IosAppStoreOriginalTransactionId": 5
+      }
     }
   },
   "recipients": [],
