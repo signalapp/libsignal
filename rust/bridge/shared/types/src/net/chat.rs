@@ -22,6 +22,7 @@ use libsignal_net::chat::{
 };
 use libsignal_net::infra::route::{ConnectionProxyConfig, DirectOrProxyProvider};
 use libsignal_net::infra::tcp_ssl::InvalidProxyConfig;
+use libsignal_net::infra::{Connection, ConnectionInfo};
 use libsignal_protocol::Timestamp;
 use tokio::sync::{mpsc, oneshot};
 
@@ -286,6 +287,17 @@ impl AuthenticatedChatConnection {
         self.inner.disconect().await
     }
 }
+impl Connection for UnauthenticatedChatConnection {
+    fn connection_info(&self) -> ConnectionInfo {
+        self.inner.connection_info()
+    }
+}
+
+impl Connection for AuthenticatedChatConnection {
+    fn connection_info(&self) -> ConnectionInfo {
+        self.inner.connection_info()
+    }
+}
 
 async fn establish_chat_connection(
     connection_manager: &ConnectionManager,
@@ -542,3 +554,5 @@ bridge_as_handle!(ServerMessageAck);
 // makes it `!RefUnwindSafe`. We're putting that back; because we only manipulate the `AtomicTake`
 // using its atomic operations, it can never be in an invalid state.
 impl std::panic::RefUnwindSafe for ServerMessageAck {}
+
+bridge_as_handle!(ConnectionInfo);

@@ -24,8 +24,8 @@ use libsignal_net_infra::timeouts::{MULTI_ROUTE_CONNECTION_TIMEOUT, ONE_ROUTE_CO
 use libsignal_net_infra::utils::ObservableEvent;
 use libsignal_net_infra::ws::WebSocketClientConnector;
 use libsignal_net_infra::{
-    make_ws_config, AsHttpHeader, EndpointConnection, HttpRequestDecorator, IpType,
-    TransportConnector,
+    make_ws_config, AsHttpHeader, Connection, ConnectionInfo, EndpointConnection,
+    HttpRequestDecorator, IpType, TransportConnector,
 };
 
 use crate::auth::Auth;
@@ -84,7 +84,7 @@ pub trait ChatServiceWithDebugInfo: ChatService {
 #[derive(Debug)]
 pub struct DebugInfo {
     /// IP type of the connection that was used for the request.
-    pub ip_type: IpType,
+    pub ip_type: Option<IpType>,
     /// Time it took to complete the request.
     pub duration: Duration,
     /// Connection information summary.
@@ -517,6 +517,13 @@ pub fn endpoint_connection(
 
 pub struct ChatConnection {
     inner: self::ws2::Chat,
+    connection_info: ConnectionInfo,
+}
+
+impl Connection for ChatConnection {
+    fn connection_info(&self) -> ConnectionInfo {
+        self.connection_info.clone()
+    }
 }
 
 pub struct AuthenticatedChatHeaders {
@@ -578,8 +585,12 @@ impl ChatConnection {
         .await;
 
         match result {
-            Ok(ws_connection) => Ok(Self {
-                inner: self::ws2::Chat::new(ws_connection, ws_config, listener),
+            Ok(ws_connection) => Ok({
+                let connection_info = ws_connection.connection_info();
+                Self {
+                    inner: self::ws2::Chat::new(ws_connection, ws_config, listener),
+                    connection_info,
+                }
             }),
             Err(e) => {
                 use crate::infra::route::ConnectError;

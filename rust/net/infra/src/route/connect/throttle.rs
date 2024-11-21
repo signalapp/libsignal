@@ -12,6 +12,7 @@ use pin_project::pin_project;
 use tokio::sync::{OwnedSemaphorePermit, Semaphore};
 
 use crate::route::connect::Connector;
+use crate::{Connection, ConnectionInfo};
 
 /// [`Connector`] wrapper that limits the number of concurrent connection
 /// attempts.
@@ -134,5 +135,11 @@ impl<S: Sink<T>, T> Sink<T> for ThrottledConnection<S> {
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Result<(), Self::Error>> {
         self.as_pin_mut().poll_close(cx)
+    }
+}
+
+impl<C: Connection> Connection for ThrottledConnection<C> {
+    fn connection_info(&self) -> ConnectionInfo {
+        self.0.connection_info()
     }
 }

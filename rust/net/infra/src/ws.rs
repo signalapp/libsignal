@@ -27,8 +27,8 @@ use crate::service::{CancellationReason, CancellationToken, ServiceConnector};
 use crate::utils::timeout;
 use crate::ws::error::{HttpFormatError, ProtocolError, SpaceError};
 use crate::{
-    Alpn, AsyncDuplexStream, ConnectionInfo, ConnectionParams, HttpRequestDecorator, StreamAndInfo,
-    TransportConnector,
+    Alpn, AsyncDuplexStream, Connection, ConnectionParams, HttpRequestDecorator,
+    ServiceConnectionInfo, StreamAndInfo, TransportConnector,
 };
 
 pub mod error;
@@ -264,8 +264,8 @@ where
     E: Send + Sync,
     WebSocketServiceError: Into<E>,
 {
-    type Service = (WebSocketClient<T::Stream, E>, ConnectionInfo);
-    type Channel = (WebSocketStream<T::Stream>, ConnectionInfo);
+    type Service = (WebSocketClient<T::Stream, E>, ServiceConnectionInfo);
+    type Channel = (WebSocketStream<T::Stream>, ServiceConnectionInfo);
     type ConnectError = WebSocketConnectError;
 
     async fn connect_channel(
@@ -289,8 +289,8 @@ impl<T> ServiceConnector for WebSocketStreamConnector<T>
 where
     T: TransportConnector,
 {
-    type Service = (WebSocketStream<T::Stream>, ConnectionInfo);
-    type Channel = (WebSocketStream<T::Stream>, ConnectionInfo);
+    type Service = (WebSocketStream<T::Stream>, ServiceConnectionInfo);
+    type Channel = (WebSocketStream<T::Stream>, ServiceConnectionInfo);
     type ConnectError = WebSocketConnectError;
 
     async fn connect_channel(
@@ -484,7 +484,7 @@ async fn connect_websocket<T: TransportConnector>(
     endpoint: PathAndQuery,
     ws_config: tungstenite::protocol::WebSocketConfig,
     transport_connector: &T,
-) -> Result<(WebSocketStream<T::Stream>, ConnectionInfo), WebSocketConnectError> {
+) -> Result<(WebSocketStream<T::Stream>, ServiceConnectionInfo), WebSocketConnectError> {
     let StreamAndInfo(ssl_stream, remote_address) = transport_connector
         .connect(&connection_params.transport, Alpn::Http1_1)
         .await?;
@@ -610,6 +610,14 @@ impl<T> NextOrClose<T> {
             Self::Next(t) => Ok(t),
             Self::Close(close) => Err(on_close(close)),
         }
+    }
+}
+
+impl<S: Connection + tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin> Connection
+    for tokio_tungstenite::WebSocketStream<S>
+{
+    fn connection_info(&self) -> crate::ConnectionInfo {
+        self.get_ref().connection_info()
     }
 }
 

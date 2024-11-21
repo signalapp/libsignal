@@ -1226,7 +1226,7 @@ impl<'a> ResultTypeInfo<'a> for libsignal_net::chat::DebugInfo {
         } = self;
 
         // ip type as code
-        let ip_type_byte = ip_type as i8;
+        let ip_type_byte = ip_type.map_or(0, |i| i as i8);
 
         // duration as millis
         let duration_ms: i32 = duration.as_millis().try_into().expect("within i32 range");

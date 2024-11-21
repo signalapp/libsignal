@@ -15,6 +15,7 @@ use libsignal_net::auth::Auth;
 use libsignal_net::chat::{
     self, ChatServiceError, DebugInfo as ChatServiceDebugInfo, Request, Response as ChatResponse,
 };
+use libsignal_net::infra::{Connection, ConnectionInfo};
 
 use crate::support::*;
 use crate::*;
@@ -34,6 +35,7 @@ bridge_handle_fns!(
     ffi = false,
     jni = false
 );
+bridge_handle_fns!(ConnectionInfo, clone = false, ffi = false, jni = false);
 
 #[bridge_fn(ffi = false)]
 fn HttpRequest_new(
@@ -68,6 +70,16 @@ fn HttpRequest_add_header(
     value: AsType<HeaderValue, String>,
 ) {
     request.add_header(name.into_inner(), value.into_inner())
+}
+
+#[bridge_fn(ffi = false, jni = false)]
+fn ConnectionInfo_local_port(connection_info: &ConnectionInfo) -> u16 {
+    connection_info.local_port
+}
+
+#[bridge_fn(ffi = false, jni = false)]
+fn ConnectionInfo_ip_version(connection_info: &ConnectionInfo) -> u8 {
+    connection_info.ip_version as u8
 }
 
 #[bridge_fn]
@@ -119,6 +131,11 @@ async fn UnauthenticatedChatConnection_disconnect(chat: &UnauthenticatedChatConn
     chat.disconnect().await
 }
 
+#[bridge_fn(jni = false, ffi = false)]
+fn UnauthenticatedChatConnection_info(chat: &UnauthenticatedChatConnection) -> ConnectionInfo {
+    chat.connection_info()
+}
+
 #[bridge_io(TokioAsyncContext, ffi = false, jni = false)]
 async fn AuthenticatedChatConnection_connect(
     connection_manager: &ConnectionManager,
@@ -156,6 +173,11 @@ async fn AuthenticatedChatConnection_send(
 #[bridge_io(TokioAsyncContext, ffi = false, jni = false)]
 async fn AuthenticatedChatConnection_disconnect(chat: &AuthenticatedChatConnection) {
     chat.disconnect().await
+}
+
+#[bridge_fn(jni = false, ffi = false)]
+fn AuthenticatedChatConnection_info(chat: &AuthenticatedChatConnection) -> ConnectionInfo {
+    chat.connection_info()
 }
 
 #[bridge_io(TokioAsyncContext)]

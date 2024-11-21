@@ -18,7 +18,8 @@ use crate::host::Host;
 use crate::route::ConnectionProxyConfig;
 use crate::tcp_ssl::{connect_tcp, connect_tls, ssl_config};
 use crate::{
-    Alpn, ConnectionInfo, RouteType, StreamAndInfo, TransportConnectionParams, TransportConnector,
+    Alpn, RouteType, ServiceConnectionInfo, StreamAndInfo, TransportConnectionParams,
+    TransportConnector,
 };
 
 /// A [`TransportConnector`] that proxies through a TLS server.
@@ -95,7 +96,7 @@ impl TransportConnector for TlsProxyConnector {
 
         Ok(StreamAndInfo(
             tls_stream,
-            ConnectionInfo {
+            ServiceConnectionInfo {
                 route_type: RouteType::TlsProxy,
                 ..remote_address
             },
@@ -220,7 +221,7 @@ mod test {
 
         assert_eq!(
             info,
-            ConnectionInfo {
+            ServiceConnectionInfo {
                 address: Host::Ip(Ipv6Addr::LOCALHOST.into()),
                 dns_source: crate::DnsSource::Static,
                 route_type: RouteType::TlsProxy,
@@ -263,7 +264,7 @@ mod test {
 
         assert_eq!(
             info,
-            ConnectionInfo {
+            ServiceConnectionInfo {
                 address: Host::Ip(Ipv6Addr::LOCALHOST.into()),
                 dns_source: crate::DnsSource::Static,
                 route_type: RouteType::TlsProxy

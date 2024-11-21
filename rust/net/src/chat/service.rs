@@ -82,7 +82,7 @@ where
                     s.connection_info().description(),
                 )
             }
-            Err(e) => (Err(e.into()), IpType::Unknown, "".to_string()),
+            Err(e) => (Err(e.into()), None, "".to_string()),
         };
         let duration = start.elapsed();
         (

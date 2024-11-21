@@ -718,7 +718,7 @@ impl ResultTypeInfo for libsignal_net::chat::DebugInfo {
         } = self;
 
         Ok(FfiChatServiceDebugInfo {
-            raw_ip_type: ip_type as u8,
+            raw_ip_type: ip_type.map_or(0, |i| i as u8),
             duration_secs: duration.as_secs_f64(),
             connection_info: connection_info.convert_into()?,
         })

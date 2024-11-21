@@ -28,8 +28,8 @@ use libsignal_net_infra::ws2::attested::{
     AttestedConnection, AttestedConnectionError, AttestedProtocolError,
 };
 use libsignal_net_infra::{
-    make_ws_config, AsHttpHeader as _, AsyncDuplexStream, ConnectionInfo, ConnectionParams,
-    EndpointConnection, TransportConnector,
+    make_ws_config, AsHttpHeader as _, AsyncDuplexStream, ConnectionParams, EndpointConnection,
+    ServiceConnectionInfo, TransportConnector,
 };
 
 use crate::auth::Auth;
@@ -281,7 +281,7 @@ impl<E: EnclaveKind + NewHandshake, C: ConnectionManager> EnclaveEndpointConnect
         &self,
         auth: Auth,
         transport_connector: T,
-    ) -> Result<(AttestedConnection, ConnectionInfo), Error>
+    ) -> Result<(AttestedConnection, ServiceConnectionInfo), Error>
     where
         C: ConnectionManager,
     {
@@ -330,7 +330,7 @@ async fn connect_attested<C: ConnectionManager, T: TransportConnector>(
     auth: Auth,
     transport_connector: T,
     do_handshake: &(dyn Sync + Fn(&[u8]) -> enclave::Result<enclave::Handshake>),
-) -> Result<(AttestedConnection, ConnectionInfo), Error> {
+) -> Result<(AttestedConnection, ServiceConnectionInfo), Error> {
     let connector = WebSocketStreamConnector::new(
         transport_connector,
         WebSocketRouteFragment {

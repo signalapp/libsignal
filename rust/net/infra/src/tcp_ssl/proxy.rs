@@ -14,6 +14,7 @@ use tokio_util::either::Either;
 use crate::errors::TransportConnectError;
 use crate::route::{ConnectionProxyRoute, Connector, ConnectorExt as _, TlsRoute};
 use crate::tcp_ssl::proxy::socks::SocksStream;
+use crate::{Connection, IpType};
 
 pub mod socks;
 pub mod tls;
@@ -61,6 +62,25 @@ impl Connector<ConnectionProxyRoute<IpAddr>, ()> for StatelessProxied {
                 self.connect(route)
                     .map_ok(|connection| Either::Right(Either::Right(connection))),
             )),
+        }
+    }
+}
+
+impl<L: Connection, R: Connection> Connection for Either<L, R> {
+    fn connection_info(&self) -> crate::ConnectionInfo {
+        match self {
+            Self::Left(l) => l.connection_info(),
+            Self::Right(r) => r.connection_info(),
+        }
+    }
+}
+
+impl Connection for TcpStream {
+    fn connection_info(&self) -> crate::ConnectionInfo {
+        let local_addr = self.local_addr().expect("has local addr");
+        crate::ConnectionInfo {
+            ip_version: IpType::from(&local_addr.ip()),
+            local_port: local_addr.port(),
         }
     }
 }

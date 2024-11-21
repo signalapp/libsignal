@@ -1000,7 +1000,7 @@ impl<'a> ResultTypeInfo<'a> for libsignal_net::chat::DebugInfo {
         } = self;
         let obj = JsObject::new(cx);
 
-        let ip_type = cx.number(ip_type as u8);
+        let ip_type = cx.number(ip_type.map_or(0, |i| i as u8));
         let duration = cx.number(duration.as_millis().try_into().unwrap_or(u32::MAX));
         let connection_info = cx.string(connection_info);
 

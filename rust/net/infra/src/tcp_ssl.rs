@@ -30,8 +30,8 @@ use crate::timeouts::TCP_CONNECTION_ATTEMPT_DELAY;
 use crate::utils::development_only_enable_nss_standard_debug_interop;
 use crate::utils::first_ok;
 use crate::{
-    Alpn, AsyncDuplexStream, ConnectionInfo, RouteType, StreamAndInfo, TransportConnectionParams,
-    TransportConnector,
+    Alpn, AsyncDuplexStream, Connection, RouteType, ServiceConnectionInfo, StreamAndInfo,
+    TransportConnectionParams, TransportConnector,
 };
 
 pub mod proxy;
@@ -175,6 +175,12 @@ where
     }
 }
 
+impl<S: Connection> Connection for SslStream<S> {
+    fn connection_info(&self) -> crate::ConnectionInfo {
+        self.get_ref().connection_info()
+    }
+}
+
 fn ssl_config(
     certs: &RootCertificates,
     host: Host<&str>,
@@ -267,7 +273,7 @@ async fn connect_tcp(
                     log::debug!("successfully connected to IP [{ip}]");
                     StreamAndInfo(
                         r,
-                        ConnectionInfo {
+                        ServiceConnectionInfo {
                             route_type,
                             dns_source,
                             address: ip.into(),
@@ -453,7 +459,7 @@ mod test {
 
         assert_eq!(
             info,
-            ConnectionInfo {
+            ServiceConnectionInfo {
                 address: Host::Ip(Ipv6Addr::LOCALHOST.into()),
                 dns_source: crate::DnsSource::Static,
                 route_type: RouteType::Direct,

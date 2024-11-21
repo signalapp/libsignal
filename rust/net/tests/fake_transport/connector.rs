@@ -9,7 +9,7 @@ use std::sync::{Arc, Mutex};
 use async_trait::async_trait;
 use libsignal_net::infra::errors::TransportConnectError;
 use libsignal_net::infra::{
-    Alpn, ConnectionInfo, DnsSource, RouteType, StreamAndInfo, TransportConnectionParams,
+    Alpn, DnsSource, RouteType, ServiceConnectionInfo, StreamAndInfo, TransportConnectionParams,
     TransportConnector,
 };
 use tokio::io::DuplexStream;
@@ -97,7 +97,7 @@ impl TransportConnector for FakeTransportConnector {
 
         Ok(StreamAndInfo(
             client_stream,
-            ConnectionInfo {
+            ServiceConnectionInfo {
                 route_type: RouteType::Direct,
                 dns_source: DnsSource::Static,
                 address: tcp_host.clone(),

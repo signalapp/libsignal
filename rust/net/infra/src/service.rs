@@ -16,7 +16,7 @@ use crate::connection_manager::{
     ConnectionAttemptOutcome, ConnectionManager, ErrorClass, ErrorClassifier,
 };
 use crate::errors::LogSafeDisplay;
-use crate::{ConnectionInfo, ConnectionParams, HttpRequestDecorator};
+use crate::{ConnectionParams, HttpRequestDecorator, ServiceConnectionInfo};
 
 // A duration where, if this is all that's left on the timeout, we're more likely to fail than not.
 // Useful for debouncing repeated connection attempts.
@@ -55,7 +55,7 @@ pub type CancellationToken = cancel_token::CancellationToken<CancellationReason>
 
 pub trait RemoteAddressInfo {
     /// Provides information about the remote address the service is connected to
-    fn connection_info(&self) -> ConnectionInfo;
+    fn connection_info(&self) -> ServiceConnectionInfo;
 }
 
 /// Creates connections to a "service" representing a remote resource accessible over HTTPS.
@@ -280,7 +280,7 @@ where
     C: ServiceConnector,
     C::Service: RemoteAddressInfo,
 {
-    pub async fn connection_info(&self) -> Result<ConnectionInfo, StateError> {
+    pub async fn connection_info(&self) -> Result<ServiceConnectionInfo, StateError> {
         self.map_service(|s| s.connection_info().clone()).await
     }
 }

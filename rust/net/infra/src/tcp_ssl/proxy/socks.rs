@@ -24,8 +24,8 @@ use crate::errors::TransportConnectError;
 use crate::host::Host;
 use crate::route::{Connector, ConnectorExt as _, SocksRoute, TcpRoute};
 use crate::{
-    Alpn, ConnectionInfo, DnsSource, RouteType, StreamAndInfo, TransportConnectionParams,
-    TransportConnector,
+    Alpn, Connection, DnsSource, RouteType, ServiceConnectionInfo, StreamAndInfo,
+    TransportConnectionParams, TransportConnector,
 };
 
 #[derive(Clone)]
@@ -140,7 +140,7 @@ impl TransportConnector for SocksConnector {
         log::info!("connection through SOCKS proxy established successfully");
         Ok(StreamAndInfo(
             stream,
-            ConnectionInfo {
+            ServiceConnectionInfo {
                 route_type: RouteType::SocksProxy,
                 dns_source,
                 address: remote_address.address,
@@ -197,6 +197,18 @@ impl Connector<SocksRoute<IpAddr>, ()> for super::StatelessProxied {
                 .await
                 .map_err(|_: tokio_socks::Error| TransportConnectError::ProxyProtocol)
         }
+    }
+}
+
+impl Connection for Socks4Stream<TcpStream> {
+    fn connection_info(&self) -> crate::ConnectionInfo {
+        (**self).connection_info()
+    }
+}
+
+impl Connection for Socks5Stream<TcpStream> {
+    fn connection_info(&self) -> crate::ConnectionInfo {
+        (**self).connection_info()
     }
 }
 
@@ -507,7 +519,7 @@ mod test {
 
         assert_eq!(
             client_info,
-            ConnectionInfo {
+            ServiceConnectionInfo {
                 route_type: RouteType::SocksProxy,
                 dns_source: expected_dns_source,
                 address: Host::Ip(tls_server.tcp.listen_addr.ip())

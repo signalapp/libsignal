@@ -230,13 +230,45 @@ export type ChatConnection = {
   disconnect(): Promise<void>;
 
   /**
-   * Sends request to the Chat Service.
+   * Sends request to the Chat service.
    */
   fetch(
     chatRequest: ChatRequest,
     options?: { abortSignal?: AbortSignal }
   ): Promise<Native.ChatResponse>;
+
+  /**
+   * Information about the connection to the Chat service.
+   */
+  connectionInfo(): ConnectionInfo;
 };
+
+export interface ConnectionInfo {
+  localPort: number;
+  ipVersion: 'IPv4' | 'IPv6';
+}
+
+class ConnectionInfoImpl
+  implements Wrapper<Native.ConnectionInfo>, ConnectionInfo
+{
+  constructor(public _nativeHandle: Native.ConnectionInfo) {}
+
+  public get localPort(): number {
+    return Native.ConnectionInfo_local_port(this);
+  }
+
+  public get ipVersion(): 'IPv4' | 'IPv6' {
+    const value = Native.ConnectionInfo_ip_version(this);
+    switch (value) {
+      case 1:
+        return 'IPv4';
+      case 2:
+        return 'IPv6';
+      default:
+        throw new TypeError(`ip type was unexpectedly ${value}`);
+    }
+  }
+}
 
 export class UnauthenticatedChatConnection implements ChatConnection {
   static async connect(
@@ -290,6 +322,12 @@ export class UnauthenticatedChatConnection implements ChatConnection {
     return Native.UnauthenticatedChatConnection_disconnect(
       this.asyncContext,
       this.chatService
+    );
+  }
+
+  connectionInfo(): ConnectionInfo {
+    return new ConnectionInfoImpl(
+      Native.UnauthenticatedChatConnection_info(this.chatService)
     );
   }
 }
@@ -351,6 +389,12 @@ export class AuthenticatedChatConnection implements ChatConnection {
     return Native.AuthenticatedChatConnection_disconnect(
       this.asyncContext,
       this.chatService
+    );
+  }
+
+  connectionInfo(): ConnectionInfo {
+    return new ConnectionInfoImpl(
+      Native.AuthenticatedChatConnection_info(this.chatService)
     );
   }
 }

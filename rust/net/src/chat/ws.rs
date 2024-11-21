@@ -20,7 +20,7 @@ use libsignal_net_infra::ws::{
     WebSocketClientWriter, WebSocketServiceError,
 };
 use libsignal_net_infra::{
-    AsyncDuplexStream, ConnectionInfo, ConnectionParams, TransportConnector,
+    AsyncDuplexStream, ConnectionParams, ServiceConnectionInfo, TransportConnector,
 };
 use prost::Message;
 use tokio::sync::{mpsc, oneshot, Mutex};
@@ -166,7 +166,7 @@ impl<T: TransportConnector> ChatOverWebSocketServiceConnector<T> {
 #[async_trait]
 impl<T: TransportConnector> ServiceConnector for ChatOverWebSocketServiceConnector<T> {
     type Service = ChatOverWebSocket<T::Stream>;
-    type Channel = (WebSocketStream<T::Stream>, ConnectionInfo);
+    type Channel = (WebSocketStream<T::Stream>, ServiceConnectionInfo);
     type ConnectError = WebSocketServiceConnectError;
 
     async fn connect_channel(
@@ -326,11 +326,11 @@ pub struct ChatOverWebSocket<S> {
     ws_client_writer: WebSocketClientWriter<S, ChatServiceError>,
     service_cancellation: CancellationToken,
     pending_messages: Arc<Mutex<PendingMessagesMap>>,
-    connection_info: ConnectionInfo,
+    connection_info: ServiceConnectionInfo,
 }
 
 impl<S> RemoteAddressInfo for ChatOverWebSocket<S> {
-    fn connection_info(&self) -> ConnectionInfo {
+    fn connection_info(&self) -> ServiceConnectionInfo {
         self.connection_info.clone()
     }
 }

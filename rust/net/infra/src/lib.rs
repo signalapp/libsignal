@@ -42,19 +42,28 @@ pub mod ws;
 pub mod ws2;
 
 #[derive(Copy, Clone, Debug)]
+#[cfg_attr(test, derive(PartialEq))]
 #[repr(u8)]
 pub enum IpType {
-    Unknown = 0,
     V4 = 1,
     V6 = 2,
 }
 
 impl IpType {
-    pub fn from_host<S>(host: &Host<S>) -> Self {
+    pub fn from_host<S>(host: &Host<S>) -> Option<Self> {
         match host {
-            Host::Domain(_) => IpType::Unknown,
-            Host::Ip(IpAddr::V4(_)) => IpType::V4,
-            Host::Ip(IpAddr::V6(_)) => IpType::V6,
+            Host::Domain(_) => None,
+            Host::Ip(IpAddr::V4(_)) => Some(IpType::V4),
+            Host::Ip(IpAddr::V6(_)) => Some(IpType::V6),
+        }
+    }
+}
+
+impl From<&IpAddr> for IpType {
+    fn from(value: &IpAddr) -> Self {
+        match value {
+            IpAddr::V4(_) => Self::V4,
+            IpAddr::V6(_) => Self::V6,
         }
     }
 }
@@ -148,7 +157,7 @@ pub struct TransportConnectionParams {
 
 #[derive(Debug, Clone)]
 #[cfg_attr(test, derive(PartialEq))]
-pub struct ConnectionInfo {
+pub struct ServiceConnectionInfo {
     /// Type of the connection, e.g. direct or via proxy
     pub route_type: RouteType,
 
@@ -160,6 +169,24 @@ pub struct ConnectionInfo {
     /// If IP information is available, it's recommended to use [Host::Ip] and
     /// only use [Host::Domain] as a fallback.
     pub address: Host<Arc<str>>,
+}
+
+/// Information about a currently- or previously-established connection to a
+/// remote host.
+#[derive(Debug, Clone)]
+#[cfg_attr(test, derive(PartialEq))]
+pub struct ConnectionInfo {
+    /// The IP address version over which the connection is established.
+    pub ip_version: IpType,
+
+    /// The local port number for the connection.
+    pub local_port: u16,
+}
+
+/// An established connection.
+pub trait Connection {
+    /// Returns information about the connection.
+    fn connection_info(&self) -> ConnectionInfo;
 }
 
 /// Source for the result of a hostname lookup.
@@ -202,13 +229,16 @@ pub enum RouteType {
     Test,
 }
 
-impl ConnectionInfo {
+impl ServiceConnectionInfo {
     pub fn description(&self) -> String {
+        let ip_type = match IpType::from_host(&self.address) {
+            Some(IpType::V4) => "V4",
+            Some(IpType::V6) => "V6",
+            None => "Unknown",
+        };
         format!(
-            "route={};dns_source={};ip_type={:?}",
-            self.route_type,
-            self.dns_source,
-            IpType::from_host(&self.address)
+            "route={};dns_source={};ip_type={}",
+            self.route_type, self.dns_source, ip_type
         )
     }
 }
@@ -256,7 +286,7 @@ impl HttpRequestDecorator {
 }
 
 #[derive(Debug)]
-pub struct StreamAndInfo<T>(pub T, pub ConnectionInfo);
+pub struct StreamAndInfo<T>(pub T, pub ServiceConnectionInfo);
 
 impl<T> StreamAndInfo<T> {
     fn map_stream<U>(self, f: impl FnOnce(T) -> U) -> StreamAndInfo<U> {
@@ -377,8 +407,8 @@ pub mod testutil {
     use crate::errors::{LogSafeDisplay, TransportConnectError};
     use crate::service::{CancellationToken, ServiceConnector, ServiceInitializer, ServiceState};
     use crate::{
-        Alpn, ConnectionInfo, DnsSource, RouteType, StreamAndInfo, TransportConnectionParams,
-        TransportConnector,
+        Alpn, DnsSource, RouteType, ServiceConnectionInfo, StreamAndInfo,
+        TransportConnectionParams, TransportConnector,
     };
 
     #[derive(Debug, Display)]
@@ -475,7 +505,7 @@ pub mod testutil {
             });
             Ok(StreamAndInfo(
                 client,
-                ConnectionInfo {
+                ServiceConnectionInfo {
                     route_type: RouteType::Test,
                     dns_source: DnsSource::Test,
                     address: connection_params.tcp_host.clone(),
@@ -597,15 +627,16 @@ pub mod testutil {
 
 #[cfg(test)]
 pub(crate) mod test {
+    use const_str::ip_addr;
     use http::Request;
 
     use crate::host::Host;
     use crate::utils::basic_authorization;
-    use crate::{ConnectionInfo, DnsSource, HttpRequestDecorator, RouteType};
+    use crate::{DnsSource, HttpRequestDecorator, RouteType, ServiceConnectionInfo};
 
     #[test]
     fn connection_info_description() {
-        let connection_info = ConnectionInfo {
+        let connection_info = ServiceConnectionInfo {
             address: Host::Domain("test.signal.org".into()),
             dns_source: DnsSource::SystemLookup,
             route_type: RouteType::Test,
@@ -615,6 +646,15 @@ pub(crate) mod test {
             connection_info.description(),
             "route=test;dns_source=systemlookup;ip_type=Unknown"
         );
+
+        assert_eq!(
+            ServiceConnectionInfo {
+                address: Host::Ip(ip_addr!("1.2.3.4")),
+                ..connection_info
+            }
+            .description(),
+            "route=test;dns_source=systemlookup;ip_type=V4"
+        )
     }
 
     #[test]
