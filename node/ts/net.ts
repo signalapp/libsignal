@@ -217,6 +217,182 @@ export type ChatService = {
 };
 
 /**
+ * A connection to the Chat Service.
+ *
+ * Provides API methods to communicate with the remote service. Make sure to
+ * call {@link #disconnect()} when the instance is no longer needed.
+ */
+export type ChatConnection = {
+  /**
+   * Initiates termination of the underlying connection to the Chat Service. After the service is
+   * disconnected, it cannot be used again.
+   */
+  disconnect(): Promise<void>;
+
+  /**
+   * Sends request to the Chat Service.
+   */
+  fetch(
+    chatRequest: ChatRequest,
+    options?: { abortSignal?: AbortSignal }
+  ): Promise<Native.ChatResponse>;
+};
+
+export class UnauthenticatedChatConnection implements ChatConnection {
+  static async connect(
+    asyncContext: TokioAsyncContext,
+    connectionManager: ConnectionManager,
+    listener: ConnectionEventsListener,
+    options?: { abortSignal?: AbortSignal }
+  ): Promise<UnauthenticatedChatConnection> {
+    const nativeChatListener = makeNativeChatListener(asyncContext, listener);
+    const connect = Native.UnauthenticatedChatConnection_connect(
+      asyncContext,
+      connectionManager,
+      new WeakListenerWrapper(nativeChatListener)
+    );
+    const chat = await asyncContext.makeCancellable(
+      options?.abortSignal,
+      connect
+    );
+
+    return new UnauthenticatedChatConnection(
+      asyncContext,
+      newNativeHandle(chat),
+      nativeChatListener
+    );
+  }
+
+  private constructor(
+    private readonly asyncContext: TokioAsyncContext,
+    private readonly chatService: Wrapper<Native.UnauthenticatedChatConnection>,
+    // Unused except to keep the listener alive since the Rust code only holds a
+    // weak reference to the same object.
+    private readonly chatListener: Native.ChatListener
+  ) {}
+
+  fetch(
+    chatRequest: ChatRequest,
+    options?: { abortSignal?: AbortSignal }
+  ): Promise<Native.ChatResponse> {
+    return this.asyncContext.makeCancellable(
+      options?.abortSignal,
+      Native.UnauthenticatedChatConnection_send(
+        this.asyncContext,
+        this.chatService,
+        buildHttpRequest(chatRequest),
+        chatRequest.timeoutMillis ?? DEFAULT_CHAT_REQUEST_TIMEOUT_MILLIS
+      )
+    );
+  }
+
+  disconnect(): Promise<void> {
+    return Native.UnauthenticatedChatConnection_disconnect(
+      this.asyncContext,
+      this.chatService
+    );
+  }
+}
+
+export class AuthenticatedChatConnection implements ChatConnection {
+  static async connect(
+    asyncContext: TokioAsyncContext,
+    connectionManager: ConnectionManager,
+    username: string,
+    password: string,
+    receiveStories: boolean,
+    listener: ChatServiceListener,
+    options?: { abortSignal?: AbortSignal }
+  ): Promise<AuthenticatedChatConnection> {
+    const nativeChatListener = makeNativeChatListener(asyncContext, listener);
+    const connect = Native.AuthenticatedChatConnection_connect(
+      asyncContext,
+      connectionManager,
+      username,
+      password,
+      receiveStories,
+      new WeakListenerWrapper(nativeChatListener)
+    );
+    const chat = await asyncContext.makeCancellable(
+      options?.abortSignal,
+      connect
+    );
+    return new AuthenticatedChatConnection(
+      asyncContext,
+      newNativeHandle(chat),
+      nativeChatListener
+    );
+  }
+
+  private constructor(
+    private readonly asyncContext: TokioAsyncContext,
+    private readonly chatService: Wrapper<Native.AuthenticatedChatConnection>,
+    // Unused except to keep the listener alive since the Rust code only holds a
+    // weak reference to the same object.
+    private readonly chatListener: Native.ChatListener
+  ) {}
+
+  fetch(
+    chatRequest: ChatRequest,
+    options?: { abortSignal?: AbortSignal }
+  ): Promise<Native.ChatResponse> {
+    return this.asyncContext.makeCancellable(
+      options?.abortSignal,
+      Native.AuthenticatedChatConnection_send(
+        this.asyncContext,
+        this.chatService,
+        buildHttpRequest(chatRequest),
+        chatRequest.timeoutMillis ?? DEFAULT_CHAT_REQUEST_TIMEOUT_MILLIS
+      )
+    );
+  }
+
+  disconnect(): Promise<void> {
+    return Native.AuthenticatedChatConnection_disconnect(
+      this.asyncContext,
+      this.chatService
+    );
+  }
+}
+
+/**
+ * Holds a {@link Native.ChatListener} by {@link WeakRef} and delegates
+ * `ChatListener` calls to it.
+ *
+ * This lets us avoid passing anything across the bridge that has a normal
+ * (strong) reference to the app-side listener. The danger is that the passed-in
+ * listener might gain a reference to the JS connection object; that would
+ * result in a reference cycle that Node can't clean up because one of the
+ * references is through a Rust `Box`.
+ *
+ * When constructing a connection, calling code should wrap an app-side listener
+ * in this type and pass it across the bridge, then hold its own strong
+ * reference to the same listener as a field. This ensures that if there is a
+ * reference cycle between the connection and app-side listener, that cycle is
+ * visible to the Node runtime, while still ensuring the passed-in listener
+ * stays alive as long as the connection does.
+ */
+class WeakListenerWrapper implements Native.ChatListener {
+  private listener: WeakRef<Native.ChatListener>;
+  constructor(listener: Native.ChatListener) {
+    this.listener = new WeakRef(listener);
+  }
+  _connection_interrupted(reason: Error | null): void {
+    this.listener.deref()?._connection_interrupted(reason);
+  }
+  _incoming_message(
+    envelope: Buffer,
+    timestamp: number,
+    ack: ServerMessageAck
+  ): void {
+    this.listener.deref()?._incoming_message(envelope, timestamp, ack);
+  }
+  _queue_empty(): void {
+    this.listener.deref()?._queue_empty();
+  }
+}
+
+/**
  * Provides API methods to connect and communicate with the Chat Service over an authenticated channel.
  */
 export class AuthenticatedChatService implements ChatService {
@@ -253,8 +429,8 @@ export class AuthenticatedChatService implements ChatService {
       _queue_empty(): void {
         listener.onQueueEmpty();
       },
-      _connection_interrupted(cause: Error | null): void {
-        listener.onConnectionInterrupted(cause as LibSignalError | null);
+      _connection_interrupted(cause: LibSignalError | null): void {
+        listener.onConnectionInterrupted(cause);
       },
     };
     Native.ChatService_SetListenerAuth(
@@ -325,21 +501,7 @@ export class UnauthenticatedChatService implements ChatService {
     this.chatService = newNativeHandle(
       Native.ChatService_new_unauth(connectionManager)
     );
-    const nativeChatListener = {
-      _incoming_message(
-        _envelope: Buffer,
-        _timestamp: number,
-        _ack: ServerMessageAck
-      ): void {
-        throw new Error('Event not supported on unauthenticated connection');
-      },
-      _queue_empty(): void {
-        throw new Error('Event not supported on unauthenticated connection');
-      },
-      _connection_interrupted(cause: LibSignalError | null): void {
-        listener.onConnectionInterrupted(cause);
-      },
-    };
+    const nativeChatListener = makeNativeChatListener(asyncContext, listener);
     Native.ChatService_SetListenerUnauth(
       asyncContext,
       this.chatService,
@@ -392,6 +554,49 @@ export class UnauthenticatedChatService implements ChatService {
       )
     );
   }
+}
+
+function makeNativeChatListener(
+  asyncContext: TokioAsyncContext,
+  listener: ConnectionEventsListener | ChatServiceListener
+): Native.ChatListener {
+  if ('onQueueEmpty' in listener) {
+    return {
+      _incoming_message(
+        envelope: Buffer,
+        timestamp: number,
+        ack: ServerMessageAck
+      ): void {
+        listener.onIncomingMessage(
+          envelope,
+          timestamp,
+          new ChatServerMessageAck(asyncContext, ack)
+        );
+      },
+      _queue_empty(): void {
+        listener.onQueueEmpty();
+      },
+      _connection_interrupted(cause: Error | null): void {
+        listener.onConnectionInterrupted(cause as LibSignalError | null);
+      },
+    };
+  }
+
+  return {
+    _incoming_message(
+      _envelope: Buffer,
+      _timestamp: number,
+      _ack: ServerMessageAck
+    ): void {
+      throw new Error('Event not supported on unauthenticated connection');
+    },
+    _queue_empty(): void {
+      throw new Error('Event not supported on unauthenticated connection');
+    },
+    _connection_interrupted(cause: LibSignalError | null): void {
+      listener.onConnectionInterrupted(cause);
+    },
+  };
 }
 
 export function buildHttpRequest(
@@ -496,6 +701,47 @@ export class Net {
       this.asyncContext,
       this.connectionManager,
       listener
+    );
+  }
+
+  /**
+   *
+   * Creates a new instance of {@link UnauthenticatedChatConnection}.
+   * @param listener the listener for incoming events.
+   * @param options additional options to pass through.
+   * @param options.abortSignal an {@link AbortSignal} that will cancel the connection attempt.
+   * @returns the connected listener, if the connection succeeds.
+   */
+  public async connectUnauthenticatedChat(
+    listener: ConnectionEventsListener,
+    options?: { abortSignal?: AbortSignal }
+  ): Promise<UnauthenticatedChatConnection> {
+    return UnauthenticatedChatConnection.connect(
+      this.asyncContext,
+      this.connectionManager,
+      listener,
+      options
+    );
+  }
+
+  /**
+   * Creates a new instance of {@link AuthenticatedChatConnection}.
+   */
+  public connectAuthenticatedChat(
+    username: string,
+    password: string,
+    receiveStories: boolean,
+    listener: ChatServiceListener,
+    options?: { abortSignal?: AbortSignal }
+  ): Promise<AuthenticatedChatConnection> {
+    return AuthenticatedChatConnection.connect(
+      this.asyncContext,
+      this.connectionManager,
+      username,
+      password,
+      receiveStories,
+      listener,
+      options
     );
   }
 

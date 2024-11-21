@@ -54,30 +54,23 @@ impl std::fmt::Debug for ServerEvent {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, displaydoc::Display)]
 pub enum ServerEventError {
+    /// server request used unexpected verb {0}
     UnexpectedVerb(String),
+    /// server request missing path
     MissingPath,
+    /// server sent an unknown request: {0}
     UnrecognizedPath(String),
 }
 
 pub fn stream_incoming_messages(
     receiver: mpsc::Receiver<WsServerEvent<impl AsyncDuplexStream + 'static>>,
 ) -> impl Stream<Item = ServerEvent> {
-    ReceiverStream::new(receiver).filter_map(|request| match request.try_into() {
+    ReceiverStream::new(receiver).filter_map(|request| match ServerEvent::try_from(request) {
         Ok(request) => Some(request),
         Err(e) => {
-            match e {
-                ServerEventError::UnexpectedVerb(verb) => {
-                    log::error!("server request used unexpected verb {verb}",);
-                }
-                ServerEventError::MissingPath => {
-                    log::error!("server request missing path");
-                }
-                ServerEventError::UnrecognizedPath(unknown_path) => {
-                    log::error!("server sent an unknown request: {unknown_path}");
-                }
-            };
+            log::error!("{e}");
             None
         }
     })

@@ -4,9 +4,10 @@
 //
 
 use std::future::Future;
-use std::panic::{self, RefUnwindSafe};
+use std::panic::{self, RefUnwindSafe, UnwindSafe};
 use std::str::FromStr;
 use std::sync::Arc;
+use std::time::Duration;
 
 use atomic_take::AtomicTake;
 use futures_util::stream::BoxStream;
@@ -16,8 +17,11 @@ use http::uri::{InvalidUri, PathAndQuery};
 use http::{HeaderMap, HeaderName, HeaderValue};
 use libsignal_net::auth::Auth;
 use libsignal_net::chat::{
-    self, ChatServiceError, DebugInfo as ChatServiceDebugInfo, Response as ChatResponse,
+    self, ChatConnection, ChatServiceError, DebugInfo as ChatServiceDebugInfo, Request,
+    Response as ChatResponse,
 };
+use libsignal_net::infra::route::{ConnectionProxyConfig, DirectOrProxyProvider};
+use libsignal_net::infra::tcp_ssl::InvalidProxyConfig;
 use libsignal_protocol::Timestamp;
 use tokio::sync::{mpsc, oneshot};
 
@@ -213,6 +217,128 @@ impl Chat<UnauthChatService> {
 pub type UnauthChat = Chat<UnauthChatService>;
 pub type AuthChat = Chat<AuthChatService>;
 
+pub struct UnauthenticatedChatConnection {
+    inner: ChatConnection,
+}
+bridge_as_handle!(UnauthenticatedChatConnection);
+impl UnwindSafe for UnauthenticatedChatConnection {}
+impl RefUnwindSafe for UnauthenticatedChatConnection {}
+
+pub struct AuthenticatedChatConnection {
+    inner: ChatConnection,
+}
+bridge_as_handle!(AuthenticatedChatConnection);
+impl UnwindSafe for AuthenticatedChatConnection {}
+impl RefUnwindSafe for AuthenticatedChatConnection {}
+
+impl UnauthenticatedChatConnection {
+    pub async fn connect(
+        connection_manager: &ConnectionManager,
+        listener: Option<Box<dyn ChatListener>>,
+    ) -> Result<Self, ChatServiceError> {
+        let inner = establish_chat_connection(connection_manager, listener, None).await?;
+        log::info!("connected unauthenticated chat");
+        Ok(Self { inner })
+    }
+
+    pub async fn send(
+        &self,
+        message: Request,
+        timeout: Duration,
+    ) -> Result<ChatResponse, ChatServiceError> {
+        self.inner.send(message, timeout).await
+    }
+
+    pub async fn disconnect(&self) {
+        self.inner.disconect().await
+    }
+}
+
+impl AuthenticatedChatConnection {
+    pub async fn connect(
+        connection_manager: &ConnectionManager,
+        listener: Option<Box<dyn ChatListener>>,
+        auth: Auth,
+        receive_stories: bool,
+    ) -> Result<Self, ChatServiceError> {
+        let inner = establish_chat_connection(
+            connection_manager,
+            listener,
+            Some(chat::AuthenticatedChatHeaders {
+                auth,
+                receive_stories: receive_stories.into(),
+            }),
+        )
+        .await?;
+        log::info!("connected authenticated chat");
+        Ok(Self { inner })
+    }
+
+    pub async fn send(
+        &self,
+        message: Request,
+        timeout: Duration,
+    ) -> Result<ChatResponse, ChatServiceError> {
+        self.inner.send(message, timeout).await
+    }
+
+    pub async fn disconnect(&self) {
+        self.inner.disconect().await
+    }
+}
+
+async fn establish_chat_connection(
+    connection_manager: &ConnectionManager,
+    listener: Option<Box<dyn ChatListener>>,
+    auth: Option<chat::AuthenticatedChatHeaders>,
+) -> Result<ChatConnection, ChatServiceError> {
+    let ConnectionManager {
+        env,
+        dns_resolver,
+        connect,
+        user_agent,
+        transport_connector,
+        endpoints,
+        ..
+    } = connection_manager;
+
+    let proxy_config: Option<ConnectionProxyConfig> =
+        (&*transport_connector.lock().expect("not poisoned"))
+            .try_into()
+            .map_err(|InvalidProxyConfig| ChatServiceError::ServiceUnavailable)?;
+
+    let libsignal_net::infra::ws2::Config {
+        local_idle_timeout,
+        remote_idle_disconnect_timeout,
+        ..
+    } = endpoints
+        .lock()
+        .expect("not poisoned")
+        .chat
+        .config
+        .ws2_config();
+
+    let chat_connect = &env.chat_domain_config.connect;
+
+    ChatConnection::connect_with(
+        connect,
+        dns_resolver,
+        DirectOrProxyProvider::maybe_proxied(chat_connect.route_provider(), proxy_config),
+        chat_connect
+            .confirmation_header_name
+            .map(HeaderName::from_static),
+        user_agent,
+        libsignal_net::chat::ws2::Config {
+            local_idle_timeout,
+            remote_idle_timeout: remote_idle_disconnect_timeout,
+            initial_request_id: 0,
+        },
+        listener.map(|l| l.into_event_listener()),
+        auth,
+    )
+    .await
+}
+
 pub struct HttpRequest {
     pub method: http::Method,
     pub path: PathAndQuery,
@@ -321,7 +447,7 @@ impl dyn ChatListener {
     /// Consumes `self`. Returns the remaining request stream, in case another listener will be set
     /// later.
     async fn start_listening(
-        self: Box<dyn ChatListener>,
+        self: Box<Self>,
         request_stream_future: impl Future<
             Output = Result<
                 BoxStream<'static, chat::server_requests::ServerEvent>,
@@ -377,6 +503,19 @@ impl dyn ChatListener {
 
         // Pass the stream along to the next listener, if there is one.
         request_stream
+    }
+
+    fn into_event_listener(mut self: Box<Self>) -> Box<dyn FnMut(chat::ws2::ListenerEvent) + Send> {
+        Box::new(move |event| {
+            let event: chat::server_requests::ServerEvent = match event.try_into() {
+                Ok(event) => event,
+                Err(err) => {
+                    log::error!("{err}");
+                    return;
+                }
+            };
+            self.received_server_request(event);
+        })
     }
 }
 

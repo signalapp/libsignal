@@ -13,8 +13,11 @@ import * as Native from '../../Native';
 import { ErrorCode, LibSignalErrorBase } from '../Errors';
 import {
   buildHttpRequest,
+  ChatConnection,
   ChatServerMessageAck,
+  ChatService,
   ChatServiceListener,
+  ConnectionEventsListener,
   Environment,
   Net,
   newNativeHandle,
@@ -187,40 +190,71 @@ describe('chat service api', () => {
       }
     });
 
-    const connectChatUnauthenticated = async (net: Net) => {
-      const onInterrupted = sinon.promise();
-      const listener = {
-        onConnectionInterrupted: (...args: [unknown]) =>
-          onInterrupted.resolve(args),
-      };
-      const chatService = net.newUnauthenticatedChatService(listener);
-      await chatService.connect();
-      await chatService.disconnect();
-      await onInterrupted;
-      expect(onInterrupted.resolvedValue).to.eql([null]);
-    };
+    ['ChatService', 'ChatConnection'].forEach((impl) => {
+      describe(impl, () => {
+        let connectChat: (
+          net: Net,
+          listener: ConnectionEventsListener
+        ) => Promise<ChatService | ChatConnection>;
+        switch (impl) {
+          case 'ChatService':
+            connectChat = async (
+              net: Net,
+              listener: ConnectionEventsListener
+            ) => {
+              const chat = net.newUnauthenticatedChatService(listener);
+              await chat.connect();
+              return chat;
+            };
+            break;
+          case 'ChatConnection':
+            connectChat = async (
+              net: Net,
+              listener: ConnectionEventsListener
+            ) => {
+              return await net.connectUnauthenticatedChat(listener);
+            };
+            break;
+        }
 
-    it('can connect unauthenticated', async () => {
-      const net = new Net({
-        env: Environment.Production,
-        userAgent: userAgent,
+        const connectChatUnauthenticated = async (net: Net) => {
+          const onInterrupted = sinon.promise();
+          const listener = {
+            onConnectionInterrupted: (...args: [unknown]) =>
+              onInterrupted.resolve(args),
+          };
+          const chat = await connectChat(net, listener);
+          await chat.disconnect();
+          await onInterrupted;
+          expect(onInterrupted.resolvedValue).to.eql([null]);
+        };
+
+        it('can connect unauthenticated', async () => {
+          const net = new Net({
+            env: Environment.Production,
+            userAgent: userAgent,
+          });
+          await connectChatUnauthenticated(net);
+        }).timeout(10000);
+
+        it('can connect through a proxy server', async () => {
+          const PROXY_SERVER = process.env.LIBSIGNAL_TESTING_PROXY_SERVER;
+          assert(PROXY_SERVER, 'checked above');
+
+          // The default TLS proxy config doesn't support staging, so we connect to production.
+          const net = new Net({
+            env: Environment.Production,
+            userAgent: userAgent,
+          });
+          const [host = PROXY_SERVER, port = '443'] = PROXY_SERVER.split(
+            ':',
+            2
+          );
+          net.setProxy(host, parseInt(port, 10));
+          await connectChatUnauthenticated(net);
+        }).timeout(10000);
       });
-      await connectChatUnauthenticated(net);
-    }).timeout(10000);
-
-    it('can connect through a proxy server', async () => {
-      const PROXY_SERVER = process.env.LIBSIGNAL_TESTING_PROXY_SERVER;
-      assert(PROXY_SERVER, 'checked above');
-
-      // The default TLS proxy config doesn't support staging, so we connect to production.
-      const net = new Net({
-        env: Environment.Production,
-        userAgent: userAgent,
-      });
-      const [host = PROXY_SERVER, port = '443'] = PROXY_SERVER.split(':', 2);
-      net.setProxy(host, parseInt(port, 10));
-      await connectChatUnauthenticated(net);
-    }).timeout(10000);
+    });
   });
 
   // The following payloads were generated via protoscope.

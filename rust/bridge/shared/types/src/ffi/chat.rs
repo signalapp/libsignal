@@ -74,6 +74,7 @@ impl FfiChatListenerStruct {
 // SAFETY: Chat listeners are used from multiple threads. It's up to the creator of the C struct to
 // make sure `ctx` is appropriate for this.
 unsafe impl Send for FfiChatListenerStruct {}
+unsafe impl Sync for FfiChatListenerStruct {}
 
 struct ChatListenerStruct(FfiChatListenerStruct);
 

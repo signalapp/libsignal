@@ -160,6 +160,9 @@ export function AuthCredentialPresentation_GetRedemptionTime(presentationBytes: 
 export function AuthCredentialPresentation_GetUuidCiphertext(presentationBytes: Buffer): Serialized<UuidCiphertext>;
 export function AuthCredentialWithPniResponse_CheckValidContents(bytes: Buffer): void;
 export function AuthCredentialWithPni_CheckValidContents(bytes: Buffer): void;
+export function AuthenticatedChatConnection_connect(asyncRuntime: Wrapper<TokioAsyncContext>, connectionManager: Wrapper<ConnectionManager>, username: string, password: string, receiveStories: boolean, listener: ChatListener | null): CancellablePromise<AuthenticatedChatConnection>;
+export function AuthenticatedChatConnection_disconnect(asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<AuthenticatedChatConnection>): CancellablePromise<void>;
+export function AuthenticatedChatConnection_send(asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<AuthenticatedChatConnection>, httpRequest: Wrapper<HttpRequest>, timeoutMillis: number): CancellablePromise<ChatResponse>;
 export function BackupAuthCredentialPresentation_CheckValidContents(presentationBytes: Buffer): void;
 export function BackupAuthCredentialPresentation_GetBackupId(presentationBytes: Buffer): Buffer;
 export function BackupAuthCredentialPresentation_GetBackupLevel(presentationBytes: Buffer): number;
@@ -563,6 +566,9 @@ export function TESTING_ServerMessageAck_Create(): ServerMessageAck;
 export function TESTING_TestingHandleType_getValue(handle: Wrapper<TestingHandleType>): number;
 export function TokioAsyncContext_cancel(context: Wrapper<TokioAsyncContext>, rawCancellationId: bigint): void;
 export function TokioAsyncContext_new(): TokioAsyncContext;
+export function UnauthenticatedChatConnection_connect(asyncRuntime: Wrapper<TokioAsyncContext>, connectionManager: Wrapper<ConnectionManager>, listener: ChatListener | null): CancellablePromise<UnauthenticatedChatConnection>;
+export function UnauthenticatedChatConnection_disconnect(asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<UnauthenticatedChatConnection>): CancellablePromise<void>;
+export function UnauthenticatedChatConnection_send(asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<UnauthenticatedChatConnection>, httpRequest: Wrapper<HttpRequest>, timeoutMillis: number): CancellablePromise<ChatResponse>;
 export function UnidentifiedSenderMessageContent_Deserialize(data: Buffer): UnidentifiedSenderMessageContent;
 export function UnidentifiedSenderMessageContent_GetContentHint(m: Wrapper<UnidentifiedSenderMessageContent>): number;
 export function UnidentifiedSenderMessageContent_GetContents(obj: Wrapper<UnidentifiedSenderMessageContent>): Buffer;
@@ -587,6 +593,7 @@ export function initLogger(maxLevel: LogLevel, callback: (level: LogLevel, targe
 export function test_only_fn_returns_123(): number;
 interface Aes256GcmSiv { readonly __type: unique symbol; }
 interface AuthChat { readonly __type: unique symbol; }
+interface AuthenticatedChatConnection { readonly __type: unique symbol; }
 interface CdsiLookup { readonly __type: unique symbol; }
 interface CiphertextMessage { readonly __type: unique symbol; }
 interface ComparableBackup { readonly __type: unique symbol; }
@@ -645,6 +652,7 @@ interface SignedPreKeyRecord { readonly __type: unique symbol; }
 interface TestingHandleType { readonly __type: unique symbol; }
 interface TokioAsyncContext { readonly __type: unique symbol; }
 interface UnauthChat { readonly __type: unique symbol; }
+interface UnauthenticatedChatConnection { readonly __type: unique symbol; }
 interface UnidentifiedSenderMessageContent { readonly __type: unique symbol; }
 interface UuidCiphertext { readonly __type: unique symbol; }
 interface ValidatingMac { readonly __type: unique symbol; }

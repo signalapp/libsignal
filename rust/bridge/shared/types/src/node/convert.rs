@@ -668,6 +668,22 @@ impl<'storage, 'context: 'storage> ArgTypeInfo<'storage, 'context> for Box<dyn C
     }
 }
 
+impl<'a> AsyncArgTypeInfo<'a> for Box<dyn ChatListener> {
+    type ArgType = JsObject;
+    type StoredType = NodeChatListener;
+
+    fn save_async_arg(
+        cx: &mut FunctionContext,
+        foreign: Handle<Self::ArgType>,
+    ) -> NeonResult<Self::StoredType> {
+        NodeChatListener::new(cx, foreign)
+    }
+
+    fn load_async_arg(stored: &'a mut Self::StoredType) -> Self {
+        stored.make_listener()
+    }
+}
+
 impl<'storage, 'context: 'storage> ArgTypeInfo<'storage, 'context>
     for &'storage mut dyn SyncInputStream
 {

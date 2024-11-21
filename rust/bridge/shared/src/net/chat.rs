@@ -22,6 +22,18 @@ use crate::*;
 bridge_handle_fns!(AuthChat, clone = false);
 bridge_handle_fns!(UnauthChat, clone = false);
 bridge_handle_fns!(HttpRequest, clone = false);
+bridge_handle_fns!(
+    UnauthenticatedChatConnection,
+    clone = false,
+    ffi = false,
+    jni = false
+);
+bridge_handle_fns!(
+    AuthenticatedChatConnection,
+    clone = false,
+    ffi = false,
+    jni = false
+);
 
 #[bridge_fn(ffi = false)]
 fn HttpRequest_new(
@@ -75,6 +87,75 @@ fn ChatService_new_auth(
         Auth { username, password },
         receive_stories,
     )
+}
+
+#[bridge_io(TokioAsyncContext, ffi = false, jni = false)]
+async fn UnauthenticatedChatConnection_connect(
+    connection_manager: &ConnectionManager,
+    listener: Option<Box<dyn ChatListener>>,
+) -> Result<UnauthenticatedChatConnection, ChatServiceError> {
+    UnauthenticatedChatConnection::connect(connection_manager, listener).await
+}
+
+#[bridge_io(TokioAsyncContext, ffi = false, jni = false)]
+async fn UnauthenticatedChatConnection_send(
+    chat: &UnauthenticatedChatConnection,
+    http_request: &HttpRequest,
+    timeout_millis: u32,
+) -> Result<ChatResponse, ChatServiceError> {
+    let headers = http_request.headers.lock().expect("not poisoned").clone();
+    let request = chat::Request {
+        method: http_request.method.clone(),
+        path: http_request.path.clone(),
+        headers,
+        body: http_request.body.clone(),
+    };
+    chat.send(request, Duration::from_millis(timeout_millis.into()))
+        .await
+}
+
+#[bridge_io(TokioAsyncContext, ffi = false, jni = false)]
+async fn UnauthenticatedChatConnection_disconnect(chat: &UnauthenticatedChatConnection) {
+    chat.disconnect().await
+}
+
+#[bridge_io(TokioAsyncContext, ffi = false, jni = false)]
+async fn AuthenticatedChatConnection_connect(
+    connection_manager: &ConnectionManager,
+    username: String,
+    password: String,
+    receive_stories: bool,
+    listener: Option<Box<dyn ChatListener>>,
+) -> Result<AuthenticatedChatConnection, ChatServiceError> {
+    AuthenticatedChatConnection::connect(
+        connection_manager,
+        listener,
+        Auth { username, password },
+        receive_stories,
+    )
+    .await
+}
+
+#[bridge_io(TokioAsyncContext, ffi = false, jni = false)]
+async fn AuthenticatedChatConnection_send(
+    chat: &AuthenticatedChatConnection,
+    http_request: &HttpRequest,
+    timeout_millis: u32,
+) -> Result<ChatResponse, ChatServiceError> {
+    let headers = http_request.headers.lock().expect("not poisoned").clone();
+    let request = chat::Request {
+        method: http_request.method.clone(),
+        path: http_request.path.clone(),
+        headers,
+        body: http_request.body.clone(),
+    };
+    chat.send(request, Duration::from_millis(timeout_millis.into()))
+        .await
+}
+
+#[bridge_io(TokioAsyncContext, ffi = false, jni = false)]
+async fn AuthenticatedChatConnection_disconnect(chat: &AuthenticatedChatConnection) {
+    chat.disconnect().await
 }
 
 #[bridge_io(TokioAsyncContext)]
