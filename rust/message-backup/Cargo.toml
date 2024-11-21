@@ -106,3 +106,8 @@ protobuf-codegen = "3.3.0"
 # This will be fixed in sha2 0.11, which also removes the "asm" feature and turns it on by default.
 # So when sha2 0.11 is released, this section will go away.
 sha2 = { workspace = true, features = ["asm"] }
+
+# Prefer the system zlib for Android.
+# We'd probably prefer to use this everywhere, but some of our tests depend on exact output.
+[target.'cfg(target_os = "android")'.dev-dependencies]
+flate2 = { version = "1", default-features = false, features = ["zlib"] }
