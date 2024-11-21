@@ -309,6 +309,7 @@ impl From<Arc<str>> for UnresolvedHost {
 pub mod testutils {
     use std::net::IpAddr;
 
+    pub use super::connect::testutils::*;
     pub use super::resolve::testutils::*;
     use super::*;
 
@@ -340,6 +341,14 @@ pub mod testutils {
     impl<R> RouteDelayPolicy<R> for NoDelay {
         fn compute_delay(&self, _route: &R, _now: Instant) -> Duration {
             Duration::ZERO
+        }
+    }
+
+    impl<R: Clone> RouteProvider for Vec<R> {
+        type Route = R;
+
+        fn routes(&self) -> impl Iterator<Item = Self::Route> + '_ {
+            self.iter().cloned()
         }
     }
 }
@@ -669,14 +678,6 @@ mod test {
                 .send(FakeConnectResponder(route, sender))
                 .unwrap();
             receiver.map(|r| r.unwrap())
-        }
-    }
-
-    impl<R: Clone> RouteProvider for Vec<R> {
-        type Route = R;
-
-        fn routes(&self) -> impl Iterator<Item = Self::Route> + '_ {
-            self.iter().cloned()
         }
     }
 

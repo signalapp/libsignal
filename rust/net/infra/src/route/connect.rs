@@ -268,3 +268,32 @@ impl From<std::io::Error> for WebSocketConnectError {
         Self::WebSocketError(value.into())
     }
 }
+
+#[cfg(any(test, feature = "test-util"))]
+pub mod testutils {
+    use super::*;
+
+    /// [`Connector`] impl that wraps a [`Fn`].
+    ///
+    /// Using unnamed functions as Connector impls isn't great for readability,
+    /// so only allow it in test code.
+    pub struct ConnectFn<F>(pub F);
+
+    impl<R, Inner, Fut, F, C, E> Connector<R, Inner> for ConnectFn<F>
+    where
+        F: Fn(Inner, R) -> Fut,
+        Fut: Future<Output = Result<C, E>> + Send,
+    {
+        type Connection = C;
+
+        type Error = E;
+
+        fn connect_over(
+            &self,
+            over: Inner,
+            route: R,
+        ) -> impl Future<Output = Result<Self::Connection, Self::Error>> + Send {
+            self.0(over, route)
+        }
+    }
+}
