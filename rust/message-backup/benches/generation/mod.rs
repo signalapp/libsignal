@@ -35,9 +35,7 @@ pub fn generate_backup(number_of_conversations: usize, number_of_messages: usize
         iv
     };
 
-    let uncompressed = generate_backup_frames(number_of_conversations, number_of_messages)
-        .map(Ok)
-        .into_async_read();
+    let uncompressed = generate_backup_contents(number_of_conversations, number_of_messages);
 
     let mut compressed_contents = gzip_compress(futures::io::BufReader::new(uncompressed));
     pad_gzipped_bucketed(&mut compressed_contents);
@@ -49,10 +47,46 @@ pub fn generate_backup(number_of_conversations: usize, number_of_messages: usize
     compressed_contents
 }
 
-fn generate_backup_frames(
+fn generate_backup_contents(
     number_of_conversations: usize,
     number_of_messages: usize,
-) -> impl futures::Stream<Item = Vec<u8>> {
+) -> impl futures::AsyncRead {
+    let backup_info = futures::stream::once(std::future::ready(
+        generate_backup_info()
+            .write_length_delimited_to_bytes()
+            .unwrap(),
+    ));
+
+    backup_info
+        .chain(futures::stream::iter(
+            generate_frames(number_of_conversations, number_of_messages)
+                .map(|frame| frame.write_length_delimited_to_bytes().unwrap()),
+        ))
+        .map(Ok)
+        .into_async_read()
+}
+
+pub fn generate_backup_info() -> proto::BackupInfo {
+    proto::BackupInfo {
+        version: 1,
+        backupTimeMs: SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .unwrap()
+            .as_millis()
+            .try_into()
+            .unwrap(),
+        mediaRootBackupKey: vec![0; 32],
+        ..Default::default()
+    }
+}
+
+pub fn generate_frames(
+    number_of_conversations: usize,
+    number_of_messages: usize,
+) -> impl Iterator<Item = proto::Frame> {
+    let number_of_conversations = u64::try_from(number_of_conversations).unwrap();
+    let number_of_messages = u64::try_from(number_of_messages).unwrap();
+
     fn frame(item: impl Into<proto::frame::Item>) -> proto::Frame {
         proto::Frame {
             item: Some(item.into()),
@@ -60,57 +94,32 @@ fn generate_backup_frames(
         }
     }
 
-    let backup_info = futures::stream::once(std::future::ready(
-        proto::BackupInfo {
-            version: 1,
-            backupTimeMs: SystemTime::now()
-                .duration_since(SystemTime::UNIX_EPOCH)
-                .unwrap()
-                .as_millis()
-                .try_into()
-                .unwrap(),
-            mediaRootBackupKey: vec![0; 32],
-            ..Default::default()
-        }
-        .write_length_delimited_to_bytes()
-        .unwrap(),
-    ));
-
     // Based on Desktop's similar test defaults,
     // https://github.com/signalapp/Signal-Desktop/blob/0bc6368c642a7ddf2456e994db1016034380f72d/ts/test-both/helpers/generateBackup.ts#L105
-    let account_data = futures::stream::once(std::future::ready(
-        frame(proto::AccountData {
-            profileKey: vec![1; 32],
-            givenName: "Backup".into(),
-            familyName: "Benchmark".into(),
-            accountSettings: Some(proto::account_data::AccountSettings {
-                displayBadgesOnProfile: true,
-                hasSetMyStoriesPrivacy: true,
-                hasSeenGroupStoryEducationSheet: true,
-                hasCompletedUsernameOnboarding: true,
-                phoneNumberSharingMode: proto::account_data::PhoneNumberSharingMode::EVERYBODY
-                    .into(),
-                ..Default::default()
-            })
-            .into(),
+    let account_data = frame(proto::AccountData {
+        profileKey: vec![1; 32],
+        givenName: "Backup".into(),
+        familyName: "Benchmark".into(),
+        accountSettings: Some(proto::account_data::AccountSettings {
+            displayBadgesOnProfile: true,
+            hasSetMyStoriesPrivacy: true,
+            hasSeenGroupStoryEducationSheet: true,
+            hasCompletedUsernameOnboarding: true,
+            phoneNumberSharingMode: proto::account_data::PhoneNumberSharingMode::EVERYBODY.into(),
             ..Default::default()
         })
-        .write_length_delimited_to_bytes()
-        .unwrap(),
-    ));
+        .into(),
+        ..Default::default()
+    });
 
     let self_id = 0;
-    let self_recipient = futures::stream::once(std::future::ready(
-        frame(proto::Recipient {
-            id: self_id,
-            destination: Some(proto::recipient::Destination::Self_(Default::default())),
-            ..Default::default()
-        })
-        .write_length_delimited_to_bytes()
-        .unwrap(),
-    ));
+    let self_recipient = frame(proto::Recipient {
+        id: self_id,
+        destination: Some(proto::recipient::Destination::Self_(Default::default())),
+        ..Default::default()
+    });
 
-    let recipient_frames = futures::stream::iter((1..).map(|id| {
+    let recipient_frames = (1..=number_of_conversations).map(|id| {
         frame(proto::Recipient {
             id,
             destination: Some(
@@ -130,26 +139,19 @@ fn generate_backup_frames(
             ),
             ..Default::default()
         })
-        .write_length_delimited_to_bytes()
-        .unwrap()
-    }))
-    .take(number_of_conversations);
+    });
 
-    let chat_frames = futures::stream::iter((1..).map(|id| {
+    let chat_frames = (1..=number_of_conversations).map(|id| {
         frame(proto::Chat {
             id,
             recipientId: id,
             expireTimerVersion: 1,
             ..Default::default()
         })
-        .write_length_delimited_to_bytes()
-        .unwrap()
-    }))
-    .take(number_of_conversations);
+    });
 
     const START_OF_2024_IN_MILLIS: u64 = 1704067200000; // 2024-01-01T00:00:00Z
-    let message_frames = futures::stream::iter((1..).map(move |i| {
-        let number_of_conversations = u64::try_from(number_of_conversations).unwrap();
+    let message_frames = (1..=number_of_messages).map(move |i| {
         let chat_id = i % number_of_conversations + 1; // skip the Self recipient
         let date_sent = START_OF_2024_IN_MILLIS + i * 1000;
 
@@ -206,14 +208,10 @@ fn generate_backup_frames(
             directionalDetails: Some(directional_details),
             ..Default::default()
         })
-        .write_length_delimited_to_bytes()
-        .unwrap()
-    }))
-    .take(number_of_messages);
+    });
 
-    backup_info
-        .chain(account_data)
-        .chain(self_recipient)
+    [account_data, self_recipient]
+        .into_iter()
         .chain(recipient_frames)
         .chain(chat_frames)
         .chain(message_frames)

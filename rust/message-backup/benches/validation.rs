@@ -26,6 +26,7 @@ use generation::*;
 const DEFAULT_ACI: Aci = Aci::from_uuid_bytes([0x11; 16]);
 const DEFAULT_ACCOUNT_ENTROPY: &str =
     "mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm";
+const MESSAGES_PER_CONVERSATION: usize = 200;
 
 /// An [`AsyncRead`] implementation that [yields][] for every callback.
 ///
@@ -88,7 +89,6 @@ fn cursor_without_appended_hash(backup: &[u8]) -> Cursor<&'_ [u8]> {
 }
 
 fn benchmark_multiple_backup_sizes(mut body: impl FnMut(usize, &[u8])) {
-    const MESSAGES_PER_CONVERSATION: usize = 200;
     for size in [30, 100, 300] {
         let backup = generate_backup(size, MESSAGES_PER_CONVERSATION * size);
         body(size, &backup);
@@ -437,6 +437,51 @@ fn validate_using_full_backup_reader(c: &mut Criterion) {
     });
 }
 
+fn parse_only(c: &mut Criterion) {
+    let mut group = c.benchmark_group("Frame::parse");
+    benchmark_multiple_backup_sizes(|size, _backup| {
+        let frames: Vec<Vec<u8>> = generate_frames(size, MESSAGES_PER_CONVERSATION * size)
+            .map(|frame| frame.write_to_bytes().unwrap())
+            .collect();
+
+        group.bench_function(BenchmarkId::from_parameter(size), |b| {
+            b.iter(|| {
+                for next in &frames {
+                    black_box(
+                        libsignal_message_backup::proto::backup::Frame::parse_from_bytes(next)
+                            .expect("valid"),
+                    );
+                }
+            })
+        });
+    });
+}
+
+fn parse_and_validate(c: &mut Criterion) {
+    let mut group = c.benchmark_group("PartialBackup");
+    benchmark_multiple_backup_sizes(|size, _backup| {
+        let backup_info = generate_backup_info().write_to_bytes().unwrap();
+        let frames: Vec<Vec<u8>> = generate_frames(size, MESSAGES_PER_CONVERSATION * size)
+            .map(|frame| frame.write_to_bytes().unwrap())
+            .collect();
+
+        group.bench_function(BenchmarkId::from_parameter(size), |b| {
+            b.iter(|| {
+                let mut backup = PartialBackup::<ValidateOnly>::by_parsing(
+                    &backup_info,
+                    libsignal_message_backup::backup::Purpose::RemoteBackup,
+                    |_| (),
+                )
+                .expect("valid");
+                for next in &frames {
+                    backup.parse_and_add_frame(next, |_| ()).expect("valid");
+                }
+                _ = CompletedBackup::try_from(backup).expect("valid");
+            })
+        });
+    });
+}
+
 criterion_group!(
     validation,
     hmac_only,
@@ -446,5 +491,7 @@ criterion_group!(
     decrypt_and_decompress_and_hmac_and_segment_and_parse,
     decrypt_and_decompress_and_hmac_and_segment_and_parse_and_validate,
     validate_using_full_backup_reader,
+    parse_only,
+    parse_and_validate,
 );
 criterion_main!(validation);
