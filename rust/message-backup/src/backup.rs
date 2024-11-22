@@ -469,10 +469,19 @@ impl<M: Method + ReferencedTypes> PartialBackup<M> {
 
     fn add_chat_item(&mut self, chat_item: proto::ChatItem) -> Result<(), ValidationError> {
         let chat_id = ChatId(chat_item.chatId);
+        let raw_timestamp = chat_item.dateSent;
 
         let chat_item_data = chat_item
             .try_into_with(self)
-            .map_err(|e: ChatItemError| ChatFrameError(chat_id, e.into()))?;
+            .map_err(|error: ChatItemError| {
+                ChatFrameError(
+                    chat_id,
+                    ChatError::ChatItem {
+                        raw_timestamp,
+                        error,
+                    },
+                )
+            })?;
 
         Ok(self.chats.add_chat_item(chat_id, chat_item_data)?)
     }
@@ -527,9 +536,15 @@ impl<M: Method + ReferencedTypes> ChatsData<M> {
             pinned: _,
         } = self;
 
-        let chat_data = items
-            .get_mut(&chat_id)
-            .ok_or(ChatFrameError(chat_id, ChatItemError::NoChatForItem.into()))?;
+        let chat_data = items.get_mut(&chat_id).ok_or_else(|| {
+            ChatFrameError(
+                chat_id,
+                ChatError::ChatItem {
+                    raw_timestamp: item.sent_at.as_millis(),
+                    error: ChatItemError::NoChatForItem,
+                },
+            )
+        })?;
 
         item.total_chat_item_order_index = *chat_items_count;
 

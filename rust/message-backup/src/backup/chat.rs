@@ -76,8 +76,11 @@ pub enum ChatError {
     InvalidRecipient(RecipientId, DestinationKind),
     /// chat with {0:?} has an expirationTimerMs but no expireTimerVersion
     MissingExpireTimerVersion(RecipientId),
-    /// chat item: {0}
-    ChatItem(#[from] ChatItemError),
+    /// chat item {raw_timestamp}: {error}
+    ChatItem {
+        raw_timestamp: u64,
+        error: ChatItemError,
+    },
     /// {0:?} already appeared
     DuplicatePinnedOrder(PinOrder),
     /// style error: {0}

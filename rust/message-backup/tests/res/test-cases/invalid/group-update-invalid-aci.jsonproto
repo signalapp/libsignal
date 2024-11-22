@@ -29,6 +29,7 @@
     "chatItem": {
       "chatId": "1",
       "authorId": "1",
+      "dateSent": 12345,
       "directionless": {},
       "updateMessage": {
         "groupChange": {

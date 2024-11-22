@@ -88,6 +88,15 @@ impl Timestamp {
     pub(super) fn into_inner(self) -> SystemTime {
         self.0
     }
+
+    pub fn as_millis(&self) -> u64 {
+        self.0
+            .duration_since(UNIX_EPOCH)
+            .expect("should not be possible to construct a Timestamp older than UNIX_EPOCH")
+            .as_millis()
+            .try_into()
+            .expect("should not be possible to construct a Timestamp that requires u128 millis since UNIX_EPOCH")
+    }
 }
 
 impl serde::Serialize for Timestamp {
@@ -95,11 +104,7 @@ impl serde::Serialize for Timestamp {
     where
         S: serde::Serializer,
     {
-        let offset = self
-            .0
-            .duration_since(UNIX_EPOCH)
-            .expect("should not be possible to construct a Timestamp older than UNIX_EPOCH");
-        serde::Serialize::serialize(&Duration(offset), serializer)
+        self.as_millis().serialize(serializer)
     }
 }
 

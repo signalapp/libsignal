@@ -21,6 +21,7 @@
       "chatId": "1",
       "authorId": "1",
       "directionless": {},
+      "dateSent": 12345,
       "stickerMessage": {
         "sticker": {
           "packId": "YXNkZgo=",
