@@ -2,8 +2,10 @@
 # When adding new members, consider updating the log filter in rust/bridge/shared/src/logging.rs.
 members = [
     "rust/attest",
+    "rust/chat",
     "rust/crypto",
     "rust/device-transfer",
+    "rust/grpc",
     "rust/keytrans",
     "rust/media",
     "rust/message-backup",
@@ -11,6 +13,7 @@ members = [
     "rust/account-keys",
     "rust/poksho",
     "rust/protocol",
+    "rust/quic",
     "rust/svr3",
     "rust/usernames",
     "rust/zkcredential",

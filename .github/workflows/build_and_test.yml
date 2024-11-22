@@ -23,7 +23,7 @@ jobs:
       contents: read
       pull-requests: read
 
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
 
     outputs:
       rust: ${{ steps.filter.outputs.rust }}
@@ -95,7 +95,7 @@ jobs:
   rust:
     name: Rust
 
-    runs-on: ubuntu-latest-4-cores
+    runs-on: ubuntu-20.04
 
     needs: changes
 
@@ -166,6 +166,12 @@ jobs:
       run: PATH="$PATH:$PWD/local-tools/bin" ./bin/regenerate_acknowledgments.sh && git diff --name-status --exit-code acknowledgments
       if: matrix.version == 'nightly'
 
+    - name: Install Protoc
+      uses: arduino/setup-protoc@v1
+      with:
+        version: '3.x'
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
+
     - name: Build
       run: cargo +${{ matrix.toolchain }} build --workspace --features libsignal-ffi/signal-media --verbose ${{ matrix.cargo-keep-going }}
 
@@ -209,7 +215,7 @@ jobs:
   rust32:
     name: Rust (32-bit testing)
 
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
 
     needs: changes
 
@@ -243,7 +249,7 @@ jobs:
   java:
     name: Java
 
-    runs-on: ubuntu-latest-4-cores
+    runs-on: ubuntu-20.04
 
     needs: changes
 
@@ -274,6 +280,12 @@ jobs:
 
     - run: rustup toolchain install $(cat rust-toolchain) --profile minimal --target aarch64-linux-android,armv7-linux-androideabi,x86_64-linux-android,i686-linux-android
 
+    - name: Install Protoc
+      uses: arduino/setup-protoc@v1
+      with:
+        version: '3.x'
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
+
     - name: Verify that the JNI bindings are up to date
       run: rust/bridge/jni/bin/gen_java_decl.py --verify
 
@@ -298,7 +310,7 @@ jobs:
 
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ubuntu-20.04, windows-latest, macos-latest]
 
     needs: changes
 
@@ -320,7 +332,7 @@ jobs:
       shell: cmd
 
     - run: sudo apt-get update && sudo apt-get install protobuf-compiler
-      if: matrix.os == 'ubuntu-latest'
+      if: matrix.os == 'ubuntu-20.04'
 
     - run: choco install protoc
       if: matrix.os == 'windows-latest'
@@ -334,7 +346,7 @@ jobs:
 
     - name: Verify that the Node bindings are up to date
       run: rust/bridge/node/bin/gen_ts_decl.py --verify
-      if: matrix.os == 'ubuntu-latest'
+      if: matrix.os == 'ubuntu-20.04'
 
     - run: npm ci
       working-directory: node
@@ -346,11 +358,11 @@ jobs:
       working-directory: node
 
     - run: npm run lint
-      if: matrix.os == 'ubuntu-latest'
+      if: matrix.os == 'ubuntu-20.04'
       working-directory: node
 
     - run: npm run format -c
-      if: matrix.os == 'ubuntu-latest'
+      if: matrix.os == 'ubuntu-20.04'
       working-directory: node
 
     - run: npm run test
@@ -359,7 +371,7 @@ jobs:
   swift_package:
     name: Swift Package
 
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
 
     needs: changes
 

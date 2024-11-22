@@ -24,10 +24,13 @@ pub mod support;
 pub use support::{describe_panic, AsyncRuntime, ResultReporter};
 
 pub mod cds2;
+pub mod chat;
 pub mod crypto;
+pub mod grpc;
 pub mod hsm_enclave;
 pub mod net;
 pub mod protocol;
+pub mod quic;
 pub mod sgx_session;
 pub mod zkgroup;
 

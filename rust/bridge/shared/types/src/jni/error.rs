@@ -17,7 +17,10 @@ use libsignal_net::chat::ChatServiceError;
 use libsignal_net::infra::ws::{WebSocketConnectError, WebSocketServiceError};
 use libsignal_net::ws::WebSocketServiceConnectError;
 use libsignal_protocol::*;
+use signal_chat::Error as SignalChatError;
 use signal_crypto::Error as SignalCryptoError;
+use signal_grpc::Error as GrpcError;
+use signal_quic::Error as QuicError;
 use usernames::{UsernameError, UsernameLinkError};
 use zkgroup::{ZkGroupDeserializationFailure, ZkGroupVerificationFailure};
 
@@ -30,6 +33,9 @@ use crate::support::describe_panic;
 pub enum SignalJniError {
     Protocol(SignalProtocolError),
     DeviceTransfer(DeviceTransferError),
+    SignalChat(SignalChatError),
+    Grpc(GrpcError),
+    Quic(QuicError),
     SignalCrypto(SignalCryptoError),
     HsmEnclave(HsmEnclaveError),
     Enclave(EnclaveError),
@@ -80,6 +86,9 @@ impl fmt::Display for SignalJniError {
         match self {
             SignalJniError::Protocol(s) => write!(f, "{}", s),
             SignalJniError::DeviceTransfer(s) => write!(f, "{}", s),
+            SignalJniError::SignalChat(e) => write!(f, "{}", e),
+            SignalJniError::Grpc(e) => write!(f, "{}", e),
+            SignalJniError::Quic(e) => write!(f, "{}", e),
             SignalJniError::HsmEnclave(e) => write!(f, "{}", e),
             SignalJniError::Enclave(e) => write!(f, "{}", e),
             SignalJniError::Pin(e) => write!(f, "{}", e),
@@ -152,6 +161,24 @@ impl From<SignalProtocolError> for SignalJniError {
 impl From<DeviceTransferError> for SignalJniError {
     fn from(e: DeviceTransferError) -> SignalJniError {
         SignalJniError::DeviceTransfer(e)
+    }
+}
+
+impl From<SignalChatError> for SignalJniError {
+    fn from(e: SignalChatError) -> SignalJniError {
+        SignalJniError::SignalChat(e)
+    }
+}
+
+impl From<GrpcError> for SignalJniError {
+    fn from(e: GrpcError) -> SignalJniError {
+        SignalJniError::Grpc(e)
+    }
+}
+
+impl From<QuicError> for SignalJniError {
+    fn from(e: QuicError) -> SignalJniError {
+        SignalJniError::Quic(e)
     }
 }
 

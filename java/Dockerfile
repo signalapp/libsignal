@@ -19,7 +19,7 @@ RUN    apt-get update
 
 # Install only what's needed to set up Rust and Android
 # We'll install additional tools at the end to take advantage of Docker's caching of earlier steps.
-RUN    apt-get install -y openjdk-17-jdk-headless unzip
+RUN    apt-get install -y curl openjdk-17-jdk-headless unzip
 
 ARG UID
 ARG GID
@@ -87,6 +87,11 @@ RUN    apt-get install -y \
                make \
                protobuf-compiler
 USER libsignal
+
+# install protoc
+RUN    curl -LO https://github.com/protocolbuffers/protobuf/releases/download/v25.1/protoc-25.1-linux-x86_64.zip
+RUN    unzip protoc-25.1-linux-x86_64.zip -d ~/.local
+ENV PATH="/home/libsignal/.local/bin:${PATH}"
 
 # Convert ssh to https for git dependency access without a key.
 RUN    git config --global url."https://github".insteadOf ssh://git@github

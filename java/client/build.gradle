@@ -11,6 +11,7 @@ plugins {
     id 'java-library'
     id 'maven-publish'
     id 'signing'
+    id "com.google.protobuf" version "0.9.4"
 }
 
 sourceCompatibility = 17
@@ -30,6 +31,9 @@ sourceSets {
         resources {
             srcDir '../shared/resources'
         }
+        proto {
+            srcDir '../../proto'
+        }
     }
     test {
         java {
@@ -38,7 +42,14 @@ sourceSets {
     }
 }
 
+protobuf {
+    protoc {
+        artifact = 'com.google.protobuf:protoc:3.24.4'
+    }
+}
+
 dependencies {
+    implementation group: 'com.google.protobuf', name: 'protobuf-java', version: '3.24.4'
     testImplementation 'junit:junit:4.13'
 }
 
@@ -169,6 +180,6 @@ publishing {
 
 setUpSigningKey(signing)
 signing {
-    required { isReleaseBuild() && gradle.taskGraph.hasTask(":client:publish") }
+    required { !isSkipSigning() && isReleaseBuild() && gradle.taskGraph.hasTask(":client:publish") }
     sign publishing.publications.mavenJava
 }

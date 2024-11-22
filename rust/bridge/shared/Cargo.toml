@@ -24,8 +24,11 @@ libsignal-keytrans = { workspace = true }
 libsignal-message-backup = { workspace = true }
 libsignal-net = { workspace = true }
 libsignal-protocol = { workspace = true }
+signal-chat = { workspace = true }
 signal-crypto = { workspace = true }
+signal-grpc = { workspace = true }
 signal-media = { workspace = true, optional = true }
+signal-quic = { workspace = true }
 usernames = { workspace = true }
 zkgroup = { workspace = true }
 

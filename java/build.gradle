@@ -1,12 +1,13 @@
 plugins {
     id "base"
     id "signing"
+    id "de.undercouch.download" version "5.0.2"
     id "com.diffplug.spotless" version "6.20.0"
     id "io.github.gradle-nexus.publish-plugin" version "2.0.0"
 }
 
 allprojects {
-    version = "0.62.0"
+    version = "0.62.0-gluon-1"
     group   = "org.signal"
 }
 
@@ -101,12 +102,19 @@ ext.setUpSigningKey = { signingExt ->
 }
 
 nexusPublishing {
+    useStaging = false
     repositories {
-        sonatype {
+        gluonNexus {
+            nexusUrl = uri(project.findProperty('sonatypeRepo') ?: "https://oss.sonatype.org/service/local/")
+            snapshotRepositoryUrl  = uri(isReleaseBuild() ? (project.findProperty('sonatypeRepo') ?: "https://oss.sonatype.org/service/local/") : (project.findProperty('sonatypeSnapshotRepo') ?: "https://oss.sonatype.org/content/repositories/snapshots/"))
             username = project.findProperty('sonatypeUsername') ?: ""
             password = project.findProperty('sonatypePassword') ?: ""
         }
     }
+}
+
+def isSkipSigning() {
+    return hasProperty('skipSigning')
 }
 
 def isReleaseBuild() {
