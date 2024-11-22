@@ -337,7 +337,10 @@ impl<M: backup::method::Method + backup::ReferencedTypes> backup::PartialBackup<
         raw_frame: &[u8],
         mut visitor: impl FnMut(&dyn std::fmt::Debug) + Send,
     ) -> Result<Vec<(Vec<PathPart>, UnknownValue)>, crate::Error> {
-        let frame_proto = proto::backup::Frame::parse_from_bytes(raw_frame)?;
+        // Using `merge_from_bytes` instead of `parse_from_bytes` avoids having to unpack the Ok
+        // case of the Result. (This is guaranteed equivalent by protobuf.)
+        let mut frame_proto = proto::backup::Frame::new();
+        frame_proto.merge_from_bytes(raw_frame)?;
         visitor(&frame_proto);
         let unknown_fields = frame_proto.collect_unknown_fields();
         self.add_frame(frame_proto)?;
