@@ -57,8 +57,11 @@ libsignal-net = { path = "rust/net" }
 libsignal-protocol = { path = "rust/protocol" }
 libsignal-svr3 = { path = "rust/svr3" }
 poksho = { path = "rust/poksho" }
+signal-chat = { path = "rust/chat" }
 signal-crypto = { path = "rust/crypto" }
+signal-grpc = { path = "rust/grpc" }
 signal-media = { path = "rust/media" }
+signal-quic = { path = "rust/quic" }
 usernames = { path = "rust/usernames" }
 zkcredential = { path = "rust/zkcredential" }
 zkgroup = { path = "rust/zkgroup" }
