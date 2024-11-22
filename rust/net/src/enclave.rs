@@ -4,7 +4,6 @@
 //
 
 use std::marker::PhantomData;
-use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 
 use attest::svr2::RaftConfig;
@@ -16,7 +15,6 @@ use libsignal_net_infra::connection_manager::{
     ConnectionManager, MultiRouteConnectionManager, SingleRouteThrottlingConnectionManager,
 };
 use libsignal_net_infra::errors::LogSafeDisplay;
-use libsignal_net_infra::host::Host;
 use libsignal_net_infra::route::{
     DirectTcpRouteProvider, DomainFrontRouteProvider, HttpsProvider, TlsRouteProvider,
     WebSocketProvider, WebSocketRouteFragment,
@@ -119,24 +117,39 @@ impl Svr3Flavor for Nitro {}
 
 impl Svr3Flavor for Tpm2Snp {}
 
-type ConnectionAndHost = (AttestedConnection, Host<Arc<str>>);
+/// Log-safe human-readable label for a connection.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ConnectionLabel(String);
+
+pub type LabeledConnection = (AttestedConnection, ConnectionLabel);
 
 pub trait IntoConnectionResults {
-    type ConnectionResults: ArrayIsh<Result<ConnectionAndHost, Error>> + Send;
+    type ConnectionResults: ArrayIsh<Result<LabeledConnection, Error>> + Send;
     fn into_connection_results(self) -> Self::ConnectionResults;
 }
 
-pub trait IntoAttestedConnection: Into<ConnectionAndHost> {}
+/// Provides an [`AttestedConnection`] with a label for logging.
+///
+/// This trait provides useful indirection by allowing us to implement
+/// [`IntoConnectionResults`] for heterogeneous tuples with types that implement
+/// this trait.
+pub trait IntoAttestedConnection {
+    fn into_labeled_connection(self) -> LabeledConnection;
+}
 
-impl IntoAttestedConnection for ConnectionAndHost {}
+impl IntoAttestedConnection for LabeledConnection {
+    fn into_labeled_connection(self) -> LabeledConnection {
+        self
+    }
+}
 
 impl<A> IntoConnectionResults for Result<A, Error>
 where
     A: IntoAttestedConnection,
 {
-    type ConnectionResults = [Result<ConnectionAndHost, Error>; 1];
+    type ConnectionResults = [Result<LabeledConnection, Error>; 1];
     fn into_connection_results(self) -> Self::ConnectionResults {
-        [self.map(Into::into)]
+        [self.map(IntoAttestedConnection::into_labeled_connection)]
     }
 }
 
@@ -145,9 +158,12 @@ where
     A: IntoAttestedConnection,
     B: IntoAttestedConnection,
 {
-    type ConnectionResults = [Result<ConnectionAndHost, Error>; 2];
+    type ConnectionResults = [Result<LabeledConnection, Error>; 2];
     fn into_connection_results(self) -> Self::ConnectionResults {
-        [self.0.map(Into::into), self.1.map(Into::into)]
+        [
+            self.0.map(IntoAttestedConnection::into_labeled_connection),
+            self.1.map(IntoAttestedConnection::into_labeled_connection),
+        ]
     }
 }
 
@@ -157,13 +173,26 @@ where
     B: IntoAttestedConnection,
     C: IntoAttestedConnection,
 {
-    type ConnectionResults = [Result<ConnectionAndHost, Error>; 3];
+    type ConnectionResults = [Result<LabeledConnection, Error>; 3];
     fn into_connection_results(self) -> Self::ConnectionResults {
         [
-            self.0.map(Into::into),
-            self.1.map(Into::into),
-            self.2.map(Into::into),
+            self.0.map(IntoAttestedConnection::into_labeled_connection),
+            self.1.map(IntoAttestedConnection::into_labeled_connection),
+            self.2.map(IntoAttestedConnection::into_labeled_connection),
         ]
+    }
+}
+
+impl ConnectionLabel {
+    pub fn from_log_safe(value: String) -> Self {
+        Self(value)
+    }
+}
+
+impl LogSafeDisplay for ConnectionLabel {}
+impl std::fmt::Display for ConnectionLabel {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.0)
     }
 }
 

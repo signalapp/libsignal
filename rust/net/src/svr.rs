@@ -13,21 +13,24 @@ use libsignal_net_infra::TransportConnector;
 
 use crate::auth::Auth;
 pub use crate::enclave::Error;
-use crate::enclave::{EnclaveEndpointConnection, IntoAttestedConnection, NewHandshake, Svr3Flavor};
+use crate::enclave::{
+    ConnectionLabel, EnclaveEndpointConnection, IntoAttestedConnection, LabeledConnection,
+    NewHandshake, Svr3Flavor,
+};
 
 pub struct SvrConnection<Flavor: Svr3Flavor> {
     inner: AttestedConnection,
-    remote_address: Host<std::sync::Arc<str>>,
+    remote_address: Host<Arc<str>>,
     witness: PhantomData<Flavor>,
 }
 
-impl<Flavor: Svr3Flavor> From<SvrConnection<Flavor>> for (AttestedConnection, Host<Arc<str>>) {
-    fn from(conn: SvrConnection<Flavor>) -> Self {
-        (conn.inner, conn.remote_address)
+impl<Flavor: Svr3Flavor> IntoAttestedConnection for SvrConnection<Flavor> {
+    fn into_labeled_connection(self) -> LabeledConnection {
+        let label = ConnectionLabel::from_log_safe(self.remote_address.to_string());
+        let connection = self.inner;
+        (connection, label)
     }
 }
-
-impl<Flavor: Svr3Flavor> IntoAttestedConnection for SvrConnection<Flavor> {}
 
 impl<E: Svr3Flavor> SvrConnection<E>
 where

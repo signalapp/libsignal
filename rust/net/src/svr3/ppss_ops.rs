@@ -9,12 +9,11 @@
 //! each individual operation, as implied by `Svr3Client` trait.
 use std::collections::VecDeque;
 use std::num::NonZeroU32;
-use std::sync::Arc;
 
 use futures_util::future::join_all;
-use libsignal_net_infra::host::Host;
+use futures_util::TryFutureExt as _;
 use libsignal_net_infra::ws::NextOrClose;
-use libsignal_net_infra::ws2::attested::{run_attested_interaction, AttestedConnection};
+use libsignal_net_infra::ws2::attested::AttestedConnectionError;
 use libsignal_svr3::{
     Backup4, EvaluationResult, MaskedSecret, Query4, Remove4, Restore1, RotationMachine,
     MAX_ROTATION_STEPS,
@@ -22,7 +21,9 @@ use libsignal_svr3::{
 use rand_core::CryptoRngCore;
 
 use super::{Error, OpaqueMaskedShareSet};
-use crate::enclave::{ArrayIsh, IntoConnectionResults, PpssSetup};
+use crate::enclave::{
+    ArrayIsh, ConnectionLabel, IntoConnectionResults, LabeledConnection, PpssSetup,
+};
 
 pub async fn do_backup<Env: PpssSetup>(
     connect_results: Env::ConnectionResults,
@@ -33,7 +34,6 @@ pub async fn do_backup<Env: PpssSetup>(
 ) -> Result<OpaqueMaskedShareSet, Error> {
     let ConnectionContext {
         mut connections,
-        addresses,
         errors,
     } = ConnectionContext::new(connect_results);
     if let Some(err) = errors.into_iter().next() {
@@ -56,7 +56,7 @@ pub async fn do_backup<Env: PpssSetup>(
         .await
         .into_iter()
         .collect::<Result<Vec<_>, _>>();
-    collect_responses(results?, addresses.iter())?;
+    collect_responses(results?)?;
     Ok(OpaqueMaskedShareSet::new(backup.masked_secret))
 }
 
@@ -68,7 +68,6 @@ pub async fn do_restore(
 ) -> Result<EvaluationResult, Error> {
     let ConnectionContext {
         mut connections,
-        addresses,
         errors,
     } = ConnectionContext::new(connect_results);
     if let Some(err) = errors.into_iter().next() {
@@ -87,12 +86,12 @@ pub async fn do_restore(
             .await
             .into_iter()
             .collect::<Result<Vec<_>, _>>();
-        collect_responses(results?, addresses.iter())?
+        collect_responses(results?)?
     };
 
     let handshake_hashes = connections
         .iter()
-        .map(|c| c.handshake_hash())
+        .map(|c| c.0.handshake_hash())
         .collect::<Vec<_>>();
     let restore2 = restore1.restore2(&responses1, &handshake_hashes, rng)?;
     let tries_remaining = restore2.tries_remaining;
@@ -105,7 +104,7 @@ pub async fn do_restore(
             .await
             .into_iter()
             .collect::<Result<Vec<_>, _>>();
-        collect_responses(results?, addresses.iter())?
+        collect_responses(results?)?
     };
     let output = restore2.restore(&responses2)?;
 
@@ -118,7 +117,6 @@ pub async fn do_restore(
 pub async fn do_remove(connect_results: impl IntoConnectionResults) -> Result<(), Error> {
     let ConnectionContext {
         mut connections,
-        addresses,
         errors,
     } = ConnectionContext::new(connect_results);
     for err in errors {
@@ -135,14 +133,13 @@ pub async fn do_remove(connect_results: impl IntoConnectionResults) -> Result<()
         .await
         .into_iter()
         .collect::<Result<Vec<_>, _>>();
-    let _responses = collect_responses(results?, addresses.iter())?;
+    collect_responses(results?)?;
     Ok(())
 }
 
 pub async fn do_query(connect_results: impl IntoConnectionResults) -> Result<u32, Error> {
     let ConnectionContext {
         mut connections,
-        addresses,
         errors,
     } = ConnectionContext::new(connect_results);
     if let Some(err) = errors.into_iter().next() {
@@ -157,7 +154,7 @@ pub async fn do_query(connect_results: impl IntoConnectionResults) -> Result<u32
         .await
         .into_iter()
         .collect::<Result<Vec<_>, _>>();
-    let responses = collect_responses(results?, addresses.iter())?;
+    let responses = collect_responses(results?)?;
     Ok(Query4::finalize(&responses)?)
 }
 
@@ -168,7 +165,6 @@ pub async fn do_rotate(
 ) -> Result<(), Error> {
     let ConnectionContext {
         mut connections,
-        addresses,
         errors,
     } = ConnectionContext::new(connect_results);
     if let Some(err) = errors.into_iter().next() {
@@ -191,7 +187,7 @@ pub async fn do_rotate(
             .await
             .into_iter()
             .collect::<Result<Vec<_>, _>>();
-        let responses = collect_responses(results?, addresses.iter())?;
+        let responses = collect_responses(results?)?;
         rotation_machine.handle_responses(responses.as_ref())?;
     }
     if rotation_machine.is_done() {
@@ -201,41 +197,44 @@ pub async fn do_rotate(
     }
 }
 
+async fn run_attested_interaction<'a>(
+    connection: &mut LabeledConnection,
+    request: impl AsRef<[u8]>,
+) -> Result<(NextOrClose<Vec<u8>>, &ConnectionLabel), AttestedConnectionError> {
+    libsignal_net_infra::ws2::attested::run_attested_interaction(&mut connection.0, request)
+        .map_ok(|n| (n, &connection.1))
+        .await
+}
+
 struct ConnectionContext {
-    connections: Vec<AttestedConnection>,
-    addresses: Vec<Host<Arc<str>>>,
+    connections: Vec<LabeledConnection>,
     errors: VecDeque<Error>,
 }
 
 impl ConnectionContext {
     fn new<Arr: IntoConnectionResults>(connect_results: Arr) -> Self {
         let mut connections = Vec::with_capacity(Arr::ConnectionResults::N);
-        let mut addresses = Vec::with_capacity(Arr::ConnectionResults::N);
         let mut errors = VecDeque::with_capacity(Arr::ConnectionResults::N);
         for connect_result in connect_results.into_connection_results().into_iter() {
             match connect_result {
                 Ok((connection, remote_address)) => {
-                    addresses.push(remote_address);
-                    connections.push(connection);
+                    connections.push((connection, remote_address));
                 }
                 Err(err) => errors.push_back(err.into()),
             }
         }
         Self {
             connections,
-            addresses,
             errors,
         }
     }
 }
 
 fn collect_responses<'a>(
-    results: impl IntoIterator<Item = NextOrClose<Vec<u8>>>,
-    addresses: impl IntoIterator<Item = &'a Host<impl AsRef<str> + 'a>>,
+    results: impl IntoIterator<Item = (NextOrClose<Vec<u8>>, &'a ConnectionLabel)>,
 ) -> Result<Vec<Vec<u8>>, Error> {
     results
         .into_iter()
-        .zip(addresses)
         .map(|(next_or_close, address)| {
             next_or_close.next_or(Error::Protocol(format!("no response from {}", address)))
         })
@@ -266,7 +265,7 @@ mod test {
     struct NotConnectedResults;
 
     impl IntoConnectionResults for NotConnectedResults {
-        type ConnectionResults = [Result<(AttestedConnection, Host<Arc<str>>), Error>; 2];
+        type ConnectionResults = [Result<LabeledConnection, Error>; 2];
 
         fn into_connection_results(self) -> Self::ConnectionResults {
             [
