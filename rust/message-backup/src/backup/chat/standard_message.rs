@@ -55,7 +55,19 @@ impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R> + ReportUnusualTim
             .map(|q| q.try_into_with(context))
             .transpose()?;
 
-        let text = text.into_option().map(MessageText::try_from).transpose()?;
+        let text = match text.into_option() {
+            None => None,
+            // Fast-path for a message with no body-ranges.
+            Some(proto::Text {
+                body,
+                bodyRanges,
+                special_fields: _,
+            }) if bodyRanges.is_empty() => Some(MessageText {
+                text: body,
+                ranges: Default::default(),
+            }),
+            Some(text) => Some(text.try_into()?),
+        };
 
         let link_previews = linkPreview
             .into_iter()
