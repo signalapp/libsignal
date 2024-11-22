@@ -72,12 +72,10 @@ fn derive_has_unknown_fields_struct_impl(ident: Ident, e: syn::DataStruct) -> To
 
     quote! {
         impl #VisitUnknownFields for #ident {
-            fn visit_unknown_fields(&self, #PathArgName: #PathType, #VisitorArgName: &mut impl #Visitor) -> std::ops::ControlFlow<()>{
+            fn visit_unknown_fields(&self, #PathArgName: #PathType, #VisitorArgName: &mut impl #Visitor) {
                 let Self #destruct = self;
 
                 #({ #visit_fields };)*
-
-                std::ops::ControlFlow::Continue(())
             }
         }
     }
@@ -123,11 +121,10 @@ fn derive_has_unknown_fields_enum_impl(ident: Ident, e: syn::DataEnum) -> TokenS
 
     quote! {
         impl #VisitUnknownFields for #ident {
-            fn visit_unknown_fields(&self, path: #PathType, #VisitorArgName: &mut impl #Visitor) -> std::ops::ControlFlow<()> {
+            fn visit_unknown_fields(&self, path: #PathType, #VisitorArgName: &mut impl #Visitor) {
                 match self {
                     #(#arms,)*
                 };
-                std::ops::ControlFlow::Continue(())
             }
         }
     }
@@ -159,7 +156,7 @@ impl ToTokens for VisitField {
                     field_name: #field_name,
                     part: #Part::Field,
                 };
-                #VisitUnknownFields::visit_unknown_fields(#field_ident, #PathArgName, #VisitorArgName)?
+                #VisitUnknownFields::visit_unknown_fields(#field_ident, #PathArgName, #VisitorArgName)
             },
             FieldType::Container => quote! {
                 #VisitContainerUnknownFields::visit_unknown_fields_within(
@@ -167,7 +164,7 @@ impl ToTokens for VisitField {
                     #PathArgName,
                     #field_name,
                     #VisitorArgName
-                )?
+                )
             },
         }.to_tokens(tokens)
     }
@@ -264,7 +261,7 @@ mod test {
                     fn visit_unknown_fields(
                             &self,
                             path: crate::unknown::Path<'_>,
-                            visitor: &mut impl crate::unknown::visit_static::Visitor) -> std::ops::ControlFlow<()>
+                            visitor: &mut impl crate::unknown::visit_static::Visitor)
                     {
                         let Self {
                             pub_field, priv_field
@@ -276,7 +273,7 @@ mod test {
                                 field_name: "pub_field",
                                 part: crate::unknown::Part::Field,
                             };
-                            crate::unknown::visit_static::VisitUnknownFields::visit_unknown_fields(pub_field, path, visitor)?
+                            crate::unknown::visit_static::VisitUnknownFields::visit_unknown_fields(pub_field, path, visitor)
                         };
                         {
                             let path = crate::unknown::Path::Branch {
@@ -284,9 +281,8 @@ mod test {
                                 field_name: "priv_field",
                                 part: crate::unknown::Part::Field,
                             };
-                            crate::unknown::visit_static::VisitUnknownFields::visit_unknown_fields(priv_field, path, visitor)?
+                            crate::unknown::visit_static::VisitUnknownFields::visit_unknown_fields(priv_field, path, visitor)
                         };
-                        std::ops::ControlFlow::Continue(())
                     }
                 }
             },
@@ -306,7 +302,7 @@ mod test {
                     fn visit_unknown_fields(
                             &self,
                             path: crate::unknown::Path<'_>,
-                            visitor: &mut impl crate::unknown::visit_static::Visitor) -> std::ops::ControlFlow<()>
+                            visitor: &mut impl crate::unknown::visit_static::Visitor)
                     {
                         match self {
                             Self::AField(a_field) => {
@@ -315,7 +311,7 @@ mod test {
                                     field_name: "a_field",
                                     part: crate::unknown::Part::Field,
                                 };
-                                crate::unknown::visit_static::VisitUnknownFields::visit_unknown_fields(a_field, path, visitor)?
+                                crate::unknown::visit_static::VisitUnknownFields::visit_unknown_fields(a_field, path, visitor)
                             },
                             Self::BField(b_field) => {
                                 let path = crate::unknown::Path::Branch {
@@ -323,10 +319,9 @@ mod test {
                                     field_name: "b_field",
                                     part: crate::unknown::Part::Field,
                                 };
-                                crate::unknown::visit_static::VisitUnknownFields::visit_unknown_fields(b_field, path, visitor)?
+                                crate::unknown::visit_static::VisitUnknownFields::visit_unknown_fields(b_field, path, visitor)
                             },
                         };
-                        std::ops::ControlFlow::Continue(())
                     }
                 }
             },

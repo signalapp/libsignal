@@ -6,8 +6,6 @@
 //! Unknown field searching via dynamic traversal of protubuf message
 //! descriptors.
 
-use std::ops::ControlFlow;
-
 use protobuf::reflect::{ReflectFieldRef, ReflectValueRef};
 use protobuf::MessageDyn;
 
@@ -22,9 +20,9 @@ pub(super) fn visit_unknown_fields(
     // to fail to determine whether `&mut &mut .... &mut impl
     // UnknownFieldVisitor` implements `UnknownFieldVisitor`.
     visitor: &mut impl UnknownFieldVisitor,
-) -> ControlFlow<()> {
+) {
     for (tag, _value) in message.unknown_fields_dyn() {
-        visitor(path.owned_parts(), UnknownValue::Field { tag })?
+        visitor(path.owned_parts(), UnknownValue::Field { tag })
     }
 
     for field in message.descriptor_dyn().fields() {
@@ -37,10 +35,8 @@ pub(super) fn visit_unknown_fields(
                 part: Part::Field,
             },
         };
-        visit_child_unknown_fields(field.get_reflect(message), path, field.name(), visitor)?
+        visit_child_unknown_fields(field.get_reflect(message), path, field.name(), visitor)
     }
-
-    ControlFlow::Continue(())
 }
 
 fn visit_child_unknown_fields<'s>(
@@ -48,7 +44,7 @@ fn visit_child_unknown_fields<'s>(
     parent_path: Path<'s>,
     field_name: &'s str,
     visitor: &mut impl UnknownFieldVisitor,
-) -> ControlFlow<()> {
+) {
     let make_path = |part| Path::Branch {
         parent: &parent_path,
         field_name,
@@ -58,24 +54,20 @@ fn visit_child_unknown_fields<'s>(
     match field {
         ReflectFieldRef::Optional(value) => {
             let Some(value) = value.value() else {
-                return ControlFlow::Continue(());
+                return;
             };
             visit_field(value, visitor, make_path(Part::Field))
         }
         ReflectFieldRef::Repeated(values) => {
             for (index, value) in values.into_iter().enumerate() {
-                visit_field(value, visitor, make_path(Part::Repeated { index }))?;
+                visit_field(value, visitor, make_path(Part::Repeated { index }));
             }
-
-            ControlFlow::Continue(())
         }
         ReflectFieldRef::Map(values) => {
             for (key, value) in &values {
                 let key = key.into();
-                visit_field(value, visitor, make_path(Part::MapValue { key }))?;
+                visit_field(value, visitor, make_path(Part::MapValue { key }));
             }
-
-            ControlFlow::Continue(())
         }
     }
 }
@@ -84,7 +76,7 @@ fn visit_field<'s>(
     value: ReflectValueRef<'s>,
     visitor: &mut impl UnknownFieldVisitor,
     path: Path<'s>,
-) -> ControlFlow<()> {
+) {
     match value {
         ReflectValueRef::U32(_)
         | ReflectValueRef::U64(_)
@@ -94,12 +86,10 @@ fn visit_field<'s>(
         | ReflectValueRef::F64(_)
         | ReflectValueRef::Bool(_)
         | ReflectValueRef::String(_)
-        | ReflectValueRef::Bytes(_) => ControlFlow::Continue(()),
+        | ReflectValueRef::Bytes(_) => {}
         ReflectValueRef::Enum(descriptor, number) => {
             if descriptor.value_by_number(number).is_none() {
                 visitor(path.owned_parts(), UnknownValue::EnumValue { number })
-            } else {
-                ControlFlow::Continue(())
             }
         }
         ReflectValueRef::Message(message) => {
