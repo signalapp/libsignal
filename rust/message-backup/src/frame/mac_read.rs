@@ -11,17 +11,17 @@ use hmac::Mac;
 
 /// [`AsyncRead`]er that computes an HMAC of the produced contents.
 #[derive(Clone, Debug)]
-pub(crate) struct MacReader<R, M> {
+pub struct MacReader<R, M> {
     reader: R,
     mac: M,
 }
 
 impl<R, M> MacReader<R, M> {
-    pub(crate) fn new(reader: R, mac: M) -> Self {
+    pub fn new(reader: R, mac: M) -> Self {
         Self { reader, mac }
     }
 
-    pub(crate) fn finalize(self) -> GenericArray<u8, M::OutputSize>
+    pub fn finalize(self) -> GenericArray<u8, M::OutputSize>
     where
         M: Mac,
     {

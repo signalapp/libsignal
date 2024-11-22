@@ -19,9 +19,8 @@ use crate::frame::cbc::CbcStreamDecryptor;
 use crate::frame::unpad::UnpadLast;
 
 const AES_BLOCK_SIZE: usize = <<Aes256 as BlockSizeUser>::BlockSize as Unsigned>::USIZE;
-const AES_KEY_SIZE: usize = <<Aes256 as KeySizeUser>::KeySize as Unsigned>::USIZE;
-pub(super) const AES_IV_SIZE: usize =
-    <<cbc::Decryptor<Aes256> as IvSizeUser>::IvSize as Unsigned>::USIZE;
+pub const AES_KEY_SIZE: usize = <<Aes256 as KeySizeUser>::KeySize as Unsigned>::USIZE;
+pub const AES_IV_SIZE: usize = <<cbc::Decryptor<Aes256> as IvSizeUser>::IvSize as Unsigned>::USIZE;
 
 /// Decrypting implementation of [`futures::io::AsyncRead`].
 ///
@@ -30,7 +29,7 @@ pub(super) const AES_IV_SIZE: usize =
 ///
 /// This exists as a named type to allow it to be held as a field in other types.
 #[derive(Debug)]
-pub(crate) struct Aes256CbcReader<R: AsyncRead + Unpin> {
+pub struct Aes256CbcReader<R: AsyncRead + Unpin> {
     /// Reader for the bytes being produced.
     ///
     /// Bytes are pulled from the wrapped `R` reader, chunked into blocks which
@@ -45,7 +44,7 @@ pub(crate) struct Aes256CbcReader<R: AsyncRead + Unpin> {
 }
 
 impl<R: AsyncRead + Unpin> Aes256CbcReader<R> {
-    pub(crate) fn new(key: &[u8; AES_KEY_SIZE], iv: &[u8; AES_IV_SIZE], reader: R) -> Self {
+    pub fn new(key: &[u8; AES_KEY_SIZE], iv: &[u8; AES_IV_SIZE], reader: R) -> Self {
         let rc_reader = Rc::new(RefCell::new(reader));
         let reader = RcReader(rc_reader.clone());
         let stream: BlockStream<_> = ExactReadBlockStream::from_reader(reader).map_ok(Into::into);
@@ -63,7 +62,7 @@ impl<R: AsyncRead + Unpin> Aes256CbcReader<R> {
     /// If this reader is exhaused (a call to [`AsyncRead::poll_read`] returned
     /// `Poll::Ready(Ok(0))`), then the returned reader is also exhausted.
     /// Otherwise no guarantees are made about the returned value.
-    pub(crate) fn into_inner(self) -> R {
+    pub fn into_inner(self) -> R {
         let Self { reader, inner } = self;
         drop(reader);
 

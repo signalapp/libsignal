@@ -16,8 +16,6 @@ use mediasan_common::{AsyncSkip, AsyncSkipExt as _};
 use sha2::Sha256;
 use subtle::ConstantTimeEq as _;
 
-use crate::frame::aes_read::{Aes256CbcReader, AES_IV_SIZE};
-use crate::frame::mac_read::MacReader;
 use crate::key::MessageBackupKey;
 
 mod aes_read;
@@ -27,6 +25,12 @@ mod mac_read;
 mod reader_factory;
 mod unpad;
 
+#[cfg(feature = "test-util")]
+pub use aes_read::AES_KEY_SIZE;
+#[cfg_attr(feature = "test-util", visibility::make(pub))]
+use aes_read::{Aes256CbcReader, AES_IV_SIZE};
+#[cfg_attr(feature = "test-util", visibility::make(pub))]
+use mac_read::MacReader;
 pub use reader_factory::{CursorFactory, FileReaderFactory, LimitedReaderFactory, ReaderFactory};
 
 const HMAC_LEN: usize = <<Hmac<Sha256> as OutputSizeUser>::OutputSize as Unsigned>::USIZE;
@@ -138,7 +142,7 @@ impl<R: AsyncRead + Unpin> AsyncRead for FramesReader<R> {
 }
 
 impl<R> MacReader<R, Hmac<Sha256>> {
-    fn new_sha256(reader: R, hmac_key: &[u8]) -> Self {
+    pub fn new_sha256(reader: R, hmac_key: &[u8]) -> Self {
         Self::new(
             reader,
             Hmac::<Sha256>::new_from_slice(hmac_key)

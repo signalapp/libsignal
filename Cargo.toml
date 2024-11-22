@@ -150,6 +150,7 @@ thiserror = "1.0.57"
 tokio = "1"
 tokio-stream = "0.1.14"
 uuid = "1.1.2"
+visibility = "0.1.1"
 x25519-dalek = "2.0.0"
 zerocopy = "0.7.34"
 

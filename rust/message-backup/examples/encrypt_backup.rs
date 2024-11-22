@@ -7,22 +7,17 @@ use std::fmt::Display;
 use std::io::{stdout, Read as _, Write};
 use std::str::FromStr as _;
 
-use aes::cipher::block_padding::Pkcs7;
 use aes::cipher::crypto_common::rand_core::{OsRng, RngCore};
-use aes::cipher::{BlockEncryptMut, KeyIvInit};
-use aes::Aes256;
-use async_compression::futures::bufread::GzipEncoder;
 use clap::builder::TypedValueParser;
 use clap::{ArgAction, Parser};
 use clap_stdin::FileOrStdin;
-use futures::io::Cursor;
-use futures::AsyncReadExt;
-use hmac::Mac;
 use libsignal_account_keys::{AccountEntropyPool, BackupKey};
 use libsignal_core::Aci;
 use libsignal_message_backup::args::{parse_aci, parse_hex_bytes};
+use libsignal_message_backup::export::{
+    aes_cbc_encrypt, gzip_compress, hmac_checksum, pad_gzipped_bucketed,
+};
 use libsignal_message_backup::key::MessageBackupKey;
-use sha2::Sha256;
 
 const DEFAULT_ACI: Aci = Aci::from_uuid_bytes([0x11; 16]);
 const DEFAULT_ACCOUNT_ENTROPY: &str =
@@ -97,7 +92,7 @@ fn main() {
     let contents = read_file(filename);
     eprintln!("read {} bytes", contents.len());
 
-    let mut compressed_contents = gzip_compress(contents);
+    let mut compressed_contents = gzip_compress(futures::io::Cursor::new(contents));
     eprintln!("compressed to {} bytes", compressed_contents.len());
 
     if pad_bucketed {
@@ -109,11 +104,11 @@ fn main() {
 
     write_bytes("IV", iv);
 
-    let encrypted_contents = aes_cbc_encrypt(aes_key, &iv, compressed_contents);
-    eprintln!("encrypted to {} bytes", encrypted_contents.len());
+    aes_cbc_encrypt(aes_key, &iv, &mut compressed_contents);
+    eprintln!("encrypted to {} bytes", compressed_contents.len());
 
-    let hmac = hmac_checksum(hmac_key, &iv, &encrypted_contents);
-    write_bytes("encrypted", encrypted_contents);
+    let hmac = hmac_checksum(hmac_key, &iv, &compressed_contents);
+    write_bytes("encrypted", compressed_contents);
 
     write_bytes("HMAC", hmac);
 }
@@ -127,41 +122,6 @@ fn read_file(filename: FileOrStdin) -> Vec<u8> {
         .read_to_end(&mut contents)
         .expect("IO error");
     contents
-}
-
-fn aes_cbc_encrypt(aes_key: &[u8; 32], iv: &[u8; 16], compressed_contents: Vec<u8>) -> Vec<u8> {
-    let encryptor = cbc::Encryptor::<Aes256>::new(aes_key.into(), iv.into());
-
-    encryptor.encrypt_padded_vec_mut::<Pkcs7>(&compressed_contents)
-}
-fn hmac_checksum(hmac_key: &[u8; 32], iv: &[u8], encrypted_contents: &[u8]) -> [u8; 32] {
-    let mut hmac = hmac::Hmac::<Sha256>::new_from_slice(hmac_key).expect("correct key size");
-    hmac.update(iv);
-    hmac.update(encrypted_contents);
-    hmac.finalize().into_bytes().into()
-}
-
-fn gzip_compress(contents: Vec<u8>) -> Vec<u8> {
-    let mut compressed_contents = Vec::new();
-    futures::executor::block_on(
-        GzipEncoder::new(Cursor::new(contents)).read_to_end(&mut compressed_contents),
-    )
-    .expect("failed to compress");
-
-    compressed_contents
-}
-
-fn pad_gzipped_bucketed(out: &mut Vec<u8>) {
-    const BASE: f64 = 1.05;
-    let len = u32::try_from(out.len()).expect("backup < 4GB");
-
-    #[allow(clippy::cast_possible_truncation)]
-    let padded_len = {
-        let exp = f64::log(len.into(), BASE).ceil();
-        u32::max(541, BASE.powf(exp).floor() as u32)
-    };
-
-    out.resize(padded_len.try_into().unwrap(), 0);
 }
 
 fn write_bytes(label: &'static str, bytes: impl AsRef<[u8]>) {

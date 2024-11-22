@@ -2264,6 +2264,7 @@ dependencies = [
  "cbc",
  "clap",
  "clap-stdin",
+ "criterion",
  "derive-where",
  "dir-test",
  "displaydoc",
@@ -2291,6 +2292,7 @@ dependencies = [
  "protobuf",
  "protobuf-codegen",
  "protobuf-json-mapping",
+ "rand",
  "serde",
  "serde_json",
  "sha2",
@@ -2303,6 +2305,7 @@ dependencies = [
  "thiserror",
  "usernames",
  "uuid",
+ "visibility",
  "zkcredential",
  "zkgroup",
 ]

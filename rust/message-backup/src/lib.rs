@@ -29,7 +29,14 @@ pub mod key;
 pub mod parse;
 pub mod unknown;
 
+// visibility::make isn't supported for modules, so we have to write it twice instead.
+#[cfg(feature = "test-util")]
+pub mod proto;
+#[cfg(not(feature = "test-util"))]
 pub(crate) mod proto;
+
+#[cfg(feature = "test-util")]
+pub mod export;
 
 pub struct BackupReader<R> {
     purpose: Purpose,
@@ -344,5 +351,16 @@ impl From<VerifyHmacError> for Error {
             VerifyHmacError::HmacMismatch(e) => e.into(),
             VerifyHmacError::Io(e) => Self::Parse(e.into()),
         }
+    }
+}
+
+/// Rounds `content_length` up to obscure the exact size of a backup.
+pub fn padded_length(content_length: u32) -> u32 {
+    const BASE: f64 = 1.05;
+    let exp = f64::log(content_length.into(), BASE).ceil();
+
+    #[allow(clippy::cast_possible_truncation)]
+    {
+        u32::max(541, BASE.powf(exp).floor() as u32)
     }
 }

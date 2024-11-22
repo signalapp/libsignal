@@ -15,6 +15,7 @@ workspace = true
 [features]
 # Enables code to allow conversion of backups to and from JSON.
 json = ["dep:serde_json", "dep:protobuf-json-mapping"]
+test-util = []
 
 [[example]]
 name = "json_to_binproto"
@@ -23,6 +24,11 @@ required-features = ["json"]
 [[example]]
 name = "binproto_to_json"
 required-features = ["json"]
+
+[[bench]]
+name = "validation"
+harness = false
+required-features = ["test-util"]
 
 [dependencies]
 libsignal-account-keys = { workspace = true }
@@ -67,14 +73,16 @@ strum_macros = { version = "0.26.4" }
 subtle = { workspace = true }
 thiserror = { workspace = true }
 uuid = { workspace = true, features = ["serde"] }
+visibility = { workspace = true }
 
 [dev-dependencies]
-libsignal-message-backup = { path = "./", features = ["json"] }
+libsignal-message-backup = { path = "./", features = ["json", "test-util"] }
 signal-crypto = { workspace = true }
 
 array-concat = { workspace = true }
 assert_cmd = "2.0.13"
 assert_matches = { workspace = true }
+criterion = { workspace = true }
 dir-test = "0.2.0"
 futures = { workspace = true, features = ["executor"] }
 hex-literal = { workspace = true }
@@ -82,9 +90,19 @@ json5 = "0.4.1"
 nonzero_ext = { workspace = true }
 once_cell = { workspace = true }
 pretty_assertions = { workspace = true }
+rand = { workspace = true }
 test-case = { workspace = true }
 test-log = "0.2.14"
+uuid = { workspace = true, features = ["v4"] }
 
 [build-dependencies]
 protobuf = "3.3.0"
 protobuf-codegen = "3.3.0"
+
+# Enable sha2 asm for local builds (there is a similar block in libsignal-bridge-types).
+[target.'cfg(not(any(windows, target_arch = "x86")))'.dev-dependencies]
+# sha2's asm implementation uses standalone .S files that aren't compiled correctly on Windows,
+# and aren't linked correctly on x86 Android.
+# This will be fixed in sha2 0.11, which also removes the "asm" feature and turns it on by default.
+# So when sha2 0.11 is released, this section will go away.
+sha2 = { workspace = true, features = ["asm"] }
