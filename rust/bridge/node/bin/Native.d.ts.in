@@ -17,37 +17,37 @@ type Timestamp = number;
 type LookupResponse = {
   entries: Map<string, LookupResponseEntry>;
   debugPermitsUsed: number;
-}
+};
 
 type LookupResponseEntry = {
   readonly aci: string | undefined;
   readonly pni: string | undefined;
-}
+};
 
 type ChatResponse = {
   status: number;
   message: string | undefined;
   headers: ReadonlyArray<[string, string]>;
   body: Buffer | undefined;
-}
+};
 
 type ChatServiceDebugInfo = {
   ipType: number;
   durationMillis: number;
   connectionInfo: string;
-}
+};
 
 type ResponseAndDebugInfo = {
   response: ChatResponse;
   debugInfo: ChatServiceDebugInfo;
-}
+};
 
 type SealedSenderMultiRecipientMessageRecipient = {
   deviceIds: number[];
   registrationIds: number[];
   rangeOffset: number;
   rangeLen: number;
-}
+};
 
 type SealedSenderMultiRecipientMessage = {
   recipientMap: {
@@ -55,7 +55,7 @@ type SealedSenderMultiRecipientMessage = {
   };
   excludedRecipients: string[];
   offsetOfSharedData: number;
-}
+};
 
 type IdentityKeyStore = {
   _getIdentityKey(): Promise<PrivateKey>;
@@ -67,18 +67,18 @@ type IdentityKeyStore = {
     sending: boolean
   ): Promise<boolean>;
   _getIdentity(name: ProtocolAddress): Promise<PublicKey | null>;
-}
+};
 
 type SessionStore = {
   _saveSession(addr: ProtocolAddress, record: SessionRecord): Promise<void>;
   _getSession(addr: ProtocolAddress): Promise<SessionRecord | null>;
-}
+};
 
 type PreKeyStore = {
   _savePreKey(preKeyId: number, record: PreKeyRecord): Promise<void>;
   _getPreKey(preKeyId: number): Promise<PreKeyRecord>;
   _removePreKey(preKeyId: number): Promise<void>;
-}
+};
 
 type SignedPreKeyStore = {
   _saveSignedPreKey(
@@ -86,7 +86,7 @@ type SignedPreKeyStore = {
     record: SignedPreKeyRecord
   ): Promise<void>;
   _getSignedPreKey(signedPreKeyId: number): Promise<SignedPreKeyRecord>;
-}
+};
 
 type KyberPreKeyStore = {
   _saveKyberPreKey(
@@ -95,7 +95,7 @@ type KyberPreKeyStore = {
   ): Promise<void>;
   _getKyberPreKey(kyberPreKeyId: number): Promise<KyberPreKeyRecord>;
   _markKyberPreKeyUsed(kyberPreKeyId: number): Promise<void>;
-}
+};
 
 type SenderKeyStore = {
   _saveSenderKey(
@@ -107,12 +107,12 @@ type SenderKeyStore = {
     sender: ProtocolAddress,
     distributionId: Uuid
   ): Promise<SenderKeyRecord | null>;
-}
+};
 
 type InputStream = {
   _read(amount: number): Promise<Buffer>;
   _skip(amount: number): Promise<void>;
-}
+};
 
 type SyncInputStream = Buffer;
 
@@ -127,7 +127,7 @@ type ChatListener = {
     // A LibSignalError or null, but not naming the type to avoid circular import dependencies.
     reason: Error | null
   ): void;
-}
+};
 
 type Wrapper<T> = Readonly<{
   _nativeHandle: T;
@@ -136,11 +136,11 @@ type Wrapper<T> = Readonly<{
 type MessageBackupValidationOutcome = {
   errorMessage: string | null;
   unknownFieldMessages: Array<string>;
-}
+};
 
 type CancellablePromise<T> = Promise<T> & {
   _cancellationToken: bigint;
-}
+};
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 type Serialized<T> = Buffer;
