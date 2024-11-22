@@ -54,7 +54,9 @@ futures = { workspace = true }
 hex = { workspace = true, features = ["serde"] }
 hkdf = { workspace = true }
 hmac = { workspace = true }
-intmap = "2.0.0"
+# The main branch of intmap supports allocation-less empty maps.
+# When there's a release for this, we can remove the pin.
+intmap = { version = "2.0.0", git = 'https://github.com/JesperAxelsson/rust-intmap', rev = "e7edd6e8fb452506ca2570e91f62b14dc29a950c" }
 itertools = { workspace = true }
 log = { workspace = true }
 macro_rules_attribute = "0.2.0"
