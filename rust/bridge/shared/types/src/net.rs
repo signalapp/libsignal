@@ -26,7 +26,7 @@ use libsignal_net::infra::tcp_ssl::proxy::tls::TlsProxyConnector as TcpSslProxyC
 use libsignal_net::infra::tcp_ssl::{DirectConnector as TcpSslDirectConnector, TcpSslConnector};
 use libsignal_net::infra::timeouts::ONE_ROUTE_CONNECTION_TIMEOUT;
 use libsignal_net::infra::utils::ObservableEvent;
-use libsignal_net::infra::EndpointConnection;
+use libsignal_net::infra::{EnableDomainFronting, EndpointConnection};
 use libsignal_net::svr::SvrConnection;
 use libsignal_net::svr3::traits::*;
 use libsignal_net::svr3::{Error, OpaqueMaskedShareSet};
@@ -76,6 +76,7 @@ struct EndpointConnections {
     chat: EndpointConnection<MultiRouteConnectionManager>,
     cdsi: EnclaveEndpointConnection<Cdsi, MultiRouteConnectionManager>,
     svr3: Svr3EndpointConnections,
+    enable_fronting: EnableDomainFronting,
 }
 
 impl EndpointConnections {
@@ -121,7 +122,12 @@ impl EndpointConnections {
                 network_change_event,
             ),
         );
-        Self { chat, cdsi, svr3 }
+        Self {
+            chat,
+            cdsi,
+            svr3,
+            enable_fronting: EnableDomainFronting(use_fallbacks),
+        }
     }
 
     fn endpoint_connection<E: EnclaveKind>(

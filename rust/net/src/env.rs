@@ -21,8 +21,8 @@ use libsignal_net_infra::route::{
     HttpsProvider, TlsRouteProvider,
 };
 use libsignal_net_infra::{
-    AsHttpHeader, ConnectionParams, DnsSource, HttpRequestDecorator, HttpRequestDecoratorSeq,
-    RouteType, TransportConnectionParams,
+    AsHttpHeader, ConnectionParams, DnsSource, EnableDomainFronting, HttpRequestDecorator,
+    HttpRequestDecoratorSeq, RouteType, TransportConnectionParams,
 };
 use nonzero_ext::nonzero;
 use rand::seq::SliceRandom;
@@ -418,6 +418,7 @@ impl ConnectionConfig {
 
     pub fn route_provider(
         &self,
+        enable_domain_fronting: EnableDomainFronting,
     ) -> HttpsProvider<DomainFrontRouteProvider, TlsRouteProvider<DirectTcpRouteProvider>> {
         let Self {
             hostname,
@@ -428,6 +429,7 @@ impl ConnectionConfig {
         } = self;
         let domain_front_configs = proxy
             .as_ref()
+            .and_then(|proxy| enable_domain_fronting.0.then_some(proxy))
             .map(
                 |ConnectionProxyConfig {
                      path_prefix,
@@ -692,6 +694,12 @@ pub mod constants {
 
 #[cfg(test)]
 mod test {
+    use itertools::Itertools as _;
+    use libsignal_net_infra::route::{
+        HttpRouteFragment, HttpsTlsRoute, RouteProvider as _, TcpRoute, TlsRoute, TlsRouteFragment,
+        UnresolvedHost,
+    };
+    use libsignal_net_infra::Alpn;
     use test_case::test_matrix;
 
     use super::*;
@@ -742,5 +750,61 @@ mod test {
                 params.transport.sni,
             );
         }
+    }
+
+    #[test_matrix([true, false])]
+    fn connect_config_routes_enable_domain_fronting(enable_domain_fronting: bool) {
+        const PORT: NonZeroU16 = nonzero!(123u16);
+        const CONNECT_CONFIG: ConnectionConfig = ConnectionConfig {
+            hostname: "host",
+            port: PORT,
+            cert: RootCertificates::Native,
+            confirmation_header_name: None,
+            proxy: Some(ConnectionProxyConfig {
+                path_prefix: "proxy-prefix",
+                configs: [
+                    ProxyConfig {
+                        route_type: RouteType::ProxyF,
+                        http_host: "proxy-host-1",
+                        sni_list: &["sni-1-a", "sni-1-b"],
+                        certs: RootCertificates::Native,
+                    },
+                    ProxyConfig {
+                        route_type: RouteType::ProxyF,
+                        http_host: "proxy-host0",
+                        sni_list: &["sni-2-a", "sni-2-b"],
+                        certs: RootCertificates::Native,
+                    },
+                ],
+            }),
+        };
+        let route_provider =
+            CONNECT_CONFIG.route_provider(EnableDomainFronting(enable_domain_fronting));
+        let routes = route_provider.routes().collect_vec();
+
+        let expected_direct_route = HttpsTlsRoute {
+            fragment: HttpRouteFragment {
+                host_header: "host".into(),
+                path_prefix: "".into(),
+            },
+            inner: TlsRoute {
+                fragment: TlsRouteFragment {
+                    root_certs: RootCertificates::Native,
+                    sni: Host::Domain("host".into()),
+                    alpn: Some(Alpn::Http1_1),
+                },
+                inner: TcpRoute {
+                    address: UnresolvedHost::from(Arc::from("host")),
+                    port: PORT,
+                },
+            },
+        };
+
+        if enable_domain_fronting {
+            assert_eq!(routes.first(), Some(&expected_direct_route));
+            assert_eq!(routes.len(), 5, "{routes:?}");
+        } else {
+            assert_eq!(routes, [expected_direct_route]);
+        };
     }
 }

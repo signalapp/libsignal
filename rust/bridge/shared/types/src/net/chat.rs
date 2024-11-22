@@ -319,23 +319,29 @@ async fn establish_chat_connection(
             .try_into()
             .map_err(|InvalidProxyConfig| ChatServiceError::ServiceUnavailable)?;
 
+    let (ws_config, enable_domain_fronting) = {
+        let endpoints_guard = endpoints.lock().expect("not poisoned");
+        (
+            endpoints_guard.chat.config.ws2_config(),
+            endpoints_guard.enable_fronting,
+        )
+    };
+
     let libsignal_net::infra::ws2::Config {
         local_idle_timeout,
         remote_idle_disconnect_timeout,
         ..
-    } = endpoints
-        .lock()
-        .expect("not poisoned")
-        .chat
-        .config
-        .ws2_config();
+    } = ws_config;
 
     let chat_connect = &env.chat_domain_config.connect;
 
     ChatConnection::connect_with(
         connect,
         dns_resolver,
-        DirectOrProxyProvider::maybe_proxied(chat_connect.route_provider(), proxy_config),
+        DirectOrProxyProvider::maybe_proxied(
+            chat_connect.route_provider(enable_domain_fronting),
+            proxy_config,
+        ),
         chat_connect
             .confirmation_header_name
             .map(HeaderName::from_static),

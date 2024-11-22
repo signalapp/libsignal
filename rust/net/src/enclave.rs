@@ -32,6 +32,7 @@ use libsignal_net_infra::{
 
 use crate::auth::Auth;
 use crate::env::{DomainConfig, Svr3Env};
+use crate::infra::EnableDomainFronting;
 use crate::svr::SvrConnection;
 use crate::ws::{WebSocketServiceConnectError, WebSocketServiceConnector};
 
@@ -331,6 +332,7 @@ impl<E: EnclaveKind + NewHandshake, C: ConnectionManager> EnclaveEndpointConnect
 impl<'a, E: EnclaveKind> EnclaveEndpoint<'a, E> {
     pub fn route_provider(
         &self,
+        enable_domain_fronting: EnableDomainFronting,
     ) -> WebSocketProvider<
         HttpsProvider<DomainFrontRouteProvider, TlsRouteProvider<DirectTcpRouteProvider>>,
     > {
@@ -338,7 +340,7 @@ impl<'a, E: EnclaveKind> EnclaveEndpoint<'a, E> {
             domain_config,
             params,
         } = self;
-        let http_provider = domain_config.connect.route_provider();
+        let http_provider = domain_config.connect.route_provider(enable_domain_fronting);
 
         let ws_fragment = WebSocketRouteFragment {
             ws_config: Default::default(),

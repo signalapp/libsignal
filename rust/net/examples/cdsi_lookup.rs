@@ -16,6 +16,7 @@ use libsignal_net::infra::dns::DnsResolver;
 use libsignal_net::infra::utils::ObservableEvent;
 use libsignal_net_infra::route::{ConnectionOutcomeParams, DirectOrProxyProvider};
 use libsignal_net_infra::tcp_ssl::DirectConnector;
+use libsignal_net_infra::EnableDomainFronting;
 use tokio::io::AsyncBufReadExt as _;
 
 async fn cdsi_lookup(
@@ -99,7 +100,10 @@ async fn main() {
         CdsiConnection::connect_with(
             &connect_state,
             &resolver,
-            DirectOrProxyProvider::maybe_proxied(cdsi_env.route_provider(), None),
+            DirectOrProxyProvider::maybe_proxied(
+                cdsi_env.route_provider(EnableDomainFronting(false)),
+                None,
+            ),
             confirmation_header,
             WS2_CONFIG,
             &cdsi_env.params,
