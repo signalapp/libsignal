@@ -6,7 +6,7 @@
 use libsignal_core::Aci;
 
 use crate::backup::serialize::{self, UnorderedList};
-use crate::backup::uuid_bytes_to_aci;
+use crate::backup::{likely_empty, uuid_bytes_to_aci};
 use crate::proto::backup as proto;
 
 /// Validated version of [`proto::Text`].
@@ -51,9 +51,8 @@ impl TryFrom<proto::Text> for MessageText {
             special_fields: _,
         } = value;
 
-        let ranges = bodyRanges
-            .into_iter()
-            .map(|range| {
+        let ranges = likely_empty(bodyRanges, |iter| {
+            iter.map(|range| {
                 let proto::BodyRange {
                     start,
                     length,
@@ -77,7 +76,8 @@ impl TryFrom<proto::Text> for MessageText {
                     effect,
                 })
             })
-            .collect::<Result<_, _>>()?;
+            .collect::<Result<_, _>>()
+        })?;
         Ok(Self { text: body, ranges })
     }
 }

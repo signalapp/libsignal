@@ -21,7 +21,9 @@ use crate::backup::recipient::DestinationKind;
 use crate::backup::serialize::{SerializeOrder, UnorderedList};
 use crate::backup::sticker::MessageStickerError;
 use crate::backup::time::{Duration, ReportUnusualTimestamp, Timestamp, TimestampOrForever};
-use crate::backup::{BackupMeta, CallError, ReferencedTypes, TryFromWith, TryIntoWith as _};
+use crate::backup::{
+    likely_empty, BackupMeta, CallError, ReferencedTypes, TryFromWith, TryIntoWith as _,
+};
 use crate::proto::backup as proto;
 
 mod contact_message;
@@ -469,9 +471,8 @@ impl<
             (_, _) => Ok(()),
         }?;
 
-        let revisions: Vec<_> = revisions
-            .into_iter()
-            .map(|rev| {
+        let revisions: Vec<_> = likely_empty(revisions, |iter| {
+            iter.map(|rev| {
                 // We have to test this on the raw IDs because RecipientReference isn't necessarily
                 // comparable.
                 if author_id.0 != rev.authorId {
@@ -520,7 +521,8 @@ impl<
                 }
                 Ok(item)
             })
-            .collect::<Result<_, _>>()?;
+            .collect::<Result<_, _>>()
+        })?;
 
         let sent_at = Timestamp::from_millis(dateSent, "ChatItem.dateSent", context);
         let expire_start = expireStartDate

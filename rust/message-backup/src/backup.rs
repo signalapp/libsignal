@@ -696,6 +696,21 @@ fn uuid_bytes_to_aci(bytes: Vec<u8>) -> Result<Aci, InvalidAci> {
         .map_err(|_| InvalidAci)
 }
 
+/// Hint for processing a collection that's usually empty.
+///
+/// This saves a small amount of time by not setting up an iteration loop in `collect` only to throw
+/// it away.
+fn likely_empty<I, T: Default, E>(
+    input: Vec<I>,
+    process: impl FnOnce(std::vec::IntoIter<I>) -> Result<T, E>,
+) -> Result<T, E> {
+    if input.is_empty() {
+        Ok(T::default())
+    } else {
+        process(input.into_iter())
+    }
+}
+
 #[cfg(test)]
 mod test {
     use std::collections::HashMap;

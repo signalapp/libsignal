@@ -14,7 +14,7 @@ use zkgroup::GroupMasterKeyBytes;
 
 use crate::backup::serialize::{self, UnorderedList};
 use crate::backup::time::{Duration, ReportUnusualTimestamp};
-use crate::backup::{TryFromWith, TryIntoWith};
+use crate::backup::{likely_empty, TryFromWith, TryIntoWith};
 use crate::proto::backup as proto;
 
 mod members;
@@ -243,20 +243,20 @@ impl<C: ReportUnusualTimestamp> TryFromWith<proto::group::GroupSnapshot, C> for 
             .map(GroupMember::try_from)
             .try_collect()?;
 
-        let members_pending_profile_key = membersPendingProfileKey
-            .into_iter()
-            .map(|m| GroupMemberPendingProfileKey::try_from_with(m, context))
-            .try_collect()?;
+        let members_pending_profile_key = likely_empty(membersPendingProfileKey, |iter| {
+            iter.map(|m| GroupMemberPendingProfileKey::try_from_with(m, context))
+                .try_collect()
+        })?;
 
-        let members_pending_admin_approval = membersPendingAdminApproval
-            .into_iter()
-            .map(|m| GroupMemberPendingAdminApproval::try_from_with(m, context))
-            .try_collect()?;
+        let members_pending_admin_approval = likely_empty(membersPendingAdminApproval, |iter| {
+            iter.map(|m| GroupMemberPendingAdminApproval::try_from_with(m, context))
+                .try_collect()
+        })?;
 
-        let members_banned = members_banned
-            .into_iter()
-            .map(|m| GroupMemberBanned::try_from_with(m, context))
-            .try_collect()?;
+        let members_banned = likely_empty(members_banned, |iter| {
+            iter.map(|m| GroupMemberBanned::try_from_with(m, context))
+                .try_collect()
+        })?;
 
         Ok(Self {
             title,

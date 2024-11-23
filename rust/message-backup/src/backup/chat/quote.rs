@@ -9,7 +9,7 @@ use crate::backup::frame::RecipientId;
 use crate::backup::method::LookupPair;
 use crate::backup::recipient::DestinationKind;
 use crate::backup::time::{ReportUnusualTimestamp, Timestamp};
-use crate::backup::TryFromWith;
+use crate::backup::{likely_empty, TryFromWith};
 use crate::proto::backup as proto;
 
 /// Validated version of [`proto::Quote`]
@@ -105,10 +105,10 @@ impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R> + ReportUnusualTim
 
         let text = text.into_option().map(|text| text.try_into()).transpose()?;
 
-        let attachments = attachments
-            .into_iter()
-            .map(|attachment| QuotedAttachment::try_from_with(attachment, context))
-            .collect::<Result<_, _>>()?;
+        let attachments = likely_empty(attachments, |iter| {
+            iter.map(|attachment| QuotedAttachment::try_from_with(attachment, context))
+                .collect::<Result<_, _>>()
+        })?;
 
         Ok(Self {
             author,
