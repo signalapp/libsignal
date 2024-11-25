@@ -3,11 +3,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use std::str::FromStr as _;
 use std::time::SystemTime;
 
 use futures::{StreamExt as _, TryStreamExt as _};
-use libsignal_account_keys::{AccountEntropyPool, BackupKey};
 use libsignal_message_backup::export::{
     aes_cbc_encrypt, gzip_compress, hmac_checksum, pad_gzipped_bucketed,
 };
@@ -17,18 +15,15 @@ use protobuf::Message as _;
 use rand::rngs::OsRng;
 use rand::RngCore as _;
 
-use super::{DEFAULT_ACCOUNT_ENTROPY, DEFAULT_ACI};
-
 /// Generates a compressed, encrypted, MAC'd backup with the given settings.
 ///
 /// The backup is not very realistic, just `number_of_conversations` 1:1 conversations and
 /// `number_of_messages` total messages in those conversations.
-pub fn generate_backup(number_of_conversations: usize, number_of_messages: usize) -> Vec<u8> {
-    let account_entropy = AccountEntropyPool::from_str(DEFAULT_ACCOUNT_ENTROPY).expect("valid");
-    let backup_key = BackupKey::derive_from_account_entropy_pool(&account_entropy);
-    let backup_id = backup_key.derive_backup_id(&DEFAULT_ACI);
-    let message_backup_key = MessageBackupKey::derive(&backup_key, &backup_id);
-
+pub fn generate_backup(
+    number_of_conversations: usize,
+    number_of_messages: usize,
+    message_backup_key: &MessageBackupKey,
+) -> Vec<u8> {
     let iv = {
         let mut iv = [0; 16];
         OsRng.fill_bytes(&mut iv);

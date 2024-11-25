@@ -3,6 +3,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+//! Benchmarks for the various steps of validating a backup.
+//!
+//! By default, the benchmarks are run on synthetic input (see the `generation` module), but most
+//! (but not all) of them can be run on an externally-provided backup file as well. See the
+//! `LIBSIGNAL_TESTING`-prefixed environment variables below.
+
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 use futures::io::{BufReader, Cursor};
 use futures::AsyncRead;
@@ -22,6 +28,10 @@ use sha2::Digest as _;
 
 mod generation;
 use generation::*;
+
+const CUSTOM_BACKUP_FILE_ENV_VAR: &str = "LIBSIGNAL_TESTING_BACKUP_FILE";
+const CUSTOM_BACKUP_FILE_HMAC_KEY_ENV_VAR: &str = "LIBSIGNAL_TESTING_BACKUP_FILE_HMAC_KEY";
+const CUSTOM_BACKUP_FILE_AES_KEY_ENV_VAR: &str = "LIBSIGNAL_TESTING_BACKUP_FILE_AES_KEY";
 
 const DEFAULT_ACI: Aci = Aci::from_uuid_bytes([0x11; 16]);
 const DEFAULT_ACCOUNT_ENTROPY: &str =
@@ -88,19 +98,40 @@ fn cursor_without_appended_hash(backup: &[u8]) -> Cursor<&'_ [u8]> {
     Cursor::new(&backup[..backup.len() - sha2::Sha256::output_size()])
 }
 
-fn benchmark_multiple_backup_sizes(mut body: impl FnMut(usize, &[u8])) {
-    for size in [30, 100, 300] {
-        let backup = generate_backup(size, MESSAGES_PER_CONVERSATION * size);
-        body(size, &backup);
-    }
-}
+fn benchmark_multiple_backup_sizes(mut body: impl FnMut(usize, &[u8], &MessageBackupKey)) {
+    if let Some(backup_file) = std::env::var_os(CUSTOM_BACKUP_FILE_ENV_VAR) {
+        let mut message_backup_key = MessageBackupKey {
+            hmac_key: [0; 32],
+            aes_key: [0; AES_KEY_SIZE],
+        };
+        hex::decode_to_slice(
+            std::env::var(CUSTOM_BACKUP_FILE_HMAC_KEY_ENV_VAR).expect("HMAC key provided"),
+            &mut message_backup_key.hmac_key,
+        )
+        .expect("valid HMAC key");
+        hex::decode_to_slice(
+            std::env::var(CUSTOM_BACKUP_FILE_AES_KEY_ENV_VAR).expect("AES key provided"),
+            &mut message_backup_key.aes_key,
+        )
+        .expect("valid AES key");
 
-fn hmac_only(c: &mut Criterion) {
+        let contents = std::fs::read(backup_file).expect("can read backup file");
+        body(0, &contents, &message_backup_key);
+        return;
+    }
+
     let backup_key =
         BackupKey::derive_from_account_entropy_pool(&DEFAULT_ACCOUNT_ENTROPY.parse().unwrap());
     let message_backup_key =
         MessageBackupKey::derive(&backup_key, &backup_key.derive_backup_id(&DEFAULT_ACI));
 
+    for size in [30, 100, 300] {
+        let backup = generate_backup(size, MESSAGES_PER_CONVERSATION * size, &message_backup_key);
+        body(size, &backup, &message_backup_key);
+    }
+}
+
+fn hmac_only(c: &mut Criterion) {
     fn process<R: AsyncRead + Unpin>(input: R, hmac_key: &[u8]) {
         let reader = MacReader::new_sha256(input, hmac_key);
         futures::executor::block_on(futures::io::copy(reader, &mut futures::io::sink()))
@@ -108,7 +139,7 @@ fn hmac_only(c: &mut Criterion) {
     }
 
     let mut group = c.benchmark_group("MacReader");
-    benchmark_multiple_backup_sizes(|size, backup| {
+    benchmark_multiple_backup_sizes(|size, backup, message_backup_key| {
         group.bench_function(BenchmarkId::new("direct", size), |b| {
             b.iter(|| {
                 process(
@@ -130,11 +161,6 @@ fn hmac_only(c: &mut Criterion) {
 }
 
 fn decrypt_only(c: &mut Criterion) {
-    let backup_key =
-        BackupKey::derive_from_account_entropy_pool(&DEFAULT_ACCOUNT_ENTROPY.parse().unwrap());
-    let message_backup_key =
-        MessageBackupKey::derive(&backup_key, &backup_key.derive_backup_id(&DEFAULT_ACI));
-
     fn process<R: AsyncRead + Unpin>(
         input: R,
         aes_key: &[u8; AES_KEY_SIZE],
@@ -146,7 +172,7 @@ fn decrypt_only(c: &mut Criterion) {
     }
 
     let mut group = c.benchmark_group("Aes256CbcReader");
-    benchmark_multiple_backup_sizes(|size, backup| {
+    benchmark_multiple_backup_sizes(|size, backup, message_backup_key| {
         let iv = backup[..AES_IV_SIZE].try_into().unwrap();
 
         group.bench_function(BenchmarkId::new("direct", size), |b| {
@@ -171,11 +197,6 @@ fn decrypt_only(c: &mut Criterion) {
 }
 
 fn decrypt_and_decompress_and_hmac(c: &mut Criterion) {
-    let backup_key =
-        BackupKey::derive_from_account_entropy_pool(&DEFAULT_ACCOUNT_ENTROPY.parse().unwrap());
-    let message_backup_key =
-        MessageBackupKey::derive(&backup_key, &backup_key.derive_backup_id(&DEFAULT_ACI));
-
     fn process<R: ReaderFactory>(input: R, key: &MessageBackupKey)
     where
         R::Reader: Unpin,
@@ -189,15 +210,15 @@ fn decrypt_and_decompress_and_hmac(c: &mut Criterion) {
     }
 
     let mut group = c.benchmark_group("FramesReader");
-    benchmark_multiple_backup_sizes(|size, backup| {
+    benchmark_multiple_backup_sizes(|size, backup, message_backup_key| {
         group.bench_function(BenchmarkId::new("direct", size), |b| {
-            b.iter(|| process(CursorFactory::new(backup), &message_backup_key))
+            b.iter(|| process(CursorFactory::new(backup), message_backup_key))
         });
         group.bench_function(BenchmarkId::new("YieldingReader", size), |b| {
             b.iter(|| {
                 process(
                     YieldingReader(CursorFactory::new(&backup)),
-                    &message_backup_key,
+                    message_backup_key,
                 )
             })
         });
@@ -205,11 +226,6 @@ fn decrypt_and_decompress_and_hmac(c: &mut Criterion) {
 }
 
 fn decrypt_and_decompress_and_hmac_and_segment(c: &mut Criterion) {
-    let backup_key =
-        BackupKey::derive_from_account_entropy_pool(&DEFAULT_ACCOUNT_ENTROPY.parse().unwrap());
-    let message_backup_key =
-        MessageBackupKey::derive(&backup_key, &backup_key.derive_backup_id(&DEFAULT_ACI));
-
     fn process<R: ReaderFactory, R2: AsyncRead + Unpin>(
         input: R,
         key: &MessageBackupKey,
@@ -227,15 +243,15 @@ fn decrypt_and_decompress_and_hmac_and_segment(c: &mut Criterion) {
     }
 
     let mut group = c.benchmark_group("FramesReader + VarintDelimitedReader");
-    benchmark_multiple_backup_sizes(|size, backup| {
+    benchmark_multiple_backup_sizes(|size, backup, message_backup_key| {
         group.bench_function(BenchmarkId::new("direct", size), |b| {
-            b.iter(|| process(CursorFactory::new(backup), &message_backup_key, |r| r))
+            b.iter(|| process(CursorFactory::new(backup), message_backup_key, |r| r))
         });
         group.bench_function(BenchmarkId::new("direct + BufReader", size), |b| {
             b.iter(|| {
                 process(
                     CursorFactory::new(backup),
-                    &message_backup_key,
+                    message_backup_key,
                     BufReader::new,
                 )
             })
@@ -244,7 +260,7 @@ fn decrypt_and_decompress_and_hmac_and_segment(c: &mut Criterion) {
             b.iter(|| {
                 process(
                     YieldingReader(CursorFactory::new(backup)),
-                    &message_backup_key,
+                    message_backup_key,
                     |r| r,
                 )
             })
@@ -253,7 +269,7 @@ fn decrypt_and_decompress_and_hmac_and_segment(c: &mut Criterion) {
             b.iter(|| {
                 process(
                     YieldingReader(CursorFactory::new(backup)),
-                    &message_backup_key,
+                    message_backup_key,
                     BufReader::new,
                 )
             })
@@ -262,11 +278,6 @@ fn decrypt_and_decompress_and_hmac_and_segment(c: &mut Criterion) {
 }
 
 fn decrypt_and_decompress_and_hmac_and_segment_and_parse(c: &mut Criterion) {
-    let backup_key =
-        BackupKey::derive_from_account_entropy_pool(&DEFAULT_ACCOUNT_ENTROPY.parse().unwrap());
-    let message_backup_key =
-        MessageBackupKey::derive(&backup_key, &backup_key.derive_backup_id(&DEFAULT_ACI));
-
     fn process<R: ReaderFactory, R2: AsyncRead + Unpin>(
         input: R,
         key: &MessageBackupKey,
@@ -293,15 +304,15 @@ fn decrypt_and_decompress_and_hmac_and_segment_and_parse(c: &mut Criterion) {
     }
 
     let mut group = c.benchmark_group("FramesReader + VarintDelimitedReader + Frame::parse");
-    benchmark_multiple_backup_sizes(|size, backup| {
+    benchmark_multiple_backup_sizes(|size, backup, message_backup_key| {
         group.bench_function(BenchmarkId::new("direct", size), |b| {
-            b.iter(|| process(CursorFactory::new(backup), &message_backup_key, |r| r))
+            b.iter(|| process(CursorFactory::new(backup), message_backup_key, |r| r))
         });
         group.bench_function(BenchmarkId::new("direct + BufReader", size), |b| {
             b.iter(|| {
                 process(
                     CursorFactory::new(backup),
-                    &message_backup_key,
+                    message_backup_key,
                     BufReader::new,
                 )
             })
@@ -310,7 +321,7 @@ fn decrypt_and_decompress_and_hmac_and_segment_and_parse(c: &mut Criterion) {
             b.iter(|| {
                 process(
                     YieldingReader(CursorFactory::new(backup)),
-                    &message_backup_key,
+                    message_backup_key,
                     |r| r,
                 )
             })
@@ -319,7 +330,7 @@ fn decrypt_and_decompress_and_hmac_and_segment_and_parse(c: &mut Criterion) {
             b.iter(|| {
                 process(
                     YieldingReader(CursorFactory::new(backup)),
-                    &message_backup_key,
+                    message_backup_key,
                     BufReader::new,
                 )
             })
@@ -328,11 +339,6 @@ fn decrypt_and_decompress_and_hmac_and_segment_and_parse(c: &mut Criterion) {
 }
 
 fn decrypt_and_decompress_and_hmac_and_segment_and_parse_and_validate(c: &mut Criterion) {
-    let backup_key =
-        BackupKey::derive_from_account_entropy_pool(&DEFAULT_ACCOUNT_ENTROPY.parse().unwrap());
-    let message_backup_key =
-        MessageBackupKey::derive(&backup_key, &backup_key.derive_backup_id(&DEFAULT_ACI));
-
     fn process<R: ReaderFactory, R2: AsyncRead + Unpin>(
         input: R,
         key: &MessageBackupKey,
@@ -362,15 +368,15 @@ fn decrypt_and_decompress_and_hmac_and_segment_and_parse_and_validate(c: &mut Cr
     }
 
     let mut group = c.benchmark_group("FramesReader + VarintDelimitedReader + PartialBackup");
-    benchmark_multiple_backup_sizes(|size, backup| {
+    benchmark_multiple_backup_sizes(|size, backup, message_backup_key| {
         group.bench_function(BenchmarkId::new("direct", size), |b| {
-            b.iter(|| process(CursorFactory::new(backup), &message_backup_key, |r| r))
+            b.iter(|| process(CursorFactory::new(backup), message_backup_key, |r| r))
         });
         group.bench_function(BenchmarkId::new("direct + BufReader", size), |b| {
             b.iter(|| {
                 process(
                     CursorFactory::new(backup),
-                    &message_backup_key,
+                    message_backup_key,
                     BufReader::new,
                 )
             })
@@ -379,7 +385,7 @@ fn decrypt_and_decompress_and_hmac_and_segment_and_parse_and_validate(c: &mut Cr
             b.iter(|| {
                 process(
                     YieldingReader(CursorFactory::new(backup)),
-                    &message_backup_key,
+                    message_backup_key,
                     |r| r,
                 )
             })
@@ -388,7 +394,7 @@ fn decrypt_and_decompress_and_hmac_and_segment_and_parse_and_validate(c: &mut Cr
             b.iter(|| {
                 process(
                     YieldingReader(CursorFactory::new(backup)),
-                    &message_backup_key,
+                    message_backup_key,
                     BufReader::new,
                 )
             })
@@ -397,11 +403,6 @@ fn decrypt_and_decompress_and_hmac_and_segment_and_parse_and_validate(c: &mut Cr
 }
 
 fn validate_using_full_backup_reader(c: &mut Criterion) {
-    let backup_key =
-        BackupKey::derive_from_account_entropy_pool(&DEFAULT_ACCOUNT_ENTROPY.parse().unwrap());
-    let message_backup_key =
-        MessageBackupKey::derive(&backup_key, &backup_key.derive_backup_id(&DEFAULT_ACI));
-
     fn process<R: ReaderFactory>(input: R, key: &MessageBackupKey)
     where
         R::Reader: Unpin,
@@ -422,15 +423,15 @@ fn validate_using_full_backup_reader(c: &mut Criterion) {
     }
 
     let mut group = c.benchmark_group("BackupReader");
-    benchmark_multiple_backup_sizes(|size, backup| {
+    benchmark_multiple_backup_sizes(|size, backup, message_backup_key| {
         group.bench_function(BenchmarkId::new("direct", size), |b| {
-            b.iter(|| process(CursorFactory::new(backup), &message_backup_key))
+            b.iter(|| process(CursorFactory::new(backup), message_backup_key))
         });
         group.bench_function(BenchmarkId::new("YieldingReader", size), |b| {
             b.iter(|| {
                 process(
                     YieldingReader(CursorFactory::new(backup)),
-                    &message_backup_key,
+                    message_backup_key,
                 )
             })
         });
@@ -439,7 +440,11 @@ fn validate_using_full_backup_reader(c: &mut Criterion) {
 
 fn parse_only(c: &mut Criterion) {
     let mut group = c.benchmark_group("Frame::parse");
-    benchmark_multiple_backup_sizes(|size, _backup| {
+    benchmark_multiple_backup_sizes(|size, _backup, _key| {
+        if size == 0 {
+            return;
+        }
+
         let frames: Vec<Vec<u8>> = generate_frames(size, MESSAGES_PER_CONVERSATION * size)
             .map(|frame| frame.write_to_bytes().unwrap())
             .collect();
@@ -459,7 +464,11 @@ fn parse_only(c: &mut Criterion) {
 
 fn parse_and_validate(c: &mut Criterion) {
     let mut group = c.benchmark_group("PartialBackup");
-    benchmark_multiple_backup_sizes(|size, _backup| {
+    benchmark_multiple_backup_sizes(|size, _backup, _key| {
+        if size == 0 {
+            return;
+        }
+
         let backup_info = generate_backup_info().write_to_bytes().unwrap();
         let frames: Vec<Vec<u8>> = generate_frames(size, MESSAGES_PER_CONVERSATION * size)
             .map(|frame| frame.write_to_bytes().unwrap())
