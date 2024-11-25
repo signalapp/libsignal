@@ -280,17 +280,22 @@ export class UnauthenticatedChatConnection implements ChatConnection {
     const nativeChatListener = makeNativeChatListener(asyncContext, listener);
     const connect = Native.UnauthenticatedChatConnection_connect(
       asyncContext,
-      connectionManager,
-      new WeakListenerWrapper(nativeChatListener)
+      connectionManager
     );
     const chat = await asyncContext.makeCancellable(
       options?.abortSignal,
       connect
     );
 
+    const connection = newNativeHandle(chat);
+    Native.UnauthenticatedChatConnection_init_listener(
+      connection,
+      new WeakListenerWrapper(nativeChatListener)
+    );
+
     return new UnauthenticatedChatConnection(
       asyncContext,
-      newNativeHandle(chat),
+      connection,
       nativeChatListener
     );
   }
@@ -348,16 +353,20 @@ export class AuthenticatedChatConnection implements ChatConnection {
       connectionManager,
       username,
       password,
-      receiveStories,
-      new WeakListenerWrapper(nativeChatListener)
+      receiveStories
     );
     const chat = await asyncContext.makeCancellable(
       options?.abortSignal,
       connect
     );
+    const connection = newNativeHandle(chat);
+    Native.AuthenticatedChatConnection_init_listener(
+      connection,
+      new WeakListenerWrapper(nativeChatListener)
+    );
     return new AuthenticatedChatConnection(
       asyncContext,
-      newNativeHandle(chat),
+      connection,
       nativeChatListener
     );
   }

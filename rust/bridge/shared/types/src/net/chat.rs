@@ -219,52 +219,53 @@ pub type UnauthChat = Chat<UnauthChatService>;
 pub type AuthChat = Chat<AuthChatService>;
 
 pub struct UnauthenticatedChatConnection {
-    inner: ChatConnection,
+    /// The possibly-still-being-constructed [`ChatConnection`].
+    ///
+    /// See [`AuthenticatedChatConnection::inner`] for rationale around lack of
+    /// reader/writer contention.
+    inner: tokio::sync::RwLock<MaybeChatConnection>,
 }
 bridge_as_handle!(UnauthenticatedChatConnection);
 impl UnwindSafe for UnauthenticatedChatConnection {}
 impl RefUnwindSafe for UnauthenticatedChatConnection {}
 
 pub struct AuthenticatedChatConnection {
-    inner: ChatConnection,
+    /// The possibly-still-being-constructed [`ChatConnection`].
+    ///
+    /// This is a `RwLock` so that bridging functions can always take a
+    /// `&AuthenticatedChatConnection`, even when finishing construction of the
+    /// `ChatConnection`. The lock will only be held in writer mode once, when
+    /// finishing construction, and after that will be held in read mode, so
+    /// there won't be any contention.
+    inner: tokio::sync::RwLock<MaybeChatConnection>,
 }
 bridge_as_handle!(AuthenticatedChatConnection);
 impl UnwindSafe for AuthenticatedChatConnection {}
 impl RefUnwindSafe for AuthenticatedChatConnection {}
 
-impl UnauthenticatedChatConnection {
-    pub async fn connect(
-        connection_manager: &ConnectionManager,
-        listener: Option<Box<dyn ChatListener>>,
-    ) -> Result<Self, ChatServiceError> {
-        let inner = establish_chat_connection(connection_manager, listener, None).await?;
-        log::info!("connected unauthenticated chat");
-        Ok(Self { inner })
-    }
-
-    pub async fn send(
-        &self,
-        message: Request,
-        timeout: Duration,
-    ) -> Result<ChatResponse, ChatServiceError> {
-        self.inner.send(message, timeout).await
-    }
-
-    pub async fn disconnect(&self) {
-        self.inner.disconect().await
-    }
+enum MaybeChatConnection {
+    Running(ChatConnection),
+    WaitingForListener(chat::PendingChatConnection),
+    TemporarilyEvicted,
 }
 
+impl UnauthenticatedChatConnection {
+    pub async fn connect(connection_manager: &ConnectionManager) -> Result<Self, ChatServiceError> {
+        let inner = establish_chat_connection(connection_manager, None).await?;
+        log::info!("connected unauthenticated chat");
+        Ok(Self {
+            inner: MaybeChatConnection::WaitingForListener(inner).into(),
+        })
+    }
+}
 impl AuthenticatedChatConnection {
     pub async fn connect(
         connection_manager: &ConnectionManager,
-        listener: Option<Box<dyn ChatListener>>,
         auth: Auth,
         receive_stories: bool,
     ) -> Result<Self, ChatServiceError> {
-        let inner = establish_chat_connection(
+        let pending = establish_chat_connection(
             connection_manager,
-            listener,
             Some(chat::AuthenticatedChatHeaders {
                 auth,
                 receive_stories: receive_stories.into(),
@@ -272,38 +273,111 @@ impl AuthenticatedChatConnection {
         )
         .await?;
         log::info!("connected authenticated chat");
-        Ok(Self { inner })
+        Ok(Self {
+            inner: MaybeChatConnection::WaitingForListener(pending).into(),
+        })
     }
+}
 
-    pub async fn send(
+impl AsRef<tokio::sync::RwLock<MaybeChatConnection>> for AuthenticatedChatConnection {
+    fn as_ref(&self) -> &tokio::sync::RwLock<MaybeChatConnection> {
+        &self.inner
+    }
+}
+
+impl AsRef<tokio::sync::RwLock<MaybeChatConnection>> for UnauthenticatedChatConnection {
+    fn as_ref(&self) -> &tokio::sync::RwLock<MaybeChatConnection> {
+        &self.inner
+    }
+}
+
+pub trait BridgeChatConnection {
+    fn init_listener(&self, listener: Box<dyn ChatListener>);
+
+    fn send(
         &self,
         message: Request,
         timeout: Duration,
-    ) -> Result<ChatResponse, ChatServiceError> {
-        self.inner.send(message, timeout).await
+    ) -> impl Future<Output = Result<ChatResponse, ChatServiceError>> + Send;
+
+    fn disconnect(&self) -> impl Future<Output = ()> + Send;
+
+    fn info(&self) -> ConnectionInfo;
+}
+
+impl<C: AsRef<tokio::sync::RwLock<MaybeChatConnection>>> BridgeChatConnection for C {
+    fn init_listener(&self, listener: Box<dyn ChatListener>) {
+        init_listener(&mut self.as_ref().blocking_write(), listener)
     }
 
-    pub async fn disconnect(&self) {
-        self.inner.disconect().await
+    fn send(
+        &self,
+        message: Request,
+        timeout: Duration,
+    ) -> impl Future<Output = Result<ChatResponse, ChatServiceError>> + Send {
+        let guard = self.as_ref().blocking_read();
+        async move {
+            let MaybeChatConnection::Running(inner) = &*guard else {
+                panic!("listener was not set")
+            };
+            inner.send(message, timeout).await
+        }
+    }
+
+    fn disconnect(&self) -> impl Future<Output = ()> + Send {
+        let guard = self.as_ref().blocking_read();
+        async move {
+            let MaybeChatConnection::Running(inner) = &*guard else {
+                panic!("listener was not set")
+            };
+            inner.disconect().await
+        }
+    }
+
+    fn info(&self) -> ConnectionInfo {
+        let guard = self.as_ref().blocking_read();
+        match &*guard {
+            MaybeChatConnection::Running(chat_connection) => chat_connection.connection_info(),
+            MaybeChatConnection::WaitingForListener(pending_chat_connection) => {
+                pending_chat_connection.connection_info()
+            }
+            MaybeChatConnection::TemporarilyEvicted => unreachable!("unobservable state"),
+        }
     }
 }
+
+fn init_listener(connection: &mut MaybeChatConnection, listener: Box<dyn ChatListener>) {
+    let pending = match std::mem::replace(connection, MaybeChatConnection::TemporarilyEvicted) {
+        MaybeChatConnection::Running(chat_connection) => {
+            *connection = MaybeChatConnection::Running(chat_connection);
+            panic!("listener already set")
+        }
+        MaybeChatConnection::WaitingForListener(pending_chat_connection) => pending_chat_connection,
+        MaybeChatConnection::TemporarilyEvicted => panic!("should be a temporary state"),
+    };
+
+    *connection = MaybeChatConnection::Running(ChatConnection::finish_connect(
+        pending,
+        listener.into_event_listener(),
+    ))
+}
+
 impl Connection for UnauthenticatedChatConnection {
     fn connection_info(&self) -> ConnectionInfo {
-        self.inner.connection_info()
+        BridgeChatConnection::info(self)
     }
 }
 
 impl Connection for AuthenticatedChatConnection {
     fn connection_info(&self) -> ConnectionInfo {
-        self.inner.connection_info()
+        BridgeChatConnection::info(self)
     }
 }
 
 async fn establish_chat_connection(
     connection_manager: &ConnectionManager,
-    listener: Option<Box<dyn ChatListener>>,
     auth: Option<chat::AuthenticatedChatHeaders>,
-) -> Result<ChatConnection, ChatServiceError> {
+) -> Result<chat::PendingChatConnection, ChatServiceError> {
     let ConnectionManager {
         env,
         dns_resolver,
@@ -335,7 +409,7 @@ async fn establish_chat_connection(
 
     let chat_connect = &env.chat_domain_config.connect;
 
-    ChatConnection::connect_with(
+    ChatConnection::start_connect_with(
         connect,
         dns_resolver,
         DirectOrProxyProvider::maybe_proxied(
@@ -351,7 +425,6 @@ async fn establish_chat_connection(
             remote_idle_timeout: remote_idle_disconnect_timeout,
             initial_request_id: 0,
         },
-        listener.map(|l| l.into_event_listener()),
         auth,
     )
     .await

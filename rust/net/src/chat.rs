@@ -16,13 +16,14 @@ use libsignal_net_infra::connection_manager::{
 };
 use libsignal_net_infra::dns::DnsResolver;
 use libsignal_net_infra::route::{
-    RouteProvider, RouteProviderExt, ThrottlingConnector, UnresolvedHttpsServiceRoute,
-    UnresolvedWebsocketServiceRoute, WebSocketRoute, WebSocketRouteFragment,
+    ComposedConnector, Connector, RouteProvider, RouteProviderExt, StatelessTransportConnector,
+    ThrottlingConnector, UnresolvedHttpsServiceRoute, UnresolvedWebsocketServiceRoute,
+    WebSocketRoute, WebSocketRouteFragment, WebSocketServiceRoute,
 };
 use libsignal_net_infra::service::{Service, ServiceConnectorWithDecorator};
 use libsignal_net_infra::timeouts::{MULTI_ROUTE_CONNECTION_TIMEOUT, ONE_ROUTE_CONNECTION_TIMEOUT};
 use libsignal_net_infra::utils::ObservableEvent;
-use libsignal_net_infra::ws::WebSocketClientConnector;
+use libsignal_net_infra::ws::{WebSocketClientConnector, WebSocketConnectError};
 use libsignal_net_infra::{
     make_ws_config, AsHttpHeader, Connection, ConnectionInfo, EndpointConnection,
     HttpRequestDecorator, IpType, TransportConnector,
@@ -526,6 +527,25 @@ impl Connection for ChatConnection {
     }
 }
 
+type ChatConnector = ComposedConnector<
+    ThrottlingConnector<crate::infra::ws::Stateless>,
+    StatelessTransportConnector,
+    WebSocketConnectError,
+>;
+type ChatWebSocketConnection = <ChatConnector as Connector<WebSocketServiceRoute, ()>>::Connection;
+
+pub struct PendingChatConnection {
+    connection: ChatWebSocketConnection,
+    ws_config: ws2::Config,
+    connection_info: ConnectionInfo,
+}
+
+impl Connection for PendingChatConnection {
+    fn connection_info(&self) -> ConnectionInfo {
+        self.connection_info.clone()
+    }
+}
+
 pub struct AuthenticatedChatHeaders {
     pub auth: Auth,
     pub receive_stories: ReceiveStories,
@@ -544,6 +564,28 @@ impl ChatConnection {
         listener: self::ws2::EventListener,
         auth: Option<AuthenticatedChatHeaders>,
     ) -> Result<Self, ChatServiceError> {
+        let pending = Self::start_connect_with(
+            connect,
+            resolver,
+            http_route_provider,
+            confirmation_header_name,
+            user_agent,
+            ws_config,
+            auth,
+        )
+        .await?;
+        Ok(Self::finish_connect(pending, listener))
+    }
+
+    pub async fn start_connect_with(
+        connect: &tokio::sync::RwLock<ConnectState>,
+        resolver: &DnsResolver,
+        http_route_provider: impl RouteProvider<Route = UnresolvedHttpsServiceRoute>,
+        confirmation_header_name: Option<HeaderName>,
+        user_agent: &UserAgent,
+        ws_config: self::ws2::Config,
+        auth: Option<AuthenticatedChatHeaders>,
+    ) -> Result<PendingChatConnection, ChatServiceError> {
         let headers = auth
             .into_iter()
             .flat_map(
@@ -587,9 +629,10 @@ impl ChatConnection {
         match result {
             Ok(ws_connection) => Ok({
                 let connection_info = ws_connection.connection_info();
-                Self {
-                    inner: self::ws2::Chat::new(ws_connection, ws_config, listener),
+                PendingChatConnection {
+                    connection: ws_connection,
                     connection_info,
+                    ws_config,
                 }
             }),
             Err(e) => {
@@ -604,6 +647,18 @@ impl ChatConnection {
                     ConnectError::FatalConnect(err) => err,
                 })
             }
+        }
+    }
+
+    pub fn finish_connect(pending: PendingChatConnection, listener: ws2::EventListener) -> Self {
+        let PendingChatConnection {
+            connection,
+            connection_info,
+            ws_config,
+        } = pending;
+        Self {
+            inner: crate::chat::ws2::Chat::new(connection, ws_config, listener),
+            connection_info,
         }
     }
 

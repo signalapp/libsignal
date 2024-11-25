@@ -9,7 +9,6 @@ use std::future::Future;
 use std::io::ErrorKind as IoErrorKind;
 use std::panic::AssertUnwindSafe;
 use std::pin::Pin;
-use std::sync::{Arc, Mutex};
 
 use futures_util::{pin_mut, Sink, Stream, StreamExt as _};
 use http::uri::PathAndQuery;
@@ -48,9 +47,6 @@ pub struct Chat {
     /// points. If it were a regular [`Mutex`] the futures produced by methods
     /// on `Chat` would not be `Send`.
     state: TokioMutex<TaskState>,
-
-    /// The listener that will receive events from the task.
-    incoming_event_listener: Arc<Mutex<ListenerState>>,
 }
 
 /// Instantiation-time configuration for a [`Chat`] instance.
@@ -144,7 +140,7 @@ pub struct Responder {
     tx: mpsc::WeakUnboundedSender<OutgoingResponse>,
 }
 
-pub type EventListener = Option<Box<dyn FnMut(ListenerEvent) + Send>>;
+pub type EventListener = Box<dyn FnMut(ListenerEvent) + Send>;
 
 impl Chat {
     pub fn new<T>(transport: T, config: Config, listener: EventListener) -> Self
@@ -179,10 +175,7 @@ impl Chat {
     /// If the request can't be sent or the response isn't received, this
     /// returns an error.
     pub async fn send(&self, request: Request) -> Result<Response, SendError> {
-        let Self {
-            state,
-            incoming_event_listener: _,
-        } = self;
+        let Self { state } = self;
 
         let Request {
             method,
@@ -235,23 +228,6 @@ impl Chat {
             state @ (TaskState::SignaledToEnd(_) | TaskState::Finished(_)) => state,
         };
         *guard = new_state
-    }
-
-    /// Sets the handler that will receive [`ListenerEvent`]s from the server.
-    ///
-    /// To remove an existing listener, provide a value of `None`.
-    pub fn set_listener(&self, listener: EventListener) {
-        let mut guard = self.incoming_event_listener.lock().expect("not poisoned");
-
-        *guard = match &mut *guard {
-            ListenerState::NotRunning(_) => ListenerState::NotRunning(listener),
-            ListenerState::Running => ListenerState::ReplacedWhileRunning(listener),
-            ListenerState::ReplacedWhileRunning(_) => {
-                // No reason the listener can't replace itself twice during the
-                // same run.
-                ListenerState::ReplacedWhileRunning(listener)
-            }
-        };
     }
 
     /// Returns `true` if the websocket is known to be connected.
@@ -323,11 +299,10 @@ impl Chat {
             inner: inner_connection,
             requests_in_flight,
         };
-        let incoming_event_listener = Arc::new(Mutex::new(ListenerState::NotRunning(listener)));
 
         let task = tokio::spawn(spawned_task_body(
             connection,
-            Arc::clone(&incoming_event_listener),
+            listener,
             response_tx.downgrade(),
         ));
         let state = TaskState::MaybeStillRunning {
@@ -338,7 +313,6 @@ impl Chat {
 
         Self {
             state: TokioMutex::new(state),
-            incoming_event_listener,
         }
     }
 }
@@ -523,36 +497,25 @@ enum OutgoingMeta {
 }
 
 /// State for a registered [`EventListener`]
-enum ListenerState {
-    NotRunning(EventListener),
-    Running,
-    ReplacedWhileRunning(EventListener),
+struct ListenerState {
+    // only `None` when the listener is being run.
+    listener: Option<EventListener>,
 }
 
 impl ListenerState {
-    async fn send_event(
-        listener: &Mutex<ListenerState>,
-        tokio_rt: &tokio::runtime::Handle,
-        make_event: impl FnOnce() -> ListenerEvent,
-    ) {
-        let mut taken_listener = {
-            let mut guard = listener.lock().expect("not poisoned");
-            match std::mem::replace(&mut *guard, ListenerState::Running) {
-                ListenerState::NotRunning(None) => {
-                    *guard = ListenerState::NotRunning(None);
-                    return;
-                }
-                ListenerState::NotRunning(Some(listener)) => listener,
-                ListenerState::Running | ListenerState::ReplacedWhileRunning(_) => {
-                    unreachable!("the listener can't already be running")
-                }
-            }
-        };
+    fn new(listener: EventListener) -> Self {
+        Self {
+            listener: Some(listener),
+        }
+    }
+}
+
+impl ListenerState {
+    async fn send_event(&mut self, tokio_rt: &tokio::runtime::Handle, event: ListenerEvent) {
+        let mut taken_listener = self.listener.take().expect("not running");
+
         // This callback might take a while, so execute it without blocking the
-        // Tokio runtime or holding the lock.
-
-        let event = make_event();
-
+        // Tokio runtime.
         let returned_listener = match tokio_rt
             .spawn_blocking(move || {
                 taken_listener(event);
@@ -560,50 +523,18 @@ impl ListenerState {
             })
             .await
         {
-            Ok(listener) => Some(listener),
+            Ok(listener) => listener,
             Err(_join_error) => {
                 log::error!("listener panicked on event; removing it");
-                None
+                Box::new(|_| ())
             }
         };
 
-        // It's possible that a new listener was set while the current one was
-        // executing (maybe even by the listener itself). Don't overwrite it if so!
-        let mut guard = listener.lock().expect("not poisoned");
-        match &mut *guard {
-            ListenerState::NotRunning(_) => unreachable!("listener was running"),
-            ListenerState::Running => *guard = ListenerState::NotRunning(returned_listener),
-            ListenerState::ReplacedWhileRunning(new_listener) => {
-                // Keep the new listener, not the one that just ran.
-                *guard = ListenerState::NotRunning(new_listener.take())
-            }
-        }
+        self.listener = Some(returned_listener);
     }
 
-    fn send_event_blocking(
-        listener: Arc<Mutex<ListenerState>>,
-        make_event: impl FnOnce() -> ListenerEvent,
-    ) {
-        let mut guard = listener.lock().expect("not poisoned");
-        let taken_listener = match std::mem::replace(&mut *guard, ListenerState::Running) {
-            ListenerState::NotRunning(None) => {
-                *guard = ListenerState::NotRunning(None);
-                return;
-            }
-            ListenerState::NotRunning(Some(listener)) => listener,
-            unexpected_state
-            @ (ListenerState::Running | ListenerState::ReplacedWhileRunning(_)) => {
-                // This shouldn't happen; if it does it probably means the
-                // listener has panicked. There's nothing more we can do here
-                // other than not crash.
-                log::error!("chat task listener was found in an invalid state");
-                *guard = unexpected_state;
-                return;
-            }
-        };
-        // This callback might take a while, so execute it without blocking the
-        // Tokio runtime or holding the lock.
-        drop(guard);
+    fn send_event_blocking(&mut self, event: ListenerEvent) {
+        let taken_listener = self.listener.take().expect("not running");
 
         // If there's a panic in the listener, the event and listener won't
         // escape, and so won't be used again on this thread. That means that
@@ -611,7 +542,7 @@ impl ListenerState {
         // those won't be visible outside the `catch_unwind` call. This is
         // notionally equivalent to using `std::thread::spawn` and then joining
         // on the created thread, but without the overhead.
-        let unwind_safe = AssertUnwindSafe((make_event(), taken_listener));
+        let unwind_safe = AssertUnwindSafe((event, taken_listener));
 
         let returned_listener = match std::panic::catch_unwind(move || {
             let _ = &unwind_safe; // Force the compiler to move the entire value into the closure.
@@ -619,24 +550,14 @@ impl ListenerState {
             (*taken_listener)(event);
             taken_listener
         }) {
-            Ok(listener) => Some(listener),
-            Err(_panic) => {
+            Ok(listener) => listener,
+            Err(_join_error) => {
                 log::error!("listener panicked on event; removing it");
-                None
+                Box::new(|_| ())
             }
         };
 
-        // It's possible that a new listener was set while the current one was
-        // executing (maybe even by the listener itself). Don't overwrite it if so!
-        let mut guard = listener.lock().expect("not poisoned");
-        match &mut *guard {
-            ListenerState::NotRunning(_) => unreachable!("listener was running"),
-            ListenerState::Running => *guard = ListenerState::NotRunning(returned_listener),
-            ListenerState::ReplacedWhileRunning(new_listener) => {
-                // Keep the new listener, not the one that just ran.
-                *guard = ListenerState::NotRunning(new_listener.take())
-            }
-        }
+        self.listener = Some(returned_listener);
     }
 }
 
@@ -646,19 +567,18 @@ impl ListenerState {
 /// [`Outcome::Finished`].
 async fn spawned_task_body<I: InnerConnection>(
     connection: ConnectionImpl<I>,
-    listener: Arc<Mutex<ListenerState>>,
+    listener: EventListener,
     weak_response_tx: mpsc::WeakUnboundedSender<OutgoingResponse>,
 ) -> Result<FinishReason, TaskErrorState> {
     pin_mut!(connection);
     let tokio_rt = tokio::runtime::Handle::current();
+    let listener_state = ListenerState::new(listener);
 
     // In case the task panics, make sure the callback at least knows about the
     // disconnection.
-    let listener = scopeguard::guard_on_unwind(listener, |listener| {
+    let mut listener_state = scopeguard::guard_on_unwind(listener_state, |mut listener_state| {
         log::error!("chat handler task exited abnormally");
-        ListenerState::send_event_blocking(listener, || {
-            ListenerEvent::Finished(Err(FinishError::Unknown))
-        });
+        listener_state.send_event_blocking(ListenerEvent::Finished(Err(FinishError::Unknown)));
     });
     let result = loop {
         let (id, incoming_request) = match connection.as_mut().handle_one_event().await {
@@ -670,26 +590,27 @@ async fn spawned_task_body<I: InnerConnection>(
         };
 
         log::debug!("received incoming request from server: {id}");
-        ListenerState::send_event(&listener, &tokio_rt, || {
-            ListenerEvent::ReceivedMessage(
-                incoming_request,
-                Responder {
-                    id,
-                    tx: weak_response_tx.clone(),
-                },
-            )
-        })
-        .await;
+
+        let event = ListenerEvent::ReceivedMessage(
+            incoming_request,
+            Responder {
+                id,
+                tx: weak_response_tx.clone(),
+            },
+        );
+        listener_state.send_event(&tokio_rt, event).await;
     };
     let task_result = result.as_ref().map_err(Into::into).copied();
 
     // The loop is finishing. Make sure to tell the listener after disarming the
     // scope guard.
-    let listener = scopeguard::ScopeGuard::into_inner(listener);
-    ListenerState::send_event(&listener, &tokio_rt, move || {
-        ListenerEvent::Finished(result.map_err(FinishError::Error))
-    })
-    .await;
+    let mut listener = scopeguard::ScopeGuard::into_inner(listener_state);
+    listener
+        .send_event(
+            &tokio_rt,
+            ListenerEvent::Finished(result.map_err(FinishError::Error)),
+        )
+        .await;
 
     task_result
 }
@@ -1264,12 +1185,18 @@ mod test {
             pub initial_request_id: u64,
         }
 
-        pub(super) fn new_chat() -> (Chat, FakeTxRxChannels) {
-            new_chat_with_config(FakeConfig {
-                initial_request_id: INITIAL_REQUEST_ID,
-            })
+        pub(super) fn new_chat(listener: EventListener) -> (Chat, FakeTxRxChannels) {
+            new_chat_with_config(
+                FakeConfig {
+                    initial_request_id: INITIAL_REQUEST_ID,
+                },
+                listener,
+            )
         }
-        pub(super) fn new_chat_with_config(config: FakeConfig) -> (Chat, FakeTxRxChannels) {
+        pub(super) fn new_chat_with_config(
+            config: FakeConfig,
+            listener: EventListener,
+        ) -> (Chat, FakeTxRxChannels) {
             let FakeConfig { initial_request_id } = config;
             let (outgoing_events_tx, outgoing_events_rx) = mpsc::unbounded_channel();
             let (incoming_events_tx, incoming_events_rx) = mpsc::unbounded_channel();
@@ -1279,7 +1206,7 @@ mod test {
                     incoming_events: incoming_events_rx,
                 },
                 initial_request_id,
-                None,
+                listener,
             );
 
             (chat, (outgoing_events_rx, incoming_events_tx))
@@ -1386,15 +1313,15 @@ mod test {
 
     impl IntoEventListener for mpsc::UnboundedSender<ListenerEvent> {
         fn into_event_listener(self) -> EventListener {
-            Some(Box::new(move |event| {
+            Box::new(move |event| {
                 let _ignore_failure = self.send(event);
-            }))
+            })
         }
     }
 
     #[test_log::test(tokio::test(start_paused = true))]
     async fn sends_requests_and_receives_responses() {
-        let (chat, (mut chat_events, inner_responses)) = fake::new_chat();
+        let (chat, (mut chat_events, inner_responses)) = fake::new_chat(Box::new(|_| ()));
         assert!(chat.is_connected().await);
 
         const REQUEST_PATHS: [&str; 3] = ["/first", "/second", "/third"];
@@ -1502,10 +1429,10 @@ mod test {
     async fn receives_incoming_server_requests_and_responds() {
         const INITIAL_INCOMING_REQUEST_ID: u64 = 88;
 
-        let (chat, (mut inner_events, inner_responses)) = fake::new_chat();
-
         let (received_events_tx, mut received_events_rx) = mpsc::unbounded_channel();
-        chat.set_listener(received_events_tx.into_event_listener());
+
+        let (_chat, (mut inner_events, inner_responses)) =
+            fake::new_chat(received_events_tx.into_event_listener());
 
         const INCOMING_REQUEST_PATHS: [&str; 3] = ["/first", "/second", "/third"];
 
@@ -1617,10 +1544,9 @@ mod test {
     #[test_case(false; "client called disconnect")]
     #[test_log::test(tokio::test(start_paused = true))]
     async fn send_error_if_server_disconnected_before_response(remote_initiated: bool) {
-        let (chat, (mut inner_events, inner_responses)) = fake::new_chat();
-
         let (received_events_tx, mut received_events_rx) = mpsc::unbounded_channel();
-        chat.set_listener(received_events_tx.into_event_listener());
+        let (chat, (mut inner_events, inner_responses)) =
+            fake::new_chat(received_events_tx.into_event_listener());
 
         inner_responses
             .send(
@@ -1674,7 +1600,7 @@ mod test {
 
     #[test_log::test(tokio::test(start_paused = true))]
     async fn disconnects_server_on_client_disconnect() {
-        let (chat, (mut inner_events, _inner_responses)) = fake::new_chat();
+        let (chat, (mut inner_events, _inner_responses)) = fake::new_chat(Box::new(|_| ()));
 
         chat.disconnect().await;
         assert!(!chat.is_connected().await);
@@ -1696,7 +1622,7 @@ mod test {
 
     #[test_log::test(tokio::test(start_paused = true))]
     async fn client_disconnect_twice() {
-        let (chat, (_inner_events, _inner_responses)) = fake::new_chat();
+        let (chat, (_inner_events, _inner_responses)) = fake::new_chat(Box::new(|_| ()));
 
         chat.disconnect().await;
         chat.disconnect().await;
@@ -1706,7 +1632,15 @@ mod test {
     #[test_case(false; "response to incoming request")]
     #[test_log::test(tokio::test(start_paused = true))]
     async fn send_failure_causes_disconnect(outgoing_request_fails: bool) {
-        let (chat, (mut chat_events, inner_responses)) = fake::new_chat();
+        let (received_events_tx, mut received_events_rx) = mpsc::unbounded_channel();
+        let listener = if outgoing_request_fails {
+            Box::new(|_| ()) as EventListener
+        } else {
+            Box::new(move |event| {
+                let _ignore_send_failure = received_events_tx.send(event);
+            })
+        };
+        let (chat, (mut chat_events, inner_responses)) = fake::new_chat(listener);
 
         let mut send_future = if outgoing_request_fails {
             let send = chat.send(Request {
@@ -1718,12 +1652,6 @@ mod test {
             Some(send)
         } else {
             // Send an incoming request and send a response to it.
-            let (received_events_tx, mut received_events_rx) = mpsc::unbounded_channel();
-            chat.set_listener({
-                Some(Box::new(move |event| {
-                    let _ignore_send_failure = received_events_tx.send(event);
-                }))
-            });
 
             inner_responses
                 .send(
@@ -1783,11 +1711,10 @@ mod test {
 
     #[test_log::test(tokio::test(start_paused = true))]
     async fn sends_listener_close_on_remote_disconnect() {
-        let (chat, (_inner_events, inner_responses)) = fake::new_chat();
-
         let (received_events_tx, mut received_events_rx) = mpsc::unbounded_channel();
 
-        chat.set_listener(received_events_tx.into_event_listener());
+        let (_chat, (_inner_events, inner_responses)) =
+            fake::new_chat(received_events_tx.into_event_listener());
 
         inner_responses
             .send(Outcome::Finished(Ok(FinishReason::RemoteDisconnect)).into())
@@ -1800,14 +1727,22 @@ mod test {
 
     #[test_log::test(tokio::test(start_paused = true))]
     async fn is_not_connected_after_remote_close() {
-        let (chat, (_inner_events, inner_responses)) = fake::new_chat();
+        let (received_close_tx, mut received_close_rx) = mpsc::unbounded_channel();
+        let (chat, (_inner_events, inner_responses)) = fake::new_chat(Box::new(move |e| {
+            if let ListenerEvent::Finished(_) = e {
+                let _ignore_error = received_close_tx.send(());
+            }
+        }));
 
         inner_responses
             .send(Outcome::Finished(Ok(FinishReason::RemoteDisconnect)).into())
             .expect("can send");
 
-        // Let the other task run so the response can be propagated to the task.
-        tokio::task::yield_now().await;
+        received_close_rx.recv().await;
+        // Wait for some amount of simulated time to elapse. Since the Chat's
+        // background task isn't just waiting for time to elapse it will
+        // receive the incoming message and terminate the connection.
+        tokio::time::sleep(Duration::from_millis(1)).await;
 
         assert!(!chat.is_connected().await);
     }
@@ -1824,11 +1759,10 @@ mod test {
                 }; "invalid request")]
     #[test_log::test(tokio::test(start_paused = true))]
     async fn continues_on_invalid_incoming_message(incoming: MessageProto) {
-        let (chat, (_inner_events, inner_responses)) = fake::new_chat();
-
         let (received_events_tx, mut received_events_rx) = mpsc::unbounded_channel();
 
-        chat.set_listener(received_events_tx.into_event_listener());
+        let (_chat, (_inner_events, inner_responses)) =
+            fake::new_chat(received_events_tx.into_event_listener());
 
         // Send 2 incoming requests. Since they are processed in order, if the
         // second one comes in we know the first one didn't cause the worker to
@@ -1863,10 +1797,12 @@ mod test {
 
     #[test_log::test(tokio::test(start_paused = true))]
     async fn request_id_wraps_around() {
-        let (chat, (mut inner_events, inner_responses)) =
-            fake::new_chat_with_config(fake::FakeConfig {
+        let (chat, (mut inner_events, inner_responses)) = fake::new_chat_with_config(
+            fake::FakeConfig {
                 initial_request_id: u64::MAX,
-            });
+            },
+            Box::new(|_| ()),
+        );
 
         let mut send_requests = FuturesUnordered::from_iter(["/a", "/b"].map(|path| {
             chat.send(Request {
@@ -1916,92 +1852,15 @@ mod test {
     }
 
     #[test_log::test(tokio::test(start_paused = true))]
-    async fn can_set_listener_inside_listener() {
-        let (chat, (_inner_events, inner_responses)) = fake::new_chat();
-        // Allow sharing the `Chat` with the listener which needs to be 'static.
-        let chat = Arc::new(chat);
-
-        let (received_events_tx, mut received_events_rx) = mpsc::unbounded_channel();
-
-        let listener = {
-            let chat = Arc::clone(&chat);
-            move |event| {
-                // Send the event and set the second listener.
-                let _ignore_send_failure = received_events_tx.send(("from first listener", event));
-                let second_listener = {
-                    let chat = Arc::clone(&chat);
-                    let tx = received_events_tx.clone();
-                    move |event| {
-                        // Send the event and remove the listener.
-                        let _ignore_send_failure = tx.send(("from second listener", event));
-                        chat.set_listener(None);
-                    }
-                };
-                chat.set_listener(Some(Box::new(second_listener)));
-            }
-        };
-
-        chat.set_listener(Some(Box::new(listener)));
-
-        const INCOMING_REQUEST_PATHS: [&str; 3] = ["/first", "/second", "/third"];
-
-        let incoming_requests = INCOMING_REQUEST_PATHS
-            .iter()
-            .enumerate()
-            .map(|(index, path)| RequestProto {
-                id: Some(index as u64),
-                verb: Some(Method::GET.to_string()),
-                path: Some(path.to_string()),
-                headers: vec!["req-header: value".to_string()],
-                body: None,
-            })
-            .collect_vec();
-
-        for request in &incoming_requests {
-            inner_responses
-                .send(
-                    Outcome::Continue(MessageEvent::ReceivedMessage(TextOrBinary::Binary(
-                        MessageProto {
-                            r#type: Some(ChatMessageType::Request.into()),
-                            request: Some(request.clone()),
-                            response: None,
-                        }
-                        .encode_to_vec(),
-                    )))
-                    .into(),
-                )
-                .expect("can send requests from server");
-        }
-
-        // Because the task running in the background is continuing to run, it
-        // should send events to the listener for the incoming requests and the
-        // listener will bounce those to the channel.
-        assert_matches!(
-            received_events_rx.recv().await,
-            Some(("from first listener", ListenerEvent::ReceivedMessage(_, _)))
-        );
-        assert_matches!(
-            received_events_rx.recv().await,
-            Some(("from second listener", ListenerEvent::ReceivedMessage(_, _)))
-        );
-        assert_matches!(
-            received_events_rx.recv().await,
-            None,
-            "second listener didn't clear the listener"
-        );
-    }
-
-    #[test_log::test(tokio::test(start_paused = true))]
     async fn listener_panic_on_receive_incoming() {
-        let (chat, (_inner_events, inner_responses)) = fake::new_chat();
         let (listener_tx, mut listener_rx) = mpsc::unbounded_channel();
 
-        chat.set_listener(Some(Box::new(move |event| {
+        let (_chat, (_inner_events, inner_responses)) = fake::new_chat(Box::new(move |event| {
             listener_tx.send(()).expect("listener exists");
             if let ListenerEvent::ReceivedMessage(req, _responder) = event {
                 panic!("expected panic on receiving {req:?}");
             }
-        })));
+        }));
 
         inner_responses
             .send(
@@ -2023,10 +1882,9 @@ mod test {
 
     #[test_log::test(tokio::test(start_paused = true))]
     async fn listener_panic_during_task_panic_doesnt_abort() {
-        let (chat, (_inner_events, inner_responses)) = fake::new_chat();
         let (listener_tx, mut listener_rx) = mpsc::unbounded_channel();
 
-        chat.set_listener(Some(Box::new(move |event| {
+        let (_chat, (_inner_events, inner_responses)) = fake::new_chat(Box::new(move |event| {
             listener_tx
                 .send(matches!(
                     event,
@@ -2034,7 +1892,7 @@ mod test {
                 ))
                 .expect("can send");
             panic!("expected panic on receiving {event:?}");
-        })));
+        }));
 
         inner_responses
             .send(fake::OutcomeOrPanic::IntentionalPanic("oh noes!"))

@@ -104,9 +104,16 @@ fn ChatService_new_auth(
 #[bridge_io(TokioAsyncContext, ffi = false, jni = false)]
 async fn UnauthenticatedChatConnection_connect(
     connection_manager: &ConnectionManager,
-    listener: Option<Box<dyn ChatListener>>,
 ) -> Result<UnauthenticatedChatConnection, ChatServiceError> {
-    UnauthenticatedChatConnection::connect(connection_manager, listener).await
+    UnauthenticatedChatConnection::connect(connection_manager).await
+}
+
+#[bridge_fn(ffi = false, jni = false)]
+fn UnauthenticatedChatConnection_init_listener(
+    chat: &UnauthenticatedChatConnection,
+    listener: Box<dyn ChatListener>,
+) {
+    chat.init_listener(listener)
 }
 
 #[bridge_io(TokioAsyncContext, ffi = false, jni = false)]
@@ -142,15 +149,21 @@ async fn AuthenticatedChatConnection_connect(
     username: String,
     password: String,
     receive_stories: bool,
-    listener: Option<Box<dyn ChatListener>>,
 ) -> Result<AuthenticatedChatConnection, ChatServiceError> {
     AuthenticatedChatConnection::connect(
         connection_manager,
-        listener,
         Auth { username, password },
         receive_stories,
     )
     .await
+}
+
+#[bridge_fn(ffi = false, jni = false)]
+fn AuthenticatedChatConnection_init_listener(
+    chat: &AuthenticatedChatConnection,
+    listener: Box<dyn ChatListener>,
+) {
+    chat.init_listener(listener)
 }
 
 #[bridge_io(TokioAsyncContext, ffi = false, jni = false)]
