@@ -143,6 +143,7 @@ impl PathPart {
 }
 
 /// Visitor for unknown fields on a [`protobuf::Message`].
+#[cfg_attr(feature = "test-util", visibility::make(pub))]
 pub(crate) trait VisitUnknownFields {
     /// Calls the visitor for each unknown field in the message.
     fn visit_unknown_fields<F: UnknownFieldVisitor>(&self, visitor: F);
@@ -159,6 +160,7 @@ impl<M: visit_static::VisitUnknownFields> VisitUnknownFields for M {
 }
 
 /// Extension trait for [`VisitUnknownFields`] with convenience methods.
+#[cfg_attr(feature = "test-util", visibility::make(pub))]
 pub(crate) trait VisitUnknownFieldsExt {
     #[allow(dead_code)]
     fn has_unknown_fields(&self) -> bool;
