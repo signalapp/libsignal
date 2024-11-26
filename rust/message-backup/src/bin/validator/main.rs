@@ -4,26 +4,25 @@
 //
 
 use std::io::Read as _;
-use std::str::FromStr as _;
 
-use clap::{Args, Parser};
+use clap::Parser;
 use futures::io::AllowStdIo;
 use futures::AsyncRead;
-use libsignal_account_keys::{AccountEntropyPool, BackupKey};
-use libsignal_core::Aci;
-use libsignal_message_backup::args::{parse_aci, parse_hex_bytes};
 use libsignal_message_backup::backup::Purpose;
 use libsignal_message_backup::frame::{
     CursorFactory, FileReaderFactory, FramesReader, ReaderFactory, UnvalidatedHmacReader,
     VerifyHmac,
 };
-use libsignal_message_backup::key::MessageBackupKey;
 use libsignal_message_backup::{BackupReader, Error, FoundUnknownField, ReadResult};
 use mediasan_common::SeekSkipAdapter;
 
 use crate::args::ParseVerbosity;
 
 mod args;
+
+#[path = "../support/mod.rs"]
+mod support;
+use support::KeyArgs;
 
 /// Validates, and optionally prints the contents of, message backup files.
 ///
@@ -49,38 +48,8 @@ struct Cli {
     #[arg(long, default_value_t=Purpose::RemoteBackup)]
     purpose: Purpose,
 
-    // TODO once https://github.com/clap-rs/clap/issues/5092 is resolved, make
-    // `derive_key` and `key_parts` Optional at the top level.
     #[command(flatten)]
-    derive_key: DeriveKey,
-
-    #[command(flatten)]
-    key_parts: KeyParts,
-}
-
-#[derive(Debug, Args, PartialEq)]
-#[group(conflicts_with = "KeyParts")]
-struct DeriveKey {
-    /// account entropy pool, used with the ACI to derive the message backup key
-    #[arg(long, conflicts_with = "master_key", requires = "aci")]
-    account_entropy: Option<String>,
-    /// master key used (with the ACI) to derive the backup keys (deprecated)
-    #[arg(long, conflicts_with = "account_entropy", value_parser=parse_hex_bytes::<32>)]
-    master_key: Option<[u8; BackupKey::MASTER_KEY_LEN]>,
-    /// ACI for the backup creator
-    #[arg(long, value_parser=parse_aci)]
-    aci: Option<Aci>,
-}
-
-#[derive(Debug, Args, PartialEq)]
-#[group(conflicts_with = "DeriveKey")]
-struct KeyParts {
-    /// HMAC key, used if the account entropy pool is not provided
-    #[arg(long, value_parser=parse_hex_bytes::<32>, requires_all=["aes_key"])]
-    hmac_key: Option<[u8; MessageBackupKey::HMAC_KEY_LEN]>,
-    /// AES encryption key, used if the account entropy pool is not provided
-    #[arg(long, value_parser=parse_hex_bytes::<32>, requires_all=["hmac_key"])]
-    aes_key: Option<[u8; MessageBackupKey::AES_KEY_LEN]>,
+    key_args: KeyArgs,
 }
 
 fn main() {
@@ -90,11 +59,7 @@ fn main() {
 async fn async_main() {
     let Cli {
         file: file_or_stdin,
-
-        derive_key,
-
-        key_parts,
-
+        key_args,
         purpose,
         print,
         verbose,
@@ -105,43 +70,7 @@ async fn async_main() {
 
     let verbosity = verbose.into();
 
-    let derive_key = {
-        let DeriveKey {
-            account_entropy,
-            master_key,
-            aci,
-        } = derive_key;
-        aci.map(|aci| (aci, account_entropy, master_key))
-    };
-    let key_parts = {
-        let KeyParts { hmac_key, aes_key } = key_parts;
-        hmac_key.zip(aes_key)
-    };
-
-    let key = {
-        match (derive_key, key_parts) {
-            (None, None) => None,
-            (None, Some((hmac_key, aes_key))) => Some(MessageBackupKey { aes_key, hmac_key }),
-            (Some((_aci, None, None)), None) => {
-                panic!("ACI provided, but no account-entropy or master-key")
-            }
-            (Some((aci, None, Some(master_key))), None) => Some({
-                #[allow(deprecated)]
-                let backup_key = BackupKey::derive_from_master_key(&master_key);
-                let backup_id = backup_key.derive_backup_id(&aci);
-                MessageBackupKey::derive(&backup_key, &backup_id)
-            }),
-            (Some((aci, Some(account_entropy), None)), None) => Some({
-                let account_entropy =
-                    AccountEntropyPool::from_str(&account_entropy).expect("valid account-entropy");
-                let backup_key = BackupKey::derive_from_account_entropy_pool(&account_entropy);
-                let backup_id = backup_key.derive_backup_id(&aci);
-                MessageBackupKey::derive(&backup_key, &backup_id)
-            }),
-            (Some((_aci, Some(_), Some(_))), None) => unreachable!("disallowed by clap arg parser"),
-            (Some(_), Some(_)) => unreachable!("disallowed by clap arg parser"),
-        }
-    };
+    let key = key_args.into_key();
 
     let contents = FilenameOrContents::from(file_or_stdin);
     let mut factory = AsyncReaderFactory::from(&contents);
@@ -279,6 +208,8 @@ fn print_unknown_fields(found_unknown_fields: Vec<FoundUnknownField>) {
 mod test {
     use assert_matches::assert_matches;
     use clap_stdin::FileOrStdin;
+    use libsignal_core::Aci;
+    use support::{DeriveKey, KeyParts};
     use test_case::test_case;
 
     use super::*;
@@ -306,8 +237,10 @@ mod test {
             verbose: 0,
             print: false,
             purpose: Purpose::RemoteBackup,
-            derive_key: DeriveKey { account_entropy: None, master_key: None, aci: None },
-            key_parts: KeyParts { hmac_key: None, aes_key: None },
+            key_args: KeyArgs {
+                derive_key: DeriveKey { account_entropy: None, master_key: None, aci: None },
+                key_parts: KeyParts { hmac_key: None, aes_key: None }
+            },
         }) =>  file_source);
         assert_eq!(file_source, "filename");
     }
@@ -332,8 +265,10 @@ mod test {
             verbose: 0,
             print: false,
             purpose: Purpose::RemoteBackup,
-            derive_key,
-            key_parts: KeyParts { hmac_key: None, aes_key: None },
+            key_args: KeyArgs {
+                derive_key,
+                key_parts: KeyParts { hmac_key: None, aes_key: None }
+            },
         }) => (file_source, derive_key));
         assert_eq!(file_source, "filename");
         assert_eq!(
@@ -366,8 +301,10 @@ mod test {
             verbose: 0,
             print: false,
             purpose: Purpose::RemoteBackup,
-            derive_key,
-            key_parts: KeyParts { hmac_key: None, aes_key: None },
+            key_args: KeyArgs {
+                derive_key,
+                key_parts: KeyParts { hmac_key: None, aes_key: None }
+            },
         }) => (file_source, derive_key));
         assert_eq!(file_source, "filename");
         assert_eq!(
@@ -400,8 +337,10 @@ mod test {
             verbose: 0,
             print: false,
             purpose: Purpose::RemoteBackup,
-            derive_key: DeriveKey { account_entropy: None, master_key: None, aci: None},
-            key_parts,
+            key_args: KeyArgs {
+                derive_key: DeriveKey { account_entropy: None, master_key: None, aci: None},
+                key_parts,
+            }
         }) => (file_source, key_parts));
         assert_eq!(file_source, "filename");
         assert_eq!(
