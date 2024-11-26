@@ -266,7 +266,8 @@ where
                     }
                 };
 
-                let these_unknown_fields = backup.parse_and_add_frame(&frame, &mut visitor)?;
+                let these_unknown_fields =
+                    backup.parse_and_add_frame(&frame, |frame| visitor(frame))?;
                 add_found_unknown(&mut unknown_fields, these_unknown_fields, frame_index);
                 frame_index += 1;
             }
@@ -313,7 +314,7 @@ impl<M: backup::method::Method + backup::ReferencedTypes> backup::PartialBackup<
     pub fn by_parsing(
         raw_backup_info: &[u8],
         purpose: Purpose,
-        mut visitor: impl FnMut(&dyn std::fmt::Debug) + Send,
+        mut visitor: impl FnMut(&proto::backup::BackupInfo) + Send,
     ) -> Result<Self, crate::Error> {
         let backup_info_proto = proto::backup::BackupInfo::parse_from_bytes(raw_backup_info)?;
         visitor(&backup_info_proto);
@@ -335,7 +336,7 @@ impl<M: backup::method::Method + backup::ReferencedTypes> backup::PartialBackup<
     pub fn parse_and_add_frame(
         &mut self,
         raw_frame: &[u8],
-        mut visitor: impl FnMut(&dyn std::fmt::Debug) + Send,
+        mut visitor: impl FnMut(&proto::backup::Frame) + Send,
     ) -> Result<Vec<(Vec<PathPart>, UnknownValue)>, crate::Error> {
         // Using `merge_from_bytes` instead of `parse_from_bytes` avoids having to unpack the Ok
         // case of the Result. (This is guaranteed equivalent by protobuf.)
