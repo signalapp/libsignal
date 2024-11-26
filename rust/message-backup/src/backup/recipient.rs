@@ -26,6 +26,8 @@ use crate::proto::backup::recipient::Destination as RecipientDestination;
 pub(crate) mod group;
 use group::*;
 
+pub(crate) const MY_STORY_UUID: Uuid = Uuid::nil();
+
 #[derive(Debug, thiserror::Error, displaydoc::Display)]
 #[cfg_attr(test, derive(PartialEq))]
 pub enum RecipientError {
@@ -453,8 +455,6 @@ impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R> + ReportUnusualTim
             item,
             special_fields: _,
         } = value;
-
-        const MY_STORY_UUID: Uuid = Uuid::nil();
 
         let distribution_id = Uuid::from_bytes(
             distributionId

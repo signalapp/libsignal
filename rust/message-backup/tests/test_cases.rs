@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use assert_cmd::Command;
 use assert_matches::assert_matches;
@@ -74,7 +74,39 @@ fn serialized_account_settings_is_valid() {
         .expect("valid backup");
     let canonical_repr =
         libsignal_message_backup::backup::serialize::Backup::from(result).to_string_pretty();
-    pretty_assertions::assert_str_eq!(canonical_repr, expected_canonical_str)
+    pretty_assertions::assert_str_eq!(expected_canonical_str, canonical_repr)
+}
+
+#[test]
+fn scrambler_smoke_test() {
+    // Scrambling is deterministic, so we can check against expected output.
+    let binproto = include_bytes!("res/canonical-backup.binproto");
+    let scrambled_binproto = Command::cargo_bin("examples/scramble")
+        .expect("bin exists")
+        .arg("-")
+        .write_stdin(binproto)
+        .ok()
+        .expect("valid binproto")
+        .stdout;
+
+    let input = Cursor::new(scrambled_binproto);
+    let reader = BackupReader::new_unencrypted(input, BACKUP_PURPOSE);
+    let result = futures::executor::block_on(reader.read_all())
+        .result
+        .expect("valid backup");
+    let canonical_repr =
+        libsignal_message_backup::backup::serialize::Backup::from(result).to_string_pretty();
+
+    if write_expected_output() {
+        let path = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("tests/res/canonical-backup.scrambled.expected.json");
+        eprintln!("writing expected contents to {:?}", path);
+        std::fs::write(path, canonical_repr).expect("failed to overwrite expected contents");
+        return;
+    }
+
+    let expected_canonical_str = include_str!("res/canonical-backup.scrambled.expected.json");
+    pretty_assertions::assert_str_eq!(expected_canonical_str, canonical_repr)
 }
 
 const ENCRYPTED_SOURCE_SUFFIX: &str = ".source.jsonproto";

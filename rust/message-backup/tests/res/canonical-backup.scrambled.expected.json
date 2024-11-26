@@ -1,0 +1,77 @@
+{
+  "meta": {
+    "version": 1,
+    "media_root_backup_key": "7f6f2ccdb23f2abb7b69278e947c01c6160a31cf02c19d06d0f6e5ab1d768b95",
+    "purpose": "RemoteBackup"
+  },
+  "account_data": {
+    "profile_key": "117be1de549d1d4322c4711f11efa0c5137903124f85fc37c761ffc91ace30cb",
+    "username": {
+      "username": "signal.1",
+      "link": {
+        "color": "OLIVE",
+        "entropy": "ac7f0d9eaea4d4bf5438b887e34d0cf87e7f98d97da70eff001850487b2cae23",
+        "server_id": "bb7b55ef-f062-4284-9a63-283cbaf0fdbc"
+      }
+    },
+    "given_name": "rJu1",
+    "family_name": "dNEg",
+    "account_settings": {
+      "phone_number_sharing": "WithNobody",
+      "read_receipts": true,
+      "sealed_sender_indicators": true,
+      "typing_indicators": true,
+      "link_previews": false,
+      "not_discoverable_by_phone_number": true,
+      "prefer_contact_avatars": true,
+      "display_badges_on_profile": true,
+      "keep_muted_chats_archived": true,
+      "has_set_my_stories_privacy": true,
+      "has_viewed_onboarding_story": true,
+      "stories_disabled": true,
+      "story_view_receipts_enabled": true,
+      "has_seen_group_story_education_sheet": true,
+      "has_completed_username_onboarding": true,
+      "universal_expire_timer": 3600000,
+      "preferred_reaction_emoji": [
+        "🏎️"
+      ],
+      "default_chat_style": null,
+      "custom_chat_colors": {}
+    },
+    "avatar_url_path": "",
+    "donation_subscription": {
+      "subscriber_id": "8d4e5ee1d08b43a3d80457bf09e0957a2f922b58e79646e02a2529cb7c99e3de",
+      "currency_code": "USD",
+      "manually_canceled": true
+    },
+    "backup_subscription": null
+  },
+  "recipients": [
+    "Self_",
+    "ReleaseNotes",
+    {
+      "DistributionList": {
+        "List": {
+          "distribution_id": "00000000-0000-0000-0000-000000000000",
+          "name": "My Story",
+          "allow_replies": true,
+          "privacy_mode": "All"
+        }
+      }
+    },
+    {
+      "CallLink": {
+        "restrictions": "ADMIN_APPROVAL",
+        "root_key": "560162bb28f02f1015a3dcec38dca4fc",
+        "admin_key": "73535b298b0b8037077edc6fe22b20fa72cc0b4cee98ddeaa5a0626311355dad",
+        "expiration": 1725926400000,
+        "name": "YA0E2nsnqyUq"
+      }
+    }
+  ],
+  "chats": [],
+  "ad_hoc_calls": [],
+  "pinned_chats": [],
+  "sticker_packs": []
+}

@@ -18,8 +18,7 @@ pub enum ParseError {
 
 const VARINT_MAX_LENGTH: usize = 10;
 
-#[cfg_attr(feature = "test-util", visibility::make(pub))]
-pub(crate) struct VarintDelimitedReader<R> {
+pub struct VarintDelimitedReader<R> {
     reader: R,
     buffer: ArrayVec<u8, VARINT_MAX_LENGTH>,
 }

@@ -38,6 +38,9 @@ pub(crate) mod proto;
 #[cfg(feature = "test-util")]
 pub mod export;
 
+#[cfg(feature = "scramble")]
+pub mod scramble;
+
 pub struct BackupReader<R> {
     purpose: Purpose,
     reader: VarintDelimitedReader<R>,

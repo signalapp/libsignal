@@ -46,6 +46,9 @@ mod time;
 #[cfg(test)]
 mod testutil;
 
+#[cfg(feature = "scramble")]
+pub(crate) use crate::backup::recipient::MY_STORY_UUID;
+
 pub trait ReferencedTypes {
     /// Recorded information from a [`proto::Recipient`].
     type RecipientData: Debug + AsRef<DestinationKind>;
