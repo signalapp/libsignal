@@ -7,13 +7,16 @@
 //!
 //! These *don't* live in the main library because they depend on clap.
 
+use std::io::Read as _;
 use std::str::FromStr as _;
 
 use clap::Args;
 use libsignal_account_keys::{AccountEntropyPool, BackupKey};
 use libsignal_core::Aci;
 use libsignal_message_backup::args::{parse_aci, parse_hex_bytes};
+use libsignal_message_backup::frame::{CursorFactory, FileReaderFactory, ReaderFactory};
 use libsignal_message_backup::key::MessageBackupKey;
+use mediasan_common::SeekSkipAdapter;
 
 // Only used for encrypt_backup/decrypt_backup, which need a default.
 const DEFAULT_ACI: Aci = Aci::from_uuid_bytes([0x11; 16]);
@@ -109,5 +112,66 @@ impl KeyArgs {
             let backup_key = BackupKey::derive_from_account_entropy_pool(&account_entropy);
             MessageBackupKey::derive(&backup_key, &backup_key.derive_backup_id(&DEFAULT_ACI))
         })
+    }
+}
+
+/// Filename or in-memory buffer of contents.
+pub enum FilenameOrContents {
+    Filename(String),
+    Contents(Box<[u8]>),
+}
+
+impl From<clap_stdin::FileOrStdin> for FilenameOrContents {
+    fn from(arg: clap_stdin::FileOrStdin) -> Self {
+        match arg.source {
+            clap_stdin::Source::Stdin => {
+                let mut buffer = vec![];
+                std::io::stdin()
+                    .lock()
+                    .read_to_end(&mut buffer)
+                    .expect("failed to read from stdin");
+                Self::Contents(buffer.into_boxed_slice())
+            }
+            clap_stdin::Source::Arg(path) => Self::Filename(path),
+        }
+    }
+}
+
+/// [`ReaderFactory`] impl backed by a [`FilenameOrContents`].
+pub enum AsyncReaderFactory<'a> {
+    // Using `AllowStdIo` with a `File` isn't generally a good idea since
+    // the `Read` implementation will block. Since we're using a
+    // single-threaded executor, though, the blocking I/O isn't a problem.
+    // If that changes, this should be changed to an async-aware type, like
+    // something from the `tokio` or `async-std` crates.
+    File(FileReaderFactory<&'a str>),
+    Cursor(CursorFactory<&'a [u8]>),
+}
+
+impl<'a> From<&'a FilenameOrContents> for AsyncReaderFactory<'a> {
+    fn from(value: &'a FilenameOrContents) -> Self {
+        match value {
+            FilenameOrContents::Filename(path) => Self::File(FileReaderFactory { path }),
+            FilenameOrContents::Contents(contents) => Self::Cursor(CursorFactory::new(contents)),
+        }
+    }
+}
+
+impl<'a> ReaderFactory for AsyncReaderFactory<'a> {
+    type Reader = SeekSkipAdapter<
+        futures::future::Either<
+            futures::io::BufReader<futures::io::AllowStdIo<std::fs::File>>,
+            <CursorFactory<&'a [u8]> as ReaderFactory>::Reader,
+        >,
+    >;
+
+    fn make_reader(&mut self) -> futures::io::Result<Self::Reader> {
+        match self {
+            AsyncReaderFactory::File(f) => f.make_reader().map(|SeekSkipAdapter(f)| {
+                futures::future::Either::Left(futures::io::BufReader::new(f))
+            }),
+            AsyncReaderFactory::Cursor(c) => c.make_reader().map(futures::future::Either::Right),
+        }
+        .map(SeekSkipAdapter)
     }
 }

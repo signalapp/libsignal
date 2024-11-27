@@ -3,18 +3,13 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use std::io::Read as _;
-
 use clap::Parser;
-use futures::io::AllowStdIo;
 use futures::AsyncRead;
 use libsignal_message_backup::backup::Purpose;
 use libsignal_message_backup::frame::{
-    CursorFactory, FileReaderFactory, FramesReader, ReaderFactory, UnvalidatedHmacReader,
-    VerifyHmac,
+    FramesReader, ReaderFactory as _, UnvalidatedHmacReader, VerifyHmac,
 };
 use libsignal_message_backup::{BackupReader, Error, FoundUnknownField, ReadResult};
-use mediasan_common::SeekSkipAdapter;
 
 use crate::args::ParseVerbosity;
 
@@ -22,7 +17,7 @@ mod args;
 
 #[path = "../support/mod.rs"]
 mod support;
-use support::KeyArgs;
+use support::{AsyncReaderFactory, FilenameOrContents, KeyArgs};
 
 /// Validates, and optionally prints the contents of, message backup files.
 ///
@@ -94,66 +89,6 @@ async fn async_main() {
         .unwrap_or_else(|e| panic!("backup error: {e:#}"));
 }
 
-/// Filename or in-memory buffer of contents.
-enum FilenameOrContents {
-    Filename(String),
-    Contents(Box<[u8]>),
-}
-
-impl From<clap_stdin::FileOrStdin> for FilenameOrContents {
-    fn from(arg: clap_stdin::FileOrStdin) -> Self {
-        match arg.source {
-            clap_stdin::Source::Stdin => {
-                let mut buffer = vec![];
-                std::io::stdin()
-                    .lock()
-                    .read_to_end(&mut buffer)
-                    .expect("failed to read from stdin");
-                Self::Contents(buffer.into_boxed_slice())
-            }
-            clap_stdin::Source::Arg(path) => Self::Filename(path),
-        }
-    }
-}
-
-/// [`ReaderFactory`] impl backed by a [`FilenameOrContents`].
-enum AsyncReaderFactory<'a> {
-    // Using `AllowStdIo` with a `File` isn't generally a good idea since
-    // the `Read` implementation will block. Since we're using a
-    // single-threaded executor, though, the blocking I/O isn't a problem.
-    // If that changes, this should be changed to an async-aware type, like
-    // something from the `tokio` or `async-std` crates.
-    File(FileReaderFactory<&'a str>),
-    Cursor(CursorFactory<&'a [u8]>),
-}
-
-impl<'a> From<&'a FilenameOrContents> for AsyncReaderFactory<'a> {
-    fn from(value: &'a FilenameOrContents) -> Self {
-        match value {
-            FilenameOrContents::Filename(path) => Self::File(FileReaderFactory { path }),
-            FilenameOrContents::Contents(contents) => Self::Cursor(CursorFactory::new(contents)),
-        }
-    }
-}
-
-impl<'a> ReaderFactory for AsyncReaderFactory<'a> {
-    type Reader = SeekSkipAdapter<
-        futures::future::Either<
-            futures::io::BufReader<AllowStdIo<std::fs::File>>,
-            <CursorFactory<&'a [u8]> as ReaderFactory>::Reader,
-        >,
-    >;
-
-    fn make_reader(&mut self) -> futures::io::Result<Self::Reader> {
-        match self {
-            AsyncReaderFactory::File(f) => f.make_reader().map(|SeekSkipAdapter(f)| {
-                futures::future::Either::Left(futures::io::BufReader::new(f))
-            }),
-            AsyncReaderFactory::Cursor(c) => c.make_reader().map(futures::future::Either::Right),
-        }
-        .map(SeekSkipAdapter)
-    }
-}
 /// Wrapper over encrypted- or plaintext-sourced [`BackupReader`].
 enum MaybeEncryptedBackupReader<R: AsyncRead + Unpin> {
     EncryptedCompressed(Box<BackupReader<FramesReader<R>>>),
