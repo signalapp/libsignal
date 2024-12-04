@@ -195,6 +195,8 @@ impl Visit<Scrambler> for proto::Frame {
                 Item::ChatItem(item) => item.accept(visitor),
                 Item::StickerPack(item) => item.accept(visitor),
                 Item::AdHocCall(item) => item.accept(visitor),
+                Item::NotificationProfile(item) => item.accept(visitor),
+                Item::ChatFolder(item) => item.accept(visitor),
             }
         }
     }
@@ -1948,5 +1950,42 @@ impl Visit<Scrambler> for proto::AdHocCall {
             callTimestamp: _,
             special_fields: _,
         } = self;
+    }
+}
+
+impl Visit<Scrambler> for proto::NotificationProfile {
+    fn accept(&mut self, visitor: &mut Scrambler) {
+        let Self {
+            name,
+            emoji: _,
+            color: _,
+            createdAtMs: _,
+            allowAllCalls: _,
+            allowAllMentions: _,
+            schedule: _,
+            allowedMembers: _,
+            special_fields: _,
+        } = self;
+
+        name.randomize(&mut visitor.rng)
+    }
+}
+
+impl Visit<Scrambler> for proto::ChatFolder {
+    fn accept(&mut self, visitor: &mut Scrambler) {
+        let Self {
+            name,
+            position: _,
+            showUnread: _,
+            showMutedChats: _,
+            includeAllIndividualChats: _,
+            includeAllGroupChats: _,
+            folderType: _,
+            includedRecipientIds: _,
+            excludedRecipientIds: _,
+            special_fields: _,
+        } = self;
+
+        name.randomize(&mut visitor.rng)
     }
 }

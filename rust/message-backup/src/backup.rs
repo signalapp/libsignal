@@ -419,6 +419,12 @@ impl<M: Method + ReferencedTypes> PartialBackup<M> {
                 self.add_sticker_pack(sticker_pack).map_err(Into::into)
             }
             FrameItem::AdHocCall(call) => self.add_ad_hoc_call(call).map_err(Into::into),
+            FrameItem::NotificationProfile(notification_profile) => self
+                .add_notification_profile(notification_profile)
+                .map_err(Into::into),
+            FrameItem::ChatFolder(chat_folder) => {
+                self.add_chat_folder(chat_folder).map_err(Into::into)
+            }
         }
     }
 
@@ -505,6 +511,17 @@ impl<M: Method + ReferencedTypes> PartialBackup<M> {
                 Ok(())
             }
         }
+    }
+
+    fn add_notification_profile(
+        &mut self,
+        _notification_profile: proto::NotificationProfile,
+    ) -> Result<(), ValidationError> {
+        Ok(())
+    }
+
+    fn add_chat_folder(&mut self, _chat_folder: proto::ChatFolder) -> Result<(), ValidationError> {
+        Ok(())
     }
 }
 
