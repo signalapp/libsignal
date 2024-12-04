@@ -1962,8 +1962,11 @@ impl Visit<Scrambler> for proto::NotificationProfile {
             createdAtMs: _,
             allowAllCalls: _,
             allowAllMentions: _,
-            schedule: _,
             allowedMembers: _,
+            scheduleEnabled: _,
+            scheduleStartTime: _,
+            scheduleEndTime: _,
+            scheduleDaysEnabled: _,
             special_fields: _,
         } = self;
 
@@ -1975,8 +1978,7 @@ impl Visit<Scrambler> for proto::ChatFolder {
     fn accept(&mut self, visitor: &mut Scrambler) {
         let Self {
             name,
-            position: _,
-            showUnread: _,
+            showOnlyUnread: _,
             showMutedChats: _,
             includeAllIndividualChats: _,
             includeAllGroupChats: _,
