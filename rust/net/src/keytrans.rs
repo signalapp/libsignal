@@ -15,9 +15,10 @@ use http::header::{ACCEPT, CONTENT_TYPE};
 use http::uri::PathAndQuery;
 use libsignal_core::{Aci, E164};
 use libsignal_keytrans::{
-    ChatDistinguishedResponse, ChatSearchResponse, CondensedTreeSearchResponse, FullSearchResponse,
-    FullTreeHead, KeyTransparency, LastTreeHead, LocalStateUpdate, MonitoringData, SearchContext,
-    SlimSearchRequest, StoredMonitoringData, StoredTreeHead, VerifiedSearchResult,
+    AccountData, ChatDistinguishedResponse, ChatSearchResponse, CondensedTreeSearchResponse,
+    FullSearchResponse, FullTreeHead, KeyTransparency, LastTreeHead, LocalStateUpdate,
+    MonitoringData, SearchContext, SearchStateUpdate, SlimSearchRequest, StoredAccountData,
+    StoredMonitoringData, StoredTreeHead, VerifiedSearchResult,
 };
 use libsignal_protocol::{IdentityKey, PublicKey};
 use prost::{DecodeError, Message};
@@ -160,24 +161,37 @@ where
 // 0x00 is the current version prefix
 const SEARCH_VALUE_PREFIX: u8 = 0x00;
 
-struct SearchValue {
-    raw: Vec<u8>,
+/// A safe-to-use wrapper around the values returned by KT server.
+///
+/// The KT server stores values prefixed with an extra "version" byte, that needs
+/// to be stripped.
+///
+/// SearchValue validates the prefix upon construction from raw bytes, and
+/// provides acces to the actual underlying value via its payload method.
+struct SearchValue<'a> {
+    raw: &'a [u8],
 }
 
-impl SearchValue {
-    fn new(raw: Vec<u8>) -> Result<Self> {
-        match raw.as_slice() {
-            [SEARCH_VALUE_PREFIX, ..] => Ok(Self { raw }),
-            _ => Err(Error::InvalidResponse("bad value format")),
+impl<'a> TryFrom<&'a VerifiedSearchResult> for SearchValue<'a> {
+    type Error = Error;
+
+    fn try_from(result: &'a VerifiedSearchResult) -> Result<Self> {
+        let raw = result.value.as_slice();
+        if raw.first() == Some(&SEARCH_VALUE_PREFIX) {
+            Ok(Self { raw })
+        } else {
+            Err(Error::InvalidResponse("bad value format"))
         }
     }
+}
 
+impl SearchValue<'_> {
     fn payload(&self) -> &[u8] {
         &self.raw[1..]
     }
 }
 
-impl TryFrom<SearchValue> for Aci {
+impl TryFrom<SearchValue<'_>> for Aci {
     type Error = Error;
 
     fn try_from(value: SearchValue) -> std::result::Result<Self, Self::Error> {
@@ -185,7 +199,7 @@ impl TryFrom<SearchValue> for Aci {
     }
 }
 
-impl TryFrom<SearchValue> for IdentityKey {
+impl TryFrom<SearchValue<'_>> for IdentityKey {
     type Error = Error;
 
     fn try_from(value: SearchValue) -> std::result::Result<Self, Self::Error> {
@@ -246,10 +260,7 @@ pub struct Kt<'a> {
 
 #[derive(Debug, Clone, Default)]
 pub struct ChatSearchContext {
-    pub aci_monitor: Option<StoredMonitoringData>,
-    pub e164_monitor: Option<StoredMonitoringData>,
-    pub username_hash_monitor: Option<StoredMonitoringData>,
-    pub last_tree_head: Option<StoredTreeHead>,
+    pub account_data: Option<StoredAccountData>,
     pub distinguished_tree_head_size: u64,
 }
 
@@ -261,16 +272,18 @@ impl ChatSearchContext {
         e164: Option<&(E164, Vec<u8>)>,
         username_hash: Option<&UsernameHash>,
     ) -> RawChatSearchRequest {
+        fn get_tree_size(account_data: &StoredAccountData) -> Option<u64> {
+            let stored = account_data.last_tree_head.as_ref()?;
+            let head = stored.tree_head.as_ref()?;
+            Some(head.tree_size)
+        }
         RawChatSearchRequest {
             aci: aci.service_id_string(),
             aci_identity_key: BASE64_STANDARD.encode(aci_identity_key.serialize()),
             e164: e164.map(|x| x.0.to_string()),
             username_hash: username_hash.map(|x| BASE64_URL_SAFE_NO_PAD.encode(x.as_ref())),
             unidentified_access_key: e164.map(|x| BASE64_STANDARD.encode(&x.1)),
-            last_tree_head_size: self
-                .last_tree_head
-                .as_ref()
-                .and_then(|stored| stored.tree_head.as_ref().map(|h| h.tree_size)),
+            last_tree_head_size: self.account_data.as_ref().and_then(get_tree_size),
             distinguished_tree_head_size: self.distinguished_tree_head_size,
         }
     }
@@ -281,29 +294,8 @@ pub struct SearchResult {
     pub aci_identity_key: IdentityKey,
     pub aci_for_e164: Option<Aci>,
     pub aci_for_username_hash: Option<Aci>,
-    pub state_update: Option<LocalStateUpdate>,
-}
-
-impl SearchResult {
-    pub fn serialized_tree_head(&self) -> Option<Vec<u8>> {
-        self.state_update
-            .as_ref()
-            .map(|x| StoredTreeHead::from((x.tree_head.clone(), x.tree_root)).encode_to_vec())
-    }
-
-    pub fn serialized_monitoring_data(&self) -> Vec<(Vec<u8>, Vec<u8>)> {
-        fn serialize_all(xs: Vec<(Vec<u8>, MonitoringData)>) -> Vec<(Vec<u8>, Vec<u8>)> {
-            xs.into_iter()
-                .map(|(key, data)| (key, StoredMonitoringData::from(data).encode_to_vec()))
-                .collect()
-        }
-        let typed_updates = self
-            .state_update
-            .as_ref()
-            .map(|update| update.monitors.clone())
-            .unwrap_or_default();
-        serialize_all(typed_updates)
-    }
+    pub timestamp: SystemTime,
+    pub account_data: StoredAccountData,
 }
 
 impl<'a> Kt<'a> {
@@ -336,102 +328,132 @@ impl<'a> Kt<'a> {
             context.make_raw_request(aci, aci_identity_key, e164.as_ref(), username_hash.as_ref());
         let response = self.send(raw_request.into()).await?;
 
-        let search_response = RawChatSerializedResponse::try_from(response)
+        let chat_search_response = RawChatSerializedResponse::try_from(response)
             .and_then(TypedChatSearchResponse::try_from)?;
 
         let ChatSearchContext {
-            aci_monitor,
-            e164_monitor,
-            username_hash_monitor,
-            last_tree_head,
-            ..
+            account_data: stored_account_data,
+            distinguished_tree_head_size: _,
         } = context;
-        let last_tree_head = last_tree_head.and_then(|stored| stored.into_last_tree_head());
 
-        let make_single_context = |data| SearchContext {
-            last_tree_head: last_tree_head.clone(),
-            data,
-        };
-
+        let account_data = stored_account_data.map(AccountData::try_from).transpose()?;
         let now = SystemTime::now();
 
-        let mut all_updates = Vec::with_capacity(3);
-        let mut aci_data = None;
-        let mut e164_data = None;
-        let mut username_hash_data = None;
-
-        for (key, response, value_destination, monitor) in [
-            (
-                Some(aci.as_search_key()),
-                Some(search_response.aci_search_response),
-                &mut aci_data,
-                aci_monitor,
-            ),
-            (
-                e164.map(|x| x.0.as_search_key()),
-                search_response.e164_search_response,
-                &mut e164_data,
-                e164_monitor,
-            ),
-            (
-                username_hash.map(|x| x.as_search_key()),
-                search_response.username_hash_search_response,
-                &mut username_hash_data,
-                username_hash_monitor,
-            ),
-        ] {
-            let request = key.map(SlimSearchRequest::new);
-            let VerifiedSearchResult {
-                value,
-                state_update,
-            } = match (request, response) {
-                (Some(request), Some(response)) => {
-                    let data = monitor.map(MonitoringData::from);
-                    let context = make_single_context(data);
-                    let response =
-                        FullSearchResponse::new(response, &search_response.full_tree_head);
-                    self.inner
-                        .verify_search(request, response, context, true, now)?
-                }
-                (None, None) => continue,
-                _ => {
-                    return Err(Error::InvalidResponse(
-                        "request/response optionality mismatch",
-                    ))
-                }
-            };
-            // We do not strip the prefix, merely validating that it is correct.
-            *value_destination = value.map(SearchValue::new).transpose()?;
-            all_updates.push(state_update);
+        // TODO: this could be a `validate` on the TypedSearchResponse, but then what to accept as the "expected" arguments?
+        if e164.is_some() != chat_search_response.e164_search_response.is_some()
+            || username_hash.is_some()
+                != chat_search_response.username_hash_search_response.is_some()
+        {
+            return Err(Error::InvalidResponse(
+                "request/response optionality mismatch",
+            ));
         }
 
-        let Some(aci_result) = aci_data else {
-            return Err(Error::InvalidResponse(
-                "response must contain ACI Identity Key",
-            ));
+        let (
+            aci_monitoring_data,
+            e164_monitoring_data,
+            username_hash_monitoring_data,
+            stored_last_tree_head,
+        ) = match account_data {
+            None => (None, None, None, None),
+            Some(acc) => {
+                let AccountData {
+                    aci,
+                    e164,
+                    username_hash,
+                    last_tree_head,
+                } = acc;
+                (Some(aci), e164, username_hash, Some(last_tree_head))
+            }
         };
 
-        let identity_key = IdentityKey::try_from(aci_result)?;
-        let aci_for_e164 = e164_data.map(Aci::try_from).transpose()?;
-        let aci_for_username_hash = username_hash_data.map(Aci::try_from).transpose()?;
+        let aci_result = self.do_verify_search(
+            aci.as_search_key(),
+            chat_search_response.aci_search_response,
+            aci_monitoring_data,
+            &chat_search_response.full_tree_head,
+            stored_last_tree_head.as_ref(),
+            now,
+        )?;
+        let e164_result = e164
+            .map(|(e164, _)| {
+                self.do_verify_search(
+                    e164.as_search_key(),
+                    chat_search_response
+                        .e164_search_response
+                        .expect("e164 response must be present"),
+                    e164_monitoring_data,
+                    &chat_search_response.full_tree_head,
+                    stored_last_tree_head.as_ref(),
+                    now,
+                )
+            })
+            .transpose()?;
+        let username_hash_result = username_hash
+            .map(|username_hash| {
+                self.do_verify_search(
+                    username_hash.as_search_key(),
+                    chat_search_response
+                        .username_hash_search_response
+                        .expect("username hash response must be present"),
+                    username_hash_monitoring_data,
+                    &chat_search_response.full_tree_head,
+                    stored_last_tree_head.as_ref(),
+                    now,
+                )
+            })
+            .transpose()?;
 
-        let state_update = all_updates.into_iter().reduce(|mut acc, next| {
-            acc.merge(&next);
-            acc
-        });
+        if !aci_result.are_all_roots_equal([e164_result.as_ref(), username_hash_result.as_ref()]) {
+            return Err(Error::InvalidResponse("mismatching tree roots"));
+        }
+
+        let identity_key = extract_value_as::<IdentityKey>(&aci_result)?;
+        let aci_for_e164 = e164_result
+            .as_ref()
+            .map(extract_value_as::<Aci>)
+            .transpose()?;
+        let aci_for_username_hash = username_hash_result
+            .as_ref()
+            .map(extract_value_as::<Aci>)
+            .transpose()?;
+
+        // ACI response is guaranteed to be present, taking the last tree head from it.
+        let LocalStateUpdate {
+            tree_head,
+            tree_root,
+            monitoring_data: updated_aci_monitoring_data,
+        } = aci_result.state_update;
+
+        let last_tree_head = StoredTreeHead {
+            tree_head: Some(tree_head),
+            root: tree_root.into(),
+        };
+
+        let updated_account_data = StoredAccountData {
+            aci: updated_aci_monitoring_data.map(StoredMonitoringData::from),
+            e164: e164_result
+                .and_then(|r| r.state_update.monitoring_data)
+                .map(StoredMonitoringData::from),
+            username_hash: username_hash_result
+                .and_then(|r| r.state_update.monitoring_data)
+                .map(StoredMonitoringData::from),
+            last_tree_head: Some(last_tree_head),
+        };
 
         Ok(SearchResult {
             aci_identity_key: identity_key,
             aci_for_e164,
             aci_for_username_hash,
-            state_update,
+            timestamp: now,
+            account_data: updated_account_data,
         })
     }
 
     pub async fn distinguished(
         &self,
         last_distinguished: Option<LastTreeHead>,
-    ) -> Result<LocalStateUpdate> {
+    ) -> Result<SearchStateUpdate> {
         let distinguished_size = last_distinguished
             .as_ref()
             .map(|last_tree_head| last_tree_head.0.tree_size);
@@ -458,7 +480,7 @@ impl<'a> Kt<'a> {
             slim_search_request,
             search_response,
             SearchContext {
-                last_tree_head: last_distinguished,
+                last_tree_head: last_distinguished.as_ref(),
                 ..Default::default()
             },
             false,
@@ -466,6 +488,37 @@ impl<'a> Kt<'a> {
         )?;
         Ok(verified_result.state_update)
     }
+
+    fn do_verify_search(
+        &self,
+        search_key: Vec<u8>,
+        response: CondensedTreeSearchResponse,
+        monitoring_data: Option<MonitoringData>,
+        full_tree_head: &FullTreeHead,
+        last_tree_head: Option<&LastTreeHead>,
+        now: SystemTime,
+    ) -> Result<VerifiedSearchResult> {
+        let result = self.inner.verify_search(
+            SlimSearchRequest::new(search_key),
+            FullSearchResponse::new(response, full_tree_head),
+            SearchContext {
+                last_tree_head,
+                data: monitoring_data.map(MonitoringData::from),
+            },
+            true,
+            now,
+        )?;
+        Ok(result)
+    }
+}
+
+// Cannot be a method on VerifiedSearchResult due to use of SearchValue
+fn extract_value_as<T>(result: &VerifiedSearchResult) -> Result<T>
+where
+    T: for<'a> TryFrom<SearchValue<'a>, Error = Error>,
+{
+    let val = SearchValue::try_from(result)?;
+    val.try_into()
 }
 
 const SEARCH_KEY_PREFIX_ACI: &[u8] = b"a";
@@ -590,7 +643,6 @@ mod test {
         }
     }
 
-    #[cfg(feature = "test-util")]
     async fn make_chat() -> AnyChat {
         use crate::chat::test_support::simple_chat_service;
         let chat = simple_chat_service(
@@ -607,7 +659,6 @@ mod test {
         chat
     }
 
-    #[cfg(feature = "test-util")]
     #[tokio::test]
     #[test_case(false, false; "ACI")]
     #[test_case(false, true; "ACI + E164")]
@@ -644,8 +695,8 @@ mod test {
                 use_e164.then_some(e164),
                 use_username_hash.then_some(username_hash),
                 ChatSearchContext {
+                    account_data: None,
                     distinguished_tree_head_size,
-                    ..Default::default()
                 },
             )
             .await;
@@ -660,7 +711,6 @@ mod test {
     }
 
     #[tokio::test]
-    #[cfg(feature = "test-util")]
     async fn distinguished_integration_test() {
         if std::env::var("LIBSIGNAL_TESTING_RUN_NONHERMETIC_TESTS").is_err() {
             println!("SKIPPED: running integration tests is not enabled");

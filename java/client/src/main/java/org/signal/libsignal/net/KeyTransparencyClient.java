@@ -5,14 +5,11 @@
 
 package org.signal.libsignal.net;
 
-import static org.signal.libsignal.net.KeyTransparency.searchKeyForAci;
-
 import java.util.Optional;
-import java.util.function.Function;
 import org.signal.libsignal.internal.CompletableFuture;
+import org.signal.libsignal.internal.FilterExceptions;
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
-import org.signal.libsignal.keytrans.SearchContext;
 import org.signal.libsignal.keytrans.SearchResult;
 import org.signal.libsignal.keytrans.Store;
 import org.signal.libsignal.protocol.IdentityKey;
@@ -88,20 +85,10 @@ public class KeyTransparencyClient {
                   this.search(
                       aci, aciIdentityKey, e164, unidentifiedAccessKey, usernameHash, store));
     }
-    byte[] e164SearchKey = mapNullable(e164, KeyTransparency::searchKeyForE164);
-    byte[] usernameHashSearchKey =
-        mapNullable(usernameHash, KeyTransparency::searchKeyForUsernameHash);
-    SearchContext searchContext;
     // Decoding of the last distinguished tree head happens "eagerly" while constructing the
     // SearchContext. It may result in an IllegalArgumentError.
-    searchContext =
-        SearchContext.builder()
-            .withLastTreeHead(store.getLastTreeHead().orElse(null))
-            .withAciMonitor(store.getMonitorData(searchKeyForAci(aci)).orElse(null))
-            .withE164Monitor(store.getMonitorData(e164SearchKey).orElse(null))
-            .withUsernameHashMonitor(store.getMonitorData(usernameHashSearchKey).orElse(null))
-            .withLastDistinguishedTreeHead(lastDistinguishedTreeHead.get())
-            .build();
+    SearchContext searchContext =
+        new SearchContext(store.getAccountData(aci).orElse(null), lastDistinguishedTreeHead.get());
     try (NativeHandleGuard tokioContextGuard = this.tokioAsyncContext.guard();
         NativeHandleGuard chatGuard = chat.guard();
         NativeHandleGuard identityKeyGuard = aciIdentityKey.getPublicKey().guard();
@@ -119,7 +106,7 @@ public class KeyTransparencyClient {
           .thenApply(
               (handle) -> {
                 SearchResult result = new SearchResult(handle);
-                store.applyUpdates(result);
+                store.applyUpdates(aci, result);
                 return result;
               });
     }
@@ -168,10 +155,26 @@ public class KeyTransparencyClient {
     }
   }
 
-  private static <T, U> U mapNullable(T what, Function<? super T, ? extends U> mapper) {
-    if (what == null) {
-      return null;
+  /**
+   * Extra data accompanying the key transparency search request.
+   *
+   * <p>This is an implementation detail of the {@link
+   * org.signal.libsignal.net.KeyTransparencyClient} and is not supposed to be used directly. The
+   * context will be populated from the {@link Store}.
+   */
+  static final class SearchContext extends NativeHandleGuard.SimpleOwner {
+    SearchContext(byte[] accountData, byte[] lastDistinguishedTreeHead) {
+      super(
+          FilterExceptions.filterExceptions(
+              () ->
+                  // The only exception it can throw is an IllegalArgumentException, even though it
+                  // is bridged as throwing Exception.
+                  Native.KeyTransparency_NewSearchContext(accountData, lastDistinguishedTreeHead)));
     }
-    return mapper.apply(what);
+
+    @Override
+    protected void release(long nativeHandle) {
+      Native.ChatSearchContext_Destroy(nativeHandle);
+    }
   }
 }

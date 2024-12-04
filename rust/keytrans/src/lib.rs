@@ -21,8 +21,8 @@ use std::time::SystemTime;
 pub use ed25519_dalek::VerifyingKey;
 pub use proto::{
     CondensedTreeSearchResponse, DistinguishedResponse as ChatDistinguishedResponse, FullTreeHead,
-    MonitorRequest, MonitorResponse, SearchResponse as ChatSearchResponse, StoredMonitoringData,
-    StoredTreeHead, TreeHead, UpdateRequest, UpdateResponse,
+    MonitorRequest, MonitorResponse, SearchResponse as ChatSearchResponse, StoredAccountData,
+    StoredMonitoringData, StoredTreeHead, TreeHead, UpdateRequest, UpdateResponse,
 };
 pub use verify::Error;
 use verify::{
@@ -76,8 +76,8 @@ impl From<LastTreeHead> for StoredTreeHead {
 }
 
 #[derive(Default, Debug, Clone)]
-pub struct SearchContext {
-    pub last_tree_head: Option<LastTreeHead>,
+pub struct SearchContext<'a> {
+    pub last_tree_head: Option<&'a LastTreeHead>,
     pub data: Option<MonitoringData>,
 }
 
@@ -89,8 +89,25 @@ pub struct MonitorContext {
 
 #[derive(Clone, Debug)]
 pub struct VerifiedSearchResult {
-    pub value: Option<Vec<u8>>,
-    pub state_update: LocalStateUpdate,
+    pub value: Vec<u8>,
+    pub state_update: SearchStateUpdate,
+}
+
+impl VerifiedSearchResult {
+    pub fn tree_root(&self) -> &TreeRoot {
+        &self.state_update.tree_root
+    }
+
+    pub fn are_all_roots_equal<'b>(
+        &self,
+        tail: impl IntoIterator<Item = Option<&'b Self>>,
+    ) -> bool {
+        let mut all_roots_are_equal = true;
+        for other in tail.into_iter().flatten() {
+            all_roots_are_equal &= self.tree_root() == other.tree_root();
+        }
+        all_roots_are_equal
+    }
 }
 
 /// A collection of updates needed to be performed on a local state following
@@ -98,27 +115,14 @@ pub struct VerifiedSearchResult {
 ///
 /// The data field may be empty if no local data needs updating.
 #[derive(Clone, Debug)]
-pub struct LocalStateUpdate {
+pub struct LocalStateUpdate<T> {
     pub tree_head: TreeHead,
     pub tree_root: TreeRoot,
-    pub monitors: Vec<(Vec<u8>, MonitoringData)>,
+    pub monitoring_data: T,
 }
 
-impl LocalStateUpdate {
-    /// Merges two updates by accumulating monitors and picking the most recent tree head.
-    pub fn merge(&mut self, other: &LocalStateUpdate) {
-        let LocalStateUpdate {
-            tree_head,
-            tree_root,
-            monitors,
-        } = other;
-
-        // Only updates with the same tree head and root are merge-able
-        assert_eq!(self.tree_head.timestamp, tree_head.timestamp);
-        assert_eq!(tree_root, &other.tree_root);
-        self.monitors.extend_from_slice(monitors);
-    }
-}
+pub type SearchStateUpdate = LocalStateUpdate<Option<MonitoringData>>;
+pub type MonitorStateUpdate = LocalStateUpdate<Vec<(Vec<u8>, MonitoringData)>>;
 
 /// PublicConfig wraps the cryptographic keys needed to interact with a
 /// transparency tree.
@@ -188,7 +192,7 @@ impl KeyTransparency {
             verify_search(&self.config, request, response, context, force_monitor, now)?;
         Ok(VerifiedSearchResult {
             // the value has now been verified
-            value: unverified_value,
+            value: unverified_value.ok_or(Error::RequiredFieldMissing)?,
             state_update,
         })
     }
@@ -230,7 +234,7 @@ impl KeyTransparency {
         response: &'a MonitorResponse,
         context: MonitorContext,
         now: SystemTime,
-    ) -> Result<LocalStateUpdate, verify::Error> {
+    ) -> Result<MonitorStateUpdate, verify::Error> {
         verify_monitor(&self.config, request, response, context, now)
     }
 
@@ -242,7 +246,7 @@ impl KeyTransparency {
         response: &UpdateResponse,
         context: SearchContext,
         now: SystemTime,
-    ) -> Result<LocalStateUpdate, verify::Error> {
+    ) -> Result<SearchStateUpdate, verify::Error> {
         verify_update(&self.config, request, response, context, now)
     }
 }
@@ -294,5 +298,38 @@ impl From<StoredMonitoringData> for MonitoringData {
             ptrs: value.ptrs,
             owned: value.owned,
         }
+    }
+}
+
+// An in-memory representation of the StoredAccountData with correct optionality of the fields
+#[derive(Debug, Clone)]
+pub struct AccountData {
+    pub aci: MonitoringData,
+    pub e164: Option<MonitoringData>,
+    pub username_hash: Option<MonitoringData>,
+    pub last_tree_head: LastTreeHead,
+}
+
+impl TryFrom<StoredAccountData> for AccountData {
+    type Error = Error;
+
+    fn try_from(stored: StoredAccountData) -> Result<Self, Self::Error> {
+        let StoredAccountData {
+            aci,
+            e164,
+            username_hash,
+            last_tree_head,
+        } = stored;
+        let last_tree_head = last_tree_head.ok_or(Error::RequiredFieldMissing)?;
+        Ok(Self {
+            aci: aci
+                .map(MonitoringData::from)
+                .ok_or(Error::RequiredFieldMissing)?,
+            e164: e164.map(MonitoringData::from),
+            username_hash: username_hash.map(MonitoringData::from),
+            last_tree_head: last_tree_head
+                .into_last_tree_head()
+                .expect("valid tree head"),
+        })
     }
 }

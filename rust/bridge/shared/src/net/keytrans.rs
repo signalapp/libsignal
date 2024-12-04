@@ -3,8 +3,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::time::SystemTime;
+
 use libsignal_bridge_macros::{bridge_fn, bridge_io};
-use libsignal_bridge_types::keytrans::MonitorDataUpdates;
 use libsignal_bridge_types::net::chat::UnauthChat;
 pub use libsignal_bridge_types::net::{Environment, TokioAsyncContext};
 use libsignal_bridge_types::support::AsType;
@@ -53,20 +54,18 @@ fn SearchResult_GetAciForUsernameHash(res: &SearchResult) -> Option<Aci> {
 }
 
 #[bridge_fn(node = false, ffi = false)]
-fn SearchResult_GetTreeHead(res: &SearchResult) -> Option<Vec<u8>> {
-    res.serialized_tree_head()
-}
-
-bridge_handle_fns!(MonitorDataUpdates, clone = false, ffi = false, node = false);
-
-#[bridge_fn(node = false, ffi = false)]
-fn SearchResult_GetMonitors(res: &SearchResult) -> MonitorDataUpdates {
-    MonitorDataUpdates(res.serialized_monitoring_data())
+fn SearchResult_GetTimestamp(res: &SearchResult) -> u64 {
+    res.timestamp
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .expect("valid timestamp")
+        .as_millis()
+        .try_into()
+        .expect("in u64 range")
 }
 
 #[bridge_fn(node = false, ffi = false)]
-fn MonitorDataUpdates_GetNext(val: &mut MonitorDataUpdates) -> Option<(Vec<u8>, Vec<u8>)> {
-    val.0.pop()
+fn SearchResult_GetAccountData(res: &SearchResult) -> Vec<u8> {
+    res.account_data.encode_to_vec()
 }
 
 #[cfg(feature = "jni")]
@@ -80,22 +79,17 @@ where
 
 #[bridge_fn(node = false, ffi = false)]
 fn KeyTransparency_NewSearchContext(
-    aci_monitor: Option<&[u8]>,
-    e164_monitor: Option<&[u8]>,
-    username_hash_monitor: Option<&[u8]>,
-    last_tree_head: Option<&[u8]>,
+    account_data: Option<&[u8]>,
     last_distinguished_tree_head: &[u8],
 ) -> Result<ChatSearchContext, Error> {
+    let account_data = account_data.map(try_decode).transpose()?;
     let last_distinguished_tree_head =
         try_decode(last_distinguished_tree_head).map(|stored: StoredTreeHead| stored.tree_head)?;
     let distinguished_tree_head_size = last_distinguished_tree_head
         .map(|head| head.tree_size)
         .ok_or(Error::InvalidRequest("distinguished tree head is missing"))?;
     Ok(ChatSearchContext {
-        aci_monitor: aci_monitor.map(try_decode).transpose()?,
-        e164_monitor: e164_monitor.map(try_decode).transpose()?,
-        username_hash_monitor: username_hash_monitor.map(try_decode).transpose()?,
-        last_tree_head: last_tree_head.map(try_decode).transpose()?,
+        account_data,
         distinguished_tree_head_size,
     })
 }
@@ -179,7 +173,7 @@ async fn KeyTransparency_Distinguished(
     let LocalStateUpdate {
         tree_head,
         tree_root,
-        monitors: _,
+        monitoring_data: _,
     } = kt.distinguished(known_distinguished).await?;
     let updated_distinguished = StoredTreeHead::from((tree_head, tree_root));
     let serialized = updated_distinguished.encode_to_vec();

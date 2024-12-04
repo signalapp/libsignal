@@ -48,33 +48,10 @@ public class SearchResult extends NativeHandleGuard.SimpleOwner {
 
   // This is effectively an implementation of Store.applyUpdates method.
   // Intentionally package private. Defined here to have SearchResult native APIs in one place.
-  void updateStore(Store store) {
-    byte[] lastTreeHead = this.guardedMap(Native::SearchResult_GetTreeHead);
-    if (lastTreeHead != null) {
-      store.setLastTreeHead(lastTreeHead);
-    }
-
-    MonitoringDataUpdates monitoringUpdates =
-        new MonitoringDataUpdates(this.guardedMap(Native::SearchResult_GetMonitors));
-    byte[][] kvp = monitoringUpdates.nextKeyValuePair();
-    while (kvp != null) {
-      store.setMonitorData(kvp[0], kvp[1]);
-      kvp = monitoringUpdates.nextKeyValuePair();
-    }
-  }
-
-  static class MonitoringDataUpdates extends NativeHandleGuard.SimpleOwner {
-    protected MonitoringDataUpdates(long nativeHandle) {
-      super(nativeHandle);
-    }
-
-    @Override
-    protected void release(long nativeHandle) {
-      Native.MonitorDataUpdates_Destroy(nativeHandle);
-    }
-
-    public byte[][] nextKeyValuePair() {
-      return (byte[][]) this.guardedMap(Native::MonitorDataUpdates_GetNext);
+  void updateStore(Aci aci, Store store) {
+    byte[] accountData = this.guardedMap(Native::SearchResult_GetAccountData);
+    if (accountData != null) {
+      store.setAccountData(aci, accountData);
     }
   }
 }

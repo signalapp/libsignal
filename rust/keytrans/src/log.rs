@@ -379,8 +379,8 @@ pub fn verify_consistency_proof(
     m: u64,
     n: u64,
     proof: &[Hash],
-    m_root: Hash,
-    n_root: Hash,
+    m_root: &Hash,
+    n_root: &Hash,
 ) -> Result<()> {
     if m == 0 || m >= n {
         return Err(Error::InvalidInput("m must be within [0, n)"));
@@ -395,7 +395,7 @@ pub fn verify_consistency_proof(
     let path = math::full_subtrees(math::root(m), m);
     if path.len() == 1 {
         // m is a power of two so we don't need to verify anything.
-        calc.insert(math::level(math::root(m)), m_root);
+        calc.insert(math::level(math::root(m)), *m_root);
     } else {
         for (i, &elem) in path.iter().enumerate() {
             if ids[i] != elem {
@@ -406,7 +406,7 @@ pub fn verify_consistency_proof(
         }
         match calc.root() {
             Ok(root) => {
-                if m_root != root {
+                if m_root != &root {
                     return Err(Error::ProofMismatch("first root does not match proof"));
                 }
             }
@@ -423,7 +423,7 @@ pub fn verify_consistency_proof(
         calc.insert(math::level(ids[j]), proof[j]);
     }
     match calc.root() {
-        Ok(root) if n_root == root => Ok(()),
+        Ok(root) if n_root == &root => Ok(()),
         Ok(_root) => Err(Error::ProofMismatch("second root does not match proof")),
         Err(err) => Err(err),
     }
@@ -494,8 +494,8 @@ mod test {
             hex!("6263b4af228c862edcc8b63ca33d4e67d1d278000e1f7c3eb8cd56039b9613b3"),
         ];
 
-        assert!(verify_consistency_proof(1078, 2000, proof, m_root, n_root).is_ok());
-        assert!(verify_consistency_proof(1078, 2000, proof, m_root, m_root).is_err());
-        assert!(verify_consistency_proof(1078, 2000, proof, n_root, n_root).is_err());
+        assert!(verify_consistency_proof(1078, 2000, proof, &m_root, &n_root).is_ok());
+        assert!(verify_consistency_proof(1078, 2000, proof, &m_root, &m_root).is_err());
+        assert!(verify_consistency_proof(1078, 2000, proof, &n_root, &n_root).is_err());
     }
 }

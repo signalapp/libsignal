@@ -373,7 +373,7 @@ public final class Native {
   public static native byte[] KeyTransparency_AciSearchKey(byte[] aci);
   public static native CompletableFuture<byte[]> KeyTransparency_Distinguished(long asyncRuntime, int environment, long chat, byte[] lastDistinguishedTreeHead);
   public static native byte[] KeyTransparency_E164SearchKey(String e164);
-  public static native long KeyTransparency_NewSearchContext(byte[] aciMonitor, byte[] e164Monitor, byte[] usernameHashMonitor, byte[] lastTreeHead, byte[] lastDistinguishedTreeHead) throws Exception;
+  public static native long KeyTransparency_NewSearchContext(byte[] accountData, byte[] lastDistinguishedTreeHead) throws Exception;
   public static native CompletableFuture<Long> KeyTransparency_Search(long asyncRuntime, int environment, long chat, byte[] aci, long aciIdentityKey, String e164, byte[] unidentifiedAccessKey, byte[] usernameHash, long context);
   public static native byte[] KeyTransparency_UsernameHashSearchKey(byte[] hash);
 
@@ -421,9 +421,6 @@ public final class Native {
   public static native byte[] MessageBackupKey_GetHmacKey(long key);
 
   public static native Object MessageBackupValidator_Validate(long key, InputStream firstStream, InputStream secondStream, long len, int purpose) throws Exception;
-
-  public static native void MonitorDataUpdates_Destroy(long handle);
-  public static native Object[] MonitorDataUpdates_GetNext(long val);
 
   public static native long Mp4Sanitizer_Sanitize(InputStream input, long len) throws Exception;
 
@@ -542,11 +539,11 @@ public final class Native {
   public static native byte[] SealedSessionCipher_MultiRecipientMessageForSingleRecipient(byte[] encodedMultiRecipientMessage) throws Exception;
 
   public static native void SearchResult_Destroy(long handle);
+  public static native byte[] SearchResult_GetAccountData(long res);
   public static native byte[] SearchResult_GetAciForE164(long res);
   public static native byte[] SearchResult_GetAciForUsernameHash(long res);
   public static native long SearchResult_GetAciIdentityKey(long res);
-  public static native long SearchResult_GetMonitors(long res);
-  public static native byte[] SearchResult_GetTreeHead(long res);
+  public static native long SearchResult_GetTimestamp(long res);
 
   public static native long SenderCertificate_Deserialize(byte[] data) throws Exception;
   public static native void SenderCertificate_Destroy(long handle);

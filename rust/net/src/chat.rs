@@ -678,7 +678,7 @@ impl ChatConnection {
     }
 }
 
-#[cfg(feature = "test-util")]
+#[cfg(any(test, feature = "test-util"))]
 pub mod test_support {
     use std::sync::Arc;
     use std::time::Duration;

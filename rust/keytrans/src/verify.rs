@@ -15,8 +15,9 @@ use crate::log::{evaluate_batch_proof, truncate_batch_proof, verify_consistency_
 use crate::prefix::{evaluate as evaluate_prefix, MalformedProof};
 use crate::proto::*;
 use crate::{
-    guide, log, vrf, DeploymentMode, FullSearchResponse, LastTreeHead, LocalStateUpdate,
-    MonitorContext, MonitoringData, PublicConfig, SearchContext, SlimSearchRequest,
+    guide, log, vrf, DeploymentMode, FullSearchResponse, LastTreeHead, MonitorContext,
+    MonitorStateUpdate, MonitoringData, PublicConfig, SearchContext, SearchStateUpdate,
+    SlimSearchRequest,
 };
 
 /// The range of allowed timestamp values relative to "now".
@@ -158,7 +159,7 @@ fn verify_full_tree_head(
     config: &PublicConfig,
     fth: &FullTreeHead,
     root: [u8; 32],
-    last_tree_head: Option<LastTreeHead>,
+    last_tree_head: Option<&LastTreeHead>,
     now: SystemTime,
 ) -> Result<LastTreeHead> {
     let tree_head = get_proto_field(&fth.tree_head)?;
@@ -175,7 +176,7 @@ fn verify_full_tree_head(
             }
         }
         Some((last, last_root)) if last.tree_size == tree_head.tree_size => {
-            if root != last_root {
+            if &root != last_root {
                 return Err(Error::VerificationFailed(
                     "root is different but tree size is same".to_string(),
                 ));
@@ -203,7 +204,13 @@ fn verify_full_tree_head(
                 ));
             }
             let proof = get_hash_proof(&fth.last)?;
-            verify_consistency_proof(last.tree_size, tree_head.tree_size, &proof, last_root, root)?
+            verify_consistency_proof(
+                last.tree_size,
+                tree_head.tree_size,
+                &proof,
+                last_root,
+                &root,
+            )?
         }
     };
 
@@ -254,8 +261,8 @@ fn verify_full_tree_head(
                 auditor_head.tree_size,
                 tree_head.tree_size,
                 &proof,
-                *auditor_root,
-                root,
+                auditor_root,
+                &root,
             )?;
             verify_tree_head_signature(config, auditor_head, auditor_root, &auditor_key)?;
         } else {
@@ -348,8 +355,8 @@ pub fn verify_distinguished(
         distinguished_size,
         tree_size,
         &get_hash_proof(&fth.distinguished)?,
-        distinguished_root,
-        root,
+        &distinguished_root,
+        &root,
     )?)
 }
 
@@ -370,7 +377,7 @@ fn verify_search_internal(
     context: SearchContext,
     monitor: bool,
     now: SystemTime,
-) -> Result<LocalStateUpdate> {
+) -> Result<SearchStateUpdate> {
     // NOTE: Update this function in tandem with truncate_search_response.
     let SlimSearchRequest {
         search_key,
@@ -482,16 +489,10 @@ fn verify_search_internal(
     mdw.check_search_consistency(size, &index, search_proof.pos, result_id, ver, monitor)?;
     mdw.update(size, &steps)?;
 
-    let monitoring_data_updates = mdw
-        .into_data_update()
-        .into_iter()
-        .map(|update| (search_key.clone(), update))
-        .collect();
-
-    Ok(LocalStateUpdate {
+    Ok(SearchStateUpdate {
         tree_head: updated_tree_head.0,
         tree_root: updated_tree_head.1,
-        monitors: monitoring_data_updates,
+        monitoring_data: mdw.into_data_update(),
     })
 }
 
@@ -505,7 +506,7 @@ pub fn verify_search(
     context: SearchContext,
     force_monitor: bool,
     now: SystemTime,
-) -> Result<LocalStateUpdate> {
+) -> Result<SearchStateUpdate> {
     verify_search_internal(config, req, res, context, force_monitor, now)
 }
 
@@ -517,7 +518,7 @@ pub fn verify_update(
     res: &UpdateResponse,
     context: SearchContext,
     now: SystemTime,
-) -> Result<LocalStateUpdate> {
+) -> Result<SearchStateUpdate> {
     let UpdateResponse {
         tree_head,
         vrf_proof,
@@ -556,7 +557,7 @@ pub fn verify_monitor<'a>(
     res: &'a MonitorResponse,
     context: MonitorContext,
     now: SystemTime,
-) -> Result<LocalStateUpdate> {
+) -> Result<MonitorStateUpdate> {
     // Verify proof responses are the expected lengths.
     if req.keys.len() != res.proofs.len() {
         return Err(Error::VerificationFailed(
@@ -598,7 +599,7 @@ pub fn verify_monitor<'a>(
 
     // Verify the tree head with the candidate root.
     let updated_tree_head =
-        verify_full_tree_head(config, full_tree_head, root, last_tree_head, now)?;
+        verify_full_tree_head(config, full_tree_head, root, last_tree_head.as_ref(), now)?;
 
     let MonitorRequest { keys, consistency } = req;
 
@@ -630,10 +631,10 @@ pub fn verify_monitor<'a>(
         }
     }
 
-    Ok(LocalStateUpdate {
+    Ok(MonitorStateUpdate {
         tree_head: updated_tree_head.0,
         tree_root: updated_tree_head.1,
-        monitors: data_updates,
+        monitoring_data: data_updates,
     })
 }
 
@@ -711,14 +712,12 @@ impl MonitorProofAcc {
 
 struct MonitoringDataWrapper {
     inner: Option<MonitoringData>,
-    changed: bool,
 }
 
 impl MonitoringDataWrapper {
     fn new(monitoring_data: Option<MonitoringData>) -> Self {
         Self {
             inner: monitoring_data,
-            changed: false,
         }
     }
 
@@ -739,7 +738,6 @@ impl MonitoringDataWrapper {
                 ptrs: HashMap::from([(ver_pos, version)]),
                 owned,
             });
-            self.changed = true;
         }
     }
 
@@ -787,7 +785,6 @@ impl MonitoringDataWrapper {
                     }
                     None => {
                         data.ptrs.insert(ver_pos, version);
-                        self.changed = true;
                     }
                 };
             }
@@ -795,7 +792,6 @@ impl MonitoringDataWrapper {
 
         if !data.owned && owned {
             data.owned = true;
-            self.changed = true;
         }
 
         Ok(())
@@ -850,14 +846,13 @@ impl MonitoringDataWrapper {
 
         if changed {
             data.ptrs = ptrs;
-            self.changed = true;
         }
 
         Ok(())
     }
 
     fn into_data_update(self) -> Option<MonitoringData> {
-        self.inner.filter(|_| self.changed)
+        self.inner
     }
 }
 
@@ -1051,13 +1046,27 @@ mod test {
             ptrs: HashMap::from([(6143, 0)]),
             owned: true,
         };
+
         assert_matches!(
             verify_search_internal(&config, request.clone(), response.clone(), SearchContext::default(), true, valid_at),
             Ok(update) => {
                 assert_eq!(update.tree_head, last_tree_head);
                 assert_eq!(update.tree_root, last_root);
-                assert_eq!(update.monitors.len(), 1);
-                assert_eq!(update.monitors[0].1, expected_data_update);
+                assert_eq!(update.monitoring_data, Some(expected_data_update.clone()));
+            }
+        );
+        let last_tree = (last_tree_head.clone(), last_root);
+        let context = SearchContext {
+            last_tree_head: Some(&last_tree),
+            data: Some(expected_data_update.clone()),
+        };
+        // Verification result should always include the monitoring data field, even if it has not changed.
+        assert_matches!(
+            verify_search_internal(&config, request.clone(), response.clone(), context, true, valid_at),
+            Ok(update) => {
+                assert_eq!(&update.tree_head, &last_tree_head);
+                assert_eq!(update.tree_root, last_root);
+                assert_eq!(update.monitoring_data, Some(expected_data_update));
             }
         );
         assert_matches!(
@@ -1066,7 +1075,7 @@ mod test {
                 assert_eq!(update.tree_head, last_tree_head);
                 assert_eq!(update.tree_root, last_root);
                 // When monitor == false there should be no data update
-                assert!(update.monitors.is_empty());
+                assert!(update.monitoring_data.is_none());
             }
         );
     }

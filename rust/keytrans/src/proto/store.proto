@@ -20,3 +20,10 @@ message StoredMonitoringData {
   map<uint64, uint32> ptrs = 3;
   bool owned = 4;
 }
+
+message StoredAccountData {
+  StoredMonitoringData aci = 1;
+  StoredMonitoringData e164 = 2;
+  StoredMonitoringData username_hash = 3;
+  StoredTreeHead last_tree_head = 4;
+}

@@ -7,6 +7,7 @@ package org.signal.libsignal.keytrans;
 
 import java.nio.ByteBuffer;
 import java.util.Optional;
+import org.signal.libsignal.protocol.ServiceId;
 
 /**
  * Interface of a local persistent key transparency data store.
@@ -20,27 +21,15 @@ import java.util.Optional;
  * <p>It is safe to assume that {@code null} will never be passed to any of the parameters.
  */
 public interface Store {
-  Optional<byte[]> getLastTreeHead();
-
-  void setLastTreeHead(byte[] lastTreeHead);
-
   Optional<byte[]> getLastDistinguishedTreeHead();
 
   void setLastDistinguishedTreeHead(byte[] lastDistinguishedTreeHead);
 
-  Optional<byte[]> getMonitorData(ByteBuffer searchKey);
+  Optional<byte[]> getAccountData(ServiceId.Aci aci);
 
-  void setMonitorData(ByteBuffer searchKey, byte[] monitorData);
+  void setAccountData(ServiceId.Aci aci, byte[] data);
 
-  default Optional<byte[]> getMonitorData(byte[] searchKey) {
-    return getMonitorData(searchKey == null ? null : ByteBuffer.wrap(searchKey));
-  }
-
-  default void setMonitorData(byte[] searchKey, byte[] monitorData) {
-    setMonitorData(ByteBuffer.wrap(searchKey), monitorData);
-  }
-
-  default void applyUpdates(SearchResult searchResult) {
-    searchResult.updateStore(this);
+  default void applyUpdates(ServiceId.Aci aci, SearchResult searchResult) {
+    searchResult.updateStore(aci, this);
   }
 }
