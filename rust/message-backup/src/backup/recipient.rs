@@ -16,6 +16,7 @@ use zkgroup::ProfileKeyBytes;
 
 use crate::backup::call::{CallLink, CallLinkError};
 use crate::backup::frame::RecipientId;
+use crate::backup::map::IntMap;
 use crate::backup::method::{LookupPair, Method, Store, ValidateOnly};
 use crate::backup::serialize::{self, SerializeOrder, UnorderedList};
 use crate::backup::time::{ReportUnusualTimestamp, Timestamp};
@@ -71,6 +72,8 @@ pub enum RecipientError {
     DistributionListItemMissing,
     /// distribution list member {0:?} is unknown
     DistributionListMemberUnknown(RecipientId),
+    /// distribution list member {0:?} appears multiple times
+    DistributionListMemberDuplicate(RecipientId),
     /// distribution list member {0:?} is a {1:?} not a contact
     DistributionListMemberWrongKind(RecipientId, DestinationKind),
 }
@@ -488,10 +491,14 @@ impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R> + ReportUnusualTim
                         special_fields: _,
                     },
                 ) => {
+                    let mut members_seen = IntMap::default();
                     let members: UnorderedList<R> = memberRecipientIds
                         .into_iter()
                         .map(|id| {
                             let id = RecipientId(id);
+                            if members_seen.insert(id, ()).is_some() {
+                                return Err(RecipientError::DistributionListMemberDuplicate(id));
+                            }
                             let (&kind, recipient_reference) = context
                                 .lookup_pair(&id)
                                 .ok_or(RecipientError::DistributionListMemberUnknown(id))?;
@@ -790,6 +797,11 @@ mod test {
         |x| x.mut_distributionList().memberRecipientIds.push(UNKNOWN_RECIPIENT_ID.0) =>
         Err(RecipientError::DistributionListMemberUnknown(UNKNOWN_RECIPIENT_ID));
         "unknown_member"
+    )]
+    #[test_case(
+        |x| x.mut_distributionList().memberRecipientIds.push(TestContext::CONTACT_ID.0) =>
+        Err(RecipientError::DistributionListMemberDuplicate(TestContext::CONTACT_ID));
+        "duplicate_member"
     )]
     #[test_case(
         |x| x.mut_distributionList().memberRecipientIds.push(TestContext::SELF_ID.0) =>
