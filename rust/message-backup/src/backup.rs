@@ -20,10 +20,11 @@ use crate::backup::frame::{ChatId, RecipientId};
 use crate::backup::map::IntMap;
 use crate::backup::method::{Lookup, LookupPair, Method};
 pub use crate::backup::method::{Store, ValidateOnly};
+use crate::backup::notification_profile::{NotificationProfile, NotificationProfileError};
 use crate::backup::recipient::{
     DestinationKind, FullRecipientData, MinimalRecipientData, RecipientError,
 };
-use crate::backup::serialize::{backup_key_as_hex, SerializeOrder};
+use crate::backup::serialize::{backup_key_as_hex, SerializeOrder, UnorderedList};
 use crate::backup::sticker::{PackId as StickerPackId, StickerPack, StickerPackError};
 use crate::backup::time::{
     ReportUnusualTimestamp, Timestamp, TimestampIssue, UnusualTimestampTracker,
@@ -38,6 +39,7 @@ mod file;
 mod frame;
 mod map;
 pub(crate) mod method;
+mod notification_profile;
 mod recipient;
 pub mod serialize;
 mod sticker;
@@ -94,6 +96,7 @@ pub struct PartialBackup<M: Method + ReferencedTypes> {
     chats: ChatsData<M>,
     ad_hoc_calls: M::List<AdHocCall<M::RecipientReference>>,
     sticker_packs: HashMap<StickerPackId, StickerPack<M>>,
+    notification_profiles: UnorderedList<NotificationProfile<M::RecipientReference>>,
     /// Stored here so PartialBackup can be the only context necessary for processing backup frames.
     unusual_timestamp_tracker: RefCell<UnusualTimestampTracker>,
 }
@@ -106,6 +109,7 @@ pub struct CompletedBackup<M: Method + ReferencedTypes> {
     chats: ChatsData<M>,
     ad_hoc_calls: M::List<AdHocCall<M::RecipientReference>>,
     sticker_packs: HashMap<StickerPackId, StickerPack<M>>,
+    notification_profiles: UnorderedList<NotificationProfile<M::RecipientReference>>,
 }
 
 pub type Backup = CompletedBackup<Store>;
@@ -180,6 +184,7 @@ impl<M: Method + ReferencedTypes> TryFrom<PartialBackup<M>> for CompletedBackup<
             chats,
             ad_hoc_calls,
             sticker_packs,
+            notification_profiles,
             unusual_timestamp_tracker: _,
         } = value;
 
@@ -192,6 +197,7 @@ impl<M: Method + ReferencedTypes> TryFrom<PartialBackup<M>> for CompletedBackup<
             chats,
             ad_hoc_calls,
             sticker_packs,
+            notification_profiles,
         })
     }
 }
@@ -214,6 +220,8 @@ pub enum ValidationError {
     CallError(#[from] CallFrameError),
     /// {0}
     StickerError(#[from] StickerError),
+    /// {0}
+    NotificationProfileError(#[from] NotificationProfileError),
 }
 
 #[derive(Debug, displaydoc::Display, thiserror::Error)]
@@ -401,6 +409,7 @@ impl<M: Method + ReferencedTypes> PartialBackup<M> {
             chats: Default::default(),
             ad_hoc_calls: Default::default(),
             sticker_packs: Default::default(),
+            notification_profiles: Default::default(),
             unusual_timestamp_tracker,
         })
     }
@@ -515,8 +524,10 @@ impl<M: Method + ReferencedTypes> PartialBackup<M> {
 
     fn add_notification_profile(
         &mut self,
-        _notification_profile: proto::NotificationProfile,
+        notification_profile: proto::NotificationProfile,
     ) -> Result<(), ValidationError> {
+        let profile = notification_profile.try_into_with(self)?;
+        self.notification_profiles.0.push(profile);
         Ok(())
     }
 
@@ -705,6 +716,26 @@ pub async fn convert_to_json(
         array.push(binary_proto_to_json::<proto::Frame>(&frame)?);
     }
     Ok(array)
+}
+
+pub enum ColorError {
+    NotOpaque(u32),
+}
+
+#[derive(Copy, Clone, Debug, serde::Serialize)]
+#[cfg_attr(test, derive(PartialEq))]
+#[serde(transparent)]
+pub struct Color(u32);
+
+impl TryFrom<u32> for Color {
+    type Error = ColorError;
+
+    fn try_from(value: u32) -> Result<Self, Self::Error> {
+        if value >> 24 != 0xFF {
+            return Err(ColorError::NotOpaque(value));
+        }
+        Ok(Self(value))
+    }
 }
 
 struct InvalidAci;

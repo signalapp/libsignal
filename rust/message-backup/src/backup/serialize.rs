@@ -16,6 +16,7 @@ use crate::backup::chat::text::{TextEffect, TextRange};
 use crate::backup::chat::{ChatData, OutgoingSend};
 use crate::backup::frame::RecipientId;
 use crate::backup::method::Store;
+use crate::backup::notification_profile::NotificationProfile;
 use crate::backup::recipient::{DistributionListItem, FullRecipientData};
 use crate::backup::sticker::{PackId as StickerPackId, StickerPack};
 use crate::backup::{BackupMeta, ChatsData, CompletedBackup};
@@ -34,6 +35,7 @@ pub struct Backup {
     ad_hoc_calls: UnorderedList<AdHocCall<FullRecipientData>>,
     pinned_chats: Vec<FullRecipientData>,
     sticker_packs: UnorderedList<(StickerPackId, StickerPack<Store>)>,
+    notification_profiles: UnorderedList<NotificationProfile<FullRecipientData>>,
 }
 
 impl Backup {
@@ -57,6 +59,7 @@ impl From<CompletedBackup<Store>> for Backup {
                 },
             ad_hoc_calls,
             sticker_packs,
+            notification_profiles,
         } = value;
         Self {
             meta,
@@ -66,6 +69,7 @@ impl From<CompletedBackup<Store>> for Backup {
             ad_hoc_calls: ad_hoc_calls.into_iter().collect(),
             pinned_chats: pinned.into_iter().map(|(_, data)| data).collect(),
             sticker_packs: sticker_packs.into_iter().collect(),
+            notification_profiles: notification_profiles.into_iter().collect(),
         }
     }
 }
@@ -435,6 +439,7 @@ mod test {
             ad_hoc_calls: UnorderedList::default(),
             pinned_chats: Vec::default(),
             sticker_packs: UnorderedList::default(),
+            notification_profiles: UnorderedList::default(),
         };
 
         const EXPECTED_JSON: &str = include_str!("expected_serialized_backup.json");

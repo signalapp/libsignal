@@ -73,5 +73,6 @@
   "chats": [],
   "ad_hoc_calls": [],
   "pinned_chats": [],
-  "sticker_packs": []
+  "sticker_packs": [],
+  "notification_profiles": []
 }

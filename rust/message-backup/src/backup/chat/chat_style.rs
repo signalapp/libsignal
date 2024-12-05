@@ -12,7 +12,7 @@ use crate::backup::file::{FilePointer, FilePointerError};
 use crate::backup::method::{Lookup, Method};
 use crate::backup::serialize::{SerializeOrder, UnorderedList};
 use crate::backup::time::ReportUnusualTimestamp;
-use crate::backup::{serialize, ReferencedTypes, TryFromWith, TryIntoWith as _};
+use crate::backup::{serialize, Color, ColorError, ReferencedTypes, TryFromWith, TryIntoWith as _};
 use crate::proto::backup as proto;
 
 #[derive(serde::Serialize)]
@@ -31,22 +31,6 @@ pub struct ChatStyle<M: Method + ReferencedTypes> {
 pub enum Wallpaper<M: Method> {
     Preset(WallpaperPreset),
     Photo(M::BoxedValue<FilePointer>),
-}
-
-#[derive(Copy, Clone, Debug, serde::Serialize)]
-#[cfg_attr(test, derive(PartialEq))]
-#[serde(transparent)]
-pub struct Color(u32);
-
-impl TryFrom<u32> for Color {
-    type Error = ChatStyleError;
-
-    fn try_from(value: u32) -> Result<Self, Self::Error> {
-        if value >> 24 != 0xFF {
-            return Err(ChatStyleError::ChatColorNotOpaque(value));
-        }
-        Ok(Self(value))
-    }
 }
 
 #[derive(Debug, serde::Serialize)]
@@ -334,6 +318,14 @@ impl TryFrom<proto::chat_style::custom_chat_color::Color> for CustomChatColor {
 
 impl From<CustomChatColor> for () {
     fn from(_: CustomChatColor) -> Self {}
+}
+
+impl From<ColorError> for ChatStyleError {
+    fn from(value: ColorError) -> Self {
+        match value {
+            ColorError::NotOpaque(color) => ChatStyleError::ChatColorNotOpaque(color),
+        }
+    }
 }
 
 impl WallpaperPreset {

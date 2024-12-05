@@ -54,7 +54,6 @@ impl<T> UnorderedList<T> {
     }
 }
 
-#[cfg(test)]
 impl<T> From<Vec<T>> for UnorderedList<T> {
     fn from(value: Vec<T>) -> Self {
         Self(value)
