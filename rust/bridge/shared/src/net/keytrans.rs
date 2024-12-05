@@ -10,10 +10,10 @@ use libsignal_bridge_types::net::chat::UnauthChat;
 pub use libsignal_bridge_types::net::{Environment, TokioAsyncContext};
 use libsignal_bridge_types::support::AsType;
 use libsignal_core::{Aci, E164};
-use libsignal_keytrans::{KeyTransparency, LocalStateUpdate, StoredTreeHead};
-use libsignal_net::keytrans::{
-    ChatSearchContext, Error, Kt, SearchKey, SearchResult, UsernameHash,
+use libsignal_keytrans::{
+    AccountData, KeyTransparency, LocalStateUpdate, StoredAccountData, StoredTreeHead,
 };
+use libsignal_net::keytrans::{Error, Kt, SearchKey, SearchResult, UsernameHash};
 use libsignal_protocol::PublicKey;
 use prost::{DecodeError, Message};
 
@@ -35,7 +35,6 @@ fn KeyTransparency_UsernameHashSearchKey(hash: &[u8]) -> Vec<u8> {
     UsernameHash::from_slice(hash).as_search_key()
 }
 
-bridge_handle_fns!(ChatSearchContext, clone = false, ffi = false, node = false);
 bridge_handle_fns!(SearchResult, clone = false, ffi = false, node = false);
 
 #[bridge_fn(node = false, ffi = false)]
@@ -77,24 +76,8 @@ where
     T::decode(bytes.as_ref())
 }
 
-#[bridge_fn(node = false, ffi = false)]
-fn KeyTransparency_NewSearchContext(
-    account_data: Option<&[u8]>,
-    last_distinguished_tree_head: &[u8],
-) -> Result<ChatSearchContext, Error> {
-    let account_data = account_data.map(try_decode).transpose()?;
-    let last_distinguished_tree_head =
-        try_decode(last_distinguished_tree_head).map(|stored: StoredTreeHead| stored.tree_head)?;
-    let distinguished_tree_head_size = last_distinguished_tree_head
-        .map(|head| head.tree_size)
-        .ok_or(Error::InvalidRequest("distinguished tree head is missing"))?;
-    Ok(ChatSearchContext {
-        account_data,
-        distinguished_tree_head_size,
-    })
-}
-
 #[bridge_io(TokioAsyncContext, node = false, ffi = false)]
+#[allow(clippy::too_many_arguments)]
 async fn KeyTransparency_Search(
     // TODO: it is currently possible to pass an env that does not match chat
     environment: AsType<Environment, u8>,
@@ -104,7 +87,8 @@ async fn KeyTransparency_Search(
     e164: Option<E164>,
     unidentified_access_key: Option<Box<[u8]>>,
     username_hash: Option<Box<[u8]>>,
-    context: &ChatSearchContext,
+    account_data: Option<Box<[u8]>>,
+    last_distinguished_tree_head: Box<[u8]>,
 ) -> Result<SearchResult, Error> {
     let username_hash = username_hash.map(UsernameHash::from);
     let config = environment
@@ -135,13 +119,27 @@ async fn KeyTransparency_Search(
         }
     };
 
+    let account_data = account_data
+        .map(|bytes| {
+            let stored: StoredAccountData = try_decode(bytes)?;
+            AccountData::try_from(stored).map_err(Error::from)
+        })
+        .transpose()?;
+
+    let last_distinguished_tree_head =
+        try_decode(last_distinguished_tree_head).map(|stored: StoredTreeHead| stored.tree_head)?;
+    let distinguished_tree_head_size = last_distinguished_tree_head
+        .map(|head| head.tree_size)
+        .ok_or(Error::InvalidRequest("distinguished tree head is missing"))?;
+
     let result = kt
         .search(
             &aci,
             aci_identity_key,
             e164_pair,
             username_hash,
-            context.clone(),
+            account_data,
+            distinguished_tree_head_size,
         )
         .await?;
     Ok(result)

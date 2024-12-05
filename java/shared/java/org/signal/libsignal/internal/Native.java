@@ -208,8 +208,6 @@ public final class Native {
   public static native CompletableFuture<Long> CdsiLookup_new(long asyncRuntime, long connectionManager, String username, String password, long request);
   public static native byte[] CdsiLookup_token(long lookup);
 
-  public static native void ChatSearchContext_Destroy(long handle);
-
   public static native void ChatService_SetListenerAuth(long runtime, long chat, BridgeChatListener listener);
   public static native void ChatService_SetListenerUnauth(long runtime, long chat, BridgeChatListener listener);
   public static native CompletableFuture<Object> ChatService_auth_send(long asyncRuntime, long chat, long httpRequest, int timeoutMillis);
@@ -373,8 +371,7 @@ public final class Native {
   public static native byte[] KeyTransparency_AciSearchKey(byte[] aci);
   public static native CompletableFuture<byte[]> KeyTransparency_Distinguished(long asyncRuntime, int environment, long chat, byte[] lastDistinguishedTreeHead);
   public static native byte[] KeyTransparency_E164SearchKey(String e164);
-  public static native long KeyTransparency_NewSearchContext(byte[] accountData, byte[] lastDistinguishedTreeHead) throws Exception;
-  public static native CompletableFuture<Long> KeyTransparency_Search(long asyncRuntime, int environment, long chat, byte[] aci, long aciIdentityKey, String e164, byte[] unidentifiedAccessKey, byte[] usernameHash, long context);
+  public static native CompletableFuture<Long> KeyTransparency_Search(long asyncRuntime, int environment, long chat, byte[] aci, long aciIdentityKey, String e164, byte[] unidentifiedAccessKey, byte[] usernameHash, byte[] accountData, byte[] lastDistinguishedTreeHead);
   public static native byte[] KeyTransparency_UsernameHashSearchKey(byte[] hash);
 
   public static native void KyberKeyPair_Destroy(long handle);

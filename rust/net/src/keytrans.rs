@@ -82,6 +82,27 @@ struct RawChatSearchRequest {
     distinguished_tree_head_size: u64,
 }
 
+impl RawChatSearchRequest {
+    fn new(
+        aci: &Aci,
+        aci_identity_key: &PublicKey,
+        e164: Option<&(E164, Vec<u8>)>,
+        username_hash: Option<&UsernameHash>,
+        account_data: Option<&AccountData>,
+        distinguished_tree_head_size: u64,
+    ) -> Self {
+        Self {
+            aci: aci.as_chat_value(),
+            aci_identity_key: BASE64_STANDARD.encode(aci_identity_key.serialize()),
+            e164: e164.map(|x| x.0.as_chat_value()),
+            username_hash: username_hash.map(|x| x.as_chat_value()),
+            unidentified_access_key: e164.map(|x| BASE64_STANDARD.encode(&x.1)),
+            last_tree_head_size: account_data.map(|acc| acc.last_tree_head.0.tree_size),
+            distinguished_tree_head_size,
+        }
+    }
+}
+
 impl From<RawChatSearchRequest> for chat::Request {
     fn from(request: RawChatSearchRequest) -> Self {
         Self {
@@ -387,37 +408,6 @@ pub struct Kt<'a> {
     pub config: Config,
 }
 
-#[derive(Debug, Clone, Default)]
-pub struct ChatSearchContext {
-    pub account_data: Option<StoredAccountData>,
-    pub distinguished_tree_head_size: u64,
-}
-
-impl ChatSearchContext {
-    fn make_raw_request(
-        &self,
-        aci: &Aci,
-        aci_identity_key: &PublicKey,
-        e164: Option<&(E164, Vec<u8>)>,
-        username_hash: Option<&UsernameHash>,
-    ) -> RawChatSearchRequest {
-        fn get_tree_size(account_data: &StoredAccountData) -> Option<u64> {
-            let stored = account_data.last_tree_head.as_ref()?;
-            let head = stored.tree_head.as_ref()?;
-            Some(head.tree_size)
-        }
-        RawChatSearchRequest {
-            aci: aci.as_chat_value(),
-            aci_identity_key: BASE64_STANDARD.encode(aci_identity_key.serialize()),
-            e164: e164.map(|x| x.0.as_chat_value()),
-            username_hash: username_hash.map(|x| x.as_chat_value()),
-            unidentified_access_key: e164.map(|x| BASE64_STANDARD.encode(&x.1)),
-            last_tree_head_size: self.account_data.as_ref().and_then(get_tree_size),
-            distinguished_tree_head_size: self.distinguished_tree_head_size,
-        }
-    }
-}
-
 #[derive(Debug, Clone)]
 pub struct SearchResult {
     pub aci_identity_key: IdentityKey,
@@ -451,10 +441,17 @@ impl<'a> Kt<'a> {
         aci_identity_key: &PublicKey,
         e164: Option<(E164, Vec<u8>)>,
         username_hash: Option<UsernameHash<'a>>,
-        context: ChatSearchContext,
+        stored_account_data: Option<AccountData>,
+        distinguished_tree_head_size: u64,
     ) -> Result<SearchResult> {
-        let raw_request =
-            context.make_raw_request(aci, aci_identity_key, e164.as_ref(), username_hash.as_ref());
+        let raw_request = RawChatSearchRequest::new(
+            aci,
+            aci_identity_key,
+            e164.as_ref(),
+            username_hash.as_ref(),
+            stored_account_data.as_ref(),
+            distinguished_tree_head_size,
+        );
         let response = self.send(raw_request.into()).await?;
 
         let chat_search_response = RawChatSerializedResponse::try_from(response)
@@ -463,12 +460,6 @@ impl<'a> Kt<'a> {
                 TypedSearchResponse::from_untyped(e164.is_some(), username_hash.is_some(), r)
             })?;
 
-        let ChatSearchContext {
-            account_data: stored_account_data,
-            distinguished_tree_head_size: _,
-        } = context;
-
-        let account_data = stored_account_data.map(AccountData::try_from).transpose()?;
         let now = SystemTime::now();
 
         // TODO: this could be a `validate` on the TypedSearchResponse, but then what to accept as the "expected" arguments?
@@ -486,7 +477,7 @@ impl<'a> Kt<'a> {
             e164_monitoring_data,
             username_hash_monitoring_data,
             stored_last_tree_head,
-        ) = match account_data {
+        ) = match stored_account_data {
             None => (None, None, None, None),
             Some(acc) => {
                 let AccountData {
@@ -993,10 +984,8 @@ mod test {
                 &aci_identity_key,
                 use_e164.then_some(e164),
                 use_username_hash.then_some(username_hash),
-                ChatSearchContext {
-                    account_data: None,
-                    distinguished_tree_head_size,
-                },
+                None,
+                distinguished_tree_head_size,
             )
             .await;
 
@@ -1058,10 +1047,8 @@ mod test {
                     &aci_identity_key,
                     use_e164.then_some(e164),
                     use_username_hash.then_some(username_hash.clone()),
-                    ChatSearchContext {
-                        account_data: None,
-                        distinguished_tree_head_size,
-                    },
+                    None,
+                    distinguished_tree_head_size,
                 )
                 .await
                 .expect("can search");
