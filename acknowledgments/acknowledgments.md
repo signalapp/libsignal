@@ -2117,7 +2117,7 @@ limitations under the License.
 
 ```
 
-## boring 4.9.0
+## boring 4.13.0
 
 ```
 Copyright 2011-2017 Google Inc.
@@ -2586,7 +2586,7 @@ express Statement of Purpose.
    CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 ```
 
-## boring-sys 4.9.0
+## boring-sys 4.13.0
 
 ```
 /* Copyright (c) 2015, Google Inc.
@@ -2957,7 +2957,7 @@ DEALINGS IN THE SOFTWARE.
 
 ```
 
-## boring-sys 4.9.0
+## boring-sys 4.13.0
 
 ```
 Copyright (c) 2014 Alex Crichton
@@ -3626,7 +3626,7 @@ DEALINGS IN THE SOFTWARE.
 
 ```
 
-## boring-sys 4.9.0
+## boring-sys 4.13.0
 
 ```
 Copyright (c) 2015-2016 the fiat-crypto authors (see
@@ -4165,7 +4165,7 @@ SOFTWARE.
 
 ```
 
-## tokio-boring 4.9.0
+## tokio-boring 4.13.0
 
 ```
 Copyright (c) 2016 Tokio contributors
@@ -5841,6 +5841,31 @@ DEALINGS IN THE SOFTWARE.
 
 ```
 Copyright (c) 2022 Jacob Pratt et al.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+```
+
+## openssl-macros 0.1.1
+
+```
+Copyright (c) 2022 Steven Fackler
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -7743,7 +7768,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-## boring-sys 4.9.0, ring 0.17.8
+## boring-sys 4.13.0, ring 0.17.8
 
 ```
 /* ====================================================================

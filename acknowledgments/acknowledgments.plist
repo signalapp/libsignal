@@ -2181,7 +2181,7 @@ limitations under the License.
 			<key>License</key>
 			<string>Apache License 2.0</string>
 			<key>Title</key>
-			<string>boring 4.9.0</string>
+			<string>boring 4.13.0</string>
 			<key>Type</key>
 			<string>PSGroupSpecifier</string>
 		</dict>
@@ -2694,7 +2694,7 @@ express Statement of Purpose.
 			<key>License</key>
 			<string>ISC License</string>
 			<key>Title</key>
-			<string>boring-sys 4.9.0</string>
+			<string>boring-sys 4.13.0</string>
 			<key>Type</key>
 			<string>PSGroupSpecifier</string>
 		</dict>
@@ -3135,7 +3135,7 @@ DEALINGS IN THE SOFTWARE.
 			<key>License</key>
 			<string>MIT License</string>
 			<key>Title</key>
-			<string>boring-sys 4.9.0</string>
+			<string>boring-sys 4.13.0</string>
 			<key>Type</key>
 			<string>PSGroupSpecifier</string>
 		</dict>
@@ -3893,7 +3893,7 @@ SOFTWARE.</string>
 			<key>License</key>
 			<string>MIT License</string>
 			<key>Title</key>
-			<string>boring-sys 4.9.0</string>
+			<string>boring-sys 4.13.0</string>
 			<key>Type</key>
 			<string>PSGroupSpecifier</string>
 		</dict>
@@ -4515,7 +4515,7 @@ DEALINGS IN THE SOFTWARE.
 			<key>License</key>
 			<string>MIT License</string>
 			<key>Title</key>
-			<string>tokio-boring 4.9.0</string>
+			<string>tokio-boring 4.13.0</string>
 			<key>Type</key>
 			<string>PSGroupSpecifier</string>
 		</dict>
@@ -6397,6 +6397,35 @@ SOFTWARE.
 			<string>MIT License</string>
 			<key>Title</key>
 			<string>deranged 0.3.11, time-core 0.1.2</string>
+			<key>Type</key>
+			<string>PSGroupSpecifier</string>
+		</dict>
+		<dict>
+			<key>FooterText</key>
+			<string>Copyright (c) 2022 Steven Fackler
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the &quot;Software&quot;), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED &quot;AS IS&quot;, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+</string>
+			<key>License</key>
+			<string>MIT License</string>
+			<key>Title</key>
+			<string>openssl-macros 0.1.1</string>
 			<key>Type</key>
 			<string>PSGroupSpecifier</string>
 		</dict>
@@ -8623,7 +8652,7 @@ SOFTWARE.</string>
 			<key>License</key>
 			<string>OpenSSL License</string>
 			<key>Title</key>
-			<string>boring-sys 4.9.0, ring 0.17.8</string>
+			<string>boring-sys 4.13.0, ring 0.17.8</string>
 			<key>Type</key>
 			<string>PSGroupSpecifier</string>
 		</dict>

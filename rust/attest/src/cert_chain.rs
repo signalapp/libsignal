@@ -385,14 +385,11 @@ mod test {
     fn trust_store(root: &X509Ref, crl: Option<&X509CRLRef>) -> X509Store {
         let mut store_bldr = X509StoreBuilder::new().expect("Could not allocate x509 store");
         if let Some(crl) = crl {
-            store_bldr
-                .param_mut()
-                .set_flags(
-                    X509VerifyFlags::CRL_CHECK
-                        | X509VerifyFlags::CRL_CHECK_ALL
-                        | X509VerifyFlags::X509_STRICT,
-                )
-                .unwrap();
+            store_bldr.param_mut().set_flags(
+                X509VerifyFlags::CRL_CHECK
+                    | X509VerifyFlags::CRL_CHECK_ALL
+                    | X509VerifyFlags::X509_STRICT,
+            );
             store_bldr.add_crl(crl.to_owned()).unwrap();
         }
         store_bldr.add_cert(root.to_owned()).unwrap();

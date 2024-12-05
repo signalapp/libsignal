@@ -361,14 +361,11 @@ pub(crate) fn from_trusted(
 ) -> Result<X509Store> {
     let build = || -> std::result::Result<X509Store, ErrorStack> {
         let mut store_builder = X509StoreBuilder::new().expect("can make a fresh X509StoreBuilder");
-        store_builder
-            .param_mut()
-            .set_flags(
-                X509VerifyFlags::CRL_CHECK
-                    | X509VerifyFlags::CRL_CHECK_ALL
-                    | X509VerifyFlags::X509_STRICT,
-            )
-            .expect("supports CRL checking flags");
+        store_builder.param_mut().set_flags(
+            X509VerifyFlags::CRL_CHECK
+                | X509VerifyFlags::CRL_CHECK_ALL
+                | X509VerifyFlags::X509_STRICT,
+        );
         store_builder.param_mut().set_time(
             current_time
                 .duration_since(SystemTime::UNIX_EPOCH)
