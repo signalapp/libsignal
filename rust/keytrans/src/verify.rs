@@ -603,7 +603,7 @@ pub fn verify_monitor<'a>(
 
     let MonitorRequest { keys, consistency } = req;
 
-    let mut data_updates = Vec::with_capacity(keys.len());
+    let mut data_updates = HashMap::with_capacity(keys.len());
     // Update monitoring data.
     for (key, entry) in keys.iter().zip(mpa.entries.iter()) {
         let size = if key.search_key == b"distinguished" {
@@ -627,7 +627,7 @@ pub fn verify_monitor<'a>(
         mdw.update(size, entry)?;
 
         if let Some(data_update) = mdw.into_data_update() {
-            data_updates.push((key.search_key.clone(), data_update));
+            data_updates.insert(key.search_key.clone(), data_update);
         }
     }
 

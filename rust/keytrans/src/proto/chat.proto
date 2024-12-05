@@ -53,3 +53,30 @@ message DistinguishedResponse {
    */
   CondensedTreeSearchResponse distinguished = 2;
 }
+
+message ChatMonitorResponse {
+  /**
+   * A signed representation of the log tree's current state along with some
+   * additional information necessary for validation such as a consistency proof and an auditor-signed tree head.
+   */
+  FullTreeHead tree_head = 1;
+  /**
+   * A proof that the MonitorRequest's ACI continues to be constructed correctly in later entries of the log tree.
+   */
+  MonitorProof aci = 2;
+  /**
+   * A proof that the username hash continues to be constructed correctly in later entries of the log tree.
+   * Will be absent if the request did not include a UsernameHashMonitorRequest.
+   */
+  optional MonitorProof username_hash = 3;
+  /**
+   * A proof that the e164 continues to be constructed correctly in later entries of the log tree.
+   * Will be absent if the request did not include a E164MonitorRequest.
+   */
+  optional MonitorProof e164 = 4;
+  /**
+   * A batch inclusion proof that the log entries involved in the binary search for each of the entries
+   * being monitored in the request are included in the current log tree.
+   */
+  repeated bytes inclusion = 5;
+}

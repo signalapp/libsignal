@@ -20,7 +20,8 @@ use std::time::SystemTime;
 
 pub use ed25519_dalek::VerifyingKey;
 pub use proto::{
-    CondensedTreeSearchResponse, DistinguishedResponse as ChatDistinguishedResponse, FullTreeHead,
+    ChatMonitorResponse, CondensedTreeSearchResponse,
+    DistinguishedResponse as ChatDistinguishedResponse, FullTreeHead, MonitorKey, MonitorProof,
     MonitorRequest, MonitorResponse, SearchResponse as ChatSearchResponse, StoredAccountData,
     StoredMonitoringData, StoredTreeHead, TreeHead, UpdateRequest, UpdateResponse,
 };
@@ -83,8 +84,8 @@ pub struct SearchContext<'a> {
 
 #[derive(Default, Debug)]
 pub struct MonitorContext {
-    last_tree_head: Option<LastTreeHead>,
-    data: HashMap<Vec<u8>, MonitoringData>,
+    pub last_tree_head: Option<LastTreeHead>,
+    pub data: HashMap<Vec<u8>, MonitoringData>,
 }
 
 #[derive(Clone, Debug)]
@@ -122,7 +123,7 @@ pub struct LocalStateUpdate<T> {
 }
 
 pub type SearchStateUpdate = LocalStateUpdate<Option<MonitoringData>>;
-pub type MonitorStateUpdate = LocalStateUpdate<Vec<(Vec<u8>, MonitoringData)>>;
+pub type MonitorStateUpdate = LocalStateUpdate<HashMap<Vec<u8>, MonitoringData>>;
 
 /// PublicConfig wraps the cryptographic keys needed to interact with a
 /// transparency tree.
@@ -302,7 +303,7 @@ impl From<StoredMonitoringData> for MonitoringData {
 }
 
 // An in-memory representation of the StoredAccountData with correct optionality of the fields
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct AccountData {
     pub aci: MonitoringData,
     pub e164: Option<MonitoringData>,
@@ -331,5 +332,22 @@ impl TryFrom<StoredAccountData> for AccountData {
                 .into_last_tree_head()
                 .expect("valid tree head"),
         })
+    }
+}
+
+impl From<AccountData> for StoredAccountData {
+    fn from(acc: AccountData) -> Self {
+        let AccountData {
+            aci,
+            e164,
+            username_hash,
+            last_tree_head,
+        } = acc;
+        Self {
+            aci: Some(aci.into()),
+            e164: e164.map(StoredMonitoringData::from),
+            username_hash: username_hash.map(StoredMonitoringData::from),
+            last_tree_head: Some(last_tree_head.into()),
+        }
     }
 }
