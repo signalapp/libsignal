@@ -5,7 +5,6 @@
 
 use std::sync::Arc;
 
-use nonzero_ext::nonzero;
 use once_cell::sync::Lazy;
 
 use crate::backup::call::CallLink;
@@ -99,7 +98,7 @@ static TEST_CUSTOM_COLOR: Lazy<Arc<CustomChatColor>> =
     Lazy::new(|| Arc::new(CustomChatColor::from_proto_test_data()));
 
 impl TestContext {
-    pub(super) const DUPLICATE_PINNED_ORDER: PinOrder = PinOrder(nonzero!(183324u32));
+    pub(super) const DUPLICATE_PINNED_ORDER: PinOrder = PinOrder(183324u32);
     pub(super) const CUSTOM_CHAT_COLOR_ID: CustomColorId = CustomColorId(555);
 
     pub(super) fn test_recipient() -> &'static FullRecipientData {

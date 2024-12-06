@@ -9,7 +9,6 @@
 #![allow(clippy::manual_non_exhaustive)]
 
 use std::fmt::Debug;
-use std::num::NonZeroU32;
 
 use derive_where::derive_where;
 
@@ -203,7 +202,7 @@ pub struct ChatData<M: Method + ReferencedTypes> {
 }
 
 #[derive(Copy, Clone, Debug, Eq, Hash, PartialEq, PartialOrd, Ord, serde::Serialize)]
-pub struct PinOrder(pub(super) NonZeroU32);
+pub struct PinOrder(pub(super) u32);
 
 /// Validated version of [`proto::ChatItem`].
 #[derive_where(Debug)]
@@ -365,8 +364,7 @@ impl<
             }
         }?;
 
-        // For compatibility with earlier backups, allow 0 as "unpinned" for now.
-        let pinned_order = pinnedOrder.and_then(NonZeroU32::new).map(PinOrder);
+        let pinned_order = pinnedOrder.map(PinOrder);
         if let Some(pinned_order) = pinned_order {
             if let Some(_recipient) = context.lookup(&pinned_order) {
                 return Err(ChatError::DuplicatePinnedOrder(pinned_order));
@@ -867,7 +865,7 @@ mod test {
     #[test_case(|x| x.expireTimerVersion = 3 => Ok(()); "with_expire_timer_version_only")]
     #[test_case(|x| x.muteUntilMs = Some(MillisecondsSinceEpoch::TEST_VALUE.0) => Ok(()); "with mute until")]
     #[test_case(
-        |x| x.pinnedOrder = Some(TestContext::DUPLICATE_PINNED_ORDER.0.get()) =>
+        |x| x.pinnedOrder = Some(TestContext::DUPLICATE_PINNED_ORDER.0) =>
         Err(ChatError::DuplicatePinnedOrder(TestContext::DUPLICATE_PINNED_ORDER));
         "duplicate_pinned_order"
     )]
