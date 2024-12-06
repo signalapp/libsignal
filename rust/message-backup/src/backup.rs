@@ -16,6 +16,7 @@ pub(crate) use crate::backup::account_data::{AccountData, AccountDataError};
 use crate::backup::call::{AdHocCall, CallError};
 use crate::backup::chat::chat_style::{CustomChatColor, CustomColorId};
 use crate::backup::chat::{ChatData, ChatError, ChatItemData, ChatItemError, PinOrder};
+use crate::backup::chat_folder::{ChatFolder, ChatFolderError};
 use crate::backup::frame::{ChatId, RecipientId};
 use crate::backup::map::IntMap;
 use crate::backup::method::{Lookup, LookupPair, Method};
@@ -35,6 +36,7 @@ use crate::proto::backup::frame::Item as FrameItem;
 mod account_data;
 mod call;
 mod chat;
+mod chat_folder;
 mod file;
 mod frame;
 mod map;
@@ -97,6 +99,7 @@ pub struct PartialBackup<M: Method + ReferencedTypes> {
     ad_hoc_calls: M::List<AdHocCall<M::RecipientReference>>,
     sticker_packs: HashMap<StickerPackId, StickerPack<M>>,
     notification_profiles: UnorderedList<NotificationProfile<M::RecipientReference>>,
+    chat_folders: Vec<ChatFolder<M::RecipientReference>>,
     /// Stored here so PartialBackup can be the only context necessary for processing backup frames.
     unusual_timestamp_tracker: RefCell<UnusualTimestampTracker>,
 }
@@ -110,6 +113,7 @@ pub struct CompletedBackup<M: Method + ReferencedTypes> {
     ad_hoc_calls: M::List<AdHocCall<M::RecipientReference>>,
     sticker_packs: HashMap<StickerPackId, StickerPack<M>>,
     notification_profiles: UnorderedList<NotificationProfile<M::RecipientReference>>,
+    chat_folders: Vec<ChatFolder<M::RecipientReference>>,
 }
 
 pub type Backup = CompletedBackup<Store>;
@@ -171,6 +175,10 @@ pub enum Purpose {
 pub enum CompletionError {
     /// no AccountData frames found
     MissingAccountData,
+    /// no ALL ChatFolder found
+    MissingAllChatFolder,
+    /// multiple ALL ChatFolders found
+    DuplicateAllChatFolder,
 }
 
 impl<M: Method + ReferencedTypes> TryFrom<PartialBackup<M>> for CompletedBackup<M> {
@@ -185,10 +193,23 @@ impl<M: Method + ReferencedTypes> TryFrom<PartialBackup<M>> for CompletedBackup<
             ad_hoc_calls,
             sticker_packs,
             notification_profiles,
+            chat_folders,
             unusual_timestamp_tracker: _,
         } = value;
 
         let account_data = account_data.ok_or(CompletionError::MissingAccountData)?;
+
+        if !chat_folders.is_empty() {
+            match chat_folders
+                .iter()
+                .filter(|folder| matches!(folder, ChatFolder::All))
+                .count()
+            {
+                0 => Err(CompletionError::MissingAllChatFolder),
+                1 => Ok(()),
+                _ => Err(CompletionError::DuplicateAllChatFolder),
+            }?;
+        }
 
         Ok(CompletedBackup {
             meta,
@@ -198,6 +219,7 @@ impl<M: Method + ReferencedTypes> TryFrom<PartialBackup<M>> for CompletedBackup<
             ad_hoc_calls,
             sticker_packs,
             notification_profiles,
+            chat_folders,
         })
     }
 }
@@ -222,6 +244,8 @@ pub enum ValidationError {
     StickerError(#[from] StickerError),
     /// {0}
     NotificationProfileError(#[from] NotificationProfileError),
+    /// {0}
+    ChatFolderError(#[from] ChatFolderError),
 }
 
 #[derive(Debug, displaydoc::Display, thiserror::Error)]
@@ -410,6 +434,7 @@ impl<M: Method + ReferencedTypes> PartialBackup<M> {
             ad_hoc_calls: Default::default(),
             sticker_packs: Default::default(),
             notification_profiles: Default::default(),
+            chat_folders: Default::default(),
             unusual_timestamp_tracker,
         })
     }
@@ -531,7 +556,9 @@ impl<M: Method + ReferencedTypes> PartialBackup<M> {
         Ok(())
     }
 
-    fn add_chat_folder(&mut self, _chat_folder: proto::ChatFolder) -> Result<(), ValidationError> {
+    fn add_chat_folder(&mut self, chat_folder: proto::ChatFolder) -> Result<(), ValidationError> {
+        let folder = chat_folder.try_into_with(self)?;
+        self.chat_folders.push(folder);
         Ok(())
     }
 }
@@ -869,6 +896,66 @@ mod test {
         assert_matches!(
             partial.add_frame_item(proto::AccountData::test_data().into()),
             Err(ValidationError::MultipleAccountData)
+        );
+    }
+
+    #[test_case(ValidateOnly::empty())]
+    #[test_case(Store::empty())]
+    fn rejects_missing_account_data<M: Method + ReferencedTypes>(partial: PartialBackup<M>) {
+        assert_matches!(
+            CompletedBackup::try_from(partial),
+            Err(CompletionError::MissingAccountData)
+        );
+    }
+
+    #[test_case(ValidateOnly::empty())]
+    #[test_case(Store::empty())]
+    fn rejects_missing_all_folder<M: Method + ReferencedTypes>(mut partial: PartialBackup<M>) {
+        partial
+            .add_frame_item(proto::AccountData::test_data().into())
+            .expect("accepts AccountData");
+        partial
+            .add_frame_item(proto::Recipient::test_data_contact().into())
+            .expect("accepts Contact");
+        partial
+            .add_frame_item(FrameItem::ChatFolder(proto::ChatFolder::test_data()))
+            .expect("accepts ChatFolder");
+
+        assert_matches!(
+            CompletedBackup::try_from(partial),
+            Err(CompletionError::MissingAllChatFolder)
+        );
+    }
+
+    #[test_case(ValidateOnly::empty())]
+    #[test_case(Store::empty())]
+    fn allows_lone_all_folder<M: Method + ReferencedTypes>(mut partial: PartialBackup<M>) {
+        partial
+            .add_frame_item(proto::AccountData::test_data().into())
+            .expect("accepts AccountData");
+        partial
+            .add_frame_item(FrameItem::ChatFolder(proto::ChatFolder::all_folder_data()))
+            .expect("accepts ChatFolder");
+
+        assert_matches!(CompletedBackup::try_from(partial), Ok(_));
+    }
+
+    #[test_case(ValidateOnly::empty())]
+    #[test_case(Store::empty())]
+    fn rejects_duplicate_all_folder<M: Method + ReferencedTypes>(mut partial: PartialBackup<M>) {
+        partial
+            .add_frame_item(proto::AccountData::test_data().into())
+            .expect("accepts AccountData");
+        partial
+            .add_frame_item(FrameItem::ChatFolder(proto::ChatFolder::all_folder_data()))
+            .expect("accepts ChatFolder");
+        partial
+            .add_frame_item(FrameItem::ChatFolder(proto::ChatFolder::all_folder_data()))
+            .expect("accepts ChatFolder");
+
+        assert_matches!(
+            CompletedBackup::try_from(partial),
+            Err(CompletionError::DuplicateAllChatFolder)
         );
     }
 
