@@ -1048,6 +1048,8 @@ mod test {
                 [0; libsignal_account_keys::BACKUP_KEY_LEN],
             ),
             version: 0,
+            current_app_version: "".into(),
+            first_app_version: "".into(),
         };
 
         let mut item = proto::ChatItem::test_data();

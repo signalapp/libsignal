@@ -2,6 +2,7 @@
   "meta": {
     "version": 1,
     "media_root_backup_key": "7f6f2ccdb23f2abb7b69278e947c01c6160a31cf02c19d06d0f6e5ab1d768b95",
+    "first_app_version": "",
     "purpose": "RemoteBackup"
   },
   "account_data": {

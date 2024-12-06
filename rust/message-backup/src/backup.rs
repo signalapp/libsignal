@@ -138,6 +138,13 @@ pub struct BackupMeta {
     /// The key used to encrypt and upload media associated with this backup.
     #[serde(serialize_with = "backup_key_as_hex")]
     pub media_root_backup_key: libsignal_account_keys::BackupKey,
+    /// The app version that made the backup.
+    ///
+    /// Omitted from the canonical backup string, so that subsequent backups can be compared.
+    #[serde(skip)]
+    pub current_app_version: String,
+    /// The app version the user first registered on.
+    pub first_app_version: String,
     /// What purpose the backup was intended for.
     pub purpose: Purpose,
 }
@@ -403,6 +410,8 @@ impl<M: Method + ReferencedTypes> PartialBackup<M> {
             version,
             backupTimeMs,
             mediaRootBackupKey,
+            currentAppVersion,
+            firstAppVersion,
             special_fields: _,
         } = value;
 
@@ -423,6 +432,8 @@ impl<M: Method + ReferencedTypes> PartialBackup<M> {
                 &unusual_timestamp_tracker,
             ),
             media_root_backup_key,
+            current_app_version: currentAppVersion,
+            first_app_version: firstAppVersion,
             purpose,
         };
 

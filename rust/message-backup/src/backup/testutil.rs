@@ -35,6 +35,8 @@ impl BackupMeta {
                 [0xab; libsignal_account_keys::BACKUP_KEY_LEN],
             ),
             version: 0,
+            current_app_version: "libsignal-testing 0.0.2".into(),
+            first_app_version: "libsignal-testing 0.0.1".into(),
         }
     }
 }

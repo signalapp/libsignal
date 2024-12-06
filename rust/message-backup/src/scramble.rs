@@ -172,6 +172,8 @@ impl Visit<Scrambler> for proto::BackupInfo {
             version: _,
             backupTimeMs: _,
             mediaRootBackupKey,
+            currentAppVersion: _,
+            firstAppVersion: _,
             special_fields: _,
         } = self;
 

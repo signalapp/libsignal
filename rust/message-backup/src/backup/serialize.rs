@@ -407,6 +407,8 @@ mod test {
                 version: 1,
                 backupTimeMs: 1715636551000,
                 mediaRootBackupKey: vec![0xab; libsignal_account_keys::BACKUP_KEY_LEN],
+                currentAppVersion: "libsignal-testing 0.0.2".into(),
+                firstAppVersion: "libsignal-testing 0.0.1".into(),
                 special_fields: Default::default(),
             }
         }
@@ -436,6 +438,8 @@ mod test {
                 media_root_backup_key: libsignal_account_keys::BackupKey(
                     [0xab; libsignal_account_keys::BACKUP_KEY_LEN],
                 ),
+                current_app_version: "libsignal-testing 0.0.2".into(),
+                first_app_version: "libsignal-testing 0.0.1".into(),
             },
             account_data: AccountData::from_proto_test_data(),
             recipients: UnorderedList::default(),
