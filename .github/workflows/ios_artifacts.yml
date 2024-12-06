@@ -69,9 +69,9 @@ jobs:
       env:
         CARGO_BUILD_TARGET: aarch64-apple-ios-sim
 
-    - run: tar -c --auto-compress --no-mac-metadata -f ${{ steps.archive-name.outputs.name }} target/*/release/libsignal_ffi.a
+    - run: tar -c --auto-compress --no-mac-metadata -f '${{ steps.archive-name.outputs.name }}' target/*/release/libsignal_ffi.a
 
-    - run: 'shasum -a 256 ${{ steps.archive-name.outputs.name }} | tee -a $GITHUB_STEP_SUMMARY ${{ steps.archive-name.outputs.name }}.sha256'
+    - run: "shasum -a 256 '${{ steps.archive-name.outputs.name }}' | tee -a $GITHUB_STEP_SUMMARY '${{ steps.archive-name.outputs.name }}.sha256'"
       shell: bash # Explicitly setting the shell turns on pipefail in GitHub Actions
 
     - name: Attach artifact to the run

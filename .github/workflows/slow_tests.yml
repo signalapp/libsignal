@@ -254,7 +254,7 @@ jobs:
     - run: npm ci
       working-directory: node
     - name: Build for arm64
-      run: npx prebuildify --napi -t ${{ steps.get-nvm-version.outputs.node-version }} --arch arm64
+      run: npx prebuildify --napi -t '${{ steps.get-nvm-version.outputs.node-version }}' --arch arm64
       working-directory: node
 
   swift-cocoapod:
