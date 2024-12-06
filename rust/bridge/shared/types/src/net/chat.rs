@@ -245,7 +245,7 @@ impl RefUnwindSafe for AuthenticatedChatConnection {}
 
 enum MaybeChatConnection {
     Running(ChatConnection),
-    WaitingForListener(chat::PendingChatConnection),
+    WaitingForListener(tokio::runtime::Handle, chat::PendingChatConnection),
     TemporarilyEvicted,
 }
 
@@ -254,7 +254,11 @@ impl UnauthenticatedChatConnection {
         let inner = establish_chat_connection(connection_manager, None).await?;
         log::info!("connected unauthenticated chat");
         Ok(Self {
-            inner: MaybeChatConnection::WaitingForListener(inner).into(),
+            inner: MaybeChatConnection::WaitingForListener(
+                tokio::runtime::Handle::current(),
+                inner,
+            )
+            .into(),
         })
     }
 }
@@ -274,7 +278,11 @@ impl AuthenticatedChatConnection {
         .await?;
         log::info!("connected authenticated chat");
         Ok(Self {
-            inner: MaybeChatConnection::WaitingForListener(pending).into(),
+            inner: MaybeChatConnection::WaitingForListener(
+                tokio::runtime::Handle::current(),
+                pending,
+            )
+            .into(),
         })
     }
 }
@@ -305,40 +313,36 @@ pub trait BridgeChatConnection {
     fn info(&self) -> ConnectionInfo;
 }
 
-impl<C: AsRef<tokio::sync::RwLock<MaybeChatConnection>>> BridgeChatConnection for C {
+impl<C: AsRef<tokio::sync::RwLock<MaybeChatConnection>> + Sync> BridgeChatConnection for C {
     fn init_listener(&self, listener: Box<dyn ChatListener>) {
         init_listener(&mut self.as_ref().blocking_write(), listener)
     }
 
-    fn send(
+    async fn send(
         &self,
         message: Request,
         timeout: Duration,
-    ) -> impl Future<Output = Result<ChatResponse, ChatServiceError>> + Send {
-        let guard = self.as_ref().blocking_read();
-        async move {
-            let MaybeChatConnection::Running(inner) = &*guard else {
-                panic!("listener was not set")
-            };
-            inner.send(message, timeout).await
-        }
+    ) -> Result<ChatResponse, ChatServiceError> {
+        let guard = self.as_ref().read().await;
+        let MaybeChatConnection::Running(inner) = &*guard else {
+            panic!("listener was not set")
+        };
+        inner.send(message, timeout).await
     }
 
-    fn disconnect(&self) -> impl Future<Output = ()> + Send {
-        let guard = self.as_ref().blocking_read();
-        async move {
-            let MaybeChatConnection::Running(inner) = &*guard else {
-                panic!("listener was not set")
-            };
-            inner.disconect().await
-        }
+    async fn disconnect(&self) {
+        let guard = self.as_ref().read().await;
+        let MaybeChatConnection::Running(inner) = &*guard else {
+            panic!("listener was not set")
+        };
+        inner.disconect().await
     }
 
     fn info(&self) -> ConnectionInfo {
         let guard = self.as_ref().blocking_read();
         match &*guard {
             MaybeChatConnection::Running(chat_connection) => chat_connection.connection_info(),
-            MaybeChatConnection::WaitingForListener(pending_chat_connection) => {
+            MaybeChatConnection::WaitingForListener(_, pending_chat_connection) => {
                 pending_chat_connection.connection_info()
             }
             MaybeChatConnection::TemporarilyEvicted => unreachable!("unobservable state"),
@@ -347,16 +351,20 @@ impl<C: AsRef<tokio::sync::RwLock<MaybeChatConnection>>> BridgeChatConnection fo
 }
 
 fn init_listener(connection: &mut MaybeChatConnection, listener: Box<dyn ChatListener>) {
-    let pending = match std::mem::replace(connection, MaybeChatConnection::TemporarilyEvicted) {
-        MaybeChatConnection::Running(chat_connection) => {
-            *connection = MaybeChatConnection::Running(chat_connection);
-            panic!("listener already set")
-        }
-        MaybeChatConnection::WaitingForListener(pending_chat_connection) => pending_chat_connection,
-        MaybeChatConnection::TemporarilyEvicted => panic!("should be a temporary state"),
-    };
+    let (tokio_runtime, pending) =
+        match std::mem::replace(connection, MaybeChatConnection::TemporarilyEvicted) {
+            MaybeChatConnection::Running(chat_connection) => {
+                *connection = MaybeChatConnection::Running(chat_connection);
+                panic!("listener already set")
+            }
+            MaybeChatConnection::WaitingForListener(tokio_runtime, pending_chat_connection) => {
+                (tokio_runtime, pending_chat_connection)
+            }
+            MaybeChatConnection::TemporarilyEvicted => panic!("should be a temporary state"),
+        };
 
     *connection = MaybeChatConnection::Running(ChatConnection::finish_connect(
+        tokio_runtime,
         pending,
         listener.into_event_listener(),
     ))

@@ -129,10 +129,10 @@ public class ChatServiceTest {
 
   @Test
   public void testConnectUnauth() throws Exception {
-    // Use the presence of the proxy server environment setting to know whether we should make
-    // network requests in our tests.
-    final String PROXY_SERVER = TestEnvironment.get("LIBSIGNAL_TESTING_PROXY_SERVER");
-    Assume.assumeNotNull(PROXY_SERVER);
+    // Use the presence of the environment setting to know whether we should
+    // make network requests in our tests.
+    final String ENABLE_TEST = TestEnvironment.get("LIBSIGNAL_TESTING_RUN_NONHERMETIC_TESTS");
+    Assume.assumeNotNull(ENABLE_TEST);
 
     final Network net = new Network(Network.Environment.STAGING, USER_AGENT);
     final UnauthenticatedChatService chat = net.createUnauthChatService(null);

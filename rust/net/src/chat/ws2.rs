@@ -143,7 +143,12 @@ pub struct Responder {
 pub type EventListener = Box<dyn FnMut(ListenerEvent) + Send>;
 
 impl Chat {
-    pub fn new<T>(transport: T, config: Config, listener: EventListener) -> Self
+    pub fn new<T>(
+        tokio_runtime: tokio::runtime::Handle,
+        transport: T,
+        config: Config,
+        listener: EventListener,
+    ) -> Self
     where
         T: Stream<Item = Result<tungstenite::Message, tungstenite::Error>>
             + Sink<tungstenite::Message, Error = tungstenite::Error>
@@ -156,6 +161,8 @@ impl Chat {
             remote_idle_timeout,
         } = config;
 
+        // Enable access to tokio types like Sleep, but only for the duration of this call.
+        let _enable_tokio_types = tokio_runtime.enter();
         Self::new_inner(
             (
                 transport,
@@ -167,6 +174,7 @@ impl Chat {
             ),
             initial_request_id,
             listener,
+            tokio_runtime,
         )
     }
 
@@ -267,6 +275,7 @@ impl Chat {
         into_inner_connection: impl IntoInnerConnection,
         initial_request_id: u64,
         listener: EventListener,
+        tokio_runtime: tokio::runtime::Handle,
     ) -> Self {
         let (request_tx, request_rx) = mpsc::channel(1);
         let (response_tx, response_rx) = mpsc::unbounded_channel();
@@ -300,7 +309,7 @@ impl Chat {
             requests_in_flight,
         };
 
-        let task = tokio::spawn(spawned_task_body(
+        let task = tokio_runtime.spawn(spawned_task_body(
             connection,
             listener,
             response_tx.downgrade(),
@@ -1207,6 +1216,7 @@ mod test {
                 },
                 initial_request_id,
                 listener,
+                tokio::runtime::Handle::current(),
             );
 
             (chat, (outgoing_events_rx, incoming_events_tx))

@@ -554,29 +554,6 @@ pub struct AuthenticatedChatHeaders {
 pub type ChatServiceRoute = UnresolvedWebsocketServiceRoute;
 
 impl ChatConnection {
-    pub async fn connect_with(
-        connect: &tokio::sync::RwLock<ConnectState>,
-        resolver: &DnsResolver,
-        http_route_provider: impl RouteProvider<Route = UnresolvedHttpsServiceRoute>,
-        confirmation_header_name: Option<HeaderName>,
-        user_agent: &UserAgent,
-        ws_config: self::ws2::Config,
-        listener: self::ws2::EventListener,
-        auth: Option<AuthenticatedChatHeaders>,
-    ) -> Result<Self, ChatServiceError> {
-        let pending = Self::start_connect_with(
-            connect,
-            resolver,
-            http_route_provider,
-            confirmation_header_name,
-            user_agent,
-            ws_config,
-            auth,
-        )
-        .await?;
-        Ok(Self::finish_connect(pending, listener))
-    }
-
     pub async fn start_connect_with(
         connect: &tokio::sync::RwLock<ConnectState>,
         resolver: &DnsResolver,
@@ -650,14 +627,18 @@ impl ChatConnection {
         }
     }
 
-    pub fn finish_connect(pending: PendingChatConnection, listener: ws2::EventListener) -> Self {
+    pub fn finish_connect(
+        tokio_runtime: tokio::runtime::Handle,
+        pending: PendingChatConnection,
+        listener: ws2::EventListener,
+    ) -> Self {
         let PendingChatConnection {
             connection,
             connection_info,
             ws_config,
         } = pending;
         Self {
-            inner: crate::chat::ws2::Chat::new(connection, ws_config, listener),
+            inner: crate::chat::ws2::Chat::new(tokio_runtime, connection, ws_config, listener),
             connection_info,
         }
     }

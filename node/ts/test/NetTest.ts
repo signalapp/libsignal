@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import { assert, config, expect, use } from 'chai';
+import { config, expect, use } from 'chai';
 import * as chaiAsPromised from 'chai-as-promised';
 import * as sinon from 'sinon';
 import * as sinonChai from 'sinon-chai';
@@ -237,9 +237,11 @@ describe('chat service api', () => {
           await connectChatUnauthenticated(net);
         }).timeout(10000);
 
-        it('can connect through a proxy server', async () => {
+        it('can connect through a proxy server', async function () {
           const PROXY_SERVER = process.env.LIBSIGNAL_TESTING_PROXY_SERVER;
-          assert(PROXY_SERVER, 'checked above');
+          if (!PROXY_SERVER) {
+            this.skip();
+          }
 
           // The default TLS proxy config doesn't support staging, so we connect to production.
           const net = new Net({

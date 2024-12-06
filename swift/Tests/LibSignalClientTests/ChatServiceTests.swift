@@ -314,8 +314,8 @@ final class ChatServiceTests: TestCaseBase {
     }
 
     func testConnectUnauth() async throws {
-        // Use the presence of the proxy server environment setting to know whether we should make network requests in our tests.
-        guard ProcessInfo.processInfo.environment["LIBSIGNAL_TESTING_PROXY_SERVER"] != nil else {
+        // Use the presence of the environment setting to know whether we should make network requests in our tests.
+        guard ProcessInfo.processInfo.environment["LIBSIGNAL_TESTING_RUN_NONHERMETIC_TESTS"] != nil else {
             throw XCTSkip()
         }
 
