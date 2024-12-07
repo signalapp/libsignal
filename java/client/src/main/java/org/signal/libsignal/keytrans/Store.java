@@ -19,6 +19,9 @@ import org.signal.libsignal.protocol.ServiceId;
  * implementations accepting byte arrays are provided for convenience.
  *
  * <p>It is safe to assume that {@code null} will never be passed to any of the parameters.
+ *
+ * <p>Note: depending on the usage of {@link org.signal.libsignal.net.KeyTransparencyClient} APIs,
+ * {@code Store} methods may be invoked from multiple threads.
  */
 public interface Store {
   Optional<byte[]> getLastDistinguishedTreeHead();

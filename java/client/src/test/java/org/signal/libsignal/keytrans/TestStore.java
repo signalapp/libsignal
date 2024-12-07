@@ -5,13 +5,12 @@
 
 package org.signal.libsignal.keytrans;
 
-import java.util.HashMap;
-import java.util.Optional;
+import java.util.*;
 import org.signal.libsignal.protocol.ServiceId;
 
 public class TestStore implements Store {
 
-  public HashMap<ServiceId.Aci, byte[]> storage = new HashMap<>();
+  public HashMap<ServiceId.Aci, Deque<byte[]>> storage = new HashMap<>();
   public byte[] lastDistinguishedTreeHead;
 
   @Override
@@ -26,11 +25,13 @@ public class TestStore implements Store {
 
   @Override
   public Optional<byte[]> getAccountData(ServiceId.Aci aci) {
-    return Optional.ofNullable(this.storage.get(aci));
+    Deque<byte[]> deque = this.storage.computeIfAbsent(aci, key -> new ArrayDeque<>());
+    return Optional.ofNullable(deque.peekLast());
   }
 
   @Override
   public void setAccountData(ServiceId.Aci aci, byte[] data) {
-    this.storage.put(aci, data);
+    Deque<byte[]> deque = this.storage.computeIfAbsent(aci, key -> new ArrayDeque<>());
+    deque.addLast(data);
   }
 }

@@ -20,6 +20,14 @@ import org.signal.libsignal.protocol.ServiceId;
  *
  * <p>Unlike {@link ChatService}, key transparency client does not export "raw" send/receive APIs,
  * and instead uses them internally to implement high-level operations.
+ *
+ * <p>Note: {@code Store} APIs may be invoked concurrently. Here are possible strategies to make
+ * sure there are no thread safety violations:
+ *
+ * <ul>
+ *   <li>Types implementing {@code Store} can be made thread safe
+ *   <li>{@link KeyTransparencyClient} operations-completed asynchronous calls-can be serialized.
+ * </ul>
  */
 public class KeyTransparencyClient {
   private final TokioAsyncContext tokioAsyncContext;
@@ -148,6 +156,68 @@ public class KeyTransparencyClient {
           .thenApply(
               bytes -> {
                 store.setLastDistinguishedTreeHead(bytes);
+                return null;
+              });
+    }
+  }
+
+  /**
+   * Issue a monitor request to the key transparency service.
+   *
+   * <p>Only the ACI is required to identify the account.
+   *
+   * <p>If the latest distinguished tree head is not present in the store, it will be requested from
+   * the server prior to performing the search via {@link #updateDistinguished}.
+   *
+   * <p>This is an asynchronous operation; all the exceptions occurring during communication with
+   * the server will be wrapped in {@link java.util.concurrent.ExecutionException}.
+   *
+   * <p>Possible exceptions include:
+   *
+   * <ul>
+   *   <li>{@link ChatServiceException} for errors related to communication with the server.
+   *       Depending on the severity, the search can be retried.
+   *   <li>{@link KeyTransparencyException} for errors related to key transparency logic. Retrying
+   *       the search without changing any of the arguments (including the state of the store) is
+   *       unlikely to yield a different result.
+   * </ul>
+   *
+   * @param aci the ACI of the account to be searched for. Required.
+   * @param e164 string representation of an E.164 number associated with the account. Optional.
+   * @param usernameHash hash of the username associated with the account. Optional.
+   * @param store local persistent storage for key transparency-related data, such as the latest
+   *     tree heads and account monitoring data. It will be queried for data before performing the
+   *     server request and updated with the latest information from the server response if it
+   *     succeeds.
+   * @return an instance of {@link CompletableFuture} successful completion of which will indicate
+   *     that the monitor request has succeeded and store has been updated with the latest account
+   *     data.
+   * @throws IllegalArgumentException if the store contains corrupted data.
+   */
+  public CompletableFuture<Void> monitor(
+      /* @NotNull */ final ServiceId.Aci aci,
+      final String e164,
+      final byte[] usernameHash,
+      final Store store) {
+    Optional<byte[]> lastDistinguishedTreeHead = store.getLastDistinguishedTreeHead();
+    if (lastDistinguishedTreeHead.isEmpty()) {
+      return this.updateDistinguished(store)
+          .thenCompose((ignored) -> this.monitor(aci, e164, usernameHash, store));
+    }
+    try (NativeHandleGuard tokioContextGuard = this.tokioAsyncContext.guard();
+        NativeHandleGuard chatGuard = chat.guard()) {
+      return Native.KeyTransparency_Monitor(
+              tokioContextGuard.nativeHandle(),
+              chat.environment.value,
+              chatGuard.nativeHandle(),
+              aci.toServiceIdFixedWidthBinary(),
+              e164,
+              usernameHash,
+              store.getAccountData(aci).orElse(null),
+              lastDistinguishedTreeHead.get())
+          .thenApply(
+              (updatedAccountData) -> {
+                store.setAccountData(aci, updatedAccountData);
                 return null;
               });
     }

@@ -8,7 +8,11 @@ package org.signal.libsignal.net;
 import static org.junit.Assert.*;
 import static org.signal.libsignal.net.KeyTransparencyTest.TEST_ACI;
 import static org.signal.libsignal.net.KeyTransparencyTest.TEST_ACI_IDENTITY_KEY;
+import static org.signal.libsignal.net.KeyTransparencyTest.TEST_E164;
+import static org.signal.libsignal.net.KeyTransparencyTest.TEST_UNIDENTIFIED_ACCESS_KEY;
+import static org.signal.libsignal.net.KeyTransparencyTest.TEST_USERNAME_HASH;
 
+import java.util.Deque;
 import org.junit.Assume;
 import org.junit.Test;
 import org.signal.libsignal.keytrans.SearchResult;
@@ -36,10 +40,9 @@ public class KeyTransparencyClientTest {
             .search(
                 TEST_ACI,
                 TEST_ACI_IDENTITY_KEY,
-                "+18005550100",
-                Hex.fromStringCondensedAssert("fdc7951d1507268daf1834b74d23b76c"),
-                Hex.fromStringCondensedAssert(
-                    "d237a4b83b463ca7da58d4a16bf6a3ba104506eb412b235eb603ea10f467c655"),
+                TEST_E164,
+                TEST_UNIDENTIFIED_ACCESS_KEY,
+                TEST_USERNAME_HASH,
                 store)
             .get();
 
@@ -66,5 +69,36 @@ public class KeyTransparencyClientTest {
     chat.keyTransparencyClient().updateDistinguished(store).get();
 
     assertTrue(store.getLastDistinguishedTreeHead().isPresent());
+  }
+
+  @Test
+  public void monitorInStagingIntegration() throws Exception {
+    Assume.assumeTrue(INTEGRATION_TESTS_ENABLED);
+
+    final Network net = new Network(Network.Environment.STAGING, USER_AGENT);
+    final UnauthenticatedChatService chat = net.createUnauthChatService(null);
+    chat.connect().get();
+
+    TestStore store = new TestStore();
+
+    SearchResult ignoredSearchResult =
+        chat.keyTransparencyClient()
+            .search(
+                TEST_ACI,
+                TEST_ACI_IDENTITY_KEY,
+                TEST_E164,
+                TEST_UNIDENTIFIED_ACCESS_KEY,
+                TEST_USERNAME_HASH,
+                store)
+            .get();
+
+    Deque<byte[]> accountDataHistory = store.storage.get(TEST_ACI);
+
+    // Following search there should be a single entry in the account history
+    assertEquals(1, accountDataHistory.size());
+
+    chat.keyTransparencyClient().monitor(TEST_ACI, TEST_E164, TEST_USERNAME_HASH, store).get();
+    // Another entry in the account history after a successful monitor request
+    assertEquals(2, accountDataHistory.size());
   }
 }

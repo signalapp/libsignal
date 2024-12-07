@@ -146,6 +146,53 @@ async fn KeyTransparency_Search(
 }
 
 #[bridge_io(TokioAsyncContext, node = false, ffi = false)]
+async fn KeyTransparency_Monitor(
+    // TODO: it is currently possible to pass an env that does not match chat
+    environment: AsType<Environment, u8>,
+    chat: &UnauthChat,
+    aci: Aci,
+    e164: Option<E164>,
+    username_hash: Option<Box<[u8]>>,
+    account_data: Box<[u8]>,
+    last_distinguished_tree_head: Box<[u8]>,
+) -> Result<Vec<u8>, Error> {
+    let username_hash = username_hash.map(UsernameHash::from);
+
+    let account_data = {
+        let stored: StoredAccountData = try_decode(account_data)?;
+        AccountData::try_from(stored).map_err(Error::from)?
+    };
+
+    let last_distinguished_tree_head =
+        try_decode(last_distinguished_tree_head).map(|stored: StoredTreeHead| stored.tree_head)?;
+    let distinguished_tree_head_size = last_distinguished_tree_head
+        .map(|head| head.tree_size)
+        .ok_or(Error::InvalidRequest("distinguished tree head is missing"))?;
+
+    let config = environment
+        .into_inner()
+        .env()
+        .keytrans_config
+        .expect("keytrans config must be set")
+        .into();
+    let kt = Kt {
+        inner: KeyTransparency { config },
+        chat: &chat.service.0,
+        config: Default::default(),
+    };
+    let updated_account_data = kt
+        .monitor(
+            aci,
+            e164,
+            username_hash,
+            account_data,
+            distinguished_tree_head_size,
+        )
+        .await?;
+    Ok(StoredAccountData::from(updated_account_data).encode_to_vec())
+}
+
+#[bridge_io(TokioAsyncContext, node = false, ffi = false)]
 async fn KeyTransparency_Distinguished(
     // TODO: it is currently possible to pass an env that does not match chat
     environment: AsType<Environment, u8>,
