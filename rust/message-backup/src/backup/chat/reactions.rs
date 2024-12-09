@@ -4,10 +4,10 @@
 //
 
 use derive_where::derive_where;
+use intmap::IntMap;
 use itertools::Itertools;
 
 use crate::backup::frame::RecipientId;
-use crate::backup::map::IntMap;
 use crate::backup::method::LookupPair;
 use crate::backup::recipient::DestinationKind;
 use crate::backup::serialize::SerializeOrder;

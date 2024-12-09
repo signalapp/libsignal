@@ -3,7 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use crate::backup::map::IntKey;
+use intmap::IntKey;
+
 use crate::backup::WithId;
 use crate::proto::backup::{Chat, Recipient};
 
@@ -25,7 +26,9 @@ macro_rules! impl_with_id {
         }
 
         impl IntKey for $id {
-            fn int_key(&self) -> u64 {
+            type Int = u64;
+            const PRIME: Self::Int = u64::PRIME;
+            fn into_int(self) -> u64 {
                 self.0
             }
         }

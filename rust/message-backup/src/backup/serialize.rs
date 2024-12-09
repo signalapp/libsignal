@@ -67,8 +67,8 @@ impl From<CompletedBackup<Store>> for Backup {
         Self {
             meta,
             account_data,
-            recipients: recipients.into_values().collect(),
-            chats: items.into_values().collect(),
+            recipients: recipients.into_iter().map(|(_, v)| v).collect(),
+            chats: items.into_iter().map(|(_, v)| v).collect(),
             ad_hoc_calls: ad_hoc_calls.into_iter().collect(),
             pinned_chats: pinned.into_iter().map(|(_, data)| data).collect(),
             sticker_packs: sticker_packs.into_iter().collect(),

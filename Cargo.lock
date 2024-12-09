@@ -1841,8 +1841,9 @@ dependencies = [
 
 [[package]]
 name = "intmap"
-version = "2.0.0"
-source = "git+https://github.com/JesperAxelsson/rust-intmap?rev=e7edd6e8fb452506ca2570e91f62b14dc29a950c#e7edd6e8fb452506ca2570e91f62b14dc29a950c"
+version = "3.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d5060f612722cfc63eb553c33984067081a56f3053bf41ed1fdb6defa37986a7"
 
 [[package]]
 name = "ipnet"

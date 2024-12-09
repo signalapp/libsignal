@@ -8,6 +8,7 @@ use std::num::NonZeroU64;
 use std::sync::Arc;
 
 use derive_where::derive_where;
+use intmap::IntMap;
 use itertools::Itertools as _;
 use libsignal_core::{Aci, Pni, ServiceIdKind};
 use libsignal_protocol::IdentityKey;
@@ -16,7 +17,6 @@ use zkgroup::ProfileKeyBytes;
 
 use crate::backup::call::{CallLink, CallLinkError};
 use crate::backup::frame::RecipientId;
-use crate::backup::map::IntMap;
 use crate::backup::method::{LookupPair, Method, Store, ValidateOnly};
 use crate::backup::serialize::{self, SerializeOrder, UnorderedList};
 use crate::backup::time::{ReportUnusualTimestamp, Timestamp};

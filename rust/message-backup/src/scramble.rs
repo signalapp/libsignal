@@ -22,7 +22,7 @@ use randomize::*;
 
 pub struct Scrambler {
     rng: rand::rngs::StdRng,
-    e164s: intmap::IntMap<u64>,
+    e164s: intmap::IntMap<u64, u64>,
     uuids: HashMap<Box<[u8]>, Box<[u8]>>,
 }
 

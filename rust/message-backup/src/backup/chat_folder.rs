@@ -8,10 +8,10 @@
 // crate, but we want intra-crate privacy.
 #![allow(clippy::manual_non_exhaustive)]
 
+use intmap::IntMap;
 use itertools::Itertools;
 
 use crate::backup::frame::RecipientId;
-use crate::backup::map::IntMap;
 use crate::backup::method::LookupPair;
 use crate::backup::recipient::DestinationKind;
 use crate::backup::serialize::{SerializeOrder, UnorderedList};
@@ -184,7 +184,7 @@ impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R>> TryFromWith<proto
                 if seen_excluded_members.insert(id, ()).is_some() {
                     return Err(ChatFolderError::ExcludedMemberDuplicate(id));
                 }
-                if seen_included_members.get(&id).is_some() {
+                if seen_included_members.get(id).is_some() {
                     return Err(ChatFolderError::MemberIsBothIncludedAndExcluded(id));
                 }
                 let (kind, recipient) = context

@@ -9,6 +9,7 @@ use std::fmt::Debug;
 use std::sync::Arc;
 
 use derive_where::derive_where;
+use intmap::IntMap;
 use libsignal_account_keys::BACKUP_KEY_LEN;
 use libsignal_core::Aci;
 
@@ -18,7 +19,6 @@ use crate::backup::chat::chat_style::{CustomChatColor, CustomColorId};
 use crate::backup::chat::{ChatData, ChatError, ChatItemData, ChatItemError, PinOrder};
 use crate::backup::chat_folder::{ChatFolder, ChatFolderError};
 use crate::backup::frame::{ChatId, RecipientId};
-use crate::backup::map::IntMap;
 use crate::backup::method::{Lookup, LookupPair, Method};
 pub use crate::backup::method::{Store, ValidateOnly};
 use crate::backup::notification_profile::{NotificationProfile, NotificationProfileError};
@@ -39,7 +39,6 @@ mod chat;
 mod chat_folder;
 mod file;
 mod frame;
-mod map;
 pub(crate) mod method;
 mod notification_profile;
 mod recipient;
@@ -605,7 +604,7 @@ impl<M: Method + ReferencedTypes> ChatsData<M> {
             pinned: _,
         } = self;
 
-        let chat_data = items.get_mut(&chat_id).ok_or_else(|| {
+        let chat_data = items.get_mut(chat_id).ok_or_else(|| {
             ChatFrameError(
                 chat_id,
                 ChatError::ChatItem {
@@ -628,7 +627,7 @@ impl<M: Method + ReferencedTypes> ChatsData<M> {
 impl<M: Method + ReferencedTypes> Lookup<RecipientId, M::RecipientReference> for PartialBackup<M> {
     fn lookup<'a>(&'a self, key: &'a RecipientId) -> Option<&'a M::RecipientReference> {
         self.recipients
-            .get(key)
+            .get(*key)
             .map(|data| M::recipient_reference(key, data))
     }
 }
@@ -641,7 +640,7 @@ impl<M: Method + ReferencedTypes> LookupPair<RecipientId, DestinationKind, M::Re
         key: &'a RecipientId,
     ) -> Option<(&'a DestinationKind, &'a M::RecipientReference)> {
         self.recipients
-            .get(key)
+            .get(*key)
             .map(|data| (data.as_ref(), M::recipient_reference(key, data)))
     }
 }
@@ -1010,10 +1009,10 @@ mod test {
             .expect("valid completed backup")
             .chats
             .items
-            .into_iter_with_raw_keys()
-            .map(|(raw_chat_id, items)| {
+            .into_iter()
+            .map(|(chat_id, items)| {
                 (
-                    raw_chat_id,
+                    chat_id.0,
                     items
                         .items
                         .into_iter()

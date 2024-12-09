@@ -3916,7 +3916,7 @@ DEALINGS IN THE SOFTWARE.
 
 ```
 
-## intmap 2.0.0
+## intmap 3.0.0
 
 ```
 Copyright (c) 2016 Jesper Axelsson
