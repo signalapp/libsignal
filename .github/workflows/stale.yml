@@ -2,6 +2,7 @@ name: 'Close stale issues and PRs'
 on:
   schedule:
   - cron: '15 12 * * *' # 7:15 EST, early in a workday
+  workflow_dispatch: {} # no parameters
 
 jobs:
   stale:
@@ -29,9 +30,8 @@ jobs:
         days-before-close: 7
         stale-issue-label: stale
         stale-pr-label: stale
-        exempt-issue-labels:
-        - acknowledged
-        exempt-pr-labels:
-        - acknowledged
+        # These are comma-separated lists, if we ever want more than one.
+        exempt-issue-labels: "acknowledged"
+        exempt-pr-labels: "acknowledged"
         exempt-all-assignees: true
-        operations-per-run: 5
+        operations-per-run: 30
