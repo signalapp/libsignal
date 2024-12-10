@@ -8,7 +8,7 @@ use std::num::{NonZeroU16, NonZeroU32};
 
 use base64::prelude::{Engine, BASE64_STANDARD};
 use libsignal_bridge_macros::{bridge_fn, bridge_io};
-use libsignal_bridge_types::net::Svr3Clients;
+use libsignal_bridge_types::net::{ConnectionInfo, Svr3Clients};
 pub use libsignal_bridge_types::net::{ConnectionManager, Environment, TokioAsyncContext};
 use libsignal_net::auth::Auth;
 use libsignal_net::svr3::traits::*;
@@ -22,6 +22,8 @@ pub(crate) mod cdsi;
 pub(crate) mod chat;
 mod keytrans;
 mod tokio;
+
+bridge_handle_fns!(ConnectionInfo, clone = false, jni = false);
 
 bridge_handle_fns!(ConnectionManager, clone = false);
 

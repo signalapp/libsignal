@@ -165,7 +165,7 @@ final class ChatServiceTests: TestCaseBase {
     }
 
     func testListenerCallbacks() async throws {
-        class Listener: ChatListener {
+        class Listener: ChatServiceListener {
             let queueEmpty: XCTestExpectation
             let firstMessageReceived: XCTestExpectation
             let secondMessageReceived: XCTestExpectation
@@ -251,7 +251,7 @@ final class ChatServiceTests: TestCaseBase {
 #endif
 
     func testListenerCleanup() async throws {
-        class Listener: ChatListener {
+        class Listener: ChatServiceListener {
             let expectation: XCTestExpectation
             init(expectation: XCTestExpectation) {
                 self.expectation = expectation
@@ -369,5 +369,99 @@ final class ChatServiceTests: TestCaseBase {
         } catch SignalError.ioError {
             // Okay
         }
+    }
+}
+
+final class ChatConnectionTests: TestCaseBase {
+    private static let userAgent = "test"
+
+    func testListenerCleanup() async throws {
+        // Use the presence of the environment setting to know whether we should make network requests in our tests.
+        guard ProcessInfo.processInfo.environment["LIBSIGNAL_TESTING_RUN_NONHERMETIC_TESTS"] != nil else {
+            throw XCTSkip()
+        }
+        class Listener: ConnectionEventsListener {
+            let expectation: XCTestExpectation
+            init(expectation: XCTestExpectation) {
+                self.expectation = expectation
+            }
+
+            deinit {
+                expectation.fulfill()
+            }
+
+            func connectionWasInterrupted(_ service: UnauthenticatedChatConnection, error: Error?) {}
+        }
+
+        let net = Net(env: .staging, userAgent: Self.userAgent)
+        var expectations: [XCTestExpectation] = []
+
+        do {
+            let chat = try await net.connectUnauthenticatedChat()
+            let expectation = expectation(description: "second listener destroyed")
+            expectations.append(expectation)
+            let listener = Listener(expectation: expectation)
+            chat.start(listener: listener)
+        }
+        // If we destroy the ChatService, we should also clean up the listener.
+        await fulfillment(of: expectations, timeout: 2, enforceOrder: true)
+    }
+
+    final class ExpectDisconnectListener: ConnectionEventsListener {
+        let expectation: XCTestExpectation
+
+        init(_ expectation: XCTestExpectation) {
+            self.expectation = expectation
+        }
+
+        func connectionWasInterrupted(_: UnauthenticatedChatConnection, error: Error?) {
+            XCTAssertNil(error)
+            self.expectation.fulfill()
+        }
+    }
+
+    func testConnectUnauth() async throws {
+        // Use the presence of the environment setting to know whether we should make network requests in our tests.
+        guard ProcessInfo.processInfo.environment["LIBSIGNAL_TESTING_RUN_NONHERMETIC_TESTS"] != nil else {
+            throw XCTSkip()
+        }
+
+        let net = Net(env: .staging, userAgent: Self.userAgent)
+        let chat = try await net.connectUnauthenticatedChat()
+        let listener = ExpectDisconnectListener(expectation(description: "disconnect"))
+        chat.start(listener: listener)
+
+        // Just make sure we can connect.
+        try await chat.disconnect()
+
+        await self.fulfillment(of: [listener.expectation], timeout: 2)
+    }
+
+    func testConnectUnauthThroughProxy() async throws {
+        guard let PROXY_SERVER = ProcessInfo.processInfo.environment["LIBSIGNAL_TESTING_PROXY_SERVER"] else {
+            throw XCTSkip()
+        }
+
+        // The default TLS proxy config doesn't support staging, so we connect to production.
+        let net = Net(env: .production, userAgent: Self.userAgent)
+        let host: Substring
+        let port: UInt16
+        if let colonIndex = PROXY_SERVER.firstIndex(of: ":") {
+            host = PROXY_SERVER[..<colonIndex]
+            port = UInt16(PROXY_SERVER[colonIndex...].dropFirst())!
+        } else {
+            host = PROXY_SERVER[...]
+            port = 443
+        }
+        try net.setProxy(host: String(host), port: port)
+
+        let chat = try await net.connectUnauthenticatedChat()
+        let listener = ExpectDisconnectListener(expectation(description: "disconnect"))
+        chat.start(listener: listener)
+
+        // Just make sure we can connect.
+        try await chat.disconnect()
+
+        await self.fulfillment(of: [listener.expectation], timeout: 2)
     }
 }

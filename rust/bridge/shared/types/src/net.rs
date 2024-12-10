@@ -56,6 +56,11 @@ impl Environment {
         }
     }
 }
+
+// Trivial wrapper type that cbindgen will treat as opaque.
+pub struct ConnectionInfo(pub libsignal_net::infra::ConnectionInfo);
+bridge_as_handle!(ConnectionInfo);
+
 const CONNECT_PARAMS: ConnectionOutcomeParams = {
     ConnectionOutcomeParams {
         age_cutoff: Duration::from_secs(5 * 60),

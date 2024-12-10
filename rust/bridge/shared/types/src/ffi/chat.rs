@@ -4,6 +4,7 @@
 //
 
 use std::ffi::{c_uchar, c_void};
+use std::panic::UnwindSafe;
 
 use libsignal_net::chat::ChatServiceError;
 
@@ -53,7 +54,7 @@ impl FfiChatListenerStruct {
     ///
     /// The caller must ensure that this method is called at most once on an
     /// `FfiChatListenerStruct`.
-    pub(crate) unsafe fn make_listener(&self) -> Box<dyn ChatListener> {
+    pub(crate) unsafe fn make_listener(&self) -> Box<dyn ChatListener + UnwindSafe> {
         let FfiChatListenerStruct {
             ctx,
             received_incoming_message,
@@ -74,7 +75,6 @@ impl FfiChatListenerStruct {
 // SAFETY: Chat listeners are used from multiple threads. It's up to the creator of the C struct to
 // make sure `ctx` is appropriate for this.
 unsafe impl Send for FfiChatListenerStruct {}
-unsafe impl Sync for FfiChatListenerStruct {}
 
 struct ChatListenerStruct(FfiChatListenerStruct);
 

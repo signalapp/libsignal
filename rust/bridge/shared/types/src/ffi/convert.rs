@@ -7,6 +7,7 @@ use std::ffi::{c_char, c_uchar, CStr};
 use std::fmt::Display;
 use std::num::{NonZeroU64, ParseIntError};
 use std::ops::Deref;
+use std::panic::UnwindSafe;
 
 use libsignal_protocol::*;
 use paste::paste;
@@ -386,15 +387,29 @@ bridge_trait!(KyberPreKeyStore);
 bridge_trait!(InputStream);
 bridge_trait!(SyncInputStream);
 
-impl<'a> ArgTypeInfo<'a> for Option<Box<dyn ChatListener>> {
+impl<'a> ArgTypeInfo<'a> for Box<dyn ChatListener> {
     type ArgType = *const FfiChatListenerStruct;
-    type StoredType = Option<Box<dyn ChatListener>>;
+    type StoredType = Option<Box<dyn ChatListener + UnwindSafe>>;
     #[allow(clippy::not_unsafe_ptr_arg_deref)]
     fn borrow(foreign: Self::ArgType) -> SignalFfiResult<Self::StoredType> {
-        Ok(unsafe { foreign.as_ref().map(|f| f.make_listener()) })
+        Ok(Some(unsafe {
+            foreign.as_ref().ok_or(NullPointerError)?.make_listener()
+        }))
     }
     fn load_from(stored: &'a mut Self::StoredType) -> Self {
-        stored.take()
+        stored.take().expect("not previously taken")
+    }
+}
+
+impl<'a> ArgTypeInfo<'a> for Option<Box<dyn ChatListener>> {
+    type ArgType = *const FfiChatListenerStruct;
+    type StoredType = Option<Box<dyn ChatListener + UnwindSafe>>;
+    #[allow(clippy::not_unsafe_ptr_arg_deref)]
+    fn borrow(foreign: Self::ArgType) -> SignalFfiResult<Self::StoredType> {
+        Ok(unsafe { foreign.as_ref().map(|m| m.make_listener()) })
+    }
+    fn load_from(stored: &'a mut Self::StoredType) -> Self {
+        stored.take().map(|b| b as Box<_>)
     }
 }
 
@@ -862,6 +877,7 @@ macro_rules! ffi_arg_type {
     (&mut $typ:ty) => (*mut $typ);
     (Option<& $typ:ty>) => (*const $typ);
     (Box<[u8]>) => (ffi::BorrowedSliceOf<std::ffi::c_uchar>);
+    (Box<dyn $typ:ty>) => (*const ::paste::paste!(ffi::[<Ffi $typ Struct>]));
     (Option<Box<dyn $typ:ty> >) => (*const ::paste::paste!(ffi::[<Ffi $typ Struct>]));
 
     (Ignored<$typ:ty>) => (*const std::ffi::c_void);

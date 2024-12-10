@@ -22,11 +22,11 @@ use libsignal_net::chat::{
 };
 use libsignal_net::infra::route::{ConnectionProxyConfig, DirectOrProxyProvider};
 use libsignal_net::infra::tcp_ssl::InvalidProxyConfig;
-use libsignal_net::infra::{Connection, ConnectionInfo};
+use libsignal_net::infra::Connection;
 use libsignal_protocol::Timestamp;
 use tokio::sync::{mpsc, oneshot};
 
-use crate::net::{ConnectionManager, TokioAsyncContext};
+use crate::net::{ConnectionInfo, ConnectionManager, TokioAsyncContext};
 use crate::support::*;
 use crate::*;
 
@@ -340,13 +340,13 @@ impl<C: AsRef<tokio::sync::RwLock<MaybeChatConnection>> + Sync> BridgeChatConnec
 
     fn info(&self) -> ConnectionInfo {
         let guard = self.as_ref().blocking_read();
-        match &*guard {
+        ConnectionInfo(match &*guard {
             MaybeChatConnection::Running(chat_connection) => chat_connection.connection_info(),
             MaybeChatConnection::WaitingForListener(_, pending_chat_connection) => {
                 pending_chat_connection.connection_info()
             }
             MaybeChatConnection::TemporarilyEvicted => unreachable!("unobservable state"),
-        }
+        })
     }
 }
 
@@ -368,18 +368,6 @@ fn init_listener(connection: &mut MaybeChatConnection, listener: Box<dyn ChatLis
         pending,
         listener.into_event_listener(),
     ))
-}
-
-impl Connection for UnauthenticatedChatConnection {
-    fn connection_info(&self) -> ConnectionInfo {
-        BridgeChatConnection::info(self)
-    }
-}
-
-impl Connection for AuthenticatedChatConnection {
-    fn connection_info(&self) -> ConnectionInfo {
-        BridgeChatConnection::info(self)
-    }
 }
 
 async fn establish_chat_connection(
@@ -641,5 +629,3 @@ bridge_as_handle!(ServerMessageAck);
 // makes it `!RefUnwindSafe`. We're putting that back; because we only manipulate the `AtomicTake`
 // using its atomic operations, it can never be in an invalid state.
 impl std::panic::RefUnwindSafe for ServerMessageAck {}
-
-bridge_as_handle!(ConnectionInfo);

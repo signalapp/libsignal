@@ -166,6 +166,55 @@ public class Net {
         return UnauthenticatedChatService(tokioAsyncContext: self.asyncContext, connectionManager: self.connectionManager)
     }
 
+    /// Asynchronously establishes an authenticated connection to the remote
+    /// chat service.
+    ///
+    /// Creates a connection to the remote chat service, or throws a
+    /// ``SignalError`` if one cannot be established, or if the connection
+    /// attempt is rejected. Once the connection is established, the returned
+    /// object can be used to send and receive messages after
+    /// ``AuthenticatedChatConnection/start(listener:)`` is called.
+    ///
+    /// - Parameters:
+    ///   - username: The username to provide; this is typically of the form `{aci}.{deviceId}`.
+    ///   - password: The password to provide to the server.
+    ///   - receiveStories: Indicates to the server whether it should send story updates on this connection.
+    ///
+    /// - Throws: ``SignalError/appExpired(_:)`` if the current app version is too old (as judged by
+    ///   the server).
+    /// - Throws: ``SignalError/rateLimitedError(_:, _:)`` if the server
+    ///   response indicates the request should be tried again after some time.
+    /// - Throws: ``SignalError/deviceDeregistered(_:)`` if the server response
+    ///   indicates the device is no longer registered.
+    /// - Throws: Other ``SignalError``s for other kinds of failures.
+    ///
+    /// - Returns:
+    ///   An object representing the established, but not yet active, connection.
+    public func connectAuthenticatedChat(username: String, password: String, receiveStories: Bool) async throws -> AuthenticatedChatConnection {
+        return try await AuthenticatedChatConnection(tokioAsyncContext: self.asyncContext, connectionManager: self.connectionManager, username: username, password: password, receiveStories: receiveStories)
+    }
+
+    /// Asynchronously establishes an unauthenticated connection to the remote
+    /// chat service.
+    ///
+    /// Creates a connection to the remote chat service, or throws a
+    /// ``SignalError`` if one cannot be established, or if the connection
+    /// attempt is rejected. Once the connection is established, the returned
+    /// object can be used to send and receive messages after
+    /// ``UnauthenticatedChatConnection/start(listener:)`` is called.
+    ///
+    /// - Throws: ``SignalError/appExpired(_:)`` if the current app version is too old (as judged by
+    ///   the server).
+    /// - Throws: ``SignalError/rateLimitedError(_:, _:)`` if the server
+    ///   response indicates the request should be tried again after some time.
+    /// - Throws: Other ``SignalError``s for other kinds of failures.
+    ///
+    /// - Returns:
+    ///   An object representing the established, but not active, connection.
+    public func connectUnauthenticatedChat() async throws -> UnauthenticatedChatConnection {
+        return try await UnauthenticatedChatConnection(tokioAsyncContext: self.asyncContext, connectionManager: self.connectionManager)
+    }
+
     private var asyncContext: TokioAsyncContext
     private var connectionManager: ConnectionManager
 }

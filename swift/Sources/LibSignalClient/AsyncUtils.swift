@@ -60,6 +60,14 @@ extension SignalCPromiseOwnedBufferOfc_uchar: PromiseStruct {
     typealias Result = SignalOwnedBuffer
 }
 
+extension SignalCPromiseAuthenticatedChatConnection: PromiseStruct {
+    typealias Result = OpaquePointer
+}
+
+extension SignalCPromiseUnauthenticatedChatConnection: PromiseStruct {
+    typealias Result = OpaquePointer
+}
+
 /// A type-erased version of ``Completer``.
 ///
 /// Not for direct use, see Completer instead.

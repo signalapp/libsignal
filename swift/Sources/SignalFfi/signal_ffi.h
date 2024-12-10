@@ -224,6 +224,8 @@ typedef struct SignalAes256GcmEncryption SignalAes256GcmEncryption;
 
 typedef struct SignalAes256GcmSiv SignalAes256GcmSiv;
 
+typedef struct SignalAuthenticatedChatConnection SignalAuthenticatedChatConnection;
+
 typedef struct SignalCdsiLookup SignalCdsiLookup;
 
 typedef struct SignalChatAuthChatService SignalChatAuthChatService;
@@ -231,6 +233,8 @@ typedef struct SignalChatAuthChatService SignalChatAuthChatService;
 typedef struct SignalChatUnauthChatService SignalChatUnauthChatService;
 
 typedef struct SignalCiphertextMessage SignalCiphertextMessage;
+
+typedef struct SignalConnectionInfo SignalConnectionInfo;
 
 typedef struct SignalConnectionManager SignalConnectionManager;
 
@@ -319,6 +323,8 @@ typedef struct SignalMessage SignalMessage;
 typedef struct SignalSignedPreKeyRecord SignalSignedPreKeyRecord;
 
 typedef struct SignalTokioAsyncContext SignalTokioAsyncContext;
+
+typedef struct SignalUnauthenticatedChatConnection SignalUnauthenticatedChatConnection;
 
 typedef struct SignalUnidentifiedSenderMessageContent SignalUnidentifiedSenderMessageContent;
 
@@ -589,12 +595,6 @@ typedef SignalChatAuthChatService SignalAuthChat;
 
 typedef SignalChatUnauthChatService SignalUnauthChat;
 
-typedef struct {
-  uint8_t raw_ip_type;
-  double duration_secs;
-  const char *connection_info;
-} SignalFfiChatServiceDebugInfo;
-
 /**
  * A C callback used to report the results of Rust futures.
  *
@@ -605,52 +605,10 @@ typedef struct {
  * completed once.
  */
 typedef struct {
-  void (*complete)(SignalFfiError *error, const SignalFfiChatServiceDebugInfo *result, const void *context);
+  void (*complete)(SignalFfiError *error, SignalUnauthenticatedChatConnection *const *result, const void *context);
   const void *context;
   SignalCancellationId cancellation_id;
-} SignalCPromiseFfiChatServiceDebugInfo;
-
-typedef struct {
-  uint16_t status;
-  const char *message;
-  SignalOwnedBufferOfCStringPtr headers;
-  SignalOwnedBuffer body;
-} SignalFfiChatResponse;
-
-/**
- * A C callback used to report the results of Rust futures.
- *
- * cbindgen will produce independent C types like `SignalCPromisei32` and
- * `SignalCPromiseProtocolAddress`.
- *
- * This derives Copy because it behaves like a C type; nevertheless, a promise should still only be
- * completed once.
- */
-typedef struct {
-  void (*complete)(SignalFfiError *error, const SignalFfiChatResponse *result, const void *context);
-  const void *context;
-  SignalCancellationId cancellation_id;
-} SignalCPromiseFfiChatResponse;
-
-typedef struct {
-  SignalFfiChatResponse response;
-  SignalFfiChatServiceDebugInfo debug_info;
-} SignalFfiResponseAndDebugInfo;
-
-/**
- * A C callback used to report the results of Rust futures.
- *
- * cbindgen will produce independent C types like `SignalCPromisei32` and
- * `SignalCPromiseProtocolAddress`.
- *
- * This derives Copy because it behaves like a C type; nevertheless, a promise should still only be
- * completed once.
- */
-typedef struct {
-  void (*complete)(SignalFfiError *error, const SignalFfiResponseAndDebugInfo *result, const void *context);
-  const void *context;
-  SignalCancellationId cancellation_id;
-} SignalCPromiseFfiResponseAndDebugInfo;
+} SignalCPromiseUnauthenticatedChatConnection;
 
 typedef void (*SignalReceivedIncomingMessage)(void *ctx, SignalOwnedBuffer envelope, uint64_t timestamp_millis, SignalServerMessageAck *cleanup);
 
@@ -682,6 +640,84 @@ typedef struct {
   SignalConnectionInterrupted connection_interrupted;
   SignalDestroyChatListener destroy;
 } SignalFfiChatListenerStruct;
+
+typedef struct {
+  uint16_t status;
+  const char *message;
+  SignalOwnedBufferOfCStringPtr headers;
+  SignalOwnedBuffer body;
+} SignalFfiChatResponse;
+
+/**
+ * A C callback used to report the results of Rust futures.
+ *
+ * cbindgen will produce independent C types like `SignalCPromisei32` and
+ * `SignalCPromiseProtocolAddress`.
+ *
+ * This derives Copy because it behaves like a C type; nevertheless, a promise should still only be
+ * completed once.
+ */
+typedef struct {
+  void (*complete)(SignalFfiError *error, const SignalFfiChatResponse *result, const void *context);
+  const void *context;
+  SignalCancellationId cancellation_id;
+} SignalCPromiseFfiChatResponse;
+
+/**
+ * A C callback used to report the results of Rust futures.
+ *
+ * cbindgen will produce independent C types like `SignalCPromisei32` and
+ * `SignalCPromiseProtocolAddress`.
+ *
+ * This derives Copy because it behaves like a C type; nevertheless, a promise should still only be
+ * completed once.
+ */
+typedef struct {
+  void (*complete)(SignalFfiError *error, SignalAuthenticatedChatConnection *const *result, const void *context);
+  const void *context;
+  SignalCancellationId cancellation_id;
+} SignalCPromiseAuthenticatedChatConnection;
+
+typedef struct {
+  uint8_t raw_ip_type;
+  double duration_secs;
+  const char *connection_info;
+} SignalFfiChatServiceDebugInfo;
+
+/**
+ * A C callback used to report the results of Rust futures.
+ *
+ * cbindgen will produce independent C types like `SignalCPromisei32` and
+ * `SignalCPromiseProtocolAddress`.
+ *
+ * This derives Copy because it behaves like a C type; nevertheless, a promise should still only be
+ * completed once.
+ */
+typedef struct {
+  void (*complete)(SignalFfiError *error, const SignalFfiChatServiceDebugInfo *result, const void *context);
+  const void *context;
+  SignalCancellationId cancellation_id;
+} SignalCPromiseFfiChatServiceDebugInfo;
+
+typedef struct {
+  SignalFfiChatResponse response;
+  SignalFfiChatServiceDebugInfo debug_info;
+} SignalFfiResponseAndDebugInfo;
+
+/**
+ * A C callback used to report the results of Rust futures.
+ *
+ * cbindgen will produce independent C types like `SignalCPromisei32` and
+ * `SignalCPromiseProtocolAddress`.
+ *
+ * This derives Copy because it behaves like a C type; nevertheless, a promise should still only be
+ * completed once.
+ */
+typedef struct {
+  void (*complete)(SignalFfiError *error, const SignalFfiResponseAndDebugInfo *result, const void *context);
+  const void *context;
+  SignalCancellationId cancellation_id;
+} SignalCPromiseFfiResponseAndDebugInfo;
 
 typedef int (*SignalRead)(void *ctx, uint8_t *buf, size_t buf_len, size_t *amount_read);
 
@@ -1473,6 +1509,8 @@ SignalFfiError *signal_group_send_full_token_get_expiration(uint64_t *out, Signa
 
 SignalFfiError *signal_group_send_full_token_verify(SignalBorrowedBuffer token, SignalBorrowedBuffer user_ids, uint64_t now, SignalBorrowedBuffer key_pair);
 
+SignalFfiError *signal_connection_info_destroy(SignalConnectionInfo *p);
+
 SignalFfiError *signal_connection_manager_destroy(SignalConnectionManager *p);
 
 SignalFfiError *signal_connection_manager_new(SignalConnectionManager **out, uint8_t environment, const char *user_agent);
@@ -1525,6 +1563,10 @@ SignalFfiError *signal_unauth_chat_destroy(SignalUnauthChat *p);
 
 SignalFfiError *signal_http_request_destroy(SignalHttpRequest *p);
 
+SignalFfiError *signal_unauthenticated_chat_connection_destroy(SignalUnauthenticatedChatConnection *p);
+
+SignalFfiError *signal_authenticated_chat_connection_destroy(SignalAuthenticatedChatConnection *p);
+
 SignalFfiError *signal_http_request_new_with_body(SignalHttpRequest **out, const char *method, const char *path, SignalBorrowedBuffer body_as_slice);
 
 SignalFfiError *signal_http_request_new_without_body(SignalHttpRequest **out, const char *method, const char *path);
@@ -1534,6 +1576,26 @@ SignalFfiError *signal_http_request_add_header(const SignalHttpRequest *request,
 SignalFfiError *signal_chat_service_new_unauth(SignalUnauthChat **out, const SignalConnectionManager *connection_manager);
 
 SignalFfiError *signal_chat_service_new_auth(SignalAuthChat **out, const SignalConnectionManager *connection_manager, const char *username, const char *password, bool receive_stories);
+
+SignalFfiError *signal_unauthenticated_chat_connection_connect(SignalCPromiseUnauthenticatedChatConnection *promise, const SignalTokioAsyncContext *async_runtime, const SignalConnectionManager *connection_manager);
+
+SignalFfiError *signal_unauthenticated_chat_connection_init_listener(const SignalUnauthenticatedChatConnection *chat, const SignalFfiChatListenerStruct *listener);
+
+SignalFfiError *signal_unauthenticated_chat_connection_send(SignalCPromiseFfiChatResponse *promise, const SignalTokioAsyncContext *async_runtime, const SignalUnauthenticatedChatConnection *chat, const SignalHttpRequest *http_request, uint32_t timeout_millis);
+
+SignalFfiError *signal_unauthenticated_chat_connection_disconnect(SignalCPromisebool *promise, const SignalTokioAsyncContext *async_runtime, const SignalUnauthenticatedChatConnection *chat);
+
+SignalFfiError *signal_unauthenticated_chat_connection_info(SignalConnectionInfo **out, const SignalUnauthenticatedChatConnection *chat);
+
+SignalFfiError *signal_authenticated_chat_connection_connect(SignalCPromiseAuthenticatedChatConnection *promise, const SignalTokioAsyncContext *async_runtime, const SignalConnectionManager *connection_manager, const char *username, const char *password, bool receive_stories);
+
+SignalFfiError *signal_authenticated_chat_connection_init_listener(const SignalAuthenticatedChatConnection *chat, const SignalFfiChatListenerStruct *listener);
+
+SignalFfiError *signal_authenticated_chat_connection_send(SignalCPromiseFfiChatResponse *promise, const SignalTokioAsyncContext *async_runtime, const SignalAuthenticatedChatConnection *chat, const SignalHttpRequest *http_request, uint32_t timeout_millis);
+
+SignalFfiError *signal_authenticated_chat_connection_disconnect(SignalCPromisebool *promise, const SignalTokioAsyncContext *async_runtime, const SignalAuthenticatedChatConnection *chat);
+
+SignalFfiError *signal_authenticated_chat_connection_info(SignalConnectionInfo **out, const SignalAuthenticatedChatConnection *chat);
 
 SignalFfiError *signal_chat_service_disconnect_unauth(SignalCPromisebool *promise, const SignalTokioAsyncContext *async_runtime, const SignalUnauthChat *chat);
 

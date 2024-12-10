@@ -30,7 +30,6 @@ public protocol ChatService: AnyObject {
     ///
     /// - Throws: ``SignalError/chatServiceInactive(_:)`` if you haven't called ``connect()``
     /// - Throws: Other ``SignalError``s for other kinds of failures.
-    /// - SeeAlso: ``send(_:)``
     func send(_ request: Request) async throws -> Response
 
     /// Sends a request to the Chat Service.
@@ -76,7 +75,7 @@ public class AuthenticatedChatService: NativeHandleOwner, ChatService {
     /// Sets (or clears) the listener for server push messages.
     ///
     /// Takes ownership of the listener; be careful this doesn't lead to a reference cycle (unless the owner lives forever anyway).
-    public func setListener(_ listener: (any ChatListener)?) {
+    public func setListener(_ listener: (any ChatServiceListener)?) {
         self.tokioAsyncContext.withNativeHandle { tokioAsyncContext in
             withNativeHandle { chatService in
                 if let listener {
