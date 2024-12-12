@@ -184,12 +184,6 @@ describe('chat service api', () => {
 
   // Integration tests make real network calls and as such will not be run unless a proxy server is provided.
   describe('Integration tests', function (this: Mocha.Suite) {
-    before(() => {
-      if (!process.env.LIBSIGNAL_TESTING_PROXY_SERVER) {
-        this.ctx.skip();
-      }
-    });
-
     ['ChatService', 'ChatConnection'].forEach((impl) => {
       describe(impl, () => {
         let connectChat: (
@@ -229,7 +223,10 @@ describe('chat service api', () => {
           expect(onInterrupted.resolvedValue).to.eql([null]);
         };
 
-        it('can connect unauthenticated', async () => {
+        it('can connect unauthenticated', async function () {
+          if (!process.env.LIBSIGNAL_TESTING_RUN_NONHERMETIC_TESTS) {
+            this.skip();
+          }
           const net = new Net({
             env: Environment.Production,
             userAgent: userAgent,
