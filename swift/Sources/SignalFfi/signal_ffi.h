@@ -1573,6 +1573,10 @@ SignalFfiError *signal_http_request_new_without_body(SignalHttpRequest **out, co
 
 SignalFfiError *signal_http_request_add_header(const SignalHttpRequest *request, const char *name, const char *value);
 
+SignalFfiError *signal_connection_info_local_port(uint16_t *out, const SignalConnectionInfo *connection_info);
+
+SignalFfiError *signal_connection_info_ip_version(uint8_t *out, const SignalConnectionInfo *connection_info);
+
 SignalFfiError *signal_chat_service_new_unauth(SignalUnauthChat **out, const SignalConnectionManager *connection_manager);
 
 SignalFfiError *signal_chat_service_new_auth(SignalAuthChat **out, const SignalConnectionManager *connection_manager, const char *username, const char *password, bool receive_stories);

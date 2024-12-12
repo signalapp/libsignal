@@ -60,12 +60,12 @@ fn HttpRequest_add_header(
     request.add_header(name.into_inner(), value.into_inner())
 }
 
-#[bridge_fn(ffi = false, jni = false)]
+#[bridge_fn(jni = false)]
 fn ConnectionInfo_local_port(connection_info: &ConnectionInfo) -> u16 {
     connection_info.0.local_port
 }
 
-#[bridge_fn(ffi = false, jni = false)]
+#[bridge_fn(jni = false)]
 fn ConnectionInfo_ip_version(connection_info: &ConnectionInfo) -> u8 {
     connection_info.0.ip_version as u8
 }

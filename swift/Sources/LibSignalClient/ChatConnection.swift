@@ -16,6 +16,34 @@ public protocol ChatConnection: AnyObject {
     ///
     /// - Throws: ``SignalError``s for the various failure modes.
     func send(_ request: Request) async throws -> Response
+
+    /// Produces information about the connection.
+    func info() -> ConnectionInfo
+}
+
+public class ConnectionInfo: NativeHandleOwner {
+    /// The local port used by the connection.
+    public var localPort: UInt16 {
+        withNativeHandle { connectionInfo in
+            failOnError {
+                try invokeFnReturningInteger {
+                    signal_connection_info_local_port($0, connectionInfo)
+                }
+            }
+        }
+    }
+
+    /// The IP addressing version used by the connection.
+    public var ipType: IpType {
+        let rawValue = withNativeHandle { connectionInfo in
+            failOnError {
+                try invokeFnReturningInteger {
+                    signal_connection_info_ip_version($0, connectionInfo)
+                }
+            }
+        }
+        return IpType(rawValue: rawValue) ?? .unknown
+    }
 }
 
 extension ChatConnection {
@@ -91,6 +119,17 @@ public class AuthenticatedChatConnection: NativeHandleOwner, ChatConnection {
         }
         return try Response(consuming: rawResponse)
     }
+
+    /// Returns an object representing information about the connection.
+    public func info() -> ConnectionInfo {
+        withNativeHandle { chatConnection in
+            failOnError {
+                try invokeFnReturningNativeHandle {
+                    signal_authenticated_chat_connection_info($0, chatConnection)
+                }
+            }
+        }
+    }
 }
 
 /// Represents an unauthenticated connection to the Chat Service.
@@ -160,5 +199,16 @@ public class UnauthenticatedChatConnection: NativeHandleOwner, ChatConnection {
             }
         }
         return try Response(consuming: rawResponse)
+    }
+
+    /// Returns an object representing information about the connection.
+    public func info() -> ConnectionInfo {
+        withNativeHandle { chatConnection in
+            failOnError {
+                try invokeFnReturningNativeHandle {
+                    signal_authenticated_chat_connection_info($0, chatConnection)
+                }
+            }
+        }
     }
 }

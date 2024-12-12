@@ -908,6 +908,7 @@ macro_rules! ffi_result_type {
     (()) => (bool); // Only relevant for Futures.
 
     (u8) => (u8);
+    (u16) => (u16);
     (i32) => (i32);
     (u32) => (u32);
     (Option<u32>) => (u32);
