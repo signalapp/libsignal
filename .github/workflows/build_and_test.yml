@@ -108,11 +108,8 @@ jobs:
         include:
         - version: nightly
           toolchain: "$(cat rust-toolchain)"
-          cargo-keep-going: "--keep-going"
         - version: stable
           toolchain: "${LIBSIGNAL_MINIMUM_SUPPORTED_RUST_VERSION}"
-          # Remove this switch once our MSRV is at least 1.74, which stablilized the --keep-going flag.
-          cargo-keep-going: ""
 
     timeout-minutes: 45
 
@@ -167,7 +164,7 @@ jobs:
       if: matrix.version == 'nightly'
 
     - name: Build
-      run: cargo +${{ matrix.toolchain }} build --workspace --features libsignal-ffi/signal-media --verbose ${{ matrix.cargo-keep-going }}
+      run: cargo +${{ matrix.toolchain }} build --workspace --features libsignal-ffi/signal-media --verbose --keep-going
 
     - name: Run tests
       run: cargo +${{ matrix.toolchain }} test --workspace --all-features --verbose --no-fail-fast -- --include-ignored
@@ -176,14 +173,14 @@ jobs:
       run: cargo +${{ matrix.toolchain }} test --workspace --benches --all-features --verbose --no-fail-fast
 
     - name: Build bins and examples
-      run: cargo +${{ matrix.toolchain }} build --workspace  --bins --examples --all-features --verbose ${{ matrix.cargo-keep-going }}
+      run: cargo +${{ matrix.toolchain }} build --workspace  --bins --examples --all-features --verbose --keep-going
 
     - name: Clippy
-      run: cargo clippy --workspace --all-targets --all-features ${{ matrix.cargo-keep-going }} -- -D warnings
+      run: cargo clippy --workspace --all-targets --all-features --keep-going -- -D warnings
       if: matrix.version == 'nightly'
 
     - name: Rust docs
-      run: cargo +${{ matrix.toolchain }} doc --workspace --all-features ${{ matrix.cargo-keep-going }}
+      run: cargo +${{ matrix.toolchain }} doc --workspace --all-features --keep-going
       if: matrix.version == 'stable'
       env:
         RUSTFLAGS: -D warnings
@@ -193,14 +190,14 @@ jobs:
     # See https://github.com/dtolnay/proc-macro2/issues/307 for an example.
 
     - name: Check that the protocol fuzz target still builds
-      run: cargo +${{ matrix.toolchain }} check --all-targets ${{ matrix.cargo-keep-going }}
+      run: cargo +${{ matrix.toolchain }} check --all-targets --keep-going
       working-directory: rust/protocol/fuzz
       env:
         RUSTFLAGS: --cfg fuzzing
       if: matrix.version == 'stable'
 
     - name: Check that the attest fuzz target still builds
-      run: cargo +${{ matrix.toolchain }} check --all-targets ${{ matrix.cargo-keep-going }}
+      run: cargo +${{ matrix.toolchain }} check --all-targets --keep-going
       working-directory: rust/attest/fuzz
       env:
         RUSTFLAGS: --cfg fuzzing
