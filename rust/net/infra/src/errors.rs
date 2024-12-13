@@ -11,6 +11,10 @@ use crate::certs;
 
 pub trait LogSafeDisplay: Display {}
 
+/// Vacuous implementation since you can't actually [`Display::fmt`] a
+/// [`std::convert::Infallible`].
+impl LogSafeDisplay for std::convert::Infallible {}
+
 /// Errors that can occur during transport-level connection establishment.
 #[derive(displaydoc::Display, Debug, thiserror::Error)]
 pub enum TransportConnectError {

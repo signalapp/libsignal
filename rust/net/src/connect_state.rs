@@ -7,13 +7,16 @@ use std::default::Default;
 use std::ops::ControlFlow;
 
 use http::HeaderName;
+use itertools::Itertools as _;
 use libsignal_net_infra::connection_manager::{ErrorClass, ErrorClassifier as _};
 use libsignal_net_infra::dns::DnsResolver;
+use libsignal_net_infra::errors::LogSafeDisplay;
 use libsignal_net_infra::route::{
     ComposedConnector, ConnectError, ConnectionOutcomeParams, ConnectionOutcomes, Connector,
-    HttpRouteFragment, RouteProvider, RouteProviderExt as _, RouteResolver,
-    StatelessTransportConnector, TransportRoute, UnresolvedWebsocketServiceRoute,
-    WebSocketRouteFragment, WebSocketServiceRoute,
+    DescribedRouteConnector, HttpRouteFragment, ResolveWithSavedDescription, RouteProvider,
+    RouteProviderExt as _, RouteResolver, StatelessTransportConnector, TransportRoute,
+    UnresolvedRouteDescription, UnresolvedWebsocketServiceRoute, WebSocketRouteFragment,
+    WebSocketServiceRoute, WithLoggableDescription, WithoutLoggableDescription,
 };
 use libsignal_net_infra::ws::WebSocketConnectError;
 use libsignal_net_infra::ws2::attested::AttestedConnection;
@@ -44,6 +47,19 @@ impl ConnectState {
     }
 }
 
+#[derive(Clone, Debug, PartialEq)]
+pub struct RouteInfo {
+    unresolved: UnresolvedRouteDescription,
+}
+
+impl LogSafeDisplay for RouteInfo {}
+impl std::fmt::Display for RouteInfo {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self { unresolved } = self;
+        (unresolved as &dyn LogSafeDisplay).fmt(f)
+    }
+}
+
 impl<TC> ConnectState<TC>
 where
     TC: Connector<TransportRoute, ()> + Sync,
@@ -56,7 +72,7 @@ where
         resolver: &DnsResolver,
         confirmation_header_name: Option<&HeaderName>,
         mut on_error: impl FnMut(WebSocketServiceConnectError) -> ControlFlow<E>,
-    ) -> Result<WC::Connection, ConnectError<E>>
+    ) -> Result<(WC::Connection, RouteInfo), ConnectError<E>>
     where
         WC: Connector<
                 (WebSocketRouteFragment, HttpRouteFragment),
@@ -64,15 +80,27 @@ where
                 Error = tungstenite::Error,
             > + Send
             + Sync,
+        E: LogSafeDisplay,
     {
         let connect_read = this.read().await;
+        let routes = routes.routes().collect_vec();
 
+        log::info!("starting connection attempt with {} routes", routes.len());
+
+        let route_provider = routes.into_iter().map(ResolveWithSavedDescription);
+        let connector = DescribedRouteConnector(ComposedConnector::new(
+            ws_connector,
+            &connect_read.transport_connector,
+        ));
+        let delay_policy = WithoutLoggableDescription(&connect_read.attempts_record);
+
+        let start = Instant::now();
         let (result, updates) = crate::infra::route::connect(
             &connect_read.route_resolver,
-            &connect_read.attempts_record,
-            routes,
+            delay_policy,
+            route_provider,
             resolver,
-            ComposedConnector::new(ws_connector, &connect_read.transport_connector),
+            connector,
             |error| {
                 let error = WebSocketServiceConnectError::from_websocket_error(
                     error,
@@ -89,12 +117,35 @@ where
         // doesn't matter.
         drop(connect_read);
 
-        this.write()
-            .await
-            .attempts_record
-            .apply_outcome_updates(updates.outcomes, updates.finished_at);
+        match &result {
+            Ok((_connection, route)) => log::info!(
+                "connection through {route} succeeded after {:.3?}",
+                start.elapsed()
+            ),
+            Err(e) => log::info!("connection failed with {e}"),
+        }
 
-        result
+        this.write().await.attempts_record.apply_outcome_updates(
+            updates.outcomes.into_iter().map(
+                |(
+                    WithLoggableDescription {
+                        route,
+                        description: _,
+                    },
+                    outcome,
+                )| (route, outcome),
+            ),
+            updates.finished_at,
+        );
+
+        result.map(|(connection, description)| {
+            (
+                connection,
+                RouteInfo {
+                    unresolved: description,
+                },
+            )
+        })
     }
 
     pub(crate) async fn connect_attested_ws(
@@ -105,7 +156,7 @@ where
         confirmation_header_name: Option<HeaderName>,
         ws_config: libsignal_net_infra::ws2::Config,
         new_handshake: impl FnOnce(&[u8]) -> Result<attest::enclave::Handshake, attest::enclave::Error>,
-    ) -> Result<AttestedConnection, crate::enclave::Error>
+    ) -> Result<(AttestedConnection, RouteInfo), crate::enclave::Error>
     where
         TC::Connection: AsyncDuplexStream + 'static,
     {
@@ -114,7 +165,7 @@ where
             route
         });
 
-        let ws = ConnectState::connect_ws(
+        let (ws, route_info) = ConnectState::connect_ws(
             connect,
             ws_routes,
             crate::infra::ws::Stateless,
@@ -135,9 +186,8 @@ where
             ConnectError::FatalConnect(e) => e,
         })?;
 
-        AttestedConnection::connect(ws, ws_config, new_handshake)
-            .await
-            .map_err(Into::into)
+        let connection = AttestedConnection::connect(ws, ws_config, new_handshake).await?;
+        Ok((connection, route_info))
     }
 }
 
@@ -159,7 +209,7 @@ mod test {
         DirectOrProxyRoute, HttpsTlsRoute, TcpRoute, TlsRoute, TlsRouteFragment, UnresolvedHost,
         WebSocketRoute,
     };
-    use libsignal_net_infra::{Alpn, DnsSource};
+    use libsignal_net_infra::{Alpn, DnsSource, RouteType};
     use nonzero_ext::nonzero;
 
     use super::*;
@@ -199,6 +249,7 @@ mod test {
                 fragment: HttpRouteFragment {
                     host_header: "failing-host".into(),
                     path_prefix: "".into(),
+                    front_name: None,
                 },
                 inner: fake_transport_route.clone(),
             },
@@ -214,6 +265,7 @@ mod test {
                 fragment: HttpRouteFragment {
                     host_header: "successful-host".into(),
                     path_prefix: "".into(),
+                    front_name: Some(RouteType::ProxyF.into()),
                 },
                 inner: fake_transport_route,
             },
@@ -256,15 +308,19 @@ mod test {
                     e,
                     WebSocketConnectError::WebSocketError(tungstenite::Error::ConnectionClosed)
                 );
-                ControlFlow::<()>::Continue(())
+                ControlFlow::<std::convert::Infallible>::Continue(())
             },
         )
         // This previously hung forever due to a deadlock bug.
         .await;
 
+        let (connection, info) = result.expect("succeeded");
         assert_eq!(
-            result,
-            Ok((succeeding_route.fragment, succeeding_route.inner.fragment))
-        )
+            connection,
+            (succeeding_route.fragment, succeeding_route.inner.fragment)
+        );
+        let RouteInfo { unresolved } = info;
+
+        assert_eq!(unresolved.to_string(), "REDACTED:1234 fronted by proxyf");
     }
 }

@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::fmt::Display;
 use std::ops::ControlFlow;
 use std::sync::Arc;
 use std::time::Duration;
@@ -25,13 +26,13 @@ use libsignal_net_infra::timeouts::{MULTI_ROUTE_CONNECTION_TIMEOUT, ONE_ROUTE_CO
 use libsignal_net_infra::utils::ObservableEvent;
 use libsignal_net_infra::ws::{WebSocketClientConnector, WebSocketConnectError};
 use libsignal_net_infra::{
-    make_ws_config, AsHttpHeader, Connection, ConnectionInfo, EndpointConnection,
-    HttpRequestDecorator, IpType, TransportConnector,
+    make_ws_config, AsHttpHeader, Connection, EndpointConnection, HttpRequestDecorator, IpType,
+    TransportConnector, TransportInfo,
 };
 
 use crate::auth::Auth;
 use crate::chat::ws::{ChatOverWebSocketServiceConnector, ServerEvent};
-use crate::connect_state::ConnectState;
+use crate::connect_state::{ConnectState, RouteInfo};
 use crate::env::{add_user_agent_header, ConnectionConfig, UserAgent};
 use crate::proto;
 
@@ -516,15 +517,16 @@ pub fn endpoint_connection(
     )
 }
 
+/// Information about an established connection.
+#[derive(Clone, Debug)]
+pub struct ConnectionInfo {
+    pub route_info: RouteInfo,
+    pub transport_info: TransportInfo,
+}
+
 pub struct ChatConnection {
     inner: self::ws2::Chat,
     connection_info: ConnectionInfo,
-}
-
-impl Connection for ChatConnection {
-    fn connection_info(&self) -> ConnectionInfo {
-        self.connection_info.clone()
-    }
 }
 
 type ChatConnector = ComposedConnector<
@@ -538,12 +540,6 @@ pub struct PendingChatConnection {
     connection: ChatWebSocketConnection,
     ws_config: ws2::Config,
     connection_info: ConnectionInfo,
-}
-
-impl Connection for PendingChatConnection {
-    fn connection_info(&self) -> ConnectionInfo {
-        self.connection_info.clone()
-    }
 }
 
 pub struct AuthenticatedChatHeaders {
@@ -594,18 +590,25 @@ impl ChatConnection {
             ThrottlingConnector::new(crate::infra::ws::Stateless, 1),
             resolver,
             confirmation_header_name.as_ref(),
-            |error| match error.classify() {
-                ErrorClass::Intermittent => ControlFlow::Continue(()),
-                ErrorClass::Fatal | ErrorClass::RetryAt(_) => {
-                    ControlFlow::Break(ChatServiceError::from(error))
+            |error| {
+                log::debug!("connection attempt failed with {error}");
+                match error.classify() {
+                    ErrorClass::Intermittent => ControlFlow::Continue(()),
+                    ErrorClass::Fatal | ErrorClass::RetryAt(_) => {
+                        ControlFlow::Break(ChatServiceError::from(error))
+                    }
                 }
             },
         )
         .await;
 
         match result {
-            Ok(ws_connection) => Ok({
-                let connection_info = ws_connection.connection_info();
+            Ok((ws_connection, route_info)) => Ok({
+                let transport_info = ws_connection.transport_info();
+                let connection_info = ConnectionInfo {
+                    transport_info,
+                    route_info,
+                };
                 PendingChatConnection {
                     connection: ws_connection,
                     connection_info,
@@ -634,8 +637,8 @@ impl ChatConnection {
     ) -> Self {
         let PendingChatConnection {
             connection,
-            connection_info,
             ws_config,
+            connection_info,
         } = pending;
         Self {
             inner: crate::chat::ws2::Chat::new(tokio_runtime, connection, ws_config, listener),
@@ -656,6 +659,30 @@ impl ChatConnection {
 
     pub async fn disconect(&self) {
         self.inner.disconnect().await
+    }
+
+    pub fn connection_info(&self) -> &ConnectionInfo {
+        &self.connection_info
+    }
+}
+
+impl PendingChatConnection {
+    pub fn connection_info(&self) -> &ConnectionInfo {
+        &self.connection_info
+    }
+}
+
+impl Display for ConnectionInfo {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self {
+            transport_info:
+                TransportInfo {
+                    local_port,
+                    ip_version,
+                },
+            route_info,
+        } = self;
+        write!(f, "from {ip_version}:{local_port} via {route_info}")
     }
 }
 

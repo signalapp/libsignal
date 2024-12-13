@@ -22,6 +22,8 @@ pub const DEFAULT_HTTPS_PORT: NonZeroU16 = nonzero!(443u16);
 pub struct HttpRouteFragment {
     pub host_header: Arc<str>,
     pub path_prefix: Arc<str>,
+    /// Only for logging; the name of the domain front for this proxy.
+    pub front_name: Option<&'static str>,
 }
 
 pub type HttpsTlsRoute<T> = SimpleRoute<HttpRouteFragment, T>;
@@ -61,6 +63,8 @@ pub struct DomainFrontConfig {
     pub root_certs: RootCertificates,
     /// A string to prepend to the path of outgoing HTTP requests.
     pub path_prefix: Arc<str>,
+    /// A loggable name for the front.
+    pub front_name: &'static str,
 }
 
 impl<F, P> HttpsProvider<F, P> {
@@ -103,6 +107,7 @@ impl RouteProvider for DomainFrontRouteProvider {
                  sni_list,
                  root_certs,
                  path_prefix,
+                 front_name,
              }| {
                 sni_list.iter().map(|sni| HttpsTlsRoute {
                     inner: TlsRoute {
@@ -119,6 +124,7 @@ impl RouteProvider for DomainFrontRouteProvider {
                     fragment: HttpRouteFragment {
                         host_header: Arc::clone(http_host),
                         path_prefix: Arc::clone(path_prefix),
+                        front_name: Some(*front_name),
                     },
                 })
             },
@@ -150,6 +156,7 @@ where
                     fragment: HttpRouteFragment {
                         host_header: Arc::clone(direct_host_header),
                         path_prefix: "".into(),
+                        front_name: None,
                     },
                     inner,
                 }
@@ -210,12 +217,14 @@ mod test {
                         sni_list: vec!["front-sni-1a".into(), "front-sni-1b".into()],
                         root_certs: RootCertificates::Native,
                         path_prefix: "/prefix-1".into(),
+                        front_name: "front-1",
                     },
                     DomainFrontConfig {
                         http_host: "front-host-2".into(),
                         sni_list: vec!["front-sni-2".into()],
                         root_certs: RootCertificates::Native,
                         path_prefix: "/prefix-2".into(),
+                        front_name: "front-2",
                     },
                 ],
                 http_version: HttpVersion::Http1_1,
@@ -239,6 +248,7 @@ mod test {
                     fragment: HttpRouteFragment {
                         host_header: "direct-host".into(),
                         path_prefix: "".into(),
+                        front_name: None,
                     },
                     inner: TlsRoute {
                         fragment: TlsRouteFragment {
@@ -256,6 +266,7 @@ mod test {
                     fragment: HttpRouteFragment {
                         host_header: "front-host-1".into(),
                         path_prefix: "/prefix-1".into(),
+                        front_name: Some("front-1")
                     },
                     inner: TlsRoute {
                         fragment: TlsRouteFragment {
@@ -273,6 +284,7 @@ mod test {
                     fragment: HttpRouteFragment {
                         host_header: "front-host-1".into(),
                         path_prefix: "/prefix-1".into(),
+                        front_name: Some("front-1")
                     },
                     inner: TlsRoute {
                         fragment: TlsRouteFragment {
@@ -290,6 +302,7 @@ mod test {
                     fragment: HttpRouteFragment {
                         host_header: "front-host-2".into(),
                         path_prefix: "/prefix-2".into(),
+                        front_name: Some("front-2")
                     },
                     inner: TlsRoute {
                         fragment: TlsRouteFragment {

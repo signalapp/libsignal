@@ -67,18 +67,18 @@ impl Connector<ConnectionProxyRoute<IpAddr>, ()> for StatelessProxied {
 }
 
 impl<L: Connection, R: Connection> Connection for Either<L, R> {
-    fn connection_info(&self) -> crate::ConnectionInfo {
+    fn transport_info(&self) -> crate::TransportInfo {
         match self {
-            Self::Left(l) => l.connection_info(),
-            Self::Right(r) => r.connection_info(),
+            Self::Left(l) => l.transport_info(),
+            Self::Right(r) => r.transport_info(),
         }
     }
 }
 
 impl Connection for TcpStream {
-    fn connection_info(&self) -> crate::ConnectionInfo {
+    fn transport_info(&self) -> crate::TransportInfo {
         let local_addr = self.local_addr().expect("has local addr");
-        crate::ConnectionInfo {
+        crate::TransportInfo {
             ip_version: IpType::from(&local_addr.ip()),
             local_port: local_addr.port(),
         }

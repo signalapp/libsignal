@@ -438,7 +438,7 @@ impl ConnectionConfig {
                     let fronting_path_prefix = Arc::from(*path_prefix);
                     let make_proxy_config = move |config: &ProxyConfig| {
                         let ProxyConfig {
-                            route_type: _,
+                            route_type,
                             http_host,
                             sni_list,
                             certs,
@@ -448,6 +448,7 @@ impl ConnectionConfig {
                             http_host: (*http_host).into(),
                             sni_list: sni_list.iter().map(|sni| (*sni).into()).collect(),
                             path_prefix: Arc::clone(&fronting_path_prefix),
+                            front_name: route_type.into(),
                         }
                     };
                     configs.iter().map(make_proxy_config)
@@ -786,6 +787,7 @@ mod test {
             fragment: HttpRouteFragment {
                 host_header: "host".into(),
                 path_prefix: "".into(),
+                front_name: None,
             },
             inner: TlsRoute {
                 fragment: TlsRouteFragment {

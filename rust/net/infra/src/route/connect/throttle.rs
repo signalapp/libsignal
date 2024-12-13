@@ -12,7 +12,7 @@ use pin_project::pin_project;
 use tokio::sync::{OwnedSemaphorePermit, Semaphore};
 
 use crate::route::connect::Connector;
-use crate::{Connection, ConnectionInfo};
+use crate::{Connection, TransportInfo};
 
 /// [`Connector`] wrapper that limits the number of concurrent connection
 /// attempts.
@@ -139,7 +139,7 @@ impl<S: Sink<T>, T> Sink<T> for ThrottledConnection<S> {
 }
 
 impl<C: Connection> Connection for ThrottledConnection<C> {
-    fn connection_info(&self) -> ConnectionInfo {
-        self.0.connection_info()
+    fn transport_info(&self) -> TransportInfo {
+        self.0.transport_info()
     }
 }

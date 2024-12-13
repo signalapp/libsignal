@@ -23,7 +23,8 @@ pub struct SocksRoute<Addr> {
     pub protocol: socks::Protocol,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, strum::EnumDiscriminants)]
+#[strum_discriminants(name(ConnectionProxyKind))]
 pub enum ConnectionProxyRoute<Addr> {
     Tls {
         proxy: TlsRoute<TcpRoute<Addr>>,

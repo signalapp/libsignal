@@ -356,7 +356,7 @@ impl CdsiConnection {
         params: &EndpointParams<'_, Cdsi>,
         auth: Auth,
     ) -> Result<Self, LookupError> {
-        let connection = ConnectState::connect_attested_ws(
+        let (connection, _route_info) = ConnectState::connect_attested_ws(
             connect,
             route_provider,
             auth,

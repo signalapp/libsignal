@@ -176,6 +176,7 @@ where
             HttpRouteFragment {
                 host_header,
                 path_prefix,
+                front_name: _,
             },
         ) = route;
 
@@ -616,8 +617,8 @@ impl<T> NextOrClose<T> {
 impl<S: Connection + tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin> Connection
     for tokio_tungstenite::WebSocketStream<S>
 {
-    fn connection_info(&self) -> crate::ConnectionInfo {
-        self.get_ref().connection_info()
+    fn transport_info(&self) -> crate::TransportInfo {
+        self.get_ref().transport_info()
     }
 }
 
@@ -646,6 +647,7 @@ pub mod testutil {
                 HttpRouteFragment {
                     host_header: "localhost".into(),
                     path_prefix: "".into(),
+                    front_name: None,
                 },
             ),
         );

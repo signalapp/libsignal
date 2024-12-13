@@ -14,11 +14,15 @@ use futures_util::{FutureExt, StreamExt};
 use tokio::time::Instant;
 use tokio_util::either::Either;
 
+use crate::errors::LogSafeDisplay;
 use crate::host::Host;
 use crate::utils::future::SomeOrPending;
 
 mod connect;
 pub use connect::*;
+
+mod describe;
+pub use describe::*;
 
 mod http;
 pub use http::*;
@@ -153,10 +157,10 @@ pub struct OutcomeUpdates<R> {
 ///
 /// The `Future` returned by this function resolves when all connection attempts
 /// are exhausted or a one of them produces a fatal error.
-pub async fn connect<R, P, C, FatalError>(
+pub async fn connect<R, UR, C, FatalError>(
     route_resolver: &RouteResolver,
-    delay_policy: &impl RouteDelayPolicy<R>,
-    route_provider: P,
+    delay_policy: impl RouteDelayPolicy<R>,
+    ordered_routes: impl Iterator<Item = UR>,
     resolver: &impl Resolver,
     connector: C,
     mut on_error: impl FnMut(C::Error) -> ControlFlow<FatalError>,
@@ -167,11 +171,9 @@ pub async fn connect<R, P, C, FatalError>(
 where
     R: Clone,
     C: Connector<R, ()>,
-    P: RouteProvider,
-    P::Route: ResolveHostnames<Resolved = R> + Clone + 'static,
+    UR: ResolveHostnames<Resolved = R> + Clone + 'static,
     R: ResolvedRoute,
 {
-    let ordered_routes = route_provider.routes();
     let resolver_stream = route_resolver.resolve(ordered_routes, resolver);
     let schedule = Some(Schedule::new(
         resolver_stream,
@@ -283,6 +285,17 @@ where
     )
 }
 
+impl<E: LogSafeDisplay> LogSafeDisplay for ConnectError<E> {}
+impl<E: std::fmt::Display> std::fmt::Display for ConnectError<E> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ConnectError::NoResolvedRoutes => f.write_str("no resolved routes"),
+            ConnectError::AllAttemptsFailed => f.write_str("all connect attempts failed"),
+            ConnectError::FatalConnect(e) => write!(f, "fatal connect error: {e}"),
+        }
+    }
+}
+
 const PER_CONNECTION_WAIT_DURATION: Duration = Duration::from_millis(500);
 
 fn pull_next_route_delay<F>(connects_in_progress: &FuturesUnordered<F>) -> Duration {
@@ -296,6 +309,12 @@ impl<R: RouteProvider> RouteProvider for &R {
 
     fn routes(&self) -> impl Iterator<Item = Self::Route> + '_ {
         R::routes(self)
+    }
+}
+
+impl From<UnresolvedHost> for Arc<str> {
+    fn from(value: UnresolvedHost) -> Self {
+        value.0
     }
 }
 
@@ -407,6 +426,7 @@ mod test {
                         http_host: "front-host".into(),
                         sni_list: vec!["front-sni1".into(), "front-sni2".into()],
                         path_prefix: "/front-host-path-prefix".into(),
+                        front_name: "front-host",
                     }],
                     http_version: HttpVersion::Http2,
                 },
@@ -434,6 +454,7 @@ mod test {
                     fragment: HttpRouteFragment {
                         host_header: "http-host".into(),
                         path_prefix: "".into(),
+                        front_name: None,
                     },
                     inner: TlsRoute {
                         fragment: TlsRouteFragment {
@@ -458,6 +479,7 @@ mod test {
                     fragment: HttpRouteFragment {
                         host_header: "front-host".into(),
                         path_prefix: "/front-host-path-prefix".into(),
+                        front_name: Some("front-host"),
                     },
                     inner: TlsRoute {
                         fragment: TlsRouteFragment {
@@ -482,6 +504,7 @@ mod test {
                     fragment: HttpRouteFragment {
                         host_header: "front-host".into(),
                         path_prefix: "/front-host-path-prefix".into(),
+                        front_name: Some("front-host"),
                     },
                     inner: TlsRoute {
                         fragment: TlsRouteFragment {
@@ -702,8 +725,7 @@ mod test {
                 &outcomes,
                 HOSTNAMES
                     .iter()
-                    .map(|(h, _addr)| FakeRoute(UnresolvedHost::from(Arc::from(*h))))
-                    .collect_vec(),
+                    .map(|(h, _addr)| FakeRoute(UnresolvedHost::from(Arc::from(*h)))),
                 &resolver,
                 connector,
                 |_err: FakeConnectError| ControlFlow::<Infallible>::Continue(()),
@@ -802,8 +824,7 @@ mod test {
             &outcomes,
             HOSTNAMES
                 .iter()
-                .map(|(h, _addr)| FakeRoute(UnresolvedHost::from(Arc::from(*h))))
-                .collect_vec(),
+                .map(|(h, _addr)| FakeRoute(UnresolvedHost::from(Arc::from(*h)))),
             &resolver,
             connector,
             |_err: FakeConnectError| ControlFlow::<Infallible>::Continue(()),

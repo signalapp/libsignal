@@ -590,6 +590,7 @@ mod test {
         let http_fragment = HttpRouteFragment {
             host_header: "target-domain".into(),
             path_prefix: "".into(),
+            front_name: None,
         };
 
         let tls_fragment = TlsRouteFragment {

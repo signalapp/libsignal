@@ -9,7 +9,7 @@ use http::uri::InvalidUri;
 use http::{HeaderName, HeaderValue, StatusCode};
 use libsignal_bridge_macros::{bridge_fn, bridge_io};
 use libsignal_bridge_types::net::chat::*;
-use libsignal_bridge_types::net::{ConnectionInfo, ConnectionManager, TokioAsyncContext};
+use libsignal_bridge_types::net::{ConnectionManager, TokioAsyncContext};
 use libsignal_bridge_types::support::AsType;
 use libsignal_net::auth::Auth;
 use libsignal_net::chat::{
@@ -61,13 +61,18 @@ fn HttpRequest_add_header(
 }
 
 #[bridge_fn(jni = false)]
-fn ConnectionInfo_local_port(connection_info: &ConnectionInfo) -> u16 {
-    connection_info.0.local_port
+fn ChatConnectionInfo_local_port(connection_info: &ChatConnectionInfo) -> u16 {
+    connection_info.transport_info.local_port
 }
 
 #[bridge_fn(jni = false)]
-fn ConnectionInfo_ip_version(connection_info: &ConnectionInfo) -> u8 {
-    connection_info.0.ip_version as u8
+fn ChatConnectionInfo_ip_version(connection_info: &ChatConnectionInfo) -> u8 {
+    connection_info.transport_info.ip_version as u8
+}
+
+#[bridge_fn(jni = false)]
+fn ChatConnectionInfo_description(connection_info: &ChatConnectionInfo) -> String {
+    connection_info.to_string()
 }
 
 #[bridge_fn]
@@ -127,7 +132,7 @@ async fn UnauthenticatedChatConnection_disconnect(chat: &UnauthenticatedChatConn
 }
 
 #[bridge_fn(jni = false)]
-fn UnauthenticatedChatConnection_info(chat: &UnauthenticatedChatConnection) -> ConnectionInfo {
+fn UnauthenticatedChatConnection_info(chat: &UnauthenticatedChatConnection) -> ChatConnectionInfo {
     chat.info()
 }
 
@@ -177,7 +182,7 @@ async fn AuthenticatedChatConnection_disconnect(chat: &AuthenticatedChatConnecti
 }
 
 #[bridge_fn(jni = false)]
-fn AuthenticatedChatConnection_info(chat: &AuthenticatedChatConnection) -> ConnectionInfo {
+fn AuthenticatedChatConnection_info(chat: &AuthenticatedChatConnection) -> ChatConnectionInfo {
     chat.info()
 }
 

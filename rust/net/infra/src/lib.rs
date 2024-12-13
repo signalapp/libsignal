@@ -20,7 +20,7 @@ use crate::certs::RootCertificates;
 use crate::connection_manager::{
     MultiRouteConnectionManager, SingleRouteThrottlingConnectionManager,
 };
-use crate::errors::TransportConnectError;
+use crate::errors::{LogSafeDisplay, TransportConnectError};
 use crate::host::Host;
 use crate::timeouts::{WS_KEEP_ALIVE_INTERVAL, WS_MAX_IDLE_INTERVAL};
 use crate::utils::ObservableEvent;
@@ -65,6 +65,13 @@ impl From<&IpAddr> for IpType {
             IpAddr::V4(_) => Self::V4,
             IpAddr::V6(_) => Self::V6,
         }
+    }
+}
+
+impl LogSafeDisplay for IpType {}
+impl std::fmt::Display for IpType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Debug::fmt(self, f)
     }
 }
 
@@ -179,7 +186,7 @@ pub struct ServiceConnectionInfo {
 /// remote host.
 #[derive(Debug, Clone)]
 #[cfg_attr(test, derive(PartialEq))]
-pub struct ConnectionInfo {
+pub struct TransportInfo {
     /// The IP address version over which the connection is established.
     pub ip_version: IpType,
 
@@ -189,8 +196,8 @@ pub struct ConnectionInfo {
 
 /// An established connection.
 pub trait Connection {
-    /// Returns information about the connection.
-    fn connection_info(&self) -> ConnectionInfo;
+    /// Returns transport-level information about the connection.
+    fn transport_info(&self) -> TransportInfo;
 }
 
 /// Source for the result of a hostname lookup.
@@ -215,7 +222,7 @@ pub enum DnsSource {
 }
 
 /// Type of the route used for the connection.
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, strum::Display)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, strum::Display, strum::IntoStaticStr)]
 #[strum(serialize_all = "lowercase")]
 pub enum RouteType {
     /// Direct connection to the service.

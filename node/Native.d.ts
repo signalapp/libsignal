@@ -162,7 +162,7 @@ export function AuthCredentialWithPniResponse_CheckValidContents(bytes: Buffer):
 export function AuthCredentialWithPni_CheckValidContents(bytes: Buffer): void;
 export function AuthenticatedChatConnection_connect(asyncRuntime: Wrapper<TokioAsyncContext>, connectionManager: Wrapper<ConnectionManager>, username: string, password: string, receiveStories: boolean): CancellablePromise<AuthenticatedChatConnection>;
 export function AuthenticatedChatConnection_disconnect(asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<AuthenticatedChatConnection>): CancellablePromise<void>;
-export function AuthenticatedChatConnection_info(chat: Wrapper<AuthenticatedChatConnection>): ConnectionInfo;
+export function AuthenticatedChatConnection_info(chat: Wrapper<AuthenticatedChatConnection>): ChatConnectionInfo;
 export function AuthenticatedChatConnection_init_listener(chat: Wrapper<AuthenticatedChatConnection>, listener: ChatListener): void;
 export function AuthenticatedChatConnection_send(asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<AuthenticatedChatConnection>, httpRequest: Wrapper<HttpRequest>, timeoutMillis: number): CancellablePromise<ChatResponse>;
 export function BackupAuthCredentialPresentation_CheckValidContents(presentationBytes: Buffer): void;
@@ -205,6 +205,9 @@ export function Cds2ClientState_New(mrenclave: Buffer, attestationMsg: Buffer, c
 export function CdsiLookup_complete(asyncRuntime: Wrapper<TokioAsyncContext>, lookup: Wrapper<CdsiLookup>): CancellablePromise<LookupResponse>;
 export function CdsiLookup_new(asyncRuntime: Wrapper<TokioAsyncContext>, connectionManager: Wrapper<ConnectionManager>, username: string, password: string, request: Wrapper<LookupRequest>): CancellablePromise<CdsiLookup>;
 export function CdsiLookup_token(lookup: Wrapper<CdsiLookup>): Buffer;
+export function ChatConnectionInfo_description(connectionInfo: Wrapper<ChatConnectionInfo>): string;
+export function ChatConnectionInfo_ip_version(connectionInfo: Wrapper<ChatConnectionInfo>): number;
+export function ChatConnectionInfo_local_port(connectionInfo: Wrapper<ChatConnectionInfo>): number;
 export function ChatService_SetListenerAuth(runtime: Wrapper<TokioAsyncContext>, chat: Wrapper<AuthChat>, listener: ChatListener | null): void;
 export function ChatService_SetListenerUnauth(runtime: Wrapper<TokioAsyncContext>, chat: Wrapper<UnauthChat>, listener: ChatListener | null): void;
 export function ChatService_auth_send(asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<AuthChat>, httpRequest: Wrapper<HttpRequest>, timeoutMillis: number): CancellablePromise<ChatResponse>;
@@ -223,8 +226,6 @@ export function CiphertextMessage_Type(msg: Wrapper<CiphertextMessage>): number;
 export function ComparableBackup_GetComparableString(backup: Wrapper<ComparableBackup>): string;
 export function ComparableBackup_GetUnknownFields(backup: Wrapper<ComparableBackup>): string[];
 export function ComparableBackup_ReadUnencrypted(stream: InputStream, len: bigint, purpose: number): Promise<ComparableBackup>;
-export function ConnectionInfo_ip_version(connectionInfo: Wrapper<ConnectionInfo>): number;
-export function ConnectionInfo_local_port(connectionInfo: Wrapper<ConnectionInfo>): number;
 export function ConnectionManager_clear_proxy(connectionManager: Wrapper<ConnectionManager>): void;
 export function ConnectionManager_new(environment: number, userAgent: string): ConnectionManager;
 export function ConnectionManager_on_network_change(connectionManager: Wrapper<ConnectionManager>): void;
@@ -569,7 +570,7 @@ export function TokioAsyncContext_cancel(context: Wrapper<TokioAsyncContext>, ra
 export function TokioAsyncContext_new(): TokioAsyncContext;
 export function UnauthenticatedChatConnection_connect(asyncRuntime: Wrapper<TokioAsyncContext>, connectionManager: Wrapper<ConnectionManager>): CancellablePromise<UnauthenticatedChatConnection>;
 export function UnauthenticatedChatConnection_disconnect(asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<UnauthenticatedChatConnection>): CancellablePromise<void>;
-export function UnauthenticatedChatConnection_info(chat: Wrapper<UnauthenticatedChatConnection>): ConnectionInfo;
+export function UnauthenticatedChatConnection_info(chat: Wrapper<UnauthenticatedChatConnection>): ChatConnectionInfo;
 export function UnauthenticatedChatConnection_init_listener(chat: Wrapper<UnauthenticatedChatConnection>, listener: ChatListener): void;
 export function UnauthenticatedChatConnection_send(asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<UnauthenticatedChatConnection>, httpRequest: Wrapper<HttpRequest>, timeoutMillis: number): CancellablePromise<ChatResponse>;
 export function UnidentifiedSenderMessageContent_Deserialize(data: Buffer): UnidentifiedSenderMessageContent;
@@ -598,10 +599,10 @@ interface Aes256GcmSiv { readonly __type: unique symbol; }
 interface AuthChat { readonly __type: unique symbol; }
 interface AuthenticatedChatConnection { readonly __type: unique symbol; }
 interface CdsiLookup { readonly __type: unique symbol; }
+interface ChatConnectionInfo { readonly __type: unique symbol; }
 interface CiphertextMessage { readonly __type: unique symbol; }
 interface ComparableBackup { readonly __type: unique symbol; }
 interface ComparableBackup { readonly __type: unique symbol; }
-interface ConnectionInfo { readonly __type: unique symbol; }
 interface ConnectionManager { readonly __type: unique symbol; }
 interface DecryptionErrorMessage { readonly __type: unique symbol; }
 interface ExpiringProfileKeyCredential { readonly __type: unique symbol; }

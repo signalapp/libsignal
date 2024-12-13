@@ -2371,6 +2371,7 @@ dependencies = [
  "serde_json",
  "sha2",
  "snow",
+ "static_assertions",
  "strum",
  "test-case",
  "test-log",

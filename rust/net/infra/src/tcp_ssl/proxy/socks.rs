@@ -201,14 +201,14 @@ impl Connector<SocksRoute<IpAddr>, ()> for super::StatelessProxied {
 }
 
 impl Connection for Socks4Stream<TcpStream> {
-    fn connection_info(&self) -> crate::ConnectionInfo {
-        (**self).connection_info()
+    fn transport_info(&self) -> crate::TransportInfo {
+        (**self).transport_info()
     }
 }
 
 impl Connection for Socks5Stream<TcpStream> {
-    fn connection_info(&self) -> crate::ConnectionInfo {
-        (**self).connection_info()
+    fn transport_info(&self) -> crate::TransportInfo {
+        (**self).transport_info()
     }
 }
 

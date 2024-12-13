@@ -83,6 +83,7 @@ include = [
     "libsignal-account-keys",
     "libsignal-bridge-types",
     "libsignal-core",
+    "libsignal-net",
     "libsignal-protocol",
     "mediasan-common",
     "signal-crypto",

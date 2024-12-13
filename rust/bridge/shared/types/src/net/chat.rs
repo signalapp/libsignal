@@ -11,24 +11,27 @@ use std::time::Duration;
 
 use atomic_take::AtomicTake;
 use futures_util::stream::BoxStream;
-use futures_util::StreamExt as _;
+use futures_util::{FutureExt as _, StreamExt as _};
 use http::status::InvalidStatusCode;
 use http::uri::{InvalidUri, PathAndQuery};
 use http::{HeaderMap, HeaderName, HeaderValue};
 use libsignal_net::auth::Auth;
 use libsignal_net::chat::{
-    self, ChatConnection, ChatServiceError, DebugInfo as ChatServiceDebugInfo, Request,
-    Response as ChatResponse,
+    self, ChatConnection, ChatServiceError, ConnectionInfo, DebugInfo as ChatServiceDebugInfo,
+    Request, Response as ChatResponse,
 };
 use libsignal_net::infra::route::{ConnectionProxyConfig, DirectOrProxyProvider};
 use libsignal_net::infra::tcp_ssl::InvalidProxyConfig;
-use libsignal_net::infra::Connection;
 use libsignal_protocol::Timestamp;
 use tokio::sync::{mpsc, oneshot};
 
-use crate::net::{ConnectionInfo, ConnectionManager, TokioAsyncContext};
+use crate::net::{ConnectionManager, TokioAsyncContext};
 use crate::support::*;
 use crate::*;
+
+pub type ChatConnectionInfo = ConnectionInfo;
+
+bridge_as_handle!(ChatConnectionInfo);
 
 enum ChatListenerState {
     Inactive(BoxStream<'static, chat::server_requests::ServerEvent>),
@@ -251,7 +254,7 @@ enum MaybeChatConnection {
 
 impl UnauthenticatedChatConnection {
     pub async fn connect(connection_manager: &ConnectionManager) -> Result<Self, ChatServiceError> {
-        let inner = establish_chat_connection(connection_manager, None).await?;
+        let inner = establish_chat_connection("unauthenticated", connection_manager, None).await?;
         log::info!("connected unauthenticated chat");
         Ok(Self {
             inner: MaybeChatConnection::WaitingForListener(
@@ -268,7 +271,8 @@ impl AuthenticatedChatConnection {
         auth: Auth,
         receive_stories: bool,
     ) -> Result<Self, ChatServiceError> {
-        let pending = establish_chat_connection(
+        let inner = establish_chat_connection(
+            "authenticated",
             connection_manager,
             Some(chat::AuthenticatedChatHeaders {
                 auth,
@@ -276,11 +280,10 @@ impl AuthenticatedChatConnection {
             }),
         )
         .await?;
-        log::info!("connected authenticated chat");
         Ok(Self {
             inner: MaybeChatConnection::WaitingForListener(
                 tokio::runtime::Handle::current(),
-                pending,
+                inner,
             )
             .into(),
         })
@@ -340,13 +343,15 @@ impl<C: AsRef<tokio::sync::RwLock<MaybeChatConnection>> + Sync> BridgeChatConnec
 
     fn info(&self) -> ConnectionInfo {
         let guard = self.as_ref().blocking_read();
-        ConnectionInfo(match &*guard {
+        let connection_info = match &*guard {
             MaybeChatConnection::Running(chat_connection) => chat_connection.connection_info(),
             MaybeChatConnection::WaitingForListener(_, pending_chat_connection) => {
                 pending_chat_connection.connection_info()
             }
             MaybeChatConnection::TemporarilyEvicted => unreachable!("unobservable state"),
-        })
+        };
+
+        connection_info.clone()
     }
 }
 
@@ -371,6 +376,7 @@ fn init_listener(connection: &mut MaybeChatConnection, listener: Box<dyn ChatLis
 }
 
 async fn establish_chat_connection(
+    auth_type: &'static str,
     connection_manager: &ConnectionManager,
     auth: Option<chat::AuthenticatedChatHeaders>,
 ) -> Result<chat::PendingChatConnection, ChatServiceError> {
@@ -404,6 +410,7 @@ async fn establish_chat_connection(
     } = ws_config;
 
     let chat_connect = &env.chat_domain_config.connect;
+    log::info!("connecting {auth_type} chat");
 
     ChatConnection::start_connect_with(
         connect,
@@ -423,6 +430,10 @@ async fn establish_chat_connection(
         },
         auth,
     )
+    .inspect(|r| match r {
+        Ok(_) => log::info!("successfully connected {auth_type} chat"),
+        Err(e) => log::warn!("failed to connect {auth_type} chat: {e}"),
+    })
     .await
 }
 

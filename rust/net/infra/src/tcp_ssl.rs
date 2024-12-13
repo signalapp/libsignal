@@ -176,8 +176,8 @@ where
 }
 
 impl<S: Connection> Connection for SslStream<S> {
-    fn connection_info(&self) -> crate::ConnectionInfo {
-        self.get_ref().connection_info()
+    fn transport_info(&self) -> crate::TransportInfo {
+        self.get_ref().transport_info()
     }
 }
 

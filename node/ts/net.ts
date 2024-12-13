@@ -242,19 +242,20 @@ export type ChatConnection = {
 export interface ConnectionInfo {
   localPort: number;
   ipVersion: 'IPv4' | 'IPv6';
+  toString: () => string;
 }
 
 class ConnectionInfoImpl
-  implements Wrapper<Native.ConnectionInfo>, ConnectionInfo
+  implements Wrapper<Native.ChatConnectionInfo>, ConnectionInfo
 {
-  constructor(public _nativeHandle: Native.ConnectionInfo) {}
+  constructor(public _nativeHandle: Native.ChatConnectionInfo) {}
 
   public get localPort(): number {
-    return Native.ConnectionInfo_local_port(this);
+    return Native.ChatConnectionInfo_local_port(this);
   }
 
   public get ipVersion(): 'IPv4' | 'IPv6' {
-    const value = Native.ConnectionInfo_ip_version(this);
+    const value = Native.ChatConnectionInfo_ip_version(this);
     switch (value) {
       case 1:
         return 'IPv4';
@@ -263,6 +264,10 @@ class ConnectionInfoImpl
       default:
         throw new TypeError(`ip type was unexpectedly ${value}`);
     }
+  }
+
+  public toString() : string {
+    return Native.ChatConnectionInfo_description(this)
   }
 }
 

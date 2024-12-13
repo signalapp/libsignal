@@ -7,9 +7,9 @@ use std::num::NonZeroU16;
 
 use base64::prelude::{Engine, BASE64_STANDARD};
 use libsignal_bridge_macros::bridge_fn;
-use libsignal_bridge_types::net::ConnectionInfo;
 pub use libsignal_bridge_types::net::{ConnectionManager, Environment, TokioAsyncContext};
 use libsignal_net::auth::Auth;
+use libsignal_net::chat::ConnectionInfo;
 
 use crate::support::*;
 use crate::*;

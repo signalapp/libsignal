@@ -234,6 +234,9 @@ typedef struct SignalChatUnauthChatService SignalChatUnauthChatService;
 
 typedef struct SignalCiphertextMessage SignalCiphertextMessage;
 
+/**
+ * Information about an established connection.
+ */
 typedef struct SignalConnectionInfo SignalConnectionInfo;
 
 typedef struct SignalConnectionManager SignalConnectionManager;
@@ -564,6 +567,8 @@ typedef struct {
 typedef SignalChatAuthChatService SignalAuthChat;
 
 typedef SignalChatUnauthChatService SignalUnauthChat;
+
+typedef SignalConnectionInfo SignalChatConnectionInfo;
 
 /**
  * A C callback used to report the results of Rust futures.
@@ -1548,9 +1553,11 @@ SignalFfiError *signal_http_request_new_without_body(SignalHttpRequest **out, co
 
 SignalFfiError *signal_http_request_add_header(const SignalHttpRequest *request, const char *name, const char *value);
 
-SignalFfiError *signal_connection_info_local_port(uint16_t *out, const SignalConnectionInfo *connection_info);
+SignalFfiError *signal_chat_connection_info_local_port(uint16_t *out, const SignalChatConnectionInfo *connection_info);
 
-SignalFfiError *signal_connection_info_ip_version(uint8_t *out, const SignalConnectionInfo *connection_info);
+SignalFfiError *signal_chat_connection_info_ip_version(uint8_t *out, const SignalChatConnectionInfo *connection_info);
+
+SignalFfiError *signal_chat_connection_info_description(const char **out, const SignalChatConnectionInfo *connection_info);
 
 SignalFfiError *signal_chat_service_new_unauth(SignalUnauthChat **out, const SignalConnectionManager *connection_manager);
 
@@ -1564,7 +1571,7 @@ SignalFfiError *signal_unauthenticated_chat_connection_send(SignalCPromiseFfiCha
 
 SignalFfiError *signal_unauthenticated_chat_connection_disconnect(SignalCPromisebool *promise, const SignalTokioAsyncContext *async_runtime, const SignalUnauthenticatedChatConnection *chat);
 
-SignalFfiError *signal_unauthenticated_chat_connection_info(SignalConnectionInfo **out, const SignalUnauthenticatedChatConnection *chat);
+SignalFfiError *signal_unauthenticated_chat_connection_info(SignalChatConnectionInfo **out, const SignalUnauthenticatedChatConnection *chat);
 
 SignalFfiError *signal_authenticated_chat_connection_connect(SignalCPromiseAuthenticatedChatConnection *promise, const SignalTokioAsyncContext *async_runtime, const SignalConnectionManager *connection_manager, const char *username, const char *password, bool receive_stories);
 
@@ -1574,7 +1581,7 @@ SignalFfiError *signal_authenticated_chat_connection_send(SignalCPromiseFfiChatR
 
 SignalFfiError *signal_authenticated_chat_connection_disconnect(SignalCPromisebool *promise, const SignalTokioAsyncContext *async_runtime, const SignalAuthenticatedChatConnection *chat);
 
-SignalFfiError *signal_authenticated_chat_connection_info(SignalConnectionInfo **out, const SignalAuthenticatedChatConnection *chat);
+SignalFfiError *signal_authenticated_chat_connection_info(SignalChatConnectionInfo **out, const SignalAuthenticatedChatConnection *chat);
 
 SignalFfiError *signal_chat_service_disconnect_unauth(SignalCPromisebool *promise, const SignalTokioAsyncContext *async_runtime, const SignalUnauthChat *chat);
 

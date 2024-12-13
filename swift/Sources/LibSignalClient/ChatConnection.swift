@@ -21,13 +21,13 @@ public protocol ChatConnection: AnyObject {
     func info() -> ConnectionInfo
 }
 
-public class ConnectionInfo: NativeHandleOwner {
+public class ConnectionInfo: NativeHandleOwner, CustomStringConvertible {
     /// The local port used by the connection.
     public var localPort: UInt16 {
         withNativeHandle { connectionInfo in
             failOnError {
                 try invokeFnReturningInteger {
-                    signal_connection_info_local_port($0, connectionInfo)
+                    signal_chat_connection_info_local_port($0, connectionInfo)
                 }
             }
         }
@@ -38,11 +38,22 @@ public class ConnectionInfo: NativeHandleOwner {
         let rawValue = withNativeHandle { connectionInfo in
             failOnError {
                 try invokeFnReturningInteger {
-                    signal_connection_info_ip_version($0, connectionInfo)
+                    signal_chat_connection_info_ip_version($0, connectionInfo)
                 }
             }
         }
         return IpType(rawValue: rawValue) ?? .unknown
+    }
+
+    /// A developer-facing description of the connection.
+    public var description: String {
+        withNativeHandle { connectionInfo in
+            failOnError {
+                try invokeFnReturningString {
+                    signal_chat_connection_info_description($0, connectionInfo)
+                }
+            }
+        }
     }
 }
 
