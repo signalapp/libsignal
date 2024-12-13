@@ -56,10 +56,6 @@ extension SignalCPromiseFfiResponseAndDebugInfo: PromiseStruct {
     typealias Result = SignalFfiResponseAndDebugInfo
 }
 
-extension SignalCPromiseOwnedBufferOfc_uchar: PromiseStruct {
-    typealias Result = SignalOwnedBuffer
-}
-
 extension SignalCPromiseAuthenticatedChatConnection: PromiseStruct {
     typealias Result = OpaquePointer
 }

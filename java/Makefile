@@ -19,7 +19,6 @@ docker_image:
 java_build: DOCKER_EXTRA=$(shell [ -L build ] && P=$$(readlink build) && echo -v $$P/:$$P )
 java_build: docker_image
 	$(DOCKER) run $(DOCKER_TTY_FLAG) --init --rm --user $$(id -u):$$(id -g) \
-        --env LIBSIGNAL_TESTING_ENCLAVE_SECRET \
         -v `cd .. && pwd`/:/home/libsignal/src $(DOCKER_EXTRA) $(DOCKER_IMAGE) \
         sh -c "cd src/java; ./gradlew build $(CROSS_COMPILE_SERVER)"
 

@@ -32,17 +32,9 @@ public class Network {
 
   private final ConnectionManager connectionManager;
 
-  /**
-   * Group of the APIs responsible for communication with the SVR3 service.
-   *
-   * <p>Refer to {@link org.signal.libsignal.net.Svr3} for the detailed description.
-   */
-  private final Svr3 svr3;
-
   public Network(Environment env, String userAgent) {
     this.tokioAsyncContext = new TokioAsyncContext();
     this.connectionManager = new ConnectionManager(env, userAgent);
-    this.svr3 = new Svr3(this);
   }
 
   /**
@@ -97,10 +89,6 @@ public class Network {
    */
   public void onNetworkChange() {
     connectionManager.guardedRun(Native::ConnectionManager_on_network_change);
-  }
-
-  public Svr3 svr3() {
-    return this.svr3;
   }
 
   public CompletableFuture<CdsiLookupResponse> cdsiLookup(

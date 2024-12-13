@@ -22,14 +22,10 @@ public class Net {
         case production = 1
     }
 
-    /// An SVR3 client providing backup and restore functionality.
-    public let svr3: Svr3Client
-
     /// Creates a new `Net` instance that enables interacting with services in the given Signal environment.
     public init(env: Environment, userAgent: String) {
         self.asyncContext = TokioAsyncContext()
         self.connectionManager = ConnectionManager(env: env, userAgent: userAgent)
-        self.svr3 = Svr3Client(self.asyncContext, self.connectionManager)
     }
 
     /// Sets the proxy host to be used for all new connections (until overridden).

@@ -680,16 +680,6 @@ public final class Native {
 
   public static native long Svr2Client_New(byte[] mrenclave, byte[] attestationMsg, long currentTimestamp) throws Exception;
 
-  public static native CompletableFuture<byte[]> Svr3Backup(long asyncRuntime, long connectionManager, byte[] secret, String password, int maxTries, String username, String enclavePassword);
-
-  public static native CompletableFuture<byte[]> Svr3Migrate(long asyncRuntime, long connectionManager, byte[] secret, String password, int maxTries, String username, String enclavePassword);
-
-  public static native CompletableFuture<Void> Svr3Remove(long asyncRuntime, long connectionManager, String username, String enclavePassword);
-
-  public static native CompletableFuture<byte[]> Svr3Restore(long asyncRuntime, long connectionManager, String password, byte[] shareSet, String username, String enclavePassword);
-
-  public static native CompletableFuture<Void> Svr3Rotate(long asyncRuntime, long connectionManager, byte[] shareSet, String username, String enclavePassword);
-
   public static native void TokioAsyncContext_Destroy(long handle);
   public static native void TokioAsyncContext_cancel(long context, long rawCancellationId);
   public static native long TokioAsyncContext_new();

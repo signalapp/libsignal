@@ -10,11 +10,7 @@ import {
   AppExpiredError,
   ChatServiceInactive,
   DeviceDelinkedError,
-  IoError,
   RateLimitedError,
-  SvrDataMissingError,
-  SvrRestoreFailedError,
-  SvrRequestFailedError,
   LibSignalError,
 } from './Errors';
 import { ServerMessageAck, Wrapper } from '../Native';
@@ -691,11 +687,6 @@ export class Net {
   private readonly asyncContext: TokioAsyncContext;
   private readonly connectionManager: ConnectionManager;
 
-  /**
-   * Instance of the {@link Svr3Client} to access SVR3.
-   */
-  svr3: Svr3Client;
-
   constructor(options: NetConstructorOptions) {
     this.asyncContext = new TokioAsyncContext(Native.TokioAsyncContext_new());
 
@@ -717,7 +708,6 @@ export class Net {
         Native.ConnectionManager_new(options.env, options.userAgent)
       );
     }
-    this.svr3 = new Svr3ClientImpl(this.asyncContext, this.connectionManager);
   }
 
   /**
@@ -893,216 +883,6 @@ export class Net {
     return await this.asyncContext.makeCancellable(
       abortSignal,
       Native.CdsiLookup_complete(this.asyncContext, newNativeHandle(lookup))
-    );
-  }
-}
-
-/**
- * This interface provides functionality for communicating with SVR3
- *
- * Its instance can be obtained from an {@link Net#svr3} property
- * of the {@link Net} class.
- *
- * Example usage:
- *
- * @example
- * ```ts
- * import { Environment, Net } from '../net';
- * // Obtain an instance
- * const SVR3 = new Net(Environment.Staging).svr3;
- * // Instantiate ServiceAuth with the username and password obtained from the Chat Server.
- * const auth = { username: USERNAME, password: ENCLAVE_PASSWORD };
- * // Store a value in SVR3. Here 10 is the number of permitted restore attempts.
- * const shareSet = await SVR3.backup(SECRET_TO_BE_STORED, PASSWORD, 10, auth);
- * const restoredSecret = await SVR3.restore( PASSWORD, shareSet, auth);
- * ```
- */
-export interface Svr3Client {
-  /**
-   * Backup a secret to SVR3.
-   *
-   * Error messages are log-safe and do not contain any sensitive data.
-   *
-   * @param what - The secret to be stored. Must be 32 bytes long.
-   * @param password - User-provided password that will be used to derive the
-   * encryption key for the secret.
-   * @param maxTries - Number of times the secret will be allowed to be guessed.
-   * Each call to {@link Svr3Client#restore} that has reached the server will
-   * decrement the counter. Must be positive.
-   * @param auth - An instance of {@link ServiceAuth} containing the username
-   * and password obtained from the Chat Server. The password is an OTP which is
-   * generally good for about 15 minutes, therefore it can be reused for the
-   * subsequent calls to either backup or restore that are not too far apart in
-   * time.
-   * @returns A `Promise` which--when awaited--will return a byte array with a
-   * serialized masked share set. It is supposed to be an opaque blob for the
-   * clients and therefore no assumptions should be made about its contents.
-   * This byte array should be stored by the clients and used to restore the
-   * secret along with the password. Please note that masked share set does not
-   * have to be treated as secret.
-   *
-   * The returned `Promise` can also fail due to the network issues (including a
-   * connection timeout), problems establishing the Noise connection to the
-   * enclaves, or invalid arguments' values. {@link IoError} errors can, in
-   * general, be retried, although there is already a retry-with-backoff
-   * mechanism inside libsignal used to connect to the SVR3 servers. Other
-   * exceptions are caused by the bad input or data missing on the server. They
-   * are therefore non-actionable and are guaranteed to be thrown again when
-   * retried.
-   */
-  backup(
-    what: Buffer,
-    password: string,
-    maxTries: number,
-    auth: Readonly<ServiceAuth>,
-    options?: { abortSignal?: AbortSignal }
-  ): Promise<Buffer>;
-
-  /**
-   * Restore a secret from SVR3.
-   *
-   * Error messages are log-safe and do not contain any sensitive data.
-   *
-   * @param password - User-provided password that will be used to derive the
-   * decryption key for the secret.
-   * @param shareSet - a serialized masked share set returned by a call to
-   * {@link Svr3Client#backup}.
-   * @param auth - An instance of {@link ServiceAuth} containing the username
-   * and password obtained from the Chat Server. The password is an OTP which is
-   * generally good for about 15 minutes, therefore it can be reused for the
-   * subsequent calls to either backup or restore that are not too far apart in
-   * time.
-   * @returns A `Promise` which--when awaited--will return a
-   * {@link RestoredSecret} object, containing the restored secret.
-   *
-   * The returned `Promise` can also fail due to the network issues (including
-   * the connection timeout), problems establishing the Noise connection to the
-   * enclaves, or invalid arguments' values. {@link IoError} errors can, in
-   * general, be retried, although there is already a retry-with-backoff
-   * mechanism inside libsignal used to connect to the SVR3 servers. Other
-   * exceptions are caused by the bad input or data missing on the server. They
-   * are therefore non-actionable and are guaranteed to be thrown again when
-   * retried.
-   *
-   * - {@link SvrDataMissingError} is returned when the maximum restore attempts
-   * number has been exceeded or if the value has never been backed up.
-   * - {@link SvrRestoreFailedError} is returned when the combination of the
-   * password and masked share set does not result in successful restoration
-   * of the secret.
-   * - {@link SvrRequestFailedError} is returned when the de-serialization of a
-   * masked share set fails, or when the server requests fail for reasons
-   * other than "maximum attempts exceeded".
-   */
-  restore(
-    password: string,
-    shareSet: Buffer,
-    auth: Readonly<ServiceAuth>,
-    options?: { abortSignal?: AbortSignal }
-  ): Promise<RestoredSecret>;
-
-  /**
-   * Remove a value stored in SVR3.
-   *
-   * This method will succeed even if the data has never been backed up in the
-   * first place.
-   *
-   * Error messages are log-safe and do not contain any sensitive data.
-   *
-   * @param auth - An instance of {@link ServiceAuth} containing the username
-   * and password obtained from the Chat Server. The password is an OTP which is
-   * generally good for about 15 minutes, therefore it can be reused for the
-   * subsequent calls to either backup or restore that are not too far apart in
-   * time.
-   * @returns A `Promise` successful completion of which will mean the data has
-   * been removed.
-   *
-   * The returned `Promise` can also fail due to the network issues (including
-   * the connection timeout), problems establishing the Noise connection to the
-   * enclaves, or invalid arguments' values. {@link IoError} errors can, in
-   * general, be retried, although there is already a retry-with-backoff
-   * mechanism inside libsignal used to connect to the SVR3 servers. Other
-   * exceptions are caused by the bad input or data missing on the server. They
-   * are therefore non-actionable and are guaranteed to be thrown again when
-   * retried.
-   */
-  remove(
-    auth: Readonly<ServiceAuth>,
-    options?: { abortSignal?: AbortSignal }
-  ): Promise<void>;
-}
-
-/**
- * A simple data class containing the secret restored from SVR3 as well as the
- * number of restore attempts remaining.
- */
-export class RestoredSecret {
-  readonly triesRemaining: number;
-  readonly value: Buffer;
-
-  constructor(serialized: Buffer) {
-    this.triesRemaining = serialized.readInt32BE();
-    this.value = serialized.subarray(4);
-  }
-}
-
-class Svr3ClientImpl implements Svr3Client {
-  constructor(
-    private readonly asyncContext: TokioAsyncContext,
-    private readonly connectionManager: ConnectionManager
-  ) {}
-
-  async backup(
-    what: Buffer,
-    password: string,
-    maxTries: number,
-    auth: Readonly<ServiceAuth>,
-    options?: { abortSignal?: AbortSignal }
-  ): Promise<Buffer> {
-    return this.asyncContext.makeCancellable(
-      options?.abortSignal,
-      Native.Svr3Backup(
-        this.asyncContext,
-        this.connectionManager,
-        what,
-        password,
-        maxTries,
-        auth.username,
-        auth.password
-      )
-    );
-  }
-
-  async restore(
-    password: string,
-    shareSet: Buffer,
-    auth: Readonly<ServiceAuth>,
-    options?: { abortSignal?: AbortSignal }
-  ): Promise<RestoredSecret> {
-    const serialized = await this.asyncContext.makeCancellable(
-      options?.abortSignal,
-      Native.Svr3Restore(
-        this.asyncContext,
-        this.connectionManager,
-        password,
-        shareSet,
-        auth.username,
-        auth.password
-      )
-    );
-    return new RestoredSecret(serialized);
-  }
-  async remove(
-    auth: Readonly<ServiceAuth>,
-    options?: { abortSignal?: AbortSignal }
-  ): Promise<void> {
-    return this.asyncContext.makeCancellable(
-      options?.abortSignal,
-      Native.Svr3Remove(
-        this.asyncContext,
-        this.connectionManager,
-        auth.username,
-        auth.password
-      )
     );
   }
 }
