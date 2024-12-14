@@ -13,7 +13,6 @@ use nonzero_ext::nonzero;
 use oneshot_broadcast::Sender;
 use tokio::time::Instant;
 
-use super::TransportConnectionParams;
 use crate::certs::RootCertificates;
 use crate::dns::custom_resolver::CustomDnsResolver;
 use crate::dns::dns_errors::Error;
@@ -26,7 +25,7 @@ use crate::dns::lookup_result::LookupResult;
 use crate::host::Host;
 use crate::timeouts::{DNS_FALLBACK_LOOKUP_TIMEOUTS, DNS_SYSTEM_LOOKUP_TIMEOUT};
 use crate::utils::{self, ObservableEvent};
-use crate::{ConnectionParams, HttpRequestDecoratorSeq, RouteType};
+use crate::{ConnectionParams, HttpRequestDecoratorSeq, RouteType, TransportConnectionParams};
 
 pub mod custom_resolver;
 mod dns_errors;
@@ -79,6 +78,25 @@ struct LookupOption {
     timeout_after: Duration,
 }
 
+pub fn build_custom_resolver_cloudflare_doh(
+    network_change_event: &ObservableEvent,
+) -> CustomDnsResolver<DohTransport> {
+    let host: Arc<str> = Arc::from(CLOUDFLARE_NS);
+    let connection_params = ConnectionParams {
+        route_type: RouteType::Direct,
+        http_host: host.clone(),
+        transport: TransportConnectionParams {
+            port: nonzero!(443u16),
+            tcp_host: Host::Domain(host.clone()),
+            sni: host.clone(),
+            certs: RootCertificates::Native,
+        },
+        http_request_decorator: HttpRequestDecoratorSeq::default(),
+        connection_confirmation_header: None,
+    };
+    CustomDnsResolver::<DohTransport>::new(connection_params, network_change_event)
+}
+
 impl DnsResolver {
     #[cfg(test)]
     fn new_custom(lookup_options: Vec<(Box<dyn DnsLookup>, Duration)>) -> Self {
@@ -119,37 +137,23 @@ impl DnsResolver {
         static_map: HashMap<&'static str, LookupResult>,
         network_change_event: &ObservableEvent,
     ) -> Self {
-        let host = CLOUDFLARE_NS.into();
-        let connection_params = ConnectionParams {
-            route_type: RouteType::Direct,
-            http_host: Arc::clone(&host),
-            transport: TransportConnectionParams {
-                port: nonzero!(443u16),
-                tcp_host: Host::Domain(Arc::clone(&host)),
-                sni: host,
-                certs: RootCertificates::Native,
-            },
-            http_request_decorator: HttpRequestDecoratorSeq::default(),
-            connection_confirmation_header: None,
-        };
-        let custom_resolver = Box::new(CustomDnsResolver::<DohTransport>::new(
-            connection_params,
-            network_change_event,
-        ));
-        let fallback_lookups = DNS_FALLBACK_LOOKUP_TIMEOUTS
-            .iter()
-            .copied()
-            .map(|timeout_after| LookupOption {
-                lookup: custom_resolver.clone(),
-                timeout_after,
-            });
+        let cloudflare_doh = Box::new(build_custom_resolver_cloudflare_doh(network_change_event));
+
+        let cloudflare_fallback_options =
+            DNS_FALLBACK_LOOKUP_TIMEOUTS
+                .iter()
+                .copied()
+                .map(|timeout_after| LookupOption {
+                    lookup: cloudflare_doh.clone(),
+                    timeout_after,
+                });
 
         let lookup_options = [LookupOption {
             lookup: Box::new(SystemDnsLookup),
             timeout_after: DNS_SYSTEM_LOOKUP_TIMEOUT,
         }]
         .into_iter()
-        .chain(fallback_lookups)
+        .chain(cloudflare_fallback_options)
         .chain([LookupOption {
             lookup: Box::new(StaticDnsMap(static_map)),
             timeout_after: Duration::from_secs(1),

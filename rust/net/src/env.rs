@@ -695,11 +695,16 @@ pub mod constants {
 
 #[cfg(test)]
 mod test {
+    use std::collections::HashSet;
+
     use itertools::Itertools as _;
+    use libsignal_net_infra::dns::build_custom_resolver_cloudflare_doh;
+    use libsignal_net_infra::dns::dns_lookup::DnsLookupRequest;
     use libsignal_net_infra::route::{
         HttpRouteFragment, HttpsTlsRoute, RouteProvider as _, TcpRoute, TlsRoute, TlsRouteFragment,
         UnresolvedHost,
     };
+    use libsignal_net_infra::utils::ObservableEvent;
     use libsignal_net_infra::Alpn;
     use test_case::test_matrix;
 
@@ -808,5 +813,40 @@ mod test {
         } else {
             assert_eq!(routes, [expected_direct_route]);
         };
+    }
+
+    #[tokio::test]
+    #[test_matrix([&DOMAIN_CONFIG_CHAT, &DOMAIN_CONFIG_CHAT_STAGING, &DOMAIN_CONFIG_CDSI, &DOMAIN_CONFIG_CDSI_STAGING])]
+    async fn live_resolve_eq_static_resolution(config: &DomainConfig) {
+        if std::env::var("LIBSIGNAL_TESTING_RUN_NONHERMETIC_TESTS").is_err() {
+            println!("SKIPPED: running test with network activity is not enabled");
+            return;
+        }
+
+        // The point of this test isn't to test the resolver, but to use it to test something else.
+        // So, I directly access the raw CustomDnsResolver::resolve method.
+        // Other usages should use the higher level DnsResolver::lookup instead.
+        let resolver = build_custom_resolver_cloudflare_doh(&ObservableEvent::new());
+
+        let (hostname, static_hardcoded_ips) = config.static_fallback();
+
+        let resolved_ips: Vec<_> = resolver
+            .resolve(DnsLookupRequest {
+                hostname: Arc::from(hostname),
+                ipv6_enabled: true,
+            })
+            .await
+            .unwrap_or_else(|_| panic!("Unable to resolve {hostname}"))
+            .into_iter()
+            .collect();
+
+        let resolved_set = HashSet::<_>::from_iter(resolved_ips);
+        let static_set = HashSet::<_>::from_iter(static_hardcoded_ips);
+
+        assert_eq!(
+            resolved_set, static_set,
+            "Resolved IP addresses do not match static ones for {}",
+            hostname
+        );
     }
 }
