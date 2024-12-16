@@ -8,4 +8,6 @@ import LibSignalClient
 
 Benchmark.main([
     groupSendEndorsementsSuite,
+    privateKeyOperationsSuite,
+    publicKeyOperationsSuite,
 ])
