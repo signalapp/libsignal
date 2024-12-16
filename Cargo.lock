@@ -2301,6 +2301,7 @@ dependencies = [
  "serde_json",
  "sha2",
  "signal-crypto",
+ "static_assertions",
  "strum",
  "strum_macros",
  "subtle",

@@ -20,8 +20,8 @@ use crate::proto::backup as proto;
 mod members;
 use members::*;
 
-#[derive(Debug, serde::Serialize)]
-#[cfg_attr(test, derive(PartialEq, Clone))]
+#[derive(Clone, Debug, serde::Serialize)]
+#[cfg_attr(test, derive(PartialEq))]
 pub struct GroupSnapshot {
     pub title: Option<String>,
     pub description: Option<String>,
@@ -278,7 +278,7 @@ impl<C: ReportUnusualTimestamp> TryFromWith<proto::group::GroupSnapshot, C> for 
     }
 }
 
-#[derive(Debug, serde::Serialize)]
+#[derive(Clone, Debug, serde::Serialize)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct GroupData {
     #[serde(with = "hex")]

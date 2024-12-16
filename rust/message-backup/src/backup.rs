@@ -11,7 +11,7 @@ use std::sync::Arc;
 use derive_where::derive_where;
 use intmap::IntMap;
 use libsignal_account_keys::BACKUP_KEY_LEN;
-use libsignal_core::Aci;
+use libsignal_core::{Aci, Pni};
 
 pub(crate) use crate::backup::account_data::{AccountData, AccountDataError};
 use crate::backup::call::{AdHocCall, CallError};
@@ -19,6 +19,7 @@ use crate::backup::chat::chat_style::{CustomChatColor, CustomColorId};
 use crate::backup::chat::{ChatData, ChatError, ChatItemData, ChatItemError, PinOrder};
 use crate::backup::chat_folder::{ChatFolder, ChatFolderError};
 use crate::backup::frame::{ChatId, RecipientId};
+use crate::backup::hashutil::{AssumedRandomInputHasher, HashBytesAllAtOnce};
 use crate::backup::method::{Lookup, LookupPair, Method};
 pub use crate::backup::method::{Store, ValidateOnly};
 use crate::backup::notification_profile::{NotificationProfile, NotificationProfileError};
@@ -39,6 +40,7 @@ mod chat;
 mod chat_folder;
 mod file;
 mod frame;
+mod hashutil;
 pub(crate) mod method;
 mod notification_profile;
 mod recipient;
@@ -54,7 +56,9 @@ pub(crate) use crate::backup::recipient::MY_STORY_UUID;
 
 pub trait ReferencedTypes {
     /// Recorded information from a [`proto::Recipient`].
-    type RecipientData: Debug + AsRef<DestinationKind>;
+    type RecipientData: Debug
+        + AsRef<DestinationKind>
+        + From<recipient::Destination<Self::RecipientReference>>;
     /// Resolved data for a [`RecipientId`] in a non-`proto::Recipient` message.
     type RecipientReference: Clone + Debug + serde::Serialize + SerializeOrder;
 
@@ -74,20 +78,10 @@ pub trait ReferencedTypes {
         data: &'a Self::RecipientData,
     ) -> &'a Self::RecipientReference;
 
-    /// Parse a [`proto::Recipient`] into the in-memory form.
-    ///
-    /// This can't just be a [`TryFromWith`] bound on `Self::RecipientData`
-    /// since we want it to be convertible from any context type with some
-    /// bounds, and Rust doesn't have a way to express that. The closest thing
-    /// would be to define an additional trait that bounds `Self::RecipientData`
-    /// with one method that takes a context type with the `LookupPair` bound,
-    /// but that doesn't seem to provide additional value.
-    fn try_convert_recipient<
-        C: LookupPair<RecipientId, DestinationKind, Self::RecipientReference> + ReportUnusualTimestamp,
-    >(
-        recipient: proto::Recipient,
-        context: &C,
-    ) -> Result<Self::RecipientData, RecipientError>;
+    fn with_minimal_recipient_data<T>(
+        data: &Self::RecipientData,
+        body: impl FnOnce(&MinimalRecipientData) -> T,
+    ) -> T;
 }
 
 pub struct PartialBackup<M: Method + ReferencedTypes> {
@@ -178,6 +172,7 @@ pub enum Purpose {
 }
 
 #[derive(Debug, displaydoc::Display, thiserror::Error)]
+#[cfg_attr(test, derive(PartialEq))]
 pub enum CompletionError {
     /// no AccountData frames found
     MissingAccountData,
@@ -185,6 +180,22 @@ pub enum CompletionError {
     MissingAllChatFolder,
     /// multiple ALL ChatFolders found
     DuplicateAllChatFolder,
+    /// {0:?} and {1:?} have the same phone number
+    DuplicateContactE164(RecipientId, RecipientId),
+    /// {0:?} and {1:?} have the same ACI
+    DuplicateContactAci(RecipientId, RecipientId),
+    /// {0:?} and {1:?} have the same PNI
+    DuplicateContactPni(RecipientId, RecipientId),
+    /// {0:?} and {1:?} have the same group master key
+    DuplicateGroupMasterKey(RecipientId, RecipientId),
+    /// {0:?} and {1:?} have the same distribution list ID
+    DuplicateDistributionListId(RecipientId, RecipientId),
+    /// {0:?} and {1:?} have the same call link root key
+    DuplicateCallLinkRootKey(RecipientId, RecipientId),
+    /// {0:?} and {1:?} both represent the Self recipient
+    DuplicateSelfRecipient(RecipientId, RecipientId),
+    /// {0:?} and {1:?} both represent the release notes channel
+    DuplicateReleaseNotesRecipient(RecipientId, RecipientId),
 }
 
 impl<M: Method + ReferencedTypes> TryFrom<PartialBackup<M>> for CompletedBackup<M> {
@@ -217,6 +228,8 @@ impl<M: Method + ReferencedTypes> TryFrom<PartialBackup<M>> for CompletedBackup<
             }?;
         }
 
+        Self::check_for_duplicate_recipients(&recipients)?;
+
         Ok(CompletedBackup {
             meta,
             account_data,
@@ -227,6 +240,185 @@ impl<M: Method + ReferencedTypes> TryFrom<PartialBackup<M>> for CompletedBackup<
             notification_profiles,
             chat_folders,
         })
+    }
+}
+
+impl<M: Method + ReferencedTypes> CompletedBackup<M> {
+    /// One specific check during the conversion from PartialBackup to CompletedBackup.
+    ///
+    /// This check could be implemented as part of [`PartialBackup::add_recipient`] instead, and
+    /// indeed that would have some advantages in simplicity. However, we can't avoid reallocation
+    /// costs in that case.
+    fn check_for_duplicate_recipients(
+        recipients: &IntMap<RecipientId, M::RecipientData>,
+    ) -> Result<(), CompletionError> {
+        /// Recipients aren't stored in order, but we can at least at least *pretend* we visit lower
+        /// IDs before higher ones.
+        ///
+        /// This is better for testing, but still doesn't guarantee deterministic output if *three*
+        /// (or more) recipients share identifiers.
+        #[inline]
+        fn sort_recipient_ids(id1: RecipientId, id2: RecipientId) -> [RecipientId; 2] {
+            // TODO: Replace with std::cmp::minmax_by_key when that gets stabilized.
+            // Meanwhile this shape is load-bearing for performance (anything
+            // "sort"-related seems to not get optimized all the way away, possibly
+            // because of the array shape).
+            if id1.0 > id2.0 {
+                [id2, id1]
+            } else {
+                [id1, id2]
+            }
+        }
+
+        /// Inserts a value into a map if the key is not already present, or throws an error
+        /// containing the new and old value if it is.
+        fn insert_or_error<K: std::cmp::Eq + std::hash::Hash, S: std::hash::BuildHasher>(
+            map: &mut HashMap<K, RecipientId, S>,
+            key: Option<impl Into<K>>,
+            id: RecipientId,
+            error: impl Fn(RecipientId, RecipientId) -> CompletionError,
+        ) -> Result<(), CompletionError> {
+            if let Some(key) = key {
+                match map.entry(key.into()) {
+                    hash_map::Entry::Occupied(entry) => {
+                        let [id1, id2] = sort_recipient_ids(*entry.get(), id);
+                        return Err(error(id1, id2));
+                    }
+                    hash_map::Entry::Vacant(entry) => {
+                        entry.insert(id);
+                    }
+                }
+            }
+            Ok(())
+        }
+
+        // Preallocate maps as if every recipient is a contact, or a group, or...etc, with
+        // reasonable limits. We want to avoid rehashing costs if possible, but we also don't want
+        // to allocate *too* much memory up front. Most users will have many many recipients,
+        // followed by groups and perhaps call links, and finally custom distribution lists. In the
+        // worst case, these preallocations won't be big enough and the tables will have to grow as
+        // we iterate.
+
+        const HIGH_BUT_REASONABLE_NUMBER_OF_CONTACTS: usize = 2500;
+        const HIGH_BUT_REASONABLE_NUMBER_OF_GROUPS: usize = 1000;
+        const HIGH_BUT_REASONABLE_NUMBER_OF_DISTRIBUTION_LISTS: usize = 100;
+        const HIGH_BUT_REASONABLE_NUMBER_OF_CALL_LINKS: usize = 1000;
+
+        // Approximate the memory usage if every one of the maps below is maxed out. This is only
+        // meant to be a ballpark bound, and of course it's possible a backup exceeds these limits
+        // anyway, but we want to make sure we don't allocate *too* much extra memory up front.
+        static_assertions::const_assert!(
+            HIGH_BUT_REASONABLE_NUMBER_OF_CONTACTS * std::mem::size_of::<(u64, RecipientId)>()
+                + HIGH_BUT_REASONABLE_NUMBER_OF_CONTACTS
+                    * std::mem::size_of::<(Aci, RecipientId)>()
+                + HIGH_BUT_REASONABLE_NUMBER_OF_CONTACTS
+                    * std::mem::size_of::<(Pni, RecipientId)>()
+                + HIGH_BUT_REASONABLE_NUMBER_OF_GROUPS
+                    * std::mem::size_of::<(zkgroup::GroupMasterKeyBytes, RecipientId)>()
+                + HIGH_BUT_REASONABLE_NUMBER_OF_DISTRIBUTION_LISTS
+                    * std::mem::size_of::<(uuid::Uuid, RecipientId)>()
+                + HIGH_BUT_REASONABLE_NUMBER_OF_CALL_LINKS
+                    * std::mem::size_of::<(call::CallLinkRootKey, RecipientId)>()
+                < 250_000,
+        );
+
+        let mut e164s = IntMap::<u64, RecipientId>::with_capacity(
+            recipients.len().min(HIGH_BUT_REASONABLE_NUMBER_OF_CONTACTS),
+        );
+        let mut acis = AssumedRandomInputHasher::map_with_capacity::<Aci, RecipientId>(
+            recipients.len().min(HIGH_BUT_REASONABLE_NUMBER_OF_CONTACTS),
+        );
+        let mut pnis = AssumedRandomInputHasher::map_with_capacity::<Pni, RecipientId>(
+            recipients.len().min(HIGH_BUT_REASONABLE_NUMBER_OF_CONTACTS),
+        );
+        let mut group_master_keys =
+            AssumedRandomInputHasher::map_with_capacity::<
+                HashBytesAllAtOnce<zkgroup::GroupMasterKeyBytes>,
+                RecipientId,
+            >(recipients.len().min(HIGH_BUT_REASONABLE_NUMBER_OF_GROUPS));
+        let mut distribution_ids = AssumedRandomInputHasher::map_with_capacity::<
+            HashBytesAllAtOnce<uuid::Bytes>,
+            RecipientId,
+        >(
+            recipients
+                .len()
+                .min(HIGH_BUT_REASONABLE_NUMBER_OF_DISTRIBUTION_LISTS),
+        );
+        let mut self_recipient = None;
+        let mut release_notes_recipient = None;
+        let mut call_link_root_keys = AssumedRandomInputHasher::map_with_capacity::<
+            HashBytesAllAtOnce<call::CallLinkRootKey>,
+            RecipientId,
+        >(
+            recipients
+                .len()
+                .min(HIGH_BUT_REASONABLE_NUMBER_OF_CALL_LINKS),
+        );
+
+        for (id, recipient) in recipients.iter() {
+            M::with_minimal_recipient_data(recipient, |recipient| {
+                match recipient {
+                    MinimalRecipientData::Contact { e164, aci, pni } => {
+                        // We can't use insert_or_throw_error for `e164s` because it's an IntMap.
+                        // Here's an inlined copy:
+                        if let Some(e164) = *e164 {
+                            match e164s.entry(e164.into()) {
+                                intmap::Entry::Occupied(entry) => {
+                                    let [id1, id2] = sort_recipient_ids(*entry.get(), id);
+                                    return Err(CompletionError::DuplicateContactE164(id1, id2));
+                                }
+                                intmap::Entry::Vacant(entry) => {
+                                    entry.insert(id);
+                                }
+                            }
+                        }
+                        insert_or_error(&mut acis, *aci, id, CompletionError::DuplicateContactAci)?;
+                        insert_or_error(&mut pnis, *pni, id, CompletionError::DuplicateContactPni)?;
+                    }
+                    MinimalRecipientData::Group { master_key } => {
+                        insert_or_error(
+                            &mut group_master_keys,
+                            Some(*master_key),
+                            id,
+                            CompletionError::DuplicateGroupMasterKey,
+                        )?;
+                    }
+                    MinimalRecipientData::DistributionList { distribution_id } => {
+                        insert_or_error(
+                            &mut distribution_ids,
+                            Some(*distribution_id.as_bytes()),
+                            id,
+                            CompletionError::DuplicateDistributionListId,
+                        )?;
+                    }
+                    MinimalRecipientData::Self_ => {
+                        if let Some(previous) = self_recipient {
+                            let [id1, id2] = sort_recipient_ids(previous, id);
+                            return Err(CompletionError::DuplicateSelfRecipient(id1, id2));
+                        }
+                        self_recipient = Some(id);
+                    }
+                    MinimalRecipientData::ReleaseNotes => {
+                        if let Some(previous) = release_notes_recipient {
+                            let [id1, id2] = sort_recipient_ids(previous, id);
+                            return Err(CompletionError::DuplicateReleaseNotesRecipient(id1, id2));
+                        }
+                        release_notes_recipient = Some(id);
+                    }
+                    MinimalRecipientData::CallLink { root_key } => {
+                        insert_or_error(
+                            &mut call_link_root_keys,
+                            Some(*root_key),
+                            id,
+                            CompletionError::DuplicateCallLinkRootKey,
+                        )?;
+                    }
+                }
+                Ok(())
+            })?;
+        }
+
+        Ok(())
     }
 }
 
@@ -336,13 +528,14 @@ impl ReferencedTypes for Store {
         data
     }
 
-    fn try_convert_recipient<
-        C: LookupPair<RecipientId, DestinationKind, Self::RecipientReference> + ReportUnusualTimestamp,
-    >(
-        recipient: proto::Recipient,
-        context: &C,
-    ) -> Result<Self::RecipientData, RecipientError> {
-        recipient.try_into_with(context)
+    fn with_minimal_recipient_data<T>(
+        data: &Self::RecipientData,
+        body: impl FnOnce(&MinimalRecipientData) -> T,
+    ) -> T {
+        // This isn't a very efficient implementation: it clones the entire Destination inside the
+        // FullRecipientData just so MinimalRecipientData can extract a few fields. If the Store
+        // method is ever in a hot path, we may want to revisit this.
+        body(&MinimalRecipientData::from((**data).clone()))
     }
 }
 
@@ -354,6 +547,7 @@ impl ReferencedTypes for ValidateOnly {
     type CustomColorData = ();
     type CustomColorReference = CustomColorId;
 
+    #[inline]
     fn color_reference<'a>(
         id: &'a CustomColorId,
         _data: &'a Self::CustomColorData,
@@ -361,6 +555,7 @@ impl ReferencedTypes for ValidateOnly {
         id
     }
 
+    #[inline]
     fn recipient_reference<'a>(
         id: &'a RecipientId,
         _data: &'a Self::RecipientData,
@@ -368,13 +563,12 @@ impl ReferencedTypes for ValidateOnly {
         id
     }
 
-    fn try_convert_recipient<
-        C: LookupPair<RecipientId, DestinationKind, Self::RecipientReference> + ReportUnusualTimestamp,
-    >(
-        recipient: proto::Recipient,
-        context: &C,
-    ) -> Result<Self::RecipientData, RecipientError> {
-        MinimalRecipientData::try_from_with(recipient, context)
+    #[inline]
+    fn with_minimal_recipient_data<T>(
+        data: &Self::RecipientData,
+        body: impl FnOnce(&MinimalRecipientData) -> T,
+    ) -> T {
+        body(data)
     }
 }
 
@@ -499,11 +693,13 @@ impl<M: Method + ReferencedTypes> PartialBackup<M> {
     fn add_recipient(&mut self, recipient: proto::Recipient) -> Result<(), RecipientFrameError> {
         let id = recipient.id();
         let err_with_id = |e| RecipientFrameError(id, e);
-        let recipient = M::try_convert_recipient(recipient, self).map_err(err_with_id)?;
+        let recipient =
+            recipient::Destination::try_from_with(recipient, self).map_err(err_with_id)?;
+
         match self.recipients.entry(id) {
             intmap::Entry::Occupied(_) => Err(err_with_id(RecipientError::DuplicateRecipient)),
             intmap::Entry::Vacant(v) => {
-                let _ = v.insert(recipient);
+                let _ = v.insert(recipient.into());
                 Ok(())
             }
         }
@@ -1026,5 +1222,130 @@ mod test {
             chat_order_indices,
             HashMap::from([(1, vec![0, 2, 4]), (2, vec![1, 3, 5])])
         );
+    }
+
+    #[test_matrix(
+        [ValidateOnly::empty(), Store::empty()],
+        [
+            (CompletionError::DuplicateContactAci, |x| {
+                x.aci = Some(proto::Contact::TEST_ACI.into());
+            }),
+            (CompletionError::DuplicateContactPni, |x| {
+                x.pni = Some(proto::Contact::TEST_PNI.into());
+            }),
+            (CompletionError::DuplicateContactE164, |x| {
+                x.e164 = Some(proto::Contact::TEST_E164.into());
+            }),
+        ]
+    )]
+    fn duplicate_contact_id<M: Method + ReferencedTypes>(
+        mut partial: PartialBackup<M>,
+        (expected_error, fill_in_field): (
+            impl Fn(RecipientId, RecipientId) -> CompletionError,
+            impl Fn(&mut proto::Contact),
+        ),
+    ) {
+        partial
+            .add_account_data(proto::AccountData::test_data())
+            .expect("valid account data");
+
+        let mut first_contact = proto::Recipient::test_data_contact();
+        first_contact.id = 10;
+        fill_in_field(first_contact.mut_contact());
+
+        partial
+            .add_recipient(first_contact)
+            .expect("valid recipient");
+
+        let mut second_contact = proto::Recipient::test_data_contact();
+        second_contact.id = 20;
+        // Give it a different ACI by default.
+        second_contact.mut_contact().aci = Some(uuid::Uuid::new_v4().as_bytes().to_vec());
+        fill_in_field(second_contact.mut_contact());
+
+        partial
+            .add_recipient(second_contact)
+            .expect("valid recipient");
+
+        assert_eq!(
+            CompletedBackup::try_from(partial).expect_err("should have failed"),
+            expected_error(RecipientId(10), RecipientId(20)),
+        );
+    }
+
+    #[test_matrix(
+        [ValidateOnly::empty(), Store::empty()],
+        [
+            (CompletionError::DuplicateGroupMasterKey, proto::Group::test_data().into()),
+            (CompletionError::DuplicateDistributionListId, proto::DistributionListItem::test_data().into()),
+            (CompletionError::DuplicateCallLinkRootKey, proto::recipient::Destination::CallLink(proto::CallLink::test_data())),
+            (CompletionError::DuplicateSelfRecipient, proto::recipient::Destination::Self_(Default::default())),
+            (CompletionError::DuplicateReleaseNotesRecipient, proto::recipient::Destination::ReleaseNotes(Default::default())),
+        ]
+    )]
+    fn duplicate_non_contact_recipient<M: Method + ReferencedTypes>(
+        mut partial: PartialBackup<M>,
+        (expected_error, destination): (
+            impl Fn(RecipientId, RecipientId) -> CompletionError,
+            proto::recipient::Destination,
+        ),
+    ) {
+        partial
+            .add_account_data(proto::AccountData::test_data())
+            .expect("valid account data");
+        partial
+            .add_recipient(proto::Recipient::test_data_contact())
+            .expect("valid contact");
+
+        let first_recipient = proto::Recipient {
+            id: 10,
+            destination: Some(destination),
+            ..Default::default()
+        };
+
+        partial
+            .add_recipient(first_recipient.clone())
+            .expect("valid recipient");
+
+        let second_recipient = proto::Recipient {
+            id: 20,
+            ..first_recipient
+        };
+
+        partial
+            .add_recipient(second_recipient)
+            .expect("valid recipient");
+
+        assert_eq!(
+            CompletedBackup::try_from(partial).expect_err("should have failed"),
+            expected_error(RecipientId(10), RecipientId(20)),
+        );
+    }
+
+    #[test_case(ValidateOnly::empty())]
+    #[test_case(Store::empty())]
+    fn pni_matching_aci_is_okay<M: Method + ReferencedTypes>(mut partial: PartialBackup<M>) {
+        partial
+            .add_account_data(proto::AccountData::test_data())
+            .expect("valid account data");
+
+        let mut first_contact = proto::Recipient::test_data_contact();
+        first_contact.id = 10;
+
+        partial
+            .add_recipient(first_contact)
+            .expect("valid recipient");
+
+        let mut second_contact = proto::Recipient::test_data_contact();
+        second_contact.id = 20;
+        // Move the ACI over to the PNI, and provide a new ACI.
+        second_contact.mut_contact().pni = second_contact.mut_contact().aci.take();
+        second_contact.mut_contact().aci = Some(uuid::Uuid::new_v4().as_bytes().to_vec());
+
+        partial
+            .add_recipient(second_contact)
+            .expect("valid recipient");
+
+        CompletedBackup::try_from(partial).expect("ACI and PNI are different namespaces");
     }
 }

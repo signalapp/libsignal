@@ -17,8 +17,8 @@ pub enum Role {
     Administrator,
 }
 
-#[derive(Debug, serde::Serialize)]
-#[cfg_attr(test, derive(PartialEq, Clone))]
+#[derive(Clone, Debug, serde::Serialize)]
+#[cfg_attr(test, derive(PartialEq))]
 pub struct GroupMember {
     #[serde(serialize_with = "serialize::service_id_as_string")]
     pub user_id: Aci,
@@ -69,8 +69,8 @@ impl TryFrom<proto::group::Member> for GroupMember {
     }
 }
 
-#[derive(Debug, serde::Serialize)]
-#[cfg_attr(test, derive(PartialEq, Clone))]
+#[derive(Clone, Debug, serde::Serialize)]
+#[cfg_attr(test, derive(PartialEq))]
 pub struct GroupMemberPendingProfileKey {
     #[serde(serialize_with = "serialize::service_id_as_string")]
     pub user_id: ServiceId,
@@ -152,8 +152,8 @@ impl<C: ReportUnusualTimestamp> TryFromWith<proto::group::MemberPendingProfileKe
     }
 }
 
-#[derive(Debug, serde::Serialize)]
-#[cfg_attr(test, derive(PartialEq, Clone))]
+#[derive(Clone, Debug, serde::Serialize)]
+#[cfg_attr(test, derive(PartialEq))]
 pub struct GroupMemberPendingAdminApproval {
     #[serde(serialize_with = "serialize::service_id_as_string")]
     pub user_id: Aci,
@@ -203,8 +203,8 @@ impl<C: ReportUnusualTimestamp> TryFromWith<proto::group::MemberPendingAdminAppr
     }
 }
 
-#[derive(Debug, serde::Serialize)]
-#[cfg_attr(test, derive(PartialEq, Clone))]
+#[derive(Clone, Debug, serde::Serialize)]
+#[cfg_attr(test, derive(PartialEq))]
 pub struct GroupMemberBanned {
     #[serde(serialize_with = "serialize::service_id_as_string")]
     pub user_id: ServiceId,

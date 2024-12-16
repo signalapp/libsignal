@@ -49,7 +49,7 @@ pub struct WrongKindOfServiceIdError {
 /// A service ID with a known type.
 ///
 /// `RAW_KIND` is a raw [ServiceIdKind] (eventually Rust will allow enums as generic parameters).
-#[derive(Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct SpecificServiceId<const RAW_KIND: u8>(Uuid);
 
 impl<const KIND: u8> SpecificServiceId<KIND> {
@@ -64,6 +64,14 @@ impl<const KIND: u8> SpecificServiceId<KIND> {
     #[inline]
     const fn from_uuid(uuid: Uuid) -> Self {
         Self(uuid)
+    }
+}
+
+// We can go back to derive(Hash) if the uuid crate makes a similar change:
+// https://github.com/uuid-rs/uuid/issues/775
+impl<const KIND: u8> std::hash::Hash for SpecificServiceId<KIND> {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        state.write(self.0.as_bytes());
     }
 }
 

@@ -7,7 +7,6 @@ use std::fmt::Debug;
 use std::num::NonZeroU64;
 use std::sync::Arc;
 
-use derive_where::derive_where;
 use intmap::IntMap;
 use itertools::Itertools as _;
 use libsignal_core::{Aci, Pni, ServiceIdKind};
@@ -15,12 +14,12 @@ use libsignal_protocol::IdentityKey;
 use uuid::Uuid;
 use zkgroup::ProfileKeyBytes;
 
-use crate::backup::call::{CallLink, CallLinkError};
+use crate::backup::call::{CallLink, CallLinkError, CallLinkRootKey};
 use crate::backup::frame::RecipientId;
-use crate::backup::method::{LookupPair, Method, Store, ValidateOnly};
+use crate::backup::method::LookupPair;
 use crate::backup::serialize::{self, SerializeOrder, UnorderedList};
 use crate::backup::time::{ReportUnusualTimestamp, Timestamp};
-use crate::backup::{ReferencedTypes, TryFromWith, TryIntoWith};
+use crate::backup::{TryFromWith, TryIntoWith};
 use crate::proto::backup as proto;
 use crate::proto::backup::recipient::Destination as RecipientDestination;
 
@@ -53,6 +52,7 @@ pub enum RecipientError {
     /// contact has neither an ACI, nor a PNI, nor an e164
     ContactHasNoIdentifiers,
     /// contact has a PNI but no e164
+    #[allow(dead_code)] // See the commented-out use site in this file.
     PniWithoutE164,
     /// contact registered value is UNKNOWN
     ContactRegistrationUnknown,
@@ -84,33 +84,43 @@ pub enum RecipientError {
 /// frames.
 #[derive(Debug)]
 #[cfg_attr(test, derive(PartialEq))]
-pub struct MinimalRecipientData(DestinationKind);
+pub enum MinimalRecipientData {
+    Contact {
+        e164: Option<E164>,
+        aci: Option<Aci>,
+        pni: Option<Pni>,
+    },
+    Group {
+        master_key: zkgroup::GroupMasterKeyBytes,
+    },
+    DistributionList {
+        distribution_id: Uuid,
+    },
+    Self_,
+    ReleaseNotes,
+    CallLink {
+        root_key: CallLinkRootKey,
+    },
+}
 
 /// Data kept in-memory from a [`proto::Recipient`] for [`Store`] mode.
 ///
 /// This keeps the full data in memory behind a [`Arc`] so it can be cheaply
 /// cloned when referenced by later frames.
 #[derive(Clone, Debug, serde::Serialize)]
-pub struct FullRecipientData(Arc<Destination<Store>>);
+pub struct FullRecipientData(Arc<Destination<FullRecipientData>>);
 
-#[derive_where(Debug)]
-#[cfg_attr(test,
-    derive_where(PartialEq;
-        M::Value<ContactData>: PartialEq,
-        M::Value<GroupData>: PartialEq,
-        M::Value<DistributionListItem<M::RecipientReference>>: PartialEq,
-        M::Value<CallLink>: PartialEq
-    )
-)]
-#[derive(serde::Serialize, strum::EnumDiscriminants)]
+#[derive(Clone, Debug, serde::Serialize, strum::EnumDiscriminants)]
+#[cfg_attr(test, derive(PartialEq))]
 #[strum_discriminants(name(DestinationKind))]
-pub enum Destination<M: Method + ReferencedTypes> {
-    Contact(M::Value<ContactData>),
-    Group(M::Value<GroupData>),
-    DistributionList(M::Value<DistributionListItem<M::RecipientReference>>),
+pub enum Destination<R> {
+    Contact(ContactData),
+    Group(GroupData),
+    #[serde(bound(serialize = "DistributionListItem<R>: serde::Serialize"))]
+    DistributionList(DistributionListItem<R>),
     Self_,
     ReleaseNotes,
-    CallLink(M::Value<CallLink>),
+    CallLink(CallLink),
 }
 
 impl DestinationKind {
@@ -138,7 +148,7 @@ impl AsRef<DestinationKind> for DestinationKind {
 /// The ordering should be considered arbitrary; a proper ordering of E164s would use a
 /// lexicographic ordering of the decimal digits, but that costs more in CPU. Use the string
 /// representation as a sort key if sorting for human consumption.
-#[derive(Debug, serde::Serialize, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, serde::Serialize, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
 #[serde(transparent)]
 pub struct E164(NonZeroU64);
 
@@ -162,7 +172,7 @@ impl std::fmt::Display for E164 {
     }
 }
 
-#[derive(Debug, serde::Serialize)]
+#[derive(Clone, Debug, serde::Serialize)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct ContactData {
     #[serde(serialize_with = "serialize::optional_service_id_as_string")]
@@ -187,7 +197,7 @@ pub struct ContactData {
     pub identity_state: proto::contact::IdentityState,
 }
 
-#[derive(Debug, serde::Serialize)]
+#[derive(Clone, Debug, serde::Serialize)]
 #[cfg_attr(test, derive(PartialEq))]
 pub enum DistributionListItem<Recipient> {
     Deleted {
@@ -203,14 +213,14 @@ pub enum DistributionListItem<Recipient> {
     },
 }
 
-#[derive(Debug, serde::Serialize)]
+#[derive(Clone, Debug, serde::Serialize)]
 #[cfg_attr(test, derive(PartialEq))]
 pub enum Registration {
     NotRegistered { unregistered_at: Option<Timestamp> },
     Registered,
 }
 
-#[derive(Debug, serde::Serialize)]
+#[derive(Clone, Debug, serde::Serialize)]
 #[cfg_attr(test, derive(PartialEq))]
 pub enum PrivacyMode<RecipientList> {
     OnlyWith(RecipientList),
@@ -220,30 +230,51 @@ pub enum PrivacyMode<RecipientList> {
 
 impl AsRef<DestinationKind> for MinimalRecipientData {
     fn as_ref(&self) -> &DestinationKind {
-        &self.0
+        // We cheat by returning static references. That's fine since these are
+        // just discriminants; they don't represent the actual data from the
+        // enum values.
+        match self {
+            Self::Contact { .. } => &DestinationKind::Contact,
+            Self::Group { .. } => &DestinationKind::Group,
+            Self::DistributionList { .. } => &DestinationKind::DistributionList,
+            Self::Self_ => &DestinationKind::Self_,
+            Self::ReleaseNotes => &DestinationKind::ReleaseNotes,
+            Self::CallLink { .. } => &DestinationKind::CallLink,
+        }
     }
 }
 
 impl std::ops::Deref for FullRecipientData {
-    type Target = Destination<Store>;
+    type Target = Destination<FullRecipientData>;
     fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
 
-impl<C: LookupPair<RecipientId, DestinationKind, RecipientId> + ReportUnusualTimestamp>
-    TryFromWith<proto::Recipient, C> for MinimalRecipientData
-{
-    type Error = RecipientError;
-
-    fn try_from_with(item: proto::Recipient, context: &C) -> Result<Self, Self::Error> {
-        let destination: Destination<ValidateOnly> = item.try_into_with(context)?;
-        Ok(Self(*destination.as_ref()))
+impl<R> From<Destination<R>> for MinimalRecipientData {
+    fn from(value: Destination<R>) -> Self {
+        match value {
+            Destination::Contact(ContactData { aci, pni, e164, .. }) => {
+                Self::Contact { e164, aci, pni }
+            }
+            Destination::Group(GroupData { master_key, .. }) => Self::Group { master_key },
+            Destination::DistributionList(
+                DistributionListItem::Deleted {
+                    distribution_id, ..
+                }
+                | DistributionListItem::List {
+                    distribution_id, ..
+                },
+            ) => Self::DistributionList { distribution_id },
+            Destination::Self_ => Self::Self_,
+            Destination::ReleaseNotes => Self::ReleaseNotes,
+            Destination::CallLink(CallLink { root_key, .. }) => Self::CallLink { root_key },
+        }
     }
 }
 
 impl FullRecipientData {
-    pub(crate) fn new(data: Destination<Store>) -> Self {
+    pub(crate) fn new(data: Destination<FullRecipientData>) -> Self {
         Self(Arc::new(data))
     }
 }
@@ -260,13 +291,9 @@ impl AsRef<Self> for FullRecipientData {
     }
 }
 
-impl<C: LookupPair<RecipientId, DestinationKind, Self> + ReportUnusualTimestamp>
-    TryFromWith<proto::Recipient, C> for FullRecipientData
-{
-    type Error = RecipientError;
-
-    fn try_from_with(item: proto::Recipient, context: &C) -> Result<Self, Self::Error> {
-        item.try_into_with(context).map(Self::new)
+impl From<Destination<FullRecipientData>> for FullRecipientData {
+    fn from(value: Destination<FullRecipientData>) -> Self {
+        Self::new(value)
     }
 }
 
@@ -277,7 +304,7 @@ impl PartialEq for FullRecipientData {
     }
 }
 
-impl<M: Method + ReferencedTypes> AsRef<DestinationKind> for Destination<M> {
+impl<R> AsRef<DestinationKind> for Destination<R> {
     fn as_ref(&self) -> &DestinationKind {
         // We cheat by returning static references. That's fine since these are
         // just discriminants; they don't represent the actual data from the
@@ -293,10 +320,8 @@ impl<M: Method + ReferencedTypes> AsRef<DestinationKind> for Destination<M> {
     }
 }
 
-impl<
-        M: Method + ReferencedTypes,
-        C: LookupPair<RecipientId, DestinationKind, M::RecipientReference> + ReportUnusualTimestamp,
-    > TryFromWith<proto::Recipient, C> for Destination<M>
+impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R> + ReportUnusualTimestamp>
+    TryFromWith<proto::Recipient, C> for Destination<R>
 {
     type Error = RecipientError;
     fn try_from_with(value: proto::Recipient, context: &C) -> Result<Self, Self::Error> {
@@ -310,20 +335,18 @@ impl<
 
         Ok(match destination {
             RecipientDestination::Contact(contact) => {
-                Destination::Contact(M::value(contact.try_into_with(context)?))
+                Destination::Contact(contact.try_into_with(context)?)
             }
-            RecipientDestination::Group(group) => {
-                Destination::Group(M::value(group.try_into_with(context)?))
-            }
+            RecipientDestination::Group(group) => Destination::Group(group.try_into_with(context)?),
             RecipientDestination::DistributionList(list) => {
-                Destination::DistributionList(M::value(list.try_into_with(context)?))
+                Destination::DistributionList(list.try_into_with(context)?)
             }
             RecipientDestination::Self_(proto::Self_ { special_fields: _ }) => Destination::Self_,
             RecipientDestination::ReleaseNotes(proto::ReleaseNotes { special_fields: _ }) => {
                 Destination::ReleaseNotes
             }
             RecipientDestination::CallLink(call_link) => {
-                Destination::CallLink(M::value(call_link.try_into_with(context)?))
+                Destination::CallLink(call_link.try_into_with(context)?)
             }
         })
     }
@@ -562,7 +585,6 @@ mod test {
     use test_case::test_case;
 
     use super::*;
-    use crate::backup::method::Store;
     use crate::backup::testutil::TestContext;
     use crate::backup::time::testutil::MillisecondsSinceEpoch;
 
@@ -620,7 +642,7 @@ mod test {
 
     impl proto::DistributionListItem {
         const TEST_CUSTOM_UUID: [u8; 16] = [0x99; 16];
-        fn test_data() -> Self {
+        pub(crate) fn test_data() -> Self {
             Self {
                 distributionId: Uuid::nil().into(),
                 item: Some(proto::distribution_list_item::Item::DistributionList(
@@ -668,7 +690,7 @@ mod test {
         };
 
         assert_matches!(
-            Destination::<Store>::try_from_with(recipient, &TestContext::default()),
+            Destination::try_from_with(recipient, &TestContext::default()),
             Err(RecipientError::MissingDestination)
         );
     }
@@ -678,7 +700,7 @@ mod test {
         let recipient = proto::Recipient::test_data();
 
         assert_eq!(
-            Destination::<Store>::try_from_with(recipient, &TestContext::default()),
+            Destination::try_from_with(recipient, &TestContext::default()),
             Ok(Destination::Self_)
         )
     }
@@ -691,7 +713,7 @@ mod test {
         };
 
         assert_eq!(
-            Destination::<Store>::try_from_with(recipient, &TestContext::default()),
+            Destination::try_from_with(recipient, &TestContext::default()),
             Ok(Destination::Contact(ContactData::from_proto_test_data()))
         )
     }
@@ -732,7 +754,7 @@ mod test {
             ..proto::Recipient::test_data()
         };
 
-        Destination::<Store>::try_from_with(recipient, &TestContext::default()).map(|_| ())
+        Destination::try_from_with(recipient, &TestContext::default()).map(|_| ())
     }
 
     #[test]
@@ -743,7 +765,7 @@ mod test {
         };
 
         assert_eq!(
-            Destination::<Store>::try_from_with(recipient, &TestContext::default()),
+            Destination::try_from_with(recipient, &TestContext::default()),
             Ok(Destination::Group(GroupData::from_proto_test_data()))
         );
     }
@@ -759,7 +781,7 @@ mod test {
             ..proto::Recipient::test_data()
         };
 
-        Destination::<Store>::try_from_with(recipient, &TestContext::default()).map(|_| ())
+        Destination::try_from_with(recipient, &TestContext::default()).map(|_| ())
     }
 
     #[test]
@@ -770,7 +792,7 @@ mod test {
         };
 
         assert_eq!(
-            Destination::<Store>::try_from_with(recipient, &TestContext::default()),
+            Destination::try_from_with(recipient, &TestContext::default()),
             Ok(Destination::DistributionList(DistributionListItem::List {
                 distribution_id: Uuid::nil(),
                 privacy_mode: PrivacyMode::AllExcept(
@@ -840,6 +862,6 @@ mod test {
             ..proto::Recipient::test_data()
         };
 
-        Destination::<Store>::try_from_with(recipient, &TestContext::default()).map(|_| ())
+        Destination::try_from_with(recipient, &TestContext::default()).map(|_| ())
     }
 }

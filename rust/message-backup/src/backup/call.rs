@@ -123,10 +123,10 @@ pub enum GroupCallState {
 }
 
 const CALL_LINK_ROOT_KEY_LEN: usize = 16;
-type CallLinkRootKey = [u8; CALL_LINK_ROOT_KEY_LEN];
+pub(crate) type CallLinkRootKey = [u8; CALL_LINK_ROOT_KEY_LEN];
 
 /// Validated version of [`proto::CallLink`].
-#[derive(Debug, serde::Serialize)]
+#[derive(Clone, Debug, serde::Serialize)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct CallLink {
     #[serde(serialize_with = "serialize::enum_as_string")]
@@ -425,7 +425,7 @@ pub(crate) mod test {
     const TEST_CALL_LINK_ROOT_KEY: CallLinkRootKey = [b'R'; 16];
     const TEST_CALL_LINK_ADMIN_KEY: &[u8] = b"A";
     impl proto::CallLink {
-        fn test_data() -> Self {
+        pub(crate) fn test_data() -> Self {
             Self {
                 rootKey: TEST_CALL_LINK_ROOT_KEY.to_vec(),
                 adminKey: Some(TEST_CALL_LINK_ADMIN_KEY.to_vec()),
