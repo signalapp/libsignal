@@ -162,8 +162,8 @@ impl<C, M> ServiceInitializer<C, M>
 where
     M: ConnectionManager,
     C: ServiceConnector + Send + Sync,
-    C::Service: Send + Sync,
-    C::Channel: Send + Sync,
+    C::Service: Send,
+    C::Channel: Send,
     C::ConnectError: Send + Sync + Debug + LogSafeDisplay + ErrorClassifier,
 {
     pub fn new(service_connector: C, connection_manager: M) -> Self {
@@ -290,7 +290,7 @@ where
     M: ConnectionManager + 'static,
     C: ServiceConnector + Send + Sync + 'static,
     C::Service: Clone + Send + Sync + 'static,
-    C::Channel: Send + Sync,
+    C::Channel: Send,
     C::ConnectError: Send + Sync + Debug + LogSafeDisplay + ErrorClassifier,
 {
     pub fn new(service_connector: C, connection_manager: M, connection_timeout: Duration) -> Self {

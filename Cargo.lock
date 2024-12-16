@@ -2425,6 +2425,7 @@ dependencies = [
  "rustls-platform-verifier",
  "snow",
  "socks5-server",
+ "static_assertions",
  "strum",
  "test-case",
  "thiserror",

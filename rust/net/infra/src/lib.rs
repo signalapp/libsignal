@@ -305,9 +305,9 @@ impl<T> StreamAndInfo<T> {
     }
 }
 
-pub trait AsyncDuplexStream: AsyncRead + AsyncWrite + Unpin + Send + Sync {}
+pub trait AsyncDuplexStream: AsyncRead + AsyncWrite + Unpin + Send {}
 
-impl<S: AsyncRead + AsyncWrite + Unpin + Send + Sync> AsyncDuplexStream for S {}
+impl<S: AsyncRead + AsyncWrite + Unpin + Send> AsyncDuplexStream for S {}
 
 /// Establishes TCP/TLS connections to remote destinations.
 ///

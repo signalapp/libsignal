@@ -22,7 +22,7 @@ where
     M: ConnectionManager + 'static,
     C: ServiceConnector + Send + Sync + 'static,
     C::Service: ChatService + Clone + Sync + Send + 'static,
-    C::Channel: Send + Sync,
+    C::Channel: Send,
     C::ConnectError:
         Send + Sync + Debug + LogSafeDisplay + ErrorClassifier + Into<ChatServiceError>,
 {
@@ -45,7 +45,7 @@ where
     M: ConnectionManager + 'static,
     C: ServiceConnector + Send + Sync + 'static,
     C::Service: ChatService + RemoteAddressInfo + Clone + Sync + Send + 'static,
-    C::Channel: Send + Sync,
+    C::Channel: Send,
     C::ConnectError:
         Send + Sync + Debug + LogSafeDisplay + ErrorClassifier + Into<ChatServiceError>,
 {

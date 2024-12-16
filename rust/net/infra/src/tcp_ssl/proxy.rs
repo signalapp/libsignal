@@ -8,23 +8,24 @@ use std::net::IpAddr;
 
 use futures_util::TryFutureExt;
 use tokio::net::TcpStream;
-use tokio_boring_signal::SslStream;
 use tokio_util::either::Either;
 
 use crate::errors::TransportConnectError;
 use crate::route::{ConnectionProxyRoute, Connector, ConnectorExt as _, TlsRoute};
-use crate::tcp_ssl::proxy::socks::SocksStream;
 use crate::{Connection, IpType};
 
 pub mod socks;
 pub mod tls;
+
+mod stream;
+pub use stream::ProxyStream;
 
 /// Stateless [`Connector`] impl for [`ConnectionProxyRoute`].
 #[derive(Debug, Default)]
 pub struct StatelessProxied;
 
 impl Connector<ConnectionProxyRoute<IpAddr>, ()> for StatelessProxied {
-    type Connection = Either<SslStream<TcpStream>, Either<TcpStream, SocksStream>>;
+    type Connection = ProxyStream;
 
     type Error = TransportConnectError;
 
@@ -46,21 +47,20 @@ impl Connector<ConnectionProxyRoute<IpAddr>, ()> for StatelessProxied {
                     connector
                         .connect_over(tcp, tls_fragment)
                         .await
-                        .map(Either::Left)
+                        .map(Into::into)
                 })
             }
             ConnectionProxyRoute::Tcp { proxy } => {
                 let connector = super::StatelessDirect;
                 Either::Right(Either::Left(async move {
                     match connector.connect(proxy).await {
-                        Ok(connection) => Ok(Either::Right(Either::Left(connection))),
+                        Ok(connection) => Ok(connection.into()),
                         Err(_io_error) => Err(TransportConnectError::TcpConnectionFailed),
                     }
                 }))
             }
             ConnectionProxyRoute::Socks(route) => Either::Right(Either::Right(
-                self.connect(route)
-                    .map_ok(|connection| Either::Right(Either::Right(connection))),
+                self.connect(route).map_ok(|connection| connection.into()),
             )),
         }
     }

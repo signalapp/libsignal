@@ -10,6 +10,7 @@ use std::net::IpAddr;
 
 use derive_where::derive_where;
 use futures_util::TryFutureExt;
+use static_assertions::assert_impl_all;
 use tokio_util::either::Either;
 
 use crate::errors::TransportConnectError;
@@ -93,17 +94,13 @@ type TransportConnector =
 type WebSocketHttpConnector =
     ComposedConnector<crate::ws::Stateless, TransportConnector, WebSocketConnectError>;
 
-const _: () = {
-    const fn assert_is_connector<C: Connector<R, ()>, R>() {}
-
-    assert_is_connector::<TcpConnector, TcpRoute<IpAddr>>();
-    assert_is_connector::<
-        DirectProxyConnector,
-        DirectOrProxyRoute<TcpRoute<IpAddr>, ConnectionProxyRoute<IpAddr>>,
-    >();
-    assert_is_connector::<TransportConnector, TransportRoute>();
-    assert_is_connector::<WebSocketHttpConnector, WebSocketServiceRoute>();
-};
+assert_impl_all!(TcpConnector: Connector<TcpRoute<IpAddr>, ()>);
+assert_impl_all!(
+    DirectProxyConnector:
+    Connector<DirectOrProxyRoute<TcpRoute<IpAddr>, ConnectionProxyRoute<IpAddr>>, ()>
+);
+assert_impl_all!(TransportConnector: Connector<TransportRoute, ()>);
+assert_impl_all!(WebSocketHttpConnector: Connector<WebSocketServiceRoute, ()>);
 
 impl<O, I, E> ComposedConnector<O, I, E> {
     pub fn new(outer: O, inner: I) -> Self {
