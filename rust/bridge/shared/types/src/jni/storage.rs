@@ -39,7 +39,7 @@ impl<'a> JniIdentityKeyStore<'a> {
     }
 }
 
-impl<'a> JniIdentityKeyStore<'a> {
+impl JniIdentityKeyStore<'_> {
     fn do_get_identity_key_pair(&self) -> Result<IdentityKeyPair, SignalJniError> {
         self.env
             .borrow_mut()
@@ -176,7 +176,7 @@ impl<'a> JniIdentityKeyStore<'a> {
 }
 
 #[async_trait(? Send)]
-impl<'a> IdentityKeyStore for JniIdentityKeyStore<'a> {
+impl IdentityKeyStore for JniIdentityKeyStore<'_> {
     async fn get_identity_key_pair(&self) -> Result<IdentityKeyPair, SignalProtocolError> {
         Ok(self.do_get_identity_key_pair()?)
     }
@@ -232,7 +232,7 @@ impl<'a> JniPreKeyStore<'a> {
     }
 }
 
-impl<'a> JniPreKeyStore<'a> {
+impl JniPreKeyStore<'_> {
     fn do_get_pre_key(&self, prekey_id: u32) -> Result<PreKeyRecord, SignalJniError> {
         self.env
             .borrow_mut()
@@ -291,7 +291,7 @@ impl<'a> JniPreKeyStore<'a> {
 }
 
 #[async_trait(? Send)]
-impl<'a> PreKeyStore for JniPreKeyStore<'a> {
+impl PreKeyStore for JniPreKeyStore<'_> {
     async fn get_pre_key(&self, prekey_id: PreKeyId) -> Result<PreKeyRecord, SignalProtocolError> {
         Ok(self.do_get_pre_key(prekey_id.into())?)
     }
@@ -331,7 +331,7 @@ impl<'a> JniSignedPreKeyStore<'a> {
     }
 }
 
-impl<'a> JniSignedPreKeyStore<'a> {
+impl JniSignedPreKeyStore<'_> {
     fn do_get_signed_pre_key(&self, prekey_id: u32) -> Result<SignedPreKeyRecord, SignalJniError> {
         self.env
             .borrow_mut()
@@ -379,7 +379,7 @@ impl<'a> JniSignedPreKeyStore<'a> {
 }
 
 #[async_trait(? Send)]
-impl<'a> SignedPreKeyStore for JniSignedPreKeyStore<'a> {
+impl SignedPreKeyStore for JniSignedPreKeyStore<'_> {
     async fn get_signed_pre_key(
         &self,
         prekey_id: SignedPreKeyId,
@@ -418,7 +418,7 @@ impl<'a> JniKyberPreKeyStore<'a> {
     }
 }
 
-impl<'a> JniKyberPreKeyStore<'a> {
+impl JniKyberPreKeyStore<'_> {
     fn do_get_kyber_pre_key(&self, prekey_id: u32) -> Result<KyberPreKeyRecord, SignalJniError> {
         self.env
             .borrow_mut()
@@ -481,7 +481,7 @@ impl<'a> JniKyberPreKeyStore<'a> {
 }
 
 #[async_trait(? Send)]
-impl<'a> KyberPreKeyStore for JniKyberPreKeyStore<'a> {
+impl KyberPreKeyStore for JniKyberPreKeyStore<'_> {
     async fn get_kyber_pre_key(
         &self,
         prekey_id: KyberPreKeyId,
@@ -527,7 +527,7 @@ impl<'a> JniSessionStore<'a> {
     }
 }
 
-impl<'a> JniSessionStore<'a> {
+impl JniSessionStore<'_> {
     fn do_load_session(
         &self,
         address: &ProtocolAddress,
@@ -571,7 +571,7 @@ impl<'a> JniSessionStore<'a> {
 }
 
 #[async_trait(? Send)]
-impl<'a> SessionStore for JniSessionStore<'a> {
+impl SessionStore for JniSessionStore<'_> {
     async fn load_session(
         &self,
         address: &ProtocolAddress,
@@ -610,7 +610,7 @@ impl<'a> JniSenderKeyStore<'a> {
     }
 }
 
-impl<'a> JniSenderKeyStore<'a> {
+impl JniSenderKeyStore<'_> {
     fn do_store_sender_key(
         &mut self,
         sender: &ProtocolAddress,
@@ -660,7 +660,7 @@ impl<'a> JniSenderKeyStore<'a> {
 }
 
 #[async_trait(? Send)]
-impl<'a> SenderKeyStore for JniSenderKeyStore<'a> {
+impl SenderKeyStore for JniSenderKeyStore<'_> {
     async fn store_sender_key(
         &mut self,
         sender: &ProtocolAddress,

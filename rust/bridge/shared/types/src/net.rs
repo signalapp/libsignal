@@ -308,7 +308,7 @@ impl<'a> Svr3Clients<'a> {
 }
 
 #[async_trait]
-impl<'a> Svr3Connect for Svr3Client<'a, CurrentVersion> {
+impl Svr3Connect for Svr3Client<'_, CurrentVersion> {
     type Env = Svr3Env<'static>;
 
     async fn connect(&self) -> <Self::Env as PpssSetup>::ConnectionResults {
@@ -331,7 +331,7 @@ impl<'a> Svr3Connect for Svr3Client<'a, CurrentVersion> {
 }
 
 #[async_trait]
-impl<'a> Backup for Svr3Client<'a, PreviousVersion> {
+impl Backup for Svr3Client<'_, PreviousVersion> {
     async fn backup(
         &self,
         _password: &str,
@@ -344,7 +344,7 @@ impl<'a> Backup for Svr3Client<'a, PreviousVersion> {
 }
 
 #[async_trait]
-impl<'a> Restore for Svr3Client<'a, PreviousVersion> {
+impl Restore for Svr3Client<'_, PreviousVersion> {
     async fn restore(
         &self,
         _password: &str,
@@ -356,21 +356,21 @@ impl<'a> Restore for Svr3Client<'a, PreviousVersion> {
 }
 
 #[async_trait]
-impl<'a> Remove for Svr3Client<'a, PreviousVersion> {
+impl Remove for Svr3Client<'_, PreviousVersion> {
     async fn remove(&self) -> Result<(), Error> {
         empty_env::remove().await
     }
 }
 
 #[async_trait]
-impl<'a> Query for Svr3Client<'a, PreviousVersion> {
+impl Query for Svr3Client<'_, PreviousVersion> {
     async fn query(&self) -> Result<u32, Error> {
         empty_env::query().await
     }
 }
 
 #[async_trait]
-impl<'a> Rotate for Svr3Client<'a, PreviousVersion> {
+impl Rotate for Svr3Client<'_, PreviousVersion> {
     async fn rotate(
         &self,
         _share_set: OpaqueMaskedShareSet,

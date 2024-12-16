@@ -329,7 +329,7 @@ impl<E: EnclaveKind + NewHandshake, C: ConnectionManager> EnclaveEndpointConnect
     }
 }
 
-impl<'a, E: EnclaveKind> EnclaveEndpoint<'a, E> {
+impl<E: EnclaveKind> EnclaveEndpoint<'_, E> {
     pub fn route_provider(
         &self,
         enable_domain_fronting: EnableDomainFronting,

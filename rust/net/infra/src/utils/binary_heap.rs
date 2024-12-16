@@ -56,9 +56,10 @@ pub struct MinKeyValueQueue<K, V>(MinHeap<KeyValue<K, V>>);
 
 impl<T: Ord + Eq> Queue for MinHeap<T> {
     type Item = T;
-    type PeekItem<'a> = &'a T
-        where
-            Self: 'a;
+    type PeekItem<'a>
+        = &'a T
+    where
+        Self: 'a;
 
     fn push(&mut self, item: Self::Item) {
         self.0.push(Reverse(item));
@@ -85,9 +86,10 @@ impl<T: Ord + Eq> Extend<T> for MinHeap<T> {
 
 impl<K: Ord + Eq, V> Queue for MinKeyValueQueue<K, V> {
     type Item = (K, V);
-    type PeekItem<'a> = (&'a K, &'a V)
-        where
-            Self: 'a;
+    type PeekItem<'a>
+        = (&'a K, &'a V)
+    where
+        Self: 'a;
 
     fn push(&mut self, (key, value): Self::Item) {
         self.0.push(KeyValue { key, value });

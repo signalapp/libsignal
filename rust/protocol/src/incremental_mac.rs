@@ -40,7 +40,7 @@ where
         return MINIMUM_CHUNK_SIZE;
     }
     if data_size < target_chunk_count * MAXIMUM_CHUNK_SIZE {
-        return (data_size + target_chunk_count - 1) / target_chunk_count;
+        return data_size.div_ceil(target_chunk_count);
     }
     MAXIMUM_CHUNK_SIZE
 }
@@ -397,7 +397,7 @@ mod test {
     fn total_digest_size_is_never_too_big() {
         fn total_digest_size(data_size: usize) -> usize {
             let chunk_size = calculate_chunk_size::<Sha256>(data_size);
-            let num_chunks = std::cmp::max(1, (data_size + chunk_size - 1) / chunk_size);
+            let num_chunks = std::cmp::max(1, data_size.div_ceil(chunk_size));
             num_chunks * <Sha256 as OutputSizeUser>::OutputSize::USIZE
         }
         let config = ProptestConfig::with_cases(10_000);

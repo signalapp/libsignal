@@ -180,5 +180,5 @@ fn minidump_to_json_string(mut cx: FunctionContext) -> JsResult<JsString> {
         .print_json(&mut json, false)
         .expect("Failed to print json");
 
-    return Ok(cx.string(std::str::from_utf8(&json).expect("Failed to convert JSON to utf8")));
+    Ok(cx.string(std::str::from_utf8(&json).expect("Failed to convert JSON to utf8")))
 }

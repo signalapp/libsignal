@@ -92,7 +92,6 @@ pub const PUB_KEY_SIZE: usize = 32;
 ///   let encrypted_received = websocket.recv(...)?;
 ///   let plaintext_received: Vec<u8> = conn.recv(encrypted_received)?;
 /// ```
-
 impl ClientConnectionEstablishment {
     /// Creates a new client connection establishment.
     pub fn new(

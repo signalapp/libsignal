@@ -465,18 +465,15 @@ impl<R> IntoIterator for ResolvedRoutes<R> {
     }
 }
 
+type EagerResolutionResult<R> = Result<ResolvedRoutes<R>, (Arc<str>, DnsError)>;
+
 /// Produces a stream of resolved routes.
 ///
 /// Resolves all the input routes in parallel.
 fn eagerly_resolve_each<'r, R: ResolveHostnames + Clone + 'static>(
     routes: impl Iterator<Item = R> + 'r,
     resolver: &'r impl Resolver,
-) -> impl FusedStream<
-    Item = (
-        Result<ResolvedRoutes<R::Resolved>, (Arc<str>, DnsError)>,
-        ResolveMeta,
-    ),
-> + 'r {
+) -> impl FusedStream<Item = (EagerResolutionResult<R::Resolved>, ResolveMeta)> + 'r {
     FuturesUnordered::from_iter(routes.enumerate().map(|(index, route)| async move {
         let resolution = super::resolve_route(resolver, route)
             .await

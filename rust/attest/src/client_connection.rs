@@ -35,15 +35,13 @@ pub enum Error {
     NoiseError(#[from] snow::Error),
 }
 
-fn ceil_div(total: usize, chunk_size: usize) -> usize {
-    (total + chunk_size - 1) / chunk_size
-}
-
 impl ClientConnection {
     /// Wrap a plaintext message to be sent, returning the ciphertext.
     pub fn send(&mut self, plaintext_to_send: &[u8]) -> Result<Vec<u8>> {
         let max_ciphertext_size = plaintext_to_send.len()
-            + ceil_div(plaintext_to_send.len(), NOISE_TRANSPORT_PER_PAYLOAD_MAX)
+            + plaintext_to_send
+                .len()
+                .div_ceil(NOISE_TRANSPORT_PER_PAYLOAD_MAX)
                 * NOISE_TRANSPORT_PER_PAYLOAD_OVERHEAD;
         let mut ciphertext = vec![0u8; max_ciphertext_size];
         let mut total_size = 0;

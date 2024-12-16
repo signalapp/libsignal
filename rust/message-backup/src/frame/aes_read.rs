@@ -149,7 +149,7 @@ mod test {
             .encrypt_padded_vec_mut::<Pkcs7>(plaintext);
         assert_eq!(
             ciphertext.len(),
-            (plaintext.len() + AES_BLOCK_SIZE - 1) / AES_BLOCK_SIZE * AES_BLOCK_SIZE
+            plaintext.len().div_ceil(AES_BLOCK_SIZE) * AES_BLOCK_SIZE
         );
         ciphertext
     }

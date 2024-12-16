@@ -526,7 +526,7 @@ impl<'a> Restore1<'a> {
     }
 }
 
-impl<'a> Restore2<'a> {
+impl Restore2<'_> {
     pub fn restore(self, responses2_bytes: &[Vec<u8>]) -> Result<Output4, Error> {
         if responses2_bytes.len() != self.server_ids.len() {
             return Err(Error::NumServers {

@@ -197,7 +197,7 @@ pub async fn do_rotate(
     }
 }
 
-async fn run_attested_interaction<'a>(
+async fn run_attested_interaction(
     connection: &mut LabeledConnection,
     request: impl AsRef<[u8]>,
 ) -> Result<(NextOrClose<Vec<u8>>, &ConnectionLabel), AttestedConnectionError> {

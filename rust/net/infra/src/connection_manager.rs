@@ -400,7 +400,7 @@ impl<C> SingleRouteThrottlingConnectionManager<C> {
         // respect to panics.
         let was_successful = connection_result_or_timeout
             .as_ref()
-            .map_or(false, |r| r.is_ok());
+            .is_ok_and(|r| r.is_ok());
         let new_state = s.clone().after_attempt(was_successful, attempt_start_time);
         *s = new_state;
 

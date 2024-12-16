@@ -505,7 +505,7 @@ fn rate_limited_error<'a, C: Context<'a>>(
     retry_after_seconds: u32,
 ) -> (
     Option<&'a str>,
-    Option<impl Fn(&mut C) -> Result<Handle<'a, JsValue>, neon::result::Throw>>,
+    Option<impl Fn(&mut C) -> JsResult<'a, JsValue>>,
 ) {
     (
         Some(RATE_LIMITED_ERROR),

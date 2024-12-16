@@ -71,7 +71,7 @@ impl<'a> SgxQuote<'a> {
 
 /// Verifies the signature of the quote header + ISV report, which must be signed
 /// by the quoting enclave attest key
-impl<'a> EcdsaSigned for SgxQuote<'a> {
+impl EcdsaSigned for SgxQuote<'_> {
     fn data(&self) -> &[u8] {
         self.quote_body.as_bytes()
     }
@@ -158,7 +158,7 @@ impl TryFrom<[u8; std::mem::size_of::<SgxQuoteBody>()]> for SgxQuoteBody {
     }
 }
 
-impl<'a> Expireable for SgxQuote<'a> {
+impl Expireable for SgxQuote<'_> {
     fn valid_at(&self, timestamp: SystemTime) -> bool {
         // quote_body is not expireable
         self.support.valid_at(timestamp)
@@ -198,7 +198,7 @@ pub(crate) struct SgxQuoteSupport<'a> {
 
 /// Validates the signature of the QE report, which must be
 /// signed by the pck_cert leaf public key
-impl<'a> EcdsaSigned for SgxQuoteSupport<'a> {
+impl EcdsaSigned for SgxQuoteSupport<'_> {
     fn data(&self) -> &[u8] {
         self.qe_report_body.as_bytes()
     }
@@ -304,7 +304,7 @@ impl<'a> SgxQuoteSupport<'a> {
     }
 }
 
-impl<'a> Expireable for SgxQuoteSupport<'a> {
+impl Expireable for SgxQuoteSupport<'_> {
     fn valid_at(&self, timestamp: SystemTime) -> bool {
         self.pck_cert_chain.valid_at(timestamp)
     }

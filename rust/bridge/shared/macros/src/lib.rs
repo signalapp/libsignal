@@ -155,7 +155,7 @@ fn value_for_meta_key<'a>(
 ) -> Option<&'a Expr> {
     meta_values
         .iter()
-        .find(|meta| meta.path.get_ident().map_or(false, |ident| ident == key))
+        .find(|meta| meta.path.get_ident().is_some_and(|ident| ident == key))
         .map(|meta| &meta.value)
 }
 

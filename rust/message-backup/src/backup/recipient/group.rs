@@ -400,7 +400,6 @@ mod test {
 
     impl GroupData {
         pub(crate) fn from_proto_test_data() -> Self {
-            use proto::group::access_control::AccessRequired;
             GroupData {
                 master_key: proto::Group::TEST_MASTER_KEY,
                 story_send_mode: proto::group::StorySendMode::ENABLED,

@@ -125,9 +125,9 @@ impl<C: ServiceConnector> ServiceConnectorWithDecorator<C> {
 }
 
 #[async_trait]
-impl<'a, C> ServiceConnector for ServiceConnectorWithDecorator<C>
+impl<C> ServiceConnector for ServiceConnectorWithDecorator<C>
 where
-    C: ServiceConnector + Send + Sync + 'a,
+    C: ServiceConnector + Send + Sync,
 {
     type Service = C::Service;
     type Channel = C::Channel;
@@ -158,11 +158,11 @@ pub struct ServiceInitializer<C, M> {
     connection_manager: M,
 }
 
-impl<'a, C, M> ServiceInitializer<C, M>
+impl<C, M> ServiceInitializer<C, M>
 where
-    M: ConnectionManager + 'a,
-    C: ServiceConnector + Send + Sync + 'a,
-    C::Service: Send + Sync + 'a,
+    M: ConnectionManager,
+    C: ServiceConnector + Send + Sync,
+    C::Service: Send + Sync,
     C::Channel: Send + Sync,
     C::ConnectError: Send + Sync + Debug + LogSafeDisplay + ErrorClassifier,
 {

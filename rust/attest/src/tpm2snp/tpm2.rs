@@ -86,7 +86,7 @@ pub(crate) type PcrMap = [(usize, RawPcr)];
 #[derive(Debug)]
 pub struct Pcrs<'a>(pub [Pcr<'a>; 24]);
 
-impl<'a> AsRef<[u8]> for VerifiedBytes<'a> {
+impl AsRef<[u8]> for VerifiedBytes<'_> {
     fn as_ref(&self) -> &[u8] {
         self.0
     }

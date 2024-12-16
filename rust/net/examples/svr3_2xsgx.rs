@@ -69,7 +69,7 @@ where
     A: Svr3Flavor,
     B: Svr3Flavor;
 
-impl<'a, A, B> PpssSetup for TwoForTwoEnv<'a, A, B>
+impl<A, B> PpssSetup for TwoForTwoEnv<'_, A, B>
 where
     A: Svr3Flavor + Send,
     B: Svr3Flavor + Send,
