@@ -20,14 +20,10 @@ export default class AuthCredentialPresentation extends ByteArray {
     );
   }
 
-  getPniCiphertext(): UuidCiphertext | null {
-    const ciphertextBytes = Native.AuthCredentialPresentation_GetPniCiphertext(
-      this.contents
+  getPniCiphertext(): UuidCiphertext {
+    return new UuidCiphertext(
+      Native.AuthCredentialPresentation_GetPniCiphertext(this.contents)
     );
-    if (ciphertextBytes === null) {
-      return null;
-    }
-    return new UuidCiphertext(ciphertextBytes);
   }
 
   getRedemptionTime(): Date {

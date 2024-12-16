@@ -32,6 +32,8 @@ pub struct ServerSecretParams {
 
     expiring_profile_key_credentials_key_pair:
         crypto::credentials::KeyPair<crypto::credentials::ExpiringProfileKeyCredential>,
+
+    // Now unused
     auth_credentials_with_pni_key_pair:
         crypto::credentials::KeyPair<crypto::credentials::AuthCredentialWithPni>,
 
@@ -55,6 +57,8 @@ pub struct ServerPublicParams {
     pni_credentials_public_key: crypto::credentials::PublicKey,
 
     expiring_profile_key_credentials_public_key: crypto::credentials::PublicKey,
+
+    // Now unused
     auth_credentials_with_pni_public_key: crypto::credentials::PublicKey,
 
     pub(crate) generic_credential_public_key: zkcredential::credentials::CredentialPublicKey,
@@ -124,39 +128,6 @@ impl ServerSecretParams {
         self.sig_key_pair.sign(message, &mut sho)
     }
 
-    pub fn issue_auth_credential_with_pni_as_service_id(
-        &self,
-        randomness: RandomnessBytes,
-        aci: libsignal_core::Aci,
-        pni: libsignal_core::Pni,
-        redemption_time: Timestamp,
-    ) -> api::auth::AuthCredentialWithPniResponse {
-        let mut sho = Sho::new(
-            b"Signal_ZKGroup_20220617_Random_ServerSecretParams_IssueAuthCredentialWithPni",
-            &randomness,
-        );
-
-        let aci_struct = crypto::uid_struct::UidStruct::from_service_id(aci.into());
-        let pni_struct = crypto::uid_struct::UidStruct::from_service_id(pni.into());
-        let credential = self
-            .auth_credentials_with_pni_key_pair
-            .create_auth_credential_with_pni(aci_struct, pni_struct, redemption_time, &mut sho);
-        let proof = crypto::proofs::AuthCredentialWithPniIssuanceProof::new(
-            self.auth_credentials_with_pni_key_pair,
-            credential,
-            aci_struct,
-            pni_struct,
-            redemption_time,
-            &mut sho,
-        );
-        api::auth::AuthCredentialWithPniV0Response {
-            version: VersionByte,
-            credential,
-            proof,
-        }
-        .into()
-    }
-
     /// Checks that `current_time` is within the validity window defined by
     /// `redemption_time`.
     ///
@@ -192,39 +163,10 @@ impl ServerSecretParams {
         )?;
 
         match presentation {
-            api::auth::AnyAuthCredentialPresentation::V3(presentation) => {
-                presentation.proof.verify(
-                    self.auth_credentials_with_pni_key_pair,
-                    group_public_params.uid_enc_public_key,
-                    presentation.aci_ciphertext,
-                    presentation.pni_ciphertext,
-                    presentation.redemption_time,
-                )
-            }
-
             api::auth::AnyAuthCredentialPresentation::V4(presentation) => {
                 presentation.verify(self, &group_public_params, presentation.redemption_time())
             }
         }
-    }
-
-    pub fn verify_auth_credential_with_pni_presentation(
-        &self,
-        group_public_params: api::groups::GroupPublicParams,
-        presentation: &api::auth::AuthCredentialWithPniPresentation,
-        current_time: Timestamp,
-    ) -> Result<(), ZkGroupVerificationFailure> {
-        Self::check_auth_credential_redemption_time(
-            presentation.get_redemption_time(),
-            current_time,
-        )?;
-        presentation.proof.verify(
-            self.auth_credentials_with_pni_key_pair,
-            group_public_params.uid_enc_public_key,
-            presentation.aci_ciphertext,
-            presentation.pni_ciphertext,
-            presentation.redemption_time,
-        )
     }
 
     pub fn verify_profile_key_credential_presentation(
@@ -387,85 +329,6 @@ impl ServerPublicParams {
         signature: NotarySignatureBytes,
     ) -> Result<(), ZkGroupVerificationFailure> {
         self.sig_public_key.verify(message, signature)
-    }
-
-    pub fn receive_auth_credential_with_pni_as_service_id(
-        &self,
-        aci: libsignal_core::Aci,
-        pni: libsignal_core::Pni,
-        redemption_time: Timestamp,
-        response: api::auth::AuthCredentialWithPniResponse,
-    ) -> Result<api::auth::AuthCredentialWithPni, ZkGroupVerificationFailure> {
-        let response = match response {
-            api::auth::AuthCredentialWithPniResponse::Zkc(response) => {
-                return response
-                    .receive(aci, pni, redemption_time, self)
-                    .map(Into::into)
-            }
-            api::auth::AuthCredentialWithPniResponse::V0(response) => response,
-        };
-        let aci_struct = crypto::uid_struct::UidStruct::from_service_id(aci.into());
-        let pni_struct = crypto::uid_struct::UidStruct::from_service_id(pni.into());
-        response.proof.verify(
-            self.auth_credentials_with_pni_public_key,
-            response.credential,
-            aci_struct,
-            pni_struct,
-            redemption_time,
-        )?;
-
-        Ok(api::auth::AuthCredentialWithPniV0 {
-            version: VersionByte,
-            credential: response.credential,
-            aci: aci_struct,
-            pni: pni_struct,
-            redemption_time,
-        }
-        .into())
-    }
-
-    pub fn create_auth_credential_with_pni_presentation(
-        &self,
-        randomness: RandomnessBytes,
-        group_secret_params: api::groups::GroupSecretParams,
-        auth_credential: api::auth::AuthCredentialWithPni,
-    ) -> api::auth::AnyAuthCredentialPresentation {
-        let auth_credential = match auth_credential {
-            api::auth::AuthCredentialWithPni::Zkc(auth_credential) => {
-                return auth_credential
-                    .present(self, &group_secret_params, randomness)
-                    .into()
-            }
-            api::auth::AuthCredentialWithPni::V0(auth_credential) => auth_credential,
-        };
-        let mut sho = Sho::new(
-            b"Signal_ZKGroup_20220617_Random_ServerPublicParams_CreateAuthCredentialWithPniPresentation",
-            &randomness,
-        );
-
-        let aci_ciphertext = group_secret_params.encrypt_uid_struct(auth_credential.aci);
-        let pni_ciphertext = group_secret_params.encrypt_uid_struct(auth_credential.pni);
-
-        let proof = crypto::proofs::AuthCredentialWithPniPresentationProof::new(
-            self.auth_credentials_with_pni_public_key,
-            group_secret_params.uid_enc_key_pair,
-            auth_credential.credential,
-            auth_credential.aci,
-            aci_ciphertext.ciphertext,
-            auth_credential.pni,
-            pni_ciphertext.ciphertext,
-            auth_credential.redemption_time,
-            &mut sho,
-        );
-
-        api::auth::AuthCredentialWithPniPresentation {
-            version: VersionByte,
-            proof,
-            aci_ciphertext: aci_ciphertext.ciphertext,
-            pni_ciphertext: pni_ciphertext.ciphertext,
-            redemption_time: auth_credential.redemption_time,
-        }
-        .into()
     }
 
     pub fn create_profile_key_credential_request_context(

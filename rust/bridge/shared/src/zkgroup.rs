@@ -185,14 +185,12 @@ fn ServerPublicParams_ReceiveAuthCredentialWithPniAsServiceId(
 ) -> Result<Vec<u8>, ZkGroupVerificationFailure> {
     let response = AuthCredentialWithPniResponse::new(auth_credential_with_pni_response_bytes)
         .expect("previously validated");
-    Ok(zkgroup::serialize(
-        &params.receive_auth_credential_with_pni_as_service_id(
-            aci,
-            pni,
-            redemption_time,
-            response,
-        )?,
-    ))
+    Ok(zkgroup::serialize(&response.receive(
+        params,
+        aci,
+        pni,
+        redemption_time,
+    )?))
 }
 
 #[bridge_fn]
@@ -204,13 +202,11 @@ fn ServerPublicParams_CreateAuthCredentialWithPniPresentationDeterministic(
 ) -> Vec<u8> {
     let auth_credential =
         AuthCredentialWithPni::new(auth_credential_with_pni_bytes).expect("previously validated");
-    zkgroup::serialize(
-        &server_public_params.create_auth_credential_with_pni_presentation(
-            *randomness,
-            group_secret_params.into_inner(),
-            auth_credential,
-        ),
-    )
+    zkgroup::serialize(&auth_credential.present(
+        server_public_params,
+        &group_secret_params.into_inner(),
+        *randomness,
+    ))
 }
 
 #[bridge_fn]
@@ -292,24 +288,6 @@ fn ServerPublicParams_CreateReceiptCredentialPresentationDeterministic(
     server_public_params
         .create_receipt_credential_presentation(*randomness, &receipt_credential)
         .into()
-}
-
-#[bridge_fn]
-fn ServerSecretParams_IssueAuthCredentialWithPniAsServiceIdDeterministic(
-    server_secret_params: &ServerSecretParams,
-    randomness: &[u8; RANDOMNESS_LEN],
-    aci: Aci,
-    pni: Pni,
-    redemption_time: Timestamp,
-) -> Vec<u8> {
-    zkgroup::serialize(
-        &server_secret_params.issue_auth_credential_with_pni_as_service_id(
-            *randomness,
-            aci,
-            pni,
-            redemption_time,
-        ),
-    )
 }
 
 #[bridge_fn]
@@ -452,26 +430,16 @@ fn AuthCredentialPresentation_GetUuidCiphertext(
 ) -> Serialized<UuidCiphertext> {
     let presentation = AnyAuthCredentialPresentation::new(presentation_bytes)
         .expect("should have been parsed previously");
-    presentation.get_uuid_ciphertext().into()
+    presentation.get_aci_ciphertext().into()
 }
 
-#[bridge_fn(ffi = false)]
-fn AuthCredentialPresentation_GetPniCiphertext(presentation_bytes: &[u8]) -> Option<Vec<u8>> {
+#[bridge_fn]
+fn AuthCredentialPresentation_GetPniCiphertext(
+    presentation_bytes: &[u8],
+) -> Serialized<UuidCiphertext> {
     let presentation = AnyAuthCredentialPresentation::new(presentation_bytes)
         .expect("should have been parsed previously");
-    presentation
-        .get_pni_ciphertext()
-        .map(|ciphertext| zkgroup::serialize(&ciphertext))
-}
-
-#[bridge_fn(jni = false, node = false)]
-fn AuthCredentialPresentation_GetPniCiphertextOrEmpty(presentation_bytes: &[u8]) -> Vec<u8> {
-    let presentation = AnyAuthCredentialPresentation::new(presentation_bytes)
-        .expect("should have been parsed previously");
-    presentation
-        .get_pni_ciphertext()
-        .map(|ciphertext| zkgroup::serialize(&ciphertext))
-        .unwrap_or_default()
+    presentation.get_pni_ciphertext().into()
 }
 
 #[bridge_fn]

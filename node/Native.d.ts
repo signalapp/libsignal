@@ -155,7 +155,7 @@ export function Aes256GcmSiv_Decrypt(aesGcmSiv: Wrapper<Aes256GcmSiv>, ctext: Bu
 export function Aes256GcmSiv_Encrypt(aesGcmSivObj: Wrapper<Aes256GcmSiv>, ptext: Buffer, nonce: Buffer, associatedData: Buffer): Buffer;
 export function Aes256GcmSiv_New(key: Buffer): Aes256GcmSiv;
 export function AuthCredentialPresentation_CheckValidContents(presentationBytes: Buffer): void;
-export function AuthCredentialPresentation_GetPniCiphertext(presentationBytes: Buffer): Buffer | null;
+export function AuthCredentialPresentation_GetPniCiphertext(presentationBytes: Buffer): Serialized<UuidCiphertext>;
 export function AuthCredentialPresentation_GetRedemptionTime(presentationBytes: Buffer): Timestamp;
 export function AuthCredentialPresentation_GetUuidCiphertext(presentationBytes: Buffer): Serialized<UuidCiphertext>;
 export function AuthCredentialWithPniResponse_CheckValidContents(bytes: Buffer): void;
@@ -477,7 +477,6 @@ export function ServerPublicParams_VerifySignature(serverPublicParams: Wrapper<S
 export function ServerSecretParams_Deserialize(buffer: Buffer): ServerSecretParams;
 export function ServerSecretParams_GenerateDeterministic(randomness: Buffer): ServerSecretParams;
 export function ServerSecretParams_GetPublicParams(params: Wrapper<ServerSecretParams>): ServerPublicParams;
-export function ServerSecretParams_IssueAuthCredentialWithPniAsServiceIdDeterministic(serverSecretParams: Wrapper<ServerSecretParams>, randomness: Buffer, aci: Buffer, pni: Buffer, redemptionTime: Timestamp): Buffer;
 export function ServerSecretParams_IssueAuthCredentialWithPniZkcDeterministic(serverSecretParams: Wrapper<ServerSecretParams>, randomness: Buffer, aci: Buffer, pni: Buffer, redemptionTime: Timestamp): Buffer;
 export function ServerSecretParams_IssueExpiringProfileKeyCredentialDeterministic(serverSecretParams: Wrapper<ServerSecretParams>, randomness: Buffer, request: Serialized<ProfileKeyCredentialRequest>, userId: Buffer, commitment: Serialized<ProfileKeyCommitment>, expirationInSeconds: Timestamp): Serialized<ExpiringProfileKeyCredentialResponse>;
 export function ServerSecretParams_IssueReceiptCredentialDeterministic(serverSecretParams: Wrapper<ServerSecretParams>, randomness: Buffer, request: Serialized<ReceiptCredentialRequest>, receiptExpirationTime: Timestamp, receiptLevel: bigint): Serialized<ReceiptCredentialResponse>;

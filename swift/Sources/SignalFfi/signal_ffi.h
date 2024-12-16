@@ -1331,8 +1331,6 @@ SignalFfiError *signal_server_public_params_receive_receipt_credential(unsigned 
 
 SignalFfiError *signal_server_public_params_create_receipt_credential_presentation_deterministic(unsigned char (*out)[SignalRECEIPT_CREDENTIAL_PRESENTATION_LEN], const SignalServerPublicParams *server_public_params, const uint8_t (*randomness)[SignalRANDOMNESS_LEN], const unsigned char (*receipt_credential)[SignalRECEIPT_CREDENTIAL_LEN]);
 
-SignalFfiError *signal_server_secret_params_issue_auth_credential_with_pni_as_service_id_deterministic(SignalOwnedBuffer *out, const SignalServerSecretParams *server_secret_params, const uint8_t (*randomness)[SignalRANDOMNESS_LEN], const SignalServiceIdFixedWidthBinaryBytes *aci, const SignalServiceIdFixedWidthBinaryBytes *pni, uint64_t redemption_time);
-
 SignalFfiError *signal_server_secret_params_issue_auth_credential_with_pni_zkc_deterministic(SignalOwnedBuffer *out, const SignalServerSecretParams *server_secret_params, const uint8_t (*randomness)[SignalRANDOMNESS_LEN], const SignalServiceIdFixedWidthBinaryBytes *aci, const SignalServiceIdFixedWidthBinaryBytes *pni, uint64_t redemption_time);
 
 SignalFfiError *signal_auth_credential_with_pni_check_valid_contents(SignalBorrowedBuffer bytes);
@@ -1357,7 +1355,7 @@ SignalFfiError *signal_auth_credential_presentation_check_valid_contents(SignalB
 
 SignalFfiError *signal_auth_credential_presentation_get_uuid_ciphertext(unsigned char (*out)[SignalUUID_CIPHERTEXT_LEN], SignalBorrowedBuffer presentation_bytes);
 
-SignalFfiError *signal_auth_credential_presentation_get_pni_ciphertext_or_empty(SignalOwnedBuffer *out, SignalBorrowedBuffer presentation_bytes);
+SignalFfiError *signal_auth_credential_presentation_get_pni_ciphertext(unsigned char (*out)[SignalUUID_CIPHERTEXT_LEN], SignalBorrowedBuffer presentation_bytes);
 
 SignalFfiError *signal_auth_credential_presentation_get_redemption_time(uint64_t *out, SignalBorrowedBuffer presentation_bytes);
 

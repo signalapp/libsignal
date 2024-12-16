@@ -264,6 +264,9 @@ impl<'a> IssuanceProofBuilder<'a> {
     pub fn verify(
         mut self,
         public_key: &CredentialPublicKey,
+        // Even though it would work with a borrow, this deliberately consumes
+        // IssuanceProof to indicate that you should not keep it around after
+        // you have extracted the credential.
         proof: IssuanceProof,
     ) -> Result<Credential, VerificationFailure> {
         self.finalize_public_attrs();

@@ -19,6 +19,8 @@ use crate::RANDOMNESS_LEN;
 ///
 /// Defined in Chase-Perrin-Zaverucha section 3.1.
 #[derive(Clone, Serialize, Deserialize, PartialDefault)]
+// This type intentionally does not implement `Copy` to make it harder to
+// accidentally duplicate these values.
 pub struct Credential {
     pub(crate) t: Scalar,
     pub(crate) U: RistrettoPoint,

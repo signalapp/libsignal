@@ -33,8 +33,6 @@ fn test_lizard() {
 
 const AUTH_CREDENTIAL_PRESENTATION_V1:&[u8] = &hex!( "000cde979737ed30bbeb16362e4e076945ce02069f727b0ed4c3c33c011e82546e1cdf081fbdf37c03a851ad060bdcbf6378cb4cb16dc3154d08de5439b5323203729d1841b517033af2fd177d30491c138ae723655734f6e5cc01c00696f4e92096d8c33df26ba2a820d42e9735d30f8eeef96d399079073c099f7035523bfe716638659319d3c36ad34c00ef8850f663c4d93030235074312a8878b6a5c5df4fbc7d32935278bfa5996b44ab75d6f06f4c30b98640ad5de74742656c8977567de000000000000000fde69f82ad2dcb4909650ac6b2573841af568fef822b32b45f625a764691a704d11b6f385261468117ead57fa623338e21c66ed846ab65809fcac158066d8e0e444077b99540d886e7dc09555dd6faea2cd3697f1e089f82d54e5d0fe4a185008b5cbc3979391ad71686bc03be7b00ea7e42c08d9f1d75c3a56c27ae2467b80636c0b5343eda7cd578ba88ddb7a0766568477fed63cf531862122c6c15b4a707973d41782cfc0ef4fe6c3115988a2e339015938d2df0a5d30237a2592cc10c05a9e4ef6b695bca99736b1a49ea39606a381ecfb05efe60d28b54823ec5a3680c765de9df4cfa5487f360e29e99343e91811baec331c4680985e608ca5d408e21725c6aa1b61d5a8b48d75f4aaa9a3cbe88d3e0f1a54319081f77c72c8f52547440e20100");
 
-const AUTH_CREDENTIAL_PRESENTATION_V3_RESULT: &[u8] = &hex!("02ec2374624ee8de07393f4c4f625afe1793a3fe0cfcf19a447ee93667e52dc7763800382c6ee41e49bb60c40cbd76657e1f6c737f502d6f47abe16bd4efab1f71948d7634771cd04573a75f3c8e77e70c55f5550753ad077cfe5bb3edee0b0e2ab8087285653df8415b9fea2f5410c4094059a2217e280865bfeba660538da20786346da334c67bfc4d706f725117a75e60c6fa242e2735fc2361d129b7ab793a100a6a4917959f0f87ef75ef35350e6da9d7d638cf8cf9f106c94734a32b85337441d22a99cf08c24d11f4e7beddbf7fc91a10145215b950a2b78e7fbbc7707faa0de254125cbac98f021467f540151c577366800fee1fc6ea4730ee58cd7460e0000000000000009ef87a5ea87d8bb00516623394ff9b82ced69477360c21e00e44da187129d80d414da3f3d26d2d22af93d659c4816c75046e597ab614f09edda581b08162070da8c1234c65268496db7ba8aa3b81e67336f53174926573ba5a007bbaa2a23b01d09fa41998bdfeb49e4e7d077b81693421c05af81c53a58681035b72f9b6eb04e366da64ca95f5277e1af3aa2f915accd120cad67578f7a4d075bd3cc91c07095db54b0203955419677723ad3ee7ff95f3858558aeb040427cb81ab02be7e60cea45dc2f4ad12e70d32f67741228fd5789b7110b4a3169c13ad66e4c9aa3cd08765de9df4cfa5487f360e29e99343e91811baec331c4680985e608ca5d408e21725c6aa1b61d5a8b48d75f4aaa9a3cbe88d3e0f1a54319081f77c72c8f525474de749a0fef17b06bbce74ca5d0f7a0c45f443a1901f1e3e016d3548e50a2fa19ce6b27ac467ed9c9f5018b2a4456b6c2b1a91454422fdd473c9636a8459e1c170060c77b02000000");
-
 const AUTH_CREDENTIAL_PRESENTATION_V4_RESULT: &[u8] = &hex!("035e3e79afda8dc0d489fcf7c78f71e1502f2e06e8aeb20149046f85b3004d3f7f982d57dfad49cd1e6c335755cef4cc5e8d3de1eb4f5e8f24d71cf9f2220ae750f47181d71aaabbd48a1916813ec08eea935eb013395bf72f9139da8ef4f9530d05000000000000007a080544e6ee8ee2ff0dc298f18841103a9f9ec38631df8682e241755f86f74e26301872f4f32a9bb80f5b17651c0c83253a8013532384061a1febf79e58e60fa215b31da678305fa2a271655e35824630d0804680ec0bf29b1c775652683c3a5cec537c3514df730f267371d909f29cc6252af30afe3ea846c0cf56478bdc5b7a7f983ea7c24ecef4b371286a6414b2c38a57a7f59a9df33e430736c1a2ca14e00000000000000015416082ff7e3a741a4c3c31be3c95d4a31f2cf742685e0b17cd7f7205230e0e4e67b4b6ed45e705de13a1cb7170897bb32c9db6f9a1108fddfc7fae9eb2ca0c5fc3d8ccbd79d992eeed333626a1f0c37f0b25625955611e5ba33c782c50550045923582280cd93c3e9555b4e36eec20993f60b6aeb9ddb7f2856c4659546f037b33534a0292c77a501a70796f24ff37c8311bdfea8bb6c78f909563fe6e3b0386f36adc92090694ebb106a837bac046ad26e2472ee16408e9fd84269fd78c00c5dde91fcf202a6afad3441b9e2a34f4831d5bf560c81b38d951cb7c88e4d701765de9df4cfa5487f360e29e99343e91811baec331c4680985e608ca5d408e21725c6aa1b61d5a8b48d75f4aaa9a3cbe88d3e0f1a54319081f77c72c8f525474de749a0fef17b06bbce74ca5d0f7a0c45f443a1901f1e3e016d3548e50a2fa19ce6b27ac467ed9c9f5018b2a4456b6c2b1a91454422fdd473c9636a8459e1c170060c77b02000000");
 
 const PROFILE_KEY_CREDENTIAL_PRESENTATION_V1: &[u8] = &hex!("00c4d19bca1ae844585168869da4133e0e0bb59f2ce17b7ac65bff5da9610eca103429d8022a94bae2b5b1057b5595b8ad70bfc2d0e1ad662cb75e6bae0782be6f00e3db793bc28561f0196c2e74da6f303fa8bcb70c94096671b73f7b3a95fb002200d5b9180fa0ef7d3014d01344145b4d38480d72ff25c24294e305e5705072e0d32cc4e84f5caf31486089a4b934c80c92eba43472ff23a5af93c397535d33801f0e6fc6eb2ee0d117f03bb4fd38a8b9c88d94708131f38742ca804a3cfc4f9476bc2d03f53d17001c36478afbe9cc535a224b2df6b2b08bef06cbc7d4dc42ccfc3459f7ac5c4419ae9f3c8a161d554d047778943216240858da3b1101984c40010000000000007a01eea6b2adad14d71ab8b8e411bef3c596e954b70e4031570cb1abd7e932083241f1caca3116708fa4319fbbdfe351376c23644ae09a42f0155db4996c9d0c7ffc8521c1914c0e1a20ae51e65df64dd5e6e5985b3d9d31732046d2d77f9c08aaccf056b84026073976eec6164cbdaee5d9e76e497f0c290af681cabd5c5101282abb26c3680d6087ce053310fe8a94f59d8ae23caac5fc0ed0c379888abf028a6f29f89d4fe2acc1706341b2245ba1885bca57e1e27ccf7ed79371500965009f960c2ba00fad3e93383b87ce119cac0b3360eb99284ce78e2cbed680f7960373e0ab75c190254160c2353614109489e653c9b2e1c93f92c7c5ad583d987a04bd3541b24485c33ea49bac43c87c4ab3efde2e2d7ec10a40be544199f925b20b2c55542bc56410571e41cd8e0286f609a66768b5061ccb4777af32309928dd09765de9df4cfa5487f360e29e99343e91811baec331c4680985e608ca5d408e21725c6aa1b61d5a8b48d75f4aaa9a3cbe88d3e0f1a54319081f77c72c8f52547448c03ab4afbf6b8fb0e126c037a0ad4094600dd0e0634d76f88c21087f3cfb485a89bc1e3abc4c95041d1d170eccf02933ec5393d4be1dc573f83c33d3b9a746");
@@ -48,125 +46,6 @@ fn test_auth_credential_presentation_v1_is_rejected() {
     assert!(
         zkgroup::auth::AnyAuthCredentialPresentation::new(AUTH_CREDENTIAL_PRESENTATION_V1).is_err()
     );
-}
-
-#[test]
-fn test_integration_auth_with_pni() {
-    let server_secret_params = zkgroup::ServerSecretParams::generate(zkgroup::TEST_ARRAY_32);
-    let server_public_params = server_secret_params.get_public_params();
-
-    let master_key = zkgroup::groups::GroupMasterKey::new(zkgroup::TEST_ARRAY_32_1);
-    let group_secret_params =
-        zkgroup::groups::GroupSecretParams::derive_from_master_key(master_key);
-    let group_public_params = group_secret_params.get_public_params();
-
-    // Random UID and issueTime
-    let aci = libsignal_core::Aci::from_uuid_bytes(zkgroup::TEST_ARRAY_16);
-    let pni = libsignal_core::Pni::from_uuid_bytes(zkgroup::TEST_ARRAY_16_1);
-    let redemption_time = zkgroup::Timestamp::from_epoch_seconds(123456 * SECONDS_PER_DAY);
-
-    // SERVER
-    // Issue credential
-    let randomness = zkgroup::TEST_ARRAY_32_2;
-    let auth_credential_response = server_secret_params
-        .issue_auth_credential_with_pni_as_service_id(randomness, aci, pni, redemption_time);
-
-    // CLIENT
-    let auth_credential = server_public_params
-        .receive_auth_credential_with_pni_as_service_id(
-            aci,
-            pni,
-            redemption_time,
-            auth_credential_response.clone(),
-        )
-        .unwrap();
-
-    // Create and receive presentation
-    let randomness = zkgroup::TEST_ARRAY_32_5;
-
-    let presentation = server_public_params.create_auth_credential_with_pni_presentation(
-        randomness,
-        group_secret_params,
-        auth_credential.clone(),
-    );
-
-    let presentation_bytes = &bincode::serialize(&presentation).unwrap();
-
-    let presentation_any: zkgroup::auth::AnyAuthCredentialPresentation = presentation;
-
-    let presentation_any_bytes = &bincode::serialize(&presentation_any).unwrap();
-
-    assert_hex_eq!(
-        AUTH_CREDENTIAL_PRESENTATION_V3_RESULT[..],
-        presentation_bytes[..]
-    );
-    assert_hex_eq!(
-        AUTH_CREDENTIAL_PRESENTATION_V3_RESULT[..],
-        presentation_any_bytes[..]
-    );
-
-    let presentation_parsed = bincode::deserialize::<
-        zkgroup::auth::AuthCredentialWithPniPresentation,
-    >(presentation_bytes)
-    .unwrap();
-
-    assert!(
-        presentation_any.get_pni_ciphertext().unwrap()
-            == group_secret_params.encrypt_service_id(pni.into())
-    );
-
-    server_secret_params
-        .verify_auth_credential_with_pni_presentation(
-            group_public_params,
-            &presentation_parsed,
-            redemption_time,
-        )
-        .unwrap();
-
-    server_secret_params
-        .verify_auth_credential_presentation(
-            group_public_params,
-            &presentation_any,
-            redemption_time,
-        )
-        .unwrap();
-
-    server_secret_params
-        .verify_auth_credential_presentation(
-            group_public_params,
-            &presentation_any,
-            redemption_time.sub_seconds(SECONDS_PER_DAY + 1),
-        )
-        .expect_err("credential not valid before redemption time (allowing for clock skew)");
-
-    server_secret_params
-        .verify_auth_credential_presentation(
-            group_public_params,
-            &presentation_any,
-            redemption_time.add_seconds(2 * SECONDS_PER_DAY + 2),
-        )
-        .expect_err("credential not valid past deadline");
-
-    // test encoding
-    // these tests will also discover if the serialized sizes change,
-    //   necessitating an update to the LEN constants
-    let mut group_secret_params_bytes = [0u8; zkgroup::common::constants::GROUP_SECRET_PARAMS_LEN];
-    let mut server_secret_params_bytes =
-        [0u8; zkgroup::common::constants::SERVER_SECRET_PARAMS_LEN];
-    let mut group_public_params_bytes = [0u8; zkgroup::common::constants::GROUP_PUBLIC_PARAMS_LEN];
-    let mut server_public_params_bytes =
-        [0u8; zkgroup::common::constants::SERVER_PUBLIC_PARAMS_LEN];
-    let mut auth_credential_response_bytes =
-        [0u8; zkgroup::common::constants::AUTH_CREDENTIAL_WITH_PNI_RESPONSE_LEN];
-    let mut auth_credential_bytes = [0u8; zkgroup::common::constants::AUTH_CREDENTIAL_WITH_PNI_LEN];
-
-    group_secret_params_bytes.copy_from_slice(&bincode::serialize(&group_secret_params).unwrap());
-    server_secret_params_bytes.copy_from_slice(&bincode::serialize(&server_secret_params).unwrap());
-    group_public_params_bytes.copy_from_slice(&bincode::serialize(&group_public_params).unwrap());
-    server_public_params_bytes.copy_from_slice(&bincode::serialize(&server_public_params).unwrap());
-    auth_credential_response_bytes
-        .copy_from_slice(&bincode::serialize(&auth_credential_response).unwrap());
-    auth_credential_bytes.copy_from_slice(&bincode::serialize(&auth_credential).unwrap());
 }
 
 #[test]
@@ -230,8 +109,7 @@ fn test_integration_auth_zkc() {
     .unwrap();
 
     assert!(
-        presentation_any.get_pni_ciphertext().unwrap()
-            == group_secret_params.encrypt_service_id(pni.into())
+        presentation_any.get_pni_ciphertext() == group_secret_params.encrypt_service_id(pni.into())
     );
 
     presentation_parsed

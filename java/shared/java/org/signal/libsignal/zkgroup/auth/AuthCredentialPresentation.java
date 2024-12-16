@@ -40,12 +40,9 @@ public final class AuthCredentialPresentation extends ByteArray {
     }
   }
 
-  /** Returns the PNI ciphertext for this credential. May be {@code null}. */
+  /** Returns the PNI ciphertext for this credential. Will never be {@code null}. */
   public UuidCiphertext getPniCiphertext() {
     byte[] newContents = Native.AuthCredentialPresentation_GetPniCiphertext(contents);
-    if (newContents == null) {
-      return null;
-    }
 
     try {
       return new UuidCiphertext(newContents);

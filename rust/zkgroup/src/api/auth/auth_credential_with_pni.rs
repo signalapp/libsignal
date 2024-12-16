@@ -3,31 +3,32 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use libsignal_core::{Aci, Pni};
 use num_enum::TryFromPrimitive;
 use partial_default::PartialDefault;
 use serde::Serialize;
 
-mod v0;
-pub use v0::{AuthCredentialWithPniV0, AuthCredentialWithPniV0Response};
+use crate::auth::AnyAuthCredentialPresentation;
+use crate::groups::GroupSecretParams;
+use crate::{
+    RandomnessBytes, ServerPublicParams, ZkGroupDeserializationFailure, ZkGroupVerificationFailure,
+};
+
 mod zkc;
 pub use zkc::{
     AuthCredentialWithPniZkc, AuthCredentialWithPniZkcPresentation,
     AuthCredentialWithPniZkcResponse,
 };
 
-use crate::ZkGroupDeserializationFailure;
-
 #[derive(Clone, PartialDefault)]
 pub enum AuthCredentialWithPni {
     #[partial_default]
-    V0(AuthCredentialWithPniV0),
     Zkc(AuthCredentialWithPniZkc),
 }
 
 #[derive(Clone, PartialDefault)]
 pub enum AuthCredentialWithPniResponse {
     #[partial_default]
-    V0(AuthCredentialWithPniV0Response),
     Zkc(AuthCredentialWithPniZkcResponse),
 }
 
@@ -35,7 +36,6 @@ pub enum AuthCredentialWithPniResponse {
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialDefault, TryFromPrimitive)]
 pub enum AuthCredentialWithPniVersion {
     #[partial_default]
-    V0 = 0,
     Zkc = 3,
 }
 
@@ -47,12 +47,24 @@ impl AuthCredentialWithPni {
         let version = AuthCredentialWithPniVersion::try_from(*first)
             .map_err(|_| ZkGroupDeserializationFailure::new::<Self>())?;
         match version {
-            AuthCredentialWithPniVersion::V0 => {
-                crate::common::serialization::deserialize(bytes).map(Self::V0)
-            }
             AuthCredentialWithPniVersion::Zkc => {
                 crate::common::serialization::deserialize(bytes).map(Self::Zkc)
             }
+        }
+    }
+
+    pub fn present(
+        &self,
+        public_params: &ServerPublicParams,
+        group_secret_params: &GroupSecretParams,
+        randomness: RandomnessBytes,
+    ) -> AnyAuthCredentialPresentation {
+        match self {
+            Self::Zkc(credential) => AnyAuthCredentialPresentation::V4(credential.present(
+                public_params,
+                group_secret_params,
+                randomness,
+            )),
         }
     }
 }
@@ -65,25 +77,24 @@ impl AuthCredentialWithPniResponse {
         let version = AuthCredentialWithPniVersion::try_from(*first)
             .map_err(|_| ZkGroupDeserializationFailure::new::<Self>())?;
         match version {
-            AuthCredentialWithPniVersion::V0 => {
-                crate::common::serialization::deserialize(bytes).map(Self::V0)
-            }
             AuthCredentialWithPniVersion::Zkc => {
                 crate::common::serialization::deserialize(bytes).map(Self::Zkc)
             }
         }
     }
-}
 
-impl From<AuthCredentialWithPniV0> for AuthCredentialWithPni {
-    fn from(value: AuthCredentialWithPniV0) -> Self {
-        Self::V0(value)
-    }
-}
-
-impl From<AuthCredentialWithPniV0Response> for AuthCredentialWithPniResponse {
-    fn from(value: AuthCredentialWithPniV0Response) -> Self {
-        Self::V0(value)
+    pub fn receive(
+        self,
+        public_params: &ServerPublicParams,
+        aci: Aci,
+        pni: Pni,
+        redemption_time: crate::Timestamp,
+    ) -> Result<AuthCredentialWithPni, ZkGroupVerificationFailure> {
+        match self {
+            Self::Zkc(credential) => credential
+                .receive(aci, pni, redemption_time, public_params)
+                .map(AuthCredentialWithPni::Zkc),
+        }
     }
 }
 
@@ -105,7 +116,6 @@ impl Serialize for AuthCredentialWithPni {
         S: serde::Serializer,
     {
         match self {
-            Self::V0(v) => v.serialize(serializer),
             Self::Zkc(z) => z.serialize(serializer),
         }
     }
@@ -117,7 +127,6 @@ impl Serialize for AuthCredentialWithPniResponse {
         S: serde::Serializer,
     {
         match self {
-            Self::V0(v) => v.serialize(serializer),
             Self::Zkc(z) => z.serialize(serializer),
         }
     }

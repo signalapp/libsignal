@@ -133,15 +133,17 @@ pub struct PublicKey {
     pub(crate) I: RistrettoPoint,
 }
 
+/// Unused, kept only because ServerSecretParams contains a `KeyPair<AuthCredential>`.
 #[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize, PartialDefault)]
-pub struct AuthCredential {
+pub(crate) struct AuthCredential {
     pub(crate) t: Scalar,
     pub(crate) U: RistrettoPoint,
     pub(crate) V: RistrettoPoint,
 }
 
+/// Unused, kept only because ServerSecretParams contains a `KeyPair<AuthCredentialWithPni>`.
 #[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize, PartialDefault)]
-pub struct AuthCredentialWithPni {
+pub(crate) struct AuthCredentialWithPni {
     pub(crate) t: Scalar,
     pub(crate) U: RistrettoPoint,
     pub(crate) V: RistrettoPoint,
@@ -209,22 +211,6 @@ pub struct BlindedReceiptCredential {
     pub(crate) U: RistrettoPoint,
     pub(crate) S1: RistrettoPoint,
     pub(crate) S2: RistrettoPoint,
-}
-
-pub(crate) fn convert_to_points_aci_pni_timestamp(
-    aci: uid_struct::UidStruct,
-    pni: uid_struct::UidStruct,
-    redemption_time: Timestamp,
-) -> Vec<RistrettoPoint> {
-    let system = SystemParams::get_hardcoded();
-    let redemption_time_scalar = TimestampStruct::calc_m_from(redemption_time);
-    vec![
-        aci.M1,
-        aci.M2,
-        pni.M1,
-        pni.M2,
-        redemption_time_scalar * system.G_m5,
-    ]
 }
 
 pub(crate) fn convert_to_points_receipt_struct(
@@ -369,20 +355,6 @@ impl<S: AttrScalars> KeyPair<S> {
     }
 }
 
-impl KeyPair<AuthCredentialWithPni> {
-    pub fn create_auth_credential_with_pni(
-        &self,
-        aci: uid_struct::UidStruct,
-        pni: uid_struct::UidStruct,
-        redemption_time: Timestamp,
-        sho: &mut Sho,
-    ) -> AuthCredentialWithPni {
-        let M = convert_to_points_aci_pni_timestamp(aci, pni, redemption_time);
-        let (t, U, V) = self.credential_core(&M, sho);
-        AuthCredentialWithPni { t, U, V }
-    }
-}
-
 impl KeyPair<ExpiringProfileKeyCredential> {
     pub fn create_blinded_expiring_profile_key_credential(
         &self,
@@ -489,25 +461,34 @@ mod tests {
         // eventually all be superseded by implementations using zkcredential, at which point this
         // test can be deleted.)
         let mut sho = Sho::new(b"Test_Credentials", b"");
-        let keypair = KeyPair::<AuthCredentialWithPni>::generate(&mut sho);
+        let keypair = KeyPair::<ExpiringProfileKeyCredential>::generate(&mut sho);
 
         let uid_bytes = TEST_ARRAY_16;
         let redemption_time = Timestamp::from_epoch_seconds(37 * SECONDS_PER_DAY);
         let aci = libsignal_core::Aci::from_uuid_bytes(uid_bytes);
         let aci_struct = uid_struct::UidStruct::from_service_id(aci.into());
-        let pni = libsignal_core::Aci::from_uuid_bytes(uid_bytes);
-        let pni_struct = uid_struct::UidStruct::from_service_id(pni.into());
-        let credential = keypair.create_auth_credential_with_pni(
+        let profile_key_struct = crate::crypto::profile_key_struct::ProfileKeyStruct::new(
+            [1; PROFILE_KEY_LEN],
+            uid_bytes,
+        );
+        let request_key_pair =
+            crate::crypto::profile_key_credential_request::KeyPair::generate(&mut sho);
+        let ciphertext = request_key_pair
+            .encrypt(profile_key_struct, &mut sho)
+            .get_ciphertext();
+        let credential = keypair.create_blinded_expiring_profile_key_credential(
             aci_struct,
-            pni_struct,
+            request_key_pair.get_public_key(),
+            ciphertext,
             redemption_time,
             &mut sho,
         );
-        let proof = proofs::AuthCredentialWithPniIssuanceProof::new(
+        let proof = proofs::ExpiringProfileKeyCredentialIssuanceProof::new(
             keypair,
+            request_key_pair.get_public_key(),
+            ciphertext,
             credential,
             aci_struct,
-            pni_struct,
             redemption_time,
             &mut sho,
         );
@@ -516,9 +497,10 @@ mod tests {
         proof
             .verify(
                 public_key,
-                credential,
-                aci_struct,
-                pni_struct,
+                request_key_pair.get_public_key(),
+                uid_bytes,
+                ciphertext,
+                credential.get_blinded_expiring_profile_key_credential(),
                 redemption_time,
             )
             .unwrap();
@@ -533,19 +515,15 @@ mod tests {
 
         let mac_bytes = bincode::serialize(&credential).unwrap();
 
-        println!("mac_bytes = {:#x?}", mac_bytes);
-        assert!(
-            mac_bytes
-                == vec![
-                    0xf0, 0xf7, 0x41, 0xdd, 0x71, 0xb3, 0x3a, 0x18, 0x67, 0x26, 0x43, 0x15, 0xb0,
-                    0x4, 0x8e, 0xef, 0x31, 0xf0, 0x85, 0x77, 0x43, 0x68, 0x54, 0xf5, 0x91, 0x39,
-                    0xaa, 0xf, 0xb4, 0xca, 0x7c, 0x4, 0xfe, 0x4b, 0x1c, 0xcd, 0x3c, 0xef, 0x74,
-                    0x8, 0xca, 0x30, 0x7f, 0xcb, 0xfd, 0xda, 0xe9, 0xdb, 0xfd, 0xed, 0xbb, 0xec,
-                    0xce, 0x23, 0x2, 0x2, 0xa3, 0xec, 0xaa, 0x96, 0xea, 0xd, 0xac, 0x57, 0x62,
-                    0x8f, 0x6e, 0x51, 0x84, 0x7f, 0xb1, 0x62, 0x39, 0x6, 0xbc, 0x4d, 0x14, 0xed,
-                    0x96, 0xe9, 0x6, 0x27, 0xbd, 0x54, 0xc0, 0x31, 0xdc, 0x92, 0x9e, 0x40, 0x1,
-                    0x33, 0xfc, 0xc5, 0x56, 0x7a,
-                ]
+        println!("mac_bytes = {}", hex::encode(&mac_bytes));
+        assert_eq!(
+            mac_bytes,
+            hex!(
+                "ef47110715831160100f14d1936f4349c45b80ccaacd4edd9f949375d2d90a090888d81f8b0ed313
+                808b5ff7ec1957ed4e8b3d9c195b3a5abdbdd3d972c29809100a7f8dc2354be7a1d44452cbadd87e
+                4851ae05ebeb2586b856d35af765883a94473ad855df8583be2930e4e1d5756175a9091f2be1d8d0
+                21280446a7611841d6b4f2eb165267a9d1d7a800f19c2077a4ef7df721b160fe200181be3c455f1c"
+            )
         );
     }
 }

@@ -6,11 +6,8 @@
 pub mod auth_credential_presentation;
 pub mod auth_credential_with_pni;
 
-pub use auth_credential_presentation::{
-    AnyAuthCredentialPresentation, AuthCredentialWithPniPresentation,
-};
+pub use auth_credential_presentation::AnyAuthCredentialPresentation;
 pub use auth_credential_with_pni::{
-    AuthCredentialWithPni, AuthCredentialWithPniResponse, AuthCredentialWithPniV0,
-    AuthCredentialWithPniV0Response, AuthCredentialWithPniZkc,
+    AuthCredentialWithPni, AuthCredentialWithPniResponse, AuthCredentialWithPniZkc,
     AuthCredentialWithPniZkcPresentation, AuthCredentialWithPniZkcResponse,
 };

@@ -26,44 +26,6 @@ public class ServerZkAuthOperations {
     this.serverSecretParams = serverSecretParams;
   }
 
-  /**
-   * @deprecated These credentials are no longer supported by the server; use {@link
-   *     #issueAuthCredentialWithPniZkc} instead.
-   */
-  @Deprecated
-  public AuthCredentialWithPniResponse issueAuthCredentialWithPniAsServiceId(
-      Aci aci, Pni pni, Instant redemptionTime) {
-    return issueAuthCredentialWithPniAsServiceId(new SecureRandom(), aci, pni, redemptionTime);
-  }
-
-  /**
-   * @deprecated These credentials are no longer supported by the server; use {@link
-   *     #issueAuthCredentialWithPniZkc} instead.
-   */
-  @Deprecated
-  public AuthCredentialWithPniResponse issueAuthCredentialWithPniAsServiceId(
-      SecureRandom secureRandom, Aci aci, Pni pni, Instant redemptionTime) {
-    byte[] random = new byte[RANDOM_LENGTH];
-
-    secureRandom.nextBytes(random);
-
-    byte[] newContents =
-        serverSecretParams.guardedMap(
-            (serverSecretParams) ->
-                Native.ServerSecretParams_IssueAuthCredentialWithPniAsServiceIdDeterministic(
-                    serverSecretParams,
-                    random,
-                    aci.toServiceIdFixedWidthBinary(),
-                    pni.toServiceIdFixedWidthBinary(),
-                    redemptionTime.getEpochSecond()));
-
-    try {
-      return new AuthCredentialWithPniResponse(newContents);
-    } catch (InvalidInputException e) {
-      throw new AssertionError(e);
-    }
-  }
-
   public AuthCredentialWithPniResponse issueAuthCredentialWithPniZkc(
       Aci aci, Pni pni, Instant redemptionTime) {
     return issueAuthCredentialWithPniZkc(new SecureRandom(), aci, pni, redemptionTime);

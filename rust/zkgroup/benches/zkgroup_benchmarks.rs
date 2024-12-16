@@ -5,6 +5,7 @@
 
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator as _};
+use zkgroup::auth::AuthCredentialWithPniZkcResponse;
 use zkgroup::SECONDS_PER_DAY;
 
 fn benchmark_integration_auth(c: &mut Criterion) {
@@ -19,44 +20,42 @@ fn benchmark_integration_auth(c: &mut Criterion) {
     // Random UID and issueTime
     let aci = libsignal_core::Aci::from_uuid_bytes(zkgroup::TEST_ARRAY_16);
     let pni = libsignal_core::Pni::from_uuid_bytes(zkgroup::TEST_ARRAY_16_1);
-    let redemption_time = zkgroup::Timestamp::from_epoch_seconds(123456);
+    let redemption_time = zkgroup::Timestamp::from_epoch_seconds(123456 * SECONDS_PER_DAY);
 
     // SERVER
     // Issue credential
     let randomness = zkgroup::TEST_ARRAY_32_2;
-    let auth_credential_response = server_secret_params
-        .issue_auth_credential_with_pni_as_service_id(randomness, aci, pni, redemption_time);
+    let auth_credential_response = AuthCredentialWithPniZkcResponse::issue_credential(
+        aci,
+        pni,
+        redemption_time,
+        &server_secret_params,
+        randomness,
+    );
 
-    c.bench_function("issue_auth_credential_with_pni_as_service_id", |b| {
+    c.bench_function("issue_auth_credential", |b| {
         b.iter(|| {
-            server_secret_params.issue_auth_credential_with_pni_as_service_id(
-                randomness,
+            AuthCredentialWithPniZkcResponse::issue_credential(
                 aci,
                 pni,
                 redemption_time,
+                &server_secret_params,
+                randomness,
             )
         })
     });
 
     // CLIENT
-    let auth_credential = server_public_params
-        .receive_auth_credential_with_pni_as_service_id(
-            aci,
-            pni,
-            redemption_time,
-            auth_credential_response.clone(),
-        )
+    let auth_credential = auth_credential_response
+        .clone()
+        .receive(aci, pni, redemption_time, &server_public_params)
         .unwrap();
 
     c.bench_function("receive_auth_credential", |b| {
         b.iter(|| {
-            server_public_params
-                .receive_auth_credential_with_pni_as_service_id(
-                    aci,
-                    pni,
-                    redemption_time,
-                    auth_credential_response.clone(),
-                )
+            auth_credential_response
+                .clone()
+                .receive(aci, pni, redemption_time, &server_public_params)
                 .unwrap()
         })
     });
@@ -71,23 +70,14 @@ fn benchmark_integration_auth(c: &mut Criterion) {
     // Create and receive presentation
     let randomness = zkgroup::TEST_ARRAY_32_5;
 
-    let presentation_v2 = server_public_params.create_auth_credential_with_pni_presentation(
-        randomness,
-        group_secret_params,
-        auth_credential.clone(),
-    );
+    let presentation =
+        auth_credential.present(&server_public_params, &group_secret_params, randomness);
 
-    c.bench_function("create_auth_credential_with_pni_presentation", |b| {
-        b.iter(|| {
-            server_public_params.create_auth_credential_with_pni_presentation(
-                randomness,
-                group_secret_params,
-                auth_credential.clone(),
-            )
-        })
+    c.bench_function("create_auth_credential_presentation_v2", |b| {
+        b.iter(|| auth_credential.present(&server_public_params, &group_secret_params, randomness))
     });
 
-    let _presentation_bytes = &bincode::serialize(&presentation_v2).unwrap();
+    let _presentation_bytes = &bincode::serialize(&presentation).unwrap();
 
     //for b in presentation_bytes.iter() {
     //    print!("0x{:02x}, ", b);
@@ -96,12 +86,8 @@ fn benchmark_integration_auth(c: &mut Criterion) {
 
     c.bench_function("verify_auth_credential_presentation_v2", |b| {
         b.iter(|| {
-            server_secret_params
-                .verify_auth_credential_presentation(
-                    group_public_params,
-                    &presentation_v2,
-                    redemption_time,
-                )
+            presentation
+                .verify(&server_secret_params, &group_public_params, redemption_time)
                 .unwrap();
         })
     });

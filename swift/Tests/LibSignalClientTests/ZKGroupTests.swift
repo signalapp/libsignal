@@ -137,7 +137,7 @@ class ZKGroupTests: TestCaseBase {
         // Verify presentation
         let uuidCiphertextRecv = try presentation.getUuidCiphertext()
         XCTAssertEqual(aciCiphertext.serialize(), uuidCiphertextRecv.serialize())
-        XCTAssertEqual(pniCiphertext.serialize(), try presentation.getPniCiphertext()?.serialize())
+        XCTAssertEqual(pniCiphertext.serialize(), try presentation.getPniCiphertext().serialize())
         XCTAssertEqual(try presentation.getRedemptionTime(), Date(timeIntervalSince1970: TimeInterval(redemptionTime)))
         try serverZkAuth.verifyAuthCredentialPresentation(groupPublicParams: groupPublicParams, authCredentialPresentation: presentation, now: Date(timeIntervalSince1970: TimeInterval(redemptionTime)))
     }

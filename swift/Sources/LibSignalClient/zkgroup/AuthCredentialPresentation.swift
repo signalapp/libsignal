@@ -19,10 +19,10 @@ public class AuthCredentialPresentation: ByteArray, @unchecked Sendable {
         }
     }
 
-    public func getPniCiphertext() throws -> UuidCiphertext? {
+    public func getPniCiphertext() throws -> UuidCiphertext {
         return try withUnsafeBorrowedBuffer { buffer in
-            try invokeFnReturningOptionalVariableLengthSerialized {
-                signal_auth_credential_presentation_get_pni_ciphertext_or_empty($0, buffer)
+            try invokeFnReturningSerialized {
+                signal_auth_credential_presentation_get_pni_ciphertext($0, buffer)
             }
         }
     }

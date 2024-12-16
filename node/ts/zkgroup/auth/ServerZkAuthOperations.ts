@@ -20,44 +20,6 @@ export default class ServerZkAuthOperations {
     this.serverSecretParams = serverSecretParams;
   }
 
-  /**
-   * @deprecated These credentials are no longer supported by the server; use `issueAuthCredentialWithPniZkc` instead.
-   */
-  issueAuthCredentialWithPniAsServiceId(
-    aci: Aci,
-    pni: Pni,
-    redemptionTime: number
-  ): AuthCredentialWithPniResponse {
-    const random = randomBytes(RANDOM_LENGTH);
-
-    return this.issueAuthCredentialWithPniAsServiceIdWithRandom(
-      random,
-      aci,
-      pni,
-      redemptionTime
-    );
-  }
-
-  /**
-   * @deprecated These credentials are no longer supported by the server; use `issueAuthCredentialWithPniZkc` instead.
-   */
-  issueAuthCredentialWithPniAsServiceIdWithRandom(
-    random: Buffer,
-    aci: Aci,
-    pni: Pni,
-    redemptionTime: number
-  ): AuthCredentialWithPniResponse {
-    return new AuthCredentialWithPniResponse(
-      Native.ServerSecretParams_IssueAuthCredentialWithPniAsServiceIdDeterministic(
-        this.serverSecretParams,
-        random,
-        aci.getServiceIdFixedWidthBinary(),
-        pni.getServiceIdFixedWidthBinary(),
-        redemptionTime
-      )
-    );
-  }
-
   issueAuthCredentialWithPniZkc(
     aci: Aci,
     pni: Pni,

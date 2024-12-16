@@ -610,7 +610,6 @@ public final class Native {
   public static native void ServerSecretParams_Destroy(long handle);
   public static native long ServerSecretParams_GenerateDeterministic(byte[] randomness);
   public static native long ServerSecretParams_GetPublicParams(long params);
-  public static native byte[] ServerSecretParams_IssueAuthCredentialWithPniAsServiceIdDeterministic(long serverSecretParams, byte[] randomness, byte[] aci, byte[] pni, long redemptionTime);
   public static native byte[] ServerSecretParams_IssueAuthCredentialWithPniZkcDeterministic(long serverSecretParams, byte[] randomness, byte[] aci, byte[] pni, long redemptionTime);
   public static native byte[] ServerSecretParams_IssueExpiringProfileKeyCredentialDeterministic(long serverSecretParams, byte[] randomness, byte[] request, byte[] userId, byte[] commitment, long expirationInSeconds) throws Exception;
   public static native byte[] ServerSecretParams_IssueReceiptCredentialDeterministic(long serverSecretParams, byte[] randomness, byte[] request, long receiptExpirationTime, long receiptLevel);
