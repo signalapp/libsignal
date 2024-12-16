@@ -26,16 +26,16 @@ let groupSendEndorsementsSuite = BenchmarkSuite(name: "GroupSendEndorsements") {
         let response = GroupSendEndorsementsResponse.issue(groupMembers: encryptedMembers, keyPair: keyPair)
 
         suite.benchmark("receiveWithServiceIds/\(groupSize)") {
-            _ = try! response.receive(groupMembers: members, localUser: members[0], groupParams: groupParams, serverParams: serverPublicParams)
+            blackHole(try! response.receive(groupMembers: members, localUser: members[0], groupParams: groupParams, serverParams: serverPublicParams))
         }
         suite.benchmark("receiveWithCiphertexts/\(groupSize)") {
-            _ = try! response.receive(groupMembers: encryptedMembers, localUser: encryptedMembers[0], serverParams: serverPublicParams)
+            blackHole(try! response.receive(groupMembers: encryptedMembers, localUser: encryptedMembers[0], serverParams: serverPublicParams))
         }
 
         let endorsements = try! response.receive(groupMembers: members, localUser: members[0], groupParams: groupParams, serverParams: serverPublicParams)
 
         suite.benchmark("toToken/\(groupSize)") {
-            _ = endorsements.endorsements.map { $0.toToken(groupParams: groupParams) }
+            blackHole(endorsements.endorsements.map { $0.toToken(groupParams: groupParams) })
         }
     }
 }
