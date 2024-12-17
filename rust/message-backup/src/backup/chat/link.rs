@@ -21,6 +21,8 @@ pub struct LinkPreview {
 #[derive(Debug, displaydoc::Display, thiserror::Error)]
 #[cfg_attr(test, derive(PartialEq))]
 pub enum LinkPreviewError {
+    /// missing url
+    EmptyUrl,
     /// image: {0}
     Image(FilePointerError),
 }
@@ -37,6 +39,10 @@ impl<C: ReportUnusualTimestamp> TryFromWith<proto::LinkPreview, C> for LinkPrevi
             date,
             special_fields: _,
         } = value;
+
+        if url.is_empty() {
+            return Err(LinkPreviewError::EmptyUrl);
+        }
 
         let date = date.map(|d| Timestamp::from_millis(d, "LinkPreview.date", context));
 
@@ -78,7 +84,7 @@ mod test {
     }
 
     #[test_case(|_| {} => Ok(()); "valid")]
-    #[test_case(|x| x.url = "".into() => Ok(()); "empty url")]
+    #[test_case(|x| x.url = "".into() => Err(LinkPreviewError::EmptyUrl); "empty url")]
     #[test_case(|x| x.title = None => Ok(()); "no title")]
     #[test_case(|x| x.title = Some("".into()) => Ok(()); "empty title")]
     #[test_case(|x| x.image = None.into() => Ok(()); "no image")]
