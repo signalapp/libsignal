@@ -8,6 +8,7 @@ accepted = [
     "ISC",
     "AGPL-3.0",
     "OpenSSL",
+    "Unicode-3.0",
     "Unicode-DFS-2016",
 ]
 
