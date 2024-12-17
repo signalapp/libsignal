@@ -1,0 +1,5 @@
+[advisories]
+ignore = [
+    "RUSTSEC-2024-0370", # proc-macro-error is unmaintained, used by libcrux
+    "RUSTSEC-2024-0381", # pqcrypto-kyber is unmaintained
+]
