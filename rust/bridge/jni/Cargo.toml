@@ -32,6 +32,6 @@ cpufeatures = "0.2.2" # Make sure 64-bit Android gets optimized crypto
 
 [target.'cfg(target_os = "android")'.dependencies]
 jni19 = { version = "0.19", package = "jni" }
-rustls-platform-verifier = "0.3.1"
+rustls-platform-verifier = { workspace = true }
 # Make sure we're using the system zlib on Android.
 flate2 = { version = "1", default-features = false, features = ["zlib"] }

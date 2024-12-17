@@ -2685,7 +2685,7 @@ third-party/chromium/LICENSE.
 
 ```
 
-## windows-core 0.52.0, windows-sys 0.45.0, windows-sys 0.48.0, windows-sys 0.52.0, windows-sys 0.59.0, windows-targets 0.42.2, windows-targets 0.48.5, windows-targets 0.52.6, windows_aarch64_msvc 0.42.2, windows_aarch64_msvc 0.48.5, windows_aarch64_msvc 0.52.6, windows_x86_64_gnu 0.48.5, windows_x86_64_gnu 0.52.6, windows_x86_64_msvc 0.42.2, windows_x86_64_msvc 0.48.5, windows_x86_64_msvc 0.52.6
+## windows-core 0.52.0, windows-sys 0.45.0, windows-sys 0.52.0, windows-sys 0.59.0, windows-targets 0.42.2, windows-targets 0.48.5, windows-targets 0.52.6, windows_aarch64_msvc 0.42.2, windows_aarch64_msvc 0.48.5, windows_aarch64_msvc 0.52.6, windows_x86_64_gnu 0.48.5, windows_x86_64_gnu 0.52.6, windows_x86_64_msvc 0.42.2, windows_x86_64_msvc 0.48.5, windows_x86_64_msvc 0.52.6
 
 ```
     MIT License
@@ -3990,7 +3990,7 @@ DEALINGS IN THE SOFTWARE.
 
 ```
 
-## rustls-native-certs 0.7.3, rustls-pemfile 2.1.3, rustls 0.22.4, rustls 0.23.13
+## rustls-native-certs 0.7.3, rustls-pemfile 2.1.3, rustls 0.22.4, rustls 0.23.20
 
 ```
 Copyright (c) 2016 Joseph Birr-Pixton <jpixton@gmail.com>
@@ -5999,7 +5999,7 @@ SOFTWARE.
 
 ```
 
-## rustls-pki-types 1.8.0
+## rustls-pki-types 1.10.1
 
 ```
 Copyright (c) 2023 Dirkjan Ochtman <dirkjan@ochtman.nl>
@@ -6917,7 +6917,7 @@ SOFTWARE.
 
 ```
 
-## rustls-platform-verifier-android 0.1.1, rustls-platform-verifier 0.3.4
+## rustls-platform-verifier-android 0.1.1, rustls-platform-verifier 0.4.0
 
 ```
 MIT License
