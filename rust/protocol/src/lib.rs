@@ -24,7 +24,6 @@
 
 mod consts;
 mod crypto;
-mod curve;
 pub mod error;
 mod fingerprint;
 mod group_cipher;
@@ -41,9 +40,7 @@ mod session_cipher;
 mod state;
 mod storage;
 mod timestamp;
-mod utils;
 
-pub use curve::{KeyPair, PrivateKey, PublicKey};
 use error::Result;
 pub use error::SignalProtocolError;
 pub use fingerprint::{DisplayableFingerprint, Fingerprint, ScannableFingerprint};
@@ -52,6 +49,7 @@ pub use group_cipher::{
     process_sender_key_distribution_message,
 };
 pub use identity_key::{IdentityKey, IdentityKeyPair};
+pub use libsignal_core::curve::{KeyPair, PrivateKey, PublicKey};
 pub use libsignal_core::{
     Aci, DeviceId, Pni, ProtocolAddress, ServiceId, ServiceIdFixedWidthBinaryBytes, ServiceIdKind,
 };

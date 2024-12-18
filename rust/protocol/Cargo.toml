@@ -23,7 +23,6 @@ arrayref = "0.3.6"
 assert_matches = { workspace = true }
 async-trait = { workspace = true }
 ctr = { workspace = true, features = ["zeroize"] }
-curve25519-dalek = { workspace = true, features = ["digest"] }
 derive-where = { workspace = true }
 displaydoc = { workspace = true }
 hex = { workspace = true }
@@ -43,7 +42,6 @@ sha2 = { workspace = true }
 subtle = { workspace = true }
 thiserror = { workspace = true }
 uuid = { workspace = true }
-x25519-dalek = { workspace = true, features = ["static_secrets"] }
 
 # WARNING: pqcrypto-kyber 0.8 and 0.7 don't actually coexist, they both depend on the same C symbols.
 # We keep this here for if/when that gets cleared up.
@@ -66,10 +64,6 @@ proptest = { workspace = true }
 
 [build-dependencies]
 prost-build = { workspace = true }
-
-[[bench]]
-name = "curve"
-harness = false
 
 [[bench]]
 name = "session"

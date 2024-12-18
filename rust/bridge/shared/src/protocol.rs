@@ -118,14 +118,14 @@ fn ProtocolAddress_New(name: String, device_id: u32) -> ProtocolAddress {
 
 #[bridge_fn(ffi = "publickey_deserialize", jni = false)]
 fn PublicKey_Deserialize(data: &[u8]) -> Result<PublicKey> {
-    PublicKey::deserialize(data)
+    Ok(PublicKey::deserialize(data)?)
 }
 
 // Alternate implementation to deserialize from an offset.
 #[bridge_fn(ffi = false, node = false)]
 fn ECPublicKey_Deserialize(data: &[u8], offset: u32) -> Result<PublicKey> {
     let offset = offset as usize;
-    PublicKey::deserialize(&data[offset..])
+    Ok(PublicKey::deserialize(&data[offset..])?)
 }
 
 bridge_get!(
@@ -164,13 +164,13 @@ fn ECPublicKey_Compare(key1: &PublicKey, key2: &PublicKey) -> i32 {
 }
 
 #[bridge_fn(ffi = "publickey_verify", node = "PublicKey_Verify")]
-fn ECPublicKey_Verify(key: &PublicKey, message: &[u8], signature: &[u8]) -> Result<bool> {
+fn ECPublicKey_Verify(key: &PublicKey, message: &[u8], signature: &[u8]) -> bool {
     key.verify_signature(message, signature)
 }
 
 #[bridge_fn(ffi = "privatekey_deserialize", jni = "ECPrivateKey_1Deserialize")]
 fn PrivateKey_Deserialize(data: &[u8]) -> Result<PrivateKey> {
-    PrivateKey::deserialize(data)
+    Ok(PrivateKey::deserialize(data)?)
 }
 
 bridge_get!(
@@ -188,7 +188,7 @@ fn ECPrivateKey_Generate() -> PrivateKey {
 
 #[bridge_fn(ffi = "privatekey_get_public_key", node = "PrivateKey_GetPublicKey")]
 fn ECPrivateKey_GetPublicKey(k: &PrivateKey) -> Result<PublicKey> {
-    k.public_key()
+    Ok(k.public_key()?)
 }
 
 #[bridge_fn(ffi = "privatekey_sign", node = "PrivateKey_Sign")]

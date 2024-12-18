@@ -62,15 +62,18 @@ impl PreKeyRecord {
     }
 
     pub fn key_pair(&self) -> Result<KeyPair> {
-        KeyPair::from_public_and_private(&self.pre_key.public_key, &self.pre_key.private_key)
+        Ok(KeyPair::from_public_and_private(
+            &self.pre_key.public_key,
+            &self.pre_key.private_key,
+        )?)
     }
 
     pub fn public_key(&self) -> Result<PublicKey> {
-        PublicKey::deserialize(&self.pre_key.public_key)
+        Ok(PublicKey::deserialize(&self.pre_key.public_key)?)
     }
 
     pub fn private_key(&self) -> Result<PrivateKey> {
-        PrivateKey::deserialize(&self.pre_key.private_key)
+        Ok(PrivateKey::deserialize(&self.pre_key.private_key)?)
     }
 
     pub fn serialize(&self) -> Result<Vec<u8>> {

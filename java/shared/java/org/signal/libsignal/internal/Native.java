@@ -286,7 +286,7 @@ public final class Native {
   public static native boolean ECPublicKey_Equals(long lhs, long rhs);
   public static native byte[] ECPublicKey_GetPublicKeyBytes(long obj) throws Exception;
   public static native byte[] ECPublicKey_Serialize(long obj) throws Exception;
-  public static native boolean ECPublicKey_Verify(long key, byte[] message, byte[] signature) throws Exception;
+  public static native boolean ECPublicKey_Verify(long key, byte[] message, byte[] signature);
 
   public static native void ExpiringProfileKeyCredentialResponse_CheckValidContents(byte[] buffer) throws Exception;
 

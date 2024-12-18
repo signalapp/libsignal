@@ -59,8 +59,7 @@ public class ECPublicKey extends NativeHandleGuard.SimpleOwner implements Compar
 
   public boolean verifySignature(byte[] message, byte[] signature) {
     try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return filterExceptions(
-          () -> Native.ECPublicKey_Verify(guard.nativeHandle(), message, signature));
+      return Native.ECPublicKey_Verify(guard.nativeHandle(), message, signature);
     }
   }
 

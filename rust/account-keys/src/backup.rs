@@ -11,8 +11,8 @@
 //! SVR, so that a restorer can reconstruct the `BackupId`.
 
 use hkdf::Hkdf;
+use libsignal_core::curve::PrivateKey;
 use libsignal_core::Aci;
-use libsignal_protocol::PrivateKey;
 use partial_default::PartialDefault;
 use sha2::Sha256;
 
@@ -79,8 +79,7 @@ impl BackupKey<V1> {
         Hkdf::<Sha256>::new(None, &self.0)
             .expand_multi_info(&[INFO, &aci.service_id_binary()], &mut private_key_bytes)
             .expect("valid length");
-        libsignal_protocol::PrivateKey::deserialize(&private_key_bytes)
-            .expect("correctly generated")
+        PrivateKey::deserialize(&private_key_bytes).expect("correctly generated")
     }
 
     pub fn derive_local_backup_metadata_key(&self) -> [u8; LOCAL_BACKUP_METADATA_KEY_LEN] {

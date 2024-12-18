@@ -4,6 +4,8 @@
 //
 
 mod address;
+// Not exporting the members because they have overly-generic names.
+pub mod curve;
 mod e164;
 mod version;
 

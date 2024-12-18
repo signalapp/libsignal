@@ -2159,7 +2159,6 @@ dependencies = [
  "hkdf",
  "hmac",
  "libsignal-core",
- "libsignal-protocol",
  "partial-default",
  "proptest",
  "rand",
@@ -2307,11 +2306,17 @@ name = "libsignal-core"
 version = "0.1.0"
 dependencies = [
  "assert_matches",
+ "criterion",
+ "curve25519-dalek",
+ "displaydoc",
  "hex-literal",
  "num_enum",
  "proptest",
  "rand",
+ "sha2",
+ "subtle",
  "uuid",
+ "x25519-dalek",
 ]
 
 [[package]]
@@ -2596,7 +2601,6 @@ dependencies = [
  "clap",
  "criterion",
  "ctr",
- "curve25519-dalek",
  "derive-where",
  "displaydoc",
  "env_logger",
@@ -2624,7 +2628,6 @@ dependencies = [
  "subtle",
  "thiserror",
  "uuid",
- "x25519-dalek",
 ]
 
 [[package]]

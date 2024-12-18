@@ -17,7 +17,7 @@ use rand::{CryptoRng, Rng};
 use subtle::ConstantTimeEq;
 
 use crate::{
-    crypto, curve, message_encrypt, proto, session_cipher, Aci, CiphertextMessageType, DeviceId,
+    crypto, message_encrypt, proto, session_cipher, Aci, CiphertextMessageType, DeviceId,
     Direction, IdentityKey, IdentityKeyPair, IdentityKeyStore, KeyPair, KyberPreKeyStore,
     PreKeySignalMessage, PreKeyStore, PrivateKey, ProtocolAddress, PublicKey, Result, ServiceId,
     ServiceIdFixedWidthBinaryBytes, SessionRecord, SessionStore, SignalMessage,
@@ -131,7 +131,7 @@ impl ServerCertificate {
             );
             return Ok(false);
         }
-        trust_root.verify_signature(&self.certificate, &self.signature)
+        Ok(trust_root.verify_signature(&self.certificate, &self.signature))
     }
 
     pub fn key_id(&self) -> Result<u32> {
@@ -273,7 +273,7 @@ impl SenderCertificate {
         if !self
             .signer
             .public_key()?
-            .verify_signature(&self.certificate, &self.signature)?
+            .verify_signature(&self.certificate, &self.signature)
         {
             log::error!("sender certificate not signed by server");
             return Ok(false);
@@ -577,7 +577,7 @@ impl UnidentifiedSenderMessage {
                 if remaining.len()
                     < sealed_sender_v2::MESSAGE_KEY_LEN
                         + sealed_sender_v2::AUTH_TAG_LEN
-                        + curve::curve25519::PUBLIC_KEY_LENGTH
+                        + sealed_sender_v2::PUBLIC_KEY_LEN
                 {
                     return Err(SignalProtocolError::InvalidProtobufEncoding);
                 }
@@ -586,7 +586,7 @@ impl UnidentifiedSenderMessage {
                 let (encrypted_authentication_tag, remaining) =
                     remaining.split_at(sealed_sender_v2::AUTH_TAG_LEN);
                 let (ephemeral_public, encrypted_message) =
-                    remaining.split_at(curve::curve25519::PUBLIC_KEY_LENGTH);
+                    remaining.split_at(sealed_sender_v2::PUBLIC_KEY_LEN);
 
                 Ok(Self::V2 {
                     ephemeral_public: PublicKey::from_djb_public_key_bytes(ephemeral_public)?,
@@ -921,6 +921,8 @@ mod sealed_sender_v2 {
     pub const CIPHER_KEY_LEN: usize =
         <Aes256GcmSiv as aes_gcm_siv::aead::KeySizeUser>::KeySize::USIZE;
     pub const AUTH_TAG_LEN: usize = 16;
+    /// SSv2 hardcodes that its keys are Curve25519 public keys.
+    pub const PUBLIC_KEY_LEN: usize = 32;
 
     /// An asymmetric and a symmetric cipher key.
     pub(super) struct DerivedKeys {
@@ -1489,7 +1491,7 @@ where
         serialized.push(0);
     }
 
-    serialized.extend_from_slice(e_pub.public_key_bytes()?);
+    serialized.extend_from_slice(e_pub.public_key_bytes());
     serialized.extend_from_slice(&ciphertext);
 
     Ok(serialized)
@@ -1635,7 +1637,7 @@ impl<'a> SealedSenderV2SentMessage<'a> {
             };
         }
 
-        if remaining.len() < curve::curve25519::PUBLIC_KEY_LENGTH {
+        if remaining.len() < sealed_sender_v2::PUBLIC_KEY_LEN {
             return Err(SignalProtocolError::InvalidProtobufEncoding);
         }
 

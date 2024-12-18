@@ -14,11 +14,21 @@ license = "AGPL-3.0-only"
 workspace = true
 
 [dependencies]
+curve25519-dalek = { workspace = true, features = ["digest"] }
+displaydoc = { workspace = true }
 num_enum = { workspace = true }
+rand = { workspace = true }
+sha2 = { workspace = true }
+subtle = { workspace = true }
 uuid = { workspace = true }
+x25519-dalek = { workspace = true, features = ["static_secrets"] }
 
 [dev-dependencies]
 assert_matches = { workspace = true }
+criterion = { workspace = true }
 hex-literal = { workspace = true }
 proptest = { workspace = true }
-rand = { workspace = true }
+
+[[bench]]
+name = "curve"
+harness = false

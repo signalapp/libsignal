@@ -6,10 +6,10 @@
 use std::panic::UnwindSafe;
 
 use displaydoc::Display;
+use libsignal_core::curve::{CurveError, KeyType};
 use thiserror::Error;
 use uuid::Uuid;
 
-use crate::curve::KeyType;
 use crate::kem;
 
 pub type Result<T> = std::result::Result<T, SignalProtocolError>;
@@ -110,5 +110,15 @@ impl SignalProtocolError {
         method: &'static str,
     ) -> impl FnOnce(E) -> Self {
         move |error| Self::ApplicationCallbackError(method, Box::new(error))
+    }
+}
+
+impl From<CurveError> for SignalProtocolError {
+    fn from(e: CurveError) -> Self {
+        match e {
+            CurveError::NoKeyTypeIdentifier => Self::NoKeyTypeIdentifier,
+            CurveError::BadKeyType(raw) => Self::BadKeyType(raw),
+            CurveError::BadKeyLength(key_type, len) => Self::BadKeyLength(key_type, len),
+        }
     }
 }

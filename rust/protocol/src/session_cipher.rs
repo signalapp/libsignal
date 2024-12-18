@@ -131,10 +131,7 @@ pub async fn message_encrypt(
     {
         log::warn!(
             "Identity key {} is not trusted for remote address {}",
-            their_identity_key
-                .public_key()
-                .public_key_bytes()
-                .map_or_else(|e| format!("<error: {}>", e), hex::encode),
+            hex::encode(their_identity_key.public_key().public_key_bytes()),
             remote_address,
         );
         return Err(SignalProtocolError::UntrustedIdentity(
@@ -293,10 +290,7 @@ pub async fn message_decrypt_signal<R: Rng + CryptoRng>(
     {
         log::warn!(
             "Identity key {} is not trusted for remote address {}",
-            their_identity_key
-                .public_key()
-                .public_key_bytes()
-                .map_or_else(|e| format!("<error: {}>", e), hex::encode),
+            hex::encode(their_identity_key.public_key().public_key_bytes()),
             remote_address,
         );
         return Err(SignalProtocolError::UntrustedIdentity(
@@ -379,7 +373,7 @@ fn create_decryption_failure_log(
     lines.push(format!(
         "Message from {} failed to decrypt; sender ratchet public key {} message counter {}",
         remote_address,
-        hex::encode(ciphertext.sender_ratchet_key().public_key_bytes()?),
+        hex::encode(ciphertext.sender_ratchet_key().public_key_bytes()),
         ciphertext.counter()
     ));
 
@@ -425,10 +419,7 @@ fn decrypt_message_with_record<R: Rng + CryptoRng>(
             "Failed to decrypt {:?} message with ratchet key: {} and counter: {}. \
              Session loaded for {}. Local session has base key: {} and counter: {}. {}",
             original_message_type,
-            ciphertext
-                .sender_ratchet_key()
-                .public_key_bytes()
-                .map_or_else(|e| format!("<error: {}>", e), hex::encode),
+            hex::encode(ciphertext.sender_ratchet_key().public_key_bytes()),
             ciphertext.counter(),
             remote_address,
             state

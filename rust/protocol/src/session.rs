@@ -161,7 +161,7 @@ pub async fn process_prekey_bundle<R: Rng + CryptoRng>(
     if !their_identity_key.public_key().verify_signature(
         &bundle.signed_pre_key_public()?.serialize(),
         bundle.signed_pre_key_signature()?,
-    )? {
+    ) {
         return Err(SignalProtocolError::SignatureValidationFailed);
     }
 
@@ -171,7 +171,7 @@ pub async fn process_prekey_bundle<R: Rng + CryptoRng>(
             bundle
                 .kyber_pre_key_signature()?
                 .expect("signature must be present"),
-        )? {
+        ) {
             return Err(SignalProtocolError::SignatureValidationFailed);
         }
     }

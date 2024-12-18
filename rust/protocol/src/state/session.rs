@@ -194,11 +194,7 @@ impl SessionState {
     }
 
     pub(crate) fn sender_ratchet_key_for_logging(&self) -> Result<String, InvalidSessionError> {
-        Ok(hex::encode(
-            self.sender_ratchet_key()?
-                .public_key_bytes()
-                .expect("no invalid public keys"),
-        ))
+        Ok(hex::encode(self.sender_ratchet_key()?.public_key_bytes()))
     }
 
     pub(crate) fn sender_ratchet_private_key(&self) -> Result<PrivateKey, InvalidSessionError> {

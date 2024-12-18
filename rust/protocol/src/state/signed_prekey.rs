@@ -40,7 +40,7 @@ pub struct SignedPreKeyRecord {
 
 impl SignedPreKeyRecord {
     pub fn private_key(&self) -> Result<PrivateKey> {
-        PrivateKey::deserialize(&self.get_storage().private_key)
+        Ok(PrivateKey::deserialize(&self.get_storage().private_key)?)
     }
 }
 
@@ -144,7 +144,7 @@ impl KeySerde for PublicKey {
     }
 
     fn deserialize<T: AsRef<[u8]>>(bytes: T) -> Result<Self> {
-        Self::deserialize(bytes.as_ref())
+        Ok(Self::deserialize(bytes.as_ref())?)
     }
 }
 
@@ -154,7 +154,7 @@ impl KeySerde for PrivateKey {
     }
 
     fn deserialize<T: AsRef<[u8]>>(bytes: T) -> Result<Self> {
-        Self::deserialize(bytes.as_ref())
+        Ok(Self::deserialize(bytes.as_ref())?)
     }
 }
 
@@ -188,7 +188,7 @@ impl KeyPairSerde for KeyPair {
     type PrivateKey = PrivateKey;
 
     fn from_public_and_private(public_key: &[u8], private_key: &[u8]) -> Result<Self> {
-        KeyPair::from_public_and_private(public_key, private_key)
+        Ok(KeyPair::from_public_and_private(public_key, private_key)?)
     }
 
     fn get_public(&self) -> &PublicKey {

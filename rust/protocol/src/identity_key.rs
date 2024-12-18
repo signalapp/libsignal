@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-//! Wrappers over cryptographic primitives from [`crate::curve`] to represent a user.
+//! Wrappers over cryptographic primitives from [`libsignal_core::curve`] to represent a user.
 
 #![warn(missing_docs)]
 
@@ -53,14 +53,14 @@ impl IdentityKey {
     ///
     /// `signature` must be calculated from [`IdentityKeyPair::sign_alternate_identity`].
     pub fn verify_alternate_identity(&self, other: &IdentityKey, signature: &[u8]) -> Result<bool> {
-        self.public_key.verify_signature_for_multipart_message(
+        Ok(self.public_key.verify_signature_for_multipart_message(
             &[
                 ALTERNATE_IDENTITY_SIGNATURE_PREFIX_1,
                 ALTERNATE_IDENTITY_SIGNATURE_PREFIX_2,
                 &other.serialize(),
             ],
             signature,
-        )
+        ))
     }
 }
 
@@ -147,14 +147,14 @@ impl IdentityKeyPair {
         other: &IdentityKey,
         rng: &mut R,
     ) -> Result<Box<[u8]>> {
-        self.private_key.calculate_signature_for_multipart_message(
+        Ok(self.private_key.calculate_signature_for_multipart_message(
             &[
                 ALTERNATE_IDENTITY_SIGNATURE_PREFIX_1,
                 ALTERNATE_IDENTITY_SIGNATURE_PREFIX_2,
                 &other.serialize(),
             ],
             rng,
-        )
+        )?)
     }
 }
 

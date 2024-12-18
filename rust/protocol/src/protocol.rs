@@ -483,7 +483,7 @@ impl SenderKeyMessage {
         let valid = signature_key.verify_signature(
             &self.serialized[..self.serialized.len() - Self::SIGNATURE_LEN],
             &self.serialized[self.serialized.len() - Self::SIGNATURE_LEN..],
-        )?;
+        );
 
         Ok(valid)
     }

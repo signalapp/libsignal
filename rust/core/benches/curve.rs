@@ -4,7 +4,7 @@
 //
 
 use criterion::{criterion_group, criterion_main, Criterion};
-use libsignal_protocol::KeyPair;
+use libsignal_core::curve::KeyPair;
 use rand::{thread_rng, Rng};
 
 pub fn generation(c: &mut Criterion) {
@@ -35,12 +35,7 @@ pub fn signatures(c: &mut Criterion) {
     let sig = alice_key.calculate_signature(&some_data, rng).unwrap();
 
     c.bench_function("verify signature", |b| {
-        b.iter(|| {
-            alice_key
-                .public_key
-                .verify_signature(&some_data, &sig)
-                .unwrap()
-        })
+        b.iter(|| alice_key.public_key.verify_signature(&some_data, &sig))
     });
 }
 
