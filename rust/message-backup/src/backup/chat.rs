@@ -69,6 +69,8 @@ use voice_message::*;
 #[derive(Debug, displaydoc::Display, thiserror::Error)]
 #[cfg_attr(test, derive(PartialEq))]
 pub enum ChatError {
+    /// 0 is not a valid chat ID
+    InvalidId,
     /// multiple records with the same ID
     DuplicateId,
     /// no record for {0:?}

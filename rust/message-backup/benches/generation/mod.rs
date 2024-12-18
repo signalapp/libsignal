@@ -107,7 +107,7 @@ pub fn generate_frames(
         ..Default::default()
     });
 
-    let self_id = 0;
+    let self_id = number_of_conversations + 1;
     let self_recipient = frame(proto::Recipient {
         id: self_id,
         destination: Some(proto::recipient::Destination::Self_(Default::default())),

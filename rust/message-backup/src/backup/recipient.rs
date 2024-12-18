@@ -31,6 +31,8 @@ pub(crate) const MY_STORY_UUID: Uuid = Uuid::nil();
 #[derive(Debug, thiserror::Error, displaydoc::Display)]
 #[cfg_attr(test, derive(PartialEq))]
 pub enum RecipientError {
+    /// 0 is not a valid recipient ID
+    InvalidId,
     /// multiple frames with the same ID
     DuplicateRecipient,
     /// Recipient.destination is a oneof but is empty

@@ -693,6 +693,10 @@ impl<M: Method + ReferencedTypes> PartialBackup<M> {
     fn add_recipient(&mut self, recipient: proto::Recipient) -> Result<(), RecipientFrameError> {
         let id = recipient.id();
         let err_with_id = |e| RecipientFrameError(id, e);
+        if id == RecipientId(0) {
+            return Err(err_with_id(RecipientError::InvalidId));
+        }
+
         let recipient =
             recipient::Destination::try_from_with(recipient, self).map_err(err_with_id)?;
 
@@ -707,11 +711,12 @@ impl<M: Method + ReferencedTypes> PartialBackup<M> {
 
     fn add_chat(&mut self, chat: proto::Chat) -> Result<(), ChatFrameError> {
         let id = chat.id();
+        let err_with_id = |e| ChatFrameError(id, e);
+        if id == ChatId(0) {
+            return Err(err_with_id(ChatError::InvalidId));
+        }
 
-        let chat: ChatData<M> = chat
-            .try_into_with(self)
-            .map_err(|e| ChatFrameError(id, e))?;
-
+        let chat: ChatData<M> = chat.try_into_with(self).map_err(err_with_id)?;
         self.chats.add_chat(id, chat)?;
         Ok(())
     }
@@ -1347,5 +1352,42 @@ mod test {
             .expect("valid recipient");
 
         CompletedBackup::try_from(partial).expect("ACI and PNI are different namespaces");
+    }
+
+    #[test_matrix([ValidateOnly::empty(), Store::empty()])]
+    fn zero_recipient_id<M: Method + ReferencedTypes>(mut partial: PartialBackup<M>) {
+        partial
+            .add_account_data(proto::AccountData::test_data())
+            .expect("valid account data");
+
+        let mut contact = proto::Recipient::test_data_contact();
+        contact.id = 0;
+
+        assert_matches!(
+            partial.add_recipient(contact),
+            Err(RecipientFrameError(
+                RecipientId(0),
+                RecipientError::InvalidId
+            ))
+        );
+    }
+
+    #[test_matrix([ValidateOnly::empty(), Store::empty()])]
+    fn zero_chat_id<M: Method + ReferencedTypes>(mut partial: PartialBackup<M>) {
+        partial
+            .add_account_data(proto::AccountData::test_data())
+            .expect("valid account data");
+
+        partial
+            .add_recipient(proto::Recipient::test_data_contact())
+            .expect("valid recipient");
+
+        let mut chat = proto::Chat::test_data();
+        chat.id = 0;
+
+        assert_matches!(
+            partial.add_chat(chat),
+            Err(ChatFrameError(ChatId(0), ChatError::InvalidId))
+        );
     }
 }
