@@ -64,6 +64,8 @@ pub enum RecipientError {
     DistributionListPrivacyInvalid(proto::distribution_list::PrivacyMode),
     /// distribution list has members but has privacy ALL
     DistributionListPrivacyAllWithNonemptyMembers,
+    /// distribution list has no members but has privacy ALL_EXCEPT
+    DistributionListPrivacyAllExceptWithEmptyMembers,
     /// invalid call link: {0}
     InvalidCallLink(#[from] CallLinkError),
     /// contact has invalid username
@@ -555,6 +557,11 @@ impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R> + ReportUnusualTim
                             PrivacyMode::OnlyWith(members)
                         }
                         (proto::distribution_list::PrivacyMode::ALL_EXCEPT, true) => {
+                            if members.is_empty() {
+                                return Err(
+                                    RecipientError::DistributionListPrivacyAllExceptWithEmptyMembers,
+                                );
+                            }
                             PrivacyMode::AllExcept(members)
                         }
                         (proto::distribution_list::PrivacyMode::ALL, true) => {
@@ -845,6 +852,15 @@ mod test {
         Err(RecipientError::DistributionListPrivacyAllWithNonemptyMembers);
         "privacy_mode_all_with_nonempty_members"
     )]
+    #[test_case(
+        |x| x.mut_distributionList().memberRecipientIds.clear() =>
+        Err(RecipientError::DistributionListPrivacyAllExceptWithEmptyMembers);
+        "privacy_mode_all_except_with_empty_members"
+    )]
+    #[test_case(|x| {
+        x.mut_distributionList().privacyMode = proto::distribution_list::PrivacyMode::ONLY_WITH.into();
+        x.mut_distributionList().memberRecipientIds.clear();
+    } => Ok(()); "privacy_mode_only_with_empty_members")]
     #[test_case(
         |x| x.distributionId = proto::DistributionListItem::TEST_CUSTOM_UUID.into() => Err(RecipientError::DistributionListPrivacyInvalid(proto::distribution_list::PrivacyMode::ALL_EXCEPT));
         "privacy_mode_for_custom_story"
