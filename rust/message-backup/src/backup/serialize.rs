@@ -554,6 +554,7 @@ mod test {
     const FIRST_CONTACT_ID: RecipientId = RecipientId(100);
     const SECOND_CONTACT_ID: RecipientId = RecipientId(101);
     const GROUP_ID: RecipientId = RecipientId(102);
+    const SELF_ID: RecipientId = RecipientId(10);
 
     #[test]
     fn shuffled_chats_and_recipient_ids() {
@@ -576,6 +577,11 @@ mod test {
         });
 
         let chat_frames = vec![
+            // Self-recipient
+            make_recipient(
+                SELF_ID,
+                &proto::recipient::Destination::Self_(Default::default()),
+            ),
             // Chat with FIRST_CONTACT
             make_recipient(FIRST_CONTACT_ID, &first_contact),
             make_chat(FIRST_CONTACT_CHAT_ID, FIRST_CONTACT_ID),
@@ -604,6 +610,11 @@ mod test {
             make_chat(
                 FIRST_CONTACT_CHAT_ID.renumbered(),
                 FIRST_CONTACT_ID.renumbered(),
+            ),
+            // Self-recipient is late.
+            make_recipient(
+                SELF_ID.renumbered(),
+                &proto::recipient::Destination::Self_(Default::default()),
             ),
             // The same messages appear in the same global order as above.
             make_chat_item(
@@ -641,6 +652,10 @@ mod test {
                 item: Some(proto::AccountData::test_data().into()),
                 special_fields: Default::default(),
             },
+            make_recipient(
+                SELF_ID,
+                &proto::recipient::Destination::Self_(Default::default()),
+            ),
             make_recipient(FIRST_CONTACT_ID, &first_contact),
             make_chat(FIRST_CONTACT_CHAT_ID, FIRST_CONTACT_ID),
             make_recipient(SECOND_CONTACT_ID, &second_contact),

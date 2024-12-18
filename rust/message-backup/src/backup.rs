@@ -180,6 +180,8 @@ pub enum CompletionError {
     MissingAllChatFolder,
     /// multiple ALL ChatFolders found
     DuplicateAllChatFolder,
+    /// no Self recipient found
+    MissingSelfRecipient,
     /// {0:?} and {1:?} have the same phone number
     DuplicateContactE164(RecipientId, RecipientId),
     /// {0:?} and {1:?} have the same ACI
@@ -416,6 +418,10 @@ impl<M: Method + ReferencedTypes> CompletedBackup<M> {
                 }
                 Ok(())
             })?;
+        }
+
+        if self_recipient.is_none() {
+            return Err(CompletionError::MissingSelfRecipient);
         }
 
         Ok(())
@@ -1145,6 +1151,9 @@ mod test {
             .add_frame_item(proto::AccountData::test_data().into())
             .expect("accepts AccountData");
         partial
+            .add_recipient(proto::Recipient::test_data())
+            .expect("self recipient");
+        partial
             .add_frame_item(FrameItem::ChatFolder(proto::ChatFolder::all_folder_data()))
             .expect("accepts ChatFolder");
 
@@ -1334,6 +1343,10 @@ mod test {
             .add_account_data(proto::AccountData::test_data())
             .expect("valid account data");
 
+        partial
+            .add_recipient(proto::Recipient::test_data())
+            .expect("self recipient");
+
         let mut first_contact = proto::Recipient::test_data_contact();
         first_contact.id = 10;
 
@@ -1352,6 +1365,17 @@ mod test {
             .expect("valid recipient");
 
         CompletedBackup::try_from(partial).expect("ACI and PNI are different namespaces");
+    }
+
+    #[test_matrix([ValidateOnly::empty(), Store::empty()])]
+    fn missing_self<M: Method + ReferencedTypes>(mut partial: PartialBackup<M>) {
+        partial
+            .add_account_data(proto::AccountData::test_data())
+            .expect("valid account data");
+        assert_matches!(
+            CompletedBackup::try_from(partial),
+            Err(CompletionError::MissingSelfRecipient)
+        );
     }
 
     #[test_matrix([ValidateOnly::empty(), Store::empty()])]
