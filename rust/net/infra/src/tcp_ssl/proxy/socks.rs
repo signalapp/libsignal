@@ -181,10 +181,10 @@ impl Connector<SocksRoute<IpAddr>, ()> for super::StatelessProxied {
             log::debug!("connecting to {protocol:?} proxy at {proxy_host}:{proxy_port} over TCP");
 
             let target = match &target_addr {
-                crate::route::SocksTarget::ResolvedLocally(ip) => {
+                crate::route::ProxyTarget::ResolvedLocally(ip) => {
                     TargetAddr::Ip((*ip, target_port.get()).into())
                 }
-                crate::route::SocksTarget::ResolvedRemotely { name } => {
+                crate::route::ProxyTarget::ResolvedRemotely { name } => {
                     TargetAddr::Domain(Cow::Borrowed(name), target_port.get())
                 }
             };

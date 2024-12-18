@@ -56,3 +56,19 @@ impl RouteProvider for DirectTcpRouteProvider {
         })
     }
 }
+
+#[cfg(test)]
+#[derive(Debug)]
+pub struct ZeroPortNumber;
+
+#[cfg(test)]
+impl TryFrom<std::net::SocketAddr> for TcpRoute<IpAddr> {
+    type Error = ZeroPortNumber;
+
+    fn try_from(value: std::net::SocketAddr) -> Result<Self, Self::Error> {
+        Ok(Self {
+            address: value.ip(),
+            port: NonZeroU16::new(value.port()).ok_or(ZeroPortNumber)?,
+        })
+    }
+}

@@ -17,8 +17,8 @@ use crate::dns::lookup_result::LookupResult;
 use crate::dns::{DnsError, DnsResolver};
 use crate::host::Host;
 use crate::route::{
-    ConnectionProxyRoute, DirectOrProxyRoute, HttpsTlsRoute, SocksRoute, SocksTarget, TcpRoute,
-    TlsRoute, UnresolvedHost, WebSocketRoute,
+    ConnectionProxyRoute, DirectOrProxyRoute, HttpProxyRouteFragment, HttpsProxyRoute,
+    HttpsTlsRoute, ProxyTarget, SocksRoute, TcpRoute, TlsRoute, UnresolvedHost, WebSocketRoute,
 };
 
 /// A route with hostnames that can be resolved.
@@ -240,7 +240,8 @@ impl<A: ResolveHostnames> ResolveHostnames for ConnectionProxyRoute<A> {
         match self {
             Self::Tls { proxy } => Either::Left(Either::Left(proxy.hostnames())),
             Self::Tcp { proxy } => Either::Left(Either::Right(proxy.hostnames())),
-            Self::Socks(socks) => Either::Right(socks.hostnames()),
+            Self::Socks(socks) => Either::Right(Either::Right(socks.hostnames())),
+            Self::Https(http) => Either::Right(Either::Left(http.hostnames())),
         }
     }
 
@@ -255,6 +256,51 @@ impl<A: ResolveHostnames> ResolveHostnames for ConnectionProxyRoute<A> {
             ConnectionProxyRoute::Socks(socks) => {
                 ConnectionProxyRoute::Socks(socks.resolve(lookup))
             }
+            ConnectionProxyRoute::Https(http) => ConnectionProxyRoute::Https(http.resolve(lookup)),
+        }
+    }
+}
+
+impl<A: ResolveHostnames> ResolveHostnames for HttpsProxyRoute<A> {
+    type Resolved = HttpsProxyRoute<A::Resolved>;
+
+    fn hostnames(&self) -> impl Iterator<Item = &UnresolvedHost> {
+        let Self {
+            inner,
+            fragment:
+                HttpProxyRouteFragment {
+                    target_host,
+                    target_port: _,
+                    authorization: _,
+                },
+        } = self;
+        inner
+            .as_ref()
+            .map_either(ResolveHostnames::hostnames, ResolveHostnames::hostnames)
+            .chain(target_host.locally_resolved_hostnames())
+    }
+    fn resolve(self, mut lookup: impl FnMut(&str) -> IpAddr) -> Self::Resolved {
+        let Self {
+            inner,
+            fragment:
+                HttpProxyRouteFragment {
+                    target_host,
+                    target_port,
+                    authorization,
+                },
+        } = self;
+        let fragment = HttpProxyRouteFragment {
+            target_host: target_host.replace_locally_resolved(&mut lookup),
+            target_port,
+            authorization,
+        };
+        Self::Resolved {
+            inner: inner.map_either_with(
+                lookup,
+                |lookup, r| r.resolve(lookup),
+                |lookup, r| r.resolve(lookup),
+            ),
+            fragment,
         }
     }
 }
@@ -269,10 +315,9 @@ impl<A: ResolveHostnames> ResolveHostnames for SocksRoute<A> {
             target_port: _,
             protocol: _,
         } = self;
-        proxy.hostnames().chain(match target_addr {
-            SocksTarget::ResolvedLocally(addr) => Either::Left(addr.hostnames()),
-            SocksTarget::ResolvedRemotely { name: _ } => Either::Right(std::iter::empty()),
-        })
+        proxy
+            .hostnames()
+            .chain(target_addr.locally_resolved_hostnames())
     }
 
     fn resolve(self, mut lookup: impl FnMut(&str) -> IpAddr) -> Self::Resolved {
@@ -282,17 +327,35 @@ impl<A: ResolveHostnames> ResolveHostnames for SocksRoute<A> {
             target_port,
             protocol,
         } = self;
-        let target_addr = match target_addr {
-            SocksTarget::ResolvedLocally(addr) => {
-                SocksTarget::ResolvedLocally(addr.resolve(&mut lookup))
-            }
-            SocksTarget::ResolvedRemotely { name } => SocksTarget::ResolvedRemotely { name },
-        };
+        let target_addr = target_addr.replace_locally_resolved(&mut lookup);
         SocksRoute {
             proxy: proxy.resolve(lookup),
             target_addr,
             target_port,
             protocol,
+        }
+    }
+}
+
+impl<A: ResolveHostnames> ProxyTarget<A> {
+    fn locally_resolved_hostnames(&self) -> impl Iterator<Item = &UnresolvedHost> {
+        match self {
+            ProxyTarget::ResolvedLocally(addr) => Some(addr.hostnames()),
+            ProxyTarget::ResolvedRemotely { name: _ } => None,
+        }
+        .into_iter()
+        .flatten()
+    }
+
+    fn replace_locally_resolved(
+        self,
+        lookup: impl FnMut(&str) -> IpAddr,
+    ) -> ProxyTarget<A::Resolved> {
+        match self {
+            ProxyTarget::ResolvedLocally(addr) => {
+                ProxyTarget::ResolvedLocally(addr.resolve(lookup))
+            }
+            ProxyTarget::ResolvedRemotely { name } => ProxyTarget::ResolvedRemotely { name },
         }
     }
 }
@@ -316,6 +379,7 @@ impl ResolvedRoute for IpAddr {
 impl_resolved_route!(TcpRoute, address);
 impl_resolved_route!(TlsRoute, inner);
 impl_resolved_route!(HttpsTlsRoute, inner);
+impl_resolved_route!(HttpsProxyRoute, inner);
 impl_resolved_route!(WebSocketRoute, inner);
 
 impl<D: ResolvedRoute, P: ResolvedRoute> ResolvedRoute for DirectOrProxyRoute<D, P> {
@@ -333,6 +397,7 @@ impl<A: ResolvedRoute> ResolvedRoute for ConnectionProxyRoute<A> {
             ConnectionProxyRoute::Tls { proxy } => proxy.immediate_target(),
             ConnectionProxyRoute::Tcp { proxy } => proxy.immediate_target(),
             ConnectionProxyRoute::Socks(proxy) => proxy.immediate_target(),
+            ConnectionProxyRoute::Https(proxy) => proxy.immediate_target(),
         }
     }
 }
@@ -346,6 +411,17 @@ impl<A: ResolvedRoute> ResolvedRoute for SocksRoute<A> {
             protocol: _,
         } = self;
         proxy.immediate_target()
+    }
+}
+
+impl<L: ResolvedRoute, R: ResolvedRoute> ResolvedRoute for Either<L, R> {
+    fn immediate_target(&self) -> &IpAddr {
+        self.as_ref()
+            .map_either(
+                ResolvedRoute::immediate_target,
+                ResolvedRoute::immediate_target,
+            )
+            .into_inner()
     }
 }
 
@@ -605,7 +681,7 @@ mod test {
                     address: proxy,
                     port: PROXY_PORT,
                 },
-                target_addr: SocksTarget::ResolvedLocally(target),
+                target_addr: ProxyTarget::ResolvedLocally(target),
                 target_port: TARGET_PORT,
                 protocol: socks::Protocol::Socks5 {
                     username_password: None,

@@ -615,7 +615,7 @@ mod test {
                     address: Host::Domain(UnresolvedHost("socks-proxy".into())),
                     port: PROXY_PORT,
                 },
-                target_addr: SocksTarget::ResolvedRemotely {
+                target_addr: ProxyTarget::ResolvedRemotely {
                     name: "direct-target".into(),
                 },
                 target_port: TARGET_PORT,

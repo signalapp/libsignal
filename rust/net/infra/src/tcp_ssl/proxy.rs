@@ -3,7 +3,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use std::future::Future;
 use std::net::IpAddr;
 
 use futures_util::TryFutureExt;
@@ -14,6 +13,7 @@ use crate::errors::TransportConnectError;
 use crate::route::{ConnectionProxyRoute, Connector, ConnectorExt as _, TlsRoute};
 use crate::{Connection, IpType};
 
+pub mod https;
 pub mod socks;
 pub mod tls;
 
@@ -29,11 +29,11 @@ impl Connector<ConnectionProxyRoute<IpAddr>, ()> for StatelessProxied {
 
     type Error = TransportConnectError;
 
-    fn connect_over(
+    async fn connect_over(
         &self,
         (): (),
         route: ConnectionProxyRoute<IpAddr>,
-    ) -> impl Future<Output = Result<Self::Connection, Self::Error>> + Send {
+    ) -> Result<Self::Connection, Self::Error> {
         match route {
             ConnectionProxyRoute::Tls { proxy } => {
                 let TlsRoute {
@@ -42,26 +42,22 @@ impl Connector<ConnectionProxyRoute<IpAddr>, ()> for StatelessProxied {
                 } = proxy;
 
                 let connector = super::StatelessDirect;
-                Either::Left(async move {
-                    let tcp = connector.connect(inner).await?;
-                    connector
-                        .connect_over(tcp, tls_fragment)
-                        .await
-                        .map(Into::into)
-                })
+
+                let tcp = connector.connect(inner).await?;
+                connector
+                    .connect_over(tcp, tls_fragment)
+                    .await
+                    .map(Into::into)
             }
             ConnectionProxyRoute::Tcp { proxy } => {
                 let connector = super::StatelessDirect;
-                Either::Right(Either::Left(async move {
-                    match connector.connect(proxy).await {
-                        Ok(connection) => Ok(connection.into()),
-                        Err(_io_error) => Err(TransportConnectError::TcpConnectionFailed),
-                    }
-                }))
+                match connector.connect(proxy).await {
+                    Ok(connection) => Ok(connection.into()),
+                    Err(_io_error) => Err(TransportConnectError::TcpConnectionFailed),
+                }
             }
-            ConnectionProxyRoute::Socks(route) => Either::Right(Either::Right(
-                self.connect(route).map_ok(|connection| connection.into()),
-            )),
+            ConnectionProxyRoute::Socks(route) => self.connect(route).map_ok(Into::into).await,
+            ConnectionProxyRoute::Https(route) => self.connect(route).map_ok(Into::into).await,
         }
     }
 }

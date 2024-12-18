@@ -15,9 +15,10 @@ use crate::dns::dns_utils::log_safe_domain;
 use crate::errors::LogSafeDisplay;
 use crate::host::Host;
 use crate::route::{
-    ConnectionProxyKind, ConnectionProxyRoute, Connector, DirectOrProxyRoute, HttpsTlsRoute,
-    ResolveHostnames, ResolvedRoute, RouteDelayPolicy, SocksRoute, SocksTarget, TcpRoute, TlsRoute,
-    UnresolvedHost, UnresolvedWebsocketServiceRoute, DEFAULT_HTTPS_PORT,
+    ConnectionProxyKind, ConnectionProxyRoute, Connector, DirectOrProxyRoute,
+    HttpProxyRouteFragment, HttpsProxyRoute, HttpsTlsRoute, ProxyTarget, ResolveHostnames,
+    ResolvedRoute, RouteDelayPolicy, SocksRoute, TcpRoute, TlsRoute, UnresolvedHost,
+    UnresolvedWebsocketServiceRoute, DEFAULT_HTTPS_PORT,
 };
 
 /// A type that is not itself loggable but can produce a [`LogSafeDisplay`]
@@ -174,13 +175,16 @@ impl DescribeForLog for UnresolvedWebsocketServiceRoute {
                     target_addr,
                     target_port,
                     ..
-                }) => (
-                    match target_addr {
-                        SocksTarget::ResolvedLocally(host) => host.clone().map_domain(Arc::from),
-                        SocksTarget::ResolvedRemotely { name } => Host::Domain(name.clone()),
-                    },
-                    *target_port,
-                ),
+                }) => (target_addr.as_informational_host(), *target_port),
+                ConnectionProxyRoute::Https(HttpsProxyRoute {
+                    fragment:
+                        HttpProxyRouteFragment {
+                            target_host,
+                            target_port,
+                            ..
+                        },
+                    inner: _,
+                }) => (target_host.as_informational_host(), *target_port),
             },
         };
 
@@ -194,6 +198,19 @@ impl DescribeForLog for UnresolvedWebsocketServiceRoute {
             front,
             proxy,
             target,
+        }
+    }
+}
+
+impl ProxyTarget<Host<UnresolvedHost>> {
+    /// Returns a [`Host`] suitable for informational purposes.
+    ///
+    /// The returned type doesn't carry the locally-/remotely-resolved
+    /// distinction, so use with caution!
+    fn as_informational_host(&self) -> Host<Arc<str>> {
+        match self {
+            ProxyTarget::ResolvedLocally(host) => host.clone().map_domain(Arc::from),
+            ProxyTarget::ResolvedRemotely { name } => Host::Domain(name.clone()),
         }
     }
 }

@@ -11,16 +11,40 @@ use either::Either;
 use crate::certs::RootCertificates;
 use crate::host::Host;
 use crate::route::{
-    ReplaceFragment, RouteProvider, TcpRoute, TlsRoute, TlsRouteFragment, UnresolvedHost,
+    ReplaceFragment, RouteProvider, SimpleRoute, TcpRoute, TlsRoute, TlsRouteFragment,
+    UnresolvedHost,
 };
 use crate::tcp_ssl::proxy::socks;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct SocksRoute<Addr> {
     pub proxy: TcpRoute<Addr>,
-    pub target_addr: SocksTarget<Addr>,
+    pub target_addr: ProxyTarget<Addr>,
     pub target_port: NonZeroU16,
     pub protocol: socks::Protocol,
+}
+
+/// Route for connecting via an HTTPS proxy.
+pub type HttpsProxyRoute<Addr> =
+    SimpleRoute<HttpProxyRouteFragment<Addr>, Either<TlsRoute<TcpRoute<Addr>>, TcpRoute<Addr>>>;
+
+/// Required information for an HTTP [CONNECT](::http::method::Method::CONNECT)
+/// request.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct HttpProxyRouteFragment<Addr> {
+    /// The address to pass to the proxy as the target.
+    pub target_host: ProxyTarget<Addr>,
+    /// The port on the target (to pass to the proxy).
+    pub target_port: NonZeroU16,
+    /// An authorization header to pass to the proxy.
+    pub authorization: Option<HttpProxyAuth>,
+}
+
+/// Username and password to pass to an HTTP proxy.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct HttpProxyAuth {
+    pub username: String,
+    pub password: String,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, strum::EnumDiscriminants)]
@@ -34,11 +58,22 @@ pub enum ConnectionProxyRoute<Addr> {
         proxy: TcpRoute<Addr>,
     },
     Socks(SocksRoute<Addr>),
+    Https(HttpsProxyRoute<Addr>),
 }
 
+/// Target address for proxy protocols that support remote resolution.
+///
+/// SOCKS and HTTPS proxies support making a connection to a remote host
+/// specified as an IP address or as a domain name; in the latter case the proxy
+/// will resolve the name itself. The distinction is important: when local DNS
+/// requests are being blocked, connecting to a remotely-resolved name might
+/// still work.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub enum SocksTarget<Addr> {
+pub enum ProxyTarget<Addr> {
+    /// A target that will be resolved locally and communicated to the proxy as
+    /// an IP address.
     ResolvedLocally(Addr),
+    /// A domain name target that the proxy will resolve for itself.
     ResolvedRemotely { name: Arc<str> },
 }
 
@@ -196,9 +231,9 @@ where
                             proxy: proxy.clone(),
                             protocol: protocol.clone(),
                             target_addr: if *resolve_hostname_locally {
-                                SocksTarget::ResolvedLocally(Host::Domain(address))
+                                ProxyTarget::ResolvedLocally(Host::Domain(address))
                             } else {
-                                SocksTarget::ResolvedRemotely { name: address.0 }
+                                ProxyTarget::ResolvedRemotely { name: address.0 }
                             },
                             target_port: port,
                         })

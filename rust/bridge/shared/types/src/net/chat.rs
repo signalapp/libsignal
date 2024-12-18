@@ -23,6 +23,7 @@ use libsignal_net::chat::{
 use libsignal_net::infra::route::{ConnectionProxyConfig, DirectOrProxyProvider};
 use libsignal_net::infra::tcp_ssl::InvalidProxyConfig;
 use libsignal_protocol::Timestamp;
+use static_assertions::assert_impl_all;
 use tokio::sync::{mpsc, oneshot};
 
 use crate::net::{ConnectionManager, TokioAsyncContext};
@@ -248,9 +249,14 @@ impl RefUnwindSafe for AuthenticatedChatConnection {}
 
 enum MaybeChatConnection {
     Running(ChatConnection),
-    WaitingForListener(tokio::runtime::Handle, chat::PendingChatConnection),
+    WaitingForListener(
+        tokio::runtime::Handle,
+        std::sync::Mutex<chat::PendingChatConnection>,
+    ),
     TemporarilyEvicted,
 }
+
+assert_impl_all!(MaybeChatConnection: Send, Sync);
 
 impl UnauthenticatedChatConnection {
     pub async fn connect(connection_manager: &ConnectionManager) -> Result<Self, ChatServiceError> {
@@ -259,7 +265,7 @@ impl UnauthenticatedChatConnection {
         Ok(Self {
             inner: MaybeChatConnection::WaitingForListener(
                 tokio::runtime::Handle::current(),
-                inner,
+                inner.into(),
             )
             .into(),
         })
@@ -283,7 +289,7 @@ impl AuthenticatedChatConnection {
         Ok(Self {
             inner: MaybeChatConnection::WaitingForListener(
                 tokio::runtime::Handle::current(),
-                inner,
+                inner.into(),
             )
             .into(),
         })
@@ -344,9 +350,15 @@ impl<C: AsRef<tokio::sync::RwLock<MaybeChatConnection>> + Sync> BridgeChatConnec
     fn info(&self) -> ConnectionInfo {
         let guard = self.as_ref().blocking_read();
         let connection_info = match &*guard {
-            MaybeChatConnection::Running(chat_connection) => chat_connection.connection_info(),
+            MaybeChatConnection::Running(chat_connection) => {
+                chat_connection.connection_info().clone()
+            }
             MaybeChatConnection::WaitingForListener(_, pending_chat_connection) => {
-                pending_chat_connection.connection_info()
+                pending_chat_connection
+                    .lock()
+                    .expect("not poisoned")
+                    .connection_info()
+                    .clone()
             }
             MaybeChatConnection::TemporarilyEvicted => unreachable!("unobservable state"),
         };
@@ -370,7 +382,7 @@ fn init_listener(connection: &mut MaybeChatConnection, listener: Box<dyn ChatLis
 
     *connection = MaybeChatConnection::Running(ChatConnection::finish_connect(
         tokio_runtime,
-        pending,
+        pending.into_inner().expect("not poisoned"),
         listener.into_event_listener(),
     ))
 }

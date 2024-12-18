@@ -20,7 +20,7 @@ use libsignal_net::infra::tcp_ssl::proxy::socks::{Protocol, SocksConnector};
 use libsignal_net::infra::{Alpn, StreamAndInfo, TransportConnectionParams, TransportConnector};
 use libsignal_net_infra::errors::TransportConnectError;
 use libsignal_net_infra::route::{
-    ConnectorExt as _, SocksRoute, SocksTarget, TcpRoute, TlsRoute, TlsRouteFragment,
+    ConnectorExt as _, ProxyTarget, SocksRoute, TcpRoute, TlsRoute, TlsRouteFragment,
     UnresolvedHost,
 };
 use tokio::time::Duration;
@@ -97,9 +97,9 @@ async fn main() {
         let Target(target_host, target_port) = target;
         let host_name = target_host.to_string().into();
         let target_host = match (resolve_hostname_locally, target_host) {
-            (true, host) => SocksTarget::ResolvedLocally(host.map_domain(UnresolvedHost::from)),
-            (false, Host::Ip(ip)) => SocksTarget::ResolvedLocally(Host::Ip(ip)),
-            (false, Host::Domain(domain)) => SocksTarget::ResolvedRemotely { name: domain },
+            (true, host) => ProxyTarget::ResolvedLocally(host.map_domain(UnresolvedHost::from)),
+            (false, Host::Ip(ip)) => ProxyTarget::ResolvedLocally(Host::Ip(ip)),
+            (false, Host::Domain(domain)) => ProxyTarget::ResolvedRemotely { name: domain },
         };
         let unresolved_route = TlsRoute {
             fragment: TlsRouteFragment {

@@ -8,6 +8,7 @@ use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::net::TcpStream;
 use tokio_boring_signal::SslStream;
 
+use crate::tcp_ssl::proxy::https::HttpProxyStream;
 use crate::tcp_ssl::proxy::socks::SocksStream;
 use crate::Connection;
 
@@ -17,6 +18,7 @@ pub enum ProxyStream {
     Tls(#[pin] SslStream<TcpStream>),
     Tcp(#[pin] TcpStream),
     Socks(#[pin] SocksStream),
+    Http(#[pin] HttpProxyStream),
 }
 
 impl From<SslStream<TcpStream>> for ProxyStream {
@@ -37,6 +39,12 @@ impl From<SocksStream> for ProxyStream {
     }
 }
 
+impl From<HttpProxyStream> for ProxyStream {
+    fn from(value: HttpProxyStream) -> Self {
+        Self::Http(value)
+    }
+}
+
 impl AsyncRead for ProxyStream {
     fn poll_read(
         self: std::pin::Pin<&mut Self>,
@@ -47,6 +55,7 @@ impl AsyncRead for ProxyStream {
             ProxyStreamProj::Tls(tls) => tls.poll_read(cx, buf),
             ProxyStreamProj::Tcp(tcp) => tcp.poll_read(cx, buf),
             ProxyStreamProj::Socks(socks) => socks.poll_read(cx, buf),
+            ProxyStreamProj::Http(http) => http.poll_read(cx, buf),
         }
     }
 }
@@ -61,6 +70,7 @@ impl AsyncWrite for ProxyStream {
             ProxyStreamProj::Tls(tls) => tls.poll_write(cx, buf),
             ProxyStreamProj::Tcp(tcp) => tcp.poll_write(cx, buf),
             ProxyStreamProj::Socks(socks) => socks.poll_write(cx, buf),
+            ProxyStreamProj::Http(http) => http.poll_write(cx, buf),
         }
     }
 
@@ -72,6 +82,7 @@ impl AsyncWrite for ProxyStream {
             ProxyStreamProj::Tls(tls) => tls.poll_flush(cx),
             ProxyStreamProj::Tcp(tcp) => tcp.poll_flush(cx),
             ProxyStreamProj::Socks(socks) => socks.poll_flush(cx),
+            ProxyStreamProj::Http(http) => http.poll_flush(cx),
         }
     }
 
@@ -83,6 +94,7 @@ impl AsyncWrite for ProxyStream {
             ProxyStreamProj::Tls(tls) => tls.poll_shutdown(cx),
             ProxyStreamProj::Tcp(tcp) => tcp.poll_shutdown(cx),
             ProxyStreamProj::Socks(socks) => socks.poll_shutdown(cx),
+            ProxyStreamProj::Http(http) => http.poll_shutdown(cx),
         }
     }
 }
@@ -93,6 +105,7 @@ impl Connection for ProxyStream {
             ProxyStream::Tls(ssl_stream) => ssl_stream.transport_info(),
             ProxyStream::Tcp(tcp_stream) => tcp_stream.transport_info(),
             ProxyStream::Socks(either) => either.transport_info(),
+            ProxyStream::Http(http) => http.transport_info(),
         }
     }
 }
