@@ -146,6 +146,8 @@ pub enum ChatStyleError {
     UnsupportedGradient,
     /// referenced unknown custom color ID {0:?}
     UnknownCustomColorId(u64),
+    /// 0 is not a valid custom color ID
+    InvalidCustomColorId,
     /// duplicate custom color ID {0}
     DuplicateCustomChatColorId(u64),
 }
@@ -158,6 +160,9 @@ impl<M: ReferencedTypes> TryFrom<Vec<proto::chat_style::CustomChatColor>> for Cu
             .into_iter()
             .try_fold(Self::default(), |mut colors, custom_color| {
                 let (id, custom_color) = TryFrom::try_from(custom_color)?;
+                if id == CustomColorId(0) {
+                    return Err(ChatStyleError::InvalidCustomColorId)?;
+                }
                 colors
                     .insert(id, custom_color.into())
                     .map_err(|KeyExists| ChatStyleError::DuplicateCustomChatColorId(id.0))?;
@@ -407,7 +412,7 @@ mod test {
 
     use super::*;
     use crate::backup::chat::chat_style::Color;
-    use crate::backup::method::Store;
+    use crate::backup::method::{Store, ValidateOnly};
     use crate::backup::testutil::TestContext;
 
     impl proto::ChatStyle {
@@ -606,5 +611,31 @@ mod test {
             serde_json::to_string_pretty(&map1).expect("valid"),
             serde_json::to_string_pretty(&map2).expect("valid"),
         );
+    }
+
+    #[test]
+    fn custom_color_map_rejects_duplicates() {
+        assert_eq!(
+            CustomColorMap::<ValidateOnly>::try_from(vec![
+                proto::chat_style::CustomChatColor::test_data(),
+                proto::chat_style::CustomChatColor::test_data(),
+            ])
+            .expect_err("should have failed"),
+            ChatStyleError::DuplicateCustomChatColorId(
+                proto::chat_style::CustomChatColor::TEST_ID.0,
+            )
+        )
+    }
+
+    #[test]
+    fn custom_color_map_rejects_id_zero() {
+        assert_eq!(
+            CustomColorMap::<ValidateOnly>::try_from(vec![proto::chat_style::CustomChatColor {
+                id: 0,
+                ..proto::chat_style::CustomChatColor::test_data()
+            },])
+            .expect_err("should have failed"),
+            ChatStyleError::InvalidCustomColorId
+        )
     }
 }
