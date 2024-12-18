@@ -109,10 +109,14 @@ pub enum ChatItemError {
     OutgoingMessageFrom(RecipientId, DestinationKind),
     /// ChatItem.item is a oneof but is empty
     MissingItem,
+    /// StandardMessage has neither text nor attachments
+    StandardMessageIsEmpty,
     /// text: {0}
     Text(#[from] TextError),
     /// long text: {0}
     LongText(FilePointerError),
+    /// StandardMessage has longText but no body text
+    LongTextWithoutBody,
     /// quote: {0}
     Quote(#[from] QuoteError),
     /// link preview: {0}

@@ -80,10 +80,19 @@ impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R> + ReportUnusualTim
             .transpose()
             .map_err(ChatItemError::LongText)?;
 
-        let attachments = likely_empty(attachments, |iter| {
+        let attachments: Vec<MessageAttachment> = likely_empty(attachments, |iter| {
             iter.map(|attachment| MessageAttachment::try_from_with(attachment, context))
                 .collect::<Result<_, _>>()
         })?;
+
+        if text.is_none() {
+            if attachments.is_empty() {
+                return Err(ChatItemError::StandardMessageIsEmpty);
+            }
+            if long_text.is_some() {
+                return Err(ChatItemError::LongTextWithoutBody);
+            }
+        }
 
         Ok(Self {
             text,
@@ -99,6 +108,8 @@ impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R> + ReportUnusualTim
 
 #[cfg(test)]
 mod test {
+    use test_case::test_case;
+
     use super::*;
     use crate::backup::chat::Reaction;
     use crate::backup::recipient::FullRecipientData;
@@ -150,5 +161,25 @@ mod test {
             proto::StandardMessage::test_data().try_into_with(&TestContext::default()),
             Ok(StandardMessage::from_proto_test_data())
         );
+    }
+
+    #[test_case(|x| {
+        x.text = None.into();
+        x.longText = None.into();
+    } => Ok(()); "no text")]
+    #[test_case(|x| x.attachments.clear() => Ok(()); "no attachments")]
+    #[test_case(|x| x.text = None.into() => Err(ChatItemError::LongTextWithoutBody); "long text without body")]
+    #[test_case(|x| {
+        x.text = None.into();
+        x.longText = None.into();
+        x.attachments.clear();
+    } => Err(ChatItemError::StandardMessageIsEmpty); "no text or attachments")]
+    fn standard_message(modifier: fn(&mut proto::StandardMessage)) -> Result<(), ChatItemError> {
+        let mut message = proto::StandardMessage::test_data();
+        modifier(&mut message);
+
+        message
+            .try_into_with(&TestContext::default())
+            .map(|_: StandardMessage<FullRecipientData>| ())
     }
 }
