@@ -19,14 +19,14 @@ extension AuthenticatedChatService {
     func injectServerRequest(_ requestBytes: Data) {
         withNativeHandle { handle in
             requestBytes.withUnsafeBorrowedBuffer { requestBytes in
-                failOnError(signal_testing_chat_service_inject_raw_server_request(handle, requestBytes))
+                failOnError(signal_testing_chat_service_inject_raw_server_request(handle.const(), requestBytes))
             }
         }
     }
 
     func injectConnectionInterrupted() {
         withNativeHandle { handle in
-            failOnError(signal_testing_chat_service_inject_connection_interrupted(handle))
+            failOnError(signal_testing_chat_service_inject_connection_interrupted(handle.const()))
         }
     }
 }
@@ -148,17 +148,17 @@ final class ChatServiceTests: TestCaseBase {
         let internalRequest = try ChatService.Request.InternalRequest(request)
         try internalRequest.withNativeHandle { internalRequest in
             XCTAssertEqual(expectedMethod, try invokeFnReturningString {
-                signal_testing_chat_request_get_method($0, internalRequest)
+                signal_testing_chat_request_get_method($0, internalRequest.const())
             })
             XCTAssertEqual(expectedPathAndQuery, try invokeFnReturningString {
-                signal_testing_chat_request_get_path($0, internalRequest)
+                signal_testing_chat_request_get_path($0, internalRequest.const())
             })
             XCTAssertEqual(Self.expectedContent, try invokeFnReturningData {
-                signal_testing_chat_request_get_body($0, internalRequest)
+                signal_testing_chat_request_get_body($0, internalRequest.const())
             })
             for (k, v) in Self.expectedHeaders {
                 XCTAssertEqual(v, try invokeFnReturningString {
-                    signal_testing_chat_request_get_header_value($0, internalRequest, k)
+                    signal_testing_chat_request_get_header_value($0, internalRequest.const(), k)
                 })
             }
         }

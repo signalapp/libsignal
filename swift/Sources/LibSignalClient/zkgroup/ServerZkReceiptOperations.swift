@@ -22,7 +22,7 @@ public class ServerZkReceiptOperations {
             try randomness.withUnsafePointerToBytes { randomness in
                 try receiptCredentialRequest.withUnsafePointerToSerialized { receiptCredentialRequest in
                     try invokeFnReturningSerialized {
-                        signal_server_secret_params_issue_receipt_credential_deterministic($0, serverSecretParams, randomness, receiptCredentialRequest, receiptExpirationTime, receiptLevel)
+                        signal_server_secret_params_issue_receipt_credential_deterministic($0, serverSecretParams.const(), randomness, receiptCredentialRequest, receiptExpirationTime, receiptLevel)
                     }
                 }
             }
@@ -32,7 +32,7 @@ public class ServerZkReceiptOperations {
     public func verifyReceiptCredentialPresentation(receiptCredentialPresentation: ReceiptCredentialPresentation) throws {
         try self.serverSecretParams.withNativeHandle { serverSecretParams in
             try receiptCredentialPresentation.withUnsafePointerToSerialized { receiptCredentialPresentation in
-                try checkError(signal_server_secret_params_verify_receipt_credential_presentation(serverSecretParams, receiptCredentialPresentation))
+                try checkError(signal_server_secret_params_verify_receipt_credential_presentation(serverSecretParams.const(), receiptCredentialPresentation))
             }
         }
     }

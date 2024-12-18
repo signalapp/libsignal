@@ -20,7 +20,7 @@ import SignalFfi
 ///
 /// The diff of the canonical strings (which may be rather large) will show the
 /// differences between the logical content of the input backup files.
-public class ComparableBackup: NativeHandleOwner {
+public class ComparableBackup: NativeHandleOwner<SignalMutPointerComparableBackup> {
     /// Reads an unencrypted backup file into memory for comparison.
     ///
     /// - Parameters:
@@ -32,13 +32,13 @@ public class ComparableBackup: NativeHandleOwner {
     ///  - ``SignalError/ioError(_:)``: If an IO error on the input occurs.
     ///  - ``MessageBackupValidationError``: If validation of the input fails.
     public convenience init(purpose: MessageBackupPurpose, length: UInt64, stream: SignalInputStream) throws {
-        var handle: OpaquePointer?
+        var handle = SignalMutPointerComparableBackup()
         try checkError(
             try withInputStream(stream) { stream in
                 signal_comparable_backup_read_unencrypted(&handle, stream, length, purpose.rawValue)
             }
         )
-        self.init(owned: handle!)
+        self.init(owned: NonNull(handle)!)
     }
 
     /// Unrecognized protobuf fields present in the backup.
@@ -49,7 +49,7 @@ public class ComparableBackup: NativeHandleOwner {
         let fields = failOnError {
             try self.withNativeHandle { result in
                 try invokeFnReturningStringArray {
-                    signal_comparable_backup_get_unknown_fields($0, result)
+                    signal_comparable_backup_get_unknown_fields($0, result.const())
                 }
             }
         }
@@ -67,14 +67,36 @@ public class ComparableBackup: NativeHandleOwner {
         return failOnError {
             try self.withNativeHandle { result in
                 try invokeFnReturningString {
-                    signal_comparable_backup_get_comparable_string($0, result)
+                    signal_comparable_backup_get_comparable_string($0, result.const())
                 }
             }
         }
     }
 
-    override internal class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
-        signal_comparable_backup_destroy(handle)
+    override internal class func destroyNativeHandle(_ handle: NonNull<SignalMutPointerComparableBackup>) -> SignalFfiErrorRef? {
+        signal_comparable_backup_destroy(handle.pointer)
+    }
+}
+
+extension SignalMutPointerComparableBackup: SignalMutPointer {
+    public typealias ConstPointer = SignalConstPointerComparableBackup
+
+    public init(untyped: OpaquePointer?) {
+        self.init(raw: untyped)
+    }
+
+    public func toOpaque() -> OpaquePointer? {
+        self.raw
+    }
+
+    public func const() -> Self.ConstPointer {
+        Self.ConstPointer(raw: self.raw)
+    }
+}
+
+extension SignalConstPointerComparableBackup: SignalConstPointer {
+    public func toOpaque() -> OpaquePointer? {
+        self.raw
     }
 }
 

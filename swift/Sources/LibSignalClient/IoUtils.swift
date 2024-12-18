@@ -6,7 +6,7 @@
 import Foundation
 import SignalFfi
 
-internal func withInputStream<Result>(_ stream: SignalInputStream, _ body: (UnsafePointer<SignalFfi.SignalInputStream>) throws -> Result) throws -> Result {
+internal func withInputStream<Result>(_ stream: SignalInputStream, _ body: (SignalConstPointerFfiInputStreamStruct) throws -> Result) throws -> Result {
     func ffiShimRead(
         stream_ctx: UnsafeMutableRawPointer?,
         pBuf: UnsafeMutablePointer<UInt8>?,
@@ -36,6 +36,8 @@ internal func withInputStream<Result>(_ stream: SignalInputStream, _ body: (Unsa
             read: ffiShimRead as SignalRead,
             skip: ffiShimSkip as SignalSkip
         )
-        return try body(&ffiStream)
+        return try withUnsafePointer(to: &ffiStream) {
+            try body(SignalConstPointerFfiInputStreamStruct(raw: $0))
+        }
     }
 }

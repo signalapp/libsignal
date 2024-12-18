@@ -19,7 +19,7 @@ public func signalEncrypt<Bytes: ContiguousBytes>(
             try withSessionStore(sessionStore, context) { ffiSessionStore in
                 try withIdentityKeyStore(identityStore, context) { ffiIdentityStore in
                     try invokeFnReturningNativeHandle {
-                        signal_encrypt_message($0, messageBuffer, addressHandle, ffiSessionStore, ffiIdentityStore, UInt64(now.timeIntervalSince1970 * 1000))
+                        signal_encrypt_message($0, messageBuffer, addressHandle.const(), ffiSessionStore, ffiIdentityStore, UInt64(now.timeIntervalSince1970 * 1000))
                     }
                 }
             }
@@ -38,7 +38,7 @@ public func signalDecrypt(
         try withSessionStore(sessionStore, context) { ffiSessionStore in
             try withIdentityKeyStore(identityStore, context) { ffiIdentityStore in
                 try invokeFnReturningArray {
-                    signal_decrypt_message($0, messageHandle, addressHandle, ffiSessionStore, ffiIdentityStore)
+                    signal_decrypt_message($0, messageHandle.const(), addressHandle.const(), ffiSessionStore, ffiIdentityStore)
                 }
             }
         }
@@ -62,7 +62,7 @@ public func signalDecryptPreKey(
                     try withSignedPreKeyStore(signedPreKeyStore, context) { ffiSignedPreKeyStore in
                         try withKyberPreKeyStore(kyberPreKeyStore, context) { ffiKyberPreKeyStore in
                             try invokeFnReturningArray {
-                                signal_decrypt_pre_key_message($0, messageHandle, addressHandle, ffiSessionStore, ffiIdentityStore, ffiPreKeyStore, ffiSignedPreKeyStore, ffiKyberPreKeyStore)
+                                signal_decrypt_pre_key_message($0, messageHandle.const(), addressHandle.const(), ffiSessionStore, ffiIdentityStore, ffiPreKeyStore, ffiSignedPreKeyStore, ffiKyberPreKeyStore)
                             }
                         }
                     }
@@ -83,7 +83,7 @@ public func processPreKeyBundle(
     return try withNativeHandles(bundle, address) { bundleHandle, addressHandle in
         try withSessionStore(sessionStore, context) { ffiSessionStore in
             try withIdentityKeyStore(identityStore, context) { ffiIdentityStore in
-                try checkError(signal_process_prekey_bundle(bundleHandle, addressHandle, ffiSessionStore, ffiIdentityStore, UInt64(now.timeIntervalSince1970 * 1000)))
+                try checkError(signal_process_prekey_bundle(bundleHandle.const(), addressHandle.const(), ffiSessionStore, ffiIdentityStore, UInt64(now.timeIntervalSince1970 * 1000)))
             }
         }
     }
@@ -101,7 +101,7 @@ public func groupEncrypt<Bytes: ContiguousBytes>(
             try withUnsafePointer(to: distributionId.uuid) { distributionId in
                 try withSenderKeyStore(store, context) { ffiStore in
                     try invokeFnReturningNativeHandle {
-                        signal_group_encrypt_message($0, senderHandle, distributionId, messageBuffer, ffiStore)
+                        signal_group_encrypt_message($0, senderHandle.const(), distributionId, messageBuffer, ffiStore)
                     }
                 }
             }
@@ -119,7 +119,7 @@ public func groupDecrypt<Bytes: ContiguousBytes>(
         try message.withUnsafeBorrowedBuffer { messageBuffer in
             try withSenderKeyStore(store, context) { ffiStore in
                 try invokeFnReturningArray {
-                    signal_group_decrypt_message($0, senderHandle, messageBuffer, ffiStore)
+                    signal_group_decrypt_message($0, senderHandle.const(), messageBuffer, ffiStore)
                 }
             }
         }
@@ -135,8 +135,8 @@ public func processSenderKeyDistributionMessage(
     return try withNativeHandles(sender, message) { senderHandle, messageHandle in
         try withSenderKeyStore(store, context) {
             try checkError(signal_process_sender_key_distribution_message(
-                senderHandle,
-                messageHandle,
+                senderHandle.const(),
+                messageHandle.const(),
                 $0
             ))
         }

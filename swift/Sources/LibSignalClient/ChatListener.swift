@@ -78,9 +78,9 @@ extension AuthenticatedChatService: ChatListenerConnection {}
 extension AuthenticatedChatConnection: ChatListenerConnection {}
 
 internal class ChatListenerBridge {
-    private class AckHandleOwner: NativeHandleOwner {
-        override class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
-            signal_server_message_ack_destroy(handle)
+    private class AckHandleOwner: NativeHandleOwner<SignalMutPointerServerMessageAck> {
+        override class func destroyNativeHandle(_ handle: NonNull<SignalMutPointerServerMessageAck>) -> SignalFfiErrorRef? {
+            signal_server_message_ack_destroy(handle.pointer)
         }
     }
 
@@ -114,7 +114,7 @@ internal class ChatListenerBridge {
             defer { signal_free_buffer(envelope.base, envelope.length) }
             let bridge = Unmanaged<ChatListenerBridge>.fromOpaque(rawCtx!).takeUnretainedValue()
 
-            let ackHandleOwner = AckHandleOwner(owned: ackHandle!)
+            let ackHandleOwner = AckHandleOwner(owned: NonNull(ackHandle)!)
             switch bridge.inner {
             case .service(let chatService, let chatListener):
                 guard let chatService = chatService.inner else {
@@ -128,7 +128,7 @@ internal class ChatListenerBridge {
                 ) {
                     _ = try await chatService.tokioAsyncContext.invokeAsyncFunction { promise, asyncContext in
                         ackHandleOwner.withNativeHandle { ackHandle in
-                            signal_server_message_ack_send(promise, asyncContext, ackHandle)
+                            signal_server_message_ack_send(promise, asyncContext.const(), ackHandle.const())
                         }
                     }
                 }
@@ -144,7 +144,7 @@ internal class ChatListenerBridge {
                 ) {
                     _ = try await chatService.tokioAsyncContext.invokeAsyncFunction { promise, asyncContext in
                         ackHandleOwner.withNativeHandle { ackHandle in
-                            signal_server_message_ack_send(promise, asyncContext, ackHandle)
+                            signal_server_message_ack_send(promise, asyncContext.const(), ackHandle.const())
                         }
                     }
                 }
@@ -197,6 +197,28 @@ internal class ChatListenerBridge {
                 _ = Unmanaged<AnyObject>.fromOpaque(rawCtx!).takeRetainedValue()
             }
         )
+    }
+}
+
+extension SignalMutPointerServerMessageAck: SignalMutPointer {
+    public typealias ConstPointer = SignalConstPointerServerMessageAck
+
+    public init(untyped: OpaquePointer?) {
+        self.init(raw: untyped)
+    }
+
+    public func toOpaque() -> OpaquePointer? {
+        self.raw
+    }
+
+    public func const() -> SignalConstPointerServerMessageAck {
+        SignalConstPointerServerMessageAck(raw: self.raw)
+    }
+}
+
+extension SignalConstPointerServerMessageAck: SignalConstPointer {
+    public func toOpaque() -> OpaquePointer? {
+        self.raw
     }
 }
 

@@ -5,15 +5,15 @@
 
 import SignalFfi
 
-public class ProtocolAddress: ClonableHandleOwner, @unchecked Sendable {
+public class ProtocolAddress: ClonableHandleOwner<SignalMutPointerProtocolAddress>, @unchecked Sendable {
     public convenience init(name: String, deviceId: UInt32) throws {
-        var handle: OpaquePointer?
+        var handle = SignalMutPointerProtocolAddress()
         try checkError(signal_address_new(
             &handle,
             name,
             deviceId
         ))
-        self.init(owned: handle!)
+        self.init(owned: NonNull(handle)!)
     }
 
     /// Creates a ProtocolAddress using the **uppercase** string representation of a service ID, for backward compatibility.
@@ -27,19 +27,19 @@ public class ProtocolAddress: ClonableHandleOwner, @unchecked Sendable {
         }
     }
 
-    override internal class func cloneNativeHandle(_ newHandle: inout OpaquePointer?, currentHandle: OpaquePointer?) -> SignalFfiErrorRef? {
+    override internal class func cloneNativeHandle(_ newHandle: inout SignalMutPointerProtocolAddress, currentHandle: SignalConstPointerProtocolAddress) -> SignalFfiErrorRef? {
         return signal_address_clone(&newHandle, currentHandle)
     }
 
-    override internal class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
-        return signal_address_destroy(handle)
+    override internal class func destroyNativeHandle(_ handle: NonNull<SignalMutPointerProtocolAddress>) -> SignalFfiErrorRef? {
+        return signal_address_destroy(handle.pointer)
     }
 
     public var name: String {
         return withNativeHandle { nativeHandle in
             failOnError {
                 try invokeFnReturningString {
-                    signal_address_get_name($0, nativeHandle)
+                    signal_address_get_name($0, nativeHandle.const())
                 }
             }
         }
@@ -56,7 +56,7 @@ public class ProtocolAddress: ClonableHandleOwner, @unchecked Sendable {
         return withNativeHandle { nativeHandle in
             failOnError {
                 try invokeFnReturningInteger {
-                    signal_address_get_device_id($0, nativeHandle)
+                    signal_address_get_device_id($0, nativeHandle.const())
                 }
             }
         }
@@ -81,5 +81,27 @@ extension ProtocolAddress: Hashable {
     public func hash(into hasher: inout Hasher) {
         hasher.combine(self.name)
         hasher.combine(self.deviceId)
+    }
+}
+
+extension SignalMutPointerProtocolAddress: SignalMutPointer {
+    public typealias ConstPointer = SignalConstPointerProtocolAddress
+
+    public init(untyped: OpaquePointer?) {
+        self.init(raw: untyped)
+    }
+
+    public func toOpaque() -> OpaquePointer? {
+        self.raw
+    }
+
+    public func const() -> Self.ConstPointer {
+        Self.ConstPointer(raw: self.raw)
+    }
+}
+
+extension SignalConstPointerProtocolAddress: SignalConstPointer {
+    public func toOpaque() -> OpaquePointer? {
+        self.raw
     }
 }

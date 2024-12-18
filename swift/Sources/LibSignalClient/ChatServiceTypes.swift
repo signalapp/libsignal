@@ -39,9 +39,9 @@ public struct ChatRequest: Equatable, Sendable {
     }
 
     // Exposed for testing
-    internal class InternalRequest: NativeHandleOwner {
+    internal class InternalRequest: NativeHandleOwner<SignalMutPointerHttpRequest> {
         convenience init(_ request: ChatRequest) throws {
-            var handle: OpaquePointer?
+            var handle = SignalMutPointerHttpRequest(untyped: nil)
             if let body = request.body {
                 try body.withUnsafeBorrowedBuffer { body in
                     try checkError(signal_http_request_new_with_body(&handle, request.method, request.pathAndQuery, body))
@@ -50,16 +50,38 @@ public struct ChatRequest: Equatable, Sendable {
                 try checkError(signal_http_request_new_without_body(&handle, request.method, request.pathAndQuery))
             }
             // Make sure we clean up the handle if there are any errors adding headers.
-            self.init(owned: handle!)
+            self.init(owned: NonNull(handle)!)
 
             for (name, value) in request.headers {
-                try checkError(signal_http_request_add_header(handle, name, value))
+                try checkError(signal_http_request_add_header(handle.const(), name, value))
             }
         }
 
-        override class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
-            return signal_http_request_destroy(handle)
+        override class func destroyNativeHandle(_ handle: NonNull<SignalMutPointerHttpRequest>) -> SignalFfiErrorRef? {
+            return signal_http_request_destroy(handle.pointer)
         }
+    }
+}
+
+extension SignalMutPointerHttpRequest: SignalMutPointer {
+    public typealias ConstPointer = SignalConstPointerHttpRequest
+
+    public init(untyped: OpaquePointer?) {
+        self.init(raw: untyped)
+    }
+
+    public func toOpaque() -> OpaquePointer? {
+        self.raw
+    }
+
+    public func const() -> Self.ConstPointer {
+        Self.ConstPointer(raw: self.raw)
+    }
+}
+
+extension SignalConstPointerHttpRequest: SignalConstPointer {
+    public func toOpaque() -> OpaquePointer? {
+        self.raw
     }
 }
 

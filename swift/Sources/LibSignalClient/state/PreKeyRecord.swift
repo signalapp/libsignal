@@ -6,22 +6,22 @@
 import Foundation
 import SignalFfi
 
-public class PreKeyRecord: ClonableHandleOwner {
-    override internal class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
-        return signal_pre_key_record_destroy(handle)
+public class PreKeyRecord: ClonableHandleOwner<SignalMutPointerPreKeyRecord> {
+    override internal class func destroyNativeHandle(_ handle: NonNull<SignalMutPointerPreKeyRecord>) -> SignalFfiErrorRef? {
+        return signal_pre_key_record_destroy(handle.pointer)
     }
 
-    override internal class func cloneNativeHandle(_ newHandle: inout OpaquePointer?, currentHandle: OpaquePointer?) -> SignalFfiErrorRef? {
+    override internal class func cloneNativeHandle(_ newHandle: inout SignalMutPointerPreKeyRecord, currentHandle: SignalConstPointerPreKeyRecord) -> SignalFfiErrorRef? {
         return signal_pre_key_record_clone(&newHandle, currentHandle)
     }
 
     public convenience init<Bytes: ContiguousBytes>(bytes: Bytes) throws {
-        let handle: OpaquePointer? = try bytes.withUnsafeBorrowedBuffer {
-            var result: OpaquePointer?
+        let handle: SignalMutPointerPreKeyRecord = try bytes.withUnsafeBorrowedBuffer {
+            var result = SignalMutPointerPreKeyRecord()
             try checkError(signal_pre_key_record_deserialize(&result, $0))
             return result
         }
-        self.init(owned: handle!)
+        self.init(owned: NonNull(handle)!)
     }
 
     public convenience init(
@@ -29,11 +29,11 @@ public class PreKeyRecord: ClonableHandleOwner {
         publicKey: PublicKey,
         privateKey: PrivateKey
     ) throws {
-        var handle: OpaquePointer?
+        var handle = SignalMutPointerPreKeyRecord()
         try withNativeHandles(publicKey, privateKey) { publicKeyHandle, privateKeyHandle in
-            try checkError(signal_pre_key_record_new(&handle, id, publicKeyHandle, privateKeyHandle))
+            try checkError(signal_pre_key_record_new(&handle, id, publicKeyHandle.const(), privateKeyHandle.const()))
         }
-        self.init(owned: handle!)
+        self.init(owned: NonNull(handle)!)
     }
 
     public convenience init(id: UInt32, privateKey: PrivateKey) throws {
@@ -44,7 +44,7 @@ public class PreKeyRecord: ClonableHandleOwner {
         return withNativeHandle { nativeHandle in
             failOnError {
                 try invokeFnReturningArray {
-                    signal_pre_key_record_serialize($0, nativeHandle)
+                    signal_pre_key_record_serialize($0, nativeHandle.const())
                 }
             }
         }
@@ -54,7 +54,7 @@ public class PreKeyRecord: ClonableHandleOwner {
         return withNativeHandle { nativeHandle in
             failOnError {
                 try invokeFnReturningInteger {
-                    signal_pre_key_record_get_id($0, nativeHandle)
+                    signal_pre_key_record_get_id($0, nativeHandle.const())
                 }
             }
         }
@@ -63,7 +63,7 @@ public class PreKeyRecord: ClonableHandleOwner {
     public func publicKey() throws -> PublicKey {
         return try withNativeHandle { nativeHandle in
             try invokeFnReturningNativeHandle {
-                signal_pre_key_record_get_public_key($0, nativeHandle)
+                signal_pre_key_record_get_public_key($0, nativeHandle.const())
             }
         }
     }
@@ -71,8 +71,30 @@ public class PreKeyRecord: ClonableHandleOwner {
     public func privateKey() throws -> PrivateKey {
         return try withNativeHandle { nativeHandle in
             try invokeFnReturningNativeHandle {
-                signal_pre_key_record_get_private_key($0, nativeHandle)
+                signal_pre_key_record_get_private_key($0, nativeHandle.const())
             }
         }
+    }
+}
+
+extension SignalMutPointerPreKeyRecord: SignalMutPointer {
+    public typealias ConstPointer = SignalConstPointerPreKeyRecord
+
+    public init(untyped: OpaquePointer?) {
+        self.init(raw: untyped)
+    }
+
+    public func toOpaque() -> OpaquePointer? {
+        self.raw
+    }
+
+    public func const() -> Self.ConstPointer {
+        Self.ConstPointer(raw: self.raw)
+    }
+}
+
+extension SignalConstPointerPreKeyRecord: SignalConstPointer {
+    public func toOpaque() -> OpaquePointer? {
+        self.raw
     }
 }

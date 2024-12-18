@@ -6,7 +6,7 @@
 import Foundation
 import SignalFfi
 
-public class ServerSecretParams: NativeHandleOwner {
+public class ServerSecretParams: NativeHandleOwner<SignalMutPointerServerSecretParams> {
     public static func generate() throws -> ServerSecretParams {
         return try self.generate(randomness: Randomness.generate())
     }
@@ -20,14 +20,14 @@ public class ServerSecretParams: NativeHandleOwner {
     }
 
     public convenience init(contents: [UInt8]) throws {
-        var handle: OpaquePointer?
+        var handle = SignalMutPointerServerSecretParams()
         try contents.withUnsafeBorrowedBuffer {
             try checkError(signal_server_secret_params_deserialize(&handle, $0))
         }
-        self.init(owned: handle!)
+        self.init(owned: NonNull(handle)!)
     }
 
-    required init(owned: OpaquePointer) {
+    required init(owned: NonNull<SignalMutPointerServerSecretParams>) {
         super.init(owned: owned)
     }
 
@@ -35,7 +35,7 @@ public class ServerSecretParams: NativeHandleOwner {
         return failOnError {
             try withNativeHandle { handle in
                 try invokeFnReturningArray {
-                    signal_server_secret_params_serialize($0, handle)
+                    signal_server_secret_params_serialize($0, handle.const())
                 }
             }
         }
@@ -44,7 +44,7 @@ public class ServerSecretParams: NativeHandleOwner {
     public func getPublicParams() throws -> ServerPublicParams {
         return try withNativeHandle { contents in
             try invokeFnReturningNativeHandle {
-                signal_server_secret_params_get_public_params($0, contents)
+                signal_server_secret_params_get_public_params($0, contents.const())
             }
         }
     }
@@ -58,14 +58,36 @@ public class ServerSecretParams: NativeHandleOwner {
             try randomness.withUnsafePointerToBytes { randomness in
                 try message.withUnsafeBorrowedBuffer { message in
                     try invokeFnReturningSerialized {
-                        signal_server_secret_params_sign_deterministic($0, contents, randomness, message)
+                        signal_server_secret_params_sign_deterministic($0, contents.const(), randomness, message)
                     }
                 }
             }
         }
     }
 
-    override internal class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
-        signal_server_secret_params_destroy(handle)
+    override internal class func destroyNativeHandle(_ handle: NonNull<SignalMutPointerServerSecretParams>) -> SignalFfiErrorRef? {
+        signal_server_secret_params_destroy(handle.pointer)
+    }
+}
+
+extension SignalMutPointerServerSecretParams: SignalMutPointer {
+    public typealias ConstPointer = SignalConstPointerServerSecretParams
+
+    public init(untyped: OpaquePointer?) {
+        self.init(raw: untyped)
+    }
+
+    public func toOpaque() -> OpaquePointer? {
+        self.raw
+    }
+
+    public func const() -> Self.ConstPointer {
+        Self.ConstPointer(raw: self.raw)
+    }
+}
+
+extension SignalConstPointerServerSecretParams: SignalConstPointer {
+    public func toOpaque() -> OpaquePointer? {
+        self.raw
     }
 }

@@ -16,9 +16,9 @@ public class Cds2Client: SgxClient {
         attestationMessage: some ContiguousBytes,
         currentDate: Date
     ) throws {
-        let handle: OpaquePointer? = try attestationMessage.withUnsafeBorrowedBuffer { attestationMessageBuffer in
+        let handle = try attestationMessage.withUnsafeBorrowedBuffer { attestationMessageBuffer in
             try mrenclave.withUnsafeBorrowedBuffer { mrenclaveBuffer in
-                var result: OpaquePointer?
+                var result = SignalMutPointerSgxClientState()
                 try checkError(signal_cds2_client_state_new(
                     &result,
                     mrenclaveBuffer,
@@ -28,6 +28,6 @@ public class Cds2Client: SgxClient {
                 return result
             }
         }
-        self.init(owned: handle!)
+        self.init(owned: NonNull(handle)!)
     }
 }

@@ -22,7 +22,7 @@ public class ClientZkReceiptOperations {
             try randomness.withUnsafePointerToBytes { randomness in
                 try receiptSerial.withUnsafePointerToSerialized { receiptSerial in
                     try invokeFnReturningSerialized {
-                        signal_server_public_params_create_receipt_credential_request_context_deterministic($0, serverPublicParams, randomness, receiptSerial)
+                        signal_server_public_params_create_receipt_credential_request_context_deterministic($0, serverPublicParams.const(), randomness, receiptSerial)
                     }
                 }
             }
@@ -34,7 +34,7 @@ public class ClientZkReceiptOperations {
             try receiptCredentialRequestContext.withUnsafePointerToSerialized { requestContext in
                 try receiptCredentialResponse.withUnsafePointerToSerialized { response in
                     try invokeFnReturningSerialized {
-                        signal_server_public_params_receive_receipt_credential($0, serverPublicParams, requestContext, response)
+                        signal_server_public_params_receive_receipt_credential($0, serverPublicParams.const(), requestContext, response)
                     }
                 }
             }
@@ -50,7 +50,7 @@ public class ClientZkReceiptOperations {
             try randomness.withUnsafePointerToBytes { randomness in
                 try receiptCredential.withUnsafePointerToSerialized { receiptCredential in
                     try invokeFnReturningSerialized {
-                        signal_server_public_params_create_receipt_credential_presentation_deterministic($0, serverPublicParams, randomness, receiptCredential)
+                        signal_server_public_params_create_receipt_credential_presentation_deterministic($0, serverPublicParams.const(), randomness, receiptCredential)
                     }
                 }
             }

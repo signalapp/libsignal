@@ -82,7 +82,7 @@ pub unsafe extern "C" fn signal_error_get_message(
 #[no_mangle]
 pub unsafe extern "C" fn signal_error_get_address(
     err: *const SignalFfiError,
-    out: *mut *mut ProtocolAddress,
+    out: *mut MutPointer<ProtocolAddress>,
 ) -> *mut SignalFfiError {
     let err = AssertUnwindSafe(err);
     run_ffi_safe(|| {
@@ -183,8 +183,8 @@ pub unsafe extern "C" fn signal_error_free(err: *mut SignalFfiError) {
 
 #[no_mangle]
 pub unsafe extern "C" fn signal_identitykeypair_deserialize(
-    private_key: *mut *mut PrivateKey,
-    public_key: *mut *mut PublicKey,
+    private_key: *mut MutPointer<PrivateKey>,
+    public_key: *mut MutPointer<PublicKey>,
     input: BorrowedSliceOf<c_uchar>,
 ) -> *mut SignalFfiError {
     run_ffi_safe(|| {
@@ -203,24 +203,33 @@ pub unsafe extern "C" fn signal_sealed_session_cipher_decrypt(
     sender_uuid: *mut *const c_char,
     sender_device_id: *mut u32,
     ctext: BorrowedSliceOf<c_uchar>,
-    trust_root: *const PublicKey,
+    trust_root: ConstPointer<PublicKey>,
     timestamp: u64,
     local_e164: *const c_char,
     local_uuid: *const c_char,
     local_device_id: c_uint,
-    session_store: *const FfiSessionStoreStruct,
-    identity_store: *const FfiIdentityKeyStoreStruct,
-    prekey_store: *const FfiPreKeyStoreStruct,
-    signed_prekey_store: *const FfiSignedPreKeyStoreStruct,
+    session_store: ConstPointer<FfiSessionStoreStruct>,
+    identity_store: ConstPointer<FfiIdentityKeyStoreStruct>,
+    prekey_store: ConstPointer<FfiPreKeyStoreStruct>,
+    signed_prekey_store: ConstPointer<FfiSignedPreKeyStoreStruct>,
 ) -> *mut SignalFfiError {
     run_ffi_safe(|| {
         let mut kyber_pre_key_store = InMemKyberPreKeyStore::new();
         let ctext = ctext.as_slice()?;
-        let trust_root = native_handle_cast::<PublicKey>(trust_root)?;
-        let mut identity_store = identity_store.as_ref().ok_or(NullPointerError)?;
-        let mut session_store = session_store.as_ref().ok_or(NullPointerError)?;
-        let mut prekey_store = prekey_store.as_ref().ok_or(NullPointerError)?;
-        let signed_prekey_store = signed_prekey_store.as_ref().ok_or(NullPointerError)?;
+        let trust_root = native_handle_cast::<PublicKey>(trust_root.into_inner())?;
+        let mut identity_store = identity_store
+            .into_inner()
+            .as_ref()
+            .ok_or(NullPointerError)?;
+        let mut session_store = session_store
+            .into_inner()
+            .as_ref()
+            .ok_or(NullPointerError)?;
+        let mut prekey_store = prekey_store.into_inner().as_ref().ok_or(NullPointerError)?;
+        let signed_prekey_store = signed_prekey_store
+            .into_inner()
+            .as_ref()
+            .ok_or(NullPointerError)?;
 
         let local_e164 = Option::convert_from(local_e164)?;
         let local_uuid = Option::convert_from(local_uuid)?.ok_or(NullPointerError)?;

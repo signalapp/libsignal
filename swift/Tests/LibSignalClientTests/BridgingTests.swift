@@ -10,8 +10,8 @@
 import SignalFfi
 import XCTest
 
-private func fakeAsyncRuntime() -> OpaquePointer! {
-    OpaquePointer(bitPattern: -1)
+private func fakeAsyncRuntime() -> SignalConstPointerNonSuspendingBackgroundThreadRuntime {
+    SignalConstPointerNonSuspendingBackgroundThreadRuntime(raw: OpaquePointer(bitPattern: -1))
 }
 
 private func invokeFnIgnoringResult<T>(fn: (UnsafeMutablePointer<T>?) -> SignalFfiErrorRef?) throws {

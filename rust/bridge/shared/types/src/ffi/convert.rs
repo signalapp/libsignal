@@ -7,7 +7,6 @@ use std::ffi::{c_char, c_uchar, CStr};
 use std::fmt::Display;
 use std::num::{NonZeroU64, ParseIntError};
 use std::ops::Deref;
-use std::panic::UnwindSafe;
 
 use libsignal_protocol::*;
 use paste::paste;
@@ -349,11 +348,11 @@ macro_rules! bridge_trait {
     ($name:ident) => {
         paste! {
             impl<'a> ArgTypeInfo<'a> for &'a mut dyn $name {
-                type ArgType = *const [<Ffi $name Struct>];
+                type ArgType = crate::ffi::ConstPointer< [<Ffi $name Struct>] >;
                 type StoredType = &'a [<Ffi $name Struct>];
                 #[allow(clippy::not_unsafe_ptr_arg_deref)]
                 fn borrow(foreign: Self::ArgType) -> SignalFfiResult<Self::StoredType> {
-                    match unsafe { foreign.as_ref() } {
+                    match unsafe { foreign.into_inner().as_ref() } {
                         None => Err(NullPointerError.into()),
                         Some(store) => Ok(store),
                     }
@@ -364,11 +363,11 @@ macro_rules! bridge_trait {
             }
 
             impl<'a> ArgTypeInfo<'a> for Option<&'a dyn $name> {
-                type ArgType = *const [<Ffi $name Struct>];
+                type ArgType = crate::ffi::ConstPointer< [<Ffi $name Struct>] >;
                 type StoredType = Option<&'a [<Ffi $name Struct>]>;
                 #[allow(clippy::not_unsafe_ptr_arg_deref)]
                 fn borrow(foreign: Self::ArgType) -> SignalFfiResult<Self::StoredType> {
-                    Ok(unsafe { foreign.as_ref() })
+                    Ok(unsafe { foreign.into_inner().as_ref() })
                 }
                 fn load_from(stored: &'a mut Self::StoredType) -> Self {
                     stored.as_ref().map(|x| x as &'a dyn $name)
@@ -388,12 +387,16 @@ bridge_trait!(InputStream);
 bridge_trait!(SyncInputStream);
 
 impl<'a> ArgTypeInfo<'a> for Box<dyn ChatListener> {
-    type ArgType = *const FfiChatListenerStruct;
-    type StoredType = Option<Box<dyn ChatListener + UnwindSafe>>;
+    type ArgType = crate::ffi::ConstPointer<FfiChatListenerStruct>;
+    type StoredType = Option<Box<dyn ChatListener>>;
     #[allow(clippy::not_unsafe_ptr_arg_deref)]
     fn borrow(foreign: Self::ArgType) -> SignalFfiResult<Self::StoredType> {
         Ok(Some(unsafe {
-            foreign.as_ref().ok_or(NullPointerError)?.make_listener()
+            foreign
+                .into_inner()
+                .as_ref()
+                .ok_or(NullPointerError)?
+                .make_listener()
         }))
     }
     fn load_from(stored: &'a mut Self::StoredType) -> Self {
@@ -402,11 +405,16 @@ impl<'a> ArgTypeInfo<'a> for Box<dyn ChatListener> {
 }
 
 impl<'a> ArgTypeInfo<'a> for Option<Box<dyn ChatListener>> {
-    type ArgType = *const FfiChatListenerStruct;
-    type StoredType = Option<Box<dyn ChatListener + UnwindSafe>>;
+    type ArgType = crate::ffi::ConstPointer<FfiChatListenerStruct>;
+    type StoredType = Option<Box<dyn ChatListener>>;
     #[allow(clippy::not_unsafe_ptr_arg_deref)]
     fn borrow(foreign: Self::ArgType) -> SignalFfiResult<Self::StoredType> {
-        Ok(unsafe { foreign.as_ref().map(|m| m.make_listener()) })
+        Ok(unsafe {
+            foreign
+                .into_inner()
+                .as_ref()
+                .map(|f| f.make_listener() as Box<_>)
+        })
     }
     fn load_from(stored: &'a mut Self::StoredType) -> Self {
         stored.take().map(|b| b as Box<_>)
@@ -532,17 +540,17 @@ impl ResultTypeInfo for crate::zkgroup::Timestamp {
 pub trait BridgeHandle: 'static {}
 
 impl<T: BridgeHandle> SimpleArgTypeInfo for &T {
-    type ArgType = *const T;
+    type ArgType = ConstPointer<T>;
     #[allow(clippy::not_unsafe_ptr_arg_deref)]
-    fn convert_from(foreign: *const T) -> SignalFfiResult<Self> {
-        unsafe { native_handle_cast(foreign) }
+    fn convert_from(foreign: ConstPointer<T>) -> SignalFfiResult<Self> {
+        unsafe { native_handle_cast(foreign.into_inner()) }
     }
 }
 
 impl<T: BridgeHandle> SimpleArgTypeInfo for Option<&T> {
-    type ArgType = *const T;
-    fn convert_from(foreign: *const T) -> SignalFfiResult<Self> {
-        if foreign.is_null() {
+    type ArgType = ConstPointer<T>;
+    fn convert_from(foreign: ConstPointer<T>) -> SignalFfiResult<Self> {
+        if foreign.raw.is_null() {
             Ok(None)
         } else {
             <&T>::convert_from(foreign).map(Some)
@@ -551,20 +559,22 @@ impl<T: BridgeHandle> SimpleArgTypeInfo for Option<&T> {
 }
 
 impl<T: BridgeHandle> SimpleArgTypeInfo for &mut T {
-    type ArgType = *mut T;
+    type ArgType = MutPointer<T>;
     #[allow(clippy::not_unsafe_ptr_arg_deref)]
-    fn convert_from(foreign: *mut T) -> SignalFfiResult<Self> {
-        unsafe { native_handle_cast_mut(foreign) }
+    fn convert_from(foreign: MutPointer<T>) -> SignalFfiResult<Self> {
+        unsafe { native_handle_cast_mut(foreign.raw) }
     }
 }
 
 impl<'a, T: BridgeHandle> ArgTypeInfo<'a> for &'a [&'a T] {
-    type ArgType = BorrowedSliceOf<*const T>;
+    type ArgType = BorrowedSliceOf<ConstPointer<T>>;
     type StoredType = Self::ArgType;
     fn borrow(foreign: Self::ArgType) -> SignalFfiResult<Self::StoredType> {
         // Check preconditions up front.
         let slice_of_pointers = unsafe { foreign.as_slice() }?;
-        if slice_of_pointers.contains(&std::ptr::null()) {
+        if slice_of_pointers.contains(&ConstPointer {
+            raw: std::ptr::null(),
+        }) {
             return Err(NullPointerError.into());
         }
 
@@ -584,18 +594,18 @@ impl<'a, T: BridgeHandle> ArgTypeInfo<'a> for &'a [&'a T] {
 }
 
 impl<T: BridgeHandle> ResultTypeInfo for T {
-    type ResultType = *mut T;
+    type ResultType = MutPointer<T>;
     fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
-        Ok(Box::into_raw(Box::new(self)))
+        Ok(Box::into_raw(Box::new(self)).into())
     }
 }
 
 impl<T: BridgeHandle> ResultTypeInfo for Option<T> {
-    type ResultType = *mut T;
+    type ResultType = MutPointer<T>;
     fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
         match self {
             Some(obj) => obj.convert_into(),
-            None => Ok(std::ptr::null_mut()),
+            None => Ok(MutPointer::from(std::ptr::null_mut())),
         }
     }
 }
@@ -770,11 +780,11 @@ macro_rules! ffi_bridge_handle_clone {
                 "_clone",
             )]
             pub unsafe extern "C" fn [<__bridge_handle_ffi_ $ffi_name _clone>](
-                new_obj: *mut *mut $typ,
-                obj: *const $typ,
+                new_obj: *mut ffi::MutPointer<$typ>,
+                obj: ffi::ConstPointer<$typ>,
             ) -> *mut $crate::ffi::SignalFfiError {
                 $crate::ffi::run_ffi_safe(|| {
-                    let obj = $crate::ffi::native_handle_cast::<$typ>(obj)?;
+                    let obj = $crate::ffi::native_handle_cast::<$typ>(obj.into_inner())?;
                     $crate::ffi::write_result_to::<$typ>(new_obj, obj.clone())
                 })
             }
@@ -870,15 +880,15 @@ macro_rules! ffi_arg_type {
     (Pni) => (*const libsignal_protocol::ServiceIdFixedWidthBinaryBytes);
     (E164) => (*const std::ffi::c_char);
     (&[u8; $len:expr]) => (*const [u8; $len]);
-    (&[& $typ:ty]) => (ffi::BorrowedSliceOf<*const $typ>);
-    (&mut dyn $typ:ty) => (*const ::paste::paste!(ffi::[<Ffi $typ Struct>]));
-    (Option<&dyn $typ:ty>) => (*const ::paste::paste!(ffi::[<Ffi $typ Struct>]));
-    (& $typ:ty) => (*const $typ);
-    (&mut $typ:ty) => (*mut $typ);
-    (Option<& $typ:ty>) => (*const $typ);
+    (&[& $typ:ty]) => (ffi::BorrowedSliceOf<ffi::ConstPointer< $typ >>);
+    (&mut dyn $typ:ty) => (ffi::ConstPointer< ::paste::paste!(ffi::[<Ffi $typ Struct>]) >);
+    (Option<&dyn $typ:ty>) => (ffi::ConstPointer< ::paste::paste!(ffi::[<Ffi $typ Struct>]) >);
+    (& $typ:ty) => (ffi::ConstPointer< $typ >);
+    (&mut $typ:ty) => (ffi::MutPointer< $typ >);
+    (Option<& $typ:ty>) => (ffi::ConstPointer< $typ >);
     (Box<[u8]>) => (ffi::BorrowedSliceOf<std::ffi::c_uchar>);
-    (Box<dyn $typ:ty>) => (*const ::paste::paste!(ffi::[<Ffi $typ Struct>]));
-    (Option<Box<dyn $typ:ty> >) => (*const ::paste::paste!(ffi::[<Ffi $typ Struct>]));
+    (Box<dyn $typ:ty >) => (ffi::ConstPointer< ::paste::paste!(ffi::[<Ffi $typ Struct>]) >);
+    (Option<Box<dyn $typ:ty> >) => (ffi::ConstPointer< ::paste::paste!(ffi::[<Ffi $typ Struct>]) >);
 
     (Ignored<$typ:ty>) => (*const std::ffi::c_void);
     (AsType<$typ:ident, $bridged:ident>) => (ffi_arg_type!($bridged));
@@ -918,7 +928,7 @@ macro_rules! ffi_result_type {
     (String) => (*const std::ffi::c_char);
     (Option<String>) => (*const std::ffi::c_char);
     (Option<&str>) => (*const std::ffi::c_char);
-    (Option<$typ:ty>) => (*mut $typ);
+    (Option<$typ:ty>) => ($crate::ffi::MutPointer<$typ>);
     (Timestamp) => (u64);
     (Uuid) => ([u8; 16]);
     (ServiceId) => (libsignal_protocol::ServiceIdFixedWidthBinaryBytes);
@@ -941,5 +951,5 @@ macro_rules! ffi_result_type {
 
     (Ignored<$typ:ty>) => (*const std::ffi::c_void);
 
-    ( $typ:ty ) => (*mut $typ);
+    ( $typ:ty ) => ($crate::ffi::MutPointer<$typ>);
 }

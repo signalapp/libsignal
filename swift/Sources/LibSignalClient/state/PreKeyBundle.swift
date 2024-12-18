@@ -6,9 +6,9 @@
 import Foundation
 import SignalFfi
 
-public class PreKeyBundle: NativeHandleOwner {
-    override internal class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
-        return signal_pre_key_bundle_destroy(handle)
+public class PreKeyBundle: NativeHandleOwner<SignalMutPointerPreKeyBundle> {
+    override internal class func destroyNativeHandle(_ handle: NonNull<SignalMutPointerPreKeyBundle>) -> SignalFfiErrorRef? {
+        return signal_pre_key_bundle_destroy(handle.pointer)
     }
 
     // with a prekey
@@ -22,7 +22,7 @@ public class PreKeyBundle: NativeHandleOwner {
         signedPrekeySignature: Bytes,
         identity identityKey: IdentityKey
     ) throws {
-        var result: OpaquePointer?
+        var result = SignalMutPointerPreKeyBundle()
         try withNativeHandles(prekey, signedPrekey, identityKey.publicKey) { prekeyHandle, signedPrekeyHandle, identityKeyHandle in
             try signedPrekeySignature.withUnsafeBorrowedBuffer { signedSignatureBuffer in
                 try [].withUnsafeBorrowedBuffer { kyberSignatureBuffer in
@@ -31,19 +31,19 @@ public class PreKeyBundle: NativeHandleOwner {
                         registrationId,
                         deviceId,
                         prekeyId,
-                        prekeyHandle,
+                        prekeyHandle.const(),
                         signedPrekeyId,
-                        signedPrekeyHandle,
+                        signedPrekeyHandle.const(),
                         signedSignatureBuffer,
-                        identityKeyHandle,
+                        identityKeyHandle.const(),
                         ~0,
-                        nil,
+                        SignalConstPointerKyberPublicKey(),
                         kyberSignatureBuffer
                     ))
                 }
             }
         }
-        self.init(owned: result!)
+        self.init(owned: NonNull(result)!)
     }
 
     // without a prekey
@@ -55,7 +55,7 @@ public class PreKeyBundle: NativeHandleOwner {
         signedPrekeySignature: Bytes,
         identity identityKey: IdentityKey
     ) throws {
-        var result: OpaquePointer?
+        var result = SignalMutPointerPreKeyBundle()
         try withNativeHandles(signedPrekey, identityKey.publicKey) { signedPrekeyHandle, identityKeyHandle in
             try signedPrekeySignature.withUnsafeBorrowedBuffer { signedSignatureBuffer in
                 try [].withUnsafeBorrowedBuffer { kyberSignatureBuffer in
@@ -64,19 +64,19 @@ public class PreKeyBundle: NativeHandleOwner {
                         registrationId,
                         deviceId,
                         ~0,
-                        nil,
+                        SignalConstPointerPublicKey(),
                         signedPrekeyId,
-                        signedPrekeyHandle,
+                        signedPrekeyHandle.const(),
                         signedSignatureBuffer,
-                        identityKeyHandle,
+                        identityKeyHandle.const(),
                         ~0,
-                        nil,
+                        SignalConstPointerKyberPublicKey(),
                         kyberSignatureBuffer
                     ))
                 }
             }
         }
-        self.init(owned: result!)
+        self.init(owned: NonNull(result)!)
     }
 
     // with a prekey and KEM key
@@ -96,7 +96,7 @@ public class PreKeyBundle: NativeHandleOwner {
         kyberPrekey: KEMPublicKey,
         kyberPrekeySignature: KEMBytes
     ) throws {
-        var result: OpaquePointer?
+        var result = SignalMutPointerPreKeyBundle()
         try withNativeHandles(prekey, signedPrekey, identityKey.publicKey, kyberPrekey) { prekeyHandle, signedPrekeyHandle, identityKeyHandle, kyberKeyHandle in
             try signedPrekeySignature.withUnsafeBorrowedBuffer { ecSignatureBuffer in
                 try kyberPrekeySignature.withUnsafeBorrowedBuffer { kyberSignatureBuffer in
@@ -105,19 +105,19 @@ public class PreKeyBundle: NativeHandleOwner {
                         registrationId,
                         deviceId,
                         prekeyId,
-                        prekeyHandle,
+                        prekeyHandle.const(),
                         signedPrekeyId,
-                        signedPrekeyHandle,
+                        signedPrekeyHandle.const(),
                         ecSignatureBuffer,
-                        identityKeyHandle,
+                        identityKeyHandle.const(),
                         kyberPrekeyId,
-                        kyberKeyHandle,
+                        kyberKeyHandle.const(),
                         kyberSignatureBuffer
                     ))
                 }
             }
         }
-        self.init(owned: result!)
+        self.init(owned: NonNull(result)!)
     }
 
     // without a prekey but with KEM key
@@ -135,7 +135,7 @@ public class PreKeyBundle: NativeHandleOwner {
         kyberPrekey: KEMPublicKey,
         kyberPrekeySignature: KEMBytes
     ) throws {
-        var result: OpaquePointer?
+        var result = SignalMutPointerPreKeyBundle()
         try withNativeHandles(signedPrekey, identityKey.publicKey, kyberPrekey) { signedPrekeyHandle, identityKeyHandle, kyberKeyHandle in
             try signedPrekeySignature.withUnsafeBorrowedBuffer { ecSignatureBuffer in
                 try kyberPrekeySignature.withUnsafeBorrowedBuffer { kyberSignatureBuffer in
@@ -144,26 +144,26 @@ public class PreKeyBundle: NativeHandleOwner {
                         registrationId,
                         deviceId,
                         ~0,
-                        nil,
+                        SignalConstPointerPublicKey(),
                         signedPrekeyId,
-                        signedPrekeyHandle,
+                        signedPrekeyHandle.const(),
                         ecSignatureBuffer,
-                        identityKeyHandle,
+                        identityKeyHandle.const(),
                         kyberPrekeyId,
-                        kyberKeyHandle,
+                        kyberKeyHandle.const(),
                         kyberSignatureBuffer
                     ))
                 }
             }
         }
-        self.init(owned: result!)
+        self.init(owned: NonNull(result)!)
     }
 
     public var registrationId: UInt32 {
         return withNativeHandle { nativeHandle in
             failOnError {
                 try invokeFnReturningInteger {
-                    signal_pre_key_bundle_get_registration_id($0, nativeHandle)
+                    signal_pre_key_bundle_get_registration_id($0, nativeHandle.const())
                 }
             }
         }
@@ -173,7 +173,7 @@ public class PreKeyBundle: NativeHandleOwner {
         return withNativeHandle { nativeHandle in
             failOnError {
                 try invokeFnReturningInteger {
-                    signal_pre_key_bundle_get_device_id($0, nativeHandle)
+                    signal_pre_key_bundle_get_device_id($0, nativeHandle.const())
                 }
             }
         }
@@ -183,7 +183,7 @@ public class PreKeyBundle: NativeHandleOwner {
         return withNativeHandle { nativeHandle in
             failOnError {
                 try invokeFnReturningInteger {
-                    signal_pre_key_bundle_get_signed_pre_key_id($0, nativeHandle)
+                    signal_pre_key_bundle_get_signed_pre_key_id($0, nativeHandle.const())
                 }
             }
         }
@@ -193,7 +193,7 @@ public class PreKeyBundle: NativeHandleOwner {
         let prekey_id = withNativeHandle { nativeHandle in
             failOnError {
                 try invokeFnReturningInteger {
-                    signal_pre_key_bundle_get_pre_key_id($0, nativeHandle)
+                    signal_pre_key_bundle_get_pre_key_id($0, nativeHandle.const())
                 }
             }
         }
@@ -204,7 +204,7 @@ public class PreKeyBundle: NativeHandleOwner {
         return withNativeHandle { nativeHandle in
             failOnError {
                 try invokeFnReturningOptionalNativeHandle {
-                    signal_pre_key_bundle_get_pre_key_public($0, nativeHandle)
+                    signal_pre_key_bundle_get_pre_key_public($0, nativeHandle.const())
                 }
             }
         }
@@ -214,7 +214,7 @@ public class PreKeyBundle: NativeHandleOwner {
         let pk: PublicKey = withNativeHandle { nativeHandle in
             failOnError {
                 try invokeFnReturningNativeHandle {
-                    signal_pre_key_bundle_get_identity_key($0, nativeHandle)
+                    signal_pre_key_bundle_get_identity_key($0, nativeHandle.const())
                 }
             }
         }
@@ -225,7 +225,7 @@ public class PreKeyBundle: NativeHandleOwner {
         return withNativeHandle { nativeHandle in
             failOnError {
                 try invokeFnReturningNativeHandle {
-                    signal_pre_key_bundle_get_signed_pre_key_public($0, nativeHandle)
+                    signal_pre_key_bundle_get_signed_pre_key_public($0, nativeHandle.const())
                 }
             }
         }
@@ -235,7 +235,7 @@ public class PreKeyBundle: NativeHandleOwner {
         return withNativeHandle { nativeHandle in
             failOnError {
                 try invokeFnReturningArray {
-                    signal_pre_key_bundle_get_signed_pre_key_signature($0, nativeHandle)
+                    signal_pre_key_bundle_get_signed_pre_key_signature($0, nativeHandle.const())
                 }
             }
         }
@@ -245,7 +245,7 @@ public class PreKeyBundle: NativeHandleOwner {
         let prekey_id = withNativeHandle { nativeHandle in
             failOnError {
                 try invokeFnReturningInteger {
-                    signal_pre_key_bundle_get_kyber_pre_key_id($0, nativeHandle)
+                    signal_pre_key_bundle_get_kyber_pre_key_id($0, nativeHandle.const())
                 }
             }
         }
@@ -256,7 +256,7 @@ public class PreKeyBundle: NativeHandleOwner {
         return withNativeHandle { nativeHandle in
             failOnError {
                 try invokeFnReturningOptionalNativeHandle {
-                    signal_pre_key_bundle_get_kyber_pre_key_public($0, nativeHandle)
+                    signal_pre_key_bundle_get_kyber_pre_key_public($0, nativeHandle.const())
                 }
             }
         }
@@ -266,10 +266,32 @@ public class PreKeyBundle: NativeHandleOwner {
         let result: [UInt8] = withNativeHandle { nativeHandle in
             failOnError {
                 try invokeFnReturningArray {
-                    signal_pre_key_bundle_get_kyber_pre_key_signature($0, nativeHandle)
+                    signal_pre_key_bundle_get_kyber_pre_key_signature($0, nativeHandle.const())
                 }
             }
         }
         return result.isEmpty ? nil : result
+    }
+}
+
+extension SignalMutPointerPreKeyBundle: SignalMutPointer {
+    public typealias ConstPointer = SignalConstPointerPreKeyBundle
+
+    public init(untyped: OpaquePointer?) {
+        self.init(raw: untyped)
+    }
+
+    public func toOpaque() -> OpaquePointer? {
+        self.raw
+    }
+
+    public func const() -> Self.ConstPointer {
+        Self.ConstPointer(raw: self.raw)
+    }
+}
+
+extension SignalConstPointerPreKeyBundle: SignalConstPointer {
+    public func toOpaque() -> OpaquePointer? {
+        self.raw
     }
 }

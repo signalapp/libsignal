@@ -16,14 +16,14 @@ public struct AciAndAccessKey: Sendable {
 }
 
 /// Information passed to the CDSI server when making a request.
-public class CdsiLookupRequest: NativeHandleOwner {
+public class CdsiLookupRequest: NativeHandleOwner<SignalMutPointerLookupRequest> {
     /// Indicates whether this request object was constructed with a token.
     public private(set) var hasToken: Bool = false
 
     private convenience init() {
-        var handle: OpaquePointer?
+        var handle = SignalMutPointerLookupRequest(untyped: nil)
         try! checkError(signal_lookup_request_new(&handle))
-        self.init(owned: handle!)
+        self.init(owned: NonNull(handle)!)
     }
 
     /// Creates a new `CdsiLookupRequest` with the provided data.
@@ -42,11 +42,11 @@ public class CdsiLookupRequest: NativeHandleOwner {
         self.init()
         try self.withNativeHandle { handle in
             for e164 in e164s {
-                try checkError(signal_lookup_request_add_e164(handle, e164))
+                try checkError(signal_lookup_request_add_e164(handle.const(), e164))
             }
 
             for prevE164 in prevE164s {
-                try checkError(signal_lookup_request_add_previous_e164(handle, prevE164))
+                try checkError(signal_lookup_request_add_previous_e164(handle.const(), prevE164))
             }
 
             for aciAndAccessKey in acisAndAccessKeys {
@@ -54,14 +54,14 @@ public class CdsiLookupRequest: NativeHandleOwner {
                 let accessKey = aciAndAccessKey.accessKey
                 try aci.withPointerToFixedWidthBinary { aci in
                     try accessKey.withUnsafeBorrowedBuffer { accessKey in
-                        try checkError(signal_lookup_request_add_aci_and_access_key(handle, aci, accessKey))
+                        try checkError(signal_lookup_request_add_aci_and_access_key(handle.const(), aci, accessKey))
                     }
                 }
             }
 
             if let token = token {
                 try token.withUnsafeBorrowedBuffer { token in
-                    try checkError(signal_lookup_request_set_token(handle, token))
+                    try checkError(signal_lookup_request_set_token(handle.const(), token))
                 }
                 self.hasToken = true
             }
@@ -86,8 +86,30 @@ public class CdsiLookupRequest: NativeHandleOwner {
         try self.init(e164s: e164s, prevE164s: prevE164s, acisAndAccessKeys: acisAndAccessKeys, token: token)
     }
 
-    override internal class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
-        signal_lookup_request_destroy(handle)
+    override internal class func destroyNativeHandle(_ handle: NonNull<SignalMutPointerLookupRequest>) -> SignalFfiErrorRef? {
+        signal_lookup_request_destroy(handle.pointer)
+    }
+}
+
+extension SignalMutPointerLookupRequest: SignalMutPointer {
+    public typealias ConstPointer = SignalConstPointerLookupRequest
+
+    public init(untyped: OpaquePointer?) {
+        self.init(raw: untyped)
+    }
+
+    public func toOpaque() -> OpaquePointer? {
+        self.raw
+    }
+
+    public func const() -> Self.ConstPointer {
+        Self.ConstPointer(raw: self.raw)
+    }
+}
+
+extension SignalConstPointerLookupRequest: SignalConstPointer {
+    public func toOpaque() -> OpaquePointer? {
+        self.raw
     }
 }
 
@@ -95,16 +117,16 @@ public class CdsiLookupRequest: NativeHandleOwner {
 ///
 /// Returned by ``Net/cdsiLookup(auth:request:)`` when a request is successfully initiated.
 public class CdsiLookup {
-    class NativeCdsiLookup: NativeHandleOwner {
-        override internal class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
-            signal_cdsi_lookup_destroy(handle)
+    class NativeCdsiLookup: NativeHandleOwner<SignalMutPointerCdsiLookup> {
+        override internal class func destroyNativeHandle(_ handle: NonNull<SignalMutPointerCdsiLookup>) -> SignalFfiErrorRef? {
+            signal_cdsi_lookup_destroy(handle.pointer)
         }
     }
 
     private var asyncContext: TokioAsyncContext
     private var native: NativeCdsiLookup
 
-    internal init(native: OpaquePointer, asyncContext: TokioAsyncContext) {
+    internal init(native: NonNull<SignalMutPointerCdsiLookup>, asyncContext: TokioAsyncContext) {
         self.native = NativeCdsiLookup(owned: native)
         self.asyncContext = asyncContext
     }
@@ -118,7 +140,7 @@ public class CdsiLookup {
         failOnError {
             try self.native.withNativeHandle { handle in
                 try invokeFnReturningData {
-                    signal_cdsi_lookup_token($0, handle)
+                    signal_cdsi_lookup_token($0, handle.const())
                 }
             }
         }
@@ -137,11 +159,33 @@ public class CdsiLookup {
     public func complete() async throws -> CdsiLookupResponse {
         let response: SignalFfiCdsiLookupResponse = try await self.asyncContext.invokeAsyncFunction { promise, asyncContext in
             self.native.withNativeHandle { handle in
-                signal_cdsi_lookup_complete(promise, asyncContext, handle)
+                signal_cdsi_lookup_complete(promise, asyncContext.const(), handle.const())
             }
         }
 
         return CdsiLookupResponse(entries: LookupResponseEntryList(owned: response.entries), debugPermitsUsed: response.debug_permits_used)
+    }
+}
+
+extension SignalMutPointerCdsiLookup: SignalMutPointer {
+    public typealias ConstPointer = SignalConstPointerCdsiLookup
+
+    public init(untyped: OpaquePointer?) {
+        self.init(raw: untyped)
+    }
+
+    public func toOpaque() -> OpaquePointer? {
+        self.raw
+    }
+
+    public func const() -> Self.ConstPointer {
+        Self.ConstPointer(raw: self.raw)
+    }
+}
+
+extension SignalConstPointerCdsiLookup: SignalConstPointer {
+    public func toOpaque() -> OpaquePointer? {
+        self.raw
     }
 }
 

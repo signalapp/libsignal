@@ -25,7 +25,7 @@ public struct IdentityKey: Equatable, Sendable {
         var result = false
         try withNativeHandles(publicKey, other.publicKey) { selfHandle, otherHandle in
             try signature.withUnsafeBorrowedBuffer { signatureBuffer in
-                try checkError(signal_identitykey_verify_alternate_identity(&result, selfHandle, otherHandle, signatureBuffer))
+                try checkError(signal_identitykey_verify_alternate_identity(&result, selfHandle.const(), otherHandle.const(), signatureBuffer))
             }
         }
         return result
@@ -43,14 +43,14 @@ public struct IdentityKeyPair: Sendable {
     }
 
     public init<Bytes: ContiguousBytes>(bytes: Bytes) throws {
-        var pubkeyPtr: OpaquePointer?
-        var privkeyPtr: OpaquePointer?
+        var pubkeyPtr = SignalMutPointerPublicKey()
+        var privkeyPtr = SignalMutPointerPrivateKey()
         try bytes.withUnsafeBorrowedBuffer {
             try checkError(signal_identitykeypair_deserialize(&privkeyPtr, &pubkeyPtr, $0))
         }
 
-        self.publicKey = PublicKey(owned: pubkeyPtr!)
-        self.privateKey = PrivateKey(owned: privkeyPtr!)
+        self.publicKey = PublicKey(owned: NonNull(pubkeyPtr)!)
+        self.privateKey = PrivateKey(owned: NonNull(privkeyPtr)!)
     }
 
     public init(publicKey: PublicKey, privateKey: PrivateKey) {
@@ -62,7 +62,7 @@ public struct IdentityKeyPair: Sendable {
         return withNativeHandles(self.publicKey, self.privateKey) { publicKey, privateKey in
             failOnError {
                 try invokeFnReturningArray {
-                    signal_identitykeypair_serialize($0, publicKey, privateKey)
+                    signal_identitykeypair_serialize($0, publicKey.const(), privateKey.const())
                 }
             }
         }
@@ -76,7 +76,7 @@ public struct IdentityKeyPair: Sendable {
         return withNativeHandles(self.publicKey, self.privateKey, other.publicKey) { publicKey, privateKey, other in
             failOnError {
                 try invokeFnReturningArray {
-                    signal_identitykeypair_sign_alternate_identity($0, publicKey, privateKey, other)
+                    signal_identitykeypair_sign_alternate_identity($0, publicKey.const(), privateKey.const(), other.const())
                 }
             }
         }

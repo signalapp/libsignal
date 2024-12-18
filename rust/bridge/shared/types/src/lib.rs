@@ -47,11 +47,17 @@ pub mod message_backup;
 pub mod io;
 pub mod keytrans;
 
-#[cfg(feature = "signal-media")]
 pub mod media {
     // Wrapper struct for cbindgen
     #[derive(Clone, Debug)]
-    pub struct SanitizedMetadata(pub signal_media::sanitize::mp4::SanitizedMetadata);
+    pub struct SanitizedMetadata(
+        // This `cfg` should really go on the type instead of its members since
+        // the only code that uses the type is similarly conditionally enabled.
+        // The problem is that cbindgen generates a typedef that references this
+        // type even when the feature is disabled. Having the type always
+        // present works around this bug.
+        #[cfg(feature = "signal-media")] pub signal_media::sanitize::mp4::SanitizedMetadata,
+    );
 
     use crate::*;
 

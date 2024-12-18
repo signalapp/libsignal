@@ -24,9 +24,9 @@ import SignalFfi
 /// to pass along.  When a message is received (as ciphertext), it is passed to Cds2Client.establishedRecv(),
 /// which decrypts and verifies it, passing the plaintext back to the client for processing.
 ///
-public class SgxClient: NativeHandleOwner {
-    override internal class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
-        return signal_sgx_client_state_destroy(handle)
+public class SgxClient: NativeHandleOwner<SignalMutPointerSgxClientState> {
+    override internal class func destroyNativeHandle(_ handle: NonNull<SignalMutPointerSgxClientState>) -> SignalFfiErrorRef? {
+        return signal_sgx_client_state_destroy(handle.pointer)
     }
 
     /// Initial request to send to an SGX service, which begins post-attestation handshake.
@@ -34,7 +34,7 @@ public class SgxClient: NativeHandleOwner {
         return withNativeHandle { nativeHandle in
             failOnError {
                 try invokeFnReturningArray {
-                    signal_sgx_client_state_initial_request($0, nativeHandle)
+                    signal_sgx_client_state_initial_request($0, nativeHandle.const())
                 }
             }
         }
@@ -69,5 +69,27 @@ public class SgxClient: NativeHandleOwner {
                 }
             }
         }
+    }
+}
+
+extension SignalMutPointerSgxClientState: SignalMutPointer {
+    public typealias ConstPointer = SignalConstPointerSgxClientState
+
+    public init(untyped: OpaquePointer?) {
+        self.init(raw: untyped)
+    }
+
+    public func toOpaque() -> OpaquePointer? {
+        self.raw
+    }
+
+    public func const() -> Self.ConstPointer {
+        Self.ConstPointer(raw: self.raw)
+    }
+}
+
+extension SignalConstPointerSgxClientState: SignalConstPointer {
+    public func toOpaque() -> OpaquePointer? {
+        self.raw
     }
 }

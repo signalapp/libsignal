@@ -6,7 +6,7 @@
 import Foundation
 import SignalFfi
 
-public class Aes256Ctr32: NativeHandleOwner {
+public class Aes256Ctr32: NativeHandleOwner<SignalMutPointerAes256Ctr32> {
     public static let keyLength: Int = 32
     public static let nonceLength: Int = 16
 
@@ -14,7 +14,7 @@ public class Aes256Ctr32: NativeHandleOwner {
         key: KeyBytes,
         nonce: NonceBytes
     ) throws where KeyBytes: ContiguousBytes, NonceBytes: ContiguousBytes {
-        let handle: OpaquePointer? = try key.withUnsafeBorrowedBuffer { keyBuffer in
+        let handle = try key.withUnsafeBorrowedBuffer { keyBuffer in
             try nonce.withUnsafeBytes { nonceBytes in
                 guard nonceBytes.count == Self.nonceLength else {
                     throw SignalError.invalidArgument("nonce must be \(Self.nonceLength) bytes (got \(nonceBytes.count))")
@@ -26,7 +26,7 @@ public class Aes256Ctr32: NativeHandleOwner {
                     UInt32(nonceBytes[15])
                 var nonceBufferWithoutCounter = SignalBorrowedBuffer(nonceBytes)
                 nonceBufferWithoutCounter.length -= 4
-                var result: OpaquePointer?
+                var result = SignalMutPointerAes256Ctr32()
                 try checkError(signal_aes256_ctr32_new(
                     &result,
                     keyBuffer,
@@ -36,11 +36,11 @@ public class Aes256Ctr32: NativeHandleOwner {
                 return result
             }
         }
-        self.init(owned: handle!)
+        self.init(owned: NonNull(handle)!)
     }
 
-    override internal class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
-        return signal_aes256_ctr32_destroy(handle)
+    override internal class func destroyNativeHandle(_ handle: NonNull<SignalMutPointerAes256Ctr32>) -> SignalFfiErrorRef? {
+        return signal_aes256_ctr32_destroy(handle.pointer)
     }
 
     public func process(_ message: inout Data) throws {
@@ -62,5 +62,21 @@ public class Aes256Ctr32: NativeHandleOwner {
         nonce: NonceBytes
     ) throws where KeyBytes: ContiguousBytes, NonceBytes: ContiguousBytes {
         try Aes256Ctr32(key: key, nonce: nonce).process(&message)
+    }
+}
+
+extension SignalMutPointerAes256Ctr32: SignalMutPointer {
+    public typealias ConstPointer = OpaquePointer?
+
+    public init(untyped: OpaquePointer?) {
+        self.init(raw: untyped)
+    }
+
+    public func toOpaque() -> OpaquePointer? {
+        self.raw
+    }
+
+    public func const() -> Self.ConstPointer {
+        nil
     }
 }

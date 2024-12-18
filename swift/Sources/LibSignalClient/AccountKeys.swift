@@ -46,10 +46,32 @@ public func verifyLocalPin<Bytes: ContiguousBytes>(_ pin: Bytes, againstEncodedH
     }
 }
 
+extension SignalMutPointerPinHash: SignalMutPointer {
+    public typealias ConstPointer = SignalConstPointerPinHash
+
+    public init(untyped: OpaquePointer?) {
+        self.init(raw: untyped)
+    }
+
+    public func toOpaque() -> OpaquePointer? {
+        self.raw
+    }
+
+    public func const() -> Self.ConstPointer {
+        Self.ConstPointer(raw: self.raw)
+    }
+}
+
+extension SignalConstPointerPinHash: SignalConstPointer {
+    public func toOpaque() -> OpaquePointer? {
+        self.raw
+    }
+}
+
 /// A hash of the pin that can be used to interact with a Secure Value Recovery service.
-public class PinHash: NativeHandleOwner, @unchecked Sendable {
-    override internal class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
-        return signal_pin_hash_destroy(handle)
+public class PinHash: NativeHandleOwner<SignalMutPointerPinHash>, @unchecked Sendable {
+    override internal class func destroyNativeHandle(_ handle: NonNull<SignalMutPointerPinHash>) -> SignalFfiErrorRef? {
+        return signal_pin_hash_destroy(handle.pointer)
     }
 
     /// A 32 byte secret that can be used to access a value in a secure store.
@@ -57,7 +79,7 @@ public class PinHash: NativeHandleOwner, @unchecked Sendable {
         return withNativeHandle { nativeHandle in
             failOnError {
                 try invokeFnReturningFixedLengthArray {
-                    signal_pin_hash_access_key($0, nativeHandle)
+                    signal_pin_hash_access_key($0, nativeHandle.const())
                 }
             }
         }
@@ -68,7 +90,7 @@ public class PinHash: NativeHandleOwner, @unchecked Sendable {
         return withNativeHandle { nativeHandle in
             failOnError {
                 try invokeFnReturningFixedLengthArray {
-                    signal_pin_hash_encryption_key($0, nativeHandle)
+                    signal_pin_hash_encryption_key($0, nativeHandle.const())
                 }
             }
         }
@@ -83,7 +105,7 @@ public class PinHash: NativeHandleOwner, @unchecked Sendable {
     /// - parameter salt: A 32 byte salt
     /// - returns: A `PinHash`
     public convenience init<PinBytes: ContiguousBytes, SaltBytes: ContiguousBytes>(normalizedPin: PinBytes, salt: SaltBytes) throws {
-        var result: OpaquePointer?
+        var result = SignalMutPointerPinHash()
         try normalizedPin.withUnsafeBorrowedBuffer { pinBytes in
             try salt.withUnsafeBytes { saltBytes in
                 try ByteArray(newContents: Array(saltBytes), expectedLength: 32).withUnsafePointerToSerialized { saltTuple in
@@ -91,7 +113,7 @@ public class PinHash: NativeHandleOwner, @unchecked Sendable {
                 }
             }
         }
-        self.init(owned: result!)
+        self.init(owned: NonNull(result)!)
     }
 
     /// Hash a pin for use with a remote SecureValueRecovery2 service.
@@ -103,7 +125,7 @@ public class PinHash: NativeHandleOwner, @unchecked Sendable {
     /// - parameter mrenclave: The mrenclave where the hashed pin will be stored
     /// - returns: A `PinHash`
     public convenience init<PinBytes: ContiguousBytes, MrenclaveBytes: ContiguousBytes>(normalizedPin: PinBytes, username: String, mrenclave: MrenclaveBytes) throws {
-        var result: OpaquePointer?
+        var result = SignalMutPointerPinHash()
         try normalizedPin.withUnsafeBorrowedBuffer { pinBytes in
             try mrenclave.withUnsafeBorrowedBuffer { mrenclaveBytes in
                 try username.withCString { userBytes in
@@ -111,7 +133,7 @@ public class PinHash: NativeHandleOwner, @unchecked Sendable {
                 }
             }
         }
-        self.init(owned: result!)
+        self.init(owned: NonNull(result)!)
     }
 }
 

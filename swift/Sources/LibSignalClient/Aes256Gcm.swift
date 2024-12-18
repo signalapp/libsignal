@@ -82,16 +82,16 @@ public struct Aes256GcmEncryptedData: Sendable {
 }
 
 /// Supports streamed encryption and custom nonces. Use Aes256GcmEncryptedData if you don't need either.
-public class Aes256GcmEncryption: NativeHandleOwner {
+public class Aes256GcmEncryption: NativeHandleOwner<SignalMutPointerAes256GcmEncryption> {
     public convenience init(
         key: some ContiguousBytes,
         nonce: some ContiguousBytes,
         associatedData: some ContiguousBytes
     ) throws {
-        let handle: OpaquePointer? = try key.withUnsafeBorrowedBuffer { keyBuffer in
+        let handle = try key.withUnsafeBorrowedBuffer { keyBuffer in
             try nonce.withUnsafeBorrowedBuffer { nonceBuffer in
                 try associatedData.withUnsafeBorrowedBuffer { adBuffer in
-                    var result: OpaquePointer?
+                    var result = SignalMutPointerAes256GcmEncryption()
                     try checkError(signal_aes256_gcm_encryption_new(
                         &result,
                         keyBuffer,
@@ -102,11 +102,11 @@ public class Aes256GcmEncryption: NativeHandleOwner {
                 }
             }
         }
-        self.init(owned: handle!)
+        self.init(owned: NonNull(handle)!)
     }
 
-    override internal class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
-        return signal_aes256_gcm_encryption_destroy(handle)
+    override internal class func destroyNativeHandle(_ handle: NonNull<SignalMutPointerAes256GcmEncryption>) -> SignalFfiErrorRef? {
+        return signal_aes256_gcm_encryption_destroy(handle.pointer)
     }
 
     public func encrypt(_ message: inout Data) throws {
@@ -131,17 +131,33 @@ public class Aes256GcmEncryption: NativeHandleOwner {
     }
 }
 
+extension SignalMutPointerAes256GcmEncryption: SignalMutPointer {
+    public typealias ConstPointer = OpaquePointer?
+
+    public init(untyped: OpaquePointer?) {
+        self.init(raw: untyped)
+    }
+
+    public func toOpaque() -> OpaquePointer? {
+        self.raw
+    }
+
+    public func const() -> Self.ConstPointer {
+        nil
+    }
+}
+
 /// Supports streamed decryption. Use Aes256GcmEncryptedData if you don't need streamed decryption.
-public class Aes256GcmDecryption: NativeHandleOwner {
+public class Aes256GcmDecryption: NativeHandleOwner<SignalMutPointerAes256GcmDecryption> {
     public convenience init(
         key: some ContiguousBytes,
         nonce: some ContiguousBytes,
         associatedData: some ContiguousBytes
     ) throws {
-        let handle: OpaquePointer? = try key.withUnsafeBorrowedBuffer { keyBuffer in
+        let handle = try key.withUnsafeBorrowedBuffer { keyBuffer in
             try nonce.withUnsafeBorrowedBuffer { nonceBuffer in
                 try associatedData.withUnsafeBorrowedBuffer { adBuffer in
-                    var result: OpaquePointer?
+                    var result = SignalMutPointerAes256GcmDecryption()
                     try checkError(signal_aes256_gcm_decryption_new(
                         &result,
                         keyBuffer,
@@ -152,11 +168,11 @@ public class Aes256GcmDecryption: NativeHandleOwner {
                 }
             }
         }
-        self.init(owned: handle!)
+        self.init(owned: NonNull(handle)!)
     }
 
-    override internal class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
-        return signal_aes256_gcm_decryption_destroy(handle)
+    override internal class func destroyNativeHandle(_ handle: NonNull<SignalMutPointerAes256GcmDecryption>) -> SignalFfiErrorRef? {
+        return signal_aes256_gcm_decryption_destroy(handle.pointer)
     }
 
     public func decrypt(_ message: inout Data) throws {
@@ -184,5 +200,21 @@ public class Aes256GcmDecryption: NativeHandleOwner {
                 return result
             }
         }
+    }
+}
+
+extension SignalMutPointerAes256GcmDecryption: SignalMutPointer {
+    public typealias ConstPointer = OpaquePointer?
+
+    public init(untyped: OpaquePointer?) {
+        self.init(raw: untyped)
+    }
+
+    public func toOpaque() -> OpaquePointer? {
+        self.raw
+    }
+
+    public func const() -> Self.ConstPointer {
+        nil
     }
 }

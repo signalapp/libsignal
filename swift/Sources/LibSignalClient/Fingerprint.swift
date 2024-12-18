@@ -52,7 +52,7 @@ public struct NumericFingerprintGenerator: Sendable {
         remoteIdentifier: some ContiguousBytes,
         remoteKey: PublicKey
     ) throws -> Fingerprint {
-        var obj: OpaquePointer?
+        var obj = SignalMutPointerFingerprint()
         try withNativeHandles(localKey, remoteKey) { localKeyHandle, remoteKeyHandle in
             try localIdentifier.withUnsafeBorrowedBuffer { localBuffer in
                 try remoteIdentifier.withUnsafeBorrowedBuffer { remoteBuffer in
@@ -61,25 +61,47 @@ public struct NumericFingerprintGenerator: Sendable {
                         UInt32(self.iterations),
                         UInt32(version),
                         localBuffer,
-                        localKeyHandle,
+                        localKeyHandle.const(),
                         remoteBuffer,
-                        remoteKeyHandle
+                        remoteKeyHandle.const()
                     ))
                 }
             }
         }
 
         let fprintStr = try invokeFnReturningString {
-            signal_fingerprint_display_string($0, obj)
+            signal_fingerprint_display_string($0, obj.const())
         }
         let displayable = DisplayableFingerprint(formatted: fprintStr)
 
         let scannableBits = try invokeFnReturningArray {
-            signal_fingerprint_scannable_encoding($0, obj)
+            signal_fingerprint_scannable_encoding($0, obj.const())
         }
         let scannable = ScannableFingerprint(encoding: scannableBits)
         try checkError(signal_fingerprint_destroy(obj))
 
         return Fingerprint(displayable: displayable, scannable: scannable)
+    }
+}
+
+extension SignalMutPointerFingerprint: SignalMutPointer {
+    public typealias ConstPointer = SignalConstPointerFingerprint
+
+    public init(untyped: OpaquePointer?) {
+        self.init(raw: untyped)
+    }
+
+    public func toOpaque() -> OpaquePointer? {
+        self.raw
+    }
+
+    public func const() -> Self.ConstPointer {
+        Self.ConstPointer(raw: self.raw)
+    }
+}
+
+extension SignalConstPointerFingerprint: SignalConstPointer {
+    public func toOpaque() -> OpaquePointer? {
+        self.raw
     }
 }

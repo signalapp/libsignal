@@ -22,7 +22,7 @@ public class ClientZkAuthOperations {
                 try pni.withPointerToFixedWidthBinary { pni in
                     try authCredentialResponse.withUnsafeBorrowedBuffer { authCredentialResponse in
                         try invokeFnReturningVariableLengthSerialized {
-                            signal_server_public_params_receive_auth_credential_with_pni_as_service_id($0, serverPublicParams, aci, pni, redemptionTime, authCredentialResponse)
+                            signal_server_public_params_receive_auth_credential_with_pni_as_service_id($0, serverPublicParams.const(), aci, pni, redemptionTime, authCredentialResponse)
                         }
                     }
                 }
@@ -40,7 +40,7 @@ public class ClientZkAuthOperations {
                 try groupSecretParams.withUnsafePointerToSerialized { groupSecretParams in
                     try authCredential.withUnsafeBorrowedBuffer { authCredential in
                         try invokeFnReturningVariableLengthSerialized {
-                            signal_server_public_params_create_auth_credential_with_pni_presentation_deterministic($0, contents, randomness, groupSecretParams, authCredential)
+                            signal_server_public_params_create_auth_credential_with_pni_presentation_deterministic($0, contents.const(), randomness, groupSecretParams, authCredential)
                         }
                     }
                 }

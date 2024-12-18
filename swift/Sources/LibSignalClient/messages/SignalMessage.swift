@@ -6,24 +6,24 @@
 import Foundation
 import SignalFfi
 
-public class SignalMessage: NativeHandleOwner {
-    override internal class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
-        return signal_message_destroy(handle)
+public class SignalMessage: NativeHandleOwner<SignalMutPointerSignalMessage> {
+    override internal class func destroyNativeHandle(_ handle: NonNull<SignalMutPointerSignalMessage>) -> SignalFfiErrorRef? {
+        return signal_message_destroy(handle.pointer)
     }
 
     public convenience init<Bytes: ContiguousBytes>(bytes: Bytes) throws {
-        var result: OpaquePointer?
+        var result = SignalMutPointerSignalMessage()
         try bytes.withUnsafeBorrowedBuffer {
             try checkError(signal_message_deserialize(&result, $0))
         }
-        self.init(owned: result!)
+        self.init(owned: NonNull(result)!)
     }
 
     public var senderRatchetKey: PublicKey {
         return withNativeHandle { nativeHandle in
             failOnError {
                 try invokeFnReturningNativeHandle {
-                    signal_message_get_sender_ratchet_key($0, nativeHandle)
+                    signal_message_get_sender_ratchet_key($0, nativeHandle.const())
                 }
             }
         }
@@ -33,7 +33,7 @@ public class SignalMessage: NativeHandleOwner {
         return withNativeHandle { nativeHandle in
             failOnError {
                 try invokeFnReturningArray {
-                    signal_message_get_body($0, nativeHandle)
+                    signal_message_get_body($0, nativeHandle.const())
                 }
             }
         }
@@ -43,7 +43,7 @@ public class SignalMessage: NativeHandleOwner {
         return withNativeHandle { nativeHandle in
             failOnError {
                 try invokeFnReturningArray {
-                    signal_message_get_serialized($0, nativeHandle)
+                    signal_message_get_serialized($0, nativeHandle.const())
                 }
             }
         }
@@ -53,7 +53,7 @@ public class SignalMessage: NativeHandleOwner {
         return withNativeHandle { nativeHandle in
             failOnError {
                 try invokeFnReturningInteger {
-                    signal_message_get_message_version($0, nativeHandle)
+                    signal_message_get_message_version($0, nativeHandle.const())
                 }
             }
         }
@@ -63,7 +63,7 @@ public class SignalMessage: NativeHandleOwner {
         return withNativeHandle { nativeHandle in
             failOnError {
                 try invokeFnReturningInteger {
-                    signal_message_get_counter($0, nativeHandle)
+                    signal_message_get_counter($0, nativeHandle.const())
                 }
             }
         }
@@ -79,13 +79,35 @@ public class SignalMessage: NativeHandleOwner {
                 var result = false
                 try checkError(signal_message_verify_mac(
                     &result,
-                    messageHandle,
-                    senderHandle,
-                    receiverHandle,
+                    messageHandle.const(),
+                    senderHandle.const(),
+                    receiverHandle.const(),
                     $0
                 ))
                 return result
             }
         }
+    }
+}
+
+extension SignalMutPointerSignalMessage: SignalMutPointer {
+    public typealias ConstPointer = SignalConstPointerSignalMessage
+
+    public init(untyped: OpaquePointer?) {
+        self.init(raw: untyped)
+    }
+
+    public func toOpaque() -> OpaquePointer? {
+        self.raw
+    }
+
+    public func const() -> Self.ConstPointer {
+        Self.ConstPointer(raw: self.raw)
+    }
+}
+
+extension SignalConstPointerSignalMessage: SignalConstPointer {
+    public func toOpaque() -> OpaquePointer? {
+        self.raw
     }
 }

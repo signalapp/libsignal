@@ -6,14 +6,14 @@
 import Foundation
 import SignalFfi
 
-public class PrivateKey: ClonableHandleOwner, @unchecked Sendable {
+public class PrivateKey: ClonableHandleOwner<SignalMutPointerPrivateKey>, @unchecked Sendable {
     public convenience init<Bytes: ContiguousBytes>(_ bytes: Bytes) throws {
-        let handle: OpaquePointer? = try bytes.withUnsafeBorrowedBuffer {
-            var result: OpaquePointer?
+        let handle = try bytes.withUnsafeBorrowedBuffer {
+            var result = SignalMutPointerPrivateKey()
             try checkError(signal_privatekey_deserialize(&result, $0))
             return result
         }
-        self.init(owned: handle!)
+        self.init(owned: NonNull(handle)!)
     }
 
     public static func generate() -> PrivateKey {
@@ -24,19 +24,19 @@ public class PrivateKey: ClonableHandleOwner, @unchecked Sendable {
         }
     }
 
-    override internal class func cloneNativeHandle(_ newHandle: inout OpaquePointer?, currentHandle: OpaquePointer?) -> SignalFfiErrorRef? {
+    override internal class func cloneNativeHandle(_ newHandle: inout SignalMutPointerPrivateKey, currentHandle: SignalConstPointerPrivateKey) -> SignalFfiErrorRef? {
         return signal_privatekey_clone(&newHandle, currentHandle)
     }
 
-    override internal class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
-        return signal_privatekey_destroy(handle)
+    override internal class func destroyNativeHandle(_ handle: NonNull<SignalMutPointerPrivateKey>) -> SignalFfiErrorRef? {
+        return signal_privatekey_destroy(handle.pointer)
     }
 
     public func serialize() -> [UInt8] {
         return withNativeHandle { nativeHandle in
             failOnError {
                 try invokeFnReturningArray {
-                    signal_privatekey_serialize($0, nativeHandle)
+                    signal_privatekey_serialize($0, nativeHandle.const())
                 }
             }
         }
@@ -47,7 +47,7 @@ public class PrivateKey: ClonableHandleOwner, @unchecked Sendable {
             message.withUnsafeBorrowedBuffer { messageBuffer in
                 failOnError {
                     try invokeFnReturningArray {
-                        signal_privatekey_sign($0, nativeHandle, messageBuffer)
+                        signal_privatekey_sign($0, nativeHandle.const(), messageBuffer)
                     }
                 }
             }
@@ -58,7 +58,7 @@ public class PrivateKey: ClonableHandleOwner, @unchecked Sendable {
         return withNativeHandles(self, other) { nativeHandle, otherHandle in
             failOnError {
                 try invokeFnReturningArray {
-                    signal_privatekey_agree($0, nativeHandle, otherHandle)
+                    signal_privatekey_agree($0, nativeHandle.const(), otherHandle.const())
                 }
             }
         }
@@ -68,9 +68,31 @@ public class PrivateKey: ClonableHandleOwner, @unchecked Sendable {
         return withNativeHandle { nativeHandle in
             failOnError {
                 try invokeFnReturningNativeHandle {
-                    signal_privatekey_get_public_key($0, nativeHandle)
+                    signal_privatekey_get_public_key($0, nativeHandle.const())
                 }
             }
         }
+    }
+}
+
+extension SignalMutPointerPrivateKey: SignalMutPointer {
+    public typealias ConstPointer = SignalConstPointerPrivateKey
+
+    public init(untyped: OpaquePointer?) {
+        self.init(raw: untyped)
+    }
+
+    public func toOpaque() -> OpaquePointer? {
+        self.raw
+    }
+
+    public func const() -> SignalConstPointerPrivateKey {
+        SignalConstPointerPrivateKey(raw: self.raw)
+    }
+}
+
+extension SignalConstPointerPrivateKey: SignalConstPointer {
+    public func toOpaque() -> OpaquePointer? {
+        self.raw
     }
 }

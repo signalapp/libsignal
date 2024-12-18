@@ -98,7 +98,8 @@ impl ChatListener for ChatListenerStruct {
                 .expect("Vec<u8> conversion is infallible"),
             timestamp.epoch_millis(),
             ack.convert_into()
-                .expect("bridge_as_handle conversion is infallible"),
+                .expect("bridge_as_handle conversion is infallible")
+                .into_inner(),
         )
     }
 

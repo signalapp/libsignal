@@ -99,7 +99,7 @@ public class GroupSendEndorsementsResponse: ByteArray, @unchecked Sendable {
                     try groupParams.withUnsafePointerToSerialized { groupParams in
                         try serverParams.withNativeHandle { serverParams in
                             try invokeFnReturningBytestringArray {
-                                signal_group_send_endorsements_response_receive_and_combine_with_service_ids($0, response, groupMembers, localUser, UInt64(now.timeIntervalSince1970), groupParams, serverParams)
+                                signal_group_send_endorsements_response_receive_and_combine_with_service_ids($0, response, groupMembers, localUser, UInt64(now.timeIntervalSince1970), groupParams, serverParams.const())
                             }
                         }
                     }
@@ -137,7 +137,7 @@ public class GroupSendEndorsementsResponse: ByteArray, @unchecked Sendable {
                 try localUser.withUnsafeBorrowedBuffer { localUser in
                     try serverParams.withNativeHandle { serverParams in
                         try invokeFnReturningBytestringArray {
-                            signal_group_send_endorsements_response_receive_and_combine_with_ciphertexts($0, response, groupMembers, localUser, UInt64(now.timeIntervalSince1970), serverParams)
+                            signal_group_send_endorsements_response_receive_and_combine_with_ciphertexts($0, response, groupMembers, localUser, UInt64(now.timeIntervalSince1970), serverParams.const())
                         }
                     }
                 }

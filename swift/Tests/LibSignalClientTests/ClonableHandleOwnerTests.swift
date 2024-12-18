@@ -13,15 +13,15 @@ private struct FakeHandle {
     var destroyed: (original: Bool, clone: Bool, redzone: Bool) = (false, false, true)
 }
 
-private class MockClonableHandleOwner: ClonableHandleOwner {
+private class MockClonableHandleOwner: ClonableHandleOwner<OpaquePointer?> {
     override class func cloneNativeHandle(_ newHandle: inout OpaquePointer?, currentHandle: OpaquePointer?) -> SignalFfiErrorRef? {
         XCTAssertFalse(UnsafePointer<Bool>(currentHandle!).pointee)
         newHandle = OpaquePointer(UnsafePointer<Bool>(currentHandle!) + 1)
         return nil
     }
 
-    override class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
-        UnsafeMutablePointer<Bool>(handle).pointee = true
+    override class func destroyNativeHandle(_ handle: NonNull<OpaquePointer?>) -> SignalFfiErrorRef? {
+        UnsafeMutablePointer<Bool>(handle.opaque).pointee = true
         return nil
     }
 }
@@ -30,7 +30,7 @@ class ClonableHandleOwnerTests: XCTestCase {
     func testOwned() {
         var handle = FakeHandle()
         withUnsafeMutablePointer(to: &handle) {
-            _ = MockClonableHandleOwner(owned: OpaquePointer($0))
+            _ = MockClonableHandleOwner(owned: NonNull(OpaquePointer($0))!)
         }
         XCTAssertTrue(handle.destroyed.original)
         XCTAssertFalse(handle.destroyed.clone)
@@ -61,7 +61,7 @@ class ClonableHandleOwnerTests: XCTestCase {
     func testTake() {
         var handle = FakeHandle()
         withUnsafeMutablePointer(to: &handle) {
-            var owner = MockClonableHandleOwner(owned: OpaquePointer($0))
+            var owner = MockClonableHandleOwner(owned: NonNull(OpaquePointer($0))!)
             let takenHandle = try! cloneOrTakeHandle(from: &owner)
             XCTAssertEqual(takenHandle, OpaquePointer($0))
         }
@@ -72,7 +72,7 @@ class ClonableHandleOwnerTests: XCTestCase {
     func testTakeAfterEscape() {
         var handle = FakeHandle()
         withUnsafeMutablePointer(to: &handle) {
-            var owner = MockClonableHandleOwner(owned: OpaquePointer($0))
+            var owner = MockClonableHandleOwner(owned: NonNull(OpaquePointer($0))!)
             let fakeEscape = Unmanaged.passRetained(owner)
             let takenHandle = try! cloneOrTakeHandle(from: &owner)
             XCTAssertEqual(UnsafeRawPointer(takenHandle), UnsafeRawPointer($0) + 1)

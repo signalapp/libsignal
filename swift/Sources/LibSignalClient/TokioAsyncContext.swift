@@ -6,15 +6,15 @@
 import Foundation
 import SignalFfi
 
-internal class TokioAsyncContext: NativeHandleOwner, @unchecked Sendable {
+internal class TokioAsyncContext: NativeHandleOwner<SignalMutPointerTokioAsyncContext>, @unchecked Sendable {
     convenience init() {
-        var handle: OpaquePointer?
+        var handle = SignalMutPointerTokioAsyncContext()
         failOnError(signal_tokio_async_context_new(&handle))
-        self.init(owned: handle!)
+        self.init(owned: NonNull(handle)!)
     }
 
-    override internal class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
-        signal_tokio_async_context_destroy(handle)
+    override internal class func destroyNativeHandle(_ handle: NonNull<SignalMutPointerTokioAsyncContext>) -> SignalFfiErrorRef? {
+        signal_tokio_async_context_destroy(handle.pointer)
     }
 
     /// A thread-safe helper for translating Swift task cancellations into calls to
@@ -85,7 +85,7 @@ internal class TokioAsyncContext: NativeHandleOwner, @unchecked Sendable {
         func cancel(_ id: SignalCancellationId) {
             do {
                 try self.context.withNativeHandle {
-                    try checkError(signal_tokio_async_context_cancel($0, id))
+                    try checkError(signal_tokio_async_context_cancel($0.const(), id))
                 }
             } catch {
                 LoggerBridge.shared?.logger.log(level: .warn, file: #fileID, line: #line, message: "failed to cancel libsignal task \(id): \(error)")
@@ -103,7 +103,7 @@ internal class TokioAsyncContext: NativeHandleOwner, @unchecked Sendable {
     /// }
     /// ```
     internal func invokeAsyncFunction<Promise: PromiseStruct>(
-        _ body: (UnsafeMutablePointer<Promise>, OpaquePointer?) -> SignalFfiErrorRef?
+        _ body: (UnsafeMutablePointer<Promise>, SignalMutPointerTokioAsyncContext) -> SignalFfiErrorRef?
     ) async throws -> Promise.Result {
         let cancellationHelper = CancellationHandoffHelper(context: self)
         return try await withTaskCancellationHandler(operation: {
@@ -117,5 +117,27 @@ internal class TokioAsyncContext: NativeHandleOwner, @unchecked Sendable {
         }, onCancel: {
             cancellationHelper.cancel()
         })
+    }
+}
+
+extension SignalMutPointerTokioAsyncContext: SignalMutPointer {
+    public typealias ConstPointer = SignalConstPointerTokioAsyncContext
+
+    public init(untyped: OpaquePointer?) {
+        self.init(raw: untyped)
+    }
+
+    public func toOpaque() -> OpaquePointer? {
+        self.raw
+    }
+
+    public func const() -> Self.ConstPointer {
+        Self.ConstPointer(raw: self.raw)
+    }
+}
+
+extension SignalConstPointerTokioAsyncContext: SignalConstPointer {
+    public func toOpaque() -> OpaquePointer? {
+        self.raw
     }
 }

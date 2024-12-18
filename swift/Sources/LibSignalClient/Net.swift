@@ -71,7 +71,7 @@ public class Net {
     /// recoverable for this particular call.
     public func networkDidChange() throws {
         try self.connectionManager.withNativeHandle { connectionManager in
-            try checkError(signal_connection_manager_on_network_change(connectionManager))
+            try checkError(signal_connection_manager_on_network_change(connectionManager.const()))
         }
     }
 
@@ -144,14 +144,14 @@ public class Net {
         auth: Auth,
         request: CdsiLookupRequest
     ) async throws -> CdsiLookup {
-        let handle: OpaquePointer = try await self.asyncContext.invokeAsyncFunction { promise, asyncContext in
+        let handle = try await self.asyncContext.invokeAsyncFunction { promise, asyncContext in
             self.connectionManager.withNativeHandle { connectionManager in
                 request.withNativeHandle { request in
-                    signal_cdsi_lookup_new(promise, asyncContext, connectionManager, auth.username, auth.password, request)
+                    signal_cdsi_lookup_new(promise, asyncContext.const(), connectionManager.const(), auth.username, auth.password, request.const())
                 }
             }
         }
-        return CdsiLookup(native: handle, asyncContext: self.asyncContext)
+        return CdsiLookup(native: NonNull(handle)!, asyncContext: self.asyncContext)
     }
 
     public func createAuthenticatedChatService(username: String, password: String, receiveStories: Bool) -> AuthenticatedChatService {
@@ -237,33 +237,55 @@ extension Auth {
     }
 }
 
-internal class ConnectionManager: NativeHandleOwner {
+internal class ConnectionManager: NativeHandleOwner<SignalMutPointerConnectionManager> {
     convenience init(env: Net.Environment, userAgent: String) {
-        var handle: OpaquePointer?
+        var handle = SignalMutPointerConnectionManager()
         failOnError(signal_connection_manager_new(&handle, env.rawValue, userAgent))
-        self.init(owned: handle!)
+        self.init(owned: NonNull(handle)!)
     }
 
     internal func setProxy(host: String, port: UInt16) throws {
         try self.withNativeHandle {
             // We have to cast to Int32 because of how the port number is validated...for Java.
-            try checkError(signal_connection_manager_set_proxy($0, host, Int32(port)))
+            try checkError(signal_connection_manager_set_proxy($0.const(), host, Int32(port)))
         }
     }
 
     internal func clearProxy() {
         self.withNativeHandle {
-            failOnError(signal_connection_manager_clear_proxy($0))
+            failOnError(signal_connection_manager_clear_proxy($0.const()))
         }
     }
 
     internal func setCensorshipCircumventionEnabled(_ enabled: Bool) {
         self.withNativeHandle {
-            failOnError(signal_connection_manager_set_censorship_circumvention_enabled($0, enabled))
+            failOnError(signal_connection_manager_set_censorship_circumvention_enabled($0.const(), enabled))
         }
     }
 
-    override internal class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
-        signal_connection_manager_destroy(handle)
+    override internal class func destroyNativeHandle(_ handle: NonNull<SignalMutPointerConnectionManager>) -> SignalFfiErrorRef? {
+        signal_connection_manager_destroy(handle.pointer)
+    }
+}
+
+extension SignalMutPointerConnectionManager: SignalMutPointer {
+    public typealias ConstPointer = SignalConstPointerConnectionManager
+
+    public init(untyped: OpaquePointer?) {
+        self.init(raw: untyped)
+    }
+
+    public func toOpaque() -> OpaquePointer? {
+        self.raw
+    }
+
+    public func const() -> Self.ConstPointer {
+        Self.ConstPointer(raw: self.raw)
+    }
+}
+
+extension SignalConstPointerConnectionManager: SignalConstPointer {
+    public func toOpaque() -> OpaquePointer? {
+        self.raw
     }
 }

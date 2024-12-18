@@ -24,7 +24,7 @@ public class ServerZkProfileOperations {
                     try userId.withPointerToFixedWidthBinary { userId in
                         try profileKeyCommitment.withUnsafePointerToSerialized { commitment in
                             try invokeFnReturningSerialized {
-                                signal_server_secret_params_issue_expiring_profile_key_credential_deterministic($0, serverSecretParams, randomness, request, userId, commitment, expiration)
+                                signal_server_secret_params_issue_expiring_profile_key_credential_deterministic($0, serverSecretParams.const(), randomness, request, userId, commitment, expiration)
                             }
                         }
                     }
@@ -41,7 +41,7 @@ public class ServerZkProfileOperations {
         try self.serverSecretParams.withNativeHandle { serverSecretParams in
             try groupPublicParams.withUnsafePointerToSerialized { groupPublicParams in
                 try profileKeyCredentialPresentation.withUnsafeBorrowedBuffer { presentation in
-                    try checkError(signal_server_secret_params_verify_profile_key_credential_presentation(serverSecretParams, groupPublicParams, presentation, UInt64(now.timeIntervalSince1970)))
+                    try checkError(signal_server_secret_params_verify_profile_key_credential_presentation(serverSecretParams.const(), groupPublicParams, presentation, UInt64(now.timeIntervalSince1970)))
                 }
             }
         }

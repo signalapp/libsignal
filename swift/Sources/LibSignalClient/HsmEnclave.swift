@@ -47,13 +47,13 @@ public struct HsmCodeHashList: Sendable {
 /// to pass along.  When a message is received (as ciphertext), it is passed to HsmEnclaveClient.establishedRecv(),
 /// which decrypts and verifies it, passing the plaintext back to the client for processing.
 ///
-public class HsmEnclaveClient: NativeHandleOwner {
+public class HsmEnclaveClient: NativeHandleOwner<SignalMutPointerHsmEnclaveClient> {
     public convenience init<Bytes: ContiguousBytes>(publicKey: Bytes, codeHashes: HsmCodeHashList) throws {
         let codeHashBytes = codeHashes.flatten()
 
-        let handle: OpaquePointer? = try publicKey.withUnsafeBorrowedBuffer { publicKeyBuffer in
+        let handle = try publicKey.withUnsafeBorrowedBuffer { publicKeyBuffer in
             try codeHashBytes.withUnsafeBorrowedBuffer { codeHashBuffer in
-                var result: OpaquePointer?
+                var result = SignalMutPointerHsmEnclaveClient()
                 try checkError(signal_hsm_enclave_client_new(
                     &result,
                     publicKeyBuffer,
@@ -63,11 +63,11 @@ public class HsmEnclaveClient: NativeHandleOwner {
             }
         }
 
-        self.init(owned: handle!)
+        self.init(owned: NonNull(handle)!)
     }
 
-    override internal class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
-        return signal_hsm_enclave_client_destroy(handle)
+    override internal class func destroyNativeHandle(_ handle: NonNull<SignalMutPointerHsmEnclaveClient>) -> SignalFfiErrorRef? {
+        return signal_hsm_enclave_client_destroy(handle.pointer)
     }
 
     /// Initial request to send to HSM enclave, to begin handshake.
@@ -75,7 +75,7 @@ public class HsmEnclaveClient: NativeHandleOwner {
         return withNativeHandle { nativeHandle in
             failOnError {
                 try invokeFnReturningArray {
-                    signal_hsm_enclave_client_initial_request($0, nativeHandle)
+                    signal_hsm_enclave_client_initial_request($0, nativeHandle.const())
                 }
             }
         }
@@ -110,5 +110,27 @@ public class HsmEnclaveClient: NativeHandleOwner {
                 }
             }
         }
+    }
+}
+
+extension SignalMutPointerHsmEnclaveClient: SignalMutPointer {
+    public typealias ConstPointer = SignalConstPointerHsmEnclaveClient
+
+    public init(untyped: OpaquePointer?) {
+        self.init(raw: untyped)
+    }
+
+    public func toOpaque() -> OpaquePointer? {
+        self.raw
+    }
+
+    public func const() -> Self.ConstPointer {
+        Self.ConstPointer(raw: self.raw)
+    }
+}
+
+extension SignalConstPointerHsmEnclaveClient: SignalConstPointer {
+    public func toOpaque() -> OpaquePointer? {
+        self.raw
     }
 }

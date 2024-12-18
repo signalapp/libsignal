@@ -26,19 +26,22 @@ prefix_with_name = true
 [export]
 exclude = [
     # Already in signal_ffi.h
-    "BorrowedSliceOfc_uchar",
     "BorrowedSliceOfBorrowedSliceOfc_uchar",
+    "BorrowedSliceOfc_uchar",
     "BytestringArray",
+    "ConstPointerAuthChat",
+    "ConstPointerFfiInputStreamStruct",
+    "ConstPointerHttpRequest",
+    "ConstPointerTokioAsyncContext",
     "CPromisebool",
     "CPromiseFfiCdsiLookupResponse",
     "FfiCdsiLookupResponse",
     "FfiCdsiLookupResponseEntry",
     "FfiChatResponse",
     "FfiChatServiceDebugInfo",
-    "FfiInputStreamStruct",
     "FfiResponseAndDebugInfo",
-    "OwnedBufferOfCStringPtr",
     "OwnedBufferOfc_uchar",
+    "OwnedBufferOfCStringPtr",
     "OwnedBufferOfFfiCdsiLookupResponseEntry",
     "OwnedBufferOfusize",
 ]

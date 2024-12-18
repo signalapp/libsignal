@@ -6,18 +6,18 @@
 import Foundation
 import SignalFfi
 
-public class Aes256GcmSiv: NativeHandleOwner {
+public class Aes256GcmSiv: NativeHandleOwner<SignalMutPointerAes256GcmSiv> {
     public convenience init<Bytes: ContiguousBytes>(key bytes: Bytes) throws {
-        let handle: OpaquePointer? = try bytes.withUnsafeBorrowedBuffer {
-            var result: OpaquePointer?
+        let handle = try bytes.withUnsafeBorrowedBuffer {
+            var result = SignalMutPointerAes256GcmSiv()
             try checkError(signal_aes256_gcm_siv_new(&result, $0))
             return result
         }
-        self.init(owned: handle!)
+        self.init(owned: NonNull(handle)!)
     }
 
-    override internal class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
-        return signal_aes256_gcm_siv_destroy(handle)
+    override internal class func destroyNativeHandle(_ handle: NonNull<SignalMutPointerAes256GcmSiv>) -> SignalFfiErrorRef? {
+        return signal_aes256_gcm_siv_destroy(handle.pointer)
     }
 
     public func encrypt(
@@ -32,7 +32,7 @@ public class Aes256GcmSiv: NativeHandleOwner {
                         try invokeFnReturningArray {
                             signal_aes256_gcm_siv_encrypt(
                                 $0,
-                                nativeHandle,
+                                nativeHandle.const(),
                                 messageBuffer,
                                 nonceBuffer,
                                 adBuffer
@@ -56,7 +56,7 @@ public class Aes256GcmSiv: NativeHandleOwner {
                         try invokeFnReturningArray {
                             signal_aes256_gcm_siv_decrypt(
                                 $0,
-                                nativeHandle,
+                                nativeHandle.const(),
                                 messageBuffer,
                                 nonceBuffer,
                                 adBuffer
@@ -66,5 +66,27 @@ public class Aes256GcmSiv: NativeHandleOwner {
                 }
             }
         }
+    }
+}
+
+extension SignalMutPointerAes256GcmSiv: SignalMutPointer {
+    public typealias ConstPointer = SignalConstPointerAes256GcmSiv
+
+    public init(untyped: OpaquePointer?) {
+        self.init(raw: untyped)
+    }
+
+    public func toOpaque() -> OpaquePointer? {
+        self.raw
+    }
+
+    public func const() -> Self.ConstPointer {
+        Self.ConstPointer(raw: self.raw)
+    }
+}
+
+extension SignalConstPointerAes256GcmSiv: SignalConstPointer {
+    public func toOpaque() -> OpaquePointer? {
+        self.raw
     }
 }

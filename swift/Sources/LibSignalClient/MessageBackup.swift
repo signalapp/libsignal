@@ -9,18 +9,18 @@ import SignalFfi
 /// Key used to encrypt and decrypt a message backup bundle.
 ///
 /// - SeeAlso: ``BackupKey``
-public class MessageBackupKey: NativeHandleOwner, @unchecked Sendable {
+public class MessageBackupKey: NativeHandleOwner<SignalMutPointerMessageBackupKey>, @unchecked Sendable {
     @available(*, deprecated, message: "Use init(accountEntropy:aci:) instead")
     public convenience init(masterKey: [UInt8], aci: Aci) throws {
         let masterKey = try ByteArray(newContents: masterKey, expectedLength: 32)
         let handle = try masterKey.withUnsafePointerToSerialized { masterKey in
             try aci.withPointerToFixedWidthBinary { aci in
-                var outputHandle: OpaquePointer?
+                var outputHandle = SignalMutPointerMessageBackupKey()
                 try checkError(signal_message_backup_key_from_master_key(&outputHandle, masterKey, aci))
                 return outputHandle
             }
         }
-        self.init(owned: handle!)
+        self.init(owned: NonNull(handle)!)
     }
 
     /// Derives a `MessageBackupKey` from the given account entropy pool.
@@ -29,11 +29,11 @@ public class MessageBackupKey: NativeHandleOwner, @unchecked Sendable {
     /// passing an arbitrary String here is considered a programmer error.
     public convenience init(accountEntropy: String, aci: Aci) throws {
         let handle = try aci.withPointerToFixedWidthBinary { aci in
-            var outputHandle: OpaquePointer?
+            var outputHandle = SignalMutPointerMessageBackupKey()
             try checkError(signal_message_backup_key_from_account_entropy_pool(&outputHandle, accountEntropy, aci))
             return outputHandle
         }
-        self.init(owned: handle!)
+        self.init(owned: NonNull(handle)!)
     }
 
     /// Derives a `MessageBackupKey` from the given backup key and ID.
@@ -46,12 +46,12 @@ public class MessageBackupKey: NativeHandleOwner, @unchecked Sendable {
         let backupId = try ByteArray(newContents: backupId, expectedLength: 16)
         let handle = try backupKey.withUnsafePointerToSerialized { backupKey in
             try backupId.withUnsafePointerToSerialized { backupId in
-                var outputHandle: OpaquePointer?
+                var outputHandle = SignalMutPointerMessageBackupKey()
                 try checkError(signal_message_backup_key_from_backup_key_and_backup_id(&outputHandle, backupKey, backupId))
                 return outputHandle
             }
         }
-        self.init(owned: handle!)
+        self.init(owned: NonNull(handle)!)
     }
 
     @available(*, deprecated, message: "Use the overload that takes a strongly-typed BackupKey instead")
@@ -60,12 +60,12 @@ public class MessageBackupKey: NativeHandleOwner, @unchecked Sendable {
         try self.init(backupKey: backupKey, backupId: backupId)
     }
 
-    internal required init(owned handle: OpaquePointer) {
+    internal required init(owned handle: NonNull<SignalMutPointerMessageBackupKey>) {
         super.init(owned: handle)
     }
 
-    override internal class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
-        signal_message_backup_key_destroy(handle)
+    override internal class func destroyNativeHandle(_ handle: NonNull<SignalMutPointerMessageBackupKey>) -> SignalFfiErrorRef? {
+        signal_message_backup_key_destroy(handle.pointer)
     }
 
     /// An HMAC key used to sign a backup file.
@@ -73,7 +73,7 @@ public class MessageBackupKey: NativeHandleOwner, @unchecked Sendable {
         failOnError {
             try withNativeHandle { keyHandle in
                 try invokeFnReturningFixedLengthArray {
-                    signal_message_backup_key_get_hmac_key($0, keyHandle)
+                    signal_message_backup_key_get_hmac_key($0, keyHandle.const())
                 }
             }
         }
@@ -84,10 +84,32 @@ public class MessageBackupKey: NativeHandleOwner, @unchecked Sendable {
         failOnError {
             try withNativeHandle { keyHandle in
                 try invokeFnReturningFixedLengthArray {
-                    signal_message_backup_key_get_aes_key($0, keyHandle)
+                    signal_message_backup_key_get_aes_key($0, keyHandle.const())
                 }
             }
         }
+    }
+}
+
+extension SignalMutPointerMessageBackupKey: SignalMutPointer {
+    public typealias ConstPointer = SignalConstPointerMessageBackupKey
+
+    public init(untyped: OpaquePointer?) {
+        self.init(raw: untyped)
+    }
+
+    public func toOpaque() -> OpaquePointer? {
+        self.raw
+    }
+
+    public func const() -> Self.ConstPointer {
+        Self.ConstPointer(raw: self.raw)
+    }
+}
+
+extension SignalConstPointerMessageBackupKey: SignalConstPointer {
+    public func toOpaque() -> OpaquePointer? {
+        self.raw
     }
 }
 
@@ -118,7 +140,7 @@ public func validateMessageBackup(
         try withInputStream(try makeStream()) { secondInput in
             try key.withNativeHandle { key in
                 try invokeFnReturningNativeHandle {
-                    signal_message_backup_validator_validate($0, key, firstInput, secondInput, length, purpose.rawValue)
+                    signal_message_backup_validator_validate($0, key.const(), firstInput, secondInput, length, purpose.rawValue)
                 }
             }
         }
@@ -148,7 +170,7 @@ public func validateMessageBackup(
 /// }
 /// try validator.finalize() // don't forget this!
 /// ```
-public class OnlineBackupValidator: NativeHandleOwner {
+public class OnlineBackupValidator: NativeHandleOwner<SignalMutPointerOnlineBackupValidator> {
     /// Initializes an OnlineBackupValidator from the given BackupInfo protobuf message.
     ///
     /// "Soft" errors will be logged, including unrecognized fields in the protobuf.
@@ -156,19 +178,19 @@ public class OnlineBackupValidator: NativeHandleOwner {
     /// - Throws: ``MessageBackupValidationError`` on error.
     public convenience init<Bytes: ContiguousBytes>(backupInfo: Bytes, purpose: MessageBackupPurpose) throws {
         let handle = try backupInfo.withUnsafeBorrowedBuffer { backupInfo in
-            var outputHandle: OpaquePointer?
+            var outputHandle = SignalMutPointerOnlineBackupValidator()
             try checkError(signal_online_backup_validator_new(&outputHandle, backupInfo, purpose.rawValue))
-            return outputHandle!
+            return outputHandle
         }
-        self.init(owned: handle)
+        self.init(owned: NonNull(handle)!)
     }
 
-    internal required init(owned handle: OpaquePointer) {
+    internal required init(owned handle: NonNull<SignalMutPointerOnlineBackupValidator>) {
         super.init(owned: handle)
     }
 
-    override internal class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
-        signal_online_backup_validator_destroy(handle)
+    override internal class func destroyNativeHandle(_ handle: NonNull<SignalMutPointerOnlineBackupValidator>) -> SignalFfiErrorRef? {
+        signal_online_backup_validator_destroy(handle.pointer)
     }
 
     /// Processes a single Frame protobuf message.
@@ -196,6 +218,22 @@ public class OnlineBackupValidator: NativeHandleOwner {
     }
 }
 
+extension SignalMutPointerOnlineBackupValidator: SignalMutPointer {
+    public typealias ConstPointer = OpaquePointer?
+
+    public init(untyped: OpaquePointer?) {
+        self.init(raw: untyped)
+    }
+
+    public func toOpaque() -> OpaquePointer? {
+        self.raw
+    }
+
+    public func const() -> Self.ConstPointer {
+        nil
+    }
+}
+
 /// The outcome of a failed validation attempt.
 public struct MessageBackupValidationError: Error {
     /// The human-readable error that caused validation to fail.
@@ -209,12 +247,12 @@ public struct MessageBackupUnknownFields: Sendable {
     public let fields: [String]
 }
 
-private class ValidationOutcome: NativeHandleOwner {
+private class ValidationOutcome: NativeHandleOwner<SignalMutPointerMessageBackupValidationOutcome> {
     public var unknownFields: MessageBackupUnknownFields {
         let fields = failOnError {
             try self.withNativeHandle { result in
                 try invokeFnReturningStringArray {
-                    signal_message_backup_validation_outcome_get_unknown_fields($0, result)
+                    signal_message_backup_validation_outcome_get_unknown_fields($0, result.const())
                 }
             }
         }
@@ -224,12 +262,34 @@ private class ValidationOutcome: NativeHandleOwner {
     public var errorMessage: String? {
         try! self.withNativeHandle { result in
             try invokeFnReturningOptionalString {
-                signal_message_backup_validation_outcome_get_error_message($0, result)
+                signal_message_backup_validation_outcome_get_error_message($0, result.const())
             }
         }
     }
 
-    override internal class func destroyNativeHandle(_ handle: OpaquePointer) -> SignalFfiErrorRef? {
-        signal_message_backup_validation_outcome_destroy(handle)
+    override internal class func destroyNativeHandle(_ handle: NonNull<SignalMutPointerMessageBackupValidationOutcome>) -> SignalFfiErrorRef? {
+        signal_message_backup_validation_outcome_destroy(handle.pointer)
+    }
+}
+
+extension SignalMutPointerMessageBackupValidationOutcome: SignalMutPointer {
+    public typealias ConstPointer = SignalConstPointerMessageBackupValidationOutcome
+
+    public init(untyped: OpaquePointer?) {
+        self.init(raw: untyped)
+    }
+
+    public func toOpaque() -> OpaquePointer? {
+        self.raw
+    }
+
+    public func const() -> Self.ConstPointer {
+        Self.ConstPointer(raw: self.raw)
+    }
+}
+
+extension SignalConstPointerMessageBackupValidationOutcome: SignalConstPointer {
+    public func toOpaque() -> OpaquePointer? {
+        self.raw
     }
 }
