@@ -24,6 +24,7 @@ pub struct Scrambler {
     rng: rand::rngs::StdRng,
     e164s: intmap::IntMap<u64, u64>,
     uuids: HashMap<Box<[u8]>, Box<[u8]>>,
+    usernames: u64,
 }
 
 impl Scrambler {
@@ -33,6 +34,7 @@ impl Scrambler {
             rng: rand::rngs::StdRng::seed_from_u64(0),
             e164s: Default::default(),
             uuids: Default::default(),
+            usernames: 0,
         }
     }
 
@@ -87,6 +89,12 @@ impl Scrambler {
             })
             .to_vec()
     }
+
+    /// Generates a username
+    fn next_username(&mut self) -> String {
+        self.usernames += 1;
+        format!("user.{:02}", self.usernames)
+    }
 }
 
 impl Default for Scrambler {
@@ -122,7 +130,6 @@ Signal is an independent nonprofit. We're not tied to any major tech companies, 
 
 const REPLACEMENT_EMOJI: &str = "❌";
 const REPLACEMENT_URL: &str = "https://signal.org";
-const REPLACEMENT_USERNAME: &str = "signal.01";
 
 fn scramble_content_type(content_type: &mut String) {
     if let Some(split_point) = content_type.find('/') {
@@ -221,7 +228,7 @@ impl Visit<Scrambler> for proto::AccountData {
 
         profileKey.randomize(&mut visitor.rng);
         if let Some(username) = username {
-            *username = REPLACEMENT_USERNAME.into()
+            *username = visitor.next_username();
         }
         usernameLink.accept(visitor);
         givenName.randomize(&mut visitor.rng);
@@ -487,7 +494,7 @@ impl Visit<Scrambler> for proto::Contact {
             visitor.replace_service_id(pni);
         }
         if let Some(username) = username {
-            *username = REPLACEMENT_USERNAME.into();
+            *username = visitor.next_username();
         };
         if let Some(e164) = e164 {
             visitor.replace_e164(e164);
@@ -1796,7 +1803,7 @@ impl Visit<Scrambler> for proto::LearnedProfileChatUpdate {
             use proto::learned_profile_chat_update::PreviousName;
             match name {
                 PreviousName::E164(e164) => visitor.replace_e164(e164),
-                PreviousName::Username(username) => *username = REPLACEMENT_USERNAME.into(),
+                PreviousName::Username(username) => *username = visitor.next_username(),
             }
         }
     }
