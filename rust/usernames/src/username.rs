@@ -44,7 +44,7 @@ pub struct Username {
 
 impl Display for Username {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}.{}", self.nickname, self.discriminator)
+        write!(f, "{}.{:02}", self.nickname, self.discriminator)
     }
 }
 
@@ -373,8 +373,12 @@ mod test {
 
     #[test]
     fn valid_usernames() {
-        for username in ["He110.01", "usr.999999999", "_identifier.42"] {
-            Username::new(username).map(|name| name.hash()).unwrap();
+        for username in ["He110.01", "usr.999999999", "_identifier.42", "LOUD.700"] {
+            let parsed = Username::new(username).unwrap();
+            _ = parsed.hash();
+            // Note that parsing is case-preserving even though username hashes are
+            // case-insensitive.
+            assert_eq!(parsed.to_string(), username);
         }
     }
 
