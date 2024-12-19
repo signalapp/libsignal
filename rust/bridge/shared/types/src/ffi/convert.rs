@@ -8,6 +8,7 @@ use std::fmt::Display;
 use std::num::{NonZeroU64, ParseIntError};
 use std::ops::Deref;
 
+use libsignal_account_keys::{AccountEntropyPool, InvalidAccountEntropyPool};
 use libsignal_protocol::*;
 use paste::paste;
 use uuid::Uuid;
@@ -317,6 +318,17 @@ impl SimpleArgTypeInfo for libsignal_core::E164 {
             SignalProtocolError::InvalidArgument(format!("{e164} is not an e164"))
         })?;
         Ok(parsed)
+    }
+}
+
+impl SimpleArgTypeInfo for AccountEntropyPool {
+    type ArgType = <String as SimpleArgTypeInfo>::ArgType;
+
+    fn convert_from(foreign: Self::ArgType) -> SignalFfiResult<Self> {
+        let string = String::convert_from(foreign)?;
+        string.parse().map_err(|e: InvalidAccountEntropyPool| {
+            SignalProtocolError::InvalidArgument(format!("bad account entropy pool: {e}")).into()
+        })
     }
 }
 
@@ -879,6 +891,7 @@ macro_rules! ffi_arg_type {
     (Aci) => (*const libsignal_protocol::ServiceIdFixedWidthBinaryBytes);
     (Pni) => (*const libsignal_protocol::ServiceIdFixedWidthBinaryBytes);
     (E164) => (*const std::ffi::c_char);
+    (AccountEntropyPool) => (*const std::ffi::c_char);
     (&[u8; $len:expr]) => (*const [u8; $len]);
     (&[& $typ:ty]) => (ffi::BorrowedSliceOf<ffi::ConstPointer< $typ >>);
     (&mut dyn $typ:ty) => (ffi::ConstPointer< ::paste::paste!(ffi::[<Ffi $typ Struct>]) >);

@@ -67,17 +67,15 @@ pub fn AccountEntropyPool_IsValid(account_entropy: String) -> bool {
 }
 
 #[bridge_fn]
-pub fn AccountEntropyPool_DeriveSvrKey(account_entropy: String) -> [u8; SVR_KEY_LEN] {
-    let entropy = AccountEntropyPool::from_str(&account_entropy)
-        .expect("should only pass validated entropy pool here");
-    entropy.derive_svr_key()
+pub fn AccountEntropyPool_DeriveSvrKey(account_entropy: AccountEntropyPool) -> [u8; SVR_KEY_LEN] {
+    account_entropy.derive_svr_key()
 }
 
 #[bridge_fn]
-pub fn AccountEntropyPool_DeriveBackupKey(account_entropy: String) -> [u8; BACKUP_KEY_LEN] {
-    let entropy = AccountEntropyPool::from_str(&account_entropy)
-        .expect("should only pass validated entropy pool here");
-    let backup_key = BackupKey::derive_from_account_entropy_pool(&entropy);
+pub fn AccountEntropyPool_DeriveBackupKey(
+    account_entropy: AccountEntropyPool,
+) -> [u8; BACKUP_KEY_LEN] {
+    let backup_key = BackupKey::derive_from_account_entropy_pool(&account_entropy);
     backup_key.0
 }
 

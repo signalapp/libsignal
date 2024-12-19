@@ -3,8 +3,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use std::str::FromStr as _;
-
 use libsignal_account_keys::{AccountEntropyPool, BackupId, BackupKey, BACKUP_KEY_LEN};
 use libsignal_message_backup::frame::ValidationError as FrameValidationError;
 use libsignal_message_backup::key::MessageBackupKey as MessageBackupKeyInner;
@@ -24,10 +22,8 @@ impl MessageBackupKey {
         Self(MessageBackupKeyInner::derive(&backup_key, &backup_id))
     }
 
-    pub fn from_account_entropy_pool(account_entropy: &str, aci: Aci) -> Self {
-        let entropy = AccountEntropyPool::from_str(account_entropy)
-            .expect("should only pass validated entropy pool here");
-        let backup_key = BackupKey::derive_from_account_entropy_pool(&entropy);
+    pub fn from_account_entropy_pool(account_entropy: &AccountEntropyPool, aci: Aci) -> Self {
+        let backup_key = BackupKey::derive_from_account_entropy_pool(account_entropy);
         let backup_id = backup_key.derive_backup_id(&aci);
         Self(MessageBackupKeyInner::derive(&backup_key, &backup_id))
     }

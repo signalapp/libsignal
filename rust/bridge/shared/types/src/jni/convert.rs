@@ -9,6 +9,7 @@ use std::ops::Deref;
 use jni::objects::{AutoLocal, JByteBuffer, JMap, JObjectArray};
 use jni::sys::{jbyte, JNI_FALSE, JNI_TRUE};
 use jni::JNIEnv;
+use libsignal_account_keys::{AccountEntropyPool, InvalidAccountEntropyPool};
 use libsignal_net::cdsi::LookupResponseEntry;
 use libsignal_protocol::*;
 use paste::paste;
@@ -297,6 +298,19 @@ impl<'a> SimpleArgTypeInfo<'a> for Option<libsignal_core::E164> {
         }
         let res = libsignal_core::E164::convert_from(env, foreign)?;
         Ok(Some(res))
+    }
+}
+
+impl<'a> SimpleArgTypeInfo<'a> for AccountEntropyPool {
+    type ArgType = <String as SimpleArgTypeInfo<'a>>::ArgType;
+    fn convert_from(
+        env: &mut JNIEnv<'a>,
+        foreign: &Self::ArgType,
+    ) -> Result<Self, BridgeLayerError> {
+        let pool = String::convert_from(env, foreign)?;
+        pool.parse().map_err(|e: InvalidAccountEntropyPool| {
+            BridgeLayerError::BadArgument(format!("bad account entropy pool: {e}"))
+        })
     }
 }
 
@@ -1471,6 +1485,9 @@ macro_rules! jni_arg_type {
     };
     (Pni) => {
         ::jni::objects::JByteArray<'local>
+    };
+    (AccountEntropyPool) => {
+        ::jni::objects::JString<'local>
     };
     (ServiceIdSequence<'_>) => {
         ::jni::objects::JByteArray<'local>

@@ -11,6 +11,7 @@ use std::num::ParseIntError;
 use std::ops::{Deref, DerefMut, RangeInclusive};
 use std::slice;
 
+use libsignal_account_keys::{AccountEntropyPool, InvalidAccountEntropyPool};
 use neon::prelude::*;
 use neon::types::JsBigInt;
 use paste::paste;
@@ -346,6 +347,16 @@ impl SimpleArgTypeInfo for libsignal_core::E164 {
         let e164 = String::convert_from(cx, e164)?;
         e164.parse()
             .or_else(|_: ParseIntError| cx.throw_type_error("not an E164"))
+    }
+}
+
+impl SimpleArgTypeInfo for AccountEntropyPool {
+    type ArgType = <String as SimpleArgTypeInfo>::ArgType;
+    fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {
+        let pool = String::convert_from(cx, foreign)?;
+        pool.parse().or_else(|e: InvalidAccountEntropyPool| {
+            cx.throw_type_error(format!("bad account entropy pool: {e}"))
+        })
     }
 }
 

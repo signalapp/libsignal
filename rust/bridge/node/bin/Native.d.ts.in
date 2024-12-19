@@ -138,6 +138,8 @@ type MessageBackupValidationOutcome = {
   unknownFieldMessages: Array<string>;
 };
 
+type AccountEntropyPool = string;
+
 type CancellablePromise<T> = Promise<T> & {
   _cancellationToken: bigint;
 };

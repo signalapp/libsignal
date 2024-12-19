@@ -138,6 +138,8 @@ type MessageBackupValidationOutcome = {
   unknownFieldMessages: Array<string>;
 };
 
+type AccountEntropyPool = string;
+
 type CancellablePromise<T> = Promise<T> & {
   _cancellationToken: bigint;
 };
@@ -148,8 +150,8 @@ type Serialized<T> = Buffer;
 export function registerErrors(errorsModule: Record<string, unknown>): void;
 
 export const enum LogLevel { Error = 1, Warn, Info, Debug, Trace }
-export function AccountEntropyPool_DeriveBackupKey(accountEntropy: string): Buffer;
-export function AccountEntropyPool_DeriveSvrKey(accountEntropy: string): Buffer;
+export function AccountEntropyPool_DeriveBackupKey(accountEntropy: AccountEntropyPool): Buffer;
+export function AccountEntropyPool_DeriveSvrKey(accountEntropy: AccountEntropyPool): Buffer;
 export function AccountEntropyPool_Generate(): string;
 export function AccountEntropyPool_IsValid(accountEntropy: string): boolean;
 export function Aes256GcmSiv_Decrypt(aesGcmSiv: Wrapper<Aes256GcmSiv>, ctext: Buffer, nonce: Buffer, associatedData: Buffer): Buffer;
@@ -333,7 +335,7 @@ export function LookupRequest_addE164(request: Wrapper<LookupRequest>, e164: str
 export function LookupRequest_addPreviousE164(request: Wrapper<LookupRequest>, e164: string): void;
 export function LookupRequest_new(): LookupRequest;
 export function LookupRequest_setToken(request: Wrapper<LookupRequest>, token: Buffer): void;
-export function MessageBackupKey_FromAccountEntropyPool(accountEntropy: string, aci: Buffer): MessageBackupKey;
+export function MessageBackupKey_FromAccountEntropyPool(accountEntropy: AccountEntropyPool, aci: Buffer): MessageBackupKey;
 export function MessageBackupKey_FromBackupKeyAndBackupId(backupKey: Buffer, backupId: Buffer): MessageBackupKey;
 export function MessageBackupKey_FromMasterKey(masterKey: Buffer, aci: Buffer): MessageBackupKey;
 export function MessageBackupKey_GetAesKey(key: Wrapper<MessageBackupKey>): Buffer;
