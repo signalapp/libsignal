@@ -495,7 +495,16 @@ impl Visit<Scrambler> for proto::Contact {
         profileKey.randomize(&mut visitor.rng);
         profileGivenName.randomize(&mut visitor.rng);
         profileFamilyName.randomize(&mut visitor.rng);
-        identityKey.randomize(&mut visitor.rng);
+        if let Some(identity_key) = identityKey {
+            if libsignal_protocol::PublicKey::deserialize(identity_key).is_ok() {
+                *identity_key = libsignal_protocol::KeyPair::generate(&mut visitor.rng)
+                    .public_key
+                    .serialize()
+                    .into_vec();
+            } else {
+                identity_key.randomize(&mut visitor.rng);
+            }
+        }
 
         if let Some(reg) = registration {
             use proto::contact::Registration;
