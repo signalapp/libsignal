@@ -102,6 +102,13 @@ class MessageBackupTests: TestCaseBase {
         XCTAssertThrowsError(try backup.finalize())
     }
 
+    func testAccountEntropyPoolValidity() {
+        XCTAssertFalse(AccountEntropyPool.isValid("invalid key"))
+        XCTAssertTrue(
+            AccountEntropyPool.isValid(
+                "0123456789abcdefghijklmnopqrstuvwxyz0123456789abcdefghijklmnopqr"))
+    }
+
 #if !os(iOS) || targetEnvironment(simulator)
     func testComparableBackup() throws {
         let bytes = readResource(forName: "canonical-backup.binproto")

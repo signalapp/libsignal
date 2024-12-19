@@ -119,6 +119,7 @@ public final class Native {
   public static native byte[] AccountEntropyPool_DeriveBackupKey(String accountEntropy);
   public static native byte[] AccountEntropyPool_DeriveSvrKey(String accountEntropy);
   public static native String AccountEntropyPool_Generate();
+  public static native boolean AccountEntropyPool_IsValid(String accountEntropy);
 
   public static native void Aes256Ctr32_Destroy(long handle);
   public static native long Aes256Ctr32_New(byte[] key, byte[] nonce, int initialCtr) throws Exception;

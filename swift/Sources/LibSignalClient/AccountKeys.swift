@@ -152,6 +152,17 @@ public enum AccountEntropyPool {
         }
     }
 
+    /// Checks whether a string can be used as an account entropy pool.
+    ///
+    /// - returns: `true` if the string is a structurally valid account entropy value.
+    public static func isValid(_ accountEntropyPool: String) -> Bool {
+        failOnError {
+            try invokeFnReturningBool {
+                signal_account_entropy_pool_is_valid($0, accountEntropyPool)
+            }
+        }
+    }
+
     /// Derives an SVR key from the given account entropy pool.
     ///
     /// `accountEntropyPool` must be a **validated** account entropy pool;

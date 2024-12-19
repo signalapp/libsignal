@@ -62,6 +62,11 @@ pub fn AccountEntropyPool_Generate() -> String {
 }
 
 #[bridge_fn]
+pub fn AccountEntropyPool_IsValid(account_entropy: String) -> bool {
+    AccountEntropyPool::from_str(&account_entropy).is_ok()
+}
+
+#[bridge_fn]
 pub fn AccountEntropyPool_DeriveSvrKey(account_entropy: String) -> [u8; SVR_KEY_LEN] {
     let entropy = AccountEntropyPool::from_str(&account_entropy)
         .expect("should only pass validated entropy pool here");

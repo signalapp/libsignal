@@ -11,10 +11,21 @@ import { Uint8ArrayInputStream, ErrorInputStream } from './ioutil';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { hkdf, LogLevel } from '..';
-import { BackupKey } from '../AccountKeys';
+import { AccountEntropyPool, BackupKey } from '../AccountKeys';
 import { Readable } from 'node:stream';
 
 util.initLogger(LogLevel.Trace);
+
+describe('AccountEntropyPool', () => {
+  describe('isValid', () => {
+    assert.isFalse(AccountEntropyPool.isValid('invalid key'));
+    assert.isTrue(
+      AccountEntropyPool.isValid(
+        '0123456789abcdefghijklmnopqrstuvwxyz0123456789abcdefghijklmnopqr'
+      )
+    );
+  });
+});
 
 describe('MessageBackup', () => {
   const accountEntropy = 'm'.repeat(64);

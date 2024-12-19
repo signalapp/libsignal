@@ -60,6 +60,14 @@ public class MessageBackupValidationTest {
   static final MessageBackup.Purpose BACKUP_PURPOSE = MessageBackup.Purpose.REMOTE_BACKUP;
 
   @Test
+  public void AccountEntropyPoolValidity() {
+    assertFalse(AccountEntropyPool.isValid("invalid key"));
+    assertTrue(
+        AccountEntropyPool.isValid(
+            "0123456789abcdefghijklmnopqrstuvwxyz0123456789abcdefghijklmnopqr"));
+  }
+
+  @Test
   public void validBackupFile() throws IOException, ValidationError {
     Supplier<InputStream> factory =
         () -> {

@@ -266,8 +266,8 @@ class ConnectionInfoImpl
     }
   }
 
-  public toString() : string {
-    return Native.ChatConnectionInfo_description(this)
+  public toString(): string {
+    return Native.ChatConnectionInfo_description(this);
   }
 }
 

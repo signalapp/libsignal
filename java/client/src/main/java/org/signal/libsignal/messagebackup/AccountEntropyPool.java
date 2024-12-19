@@ -26,6 +26,15 @@ public class AccountEntropyPool {
   }
 
   /**
+   * Checks whether a string can be used as an account entropy pool.
+   *
+   * @return <code>true</code> if the string is a structurally valid account entropy value.
+   */
+  public static boolean isValid(String accountEntropyPool) {
+    return Native.AccountEntropyPool_IsValid(accountEntropyPool);
+  }
+
+  /**
    * Derives an SVR key from the given account entropy pool.
    *
    * <p>{@code accountEntropyPool} must be a **validated** account entropy pool; passing an

@@ -151,6 +151,7 @@ export const enum LogLevel { Error = 1, Warn, Info, Debug, Trace }
 export function AccountEntropyPool_DeriveBackupKey(accountEntropy: string): Buffer;
 export function AccountEntropyPool_DeriveSvrKey(accountEntropy: string): Buffer;
 export function AccountEntropyPool_Generate(): string;
+export function AccountEntropyPool_IsValid(accountEntropy: string): boolean;
 export function Aes256GcmSiv_Decrypt(aesGcmSiv: Wrapper<Aes256GcmSiv>, ctext: Buffer, nonce: Buffer, associatedData: Buffer): Buffer;
 export function Aes256GcmSiv_Encrypt(aesGcmSivObj: Wrapper<Aes256GcmSiv>, ptext: Buffer, nonce: Buffer, associatedData: Buffer): Buffer;
 export function Aes256GcmSiv_New(key: Buffer): Aes256GcmSiv;

@@ -2035,6 +2035,8 @@ SignalFfiError *signal_pin_verify_local_hash(bool *out, const char *encoded_hash
 
 SignalFfiError *signal_account_entropy_pool_generate(const char **out);
 
+SignalFfiError *signal_account_entropy_pool_is_valid(bool *out, const char *account_entropy);
+
 SignalFfiError *signal_account_entropy_pool_derive_svr_key(uint8_t (*out)[SignalSVR_KEY_LEN], const char *account_entropy);
 
 SignalFfiError *signal_account_entropy_pool_derive_backup_key(uint8_t (*out)[SignalBACKUP_KEY_LEN], const char *account_entropy);
