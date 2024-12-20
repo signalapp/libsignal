@@ -124,6 +124,11 @@ def main(args: Optional[List[str]] = None) -> int:
         # Link it statically to avoid propagating that dependency.
         cargo_env['RUSTFLAGS'] += ' -C target-feature=+crt-static'
 
+        # Hint to the Rust compiler that we're cross-compiling. This shouldn't be necessary
+        # since the invoking build script (if any) should be doing that but it's needed
+        # since Rust nightly-2024-10-03.
+        cargo_env['VSCMD_ARG_TGT_ARCH'] = node_arch
+
         # Save the debug info in PDB format...
         cargo_env['CARGO_PROFILE_RELEASE_SPLIT_DEBUGINFO'] = 'packed'
         # ...and DLLs don't have anything to strip.
@@ -174,7 +179,11 @@ def main(args: Optional[List[str]] = None) -> int:
 
         objcopy = shutil.which('%s-linux-gnu-objcopy' % cargo_target.split('-')[0]) or 'objcopy'
 
-    print("with environment: %s" % (' '.join("%s=%s" % (k, v) for (k, v) in cargo_env.items())))
+    print("with environment:")
+    for (k, v) in cargo_env.items():
+        print("%s=%s" % (k, v))
+    print("", flush=True)
+
     subprocess.check_call(cmdline, env=cargo_env)
 
     libs_in = os.path.join(cargo_env['CARGO_BUILD_TARGET_DIR'],
