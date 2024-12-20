@@ -159,8 +159,10 @@ pub enum ChatItemError {
     RevisionWithMismatchedAuthor(RecipientId, RecipientId),
     /// revisions of {0:?} message contained {1:?} message
     RevisionWithMismatchedDirection(DirectionDiscriminants, DirectionDiscriminants),
-    /// revisions contains a ChatItem with a call message
-    RevisionContainsCall,
+    /// ChatItem that isn't a StandardMessage has revisions
+    NonStandardMessageHasRevisions,
+    /// revisions contains a ChatItem that isn't a StandardMessage
+    RevisionIsNotAStandardMessage,
     /// nested revisions
     RevisionContainsRevisions,
     /// learned profile chat update has no e164 or name
@@ -491,30 +493,18 @@ impl<
                         DirectionDiscriminants::from(&item.direction),
                     ));
                 }
-                match &item.message {
-                    ChatItemMessage::Update(update) => match update {
-                        UpdateMessage::GroupCall(_) | UpdateMessage::IndividualCall(_) => {
-                            return Err(ChatItemError::RevisionContainsCall)
-                        }
-                        UpdateMessage::Simple(_)
-                        | UpdateMessage::GroupChange { updates: _ }
-                        | UpdateMessage::ExpirationTimerChange { expires_in: _ }
-                        | UpdateMessage::ProfileChange {
-                            previous: _,
-                            new: _,
-                        }
-                        | UpdateMessage::ThreadMerge { previous_e164: _ }
-                        | UpdateMessage::SessionSwitchover { e164: _ }
-                        | UpdateMessage::LearnedProfileUpdate(_) => (),
-                    },
-                    ChatItemMessage::Standard(_)
-                    | ChatItemMessage::Contact(_)
+                match item.message {
+                    ChatItemMessage::Standard(_) => {}
+                    ChatItemMessage::Contact(_)
                     | ChatItemMessage::Voice(_)
-                    | ChatItemMessage::PaymentNotification(_)
                     | ChatItemMessage::Sticker(_)
-                    | ChatItemMessage::GiftBadge(_)
                     | ChatItemMessage::RemoteDeleted
-                    | ChatItemMessage::ViewOnce(_) => (),
+                    | ChatItemMessage::Update(_)
+                    | ChatItemMessage::PaymentNotification(_)
+                    | ChatItemMessage::GiftBadge(_)
+                    | ChatItemMessage::ViewOnce(_) => {
+                        return Err(ChatItemError::RevisionIsNotAStandardMessage);
+                    }
                 }
                 if !item.revisions.is_empty() {
                     return Err(ChatItemError::RevisionContainsRevisions);
@@ -523,6 +513,22 @@ impl<
             })
             .collect::<Result<_, _>>()
         })?;
+
+        if !revisions.is_empty() {
+            match &message {
+                ChatItemMessage::Standard(_) => {}
+                ChatItemMessage::Contact(_)
+                | ChatItemMessage::Voice(_)
+                | ChatItemMessage::Sticker(_)
+                | ChatItemMessage::RemoteDeleted
+                | ChatItemMessage::Update(_)
+                | ChatItemMessage::PaymentNotification(_)
+                | ChatItemMessage::GiftBadge(_)
+                | ChatItemMessage::ViewOnce(_) => {
+                    return Err(ChatItemError::NonStandardMessageHasRevisions);
+                }
+            }
+        }
 
         let sent_at = Timestamp::from_millis(dateSent, "ChatItem.dateSent", context);
         let expire_start = expireStartDate
@@ -982,6 +988,16 @@ mod test {
         });
     } => Ok(()); "directionless_update")]
     #[test_case(|x| x.revisions.push(proto::ChatItem::test_data()) => Ok(()); "revision")]
+    #[test_case(|x| {
+        x.revisions.push(proto::ChatItem {
+            item: Some(proto::chat_item::Item::RemoteDeletedMessage(Default::default())),
+            ..proto::ChatItem::test_data()
+        })
+    } => Err(ChatItemError::RevisionIsNotAStandardMessage); "revision not StandardMessage")]
+    #[test_case(|x| {
+        x.item = Some(proto::chat_item::Item::RemoteDeletedMessage(Default::default()));
+        x.revisions.push(proto::ChatItem::test_data());
+    } => Err(ChatItemError::NonStandardMessageHasRevisions); "revision not attached to StandardMessage")]
     #[test_case(|x| {
         x.revisions.push(proto::ChatItem {
             authorId: 0,
