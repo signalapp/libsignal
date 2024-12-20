@@ -55,6 +55,8 @@ pub enum QuoteError {
     AuthorHasNoAciOrE164(RecipientId),
     /// "type" is unknown
     TypeUnknown,
+    /// quoted message is NORMAL but has no text or attachments
+    EmptyQuotedMessage,
     /// text error: {0}
     Text(#[from] TextError),
     /// attachment thumbnail: {0}
@@ -109,7 +111,12 @@ impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusu
             .transpose()?;
         let quote_type = match type_.enum_value_or_default() {
             proto::quote::Type::UNKNOWN => return Err(QuoteError::TypeUnknown),
-            proto::quote::Type::NORMAL => QuoteType::Normal,
+            proto::quote::Type::NORMAL => {
+                if text.is_none() && attachments.is_empty() {
+                    return Err(QuoteError::EmptyQuotedMessage);
+                }
+                QuoteType::Normal
+            }
             proto::quote::Type::GIFT_BADGE => QuoteType::GiftBadge,
             proto::quote::Type::VIEW_ONCE => QuoteType::ViewOnce,
         };
@@ -262,6 +269,10 @@ mod test {
         x.authorId = TestContext::PNI_ONLY_ID.0
     } => Err(QuoteError::AuthorHasNoAciOrE164(TestContext::PNI_ONLY_ID)); "pni-only author")]
     #[test_case(|x| x.type_ = proto::quote::Type::UNKNOWN.into() => Err(QuoteError::TypeUnknown); "unknown type")]
+    #[test_case(|x| {
+        x.text = None.into();
+        x.attachments.clear();
+    } => Err(QuoteError::EmptyQuotedMessage); "empty quoted message")]
     #[test_case(
         |x| x.targetSentTimestamp = Some(MillisecondsSinceEpoch::FAR_FUTURE.0) =>
         Err(QuoteError::InvalidTimestamp(TimestampError("Quote.targetSentTimestamp", MillisecondsSinceEpoch::FAR_FUTURE.0)));
