@@ -925,7 +925,7 @@ fn CiphertextMessage_FromPlaintextContent(m: &PlaintextContent) -> CiphertextMes
     CiphertextMessage::PlaintextContent(m.clone())
 }
 
-#[bridge_fn(ffi = false, node = false)]
+#[bridge_fn(node = false)]
 fn SessionRecord_NewFresh() -> SessionRecord {
     SessionRecord::new_fresh()
 }
