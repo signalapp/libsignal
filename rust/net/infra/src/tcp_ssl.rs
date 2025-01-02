@@ -9,7 +9,7 @@ use std::num::NonZeroU16;
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use boring_signal::ssl::{ConnectConfiguration, SslConnector, SslMethod};
+use boring_signal::ssl::{ConnectConfiguration, SslConnector, SslMethod, SslSignatureAlgorithm};
 use futures_util::TryFutureExt;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::net::TcpStream;
@@ -191,6 +191,19 @@ fn ssl_config(
     if let Some(alpn) = alpn {
         ssl.set_alpn_protos(alpn.as_ref())?;
     }
+
+    // This is just the default Boring TLS supported signature scheme list
+    //   with ed25519 added at the top of the preference order.
+    // We can't be any more specific because of the fallback proxies.
+    ssl.set_verify_algorithm_prefs(&[
+        SslSignatureAlgorithm::ED25519,
+        SslSignatureAlgorithm::RSA_PSS_RSAE_SHA256,
+        SslSignatureAlgorithm::RSA_PKCS1_SHA256,
+        SslSignatureAlgorithm::ECDSA_SECP256R1_SHA256,
+        SslSignatureAlgorithm::RSA_PKCS1_SHA1,
+        SslSignatureAlgorithm::ECDSA_SHA1,
+    ])?;
+
     // Uncomment and build with the feature "dev-util" to enable NSS-standard
     //   debugging support for e.g. Wireshark.
     // This is already built into BoringSSL and RustTLS, so there is no added risk here,
