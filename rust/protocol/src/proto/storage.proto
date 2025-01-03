@@ -60,7 +60,8 @@ message SessionStructure {
 
   reserved 12; // no longer used
   bytes          alice_base_key            = 13;
-  // Next index: 15
+  optional bytes ephemeral_derivation_key  = 15;
+  // Next index: 16
 }
 
 message RecordStructure {

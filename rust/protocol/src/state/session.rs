@@ -117,6 +117,7 @@ impl SessionState {
                 remote_registration_id: 0,
                 local_registration_id: 0,
                 alice_base_key: alice_base_key.serialize().into_vec(),
+                ephemeral_derivation_key: None,
             },
         }
     }
@@ -529,12 +530,14 @@ impl SessionState {
             remote_registration_id: _remote_registration_id,
             local_registration_id: _local_registration_id,
             alice_base_key: _alice_base_key,
+            ephemeral_derivation_key: _ephemeral_derivation_key,
         } = &self.session;
         // ####### IMPORTANT #######
         // Don't forget to clean up new pending fields.
         // ####### IMPORTANT #######
         self.session.pending_pre_key = None;
         self.session.pending_kyber_pre_key = None;
+        self.session.ephemeral_derivation_key = None;
     }
 
     pub(crate) fn set_remote_registration_id(&mut self, registration_id: u32) {
@@ -558,6 +561,14 @@ impl SessionState {
             .pending_kyber_pre_key
             .as_ref()
             .map(|pending| &pending.ciphertext)
+    }
+
+    pub(crate) fn set_ephemeral_derivation_key(&mut self, key: &PublicKey) {
+        self.session.ephemeral_derivation_key = Some(key.serialize().to_vec());
+    }
+
+    pub(crate) fn get_ephemeral_derivation_key(&self) -> Option<Vec<u8>> {
+        self.session.ephemeral_derivation_key.clone()
     }
 }
 

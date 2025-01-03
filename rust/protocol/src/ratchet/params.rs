@@ -100,6 +100,7 @@ pub struct BobSignalProtocolParameters<'a> {
     their_identity_key: IdentityKey,
     their_base_key: PublicKey,
     their_kyber_ciphertext: Option<&'a kem::SerializedCiphertext>,
+    ephemeral_derivation_key: Option<PublicKey>,
 }
 
 impl<'a> BobSignalProtocolParameters<'a> {
@@ -112,6 +113,7 @@ impl<'a> BobSignalProtocolParameters<'a> {
         their_identity_key: IdentityKey,
         their_base_key: PublicKey,
         their_kyber_ciphertext: Option<&'a kem::SerializedCiphertext>,
+        ephemeral_derivation_key: Option<PublicKey>,
     ) -> Self {
         Self {
             our_identity_key_pair,
@@ -122,6 +124,7 @@ impl<'a> BobSignalProtocolParameters<'a> {
             their_identity_key,
             their_base_key,
             their_kyber_ciphertext,
+            ephemeral_derivation_key,
         }
     }
 
@@ -163,5 +166,9 @@ impl<'a> BobSignalProtocolParameters<'a> {
     #[inline]
     pub fn their_kyber_ciphertext(&self) -> Option<&kem::SerializedCiphertext> {
         self.their_kyber_ciphertext
+    }
+
+    pub fn ephemeral_derivation_key(&self) -> Option<&PublicKey> {
+        self.ephemeral_derivation_key.as_ref()
     }
 }

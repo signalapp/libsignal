@@ -92,7 +92,7 @@ pub async fn create_pre_key_bundle<R: Rng + CryptoRng>(
     let pre_key_bundle = PreKeyBundle::new(
         store.get_local_registration_id().await?,
         device_id.into(),
-        Some((pre_key_id.into(), pre_key_pair.public_key)),
+        Some((pre_key_id.into(), pre_key_pair.private_key.compressed_edwards_public_key().unwrap())),
         signed_pre_key_id.into(),
         signed_pre_key_pair.public_key,
         signed_pre_key_signature.to_vec(),
@@ -168,6 +168,7 @@ pub fn initialize_sessions_v3() -> Result<(SessionRecord, SessionRecord), Signal
         *alice_identity.identity_key(),
         alice_base_key.public_key,
         None,
+        None,
     );
 
     let bob_session = initialize_bob_session_record(&bob_params)?;
@@ -214,6 +215,7 @@ pub fn initialize_sessions_v4() -> Result<(SessionRecord, SessionRecord), Signal
         *alice_identity.identity_key(),
         alice_base_key.public_key,
         Some(&kyber_ciphertext),
+        None,
     );
 
     let bob_session = initialize_bob_session_record(&bob_params)?;
@@ -366,6 +368,7 @@ impl TestStoreBuilder {
                 .expect("syng")
                 .expect("has pre key")
         });
+
         let identity_key_pair = self
             .store
             .get_identity_key_pair()
@@ -392,13 +395,14 @@ impl TestStoreBuilder {
                 .expect("sync")
                 .expect("has kyber pre key")
         });
+
         let mut bundle = PreKeyBundle::new(
             registration_id,
             device_id,
             maybe_pre_key_record.map(|rec| {
                 (
                     rec.id().expect("has id"),
-                    rec.public_key().expect("has public key"),
+                    rec.private_key().unwrap().compressed_edwards_public_key().unwrap(),
                 )
             }),
             signed_pre_key_record.id().expect("has id"),

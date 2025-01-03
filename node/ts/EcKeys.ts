@@ -76,6 +76,10 @@ export class PrivateKey {
   getPublicKey(): PublicKey {
     return PublicKey._fromNativeHandle(Native.PrivateKey_GetPublicKey(this));
   }
+
+  getCompressedEdwardsPublicKey(): PublicKey {
+    return PublicKey._fromNativeHandle(Native.PrivateKey_GetCompressedEdwardsPublicKey(this));
+  }
 }
 
 export class IdentityKeyPair {

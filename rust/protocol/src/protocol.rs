@@ -260,6 +260,7 @@ pub struct PreKeySignalMessage {
     identity_key: IdentityKey,
     message: SignalMessage,
     serialized: Box<[u8]>,
+    ephemeral_derivation_key: Option<Vec<u8>>,
 }
 
 impl PreKeySignalMessage {
@@ -273,6 +274,7 @@ impl PreKeySignalMessage {
         base_key: PublicKey,
         identity_key: IdentityKey,
         message: SignalMessage,
+        ephemeral_derivation_key: Option<Vec<u8>>,
     ) -> Result<Self> {
         let proto_message = proto::wire::PreKeySignalMessage {
             registration_id: Some(registration_id),
@@ -285,6 +287,7 @@ impl PreKeySignalMessage {
             base_key: Some(base_key.serialize().into_vec()),
             identity_key: Some(identity_key.serialize().into_vec()),
             message: Some(Vec::from(message.as_ref())),
+            ephemeral_derivation_key: ephemeral_derivation_key.as_ref().map(|key| key.clone()),
         };
         let mut serialized = Vec::with_capacity(1 + proto_message.encoded_len());
         serialized.push(((message_version & 0xF) << 4) | CIPHERTEXT_MESSAGE_CURRENT_VERSION);
@@ -301,6 +304,7 @@ impl PreKeySignalMessage {
             identity_key,
             message,
             serialized: serialized.into_boxed_slice(),
+            ephemeral_derivation_key,
         })
     }
 
@@ -352,6 +356,14 @@ impl PreKeySignalMessage {
     #[inline]
     pub fn serialized(&self) -> &[u8] {
         &self.serialized
+    }
+
+    #[inline]
+    pub fn ephemeral_derivation_key(&self) -> Option<PublicKey> {
+        self.ephemeral_derivation_key
+            .as_ref()
+            .map(|bytes| PublicKey::deserialize(bytes).ok())
+            .flatten()
     }
 }
 
@@ -429,6 +441,7 @@ impl TryFrom<&[u8]> for PreKeySignalMessage {
             identity_key: IdentityKey::try_from(identity_key.as_ref())?,
             message: SignalMessage::try_from(message.as_ref())?,
             serialized: Box::from(value),
+            ephemeral_derivation_key: proto_structure.ephemeral_derivation_key.map(|key| key.into()),
         })
     }
 }
@@ -965,6 +978,7 @@ mod tests {
             base_key_pair.public_key,
             identity_key_pair.public_key.into(),
             message,
+            None,
         )?;
         let deser_pre_key_signal_message =
             PreKeySignalMessage::try_from(pre_key_signal_message.as_ref())
@@ -1076,6 +1090,7 @@ mod tests {
             base_key_pair.public_key,
             identity_key_pair.public_key.into(),
             message,
+            None,
         )?;
 
         {

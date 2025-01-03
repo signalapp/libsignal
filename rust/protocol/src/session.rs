@@ -123,6 +123,7 @@ async fn process_prekey_impl(
         *message.identity_key(),
         *message.base_key(),
         message.kyber_ciphertext(),
+        message.ephemeral_derivation_key(),
     );
 
     let mut new_session = ratchet::initialize_bob_session(&parameters)?;

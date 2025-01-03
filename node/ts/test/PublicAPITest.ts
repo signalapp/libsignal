@@ -220,7 +220,7 @@ async function makeX3DHBundle(
 
   await stores.prekey.savePreKey(
     prekeyId,
-    SignalClient.PreKeyRecord.new(prekeyId, prekey.getPublicKey(), prekey)
+    SignalClient.PreKeyRecord.new(prekeyId, prekey.getCompressedEdwardsPublicKey(), prekey)
   );
 
   await stores.signed.saveSignedPreKey(
@@ -238,7 +238,7 @@ async function makeX3DHBundle(
     await stores.identity.getLocalRegistrationId(),
     address.deviceId(),
     prekeyId,
-    prekey.getPublicKey(),
+    prekey.getCompressedEdwardsPublicKey(),
     signedPrekeyId,
     signedPrekey.getPublicKey(),
     signedPrekeySignature,
@@ -294,7 +294,7 @@ async function makePQXDHBundle(
     await stores.identity.getLocalRegistrationId(),
     address.deviceId(),
     prekeyId,
-    prekey.getPublicKey(),
+    prekey.getCompressedEdwardsPublicKey(),
     signedPrekeyId,
     signedPrekey.getPublicKey(),
     signedPrekeySignature,
@@ -952,7 +952,8 @@ describe('SignalClient', () => {
       signedPreKeyId,
       baseKey,
       identityKey,
-      sm
+      sm,
+      ''
     );
     assert.deepEqual(pkm.preKeyId(), preKeyId);
     assert.deepEqual(pkm.registrationId(), registrationId);
@@ -1291,7 +1292,7 @@ describe('SignalClient', () => {
         bRegistrationId,
         bDeviceId,
         bPreKeyId,
-        bPreKey.getPublicKey(),
+        bPreKey.getCompressedEdwardsPublicKey(),
         bSignedPreKeyId,
         bSPreKey.getPublicKey(),
         bSignedPreKeySig,
@@ -1438,7 +1439,7 @@ describe('SignalClient', () => {
         sharedRegistrationId,
         sharedDeviceId,
         bPreKeyId,
-        bPreKey.getPublicKey(),
+        bPreKey.getCompressedEdwardsPublicKey(),
         bSignedPreKeyId,
         bSPreKey.getPublicKey(),
         bSignedPreKeySig,
@@ -1563,7 +1564,7 @@ describe('SignalClient', () => {
         bRegistrationId,
         bDeviceId,
         bPreKeyId,
-        bPreKey.getPublicKey(),
+        bPreKey.getCompressedEdwardsPublicKey(),
         bSignedPreKeyId,
         bSPreKey.getPublicKey(),
         bSignedPreKeySig,
@@ -1732,7 +1733,7 @@ describe('SignalClient', () => {
         0x4000,
         bDeviceId,
         bPreKeyId,
-        bPreKey.getPublicKey(),
+        bPreKey.getCompressedEdwardsPublicKey(),
         bSignedPreKeyId,
         bSPreKey.getPublicKey(),
         bSignedPreKeySig,
@@ -1860,7 +1861,7 @@ describe('SignalClient', () => {
         0x2000,
         bDeviceId,
         bPreKeyId,
-        bPreKey.getPublicKey(),
+        bPreKey.getCompressedEdwardsPublicKey(),
         bSignedPreKeyId,
         bSPreKey.getPublicKey(),
         bSignedPreKeySig,
@@ -1993,7 +1994,7 @@ describe('SignalClient', () => {
       bRegistrationId,
       bDeviceId,
       bPreKeyId,
-      bPreKey.getPublicKey(),
+      bPreKey.getCompressedEdwardsPublicKey(),
       bSignedPreKeyId,
       bSPreKey.getPublicKey(),
       bSignedPreKeySig,

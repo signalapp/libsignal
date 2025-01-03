@@ -368,11 +368,12 @@ export function PreKeySignalMessage_GetPreKeyId(obj: Wrapper<PreKeySignalMessage
 export function PreKeySignalMessage_GetRegistrationId(obj: Wrapper<PreKeySignalMessage>): number;
 export function PreKeySignalMessage_GetSignedPreKeyId(obj: Wrapper<PreKeySignalMessage>): number;
 export function PreKeySignalMessage_GetVersion(obj: Wrapper<PreKeySignalMessage>): number;
-export function PreKeySignalMessage_New(messageVersion: number, registrationId: number, preKeyId: number | null, signedPreKeyId: number, baseKey: Wrapper<PublicKey>, identityKey: Wrapper<PublicKey>, signalMessage: Wrapper<SignalMessage>): PreKeySignalMessage;
+export function PreKeySignalMessage_New(messageVersion: number, registrationId: number, preKeyId: number | null, signedPreKeyId: number, baseKey: Wrapper<PublicKey>, identityKey: Wrapper<PublicKey>, signalMessage: Wrapper<SignalMessage>, ephemeralDerivationKey: string | null): PreKeySignalMessage;
 export function PreKeySignalMessage_Serialize(obj: Wrapper<PreKeySignalMessage>): Buffer;
 export function PrivateKey_Agree(privateKey: Wrapper<PrivateKey>, publicKey: Wrapper<PublicKey>): Buffer;
 export function PrivateKey_Deserialize(data: Buffer): PrivateKey;
 export function PrivateKey_Generate(): PrivateKey;
+export function PrivateKey_GetCompressedEdwardsPublicKey(key: Wrapper<PrivateKey>): PublicKey;
 export function PrivateKey_GetPublicKey(k: Wrapper<PrivateKey>): PublicKey;
 export function PrivateKey_Serialize(obj: Wrapper<PrivateKey>): Buffer;
 export function PrivateKey_Sign(key: Wrapper<PrivateKey>, message: Buffer): Buffer;

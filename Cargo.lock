@@ -2056,6 +2056,7 @@ dependencies = [
  "bincode",
  "device-transfer",
  "futures-util",
+ "hex",
  "hkdf",
  "hmac",
  "http 1.1.0",

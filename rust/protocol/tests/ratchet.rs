@@ -57,10 +57,11 @@ fn test_ratcheting_session_as_bob() -> Result<(), SignalProtocolError> {
         bob_signed_prekey_pair,
         None, // one time pre key pair
         bob_ephemeral_pair,
-        None,
+        None, // kyber pre key pair
         IdentityKey::decode(&alice_identity_public)?,
         alice_base_public_key,
-        None,
+        None, // kyber ciphertext
+        None, // ephemeral derivation key
     );
 
     let bob_record = initialize_bob_session_record(&bob_parameters)?;
@@ -214,6 +215,7 @@ fn test_alice_and_bob_agree_on_chain_keys_with_kyber() -> Result<(), SignalProto
         *alice_identity_key_pair.identity_key(),
         alice_base_key_pair.public_key,
         Some(&kyber_ciphertext),
+        None, // ephemeral derivation key
     );
     let bob_record = initialize_bob_session_record(&bob_parameters)?;
 

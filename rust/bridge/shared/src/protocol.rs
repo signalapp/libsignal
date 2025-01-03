@@ -179,6 +179,11 @@ bridge_get!(
     jni = "ECPrivateKey_1Serialize"
 );
 
+#[bridge_fn(ffi = "privatekey_get_compressed_edwards_pubkey", node = "PrivateKey_GetCompressedEdwardsPublicKey")]
+fn PrivateKey_GetCompressedEdwardsPublicKey(key: &PrivateKey) -> Result<PublicKey> {
+    key.compressed_edwards_public_key()
+}
+
 #[bridge_fn(ffi = "privatekey_generate", node = "PrivateKey_Generate")]
 fn ECPrivateKey_Generate() -> PrivateKey {
     let mut rng = rand::rngs::OsRng;
@@ -397,6 +402,7 @@ fn PreKeySignalMessage_New(
     base_key: &PublicKey,
     identity_key: &PublicKey,
     signal_message: &SignalMessage,
+    ephemeral_derivation_key: Option<String>,
 ) -> Result<PreKeySignalMessage> {
     PreKeySignalMessage::new(
         message_version,
@@ -407,6 +413,7 @@ fn PreKeySignalMessage_New(
         *base_key,
         IdentityKey::new(*identity_key),
         signal_message.clone(),
+        ephemeral_derivation_key.map(|k| hex::decode(k).expect("valid hex")),
     )
 }
 

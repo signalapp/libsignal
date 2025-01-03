@@ -23,6 +23,7 @@ message PreKeySignalMessage {
   optional bytes  base_key          = 2;
   optional bytes  identity_key      = 3;
   optional bytes  message           = 4; // SignalMessage
+  optional bytes  ephemeral_derivation_key = 9;
 }
 
 message SenderKeyMessage {

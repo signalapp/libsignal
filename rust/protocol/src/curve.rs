@@ -9,7 +9,7 @@ use std::cmp::Ordering;
 use std::fmt;
 
 use arrayref::array_ref;
-use curve25519_dalek::scalar;
+use curve25519_dalek::{constants::ED25519_BASEPOINT_TABLE, scalar, Scalar};
 use rand::{CryptoRng, Rng};
 use subtle::ConstantTimeEq;
 
@@ -247,6 +247,20 @@ impl PrivateKey {
     pub fn key_type(&self) -> KeyType {
         match &self.key {
             PrivateKeyData::DjbPrivateKey(_) => KeyType::Djb,
+        }
+    }
+
+    pub fn compressed_edwards_public_key(&self) -> Result<PublicKey> {
+        match self.key {
+            PrivateKeyData::DjbPrivateKey(k) => {
+                let private_key = curve25519::PrivateKey::from(k);
+                let key_data = private_key.private_key_bytes();
+                let a = Scalar::from_bytes_mod_order(key_data);
+                let ed_public_key_point = &a * ED25519_BASEPOINT_TABLE;
+                let ed_public_key = ed_public_key_point.compress();
+
+                Ok(PublicKey::new(PublicKeyData::DjbPublicKey(ed_public_key.to_bytes())))
+            }
         }
     }
 

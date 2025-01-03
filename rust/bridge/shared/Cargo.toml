@@ -54,6 +54,7 @@ jni = { workspace = true, optional = true }
 linkme = { workspace = true, optional = true }
 neon = { workspace = true, optional = true, default-features = false, features = ["napi-6"] }
 strum = { workspace = true, features = ["derive"] }
+hex = "0.4.3"
 
 [dev-dependencies]
 assert_matches = { workspace = true }

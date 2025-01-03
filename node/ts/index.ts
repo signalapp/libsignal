@@ -571,7 +571,8 @@ export class PreKeySignalMessage {
     signedPreKeyId: number,
     baseKey: PublicKey,
     identityKey: PublicKey,
-    signalMessage: SignalMessage
+    signalMessage: SignalMessage,
+    ephemeralDerivationKey: string,
   ): PreKeySignalMessage {
     return new PreKeySignalMessage(
       Native.PreKeySignalMessage_New(
@@ -581,7 +582,8 @@ export class PreKeySignalMessage {
         signedPreKeyId,
         baseKey,
         identityKey,
-        signalMessage
+        signalMessage,
+        ephemeralDerivationKey
       )
     );
   }

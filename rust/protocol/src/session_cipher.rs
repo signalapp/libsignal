@@ -99,6 +99,8 @@ pub async fn message_encrypt(
             .zip(items.kyber_ciphertext())
             .map(|(id, ciphertext)| KyberPayload::new(id, ciphertext.into()));
 
+        let ephemeral_derivation_key = session_state.get_ephemeral_derivation_key();
+
         CiphertextMessage::PreKeySignalMessage(PreKeySignalMessage::new(
             session_version,
             local_registration_id,
@@ -108,6 +110,7 @@ pub async fn message_encrypt(
             *items.base_key(),
             local_identity_key,
             message,
+            ephemeral_derivation_key,
         )?)
     } else {
         CiphertextMessage::SignalMessage(SignalMessage::new(
