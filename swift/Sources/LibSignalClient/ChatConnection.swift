@@ -22,6 +22,11 @@ public protocol ChatConnection: AnyObject {
 }
 
 public class ConnectionInfo: NativeHandleOwner<SignalMutPointerChatConnectionInfo>, CustomStringConvertible {
+    override class func destroyNativeHandle(_ handle: NonNull<SignalMutPointerChatConnectionInfo>) -> SignalFfiErrorRef? {
+        // ChatConnectionInfo is an alias for ConnectionInfo, but Swift doesn't know that.
+        return signal_connection_info_destroy(SignalMutPointerConnectionInfo(raw: handle.opaque))
+    }
+
     /// The local port used by the connection.
     public var localPort: UInt16 {
         withNativeHandle { connectionInfo in
