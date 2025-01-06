@@ -115,7 +115,7 @@ pub type HttpsServiceRoute = HttpsTlsRoute<TransportRoute>;
 /// [`WebSocketRoute`] that contains [`IpAddr`]s.
 pub type WebSocketServiceRoute = WebSocketRoute<HttpsServiceRoute>;
 
-/// Error for [`connect`].
+/// Error for [`connect()`].
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum ConnectError<E> {
     /// The route provider did not produce any routes.
@@ -126,7 +126,7 @@ pub enum ConnectError<E> {
     FatalConnect(E),
 }
 
-/// Recorded success and failure information from [`connect`].
+/// Recorded success and failure information from [`connect()`].
 ///
 /// This should be used to update the internal state of the delay policy after
 /// the connection attempt completes.

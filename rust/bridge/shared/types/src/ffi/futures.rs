@@ -37,8 +37,9 @@ pub struct CPromise<T> {
 /// Keeps track of the information necessary to report a promise result back to C.
 ///
 /// Because this represents a C callback that might be holding on to resources, users of
-/// PromiseCompleter *must* consume it by calling [`complete`][Self::complete]. Failure to do so
-/// will result in a panic in debug mode and an error log in release mode.
+/// PromiseCompleter *must* consume it by calling [`CPromise`]'s `complete`.
+/// Failure to do so will result in a panic in debug mode and an error log in
+/// release mode.
 pub struct PromiseCompleter<T: ResultTypeInfo> {
     promise: CPromise<T::ResultType>,
 }
@@ -139,7 +140,8 @@ pub fn run_future_on_runtime<R, F, O>(
     promise.cancellation_id = cancellation_id.into();
 }
 
-/// Catches panics that occur in `future` and converts them to [`SignalFfiError::UnexpectedPanic`].
+/// Catches panics that occur in `future` and converts them to a
+/// [`SignalFfiError`] error containing an [`UnexpectedPanic`].
 pub fn catch_unwind<T>(
     future: impl Future<Output = SignalFfiResult<T>> + Send + std::panic::UnwindSafe + 'static,
 ) -> impl Future<Output = SignalFfiResult<T>> + Send + std::panic::UnwindSafe + 'static {

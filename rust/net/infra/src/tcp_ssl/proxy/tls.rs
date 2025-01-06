@@ -25,12 +25,12 @@ use crate::{
 /// A [`TransportConnector`] that proxies through a TLS server.
 ///
 /// The proxy server should expose a listening port. If `use_tls_for_proxy` is
-/// [`ShouldUseTls::Yes`], the port should accept TLS client connections;
+/// `ShouldUseTls::Yes`, the port should accept TLS client connections;
 /// otherwise unencrypted. The proxy will transparently proxy TLS traffic by
 /// examining the SNI of incoming connections to determine the destination host.
 ///
 /// An example implementation of such a target service can be found at
-/// https://github.com/signalapp/Signal-TLS-Proxy.
+/// <https://github.com/signalapp/Signal-TLS-Proxy>.
 #[derive(Clone, Debug)]
 pub struct TlsProxyConnector {
     pub dns_resolver: DnsResolver,

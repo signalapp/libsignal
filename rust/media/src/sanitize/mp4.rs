@@ -9,7 +9,7 @@ pub use mp4san::parse::ParseError;
 use mp4san::{sanitize_async_with_config, Config};
 pub use mp4san::{InputSpan, SanitizedMetadata};
 
-/// Error type returned by [`sanitize_mp4`].
+/// Error type returned by [`sanitize`].
 pub type Error = super::error::SanitizerError<ParseError>;
 
 /// A decomposed and stringified [`error_stack::Report<ParseError>`](mediasan_common::Error::Parse).

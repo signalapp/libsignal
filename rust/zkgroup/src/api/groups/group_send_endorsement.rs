@@ -177,8 +177,8 @@ impl GroupSendEndorsementsResponse {
             .derive_key(GroupSendDerivedKeyPair::tag_info(self.expiration)))
     }
 
-    /// Same as [`receive_with_service_ids`], but without parallelizing the zkgroup-specific parts
-    /// of the operation.
+    /// Same as [`Self::receive_with_service_ids`], but without parallelizing the zkgroup-specific
+    /// parts of the operation.
     ///
     /// Only interesting for benchmarking. The zkcredential part of the operation may still be
     /// parallelized.
@@ -234,7 +234,7 @@ impl GroupSendEndorsementsResponse {
     /// user as well.
     ///
     /// If you already have the member ciphertexts for the group available,
-    /// [`receive_with_ciphertexts`] will be faster than this method.
+    /// [`Self::receive_with_ciphertexts`] will be faster than this method.
     pub fn receive_with_service_ids<T>(
         self,
         user_ids: T,
@@ -291,8 +291,8 @@ impl GroupSendEndorsementsResponse {
     /// contain the current user as well.
     ///
     /// If you don't already have the member ciphertexts for the group available,
-    /// [`receive_with_service_ids`] will be faster than computing them separately, using this
-    /// method, and then throwing the ciphertexts away.
+    /// [`Self::receive_with_service_ids`] will be faster than computing them separately, using
+    /// this method, and then throwing the ciphertexts away.
     pub fn receive_with_ciphertexts(
         self,
         member_ciphertexts: impl IntoIterator<Item = UuidCiphertext>,

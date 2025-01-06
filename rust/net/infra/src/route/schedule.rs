@@ -48,7 +48,7 @@ pub struct ResolveMeta {
 ///
 /// This is notionally a stream, though it doesn't (yet) implement [`Stream`].
 /// [`Schedule::next`] behaves like [`StreamExt::next`]. The output of calling
-/// [`next`] is a sequence of routes to attempt connecting over, in the order in
+/// `next` is a sequence of routes to attempt connecting over, in the order in
 /// which they should be tried.
 ///
 /// Internally, this is implemented with two min-heaps: one that orders

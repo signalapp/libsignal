@@ -59,12 +59,12 @@ pub trait ReferencedTypes {
     type RecipientData: Debug
         + AsRef<DestinationKind>
         + From<recipient::Destination<Self::RecipientReference>>;
-    /// Resolved data for a [`RecipientId`] in a non-`proto::Recipient` message.
+    /// Resolved data for a recipient in a non-`proto::Recipient` message.
     type RecipientReference: Clone + Debug + serde::Serialize + SerializeOrder;
 
     /// Recorded information from a [`proto::chat_style::CustomChatColor`].
     type CustomColorData: Debug + From<CustomChatColor> + serde::Serialize;
-    /// Resolved data for a [`CustomColorId`] in a non-`CustomChatColor` message.
+    /// Resolved data for a custom color in a non-`CustomChatColor` message.
     type CustomColorReference: Clone + Debug + serde::Serialize;
 
     fn color_reference<'a>(

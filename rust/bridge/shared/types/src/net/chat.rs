@@ -513,7 +513,7 @@ impl HttpRequest {
     }
 }
 
-/// A trait of callbacks for different kinds of [`chat::server_requests::ServerMessage`].
+/// A trait of callbacks for different kinds of [`chat::server_requests::ServerEvent`].
 ///
 /// Done as multiple functions so we can adjust the types to be more suitable for bridging.
 pub trait ChatListener: Send {
@@ -629,7 +629,7 @@ impl dyn ChatListener {
     }
 }
 
-/// Wraps a named type and a single-use guard around [`chat::server_requests::AckEnvelopeFuture`].
+/// Wraps a named type and a single-use guard around [`chat::server_requests::ResponseEnvelopeSender`].
 pub struct ServerMessageAck {
     inner: AtomicTake<chat::server_requests::ResponseEnvelopeSender>,
 }

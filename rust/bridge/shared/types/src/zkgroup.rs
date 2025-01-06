@@ -44,7 +44,7 @@ macro_rules! bridge_as_fixed_length_serializable {
 
 /// Defines functions for types that implement [`FixedLengthBincodeSerializable`].
 ///
-/// `
+/// `bridge_fixed_length_serializable_fns!(FooBar)` generates
 /// `#[bridge_fn] fn FooBar_CheckValidContents`, which checks that the type can be deserialized.
 #[macro_export]
 macro_rules! bridge_fixed_length_serializable_fns {

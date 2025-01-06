@@ -2297,6 +2297,7 @@ dependencies = [
  "tokio",
  "usernames",
  "uuid",
+ "visibility",
  "zerocopy",
  "zkgroup",
 ]

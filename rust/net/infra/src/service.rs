@@ -67,9 +67,6 @@ pub trait RemoteAddressInfo {
 /// Once the channel is established, creating the service is an infallible
 /// operation. Requests or queries sent to the service can still fail later, but
 /// the service is guaranteed to exist.
-///
-/// See [crate::chat::http::ChatOverHttp2ServiceConnector]
-/// and [crate::chat::ws::ChatOverWebSocketServiceConnector]
 #[async_trait]
 pub trait ServiceConnector: Clone {
     type Service;

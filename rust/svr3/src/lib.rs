@@ -645,8 +645,8 @@ enum RotationMachineState {
 ///   }
 ///
 /// Important:  The order of request and response vectors matter: if
-/// server.ids()[1] is X, then requests[1] is meant for server X
-/// and responses[1] should be the response received from X.
+/// `server.ids()[1]` is X, then `requests[1]` is meant for server X
+/// and `responses[1]` should be the response received from X.
 pub struct RotationMachine<'a> {
     pub server_ids: &'a [u64],
     rng: &'a mut (dyn CryptoRngCore + Send),

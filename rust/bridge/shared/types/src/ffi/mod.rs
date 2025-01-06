@@ -191,6 +191,7 @@ pub struct FfiResponseAndDebugInfo {
     debug_info: FfiChatServiceDebugInfo,
 }
 
+#[cfg_attr(doc, visibility::make(pub))]
 struct UnexpectedPanic(Box<dyn std::any::Any + Send>);
 
 impl std::fmt::Debug for UnexpectedPanic {

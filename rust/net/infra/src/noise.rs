@@ -19,6 +19,8 @@ use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 /// Implements [`AsyncRead`] and [`AsyncWrite`] over a block-based [`Transport`]
 /// implementation by passing sent and received bytes through a
 /// [`snow::TransportState`] instance to encrypt and decrypt.
+///
+/// [Noise]: https://noiseprotocol.org/noise.html
 pub struct NoiseStream<S> {
     inner: S,
     transport: ClientConnection,
@@ -60,7 +62,7 @@ impl<S> NoiseStream<S> {
     }
 }
 
-/// Convenience alias for types that implement [`Stream`] and [`Sink`] for
+/// Convenience alias for types that implement [`FusedStream`] and [`Sink`] for
 /// `NoiseStream` to wrap.
 ///
 /// A blanket implementation is provided for types with compatible `Stream` and

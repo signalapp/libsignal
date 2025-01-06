@@ -156,7 +156,7 @@ pub enum FinishReason {
 /// in response to sending on an established (post-handshake) connection. It was
 /// manually produced by tracing through original sites for all the possible
 /// errors and seeing where those intersected calls originating from
-/// [`tokio_tungstenite::WebSocketStream::send`] and friends.
+/// [`tokio_tungstenite::WebSocketStream`]'s `send()` and friends.
 #[derive(Debug, thiserror::Error)]
 pub enum TungsteniteSendError {
     /// Like [`tungstenite::Error::AlreadyClosed`].
@@ -175,7 +175,7 @@ pub enum TungsteniteSendError {
 /// in response to receiving on an established (post-handshake) connection. It
 /// was manually produced by tracing through original sites for all the possible
 /// errors and seeing where those intersected calls originating from
-/// [`tokio_tungstenite::WebSocketStream::next`] and friends.
+/// [`tokio_tungstenite::WebSocketStream`]'s `next()` and friends.
 #[derive(Debug, thiserror::Error)]
 pub enum TungsteniteReceiveError {
     /// Like [`tungstenite::Error::Io`].

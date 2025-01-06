@@ -297,7 +297,7 @@ typedef struct SignalSenderKeyRecord SignalSenderKeyRecord;
 typedef struct SignalServerCertificate SignalServerCertificate;
 
 /**
- * Wraps a named type and a single-use guard around [`chat::server_requests::AckEnvelopeFuture`].
+ * Wraps a named type and a single-use guard around [`chat::server_requests::ResponseEnvelopeSender`].
  */
 typedef struct SignalServerMessageAck SignalServerMessageAck;
 

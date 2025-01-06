@@ -232,7 +232,7 @@ impl<T: Future> Future for AssertSendSafe<T> {
     }
 }
 
-/// A wrapper around [neon::Channel] that restricts direct use to the Neon Context where it was
+/// A wrapper around [`neon::event::Channel`] that restricts direct use to the Neon Context where it was
 /// created.
 ///
 /// This allows us to implement [`AsyncRuntime`] for non-Send Futures: we start them here, on the

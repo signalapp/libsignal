@@ -98,7 +98,7 @@ pub enum Error {
 
 impl LogSafeDisplay for Error {}
 
-/// Mirror of [`tungstenite::error::CapacityError`] and [`tungstenite::Error::SendQueueFull`].
+/// Mirror of [`tungstenite::error::CapacityError`] and [`tungstenite::Error::WriteBufferFull`].
 ///
 /// Provides a user-data-free [`std::fmt::Display`] implementation.
 #[derive(Clone, Debug, Eq, PartialEq, thiserror::Error, displaydoc::Display)]

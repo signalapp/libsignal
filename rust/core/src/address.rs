@@ -37,7 +37,7 @@ impl fmt::Debug for ServiceIdKind {
 }
 
 /// The error returned for a failed "downcast" conversion from a [`ServiceId`] to a specific kind of
-/// service ID (e.g. [`PNI`]).
+/// service ID (e.g. [`Pni`]).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct WrongKindOfServiceIdError {
     /// The kind of service ID being converted to.

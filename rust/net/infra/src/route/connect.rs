@@ -209,8 +209,8 @@ where
 
 /// Establishes a connection either directly or through a proxy.
 ///
-/// Delegates to the respective wrapped connector: [`DirectOrProxy::direct`] for
-/// [`DirectOrProxyRoute::Direct`] and [`DirectOrProxy::proxy`] for
+/// Delegates to the respective wrapped connector: [`DirectOrProxy`]'s `direct`
+/// for [`DirectOrProxyRoute::Direct`] and `proxy` for
 /// [`DirectOrProxyRoute::Proxy`].
 impl<D, P, DR, PR, Inner, Err> Connector<DirectOrProxyRoute<DR, PR>, Inner>
     for DirectOrProxy<D, P, Err>

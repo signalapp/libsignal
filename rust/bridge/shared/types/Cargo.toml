@@ -48,6 +48,7 @@ static_assertions = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread"] }
 uuid = { workspace = true }
+visibility = { workspace = true }
 
 # Enable this for all libsignal app language libraries
 subtle = { workspace = true, features = ["core_hint_black_box"] }
