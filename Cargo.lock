@@ -2629,6 +2629,7 @@ dependencies = [
  "subtle",
  "thiserror",
  "uuid",
+ "zerocopy",
 ]
 
 [[package]]

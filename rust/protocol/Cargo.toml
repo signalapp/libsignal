@@ -42,6 +42,7 @@ sha2 = { workspace = true }
 subtle = { workspace = true }
 thiserror = { workspace = true }
 uuid = { workspace = true }
+zerocopy = { workspace = true, features = ["derive"] }
 
 # WARNING: pqcrypto-kyber 0.8 and 0.7 don't actually coexist, they both depend on the same C symbols.
 # We keep this here for if/when that gets cleared up.

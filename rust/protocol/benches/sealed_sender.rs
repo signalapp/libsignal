@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::hint::black_box;
 use std::time::SystemTime;
 
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
@@ -80,18 +81,27 @@ pub fn v1(c: &mut Criterion) {
     .expect("valid");
 
     let mut encrypt_it = || {
-        sealed_sender_encrypt_from_usmc(&bob_address, &usmc, &alice_store.identity_store, &mut rng)
+        black_box(
+            sealed_sender_encrypt_from_usmc(
+                &bob_address,
+                &usmc,
+                &alice_store.identity_store,
+                &mut rng,
+            )
             .now_or_never()
             .expect("sync")
-            .expect("valid")
+            .expect("valid"),
+        )
     };
     let encrypted = encrypt_it();
 
     let mut decrypt_it = || {
-        sealed_sender_decrypt_to_usmc(&encrypted, &bob_store.identity_store)
-            .now_or_never()
-            .expect("sync")
-            .expect("valid")
+        black_box(
+            sealed_sender_decrypt_to_usmc(&encrypted, &bob_store.identity_store)
+                .now_or_never()
+                .expect("sync")
+                .expect("valid"),
+        )
     };
     assert_eq!(message, decrypt_it().contents().expect("valid"));
 
@@ -164,20 +174,22 @@ pub fn v2(c: &mut Criterion) {
     .expect("valid");
 
     let mut encrypt_it = || {
-        sealed_sender_multi_recipient_encrypt(
-            &[&bob_address],
-            &alice_store
-                .session_store
-                .load_existing_sessions(&[&bob_address])
-                .expect("present"),
-            [],
-            &usmc,
-            &alice_store.identity_store,
-            &mut rng,
+        black_box(
+            sealed_sender_multi_recipient_encrypt(
+                &[&bob_address],
+                &alice_store
+                    .session_store
+                    .load_existing_sessions(&[&bob_address])
+                    .expect("present"),
+                [],
+                &usmc,
+                &alice_store.identity_store,
+                &mut rng,
+            )
+            .now_or_never()
+            .expect("sync")
+            .expect("valid"),
         )
-        .now_or_never()
-        .expect("sync")
-        .expect("valid")
     };
     let outgoing = encrypt_it();
 
@@ -186,10 +198,12 @@ pub fn v2(c: &mut Criterion) {
     assert_eq!(&incoming_recipient.service_id_string(), bob_address.name());
 
     let mut decrypt_it = || {
-        sealed_sender_decrypt_to_usmc(&incoming_message, &bob_store.identity_store)
-            .now_or_never()
-            .expect("sync")
-            .expect("valid")
+        black_box(
+            sealed_sender_decrypt_to_usmc(&incoming_message, &bob_store.identity_store)
+                .now_or_never()
+                .expect("sync")
+                .expect("valid"),
+        )
     };
     assert_eq!(message, decrypt_it().contents().expect("valid"));
 
