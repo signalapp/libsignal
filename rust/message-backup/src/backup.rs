@@ -29,7 +29,7 @@ use crate::backup::recipient::{
 use crate::backup::serialize::{backup_key_as_hex, SerializeOrder, UnorderedList};
 use crate::backup::sticker::{PackId as StickerPackId, StickerPack, StickerPackError};
 use crate::backup::time::{
-    ReportUnusualTimestamp, Timestamp, TimestampIssue, UnusualTimestampTracker,
+    ReportUnusualTimestamp, Timestamp, TimestampError, TimestampIssue, UnusualTimestampTracker,
 };
 use crate::proto::backup as proto;
 use crate::proto::backup::frame::Item as FrameItem;
@@ -586,6 +586,8 @@ pub struct RecipientFrameError(RecipientId, RecipientError);
 pub enum MetadataError {
     /// invalid mediaRootBackupKey (expected {BACKUP_KEY_LEN:?} bytes, got {0:?})
     InvalidMediaRootBackupKey(usize),
+    /// {0}
+    InvalidTimestamp(#[from] TimestampError),
 }
 
 impl PartialBackup<ValidateOnly> {
@@ -629,7 +631,8 @@ impl<M: Method + ReferencedTypes> PartialBackup<M> {
                 backupTimeMs,
                 "BackupInfo.backupTimeMs",
                 &unusual_timestamp_tracker,
-            ),
+            )
+            .map_err(MetadataError::from)?,
             media_root_backup_key,
             current_app_version: currentAppVersion,
             first_app_version: firstAppVersion,

@@ -8,7 +8,7 @@ use crate::backup::file::{MessageAttachment, MessageAttachmentError};
 use crate::backup::frame::RecipientId;
 use crate::backup::method::LookupPair;
 use crate::backup::recipient::DestinationKind;
-use crate::backup::time::{ReportUnusualTimestamp, Timestamp};
+use crate::backup::time::{ReportUnusualTimestamp, Timestamp, TimestampError};
 use crate::backup::{likely_empty, TryFromWith};
 use crate::proto::backup as proto;
 
@@ -59,6 +59,8 @@ pub enum QuoteError {
     AttachmentThumbnail(#[from] MessageAttachmentError),
     /// attachment thumbnail cannot have flag {0:?}
     AttachmentThumbnailWrongFlag(proto::message_attachment::Flag),
+    /// {0}
+    InvalidTimestamp(#[from] TimestampError),
 }
 
 impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R> + ReportUnusualTimestamp>
@@ -93,9 +95,11 @@ impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R> + ReportUnusualTim
             | DestinationKind::CallLink => Err(QuoteError::InvalidAuthor(author_id, author_kind)),
         }?;
 
-        let target_sent_timestamp = targetSentTimestamp.map(|timestamp| {
-            Timestamp::from_millis(timestamp, "Quote.targetSentTimestamp", context)
-        });
+        let target_sent_timestamp = targetSentTimestamp
+            .map(|timestamp| {
+                Timestamp::from_millis(timestamp, "Quote.targetSentTimestamp", context)
+            })
+            .transpose()?;
         let quote_type = match type_.enum_value_or_default() {
             proto::quote::Type::UNKNOWN => return Err(QuoteError::TypeUnknown),
             proto::quote::Type::NORMAL => QuoteType::Normal,
@@ -248,6 +252,11 @@ mod test {
         x.authorId = TestContext::GROUP_ID.0
     } => Err(QuoteError::InvalidAuthor(TestContext::GROUP_ID, DestinationKind::Group)); "invalid author")]
     #[test_case(|x| x.type_ = proto::quote::Type::UNKNOWN.into() => Err(QuoteError::TypeUnknown); "unknown type")]
+    #[test_case(
+        |x| x.targetSentTimestamp = Some(MillisecondsSinceEpoch::FAR_FUTURE.0) =>
+        Err(QuoteError::InvalidTimestamp(TimestampError("Quote.targetSentTimestamp", MillisecondsSinceEpoch::FAR_FUTURE.0)));
+        "invalid targetSentTimestamp"
+    )]
     fn quote(modifier: impl FnOnce(&mut proto::Quote)) -> Result<(), QuoteError> {
         let mut attachment = proto::Quote::test_data();
         modifier(&mut attachment);

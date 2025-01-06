@@ -8,7 +8,7 @@ use std::fmt::Debug;
 use crate::backup::frame::RecipientId;
 use crate::backup::method::LookupPair;
 use crate::backup::recipient::DestinationKind;
-use crate::backup::time::{ReportUnusualTimestamp, Timestamp};
+use crate::backup::time::{ReportUnusualTimestamp, Timestamp, TimestampError};
 use crate::backup::{serialize, TryFromWith};
 use crate::proto::backup as proto;
 
@@ -74,15 +74,20 @@ pub enum CallError {
     UnknownState,
     /// call direction is UNKNOWN_DIRECTION
     UnknownDirection,
+    /// {0}
+    InvalidTimestamp(#[from] TimestampError),
 }
 
 #[derive(Debug, displaydoc::Display, thiserror::Error)]
 #[cfg_attr(test, derive(PartialEq))]
+#[allow(clippy::enum_variant_names)]
 pub enum CallLinkError {
     /// expected {CALL_LINK_ROOT_KEY_LEN:?}-byte root key, found {0} bytes
     InvalidRootKey(usize),
     /// admin key was present but empty
     InvalidAdminKey,
+    /// {0}
+    InvalidTimestamp(#[from] TimestampError),
 }
 
 #[derive(Debug, serde::Serialize)]
@@ -184,7 +189,7 @@ impl<C: ReportUnusualTimestamp> TryFromWith<proto::IndividualCall, C> for Indivi
             }
         };
 
-        let started_at = Timestamp::from_millis(startedCallTimestamp, "Call.timestamp", context);
+        let started_at = Timestamp::from_millis(startedCallTimestamp, "Call.timestamp", context)?;
         let id = callId.map(CallId);
 
         Ok(Self {
@@ -260,10 +265,12 @@ impl<C: LookupPair<RecipientId, DestinationKind, R> + ReportUnusualTimestamp, R:
             startedCallTimestamp,
             "GroupCall.startedCallTimestamp",
             context,
-        );
-        let ended_at = endedCallTimestamp.map(|ended_at| {
-            Timestamp::from_millis(ended_at, "GroupCall.endedCallTimestamp", context)
-        });
+        )?;
+        let ended_at = endedCallTimestamp
+            .map(|ended_at| {
+                Timestamp::from_millis(ended_at, "GroupCall.endedCallTimestamp", context)
+            })
+            .transpose()?;
         let id = callId.map(CallId);
 
         Ok(Self {
@@ -317,7 +324,7 @@ impl<C: LookupPair<RecipientId, DestinationKind, R> + ReportUnusualTimestamp, R:
         };
 
         let timestamp =
-            Timestamp::from_millis(callTimestamp, "AdHocCall.startedCallTimestamp", context);
+            Timestamp::from_millis(callTimestamp, "AdHocCall.startedCallTimestamp", context)?;
 
         Ok(Self {
             id,
@@ -353,7 +360,7 @@ impl<C: ReportUnusualTimestamp> TryFromWith<proto::CallLink, C> for CallLink {
 
         // Any unknown values will be warned about elsewhere.
         let restrictions = restrictions.enum_value_or(proto::call_link::Restrictions::UNKNOWN);
-        let expiration = Timestamp::from_millis(expirationMs, "CallLink.expirationMs", context);
+        let expiration = Timestamp::from_millis(expirationMs, "CallLink.expirationMs", context)?;
 
         Ok(Self {
             root_key,
@@ -492,6 +499,11 @@ pub(crate) mod test {
     #[test_case(|x| x.type_ = EnumOrUnknown::default() => Err(CallError::UnknownType); "unknown type")]
     #[test_case(|x| x.state = EnumOrUnknown::default() => Err(CallError::UnknownState); "unknown state")]
     #[test_case(|x| x.direction = EnumOrUnknown::default() => Err(CallError::UnknownDirection); "unknown_direction")]
+    #[test_case(
+        |x| x.startedCallTimestamp = MillisecondsSinceEpoch::FAR_FUTURE.0 =>
+        Err(CallError::InvalidTimestamp(TimestampError("Call.timestamp", MillisecondsSinceEpoch::FAR_FUTURE.0)));
+        "invalid timestamp"
+    )]
     fn individual_call(modifier: fn(&mut proto::IndividualCall)) -> Result<(), CallError> {
         let mut call = proto::IndividualCall::test_data();
         modifier(&mut call);
@@ -532,6 +544,16 @@ pub(crate) mod test {
     } => Err(CallError::InvalidCallStarter(TEST_CALL_LINK_RECIPIENT_ID, DestinationKind::CallLink)); "invalid call starter")]
     #[test_case(|x| x.state = EnumOrUnknown::default() => Err(CallError::UnknownState); "unknown_state")]
     #[test_case(|x| x.endedCallTimestamp = None => Ok(()); "no end timestamp")]
+    #[test_case(
+        |x| x.startedCallTimestamp = MillisecondsSinceEpoch::FAR_FUTURE.0 =>
+        Err(CallError::InvalidTimestamp(TimestampError("GroupCall.startedCallTimestamp", MillisecondsSinceEpoch::FAR_FUTURE.0)));
+        "invalid start timestamp"
+    )]
+    #[test_case(
+        |x| x.endedCallTimestamp = Some(MillisecondsSinceEpoch::FAR_FUTURE.0) =>
+        Err(CallError::InvalidTimestamp(TimestampError("GroupCall.endedCallTimestamp", MillisecondsSinceEpoch::FAR_FUTURE.0)));
+        "invalid end timestamp"
+    )]
     fn group_call(modifier: fn(&mut proto::GroupCall)) -> Result<(), CallError> {
         let mut call = proto::GroupCall::test_data();
         modifier(&mut call);
@@ -559,6 +581,11 @@ pub(crate) mod test {
         |x| x.recipientId = proto::Recipient::TEST_ID => Err(CallError::InvalidAdHocRecipient(RecipientId(proto::Recipient::TEST_ID)));
         "ad_hoc_recipient_not_call"
     )]
+    #[test_case(
+        |x| x.callTimestamp = MillisecondsSinceEpoch::FAR_FUTURE.0 =>
+        Err(CallError::InvalidTimestamp(TimestampError("AdHocCall.startedCallTimestamp", MillisecondsSinceEpoch::FAR_FUTURE.0)));
+        "invalid timestamp"
+    )]
     fn ad_hoc_call(modifier: impl FnOnce(&mut proto::AdHocCall)) -> Result<(), CallError> {
         let mut call = proto::AdHocCall::test_data();
         modifier(&mut call);
@@ -578,6 +605,11 @@ pub(crate) mod test {
     #[test_case(|x| x.adminKey = None => Ok(()); "no_admin_key")]
     #[test_case(|x| x.restrictions = proto::call_link::Restrictions::UNKNOWN.into() => Ok(()); "unknown_restrictions")]
     #[test_case(|x| x.restrictions = EnumOrUnknown::from_i32(1000) => Ok(()); "unknown_restrictions_value")]
+    #[test_case(
+        |x| x.expirationMs = MillisecondsSinceEpoch::FAR_FUTURE.0 =>
+        Err(CallLinkError::InvalidTimestamp(TimestampError("CallLink.expirationMs", MillisecondsSinceEpoch::FAR_FUTURE.0)));
+        "invalid expiration"
+    )]
     fn call_link(modifier: fn(&mut proto::CallLink)) -> Result<(), CallLinkError> {
         let mut link = proto::CallLink::test_data();
         modifier(&mut link);

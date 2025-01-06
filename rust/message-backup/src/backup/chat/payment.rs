@@ -5,7 +5,7 @@
 
 use std::fmt::Display;
 
-use crate::backup::time::{ReportUnusualTimestamp, Timestamp};
+use crate::backup::time::{ReportUnusualTimestamp, Timestamp, TimestampError};
 use crate::backup::{serialize, TryFromWith, TryIntoWith};
 use crate::proto::backup as proto;
 
@@ -83,6 +83,8 @@ pub enum TransactionError {
     EmptyIdentification,
     /// MobileCoinTxoIdentification has keyImages and publicKey values
     IdentificationContainsBoth,
+    /// {0}
+    InvalidTimestamp(#[from] TimestampError),
 }
 
 impl<C: ReportUnusualTimestamp> TryFromWith<proto::PaymentNotification, C> for PaymentNotification {
@@ -189,10 +191,12 @@ impl<C: ReportUnusualTimestamp>
             )
             .transpose()?;
 
-        let timestamp =
-            timestamp.map(|t| Timestamp::from_millis(t, "Transaction.timestamp", context));
+        let timestamp = timestamp
+            .map(|t| Timestamp::from_millis(t, "Transaction.timestamp", context))
+            .transpose()?;
         let block_timestamp = blockTimestamp
-            .map(|t| Timestamp::from_millis(t, "Transaction.blockTimestamp", context));
+            .map(|t| Timestamp::from_millis(t, "Transaction.blockTimestamp", context))
+            .transpose()?;
 
         Ok(Self {
             status,
@@ -365,6 +369,25 @@ mod test {
                 receipt: None,
             })
         )
+    }
+
+    #[test_case(
+        |x| x.timestamp = Some(MillisecondsSinceEpoch::FAR_FUTURE.0) =>
+        Err(TransactionError::InvalidTimestamp(TimestampError("Transaction.timestamp", MillisecondsSinceEpoch::FAR_FUTURE.0)));
+        "invalid timestamp"
+    )]
+    #[test_case(
+        |x| x.blockTimestamp = Some(MillisecondsSinceEpoch::FAR_FUTURE.0) =>
+        Err(TransactionError::InvalidTimestamp(TimestampError("Transaction.blockTimestamp", MillisecondsSinceEpoch::FAR_FUTURE.0)));
+        "invalid blockTimestamp"
+    )]
+    fn transaction(
+        modifier: fn(&mut proto::payment_notification::transaction_details::Transaction),
+    ) -> Result<(), TransactionError> {
+        let mut transaction =
+            proto::payment_notification::transaction_details::Transaction::test_data();
+        modifier(&mut transaction);
+        Transaction::try_from_with(transaction, &TestContext::default()).map(|_| ())
     }
 
     fn both(

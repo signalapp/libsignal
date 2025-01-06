@@ -11,7 +11,7 @@ use crate::backup::frame::RecipientId;
 use crate::backup::method::LookupPair;
 use crate::backup::recipient::DestinationKind;
 use crate::backup::serialize::SerializeOrder;
-use crate::backup::time::{ReportUnusualTimestamp, Timestamp};
+use crate::backup::time::{ReportUnusualTimestamp, Timestamp, TimestampError};
 use crate::backup::{TryFromWith, TryIntoWith};
 use crate::proto::backup as proto;
 
@@ -49,6 +49,8 @@ pub enum ReactionError {
     MultipleReactions(RecipientId),
     /// "emoji" is an empty string
     EmptyEmoji,
+    /// {0}
+    InvalidTimestamp(#[from] TimestampError),
 }
 
 impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R> + ReportUnusualTimestamp>
@@ -79,7 +81,7 @@ impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R> + ReportUnusualTim
         let author = author.clone();
 
         let sent_timestamp =
-            Timestamp::from_millis(sentTimestamp, "Reaction.sentTimestamp", context);
+            Timestamp::from_millis(sentTimestamp, "Reaction.sentTimestamp", context)?;
 
         Ok(Self {
             emoji,
@@ -214,6 +216,11 @@ mod test {
     #[test_case(
         |x| x.authorId = TestContext::GROUP_ID.0 => Err(ReactionError::InvalidAuthor(TestContext::GROUP_ID, DestinationKind::Group));
         "invalid author id"
+    )]
+    #[test_case(
+        |x| x.sentTimestamp = MillisecondsSinceEpoch::FAR_FUTURE.0 =>
+        Err(ReactionError::InvalidTimestamp(TimestampError("Reaction.sentTimestamp", MillisecondsSinceEpoch::FAR_FUTURE.0)));
+        "invalid timestamp"
     )]
     fn reaction(modifier: fn(&mut proto::Reaction)) -> Result<(), ReactionError> {
         let mut reaction = proto::Reaction::test_data();

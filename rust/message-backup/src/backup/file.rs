@@ -11,7 +11,7 @@
 use hex::ToHex as _;
 use uuid::Uuid;
 
-use crate::backup::time::{ReportUnusualTimestamp, Timestamp};
+use crate::backup::time::{ReportUnusualTimestamp, Timestamp, TimestampError};
 use crate::backup::{serialize, TryFromWith, TryIntoWith};
 use crate::proto::backup as proto;
 
@@ -60,6 +60,8 @@ pub enum AttachmentLocatorError {
     MissingTransitCdnKey,
     /// mediaName isn't digest encoded as hex (maybe with "_thumbnail" suffix)
     InvalidMediaName,
+    /// {0}
+    InvalidTimestamp(#[from] TimestampError),
 }
 
 impl<C: ReportUnusualTimestamp + ?Sized> TryFromWith<proto::file_pointer::Locator, C>
@@ -137,13 +139,15 @@ impl<C: ReportUnusualTimestamp + ?Sized> TryFromWith<proto::file_pointer::Locato
                     return Err(AttachmentLocatorError::MissingDigest);
                 }
 
-                let upload_timestamp = uploadTimestamp.map(|upload_timestamp| {
-                    Timestamp::from_millis(
-                        upload_timestamp,
-                        "AttachmentLocator.uploadTimestamp",
-                        &context,
-                    )
-                });
+                let upload_timestamp = uploadTimestamp
+                    .map(|upload_timestamp| {
+                        Timestamp::from_millis(
+                            upload_timestamp,
+                            "AttachmentLocator.uploadTimestamp",
+                            &context,
+                        )
+                    })
+                    .transpose()?;
 
                 Ok(Self::Transit {
                     cdn_key: cdnKey,
@@ -379,6 +383,11 @@ mod test {
     #[test_case(|x| x.key = vec![] => Err(AttachmentLocatorError::MissingKey); "no key")]
     #[test_case(|x| x.digest = vec![] => Err(AttachmentLocatorError::MissingDigest); "no digest")]
     #[test_case(|x| x.size = 0 => Ok(()); "size zero")]
+    #[test_case(
+        |x| x.uploadTimestamp = Some(MillisecondsSinceEpoch::FAR_FUTURE.0) =>
+        Err(AttachmentLocatorError::InvalidTimestamp(TimestampError("AttachmentLocator.uploadTimestamp", MillisecondsSinceEpoch::FAR_FUTURE.0)));
+        "invalid timestamp"
+    )]
     fn attachment_locator(
         modifier: impl FnOnce(&mut proto::file_pointer::AttachmentLocator),
     ) -> Result<(), AttachmentLocatorError> {

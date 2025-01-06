@@ -18,7 +18,7 @@ use crate::backup::call::{CallLink, CallLinkError, CallLinkRootKey};
 use crate::backup::frame::RecipientId;
 use crate::backup::method::LookupPair;
 use crate::backup::serialize::{self, SerializeOrder, UnorderedList};
-use crate::backup::time::{ReportUnusualTimestamp, Timestamp};
+use crate::backup::time::{ReportUnusualTimestamp, Timestamp, TimestampError};
 use crate::backup::{TryFromWith, TryIntoWith};
 use crate::proto::backup as proto;
 use crate::proto::backup::recipient::Destination as RecipientDestination;
@@ -78,6 +78,8 @@ pub enum RecipientError {
     DistributionListMemberDuplicate(RecipientId),
     /// distribution list member {0:?} is a {1:?} not a contact
     DistributionListMemberWrongKind(RecipientId, DestinationKind),
+    /// {0}
+    InvalidTimestamp(#[from] TimestampError),
 }
 
 /// Data kept in-memory from a [`proto::Recipient`] for [`ValidateOnly`] mode.
@@ -404,13 +406,15 @@ impl<C: ReportUnusualTimestamp> TryFromWith<proto::Contact, C> for ContactData {
                 unregisteredTimestamp,
                 special_fields: _,
             }) => Registration::NotRegistered {
-                unregistered_at: NonZeroU64::new(unregisteredTimestamp).map(|u| {
-                    Timestamp::from_millis(
-                        u.get(),
-                        "Contact.notRegistered.unregisteredTimestamp",
-                        context,
-                    )
-                }),
+                unregistered_at: NonZeroU64::new(unregisteredTimestamp)
+                    .map(|u| {
+                        Timestamp::from_millis(
+                            u.get(),
+                            "Contact.notRegistered.unregisteredTimestamp",
+                            context,
+                        )
+                    })
+                    .transpose()?,
             },
             proto::contact::Registration::Registered(proto::contact::Registered {
                 special_fields: _,
@@ -501,7 +505,7 @@ impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R> + ReportUnusualTim
                         deletion_timestamp,
                         "DistributionList.deletionTimestamp",
                         context,
-                    );
+                    )?;
                     Self::Deleted {
                         distribution_id,
                         at,
@@ -747,6 +751,10 @@ mod test {
         x.identityState = proto::contact::IdentityState::DEFAULT.into();
     } => Ok(()); "missing_identity_default")]
     #[test_case(|x| x.identityKey = Some(vec![]) => Err(RecipientError::InvalidIdentityKey); "invalid_identity_key")]
+    #[test_case(|x| x.registration = Some(proto::contact::Registration::NotRegistered(proto::contact::NotRegistered {
+        unregisteredTimestamp: MillisecondsSinceEpoch::FAR_FUTURE.0,
+        ..Default::default()
+    })) => Err(RecipientError::InvalidTimestamp(TimestampError("Contact.notRegistered.unregisteredTimestamp", MillisecondsSinceEpoch::FAR_FUTURE.0))); "invalid unregisteredTimestamp")]
     fn destination_contact(modifier: fn(&mut proto::Contact)) -> Result<(), RecipientError> {
         let mut contact = proto::Contact::test_data();
         modifier(&mut contact);
@@ -853,6 +861,10 @@ mod test {
         x.distributionId = proto::DistributionListItem::TEST_CUSTOM_UUID.into();
         x.set_deletionTimestamp(MillisecondsSinceEpoch::TEST_VALUE.0);
     } => Ok(()); "valid_deletion")]
+    #[test_case(|x| {
+        x.distributionId = proto::DistributionListItem::TEST_CUSTOM_UUID.into();
+        x.set_deletionTimestamp(MillisecondsSinceEpoch::FAR_FUTURE.0);
+    } => Err(RecipientError::InvalidTimestamp(TimestampError("DistributionList.deletionTimestamp", MillisecondsSinceEpoch::FAR_FUTURE.0))); "invalid deletionTimestamp")]
     fn destination_distribution_list(
         modifier: fn(&mut proto::DistributionListItem),
     ) -> Result<(), RecipientError> {

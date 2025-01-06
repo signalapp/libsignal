@@ -15,7 +15,7 @@ use crate::backup::frame::RecipientId;
 use crate::backup::method::LookupPair;
 use crate::backup::recipient::DestinationKind;
 use crate::backup::serialize::{SerializeOrder, UnorderedList};
-use crate::backup::time::{ReportUnusualTimestamp, Timestamp};
+use crate::backup::time::{ReportUnusualTimestamp, Timestamp, TimestampError};
 use crate::backup::{Color, ColorError, TryFromWith};
 use crate::proto::backup as proto;
 
@@ -58,6 +58,8 @@ pub enum NotificationProfileError {
     InvalidWeekday(i32),
     /// {0:?} appears twice in enabledDays
     DuplicateDay(DayOfWeek),
+    /// {0}
+    InvalidTimestamp(#[from] TimestampError),
 }
 
 impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R> + ReportUnusualTimestamp>
@@ -91,7 +93,7 @@ impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R> + ReportUnusualTim
         let color = Color::try_from(color)?;
 
         let created_at =
-            Timestamp::from_millis(createdAtMs, "NotificationProfile.createdAtMs", context);
+            Timestamp::from_millis(createdAtMs, "NotificationProfile.createdAtMs", context)?;
 
         let mut seen_members = IntMap::default();
         let allowed_members = allowedMembers
@@ -295,6 +297,11 @@ mod test {
     #[test_case(|x| x.allowedMembers = vec![TestContext::SELF_ID.0] => Err(NotificationProfileError::MemberWrongKind(TestContext::SELF_ID, DestinationKind::Self_)); "cannot include Self")]
     #[test_case(|x| x.allowedMembers = vec![TestContext::CONTACT_ID.0, TestContext::CONTACT_ID.0] => Err(NotificationProfileError::DuplicateMember(TestContext::CONTACT_ID)); "cannot include duplicates")]
     #[test_case(|x| x.allowedMembers = vec![1000] => Err(NotificationProfileError::UnknownMember(RecipientId(1000))); "unknown member")]
+    #[test_case(
+        |x| x.createdAtMs = MillisecondsSinceEpoch::FAR_FUTURE.0 =>
+        Err(NotificationProfileError::InvalidTimestamp(TimestampError("NotificationProfile.createdAtMs", MillisecondsSinceEpoch::FAR_FUTURE.0)));
+        "invalid createdAtMs"
+    )]
     fn profile(
         mutator: fn(&mut proto::NotificationProfile),
     ) -> Result<(), NotificationProfileError> {

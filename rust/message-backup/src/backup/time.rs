@@ -32,6 +32,11 @@ pub enum TimestampIssue {
     Future,
 }
 
+#[derive(Debug, displaydoc::Display, thiserror::Error)]
+#[cfg_attr(test, derive(PartialEq))]
+/// Timestamp {1} for '{0}' was too far in the future
+pub struct TimestampError(pub(crate) &'static str, pub(crate) u64);
+
 /// Callback for when a backup frame contains an unusual timestamp.
 ///
 /// See [`Timestamp::from_millis`].
@@ -53,11 +58,16 @@ pub struct UnusualTimestampTracker(
 );
 
 impl Timestamp {
+    /// A reasonable range for timestamps found in backup files; timestamps outside of this range
+    /// will be warned about.
     const EXPECTED_RANGE_MS: std::ops::Range<u64> =
         // 2000-01-01 - UNIX_EPOCH
         946_684_800_000..
         // 2100-01-01 - UNIX_EPOCH
         4_102_444_800_000;
+
+    /// The maximum timestamp we allow in backup files, also the limit of JavaScript's Date type.
+    const MAX_SAFE_TIMESTAMP_MS: u64 = 100_000_000 * 1000 * 60 * 60 * 24;
 
     /// Validates and converts a timestamp represented as seconds since [`UNIX_EPOCH`].
     ///
@@ -71,7 +81,7 @@ impl Timestamp {
         since_epoch: u64,
         context: &'static str,
         reporter: &dyn ReportUnusualTimestamp,
-    ) -> Self {
+    ) -> Result<Self, TimestampError> {
         if since_epoch < Self::EXPECTED_RANGE_MS.start {
             let issue = if since_epoch == 0 {
                 TimestampIssue::Zero
@@ -80,9 +90,14 @@ impl Timestamp {
             };
             reporter.report(since_epoch, context, issue);
         } else if since_epoch > Self::EXPECTED_RANGE_MS.end {
+            if since_epoch > Self::MAX_SAFE_TIMESTAMP_MS {
+                return Err(TimestampError(context, since_epoch));
+            }
             reporter.report(since_epoch, context, TimestampIssue::Future);
         }
-        Self(UNIX_EPOCH + std::time::Duration::from_millis(since_epoch))
+        Ok(Self(
+            UNIX_EPOCH + std::time::Duration::from_millis(since_epoch),
+        ))
     }
 
     pub(super) fn into_inner(self) -> SystemTime {
@@ -116,12 +131,12 @@ impl TimestampOrForever {
         since_epoch: u64,
         context: &'static str,
         reporter: &dyn ReportUnusualTimestamp,
-    ) -> Self {
-        if since_epoch >= Self::FOREVER_MS {
+    ) -> Result<Self, TimestampError> {
+        Ok(if since_epoch >= Self::FOREVER_MS {
             Self::Forever
         } else {
-            Self::Timestamp(Timestamp::from_millis(since_epoch, context, reporter))
-        }
+            Self::Timestamp(Timestamp::from_millis(since_epoch, context, reporter)?)
+        })
     }
 }
 
@@ -199,6 +214,13 @@ pub(super) mod testutil {
 
     impl MillisecondsSinceEpoch {
         pub(crate) const TEST_VALUE: Self = FIXED_DATE;
+
+        /// Just out of the allowed range for backup timestamps.
+        pub(crate) const FAR_FUTURE: Self = {
+            const DAYS: u64 = 100_000_000;
+            const SECONDS: u64 = DAYS * 24 * 60 * 60;
+            MillisecondsSinceEpoch(SECONDS * 1000 + 1)
+        };
     }
 
     pub(crate) const FIXED_DATE: MillisecondsSinceEpoch = {
@@ -277,6 +299,20 @@ mod test {
             } else {
                 TimestampIssue::Future
             }
+        );
+    }
+
+    #[test_matrix([MillisecondsSinceEpoch::FAR_FUTURE.0, i64::MAX as u64, u64::MAX])]
+    fn timestamp_hard_error(raw_timestamp: u64) {
+        let tracker: RefCell<UnusualTimestampTracker> = Default::default();
+        assert_eq!(
+            Timestamp::from_millis(raw_timestamp, "test", &tracker),
+            Err(TimestampError("test", raw_timestamp))
+        );
+        assert_eq!(
+            0,
+            tracker.into_inner().0.len(),
+            "nothing should be added to the tracker"
         );
     }
 }

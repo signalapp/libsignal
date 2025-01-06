@@ -19,7 +19,9 @@ use crate::backup::method::{Lookup, LookupPair, Method};
 use crate::backup::recipient::DestinationKind;
 use crate::backup::serialize::{SerializeOrder, UnorderedList};
 use crate::backup::sticker::MessageStickerError;
-use crate::backup::time::{Duration, ReportUnusualTimestamp, Timestamp, TimestampOrForever};
+use crate::backup::time::{
+    Duration, ReportUnusualTimestamp, Timestamp, TimestampError, TimestampOrForever,
+};
 use crate::backup::{
     likely_empty, BackupMeta, CallError, ReferencedTypes, TryFromWith, TryIntoWith as _,
 };
@@ -88,6 +90,8 @@ pub enum ChatError {
     DuplicatePinnedOrder(PinOrder),
     /// style error: {0}
     Style(#[from] ChatStyleError),
+    /// {0}
+    InvalidTimestamp(#[from] TimestampError),
 }
 
 #[derive(Debug, displaydoc::Display, thiserror::Error)]
@@ -169,6 +173,8 @@ pub enum ChatItemError {
     LearnedProfileIsEmpty,
     /// invalid e164
     InvalidE164,
+    /// {0}
+    InvalidTimestamp(#[from] TimestampError),
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -307,6 +313,8 @@ pub enum OutgoingSendError {
     InvalidRecipient(RecipientId, DestinationKind),
     /// send status is missing
     SendStatusMissing,
+    /// send status for recipient {0:?}: {1}
+    InvalidTimestamp(RecipientId, TimestampError),
 }
 
 impl std::fmt::Display for InvalidExpiration {
@@ -382,8 +390,9 @@ impl<
 
         let expiration_timer = expirationTimerMs.map(Duration::from_millis);
 
-        let mute_until =
-            muteUntilMs.map(|t| TimestampOrForever::from_millis(t, "Chat.muteUntilMs", context));
+        let mute_until = muteUntilMs
+            .map(|t| TimestampOrForever::from_millis(t, "Chat.muteUntilMs", context))
+            .transpose()?;
 
         if expiration_timer.is_some() && expireTimerVersion == 0 {
             return Err(ChatError::MissingExpireTimerVersion(recipient_id));
@@ -530,9 +539,10 @@ impl<
             }
         }
 
-        let sent_at = Timestamp::from_millis(dateSent, "ChatItem.dateSent", context);
+        let sent_at = Timestamp::from_millis(dateSent, "ChatItem.dateSent", context)?;
         let expire_start = expireStartDate
-            .map(|date| Timestamp::from_millis(date, "ChatItem.expireStartDate", context));
+            .map(|date| Timestamp::from_millis(date, "ChatItem.expireStartDate", context))
+            .transpose()?;
         let expires_in = expiresInMs.map(Into::into).map(Duration::from_millis);
 
         match (expire_start, expires_in) {
@@ -625,14 +635,16 @@ impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R> + ReportUnusualTim
                 read,
                 sealedSender,
             }) => {
-                let sent = dateServerSent.map(|sent| {
-                    Timestamp::from_millis(sent, "DirectionalDetails.dateServerSent", context)
-                });
+                let sent = dateServerSent
+                    .map(|sent| {
+                        Timestamp::from_millis(sent, "DirectionalDetails.dateServerSent", context)
+                    })
+                    .transpose()?;
                 let received = Timestamp::from_millis(
                     dateReceived,
                     "DirectionalDetails.dateReceived",
                     context,
-                );
+                )?;
                 Ok(Self::Incoming {
                     received,
                     sent,
@@ -729,7 +741,8 @@ impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R> + ReportUnusualTim
             }
         };
 
-        let last_status_update = Timestamp::from_millis(timestamp, "SendStatus.timestamp", context);
+        let last_status_update = Timestamp::from_millis(timestamp, "SendStatus.timestamp", context)
+            .map_err(|e| OutgoingSendError::InvalidTimestamp(recipient_id, e))?;
 
         Ok(Self {
             recipient,
@@ -872,6 +885,11 @@ mod test {
     #[test_case(|x| x.expirationTimerMs = Some(123456) => Err(ChatError::MissingExpireTimerVersion(TestContext::SELF_ID)); "with_expiration_timer_only")]
     #[test_case(|x| x.expireTimerVersion = 3 => Ok(()); "with_expire_timer_version_only")]
     #[test_case(|x| x.muteUntilMs = Some(MillisecondsSinceEpoch::TEST_VALUE.0) => Ok(()); "with mute until")]
+    #[test_case(
+        |x| x.muteUntilMs = Some(MillisecondsSinceEpoch::FAR_FUTURE.0) =>
+        Err(ChatError::InvalidTimestamp(TimestampError("Chat.muteUntilMs", MillisecondsSinceEpoch::FAR_FUTURE.0)));
+        "invalid mute until"
+    )]
     #[test_case(
         |x| x.pinnedOrder = Some(TestContext::DUPLICATE_PINNED_ORDER.0) =>
         Err(ChatError::DuplicatePinnedOrder(TestContext::DUPLICATE_PINNED_ORDER));
@@ -1023,6 +1041,31 @@ mod test {
             ..proto::ChatItem::test_data()
         })
     } => Err(ChatItemError::RevisionContainsRevisions); "revision recursion")]
+    #[test_case(
+        |x| x.dateSent = MillisecondsSinceEpoch::FAR_FUTURE.0 =>
+        Err(ChatItemError::InvalidTimestamp(TimestampError("ChatItem.dateSent", MillisecondsSinceEpoch::FAR_FUTURE.0)));
+        "invalid dateSent"
+    )]
+    #[test_case(
+        |x| x.expireStartDate = Some(MillisecondsSinceEpoch::FAR_FUTURE.0) =>
+        Err(ChatItemError::InvalidTimestamp(TimestampError("ChatItem.expireStartDate", MillisecondsSinceEpoch::FAR_FUTURE.0)));
+        "invalid expireStartDate"
+    )]
+    #[test_case(
+        |x| x.mut_incoming().dateServerSent = Some(MillisecondsSinceEpoch::FAR_FUTURE.0) =>
+        Err(ChatItemError::InvalidTimestamp(TimestampError("DirectionalDetails.dateServerSent", MillisecondsSinceEpoch::FAR_FUTURE.0)));
+        "invalid dateServerSent"
+    )]
+    #[test_case(
+        |x| x.mut_incoming().dateReceived = MillisecondsSinceEpoch::FAR_FUTURE.0 =>
+        Err(ChatItemError::InvalidTimestamp(TimestampError("DirectionalDetails.dateReceived", MillisecondsSinceEpoch::FAR_FUTURE.0)));
+        "invalid dateReceived"
+    )]
+    #[test_case(|x| {
+        x.authorId = TestContext::SELF_ID.0;
+        x.directionalDetails = Some(proto::chat_item::OutgoingMessageDetails::test_data().into());
+        x.mut_outgoing().sendStatus[0].timestamp = MillisecondsSinceEpoch::FAR_FUTURE.0;
+    } => Err(ChatItemError::Outgoing(OutgoingSendError::InvalidTimestamp(TestContext::SELF_ID, TimestampError("SendStatus.timestamp", MillisecondsSinceEpoch::FAR_FUTURE.0)))); "invalid SendStatus timestamp")]
     fn chat_item(modifier: fn(&mut proto::ChatItem)) -> Result<(), ChatItemError> {
         let mut message = proto::ChatItem::test_data();
         modifier(&mut message);

@@ -13,7 +13,7 @@ use libsignal_core::ServiceIdKind;
 use zkgroup::GroupMasterKeyBytes;
 
 use crate::backup::serialize::{self, UnorderedList};
-use crate::backup::time::{Duration, ReportUnusualTimestamp};
+use crate::backup::time::{Duration, ReportUnusualTimestamp, TimestampError};
 use crate::backup::{likely_empty, TryFromWith, TryIntoWith};
 use crate::proto::backup as proto;
 
@@ -80,6 +80,8 @@ pub enum GroupError {
     MemberPendingProfileKeyHasProfileKey,
     /// MemberPendingProfileKey's userId and addedByUserId are the same
     MemberPendingProfileKeyWasInvitedBySelf,
+    /// {0}
+    InvalidTimestamp(#[from] TimestampError),
 }
 
 impl proto::group::group_attribute_blob::Content {
