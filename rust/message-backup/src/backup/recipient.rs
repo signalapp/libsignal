@@ -80,6 +80,8 @@ pub enum RecipientError {
     DistributionListMemberDuplicate(RecipientId),
     /// distribution list member {0:?} is a {1:?} not a contact
     DistributionListMemberWrongKind(RecipientId, DestinationKind),
+    /// distribution list member {0:?} is a contact with no service IDs
+    DistributionListMemberHasNoServiceIds(RecipientId),
     /// {0}
     InvalidTimestamp(#[from] TimestampError),
 }
@@ -109,12 +111,24 @@ pub enum MinimalRecipientData {
     },
 }
 
+impl AsRef<MinimalRecipientData> for MinimalRecipientData {
+    fn as_ref(&self) -> &MinimalRecipientData {
+        self
+    }
+}
+
 /// Data kept in-memory from a [`proto::Recipient`] for [`Store`] mode.
 ///
 /// This keeps the full data in memory behind a [`Arc`] so it can be cheaply
 /// cloned when referenced by later frames.
-#[derive(Clone, Debug, serde::Serialize)]
-pub struct FullRecipientData(Arc<Destination<FullRecipientData>>);
+#[derive(Clone, Debug)]
+pub struct FullRecipientData(Arc<(MinimalRecipientData, Destination<FullRecipientData>)>);
+
+impl serde::Serialize for FullRecipientData {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        self.0 .1.serialize(serializer)
+    }
+}
 
 #[derive(Clone, Debug, serde::Serialize, strum::EnumDiscriminants)]
 #[cfg_attr(test, derive(PartialEq))]
@@ -127,24 +141,6 @@ pub enum Destination<R> {
     Self_,
     ReleaseNotes,
     CallLink(CallLink),
-}
-
-impl DestinationKind {
-    pub fn is_individual(&self) -> bool {
-        match self {
-            DestinationKind::Contact | DestinationKind::Self_ => true,
-            DestinationKind::Group
-            | DestinationKind::DistributionList
-            | DestinationKind::ReleaseNotes
-            | DestinationKind::CallLink => false,
-        }
-    }
-}
-
-impl AsRef<DestinationKind> for DestinationKind {
-    fn as_ref(&self) -> &DestinationKind {
-        self
-    }
 }
 
 /// Represents a phone number in E.164 format.
@@ -253,7 +249,7 @@ impl AsRef<DestinationKind> for MinimalRecipientData {
 impl std::ops::Deref for FullRecipientData {
     type Target = Destination<FullRecipientData>;
     fn deref(&self) -> &Self::Target {
-        &self.0
+        &self.0 .1
     }
 }
 
@@ -281,13 +277,15 @@ impl<R> From<Destination<R>> for MinimalRecipientData {
 
 impl FullRecipientData {
     pub(crate) fn new(data: Destination<FullRecipientData>) -> Self {
-        Self(Arc::new(data))
+        // Cloning the data to convert it to a MinimalRecipientData isn't very efficient,
+        // but it doesn't need to be for the time being.
+        Self(Arc::new((data.clone().into(), data)))
     }
 }
 
-impl AsRef<DestinationKind> for FullRecipientData {
-    fn as_ref(&self) -> &DestinationKind {
-        self.0.as_ref().as_ref()
+impl AsRef<MinimalRecipientData> for FullRecipientData {
+    fn as_ref(&self) -> &MinimalRecipientData {
+        &self.0 .0
     }
 }
 
@@ -326,7 +324,7 @@ impl<R> AsRef<DestinationKind> for Destination<R> {
     }
 }
 
-impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R> + ReportUnusualTimestamp>
+impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusualTimestamp>
     TryFromWith<proto::Recipient, C> for Destination<R>
 {
     type Error = RecipientError;
@@ -478,7 +476,7 @@ impl<C: ReportUnusualTimestamp> TryFromWith<proto::Contact, C> for ContactData {
     }
 }
 
-impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R> + ReportUnusualTimestamp>
+impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusualTimestamp>
     TryFromWith<proto::DistributionListItem, C> for DistributionListItem<R>
 {
     type Error = RecipientError;
@@ -530,17 +528,27 @@ impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R> + ReportUnusualTim
                             if members_seen.insert(id, ()).is_some() {
                                 return Err(RecipientError::DistributionListMemberDuplicate(id));
                             }
-                            let (&kind, recipient_reference) = context
+                            let (recipient_data, recipient_reference) = context
                                 .lookup_pair(&id)
                                 .ok_or(RecipientError::DistributionListMemberUnknown(id))?;
-                            match kind {
-                                DestinationKind::Contact => Ok(recipient_reference.clone()),
-                                DestinationKind::Group
-                                | DestinationKind::DistributionList
-                                | DestinationKind::Self_
-                                | DestinationKind::ReleaseNotes
-                                | DestinationKind::CallLink => {
-                                    Err(RecipientError::DistributionListMemberWrongKind(id, kind))
+                            match recipient_data {
+                                MinimalRecipientData::Contact {
+                                    aci: None,
+                                    pni: None,
+                                    e164: _,
+                                } => Err(RecipientError::DistributionListMemberHasNoServiceIds(id)),
+                                MinimalRecipientData::Contact { .. } => {
+                                    Ok(recipient_reference.clone())
+                                }
+                                MinimalRecipientData::Group { .. }
+                                | MinimalRecipientData::DistributionList { .. }
+                                | MinimalRecipientData::Self_
+                                | MinimalRecipientData::ReleaseNotes
+                                | MinimalRecipientData::CallLink { .. } => {
+                                    Err(RecipientError::DistributionListMemberWrongKind(
+                                        id,
+                                        *recipient_data.as_ref(),
+                                    ))
                                 }
                             }
                         })
@@ -846,6 +854,11 @@ mod test {
         |x| x.mut_distributionList().memberRecipientIds.push(TestContext::SELF_ID.0) =>
         Err(RecipientError::DistributionListMemberWrongKind(TestContext::SELF_ID, DestinationKind::Self_));
         "member_is_not_a_contact"
+    )]
+    #[test_case(
+        |x| x.mut_distributionList().memberRecipientIds.push(TestContext::E164_ONLY_ID.0) =>
+        Err(RecipientError::DistributionListMemberHasNoServiceIds(TestContext::E164_ONLY_ID));
+        "member has no service IDs"
     )]
     #[test_case(
         |x| x.mut_distributionList().privacyMode = proto::distribution_list::PrivacyMode::ALL.into() =>

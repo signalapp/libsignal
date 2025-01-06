@@ -23,9 +23,7 @@ use crate::backup::hashutil::{AssumedRandomInputHasher, HashBytesAllAtOnce};
 use crate::backup::method::{Lookup, LookupPair, Method};
 pub use crate::backup::method::{Store, ValidateOnly};
 use crate::backup::notification_profile::{NotificationProfile, NotificationProfileError};
-use crate::backup::recipient::{
-    DestinationKind, FullRecipientData, MinimalRecipientData, RecipientError,
-};
+use crate::backup::recipient::{FullRecipientData, MinimalRecipientData, RecipientError};
 use crate::backup::serialize::{backup_key_as_hex, SerializeOrder, UnorderedList};
 use crate::backup::sticker::{PackId as StickerPackId, StickerPack, StickerPackError};
 use crate::backup::time::{
@@ -57,7 +55,7 @@ pub(crate) use crate::backup::recipient::MY_STORY_UUID;
 pub trait ReferencedTypes {
     /// Recorded information from a [`proto::Recipient`].
     type RecipientData: Debug
-        + AsRef<DestinationKind>
+        + AsRef<MinimalRecipientData>
         + From<recipient::Destination<Self::RecipientReference>>;
     /// Resolved data for a recipient in a non-`proto::Recipient` message.
     type RecipientReference: Clone + Debug + serde::Serialize + SerializeOrder;
@@ -77,11 +75,6 @@ pub trait ReferencedTypes {
         id: &'a RecipientId,
         data: &'a Self::RecipientData,
     ) -> &'a Self::RecipientReference;
-
-    fn with_minimal_recipient_data<T>(
-        data: &Self::RecipientData,
-        body: impl FnOnce(&MinimalRecipientData) -> T,
-    ) -> T;
 }
 
 pub struct PartialBackup<M: Method + ReferencedTypes> {
@@ -358,66 +351,63 @@ impl<M: Method + ReferencedTypes> CompletedBackup<M> {
         );
 
         for (id, recipient) in recipients.iter() {
-            M::with_minimal_recipient_data(recipient, |recipient| {
-                match recipient {
-                    MinimalRecipientData::Contact { e164, aci, pni } => {
-                        // We can't use insert_or_throw_error for `e164s` because it's an IntMap.
-                        // Here's an inlined copy:
-                        if let Some(e164) = *e164 {
-                            match e164s.entry(e164.into()) {
-                                intmap::Entry::Occupied(entry) => {
-                                    let [id1, id2] = sort_recipient_ids(*entry.get(), id);
-                                    return Err(CompletionError::DuplicateContactE164(id1, id2));
-                                }
-                                intmap::Entry::Vacant(entry) => {
-                                    entry.insert(id);
-                                }
+            match recipient.as_ref() {
+                MinimalRecipientData::Contact { e164, aci, pni } => {
+                    // We can't use insert_or_throw_error for `e164s` because it's an IntMap.
+                    // Here's an inlined copy:
+                    if let Some(e164) = *e164 {
+                        match e164s.entry(e164.into()) {
+                            intmap::Entry::Occupied(entry) => {
+                                let [id1, id2] = sort_recipient_ids(*entry.get(), id);
+                                return Err(CompletionError::DuplicateContactE164(id1, id2));
+                            }
+                            intmap::Entry::Vacant(entry) => {
+                                entry.insert(id);
                             }
                         }
-                        insert_or_error(&mut acis, *aci, id, CompletionError::DuplicateContactAci)?;
-                        insert_or_error(&mut pnis, *pni, id, CompletionError::DuplicateContactPni)?;
                     }
-                    MinimalRecipientData::Group { master_key } => {
-                        insert_or_error(
-                            &mut group_master_keys,
-                            Some(*master_key),
-                            id,
-                            CompletionError::DuplicateGroupMasterKey,
-                        )?;
-                    }
-                    MinimalRecipientData::DistributionList { distribution_id } => {
-                        insert_or_error(
-                            &mut distribution_ids,
-                            Some(*distribution_id.as_bytes()),
-                            id,
-                            CompletionError::DuplicateDistributionListId,
-                        )?;
-                    }
-                    MinimalRecipientData::Self_ => {
-                        if let Some(previous) = self_recipient {
-                            let [id1, id2] = sort_recipient_ids(previous, id);
-                            return Err(CompletionError::DuplicateSelfRecipient(id1, id2));
-                        }
-                        self_recipient = Some(id);
-                    }
-                    MinimalRecipientData::ReleaseNotes => {
-                        if let Some(previous) = release_notes_recipient {
-                            let [id1, id2] = sort_recipient_ids(previous, id);
-                            return Err(CompletionError::DuplicateReleaseNotesRecipient(id1, id2));
-                        }
-                        release_notes_recipient = Some(id);
-                    }
-                    MinimalRecipientData::CallLink { root_key } => {
-                        insert_or_error(
-                            &mut call_link_root_keys,
-                            Some(*root_key),
-                            id,
-                            CompletionError::DuplicateCallLinkRootKey,
-                        )?;
-                    }
+                    insert_or_error(&mut acis, *aci, id, CompletionError::DuplicateContactAci)?;
+                    insert_or_error(&mut pnis, *pni, id, CompletionError::DuplicateContactPni)?;
                 }
-                Ok(())
-            })?;
+                MinimalRecipientData::Group { master_key } => {
+                    insert_or_error(
+                        &mut group_master_keys,
+                        Some(*master_key),
+                        id,
+                        CompletionError::DuplicateGroupMasterKey,
+                    )?;
+                }
+                MinimalRecipientData::DistributionList { distribution_id } => {
+                    insert_or_error(
+                        &mut distribution_ids,
+                        Some(*distribution_id.as_bytes()),
+                        id,
+                        CompletionError::DuplicateDistributionListId,
+                    )?;
+                }
+                MinimalRecipientData::Self_ => {
+                    if let Some(previous) = self_recipient {
+                        let [id1, id2] = sort_recipient_ids(previous, id);
+                        return Err(CompletionError::DuplicateSelfRecipient(id1, id2));
+                    }
+                    self_recipient = Some(id);
+                }
+                MinimalRecipientData::ReleaseNotes => {
+                    if let Some(previous) = release_notes_recipient {
+                        let [id1, id2] = sort_recipient_ids(previous, id);
+                        return Err(CompletionError::DuplicateReleaseNotesRecipient(id1, id2));
+                    }
+                    release_notes_recipient = Some(id);
+                }
+                MinimalRecipientData::CallLink { root_key } => {
+                    insert_or_error(
+                        &mut call_link_root_keys,
+                        Some(*root_key),
+                        id,
+                        CompletionError::DuplicateCallLinkRootKey,
+                    )?;
+                }
+            }
         }
 
         if self_recipient.is_none() {
@@ -533,16 +523,6 @@ impl ReferencedTypes for Store {
     ) -> &'a Self::RecipientReference {
         data
     }
-
-    fn with_minimal_recipient_data<T>(
-        data: &Self::RecipientData,
-        body: impl FnOnce(&MinimalRecipientData) -> T,
-    ) -> T {
-        // This isn't a very efficient implementation: it clones the entire Destination inside the
-        // FullRecipientData just so MinimalRecipientData can extract a few fields. If the Store
-        // method is ever in a hot path, we may want to revisit this.
-        body(&MinimalRecipientData::from((**data).clone()))
-    }
 }
 
 impl ReferencedTypes for ValidateOnly {
@@ -567,14 +547,6 @@ impl ReferencedTypes for ValidateOnly {
         _data: &'a Self::RecipientData,
     ) -> &'a Self::RecipientReference {
         id
-    }
-
-    #[inline]
-    fn with_minimal_recipient_data<T>(
-        data: &Self::RecipientData,
-        body: impl FnOnce(&MinimalRecipientData) -> T,
-    ) -> T {
-        body(data)
     }
 }
 
@@ -834,21 +806,13 @@ impl<M: Method + ReferencedTypes> ChatsData<M> {
     }
 }
 
-impl<M: Method + ReferencedTypes> Lookup<RecipientId, M::RecipientReference> for PartialBackup<M> {
-    fn lookup<'a>(&'a self, key: &'a RecipientId) -> Option<&'a M::RecipientReference> {
-        self.recipients
-            .get(*key)
-            .map(|data| M::recipient_reference(key, data))
-    }
-}
-
-impl<M: Method + ReferencedTypes> LookupPair<RecipientId, DestinationKind, M::RecipientReference>
-    for PartialBackup<M>
+impl<M: Method + ReferencedTypes>
+    LookupPair<RecipientId, MinimalRecipientData, M::RecipientReference> for PartialBackup<M>
 {
     fn lookup_pair<'a>(
         &'a self,
         key: &'a RecipientId,
-    ) -> Option<(&'a DestinationKind, &'a M::RecipientReference)> {
+    ) -> Option<(&'a MinimalRecipientData, &'a M::RecipientReference)> {
         self.recipients
             .get(*key)
             .map(|data| (data.as_ref(), M::recipient_reference(key, data)))

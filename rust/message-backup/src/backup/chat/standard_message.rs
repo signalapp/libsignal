@@ -12,7 +12,7 @@ use crate::backup::chat::{ChatItemError, ReactionSet};
 use crate::backup::file::{FilePointer, MessageAttachment};
 use crate::backup::frame::RecipientId;
 use crate::backup::method::LookupPair;
-use crate::backup::recipient::DestinationKind;
+use crate::backup::recipient::MinimalRecipientData;
 use crate::backup::serialize::SerializeOrder;
 use crate::backup::time::ReportUnusualTimestamp;
 use crate::backup::{likely_empty, TryFromWith, TryIntoWith as _};
@@ -32,7 +32,7 @@ pub struct StandardMessage<Recipient> {
     _limit_construction_to_module: (),
 }
 
-impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R> + ReportUnusualTimestamp>
+impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusualTimestamp>
     TryFromWith<proto::StandardMessage, C> for StandardMessage<R>
 {
     type Error = ChatItemError;

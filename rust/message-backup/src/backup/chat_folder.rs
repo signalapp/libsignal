@@ -13,7 +13,7 @@ use itertools::Itertools;
 
 use crate::backup::frame::RecipientId;
 use crate::backup::method::LookupPair;
-use crate::backup::recipient::DestinationKind;
+use crate::backup::recipient::{DestinationKind, MinimalRecipientData};
 use crate::backup::serialize::{SerializeOrder, UnorderedList};
 use crate::backup::TryFromWith;
 use crate::proto::backup as proto;
@@ -121,8 +121,8 @@ impl<R> ChatFolder<R> {
     }
 }
 
-impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R>> TryFromWith<proto::ChatFolder, C>
-    for ChatFolder<R>
+impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R>>
+    TryFromWith<proto::ChatFolder, C> for ChatFolder<R>
 {
     type Error = ChatFolderError;
     fn try_from_with(item: proto::ChatFolder, context: &C) -> Result<Self, Self::Error> {
@@ -160,9 +160,10 @@ impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R>> TryFromWith<proto
                 if seen_included_members.insert(id, ()).is_some() {
                     return Err(ChatFolderError::IncludedMemberDuplicate(id));
                 }
-                let (kind, recipient) = context
+                let (data, recipient) = context
                     .lookup_pair(&id)
                     .ok_or(ChatFolderError::IncludedMemberUnknown(id))?;
+                let kind = data.as_ref();
                 match kind {
                     DestinationKind::Contact | DestinationKind::Self_ | DestinationKind::Group => {
                         Ok(recipient.clone())
@@ -187,9 +188,10 @@ impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R>> TryFromWith<proto
                 if seen_included_members.get(id).is_some() {
                     return Err(ChatFolderError::MemberIsBothIncludedAndExcluded(id));
                 }
-                let (kind, recipient) = context
+                let (data, recipient) = context
                     .lookup_pair(&id)
                     .ok_or(ChatFolderError::ExcludedMemberUnknown(id))?;
+                let kind = data.as_ref();
                 match kind {
                     DestinationKind::Contact | DestinationKind::Self_ | DestinationKind::Group => {
                         Ok(recipient.clone())

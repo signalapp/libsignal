@@ -7,15 +7,17 @@ use std::sync::Arc;
 
 use once_cell::sync::Lazy;
 
+use super::recipient::MinimalRecipientData;
 use crate::backup::call::CallLink;
 use crate::backup::chat::chat_style::{CustomChatColor, CustomColorId};
 use crate::backup::chat::PinOrder;
 use crate::backup::frame::RecipientId;
 use crate::backup::method::{Lookup, LookupPair};
 use crate::backup::recipient::group::GroupData;
-use crate::backup::recipient::{ContactData, Destination, DestinationKind, FullRecipientData};
+use crate::backup::recipient::{self, ContactData, Destination, FullRecipientData};
 use crate::backup::time::{ReportUnusualTimestamp, Timestamp, TimestampIssue};
 use crate::backup::{BackupMeta, Purpose};
+use crate::proto::backup as proto;
 
 pub(super) struct TestContext(pub(super) BackupMeta);
 
@@ -43,6 +45,44 @@ static SELF_RECIPIENT: Lazy<FullRecipientData> =
     Lazy::new(|| FullRecipientData::new(Destination::Self_));
 static CONTACT_RECIPIENT: Lazy<FullRecipientData> =
     Lazy::new(|| FullRecipientData::new(Destination::Contact(ContactData::from_proto_test_data())));
+static E164_ONLY_RECIPIENT: Lazy<FullRecipientData> = Lazy::new(|| {
+    FullRecipientData::new(Destination::Contact(ContactData {
+        aci: None,
+        pni: None,
+        profile_key: None,
+        username: None,
+        registration: recipient::Registration::Registered,
+        e164: Some(proto::Contact::TEST_E164),
+        blocked: false,
+        visibility: Default::default(),
+        profile_sharing: false,
+        profile_given_name: None,
+        profile_family_name: None,
+        hide_story: false,
+        identity_key: None,
+        identity_state: Default::default(),
+    }))
+});
+static PNI_ONLY_RECIPIENT: Lazy<FullRecipientData> = Lazy::new(|| {
+    FullRecipientData::new(Destination::Contact(ContactData {
+        aci: None,
+        pni: Some(libsignal_core::Pni::from_uuid_bytes(
+            proto::Contact::TEST_PNI,
+        )),
+        profile_key: None,
+        username: None,
+        registration: recipient::Registration::Registered,
+        e164: None,
+        blocked: false,
+        visibility: Default::default(),
+        profile_sharing: false,
+        profile_given_name: None,
+        profile_family_name: None,
+        hide_story: false,
+        identity_key: None,
+        identity_state: Default::default(),
+    }))
+});
 static GROUP_RECIPIENT: Lazy<FullRecipientData> =
     Lazy::new(|| FullRecipientData::new(Destination::Group(GroupData::from_proto_test_data())));
 static CALL_LINK_RECIPIENT: Lazy<FullRecipientData> =
@@ -51,22 +91,27 @@ static CALL_LINK_RECIPIENT: Lazy<FullRecipientData> =
 impl TestContext {
     pub(super) const CONTACT_ID: RecipientId = RecipientId(123456789);
     pub(super) const SELF_ID: RecipientId = RecipientId(1111111111);
+    pub(super) const E164_ONLY_ID: RecipientId = RecipientId(164);
+    pub(super) const PNI_ONLY_ID: RecipientId = RecipientId(6000000);
     pub(super) const GROUP_ID: RecipientId = RecipientId(7000000);
     pub(super) const CALL_LINK_ID: RecipientId = RecipientId(0xCA77);
 }
 
-impl LookupPair<RecipientId, DestinationKind, FullRecipientData> for TestContext {
+impl LookupPair<RecipientId, MinimalRecipientData, FullRecipientData> for TestContext {
     fn lookup_pair<'a>(
         &'a self,
         key: &'a RecipientId,
-    ) -> Option<(&'a DestinationKind, &'a FullRecipientData)> {
-        match *key {
-            Self::CONTACT_ID => Some((&DestinationKind::Contact, &CONTACT_RECIPIENT)),
-            Self::SELF_ID => Some((&DestinationKind::Self_, &SELF_RECIPIENT)),
-            Self::GROUP_ID => Some((&DestinationKind::Group, &GROUP_RECIPIENT)),
-            Self::CALL_LINK_ID => Some((&DestinationKind::CallLink, &CALL_LINK_RECIPIENT)),
-            _ => None,
-        }
+    ) -> Option<(&'a MinimalRecipientData, &'a FullRecipientData)> {
+        let recipient = match *key {
+            Self::CONTACT_ID => &CONTACT_RECIPIENT,
+            Self::SELF_ID => &SELF_RECIPIENT,
+            Self::PNI_ONLY_ID => &PNI_ONLY_RECIPIENT,
+            Self::E164_ONLY_ID => &E164_ONLY_RECIPIENT,
+            Self::GROUP_ID => &GROUP_RECIPIENT,
+            Self::CALL_LINK_ID => &CALL_LINK_RECIPIENT,
+            _ => return None,
+        };
+        Some((recipient.as_ref(), recipient))
     }
 }
 

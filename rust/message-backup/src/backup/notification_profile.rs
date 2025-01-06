@@ -13,7 +13,7 @@ use itertools::Itertools;
 
 use crate::backup::frame::RecipientId;
 use crate::backup::method::LookupPair;
-use crate::backup::recipient::DestinationKind;
+use crate::backup::recipient::{DestinationKind, MinimalRecipientData};
 use crate::backup::serialize::{SerializeOrder, UnorderedList};
 use crate::backup::time::{ReportUnusualTimestamp, Timestamp, TimestampError};
 use crate::backup::{Color, ColorError, TryFromWith};
@@ -62,7 +62,7 @@ pub enum NotificationProfileError {
     InvalidTimestamp(#[from] TimestampError),
 }
 
-impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R> + ReportUnusualTimestamp>
+impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusualTimestamp>
     TryFromWith<proto::NotificationProfile, C> for NotificationProfile<R>
 {
     type Error = NotificationProfileError;
@@ -103,15 +103,15 @@ impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R> + ReportUnusualTim
                 if seen_members.insert(id, ()).is_some() {
                     return Err(NotificationProfileError::DuplicateMember(id));
                 }
-                let (kind, recipient) = context
+                let (recipient_data, recipient) = context
                     .lookup_pair(&id)
                     .ok_or(NotificationProfileError::UnknownMember(id))?;
-                match kind {
+                match recipient_data.as_ref() {
                     DestinationKind::Contact | DestinationKind::Group => Ok(recipient.clone()),
-                    DestinationKind::DistributionList
+                    kind @ (DestinationKind::DistributionList
                     | DestinationKind::Self_
                     | DestinationKind::ReleaseNotes
-                    | DestinationKind::CallLink => {
+                    | DestinationKind::CallLink) => {
                         Err(NotificationProfileError::MemberWrongKind(id, *kind))
                     }
                 }

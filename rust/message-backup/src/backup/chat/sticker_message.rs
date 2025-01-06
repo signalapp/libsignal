@@ -8,7 +8,7 @@ use derive_where::derive_where;
 use crate::backup::chat::{ChatItemError, ReactionSet};
 use crate::backup::frame::RecipientId;
 use crate::backup::method::LookupPair;
-use crate::backup::recipient::DestinationKind;
+use crate::backup::recipient::MinimalRecipientData;
 use crate::backup::serialize::SerializeOrder;
 use crate::backup::sticker::MessageSticker;
 use crate::backup::time::ReportUnusualTimestamp;
@@ -25,7 +25,7 @@ pub struct StickerMessage<Recipient> {
     _limit_construction_to_module: (),
 }
 
-impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R> + ReportUnusualTimestamp>
+impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusualTimestamp>
     TryFromWith<proto::StickerMessage, C> for StickerMessage<R>
 {
     type Error = ChatItemError;

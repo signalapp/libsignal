@@ -9,7 +9,7 @@ use crate::backup::chat::{ReactionError, ReactionSet};
 use crate::backup::file::{MessageAttachment, MessageAttachmentError};
 use crate::backup::frame::RecipientId;
 use crate::backup::method::LookupPair;
-use crate::backup::recipient::DestinationKind;
+use crate::backup::recipient::MinimalRecipientData;
 use crate::backup::serialize::SerializeOrder;
 use crate::backup::time::ReportUnusualTimestamp;
 use crate::backup::{TryFromWith, TryIntoWith as _};
@@ -34,7 +34,7 @@ pub enum ViewOnceMessageError {
     Reaction(#[from] ReactionError),
 }
 
-impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R> + ReportUnusualTimestamp>
+impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusualTimestamp>
     TryFromWith<proto::ViewOnceMessage, C> for ViewOnceMessage<R>
 {
     type Error = ViewOnceMessageError;

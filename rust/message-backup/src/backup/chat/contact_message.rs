@@ -10,7 +10,7 @@ use crate::backup::chat::{ChatItemError, ReactionSet};
 use crate::backup::file::{FilePointer, FilePointerError};
 use crate::backup::frame::RecipientId;
 use crate::backup::method::LookupPair;
-use crate::backup::recipient::DestinationKind;
+use crate::backup::recipient::MinimalRecipientData;
 use crate::backup::serialize::SerializeOrder;
 use crate::backup::time::ReportUnusualTimestamp;
 use crate::backup::{TryFromWith, TryIntoWith as _};
@@ -49,7 +49,7 @@ pub enum ContactAttachmentError {
     Avatar(FilePointerError),
 }
 
-impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R> + ReportUnusualTimestamp>
+impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusualTimestamp>
     TryFromWith<proto::ContactMessage, C> for ContactMessage<R>
 {
     type Error = ChatItemError;

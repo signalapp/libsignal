@@ -9,7 +9,7 @@ use itertools::Itertools;
 
 use crate::backup::frame::RecipientId;
 use crate::backup::method::LookupPair;
-use crate::backup::recipient::DestinationKind;
+use crate::backup::recipient::{DestinationKind, MinimalRecipientData};
 use crate::backup::serialize::SerializeOrder;
 use crate::backup::time::{ReportUnusualTimestamp, Timestamp, TimestampError};
 use crate::backup::{TryFromWith, TryIntoWith};
@@ -45,6 +45,8 @@ pub enum ReactionError {
     AuthorNotFound(RecipientId),
     /// author {0:?} was a {1:?}, not a contact or self
     InvalidAuthor(RecipientId, DestinationKind),
+    /// author {0:?} has neither an ACI nor an E164
+    AuthorHasNoAciOrE164(RecipientId),
     /// multiple reactions from {0:?}
     MultipleReactions(RecipientId),
     /// "emoji" is an empty string
@@ -53,7 +55,7 @@ pub enum ReactionError {
     InvalidTimestamp(#[from] TimestampError),
 }
 
-impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R> + ReportUnusualTimestamp>
+impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusualTimestamp>
     TryFromWith<proto::Reaction, C> for Reaction<R>
 {
     type Error = ReactionError;
@@ -72,13 +74,29 @@ impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R> + ReportUnusualTim
         }
 
         let author_id = RecipientId(authorId);
-        let Some((&author_kind, author)) = context.lookup_pair(&author_id) else {
+        let Some((author_data, author)) = context.lookup_pair(&author_id) else {
             return Err(ReactionError::AuthorNotFound(author_id));
         };
-        if !author_kind.is_individual() {
-            return Err(ReactionError::InvalidAuthor(author_id, author_kind));
-        }
-        let author = author.clone();
+        let author = match author_data {
+            MinimalRecipientData::Contact {
+                e164: None,
+                aci: None,
+                pni: _,
+            } => Err(ReactionError::AuthorHasNoAciOrE164(author_id)),
+            MinimalRecipientData::Contact {
+                e164: _,
+                aci: _,
+                pni: _,
+            }
+            | MinimalRecipientData::Self_ => Ok(author.clone()),
+            MinimalRecipientData::Group { .. }
+            | MinimalRecipientData::DistributionList { .. }
+            | MinimalRecipientData::ReleaseNotes
+            | MinimalRecipientData::CallLink { .. } => Err(ReactionError::InvalidAuthor(
+                author_id,
+                *author_data.as_ref(),
+            )),
+        }?;
 
         let sent_timestamp =
             Timestamp::from_millis(sentTimestamp, "Reaction.sentTimestamp", context)?;
@@ -99,7 +117,7 @@ pub struct ReactionSet<Recipient> {
     reactions: IntMap<RecipientId, Reaction<Recipient>>,
 }
 
-impl<R: Clone, C: LookupPair<RecipientId, DestinationKind, R> + ReportUnusualTimestamp>
+impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusualTimestamp>
     TryFromWith<Vec<proto::Reaction>, C> for ReactionSet<R>
 {
     type Error = ReactionError;
@@ -216,6 +234,10 @@ mod test {
     #[test_case(
         |x| x.authorId = TestContext::GROUP_ID.0 => Err(ReactionError::InvalidAuthor(TestContext::GROUP_ID, DestinationKind::Group));
         "invalid author id"
+    )]
+    #[test_case(
+        |x| x.authorId = TestContext::PNI_ONLY_ID.0 => Err(ReactionError::AuthorHasNoAciOrE164(TestContext::PNI_ONLY_ID));
+        "pni-only author"
     )]
     #[test_case(
         |x| x.sentTimestamp = MillisecondsSinceEpoch::FAR_FUTURE.0 =>

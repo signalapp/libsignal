@@ -7,7 +7,7 @@ use crate::backup::chat::group::GroupChatUpdate;
 use crate::backup::chat::ChatItemError;
 use crate::backup::frame::RecipientId;
 use crate::backup::method::LookupPair;
-use crate::backup::recipient::{DestinationKind, E164};
+use crate::backup::recipient::{MinimalRecipientData, E164};
 use crate::backup::time::{Duration, ReportUnusualTimestamp};
 use crate::backup::{TryFromWith, TryIntoWith as _};
 use crate::proto::backup as proto;
@@ -49,7 +49,7 @@ pub enum SimpleChatUpdate {
     MessageRequestAccepted,
 }
 
-impl<C: LookupPair<RecipientId, DestinationKind, R> + ReportUnusualTimestamp, R: Clone>
+impl<C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusualTimestamp, R: Clone>
     TryFromWith<proto::ChatUpdateMessage, C> for UpdateMessage<R>
 {
     type Error = ChatItemError;
