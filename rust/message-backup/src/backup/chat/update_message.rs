@@ -130,10 +130,15 @@ impl<C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusualTimestam
                 previousName,
                 newName,
                 special_fields: _,
-            }) => UpdateMessage::ProfileChange {
-                previous: previousName,
-                new: newName,
-            },
+            }) => {
+                if previousName.is_empty() || newName.is_empty() {
+                    return Err(ChatItemError::ProfileChangeMissingNames);
+                }
+                UpdateMessage::ProfileChange {
+                    previous: previousName,
+                    new: newName,
+                }
+            }
             Update::ThreadMerge(proto::ThreadMergeChatUpdate {
                 previousE164,
                 special_fields: _,
@@ -236,7 +241,32 @@ mod test {
 
     #[test_case(proto::SimpleChatUpdate::test_data(), Ok(()))]
     #[test_case(proto::ExpirationTimerChatUpdate::default(), Ok(()))]
-    #[test_case(proto::ProfileChangeChatUpdate::default(), Ok(()))]
+    #[test_case(
+        proto::ProfileChangeChatUpdate::default(),
+        Err(ChatItemError::ProfileChangeMissingNames)
+    )]
+    #[test_case(
+        proto::ProfileChangeChatUpdate {
+            previousName: "Kon".into(),
+            ..Default::default()
+        },
+        Err(ChatItemError::ProfileChangeMissingNames)
+    )]
+    #[test_case(
+        proto::ProfileChangeChatUpdate {
+            newName: "Bak".into(),
+            ..Default::default()
+        },
+        Err(ChatItemError::ProfileChangeMissingNames)
+    )]
+    #[test_case(
+        proto::ProfileChangeChatUpdate {
+            previousName: "Kon".into(),
+            newName: "Bak".into(),
+            ..Default::default()
+        },
+        Ok(())
+    )]
     #[test_case(
         proto::ThreadMergeChatUpdate::default(),
         Err(ChatItemError::InvalidE164)

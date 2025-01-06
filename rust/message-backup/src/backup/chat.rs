@@ -175,6 +175,8 @@ pub enum ChatItemError {
     RevisionIsNotAStandardMessage,
     /// nested revisions
     RevisionContainsRevisions,
+    /// profile change update must have both a previousName and a newName
+    ProfileChangeMissingNames,
     /// learned profile chat update has no e164 or name
     LearnedProfileIsEmpty,
     /// invalid e164
