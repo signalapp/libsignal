@@ -427,7 +427,16 @@ impl<'a> Kt<'a> {
             .chat
             .send_unauthenticated(request, self.config.chat_timeout)
             .await?;
-        log::debug!("{:?}", &response);
+        log::debug!(
+            "{} {:?}, headers: {:?}, body: {}",
+            &response.status,
+            &response.message,
+            &response.headers,
+            hex::encode({
+                let body_slice = response.body.as_deref().unwrap_or_default();
+                &body_slice[..body_slice.len().min(1024)]
+            })
+        );
         if !response.status.is_success() {
             Err(Error::RequestFailed(response.status))
         } else {
