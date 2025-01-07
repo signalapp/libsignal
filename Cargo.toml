@@ -34,6 +34,9 @@ default-members = [
 ]
 resolver = "2" # so that our dev-dependency features don't leak into products
 
+[workspace.package]
+rust-version = "1.75"
+
 [workspace.lints.clippy]
 # Prefer TryFrom between integers unless truncation is desired.
 # For converting between floats and integers, there may not be an alternative.
