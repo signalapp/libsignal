@@ -12,6 +12,7 @@ use ::http::uri::PathAndQuery;
 use ::http::{HeaderMap, HeaderName, HeaderValue, StatusCode};
 use async_trait::async_trait;
 use futures_util::future::BoxFuture;
+use futures_util::SinkExt;
 use libsignal_net_infra::connection_manager::{
     ErrorClass, ErrorClassifier, MultiRouteConnectionManager,
 };
@@ -669,6 +670,12 @@ impl ChatConnection {
 impl PendingChatConnection {
     pub fn connection_info(&self) -> &ConnectionInfo {
         &self.connection_info
+    }
+
+    pub async fn disconnect(&mut self) {
+        if let Err(error) = self.connection.close().await {
+            log::error!("pending chat connection disconnect failed with {error}");
+        }
     }
 }
 

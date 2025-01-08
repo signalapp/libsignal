@@ -465,4 +465,17 @@ final class ChatConnectionTests: TestCaseBase {
 
         await self.fulfillment(of: [listener.expectation], timeout: 2)
     }
+
+    func testDisconnectWithoutListener() async throws {
+        // Use the presence of the environment setting to know whether we should make network requests in our tests.
+        guard ProcessInfo.processInfo.environment["LIBSIGNAL_TESTING_RUN_NONHERMETIC_TESTS"] != nil else {
+            throw XCTSkip()
+        }
+
+        let net = Net(env: .staging, userAgent: Self.userAgent)
+        let chat = try await net.connectUnauthenticatedChat()
+        // Intentionally don't call .start and set a listener; sometimes the client app does not do this before
+        // calling .disconnect()
+        try await chat.disconnect()
+    }
 }

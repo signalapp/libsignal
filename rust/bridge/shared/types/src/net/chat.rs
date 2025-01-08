@@ -251,7 +251,7 @@ enum MaybeChatConnection {
     Running(ChatConnection),
     WaitingForListener(
         tokio::runtime::Handle,
-        std::sync::Mutex<chat::PendingChatConnection>,
+        tokio::sync::Mutex<chat::PendingChatConnection>,
     ),
     TemporarilyEvicted,
 }
@@ -341,10 +341,15 @@ impl<C: AsRef<tokio::sync::RwLock<MaybeChatConnection>> + Sync> BridgeChatConnec
 
     async fn disconnect(&self) {
         let guard = self.as_ref().read().await;
-        let MaybeChatConnection::Running(inner) = &*guard else {
-            panic!("listener was not set")
-        };
-        inner.disconect().await
+        match &*guard {
+            MaybeChatConnection::Running(chat_connection) => chat_connection.disconect().await,
+            MaybeChatConnection::WaitingForListener(_handle, pending_chat_mutex) => {
+                pending_chat_mutex.lock().await.disconnect().await
+            }
+            MaybeChatConnection::TemporarilyEvicted => {
+                unreachable!("unobservable state");
+            }
+        }
     }
 
     fn info(&self) -> ConnectionInfo {
@@ -355,8 +360,7 @@ impl<C: AsRef<tokio::sync::RwLock<MaybeChatConnection>> + Sync> BridgeChatConnec
             }
             MaybeChatConnection::WaitingForListener(_, pending_chat_connection) => {
                 pending_chat_connection
-                    .lock()
-                    .expect("not poisoned")
+                    .blocking_lock()
                     .connection_info()
                     .clone()
             }
@@ -382,7 +386,7 @@ fn init_listener(connection: &mut MaybeChatConnection, listener: Box<dyn ChatLis
 
     *connection = MaybeChatConnection::Running(ChatConnection::finish_connect(
         tokio_runtime,
-        pending.into_inner().expect("not poisoned"),
+        pending.into_inner(),
         listener.into_event_listener(),
     ))
 }
