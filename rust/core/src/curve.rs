@@ -42,6 +42,8 @@ pub enum CurveError {
     BadKeyLength(KeyType, usize),
 }
 
+impl std::error::Error for CurveError {}
+
 impl TryFrom<u8> for KeyType {
     type Error = CurveError;
 
@@ -365,6 +367,7 @@ impl TryFrom<PrivateKey> for KeyPair {
 
 #[cfg(test)]
 mod tests {
+    use assert_matches::assert_matches;
     use rand::rngs::OsRng;
 
     use super::*;
@@ -430,5 +433,12 @@ mod tests {
         assert_eq!(&serialized_public[..], &just_right?.serialize()[..]);
         assert_eq!(&serialized_public[..], &extra_space_decode?.serialize()[..]);
         Ok(())
+    }
+
+    #[test]
+    fn curve_error_impls_std_error() {
+        let error = CurveError::BadKeyType(u8::MAX);
+        let error = Box::new(error) as Box<dyn std::error::Error>;
+        assert_matches!(error.downcast_ref(), Some(CurveError::BadKeyType(_)));
     }
 }
