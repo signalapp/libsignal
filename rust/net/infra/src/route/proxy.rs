@@ -11,8 +11,8 @@ use either::Either;
 use crate::certs::RootCertificates;
 use crate::host::Host;
 use crate::route::{
-    ReplaceFragment, RouteProvider, SimpleRoute, TcpRoute, TlsRoute, TlsRouteFragment,
-    UnresolvedHost,
+    ReplaceFragment, RouteProvider, RouteProviderContext, SimpleRoute, TcpRoute, TlsRoute,
+    TlsRouteFragment, UnresolvedHost,
 };
 use crate::tcp_ssl::proxy::socks;
 
@@ -152,14 +152,17 @@ where
 {
     type Route = R;
 
-    fn routes(&self) -> impl Iterator<Item = Self::Route> + '_ {
+    fn routes<'s>(
+        &'s self,
+        context: &impl RouteProviderContext,
+    ) -> impl Iterator<Item = Self::Route> + 's {
         match self {
             Self::Direct(direct) => Either::Left(
                 direct
-                    .routes()
+                    .routes(context)
                     .map(|route: D::Route| route.replace(DirectOrProxyRoute::Direct)),
             ),
-            Self::Proxy(proxy) => Either::Right(proxy.routes().map(|route: P::Route| {
+            Self::Proxy(proxy) => Either::Right(proxy.routes(context).map(|route: P::Route| {
                 route.replace(|cpr: ConnectionProxyRoute<Host<UnresolvedHost>>| {
                     DirectOrProxyRoute::Proxy(cpr)
                 })
@@ -177,7 +180,10 @@ where
         ConnectionProxyRoute<Host<UnresolvedHost>>,
     >;
 
-    fn routes(&self) -> impl Iterator<Item = Self::Route> + '_ {
+    fn routes<'s>(
+        &'s self,
+        context: &impl RouteProviderContext,
+    ) -> impl Iterator<Item = Self::Route> + 's {
         let Self { proxy, inner } = self;
 
         match proxy {
@@ -204,7 +210,7 @@ where
                     inner: tcp,
                     fragment: tls_fragment,
                 };
-                let routes = inner.routes().map(move |route| {
+                let routes = inner.routes(context).map(move |route| {
                     route.replace(|_: TcpRoute<UnresolvedHost>| ConnectionProxyRoute::Tls {
                         proxy: tls_route.clone(),
                     })
@@ -225,7 +231,7 @@ where
                     },
                     port: *proxy_port,
                 };
-                let routes = inner.routes().map(move |route| {
+                let routes = inner.routes(context).map(move |route| {
                     route.replace(|TcpRoute { address, port }| {
                         ConnectionProxyRoute::Socks(SocksRoute {
                             proxy: proxy.clone(),
@@ -254,7 +260,7 @@ where
                     port: *proxy_port,
                 };
 
-                let routes = inner.routes().map(move |route| {
+                let routes = inner.routes(context).map(move |route| {
                     route.replace(|_: TcpRoute<UnresolvedHost>| ConnectionProxyRoute::Tcp {
                         proxy: tcp.clone(),
                     })

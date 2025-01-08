@@ -9,7 +9,7 @@ use http::uri::PathAndQuery;
 use http::HeaderMap;
 use tungstenite::protocol::WebSocketConfig;
 
-use crate::route::{ReplaceFragment, RouteProvider, SimpleRoute};
+use crate::route::{ReplaceFragment, RouteProvider, RouteProviderContext, SimpleRoute};
 
 #[derive(Clone, Debug)]
 pub struct WebSocketRouteFragment {
@@ -44,8 +44,11 @@ impl<P> WebSocketProvider<P> {
 impl<P: RouteProvider> RouteProvider for WebSocketProvider<P> {
     type Route = WebSocketRoute<P::Route>;
 
-    fn routes(&self) -> impl Iterator<Item = Self::Route> + '_ {
-        self.inner.routes().map(|route| WebSocketRoute {
+    fn routes<'s>(
+        &'s self,
+        context: &impl RouteProviderContext,
+    ) -> impl Iterator<Item = Self::Route> + 's {
+        self.inner.routes(context).map(|route| WebSocketRoute {
             inner: route,
             fragment: self.fragment.clone(),
         })

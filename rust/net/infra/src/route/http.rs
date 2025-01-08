@@ -11,8 +11,8 @@ use nonzero_ext::nonzero;
 use crate::certs::RootCertificates;
 use crate::host::Host;
 use crate::route::{
-    ReplaceFragment, RouteProvider, SetAlpn, SimpleRoute, TcpRoute, TlsRoute, TlsRouteFragment,
-    UnresolvedHost,
+    ReplaceFragment, RouteProvider, RouteProviderContext, SetAlpn, SimpleRoute, TcpRoute, TlsRoute,
+    TlsRouteFragment, UnresolvedHost,
 };
 use crate::Alpn;
 
@@ -65,6 +65,8 @@ pub struct DomainFrontConfig {
     pub path_prefix: Arc<str>,
     /// A loggable name for the front.
     pub front_name: &'static str,
+    /// Whether to use all SNIs or just one.
+    pub return_routes_with_all_snis: bool,
 }
 
 impl<F, P> HttpsProvider<F, P> {
@@ -95,20 +97,34 @@ impl DomainFrontRouteProvider {
 impl RouteProvider for DomainFrontRouteProvider {
     type Route = HttpsTlsRoute<TlsRoute<TcpRoute<UnresolvedHost>>>;
 
-    fn routes(&self) -> impl Iterator<Item = Self::Route> + '_ {
+    fn routes<'s>(
+        &'s self,
+        context: &impl RouteProviderContext,
+    ) -> impl Iterator<Item = Self::Route> + 's {
         let Self {
             fronts,
             http_version,
         } = self;
 
+        let sni_index = context.random_usize();
+
         fronts.iter().flat_map(
-            |DomainFrontConfig {
-                 http_host,
-                 sni_list,
-                 root_certs,
-                 path_prefix,
-                 front_name,
-             }| {
+            move |DomainFrontConfig {
+                      http_host,
+                      sni_list,
+                      root_certs,
+                      path_prefix,
+                      front_name,
+                      return_routes_with_all_snis,
+                  }| {
+                let sni_list = if *return_routes_with_all_snis {
+                    &**sni_list
+                } else if !sni_list.is_empty() {
+                    let index = sni_index % sni_list.len();
+                    &sni_list[index..][..1]
+                } else {
+                    &[]
+                };
                 sni_list.iter().map(|sni| HttpsTlsRoute {
                     inner: TlsRoute {
                         inner: TcpRoute {
@@ -139,7 +155,10 @@ where
     P::Route: SetAlpn,
 {
     type Route = HttpsTlsRoute<P::Route>;
-    fn routes(&self) -> impl Iterator<Item = Self::Route> + '_ {
+    fn routes<'s>(
+        &'s self,
+        context: &impl RouteProviderContext,
+    ) -> impl Iterator<Item = Self::Route> + 's {
         let Self {
             direct_host_header,
             direct_http_version,
@@ -148,7 +167,7 @@ where
         } = self;
 
         inner
-            .routes()
+            .routes(context)
             .map(|mut inner| {
                 inner.set_alpn(Alpn::from(*direct_http_version));
 
@@ -161,7 +180,7 @@ where
                     inner,
                 }
             })
-            .chain(domain_front.routes())
+            .chain(domain_front.routes(context))
     }
 }
 
@@ -191,6 +210,7 @@ mod test {
     use itertools::Itertools;
 
     use super::*;
+    use crate::route::testutils::FakeContext;
     use crate::route::{DirectTcpRouteProvider, TlsRouteProvider};
 
     #[derive(Copy, Clone, Debug, Default)]
@@ -199,7 +219,10 @@ mod test {
     impl RouteProvider for FakeProvider {
         type Route = ();
 
-        fn routes(&self) -> impl Iterator<Item = Self::Route> + '_ {
+        fn routes<'s>(
+            &'s self,
+            _context: &impl RouteProviderContext,
+        ) -> impl Iterator<Item = Self::Route> + 's {
             std::iter::once(())
         }
     }
@@ -218,13 +241,15 @@ mod test {
                         root_certs: RootCertificates::Native,
                         path_prefix: "/prefix-1".into(),
                         front_name: "front-1",
+                        return_routes_with_all_snis: true,
                     },
                     DomainFrontConfig {
                         http_host: "front-host-2".into(),
-                        sni_list: vec!["front-sni-2".into()],
+                        sni_list: vec!["front-sni-2a".into(), "front-sni-2b".into()],
                         root_certs: RootCertificates::Native,
                         path_prefix: "/prefix-2".into(),
                         front_name: "front-2",
+                        return_routes_with_all_snis: false,
                     },
                 ],
                 http_version: HttpVersion::Http1_1,
@@ -239,7 +264,7 @@ mod test {
             },
         };
 
-        let routes = provider.routes().collect_vec();
+        let routes = provider.routes(&FakeContext::new()).collect_vec();
 
         assert_eq!(
             routes,
@@ -307,11 +332,11 @@ mod test {
                     inner: TlsRoute {
                         fragment: TlsRouteFragment {
                             root_certs: RootCertificates::Native,
-                            sni: Host::Domain("front-sni-2".into()),
+                            sni: Host::Domain("front-sni-2b".into()),
                             alpn: Some(Alpn::Http1_1)
                         },
                         inner: TcpRoute {
-                            address: UnresolvedHost("front-sni-2".into()),
+                            address: UnresolvedHost("front-sni-2b".into()),
                             port: DEFAULT_HTTPS_PORT
                         },
                     }

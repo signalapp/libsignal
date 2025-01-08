@@ -8,7 +8,7 @@ use std::num::NonZeroU16;
 use std::sync::Arc;
 
 use crate::host::Host;
-use crate::route::{ReplaceFragment, RouteProvider, UnresolvedHost};
+use crate::route::{ReplaceFragment, RouteProvider, RouteProviderContext, UnresolvedHost};
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct TcpRoute<Addr> {
@@ -47,7 +47,10 @@ impl DirectTcpRouteProvider {
 impl RouteProvider for DirectTcpRouteProvider {
     type Route = TcpRoute<UnresolvedHost>;
 
-    fn routes(&self) -> impl Iterator<Item = Self::Route> + '_ {
+    fn routes<'s>(
+        &'s self,
+        _context: &impl RouteProviderContext,
+    ) -> impl Iterator<Item = Self::Route> + 's {
         let Self { dns_hostname, port } = self;
 
         std::iter::once(TcpRoute {

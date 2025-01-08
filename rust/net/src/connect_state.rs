@@ -14,13 +14,17 @@ use libsignal_net_infra::errors::LogSafeDisplay;
 use libsignal_net_infra::route::{
     ComposedConnector, ConnectError, ConnectionOutcomeParams, ConnectionOutcomes, Connector,
     DescribedRouteConnector, HttpRouteFragment, ResolveWithSavedDescription, RouteProvider,
-    RouteProviderExt as _, RouteResolver, StatelessTransportConnector, TransportRoute,
-    UnresolvedRouteDescription, UnresolvedWebsocketServiceRoute, WebSocketRouteFragment,
-    WebSocketServiceRoute, WithLoggableDescription, WithoutLoggableDescription,
+    RouteProviderContext, RouteProviderExt as _, RouteResolver, StatelessTransportConnector,
+    TransportRoute, UnresolvedRouteDescription, UnresolvedWebsocketServiceRoute,
+    WebSocketRouteFragment, WebSocketServiceRoute, WithLoggableDescription,
+    WithoutLoggableDescription,
 };
 use libsignal_net_infra::ws::WebSocketConnectError;
 use libsignal_net_infra::ws2::attested::AttestedConnection;
 use libsignal_net_infra::{AsHttpHeader as _, AsyncDuplexStream};
+use rand::Rng;
+use rand_core::OsRng;
+use static_assertions::assert_eq_size_val;
 use tokio::time::Instant;
 
 use crate::auth::Auth;
@@ -34,6 +38,8 @@ pub struct ConnectState<TC = StatelessTransportConnector> {
     transport_connector: TC,
     /// Record of connection outcomes.
     attempts_record: ConnectionOutcomes<WebSocketServiceRoute>,
+    /// [`RouteProviderContext`] passed to route providers.
+    route_provider_context: RouteProviderContextImpl,
 }
 
 impl ConnectState {
@@ -42,6 +48,7 @@ impl ConnectState {
             route_resolver: RouteResolver::default(),
             transport_connector: StatelessTransportConnector::default(),
             attempts_record: ConnectionOutcomes::new(connect_params),
+            route_provider_context: RouteProviderContextImpl::default(),
         }
         .into()
     }
@@ -83,7 +90,9 @@ where
         E: LogSafeDisplay,
     {
         let connect_read = this.read().await;
-        let routes = routes.routes().collect_vec();
+        let routes = routes
+            .routes(&connect_read.route_provider_context)
+            .collect_vec();
 
         log::info!("starting connection attempt with {} routes", routes.len());
 
@@ -191,6 +200,18 @@ where
     }
 }
 
+#[derive(Debug, Default)]
+struct RouteProviderContextImpl(OsRng);
+
+impl RouteProviderContext for RouteProviderContextImpl {
+    fn random_usize(&self) -> usize {
+        // OsRng is zero-sized, so we're not losing random values by copying it.
+        let mut owned_rng: OsRng = self.0;
+        assert_eq_size_val!(owned_rng, ());
+        owned_rng.gen()
+    }
+}
+
 #[cfg(test)]
 mod test {
     use std::collections::HashMap;
@@ -293,6 +314,7 @@ mod test {
             route_resolver: RouteResolver::default(),
             attempts_record: ConnectionOutcomes::new(FAKE_CONNECT_PARAMS),
             transport_connector: fake_transport_connector,
+            route_provider_context: Default::default(),
         }
         .into();
 

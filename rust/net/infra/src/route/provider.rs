@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use crate::route::RouteProvider;
+use crate::route::{RouteProvider, RouteProviderContext};
 
 pub trait RouteProviderExt: RouteProvider + Sized {
     fn map_routes<F: Fn(Self::Route) -> T, T>(self, f: F) -> Map<Self, F> {
@@ -18,7 +18,10 @@ pub struct Map<R, F>(R, F);
 impl<R: RouteProvider, F: Fn(R::Route) -> T, T> RouteProvider for Map<R, F> {
     type Route = T;
 
-    fn routes(&self) -> impl Iterator<Item = Self::Route> + '_ {
-        self.0.routes().map(&self.1)
+    fn routes<'s>(
+        &'s self,
+        context: &impl RouteProviderContext,
+    ) -> impl Iterator<Item = Self::Route> + 's {
+        self.0.routes(context).map(&self.1)
     }
 }

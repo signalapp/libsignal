@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 use crate::certs::RootCertificates;
 use crate::host::Host;
-use crate::route::{ReplaceFragment, RouteProvider, SimpleRoute};
+use crate::route::{ReplaceFragment, RouteProvider, RouteProviderContext, SimpleRoute};
 use crate::Alpn;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -41,10 +41,13 @@ pub(crate) trait SetAlpn {
 impl<P: RouteProvider> RouteProvider for TlsRouteProvider<P> {
     type Route = TlsRoute<P::Route>;
 
-    fn routes(&self) -> impl Iterator<Item = Self::Route> + '_ {
+    fn routes<'s>(
+        &'s self,
+        context: &impl RouteProviderContext,
+    ) -> impl Iterator<Item = Self::Route> + 's {
         let Self { sni, certs, inner } = self;
 
-        inner.routes().map(|route| TlsRoute {
+        inner.routes(context).map(|route| TlsRoute {
             fragment: TlsRouteFragment {
                 root_certs: certs.clone(),
                 sni: sni.clone(),

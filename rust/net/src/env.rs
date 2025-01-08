@@ -449,6 +449,7 @@ impl ConnectionConfig {
                             sni_list: sni_list.iter().map(|sni| (*sni).into()).collect(),
                             path_prefix: Arc::clone(&fronting_path_prefix),
                             front_name: route_type.into(),
+                            return_routes_with_all_snis: false,
                         }
                     };
                     configs.iter().map(make_proxy_config)
@@ -700,6 +701,7 @@ mod test {
     use itertools::Itertools as _;
     use libsignal_net_infra::dns::build_custom_resolver_cloudflare_doh;
     use libsignal_net_infra::dns::dns_lookup::DnsLookupRequest;
+    use libsignal_net_infra::route::testutils::FakeContext;
     use libsignal_net_infra::route::{
         HttpRouteFragment, HttpsTlsRoute, RouteProvider as _, TcpRoute, TlsRoute, TlsRouteFragment,
         UnresolvedHost,
@@ -786,7 +788,7 @@ mod test {
         };
         let route_provider =
             CONNECT_CONFIG.route_provider(EnableDomainFronting(enable_domain_fronting));
-        let routes = route_provider.routes().collect_vec();
+        let routes = route_provider.routes(&FakeContext::new()).collect_vec();
 
         let expected_direct_route = HttpsTlsRoute {
             fragment: HttpRouteFragment {
@@ -809,7 +811,7 @@ mod test {
 
         if enable_domain_fronting {
             assert_eq!(routes.first(), Some(&expected_direct_route));
-            assert_eq!(routes.len(), 5, "{routes:?}");
+            assert_eq!(routes.len(), 3, "{routes:?}");
         } else {
             assert_eq!(routes, [expected_direct_route]);
         };

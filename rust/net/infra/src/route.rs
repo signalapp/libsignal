@@ -66,7 +66,40 @@ pub trait RouteProvider {
     /// The routes must be produced in the order in which connection attempts
     /// should be made. The iterator is allowed to borrow from `self` as an
     /// optimization.
-    fn routes(&self) -> impl Iterator<Item = Self::Route> + '_;
+    ///
+    /// Why is `context` a `&` instead of a `&mut`? Because as of Jan 2025,
+    /// there's no way to prevent the lifetime in the type of `context` from
+    /// being captured in the opaque return type. That's important because there
+    /// are some implementations of this trait where it's necessary to combine
+    /// the output of two different comprising providers. If `context` was a
+    /// `&mut` the first call's exclusive borrow for its entire lifetime would
+    /// prevent the second call from being able to use the same `context`.
+    ///
+    /// There are two potential ways we could work around this:
+    ///
+    /// 1. Use the new precise-capture syntax introduced in Rust 1.82. This
+    ///    isn't an option now because that syntax isn't supported in trait
+    ///    methods. Once <https://github.com/rust-lang/rust/issues/130044> is
+    ///    stabilized and available (per our MSRV) we can revisit this.
+    ///
+    /// 2. Introduce a named associated type that only captures `'s`, not `'c`.
+    ///    This works now, but would require all returned iterator types to be
+    ///    named. That would prevent us from using `Iterator::map` and other
+    ///    combinators, or require any uses be `Box`ed and those tradeoffs
+    ///    aren't (currently) worth the imprecision.
+    fn routes<'s>(
+        &'s self,
+        context: &impl RouteProviderContext,
+    ) -> impl Iterator<Item = Self::Route> + 's;
+}
+
+/// Context parameter passed to [`RouteProvider::routes`].
+///
+/// This provides methods and access to mutable state that a `RouteProvider`
+/// implementer can use to make decisions about what routes to emit.
+pub trait RouteProviderContext {
+    /// Returns a uniformly random [`usize`].
+    fn random_usize(&self) -> usize;
 }
 
 /// A hostname in a route that can later be resolved to IP addresses.
@@ -307,8 +340,11 @@ fn pull_next_route_delay<F>(connects_in_progress: &FuturesUnordered<F>) -> Durat
 impl<R: RouteProvider> RouteProvider for &R {
     type Route = R::Route;
 
-    fn routes(&self) -> impl Iterator<Item = Self::Route> + '_ {
-        R::routes(self)
+    fn routes<'s>(
+        &'s self,
+        context: &impl RouteProviderContext,
+    ) -> impl Iterator<Item = Self::Route> + 's {
+        R::routes(self, context)
     }
 }
 
@@ -326,7 +362,11 @@ impl From<Arc<str>> for UnresolvedHost {
 
 #[cfg(any(test, feature = "test-util"))]
 pub mod testutils {
+    use std::cell::RefCell;
     use std::net::IpAddr;
+
+    use rand::rngs::mock::StepRng;
+    use rand::Rng as _;
 
     pub use super::connect::testutils::*;
     pub use super::resolve::testutils::*;
@@ -366,8 +406,36 @@ pub mod testutils {
     impl<R: Clone> RouteProvider for Vec<R> {
         type Route = R;
 
-        fn routes(&self) -> impl Iterator<Item = Self::Route> + '_ {
+        fn routes<'s>(
+            &'s self,
+            _context: &impl RouteProviderContext,
+        ) -> impl Iterator<Item = Self::Route> + 's {
             self.iter().cloned()
+        }
+    }
+
+    pub struct FakeContext {
+        rng: RefCell<StepRng>,
+    }
+
+    impl Default for FakeContext {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
+    impl FakeContext {
+        pub fn new() -> Self {
+            Self {
+                // Randomly chosen initial and increment values.
+                rng: StepRng::new(13618430565133050083, 8391096191305687941).into(),
+            }
+        }
+    }
+
+    impl RouteProviderContext for FakeContext {
+        fn random_usize(&self) -> usize {
+            self.rng.borrow_mut().gen()
         }
     }
 }
@@ -397,7 +465,7 @@ mod test {
     use crate::dns::lookup_result::LookupResult;
     use crate::host::Host;
     use crate::route::resolve::testutils::FakeResolver;
-    use crate::route::testutils::{FakeRoute, NoDelay};
+    use crate::route::testutils::{FakeContext, FakeRoute, NoDelay};
     use crate::tcp_ssl::proxy::socks;
     use crate::Alpn;
 
@@ -427,6 +495,7 @@ mod test {
                         sni_list: vec!["front-sni1".into(), "front-sni2".into()],
                         path_prefix: "/front-host-path-prefix".into(),
                         front_name: "front-host",
+                        return_routes_with_all_snis: true,
                     }],
                     http_version: HttpVersion::Http2,
                 },
@@ -441,7 +510,7 @@ mod test {
             },
         };
 
-        let routes = RouteProvider::routes(&provider).collect_vec();
+        let routes = RouteProvider::routes(&provider, &FakeContext::new()).collect_vec();
 
         let expected_routes = vec![
             WebSocketRoute {
@@ -548,7 +617,7 @@ mod test {
             inner: direct_provider,
         };
 
-        let routes = provider.routes().collect_vec();
+        let routes = provider.routes(&FakeContext::new()).collect_vec();
 
         assert_eq!(
             routes,
@@ -602,7 +671,7 @@ mod test {
             inner: direct_provider,
         };
 
-        let routes = provider.routes().collect_vec();
+        let routes = provider.routes(&FakeContext::new()).collect_vec();
 
         let expected_routes = vec![TlsRoute {
             fragment: TlsRouteFragment {
