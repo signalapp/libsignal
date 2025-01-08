@@ -471,115 +471,15 @@ impl<'a> Kt<'a> {
 
         let now = SystemTime::now();
 
-        // TODO: this could be a `validate` on the TypedSearchResponse, but then what to accept as the "expected" arguments?
-        if e164.is_some() != chat_search_response.e164_search_response.is_some()
-            || username_hash.is_some()
-                != chat_search_response.username_hash_search_response.is_some()
-        {
-            return Err(Error::InvalidResponse(
-                "request/response optionality mismatch",
-            ));
-        }
-
-        let (
-            aci_monitoring_data,
-            e164_monitoring_data,
-            username_hash_monitoring_data,
-            stored_last_tree_head,
-        ) = match stored_account_data {
-            None => (None, None, None, None),
-            Some(acc) => {
-                let AccountData {
-                    aci,
-                    e164,
-                    username_hash,
-                    last_tree_head,
-                } = acc;
-                (Some(aci), e164, username_hash, Some(last_tree_head))
-            }
-        };
-
-        let aci_result = self.do_verify_search(
-            aci.as_search_key(),
-            chat_search_response.aci_search_response,
-            aci_monitoring_data,
-            &chat_search_response.full_tree_head,
-            stored_last_tree_head.as_ref(),
+        verify_chat_search_response(
+            &self.inner,
+            aci,
+            e164.map(|(e164, _)| e164),
+            username_hash,
+            stored_account_data,
+            chat_search_response,
             now,
-        )?;
-        let e164_result = e164
-            .map(|(e164, _)| {
-                self.do_verify_search(
-                    e164.as_search_key(),
-                    chat_search_response
-                        .e164_search_response
-                        .expect("e164 response must be present"),
-                    e164_monitoring_data,
-                    &chat_search_response.full_tree_head,
-                    stored_last_tree_head.as_ref(),
-                    now,
-                )
-            })
-            .transpose()?;
-        let username_hash_result = username_hash
-            .map(|username_hash| {
-                self.do_verify_search(
-                    username_hash.as_search_key(),
-                    chat_search_response
-                        .username_hash_search_response
-                        .expect("username hash response must be present"),
-                    username_hash_monitoring_data,
-                    &chat_search_response.full_tree_head,
-                    stored_last_tree_head.as_ref(),
-                    now,
-                )
-            })
-            .transpose()?;
-
-        if !aci_result.are_all_roots_equal([e164_result.as_ref(), username_hash_result.as_ref()]) {
-            return Err(Error::InvalidResponse("mismatching tree roots"));
-        }
-
-        let identity_key = extract_value_as::<IdentityKey>(&aci_result)?;
-        let aci_for_e164 = e164_result
-            .as_ref()
-            .map(extract_value_as::<Aci>)
-            .transpose()?;
-        let aci_for_username_hash = username_hash_result
-            .as_ref()
-            .map(extract_value_as::<Aci>)
-            .transpose()?;
-
-        // ACI response is guaranteed to be present, taking the last tree head from it.
-        let LocalStateUpdate {
-            tree_head,
-            tree_root,
-            monitoring_data: updated_aci_monitoring_data,
-        } = aci_result.state_update;
-
-        let last_tree_head = StoredTreeHead {
-            tree_head: Some(tree_head),
-            root: tree_root.into(),
-        };
-
-        let updated_account_data = StoredAccountData {
-            aci: updated_aci_monitoring_data.map(StoredMonitoringData::from),
-            e164: e164_result
-                .and_then(|r| r.state_update.monitoring_data)
-                .map(StoredMonitoringData::from),
-            username_hash: username_hash_result
-                .and_then(|r| r.state_update.monitoring_data)
-                .map(StoredMonitoringData::from),
-            last_tree_head: Some(last_tree_head),
-        };
-
-        Ok(SearchResult {
-            aci_identity_key: identity_key,
-            aci_for_e164,
-            aci_for_username_hash,
-            timestamp: now,
-            account_data: updated_account_data,
-        })
+        )
     }
 
     pub async fn distinguished(
@@ -755,27 +655,161 @@ impl<'a> Kt<'a> {
 
         Ok(updated_account_data)
     }
+}
 
-    fn do_verify_search(
-        &self,
-        search_key: Vec<u8>,
-        response: CondensedTreeSearchResponse,
-        monitoring_data: Option<MonitoringData>,
-        full_tree_head: &FullTreeHead,
-        last_tree_head: Option<&LastTreeHead>,
-        now: SystemTime,
-    ) -> Result<VerifiedSearchResult> {
-        let result = self.inner.verify_search(
-            SlimSearchRequest::new(search_key),
-            FullSearchResponse::new(response, full_tree_head),
-            SearchContext {
+fn verify_single_search_response(
+    kt: &KeyTransparency,
+    search_key: Vec<u8>,
+    response: CondensedTreeSearchResponse,
+    monitoring_data: Option<MonitoringData>,
+    full_tree_head: &FullTreeHead,
+    last_tree_head: Option<&LastTreeHead>,
+    now: SystemTime,
+) -> Result<VerifiedSearchResult> {
+    let result = kt.verify_search(
+        SlimSearchRequest::new(search_key),
+        FullSearchResponse::new(response, full_tree_head),
+        SearchContext {
+            last_tree_head,
+            data: monitoring_data.map(MonitoringData::from),
+        },
+        true,
+        now,
+    )?;
+    Ok(result)
+}
+
+fn verify_chat_search_response(
+    kt: &KeyTransparency,
+    aci: &Aci,
+    e164: Option<E164>,
+    username_hash: Option<UsernameHash>,
+    stored_account_data: Option<AccountData>,
+    chat_search_response: TypedSearchResponse,
+    now: SystemTime,
+) -> Result<SearchResult> {
+    let TypedSearchResponse {
+        full_tree_head,
+        aci_search_response,
+        e164_search_response,
+        username_hash_search_response,
+    } = chat_search_response;
+
+    let (
+        aci_monitoring_data,
+        e164_monitoring_data,
+        username_hash_monitoring_data,
+        stored_last_tree_head,
+    ) = match stored_account_data {
+        None => (None, None, None, None),
+        Some(acc) => {
+            let AccountData {
+                aci,
+                e164,
+                username_hash,
                 last_tree_head,
-                data: monitoring_data.map(MonitoringData::from),
-            },
-            true,
+            } = acc;
+            (Some(aci), e164, username_hash, Some(last_tree_head))
+        }
+    };
+
+    let aci_result = verify_single_search_response(
+        kt,
+        aci.as_search_key(),
+        aci_search_response,
+        aci_monitoring_data,
+        &full_tree_head,
+        stored_last_tree_head.as_ref(),
+        now,
+    )?;
+
+    let e164_result = both_or_neither(
+        e164,
+        e164_search_response,
+        "E.164 request/response mismatch",
+    )?
+    .map(|(e164, e164_search_response)| {
+        verify_single_search_response(
+            kt,
+            e164.as_search_key(),
+            e164_search_response,
+            e164_monitoring_data,
+            &full_tree_head,
+            stored_last_tree_head.as_ref(),
             now,
-        )?;
-        Ok(result)
+        )
+    })
+    .transpose()?;
+
+    let username_hash_result = both_or_neither(
+        username_hash,
+        username_hash_search_response,
+        "Username hash request/response mismatch",
+    )?
+    .map(|(username_hash, username_hash_response)| {
+        verify_single_search_response(
+            kt,
+            username_hash.as_search_key(),
+            username_hash_response,
+            username_hash_monitoring_data,
+            &full_tree_head,
+            stored_last_tree_head.as_ref(),
+            now,
+        )
+    })
+    .transpose()?;
+
+    if !aci_result.are_all_roots_equal([e164_result.as_ref(), username_hash_result.as_ref()]) {
+        return Err(Error::InvalidResponse("mismatching tree roots"));
+    }
+
+    let identity_key = extract_value_as::<IdentityKey>(&aci_result)?;
+    let aci_for_e164 = e164_result
+        .as_ref()
+        .map(extract_value_as::<Aci>)
+        .transpose()?;
+    let aci_for_username_hash = username_hash_result
+        .as_ref()
+        .map(extract_value_as::<Aci>)
+        .transpose()?;
+
+    // ACI response is guaranteed to be present, taking the last tree head from it.
+    let LocalStateUpdate {
+        tree_head,
+        tree_root,
+        monitoring_data: updated_aci_monitoring_data,
+    } = aci_result.state_update;
+
+    let last_tree_head = StoredTreeHead {
+        tree_head: Some(tree_head),
+        root: tree_root.into(),
+    };
+
+    let updated_account_data = StoredAccountData {
+        aci: updated_aci_monitoring_data.map(StoredMonitoringData::from),
+        e164: e164_result
+            .and_then(|r| r.state_update.monitoring_data)
+            .map(StoredMonitoringData::from),
+        username_hash: username_hash_result
+            .and_then(|r| r.state_update.monitoring_data)
+            .map(StoredMonitoringData::from),
+        last_tree_head: Some(last_tree_head),
+    };
+
+    Ok(SearchResult {
+        aci_identity_key: identity_key,
+        aci_for_e164,
+        aci_for_username_hash,
+        timestamp: now,
+        account_data: updated_account_data,
+    })
+}
+
+fn both_or_neither<T, U>(a: Option<T>, b: Option<U>, msg: &'static str) -> Result<Option<(T, U)>> {
+    match (a, b) {
+        (Some(a), Some(b)) => Ok(Some((a, b))),
+        (None, None) => Ok(None),
+        (None, Some(_)) | (Some(_), None) => Err(Error::InvalidResponse(msg)),
     }
 }
 
@@ -921,21 +955,24 @@ mod test {
     const AUDITOR_KEY: &[u8; 32] =
         &hex!("1123b13ee32479ae6af5739e5d687b51559abf7684120511f68cde7a21a0e755");
 
-    fn make_kt(chat: &AnyChat) -> Kt {
+    fn make_key_transparency() -> KeyTransparency {
         let signature_key =
             VerifyingKey::from_bytes(SIGNING_KEY).expect("valid signature key material");
         let vrf_key = VrfPublicKey::try_from(*VRF_KEY).expect("valid vrf key material");
         let auditor_key =
             VerifyingKey::from_bytes(AUDITOR_KEY).expect("valid auditor key material");
-        let inner = KeyTransparency {
+        KeyTransparency {
             config: PublicConfig {
                 mode: DeploymentMode::ThirdPartyAuditing(auditor_key),
                 signature_key,
                 vrf_key,
             },
-        };
+        }
+    }
+
+    fn make_kt(chat: &AnyChat) -> Kt {
         Kt {
-            inner,
+            inner: make_key_transparency(),
             chat,
             config: Default::default(),
         }
@@ -1078,5 +1115,87 @@ mod test {
             )
             .await;
         assert_matches!(result, Ok(updated) => assert_eq!(&updated, &account_data));
+    }
+
+    const CHAT_SEARCH_RESPONSE: &[u8] = include_bytes!("../tests/data/chat_search_response.dat");
+    const CHAT_SEARCH_RESPONSE_VALID_AT: Duration = Duration::from_secs(1736210369);
+
+    fn test_search_response() -> TypedSearchResponse {
+        let chat_search_response =
+            libsignal_keytrans::ChatSearchResponse::decode(CHAT_SEARCH_RESPONSE)
+                .expect("valid response");
+        TypedSearchResponse::from_untyped(true, true, chat_search_response)
+            .expect("valid typed search response")
+    }
+
+    enum Skip {
+        E164,
+        UsernameHash,
+        Both,
+    }
+
+    #[test_case(Skip::E164; "e164")]
+    #[test_case(Skip::UsernameHash; "username_hash")]
+    #[test_case(Skip::Both; "e164 + username_hash")]
+    fn search_returns_data_not_requested(skip: Skip) {
+        let valid_at = SystemTime::UNIX_EPOCH + CHAT_SEARCH_RESPONSE_VALID_AT;
+
+        let aci = Aci::from(test_account::ACI);
+        let e164 = test_account::PHONE_NUMBER;
+        let username_hash = UsernameHash(Cow::Borrowed(test_account::USERNAME_HASH));
+
+        let kt_impl = make_key_transparency();
+
+        let (e164, username_hash) = match skip {
+            Skip::E164 => (None, Some(username_hash)),
+            Skip::UsernameHash => (Some(e164), None),
+            Skip::Both => (None, None),
+        };
+
+        let result = verify_chat_search_response(
+            &kt_impl,
+            &aci,
+            e164,
+            username_hash,
+            None,
+            test_search_response(),
+            valid_at,
+        );
+
+        assert_matches!(result, Err(Error::InvalidResponse(_)))
+    }
+
+    #[test_case(Skip::E164; "e164")]
+    #[test_case(Skip::UsernameHash; "username_hash")]
+    #[test_case(Skip::Both; "e164 + username_hash")]
+    fn optionality_mismatch_in_search_is_an_error(skip: Skip) {
+        let valid_at = SystemTime::UNIX_EPOCH + CHAT_SEARCH_RESPONSE_VALID_AT;
+
+        let aci = Aci::from(test_account::ACI);
+        let e164 = test_account::PHONE_NUMBER;
+        let username_hash = UsernameHash(Cow::Borrowed(test_account::USERNAME_HASH));
+
+        let kt_impl = make_key_transparency();
+        let mut search_response = test_search_response();
+        match skip {
+            Skip::E164 => search_response.e164_search_response = None,
+            Skip::UsernameHash => search_response.username_hash_search_response = None,
+            Skip::Both => {
+                search_response.e164_search_response = None;
+                search_response.username_hash_search_response = None;
+            }
+        }
+
+        let result = verify_chat_search_response(
+            &kt_impl,
+            &aci,
+            Some(e164),
+            Some(username_hash),
+            None,
+            search_response,
+            valid_at,
+        );
+
+        assert_matches!(result, Err(Error::InvalidResponse(_)));
     }
 }
