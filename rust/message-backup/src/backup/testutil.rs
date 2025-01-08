@@ -61,6 +61,7 @@ static E164_ONLY_RECIPIENT: Lazy<FullRecipientData> = Lazy::new(|| {
         hide_story: false,
         identity_key: None,
         identity_state: Default::default(),
+        nickname: None,
     }))
 });
 static PNI_ONLY_RECIPIENT: Lazy<FullRecipientData> = Lazy::new(|| {
@@ -81,6 +82,7 @@ static PNI_ONLY_RECIPIENT: Lazy<FullRecipientData> = Lazy::new(|| {
         hide_story: false,
         identity_key: None,
         identity_state: Default::default(),
+        nickname: None,
     }))
 });
 static GROUP_RECIPIENT: Lazy<FullRecipientData> =

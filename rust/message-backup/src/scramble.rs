@@ -484,6 +484,7 @@ impl Visit<Scrambler> for proto::Contact {
             identityKey,
             identityState: _,
             registration,
+            nickname,
             special_fields: _,
         } = self;
 
@@ -520,6 +521,8 @@ impl Visit<Scrambler> for proto::Contact {
                 Registration::NotRegistered(reg) => reg.accept(visitor),
             }
         }
+
+        nickname.accept(visitor);
     }
 }
 
@@ -535,6 +538,18 @@ impl Visit<Scrambler> for proto::contact::NotRegistered {
             unregisteredTimestamp: _,
             special_fields: _,
         } = self;
+    }
+}
+
+impl Visit<Scrambler> for proto::contact::Name {
+    fn accept(&mut self, visitor: &mut Scrambler) {
+        let Self {
+            given,
+            family,
+            special_fields: _,
+        } = self;
+        given.randomize(&mut visitor.rng);
+        family.randomize(&mut visitor.rng);
     }
 }
 

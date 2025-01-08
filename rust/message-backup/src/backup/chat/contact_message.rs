@@ -19,7 +19,7 @@ use crate::proto::backup as proto;
 #[derive(Debug, serde::Serialize)]
 #[cfg_attr(test, derive_where(PartialEq; Recipient: PartialEq + SerializeOrder))]
 pub struct ContactMessage<Recipient> {
-    pub contacts: Vec<ContactAttachment>,
+    pub contact: ContactAttachment,
     #[serde(bound(serialize = "Recipient: serde::Serialize + SerializeOrder"))]
     pub reactions: ReactionSet<Recipient>,
     _limit_construction_to_module: (),
@@ -42,6 +42,8 @@ pub struct ContactAttachment {
 #[derive(Debug, displaydoc::Display, thiserror::Error)]
 #[cfg_attr(test, derive(PartialEq))]
 pub enum ContactAttachmentError {
+    /// contact message without attachment
+    Missing,
     /// {0} type is unknown                                                                                                                                                                                                                                                                                                                                                                                                
     UnknownType(&'static str),
     /// Name is present but empty
@@ -70,13 +72,13 @@ impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusu
 
         let reactions = reactions.try_into_with(context)?;
 
-        let contacts = contact
-            .into_iter()
-            .map(|c| c.try_into_with(context))
-            .collect::<Result<_, _>>()?;
+        let contact = contact
+            .into_option()
+            .ok_or(ContactAttachmentError::Missing)?
+            .try_into_with(context)?;
 
         Ok(Self {
-            contacts,
+            contact,
             reactions,
             _limit_construction_to_module: (),
         })
@@ -211,7 +213,7 @@ mod test {
         fn test_data() -> Self {
             Self {
                 reactions: vec![proto::Reaction::test_data()],
-                contact: vec![proto::ContactAttachment::test_data()],
+                contact: Some(proto::ContactAttachment::test_data()).into(),
                 ..Default::default()
             }
         }
@@ -244,7 +246,7 @@ mod test {
         assert_eq!(
             proto::ContactMessage::test_data().try_into_with(&TestContext::default()),
             Ok(ContactMessage {
-                contacts: vec![ContactAttachment::from_proto_test_data()],
+                contact: ContactAttachment::from_proto_test_data(),
                 reactions: ReactionSet::from_iter([(
                     TestContext::SELF_ID,
                     Reaction::from_proto_test_data(),
@@ -260,21 +262,22 @@ mod test {
         Err(ChatItemError::Reaction(ReactionError::EmptyEmoji));
         "invalid reaction"
     )]
-    #[test_case(|x| x.contact[0].avatar = Some(proto::FilePointer::test_data()).into() => Ok(()); "with avatar")]
+    #[test_case(|x| x.contact = None.into() => Err(ChatItemError::ContactAttachment(ContactAttachmentError::Missing)); "no attachment")]
+    #[test_case(|x| x.contact.as_mut().unwrap().avatar = Some(proto::FilePointer::test_data()).into() => Ok(()); "with avatar")]
     #[test_case(
-        |x| x.contact[0].avatar = Some(proto::FilePointer::default()).into() =>
+        |x| x.contact.as_mut().unwrap().avatar = Some(proto::FilePointer::default()).into() =>
         Err(ChatItemError::ContactAttachment(ContactAttachmentError::Avatar(
             FilePointerError::NoLocator
         )));
         "with invalid avatar"
     )]
     #[test_case(
-        |x| x.contact[0].name = Some(Default::default()).into() =>
+        |x| x.contact.as_mut().unwrap().name = Some(Default::default()).into() =>
         Err(ChatItemError::ContactAttachment(ContactAttachmentError::EmptyName));
         "empty name"
     )]
     #[test_case(
-        |x| x.contact[0].number.push(proto::contact_attachment::Phone {
+        |x| x.contact.as_mut().unwrap().number.push(proto::contact_attachment::Phone {
             type_: proto::contact_attachment::phone::Type::HOME.into(),
             ..Default::default()
         }) =>
@@ -282,7 +285,7 @@ mod test {
         "empty phone number"
     )]
     #[test_case(
-        |x| x.contact[0].number.push(proto::contact_attachment::Phone {
+        |x| x.contact.as_mut().unwrap().number.push(proto::contact_attachment::Phone {
             type_: proto::contact_attachment::phone::Type::HOME.into(),
             value: "unvalidated".into(),
             ..Default::default()
@@ -291,7 +294,7 @@ mod test {
         "empty phone number label"
     )]
     #[test_case(
-        |x| x.contact[0].email.push(proto::contact_attachment::Email {
+        |x| x.contact.as_mut().unwrap().email.push(proto::contact_attachment::Email {
             type_: proto::contact_attachment::email::Type::HOME.into(),
             ..Default::default()
         }) =>
@@ -299,7 +302,7 @@ mod test {
         "empty email"
     )]
     #[test_case(
-        |x| x.contact[0].email.push(proto::contact_attachment::Email {
+        |x| x.contact.as_mut().unwrap().email.push(proto::contact_attachment::Email {
             type_: proto::contact_attachment::email::Type::HOME.into(),
             value: "unvalidated".into(),
             ..Default::default()
@@ -308,7 +311,7 @@ mod test {
         "empty email label"
     )]
     #[test_case(
-        |x| x.contact[0].address.push(proto::contact_attachment::PostalAddress {
+        |x| x.contact.as_mut().unwrap().address.push(proto::contact_attachment::PostalAddress {
             type_: proto::contact_attachment::postal_address::Type::HOME.into(),
             ..Default::default()
         }) =>

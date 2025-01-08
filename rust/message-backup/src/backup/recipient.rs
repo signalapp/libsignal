@@ -47,6 +47,8 @@ pub enum RecipientError {
     InvalidIdentityKey,
     /// missing identity key for contact marked {0:?}
     MissingIdentityKey(proto::contact::IdentityState),
+    /// Contact.nickname is present but empty
+    NicknameIsPresentButEmpty,
     /// distribution destination has invalid UUID
     InvalidDistributionId,
     /// invalid group: {0}
@@ -197,6 +199,14 @@ pub struct ContactData {
     pub identity_key: Option<IdentityKey>,
     #[serde(serialize_with = "serialize::enum_as_string")]
     pub identity_state: proto::contact::IdentityState,
+    pub nickname: Option<ContactName>,
+}
+
+#[derive(Clone, Debug, serde::Serialize)]
+#[cfg_attr(test, derive(PartialEq))]
+pub struct ContactName {
+    pub given_name: String,
+    pub family_name: String,
 }
 
 #[derive(Clone, Debug, serde::Serialize)]
@@ -374,6 +384,7 @@ impl<C: ReportUnusualTimestamp> TryFromWith<proto::Contact, C> for ContactData {
             hideStory,
             identityKey,
             identityState,
+            nickname,
             special_fields: _,
         } = value;
 
@@ -457,6 +468,25 @@ impl<C: ReportUnusualTimestamp> TryFromWith<proto::Contact, C> for ContactData {
             }
         };
 
+        let nickname = nickname
+            .into_option()
+            .map(
+                |proto::contact::Name {
+                     given,
+                     family,
+                     special_fields: _,
+                 }| {
+                    if given.is_empty() && family.is_empty() {
+                        return Err(RecipientError::NicknameIsPresentButEmpty);
+                    }
+                    Ok(ContactName {
+                        given_name: given,
+                        family_name: family,
+                    })
+                },
+            )
+            .transpose()?;
+
         Ok(Self {
             aci,
             pni,
@@ -472,6 +502,7 @@ impl<C: ReportUnusualTimestamp> TryFromWith<proto::Contact, C> for ContactData {
             hide_story: hideStory,
             identity_key,
             identity_state,
+            nickname,
         })
     }
 }
@@ -655,6 +686,12 @@ mod test {
                 profileFamilyName: Some("FamilyName".to_owned()),
                 identityKey: Some(Self::TEST_IDENTITY_KEY_BYTES.to_vec()),
                 identityState: proto::contact::IdentityState::VERIFIED.into(),
+                nickname: Some(proto::contact::Name {
+                    given: "GivenNickName".to_owned(),
+                    family: "FamilyNickName".to_owned(),
+                    ..Default::default()
+                })
+                .into(),
 
                 ..Default::default()
             }
@@ -699,6 +736,10 @@ mod test {
                     IdentityKey::decode(&proto::Contact::TEST_IDENTITY_KEY_BYTES).expect("valid"),
                 ),
                 identity_state: proto::contact::IdentityState::VERIFIED,
+                nickname: Some(ContactName {
+                    given_name: "GivenNickName".to_owned(),
+                    family_name: "FamilyNickName".to_owned(),
+                }),
             }
         }
     }
@@ -770,6 +811,10 @@ mod test {
         unregisteredTimestamp: MillisecondsSinceEpoch::FAR_FUTURE.0,
         ..Default::default()
     })) => Err(RecipientError::InvalidTimestamp(TimestampError("Contact.notRegistered.unregisteredTimestamp", MillisecondsSinceEpoch::FAR_FUTURE.0))); "invalid unregisteredTimestamp")]
+    #[test_case(|x| x.nickname = None.into() => Ok(()); "no nickname")]
+    #[test_case(|x| x.nickname.as_mut().unwrap().given = "".into() => Ok(()); "no nickname given name")]
+    #[test_case(|x| x.nickname.as_mut().unwrap().family = "".into() => Ok(()); "no nickname family name")]
+    #[test_case(|x| x.nickname = Some(Default::default()).into() => Err(RecipientError::NicknameIsPresentButEmpty); "no nickname given or family name")]
     fn destination_contact(modifier: fn(&mut proto::Contact)) -> Result<(), RecipientError> {
         let mut contact = proto::Contact::test_data();
         modifier(&mut contact);
