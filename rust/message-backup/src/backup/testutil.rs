@@ -89,6 +89,8 @@ static GROUP_RECIPIENT: Lazy<FullRecipientData> =
     Lazy::new(|| FullRecipientData::new(Destination::Group(GroupData::from_proto_test_data())));
 static CALL_LINK_RECIPIENT: Lazy<FullRecipientData> =
     Lazy::new(|| FullRecipientData::new(Destination::CallLink(CallLink::from_proto_test_data())));
+static RELEASE_NOTES_RECIPIENT: Lazy<FullRecipientData> =
+    Lazy::new(|| FullRecipientData::new(Destination::ReleaseNotes));
 
 impl TestContext {
     pub(super) const CONTACT_ID: RecipientId = RecipientId(123456789);
@@ -97,6 +99,8 @@ impl TestContext {
     pub(super) const PNI_ONLY_ID: RecipientId = RecipientId(6000000);
     pub(super) const GROUP_ID: RecipientId = RecipientId(7000000);
     pub(super) const CALL_LINK_ID: RecipientId = RecipientId(0xCA77);
+    pub(super) const RELEASE_NOTES_ID: RecipientId = RecipientId(9000);
+    pub(super) const NONEXISTENT_ID: RecipientId = RecipientId(9999);
 }
 
 impl LookupPair<RecipientId, MinimalRecipientData, FullRecipientData> for TestContext {
@@ -111,6 +115,7 @@ impl LookupPair<RecipientId, MinimalRecipientData, FullRecipientData> for TestCo
             Self::E164_ONLY_ID => &E164_ONLY_RECIPIENT,
             Self::GROUP_ID => &GROUP_RECIPIENT,
             Self::CALL_LINK_ID => &CALL_LINK_RECIPIENT,
+            Self::RELEASE_NOTES_ID => &RELEASE_NOTES_RECIPIENT,
             _ => return None,
         };
         Some((recipient.as_ref(), recipient))

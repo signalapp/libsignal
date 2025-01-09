@@ -281,7 +281,7 @@ mod test {
     #[test_case(|x| x.excludedRecipientIds.push(TestContext::SELF_ID.0) => Ok(()); "excluding Self is okay")]
     #[test_case(|x| x.excludedRecipientIds.push(TestContext::CALL_LINK_ID.0) => Err(ChatFolderError::ExcludedMemberWrongKind(TestContext::CALL_LINK_ID, DestinationKind::CallLink)); "excluding call links is not okay")]
     #[test_case(|x| x.excludedRecipientIds.push(TestContext::CONTACT_ID.0) => Err(ChatFolderError::ExcludedMemberDuplicate(TestContext::CONTACT_ID)); "duplicate exclusion")]
-    #[test_case(|x| x.excludedRecipientIds.push(9999) => Err(ChatFolderError::ExcludedMemberUnknown(RecipientId(9999))); "unknown exclusion")]
+    #[test_case(|x| x.excludedRecipientIds.push(TestContext::NONEXISTENT_ID.0) => Err(ChatFolderError::ExcludedMemberUnknown(TestContext::NONEXISTENT_ID)); "unknown exclusion")]
     #[test_case(|x| {
         x.includeAllGroupChats = false;
         x.includedRecipientIds.push(TestContext::GROUP_ID.0);
@@ -291,7 +291,7 @@ mod test {
         x.includedRecipientIds.push(TestContext::GROUP_ID.0);
         x.includedRecipientIds.push(TestContext::GROUP_ID.0);
     } => Err(ChatFolderError::IncludedMemberDuplicate(TestContext::GROUP_ID)); "duplicate inclusion")]
-    #[test_case(|x| x.includedRecipientIds.push(9999) => Err(ChatFolderError::IncludedMemberUnknown(RecipientId(9999))); "unknown inclusion")]
+    #[test_case(|x| x.includedRecipientIds.push(TestContext::NONEXISTENT_ID.0) => Err(ChatFolderError::IncludedMemberUnknown(TestContext::NONEXISTENT_ID)); "unknown inclusion")]
     #[test_case(|x| x.includedRecipientIds.push(TestContext::CALL_LINK_ID.0) => Err(ChatFolderError::IncludedMemberWrongKind(TestContext::CALL_LINK_ID, DestinationKind::CallLink)); "including call links is not okay")]
     #[test_case(|x| x.includedRecipientIds.push(TestContext::CONTACT_ID.0) => Err(ChatFolderError::MemberIsBothIncludedAndExcluded(TestContext::CONTACT_ID)); "member in both lists")]
     #[test_case(|x| x.includedRecipientIds.push(TestContext::GROUP_ID.0) => Ok(()); "include a group even though all groups are included by default")]

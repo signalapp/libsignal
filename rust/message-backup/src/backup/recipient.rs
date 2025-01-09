@@ -90,9 +90,11 @@ pub enum RecipientError {
 
 /// Data kept in-memory from a [`proto::Recipient`] for [`ValidateOnly`] mode.
 ///
-/// This is intentionally the minimal amount of data required to validate later
-/// frames.
-#[derive(Debug)]
+/// This is intentionally the minimal amount of data required to validate later frames.
+///
+/// Supports Clone but not Copy, both in case we eventually have non-Copy fields and because it's
+/// still a bit big to copy around without thinking about it.
+#[derive(Debug, Clone)]
 #[cfg_attr(test, derive(PartialEq))]
 pub enum MinimalRecipientData {
     Contact {
@@ -334,6 +336,10 @@ impl FullRecipientData {
         // Cloning the data to convert it to a MinimalRecipientData isn't very efficient,
         // but it doesn't need to be for the time being.
         Self(Arc::new((data.clone().into(), data)))
+    }
+
+    pub(crate) fn is_same_reference(&self, other: &FullRecipientData) -> bool {
+        Arc::ptr_eq(&self.0, &other.0)
     }
 }
 

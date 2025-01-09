@@ -75,6 +75,9 @@ pub trait ReferencedTypes {
         id: &'a RecipientId,
         data: &'a Self::RecipientData,
     ) -> &'a Self::RecipientReference;
+
+    fn is_same_reference(left: &Self::RecipientReference, right: &Self::RecipientReference)
+        -> bool;
 }
 
 pub struct PartialBackup<M: Method + ReferencedTypes> {
@@ -523,6 +526,13 @@ impl ReferencedTypes for Store {
     ) -> &'a Self::RecipientReference {
         data
     }
+
+    fn is_same_reference(
+        left: &Self::RecipientReference,
+        right: &Self::RecipientReference,
+    ) -> bool {
+        left.is_same_reference(right)
+    }
 }
 
 impl ReferencedTypes for ValidateOnly {
@@ -547,6 +557,14 @@ impl ReferencedTypes for ValidateOnly {
         _data: &'a Self::RecipientData,
     ) -> &'a Self::RecipientReference {
         id
+    }
+
+    #[inline]
+    fn is_same_reference(
+        left: &Self::RecipientReference,
+        right: &Self::RecipientReference,
+    ) -> bool {
+        left == right
     }
 }
 
@@ -786,15 +804,22 @@ impl<M: Method + ReferencedTypes> ChatsData<M> {
             pinned: _,
         } = self;
 
-        let chat_data = items.get_mut(chat_id).ok_or_else(|| {
+        let wrap_error = |error| {
             ChatFrameError(
                 chat_id,
                 ChatError::ChatItem {
                     raw_timestamp: item.sent_at.as_millis(),
-                    error: ChatItemError::NoChatForItem,
+                    error,
                 },
             )
-        })?;
+        };
+
+        let chat_data = items
+            .get_mut(chat_id)
+            .ok_or_else(|| wrap_error(ChatItemError::NoChatForItem))?;
+
+        item.validate_chat_recipient(&chat_data.recipient, &chat_data.cached_recipient_info)
+            .map_err(wrap_error)?;
 
         item.total_chat_item_order_index = *chat_items_count;
 
@@ -987,7 +1012,7 @@ mod test {
         pub(crate) fn test_data() -> Self {
             Self {
                 id: Self::TEST_ID,
-                recipientId: proto::Recipient::TEST_ID,
+                recipientId: proto::Recipient::test_data_contact().id,
                 ..Default::default()
             }
         }
@@ -1013,9 +1038,9 @@ mod test {
 
         fn fake() -> PartialBackup<Self> {
             Self::fake_with([
-                proto::Recipient::test_data().into(),
-                proto::Chat::test_data().into(),
                 proto::Recipient::test_data_contact().into(),
+                proto::Chat::test_data().into(),
+                proto::Recipient::test_data().into(),
                 // References both SELF_ID and CONTACT_ID
                 proto::ChatItem::test_data().into(),
             ])
@@ -1160,13 +1185,34 @@ mod test {
             .add_recipient(proto::Recipient::test_data_contact())
             .expect("valid recipient");
 
+        const GROUP_ID: u64 = 200;
+        partial
+            .add_recipient(proto::Recipient {
+                id: GROUP_ID,
+                destination: proto::recipient::Destination::Group(proto::Group {
+                    masterKey: [0x47; zkgroup::GROUP_MASTER_KEY_LEN].into(),
+                    snapshot: Some(proto::group::GroupSnapshot {
+                        // present but empty, technically a valid group
+                        ..Default::default()
+                    })
+                    .into(),
+                    ..Default::default()
+                })
+                .into(),
+                ..Default::default()
+            })
+            .expect("valid group");
+
         const CHAT_IDS: std::ops::RangeInclusive<u64> = 1..=2;
 
         // Interleave some chat items from different chats.
+        // Yes, we shouldn't have multiple chats for the same recipient,
+        // but the validator doesn't check that because it's not going to happen by accident.
         for chat_id in CHAT_IDS {
             partial
                 .add_chat(proto::Chat {
                     id: chat_id,
+                    recipientId: GROUP_ID,
                     ..proto::Chat::test_data()
                 })
                 .expect("valid chat");
