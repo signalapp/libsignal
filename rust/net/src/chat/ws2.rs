@@ -609,6 +609,10 @@ async fn spawned_task_body<I: InnerConnection>(
         );
         listener_state.send_event(&tokio_rt, event).await;
     };
+    match &result {
+        Ok(reason) => log::info!("chat handler task finishing after {reason}"),
+        Err(err) => log::info!("chat handler task is stopping due to {err}"),
+    }
     let task_result = result.as_ref().map_err(Into::into).copied();
 
     // The loop is finishing. Make sure to tell the listener after disarming the

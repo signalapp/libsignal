@@ -142,7 +142,8 @@ pub enum MessageEvent<Meta> {
 /// This can't necessarily be precise since there are network delays and
 /// queueing involved and so a "simultaneous" disconnect can result in each side
 /// seeing a different outcome.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, strum::Display)]
+#[strum(serialize_all = "lowercase")]
 pub enum FinishReason {
     /// The local end disconnected first.
     LocalDisconnect,
@@ -383,16 +384,22 @@ where
                         // tungstenite handles pings internally, nothing to do here.
                         Outcome::Continue(MessageEvent::ReceivedPingPong)
                     }
-                    Message::Close(None)
-                    | Message::Close(Some(CloseFrame {
-                        code: CloseCode::Normal,
-                        ..
-                    })) => Outcome::Finished(Ok(FinishReason::RemoteDisconnect)),
-                    Message::Close(Some(CloseFrame { code, reason })) => {
-                        Outcome::Finished(Err(NextEventError::AbnormalServerClose {
-                            code,
-                            reason: reason.into_owned(),
-                        }))
+                    Message::Close(close) => {
+                        let code = close.as_ref().map(|c| c.code);
+                        log::info!("received a close frame from the server with code {code:?}",);
+                        match close {
+                            None
+                            | Some(CloseFrame {
+                                code: CloseCode::Normal,
+                                ..
+                            }) => Outcome::Finished(Ok(FinishReason::RemoteDisconnect)),
+                            Some(CloseFrame { code, reason }) => {
+                                Outcome::Finished(Err(NextEventError::AbnormalServerClose {
+                                    code,
+                                    reason: reason.into_owned(),
+                                }))
+                            }
+                        }
                     }
                     Message::Frame(_) => {
                         unreachable!("Message::Frame is never returned for a read")
