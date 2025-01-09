@@ -5,12 +5,11 @@
 
 use derive_where::derive_where;
 use intmap::IntMap;
-use itertools::Itertools;
 
 use crate::backup::frame::RecipientId;
 use crate::backup::method::LookupPair;
 use crate::backup::recipient::{DestinationKind, MinimalRecipientData};
-use crate::backup::serialize::SerializeOrder;
+use crate::backup::serialize::{SerializeOrder, UnorderedList};
 use crate::backup::time::{ReportUnusualTimestamp, Timestamp, TimestampError};
 use crate::backup::{TryFromWith, TryIntoWith};
 use crate::proto::backup as proto;
@@ -111,10 +110,11 @@ impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusu
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, serde::Serialize)]
 #[derive_where(Default)]
 pub struct ReactionSet<Recipient> {
-    reactions: IntMap<RecipientId, Reaction<Recipient>>,
+    #[serde(bound(serialize = "Recipient: serde::Serialize + SerializeOrder"))]
+    reactions: UnorderedList<Reaction<Recipient>>,
 }
 
 impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusualTimestamp>
@@ -123,40 +123,29 @@ impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusu
     type Error = ReactionError;
 
     fn try_from_with(items: Vec<proto::Reaction>, context: &C) -> Result<Self, Self::Error> {
-        let mut reactions = IntMap::with_capacity(items.len());
+        let mut existing = IntMap::with_capacity(items.len());
+        let mut reactions = Vec::with_capacity(items.len());
 
         for item in items {
             let author_id = RecipientId(item.authorId);
-            let reaction = item.try_into_with(context)?;
-            if reactions.insert(author_id, reaction).is_some() {
+            if existing.insert(author_id, ()).is_some() {
                 return Err(ReactionError::MultipleReactions(author_id));
             }
+            reactions.push(item.try_into_with(context)?);
         }
 
-        Ok(Self { reactions })
+        Ok(Self {
+            reactions: reactions.into(),
+        })
     }
 }
 
-// ReactionSet serializes like UnorderedList; we don't need to maintain the "map" structure.
-impl<R> serde::Serialize for ReactionSet<R>
-where
-    R: serde::Serialize + SerializeOrder,
-{
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        let mut items = self.reactions.values().collect_vec();
-        items.sort_by(|l, r| l.serialize_cmp(r));
-
-        serializer.collect_seq(items)
-    }
-}
-
-impl<R> FromIterator<(RecipientId, Reaction<R>)> for ReactionSet<R> {
-    fn from_iter<T: IntoIterator<Item = (RecipientId, Reaction<R>)>>(iter: T) -> Self {
+#[cfg(test)]
+impl<R> FromIterator<Reaction<R>> for ReactionSet<R> {
+    fn from_iter<T: IntoIterator<Item = Reaction<R>>>(iter: T) -> Self {
+        // Does not check uniqueness, hence the cfg(test).
         Self {
-            reactions: IntMap::from_iter(iter),
+            reactions: iter.into_iter().collect(),
         }
     }
 }
@@ -169,15 +158,17 @@ where
     R: PartialEq + SerializeOrder,
 {
     fn eq(&self, other: &Self) -> bool {
+        use itertools::Itertools as _;
+
         // This is not very efficient because it makes two temporary arrays, but we only use it for
         // tests anyway.
         self.reactions
-            .values()
+            .iter()
             .sorted_unstable_by(|a, b| a.serialize_cmp(b))
             .collect_vec()
             == other
                 .reactions
-                .values()
+                .iter()
                 .sorted_unstable_by(|a, b| a.serialize_cmp(b))
                 .collect_vec()
     }
@@ -293,40 +284,28 @@ mod test {
 
         let mut message1 = StandardMessage::from_proto_test_data();
         message1.reactions = ReactionSet::from_iter([
-            (
-                TestContext::SELF_ID,
-                Reaction {
-                    sort_order: 10,
-                    ..reaction1.clone()
-                },
-            ),
-            (
-                TestContext::CONTACT_ID,
-                Reaction {
-                    sort_order: 20,
-                    ..reaction2.clone()
-                },
-            ),
+            Reaction {
+                sort_order: 10,
+                ..reaction1.clone()
+            },
+            Reaction {
+                sort_order: 20,
+                ..reaction2.clone()
+            },
         ]);
 
         let mut message2 = StandardMessage::from_proto_test_data();
         // Note that the recipient IDs have been swapped too, to demonstrate that they are not used
         // in sorting.
         message2.reactions = ReactionSet::from_iter([
-            (
-                TestContext::SELF_ID,
-                Reaction {
-                    sort_order: 200,
-                    ..reaction2
-                },
-            ),
-            (
-                TestContext::CONTACT_ID,
-                Reaction {
-                    sort_order: 100,
-                    ..reaction1
-                },
-            ),
+            Reaction {
+                sort_order: 200,
+                ..reaction2
+            },
+            Reaction {
+                sort_order: 100,
+                ..reaction1
+            },
         ]);
 
         assert_eq!(

@@ -247,10 +247,7 @@ mod test {
             proto::ContactMessage::test_data().try_into_with(&TestContext::default()),
             Ok(ContactMessage {
                 contact: ContactAttachment::from_proto_test_data().into(),
-                reactions: ReactionSet::from_iter([(
-                    TestContext::SELF_ID,
-                    Reaction::from_proto_test_data(),
-                )]),
+                reactions: ReactionSet::from_iter([Reaction::from_proto_test_data()]),
                 _limit_construction_to_module: ()
             })
         )

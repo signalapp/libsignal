@@ -142,10 +142,7 @@ mod test {
         pub(crate) fn from_proto_test_data() -> Self {
             Self {
                 text: Some(MessageText::from_proto_test_data()),
-                reactions: ReactionSet::from_iter([(
-                    TestContext::SELF_ID,
-                    Reaction::from_proto_test_data(),
-                )]),
+                reactions: ReactionSet::from_iter([Reaction::from_proto_test_data()]),
                 attachments: vec![MessageAttachment::from_proto_test_data()],
                 quote: Some(Box::new(Quote::from_proto_test_data())),
                 long_text: Some(Box::new(FilePointer::default())),

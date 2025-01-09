@@ -109,10 +109,7 @@ mod test {
                 .try_into_with(&TestContext::default()),
             Ok(VoiceMessage {
                 quote: Some(Quote::from_proto_test_data()),
-                reactions: ReactionSet::from_iter([(
-                    TestContext::SELF_ID,
-                    Reaction::from_proto_test_data(),
-                )]),
+                reactions: ReactionSet::from_iter([Reaction::from_proto_test_data()]),
                 attachment: Box::new(MessageAttachment::from_proto_voice_message_data()),
                 _limit_construction_to_module: ()
             })
