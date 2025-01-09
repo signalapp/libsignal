@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use assert_matches::debug_assert_matches;
+
 use crate::backup::call::{GroupCall, IndividualCall};
 use crate::backup::chat::group::GroupChatUpdate;
 use crate::backup::chat::ChatItemError;
@@ -28,7 +30,7 @@ pub enum UpdateMessage<Recipient> {
 }
 
 /// Validated version of [`proto::simple_chat_update::Type`].
-#[derive(Debug, serde::Serialize)]
+#[derive(Debug, Clone, Copy, serde::Serialize)]
 #[cfg_attr(test, derive(PartialEq))]
 pub enum SimpleChatUpdate {
     JoinedSignal,
@@ -166,6 +168,140 @@ impl<C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusualTimestam
                 previousName.ok_or(ChatItemError::LearnedProfileIsEmpty)?,
             ),
         })
+    }
+}
+
+impl<R> UpdateMessage<R> {
+    // This could be folded into the initial creation of the message,
+    // but then it wouldn't fit the TryFromWith signature (or would require a tuple).
+    pub(super) fn validate_author(
+        &self,
+        author: &MinimalRecipientData,
+    ) -> Result<(), ChatItemError> {
+        debug_assert_matches!(
+            author,
+            MinimalRecipientData::Contact { .. }
+                | MinimalRecipientData::Self_
+                | MinimalRecipientData::ReleaseNotes,
+            "update messages should always be attributed to an individual",
+        );
+
+        match self {
+            UpdateMessage::Simple(
+                update @ (SimpleChatUpdate::JoinedSignal
+                | SimpleChatUpdate::EndSession
+                | SimpleChatUpdate::ChatSessionRefresh
+                | SimpleChatUpdate::IdentityUpdate),
+            ) => {
+                // We allow Self for these, for a few reasons:
+                // - "Note to Self" can have ChatSessionRefresh (and IdentityUpdate, if things go
+                //   very wrong)
+                // - An E164-based thread can get merged into Self if the user takes a phone number
+                //   that formerly belonged to a contact.
+                if !author.is_individual() {
+                    Err(ChatItemError::ChatUpdateNotFromAci(*update))
+                } else {
+                    Ok(())
+                }
+            }
+            UpdateMessage::Simple(
+                update @ (SimpleChatUpdate::IdentityDefault
+                | SimpleChatUpdate::IdentityVerified
+                | SimpleChatUpdate::ChangeNumber
+                | SimpleChatUpdate::BadDecrypt
+                | SimpleChatUpdate::UnsupportedProtocolMessage),
+            ) => {
+                // Similar to the above, we allow Self for these too, just not PNIs.
+                if !author.is_valid_sender_account() {
+                    Err(ChatItemError::ChatUpdateNotFromContact(*update))
+                } else {
+                    Ok(())
+                }
+            }
+            UpdateMessage::Simple(
+                update @ (SimpleChatUpdate::PaymentActivationRequest
+                | SimpleChatUpdate::PaymentsActivated),
+            ) => {
+                if !author.is_contact_with_aci() {
+                    Err(ChatItemError::ChatUpdateNotFromAci(*update))
+                } else {
+                    Ok(())
+                }
+            }
+            UpdateMessage::Simple(
+                update @ (SimpleChatUpdate::ReportedSpam
+                | SimpleChatUpdate::Blocked
+                | SimpleChatUpdate::Unblocked
+                | SimpleChatUpdate::MessageRequestAccepted),
+            ) => {
+                if !matches!(author, MinimalRecipientData::Self_) {
+                    Err(ChatItemError::ChatUpdateNotFromSelf(*update))
+                } else {
+                    Ok(())
+                }
+            }
+            UpdateMessage::Simple(SimpleChatUpdate::ReleaseChannelDonationRequest) => {
+                if !matches!(author, MinimalRecipientData::ReleaseNotes) {
+                    Err(ChatItemError::DonationRequestNotFromReleaseNotesRecipient)
+                } else {
+                    Ok(())
+                }
+            }
+            UpdateMessage::GroupChange { .. } => {
+                // For GV2 this could be limited to ACIs only, but GV1 messages still exist.
+                if !author.is_valid_sender_account() {
+                    Err(ChatItemError::GroupUpdateNotFromContact)
+                } else {
+                    Ok(())
+                }
+            }
+            UpdateMessage::ExpirationTimerChange { .. } => {
+                if !author.is_valid_sender_account() {
+                    Err(ChatItemError::ExpirationTimerChangeNotFromContact)
+                } else {
+                    Ok(())
+                }
+            }
+            UpdateMessage::ProfileChange { .. } => {
+                // Another case where this *shouldn't* happen for Self, but could if the user takes
+                // a phone number that formerly belonged to a contact.
+                if !author.is_valid_sender_account() {
+                    Err(ChatItemError::ProfileChangeNotFromContact)
+                } else {
+                    Ok(())
+                }
+            }
+            UpdateMessage::ThreadMerge { .. } => {
+                if !author.is_contact_with_aci() {
+                    Err(ChatItemError::ThreadMergeNotFromAci)
+                } else {
+                    Ok(())
+                }
+            }
+            UpdateMessage::SessionSwitchover { .. } => {
+                if !author.is_contact_with_aci() {
+                    Err(ChatItemError::SessionSwitchoverNotFromAci)
+                } else {
+                    Ok(())
+                }
+            }
+            UpdateMessage::IndividualCall(_) | UpdateMessage::GroupCall(_) => {
+                if !author.is_valid_sender_account() {
+                    Err(ChatItemError::CallNotFromContact)
+                } else {
+                    Ok(())
+                }
+            }
+            UpdateMessage::LearnedProfileUpdate(_) => {
+                // Another case where this *shouldn't* happen for Self, but could if the user takes
+                // a phone number that formerly belonged to a contact.
+                if !author.is_valid_sender_account() {
+                    Err(ChatItemError::LearnedProfileUpdateNotFromContact)
+                } else {
+                    Ok(())
+                }
+            }
+        }
     }
 }
 

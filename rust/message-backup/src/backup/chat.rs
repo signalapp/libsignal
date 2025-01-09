@@ -179,6 +179,28 @@ pub enum ChatItemError {
     ProfileChangeMissingNames,
     /// learned profile chat update has no e164 or name
     LearnedProfileIsEmpty,
+    /// chat update not from contact: {0:?}
+    ChatUpdateNotFromContact(SimpleChatUpdate),
+    /// chat update not from ACI: {0:?}
+    ChatUpdateNotFromAci(SimpleChatUpdate),
+    /// chat update not from Self: {0:?}
+    ChatUpdateNotFromSelf(SimpleChatUpdate),
+    /// donation request not from Release Notes recipient
+    DonationRequestNotFromReleaseNotesRecipient,
+    /// group update not from contact or Self
+    GroupUpdateNotFromContact,
+    /// expiration timer change not from contact or Self
+    ExpirationTimerChangeNotFromContact,
+    /// profile change not from contact
+    ProfileChangeNotFromContact,
+    /// thread merge not from ACI
+    ThreadMergeNotFromAci,
+    /// session switchover not from ACI
+    SessionSwitchoverNotFromAci,
+    /// call not from contact or self
+    CallNotFromContact,
+    /// learned profile update not from contact
+    LearnedProfileUpdateNotFromContact,
     /// invalid e164
     InvalidE164,
     /// {0}
@@ -531,6 +553,10 @@ impl<
             (Direction::Directionless, _) => Err(ChatItemError::DirectionlessMessage),
             (_, _) => Ok(()),
         }?;
+
+        if let ChatItemMessage::Update(update) = &message {
+            update.validate_author(author_data)?;
+        }
 
         let revisions: Vec<_> = likely_empty(revisions, |iter| {
             iter.map(|rev| {

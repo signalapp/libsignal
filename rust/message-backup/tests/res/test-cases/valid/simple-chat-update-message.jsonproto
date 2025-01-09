@@ -241,35 +241,9 @@
   },
   {
     "chatItem": {
-      "authorId": 1,
-      "chatId": 1,
-      "dateSent": 11,
-      "directionless": {},
-      "updateMessage": {
-        "simpleUpdate": {
-          "type": "PAYMENTS_ACTIVATED"
-        }
-      }
-    }
-  },
-  {
-    "chatItem": {
       "authorId": 4,
       "chatId": 1,
       "dateSent": 12,
-      "directionless": {},
-      "updateMessage": {
-        "simpleUpdate": {
-          "type": "PAYMENT_ACTIVATION_REQUEST"
-        }
-      }
-    }
-  },
-  {
-    "chatItem": {
-      "authorId": 1,
-      "chatId": 1,
-      "dateSent": 13,
       "directionless": {},
       "updateMessage": {
         "simpleUpdate": {

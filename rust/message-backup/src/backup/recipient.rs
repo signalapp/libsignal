@@ -113,6 +113,50 @@ pub enum MinimalRecipientData {
     },
 }
 
+impl MinimalRecipientData {
+    /// Returns true iff `self` is a contact or the Self recipient.
+    pub fn is_individual(&self) -> bool {
+        match self {
+            MinimalRecipientData::Contact { .. } => true,
+            MinimalRecipientData::Group { .. } => false,
+            MinimalRecipientData::DistributionList { .. } => false,
+            MinimalRecipientData::Self_ => true,
+            MinimalRecipientData::ReleaseNotes => false,
+            MinimalRecipientData::CallLink { .. } => false,
+        }
+    }
+
+    /// Returns true iff `self` is a contact with an ACI or E164, or the Self recipient.
+    ///
+    /// Note that this **excludes `ReleaseNotes`**, hence "sender *account*".
+    pub fn is_valid_sender_account(&self) -> bool {
+        match self {
+            MinimalRecipientData::Contact { e164, aci, pni: _ } => aci.is_some() || e164.is_some(),
+            MinimalRecipientData::Group { .. } => false,
+            MinimalRecipientData::DistributionList { .. } => false,
+            MinimalRecipientData::Self_ => true,
+            MinimalRecipientData::ReleaseNotes => false,
+            MinimalRecipientData::CallLink { .. } => false,
+        }
+    }
+
+    /// Returns true iff `self` is a contact with an ACI.
+    pub fn is_contact_with_aci(&self) -> bool {
+        match self {
+            MinimalRecipientData::Contact {
+                e164: _,
+                aci,
+                pni: _,
+            } => aci.is_some(),
+            MinimalRecipientData::Group { .. } => false,
+            MinimalRecipientData::DistributionList { .. } => false,
+            MinimalRecipientData::Self_ => false,
+            MinimalRecipientData::ReleaseNotes => false,
+            MinimalRecipientData::CallLink { .. } => false,
+        }
+    }
+}
+
 impl AsRef<MinimalRecipientData> for MinimalRecipientData {
     fn as_ref(&self) -> &MinimalRecipientData {
         self
