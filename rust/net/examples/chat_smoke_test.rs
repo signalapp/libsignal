@@ -3,32 +3,31 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use std::collections::HashSet;
 use std::process::ExitCode;
 
-use clap::{Parser, ValueEnum};
-use either::Either;
-use futures_util::{FutureExt, StreamExt};
-use itertools::Itertools;
+use clap::{Args, Parser, ValueEnum};
+use libsignal_net::auth::Auth;
+use libsignal_net::chat::test_support::simple_chat_service;
 use libsignal_net::chat::ChatServiceError;
 use libsignal_net::env::Svr3Env;
-use strum::IntoEnumIterator as _;
+use libsignal_net::infra::{ConnectionParams, RouteType};
 
 #[derive(Parser)]
 struct Config {
+    #[clap(flatten)]
+    route: Option<Route>,
     env: Environment,
-    #[arg(long)]
-    limit_to_routes: Vec<RouteType>,
     #[arg(long)]
     try_all_routes: bool,
 }
 
-#[derive(Copy, Clone, Eq, PartialEq, Hash, strum::EnumString, strum::EnumIter)]
-#[strum(serialize_all = "lowercase")]
-enum RouteType {
-    Direct,
-    ProxyF,
-    ProxyG,
+#[derive(Args)]
+#[group(multiple = false)]
+struct Route {
+    #[arg(long)]
+    proxy_g: bool,
+    #[arg(long)]
+    proxy_f: bool,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, ValueEnum)]
@@ -45,74 +44,64 @@ async fn main() -> ExitCode {
         .parse_default_env()
         .init();
 
-    let Config {
-        env,
-        limit_to_routes,
-        try_all_routes,
-    } = Config::parse();
-    let env = match env {
+    let config = Config::parse();
+    let env = match config.env {
         Environment::Staging => libsignal_net::env::STAGING,
         Environment::Production => libsignal_net::env::PROD,
     };
 
-    let allowed_route_types = limit_to_routes
-        .is_empty()
-        .then(|| Either::Left(RouteType::iter()))
-        .unwrap_or_else(|| Either::Right(limit_to_routes.into_iter()))
-        .collect_vec();
-
-    let success = if try_all_routes {
-        futures_util::stream::iter(allowed_route_types)
-            .then(|route_type| {
-                test_connection(&env, HashSet::from([route_type])).map(|result| match result {
-                    Ok(()) => true,
-                    Err(e) => {
-                        log::error!("failed to connect: {e}");
-                        false
-                    }
-                })
-            })
-            .fold(true, |a, b| std::future::ready(a && b))
-            .await
-    } else {
-        match test_connection(&env, allowed_route_types.into_iter().collect()).await {
-            Ok(()) => true,
-            Err(e) => {
-                log::error!("failed to connect: {e}");
-                false
-            }
+    let mut connection_params = env
+        .chat_domain_config
+        .connect
+        .connection_params_with_fallback();
+    match config.route {
+        Some(Route { proxy_g: true, .. }) => {
+            connection_params.retain(|c| c.route_type == RouteType::ProxyG)
         }
+        Some(Route { proxy_f: true, .. }) => {
+            connection_params.retain(|c| c.route_type == RouteType::ProxyF)
+        }
+        _ if config.try_all_routes => {
+            // Retain every route, including the direct one.
+        }
+        _ => connection_params.retain(|c| c.route_type == RouteType::Direct),
     };
 
-    if success {
-        ExitCode::SUCCESS
+    let mut any_failures = false;
+    if config.try_all_routes {
+        for route in connection_params {
+            log::info!("trying {} ({})", route.transport.sni, route.route_type);
+            test_connection(&env, vec![route])
+                .await
+                .unwrap_or_else(|e| {
+                    any_failures = true;
+                    log::error!("failed to connect: {e}")
+                });
+        }
     } else {
+        test_connection(&env, connection_params)
+            .await
+            .unwrap_or_else(|e| {
+                any_failures = true;
+                log::error!("failed to connect: {e}")
+            });
+    }
+
+    if any_failures {
         ExitCode::FAILURE
+    } else {
+        ExitCode::SUCCESS
     }
 }
 
 async fn test_connection(
     env: &libsignal_net::env::Env<'static, Svr3Env<'static>>,
-    route_types: HashSet<RouteType>,
+    connection_params: Vec<ConnectionParams>,
 ) -> Result<(), ChatServiceError> {
-    let front_names = route_types
-        .into_iter()
-        .map(|route_type| match route_type {
-            RouteType::Direct => None,
-            RouteType::ProxyF => Some(libsignal_net_infra::RouteType::ProxyF.into()),
-            RouteType::ProxyG => Some(libsignal_net_infra::RouteType::ProxyG.into()),
-        })
-        .collect::<HashSet<Option<&'static str>>>();
+    let chat = simple_chat_service(env, Auth::default(), connection_params);
 
-    use libsignal_net::chat::test_support::simple_chat_connection;
-    let chat_connection = simple_chat_connection(env, |route| {
-        front_names.contains(&route.fragment.front_name)
-    })
-    .await?;
-
-    // Disconnect immediately to confirm connection and disconnection works.
-    chat_connection.disconect().await;
-
+    chat.connect_unauthenticated().await?;
+    chat.disconnect().await;
     log::info!("completed successfully");
     Ok(())
 }
