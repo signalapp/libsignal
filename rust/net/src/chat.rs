@@ -701,14 +701,76 @@ pub mod test_support {
     use http::uri::PathAndQuery;
     use libsignal_net_infra::dns::DnsResolver;
     use libsignal_net_infra::tcp_ssl::DirectConnector;
-    use libsignal_net_infra::{make_ws_config, ConnectionParams, EndpointConnection};
+    use libsignal_net_infra::{
+        make_ws_config, ConnectionParams, EnableDomainFronting, EndpointConnection,
+    };
     use tokio::sync::mpsc;
 
     use super::*;
     use crate::auth::Auth;
-    use crate::chat::{Chat, ChatServiceWithDebugInfo};
+    use crate::chat::{ws2, Chat, ChatConnection, ChatServiceError, ChatServiceWithDebugInfo};
+    use crate::connect_state::ConnectState;
     use crate::env::constants::WEB_SOCKET_PATH;
-    use crate::env::{Env, Svr3Env};
+    use crate::env::{Env, Svr3Env, UserAgent};
+    use crate::infra::route::DirectOrProxyProvider;
+
+    // Used in chat_smoke_test.rs, copied from net.rs
+    const CONNECT_PARAMS: crate::infra::route::ConnectionOutcomeParams =
+        crate::infra::route::ConnectionOutcomeParams {
+            age_cutoff: Duration::from_secs(5 * 60),
+            cooldown_growth_factor: 10.0,
+            max_count: 5,
+            max_delay: Duration::from_secs(30),
+            count_growth_factor: 10.0,
+        };
+
+    pub async fn simple_chat_connection(
+        env: &Env<'static, Svr3Env<'static>>,
+        filter_routes: impl Fn(&UnresolvedHttpsServiceRoute) -> bool,
+    ) -> Result<ChatConnection, ChatServiceError> {
+        let network_change_event = ObservableEvent::new();
+        let dns_resolver =
+            DnsResolver::new_with_static_fallback(env.static_fallback(), &network_change_event);
+
+        let route_provider = DirectOrProxyProvider::maybe_proxied(
+            env.chat_domain_config
+                .connect
+                .route_provider(EnableDomainFronting(true)),
+            None,
+        )
+        .filter_routes(filter_routes);
+
+        let connect = ConnectState::new(CONNECT_PARAMS);
+        let user_agent = UserAgent::with_libsignal_version("test_simple_chat_connection");
+
+        let ws_config = ws2::Config {
+            initial_request_id: 0,
+            local_idle_timeout: Duration::from_secs(60),
+            remote_idle_timeout: Duration::from_secs(60),
+        };
+
+        let pending = ChatConnection::start_connect_with(
+            &connect,
+            &dns_resolver,
+            route_provider,
+            env.chat_domain_config
+                .connect
+                .confirmation_header_name
+                .map(HeaderName::from_static),
+            &user_agent,
+            ws_config,
+            None,
+        )
+        .await?;
+
+        // Just a no-op listener.
+        let listener: ws2::EventListener = Box::new(|_event| {});
+
+        let tokio_runtime = tokio::runtime::Handle::try_current().expect("can get tokio runtime");
+        let chat_connection = ChatConnection::finish_connect(tokio_runtime, pending, listener);
+
+        Ok(chat_connection)
+    }
 
     pub type AnyChat = Chat<
         Arc<dyn ChatServiceWithDebugInfo + Send + Sync>,
