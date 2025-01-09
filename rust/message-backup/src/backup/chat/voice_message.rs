@@ -23,7 +23,7 @@ pub struct VoiceMessage<Recipient> {
     pub quote: Option<Quote<Recipient>>,
     #[serde(bound(serialize = "Recipient: serde::Serialize + SerializeOrder"))]
     pub reactions: ReactionSet<Recipient>,
-    pub attachment: MessageAttachment,
+    pub attachment: Box<MessageAttachment>,
     _limit_construction_to_module: (),
 }
 
@@ -87,7 +87,7 @@ impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusu
         Ok(Self {
             reactions,
             quote,
-            attachment,
+            attachment: Box::new(attachment),
             _limit_construction_to_module: (),
         })
     }
@@ -113,7 +113,7 @@ mod test {
                     TestContext::SELF_ID,
                     Reaction::from_proto_test_data(),
                 )]),
-                attachment: MessageAttachment::from_proto_voice_message_data(),
+                attachment: Box::new(MessageAttachment::from_proto_voice_message_data()),
                 _limit_construction_to_module: ()
             })
         )

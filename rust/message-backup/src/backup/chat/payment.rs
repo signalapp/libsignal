@@ -21,7 +21,7 @@ pub struct PaymentNotification {
 #[derive(Clone, Debug, serde::Serialize)]
 #[cfg_attr(test, derive(PartialEq))]
 pub enum TransactionDetails {
-    Transaction(Transaction),
+    Transaction(Box<Transaction>),
     FailedTransaction(FailedTransaction),
 }
 
@@ -120,7 +120,7 @@ impl<C: ReportUnusualTimestamp> TryFromWith<proto::PaymentNotification, C> for P
                     match payment.ok_or(PaymentError::NoTransactionDetailsPayment)? {
                         Payment::Transaction(transaction) => transaction
                             .try_into_with(context)
-                            .map(TransactionDetails::Transaction),
+                            .map(|t| TransactionDetails::Transaction(Box::new(t))),
                         Payment::FailedTransaction(failed) => {
                             failed.try_into().map(TransactionDetails::FailedTransaction)
                         }

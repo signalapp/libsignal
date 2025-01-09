@@ -267,6 +267,30 @@ pub enum ChatItemMessage<M: Method + ReferencedTypes> {
     ViewOnce(ViewOnceMessage<M::RecipientReference>),
 }
 
+#[allow(dead_code)]
+const CHAT_ITEM_MESSAGE_SIZE_LIMIT: usize = 200;
+static_assertions::const_assert!(
+    std::mem::size_of::<StandardMessage<super::ValidateOnly>>() < CHAT_ITEM_MESSAGE_SIZE_LIMIT
+);
+static_assertions::const_assert!(
+    std::mem::size_of::<ContactMessage<super::ValidateOnly>>() < CHAT_ITEM_MESSAGE_SIZE_LIMIT
+);
+static_assertions::const_assert!(
+    std::mem::size_of::<VoiceMessage<super::ValidateOnly>>() < CHAT_ITEM_MESSAGE_SIZE_LIMIT
+);
+static_assertions::const_assert!(
+    std::mem::size_of::<StickerMessage<super::ValidateOnly>>() < CHAT_ITEM_MESSAGE_SIZE_LIMIT
+);
+static_assertions::const_assert!(
+    std::mem::size_of::<UpdateMessage<super::ValidateOnly>>() < CHAT_ITEM_MESSAGE_SIZE_LIMIT
+);
+static_assertions::const_assert!(
+    std::mem::size_of::<PaymentNotification>() < CHAT_ITEM_MESSAGE_SIZE_LIMIT
+);
+static_assertions::const_assert!(
+    std::mem::size_of::<ViewOnceMessage<super::ValidateOnly>>() < CHAT_ITEM_MESSAGE_SIZE_LIMIT
+);
+
 #[derive(Debug, serde::Serialize, strum::EnumDiscriminants)]
 #[cfg_attr(test, derive(PartialEq))]
 pub enum Direction<Recipient> {

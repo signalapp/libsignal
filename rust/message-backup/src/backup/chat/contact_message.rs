@@ -19,7 +19,7 @@ use crate::proto::backup as proto;
 #[derive(Debug, serde::Serialize)]
 #[cfg_attr(test, derive_where(PartialEq; Recipient: PartialEq + SerializeOrder))]
 pub struct ContactMessage<Recipient> {
-    pub contact: ContactAttachment,
+    pub contact: Box<ContactAttachment>,
     #[serde(bound(serialize = "Recipient: serde::Serialize + SerializeOrder"))]
     pub reactions: ReactionSet<Recipient>,
     _limit_construction_to_module: (),
@@ -78,7 +78,7 @@ impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusu
             .try_into_with(context)?;
 
         Ok(Self {
-            contact,
+            contact: Box::new(contact),
             reactions,
             _limit_construction_to_module: (),
         })
@@ -246,7 +246,7 @@ mod test {
         assert_eq!(
             proto::ContactMessage::test_data().try_into_with(&TestContext::default()),
             Ok(ContactMessage {
-                contact: ContactAttachment::from_proto_test_data(),
+                contact: ContactAttachment::from_proto_test_data().into(),
                 reactions: ReactionSet::from_iter([(
                     TestContext::SELF_ID,
                     Reaction::from_proto_test_data(),

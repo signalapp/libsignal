@@ -23,12 +23,12 @@ use crate::proto::backup as proto;
 #[cfg_attr(test, derive_where(PartialEq; Recipient: PartialEq + SerializeOrder))]
 pub struct StandardMessage<Recipient> {
     pub text: Option<MessageText>,
-    pub quote: Option<Quote<Recipient>>,
+    pub quote: Option<Box<Quote<Recipient>>>,
     pub attachments: Vec<MessageAttachment>,
     #[serde(bound(serialize = "Recipient: serde::Serialize + SerializeOrder"))]
     pub reactions: ReactionSet<Recipient>,
     pub link_previews: Vec<LinkPreview>,
-    pub long_text: Option<FilePointer>,
+    pub long_text: Option<Box<FilePointer>>,
     _limit_construction_to_module: (),
 }
 
@@ -96,11 +96,11 @@ impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusu
 
         Ok(Self {
             text,
-            quote,
+            quote: quote.map(Box::new),
             attachments,
             reactions,
             link_previews,
-            long_text,
+            long_text: long_text.map(Box::new),
             _limit_construction_to_module: (),
         })
     }
@@ -147,8 +147,8 @@ mod test {
                     Reaction::from_proto_test_data(),
                 )]),
                 attachments: vec![MessageAttachment::from_proto_test_data()],
-                quote: Some(Quote::from_proto_test_data()),
-                long_text: Some(FilePointer::default()),
+                quote: Some(Box::new(Quote::from_proto_test_data())),
+                long_text: Some(Box::new(FilePointer::default())),
                 link_previews: vec![],
                 _limit_construction_to_module: (),
             }

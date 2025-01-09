@@ -19,7 +19,7 @@ use crate::proto::backup as proto;
 #[derive(Debug, serde::Serialize)]
 #[cfg_attr(test, derive_where(PartialEq; Recipient: PartialEq + SerializeOrder))]
 pub struct ViewOnceMessage<Recipient> {
-    pub attachment: Option<MessageAttachment>,
+    pub attachment: Option<Box<MessageAttachment>>,
     #[serde(bound(serialize = "Recipient: serde::Serialize + SerializeOrder"))]
     pub reactions: ReactionSet<Recipient>,
     _limit_construction_to_module: (),
@@ -54,7 +54,7 @@ impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusu
         let reactions = reactions.try_into_with(context)?;
 
         Ok(Self {
-            attachment,
+            attachment: attachment.map(Box::new),
             reactions,
             _limit_construction_to_module: (),
         })
@@ -85,7 +85,7 @@ mod test {
         assert_eq!(
             proto::ViewOnceMessage::test_data().try_into_with(&TestContext::default()),
             Ok(ViewOnceMessage {
-                attachment: Some(MessageAttachment::from_proto_test_data()),
+                attachment: Some(MessageAttachment::from_proto_test_data().into()),
                 reactions: ReactionSet::from_iter([(
                     TestContext::SELF_ID,
                     Reaction::from_proto_test_data(),

@@ -21,7 +21,7 @@ use crate::proto::backup as proto;
 pub struct StickerMessage<Recipient> {
     #[serde(bound(serialize = "Recipient: serde::Serialize + SerializeOrder"))]
     pub reactions: ReactionSet<Recipient>,
-    pub sticker: MessageSticker,
+    pub sticker: Box<MessageSticker>,
     _limit_construction_to_module: (),
 }
 
@@ -46,7 +46,7 @@ impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusu
 
         Ok(Self {
             reactions,
-            sticker,
+            sticker: Box::new(sticker),
             _limit_construction_to_module: (),
         })
     }
