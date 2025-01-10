@@ -285,7 +285,7 @@ mod test {
     impl proto::PaymentNotification {
         const TEST_NOTE: &'static str = "note";
 
-        fn test_data() -> Self {
+        pub(crate) fn test_data() -> Self {
             Self {
                 amountMob: Some("123".to_string()),
                 feeMob: Some("0".to_string()),

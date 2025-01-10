@@ -211,6 +211,8 @@ pub enum ChatItemError {
     MessageFromContactInReleaseNotes,
     /// message from release notes recipient found in {0:?} chat instead
     ReleaseNoteMessageNotInReleaseNoteChat(DestinationKind),
+    /// payment notification found in {0:?} chat
+    PaymentNotificationNotInContactThread(DestinationKind),
     /// chat update not in contact thread: {0:?}
     ChatUpdateNotInContactThread(SimpleChatUpdate),
     /// unexpected update message in Release Notes
@@ -772,8 +774,29 @@ impl<M: Method + ReferencedTypes> ChatItemData<M> {
             | DestinationKind::CallLink => panic!("can't be a chat item author"),
         }
 
-        if let ChatItemMessage::Update(update) = &self.message {
-            update.validate_chat_recipient(recipient_data)?;
+        match &self.message {
+            ChatItemMessage::Standard(_)
+            | ChatItemMessage::Contact(_)
+            | ChatItemMessage::Voice(_)
+            | ChatItemMessage::Sticker(_)
+            | ChatItemMessage::RemoteDeleted
+            | ChatItemMessage::ViewOnce(_) => {
+                // Most messages can appear in any chat.
+            }
+            ChatItemMessage::GiftBadge(_) => {
+                // Gift badge messages *can* end up in any chat, even though usually only 1:1 chats
+                // make sense.
+            }
+            ChatItemMessage::Update(update) => {
+                update.validate_chat_recipient(recipient_data)?;
+            }
+            ChatItemMessage::PaymentNotification(_) => {
+                if !recipient_data.is_contact_with_aci() {
+                    return Err(ChatItemError::PaymentNotificationNotInContactThread(
+                        *recipient_data.as_ref(),
+                    ));
+                }
+            }
         }
 
         Ok(())
@@ -1443,6 +1466,18 @@ mod test {
         |x| x.authorId = TestContext::RELEASE_NOTES_ID.0 =>
         Err(ChatItemError::ReleaseNoteMessageNotInReleaseNoteChat(DestinationKind::Contact));
         "release note in 1:1 chat"
+    )]
+    #[test_case(
+        TestContext::CONTACT_ID,
+        |x| x.item = Some(proto::chat_item::Item::PaymentNotification(proto::PaymentNotification::test_data())) =>
+        Ok(());
+        "payment notification in 1:1 chat"
+    )]
+    #[test_case(
+        TestContext::GROUP_ID,
+        |x| x.item = Some(proto::chat_item::Item::PaymentNotification(proto::PaymentNotification::test_data())) =>
+        Err(ChatItemError::PaymentNotificationNotInContactThread(DestinationKind::Group));
+        "payment notification in group chat"
     )]
     fn validate_chat_recipient(
         recipient_id: RecipientId,
