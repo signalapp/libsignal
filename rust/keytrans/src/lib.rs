@@ -302,7 +302,7 @@ impl From<StoredMonitoringData> for MonitoringData {
     }
 }
 
-// An in-memory representation of the StoredAccountData with correct optionality of the fields
+/// An in-memory representation of the [`StoredAccountData`] with correct optionality of the fields
 #[derive(Debug, Clone, PartialEq)]
 pub struct AccountData {
     pub aci: MonitoringData,

@@ -924,6 +924,8 @@ impl AsChatValue for UsernameHash<'_> {
 
 #[cfg(test)]
 mod test {
+    use std::cmp::Ordering;
+
     use assert_matches::assert_matches;
     use hex_literal::hex;
     use libsignal_keytrans::{DeploymentMode, PublicConfig, VerifyingKey, VrfPublicKey};
@@ -1057,13 +1059,11 @@ mod test {
         assert_matches!(result, Ok( LocalStateUpdate {tree_head, ..}) => assert_ne!(tree_head.tree_size, 0));
     }
 
-    // Disabled: does not yet account for server state changing between the two requests.
-    #[allow(dead_code)]
-    // #[tokio::test]
-    // #[test_case(false, false; "ACI")]
-    // #[test_case(false, true; "ACI + E164")]
-    // #[test_case(true, false; "ACI + Username Hash")]
-    // #[test_case(true, true; "ACI + E164 + Username Hash")]
+    #[tokio::test]
+    #[test_case(false, false; "ACI")]
+    #[test_case(false, true; "ACI + E164")]
+    #[test_case(true, false; "ACI + Username Hash")]
+    #[test_case(true, true; "ACI + E164 + Username Hash")]
     async fn monitor_permutations_integration_test(use_e164: bool, use_username_hash: bool) {
         if std::env::var("LIBSIGNAL_TESTING_RUN_NONHERMETIC_TESTS").is_err() {
             println!("SKIPPED: running integration tests is not enabled");
@@ -1105,7 +1105,7 @@ mod test {
             (account_data, distinguished_tree_head_size)
         };
 
-        let result = kt
+        let updated_account_data = kt
             .monitor(
                 aci,
                 use_e164.then_some(e164),
@@ -1113,8 +1113,20 @@ mod test {
                 account_data.clone(),
                 distinguished_tree_size,
             )
-            .await;
-        assert_matches!(result, Ok(updated) => assert_eq!(&updated, &account_data));
+            .await
+            .expect("can monitor");
+
+        match Ord::cmp(
+            &updated_account_data.last_tree_head.0.tree_size,
+            &account_data.last_tree_head.0.tree_size,
+        ) {
+            Ordering::Less => panic!("The tree is shrinking"),
+            Ordering::Equal => assert_eq!(&updated_account_data, &account_data),
+            Ordering::Greater => {
+                // verify that the initial position of the ACI in the tree has not changed, at least
+                assert_eq!(&updated_account_data.aci.pos, &account_data.aci.pos)
+            }
+        }
     }
 
     const CHAT_SEARCH_RESPONSE: &[u8] = include_bytes!("../tests/data/chat_search_response.dat");
