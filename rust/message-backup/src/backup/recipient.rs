@@ -115,46 +115,96 @@ pub enum MinimalRecipientData {
     },
 }
 
-impl MinimalRecipientData {
+/// Minimal information about the recipient in a [`proto::Chat`].
+#[derive(Copy, Clone, Debug)]
+#[cfg_attr(test, derive(PartialEq))]
+pub enum ChatRecipientKind {
+    Self_,
+    ReleaseNotes,
+    Contact { has_aci: bool },
+    Group,
+}
+
+impl ChatRecipientKind {
     /// Returns true iff `self` is a contact or the Self recipient.
     pub fn is_individual(&self) -> bool {
         match self {
-            MinimalRecipientData::Contact { .. } => true,
-            MinimalRecipientData::Group { .. } => false,
-            MinimalRecipientData::DistributionList { .. } => false,
-            MinimalRecipientData::Self_ => true,
-            MinimalRecipientData::ReleaseNotes => false,
-            MinimalRecipientData::CallLink { .. } => false,
-        }
-    }
-
-    /// Returns true iff `self` is a contact with an ACI or E164, or the Self recipient.
-    ///
-    /// Note that this **excludes `ReleaseNotes`**, hence "sender *account*".
-    pub fn is_valid_sender_account(&self) -> bool {
-        match self {
-            MinimalRecipientData::Contact { e164, aci, pni: _ } => aci.is_some() || e164.is_some(),
-            MinimalRecipientData::Group { .. } => false,
-            MinimalRecipientData::DistributionList { .. } => false,
-            MinimalRecipientData::Self_ => true,
-            MinimalRecipientData::ReleaseNotes => false,
-            MinimalRecipientData::CallLink { .. } => false,
+            Self::Contact { .. } => true,
+            Self::Group { .. } => false,
+            Self::Self_ => true,
+            Self::ReleaseNotes => false,
         }
     }
 
     /// Returns true iff `self` is a contact with an ACI.
     pub fn is_contact_with_aci(&self) -> bool {
-        match self {
-            MinimalRecipientData::Contact {
-                e164: _,
-                aci,
-                pni: _,
-            } => aci.is_some(),
-            MinimalRecipientData::Group { .. } => false,
-            MinimalRecipientData::DistributionList { .. } => false,
-            MinimalRecipientData::Self_ => false,
-            MinimalRecipientData::ReleaseNotes => false,
-            MinimalRecipientData::CallLink { .. } => false,
+        match *self {
+            Self::Contact { has_aci } => has_aci,
+            Self::Group => false,
+            Self::ReleaseNotes => false,
+            Self::Self_ => false,
+        }
+    }
+}
+
+impl From<ChatRecipientKind> for DestinationKind {
+    fn from(value: ChatRecipientKind) -> Self {
+        match value {
+            ChatRecipientKind::Self_ => Self::Self_,
+            ChatRecipientKind::ReleaseNotes => Self::ReleaseNotes,
+            ChatRecipientKind::Group => Self::Group,
+            ChatRecipientKind::Contact { has_aci: _ } => Self::Contact,
+        }
+    }
+}
+
+impl TryFrom<&MinimalRecipientData> for ChatRecipientKind {
+    type Error = DestinationKind;
+
+    fn try_from(value: &MinimalRecipientData) -> Result<Self, Self::Error> {
+        Ok(match value {
+            MinimalRecipientData::Contact { aci, .. } => Self::Contact {
+                has_aci: aci.is_some(),
+            },
+            MinimalRecipientData::Group { .. } => Self::Group,
+            MinimalRecipientData::Self_ => Self::Self_,
+            MinimalRecipientData::ReleaseNotes => Self::ReleaseNotes,
+            kind @ (MinimalRecipientData::DistributionList { .. }
+            | MinimalRecipientData::CallLink { .. }) => return Err(*kind.as_ref()),
+        })
+    }
+}
+
+/// Minimal information about the author in a [`proto::ChatItem`].
+#[derive(Clone, Debug)]
+#[cfg_attr(test, derive(PartialEq))]
+pub enum ChatItemAuthorKind {
+    Self_,
+    ReleaseNotes,
+    Contact { has_e164: bool, has_aci: bool },
+}
+
+impl ChatItemAuthorKind {
+    /// Returns true iff `self` is a contact with an ACI or E164, or the Self recipient.
+    ///
+    /// Note that this **excludes `ReleaseNotes`**, hence "sender *account*".
+    pub fn is_valid_sender_account(&self) -> bool {
+        match *self {
+            ChatItemAuthorKind::Contact { has_e164, has_aci } => has_e164 || has_aci,
+            ChatItemAuthorKind::Self_ => true,
+            ChatItemAuthorKind::ReleaseNotes => false,
+        }
+    }
+
+    /// Returns true iff `self` is a contact with an ACI.
+    pub fn is_contact_with_aci(&self) -> bool {
+        match *self {
+            ChatItemAuthorKind::Contact {
+                has_e164: _,
+                has_aci,
+            } => has_aci,
+            ChatItemAuthorKind::Self_ => false,
+            ChatItemAuthorKind::ReleaseNotes => false,
         }
     }
 }

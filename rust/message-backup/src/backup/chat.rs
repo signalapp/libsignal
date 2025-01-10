@@ -16,7 +16,9 @@ use crate::backup::chat::chat_style::{ChatStyle, ChatStyleError, CustomColorId};
 use crate::backup::file::{FilePointerError, MessageAttachmentError};
 use crate::backup::frame::RecipientId;
 use crate::backup::method::{Lookup, LookupPair, Method};
-use crate::backup::recipient::{DestinationKind, MinimalRecipientData};
+use crate::backup::recipient::{
+    ChatItemAuthorKind, ChatRecipientKind, DestinationKind, MinimalRecipientData,
+};
 use crate::backup::serialize::{SerializeOrder, UnorderedList};
 use crate::backup::sticker::MessageStickerError;
 use crate::backup::time::{
@@ -256,7 +258,7 @@ pub struct ChatData<M: Method + ReferencedTypes> {
     pub recipient: M::RecipientReference,
     // Stored inline to avoid a second lookup when we want to do checks against a chat's recipient.
     #[serde(skip)]
-    pub cached_recipient_info: MinimalRecipientData,
+    pub cached_recipient_info: ChatRecipientKind,
     // This list can get quite large (when using the Store method), to the point that reallocation
     // times start showing up in benchmarks of the `validator` CLI tool. However, experiments with a
     // custom "segmented list" type (roughly `Vec<Vec<ChatItemData>>`) showed that there wasn't too
@@ -288,7 +290,7 @@ pub struct ChatItemData<M: Method + ReferencedTypes> {
     pub author: M::RecipientReference,
     // Stored here to save a lookup.
     #[serde(skip)]
-    pub cached_author_kind: DestinationKind,
+    pub cached_author_kind: ChatItemAuthorKind,
     #[serde(bound(serialize = "ChatItemMessage<M>: serde::Serialize"))]
     pub message: ChatItemMessage<M>,
     // This could be Self: Serialize but that just confuses the compiler.
@@ -456,15 +458,8 @@ impl<
         let Some((recipient_data, recipient)) = context.lookup_pair(&recipient_id) else {
             return Err(ChatError::NoRecipient(recipient_id));
         };
-        let recipient = match recipient_data.as_ref() {
-            DestinationKind::Contact
-            | DestinationKind::Group
-            | DestinationKind::Self_
-            | DestinationKind::ReleaseNotes => Ok(recipient.clone()),
-            kind @ (DestinationKind::DistributionList | DestinationKind::CallLink) => {
-                Err(ChatError::InvalidRecipient(recipient_id, *kind))
-            }
-        }?;
+        let cached_recipient_info = ChatRecipientKind::try_from(recipient_data)
+            .map_err(|kind| ChatError::InvalidRecipient(recipient_id, kind))?;
 
         let pinned_order = pinnedOrder.map(PinOrder);
         if let Some(pinned_order) = pinned_order {
@@ -490,8 +485,8 @@ impl<
         let expiration_timer_version = expireTimerVersion;
 
         Ok(Self {
-            recipient,
-            cached_recipient_info: recipient_data.clone(),
+            recipient: recipient.clone(),
+            cached_recipient_info,
             expiration_timer,
             expiration_timer_version,
             mute_until,
@@ -537,7 +532,7 @@ impl<
         let Some((author_data, author)) = context.lookup_pair(&author_id) else {
             return Err(ChatItemError::AuthorNotFound(author_id));
         };
-        let author = match (author_data, &direction) {
+        let cached_author_kind = match (author_data, &direction) {
             // Even update messages in groups are still attributed to self (if not a specific
             // author)
             (
@@ -574,11 +569,20 @@ impl<
             )),
 
             (MinimalRecipientData::Self_, Direction::Outgoing(_))
-            | (MinimalRecipientData::Contact { .. }, Direction::Incoming { .. })
-            | (MinimalRecipientData::ReleaseNotes, Direction::Incoming { .. })
-            | (MinimalRecipientData::Self_, Direction::Directionless)
-            | (MinimalRecipientData::Contact { .. }, Direction::Directionless)
-            | (MinimalRecipientData::ReleaseNotes, Direction::Directionless) => Ok(author.clone()),
+            | (MinimalRecipientData::Self_, Direction::Directionless) => {
+                Ok(ChatItemAuthorKind::Self_)
+            }
+            (MinimalRecipientData::Contact { aci, e164, .. }, Direction::Incoming { .. })
+            | (MinimalRecipientData::Contact { aci, e164, .. }, Direction::Directionless) => {
+                Ok(ChatItemAuthorKind::Contact {
+                    has_aci: aci.is_some(),
+                    has_e164: e164.is_some(),
+                })
+            }
+            (MinimalRecipientData::ReleaseNotes, Direction::Incoming { .. })
+            | (MinimalRecipientData::ReleaseNotes, Direction::Directionless) => {
+                Ok(ChatItemAuthorKind::ReleaseNotes)
+            }
         }?;
 
         let message = item
@@ -595,7 +599,7 @@ impl<
         }?;
 
         if let ChatItemMessage::Update(update) = &message {
-            update.validate_author(author_data)?;
+            update.validate_author(&cached_author_kind)?;
         }
 
         let revisions: Vec<_> = likely_empty(revisions, |iter| {
@@ -719,8 +723,8 @@ impl<
         }
 
         Ok(Self {
-            author,
-            cached_author_kind: *author_data.as_ref(),
+            author: author.clone(),
+            cached_author_kind,
             message,
             revisions,
             direction,
@@ -738,40 +742,35 @@ impl<M: Method + ReferencedTypes> ChatItemData<M> {
     pub(crate) fn validate_chat_recipient(
         &self,
         recipient_ref: &M::RecipientReference,
-        recipient_data: &MinimalRecipientData,
+        recipient_data: &ChatRecipientKind,
     ) -> Result<(), ChatItemError> {
         match self.cached_author_kind {
-            DestinationKind::Contact => match recipient_data {
-                MinimalRecipientData::Contact { .. } => {
+            ChatItemAuthorKind::Contact { .. } => match recipient_data {
+                ChatRecipientKind::Contact { .. } => {
                     if !M::is_same_reference(&self.author, recipient_ref) {
                         return Err(ChatItemError::MessageFromContactInWrongIndividualChat);
                     }
                 }
-                MinimalRecipientData::Group { .. } => {
+                ChatRecipientKind::Group => {
                     // Okay (anyone could have been in a group at some point in the past)
                 }
-                MinimalRecipientData::Self_ => {
+                ChatRecipientKind::Self_ => {
                     return Err(ChatItemError::MessageFromContactInNoteToSelf);
                 }
-                MinimalRecipientData::ReleaseNotes => {
+                ChatRecipientKind::ReleaseNotes => {
                     return Err(ChatItemError::MessageFromContactInReleaseNotes);
                 }
-                MinimalRecipientData::DistributionList { .. }
-                | MinimalRecipientData::CallLink { .. } => panic!("can't be a chat recipient"),
             },
-            DestinationKind::Self_ => {
+            ChatItemAuthorKind::Self_ => {
                 // Okay (Self can send messages in every channel, at least update messages)
             }
-            DestinationKind::ReleaseNotes => {
-                if !matches!(recipient_data, MinimalRecipientData::ReleaseNotes) {
+            ChatItemAuthorKind::ReleaseNotes => {
+                if !matches!(recipient_data, ChatRecipientKind::ReleaseNotes) {
                     return Err(ChatItemError::ReleaseNoteMessageNotInReleaseNoteChat(
-                        *recipient_data.as_ref(),
+                        (*recipient_data).into(),
                     ));
                 }
             }
-            DestinationKind::Group
-            | DestinationKind::DistributionList
-            | DestinationKind::CallLink => panic!("can't be a chat item author"),
         }
 
         match &self.message {
@@ -793,7 +792,7 @@ impl<M: Method + ReferencedTypes> ChatItemData<M> {
             ChatItemMessage::PaymentNotification(_) => {
                 if !recipient_data.is_contact_with_aci() {
                     return Err(ChatItemError::PaymentNotificationNotInContactThread(
-                        *recipient_data.as_ref(),
+                        (*recipient_data).into(),
                     ));
                 }
             }
@@ -1059,10 +1058,11 @@ mod test {
             proto::Chat::test_data().try_into_with(&TestContext::default()),
             Ok(ChatData::<Store> {
                 recipient: TestContext::contact_recipient().clone(),
-                cached_recipient_info: AsRef::<MinimalRecipientData>::as_ref(
-                    &TestContext::contact_recipient()
-                )
-                .clone(),
+                cached_recipient_info: (AsRef::<MinimalRecipientData>::as_ref(
+                    TestContext::contact_recipient()
+                ))
+                .try_into()
+                .unwrap(),
                 items: Vec::default(),
                 expiration_timer: None,
                 expiration_timer_version: 0,
@@ -1112,7 +1112,10 @@ mod test {
             proto::ChatItem::test_data().try_into_with(&TestContext::default()),
             Ok(ChatItemData::<Store> {
                 author: TestContext::contact_recipient().clone(),
-                cached_author_kind: DestinationKind::Contact,
+                cached_author_kind: ChatItemAuthorKind::Contact {
+                    has_aci: true,
+                    has_e164: true,
+                },
                 message: ChatItemMessage::Standard(StandardMessage::from_proto_test_data()),
                 revisions: vec![],
                 direction: Direction::Incoming {
@@ -1490,6 +1493,6 @@ mod test {
         let item: ChatItemData<Store> =
             message.try_into_with(&context).expect("valid in isolation");
         let (minimal_data, full_data) = context.lookup_pair(&recipient_id).expect("present");
-        item.validate_chat_recipient(full_data, minimal_data)
+        item.validate_chat_recipient(full_data, &minimal_data.try_into().unwrap())
     }
 }

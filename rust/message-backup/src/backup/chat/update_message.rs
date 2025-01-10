@@ -2,14 +2,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use assert_matches::debug_assert_matches;
-
 use crate::backup::call::{GroupCall, IndividualCall};
 use crate::backup::chat::group::GroupChatUpdate;
 use crate::backup::chat::ChatItemError;
 use crate::backup::frame::RecipientId;
 use crate::backup::method::LookupPair;
-use crate::backup::recipient::{MinimalRecipientData, E164};
+use crate::backup::recipient::{ChatItemAuthorKind, ChatRecipientKind, MinimalRecipientData, E164};
 use crate::backup::time::{Duration, ReportUnusualTimestamp};
 use crate::backup::{TryFromWith, TryIntoWith as _};
 use crate::proto::backup as proto;
@@ -174,18 +172,7 @@ impl<C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusualTimestam
 impl<R> UpdateMessage<R> {
     // This could be folded into the initial creation of the message,
     // but then it wouldn't fit the TryFromWith signature (or would require a tuple).
-    pub(super) fn validate_author(
-        &self,
-        author: &MinimalRecipientData,
-    ) -> Result<(), ChatItemError> {
-        debug_assert_matches!(
-            author,
-            MinimalRecipientData::Contact { .. }
-                | MinimalRecipientData::Self_
-                | MinimalRecipientData::ReleaseNotes,
-            "update messages should always be attributed to an individual",
-        );
-
+    pub(super) fn validate_author(&self, author: &ChatItemAuthorKind) -> Result<(), ChatItemError> {
         match self {
             UpdateMessage::Simple(
                 update @ (SimpleChatUpdate::JoinedSignal
@@ -198,10 +185,11 @@ impl<R> UpdateMessage<R> {
                 //   very wrong)
                 // - An E164-based thread can get merged into Self if the user takes a phone number
                 //   that formerly belonged to a contact.
-                if !author.is_individual() {
-                    Err(ChatItemError::ChatUpdateNotFromAci(*update))
-                } else {
-                    Ok(())
+                match author {
+                    ChatItemAuthorKind::Contact { .. } | ChatItemAuthorKind::Self_ => Ok(()),
+                    ChatItemAuthorKind::ReleaseNotes => {
+                        Err(ChatItemError::ChatUpdateNotFromAci(*update))
+                    }
                 }
             }
             UpdateMessage::Simple(
@@ -234,14 +222,14 @@ impl<R> UpdateMessage<R> {
                 | SimpleChatUpdate::Unblocked
                 | SimpleChatUpdate::MessageRequestAccepted),
             ) => {
-                if !matches!(author, MinimalRecipientData::Self_) {
+                if !matches!(author, ChatItemAuthorKind::Self_) {
                     Err(ChatItemError::ChatUpdateNotFromSelf(*update))
                 } else {
                     Ok(())
                 }
             }
             UpdateMessage::Simple(SimpleChatUpdate::ReleaseChannelDonationRequest) => {
-                if !matches!(author, MinimalRecipientData::ReleaseNotes) {
+                if !matches!(author, ChatItemAuthorKind::ReleaseNotes) {
                     Err(ChatItemError::DonationRequestNotFromReleaseNotesRecipient)
                 } else {
                     Ok(())
@@ -306,17 +294,8 @@ impl<R> UpdateMessage<R> {
 
     pub(super) fn validate_chat_recipient(
         &self,
-        chat: &MinimalRecipientData,
+        chat: &ChatRecipientKind,
     ) -> Result<(), ChatItemError> {
-        debug_assert_matches!(
-            chat,
-            MinimalRecipientData::Contact { .. }
-                | MinimalRecipientData::Self_
-                | MinimalRecipientData::Group { .. }
-                | MinimalRecipientData::ReleaseNotes,
-            "only valid chat kinds",
-        );
-
         match self {
             UpdateMessage::Simple(
                 update @ (SimpleChatUpdate::JoinedSignal
@@ -351,30 +330,26 @@ impl<R> UpdateMessage<R> {
             | UpdateMessage::ProfileChange { .. }
             | UpdateMessage::LearnedProfileUpdate(_) => {
                 match chat {
-                    MinimalRecipientData::Contact { .. } | MinimalRecipientData::Group { .. } => {
-                        Ok(())
-                    }
-                    MinimalRecipientData::Self_ => {
+                    ChatRecipientKind::Contact { .. } | ChatRecipientKind::Group { .. } => Ok(()),
+                    ChatRecipientKind::Self_ => {
                         // Again, Self is allowed because of possible past thread merging.
                         // See above.
                         Ok(())
                     }
-                    MinimalRecipientData::ReleaseNotes => {
+                    ChatRecipientKind::ReleaseNotes => {
                         Err(ChatItemError::UnexpectedUpdateInReleaseNotes)
                     }
-                    MinimalRecipientData::DistributionList { .. }
-                    | MinimalRecipientData::CallLink { .. } => panic!("not a valid chat"),
                 }
             }
             UpdateMessage::Simple(SimpleChatUpdate::ReleaseChannelDonationRequest) => {
-                if !matches!(chat, MinimalRecipientData::ReleaseNotes) {
+                if !matches!(chat, ChatRecipientKind::ReleaseNotes) {
                     Err(ChatItemError::DonationRequestNotInReleaseNotesChat)
                 } else {
                     Ok(())
                 }
             }
             UpdateMessage::GroupChange { .. } => {
-                if !matches!(chat, MinimalRecipientData::Group { .. }) {
+                if !matches!(chat, ChatRecipientKind::Group { .. }) {
                     Err(ChatItemError::GroupUpdateNotInGroupThread)
                 } else {
                     Ok(())
@@ -409,7 +384,7 @@ impl<R> UpdateMessage<R> {
                 }
             }
             UpdateMessage::GroupCall(_) => {
-                if !matches!(chat, MinimalRecipientData::Group { .. }) {
+                if !matches!(chat, ChatRecipientKind::Group { .. }) {
                     Err(ChatItemError::GroupCallNotInGroupThread)
                 } else {
                     Ok(())
