@@ -211,6 +211,24 @@ pub enum ChatItemError {
     MessageFromContactInReleaseNotes,
     /// message from release notes recipient found in {0:?} chat instead
     ReleaseNoteMessageNotInReleaseNoteChat(DestinationKind),
+    /// chat update not in contact thread: {0:?}
+    ChatUpdateNotInContactThread(SimpleChatUpdate),
+    /// unexpected update message in Release Notes
+    UnexpectedUpdateInReleaseNotes,
+    /// donation request outside of Release Notes chat
+    DonationRequestNotInReleaseNotesChat,
+    /// group update not in group thread
+    GroupUpdateNotInGroupThread,
+    /// expiration timer change not in contact thread
+    ExpirationTimerChangeNotInContactThread,
+    /// thread merge not in contact thread
+    ThreadMergeNotInContactThread,
+    /// session switchover not in contact thread
+    SessionSwitchoverNotInContactThread,
+    /// individual call not in contact thread
+    IndividualCallNotInContactThread,
+    /// group call not in group thread
+    GroupCallNotInGroupThread,
     /// invalid e164
     InvalidE164,
     /// {0}
@@ -752,6 +770,10 @@ impl<M: Method + ReferencedTypes> ChatItemData<M> {
             DestinationKind::Group
             | DestinationKind::DistributionList
             | DestinationKind::CallLink => panic!("can't be a chat item author"),
+        }
+
+        if let ChatItemMessage::Update(update) = &self.message {
+            update.validate_chat_recipient(recipient_data)?;
         }
 
         Ok(())

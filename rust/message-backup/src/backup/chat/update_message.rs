@@ -303,6 +303,120 @@ impl<R> UpdateMessage<R> {
             }
         }
     }
+
+    pub(super) fn validate_chat_recipient(
+        &self,
+        chat: &MinimalRecipientData,
+    ) -> Result<(), ChatItemError> {
+        debug_assert_matches!(
+            chat,
+            MinimalRecipientData::Contact { .. }
+                | MinimalRecipientData::Self_
+                | MinimalRecipientData::Group { .. }
+                | MinimalRecipientData::ReleaseNotes,
+            "only valid chat kinds",
+        );
+
+        match self {
+            UpdateMessage::Simple(
+                update @ (SimpleChatUpdate::JoinedSignal
+                | SimpleChatUpdate::EndSession
+                | SimpleChatUpdate::ChatSessionRefresh
+                | SimpleChatUpdate::PaymentActivationRequest
+                | SimpleChatUpdate::PaymentsActivated),
+            ) => {
+                // We allow Self for these, for a few reasons:
+                // - "Note to Self" can have ChatSessionRefresh (and IdentityUpdate, if things go
+                //   very wrong)
+                // - An E164-based thread can get merged into Self if the user takes a phone number
+                //   that formerly belonged to a contact.
+                if !chat.is_individual() {
+                    Err(ChatItemError::ChatUpdateNotInContactThread(*update))
+                } else {
+                    Ok(())
+                }
+            }
+            UpdateMessage::Simple(
+                SimpleChatUpdate::IdentityDefault
+                | SimpleChatUpdate::IdentityVerified
+                | SimpleChatUpdate::IdentityUpdate
+                | SimpleChatUpdate::ChangeNumber
+                | SimpleChatUpdate::BadDecrypt
+                | SimpleChatUpdate::UnsupportedProtocolMessage
+                | SimpleChatUpdate::ReportedSpam
+                | SimpleChatUpdate::Blocked
+                | SimpleChatUpdate::Unblocked
+                | SimpleChatUpdate::MessageRequestAccepted,
+            )
+            | UpdateMessage::ProfileChange { .. }
+            | UpdateMessage::LearnedProfileUpdate(_) => {
+                match chat {
+                    MinimalRecipientData::Contact { .. } | MinimalRecipientData::Group { .. } => {
+                        Ok(())
+                    }
+                    MinimalRecipientData::Self_ => {
+                        // Again, Self is allowed because of possible past thread merging.
+                        // See above.
+                        Ok(())
+                    }
+                    MinimalRecipientData::ReleaseNotes => {
+                        Err(ChatItemError::UnexpectedUpdateInReleaseNotes)
+                    }
+                    MinimalRecipientData::DistributionList { .. }
+                    | MinimalRecipientData::CallLink { .. } => panic!("not a valid chat"),
+                }
+            }
+            UpdateMessage::Simple(SimpleChatUpdate::ReleaseChannelDonationRequest) => {
+                if !matches!(chat, MinimalRecipientData::ReleaseNotes) {
+                    Err(ChatItemError::DonationRequestNotInReleaseNotesChat)
+                } else {
+                    Ok(())
+                }
+            }
+            UpdateMessage::GroupChange { .. } => {
+                if !matches!(chat, MinimalRecipientData::Group { .. }) {
+                    Err(ChatItemError::GroupUpdateNotInGroupThread)
+                } else {
+                    Ok(())
+                }
+            }
+            UpdateMessage::ExpirationTimerChange { .. } => {
+                if !chat.is_individual() {
+                    Err(ChatItemError::ExpirationTimerChangeNotInContactThread)
+                } else {
+                    Ok(())
+                }
+            }
+            UpdateMessage::ThreadMerge { .. } => {
+                if !chat.is_contact_with_aci() {
+                    Err(ChatItemError::ThreadMergeNotInContactThread)
+                } else {
+                    Ok(())
+                }
+            }
+            UpdateMessage::SessionSwitchover { .. } => {
+                if !chat.is_contact_with_aci() {
+                    Err(ChatItemError::SessionSwitchoverNotInContactThread)
+                } else {
+                    Ok(())
+                }
+            }
+            UpdateMessage::IndividualCall(_) => {
+                if !chat.is_individual() {
+                    Err(ChatItemError::IndividualCallNotInContactThread)
+                } else {
+                    Ok(())
+                }
+            }
+            UpdateMessage::GroupCall(_) => {
+                if !matches!(chat, MinimalRecipientData::Group { .. }) {
+                    Err(ChatItemError::GroupCallNotInGroupThread)
+                } else {
+                    Ok(())
+                }
+            }
+        }
+    }
 }
 
 #[cfg(test)]
