@@ -8,6 +8,7 @@
 #![allow(clippy::manual_non_exhaustive)]
 
 use std::fmt::Debug;
+use std::num::NonZeroU32;
 
 use itertools::Itertools as _;
 use libsignal_core::{Aci, Pni, ServiceId};
@@ -156,7 +157,7 @@ pub enum GroupChatUpdate {
     GroupUnknownInviteeUpdate {
         #[serde(serialize_with = "serialize::optional_service_id_as_string")]
         inviterAci: Option<Aci>,
-        inviteeCount: NoValidation<u32>,
+        inviteeCount: NonZeroU32,
     },
     GroupInvitationAcceptedUpdate {
         #[serde(serialize_with = "serialize::optional_service_id_as_string")]
@@ -235,15 +236,15 @@ pub enum GroupChatUpdate {
     GroupV2MigrationUpdate,
     GroupV2MigrationSelfInvitedUpdate,
     GroupV2MigrationInvitedMembersUpdate {
-        invitedMembersCount: NoValidation<u32>,
+        invitedMembersCount: NonZeroU32,
     },
     GroupV2MigrationDroppedMembersUpdate {
-        droppedMembersCount: NoValidation<u32>,
+        droppedMembersCount: NonZeroU32,
     },
     GroupSequenceOfRequestsAndCancelsUpdate {
         #[serde(serialize_with = "serialize::service_id_as_string")]
         requestorAci: Aci,
-        count: NoValidation<u32>,
+        count: NonZeroU32,
     },
     GroupExpirationTimerUpdate {
         #[serde(serialize_with = "serialize::optional_service_id_as_string")]
@@ -298,6 +299,8 @@ pub enum GroupUpdateFieldError {
     AccessLevelInvalid(&'static str),
     /// inviter ACI is present but hadOpenInvitation is false
     InviterMismatch,
+    /// count must be nonzero
+    CountMustBeNonzero,
 }
 
 #[derive(Debug, displaydoc::Display)]
@@ -342,6 +345,12 @@ impl ValidateFrom<Vec<u8>> for ServiceId {
     }
 }
 
+impl ValidateFrom<u32> for NonZeroU32 {
+    fn validate_from(value: u32) -> Result<Self, GroupUpdateFieldError> {
+        NonZeroU32::try_from(value).map_err(|_| GroupUpdateFieldError::CountMustBeNonzero)
+    }
+}
+
 impl<T> ValidateFrom<T> for NoValidation<T> {
     fn validate_from(value: T) -> Result<Self, GroupUpdateFieldError> {
         Ok(Self(value))
@@ -370,6 +379,9 @@ impl ValidateFrom<Vec<proto::group_invitation_revoked_update::Invitee>> for Unor
     fn validate_from(
         invitees: Vec<proto::group_invitation_revoked_update::Invitee>,
     ) -> Result<Self, GroupUpdateFieldError> {
+        if invitees.is_empty() {
+            return Err(GroupUpdateFieldError::CountMustBeNonzero);
+        }
         invitees
             .into_iter()
             .map(TryInto::try_into)
@@ -492,6 +504,7 @@ impl<T: Debug> Debug for NoValidation<T> {
 
 #[cfg(test)]
 mod test {
+    use nonzero_ext::nonzero;
     use test_case::test_case;
 
     use super::*;
@@ -547,6 +560,8 @@ mod test {
     use GroupUpdateFieldError::*;
 
     #[test_case(123, Ok(NoValidation(123)); "no validation")]
+    #[test_case(123, Ok(nonzero!(123u32)); "non-zero")]
+    #[test_case(0, Err::<NonZeroU32, _>(CountMustBeNonzero))]
     #[test_case(vec![], Err::<Aci, _>(InvalidAci))]
     #[test_case(ACI.service_id_binary(), Ok(ACI))]
     #[test_case(Some(ACI.service_id_binary()), Ok(Some(ACI)))]
@@ -557,7 +572,7 @@ mod test {
     #[test_case(ACI.service_id_binary(), Ok(ServiceId::Aci(ACI)))]
     #[test_case(vec![], Err::<ServiceId, _>(InvalidServiceId))]
     #[test_case(valid_invitees(), Ok(validated_invitees()))]
-    #[test_case(vec![], Ok(UnorderedList::from(vec![])))]
+    #[test_case(vec![], Err::<UnorderedList<Invitee>, _>(CountMustBeNonzero))]
     #[test_case(invitee_invalid_aci(), Err::<UnorderedList<Invitee>,_>(InvalidInvitee(InviteeError::InviteeAci)))]
     #[test_case(
         invitee_pni_service_id_binary(),
