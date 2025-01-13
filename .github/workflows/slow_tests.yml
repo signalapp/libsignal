@@ -88,7 +88,7 @@ jobs:
         retention-days: 2
 
   java-reproducibility:
-    name: Verify Reproducible Build
+    name: Verify Java Reproducible Build
     runs-on: ubuntu-latest
     needs: [java-docker, java-docker-secondary]
     if: ${{ always() && needs.java-docker.result == 'success' && needs.java-docker-secondary.result == 'success' }}
@@ -223,6 +223,50 @@ jobs:
       working-directory: node
       env:
         PREBUILDS_ONLY: 1
+    - name: Upload prebuilds
+      uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4.3.1
+      with:
+        name: node-prebuilds
+        path: node/prebuilds
+        retention-days: 2
+
+  node-docker-secondary:
+    name: Node (Secondary Ubuntu via Docker)
+    runs-on: ubuntu-latest
+    needs: [check-up-to-date]
+    if: ${{ always() && (needs.check-up-to-date.outputs.has-changes || github.event_name != 'schedule') }}
+    timeout-minutes: 45
+
+    steps:
+    - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      with:
+        submodules: recursive
+    - run: node/docker-prebuildify.sh
+    - name: Upload prebuilds
+      uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4.3.1
+      with:
+        name: node-prebuilds-secondary
+        path: node/prebuilds
+        retention-days: 2
+
+  node-reproducibility:
+    name: Verify Desktop Linux Reproducible Build
+    runs-on: ubuntu-latest
+    needs: [node-docker, node-docker-secondary]
+    if: ${{ always() && needs.node-docker.result == 'success' && needs.node-docker-secondary.result == 'success' }}
+
+    steps:
+    - name: Download prebuilds
+      uses: actions/download-artifact@c850b930e6ba138125429b7e5c93fc707a7f8427 # v4.1.4
+      with:
+        name: node-prebuilds
+        path: a/prebuilds/
+    - name: Download prebuilds (secondary)
+      uses: actions/download-artifact@c850b930e6ba138125429b7e5c93fc707a7f8427 # v4.1.4
+      with:
+        name: node-prebuilds-secondary
+        path: b/prebuilds/
+    - run: diff -qr a/ b/
 
   node-windows-arm64:
     name: Node (Windows ARM64 cross-compile)
@@ -352,7 +396,7 @@ jobs:
   report_failures:
     name: Report Failures
     runs-on: ubuntu-latest
-    needs: [java-docker, java-reproducibility, android-emulator-tests, aarch64, node-docker, node-windows-arm64, swift-cocoapod, rust-stable-testing]
+    needs: [java-docker, java-reproducibility, android-emulator-tests, aarch64, node-docker, node-reproducibility, node-windows-arm64, swift-cocoapod, rust-stable-testing]
     if: ${{ failure() && github.event_name == 'schedule' }}
 
     permissions:

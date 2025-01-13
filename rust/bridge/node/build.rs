@@ -11,7 +11,8 @@ fn main() {
         // x86_64-unknown-linux-gnu, which causes issues with the `linkme` crate.
         // We could disable rust-lld instead but then we'd lose out on the faster
         // link times, so pass additional flags to the linker instead. See
-        // https://github.com/dtolnay/linkme/issues/94
-        println!("cargo:rustc-link-arg=-znostart-stop-gc");
+        // https://github.com/dtolnay/linkme/issues/94 and
+        // https://blog.rust-lang.org/2024/05/17/enabling-rust-lld-on-linux.html#possible-drawbacks
+        println!("cargo:rustc-link-arg=-Wl,-z,nostart-stop-gc");
     }
 }

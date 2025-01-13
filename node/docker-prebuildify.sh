@@ -18,7 +18,8 @@ if [[ -t 0 ]]; then
     IS_TTY="yes"
 fi
 
-docker build --build-arg "UID=${UID:-501}" --build-arg "GID=${GID:-501}" --build-arg "NODE_VERSION=$(cat .nvmrc)" -t ${DOCKER_IMAGE} -f node/Dockerfile .
+# Build specifically using linux/amd64 to make it reproducible.
+docker build --platform=linux/amd64 --build-arg "UID=${UID:-501}" --build-arg "GID=${GID:-501}" --build-arg "NODE_VERSION=$(cat .nvmrc)" -t ${DOCKER_IMAGE} -f node/Dockerfile .
 
 # We build both architectures in the same run action to save on intermediates
 # (including downloading dependencies)
