@@ -15,7 +15,7 @@ use crate::certs::RootCertificates;
 use crate::dns::DnsResolver;
 use crate::errors::TransportConnectError;
 use crate::host::Host;
-use crate::route::ConnectionProxyConfig;
+use crate::route::{ConnectionProxyConfig, TcpProxy, TlsProxy};
 use crate::tcp_ssl::{connect_tcp, connect_tls, ssl_config};
 use crate::{
     Alpn, RouteType, ServiceConnectionInfo, StreamAndInfo, TransportConnectionParams,
@@ -151,15 +151,17 @@ impl TlsProxyConnector {
             use_tls_for_proxy,
         } = self;
         match use_tls_for_proxy {
-            ShouldUseTls::Yes => ConnectionProxyConfig::TlsProxy {
+            ShouldUseTls::Yes => TlsProxy {
                 proxy_host: proxy_host.clone(),
                 proxy_port: *proxy_port,
                 proxy_certs: proxy_certs.clone(),
-            },
-            ShouldUseTls::No => ConnectionProxyConfig::TcpProxy {
+            }
+            .into(),
+            ShouldUseTls::No => TcpProxy {
                 proxy_host: proxy_host.clone(),
                 proxy_port: *proxy_port,
-            },
+            }
+            .into(),
         }
     }
 }

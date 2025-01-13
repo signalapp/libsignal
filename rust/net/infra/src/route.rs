@@ -466,6 +466,7 @@ mod test {
     use crate::host::Host;
     use crate::route::resolve::testutils::FakeResolver;
     use crate::route::testutils::{FakeContext, FakeRoute, NoDelay};
+    use crate::route::{SocksProxy, TlsProxy};
     use crate::tcp_ssl::proxy::socks;
     use crate::Alpn;
 
@@ -609,11 +610,12 @@ mod test {
         };
 
         let provider = ConnectionProxyRouteProvider {
-            proxy: ConnectionProxyConfig::TlsProxy {
+            proxy: TlsProxy {
                 proxy_host: Host::Domain("tls-proxy".into()),
                 proxy_port: PROXY_PORT,
                 proxy_certs: PROXY_CERTS,
-            },
+            }
+            .into(),
             inner: direct_provider,
         };
 
@@ -662,12 +664,13 @@ mod test {
         };
 
         let provider = ConnectionProxyRouteProvider {
-            proxy: ConnectionProxyConfig::Socks {
+            proxy: SocksProxy {
                 proxy_host: Host::Domain("socks-proxy".into()),
                 proxy_port: PROXY_PORT,
                 protocol: SOCKS_PROTOCOL,
                 resolve_hostname_locally: false,
-            },
+            }
+            .into(),
             inner: direct_provider,
         };
 
