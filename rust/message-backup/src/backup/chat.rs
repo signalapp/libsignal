@@ -149,6 +149,8 @@ pub enum ChatItemError {
     NoDirection,
     /// directionless ChatItem wasn't an update message
     DirectionlessMessage,
+    /// update message wasn't directionless
+    UpdateMessageShouldBeDirectionless,
     /// outgoing message {0}
     Outgoing(#[from] OutgoingSendError),
     /// attachment: {0}
@@ -551,6 +553,9 @@ impl<
         match (&direction, &message) {
             (Direction::Directionless, ChatItemMessage::Update(_)) => Ok(()),
             (Direction::Directionless, _) => Err(ChatItemError::DirectionlessMessage),
+            (_, ChatItemMessage::Update(_)) => {
+                Err(ChatItemError::UpdateMessageShouldBeDirectionless)
+            }
             (_, _) => Ok(()),
         }?;
 
@@ -1090,6 +1095,15 @@ mod test {
             ..Default::default()
         });
     } => Ok(()); "directionless_update")]
+    #[test_case(|x| {
+        x.set_updateMessage(proto::ChatUpdateMessage {
+            update: Some(proto::chat_update_message::Update::SimpleUpdate(proto::SimpleChatUpdate {
+                type_: proto::simple_chat_update::Type::JOINED_SIGNAL.into(),
+                ..Default::default()
+            })),
+            ..Default::default()
+        });
+    } => Err(ChatItemError::UpdateMessageShouldBeDirectionless); "update_with_direction")]
     #[test_case(|x| x.revisions.push(proto::ChatItem::test_data()) => Ok(()); "revision")]
     #[test_case(|x| {
         x.revisions.push(proto::ChatItem {
