@@ -9,6 +9,7 @@ use std::future::Future;
 use std::io::ErrorKind as IoErrorKind;
 use std::panic::AssertUnwindSafe;
 use std::pin::Pin;
+use std::sync::Arc;
 
 use futures_util::{pin_mut, Sink, Stream, StreamExt as _};
 use http::uri::PathAndQuery;
@@ -147,6 +148,7 @@ impl Chat {
         tokio_runtime: tokio::runtime::Handle,
         transport: T,
         config: Config,
+        log_tag: Arc<str>,
         listener: EventListener,
     ) -> Self
     where
@@ -173,6 +175,7 @@ impl Chat {
                 },
             ),
             initial_request_id,
+            log_tag,
             listener,
             tokio_runtime,
         )
@@ -274,6 +277,7 @@ impl Chat {
     fn new_inner(
         into_inner_connection: impl IntoInnerConnection,
         initial_request_id: u64,
+        log_tag: Arc<str>,
         listener: EventListener,
         tokio_runtime: tokio::runtime::Handle,
     ) -> Self {
@@ -282,6 +286,7 @@ impl Chat {
 
         let requests_in_flight = InFlightRequests {
             outstanding_reqs: Default::default(),
+            log_tag: log_tag.clone(),
         };
 
         let mut request_id = initial_request_id;
@@ -294,15 +299,21 @@ impl Chat {
 
             (message, meta)
         });
-        let response_rx = UnboundedReceiverStream::new(response_rx).map(|response| {
+        let log_tag_for_responses = log_tag.clone();
+        let response_rx = UnboundedReceiverStream::new(response_rx).map(move |response| {
             let OutgoingResponse { id, status } = response;
-            log::debug!("sending response for incoming request {}", id);
+            log::debug!(
+                "[{log_tag_for_responses}] sending response for incoming request {}",
+                id
+            );
             let message = response_for_status(id, status);
             (message, OutgoingMeta::ResponseToIncoming)
         });
 
-        let inner_connection = into_inner_connection
-            .into_inner_connection(tokio_stream::StreamExt::merge(request_rx, response_rx));
+        let inner_connection = into_inner_connection.into_inner_connection(
+            tokio_stream::StreamExt::merge(request_rx, response_rx),
+            log_tag.clone(),
+        );
 
         let connection = ConnectionImpl {
             inner: inner_connection,
@@ -311,6 +322,7 @@ impl Chat {
 
         let task = tokio_runtime.spawn(spawned_task_body(
             connection,
+            log_tag,
             listener,
             response_tx.downgrade(),
         ));
@@ -364,6 +376,7 @@ enum TaskState {
 
 struct InFlightRequests {
     outstanding_reqs: HashMap<RequestId, oneshot::Sender<Result<Response, TaskSendError>>>,
+    log_tag: Arc<str>,
 }
 
 /// Why the task finished unexpectedly.
@@ -576,6 +589,7 @@ impl ListenerState {
 /// [`Outcome::Finished`].
 async fn spawned_task_body<I: InnerConnection>(
     connection: ConnectionImpl<I>,
+    log_tag: Arc<str>,
     listener: EventListener,
     weak_response_tx: mpsc::WeakUnboundedSender<OutgoingResponse>,
 ) -> Result<FinishReason, TaskErrorState> {
@@ -586,7 +600,7 @@ async fn spawned_task_body<I: InnerConnection>(
     // In case the task panics, make sure the callback at least knows about the
     // disconnection.
     let mut listener_state = scopeguard::guard_on_unwind(listener_state, |mut listener_state| {
-        log::error!("chat handler task exited abnormally");
+        log::error!("[{log_tag}] chat handler task exited abnormally");
         listener_state.send_event_blocking(ListenerEvent::Finished(Err(FinishError::Unknown)));
     });
     let result = loop {
@@ -598,7 +612,7 @@ async fn spawned_task_body<I: InnerConnection>(
             Outcome::Finished(result) => break result,
         };
 
-        log::debug!("received incoming request from server: {id}");
+        log::debug!("[{log_tag}] received incoming request from server: {id}");
 
         let event = ListenerEvent::ReceivedMessage(
             incoming_request,
@@ -610,8 +624,8 @@ async fn spawned_task_body<I: InnerConnection>(
         listener_state.send_event(&tokio_rt, event).await;
     };
     match &result {
-        Ok(reason) => log::info!("chat handler task finishing after {reason}"),
-        Err(err) => log::info!("chat handler task is stopping due to {err}"),
+        Ok(reason) => log::info!("[{log_tag}] chat handler task finishing after {reason}"),
+        Err(err) => log::info!("[{log_tag}] chat handler task is stopping due to {err}"),
     }
     let task_result = result.as_ref().map_err(Into::into).copied();
 
@@ -746,7 +760,10 @@ impl InFlightRequests {
         id: RequestId,
         response_sender: oneshot::Sender<Result<Response, TaskSendError>>,
     ) {
-        let Self { outstanding_reqs } = self;
+        let Self {
+            outstanding_reqs,
+            log_tag: _,
+        } = self;
         let prev = outstanding_reqs.insert(id, response_sender);
         assert!(
             prev.is_none(),
@@ -756,11 +773,17 @@ impl InFlightRequests {
     }
 
     fn finish_send(&mut self, id: RequestId, result: Result<Response, TaskSendError>) {
-        let Self { outstanding_reqs } = self;
+        let Self {
+            outstanding_reqs,
+            log_tag,
+        } = self;
         if let Some(sender) = outstanding_reqs.remove(&id) {
             let _ignore_send_error = sender.send(result);
         } else {
-            log::error!("tried to send response to nonexistent request {}", id.0);
+            log::error!(
+                "[{log_tag}] tried to send response to nonexistent request {}",
+                id.0
+            );
         }
     }
 }
@@ -774,7 +797,11 @@ impl InFlightRequests {
 /// [`InnerConnection`].
 trait IntoInnerConnection {
     /// Turn `self` and an outgoing stream into an `InnerConnection` impl.
-    fn into_inner_connection<R>(self, outgoing_stream: R) -> impl InnerConnection + Send + 'static
+    fn into_inner_connection<R>(
+        self,
+        outgoing_stream: R,
+        log_tag: Arc<str>,
+    ) -> impl InnerConnection + Send + 'static
     where
         R: Stream<Item = (TextOrBinary, OutgoingMeta)> + Send + 'static;
 }
@@ -786,12 +813,16 @@ where
         + Send
         + 'static,
 {
-    fn into_inner_connection<R>(self, outgoing_stream: R) -> impl InnerConnection + Send + 'static
+    fn into_inner_connection<R>(
+        self,
+        outgoing_stream: R,
+        log_tag: Arc<str>,
+    ) -> impl InnerConnection + Send + 'static
     where
         R: Stream<Item = (TextOrBinary, OutgoingMeta)> + Send + 'static,
     {
         let (stream, config) = self;
-        crate::infra::ws2::Connection::new(stream, outgoing_stream, config)
+        crate::infra::ws2::Connection::new(stream, outgoing_stream, config, log_tag)
     }
 }
 
@@ -841,6 +872,7 @@ impl<I: InnerConnection> ConnectionImpl<I> {
         requests_in_flight: &mut InFlightRequests,
         event: Outcome<MessageEvent<OutgoingMeta>, Result<FinishReason, NextEventError>>,
     ) -> Outcome<Option<IncomingEvent>, Result<FinishReason, TaskExitError>> {
+        let log_tag = &requests_in_flight.log_tag;
         match event {
             Outcome::Finished(Ok(finish)) => return Outcome::Finished(Ok(finish)),
             Outcome::Finished(Err(err)) => {
@@ -875,7 +907,7 @@ impl<I: InnerConnection> ConnectionImpl<I> {
                         Err(TaskExitError::SendProtocol(protocol_error.clone()))
                     }
                 };
-                log::warn!("shutting down after send failed: {send_error}");
+                log::warn!("[{log_tag}] shutting down after send failed: {send_error}");
                 match meta {
                     OutgoingMeta::SentRequest(_request_id, response_sender) => {
                         // The server isn't going to get our response to an
@@ -907,11 +939,11 @@ impl<I: InnerConnection> ConnectionImpl<I> {
                         // there's nothing to do here. We could be strict here
                         // and close the connection, or ignore the message and
                         // keep going. We choose the latter.
-                        log::warn!("received invalid message: {e}");
+                        log::warn!("[{log_tag}] received invalid message: {e}");
                     }
                     Err(ChatProtocolError::InvalidResponse(id)) => {
                         log::warn!(
-                            "received invalid response for outgoing request {id}",
+                            "[{log_tag}] received invalid response for outgoing request {id}",
                             id = id.0
                         );
                         requests_in_flight.finish_send(id, Err(TaskSendError::InvalidResponse));
@@ -920,7 +952,10 @@ impl<I: InnerConnection> ConnectionImpl<I> {
                         // incoming requests.
                     }
                     Ok(ChatMessage::Response(id, response)) => {
-                        log::debug!("received response for outgoing request {id}", id = id.0);
+                        log::debug!(
+                            "[{log_tag}] received response for outgoing request {id}",
+                            id = id.0
+                        );
                         requests_in_flight.finish_send(id, Ok(response))
                     }
                     Ok(ChatMessage::Request(id, request_proto)) => {
@@ -1219,6 +1254,7 @@ mod test {
                     incoming_events: incoming_events_rx,
                 },
                 initial_request_id,
+                "test".into(),
                 listener,
                 tokio::runtime::Handle::current(),
             );
@@ -1304,6 +1340,7 @@ mod test {
             fn into_inner_connection<R>(
                 self,
                 outgoing_stream: R,
+                _log_tag: Arc<str>,
             ) -> impl InnerConnection + Send + 'static
             where
                 R: Stream<Item = (TextOrBinary, OutgoingMeta)> + Send + 'static,

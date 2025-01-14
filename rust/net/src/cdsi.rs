@@ -337,7 +337,7 @@ impl CdsiConnection {
     {
         log::info!("connecting to CDSI endpoint");
         let (connection, _info) = endpoint
-            .connect(auth, transport_connector)
+            .connect(auth, transport_connector, "cdsi".into())
             .inspect_err(|e| {
                 log::warn!("CDSI connection failed: {e}");
             })
@@ -363,6 +363,7 @@ impl CdsiConnection {
             resolver,
             confirmation_header_name,
             ws_config,
+            "cdsi".into(),
             move |attestation_message| Cdsi::new_handshake(params, attestation_message),
         )
         .await?;
@@ -736,10 +737,15 @@ mod test {
         ));
 
         let cdsi_connection = CdsiConnection(
-            AttestedConnection::connect(client, FAKE_WS_CONFIG, |fake_attestation| {
-                assert_eq!(fake_attestation, FAKE_ATTESTATION);
-                attest::sgx_session::testutil::handshake_from_tests_data()
-            })
+            AttestedConnection::connect(
+                client,
+                FAKE_WS_CONFIG,
+                "test".into(),
+                |fake_attestation| {
+                    assert_eq!(fake_attestation, FAKE_ATTESTATION);
+                    attest::sgx_session::testutil::handshake_from_tests_data()
+                },
+            )
             .await
             .expect("handshake failed"),
         );
@@ -790,10 +796,15 @@ mod test {
         ));
 
         let cdsi_connection = CdsiConnection(
-            AttestedConnection::connect(client, FAKE_WS_CONFIG, |fake_attestation| {
-                assert_eq!(fake_attestation, FAKE_ATTESTATION);
-                attest::sgx_session::testutil::handshake_from_tests_data()
-            })
+            AttestedConnection::connect(
+                client,
+                FAKE_WS_CONFIG,
+                "test".into(),
+                |fake_attestation| {
+                    assert_eq!(fake_attestation, FAKE_ATTESTATION);
+                    attest::sgx_session::testutil::handshake_from_tests_data()
+                },
+            )
             .await
             .expect("handshake failed"),
         );
@@ -836,10 +847,15 @@ mod test {
         ));
 
         let cdsi_connection = CdsiConnection(
-            AttestedConnection::connect(client, FAKE_WS_CONFIG, |fake_attestation| {
-                assert_eq!(fake_attestation, FAKE_ATTESTATION);
-                attest::sgx_session::testutil::handshake_from_tests_data()
-            })
+            AttestedConnection::connect(
+                client,
+                FAKE_WS_CONFIG,
+                "test".into(),
+                |fake_attestation| {
+                    assert_eq!(fake_attestation, FAKE_ATTESTATION);
+                    attest::sgx_session::testutil::handshake_from_tests_data()
+                },
+            )
             .await
             .expect("handshake failed"),
         );
@@ -912,10 +928,15 @@ mod test {
         ));
 
         let cdsi_connection = CdsiConnection(
-            AttestedConnection::connect(client, FAKE_WS_CONFIG, |fake_attestation| {
-                assert_eq!(fake_attestation, FAKE_ATTESTATION);
-                attest::sgx_session::testutil::handshake_from_tests_data()
-            })
+            AttestedConnection::connect(
+                client,
+                FAKE_WS_CONFIG,
+                "test".into(),
+                |fake_attestation| {
+                    assert_eq!(fake_attestation, FAKE_ATTESTATION);
+                    attest::sgx_session::testutil::handshake_from_tests_data()
+                },
+            )
             .await
             .expect("handshake failed"),
         );

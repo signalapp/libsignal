@@ -6,6 +6,7 @@
 use std::fmt::Display;
 use std::io::Error as IoError;
 use std::pin::Pin;
+use std::sync::Arc;
 
 use futures_util::{Sink, SinkExt as _, Stream, StreamExt as _};
 use pin_project::pin_project;
@@ -100,6 +101,9 @@ pub struct Connection<S, R> {
 
     /// Configuration for this websocket client's behavior.
     config: Config,
+
+    /// A tag to include in log lines, to disambiguate multiple websockets.
+    log_tag: Arc<str>,
 }
 
 /// Fatal error that causes a connection to be closed.
@@ -201,7 +205,7 @@ impl<S, R, SendMeta> Connection<S, R>
 where
     R: Stream<Item = (TextOrBinary, SendMeta)>,
 {
-    pub fn new(stream: S, outgoing_rx: R, config: Config) -> Self {
+    pub fn new(stream: S, outgoing_rx: R, config: Config, log_tag: Arc<str>) -> Self {
         Self {
             stream,
             outgoing_rx,
@@ -211,6 +215,7 @@ where
             last_heard_from_server: None,
             last_sent_to_server: None,
             last_sent_ping_to_server: None,
+            log_tag,
         }
     }
 
@@ -254,6 +259,7 @@ where
             last_sent_to_server,
             last_sent_ping_to_server,
             last_heard_from_server,
+            log_tag,
         } = self.project();
 
         // For the first call this function, assume we just heard from & sent to
@@ -386,7 +392,9 @@ where
                     }
                     Message::Close(close) => {
                         let code = close.as_ref().map(|c| c.code);
-                        log::info!("received a close frame from the server with code {code:?}",);
+                        log::info!(
+                            "[{log_tag}] received a close frame from the server with code {code:?}",
+                        );
                         match close {
                             None
                             | Some(CloseFrame {
@@ -651,6 +659,7 @@ mod test {
                 remote_idle_ping_timeout: FOREVER,
                 remote_idle_disconnect_timeout: FOREVER,
             },
+            "test".into(),
         );
         pin_mut!(connection);
 
@@ -686,6 +695,7 @@ mod test {
                 remote_idle_ping_timeout: FOREVER,
                 remote_idle_disconnect_timeout: FOREVER,
             },
+            "test".into(),
         );
         pin_mut!(connection);
 
@@ -735,6 +745,7 @@ mod test {
                 remote_idle_ping_timeout: FOREVER,
                 remote_idle_disconnect_timeout: FOREVER,
             },
+            "test".into(),
         );
         pin_mut!(connection);
 
@@ -802,6 +813,7 @@ mod test {
                 remote_idle_ping_timeout: FOREVER,
                 remote_idle_disconnect_timeout: FOREVER,
             },
+            "test".into(),
         );
         pin_mut!(connection);
 
@@ -824,6 +836,7 @@ mod test {
                 remote_idle_ping_timeout: FOREVER,
                 remote_idle_disconnect_timeout: FOREVER,
             },
+            "test".into(),
         );
         pin_mut!(connection);
 
@@ -856,6 +869,7 @@ mod test {
                 remote_idle_ping_timeout: FOREVER,
                 remote_idle_disconnect_timeout: FOREVER,
             },
+            "test".into(),
         );
         pin_mut!(connection);
 
@@ -887,6 +901,7 @@ mod test {
                 remote_idle_ping_timeout: FOREVER,
                 remote_idle_disconnect_timeout: FOREVER,
             },
+            "test".into(),
         );
         pin_mut!(connection);
 
@@ -929,6 +944,7 @@ mod test {
                 remote_idle_disconnect_timeout: REMOTE_DISCONNECT_TIMEOUT,
                 local_idle_timeout: FOREVER,
             },
+            "test".into(),
         );
         pin_mut!(connection);
 
@@ -964,6 +980,7 @@ mod test {
                 remote_idle_ping_timeout: REMOTE_IDLE_TIMEOUT,
                 remote_idle_disconnect_timeout: REMOTE_DISCONNECT_TIMEOUT,
             },
+            "test".into(),
         );
         pin_mut!(connection);
 

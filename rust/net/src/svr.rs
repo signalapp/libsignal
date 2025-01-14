@@ -46,7 +46,11 @@ where
         T: TransportConnector,
     {
         connection
-            .connect(auth, transport_connector)
+            .connect(
+                auth,
+                transport_connector,
+                format!("svr3:{}", std::any::type_name::<E>()).into(),
+            )
             .await
             .map(|(connection, info)| Self {
                 inner: connection,

@@ -7,6 +7,7 @@ use std::fmt::Display;
 use std::future::Future;
 use std::net::IpAddr;
 use std::num::NonZeroU16;
+use std::sync::Arc;
 
 use bytes::Bytes;
 use futures_util::TryFutureExt as _;
@@ -57,6 +58,7 @@ impl Connector<HttpsProxyRoute<IpAddr>, ()> for super::StatelessProxied {
         &self,
         (): (),
         route: HttpsProxyRoute<IpAddr>,
+        log_tag: Arc<str>,
     ) -> impl Future<Output = Result<Self::Connection, Self::Error>> + Send {
         let HttpsProxyRoute { fragment, inner } = route;
         async move {
@@ -64,8 +66,16 @@ impl Connector<HttpsProxyRoute<IpAddr>, ()> for super::StatelessProxied {
             let tcp_connector = StatelessTcpConnector::default();
             let inner = inner
                 .map_either(
-                    |tls| tls_connector.connect(tls).map_ok(Either::Left),
-                    |tcp| tcp_connector.connect(tcp).map_ok(Either::Right),
+                    |tls| {
+                        tls_connector
+                            .connect(tls, log_tag.clone())
+                            .map_ok(Either::Left)
+                    },
+                    |tcp| {
+                        tcp_connector
+                            .connect(tcp, log_tag.clone())
+                            .map_ok(Either::Right)
+                    },
                 )
                 .await?;
             let info = inner.transport_info();
@@ -93,7 +103,7 @@ impl Connector<HttpsProxyRoute<IpAddr>, ()> for super::StatelessProxied {
                     info,
                 }),
                 Err(e) => {
-                    log::info!("failed to connect via HTTP proxy: {e}");
+                    log::info!("[{log_tag}] failed to connect via HTTP proxy: {e}");
                     Err(TransportConnectError::ProxyProtocol)
                 }
             }
@@ -411,7 +421,7 @@ mod test {
         };
 
         let mut client_stream = super::super::StatelessProxied
-            .connect(route)
+            .connect(route, "test".into())
             .await
             .expect("can connect");
 
@@ -491,7 +501,9 @@ mod test {
             inner: Either::Right(route_to_proxy),
         };
 
-        let connect_result = super::super::StatelessProxied.connect(route).await;
+        let connect_result = super::super::StatelessProxied
+            .connect(route, "test".into())
+            .await;
 
         assert_matches!(connect_result, Err(TransportConnectError::ProxyProtocol));
     }

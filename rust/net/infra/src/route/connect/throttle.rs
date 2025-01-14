@@ -61,6 +61,7 @@ where
         &self,
         over: Inner,
         route: R,
+        log_tag: Arc<str>,
     ) -> impl Future<Output = Result<Self::Connection, Self::Error>> + Send {
         let Self { inner, permits } = self;
         async move {
@@ -68,7 +69,7 @@ where
                 .acquire_owned()
                 .await
                 .expect("semaphore not closed");
-            let connection = inner.connect_over(over, route).await?;
+            let connection = inner.connect_over(over, route, log_tag).await?;
             Ok(ThrottledConnection(connection, permit))
         }
     }

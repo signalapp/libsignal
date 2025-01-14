@@ -535,6 +535,7 @@ pub struct PendingChatConnection {
     connection: ChatWebSocketConnection,
     ws_config: ws2::Config,
     connection_info: ConnectionInfo,
+    log_tag: Arc<str>,
 }
 
 pub struct AuthenticatedChatHeaders {
@@ -553,6 +554,7 @@ impl ChatConnection {
         user_agent: &UserAgent,
         ws_config: self::ws2::Config,
         auth: Option<AuthenticatedChatHeaders>,
+        log_tag: &str,
     ) -> Result<PendingChatConnection, ChatServiceError> {
         let headers = auth
             .into_iter()
@@ -573,6 +575,7 @@ impl ChatConnection {
             fragment: ws_fragment.clone(),
         });
 
+        let log_tag: Arc<str> = log_tag.into();
         let result = ConnectState::connect_ws(
             connect,
             ws_routes,
@@ -585,8 +588,9 @@ impl ChatConnection {
             ThrottlingConnector::new(crate::infra::ws::Stateless, 1),
             resolver,
             confirmation_header_name.as_ref(),
+            log_tag.clone(),
             |error| {
-                log::debug!("connection attempt failed with {error}");
+                log::debug!("[{log_tag}] connection attempt failed with {error}");
                 match error.classify() {
                     ErrorClass::Intermittent => ControlFlow::Continue(()),
                     ErrorClass::Fatal | ErrorClass::RetryAt(_) => {
@@ -608,6 +612,7 @@ impl ChatConnection {
                     connection: ws_connection,
                     connection_info,
                     ws_config,
+                    log_tag,
                 }
             }),
             Err(e) => {
@@ -634,9 +639,16 @@ impl ChatConnection {
             connection,
             ws_config,
             connection_info,
+            log_tag,
         } = pending;
         Self {
-            inner: crate::chat::ws2::Chat::new(tokio_runtime, connection, ws_config, listener),
+            inner: crate::chat::ws2::Chat::new(
+                tokio_runtime,
+                connection,
+                ws_config,
+                log_tag,
+                listener,
+            ),
             connection_info,
         }
     }
@@ -668,7 +680,10 @@ impl PendingChatConnection {
 
     pub async fn disconnect(&mut self) {
         if let Err(error) = self.connection.close().await {
-            log::error!("pending chat connection disconnect failed with {error}");
+            log::error!(
+                "[{}] pending chat connection disconnect failed with {error}",
+                &self.log_tag
+            );
         }
     }
 }
@@ -754,6 +769,7 @@ pub mod test_support {
             &user_agent,
             ws_config,
             None,
+            "test",
         )
         .await?;
 

@@ -4,6 +4,7 @@
 //
 
 use std::borrow::Cow;
+use std::sync::Arc;
 
 use attest::client_connection::ClientConnection;
 use tokio::sync::{mpsc, oneshot};
@@ -71,9 +72,10 @@ impl AttestedConnection {
     pub async fn connect<S: AsyncDuplexStream + 'static>(
         ws: WebSocketStream<S>,
         ws_config: crate::ws2::Config,
+        log_tag: Arc<str>,
         new_handshake: impl FnOnce(&[u8]) -> attest::enclave::Result<attest::enclave::Handshake>,
     ) -> Result<Self, AttestedConnectionError> {
-        let mut ws_client = WsClient::new(ws, ws_config);
+        let mut ws_client = WsClient::new(ws, ws_config, log_tag);
 
         let client_connection = authenticate(&mut ws_client, new_handshake).await?;
 
@@ -163,11 +165,18 @@ impl WsClient {
     fn new<S: AsyncDuplexStream + 'static>(
         ws: WebSocketStream<S>,
         ws_config: crate::ws2::Config,
+        log_tag: Arc<str>,
     ) -> Self {
         let (outgoing_tx, outgoing_rx) = mpsc::channel(WS_MESSAGE_BUFFER);
         let (incoming_tx, incoming_rx) = mpsc::channel(WS_MESSAGE_BUFFER);
 
-        let _task = tokio::spawn(spawned_task_body(ws, outgoing_rx, incoming_tx, ws_config));
+        let _task = tokio::spawn(spawned_task_body(
+            ws,
+            outgoing_rx,
+            incoming_tx,
+            ws_config,
+            log_tag,
+        ));
 
         Self {
             outgoing_tx,
@@ -240,9 +249,14 @@ async fn spawned_task_body(
     outgoing_rx: mpsc::Receiver<(TextOrBinary, oneshot::Sender<Result<(), SendError>>)>,
     incoming_tx: mpsc::Sender<Result<NextOrClose<TextOrBinary>, ReceiveError>>,
     config: crate::ws2::Config,
+    log_tag: Arc<str>,
 ) -> Result<(), TaskExitError> {
-    let mut connection =
-        crate::ws2::Connection::new(stream, ReceiverStream::new(outgoing_rx), config);
+    let mut connection = crate::ws2::Connection::new(
+        stream,
+        ReceiverStream::new(outgoing_rx),
+        config,
+        log_tag.clone(),
+    );
     let mut connection = std::pin::pin!(connection);
 
     loop {
@@ -250,7 +264,9 @@ async fn spawned_task_body(
             Outcome::Continue(event) => match event {
                 MessageEvent::SentMessage(response_sender) => {
                     if response_sender.send(Ok(())).is_err() {
-                        log::debug!("failed to signal send because the sender was dropped");
+                        log::debug!(
+                            "[{log_tag}] failed to signal send because the sender was dropped"
+                        );
                     }
                 }
                 MessageEvent::SendFailed(response_sender, tungstenite_send_error) => {
@@ -259,7 +275,7 @@ async fn spawned_task_body(
                         .send(Err(tungstenite_send_error.into()))
                         .is_err()
                     {
-                        log::debug!("failed to signal send error because the sender was dropped");
+                        log::debug!("[{log_tag}] failed to signal send error because the sender was dropped");
                     }
                     return Err(task_err);
                 }
@@ -270,7 +286,7 @@ async fn spawned_task_body(
                         .is_err()
                     {
                         log::debug!(
-                            "failed to forward received message because the receiver was dropped"
+                            "[{log_tag}] failed to forward received message because the receiver was dropped"
                         );
                         // The receiver has been dropped, so we should exit.
                         return Ok(());
@@ -284,7 +300,9 @@ async fn spawned_task_body(
                     .await
                     .is_err()
                 {
-                    log::debug!("failed to send close event because the receiver was dropped")
+                    log::debug!(
+                        "[{log_tag}] failed to send close event because the receiver was dropped"
+                    )
                 }
                 return Ok(());
             }
@@ -303,7 +321,7 @@ async fn spawned_task_body(
                             .await
                             .is_err()
                         {
-                            log::debug!("failed to send abnormal close event because the receiver was dropped");
+                            log::debug!("[{log_tag}] failed to send abnormal close event because the receiver was dropped");
                         }
                         return Err(TaskExitError::AbnormalServerClose { code });
                     }
@@ -329,7 +347,9 @@ async fn spawned_task_body(
                     ),
                 };
                 if incoming_tx.send(Err(tx_error)).await.is_err() {
-                    log::debug!("failed to signal send error because the receiver was dropped")
+                    log::debug!(
+                        "[{log_tag}] failed to signal send error because the receiver was dropped"
+                    )
                 }
                 return Err(exit_error);
             }
@@ -650,13 +670,17 @@ mod test {
             attest::sgx_session::testutil::private_key(),
         ));
 
-        let mut connection =
-            AttestedConnection::connect(client, FAKE_WS_CONFIG, |fake_attestation| {
+        let mut connection = AttestedConnection::connect(
+            client,
+            FAKE_WS_CONFIG,
+            "test".into(),
+            |fake_attestation| {
                 assert_eq!(fake_attestation, FAKE_ATTESTATION);
                 attest::sgx_session::testutil::handshake_from_tests_data()
-            })
-            .await
-            .unwrap();
+            },
+        )
+        .await
+        .unwrap();
 
         connection.send(Vec::from(ECHO_BYTES)).await.unwrap();
         let response: Vec<u8> = connection.receive().await.unwrap().unwrap_next();
@@ -681,7 +705,8 @@ mod test {
         }
 
         assert_matches!(
-            AttestedConnection::connect(client, FAKE_WS_CONFIG, fail_to_handshake).await,
+            AttestedConnection::connect(client, FAKE_WS_CONFIG, "test".into(), fail_to_handshake)
+                .await,
             Err(_)
         );
     }
@@ -695,13 +720,17 @@ mod test {
             attest::sgx_session::testutil::private_key(),
         ));
 
-        let mut connection =
-            AttestedConnection::connect(client, FAKE_WS_CONFIG, |fake_attestation| {
+        let mut connection = AttestedConnection::connect(
+            client,
+            FAKE_WS_CONFIG,
+            "test".into(),
+            |fake_attestation| {
                 assert_eq!(fake_attestation, FAKE_ATTESTATION);
                 attest::sgx_session::testutil::handshake_from_tests_data()
-            })
-            .await
-            .unwrap();
+            },
+        )
+        .await
+        .unwrap();
 
         connection.send(Vec::from(ECHO_BYTES)).await.unwrap();
         // Decoding a vec as a 32-bit float shouldn't work.

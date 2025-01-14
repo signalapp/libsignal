@@ -5,6 +5,7 @@
 
 use std::default::Default;
 use std::ops::ControlFlow;
+use std::sync::Arc;
 
 use http::HeaderName;
 use itertools::Itertools as _;
@@ -78,6 +79,7 @@ where
         ws_connector: WC,
         resolver: &DnsResolver,
         confirmation_header_name: Option<&HeaderName>,
+        log_tag: Arc<str>,
         mut on_error: impl FnMut(WebSocketServiceConnectError) -> ControlFlow<E>,
     ) -> Result<(WC::Connection, RouteInfo), ConnectError<E>>
     where
@@ -94,7 +96,10 @@ where
             .routes(&connect_read.route_provider_context)
             .collect_vec();
 
-        log::info!("starting connection attempt with {} routes", routes.len());
+        log::info!(
+            "[{log_tag}] starting connection attempt with {} routes",
+            routes.len()
+        );
 
         let route_provider = routes.into_iter().map(ResolveWithSavedDescription);
         let connector = DescribedRouteConnector(ComposedConnector::new(
@@ -110,6 +115,7 @@ where
             route_provider,
             resolver,
             connector,
+            log_tag.clone(),
             |error| {
                 let error = WebSocketServiceConnectError::from_websocket_error(
                     error,
@@ -128,10 +134,10 @@ where
 
         match &result {
             Ok((_connection, route)) => log::info!(
-                "connection through {route} succeeded after {:.3?}",
+                "[{log_tag}] connection through {route} succeeded after {:.3?}",
                 start.elapsed()
             ),
-            Err(e) => log::info!("connection failed with {e}"),
+            Err(e) => log::info!("[{log_tag}] connection failed with {e}"),
         }
 
         this.write().await.attempts_record.apply_outcome_updates(
@@ -164,6 +170,7 @@ where
         resolver: &DnsResolver,
         confirmation_header_name: Option<HeaderName>,
         ws_config: libsignal_net_infra::ws2::Config,
+        log_tag: Arc<str>,
         new_handshake: impl FnOnce(&[u8]) -> Result<attest::enclave::Handshake, attest::enclave::Error>,
     ) -> Result<(AttestedConnection, RouteInfo), crate::enclave::Error>
     where
@@ -180,6 +187,7 @@ where
             crate::infra::ws::Stateless,
             resolver,
             confirmation_header_name.as_ref(),
+            log_tag.clone(),
             |error| match error.classify() {
                 ErrorClass::Intermittent => ControlFlow::Continue(()),
                 ErrorClass::RetryAt(_) | ErrorClass::Fatal => {
@@ -195,7 +203,7 @@ where
             ConnectError::FatalConnect(e) => e,
         })?;
 
-        let connection = AttestedConnection::connect(ws, ws_config, new_handshake).await?;
+        let connection = AttestedConnection::connect(ws, ws_config, log_tag, new_handshake).await?;
         Ok((connection, route_info))
     }
 }
@@ -292,7 +300,7 @@ mod test {
             },
         };
 
-        let ws_connector = ConnectFn(|(), route| {
+        let ws_connector = ConnectFn(|(), route, _log_tag| {
             let (ws, http) = &route;
             std::future::ready(
                 if (ws, http) == (&failing_route.fragment, &failing_route.inner.fragment) {
@@ -308,7 +316,7 @@ mod test {
         )]));
 
         let fake_transport_connector =
-            ConnectFn(move |(), _| std::future::ready(Ok::<_, WebSocketConnectError>(())));
+            ConnectFn(move |(), _, _| std::future::ready(Ok::<_, WebSocketConnectError>(())));
 
         let state = ConnectState {
             route_resolver: RouteResolver::default(),
@@ -324,6 +332,7 @@ mod test {
             ws_connector,
             &resolver,
             None,
+            "test".into(),
             |e| {
                 let e = assert_matches!(e, WebSocketServiceConnectError::Connect(e, _) => e);
                 assert_matches!(

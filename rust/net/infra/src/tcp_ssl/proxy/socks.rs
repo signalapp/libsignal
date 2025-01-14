@@ -79,11 +79,14 @@ impl TransportConnector for SocksConnector {
         log::info!("connecting to {which_protocol:?} proxy over TCP");
         log::debug!("connecting to {which_protocol:?} proxy at {proxy_host}:{proxy_port} over TCP");
 
+        let log_tag: Arc<str> = "SocksConnector".into();
+
         let StreamAndInfo(tcp_stream, remote_address) = crate::tcp_ssl::connect_tcp(
             dns_resolver,
             RouteType::SocksProxy,
             proxy_host.as_deref(),
             *proxy_port,
+            log_tag.clone(),
         )
         .await?;
         let is_ipv6 = tcp_stream
@@ -135,7 +138,8 @@ impl TransportConnector for SocksConnector {
             })?;
 
         log::debug!("connecting TLS through proxy");
-        let stream = crate::tcp_ssl::connect_tls(socks_stream, connection_params, alpn).await?;
+        let stream =
+            crate::tcp_ssl::connect_tls(socks_stream, connection_params, alpn, log_tag).await?;
 
         log::info!("connection through SOCKS proxy established successfully");
         Ok(StreamAndInfo(
@@ -158,6 +162,7 @@ impl Connector<SocksRoute<IpAddr>, ()> for super::StatelessProxied {
         &self,
         (): (),
         route: SocksRoute<IpAddr>,
+        log_tag: Arc<str>,
     ) -> impl Future<Output = Result<Self::Connection, Self::Error>> + Send {
         let SocksRoute {
             protocol,
@@ -167,18 +172,18 @@ impl Connector<SocksRoute<IpAddr>, ()> for super::StatelessProxied {
         } = route;
 
         async move {
-            log::info!("establishing connection to host over SOCKS proxy");
+            log::info!("[{log_tag}] establishing connection to host over SOCKS proxy");
             log::debug!(
-                "establishing connection to {:?} over SOCKS proxy",
+                "[{log_tag}] establishing connection to {:?} over SOCKS proxy",
                 target_addr
             );
 
-            log::info!("connecting to {protocol:?} proxy over TCP");
+            log::info!("[{log_tag}] connecting to {protocol:?} proxy over TCP");
             let TcpRoute {
                 address: proxy_host,
                 port: proxy_port,
             } = &proxy;
-            log::debug!("connecting to {protocol:?} proxy at {proxy_host}:{proxy_port} over TCP");
+            log::debug!("[{log_tag}] connecting to {protocol:?} proxy at {proxy_host}:{proxy_port} over TCP");
 
             let target = match &target_addr {
                 crate::route::ProxyTarget::ResolvedLocally(ip) => {
@@ -189,9 +194,11 @@ impl Connector<SocksRoute<IpAddr>, ()> for super::StatelessProxied {
                 }
             };
 
-            let stream = super::super::StatelessDirect.connect(proxy).await?;
-            log::info!("performing proxy handshake");
-            log::debug!("performing proxy handshake with {target:?}");
+            let stream = super::super::StatelessDirect
+                .connect(proxy, log_tag.clone())
+                .await?;
+            log::info!("[{log_tag}] performing proxy handshake");
+            log::debug!("[{log_tag}] performing proxy handshake with {target:?}");
             protocol
                 .connect_to_proxy(stream, target)
                 .await

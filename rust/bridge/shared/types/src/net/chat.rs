@@ -445,6 +445,7 @@ async fn establish_chat_connection(
             initial_request_id: 0,
         },
         auth,
+        auth_type,
     )
     .inspect(|r| match r {
         Ok(_) => log::info!("successfully connected {auth_type} chat"),

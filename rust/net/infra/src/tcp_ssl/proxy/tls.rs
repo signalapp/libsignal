@@ -55,11 +55,13 @@ impl TransportConnector for TlsProxyConnector {
         connection_params: &TransportConnectionParams,
         alpn: Alpn,
     ) -> Result<StreamAndInfo<Self::Stream>, TransportConnectError> {
+        let log_tag: Arc<str> = "TlsProxyConnector".into();
         let StreamAndInfo(tcp_stream, remote_address) = connect_tcp(
             &self.dns_resolver,
             RouteType::TlsProxy,
             self.proxy_host.as_deref(),
             self.proxy_port,
+            log_tag.clone(),
         )
         .await?;
 
@@ -92,7 +94,7 @@ impl TransportConnector for TlsProxyConnector {
             }
         };
 
-        let tls_stream = connect_tls(inner_stream, connection_params, alpn).await?;
+        let tls_stream = connect_tls(inner_stream, connection_params, alpn, log_tag).await?;
 
         Ok(StreamAndInfo(
             tls_stream,

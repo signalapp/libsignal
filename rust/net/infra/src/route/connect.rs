@@ -7,6 +7,7 @@ use std::fmt::Debug;
 use std::future::Future;
 use std::marker::PhantomData;
 use std::net::IpAddr;
+use std::sync::Arc;
 
 use derive_where::derive_where;
 use futures_util::TryFutureExt;
@@ -38,6 +39,7 @@ pub trait Connector<R, Inner> {
         &self,
         over: Inner,
         route: R,
+        log_tag: Arc<str>,
     ) -> impl Future<Output = Result<Self::Connection, Self::Error>> + Send;
 }
 
@@ -46,8 +48,9 @@ pub trait ConnectorExt<R>: Connector<R, ()> {
     fn connect(
         &self,
         route: R,
+        log_tag: Arc<str>,
     ) -> impl Future<Output = Result<Self::Connection, Self::Error>> + Send {
-        self.connect_over((), route)
+        self.connect_over((), route, log_tag)
     }
 }
 impl<R, C: Connector<R, ()>> ConnectorExt<R> for C {}
@@ -139,6 +142,7 @@ where
         &self,
         over: Inner,
         route: WebSocketRoute<HttpsTlsRoute<T>>,
+        log_tag: Arc<str>,
     ) -> impl Future<Output = Result<Self::Connection, Self::Error>> + Send {
         let Self {
             outer,
@@ -155,11 +159,11 @@ where
         } = route;
         async move {
             let inner = inner
-                .connect_over(over, tls_route)
+                .connect_over(over, tls_route, log_tag.clone())
                 .await
                 .map_err(Into::into)?;
             outer
-                .connect_over(inner, (ws_fragment, http_fragment))
+                .connect_over(inner, (ws_fragment, http_fragment), log_tag)
                 .await
                 .map_err(Into::into)
         }
@@ -184,6 +188,7 @@ where
         &self,
         over: Inner,
         route: TlsRoute<T>,
+        log_tag: Arc<str>,
     ) -> impl Future<Output = Result<Self::Connection, Self::Error>> + Send {
         let Self {
             outer,
@@ -196,11 +201,11 @@ where
         } = route;
         async move {
             let inner = inner
-                .connect_over(over, tcp_route)
+                .connect_over(over, tcp_route, log_tag.clone())
                 .await
                 .map_err(Into::into)?;
             outer
-                .connect_over(inner, tls_fragment)
+                .connect_over(inner, tls_fragment, log_tag)
                 .await
                 .map_err(Into::into)
         }
@@ -228,17 +233,18 @@ where
         &self,
         over: Inner,
         route: DirectOrProxyRoute<DR, PR>,
+        log_tag: Arc<str>,
     ) -> impl Future<Output = Result<Self::Connection, Self::Error>> + Send {
         match route {
             DirectOrProxyRoute::Direct(d) => Either::Left(
                 self.direct
-                    .connect_over(over, d)
+                    .connect_over(over, d, log_tag)
                     .map_ok(Either::Left)
                     .map_err(Into::into),
             ),
             DirectOrProxyRoute::Proxy(p) => Either::Right(
                 self.proxy
-                    .connect_over(over, p)
+                    .connect_over(over, p, log_tag)
                     .map_ok(Either::Right)
                     .map_err(Into::into),
             ),
@@ -255,8 +261,9 @@ impl<C: Connector<R, Inner>, R, Inner> Connector<R, Inner> for &C {
         &self,
         over: Inner,
         route: R,
+        log_tag: Arc<str>,
     ) -> impl Future<Output = Result<Self::Connection, Self::Error>> + Send {
-        (*self).connect_over(over, route)
+        (*self).connect_over(over, route, log_tag)
     }
 }
 
@@ -278,7 +285,7 @@ pub mod testutils {
 
     impl<R, Inner, Fut, F, C, E> Connector<R, Inner> for ConnectFn<F>
     where
-        F: Fn(Inner, R) -> Fut,
+        F: Fn(Inner, R, Arc<str>) -> Fut,
         Fut: Future<Output = Result<C, E>> + Send,
     {
         type Connection = C;
@@ -289,8 +296,9 @@ pub mod testutils {
             &self,
             over: Inner,
             route: R,
+            log_tag: Arc<str>,
         ) -> impl Future<Output = Result<Self::Connection, Self::Error>> + Send {
-            self.0(over, route)
+            self.0(over, route, log_tag)
         }
     }
 }

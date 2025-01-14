@@ -113,9 +113,10 @@ impl<R: Clone + Send, Inner, C: Connector<R, Inner>, D: Send>
         &self,
         over: Inner,
         route: WithLoggableDescription<R, D>,
+        log_tag: Arc<str>,
     ) -> impl Future<Output = Result<Self::Connection, Self::Error>> + Send {
         self.0
-            .connect_over(over, route.route)
+            .connect_over(over, route.route, log_tag)
             .map_ok(|c| (c, route.description))
     }
 }

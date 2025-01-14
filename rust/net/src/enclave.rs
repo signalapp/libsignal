@@ -4,6 +4,7 @@
 //
 
 use std::marker::PhantomData;
+use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 
 use attest::svr2::RaftConfig;
@@ -311,6 +312,7 @@ impl<E: EnclaveKind + NewHandshake, C: ConnectionManager> EnclaveEndpointConnect
         &self,
         auth: Auth,
         transport_connector: T,
+        log_tag: Arc<str>,
     ) -> Result<(AttestedConnection, ServiceConnectionInfo), Error>
     where
         C: ConnectionManager,
@@ -323,6 +325,7 @@ impl<E: EnclaveKind + NewHandshake, C: ConnectionManager> EnclaveEndpointConnect
             &self.endpoint_connection,
             auth,
             transport_connector,
+            log_tag,
             &move |attestation_message| E::new_handshake(&self.params, attestation_message),
         )
         .await
@@ -360,6 +363,7 @@ async fn connect_attested<C: ConnectionManager, T: TransportConnector>(
     endpoint_connection: &EndpointConnection<C>,
     auth: Auth,
     transport_connector: T,
+    log_tag: Arc<str>,
     do_handshake: &(dyn Sync + Fn(&[u8]) -> enclave::Result<enclave::Handshake>),
 ) -> Result<(AttestedConnection, ServiceConnectionInfo), Error> {
     let connector = WebSocketStreamConnector::new(
@@ -387,6 +391,7 @@ async fn connect_attested<C: ConnectionManager, T: TransportConnector>(
     let attested = AttestedConnection::connect(
         websocket,
         endpoint_connection.config.ws2_config(),
+        log_tag,
         do_handshake,
     )
     .await?;
@@ -582,6 +587,7 @@ mod test {
                     username: "fdsa".to_string(),
                 },
                 AlwaysFailingConnector,
+                "test".into(),
             )
             .await
             .map(|(connection, _info)| connection)

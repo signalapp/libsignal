@@ -196,6 +196,7 @@ pub async fn connect<R, UR, C, FatalError>(
     ordered_routes: impl Iterator<Item = UR>,
     resolver: &impl Resolver,
     connector: C,
+    log_tag: Arc<str>,
     mut on_error: impl FnMut(C::Error) -> ControlFlow<FatalError>,
 ) -> (
     Result<C::Connection, ConnectError<FatalError>>,
@@ -272,7 +273,7 @@ where
             Event::NextRouteAvailable(Some(route)) => {
                 connects_in_progress.push(async {
                     let started = Instant::now();
-                    let result = connector.connect(route.clone()).await;
+                    let result = connector.connect(route.clone(), log_tag.clone()).await;
                     (route, result, started)
                 });
                 poll_schedule_for_next = false;
@@ -755,6 +756,7 @@ mod test {
             &self,
             (): (),
             route: R,
+            _log_tag: Arc<str>,
         ) -> impl Future<Output = Result<Self::Connection, Self::Error>> + Send {
             let (sender, receiver) = oneshot::channel();
             self.outgoing
@@ -788,6 +790,7 @@ mod test {
                     .map(|(h, _addr)| FakeRoute(UnresolvedHost::from(Arc::from(*h)))),
                 &resolver,
                 connector,
+                "test".into(),
                 |_err: FakeConnectError| ControlFlow::<Infallible>::Continue(()),
             )
             .await
@@ -887,6 +890,7 @@ mod test {
                 .map(|(h, _addr)| FakeRoute(UnresolvedHost::from(Arc::from(*h)))),
             &resolver,
             connector,
+            "test".into(),
             |_err: FakeConnectError| ControlFlow::<Infallible>::Continue(()),
         )
         .await;

@@ -4,6 +4,7 @@
 //
 
 use std::net::IpAddr;
+use std::sync::Arc;
 
 use futures_util::TryFutureExt;
 use tokio::net::TcpStream;
@@ -33,6 +34,7 @@ impl Connector<ConnectionProxyRoute<IpAddr>, ()> for StatelessProxied {
         &self,
         (): (),
         route: ConnectionProxyRoute<IpAddr>,
+        log_tag: Arc<str>,
     ) -> Result<Self::Connection, Self::Error> {
         match route {
             ConnectionProxyRoute::Tls { proxy } => {
@@ -43,21 +45,25 @@ impl Connector<ConnectionProxyRoute<IpAddr>, ()> for StatelessProxied {
 
                 let connector = super::StatelessDirect;
 
-                let tcp = connector.connect(inner).await?;
+                let tcp = connector.connect(inner, log_tag.clone()).await?;
                 connector
-                    .connect_over(tcp, tls_fragment)
+                    .connect_over(tcp, tls_fragment, log_tag)
                     .await
                     .map(Into::into)
             }
             ConnectionProxyRoute::Tcp { proxy } => {
                 let connector = super::StatelessDirect;
-                match connector.connect(proxy).await {
+                match connector.connect(proxy, log_tag).await {
                     Ok(connection) => Ok(connection.into()),
                     Err(_io_error) => Err(TransportConnectError::TcpConnectionFailed),
                 }
             }
-            ConnectionProxyRoute::Socks(route) => self.connect(route).map_ok(Into::into).await,
-            ConnectionProxyRoute::Https(route) => self.connect(route).map_ok(Into::into).await,
+            ConnectionProxyRoute::Socks(route) => {
+                self.connect(route, log_tag).map_ok(Into::into).await
+            }
+            ConnectionProxyRoute::Https(route) => {
+                self.connect(route, log_tag).map_ok(Into::into).await
+            }
         }
     }
 }

@@ -116,15 +116,17 @@ impl TransportConnector for DirectConnector {
         connection_params: &TransportConnectionParams,
         alpn: Alpn,
     ) -> Result<StreamAndInfo<Self::Stream>, TransportConnectError> {
+        let log_tag: Arc<str> = "DirectConnector".into();
         let StreamAndInfo(tcp_stream, remote_address) = connect_tcp(
             &self.dns_resolver,
             RouteType::Direct,
             connection_params.tcp_host.as_deref(),
             connection_params.port,
+            log_tag.clone(),
         )
         .await?;
 
-        let ssl_stream = connect_tls(tcp_stream, connection_params, alpn).await?;
+        let ssl_stream = connect_tls(tcp_stream, connection_params, alpn, log_tag).await?;
 
         Ok(StreamAndInfo(ssl_stream, remote_address))
     }
@@ -150,6 +152,7 @@ impl Connector<TcpRoute<IpAddr>, ()> for StatelessDirect {
         &self,
         (): (),
         route: TcpRoute<IpAddr>,
+        _log_tag: Arc<str>,
     ) -> impl Future<Output = Result<Self::Connection, Self::Error>> {
         let TcpRoute { address, port } = route;
 
@@ -170,6 +173,7 @@ where
         &self,
         inner: Inner,
         fragment: TlsRouteFragment,
+        _log_tag: Arc<str>,
     ) -> impl Future<Output = Result<Self::Connection, Self::Error>> + Send {
         let TlsRouteFragment {
             root_certs,
@@ -239,6 +243,7 @@ async fn connect_tls<S: AsyncDuplexStream>(
     transport: S,
     connection_params: &TransportConnectionParams,
     alpn: Alpn,
+    log_tag: Arc<str>,
 ) -> Result<SslStream<S>, TransportConnectError> {
     let route = TlsRouteFragment {
         root_certs: connection_params.certs.clone(),
@@ -246,7 +251,9 @@ async fn connect_tls<S: AsyncDuplexStream>(
         alpn: Some(alpn),
     };
 
-    StatelessDirect.connect_over(transport, route).await
+    StatelessDirect
+        .connect_over(transport, route, log_tag)
+        .await
 }
 
 async fn connect_tcp(
@@ -254,6 +261,7 @@ async fn connect_tcp(
     route_type: RouteType,
     host: Host<&str>,
     port: NonZeroU16,
+    log_tag: Arc<str>,
 ) -> Result<StreamAndInfo<TcpStream>, TransportConnectError> {
     let dns_lookup = match host {
         Host::Ip(ip) => {
@@ -291,13 +299,14 @@ async fn connect_tcp(
     let staggered_futures = dns_lookup.into_iter().enumerate().map(|(idx, ip)| {
         let delay = TCP_CONNECTION_ATTEMPT_DELAY * idx.try_into().unwrap();
         let connector = &connector;
+        let log_tag = log_tag.clone();
         async move {
             if !delay.is_zero() {
                 tokio::time::sleep(delay).await;
             }
             let route = TcpRoute { address: ip, port };
             connector
-                .connect(route)
+                .connect(route, log_tag)
                 .inspect_err(|e| {
                     log::debug!("failed to connect to IP [{ip}] with an error: {e:?}");
                 })

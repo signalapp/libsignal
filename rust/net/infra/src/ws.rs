@@ -166,6 +166,7 @@ where
         &self,
         inner: Inner,
         route: (WebSocketRouteFragment, HttpRouteFragment),
+        _log_tag: Arc<str>,
     ) -> impl std::future::Future<Output = Result<Self::Connection, Self::Error>> + Send {
         let (
             WebSocketRouteFragment {
@@ -638,6 +639,7 @@ pub mod testutil {
                     front_name: None,
                 },
             ),
+            "test".into(),
         );
         let server_future = tokio_tungstenite::accept_async(server);
         let (client_res, server_res) = tokio::join!(client_future, server_future);
