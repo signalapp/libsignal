@@ -526,23 +526,11 @@ async fn connect_websocket<T: TransportConnector>(
     Ok((ws_stream, remote_address))
 }
 
-#[derive(Debug)]
+#[derive(Debug, derive_more::From)]
 #[cfg_attr(any(test, feature = "test-util"), derive(Clone, Eq, PartialEq))]
 pub enum TextOrBinary {
     Text(String),
     Binary(Vec<u8>),
-}
-
-impl From<String> for TextOrBinary {
-    fn from(value: String) -> Self {
-        Self::Text(value)
-    }
-}
-
-impl From<Vec<u8>> for TextOrBinary {
-    fn from(value: Vec<u8>) -> Self {
-        Self::Binary(value)
-    }
 }
 
 impl From<TextOrBinary> for Message {

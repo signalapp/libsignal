@@ -36,12 +36,13 @@ use crate::{
 
 pub mod proxy;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, derive_more::From)]
 pub enum TcpSslConnector {
     Direct(DirectConnector),
     Proxied(TlsProxyConnector),
     /// Used when configuring one of the other kinds of connector isn't possible, perhaps because
     /// invalid configuration options were provided.
+    #[from(skip)]
     Invalid(DnsResolver),
 }
 
@@ -356,18 +357,6 @@ impl TransportConnector for TcpSslConnector {
             Self::Invalid(_) => Err(TransportConnectError::InvalidConfiguration),
         }
         .map(|s| s.map_stream(TcpSslConnectorStream))
-    }
-}
-
-impl From<DirectConnector> for TcpSslConnector {
-    fn from(value: DirectConnector) -> Self {
-        Self::Direct(value)
-    }
-}
-
-impl From<TlsProxyConnector> for TcpSslConnector {
-    fn from(value: TlsProxyConnector) -> Self {
-        Self::Proxied(value)
     }
 }
 

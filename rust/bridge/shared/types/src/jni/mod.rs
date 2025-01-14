@@ -112,6 +112,7 @@ struct ConsumableException<'a> {
     error: ConsumableExceptionError,
 }
 
+#[derive(derive_more::From)]
 enum ConsumableExceptionError {
     String(String),
     Static(&'static str),
@@ -721,24 +722,6 @@ fn retry_later_exception<'env>(
         jni_args!((retry_after_seconds.into() => long) -> void),
     )
     .map(Into::into)
-}
-
-impl From<&'static str> for ConsumableExceptionError {
-    fn from(value: &'static str) -> Self {
-        Self::Static(value)
-    }
-}
-
-impl From<String> for ConsumableExceptionError {
-    fn from(value: String) -> Self {
-        Self::String(value)
-    }
-}
-
-impl From<SignalJniError> for ConsumableExceptionError {
-    fn from(value: SignalJniError) -> Self {
-        Self::JniError(value)
-    }
 }
 
 impl Display for ConsumableExceptionError {

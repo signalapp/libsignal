@@ -12,37 +12,13 @@ use crate::tcp_ssl::proxy::https::HttpProxyStream;
 use crate::tcp_ssl::proxy::socks::SocksStream;
 use crate::Connection;
 
-#[derive(Debug)]
+#[derive(Debug, derive_more::From)]
 #[pin_project(project = ProxyStreamProj)]
 pub enum ProxyStream {
     Tls(#[pin] SslStream<TcpStream>),
     Tcp(#[pin] TcpStream),
     Socks(#[pin] SocksStream),
     Http(#[pin] HttpProxyStream),
-}
-
-impl From<SslStream<TcpStream>> for ProxyStream {
-    fn from(value: SslStream<TcpStream>) -> Self {
-        Self::Tls(value)
-    }
-}
-
-impl From<TcpStream> for ProxyStream {
-    fn from(value: TcpStream) -> Self {
-        Self::Tcp(value)
-    }
-}
-
-impl From<SocksStream> for ProxyStream {
-    fn from(value: SocksStream) -> Self {
-        Self::Socks(value)
-    }
-}
-
-impl From<HttpProxyStream> for ProxyStream {
-    fn from(value: HttpProxyStream) -> Self {
-        Self::Http(value)
-    }
 }
 
 impl AsyncRead for ProxyStream {

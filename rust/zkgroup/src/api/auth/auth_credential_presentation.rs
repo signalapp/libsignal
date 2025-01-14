@@ -7,6 +7,7 @@ use crate::common::constants::*;
 use crate::common::errors::*;
 use crate::common::simple_types::*;
 
+#[derive(derive_more::From)]
 pub enum AnyAuthCredentialPresentation {
     V4(AuthCredentialWithPniZkcPresentation),
 }
@@ -63,11 +64,5 @@ impl Serialize for AnyAuthCredentialPresentation {
         match self {
             AnyAuthCredentialPresentation::V4(presentation) => presentation.serialize(serializer),
         }
-    }
-}
-
-impl From<AuthCredentialWithPniZkcPresentation> for AnyAuthCredentialPresentation {
-    fn from(presentation: AuthCredentialWithPniZkcPresentation) -> Self {
-        Self::V4(presentation)
     }
 }

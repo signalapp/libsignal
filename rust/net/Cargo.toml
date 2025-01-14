@@ -25,6 +25,7 @@ bincode = { workspace = true }
 bytes = "1.4.0"
 const-str = { workspace = true, features = ["std"] }
 derive-where = { workspace = true }
+derive_more = { workspace = true, features = ["from"] }
 displaydoc = { workspace = true }
 either = "1.10.0"
 futures-util = { workspace = true }

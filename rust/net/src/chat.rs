@@ -402,14 +402,8 @@ impl DelegatingChatService for Arc<dyn ChatServiceWithDebugInfo + Send + Sync> {
     }
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, derive_more::From)]
 pub struct ReceiveStories(bool);
-
-impl From<bool> for ReceiveStories {
-    fn from(value: bool) -> Self {
-        Self(value)
-    }
-}
 
 impl AsHttpHeader for ReceiveStories {
     const HEADER_NAME: HeaderName = HeaderName::from_static(RECEIVE_STORIES_HEADER_NAME);

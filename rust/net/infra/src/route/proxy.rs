@@ -123,7 +123,7 @@ pub struct HttpProxy {
     pub resolve_hostname_locally: bool,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, derive_more::From)]
 pub enum ConnectionProxyConfig {
     Tls(TlsProxy),
     Tcp(TcpProxy),
@@ -390,29 +390,5 @@ impl<R> ReplaceFragment<ConnectionProxyRoute<R>> for ConnectionProxyRoute<R> {
         make_fragment: impl FnOnce(ConnectionProxyRoute<R>) -> T,
     ) -> Self::Replacement<T> {
         make_fragment(self)
-    }
-}
-
-impl From<TlsProxy> for ConnectionProxyConfig {
-    fn from(value: TlsProxy) -> Self {
-        Self::Tls(value)
-    }
-}
-
-impl From<TcpProxy> for ConnectionProxyConfig {
-    fn from(value: TcpProxy) -> Self {
-        Self::Tcp(value)
-    }
-}
-
-impl From<SocksProxy> for ConnectionProxyConfig {
-    fn from(value: SocksProxy) -> Self {
-        Self::Socks(value)
-    }
-}
-
-impl From<HttpProxy> for ConnectionProxyConfig {
-    fn from(value: HttpProxy) -> Self {
-        Self::Http(value)
     }
 }

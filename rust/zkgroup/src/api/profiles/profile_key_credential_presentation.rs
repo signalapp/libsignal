@@ -90,6 +90,7 @@ impl ExpiringProfileKeyCredentialPresentation {
     }
 }
 
+#[derive(derive_more::From)]
 pub enum AnyProfileKeyCredentialPresentation {
     V1(ProfileKeyCredentialPresentationV1),
     V2(ProfileKeyCredentialPresentationV2),
@@ -175,21 +176,5 @@ impl Serialize for AnyProfileKeyCredentialPresentation {
                 presentation.serialize(serializer)
             }
         }
-    }
-}
-
-impl From<ProfileKeyCredentialPresentationV1> for AnyProfileKeyCredentialPresentation {
-    fn from(presentation: ProfileKeyCredentialPresentationV1) -> Self {
-        Self::V1(presentation)
-    }
-}
-impl From<ProfileKeyCredentialPresentationV2> for AnyProfileKeyCredentialPresentation {
-    fn from(presentation: ProfileKeyCredentialPresentationV2) -> Self {
-        Self::V2(presentation)
-    }
-}
-impl From<ExpiringProfileKeyCredentialPresentation> for AnyProfileKeyCredentialPresentation {
-    fn from(presentation: ExpiringProfileKeyCredentialPresentation) -> Self {
-        Self::V3(presentation)
     }
 }

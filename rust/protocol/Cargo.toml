@@ -24,6 +24,7 @@ assert_matches = { workspace = true }
 async-trait = { workspace = true }
 ctr = { workspace = true, features = ["zeroize"] }
 derive-where = { workspace = true }
+derive_more = { workspace = true, features = ["from", "into"] }
 displaydoc = { workspace = true }
 hex = { workspace = true }
 hkdf = { workspace = true }

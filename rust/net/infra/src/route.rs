@@ -103,7 +103,7 @@ pub trait RouteProviderContext {
 }
 
 /// A hostname in a route that can later be resolved to IP addresses.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, derive_more::From, derive_more::Into)]
 pub struct UnresolvedHost(Arc<str>);
 
 /// Allows replacing part of a route.
@@ -345,18 +345,6 @@ impl<R: RouteProvider> RouteProvider for &R {
         context: &impl RouteProviderContext,
     ) -> impl Iterator<Item = Self::Route> + 's {
         R::routes(self, context)
-    }
-}
-
-impl From<UnresolvedHost> for Arc<str> {
-    fn from(value: UnresolvedHost) -> Self {
-        value.0
-    }
-}
-
-impl From<Arc<str>> for UnresolvedHost {
-    fn from(value: Arc<str>) -> Self {
-        Self(value)
     }
 }
 

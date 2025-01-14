@@ -479,18 +479,13 @@ impl TryFrom<String> for HttpMethod {
     }
 }
 
+#[derive(derive_more::Into)]
 pub struct HttpStatus(http::StatusCode);
 
 impl TryFrom<u16> for HttpStatus {
     type Error = InvalidStatusCode;
     fn try_from(value: u16) -> Result<Self, Self::Error> {
         http::StatusCode::from_u16(value).map(Self)
-    }
-}
-
-impl From<HttpStatus> for http::StatusCode {
-    fn from(value: HttpStatus) -> Self {
-        value.0
     }
 }
 

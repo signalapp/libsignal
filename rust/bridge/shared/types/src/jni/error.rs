@@ -26,7 +26,7 @@ use crate::net::cdsi::CdsiError;
 use crate::support::describe_panic;
 
 /// The top-level error type for when something goes wrong.
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, thiserror::Error, derive_more::From)]
 pub enum SignalJniError {
     Protocol(SignalProtocolError),
     DeviceTransfer(DeviceTransferError),
@@ -45,16 +45,19 @@ pub enum SignalJniError {
     #[cfg(feature = "signal-media")]
     WebpSanitizeParse(signal_media::sanitize::webp::ParseErrorReport),
     Cdsi(CdsiError),
+    #[from(skip)]
     Svr3(libsignal_net::svr3::Error),
-    WebSocket(#[from] WebSocketServiceError),
+    WebSocket(WebSocketServiceError),
     ChatService(ChatServiceError),
     InvalidUri(InvalidUri),
     ConnectTimedOut,
-    BackupValidation(#[from] libsignal_message_backup::ReadError),
+    BackupValidation(libsignal_message_backup::ReadError),
     Bridge(BridgeLayerError),
+    #[from(skip)]
     TestingError {
         exception_class: ClassName<'static>,
     },
+    #[from(skip)]
     KeyTransparency(libsignal_net::keytrans::Error),
 }
 
@@ -143,90 +146,6 @@ impl fmt::Display for BridgeLayerError {
     }
 }
 
-impl From<SignalProtocolError> for SignalJniError {
-    fn from(e: SignalProtocolError) -> SignalJniError {
-        SignalJniError::Protocol(e)
-    }
-}
-
-impl From<DeviceTransferError> for SignalJniError {
-    fn from(e: DeviceTransferError) -> SignalJniError {
-        SignalJniError::DeviceTransfer(e)
-    }
-}
-
-impl From<HsmEnclaveError> for SignalJniError {
-    fn from(e: HsmEnclaveError) -> SignalJniError {
-        SignalJniError::HsmEnclave(e)
-    }
-}
-
-impl From<EnclaveError> for SignalJniError {
-    fn from(e: EnclaveError) -> SignalJniError {
-        SignalJniError::Enclave(e)
-    }
-}
-
-impl From<PinError> for SignalJniError {
-    fn from(e: PinError) -> SignalJniError {
-        SignalJniError::Pin(e)
-    }
-}
-
-impl From<SignalCryptoError> for SignalJniError {
-    fn from(e: SignalCryptoError) -> SignalJniError {
-        SignalJniError::SignalCrypto(e)
-    }
-}
-
-impl From<ZkGroupVerificationFailure> for SignalJniError {
-    fn from(e: ZkGroupVerificationFailure) -> SignalJniError {
-        SignalJniError::ZkGroupVerificationFailure(e)
-    }
-}
-
-impl From<ZkGroupDeserializationFailure> for SignalJniError {
-    fn from(e: ZkGroupDeserializationFailure) -> SignalJniError {
-        SignalJniError::ZkGroupDeserializationFailure(e)
-    }
-}
-
-impl From<UsernameError> for SignalJniError {
-    fn from(e: UsernameError) -> Self {
-        SignalJniError::UsernameError(e)
-    }
-}
-
-impl From<usernames::ProofVerificationFailure> for SignalJniError {
-    fn from(e: usernames::ProofVerificationFailure) -> Self {
-        SignalJniError::UsernameProofError(e)
-    }
-}
-
-impl From<UsernameLinkError> for SignalJniError {
-    fn from(e: UsernameLinkError) -> Self {
-        SignalJniError::UsernameLinkError(e)
-    }
-}
-
-impl From<InvalidUri> for SignalJniError {
-    fn from(e: InvalidUri) -> Self {
-        SignalJniError::InvalidUri(e)
-    }
-}
-
-impl From<ChatServiceError> for SignalJniError {
-    fn from(e: ChatServiceError) -> Self {
-        SignalJniError::ChatService(e)
-    }
-}
-
-impl From<IoError> for SignalJniError {
-    fn from(e: IoError) -> SignalJniError {
-        Self::Io(e)
-    }
-}
-
 #[cfg(feature = "signal-media")]
 impl From<signal_media::sanitize::mp4::Error> for SignalJniError {
     fn from(e: signal_media::sanitize::mp4::Error) -> Self {
@@ -276,12 +195,6 @@ impl From<libsignal_net::cdsi::LookupError> for SignalJniError {
             LookupError::InvalidToken => CdsiError::InvalidToken,
             LookupError::Server { reason } => CdsiError::Server { reason },
         })
-    }
-}
-
-impl From<BridgeLayerError> for SignalJniError {
-    fn from(e: BridgeLayerError) -> SignalJniError {
-        SignalJniError::Bridge(e)
     }
 }
 

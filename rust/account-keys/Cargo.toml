@@ -18,6 +18,7 @@ workspace = true
 libsignal-core = { workspace = true }
 
 argon2 = { version = "0.5.0", features = ["zeroize"] }
+derive_more = { workspace = true, features = ["from"] }
 displaydoc = { workspace = true }
 hkdf = { workspace = true }
 partial-default = { workspace = true, features = ["derive"] }

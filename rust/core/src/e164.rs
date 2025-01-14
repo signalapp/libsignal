@@ -7,7 +7,7 @@ use std::fmt::Display;
 use std::num::{NonZeroU64, ParseIntError};
 use std::str::FromStr;
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, derive_more::Into)]
 pub struct E164(NonZeroU64);
 
 impl E164 {
@@ -21,12 +21,6 @@ impl E164 {
 
     pub fn from_be_bytes(bytes: [u8; std::mem::size_of::<u64>()]) -> Option<Self> {
         NonZeroU64::new(u64::from_be_bytes(bytes)).map(Self)
-    }
-}
-
-impl From<E164> for NonZeroU64 {
-    fn from(value: E164) -> Self {
-        value.0
     }
 }
 

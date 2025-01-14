@@ -10,20 +10,10 @@ use crate::state::GenericSignedPreKey;
 use crate::{kem, PrivateKey, Result, Timestamp};
 
 /// A unique identifier selecting among this client's known signed pre-keys.
-#[derive(Copy, Clone, Debug, Hash, Eq, PartialEq, Ord, PartialOrd)]
+#[derive(
+    Copy, Clone, Debug, Hash, Eq, PartialEq, Ord, PartialOrd, derive_more::From, derive_more::Into,
+)]
 pub struct KyberPreKeyId(u32);
-
-impl From<u32> for KyberPreKeyId {
-    fn from(value: u32) -> Self {
-        Self(value)
-    }
-}
-
-impl From<KyberPreKeyId> for u32 {
-    fn from(value: KyberPreKeyId) -> Self {
-        value.0
-    }
-}
 
 impl fmt::Display for KyberPreKeyId {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

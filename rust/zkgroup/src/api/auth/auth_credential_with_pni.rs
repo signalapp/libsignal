@@ -20,13 +20,13 @@ pub use zkc::{
     AuthCredentialWithPniZkcResponse,
 };
 
-#[derive(Clone, PartialDefault)]
+#[derive(Clone, PartialDefault, derive_more::From)]
 pub enum AuthCredentialWithPni {
     #[partial_default]
     Zkc(AuthCredentialWithPniZkc),
 }
 
-#[derive(Clone, PartialDefault)]
+#[derive(Clone, PartialDefault, derive_more::From)]
 pub enum AuthCredentialWithPniResponse {
     #[partial_default]
     Zkc(AuthCredentialWithPniZkcResponse),
@@ -95,18 +95,6 @@ impl AuthCredentialWithPniResponse {
                 .receive(aci, pni, redemption_time, public_params)
                 .map(AuthCredentialWithPni::Zkc),
         }
-    }
-}
-
-impl From<AuthCredentialWithPniZkc> for AuthCredentialWithPni {
-    fn from(value: AuthCredentialWithPniZkc) -> Self {
-        Self::Zkc(value)
-    }
-}
-
-impl From<AuthCredentialWithPniZkcResponse> for AuthCredentialWithPniResponse {
-    fn from(value: AuthCredentialWithPniZkcResponse) -> Self {
-        Self::Zkc(value)
     }
 }
 

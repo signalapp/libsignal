@@ -27,6 +27,7 @@ curve25519-dalek-signal = { workspace = true, features = ["serde"] }
 aes-gcm-siv = { workspace = true }
 bincode = { workspace = true }
 derive-where = { workspace = true }
+derive_more = { workspace = true, features = ["from"] }
 displaydoc = { workspace = true }
 hex = { workspace = true }
 hex-literal = { workspace = true }

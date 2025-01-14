@@ -19,7 +19,9 @@ const ALTERNATE_IDENTITY_SIGNATURE_PREFIX_2: &[u8] = b"Signal_PNI_Signature";
 /// A public key that represents the identity of a user.
 ///
 /// Wrapper for [`PublicKey`].
-#[derive(Debug, PartialOrd, Ord, PartialEq, Eq, Clone, Copy)]
+#[derive(
+    Debug, PartialOrd, Ord, PartialEq, Eq, Clone, Copy, derive_more::From, derive_more::Into,
+)]
 pub struct IdentityKey {
     public_key: PublicKey,
 }
@@ -69,18 +71,6 @@ impl TryFrom<&[u8]> for IdentityKey {
 
     fn try_from(value: &[u8]) -> Result<Self> {
         IdentityKey::decode(value)
-    }
-}
-
-impl From<PublicKey> for IdentityKey {
-    fn from(value: PublicKey) -> Self {
-        Self { public_key: value }
-    }
-}
-
-impl From<IdentityKey> for PublicKey {
-    fn from(value: IdentityKey) -> Self {
-        value.public_key
     }
 }
 

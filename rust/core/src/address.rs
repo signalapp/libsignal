@@ -169,7 +169,7 @@ pub type ServiceIdFixedWidthBinaryBytes = [u8; 17];
 ///
 /// Conceptually this is a UUID in a particular "namespace" representing a particular way to reach a
 /// user on the Signal service.
-#[derive(Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, derive_more::From)]
 pub enum ServiceId {
     /// An ACI
     Aci(Aci),
@@ -289,20 +289,6 @@ impl ServiceId {
 impl fmt::Debug for ServiceId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "<{}:{}>", self.kind(), self.raw_uuid())
-    }
-}
-
-impl From<Aci> for ServiceId {
-    #[inline]
-    fn from(aci: Aci) -> Self {
-        Self::Aci(aci)
-    }
-}
-
-impl From<Pni> for ServiceId {
-    #[inline]
-    fn from(pni: Pni) -> Self {
-        Self::Pni(pni)
     }
 }
 
@@ -680,20 +666,10 @@ mod service_id_tests {
 /// represents some user.
 ///
 /// Used in [ProtocolAddress].
-#[derive(Copy, Clone, Debug, Hash, Eq, PartialEq, PartialOrd, Ord)]
+#[derive(
+    Copy, Clone, Debug, Hash, Eq, PartialEq, PartialOrd, Ord, derive_more::From, derive_more::Into,
+)]
 pub struct DeviceId(u32);
-
-impl From<u32> for DeviceId {
-    fn from(value: u32) -> Self {
-        Self(value)
-    }
-}
-
-impl From<DeviceId> for u32 {
-    fn from(value: DeviceId) -> Self {
-        value.0
-    }
-}
 
 impl fmt::Display for DeviceId {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

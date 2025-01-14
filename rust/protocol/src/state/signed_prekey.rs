@@ -12,20 +12,10 @@ use crate::proto::storage::SignedPreKeyRecordStructure;
 use crate::{kem, KeyPair, PrivateKey, PublicKey, Result, SignalProtocolError, Timestamp};
 
 /// A unique identifier selecting among this client's known signed pre-keys.
-#[derive(Copy, Clone, Debug, Hash, Eq, PartialEq, Ord, PartialOrd)]
+#[derive(
+    Copy, Clone, Debug, Hash, Eq, PartialEq, Ord, PartialOrd, derive_more::From, derive_more::Into,
+)]
 pub struct SignedPreKeyId(u32);
-
-impl From<u32> for SignedPreKeyId {
-    fn from(value: u32) -> Self {
-        Self(value)
-    }
-}
-
-impl From<SignedPreKeyId> for u32 {
-    fn from(value: SignedPreKeyId) -> Self {
-        value.0
-    }
-}
 
 impl fmt::Display for SignedPreKeyId {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

@@ -12,7 +12,7 @@ use crate::ws::WebSocketServiceConnectError;
 #[derive(Debug, thiserror::Error, displaydoc::Display)]
 pub enum ChatServiceError {
     /// websocket error: {0}
-    WebSocket(WebSocketServiceError),
+    WebSocket(#[from] WebSocketServiceError),
     /// App version too old
     AppExpired,
     /// Device deregistered or delinked
@@ -44,12 +44,6 @@ pub enum ChatServiceError {
 }
 
 impl LogSafeDisplay for ChatServiceError {}
-
-impl From<WebSocketServiceError> for ChatServiceError {
-    fn from(e: WebSocketServiceError) -> Self {
-        Self::WebSocket(e)
-    }
-}
 
 impl From<WebSocketServiceConnectError> for ChatServiceError {
     fn from(e: WebSocketServiceConnectError) -> Self {

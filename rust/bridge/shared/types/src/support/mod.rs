@@ -225,7 +225,7 @@ pub trait ResultReporter {
 /// counter to generate IDs---2^64 *nanoseconds* is over 500 years.
 ///
 /// This type is designed to not need cleanup across language bridges.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, derive_more::From)]
 pub enum CancellationId {
     NotSupported,
     Id(NonZeroU64),
@@ -246,12 +246,6 @@ impl From<u64> for CancellationId {
             Ok(value) => Self::Id(value),
             Err(_) => Self::NotSupported,
         }
-    }
-}
-
-impl From<NonZeroU64> for CancellationId {
-    fn from(value: NonZeroU64) -> Self {
-        Self::Id(value)
     }
 }
 

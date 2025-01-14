@@ -60,7 +60,7 @@ enum PublicKeyData {
     DjbPublicKey([u8; curve25519::PUBLIC_KEY_LENGTH]),
 }
 
-#[derive(Clone, Copy, Eq)]
+#[derive(Clone, Copy, Eq, derive_more::From)]
 pub struct PublicKey {
     key: PublicKeyData,
 }
@@ -149,12 +149,6 @@ impl PublicKey {
     }
 }
 
-impl From<PublicKeyData> for PublicKey {
-    fn from(key: PublicKeyData) -> PublicKey {
-        Self { key }
-    }
-}
-
 impl TryFrom<&[u8]> for PublicKey {
     type Error = CurveError;
 
@@ -214,7 +208,7 @@ enum PrivateKeyData {
     DjbPrivateKey([u8; curve25519::PRIVATE_KEY_LENGTH]),
 }
 
-#[derive(Clone, Copy, Eq, PartialEq)]
+#[derive(Clone, Copy, Eq, PartialEq, derive_more::From)]
 pub struct PrivateKey {
     key: PrivateKeyData,
 }
@@ -284,12 +278,6 @@ impl PrivateKey {
                 Ok(Box::new(private_key.calculate_agreement(&pub_key)))
             }
         }
-    }
-}
-
-impl From<PrivateKeyData> for PrivateKey {
-    fn from(key: PrivateKeyData) -> PrivateKey {
-        Self { key }
     }
 }
 

@@ -15,6 +15,7 @@ workspace = true
 
 [dependencies]
 curve25519-dalek = { workspace = true, features = ["digest"] }
+derive_more = { workspace = true, features = ["from", "into"] }
 displaydoc = { workspace = true }
 num_enum = { workspace = true }
 rand = { workspace = true }

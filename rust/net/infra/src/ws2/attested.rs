@@ -37,23 +37,11 @@ pub enum AttestedProtocolError {
     UnexpectedClose(UnexpectedCloseError),
 }
 
-#[derive(Debug)]
+#[derive(Debug, derive_more::From)]
 pub enum AttestedConnectionError {
     Protocol(AttestedProtocolError),
     Attestation(attest::enclave::Error),
     WebSocket(WebSocketServiceError),
-}
-
-impl From<attest::enclave::Error> for AttestedConnectionError {
-    fn from(value: attest::enclave::Error) -> Self {
-        Self::Attestation(value)
-    }
-}
-
-impl From<WebSocketServiceError> for AttestedConnectionError {
-    fn from(value: WebSocketServiceError) -> Self {
-        Self::WebSocket(value)
-    }
 }
 
 impl From<attest::client_connection::Error> for AttestedConnectionError {

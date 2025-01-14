@@ -4,7 +4,7 @@
 //
 
 /// Error types for pin operations
-#[derive(displaydoc::Display, thiserror::Error, Debug, Clone, Eq, PartialEq)]
+#[derive(displaydoc::Display, thiserror::Error, Debug, Clone, Eq, PartialEq, derive_more::From)]
 pub enum Error {
     /// Argon2 hashing error: {0}
     Argon2Error(argon2::Error),
@@ -12,18 +12,6 @@ pub enum Error {
     DecodingError(argon2::password_hash::errors::Error),
     /// Error looking up mrenclave
     MrenclaveLookupError,
-}
-
-impl From<argon2::Error> for Error {
-    fn from(e: argon2::Error) -> Self {
-        Error::Argon2Error(e)
-    }
-}
-
-impl From<argon2::password_hash::errors::Error> for Error {
-    fn from(e: argon2::password_hash::errors::Error) -> Self {
-        Error::DecodingError(e)
-    }
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
