@@ -124,6 +124,12 @@ impl TlsProxyConnector {
         }
     }
 
+    pub(crate) fn new_tcp(dns_resolver: DnsResolver, proxy: (Host<Arc<str>>, NonZeroU16)) -> Self {
+        let mut connector = Self::new(dns_resolver, proxy);
+        connector.use_tls_for_proxy = ShouldUseTls::No;
+        connector
+    }
+
     pub fn set_proxy(&mut self, (host, port): (Host<Arc<str>>, NonZeroU16)) {
         let (use_tls_for_proxy, actual_host) = Self::parse_host_for_tls_opt_out(host);
 

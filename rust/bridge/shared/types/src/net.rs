@@ -22,8 +22,7 @@ use libsignal_net::infra::connection_manager::MultiRouteConnectionManager;
 use libsignal_net::infra::dns::DnsResolver;
 use libsignal_net::infra::host::Host;
 use libsignal_net::infra::route::ConnectionOutcomeParams;
-use libsignal_net::infra::tcp_ssl::proxy::tls::TlsProxyConnector as TcpSslProxyConnector;
-use libsignal_net::infra::tcp_ssl::{DirectConnector as TcpSslDirectConnector, TcpSslConnector};
+use libsignal_net::infra::tcp_ssl::TcpSslConnector;
 use libsignal_net::infra::timeouts::ONE_ROUTE_CONNECTION_TIMEOUT;
 use libsignal_net::infra::utils::ObservableEvent;
 use libsignal_net::infra::{EnableDomainFronting, EndpointConnection};
@@ -185,7 +184,7 @@ impl ConnectionManager {
         let dns_resolver =
             DnsResolver::new_with_static_fallback(env.static_fallback(), &network_change_event);
         let transport_connector =
-            std::sync::Mutex::new(TcpSslDirectConnector::new(dns_resolver.clone()).into());
+            std::sync::Mutex::new(TcpSslConnector::new_direct(dns_resolver.clone()));
         let endpoints = std::sync::Mutex::new(
             EndpointConnections::new(&env, &user_agent, false, &network_change_event).into(),
         );
@@ -206,26 +205,11 @@ impl ConnectionManager {
         let mut guard = self.transport_connector.lock().expect("not poisoned");
         match port {
             Some(port) => {
-                let proxy_addr = (host, port);
-                match &mut *guard {
-                    TcpSslConnector::Direct(direct) => {
-                        *guard = direct.with_proxy(proxy_addr).into()
-                    }
-                    TcpSslConnector::Proxied(proxied) => proxied.set_proxy(proxy_addr),
-                    TcpSslConnector::Invalid(dns_resolver) => {
-                        *guard = TcpSslProxyConnector::new(dns_resolver.clone(), proxy_addr).into()
-                    }
-                };
+                guard.set_tls_proxy((host, port));
                 Ok(())
             }
             None => {
-                match &*guard {
-                    TcpSslConnector::Direct(TcpSslDirectConnector { dns_resolver, .. })
-                    | TcpSslConnector::Proxied(TcpSslProxyConnector { dns_resolver, .. }) => {
-                        *guard = TcpSslConnector::Invalid(dns_resolver.clone())
-                    }
-                    TcpSslConnector::Invalid(_dns_resolver) => (),
-                }
+                guard.set_invalid();
                 Err(std::io::ErrorKind::InvalidInput.into())
             }
         }
@@ -233,13 +217,7 @@ impl ConnectionManager {
 
     pub fn clear_proxy(&self) {
         let mut guard = self.transport_connector.lock().expect("not poisoned");
-        match &*guard {
-            TcpSslConnector::Direct(_direct) => (),
-            TcpSslConnector::Proxied(TcpSslProxyConnector { dns_resolver, .. })
-            | TcpSslConnector::Invalid(dns_resolver) => {
-                *guard = TcpSslDirectConnector::new(dns_resolver.clone()).into()
-            }
-        };
+        guard.clear_proxy();
     }
 
     pub fn set_ipv6_enabled(&self, ipv6_enabled: bool) {
@@ -439,6 +417,6 @@ mod test {
         // This is not a valid port and so should make the ConnectionManager "invalid".
         assert_matches!(manager.set_proxy("proxy.host", None), Err(e) if e.kind() == std::io::ErrorKind::InvalidInput);
         let transport_connector = manager.transport_connector.lock().expect("not poisoned");
-        assert_matches!(&*transport_connector, TcpSslConnector::Invalid(_))
+        assert_matches!(transport_connector.proxy(), Err(_));
     }
 }

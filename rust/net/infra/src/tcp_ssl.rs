@@ -21,7 +21,8 @@ use crate::dns::DnsResolver;
 use crate::errors::TransportConnectError;
 use crate::host::Host;
 use crate::route::{
-    ConnectionProxyConfig, Connector, ConnectorExt as _, TcpRoute, TlsRouteFragment,
+    ConnectionProxyConfig, Connector, ConnectorExt as _, TcpProxy, TcpRoute, TlsProxy,
+    TlsRouteFragment,
 };
 use crate::tcp_ssl::proxy::tls::TlsProxyConnector;
 use crate::timeouts::TCP_CONNECTION_ATTEMPT_DELAY;
@@ -36,40 +37,58 @@ use crate::{
 
 pub mod proxy;
 
-#[derive(Clone, Debug, derive_more::From)]
-pub enum TcpSslConnector {
-    Direct(DirectConnector),
-    Proxied(TlsProxyConnector),
-    /// Used when configuring one of the other kinds of connector isn't possible, perhaps because
-    /// invalid configuration options were provided.
-    #[from(skip)]
-    Invalid(DnsResolver),
+#[derive(Clone, Debug)]
+pub struct TcpSslConnector {
+    dns_resolver: DnsResolver,
+    proxy: Result<Option<ConnectionProxyConfig>, InvalidProxyConfig>,
 }
 
 impl TcpSslConnector {
+    pub fn new_direct(dns_resolver: DnsResolver) -> Self {
+        Self {
+            dns_resolver,
+            proxy: Ok(None),
+        }
+    }
+
     pub fn set_ipv6_enabled(&mut self, ipv6_enabled: bool) {
-        let dns_resolver = match self {
-            TcpSslConnector::Direct(c) => &mut c.dns_resolver,
-            TcpSslConnector::Proxied(c) => &mut c.dns_resolver,
-            TcpSslConnector::Invalid(resolver) => resolver,
-        };
-        dns_resolver.set_ipv6_enabled(ipv6_enabled);
+        self.dns_resolver.set_ipv6_enabled(ipv6_enabled);
+    }
+
+    pub fn set_tls_proxy(&mut self, proxy: (Host<Arc<str>>, NonZeroU16)) {
+        self.proxy = Ok(Some(
+            TlsProxyConnector::new(self.dns_resolver.clone(), proxy).as_route_config(),
+        ));
+    }
+
+    pub fn set_invalid(&mut self) {
+        self.proxy = Err(InvalidProxyConfig)
+    }
+
+    pub fn clear_proxy(&mut self) {
+        self.proxy = Ok(None);
+    }
+
+    pub fn proxy(&self) -> Result<Option<&ConnectionProxyConfig>, InvalidProxyConfig> {
+        self.proxy
+            .as_ref()
+            .map(Option::as_ref)
+            .map_err(InvalidProxyConfig::clone)
     }
 }
 
+#[derive(Clone, Debug)]
 pub struct InvalidProxyConfig;
 
 impl TryFrom<&TcpSslConnector> for Option<ConnectionProxyConfig> {
     type Error = InvalidProxyConfig;
 
     fn try_from(value: &TcpSslConnector) -> Result<Self, Self::Error> {
-        match value {
-            TcpSslConnector::Direct(_) => Ok(None),
-            TcpSslConnector::Proxied(tls_proxy_connector) => {
-                Ok(Some(tls_proxy_connector.as_route_config()))
-            }
-            TcpSslConnector::Invalid(_) => Err(InvalidProxyConfig),
-        }
+        let TcpSslConnector {
+            dns_resolver: _,
+            proxy,
+        } = value;
+        proxy.clone()
     }
 }
 
@@ -345,18 +364,53 @@ impl TransportConnector for TcpSslConnector {
         connection_params: &TransportConnectionParams,
         alpn: Alpn,
     ) -> Result<StreamAndInfo<Self::Stream>, TransportConnectError> {
-        match self {
-            Self::Direct(direct) => direct
+        let Self {
+            dns_resolver,
+            proxy,
+        } = self;
+        let proxy = proxy
+            .as_ref()
+            .map_err(|InvalidProxyConfig| TransportConnectError::InvalidConfiguration)?;
+
+        let stream_and_info = match proxy {
+            None => {
+                let stream_and_info = DirectConnector {
+                    dns_resolver: dns_resolver.clone(),
+                }
                 .connect(connection_params, alpn)
-                .await
-                .map(|s| s.map_stream(Either::Left)),
-            Self::Proxied(proxied) => proxied
-                .connect(connection_params, alpn)
-                .await
-                .map(|s| s.map_stream(Either::Right)),
-            Self::Invalid(_) => Err(TransportConnectError::InvalidConfiguration),
-        }
-        .map(|s| s.map_stream(TcpSslConnectorStream))
+                .await?;
+
+                stream_and_info.map_stream(Either::Left)
+            }
+            Some(ConnectionProxyConfig::Tcp(TcpProxy {
+                proxy_host,
+                proxy_port,
+            })) => {
+                let connector = TlsProxyConnector::new_tcp(
+                    dns_resolver.clone(),
+                    (proxy_host.clone(), *proxy_port),
+                );
+                let stream_and_info = connector.connect(connection_params, alpn).await?;
+                stream_and_info.map_stream(Either::Right)
+            }
+            Some(ConnectionProxyConfig::Tls(TlsProxy {
+                proxy_host,
+                proxy_port,
+                proxy_certs,
+            })) => {
+                let mut connector =
+                    TlsProxyConnector::new(dns_resolver.clone(), (proxy_host.clone(), *proxy_port));
+                connector.proxy_certs = proxy_certs.clone();
+                let stream_and_info = connector.connect(connection_params, alpn).await?;
+                stream_and_info.map_stream(Either::Right)
+            }
+            Some(ConnectionProxyConfig::Socks(_) | ConnectionProxyConfig::Http(_)) => {
+                log::warn!("SOCKS and HTTP proxies are not supported by TransportConnector");
+                return Err(TransportConnectError::InvalidConfiguration);
+            }
+        };
+
+        Ok(stream_and_info.map_stream(TcpSslConnectorStream))
     }
 }
 
@@ -476,9 +530,13 @@ mod test {
         let (addr, server) = localhost_http_server();
         let _server_handle = tokio::spawn(server);
 
-        let connector = TcpSslConnector::Invalid(DnsResolver::new_from_static_map(HashMap::from(
-            [(SERVER_HOSTNAME, LookupResult::localhost())],
-        )));
+        let connector = TcpSslConnector {
+            dns_resolver: DnsResolver::new_from_static_map(HashMap::from([(
+                SERVER_HOSTNAME,
+                LookupResult::localhost(),
+            )])),
+            proxy: Err(InvalidProxyConfig),
+        };
         let connection_params = TransportConnectionParams {
             sni: SERVER_HOSTNAME.into(),
             tcp_host: Host::Ip(addr.ip()),
