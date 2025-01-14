@@ -58,6 +58,9 @@ use standard_message::*;
 mod sticker_message;
 use sticker_message::*;
 
+mod story_reply;
+use story_reply::*;
+
 pub(crate) mod text;
 use text::*;
 
@@ -147,6 +150,8 @@ pub enum ChatItemError {
     GiftBadge(#[from] GiftBadgeError),
     /// view-once message: {0}
     ViewOnce(#[from] ViewOnceMessageError),
+    /// direct story reply: {0}
+    DirectStoryReply(#[from] DirectStoryReplyError),
     /// ChatItem.directionalDetails is a oneof but is empty
     NoDirection,
     /// directionless ChatItem wasn't an update message
@@ -173,10 +178,10 @@ pub enum ChatItemError {
     RevisionWithMismatchedAuthor(RecipientId, RecipientId),
     /// revisions of {0:?} message contained {1:?} message
     RevisionWithMismatchedDirection(DirectionDiscriminants, DirectionDiscriminants),
-    /// ChatItem that isn't a StandardMessage has revisions
+    /// revisions of {0:?} message contained {1:?} message
+    RevisionWithMismatchedMessageType(ChatItemMessageDiscriminants, ChatItemMessageDiscriminants),
+    /// ChatItem that isn't a StandardMessage or DirectStoryReplyMessage has revisions
     NonStandardMessageHasRevisions,
-    /// revisions contains a ChatItem that isn't a StandardMessage
-    RevisionIsNotAStandardMessage,
     /// nested revisions
     RevisionContainsRevisions,
     /// profile change update must have both a previousName and a newName
@@ -215,6 +220,8 @@ pub enum ChatItemError {
     ReleaseNoteMessageNotInReleaseNoteChat(DestinationKind),
     /// payment notification found in {0:?} chat
     PaymentNotificationNotInContactThread(DestinationKind),
+    /// direct story reply found in {0:?} chat
+    DirectStoryReplyNotInContactThread(DestinationKind),
     /// chat update not in contact thread: {0:?}
     ChatUpdateNotInContactThread(SimpleChatUpdate),
     /// unexpected update message in Release Notes
@@ -310,7 +317,7 @@ const MAX_REMOTE_BACKUP_DISAPPEARING_MESSAGE_TIME: Duration = Duration::from_hou
 
 /// Validated version of [`proto::chat_item::Item`].
 #[derive_where(Debug)]
-#[derive(serde::Serialize)]
+#[derive(serde::Serialize, strum::EnumDiscriminants)]
 #[cfg_attr(test, derive_where(PartialEq;
     M::BoxedValue<GiftBadge>: PartialEq,
     M::RecipientReference: PartialEq
@@ -325,30 +332,34 @@ pub enum ChatItemMessage<M: Method + ReferencedTypes> {
     PaymentNotification(PaymentNotification),
     GiftBadge(M::BoxedValue<GiftBadge>),
     ViewOnce(ViewOnceMessage<M::RecipientReference>),
+    DirectStoryReply(DirectStoryReplyMessage<M::RecipientReference>),
 }
 
 #[allow(dead_code)]
 const CHAT_ITEM_MESSAGE_SIZE_LIMIT: usize = 200;
 static_assertions::const_assert!(
-    std::mem::size_of::<StandardMessage<super::ValidateOnly>>() < CHAT_ITEM_MESSAGE_SIZE_LIMIT
+    std::mem::size_of::<StandardMessage<RecipientId>>() < CHAT_ITEM_MESSAGE_SIZE_LIMIT
 );
 static_assertions::const_assert!(
-    std::mem::size_of::<ContactMessage<super::ValidateOnly>>() < CHAT_ITEM_MESSAGE_SIZE_LIMIT
+    std::mem::size_of::<ContactMessage<RecipientId>>() < CHAT_ITEM_MESSAGE_SIZE_LIMIT
 );
 static_assertions::const_assert!(
-    std::mem::size_of::<VoiceMessage<super::ValidateOnly>>() < CHAT_ITEM_MESSAGE_SIZE_LIMIT
+    std::mem::size_of::<VoiceMessage<RecipientId>>() < CHAT_ITEM_MESSAGE_SIZE_LIMIT
 );
 static_assertions::const_assert!(
-    std::mem::size_of::<StickerMessage<super::ValidateOnly>>() < CHAT_ITEM_MESSAGE_SIZE_LIMIT
+    std::mem::size_of::<StickerMessage<RecipientId>>() < CHAT_ITEM_MESSAGE_SIZE_LIMIT
 );
 static_assertions::const_assert!(
-    std::mem::size_of::<UpdateMessage<super::ValidateOnly>>() < CHAT_ITEM_MESSAGE_SIZE_LIMIT
+    std::mem::size_of::<UpdateMessage<RecipientId>>() < CHAT_ITEM_MESSAGE_SIZE_LIMIT
 );
 static_assertions::const_assert!(
     std::mem::size_of::<PaymentNotification>() < CHAT_ITEM_MESSAGE_SIZE_LIMIT
 );
 static_assertions::const_assert!(
-    std::mem::size_of::<ViewOnceMessage<super::ValidateOnly>>() < CHAT_ITEM_MESSAGE_SIZE_LIMIT
+    std::mem::size_of::<ViewOnceMessage<RecipientId>>() < CHAT_ITEM_MESSAGE_SIZE_LIMIT
+);
+static_assertions::const_assert!(
+    std::mem::size_of::<ViewOnceMessage<RecipientId>>() < CHAT_ITEM_MESSAGE_SIZE_LIMIT
 );
 
 #[derive(Debug, serde::Serialize, strum::EnumDiscriminants)]
@@ -602,6 +613,23 @@ impl<
             update.validate_author(&cached_author_kind)?;
         }
 
+        if !revisions.is_empty() {
+            match &message {
+                ChatItemMessage::Standard(_) | ChatItemMessage::DirectStoryReply(_) => {}
+                ChatItemMessage::Contact(_)
+                | ChatItemMessage::Voice(_)
+                | ChatItemMessage::Sticker(_)
+                | ChatItemMessage::RemoteDeleted
+                | ChatItemMessage::Update(_)
+                | ChatItemMessage::PaymentNotification(_)
+                | ChatItemMessage::GiftBadge(_)
+                | ChatItemMessage::ViewOnce(_) => {
+                    return Err(ChatItemError::NonStandardMessageHasRevisions);
+                }
+            }
+        }
+
+        let expected_message_type = ChatItemMessageDiscriminants::from(&message);
         let revisions: Vec<_> = likely_empty(revisions, |iter| {
             iter.map(|rev| {
                 // We have to test this on the raw IDs because RecipientReference isn't necessarily
@@ -622,19 +650,15 @@ impl<
                         DirectionDiscriminants::from(&item.direction),
                     ));
                 }
-                match item.message {
-                    ChatItemMessage::Standard(_) => {}
-                    ChatItemMessage::Contact(_)
-                    | ChatItemMessage::Voice(_)
-                    | ChatItemMessage::Sticker(_)
-                    | ChatItemMessage::RemoteDeleted
-                    | ChatItemMessage::Update(_)
-                    | ChatItemMessage::PaymentNotification(_)
-                    | ChatItemMessage::GiftBadge(_)
-                    | ChatItemMessage::ViewOnce(_) => {
-                        return Err(ChatItemError::RevisionIsNotAStandardMessage);
-                    }
+
+                let revision_message_type = ChatItemMessageDiscriminants::from(&item.message);
+                if revision_message_type != expected_message_type {
+                    return Err(ChatItemError::RevisionWithMismatchedMessageType(
+                        expected_message_type,
+                        revision_message_type,
+                    ));
                 }
+
                 if !item.revisions.is_empty() {
                     return Err(ChatItemError::RevisionContainsRevisions);
                 }
@@ -642,22 +666,6 @@ impl<
             })
             .collect::<Result<_, _>>()
         })?;
-
-        if !revisions.is_empty() {
-            match &message {
-                ChatItemMessage::Standard(_) => {}
-                ChatItemMessage::Contact(_)
-                | ChatItemMessage::Voice(_)
-                | ChatItemMessage::Sticker(_)
-                | ChatItemMessage::RemoteDeleted
-                | ChatItemMessage::Update(_)
-                | ChatItemMessage::PaymentNotification(_)
-                | ChatItemMessage::GiftBadge(_)
-                | ChatItemMessage::ViewOnce(_) => {
-                    return Err(ChatItemError::NonStandardMessageHasRevisions);
-                }
-            }
-        }
 
         let sent_at = Timestamp::from_millis(dateSent, "ChatItem.dateSent", context)?;
         let expire_start = expireStartDate
@@ -792,6 +800,13 @@ impl<M: Method + ReferencedTypes> ChatItemData<M> {
             ChatItemMessage::PaymentNotification(_) => {
                 if !recipient_data.is_contact_with_aci() {
                     return Err(ChatItemError::PaymentNotificationNotInContactThread(
+                        (*recipient_data).into(),
+                    ));
+                }
+            }
+            ChatItemMessage::DirectStoryReply(_) => {
+                if !recipient_data.is_contact_with_aci() {
+                    return Err(ChatItemError::DirectStoryReplyNotInContactThread(
                         (*recipient_data).into(),
                     ));
                 }
@@ -989,6 +1004,9 @@ impl<
             Item::GiftBadge(badge) => ChatItemMessage::GiftBadge(M::boxed_value(badge.try_into()?)),
             Item::ViewOnceMessage(message) => {
                 ChatItemMessage::ViewOnce(message.try_into_with(context)?)
+            }
+            Item::DirectStoryReplyMessage(message) => {
+                ChatItemMessage::DirectStoryReply(message.try_into_with(context)?)
             }
         })
     }
@@ -1223,7 +1241,7 @@ mod test {
             item: Some(proto::chat_item::Item::RemoteDeletedMessage(Default::default())),
             ..proto::ChatItem::test_data()
         })
-    } => Err(ChatItemError::RevisionIsNotAStandardMessage); "revision not StandardMessage")]
+    } => Err(ChatItemError::RevisionWithMismatchedMessageType(ChatItemMessageDiscriminants::Standard, ChatItemMessageDiscriminants::RemoteDeleted)); "revision not StandardMessage")]
     #[test_case(|x| {
         x.item = Some(proto::chat_item::Item::RemoteDeletedMessage(Default::default()));
         x.revisions.push(proto::ChatItem::test_data());
@@ -1253,6 +1271,17 @@ mod test {
             ..proto::ChatItem::test_data()
         })
     } => Err(ChatItemError::RevisionContainsRevisions); "revision recursion")]
+    #[test_case(|x| {
+        *x.mut_directStoryReplyMessage() = proto::DirectStoryReplyMessage::test_data();
+        x.revisions.push(proto::ChatItem {
+            item: Some(proto::chat_item::Item::DirectStoryReplyMessage(proto::DirectStoryReplyMessage::test_data())),
+            ..proto::ChatItem::test_data()
+        });
+    } => Ok(()); "DirectStoryReplyMessages can have revisions too")]
+    #[test_case(|x| {
+        *x.mut_directStoryReplyMessage() = proto::DirectStoryReplyMessage::test_data();
+        x.revisions.push(proto::ChatItem::test_data());
+    } => Err(ChatItemError::RevisionWithMismatchedMessageType(ChatItemMessageDiscriminants::DirectStoryReply, ChatItemMessageDiscriminants::Standard)); "DirectStoryReplyMessage with StandardMessage revision")]
     #[test_case(
         |x| x.dateSent = MillisecondsSinceEpoch::FAR_FUTURE.0 =>
         Err(ChatItemError::InvalidTimestamp(TimestampError("ChatItem.dateSent", MillisecondsSinceEpoch::FAR_FUTURE.0)));
@@ -1481,6 +1510,12 @@ mod test {
         |x| x.item = Some(proto::chat_item::Item::PaymentNotification(proto::PaymentNotification::test_data())) =>
         Err(ChatItemError::PaymentNotificationNotInContactThread(DestinationKind::Group));
         "payment notification in group chat"
+    )]
+    #[test_case(
+        TestContext::GROUP_ID,
+        |x| x.item = Some(proto::chat_item::Item::DirectStoryReplyMessage(proto::DirectStoryReplyMessage::test_data())) =>
+        Err(ChatItemError::DirectStoryReplyNotInContactThread(DestinationKind::Group));
+        "direct story reply in group chat"
     )]
     fn validate_chat_recipient(
         recipient_id: RecipientId,

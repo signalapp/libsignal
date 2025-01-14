@@ -798,6 +798,7 @@ impl Visit<Scrambler> for proto::ChatItem {
                 Item::PaymentNotification(item) => item.accept(visitor),
                 Item::GiftBadge(item) => item.accept(visitor),
                 Item::ViewOnceMessage(item) => item.accept(visitor),
+                Item::DirectStoryReplyMessage(item) => item.accept(visitor),
             }
         }
     }
@@ -1959,6 +1960,37 @@ impl Visit<Scrambler> for proto::ViewOnceMessage {
         } = self;
         attachment.accept(visitor);
         reactions.accept(visitor);
+    }
+}
+
+impl Visit<Scrambler> for proto::DirectStoryReplyMessage {
+    fn accept(&mut self, visitor: &mut Scrambler) {
+        let Self {
+            reactions,
+            storySentTimestamp: _,
+            reply,
+            special_fields: _,
+        } = self;
+        reactions.accept(visitor);
+        if let Some(reply) = reply {
+            use proto::direct_story_reply_message::Reply;
+            match reply {
+                Reply::TextReply(text_reply) => text_reply.accept(visitor),
+                Reply::Emoji(emoji) => *emoji = REPLACEMENT_EMOJI.into(),
+            }
+        }
+    }
+}
+
+impl Visit<Scrambler> for proto::direct_story_reply_message::TextReply {
+    fn accept(&mut self, visitor: &mut Scrambler) {
+        let Self {
+            text,
+            longText,
+            special_fields: _,
+        } = self;
+        text.accept(visitor);
+        longText.accept(visitor);
     }
 }
 
