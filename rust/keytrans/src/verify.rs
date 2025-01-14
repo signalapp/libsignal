@@ -672,7 +672,7 @@ impl MonitorProofAcc {
         })?;
 
         // Compute which entry in the log each proof is supposed to correspond to.
-        let entries = full_monitoring_path(&key.entries, data.pos, self.tree_size);
+        let entries = full_monitoring_path(key.entry_position, data.pos, self.tree_size);
         if entries.len() != proof.steps.len() {
             return Err(Error::VerificationFailed(
                 "monitoring response is malformed: wrong number of proof steps".to_string(),

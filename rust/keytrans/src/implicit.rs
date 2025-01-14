@@ -83,19 +83,16 @@ fn monitoring_frontier(frontier: &[u64], entries: HashSet<u64>) -> Vec<u64> {
 }
 
 /// Returns the full set of entries that should be checked as part of monitoring
-/// all versions of a key.
-pub fn full_monitoring_path(entries: &[u64], start: u64, n: u64) -> Vec<u64> {
+/// a particular version of a key.
+pub fn full_monitoring_path(entry: u64, start: u64, n: u64) -> Vec<u64> {
     let mut path = vec![];
     let mut dedup = HashSet::new();
-
-    for entry in entries {
-        for x in monitoring_path(*entry, start, n) {
-            if dedup.insert(x) {
-                path.push(x);
-            }
+    for x in monitoring_path(entry, start, n) {
+        if dedup.insert(x) {
+            path.push(x);
         }
-        dedup.insert(*entry);
     }
+    dedup.insert(entry);
     path.extend(monitoring_frontier(&frontier(start, n), dedup));
     path
 }

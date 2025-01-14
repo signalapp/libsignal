@@ -278,6 +278,15 @@ impl MonitoringData {
         out.sort();
         out
     }
+
+    /// The largest known log position for the given search key.
+    pub fn latest_log_position(&self) -> u64 {
+        self.ptrs
+            .keys()
+            .max()
+            .copied()
+            .expect("at least one version must be present")
+    }
 }
 
 impl From<MonitoringData> for StoredMonitoringData {

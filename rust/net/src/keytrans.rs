@@ -252,33 +252,37 @@ impl From<RawChatDistinguishedRequest> for chat::Request {
 #[serde(rename_all = "camelCase")]
 struct ValueMonitor {
     value: String,
-    positions: Vec<u64>,
+    entry_position: u64,
     commitment_index: String,
 }
 
 impl ValueMonitor {
-    fn new(value: String, positions: Vec<u64>, commitment_index: &[u8]) -> Self {
+    fn new(value: String, entry_position: u64, commitment_index: &[u8]) -> Self {
         Self {
             value,
-            positions,
+            entry_position,
             commitment_index: BASE64_STANDARD_NO_PAD.encode(commitment_index),
         }
     }
 
-    fn for_aci(aci: &Aci, positions: Vec<u64>, commitment_index: &[u8]) -> Self {
-        Self::new(aci.as_chat_value(), positions, commitment_index)
+    fn for_aci(aci: &Aci, entry_position: u64, commitment_index: &[u8]) -> Self {
+        Self::new(aci.as_chat_value(), entry_position, commitment_index)
     }
 
-    fn for_e164(e164: E164, positions: Vec<u64>, commitment_index: &[u8]) -> Self {
-        Self::new(e164.as_chat_value(), positions, commitment_index)
+    fn for_e164(e164: E164, entry_position: u64, commitment_index: &[u8]) -> Self {
+        Self::new(e164.as_chat_value(), entry_position, commitment_index)
     }
 
     fn for_username_hash(
         username_hash: &UsernameHash,
-        positions: Vec<u64>,
+        entry_position: u64,
         commitment_index: &[u8],
     ) -> Self {
-        Self::new(username_hash.as_chat_value(), positions, commitment_index)
+        Self::new(
+            username_hash.as_chat_value(),
+            entry_position,
+            commitment_index,
+        )
     }
 }
 
@@ -324,18 +328,26 @@ impl RawChatMonitorRequest {
         }
 
         Ok(Self {
-            aci: ValueMonitor::for_aci(aci, account_data.aci.entries(), &account_data.aci.index),
+            aci: ValueMonitor::for_aci(
+                aci,
+                account_data.aci.latest_log_position(),
+                &account_data.aci.index,
+            ),
             e164: e164.map(|e164| {
                 ValueMonitor::for_e164(
                     e164,
-                    account_data.e164.as_ref().unwrap().entries(),
+                    account_data.e164.as_ref().unwrap().latest_log_position(),
                     &account_data.e164.as_ref().unwrap().index,
                 )
             }),
             username_hash: username_hash.as_ref().map(|unh| {
                 ValueMonitor::for_username_hash(
                     unh,
-                    account_data.username_hash.as_ref().unwrap().entries(),
+                    account_data
+                        .username_hash
+                        .as_ref()
+                        .unwrap()
+                        .latest_log_position(),
                     &account_data.username_hash.as_ref().unwrap().index,
                 )
             }),
@@ -560,7 +572,7 @@ impl<'a> Kt<'a> {
 
             let aci_monitor_key = MonitorKey {
                 search_key: aci.as_search_key(),
-                entries: aci_monitoring_data.entries(),
+                entry_position: aci_monitoring_data.latest_log_position(),
                 commitment_index: aci_monitoring_data.index.to_vec(),
             };
             monitor_keys.push(aci_monitor_key);
@@ -572,7 +584,7 @@ impl<'a> Kt<'a> {
                     .ok_or(Error::InvalidRequest("missing E.164 monitoring data"))?;
                 let key = MonitorKey {
                     search_key: e164.as_search_key(),
-                    entries: monitoring_data.entries(),
+                    entry_position: monitoring_data.latest_log_position(),
                     commitment_index: monitoring_data.index.to_vec(),
                 };
                 monitor_keys.push(key);
@@ -588,7 +600,7 @@ impl<'a> Kt<'a> {
                 )?;
                 let key = MonitorKey {
                     search_key: username_hash.as_search_key().to_vec(),
-                    entries: monitoring_data.entries(),
+                    entry_position: monitoring_data.latest_log_position(),
                     commitment_index: monitoring_data.index.to_vec(),
                 };
                 monitor_keys.push(key);
