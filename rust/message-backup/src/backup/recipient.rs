@@ -296,6 +296,7 @@ pub struct ContactData {
     #[serde(serialize_with = "serialize::enum_as_string")]
     pub identity_state: proto::contact::IdentityState,
     pub nickname: Option<ContactName>,
+    pub note: String,
 }
 
 #[derive(Clone, Debug, serde::Serialize)]
@@ -485,6 +486,7 @@ impl<C: ReportUnusualTimestamp> TryFromWith<proto::Contact, C> for ContactData {
             identityKey,
             identityState,
             nickname,
+            note,
             special_fields: _,
         } = value;
 
@@ -603,6 +605,7 @@ impl<C: ReportUnusualTimestamp> TryFromWith<proto::Contact, C> for ContactData {
             identity_key,
             identity_state,
             nickname,
+            note,
         })
     }
 }
@@ -792,7 +795,7 @@ mod test {
                     ..Default::default()
                 })
                 .into(),
-
+                note: "nb".into(),
                 ..Default::default()
             }
         }
@@ -840,6 +843,7 @@ mod test {
                     given_name: "GivenNickName".to_owned(),
                     family_name: "FamilyNickName".to_owned(),
                 }),
+                note: "nb".into(),
             }
         }
     }

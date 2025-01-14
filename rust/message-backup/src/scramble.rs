@@ -485,6 +485,7 @@ impl Visit<Scrambler> for proto::Contact {
             identityState: _,
             registration,
             nickname,
+            note,
             special_fields: _,
         } = self;
 
@@ -523,6 +524,7 @@ impl Visit<Scrambler> for proto::Contact {
         }
 
         nickname.accept(visitor);
+        note.randomize(&mut visitor.rng);
     }
 }
 
