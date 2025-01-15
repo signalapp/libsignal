@@ -210,7 +210,7 @@ impl<R> UpdateMessage<R> {
                 update @ (SimpleChatUpdate::PaymentActivationRequest
                 | SimpleChatUpdate::PaymentsActivated),
             ) => {
-                if !author.is_contact_with_aci() {
+                if !(author.is_contact_with_aci() || matches!(author, ChatItemAuthorKind::Self_)) {
                     Err(ChatItemError::ChatUpdateNotFromAci(*update))
                 } else {
                     Ok(())
