@@ -362,7 +362,9 @@ jobs:
 
     - run: rustup +stable target add i686-unknown-linux-gnu
 
-    - run: cargo audit -D warnings
+    - run: cargo +stable install cargo-audit
+
+    - run: cargo +stable audit -D warnings
 
     - name: Run tests
       run: cargo +stable test --workspace --all-features --verbose --no-fail-fast -- --include-ignored
