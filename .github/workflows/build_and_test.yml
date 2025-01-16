@@ -264,7 +264,7 @@ jobs:
         fetch-depth: 0
 
     - name: Install NDK
-      run: sudo ${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager --install "ndk;${NDK_VERSION}"
+      run: ${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager --install "ndk;${NDK_VERSION}"
 
     - run: sudo apt-get update && sudo apt-get install protobuf-compiler
 
