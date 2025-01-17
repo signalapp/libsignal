@@ -586,18 +586,19 @@ pub mod testutil {
 
         websocket.send(message.into()).await.unwrap();
 
-        let mut server_transport = server_hs.into_transport_mode().unwrap();
+        // The type is poorly named but works here since it just wraps an
+        // already-established connection.
+        let mut server_connection = ClientConnection {
+            handshake_hash: server_hs.get_handshake_hash().to_vec(),
+            transport: server_hs.into_transport_mode().unwrap(),
+        };
 
         while let Ok(incoming) = websocket.receive().await {
             let received = match incoming {
                 NextOrClose::Close(close) => NextOrClose::Close(close),
                 NextOrClose::Next(incoming) => {
                     let incoming = incoming.try_into_binary().unwrap();
-                    let mut payload = vec![0; incoming.len()];
-                    let read = server_transport
-                        .read_message(&incoming, &mut payload)
-                        .unwrap();
-                    payload.truncate(read);
+                    let payload = server_connection.recv(&incoming).unwrap();
 
                     NextOrClose::Next(payload)
                 }
@@ -609,11 +610,7 @@ pub mod testutil {
             } = on_message(received);
 
             if let Some(payload) = message {
-                let mut outgoing = vec![0; payload.len() + 16 /* snow tag len */];
-                let written = server_transport
-                    .write_message(&payload, &mut outgoing)
-                    .unwrap();
-                outgoing.truncate(written);
+                let outgoing = server_connection.send(&payload).unwrap();
                 websocket.send(outgoing.into()).await.unwrap();
             }
 

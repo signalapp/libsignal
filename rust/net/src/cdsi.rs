@@ -67,6 +67,7 @@ impl FixedLengthSerializable for Uuid {
     }
 }
 
+#[cfg_attr(test, derive(Clone))]
 pub struct AciAndAccessKey {
     pub aci: Aci,
     pub access_key: [u8; 16],
@@ -84,6 +85,7 @@ impl FixedLengthSerializable for AciAndAccessKey {
 }
 
 #[derive(Default)]
+#[cfg_attr(test, derive(Clone))]
 pub struct LookupRequest {
     pub new_e164s: Vec<E164>,
     pub prev_e164s: Vec<E164>,
@@ -532,6 +534,7 @@ mod test {
 
     use assert_matches::assert_matches;
     use hex_literal::hex;
+    use itertools::Itertools as _;
     use libsignal_net_infra::testutil::InMemoryWarpConnector;
     use libsignal_net_infra::utils::ObservableEvent;
     use libsignal_net_infra::ws::testutil::fake_websocket;
@@ -769,6 +772,113 @@ mod test {
                 records: vec![FakeServerState::RESPONSE_RECORD],
             }
         );
+    }
+
+    #[tokio::test]
+    async fn large_request_split() {
+        // Large requests should be split into multiple Noise packets, but those
+        // will be sent concatenated as a single websocket message since that's
+        // the form the CDSI server expectes.
+        const LARGE_NUMBER_OF_ENTRIES: u16 = 20_000;
+
+        let (server, client) = fake_websocket().await;
+
+        let mut fake_server = FakeServerState::default();
+        let (received_request_tx, mut received_request_rx) = tokio::sync::mpsc::unbounded_channel();
+        tokio::spawn(run_attested_server(
+            server,
+            attest::sgx_session::testutil::private_key(),
+            move |next_or_close| {
+                let frame = next_or_close.next_or(()).unwrap();
+                let mut output = fake_server.receive_frame(&frame);
+                match &fake_server {
+                    FakeServerState::AwaitingLookupRequest => (),
+                    FakeServerState::AwaitingTokenAck => {
+                        // Send the initial request for comparison.
+                        received_request_tx.send(frame).unwrap();
+                    }
+                    FakeServerState::Finished => {
+                        // Override the output to send a larger response message
+                        // that will be split over multiple Noise packets.
+                        let large_number_of_triples = (1..=LARGE_NUMBER_OF_ENTRIES)
+                            .map(|i| LookupResponseEntry {
+                                e164: E164::new(NonZeroU64::new(i.into()).unwrap()),
+                                aci: None,
+                                pni: None,
+                            })
+                            .collect_serialized();
+                        let serialized_response = ClientResponse {
+                            debug_permits_used: 1,
+                            e164_pni_aci_triples: large_number_of_triples,
+                            ..Default::default()
+                        }
+                        .encode_to_vec();
+                        assert!(
+                            serialized_response.len() > 10 * NOISE_TRANSPORT_PER_PACKET_MAX,
+                            "response size: {}",
+                            serialized_response.len()
+                        );
+                        *output.message.as_mut().unwrap() = serialized_response;
+                    }
+                }
+
+                output
+            },
+        ));
+
+        let cdsi_connection = CdsiConnection(
+            AttestedConnection::connect(
+                client,
+                FAKE_WS_CONFIG,
+                "test".into(),
+                |fake_attestation| {
+                    assert_eq!(fake_attestation, FAKE_ATTESTATION);
+                    attest::sgx_session::testutil::handshake_from_tests_data()
+                },
+            )
+            .await
+            .expect("handshake failed"),
+        );
+
+        let large_number_of_e164s = (1..=LARGE_NUMBER_OF_ENTRIES)
+            .map(|i| E164::new(NonZeroU64::new(i.into()).unwrap()))
+            .collect_vec();
+        let request = LookupRequest {
+            token: b"valid but ignored token".as_slice().into(),
+            new_e164s: large_number_of_e164s.clone(),
+            prev_e164s: large_number_of_e164s,
+            acis_and_access_keys: (1..=LARGE_NUMBER_OF_ENTRIES)
+                .map(|i| {
+                    let mut bytes = [0; 16];
+                    // TODO use first_chunk_mut() once MSRV >= 1.77
+                    bytes[..2].copy_from_slice(i.to_be_bytes().as_slice());
+                    AciAndAccessKey {
+                        access_key: bytes,
+                        aci: Uuid::from_bytes(bytes).into(),
+                    }
+                })
+                .collect(),
+        };
+
+        let serialized_request = request.clone().into_client_request().encode_to_vec();
+
+        const NOISE_TRANSPORT_PER_PACKET_MAX: usize = 65535;
+        assert!(
+            serialized_request.len() > 10 * NOISE_TRANSPORT_PER_PACKET_MAX,
+            "request size: {}",
+            serialized_request.len()
+        );
+
+        let (_token, collector) = cdsi_connection
+            .send_request(request)
+            .await
+            .expect("request accepted");
+
+        let request_received_at_server = received_request_rx.recv().await.unwrap();
+        assert_eq!(request_received_at_server.len(), serialized_request.len());
+
+        let response = collector.collect().await.expect("successful request");
+        assert_eq!(response.records.len(), LARGE_NUMBER_OF_ENTRIES as usize);
     }
 
     const RETRY_AFTER_SECS: u32 = 12345;
