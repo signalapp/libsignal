@@ -11,7 +11,7 @@ use crate::backup::frame::RecipientId;
 use crate::backup::method::LookupPair;
 use crate::backup::recipient::MinimalRecipientData;
 use crate::backup::serialize::SerializeOrder;
-use crate::backup::time::{ReportUnusualTimestamp, Timestamp, TimestampError};
+use crate::backup::time::ReportUnusualTimestamp;
 use crate::backup::{TryFromWith, TryIntoWith as _};
 use crate::proto::backup as proto;
 
@@ -20,7 +20,6 @@ use crate::proto::backup as proto;
 #[cfg_attr(test, derive_where(PartialEq; Recipient: PartialEq + SerializeOrder))]
 pub struct DirectStoryReplyMessage<Recipient> {
     pub content: DirectStoryReplyContent,
-    pub story_timestamp: Option<Timestamp>,
     #[serde(bound(serialize = "Recipient: serde::Serialize + SerializeOrder"))]
     pub reactions: ReactionSet<Recipient>,
     _limit_construction_to_module: (),
@@ -51,8 +50,6 @@ pub enum DirectStoryReplyError {
     EmptyEmoji,
     /// invalid reaction: {0}
     Reaction(#[from] ReactionError),
-    /// {0}
-    InvalidTimestamp(#[from] TimestampError),
 }
 
 impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusualTimestamp>
@@ -66,18 +63,11 @@ impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusu
     ) -> Result<Self, Self::Error> {
         let proto::DirectStoryReplyMessage {
             reactions,
-            storySentTimestamp,
             reply,
             special_fields: _,
         } = item;
 
         let reactions = reactions.try_into_with(context)?;
-
-        let story_timestamp = storySentTimestamp
-            .map(|t| {
-                Timestamp::from_millis(t, "DirectStoryReplyMessage.storySentTimestamp", context)
-            })
-            .transpose()?;
 
         let content = match reply.ok_or(DirectStoryReplyError::MissingReply)? {
             proto::direct_story_reply_message::Reply::TextReply(
@@ -111,7 +101,6 @@ impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusu
 
         Ok(Self {
             content,
-            story_timestamp,
             reactions,
             _limit_construction_to_module: (),
         })
@@ -126,12 +115,10 @@ mod test {
     use crate::backup::chat::Reaction;
     use crate::backup::recipient::FullRecipientData;
     use crate::backup::testutil::TestContext;
-    use crate::backup::time::testutil::MillisecondsSinceEpoch;
 
     impl proto::DirectStoryReplyMessage {
         pub(crate) fn test_data() -> Self {
             Self {
-                storySentTimestamp: Some(MillisecondsSinceEpoch::TEST_VALUE.0),
                 reactions: vec![proto::Reaction::test_data()],
                 reply: Some(proto::direct_story_reply_message::Reply::TextReply(
                     proto::direct_story_reply_message::TextReply {
@@ -153,7 +140,6 @@ mod test {
                     body: MessageText::from_proto_test_data(),
                     long_text: None,
                 },
-                story_timestamp: Some(Timestamp::test_value()),
                 reactions: ReactionSet::from_iter([Reaction::from_proto_test_data()]),
                 _limit_construction_to_module: ()
             })
@@ -176,12 +162,6 @@ mod test {
     #[test_case(|x| *x.mut_emoji() = "x".into() => Ok(()); "valid emoji")]
     #[test_case(|x| x.reactions.clear() => Ok(()); "no reactions")]
     #[test_case(|x| x.reactions.push(proto::Reaction::default()) => Err(DirectStoryReplyError::Reaction(ReactionError::EmptyEmoji)); "invalid reaction")]
-    #[test_case(|x| x.storySentTimestamp = None => Ok(()); "no timestamp")]
-    #[test_case(
-        |x| x.storySentTimestamp = Some(MillisecondsSinceEpoch::FAR_FUTURE.0) =>
-        Err(DirectStoryReplyError::InvalidTimestamp(TimestampError("DirectStoryReplyMessage.storySentTimestamp", MillisecondsSinceEpoch::FAR_FUTURE.0)));
-        "invalid storySentTimestamp"
-    )]
     fn story_reply_message(
         modifier: fn(&mut proto::DirectStoryReplyMessage),
     ) -> Result<(), DirectStoryReplyError> {
