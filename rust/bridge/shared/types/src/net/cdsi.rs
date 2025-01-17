@@ -57,30 +57,6 @@ impl CdsiLookup {
         auth: Auth,
         request: cdsi::LookupRequest,
     ) -> Result<Self, cdsi::LookupError> {
-        let transport_connector = connection_manager
-            .transport_connector
-            .lock()
-            .expect("not poisoned")
-            .clone();
-        let endpoints = connection_manager
-            .endpoints
-            .lock()
-            .expect("not poisoned")
-            .clone();
-        let connected = CdsiConnection::connect(&endpoints.cdsi, transport_connector, auth).await?;
-        let (token, remaining_response) = connected.send_request(request).await?;
-
-        Ok(CdsiLookup {
-            token,
-            remaining: std::sync::Mutex::new(Some(remaining_response)),
-        })
-    }
-
-    pub async fn new_routes(
-        connection_manager: &ConnectionManager,
-        auth: Auth,
-        request: cdsi::LookupRequest,
-    ) -> Result<Self, cdsi::LookupError> {
         let ConnectionManager {
             env,
             dns_resolver,
