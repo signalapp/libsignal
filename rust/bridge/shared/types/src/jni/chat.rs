@@ -87,27 +87,33 @@ impl ChatListener for JniChatListener {
     fn connection_interrupted(&mut self, disconnect_cause: ChatServiceError) {
         let listener = &self.listener;
         self.attach_and_log_on_error("connection interrupted", move |env| {
-            convert_to_exception(
-                env,
-                SignalJniError::from(disconnect_cause),
-                move |env, throwable, _error| {
-                    throwable
-                        .and_then(move |throwable| {
-                            call_method_checked(
-                                env,
-                                listener,
-                                "onConnectionInterrupted",
-                                jni_args!((throwable => java.lang.Throwable) -> void),
-                            )?;
-                            Ok(())
-                        })
-                        .unwrap_or_else(|error| {
-                            log::error!(
-                                "failed to call onConnectionInterrupted with cause: {error}"
-                            );
-                        });
-                },
-            );
+            let throw_exception = move |env, listener, throwable: JThrowable<'_>| {
+                call_method_checked(
+                    env,
+                    listener,
+                    "onConnectionInterrupted",
+                    jni_args!((throwable => java.lang.Throwable) -> void),
+                )?;
+                Ok(())
+            };
+            match disconnect_cause {
+                ChatServiceError::ServiceIntentionallyDisconnected => {
+                    throw_exception(env, listener, JObject::null().into())?
+                }
+                disconnect_cause => convert_to_exception(
+                    env,
+                    SignalJniError::from(disconnect_cause),
+                    move |env, throwable, _error| {
+                        throwable
+                            .and_then(|throwable| throw_exception(env, listener, throwable))
+                            .unwrap_or_else(|error| {
+                                log::error!(
+                                    "failed to call onConnectionInterrupted with cause: {error}"
+                                );
+                            });
+                    },
+                ),
+            };
             Ok(())
         });
     }

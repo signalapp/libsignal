@@ -14,9 +14,11 @@ import java.util.ArrayList;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Function;
+import java.util.function.BiFunction;
 import org.junit.Assume;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.Timeout;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameter;
@@ -136,26 +138,62 @@ public class ChatServiceTest {
 
   @RunWith(Parameterized.class)
   public static class ConnectTests {
+    private static class Listener implements ChatListener, ChatConnectionListener {
+      CompletableFuture<ChatServiceException> disconnectReason = new CompletableFuture<>();
+
+      public void onConnectionInterrupted(ChatService chat, ChatServiceException disconnectReason) {
+        this.disconnectReason.complete(disconnectReason);
+      }
+
+      public void onConnectionInterrupted(
+          ChatConnection chat, ChatServiceException disconnectReason) {
+        this.disconnectReason.complete(disconnectReason);
+      }
+
+      public void onIncomingMessage(
+          ChatService chat,
+          byte[] envelope,
+          long serverDeliveryTimestamp,
+          ChatListener.ServerMessageAck sendAck) {
+        throw new AssertionError("Unexpected incoming message");
+      }
+
+      public void onIncomingMessage(
+          ChatConnection chat,
+          byte[] envelope,
+          long serverDeliveryTimestamp,
+          ChatConnectionListener.ServerMessageAck sendAck) {
+        throw new AssertionError("Unexpected incoming message");
+      }
+    }
+    ;
+
+    @Rule public Timeout perCaseTimeout = new Timeout(15, TimeUnit.SECONDS);
+
     @Parameters
-    public static Iterable<Function<Network, CompletableFuture<Void>>> connectUnauthFns() {
-      ArrayList<Function<Network, CompletableFuture<Void>>> fns = new ArrayList<>(2);
+    public static Iterable<BiFunction<Network, Listener, CompletableFuture<Void>>>
+        connectUnauthFns() {
+      ArrayList<BiFunction<Network, Listener, CompletableFuture<Void>>> fns = new ArrayList<>(2);
       fns.add(
-          (Network net) -> {
+          (Network net, Listener listener) -> {
             // Chat service
-            final UnauthenticatedChatService chat = net.createUnauthChatService(null);
-            return chat.connect()
-                .thenCompose((ChatService.DebugInfo debugInfo) -> chat.disconnect());
+            final UnauthenticatedChatService chat = net.createUnauthChatService(listener);
+            return chat.connect().thenCompose(debugInfo -> chat.disconnect());
           });
       fns.add(
-          (Network net) -> {
+          (Network net, Listener listener) -> {
             // Chat connection
-            return net.connectUnauthChat(null)
-                .thenCompose((UnauthenticatedChatConnection chat) -> chat.disconnect());
+            return net.connectUnauthChat(listener)
+                .thenCompose(
+                    chat -> {
+                      chat.start();
+                      return chat.disconnect();
+                    });
           });
       return fns;
     }
 
-    @Parameter public Function<Network, CompletableFuture<Void>> connectUnauthChat;
+    @Parameter public BiFunction<Network, Listener, CompletableFuture<Void>> connectUnauthChat;
 
     @Test
     public void testConnectUnauth() throws Exception {
@@ -165,7 +203,11 @@ public class ChatServiceTest {
       Assume.assumeNotNull(ENABLE_TEST);
 
       final Network net = new Network(Network.Environment.STAGING, USER_AGENT);
-      this.connectUnauthChat.apply(net).get();
+      final Listener listener = new Listener();
+      Void disconnectFinished = this.connectUnauthChat.apply(net, listener).get();
+
+      ChatServiceException disconnectReason = listener.disconnectReason.get();
+      assertNull(disconnectReason);
     }
 
     @Test
@@ -187,7 +229,11 @@ public class ChatServiceTest {
           throw new IllegalArgumentException("invalid LIBSIGNAL_TESTING_PROXY_SERVER");
       }
 
-      this.connectUnauthChat.apply(net).get();
+      final Listener listener = new Listener();
+      Void disconnectFinished = this.connectUnauthChat.apply(net, listener).get();
+
+      ChatServiceException disconnectReason = listener.disconnectReason.get();
+      assertNull(disconnectReason);
     }
   }
   ;

@@ -78,9 +78,11 @@ public abstract class ChatService extends NativeHandleGuard.SimpleOwner {
       if (chat.chatListener == null) return;
 
       ChatServiceException disconnectReasonChatServiceException =
-          (disconnectReason instanceof ChatServiceException)
-              ? (ChatServiceException) disconnectReason
-              : new ChatServiceException("OtherDisconnectReason", disconnectReason);
+          (disconnectReason == null)
+              ? null
+              : (disconnectReason instanceof ChatServiceException)
+                  ? (ChatServiceException) disconnectReason
+                  : new ChatServiceException("OtherDisconnectReason", disconnectReason);
       chat.chatListener.onConnectionInterrupted(chat, disconnectReasonChatServiceException);
     }
   }

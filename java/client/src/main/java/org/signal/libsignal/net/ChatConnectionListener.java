@@ -34,7 +34,8 @@ public interface ChatConnectionListener {
   /**
    * Called when the client gets disconnected from the server.
    *
-   * <p>This includes both deliberate disconnects as well as unexpected socket closures.
+   * <p>This includes both deliberate disconnects as well as unexpected socket closures. In the case
+   * of the former, the {@param disconnectReason} will be null.
    *
    * <p>The default implementation of this method does nothing.
    */

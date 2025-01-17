@@ -34,8 +34,8 @@ public interface ChatListener {
   /**
    * Called when the client gets disconnected from the server.
    *
-   * <p>This includes both deliberate disconnects as well as unexpected socket closures that will be
-   * automatically retried.
+   * <p>This includes both deliberate disconnects as well as unexpected socket closures. In the case
+   * of the former, the {@param disconnectReason} will be null.
    *
    * <p>Will not be called if no other requests have been invoked for this connection attempt. That
    * is, you should never see this as the first callback, nor two of these callbacks in a row.
