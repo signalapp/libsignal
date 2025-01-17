@@ -150,6 +150,42 @@ public class Network {
         tokioAsyncContext, connectionManager, username, password, receiveStories, listener);
   }
 
+  /**
+   * Initiates an unauthenticated connection attempt to the chat service.
+   *
+   * <p>The returned {@link CompletableFuture} will resolve when the connection attempt succeeds or
+   * fails. If it succeeds, the {@link UnauthenticatedChatConnection} can be used to send requests
+   * to the chat service, and incoming events will be provided via the provided {@link
+   * ChatConnectionListener} argument.
+   *
+   * <p>If the connection attempt fails, the future will contain a {@link ChatServiceException} or
+   * other exception type wrapped in a {@link ExecutionException}.
+   */
+  public CompletableFuture<UnauthenticatedChatConnection> connectUnauthChat(
+      ChatConnectionListener listener) {
+    return UnauthenticatedChatConnection.connect(tokioAsyncContext, connectionManager, listener);
+  }
+
+  /**
+   * Initiates an authenticated connection attempt to the chat service.
+   *
+   * <p>The returned {@link CompletableFuture} will resolve when the connection attempt succeeds or
+   * fails. If it succeeds, the {@link AuthenticatedChatConnection} can be used to send requests to
+   * the chat service, and incoming events will be provided via the provided {@link
+   * ChatConnectionListener} argument.
+   *
+   * <p>If the connection attempt fails, the future will contain a {@link ChatServiceException} or
+   * other exception type wrapped in a {@link ExecutionException}.
+   */
+  public CompletableFuture<AuthenticatedChatConnection> connectAuthChat(
+      final String username,
+      final String password,
+      final boolean receiveStories,
+      ChatConnectionListener listener) {
+    return AuthenticatedChatConnection.connect(
+        tokioAsyncContext, connectionManager, username, password, receiveStories, listener);
+  }
+
   static class ConnectionManager extends NativeHandleGuard.SimpleOwner {
     private final Environment environment;
 

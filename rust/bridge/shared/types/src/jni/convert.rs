@@ -541,6 +541,25 @@ impl<'storage, 'param: 'storage, 'context: 'param> ArgTypeInfo<'storage, 'param,
     }
 }
 
+impl<'storage, 'param: 'storage, 'context: 'param> ArgTypeInfo<'storage, 'param, 'context>
+    for Box<dyn ChatListener>
+{
+    type ArgType = JObject<'context>;
+    type StoredType = Option<JniBridgeChatListener>;
+    fn borrow(
+        env: &mut JNIEnv<'context>,
+        store: &'param Self::ArgType,
+    ) -> Result<Self::StoredType, BridgeLayerError> {
+        if store.is_null() {
+            return Err(BridgeLayerError::NullPointer(Some("BridgeChatListener")));
+        }
+        Ok(Some(JniBridgeChatListener::new(env, store)?))
+    }
+    fn load_from(stored: &'storage mut Self::StoredType) -> Self {
+        stored.take().expect("not previously taken").into_listener()
+    }
+}
+
 /// A translation from a Java interface where the implementing class wraps the Rust handle.
 impl<'a> SimpleArgTypeInfo<'a> for CiphertextMessageRef<'a> {
     type ArgType = JavaCiphertextMessage<'a>;
@@ -1463,6 +1482,9 @@ macro_rules! jni_arg_type {
         ::jni::objects::JByteArray<'local>
     };
     (Option<Box<dyn ChatListener> >) =>{
+        jni::JavaBridgeChatListener<'local>
+    };
+    (Box<dyn ChatListener >) =>{
         jni::JavaBridgeChatListener<'local>
     };
     (&mut [u8]) => {

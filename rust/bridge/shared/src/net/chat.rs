@@ -22,8 +22,8 @@ use crate::*;
 bridge_handle_fns!(AuthChat, clone = false);
 bridge_handle_fns!(UnauthChat, clone = false);
 bridge_handle_fns!(HttpRequest, clone = false);
-bridge_handle_fns!(UnauthenticatedChatConnection, clone = false, jni = false);
-bridge_handle_fns!(AuthenticatedChatConnection, clone = false, jni = false);
+bridge_handle_fns!(UnauthenticatedChatConnection, clone = false);
+bridge_handle_fns!(AuthenticatedChatConnection, clone = false);
 
 #[bridge_fn(ffi = false)]
 fn HttpRequest_new(
@@ -94,14 +94,14 @@ fn ChatService_new_auth(
     )
 }
 
-#[bridge_io(TokioAsyncContext, jni = false)]
+#[bridge_io(TokioAsyncContext)]
 async fn UnauthenticatedChatConnection_connect(
     connection_manager: &ConnectionManager,
 ) -> Result<UnauthenticatedChatConnection, ChatServiceError> {
     UnauthenticatedChatConnection::connect(connection_manager).await
 }
 
-#[bridge_fn(jni = false)]
+#[bridge_fn]
 fn UnauthenticatedChatConnection_init_listener(
     chat: &UnauthenticatedChatConnection,
     listener: Box<dyn ChatListener>,
@@ -109,7 +109,7 @@ fn UnauthenticatedChatConnection_init_listener(
     chat.init_listener(listener)
 }
 
-#[bridge_io(TokioAsyncContext, jni = false)]
+#[bridge_io(TokioAsyncContext)]
 async fn UnauthenticatedChatConnection_send(
     chat: &UnauthenticatedChatConnection,
     http_request: &HttpRequest,
@@ -126,17 +126,17 @@ async fn UnauthenticatedChatConnection_send(
         .await
 }
 
-#[bridge_io(TokioAsyncContext, jni = false)]
+#[bridge_io(TokioAsyncContext)]
 async fn UnauthenticatedChatConnection_disconnect(chat: &UnauthenticatedChatConnection) {
     chat.disconnect().await
 }
 
-#[bridge_fn(jni = false)]
+#[bridge_fn]
 fn UnauthenticatedChatConnection_info(chat: &UnauthenticatedChatConnection) -> ChatConnectionInfo {
     chat.info()
 }
 
-#[bridge_io(TokioAsyncContext, jni = false)]
+#[bridge_io(TokioAsyncContext)]
 async fn AuthenticatedChatConnection_connect(
     connection_manager: &ConnectionManager,
     username: String,
@@ -151,7 +151,7 @@ async fn AuthenticatedChatConnection_connect(
     .await
 }
 
-#[bridge_fn(jni = false)]
+#[bridge_fn]
 fn AuthenticatedChatConnection_init_listener(
     chat: &AuthenticatedChatConnection,
     listener: Box<dyn ChatListener>,
@@ -159,7 +159,7 @@ fn AuthenticatedChatConnection_init_listener(
     chat.init_listener(listener)
 }
 
-#[bridge_io(TokioAsyncContext, jni = false)]
+#[bridge_io(TokioAsyncContext)]
 async fn AuthenticatedChatConnection_send(
     chat: &AuthenticatedChatConnection,
     http_request: &HttpRequest,
@@ -176,7 +176,7 @@ async fn AuthenticatedChatConnection_send(
         .await
 }
 
-#[bridge_io(TokioAsyncContext, jni = false)]
+#[bridge_io(TokioAsyncContext)]
 async fn AuthenticatedChatConnection_disconnect(chat: &AuthenticatedChatConnection) {
     chat.disconnect().await
 }

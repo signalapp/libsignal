@@ -153,6 +153,12 @@ public final class Native {
 
   public static native void AuthCredentialWithPni_CheckValidContents(byte[] bytes) throws Exception;
 
+  public static native void AuthenticatedChatConnection_Destroy(long handle);
+  public static native CompletableFuture<Long> AuthenticatedChatConnection_connect(long asyncRuntime, long connectionManager, String username, String password, boolean receiveStories);
+  public static native CompletableFuture AuthenticatedChatConnection_disconnect(long asyncRuntime, long chat);
+  public static native void AuthenticatedChatConnection_init_listener(long chat, BridgeChatListener listener);
+  public static native CompletableFuture<Object> AuthenticatedChatConnection_send(long asyncRuntime, long chat, long httpRequest, int timeoutMillis);
+
   public static native void BackupAuthCredentialPresentation_CheckValidContents(byte[] presentationBytes) throws Exception;
   public static native byte[] BackupAuthCredentialPresentation_GetBackupId(byte[] presentationBytes);
   public static native int BackupAuthCredentialPresentation_GetBackupLevel(byte[] presentationBytes);
@@ -685,6 +691,13 @@ public final class Native {
   public static native long TokioAsyncContext_new();
 
   public static native void UnauthChat_Destroy(long handle);
+
+  public static native void UnauthenticatedChatConnection_Destroy(long handle);
+  public static native CompletableFuture<Long> UnauthenticatedChatConnection_connect(long asyncRuntime, long connectionManager);
+  public static native CompletableFuture UnauthenticatedChatConnection_disconnect(long asyncRuntime, long chat);
+  public static native long UnauthenticatedChatConnection_info(long chat);
+  public static native void UnauthenticatedChatConnection_init_listener(long chat, BridgeChatListener listener);
+  public static native CompletableFuture<Object> UnauthenticatedChatConnection_send(long asyncRuntime, long chat, long httpRequest, int timeoutMillis);
 
   public static native long UnidentifiedSenderMessageContent_Deserialize(byte[] data) throws Exception;
   public static native void UnidentifiedSenderMessageContent_Destroy(long handle);
