@@ -3,8 +3,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use std::ops::Deref;
-
 /// A trait representing arrays, for use in other traits and generics.
 pub trait Array<Element>: AsRef<[Element]> {
     const LEN: usize;
@@ -20,24 +18,11 @@ pub trait FixedLengthBincodeSerializable: 'static {
 }
 
 /// A wrapper type that indicates that `T` should be serialized across the bridges.
+#[derive(derive_more::Deref, derive_more::From)]
 pub struct Serialized<T>(T);
 
 impl<T> Serialized<T> {
     pub fn into_inner(self) -> T {
         self.0
-    }
-}
-
-impl<T> Deref for Serialized<T> {
-    type Target = T;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl<T> From<T> for Serialized<T> {
-    fn from(value: T) -> Self {
-        Self(value)
     }
 }

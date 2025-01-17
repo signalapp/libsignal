@@ -22,7 +22,7 @@ boring-signal = { workspace = true }
 bytes = "1.4.0"
 const-str = { workspace = true, features = ["std"] }
 derive-where = { workspace = true }
-derive_more = { workspace = true, features = ["from", "into"] }
+derive_more = { workspace = true, features = ["from", "into", "into_iterator"] }
 displaydoc = { workspace = true }
 either = "1.10.0"
 futures-util = { workspace = true }

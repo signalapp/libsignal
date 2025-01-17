@@ -12,7 +12,7 @@ use crate::backup::serialize::SerializeOrder;
 ///
 /// `UnorderedList<T>` implements [`serde::Serialize`] by serializing to a
 /// canonical order, which requires `T: SerializeOrder`.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, derive_more::From, derive_more::IntoIterator)]
 #[derive_where(Default)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct UnorderedList<T>(pub(crate) Vec<T>);
@@ -38,16 +38,6 @@ impl<T> FromIterator<T> for UnorderedList<T> {
     }
 }
 
-impl<T> IntoIterator for UnorderedList<T> {
-    type Item = T;
-
-    type IntoIter = std::vec::IntoIter<T>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.0.into_iter()
-    }
-}
-
 impl<T> UnorderedList<T> {
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
@@ -55,11 +45,5 @@ impl<T> UnorderedList<T> {
 
     pub fn iter(&self) -> std::slice::Iter<T> {
         self.0.iter()
-    }
-}
-
-impl<T> From<Vec<T>> for UnorderedList<T> {
-    fn from(value: Vec<T>) -> Self {
-        Self(value)
     }
 }

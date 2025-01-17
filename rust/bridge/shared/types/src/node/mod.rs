@@ -3,8 +3,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use std::ops::Deref;
-
 use libsignal_protocol::*;
 pub use neon::context::Context;
 pub use neon::prelude::*;
@@ -63,22 +61,9 @@ pub fn register(cx: &mut ModuleContext) -> NeonResult<()> {
 }
 
 /// A wrapper around a type that implements Neon's [`Finalize`] by simply dropping the type.
+#[derive(derive_more::Deref, derive_more::From)]
 pub struct DefaultFinalize<T>(pub T);
 
 impl<T> Finalize for DefaultFinalize<T> {}
-
-impl<T> Deref for DefaultFinalize<T> {
-    type Target = T;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl<T> From<T> for DefaultFinalize<T> {
-    fn from(value: T) -> Self {
-        Self(value)
-    }
-}
 
 pub type DefaultJsBox<T> = JsBox<DefaultFinalize<T>>;

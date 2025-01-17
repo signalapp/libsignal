@@ -2421,6 +2421,7 @@ dependencies = [
  "clap-stdin",
  "criterion",
  "derive-where",
+ "derive_more 1.0.0",
  "dir-test",
  "displaydoc",
  "env_logger",

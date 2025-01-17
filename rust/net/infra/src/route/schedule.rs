@@ -451,18 +451,9 @@ impl<S: FusedStream<Item = (A, B)>, A, B> FusedStream for SwapPairStream<S> {
 const HAPPY_EYEBALLS_DELAY: Duration = Duration::from_millis(300);
 
 /// A group of resolved routes that came from the same unresolved route.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, derive_more::IntoIterator)]
 pub struct ResolvedRoutes<R> {
     routes: Vec<R>,
-}
-
-impl<R> IntoIterator for ResolvedRoutes<R> {
-    type IntoIter = <Vec<R> as IntoIterator>::IntoIter;
-    type Item = R;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.routes.into_iter()
-    }
 }
 
 type EagerResolutionResult<R> = Result<ResolvedRoutes<R>, (Arc<str>, DnsError)>;

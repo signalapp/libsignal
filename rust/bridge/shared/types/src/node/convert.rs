@@ -435,7 +435,9 @@ fn calculate_checksum_for_immutable_buffer(buffer: &[u8]) -> u64 {
 }
 
 /// A wrapper around `&[u8]` that also stores a checksum, to be validated on Drop.
+#[derive(derive_more::Deref)]
 pub struct AssumedImmutableBuffer<'a> {
+    #[deref]
     buffer: &'a [u8],
     hash: u64,
 }
@@ -461,13 +463,6 @@ impl<'a> AssumedImmutableBuffer<'a> {
             buffer: extended_lifetime_buffer,
             hash,
         }
-    }
-}
-
-impl Deref for AssumedImmutableBuffer<'_> {
-    type Target = [u8];
-    fn deref(&self) -> &[u8] {
-        self.buffer
     }
 }
 

@@ -207,6 +207,7 @@ impl std::fmt::Debug for UnexpectedPanic {
 // Swift code considers all opaque pointers to be the same type, but
 // differentiates between the generated named struct types.
 #[repr(C)]
+#[derive(derive_more::From)]
 #[derive_where(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct MutPointer<T> {
     raw: *mut T,
@@ -224,23 +225,11 @@ impl<T> MutPointer<T> {
     }
 }
 
-impl<T> From<*mut T> for MutPointer<T> {
-    fn from(raw: *mut T) -> Self {
-        Self { raw }
-    }
-}
-
 // Wrapped `*const T`. This type exists for the same reason `MutPointer` does.
 #[repr(C)]
 #[derive_where(Copy, Clone, Debug, PartialEq)]
 pub struct ConstPointer<T> {
     raw: *const T,
-}
-
-impl<T> From<*const T> for ConstPointer<T> {
-    fn from(raw: *const T) -> Self {
-        Self { raw }
-    }
 }
 
 impl<T> From<&T> for ConstPointer<T> {

@@ -57,7 +57,6 @@ mod kyber768;
 mod mlkem1024;
 
 use std::marker::PhantomData;
-use std::ops::Deref;
 
 use derive_where::derive_where;
 use displaydoc::Display;
@@ -216,8 +215,10 @@ impl KeyKind for Secret {
     }
 }
 
+#[derive(derive_more::Deref)]
 #[derive_where(Clone)]
 pub(crate) struct KeyMaterial<T: KeyKind> {
+    #[deref(forward)]
     data: Box<[u8]>,
     kind: PhantomData<T>,
 }
@@ -228,14 +229,6 @@ impl<T: KeyKind> KeyMaterial<T> {
             data,
             kind: PhantomData,
         }
-    }
-}
-
-impl<T: KeyKind> Deref for KeyMaterial<T> {
-    type Target = [u8];
-
-    fn deref(&self) -> &Self::Target {
-        self.data.deref()
     }
 }
 

@@ -54,6 +54,7 @@ cbc = { workspace = true }
 clap = { workspace = true, features = ["derive"] }
 clap-stdin = "0.3.0"
 derive-where = { workspace = true }
+derive_more = { workspace = true, features = ["from", "into_iterator"] }
 displaydoc = { workspace = true }
 env_logger = { workspace = true }
 futures = { workspace = true }
