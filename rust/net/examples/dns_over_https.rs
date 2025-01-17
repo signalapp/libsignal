@@ -2,7 +2,7 @@
 // Copyright 2024 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
-use std::convert::Infallible;
+use std::net::IpAddr;
 use std::num::NonZeroU16;
 use std::sync::Arc;
 
@@ -13,9 +13,10 @@ use libsignal_net::infra::dns::custom_resolver::DnsTransport;
 use libsignal_net::infra::dns::dns_lookup::DnsLookupRequest;
 use libsignal_net::infra::dns::dns_transport_doh::DohTransport;
 use libsignal_net::infra::host::Host;
-use libsignal_net::infra::{
-    ConnectionParams, HttpRequestDecoratorSeq, RouteType, TransportConnectionParams,
+use libsignal_net_infra::route::{
+    HttpRouteFragment, HttpsTlsRoute, TcpRoute, TlsRoute, TlsRouteFragment,
 };
+use libsignal_net_infra::Alpn;
 
 #[derive(Parser, Debug)]
 struct Args {
@@ -26,15 +27,11 @@ struct Args {
     #[arg(long, default_value = "chat.signal.org")]
     domain: String,
     /// address of the name server
-    #[arg(long, default_value = "1.1.1.1", value_parser=parse_host)]
-    ns_address: Host<Arc<str>>,
+    #[arg(long, default_value = "1.1.1.1")]
+    ns_address: IpAddr,
     /// port of the name server
     #[arg(long, default_value = "443")]
-    ns_port: u16,
-}
-
-fn parse_host(s: &str) -> Result<Host<Arc<str>>, Infallible> {
-    Ok(Host::parse_as_ip_or_domain(s))
+    ns_port: NonZeroU16,
 }
 
 #[tokio::main]
@@ -44,28 +41,32 @@ async fn main() {
         .try_init();
 
     let args = Args::parse();
+    let address = args.ns_address;
 
-    let host = args.ns_address.to_string().into();
-    let connection_params = ConnectionParams {
-        route_type: RouteType::Direct,
-        http_request_decorator: HttpRequestDecoratorSeq::default(),
-        transport: TransportConnectionParams {
-            sni: Arc::clone(&host),
-            tcp_host: args.ns_address,
-            port: NonZeroU16::try_from(args.ns_port).expect("valid port value"),
-            certs: RootCertificates::Native,
+    let host: Arc<str> = address.to_string().into();
+    let route = HttpsTlsRoute {
+        fragment: HttpRouteFragment {
+            host_header: host.clone(),
+            path_prefix: "".into(),
+            front_name: None,
         },
-        http_host: host,
-        connection_confirmation_header: None,
+        inner: TlsRoute {
+            fragment: TlsRouteFragment {
+                root_certs: RootCertificates::Native,
+                sni: Host::Domain(host),
+                alpn: Some(Alpn::Http2),
+            },
+            inner: TcpRoute {
+                address,
+                port: args.ns_port,
+            },
+        },
     };
 
-    let doh_transport = DohTransport::connect(connection_params.clone(), !args.no_ipv6)
+    let doh_transport = DohTransport::connect(route.clone(), !args.no_ipv6)
         .await
         .expect("connected to the DNS server");
-    log::info!(
-        "successfully connected to the DNS server at {:?}",
-        connection_params
-    );
+    log::info!("successfully connected to the DNS server at {:?}", route);
 
     let request = DnsLookupRequest {
         hostname: Arc::from(args.domain),

@@ -3,6 +3,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::net::IpAddr;
+use std::sync::Arc;
+
 use bytes::Bytes;
 use http::response::Parts;
 use http::uri::PathAndQuery;
@@ -11,7 +14,9 @@ use http_body_util::{BodyExt, Full, Limited};
 use hyper::client::conn::http2;
 use hyper_util::rt::{TokioExecutor, TokioIo};
 
-use crate::{Alpn, ConnectionParams, StreamAndInfo, TransportConnector};
+use crate::errors::{LogSafeDisplay, TransportConnectError};
+use crate::route::{ConnectorExt as _, HttpRouteFragment, HttpsTlsRoute, TcpRoute, TlsRoute};
+use crate::{Connection, TransportInfo};
 
 #[derive(displaydoc::Display, Debug)]
 pub enum HttpError {
@@ -36,8 +41,9 @@ pub enum HttpError {
 #[derive(Debug, Clone)]
 pub struct AggregatingHttp2Client {
     service: http2::SendRequest<Full<Bytes>>,
-    connection_params: ConnectionParams,
+    http_host: Arc<str>,
     max_response_size: usize,
+    path_prefix: Arc<str>,
 }
 
 impl AggregatingHttp2Client {
@@ -49,8 +55,8 @@ impl AggregatingHttp2Client {
         body: Bytes,
     ) -> Result<(Parts, Bytes), HttpError> {
         let uri = format!(
-            "https://{}:{}{}",
-            self.connection_params.http_host, self.connection_params.transport.port, path_and_query
+            "https://{}{}{}",
+            self.http_host, self.path_prefix, path_and_query
         );
         let mut request_builder = http::Request::builder()
             .method(method)
@@ -62,10 +68,6 @@ impl AggregatingHttp2Client {
             // This can fail if the builder is invalid.
             .ok_or(HttpError::FailedToCreateRequest)?
             .extend(headers);
-        let request_builder = self
-            .connection_params
-            .http_request_decorator
-            .decorate_request(request_builder);
 
         let content_length = body.len();
         let request = request_builder
@@ -112,18 +114,35 @@ impl AggregatingHttp2Client {
     }
 }
 
-pub(crate) async fn http2_client<C: TransportConnector>(
-    transport_connector: &C,
-    connection_params: ConnectionParams,
+pub(crate) async fn http2_client(
+    target: HttpsTlsRoute<TlsRoute<TcpRoute<IpAddr>>>,
     max_response_size: usize,
+    log_tag: &Arc<str>,
 ) -> Result<AggregatingHttp2Client, HttpError> {
-    let StreamAndInfo(ssl_stream, info) = transport_connector
-        .connect(&connection_params.transport, Alpn::Http2)
+    let HttpsTlsRoute {
+        fragment:
+            HttpRouteFragment {
+                host_header,
+                path_prefix,
+                front_name: _,
+            },
+        inner: tls_target,
+    } = target;
+    let connector = crate::route::ComposedConnector::new(
+        crate::tcp_ssl::StatelessDirect,
+        crate::tcp_ssl::StatelessDirect,
+    );
+    let ssl_stream = connector
+        .connect(tls_target, log_tag.clone())
         .await
-        .map_err(|e| {
-            log::error!("error: {}", e);
+        .map_err(|e: TransportConnectError| {
+            log::info!(
+                "[{log_tag}] HTTP2 connection failed: {}",
+                (&e as &dyn LogSafeDisplay)
+            );
             HttpError::SslHandshakeFailed
         })?;
+    let info = ssl_stream.transport_info();
     let io = TokioIo::new(ssl_stream);
     let (sender, connection) = http2::handshake::<_, _, Full<Bytes>>(TokioExecutor::new(), io)
         .await
@@ -132,16 +151,19 @@ pub(crate) async fn http2_client<C: TransportConnector>(
     // Starting a thread to drive client connection events.
     // The task will complete once the connection is closed due to an error
     // or if all clients are dropped.
+    let log_tag = Arc::clone(log_tag);
+    let TransportInfo { ip_version, .. } = info;
     tokio::spawn(async move {
         match connection.await {
-            Ok(_) => log::info!("HTTP2 connection [{}] closed", info.description()),
-            Err(err) => log::warn!("HTTP2 connection [{}] failed: {}", info.description(), err),
+            Ok(_) => log::info!("[{log_tag}] HTTP2 connection [{ip_version}] closed"),
+            Err(err) => log::warn!("[{log_tag}] HTTP2 connection [{ip_version}] failed: {err}",),
         }
     });
 
     Ok(AggregatingHttp2Client {
+        http_host: host_header,
+        path_prefix,
         service: sender,
-        connection_params,
         max_response_size,
     })
 }
@@ -149,23 +171,18 @@ pub(crate) async fn http2_client<C: TransportConnector>(
 #[cfg(test)]
 mod test {
     use std::borrow::Cow;
-    use std::collections::HashMap;
     use std::future::Future;
     use std::net::{Ipv6Addr, SocketAddr};
     use std::num::NonZeroU16;
-    use std::sync::Arc;
 
     use assert_matches::assert_matches;
     use http::{HeaderName, HeaderValue, Method, StatusCode};
     use warp::Filter as _;
 
     use super::*;
-    use crate::dns::lookup_result::LookupResult;
-    use crate::dns::DnsResolver;
     use crate::host::Host;
+    use crate::route::TlsRouteFragment;
     use crate::tcp_ssl::testutil::{SERVER_CERTIFICATE, SERVER_HOSTNAME};
-    use crate::tcp_ssl::DirectConnector;
-    use crate::{HttpRequestDecoratorSeq, TransportConnectionParams};
 
     const FAKE_RESPONSE: &str = "RESPONSE";
     const FAKE_RESPONSE_HEADER: (HeaderName, HeaderValue) = (
@@ -218,28 +235,30 @@ mod test {
 
         const FAKE_HOSTNAME: &str = "different-from-sni.test-hostname";
 
-        let connector = DirectConnector::new(DnsResolver::new_from_static_map(HashMap::from([(
-            FAKE_HOSTNAME,
-            LookupResult::localhost(),
-        )])));
         let host = FAKE_HOSTNAME.into();
         let client = http2_client(
-            &connector,
-            ConnectionParams {
-                route_type: crate::RouteType::Direct,
-                transport: TransportConnectionParams {
-                    sni: SERVER_HOSTNAME.into(),
-                    tcp_host: Host::Domain(Arc::clone(&host)),
-                    port: NonZeroU16::new(server_addr.port()).unwrap(),
-                    certs: crate::certs::RootCertificates::FromDer(Cow::Borrowed(
-                        SERVER_CERTIFICATE.cert.der(),
-                    )),
+            HttpsTlsRoute {
+                fragment: HttpRouteFragment {
+                    host_header: Arc::clone(&host),
+                    path_prefix: "".into(),
+                    front_name: None,
                 },
-                http_host: host,
-                http_request_decorator: HttpRequestDecoratorSeq::default(),
-                connection_confirmation_header: None,
+                inner: TlsRoute {
+                    fragment: TlsRouteFragment {
+                        sni: Host::Domain(SERVER_HOSTNAME.into()),
+                        root_certs: crate::certs::RootCertificates::FromDer(Cow::Borrowed(
+                            SERVER_CERTIFICATE.cert.der(),
+                        )),
+                        alpn: None,
+                    },
+                    inner: TcpRoute {
+                        address: Ipv6Addr::LOCALHOST.into(),
+                        port: NonZeroU16::new(server_addr.port()).unwrap(),
+                    },
+                },
             },
             MAX_RESPONSE_SIZE,
+            &"test".into(),
         )
         .await
         .expect("can connect");
@@ -291,28 +310,30 @@ mod test {
         tokio::spawn(server);
 
         const INVALID_HOSTNAME: &str = "invalid hostname &&?";
-        let connector = DirectConnector::new(DnsResolver::new_from_static_map(HashMap::from([(
-            INVALID_HOSTNAME,
-            LookupResult::localhost(),
-        )])));
-        let host = INVALID_HOSTNAME.into();
+        let host_header = INVALID_HOSTNAME.into();
         let client = http2_client(
-            &connector,
-            ConnectionParams {
-                route_type: crate::RouteType::Direct,
-                transport: TransportConnectionParams {
-                    sni: SERVER_HOSTNAME.into(),
-                    tcp_host: Host::Domain(Arc::clone(&host)),
-                    port: NonZeroU16::new(server_addr.port()).unwrap(),
-                    certs: crate::certs::RootCertificates::FromDer(Cow::Borrowed(
-                        SERVER_CERTIFICATE.cert.der(),
-                    )),
+            HttpsTlsRoute {
+                fragment: HttpRouteFragment {
+                    host_header,
+                    path_prefix: "".into(),
+                    front_name: None,
                 },
-                http_host: host,
-                http_request_decorator: HttpRequestDecoratorSeq::default(),
-                connection_confirmation_header: None,
+                inner: TlsRoute {
+                    fragment: TlsRouteFragment {
+                        sni: Host::Domain(SERVER_HOSTNAME.into()),
+                        root_certs: crate::certs::RootCertificates::FromDer(Cow::Borrowed(
+                            SERVER_CERTIFICATE.cert.der(),
+                        )),
+                        alpn: None,
+                    },
+                    inner: TcpRoute {
+                        address: Ipv6Addr::LOCALHOST.into(),
+                        port: NonZeroU16::new(server_addr.port()).unwrap(),
+                    },
+                },
             },
             MAX_RESPONSE_SIZE,
+            &"test".into(),
         )
         .await
         .expect("can connect");

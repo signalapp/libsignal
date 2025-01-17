@@ -17,15 +17,15 @@ use crate::certs::RootCertificates;
 use crate::dns::custom_resolver::CustomDnsResolver;
 use crate::dns::dns_errors::Error;
 use crate::dns::dns_lookup::{DnsLookup, DnsLookupRequest, StaticDnsMap, SystemDnsLookup};
-use crate::dns::dns_transport_doh::{DohTransport, CLOUDFLARE_NS};
+use crate::dns::dns_transport_doh::{DohTransport, CLOUDFLARE_IP};
 use crate::dns::dns_types::ResourceType;
 use crate::dns::dns_utils::oneshot_broadcast::Receiver;
 use crate::dns::dns_utils::{log_safe_domain, oneshot_broadcast};
 use crate::dns::lookup_result::LookupResult;
-use crate::host::Host;
+use crate::route::{HttpRouteFragment, HttpsTlsRoute, TcpRoute, TlsRoute, TlsRouteFragment};
 use crate::timeouts::{DNS_FALLBACK_LOOKUP_TIMEOUTS, DNS_SYSTEM_LOOKUP_TIMEOUT};
 use crate::utils::{self, ObservableEvent};
-use crate::{ConnectionParams, HttpRequestDecoratorSeq, RouteType, TransportConnectionParams};
+use crate::Alpn;
 
 pub mod custom_resolver;
 mod dns_errors;
@@ -81,20 +81,27 @@ struct LookupOption {
 pub fn build_custom_resolver_cloudflare_doh(
     network_change_event: &ObservableEvent,
 ) -> CustomDnsResolver<DohTransport> {
-    let host: Arc<str> = Arc::from(CLOUDFLARE_NS);
-    let connection_params = ConnectionParams {
-        route_type: RouteType::Direct,
-        http_host: host.clone(),
-        transport: TransportConnectionParams {
-            port: nonzero!(443u16),
-            tcp_host: Host::Domain(host.clone()),
-            sni: host.clone(),
-            certs: RootCertificates::Native,
+    let ip_addr = CLOUDFLARE_IP;
+    let host: Arc<str> = Arc::from(ip_addr.to_string());
+    let target = HttpsTlsRoute {
+        fragment: HttpRouteFragment {
+            path_prefix: "".into(),
+            front_name: None,
+            host_header: host.clone(),
         },
-        http_request_decorator: HttpRequestDecoratorSeq::default(),
-        connection_confirmation_header: None,
+        inner: TlsRoute {
+            fragment: TlsRouteFragment {
+                sni: ip_addr.into(),
+                root_certs: RootCertificates::Native,
+                alpn: Some(Alpn::Http2),
+            },
+            inner: TcpRoute {
+                address: ip_addr,
+                port: nonzero!(443u16),
+            },
+        },
     };
-    CustomDnsResolver::<DohTransport>::new(connection_params, network_change_event)
+    CustomDnsResolver::<DohTransport>::new(target, network_change_event)
 }
 
 impl DnsResolver {

@@ -15,9 +15,10 @@ use libsignal_net::infra::dns::dns_transport_doh::DohTransport;
 use libsignal_net::infra::dns::dns_transport_udp::UdpTransport;
 use libsignal_net::infra::host::Host;
 use libsignal_net::infra::utils::ObservableEvent;
-use libsignal_net::infra::{
-    ConnectionParams, HttpRequestDecoratorSeq, RouteType, TransportConnectionParams,
+use libsignal_net_infra::route::{
+    HttpRouteFragment, HttpsTlsRoute, TcpRoute, TlsRoute, TlsRouteFragment,
 };
+use libsignal_net_infra::Alpn;
 use nonzero_ext::nonzero;
 use tokio::time::Instant;
 
@@ -46,31 +47,38 @@ async fn main() {
         .try_init();
 
     let args = Args::parse();
+    const HOST_IP: IpAddr = ip_addr!("1.1.1.1");
 
     let custom_resolver = match args.transport {
         Transport::Udp => {
-            let ns_address = (IpAddr::V4(ip_addr!(v4, "1.1.1.1")), 53);
+            let ns_address = (HOST_IP, 53);
             Either::Left(CustomDnsResolver::<UdpTransport>::new(
                 ns_address,
                 &ObservableEvent::default(),
             ))
         }
         Transport::Doh => {
-            let host = "1.1.1.1".into();
-            let connection_params = ConnectionParams {
-                route_type: RouteType::Direct,
-                http_request_decorator: HttpRequestDecoratorSeq::default(),
-                connection_confirmation_header: None,
-                transport: TransportConnectionParams {
-                    sni: Arc::clone(&host),
-                    tcp_host: Host::Ip(ip_addr!("1.1.1.1")),
-                    port: nonzero!(443u16),
-                    certs: RootCertificates::Native,
+            let host: Arc<str> = HOST_IP.to_string().into();
+            let target = HttpsTlsRoute {
+                fragment: HttpRouteFragment {
+                    host_header: host.clone(),
+                    path_prefix: "".into(),
+                    front_name: None,
                 },
-                http_host: host,
+                inner: TlsRoute {
+                    fragment: TlsRouteFragment {
+                        root_certs: RootCertificates::Native,
+                        sni: Host::Domain(host.clone()),
+                        alpn: Some(Alpn::Http2),
+                    },
+                    inner: TcpRoute {
+                        address: HOST_IP,
+                        port: nonzero!(443u16),
+                    },
+                },
             };
             Either::Right(CustomDnsResolver::<DohTransport>::new(
-                connection_params,
+                target,
                 &ObservableEvent::default(),
             ))
         }
