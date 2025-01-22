@@ -4,7 +4,7 @@
 //
 
 use std::marker::PhantomData;
-use std::num::{NonZeroU16, NonZeroU32};
+use std::num::NonZeroU32;
 use std::panic::RefUnwindSafe;
 use std::sync::Arc;
 use std::time::Duration;
@@ -20,8 +20,8 @@ use libsignal_net::enclave::{
 use libsignal_net::env::{add_user_agent_header, Env, Svr3Env, UserAgent};
 use libsignal_net::infra::connection_manager::MultiRouteConnectionManager;
 use libsignal_net::infra::dns::DnsResolver;
-use libsignal_net::infra::host::Host;
-use libsignal_net::infra::route::ConnectionOutcomeParams;
+use libsignal_net::infra::errors::LogSafeDisplay;
+use libsignal_net::infra::route::{ConnectionOutcomeParams, ConnectionProxyConfig};
 use libsignal_net::infra::tcp_ssl::TcpSslConnector;
 use libsignal_net::infra::timeouts::ONE_ROUTE_CONNECTION_TIMEOUT;
 use libsignal_net::infra::utils::ObservableEvent;
@@ -199,18 +199,31 @@ impl ConnectionManager {
         }
     }
 
-    pub fn set_proxy(&self, host: &str, port: Option<NonZeroU16>) -> Result<(), std::io::Error> {
-        let host = Host::parse_as_ip_or_domain(host);
-
+    pub fn set_proxy_from_url(&self, url_str: &str) -> Result<(), std::io::Error> {
         let mut guard = self.transport_connector.lock().expect("not poisoned");
-        match port {
-            Some(port) => {
-                guard.set_tls_proxy((host, port));
+        match ConnectionProxyConfig::from_url(url_str) {
+            Ok(proxy) => {
+                guard.set_proxy(proxy);
                 Ok(())
             }
-            None => {
+            Err(e) => {
                 guard.set_invalid();
-                Err(std::io::ErrorKind::InvalidInput.into())
+
+                use libsignal_net::infra::route::ProxyUrlError;
+                static_assertions::assert_impl_all!(ProxyUrlError: LogSafeDisplay);
+                Err(match e {
+                    ProxyUrlError::InvalidUrl(_)
+                    | ProxyUrlError::UnexpectedPath
+                    | ProxyUrlError::UnexpectedQuery
+                    | ProxyUrlError::UnexpectedFragment
+                    | ProxyUrlError::SchemeDoesNotSupportUsernames(_)
+                    | ProxyUrlError::SchemeDoesNotSupportPasswords(_) => {
+                        std::io::Error::new(std::io::ErrorKind::InvalidInput, e.to_string())
+                    }
+                    ProxyUrlError::UnsupportedScheme(_) => {
+                        std::io::Error::new(std::io::ErrorKind::Unsupported, e.to_string())
+                    }
+                })
             }
         }
     }
@@ -415,7 +428,7 @@ mod test {
     fn connection_manager_invalid_after_invalid_host_port() {
         let manager = ConnectionManager::new(Environment::Staging, "test-user-agent");
         // This is not a valid port and so should make the ConnectionManager "invalid".
-        assert_matches!(manager.set_proxy("proxy.host", None), Err(e) if e.kind() == std::io::ErrorKind::InvalidInput);
+        assert_matches!(manager.set_proxy_from_url("org.signal.tls://proxy.host:0"), Err(e) if e.kind() == std::io::ErrorKind::InvalidInput);
         let transport_connector = manager.transport_connector.lock().expect("not poisoned");
         assert_matches!(transport_connector.proxy(), Err(_));
     }

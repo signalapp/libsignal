@@ -38,6 +38,7 @@ hmac = { workspace = true }
 http = { workspace = true }
 log = { workspace = true }
 mediasan-common = { workspace = true }
+nonzero_ext = { workspace = true }
 num_enum = { workspace = true }
 once_cell = { workspace = true }
 partial-default = { workspace = true }
@@ -63,6 +64,7 @@ zerocopy = { workspace = true, optional = true }
 
 [dev-dependencies]
 assert_matches = { workspace = true }
+const-str = { workspace = true }
 test-case = { workspace = true }
 tokio = { workspace = true, features = ["test-util", "time", "macros"] }
 

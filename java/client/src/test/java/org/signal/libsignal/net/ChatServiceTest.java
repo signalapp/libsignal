@@ -239,12 +239,28 @@ public class ChatServiceTest {
   ;
 
   @Test
-  public void testInvalidProxyRejected() throws Exception {
+  public void testConnectUnauthThroughProxyAsUrl() throws Exception {
+    final String PROXY_SERVER = TestEnvironment.get("LIBSIGNAL_TESTING_PROXY_SERVER");
+    Assume.assumeNotNull(PROXY_SERVER);
+
     // The default TLS proxy config doesn't support staging, so we connect to production.
+    final Network net = new Network(Network.Environment.PRODUCTION, USER_AGENT);
+    net.setProxyFromUrl("org.signal.tls://" + PROXY_SERVER);
+
+    final UnauthenticatedChatService chat = net.createUnauthChatService(null);
+    // Just make sure we can connect.
+    chat.connect().get();
+    chat.disconnect();
+  }
+
+  @Test
+  public void testInvalidProxyRejected() throws Exception {
     final Network net = new Network(Network.Environment.PRODUCTION, USER_AGENT);
     assertThrows(IOException.class, () -> net.setProxy("signalfoundation.org", 0));
     assertThrows(IOException.class, () -> net.setProxy("signalfoundation.org", 100_000));
     assertThrows(IOException.class, () -> net.setProxy("signalfoundation.org", -1));
+    assertThrows(
+        IOException.class, () -> net.setProxyFromUrl("socks+shoes://signalfoundation.org"));
   }
 
   private void injectServerRequest(ChatService chat, String requestBase64) {

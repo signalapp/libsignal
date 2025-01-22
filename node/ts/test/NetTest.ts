@@ -169,7 +169,6 @@ describe('chat service api', () => {
   });
 
   it('invalid proxies are rejected', () => {
-    // The default TLS proxy config doesn't support staging, so we connect to production.
     const net = new Net({
       env: Environment.Production,
       userAgent: userAgent,
@@ -178,6 +177,7 @@ describe('chat service api', () => {
     expect(() => net.setProxy('signalfoundation.org', 100_000)).throws(Error);
     expect(() => net.setProxy('signalfoundation.org', -1)).throws(Error);
     expect(() => net.setProxy('signalfoundation.org', 0.1)).throws(Error);
+    expect(() => net.setProxyFromUrl('socks+shoes://signalfoundation.org')).throws(Error);
   });
 
   // Integration tests make real network calls and as such will not be run unless a proxy server is provided.
@@ -248,6 +248,21 @@ describe('chat service api', () => {
             2
           );
           net.setProxy(host, parseInt(port, 10));
+          await connectChatUnauthenticated(net);
+        }).timeout(10000);
+
+        it('can connect through a proxy server using URL syntax', async function () {
+          const PROXY_SERVER = process.env.LIBSIGNAL_TESTING_PROXY_SERVER;
+          if (!PROXY_SERVER) {
+            this.skip();
+          }
+
+          // The default TLS proxy config doesn't support staging, so we connect to production.
+          const net = new Net({
+            env: Environment.Production,
+            userAgent: userAgent,
+          });
+          net.setProxyFromUrl(`org.signal.tls://${PROXY_SERVER}`);
           await connectChatUnauthenticated(net);
         }).timeout(10000);
       });

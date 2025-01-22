@@ -1909,7 +1909,7 @@ SignalFfiError *signal_connection_manager_destroy(SignalMutPointerConnectionMana
 
 SignalFfiError *signal_connection_manager_new(SignalMutPointerConnectionManager *out, uint8_t environment, const char *user_agent);
 
-SignalFfiError *signal_connection_manager_set_proxy(SignalConstPointerConnectionManager connection_manager, const char *host, int32_t port);
+SignalFfiError *signal_connection_manager_set_proxy_from_url(SignalConstPointerConnectionManager connection_manager, const char *url);
 
 SignalFfiError *signal_connection_manager_clear_proxy(SignalConstPointerConnectionManager connection_manager);
 

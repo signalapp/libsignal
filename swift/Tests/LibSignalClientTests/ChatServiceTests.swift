@@ -360,12 +360,37 @@ final class ChatServiceTests: TestCaseBase {
         await self.fulfillment(of: [listener.expectation], timeout: 2)
     }
 
-    func testInvalidProxyRejected() async throws {
+    func testConnectUnauthThroughProxyAsUrl() async throws {
+        guard let PROXY_SERVER = ProcessInfo.processInfo.environment["LIBSIGNAL_TESTING_PROXY_SERVER"] else {
+            throw XCTSkip()
+        }
+
         // The default TLS proxy config doesn't support staging, so we connect to production.
+        let net = Net(env: .production, userAgent: Self.userAgent)
+        try net.setProxy(fromUrl: "org.signal.tls://\(PROXY_SERVER)")
+
+        let chat = net.createUnauthenticatedChatService()
+        let listener = ExpectDisconnectListener(expectation(description: "disconnect"))
+        chat.setListener(listener)
+
+        // Just make sure we can connect.
+        try await chat.connect()
+        try await chat.disconnect()
+
+        await self.fulfillment(of: [listener.expectation], timeout: 2)
+    }
+
+    func testInvalidProxyRejected() async throws {
         let net = Net(env: .production, userAgent: Self.userAgent)
         do {
             try net.setProxy(host: "signalfoundation.org", port: 0)
             XCTFail("should not allow setting invalid proxy")
+        } catch SignalError.ioError {
+            // Okay
+        }
+        do {
+            try net.setProxy(fromUrl: "socks+shoes://signalfoundation.org")
+            XCTFail("should not allow setting unsupported proxy")
         } catch SignalError.ioError {
             // Okay
         }

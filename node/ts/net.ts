@@ -825,21 +825,36 @@ export class Net {
   /**
    * Sets the proxy host to be used for all new connections (until overridden).
    *
-   * Sets a domain name and port to be used to proxy all new outgoing
-   * connections. The proxy can be overridden by calling this method again or
-   * unset by calling {@link #clearProxy}.
+   * Sets a server to be used to proxy all new outgoing connections. The proxy can be
+   * overridden by calling this method again or unset by calling {@link #clearProxy}.
+   *
+   * To specify a Signal transparent TLS proxy, use the scheme `org.signal.tls://`, or the overload
+   * that takes a separate domain and port number.
+   *
+   * Throws if the URL is structurally invalid or uses an unsupported proxy protocol.
+   */
+  setProxyFromUrl(url: string): void {
+    Native.ConnectionManager_set_proxy_from_url(this.connectionManager, url);
+  }
+
+  /**
+   * Sets the Signal TLS proxy host to be used for all new connections (until overridden).
+   *
+   * Sets a domain name and port to be used to proxy all new outgoing connections, using a Signal
+   * transparent TLS proxy. The proxy can be overridden by calling this method again or unset by
+   * calling {@link #clearProxy}.
    *
    * Throws if the host or port is structurally invalid, such as a port that doesn't fit in u16.
    */
   setProxy(host: string, port: number): void {
-    Native.ConnectionManager_set_proxy(this.connectionManager, host, port);
+    this.setProxyFromUrl(`org.signal.tls://${host}:${port}`)
   }
 
   /**
    * Ensures that future connections will be made directly, not through a proxy.
    *
-   * Clears any proxy configuration set via {@link #setProxy}. If none was set, calling this
-   * method is a no-op.
+   * Clears any proxy configuration set via {@link #setProxy} or {@link #setProxyFromUrl}. If none
+   * was set, calling this method is a no-op.
    */
   clearProxy(): void {
     Native.ConnectionManager_clear_proxy(this.connectionManager);
