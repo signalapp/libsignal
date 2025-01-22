@@ -241,6 +241,7 @@ impl ConnectionManager {
     }
 
     pub fn on_network_change(&self) {
+        log::info!("ConnectionManager: on_network_change");
         self.network_change_event.fire()
     }
 }
