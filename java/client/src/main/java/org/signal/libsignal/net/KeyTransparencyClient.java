@@ -18,8 +18,8 @@ import org.signal.libsignal.protocol.ServiceId;
  * Typed API to access the key transparency subsystem using an existing unauthenticated chat
  * connection.
  *
- * <p>Unlike {@link ChatService}, key transparency client does not export "raw" send/receive APIs,
- * and instead uses them internally to implement high-level operations.
+ * <p>Unlike {@link ChatService} and {@link ChatConnection}, key transparency client does not export
+ * "raw" send/receive APIs, and instead uses them internally to implement high-level operations.
  *
  * <p>Note: {@code Store} APIs may be invoked concurrently. Here are possible strategies to make
  * sure there are no thread safety violations:
@@ -31,11 +31,25 @@ import org.signal.libsignal.protocol.ServiceId;
  */
 public class KeyTransparencyClient {
   private final TokioAsyncContext tokioAsyncContext;
-  private final UnauthenticatedChatService chat;
+  private final UnauthenticatedChatService chatService;
+  private final UnauthenticatedChatConnection chatConnection;
+  private final Network.Environment environment;
 
   KeyTransparencyClient(UnauthenticatedChatService chat, TokioAsyncContext tokioAsyncContext) {
-    this.chat = chat;
+    this.chatService = chat;
+    this.chatConnection = null;
     this.tokioAsyncContext = tokioAsyncContext;
+    this.environment = chat.environment;
+  }
+
+  KeyTransparencyClient(
+      UnauthenticatedChatConnection chat,
+      TokioAsyncContext tokioAsyncContext,
+      Network.Environment environment) {
+    this.chatConnection = chat;
+    this.chatService = null;
+    this.tokioAsyncContext = tokioAsyncContext;
+    this.environment = environment;
   }
 
   /**
@@ -96,12 +110,14 @@ public class KeyTransparencyClient {
     // requests.
     // It may result in an IllegalArgumentException.
     try (NativeHandleGuard tokioContextGuard = this.tokioAsyncContext.guard();
-        NativeHandleGuard chatGuard = chat.guard();
         NativeHandleGuard identityKeyGuard = aciIdentityKey.getPublicKey().guard()) {
+      NativeHandleGuard chatServiceGuard = new NativeHandleGuard(chatService);
+      NativeHandleGuard chatConnectionGuard = new NativeHandleGuard(chatConnection);
       return Native.KeyTransparency_Search(
               tokioContextGuard.nativeHandle(),
-              chat.environment.value,
-              chatGuard.nativeHandle(),
+              this.environment.value,
+              chatServiceGuard.nativeHandle(),
+              chatConnectionGuard.nativeHandle(),
               aci.toServiceIdFixedWidthBinary(),
               identityKeyGuard.nativeHandle(),
               e164,
@@ -147,11 +163,13 @@ public class KeyTransparencyClient {
   public CompletableFuture<Void> updateDistinguished(final Store store) {
     byte[] lastDistinguished = store.getLastDistinguishedTreeHead().orElse(null);
     try (NativeHandleGuard tokioContextGuard = this.tokioAsyncContext.guard();
-        NativeHandleGuard chatGuard = chat.guard()) {
+        NativeHandleGuard chatServiceGuard = new NativeHandleGuard(chatService);
+        NativeHandleGuard chatConnectionGuard = new NativeHandleGuard(chatConnection)) {
       return Native.KeyTransparency_Distinguished(
               tokioContextGuard.nativeHandle(),
-              chat.environment.value,
-              chatGuard.nativeHandle(),
+              this.environment.value,
+              chatServiceGuard.nativeHandle(),
+              chatConnectionGuard.nativeHandle(),
               lastDistinguished)
           .thenApply(
               bytes -> {
@@ -205,11 +223,13 @@ public class KeyTransparencyClient {
           .thenCompose((ignored) -> this.monitor(aci, e164, usernameHash, store));
     }
     try (NativeHandleGuard tokioContextGuard = this.tokioAsyncContext.guard();
-        NativeHandleGuard chatGuard = chat.guard()) {
+        NativeHandleGuard chatServiceGuard = new NativeHandleGuard(chatService);
+        NativeHandleGuard chatConnectionGuard = new NativeHandleGuard(chatConnection)) {
       return Native.KeyTransparency_Monitor(
               tokioContextGuard.nativeHandle(),
-              chat.environment.value,
-              chatGuard.nativeHandle(),
+              this.environment.value,
+              chatServiceGuard.nativeHandle(),
+              chatConnectionGuard.nativeHandle(),
               aci.toServiceIdFixedWidthBinary(),
               e164,
               usernameHash,

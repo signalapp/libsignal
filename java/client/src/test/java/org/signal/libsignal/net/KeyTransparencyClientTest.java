@@ -12,31 +12,66 @@ import static org.signal.libsignal.net.KeyTransparencyTest.TEST_E164;
 import static org.signal.libsignal.net.KeyTransparencyTest.TEST_UNIDENTIFIED_ACCESS_KEY;
 import static org.signal.libsignal.net.KeyTransparencyTest.TEST_USERNAME_HASH;
 
+import java.util.ArrayList;
 import java.util.Deque;
+import java.util.function.Function;
 import org.junit.Assume;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameter;
+import org.junit.runners.Parameterized.Parameters;
+import org.signal.libsignal.internal.CompletableFuture;
 import org.signal.libsignal.keytrans.SearchResult;
 import org.signal.libsignal.keytrans.TestStore;
 import org.signal.libsignal.protocol.util.Hex;
 import org.signal.libsignal.util.TestEnvironment;
 
+@RunWith(Parameterized.class)
 public class KeyTransparencyClientTest {
   private static final String USER_AGENT = "test";
   private static final boolean INTEGRATION_TESTS_ENABLED =
       TestEnvironment.get("LIBSIGNAL_TESTING_RUN_NONHERMETIC_TESTS") != null;
+
+  @Parameters
+  public static Iterable<Function<Network, CompletableFuture<KeyTransparencyClient>>>
+      connectUnauthChatAndGetKtClientFns() {
+    ArrayList<Function<Network, CompletableFuture<KeyTransparencyClient>>> fns = new ArrayList<>(2);
+    fns.add(
+        (Network net) -> {
+          // Chat service
+          final UnauthenticatedChatService chat = net.createUnauthChatService(null);
+          return chat.connect()
+              .thenApply((ChatService.DebugInfo debugInfo) -> chat.keyTransparencyClient());
+        });
+    fns.add(
+        (Network net) -> {
+          // Chat connection
+          return net.connectUnauthChat(null)
+              .thenApply(
+                  (UnauthenticatedChatConnection chat) -> {
+                    chat.start();
+                    return chat.keyTransparencyClient();
+                  });
+        });
+    return fns;
+  }
+
+  @Parameter
+  public Function<Network, CompletableFuture<KeyTransparencyClient>>
+      connectUnauthChatAndGetKtClient;
 
   @Test
   public void searchInStagingIntegration() throws Exception {
     Assume.assumeTrue(INTEGRATION_TESTS_ENABLED);
 
     final Network net = new Network(Network.Environment.STAGING, USER_AGENT);
-    final UnauthenticatedChatService chat = net.createUnauthChatService(null);
-    chat.connect().get();
+    final KeyTransparencyClient ktClient = connectUnauthChatAndGetKtClient.apply(net).get();
 
     TestStore store = new TestStore();
 
     SearchResult result =
-        chat.keyTransparencyClient()
+        ktClient
             .search(
                 TEST_ACI,
                 TEST_ACI_IDENTITY_KEY,
@@ -62,11 +97,10 @@ public class KeyTransparencyClientTest {
     Assume.assumeTrue(INTEGRATION_TESTS_ENABLED);
 
     final Network net = new Network(Network.Environment.STAGING, USER_AGENT);
-    final UnauthenticatedChatService chat = net.createUnauthChatService(null);
-    chat.connect().get();
+    final KeyTransparencyClient ktClient = connectUnauthChatAndGetKtClient.apply(net).get();
 
     TestStore store = new TestStore();
-    chat.keyTransparencyClient().updateDistinguished(store).get();
+    ktClient.updateDistinguished(store).get();
 
     assertTrue(store.getLastDistinguishedTreeHead().isPresent());
   }
@@ -76,13 +110,12 @@ public class KeyTransparencyClientTest {
     Assume.assumeTrue(INTEGRATION_TESTS_ENABLED);
 
     final Network net = new Network(Network.Environment.STAGING, USER_AGENT);
-    final UnauthenticatedChatService chat = net.createUnauthChatService(null);
-    chat.connect().get();
+    final KeyTransparencyClient ktClient = connectUnauthChatAndGetKtClient.apply(net).get();
 
     TestStore store = new TestStore();
 
     SearchResult ignoredSearchResult =
-        chat.keyTransparencyClient()
+        ktClient
             .search(
                 TEST_ACI,
                 TEST_ACI_IDENTITY_KEY,
@@ -97,7 +130,7 @@ public class KeyTransparencyClientTest {
     // Following search there should be a single entry in the account history
     assertEquals(1, accountDataHistory.size());
 
-    chat.keyTransparencyClient().monitor(TEST_ACI, TEST_E164, TEST_USERNAME_HASH, store).get();
+    ktClient.monitor(TEST_ACI, TEST_E164, TEST_USERNAME_HASH, store).get();
     // Another entry in the account history after a successful monitor request
     assertEquals(2, accountDataHistory.size());
   }

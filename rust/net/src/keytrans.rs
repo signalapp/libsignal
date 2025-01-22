@@ -6,12 +6,12 @@
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::fmt::{Debug, Formatter};
-use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 
 use base64::prelude::{
     Engine as _, BASE64_STANDARD, BASE64_STANDARD_NO_PAD, BASE64_URL_SAFE_NO_PAD,
 };
+use futures_util::future::BoxFuture;
 use http::header::{ACCEPT, CONTENT_TYPE};
 use http::uri::PathAndQuery;
 use libsignal_core::{Aci, E164};
@@ -27,7 +27,7 @@ use prost::{DecodeError, Message};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use crate::chat::{self, Chat, ChatServiceWithDebugInfo};
+use crate::chat;
 
 const SEARCH_PATH: &str = "/v1/key-transparency/search";
 const DISTINGUISHED_PATH: &str = "/v1/key-transparency/distinguished";
@@ -397,10 +397,13 @@ impl TypedMonitorResponse {
     }
 }
 
-type AnyChat = Chat<
-    Arc<dyn ChatServiceWithDebugInfo + Send + Sync>,
-    Arc<dyn ChatServiceWithDebugInfo + Send + Sync>,
->;
+pub trait UnauthenticatedChat {
+    fn send_unauthenticated(
+        &self,
+        request: chat::Request,
+        timeout: Duration,
+    ) -> BoxFuture<'_, std::result::Result<chat::Response, chat::ChatServiceError>>;
+}
 
 pub struct Config {
     chat_timeout: Duration,
@@ -416,7 +419,7 @@ impl Default for Config {
 
 pub struct Kt<'a> {
     pub inner: KeyTransparency,
-    pub chat: &'a AnyChat,
+    pub chat: &'a (dyn UnauthenticatedChat + Sync),
     pub config: Config,
 }
 
@@ -945,6 +948,7 @@ mod test {
 
     use super::*;
     use crate::auth::Auth;
+    use crate::chat::test_support::AnyChat;
     use crate::env;
 
     mod test_account {
@@ -968,6 +972,16 @@ mod test {
         &hex!("1e71563470c1b8a6e0aadf280b6aa96f8ad064674e69b80292ee46d1ab655fcf");
     const AUDITOR_KEY: &[u8; 32] =
         &hex!("1123b13ee32479ae6af5739e5d687b51559abf7684120511f68cde7a21a0e755");
+
+    impl UnauthenticatedChat for AnyChat {
+        fn send_unauthenticated(
+            &self,
+            request: chat::Request,
+            timeout: Duration,
+        ) -> BoxFuture<'_, std::result::Result<chat::Response, chat::ChatServiceError>> {
+            Box::pin(self.send_unauthenticated(request, timeout))
+        }
+    }
 
     fn make_key_transparency() -> KeyTransparency {
         let signature_key =

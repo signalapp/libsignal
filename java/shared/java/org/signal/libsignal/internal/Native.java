@@ -376,10 +376,10 @@ public final class Native {
   public static native byte[] IncrementalMac_Update(long mac, byte[] bytes, int offset, int length);
 
   public static native byte[] KeyTransparency_AciSearchKey(byte[] aci);
-  public static native CompletableFuture<byte[]> KeyTransparency_Distinguished(long asyncRuntime, int environment, long chat, byte[] lastDistinguishedTreeHead);
+  public static native CompletableFuture<byte[]> KeyTransparency_Distinguished(long asyncRuntime, int environment, long chatService, long chatConnection, byte[] lastDistinguishedTreeHead);
   public static native byte[] KeyTransparency_E164SearchKey(String e164);
-  public static native CompletableFuture<byte[]> KeyTransparency_Monitor(long asyncRuntime, int environment, long chat, byte[] aci, String e164, byte[] usernameHash, byte[] accountData, byte[] lastDistinguishedTreeHead);
-  public static native CompletableFuture<Long> KeyTransparency_Search(long asyncRuntime, int environment, long chat, byte[] aci, long aciIdentityKey, String e164, byte[] unidentifiedAccessKey, byte[] usernameHash, byte[] accountData, byte[] lastDistinguishedTreeHead);
+  public static native CompletableFuture<byte[]> KeyTransparency_Monitor(long asyncRuntime, int environment, long chatService, long chatConnection, byte[] aci, String e164, byte[] usernameHash, byte[] accountData, byte[] lastDistinguishedTreeHead);
+  public static native CompletableFuture<Long> KeyTransparency_Search(long asyncRuntime, int environment, long chatService, long chatConnection, byte[] aci, long aciIdentityKey, String e164, byte[] unidentifiedAccessKey, byte[] usernameHash, byte[] accountData, byte[] lastDistinguishedTreeHead);
   public static native byte[] KeyTransparency_UsernameHashSearchKey(byte[] hash);
 
   public static native void KyberKeyPair_Destroy(long handle);

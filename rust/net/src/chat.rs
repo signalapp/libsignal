@@ -166,36 +166,36 @@ where
     AuthService: ChatServiceWithDebugInfo + Send + Sync,
     UnauthService: ChatServiceWithDebugInfo + Send + Sync,
 {
-    pub async fn send_authenticated(
+    pub fn send_authenticated(
         &self,
         msg: Request,
         timeout: Duration,
-    ) -> Result<Response, ChatServiceError> {
-        self.auth_service.send(msg, timeout).await
+    ) -> BoxFuture<'_, Result<Response, ChatServiceError>> {
+        self.auth_service.send(msg, timeout)
     }
 
-    pub async fn send_unauthenticated(
+    pub fn send_unauthenticated(
         &self,
         msg: Request,
         timeout: Duration,
-    ) -> Result<Response, ChatServiceError> {
-        self.unauth_service.send(msg, timeout).await
+    ) -> BoxFuture<'_, Result<Response, ChatServiceError>> {
+        self.unauth_service.send(msg, timeout)
     }
 
-    pub async fn send_authenticated_and_debug(
+    pub fn send_authenticated_and_debug(
         &self,
         msg: Request,
         timeout: Duration,
-    ) -> (Result<Response, ChatServiceError>, DebugInfo) {
-        self.auth_service.send_and_debug(msg, timeout).await
+    ) -> BoxFuture<'_, (Result<Response, ChatServiceError>, DebugInfo)> {
+        self.auth_service.send_and_debug(msg, timeout)
     }
 
-    pub async fn send_unauthenticated_and_debug(
+    pub fn send_unauthenticated_and_debug(
         &self,
         msg: Request,
         timeout: Duration,
-    ) -> (Result<Response, ChatServiceError>, DebugInfo) {
-        self.unauth_service.send_and_debug(msg, timeout).await
+    ) -> BoxFuture<'_, (Result<Response, ChatServiceError>, DebugInfo)> {
+        self.unauth_service.send_and_debug(msg, timeout)
     }
 
     pub async fn connect_authenticated(&self) -> Result<DebugInfo, ChatServiceError> {

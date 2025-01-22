@@ -23,9 +23,13 @@ public class UnauthenticatedChatConnection extends ChatConnection {
   private UnauthenticatedChatConnection(
       final TokioAsyncContext tokioAsyncContext,
       long nativeHandle,
-      ChatConnectionListener listener) {
+      ChatConnectionListener listener,
+      Network.Environment ktEnvironment) {
     super(tokioAsyncContext, nativeHandle, listener);
+    this.keyTransparencyClient = new KeyTransparencyClient(this, tokioAsyncContext, ktEnvironment);
   }
+
+  private KeyTransparencyClient keyTransparencyClient;
 
   static CompletableFuture<UnauthenticatedChatConnection> connect(
       final TokioAsyncContext tokioAsyncContext,
@@ -40,7 +44,20 @@ public class UnauthenticatedChatConnection extends ChatConnection {
                         .thenApply(
                             nativeHandle ->
                                 new UnauthenticatedChatConnection(
-                                    tokioAsyncContext, nativeHandle, chatListener))));
+                                    tokioAsyncContext,
+                                    nativeHandle,
+                                    chatListener,
+                                    connectionManager.environment()))));
+  }
+
+  /**
+   * High-level key transparency subsystem client on top using {@code this} to communicate with the
+   * chat server.
+   *
+   * @return an instance of {@link KeyTransparencyClient}
+   */
+  public KeyTransparencyClient keyTransparencyClient() {
+    return this.keyTransparencyClient;
   }
 
   // Implementing these abstract methods from ChatConnection allows UnauthenticatedChatConnection

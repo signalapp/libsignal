@@ -6,14 +6,16 @@
 use std::time::SystemTime;
 
 use libsignal_bridge_macros::{bridge_fn, bridge_io};
-use libsignal_bridge_types::net::chat::UnauthChat;
+use libsignal_bridge_types::net::chat::{UnauthChat, UnauthenticatedChatConnection};
 pub use libsignal_bridge_types::net::{Environment, TokioAsyncContext};
 use libsignal_bridge_types::support::AsType;
 use libsignal_core::{Aci, E164};
 use libsignal_keytrans::{
     AccountData, KeyTransparency, LocalStateUpdate, StoredAccountData, StoredTreeHead,
 };
-use libsignal_net::keytrans::{Error, Kt, SearchKey, SearchResult, UsernameHash};
+use libsignal_net::keytrans::{
+    Error, Kt, SearchKey, SearchResult, UnauthenticatedChat, UsernameHash,
+};
 use libsignal_protocol::PublicKey;
 use prost::{DecodeError, Message};
 
@@ -76,12 +78,27 @@ where
     T::decode(bytes.as_ref())
 }
 
+#[cfg(feature = "jni")]
+fn pick_chat_or_panic<'a>(
+    chat_service: Option<&'a UnauthChat>,
+    chat_connection: Option<&'a UnauthenticatedChatConnection>,
+) -> &'a (dyn UnauthenticatedChat + Sync) {
+    match (chat_service, chat_connection) {
+        (None, None) => panic!("no chat impl was provided"),
+        (None, Some(connection)) => connection,
+        (Some(service), None) => service,
+        (Some(_), Some(_)) => panic!("two chat impls were provided"),
+    }
+}
+
 #[bridge_io(TokioAsyncContext, node = false, ffi = false)]
 #[allow(clippy::too_many_arguments)]
 async fn KeyTransparency_Search(
     // TODO: it is currently possible to pass an env that does not match chat
     environment: AsType<Environment, u8>,
-    chat: &UnauthChat,
+    // TODO remove chatService when the switch to chat connection is complete.
+    chatService: Option<&UnauthChat>,
+    chatConnection: Option<&UnauthenticatedChatConnection>,
     aci: Aci,
     aci_identity_key: &PublicKey,
     e164: Option<E164>,
@@ -90,6 +107,7 @@ async fn KeyTransparency_Search(
     account_data: Option<Box<[u8]>>,
     last_distinguished_tree_head: Box<[u8]>,
 ) -> Result<SearchResult, Error> {
+    let chat = pick_chat_or_panic(chatService, chatConnection);
     let username_hash = username_hash.map(UsernameHash::from);
     let config = environment
         .into_inner()
@@ -99,7 +117,7 @@ async fn KeyTransparency_Search(
         .into();
     let kt = Kt {
         inner: KeyTransparency { config },
-        chat: &chat.service.0,
+        chat,
         config: Default::default(),
     };
 
@@ -149,13 +167,16 @@ async fn KeyTransparency_Search(
 async fn KeyTransparency_Monitor(
     // TODO: it is currently possible to pass an env that does not match chat
     environment: AsType<Environment, u8>,
-    chat: &UnauthChat,
+    // TODO remove chatService when the switch to chat connection is complete.
+    chatService: Option<&UnauthChat>,
+    chatConnection: Option<&UnauthenticatedChatConnection>,
     aci: Aci,
     e164: Option<E164>,
     username_hash: Option<Box<[u8]>>,
     account_data: Box<[u8]>,
     last_distinguished_tree_head: Box<[u8]>,
 ) -> Result<Vec<u8>, Error> {
+    let chat = pick_chat_or_panic(chatService, chatConnection);
     let username_hash = username_hash.map(UsernameHash::from);
 
     let account_data = {
@@ -177,7 +198,7 @@ async fn KeyTransparency_Monitor(
         .into();
     let kt = Kt {
         inner: KeyTransparency { config },
-        chat: &chat.service.0,
+        chat,
         config: Default::default(),
     };
     let updated_account_data = kt
@@ -196,9 +217,12 @@ async fn KeyTransparency_Monitor(
 async fn KeyTransparency_Distinguished(
     // TODO: it is currently possible to pass an env that does not match chat
     environment: AsType<Environment, u8>,
-    chat: &UnauthChat,
+    // TODO remove chatService when the switch to chat connection is complete.
+    chatService: Option<&UnauthChat>,
+    chatConnection: Option<&UnauthenticatedChatConnection>,
     last_distinguished_tree_head: Option<Box<[u8]>>,
 ) -> Result<Vec<u8>, Error> {
+    let chat = pick_chat_or_panic(chatService, chatConnection);
     let config = environment
         .into_inner()
         .env()
@@ -207,7 +231,7 @@ async fn KeyTransparency_Distinguished(
         .into();
     let kt = Kt {
         inner: KeyTransparency { config },
-        chat: &chat.service.0,
+        chat,
         config: Default::default(),
     };
 
