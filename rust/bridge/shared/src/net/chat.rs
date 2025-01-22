@@ -349,7 +349,7 @@ mod test {
     use libsignal_net::chat::ChatServiceError;
 
     use super::*;
-    use crate::net::{ConnectionManager, ConnectionManager_set_proxy_from_url, Environment};
+    use crate::net::{ConnectionManager, ConnectionManager_set_proxy, Environment};
 
     // Normally we would write this test in the app languages, but it depends on timeouts.
     // Using a paused tokio runtime auto-advances time when there's no other work to be done.
@@ -358,25 +358,16 @@ mod test {
         let cm = ConnectionManager::new(Environment::Staging, "test-user-agent");
 
         assert_matches!(
-            ConnectionManager_set_proxy_from_url(
-                &cm,
-                "org.signal.tls://signalfoundation.org:0".to_string()
-            ),
+            ConnectionManager_set_proxy(&cm, "signalfoundation.org".to_string(), 0),
             Err(_)
         );
         assert_matches!(
-            ConnectionManager_set_proxy_from_url(
-                &cm,
-                "org.signal.tls://signalfoundation.org:100000".to_string()
-            ),
+            ConnectionManager_set_proxy(&cm, "signalfoundation.org".to_string(), 100_000),
             Err(_)
         );
 
         assert_matches!(
-            ConnectionManager_set_proxy_from_url(
-                &cm,
-                "org.signal.tls://signalfoundation.org:-1".to_string()
-            ),
+            ConnectionManager_set_proxy(&cm, "signalfoundation.org".to_string(), -1),
             Err(_)
         );
 

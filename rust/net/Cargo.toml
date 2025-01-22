@@ -57,7 +57,7 @@ tokio-boring-signal = { workspace = true }
 tokio-stream = { workspace = true }
 tokio-tungstenite = "0.23.0"
 tungstenite = { version = "0.23.0", features = ["url"] }
-url = { workspace = true }
+url = "2.4.1"
 uuid = { workspace = true }
 zerocopy = { workspace = true }
 

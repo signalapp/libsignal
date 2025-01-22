@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::num::NonZeroU16;
+
 use base64::prelude::{Engine, BASE64_STANDARD};
 use libsignal_bridge_macros::bridge_fn;
 pub use libsignal_bridge_types::net::{ConnectionManager, Environment, TokioAsyncContext};
@@ -30,11 +32,15 @@ fn ConnectionManager_new(
 }
 
 #[bridge_fn]
-fn ConnectionManager_set_proxy_from_url(
+fn ConnectionManager_set_proxy(
     connection_manager: &ConnectionManager,
-    url: String,
+    host: String,
+    port: i32,
 ) -> Result<(), std::io::Error> {
-    connection_manager.set_proxy_from_url(&url)
+    // We take port as an i32 because Java 'short' is signed and thus can't represent all port
+    // numbers, and we want too-large port numbers to be handled the same way as 0.
+    let port = u16::try_from(port).ok().and_then(NonZeroU16::new);
+    connection_manager.set_proxy(&host, port)
 }
 
 #[bridge_fn]

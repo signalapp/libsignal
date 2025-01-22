@@ -40,28 +40,8 @@ public class Network {
   /**
    * Sets the proxy host to be used for all new connections (until overridden).
    *
-   * <p>Sets a server to be used to proxy all new outgoing connections. The proxy can be overridden
-   * by calling this method again or unset by calling {@link #clearProxy}.
-   *
-   * <p>To specify a Signal transparent TLS proxy, use the scheme <tt>org.signal.tls://</tt>, or the
-   * overload that takes a separate domain and port number.
-   *
-   * <p>Existing connections and services will continue with the setting they were created with. (In
-   * particular, changing this setting will not affect any existing {@link ChatService
-   * ChatServices}.)
-   *
-   * @throws IOException if the URL is structurally invalid or uses an unsupported proxy protocol.
-   */
-  public void setProxyFromUrl(String url) throws IOException {
-    this.connectionManager.setProxyFromUrl(url);
-  }
-
-  /**
-   * Sets the Signal TLS proxy host to be used for all new connections (until overridden).
-   *
-   * <p>Sets a domain name and port to be used to proxy all new outgoing connections, using a Signal
-   * transparent TLS proxy. The proxy can be overridden by calling this method again or unset by
-   * calling {@link #clearProxy}.
+   * <p>Sets a domain name and port to be used to proxy all new outgoing connections. The proxy can
+   * be overridden by calling this method again or unset by calling {@link #clearProxy}.
    *
    * <p>Existing connections and services will continue with the setting they were created with. (In
    * particular, changing this setting will not affect any existing {@link ChatService
@@ -71,14 +51,14 @@ public class Network {
    *     doesn't fit in u16.
    */
   public void setProxy(String host, int port) throws IOException {
-    this.setProxyFromUrl("org.signal.tls://" + host + ":" + port);
+    this.connectionManager.setProxy(host, port);
   }
 
   /**
    * Ensures that future connections will be made directly, not through a proxy.
    *
-   * <p>Clears any proxy configuration set via {@link #setProxy} or {@link #setProxyFromUrl}. If
-   * none was set, calling this method is a no-op.
+   * <p>Clears any proxy configuration set via {@link #setProxy}. If none was set, calling this
+   * method is a no-op.
    *
    * <p>Existing connections and services will continue with the setting they were created with. (In
    * particular, changing this setting will not affect any existing {@link ChatService
@@ -214,10 +194,10 @@ public class Network {
       this.environment = env;
     }
 
-    private void setProxyFromUrl(String url) throws IOException {
+    private void setProxy(String host, int port) throws IOException {
       filterExceptions(
           IOException.class,
-          () -> guardedRunChecked(h -> Native.ConnectionManager_set_proxy_from_url(h, url)));
+          () -> guardedRunChecked(h -> Native.ConnectionManager_set_proxy(h, host, port)));
     }
 
     private void clearProxy() {
