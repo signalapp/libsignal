@@ -739,8 +739,10 @@ message BodyRange {
     MONOSPACE = 5;
   }
 
-  optional uint32 start = 1;
-  optional uint32 length = 2;
+  // 'start' and 'length' are measured in UTF-16 code units.
+  // They may refer to offsets in a longText attachment.
+  uint32 start = 1;
+  uint32 length = 2;
 
   // If unset, importers should ignore the body range without throwing an error.
   oneof associatedValue {
