@@ -54,6 +54,9 @@ build_desktop_for_arch () {
         aarch64)
             suffix=aarch64
             ;;
+        armv7)
+            suffix=armv7
+            ;;
         *)
             echo "building for unknown CPU architecture ${cpuarch}; update build_jni.sh"
             exit 2
