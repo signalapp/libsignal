@@ -339,13 +339,13 @@ final class ChatServiceTests: TestCaseBase {
         // The default TLS proxy config doesn't support staging, so we connect to production.
         let net = Net(env: .production, userAgent: Self.userAgent)
         let host: Substring
-        let port: UInt16
+        let port: UInt16?
         if let colonIndex = PROXY_SERVER.firstIndex(of: ":") {
             host = PROXY_SERVER[..<colonIndex]
             port = UInt16(PROXY_SERVER[colonIndex...].dropFirst())!
         } else {
             host = PROXY_SERVER[...]
-            port = 443
+            port = nil
         }
         try net.setProxy(host: String(host), port: port)
 
@@ -360,11 +360,62 @@ final class ChatServiceTests: TestCaseBase {
         await self.fulfillment(of: [listener.expectation], timeout: 2)
     }
 
-    func testInvalidProxyRejected() async throws {
+    func testConnectUnauthThroughProxyByParts() async throws {
+        guard let PROXY_SERVER = ProcessInfo.processInfo.environment["LIBSIGNAL_TESTING_PROXY_SERVER"] else {
+            throw XCTSkip()
+        }
+
         // The default TLS proxy config doesn't support staging, so we connect to production.
+        let net = Net(env: .production, userAgent: Self.userAgent)
+        let host: Substring
+        let port: UInt16?
+        if let colonIndex = PROXY_SERVER.firstIndex(of: ":") {
+            host = PROXY_SERVER[..<colonIndex]
+            port = UInt16(PROXY_SERVER[colonIndex...].dropFirst())!
+        } else {
+            host = PROXY_SERVER[...]
+            port = nil
+        }
+
+        let user: Substring?
+        let justTheHost: Substring
+        if let atIndex = host.firstIndex(of: "@") {
+            user = host[..<atIndex]
+            justTheHost = host[atIndex...].dropFirst()
+        } else {
+            user = nil
+            justTheHost = host
+        }
+
+        try net.setProxy(
+            scheme: Net.signalTlsProxyScheme,
+            host: String(justTheHost),
+            port: port,
+            username: user.map(String.init)
+        )
+
+        let chat = net.createUnauthenticatedChatService()
+        let listener = ExpectDisconnectListener(expectation(description: "disconnect"))
+        chat.setListener(listener)
+
+        // Just make sure we can connect.
+        try await chat.connect()
+        try await chat.disconnect()
+
+        await self.fulfillment(of: [listener.expectation], timeout: 2)
+    }
+
+    func testInvalidProxyRejected() async throws {
         let net = Net(env: .production, userAgent: Self.userAgent)
         do {
             try net.setProxy(host: "signalfoundation.org", port: 0)
+            XCTFail("should not allow setting invalid proxy")
+        } catch SignalError.ioError {
+            // Okay
+        }
+
+        do {
+            try net.setProxy(scheme: "socks+shoes", host: "signalfoundation.org")
             XCTFail("should not allow setting invalid proxy")
         } catch SignalError.ioError {
             // Okay

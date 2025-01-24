@@ -358,16 +358,37 @@ mod test {
         let cm = ConnectionManager::new(Environment::Staging, "test-user-agent");
 
         assert_matches!(
-            ConnectionManager_set_proxy(&cm, "signalfoundation.org".to_string(), 0),
+            ConnectionManager_set_proxy(
+                &cm,
+                "org.signal.tls".to_string(),
+                "signalfoundation.org".to_string(),
+                0,
+                None,
+                None,
+            ),
             Err(_)
         );
         assert_matches!(
-            ConnectionManager_set_proxy(&cm, "signalfoundation.org".to_string(), 100_000),
+            ConnectionManager_set_proxy(
+                &cm,
+                "org.signal.tls".to_string(),
+                "signalfoundation.org".to_string(),
+                100_000,
+                None,
+                None,
+            ),
             Err(_)
         );
 
         assert_matches!(
-            ConnectionManager_set_proxy(&cm, "signalfoundation.org".to_string(), -1),
+            ConnectionManager_set_proxy(
+                &cm,
+                "org.signal.tls".to_string(),
+                "signalfoundation.org".to_string(),
+                -1,
+                None,
+                None,
+            ),
             Err(_)
         );
 

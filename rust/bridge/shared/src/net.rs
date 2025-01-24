@@ -34,13 +34,30 @@ fn ConnectionManager_new(
 #[bridge_fn]
 fn ConnectionManager_set_proxy(
     connection_manager: &ConnectionManager,
+    scheme: String,
     host: String,
     port: i32,
+    username: Option<String>,
+    password: Option<String>,
 ) -> Result<(), std::io::Error> {
     // We take port as an i32 because Java 'short' is signed and thus can't represent all port
-    // numbers, and we want too-large port numbers to be handled the same way as 0.
-    let port = u16::try_from(port).ok().and_then(NonZeroU16::new);
-    connection_manager.set_proxy(&host, port)
+    // numbers, and we want too-large port numbers to be handled the same way as 0. However, we
+    // *also* want to have a representation that means "no port provided". We'll use something
+    // unlikely for anyone to have typed manually, especially in decimal: `i32::MIN`. (We're not
+    // using 0 as the placeholder because an explicitly-specified zero should be diagnosed as
+    // invalid.) Note that we also *don't* return early from this function if the port is invalid;
+    // that should poison the connection manager. See [`ConnectionManager::set_proxy`].
+    let port: Option<Result<NonZeroU16, i32>> = if port == i32::MIN {
+        None
+    } else {
+        Some(
+            u16::try_from(port)
+                .ok()
+                .and_then(NonZeroU16::new)
+                .ok_or(port),
+        )
+    };
+    connection_manager.set_proxy(&scheme, &host, port, username, password)
 }
 
 #[bridge_fn]

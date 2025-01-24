@@ -22,6 +22,9 @@ public class Net {
         case production = 1
     }
 
+    /// The "scheme" for Signal TLS proxies. See ``Net/setProxy(scheme:host:port:username:password:)``.
+    public static let signalTlsProxyScheme = "org.signal.tls"
+
     /// Creates a new `Net` instance that enables interacting with services in the given Signal environment.
     public init(env: Environment, userAgent: String) {
         self.asyncContext = TokioAsyncContext()
@@ -30,15 +33,43 @@ public class Net {
 
     /// Sets the proxy host to be used for all new connections (until overridden).
     ///
-    /// Sets a domain name and port to be used to proxy all new outgoing connections. The proxy can
-    /// be overridden by calling this method again or unset by calling ``Net/clearProxy()``.
+    /// Sets a server to be used to proxy all new outgoing connections. The proxy can be
+    /// overridden by calling this method again or unset by calling ``Net/clearProxy()``.
+    /// Passing `nil` for the `port` means the default port for the scheme will be used.
+    ///
+    /// To specify a Signal transparent TLS proxy, use ``Net/signalTlsProxyScheme``,
+    /// or the overload that takes a separate domain and port number.
+    ///
+    /// Existing connections and services will continue with the setting they were created with.
+    /// (In particular, changing this setting will not affect any existing ``ChatService``s.)
+    ///
+    /// - Throws: if the scheme is unsupported or if the provided parameters are invalid for that scheme
+    ///   (e.g. Signal TLS proxies don't support authentication)
+    public func setProxy(scheme: String, host: String, port: UInt16? = nil, username: String? = nil, password: String? = nil) throws {
+        try self.connectionManager.setProxy(scheme: scheme, host: host, port: port, username: username, password: password)
+    }
+
+    /// Sets the Signal TLS proxy host to be used for all new connections (until overridden).
+    ///
+    /// Sets a domain name and port to be used to proxy all new outgoing connections, using a Signal
+    /// transparent TLS proxy. The proxy can be overridden by calling this method again or unset by
+    /// calling ``Net/clearProxy()``.
     ///
     /// Existing connections and services will continue with the setting they were created with.
     /// (In particular, changing this setting will not affect any existing ``ChatService``s.)
     ///
     /// - Throws: if the host or port is not structurally valid, such as a port of 0.
-    public func setProxy(host: String, port: UInt16) throws {
-        try self.connectionManager.setProxy(host: host, port: port)
+    public func setProxy(host: String, port: UInt16?) throws {
+        // Support <username>@<host> syntax to allow UNENCRYPTED_FOR_TESTING as a marker user.
+        // This is not a stable feature of the API and may go away in the future;
+        // the Rust layer will reject any other users anyway. But it's convenient for us.
+        let (username, host): (String?, String) = if let atSign = host.firstIndex(of: "@") {
+            (String(host[..<atSign]), String(host[atSign...].dropFirst()))
+        } else {
+            (nil, host)
+        }
+
+        try self.connectionManager.setProxy(scheme: Net.signalTlsProxyScheme, host: host, port: port, username: username, password: nil)
     }
 
     /// Clears the proxy host (if any) so that future connections will be made directly.
@@ -244,10 +275,17 @@ internal class ConnectionManager: NativeHandleOwner<SignalMutPointerConnectionMa
         self.init(owned: NonNull(handle)!)
     }
 
-    internal func setProxy(host: String, port: UInt16) throws {
-        try self.withNativeHandle {
-            // We have to cast to Int32 because of how the port number is validated...for Java.
-            try checkError(signal_connection_manager_set_proxy($0.const(), host, Int32(port)))
+    internal func setProxy(scheme: String, host: String, port: UInt16?, username: String?, password: String?) throws {
+        // We have to cast to Int32 because of how the port number is validated...for Java.
+        // But it also lets us distinguish "no port provided".
+        let port = port.map(Int32.init) ?? .min
+
+        try username.withCString { username in
+            try password.withCString { password in
+                try self.withNativeHandle {
+                    try checkError(signal_connection_manager_set_proxy($0.const(), scheme, host, port, username, password))
+                }
+            }
         }
     }
 

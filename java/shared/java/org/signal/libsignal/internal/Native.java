@@ -233,7 +233,7 @@ public final class Native {
   public static native long ConnectionManager_new(int environment, String userAgent);
   public static native void ConnectionManager_on_network_change(long connectionManager);
   public static native void ConnectionManager_set_censorship_circumvention_enabled(long connectionManager, boolean enabled);
-  public static native void ConnectionManager_set_proxy(long connectionManager, String host, int port) throws Exception;
+  public static native void ConnectionManager_set_proxy(long connectionManager, String scheme, String host, int port, String username, String password) throws Exception;
 
   public static native void CreateCallLinkCredentialPresentation_CheckValidContents(byte[] presentationBytes) throws Exception;
   public static native void CreateCallLinkCredentialPresentation_Verify(byte[] presentationBytes, byte[] roomId, long now, byte[] serverParamsBytes, byte[] callLinkParamsBytes) throws Exception;

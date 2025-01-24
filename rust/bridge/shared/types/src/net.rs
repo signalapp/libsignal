@@ -19,7 +19,8 @@ use libsignal_net::enclave::{
 use libsignal_net::env::{add_user_agent_header, Env, Svr3Env, UserAgent};
 use libsignal_net::infra::connection_manager::MultiRouteConnectionManager;
 use libsignal_net::infra::dns::DnsResolver;
-use libsignal_net::infra::host::Host;
+use libsignal_net::infra::errors::LogSafeDisplay;
+use libsignal_net::infra::route::ConnectionProxyConfig;
 use libsignal_net::infra::tcp_ssl::TcpSslConnector;
 use libsignal_net::infra::timeouts::ONE_ROUTE_CONNECTION_TIMEOUT;
 use libsignal_net::infra::utils::ObservableEvent;
@@ -187,18 +188,66 @@ impl ConnectionManager {
         }
     }
 
-    pub fn set_proxy(&self, host: &str, port: Option<NonZeroU16>) -> Result<(), std::io::Error> {
-        let host = Host::parse_as_ip_or_domain(host);
+    /// Sets the proxy using [`ConnectionProxyConfig::from_parts`]; poisons the connection manager
+    /// on failure.
+    ///
+    /// `port` is intended to be `None` only if the user doesn't specify one; if it's
+    /// `Some(Err(_))`, that indicates that the user *did* specify a port but it was invalid. The
+    /// error case should be how the user wrote the port.
+    pub fn set_proxy(
+        &self,
+        scheme: &str,
+        host: &str,
+        port: Option<Result<NonZeroU16, impl std::fmt::Display>>,
+        username: Option<String>,
+        password: Option<String>,
+    ) -> std::io::Result<()> {
+        // We wrap this in a function so that on any error we can poison the connection config until
+        // the proxy is explicitly cleared (or set to something new). See below.
+        let make_proxy = || -> std::io::Result<ConnectionProxyConfig> {
+            let port = port.transpose().map_err(|invalid_port| {
+                std::io::Error::new(
+                    std::io::ErrorKind::InvalidInput,
+                    format!("invalid port '{invalid_port}'"),
+                )
+            })?;
+
+            let auth = match (username, password) {
+                (None, None) => None,
+                (None, Some(_)) => {
+                    return Err(std::io::Error::new(
+                        std::io::ErrorKind::InvalidInput,
+                        "cannot have password without username",
+                    ));
+                }
+                (Some(username), password) => Some((username, password.unwrap_or_default())),
+            };
+
+            ConnectionProxyConfig::from_parts(scheme, host, port, auth).map_err(|e| {
+                use libsignal_net::infra::route::ProxyFromPartsError;
+                static_assertions::assert_impl_all!(ProxyFromPartsError: LogSafeDisplay);
+                match e {
+                    ProxyFromPartsError::UnsupportedScheme(_) => {
+                        std::io::Error::new(std::io::ErrorKind::Unsupported, e.to_string())
+                    }
+                    ProxyFromPartsError::MissingHost
+                    | ProxyFromPartsError::SchemeDoesNotSupportUsernames(_)
+                    | ProxyFromPartsError::SchemeDoesNotSupportPasswords(_) => {
+                        std::io::Error::new(std::io::ErrorKind::InvalidInput, e.to_string())
+                    }
+                }
+            })
+        };
 
         let mut guard = self.transport_connector.lock().expect("not poisoned");
-        match port {
-            Some(port) => {
-                guard.set_tls_proxy((host, port));
+        match make_proxy() {
+            Ok(proxy) => {
+                guard.set_proxy(proxy);
                 Ok(())
             }
-            None => {
+            Err(e) => {
                 guard.set_invalid();
-                Err(std::io::ErrorKind::InvalidInput.into())
+                Err(e)
             }
         }
     }
@@ -404,7 +453,10 @@ mod test {
     fn connection_manager_invalid_after_invalid_host_port() {
         let manager = ConnectionManager::new(Environment::Staging, "test-user-agent");
         // This is not a valid port and so should make the ConnectionManager "invalid".
-        assert_matches!(manager.set_proxy("proxy.host", None), Err(e) if e.kind() == std::io::ErrorKind::InvalidInput);
+        assert_matches!(
+            manager.set_proxy("org.signal.tls", "proxy.host", Some(Err("bad")), None, None),
+            Err(e) if e.kind() == std::io::ErrorKind::InvalidInput
+        );
         let transport_connector = manager.transport_connector.lock().expect("not poisoned");
         assert_matches!(transport_connector.proxy(), Err(_));
     }

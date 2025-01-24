@@ -235,16 +235,64 @@ public class ChatServiceTest {
       ChatServiceException disconnectReason = listener.disconnectReason.get();
       assertNull(disconnectReason);
     }
+
+    @Test
+    public void testConnectUnauthThroughProxyByParts() throws Exception {
+      final String PROXY_SERVER = TestEnvironment.get("LIBSIGNAL_TESTING_PROXY_SERVER");
+      Assume.assumeNotNull(PROXY_SERVER);
+
+      // The default TLS proxy config doesn't support staging, so we connect to production.
+      final Network net = new Network(Network.Environment.PRODUCTION, USER_AGENT);
+
+      String host;
+      Integer port;
+      final String[] proxyComponents = PROXY_SERVER.split(":");
+      switch (proxyComponents.length) {
+        case 1:
+          host = PROXY_SERVER;
+          port = null;
+          break;
+        case 2:
+          host = proxyComponents[0];
+          port = Integer.parseInt(proxyComponents[1]);
+          break;
+        default:
+          throw new IllegalArgumentException("invalid LIBSIGNAL_TESTING_PROXY_SERVER");
+      }
+
+      String username;
+      final String[] hostComponents = host.split("@");
+      switch (hostComponents.length) {
+        case 1:
+          username = null;
+          break;
+        case 2:
+          username = hostComponents[0];
+          host = hostComponents[1];
+          break;
+        default:
+          throw new IllegalArgumentException("invalid LIBSIGNAL_TESTING_PROXY_SERVER");
+      }
+
+      net.setProxy(Network.SIGNAL_TLS_PROXY_SCHEME, host, port, username, null);
+
+      final Listener listener = new Listener();
+      Void disconnectFinished = this.connectUnauthChat.apply(net, listener).get();
+
+      ChatServiceException disconnectReason = listener.disconnectReason.get();
+      assertNull(disconnectReason);
+    }
   }
-  ;
 
   @Test
   public void testInvalidProxyRejected() throws Exception {
-    // The default TLS proxy config doesn't support staging, so we connect to production.
     final Network net = new Network(Network.Environment.PRODUCTION, USER_AGENT);
     assertThrows(IOException.class, () -> net.setProxy("signalfoundation.org", 0));
     assertThrows(IOException.class, () -> net.setProxy("signalfoundation.org", 100_000));
     assertThrows(IOException.class, () -> net.setProxy("signalfoundation.org", -1));
+    assertThrows(
+        IOException.class,
+        () -> net.setProxy("socks+shoes", "signalfoundation.org", null, null, null));
   }
 
   private void injectServerRequest(ChatService chat, String requestBase64) {

@@ -28,6 +28,12 @@ public class Network {
     }
   }
 
+  /**
+   * The "scheme" for Signal TLS proxies. See {@link #setProxy(String, String, Integer, String,
+   * String)}.
+   */
+  public static final String SIGNAL_TLS_PROXY_SCHEME = "org.signal.tls";
+
   private final TokioAsyncContext tokioAsyncContext;
 
   private final ConnectionManager connectionManager;
@@ -40,8 +46,32 @@ public class Network {
   /**
    * Sets the proxy host to be used for all new connections (until overridden).
    *
-   * <p>Sets a domain name and port to be used to proxy all new outgoing connections. The proxy can
-   * be overridden by calling this method again or unset by calling {@link #clearProxy}.
+   * <p>Sets a server to be used to proxy all new outgoing connections. The proxy can be overridden
+   * by calling this method again or unset by calling {@link #clearProxy}. Passing {@code null} for
+   * the {@code port} means the default port for the scheme will be used. {@code username} and
+   * {@code password} can be {@code null} as well.
+   *
+   * <p>To specify a Signal transparent TLS proxy, use {@link SIGNAL_TLS_PROXY_SCHEME}, or the
+   * overload that takes a separate domain and port number.
+   *
+   * <p>Existing connections and services will continue with the setting they were created with. (In
+   * particular, changing this setting will not affect any existing {@link ChatService
+   * ChatServices}.)
+   *
+   * @throws IOException if the scheme is unsupported or if the provided parameters are invalid for
+   *     that scheme (e.g. Signal TLS proxies don't support authentication)
+   */
+  public void setProxy(String scheme, String host, Integer port, String username, String password)
+      throws IOException {
+    this.connectionManager.setProxy(scheme, host, port, username, password);
+  }
+
+  /**
+   * Sets the Signal TLS proxy host to be used for all new connections (until overridden).
+   *
+   * <p>Sets a domain name and port to be used to proxy all new outgoing connections, using a Signal
+   * transparent TLS proxy. The proxy can be overridden by calling this method again or unset by
+   * calling {@link #clearProxy}.
    *
    * <p>Existing connections and services will continue with the setting they were created with. (In
    * particular, changing this setting will not affect any existing {@link ChatService
@@ -51,7 +81,16 @@ public class Network {
    *     doesn't fit in u16.
    */
   public void setProxy(String host, int port) throws IOException {
-    this.connectionManager.setProxy(host, port);
+    // Support <username>@<host> syntax to allow UNENCRYPTED_FOR_TESTING as a marker user.
+    // This is not a stable feature of the API and may go away in the future;
+    // the Rust layer will reject any other users anyway. But it's convenient for us.
+    final int atIndex = host.indexOf('@');
+    String username = null;
+    if (atIndex != -1) {
+      username = host.substring(0, atIndex);
+      host = host.substring(atIndex + 1);
+    }
+    this.connectionManager.setProxy(SIGNAL_TLS_PROXY_SCHEME, host, port, username, null);
   }
 
   /**
@@ -194,10 +233,23 @@ public class Network {
       this.environment = env;
     }
 
-    private void setProxy(String host, int port) throws IOException {
+    private void setProxy(
+        String scheme, String host, Integer port, String username, String password)
+        throws IOException {
       filterExceptions(
           IOException.class,
-          () -> guardedRunChecked(h -> Native.ConnectionManager_set_proxy(h, host, port)));
+          () ->
+              guardedRunChecked(
+                  h ->
+                      Native.ConnectionManager_set_proxy(
+                          h,
+                          scheme,
+                          host,
+                          // Integer.MIN_VALUE represents "no port provided"; we don't expect anyone
+                          // to pass that manually.
+                          port != null ? port : Integer.MIN_VALUE,
+                          username,
+                          password)));
     }
 
     private void clearProxy() {

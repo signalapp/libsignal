@@ -55,10 +55,8 @@ impl TcpSslConnector {
         self.dns_resolver.set_ipv6_enabled(ipv6_enabled);
     }
 
-    pub fn set_tls_proxy(&mut self, proxy: (Host<Arc<str>>, NonZeroU16)) {
-        self.proxy = Ok(Some(
-            TlsProxyConnector::new(self.dns_resolver.clone(), proxy).as_route_config(),
-        ));
+    pub fn set_proxy(&mut self, proxy: ConnectionProxyConfig) {
+        self.proxy = Ok(Some(proxy));
     }
 
     pub fn set_invalid(&mut self) {

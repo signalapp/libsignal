@@ -126,8 +126,8 @@ describe('chat connection to mock server', () => {
             _envelope: Buffer,
             _timestamp: number,
             _ack: ChatServerMessageAck
-          ) => { },
-          onQueueEmpty: () => { },
+          ) => {},
+          onQueueEmpty: () => {},
           ...listener,
         };
         const device = chatServer.device?.device;

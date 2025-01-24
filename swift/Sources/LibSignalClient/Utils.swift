@@ -217,3 +217,12 @@ extension Collection {
         (self.prefix(upTo: index), self.suffix(from: index))
     }
 }
+
+extension Optional where Wrapped: StringProtocol {
+    internal func withCString<Result>(_ body: (UnsafePointer<CChar>?) throws -> Result) rethrows -> Result {
+        guard let wrapped = self else {
+            return try body(nil)
+        }
+        return try wrapped.withCString(body)
+    }
+}
