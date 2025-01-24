@@ -633,7 +633,7 @@ mod test {
         );
     }
 
-    impl Resolver for HashMap<&'static str, LookupResult> {
+    impl Resolver for HashMap<&str, LookupResult> {
         fn lookup_ip(
             &self,
             hostname: &str,

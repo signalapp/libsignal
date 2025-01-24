@@ -52,3 +52,14 @@ pub const CONNECTION_ROUTE_COOLDOWN_INTERVALS: [Duration; 8] = [
 
 /// Maximum value of a coolduwn interval between connection attempts
 pub const CONNECTION_ROUTE_MAX_COOLDOWN: Duration = Duration::from_secs(64);
+
+/// The result of an operation that can time out or produce a value.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, derive_more::From)]
+pub enum TimeoutOr<E> {
+    #[from(skip)]
+    Timeout {
+        /// How long the operation was allowed to run for before timing out.
+        attempt_duration: Duration,
+    },
+    Other(E),
+}

@@ -76,6 +76,7 @@ pub struct ConnectionOutcomes<R> {
     recent_failures: Arc<HashMap<R, (Instant, u8)>>,
 }
 
+#[derive(Clone, Debug, PartialEq)]
 pub struct ConnectionOutcomeParams {
     pub age_cutoff: Duration,
     pub cooldown_growth_factor: f32,

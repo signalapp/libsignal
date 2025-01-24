@@ -54,6 +54,8 @@ const CONNECT_PARAMS: ConnectionOutcomeParams = {
     }
 };
 
+const CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
+
 const WS2_CONFIG: libsignal_net_infra::ws2::Config = libsignal_net_infra::ws2::Config {
     local_idle_timeout: Duration::from_secs(10),
     remote_idle_ping_timeout: Duration::from_secs(10),
@@ -95,7 +97,10 @@ async fn main() {
             .connect
             .confirmation_header_name
             .map(HeaderName::from_static);
-        let connect_state = ConnectState::new(CONNECT_PARAMS);
+        let connect_state = ConnectState::new(libsignal_net::connect_state::Config {
+            connect_params: CONNECT_PARAMS,
+            connect_timeout: CONNECT_TIMEOUT,
+        });
 
         CdsiConnection::connect_with(
             &connect_state,

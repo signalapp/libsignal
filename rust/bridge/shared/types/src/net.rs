@@ -192,7 +192,10 @@ impl ConnectionManager {
             env,
             endpoints,
             user_agent,
-            connect: ConnectState::new(CONNECT_PARAMS),
+            connect: ConnectState::new(libsignal_net::connect_state::Config {
+                connect_params: CONNECT_PARAMS,
+                connect_timeout: ONE_ROUTE_CONNECTION_TIMEOUT,
+            }),
             dns_resolver,
             transport_connector,
             network_change_event,

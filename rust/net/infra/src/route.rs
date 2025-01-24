@@ -432,6 +432,7 @@ pub mod testutils {
 #[cfg(test)]
 mod test {
     use std::borrow::Cow;
+    use std::collections::HashMap;
     use std::convert::Infallible;
     use std::fmt::Debug;
     use std::future::Future;
@@ -457,7 +458,7 @@ mod test {
     use crate::route::testutils::{FakeContext, FakeRoute, NoDelay};
     use crate::route::{SocksProxy, TlsProxy};
     use crate::tcp_ssl::proxy::socks;
-    use crate::Alpn;
+    use crate::{Alpn, DnsSource};
 
     lazy_static::lazy_static! {
         static ref WS_ENDPOINT: PathAndQuery =  PathAndQuery::from_static("/ws-path");
@@ -918,5 +919,76 @@ mod test {
                 }))
                 .collect_vec()
         );
+    }
+
+    /// [`Connector`] impl whose `connect_over` never resolves.
+    struct NeverConnect;
+
+    impl<R> Connector<R, ()> for NeverConnect {
+        type Connection = Infallible;
+
+        type Error = FakeConnectError;
+
+        fn connect_over(
+            &self,
+            (): (),
+            _route: R,
+            _log_tag: Arc<str>,
+        ) -> impl Future<Output = Result<Self::Connection, Self::Error>> + Send {
+            std::future::pending()
+        }
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn connect_succeeds_if_some_routes_hang_indefinitely() {
+        const HOSTNAMES: &[(&str, Ipv4Addr)] = &[
+            ("A", ip_addr!(v4, "1.1.1.1")),
+            ("B", ip_addr!(v4, "2.2.2.2")),
+            ("C", ip_addr!(v4, "3.3.3.3")),
+        ];
+
+        let (connector, connection_responders) = FakeConnector::new();
+
+        let outcomes = NoDelay;
+        let resolver = HashMap::from_iter(HOSTNAMES.iter().map(|(name, ip)| {
+            (
+                *name,
+                LookupResult {
+                    source: DnsSource::Test,
+                    ipv4: vec![*ip],
+                    ipv6: vec![],
+                },
+            )
+        }));
+
+        let connect_task = tokio::spawn(async move {
+            let route_resolver = RouteResolver::default();
+            super::connect(
+                &route_resolver,
+                outcomes,
+                HOSTNAMES
+                    .iter()
+                    .map(|(h, _addr)| FakeRoute(UnresolvedHost::from(Arc::from(*h)))),
+                &resolver,
+                connector,
+                "test".into(),
+                |_err: FakeConnectError| ControlFlow::<Infallible>::Continue(()),
+            )
+            .await
+        });
+
+        // We should see routes A, B, and C tried. Don't complete any but the last one.
+        let [_a, _b, c] = connection_responders
+            .take(3)
+            .collect::<Vec<FakeConnectResponder<_>>>()
+            .await
+            .try_into()
+            .unwrap();
+        assert_eq!(c.route(), &FakeRoute(ip_addr!("3.3.3.3")));
+        c.respond(Ok(()));
+
+        let (result, _outcomes) = connect_task.await.unwrap();
+
+        assert_matches!(result, Ok(_));
     }
 }

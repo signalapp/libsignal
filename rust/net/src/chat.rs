@@ -23,7 +23,9 @@ use libsignal_net_infra::route::{
     WebSocketRoute, WebSocketRouteFragment, WebSocketServiceRoute,
 };
 use libsignal_net_infra::service::{Service, ServiceConnectorWithDecorator};
-use libsignal_net_infra::timeouts::{MULTI_ROUTE_CONNECTION_TIMEOUT, ONE_ROUTE_CONNECTION_TIMEOUT};
+use libsignal_net_infra::timeouts::{
+    TimeoutOr, MULTI_ROUTE_CONNECTION_TIMEOUT, ONE_ROUTE_CONNECTION_TIMEOUT,
+};
 use libsignal_net_infra::utils::ObservableEvent;
 use libsignal_net_infra::ws::{WebSocketClientConnector, WebSocketConnectError};
 use libsignal_net_infra::{
@@ -618,13 +620,16 @@ impl ChatConnection {
             Err(e) => {
                 use crate::infra::route::ConnectError;
                 Err(match e {
-                    ConnectError::NoResolvedRoutes => {
+                    TimeoutOr::Other(ConnectError::NoResolvedRoutes) => {
                         ChatServiceError::AllConnectionRoutesFailed { attempts: 0 }
                     }
-                    ConnectError::AllAttemptsFailed => {
+                    TimeoutOr::Other(ConnectError::AllAttemptsFailed) => {
                         ChatServiceError::AllConnectionRoutesFailed { attempts: 1 }
                     }
-                    ConnectError::FatalConnect(err) => err,
+                    TimeoutOr::Other(ConnectError::FatalConnect(err)) => err,
+                    TimeoutOr::Timeout {
+                        attempt_duration: _,
+                    } => ChatServiceError::Timeout,
                 })
             }
         }
@@ -732,6 +737,7 @@ pub mod test_support {
             max_delay: Duration::from_secs(30),
             count_growth_factor: 10.0,
         };
+    const CONNECT_TIMEOUT: Duration = Duration::from_secs(30);
 
     pub async fn simple_chat_connection(
         env: &Env<'static, Svr3Env<'static>>,
@@ -749,7 +755,10 @@ pub mod test_support {
         )
         .filter_routes(filter_routes);
 
-        let connect = ConnectState::new(CONNECT_PARAMS);
+        let connect = ConnectState::new(crate::connect_state::Config {
+            connect_params: CONNECT_PARAMS,
+            connect_timeout: CONNECT_TIMEOUT,
+        });
         let user_agent = UserAgent::with_libsignal_version("test_simple_chat_connection");
 
         let ws_config = ws2::Config {
