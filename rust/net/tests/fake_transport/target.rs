@@ -9,6 +9,7 @@ use std::sync::Arc;
 
 use libsignal_net::infra::host::Host;
 use libsignal_net::infra::{ConnectionParams, TransportConnectionParams};
+use libsignal_net_infra::{Connection, IpType, TransportInfo};
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub struct FakeTransportTarget {
@@ -34,5 +35,14 @@ impl From<TransportConnectionParams> for FakeTransportTarget {
 impl From<ConnectionParams> for FakeTransportTarget {
     fn from(value: ConnectionParams) -> Self {
         value.transport.into()
+    }
+}
+
+impl Connection for FakeTransportTarget {
+    fn transport_info(&self) -> TransportInfo {
+        TransportInfo {
+            ip_version: IpType::V4,
+            local_port: self.port.into(),
+        }
     }
 }

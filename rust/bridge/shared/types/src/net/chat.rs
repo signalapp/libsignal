@@ -359,10 +359,7 @@ impl<C: AsRef<tokio::sync::RwLock<MaybeChatConnection>> + Sync> BridgeChatConnec
                 chat_connection.connection_info().clone()
             }
             MaybeChatConnection::WaitingForListener(_, pending_chat_connection) => {
-                pending_chat_connection
-                    .blocking_lock()
-                    .connection_info()
-                    .clone()
+                pending_chat_connection.blocking_lock().connection_info()
             }
             MaybeChatConnection::TemporarilyEvicted => unreachable!("unobservable state"),
         };

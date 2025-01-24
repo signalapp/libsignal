@@ -2538,6 +2538,7 @@ dependencies = [
  "tungstenite 0.23.0",
  "url",
  "uuid",
+ "visibility",
  "warp",
  "zerocopy",
 ]

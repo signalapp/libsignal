@@ -7,13 +7,12 @@ use std::marker::PhantomData;
 use std::num::{NonZeroU16, NonZeroU32};
 use std::panic::RefUnwindSafe;
 use std::sync::Arc;
-use std::time::Duration;
 
 use aes_gcm_siv::aead::rand_core::CryptoRngCore;
 use async_trait::async_trait;
 use futures_util::future::join3;
 use libsignal_net::auth::Auth;
-use libsignal_net::connect_state::ConnectState;
+use libsignal_net::connect_state::{ConnectState, SUGGESTED_CONNECT_CONFIG};
 use libsignal_net::enclave::{
     Cdsi, EnclaveEndpoint, EnclaveEndpointConnection, EnclaveKind, Nitro, PpssSetup, Sgx, Tpm2Snp,
 };
@@ -21,7 +20,6 @@ use libsignal_net::env::{add_user_agent_header, Env, Svr3Env, UserAgent};
 use libsignal_net::infra::connection_manager::MultiRouteConnectionManager;
 use libsignal_net::infra::dns::DnsResolver;
 use libsignal_net::infra::host::Host;
-use libsignal_net::infra::route::ConnectionOutcomeParams;
 use libsignal_net::infra::tcp_ssl::TcpSslConnector;
 use libsignal_net::infra::timeouts::ONE_ROUTE_CONNECTION_TIMEOUT;
 use libsignal_net::infra::utils::ObservableEvent;
@@ -55,16 +53,6 @@ impl Environment {
         }
     }
 }
-
-const CONNECT_PARAMS: ConnectionOutcomeParams = {
-    ConnectionOutcomeParams {
-        age_cutoff: Duration::from_secs(5 * 60),
-        cooldown_growth_factor: 10.0,
-        max_count: 5,
-        max_delay: Duration::from_secs(30),
-        count_growth_factor: 10.0,
-    }
-};
 
 type Svr3EndpointConnections = (
     EnclaveEndpointConnection<Sgx, MultiRouteConnectionManager>,
@@ -192,10 +180,7 @@ impl ConnectionManager {
             env,
             endpoints,
             user_agent,
-            connect: ConnectState::new(libsignal_net::connect_state::Config {
-                connect_params: CONNECT_PARAMS,
-                connect_timeout: ONE_ROUTE_CONNECTION_TIMEOUT,
-            }),
+            connect: ConnectState::new(SUGGESTED_CONNECT_CONFIG),
             dns_resolver,
             transport_connector,
             network_change_event,

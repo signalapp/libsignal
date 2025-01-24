@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use std::fmt::Display;
+use std::fmt::{Debug, Display};
 use std::ops::ControlFlow;
 use std::sync::Arc;
 use std::time::Duration;
@@ -18,9 +18,9 @@ use libsignal_net_infra::connection_manager::{
 };
 use libsignal_net_infra::dns::DnsResolver;
 use libsignal_net_infra::route::{
-    ComposedConnector, Connector, RouteProvider, RouteProviderExt, StatelessTransportConnector,
-    ThrottlingConnector, UnresolvedHttpsServiceRoute, UnresolvedWebsocketServiceRoute,
-    WebSocketRoute, WebSocketRouteFragment, WebSocketServiceRoute,
+    Connector, RouteProvider, RouteProviderExt, StatelessTransportConnector, ThrottledConnection,
+    ThrottlingConnector, TransportRoute, UnresolvedHttpsServiceRoute,
+    UnresolvedWebsocketServiceRoute, WebSocketRoute, WebSocketRouteFragment,
 };
 use libsignal_net_infra::service::{Service, ServiceConnectorWithDecorator};
 use libsignal_net_infra::timeouts::{
@@ -29,9 +29,10 @@ use libsignal_net_infra::timeouts::{
 use libsignal_net_infra::utils::ObservableEvent;
 use libsignal_net_infra::ws::{WebSocketClientConnector, WebSocketConnectError};
 use libsignal_net_infra::{
-    make_ws_config, AsHttpHeader, Connection, EndpointConnection, HttpRequestDecorator, IpType,
-    TransportConnector, TransportInfo,
+    make_ws_config, AsHttpHeader, AsyncDuplexStream, Connection, EndpointConnection,
+    HttpRequestDecorator, IpType, TransportConnector, TransportInfo,
 };
+use tokio_tungstenite::WebSocketStream;
 
 use crate::auth::Auth;
 use crate::chat::ws::{ChatOverWebSocketServiceConnector, ServerEvent};
@@ -526,17 +527,20 @@ pub struct ChatConnection {
     connection_info: ConnectionInfo,
 }
 
-type ChatConnector = ComposedConnector<
-    ThrottlingConnector<crate::infra::ws::Stateless>,
-    StatelessTransportConnector,
-    WebSocketConnectError,
->;
-type ChatWebSocketConnection = <ChatConnector as Connector<WebSocketServiceRoute, ()>>::Connection;
+/// The type of the websocket connection over a given transport-level connection
+/// used by [`ChatConnection`].
+type ChatWebSocketConnection<TC> = ThrottledConnection<WebSocketStream<TC>>;
 
-pub struct PendingChatConnection {
-    connection: ChatWebSocketConnection,
+/// A connection to the chat service that isn't yet active.
+///
+/// Parameterized over the type of the transport-level connection for testing.
+#[derive(Debug)]
+pub struct PendingChatConnection<
+    T = <StatelessTransportConnector as Connector<TransportRoute, ()>>::Connection,
+> {
+    connection: ChatWebSocketConnection<T>,
     ws_config: ws2::Config,
-    connection_info: ConnectionInfo,
+    route_info: RouteInfo,
     log_tag: Arc<str>,
 }
 
@@ -558,6 +562,35 @@ impl ChatConnection {
         auth: Option<AuthenticatedChatHeaders>,
         log_tag: &str,
     ) -> Result<PendingChatConnection, ChatServiceError> {
+        Self::start_connect_with_transport(
+            connect,
+            resolver,
+            http_route_provider,
+            confirmation_header_name,
+            user_agent,
+            ws_config,
+            auth,
+            log_tag,
+        )
+        .await
+    }
+
+    #[cfg_attr(feature = "test-util", visibility::make(pub))]
+    async fn start_connect_with_transport<TC>(
+        connect: &tokio::sync::RwLock<ConnectState<TC>>,
+        resolver: &DnsResolver,
+        http_route_provider: impl RouteProvider<Route = UnresolvedHttpsServiceRoute>,
+        confirmation_header_name: Option<HeaderName>,
+        user_agent: &UserAgent,
+        ws_config: self::ws2::Config,
+        auth: Option<AuthenticatedChatHeaders>,
+        log_tag: &str,
+    ) -> Result<PendingChatConnection<TC::Connection>, ChatServiceError>
+    where
+        TC: Connector<TransportRoute, ()> + Sync,
+        TC::Error: Into<WebSocketConnectError>,
+        TC::Connection: AsyncDuplexStream,
+    {
         let headers = auth
             .into_iter()
             .flat_map(
@@ -605,14 +638,9 @@ impl ChatConnection {
 
         match result {
             Ok((ws_connection, route_info)) => Ok({
-                let transport_info = ws_connection.transport_info();
-                let connection_info = ConnectionInfo {
-                    transport_info,
-                    route_info,
-                };
                 PendingChatConnection {
                     connection: ws_connection,
-                    connection_info,
+                    route_info,
                     ws_config,
                     log_tag,
                 }
@@ -629,7 +657,7 @@ impl ChatConnection {
                     TimeoutOr::Other(ConnectError::FatalConnect(err)) => err,
                     TimeoutOr::Timeout {
                         attempt_duration: _,
-                    } => ChatServiceError::Timeout,
+                    } => ChatServiceError::TimeoutEstablishingConnection { attempts: 1 },
                 })
             }
         }
@@ -643,10 +671,14 @@ impl ChatConnection {
         let PendingChatConnection {
             connection,
             ws_config,
-            connection_info,
+            route_info,
             log_tag,
         } = pending;
         Self {
+            connection_info: ConnectionInfo {
+                route_info,
+                transport_info: connection.transport_info(),
+            },
             inner: crate::chat::ws2::Chat::new(
                 tokio_runtime,
                 connection,
@@ -654,7 +686,6 @@ impl ChatConnection {
                 log_tag,
                 listener,
             ),
-            connection_info,
         }
     }
 
@@ -679,8 +710,11 @@ impl ChatConnection {
 }
 
 impl PendingChatConnection {
-    pub fn connection_info(&self) -> &ConnectionInfo {
-        &self.connection_info
+    pub fn connection_info(&self) -> ConnectionInfo {
+        ConnectionInfo {
+            route_info: self.route_info.clone(),
+            transport_info: self.connection.transport_info(),
+        }
     }
 
     pub async fn disconnect(&mut self) {
@@ -723,21 +757,10 @@ pub mod test_support {
     use super::*;
     use crate::auth::Auth;
     use crate::chat::{ws2, Chat, ChatConnection, ChatServiceError, ChatServiceWithDebugInfo};
-    use crate::connect_state::ConnectState;
+    use crate::connect_state::{ConnectState, SUGGESTED_CONNECT_CONFIG};
     use crate::env::constants::WEB_SOCKET_PATH;
     use crate::env::{Env, Svr3Env, UserAgent};
     use crate::infra::route::DirectOrProxyProvider;
-
-    // Used in chat_smoke_test.rs, copied from net.rs
-    const CONNECT_PARAMS: crate::infra::route::ConnectionOutcomeParams =
-        crate::infra::route::ConnectionOutcomeParams {
-            age_cutoff: Duration::from_secs(5 * 60),
-            cooldown_growth_factor: 10.0,
-            max_count: 5,
-            max_delay: Duration::from_secs(30),
-            count_growth_factor: 10.0,
-        };
-    const CONNECT_TIMEOUT: Duration = Duration::from_secs(30);
 
     pub async fn simple_chat_connection(
         env: &Env<'static, Svr3Env<'static>>,
@@ -755,10 +778,7 @@ pub mod test_support {
         )
         .filter_routes(filter_routes);
 
-        let connect = ConnectState::new(crate::connect_state::Config {
-            connect_params: CONNECT_PARAMS,
-            connect_timeout: CONNECT_TIMEOUT,
-        });
+        let connect = ConnectState::new(SUGGESTED_CONNECT_CONFIG);
         let user_agent = UserAgent::with_libsignal_version("test_simple_chat_connection");
 
         let ws_config = ws2::Config {

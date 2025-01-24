@@ -10,11 +10,11 @@ use clap::Parser;
 use http::HeaderName;
 use libsignal_net::auth::Auth;
 use libsignal_net::cdsi::{CdsiConnection, LookupError, LookupRequest, LookupResponse};
-use libsignal_net::connect_state::ConnectState;
+use libsignal_net::connect_state::{ConnectState, SUGGESTED_CONNECT_CONFIG};
 use libsignal_net::enclave::EnclaveEndpointConnection;
 use libsignal_net::infra::dns::DnsResolver;
 use libsignal_net::infra::utils::ObservableEvent;
-use libsignal_net_infra::route::{ConnectionOutcomeParams, DirectOrProxyProvider};
+use libsignal_net_infra::route::DirectOrProxyProvider;
 use libsignal_net_infra::tcp_ssl::DirectConnector;
 use libsignal_net_infra::EnableDomainFronting;
 use tokio::io::AsyncBufReadExt as _;
@@ -43,18 +43,6 @@ struct CliArgs {
     #[arg(long, default_value_t = std::env::var("PASSWORD").unwrap())]
     password: String,
 }
-
-const CONNECT_PARAMS: ConnectionOutcomeParams = {
-    ConnectionOutcomeParams {
-        age_cutoff: Duration::from_secs(5 * 60),
-        cooldown_growth_factor: 10.0,
-        max_count: 5,
-        max_delay: Duration::from_secs(30),
-        count_growth_factor: 10.0,
-    }
-};
-
-const CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
 
 const WS2_CONFIG: libsignal_net_infra::ws2::Config = libsignal_net_infra::ws2::Config {
     local_idle_timeout: Duration::from_secs(10),
@@ -97,10 +85,7 @@ async fn main() {
             .connect
             .confirmation_header_name
             .map(HeaderName::from_static);
-        let connect_state = ConnectState::new(libsignal_net::connect_state::Config {
-            connect_params: CONNECT_PARAMS,
-            connect_timeout: CONNECT_TIMEOUT,
-        });
+        let connect_state = ConnectState::new(SUGGESTED_CONNECT_CONFIG);
 
         CdsiConnection::connect_with(
             &connect_state,

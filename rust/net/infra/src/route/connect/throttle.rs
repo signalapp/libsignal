@@ -44,6 +44,7 @@ impl<C> ThrottlingConnector<C> {
 /// this connection, and can only be released by dropping this connection.
 /// Dropping a `ThrottlingConnector` unblocks one in-progress call to
 /// [`Connector::connect_over`].
+#[derive(Debug)]
 #[pin_project]
 pub struct ThrottledConnection<S>(#[pin] S, OwnedSemaphorePermit);
 

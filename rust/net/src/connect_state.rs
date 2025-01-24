@@ -21,7 +21,7 @@ use libsignal_net_infra::route::{
     WebSocketRouteFragment, WebSocketServiceRoute, WithLoggableDescription,
     WithoutLoggableDescription,
 };
-use libsignal_net_infra::timeouts::TimeoutOr;
+use libsignal_net_infra::timeouts::{TimeoutOr, ONE_ROUTE_CONNECTION_TIMEOUT};
 use libsignal_net_infra::ws::WebSocketConnectError;
 use libsignal_net_infra::ws2::attested::AttestedConnection;
 use libsignal_net_infra::{AsHttpHeader as _, AsyncDuplexStream};
@@ -33,8 +33,25 @@ use tokio::time::Instant;
 use crate::auth::Auth;
 use crate::ws::WebSocketServiceConnectError;
 
+/// Suggested values for [`ConnectionOutcomeParams`].
+pub const SUGGESTED_CONNECT_PARAMS: ConnectionOutcomeParams = ConnectionOutcomeParams {
+    age_cutoff: Duration::from_secs(5 * 60),
+    cooldown_growth_factor: 10.0,
+    max_count: 5,
+    max_delay: Duration::from_secs(30),
+    count_growth_factor: 10.0,
+};
+
+/// Suggested values for [`Config`].
+pub const SUGGESTED_CONNECT_CONFIG: Config = Config {
+    connect_params: SUGGESTED_CONNECT_PARAMS,
+    connect_timeout: ONE_ROUTE_CONNECTION_TIMEOUT,
+};
+
 /// Endpoint-agnostic state for establishing a connection with
 /// [`crate::infra::route::connect`].
+///
+/// Templated over the type of the transport connector to support testing.
 pub struct ConnectState<TC = StatelessTransportConnector> {
     pub route_resolver: RouteResolver,
     /// The amount of time allowed for each connection attempt.
@@ -55,6 +72,16 @@ pub struct Config {
 
 impl ConnectState {
     pub fn new(config: Config) -> tokio::sync::RwLock<Self> {
+        Self::new_with_transport_connector(config, StatelessTransportConnector::default())
+    }
+}
+
+impl<TC> ConnectState<TC> {
+    #[cfg_attr(feature = "test-util", visibility::make(pub))]
+    fn new_with_transport_connector(
+        config: Config,
+        transport_connector: TC,
+    ) -> tokio::sync::RwLock<Self> {
         let Config {
             connect_params,
             connect_timeout,
@@ -62,7 +89,7 @@ impl ConnectState {
         Self {
             route_resolver: RouteResolver::default(),
             connect_timeout,
-            transport_connector: StatelessTransportConnector::default(),
+            transport_connector,
             attempts_record: ConnectionOutcomes::new(connect_params),
             route_provider_context: RouteProviderContextImpl::default(),
         }
@@ -270,14 +297,6 @@ mod test {
 
     use super::*;
 
-    const FAKE_CONNECT_PARAMS: ConnectionOutcomeParams = ConnectionOutcomeParams {
-        age_cutoff: Duration::from_secs(100),
-        cooldown_growth_factor: 10.0,
-        count_growth_factor: 10.0,
-        max_count: 3,
-        max_delay: Duration::from_secs(5),
-    };
-
     const FAKE_HOST_NAME: &str = "direct-host";
     lazy_static! {
         static ref FAKE_TRANSPORT_ROUTE: UnresolvedTransportRoute = TlsRoute {
@@ -353,7 +372,7 @@ mod test {
         let state = ConnectState {
             connect_timeout: Duration::MAX,
             route_resolver: RouteResolver::default(),
-            attempts_record: ConnectionOutcomes::new(FAKE_CONNECT_PARAMS),
+            attempts_record: ConnectionOutcomes::new(SUGGESTED_CONNECT_PARAMS),
             transport_connector: fake_transport_connector,
             route_provider_context: Default::default(),
         }
@@ -405,7 +424,7 @@ mod test {
         let state = ConnectState {
             connect_timeout: CONNECT_TIMEOUT,
             route_resolver: RouteResolver::default(),
-            attempts_record: ConnectionOutcomes::new(FAKE_CONNECT_PARAMS),
+            attempts_record: ConnectionOutcomes::new(SUGGESTED_CONNECT_PARAMS),
             transport_connector: always_hangs_connector,
             route_provider_context: Default::default(),
         }
