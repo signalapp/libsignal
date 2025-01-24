@@ -290,6 +290,7 @@ pub struct GroupData {
     #[serde(serialize_with = "serialize::enum_as_string")]
     pub story_send_mode: proto::group::StorySendMode,
     pub snapshot: GroupSnapshot,
+    pub blocked: bool,
     _limit_construction_to_module: (),
 }
 
@@ -302,6 +303,7 @@ impl<C: ReportUnusualTimestamp> TryFromWith<proto::Group, C> for GroupData {
             hideStory,
             storySendMode,
             snapshot,
+            blocked,
             special_fields: _,
         } = value;
 
@@ -326,6 +328,7 @@ impl<C: ReportUnusualTimestamp> TryFromWith<proto::Group, C> for GroupData {
             hide_story: hideStory,
             story_send_mode,
             snapshot,
+            blocked,
             _limit_construction_to_module: (),
         })
     }
@@ -430,6 +433,7 @@ mod test {
                     members_banned: vec![GroupMemberBanned::from_proto_test_data()].into(),
                     _limit_construction_to_module: (),
                 },
+                blocked: false,
                 _limit_construction_to_module: (),
             }
         }

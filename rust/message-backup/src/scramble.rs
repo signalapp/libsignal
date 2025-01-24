@@ -563,6 +563,7 @@ impl Visit<Scrambler> for proto::Group {
             hideStory: _,
             storySendMode: _,
             snapshot,
+            blocked: _,
             special_fields: _,
         } = self;
         masterKey.randomize(&mut visitor.rng);
