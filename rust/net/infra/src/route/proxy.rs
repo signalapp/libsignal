@@ -7,8 +7,10 @@ use std::num::NonZeroU16;
 use std::sync::Arc;
 
 use either::Either;
+use nonzero_ext::nonzero;
 
 use crate::certs::RootCertificates;
+use crate::errors::LogSafeDisplay;
 use crate::host::Host;
 use crate::route::{
     ReplaceFragment, RouteProvider, RouteProviderContext, SimpleRoute, TcpRoute, TlsRoute,
@@ -16,6 +18,8 @@ use crate::route::{
 };
 use crate::tcp_ssl::proxy::socks;
 use crate::Alpn;
+
+pub const SIGNAL_TLS_PROXY_SCHEME: &str = "org.signal.tls";
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct SocksRoute<Addr> {
@@ -129,6 +133,119 @@ pub enum ConnectionProxyConfig {
     Tcp(TcpProxy),
     Socks(SocksProxy),
     Http(HttpProxy),
+}
+
+#[derive(Debug, thiserror::Error, displaydoc::Display)]
+pub enum ProxyFromPartsError {
+    /// missing host
+    MissingHost,
+    /// libsignal does not support proxying via '{0}'
+    UnsupportedScheme(String),
+    /// '{0}' proxies do not support usernames
+    SchemeDoesNotSupportUsernames(&'static str),
+    /// '{0}' proxies do not support passwords
+    SchemeDoesNotSupportPasswords(&'static str),
+}
+
+impl LogSafeDisplay for ProxyFromPartsError {}
+
+impl ConnectionProxyConfig {
+    /// Create a ConnectionProxyConfig from the information found in a URL or PAC file.
+    ///
+    /// Passing `None` for the `port` means the default port for the proxy type will be used.
+    ///
+    /// Not all types of proxies support authentication. For those that support usernames but not
+    /// passwords, the second element of the `auth` tuple must be empty.
+    pub fn from_parts(
+        scheme: &str,
+        host: &str,
+        port: Option<NonZeroU16>,
+        auth: Option<(String, String)>,
+    ) -> Result<Self, ProxyFromPartsError> {
+        if host.is_empty() {
+            return Err(ProxyFromPartsError::MissingHost);
+        }
+
+        let host = Host::parse_as_ip_or_domain(host);
+        let auth = auth.map(|(username, password)| HttpProxyAuth { username, password });
+
+        // Proxies that use TLS are permitted to use any valid certificate, not just our pinned
+        // ones, so we have to defer to the system trust store.
+        const CERTS_FOR_ARBITRARY_PROXY: RootCertificates = RootCertificates::Native;
+
+        let proxy: ConnectionProxyConfig = match scheme {
+            SIGNAL_TLS_PROXY_SCHEME => {
+                if auth
+                    .as_ref()
+                    .is_some_and(|auth| auth.username == "UNENCRYPTED_FOR_TESTING")
+                {
+                    // This is a testing interface only; we don't have to be super strict about it
+                    // because it should be obvious from the username not to use it in general.
+                    TcpProxy {
+                        proxy_host: host,
+                        proxy_port: port.unwrap_or(nonzero!(80u16)),
+                    }
+                    .into()
+                } else {
+                    if auth.is_some() {
+                        return Err(ProxyFromPartsError::SchemeDoesNotSupportUsernames(
+                            SIGNAL_TLS_PROXY_SCHEME,
+                        ));
+                    }
+                    TlsProxy {
+                        proxy_host: host,
+                        proxy_port: port.unwrap_or(nonzero!(443u16)),
+                        proxy_certs: CERTS_FOR_ARBITRARY_PROXY,
+                    }
+                    .into()
+                }
+            }
+            "http" => HttpProxy {
+                proxy_host: host,
+                proxy_port: port.unwrap_or(nonzero!(80u16)),
+                proxy_tls: None,
+                proxy_authorization: auth,
+                resolve_hostname_locally: true,
+            }
+            .into(),
+            "https" => HttpProxy {
+                proxy_host: host,
+                proxy_port: port.unwrap_or(nonzero!(443u16)),
+                proxy_tls: Some(CERTS_FOR_ARBITRARY_PROXY),
+                proxy_authorization: auth,
+                resolve_hostname_locally: true,
+            }
+            .into(),
+            "socks4" | "socks4a" => {
+                if auth.as_ref().is_some_and(|auth| !auth.password.is_empty()) {
+                    return Err(ProxyFromPartsError::SchemeDoesNotSupportPasswords("socks4"));
+                }
+                SocksProxy {
+                    proxy_host: host,
+                    proxy_port: port.unwrap_or(nonzero!(1080u16)),
+                    protocol: socks::Protocol::Socks4 {
+                        user_id: auth.map(|auth| auth.username),
+                    },
+                    resolve_hostname_locally: scheme != "socks4a",
+                }
+            }
+            .into(),
+            "socks" | "socks5" | "socks5h" => SocksProxy {
+                proxy_host: host,
+                proxy_port: port.unwrap_or(nonzero!(1080u16)),
+                protocol: socks::Protocol::Socks5 {
+                    username_password: auth.map(|auth| (auth.username, auth.password)),
+                },
+                resolve_hostname_locally: scheme != "socks5h",
+            }
+            .into(),
+            scheme => {
+                return Err(ProxyFromPartsError::UnsupportedScheme(scheme.to_owned()));
+            }
+        };
+
+        Ok(proxy)
+    }
 }
 
 pub struct ConnectionProxyRouteProvider<P> {
@@ -390,5 +507,243 @@ impl<R> ReplaceFragment<ConnectionProxyRoute<R>> for ConnectionProxyRoute<R> {
         make_fragment: impl FnOnce(ConnectionProxyRoute<R>) -> T,
     ) -> Self::Replacement<T> {
         make_fragment(self)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use assert_matches::assert_matches;
+    use const_str::ip_addr;
+    use test_case::test_case;
+
+    use super::*;
+
+    const EXAMPLE_HOST: &str = "proxy.example";
+
+    #[test_case(EXAMPLE_HOST, None, Host::Domain(EXAMPLE_HOST); "simple")]
+    #[test_case(EXAMPLE_HOST, Some(4433), Host::Domain(EXAMPLE_HOST); "with port")]
+    #[test_case("127.0.0.1", None, ip_addr!("127.0.0.1"); "IPv4")]
+    #[test_case("127.0.0.1", Some(4433), ip_addr!("127.0.0.1"); "IPv4 with port")]
+    #[test_case("[::1]", None, ip_addr!("::1"); "bracketed IPv6")]
+    #[test_case("[::1]", Some(4433), ip_addr!("::1"); "bracketed IPv6 with port")]
+    #[test_case("::1", None, ip_addr!("::1"); "unbracketed IPv6 for backwards compatibility")]
+    fn proxy_from_parts_signal_tls(
+        host: &str,
+        port: Option<u16>,
+        expected_host: impl Into<Host<&'static str>>,
+    ) {
+        let TlsProxy {
+            proxy_host,
+            proxy_port,
+            proxy_certs,
+        } = {
+            let port = port.map(|p| NonZeroU16::try_from(p).expect("valid for testing"));
+            assert_matches!(
+                ConnectionProxyConfig::from_parts(SIGNAL_TLS_PROXY_SCHEME, host, port, None),
+                Ok(ConnectionProxyConfig::Tls(tls)) => tls
+            )
+        };
+        assert_eq!(expected_host.into(), proxy_host.as_deref());
+        assert_eq!(port.unwrap_or(443), proxy_port.get());
+        assert_matches!(proxy_certs, RootCertificates::Native);
+    }
+
+    #[test_case(EXAMPLE_HOST, None, Some("UNENCRYPTED_FOR_TESTING"), Host::Domain(EXAMPLE_HOST); "UNENCRYPTED_FOR_TESTING")]
+    #[test_case(EXAMPLE_HOST, Some(8080), Some("UNENCRYPTED_FOR_TESTING"), Host::Domain(EXAMPLE_HOST); "with port")]
+    fn proxy_from_parts_signal_tcp(
+        host: &str,
+        port: Option<u16>,
+        auth: Option<&str>,
+        expected_host: Host<&str>,
+    ) {
+        let TcpProxy {
+            proxy_host,
+            proxy_port,
+        } = {
+            let port = port.map(|p| NonZeroU16::try_from(p).expect("valid for testing"));
+            let auth = auth.map(|u| (u.to_owned(), "".to_owned()));
+            assert_matches!(
+                ConnectionProxyConfig::from_parts(SIGNAL_TLS_PROXY_SCHEME, host, port, auth),
+                Ok(ConnectionProxyConfig::Tcp(tcp)) => tcp
+            )
+        };
+        assert_eq!(expected_host, proxy_host.as_deref());
+        assert_eq!(port.unwrap_or(80), proxy_port.get());
+    }
+
+    #[test_case("http", EXAMPLE_HOST, None, None, Host::Domain(EXAMPLE_HOST); "simple")]
+    #[test_case("https", EXAMPLE_HOST, None, None, Host::Domain(EXAMPLE_HOST); "simple https")]
+    #[test_case("http", EXAMPLE_HOST, Some(4433), None, Host::Domain(EXAMPLE_HOST); "with port")]
+    #[test_case("https", EXAMPLE_HOST, Some(4433), None, Host::Domain(EXAMPLE_HOST); "with port https")]
+    #[test_case("http", EXAMPLE_HOST, None, Some(("user", "")), Host::Domain(EXAMPLE_HOST); "username")]
+    #[test_case("http", EXAMPLE_HOST, None, Some(("user", "pass")), Host::Domain(EXAMPLE_HOST); "username + pw")]
+    #[test_case("http", "127.0.0.1", None, None, ip_addr!("127.0.0.1"); "IPv4")]
+    #[test_case("http", "127.0.0.1", Some(4433), None, ip_addr!("127.0.0.1"); "IPv4 with port")]
+    #[test_case("http", "::1", None, None, ip_addr!("::1"); "IPv6")]
+    #[test_case("http", "[::1]", None, None, ip_addr!("::1"); "bracketed IPv6")]
+    fn proxy_from_parts_signal_http(
+        scheme: &str,
+        host: &str,
+        port: Option<u16>,
+        auth: Option<(&str, &str)>,
+        expected_host: impl Into<Host<&'static str>>,
+    ) {
+        let HttpProxy {
+            proxy_host,
+            proxy_port,
+            proxy_tls,
+            proxy_authorization,
+            resolve_hostname_locally,
+        } = {
+            let port = port.map(|p| NonZeroU16::try_from(p).expect("valid for testing"));
+            let auth = auth.map(|(u, p)| (u.to_owned(), p.to_owned()));
+            assert_matches!(
+                ConnectionProxyConfig::from_parts(scheme, host, port, auth),
+                Ok(ConnectionProxyConfig::Http(http)) => http
+            )
+        };
+        assert_eq!(expected_host.into(), proxy_host.as_deref());
+        // This is cheating a bit, but it's simpler than adding another "expected" argument.
+        if scheme == "http" {
+            assert_eq!(port.unwrap_or(80), proxy_port.get());
+            assert_matches!(proxy_tls, None, "http should not use TLS");
+        } else {
+            assert_eq!(port.unwrap_or(443), proxy_port.get());
+            assert_matches!(
+                proxy_tls,
+                Some(RootCertificates::Native),
+                "https should use TLS"
+            );
+        }
+        assert_eq!(
+            auth,
+            proxy_authorization
+                .as_ref()
+                .map(|auth| (auth.username.as_str(), auth.password.as_str())),
+        );
+        assert!(
+            resolve_hostname_locally,
+            "this endpoint never produces a config that defers to the proxy"
+        );
+    }
+
+    #[test_case("socks4", EXAMPLE_HOST, None, None, Host::Domain(EXAMPLE_HOST); "simple")]
+    #[test_case("socks4a", EXAMPLE_HOST, None, None, Host::Domain(EXAMPLE_HOST); "simple with socks4a")]
+    #[test_case("socks4", EXAMPLE_HOST, Some(4433), None, Host::Domain(EXAMPLE_HOST); "with port")]
+    #[test_case("socks4", EXAMPLE_HOST, None, Some("user"), Host::Domain(EXAMPLE_HOST); "username")]
+    #[test_case("socks4a", EXAMPLE_HOST, Some(4433), Some("user"), Host::Domain(EXAMPLE_HOST); "everything with socks4a")]
+    #[test_case("socks4", "127.0.0.1", None, None, ip_addr!("127.0.0.1"); "IPv4")]
+    #[test_case("socks4", "::1", None, None, ip_addr!("::1"); "IPv6")]
+    #[test_case("socks4", "[::1]", None, None, ip_addr!("::1"); "bracketed IPv6")]
+    fn proxy_from_parts_signal_socks4(
+        scheme: &str,
+        host: &str,
+        port: Option<u16>,
+        auth: Option<&str>,
+        expected_host: impl Into<Host<&'static str>>,
+    ) {
+        let SocksProxy {
+            proxy_host,
+            proxy_port,
+            protocol,
+            resolve_hostname_locally,
+        } = {
+            let port = port.map(|p| NonZeroU16::try_from(p).expect("valid for testing"));
+            let auth = auth.map(|u| (u.to_owned(), "".to_owned()));
+            assert_matches!(
+                ConnectionProxyConfig::from_parts(scheme, host, port, auth),
+                Ok(ConnectionProxyConfig::Socks(socks)) => socks
+            )
+        };
+        assert_eq!(expected_host.into(), proxy_host.as_deref());
+        assert_eq!(port.unwrap_or(1080), proxy_port.get());
+        let user = assert_matches!(protocol, socks::Protocol::Socks4 { user_id } => user_id);
+        assert_eq!(auth, user.as_deref());
+        // This is cheating a bit, but it's simpler than adding another "expected" argument.
+        if scheme == "socks4a" {
+            assert!(
+                !resolve_hostname_locally,
+                "{scheme} does not resolve hostnames locally"
+            );
+        } else {
+            assert!(
+                resolve_hostname_locally,
+                "{scheme} resolves hostnames locally"
+            );
+        }
+    }
+
+    #[test_case("socks", EXAMPLE_HOST, None, None, Host::Domain(EXAMPLE_HOST); "simple")]
+    #[test_case("socks5", EXAMPLE_HOST, None, None, Host::Domain(EXAMPLE_HOST); "simple with socks5")]
+    #[test_case("socks5h", EXAMPLE_HOST, None, None, Host::Domain(EXAMPLE_HOST); "simple with socks5h")]
+    #[test_case("socks", EXAMPLE_HOST, Some(4433), None, Host::Domain(EXAMPLE_HOST); "with port")]
+    #[test_case("socks", EXAMPLE_HOST, None, Some(("user", "pass")), Host::Domain(EXAMPLE_HOST); "username + pw")]
+    #[test_case("socks5h", EXAMPLE_HOST, Some(4433), Some(("user", "pass")), Host::Domain(EXAMPLE_HOST); "everything with socks5h")]
+    #[test_case("socks", "127.0.0.1", None, None, ip_addr!("127.0.0.1"); "IPv4")]
+    #[test_case("socks", "::1", None, None, ip_addr!("::1"); "IPv6")]
+    #[test_case("socks", "[::1]", None, None, ip_addr!("::1"); "bracketed IPv6")]
+    fn proxy_from_parts_signal_socks5(
+        scheme: &str,
+        host: &str,
+        port: Option<u16>,
+        auth: Option<(&str, &str)>,
+        expected_host: impl Into<Host<&'static str>>,
+    ) {
+        let SocksProxy {
+            proxy_host,
+            proxy_port,
+            protocol,
+            resolve_hostname_locally,
+        } = {
+            let port = port.map(|p| NonZeroU16::try_from(p).expect("valid for testing"));
+            let auth = auth.map(|(u, p)| (u.to_owned(), p.to_owned()));
+            assert_matches!(
+                ConnectionProxyConfig::from_parts(scheme, host, port, auth),
+                Ok(ConnectionProxyConfig::Socks(socks)) => socks
+            )
+        };
+        assert_eq!(expected_host.into(), proxy_host.as_deref());
+        assert_eq!(port.unwrap_or(1080), proxy_port.get());
+        let actual_auth =
+            assert_matches!(protocol, socks::Protocol::Socks5 { username_password: auth } => auth);
+        assert_eq!(
+            auth,
+            actual_auth
+                .as_ref()
+                .map(|auth| (auth.0.as_str(), auth.1.as_str()))
+        );
+        // This is cheating a bit, but it's simpler than adding another "expected" argument.
+        if scheme == "socks5h" {
+            assert!(
+                !resolve_hostname_locally,
+                "{scheme} does not resolve hostnames locally"
+            );
+        } else {
+            assert!(
+                resolve_hostname_locally,
+                "{scheme} resolves hostnames locally"
+            );
+        }
+    }
+
+    #[test_case("", "", "", "" => matches _)]
+    #[test_case("socks", "", "", "" => matches ProxyFromPartsError::MissingHost)]
+    #[test_case("garbage", EXAMPLE_HOST, "", "" => matches ProxyFromPartsError::UnsupportedScheme(scheme) if scheme == "garbage")]
+    #[test_case("socks4", EXAMPLE_HOST, "user", "pass" => matches ProxyFromPartsError::SchemeDoesNotSupportPasswords("socks4"))]
+    #[test_case(SIGNAL_TLS_PROXY_SCHEME, EXAMPLE_HOST, "user", "" => matches ProxyFromPartsError::SchemeDoesNotSupportUsernames(SIGNAL_TLS_PROXY_SCHEME))]
+    fn proxy_from_parts_invalid(
+        scheme: &str,
+        host: &str,
+        username: &str,
+        password: &str,
+    ) -> ProxyFromPartsError {
+        let auth = match (username, password) {
+            ("", "") => None,
+            ("", _) => panic!("invalid test case"),
+            _ => Some((username.to_owned(), password.to_owned())),
+        };
+        let port = None; // no interesting tests for ports, they're all valid
+
+        ConnectionProxyConfig::from_parts(scheme, host, port, auth).expect_err("invalid input")
     }
 }
