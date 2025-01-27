@@ -19,6 +19,7 @@ pub mod statement;
 pub use args::{PointArgs, ScalarArgs};
 pub use errors::PokshoError;
 pub use proof::Proof;
+#[allow(deprecated)]
 pub use scalar::{scalar_from_slice_canonical, scalar_from_slice_wide};
 pub use shoapi::ShoApi;
 pub use shohmacsha256::ShoHmacSha256;

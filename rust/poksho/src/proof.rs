@@ -5,7 +5,6 @@
 
 use curve25519_dalek::scalar::Scalar;
 
-use crate::scalar::*;
 use crate::simple_types::*;
 
 // We use compact Schnorr signatures, sending the challenge instead of commitments
@@ -15,16 +14,30 @@ pub struct Proof {
 }
 
 impl Proof {
+    /// Parses the given byte slice as a `Proof`.
+    ///
+    /// Returns `None` if the input is invalid. This does not run in constant
+    /// time!
     pub fn from_slice(bytes: &[u8]) -> Option<Self> {
-        let num_scalars = bytes.len() / 32;
-        if !(2..=257).contains(&num_scalars) || num_scalars * 32 != bytes.len() {
+        // TODO use Iterator::array_chunks once that's stabilized.
+        // See https://github.com/rust-lang/rust/issues/100450.
+        let chunks = bytes.chunks_exact(32);
+        if !chunks.remainder().is_empty() {
             return None;
         }
-        let challenge = scalar_from_slice_canonical(&bytes[0..32])?;
+        let mut array_chunks = chunks.map(|chunk| {
+            let chunk = chunk.try_into().expect("chunk size is exact");
+            Option::from(Scalar::from_canonical_bytes(chunk))
+        });
 
-        let mut response = Vec::<Scalar>::with_capacity(num_scalars - 1);
-        for i in 1..num_scalars {
-            response.push(scalar_from_slice_canonical(&bytes[32 * i..(32 * i) + 32])?);
+        let challenge = array_chunks.next()??;
+        if array_chunks.len() > 256 {
+            return None;
+        }
+
+        let response = array_chunks.collect::<Option<Vec<Scalar>>>()?;
+        if response.is_empty() {
+            return None;
         }
         Some(Proof {
             challenge,
@@ -33,11 +46,10 @@ impl Proof {
     }
 
     pub fn to_bytes(&self) -> Vec<u8> {
-        let mut bytes = Vec::<u8>::with_capacity(self.response.len() * 32);
-        bytes.extend_from_slice(self.challenge.as_bytes());
-        for scalar in &self.response {
-            bytes.extend_from_slice(scalar.as_bytes());
-        }
-        bytes
+        [&self.challenge]
+            .into_iter()
+            .chain(&self.response)
+            .flat_map(|scalar| *scalar.as_bytes())
+            .collect()
     }
 }
