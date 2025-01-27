@@ -6,7 +6,7 @@ plugins {
 }
 
 allprojects {
-    version = "0.65.4"
+    version = "0.65.5"
     group   = "org.signal"
 }
 

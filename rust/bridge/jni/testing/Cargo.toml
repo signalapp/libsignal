@@ -5,7 +5,7 @@
 
 [package]
 name = "libsignal-jni-testing"
-version = "0.65.4"
+version = "0.65.5"
 authors = ["Signal Messenger LLC"]
 edition = "2021"
 license = "AGPL-3.0-only"
