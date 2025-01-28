@@ -219,6 +219,10 @@ where
     let mut sleep_until_start_next_connection = tokio::time::sleep(Duration::ZERO);
     let mut sleep_until_start_next_connection = std::pin::pin!(sleep_until_start_next_connection);
 
+    // Every N seconds, log about what we've tried and still have yet to try.
+    let mut log_for_slow_connections = tokio::time::interval(Duration::from_secs(3));
+    log_for_slow_connections.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+
     // Whether the Schedule should be polled for its next route.
     let mut poll_schedule_for_next = true;
     let mut connects_in_progress = FuturesUnordered::new();
@@ -229,6 +233,7 @@ where
         StartNextConnection,
         ConnectionAttemptFinished(C),
         NextRouteAvailable(R),
+        LogStatus,
     }
 
     let outcome = loop {
@@ -263,6 +268,7 @@ where
         let event = tokio::select! {
             event = SomeOrPending::from(poll_or_wait) => event,
             c = SomeOrPending::from(next_connect_in_progress) => Event::ConnectionAttemptFinished(c),
+            _ = log_for_slow_connections.tick() => Event::LogStatus,
         };
 
         match event {
@@ -307,6 +313,13 @@ where
                         break Err(ConnectError::FatalConnect(fatal_err));
                     }
                 }
+            }
+            Event::LogStatus => {
+                log::info!(
+                    "[{log_tag}] {} connection(s) in progress, {} pending",
+                    connects_in_progress.len(),
+                    if schedule.is_some() { "more" } else { "none" }
+                );
             }
         }
     };
