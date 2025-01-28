@@ -86,6 +86,7 @@ jobs:
           - '.gitattributes'
           - '.editorconfig'
           - 'justfile'
+          - 'doc/**'
 
     - name: Check pattern completeness
       run: echo "::error file=.github/workflows/build_and_test.yml::File not included in any filter" && false
