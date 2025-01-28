@@ -53,10 +53,7 @@ impl GroupSecretParams {
             b"Signal_ZKGroup_20200424_Random_GroupSecretParams_Generate",
             &randomness,
         );
-        let mut master_key: GroupMasterKey = Default::default();
-        master_key
-            .bytes
-            .copy_from_slice(&sho.squeeze(GROUP_MASTER_KEY_LEN)[..]);
+        let master_key = GroupMasterKey::new(sho.squeeze_as_array());
         GroupSecretParams::derive_from_master_key(master_key)
     }
 
@@ -65,10 +62,8 @@ impl GroupSecretParams {
             b"Signal_ZKGroup_20200424_GroupMasterKey_GroupSecretParams_DeriveFromMasterKey",
             &master_key.bytes,
         );
-        let mut group_id: GroupIdentifierBytes = Default::default();
-        let mut blob_key: AesKeyBytes = Default::default();
-        group_id.copy_from_slice(&sho.squeeze(GROUP_IDENTIFIER_LEN)[..]);
-        blob_key.copy_from_slice(&sho.squeeze(AES_KEY_LEN)[..]);
+        let group_id: GroupIdentifierBytes = sho.squeeze_as_array();
+        let blob_key: AesKeyBytes = sho.squeeze_as_array();
         let uid_enc_key_pair = crypto::uid_encryption::KeyPair::derive_from(sho.as_mut());
         let profile_key_enc_key_pair =
             crypto::profile_key_encryption::KeyPair::derive_from(sho.as_mut());
@@ -174,9 +169,8 @@ impl GroupSecretParams {
             b"Signal_ZKGroup_20200424_Random_GroupSecretParams_EncryptBlob",
             &randomness,
         );
-        let nonce_vec = sho.squeeze(AESGCM_NONCE_LEN);
-        let mut ciphertext_vec =
-            self.encrypt_blob_aesgcmsiv(&self.blob_key, &nonce_vec[..], plaintext);
+        let nonce_vec = sho.squeeze_as_array::<AESGCM_NONCE_LEN>();
+        let mut ciphertext_vec = self.encrypt_blob_aesgcmsiv(&self.blob_key, &nonce_vec, plaintext);
         ciphertext_vec.extend(nonce_vec);
         ciphertext_vec.extend([0u8]); // reserved byte
         ciphertext_vec

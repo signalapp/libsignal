@@ -60,9 +60,9 @@ impl ShoApi for ShoHmacSha256 {
         self.mode = Mode::RATCHETED;
     }
 
-    fn squeeze_and_ratchet(&mut self, outlen: usize) -> Vec<u8> {
+    fn squeeze_and_ratchet_into(&mut self, mut target: &mut [u8]) {
         assert!(self.mode == Mode::RATCHETED);
-        let mut output = Vec::<u8>::new();
+        let outlen = target.len();
         let output_hasher_prefix =
             Hmac::<Sha256>::new_from_slice(&self.cv).expect("HMAC accepts 256-bit keys");
         let mut i = 0;
@@ -72,7 +72,9 @@ impl ShoApi for ShoHmacSha256 {
             output_hasher.update(&[0x01]);
             let digest = output_hasher.finalize().into_bytes();
             let num_bytes = cmp::min(HASH_LEN, outlen - i * HASH_LEN);
-            output.extend_from_slice(&digest[0..num_bytes]);
+            let (output, tail) = target.split_at_mut(num_bytes);
+            output.copy_from_slice(&digest[..num_bytes]);
+            target = tail;
             i += 1
         }
 
@@ -82,7 +84,6 @@ impl ShoApi for ShoHmacSha256 {
         self.cv
             .copy_from_slice(&next_hasher.finalize().into_bytes()[..]);
         self.mode = Mode::RATCHETED;
-        output
     }
 }
 

@@ -12,7 +12,7 @@ pub fn username_hash(username: &str) -> Result<[u8; 32], UsernameError> {
     Username::new(username).map(|un| un.hash())
 }
 
-pub fn username_proof(username: &str, randomness: &[u8]) -> Result<Vec<u8>, UsernameError> {
+pub fn username_proof(username: &str, randomness: &[u8; 32]) -> Result<Vec<u8>, UsernameError> {
     Username::new(username)?.proof(randomness)
 }
 
@@ -27,7 +27,7 @@ fn bench_usernames(c: &mut Criterion) {
     c.bench_function("username_hash", |b| {
         b.iter(|| username_hash(infinite_usernames.next().unwrap()))
     });
-    let randomness: Vec<u8> = (0..32).collect();
+    let randomness = std::array::from_fn(|i| i.try_into().unwrap());
     c.bench_function("username_proof", |b| {
         b.iter(|| username_proof(infinite_usernames.next().unwrap(), &randomness))
     });

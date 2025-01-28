@@ -55,6 +55,7 @@ use curve25519_dalek::constants::RISTRETTO_BASEPOINT_POINT;
 use curve25519_dalek::ristretto::RistrettoPoint;
 use curve25519_dalek::scalar::Scalar;
 use partial_default::PartialDefault;
+use poksho::shoapi::ShoApiExt as _;
 use poksho::{ShoApi, ShoHmacSha256};
 use serde::{Deserialize, Serialize};
 
@@ -488,7 +489,7 @@ impl BlindedIssuanceProofBuilder<'_> {
                 &scalar_args,
                 &point_args,
                 self.inner.authenticated_message,
-                &sho.squeeze_and_ratchet(RANDOMNESS_LEN)[..],
+                &sho.squeeze_and_ratchet_as_array::<RANDOMNESS_LEN>(),
             )
             .unwrap();
         BlindedIssuanceProof {

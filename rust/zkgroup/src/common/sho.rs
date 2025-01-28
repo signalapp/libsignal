@@ -5,6 +5,7 @@
 
 use curve25519_dalek_signal::ristretto::RistrettoPoint;
 use curve25519_dalek_signal::scalar::Scalar;
+use poksho::shoapi::ShoApiExt as _;
 use poksho::ShoApi;
 
 pub struct Sho {
@@ -26,22 +27,22 @@ impl Sho {
         self.internal_sho.squeeze_and_ratchet(outlen)
     }
 
+    pub fn squeeze_as_array<const N: usize>(&mut self) -> [u8; N] {
+        self.internal_sho.squeeze_and_ratchet_as_array()
+    }
+
     pub fn get_point(&mut self) -> RistrettoPoint {
-        let mut point_bytes = [0u8; 64];
-        point_bytes.copy_from_slice(&self.internal_sho.squeeze_and_ratchet(64)[..]);
-        RistrettoPoint::from_uniform_bytes(&point_bytes)
+        RistrettoPoint::from_uniform_bytes(&self.internal_sho.squeeze_and_ratchet_as_array())
     }
 
     pub fn get_point_single_elligator(&mut self) -> RistrettoPoint {
-        let mut point_bytes = [0u8; 32];
-        point_bytes.copy_from_slice(&self.internal_sho.squeeze_and_ratchet(32)[..]);
-        RistrettoPoint::from_uniform_bytes_single_elligator(&point_bytes)
+        RistrettoPoint::from_uniform_bytes_single_elligator(
+            &self.internal_sho.squeeze_and_ratchet_as_array(),
+        )
     }
 
     pub fn get_scalar(&mut self) -> Scalar {
-        let mut scalar_bytes = [0u8; 64];
-        scalar_bytes.copy_from_slice(&self.internal_sho.squeeze_and_ratchet(64)[..]);
-        Scalar::from_bytes_mod_order_wide(&scalar_bytes)
+        Scalar::from_bytes_mod_order_wide(&self.internal_sho.squeeze_and_ratchet_as_array())
     }
 }
 

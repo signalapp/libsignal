@@ -38,8 +38,7 @@ impl ProfileKey {
             b"Signal_ZKGroup_20200424_Random_ProfileKey_Generate",
             &randomness,
         );
-        let mut bytes = [0u8; PROFILE_KEY_LEN];
-        bytes.copy_from_slice(&sho.squeeze(PROFILE_KEY_LEN)[..]);
+        let bytes = sho.squeeze_as_array();
         Self { bytes }
     }
 
@@ -78,10 +77,13 @@ impl ProfileKey {
             &combined_array,
         );
 
-        let pkv_hex_string = hex::encode(&sho.squeeze(PROFILE_KEY_VERSION_LEN)[..]);
         let mut pkv_hex_array: [u8; PROFILE_KEY_VERSION_ENCODED_LEN] =
             [0u8; PROFILE_KEY_VERSION_ENCODED_LEN];
-        pkv_hex_array.copy_from_slice(pkv_hex_string.as_bytes());
+        hex::encode_to_slice(
+            sho.squeeze_as_array::<PROFILE_KEY_VERSION_LEN>(),
+            &mut pkv_hex_array,
+        )
+        .expect("lengths match");
         api::profiles::ProfileKeyVersion {
             bytes: pkv_hex_array,
         }

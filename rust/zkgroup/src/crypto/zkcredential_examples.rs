@@ -8,6 +8,7 @@
 //! Has to live in zkgroup because they implement zkcredential traits on zkgroup types.
 
 use curve25519_dalek_signal::ristretto::RistrettoPoint;
+use poksho::shoapi::ShoApiExt as _;
 use poksho::{ShoApi, ShoSha256};
 use serde::{Deserialize, Serialize};
 use zkcredential::attributes::{Attribute, Domain, RevealedAttribute};
@@ -30,8 +31,7 @@ use crate::{RANDOMNESS_LEN, TEST_ARRAY_16, TEST_ARRAY_32};
 #[test]
 fn test_mac_generic() {
     let mut sho = ShoSha256::new(b"Test_Credentials");
-    let keypair =
-        CredentialKeyPair::generate(sho.squeeze_and_ratchet(RANDOMNESS_LEN).try_into().unwrap());
+    let keypair = CredentialKeyPair::generate(sho.squeeze_and_ratchet_as_array());
 
     let label = b"20221221_AuthCredentialLike";
 
@@ -42,10 +42,7 @@ fn test_mac_generic() {
     let proof = IssuanceProofBuilder::new(label)
         .add_attribute(&uid)
         .add_public_attribute(&[1, 2, 3])
-        .issue(
-            &keypair,
-            sho.squeeze_and_ratchet(RANDOMNESS_LEN).try_into().unwrap(),
-        );
+        .issue(&keypair, sho.squeeze_and_ratchet_as_array());
 
     let credential = IssuanceProofBuilder::new(label)
         .add_attribute(&uid)
@@ -61,7 +58,7 @@ fn test_mac_generic() {
         .present(
             keypair.public_key(),
             &credential,
-            sho.squeeze_and_ratchet(RANDOMNESS_LEN).try_into().unwrap(),
+            sho.squeeze_and_ratchet_as_array(),
         );
 
     PresentationProofVerifier::new(label)
@@ -77,8 +74,7 @@ fn test_mac_generic() {
 #[test]
 fn test_mac_generic_without_verifying_encryption_key() {
     let mut sho = ShoSha256::new(b"Test_Credentials");
-    let keypair =
-        CredentialKeyPair::generate(sho.squeeze_and_ratchet(RANDOMNESS_LEN).try_into().unwrap());
+    let keypair = CredentialKeyPair::generate(sho.squeeze_and_ratchet_as_array());
 
     let label = b"20221221_AuthCredentialLike";
 
@@ -89,10 +85,7 @@ fn test_mac_generic_without_verifying_encryption_key() {
     let proof = IssuanceProofBuilder::new(label)
         .add_attribute(&uid)
         .add_public_attribute(&[1, 2, 3])
-        .issue(
-            &keypair,
-            sho.squeeze_and_ratchet(RANDOMNESS_LEN).try_into().unwrap(),
-        );
+        .issue(&keypair, sho.squeeze_and_ratchet_as_array());
 
     let credential = IssuanceProofBuilder::new(label)
         .add_attribute(&uid)
@@ -107,7 +100,7 @@ fn test_mac_generic_without_verifying_encryption_key() {
         .present(
             keypair.public_key(),
             &credential,
-            sho.squeeze_and_ratchet(RANDOMNESS_LEN).try_into().unwrap(),
+            sho.squeeze_and_ratchet_as_array(),
         );
 
     PresentationProofVerifier::new(label)
@@ -123,8 +116,7 @@ fn test_mac_generic_without_verifying_encryption_key() {
 #[test]
 fn test_profile_key_credential() {
     let mut sho = ShoSha256::new(b"Test_Credentials");
-    let keypair =
-        CredentialKeyPair::generate(sho.squeeze_and_ratchet(RANDOMNESS_LEN).try_into().unwrap());
+    let keypair = CredentialKeyPair::generate(sho.squeeze_and_ratchet_as_array());
     let blinding_keypair = BlindingKeyPair::generate(&mut sho);
 
     let label = b"20221221_ProfileKeyCredentialLike";
@@ -158,7 +150,7 @@ fn test_profile_key_credential() {
         .issue(
             &keypair,
             &request.blinding_public_key,
-            sho.squeeze_and_ratchet(RANDOMNESS_LEN).try_into().unwrap(),
+            sho.squeeze_and_ratchet_as_array(),
         );
 
     let proof_serialized = bincode::serialize(&proof).unwrap();
@@ -185,7 +177,7 @@ fn test_profile_key_credential() {
         .present(
             keypair.public_key(),
             &credential,
-            sho.squeeze_and_ratchet(RANDOMNESS_LEN).try_into().unwrap(),
+            sho.squeeze_and_ratchet_as_array(),
         );
 
     #[derive(Serialize, Deserialize)]
@@ -224,8 +216,7 @@ fn test_profile_key_credential() {
 #[test]
 fn test_profile_key_credential_only_verifying_one_encryption_key() {
     let mut sho = ShoSha256::new(b"Test_Credentials");
-    let keypair =
-        CredentialKeyPair::generate(sho.squeeze_and_ratchet(RANDOMNESS_LEN).try_into().unwrap());
+    let keypair = CredentialKeyPair::generate(sho.squeeze_and_ratchet_as_array());
     let blinding_keypair = BlindingKeyPair::generate(&mut sho);
 
     let label = b"20221221_ProfileKeyCredentialLike";
@@ -259,7 +250,7 @@ fn test_profile_key_credential_only_verifying_one_encryption_key() {
         .issue(
             &keypair,
             &request.blinding_public_key,
-            sho.squeeze_and_ratchet(RANDOMNESS_LEN).try_into().unwrap(),
+            sho.squeeze_and_ratchet_as_array(),
         );
 
     let proof_serialized = bincode::serialize(&proof).unwrap();
@@ -286,7 +277,7 @@ fn test_profile_key_credential_only_verifying_one_encryption_key() {
         .present(
             keypair.public_key(),
             &credential,
-            sho.squeeze_and_ratchet(RANDOMNESS_LEN).try_into().unwrap(),
+            sho.squeeze_and_ratchet_as_array(),
         );
 
     #[derive(Serialize, Deserialize)]
@@ -325,8 +316,7 @@ fn test_profile_key_credential_only_verifying_one_encryption_key() {
 #[test]
 fn test_room_credential() {
     let mut sho = ShoSha256::new(b"RoomCredential");
-    let keypair =
-        CredentialKeyPair::generate(sho.squeeze_and_ratchet(RANDOMNESS_LEN).try_into().unwrap());
+    let keypair = CredentialKeyPair::generate(sho.squeeze_and_ratchet_as_array());
     let blinding_keypair = BlindingKeyPair::generate(&mut sho);
 
     let label = b"20230330_RoomCredential";
@@ -363,7 +353,7 @@ fn test_room_credential() {
             &request_scalar_args,
             &request_point_args,
             request_label,
-            &sho.squeeze_and_ratchet(RANDOMNESS_LEN)[..],
+            &sho.squeeze_and_ratchet_as_array::<RANDOMNESS_LEN>(),
         )
         .expect("valid");
 
@@ -402,7 +392,7 @@ fn test_room_credential() {
         .issue(
             &keypair,
             &request.blinding_public_key,
-            sho.squeeze_and_ratchet(RANDOMNESS_LEN).try_into().unwrap(),
+            sho.squeeze_and_ratchet_as_array(),
         );
 
     let proof_serialized = bincode::serialize(&proof).unwrap();
@@ -423,7 +413,7 @@ fn test_room_credential() {
         .present(
             keypair.public_key(),
             &credential,
-            sho.squeeze_and_ratchet(RANDOMNESS_LEN).try_into().unwrap(),
+            sho.squeeze_and_ratchet_as_array(),
         );
 
     #[derive(Serialize, Deserialize)]

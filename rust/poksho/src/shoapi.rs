@@ -29,5 +29,29 @@ pub trait ShoApi {
     // unimplemented; make this more generic later
     // pub fn squeeze(&mut self, _outlen: usize) -> Vec<u8>;
 
-    fn squeeze_and_ratchet(&mut self, outlen: usize) -> Vec<u8>;
+    fn squeeze_and_ratchet(&mut self, outlen: usize) -> Vec<u8> {
+        let mut out = vec![0; outlen];
+        self.squeeze_and_ratchet_into(&mut out);
+        out
+    }
+
+    fn squeeze_and_ratchet_into(&mut self, target: &mut [u8]);
+}
+
+/// Convenience methods for types that implement [`ShoApi`].
+///
+/// These are defined as part of a separate trait so that `ShoApi` can remain
+/// object-safe.
+pub trait ShoApiExt {
+    /// Returns an array that has been [`ShoApi::squeeze_and_ratchet_into`]-ed.
+    fn squeeze_and_ratchet_as_array<const N: usize>(&mut self) -> [u8; N];
+}
+
+impl<S: ShoApi> ShoApiExt for S {
+    #[inline]
+    fn squeeze_and_ratchet_as_array<const N: usize>(&mut self) -> [u8; N] {
+        let mut out = [0; N];
+        self.squeeze_and_ratchet_into(&mut out);
+        out
+    }
 }

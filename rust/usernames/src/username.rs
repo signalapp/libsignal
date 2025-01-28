@@ -136,7 +136,7 @@ impl Username {
         *Self::hash_from_scalars(&self.scalars).compress().as_bytes()
     }
 
-    pub fn proof(&self, randomness: &[u8]) -> Result<Vec<u8>, UsernameError> {
+    pub fn proof(&self, randomness: &[u8; 32]) -> Result<Vec<u8>, UsernameError> {
         let hash = Self::hash_from_scalars(&self.scalars);
         let scalar_args = Self::make_scalar_args(&self.scalars);
         let point_args = Self::make_point_args(hash);
@@ -501,7 +501,7 @@ mod test {
         proptest!(|(nickname in NICKNAME_PATTERN, discriminator in 1..DISCRIMINATOR_MAX)| {
             let username = Username::new(&Username::format_parts(&nickname, discriminator)).unwrap();
             let hash = username.hash();
-            let randomness: Vec<u8> = (1..33).collect();
+            let randomness = std::array::from_fn(|i| (i + 1).try_into().unwrap());
             let proof = username.proof(&randomness).unwrap();
             Username::verify_proof(&proof, hash).unwrap();
         });
@@ -510,7 +510,7 @@ mod test {
     #[test]
     fn many_random_makes_valid_usernames() {
         let mut rng = rand::thread_rng();
-        let randomness: Vec<u8> = (1..33).collect();
+        let randomness = std::array::from_fn(|i| (i + 1).try_into().unwrap());
         let nickname = "_SiGNA1";
         let candidates = Username::candidates_from(&mut rng, nickname, Default::default()).unwrap();
         for c in &candidates {

@@ -166,11 +166,8 @@ mod tests {
 
         let mut sho = Sho::new(b"Test_Repeated_ProfileKeyEnc/Dec", b"seed");
         for _ in 0..100 {
-            let mut uid_bytes: UidBytes = Default::default();
-            let mut profile_key_bytes: ProfileKeyBytes = Default::default();
-
-            uid_bytes.copy_from_slice(&sho.squeeze(UUID_LEN)[..]);
-            profile_key_bytes.copy_from_slice(&sho.squeeze(PROFILE_KEY_LEN)[..]);
+            let uid_bytes: UidBytes = sho.squeeze_as_array();
+            let profile_key_bytes: ProfileKeyBytes = sho.squeeze_as_array();
 
             let profile_key =
                 profile_key_struct::ProfileKeyStruct::new(profile_key_bytes, uid_bytes);

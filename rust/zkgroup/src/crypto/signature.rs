@@ -40,7 +40,7 @@ impl KeyPair {
             self.signing_key,
             self.public_key,
             message,
-            &sho.squeeze(RANDOMNESS_LEN)[..],
+            &sho.squeeze_as_array::<RANDOMNESS_LEN>(),
         )
         .expect("signature failed to self-verify; bad public key?");
         let mut s: SignatureBytes = [0u8; SIGNATURE_LEN];

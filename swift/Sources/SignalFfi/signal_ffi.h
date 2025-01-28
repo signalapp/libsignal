@@ -2103,7 +2103,7 @@ SignalFfiError *signal_online_backup_validator_finalize(SignalMutPointerOnlineBa
 
 SignalFfiError *signal_username_hash(uint8_t (*out)[32], const char *username);
 
-SignalFfiError *signal_username_proof(SignalOwnedBuffer *out, const char *username, SignalBorrowedBuffer randomness);
+SignalFfiError *signal_username_proof(SignalOwnedBuffer *out, const char *username, const uint8_t (*randomness)[32]);
 
 SignalFfiError *signal_username_verify(SignalBorrowedBuffer proof, SignalBorrowedBuffer hash);
 

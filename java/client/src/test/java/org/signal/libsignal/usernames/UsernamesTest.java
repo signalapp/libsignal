@@ -5,6 +5,8 @@
 
 package org.signal.libsignal.usernames;
 
+import static org.hamcrest.CoreMatchers.containsString;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -93,8 +95,8 @@ public class UsernamesTest {
   public void testInvalidRandomness() throws BaseUsernameException {
     try {
       new Username("valid_name.01").generateProofWithRandomness(new byte[31]);
-    } catch (Error err) {
-      assertTrue(err.getMessage().contains("Failed to create proof"));
+    } catch (IllegalArgumentException err) {
+      assertThat(err.getMessage(), containsString("expected array with length 32"));
     }
   }
 

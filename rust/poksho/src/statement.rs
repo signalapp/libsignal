@@ -94,7 +94,7 @@ use PokshoError::*;
 use crate::args::*;
 use crate::errors::*;
 use crate::proof::*;
-use crate::shoapi::ShoApi;
+use crate::shoapi::{ShoApi, ShoApiExt as _};
 use crate::shohmacsha256::ShoHmacSha256;
 use crate::simple_types::*;
 
@@ -222,12 +222,7 @@ impl Statement {
             sho.absorb(&point.compress().to_bytes());
         }
         sho.absorb_and_ratchet(message);
-        let challenge = Scalar::from_bytes_mod_order_wide(
-            sho.squeeze_and_ratchet(64)
-                .as_slice()
-                .try_into()
-                .expect("correct size"),
-        );
+        let challenge = Scalar::from_bytes_mod_order_wide(&sho.squeeze_and_ratchet_as_array());
 
         // Response
         let response = nonce
@@ -289,12 +284,7 @@ impl Statement {
             sho.absorb(&point.compress().to_bytes());
         }
         sho.absorb_and_ratchet(message); // M
-        let challenge = Scalar::from_bytes_mod_order_wide(
-            sho.squeeze_and_ratchet(64)
-                .as_slice()
-                .try_into()
-                .expect("correct size"),
-        );
+        let challenge = Scalar::from_bytes_mod_order_wide(&sho.squeeze_and_ratchet_as_array());
 
         // Check challenge (const time)
         if challenge == proof.challenge {

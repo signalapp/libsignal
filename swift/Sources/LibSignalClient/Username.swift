@@ -49,11 +49,9 @@ public struct Username: Sendable {
         failOnError {
             let randomness = try randomness ?? Randomness.generate()
             return try self.value.withCString { strPtr in
-                try withUnsafeBytes(of: randomness.bytes) { randBytes in
-                    try randBytes.withUnsafeBorrowedBuffer { randPtr in
-                        try invokeFnReturningArray {
-                            signal_username_proof($0, strPtr, randPtr)
-                        }
+                try withUnsafePointer(to: randomness.bytes) { randomBytes in
+                    try invokeFnReturningArray {
+                        signal_username_proof($0, strPtr, randomBytes)
                     }
                 }
             }

@@ -20,7 +20,7 @@ pub fn Username_Hash(username: String) -> Result<[u8; 32], UsernameError> {
 }
 
 #[bridge_fn]
-pub fn Username_Proof(username: String, randomness: &[u8]) -> Result<Vec<u8>, UsernameError> {
+pub fn Username_Proof(username: String, randomness: &[u8; 32]) -> Result<Vec<u8>, UsernameError> {
     Username::new(&username)?.proof(randomness)
 }
 
