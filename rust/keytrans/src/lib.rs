@@ -79,12 +79,14 @@ impl From<LastTreeHead> for StoredTreeHead {
 #[derive(Default, Debug, Clone)]
 pub struct SearchContext<'a> {
     pub last_tree_head: Option<&'a LastTreeHead>,
+    pub last_distinguished_tree_head: Option<&'a LastTreeHead>,
     pub data: Option<MonitoringData>,
 }
 
-#[derive(Default, Debug)]
-pub struct MonitorContext {
-    pub last_tree_head: Option<LastTreeHead>,
+#[derive(Debug)]
+pub struct MonitorContext<'a> {
+    pub last_tree_head: Option<&'a LastTreeHead>,
+    pub last_distinguished_tree_head: &'a LastTreeHead,
     pub data: HashMap<Vec<u8>, MonitoringData>,
 }
 
@@ -193,7 +195,9 @@ impl KeyTransparency {
             verify_search(&self.config, request, response, context, force_monitor, now)?;
         Ok(VerifiedSearchResult {
             // the value has now been verified
-            value: unverified_value.ok_or(Error::RequiredFieldMissing)?,
+            value: unverified_value.ok_or(Error::VerificationFailed(
+                "unverified_value is not set".to_string(),
+            ))?,
             state_update,
         })
     }
@@ -203,16 +207,10 @@ impl KeyTransparency {
     pub fn verify_distinguished(
         &self,
         full_tree_head: &FullTreeHead,
-        distinguished_size: u64,
-        distinguished_root: [u8; 32],
-        last_tree_head: Option<LastTreeHead>,
+        last_tree_head: Option<&LastTreeHead>,
+        last_distinguished_tree_head: &LastTreeHead,
     ) -> Result<(), verify::Error> {
-        verify_distinguished(
-            full_tree_head,
-            distinguished_size,
-            distinguished_root,
-            last_tree_head,
-        )
+        verify_distinguished(full_tree_head, last_tree_head, last_distinguished_tree_head)
     }
 
     /// Returns the TreeHead that would've been issued immediately after the value
@@ -330,11 +328,11 @@ impl TryFrom<StoredAccountData> for AccountData {
             username_hash,
             last_tree_head,
         } = stored;
-        let last_tree_head = last_tree_head.ok_or(Error::RequiredFieldMissing)?;
+        let last_tree_head = last_tree_head.ok_or(Error::RequiredFieldMissing("last_tree_head"))?;
         Ok(Self {
             aci: aci
                 .map(MonitoringData::from)
-                .ok_or(Error::RequiredFieldMissing)?,
+                .ok_or(Error::RequiredFieldMissing("aci"))?,
             e164: e164.map(MonitoringData::from),
             username_hash: username_hash.map(MonitoringData::from),
             last_tree_head: last_tree_head

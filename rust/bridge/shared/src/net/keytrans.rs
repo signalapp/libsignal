@@ -144,11 +144,9 @@ async fn KeyTransparency_Search(
         })
         .transpose()?;
 
-    let last_distinguished_tree_head =
-        try_decode(last_distinguished_tree_head).map(|stored: StoredTreeHead| stored.tree_head)?;
-    let distinguished_tree_head_size = last_distinguished_tree_head
-        .map(|head| head.tree_size)
-        .ok_or(Error::InvalidRequest("distinguished tree head is missing"))?;
+    let last_distinguished_tree_head = try_decode(last_distinguished_tree_head)
+        .map(|stored: StoredTreeHead| stored.into_last_tree_head())?
+        .ok_or(Error::InvalidRequest("last distinguished tree is required"))?;
 
     let result = kt
         .search(
@@ -157,7 +155,7 @@ async fn KeyTransparency_Search(
             e164_pair,
             username_hash,
             account_data,
-            distinguished_tree_head_size,
+            &last_distinguished_tree_head,
         )
         .await?;
     Ok(result)
@@ -184,11 +182,9 @@ async fn KeyTransparency_Monitor(
         AccountData::try_from(stored).map_err(Error::from)?
     };
 
-    let last_distinguished_tree_head =
-        try_decode(last_distinguished_tree_head).map(|stored: StoredTreeHead| stored.tree_head)?;
-    let distinguished_tree_head_size = last_distinguished_tree_head
-        .map(|head| head.tree_size)
-        .ok_or(Error::InvalidRequest("distinguished tree head is missing"))?;
+    let last_distinguished_tree_head = try_decode(last_distinguished_tree_head)
+        .map(|stored: StoredTreeHead| stored.into_last_tree_head())?
+        .ok_or(Error::InvalidRequest("last distinguished tree is required"))?;
 
     let config = environment
         .into_inner()
@@ -207,7 +203,7 @@ async fn KeyTransparency_Monitor(
             e164,
             username_hash,
             account_data,
-            distinguished_tree_head_size,
+            &last_distinguished_tree_head,
         )
         .await?;
     Ok(StoredAccountData::from(updated_account_data).encode_to_vec())

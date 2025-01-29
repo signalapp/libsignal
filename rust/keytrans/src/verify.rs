@@ -17,7 +17,7 @@ use crate::proto::*;
 use crate::{
     guide, log, vrf, DeploymentMode, FullSearchResponse, LastTreeHead, MonitorContext,
     MonitorStateUpdate, MonitoringData, PublicConfig, SearchContext, SearchStateUpdate,
-    SlimSearchRequest,
+    SlimSearchRequest, TreeRoot,
 };
 
 /// The range of allowed timestamp values relative to "now".
@@ -36,8 +36,8 @@ const ENTRIES_MAX_BEHIND: u64 = 10_000_000;
 
 #[derive(Debug, displaydoc::Display)]
 pub enum Error {
-    /// Required field not found
-    RequiredFieldMissing,
+    /// Required field '{0}' not found
+    RequiredFieldMissing(&'static str),
     /// Proof element is wrong size
     InvalidProofElement,
     /// Value is too long to be encoded
@@ -74,8 +74,8 @@ impl From<MalformedProof> for Error {
 
 type Result<T> = std::result::Result<T, Error>;
 
-fn get_proto_field<T>(field: &Option<T>) -> Result<&T> {
-    field.as_ref().ok_or(Error::RequiredFieldMissing)
+fn get_proto_field<'a, T>(field: &'a Option<T>, name: &'static str) -> Result<&'a T> {
+    field.as_ref().ok_or(Error::RequiredFieldMissing(name))
 }
 
 fn get_hash_proof(proof: &[Vec<u8>]) -> Result<Vec<[u8; 32]>> {
@@ -160,59 +160,24 @@ fn verify_full_tree_head(
     fth: &FullTreeHead,
     root: [u8; 32],
     last_tree_head: Option<&LastTreeHead>,
+    last_distinguished_tree_head: Option<&LastTreeHead>,
     now: SystemTime,
 ) -> Result<LastTreeHead> {
-    let tree_head = get_proto_field(&fth.tree_head)?;
+    let tree_head = get_proto_field(&fth.tree_head, "tree_head")?;
 
-    // 1. Verify the proof in FullTreeHead.consistency, if one is expected.
-    // 3. Verify that the timestamp and tree_size fields of the TreeHead are
-    //    greater than or equal to what they were before.
-    match last_tree_head {
-        None => {
-            if !fth.last.is_empty() {
-                return Err(Error::VerificationFailed(
-                    "consistency proof provided when not expected".to_string(),
-                ));
-            }
-        }
-        Some((last, last_root)) if last.tree_size == tree_head.tree_size => {
-            if &root != last_root {
-                return Err(Error::VerificationFailed(
-                    "root is different but tree size is same".to_string(),
-                ));
-            }
-            if tree_head.timestamp < last.timestamp {
-                return Err(Error::VerificationFailed(
-                    "current timestamp is less than previous timestamp".to_string(),
-                ));
-            }
-            if !fth.last.is_empty() {
-                return Err(Error::VerificationFailed(
-                    "consistency proof provided when not expected".to_string(),
-                ));
-            }
-        }
-        Some((last, last_root)) => {
-            if tree_head.tree_size < last.tree_size {
-                return Err(Error::VerificationFailed(
-                    "current tree size is less than previous tree size".to_string(),
-                ));
-            }
-            if tree_head.timestamp < last.timestamp {
-                return Err(Error::VerificationFailed(
-                    "current timestamp is less than previous timestamp".to_string(),
-                ));
-            }
-            let proof = get_hash_proof(&fth.last)?;
-            verify_consistency_proof(
-                last.tree_size,
-                tree_head.tree_size,
-                &proof,
-                last_root,
-                &root,
-            )?
-        }
-    };
+    {
+        let current_tree_head = (tree_head, &root);
+        maybe_verify_consistency(
+            current_tree_head,
+            &get_hash_proof(&fth.last)?,
+            last_tree_head,
+        )?;
+        maybe_verify_consistency(
+            current_tree_head,
+            &get_hash_proof(&fth.distinguished)?,
+            last_distinguished_tree_head,
+        )?;
+    }
 
     // 2. Verify the signature in TreeHead.signature.
     verify_tree_head_signature(config, tree_head, &root, &config.signature_key)?;
@@ -223,8 +188,8 @@ fn verify_full_tree_head(
     // 4. If third-party auditing is used, verify auditor_tree_head with the
     //    steps described in Section 11.2.
     if let DeploymentMode::ThirdPartyAuditing(auditor_key) = config.mode {
-        let auditor_tree_head = get_proto_field(&fth.auditor_tree_head)?;
-        let auditor_head = get_proto_field(&auditor_tree_head.tree_head)?;
+        let auditor_tree_head = get_proto_field(&fth.auditor_tree_head, "auditor_tree_head")?;
+        let auditor_head = get_proto_field(&auditor_tree_head.tree_head, "tree_head")?;
 
         // 2. Verify that TreeHead.timestamp is sufficiently recent.
         verify_timestamp(
@@ -250,12 +215,13 @@ fn verify_full_tree_head(
         //    recent tree head from the service operator.
         // 1. Verify the signature in TreeHead.signature.
         if tree_head.tree_size > auditor_head.tree_size {
-            let auditor_root: &[u8; 32] = get_proto_field(&auditor_tree_head.root_value)?
-                .as_slice()
-                .try_into()
-                .map_err(|_| {
-                    Error::VerificationFailed("auditor tree head is malformed".to_string())
-                })?;
+            let auditor_root: &[u8; 32] =
+                get_proto_field(&auditor_tree_head.root_value, "root_value")?
+                    .as_slice()
+                    .try_into()
+                    .map_err(|_| {
+                        Error::VerificationFailed("auditor tree head is malformed".to_string())
+                    })?;
             let proof = get_hash_proof(&auditor_tree_head.consistency)?;
             verify_consistency_proof(
                 auditor_head.tree_size,
@@ -281,6 +247,82 @@ fn verify_full_tree_head(
     }
 
     Ok((tree_head.clone(), root))
+}
+
+/// Checks if the consistency proof against the baseline tree head needs to be
+/// verified, and if it does then performs it by calling [`do_verify_consistency`].
+///
+/// The `baseline` parameter is either the last_tree_head or the
+/// last_distinguished_tree_head, `proof` is the corresponding consistency proof
+/// from the search response, and `current` corresponds to the tree head from
+/// the search response.
+///
+/// * If the baseline is present, the proof should be present and valid.
+/// * Unless the current tree head size is equal to the baseline tree head size,
+///   in which case the proof should be empty.
+/// * If the baseline is absent, the proof must be empty.
+fn maybe_verify_consistency(
+    current: (&TreeHead, &TreeRoot),
+    proof: &[[u8; 32]],
+    baseline: Option<&LastTreeHead>,
+) -> Result<()> {
+    let (current_head, current_root) = current;
+    match baseline {
+        None => {
+            if !proof.is_empty() {
+                return Err(Error::VerificationFailed(
+                    "consistency proof provided when not expected".to_string(),
+                ));
+            };
+            Ok(())
+        }
+        Some((last, last_root)) if last.tree_size == current_head.tree_size => {
+            if current_root != last_root {
+                return Err(Error::VerificationFailed(
+                    "root is different but tree size is same".to_string(),
+                ));
+            }
+            if current_head.timestamp < last.timestamp {
+                return Err(Error::VerificationFailed(
+                    "current timestamp is less than previous timestamp".to_string(),
+                ));
+            }
+            if !proof.is_empty() {
+                return Err(Error::VerificationFailed(
+                    "consistency proof provided when not expected".to_string(),
+                ));
+            }
+            Ok(())
+        }
+        Some(baseline) => do_verify_consistency(current, proof, baseline),
+    }
+}
+
+/// Actually verifies the consistency proof against the baseline tree head.
+fn do_verify_consistency(
+    current: (&TreeHead, &TreeRoot),
+    proof: &[[u8; 32]],
+    baseline: &LastTreeHead,
+) -> Result<()> {
+    let (current_head, current_root) = current;
+    let (last_head, last_root) = baseline;
+    if current_head.tree_size < last_head.tree_size {
+        return Err(Error::VerificationFailed(
+            "current tree size is less than previous tree size".to_string(),
+        ));
+    }
+    if current_head.timestamp < last_head.timestamp {
+        return Err(Error::VerificationFailed(
+            "current timestamp is less than previous timestamp".to_string(),
+        ));
+    }
+    Ok(verify_consistency_proof(
+        last_head.tree_size,
+        current_head.tree_size,
+        proof,
+        last_root,
+        current_root,
+    )?)
 }
 
 /// The range of allowed timestamp values relative to "now".
@@ -324,12 +366,14 @@ fn verify_timestamp(
 /// to the provided distinguished head.
 pub fn verify_distinguished(
     fth: &FullTreeHead,
-    distinguished_size: u64,
-    distinguished_root: [u8; 32],
-    last_tree_head: Option<LastTreeHead>,
+    last_tree_head: Option<&LastTreeHead>,
+    last_distinguished_tree_head: &LastTreeHead,
 ) -> Result<()> {
-    let tree_size = get_proto_field(&fth.tree_head)?.tree_size;
+    let tree_size = get_proto_field(&fth.tree_head, "tree_head")?.tree_size;
 
+    if last_tree_head.is_none() {
+        return Ok(());
+    }
     let root = match last_tree_head {
         Some((tree_head, root)) if tree_head.tree_size == tree_size => root,
         _ => {
@@ -339,8 +383,17 @@ pub fn verify_distinguished(
         }
     };
 
+    let (
+        TreeHead {
+            tree_size: distinguished_size,
+            timestamp: _,
+            signature: _,
+        },
+        distinguished_root,
+    ) = last_distinguished_tree_head;
+
     // Handle special case when tree_size == distinguished_size.
-    if tree_size == distinguished_size {
+    if tree_size == *distinguished_size {
         let result = if root == distinguished_root {
             Ok(())
         } else {
@@ -352,11 +405,11 @@ pub fn verify_distinguished(
     }
 
     Ok(verify_consistency_proof(
-        distinguished_size,
+        *distinguished_size,
         tree_size,
         &get_hash_proof(&fth.distinguished)?,
-        &distinguished_root,
-        &root,
+        distinguished_root,
+        root,
     )?)
 }
 
@@ -398,10 +451,10 @@ fn verify_search_internal(
 
     // Evaluate the search proof.
     let tree_size = {
-        let tree_head = get_proto_field(&full_tree_head.tree_head)?;
+        let tree_head = get_proto_field(&full_tree_head.tree_head, "tree_head")?;
         tree_head.tree_size
     };
-    let search_proof = get_proto_field(&search)?;
+    let search_proof = get_proto_field(&search, "search")?;
 
     let guide = ProofGuide::new(version, search_proof.pos, tree_size);
 
@@ -415,7 +468,7 @@ fn verify_search_internal(
             ));
         }
         let step = &search_proof.steps[i];
-        let prefix_proof = get_proto_field(&step.prefix)?;
+        let prefix_proof = get_proto_field(&step.prefix, "prefix")?;
         guide.insert(next_id, prefix_proof.counter);
 
         // Evaluate the prefix proof and combine it with the commitment to get
@@ -433,11 +486,18 @@ fn verify_search_internal(
         Ok::<(), Error>(())
     })?;
 
-    if i != search_proof.steps.len() {
-        return Err(Error::VerificationFailed(
-            "unexpected number of steps in search proof".to_string(),
-        ));
-    }
+    let root = {
+        if i != search_proof.steps.len() {
+            return Err(Error::VerificationFailed(
+                "unexpected number of steps in search proof".to_string(),
+            ));
+        }
+
+        let inclusion_proof = get_hash_proof(&search_proof.inclusion)?;
+
+        let (ids, values) = into_sorted_pairs(leaves);
+        evaluate_batch_proof(&ids, tree_size, &values, &inclusion_proof)?
+    };
 
     // Verify commitment opening.
     let (result_i, result_id) = result.ok_or_else(|| {
@@ -445,7 +505,7 @@ fn verify_search_internal(
     })?;
     let result_step = &search_proof.steps[result_i];
 
-    let value = marshal_update_value(&get_proto_field(&value)?.value)?;
+    let value = marshal_update_value(&get_proto_field(&value, "value")?.value)?;
     let opening = opening
         .as_slice()
         .try_into()
@@ -457,20 +517,21 @@ fn verify_search_internal(
         ));
     }
 
-    // Evaluate the inclusion proof to get a candidate root value.
-    let (ids, values) = into_sorted_pairs(leaves);
-
-    let inclusion_proof = get_hash_proof(&search_proof.inclusion)?;
-    let root = evaluate_batch_proof(&ids, tree_size, &values, &inclusion_proof)?;
-
     let SearchContext {
         last_tree_head,
+        last_distinguished_tree_head,
         data,
     } = context;
 
     // Verify the tree head with the candidate root.
-    let updated_tree_head =
-        verify_full_tree_head(config, full_tree_head, root, last_tree_head, now)?;
+    let updated_tree_head = verify_full_tree_head(
+        config,
+        full_tree_head,
+        root,
+        last_tree_head,
+        last_distinguished_tree_head,
+        now,
+    )?;
 
     // Update stored monitoring data.
     let size = if search_key == b"distinguished" {
@@ -480,7 +541,7 @@ fn verify_search_internal(
     } else {
         tree_size
     };
-    let ver = get_proto_field(&result_step.prefix)?.counter;
+    let ver = get_proto_field(&result_step.prefix, "prefix")?.counter;
 
     let mut mdw = MonitoringDataWrapper::new(data);
     if monitor || config.mode == DeploymentMode::ContactMonitoring {
@@ -541,7 +602,7 @@ pub fn verify_update(
                     value: req.value.clone(),
                 }),
             },
-            tree_head: tree_head.as_ref().ok_or(Error::RequiredFieldMissing)?,
+            tree_head: get_proto_field(tree_head, "tree_head")?,
         },
         context,
         true,
@@ -565,12 +626,13 @@ pub fn verify_monitor<'a>(
         ));
     }
 
-    let full_tree_head = get_proto_field(&res.tree_head)?;
-    let tree_head = get_proto_field(&full_tree_head.tree_head)?;
+    let full_tree_head = get_proto_field(&res.tree_head, "tree_head")?;
+    let tree_head = get_proto_field(&full_tree_head.tree_head, "tree_head")?;
     let tree_size = tree_head.tree_size;
 
     let MonitorContext {
         last_tree_head,
+        last_distinguished_tree_head,
         data,
     } = context;
 
@@ -598,8 +660,14 @@ pub fn verify_monitor<'a>(
     };
 
     // Verify the tree head with the candidate root.
-    let updated_tree_head =
-        verify_full_tree_head(config, full_tree_head, root, last_tree_head.as_ref(), now)?;
+    let updated_tree_head = verify_full_tree_head(
+        config,
+        full_tree_head,
+        root,
+        last_tree_head,
+        Some(last_distinguished_tree_head),
+        now,
+    )?;
 
     let MonitorRequest { keys, consistency } = req;
 
@@ -682,7 +750,7 @@ impl MonitorProofAcc {
         // Evaluate each proof step to get the candidate leaf values.
         let mut steps = HashMap::new();
         for (entry, step) in entries.iter().zip(proof.steps.iter()) {
-            let prefix_proof = get_proto_field(&step.prefix)?;
+            let prefix_proof = get_proto_field(&step.prefix, "prefix")?;
             let prefix_root = evaluate_prefix(&data.index, data.pos, prefix_proof)?;
             let commitment = step
                 .commitment
@@ -817,7 +885,7 @@ impl MonitoringDataWrapper {
                 match entries.get(&x) {
                     None => break,
                     Some(step) => {
-                        let ctr = get_proto_field(&step.prefix)?.counter;
+                        let ctr = get_proto_field(&step.prefix, "prefix")?.counter;
                         if ctr < ver {
                             return Err(Error::VerificationFailed(
                                 "prefix tree has unexpectedly low version counter".to_string(),
@@ -885,10 +953,10 @@ pub fn truncate_search_response(
 
     // Evaluate the SearchProof to find the terminal leaf.
     let tree_size = {
-        let tree_head = get_proto_field(&full_tree_head.tree_head)?;
+        let tree_head = get_proto_field(&full_tree_head.tree_head, "tree_head")?;
         tree_head.tree_size
     };
-    let search_proof = get_proto_field(search)?;
+    let search_proof = get_proto_field(search, "search")?;
 
     let guide = ProofGuide::new(*version, search_proof.pos, tree_size);
 
@@ -897,7 +965,7 @@ pub fn truncate_search_response(
 
     let result = guide.consume(|guide, next_id| {
         let step = &search_proof.steps[i];
-        let prefix_proof = get_proto_field(&step.prefix)?;
+        let prefix_proof = get_proto_field(&step.prefix, "prefix")?;
         guide.insert(next_id, prefix_proof.counter);
 
         // Evaluate the prefix proof and combine it with the commitment to get
@@ -1055,12 +1123,14 @@ mod test {
                 assert_eq!(update.monitoring_data, Some(expected_data_update.clone()));
             }
         );
+        // Verification result should always include the monitoring data field, even if it has not changed.
         let last_tree = (last_tree_head.clone(), last_root);
         let context = SearchContext {
             last_tree_head: Some(&last_tree),
             data: Some(expected_data_update.clone()),
+            ..SearchContext::default()
         };
-        // Verification result should always include the monitoring data field, even if it has not changed.
+
         assert_matches!(
             verify_search_internal(&config, request.clone(), response.clone(), context, true, valid_at),
             Ok(update) => {
