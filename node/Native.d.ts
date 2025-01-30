@@ -566,6 +566,10 @@ export function TESTING_PanicOnReturnIo(asyncRuntime: Wrapper<NonSuspendingBackg
 export function TESTING_PanicOnReturnSync(_needsCleanup: null): null;
 export function TESTING_ProcessBytestringArray(input: Buffer[]): Buffer[];
 export function TESTING_ReturnStringArray(): string[];
+export function TESTING_RoundTripI32(input: number): number;
+export function TESTING_RoundTripU16(input: number): number;
+export function TESTING_RoundTripU32(input: number): number;
+export function TESTING_RoundTripU8(input: number): number;
 export function TESTING_ServerMessageAck_Create(): ServerMessageAck;
 export function TESTING_TestingHandleType_getValue(handle: Wrapper<TestingHandleType>): number;
 export function TokioAsyncContext_cancel(context: Wrapper<TokioAsyncContext>, rawCancellationId: bigint): void;

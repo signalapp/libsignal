@@ -665,6 +665,14 @@ impl ResultTypeInfo<'_> for u8 {
     }
 }
 
+/// Supports all valid byte values `0..=65536`.
+impl ResultTypeInfo<'_> for u16 {
+    type ResultType = jint;
+    fn convert_into(self, _env: &mut JNIEnv) -> Result<Self::ResultType, BridgeLayerError> {
+        Ok(self as jint)
+    }
+}
+
 /// Reinterprets the bits of the `u32` as a Java `int`.
 ///
 /// Note that this is different from the implementation of [`ArgTypeInfo`] for `u32`.
@@ -1608,6 +1616,10 @@ macro_rules! jni_result_type {
     };
     (u8) => {
         // Note: not a jbyte. It's better to preserve the signedness here.
+        ::jni::sys::jint
+    };
+    (u16) => {
+        // Note: not a jshort. It's better to preserve the signedness here.
         ::jni::sys::jint
     };
     (i32) => {

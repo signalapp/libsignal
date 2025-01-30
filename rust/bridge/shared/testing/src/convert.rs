@@ -228,6 +228,24 @@ fn TESTING_ProcessBytestringArray(input: Vec<&[u8]>) -> Box<[Vec<u8>]> {
         .into_boxed_slice()
 }
 
+// Not needed for the FFI bridge because C can exactly describe all of these types.
+#[bridge_fn(ffi = false)]
+fn TESTING_RoundTripU8(input: u8) -> u8 {
+    input
+}
+#[bridge_fn(ffi = false)]
+fn TESTING_RoundTripU16(input: u16) -> u16 {
+    input
+}
+#[bridge_fn(ffi = false)]
+fn TESTING_RoundTripU32(input: u32) -> u32 {
+    input
+}
+#[bridge_fn(ffi = false)]
+fn TESTING_RoundTripI32(input: i32) -> i32 {
+    input
+}
+
 #[bridge_fn]
 async fn TESTING_InputStreamReadIntoZeroLengthSlice(
     caps_alphabet_input: &mut dyn InputStream,

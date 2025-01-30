@@ -1100,7 +1100,7 @@ macro_rules! full_range_integer {
                 foreign: Handle<Self::ArgType>,
             ) -> NeonResult<Self> {
                 let value = foreign.value(cx);
-                if !can_convert_js_number_to_int(value, 0.0..=<$typ>::MAX.into()) {
+                if !can_convert_js_number_to_int(value, <$typ>::MIN.into()..=<$typ>::MAX.into()) {
                     return cx.throw_range_error(format!(
                         "cannot convert {} to {}",
                         value,
