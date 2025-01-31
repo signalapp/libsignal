@@ -426,6 +426,94 @@ final class ChatServiceTests: TestCaseBase {
 final class ChatConnectionTests: TestCaseBase {
     private static let userAgent = "test"
 
+// These testing endpoints aren't generated in device builds, to save on code size.
+#if !os(iOS) || targetEnvironment(simulator)
+    func testListenerCallbacks() async throws {
+        class Listener: ChatConnectionListener {
+            let queueEmpty: XCTestExpectation
+            let firstMessageReceived: XCTestExpectation
+            let secondMessageReceived: XCTestExpectation
+            let connectionInterrupted: XCTestExpectation
+
+            var expectations: [XCTestExpectation] {
+                [self.firstMessageReceived, self.secondMessageReceived, self.queueEmpty, self.connectionInterrupted]
+            }
+
+            init(queueEmpty: XCTestExpectation, firstMessageReceived: XCTestExpectation, secondMessageReceived: XCTestExpectation, connectionInterrupted: XCTestExpectation) {
+                self.queueEmpty = queueEmpty
+                self.firstMessageReceived = firstMessageReceived
+                self.secondMessageReceived = secondMessageReceived
+                self.connectionInterrupted = connectionInterrupted
+            }
+
+            func chatConnection(_ chat: AuthenticatedChatConnection, didReceiveIncomingMessage envelope: Data, serverDeliveryTimestamp: UInt64, sendAck: () async throws -> Void) {
+                // This assumes a little-endian platform.
+                XCTAssertEqual(envelope, withUnsafeBytes(of: serverDeliveryTimestamp) { Data($0) })
+                switch serverDeliveryTimestamp {
+                case 1000:
+                    self.firstMessageReceived.fulfill()
+                case 2000:
+                    self.secondMessageReceived.fulfill()
+                default:
+                    XCTFail("unexpected message")
+                }
+            }
+
+            func chatConnectionDidReceiveQueueEmpty(_: AuthenticatedChatConnection) {
+                self.queueEmpty.fulfill()
+            }
+
+            func connectionWasInterrupted(_: AuthenticatedChatConnection, error: Error?) {
+                XCTAssertNotNil(error)
+                self.connectionInterrupted.fulfill()
+            }
+        }
+
+        let tokioAsyncContext = TokioAsyncContext()
+        let listener = Listener(
+            queueEmpty: expectation(description: "queue empty"),
+            firstMessageReceived: expectation(description: "first message received"),
+            secondMessageReceived: expectation(description: "second message received"),
+            connectionInterrupted: expectation(description: "connection interrupted")
+        )
+        let (chat, fakeRemote) = AuthenticatedChatConnection.fakeConnect(tokioAsyncContext: tokioAsyncContext, listener: listener)
+        // Make sure the chat object doesn't go away too soon.
+        defer { withExtendedLifetime(chat) {} }
+
+        // The following payloads were generated via protoscope.
+        // % protoscope -s | base64
+        // The fields are described by chat_websocket.proto in the libsignal-net crate.
+
+        // 1: {"PUT"}
+        // 2: {"/api/v1/message"}
+        // 3: {1000i64}
+        // 5: {"x-signal-timestamp:1000"}
+        // 4: 1
+        fakeRemote.injectServerRequest(base64: "CgNQVVQSDy9hcGkvdjEvbWVzc2FnZRoI6AMAAAAAAAAqF3gtc2lnbmFsLXRpbWVzdGFtcDoxMDAwIAE=")
+        // 1: {"PUT"}
+        // 2: {"/api/v1/message"}
+        // 3: {2000i64}
+        // 5: {"x-signal-timestamp:2000"}
+        // 4: 2
+        fakeRemote.injectServerRequest(base64: "CgNQVVQSDy9hcGkvdjEvbWVzc2FnZRoI0AcAAAAAAAAqF3gtc2lnbmFsLXRpbWVzdGFtcDoyMDAwIAI=")
+
+        // Sending an invalid message should not affect the listener at all, nor should it stop future requests.
+        // 1: {"PUT"}
+        // 2: {"/invalid"}
+        // 4: 10
+        fakeRemote.injectServerRequest(base64: "CgNQVVQSCC9pbnZhbGlkIAo=")
+
+        // 1: {"PUT"}
+        // 2: {"/api/v1/queue/empty"}
+        // 4: 99
+        fakeRemote.injectServerRequest(base64: "CgNQVVQSEy9hcGkvdjEvcXVldWUvZW1wdHkgYw==")
+
+        fakeRemote.injectConnectionInterrupted()
+
+        await self.fulfillment(of: listener.expectations, timeout: 2, enforceOrder: true)
+    }
+#endif
+
     func testListenerCleanup() async throws {
         // Use the presence of the environment setting to know whether we should make network requests in our tests.
         guard ProcessInfo.processInfo.environment["LIBSIGNAL_TESTING_RUN_NONHERMETIC_TESTS"] != nil else {

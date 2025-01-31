@@ -128,6 +128,11 @@ public class AuthenticatedChatConnection: NativeHandleOwner<
         fatalError("should not be called directly for a ChatConnection")
     }
 
+    internal init(fakeHandle handle: NonNull<SignalMutPointerAuthenticatedChatConnection>, tokioAsyncContext: TokioAsyncContext) {
+        self.tokioAsyncContext = tokioAsyncContext
+        super.init(owned: handle)
+    }
+
     /// Sets the listener and starts the background thread that handles communication.
     ///
     /// This must be called exactly once for the ``AuthenticatedChatConnection``

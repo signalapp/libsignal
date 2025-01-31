@@ -110,6 +110,14 @@ impl std::fmt::Display for RouteInfo {
     }
 }
 
+impl RouteInfo {
+    pub fn fake() -> Self {
+        Self {
+            unresolved: UnresolvedRouteDescription::fake(),
+        }
+    }
+}
+
 impl<TC> ConnectState<TC>
 where
     TC: Connector<TransportRoute, ()> + Sync,

@@ -43,6 +43,7 @@ use crate::proto;
 mod error;
 pub use error::ChatServiceError;
 
+pub mod fake;
 pub mod noise;
 pub mod server_requests;
 pub mod service;

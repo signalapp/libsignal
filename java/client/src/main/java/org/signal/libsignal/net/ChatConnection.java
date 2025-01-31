@@ -33,14 +33,14 @@ public abstract class ChatConnection extends NativeHandleGuard.SimpleOwner {
     this.chatListener = chatListener;
   }
 
-  private static final class ListenerBridge implements BridgeChatListener {
+  protected static class ListenerBridge implements BridgeChatListener {
     // Stored as a weak reference because otherwise we'll have a reference cycle:
     // - After setting a listener, Rust has a GC GlobalRef to this ListenerBridge
     // - This field is a normal Java reference to the ChatConnection
     // - ChatConnection owns the Rust ChatConnection object
-    private WeakReference<ChatConnection> chat;
+    protected WeakReference<ChatConnection> chat;
 
-    private ListenerBridge(ChatConnection chat) {
+    protected ListenerBridge(ChatConnection chat) {
       this.chat = new WeakReference<>(chat);
     }
 

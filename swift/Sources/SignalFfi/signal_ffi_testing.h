@@ -18,6 +18,10 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 typedef struct SignalComparableBackup SignalComparableBackup;
 
+typedef struct SignalFakeChatConnection SignalFakeChatConnection;
+
+typedef struct SignalFakeChatRemoteEnd SignalFakeChatRemoteEnd;
+
 typedef struct SignalNonSuspendingBackgroundThreadRuntime SignalNonSuspendingBackgroundThreadRuntime;
 
 typedef struct SignalOtherTestingHandleType SignalOtherTestingHandleType;
@@ -130,6 +134,22 @@ typedef struct {
   const SignalComparableBackup *raw;
 } SignalConstPointerComparableBackup;
 
+typedef struct {
+  SignalFakeChatConnection *raw;
+} SignalMutPointerFakeChatConnection;
+
+typedef struct {
+  SignalFakeChatRemoteEnd *raw;
+} SignalMutPointerFakeChatRemoteEnd;
+
+typedef struct {
+  const SignalFakeChatConnection *raw;
+} SignalConstPointerFakeChatConnection;
+
+typedef struct {
+  const SignalFakeChatRemoteEnd *raw;
+} SignalConstPointerFakeChatRemoteEnd;
+
 SignalFfiError *signal_test_only_fn_returns_123(uint32_t *out);
 
 SignalFfiError *signal_testing_NonSuspendingBackgroundThreadRuntime_destroy(SignalMutPointerNonSuspendingBackgroundThreadRuntime p);
@@ -211,6 +231,20 @@ SignalFfiError *signal_testing_only_completes_by_cancellation(SignalCPromisebool
 SignalFfiError *signal_testing_cdsi_lookup_error_convert(const char *error_description);
 
 SignalFfiError *signal_testing_chat_service_error_convert(const char *error_description);
+
+SignalFfiError *signal_fake_chat_connection_destroy(SignalMutPointerFakeChatConnection p);
+
+SignalFfiError *signal_fake_chat_remote_end_destroy(SignalMutPointerFakeChatRemoteEnd p);
+
+SignalFfiError *signal_testing_fake_chat_connection_create(SignalMutPointerFakeChatConnection *out, SignalConstPointerTokioAsyncContext tokio, SignalConstPointerFfiChatListenerStruct listener);
+
+SignalFfiError *signal_testing_fake_chat_connection_take_authenticated_chat(SignalMutPointerAuthenticatedChatConnection *out, SignalConstPointerFakeChatConnection chat);
+
+SignalFfiError *signal_testing_fake_chat_connection_take_remote(SignalMutPointerFakeChatRemoteEnd *out, SignalConstPointerFakeChatConnection chat);
+
+SignalFfiError *signal_testing_fake_chat_remote_end_send_raw_server_request(SignalConstPointerFakeChatRemoteEnd chat, SignalBorrowedBuffer bytes);
+
+SignalFfiError *signal_testing_fake_chat_remote_end_inject_connection_interrupted(SignalConstPointerFakeChatRemoteEnd chat);
 
 SignalFfiError *signal_testing_chat_service_response_convert(SignalFfiChatResponse *out, bool body_present);
 

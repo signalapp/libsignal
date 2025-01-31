@@ -5,9 +5,13 @@
 
 package org.signal.libsignal.net;
 
+import java.lang.ref.WeakReference;
 import org.signal.libsignal.internal.CompletableFuture;
 import org.signal.libsignal.internal.Native;
+import org.signal.libsignal.internal.NativeHandleGuard;
+import org.signal.libsignal.internal.NativeTesting;
 import org.signal.libsignal.net.internal.BridgeChatListener;
+import org.signal.libsignal.protocol.util.Pair;
 
 /**
  * Represents an authenticated communication channel with the ChatConnection.
@@ -47,6 +51,55 @@ public class AuthenticatedChatConnection extends ChatConnection {
                             nativeHandle ->
                                 new AuthenticatedChatConnection(
                                     tokioAsyncContext, nativeHandle, chatListener))));
+  }
+
+  private static final class SetChatLaterListenerBridge extends ListenerBridge {
+    SetChatLaterListenerBridge() {
+      super(null);
+    }
+
+    void setChat(ChatConnection chat) {
+      this.chat = new WeakReference<>(chat);
+    }
+  }
+
+  /**
+   * Test-only method to create a {@code AuthenticatedChatConnection} connected to a fake remote.
+   *
+   * <p>The returned {@link FakeChatRemote} can be used to send messages to the connection.
+   */
+  public static Pair<AuthenticatedChatConnection, FakeChatRemote> fakeConnect(
+      final TokioAsyncContext tokioAsyncContext, ChatConnectionListener listener) {
+
+    return tokioAsyncContext.guardedMap(
+        asyncContextHandle -> {
+          SetChatLaterListenerBridge bridgeListener = new SetChatLaterListenerBridge();
+          long fakeChatConnection =
+              NativeTesting.TESTING_FakeChatConnection_Create(asyncContextHandle, bridgeListener);
+          AuthenticatedChatConnection chat =
+              new AuthenticatedChatConnection(
+                  tokioAsyncContext,
+                  NativeTesting.TESTING_FakeChatConnection_TakeAuthenticatedChat(
+                      fakeChatConnection),
+                  listener);
+          bridgeListener.setChat(chat);
+          FakeChatRemote fakeRemote =
+              new FakeChatRemote(
+                  NativeTesting.TESTING_FakeChatConnection_TakeRemote(fakeChatConnection));
+          NativeTesting.FakeChatConnection_Destroy(fakeChatConnection);
+          return new Pair<>(chat, fakeRemote);
+        });
+  }
+
+  static class FakeChatRemote extends NativeHandleGuard.SimpleOwner {
+    private FakeChatRemote(long nativeHandle) {
+      super(nativeHandle);
+    }
+
+    @Override
+    protected void release(long nativeHandle) {
+      NativeTesting.FakeChatRemoteEnd_Destroy(nativeHandle);
+    }
   }
 
   // Implementing these abstract methods from ChatConnection allows AuthenticatedChatConnection

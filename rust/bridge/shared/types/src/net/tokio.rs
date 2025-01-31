@@ -34,6 +34,10 @@ impl TokioAsyncContext {
             next_raw_cancellation_id: AtomicU64::new(1),
         }
     }
+
+    pub fn handle(&self) -> tokio::runtime::Handle {
+        self.rt.handle().clone()
+    }
 }
 
 /// Assert [`TokioAsyncContext`] is unwind-safe.

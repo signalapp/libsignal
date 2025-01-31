@@ -16,6 +16,7 @@ use http::status::InvalidStatusCode;
 use http::uri::{InvalidUri, PathAndQuery};
 use http::{HeaderMap, HeaderName, HeaderValue};
 use libsignal_net::auth::Auth;
+use libsignal_net::chat::fake::FakeChatRemote;
 use libsignal_net::chat::{
     self, ChatConnection, ChatServiceError, ConnectionInfo, DebugInfo as ChatServiceDebugInfo,
     Request, Response as ChatResponse,
@@ -293,6 +294,20 @@ impl AuthenticatedChatConnection {
             )
             .into(),
         })
+    }
+
+    pub fn new_fake(
+        tokio_runtime: tokio::runtime::Handle,
+        listener: Box<dyn ChatListener>,
+    ) -> (Self, FakeChatRemote) {
+        let (inner, remote) =
+            ChatConnection::new_fake(tokio_runtime, listener.into_event_listener());
+        (
+            Self {
+                inner: MaybeChatConnection::Running(inner).into(),
+            },
+            remote,
+        )
     }
 }
 

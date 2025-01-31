@@ -7,6 +7,7 @@
 
 package org.signal.libsignal.internal;
 
+import org.signal.libsignal.net.internal.BridgeChatListener;
 import org.signal.libsignal.protocol.message.CiphertextMessage;
 import org.signal.libsignal.protocol.state.IdentityKeyStore;
 import org.signal.libsignal.protocol.state.SessionStore;
@@ -42,6 +43,10 @@ public final class NativeTesting {
   public static native Object[] ComparableBackup_GetUnknownFields(long backup);
   public static native long ComparableBackup_ReadUnencrypted(InputStream stream, long len, int purpose) throws Exception;
 
+  public static native void FakeChatConnection_Destroy(long handle);
+
+  public static native void FakeChatRemoteEnd_Destroy(long handle);
+
   public static native void OtherTestingHandleType_Destroy(long handle);
 
   public static native void TESTING_CdsiLookupErrorConvert(String errorDescription) throws Exception;
@@ -64,6 +69,11 @@ public final class NativeTesting {
   public static native Object TESTING_ErrorOnReturnAsync(Object needsCleanup);
   public static native CompletableFuture<Object> TESTING_ErrorOnReturnIo(long asyncRuntime, Object needsCleanup);
   public static native Object TESTING_ErrorOnReturnSync(Object needsCleanup);
+  public static native long TESTING_FakeChatConnection_Create(long tokio, BridgeChatListener listener);
+  public static native long TESTING_FakeChatConnection_TakeAuthenticatedChat(long chat);
+  public static native long TESTING_FakeChatConnection_TakeRemote(long chat);
+  public static native void TESTING_FakeChatRemoteEnd_InjectConnectionInterrupted(long chat);
+  public static native void TESTING_FakeChatRemoteEnd_SendRawServerRequest(long chat, byte[] bytes);
   public static native CompletableFuture<Integer> TESTING_FutureFailure(long asyncRuntime, int input);
   public static native CompletableFuture<Long> TESTING_FutureProducesOtherPointerType(long asyncRuntime, String input);
   public static native CompletableFuture<Long> TESTING_FutureProducesPointerType(long asyncRuntime, int input);

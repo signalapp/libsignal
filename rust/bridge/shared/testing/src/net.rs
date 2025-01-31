@@ -5,27 +5,21 @@
 
 use std::num::NonZeroU16;
 use std::str::FromStr;
-use std::time::Duration;
 
-use http::{HeaderMap, HeaderName, HeaderValue, StatusCode};
 use libsignal_bridge_macros::*;
-use libsignal_bridge_types::net::chat::{
-    AuthChat, HttpRequest, ResponseAndDebugInfo, ServerMessageAck,
-};
+use libsignal_bridge_types::net::chat::ServerMessageAck;
 use libsignal_bridge_types::net::{ConnectionManager, TokioAsyncContext};
 use libsignal_core::E164;
 use libsignal_net::cdsi::{CdsiProtocolError, LookupError, LookupResponse, LookupResponseEntry};
-use libsignal_net::chat::{
-    self, ChatServiceError, DebugInfo as ChatServiceDebugInfo, Response as ChatResponse,
-};
-use libsignal_net::infra::ws::WebSocketServiceError;
+use libsignal_net::chat::ChatServiceError;
 use libsignal_net::infra::ws2::attested::AttestedProtocolError;
-use libsignal_net::infra::IpType;
 use libsignal_protocol::{Aci, Pni};
 use nonzero_ext::nonzero;
 use uuid::Uuid;
 
 use crate::*;
+
+pub mod chat;
 
 #[bridge_io(TokioAsyncContext)]
 async fn TESTING_CdsiLookupResponseConvert() -> LookupResponse {
@@ -203,105 +197,6 @@ fn TESTING_ChatServiceErrorConvert(
             retry_after_seconds: 42,
         },
     })
-}
-
-#[bridge_fn]
-fn TESTING_ChatServiceResponseConvert(
-    body_present: bool,
-) -> Result<ChatResponse, ChatServiceError> {
-    let body = match body_present {
-        true => Some(b"content".to_vec().into_boxed_slice()),
-        false => None,
-    };
-    let mut headers = HeaderMap::new();
-    headers.append(
-        http::header::CONTENT_TYPE,
-        HeaderValue::from_static("application/octet-stream"),
-    );
-    headers.append(http::header::FORWARDED, HeaderValue::from_static("1.1.1.1"));
-    Ok(ChatResponse {
-        status: StatusCode::OK,
-        message: Some("OK".to_string()),
-        body,
-        headers,
-    })
-}
-
-#[bridge_fn]
-fn TESTING_ChatServiceDebugInfoConvert() -> Result<ChatServiceDebugInfo, ChatServiceError> {
-    Ok(ChatServiceDebugInfo {
-        ip_type: Some(IpType::V4),
-        duration: Duration::from_millis(200),
-        connection_info: "connection_info".to_string(),
-    })
-}
-
-#[bridge_fn]
-fn TESTING_ChatServiceResponseAndDebugInfoConvert() -> Result<ResponseAndDebugInfo, ChatServiceError>
-{
-    Ok(ResponseAndDebugInfo {
-        response: TESTING_ChatServiceResponseConvert(true)?,
-        debug_info: TESTING_ChatServiceDebugInfoConvert()?,
-    })
-}
-
-#[bridge_fn]
-fn TESTING_ChatRequestGetMethod(request: &HttpRequest) -> String {
-    request.method.to_string()
-}
-
-#[bridge_fn]
-fn TESTING_ChatRequestGetPath(request: &HttpRequest) -> String {
-    request.path.to_string()
-}
-
-#[bridge_fn]
-fn TESTING_ChatRequestGetHeaderValue(request: &HttpRequest, header_name: String) -> String {
-    request
-        .headers
-        .lock()
-        .expect("not poisoned")
-        .get(HeaderName::try_from(header_name).expect("valid header name"))
-        .expect("header value present")
-        .to_str()
-        .expect("value is a string")
-        .to_string()
-}
-
-#[bridge_fn]
-fn TESTING_ChatRequestGetBody(request: &HttpRequest) -> Vec<u8> {
-    request
-        .body
-        .clone()
-        .map(|b| b.into_vec())
-        .unwrap_or_default()
-}
-
-#[bridge_fn]
-fn TESTING_ChatService_InjectRawServerRequest(chat: &AuthChat, bytes: &[u8]) {
-    let request_proto = <chat::RequestProto as prost::Message>::decode(bytes)
-        .expect("invalid protobuf cannot use this endpoint to test");
-    chat.synthetic_request_tx
-        .blocking_send(chat::ws::ServerEvent::fake(request_proto))
-        .expect("not closed");
-}
-
-#[bridge_fn]
-fn TESTING_ChatService_InjectConnectionInterrupted(chat: &AuthChat) {
-    chat.synthetic_request_tx
-        .blocking_send(chat::ws::ServerEvent::Stopped(ChatServiceError::WebSocket(
-            WebSocketServiceError::ChannelClosed,
-        )))
-        .expect("not closed");
-}
-
-#[bridge_fn]
-fn TESTING_ChatService_InjectIntentionalDisconnect(chat: &AuthChat) {
-    chat.synthetic_request_tx
-        .blocking_send(chat::ws::ServerEvent::Stopped(
-            ChatServiceError::ServiceIntentionallyDisconnected,
-        ))
-        .expect("not closed");
 }
 
 #[bridge_fn(jni = false, ffi = false)]

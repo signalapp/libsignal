@@ -9,6 +9,7 @@ use std::num::NonZeroU16;
 use std::sync::Arc;
 
 use futures_util::TryFutureExt as _;
+use nonzero_ext::nonzero;
 use tokio::time::Instant;
 
 use crate::dns::dns_utils::log_safe_domain;
@@ -143,6 +144,19 @@ impl std::fmt::Display for UnresolvedRouteDescription {
             write!(f, " through {proxy_kind:?} proxy")?
         }
         Ok(())
+    }
+}
+
+impl UnresolvedRouteDescription {
+    pub fn fake() -> Self {
+        Self {
+            front: None,
+            proxy: None,
+            target: (
+                Host::Domain("local-test.signal.org".into()),
+                nonzero!(443u16),
+            ),
+        }
     }
 }
 

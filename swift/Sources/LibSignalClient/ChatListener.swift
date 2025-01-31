@@ -62,10 +62,14 @@ extension ChatConnectionListener {
     public func chatConnectionDidReceiveQueueEmpty(_: AuthenticatedChatConnection) {}
 }
 
-internal struct Weak<T: AnyObject> {
+internal struct Weak<T: AnyObject>: ExpressibleByNilLiteral {
     weak var inner: T?
     init(_ inner: T) {
         self.inner = inner
+    }
+
+    init(nilLiteral: ()) {
+        self.inner = nil
     }
 }
 
@@ -103,6 +107,21 @@ internal class ChatListenerBridge {
         chatListener: any ChatConnectionListener
     ) {
         self.inner = .connection(Weak(chatConnection), chatListener)
+    }
+
+    internal init(
+        chatConnectionListener: any ChatConnectionListener
+    ) {
+        self.inner = .connection(nil, chatConnectionListener)
+    }
+
+    internal func setConnection(chatConnection: AuthenticatedChatConnection) {
+        switch self.inner {
+        case .service(_, _):
+            fatalError("unexpected error: found chat service instead of connection")
+        case .connection(_, let listener):
+            self.inner = .connection(Weak(chatConnection), listener)
+        }
     }
 
     /// Creates an **owned** callback struct from this object.
