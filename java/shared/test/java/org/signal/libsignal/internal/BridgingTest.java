@@ -106,7 +106,7 @@ public class BridgingTest {
       assertEquals(value, NativeTesting.TESTING_RoundTripU8(value));
     }
     for (var value : new int[] {0x100, -1, Integer.MIN_VALUE, Integer.MAX_VALUE}) {
-      assertThrows(RuntimeException.class, () -> NativeTesting.TESTING_RoundTripU8(value));
+      assertThrows(IllegalArgumentException.class, () -> NativeTesting.TESTING_RoundTripU8(value));
     }
 
     // For u16, we pass values as int.
@@ -114,7 +114,7 @@ public class BridgingTest {
       assertEquals(value, NativeTesting.TESTING_RoundTripU16(value));
     }
     for (var value : new int[] {0x1_0000, -1, Integer.MIN_VALUE, Integer.MAX_VALUE}) {
-      assertThrows(RuntimeException.class, () -> NativeTesting.TESTING_RoundTripU16(value));
+      assertThrows(IllegalArgumentException.class, () -> NativeTesting.TESTING_RoundTripU16(value));
     }
 
     // For u32, we only support passing positive values. (We actually support *returning* large
@@ -123,7 +123,7 @@ public class BridgingTest {
       assertEquals(value, NativeTesting.TESTING_RoundTripU32(value));
     }
     for (var value : new int[] {-1, Integer.MIN_VALUE}) {
-      assertThrows(RuntimeException.class, () -> NativeTesting.TESTING_RoundTripU32(value));
+      assertThrows(IllegalArgumentException.class, () -> NativeTesting.TESTING_RoundTripU32(value));
     }
 
     // Signed integers we can handle directly.

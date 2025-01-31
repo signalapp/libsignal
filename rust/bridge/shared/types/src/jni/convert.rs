@@ -1333,8 +1333,12 @@ where
     let len = it.len();
     let array = env
         .new_object_array(
-            len.try_into()
-                .map_err(|_| BridgeLayerError::IntegerOverflow(format!("{len}_usize to i32")))?,
+            len.try_into().map_err(|_| {
+                // This is not *really* the correct error, it will produce an
+                // IllegalArgumentException even though we're making a result. But also we shouldn't
+                // in practice try to return arrays of 2 billion objects.
+                BridgeLayerError::IntegerOverflow(format!("{len}_usize to i32"))
+            })?,
             element_type_signature,
             JavaObject::null(),
         )

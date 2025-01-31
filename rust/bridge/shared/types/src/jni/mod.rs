@@ -368,13 +368,13 @@ impl<'env> ConsumableException<'env> {
             | SignalJniError::SignalCrypto(SignalCryptoError::InvalidInputSize)
             | SignalJniError::SignalCrypto(SignalCryptoError::InvalidNonceSize)
             | SignalJniError::Bridge(BridgeLayerError::BadArgument(_))
+            | SignalJniError::Bridge(BridgeLayerError::IntegerOverflow(_))
             | SignalJniError::Bridge(BridgeLayerError::IncorrectArrayLength { .. })
             | SignalJniError::KeyTransparency(KeyTransNetError::DecodingFailed(_)) => {
                 (ClassName("java.lang.IllegalArgumentException"), error)
             }
 
-            SignalJniError::Bridge(BridgeLayerError::IntegerOverflow(_))
-            | SignalJniError::Bridge(BridgeLayerError::Jni(_))
+            SignalJniError::Bridge(BridgeLayerError::Jni(_))
             | SignalJniError::Protocol(SignalProtocolError::ApplicationCallbackError(_, _))
             | SignalJniError::Protocol(SignalProtocolError::FfiBindingError(_))
             | SignalJniError::DeviceTransfer(DeviceTransferError::InternalError(_))
