@@ -101,6 +101,7 @@ public final class NativeTesting {
   public static native int TESTING_RoundTripI32(int input);
   public static native int TESTING_RoundTripU16(int input);
   public static native int TESTING_RoundTripU32(int input);
+  public static native long TESTING_RoundTripU64(long input);
   public static native int TESTING_RoundTripU8(int input);
   public static native int TESTING_TestingHandleType_getValue(long handle);
 

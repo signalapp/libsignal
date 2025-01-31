@@ -167,5 +167,18 @@ describe('bridge_fn', () => {
     ]) {
       assert.throws(() => Native.TESTING_RoundTripI32(value));
     }
+
+    for (const value of [
+      0n,
+      1n,
+      0x7fff_ffff_ffff_ffffn,
+      0x8000_0000_0000_0000n,
+      0xffff_ffff_ffff_ffffn,
+    ]) {
+      assert.strictEqual(value, Native.TESTING_RoundTripU64(value));
+    }
+    for (const value of [-1n, 0x1_0000_0000_0000_0000n]) {
+      assert.throws(() => Native.TESTING_RoundTripU64(value));
+    }
   });
 });

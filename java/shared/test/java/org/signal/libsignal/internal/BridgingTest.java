@@ -126,6 +126,12 @@ public class BridgingTest {
       assertThrows(IllegalArgumentException.class, () -> NativeTesting.TESTING_RoundTripU32(value));
     }
 
+    // And for u64, we reinterpret the bits, which means we can round trip but negative values are
+    // treated as large positive ones.
+    for (var value : new long[] {0, 1, -1, Long.MAX_VALUE, Long.MIN_VALUE}) {
+      assertEquals(value, NativeTesting.TESTING_RoundTripU64(value));
+    }
+
     // Signed integers we can handle directly.
     for (var value : new int[] {0, 1, -1, Integer.MIN_VALUE, Integer.MAX_VALUE}) {
       assertEquals(value, NativeTesting.TESTING_RoundTripI32(value));

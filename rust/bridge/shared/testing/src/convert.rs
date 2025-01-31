@@ -245,6 +245,10 @@ fn TESTING_RoundTripU32(input: u32) -> u32 {
 fn TESTING_RoundTripI32(input: i32) -> i32 {
     input
 }
+#[bridge_fn(ffi = false)]
+fn TESTING_RoundTripU64(input: u64) -> u64 {
+    input
+}
 
 #[bridge_fn]
 async fn TESTING_InputStreamReadIntoZeroLengthSlice(
