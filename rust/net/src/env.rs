@@ -311,11 +311,11 @@ pub(crate) const ENDPOINT_PARAMS_SVR3_TPM2SNP_PROD: EndpointParams<'static, Tpm2
         raft_config: attest::constants::RAFT_CONFIG_SVR3_TPM2SNP_PROD,
     };
 
-const KEYTRANS_SIGNING_KEY_MATERIAL_STAGING: &[u8; 32] =
-    &hex!("12a21ad60d5a3978e19a3b0baa8c35c55a20e10d45f39e5cb34bf6e1b3cce432");
-const KEYTRANS_VRF_KEY_MATERIAL_STAGING: &[u8; 32] =
-    &hex!("1e71563470c1b8a6e0aadf280b6aa96f8ad064674e69b80292ee46d1ab655fcf");
-const KEYTRANS_AUDITOR_KEY_MATERIAL_STAGING: &[u8; 32] =
+pub(crate) const KEYTRANS_SIGNING_KEY_MATERIAL_STAGING: &[u8; 32] =
+    &hex!("ac0de1fd7f33552bbeb6ebc12b9d4ea10bf5f025c45073d3fb5f5648955a749e");
+pub(crate) const KEYTRANS_VRF_KEY_MATERIAL_STAGING: &[u8; 32] =
+    &hex!("ec3a268237cf5c47115cf222405d5f90cc633ebe05caf82c0dd5acf9d341dadb");
+pub(crate) const KEYTRANS_AUDITOR_KEY_MATERIAL_STAGING: &[u8; 32] =
     &hex!("1123b13ee32479ae6af5739e5d687b51559abf7684120511f68cde7a21a0e755");
 
 /// Configuration for a target network resource, like `chat.signal.org`.

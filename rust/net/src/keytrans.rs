@@ -190,7 +190,7 @@ const SEARCH_VALUE_PREFIX: u8 = 0x00;
 /// to be stripped.
 ///
 /// SearchValue validates the prefix upon construction from raw bytes, and
-/// provides acces to the actual underlying value via its payload method.
+/// provides access to the actual underlying value via its payload method.
 struct SearchValue<'a> {
     raw: &'a [u8],
 }
@@ -965,6 +965,10 @@ mod test {
     use crate::auth::Auth;
     use crate::chat::test_support::AnyChat;
     use crate::env;
+    use crate::env::{
+        KEYTRANS_AUDITOR_KEY_MATERIAL_STAGING, KEYTRANS_SIGNING_KEY_MATERIAL_STAGING,
+        KEYTRANS_VRF_KEY_MATERIAL_STAGING,
+    };
 
     impl UnauthenticatedChat for AnyChat {
         fn send_unauthenticated(
@@ -991,28 +995,22 @@ mod test {
         pub const UNIDENTIFIED_ACCESS_KEY: &[u8] = &hex!("fdc7951d1507268daf1834b74d23b76c");
     }
 
-    const SIGNING_KEY: &[u8; 32] =
-        &hex!("12a21ad60d5a3978e19a3b0baa8c35c55a20e10d45f39e5cb34bf6e1b3cce432");
-    const VRF_KEY: &[u8; 32] =
-        &hex!("1e71563470c1b8a6e0aadf280b6aa96f8ad064674e69b80292ee46d1ab655fcf");
-    const AUDITOR_KEY: &[u8; 32] =
-        &hex!("1123b13ee32479ae6af5739e5d687b51559abf7684120511f68cde7a21a0e755");
-
     // Distinguished tree parameters as of size 608
-    const DISTINGUISHED_TREE_608_ROOT: &[u8] =
-        &hex!("a5131966019f4187cb3dc76d4da1696ca79f6254576518fe74ffb366a4d9660f");
-    const DISTINGUISHED_TREE_608_HEAD: &[u8] =
-        &hex!("08e00410ceb7a6fbca321a40dc35ae06342071a2f98205d0e986673134001962c4a95cdf13ce96a1b6f2ab294d23638de3e72fb5ac505d4254ded958eede1e28fd1c04168a52ff5c1c223603");
+    const DISTINGUISHED_TREE_637_ROOT: &[u8] =
+        &hex!("fda58cc9c00d4e6734047f98b4723804383f9e64daa7224bdd7591df9276cbb4");
+    const DISTINGUISHED_TREE_637_HEAD: &[u8] =
+        &hex!("08fd0410f1a3a8cccb321a407761dac20002f5a15b789418d77fe482ec3bdf782a336ecf4f12cbe43ef35fa86360ffcb884354d9854a970afbbf6db716765e3a72fa36b9428918993a8ef30c");
     // Stored account data as of size 611
-    const STORED_ACCOUNT_DATA_611: &[u8] =
-        &hex!("0a2b0a2000efbe1b272b9d793f72750f108148af7cee7ea6941a86fb679027ddac8c922610221a0308ff032001122c0a20c0244778f6fbe42bd3e4a7b0897e3c18aed6c28fcebf4332fb3643f7975331851089011a0308ff0320011a2c0a204c01b7cedca5aa9388e14985cbe827f34dda1e41aba2e5892a1814e3740f18d510ee011a0308ff03200122700a4c08e3041098da8bfcca321a40dc1cfdf7120959ffb888c33fcc862dcc3288e7e263245063d2eb4a53478bfa417e5dd80ca6bfb1d3a317b7cd27fe32a3c88ff32f34814e865dc0446a2db64f0812207aa4ee88a0336b1bd493b14be940f023b25ba15c88e4dcbc7243b2408d6559a7");
+    const STORED_ACCOUNT_DATA_642: &[u8] =
+        &hex!("0a2b0a203901c94081c4e6321e92b3e434dcaf788f5326913e7bdcab47b4fd2ae7a6848a10231a0308ff032001122c0a2086052cc2a2689558e852d053c5ab411d8c3baef20171ec298e551574806ca95d1081011a0308ff0320011a2c0a20bc1cfaae736c27c437b99175798933ee32caf07a5226840ec963a4e614916e9010dc011a0308ff03200122700a4c08820510fbd0d8cdcb321a4041ed17cdfdae313856d8bd6028936f0a2c1494968eafbea1498e2fc666105d9ddbaf7d4e43d9013a713ba58f402557ec794c441ed3bcfacc6bc6d656ea0fcf01122010763b0de052335c451c9bb7b46f52d0eeb736ee9731c4ba6a6f93d74a89cc3b");
 
     fn make_key_transparency() -> KeyTransparency {
-        let signature_key =
-            VerifyingKey::from_bytes(SIGNING_KEY).expect("valid signature key material");
-        let vrf_key = VrfPublicKey::try_from(*VRF_KEY).expect("valid vrf key material");
-        let auditor_key =
-            VerifyingKey::from_bytes(AUDITOR_KEY).expect("valid auditor key material");
+        let signature_key = VerifyingKey::from_bytes(KEYTRANS_SIGNING_KEY_MATERIAL_STAGING)
+            .expect("valid signature key material");
+        let vrf_key = VrfPublicKey::try_from(*KEYTRANS_VRF_KEY_MATERIAL_STAGING)
+            .expect("valid vrf key material");
+        let auditor_key = VerifyingKey::from_bytes(KEYTRANS_AUDITOR_KEY_MATERIAL_STAGING)
+            .expect("valid auditor key material");
         KeyTransparency {
             config: PublicConfig {
                 mode: DeploymentMode::ThirdPartyAuditing(auditor_key),
@@ -1048,15 +1046,15 @@ mod test {
 
     fn test_distinguished_tree() -> LastTreeHead {
         (
-            TreeHead::decode(DISTINGUISHED_TREE_608_HEAD).expect("valid TreeHead"),
-            DISTINGUISHED_TREE_608_ROOT
+            TreeHead::decode(DISTINGUISHED_TREE_637_HEAD).expect("valid TreeHead"),
+            DISTINGUISHED_TREE_637_ROOT
                 .try_into()
                 .expect("valid root size"),
         )
     }
 
     fn test_account_data() -> StoredAccountData {
-        StoredAccountData::decode(STORED_ACCOUNT_DATA_611).expect("valid stored acc data")
+        StoredAccountData::decode(STORED_ACCOUNT_DATA_642).expect("valid stored acc data")
     }
 
     #[tokio::test]
@@ -1109,6 +1107,9 @@ mod test {
             println!("SKIPPED: running integration tests is not enabled");
             return;
         }
+
+        let _ = env_logger::builder().try_init();
+
         let chat = make_chat().await;
         let kt = make_kt(&chat);
 
@@ -1173,7 +1174,7 @@ mod test {
     }
 
     const CHAT_SEARCH_RESPONSE: &[u8] = include_bytes!("../tests/data/chat_search_response.dat");
-    const CHAT_SEARCH_RESPONSE_VALID_AT: Duration = Duration::from_secs(1738113376);
+    const CHAT_SEARCH_RESPONSE_VALID_AT: Duration = Duration::from_secs(1738283179);
 
     fn test_search_response() -> TypedSearchResponse {
         let chat_search_response =
