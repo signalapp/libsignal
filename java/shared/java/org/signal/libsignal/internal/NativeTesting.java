@@ -63,6 +63,7 @@ public final class NativeTesting {
   public static native void TESTING_ChatService_InjectConnectionInterrupted(long chat);
   public static native void TESTING_ChatService_InjectIntentionalDisconnect(long chat);
   public static native void TESTING_ChatService_InjectRawServerRequest(long chat, byte[] bytes);
+  public static native int TESTING_ConnectionManager_isUsingProxy(long manager);
   public static native void TESTING_ErrorOnBorrowAsync(Object input);
   public static native CompletableFuture TESTING_ErrorOnBorrowIo(long asyncRuntime, Object input);
   public static native void TESTING_ErrorOnBorrowSync(Object input);

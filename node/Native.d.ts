@@ -537,6 +537,7 @@ export function TESTING_ChatServiceResponseConvert(bodyPresent: boolean): ChatRe
 export function TESTING_ChatService_InjectConnectionInterrupted(chat: Wrapper<AuthChat>): void;
 export function TESTING_ChatService_InjectIntentionalDisconnect(chat: Wrapper<AuthChat>): void;
 export function TESTING_ChatService_InjectRawServerRequest(chat: Wrapper<AuthChat>, bytes: Buffer): void;
+export function TESTING_ConnectionManager_isUsingProxy(manager: Wrapper<ConnectionManager>): number;
 export function TESTING_ConnectionManager_newLocalOverride(userAgent: string, chatPort: number, cdsiPort: number, svr2Port: number, svr3SgxPort: number, svr3NitroPort: number, svr3Tpm2SnpPort: number, rootCertificateDer: Buffer): ConnectionManager;
 export function TESTING_ErrorOnBorrowAsync(_input: null): Promise<void>;
 export function TESTING_ErrorOnBorrowIo(asyncRuntime: Wrapper<NonSuspendingBackgroundThreadRuntime>, _input: null): CancellablePromise<void>;

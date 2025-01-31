@@ -719,26 +719,27 @@ export type NetConstructorOptions = Readonly<
 >;
 
 /** See {@link Net.setProxy()}. */
-export type ProxyOptions = Readonly<{
+export type ProxyOptions = {
   scheme: string;
   host: string;
   port?: number;
   username?: string;
   password?: string;
-}>;
+};
 
 /** The "scheme" for Signal TLS proxies. See {@link Net.setProxy()}. */
 export const SIGNAL_TLS_PROXY_SCHEME = 'org.signal.tls';
 
 export class Net {
   private readonly asyncContext: TokioAsyncContext;
-  private readonly connectionManager: ConnectionManager;
+  /** Exposed only for testing. */
+  readonly _connectionManager: ConnectionManager;
 
   constructor(options: NetConstructorOptions) {
     this.asyncContext = new TokioAsyncContext(Native.TokioAsyncContext_new());
 
     if (options.localTestServer) {
-      this.connectionManager = newNativeHandle(
+      this._connectionManager = newNativeHandle(
         Native.TESTING_ConnectionManager_newLocalOverride(
           options.userAgent,
           options.TESTING_localServer_chatPort,
@@ -751,7 +752,7 @@ export class Net {
         )
       );
     } else {
-      this.connectionManager = newNativeHandle(
+      this._connectionManager = newNativeHandle(
         Native.ConnectionManager_new(options.env, options.userAgent)
       );
     }
@@ -773,7 +774,7 @@ export class Net {
   ): AuthenticatedChatService {
     return new AuthenticatedChatService(
       this.asyncContext,
-      this.connectionManager,
+      this._connectionManager,
       username,
       password,
       receiveStories,
@@ -789,7 +790,7 @@ export class Net {
   ): UnauthenticatedChatService {
     return new UnauthenticatedChatService(
       this.asyncContext,
-      this.connectionManager,
+      this._connectionManager,
       listener
     );
   }
@@ -808,7 +809,7 @@ export class Net {
   ): Promise<UnauthenticatedChatConnection> {
     return UnauthenticatedChatConnection.connect(
       this.asyncContext,
-      this.connectionManager,
+      this._connectionManager,
       listener,
       options
     );
@@ -826,7 +827,7 @@ export class Net {
   ): Promise<AuthenticatedChatConnection> {
     return AuthenticatedChatConnection.connect(
       this.asyncContext,
-      this.connectionManager,
+      this._connectionManager,
       username,
       password,
       receiveStories,
@@ -842,7 +843,7 @@ export class Net {
    */
   public setIpv6Enabled(ipv6Enabled: boolean): void {
     Native.ConnectionManager_set_ipv6_enabled(
-      this.connectionManager,
+      this._connectionManager,
       ipv6Enabled
     );
   }
@@ -859,7 +860,7 @@ export class Net {
    */
   public setCensorshipCircumventionEnabled(enabled: boolean): void {
     Native.ConnectionManager_set_censorship_circumvention_enabled(
-      this.connectionManager,
+      this._connectionManager,
       enabled
     );
   }
@@ -877,7 +878,7 @@ export class Net {
    * Throws if the scheme is unsupported or if the provided parameters are invalid for that scheme
    * (e.g. Signal TLS proxies don't support authentication)
    */
-  setProxy(options: ProxyOptions): void;
+  setProxy(options: Readonly<ProxyOptions>): void;
   /**
    * Sets the Signal TLS proxy host to be used for all new connections (until overridden).
    *
@@ -888,7 +889,10 @@ export class Net {
    * Throws if the host or port is structurally invalid, such as a port that doesn't fit in u16.
    */
   setProxy(host: string, port?: number): void;
-  setProxy(hostOrOptions: string | ProxyOptions, portOrNothing?: number): void {
+  setProxy(
+    hostOrOptions: string | Readonly<ProxyOptions>,
+    portOrNothing?: number
+  ): void {
     if (typeof hostOrOptions === 'string') {
       // Support <username>@<host> syntax to allow UNENCRYPTED_FOR_TESTING as a marker user.
       // This is not a stable feature of the API and may go away in the future;
@@ -904,7 +908,7 @@ export class Net {
     }
     const { scheme, host, port, username, password } = hostOrOptions;
     Native.ConnectionManager_set_proxy(
-      this.connectionManager,
+      this._connectionManager,
       scheme,
       host,
       // i32::MIN represents "no port provided"; we don't expect anyone to pass that manually.
@@ -915,13 +919,80 @@ export class Net {
   }
 
   /**
+   * Like {@link #setProxy}, but parses the proxy options from a URL. See there for more
+   * information.
+   *
+   * Takes a string rather than a URL so that an *invalid* string can result in disabling
+   * connections until {@link #clearProxy} is called, consistent with other ways {@link #setProxy}
+   * might consider its parameters invalid.
+   *
+   * Throws if the URL contains unnecessary parts (like a query string), or if the resulting options
+   * are not supported.
+   */
+  setProxyFromUrl(urlString: string): void {
+    let options: ProxyOptions;
+    try {
+      options = Net.proxyOptionsFromUrl(urlString);
+    } catch (e) {
+      // Make sure we set an invalid proxy on error,
+      // so no connection can be made until the problem is fixed.
+      try {
+        this.setProxy({ scheme: 'https', host: '' });
+      } catch (_) {
+        // Ignore any errors here, we want to rethrow the original error.
+      }
+      throw e;
+    }
+
+    this.setProxy(options);
+  }
+
+  /**
+   * Parses a proxy URL into an options object, suitable for passing to {@link #setProxy}.
+   *
+   * It is recommended not to call this directly. Instead, use {@link #setProxyFromUrl}, which will
+   * treat an invalid URL uniformly with one that is structurally valid but unsupported by
+   * libsignal.
+   *
+   * Throws if the URL is known to not be a valid proxy URL; however it's still possible the
+   * resulting options object cannot be used as a proxy.
+   */
+  static proxyOptionsFromUrl(urlString: string): ProxyOptions {
+    const url = new URL(urlString);
+
+    // Check all the parts of the URL.
+    // scheme://username:password@hostname:port/path?query#fragment
+    const scheme = url.protocol.slice(0, -1);
+    // This does not distinguish between "https://proxy.example" and "https://@proxy.example".
+    // This could be done by manually checking `url.href`.
+    // But until someone complains about it, let's not worry about it.
+    const username = url.username != '' ? url.username : undefined;
+    const password = url.password != '' ? url.password : undefined;
+
+    const host = url.hostname;
+    const port = url.port != '' ? Number.parseInt(url.port, 10) : undefined;
+
+    if (url.pathname != '' && url.pathname != '/') {
+      throw new Error('proxy URLs should not have path components');
+    }
+    if (url.search != '') {
+      throw new Error('proxy URLs should not have query components');
+    }
+    if (url.hash != '') {
+      throw new Error('proxy URLs should not have fragment components');
+    }
+
+    return { scheme, username, password, host, port };
+  }
+
+  /**
    * Ensures that future connections will be made directly, not through a proxy.
    *
    * Clears any proxy configuration set via {@link #setProxy}. If none was set, calling this
    * method is a no-op.
    */
   clearProxy(): void {
-    Native.ConnectionManager_clear_proxy(this.connectionManager);
+    Native.ConnectionManager_clear_proxy(this._connectionManager);
   }
 
   /**
@@ -930,7 +1001,7 @@ export class Net {
    * This will lead to, e.g. caches being cleared and cooldowns being reset.
    */
   onNetworkChange(): void {
-    Native.ConnectionManager_on_network_change(this.connectionManager);
+    Native.ConnectionManager_on_network_change(this._connectionManager);
   }
 
   async cdsiLookup(
@@ -958,7 +1029,7 @@ export class Net {
       abortSignal,
       Native.CdsiLookup_new(
         this.asyncContext,
-        this.connectionManager,
+        this._connectionManager,
         username,
         password,
         request

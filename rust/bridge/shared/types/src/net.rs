@@ -21,7 +21,7 @@ use libsignal_net::infra::connection_manager::MultiRouteConnectionManager;
 use libsignal_net::infra::dns::DnsResolver;
 use libsignal_net::infra::errors::LogSafeDisplay;
 use libsignal_net::infra::route::ConnectionProxyConfig;
-use libsignal_net::infra::tcp_ssl::TcpSslConnector;
+use libsignal_net::infra::tcp_ssl::{InvalidProxyConfig, TcpSslConnector};
 use libsignal_net::infra::timeouts::ONE_ROUTE_CONNECTION_TIMEOUT;
 use libsignal_net::infra::utils::ObservableEvent;
 use libsignal_net::infra::{EnableDomainFronting, EndpointConnection};
@@ -255,6 +255,11 @@ impl ConnectionManager {
     pub fn clear_proxy(&self) {
         let mut guard = self.transport_connector.lock().expect("not poisoned");
         guard.clear_proxy();
+    }
+
+    pub fn is_using_proxy(&self) -> Result<bool, InvalidProxyConfig> {
+        let guard = self.transport_connector.lock().expect("not poisoned");
+        guard.proxy().map(|proxy| proxy.is_some())
     }
 
     pub fn set_ipv6_enabled(&self, ipv6_enabled: bool) {

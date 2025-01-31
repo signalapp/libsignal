@@ -15,9 +15,11 @@ import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiFunction;
+import java.util.function.Consumer;
 import org.junit.Assume;
 import org.junit.Rule;
 import org.junit.Test;
+import org.junit.function.ThrowingRunnable;
 import org.junit.rules.Timeout;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -230,6 +232,11 @@ public class ChatServiceTest {
         default:
           throw new IllegalArgumentException("invalid LIBSIGNAL_TESTING_PROXY_SERVER");
       }
+      assertEquals(
+          (int)
+              net.getConnectionManager()
+                  .guardedMap(NativeTesting::TESTING_ConnectionManager_isUsingProxy),
+          1);
 
       final Listener listener = new Listener();
       Void disconnectFinished = this.connectUnauthChat.apply(net, listener).get();
@@ -277,6 +284,11 @@ public class ChatServiceTest {
       }
 
       net.setProxy(Network.SIGNAL_TLS_PROXY_SCHEME, host, port, username, null);
+      assertEquals(
+          (int)
+              net.getConnectionManager()
+                  .guardedMap(NativeTesting::TESTING_ConnectionManager_isUsingProxy),
+          1);
 
       final Listener listener = new Listener();
       Void disconnectFinished = this.connectUnauthChat.apply(net, listener).get();
@@ -289,12 +301,28 @@ public class ChatServiceTest {
   @Test
   public void testInvalidProxyRejected() throws Exception {
     final Network net = new Network(Network.Environment.PRODUCTION, USER_AGENT);
-    assertThrows(IOException.class, () -> net.setProxy("signalfoundation.org", 0));
-    assertThrows(IOException.class, () -> net.setProxy("signalfoundation.org", 100_000));
-    assertThrows(IOException.class, () -> net.setProxy("signalfoundation.org", -1));
-    assertThrows(
-        IOException.class,
-        () -> net.setProxy("socks+shoes", "signalfoundation.org", null, null, null));
+
+    final Consumer<ThrowingRunnable> check =
+        (callback) -> {
+          assertEquals(
+              (int)
+                  net.getConnectionManager()
+                      .guardedMap(NativeTesting::TESTING_ConnectionManager_isUsingProxy),
+              0);
+          assertThrows(IOException.class, callback);
+          assertEquals(
+              (int)
+                  net.getConnectionManager()
+                      .guardedMap(NativeTesting::TESTING_ConnectionManager_isUsingProxy),
+              -1);
+          net.clearProxy();
+        };
+
+    check.accept(() -> net.setProxy("signalfoundation.org", 0));
+    check.accept(() -> net.setProxy("signalfoundation.org", 100_000));
+    check.accept(() -> net.setProxy("signalfoundation.org", -1));
+
+    check.accept(() -> net.setProxy("socks+shoes", "signalfoundation.org", null, null, null));
   }
 
   private void injectServerRequest(ChatService chat, String requestBase64) {

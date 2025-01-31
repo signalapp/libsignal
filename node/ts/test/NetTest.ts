@@ -25,7 +25,10 @@ import {
   SIGNAL_TLS_PROXY_SCHEME,
   TokioAsyncContext,
 } from '../net';
-import { ChatResponse } from '../../Native';
+import {
+  ChatResponse,
+  TESTING_ConnectionManager_isUsingProxy,
+} from '../../Native';
 import { CompletablePromise } from './util';
 import { fail } from 'assert';
 
@@ -171,18 +174,139 @@ describe('chat service api', () => {
     );
   });
 
-  it('invalid proxies are rejected', () => {
+  it('rejects invalid proxies', () => {
     const net = new Net({
       env: Environment.Production,
       userAgent: userAgent,
     });
-    expect(() => net.setProxy('signalfoundation.org', 0)).throws(Error);
-    expect(() => net.setProxy('signalfoundation.org', 100_000)).throws(Error);
-    expect(() => net.setProxy('signalfoundation.org', -1)).throws(Error);
-    expect(() => net.setProxy('signalfoundation.org', 0.1)).throws(Error);
-    expect(() =>
+
+    function check(callback: () => void, expectedProxyMode: number = -1): void {
+      expect(
+        TESTING_ConnectionManager_isUsingProxy(net._connectionManager)
+      ).equals(0);
+      expect(callback).throws(Error);
+      expect(
+        TESTING_ConnectionManager_isUsingProxy(net._connectionManager)
+      ).equals(expectedProxyMode);
+      net.clearProxy();
+    }
+
+    check(() => net.setProxy('signalfoundation.org', 0));
+    check(() => net.setProxy('signalfoundation.org', 100_000));
+    check(() => net.setProxy('signalfoundation.org', -1));
+
+    // Ideally these would poison the Net instance like all the other invalid options,
+    // but unfortunately it's checked at a layer that makes that awkward.
+    // Hopefully no one actually tries to set a fractional or very large port!
+    check(() => net.setProxy('signalfoundation.org', 0.1), 0);
+    check(
+      () => net.setProxy('signalfoundation.org', Number.MAX_SAFE_INTEGER),
+      0
+    );
+    check(() => net.setProxy('signalfoundation.org', Number.MAX_VALUE), 0);
+    check(
+      () => net.setProxy('signalfoundation.org', Number.POSITIVE_INFINITY),
+      0
+    );
+
+    check(() =>
       net.setProxy({ scheme: 'socks+shoes', host: 'signalfoundation.org' })
-    ).throws(Error);
+    );
+
+    check(() => net.setProxyFromUrl('not a url'));
+    check(() => net.setProxyFromUrl('socks+shoes://signalfoundation.org'));
+    check(() => net.setProxyFromUrl('https://signalfoundation.org:0x50'));
+    check(() =>
+      net.setProxyFromUrl('https://signalfoundation.org/path-for-some-reason')
+    );
+    check(() =>
+      net.setProxyFromUrl('https://signalfoundation.org?query-for-some-reason')
+    );
+    check(() =>
+      net.setProxyFromUrl(
+        'https://signalfoundation.org#fragment-for-some-reason'
+      )
+    );
+  });
+
+  it('parses proxy URLs the way we expect, if not always ideally', () => {
+    expect(() => Net.proxyOptionsFromUrl('not a url')).throws();
+
+    expect(
+      Net.proxyOptionsFromUrl('schm://user:pass@host.example:42')
+    ).deep.equals({
+      scheme: 'schm',
+      host: 'host.example',
+      username: 'user',
+      password: 'pass',
+      port: 42,
+    });
+    expect(Net.proxyOptionsFromUrl('schm://host.example')).deep.equals({
+      scheme: 'schm',
+      host: 'host.example',
+      username: undefined,
+      password: undefined,
+      port: undefined,
+    });
+    expect(Net.proxyOptionsFromUrl('schm://user@host.example')).deep.equals({
+      scheme: 'schm',
+      host: 'host.example',
+      username: 'user',
+      password: undefined,
+      port: undefined,
+    });
+
+    // Empty "fields" get dropped by Node's URL parser.
+    expect(Net.proxyOptionsFromUrl('schm://host.example:')).deep.equals({
+      scheme: 'schm',
+      host: 'host.example',
+      username: undefined,
+      password: undefined,
+      port: undefined,
+    });
+    expect(Net.proxyOptionsFromUrl('schm://@host.example')).deep.equals({
+      scheme: 'schm',
+      host: 'host.example',
+      username: undefined,
+      password: undefined,
+      port: undefined,
+    });
+    expect(Net.proxyOptionsFromUrl('schm://:@host.example')).deep.equals({
+      scheme: 'schm',
+      host: 'host.example',
+      username: undefined,
+      password: undefined,
+      port: undefined,
+    });
+    expect(Net.proxyOptionsFromUrl('schm://user:@host.example')).deep.equals({
+      scheme: 'schm',
+      host: 'host.example',
+      username: 'user',
+      password: undefined,
+      port: undefined,
+    });
+
+    // This is parsed "correctly" but the libsignal side doesn't support it, though this test doesn't exercise that.
+    expect(Net.proxyOptionsFromUrl('schm://:pass@host.example')).deep.equals({
+      scheme: 'schm',
+      host: 'host.example',
+      username: undefined,
+      password: 'pass',
+      port: undefined,
+    });
+
+    // Weird ports
+    expect(Net.proxyOptionsFromUrl('schm://host.example:0')).deep.equals({
+      scheme: 'schm',
+      host: 'host.example',
+      username: undefined,
+      password: undefined,
+      port: 0,
+    });
+    expect(() =>
+      Net.proxyOptionsFromUrl('schm://host.example:999999')
+    ).throws();
+    expect(() => Net.proxyOptionsFromUrl('schm://host.example:-1')).throws();
   });
 
   // Integration tests make real network calls and as such will not be run unless a proxy server is provided.
@@ -253,6 +377,9 @@ describe('chat service api', () => {
             2
           );
           net.setProxy(host, parseInt(port, 10));
+          expect(
+            TESTING_ConnectionManager_isUsingProxy(net._connectionManager)
+          ).equals(1);
           await connectChatUnauthenticated(net);
         }).timeout(10000);
 
@@ -282,6 +409,28 @@ describe('chat service api', () => {
             port: parseInt(port, 10),
             username,
           });
+          expect(
+            TESTING_ConnectionManager_isUsingProxy(net._connectionManager)
+          ).equals(1);
+          await connectChatUnauthenticated(net);
+        }).timeout(10000);
+
+        it('can connect through a proxy server using a URL', async function () {
+          const PROXY_SERVER = process.env.LIBSIGNAL_TESTING_PROXY_SERVER;
+          if (!PROXY_SERVER) {
+            this.skip();
+          }
+
+          // The default TLS proxy config doesn't support staging, so we connect to production.
+          const net = new Net({
+            env: Environment.Production,
+            userAgent: userAgent,
+          });
+
+          net.setProxyFromUrl(`${SIGNAL_TLS_PROXY_SCHEME}://${PROXY_SERVER}`);
+          expect(
+            TESTING_ConnectionManager_isUsingProxy(net._connectionManager)
+          ).equals(1);
           await connectChatUnauthenticated(net);
         }).timeout(10000);
 

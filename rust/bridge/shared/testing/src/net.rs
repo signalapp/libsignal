@@ -227,3 +227,12 @@ fn TESTING_ConnectionManager_newLocalOverride(
     let env = net_env::localhost_test_env_with_ports(ports, rootCertificateDer);
     ConnectionManager::new_from_static_environment(env, userAgent.as_str())
 }
+
+#[bridge_fn]
+fn TESTING_ConnectionManager_isUsingProxy(manager: &ConnectionManager) -> i32 {
+    match manager.is_using_proxy() {
+        Ok(true) => 1,
+        Ok(false) => 0,
+        Err(_) => -1,
+    }
+}

@@ -232,6 +232,8 @@ SignalFfiError *signal_testing_cdsi_lookup_error_convert(const char *error_descr
 
 SignalFfiError *signal_testing_chat_service_error_convert(const char *error_description);
 
+SignalFfiError *signal_testing_connection_manager_is_using_proxy(int32_t *out, SignalConstPointerConnectionManager manager);
+
 SignalFfiError *signal_fake_chat_connection_destroy(SignalMutPointerFakeChatConnection p);
 
 SignalFfiError *signal_fake_chat_remote_end_destroy(SignalMutPointerFakeChatRemoteEnd p);

@@ -30,6 +30,7 @@ exclude = [
     "BorrowedSliceOfc_uchar",
     "BytestringArray",
     "ConstPointerAuthChat",
+    "ConstPointerConnectionManager",
     "ConstPointerFfiChatListenerStruct",
     "ConstPointerFfiInputStreamStruct",
     "ConstPointerHttpRequest",

@@ -243,7 +243,8 @@ public class Net {
     }
 
     private var asyncContext: TokioAsyncContext
-    private var connectionManager: ConnectionManager
+    /// Exposed for testing.
+    internal var connectionManager: ConnectionManager
 }
 
 /// Authentication information used for connecting to CDS and SVR servers.

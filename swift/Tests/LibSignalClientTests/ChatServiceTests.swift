@@ -31,6 +31,18 @@ extension AuthenticatedChatService {
     }
 }
 
+extension ConnectionManager {
+    var isUsingProxy: Int32 {
+        withNativeHandle { handle in
+            failOnError {
+                try invokeFnReturningInteger {
+                    signal_testing_connection_manager_is_using_proxy($0, handle.const())
+                }
+            }
+        }
+    }
+}
+
 #endif
 
 final class ChatServiceTests: TestCaseBase {
@@ -348,6 +360,7 @@ final class ChatServiceTests: TestCaseBase {
             port = nil
         }
         try net.setProxy(host: String(host), port: port)
+        XCTAssertEqual(net.connectionManager.isUsingProxy, 1)
 
         let chat = net.createUnauthenticatedChatService()
         let listener = ExpectDisconnectListener(expectation(description: "disconnect"))
@@ -393,6 +406,7 @@ final class ChatServiceTests: TestCaseBase {
             port: port,
             username: user.map(String.init)
         )
+        XCTAssertEqual(net.connectionManager.isUsingProxy, 1)
 
         let chat = net.createUnauthenticatedChatService()
         let listener = ExpectDisconnectListener(expectation(description: "disconnect"))
@@ -405,20 +419,28 @@ final class ChatServiceTests: TestCaseBase {
         await self.fulfillment(of: [listener.expectation], timeout: 2)
     }
 
-    func testInvalidProxyRejected() async throws {
+    func testInvalidProxyRejected() {
         let net = Net(env: .production, userAgent: Self.userAgent)
-        do {
-            try net.setProxy(host: "signalfoundation.org", port: 0)
-            XCTFail("should not allow setting invalid proxy")
-        } catch SignalError.ioError {
-            // Okay
+
+        func check(callback: () throws -> Void) {
+            XCTAssertEqual(net.connectionManager.isUsingProxy, 0)
+            do {
+                try callback()
+                XCTFail("should not allow setting invalid proxy")
+            } catch SignalError.ioError {
+                // Okay
+                XCTAssertEqual(net.connectionManager.isUsingProxy, -1)
+            } catch {
+                XCTFail("unexpected error: \(error)")
+            }
+            net.clearProxy()
         }
 
-        do {
+        check {
+            try net.setProxy(host: "signalfoundation.org", port: 0)
+        }
+        check {
             try net.setProxy(scheme: "socks+shoes", host: "signalfoundation.org")
-            XCTFail("should not allow setting invalid proxy")
-        } catch SignalError.ioError {
-            // Okay
         }
     }
 }
