@@ -213,7 +213,7 @@ def main() -> None:
 
     our_abs_dir = os.path.dirname(os.path.realpath(__file__))
     convert_to_java(
-        rust_crate_dir=os.path.join(our_abs_dir, '..'),
+        rust_crate_dir=os.path.join(our_abs_dir, '..', 'impl'),
         java_in_path=os.path.join(our_abs_dir, 'Native.java.in'),
         java_out_path=os.path.join(our_abs_dir, '..', '..', '..', '..', 'java', 'shared', 'java', 'org', 'signal', 'libsignal', 'internal', 'Native.java'),
         verify=args.verify,

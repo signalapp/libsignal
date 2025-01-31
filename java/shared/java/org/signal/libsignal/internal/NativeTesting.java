@@ -30,17 +30,9 @@ import java.util.UUID;
 import java.util.Map;
 
 public final class NativeTesting {
-  private static void loadNativeCode() {
-    try {
-      Native.loadLibrary("signal_jni_testing");
-    } catch (Exception e) {
-      throw new RuntimeException(e);
-    }
-  }
-
   static {
-    loadNativeCode();
-    initializeLibrary();
+    // Ensure the Native class is loaded, which means the .so is loaded.
+    Native.ensureLoaded();
   }
 
   private NativeTesting() {}
@@ -98,8 +90,6 @@ public final class NativeTesting {
   public static native int TESTING_TestingHandleType_getValue(long handle);
 
   public static native void TestingHandleType_Destroy(long handle);
-
-  public static native void initializeLibrary();
 
   public static native int test_only_fn_returns_123();
 }

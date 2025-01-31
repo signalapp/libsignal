@@ -68,7 +68,7 @@ public final class Native {
    * Package-private to allow the NativeTest class to load its shared library.
    * This method should only be called from a static initializer.
    */
-  static void loadLibrary(String name) throws IOException {
+  private static void loadLibrary(String name) throws IOException {
     String arch = System.getProperty("os.arch");
     // Special-case: some Java implementations use "x86_64", but OpenJDK uses "amd64".
     if ("x86_64".equals(arch)) {
@@ -88,6 +88,18 @@ public final class Native {
 
   private static void loadNativeCode() {
     try {
+      // First try to load the testing library. This will only succeed when
+      // libsignal is being used in a test context. The testing library
+      // contains a superset of the functionality of the non-test library, so if
+      // it gets loaded successfully, we're done.
+      loadLibrary("signal_jni_testing");
+      return;
+    } catch (Exception e) {
+      // The testing library wasn't available. This is expected for production
+      // builds, so no error handling is needed. We'll try to load the non-test
+      // library next.
+    }
+    try {
       loadLibrary("signal_jni");
     } catch (Exception e) {
       throw new RuntimeException(e);
@@ -98,6 +110,11 @@ public final class Native {
     loadNativeCode();
     initializeLibrary();
   }
+
+  /**
+   * Ensures that the static initializer for this class gets run.
+   */
+  static void ensureLoaded() {}
 
   private Native() {}
 

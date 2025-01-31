@@ -18,20 +18,4 @@ name = "signal_jni"
 crate-type = ["cdylib"]
 
 [dependencies]
-libsignal-bridge = { workspace = true, features = ["jni", "signal-media"] }
-libsignal-protocol = { workspace = true }
-signal-crypto = { workspace = true }
-
-cfg-if = { workspace = true }
-jni = { workspace = true }
-log = { workspace = true }
-log-panics = { workspace = true, features = ["with-backtrace"] }
-
-[target.aarch64-linux-android.dependencies]
-cpufeatures = "0.2.2" # Make sure 64-bit Android gets optimized crypto
-
-[target.'cfg(target_os = "android")'.dependencies]
-jni19 = { version = "0.19", package = "jni" }
-rustls-platform-verifier = { workspace = true }
-# Make sure we're using the system zlib on Android.
-flate2 = { version = "1", default-features = false, features = ["zlib"] }
+libsignal-jni-impl = { workspace = true }

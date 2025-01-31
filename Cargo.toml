@@ -17,6 +17,7 @@ members = [
     "rust/zkgroup",
     "rust/bridge/ffi",
     "rust/bridge/jni",
+    "rust/bridge/jni/impl",
     "rust/bridge/jni/testing",
     "rust/bridge/node",
 ]
@@ -67,6 +68,7 @@ libsignal-bridge = { path = "rust/bridge/shared" }
 libsignal-bridge-macros = { path = "rust/bridge/shared/macros" }
 libsignal-bridge-testing = { path = "rust/bridge/shared/testing" }
 libsignal-bridge-types = { path = "rust/bridge/shared/types" }
+libsignal-jni-impl = { path = "rust/bridge/jni/impl" }
 signal-neon-futures = { path = "rust/bridge/node/futures" }
 
 # Our forks of some dependencies, accessible as xxx_signal so that usages of them are obvious in source code. Crates
