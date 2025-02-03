@@ -128,7 +128,7 @@ public abstract class ChatConnection extends NativeHandleGuard.SimpleOwner {
               chatServiceHandle.nativeHandle(),
               requestHandle.nativeHandle(),
               req.timeoutMillis)
-          .thenApply(o -> (Response) o);
+          .thenApply(Response::from);
     }
   }
 
@@ -179,5 +179,10 @@ public abstract class ChatConnection extends NativeHandleGuard.SimpleOwner {
       byte[] body,
       int timeoutMillis) {}
 
-  public record Response(int status, String message, Map<String, String> headers, byte[] body) {}
+  public record Response(int status, String message, Map<String, String> headers, byte[] body) {
+    private static Response from(Object o) {
+      ChatService.Response r = (ChatService.Response) o;
+      return new Response(r.status(), r.message(), r.headers(), r.body());
+    }
+  }
 }
