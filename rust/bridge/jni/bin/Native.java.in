@@ -94,7 +94,7 @@ public final class Native {
       // it gets loaded successfully, we're done.
       loadLibrary("signal_jni_testing");
       return;
-    } catch (Exception e) {
+    } catch (Throwable e) {
       // The testing library wasn't available. This is expected for production
       // builds, so no error handling is needed. We'll try to load the non-test
       // library next.
