@@ -30,20 +30,25 @@ extension AuthenticatedChatService {
         }
     }
 }
+#endif
 
 extension ConnectionManager {
-    var isUsingProxy: Int32 {
-        withNativeHandle { handle in
-            failOnError {
-                try invokeFnReturningInteger {
-                    signal_testing_connection_manager_is_using_proxy($0, handle.const())
+    func assertIsUsingProxyIs(_ value: Int32) {
+// The testing native function used to implement this isn't available on device
+// builds to save on code size. If it's present use it, otherwise this is a no-op.
+#if !os(iOS) || targetEnvironment(simulator)
+        let isUsingProxy =
+            withNativeHandle { handle in
+                failOnError {
+                    try invokeFnReturningInteger {
+                        signal_testing_connection_manager_is_using_proxy($0, handle.const())
+                    }
                 }
             }
-        }
+        XCTAssertEqual(isUsingProxy, value)
+#endif
     }
 }
-
-#endif
 
 final class ChatServiceTests: TestCaseBase {
     private static let userAgent = "test"
@@ -360,7 +365,7 @@ final class ChatServiceTests: TestCaseBase {
             port = nil
         }
         try net.setProxy(host: String(host), port: port)
-        XCTAssertEqual(net.connectionManager.isUsingProxy, 1)
+        net.connectionManager.assertIsUsingProxyIs(1)
 
         let chat = net.createUnauthenticatedChatService()
         let listener = ExpectDisconnectListener(expectation(description: "disconnect"))
@@ -406,7 +411,7 @@ final class ChatServiceTests: TestCaseBase {
             port: port,
             username: user.map(String.init)
         )
-        XCTAssertEqual(net.connectionManager.isUsingProxy, 1)
+        net.connectionManager.assertIsUsingProxyIs(1)
 
         let chat = net.createUnauthenticatedChatService()
         let listener = ExpectDisconnectListener(expectation(description: "disconnect"))
@@ -423,13 +428,13 @@ final class ChatServiceTests: TestCaseBase {
         let net = Net(env: .production, userAgent: Self.userAgent)
 
         func check(callback: () throws -> Void) {
-            XCTAssertEqual(net.connectionManager.isUsingProxy, 0)
+            net.connectionManager.assertIsUsingProxyIs(0)
             do {
                 try callback()
                 XCTFail("should not allow setting invalid proxy")
             } catch SignalError.ioError {
                 // Okay
-                XCTAssertEqual(net.connectionManager.isUsingProxy, -1)
+                net.connectionManager.assertIsUsingProxyIs(-1)
             } catch {
                 XCTFail("unexpected error: \(error)")
             }
