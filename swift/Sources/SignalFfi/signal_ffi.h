@@ -241,6 +241,8 @@ typedef struct SignalConnectionInfo SignalConnectionInfo;
 
 typedef struct SignalConnectionManager SignalConnectionManager;
 
+typedef struct SignalConnectionProxyConfig SignalConnectionProxyConfig;
+
 typedef struct SignalDecryptionErrorMessage SignalDecryptionErrorMessage;
 
 typedef struct SignalFingerprint SignalFingerprint;
@@ -788,6 +790,14 @@ typedef struct {
 typedef struct {
   SignalConnectionInfo *raw;
 } SignalMutPointerConnectionInfo;
+
+typedef struct {
+  SignalConnectionProxyConfig *raw;
+} SignalMutPointerConnectionProxyConfig;
+
+typedef struct {
+  const SignalConnectionProxyConfig *raw;
+} SignalConstPointerConnectionProxyConfig;
 
 typedef struct {
   SignalConnectionManager *raw;
@@ -1905,11 +1915,19 @@ SignalFfiError *signal_group_send_full_token_verify(SignalBorrowedBuffer token, 
 
 SignalFfiError *signal_connection_info_destroy(SignalMutPointerConnectionInfo p);
 
+SignalFfiError *signal_connection_proxy_config_destroy(SignalMutPointerConnectionProxyConfig p);
+
+SignalFfiError *signal_connection_proxy_config_clone(SignalMutPointerConnectionProxyConfig *new_obj, SignalConstPointerConnectionProxyConfig obj);
+
+SignalFfiError *signal_connection_proxy_config_new(SignalMutPointerConnectionProxyConfig *out, const char *scheme, const char *host, int32_t port, const char *username, const char *password);
+
 SignalFfiError *signal_connection_manager_destroy(SignalMutPointerConnectionManager p);
 
 SignalFfiError *signal_connection_manager_new(SignalMutPointerConnectionManager *out, uint8_t environment, const char *user_agent);
 
-SignalFfiError *signal_connection_manager_set_proxy(SignalConstPointerConnectionManager connection_manager, const char *scheme, const char *host, int32_t port, const char *username, const char *password);
+SignalFfiError *signal_connection_manager_set_proxy(SignalConstPointerConnectionManager connection_manager, SignalConstPointerConnectionProxyConfig proxy);
+
+SignalFfiError *signal_connection_manager_set_invalid_proxy(SignalConstPointerConnectionManager connection_manager);
 
 SignalFfiError *signal_connection_manager_clear_proxy(SignalConstPointerConnectionManager connection_manager);
 

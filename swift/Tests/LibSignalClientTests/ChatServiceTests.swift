@@ -447,6 +447,10 @@ final class ChatServiceTests: TestCaseBase {
         check {
             try net.setProxy(scheme: "socks+shoes", host: "signalfoundation.org")
         }
+        check {
+            net.setInvalidProxy()
+            throw SignalError.ioError("to match all the other test cases")
+        }
     }
 }
 

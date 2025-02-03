@@ -907,15 +907,22 @@ export class Net {
       };
     }
     const { scheme, host, port, username, password } = hostOrOptions;
-    Native.ConnectionManager_set_proxy(
-      this._connectionManager,
-      scheme,
-      host,
-      // i32::MIN represents "no port provided"; we don't expect anyone to pass that manually.
-      port ?? -0x8000_0000,
-      username ?? null,
-      password ?? null
-    );
+    try {
+      const proxyConfig = newNativeHandle(
+        Native.ConnectionProxyConfig_new(
+          scheme,
+          host,
+          // i32::MIN represents "no port provided"; we don't expect anyone to pass that manually.
+          port ?? -0x8000_0000,
+          username ?? null,
+          password ?? null
+        )
+      );
+      Native.ConnectionManager_set_proxy(this._connectionManager, proxyConfig);
+    } catch (e) {
+      this.setInvalidProxy();
+      throw e;
+    }
   }
 
   /**
@@ -936,11 +943,7 @@ export class Net {
     } catch (e) {
       // Make sure we set an invalid proxy on error,
       // so no connection can be made until the problem is fixed.
-      try {
-        this.setProxy({ scheme: 'https', host: '' });
-      } catch (_) {
-        // Ignore any errors here, we want to rethrow the original error.
-      }
+      this.setInvalidProxy();
       throw e;
     }
 
@@ -986,10 +989,20 @@ export class Net {
   }
 
   /**
+   * Refuses to make any new connections until a new proxy configuration is set or
+   * {@link #clearProxy} is called.
+   *
+   * Existing connections will not be affected.
+   */
+  setInvalidProxy(): void {
+    Native.ConnectionManager_set_invalid_proxy(this._connectionManager);
+  }
+
+  /**
    * Ensures that future connections will be made directly, not through a proxy.
    *
-   * Clears any proxy configuration set via {@link #setProxy}. If none was set, calling this
-   * method is a no-op.
+   * Clears any proxy configuration set via {@link #setProxy} or {@link #setInvalidProxy}. If none
+   * was set, calling this method is a no-op.
    */
   clearProxy(): void {
     Native.ConnectionManager_clear_proxy(this._connectionManager);

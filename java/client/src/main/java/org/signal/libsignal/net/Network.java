@@ -94,10 +94,20 @@ public class Network {
   }
 
   /**
+   * Refuses to make any new connections until a new proxy configuration is set or {@link
+   * #clearProxy} is called.
+   *
+   * <p>Existing connections will not be affected.
+   */
+  public void setInvalidProxy() {
+    this.connectionManager.setInvalidProxy();
+  }
+
+  /**
    * Ensures that future connections will be made directly, not through a proxy.
    *
-   * <p>Clears any proxy configuration set via {@link #setProxy}. If none was set, calling this
-   * method is a no-op.
+   * <p>Clears any proxy configuration set via {@link #setProxy} or {@link #setInvalidProxy}. If
+   * none was set, calling this method is a no-op.
    *
    * <p>Existing connections and services will continue with the setting they were created with. (In
    * particular, changing this setting will not affect any existing {@link ChatService
@@ -236,20 +246,34 @@ public class Network {
     private void setProxy(
         String scheme, String host, Integer port, String username, String password)
         throws IOException {
-      filterExceptions(
-          IOException.class,
-          () ->
-              guardedRunChecked(
-                  h ->
-                      Native.ConnectionManager_set_proxy(
-                          h,
-                          scheme,
-                          host,
-                          // Integer.MIN_VALUE represents "no port provided"; we don't expect anyone
-                          // to pass that manually.
-                          port != null ? port : Integer.MIN_VALUE,
-                          username,
-                          password)));
+      long rawProxyConfig;
+      try {
+        rawProxyConfig =
+            filterExceptions(
+                IOException.class,
+                () ->
+                    Native.ConnectionProxyConfig_new(
+                        scheme,
+                        host,
+                        // Integer.MIN_VALUE represents "no port provided"; we don't expect anyone
+                        // to pass that manually.
+                        port != null ? port : Integer.MIN_VALUE,
+                        username,
+                        password));
+      } catch (IOException | RuntimeException | Error e) {
+        setInvalidProxy();
+        throw e;
+      }
+
+      try {
+        guardedRun(h -> Native.ConnectionManager_set_proxy(h, rawProxyConfig));
+      } finally {
+        Native.ConnectionProxyConfig_Destroy(rawProxyConfig);
+      }
+    }
+
+    private void setInvalidProxy() {
+      guardedRun(Native::ConnectionManager_set_invalid_proxy);
     }
 
     private void clearProxy() {

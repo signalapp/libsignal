@@ -233,8 +233,10 @@ export function ConnectionManager_clear_proxy(connectionManager: Wrapper<Connect
 export function ConnectionManager_new(environment: number, userAgent: string): ConnectionManager;
 export function ConnectionManager_on_network_change(connectionManager: Wrapper<ConnectionManager>): void;
 export function ConnectionManager_set_censorship_circumvention_enabled(connectionManager: Wrapper<ConnectionManager>, enabled: boolean): void;
+export function ConnectionManager_set_invalid_proxy(connectionManager: Wrapper<ConnectionManager>): void;
 export function ConnectionManager_set_ipv6_enabled(connectionManager: Wrapper<ConnectionManager>, ipv6Enabled: boolean): void;
-export function ConnectionManager_set_proxy(connectionManager: Wrapper<ConnectionManager>, scheme: string, host: string, port: number, username: string | null, password: string | null): void;
+export function ConnectionManager_set_proxy(connectionManager: Wrapper<ConnectionManager>, proxy: Wrapper<ConnectionProxyConfig>): void;
+export function ConnectionProxyConfig_new(scheme: string, host: string, port: number, username: string | null, password: string | null): ConnectionProxyConfig;
 export function CreateCallLinkCredentialPresentation_CheckValidContents(presentationBytes: Buffer): void;
 export function CreateCallLinkCredentialPresentation_Verify(presentationBytes: Buffer, roomId: Buffer, now: Timestamp, serverParamsBytes: Buffer, callLinkParamsBytes: Buffer): void;
 export function CreateCallLinkCredentialRequestContext_CheckValidContents(contextBytes: Buffer): void;
@@ -617,6 +619,7 @@ interface CiphertextMessage { readonly __type: unique symbol; }
 interface ComparableBackup { readonly __type: unique symbol; }
 interface ComparableBackup { readonly __type: unique symbol; }
 interface ConnectionManager { readonly __type: unique symbol; }
+interface ConnectionProxyConfig { readonly __type: unique symbol; }
 interface DecryptionErrorMessage { readonly __type: unique symbol; }
 interface ExpiringProfileKeyCredential { readonly __type: unique symbol; }
 interface ExpiringProfileKeyCredentialResponse { readonly __type: unique symbol; }

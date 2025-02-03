@@ -180,34 +180,24 @@ describe('chat service api', () => {
       userAgent: userAgent,
     });
 
-    function check(callback: () => void, expectedProxyMode: number = -1): void {
+    function check(callback: () => void): void {
       expect(
         TESTING_ConnectionManager_isUsingProxy(net._connectionManager)
       ).equals(0);
       expect(callback).throws(Error);
       expect(
         TESTING_ConnectionManager_isUsingProxy(net._connectionManager)
-      ).equals(expectedProxyMode);
+      ).equals(-1);
       net.clearProxy();
     }
 
     check(() => net.setProxy('signalfoundation.org', 0));
     check(() => net.setProxy('signalfoundation.org', 100_000));
     check(() => net.setProxy('signalfoundation.org', -1));
-
-    // Ideally these would poison the Net instance like all the other invalid options,
-    // but unfortunately it's checked at a layer that makes that awkward.
-    // Hopefully no one actually tries to set a fractional or very large port!
-    check(() => net.setProxy('signalfoundation.org', 0.1), 0);
-    check(
-      () => net.setProxy('signalfoundation.org', Number.MAX_SAFE_INTEGER),
-      0
-    );
-    check(() => net.setProxy('signalfoundation.org', Number.MAX_VALUE), 0);
-    check(
-      () => net.setProxy('signalfoundation.org', Number.POSITIVE_INFINITY),
-      0
-    );
+    check(() => net.setProxy('signalfoundation.org', 0.1));
+    check(() => net.setProxy('signalfoundation.org', Number.MAX_SAFE_INTEGER));
+    check(() => net.setProxy('signalfoundation.org', Number.MAX_VALUE));
+    check(() => net.setProxy('signalfoundation.org', Number.POSITIVE_INFINITY));
 
     check(() =>
       net.setProxy({ scheme: 'socks+shoes', host: 'signalfoundation.org' })
@@ -227,6 +217,11 @@ describe('chat service api', () => {
         'https://signalfoundation.org#fragment-for-some-reason'
       )
     );
+
+    check(() => {
+      net.setInvalidProxy();
+      throw new Error('to match the behavior of all the other calls');
+    });
   });
 
   it('parses proxy URLs the way we expect, if not always ideally', () => {

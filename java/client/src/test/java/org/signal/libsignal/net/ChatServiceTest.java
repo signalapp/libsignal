@@ -323,6 +323,12 @@ public class ChatServiceTest {
     check.accept(() -> net.setProxy("signalfoundation.org", -1));
 
     check.accept(() -> net.setProxy("socks+shoes", "signalfoundation.org", null, null, null));
+
+    check.accept(
+        () -> {
+          net.setInvalidProxy();
+          throw new IOException("to match all the other test cases");
+        });
   }
 
   private void injectServerRequest(ChatService chat, String requestBase64) {

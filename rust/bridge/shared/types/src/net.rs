@@ -4,7 +4,7 @@
 //
 
 use std::marker::PhantomData;
-use std::num::{NonZeroU16, NonZeroU32};
+use std::num::NonZeroU32;
 use std::panic::RefUnwindSafe;
 use std::sync::Arc;
 
@@ -19,7 +19,6 @@ use libsignal_net::enclave::{
 use libsignal_net::env::{add_user_agent_header, Env, Svr3Env, UserAgent};
 use libsignal_net::infra::connection_manager::MultiRouteConnectionManager;
 use libsignal_net::infra::dns::DnsResolver;
-use libsignal_net::infra::errors::LogSafeDisplay;
 use libsignal_net::infra::route::ConnectionProxyConfig;
 use libsignal_net::infra::tcp_ssl::{InvalidProxyConfig, TcpSslConnector};
 use libsignal_net::infra::timeouts::ONE_ROUTE_CONNECTION_TIMEOUT;
@@ -188,68 +187,14 @@ impl ConnectionManager {
         }
     }
 
-    /// Sets the proxy using [`ConnectionProxyConfig::from_parts`]; poisons the connection manager
-    /// on failure.
-    ///
-    /// `port` is intended to be `None` only if the user doesn't specify one; if it's
-    /// `Some(Err(_))`, that indicates that the user *did* specify a port but it was invalid. The
-    /// error case should be how the user wrote the port.
-    pub fn set_proxy(
-        &self,
-        scheme: &str,
-        host: &str,
-        port: Option<Result<NonZeroU16, impl std::fmt::Display>>,
-        username: Option<String>,
-        password: Option<String>,
-    ) -> std::io::Result<()> {
-        // We wrap this in a function so that on any error we can poison the connection config until
-        // the proxy is explicitly cleared (or set to something new). See below.
-        let make_proxy = || -> std::io::Result<ConnectionProxyConfig> {
-            let port = port.transpose().map_err(|invalid_port| {
-                std::io::Error::new(
-                    std::io::ErrorKind::InvalidInput,
-                    format!("invalid port '{invalid_port}'"),
-                )
-            })?;
-
-            let auth = match (username, password) {
-                (None, None) => None,
-                (None, Some(_)) => {
-                    return Err(std::io::Error::new(
-                        std::io::ErrorKind::InvalidInput,
-                        "cannot have password without username",
-                    ));
-                }
-                (Some(username), password) => Some((username, password.unwrap_or_default())),
-            };
-
-            ConnectionProxyConfig::from_parts(scheme, host, port, auth).map_err(|e| {
-                use libsignal_net::infra::route::ProxyFromPartsError;
-                static_assertions::assert_impl_all!(ProxyFromPartsError: LogSafeDisplay);
-                match e {
-                    ProxyFromPartsError::UnsupportedScheme(_) => {
-                        std::io::Error::new(std::io::ErrorKind::Unsupported, e.to_string())
-                    }
-                    ProxyFromPartsError::MissingHost
-                    | ProxyFromPartsError::SchemeDoesNotSupportUsernames(_)
-                    | ProxyFromPartsError::SchemeDoesNotSupportPasswords(_) => {
-                        std::io::Error::new(std::io::ErrorKind::InvalidInput, e.to_string())
-                    }
-                }
-            })
-        };
-
+    pub fn set_proxy(&self, proxy: ConnectionProxyConfig) {
         let mut guard = self.transport_connector.lock().expect("not poisoned");
-        match make_proxy() {
-            Ok(proxy) => {
-                guard.set_proxy(proxy);
-                Ok(())
-            }
-            Err(e) => {
-                guard.set_invalid();
-                Err(e)
-            }
-        }
+        guard.set_proxy(proxy);
+    }
+
+    pub fn set_invalid_proxy(&self) {
+        let mut guard = self.transport_connector.lock().expect("not poisoned");
+        guard.set_invalid();
     }
 
     pub fn clear_proxy(&self) {
@@ -289,6 +234,7 @@ impl ConnectionManager {
 }
 
 bridge_as_handle!(ConnectionManager);
+bridge_as_handle!(ConnectionProxyConfig);
 
 pub enum PreviousVersion {}
 pub enum CurrentVersion {}
@@ -443,10 +389,13 @@ mod empty_env {
 
 #[cfg(test)]
 mod test {
+    use ::tokio; // otherwise ambiguous with the tokio submodule
     use assert_matches::assert_matches;
+    use libsignal_net::chat::ChatServiceError;
     use test_case::test_case;
 
     use super::*;
+    use crate::net::chat::UnauthenticatedChatConnection;
 
     #[test_case(Environment::Staging; "staging")]
     #[test_case(Environment::Prod; "prod")]
@@ -454,15 +403,16 @@ mod test {
         let _ = ConnectionManager::new(env, "test-user-agent");
     }
 
-    #[test]
-    fn connection_manager_invalid_after_invalid_host_port() {
-        let manager = ConnectionManager::new(Environment::Staging, "test-user-agent");
-        // This is not a valid port and so should make the ConnectionManager "invalid".
-        assert_matches!(
-            manager.set_proxy("org.signal.tls", "proxy.host", Some(Err("bad")), None, None),
-            Err(e) if e.kind() == std::io::ErrorKind::InvalidInput
-        );
-        let transport_connector = manager.transport_connector.lock().expect("not poisoned");
-        assert_matches!(transport_connector.proxy(), Err(_));
+    // Normally we would write this test in the app languages, but it depends on timeouts.
+    // Using a paused tokio runtime auto-advances time when there's no other work to be done.
+    #[tokio::test(start_paused = true)]
+    async fn cannot_connect_through_invalid_proxy() {
+        let cm = ConnectionManager::new(Environment::Staging, "test-user-agent");
+        cm.set_invalid_proxy();
+        let err = UnauthenticatedChatConnection::connect(&cm)
+            .await
+            .map(|_| ())
+            .expect_err("should fail to connect");
+        assert_matches!(err, ChatServiceError::ServiceUnavailable);
     }
 }

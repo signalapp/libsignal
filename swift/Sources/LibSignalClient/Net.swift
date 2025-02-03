@@ -72,10 +72,18 @@ public class Net {
         try self.connectionManager.setProxy(scheme: Net.signalTlsProxyScheme, host: host, port: port, username: username, password: nil)
     }
 
+    /// Refuses to make any new connections until a new proxy configuration is set or
+    /// ``Net/clearProxy()`` is called.
+    ///
+    /// Existing connections will not be affected.
+    public func setInvalidProxy() {
+        self.connectionManager.setInvalidProxy()
+    }
+
     /// Clears the proxy host (if any) so that future connections will be made directly.
     ///
-    /// Clears any proxy configuration set via ``Net/setProxy(host:port:)``. If
-    /// none was set, calling this method is a no-op.
+    /// Clears any proxy configuration set via ``Net/setProxy(host:port:)`` or
+    /// ``Net/setInvalidProxy()``. If none was set, calling this method is a no-op.
     ///
     /// Existing connections and services will continue with the setting they were created with.
     /// (In particular, changing this setting will not affect any existing ``ChatService``s.)
@@ -270,6 +278,12 @@ extension Auth {
 }
 
 internal class ConnectionManager: NativeHandleOwner<SignalMutPointerConnectionManager> {
+    private class ProxyConfig: NativeHandleOwner<SignalMutPointerConnectionProxyConfig> {
+        override class func destroyNativeHandle(_ handle: NonNull<SignalMutPointerConnectionProxyConfig>) -> SignalFfiErrorRef? {
+            signal_connection_proxy_config_destroy(handle.pointer)
+        }
+    }
+
     convenience init(env: Net.Environment, userAgent: String) {
         var handle = SignalMutPointerConnectionManager()
         failOnError(signal_connection_manager_new(&handle, env.rawValue, userAgent))
@@ -281,12 +295,29 @@ internal class ConnectionManager: NativeHandleOwner<SignalMutPointerConnectionMa
         // But it also lets us distinguish "no port provided".
         let port = port.map(Int32.init) ?? .min
 
-        try username.withCString { username in
-            try password.withCString { password in
-                try self.withNativeHandle {
-                    try checkError(signal_connection_manager_set_proxy($0.const(), scheme, host, port, username, password))
+        do {
+            let proxyConfig: ProxyConfig = try username.withCString { username in
+                try password.withCString { password in
+                    try invokeFnReturningNativeHandle {
+                        signal_connection_proxy_config_new($0, scheme, host, port, username, password)
+                    }
                 }
             }
+
+            try proxyConfig.withNativeHandle { proxyConfig in
+                try self.withNativeHandle {
+                    try checkError(signal_connection_manager_set_proxy($0.const(), proxyConfig.const()))
+                }
+            }
+        } catch {
+            self.setInvalidProxy()
+            throw error
+        }
+    }
+
+    internal func setInvalidProxy() {
+        self.withNativeHandle {
+            failOnError(signal_connection_manager_set_invalid_proxy($0.const()))
         }
     }
 
@@ -324,6 +355,28 @@ extension SignalMutPointerConnectionManager: SignalMutPointer {
 }
 
 extension SignalConstPointerConnectionManager: SignalConstPointer {
+    public func toOpaque() -> OpaquePointer? {
+        self.raw
+    }
+}
+
+extension SignalMutPointerConnectionProxyConfig: SignalMutPointer {
+    public typealias ConstPointer = SignalConstPointerConnectionProxyConfig
+
+    public init(untyped: OpaquePointer?) {
+        self.init(raw: untyped)
+    }
+
+    public func toOpaque() -> OpaquePointer? {
+        self.raw
+    }
+
+    public func const() -> Self.ConstPointer {
+        Self.ConstPointer(raw: self.raw)
+    }
+}
+
+extension SignalConstPointerConnectionProxyConfig: SignalConstPointer {
     public func toOpaque() -> OpaquePointer? {
         self.raw
     }
