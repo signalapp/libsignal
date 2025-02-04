@@ -48,9 +48,9 @@ impl LookupResult {
     }
 }
 
-#[cfg(test)]
+#[cfg(any(test, feature = "test-util"))]
 impl LookupResult {
-    pub(crate) fn localhost() -> Self {
+    pub fn localhost() -> Self {
         Self::new(
             DnsSource::Static,
             vec![Ipv4Addr::LOCALHOST],

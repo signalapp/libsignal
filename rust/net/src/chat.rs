@@ -852,10 +852,25 @@ pub mod test_support {
 
 #[cfg(test)]
 pub(crate) mod test {
+    use std::collections::HashMap;
+
     use assert_matches::assert_matches;
     use http::{HeaderName, HeaderValue};
+    use libsignal_net_infra::certs::RootCertificates;
+    use libsignal_net_infra::dns::lookup_result::LookupResult;
+    use libsignal_net_infra::errors::TransportConnectError;
+    use libsignal_net_infra::host::Host;
+    use libsignal_net_infra::route::testutils::ConnectFn;
+    use libsignal_net_infra::route::{
+        DirectOrProxyRoute, HttpRouteFragment, HttpsTlsRoute, TcpRoute, TlsRoute, TlsRouteFragment,
+        UnresolvedHost, DEFAULT_HTTPS_PORT,
+    };
+    use libsignal_net_infra::Alpn;
+    use test_case::test_case;
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
-    use crate::chat::{Response, ResponseProto, ResponseProtoInvalidError};
+    use super::*;
+    use crate::connect_state::SUGGESTED_CONNECT_CONFIG;
 
     pub(crate) mod shared {
         use std::fmt::Debug;
@@ -1058,5 +1073,122 @@ pub(crate) mod test {
         };
         let response: Result<Response, _> = proto.try_into();
         assert_matches!(response, Err(ResponseProtoInvalidError));
+    }
+
+    fn encode_response(response: http::Response<impl AsRef<[u8]>>) -> Vec<u8> {
+        let mut result = vec![];
+        assert_eq!(
+            response.version(),
+            http::Version::HTTP_11,
+            "not set up to write any other kind of response"
+        );
+        result.extend(
+            format!(
+                "HTTP/1.1 {} {}\r\n",
+                response.status().as_u16(),
+                response.status().canonical_reason().unwrap_or_default(),
+            )
+            .as_bytes(),
+        );
+        for (name, value) in response.headers() {
+            result.extend([name.as_str().as_bytes(), b": ", value.as_bytes(), b"\r\n"].concat());
+        }
+        result.extend(b"\r\n");
+        result.extend(response.body().as_ref());
+        result
+    }
+
+    // It's easier to use this with test_case in string form.
+    const CONFIRMATION_HEADER: &str = "x-really-signal";
+
+    #[test_case(403, &[] => matches ChatServiceError::AllConnectionRoutesFailed { attempts: 1 })]
+    #[test_case(403, &[(CONFIRMATION_HEADER, "1")] => matches ChatServiceError::DeviceDeregistered)]
+    #[test_case(499, &[(CONFIRMATION_HEADER, "1")] => matches ChatServiceError::AppExpired)]
+    #[test_case(429, &[(CONFIRMATION_HEADER, "1"), ("retry-after", "20")] => matches ChatServiceError::RetryLater { retry_after_seconds: 20 })]
+    #[test_case(500, &[(CONFIRMATION_HEADER, "1"), ("retry-after", "20")] => matches ChatServiceError::RetryLater { retry_after_seconds: 20 })]
+    #[test_case(429, &[("retry-after", "20")] => matches ChatServiceError::AllConnectionRoutesFailed { attempts: 1 })]
+    #[tokio::test(start_paused = true)]
+    async fn html_status_tests(
+        status: u16,
+        headers: &'static [(&'static str, &'static str)],
+    ) -> ChatServiceError {
+        _ = env_logger::builder().is_test(true).try_init();
+
+        let (client, mut server) = tokio::io::duplex(1024);
+
+        let server_task = tokio::spawn(async move {
+            // Ignore any request, just serve a hardcoded response.
+            let mut response = http::Response::builder().status(status);
+            for &(name, value) in headers {
+                response
+                    .headers_mut()
+                    .expect("no errors yet")
+                    .append(name, HeaderValue::from_static(value));
+            }
+            server
+                .write_all(&encode_response(response.body([]).expect("valid")))
+                .await
+                .expect("can write");
+
+            let mut ignored_request = vec![];
+            server
+                .read_to_end(&mut ignored_request)
+                .await
+                .expect("can read");
+        });
+
+        let client = std::sync::Mutex::new(Some(client));
+        let connect_state = ConnectState::new_with_transport_connector(
+            SUGGESTED_CONNECT_CONFIG,
+            ConnectFn(move |_inner, _route, _log_tag| {
+                std::future::ready(client.lock().expect("unpoisoned").take().ok_or(
+                    WebSocketConnectError::Transport(TransportConnectError::TcpConnectionFailed),
+                ))
+            }),
+        );
+
+        const CHAT_DOMAIN: &str = "test.signal.org";
+
+        let err = ChatConnection::start_connect_with_transport(
+            &connect_state,
+            &DnsResolver::new_from_static_map(HashMap::from_iter([(
+                CHAT_DOMAIN,
+                LookupResult::localhost(),
+            )])),
+            vec![HttpsTlsRoute {
+                fragment: HttpRouteFragment {
+                    host_header: CHAT_DOMAIN.into(),
+                    path_prefix: "".into(),
+                    front_name: None,
+                },
+                inner: TlsRoute {
+                    fragment: TlsRouteFragment {
+                        root_certs: RootCertificates::Native,
+                        sni: Host::Domain(CHAT_DOMAIN.into()),
+                        alpn: Some(Alpn::Http1_1),
+                    },
+                    inner: DirectOrProxyRoute::Direct(TcpRoute {
+                        address: UnresolvedHost(CHAT_DOMAIN.into()),
+                        port: DEFAULT_HTTPS_PORT,
+                    }),
+                },
+            }],
+            Some(HeaderName::from_static(CONFIRMATION_HEADER)),
+            &UserAgent::with_libsignal_version("test"),
+            ws2::Config {
+                // We shouldn't get to timing out anyway.
+                local_idle_timeout: Duration::ZERO,
+                remote_idle_timeout: Duration::ZERO,
+                initial_request_id: 0,
+            },
+            None,
+            "fake chat",
+        )
+        .await
+        .expect_err("should fail to connect");
+
+        server_task.await.expect("clean exit");
+
+        err
     }
 }

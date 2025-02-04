@@ -2514,6 +2514,7 @@ dependencies = [
  "lazy_static",
  "libsignal-core",
  "libsignal-keytrans",
+ "libsignal-net",
  "libsignal-net-infra",
  "libsignal-protocol",
  "libsignal-svr3",

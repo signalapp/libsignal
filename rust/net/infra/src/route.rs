@@ -104,7 +104,7 @@ pub trait RouteProviderContext {
 
 /// A hostname in a route that can later be resolved to IP addresses.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, derive_more::From, derive_more::Into)]
-pub struct UnresolvedHost(Arc<str>);
+pub struct UnresolvedHost(pub Arc<str>);
 
 /// Allows replacing part of a route.
 ///
