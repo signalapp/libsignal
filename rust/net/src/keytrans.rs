@@ -953,13 +953,8 @@ impl AsChatValue for UsernameHash<'_> {
 }
 
 #[cfg(test)]
-mod test {
-    use std::cmp::Ordering;
-
-    use assert_matches::assert_matches;
-    use hex_literal::hex;
-    use libsignal_keytrans::{DeploymentMode, PublicConfig, TreeHead, VerifyingKey, VrfPublicKey};
-    use test_case::test_case;
+mod test_support {
+    use libsignal_keytrans::{DeploymentMode, PublicConfig, VerifyingKey, VrfPublicKey};
 
     use super::*;
     use crate::auth::Auth;
@@ -980,7 +975,7 @@ mod test {
         }
     }
 
-    mod test_account {
+    pub(super) mod test_account {
         use hex_literal::hex;
         use libsignal_core::E164;
         use nonzero_ext::nonzero;
@@ -995,16 +990,7 @@ mod test {
         pub const UNIDENTIFIED_ACCESS_KEY: &[u8] = &hex!("fdc7951d1507268daf1834b74d23b76c");
     }
 
-    // Distinguished tree parameters as of size 608
-    const DISTINGUISHED_TREE_637_ROOT: &[u8] =
-        &hex!("fda58cc9c00d4e6734047f98b4723804383f9e64daa7224bdd7591df9276cbb4");
-    const DISTINGUISHED_TREE_637_HEAD: &[u8] =
-        &hex!("08fd0410f1a3a8cccb321a407761dac20002f5a15b789418d77fe482ec3bdf782a336ecf4f12cbe43ef35fa86360ffcb884354d9854a970afbbf6db716765e3a72fa36b9428918993a8ef30c");
-    // Stored account data as of size 611
-    const STORED_ACCOUNT_DATA_642: &[u8] =
-        &hex!("0a2b0a203901c94081c4e6321e92b3e434dcaf788f5326913e7bdcab47b4fd2ae7a6848a10231a0308ff032001122c0a2086052cc2a2689558e852d053c5ab411d8c3baef20171ec298e551574806ca95d1081011a0308ff0320011a2c0a20bc1cfaae736c27c437b99175798933ee32caf07a5226840ec963a4e614916e9010dc011a0308ff03200122700a4c08820510fbd0d8cdcb321a4041ed17cdfdae313856d8bd6028936f0a2c1494968eafbea1498e2fc666105d9ddbaf7d4e43d9013a713ba58f402557ec794c441ed3bcfacc6bc6d656ea0fcf01122010763b0de052335c451c9bb7b46f52d0eeb736ee9731c4ba6a6f93d74a89cc3b");
-
-    fn make_key_transparency() -> KeyTransparency {
+    pub(super) fn make_key_transparency() -> KeyTransparency {
         let signature_key = VerifyingKey::from_bytes(KEYTRANS_SIGNING_KEY_MATERIAL_STAGING)
             .expect("valid signature key material");
         let vrf_key = VrfPublicKey::try_from(*KEYTRANS_VRF_KEY_MATERIAL_STAGING)
@@ -1020,7 +1006,7 @@ mod test {
         }
     }
 
-    fn make_kt(chat: &AnyChat) -> Kt {
+    pub(super) fn make_kt(chat: &AnyChat) -> Kt {
         Kt {
             inner: make_key_transparency(),
             chat,
@@ -1028,7 +1014,7 @@ mod test {
         }
     }
 
-    async fn make_chat() -> AnyChat {
+    pub(super) async fn make_chat() -> AnyChat {
         use crate::chat::test_support::simple_chat_service;
         let chat = simple_chat_service(
             &env::STAGING,
@@ -1043,6 +1029,166 @@ mod test {
             .expect("can connect to chat");
         chat
     }
+
+    #[allow(dead_code)]
+    // This function automates the collection of the test data.
+    //
+    // In particular, the constants that start with:
+    // - DISTINGUISHED_TREE_
+    // - STORED_ACCOUNT_DATA_
+    //
+    // In order to collect the test data:
+    // - Uncomment the #[tokio::test] line
+    // - Execute the test as `cargo test --package libsignal-net --all-features collect_test_data -- --nocapture`
+    // - Follow the prompts
+    // - Replace the "const" definitions in the code with the ones printed out by the test.
+    // - Copy the "chat_search_response.dat" file to "rust/net/tests/data/" replacing the existing one.
+    //
+    //#[tokio::test]
+    async fn collect_test_data() {
+        fn prompt(text: &str) {
+            println!("{} >", text);
+
+            let mut input = String::new();
+
+            std::io::stdin()
+                .read_line(&mut input)
+                .expect("can read_line from stdin");
+        }
+
+        let chat = make_chat().await;
+        let kt = make_kt(&chat);
+
+        prompt("Let's collect some data (press ENTER)");
+
+        println!("Requesting distinguished tree...");
+        let result = kt.distinguished(None).await.expect("can get distinguished");
+
+        let distinguished_tree_size = result.tree_head.tree_size;
+        println!("Distinguished tree");
+        println!("Size: {}", &result.tree_head.tree_size);
+        println!(
+            "const DISTINGUISHED_TREE_{}_ROOT: &[u8] = &hex!(\"{}\");",
+            distinguished_tree_size,
+            &hex::encode(result.tree_head.encode_to_vec())
+        );
+        println!(
+            "const DISTINGUISHED_TREE_{}_HEAD: &[u8] = &hex!(\"{}\");",
+            distinguished_tree_size,
+            &hex::encode(result.tree_root)
+        );
+
+        let distinguished_tree = (result.tree_head, result.tree_root);
+
+        prompt("Now advance the tree (and press ENTER)");
+
+        let aci = Aci::from(test_account::ACI);
+        let aci_identity_key =
+            PublicKey::deserialize(test_account::ACI_IDENTITY_KEY_BYTES).expect("valid key bytes");
+        let e164 = (
+            test_account::PHONE_NUMBER,
+            test_account::UNIDENTIFIED_ACCESS_KEY.to_vec(),
+        );
+        let username_hash = UsernameHash(Cow::Borrowed(test_account::USERNAME_HASH));
+
+        println!("Requesting account data...");
+
+        let result = kt
+            .search(
+                &aci,
+                &aci_identity_key,
+                Some(e164.clone()),
+                Some(username_hash.clone()),
+                None,
+                &distinguished_tree,
+            )
+            .await
+            .expect("can perform search");
+
+        let last_tree_size = result
+            .account_data
+            .clone()
+            .last_tree_head
+            .unwrap()
+            .tree_head
+            .unwrap()
+            .tree_size;
+
+        assert_ne!(
+            distinguished_tree_size, last_tree_size,
+            "The tree did not advance!"
+        );
+
+        println!("Stored account data:");
+        println!(
+            "const STORED_ACCOUNT_DATA_{}: &[u8] = &hex!(\"{}\");",
+            last_tree_size,
+            &hex::encode(result.account_data.encode_to_vec())
+        );
+
+        let account_data = AccountData::try_from(result.account_data).expect("valid account data");
+
+        prompt("Now advance the tree. Yes, again! (and press ENTER)");
+
+        let raw_request = RawChatSearchRequest::new(
+            &aci,
+            &aci_identity_key,
+            Some(&e164),
+            Some(&username_hash),
+            Some(account_data.last_tree_head.0.tree_size),
+            distinguished_tree.0.tree_size,
+        );
+        let response = kt
+            .send(raw_request.into())
+            .await
+            .expect("can send raw search request");
+
+        let raw_response = RawChatSerializedResponse::try_from(response).expect("valid response");
+        let response_bytes = BASE64_STANDARD_NO_PAD
+            .decode(raw_response.serialized_response.as_bytes())
+            .expect("valid base64");
+
+        {
+            let search_response = ChatSearchResponse::decode(response_bytes.as_ref())
+                .map_err(|_| Error::InvalidResponse("bad protobuf"))
+                .and_then(|r| TypedSearchResponse::from_untyped(true, true, r))
+                .expect("valid search response");
+
+            let tree_size = search_response.full_tree_head.tree_head.unwrap().tree_size;
+            assert_ne!(last_tree_size, tree_size, "The tree did not advance!");
+        }
+
+        println!(
+            "const CHAT_SEARCH_RESPONSE_VALID_AT: Duration = Duration::from_secs({});",
+            SystemTime::UNIX_EPOCH.elapsed().unwrap().as_secs()
+        );
+
+        const PATH: &str = "/tmp/chat_search_response.dat";
+        println!("Response written to '{PATH}'");
+        std::fs::write(PATH, &response_bytes).unwrap()
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use std::cmp::Ordering;
+
+    use assert_matches::assert_matches;
+    use hex_literal::hex;
+    use libsignal_keytrans::TreeHead;
+    use test_case::test_case;
+
+    use super::test_support::{make_chat, make_key_transparency, make_kt, test_account};
+    use super::*;
+
+    // Distinguished tree parameters as of size 608
+    const DISTINGUISHED_TREE_637_ROOT: &[u8] =
+        &hex!("fda58cc9c00d4e6734047f98b4723804383f9e64daa7224bdd7591df9276cbb4");
+    const DISTINGUISHED_TREE_637_HEAD: &[u8] =
+        &hex!("08fd0410f1a3a8cccb321a407761dac20002f5a15b789418d77fe482ec3bdf782a336ecf4f12cbe43ef35fa86360ffcb884354d9854a970afbbf6db716765e3a72fa36b9428918993a8ef30c");
+    // Stored account data as of size 611
+    const STORED_ACCOUNT_DATA_642: &[u8] =
+        &hex!("0a2b0a203901c94081c4e6321e92b3e434dcaf788f5326913e7bdcab47b4fd2ae7a6848a10231a0308ff032001122c0a2086052cc2a2689558e852d053c5ab411d8c3baef20171ec298e551574806ca95d1081011a0308ff0320011a2c0a20bc1cfaae736c27c437b99175798933ee32caf07a5226840ec963a4e614916e9010dc011a0308ff03200122700a4c08820510fbd0d8cdcb321a4041ed17cdfdae313856d8bd6028936f0a2c1494968eafbea1498e2fc666105d9ddbaf7d4e43d9013a713ba58f402557ec794c441ed3bcfacc6bc6d656ea0fcf01122010763b0de052335c451c9bb7b46f52d0eeb736ee9731c4ba6a6f93d74a89cc3b");
 
     fn test_distinguished_tree() -> LastTreeHead {
         (
@@ -1107,8 +1253,6 @@ mod test {
             println!("SKIPPED: running integration tests is not enabled");
             return;
         }
-
-        let _ = env_logger::builder().try_init();
 
         let chat = make_chat().await;
         let kt = make_kt(&chat);
