@@ -39,7 +39,7 @@ public class ClientZkOperations {
     final BenchmarkState state = benchmarkRule.getState();
     state.pauseTiming();
     final AuthCredentialWithPniResponse authCredentialWithPniResponse =
-        serverZkAuthOperations.issueAuthCredentialWithPniAsServiceId(aci, pni, now);
+        serverZkAuthOperations.issueAuthCredentialWithPniZkc(aci, pni, now);
     state.resumeTiming();
 
     while (state.keepRunning()) {
@@ -53,7 +53,7 @@ public class ClientZkOperations {
     final BenchmarkState state = benchmarkRule.getState();
     state.pauseTiming();
     final AuthCredentialWithPniResponse authCredentialWithPniResponse =
-        serverZkAuthOperations.issueAuthCredentialWithPniAsServiceId(aci, pni, now);
+        serverZkAuthOperations.issueAuthCredentialWithPniZkc(aci, pni, now);
     final AuthCredentialWithPni authCredentialWithPni =
         clientZkOperations.receiveAuthCredentialWithPniAsServiceId(
             aci, pni, now.getEpochSecond(), authCredentialWithPniResponse);
