@@ -1,0 +1,40 @@
+plugins {
+    id 'com.android.library' version '8.7.3'
+}
+
+repositories {
+    google()
+    mavenCentral()
+    mavenLocal()
+}
+
+android {
+    compileSdk 34
+
+    defaultConfig {
+        minSdkVersion 21
+        targetSdkVersion 33
+        multiDexEnabled true
+
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    compileOptions {
+        coreLibraryDesugaringEnabled true
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    packagingOptions {
+        jniLibs.excludes.add("**/libsignal_jni_testing.so")
+    }
+
+    namespace "org.signal.libsignal.packagingtest"
+}
+
+dependencies {
+    androidTestImplementation "androidx.test:runner:1.5.2"
+    androidTestImplementation 'androidx.test.ext:junit:1.1.5'
+    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:1.1.6'
+    androidTestImplementation project(':android')
+}

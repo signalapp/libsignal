@@ -179,7 +179,7 @@ jobs:
           ndk: ${{ env.ANDROID_NDK_VERSION }}
           force-avd-creation: false
           emulator-options: -no-snapshot-save -no-window -noaudio -no-boot-anim
-          script: ./gradlew android:connectedCheck -x makeJniLibrariesDesktop -x android:makeJniLibraries
+          script: ./gradlew android:connectedCheck android:packaging-test:connectedCheck -x makeJniLibrariesDesktop -x android:makeJniLibraries
           working-directory: java
 
   aarch64:

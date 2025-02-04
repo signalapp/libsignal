@@ -13,7 +13,7 @@ include 'client', 'server', 'shared', 'backup-tool'
 if (hasProperty('skipAndroid')) {
     // Do nothing
 } else if (JavaVersion.current().isJava11Compatible()) {
-    include ':android', ':android:benchmarks'
+    include ':android', ':android:benchmarks', ':android:packaging-test'
 } else if (gradle.startParameter.getTaskNames().any { name -> name.contains('android:') }) {
     throw new GradleException("building for Android requires JDK 11 or newer")
 } else if (gradle.startParameter.getTaskNames().any { name -> name.lastIndexOf(':') <= 0 }) {
