@@ -449,6 +449,7 @@ public final class Native {
   public static native Object MessageBackupValidator_Validate(long key, InputStream firstStream, InputStream secondStream, long len, int purpose) throws Exception;
 
   public static native long Mp4Sanitizer_Sanitize(InputStream input, long len) throws Exception;
+  public static native long Mp4Sanitizer_Sanitize_File_With_Compounded_MDAT_Boxes(InputStream input, long len, int cumulativeMdatBoxSize) throws Exception;
 
   public static native void NumericFingerprintGenerator_Destroy(long handle);
   public static native String NumericFingerprintGenerator_GetDisplayString(long obj) throws Exception;

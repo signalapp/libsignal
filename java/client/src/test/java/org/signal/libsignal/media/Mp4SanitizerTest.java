@@ -73,6 +73,20 @@ public class Mp4SanitizerTest {
   }
 
   @Test
+  public void testMinimalCompoundedMdatMp4() throws Exception {
+    byte[] metadata = ByteUtil.combine(ftyp(), moov());
+    byte[] compounded_mdat = compoundedMdat();
+    byte[] mp4Data = ByteUtil.combine(ftyp(), compounded_mdat, moov());
+
+    SanitizedMetadata sanitized =
+        Mp4Sanitizer.sanitizeFileWithCompoundedMdatBoxes(
+            new ByteArrayInputStream(mp4Data), mp4Data.length, compounded_mdat.length);
+
+    assertSanitizedMetadataEquals(
+        sanitized, ftyp().length, mp4Data.length - metadata.length, metadata);
+  }
+
+  @Test
   public void testBrokenSkipWorkaround() throws Exception {
     // Same setup as testMinimalMp4.
     byte[] metadata = ByteUtil.combine(ftyp(), moov());
@@ -147,6 +161,17 @@ public class Mp4SanitizerTest {
     DataOutputStream mdatDataOutputStream = new DataOutputStream(mdatOutputStream);
 
     mdatDataOutputStream.writeInt(16); // box size
+    mdatDataOutputStream.write("mdat".getBytes()); // box type
+    mdatDataOutputStream.write("12345678".getBytes()); // some fake contents
+
+    return mdatOutputStream.toByteArray();
+  }
+
+  private static byte[] compoundedMdat() throws IOException {
+    ByteArrayOutputStream mdatOutputStream = new ByteArrayOutputStream();
+    DataOutputStream mdatDataOutputStream = new DataOutputStream(mdatOutputStream);
+
+    mdatDataOutputStream.writeInt(0); // box size
     mdatDataOutputStream.write("mdat".getBytes()); // box type
     mdatDataOutputStream.write("12345678".getBytes()); // some fake contents
 

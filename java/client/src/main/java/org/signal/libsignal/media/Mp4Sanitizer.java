@@ -76,4 +76,41 @@ public class Mp4Sanitizer {
       Native.SanitizedMetadata_Destroy(sanitizedMetadataHandle);
     }
   }
+
+  /**
+   * Sanitize an MP4 input featuring multiple MDAT boxes compounded to a single cumulative MDAT box
+   * whose byte length needs to be passed down to MP4 sanitizer
+   *
+   * <p>It's recommended that the given {@link InputStream} be capable of {@code skip}ping, and that
+   * it skips fewer bytes than requested only when the end of stream is reached.
+   *
+   * @param input An MP4 format input stream.
+   * @param length The exact length of the input stream.
+   * @param cumulativeMdatBoxSize The byte length of cumulative, compounded MDAT box
+   * @return The sanitized metadata.
+   * @throws IOException If an IO error on the input occurs.
+   * @throws ParseException If the input could not be parsed.
+   */
+  public static SanitizedMetadata sanitizeFileWithCompoundedMdatBoxes(
+      InputStream input, long length, int cumulativeMdatBoxSize)
+      throws IOException, ParseException {
+    long sanitizedMetadataHandle =
+        filterExceptions(
+            IOException.class,
+            ParseException.class,
+            () ->
+                Native.Mp4Sanitizer_Sanitize_File_With_Compounded_MDAT_Boxes(
+                    TrustedSkipInputStream.makeTrusted(input), length, cumulativeMdatBoxSize));
+    try {
+      byte[] sanitizedMetadata = Native.SanitizedMetadata_GetMetadata(sanitizedMetadataHandle);
+      if (sanitizedMetadata.length == 0) {
+        sanitizedMetadata = null;
+      }
+      long dataOffset = Native.SanitizedMetadata_GetDataOffset(sanitizedMetadataHandle);
+      long dataLength = Native.SanitizedMetadata_GetDataLen(sanitizedMetadataHandle);
+      return new SanitizedMetadata(sanitizedMetadata, dataOffset, dataLength);
+    } finally {
+      Native.SanitizedMetadata_Destroy(sanitizedMetadataHandle);
+    }
+  }
 }

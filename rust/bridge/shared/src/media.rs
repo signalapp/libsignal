@@ -26,7 +26,18 @@ async fn Mp4Sanitizer_Sanitize(
     len: u64,
 ) -> Result<SanitizedMetadata, mp4::Error> {
     let input = AsyncInput::new(input, len);
-    let metadata = mp4::sanitize(input).await?;
+    let metadata = mp4::sanitize(input, None).await?;
+    Ok(SanitizedMetadata(metadata))
+}
+
+#[bridge_fn(ffi = false, node = false)]
+async fn Mp4Sanitizer_Sanitize_File_With_Compounded_MDAT_Boxes(
+    input: &mut dyn InputStream,
+    len: u64,
+    cumulative_mdat_box_size: u32,
+) -> Result<SanitizedMetadata, mp4::Error> {
+    let input = AsyncInput::new(input, len);
+    let metadata = mp4::sanitize(input, Some(cumulative_mdat_box_size)).await?;
     Ok(SanitizedMetadata(metadata))
 }
 

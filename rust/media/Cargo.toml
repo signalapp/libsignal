@@ -11,9 +11,9 @@ workspace = true
 [dependencies]
 futures-util = { workspace = true }
 mediasan-common = { workspace = true }
-mp4san = { version = "0.5.0", optional = true }
+mp4san = { version = "0.5.3", optional = true }
 thiserror = { workspace = true }
-webpsan = { version = "0.5.0", optional = true, default-features = false }
+webpsan = { version = "0.5.3", optional = true, default-features = false }
 
 [features]
 default = ["mp4san", "webpsan"]

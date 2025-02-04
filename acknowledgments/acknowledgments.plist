@@ -6553,7 +6553,7 @@ SOFTWARE.
 			<key>License</key>
 			<string>MIT License</string>
 			<key>Title</key>
-			<string>mediasan-common 0.5.1, mp4san-derive 0.5.1, mp4san 0.5.1, webpsan 0.5.1</string>
+			<string>mediasan-common 0.5.3, mp4san-derive 0.5.3, mp4san 0.5.3, webpsan 0.5.3</string>
 			<key>Type</key>
 			<string>PSGroupSpecifier</string>
 		</dict>
@@ -7177,7 +7177,7 @@ SOFTWARE.
 			<key>License</key>
 			<string>MIT License</string>
 			<key>Title</key>
-			<string>darling 0.14.4, darling_core 0.14.4, darling_macro 0.14.4</string>
+			<string>darling 0.20.10, darling_core 0.20.10, darling_macro 0.20.10</string>
 			<key>Type</key>
 			<string>PSGroupSpecifier</string>
 		</dict>
@@ -8060,7 +8060,7 @@ SOFTWARE.
 			<key>License</key>
 			<string>MIT License</string>
 			<key>Title</key>
-			<string>strsim 0.10.0, strsim 0.11.1</string>
+			<string>strsim 0.11.1</string>
 			<key>Type</key>
 			<string>PSGroupSpecifier</string>
 		</dict>
@@ -8309,7 +8309,7 @@ SOFTWARE.
 			<key>License</key>
 			<string>MIT License</string>
 			<key>Title</key>
-			<string>derive_builder 0.12.0, derive_builder_core 0.12.0, derive_builder_macro 0.12.0</string>
+			<string>derive_builder 0.20.2, derive_builder_core 0.20.2, derive_builder_macro 0.20.2</string>
 			<key>Type</key>
 			<string>PSGroupSpecifier</string>
 		</dict>

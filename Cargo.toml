@@ -121,7 +121,7 @@ libc = "0.2"
 linkme = "0.3.9"
 log = "0.4"
 log-panics = "2.1.0"
-mediasan-common = "0.5.0"
+mediasan-common = "0.5.3"
 neon = { version = "1.0.0", default-features = false }
 nonzero_ext = "0.3.0"
 num_enum = "0.7.2"
