@@ -6,8 +6,8 @@
 name = "libsignal-message-backup"
 version = "0.1.0"
 edition = "2021"
-authors = ["Signal Messenger LLC"]
-license = "AGPL-3.0-only"
+authors.workspace = true
+license.workspace = true
 
 [lints]
 workspace = true

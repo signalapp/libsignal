@@ -5,11 +5,11 @@
 
 [package]
 name = "libsignal-account-keys"
-authors = ["Signal Messenger LLC"]
+authors.workspace = true
+license.workspace = true
 version = "0.1.0"
 edition = "2021"
 description = "Operations for various account-associated keys"
-license = "AGPL-3.0-only"
 
 [lints]
 workspace = true

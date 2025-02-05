@@ -6,10 +6,10 @@
 [package]
 name = "zkgroup"
 version = "0.9.0"
-authors = ["Signal Messenger LLC"]
+authors.workspace = true
+license.workspace = true
 edition = "2021"
 description = "A zero-knowledge group library"
-license = "AGPL-3.0-only"
 
 [lints]
 workspace = true

@@ -46,10 +46,7 @@ VERSION_FILES = [
     (os.path.join('java', 'build.gradle'), GRADLE_PATTERN),
     (os.path.join('node', 'package.json'), NODE_PATTERN),
     (os.path.join('rust', 'core', 'src', 'version.rs'), RUST_PATTERN),
-    (bridge_path('ffi'), CARGO_PATTERN),
-    (bridge_path('jni'), CARGO_PATTERN),
-    (bridge_path('jni', 'testing'), CARGO_PATTERN),
-    (bridge_path('node'), CARGO_PATTERN),
+    ('Cargo.toml', CARGO_PATTERN),
 ]
 
 

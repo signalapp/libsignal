@@ -2367,7 +2367,7 @@ dependencies = [
 
 [[package]]
 name = "libsignal-jni-impl"
-version = "0.65.5"
+version = "0.65.7"
 dependencies = [
  "cfg-if",
  "cpufeatures",
