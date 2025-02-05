@@ -13,7 +13,8 @@ use libsignal_bridge_types::net::chat::{
 use libsignal_bridge_types::net::TokioAsyncContext;
 use libsignal_net::chat::fake::FakeChatRemote;
 use libsignal_net::chat::{
-    self, ChatServiceError, DebugInfo as ChatServiceDebugInfo, Response as ChatResponse,
+    self, ChatServiceError, DebugInfo as ChatServiceDebugInfo, RequestProto,
+    Response as ChatResponse,
 };
 use libsignal_net::infra::ws::WebSocketServiceError;
 use libsignal_net::infra::IpType;
@@ -27,10 +28,18 @@ pub struct FakeChatConnection {
 
 pub struct FakeChatRemoteEnd(FakeChatRemote);
 
+pub struct FakeChatSentRequest {
+    // Hold as an Option so that the value can be taken.
+    http: Option<HttpRequest>,
+    id: u64,
+}
+
 bridge_as_handle!(FakeChatConnection);
 bridge_handle_fns!(FakeChatConnection, clone = false);
 bridge_as_handle!(FakeChatRemoteEnd);
 bridge_handle_fns!(FakeChatRemoteEnd, clone = false);
+bridge_as_handle!(FakeChatSentRequest, mut = true);
+bridge_handle_fns!(FakeChatSentRequest, clone = false);
 
 impl std::panic::RefUnwindSafe for FakeChatConnection {}
 impl std::panic::RefUnwindSafe for FakeChatRemoteEnd {}
@@ -69,10 +78,67 @@ fn TESTING_FakeChatRemoteEnd_SendRawServerRequest(chat: &FakeChatRemoteEnd, byte
 }
 
 #[bridge_fn]
+fn TESTING_FakeChatRemoteEnd_SendRawServerResponse(chat: &FakeChatRemoteEnd, bytes: &[u8]) {
+    chat.0
+        .send_response(prost::Message::decode(bytes).expect("invalid Response proto"))
+        .expect("chat task finished")
+}
+
+#[bridge_fn]
 fn TESTING_FakeChatRemoteEnd_InjectConnectionInterrupted(chat: &FakeChatRemoteEnd) {
     chat.0
         .send_close(Some(1008 /* Policy Violation */))
         .expect("chat task finished")
+}
+
+#[bridge_io(TokioAsyncContext)]
+async fn TESTING_FakeChatRemoteEnd_ReceiveIncomingRequest(
+    chat: &FakeChatRemoteEnd,
+) -> Option<FakeChatSentRequest> {
+    let request = chat
+        .0
+        .receive_request()
+        .await
+        .expect("message was invalid")?;
+    let RequestProto {
+        verb,
+        path,
+        body,
+        headers,
+        id,
+    } = request;
+
+    let http_request = HttpRequest {
+        method: verb.unwrap().as_str().try_into().unwrap(),
+        path: path.unwrap().try_into().unwrap(),
+        body: body.map(Vec::into_boxed_slice),
+        headers: headers
+            .into_iter()
+            .map(|header| {
+                let (name, value) = header.split_once(":").expect("previously parsed");
+                (
+                    name.trim().try_into().unwrap(),
+                    value.trim().try_into().unwrap(),
+                )
+            })
+            .collect::<HeaderMap>()
+            .into(),
+    };
+
+    Some(FakeChatSentRequest {
+        http: Some(http_request),
+        id: id.unwrap(),
+    })
+}
+
+#[bridge_fn]
+fn TESTING_FakeChatSentRequest_TakeHttpRequest(request: &mut FakeChatSentRequest) -> HttpRequest {
+    request.http.take().expect("not taken yet")
+}
+
+#[bridge_fn]
+fn TESTING_FakeChatSentRequest_RequestId(request: &FakeChatSentRequest) -> u64 {
+    request.id
 }
 
 #[bridge_fn]

@@ -6,30 +6,33 @@ use std::fmt::Debug;
 use std::marker::PhantomData;
 use std::time::Duration;
 
-use futures_util::{Sink, SinkExt as _, Stream};
+use futures_util::{Sink, Stream};
 use libsignal_net_infra::{IpType, TransportInfo};
 use pin_project::pin_project;
 use prost::Message;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
-use crate::chat::{ws2, ChatConnection, ConnectionInfo};
+use crate::chat::{ws2, ChatConnection, ConnectionInfo, MessageProto, RequestProto, ResponseProto};
 use crate::connect_state::RouteInfo;
-use crate::proto;
-
-pub type MessageProto = proto::chat_websocket::WebSocketMessage;
-pub type RequestProto = proto::chat_websocket::WebSocketRequestMessage;
-pub type ResponseProto = proto::chat_websocket::WebSocketResponseMessage;
-pub type ChatMessageType = proto::chat_websocket::web_socket_message::Type;
 
 /// The remote end of a fake connection to the chat server.
 #[derive(Debug)]
 pub struct FakeChatRemote {
     tx: tokio::sync::mpsc::UnboundedSender<Result<tungstenite::Message, tungstenite::Error>>,
+    rx: tokio::sync::Mutex<tokio::sync::mpsc::UnboundedReceiver<tungstenite::Message>>,
 }
 
 /// Error returned when a send fails because the client end has finished.
 #[derive(Clone, Debug, Default, Eq, Hash, PartialEq)]
 pub struct Disconnected;
+
+/// Error returned when a receive fails because the request is invalid.
+#[derive(Debug, derive_more::From)]
+pub enum ReceiveRequestError {
+    InvalidProto(String),
+    InvalidWebsocketMessageType,
+    GotResponse,
+}
 
 impl ChatConnection {
     /// Creates a `ChatConnection` connected to a fake remote end.
@@ -38,11 +41,20 @@ impl ChatConnection {
         listener: ws2::EventListener,
     ) -> (Self, FakeChatRemote) {
         let (tx_to_local, rx_from_remote) = tokio::sync::mpsc::unbounded_channel();
+        let (tx_to_remote, rx_from_local) = tokio::sync::mpsc::unbounded_channel();
 
-        let remote = FakeChatRemote { tx: tx_to_local };
+        let remote = FakeChatRemote {
+            tx: tx_to_local,
+            rx: rx_from_local.into(),
+        };
 
         let incoming = UnboundedReceiverStream::new(rx_from_remote);
-        let outgoing = futures_util::sink::drain().sink_map_err(|never| match never {});
+        let outgoing = futures_util::sink::unfold(tx_to_remote, |tx, message| async move {
+            tx.send(message).map_err(|_send_failed| {
+                tungstenite::Error::Io(std::io::ErrorKind::BrokenPipe.into())
+            })?;
+            Ok(tx)
+        });
         let local = StreamSink(incoming, outgoing, PhantomData);
 
         let connection_info = ConnectionInfo {
@@ -80,6 +92,34 @@ impl FakeChatRemote {
             .map_err(|_failed_send| Disconnected)
     }
 
+    /// Send a [`ResponseProto`] to the client.
+    pub fn send_response(&self, response: ResponseProto) -> Result<(), Disconnected> {
+        log::debug!("sending binary ResponseProto");
+        let proto = MessageProto {
+            r#type: Some(crate::proto::chat_websocket::web_socket_message::Type::Response.into()),
+            request: None,
+            response: Some(response),
+        };
+        self.tx
+            .send(Ok(tungstenite::Message::Binary(proto.encode_to_vec())))
+            .map_err(|_failed_send| Disconnected)
+    }
+
+    pub async fn receive_request(&self) -> Result<Option<RequestProto>, ReceiveRequestError> {
+        log::debug!("waiting for next request");
+        let Some(message) = self.rx.lock().await.recv().await else {
+            return Ok(None);
+        };
+        let proto = match message {
+            tungstenite::Message::Binary(message) => ws2::decode_and_validate(&message)?,
+            _ => return Err(ReceiveRequestError::InvalidWebsocketMessageType),
+        };
+        match proto {
+            ws2::ChatMessageProto::Request(request) => Ok(Some(request)),
+            ws2::ChatMessageProto::Response(_) => Err(ReceiveRequestError::GotResponse),
+        }
+    }
+
     /// Send a close frame to the client.
     pub fn send_close(&self, code: Option<u16>) -> Result<(), Disconnected> {
         self.tx
@@ -90,6 +130,12 @@ impl FakeChatRemote {
                 }
             }))))
             .map_err(|_failed_send| Disconnected)
+    }
+}
+
+impl From<ws2::ChatProtoDataError> for ReceiveRequestError {
+    fn from(value: ws2::ChatProtoDataError) -> Self {
+        Self::InvalidProto(value.to_string())
     }
 }
 

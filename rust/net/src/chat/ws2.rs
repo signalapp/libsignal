@@ -431,7 +431,7 @@ enum ChatProtocolError {
 }
 
 #[derive(Debug, displaydoc::Display)]
-enum ChatProtoDataError {
+pub(super) enum ChatProtoDataError {
     /// protobuf decode failed
     InvalidProtobuf(prost::DecodeError),
     /// unrecognized message type {0}
@@ -1009,7 +1009,7 @@ impl TryFrom<TextOrBinary> for ChatMessage {
     }
 }
 
-enum ChatMessageProto {
+pub(super) enum ChatMessageProto {
     Request(RequestProto),
     Response(ResponseProto),
 }
@@ -1030,7 +1030,7 @@ impl From<ChatMessageProto> for MessageProto {
     }
 }
 
-fn decode_and_validate(data: &[u8]) -> Result<ChatMessageProto, ChatProtoDataError> {
+pub(super) fn decode_and_validate(data: &[u8]) -> Result<ChatMessageProto, ChatProtoDataError> {
     let msg = MessageProto::decode(data).map_err(ChatProtoDataError::InvalidProtobuf)?;
     let MessageProto {
         r#type,

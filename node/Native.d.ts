@@ -551,7 +551,11 @@ export function TESTING_FakeChatConnection_Create(tokio: Wrapper<TokioAsyncConte
 export function TESTING_FakeChatConnection_TakeAuthenticatedChat(chat: Wrapper<FakeChatConnection>): AuthenticatedChatConnection;
 export function TESTING_FakeChatConnection_TakeRemote(chat: Wrapper<FakeChatConnection>): FakeChatRemoteEnd;
 export function TESTING_FakeChatRemoteEnd_InjectConnectionInterrupted(chat: Wrapper<FakeChatRemoteEnd>): void;
+export function TESTING_FakeChatRemoteEnd_ReceiveIncomingRequest(asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<FakeChatRemoteEnd>): CancellablePromise<FakeChatSentRequest | null>;
 export function TESTING_FakeChatRemoteEnd_SendRawServerRequest(chat: Wrapper<FakeChatRemoteEnd>, bytes: Buffer): void;
+export function TESTING_FakeChatRemoteEnd_SendRawServerResponse(chat: Wrapper<FakeChatRemoteEnd>, bytes: Buffer): void;
+export function TESTING_FakeChatSentRequest_RequestId(request: Wrapper<FakeChatSentRequest>): bigint;
+export function TESTING_FakeChatSentRequest_TakeHttpRequest(request: Wrapper<FakeChatSentRequest>): HttpRequest;
 export function TESTING_FutureFailure(asyncRuntime: Wrapper<NonSuspendingBackgroundThreadRuntime>, _input: number): CancellablePromise<number>;
 export function TESTING_FutureProducesOtherPointerType(asyncRuntime: Wrapper<NonSuspendingBackgroundThreadRuntime>, input: string): CancellablePromise<OtherTestingHandleType>;
 export function TESTING_FutureProducesPointerType(asyncRuntime: Wrapper<NonSuspendingBackgroundThreadRuntime>, input: number): CancellablePromise<TestingHandleType>;
@@ -625,6 +629,7 @@ interface ExpiringProfileKeyCredential { readonly __type: unique symbol; }
 interface ExpiringProfileKeyCredentialResponse { readonly __type: unique symbol; }
 interface FakeChatConnection { readonly __type: unique symbol; }
 interface FakeChatRemoteEnd { readonly __type: unique symbol; }
+interface FakeChatSentRequest { readonly __type: unique symbol; }
 interface Fingerprint { readonly __type: unique symbol; }
 interface GroupMasterKey { readonly __type: unique symbol; }
 interface GroupPublicParams { readonly __type: unique symbol; }

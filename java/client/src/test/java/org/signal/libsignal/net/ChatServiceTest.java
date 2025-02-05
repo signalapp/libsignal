@@ -454,6 +454,14 @@ public class ChatServiceTest {
                 chatHandle, Base64.decode(requestBase64)));
   }
 
+  private void injectServerResponse(
+      AuthenticatedChatConnection.FakeChatRemote fakeRemote, String requestBase64) {
+    fakeRemote.guardedRun(
+        chatHandle ->
+            NativeTesting.TESTING_FakeChatRemoteEnd_SendRawServerResponse(
+                chatHandle, Base64.decode(requestBase64)));
+  }
+
   @Test
   public void testConnectionListenerCallbacks() throws Exception {
     class Listener implements ChatConnectionListener {
@@ -566,6 +574,52 @@ public class ChatServiceTest {
 
     listener.latch.await();
     assertNull(listener.error);
+
+    // Make sure the chat object doesn't get GC'd early.
+    Native.keepAlive(chat);
+  }
+
+  @Test
+  public void testSending() throws Exception {
+    final TokioAsyncContext tokioAsyncContext = new TokioAsyncContext();
+    final Pair<AuthenticatedChatConnection, AuthenticatedChatConnection.FakeChatRemote>
+        chatAndFakeRemote = AuthenticatedChatConnection.fakeConnect(tokioAsyncContext, null);
+    final AuthenticatedChatConnection chat = chatAndFakeRemote.first();
+    final AuthenticatedChatConnection.FakeChatRemote fakeRemote = chatAndFakeRemote.second();
+
+    var request =
+        new AuthenticatedChatConnection.Request(
+            "PUT", "/some/path", Map.of("purpose", "test request"), new byte[] {1, 1, 2, 3}, 5000);
+    var responseFuture = chat.send(request);
+
+    var requestFromServerWithId = fakeRemote.getNextIncomingRequest().get();
+    var requestFromServer = requestFromServerWithId.first();
+    assertEquals(
+        requestFromServer.guardedMap(NativeTesting::TESTING_ChatRequestGetMethod),
+        request.method());
+    assertEquals(
+        requestFromServer.guardedMap(NativeTesting::TESTING_ChatRequestGetPath),
+        request.pathAndQuery());
+    assertArrayEquals(
+        requestFromServer.guardedMap(NativeTesting::TESTING_ChatRequestGetBody), request.body());
+    assertEquals(
+        requestFromServer.guardedMap(
+            req -> NativeTesting.TESTING_ChatRequestGetHeaderValue(req, "purpose")),
+        "test request");
+    assertEquals(requestFromServerWithId.second(), Long.valueOf(0));
+
+    // 1: 0
+    // 2: 201
+    // 3: {"Created"}
+    // 5: {"purpose: test response"}
+    // 4: {5}
+    injectServerResponse(fakeRemote, "CAAQyQEaB0NyZWF0ZWQqFnB1cnBvc2U6IHRlc3QgcmVzcG9uc2UiAQU=");
+
+    var responseFromServer = responseFuture.get();
+    assertEquals(responseFromServer.status(), 201);
+    assertEquals(responseFromServer.message(), "Created");
+    assertEquals(responseFromServer.headers(), Map.of("purpose", "test response"));
+    assertArrayEquals(responseFromServer.body(), new byte[] {5});
 
     // Make sure the chat object doesn't get GC'd early.
     Native.keepAlive(chat);

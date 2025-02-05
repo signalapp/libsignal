@@ -96,7 +96,7 @@ extension ChatConnection {
 /// Before an obtained instance can be used, it must be started by calling ``AuthenticatedChatConnection/start(listener:)``.
 public class AuthenticatedChatConnection: NativeHandleOwner<
     SignalMutPointerAuthenticatedChatConnection
->, ChatConnection {
+>, ChatConnection, @unchecked Sendable {
     internal let tokioAsyncContext: TokioAsyncContext
 
     /// Initiates establishing of the underlying unauthenticated connection to the Chat Service. Once
@@ -225,7 +225,7 @@ extension SignalConstPointerAuthenticatedChatConnection: SignalConstPointer {
 /// Before an obtained instance can be used, it must be started by calling ``UnauthenticatedChatConnection/start(listener:)``.
 public class UnauthenticatedChatConnection: NativeHandleOwner<
     SignalMutPointerUnauthenticatedChatConnection
->, ChatConnection {
+>, ChatConnection, @unchecked Sendable {
     internal let tokioAsyncContext: TokioAsyncContext
 
     /// Initiates establishing of the underlying unauthenticated connection to

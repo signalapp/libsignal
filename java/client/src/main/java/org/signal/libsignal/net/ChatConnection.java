@@ -162,6 +162,10 @@ public abstract class ChatConnection extends NativeHandleGuard.SimpleOwner {
               () -> Native.HttpRequest_new(method, pathAndQuery, body)));
     }
 
+    InternalRequest(long handle) {
+      super(handle);
+    }
+
     @Override
     protected void release(final long nativeHandle) {
       Native.HttpRequest_Destroy(nativeHandle);

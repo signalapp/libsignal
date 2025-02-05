@@ -85,6 +85,7 @@ public class AuthenticatedChatConnection extends ChatConnection {
           bridgeListener.setChat(chat);
           FakeChatRemote fakeRemote =
               new FakeChatRemote(
+                  tokioAsyncContext,
                   NativeTesting.TESTING_FakeChatConnection_TakeRemote(fakeChatConnection));
           NativeTesting.FakeChatConnection_Destroy(fakeChatConnection);
           return new Pair<>(chat, fakeRemote);
@@ -92,8 +93,33 @@ public class AuthenticatedChatConnection extends ChatConnection {
   }
 
   static class FakeChatRemote extends NativeHandleGuard.SimpleOwner {
-    private FakeChatRemote(long nativeHandle) {
+    private TokioAsyncContext tokioContext;
+
+    private FakeChatRemote(TokioAsyncContext tokioContext, long nativeHandle) {
       super(nativeHandle);
+      this.tokioContext = tokioContext;
+    }
+
+    public CompletableFuture<Pair<InternalRequest, Long>> getNextIncomingRequest() {
+      return tokioContext
+          .guardedMap(
+              asyncContextHandle ->
+                  this.guardedMap(
+                      fakeRemote ->
+                          NativeTesting.TESTING_FakeChatRemoteEnd_ReceiveIncomingRequest(
+                              asyncContextHandle, fakeRemote)))
+          .thenApply(
+              sentRequest -> {
+                try {
+                  var httpRequest =
+                      new InternalRequest(
+                          NativeTesting.TESTING_FakeChatSentRequest_TakeHttpRequest(sentRequest));
+                  var requestId = NativeTesting.TESTING_FakeChatSentRequest_RequestId(sentRequest);
+                  return new Pair<>(httpRequest, requestId);
+                } finally {
+                  NativeTesting.FakeChatSentRequest_Destroy(sentRequest);
+                }
+              });
     }
 
     @Override

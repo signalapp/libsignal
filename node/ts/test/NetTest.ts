@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import { config, expect, use } from 'chai';
+import { assert, config, expect, use } from 'chai';
 import * as chaiAsPromised from 'chai-as-promised';
 import * as sinon from 'sinon';
 import * as sinonChai from 'sinon-chai';
@@ -709,6 +709,73 @@ describe('chat service api', () => {
         });
       });
     });
+  });
+
+  it('chat connection can send requests and receive responses', async () => {
+    const tokio = new TokioAsyncContext(Native.TokioAsyncContext_new());
+    const [chat, fakeRemote] = AuthenticatedChatConnection.fakeConnect(tokio, {
+      onIncomingMessage: () => {},
+      onQueueEmpty: () => {},
+      onConnectionInterrupted: () => {},
+    });
+
+    const request = {
+      verb: 'PUT',
+      path: '/some/path',
+      headers: [['purpose', 'test request']] as [[string, string]],
+      body: Buffer.of(1, 1, 2, 3),
+    };
+    const responseFuture = chat.fetch(request);
+
+    const requestFromServerWithId =
+      await Native.TESTING_FakeChatRemoteEnd_ReceiveIncomingRequest(
+        tokio,
+        fakeRemote
+      );
+    assert(requestFromServerWithId !== null);
+    const requestFromServer = {
+      _nativeHandle: Native.TESTING_FakeChatSentRequest_TakeHttpRequest({
+        _nativeHandle: requestFromServerWithId,
+      }),
+    };
+    const requestId = Native.TESTING_FakeChatSentRequest_RequestId({
+      _nativeHandle: requestFromServerWithId,
+    });
+
+    expect(Native.TESTING_ChatRequestGetMethod(requestFromServer)).to.eq(
+      request.verb
+    );
+    expect(Native.TESTING_ChatRequestGetPath(requestFromServer)).to.eq(
+      request.path
+    );
+    expect(Native.TESTING_ChatRequestGetBody(requestFromServer)).to.deep.eq(
+      request.body
+    );
+    expect(
+      Native.TESTING_ChatRequestGetHeaderValue(requestFromServer, 'purpose')
+    ).to.eq('test request');
+    expect(requestId).to.eq(0n);
+
+    // 1: 0
+    // 2: 201
+    // 3: {"Created"}
+    // 5: {"purpose: test response"}
+    // 4: {5}
+    Native.TESTING_FakeChatRemoteEnd_SendRawServerResponse(
+      fakeRemote,
+      Buffer.from(
+        'CAAQyQEaB0NyZWF0ZWQqFnB1cnBvc2U6IHRlc3QgcmVzcG9uc2UiAQU=',
+        'base64'
+      )
+    );
+
+    const responseFromServer = await responseFuture;
+    expect(responseFromServer).property('status').to.eq(201);
+    expect(responseFromServer).property('message').to.eq('Created');
+    expect(responseFromServer)
+      .property('headers')
+      .to.deep.eq([['purpose', 'test response']]);
+    expect(responseFromServer).property('body').to.deep.eq(Buffer.of(5));
   });
 
   it('client can respond with http status code to a server message', () => {
