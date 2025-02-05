@@ -17,7 +17,9 @@ use attest::svr2::RaftConfig;
 use base64::prelude::{Engine, BASE64_STANDARD};
 use clap::Parser;
 use hex_literal::hex;
+use http::HeaderName;
 use libsignal_net::auth::Auth;
+use libsignal_net::connect_state::{ConnectState, SUGGESTED_CONNECT_CONFIG};
 use libsignal_net::enclave::{
     self, EnclaveEndpoint, EnclaveEndpointConnection, EndpointParams, MrEnclave, PpssSetup, Sgx,
     Svr3Flavor,
@@ -27,11 +29,12 @@ use libsignal_net::env::{
 };
 use libsignal_net::infra::certs::RootCertificates;
 use libsignal_net::infra::dns::DnsResolver;
-use libsignal_net::infra::tcp_ssl::DirectConnector as TcpSslTransportConnector;
 use libsignal_net::infra::utils::ObservableEvent;
 use libsignal_net::svr::SvrConnection;
 use libsignal_net::svr3::traits::*;
 use libsignal_net::svr3::OpaqueMaskedShareSet;
+use libsignal_net_infra::route::DirectOrProxyProvider;
+use libsignal_net_infra::EnableDomainFronting;
 use nonzero_ext::nonzero;
 use rand_core::{CryptoRngCore, OsRng, RngCore};
 
@@ -105,24 +108,37 @@ struct Client {
 impl Svr3Connect for Client {
     type Env = TwoForTwoEnv<'static, Sgx, Sgx>;
 
-    async fn connect(&self) -> <Self::Env as PpssSetup>::ConnectionResults {
+    async fn connect<'s>(&'s self) -> <Self::Env as PpssSetup>::ConnectionResults {
+        let connect_state = ConnectState::new(SUGGESTED_CONNECT_CONFIG);
         let network_change_event = ObservableEvent::default();
-        let connector = TcpSslTransportConnector::new(DnsResolver::new(&network_change_event));
-        let connection_a = EnclaveEndpointConnection::new(
-            &self.env.0,
-            Duration::from_secs(10),
-            &network_change_event,
-        );
+        let dns_resolver = DnsResolver::new(&network_change_event);
 
-        let a = SvrConnection::connect(self.auth_a.clone(), &connection_a, connector.clone()).await;
+        const CONNECT_TIMEOUT: Duration = Duration::from_secs(15);
 
-        let connection_b = EnclaveEndpointConnection::new(
-            &self.env.1,
-            Duration::from_secs(10),
-            &network_change_event,
-        );
+        let connect_inner = |env: &'s EnclaveEndpoint<'s, Sgx>, ws_config, auth| {
+            SvrConnection::connect(
+                &connect_state,
+                &dns_resolver,
+                DirectOrProxyProvider::maybe_proxied(
+                    env.route_provider(EnableDomainFronting(false)),
+                    None,
+                ),
+                env.domain_config
+                    .connect
+                    .confirmation_header_name
+                    .map(HeaderName::from_static),
+                ws_config,
+                &env.params,
+                auth,
+            )
+        };
+        let ws_config = |env| {
+            EnclaveEndpointConnection::new(env, CONNECT_TIMEOUT, &network_change_event).ws2_config()
+        };
 
-        let b = SvrConnection::connect(self.auth_b.clone(), &connection_b, connector).await;
+        let a = connect_inner(&self.env.0, ws_config(&self.env.0), self.auth_a.clone()).await;
+
+        let b = connect_inner(&self.env.1, ws_config(&self.env.1), self.auth_b.clone()).await;
         (a, b)
     }
 }

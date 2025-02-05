@@ -11,22 +11,27 @@ use std::sync::Arc;
 use aes_gcm_siv::aead::rand_core::CryptoRngCore;
 use async_trait::async_trait;
 use futures_util::future::join3;
+use http::HeaderName;
 use libsignal_net::auth::Auth;
 use libsignal_net::connect_state::{ConnectState, SUGGESTED_CONNECT_CONFIG};
 use libsignal_net::enclave::{
-    Cdsi, EnclaveEndpoint, EnclaveEndpointConnection, EnclaveKind, Nitro, PpssSetup, Sgx, Tpm2Snp,
+    Cdsi, EnclaveEndpoint, EnclaveEndpointConnection, EnclaveKind, NewHandshake, Nitro, PpssSetup,
+    Sgx, Svr3Flavor, Tpm2Snp,
 };
 use libsignal_net::env::{add_user_agent_header, Env, Svr3Env, UserAgent};
 use libsignal_net::infra::connection_manager::MultiRouteConnectionManager;
 use libsignal_net::infra::dns::DnsResolver;
-use libsignal_net::infra::route::ConnectionProxyConfig;
+use libsignal_net::infra::route::{
+    ConnectionProxyConfig, DirectOrProxyProvider, RouteProviderExt as _,
+};
 use libsignal_net::infra::tcp_ssl::{InvalidProxyConfig, TcpSslConnector};
 use libsignal_net::infra::timeouts::ONE_ROUTE_CONNECTION_TIMEOUT;
 use libsignal_net::infra::utils::ObservableEvent;
-use libsignal_net::infra::{EnableDomainFronting, EndpointConnection};
+use libsignal_net::infra::{AsHttpHeader as _, EnableDomainFronting, EndpointConnection};
 use libsignal_net::svr::SvrConnection;
 use libsignal_net::svr3::traits::*;
 use libsignal_net::svr3::{Error, OpaqueMaskedShareSet};
+use libsignal_net::ws::WebSocketServiceConnectError;
 use libsignal_svr3::EvaluationResult;
 
 use crate::*;
@@ -282,15 +287,104 @@ impl Svr3Connect for Svr3Client<'_, CurrentVersion> {
         let ConnectionManager {
             endpoints,
             transport_connector,
+            connect,
+            dns_resolver,
+            env,
+            user_agent,
             ..
         } = &self.connection_manager;
-        let transport_connector = transport_connector.lock().expect("not poisoned").clone();
-        let endpoints = endpoints.lock().expect("not poisoned").clone();
-        let (sgx, nitro, tpm2snp) = &endpoints.svr3;
+        let proxy_config: Option<libsignal_net::infra::route::ConnectionProxyConfig> =
+            match (&*transport_connector.lock().expect("not poisoned")).try_into() {
+                Ok(proxy_config) => proxy_config,
+                Err(_) => {
+                    let err = || {
+                        libsignal_net::svr::Error::WebSocketConnect(
+                            WebSocketServiceConnectError::invalid_proxy_configuration(),
+                        )
+                    };
+                    return (Err(err()), Err(err()), Err(err()));
+                }
+            };
+
+        let (enable_domain_fronting, sgx_ws, nitro_ws, tpm2snp_ws) = {
+            let guard = endpoints.lock().expect("not poisoned");
+            (
+                guard.enable_fronting,
+                guard.svr3.0.ws2_config(),
+                guard.svr3.1.ws2_config(),
+                guard.svr3.2.ws2_config(),
+            )
+        };
+        let (sgx, nitro, tpm2snp) = (env.svr3.sgx(), env.svr3.nitro(), env.svr3.tpm2snp());
+
+        async fn connect_one<Enclave>(
+            connect_state: &::tokio::sync::RwLock<ConnectState>,
+            dns_resolver: &DnsResolver,
+            user_agent: &UserAgent,
+            enable_domain_fronting: EnableDomainFronting,
+            endpoint: &EnclaveEndpoint<'static, Enclave>,
+            ws_config: libsignal_net::infra::ws2::Config,
+            proxy_config: Option<&libsignal_net::infra::route::ConnectionProxyConfig>,
+            auth: &Auth,
+        ) -> Result<SvrConnection<Enclave>, libsignal_net::enclave::Error>
+        where
+            Enclave: Svr3Flavor + NewHandshake + Sized,
+        {
+            SvrConnection::connect(
+                connect_state,
+                dns_resolver,
+                DirectOrProxyProvider::maybe_proxied(
+                    endpoint
+                        .route_provider(enable_domain_fronting)
+                        .map_routes(|mut route| {
+                            route.fragment.headers.extend([user_agent.as_header()]);
+                            route
+                        }),
+                    proxy_config.cloned(),
+                ),
+                endpoint
+                    .domain_config
+                    .connect
+                    .confirmation_header_name
+                    .map(HeaderName::from_static),
+                ws_config,
+                &endpoint.params,
+                auth.clone(),
+            )
+            .await
+        }
+
         let (sgx, nitro, tpm2snp) = join3(
-            SvrConnection::connect(self.auth.clone(), sgx, transport_connector.clone()),
-            SvrConnection::connect(self.auth.clone(), nitro, transport_connector.clone()),
-            SvrConnection::connect(self.auth.clone(), tpm2snp, transport_connector),
+            connect_one(
+                connect,
+                dns_resolver,
+                user_agent,
+                enable_domain_fronting,
+                sgx,
+                sgx_ws,
+                proxy_config.as_ref(),
+                &self.auth,
+            ),
+            connect_one(
+                connect,
+                dns_resolver,
+                user_agent,
+                enable_domain_fronting,
+                nitro,
+                nitro_ws,
+                proxy_config.as_ref(),
+                &self.auth,
+            ),
+            connect_one(
+                connect,
+                dns_resolver,
+                user_agent,
+                enable_domain_fronting,
+                tpm2snp,
+                tpm2snp_ws,
+                proxy_config.as_ref(),
+                &self.auth,
+            ),
         )
         .await;
         (sgx, nitro, tpm2snp)

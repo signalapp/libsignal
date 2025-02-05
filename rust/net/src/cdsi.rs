@@ -25,7 +25,7 @@ use uuid::Uuid;
 
 use crate::auth::Auth;
 use crate::connect_state::ConnectState;
-use crate::enclave::{Cdsi, EnclaveEndpointConnection, EndpointParams, NewHandshake as _};
+use crate::enclave::{Cdsi, EnclaveEndpointConnection, EndpointParams};
 use crate::proto::cds2::{ClientRequest, ClientResponse};
 use crate::ws::WebSocketServiceConnectError;
 
@@ -366,7 +366,7 @@ impl CdsiConnection {
             confirmation_header_name,
             ws_config,
             "cdsi".into(),
-            move |attestation_message| Cdsi::new_handshake(params, attestation_message),
+            params,
         )
         .await?;
         Ok(Self(connection))

@@ -4,23 +4,23 @@
 //
 
 use std::marker::PhantomData;
-use std::sync::Arc;
 
-use libsignal_net_infra::connection_manager::ConnectionManager;
-use libsignal_net_infra::host::Host;
+use http::HeaderName;
+use libsignal_net_infra::dns::DnsResolver;
+use libsignal_net_infra::route::{RouteProvider, UnresolvedWebsocketServiceRoute};
 use libsignal_net_infra::ws2::attested::AttestedConnection;
-use libsignal_net_infra::TransportConnector;
 
 use crate::auth::Auth;
+use crate::connect_state::{ConnectState, RouteInfo};
 pub use crate::enclave::Error;
 use crate::enclave::{
-    ConnectionLabel, EnclaveEndpointConnection, IntoAttestedConnection, LabeledConnection,
-    NewHandshake, Svr3Flavor,
+    ConnectionLabel, EndpointParams, IntoAttestedConnection, LabeledConnection, NewHandshake,
+    Svr3Flavor,
 };
 
 pub struct SvrConnection<Flavor: Svr3Flavor> {
     inner: AttestedConnection,
-    remote_address: Host<Arc<str>>,
+    remote_address: RouteInfo,
     witness: PhantomData<Flavor>,
 }
 
@@ -36,26 +36,30 @@ impl<E: Svr3Flavor> SvrConnection<E>
 where
     E: Svr3Flavor + NewHandshake + Sized,
 {
-    pub async fn connect<C, T>(
+    pub async fn connect(
+        connect: &tokio::sync::RwLock<ConnectState>,
+        resolver: &DnsResolver,
+        route_provider: impl RouteProvider<Route = UnresolvedWebsocketServiceRoute>,
+        confirmation_header_name: Option<HeaderName>,
+        ws_config: crate::infra::ws2::Config,
+        params: &EndpointParams<'_, E>,
         auth: Auth,
-        connection: &EnclaveEndpointConnection<E, C>,
-        transport_connector: T,
-    ) -> Result<Self, Error>
-    where
-        C: ConnectionManager,
-        T: TransportConnector,
-    {
-        connection
-            .connect(
-                auth,
-                transport_connector,
-                format!("svr3:{}", std::any::type_name::<E>()).into(),
-            )
-            .await
-            .map(|(connection, info)| Self {
-                inner: connection,
-                remote_address: info.address,
-                witness: PhantomData,
-            })
+    ) -> Result<Self, Error> {
+        ConnectState::connect_attested_ws(
+            connect,
+            route_provider,
+            auth,
+            resolver,
+            confirmation_header_name,
+            ws_config,
+            format!("svr3:{}", std::any::type_name::<E>()).into(),
+            params,
+        )
+        .await
+        .map(|(connection, info)| Self {
+            inner: connection,
+            remote_address: info,
+            witness: PhantomData,
+        })
     }
 }

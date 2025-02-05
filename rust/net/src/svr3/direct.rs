@@ -5,15 +5,15 @@
 use std::time::Duration;
 
 use async_trait::async_trait;
+use http::HeaderName;
 use libsignal_net_infra::dns::DnsResolver;
-use libsignal_net_infra::tcp_ssl::DirectConnector;
+use libsignal_net_infra::route::DirectOrProxyProvider;
 use libsignal_net_infra::utils::ObservableEvent;
-use libsignal_net_infra::ws::DefaultStream;
-use libsignal_net_infra::TransportConnector;
+use libsignal_net_infra::EnableDomainFronting;
 
 use crate::auth::Auth;
-use crate::enclave;
-use crate::enclave::{EnclaveEndpoint, EnclaveEndpointConnection, NewHandshake, Svr3Flavor};
+use crate::connect_state::{ConnectState, SUGGESTED_CONNECT_CONFIG};
+use crate::enclave::{self, EnclaveEndpoint, EnclaveEndpointConnection, NewHandshake, Svr3Flavor};
 use crate::svr::SvrConnection;
 
 const DIRECT_CONNECTION_TIMEOUT: Duration = Duration::from_secs(10);
@@ -36,8 +36,7 @@ where
 
     async fn connect(&self, auth: &Auth) -> Self::ConnectionResults {
         let network_change_event = ObservableEvent::default();
-        let transport = default_transport(&network_change_event);
-        connect_one(self, auth, transport, &network_change_event).await
+        connect_one(self, auth, &network_change_event).await
     }
 }
 
@@ -54,10 +53,9 @@ where
 
     async fn connect(&self, auth: &Auth) -> Self::ConnectionResults {
         let network_change_event = ObservableEvent::default();
-        let transport = default_transport(&network_change_event);
         futures_util::future::join(
-            connect_one(self.0, auth, transport.clone(), &network_change_event),
-            connect_one(self.1, auth, transport, &network_change_event),
+            connect_one(self.0, auth, &network_change_event),
+            connect_one(self.1, auth, &network_change_event),
         )
         .await
     }
@@ -83,32 +81,43 @@ where
 
     async fn connect(&self, auth: &Auth) -> Self::ConnectionResults {
         let network_change_event = ObservableEvent::default();
-        let transport = default_transport(&network_change_event);
 
         futures_util::future::join3(
-            connect_one(self.0, auth, transport.clone(), &network_change_event),
-            connect_one(self.1, auth, transport.clone(), &network_change_event),
-            connect_one(self.2, auth, transport, &network_change_event),
+            connect_one(self.0, auth, &network_change_event),
+            connect_one(self.1, auth, &network_change_event),
+            connect_one(self.2, auth, &network_change_event),
         )
         .await
     }
 }
 
-fn default_transport(network_change_event: &ObservableEvent) -> DirectConnector {
-    DirectConnector::new(DnsResolver::new(network_change_event))
-}
-
-async fn connect_one<Enclave, Transport>(
+async fn connect_one<Enclave>(
     endpoint: &EnclaveEndpoint<'static, Enclave>,
     auth: &Auth,
-    connector: Transport,
     network_change_event: &ObservableEvent,
 ) -> Result<SvrConnection<Enclave>, enclave::Error>
 where
     Enclave: Svr3Flavor + NewHandshake + Sized,
-    Transport: TransportConnector<Stream = DefaultStream>,
 {
-    let ep_connection =
-        EnclaveEndpointConnection::new(endpoint, DIRECT_CONNECTION_TIMEOUT, network_change_event);
-    SvrConnection::connect(auth.clone(), &ep_connection, connector).await
+    let ws_config =
+        EnclaveEndpointConnection::new(endpoint, DIRECT_CONNECTION_TIMEOUT, network_change_event)
+            .ws2_config();
+
+    SvrConnection::connect(
+        &ConnectState::new(SUGGESTED_CONNECT_CONFIG),
+        &DnsResolver::new(network_change_event),
+        DirectOrProxyProvider::maybe_proxied(
+            endpoint.route_provider(EnableDomainFronting(false)),
+            None,
+        ),
+        endpoint
+            .domain_config
+            .connect
+            .confirmation_header_name
+            .map(HeaderName::from_static),
+        ws_config,
+        &endpoint.params,
+        auth.clone(),
+    )
+    .await
 }

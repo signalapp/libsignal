@@ -261,13 +261,11 @@ pub struct EnclaveEndpoint<'a, E: EnclaveKind> {
     pub params: EndpointParams<'a, E>,
 }
 
-pub trait NewHandshake {
+pub trait NewHandshake: EnclaveKind + Sized {
     fn new_handshake(
         params: &EndpointParams<Self>,
         attestation_message: &[u8],
-    ) -> enclave::Result<enclave::Handshake>
-    where
-        Self: EnclaveKind + Sized;
+    ) -> enclave::Result<enclave::Handshake>;
 }
 
 pub struct EnclaveEndpointConnection<E: EnclaveKind, C> {

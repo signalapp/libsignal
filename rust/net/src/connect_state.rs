@@ -31,6 +31,7 @@ use static_assertions::assert_eq_size_val;
 use tokio::time::Instant;
 
 use crate::auth::Auth;
+use crate::enclave::{EndpointParams, NewHandshake};
 use crate::ws::WebSocketServiceConnectError;
 
 /// Suggested values for [`ConnectionOutcomeParams`].
@@ -222,7 +223,7 @@ where
         ))
     }
 
-    pub(crate) async fn connect_attested_ws(
+    pub(crate) async fn connect_attested_ws<E: NewHandshake>(
         connect: &tokio::sync::RwLock<Self>,
         routes: impl RouteProvider<Route = UnresolvedWebsocketServiceRoute>,
         auth: Auth,
@@ -230,7 +231,7 @@ where
         confirmation_header_name: Option<HeaderName>,
         ws_config: libsignal_net_infra::ws2::Config,
         log_tag: Arc<str>,
-        new_handshake: impl FnOnce(&[u8]) -> Result<attest::enclave::Handshake, attest::enclave::Error>,
+        params: &EndpointParams<'_, E>,
     ) -> Result<(AttestedConnection, RouteInfo), crate::enclave::Error>
     where
         TC::Connection: AsyncDuplexStream + 'static,
@@ -263,7 +264,11 @@ where
             TimeoutOr::Other(ConnectError::FatalConnect(e)) => e,
         })?;
 
-        let connection = AttestedConnection::connect(ws, ws_config, log_tag, new_handshake).await?;
+        let connection =
+            AttestedConnection::connect(ws, ws_config, log_tag, move |attestation_message| {
+                E::new_handshake(params, attestation_message)
+            })
+            .await?;
         Ok((connection, route_info))
     }
 }

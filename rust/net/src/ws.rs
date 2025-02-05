@@ -9,7 +9,7 @@ use std::time::Duration;
 use async_trait::async_trait;
 use http::HeaderName;
 use libsignal_net_infra::connection_manager::{ErrorClass, ErrorClassifier};
-use libsignal_net_infra::errors::LogSafeDisplay;
+use libsignal_net_infra::errors::{LogSafeDisplay, TransportConnectError};
 use libsignal_net_infra::service::{CancellationToken, ServiceConnector};
 use libsignal_net_infra::ws::WebSocketConnectError;
 use libsignal_net_infra::{extract_retry_after_seconds, ConnectionParams};
@@ -65,6 +65,15 @@ impl WebSocketServiceConnectError {
     pub fn timeout() -> Self {
         Self::Connect(
             WebSocketConnectError::Timeout,
+            NotRejectedByServer {
+                _limit_construction: (),
+            },
+        )
+    }
+
+    pub fn invalid_proxy_configuration() -> Self {
+        Self::Connect(
+            WebSocketConnectError::Transport(TransportConnectError::InvalidConfiguration),
             NotRejectedByServer {
                 _limit_construction: (),
             },
