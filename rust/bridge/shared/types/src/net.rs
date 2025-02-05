@@ -7,6 +7,7 @@ use std::marker::PhantomData;
 use std::num::NonZeroU32;
 use std::panic::RefUnwindSafe;
 use std::sync::Arc;
+use std::time::{Duration, Instant};
 
 use aes_gcm_siv::aead::rand_core::CryptoRngCore;
 use async_trait::async_trait;
@@ -156,6 +157,7 @@ pub struct ConnectionManager {
     // but we don't hold it for very long anyway (just enough to clone the Arc).
     endpoints: std::sync::Mutex<Arc<EndpointConnections>>,
     transport_connector: std::sync::Mutex<TcpSslConnector>,
+    most_recent_network_change: std::sync::Mutex<Instant>,
     network_change_event: ObservableEvent,
 }
 
@@ -188,6 +190,7 @@ impl ConnectionManager {
             connect: ConnectState::new(SUGGESTED_CONNECT_CONFIG),
             dns_resolver,
             transport_connector,
+            most_recent_network_change: Instant::now().into(),
             network_change_event,
         }
     }
@@ -232,7 +235,22 @@ impl ConnectionManager {
         *self.endpoints.lock().expect("not poisoned") = Arc::new(new_endpoints);
     }
 
-    pub fn on_network_change(&self) {
+    const NETWORK_CHANGE_DEBOUNCE: Duration = Duration::from_secs(1);
+
+    pub fn on_network_change(&self, now: Instant) {
+        {
+            let mut most_recent_change_guard = self
+                .most_recent_network_change
+                .lock()
+                .expect("not poisoned");
+            if now.saturating_duration_since(*most_recent_change_guard)
+                < Self::NETWORK_CHANGE_DEBOUNCE
+            {
+                log::info!("ConnectionManager: on_network_change (debounced)");
+                return;
+            }
+            *most_recent_change_guard = now;
+        }
         log::info!("ConnectionManager: on_network_change");
         self.network_change_event.fire()
     }
@@ -508,5 +526,42 @@ mod test {
             .map(|_| ())
             .expect_err("should fail to connect");
         assert_matches!(err, ChatServiceError::ServiceUnavailable);
+    }
+
+    #[test]
+    fn network_change_event_debounced() {
+        let cm = ConnectionManager::new(Environment::Staging, "test-user-agent");
+
+        let fire_count = Arc::new(std::sync::atomic::AtomicU8::new(0));
+        let _subscription = {
+            let fire_count = fire_count.clone();
+            cm.network_change_event.subscribe(Box::new(move || {
+                _ = fire_count.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+            }))
+        };
+
+        // The creation of the ConnectionManager sets the initial debounce timestamp,
+        // so let's say our first even happens well after that.
+        let start = Instant::now() + ConnectionManager::NETWORK_CHANGE_DEBOUNCE * 10;
+        cm.on_network_change(start);
+        assert_eq!(1, fire_count.load(std::sync::atomic::Ordering::SeqCst));
+
+        cm.on_network_change(start);
+        assert_eq!(1, fire_count.load(std::sync::atomic::Ordering::SeqCst));
+
+        cm.on_network_change(start + ConnectionManager::NETWORK_CHANGE_DEBOUNCE / 2);
+        assert_eq!(1, fire_count.load(std::sync::atomic::Ordering::SeqCst));
+
+        cm.on_network_change(start + ConnectionManager::NETWORK_CHANGE_DEBOUNCE);
+        assert_eq!(2, fire_count.load(std::sync::atomic::Ordering::SeqCst));
+
+        cm.on_network_change(start);
+        assert_eq!(2, fire_count.load(std::sync::atomic::Ordering::SeqCst));
+
+        cm.on_network_change(start + ConnectionManager::NETWORK_CHANGE_DEBOUNCE * 3 / 2);
+        assert_eq!(2, fire_count.load(std::sync::atomic::Ordering::SeqCst));
+
+        cm.on_network_change(start + ConnectionManager::NETWORK_CHANGE_DEBOUNCE * 4);
+        assert_eq!(3, fire_count.load(std::sync::atomic::Ordering::SeqCst));
     }
 }

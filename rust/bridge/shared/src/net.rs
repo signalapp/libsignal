@@ -125,7 +125,7 @@ fn ConnectionManager_set_censorship_circumvention_enabled(
 
 #[bridge_fn]
 fn ConnectionManager_on_network_change(connection_manager: &ConnectionManager) {
-    connection_manager.on_network_change()
+    connection_manager.on_network_change(std::time::Instant::now())
 }
 
 #[bridge_fn]
