@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::collections::HashMap;
 use std::net::Ipv6Addr;
 use std::sync::Arc;
 
@@ -139,7 +140,7 @@ pub fn error_all_hosts_after(
 pub struct FakeDeps {
     pub transport_connector: FakeTransportConnector,
     connect_state: tokio::sync::RwLock<ConnectState<FakeTransportConnector>>,
-    dns_resolver: DnsResolver,
+    pub dns_resolver: DnsResolver,
     endpoint_connection: EndpointConnection<MultiRouteConnectionManager>,
 }
 
@@ -184,24 +185,7 @@ impl FakeDeps {
             SUGGESTED_CONNECT_CONFIG,
             transport_connector.clone(),
         );
-        // Assign IP addresses from the documentation space (RFC
-        // 3849) since we're not actually going to try connecting to
-        // them.
-        const BASE_IP_ADDR: Ipv6Addr = ip_addr!(v6, "2001:db8::");
-        let dns_resolver = DnsResolver::new_from_static_map(
-            CHAT_DOMAIN_NAMES
-                .iter()
-                .zip(0..)
-                .map(|(name, index)| {
-                    let mut segments = BASE_IP_ADDR.segments();
-                    *segments.last_mut().unwrap() = index;
-                    (
-                        &**name,
-                        LookupResult::new(DnsSource::Test, vec![], vec![segments.into()]),
-                    )
-                })
-                .collect(),
-        );
+        let dns_resolver = DnsResolver::new_from_static_map(Self::static_ip_map());
         (
             Self {
                 transport_connector,
@@ -211,6 +195,25 @@ impl FakeDeps {
             },
             UnboundedReceiverStream::new(incoming_streams),
         )
+    }
+
+    pub fn static_ip_map() -> HashMap<&'static str, LookupResult> {
+        // Assign IP addresses from the documentation space (RFC
+        // 3849) since we're not actually going to try connecting to
+        // them.
+        const BASE_IP_ADDR: Ipv6Addr = ip_addr!(v6, "2001:db8::");
+        CHAT_DOMAIN_NAMES
+            .iter()
+            .zip(0..)
+            .map(|(name, index)| {
+                let mut segments = BASE_IP_ADDR.segments();
+                *segments.last_mut().unwrap() = index;
+                (
+                    &**name,
+                    LookupResult::new(DnsSource::Test, vec![], vec![segments.into()]),
+                )
+            })
+            .collect()
     }
 
     pub fn make_chat_service(

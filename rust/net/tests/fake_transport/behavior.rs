@@ -25,6 +25,8 @@ pub enum Behavior {
     },
     /// Connect the transport, applying the given modifiers to the returned stream.
     ReturnStream(Vec<fn(FakeStream) -> FakeStream>),
+    /// Panic if invoked.
+    Unreachable,
 }
 
 impl Behavior {
@@ -42,6 +44,7 @@ impl Behavior {
                 }
                 Behavior::Fail(make_error) => return Err(make_error()),
                 Behavior::ReturnStream(stream) => return Ok(stream),
+                Behavior::Unreachable => unreachable!("this test should not attempt to connect"),
             }
         }
     }

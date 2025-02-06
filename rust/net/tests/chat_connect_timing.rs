@@ -6,9 +6,12 @@
 use std::future::Future;
 
 use assert_matches::assert_matches;
+use async_trait::async_trait;
 use libsignal_net::chat::ChatServiceError;
 use libsignal_net::env::STAGING;
 use libsignal_net::infra::errors::TransportConnectError;
+use libsignal_net_infra::dns::dns_lookup::{DnsLookup, DnsLookupRequest};
+use libsignal_net_infra::dns::{self, DnsResolver};
 use test_case::test_case;
 use tokio::time::{Duration, Instant};
 
@@ -160,5 +163,111 @@ async fn connect_again_skips_timed_out_routes(
         let (elapsed, outcome) = timed(connect_chat).await;
         assert_matches!(outcome, Ok(_));
         assert_eq!(elapsed, expected_second_duration);
+    }
+}
+
+#[derive(Debug)]
+struct DnsLookupThatNeverCompletes;
+#[async_trait]
+impl DnsLookup for DnsLookupThatNeverCompletes {
+    async fn dns_lookup(
+        &self,
+        _request: DnsLookupRequest,
+    ) -> dns::Result<dns::lookup_result::LookupResult> {
+        std::future::pending().await
+    }
+}
+
+#[derive(Debug)]
+struct DnsLookupThatFailsSlowly(Duration);
+#[async_trait]
+impl DnsLookup for DnsLookupThatFailsSlowly {
+    async fn dns_lookup(
+        &self,
+        _request: DnsLookupRequest,
+    ) -> dns::Result<dns::lookup_result::LookupResult> {
+        tokio::time::sleep(self.0).await;
+        Err(dns::DnsError::LookupFailed)
+    }
+}
+
+#[derive(Debug)]
+struct DnsLookupThatRunsSlowly(Duration);
+#[async_trait]
+impl DnsLookup for DnsLookupThatRunsSlowly {
+    async fn dns_lookup(
+        &self,
+        request: DnsLookupRequest,
+    ) -> dns::Result<dns::lookup_result::LookupResult> {
+        tokio::time::sleep(self.0).await;
+        FakeDeps::static_ip_map()
+            .get(&*request.hostname)
+            .cloned()
+            .ok_or(dns::DnsError::LookupFailed)
+    }
+}
+
+const DNS_STRATEGY_TIMEOUT: Duration = Duration::from_secs(7);
+
+#[test_case(DnsLookupThatNeverCompletes, DNS_STRATEGY_TIMEOUT)]
+#[test_case(
+    DnsLookupThatFailsSlowly(Duration::from_secs(3)),
+    Duration::from_secs(3)
+)]
+#[test_log::test(tokio::test(start_paused = true))]
+async fn custom_dns_failure(lookup: impl DnsLookup + 'static, expected_duration: Duration) {
+    let chat_domain_config = STAGING.chat_domain_config;
+    let (mut deps, incoming_streams) = FakeDeps::new(&chat_domain_config);
+    deps.dns_resolver = DnsResolver::new_custom(vec![(Box::new(lookup), DNS_STRATEGY_TIMEOUT)]);
+
+    deps.transport_connector.set_behaviors([(
+        chat_domain_config.connect.direct_connection_params().into(),
+        Behavior::Unreachable,
+    )]);
+    let connect_chat = ChatConnection.start_connect(&deps);
+
+    // Don't do anything with the incoming transport streams, just let them
+    // accumulate in the unbounded stream.
+    let _ignore_incoming_streams = incoming_streams;
+
+    let (elapsed, outcome) = timed(connect_chat).await;
+
+    assert_eq!(elapsed, expected_duration);
+    assert_matches!(
+        outcome,
+        Err(ChatServiceError::AllConnectionRoutesFailed { attempts: 1 })
+    );
+}
+
+#[test_case(false, Duration::from_secs(60))]
+#[test_case(true, Duration::from_secs(3))]
+#[test_log::test(tokio::test(start_paused = true))]
+async fn slow_dns(should_accept_connection: bool, expected_duration: Duration) {
+    let chat_domain_config = STAGING.chat_domain_config;
+    let (mut deps, incoming_streams) = FakeDeps::new(&chat_domain_config);
+    deps.dns_resolver = DnsResolver::new_custom(vec![(
+        Box::new(DnsLookupThatRunsSlowly(Duration::from_secs(3))),
+        DNS_STRATEGY_TIMEOUT,
+    )]);
+
+    if should_accept_connection {
+        deps.transport_connector.set_behaviors([(
+            chat_domain_config.connect.direct_connection_params().into(),
+            Behavior::ReturnStream(vec![]),
+        )]);
+    }
+
+    let connect_chat = ChatConnection.start_connect(&deps);
+    tokio::spawn(connect_websockets_on_incoming(incoming_streams));
+    let (elapsed, outcome) = timed(connect_chat).await;
+
+    assert_eq!(elapsed, expected_duration);
+    if should_accept_connection {
+        outcome.expect("accepted")
+    } else {
+        assert_matches!(
+            outcome,
+            Err(ChatServiceError::TimeoutEstablishingConnection { attempts: 1 })
+        );
     }
 }

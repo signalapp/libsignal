@@ -105,8 +105,8 @@ pub fn build_custom_resolver_cloudflare_doh(
 }
 
 impl DnsResolver {
-    #[cfg(test)]
-    fn new_custom(lookup_options: Vec<(Box<dyn DnsLookup>, Duration)>) -> Self {
+    #[cfg(any(test, feature = "test-util"))]
+    pub fn new_custom(lookup_options: Vec<(Box<dyn DnsLookup>, Duration)>) -> Self {
         let lookup_options = lookup_options
             .into_iter()
             .map(|(lookup, timeout_after)| LookupOption {
