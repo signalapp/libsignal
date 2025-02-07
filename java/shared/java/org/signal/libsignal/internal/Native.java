@@ -159,8 +159,6 @@ public final class Native {
 
   public static native Object AsyncLoadClass(Object tokioContext, String className);
 
-  public static native void AuthChat_Destroy(long handle);
-
   public static native void AuthCredentialPresentation_CheckValidContents(byte[] presentationBytes) throws Exception;
   public static native byte[] AuthCredentialPresentation_GetPniCiphertext(byte[] presentationBytes);
   public static native long AuthCredentialPresentation_GetRedemptionTime(byte[] presentationBytes);
@@ -231,19 +229,6 @@ public final class Native {
   public static native CompletableFuture<Object> CdsiLookup_complete(long asyncRuntime, long lookup);
   public static native CompletableFuture<Long> CdsiLookup_new(long asyncRuntime, long connectionManager, String username, String password, long request);
   public static native byte[] CdsiLookup_token(long lookup);
-
-  public static native void ChatService_SetListenerAuth(long runtime, long chat, BridgeChatListener listener);
-  public static native void ChatService_SetListenerUnauth(long runtime, long chat, BridgeChatListener listener);
-  public static native CompletableFuture<Object> ChatService_auth_send(long asyncRuntime, long chat, long httpRequest, int timeoutMillis);
-  public static native CompletableFuture<Object> ChatService_auth_send_and_debug(long asyncRuntime, long chat, long httpRequest, int timeoutMillis);
-  public static native CompletableFuture<Object> ChatService_connect_auth(long asyncRuntime, long chat);
-  public static native CompletableFuture<Object> ChatService_connect_unauth(long asyncRuntime, long chat);
-  public static native CompletableFuture ChatService_disconnect_auth(long asyncRuntime, long chat);
-  public static native CompletableFuture ChatService_disconnect_unauth(long asyncRuntime, long chat);
-  public static native long ChatService_new_auth(long connectionManager, String username, String password, boolean receiveStories);
-  public static native long ChatService_new_unauth(long connectionManager);
-  public static native CompletableFuture<Object> ChatService_unauth_send(long asyncRuntime, long chat, long httpRequest, int timeoutMillis);
-  public static native CompletableFuture<Object> ChatService_unauth_send_and_debug(long asyncRuntime, long chat, long httpRequest, int timeoutMillis);
 
   public static native void ConnectionManager_Destroy(long handle);
   public static native void ConnectionManager_clear_proxy(long connectionManager);
@@ -397,10 +382,10 @@ public final class Native {
   public static native byte[] IncrementalMac_Update(long mac, byte[] bytes, int offset, int length);
 
   public static native byte[] KeyTransparency_AciSearchKey(byte[] aci);
-  public static native CompletableFuture<byte[]> KeyTransparency_Distinguished(long asyncRuntime, int environment, long chatService, long chatConnection, byte[] lastDistinguishedTreeHead);
+  public static native CompletableFuture<byte[]> KeyTransparency_Distinguished(long asyncRuntime, int environment, long chatConnection, byte[] lastDistinguishedTreeHead);
   public static native byte[] KeyTransparency_E164SearchKey(String e164);
-  public static native CompletableFuture<byte[]> KeyTransparency_Monitor(long asyncRuntime, int environment, long chatService, long chatConnection, byte[] aci, String e164, byte[] usernameHash, byte[] accountData, byte[] lastDistinguishedTreeHead);
-  public static native CompletableFuture<Long> KeyTransparency_Search(long asyncRuntime, int environment, long chatService, long chatConnection, byte[] aci, long aciIdentityKey, String e164, byte[] unidentifiedAccessKey, byte[] usernameHash, byte[] accountData, byte[] lastDistinguishedTreeHead);
+  public static native CompletableFuture<byte[]> KeyTransparency_Monitor(long asyncRuntime, int environment, long chatConnection, byte[] aci, String e164, byte[] usernameHash, byte[] accountData, byte[] lastDistinguishedTreeHead);
+  public static native CompletableFuture<Long> KeyTransparency_Search(long asyncRuntime, int environment, long chatConnection, byte[] aci, long aciIdentityKey, String e164, byte[] unidentifiedAccessKey, byte[] usernameHash, byte[] accountData, byte[] lastDistinguishedTreeHead);
   public static native byte[] KeyTransparency_UsernameHashSearchKey(byte[] hash);
 
   public static native void KyberKeyPair_Destroy(long handle);
@@ -711,8 +696,6 @@ public final class Native {
   public static native void TokioAsyncContext_Destroy(long handle);
   public static native void TokioAsyncContext_cancel(long context, long rawCancellationId);
   public static native long TokioAsyncContext_new();
-
-  public static native void UnauthChat_Destroy(long handle);
 
   public static native void UnauthenticatedChatConnection_Destroy(long handle);
   public static native CompletableFuture<Long> UnauthenticatedChatConnection_connect(long asyncRuntime, long connectionManager);

@@ -3,21 +3,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use std::time::Duration;
-
 use http::{HeaderMap, HeaderName, HeaderValue, StatusCode};
 use libsignal_bridge_macros::*;
-use libsignal_bridge_types::net::chat::{
-    AuthChat, AuthenticatedChatConnection, ChatListener, HttpRequest, ResponseAndDebugInfo,
-};
+use libsignal_bridge_types::net::chat::{AuthenticatedChatConnection, ChatListener, HttpRequest};
 use libsignal_bridge_types::net::TokioAsyncContext;
 use libsignal_net::chat::fake::FakeChatRemote;
-use libsignal_net::chat::{
-    self, ChatServiceError, DebugInfo as ChatServiceDebugInfo, RequestProto,
-    Response as ChatResponse,
-};
-use libsignal_net::infra::ws::WebSocketServiceError;
-use libsignal_net::infra::IpType;
+use libsignal_net::chat::{ChatServiceError, RequestProto, Response as ChatResponse};
 
 use crate::*;
 
@@ -142,9 +133,7 @@ fn TESTING_FakeChatSentRequest_RequestId(request: &FakeChatSentRequest) -> u64 {
 }
 
 #[bridge_fn]
-fn TESTING_ChatServiceResponseConvert(
-    body_present: bool,
-) -> Result<ChatResponse, ChatServiceError> {
+fn TESTING_ChatResponseConvert(body_present: bool) -> Result<ChatResponse, ChatServiceError> {
     let body = match body_present {
         true => Some(b"content".to_vec().into_boxed_slice()),
         false => None,
@@ -160,24 +149,6 @@ fn TESTING_ChatServiceResponseConvert(
         message: Some("OK".to_string()),
         body,
         headers,
-    })
-}
-
-#[bridge_fn]
-fn TESTING_ChatServiceDebugInfoConvert() -> Result<ChatServiceDebugInfo, ChatServiceError> {
-    Ok(ChatServiceDebugInfo {
-        ip_type: Some(IpType::V4),
-        duration: Duration::from_millis(200),
-        connection_info: "connection_info".to_string(),
-    })
-}
-
-#[bridge_fn]
-fn TESTING_ChatServiceResponseAndDebugInfoConvert() -> Result<ResponseAndDebugInfo, ChatServiceError>
-{
-    Ok(ResponseAndDebugInfo {
-        response: TESTING_ChatServiceResponseConvert(true)?,
-        debug_info: TESTING_ChatServiceDebugInfoConvert()?,
     })
 }
 
@@ -211,31 +182,4 @@ fn TESTING_ChatRequestGetBody(request: &HttpRequest) -> Vec<u8> {
         .clone()
         .map(|b| b.into_vec())
         .unwrap_or_default()
-}
-
-#[bridge_fn]
-fn TESTING_ChatService_InjectRawServerRequest(chat: &AuthChat, bytes: &[u8]) {
-    let request_proto = <chat::RequestProto as prost::Message>::decode(bytes)
-        .expect("invalid protobuf cannot use this endpoint to test");
-    chat.synthetic_request_tx
-        .blocking_send(chat::ws::ServerEvent::fake(request_proto))
-        .expect("not closed");
-}
-
-#[bridge_fn]
-fn TESTING_ChatService_InjectConnectionInterrupted(chat: &AuthChat) {
-    chat.synthetic_request_tx
-        .blocking_send(chat::ws::ServerEvent::Stopped(ChatServiceError::WebSocket(
-            WebSocketServiceError::ChannelClosed,
-        )))
-        .expect("not closed");
-}
-
-#[bridge_fn]
-fn TESTING_ChatService_InjectIntentionalDisconnect(chat: &AuthChat) {
-    chat.synthetic_request_tx
-        .blocking_send(chat::ws::ServerEvent::Stopped(
-            ChatServiceError::ServiceIntentionallyDisconnected,
-        ))
-        .expect("not closed");
 }

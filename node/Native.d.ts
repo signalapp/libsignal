@@ -211,18 +211,6 @@ export function CdsiLookup_token(lookup: Wrapper<CdsiLookup>): Buffer;
 export function ChatConnectionInfo_description(connectionInfo: Wrapper<ChatConnectionInfo>): string;
 export function ChatConnectionInfo_ip_version(connectionInfo: Wrapper<ChatConnectionInfo>): number;
 export function ChatConnectionInfo_local_port(connectionInfo: Wrapper<ChatConnectionInfo>): number;
-export function ChatService_SetListenerAuth(runtime: Wrapper<TokioAsyncContext>, chat: Wrapper<AuthChat>, listener: ChatListener | null): void;
-export function ChatService_SetListenerUnauth(runtime: Wrapper<TokioAsyncContext>, chat: Wrapper<UnauthChat>, listener: ChatListener | null): void;
-export function ChatService_auth_send(asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<AuthChat>, httpRequest: Wrapper<HttpRequest>, timeoutMillis: number): CancellablePromise<ChatResponse>;
-export function ChatService_auth_send_and_debug(asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<AuthChat>, httpRequest: Wrapper<HttpRequest>, timeoutMillis: number): CancellablePromise<ResponseAndDebugInfo>;
-export function ChatService_connect_auth(asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<AuthChat>): CancellablePromise<ChatServiceDebugInfo>;
-export function ChatService_connect_unauth(asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<UnauthChat>): CancellablePromise<ChatServiceDebugInfo>;
-export function ChatService_disconnect_auth(asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<AuthChat>): CancellablePromise<void>;
-export function ChatService_disconnect_unauth(asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<UnauthChat>): CancellablePromise<void>;
-export function ChatService_new_auth(connectionManager: Wrapper<ConnectionManager>, username: string, password: string, receiveStories: boolean): AuthChat;
-export function ChatService_new_unauth(connectionManager: Wrapper<ConnectionManager>): UnauthChat;
-export function ChatService_unauth_send(asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<UnauthChat>, httpRequest: Wrapper<HttpRequest>, timeoutMillis: number): CancellablePromise<ChatResponse>;
-export function ChatService_unauth_send_and_debug(asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<UnauthChat>, httpRequest: Wrapper<HttpRequest>, timeoutMillis: number): CancellablePromise<ResponseAndDebugInfo>;
 export function CiphertextMessage_FromPlaintextContent(m: Wrapper<PlaintextContent>): CiphertextMessage;
 export function CiphertextMessage_Serialize(obj: Wrapper<CiphertextMessage>): Buffer;
 export function CiphertextMessage_Type(msg: Wrapper<CiphertextMessage>): number;
@@ -532,13 +520,8 @@ export function TESTING_ChatRequestGetBody(request: Wrapper<HttpRequest>): Buffe
 export function TESTING_ChatRequestGetHeaderValue(request: Wrapper<HttpRequest>, headerName: string): string;
 export function TESTING_ChatRequestGetMethod(request: Wrapper<HttpRequest>): string;
 export function TESTING_ChatRequestGetPath(request: Wrapper<HttpRequest>): string;
-export function TESTING_ChatServiceDebugInfoConvert(): ChatServiceDebugInfo;
+export function TESTING_ChatResponseConvert(bodyPresent: boolean): ChatResponse;
 export function TESTING_ChatServiceErrorConvert(errorDescription: string): void;
-export function TESTING_ChatServiceResponseAndDebugInfoConvert(): ResponseAndDebugInfo;
-export function TESTING_ChatServiceResponseConvert(bodyPresent: boolean): ChatResponse;
-export function TESTING_ChatService_InjectConnectionInterrupted(chat: Wrapper<AuthChat>): void;
-export function TESTING_ChatService_InjectIntentionalDisconnect(chat: Wrapper<AuthChat>): void;
-export function TESTING_ChatService_InjectRawServerRequest(chat: Wrapper<AuthChat>, bytes: Buffer): void;
 export function TESTING_ConnectionManager_isUsingProxy(manager: Wrapper<ConnectionManager>): number;
 export function TESTING_ConnectionManager_newLocalOverride(userAgent: string, chatPort: number, cdsiPort: number, svr2Port: number, svr3SgxPort: number, svr3NitroPort: number, svr3Tpm2SnpPort: number, rootCertificateDer: Buffer): ConnectionManager;
 export function TESTING_ErrorOnBorrowAsync(_input: null): Promise<void>;
@@ -615,7 +598,6 @@ export function WebpSanitizer_Sanitize(input: SyncInputStream): void;
 export function initLogger(maxLevel: LogLevel, callback: (level: LogLevel, target: string, file: string | null, line: number | null, message: string) => void): void
 export function test_only_fn_returns_123(): number;
 interface Aes256GcmSiv { readonly __type: unique symbol; }
-interface AuthChat { readonly __type: unique symbol; }
 interface AuthenticatedChatConnection { readonly __type: unique symbol; }
 interface CdsiLookup { readonly __type: unique symbol; }
 interface ChatConnectionInfo { readonly __type: unique symbol; }
@@ -679,7 +661,6 @@ interface SignalMessage { readonly __type: unique symbol; }
 interface SignedPreKeyRecord { readonly __type: unique symbol; }
 interface TestingHandleType { readonly __type: unique symbol; }
 interface TokioAsyncContext { readonly __type: unique symbol; }
-interface UnauthChat { readonly __type: unique symbol; }
 interface UnauthenticatedChatConnection { readonly __type: unique symbol; }
 interface UnidentifiedSenderMessageContent { readonly __type: unique symbol; }
 interface UuidCiphertext { readonly __type: unique symbol; }

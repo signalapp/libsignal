@@ -18,8 +18,8 @@ import org.signal.libsignal.protocol.ServiceId;
  * Typed API to access the key transparency subsystem using an existing unauthenticated chat
  * connection.
  *
- * <p>Unlike {@link ChatService} and {@link ChatConnection}, key transparency client does not export
- * "raw" send/receive APIs, and instead uses them internally to implement high-level operations.
+ * <p>Unlike {@link ChatConnection}, key transparency client does not export "raw" send/receive
+ * APIs, and instead uses them internally to implement high-level operations.
  *
  * <p>Note: {@code Store} APIs may be invoked concurrently. Here are possible strategies to make
  * sure there are no thread safety violations:
@@ -31,23 +31,14 @@ import org.signal.libsignal.protocol.ServiceId;
  */
 public class KeyTransparencyClient {
   private final TokioAsyncContext tokioAsyncContext;
-  private final UnauthenticatedChatService chatService;
   private final UnauthenticatedChatConnection chatConnection;
   private final Network.Environment environment;
-
-  KeyTransparencyClient(UnauthenticatedChatService chat, TokioAsyncContext tokioAsyncContext) {
-    this.chatService = chat;
-    this.chatConnection = null;
-    this.tokioAsyncContext = tokioAsyncContext;
-    this.environment = chat.environment;
-  }
 
   KeyTransparencyClient(
       UnauthenticatedChatConnection chat,
       TokioAsyncContext tokioAsyncContext,
       Network.Environment environment) {
     this.chatConnection = chat;
-    this.chatService = null;
     this.tokioAsyncContext = tokioAsyncContext;
     this.environment = environment;
   }
@@ -111,12 +102,10 @@ public class KeyTransparencyClient {
     // It may result in an IllegalArgumentException.
     try (NativeHandleGuard tokioContextGuard = this.tokioAsyncContext.guard();
         NativeHandleGuard identityKeyGuard = aciIdentityKey.getPublicKey().guard()) {
-      NativeHandleGuard chatServiceGuard = new NativeHandleGuard(chatService);
       NativeHandleGuard chatConnectionGuard = new NativeHandleGuard(chatConnection);
       return Native.KeyTransparency_Search(
               tokioContextGuard.nativeHandle(),
               this.environment.value,
-              chatServiceGuard.nativeHandle(),
               chatConnectionGuard.nativeHandle(),
               aci.toServiceIdFixedWidthBinary(),
               identityKeyGuard.nativeHandle(),
@@ -163,12 +152,10 @@ public class KeyTransparencyClient {
   public CompletableFuture<Void> updateDistinguished(final Store store) {
     byte[] lastDistinguished = store.getLastDistinguishedTreeHead().orElse(null);
     try (NativeHandleGuard tokioContextGuard = this.tokioAsyncContext.guard();
-        NativeHandleGuard chatServiceGuard = new NativeHandleGuard(chatService);
         NativeHandleGuard chatConnectionGuard = new NativeHandleGuard(chatConnection)) {
       return Native.KeyTransparency_Distinguished(
               tokioContextGuard.nativeHandle(),
               this.environment.value,
-              chatServiceGuard.nativeHandle(),
               chatConnectionGuard.nativeHandle(),
               lastDistinguished)
           .thenApply(
@@ -223,12 +210,10 @@ public class KeyTransparencyClient {
           .thenCompose((ignored) -> this.monitor(aci, e164, usernameHash, store));
     }
     try (NativeHandleGuard tokioContextGuard = this.tokioAsyncContext.guard();
-        NativeHandleGuard chatServiceGuard = new NativeHandleGuard(chatService);
         NativeHandleGuard chatConnectionGuard = new NativeHandleGuard(chatConnection)) {
       return Native.KeyTransparency_Monitor(
               tokioContextGuard.nativeHandle(),
               this.environment.value,
-              chatServiceGuard.nativeHandle(),
               chatConnectionGuard.nativeHandle(),
               aci.toServiceIdFixedWidthBinary(),
               e164,

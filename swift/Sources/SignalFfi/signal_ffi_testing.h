@@ -283,11 +283,7 @@ SignalFfiError *signal_testing_fake_chat_sent_request_take_http_request(SignalMu
 
 SignalFfiError *signal_testing_fake_chat_sent_request_request_id(uint64_t *out, SignalConstPointerFakeChatSentRequest request);
 
-SignalFfiError *signal_testing_chat_service_response_convert(SignalFfiChatResponse *out, bool body_present);
-
-SignalFfiError *signal_testing_chat_service_debug_info_convert(SignalFfiChatServiceDebugInfo *out);
-
-SignalFfiError *signal_testing_chat_service_response_and_debug_info_convert(SignalFfiResponseAndDebugInfo *out);
+SignalFfiError *signal_testing_chat_response_convert(SignalFfiChatResponse *out, bool body_present);
 
 SignalFfiError *signal_testing_chat_request_get_method(const char **out, SignalConstPointerHttpRequest request);
 
@@ -296,11 +292,5 @@ SignalFfiError *signal_testing_chat_request_get_path(const char **out, SignalCon
 SignalFfiError *signal_testing_chat_request_get_header_value(const char **out, SignalConstPointerHttpRequest request, const char *header_name);
 
 SignalFfiError *signal_testing_chat_request_get_body(SignalOwnedBuffer *out, SignalConstPointerHttpRequest request);
-
-SignalFfiError *signal_testing_chat_service_inject_raw_server_request(SignalConstPointerAuthChat chat, SignalBorrowedBuffer bytes);
-
-SignalFfiError *signal_testing_chat_service_inject_connection_interrupted(SignalConstPointerAuthChat chat);
-
-SignalFfiError *signal_testing_chat_service_inject_intentional_disconnect(SignalConstPointerAuthChat chat);
 
 #endif  /* SIGNAL_FFI_TESTING_H_ */

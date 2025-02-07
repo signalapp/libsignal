@@ -39,13 +39,6 @@ public class KeyTransparencyClientTest {
     ArrayList<Function<Network, CompletableFuture<KeyTransparencyClient>>> fns = new ArrayList<>(2);
     fns.add(
         (Network net) -> {
-          // Chat service
-          final UnauthenticatedChatService chat = net.createUnauthChatService(null);
-          return chat.connect()
-              .thenApply((ChatService.DebugInfo debugInfo) -> chat.keyTransparencyClient());
-        });
-    fns.add(
-        (Network net) -> {
           // Chat connection
           return net.connectUnauthChat(null)
               .thenApply(

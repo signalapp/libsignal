@@ -87,7 +87,6 @@ extension SignalConstPointerChatConnectionInfo: SignalConstPointer {
 extension ChatConnection {
     public typealias Request = ChatRequest
     public typealias Response = ChatResponse
-    public typealias DebugInfo = ChatServiceDebugInfo
 }
 
 /// Represents an authenticated connection to the Chat Service.

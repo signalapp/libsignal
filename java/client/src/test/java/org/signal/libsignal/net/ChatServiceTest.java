@@ -10,21 +10,15 @@ import static org.junit.Assert.*;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import org.junit.Assume;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.function.ThrowingRunnable;
 import org.junit.rules.Timeout;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameter;
-import org.junit.runners.Parameterized.Parameters;
 import org.signal.libsignal.internal.CompletableFuture;
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeTesting;
@@ -50,44 +44,19 @@ public class ChatServiceTest {
   @Test
   public void testConvertResponse() throws Exception {
     // empty body
-    final ChatService.Response response1 =
-        (ChatService.Response) NativeTesting.TESTING_ChatServiceResponseConvert(false);
+    final ChatConnection.Response response1 =
+        (ChatConnection.Response) NativeTesting.TESTING_ChatResponseConvert(false);
     assertEquals(EXPECTED_STATUS, response1.status());
     assertEquals(EXPECTED_MESSAGE, response1.message());
     assertArrayEquals(new byte[0], response1.body());
     assertEquals(EXPECTED_HEADERS, response1.headers());
 
-    final ChatService.Response response2 =
-        (ChatService.Response) NativeTesting.TESTING_ChatServiceResponseConvert(true);
+    final ChatConnection.Response response2 =
+        (ChatConnection.Response) NativeTesting.TESTING_ChatResponseConvert(true);
     assertEquals(EXPECTED_STATUS, response2.status());
     assertEquals(EXPECTED_MESSAGE, response2.message());
     assertArrayEquals(EXPECTED_CONTENT, response2.body());
     assertEquals(EXPECTED_HEADERS, response2.headers());
-  }
-
-  @Test
-  public void testConvertDebugInfo() throws Exception {
-    final ChatService.DebugInfo debugInfo =
-        (ChatService.DebugInfo) NativeTesting.TESTING_ChatServiceDebugInfoConvert();
-    assertEquals(IpType.IPv4, debugInfo.ipType());
-    assertEquals(200, debugInfo.durationMs());
-    assertEquals("connection_info", debugInfo.connectionInfo());
-  }
-
-  @Test
-  public void testConvertResponseAndDebugInfo() throws Exception {
-    final ChatService.ResponseAndDebugInfo responseAndDebugInfo =
-        (ChatService.ResponseAndDebugInfo)
-            NativeTesting.TESTING_ChatServiceResponseAndDebugInfoConvert();
-
-    final ChatService.Response response = responseAndDebugInfo.response();
-    assertEquals(EXPECTED_STATUS, response.status());
-    assertEquals(EXPECTED_MESSAGE, response.message());
-    assertArrayEquals(EXPECTED_CONTENT, response.body());
-    assertEquals(EXPECTED_HEADERS, response.headers());
-
-    final ChatService.DebugInfo debugInfo = responseAndDebugInfo.debugInfo();
-    assertEquals(IpType.IPv4, debugInfo.ipType());
   }
 
   @Test
@@ -123,10 +92,10 @@ public class ChatServiceTest {
   public void testConstructRequest() throws Exception {
     final String expectedMethod = "GET";
     final String expectedPathAndQuery = "/test";
-    final ChatService.Request request =
-        new ChatService.Request(
+    final ChatConnection.Request request =
+        new ChatConnection.Request(
             expectedMethod, expectedPathAndQuery, EXPECTED_HEADERS, EXPECTED_CONTENT, 5000);
-    final ChatService.InternalRequest internal = ChatService.buildInternalRequest(request);
+    final ChatConnection.InternalRequest internal = ChatConnection.buildInternalRequest(request);
     assertEquals(expectedMethod, internal.guardedMap(NativeTesting::TESTING_ChatRequestGetMethod));
     assertEquals(
         expectedPathAndQuery, internal.guardedMap(NativeTesting::TESTING_ChatRequestGetPath));
@@ -140,26 +109,13 @@ public class ChatServiceTest {
                     h -> NativeTesting.TESTING_ChatRequestGetHeaderValue(h, name))));
   }
 
-  @RunWith(Parameterized.class)
   public static class ConnectTests {
-    private static class Listener implements ChatListener, ChatConnectionListener {
+    private static class Listener implements ChatConnectionListener {
       CompletableFuture<ChatServiceException> disconnectReason = new CompletableFuture<>();
-
-      public void onConnectionInterrupted(ChatService chat, ChatServiceException disconnectReason) {
-        this.disconnectReason.complete(disconnectReason);
-      }
 
       public void onConnectionInterrupted(
           ChatConnection chat, ChatServiceException disconnectReason) {
         this.disconnectReason.complete(disconnectReason);
-      }
-
-      public void onIncomingMessage(
-          ChatService chat,
-          byte[] envelope,
-          long serverDeliveryTimestamp,
-          ChatListener.ServerMessageAck sendAck) {
-        throw new AssertionError("Unexpected incoming message");
       }
 
       public void onIncomingMessage(
@@ -170,34 +126,8 @@ public class ChatServiceTest {
         throw new AssertionError("Unexpected incoming message");
       }
     }
-    ;
 
     @Rule public Timeout perCaseTimeout = new Timeout(15, TimeUnit.SECONDS);
-
-    @Parameters
-    public static Iterable<BiFunction<Network, Listener, CompletableFuture<Void>>>
-        connectUnauthFns() {
-      ArrayList<BiFunction<Network, Listener, CompletableFuture<Void>>> fns = new ArrayList<>(2);
-      fns.add(
-          (Network net, Listener listener) -> {
-            // Chat service
-            final UnauthenticatedChatService chat = net.createUnauthChatService(listener);
-            return chat.connect().thenCompose(debugInfo -> chat.disconnect());
-          });
-      fns.add(
-          (Network net, Listener listener) -> {
-            // Chat connection
-            return net.connectUnauthChat(listener)
-                .thenCompose(
-                    chat -> {
-                      chat.start();
-                      return chat.disconnect();
-                    });
-          });
-      return fns;
-    }
-
-    @Parameter public BiFunction<Network, Listener, CompletableFuture<Void>> connectUnauthChat;
 
     @Test
     public void testConnectUnauth() throws Exception {
@@ -208,7 +138,9 @@ public class ChatServiceTest {
 
       final Network net = new Network(Network.Environment.STAGING, USER_AGENT);
       final Listener listener = new Listener();
-      Void disconnectFinished = this.connectUnauthChat.apply(net, listener).get();
+      var chat = net.connectUnauthChat(listener).get();
+      chat.start();
+      Void disconnectFinished = chat.disconnect().get();
 
       ChatServiceException disconnectReason = listener.disconnectReason.get();
       assertNull(disconnectReason);
@@ -239,7 +171,9 @@ public class ChatServiceTest {
           1);
 
       final Listener listener = new Listener();
-      Void disconnectFinished = this.connectUnauthChat.apply(net, listener).get();
+      var chat = net.connectUnauthChat(listener).get();
+      chat.start();
+      Void disconnectFinished = chat.disconnect().get();
 
       ChatServiceException disconnectReason = listener.disconnectReason.get();
       assertNull(disconnectReason);
@@ -291,7 +225,9 @@ public class ChatServiceTest {
           1);
 
       final Listener listener = new Listener();
-      Void disconnectFinished = this.connectUnauthChat.apply(net, listener).get();
+      var chat = net.connectUnauthChat(listener).get();
+      chat.start();
+      Void disconnectFinished = chat.disconnect().get();
 
       ChatServiceException disconnectReason = listener.disconnectReason.get();
       assertNull(disconnectReason);
@@ -329,121 +265,6 @@ public class ChatServiceTest {
           net.setInvalidProxy();
           throw new IOException("to match all the other test cases");
         });
-  }
-
-  private void injectServerRequest(ChatService chat, String requestBase64) {
-    chat.guardedRun(
-        chatHandle ->
-            NativeTesting.TESTING_ChatService_InjectRawServerRequest(
-                chatHandle, Base64.decode(requestBase64)));
-  }
-
-  @Test
-  public void testListenerCallbacks() throws Exception {
-    class Listener implements ChatListener {
-      boolean receivedMessage1;
-      boolean receivedMessage2;
-      boolean receivedQueueEmpty;
-      Throwable error;
-      CountDownLatch latch = new CountDownLatch(1);
-
-      public void onIncomingMessage(
-          ChatService chat,
-          byte[] envelope,
-          long serverDeliveryTimestamp,
-          ServerMessageAck sendAck) {
-        try {
-          switch ((int) serverDeliveryTimestamp) {
-            case 1000:
-              assertFalse(receivedMessage1);
-              assertFalse(receivedMessage2);
-              assertFalse(receivedQueueEmpty);
-              receivedMessage1 = true;
-              break;
-            case 2000:
-              assertTrue(receivedMessage1);
-              assertFalse(receivedMessage2);
-              assertFalse(receivedQueueEmpty);
-              receivedMessage2 = true;
-              break;
-            default:
-              throw new AssertionError("unexpected message");
-          }
-        } catch (Throwable error) {
-          if (this.error == null) {
-            this.error = error;
-          }
-        }
-      }
-
-      public void onQueueEmpty(ChatService chat) {
-        try {
-          assertTrue(receivedMessage1);
-          assertTrue(receivedMessage2);
-          assertFalse(receivedQueueEmpty);
-          receivedQueueEmpty = true;
-        } catch (Throwable error) {
-          if (this.error == null) {
-            this.error = error;
-          }
-        }
-      }
-
-      public void onConnectionInterrupted(ChatService chat, ChatServiceException disconnectReason) {
-        try {
-          assertTrue(receivedMessage1);
-          assertTrue(receivedMessage2);
-          assertTrue(receivedQueueEmpty);
-          assertEquals("websocket error: channel already closed", disconnectReason.getMessage());
-        } catch (Throwable error) {
-          if (this.error == null) {
-            this.error = error;
-          }
-        } finally {
-          latch.countDown();
-        }
-      }
-    }
-
-    final Network net = new Network(Network.Environment.STAGING, USER_AGENT);
-    final Listener listener = new Listener();
-    final ChatService chat = net.createAuthChatService("", "", false, listener);
-
-    // The following payloads were generated via protoscope.
-    // % protoscope -s | base64
-    // The fields are described by chat_websocket.proto in the libsignal-net crate.
-
-    // 1: {"PUT"}
-    // 2: {"/api/v1/message"}
-    // 3: {1000i64}
-    // 5: {"x-signal-timestamp:1000"}
-    // 4: 1
-    injectServerRequest(
-        chat, "CgNQVVQSDy9hcGkvdjEvbWVzc2FnZRoI6AMAAAAAAAAqF3gtc2lnbmFsLXRpbWVzdGFtcDoxMDAwIAE=");
-    // 1: {"PUT"}
-    // 2: {"/api/v1/message"}
-    // 3: {2000i64}
-    // 5: {"x-signal-timestamp:2000"}
-    // 4: 2
-    injectServerRequest(
-        chat, "CgNQVVQSDy9hcGkvdjEvbWVzc2FnZRoI0AcAAAAAAAAqF3gtc2lnbmFsLXRpbWVzdGFtcDoyMDAwIAI=");
-
-    // Sending an invalid message should not affect the listener at all, nor should it stop future
-    // requests.
-    // 1: {"PUT"}
-    // 2: {"/invalid"}
-    // 4: 10
-    injectServerRequest(chat, "CgNQVVQSCC9pbnZhbGlkIAo=");
-
-    // 1: {"PUT"}
-    // 2: {"/api/v1/queue/empty"}
-    // 4: 99
-    injectServerRequest(chat, "CgNQVVQSEy9hcGkvdjEvcXVldWUvZW1wdHkgYw==");
-
-    chat.guardedRun(NativeTesting::TESTING_ChatService_InjectConnectionInterrupted);
-
-    listener.latch.await();
-    assertNull(listener.error);
   }
 
   private void injectServerRequest(
@@ -629,7 +450,7 @@ public class ChatServiceTest {
   // If it hangs for more than five seconds, consider that a failure.
   @Test(timeout = 5000)
   public void testListenerCleanup() throws Exception {
-    class Listener implements ChatListener {
+    class Listener implements ChatConnectionListener {
       CountDownLatch latch;
 
       Listener(CountDownLatch latch) {
@@ -637,7 +458,7 @@ public class ChatServiceTest {
       }
 
       public void onIncomingMessage(
-          ChatService chat,
+          ChatConnection chat,
           byte[] envelope,
           long serverDeliveryTimestamp,
           ServerMessageAck sendAck) {}
@@ -649,16 +470,17 @@ public class ChatServiceTest {
       }
     }
 
-    final Network net = new Network(Network.Environment.STAGING, USER_AGENT);
+    final TokioAsyncContext tokioAsyncContext = new TokioAsyncContext();
     CountDownLatch latch = new CountDownLatch(1);
-    ChatService chat = net.createAuthChatService("", "", false, new Listener(latch));
+    var chatAndFake =
+        AuthenticatedChatConnection.fakeConnect(tokioAsyncContext, new Listener(latch));
 
     System.gc();
     System.runFinalization();
 
     assertEquals(1, latch.getCount());
 
-    chat = null;
+    chatAndFake = null;
     do {
       System.gc();
       System.runFinalization();

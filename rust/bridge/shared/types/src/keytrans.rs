@@ -13,16 +13,6 @@ use crate::*;
 
 bridge_as_handle!(SearchResult, ffi = false, node = false);
 
-impl UnauthenticatedChat for crate::net::chat::UnauthChat {
-    fn send_unauthenticated(
-        &self,
-        request: chat::Request,
-        timeout: Duration,
-    ) -> BoxFuture<'_, Result<chat::Response, chat::ChatServiceError>> {
-        self.service.0.send_unauthenticated(request, timeout)
-    }
-}
-
 impl UnauthenticatedChat for crate::net::chat::UnauthenticatedChatConnection {
     fn send_unauthenticated(
         &self,

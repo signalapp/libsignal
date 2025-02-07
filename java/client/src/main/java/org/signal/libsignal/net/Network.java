@@ -55,8 +55,8 @@ public class Network {
    * overload that takes a separate domain and port number.
    *
    * <p>Existing connections and services will continue with the setting they were created with. (In
-   * particular, changing this setting will not affect any existing {@link ChatService
-   * ChatServices}.)
+   * particular, changing this setting will not affect any existing {@link ChatConnection
+   * ChatConnections}.)
    *
    * @throws IOException if the scheme is unsupported or if the provided parameters are invalid for
    *     that scheme (e.g. Signal TLS proxies don't support authentication)
@@ -74,8 +74,8 @@ public class Network {
    * calling {@link #clearProxy}.
    *
    * <p>Existing connections and services will continue with the setting they were created with. (In
-   * particular, changing this setting will not affect any existing {@link ChatService
-   * ChatServices}.)
+   * particular, changing this setting will not affect any existing {@link ChatConnection
+   * ChatConnections}.)
    *
    * @throws IOException if the host or port are not (structurally) valid, such as a port that
    *     doesn't fit in u16.
@@ -110,8 +110,8 @@ public class Network {
    * none was set, calling this method is a no-op.
    *
    * <p>Existing connections and services will continue with the setting they were created with. (In
-   * particular, changing this setting will not affect any existing {@link ChatService
-   * ChatServices}.)
+   * particular, changing this setting will not affect any existing {@link ChatConnection
+   * ChatConnections}.)
    */
   public void clearProxy() {
     this.connectionManager.clearProxy();
@@ -123,7 +123,7 @@ public class Network {
    * <p>If CC is enabled, <em>new</em> connections and services may try additional routes to the
    * Signal servers. Existing connections and services will continue with the setting they were
    * created with. (In particular, changing this setting will not affect any existing {@link
-   * ChatService ChatServices}.)
+   * ChatConnection ChatConnections}.)
    *
    * <p>CC is off by default.
    */
@@ -184,19 +184,6 @@ public class Network {
 
   ConnectionManager getConnectionManager() {
     return this.connectionManager;
-  }
-
-  public UnauthenticatedChatService createUnauthChatService(ChatListener listener) {
-    return new UnauthenticatedChatService(tokioAsyncContext, connectionManager, listener);
-  }
-
-  public AuthenticatedChatService createAuthChatService(
-      final String username,
-      final String password,
-      final boolean receiveStories,
-      ChatListener listener) {
-    return new AuthenticatedChatService(
-        tokioAsyncContext, connectionManager, username, password, receiveStories, listener);
   }
 
   /**

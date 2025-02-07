@@ -57,14 +57,9 @@ public final class NativeTesting {
   public static native String TESTING_ChatRequestGetHeaderValue(long request, String headerName);
   public static native String TESTING_ChatRequestGetMethod(long request);
   public static native String TESTING_ChatRequestGetPath(long request);
+  public static native Object TESTING_ChatResponseConvert(boolean bodyPresent) throws Exception;
   public static native long TESTING_ChatSearchResult();
-  public static native Object TESTING_ChatServiceDebugInfoConvert() throws Exception;
   public static native void TESTING_ChatServiceErrorConvert(String errorDescription) throws Exception;
-  public static native Object TESTING_ChatServiceResponseAndDebugInfoConvert() throws Exception;
-  public static native Object TESTING_ChatServiceResponseConvert(boolean bodyPresent) throws Exception;
-  public static native void TESTING_ChatService_InjectConnectionInterrupted(long chat);
-  public static native void TESTING_ChatService_InjectIntentionalDisconnect(long chat);
-  public static native void TESTING_ChatService_InjectRawServerRequest(long chat, byte[] bytes);
   public static native int TESTING_ConnectionManager_isUsingProxy(long manager);
   public static native void TESTING_ErrorOnBorrowAsync(Object input);
   public static native CompletableFuture TESTING_ErrorOnBorrowIo(long asyncRuntime, Object input);

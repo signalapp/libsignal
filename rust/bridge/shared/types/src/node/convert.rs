@@ -19,7 +19,7 @@ use paste::paste;
 use super::*;
 use crate::io::{InputStream, SyncInputStream};
 use crate::message_backup::MessageBackupValidationOutcome;
-use crate::net::chat::{ChatListener, ResponseAndDebugInfo};
+use crate::net::chat::ChatListener;
 use crate::node::chat::NodeChatListener;
 use crate::support::{extend_lifetime, Array, AsType, FixedLengthBincodeSerializable, Serialized};
 
@@ -991,47 +991,6 @@ impl<'a> ResultTypeInfo<'a> for libsignal_net::chat::Response {
         obj.set(cx, "message", message)?;
         obj.set(cx, "body", body)?;
         obj.set(cx, "headers", headers_arr)?;
-
-        Ok(obj)
-    }
-}
-
-impl<'a> ResultTypeInfo<'a> for libsignal_net::chat::DebugInfo {
-    type ResultType = JsObject;
-    fn convert_into(self, cx: &mut impl Context<'a>) -> JsResult<'a, Self::ResultType> {
-        let Self {
-            ip_type,
-            duration,
-            connection_info,
-        } = self;
-        let obj = JsObject::new(cx);
-
-        let ip_type = cx.number(ip_type.map_or(0, |i| i as u8));
-        let duration = cx.number(duration.as_millis().try_into().unwrap_or(u32::MAX));
-        let connection_info = cx.string(connection_info);
-
-        obj.set(cx, "ipType", ip_type)?;
-        obj.set(cx, "durationMillis", duration)?;
-        obj.set(cx, "connectionInfo", connection_info)?;
-
-        Ok(obj)
-    }
-}
-
-impl<'a> ResultTypeInfo<'a> for ResponseAndDebugInfo {
-    type ResultType = JsObject;
-    fn convert_into(self, cx: &mut impl Context<'a>) -> JsResult<'a, Self::ResultType> {
-        let Self {
-            response,
-            debug_info,
-        } = self;
-        let obj = JsObject::new(cx);
-
-        let response = response.convert_into(cx)?;
-        let debug_info = debug_info.convert_into(cx)?;
-
-        obj.set(cx, "response", response)?;
-        obj.set(cx, "debugInfo", debug_info)?;
 
         Ok(obj)
     }

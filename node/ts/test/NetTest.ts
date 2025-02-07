@@ -14,11 +14,8 @@ import { ErrorCode, LibSignalErrorBase } from '../Errors';
 import {
   AuthenticatedChatConnection,
   buildHttpRequest,
-  ChatConnection,
   ChatServerMessageAck,
-  ChatService,
   ChatServiceListener,
-  ConnectionEventsListener,
   Environment,
   Net,
   newNativeHandle,
@@ -104,21 +101,12 @@ describe('chat service api', () => {
       headers: headers,
       body: undefined,
     };
-    expect(Native.TESTING_ChatServiceResponseConvert(true)).deep.equals(
+    expect(Native.TESTING_ChatResponseConvert(true)).deep.equals(
       expectedWithContent
     );
-    expect(Native.TESTING_ChatServiceResponseConvert(false)).deep.equals(
+    expect(Native.TESTING_ChatResponseConvert(false)).deep.equals(
       expectedWithoutContent
     );
-  });
-
-  it('converts DebugInfo object to native', () => {
-    const expected = {
-      ipType: 1,
-      durationMillis: 200,
-      connectionInfo: 'connection_info',
-    };
-    expect(Native.TESTING_ChatServiceDebugInfoConvert()).deep.equals(expected);
   });
 
   const verb = 'GET';
@@ -305,409 +293,278 @@ describe('chat service api', () => {
   });
 
   // Integration tests make real network calls and as such will not be run unless a proxy server is provided.
-  describe('Integration tests', function (this: Mocha.Suite) {
-    ['ChatService', 'ChatConnection'].forEach((impl) => {
-      describe(impl, () => {
-        let connectChat: (
-          net: Net,
-          listener: ConnectionEventsListener
-        ) => Promise<ChatService | ChatConnection>;
-        switch (impl) {
-          case 'ChatService':
-            connectChat = async (
-              net: Net,
-              listener: ConnectionEventsListener
-            ) => {
-              const chat = net.newUnauthenticatedChatService(listener);
-              await chat.connect();
-              return chat;
-            };
-            break;
-          case 'ChatConnection':
-            connectChat = async (
-              net: Net,
-              listener: ConnectionEventsListener
-            ) => {
-              return await net.connectUnauthenticatedChat(listener);
-            };
-            break;
+  describe('ChatConnection integration tests', function (this: Mocha.Suite) {
+    const connectChatUnauthenticated = async (net: Net) => {
+      const onInterrupted = sinon.promise();
+      const listener = {
+        onConnectionInterrupted: (...args: [unknown]) =>
+          onInterrupted.resolve(args),
+      };
+      const chat = await net.connectUnauthenticatedChat(listener);
+      await chat.disconnect();
+      await onInterrupted;
+      expect(onInterrupted.resolvedValue).to.eql([null]);
+    };
+
+    it('can connect unauthenticated', async function () {
+      if (!process.env.LIBSIGNAL_TESTING_RUN_NONHERMETIC_TESTS) {
+        this.skip();
+      }
+      const net = new Net({
+        env: Environment.Production,
+        userAgent: userAgent,
+      });
+      await connectChatUnauthenticated(net);
+    }).timeout(10000);
+
+    it('can connect through a proxy server', async function () {
+      const PROXY_SERVER = process.env.LIBSIGNAL_TESTING_PROXY_SERVER;
+      if (!PROXY_SERVER) {
+        this.skip();
+      }
+
+      // The default TLS proxy config doesn't support staging, so we connect to production.
+      const net = new Net({
+        env: Environment.Production,
+        userAgent: userAgent,
+      });
+      const [host = PROXY_SERVER, port = '443'] = PROXY_SERVER.split(':', 2);
+      net.setProxy(host, parseInt(port, 10));
+      expect(
+        TESTING_ConnectionManager_isUsingProxy(net._connectionManager)
+      ).equals(1);
+      await connectChatUnauthenticated(net);
+    }).timeout(10000);
+
+    it('can connect through a proxy server using the options API', async function () {
+      const PROXY_SERVER = process.env.LIBSIGNAL_TESTING_PROXY_SERVER;
+      if (!PROXY_SERVER) {
+        this.skip();
+      }
+
+      // The default TLS proxy config doesn't support staging, so we connect to production.
+      const net = new Net({
+        env: Environment.Production,
+        userAgent: userAgent,
+      });
+      const [host = PROXY_SERVER, port = '443'] = PROXY_SERVER.split(':', 2);
+      const [before, after] = host.split('@', 2);
+      const [username, domain] = after ? [before, after] : [undefined, before];
+
+      net.setProxy({
+        scheme: SIGNAL_TLS_PROXY_SCHEME,
+        host: domain,
+        port: parseInt(port, 10),
+        username,
+      });
+      expect(
+        TESTING_ConnectionManager_isUsingProxy(net._connectionManager)
+      ).equals(1);
+      await connectChatUnauthenticated(net);
+    }).timeout(10000);
+
+    it('can connect through a proxy server using a URL', async function () {
+      const PROXY_SERVER = process.env.LIBSIGNAL_TESTING_PROXY_SERVER;
+      if (!PROXY_SERVER) {
+        this.skip();
+      }
+
+      // The default TLS proxy config doesn't support staging, so we connect to production.
+      const net = new Net({
+        env: Environment.Production,
+        userAgent: userAgent,
+      });
+
+      net.setProxyFromUrl(`${SIGNAL_TLS_PROXY_SCHEME}://${PROXY_SERVER}`);
+      expect(
+        TESTING_ConnectionManager_isUsingProxy(net._connectionManager)
+      ).equals(1);
+      await connectChatUnauthenticated(net);
+    }).timeout(10000);
+
+    // The following payloads were generated via protoscope.
+    // % protoscope -s | base64
+    // The fields are described by chat_websocket.proto in the libsignal-net crate.
+
+    // 1: {"PUT"}
+    // 2: {"/api/v1/message"}
+    // 3: {"payload"}
+    // 5: {"x-signal-timestamp: 1000"}
+    // 4: 1
+    const INCOMING_MESSAGE_1 = Buffer.from(
+      'CgNQVVQSDy9hcGkvdjEvbWVzc2FnZRoHcGF5bG9hZCoYeC1zaWduYWwtdGltZXN0YW1wOiAxMDAwIAE=',
+      'base64'
+    );
+
+    // 1: {"PUT"}
+    // 2: {"/api/v1/message"}
+    // 3: {"payload"}
+    // 5: {"x-signal-timestamp: 2000"}
+    // 4: 2
+    const INCOMING_MESSAGE_2 = Buffer.from(
+      'CgNQVVQSDy9hcGkvdjEvbWVzc2FnZRoHcGF5bG9hZCoYeC1zaWduYWwtdGltZXN0YW1wOiAyMDAwIAI=',
+      'base64'
+    );
+
+    // 1: {"PUT"}
+    // 2: {"/api/v1/queue/empty"}
+    // 4: 99
+    const EMPTY_QUEUE = Buffer.from(
+      'CgNQVVQSEy9hcGkvdjEvcXVldWUvZW1wdHkgYw==',
+      'base64'
+    );
+
+    // 1: {"PUT"}
+    // 2: {"/invalid"}
+    // 4: 10
+    const INVALID_MESSAGE = Buffer.from('CgNQVVQSCC9pbnZhbGlkIAo=', 'base64');
+
+    it('messages from the server are passed to the listener', async () => {
+      const listener = {
+        onIncomingMessage: sinon.stub(),
+        onQueueEmpty: sinon.stub(),
+        onConnectionInterrupted: sinon.stub(),
+      };
+      const tokio = new TokioAsyncContext(Native.TokioAsyncContext_new());
+      const [_chat, fakeRemote] = AuthenticatedChatConnection.fakeConnect(
+        tokio,
+        listener
+      );
+
+      // a helper function to check that the message has been passed to the listener
+      async function check(
+        serverRequest: Buffer,
+        expectedMethod: sinon.SinonStub,
+        expectedArguments: unknown[]
+      ) {
+        expectedMethod.reset();
+        const completable = new CompletablePromise();
+        expectedMethod.callsFake(completable.resolve);
+        Native.TESTING_FakeChatRemoteEnd_SendRawServerRequest(
+          fakeRemote,
+          serverRequest
+        );
+        await completable.done();
+        expect(expectedMethod).to.have.been.calledOnceWith(
+          ...expectedArguments
+        );
+      }
+
+      await check(INCOMING_MESSAGE_1, listener.onIncomingMessage, [
+        Buffer.from('payload', 'utf8'),
+        1000,
+        sinon.match.object,
+      ]);
+
+      await check(INCOMING_MESSAGE_2, listener.onIncomingMessage, [
+        Buffer.from('payload', 'utf8'),
+        2000,
+        sinon.match.object,
+      ]);
+
+      await check(EMPTY_QUEUE, listener.onQueueEmpty, []);
+    });
+
+    it('messages arrive in order', async () => {
+      const listener: ChatServiceListener = {
+        onIncomingMessage(
+          _envelope: Buffer,
+          _timestamp: number,
+          _ack: ChatServerMessageAck
+        ): void {
+          recordCall('_incoming_message');
+        },
+        onQueueEmpty(): void {
+          recordCall('_queue_empty');
+        },
+        onConnectionInterrupted(cause: object | null): void {
+          recordCall('_connection_interrupted', cause);
+        },
+      };
+      const tokio = new TokioAsyncContext(Native.TokioAsyncContext_new());
+      const [_chat, fakeRemote] = AuthenticatedChatConnection.fakeConnect(
+        tokio,
+        listener
+      );
+      const sendRawServerRequest = (message: Buffer) =>
+        Native.TESTING_FakeChatRemoteEnd_SendRawServerRequest(
+          fakeRemote,
+          message
+        );
+
+      const completable = new CompletablePromise();
+      const callsToMake: Buffer[] = [
+        INCOMING_MESSAGE_1,
+        EMPTY_QUEUE,
+        INVALID_MESSAGE,
+        INCOMING_MESSAGE_2,
+      ];
+      const callsReceived: [string, (object | null)[]][] = [];
+      const callsExpected: [string, ((value: object | null) => void)[]][] = [
+        ['_incoming_message', []],
+        ['_queue_empty', []],
+        ['_incoming_message', []],
+        [
+          '_connection_interrupted',
+          [
+            (error: object | null) =>
+              expect(error)
+                .instanceOf(LibSignalErrorBase)
+                .property('code', ErrorCode.IoError),
+          ],
+        ],
+      ];
+      const recordCall = function (name: string, ...args: (object | null)[]) {
+        callsReceived.push([name, args]);
+        if (callsReceived.length == callsExpected.length) {
+          completable.complete();
         }
+      };
+      callsToMake.forEach((serverRequest) =>
+        sendRawServerRequest(serverRequest)
+      );
+      Native.TESTING_FakeChatRemoteEnd_InjectConnectionInterrupted(fakeRemote);
+      await completable.done();
 
-        const connectChatUnauthenticated = async (net: Net) => {
-          const onInterrupted = sinon.promise();
-          const listener = {
-            onConnectionInterrupted: (...args: [unknown]) =>
-              onInterrupted.resolve(args),
-          };
-          const chat = await connectChat(net, listener);
-          await chat.disconnect();
-          await onInterrupted;
-          expect(onInterrupted.resolvedValue).to.eql([null]);
-        };
-
-        it('can connect unauthenticated', async function () {
-          if (!process.env.LIBSIGNAL_TESTING_RUN_NONHERMETIC_TESTS) {
-            this.skip();
-          }
-          const net = new Net({
-            env: Environment.Production,
-            userAgent: userAgent,
-          });
-          await connectChatUnauthenticated(net);
-        }).timeout(10000);
-
-        it('can connect through a proxy server', async function () {
-          const PROXY_SERVER = process.env.LIBSIGNAL_TESTING_PROXY_SERVER;
-          if (!PROXY_SERVER) {
-            this.skip();
-          }
-
-          // The default TLS proxy config doesn't support staging, so we connect to production.
-          const net = new Net({
-            env: Environment.Production,
-            userAgent: userAgent,
-          });
-          const [host = PROXY_SERVER, port = '443'] = PROXY_SERVER.split(
-            ':',
-            2
-          );
-          net.setProxy(host, parseInt(port, 10));
-          expect(
-            TESTING_ConnectionManager_isUsingProxy(net._connectionManager)
-          ).equals(1);
-          await connectChatUnauthenticated(net);
-        }).timeout(10000);
-
-        it('can connect through a proxy server using the options API', async function () {
-          const PROXY_SERVER = process.env.LIBSIGNAL_TESTING_PROXY_SERVER;
-          if (!PROXY_SERVER) {
-            this.skip();
-          }
-
-          // The default TLS proxy config doesn't support staging, so we connect to production.
-          const net = new Net({
-            env: Environment.Production,
-            userAgent: userAgent,
-          });
-          const [host = PROXY_SERVER, port = '443'] = PROXY_SERVER.split(
-            ':',
-            2
-          );
-          const [before, after] = host.split('@', 2);
-          const [username, domain] = after
-            ? [before, after]
-            : [undefined, before];
-
-          net.setProxy({
-            scheme: SIGNAL_TLS_PROXY_SCHEME,
-            host: domain,
-            port: parseInt(port, 10),
-            username,
-          });
-          expect(
-            TESTING_ConnectionManager_isUsingProxy(net._connectionManager)
-          ).equals(1);
-          await connectChatUnauthenticated(net);
-        }).timeout(10000);
-
-        it('can connect through a proxy server using a URL', async function () {
-          const PROXY_SERVER = process.env.LIBSIGNAL_TESTING_PROXY_SERVER;
-          if (!PROXY_SERVER) {
-            this.skip();
-          }
-
-          // The default TLS proxy config doesn't support staging, so we connect to production.
-          const net = new Net({
-            env: Environment.Production,
-            userAgent: userAgent,
-          });
-
-          net.setProxyFromUrl(`${SIGNAL_TLS_PROXY_SCHEME}://${PROXY_SERVER}`);
-          expect(
-            TESTING_ConnectionManager_isUsingProxy(net._connectionManager)
-          ).equals(1);
-          await connectChatUnauthenticated(net);
-        }).timeout(10000);
-
-        // The following payloads were generated via protoscope.
-        // % protoscope -s | base64
-        // The fields are described by chat_websocket.proto in the libsignal-net crate.
-
-        // 1: {"PUT"}
-        // 2: {"/api/v1/message"}
-        // 3: {"payload"}
-        // 5: {"x-signal-timestamp: 1000"}
-        // 4: 1
-        const INCOMING_MESSAGE_1 = Buffer.from(
-          'CgNQVVQSDy9hcGkvdjEvbWVzc2FnZRoHcGF5bG9hZCoYeC1zaWduYWwtdGltZXN0YW1wOiAxMDAwIAE=',
-          'base64'
-        );
-
-        // 1: {"PUT"}
-        // 2: {"/api/v1/message"}
-        // 3: {"payload"}
-        // 5: {"x-signal-timestamp: 2000"}
-        // 4: 2
-        const INCOMING_MESSAGE_2 = Buffer.from(
-          'CgNQVVQSDy9hcGkvdjEvbWVzc2FnZRoHcGF5bG9hZCoYeC1zaWduYWwtdGltZXN0YW1wOiAyMDAwIAI=',
-          'base64'
-        );
-
-        // 1: {"PUT"}
-        // 2: {"/api/v1/queue/empty"}
-        // 4: 99
-        const EMPTY_QUEUE = Buffer.from(
-          'CgNQVVQSEy9hcGkvdjEvcXVldWUvZW1wdHkgYw==',
-          'base64'
-        );
-
-        // 1: {"PUT"}
-        // 2: {"/invalid"}
-        // 4: 10
-        const INVALID_MESSAGE = Buffer.from(
-          'CgNQVVQSCC9pbnZhbGlkIAo=',
-          'base64'
-        );
-
-        it('messages from the server are passed to the listener', async () => {
-          const listener = {
-            onIncomingMessage: sinon.stub(),
-            onQueueEmpty: sinon.stub(),
-            onConnectionInterrupted: sinon.stub(),
-          };
-          let sendRawServerRequest: (serverRequest: Buffer) => void;
-          switch (impl) {
-            case 'ChatConnection':
-              {
-                const tokio = new TokioAsyncContext(
-                  Native.TokioAsyncContext_new()
-                );
-                const [_chat, fakeRemote] =
-                  AuthenticatedChatConnection.fakeConnect(tokio, listener);
-                sendRawServerRequest = (serverRequest: Buffer) => {
-                  Native.TESTING_FakeChatRemoteEnd_SendRawServerRequest(
-                    fakeRemote,
-                    serverRequest
-                  );
-                };
-              }
-              break;
-            case 'ChatService': {
-              const net = new Net({
-                env: Environment.Production,
-                userAgent: userAgent,
-              });
-              const chat = net.newAuthenticatedChatService(
-                '',
-                '',
-                false,
-                listener
-              );
-
-              sendRawServerRequest = (serverRequest: Buffer) => {
-                Native.TESTING_ChatService_InjectRawServerRequest(
-                  chat.chatService,
-                  serverRequest
-                );
-              };
-            }
-          }
-
-          // a helper function to check that the message has been passed to the listener
-          async function check(
-            serverRequest: Buffer,
-            expectedMethod: sinon.SinonStub,
-            expectedArguments: unknown[]
-          ) {
-            expectedMethod.reset();
-            const completable = new CompletablePromise();
-            expectedMethod.callsFake(completable.resolve);
-            sendRawServerRequest(serverRequest);
-            await completable.done();
-            expect(expectedMethod).to.have.been.calledOnceWith(
-              ...expectedArguments
-            );
-          }
-
-          await check(INCOMING_MESSAGE_1, listener.onIncomingMessage, [
-            Buffer.from('payload', 'utf8'),
-            1000,
-            sinon.match.object,
-          ]);
-
-          await check(INCOMING_MESSAGE_2, listener.onIncomingMessage, [
-            Buffer.from('payload', 'utf8'),
-            2000,
-            sinon.match.object,
-          ]);
-
-          await check(EMPTY_QUEUE, listener.onQueueEmpty, []);
-        });
-
-        it('messages arrive in order', async () => {
-          let sendRawServerRequest: (serverRequest: Buffer) => void;
-          let sendConnectionInterrupted: () => void = () => {};
-          const listener: ChatServiceListener = {
-            onIncomingMessage(
-              _envelope: Buffer,
-              _timestamp: number,
-              _ack: ChatServerMessageAck
-            ): void {
-              recordCall('_incoming_message');
-            },
-            onQueueEmpty(): void {
-              recordCall('_queue_empty');
-            },
-            onConnectionInterrupted(cause: object | null): void {
-              recordCall('_connection_interrupted', cause);
-            },
-          };
-          switch (impl) {
-            case 'ChatConnection':
-              {
-                const tokio = new TokioAsyncContext(
-                  Native.TokioAsyncContext_new()
-                );
-                const [_chat, fakeRemote] =
-                  AuthenticatedChatConnection.fakeConnect(tokio, listener);
-                sendRawServerRequest = (message: Buffer) =>
-                  Native.TESTING_FakeChatRemoteEnd_SendRawServerRequest(
-                    fakeRemote,
-                    message
-                  );
-                sendConnectionInterrupted = () =>
-                  Native.TESTING_FakeChatRemoteEnd_InjectConnectionInterrupted(
-                    fakeRemote
-                  );
-              }
-              break;
-            case 'ChatService': {
-              const net = new Net({
-                env: Environment.Production,
-                userAgent: userAgent,
-              });
-              const chat = net.newAuthenticatedChatService(
-                '',
-                '',
-                false,
-                listener
-              );
-              sendRawServerRequest = (message: Buffer) =>
-                Native.TESTING_ChatService_InjectRawServerRequest(
-                  chat.chatService,
-                  message
-                );
-              sendConnectionInterrupted = () =>
-                Native.TESTING_ChatService_InjectConnectionInterrupted(
-                  chat.chatService
-                );
-            }
-          }
-
-          const completable = new CompletablePromise();
-          const callsToMake: Buffer[] = [
-            INCOMING_MESSAGE_1,
-            EMPTY_QUEUE,
-            INVALID_MESSAGE,
-            INCOMING_MESSAGE_2,
-          ];
-          const callsReceived: [string, (object | null)[]][] = [];
-          const callsExpected: [string, ((value: object | null) => void)[]][] =
-            [
-              ['_incoming_message', []],
-              ['_queue_empty', []],
-              ['_incoming_message', []],
-              [
-                '_connection_interrupted',
-                [
-                  (error: object | null) =>
-                    expect(error)
-                      .instanceOf(LibSignalErrorBase)
-                      .property('code', ErrorCode.IoError),
-                ],
-              ],
-            ];
-          const recordCall = function (
-            name: string,
-            ...args: (object | null)[]
-          ) {
-            callsReceived.push([name, args]);
-            if (callsReceived.length == callsExpected.length) {
-              completable.complete();
-            }
-          };
-          callsToMake.forEach((serverRequest) =>
-            sendRawServerRequest(serverRequest)
-          );
-          sendConnectionInterrupted();
-          await completable.done();
-
-          expect(callsReceived).to.have.lengthOf(callsExpected.length);
-          callsReceived.forEach((element, index) => {
-            const [call, args] = element;
-            const [expectedCall, expectedArgs] = callsExpected[index];
-            expect(call).to.eql(expectedCall);
-            expect(args.length).to.eql(expectedArgs.length);
-            args.map((arg, i) => {
-              expectedArgs[i](arg);
-            });
-          });
-        });
-
-        it('listener gets null cause for intentional disconnect', async () => {
-          const completable = new CompletablePromise();
-          const connectionInterruptedReasons: (object | null)[] = [];
-          const listener: ChatServiceListener = {
-            onIncomingMessage(
-              _envelope: Buffer,
-              _timestamp: number,
-              _ack: ChatServerMessageAck
-            ): void {
-              fail('unexpected call');
-            },
-            onQueueEmpty(): void {
-              fail('unexpected call');
-            },
-            onConnectionInterrupted(cause: object | null): void {
-              connectionInterruptedReasons.push(cause);
-              completable.complete();
-            },
-          };
-          let sendIntentionalDisconnect: () => Promise<void> = async () => {};
-          switch (impl) {
-            case 'ChatConnection':
-              {
-                const tokio = new TokioAsyncContext(
-                  Native.TokioAsyncContext_new()
-                );
-                const [chat, _fakeRemote] =
-                  AuthenticatedChatConnection.fakeConnect(tokio, listener);
-                sendIntentionalDisconnect = async () => await chat.disconnect();
-              }
-              break;
-            case 'ChatService': {
-              const net = new Net({
-                env: Environment.Production,
-                userAgent: userAgent,
-              });
-              const chat = net.newAuthenticatedChatService(
-                '',
-                '',
-                false,
-                listener
-              );
-              // eslint-disable-next-line @typescript-eslint/require-await
-              sendIntentionalDisconnect = async () =>
-                Native.TESTING_ChatService_InjectIntentionalDisconnect(
-                  chat.chatService
-                );
-            }
-          }
-          await sendIntentionalDisconnect();
-          await completable.done();
-          expect(connectionInterruptedReasons).to.eql([null]);
+      expect(callsReceived).to.have.lengthOf(callsExpected.length);
+      callsReceived.forEach((element, index) => {
+        const [call, args] = element;
+        const [expectedCall, expectedArgs] = callsExpected[index];
+        expect(call).to.eql(expectedCall);
+        expect(args.length).to.eql(expectedArgs.length);
+        args.map((arg, i) => {
+          expectedArgs[i](arg);
         });
       });
+    });
+
+    it('listener gets null cause for intentional disconnect', async () => {
+      const completable = new CompletablePromise();
+      const connectionInterruptedReasons: (object | null)[] = [];
+      const listener: ChatServiceListener = {
+        onIncomingMessage(
+          _envelope: Buffer,
+          _timestamp: number,
+          _ack: ChatServerMessageAck
+        ): void {
+          fail('unexpected call');
+        },
+        onQueueEmpty(): void {
+          fail('unexpected call');
+        },
+        onConnectionInterrupted(cause: object | null): void {
+          connectionInterruptedReasons.push(cause);
+          completable.complete();
+        },
+      };
+      const tokio = new TokioAsyncContext(Native.TokioAsyncContext_new());
+      const [chat, _fakeRemote] = AuthenticatedChatConnection.fakeConnect(
+        tokio,
+        listener
+      );
+      await chat.disconnect();
+      await completable.done();
+      expect(connectionInterruptedReasons).to.eql([null]);
     });
   });
 

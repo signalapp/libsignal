@@ -744,43 +744,6 @@ impl ResultTypeInfo for libsignal_net::chat::Response {
     }
 }
 
-impl ResultTypeInfo for libsignal_net::chat::DebugInfo {
-    type ResultType = FfiChatServiceDebugInfo;
-
-    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
-        let Self {
-            ip_type,
-            duration,
-            connection_info,
-        } = self;
-
-        Ok(FfiChatServiceDebugInfo {
-            raw_ip_type: ip_type.map_or(0, |i| i as u8),
-            duration_secs: duration.as_secs_f64(),
-            connection_info: connection_info.convert_into()?,
-        })
-    }
-}
-
-impl ResultTypeInfo for crate::net::chat::ResponseAndDebugInfo {
-    type ResultType = FfiResponseAndDebugInfo;
-
-    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
-        let Self {
-            response,
-            debug_info,
-        } = self;
-
-        let response = response.convert_into()?;
-        let debug_info = debug_info.convert_into()?;
-
-        Ok(FfiResponseAndDebugInfo {
-            response,
-            debug_info,
-        })
-    }
-}
-
 /// Defines an `extern "C"` function for cloning the given type.
 #[macro_export]
 macro_rules! ffi_bridge_handle_clone {
@@ -955,8 +918,6 @@ macro_rules! ffi_result_type {
 
     (LookupResponse) => (ffi::FfiCdsiLookupResponse);
     (ChatResponse) => (ffi::FfiChatResponse);
-    (ChatServiceDebugInfo) => (ffi::FfiChatServiceDebugInfo);
-    (ResponseAndDebugInfo) => (ffi::FfiResponseAndDebugInfo);
 
     // In order to provide a fixed-sized array of the correct length,
     // a serialized type FooBar must have a constant FOO_BAR_LEN that's in scope (and exposed to C).

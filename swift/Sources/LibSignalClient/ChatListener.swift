@@ -15,31 +15,6 @@ public protocol ConnectionEventsListener<Service>: AnyObject {
     func connectionWasInterrupted(_ service: Service, error: Error?)
 }
 
-@available(*, deprecated, renamed: "ChatServiceListener")
-public typealias ChatListener = ChatServiceListener
-
-public protocol ChatServiceListener: ConnectionEventsListener<AuthenticatedChatService> {
-    /// Called when the server delivers an incoming message to the client.
-    ///
-    /// `serverDeliveryTimestamp` is in milliseconds.
-    ///
-    /// If `sendAck` is not called, the server will leave this message in the message queue and
-    /// attempt to deliver it again in the future.
-    func chatService(_ chat: AuthenticatedChatService, didReceiveIncomingMessage envelope: Data, serverDeliveryTimestamp: UInt64, sendAck: @escaping () async throws -> Void)
-
-    /// Called when the server indicates that there are no further messages in the message queue.
-    ///
-    /// Note that further messages may still be delivered; this merely indicates that all messages
-    /// that were in the queue *when the connection was established* have been delivered.
-    ///
-    /// The default implementation of this method does nothing.
-    func chatServiceDidReceiveQueueEmpty(_ chat: AuthenticatedChatService)
-}
-
-extension ChatServiceListener {
-    public func chatServiceDidReceiveQueueEmpty(_: AuthenticatedChatService) {}
-}
-
 public protocol ChatConnectionListener: ConnectionEventsListener<AuthenticatedChatConnection> {
     /// Called when the server delivers an incoming message to the client.
     ///
@@ -62,22 +37,9 @@ extension ChatConnectionListener {
     public func chatConnectionDidReceiveQueueEmpty(_: AuthenticatedChatConnection) {}
 }
 
-internal struct Weak<T: AnyObject>: ExpressibleByNilLiteral {
-    weak var inner: T?
-    init(_ inner: T) {
-        self.inner = inner
-    }
-
-    init(nilLiteral: ()) {
-        self.inner = nil
-    }
-}
-
 private protocol ChatListenerConnection {
     var tokioAsyncContext: TokioAsyncContext { get }
 }
-
-extension AuthenticatedChatService: ChatListenerConnection {}
 
 extension AuthenticatedChatConnection: ChatListenerConnection {}
 
@@ -88,40 +50,25 @@ internal class ChatListenerBridge {
         }
     }
 
-    fileprivate enum Inner {
-        case service(Weak<AuthenticatedChatService>, any ChatServiceListener)
-        case connection(Weak<AuthenticatedChatConnection>, any ChatConnectionListener)
-    }
-
-    private var inner: Inner
-
-    internal init(
-        chatService: AuthenticatedChatService,
-        chatListener: any ChatServiceListener
-    ) {
-        self.inner = .service(Weak(chatService), chatListener)
-    }
+    private weak var chatConnection: AuthenticatedChatConnection?
+    private var chatListener: any ChatConnectionListener
 
     internal init(
         chatConnection: AuthenticatedChatConnection,
         chatListener: any ChatConnectionListener
     ) {
-        self.inner = .connection(Weak(chatConnection), chatListener)
+        self.chatConnection = chatConnection
+        self.chatListener = chatListener
     }
 
     internal init(
         chatConnectionListener: any ChatConnectionListener
     ) {
-        self.inner = .connection(nil, chatConnectionListener)
+        self.chatListener = chatConnectionListener
     }
 
     internal func setConnection(chatConnection: AuthenticatedChatConnection) {
-        switch self.inner {
-        case .service(_, _):
-            fatalError("unexpected error: found chat service instead of connection")
-        case .connection(_, let listener):
-            self.inner = .connection(Weak(chatConnection), listener)
-        }
+        self.chatConnection = chatConnection
     }
 
     /// Creates an **owned** callback struct from this object.
@@ -134,37 +81,18 @@ internal class ChatListenerBridge {
             let bridge = Unmanaged<ChatListenerBridge>.fromOpaque(rawCtx!).takeUnretainedValue()
 
             let ackHandleOwner = AckHandleOwner(owned: NonNull(ackHandle)!)
-            switch bridge.inner {
-            case .service(let chatService, let chatListener):
-                guard let chatService = chatService.inner else {
-                    return
-                }
+            guard let chatConnection = bridge.chatConnection else {
+                return
+            }
 
-                let envelopeData = Data(bytes: envelope.base, count: envelope.length)
-                chatListener.chatService(
-                    chatService, didReceiveIncomingMessage: envelopeData,
-                    serverDeliveryTimestamp: timestamp
-                ) {
-                    _ = try await chatService.tokioAsyncContext.invokeAsyncFunction { promise, asyncContext in
-                        ackHandleOwner.withNativeHandle { ackHandle in
-                            signal_server_message_ack_send(promise, asyncContext.const(), ackHandle.const())
-                        }
-                    }
-                }
-            case .connection(let chatService, let chatListener):
-                guard let chatService = chatService.inner else {
-                    return
-                }
-
-                let envelopeData = Data(bytes: envelope.base, count: envelope.length)
-                chatListener.chatConnection(
-                    chatService, didReceiveIncomingMessage: envelopeData,
-                    serverDeliveryTimestamp: timestamp
-                ) {
-                    _ = try await chatService.tokioAsyncContext.invokeAsyncFunction { promise, asyncContext in
-                        ackHandleOwner.withNativeHandle { ackHandle in
-                            signal_server_message_ack_send(promise, asyncContext.const(), ackHandle.const())
-                        }
+            let envelopeData = Data(bytes: envelope.base, count: envelope.length)
+            bridge.chatListener.chatConnection(
+                chatConnection, didReceiveIncomingMessage: envelopeData,
+                serverDeliveryTimestamp: timestamp
+            ) {
+                _ = try await chatConnection.tokioAsyncContext.invokeAsyncFunction { promise, asyncContext in
+                    ackHandleOwner.withNativeHandle { ackHandle in
+                        signal_server_message_ack_send(promise, asyncContext.const(), ackHandle.const())
                     }
                 }
             }
@@ -172,40 +100,20 @@ internal class ChatListenerBridge {
 
         let receivedQueueEmpty: SignalReceivedQueueEmpty = { rawCtx in
             let bridge = Unmanaged<ChatListenerBridge>.fromOpaque(rawCtx!).takeUnretainedValue()
-            switch bridge.inner {
-            case .service(let chatService, let chatListener):
-                guard let chatService = chatService.inner else {
-                    return
-                }
-
-                chatListener.chatServiceDidReceiveQueueEmpty(chatService)
-            case .connection(let chatService, let chatListener):
-                guard let chatService = chatService.inner else {
-                    return
-                }
-
-                chatListener.chatConnectionDidReceiveQueueEmpty(chatService)
+            guard let chatConnection = bridge.chatConnection else {
+                return
             }
+
+            bridge.chatListener.chatConnectionDidReceiveQueueEmpty(chatConnection)
         }
         let connectionInterrupted: SignalConnectionInterrupted = { rawCtx, maybeError in
             let bridge = Unmanaged<ChatListenerBridge>.fromOpaque(rawCtx!).takeUnretainedValue()
-            switch bridge.inner {
-            case .service(let chatService, let chatListener):
-                guard let chatService = chatService.inner else {
-                    return
-                }
-
-                let error = convertError(maybeError)
-
-                chatListener.connectionWasInterrupted(chatService, error: error)
-            case .connection(let chatService, let chatListener):
-                guard let chatService = chatService.inner else {
-                    return
-                }
-
-                let error = convertError(maybeError)
-                chatListener.connectionWasInterrupted(chatService, error: error)
+            guard let chatConnection = bridge.chatConnection else {
+                return
             }
+
+            let error = convertError(maybeError)
+            bridge.chatListener.connectionWasInterrupted(chatConnection, error: error)
         }
         return .init(
             ctx: Unmanaged.passRetained(self).toOpaque(),
@@ -242,28 +150,15 @@ extension SignalConstPointerServerMessageAck: SignalConstPointer {
 }
 
 internal final class UnauthConnectionEventsListenerBridge {
-    private enum Inner {
-        case service(
-            Weak<UnauthenticatedChatService>,
-            any ConnectionEventsListener<UnauthenticatedChatService>
-        )
-        case connection(Weak<UnauthenticatedChatConnection>, any ConnectionEventsListener<UnauthenticatedChatConnection>)
-    }
-
-    private let inner: Inner
-
-    init(
-        chatService: UnauthenticatedChatService,
-        listener: any ConnectionEventsListener<UnauthenticatedChatService>
-    ) {
-        self.inner = .service(Weak(chatService), listener)
-    }
+    private weak var chatConnection: UnauthenticatedChatConnection?
+    private let chatListener: any ConnectionEventsListener<UnauthenticatedChatConnection>
 
     init(
         chatConnection: UnauthenticatedChatConnection,
         listener: any ConnectionEventsListener<UnauthenticatedChatConnection>
     ) {
-        self.inner = .connection(Weak(chatConnection), listener)
+        self.chatConnection = chatConnection
+        self.chatListener = listener
     }
 
     /// Creates an **owned** callback struct from this object.
@@ -281,24 +176,13 @@ internal final class UnauthConnectionEventsListenerBridge {
             let bridge = Unmanaged<UnauthConnectionEventsListenerBridge>.fromOpaque(rawCtx!)
                 .takeUnretainedValue()
 
-            switch bridge.inner {
-            case .service(let service, let listener):
-                guard let chatService = service.inner else {
-                    return
-                }
-
-                let error = convertError(maybeError)
-
-                listener.connectionWasInterrupted(chatService, error: error)
-            case .connection(let service, let listener):
-                guard let chatService = service.inner else {
-                    return
-                }
-
-                let error = convertError(maybeError)
-
-                listener.connectionWasInterrupted(chatService, error: error)
+            guard let chatConnection = bridge.chatConnection else {
+                return
             }
+
+            let error = convertError(maybeError)
+
+            bridge.chatListener.connectionWasInterrupted(chatConnection, error: error)
         }
 
         return .init(

@@ -220,9 +220,6 @@ impl Chat<UnauthChatService> {
     }
 }
 
-pub type UnauthChat = Chat<UnauthChatService>;
-pub type AuthChat = Chat<AuthChatService>;
-
 pub struct UnauthenticatedChatConnection {
     /// The possibly-still-being-constructed [`ChatConnection`].
     ///
@@ -478,8 +475,6 @@ pub struct ResponseAndDebugInfo {
     pub debug_info: ChatServiceDebugInfo,
 }
 
-bridge_as_handle!(UnauthChat);
-bridge_as_handle!(AuthChat);
 bridge_as_handle!(HttpRequest);
 
 /// Newtype wrapper for implementing [`TryFrom`]`

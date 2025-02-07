@@ -56,7 +56,7 @@ public class Net {
     /// calling ``Net/clearProxy()``.
     ///
     /// Existing connections and services will continue with the setting they were created with.
-    /// (In particular, changing this setting will not affect any existing ``ChatService``s.)
+    /// (In particular, changing this setting will not affect any existing ``ChatConnection``s.)
     ///
     /// - Throws: if the host or port is not structurally valid, such as a port of 0.
     public func setProxy(host: String, port: UInt16?) throws {
@@ -86,7 +86,7 @@ public class Net {
     /// ``Net/setInvalidProxy()``. If none was set, calling this method is a no-op.
     ///
     /// Existing connections and services will continue with the setting they were created with.
-    /// (In particular, changing this setting will not affect any existing ``ChatService``s.)
+    /// (In particular, changing this setting will not affect any existing ``ChatConnection``s.)
     public func clearProxy() {
         self.connectionManager.clearProxy()
     }
@@ -95,7 +95,7 @@ public class Net {
     ///
     /// If CC is enabled, *new* connections and services may try additional routes to the Signal servers.
     /// Existing connections and services will continue with the setting they were created with.
-    /// (In particular, changing this setting will not affect any existing ``ChatService``s.)
+    /// (In particular, changing this setting will not affect any existing ``ChatConnection``s.)
     ///
     /// CC is off by default.
     public func setCensorshipCircumventionEnabled(_ enabled: Bool) {
@@ -191,14 +191,6 @@ public class Net {
             }
         }
         return CdsiLookup(native: NonNull(handle)!, asyncContext: self.asyncContext)
-    }
-
-    public func createAuthenticatedChatService(username: String, password: String, receiveStories: Bool) -> AuthenticatedChatService {
-        return AuthenticatedChatService(tokioAsyncContext: self.asyncContext, connectionManager: self.connectionManager, username: username, password: password, receiveStories: receiveStories)
-    }
-
-    public func createUnauthenticatedChatService() -> UnauthenticatedChatService {
-        return UnauthenticatedChatService(tokioAsyncContext: self.asyncContext, connectionManager: self.connectionManager)
     }
 
     /// Asynchronously establishes an authenticated connection to the remote

@@ -133,9 +133,9 @@ public class AuthenticatedChatConnection extends ChatConnection {
   //   using the shared implementations of those methods in ChatConnection.
   @Override
   protected CompletableFuture disconnectWrapper(
-      long nativeAsyncContextHandle, long nativeChatServiceHandle) {
+      long nativeAsyncContextHandle, long nativeChatConnectionHandle) {
     return Native.AuthenticatedChatConnection_disconnect(
-        nativeAsyncContextHandle, nativeChatServiceHandle);
+        nativeAsyncContextHandle, nativeChatConnectionHandle);
   }
 
   @Override

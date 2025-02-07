@@ -106,7 +106,8 @@ public abstract class ChatConnection extends NativeHandleGuard.SimpleOwner {
     return tokioAsyncContext.guardedMap(
         asyncContextHandle ->
             guardedMap(
-                chatServiceHandle -> disconnectWrapper(asyncContextHandle, chatServiceHandle)));
+                chatConnectionHandle ->
+                    disconnectWrapper(asyncContextHandle, chatConnectionHandle)));
   }
 
   /**
@@ -121,14 +122,14 @@ public abstract class ChatConnection extends NativeHandleGuard.SimpleOwner {
   public CompletableFuture<Response> send(final Request req) throws MalformedURLException {
     final InternalRequest internalRequest = buildInternalRequest(req);
     try (final NativeHandleGuard asyncContextHandle = new NativeHandleGuard(tokioAsyncContext);
-        final NativeHandleGuard chatServiceHandle = new NativeHandleGuard(this);
+        final NativeHandleGuard chatConnectionHandle = new NativeHandleGuard(this);
         final NativeHandleGuard requestHandle = new NativeHandleGuard(internalRequest)) {
       return sendWrapper(
               asyncContextHandle.nativeHandle(),
-              chatServiceHandle.nativeHandle(),
+              chatConnectionHandle.nativeHandle(),
               requestHandle.nativeHandle(),
               req.timeoutMillis)
-          .thenApply(Response::from);
+          .thenApply(o -> (Response) o);
     }
   }
 
@@ -183,10 +184,5 @@ public abstract class ChatConnection extends NativeHandleGuard.SimpleOwner {
       byte[] body,
       int timeoutMillis) {}
 
-  public record Response(int status, String message, Map<String, String> headers, byte[] body) {
-    private static Response from(Object o) {
-      ChatService.Response r = (ChatService.Response) o;
-      return new Response(r.status(), r.message(), r.headers(), r.body());
-    }
-  }
+  public record Response(int status, String message, Map<String, String> headers, byte[] body) {}
 }

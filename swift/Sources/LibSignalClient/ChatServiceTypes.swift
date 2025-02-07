@@ -133,26 +133,6 @@ public struct ChatResponse: Equatable, Sendable {
     }
 }
 
-public struct ChatServiceDebugInfo: Equatable, Sendable {
-    public var ipType: IpType
-    public var duration: TimeInterval
-    public var connectionInfo: String
-
-    public init(ipType: IpType, duration: TimeInterval, connectionInfo: String) {
-        self.ipType = ipType
-        self.duration = duration
-        self.connectionInfo = connectionInfo
-    }
-
-    internal init(consuming rawDebugInfo: SignalFfiChatServiceDebugInfo) {
-        var rawDebugInfo = rawDebugInfo
-        defer { rawDebugInfo.free() }
-        self.ipType = IpType(rawValue: rawDebugInfo.raw_ip_type) ?? .unknown
-        self.duration = rawDebugInfo.duration_secs
-        self.connectionInfo = String(cString: rawDebugInfo.connection_info)
-    }
-}
-
 extension SignalFfiChatResponse {
     fileprivate var rawHeadersAsBuffer: UnsafeBufferPointer<UnsafePointer<CChar>?> {
         .init(start: self.headers.base, count: self.headers.length)
@@ -165,14 +145,6 @@ extension SignalFfiChatResponse {
         signal_free_string(message)
         signal_free_list_of_strings(headers)
         signal_free_buffer(body.base, body.length)
-        // Zero out all the fields to be sure they won't be reused.
-        self = .init()
-    }
-}
-
-extension SignalFfiChatServiceDebugInfo {
-    fileprivate mutating func free() {
-        signal_free_string(connection_info)
         // Zero out all the fields to be sure they won't be reused.
         self = .init()
     }
