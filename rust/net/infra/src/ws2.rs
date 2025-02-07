@@ -8,7 +8,7 @@ use std::io::Error as IoError;
 use std::pin::Pin;
 use std::sync::Arc;
 
-use futures_util::{Sink, SinkExt as _, Stream, StreamExt as _};
+use futures_util::{SinkExt as _, Stream, StreamExt as _};
 use pin_project::pin_project;
 use tokio::select;
 use tokio::time::{Duration, Instant};
@@ -17,7 +17,7 @@ use tungstenite::protocol::CloseFrame;
 use tungstenite::Message;
 
 use crate::errors::LogSafeDisplay;
-use crate::ws::{TextOrBinary, WebSocketServiceError};
+use crate::ws::{TextOrBinary, WebSocketServiceError, WebSocketStreamLike};
 
 pub mod attested;
 
@@ -242,8 +242,7 @@ where
         self: Pin<&mut Self>,
     ) -> Outcome<MessageEvent<SendMeta>, Result<FinishReason, NextEventError>>
     where
-        S: Stream<Item = Result<Message, tungstenite::Error>>
-            + Sink<Message, Error = tungstenite::Error>,
+        S: WebSocketStreamLike,
     {
         let ConnectionProj {
             mut stream,

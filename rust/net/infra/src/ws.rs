@@ -12,7 +12,7 @@ use std::time::Duration;
 use async_trait::async_trait;
 use derive_where::derive_where;
 use futures_util::stream::{SplitSink, SplitStream};
-use futures_util::{SinkExt as _, StreamExt, TryFutureExt};
+use futures_util::{Sink, SinkExt as _, Stream, StreamExt, TryFutureExt};
 use http::uri::PathAndQuery;
 use tokio::sync::Mutex;
 use tokio::time::Instant;
@@ -60,6 +60,22 @@ pub struct WebSocketConfig {
     /// How long to allow the connection to be idle before the server is assumed
     /// to have become unavailable.
     pub max_idle_time: Duration,
+}
+
+/// A type that can be used like a [`tokio_tungstenite::WebSocketStream`].
+///
+/// This trait is blanket-implemented for types that can send and receive
+/// [`tungstenite::Message`]s and [`tungstenite::Error`]s.
+pub trait WebSocketStreamLike:
+    Stream<Item = Result<tungstenite::Message, tungstenite::Error>>
+    + Sink<tungstenite::Message, Error = tungstenite::Error>
+{
+}
+
+impl<S> WebSocketStreamLike for S where
+    S: Stream<Item = Result<tungstenite::Message, tungstenite::Error>>
+        + Sink<tungstenite::Message, Error = tungstenite::Error>
+{
 }
 
 /// [`ServiceConnector`] for services that wrap a websocket connection.

@@ -22,7 +22,7 @@ use libsignal_net_infra::route::{
     WithoutLoggableDescription,
 };
 use libsignal_net_infra::timeouts::{TimeoutOr, ONE_ROUTE_CONNECTION_TIMEOUT};
-use libsignal_net_infra::ws::WebSocketConnectError;
+use libsignal_net_infra::ws::{WebSocketConnectError, WebSocketStreamLike};
 use libsignal_net_infra::ws2::attested::AttestedConnection;
 use libsignal_net_infra::{AsHttpHeader as _, AsyncDuplexStream};
 use rand::Rng;
@@ -223,18 +223,26 @@ where
         ))
     }
 
-    pub(crate) async fn connect_attested_ws<E: NewHandshake>(
+    pub(crate) async fn connect_attested_ws<E, WC>(
         connect: &tokio::sync::RwLock<Self>,
         routes: impl RouteProvider<Route = UnresolvedWebsocketServiceRoute>,
         auth: Auth,
         resolver: &DnsResolver,
         confirmation_header_name: Option<HeaderName>,
-        ws_config: libsignal_net_infra::ws2::Config,
+        (ws_config, ws_connector): (libsignal_net_infra::ws2::Config, WC),
         log_tag: Arc<str>,
         params: &EndpointParams<'_, E>,
     ) -> Result<(AttestedConnection, RouteInfo), crate::enclave::Error>
     where
         TC::Connection: AsyncDuplexStream + 'static,
+        WC: Connector<
+                (WebSocketRouteFragment, HttpRouteFragment),
+                TC::Connection,
+                Error = tungstenite::Error,
+            > + Send
+            + Sync,
+        WC::Connection: WebSocketStreamLike + Send + 'static,
+        E: NewHandshake,
     {
         let ws_routes = routes.map_routes(|mut route| {
             route.fragment.headers.extend([auth.as_header()]);
@@ -244,7 +252,7 @@ where
         let (ws, route_info) = ConnectState::connect_ws(
             connect,
             ws_routes,
-            crate::infra::ws::Stateless,
+            ws_connector,
             resolver,
             confirmation_header_name.as_ref(),
             log_tag.clone(),

@@ -11,11 +11,11 @@ use std::panic::AssertUnwindSafe;
 use std::pin::Pin;
 use std::sync::Arc;
 
-use futures_util::{pin_mut, Sink, Stream, StreamExt as _};
+use futures_util::{pin_mut, Stream, StreamExt as _};
 use http::uri::PathAndQuery;
 use http::{Method, StatusCode};
 use itertools::Itertools as _;
-use libsignal_net_infra::ws::WebSocketServiceError;
+use libsignal_net_infra::ws::{WebSocketServiceError, WebSocketStreamLike};
 pub use libsignal_net_infra::ws2::FinishReason;
 use libsignal_net_infra::ws2::Outcome;
 use pin_project::pin_project;
@@ -24,7 +24,6 @@ use tokio::sync::{mpsc, oneshot, Mutex as TokioMutex};
 use tokio::task::JoinHandle;
 use tokio::time::Duration;
 use tokio_stream::wrappers::{ReceiverStream, UnboundedReceiverStream};
-use tungstenite::Message;
 
 use crate::chat::{
     ChatMessageType, ChatServiceError, MessageProto, Request, RequestProto, Response, ResponseProto,
@@ -152,10 +151,7 @@ impl Chat {
         listener: EventListener,
     ) -> Self
     where
-        T: Stream<Item = Result<tungstenite::Message, tungstenite::Error>>
-            + Sink<tungstenite::Message, Error = tungstenite::Error>
-            + Send
-            + 'static,
+        T: WebSocketStreamLike + Send + 'static,
     {
         let Config {
             initial_request_id,
@@ -808,10 +804,7 @@ trait IntoInnerConnection {
 
 impl<S> IntoInnerConnection for (S, crate::infra::ws2::Config)
 where
-    S: Stream<Item = Result<Message, tungstenite::Error>>
-        + Sink<Message, Error = tungstenite::Error>
-        + Send
-        + 'static,
+    S: WebSocketStreamLike + Send + 'static,
 {
     fn into_inner_connection<R>(
         self,
@@ -840,9 +833,7 @@ trait InnerConnection {
 
 impl<S, R> InnerConnection for crate::infra::ws2::Connection<S, R>
 where
-    S: Stream<Item = Result<Message, tungstenite::Error>>
-        + Sink<Message, Error = tungstenite::Error>
-        + Send,
+    S: WebSocketStreamLike + Send,
     R: Stream<Item = (TextOrBinary, OutgoingMeta)> + Send,
 {
     fn handle_next_event(

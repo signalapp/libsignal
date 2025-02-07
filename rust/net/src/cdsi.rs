@@ -11,7 +11,9 @@ use libsignal_core::{Aci, Pni, E164};
 use libsignal_net_infra::connection_manager::ConnectionManager;
 use libsignal_net_infra::dns::DnsResolver;
 use libsignal_net_infra::errors::{LogSafeDisplay, TransportConnectError};
-use libsignal_net_infra::route::{RouteProvider, UnresolvedWebsocketServiceRoute};
+use libsignal_net_infra::route::{
+    RouteProvider, ThrottlingConnector, UnresolvedWebsocketServiceRoute,
+};
 use libsignal_net_infra::ws::{NextOrClose, WebSocketConnectError, WebSocketServiceError};
 use libsignal_net_infra::ws2::attested::{
     AttestedConnection, AttestedConnectionError, AttestedProtocolError,
@@ -364,7 +366,16 @@ impl CdsiConnection {
             auth,
             resolver,
             confirmation_header_name,
-            ws_config,
+            (
+                ws_config,
+                // We don't want to race multiple websocket handshakes because when
+                // we take the first one, the others will be uncermoniously closed.
+                // That looks like unexpected behavior at the server end, and the
+                // wasted handshakes consume resources unnecessarily.  Instead,
+                // allow parallelism at the transport level but throttle the number
+                // of websocket handshakes that can complete.
+                ThrottlingConnector::new(crate::infra::ws::Stateless, 1),
+            ),
             "cdsi".into(),
             params,
         )
