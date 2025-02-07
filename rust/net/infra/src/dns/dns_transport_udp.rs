@@ -6,9 +6,7 @@
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 use std::sync::Arc;
 
-use async_trait::async_trait;
-use futures_util::stream::BoxStream;
-use futures_util::{stream, StreamExt};
+use futures_util::{stream, Stream, StreamExt};
 use tokio::net::UdpSocket;
 
 use crate::dns::custom_resolver::{DnsQueryResult, DnsTransport};
@@ -28,7 +26,6 @@ pub struct UdpTransport {
     socket: Arc<UdpSocket>,
 }
 
-#[async_trait]
 impl DnsTransport for UdpTransport {
     type ConnectionParameters = (IpAddr, u16);
 
@@ -55,7 +52,7 @@ impl DnsTransport for UdpTransport {
     async fn send_queries(
         self,
         request: DnsLookupRequest,
-    ) -> dns::Result<BoxStream<'static, dns::Result<DnsQueryResult>>> {
+    ) -> dns::Result<impl Stream<Item = dns::Result<DnsQueryResult>> + Send + 'static> {
         let arc = Arc::new(self);
         let mut futures = vec![];
 
@@ -70,7 +67,7 @@ impl DnsTransport for UdpTransport {
         arc.send_request(&request.hostname, A_REQUEST_ID, ResourceType::A)
             .await?;
         futures.push(arc.clone().next_dns_query_result1());
-        Ok(stream::iter(futures).then(|task| task).boxed())
+        Ok(stream::iter(futures).then(|task| task))
     }
 }
 

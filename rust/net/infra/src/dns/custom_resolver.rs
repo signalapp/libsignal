@@ -6,14 +6,13 @@
 use std::cmp::min;
 use std::collections::HashMap;
 use std::fmt::Debug;
+use std::future::Future;
 use std::net::{Ipv4Addr, Ipv6Addr};
 use std::sync::Arc;
 use std::time::Duration;
 
-use async_trait::async_trait;
 use either::Either;
-use futures_util::stream::BoxStream;
-use futures_util::StreamExt;
+use futures_util::{FutureExt as _, Stream, StreamExt as _};
 use tokio::sync::oneshot;
 use tokio::time::Instant;
 
@@ -21,9 +20,10 @@ use crate::connection_manager::{ConnectionAttemptOutcome, SingleRouteThrottlingC
 use crate::dns::dns_errors::Error;
 use crate::dns::dns_lookup::DnsLookupRequest;
 use crate::dns::dns_types::Expiring;
-use crate::dns::dns_utils::{log_safe_domain, results_within_interval};
+use crate::dns::dns_utils::log_safe_domain;
 use crate::dns::lookup_result::LookupResult;
 use crate::timeouts::{DNS_CALL_BACKGROUND_TIMEOUT, DNS_RESOLUTION_DELAY};
+use crate::utils::future::results_within_interval;
 use crate::utils::{EventSubscription, ObservableEvent};
 use crate::{dns, DnsSource};
 
@@ -36,7 +36,6 @@ const MAX_CACHE_TTL: Duration = Duration::from_secs(5 * 60);
 
 /// Implementors of this trait encapsulate the logic of sending queries to the DNS server
 /// and receiving resposnes.
-#[async_trait]
 pub trait DnsTransport: Debug + Sized + Send {
     /// Type of the connection parameters data structure for this DNS transport
     type ConnectionParameters: Clone + Debug + Send + 'static;
@@ -48,10 +47,10 @@ pub trait DnsTransport: Debug + Sized + Send {
     ///
     /// Connection will be held open for as long as the returned instance is in use.
     /// Dropping the instance will close the connection and free the resources.
-    async fn connect(
+    fn connect(
         connection_params: Self::ConnectionParameters,
         ipv6_enabled: bool,
-    ) -> dns::Result<Self>;
+    ) -> impl Future<Output = dns::Result<Self>> + Send;
 
     /// Sends DNS queries and returns an async stream of the results
     /// that the caller can handle according to the resolution logic.
@@ -62,10 +61,12 @@ pub trait DnsTransport: Debug + Sized + Send {
     ///
     /// Each result is a list of either IPv4 or IPv6 records
     /// with the order of results not specified.
-    async fn send_queries(
+    fn send_queries(
         self,
         request: DnsLookupRequest,
-    ) -> dns::Result<BoxStream<'static, dns::Result<DnsQueryResult>>>;
+    ) -> impl Future<
+        Output = dns::Result<impl Stream<Item = dns::Result<DnsQueryResult>> + Send + 'static>,
+    > + Send;
 }
 
 #[derive(Debug)]
@@ -168,8 +169,12 @@ impl<T: DnsTransport + Sync + 'static> CustomDnsResolver<T> {
             ConnectionAttemptOutcome::WaitUntil(_) => Err(Error::Cooldown),
         }?;
         let (ipv4_res_rx, ipv6_res_rx) = self.send_dns_queries(transport, request);
-        let (maybe_ipv4, maybe_ipv6) =
-            results_within_interval(ipv4_res_rx, ipv6_res_rx, DNS_RESOLUTION_DELAY).await;
+        let (maybe_ipv4, maybe_ipv6) = results_within_interval(
+            ipv4_res_rx.map(Result::ok),
+            ipv6_res_rx.map(Result::ok),
+            DNS_RESOLUTION_DELAY,
+        )
+        .await;
         let ipv4s = maybe_ipv4.map_or(vec![], |r| r.data);
         let ipv6s = maybe_ipv6.map_or(vec![], |r| r.data);
         match LookupResult::new(T::dns_source(), ipv4s, ipv6s) {
@@ -196,106 +201,17 @@ impl<T: DnsTransport + Sync + 'static> CustomDnsResolver<T> {
         let (ipv6_res_tx, ipv6_res_rx) = oneshot::channel::<DnsIpv6Result>();
         let cache = self.cache.clone();
         let generation_before_lookup = cache.lock().expect("not poisoned").generation;
+        let hostname = request.hostname.clone();
         // We're starting this operation on a separate thread because we want to let it run
         // beyond an individual attempt timeout so that even if a result arrived late
         // we could still cache it for the next time.
         //
         // Reference: https://datatracker.ietf.org/doc/html/rfc8305#section-3
-        tokio::spawn(async move {
-            let started_at = Instant::now();
-            let timeout_at = started_at + DNS_CALL_BACKGROUND_TIMEOUT;
-
-            let mut stream = match transport.send_queries(request.clone()).await {
-                Ok(stream) => stream,
-                Err(err) => {
-                    log::error!(
-                        "While resolving [{}] failed to send queries over [{}]: {}",
-                        log_safe_domain(&request.hostname),
-                        T::dns_source(),
-                        err,
-                    );
-                    return;
-                }
-            };
-
-            // We're expecting two responses from the DNS server,
-            // but they can arrive in any order.
-            let mut ipv4_res_tx_opt = Some(ipv4_res_tx);
-            let mut ipv6_res_tx_opt = Some(ipv6_res_tx);
-
-            let mut maybe_ipv4_res = None;
-            let mut maybe_ipv6_res = None;
-
-            for _ in 0..2 {
-                match tokio::select! {
-                    _ = tokio::time::sleep_until(timeout_at) => None,
-                    res = stream.next() => res,
-                } {
-                    Some(Ok(DnsQueryResult::Left(res))) => {
-                        maybe_ipv4_res = Some(res.clone());
-                        if let Some(p) = ipv4_res_tx_opt.take() {
-                            // it is possible that the receiver is dropped,
-                            // so we're not treating this as an error
-                            let _ = p.send(res);
-                        }
-                        log::info!(
-                            "Received result of the IPv4 DNS query for [{}] after {:?}",
-                            log_safe_domain(&request.hostname),
-                            started_at.elapsed()
-                        );
-                    }
-                    Some(Ok(DnsQueryResult::Right(res))) => {
-                        maybe_ipv6_res = Some(res.clone());
-                        if let Some(p) = ipv6_res_tx_opt.take() {
-                            // it is possible that the receiver is dropped,
-                            // so we're not treating this as an error
-                            let _ = p.send(res);
-                        }
-                        log::info!(
-                            "Received result of the IPv6 DNS query for [{}] after {:?}",
-                            log_safe_domain(&request.hostname),
-                            started_at.elapsed()
-                        );
-                    }
-                    Some(Err(error)) => {
-                        log::warn!(
-                            "One of DNS queries for [{}] failed with an error after {:?}: {}",
-                            log_safe_domain(&request.hostname),
-                            started_at.elapsed(),
-                            error
-                        );
-                    }
-                    None => {
-                        log::warn!(
-                            "Stopped waiting for DNS queries results for [{}] after {:?}",
-                            log_safe_domain(&request.hostname),
-                            started_at.elapsed()
-                        );
-                        break;
-                    }
-                };
-            }
-
-            // update cache
-            if let Some(mut expiring_entry) = match (maybe_ipv4_res, maybe_ipv6_res) {
-                (Some(ipv4_res), Some(ipv6_res)) => Some(Expiring {
-                    data: LookupResult::new(DnsSource::Cache, ipv4_res.data, ipv6_res.data),
-                    expiration: min(ipv4_res.expiration, ipv6_res.expiration),
-                }),
-                (Some(ipv4_res), None) => Some(Expiring {
-                    data: LookupResult::new(DnsSource::Cache, ipv4_res.data, vec![]),
-                    expiration: ipv4_res.expiration,
-                }),
-                (None, Some(ipv6_res)) => Some(Expiring {
-                    data: LookupResult::new(DnsSource::Cache, vec![], ipv6_res.data),
-                    expiration: ipv6_res.expiration,
-                }),
-                (None, None) => None,
-            } {
-                // Clamp cached TTLs.
-                expiring_entry.expiration =
-                    min(expiring_entry.expiration, started_at + MAX_CACHE_TTL);
-
+        tokio::spawn(do_lookup_task_body(
+            transport,
+            request,
+            (ipv4_res_tx, ipv6_res_tx),
+            move |expiring_entry| {
                 let mut guard = cache.lock().expect("not poisoned");
                 // There are two ways the generation could be out of date:
                 // - We started the query, completed the query, and then got a network change.
@@ -305,15 +221,118 @@ impl<T: DnsTransport + Sync + 'static> CustomDnsResolver<T> {
                 // distinguish them is tricky. Not caching just means we might do another lookup
                 // sooner than necessary.
                 if guard.generation == generation_before_lookup {
-                    guard
-                        .map
-                        .insert(request.hostname.to_string(), expiring_entry);
+                    guard.map.insert(hostname.to_string(), expiring_entry);
                 }
-            };
-        });
+            },
+        ));
 
         (ipv4_res_rx, ipv6_res_rx)
     }
+}
+
+/// Makes the given request and sends the responses to the given receivers.
+async fn do_lookup_task_body<T: DnsTransport>(
+    transport: T,
+    request: DnsLookupRequest,
+    (ipv4_res_tx, ipv6_res_tx): (
+        oneshot::Sender<DnsIpv4Result>,
+        oneshot::Sender<DnsIpv6Result>,
+    ),
+    try_cache_result: impl FnOnce(Expiring<LookupResult>),
+) {
+    let started_at = Instant::now();
+    let timeout_at = started_at + DNS_CALL_BACKGROUND_TIMEOUT;
+
+    let mut stream = match transport.send_queries(request.clone()).await {
+        Ok(stream) => stream,
+        Err(err) => {
+            log::error!(
+                "While resolving [{}] failed to send queries over [{}]: {}",
+                log_safe_domain(&request.hostname),
+                T::dns_source(),
+                err,
+            );
+            return;
+        }
+    };
+    let mut stream = std::pin::pin!(stream);
+
+    // We're expecting two responses from the DNS server,
+    // but they can arrive in any order.
+    let mut ipv4_res_tx_opt = Some(ipv4_res_tx);
+    let mut ipv6_res_tx_opt = Some(ipv6_res_tx);
+
+    let mut maybe_ipv4_res = None;
+    let mut maybe_ipv6_res = None;
+
+    for _ in 0..2 {
+        match tokio::select! {
+            _ = tokio::time::sleep_until(timeout_at) => None,
+            res = stream.next() => res,
+        } {
+            Some(Ok(DnsQueryResult::Left(res))) => {
+                maybe_ipv4_res = Some(res.clone());
+                if let Some(p) = ipv4_res_tx_opt.take() {
+                    // it is possible that the receiver is dropped,
+                    // so we're not treating this as an error
+                    let _ = p.send(res);
+                }
+                log::info!(
+                    "Received result of the IPv4 DNS query for [{}] after {:?}",
+                    log_safe_domain(&request.hostname),
+                    started_at.elapsed()
+                );
+            }
+            Some(Ok(DnsQueryResult::Right(res))) => {
+                maybe_ipv6_res = Some(res.clone());
+                if let Some(p) = ipv6_res_tx_opt.take() {
+                    // it is possible that the receiver is dropped,
+                    // so we're not treating this as an error
+                    let _ = p.send(res);
+                }
+                log::info!(
+                    "Received result of the IPv6 DNS query for [{}] after {:?}",
+                    log_safe_domain(&request.hostname),
+                    started_at.elapsed()
+                );
+            }
+            Some(Err(error)) => {
+                log::warn!(
+                    "One of DNS queries for [{}] failed with an error after {:?}: {}",
+                    log_safe_domain(&request.hostname),
+                    started_at.elapsed(),
+                    error
+                );
+            }
+            None => {
+                log::warn!(
+                    "Stopped waiting for DNS queries results for [{}] after {:?}",
+                    log_safe_domain(&request.hostname),
+                    started_at.elapsed()
+                );
+                break;
+            }
+        };
+    }
+
+    let Some(expiration) = min(
+        maybe_ipv4_res.as_ref().map(|e| e.expiration),
+        maybe_ipv6_res.as_ref().map(|e| e.expiration),
+    ) else {
+        // Nothing to cache
+        return;
+    };
+
+    // update cache
+    let v4 = maybe_ipv4_res.map_or(vec![], |e| e.data);
+    let v6 = maybe_ipv6_res.map_or(vec![], |e| e.data);
+    let expiring_entry = Expiring {
+        data: LookupResult::new(DnsSource::Cache, v4, v6),
+        // Clamp cached TTLs.
+        expiration: min(expiration, started_at + MAX_CACHE_TTL),
+    };
+
+    try_cache_result(expiring_entry)
 }
 
 #[cfg(test)]
@@ -327,7 +346,6 @@ pub(crate) mod test {
     use assert_matches::assert_matches;
     use const_str::ip_addr;
     use futures_util::stream::FuturesUnordered;
-    use futures_util::FutureExt;
 
     use super::*;
     use crate::timeouts::CONNECTION_ROUTE_MAX_COOLDOWN;
@@ -350,7 +368,6 @@ pub(crate) mod test {
     #[derive(Clone, Debug)]
     struct TestDnsTransportFailingToConnect;
 
-    #[async_trait]
     impl DnsTransport for TestDnsTransportFailingToConnect {
         type ConnectionParameters = Error;
 
@@ -365,11 +382,15 @@ pub(crate) mod test {
             Err(connection_params)
         }
 
-        async fn send_queries(
+        fn send_queries(
             self,
             _request: DnsLookupRequest,
-        ) -> dns::Result<BoxStream<'static, dns::Result<DnsQueryResult>>> {
-            panic!("not implemented")
+        ) -> impl Future<
+            Output = dns::Result<impl Stream<Item = dns::Result<DnsQueryResult>> + Send + 'static>,
+        > + Send {
+            panic!("not implemented");
+            #[allow(unreachable_code)] // needed for the compiler to infer the return type
+            std::future::ready(Ok(futures_util::stream::empty()))
         }
     }
 
@@ -437,7 +458,6 @@ pub(crate) mod test {
         }
     }
 
-    #[async_trait]
     impl<const RESPONSES: usize> DnsTransport for TestDnsTransportWithResponses<RESPONSES> {
         type ConnectionParameters = Self;
 
@@ -452,10 +472,12 @@ pub(crate) mod test {
             Ok(connection_params)
         }
 
-        async fn send_queries(
+        fn send_queries(
             self,
             request: DnsLookupRequest,
-        ) -> dns::Result<BoxStream<'static, dns::Result<DnsQueryResult>>> {
+        ) -> impl Future<
+            Output = dns::Result<impl Stream<Item = dns::Result<DnsQueryResult>> + Send + 'static>,
+        > + Send {
             let query_num = self.queries_count.fetch_add(1, Ordering::Relaxed) + 1;
             let (txs, rxs): (Vec<_>, Vec<_>) =
                 iter::from_fn(|| Some(oneshot::channel::<dns::Result<DnsQueryResult>>()))
@@ -466,7 +488,7 @@ pub(crate) mod test {
                 query_num,
                 txs.try_into().expect("correct vec size"),
             );
-            Ok(Box::pin(FuturesUnordered::from_iter(
+            std::future::ready(Ok(FuturesUnordered::from_iter(
                 rxs.into_iter().map(unwrap_or_lookup_failed),
             )))
         }

@@ -5,10 +5,10 @@
 use std::net::IpAddr;
 use std::sync::Arc;
 
-use async_trait::async_trait;
 use bytes::Bytes;
 use const_str::ip_addr;
-use futures_util::stream::{BoxStream, FuturesUnordered};
+use futures_util::stream::FuturesUnordered;
+use futures_util::Stream;
 use http::uri::PathAndQuery;
 use http::{HeaderValue, Method};
 
@@ -31,7 +31,6 @@ pub struct DohTransport {
     http_client: AggregatingHttp2Client,
 }
 
-#[async_trait]
 impl DnsTransport for DohTransport {
     type ConnectionParameters = HttpsTlsRoute<TlsRoute<TcpRoute<IpAddr>>>;
 
@@ -56,7 +55,7 @@ impl DnsTransport for DohTransport {
     async fn send_queries(
         self,
         request: DnsLookupRequest,
-    ) -> dns::Result<BoxStream<'static, dns::Result<DnsQueryResult>>> {
+    ) -> dns::Result<impl Stream<Item = dns::Result<DnsQueryResult>> + Send + 'static> {
         let arc = Arc::new(self);
         let futures = match request.ipv6_enabled {
             true => vec![
@@ -66,7 +65,7 @@ impl DnsTransport for DohTransport {
             ],
             false => vec![arc.clone().send_request(request.clone(), ResourceType::A)],
         };
-        Ok(Box::pin(FuturesUnordered::from_iter(futures)))
+        Ok(FuturesUnordered::from_iter(futures))
     }
 }
 
