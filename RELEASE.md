@@ -1,38 +1,56 @@
 # Making a libsignal release
 
-## 0. Make sure all CI tests are passing on the latest commit
+## 1. Run bin/prepare_release.py
 
-Check GitHub to see if the latest commit has all tests passing, including the nightly "Slow Tests". If not, fix the tests before releasing! (You can run the Slow Tests manually under the repository Actions tab on GitHub.)
+We maintain a helper script, prepare_release.py, to automate most of the rote work involved in cutting a release.
 
-## 1. Tag the release with its version and release notes
+This script:
 
-Create a new tag for this release version. You can find the anticipated version of this release at the top of RELEASE_NOTES.md. This should be kept up to date by contributors as changes are merged in. 
+1. Automatically checks to ensure the Continuous Integration tests pass.
+2. Tags the release commit with the appropriate annotated tag, with the version number as the name and the release notes as the comment.
+3. Prepares the repository for the next version, by:
+  1. Recording the code size of the just-released version in the repository,
+  2. Clearing RELEASE_NOTES.md and preparing it for new release notes for the presumed next version,
+  3. Updating the version number references throughout the repository to match the presumed next version, and finally
+  4. commiting all these changes in a single commit.
 
-Verify that the top line in RELEASE_NOTES.md is the correct version according to the versioning methodology, then run this command:
+All these steps can be done manually if desired/needed, but the script makes it easier, incentivizing more frequent releases.
+
+## 2. Push the release commit to signalapp/libsignal on GitHub
+
+Once you have tagged a release commit using the script, you should push it to GitHub as discussed below. After you have pushed the tag, you can then kick off the submission of that version to the package repositories.
+
+#### Pushing to Multiple Remotes
+
+If you need to push the multiple remotes, you must take care, as it is a little tricky to ensure each remote ends up in the desired end state.
+
+#### Pushing Only the Release to a Remote
+
+If you want to push just the newly cut release to a remote, you need to push the following items:
+
+1. All commits up to and including the tagged commit that marks the release. (This commit should be `HEAD~1` after running the `./bin/prepare_release.py` script.)
+2. You should fast forward the main branch ref on that remote to point to that same commit.
+3. You should also push the tag marking the release you just cut.
+
+Pushing all these items generally looks something like this:
 
 ```
-git tag -a --edit "$(head -n1 RELEASE_NOTES.md)" -F RELEASE_NOTES.md
+git push <remote> HEAD~1:main <release tag, e.g. v0.x.y>
 ```
 
-An editor will pop up to give you one final chance to edit the release notes associated with the tag.
+#### Pushing the Release and the Preparation Commit to a Remote
 
-The release notes will look something like: 
+If you want to push both the release and the preparation commit that resets the repository state in anticipation of the next commit to a remote, so that e.g. you can continue working on the next release, you need to push the following items:
+
+1. All commits up to and including the preparation commit, which should be `HEAD` on after running `./bin/prepare_release.py`.
+2. You should fast-forward the main branch ref to point to that preparation commit.
+3. You should also push the tag marking the release you just cut.
+
+Pushing all these items should generally look like:
 
 ```
-v0.x.y
-
-- Bar: Added a fancy new feature
-- Fixed a bug in the foo crate
-- Android: Exposed baz to Java clients
+git push <remote> HEAD:main <release tag, e.g. v0.x.y>
 ```
-
-v0.x.y is the version of the release, and should be the name of the tag. The changes are then listed in arbitrary order. It's important that the tag comment also includes the version number as the first line, because GitHub formats it as a title.
-
-If it all looks good, save and exit in the editor to finalize the tag.
-
-## 2. Push the tag to GitHub
-
-Push the tag to the appropriate remote(s) via `git push <remote> v0.x.y`.
 
 ## 3. Submit to package repositories as needed
 
@@ -50,24 +68,7 @@ In the signalapp/libsignal repository on GitHub, run the "Publish to NPM" action
 
 In the signalapp/libsignal repository on GitHub, run the "Build iOS Artifacts" action on the tag you just made. Share the resulting checksum with whoever will update the iOS app repository.
 
-## 4. Reset the repository to prepare for the next release
-
-### 4.1. Record the code size for the Java library for the previous release
-
-On GitHub, under the Java tests for the commit you just tagged as the release, copy the code size computed for the "current" commit in the "java/check_code_size.py" step into a new entry in java/code_size.json. The version for the new entry is the same as the version for the release you made, i.e. v0.x.y, not v0.x.(y+1).
-
-### 4.2. Clear the Release Notes
-
-As we work, we keep updated running release notes for *just* the next release in RELEASE_NOTES.md. Because you just made a release that included all the changes previously in RELEASE_NOTES.md, it's now time to reset RELEASE_NOTES.md
-
-We always start by presuming the next release will not be a breaking one. So, if the last release was v0.x.y, the next release is always presumed to be v0.x.(y+1) until a breaking change is merged.
-
-Edit RELEASE_NOTES.md so that it just contains the next version number on its own line, like so:
-
-```
-v0.x.y+1
-
-```
+## Appendix: Release Standards and Information
 
 ### Versioning Methodology
 
@@ -75,27 +76,18 @@ The first version component should always be 0, to indicate that Signal does not
 
 A change is "breaking" if it will require updates in any of the Signal client apps or server components, or in external Rust clients of libsignal-protocol, zkgroup, poksho, attest, device-transfer, or signal-crypto. If there are any breaking changes, increase the second version component and reset the third to 0. Otherwise, increase the third version component.
 
-### 4.3. Update the version number to the presumed next version number
+### Release Notes Formatting
 
-Run the following commands with that version to update the version number throughout the repository:
+As we work, we keep running release notes in RELEASE_NOTES.md.
 
-```
-bin/update_versions.py $(head -n 1 RELEASE_NOTES.md)
-cargo check --workspace --all-features # make sure Cargo.lock is updated
-```
-
-#### 4.4. Commit all of these changes to main
-
-Commit all these changes in a single commit to main:
+The format of these release notes should generally look something like:
 
 ```
-git commit -am "Reset for version $(head -n1 RELEASE_NOTES.md)"
+v0.x.y
+
+- Bar: Added a fancy new feature
+- Fixed a bug in the foo crate
+- Android: Exposed baz to Java clients
 ```
 
-#### 4.5. Push the reset commit to GitHub
-
-Finally, push the main branch with this commit to the proper remote:
-
-```
-git push <remote> main
-```
+v0.x.y is the version of the release. The changes are then listed in arbitrary order. It's important that the tag comment also includes the version number as the first line, because GitHub formats it as a title.
