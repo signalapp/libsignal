@@ -10,7 +10,7 @@ import org.signal.libsignal.internal.CalledFromNative;
 /**
  * A helper interface that represents the callback methods used by the Rust side of the bridge.
  *
- * <p>The app-facing listener API is {@link org.signal.libsignal.net.ChatListener}.
+ * <p>The app-facing listener API is {@link org.signal.libsignal.net.ChatConnectionListener}.
  */
 @CalledFromNative
 public interface BridgeChatListener {
