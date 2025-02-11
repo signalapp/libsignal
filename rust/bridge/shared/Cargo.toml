@@ -37,6 +37,7 @@ futures-util = { workspace = true }
 hkdf = { workspace = true }
 hmac = { workspace = true }
 http = { workspace = true }
+itertools = { workspace = true }
 log = { workspace = true }
 nonzero_ext = { workspace = true }
 paste = { workspace = true }

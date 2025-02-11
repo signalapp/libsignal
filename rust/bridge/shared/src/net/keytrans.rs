@@ -13,7 +13,9 @@ use libsignal_core::{Aci, E164};
 use libsignal_keytrans::{
     AccountData, KeyTransparency, LocalStateUpdate, StoredAccountData, StoredTreeHead,
 };
-use libsignal_net::keytrans::{Error, Kt, SearchKey, SearchResult, UsernameHash};
+use libsignal_net::keytrans::{
+    Error, Kt, KtApi as _, MaybePartial, SearchKey, SearchResult, UsernameHash,
+};
 use libsignal_protocol::PublicKey;
 use prost::{DecodeError, Message};
 
@@ -131,7 +133,10 @@ async fn KeyTransparency_Search(
         .map(|stored: StoredTreeHead| stored.into_last_tree_head())?
         .ok_or(Error::InvalidRequest("last distinguished tree is required"))?;
 
-    let result = kt
+    let MaybePartial {
+        inner: result,
+        missing_fields,
+    } = kt
         .search(
             &aci,
             aci_identity_key,
@@ -141,7 +146,15 @@ async fn KeyTransparency_Search(
             &last_distinguished_tree_head,
         )
         .await?;
-    Ok(result)
+
+    if missing_fields.is_empty() {
+        Ok(result)
+    } else {
+        Err(Error::InvalidResponse(format!(
+            "some fields are missing from the response: {}",
+            &itertools::join(&missing_fields, ", ")
+        )))
+    }
 }
 
 #[bridge_io(TokioAsyncContext, node = false, ffi = false)]
@@ -180,7 +193,7 @@ async fn KeyTransparency_Monitor(
     };
     let updated_account_data = kt
         .monitor(
-            aci,
+            &aci,
             e164,
             username_hash,
             account_data,

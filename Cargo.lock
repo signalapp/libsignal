@@ -2204,6 +2204,7 @@ dependencies = [
  "hkdf",
  "hmac",
  "http 1.1.0",
+ "itertools 0.13.0",
  "jni 0.21.1",
  "libsignal-account-keys",
  "libsignal-bridge-macros",
