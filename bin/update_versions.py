@@ -35,6 +35,7 @@ GRADLE_PATTERN = re.compile(r'^(\s+version\s+=\s+")(.*)(")')
 NODE_PATTERN = re.compile(r'^(\s+"version": ")(.*)(")')
 CARGO_PATTERN = re.compile(r'^(version = ")(.*)(")')
 RUST_PATTERN = re.compile(r'^(pub const VERSION: &str = ")(.*)(")')
+RELEASE_NOTES_PATTERN = re.compile(r'^(v)(.*)$')
 
 
 def bridge_path(*bridge: str) -> str:
@@ -42,6 +43,7 @@ def bridge_path(*bridge: str) -> str:
 
 
 VERSION_FILES = [
+    ('RELEASE_NOTES.md', RELEASE_NOTES_PATTERN),
     ('LibSignalClient.podspec', PODSPEC_PATTERN),
     (os.path.join('java', 'build.gradle'), GRADLE_PATTERN),
     (os.path.join('node', 'package.json'), NODE_PATTERN),
