@@ -14,6 +14,7 @@ import static org.signal.libsignal.net.KeyTransparencyTest.TEST_USERNAME_HASH;
 
 import java.util.ArrayList;
 import java.util.Deque;
+import java.util.concurrent.ExecutionException;
 import java.util.function.Function;
 import org.junit.Assume;
 import org.junit.Test;
@@ -123,8 +124,43 @@ public class KeyTransparencyClientTest {
     // Following search there should be a single entry in the account history
     assertEquals(1, accountDataHistory.size());
 
-    ktClient.monitor(TEST_ACI, TEST_E164, TEST_USERNAME_HASH, store).get();
+    ktClient
+        .monitor(
+            TEST_ACI,
+            TEST_ACI_IDENTITY_KEY,
+            TEST_E164,
+            TEST_UNIDENTIFIED_ACCESS_KEY,
+            TEST_USERNAME_HASH,
+            store)
+        .get();
     // Another entry in the account history after a successful monitor request
     assertEquals(2, accountDataHistory.size());
+  }
+
+  @Test
+  public void monitorNoDataInStore() throws Exception {
+    Assume.assumeTrue(INTEGRATION_TESTS_ENABLED);
+
+    final Network net = new Network(Network.Environment.STAGING, USER_AGENT);
+    final KeyTransparencyClient ktClient = connectUnauthChatAndGetKtClient.apply(net).get();
+
+    TestStore store = new TestStore();
+
+    // Call to monitor before any data has been persisted in the store.
+    // Distinguished tree will be requested from the server, but it will fail
+    // due to account data missing.
+    try {
+      ktClient
+          .monitor(
+              TEST_ACI,
+              TEST_ACI_IDENTITY_KEY,
+              TEST_E164,
+              TEST_UNIDENTIFIED_ACCESS_KEY,
+              TEST_USERNAME_HASH,
+              store)
+          .get();
+    } catch (ExecutionException e) {
+      assertTrue(e.getCause() instanceof KeyTransparencyException);
+    }
   }
 }
