@@ -69,13 +69,13 @@ prost-build = { workspace = true }
 [dev-dependencies]
 assert_matches = { workspace = true }
 clap = { workspace = true, features = ["derive"] }
-colored = "2.1"
+colored = "3.0"
 env_logger = { workspace = true }
 hex-literal = { workspace = true }
 libsignal-net = { path = ".", features = ["test-util"] }
 libsignal-net-infra = { path = "./infra", features = ["test-util"] }
 proptest = { workspace = true }
-proptest-state-machine = "0.1.0"
+proptest-state-machine = "0.3.1"
 snow = { workspace = true, features = ["default-resolver"] }
 test-case = { workspace = true }
 test-log = { workspace = true }
