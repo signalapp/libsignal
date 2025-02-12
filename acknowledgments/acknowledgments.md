@@ -3506,7 +3506,7 @@ DEALINGS IN THE SOFTWARE.
 
 ```
 
-## procfs-core 0.16.0
+## procfs-core 0.17.0
 
 ```
 Copyright (c) 2015 The procfs Developers
@@ -6350,7 +6350,7 @@ DEALINGS IN THE SOFTWARE.
 
 ```
 
-## breakpad-symbols 0.21.2, minidump-common 0.21.2, minidump-processor 0.21.2, minidump-unwind 0.21.2, minidump 0.21.2
+## breakpad-symbols 0.22.2, minidump-common 0.22.2, minidump-processor 0.22.1, minidump-unwind 0.22.2, minidump 0.22.2
 
 ```
 MIT License

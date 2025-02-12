@@ -446,9 +446,9 @@ dependencies = [
 
 [[package]]
 name = "breakpad-symbols"
-version = "0.21.2"
+version = "0.22.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b37cb0d96cbe2c0cb6c4fc8856dc38b87d61abaa220c818f162bee332d3f4193"
+checksum = "61f012b493245d982c24a716dd716d06188af966f685ce3cafe02e197ab7fb59"
 dependencies = [
  "async-trait",
  "cachemap2",
@@ -2826,9 +2826,9 @@ dependencies = [
 
 [[package]]
 name = "minidump"
-version = "0.21.2"
+version = "0.22.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8d385b740c6b991e6eff48f26e2c6978c9e9e9e2e935f4967bcdf4c2d1d18828"
+checksum = "ebc7268c0afe5aa2fd6fde310e6cda158f0b3581f317c5a5c7d170861f9b90a6"
 dependencies = [
  "debugid",
  "encoding_rs",
@@ -2846,9 +2846,9 @@ dependencies = [
 
 [[package]]
 name = "minidump-common"
-version = "0.21.2"
+version = "0.22.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5c4d14bcca0fd3ed165a03000480aaa364c6860c34e900cb2dafdf3b95340e77"
+checksum = "0cde999358cca8fb9397c4298bb27c4a603c13ee6b3a646da514b20be582a21e"
 dependencies = [
  "bitflags",
  "debugid",
@@ -2861,9 +2861,9 @@ dependencies = [
 
 [[package]]
 name = "minidump-processor"
-version = "0.21.2"
+version = "0.22.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7869a9256743611832cdf02d01ee5e2d67055a47727b21a01d47a79839876ca4"
+checksum = "41ab4c99352eb8bcc861eb06ceae910fc1d0a8395acc9ffd961fc230c9c12ca0"
 dependencies = [
  "async-trait",
  "breakpad-symbols",
@@ -2881,9 +2881,9 @@ dependencies = [
 
 [[package]]
 name = "minidump-unwind"
-version = "0.21.2"
+version = "0.22.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1f4fb17e3a2508326b9547166051a979d439d883bcd1058b48a2d1181a0b37cf"
+checksum = "3b2bc4d6066050b350c5dddf066a25bfd6c9f20b8919dc66501d831524ab4dd4"
 dependencies = [
  "async-trait",
  "breakpad-symbols",
@@ -3582,9 +3582,9 @@ dependencies = [
 
 [[package]]
 name = "procfs-core"
-version = "0.16.0"
+version = "0.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2d3554923a69f4ce04c4a754260c338f505ce22642d3830e049a399fc2059a29"
+checksum = "239df02d8349b06fc07398a3a1697b06418223b1c7725085e801e7c0fc6a12ec"
 dependencies = [
  "bitflags",
  "hex",

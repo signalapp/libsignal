@@ -3753,7 +3753,7 @@ SOFTWARE.
 			<key>License</key>
 			<string>MIT License</string>
 			<key>Title</key>
-			<string>procfs-core 0.16.0</string>
+			<string>procfs-core 0.17.0</string>
 			<key>Type</key>
 			<string>PSGroupSpecifier</string>
 		</dict>
@@ -6991,7 +6991,7 @@ SOFTWARE.
 			<key>License</key>
 			<string>MIT License</string>
 			<key>Title</key>
-			<string>breakpad-symbols 0.21.2, minidump-common 0.21.2, minidump-processor 0.21.2, minidump-unwind 0.21.2, minidump 0.21.2</string>
+			<string>breakpad-symbols 0.22.2, minidump-common 0.22.2, minidump-processor 0.22.1, minidump-unwind 0.22.2, minidump 0.22.2</string>
 			<key>Type</key>
 			<string>PSGroupSpecifier</string>
 		</dict>
