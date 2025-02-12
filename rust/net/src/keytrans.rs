@@ -1853,4 +1853,60 @@ mod test {
             updated_account_data.into_inner()
         );
     }
+
+    #[tokio::test]
+    async fn search_for_deleted_account() {
+        if std::env::var("LIBSIGNAL_TESTING_RUN_NONHERMETIC_TESTS").is_err() {
+            println!("SKIPPED: running integration tests is not enabled");
+            return;
+        }
+
+        let chat = make_chat().await;
+        let kt = make_kt(&chat);
+
+        // This ACI belongs to account 18005550102
+        // The correct ACI identity key is `hex!("05b65b151f64638b0ea549efb2989e9d726ad2b87fbca1328d872ed6f8fbb7a333")`
+        let aci = Aci::from(uuid::uuid!("4129e9d6-dbb3-4f44-97b4-2dd29f0e2681"));
+
+        let wrong_identity_key = test_account::aci_identity_key();
+
+        let result = kt
+            .search(
+                &aci,
+                &wrong_identity_key,
+                None,
+                None,
+                None,
+                &test_distinguished_tree(),
+            )
+            .await;
+        assert_matches!(result, Err(Error::RequestFailed(StatusCode::FORBIDDEN)));
+    }
+
+    #[tokio::test]
+    async fn search_for_account_that_isnt() {
+        if std::env::var("LIBSIGNAL_TESTING_RUN_NONHERMETIC_TESTS").is_err() {
+            println!("SKIPPED: running integration tests is not enabled");
+            return;
+        }
+
+        let chat = make_chat().await;
+        let kt = make_kt(&chat);
+
+        let aci = Aci::from(uuid::uuid!("00000000-0000-0000-0000-000000000000"));
+
+        let wrong_identity_key = test_account::aci_identity_key();
+
+        let result = kt
+            .search(
+                &aci,
+                &wrong_identity_key,
+                None,
+                None,
+                None,
+                &test_distinguished_tree(),
+            )
+            .await;
+        assert_matches!(result, Err(Error::RequestFailed(StatusCode::NOT_FOUND)));
+    }
 }
