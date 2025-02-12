@@ -123,16 +123,15 @@ pub enum FilenameOrContents {
 
 impl From<clap_stdin::FileOrStdin> for FilenameOrContents {
     fn from(arg: clap_stdin::FileOrStdin) -> Self {
-        match arg.source {
-            clap_stdin::Source::Stdin => {
-                let mut buffer = vec![];
-                std::io::stdin()
-                    .lock()
-                    .read_to_end(&mut buffer)
-                    .expect("failed to read from stdin");
-                Self::Contents(buffer.into_boxed_slice())
-            }
-            clap_stdin::Source::Arg(path) => Self::Filename(path),
+        if arg.is_stdin() {
+            let mut buffer = vec![];
+            std::io::stdin()
+                .lock()
+                .read_to_end(&mut buffer)
+                .expect("failed to read from stdin");
+            Self::Contents(buffer.into_boxed_slice())
+        } else {
+            Self::Filename(arg.filename().to_owned())
         }
     }
 }

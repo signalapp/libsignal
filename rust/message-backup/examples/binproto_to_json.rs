@@ -11,17 +11,17 @@ use futures::io::AllowStdIo;
 /// Compresses and encrypts an unencrypted backup file.
 struct CliArgs {
     /// the file to read from, or '-' to read from stdin
-    filename: FileOrStdin,
+    input: FileOrStdin,
 }
 
 fn main() {
-    let CliArgs { filename } = CliArgs::parse();
+    let CliArgs { input } = CliArgs::parse();
 
-    eprintln!("reading from {:?}", filename.source);
+    eprintln!("reading from {:?}", input.filename());
 
     let json_array =
         futures::executor::block_on(libsignal_message_backup::backup::convert_to_json(
-            AllowStdIo::new(filename.into_reader().expect("failed to open")),
+            AllowStdIo::new(input.into_reader().expect("failed to open")),
         ))
         .expect("failed to convert");
 

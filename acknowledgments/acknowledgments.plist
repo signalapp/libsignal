@@ -6778,7 +6778,7 @@ THE SOFTWARE IS PROVIDED &quot;AS IS&quot;, WITHOUT WARRANTY OF ANY KIND, EXPRES
 			<key>License</key>
 			<string>MIT License</string>
 			<key>Title</key>
-			<string>clap-stdin 0.3.0</string>
+			<string>clap-stdin 0.6.0</string>
 			<key>Type</key>
 			<string>PSGroupSpecifier</string>
 		</dict>

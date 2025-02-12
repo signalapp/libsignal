@@ -6180,7 +6180,7 @@ SOFTWARE.
 
 ```
 
-## clap-stdin 0.3.0
+## clap-stdin 0.6.0
 
 ```
 Copyright (c) Matthew Wood

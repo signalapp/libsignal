@@ -24,7 +24,7 @@ use support::KeyArgs;
 /// If no key is provided, the default testing key is assumed.
 struct CliArgs {
     /// the file to read from, or '-' to read from stdin
-    filename: FileOrStdin,
+    input: FileOrStdin,
 
     #[arg(long, value_parser=parse_hex_bytes::<16>)]
     iv: Option<[u8; 16]>,
@@ -39,7 +39,7 @@ struct CliArgs {
 
 fn main() {
     let CliArgs {
-        filename,
+        input,
         iv,
         pad_bucketed,
         key_args,
@@ -53,9 +53,9 @@ fn main() {
         iv
     });
 
-    eprintln!("reading from {:?}", filename.source);
+    eprintln!("reading from {:?}", input.filename());
 
-    let contents = read_file(filename);
+    let contents = read_file(input);
     eprintln!("read {} bytes", contents.len());
 
     let mut compressed_contents = gzip_compress(futures::io::Cursor::new(contents));
@@ -79,10 +79,10 @@ fn main() {
     write_bytes("HMAC", hmac);
 }
 
-fn read_file(filename: FileOrStdin) -> Vec<u8> {
-    let source = filename.source.clone();
+fn read_file(input: FileOrStdin) -> Vec<u8> {
+    let source = input.filename().to_owned();
     let mut contents = Vec::new();
-    filename
+    input
         .into_reader()
         .unwrap_or_else(|e| panic!("failed to read {source:?}: {e}"))
         .read_to_end(&mut contents)
