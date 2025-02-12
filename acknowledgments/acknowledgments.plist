@@ -2964,7 +2964,7 @@ DEALINGS IN THE SOFTWARE.
 			<key>License</key>
 			<string>MIT License</string>
 			<key>Title</key>
-			<string>core-foundation-sys 0.8.7, core-foundation 0.9.4</string>
+			<string>core-foundation-sys 0.8.7, core-foundation 0.10.0</string>
 			<key>Type</key>
 			<string>PSGroupSpecifier</string>
 		</dict>
@@ -3336,7 +3336,7 @@ DEALINGS IN THE SOFTWARE.
 			<key>License</key>
 			<string>MIT License</string>
 			<key>Title</key>
-			<string>bitflags 2.8.0, glob 0.3.2, log 0.4.25, num-bigint 0.4.6, num-derive 0.4.2, num-integer 0.1.46, num-traits 0.2.19, range-map 0.2.0, regex-automata 0.4.9, regex-syntax 0.8.5, regex 1.11.1</string>
+			<string>bitflags 2.8.0, glob 0.3.2, log 0.4.25, num-derive 0.4.2, num-integer 0.1.46, num-traits 0.2.19, range-map 0.2.0, regex-automata 0.4.9, regex-syntax 0.8.5, regex 1.11.1</string>
 			<key>Type</key>
 			<string>PSGroupSpecifier</string>
 		</dict>
@@ -4344,7 +4344,7 @@ DEALINGS IN THE SOFTWARE.
 			<key>License</key>
 			<string>MIT License</string>
 			<key>Title</key>
-			<string>rustls-native-certs 0.7.3, rustls-pemfile 2.2.0, rustls 0.22.4, rustls 0.23.23</string>
+			<string>rustls-native-certs 0.8.1, rustls-pemfile 2.2.0, rustls 0.22.4, rustls 0.23.23</string>
 			<key>Type</key>
 			<string>PSGroupSpecifier</string>
 		</dict>
@@ -7640,7 +7640,7 @@ SOFTWARE.
 			<key>License</key>
 			<string>MIT License</string>
 			<key>Title</key>
-			<string>rustls-platform-verifier-android 0.1.1, rustls-platform-verifier 0.4.0</string>
+			<string>rustls-platform-verifier-android 0.1.1, rustls-platform-verifier 0.5.0</string>
 			<key>Type</key>
 			<string>PSGroupSpecifier</string>
 		</dict>
@@ -8185,7 +8185,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 			<key>License</key>
 			<string>MIT License</string>
 			<key>Title</key>
-			<string>security-framework-sys 2.14.0, security-framework 2.11.1</string>
+			<string>security-framework-sys 2.14.0, security-framework 3.2.0</string>
 			<key>Type</key>
 			<string>PSGroupSpecifier</string>
 		</dict>
@@ -8310,7 +8310,7 @@ SOFTWARE.
 			<key>License</key>
 			<string>MIT License</string>
 			<key>Title</key>
-			<string>jni 0.19.0, jni 0.21.1</string>
+			<string>jni 0.21.1</string>
 			<key>Type</key>
 			<string>PSGroupSpecifier</string>
 		</dict>

@@ -11,11 +11,8 @@
 # You can use the `cargo tree` command below to see where they come from,
 # and then document them here.
 #
-# jni: v0.19 is used by rustls-platform-verifier on Android, v0.21 by us
 # thiserror: minimal and highly inlinable, most of the code is synthesized at the use site
 EXPECTED="
-jni v0.19.0
-jni v0.21.1
 thiserror v1.0.69
 thiserror v2.0.11"
 

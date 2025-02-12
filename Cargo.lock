@@ -742,9 +742,9 @@ checksum = "6245d59a3e82a7fc217c5828a6692dbc6dfb63a0c8c90495621f7b9d79704a0e"
 
 [[package]]
 name = "core-foundation"
-version = "0.9.4"
+version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "91e195e091a93c46f7102ec7818a2aa394e1e1771c3ab4825963fa03e45afb8f"
+checksum = "b55271e5c8c478ad3f38ad24ef34923091e0548492a266d19b3c0b4d82574c63"
 dependencies = [
  "core-foundation-sys",
  "libc",
@@ -2034,20 +2034,6 @@ checksum = "d75a2a4b1b190afb6f5425f10f6a8f959d2ea0b9c2b1d79553551850539e4674"
 
 [[package]]
 name = "jni"
-version = "0.19.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c6df18c2e3db7e453d3c6ac5b3e9d5182664d28788126d39b91f2d1e22b017ec"
-dependencies = [
- "cesu8",
- "combine",
- "jni-sys",
- "log",
- "thiserror 1.0.69",
- "walkdir",
-]
-
-[[package]]
-name = "jni"
 version = "0.21.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1a87aa2bb7d2af34197c04845522473242e1aa17c12f4935d5856491a7fb8c97"
@@ -2197,7 +2183,7 @@ dependencies = [
  "hmac",
  "http 1.2.0",
  "itertools 0.13.0",
- "jni 0.21.1",
+ "jni",
  "libsignal-account-keys",
  "libsignal-bridge-macros",
  "libsignal-bridge-types",
@@ -2248,7 +2234,7 @@ dependencies = [
  "futures-util",
  "hex-literal",
  "http 1.2.0",
- "jni 0.21.1",
+ "jni",
  "libsignal-bridge-macros",
  "libsignal-bridge-types",
  "libsignal-core",
@@ -2283,7 +2269,7 @@ dependencies = [
  "futures-util",
  "hmac",
  "http 1.2.0",
- "jni 0.21.1",
+ "jni",
  "libsignal-account-keys",
  "libsignal-core",
  "libsignal-message-backup",
@@ -2365,8 +2351,7 @@ dependencies = [
  "cfg-if",
  "cpufeatures",
  "flate2",
- "jni 0.19.0",
- "jni 0.21.1",
+ "jni",
  "libsignal-bridge",
  "libsignal-protocol",
  "log",
@@ -2379,7 +2364,7 @@ dependencies = [
 name = "libsignal-jni-testing"
 version = "0.66.2"
 dependencies = [
- "jni 0.21.1",
+ "jni",
  "libsignal-bridge-testing",
  "libsignal-bridge-types",
  "libsignal-jni-impl",
@@ -3947,12 +3932,11 @@ dependencies = [
 
 [[package]]
 name = "rustls-native-certs"
-version = "0.7.3"
+version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e5bfb394eeed242e909609f56089eecfe5fda225042e8b171791b9c95f5931e5"
+checksum = "7fcff2dd52b58a8d98a70243663a0d234c4e2b79235637849d15913394a247d3"
 dependencies = [
  "openssl-probe",
- "rustls-pemfile",
  "rustls-pki-types",
  "schannel",
  "security-framework",
@@ -3975,13 +3959,13 @@ checksum = "917ce264624a4b4db1c364dcc35bfca9ded014d0a958cd47ad3e960e988ea51c"
 
 [[package]]
 name = "rustls-platform-verifier"
-version = "0.4.0"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a4c7dc240fec5517e6c4eab3310438636cfe6391dfc345ba013109909a90d136"
+checksum = "e012c45844a1790332c9386ed4ca3a06def221092eda277e6f079728f8ea99da"
 dependencies = [
  "core-foundation",
  "core-foundation-sys",
- "jni 0.19.0",
+ "jni",
  "log",
  "once_cell",
  "rustls 0.23.23",
@@ -4087,15 +4071,14 @@ dependencies = [
 
 [[package]]
 name = "security-framework"
-version = "2.11.1"
+version = "3.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "897b2245f0b511c87893af39b033e5ca9cce68824c4d7e7630b5a1d339658d02"
+checksum = "271720403f46ca04f7ba6f55d438f8bd878d6b8ca0a1046e8228c4145bcbb316"
 dependencies = [
  "bitflags",
  "core-foundation",
  "core-foundation-sys",
  "libc",
- "num-bigint",
  "security-framework-sys",
 ]
 

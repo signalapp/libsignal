@@ -2807,7 +2807,7 @@ DEALINGS IN THE SOFTWARE.
 
 ```
 
-## core-foundation-sys 0.8.7, core-foundation 0.9.4
+## core-foundation-sys 0.8.7, core-foundation 0.10.0
 
 ```
 Copyright (c) 2012-2013 Mozilla Foundation
@@ -3135,7 +3135,7 @@ DEALINGS IN THE SOFTWARE.
 
 ```
 
-## bitflags 2.8.0, glob 0.3.2, log 0.4.25, num-bigint 0.4.6, num-derive 0.4.2, num-integer 0.1.46, num-traits 0.2.19, range-map 0.2.0, regex-automata 0.4.9, regex-syntax 0.8.5, regex 1.11.1
+## bitflags 2.8.0, glob 0.3.2, log 0.4.25, num-derive 0.4.2, num-integer 0.1.46, num-traits 0.2.19, range-map 0.2.0, regex-automata 0.4.9, regex-syntax 0.8.5, regex 1.11.1
 
 ```
 Copyright (c) 2014 The Rust Project Developers
@@ -4015,7 +4015,7 @@ DEALINGS IN THE SOFTWARE.
 
 ```
 
-## rustls-native-certs 0.7.3, rustls-pemfile 2.2.0, rustls 0.22.4, rustls 0.23.23
+## rustls-native-certs 0.8.1, rustls-pemfile 2.2.0, rustls 0.22.4, rustls 0.23.23
 
 ```
 Copyright (c) 2016 Joseph Birr-Pixton <jpixton@gmail.com>
@@ -6915,7 +6915,7 @@ SOFTWARE.
 
 ```
 
-## rustls-platform-verifier-android 0.1.1, rustls-platform-verifier 0.4.0
+## rustls-platform-verifier-android 0.1.1, rustls-platform-verifier 0.5.0
 
 ```
 MIT License
@@ -7389,7 +7389,7 @@ THE SOFTWARE.
 
 ```
 
-## security-framework-sys 2.14.0, security-framework 2.11.1
+## security-framework-sys 2.14.0, security-framework 3.2.0
 
 ```
 The MIT License (MIT)
@@ -7497,7 +7497,7 @@ SOFTWARE.
 
 ```
 
-## jni 0.19.0, jni 0.21.1
+## jni 0.21.1
 
 ```
 The MIT License (MIT)
