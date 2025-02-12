@@ -37,7 +37,7 @@ resolver = "2" # so that our dev-dependency features don't leak into products
 
 [workspace.package]
 version = "0.66.2"
-rust-version = "1.75"
+rust-version = "1.80.1"
 authors = ["Signal Messenger LLC"]
 license = "AGPL-3.0-only"
 

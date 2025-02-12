@@ -397,10 +397,7 @@ impl ConnectionOutcomeParams {
         // Exponential decrease: as the age of the last failure increases, it
         // becomes less relevant and the delay is shorter.
         let age_factor = {
-            // TODO use Duration::div_duration_f32 once MSRV >= 1.80
-            let normalized_age =
-                (since_last_failure.as_nanos() as f32 / age_cutoff.as_nanos() as f32).min(1.0);
-
+            let normalized_age = since_last_failure.div_duration_f32(age_cutoff).min(1.0);
             let numerator = cooldown_growth_factor - cooldown_growth_factor.powf(normalized_age);
             let denominator = cooldown_growth_factor - 1.0;
             numerator / denominator

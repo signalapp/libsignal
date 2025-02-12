@@ -399,9 +399,7 @@ impl ConnectionConfig {
         let direct = self.direct_connection_params();
         if let Some(proxy) = &self.proxy {
             let mut rng = thread_rng();
-            // TODO use array::each_ref() once MSRV >= 1.77
-            let [params_a, params_b] = &proxy.configs;
-            let [params_a, params_b] = [params_a, params_b].map(|config| {
+            let [params_a, params_b] = proxy.configs.each_ref().map(|config| {
                 config.shuffled_connection_params(
                     proxy.path_prefix,
                     self.confirmation_header_name,

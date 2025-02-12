@@ -861,8 +861,7 @@ mod test {
             acis_and_access_keys: (1..=LARGE_NUMBER_OF_ENTRIES)
                 .map(|i| {
                     let mut bytes = [0; 16];
-                    // TODO use first_chunk_mut() once MSRV >= 1.77
-                    bytes[..2].copy_from_slice(i.to_be_bytes().as_slice());
+                    *bytes.first_chunk_mut().expect("long enough") = i.to_be_bytes();
                     AciAndAccessKey {
                         access_key: bytes,
                         aci: Uuid::from_bytes(bytes).into(),

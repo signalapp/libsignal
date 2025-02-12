@@ -24,16 +24,7 @@ impl Hasher for AssumedRandomInputHasher {
     }
 
     fn write(&mut self, bytes: &[u8]) {
-        // TODO: replace with slice::first_chunk once our MSRV is 1.77+
-        fn first_chunk<const N: usize>(slice: &[u8]) -> Option<&[u8; N]> {
-            if slice.len() < N {
-                None
-            } else {
-                Some(slice[..N].try_into().unwrap())
-            }
-        }
-
-        let Some(u64_bytes) = first_chunk(bytes) else {
+        let Some(u64_bytes) = bytes.first_chunk() else {
             // Assume we'll get at least one input that's at least 8 bytes long.
             return;
         };
