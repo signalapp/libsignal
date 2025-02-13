@@ -30,12 +30,13 @@ def update_version(file: str, pattern: re.Pattern[str], new_version: str) -> Non
             print(pattern.sub(f"\\g<1>{new_version}\\g<3>", line, count=1), end='')
 
 
+# Note that all of these capture three groups; update_version() relies on that.
 PODSPEC_PATTERN = re.compile(r"^(.*\.version\s+=\s+')(.*)(')")
 GRADLE_PATTERN = re.compile(r'^(\s+version\s+=\s+")(.*)(")')
 NODE_PATTERN = re.compile(r'^(\s+"version": ")(.*)(")')
 CARGO_PATTERN = re.compile(r'^(version = ")(.*)(")')
 RUST_PATTERN = re.compile(r'^(pub const VERSION: &str = ")(.*)(")')
-RELEASE_NOTES_PATTERN = re.compile(r'^(v)(.*)$')
+RELEASE_NOTES_PATTERN = re.compile(r'^(v)(.*)()$')
 
 
 def bridge_path(*bridge: str) -> str:
