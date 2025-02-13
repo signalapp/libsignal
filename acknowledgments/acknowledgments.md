@@ -6969,7 +6969,7 @@ SOFTWARE.
 
 ```
 
-## cesu8 1.1.0, half 2.4.1, pqcrypto-internals 0.2.8, pqcrypto-kyber 0.7.9, pqcrypto-kyber 0.8.1, pqcrypto-traits 0.3.5
+## cesu8 1.1.0, half 2.4.1, pqcrypto-internals 0.2.5, pqcrypto-kyber 0.7.9, pqcrypto-kyber 0.8.1, pqcrypto-traits 0.3.5
 
 ```
 MIT License
