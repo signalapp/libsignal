@@ -425,19 +425,17 @@ impl TransportConnector for TcpSslConnector {
 pub(crate) mod testutil {
     use std::future::Future;
     use std::net::{Ipv6Addr, SocketAddr};
+    use std::sync::LazyLock;
 
-    use lazy_static::lazy_static;
     use rcgen::CertifiedKey;
     use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
     use warp::Filter;
 
     pub(crate) const SERVER_HOSTNAME: &str = "test-server.signal.org.local";
 
-    lazy_static! {
-        pub(crate) static ref SERVER_CERTIFICATE: CertifiedKey =
-            rcgen::generate_simple_self_signed([SERVER_HOSTNAME.to_string()])
-                .expect("can generate");
-    }
+    pub(crate) static SERVER_CERTIFICATE: LazyLock<CertifiedKey> = LazyLock::new(|| {
+        rcgen::generate_simple_self_signed([SERVER_HOSTNAME.to_string()]).expect("can generate")
+    });
 
     const FAKE_RESPONSE: &str = "Hello there";
     /// Starts an HTTP server listening on `::1` that responds with 200 and

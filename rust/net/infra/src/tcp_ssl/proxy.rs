@@ -91,23 +91,22 @@ impl Connection for TcpStream {
 pub(crate) mod testutil {
     use std::future::Future;
     use std::net::{Ipv6Addr, SocketAddr};
+    use std::sync::LazyLock;
 
     use assert_matches::assert_matches;
     use boring_signal::pkey::PKey;
     use boring_signal::ssl::{SslAcceptor, SslMethod};
     use boring_signal::x509::X509;
     use futures_util::{pin_mut, Stream, StreamExt as _};
-    use lazy_static::lazy_static;
     use rcgen::CertifiedKey;
     use tls_parser::{ClientHello, TlsExtension, TlsMessage, TlsMessageHandshake, TlsPlaintext};
     use tokio::io::{AsyncBufReadExt, AsyncRead, AsyncWrite, BufStream};
 
     pub(crate) const PROXY_HOSTNAME: &str = "test-proxy.signal.org.local";
 
-    lazy_static! {
-        pub(crate) static ref PROXY_CERTIFICATE: CertifiedKey =
-            rcgen::generate_simple_self_signed([PROXY_HOSTNAME.to_string()]).expect("can generate");
-    }
+    pub(crate) static PROXY_CERTIFICATE: LazyLock<CertifiedKey> = LazyLock::new(|| {
+        rcgen::generate_simple_self_signed([PROXY_HOSTNAME.to_string()]).expect("can generate")
+    });
 
     struct ProxyServer<S> {
         incoming_connections_stream: S,

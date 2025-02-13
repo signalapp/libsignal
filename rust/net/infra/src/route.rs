@@ -451,6 +451,7 @@ mod test {
     use std::future::Future;
     use std::net::{IpAddr, Ipv4Addr};
     use std::num::NonZeroU16;
+    use std::sync::LazyLock;
 
     use ::http::uri::PathAndQuery;
     use ::http::HeaderMap;
@@ -473,9 +474,8 @@ mod test {
     use crate::tcp_ssl::proxy::socks;
     use crate::{Alpn, DnsSource};
 
-    lazy_static::lazy_static! {
-        static ref WS_ENDPOINT: PathAndQuery =  PathAndQuery::from_static("/ws-path");
-    }
+    static WS_ENDPOINT: LazyLock<PathAndQuery> =
+        LazyLock::new(|| PathAndQuery::from_static("/ws-path"));
     const ROOT_CERTS: RootCertificates = RootCertificates::FromDer(Cow::Borrowed(b"cert"));
     const PROXY_ROOT_CERTS: RootCertificates = RootCertificates::FromDer(Cow::Borrowed(b"proxy"));
 

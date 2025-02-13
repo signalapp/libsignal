@@ -313,14 +313,13 @@ impl RouteProviderContext for RouteProviderContextImpl {
 mod test {
     use std::collections::HashMap;
     use std::convert::Infallible;
-    use std::sync::Arc;
+    use std::sync::{Arc, LazyLock};
     use std::time::Duration;
 
     use assert_matches::assert_matches;
     use const_str::ip_addr;
     use http::uri::PathAndQuery;
     use http::HeaderMap;
-    use lazy_static::lazy_static;
     use libsignal_net_infra::certs::RootCertificates;
     use libsignal_net_infra::dns::lookup_result::LookupResult;
     use libsignal_net_infra::host::Host;
@@ -335,51 +334,52 @@ mod test {
     use super::*;
 
     const FAKE_HOST_NAME: &str = "direct-host";
-    lazy_static! {
-        static ref FAKE_TRANSPORT_ROUTE: UnresolvedTransportRoute = TlsRoute {
-            fragment: TlsRouteFragment {
-                root_certs: RootCertificates::Native,
-                sni: Host::Domain("fake-sni".into()),
-                alpn: Some(Alpn::Http1_1),
-            },
-            inner: DirectOrProxyRoute::Direct(TcpRoute {
-                address: UnresolvedHost::from(Arc::from(FAKE_HOST_NAME)),
-                port: nonzero!(1234u16),
-            }),
-        };
-        static ref FAKE_WEBSOCKET_ROUTES: [UnresolvedWebsocketServiceRoute; 2] = [
-            WebSocketRoute {
-                fragment: WebSocketRouteFragment {
-                    ws_config: Default::default(),
-                    endpoint: PathAndQuery::from_static("/first"),
-                    headers: HeaderMap::new(),
-                },
-                inner: HttpsTlsRoute {
-                    fragment: HttpRouteFragment {
-                        host_header: "first-host".into(),
-                        path_prefix: "".into(),
-                        front_name: None,
+    static FAKE_TRANSPORT_ROUTE: LazyLock<UnresolvedTransportRoute> = LazyLock::new(|| TlsRoute {
+        fragment: TlsRouteFragment {
+            root_certs: RootCertificates::Native,
+            sni: Host::Domain("fake-sni".into()),
+            alpn: Some(Alpn::Http1_1),
+        },
+        inner: DirectOrProxyRoute::Direct(TcpRoute {
+            address: UnresolvedHost::from(Arc::from(FAKE_HOST_NAME)),
+            port: nonzero!(1234u16),
+        }),
+    });
+    static FAKE_WEBSOCKET_ROUTES: LazyLock<[UnresolvedWebsocketServiceRoute; 2]> =
+        LazyLock::new(|| {
+            [
+                WebSocketRoute {
+                    fragment: WebSocketRouteFragment {
+                        ws_config: Default::default(),
+                        endpoint: PathAndQuery::from_static("/first"),
+                        headers: HeaderMap::new(),
                     },
-                    inner: (*FAKE_TRANSPORT_ROUTE).clone(),
-                },
-            },
-            WebSocketRoute {
-                fragment: WebSocketRouteFragment {
-                    ws_config: Default::default(),
-                    endpoint: PathAndQuery::from_static("/second"),
-                    headers: HeaderMap::new(),
-                },
-                inner: HttpsTlsRoute {
-                    fragment: HttpRouteFragment {
-                        host_header: "second-host".into(),
-                        path_prefix: "".into(),
-                        front_name: Some(RouteType::ProxyF.into()),
+                    inner: HttpsTlsRoute {
+                        fragment: HttpRouteFragment {
+                            host_header: "first-host".into(),
+                            path_prefix: "".into(),
+                            front_name: None,
+                        },
+                        inner: (*FAKE_TRANSPORT_ROUTE).clone(),
                     },
-                    inner: (*FAKE_TRANSPORT_ROUTE).clone(),
                 },
-            }
-        ];
-    }
+                WebSocketRoute {
+                    fragment: WebSocketRouteFragment {
+                        ws_config: Default::default(),
+                        endpoint: PathAndQuery::from_static("/second"),
+                        headers: HeaderMap::new(),
+                    },
+                    inner: HttpsTlsRoute {
+                        fragment: HttpRouteFragment {
+                            host_header: "second-host".into(),
+                            path_prefix: "".into(),
+                            front_name: Some(RouteType::ProxyF.into()),
+                        },
+                        inner: (*FAKE_TRANSPORT_ROUTE).clone(),
+                    },
+                },
+            ]
+        });
 
     #[tokio::test(start_paused = true)]
     async fn connect_ws_successful() {

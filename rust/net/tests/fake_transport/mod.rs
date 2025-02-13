@@ -5,12 +5,11 @@
 
 use std::collections::HashMap;
 use std::net::Ipv6Addr;
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock};
 
 use const_str::ip_addr;
 use futures_util::stream::StreamExt as _;
 use futures_util::Stream;
-use lazy_static::lazy_static;
 use libsignal_net::auth::Auth;
 use libsignal_net::chat::{
     self, chat_service, Chat, ChatConnection, ChatServiceError, ChatServiceWithDebugInfo,
@@ -145,24 +144,22 @@ pub struct FakeDeps {
 }
 
 const FAKE_CHAT_DOMAIN_CONFIG: DomainConfig = STAGING.chat_domain_config;
-lazy_static! {
-    static ref CHAT_DOMAIN_NAMES: Vec<Arc<str>> = {
-        let ConnectionConfig {
-            hostname, proxy, ..
-        } = FAKE_CHAT_DOMAIN_CONFIG.connect;
-        // Collect all the domain names that might be tried.
-        [hostname.into()]
-            .into_iter()
-            .chain(proxy.into_iter().flat_map(|proxy| {
-                proxy
-                    .configs
-                    .into_iter()
-                    .flat_map(|config| config.shuffled_connection_params("/", None, &mut OsRng))
-                    .map(|params| params.transport.sni)
-            }))
-            .collect()
-    };
-}
+static CHAT_DOMAIN_NAMES: LazyLock<Vec<Arc<str>>> = LazyLock::new(|| {
+    let ConnectionConfig {
+        hostname, proxy, ..
+    } = FAKE_CHAT_DOMAIN_CONFIG.connect;
+    // Collect all the domain names that might be tried.
+    [hostname.into()]
+        .into_iter()
+        .chain(proxy.into_iter().flat_map(|proxy| {
+            proxy
+                .configs
+                .into_iter()
+                .flat_map(|config| config.shuffled_connection_params("/", None, &mut OsRng))
+                .map(|params| params.transport.sni)
+        }))
+        .collect()
+});
 
 impl FakeDeps {
     const MPSC_BUFFER_SIZE: usize = 128;

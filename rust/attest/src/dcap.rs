@@ -22,6 +22,7 @@
 // Curve signing key, using the NIST p-256 curve.
 
 use std::collections::HashMap;
+use std::sync::LazyLock;
 use std::time::SystemTime;
 
 use boring_signal::asn1::{Asn1Time, Asn1TimeRef};
@@ -35,7 +36,6 @@ use boring_signal::x509::store::{X509Store, X509StoreBuilder};
 use boring_signal::x509::verify::X509VerifyFlags;
 use boring_signal::x509::{X509Ref, X509};
 use hex::ToHex;
-use lazy_static::lazy_static;
 use uuid::Uuid;
 
 use crate::dcap::ecdsa::EcdsaSigned;
@@ -264,16 +264,14 @@ fn attest_impl(
 }
 
 const INTEL_QE_VENDOR_ID: Uuid = uuid::uuid!("939a7233-f79c-4ca9-940a-0db3957f0607");
-lazy_static! {
-    static ref INTEL_PKEY: PKey<Public> = {
-        let group = EcGroup::from_curve_name(Nid::X9_62_PRIME256V1).expect("allocate curve");
-        let mut ctx = BigNumContext::new().expect("allocate bignum");
-        let point = EcPoint::from_bytes(&group, INTEL_ROOT_PUB_KEY, &mut ctx)
-            .expect("static intel key should parse");
-        let trusted_root_pubkey = EcKey::from_public_key(&group, &point).expect("should convert");
-        PKey::from_ec_key(trusted_root_pubkey).expect("ec key should convert")
-    };
-}
+static INTEL_PKEY: LazyLock<PKey<Public>> = LazyLock::new(|| {
+    let group = EcGroup::from_curve_name(Nid::X9_62_PRIME256V1).expect("allocate curve");
+    let mut ctx = BigNumContext::new().expect("allocate bignum");
+    let point = EcPoint::from_bytes(&group, INTEL_ROOT_PUB_KEY, &mut ctx)
+        .expect("static intel key should parse");
+    let trusted_root_pubkey = EcKey::from_public_key(&group, &point).expect("should convert");
+    PKey::from_ec_key(trusted_root_pubkey).expect("ec key should convert")
+});
 
 /// Verify that the various certificate chains and CRLs are rooted
 /// in `trusted_pkey`

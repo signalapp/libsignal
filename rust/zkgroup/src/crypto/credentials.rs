@@ -5,11 +5,12 @@
 
 #![allow(non_snake_case)]
 
+use std::sync::LazyLock;
+
 use curve25519_dalek_signal::constants::RISTRETTO_BASEPOINT_POINT;
 use curve25519_dalek_signal::ristretto::RistrettoPoint;
 use curve25519_dalek_signal::scalar::Scalar;
 use hex_literal::hex;
-use lazy_static::lazy_static;
 use partial_default::PartialDefault;
 use serde::{Deserialize, Serialize};
 
@@ -25,10 +26,8 @@ use crate::{
     NUM_AUTH_CRED_ATTRIBUTES, NUM_PROFILE_KEY_CRED_ATTRIBUTES, NUM_RECEIPT_CRED_ATTRIBUTES,
 };
 
-lazy_static! {
-    static ref SYSTEM_PARAMS: SystemParams =
-        crate::deserialize::<SystemParams>(SystemParams::SYSTEM_HARDCODED).unwrap();
-}
+static SYSTEM_PARAMS: LazyLock<SystemParams> =
+    LazyLock::new(|| crate::deserialize::<SystemParams>(SystemParams::SYSTEM_HARDCODED).unwrap());
 
 const NUM_SUPPORTED_ATTRS: usize = 6;
 #[derive(Copy, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]

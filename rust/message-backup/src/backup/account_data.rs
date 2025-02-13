@@ -404,9 +404,8 @@ impl<M: Method + ReferencedTypes, C: ReportUnusualTimestamp>
 
 #[cfg(test)]
 mod test {
-    use std::sync::Arc;
+    use std::sync::{Arc, LazyLock};
 
-    use once_cell::sync::Lazy;
     use protobuf::EnumOrUnknown;
     use test_case::test_case;
     use uuid::Uuid;
@@ -466,8 +465,8 @@ mod test {
     const FAKE_USERNAME_LINK_ENTROPY: [u8; USERNAME_LINK_ENTROPY_SIZE] = [12; 32];
     const FAKE_USERNAME_SERVER_ID: Uuid = Uuid::from_bytes([10; 16]);
     const FAKE_CUSTOM_COLOR_ID: CustomColorId = proto::chat_style::CustomChatColor::TEST_ID;
-    static FAKE_CUSTOM_COLOR: Lazy<Arc<CustomChatColor>> =
-        Lazy::new(|| Arc::new(CustomChatColor::from_proto_test_data()));
+    static FAKE_CUSTOM_COLOR: LazyLock<Arc<CustomChatColor>> =
+        LazyLock::new(|| Arc::new(CustomChatColor::from_proto_test_data()));
 
     #[test]
     fn account_data_custom_colors_ordering() {

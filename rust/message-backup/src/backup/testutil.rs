@@ -3,9 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use std::sync::Arc;
-
-use once_cell::sync::Lazy;
+use std::sync::{Arc, LazyLock};
 
 use super::recipient::MinimalRecipientData;
 use crate::backup::call::CallLink;
@@ -41,11 +39,12 @@ impl BackupMeta {
         }
     }
 }
-static SELF_RECIPIENT: Lazy<FullRecipientData> =
-    Lazy::new(|| FullRecipientData::new(Destination::Self_));
-static CONTACT_RECIPIENT: Lazy<FullRecipientData> =
-    Lazy::new(|| FullRecipientData::new(Destination::Contact(ContactData::from_proto_test_data())));
-static E164_ONLY_RECIPIENT: Lazy<FullRecipientData> = Lazy::new(|| {
+static SELF_RECIPIENT: LazyLock<FullRecipientData> =
+    LazyLock::new(|| FullRecipientData::new(Destination::Self_));
+static CONTACT_RECIPIENT: LazyLock<FullRecipientData> = LazyLock::new(|| {
+    FullRecipientData::new(Destination::Contact(ContactData::from_proto_test_data()))
+});
+static E164_ONLY_RECIPIENT: LazyLock<FullRecipientData> = LazyLock::new(|| {
     FullRecipientData::new(Destination::Contact(ContactData {
         aci: None,
         pni: None,
@@ -68,7 +67,7 @@ static E164_ONLY_RECIPIENT: Lazy<FullRecipientData> = Lazy::new(|| {
         note: "".into(),
     }))
 });
-static PNI_ONLY_RECIPIENT: Lazy<FullRecipientData> = Lazy::new(|| {
+static PNI_ONLY_RECIPIENT: LazyLock<FullRecipientData> = LazyLock::new(|| {
     FullRecipientData::new(Destination::Contact(ContactData {
         aci: None,
         pni: Some(libsignal_core::Pni::from_uuid_bytes(
@@ -93,12 +92,13 @@ static PNI_ONLY_RECIPIENT: Lazy<FullRecipientData> = Lazy::new(|| {
         note: "".into(),
     }))
 });
-static GROUP_RECIPIENT: Lazy<FullRecipientData> =
-    Lazy::new(|| FullRecipientData::new(Destination::Group(GroupData::from_proto_test_data())));
-static CALL_LINK_RECIPIENT: Lazy<FullRecipientData> =
-    Lazy::new(|| FullRecipientData::new(Destination::CallLink(CallLink::from_proto_test_data())));
-static RELEASE_NOTES_RECIPIENT: Lazy<FullRecipientData> =
-    Lazy::new(|| FullRecipientData::new(Destination::ReleaseNotes));
+static GROUP_RECIPIENT: LazyLock<FullRecipientData> =
+    LazyLock::new(|| FullRecipientData::new(Destination::Group(GroupData::from_proto_test_data())));
+static CALL_LINK_RECIPIENT: LazyLock<FullRecipientData> = LazyLock::new(|| {
+    FullRecipientData::new(Destination::CallLink(CallLink::from_proto_test_data()))
+});
+static RELEASE_NOTES_RECIPIENT: LazyLock<FullRecipientData> =
+    LazyLock::new(|| FullRecipientData::new(Destination::ReleaseNotes));
 
 impl TestContext {
     pub(super) const CONTACT_ID: RecipientId = RecipientId(123456789);
@@ -154,8 +154,8 @@ impl ReportUnusualTimestamp for TestContext {
     }
 }
 
-static TEST_CUSTOM_COLOR: Lazy<Arc<CustomChatColor>> =
-    Lazy::new(|| Arc::new(CustomChatColor::from_proto_test_data()));
+static TEST_CUSTOM_COLOR: LazyLock<Arc<CustomChatColor>> =
+    LazyLock::new(|| Arc::new(CustomChatColor::from_proto_test_data()));
 
 impl TestContext {
     pub(super) const DUPLICATE_PINNED_ORDER: PinOrder = PinOrder(183324u32);
