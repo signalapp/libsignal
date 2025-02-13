@@ -9,6 +9,7 @@ use std::sync::Arc;
 
 use futures_util::{Sink, Stream};
 use pin_project::pin_project;
+use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::sync::{OwnedSemaphorePermit, Semaphore};
 
 use crate::route::connect::Connector;
@@ -143,5 +144,39 @@ impl<S: Sink<T>, T> Sink<T> for ThrottledConnection<S> {
 impl<C: Connection> Connection for ThrottledConnection<C> {
     fn transport_info(&self) -> TransportInfo {
         self.0.transport_info()
+    }
+}
+
+impl<S: AsyncRead> AsyncRead for ThrottledConnection<S> {
+    fn poll_read(
+        self: Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+        buf: &mut tokio::io::ReadBuf<'_>,
+    ) -> std::task::Poll<std::io::Result<()>> {
+        self.as_pin_mut().poll_read(cx, buf)
+    }
+}
+
+impl<S: AsyncWrite> AsyncWrite for ThrottledConnection<S> {
+    fn poll_write(
+        self: Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+        buf: &[u8],
+    ) -> std::task::Poll<std::io::Result<usize>> {
+        self.as_pin_mut().poll_write(cx, buf)
+    }
+
+    fn poll_flush(
+        self: Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<std::io::Result<()>> {
+        self.as_pin_mut().poll_flush(cx)
+    }
+
+    fn poll_shutdown(
+        self: Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<Result<(), std::io::Error>> {
+        self.as_pin_mut().poll_shutdown(cx)
     }
 }

@@ -12,11 +12,11 @@ use http::HeaderName;
 use itertools::Itertools as _;
 use libsignal_net_infra::connection_manager::{ErrorClass, ErrorClassifier as _};
 use libsignal_net_infra::dns::DnsResolver;
-use libsignal_net_infra::errors::LogSafeDisplay;
+use libsignal_net_infra::errors::{LogSafeDisplay, TransportConnectError};
 use libsignal_net_infra::route::{
     ComposedConnector, ConnectError, ConnectionOutcomeParams, ConnectionOutcomes, Connector,
     DescribedRouteConnector, HttpRouteFragment, ResolveWithSavedDescription, RouteProvider,
-    RouteProviderContext, RouteProviderExt as _, RouteResolver, StatelessTransportConnector,
+    RouteProviderContext, RouteProviderExt as _, RouteResolver, ThrottlingConnector,
     TransportRoute, UnresolvedRouteDescription, UnresolvedWebsocketServiceRoute,
     WebSocketRouteFragment, WebSocketServiceRoute, WithLoggableDescription,
     WithoutLoggableDescription,
@@ -53,17 +53,27 @@ pub const SUGGESTED_CONNECT_CONFIG: Config = Config {
 /// [`crate::infra::route::connect`].
 ///
 /// Templated over the type of the transport connector to support testing.
-pub struct ConnectState<TC = StatelessTransportConnector> {
+pub struct ConnectState<ConnectorFactory = fn() -> DefaultTransportConnector> {
     pub route_resolver: RouteResolver,
     /// The amount of time allowed for each connection attempt.
     pub connect_timeout: Duration,
     /// Transport-level connector used for all connections.
-    transport_connector: TC,
+    make_transport_connector: ConnectorFactory,
     /// Record of connection outcomes.
     attempts_record: ConnectionOutcomes<WebSocketServiceRoute>,
     /// [`RouteProviderContext`] passed to route providers.
     route_provider_context: RouteProviderContextImpl,
 }
+
+pub type DefaultTransportConnector = ComposedConnector<
+    ThrottlingConnector<crate::infra::tcp_ssl::StatelessDirect>,
+    crate::infra::route::DirectOrProxy<
+        crate::infra::tcp_ssl::StatelessDirect,
+        crate::infra::tcp_ssl::proxy::StatelessProxied,
+        TransportConnectError,
+    >,
+    TransportConnectError,
+>;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Config {
@@ -73,15 +83,19 @@ pub struct Config {
 
 impl ConnectState {
     pub fn new(config: Config) -> tokio::sync::RwLock<Self> {
-        Self::new_with_transport_connector(config, StatelessTransportConnector::default())
+        Self::new_with_transport_connector(config, || {
+            let throttle_tls_connections = ThrottlingConnector::new(Default::default(), 1);
+            let proxy_or_direct_connector = Default::default();
+            ComposedConnector::new(throttle_tls_connections, proxy_or_direct_connector)
+        })
     }
 }
 
-impl<TC> ConnectState<TC> {
+impl<ConnectorFactory> ConnectState<ConnectorFactory> {
     #[cfg_attr(feature = "test-util", visibility::make(pub))]
     fn new_with_transport_connector(
         config: Config,
-        transport_connector: TC,
+        make_transport_connector: ConnectorFactory,
     ) -> tokio::sync::RwLock<Self> {
         let Config {
             connect_params,
@@ -90,7 +104,7 @@ impl<TC> ConnectState<TC> {
         Self {
             route_resolver: RouteResolver::default(),
             connect_timeout,
-            transport_connector,
+            make_transport_connector,
             attempts_record: ConnectionOutcomes::new(connect_params),
             route_provider_context: RouteProviderContextImpl::default(),
         }
@@ -119,8 +133,9 @@ impl RouteInfo {
     }
 }
 
-impl<TC> ConnectState<TC>
+impl<ConnectorFactory, TC> ConnectState<ConnectorFactory>
 where
+    ConnectorFactory: Fn() -> TC,
     TC: Connector<TransportRoute, ()> + Sync,
     TC::Error: Into<WebSocketConnectError>,
 {
@@ -147,7 +162,7 @@ where
         let Self {
             route_resolver,
             connect_timeout,
-            transport_connector,
+            make_transport_connector,
             attempts_record,
             route_provider_context,
         } = &*connect_read;
@@ -159,6 +174,7 @@ where
             routes.len()
         );
 
+        let transport_connector = make_transport_connector();
         let route_provider = routes.into_iter().map(ResolveWithSavedDescription);
         let connector =
             DescribedRouteConnector(ComposedConnector::new(ws_connector, &transport_connector));
@@ -388,13 +404,13 @@ mod test {
         )]));
 
         let fake_transport_connector =
-            ConnectFn(move |(), _, _| std::future::ready(Ok::<_, WebSocketConnectError>(())));
+            || ConnectFn(move |(), _, _| std::future::ready(Ok::<_, WebSocketConnectError>(())));
 
         let state = ConnectState {
             connect_timeout: Duration::MAX,
             route_resolver: RouteResolver::default(),
             attempts_record: ConnectionOutcomes::new(SUGGESTED_CONNECT_PARAMS),
-            transport_connector: fake_transport_connector,
+            make_transport_connector: fake_transport_connector,
             route_provider_context: Default::default(),
         }
         .into();
@@ -436,9 +452,11 @@ mod test {
             LookupResult::new(DnsSource::Static, vec![ip_addr!(v4, "1.1.1.1")], vec![]),
         )]));
 
-        let always_hangs_connector = ConnectFn(|(), _, _| {
-            std::future::pending::<Result<tokio::io::DuplexStream, WebSocketConnectError>>()
-        });
+        let always_hangs_connector = || {
+            ConnectFn(|(), _, _| {
+                std::future::pending::<Result<tokio::io::DuplexStream, WebSocketConnectError>>()
+            })
+        };
 
         const CONNECT_TIMEOUT: Duration = Duration::from_secs(31);
 
@@ -446,7 +464,7 @@ mod test {
             connect_timeout: CONNECT_TIMEOUT,
             route_resolver: RouteResolver::default(),
             attempts_record: ConnectionOutcomes::new(SUGGESTED_CONNECT_PARAMS),
-            transport_connector: always_hangs_connector,
+            make_transport_connector: always_hangs_connector,
             route_provider_context: Default::default(),
         }
         .into();

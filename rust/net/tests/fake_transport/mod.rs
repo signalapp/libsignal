@@ -139,7 +139,7 @@ pub fn error_all_hosts_after(
 /// `Chat` values, so keeping them around is useful.
 pub struct FakeDeps {
     pub transport_connector: FakeTransportConnector,
-    connect_state: tokio::sync::RwLock<ConnectState<FakeTransportConnector>>,
+    connect_state: tokio::sync::RwLock<ConnectState<Box<dyn Fn() -> FakeTransportConnector>>>,
     pub dns_resolver: DnsResolver,
     endpoint_connection: EndpointConnection<MultiRouteConnectionManager>,
 }
@@ -181,9 +181,13 @@ impl FakeDeps {
             &ObservableEvent::new(),
         );
 
+        let make_transport_connector = {
+            let tc = transport_connector.clone();
+            Box::new(move || tc.clone()) as Box<dyn Fn() -> FakeTransportConnector>
+        };
         let connect_state = ConnectState::new_with_transport_connector(
             SUGGESTED_CONNECT_CONFIG,
-            transport_connector.clone(),
+            make_transport_connector,
         );
         let dns_resolver = DnsResolver::new_from_static_map(Self::static_ip_map());
         (

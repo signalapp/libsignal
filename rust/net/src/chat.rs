@@ -18,9 +18,9 @@ use libsignal_net_infra::connection_manager::{
 };
 use libsignal_net_infra::dns::DnsResolver;
 use libsignal_net_infra::route::{
-    Connector, RouteProvider, RouteProviderExt, StatelessTransportConnector, ThrottledConnection,
-    ThrottlingConnector, TransportRoute, UnresolvedHttpsServiceRoute,
-    UnresolvedWebsocketServiceRoute, WebSocketRoute, WebSocketRouteFragment,
+    Connector, RouteProvider, RouteProviderExt, ThrottledConnection, ThrottlingConnector,
+    TransportRoute, UnresolvedHttpsServiceRoute, UnresolvedWebsocketServiceRoute, WebSocketRoute,
+    WebSocketRouteFragment,
 };
 use libsignal_net_infra::service::{Service, ServiceConnectorWithDecorator};
 use libsignal_net_infra::timeouts::{
@@ -36,7 +36,7 @@ use tokio_tungstenite::WebSocketStream;
 
 use crate::auth::Auth;
 use crate::chat::ws::{ChatOverWebSocketServiceConnector, ServerEvent};
-use crate::connect_state::{ConnectState, RouteInfo};
+use crate::connect_state::{ConnectState, DefaultTransportConnector, RouteInfo};
 use crate::env::{add_user_agent_header, ConnectionConfig, UserAgent};
 use crate::proto;
 
@@ -537,7 +537,7 @@ type ChatWebSocketConnection<TC> = ThrottledConnection<WebSocketStream<TC>>;
 /// Parameterized over the type of the transport-level connection for testing.
 #[derive(Debug)]
 pub struct PendingChatConnection<
-    T = <StatelessTransportConnector as Connector<TransportRoute, ()>>::Connection,
+    T = <DefaultTransportConnector as Connector<TransportRoute, ()>>::Connection,
 > {
     connection: ChatWebSocketConnection<T>,
     ws_config: ws2::Config,
@@ -577,7 +577,7 @@ impl ChatConnection {
     }
 
     #[cfg_attr(feature = "test-util", visibility::make(pub))]
-    async fn start_connect_with_transport<TC>(
+    async fn start_connect_with_transport<TC, Conn>(
         connect: &tokio::sync::RwLock<ConnectState<TC>>,
         resolver: &DnsResolver,
         http_route_provider: impl RouteProvider<Route = UnresolvedHttpsServiceRoute>,
@@ -586,11 +586,12 @@ impl ChatConnection {
         ws_config: self::ws2::Config,
         auth: Option<AuthenticatedChatHeaders>,
         log_tag: &str,
-    ) -> Result<PendingChatConnection<TC::Connection>, ChatServiceError>
+    ) -> Result<PendingChatConnection<Conn::Connection>, ChatServiceError>
     where
-        TC: Connector<TransportRoute, ()> + Sync,
-        TC::Error: Into<WebSocketConnectError>,
-        TC::Connection: AsyncDuplexStream,
+        TC: Fn() -> Conn,
+        Conn: Connector<TransportRoute, ()> + Sync,
+        Conn::Error: Into<WebSocketConnectError>,
+        Conn::Connection: AsyncDuplexStream,
     {
         let headers = auth
             .into_iter()
@@ -1138,14 +1139,16 @@ pub(crate) mod test {
         });
 
         let client = std::sync::Mutex::new(Some(client));
-        let connect_state = ConnectState::new_with_transport_connector(
-            SUGGESTED_CONNECT_CONFIG,
-            ConnectFn(move |_inner, _route, _log_tag| {
-                std::future::ready(client.lock().expect("unpoisoned").take().ok_or(
-                    WebSocketConnectError::Transport(TransportConnectError::TcpConnectionFailed),
-                ))
-            }),
-        );
+        let connect_state =
+            ConnectState::new_with_transport_connector(SUGGESTED_CONNECT_CONFIG, || {
+                ConnectFn(|_inner, _route, _log_tag| {
+                    std::future::ready(client.lock().expect("unpoisoned").take().ok_or(
+                        WebSocketConnectError::Transport(
+                            TransportConnectError::TcpConnectionFailed,
+                        ),
+                    ))
+                })
+            });
 
         const CHAT_DOMAIN: &str = "test.signal.org";
 
