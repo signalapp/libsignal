@@ -62,6 +62,9 @@ static E164_ONLY_RECIPIENT: Lazy<FullRecipientData> = Lazy::new(|| {
         identity_key: None,
         identity_state: Default::default(),
         nickname: None,
+        system_given_name: "".to_owned(),
+        system_family_name: "".to_owned(),
+        system_nickname: "".to_owned(),
         note: "".into(),
     }))
 });
@@ -83,6 +86,9 @@ static PNI_ONLY_RECIPIENT: Lazy<FullRecipientData> = Lazy::new(|| {
         hide_story: false,
         identity_key: None,
         identity_state: Default::default(),
+        system_given_name: "".to_owned(),
+        system_family_name: "".to_owned(),
+        system_nickname: "".to_owned(),
         nickname: None,
         note: "".into(),
     }))

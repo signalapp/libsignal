@@ -297,6 +297,9 @@ pub struct ContactData {
     pub identity_state: proto::contact::IdentityState,
     pub nickname: Option<ContactName>,
     pub note: String,
+    pub system_given_name: String,
+    pub system_family_name: String,
+    pub system_nickname: String,
 }
 
 #[derive(Clone, Debug, serde::Serialize)]
@@ -487,6 +490,9 @@ impl<C: ReportUnusualTimestamp> TryFromWith<proto::Contact, C> for ContactData {
             identityState,
             nickname,
             note,
+            systemGivenName,
+            systemFamilyName,
+            systemNickname,
             special_fields: _,
         } = value;
 
@@ -606,6 +612,9 @@ impl<C: ReportUnusualTimestamp> TryFromWith<proto::Contact, C> for ContactData {
             identity_state,
             nickname,
             note,
+            system_given_name: systemGivenName,
+            system_family_name: systemFamilyName,
+            system_nickname: systemNickname,
         })
     }
 }
@@ -795,6 +804,9 @@ mod test {
                     ..Default::default()
                 })
                 .into(),
+                systemGivenName: "GivenSystemName".to_owned(),
+                systemFamilyName: "FamilySystemName".to_owned(),
+                systemNickname: "SystemNickName".to_owned(),
                 note: "nb".into(),
                 ..Default::default()
             }
@@ -843,6 +855,9 @@ mod test {
                     given_name: "GivenNickName".to_owned(),
                     family_name: "FamilyNickName".to_owned(),
                 }),
+                system_given_name: "GivenSystemName".to_owned(),
+                system_family_name: "FamilySystemName".to_owned(),
+                system_nickname: "SystemNickName".to_owned(),
                 note: "nb".into(),
             }
         }
