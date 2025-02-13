@@ -184,7 +184,7 @@ jobs:
 
   aarch64:
     name: AArch64 Linux Tests
-    runs-on: ubuntu-24.04-arm64-2-cores
+    runs-on: ubuntu-24.04-arm64-4-cores
     needs: [check-up-to-date]
     if: ${{ always() && (needs.check-up-to-date.outputs.has-changes || github.event_name != 'schedule') }}
     timeout-minutes: 60
