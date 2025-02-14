@@ -190,12 +190,13 @@ pub struct OutcomeUpdates<R> {
 ///
 /// The `Future` returned by this function resolves when all connection attempts
 /// are exhausted or a one of them produces a fatal error.
-pub async fn connect<R, UR, C, FatalError>(
+pub async fn connect<R, UR, C, Inner, FatalError>(
     route_resolver: &RouteResolver,
     delay_policy: impl RouteDelayPolicy<R>,
     ordered_routes: impl Iterator<Item = UR>,
     resolver: &impl Resolver,
     connector: C,
+    inner: Inner,
     log_tag: Arc<str>,
     mut on_error: impl FnMut(C::Error) -> ControlFlow<FatalError>,
 ) -> (
@@ -204,7 +205,8 @@ pub async fn connect<R, UR, C, FatalError>(
 )
 where
     R: Clone,
-    C: Connector<R, ()>,
+    Inner: Clone,
+    C: Connector<R, Inner>,
     UR: ResolveHostnames<Resolved = R> + Clone + 'static,
     R: ResolvedRoute,
 {
@@ -279,7 +281,9 @@ where
             Event::NextRouteAvailable(Some(route)) => {
                 connects_in_progress.push(async {
                     let started = Instant::now();
-                    let result = connector.connect(route.clone(), log_tag.clone()).await;
+                    let result = connector
+                        .connect_over(inner.clone(), route.clone(), log_tag.clone())
+                        .await;
                     (route, result, started)
                 });
                 poll_schedule_for_next = false;
@@ -804,6 +808,7 @@ mod test {
                     .map(|(h, _addr)| FakeRoute(UnresolvedHost::from(Arc::from(*h)))),
                 &resolver,
                 connector,
+                (),
                 "test".into(),
                 |_err: FakeConnectError| ControlFlow::<Infallible>::Continue(()),
             )
@@ -904,6 +909,7 @@ mod test {
                 .map(|(h, _addr)| FakeRoute(UnresolvedHost::from(Arc::from(*h)))),
             &resolver,
             connector,
+            (),
             "test".into(),
             |_err: FakeConnectError| ControlFlow::<Infallible>::Continue(()),
         )
@@ -984,6 +990,7 @@ mod test {
                     .map(|(h, _addr)| FakeRoute(UnresolvedHost::from(Arc::from(*h)))),
                 &resolver,
                 connector,
+                (),
                 "test".into(),
                 |_err: FakeConnectError| ControlFlow::<Infallible>::Continue(()),
             )

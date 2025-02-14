@@ -187,6 +187,7 @@ where
             route_provider,
             resolver,
             connector,
+            (),
             log_tag.clone(),
             |error| {
                 let error = WebSocketServiceConnectError::from_websocket_error(
