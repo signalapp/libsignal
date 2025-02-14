@@ -11,7 +11,7 @@ use libsignal_net_infra::route::{RouteProvider, UnresolvedWebsocketServiceRoute}
 use libsignal_net_infra::ws2::attested::AttestedConnection;
 
 use crate::auth::Auth;
-use crate::connect_state::{ConnectState, RouteInfo};
+use crate::connect_state::{ConnectState, RouteInfo, WebSocketTransportConnectorFactory};
 pub use crate::enclave::Error;
 use crate::enclave::{
     ConnectionLabel, EndpointParams, IntoAttestedConnection, LabeledConnection, NewHandshake,
@@ -37,7 +37,7 @@ where
     E: Svr3Flavor + NewHandshake + Sized,
 {
     pub async fn connect(
-        connect: &tokio::sync::RwLock<ConnectState>,
+        connect: &tokio::sync::RwLock<ConnectState<impl WebSocketTransportConnectorFactory>>,
         resolver: &DnsResolver,
         route_provider: impl RouteProvider<Route = UnresolvedWebsocketServiceRoute>,
         confirmation_header_name: Option<HeaderName>,

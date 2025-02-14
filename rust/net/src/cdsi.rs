@@ -26,7 +26,7 @@ use tungstenite::protocol::CloseFrame;
 use uuid::Uuid;
 
 use crate::auth::Auth;
-use crate::connect_state::ConnectState;
+use crate::connect_state::{ConnectState, WebSocketTransportConnectorFactory};
 use crate::enclave::{Cdsi, EnclaveEndpointConnection, EndpointParams};
 use crate::proto::cds2::{ClientRequest, ClientResponse};
 use crate::ws::WebSocketServiceConnectError;
@@ -352,7 +352,7 @@ impl CdsiConnection {
     }
 
     pub async fn connect_with(
-        connect: &tokio::sync::RwLock<ConnectState>,
+        connect: &tokio::sync::RwLock<ConnectState<impl WebSocketTransportConnectorFactory>>,
         resolver: &DnsResolver,
         route_provider: impl RouteProvider<Route = UnresolvedWebsocketServiceRoute>,
         confirmation_header_name: Option<HeaderName>,

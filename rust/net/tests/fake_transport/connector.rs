@@ -13,8 +13,8 @@ use itertools::Itertools;
 use libsignal_net::infra::errors::TransportConnectError;
 use libsignal_net_infra::host::Host;
 use libsignal_net_infra::route::{
-    ConnectionProxyRoute, Connector, DirectOrProxyRoute, HttpProxyRouteFragment, HttpsProxyRoute,
-    ProxyTarget, SocksRoute, TcpRoute, TlsRoute, TransportRoute,
+    ConnectionProxyRoute, Connector, ConnectorFactory, DirectOrProxyRoute, HttpProxyRouteFragment,
+    HttpsProxyRoute, ProxyTarget, SocksRoute, TcpRoute, TlsRoute, TransportRoute,
 };
 use tokio::io::DuplexStream;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
@@ -139,6 +139,19 @@ impl Connector<TransportRoute, ()> for FakeTransportConnector {
 
             Ok(client_stream)
         }
+    }
+}
+
+/// A convenience rather than using a separate type.
+impl<R, Inner> ConnectorFactory<R, Inner> for FakeTransportConnector
+where
+    Self: Connector<R, Inner>,
+{
+    type Connector = Self;
+    type Connection = <Self as Connector<R, Inner>>::Connection;
+
+    fn make(&self) -> Self::Connector {
+        self.clone()
     }
 }
 

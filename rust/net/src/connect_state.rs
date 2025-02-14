@@ -4,6 +4,7 @@
 //
 
 use std::default::Default;
+use std::fmt::Debug;
 use std::ops::ControlFlow;
 use std::sync::Arc;
 use std::time::Duration;
@@ -15,8 +16,8 @@ use libsignal_net_infra::dns::DnsResolver;
 use libsignal_net_infra::errors::{LogSafeDisplay, TransportConnectError};
 use libsignal_net_infra::route::{
     ComposedConnector, ConnectError, ConnectionOutcomeParams, ConnectionOutcomes, Connector,
-    DescribedRouteConnector, HttpRouteFragment, ResolveWithSavedDescription, RouteProvider,
-    RouteProviderContext, RouteProviderExt as _, RouteResolver, ThrottlingConnector,
+    ConnectorFactory, DescribedRouteConnector, HttpRouteFragment, ResolveWithSavedDescription,
+    RouteProvider, RouteProviderContext, RouteProviderExt as _, RouteResolver, ThrottlingConnector,
     TransportRoute, UnresolvedRouteDescription, UnresolvedWebsocketServiceRoute,
     WebSocketRouteFragment, WebSocketServiceRoute, WithLoggableDescription,
     WithoutLoggableDescription,
@@ -49,11 +50,36 @@ pub const SUGGESTED_CONNECT_CONFIG: Config = Config {
     connect_timeout: ONE_ROUTE_CONNECTION_TIMEOUT,
 };
 
+/// Effectively an alias for [`ConnectorFactory`] with connection, route, and error
+/// requirements appropriate for websockets.
+///
+/// Meant to be simpler to write at use sites.
+pub trait WebSocketTransportConnectorFactory<Inner = ()>:
+    // rustfmt makes some weird choices without this comment blocking it.
+    ConnectorFactory<
+        TransportRoute,
+        Inner,
+        Connector: Sync + Connector<TransportRoute, Inner, Error: Into<WebSocketConnectError>>,
+        Connection: AsyncDuplexStream + 'static,
+    >
+{
+}
+
+impl<F, Inner> WebSocketTransportConnectorFactory<Inner> for F where
+    F: ConnectorFactory<
+        TransportRoute,
+        Inner,
+        Connector: Sync + Connector<TransportRoute, Inner, Error: Into<WebSocketConnectError>>,
+        Connection: AsyncDuplexStream + 'static,
+    >
+{
+}
+
 /// Endpoint-agnostic state for establishing a connection with
 /// [`crate::infra::route::connect`].
 ///
 /// Templated over the type of the transport connector to support testing.
-pub struct ConnectState<ConnectorFactory = fn() -> DefaultTransportConnector> {
+pub struct ConnectState<ConnectorFactory = DefaultConnectorFactory> {
     pub route_resolver: RouteResolver,
     /// The amount of time allowed for each connection attempt.
     pub connect_timeout: Duration,
@@ -81,13 +107,21 @@ pub struct Config {
     pub connect_timeout: Duration,
 }
 
+pub struct DefaultConnectorFactory;
+impl ConnectorFactory<TransportRoute, ()> for DefaultConnectorFactory {
+    type Connector = DefaultTransportConnector;
+    type Connection = <DefaultTransportConnector as Connector<TransportRoute, ()>>::Connection;
+
+    fn make(&self) -> Self::Connector {
+        let throttle_tls_connections = ThrottlingConnector::new(Default::default(), 1);
+        let proxy_or_direct_connector = Default::default();
+        ComposedConnector::new(throttle_tls_connections, proxy_or_direct_connector)
+    }
+}
+
 impl ConnectState {
     pub fn new(config: Config) -> tokio::sync::RwLock<Self> {
-        Self::new_with_transport_connector(config, || {
-            let throttle_tls_connections = ThrottlingConnector::new(Default::default(), 1);
-            let proxy_or_direct_connector = Default::default();
-            ComposedConnector::new(throttle_tls_connections, proxy_or_direct_connector)
-        })
+        Self::new_with_transport_connector(config, DefaultConnectorFactory)
     }
 }
 
@@ -133,8 +167,8 @@ impl RouteInfo {
     }
 }
 
-impl<ConnectorFactory> ConnectState<ConnectorFactory> {
-    pub async fn connect_ws<TC, Inner, WC>(
+impl<TC> ConnectState<TC> {
+    pub async fn connect_ws<WC, Inner>(
         this: &tokio::sync::RwLock<Self>,
         routes: impl RouteProvider<Route = UnresolvedWebsocketServiceRoute>,
         inner: Inner,
@@ -145,9 +179,13 @@ impl<ConnectorFactory> ConnectState<ConnectorFactory> {
     ) -> Result<(WC::Connection, RouteInfo), TimeoutOr<ConnectError<WebSocketServiceConnectError>>>
     where
         Inner: Clone + Send,
-        ConnectorFactory: Fn() -> TC,
-        TC: Connector<TransportRoute, Inner> + Sync,
-        TC::Error: Into<WebSocketConnectError>,
+        // Note that we're not using WebSocketTransportConnectorFactory here to make `connect_ws`
+        // easier to test; specifically, the output is not guaranteed to be an AsyncDuplexStream.
+        TC: ConnectorFactory<
+            TransportRoute,
+            Inner,
+            Connector: Sync + Connector<TransportRoute, Inner, Error: Into<WebSocketConnectError>>,
+        >,
         WC: Connector<
                 (WebSocketRouteFragment, HttpRouteFragment),
                 TC::Connection,
@@ -172,7 +210,7 @@ impl<ConnectorFactory> ConnectState<ConnectorFactory> {
             routes.len()
         );
 
-        let transport_connector = make_transport_connector();
+        let transport_connector = make_transport_connector.make();
         let route_provider = routes.into_iter().map(ResolveWithSavedDescription);
         let connector =
             DescribedRouteConnector(ComposedConnector::new(ws_connector, &transport_connector));
@@ -242,7 +280,7 @@ impl<ConnectorFactory> ConnectState<ConnectorFactory> {
         ))
     }
 
-    pub(crate) async fn connect_attested_ws<E, TC, WC>(
+    pub(crate) async fn connect_attested_ws<E, WC>(
         connect: &tokio::sync::RwLock<Self>,
         routes: impl RouteProvider<Route = UnresolvedWebsocketServiceRoute>,
         auth: Auth,
@@ -253,10 +291,7 @@ impl<ConnectorFactory> ConnectState<ConnectorFactory> {
         params: &EndpointParams<'_, E>,
     ) -> Result<(AttestedConnection, RouteInfo), crate::enclave::Error>
     where
-        ConnectorFactory: Fn() -> TC,
-        TC: Connector<TransportRoute, ()> + Sync,
-        TC::Error: Into<WebSocketConnectError>,
-        TC::Connection: AsyncDuplexStream + 'static,
+        TC: WebSocketTransportConnectorFactory,
         WC: Connector<
                 (WebSocketRouteFragment, HttpRouteFragment),
                 TC::Connection,
@@ -406,7 +441,7 @@ mod test {
         )]));
 
         let fake_transport_connector =
-            || ConnectFn(move |(), _, _| std::future::ready(Ok::<_, WebSocketConnectError>(())));
+            ConnectFn(move |(), _, _| std::future::ready(Ok::<_, WebSocketConnectError>(())));
 
         let state = ConnectState {
             connect_timeout: Duration::MAX,
@@ -447,11 +482,9 @@ mod test {
             LookupResult::new(DnsSource::Static, vec![ip_addr!(v4, "1.1.1.1")], vec![]),
         )]));
 
-        let always_hangs_connector = || {
-            ConnectFn(|(), _, _| {
-                std::future::pending::<Result<tokio::io::DuplexStream, WebSocketConnectError>>()
-            })
-        };
+        let always_hangs_connector = ConnectFn(|(), _, _| {
+            std::future::pending::<Result<tokio::io::DuplexStream, WebSocketConnectError>>()
+        });
 
         const CONNECT_TIMEOUT: Duration = Duration::from_secs(31);
 

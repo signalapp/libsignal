@@ -55,6 +55,19 @@ pub trait ConnectorExt<R>: Connector<R, ()> {
 }
 impl<R, C: Connector<R, ()>> ConnectorExt<R> for C {}
 
+/// Allows state to be shared across Connectors.
+pub trait ConnectorFactory<R, Inner> {
+    /// The connector produced by this factory.
+    type Connector: Connector<R, Inner, Connection = Self::Connection>;
+    /// The type of connection returned by the connector.
+    ///
+    /// Technically redundant, but useful for constraints.
+    type Connection;
+
+    /// Creates a new connector to use for a particular connection attempt.
+    fn make(&self) -> Self::Connector;
+}
+
 /// A [`Connector`] for [`DirectOrProxyRoute`] that delegates to direct or proxy
 /// connectors.
 #[derive_where(Debug; D: Debug, P: Debug)]
@@ -281,6 +294,7 @@ pub mod testutils {
     ///
     /// Using unnamed functions as Connector impls isn't great for readability,
     /// so only allow it in test code.
+    #[derive(Clone)]
     pub struct ConnectFn<F>(pub F);
 
     impl<R, Inner, Fut, F, C, E> Connector<R, Inner> for ConnectFn<F>
@@ -299,6 +313,18 @@ pub mod testutils {
             log_tag: Arc<str>,
         ) -> impl Future<Output = Result<Self::Connection, Self::Error>> + Send {
             self.0(over, route, log_tag)
+        }
+    }
+
+    impl<R, Inner, F> ConnectorFactory<R, Inner> for ConnectFn<F>
+    where
+        ConnectFn<F>: Connector<R, Inner> + Clone,
+    {
+        type Connector = Self;
+        type Connection = <Self as Connector<R, Inner>>::Connection;
+
+        fn make(&self) -> Self::Connector {
+            self.clone()
         }
     }
 }
