@@ -4,6 +4,8 @@
 //
 
 use libsignal_net_infra::errors::{LogSafeDisplay, TransportConnectError};
+use libsignal_net_infra::route::ConnectError;
+use libsignal_net_infra::timeouts::TimeoutOr;
 use libsignal_net_infra::ws::{WebSocketConnectError, WebSocketServiceError};
 use libsignal_net_infra::{extract_retry_after_seconds, service};
 
@@ -41,6 +43,26 @@ pub enum ChatServiceError {
     ServiceIntentionallyDisconnected,
     /// Service is unavailable now, try again after {retry_after_seconds}s
     RetryLater { retry_after_seconds: u32 },
+}
+
+impl ChatServiceError {
+    pub fn from_single_connect_error(
+        e: TimeoutOr<ConnectError<WebSocketServiceConnectError>>,
+    ) -> Self {
+        use crate::infra::route::ConnectError;
+        match e {
+            TimeoutOr::Other(ConnectError::NoResolvedRoutes) => {
+                ChatServiceError::AllConnectionRoutesFailed { attempts: 0 }
+            }
+            TimeoutOr::Other(ConnectError::AllAttemptsFailed) => {
+                ChatServiceError::AllConnectionRoutesFailed { attempts: 1 }
+            }
+            TimeoutOr::Other(ConnectError::FatalConnect(err)) => err.into(),
+            TimeoutOr::Timeout {
+                attempt_duration: _,
+            } => ChatServiceError::TimeoutEstablishingConnection { attempts: 1 },
+        }
+    }
 }
 
 impl LogSafeDisplay for ChatServiceError {}

@@ -139,15 +139,14 @@ where
     TC: Connector<TransportRoute, ()> + Sync,
     TC::Error: Into<WebSocketConnectError>,
 {
-    pub async fn connect_ws<WC, E>(
+    pub async fn connect_ws<WC>(
         this: &tokio::sync::RwLock<Self>,
         routes: impl RouteProvider<Route = UnresolvedWebsocketServiceRoute>,
         ws_connector: WC,
         resolver: &DnsResolver,
         confirmation_header_name: Option<&HeaderName>,
         log_tag: Arc<str>,
-        mut on_error: impl FnMut(WebSocketServiceConnectError) -> ControlFlow<E>,
-    ) -> Result<(WC::Connection, RouteInfo), TimeoutOr<ConnectError<E>>>
+    ) -> Result<(WC::Connection, RouteInfo), TimeoutOr<ConnectError<WebSocketServiceConnectError>>>
     where
         WC: Connector<
                 (WebSocketRouteFragment, HttpRouteFragment),
@@ -155,7 +154,6 @@ where
                 Error = tungstenite::Error,
             > + Send
             + Sync,
-        E: LogSafeDisplay,
     {
         let connect_read = this.read().await;
 
@@ -195,7 +193,11 @@ where
                     confirmation_header_name,
                     Instant::now(),
                 );
-                on_error(error)
+                log::debug!("[{log_tag}] connection attempt failed with {error}");
+                match error.classify() {
+                    ErrorClass::Intermittent => ControlFlow::Continue(()),
+                    ErrorClass::Fatal | ErrorClass::RetryAt(_) => ControlFlow::Break(error),
+                }
             },
         );
 
@@ -273,12 +275,6 @@ where
             resolver,
             confirmation_header_name.as_ref(),
             log_tag.clone(),
-            |error| match error.classify() {
-                ErrorClass::Intermittent => ControlFlow::Continue(()),
-                ErrorClass::RetryAt(_) | ErrorClass::Fatal => {
-                    ControlFlow::Break(crate::enclave::Error::WebSocketConnect(error))
-                }
-            },
         )
         .await
         .map_err(|e| match e {
@@ -286,7 +282,9 @@ where
             | TimeoutOr::Timeout {
                 attempt_duration: _,
             } => crate::enclave::Error::ConnectionTimedOut,
-            TimeoutOr::Other(ConnectError::FatalConnect(e)) => e,
+            TimeoutOr::Other(ConnectError::FatalConnect(e)) => {
+                crate::enclave::Error::WebSocketConnect(e)
+            }
         })?;
 
         let connection =
@@ -313,7 +311,6 @@ impl RouteProviderContext for RouteProviderContextImpl {
 #[cfg(test)]
 mod test {
     use std::collections::HashMap;
-    use std::convert::Infallible;
     use std::sync::{Arc, LazyLock};
     use std::time::Duration;
 
@@ -423,14 +420,6 @@ mod test {
             &resolver,
             None,
             "test".into(),
-            |e| {
-                let e = assert_matches!(e, WebSocketServiceConnectError::Connect(e, _) => e);
-                assert_matches!(
-                    e,
-                    WebSocketConnectError::WebSocketError(tungstenite::Error::ConnectionClosed)
-                );
-                ControlFlow::<Infallible>::Continue(())
-            },
         )
         // This previously hung forever due to a deadlock bug.
         .await;
@@ -479,11 +468,10 @@ mod test {
             &resolver,
             None,
             "test".into(),
-            |_| unreachable!("no errors should be produced"),
         );
 
         let start = Instant::now();
-        let result: Result<_, TimeoutOr<ConnectError<Infallible>>> = connect.await;
+        let result: Result<_, TimeoutOr<ConnectError<_>>> = connect.await;
 
         assert_matches!(
             result,

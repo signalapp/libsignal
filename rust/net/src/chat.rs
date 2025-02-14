@@ -4,7 +4,6 @@
 //
 
 use std::fmt::{Debug, Display};
-use std::ops::ControlFlow;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -13,9 +12,7 @@ use ::http::{HeaderMap, HeaderName, HeaderValue, StatusCode};
 use async_trait::async_trait;
 use futures_util::future::BoxFuture;
 use futures_util::SinkExt;
-use libsignal_net_infra::connection_manager::{
-    ErrorClass, ErrorClassifier, MultiRouteConnectionManager,
-};
+use libsignal_net_infra::connection_manager::MultiRouteConnectionManager;
 use libsignal_net_infra::dns::DnsResolver;
 use libsignal_net_infra::route::{
     Connector, RouteProvider, RouteProviderExt, ThrottledConnection, ThrottlingConnector,
@@ -23,9 +20,7 @@ use libsignal_net_infra::route::{
     WebSocketRouteFragment,
 };
 use libsignal_net_infra::service::{Service, ServiceConnectorWithDecorator};
-use libsignal_net_infra::timeouts::{
-    TimeoutOr, MULTI_ROUTE_CONNECTION_TIMEOUT, ONE_ROUTE_CONNECTION_TIMEOUT,
-};
+use libsignal_net_infra::timeouts::{MULTI_ROUTE_CONNECTION_TIMEOUT, ONE_ROUTE_CONNECTION_TIMEOUT};
 use libsignal_net_infra::utils::ObservableEvent;
 use libsignal_net_infra::ws::{WebSocketClientConnector, WebSocketConnectError};
 use libsignal_net_infra::{
@@ -613,7 +608,7 @@ impl ChatConnection {
         });
 
         let log_tag: Arc<str> = log_tag.into();
-        let result = ConnectState::connect_ws(
+        let (ws_connection, route_info) = ConnectState::connect_ws(
             connect,
             ws_routes,
             // If we create multiple authenticated chat websocket connections at
@@ -626,43 +621,16 @@ impl ChatConnection {
             resolver,
             confirmation_header_name.as_ref(),
             log_tag.clone(),
-            |error| {
-                log::debug!("[{log_tag}] connection attempt failed with {error}");
-                match error.classify() {
-                    ErrorClass::Intermittent => ControlFlow::Continue(()),
-                    ErrorClass::Fatal | ErrorClass::RetryAt(_) => {
-                        ControlFlow::Break(ChatServiceError::from(error))
-                    }
-                }
-            },
         )
-        .await;
+        .await
+        .map_err(ChatServiceError::from_single_connect_error)?;
 
-        match result {
-            Ok((ws_connection, route_info)) => Ok({
-                PendingChatConnection {
-                    connection: ws_connection,
-                    route_info,
-                    ws_config,
-                    log_tag,
-                }
-            }),
-            Err(e) => {
-                use crate::infra::route::ConnectError;
-                Err(match e {
-                    TimeoutOr::Other(ConnectError::NoResolvedRoutes) => {
-                        ChatServiceError::AllConnectionRoutesFailed { attempts: 0 }
-                    }
-                    TimeoutOr::Other(ConnectError::AllAttemptsFailed) => {
-                        ChatServiceError::AllConnectionRoutesFailed { attempts: 1 }
-                    }
-                    TimeoutOr::Other(ConnectError::FatalConnect(err)) => err,
-                    TimeoutOr::Timeout {
-                        attempt_duration: _,
-                    } => ChatServiceError::TimeoutEstablishingConnection { attempts: 1 },
-                })
-            }
-        }
+        Ok(PendingChatConnection {
+            connection: ws_connection,
+            route_info,
+            ws_config,
+            log_tag,
+        })
     }
 
     pub fn finish_connect(
