@@ -133,21 +133,21 @@ impl RouteInfo {
     }
 }
 
-impl<ConnectorFactory, TC> ConnectState<ConnectorFactory>
-where
-    ConnectorFactory: Fn() -> TC,
-    TC: Connector<TransportRoute, ()> + Sync,
-    TC::Error: Into<WebSocketConnectError>,
-{
-    pub async fn connect_ws<WC>(
+impl<ConnectorFactory> ConnectState<ConnectorFactory> {
+    pub async fn connect_ws<TC, Inner, WC>(
         this: &tokio::sync::RwLock<Self>,
         routes: impl RouteProvider<Route = UnresolvedWebsocketServiceRoute>,
+        inner: Inner,
         ws_connector: WC,
         resolver: &DnsResolver,
         confirmation_header_name: Option<&HeaderName>,
         log_tag: Arc<str>,
     ) -> Result<(WC::Connection, RouteInfo), TimeoutOr<ConnectError<WebSocketServiceConnectError>>>
     where
+        Inner: Clone + Send,
+        ConnectorFactory: Fn() -> TC,
+        TC: Connector<TransportRoute, Inner> + Sync,
+        TC::Error: Into<WebSocketConnectError>,
         WC: Connector<
                 (WebSocketRouteFragment, HttpRouteFragment),
                 TC::Connection,
@@ -185,7 +185,7 @@ where
             route_provider,
             resolver,
             connector,
-            (),
+            inner,
             log_tag.clone(),
             |error| {
                 let error = WebSocketServiceConnectError::from_websocket_error(
@@ -242,7 +242,7 @@ where
         ))
     }
 
-    pub(crate) async fn connect_attested_ws<E, WC>(
+    pub(crate) async fn connect_attested_ws<E, TC, WC>(
         connect: &tokio::sync::RwLock<Self>,
         routes: impl RouteProvider<Route = UnresolvedWebsocketServiceRoute>,
         auth: Auth,
@@ -253,6 +253,9 @@ where
         params: &EndpointParams<'_, E>,
     ) -> Result<(AttestedConnection, RouteInfo), crate::enclave::Error>
     where
+        ConnectorFactory: Fn() -> TC,
+        TC: Connector<TransportRoute, ()> + Sync,
+        TC::Error: Into<WebSocketConnectError>,
         TC::Connection: AsyncDuplexStream + 'static,
         WC: Connector<
                 (WebSocketRouteFragment, HttpRouteFragment),
@@ -271,6 +274,7 @@ where
         let (ws, route_info) = ConnectState::connect_ws(
             connect,
             ws_routes,
+            (),
             ws_connector,
             resolver,
             confirmation_header_name.as_ref(),
@@ -416,6 +420,7 @@ mod test {
         let result = ConnectState::connect_ws(
             &state,
             vec![failing_route.clone(), succeeding_route.clone()],
+            (),
             ws_connector,
             &resolver,
             None,
@@ -464,6 +469,7 @@ mod test {
         let connect = ConnectState::connect_ws(
             &state,
             vec![failing_route.clone(), succeeding_route.clone()],
+            (),
             ws_connector,
             &resolver,
             None,

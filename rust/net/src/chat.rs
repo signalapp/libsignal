@@ -611,6 +611,7 @@ impl ChatConnection {
         let (ws_connection, route_info) = ConnectState::connect_ws(
             connect,
             ws_routes,
+            (),
             // If we create multiple authenticated chat websocket connections at
             // the same time, the server will terminate earlier ones as later
             // ones complete. Throttling at the websocket connection level
