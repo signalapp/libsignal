@@ -547,6 +547,11 @@ impl ProxyConfig {
             }
         })
     }
+
+    #[cfg(feature = "test-util")]
+    pub fn hostnames(&self) -> impl Iterator<Item = &'static str> {
+        self.sni_list.iter().copied()
+    }
 }
 
 impl From<KeyTransConfig> for PublicConfig {

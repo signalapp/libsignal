@@ -9,16 +9,15 @@ use tokio::time::Duration;
 use super::FakeStream;
 
 #[derive(Clone, Debug)]
+#[allow(dead_code)] // Keep all these cases around even if not all the tests use them.
 pub enum Behavior {
     /// Let the connection attempt wait forever.
     ///
     /// This models the behavior of the underlying TCP `connect` syscall having no timeout.
     DelayForever,
     /// Fail the connection attempt with the provided error.
-    #[allow(dead_code)]
     Fail(fn() -> TransportConnectError),
     /// Wait some period of time before following the `then` behavior.
-    #[allow(unused)]
     Delay {
         delay: Duration,
         then: Box<Behavior>,

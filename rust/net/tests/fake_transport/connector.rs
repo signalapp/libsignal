@@ -8,12 +8,9 @@ use std::fmt::{Debug, Display};
 use std::future::Future;
 use std::sync::{Arc, Mutex};
 
-use async_trait::async_trait;
+use futures_util::{StreamExt as _, TryStreamExt as _};
+use itertools::Itertools;
 use libsignal_net::infra::errors::TransportConnectError;
-use libsignal_net::infra::{
-    Alpn, DnsSource, RouteType, ServiceConnectionInfo, StreamAndInfo, TransportConnectionParams,
-    TransportConnector,
-};
 use libsignal_net_infra::host::Host;
 use libsignal_net_infra::route::{
     ConnectionProxyRoute, Connector, DirectOrProxyRoute, HttpProxyRouteFragment, HttpsProxyRoute,
@@ -21,6 +18,7 @@ use libsignal_net_infra::route::{
 };
 use tokio::io::DuplexStream;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
+use tokio::time::Instant;
 
 use super::{Behavior, FakeStream, FakeTransportTarget};
 
@@ -30,20 +28,38 @@ use super::{Behavior, FakeStream, FakeTransportTarget};
 /// [Self::connect_behavior]. If a stream is established, the "local" end is
 /// returned to the caller and the "remote" end is sent to the receiver on the
 /// other end of [Self::server_stream_sender].
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct FakeTransportConnector {
-    server_stream_sender: UnboundedSender<(FakeTransportTarget, DuplexStream)>,
+    pub recorded_events: Arc<Mutex<Vec<TransportEventAtTime>>>,
+    server_stream_sender: UnboundedSender<(Host<Arc<str>>, DuplexStream)>,
     connect_behavior: Arc<Mutex<HashMap<FakeTransportTarget, Behavior>>>,
 }
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum TransportConnectEvent {
+    TcpConnect(Host<Arc<str>>),
+    TlsHandshake(Host<Arc<str>>),
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum TransportConnectEventStage {
+    Start,
+    End,
+}
+
+pub type FakeTargetAndStream = (Host<Arc<str>>, DuplexStream);
+
+type TransportEventAtTime = ((TransportConnectEvent, TransportConnectEventStage), Instant);
 
 impl FakeTransportConnector {
     pub fn new<T: IntoIterator<Item = (FakeTransportTarget, Behavior)>>(
         connect_behavior: T,
-    ) -> (Self, UnboundedReceiver<(FakeTransportTarget, DuplexStream)>) {
+    ) -> (Self, UnboundedReceiver<FakeTargetAndStream>) {
         let (sender, receiver) = tokio::sync::mpsc::unbounded_channel();
         let connector = Self {
             server_stream_sender: sender,
             connect_behavior: Arc::new(Mutex::new(connect_behavior.into_iter().collect())),
+            recorded_events: Default::default(),
         };
         (connector, receiver)
     }
@@ -54,64 +70,6 @@ impl FakeTransportConnector {
 }
 
 const MAX_BUF_SIZE: usize = 512 * 1024;
-
-#[async_trait]
-impl TransportConnector for FakeTransportConnector {
-    type Stream = FakeStream;
-
-    async fn connect(
-        &self,
-        connection_params: &TransportConnectionParams,
-        _alpn: Alpn,
-    ) -> Result<StreamAndInfo<Self::Stream>, TransportConnectError> {
-        let Self {
-            server_stream_sender,
-            connect_behavior,
-        } = self;
-
-        let TransportConnectionParams {
-            tcp_host,
-            port,
-            sni: _,
-            certs: _,
-        } = connection_params;
-        let fake_host = FakeTransportTarget {
-            host: tcp_host.clone(),
-            port: *port,
-        };
-
-        let behavior = connect_behavior
-            .lock()
-            .unwrap()
-            .get(&fake_host)
-            .cloned()
-            .unwrap_or(Behavior::DelayForever);
-        log::info!("fake connector \"connecting\" to {fake_host}, overrides: {behavior:?}");
-
-        let stream_modifiers = behavior.apply().await?;
-
-        log::info!("connected {fake_host} at transport level");
-
-        let (client_stream, server_stream) = tokio::io::duplex(MAX_BUF_SIZE);
-
-        let client_stream = stream_modifiers
-            .into_iter()
-            .fold(Box::new(client_stream) as Box<_>, |stream, f| f(stream));
-
-        server_stream_sender
-            .send((fake_host, server_stream))
-            .unwrap();
-
-        Ok(StreamAndInfo(
-            client_stream,
-            ServiceConnectionInfo {
-                route_type: RouteType::Direct,
-                dns_source: DnsSource::Static,
-                address: tcp_host.clone(),
-            },
-        ))
-    }
-}
 
 impl Connector<TransportRoute, ()> for FakeTransportConnector {
     type Connection = FakeStream;
@@ -127,30 +85,45 @@ impl Connector<TransportRoute, ()> for FakeTransportConnector {
         let Self {
             server_stream_sender,
             connect_behavior,
+            recorded_events,
         } = self;
 
-        let target_host = route.fragment.sni.clone();
-        let TcpRoute { address: _, port } = target_host_port(&route);
+        let targets = FakeTransportTarget::from_route(&route);
 
-        let fake_host = FakeTransportTarget {
-            host: target_host,
-            port,
-        };
+        let guard = connect_behavior.lock().unwrap();
+        let behaviors = targets.map(|target| {
+            let behavior = guard
+                .get(&target)
+                .cloned()
+                .unwrap_or(Behavior::DelayForever);
+            (target, behavior)
+        });
 
-        let behavior = connect_behavior
-            .lock()
-            .unwrap()
-            .get(&fake_host)
-            .cloned()
-            .unwrap_or(Behavior::DelayForever);
+        let fake_host = route.fragment.sni.clone();
 
         async move {
             log::info!(
-                "[{log_tag}] fake connector \"connecting\" along {}, overrides: {behavior:?}",
+                "[{log_tag}] fake connector \"connecting\" along {}, overrides: {behaviors:?}",
                 DescribeRoute(&route),
             );
 
-            let stream_modifiers = behavior.apply().await?;
+            let stream_modifiers: Vec<_> = futures_util::stream::iter(behaviors)
+                .then(move |(target, behavior)| async move {
+                    let stage = TransportConnectEvent::for_target(target);
+                    recorded_events.lock().unwrap().push((
+                        (stage.clone(), TransportConnectEventStage::Start),
+                        Instant::now(),
+                    ));
+                    let r = behavior.apply().await?;
+                    recorded_events.lock().unwrap().push((
+                        (stage.clone(), TransportConnectEventStage::End),
+                        Instant::now(),
+                    ));
+                    Ok::<_, TransportConnectError>(r)
+                })
+                .try_collect()
+                .await?;
+            let stream_modifiers = stream_modifiers.into_iter().flatten().collect_vec();
 
             log::info!("[{log_tag}] connected {fake_host} at transport level");
 
@@ -165,6 +138,18 @@ impl Connector<TransportRoute, ()> for FakeTransportConnector {
                 .unwrap();
 
             Ok(client_stream)
+        }
+    }
+}
+
+impl TransportConnectEvent {
+    fn for_target(target: FakeTransportTarget) -> Self {
+        match target {
+            FakeTransportTarget::TcpThroughProxy { host, .. } => {
+                TransportConnectEvent::TcpConnect(host)
+            }
+            FakeTransportTarget::Tcp { host, .. } => TransportConnectEvent::TcpConnect(host.into()),
+            FakeTransportTarget::Tls { sni } => TransportConnectEvent::TlsHandshake(sni),
         }
     }
 }

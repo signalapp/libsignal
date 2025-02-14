@@ -5,6 +5,7 @@
 
 use std::iter::Map;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
+use std::slice::Iter;
 use std::vec::IntoIter;
 
 use crate::DnsSource;
@@ -34,9 +35,31 @@ impl IntoIterator for LookupResult {
     }
 }
 
+impl<'a> IntoIterator for &'a LookupResult {
+    type Item = IpAddr;
+    type IntoIter = itertools::Interleave<
+        Map<Iter<'a, Ipv6Addr>, fn(&Ipv6Addr) -> IpAddr>,
+        Map<Iter<'a, Ipv4Addr>, fn(&Ipv4Addr) -> IpAddr>,
+    >;
+
+    /// Returns an iterator that interleaves IPv6 and IPv4 addresses.
+    fn into_iter(self) -> Self::IntoIter {
+        let v6_into_ipaddr: fn(&Ipv6Addr) -> IpAddr = |v| (*v).into();
+        let v4_into_ipaddr: fn(&Ipv4Addr) -> IpAddr = |v| (*v).into();
+        itertools::interleave(
+            self.ipv6.iter().map(v6_into_ipaddr),
+            self.ipv4.iter().map(v4_into_ipaddr),
+        )
+    }
+}
+
 impl LookupResult {
     pub fn new(source: DnsSource, ipv4: Vec<Ipv4Addr>, ipv6: Vec<Ipv6Addr>) -> Self {
         Self { source, ipv4, ipv6 }
+    }
+
+    pub fn iter(&self) -> <&Self as IntoIterator>::IntoIter {
+        self.into_iter()
     }
 
     pub(crate) fn source(&self) -> DnsSource {
