@@ -140,10 +140,9 @@ impl<O, I, E> ComposedConnector<O, I, E> {
 impl<A, B, Inner, T, Error> Connector<WebSocketRoute<HttpsTlsRoute<T>>, Inner>
     for ComposedConnector<A, B, Error>
 where
-    A: Connector<(WebSocketRouteFragment, HttpRouteFragment), B::Connection> + Sync,
-    B: Connector<T, Inner> + Sync,
-    A::Error: Into<Error>,
-    B::Error: Into<Error>,
+    A: Connector<(WebSocketRouteFragment, HttpRouteFragment), B::Connection, Error: Into<Error>>
+        + Sync,
+    B: Connector<T, Inner, Error: Into<Error>> + Sync,
     Inner: Send,
     T: Send,
 {
@@ -186,10 +185,8 @@ where
 /// Establishes a TLS connection over a transport stream.
 impl<A, B, Inner, T, Error> Connector<TlsRoute<T>, Inner> for ComposedConnector<A, B, Error>
 where
-    A: Connector<TlsRouteFragment, B::Connection> + Sync,
-    B: Connector<T, Inner> + Sync,
-    A::Error: Into<Error>,
-    B::Error: Into<Error>,
+    A: Connector<TlsRouteFragment, B::Connection, Error: Into<Error>> + Sync,
+    B: Connector<T, Inner, Error: Into<Error>> + Sync,
     Inner: Send,
     T: Send,
 {
@@ -233,10 +230,8 @@ where
 impl<D, P, DR, PR, Inner, Err> Connector<DirectOrProxyRoute<DR, PR>, Inner>
     for DirectOrProxy<D, P, Err>
 where
-    D: Connector<DR, Inner>,
-    P: Connector<PR, Inner>,
-    P::Error: Into<Err>,
-    D::Error: Into<Err>,
+    D: Connector<DR, Inner, Error: Into<Err>>,
+    P: Connector<PR, Inner, Error: Into<Err>>,
 {
     type Connection = Either<D::Connection, P::Connection>;
 

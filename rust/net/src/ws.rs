@@ -114,9 +114,8 @@ impl<S> WebSocketServiceConnector<S> {
 }
 
 #[async_trait]
-impl<S: ServiceConnector + Sync> ServiceConnector for WebSocketServiceConnector<S>
-where
-    S::ConnectError: Into<WebSocketConnectError>,
+impl<S: ServiceConnector<ConnectError: Into<WebSocketConnectError>> + Sync> ServiceConnector
+    for WebSocketServiceConnector<S>
 {
     type Service = S::Service;
 

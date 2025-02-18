@@ -927,8 +927,7 @@ mod test {
         Receiver<ServerEvent<DuplexStream>>,
     )
     where
-        F: Filter + Clone + Send + Sync + 'static,
-        F::Extract: Reply,
+        F: Filter<Extract: Reply> + Clone + Send + Sync + 'static,
     {
         let (incoming_tx, incoming_rx) = mpsc::channel::<ServerEvent<DuplexStream>>(512);
         let ws_connector = ChatOverWebSocketServiceConnector::new(

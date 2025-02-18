@@ -645,8 +645,7 @@ where
 
 impl<T, P> SimpleArgTypeInfo for AsType<T, P>
 where
-    P: TryInto<T> + SimpleArgTypeInfo,
-    P::Error: Display,
+    P: TryInto<T, Error: Display> + SimpleArgTypeInfo,
 {
     type ArgType = P::ArgType;
 

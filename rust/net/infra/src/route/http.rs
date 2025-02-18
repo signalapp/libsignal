@@ -150,9 +150,8 @@ impl RouteProvider for DomainFrontRouteProvider {
 
 impl<F, P> RouteProvider for HttpsProvider<F, P>
 where
-    P: RouteProvider,
+    P: RouteProvider<Route: SetAlpn>,
     F: RouteProvider<Route = HttpsTlsRoute<P::Route>>,
-    P::Route: SetAlpn,
 {
     type Route = HttpsTlsRoute<P::Route>;
     fn routes<'s>(

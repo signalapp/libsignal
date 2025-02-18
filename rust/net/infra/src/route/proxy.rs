@@ -279,12 +279,14 @@ type DirectOrProxyReplacement =
 
 impl<D, P, R> RouteProvider for DirectOrProxyProvider<D, P>
 where
-    D: RouteProvider,
-    P: RouteProvider,
-    D::Route: ReplaceFragment<TcpRoute<UnresolvedHost>, Replacement<DirectOrProxyReplacement> = R>,
-    P::Route: ReplaceFragment<
-        ConnectionProxyRoute<Host<UnresolvedHost>>,
-        Replacement<DirectOrProxyReplacement> = R,
+    D: RouteProvider<
+        Route: ReplaceFragment<TcpRoute<UnresolvedHost>, Replacement<DirectOrProxyReplacement> = R>,
+    >,
+    P: RouteProvider<
+        Route: ReplaceFragment<
+            ConnectionProxyRoute<Host<UnresolvedHost>>,
+            Replacement<DirectOrProxyReplacement> = R,
+        >,
     >,
 {
     type Route = R;
@@ -310,8 +312,7 @@ where
 
 impl<P> RouteProvider for ConnectionProxyRouteProvider<P>
 where
-    P: RouteProvider,
-    P::Route: ReplaceFragment<TcpRoute<UnresolvedHost>>,
+    P: RouteProvider<Route: ReplaceFragment<TcpRoute<UnresolvedHost>>>,
 {
     type Route = <P::Route as ReplaceFragment<TcpRoute<UnresolvedHost>>>::Replacement<
         ConnectionProxyRoute<Host<UnresolvedHost>>,

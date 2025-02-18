@@ -106,8 +106,7 @@ impl RouteResolver {
         resolver: &'r impl Resolver,
     ) -> impl FusedStream<Item = (ResolvedRoutes<R::Resolved>, ResolveMeta)> + 'r
     where
-        R: ResolveHostnames + Clone + 'static,
-        R::Resolved: ResolvedRoute,
+        R: ResolveHostnames<Resolved: ResolvedRoute> + Clone + 'static,
     {
         let Self { allow_ipv6 } = self;
 

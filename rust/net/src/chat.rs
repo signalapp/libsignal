@@ -280,10 +280,7 @@ impl<D: DelegatingChatService> ChatService for D {
     }
 }
 
-impl<D: DelegatingChatService> ChatServiceWithDebugInfo for D
-where
-    D::Inner: ChatServiceWithDebugInfo,
-{
+impl<D: DelegatingChatService<Inner: ChatServiceWithDebugInfo>> ChatServiceWithDebugInfo for D {
     fn send_and_debug<'life0, 'async_trait>(
         &'life0 self,
         msg: Request,
@@ -868,10 +865,13 @@ pub(crate) mod test {
         #[async_trait]
         impl<C> ChatService for NoReconnectService<C>
         where
-            C: ServiceConnector + Send + Sync + 'static,
-            C::Service: ChatService + Clone + Send + Sync + 'static,
-            C::Channel: Send + Sync,
-            C::ConnectError: Send + Sync + Debug + LogSafeDisplay,
+            C: ServiceConnector<
+                    Service: ChatService + Clone + Send + Sync + 'static,
+                    Channel: Send + Sync,
+                    ConnectError: Send + Sync + Debug + LogSafeDisplay,
+                > + Send
+                + Sync
+                + 'static,
         {
             async fn send(
                 &self,

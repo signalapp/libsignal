@@ -497,8 +497,7 @@ pub mod testutil {
     #[async_trait]
     impl<F> TransportConnector for InMemoryWarpConnector<F>
     where
-        F: Filter + Clone + Send + Sync + 'static,
-        F::Extract: Reply,
+        F: Filter<Extract: Reply> + Clone + Send + Sync + 'static,
     {
         type Stream = DuplexStream;
 
@@ -532,10 +531,13 @@ pub mod testutil {
 
     impl<C> NoReconnectService<C>
     where
-        C: ServiceConnector + Send + Sync + 'static,
-        C::Service: Clone + Send + Sync + 'static,
-        C::Channel: Send + Sync,
-        C::ConnectError: Send + Sync + Debug + LogSafeDisplay + ErrorClassifier,
+        C: ServiceConnector<
+                Service: Clone + Send + Sync + 'static,
+                Channel: Send + Sync,
+                ConnectError: Send + Sync + Debug + LogSafeDisplay + ErrorClassifier,
+            > + Send
+            + Sync
+            + 'static,
     {
         pub async fn start<M>(service_connector: C, connection_manager: M) -> Self
         where

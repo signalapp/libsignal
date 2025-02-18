@@ -20,11 +20,18 @@ use crate::chat::{
 impl<C, M> ChatService for Service<C, M>
 where
     M: ConnectionManager + 'static,
-    C: ServiceConnector + Send + Sync + 'static,
-    C::Service: ChatService + Clone + Sync + Send + 'static,
-    C::Channel: Send,
-    C::ConnectError:
-        Send + Sync + Debug + LogSafeDisplay + ErrorClassifier + Into<ChatServiceError>,
+    C: ServiceConnector<
+            Service: ChatService + Clone + Sync + Send + 'static,
+            Channel: Send,
+            ConnectError: Send
+                              + Sync
+                              + Debug
+                              + LogSafeDisplay
+                              + ErrorClassifier
+                              + Into<ChatServiceError>,
+        > + Send
+        + Sync
+        + 'static,
 {
     async fn send(&self, msg: Request, timeout: Duration) -> Result<Response, ChatServiceError> {
         self.service().await?.send(msg, timeout).await
@@ -43,11 +50,18 @@ where
 impl<C, M> ChatServiceWithDebugInfo for Service<C, M>
 where
     M: ConnectionManager + 'static,
-    C: ServiceConnector + Send + Sync + 'static,
-    C::Service: ChatService + RemoteAddressInfo + Clone + Sync + Send + 'static,
-    C::Channel: Send,
-    C::ConnectError:
-        Send + Sync + Debug + LogSafeDisplay + ErrorClassifier + Into<ChatServiceError>,
+    C: ServiceConnector<
+            Service: ChatService + RemoteAddressInfo + Clone + Sync + Send + 'static,
+            Channel: Send,
+            ConnectError: Send
+                              + Sync
+                              + Debug
+                              + LogSafeDisplay
+                              + ErrorClassifier
+                              + Into<ChatServiceError>,
+        > + Send
+        + Sync
+        + 'static,
 {
     async fn send_and_debug(
         &self,

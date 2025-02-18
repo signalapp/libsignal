@@ -243,8 +243,10 @@ impl GroupSendEndorsementsResponse {
         server_params: &ServerPublicParams,
     ) -> Result<Vec<ReceivedEndorsement>, ZkGroupVerificationFailure>
     where
-        T: rayon::iter::IntoParallelIterator<Item = libsignal_core::ServiceId>,
-        T::Iter: rayon::iter::IndexedParallelIterator,
+        T: rayon::iter::IntoParallelIterator<
+            Item = libsignal_core::ServiceId,
+            Iter: rayon::iter::IndexedParallelIterator,
+        >,
     {
         let derived_key = self.derive_public_signing_key_from_expiration(now, server_params)?;
 

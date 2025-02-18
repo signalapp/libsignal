@@ -295,10 +295,10 @@ impl<TC> ConnectState<TC> {
         WC: Connector<
                 (WebSocketRouteFragment, HttpRouteFragment),
                 TC::Connection,
+                Connection: WebSocketStreamLike + Send + 'static,
                 Error = tungstenite::Error,
             > + Send
             + Sync,
-        WC::Connection: WebSocketStreamLike + Send + 'static,
         E: NewHandshake,
     {
         let ws_routes = routes.map_routes(|mut route| {

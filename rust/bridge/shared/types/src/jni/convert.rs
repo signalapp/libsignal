@@ -1064,8 +1064,7 @@ where
 
 impl<'a, T, P> SimpleArgTypeInfo<'a> for AsType<T, P>
 where
-    P: SimpleArgTypeInfo<'a> + TryInto<T>,
-    P::Error: Display,
+    P: SimpleArgTypeInfo<'a> + TryInto<T, Error: Display>,
 {
     type ArgType = P::ArgType;
 
@@ -1263,15 +1262,16 @@ impl<'a> ResultTypeInfo<'a> for libsignal_net::chat::Response {
 /// operation).
 ///
 /// [FindClass]: https://docs.oracle.com/javase/8/docs/technotes/guides/jni/spec/functions.html#FindClass
-fn make_object_array<'a, It: IntoIterator>(
+fn make_object_array<'a, It>(
     env: &mut JNIEnv<'a>,
     element_type_signature: &str,
     it: It,
 ) -> Result<JObjectArray<'a>, BridgeLayerError>
 where
-    It::Item: ResultTypeInfo<'a>,
-    <It::Item as ResultTypeInfo<'a>>::ResultType: Into<JObject<'a>>,
-    It::IntoIter: ExactSizeIterator,
+    It: IntoIterator<
+        Item: ResultTypeInfo<'a, ResultType: Into<JObject<'a>>>,
+        IntoIter: ExactSizeIterator,
+    >,
 {
     let it = it.into_iter();
     let len = it.len();

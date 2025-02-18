@@ -95,9 +95,7 @@ impl AsyncRuntimeBase for TokioAsyncContext {
 
 impl<F> AsyncRuntime<F> for TokioAsyncContext
 where
-    F: Future + Send + 'static,
-    F::Output: ResultReporter + Send,
-    <F::Output as ResultReporter>::Receiver: Send,
+    F: Future<Output: ResultReporter<Receiver: Send> + Send> + Send + 'static,
 {
     type Cancellation = TokioContextCancellation;
 

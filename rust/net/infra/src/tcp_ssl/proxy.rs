@@ -113,10 +113,7 @@ pub(crate) mod testutil {
         upstream_addr: SocketAddr,
     }
 
-    impl<S: Stream> ProxyServer<S>
-    where
-        S::Item: AsyncRead + AsyncWrite,
-    {
+    impl<S: Stream<Item: AsyncRead + AsyncWrite>> ProxyServer<S> {
         async fn proxy(self) {
             let Self {
                 incoming_connections_stream,
