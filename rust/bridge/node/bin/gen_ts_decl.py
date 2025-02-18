@@ -43,6 +43,8 @@ def split_rust_args(args: str) -> Iterator[Tuple[str, str]]:
     """
     while ':' in args:
         (name, args) = args.split(':', maxsplit=1)
+        if name.startswith('mut '):
+            name = name[4:]
         open_pairs = 0
         for (i, c) in enumerate(args):
             if c == ',' and open_pairs == 0:
