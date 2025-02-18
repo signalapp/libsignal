@@ -17,6 +17,7 @@ dev-util = []
 attest = { workspace = true }
 
 async-trait = { workspace = true }
+auto_enums = { version = "0.8.7", features = ["tokio1"] }
 base64 = { workspace = true }
 bitstream-io = "1.10.0"
 boring-signal = { workspace = true }

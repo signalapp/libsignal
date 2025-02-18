@@ -3,8 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use pin_project::pin_project;
-use tokio::io::{AsyncRead, AsyncWrite};
+use auto_enums::enum_derive;
 use tokio::net::TcpStream;
 use tokio_boring_signal::SslStream;
 
@@ -13,66 +12,12 @@ use crate::tcp_ssl::proxy::socks::SocksStream;
 use crate::Connection;
 
 #[derive(Debug, derive_more::From)]
-#[pin_project(project = ProxyStreamProj)]
+#[enum_derive(tokio1::AsyncRead, tokio1::AsyncWrite)]
 pub enum ProxyStream {
-    Tls(#[pin] SslStream<TcpStream>),
-    Tcp(#[pin] TcpStream),
-    Socks(#[pin] SocksStream),
-    Http(#[pin] HttpProxyStream),
-}
-
-impl AsyncRead for ProxyStream {
-    fn poll_read(
-        self: std::pin::Pin<&mut Self>,
-        cx: &mut std::task::Context<'_>,
-        buf: &mut tokio::io::ReadBuf<'_>,
-    ) -> std::task::Poll<std::io::Result<()>> {
-        match self.project() {
-            ProxyStreamProj::Tls(tls) => tls.poll_read(cx, buf),
-            ProxyStreamProj::Tcp(tcp) => tcp.poll_read(cx, buf),
-            ProxyStreamProj::Socks(socks) => socks.poll_read(cx, buf),
-            ProxyStreamProj::Http(http) => http.poll_read(cx, buf),
-        }
-    }
-}
-
-impl AsyncWrite for ProxyStream {
-    fn poll_write(
-        self: std::pin::Pin<&mut Self>,
-        cx: &mut std::task::Context<'_>,
-        buf: &[u8],
-    ) -> std::task::Poll<Result<usize, std::io::Error>> {
-        match self.project() {
-            ProxyStreamProj::Tls(tls) => tls.poll_write(cx, buf),
-            ProxyStreamProj::Tcp(tcp) => tcp.poll_write(cx, buf),
-            ProxyStreamProj::Socks(socks) => socks.poll_write(cx, buf),
-            ProxyStreamProj::Http(http) => http.poll_write(cx, buf),
-        }
-    }
-
-    fn poll_flush(
-        self: std::pin::Pin<&mut Self>,
-        cx: &mut std::task::Context<'_>,
-    ) -> std::task::Poll<Result<(), std::io::Error>> {
-        match self.project() {
-            ProxyStreamProj::Tls(tls) => tls.poll_flush(cx),
-            ProxyStreamProj::Tcp(tcp) => tcp.poll_flush(cx),
-            ProxyStreamProj::Socks(socks) => socks.poll_flush(cx),
-            ProxyStreamProj::Http(http) => http.poll_flush(cx),
-        }
-    }
-
-    fn poll_shutdown(
-        self: std::pin::Pin<&mut Self>,
-        cx: &mut std::task::Context<'_>,
-    ) -> std::task::Poll<Result<(), std::io::Error>> {
-        match self.project() {
-            ProxyStreamProj::Tls(tls) => tls.poll_shutdown(cx),
-            ProxyStreamProj::Tcp(tcp) => tcp.poll_shutdown(cx),
-            ProxyStreamProj::Socks(socks) => socks.poll_shutdown(cx),
-            ProxyStreamProj::Http(http) => http.poll_shutdown(cx),
-        }
-    }
+    Tls(SslStream<TcpStream>),
+    Tcp(TcpStream),
+    Socks(SocksStream<TcpStream>),
+    Http(HttpProxyStream),
 }
 
 impl Connection for ProxyStream {

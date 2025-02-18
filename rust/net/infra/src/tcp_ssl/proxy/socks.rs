@@ -11,12 +11,12 @@ use std::num::NonZeroU16;
 use std::sync::Arc;
 
 use async_trait::async_trait;
+use auto_enums::enum_derive;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::net::TcpStream;
 use tokio_boring_signal::SslStream;
 use tokio_socks::tcp::{Socks4Stream, Socks5Stream};
 use tokio_socks::TargetAddr;
-use tokio_util::either::Either;
 
 use crate::dns::lookup_result::LookupResult;
 use crate::dns::DnsResolver;
@@ -50,11 +50,16 @@ pub enum Protocol {
     },
 }
 
-pub type SocksStream = Either<Socks5Stream<TcpStream>, Socks4Stream<TcpStream>>;
+#[derive(Debug, derive_more::From)]
+#[enum_derive(tokio1::AsyncRead, tokio1::AsyncWrite)]
+pub enum SocksStream<S> {
+    Socks4(Socks4Stream<S>),
+    Socks5(Socks5Stream<S>),
+}
 
 #[async_trait]
 impl TransportConnector for SocksConnector {
-    type Stream = SslStream<SocksStream>;
+    type Stream = SslStream<SocksStream<TcpStream>>;
 
     async fn connect(
         &self,
@@ -154,7 +159,7 @@ impl TransportConnector for SocksConnector {
 }
 
 impl Connector<SocksRoute<IpAddr>, ()> for super::StatelessProxied {
-    type Connection = SocksStream;
+    type Connection = SocksStream<TcpStream>;
 
     type Error = TransportConnectError;
 
@@ -219,12 +224,21 @@ impl Connection for Socks5Stream<TcpStream> {
     }
 }
 
+impl Connection for SocksStream<TcpStream> {
+    fn transport_info(&self) -> crate::TransportInfo {
+        match self {
+            SocksStream::Socks4(stream) => stream.transport_info(),
+            SocksStream::Socks5(stream) => stream.transport_info(),
+        }
+    }
+}
+
 impl Protocol {
     async fn connect_to_proxy<S: AsyncRead + AsyncWrite + Unpin>(
         &self,
         stream: S,
         target: TargetAddr<'_>,
-    ) -> Result<Either<Socks5Stream<S>, Socks4Stream<S>>, tokio_socks::Error> {
+    ) -> Result<SocksStream<S>, tokio_socks::Error> {
         match self {
             Protocol::Socks5 { username_password } => match username_password {
                 Some((username, password)) => {
@@ -235,14 +249,14 @@ impl Protocol {
                 }
                 None => Socks5Stream::connect_with_socket(stream, target).await,
             }
-            .map(Either::Left),
+            .map(Into::into),
             Protocol::Socks4 { user_id } => match user_id {
                 Some(user_id) => {
                     Socks4Stream::connect_with_userid_and_socket(stream, target, user_id).await
                 }
                 None => Socks4Stream::connect_with_socket(stream, target).await,
             }
-            .map(Either::Right),
+            .map(Into::into),
         }
     }
 }

@@ -7,9 +7,7 @@ use std::collections::HashSet;
 use std::process::ExitCode;
 
 use clap::{Parser, ValueEnum};
-use either::Either;
 use futures_util::{FutureExt, StreamExt};
-use itertools::Itertools;
 use libsignal_net::chat::ChatServiceError;
 use libsignal_net::env::Svr3Env;
 use strum::IntoEnumIterator as _;
@@ -57,9 +55,8 @@ async fn main() -> ExitCode {
 
     let allowed_route_types = limit_to_routes
         .is_empty()
-        .then(|| Either::Left(RouteType::iter()))
-        .unwrap_or_else(|| Either::Right(limit_to_routes.into_iter()))
-        .collect_vec();
+        .then(|| RouteType::iter().collect())
+        .unwrap_or(limit_to_routes);
 
     let success = if try_all_routes {
         futures_util::stream::iter(allowed_route_types)
