@@ -31,6 +31,7 @@ export type CDSRequestOptionsType = {
    */
   returnAcisWithoutUaks: boolean;
   abortSignal?: AbortSignal;
+  useNewConnectLogic?: boolean;
 };
 
 export type CDSResponseEntryType<Aci, Pni> = {
@@ -757,6 +758,7 @@ export class Net {
       e164s,
       acisAndAccessKeys,
       abortSignal,
+      useNewConnectLogic,
     }: ReadonlyDeep<CDSRequestOptionsType>
   ): Promise<CDSResponseType<string, string>> {
     const request = newNativeHandle(Native.LookupRequest_new());
@@ -772,9 +774,13 @@ export class Net {
       );
     });
 
+    const startLookup = useNewConnectLogic
+      ? Native.CdsiLookup_new_routes
+      : Native.CdsiLookup_new;
+
     const lookup = await this.asyncContext.makeCancellable(
       abortSignal,
-      Native.CdsiLookup_new(
+      startLookup(
         this.asyncContext,
         this._connectionManager,
         username,

@@ -10,6 +10,8 @@ org.signal.libsignal.net.AuthenticatedChatConnection$FakeChatRemote:
     114:121:private static synthetic org.signal.libsignal.protocol.util.Pair lambda$getNextIncomingRequest$2(java.lang.Long)
     107:107:private synthetic org.signal.libsignal.internal.CompletableFuture lambda$getNextIncomingRequest$1(long)
     109:109:private static synthetic org.signal.libsignal.internal.CompletableFuture lambda$getNextIncomingRequest$0(long,long)
+org.signal.libsignal.net.CdsiLookup:
+    18:18:public static org.signal.libsignal.internal.CompletableFuture start(org.signal.libsignal.net.Network,java.lang.String,java.lang.String,org.signal.libsignal.net.CdsiLookupRequest)
 org.signal.libsignal.protocol.ServiceId:
     private static final byte FIXED_WIDTH_BINARY_LENGTH
     private static final byte ACI_MARKER

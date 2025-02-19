@@ -143,7 +143,17 @@ public class Network {
   public CompletableFuture<CdsiLookupResponse> cdsiLookup(
       String username, String password, CdsiLookupRequest request, Consumer<byte[]> tokenConsumer)
       throws IOException, InterruptedException, ExecutionException {
-    return CdsiLookup.start(this, username, password, request)
+    return this.cdsiLookup(username, password, request, tokenConsumer, false);
+  }
+
+  public CompletableFuture<CdsiLookupResponse> cdsiLookup(
+      String username,
+      String password,
+      CdsiLookupRequest request,
+      Consumer<byte[]> tokenConsumer,
+      boolean useNewConnectLogic)
+      throws IOException, InterruptedException, ExecutionException {
+    return CdsiLookup.start(this, username, password, request, useNewConnectLogic)
         .thenCompose(
             (CdsiLookup lookup) -> {
               tokenConsumer.accept(lookup.getToken());
