@@ -73,7 +73,7 @@ pub struct Schedule<S, R, SP> {
 /// Implements [`RouteDelayPolicy`].
 pub struct ConnectionOutcomes<R> {
     params: ConnectionOutcomeParams,
-    recent_failures: Arc<HashMap<R, (Instant, u8)>>,
+    recent_failures: HashMap<R, (Instant, u8)>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -277,9 +277,6 @@ impl<R: Hash + Eq + Clone> ConnectionOutcomes<R> {
             params,
             recent_failures,
         } = self;
-        // Get mutable access to our failures data, cloning it into a new owned
-        // copy if it's currently borrowed.
-        let recent_failures = Arc::make_mut(recent_failures);
 
         // Age out any old entries.
         recent_failures.retain(|_route, (last_time, _failure_count)| {
