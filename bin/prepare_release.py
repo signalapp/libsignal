@@ -20,6 +20,7 @@ Usage:
   Optional arguments:
     --skip-main-branch-check     Skip the check that ensures we are on 'main' branch.
     --skip-ci-tests-pass-check   Skip the check that continous integration tests have passed on this commit.
+    --skip-worktree-clean-check  Skip the check that the working tree is clean before running this script. Not recommended.
 """
 
 import os
@@ -48,11 +49,16 @@ def main() -> None:
         action="store_true",
         help="Skip the check that continous integration tests have passed on this commit."
     )
+    parser.add_argument(
+        "--skip-worktree-clean-check",
+        action="store_true",
+        help="Skip the check that the working tree is clean before running this script. Not recommended."
+    )
 
     args = parser.parse_args()
 
     try:
-        prepare_release(skip_main_check=args.skip_main_branch_check, skip_tests_pass_check=args.skip_ci_tests_pass_check)
+        prepare_release(skip_main_check=args.skip_main_branch_check, skip_tests_pass_check=args.skip_ci_tests_pass_check, skip_worktree_clean_check=args.skip_worktree_clean_check)
     except subprocess.CalledProcessError as e:
         print(f"Error: command {e.cmd} exited with status {e.returncode}.")
         sys.exit(e.returncode)
@@ -61,8 +67,8 @@ def main() -> None:
         sys.exit(1)
 
 
-def prepare_release(skip_main_check: bool = False, skip_tests_pass_check: bool = False) -> None:
-    setup_and_check_env(skip_main_check)
+def prepare_release(skip_main_check: bool = False, skip_tests_pass_check: bool = False, skip_worktree_clean_check: bool = False) -> None:
+    setup_and_check_env(skip_main_check, skip_worktree_clean_check)
     REPO_NAME = get_repo_name()
     RELEASE_NOTES_FILE_PATH = Path("RELEASE_NOTES.md")
 
@@ -115,7 +121,8 @@ def prepare_release(skip_main_check: bool = False, skip_tests_pass_check: bool =
     presumptive_next_version = f"v{major}.{minor}.{next_patch}"
 
     run_command(["./bin/update_versions.py", presumptive_next_version])
-    run_command(["cargo", "check", "--workspace", "--all-features"])
+    # Use subprocess.run() directly here to pass through `cargo check` output, because it may take a while.
+    subprocess.run(["cargo", "check", "--workspace", "--all-features"], check=True)
 
     # Step 3, Stage 2: Record the code size of the just cut release in code_size.json
     #   Get the cannonical computed code size for the Java library on the commit for the tagged release from GitHub
@@ -170,7 +177,7 @@ def prepare_release(skip_main_check: bool = False, skip_tests_pass_check: bool =
     print("     git show")
 
 
-def setup_and_check_env(skip_main_check: bool = False) -> None:
+def setup_and_check_env(skip_main_check: bool = False, skip_worktree_clean_check: bool = False) -> None:
     """
     Checks release environment pre-conditions.
     Throws or sys.exit(1) on failure.
@@ -197,6 +204,16 @@ def setup_and_check_env(skip_main_check: bool = False) -> None:
             print("Please switch to 'main' or add the '--skip-main-branch-check' flag and then try again.")
             sys.exit(1)
 
+    if not skip_worktree_clean_check:
+        try:
+            run_command(["git", "diff-index", "--quiet", "HEAD", "--"])
+        except subprocess.CalledProcessError:
+            print("Error: Git working tree is not clean! This can cause unexpected behavior, as this script commits to Git.")
+            print("Please stash or commit your changes.")
+            print("You can also pass `--skip-worktree-clean-check` and try again to bypass this check, but this will result in")
+            print("any changes in your worktree being comitted to Git as part of the release, and is thus not recommended.")
+            sys.exit(1)
+
 
 def tag_new_release(release_notes_file_path: Path) -> str:
     if not release_notes_file_path.is_file():
@@ -214,7 +231,7 @@ def tag_new_release(release_notes_file_path: Path) -> str:
     # Tag the release (and open an editor for the user)
     # NB: We call subprocess.run() directly rather than run_command so we don't redirect stdin/stdout.
     subprocess.run(
-        ["git", "tag", "-a", "--edit", head_release_version, "-F", str(release_notes_file_path)],
+        ["git", "tag", "--annotate", "--force", "--edit", head_release_version, "-F", str(release_notes_file_path)],
         check=True
     )
     print(f"Tagged new release: {head_release_version}")
