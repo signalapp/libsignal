@@ -546,7 +546,9 @@ async fn connect_websocket<T: TransportConnector>(
 #[derive(Debug, derive_more::From)]
 #[cfg_attr(any(test, feature = "test-util"), derive(Clone, Eq, PartialEq))]
 pub enum TextOrBinary {
+    #[from(String, &str)]
     Text(String),
+    #[from(Vec<u8>)]
     Binary(Vec<u8>),
 }
 

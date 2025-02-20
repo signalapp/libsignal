@@ -1641,6 +1641,63 @@ mod test {
     }
 
     #[test_log::test(tokio::test(start_paused = true))]
+    async fn request_succeeds_even_if_followed_immediately_by_close() {
+        let (chat, (mut chat_events, inner_responses)) = fake::new_chat(Box::new(|_| ()));
+        assert!(chat.is_connected().await);
+
+        let request = Request {
+            method: Method::GET,
+            path: PathAndQuery::from_static("/request"),
+            headers: HeaderMap::default(),
+            body: None,
+        };
+        let send_request = chat.send(request);
+        pin_mut!(send_request);
+
+        let receive_outbound_request = async {
+            let fake::OutgoingMessage(_message, meta) =
+                chat_events.recv().await.expect("not ended");
+            let request_id = assert_matches!(&meta, OutgoingMeta::SentRequest(id, _) => *id);
+            inner_responses
+                .send(Outcome::Continue(MessageEvent::SentMessage(meta)).into())
+                .expect("not closed");
+            request_id
+        };
+
+        // Start polling the client sending future and the server receive end.
+        // The client sends won't finish until the response to the request is
+        // received, so do't use `join!`. The server receive will complete,
+        // though.
+        let sent_request_id = select! {
+            biased;
+            response = &mut send_request => unreachable!("send finished before responses were sent: {response:?}"),
+            req = receive_outbound_request => req,
+        };
+
+        let response = ResponseProto {
+            id: Some(sent_request_id.0),
+            status: Some(200),
+            message: None,
+            headers: vec!["resp-header: value".to_string()],
+            body: None,
+        };
+
+        // Send the response, then immediately send a "finished" event.
+        for outcome in [
+            Outcome::Continue(MessageEvent::ReceivedMessage(TextOrBinary::Binary(
+                MessageProto::from(ChatMessageProto::Response(response)).encode_to_vec(),
+            ))),
+            Outcome::Finished(Ok(FinishReason::RemoteDisconnect)),
+        ] {
+            inner_responses
+                .send(outcome.into())
+                .expect("can send response");
+        }
+
+        let _response = send_request.await.expect("request succeeded");
+    }
+
+    #[test_log::test(tokio::test(start_paused = true))]
     async fn disconnects_server_on_client_disconnect() {
         let (chat, (mut inner_events, _inner_responses)) = fake::new_chat(Box::new(|_| ()));
 
@@ -1789,6 +1846,12 @@ mod test {
         assert!(!chat.is_connected().await);
     }
 
+    impl From<MessageProto> for TextOrBinary {
+        fn from(proto: MessageProto) -> Self {
+            TextOrBinary::Binary(proto.encode_to_vec())
+        }
+    }
+
     #[test_case(MessageProto::default(); "empty message")]
     #[test_case(MessageProto::from(ChatMessageProto::Response(ResponseProto {
                     id: Some(123),
@@ -1799,8 +1862,10 @@ mod test {
                     response: Some(Default::default()),
                     request: None,
                 }; "invalid request")]
+    #[test_case("unexpected"; "text frame")]
+    #[test_case(Vec::from(b"not a proto"); "invalid proto")]
     #[test_log::test(tokio::test(start_paused = true))]
-    async fn continues_on_invalid_incoming_message(incoming: MessageProto) {
+    async fn continues_on_invalid_incoming_message(incoming: impl Into<TextOrBinary>) {
         let (received_events_tx, mut received_events_rx) = mpsc::unbounded_channel();
 
         let (_chat, (_inner_events, inner_responses)) =
@@ -1817,18 +1882,13 @@ mod test {
             body: None,
         };
         let messages = [
-            incoming,
-            MessageProto::from(ChatMessageProto::Request(second_request.clone())),
+            incoming.into(),
+            MessageProto::from(ChatMessageProto::Request(second_request.clone())).into(),
         ];
 
         for m in messages {
             inner_responses
-                .send(
-                    Outcome::Continue(MessageEvent::ReceivedMessage(TextOrBinary::Binary(
-                        m.encode_to_vec(),
-                    )))
-                    .into(),
-                )
+                .send(Outcome::Continue(MessageEvent::ReceivedMessage(m)).into())
                 .expect("not hung up on");
         }
 

@@ -10,7 +10,7 @@ use std::net::Ipv6Addr;
 use const_str::ip_addr;
 use futures_util::stream::StreamExt as _;
 use futures_util::Stream;
-use itertools::Itertools;
+use itertools::Itertools as _;
 use libsignal_net::chat::{self, ChatConnection, ChatServiceError, PendingChatConnection};
 use libsignal_net::connect_state::{ConnectState, SUGGESTED_CONNECT_CONFIG};
 use libsignal_net::env::{ConnectionConfig, DomainConfig, UserAgent};

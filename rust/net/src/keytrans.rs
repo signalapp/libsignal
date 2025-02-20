@@ -1183,26 +1183,17 @@ impl AsChatValue for UsernameHash<'_> {
 
 #[cfg(test)]
 mod test_support {
+    use futures_util::FutureExt as _;
     use libsignal_keytrans::{DeploymentMode, PublicConfig, VerifyingKey, VrfPublicKey};
+    use libsignal_net_infra::route::DirectOrProxyRoute;
 
     use super::*;
-    use crate::auth::Auth;
-    use crate::chat::test_support::AnyChat;
+    use crate::chat::ChatConnection;
     use crate::env;
     use crate::env::{
         KEYTRANS_AUDITOR_KEY_MATERIAL_STAGING, KEYTRANS_SIGNING_KEY_MATERIAL_STAGING,
         KEYTRANS_VRF_KEY_MATERIAL_STAGING,
     };
-
-    impl UnauthenticatedChat for AnyChat {
-        fn send_unauthenticated(
-            &self,
-            request: chat::Request,
-            timeout: Duration,
-        ) -> BoxFuture<'_, std::result::Result<chat::Response, chat::ChatServiceError>> {
-            Box::pin(self.send_unauthenticated(request, timeout))
-        }
-    }
 
     pub(super) mod test_account {
         use std::borrow::Cow;
@@ -1252,7 +1243,7 @@ mod test_support {
         }
     }
 
-    pub(super) fn make_kt(chat: &AnyChat) -> Kt {
+    pub(super) fn make_kt(chat: &(dyn UnauthenticatedChat + Sync)) -> Kt<'_> {
         Kt {
             inner: make_key_transparency(),
             chat,
@@ -1260,20 +1251,28 @@ mod test_support {
         }
     }
 
-    pub(super) async fn make_chat() -> AnyChat {
-        use crate::chat::test_support::simple_chat_service;
-        let chat = simple_chat_service(
-            &env::STAGING,
-            Auth::default(),
-            vec![env::STAGING
-                .chat_domain_config
-                .connect
-                .direct_connection_params()],
-        );
-        chat.connect_unauthenticated()
-            .await
-            .expect("can connect to chat");
-        chat
+    /// Wrapper for [`ChatConnection`] known to be connected without
+    /// authentication.
+    pub(super) struct KtUnauthChatConnection(ChatConnection);
+
+    impl UnauthenticatedChat for KtUnauthChatConnection {
+        fn send_unauthenticated(
+            &self,
+            request: chat::Request,
+            timeout: Duration,
+        ) -> BoxFuture<'_, std::result::Result<chat::Response, chat::ChatServiceError>> {
+            self.0.send(request, timeout).boxed()
+        }
+    }
+
+    pub(super) async fn make_chat() -> KtUnauthChatConnection {
+        use crate::chat::test_support::simple_chat_connection;
+        let chat = simple_chat_connection(&env::STAGING, |route| {
+            matches!(route.inner.inner, DirectOrProxyRoute::Direct(_))
+        })
+        .await
+        .expect("can connect to chat");
+        KtUnauthChatConnection(chat)
     }
 
     #[allow(dead_code)]

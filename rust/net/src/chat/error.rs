@@ -4,10 +4,10 @@
 //
 
 use libsignal_net_infra::errors::{LogSafeDisplay, TransportConnectError};
+use libsignal_net_infra::extract_retry_after_seconds;
 use libsignal_net_infra::route::ConnectError;
 use libsignal_net_infra::timeouts::TimeoutOr;
 use libsignal_net_infra::ws::{WebSocketConnectError, WebSocketServiceError};
-use libsignal_net_infra::{extract_retry_after_seconds, service};
 
 use crate::ws::WebSocketServiceConnectError;
 
@@ -117,31 +117,6 @@ impl From<WebSocketServiceConnectError> for ChatServiceError {
                     _ => Self::WebSocket(WebSocketServiceError::Http(response)),
                 }
             }
-        }
-    }
-}
-
-impl<E: LogSafeDisplay + Into<ChatServiceError>> From<service::ConnectError<E>>
-    for ChatServiceError
-{
-    fn from(e: service::ConnectError<E>) -> Self {
-        match e {
-            service::ConnectError::Timeout { attempts } => {
-                Self::TimeoutEstablishingConnection { attempts }
-            }
-            service::ConnectError::AllRoutesFailed { attempts } => {
-                Self::AllConnectionRoutesFailed { attempts }
-            }
-            service::ConnectError::RejectedByServer(e) => e.into(),
-        }
-    }
-}
-
-impl From<service::StateError> for ChatServiceError {
-    fn from(e: service::StateError) -> Self {
-        match e {
-            service::StateError::Inactive => Self::ServiceInactive,
-            service::StateError::ServiceUnavailable => Self::ServiceUnavailable,
         }
     }
 }

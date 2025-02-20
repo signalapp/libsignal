@@ -928,7 +928,7 @@ mod test {
     }
 
     #[tokio::test(start_paused = true)]
-    async fn sends_ping_after_remote_inactivity() {
+    async fn sends_ping_after_remote_inactivity_then_time_out() {
         // A single ping will be sent locally before the server times out.
         const REMOTE_IDLE_PING_TIMEOUT: Duration = Duration::from_secs(12);
         const REMOTE_DISCONNECT_TIMEOUT: Duration = Duration::from_secs(20);

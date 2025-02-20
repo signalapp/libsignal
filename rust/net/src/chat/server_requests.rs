@@ -4,15 +4,9 @@
 //
 
 use futures_util::future::BoxFuture;
-use futures_util::Stream;
 use libsignal_net_infra::ws::WebSocketServiceError;
-use libsignal_net_infra::AsyncDuplexStream;
 use libsignal_protocol::Timestamp;
-use tokio::sync::mpsc;
-use tokio_stream::wrappers::ReceiverStream;
-use tokio_stream::StreamExt as _;
 
-use crate::chat::ws::ServerEvent as WsServerEvent;
 use crate::chat::{ws2, ChatServiceError, RequestProto};
 use crate::env::TIMESTAMP_HEADER_NAME;
 
@@ -64,18 +58,6 @@ pub enum ServerEventError {
     UnrecognizedPath(String),
 }
 
-pub fn stream_incoming_messages(
-    receiver: mpsc::Receiver<WsServerEvent<impl AsyncDuplexStream + 'static>>,
-) -> impl Stream<Item = ServerEvent> {
-    ReceiverStream::new(receiver).filter_map(|request| match ServerEvent::try_from(request) {
-        Ok(request) => Some(request),
-        Err(e) => {
-            log::error!("{e}");
-            None
-        }
-    })
-}
-
 impl TryFrom<ws2::ListenerEvent> for ServerEvent {
     type Error = ServerEventError;
 
@@ -102,22 +84,6 @@ impl TryFrom<ws2::ListenerEvent> for ServerEvent {
                 }
                 Err(ws2::FinishError::Error(e)) => e.into(),
             })),
-        }
-    }
-}
-
-impl<S: AsyncDuplexStream + 'static> TryFrom<WsServerEvent<S>> for ServerEvent {
-    type Error = ServerEventError;
-
-    fn try_from(value: WsServerEvent<S>) -> Result<Self, Self::Error> {
-        match value {
-            WsServerEvent::Stopped(error) => Ok(ServerEvent::Stopped(error)),
-            WsServerEvent::Request {
-                request_proto,
-                response_sender,
-            } => convert_received_message(request_proto, || {
-                Box::new(|status| Box::pin(response_sender.send_response(status)))
-            }),
         }
     }
 }
