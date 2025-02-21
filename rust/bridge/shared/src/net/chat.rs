@@ -165,17 +165,17 @@ fn AuthenticatedChatConnection_info(chat: &AuthenticatedChatConnection) -> ChatC
 
 bridge_handle_fns!(ServerMessageAck, clone = false);
 
-#[bridge_io(TokioAsyncContext, node = false)]
-async fn ServerMessageAck_Send(ack: &ServerMessageAck) -> Result<(), ChatServiceError> {
-    let future = ack.take().expect("a message is only acked once");
-    future(StatusCode::OK).await
+#[bridge_fn(node = false)]
+fn ServerMessageAck_Send(ack: &ServerMessageAck) -> Result<(), ChatServiceError> {
+    let sender = ack.take().expect("a message is only acked once");
+    sender(StatusCode::OK)
 }
 
-#[bridge_io(TokioAsyncContext, jni = false, ffi = false)]
-async fn ServerMessageAck_SendStatus(
+#[bridge_fn(jni = false, ffi = false)]
+fn ServerMessageAck_SendStatus(
     ack: &ServerMessageAck,
     status: AsType<HttpStatus, u16>,
 ) -> Result<(), ChatServiceError> {
-    let future = ack.take().expect("a message is only acked once");
-    future(status.into_inner().into()).await
+    let sender = ack.take().expect("a message is only acked once");
+    sender(status.into_inner().into())
 }

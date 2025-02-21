@@ -94,22 +94,10 @@ export class TokioAsyncContext {
 }
 
 export class ChatServerMessageAck {
-  private promise: Promise<void> | null = null;
+  constructor(readonly _nativeHandle: Native.ServerMessageAck) {}
 
-  constructor(
-    private readonly asyncContext: TokioAsyncContext,
-    readonly _nativeHandle: Native.ServerMessageAck
-  ) {}
-
-  send(statusCode: number): Promise<void> {
-    if (!this.promise) {
-      this.promise = Native.ServerMessageAck_SendStatus(
-        this.asyncContext,
-        this,
-        statusCode
-      );
-    }
-    return this.promise;
+  send(statusCode: number): void {
+    Native.ServerMessageAck_SendStatus(this, statusCode);
   }
 }
 
@@ -426,7 +414,7 @@ function makeNativeChatListener(
         listener.onIncomingMessage(
           envelope,
           timestamp,
-          new ChatServerMessageAck(asyncContext, ack)
+          new ChatServerMessageAck(ack)
         );
       },
       _queue_empty(): void {

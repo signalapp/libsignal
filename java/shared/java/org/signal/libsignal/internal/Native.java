@@ -606,7 +606,7 @@ public final class Native {
   public static native long ServerCertificate_New(int keyId, long serverKey, long trustRoot) throws Exception;
 
   public static native void ServerMessageAck_Destroy(long handle);
-  public static native CompletableFuture<Void> ServerMessageAck_Send(long asyncRuntime, long ack);
+  public static native void ServerMessageAck_Send(long ack) throws Exception;
 
   public static native byte[] ServerPublicParams_CreateAuthCredentialWithPniPresentationDeterministic(long serverPublicParams, byte[] randomness, byte[] groupSecretParams, byte[] authCredentialWithPniBytes);
   public static native byte[] ServerPublicParams_CreateExpiringProfileKeyCredentialPresentationDeterministic(long serverPublicParams, byte[] randomness, byte[] groupSecretParams, byte[] profileKeyCredential);

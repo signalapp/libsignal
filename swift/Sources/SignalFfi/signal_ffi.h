@@ -1936,7 +1936,7 @@ SignalFfiError *signal_authenticated_chat_connection_info(SignalMutPointerChatCo
 
 SignalFfiError *signal_server_message_ack_destroy(SignalMutPointerServerMessageAck p);
 
-SignalFfiError *signal_server_message_ack_send(SignalCPromisebool *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalConstPointerServerMessageAck ack);
+SignalFfiError *signal_server_message_ack_send(SignalConstPointerServerMessageAck ack);
 
 SignalFfiError *signal_tokio_async_context_destroy(SignalMutPointerTokioAsyncContext p);
 

@@ -22,7 +22,7 @@ public protocol ChatConnectionListener: ConnectionEventsListener<AuthenticatedCh
     ///
     /// If `sendAck` is not called, the server will leave this message in the message queue and
     /// attempt to deliver it again in the future.
-    func chatConnection(_ chat: AuthenticatedChatConnection, didReceiveIncomingMessage envelope: Data, serverDeliveryTimestamp: UInt64, sendAck: @escaping () async throws -> Void)
+    func chatConnection(_ chat: AuthenticatedChatConnection, didReceiveIncomingMessage envelope: Data, serverDeliveryTimestamp: UInt64, sendAck: @escaping () throws -> Void)
 
     /// Called when the server indicates that there are no further messages in the message queue.
     ///
@@ -89,13 +89,7 @@ internal class ChatListenerBridge {
             bridge.chatListener.chatConnection(
                 chatConnection, didReceiveIncomingMessage: envelopeData,
                 serverDeliveryTimestamp: timestamp
-            ) {
-                _ = try await chatConnection.tokioAsyncContext.invokeAsyncFunction { promise, asyncContext in
-                    ackHandleOwner.withNativeHandle { ackHandle in
-                        signal_server_message_ack_send(promise, asyncContext.const(), ackHandle.const())
-                    }
-                }
-            }
+            ) { _ = ackHandleOwner.withNativeHandle { ackHandle in signal_server_message_ack_send(ackHandle.const()) } }
         }
 
         let receivedQueueEmpty: SignalReceivedQueueEmpty = { rawCtx in

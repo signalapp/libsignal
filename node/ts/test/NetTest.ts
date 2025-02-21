@@ -636,17 +636,15 @@ describe('chat service api', () => {
   });
 
   it('client can respond with http status code to a server message', () => {
-    const runtime = newNativeHandle(Native.TokioAsyncContext_new());
-    const serverMessageAck = newNativeHandle(
-      Native.TESTING_ServerMessageAck_Create()
-    );
+    const makeServerMessageAck = () => {
+      return newNativeHandle(Native.TESTING_ServerMessageAck_Create());
+    };
 
     // test out of u16 range values
     [-1, 100000].forEach((invalidCode) => {
       expect(() => {
         const _ignore = Native.ServerMessageAck_SendStatus(
-          runtime,
-          serverMessageAck,
+          makeServerMessageAck(),
           invalidCode
         );
       }).throws(RangeError);
@@ -656,8 +654,7 @@ describe('chat service api', () => {
     [0, 1, 99, 1000].forEach((invalidCode) => {
       expect(() => {
         const _ignore = Native.ServerMessageAck_SendStatus(
-          runtime,
-          serverMessageAck,
+          makeServerMessageAck(),
           invalidCode
         );
       }).throws(TypeError);
@@ -665,8 +662,7 @@ describe('chat service api', () => {
 
     [100, 200, 400, 500].forEach((validCode) => {
       const _ignore = Native.ServerMessageAck_SendStatus(
-        runtime,
-        serverMessageAck,
+        makeServerMessageAck(),
         validCode
       );
     });

@@ -187,7 +187,7 @@ final class ChatConnectionTests: TestCaseBase {
                 self.connectionInterrupted = connectionInterrupted
             }
 
-            func chatConnection(_ chat: AuthenticatedChatConnection, didReceiveIncomingMessage envelope: Data, serverDeliveryTimestamp: UInt64, sendAck: () async throws -> Void) {
+            func chatConnection(_ chat: AuthenticatedChatConnection, didReceiveIncomingMessage envelope: Data, serverDeliveryTimestamp: UInt64, sendAck: () throws -> Void) {
                 // This assumes a little-endian platform.
                 XCTAssertEqual(envelope, withUnsafeBytes(of: serverDeliveryTimestamp) { Data($0) })
                 switch serverDeliveryTimestamp {
@@ -256,7 +256,7 @@ final class ChatConnectionTests: TestCaseBase {
 
     func testSending() async throws {
         class NoOpListener: ChatConnectionListener {
-            func chatConnection(_ chat: AuthenticatedChatConnection, didReceiveIncomingMessage envelope: Data, serverDeliveryTimestamp: UInt64, sendAck: () async throws -> Void) {}
+            func chatConnection(_ chat: AuthenticatedChatConnection, didReceiveIncomingMessage envelope: Data, serverDeliveryTimestamp: UInt64, sendAck: () throws -> Void) {}
 
             func connectionWasInterrupted(_: AuthenticatedChatConnection, error: Error?) {}
         }

@@ -5,7 +5,7 @@
 
 package org.signal.libsignal.net;
 
-import org.signal.libsignal.internal.CompletableFuture;
+import org.signal.libsignal.internal.FilterExceptions;
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
 
@@ -61,11 +61,17 @@ public interface ChatConnectionListener {
      * will fail. However, there's not much that can be done in this scenario besides perhaps
      * logging the error. Since the message was not ack'd, the server will attempt to deliver it
      * again later.
+     *
+     * @throws ChatServiceInactiveException if the connection is already terminated.
+     * @throws ChatServiceException if the send fails for another reason.
      */
-    public CompletableFuture<Void> send() {
-      return asyncContext.guardedMap(
-          asyncContextHandle ->
-              guardedMap(ackHandle -> Native.ServerMessageAck_Send(asyncContextHandle, ackHandle)));
+    public void send() throws ChatServiceInactiveException, ChatServiceException {
+      FilterExceptions.filterExceptions(
+          ChatServiceInactiveException.class,
+          ChatServiceException.class,
+          () -> {
+            guardedRunChecked(Native::ServerMessageAck_Send);
+          });
     }
   }
 }

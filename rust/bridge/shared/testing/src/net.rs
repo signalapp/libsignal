@@ -201,7 +201,7 @@ fn TESTING_ChatServiceErrorConvert(
 
 #[bridge_fn(jni = false, ffi = false)]
 fn TESTING_ServerMessageAck_Create() -> ServerMessageAck {
-    ServerMessageAck::new(Box::new(|_| Box::pin(std::future::ready(Ok(())))))
+    ServerMessageAck::new(Box::new(|_| Ok(())))
 }
 
 #[bridge_fn(jni = false, ffi = false)]

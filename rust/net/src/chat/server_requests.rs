@@ -3,16 +3,14 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use futures_util::future::BoxFuture;
 use libsignal_net_infra::ws::WebSocketServiceError;
 use libsignal_protocol::Timestamp;
 
 use crate::chat::{ws2, ChatServiceError, RequestProto};
 use crate::env::TIMESTAMP_HEADER_NAME;
 
-pub type ResponseEnvelopeSender = Box<
-    dyn FnOnce(http::StatusCode) -> BoxFuture<'static, Result<(), ChatServiceError>> + Send + Sync,
->;
+pub type ResponseEnvelopeSender =
+    Box<dyn FnOnce(http::StatusCode) -> Result<(), ChatServiceError> + Send + Sync>;
 
 pub enum ServerEvent {
     QueueEmpty,
@@ -65,10 +63,7 @@ impl TryFrom<ws2::ListenerEvent> for ServerEvent {
         match value {
             ws2::ListenerEvent::ReceivedMessage(proto, responder) => {
                 convert_received_message(proto, || {
-                    Box::new(move |status| {
-                        // TODO remove this async when it's no longer necessary.
-                        Box::pin(async move { Ok(responder.send_response(status)?) })
-                    })
+                    Box::new(move |status| Ok(responder.send_response(status)?))
                 })
             }
 
