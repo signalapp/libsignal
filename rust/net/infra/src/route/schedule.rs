@@ -303,6 +303,14 @@ impl<R: Hash + Eq + Clone> ConnectionOutcomes<R> {
             }
         }
     }
+
+    /// Clear any outcomes from before the cutoff.
+    ///
+    /// Assumes those that completed after the cutoff are still relevant.
+    pub fn reset(&mut self, cutoff: Instant) {
+        self.recent_failures
+            .retain(|_route, (last_time, _failure_count)| cutoff < *last_time);
+    }
 }
 
 impl<P: RouteDelayPolicy<R>, R> RouteDelayPolicy<R> for &P {
@@ -845,6 +853,54 @@ mod test {
             delays.iter().map(Duration::as_secs).collect_vec(),
             [6, 16, 32, 58, 99, 99]
         );
+    }
+
+    #[test]
+    fn connection_outcomes_reset_by_cutoff() {
+        const MAX_DELAY: Duration = Duration::from_secs(100);
+        const AGE_CUTOFF: Duration = Duration::from_secs(1000);
+        const MAX_COUNT: u8 = 5;
+
+        let mut outcomes = ConnectionOutcomes::new(ConnectionOutcomeParams {
+            age_cutoff: AGE_CUTOFF,
+            cooldown_growth_factor: 2.0,
+            count_growth_factor: 10.0,
+            max_count: MAX_COUNT,
+            max_delay: MAX_DELAY,
+        });
+
+        const ROUTE: &str = "route";
+        let start = Instant::now();
+
+        // Without any information, the delay should be zero.
+        assert_eq!(outcomes.compute_delay(&ROUTE, start), Duration::ZERO);
+
+        const CONNECT_DELAY: Duration = Duration::from_secs(10);
+        // Record some failures.
+        outcomes.record_outcome(ROUTE, start, CONNECT_DELAY, Err(UnsuccessfulOutcome));
+        outcomes.record_outcome(
+            ROUTE,
+            start + CONNECT_DELAY,
+            CONNECT_DELAY,
+            Err(UnsuccessfulOutcome),
+        );
+        outcomes.record_outcome(
+            ROUTE,
+            start + 2 * CONNECT_DELAY,
+            CONNECT_DELAY,
+            Err(UnsuccessfulOutcome),
+        );
+
+        let full_delay = outcomes.compute_delay(&ROUTE, start + 3 * CONNECT_DELAY);
+        assert_ne!(full_delay, Duration::ZERO, "shouldn't decay that quickly");
+
+        outcomes.reset(start + CONNECT_DELAY);
+        let same_delay = outcomes.compute_delay(&ROUTE, start + 3 * CONNECT_DELAY);
+        assert_eq!(same_delay, full_delay, "should keep more recent outcome");
+
+        outcomes.reset(start + 3 * CONNECT_DELAY);
+        let reset_delay = outcomes.compute_delay(&ROUTE, start + 3 * CONNECT_DELAY);
+        assert_eq!(reset_delay, Duration::ZERO, "all outcomes reset");
     }
 
     #[test]

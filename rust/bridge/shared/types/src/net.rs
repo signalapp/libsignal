@@ -252,7 +252,8 @@ impl ConnectionManager {
             *most_recent_change_guard = now;
         }
         log::info!("ConnectionManager: on_network_change");
-        self.network_change_event.fire()
+        self.network_change_event.fire();
+        self.connect.blocking_write().network_changed(now.into());
     }
 }
 

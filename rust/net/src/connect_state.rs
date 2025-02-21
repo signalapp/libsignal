@@ -144,6 +144,10 @@ impl<ConnectorFactory> ConnectState<ConnectorFactory> {
         }
         .into()
     }
+
+    pub fn network_changed(&mut self, network_change_time: Instant) {
+        self.attempts_record.reset(network_change_time);
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
