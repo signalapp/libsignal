@@ -34,6 +34,18 @@ import time
 import argparse
 
 
+class ReleaseFailedException(Exception):
+    pass
+
+
+# Before we make any changes to the working tree/repository state, we add the command to rollback that change
+#  to this list. If we encounter an error, we execute these commands in order to return the repository to its
+#  original state.
+# Each of these commands should be independent of each other, as if one of them fails, we will still try to
+#  execute the rest while performing a rollback.
+on_failure_rollback_commands: list[list[str]] = []
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Automates the release preparation workflow."
@@ -59,12 +71,29 @@ def main() -> None:
 
     try:
         prepare_release(skip_main_check=args.skip_main_branch_check, skip_tests_pass_check=args.skip_ci_tests_pass_check, skip_worktree_clean_check=args.skip_worktree_clean_check)
+        exit_code = 0
     except subprocess.CalledProcessError as e:
         print(f"Error: command {e.cmd} exited with status {e.returncode}.")
-        sys.exit(e.returncode)
+        exit_code = e.returncode
+    except ReleaseFailedException:
+        # We printed out the user friendly error before we threw the exception.
+        exit_code = 1
+    except KeyboardInterrupt:
+        print("User interrupted execution! Aborting...")
+        exit_code = 1
     except Exception as ex:
         print(f"Unexpected error: {ex}")
-        sys.exit(1)
+        exit_code = 1
+
+    if exit_code != 0:
+        for rollback_command in on_failure_rollback_commands:
+            try:
+                run_command(rollback_command)
+            except subprocess.CalledProcessError:
+                rollback_command_str = " ".join(rollback_command)
+                print(f"Unable to execute `{rollback_command_str}` after failure, working tree or repository may still be in dirty state.")
+
+    sys.exit(exit_code)
 
 
 def prepare_release(skip_main_check: bool = False, skip_tests_pass_check: bool = False, skip_worktree_clean_check: bool = False) -> None:
@@ -119,6 +148,11 @@ def prepare_release(skip_main_check: bool = False, skip_tests_pass_check: bool =
     major, minor, patch = parse_version(head_release_version)
     next_patch = patch + 1
     presumptive_next_version = f"v{major}.{minor}.{next_patch}"
+
+    if not skip_worktree_clean_check:
+        # Check again that the worktree is clean, just to be doubly sure we don't lose data.
+        run_command(["git", "diff-index", "--quiet", "HEAD", "--"])
+        on_failure_rollback_commands.append(["git", "reset", "--hard"])
 
     run_command(["./bin/update_versions.py", presumptive_next_version])
     # Use subprocess.run() directly here to pass through `cargo check` output, because it may take a while.
@@ -180,7 +214,7 @@ def prepare_release(skip_main_check: bool = False, skip_tests_pass_check: bool =
 def setup_and_check_env(skip_main_check: bool = False, skip_worktree_clean_check: bool = False) -> None:
     """
     Checks release environment pre-conditions.
-    Throws or sys.exit(1) on failure.
+    Throws on failure.
     """
     # We change into the repo root dir so we can use root-relative paths throughout
     #   the script. This matches the convention in other scripts, like update_versions.py.
@@ -202,7 +236,17 @@ def setup_and_check_env(skip_main_check: bool = False, skip_worktree_clean_check
         if current_branch != "main":
             print(f"Error: You are on branch '{current_branch}'.")
             print("Please switch to 'main' or add the '--skip-main-branch-check' flag and then try again.")
-            sys.exit(1)
+            raise ReleaseFailedException
+
+    if not skip_worktree_clean_check:
+        try:
+            run_command(["git", "diff-index", "--quiet", "HEAD", "--"])
+        except subprocess.CalledProcessError:
+            print("Error: Git working tree is not clean! This can cause unexpected behavior, as this script commits to Git.")
+            print("Please stash or commit your changes.")
+            print("You can also pass `--skip-worktree-clean-check` and try again to bypass this check, but this will result in")
+            print("any changes in your worktree being comitted to Git as part of the release, and is thus not recommended.")
+            raise ReleaseFailedException
 
     if not skip_worktree_clean_check:
         try:
@@ -218,7 +262,7 @@ def setup_and_check_env(skip_main_check: bool = False, skip_worktree_clean_check
 def tag_new_release(release_notes_file_path: Path) -> str:
     if not release_notes_file_path.is_file():
         print(f"Error: {release_notes_file_path} not found. Cannot proceed with release.")
-        sys.exit(1)
+        raise ReleaseFailedException
 
     # Read the top line of RELEASE_NOTES.md for the release version
     head_release_version = get_first_line_of_file(release_notes_file_path)
@@ -234,6 +278,7 @@ def tag_new_release(release_notes_file_path: Path) -> str:
         ["git", "tag", "--annotate", "--force", "--edit", head_release_version, "-F", str(release_notes_file_path)],
         check=True
     )
+    on_failure_rollback_commands.append(["git", "tag", "-d", head_release_version])
     print(f"Tagged new release: {head_release_version}")
     return head_release_version
 
@@ -259,11 +304,11 @@ def get_repo_name() -> str:
 def check_gh_installed_and_authed() -> None:
     """
     Checks that the GitHub CLI ('gh') is installed and the user is authenticated.
-    Exits with an error if not installed or not authenticated.
+    Throws ReleaseFailedException if gh is not installed or authenticated.
     """
     if which("gh") is None:
         print("Error: GitHub CLI (gh) is not installed. Please install it and re-run.")
-        sys.exit(1)
+        raise ReleaseFailedException
 
     auth_status = subprocess.run(
         ["gh", "auth", "status"],
@@ -272,7 +317,7 @@ def check_gh_installed_and_authed() -> None:
     )
     if auth_status.returncode != 0:
         print("You are not logged into GitHub CLI. Please run 'gh auth login' and re-run this script.")
-        sys.exit(1)
+        raise ReleaseFailedException
 
 
 def run_command(cmd: list[str], print_error: bool = True) -> str:
@@ -303,7 +348,7 @@ def check_workflow_success(repo_name: str, workflow_name: str, head_sha: str) ->
     """
     Checks if a GitHub Actions workflow (workflow_name) has a run on HEAD (head_sha)
     that completed successfully. Returns the run ID if found and successful;
-    otherwise prints an error and exits.
+    otherwise prints an error and throws an exception.
     """
     run_search_limit = "100"
     list_cmd = [
@@ -314,11 +359,7 @@ def check_workflow_success(repo_name: str, workflow_name: str, head_sha: str) ->
     ]
 
     raw_json = run_command(list_cmd)
-    try:
-        runs_data = json.loads(raw_json)
-    except json.JSONDecodeError:
-        print("Error: Could not parse JSON from 'gh run list' output.")
-        sys.exit(1)
+    runs_data = json.loads(raw_json)
 
     matching_runs = [rd for rd in runs_data if rd["headSha"] == head_sha]
     if not matching_runs:
@@ -328,7 +369,7 @@ def check_workflow_success(repo_name: str, workflow_name: str, head_sha: str) ->
             print("Note that Slow Tests do not run automatically.")
             print(f"You must kick them off automatically at: https://github.com/signalapp/{repo_name}/actions/workflows/slow_tests.yml")
         print("If tests have actually passed, you can skip this check by re-running with --skip-ci-tests-pass-check")
-        sys.exit(1)
+        raise ReleaseFailedException
 
     # Sort by run ID and pick the lowest
     # NB: I opted to pick the lowest one, because as the first, it is less likely to be a re-run.
@@ -344,14 +385,14 @@ def check_workflow_success(repo_name: str, workflow_name: str, head_sha: str) ->
         view_data = json.loads(run_view_json)
     except json.JSONDecodeError:
         print(f"Error: Could not parse JSON for run {selected_run_id}.")
-        sys.exit(1)
+        raise ReleaseFailedException
 
     status = view_data.get("status")
     conclusion = view_data.get("conclusion")
     if status != "completed" or conclusion != "success":
         print(f"Error: '{workflow_name}' did not succeed (status={status}, conclusion={conclusion}).")
         print("Please ensure all CI checks have passed before releasing.")
-        sys.exit(1)
+        raise ReleaseFailedException
 
     return selected_run_id
 
@@ -360,12 +401,11 @@ def parse_version(version_str: str) -> tuple[int, int, int]:
     """
     Given a string in the form 'vMAJOR.MINOR.PATCH',
     returns (MAJOR, MINOR, PATCH) as integers.
-    Exits with an error if format is invalid.
     """
     match = re.match(r"^v(\d+)\.(\d+)\.(\d+)$", version_str.strip())
     if not match:
         print(f"Error: version string '{version_str}' is not in 'vMAJOR.MINOR.PATCH' format.")
-        sys.exit(1)
+        raise ValueError
     major, minor, patch = match.groups()
     assert int(major) == 0, "Major version should always be zero, because we never promise stability to external users"
     return int(major), int(minor), int(patch)
@@ -374,10 +414,11 @@ def parse_version(version_str: str) -> tuple[int, int, int]:
 def get_first_line_of_file(filepath: Path) -> str:
     """
     Returns the first line of the given file (stripped).
+    Throws on failure
     """
     if not filepath.is_file():
         print(f"Error: {filepath} not found.")
-        sys.exit(1)
+        raise FileNotFoundError
     with filepath.open("r", encoding="utf-8") as f:
         return f.readline().strip()
 
@@ -386,27 +427,15 @@ def append_code_size(code_size_file: Path, version: str, code_size: int) -> None
     """
     Appends an object of the form { "version": <version>, "size": <code_size> }
     to an existing JSON array in code_size_file.
-    Exits with an error if file not found or unable to load JSON.
+    Throws an exception if file not found or unable to load JSON.
     """
-    if not code_size_file.is_file():
-        print(f"Error: {code_size_file} not found. Cannot proceed with code size update.")
-        sys.exit(1)
-
-    try:
-        with code_size_file.open("r", encoding="utf-8") as f:
-            data = json.load(f)
-    except (json.JSONDecodeError, OSError) as e:
-        print(f"Error: Unable to parse or read '{code_size_file}': {e}")
-        sys.exit(1)
+    with code_size_file.open("r", encoding="utf-8") as f:
+        data = json.load(f)
 
     data.append({"version": version, "size": code_size})
 
-    try:
-        with code_size_file.open("w", encoding="utf-8") as f:
-            json.dump(data, f, indent=2)
-    except OSError as e:
-        print(f"Error: Unable to write updated JSON to '{code_size_file}': {e}")
-        sys.exit(1)
+    with code_size_file.open("w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2)
 
 
 if __name__ == "__main__":
