@@ -51,6 +51,7 @@ jobs:
           - 'rust-toolchain'
           - 'Cargo.toml'
           - 'Cargo.lock'
+          - '.cargo/**' # overly conservative, but it's fine
           rust:
           - *all
           - '.clippy.toml'
