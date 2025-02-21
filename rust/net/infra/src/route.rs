@@ -227,6 +227,7 @@ where
 
     // Whether the Schedule should be polled for its next route.
     let mut poll_schedule_for_next = true;
+    let mut most_recent_connection_start = Instant::now();
     let mut connects_in_progress = FuturesUnordered::new();
     let mut outcomes = Vec::new();
 
@@ -287,10 +288,11 @@ where
                     (route, result, started)
                 });
                 poll_schedule_for_next = false;
+                most_recent_connection_start = Instant::now();
 
-                sleep_until_start_next_connection
-                    .as_mut()
-                    .reset(Instant::now() + pull_next_route_delay(&connects_in_progress));
+                sleep_until_start_next_connection.as_mut().reset(
+                    most_recent_connection_start + pull_next_route_delay(&connects_in_progress),
+                );
             }
             Event::NextRouteAvailable(None) => {
                 // The Schedule is empty, so make sure it's not polled again.
@@ -317,6 +319,11 @@ where
                         break Err(ConnectError::FatalConnect(fatal_err));
                     }
                 }
+
+                // We probably now want to start the next connection sooner.
+                sleep_until_start_next_connection.as_mut().reset(
+                    most_recent_connection_start + pull_next_route_delay(&connects_in_progress),
+                );
             }
             Event::LogStatus => {
                 log::info!(
@@ -1010,5 +1017,71 @@ mod test {
         let (result, _outcomes) = connect_task.await.unwrap();
 
         assert_matches!(result, Ok(_));
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn start_connections_sooner_if_previous_ones_finish() {
+        const HOSTNAMES: &[(&str, Ipv4Addr)] = &[
+            ("A", ip_addr!(v4, "1.1.1.1")),
+            ("B", ip_addr!(v4, "2.2.2.2")),
+            ("C", ip_addr!(v4, "3.3.3.3")),
+        ];
+
+        let (connector, mut connection_responders) = FakeConnector::new();
+
+        let outcomes = NoDelay;
+        let resolver = HashMap::from_iter(HOSTNAMES.iter().map(|(name, ip)| {
+            (
+                *name,
+                LookupResult {
+                    source: DnsSource::Test,
+                    ipv4: vec![*ip],
+                    ipv6: vec![],
+                },
+            )
+        }));
+
+        let start = Instant::now();
+        let connect_task = tokio::spawn(async move {
+            let route_resolver = RouteResolver::default();
+            super::connect(
+                &route_resolver,
+                outcomes,
+                HOSTNAMES
+                    .iter()
+                    .map(|(h, _addr)| FakeRoute(UnresolvedHost::from(Arc::from(*h)))),
+                &resolver,
+                connector,
+                (),
+                "test".into(),
+                |_err: FakeConnectError| ControlFlow::<Infallible>::Continue(()),
+            )
+            .await
+        });
+
+        let a = connection_responders.next().await.expect("first");
+        let b = connection_responders.next().await.expect("second");
+        assert_eq!(
+            start + PER_CONNECTION_WAIT_DURATION,
+            Instant::now(),
+            "should stagger connections"
+        );
+
+        let after_small_delay = start + PER_CONNECTION_WAIT_DURATION * 3 / 2;
+        tokio::time::sleep_until(after_small_delay).await;
+        a.respond(Err(FakeConnectError));
+
+        let c = connection_responders.next().await.expect("second");
+        assert_eq!(
+            start + 2 * PER_CONNECTION_WAIT_DURATION,
+            Instant::now(),
+            "should not wait more than PER_CONNECTION_WAIT_DURATION start the next connection"
+        );
+
+        c.respond(Err(FakeConnectError));
+        b.respond(Err(FakeConnectError));
+
+        let (result, _outcomes) = connect_task.await.unwrap();
+        assert_matches!(result, Err(_));
     }
 }
