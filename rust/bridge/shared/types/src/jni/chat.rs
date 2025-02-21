@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use libsignal_net::chat::server_requests::DisconnectCause;
+
 use super::*;
 use crate::net::chat::{ChatListener, ServerMessageAck};
 
@@ -84,7 +86,7 @@ impl ChatListener for JniChatListener {
         });
     }
 
-    fn connection_interrupted(&mut self, disconnect_cause: ChatServiceError) {
+    fn connection_interrupted(&mut self, disconnect_cause: DisconnectCause) {
         let listener = &self.listener;
         self.attach_and_log_on_error("connection interrupted", move |env| {
             let throw_exception = move |env, listener, throwable: JThrowable<'_>| {
@@ -97,10 +99,10 @@ impl ChatListener for JniChatListener {
                 Ok(())
             };
             match disconnect_cause {
-                ChatServiceError::ServiceIntentionallyDisconnected => {
+                DisconnectCause::LocalDisconnect => {
                     throw_exception(env, listener, JObject::null().into())?
                 }
-                disconnect_cause => convert_to_exception(
+                DisconnectCause::Error(disconnect_cause) => convert_to_exception(
                     env,
                     SignalJniError::from(disconnect_cause),
                     move |env, throwable, _error| {

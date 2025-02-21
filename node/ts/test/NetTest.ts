@@ -53,13 +53,13 @@ describe('chat service api', () => {
     const cases: Array<[string, ErrorCode | object]> = [
       ['AppExpired', ErrorCode.AppExpired],
       ['DeviceDeregistered', ErrorCode.DeviceDelinked],
-      ['ServiceInactive', ErrorCode.ChatServiceInactive],
+      ['Disconnected', ErrorCode.ChatServiceInactive],
 
       ['WebSocket', ErrorCode.IoError],
       ['UnexpectedFrameReceived', ErrorCode.IoError],
       ['ServerRequestMissingId', ErrorCode.IoError],
       ['IncomingDataInvalid', ErrorCode.IoError],
-      ['Timeout', ErrorCode.IoError],
+      ['RequestSendTimedOut', ErrorCode.IoError],
       ['TimeoutEstablishingConnection', ErrorCode.IoError],
       [
         'RetryAfter42Seconds',
@@ -69,8 +69,6 @@ describe('chat service api', () => {
         },
       ],
 
-      // These two are more of internal errors, but they should never happen anyway.
-      ['FailedToPassMessageToIncomingChannel', ErrorCode.IoError],
       ['RequestHasInvalidHeader', ErrorCode.IoError],
     ];
     cases.forEach((testCase) => {

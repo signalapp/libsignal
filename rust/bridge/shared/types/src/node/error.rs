@@ -412,7 +412,7 @@ impl SignalNodeError for libsignal_net::chat::ChatServiceError {
         operation_name: &str,
     ) -> Handle<'a, JsError> {
         let (name, properties) = match self {
-            ChatServiceError::ServiceInactive => (Some("ChatServiceInactive"), None),
+            ChatServiceError::Disconnected => (Some("ChatServiceInactive"), None),
             ChatServiceError::AppExpired => (Some("AppExpired"), None),
             ChatServiceError::DeviceDeregistered => (Some("DeviceDelinked"), None),
             ChatServiceError::RetryLater {
@@ -421,14 +421,12 @@ impl SignalNodeError for libsignal_net::chat::ChatServiceError {
             ChatServiceError::WebSocket(_)
             | ChatServiceError::UnexpectedFrameReceived
             | ChatServiceError::ServerRequestMissingId
-            | ChatServiceError::FailedToPassMessageToIncomingChannel
             | ChatServiceError::IncomingDataInvalid
             | ChatServiceError::RequestHasInvalidHeader
-            | ChatServiceError::Timeout
-            | ChatServiceError::TimeoutEstablishingConnection { attempts: _ }
-            | ChatServiceError::AllConnectionRoutesFailed { attempts: _ }
-            | ChatServiceError::ServiceUnavailable
-            | ChatServiceError::ServiceIntentionallyDisconnected =>
+            | ChatServiceError::RequestSendTimedOut
+            | ChatServiceError::TimeoutEstablishingConnection
+            | ChatServiceError::AllConnectionRoutesFailed
+            | ChatServiceError::InvalidConnectionConfiguration =>
             // TODO: Distinguish retryable errors from proper failures?
             {
                 (Some(IO_ERROR), None)

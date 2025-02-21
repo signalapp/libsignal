@@ -309,7 +309,7 @@ impl ChatConnection {
     ) -> Result<Response, ChatServiceError> {
         let send_result = tokio::time::timeout(timeout, self.inner.send(msg))
             .await
-            .map_err(|_elapsed| ChatServiceError::Timeout)?;
+            .map_err(|_elapsed| ChatServiceError::RequestSendTimedOut)?;
         Ok(send_result?)
     }
 
@@ -585,12 +585,12 @@ pub(crate) mod test {
     // It's easier to use this with test_case in string form.
     const CONFIRMATION_HEADER: &str = "x-really-signal";
 
-    #[test_case(403, &[] => matches ChatServiceError::AllConnectionRoutesFailed { attempts: 1 })]
+    #[test_case(403, &[] => matches ChatServiceError::AllConnectionRoutesFailed)]
     #[test_case(403, &[(CONFIRMATION_HEADER, "1")] => matches ChatServiceError::DeviceDeregistered)]
     #[test_case(499, &[(CONFIRMATION_HEADER, "1")] => matches ChatServiceError::AppExpired)]
     #[test_case(429, &[(CONFIRMATION_HEADER, "1"), ("retry-after", "20")] => matches ChatServiceError::RetryLater { retry_after_seconds: 20 })]
     #[test_case(500, &[(CONFIRMATION_HEADER, "1"), ("retry-after", "20")] => matches ChatServiceError::RetryLater { retry_after_seconds: 20 })]
-    #[test_case(429, &[("retry-after", "20")] => matches ChatServiceError::AllConnectionRoutesFailed { attempts: 1 })]
+    #[test_case(429, &[("retry-after", "20")] => matches ChatServiceError::AllConnectionRoutesFailed)]
     #[tokio::test(start_paused = true)]
     async fn html_status_tests(
         status: u16,

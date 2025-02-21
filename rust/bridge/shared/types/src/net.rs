@@ -526,7 +526,7 @@ mod test {
             .await
             .map(|_| ())
             .expect_err("should fail to connect");
-        assert_matches!(err, ChatServiceError::ServiceUnavailable);
+        assert_matches!(err, ChatServiceError::InvalidConnectionConfiguration);
     }
 
     #[test]

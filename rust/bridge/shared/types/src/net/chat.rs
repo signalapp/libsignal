@@ -15,6 +15,7 @@ use http::uri::{InvalidUri, PathAndQuery};
 use http::{HeaderMap, HeaderName, HeaderValue};
 use libsignal_net::auth::Auth;
 use libsignal_net::chat::fake::FakeChatRemote;
+use libsignal_net::chat::server_requests::DisconnectCause;
 use libsignal_net::chat::{
     self, ChatConnection, ChatServiceError, ConnectionInfo, DebugInfo as ChatServiceDebugInfo,
     Request, Response as ChatResponse,
@@ -229,7 +230,7 @@ async fn establish_chat_connection(
     let proxy_config: Option<ConnectionProxyConfig> =
         (&*transport_connector.lock().expect("not poisoned"))
             .try_into()
-            .map_err(|InvalidProxyConfig| ChatServiceError::ServiceUnavailable)?;
+            .map_err(|InvalidProxyConfig| ChatServiceError::InvalidConnectionConfiguration)?;
 
     let (ws_config, enable_domain_fronting) = {
         let endpoints_guard = endpoints.lock().expect("not poisoned");
@@ -342,7 +343,7 @@ pub trait ChatListener: Send {
         ack: ServerMessageAck,
     );
     fn received_queue_empty(&mut self);
-    fn connection_interrupted(&mut self, disconnect_cause: ChatServiceError);
+    fn connection_interrupted(&mut self, disconnect_cause: DisconnectCause);
 }
 
 impl dyn ChatListener {

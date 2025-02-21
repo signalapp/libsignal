@@ -23,24 +23,20 @@ pub enum ChatServiceError {
     UnexpectedFrameReceived,
     /// Request message from the server is missing the `id` field
     ServerRequestMissingId,
-    /// Failed while sending a request from the server to the incoming  messages channel
-    FailedToPassMessageToIncomingChannel,
     /// Failed to decode data received from the server
     IncomingDataInvalid,
     /// Request object must contain only ASCII text as header names and values.
     RequestHasInvalidHeader,
-    /// Timeout
-    Timeout,
-    /// Timed out while establishing connection after {attempts} attempts
-    TimeoutEstablishingConnection { attempts: u16 },
-    /// All connection routes failed or timed out, {attempts} attempts made
-    AllConnectionRoutesFailed { attempts: u16 },
-    /// Service is inactive
-    ServiceInactive,
-    /// Service is unavailable due to the lost connection
-    ServiceUnavailable,
-    /// Service was disconnected by an intentional local call
-    ServiceIntentionallyDisconnected,
+    /// Timed out while establishing connection
+    TimeoutEstablishingConnection,
+    /// Timed out while sending a request
+    RequestSendTimedOut,
+    /// All connection routes failed or timed out
+    AllConnectionRoutesFailed,
+    /// Invalid connection configuration
+    InvalidConnectionConfiguration,
+    /// Connection is already closed
+    Disconnected,
     /// Service is unavailable now, try again after {retry_after_seconds}s
     RetryLater { retry_after_seconds: u32 },
 }
@@ -52,15 +48,15 @@ impl ChatServiceError {
         use crate::infra::route::ConnectError;
         match e {
             TimeoutOr::Other(ConnectError::NoResolvedRoutes) => {
-                ChatServiceError::AllConnectionRoutesFailed { attempts: 0 }
+                ChatServiceError::InvalidConnectionConfiguration
             }
             TimeoutOr::Other(ConnectError::AllAttemptsFailed) => {
-                ChatServiceError::AllConnectionRoutesFailed { attempts: 1 }
+                ChatServiceError::AllConnectionRoutesFailed
             }
             TimeoutOr::Other(ConnectError::FatalConnect(err)) => err.into(),
             TimeoutOr::Timeout {
                 attempt_duration: _,
-            } => ChatServiceError::TimeoutEstablishingConnection { attempts: 1 },
+            } => ChatServiceError::TimeoutEstablishingConnection,
         }
     }
 }
@@ -94,7 +90,7 @@ impl From<WebSocketServiceConnectError> for ChatServiceError {
                     }
                 }
                 .into(),
-                WebSocketConnectError::Timeout => Self::Timeout,
+                WebSocketConnectError::Timeout => Self::TimeoutEstablishingConnection,
                 WebSocketConnectError::WebSocketError(e) => Self::WebSocket(e.into()),
             },
             WebSocketServiceConnectError::RejectedByServer {

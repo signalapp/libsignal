@@ -20,7 +20,13 @@ pub enum ServerEvent {
         server_delivery_timestamp: Timestamp,
         send_ack: ResponseEnvelopeSender,
     },
-    Stopped(ChatServiceError),
+    Stopped(DisconnectCause),
+}
+
+#[derive(Debug, derive_more::From)]
+pub enum DisconnectCause {
+    LocalDisconnect,
+    Error(#[from] ChatServiceError),
 }
 
 impl std::fmt::Debug for ServerEvent {
@@ -68,16 +74,14 @@ impl TryFrom<ws2::ListenerEvent> for ServerEvent {
             }
 
             ws2::ListenerEvent::Finished(reason) => Ok(ServerEvent::Stopped(match reason {
-                Ok(ws2::FinishReason::LocalDisconnect) => {
-                    ChatServiceError::ServiceIntentionallyDisconnected
-                }
-                Ok(ws2::FinishReason::RemoteDisconnect) => {
-                    ChatServiceError::WebSocket(WebSocketServiceError::ChannelClosed)
-                }
-                Err(ws2::FinishError::Unknown) => {
-                    ChatServiceError::WebSocket(WebSocketServiceError::Other("unexpected exit"))
-                }
-                Err(ws2::FinishError::Error(e)) => e.into(),
+                Ok(ws2::FinishReason::LocalDisconnect) => DisconnectCause::LocalDisconnect,
+                Ok(ws2::FinishReason::RemoteDisconnect) => DisconnectCause::Error(
+                    ChatServiceError::WebSocket(WebSocketServiceError::ChannelClosed),
+                ),
+                Err(ws2::FinishError::Unknown) => DisconnectCause::Error(
+                    ChatServiceError::WebSocket(WebSocketServiceError::Other("unexpected exit")),
+                ),
+                Err(ws2::FinishError::Error(e)) => DisconnectCause::Error(e.into()),
             })),
         }
     }

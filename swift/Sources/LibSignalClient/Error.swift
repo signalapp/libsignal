@@ -52,6 +52,7 @@ public enum SignalError: Error {
     case callbackError(String)
     case webSocketError(String)
     case connectionTimeoutError(String)
+    case requestTimeoutError(String)
     case connectionFailed(String)
     case networkProtocolError(String)
     case cdsiInvalidToken(String)
@@ -60,7 +61,6 @@ public enum SignalError: Error {
     case svrRestoreFailed(triesRemaining: UInt32, message: String)
     case svrRotationMachineTooManySteps(String)
     case chatServiceInactive(String)
-    case chatServiceIntentionallyDisconnected(String)
     case appExpired(String)
     case deviceDeregistered(String)
 
@@ -192,6 +192,8 @@ internal func checkError(_ error: SignalFfiErrorRef?) throws {
         throw SignalError.webSocketError(errStr)
     case SignalErrorCodeConnectionTimedOut:
         throw SignalError.connectionTimeoutError(errStr)
+    case SignalErrorCodeRequestTimedOut:
+        throw SignalError.requestTimeoutError(errStr)
     case SignalErrorCodeConnectionFailed:
         throw SignalError.connectionFailed(errStr)
     case SignalErrorCodeNetworkProtocol:
@@ -214,8 +216,6 @@ internal func checkError(_ error: SignalFfiErrorRef?) throws {
         throw SignalError.svrRotationMachineTooManySteps(errStr)
     case SignalErrorCodeChatServiceInactive:
         throw SignalError.chatServiceInactive(errStr)
-    case SignalErrorCodeChatServiceIntentionallyDisconnected:
-        throw SignalError.chatServiceIntentionallyDisconnected(errStr)
     case SignalErrorCodeAppExpired:
         throw SignalError.appExpired(errStr)
     case SignalErrorCodeDeviceDeregistered:

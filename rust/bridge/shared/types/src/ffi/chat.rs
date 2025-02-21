@@ -6,7 +6,7 @@
 use std::ffi::{c_uchar, c_void};
 use std::panic::UnwindSafe;
 
-use libsignal_net::chat::ChatServiceError;
+use libsignal_net::chat::server_requests::DisconnectCause;
 
 use super::*;
 use crate::net::chat::{ChatListener, ServerMessageAck};
@@ -107,10 +107,10 @@ impl ChatListener for ChatListenerStruct {
         (self.0.received_queue_empty)(self.0.ctx)
     }
 
-    fn connection_interrupted(&mut self, disconnect_cause: ChatServiceError) {
+    fn connection_interrupted(&mut self, disconnect_cause: DisconnectCause) {
         let error = match disconnect_cause {
-            ChatServiceError::ServiceIntentionallyDisconnected => None,
-            c => Some(Box::new(SignalFfiError::from(c))),
+            DisconnectCause::LocalDisconnect => None,
+            DisconnectCause::Error(c) => Some(Box::new(SignalFfiError::from(c))),
         };
         (self.0.connection_interrupted)(
             self.0.ctx,

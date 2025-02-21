@@ -48,7 +48,7 @@ async fn all_routes_connect_hangs_forever(expected_duration: Duration) {
     assert_eq!(elapsed, expected_duration);
     assert_matches!(
         outcome,
-        Err(ChatServiceError::TimeoutEstablishingConnection { attempts: 1 })
+        Err(ChatServiceError::TimeoutEstablishingConnection)
     );
 }
 
@@ -112,7 +112,7 @@ async fn transport_connects_but_websocket_never_responds(expected_duration: Dura
     assert_eq!(elapsed, expected_duration);
     assert_matches!(
         outcome,
-        Err(ChatServiceError::TimeoutEstablishingConnection { attempts: 1 })
+        Err(ChatServiceError::TimeoutEstablishingConnection)
     );
 }
 
@@ -269,10 +269,7 @@ async fn custom_dns_failure(lookup: impl DnsLookup + 'static, expected_duration:
     let (elapsed, outcome) = timed(deps.connect_chat().map_ok(|_| ())).await;
 
     assert_eq!(elapsed, expected_duration);
-    assert_matches!(
-        outcome,
-        Err(ChatServiceError::AllConnectionRoutesFailed { attempts: 1 })
-    );
+    assert_matches!(outcome, Err(ChatServiceError::AllConnectionRoutesFailed));
 }
 
 #[test_case(false, Duration::from_secs(60))]
@@ -303,7 +300,7 @@ async fn slow_dns(should_accept_connection: bool, expected_duration: Duration) {
     } else {
         assert_matches!(
             outcome,
-            Err(ChatServiceError::TimeoutEstablishingConnection { attempts: 1 })
+            Err(ChatServiceError::TimeoutEstablishingConnection)
         );
     }
 }

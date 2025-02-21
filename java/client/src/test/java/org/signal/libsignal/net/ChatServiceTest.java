@@ -60,23 +60,20 @@ public class ChatServiceTest {
   }
 
   @Test
-  public void cdsiLookupErrorConvert() {
+  public void chatServiceErrorConvert() {
     assertChatServiceErrorIs("AppExpired", AppExpiredException.class);
     assertChatServiceErrorIs("DeviceDeregistered", DeviceDeregisteredException.class);
-    assertChatServiceErrorIs("ServiceInactive", ChatServiceInactiveException.class);
+    assertChatServiceErrorIs("Disconnected", ChatServiceInactiveException.class);
 
     assertChatServiceErrorIs("WebSocket", ChatServiceException.class);
     assertChatServiceErrorIs("UnexpectedFrameReceived", ChatServiceException.class);
     assertChatServiceErrorIs("ServerRequestMissingId", ChatServiceException.class);
     assertChatServiceErrorIs("IncomingDataInvalid", ChatServiceException.class);
-    assertChatServiceErrorIs("Timeout", ChatServiceException.class);
+    assertChatServiceErrorIs("RequestSendTimedOut", ChatServiceException.class);
     assertChatServiceErrorIs("TimeoutEstablishingConnection", ChatServiceException.class);
     RetryLaterException retryLater =
         assertChatServiceErrorIs("RetryAfter42Seconds", RetryLaterException.class);
     assertEquals(retryLater.duration, Duration.ofSeconds(42));
-
-    // These two are more of internal errors, but they should never happen anyway.
-    assertChatServiceErrorIs("FailedToPassMessageToIncomingChannel", ChatServiceException.class);
     assertChatServiceErrorIs("RequestHasInvalidHeader", ChatServiceException.class);
   }
 

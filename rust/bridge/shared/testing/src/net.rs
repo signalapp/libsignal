@@ -146,15 +146,13 @@ make_error_testing_enum! {
         DeviceDeregistered => DeviceDeregistered,
         UnexpectedFrameReceived => UnexpectedFrameReceived,
         ServerRequestMissingId => ServerRequestMissingId,
-        FailedToPassMessageToIncomingChannel => FailedToPassMessageToIncomingChannel,
         IncomingDataInvalid => IncomingDataInvalid,
         RequestHasInvalidHeader => RequestHasInvalidHeader,
-        Timeout => Timeout,
+        RequestSendTimedOut => RequestSendTimedOut,
         TimeoutEstablishingConnection => TimeoutEstablishingConnection,
         AllConnectionRoutesFailed => AllConnectionRoutesFailed,
-        ServiceInactive => ServiceInactive,
-        ServiceUnavailable => ServiceUnavailable,
-        ServiceIntentionallyDisconnected => ServiceIntentionallyDisconnected,
+        InvalidConnectionConfiguration => InvalidConnectionConfiguration,
+        Disconnected => Disconnected,
         RetryLater => RetryAfter42Seconds,
     }
 }
@@ -174,25 +172,21 @@ fn TESTING_ChatServiceErrorConvert(
             ChatServiceError::UnexpectedFrameReceived
         }
         TestingChatServiceError::ServerRequestMissingId => ChatServiceError::ServerRequestMissingId,
-        TestingChatServiceError::FailedToPassMessageToIncomingChannel => {
-            ChatServiceError::FailedToPassMessageToIncomingChannel
-        }
         TestingChatServiceError::IncomingDataInvalid => ChatServiceError::IncomingDataInvalid,
         TestingChatServiceError::RequestHasInvalidHeader => {
             ChatServiceError::RequestHasInvalidHeader
         }
-        TestingChatServiceError::Timeout => ChatServiceError::Timeout,
+        TestingChatServiceError::RequestSendTimedOut => ChatServiceError::RequestSendTimedOut,
         TestingChatServiceError::TimeoutEstablishingConnection => {
-            ChatServiceError::TimeoutEstablishingConnection { attempts: 42 }
+            ChatServiceError::TimeoutEstablishingConnection
         }
         TestingChatServiceError::AllConnectionRoutesFailed => {
-            ChatServiceError::AllConnectionRoutesFailed { attempts: 42 }
+            ChatServiceError::AllConnectionRoutesFailed
         }
-        TestingChatServiceError::ServiceInactive => ChatServiceError::ServiceInactive,
-        TestingChatServiceError::ServiceUnavailable => ChatServiceError::ServiceUnavailable,
-        TestingChatServiceError::ServiceIntentionallyDisconnected => {
-            ChatServiceError::ServiceIntentionallyDisconnected
+        TestingChatServiceError::InvalidConnectionConfiguration => {
+            ChatServiceError::InvalidConnectionConfiguration
         }
+        TestingChatServiceError::Disconnected => ChatServiceError::Disconnected,
         TestingChatServiceError::RetryAfter42Seconds => ChatServiceError::RetryLater {
             retry_after_seconds: 42,
         },

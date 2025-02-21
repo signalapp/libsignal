@@ -95,7 +95,7 @@ pub enum SignalErrorCode {
     CdsiInvalidToken = 147,
     ConnectionFailed = 148,
     ChatServiceInactive = 149,
-    ChatServiceIntentionallyDisconnected = 150,
+    RequestTimedOut = 150,
 
     SvrDataMissing = 160,
     SvrRestoreFailed = 161,
@@ -551,24 +551,20 @@ impl FfiError for ChatServiceError {
     fn describe(&self) -> String {
         match self {
             Self::WebSocket(e) => format!("WebSocket error: {e}"),
-            Self::AllConnectionRoutesFailed { .. } | Self::ServiceUnavailable => {
+            Self::AllConnectionRoutesFailed | Self::InvalidConnectionConfiguration => {
                 "Connection failed".to_owned()
             }
             Self::UnexpectedFrameReceived
             | Self::ServerRequestMissingId
             | Self::IncomingDataInvalid => format!("Protocol error: {self}"),
-            Self::FailedToPassMessageToIncomingChannel | Self::RequestHasInvalidHeader => {
+            Self::RequestHasInvalidHeader => {
                 format!("internal error: {self}")
             }
-            Self::Timeout | Self::TimeoutEstablishingConnection { .. } => {
-                "Connect timed out".to_owned()
-            }
-            Self::ServiceInactive => "Chat service inactive".to_owned(),
+            Self::RequestSendTimedOut => "Request timed out".to_string(),
+            Self::TimeoutEstablishingConnection => "Connect timed out".to_owned(),
+            Self::Disconnected => "Chat service disconnected".to_owned(),
             Self::AppExpired => "App expired".to_owned(),
             Self::DeviceDeregistered => "Device deregistered or delinked".to_owned(),
-            Self::ServiceIntentionallyDisconnected => {
-                "Chat service explicitly disconnected".to_owned()
-            }
             Self::RetryLater {
                 retry_after_seconds,
             } => format!("Rate limited; try again after {retry_after_seconds}s"),
@@ -578,24 +574,18 @@ impl FfiError for ChatServiceError {
     fn code(&self) -> SignalErrorCode {
         match self {
             Self::WebSocket(_) => SignalErrorCode::WebSocket,
-            Self::AllConnectionRoutesFailed { .. } | Self::ServiceUnavailable => {
+            Self::AllConnectionRoutesFailed { .. } | Self::InvalidConnectionConfiguration => {
                 SignalErrorCode::ConnectionFailed
             }
             Self::UnexpectedFrameReceived
             | Self::ServerRequestMissingId
             | Self::IncomingDataInvalid => SignalErrorCode::NetworkProtocol,
-            Self::FailedToPassMessageToIncomingChannel | Self::RequestHasInvalidHeader => {
-                SignalErrorCode::InternalError
-            }
-            Self::Timeout | Self::TimeoutEstablishingConnection { .. } => {
-                SignalErrorCode::ConnectionTimedOut
-            }
-            Self::ServiceInactive => SignalErrorCode::ChatServiceInactive,
+            Self::RequestHasInvalidHeader => SignalErrorCode::InternalError,
+            Self::RequestSendTimedOut => SignalErrorCode::RequestTimedOut,
+            Self::TimeoutEstablishingConnection => SignalErrorCode::ConnectionTimedOut,
+            Self::Disconnected => SignalErrorCode::ChatServiceInactive,
             Self::AppExpired => SignalErrorCode::AppExpired,
             Self::DeviceDeregistered => SignalErrorCode::DeviceDeregistered,
-            Self::ServiceIntentionallyDisconnected => {
-                SignalErrorCode::ChatServiceIntentionallyDisconnected
-            }
             Self::RetryLater { .. } => SignalErrorCode::RateLimited,
         }
     }

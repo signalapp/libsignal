@@ -653,7 +653,7 @@ impl<'env> ConsumableException<'env> {
                             error: error.into(),
                         }
                     }
-                    ChatServiceError::ServiceInactive => {
+                    ChatServiceError::Disconnected => {
                         ClassName("org.signal.libsignal.net.ChatServiceInactiveException")
                     }
                     ChatServiceError::AppExpired => {
@@ -665,14 +665,12 @@ impl<'env> ConsumableException<'env> {
                     ChatServiceError::WebSocket(_)
                     | ChatServiceError::UnexpectedFrameReceived
                     | ChatServiceError::ServerRequestMissingId
-                    | ChatServiceError::FailedToPassMessageToIncomingChannel
                     | ChatServiceError::IncomingDataInvalid
                     | ChatServiceError::RequestHasInvalidHeader
-                    | ChatServiceError::Timeout
-                    | ChatServiceError::TimeoutEstablishingConnection { attempts: _ }
-                    | ChatServiceError::AllConnectionRoutesFailed { attempts: _ }
-                    | ChatServiceError::ServiceUnavailable
-                    | ChatServiceError::ServiceIntentionallyDisconnected => {
+                    | ChatServiceError::RequestSendTimedOut
+                    | ChatServiceError::TimeoutEstablishingConnection
+                    | ChatServiceError::AllConnectionRoutesFailed
+                    | ChatServiceError::InvalidConnectionConfiguration => {
                         ClassName("org.signal.libsignal.net.ChatServiceException")
                     }
                 };

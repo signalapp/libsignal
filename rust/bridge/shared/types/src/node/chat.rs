@@ -5,7 +5,7 @@
 
 use std::sync::Arc;
 
-use libsignal_net::chat::ChatServiceError;
+use libsignal_net::chat::server_requests::DisconnectCause;
 use libsignal_protocol::Timestamp;
 use neon::context::FunctionContext;
 use neon::event::Channel;
@@ -64,10 +64,10 @@ impl ChatListener for NodeChatListener {
         });
     }
 
-    fn connection_interrupted(&mut self, disconnect_cause: ChatServiceError) {
+    fn connection_interrupted(&mut self, disconnect_cause: DisconnectCause) {
         let disconnect_cause = match disconnect_cause {
-            ChatServiceError::ServiceIntentionallyDisconnected => None,
-            c => Some(c),
+            DisconnectCause::LocalDisconnect => None,
+            DisconnectCause::Error(cause) => Some(cause),
         };
         let roots_shared = self.roots.clone();
         self.js_channel.send(move |mut cx| {

@@ -73,7 +73,7 @@ final class ChatServiceTests: TestCaseBase {
             try failWithError("DeviceDeregistered")
         } catch SignalError.deviceDeregistered(_) {}
         do {
-            try failWithError("ServiceInactive")
+            try failWithError("Disconnected")
         } catch SignalError.chatServiceInactive(_) {}
 
         do {
@@ -89,15 +89,12 @@ final class ChatServiceTests: TestCaseBase {
             try failWithError("IncomingDataInvalid")
         } catch SignalError.networkProtocolError(_) {}
         do {
-            try failWithError("Timeout")
-        } catch SignalError.connectionTimeoutError(_) {}
+            try failWithError("RequestSendTimedOut")
+        } catch SignalError.requestTimeoutError(_) {}
         do {
             try failWithError("TimeoutEstablishingConnection")
         } catch SignalError.connectionTimeoutError(_) {}
 
-        do {
-            try failWithError("FailedToPassMessageToIncomingChannel")
-        } catch SignalError.internalError(_) {}
         do {
             try failWithError("RequestHasInvalidHeader")
         } catch SignalError.internalError(_) {}

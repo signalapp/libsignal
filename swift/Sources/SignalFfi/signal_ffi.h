@@ -204,7 +204,7 @@ typedef enum {
   SignalErrorCodeCdsiInvalidToken = 147,
   SignalErrorCodeConnectionFailed = 148,
   SignalErrorCodeChatServiceInactive = 149,
-  SignalErrorCodeChatServiceIntentionallyDisconnected = 150,
+  SignalErrorCodeRequestTimedOut = 150,
   SignalErrorCodeSvrDataMissing = 160,
   SignalErrorCodeSvrRestoreFailed = 161,
   SignalErrorCodeSvrRotationMachineTooManySteps = 162,

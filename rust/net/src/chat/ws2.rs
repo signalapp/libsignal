@@ -91,7 +91,10 @@ pub enum ListenerEvent {
 #[cfg_attr(test, derive(PartialEq))]
 pub enum SendError {
     /// the chat service is no longer connected
-    Disconnected { reason: &'static str },
+    Disconnected {
+        #[cfg(test)] // Useful for testing but otherwise unused
+        reason: &'static str,
+    },
     /// an OS-level I/O error occurred
     Io(IoErrorKind),
     /// the message is larger than the configured limit
@@ -350,6 +353,7 @@ impl Responder {
         }
 
         Err(SendError::Disconnected {
+            #[cfg(test)]
             reason: "task exited without receiving response",
         })
     }
@@ -653,11 +657,13 @@ async fn send_request(
             } => request_tx.clone(),
             TaskState::SignaledToEnd(_) => {
                 return Err(SendError::Disconnected {
+                    #[cfg(test)]
                     reason: "task was already signalled to end",
                 })
             }
             TaskState::Finished(Ok(_reason)) => {
                 return Err(SendError::Disconnected {
+                    #[cfg(test)]
                     reason: "task already ended gracefully",
                 })
             }
@@ -680,6 +686,7 @@ async fn send_request(
             receiver
                 .await
                 .map_err(|_: oneshot::error::RecvError| SendError::Disconnected {
+                    #[cfg(test)]
                     reason: "response channel sender was dropped",
                 })?;
         response.map_err(SendError::from)
@@ -700,6 +707,7 @@ async fn send_request(
             // The task exited successfully but our send still didn't go
             // through, so return an error.
             SendError::Disconnected {
+                #[cfg(test)]
                 reason: "task ended gracefully before sending request",
             }
         });
@@ -1047,24 +1055,16 @@ pub(super) fn decode_and_validate(data: &[u8]) -> Result<ChatMessageProto, ChatP
 
 impl From<&TaskErrorState> for SendError {
     fn from(value: &TaskErrorState) -> Self {
-        match value {
-            TaskErrorState::SendFailed => SendError::Disconnected {
-                reason: "send failed",
-            },
-            TaskErrorState::Panic(_) => SendError::Disconnected {
-                reason: "chat task panicked",
-            },
-            TaskErrorState::AbnormalServerClose { .. } => SendError::Disconnected {
-                reason: "server closed abnormally",
-            },
-            TaskErrorState::ReceiveFailed => SendError::Disconnected {
-                reason: "receive failed",
-            },
-            TaskErrorState::ServerIdleTooLong(_) => SendError::Disconnected {
-                reason: "server idle too long",
-            },
-            TaskErrorState::UnexpectedConnectionClose => SendError::Disconnected {
-                reason: "server closed unexpectedly",
+        let _ = value;
+        SendError::Disconnected {
+            #[cfg(test)]
+            reason: match value {
+                TaskErrorState::SendFailed => "send failed",
+                TaskErrorState::Panic(_) => "chat task panicked",
+                TaskErrorState::AbnormalServerClose { .. } => "server closed abnormally",
+                TaskErrorState::ReceiveFailed => "receive failed",
+                TaskErrorState::ServerIdleTooLong(_) => "server idle too long",
+                TaskErrorState::UnexpectedConnectionClose => "server closed unexpectedly",
             },
         }
     }
@@ -1110,6 +1110,7 @@ impl From<&TungsteniteSendError> for SendError {
         match value {
             TungsteniteSendError::Io(io) => SendError::Io(io.kind()),
             TungsteniteSendError::ConnectionAlreadyClosed => SendError::Disconnected {
+                #[cfg(test)]
                 reason: "task failure due to send failure",
             },
             TungsteniteSendError::MessageTooLarge { size, max_size } => {
@@ -1156,7 +1157,7 @@ impl From<TaskExitError> for ChatServiceError {
 impl From<SendError> for ChatServiceError {
     fn from(value: SendError) -> Self {
         match value {
-            SendError::Disconnected { reason: _ } => ChatServiceError::ServiceInactive,
+            SendError::Disconnected { .. } => ChatServiceError::Disconnected,
             SendError::Io(error_kind) => {
                 ChatServiceError::WebSocket(WebSocketServiceError::Io(error_kind.into()))
             }
