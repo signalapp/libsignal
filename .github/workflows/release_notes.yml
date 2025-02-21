@@ -1,0 +1,31 @@
+name: Check release notes
+# This is in a separate job because it only runs on pull requests and triggers
+# on label changes in addition to code changes.
+
+on:
+ pull_request:
+  types: [opened, reopened, synchronize, labeled, unlabeled]
+  # all target branches
+
+env:
+  LABEL_NAME: no release notes
+
+jobs:
+  check:
+    name: Check for release notes
+
+    runs-on: ubuntu-latest
+
+    permissions:
+      # Needed to read the list of files modified by the pull request.
+      pull-requests: read
+
+    steps:
+      - name: Check for release notes change
+        uses: brettcannon/check-for-changed-files@871d7b8b5917a4f6f06662e2262e8ffc51dff6d1 # v1.2.1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          skip-label: ${{ env.LABEL_NAME }}
+          file-pattern: |
+            RELEASE_NOTES.md
+          failure-message: "RELEASE_NOTES.md is unchanged. If that's intentional, set the '${{ env.LABEL_NAME }}' tag"
