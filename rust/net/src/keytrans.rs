@@ -1313,12 +1313,12 @@ mod test_support {
         println!("Distinguished tree");
         println!("Size: {}", &result.tree_head.tree_size);
         println!(
-            "const DISTINGUISHED_TREE_{}_ROOT: &[u8] = &hex!(\"{}\");",
+            "const DISTINGUISHED_TREE_{}_HEAD: &[u8] = &hex!(\"{}\");",
             distinguished_tree_size,
             &hex::encode(result.tree_head.encode_to_vec())
         );
         println!(
-            "const DISTINGUISHED_TREE_{}_HEAD: &[u8] = &hex!(\"{}\");",
+            "const DISTINGUISHED_TREE_{}_ROOT: &[u8] = &hex!(\"{}\");",
             distinguished_tree_size,
             &hex::encode(result.tree_root)
         );
@@ -1430,26 +1430,26 @@ mod test {
     use super::test_support::{make_chat, make_key_transparency, make_kt, test_account};
     use super::*;
 
-    // Distinguished tree parameters as of size 608
-    const DISTINGUISHED_TREE_637_ROOT: &[u8] =
-        &hex!("fda58cc9c00d4e6734047f98b4723804383f9e64daa7224bdd7591df9276cbb4");
-    const DISTINGUISHED_TREE_637_HEAD: &[u8] =
-        &hex!("08fd0410f1a3a8cccb321a407761dac20002f5a15b789418d77fe482ec3bdf782a336ecf4f12cbe43ef35fa86360ffcb884354d9854a970afbbf6db716765e3a72fa36b9428918993a8ef30c");
-    // Stored account data as of size 611
-    const STORED_ACCOUNT_DATA_642: &[u8] =
-        &hex!("0a2b0a203901c94081c4e6321e92b3e434dcaf788f5326913e7bdcab47b4fd2ae7a6848a10231a0308ff032001122c0a2086052cc2a2689558e852d053c5ab411d8c3baef20171ec298e551574806ca95d1081011a0308ff0320011a2c0a20bc1cfaae736c27c437b99175798933ee32caf07a5226840ec963a4e614916e9010dc011a0308ff03200122700a4c08820510fbd0d8cdcb321a4041ed17cdfdae313856d8bd6028936f0a2c1494968eafbea1498e2fc666105d9ddbaf7d4e43d9013a713ba58f402557ec794c441ed3bcfacc6bc6d656ea0fcf01122010763b0de052335c451c9bb7b46f52d0eeb736ee9731c4ba6a6f93d74a89cc3b");
+    // Distinguished tree parameters as of size 11526
+    const DISTINGUISHED_TREE_19941_HEAD: &[u8] =
+        &hex!("08e59b0110898a95cfd2321a4026d5499cad422621f01e4b3874b7bdda5e7d4a3f7b152ad34ac57a644f2efeb9458b527e5de5e44bb776d19f317206e6f4d02ddd3215038d66c426e531113b02");
+    const DISTINGUISHED_TREE_19941_ROOT: &[u8] =
+        &hex!("9f661d1beb7c567e1fbf281a54b2372f95dab2bb3c8d1389c2590103c785c092");
+
+    const STORED_ACCOUNT_DATA_19996: &[u8] =
+        &hex!("0a2b0a203901c94081c4e6321e92b3e434dcaf788f5326913e7bdcab47b4fd2ae7a6848a10231a0308ff7f2001122c0a2086052cc2a2689558e852d053c5ab411d8c3baef20171ec298e551574806ca95d1081011a0308ff7f20011a2c0a20bc1cfaae736c27c437b99175798933ee32caf07a5226840ec963a4e614916e9010dc011a0308ff7f200122710a4d089c9c0110ffdf95cfd2321a407ad5434982865677e3a31513aa78afaf3bebec2174aefd6331be83aa80dad9731eaeca611573e6592605e2014f2ee47f76eb804cf676c6ca7e1be0f907f4cc02122013846855087b9268e136e7920bc5e84dcbe470f6ee4e629ecba7f10f64caaf96");
 
     fn test_distinguished_tree() -> LastTreeHead {
         (
-            TreeHead::decode(DISTINGUISHED_TREE_637_HEAD).expect("valid TreeHead"),
-            DISTINGUISHED_TREE_637_ROOT
+            TreeHead::decode(DISTINGUISHED_TREE_19941_HEAD).expect("valid TreeHead"),
+            DISTINGUISHED_TREE_19941_ROOT
                 .try_into()
                 .expect("valid root size"),
         )
     }
 
     fn test_stored_account_data() -> StoredAccountData {
-        StoredAccountData::decode(STORED_ACCOUNT_DATA_642).expect("valid stored acc data")
+        StoredAccountData::decode(STORED_ACCOUNT_DATA_19996).expect("valid stored acc data")
     }
 
     fn test_account_data() -> AccountData {
@@ -1569,7 +1569,7 @@ mod test {
     }
 
     const CHAT_SEARCH_RESPONSE: &[u8] = include_bytes!("../tests/data/chat_search_response.dat");
-    const CHAT_SEARCH_RESPONSE_VALID_AT: Duration = Duration::from_secs(1738283179);
+    const CHAT_SEARCH_RESPONSE_VALID_AT: Duration = Duration::from_secs(1740164663);
 
     fn test_search_response() -> TypedSearchResponse {
         let chat_search_response =
