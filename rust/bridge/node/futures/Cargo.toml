@@ -28,7 +28,7 @@ futures-util = { workspace = true }
 neon = { workspace = true, features = ["napi-4"] }
 
 [dev-dependencies]
-signal-neon-futures-tests = { path = "tests-node-module" }
+signal-neon-futures-tests = { workspace = true }
 
 [features]
 napi-6 = ["neon/napi-6"]
