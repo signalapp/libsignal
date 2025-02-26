@@ -117,7 +117,7 @@ fn convert_received_message(
                         None
                     }
                 })
-                .last();
+                .next_back();
             if raw_timestamp.is_none() {
                 log::warn!("server delivered message with no {TIMESTAMP_HEADER_NAME} header");
             }

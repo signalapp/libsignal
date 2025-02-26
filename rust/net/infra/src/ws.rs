@@ -335,7 +335,6 @@ where
             connect_future,
         )
         .await
-        .map_err(Into::into)
     }
 
     fn start_service(&self, channel: Self::Channel) -> (Self::Service, CancellationToken) {
@@ -494,7 +493,7 @@ where
     if result.is_err() {
         service_status.cancel(CancellationReason::ServiceError);
     }
-    result.map_err(Into::into)
+    result
 }
 
 async fn connect_websocket<T: TransportConnector>(

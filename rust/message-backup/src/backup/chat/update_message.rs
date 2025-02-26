@@ -330,7 +330,7 @@ impl<R> UpdateMessage<R> {
             | UpdateMessage::ProfileChange { .. }
             | UpdateMessage::LearnedProfileUpdate(_) => {
                 match chat {
-                    ChatRecipientKind::Contact { .. } | ChatRecipientKind::Group { .. } => Ok(()),
+                    ChatRecipientKind::Contact { .. } | ChatRecipientKind::Group => Ok(()),
                     ChatRecipientKind::Self_ => {
                         // Again, Self is allowed because of possible past thread merging.
                         // See above.
@@ -349,7 +349,7 @@ impl<R> UpdateMessage<R> {
                 }
             }
             UpdateMessage::GroupChange { .. } => {
-                if !matches!(chat, ChatRecipientKind::Group { .. }) {
+                if !matches!(chat, ChatRecipientKind::Group) {
                     Err(ChatItemError::GroupUpdateNotInGroupThread)
                 } else {
                     Ok(())
@@ -384,7 +384,7 @@ impl<R> UpdateMessage<R> {
                 }
             }
             UpdateMessage::GroupCall(_) => {
-                if !matches!(chat, ChatRecipientKind::Group { .. }) {
+                if !matches!(chat, ChatRecipientKind::Group) {
                     Err(ChatItemError::GroupCallNotInGroupThread)
                 } else {
                     Ok(())

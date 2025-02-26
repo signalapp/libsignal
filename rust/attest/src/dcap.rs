@@ -80,8 +80,8 @@ const INTEL_ROOT_PUB_KEY: &[u8] = &[
 ///
 /// * `expected_mrenclave` - The MRENCLAVE that the quote must match
 /// * `acceptable_sw_advisories` - In the event that the remote TCB has known vulnerabilities that
-///                                require SW mitigations, the list of vulnerabilities that are
-///                                known to be mitigated in `expected_mrenclave`.
+///   require SW mitigations, the list of vulnerabilities that are known to be
+///   mitigated in `expected_mrenclave`.
 /// * `current_time` - The current system time
 pub fn verify_remote_attestation(
     evidence_bytes: &[u8],

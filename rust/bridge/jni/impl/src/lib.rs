@@ -79,7 +79,7 @@ pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_AsyncLoadClas
         type ResultType = JClass<'a>;
 
         fn convert_into(self, env: &mut JNIEnv<'a>) -> Result<Self::ResultType, BridgeLayerError> {
-            find_class(env, ClassName(&self.0)).map_err(Into::into)
+            find_class(env, ClassName(&self.0))
         }
     }
 

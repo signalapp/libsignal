@@ -889,7 +889,7 @@ fn verify_single_search_response(
         SearchContext {
             last_tree_head,
             last_distinguished_tree_head,
-            data: monitoring_data.map(MonitoringData::from),
+            data: monitoring_data,
         },
         true,
         now,

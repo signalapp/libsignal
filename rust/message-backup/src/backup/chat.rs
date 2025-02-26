@@ -671,7 +671,7 @@ impl<
         let expire_start = expireStartDate
             .map(|date| Timestamp::from_millis(date, "ChatItem.expireStartDate", context))
             .transpose()?;
-        let expires_in = expiresInMs.map(Into::into).map(Duration::from_millis);
+        let expires_in = expiresInMs.map(Duration::from_millis);
 
         match (expire_start, expires_in) {
             (None, None) => {

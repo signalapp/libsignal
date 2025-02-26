@@ -53,10 +53,11 @@ async fn main() -> ExitCode {
         Environment::Production => libsignal_net::env::PROD,
     };
 
-    let allowed_route_types = limit_to_routes
-        .is_empty()
-        .then(|| RouteType::iter().collect())
-        .unwrap_or(limit_to_routes);
+    let allowed_route_types = if limit_to_routes.is_empty() {
+        RouteType::iter().collect()
+    } else {
+        limit_to_routes
+    };
 
     let success = if try_all_routes {
         futures_util::stream::iter(allowed_route_types)

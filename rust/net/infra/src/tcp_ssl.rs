@@ -178,8 +178,7 @@ where
         } = fragment;
         let host = sni;
 
-        let ssl_config =
-            ssl_config(&root_certs, host.as_deref(), alpn).map_err(TransportConnectError::from);
+        let ssl_config = ssl_config(&root_certs, host.as_deref(), alpn);
 
         async move {
             let domain = match &host {

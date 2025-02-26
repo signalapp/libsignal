@@ -623,12 +623,12 @@ impl FfiError for signal_media::sanitize::mp4::Error {
         match self {
             Self::Io(e) => e.code(),
             Self::Parse(e) => match e.kind {
-                ParseError::InvalidBoxLayout { .. }
-                | ParseError::InvalidInput { .. }
+                ParseError::InvalidBoxLayout
+                | ParseError::InvalidInput
                 | ParseError::MissingRequiredBox { .. }
                 | ParseError::TruncatedBox => SignalErrorCode::InvalidMediaInput,
 
-                ParseError::UnsupportedBoxLayout { .. }
+                ParseError::UnsupportedBoxLayout
                 | ParseError::UnsupportedBox { .. }
                 | ParseError::UnsupportedFormat { .. } => SignalErrorCode::UnsupportedMediaInput,
             },
@@ -650,9 +650,9 @@ impl FfiError for signal_media::sanitize::webp::Error {
         match self {
             Self::Io(e) => e.code(),
             Self::Parse(e) => match e.kind {
-                ParseError::InvalidChunkLayout { .. }
-                | ParseError::InvalidInput { .. }
-                | ParseError::InvalidVp8lPrefixCode { .. }
+                ParseError::InvalidChunkLayout
+                | ParseError::InvalidInput
+                | ParseError::InvalidVp8lPrefixCode
                 | ParseError::MissingRequiredChunk { .. }
                 | ParseError::TruncatedChunk => SignalErrorCode::InvalidMediaInput,
 

@@ -305,7 +305,7 @@ impl<'env> ConsumableException<'env> {
                 let throwable = retry_later_exception(env, retry_after_seconds);
 
                 return ConsumableException {
-                    throwable: throwable.map(Into::into),
+                    throwable,
                     error: error.into(),
                 };
             }
