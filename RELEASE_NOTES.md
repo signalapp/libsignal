@@ -1,4 +1,2 @@
-v0.67.1
+v0.67.2
 
-- Net: try IPv6 in addition to IPv4 when connecting to the DNS-over-HTTPS
-  resolver.
