@@ -9,7 +9,7 @@ use std::ops::ControlFlow;
 use std::sync::Arc;
 use std::time::Duration;
 
-use futures_util::stream::FuturesUnordered;
+use futures_util::stream::{FusedStream, FuturesUnordered};
 use futures_util::{FutureExt, StreamExt};
 use tokio::time::Instant;
 use tokio_util::either::Either;
@@ -198,6 +198,67 @@ pub async fn connect<R, UR, C, Inner, FatalError>(
     connector: C,
     inner: Inner,
     log_tag: Arc<str>,
+    on_error: impl FnMut(C::Error) -> ControlFlow<FatalError>,
+) -> (
+    Result<C::Connection, ConnectError<FatalError>>,
+    OutcomeUpdates<R>,
+)
+where
+    Inner: Clone,
+    C: Connector<R, Inner>,
+    UR: ResolveHostnames<Resolved = R> + Clone + 'static,
+    R: Clone + ResolvedRoute,
+{
+    let resolver_stream = route_resolver.resolve(ordered_routes, resolver);
+
+    connect_inner(
+        resolver_stream,
+        delay_policy,
+        connector,
+        inner,
+        log_tag,
+        on_error,
+    )
+    .await
+}
+
+/// Like [`connect`] but takes a collection of resolved routes.
+///
+/// The resolved routes are assumed to all be the result of resolving a single
+/// unresolved route.
+pub async fn connect_resolved<R, C, Inner, FatalError>(
+    routes: Vec<R>,
+    delay_policy: impl RouteDelayPolicy<R>,
+    connector: C,
+    inner: Inner,
+    log_tag: Arc<str>,
+    on_error: impl FnMut(C::Error) -> ControlFlow<FatalError>,
+) -> (
+    Result<C::Connection, ConnectError<FatalError>>,
+    OutcomeUpdates<R>,
+)
+where
+    Inner: Clone,
+    C: Connector<R, Inner>,
+    R: Clone + ResolvedRoute,
+{
+    connect_inner(
+        futures_util::stream::once(std::future::ready(schedule::as_resolved_group(routes))),
+        delay_policy,
+        connector,
+        inner,
+        log_tag,
+        on_error,
+    )
+    .await
+}
+
+async fn connect_inner<R, C, Inner, FatalError>(
+    resolver_stream: impl FusedStream<Item = (ResolvedRoutes<R>, ResolveMeta)>,
+    delay_policy: impl RouteDelayPolicy<R>,
+    connector: C,
+    inner: Inner,
+    log_tag: Arc<str>,
     mut on_error: impl FnMut(C::Error) -> ControlFlow<FatalError>,
 ) -> (
     Result<C::Connection, ConnectError<FatalError>>,
@@ -207,10 +268,7 @@ where
     R: Clone,
     Inner: Clone,
     C: Connector<R, Inner>,
-    UR: ResolveHostnames<Resolved = R> + Clone + 'static,
-    R: ResolvedRoute,
 {
-    let resolver_stream = route_resolver.resolve(ordered_routes, resolver);
     let schedule = Some(Schedule::new(
         resolver_stream,
         delay_policy,
@@ -373,6 +431,16 @@ impl<R: RouteProvider> RouteProvider for &R {
     }
 }
 
+/// [`RouteDelayPolicy`] that always returns a delay of zero.
+#[derive(Copy, Clone, Debug)]
+pub struct NoDelay;
+
+impl<R> RouteDelayPolicy<R> for NoDelay {
+    fn compute_delay(&self, _route: &R, _now: Instant) -> Duration {
+        Duration::ZERO
+    }
+}
+
 #[cfg(any(test, feature = "test-util"))]
 pub mod testutils {
     use std::cell::RefCell;
@@ -403,16 +471,6 @@ pub mod testutils {
     impl<A: ResolvedRoute> ResolvedRoute for FakeRoute<A> {
         fn immediate_target(&self) -> &IpAddr {
             self.0.immediate_target()
-        }
-    }
-
-    /// [`RouteDelayPolicy`] that always returns a delay of zero.
-    #[derive(Copy, Clone, Debug)]
-    pub struct NoDelay;
-
-    impl<R> RouteDelayPolicy<R> for NoDelay {
-        fn compute_delay(&self, _route: &R, _now: Instant) -> Duration {
-            Duration::ZERO
         }
     }
 
@@ -480,8 +538,8 @@ mod test {
     use crate::dns::lookup_result::LookupResult;
     use crate::host::Host;
     use crate::route::resolve::testutils::FakeResolver;
-    use crate::route::testutils::{FakeContext, FakeRoute, NoDelay};
-    use crate::route::{SocksProxy, TlsProxy};
+    use crate::route::testutils::{FakeContext, FakeRoute};
+    use crate::route::{NoDelay, SocksProxy, TlsProxy};
     use crate::tcp_ssl::proxy::socks;
     use crate::{Alpn, DnsSource};
 

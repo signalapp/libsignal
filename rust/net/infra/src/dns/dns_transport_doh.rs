@@ -2,7 +2,7 @@
 // Copyright 2024 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
-use std::net::IpAddr;
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 use std::sync::Arc;
 
 use bytes::Bytes;
@@ -22,7 +22,10 @@ use crate::http_client::{http2_client, AggregatingHttp2Client};
 use crate::route::{HttpsTlsRoute, TcpRoute, TlsRoute};
 use crate::{dns, DnsSource};
 
-pub(crate) const CLOUDFLARE_IP: IpAddr = ip_addr!("1.1.1.1");
+pub(crate) const CLOUDFLARE_IPS: (Ipv4Addr, Ipv6Addr) = (
+    ip_addr!(v4, "1.1.1.1"),
+    ip_addr!(v6, "2606:4700:4700::1111"),
+);
 const MAX_RESPONSE_SIZE: usize = 10240;
 
 /// DNS transport that sends queries over HTTPS
@@ -32,7 +35,7 @@ pub struct DohTransport {
 }
 
 impl DnsTransport for DohTransport {
-    type ConnectionParameters = HttpsTlsRoute<TlsRoute<TcpRoute<IpAddr>>>;
+    type ConnectionParameters = Vec<HttpsTlsRoute<TlsRoute<TcpRoute<IpAddr>>>>;
 
     fn dns_source() -> DnsSource {
         DnsSource::DnsOverHttpsLookup

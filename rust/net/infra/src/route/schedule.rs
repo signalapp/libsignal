@@ -458,6 +458,17 @@ pub struct ResolvedRoutes<R> {
     routes: Vec<R>,
 }
 
+/// Produces a single `(ResolvedRoutes<R>, ResolveMeta)` pair.
+///
+/// Assumes that the provided routes came from the same pre-resolution source.
+pub(crate) fn as_resolved_group<R>(routes: Vec<R>) -> (ResolvedRoutes<R>, ResolveMeta) {
+    let routes = ResolvedRoutes { routes };
+    let meta = ResolveMeta {
+        original_group_index: 0,
+    };
+    (routes, meta)
+}
+
 type EagerResolutionResult<R> = Result<ResolvedRoutes<R>, (Arc<str>, DnsError)>;
 
 /// Produces a stream of resolved routes.
@@ -644,8 +655,8 @@ mod test {
 
     use super::*;
     use crate::dns::lookup_result::LookupResult;
-    use crate::route::testutils::{FakeRoute, NoDelay};
-    use crate::route::UnresolvedHost;
+    use crate::route::testutils::FakeRoute;
+    use crate::route::{NoDelay, UnresolvedHost};
     use crate::DnsSource;
 
     impl<S, R, SP> Schedule<S, R, SP>

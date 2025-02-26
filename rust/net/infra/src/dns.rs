@@ -4,13 +4,12 @@
 //
 
 use std::collections::HashMap;
-use std::net::Ipv6Addr;
+use std::net::{IpAddr, Ipv6Addr};
 use std::str::FromStr as _;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use futures_util::{FutureExt as _, StreamExt as _};
-use nonzero_ext::nonzero;
 use oneshot_broadcast::Sender;
 use tokio::time::Instant;
 
@@ -18,11 +17,14 @@ use crate::certs::RootCertificates;
 use crate::dns::custom_resolver::CustomDnsResolver;
 use crate::dns::dns_errors::Error;
 use crate::dns::dns_lookup::{DnsLookup, DnsLookupRequest, StaticDnsMap, SystemDnsLookup};
-use crate::dns::dns_transport_doh::{DohTransport, CLOUDFLARE_IP};
+use crate::dns::dns_transport_doh::{DohTransport, CLOUDFLARE_IPS};
 use crate::dns::dns_types::ResourceType;
 use crate::dns::dns_utils::log_safe_domain;
 use crate::dns::lookup_result::LookupResult;
-use crate::route::{HttpRouteFragment, HttpsTlsRoute, TcpRoute, TlsRoute, TlsRouteFragment};
+use crate::host::Host;
+use crate::route::{
+    HttpRouteFragment, HttpsTlsRoute, TcpRoute, TlsRoute, TlsRouteFragment, DEFAULT_HTTPS_PORT,
+};
 use crate::timeouts::{DNS_FALLBACK_LOOKUP_TIMEOUTS, DNS_SYSTEM_LOOKUP_TIMEOUT};
 use crate::utils::oneshot_broadcast::{self, Receiver};
 use crate::utils::{self, ObservableEvent};
@@ -82,27 +84,29 @@ struct LookupOption {
 pub fn build_custom_resolver_cloudflare_doh(
     network_change_event: &ObservableEvent,
 ) -> CustomDnsResolver<DohTransport> {
-    let ip_addr = CLOUDFLARE_IP;
-    let host: Arc<str> = Arc::from(ip_addr.to_string());
-    let target = HttpsTlsRoute {
-        fragment: HttpRouteFragment {
-            path_prefix: "".into(),
-            front_name: None,
-            host_header: host.clone(),
-        },
-        inner: TlsRoute {
-            fragment: TlsRouteFragment {
-                sni: ip_addr.into(),
-                root_certs: RootCertificates::Native,
-                alpn: Some(Alpn::Http2),
+    let (v4, v6) = CLOUDFLARE_IPS;
+    let targets = [IpAddr::V6(v6), IpAddr::V4(v4)].map(|ip_addr| {
+        let host = Host::Ip(ip_addr);
+        HttpsTlsRoute {
+            fragment: HttpRouteFragment {
+                path_prefix: "".into(),
+                front_name: None,
+                host_header: Arc::from(host.to_string()),
             },
-            inner: TcpRoute {
-                address: ip_addr,
-                port: nonzero!(443u16),
+            inner: TlsRoute {
+                fragment: TlsRouteFragment {
+                    sni: host,
+                    root_certs: RootCertificates::Native,
+                    alpn: Some(Alpn::Http2),
+                },
+                inner: TcpRoute {
+                    address: ip_addr,
+                    port: DEFAULT_HTTPS_PORT,
+                },
             },
-        },
-    };
-    CustomDnsResolver::<DohTransport>::new(target, network_change_event)
+        }
+    });
+    CustomDnsResolver::<DohTransport>::new(targets.into(), network_change_event)
 }
 
 impl DnsResolver {
