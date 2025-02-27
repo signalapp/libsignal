@@ -22,16 +22,14 @@ pub enum Behavior {
         delay: Duration,
         then: Box<Behavior>,
     },
-    /// Connect the transport, applying the given modifiers to the returned stream.
-    ReturnStream(Vec<fn(FakeStream) -> FakeStream>),
+    /// Connect the transport, applying the given modifier to the returned stream.
+    ReturnStream(Option<fn(FakeStream) -> FakeStream>),
     /// Panic if invoked.
     Unreachable,
 }
 
 impl Behavior {
-    pub(super) async fn apply(
-        self,
-    ) -> Result<Vec<fn(FakeStream) -> FakeStream>, TransportConnectError> {
+    pub(super) async fn apply(self) -> Result<fn(FakeStream) -> FakeStream, TransportConnectError> {
         let mut next = self;
 
         loop {
@@ -42,7 +40,9 @@ impl Behavior {
                     next = *then;
                 }
                 Behavior::Fail(make_error) => return Err(make_error()),
-                Behavior::ReturnStream(stream) => return Ok(stream),
+                Behavior::ReturnStream(stream) => {
+                    return Ok(stream.unwrap_or(std::convert::identity))
+                }
                 Behavior::Unreachable => unreachable!("this test should not attempt to connect"),
             }
         }

@@ -37,6 +37,19 @@ impl<C> ThrottlingConnector<C> {
             permits: Semaphore::new(permits).into(),
         }
     }
+
+    /// Replaces the inner `Connector` in `self`.
+    ///
+    /// Consumes `self` and returns a new `ThrottlingConnector` that keeps the
+    /// same `Semaphore` but uses the provided connector in place of the
+    /// original one.
+    pub fn replace_connector<NewC>(self, new_connector: NewC) -> ThrottlingConnector<NewC> {
+        let Self { inner: _, permits } = self;
+        ThrottlingConnector {
+            inner: new_connector,
+            permits,
+        }
+    }
 }
 
 /// Pairs a connection `S` with a [`OwnedSemaphorePermit`].

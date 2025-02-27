@@ -12,21 +12,28 @@ use futures_util::stream::StreamExt as _;
 use futures_util::Stream;
 use itertools::Itertools as _;
 use libsignal_net::chat::{self, ChatConnection, ChatServiceError, PendingChatConnection};
-use libsignal_net::connect_state::{ConnectState, SUGGESTED_CONNECT_CONFIG};
+use libsignal_net::connect_state::{
+    ConnectState, DefaultConnectorFactory, DefaultTransportConnector, SUGGESTED_CONNECT_CONFIG,
+};
 use libsignal_net::env::{ConnectionConfig, DomainConfig, UserAgent};
 use libsignal_net::infra::connection_manager::MultiRouteConnectionManager;
 use libsignal_net::infra::dns::lookup_result::LookupResult;
 use libsignal_net::infra::dns::DnsResolver;
 use libsignal_net::infra::errors::TransportConnectError;
 use libsignal_net::infra::host::Host;
-use libsignal_net::infra::route::{DirectOrProxyProvider, DEFAULT_HTTPS_PORT};
+use libsignal_net::infra::route::{ConnectorFactory, DirectOrProxyProvider, DEFAULT_HTTPS_PORT};
 use libsignal_net::infra::utils::ObservableEvent;
 use libsignal_net::infra::{
     AsyncDuplexStream, DnsSource, EnableDomainFronting, EndpointConnection,
 };
+use libsignal_net_infra::route::{Connector, TransportRoute};
 use tokio::time::Duration;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 use warp::Filter as _;
+
+use crate::fake_transport::connector::{
+    FakeConnector, FakeTargetAndStream, ReplaceStatelessConnectorsWithFake,
+};
 
 mod behavior;
 pub use behavior::Behavior;
@@ -36,8 +43,6 @@ pub use connector::{FakeTransportConnector, TransportConnectEvent, TransportConn
 
 mod target;
 pub use target::FakeTransportTarget;
-
-use crate::fake_transport::connector::FakeTargetAndStream;
 
 /// Convenience alias for a dynamically-dispatched stream.
 pub type FakeStream = Box<dyn AsyncDuplexStream>;
@@ -74,7 +79,7 @@ pub fn allow_all_routes(
         .chain([FakeTransportTarget::Tls {
             sni: Host::Domain((*hostname).into()),
         }])
-        .zip(std::iter::repeat(Behavior::ReturnStream(vec![])))
+        .zip(std::iter::repeat(Behavior::ReturnStream(None)))
         .chain(allow_domain_fronting(domain_config, resolved_names))
 }
 
@@ -120,7 +125,7 @@ pub fn allow_domain_fronting(
 
     allow_targets
         .into_iter()
-        .zip(std::iter::repeat(Behavior::ReturnStream(vec![])))
+        .zip(std::iter::repeat(Behavior::ReturnStream(None)))
 }
 
 /// Produces an iterator that, for all routes, delays then returns an error.
@@ -138,13 +143,15 @@ pub fn error_all_hosts_after(
         }))
 }
 
+struct ReplacingConnectorFactory(FakeTransportConnector, DefaultConnectorFactory);
+
 /// Collection of persistent structs used to create a [`Chat`] instance.
 ///
 /// These values use internal reference counting to share data with created
 /// `Chat` values, so keeping them around is useful.
 pub struct FakeDeps {
     pub transport_connector: FakeTransportConnector,
-    connect_state: tokio::sync::RwLock<ConnectState<FakeTransportConnector>>,
+    connect_state: tokio::sync::RwLock<ConnectState<ReplacingConnectorFactory>>,
     pub dns_resolver: DnsResolver,
     chat_domain_config: DomainConfig,
     endpoint_connection: EndpointConnection<MultiRouteConnectionManager>,
@@ -163,10 +170,10 @@ impl FakeDeps {
             &ObservableEvent::new(),
         );
 
-        let connect_state = ConnectState::new_with_transport_connector(
-            SUGGESTED_CONNECT_CONFIG,
-            transport_connector.clone(),
-        );
+        let connector_factory =
+            ReplacingConnectorFactory(transport_connector.clone(), DefaultConnectorFactory);
+        let connect_state =
+            ConnectState::new_with_transport_connector(SUGGESTED_CONNECT_CONFIG, connector_factory);
         let resolved_names = fake_ips_for_names(chat_domain_config);
         let dns_resolver = DnsResolver::new_from_static_map(resolved_names.clone());
         (
@@ -188,7 +195,7 @@ impl FakeDeps {
 
     pub async fn connect_chat(
         &self,
-    ) -> Result<PendingChatConnection<FakeStream>, ChatServiceError> {
+    ) -> Result<PendingChatConnection<impl AsyncDuplexStream>, ChatServiceError> {
         let Self {
             endpoint_connection,
             connect_state,
@@ -222,6 +229,18 @@ impl FakeDeps {
             "fake chat",
         )
         .await
+    }
+}
+
+impl ConnectorFactory<TransportRoute, ()> for ReplacingConnectorFactory {
+    type Connector = FakeConnector<
+        <DefaultTransportConnector as ReplaceStatelessConnectorsWithFake>::Replacement,
+    >;
+
+    type Connection = <Self::Connector as Connector<TransportRoute, ()>>::Connection;
+
+    fn make(&self) -> Self::Connector {
+        self.0.replaced_stateless(self.1.make())
     }
 }
 

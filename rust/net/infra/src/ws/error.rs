@@ -35,6 +35,12 @@ impl std::fmt::Display for WebSocketConnectError {
 
 impl LogSafeDisplay for WebSocketConnectError {}
 
+impl From<std::io::Error> for WebSocketConnectError {
+    fn from(value: std::io::Error) -> Self {
+        Self::WebSocketError(value.into())
+    }
+}
+
 /// The connection was unexpectedly closed.
 ///
 /// If a [`CloseFrame`] was sent, it is included.

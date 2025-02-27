@@ -147,7 +147,7 @@ async fn connect_again_skips_timed_out_routes(
 }
 
 #[test_log::test(tokio::test(start_paused = true))]
-async fn runs_multiple_tls_handshakes_in_parallel() {
+async fn runs_one_tls_handshake_at_a_time() {
     let domain_config = STAGING.chat_domain_config;
     let (deps, incoming_streams) = FakeDeps::new(&domain_config);
 
@@ -190,18 +190,17 @@ async fn runs_multiple_tls_handshakes_in_parallel() {
     assert_matches!(
         &*events,
         [
-            // There are 3 successful TCP connections made and 3 TLS handshakes
-            // attempted. The other connections are abandoned when the first TLS
-            // handshake completes, so we never see their End events.
+            // There are 3 successful TCP connections made but only one TLS
+            // handshake is attempted. The other connections are abandoned when
+            // the first TLS handshake completes, so we never see any TLS
+            // handshake events for them.
             ((TcpConnect(_), Start), Duration::ZERO),
             ((TcpConnect(_), End), Duration::ZERO),
             ((TlsHandshake(Host::Domain(first_sni)), Start), Duration::ZERO),
             ((TcpConnect(_), Start), FIRST_DELAY),
             ((TcpConnect(_), End), FIRST_DELAY),
-            ((TlsHandshake(_), Start), FIRST_DELAY),
             ((TcpConnect(_), Start), SECOND_DELAY),
             ((TcpConnect(_), End), SECOND_DELAY),
-            ((TlsHandshake(_), Start), SECOND_DELAY),
             ((TlsHandshake(_), End), TLS_HANDSHAKE_DELAY),
         ] => assert_eq!(&**first_sni, STAGING.chat_domain_config.connect.hostname)
     );
