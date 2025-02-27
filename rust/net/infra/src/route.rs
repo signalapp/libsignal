@@ -1005,6 +1005,75 @@ mod test {
         );
     }
 
+    #[tokio::test(start_paused = true)]
+    async fn connect_interleaves_resolved_routes() {
+        const HOSTNAMES: &[(&str, &[Ipv4Addr])] = &[
+            (
+                "A",
+                &[
+                    ip_addr!(v4, "1.0.0.1"),
+                    ip_addr!(v4, "1.0.0.2"),
+                    ip_addr!(v4, "1.0.0.3"),
+                ],
+            ),
+            ("B", &[ip_addr!(v4, "2.0.0.1"), ip_addr!(v4, "2.0.0.2")]),
+            ("C", &[ip_addr!(v4, "3.0.0.1")]),
+        ];
+
+        let (connector, mut connection_responders) = FakeConnector::<FakeRoute<IpAddr>>::new();
+        let outcomes = NoDelay;
+        let (resolver, mut resolution_responders) = FakeResolver::new();
+
+        let connect_task = tokio::spawn(async move {
+            let mut ips = vec![];
+            while let Some(responder) = connection_responders.next().await {
+                ips.push(responder.route().0);
+                responder.respond(Err(FakeConnectError));
+            }
+            ips
+        });
+        let _resolve_task = tokio::spawn(async move {
+            // The routes should be sent for resolution in order.
+            for (host, addrs) in HOSTNAMES {
+                let responder = resolution_responders.next().await.unwrap();
+                assert_eq!(responder.hostname(), *host);
+                responder.respond(Ok(LookupResult::new(
+                    crate::DnsSource::Test,
+                    addrs.to_vec(),
+                    vec![],
+                )));
+            }
+        });
+
+        let (result, _updates) = connect(
+            &RouteResolver::default(),
+            &outcomes,
+            HOSTNAMES
+                .iter()
+                .map(|(h, _addr)| FakeRoute(UnresolvedHost::from(Arc::from(*h)))),
+            &resolver,
+            connector,
+            (),
+            "test".into(),
+            |_err: FakeConnectError| ControlFlow::<Infallible>::Continue(()),
+        )
+        .await;
+        assert_matches!(result, Err(_));
+
+        let ips = connect_task.await.expect("did not panic");
+        assert_eq!(
+            ips,
+            &[
+                HOSTNAMES[0].1[0],
+                HOSTNAMES[1].1[0],
+                HOSTNAMES[2].1[0],
+                HOSTNAMES[0].1[1],
+                HOSTNAMES[1].1[1],
+                HOSTNAMES[0].1[2],
+            ]
+        );
+    }
+
     /// [`Connector`] impl whose `connect_over` never resolves.
     struct NeverConnect;
 
