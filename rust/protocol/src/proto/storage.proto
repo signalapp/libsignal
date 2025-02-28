@@ -24,6 +24,9 @@ message SessionStructure {
       bytes  cipher_key = 2;
       bytes  mac_key    = 3;
       bytes  iv         = 4;
+      // If `seed` is set, then `cipher_key`, `mac_key`, and `iv` should
+      // will be empty and should be generated from it.
+      bytes  seed       = 5;
     }
 
     repeated MessageKey message_keys = 4;
