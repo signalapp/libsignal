@@ -8,7 +8,7 @@ use std::future::Future;
 
 use assert_matches::assert_matches;
 use async_trait::async_trait;
-use futures_util::TryFutureExt as _;
+use futures_util::{StreamExt as _, TryFutureExt as _};
 use itertools::Itertools as _;
 use libsignal_net::chat::ChatServiceError;
 use libsignal_net::env::STAGING;
@@ -103,16 +103,25 @@ async fn transport_connects_but_websocket_never_responds(expected_duration: Dura
     deps.transport_connector
         .set_behaviors(allow_all_routes(&chat_domain_config, deps.static_ip_map()));
 
-    // Don't do anything with the incoming transport streams, just let them
-    // accumulate in the unbounded stream.
-    let _ignore_incoming_streams = incoming_streams;
-
     let (elapsed, outcome) = timed(deps.connect_chat().map_ok(|_| ())).await;
+
+    // Now that the connect attempt is done, collect (and close) the incoming streams.
+    // (If we did this concurrently, the connection logic would move on to the next route.)
+    // Note that we have to guarantee there won't be any more connection attempts for collect()!
+    drop(deps);
+    let incoming_stream_hosts: Vec<_> =
+        incoming_streams.map(|(host, _stream)| host).collect().await;
 
     assert_eq!(elapsed, expected_duration);
     assert_matches!(
         outcome,
         Err(ChatServiceError::TimeoutEstablishingConnection)
+    );
+
+    assert_eq!(
+        &incoming_stream_hosts,
+        &[Host::Domain(chat_domain_config.connect.hostname.into())],
+        "should only have one websocket connection"
     );
 }
 
@@ -178,8 +187,8 @@ async fn runs_one_tls_handshake_at_a_time() {
         .recorded_events
         .lock()
         .unwrap()
-        .iter()
-        .map(|(event, when)| (event.clone(), when.duration_since(start)))
+        .drain(..)
+        .map(|(event, when)| (event, when.duration_since(start)))
         .collect_vec();
 
     const FIRST_DELAY: Duration = Duration::from_millis(500);
@@ -205,6 +214,53 @@ async fn runs_one_tls_handshake_at_a_time() {
         ] => assert_eq!(&**first_sni, STAGING.chat_domain_config.connect.hostname)
     );
     assert_eq!(timing, Duration::from_secs(5));
+}
+
+#[test_log::test(tokio::test(start_paused = true))]
+async fn tcp_connects_but_tls_never_responds() {
+    let domain_config = STAGING.chat_domain_config;
+    let (deps, incoming_streams) = FakeDeps::new(&domain_config);
+
+    tokio::spawn(connect_websockets_on_incoming(incoming_streams));
+    deps.transport_connector.set_behaviors(
+        allow_all_routes(&domain_config, deps.static_ip_map()).map(|(target, behavior)| {
+            let new_behavior = match &target {
+                FakeTransportTarget::Tls { .. } => Behavior::DelayForever,
+                FakeTransportTarget::TcpThroughProxy { .. } | FakeTransportTarget::Tcp { .. } => {
+                    behavior
+                }
+            };
+            (target, new_behavior)
+        }),
+    );
+
+    let (timing, outcome) = timed(deps.connect_chat().map_ok(|_| ())).await;
+    assert_matches!(
+        outcome,
+        Err(ChatServiceError::TimeoutEstablishingConnection)
+    );
+    assert_eq!(timing, Duration::from_secs(60));
+
+    use TransportConnectEvent::*;
+    use TransportConnectEventStage::*;
+    let tls_events = deps
+        .transport_connector
+        .recorded_events
+        .lock()
+        .unwrap()
+        .drain(..)
+        .map(|(event, _when)| event)
+        .filter(|event| matches!(event, (TlsHandshake(..), _)))
+        .collect_vec();
+
+    assert_eq!(
+        &tls_events,
+        &[(
+            TlsHandshake(Host::Domain(domain_config.connect.hostname.into())),
+            Start
+        )],
+        "TLS handshake does not complete and no other handshakes start",
+    );
 }
 
 #[derive(Debug)]
