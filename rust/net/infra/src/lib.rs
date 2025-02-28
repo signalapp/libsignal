@@ -662,7 +662,7 @@ pub(crate) mod test {
 
         assert_eq!(
             ServiceConnectionInfo {
-                address: Host::Ip(ip_addr!("1.2.3.4")),
+                address: Host::Ip(ip_addr!("192.0.2.4")),
                 ..connection_info
             }
             .description(),

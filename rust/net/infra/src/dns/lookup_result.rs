@@ -93,12 +93,12 @@ mod test {
 
     #[test]
     fn lookup_result_iterates_in_the_right_order() {
-        let ipv4_1 = ip_addr!(v4, "1.1.1.1");
-        let ipv4_2 = ip_addr!(v4, "2.2.2.2");
-        let ipv4_3 = ip_addr!(v4, "3.3.3.3");
-        let ipv6_1 = ip_addr!(v6, "::1");
-        let ipv6_2 = ip_addr!(v6, "::2");
-        let ipv6_3 = ip_addr!(v6, "::3");
+        let ipv4_1 = ip_addr!(v4, "192.0.2.1");
+        let ipv4_2 = ip_addr!(v4, "192.0.2.2");
+        let ipv4_3 = ip_addr!(v4, "192.0.2.3");
+        let ipv6_1 = ip_addr!(v6, "3fff::1");
+        let ipv6_2 = ip_addr!(v6, "3fff::2");
+        let ipv6_3 = ip_addr!(v6, "3fff::3");
 
         validate_expected_order(
             vec![ipv4_1, ipv4_2, ipv4_3],

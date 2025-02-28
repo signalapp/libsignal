@@ -441,7 +441,7 @@ mod test {
         });
         let resolver = DnsResolver::new_from_static_map(HashMap::from([(
             FAKE_HOST_NAME,
-            LookupResult::new(DnsSource::Static, vec![ip_addr!(v4, "1.1.1.1")], vec![]),
+            LookupResult::new(DnsSource::Static, vec![ip_addr!(v4, "192.0.2.1")], vec![]),
         )]));
 
         let fake_transport_connector =
@@ -483,7 +483,7 @@ mod test {
         let ws_connector = crate::infra::ws::Stateless;
         let resolver = DnsResolver::new_from_static_map(HashMap::from([(
             FAKE_HOST_NAME,
-            LookupResult::new(DnsSource::Static, vec![ip_addr!(v4, "1.1.1.1")], vec![]),
+            LookupResult::new(DnsSource::Static, vec![ip_addr!(v4, "192.0.2.1")], vec![]),
         )]));
 
         let always_hangs_connector = ConnectFn(|(), _, _| {

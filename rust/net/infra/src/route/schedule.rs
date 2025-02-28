@@ -678,8 +678,8 @@ mod test {
         let name_resolver = HashMap::from([(
             "domain-name",
             LookupResult {
-                ipv4: vec![ip_addr!(v4, "1.2.3.4")],
-                ipv6: vec![ip_addr!(v6, "::1234")],
+                ipv4: vec![ip_addr!(v4, "192.0.2.1")],
+                ipv6: vec![ip_addr!(v6, "3fff::1234")],
                 source: DnsSource::Static,
             },
         )]);
@@ -700,8 +700,8 @@ mod test {
         assert_eq!(
             schedule,
             vec![
-                (FakeRoute(ip_addr!("::1234")), Duration::ZERO),
-                (FakeRoute(ip_addr!("1.2.3.4")), HAPPY_EYEBALLS_DELAY),
+                (FakeRoute(ip_addr!("3fff::1234")), Duration::ZERO),
+                (FakeRoute(ip_addr!("192.0.2.1")), HAPPY_EYEBALLS_DELAY),
             ]
         );
     }
@@ -714,16 +714,16 @@ mod test {
             (
                 "name-1",
                 LookupResult {
-                    ipv4: vec![ip_addr!(v4, "1.2.3.4")],
-                    ipv6: vec![ip_addr!(v6, "::1234")],
+                    ipv4: vec![ip_addr!(v4, "192.0.2.11")],
+                    ipv6: vec![ip_addr!(v6, "3fff::1234")],
                     source: DnsSource::Static,
                 },
             ),
             (
                 "name-2",
                 LookupResult {
-                    ipv4: vec![ip_addr!(v4, "5.6.7.8")],
-                    ipv6: vec![ip_addr!(v6, "::5678")],
+                    ipv4: vec![ip_addr!(v4, "192.0.2.22")],
+                    ipv6: vec![ip_addr!(v6, "3fff::5678")],
                     source: DnsSource::Static,
                 },
             ),
@@ -754,10 +754,10 @@ mod test {
         assert_eq!(
             HashSet::from_iter(schedule),
             HashSet::from([
-                (FakeRoute(ip_addr!("::1234")), Duration::ZERO),
-                (FakeRoute(ip_addr!("1.2.3.4")), HAPPY_EYEBALLS_DELAY),
-                (FakeRoute(ip_addr!("::5678")), Duration::ZERO),
-                (FakeRoute(ip_addr!("5.6.7.8")), HAPPY_EYEBALLS_DELAY),
+                (FakeRoute(ip_addr!("3fff::1234")), Duration::ZERO),
+                (FakeRoute(ip_addr!("192.0.2.11")), HAPPY_EYEBALLS_DELAY),
+                (FakeRoute(ip_addr!("3fff::5678")), Duration::ZERO),
+                (FakeRoute(ip_addr!("192.0.2.22")), HAPPY_EYEBALLS_DELAY),
             ])
         );
     }
@@ -1041,7 +1041,7 @@ mod test {
         resolver_stream_tx
             .send((
                 ResolvedRoutes {
-                    routes: vec![FakeRoute(ip_addr!("1.1.1.1"))],
+                    routes: vec![FakeRoute(ip_addr!("192.0.2.1"))],
                 },
                 ResolveMeta {
                     original_group_index: 0,
@@ -1061,8 +1061,8 @@ mod test {
 
         let delay_policy = NoDelay;
         let resolver_stream = futures_util::stream::iter((0..ROUTE_GROUP_COUNT).map(|i| {
-            let routes = (100..(100 + ADDRS_PER_ROUTE))
-                .map(|x| FakeRoute(IpAddr::V4(Ipv4Addr::new(i, 0, 0, x))))
+            let routes = (10..(10 + ADDRS_PER_ROUTE))
+                .map(|x| FakeRoute(IpAddr::V4(Ipv4Addr::new(192, 0, 2, 10 * i + x))))
                 .collect();
             (
                 ResolvedRoutes { routes },
@@ -1085,9 +1085,9 @@ mod test {
         assert_eq!(
             immediate_route_schedule,
             [
-                FakeRoute(ip_addr!("0.0.0.100")),
-                FakeRoute(ip_addr!("1.0.0.100")),
-                FakeRoute(ip_addr!("2.0.0.100")),
+                FakeRoute(ip_addr!("192.0.2.10")),
+                FakeRoute(ip_addr!("192.0.2.20")),
+                FakeRoute(ip_addr!("192.0.2.30")),
             ]
         );
 
@@ -1099,9 +1099,9 @@ mod test {
         assert_eq!(
             remaining_route_schedule,
             vec![
-                FakeRoute(ip_addr!("0.0.0.101")),
-                FakeRoute(ip_addr!("1.0.0.101")),
-                FakeRoute(ip_addr!("2.0.0.101")),
+                FakeRoute(ip_addr!("192.0.2.11")),
+                FakeRoute(ip_addr!("192.0.2.21")),
+                FakeRoute(ip_addr!("192.0.2.31")),
             ]
         );
     }

@@ -518,7 +518,7 @@ mod test {
     use std::convert::Infallible;
     use std::fmt::Debug;
     use std::future::Future;
-    use std::net::{IpAddr, Ipv4Addr};
+    use std::net::{IpAddr, Ipv6Addr};
     use std::num::NonZeroU16;
     use std::sync::LazyLock;
 
@@ -851,14 +851,14 @@ mod test {
 
     #[tokio::test(start_paused = true)]
     async fn connect_slows_down_after_starting_a_connection() {
-        const HOSTNAMES: &[(&str, Ipv4Addr)] = &[
-            ("A", ip_addr!(v4, "1.1.1.1")),
-            ("B", ip_addr!(v4, "2.2.2.2")),
-            ("C", ip_addr!(v4, "3.3.3.3")),
-            ("D", ip_addr!(v4, "4.4.4.4")),
-            ("E", ip_addr!(v4, "5.5.5.5")),
-            ("F", ip_addr!(v4, "6.6.6.6")),
-            ("G", ip_addr!(v4, "7.7.7.7")),
+        const HOSTNAMES: &[(&str, Ipv6Addr)] = &[
+            ("A", ip_addr!(v6, "3fff::1")),
+            ("B", ip_addr!(v6, "3fff::2")),
+            ("C", ip_addr!(v6, "3fff::3")),
+            ("D", ip_addr!(v6, "3fff::4")),
+            ("E", ip_addr!(v6, "3fff::5")),
+            ("F", ip_addr!(v6, "3fff::6")),
+            ("G", ip_addr!(v6, "3fff::7")),
         ];
         let (connector, mut connection_responders) = FakeConnector::new();
         let outcomes = NoDelay;
@@ -887,8 +887,8 @@ mod test {
             assert_eq!(responder.hostname(), *host);
             responder.respond(Ok(LookupResult::new(
                 crate::DnsSource::Test,
-                vec![*addr],
                 vec![],
+                vec![*addr],
             )));
         }
 
@@ -905,7 +905,7 @@ mod test {
                 .collect_vec(),
             HOSTNAMES[..1]
                 .iter()
-                .map(|(_, addr)| IpAddr::V4(*addr))
+                .map(|(_, addr)| IpAddr::V6(*addr))
                 .collect_vec()
         );
 
@@ -918,20 +918,20 @@ mod test {
         let start = Instant::now();
         // If, however, we wait a little longer, we will see another one!
         let next_connection = connection_responders.next().await.unwrap();
-        assert_eq!(next_connection.route().0, IpAddr::V4(HOSTNAMES[1].1));
+        assert_eq!(next_connection.route().0, IpAddr::V6(HOSTNAMES[1].1));
         assert_eq!(start.elapsed(), PER_CONNECTION_WAIT_DURATION);
     }
 
     #[tokio::test(start_paused = true)]
     async fn connect_takes_first_successful() {
-        const HOSTNAMES: &[(&str, Ipv4Addr)] = &[
-            ("A", ip_addr!(v4, "1.1.1.1")),
-            ("B", ip_addr!(v4, "2.2.2.2")),
-            ("C", ip_addr!(v4, "3.3.3.3")),
-            ("D", ip_addr!(v4, "4.4.4.4")),
-            ("E", ip_addr!(v4, "5.5.5.5")),
-            ("F", ip_addr!(v4, "6.6.6.6")),
-            ("G", ip_addr!(v4, "7.7.7.7")),
+        const HOSTNAMES: &[(&str, Ipv6Addr)] = &[
+            ("A", ip_addr!(v6, "3fff::1")),
+            ("B", ip_addr!(v6, "3fff::2")),
+            ("C", ip_addr!(v6, "3fff::3")),
+            ("D", ip_addr!(v6, "3fff::4")),
+            ("E", ip_addr!(v6, "3fff::5")),
+            ("F", ip_addr!(v6, "3fff::6")),
+            ("G", ip_addr!(v6, "3fff::7")),
         ];
 
         let (connector, mut connection_responders) = FakeConnector::<FakeRoute<IpAddr>>::new();
@@ -946,7 +946,7 @@ mod test {
                 const SIMULATED_CONNECTION_DELAY: Duration = Duration::from_secs(1);
 
                 let should_succeed =
-                    responder.route().0 == IpAddr::V4(HOSTNAMES[SUCCESSFUL_ROUTE_INDEX].1);
+                    responder.route().0 == IpAddr::V6(HOSTNAMES[SUCCESSFUL_ROUTE_INDEX].1);
                 tokio::task::spawn(async move {
                     tokio::time::sleep(SIMULATED_CONNECTION_DELAY).await;
                     responder.respond(should_succeed.then_some(()).ok_or(FakeConnectError));
@@ -960,8 +960,8 @@ mod test {
                 assert_eq!(responder.hostname(), *host);
                 responder.respond(Ok(LookupResult::new(
                     crate::DnsSource::Test,
-                    vec![*addr],
                     vec![],
+                    vec![*addr],
                 )));
             }
         });
@@ -982,7 +982,7 @@ mod test {
 
         assert_eq!(
             result,
-            Ok(FakeConnection(FakeRoute(IpAddr::V4(
+            Ok(FakeConnection(FakeRoute(IpAddr::V6(
                 HOSTNAMES[SUCCESSFUL_ROUTE_INDEX].1
             ))))
         );
@@ -996,10 +996,10 @@ mod test {
             update_outcomes,
             HOSTNAMES[..SUCCESSFUL_ROUTE_INDEX]
                 .iter()
-                .map(|(_, ip)| (FakeRoute(IpAddr::V4(*ip)), Err(UnsuccessfulOutcome)))
+                .map(|(_, ip)| (FakeRoute(IpAddr::V6(*ip)), Err(UnsuccessfulOutcome)))
                 .chain(std::iter::once({
                     let (_, ip) = HOSTNAMES[SUCCESSFUL_ROUTE_INDEX];
-                    (FakeRoute(IpAddr::V4(ip)), Ok(()))
+                    (FakeRoute(IpAddr::V6(ip)), Ok(()))
                 }))
                 .collect_vec()
         );
@@ -1007,17 +1007,17 @@ mod test {
 
     #[tokio::test(start_paused = true)]
     async fn connect_interleaves_resolved_routes() {
-        const HOSTNAMES: &[(&str, &[Ipv4Addr])] = &[
+        const HOSTNAMES: &[(&str, &[Ipv6Addr])] = &[
             (
                 "A",
                 &[
-                    ip_addr!(v4, "1.0.0.1"),
-                    ip_addr!(v4, "1.0.0.2"),
-                    ip_addr!(v4, "1.0.0.3"),
+                    ip_addr!(v6, "3fff::1:1"),
+                    ip_addr!(v6, "3fff::1:2"),
+                    ip_addr!(v6, "3fff::1:3"),
                 ],
             ),
-            ("B", &[ip_addr!(v4, "2.0.0.1"), ip_addr!(v4, "2.0.0.2")]),
-            ("C", &[ip_addr!(v4, "3.0.0.1")]),
+            ("B", &[ip_addr!(v6, "3fff::2:1"), ip_addr!(v6, "3fff::2:2")]),
+            ("C", &[ip_addr!(v6, "3fff::3:1")]),
         ];
 
         let (connector, mut connection_responders) = FakeConnector::<FakeRoute<IpAddr>>::new();
@@ -1039,8 +1039,8 @@ mod test {
                 assert_eq!(responder.hostname(), *host);
                 responder.respond(Ok(LookupResult::new(
                     crate::DnsSource::Test,
-                    addrs.to_vec(),
                     vec![],
+                    addrs.to_vec(),
                 )));
             }
         });
@@ -1094,10 +1094,10 @@ mod test {
 
     #[tokio::test(start_paused = true)]
     async fn connect_succeeds_if_some_routes_hang_indefinitely() {
-        const HOSTNAMES: &[(&str, Ipv4Addr)] = &[
-            ("A", ip_addr!(v4, "1.1.1.1")),
-            ("B", ip_addr!(v4, "2.2.2.2")),
-            ("C", ip_addr!(v4, "3.3.3.3")),
+        const HOSTNAMES: &[(&str, Ipv6Addr)] = &[
+            ("A", ip_addr!(v6, "3fff::1")),
+            ("B", ip_addr!(v6, "3fff::2")),
+            ("C", ip_addr!(v6, "3fff::3")),
         ];
 
         let (connector, connection_responders) = FakeConnector::new();
@@ -1108,8 +1108,8 @@ mod test {
                 *name,
                 LookupResult {
                     source: DnsSource::Test,
-                    ipv4: vec![*ip],
-                    ipv6: vec![],
+                    ipv4: vec![],
+                    ipv6: vec![*ip],
                 },
             )
         }));
@@ -1138,7 +1138,7 @@ mod test {
             .await
             .try_into()
             .unwrap();
-        assert_eq!(c.route(), &FakeRoute(ip_addr!("3.3.3.3")));
+        assert_eq!(c.route(), &FakeRoute(ip_addr!("3fff::3")));
         c.respond(Ok(()));
 
         let (result, _outcomes) = connect_task.await.unwrap();
@@ -1148,10 +1148,10 @@ mod test {
 
     #[tokio::test(start_paused = true)]
     async fn start_connections_sooner_if_previous_ones_finish() {
-        const HOSTNAMES: &[(&str, Ipv4Addr)] = &[
-            ("A", ip_addr!(v4, "1.1.1.1")),
-            ("B", ip_addr!(v4, "2.2.2.2")),
-            ("C", ip_addr!(v4, "3.3.3.3")),
+        const HOSTNAMES: &[(&str, Ipv6Addr)] = &[
+            ("A", ip_addr!(v6, "3fff::1")),
+            ("B", ip_addr!(v6, "3fff::2")),
+            ("C", ip_addr!(v6, "3fff::3")),
         ];
 
         let (connector, mut connection_responders) = FakeConnector::new();
@@ -1162,8 +1162,8 @@ mod test {
                 *name,
                 LookupResult {
                     source: DnsSource::Test,
-                    ipv4: vec![*ip],
-                    ipv6: vec![],
+                    ipv4: vec![],
+                    ipv6: vec![*ip],
                 },
             )
         }));

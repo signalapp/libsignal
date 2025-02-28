@@ -360,10 +360,10 @@ pub(crate) mod test {
     }
 
     const NORMAL_TTL: Duration = div_duration(MAX_CACHE_TTL, 4);
-    const IP_V4_LIST_1: &[Ipv4Addr] = &[ip_addr!(v4, "2.2.2.2"), ip_addr!(v4, "2.2.2.3")];
-    const IP_V4_LIST_2: &[Ipv4Addr] = &[ip_addr!(v4, "2.2.2.4"), ip_addr!(v4, "2.2.2.5")];
-    const IP_V6_LIST_1: &[Ipv6Addr] = &[ip_addr!(v6, "::1"), ip_addr!(v6, "::2")];
-    const IP_V6_LIST_2: &[Ipv6Addr] = &[ip_addr!(v6, "::3"), ip_addr!(v6, "::4")];
+    const IP_V4_LIST_1: &[Ipv4Addr] = &[ip_addr!(v4, "192.0.2.22"), ip_addr!(v4, "192.0.2.33")];
+    const IP_V4_LIST_2: &[Ipv4Addr] = &[ip_addr!(v4, "192.0.2.44"), ip_addr!(v4, "192.0.2.55")];
+    const IP_V6_LIST_1: &[Ipv6Addr] = &[ip_addr!(v6, "3fff::1"), ip_addr!(v6, "3fff::2")];
+    const IP_V6_LIST_2: &[Ipv6Addr] = &[ip_addr!(v6, "3fff::3"), ip_addr!(v6, "3fff::4")];
 
     #[derive(Clone, Debug)]
     struct TestDnsTransportFailingToConnect;

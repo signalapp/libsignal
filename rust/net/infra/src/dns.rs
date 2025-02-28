@@ -322,8 +322,8 @@ mod test {
     use crate::utils::sleep_and_catch_up;
     use crate::DnsSource;
 
-    const IPV4: Ipv4Addr = ip_addr!(v4, "1.1.1.1");
-    const IPV6: Ipv6Addr = ip_addr!(v6, "::1");
+    const IPV4: Ipv4Addr = ip_addr!(v4, "192.0.2.1");
+    const IPV6: Ipv6Addr = ip_addr!(v6, "3fff::1");
 
     const CUSTOM_DOMAIN: &str = "custom.signal.org";
     const IPV4_ONLY_DOMAIN: &str = "ipv4.signal.org";
@@ -627,9 +627,9 @@ mod test {
         let normal_delay = ATTEMPT_TIMEOUT / 2;
         let short_delay = ATTEMPT_TIMEOUT / 10;
 
-        let ip_1 = ip_addr!(v4, "2.2.2.1");
-        let ip_2 = ip_addr!(v4, "2.2.2.2");
-        let ip_3 = ip_addr!(v4, "2.2.2.3");
+        let ip_1 = ip_addr!(v4, "192.0.2.1");
+        let ip_2 = ip_addr!(v4, "192.0.2.2");
+        let ip_3 = ip_addr!(v4, "192.0.2.3");
 
         async fn assert_expected_result(
             lookup_options: Vec<Box<dyn DnsLookup>>,
