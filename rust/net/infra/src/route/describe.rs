@@ -10,7 +10,6 @@ use std::sync::Arc;
 
 use futures_util::TryFutureExt as _;
 use nonzero_ext::nonzero;
-use tokio::time::Instant;
 
 use crate::dns::dns_utils::log_safe_domain;
 use crate::errors::LogSafeDisplay;
@@ -18,8 +17,8 @@ use crate::host::Host;
 use crate::route::{
     ConnectionProxyKind, ConnectionProxyRoute, Connector, DirectOrProxyRoute,
     HttpProxyRouteFragment, HttpsProxyRoute, HttpsTlsRoute, ProxyTarget, ResolveHostnames,
-    ResolvedRoute, RouteDelayPolicy, SocksRoute, TcpRoute, TlsRoute, UnresolvedHost,
-    UnresolvedWebsocketServiceRoute, DEFAULT_HTTPS_PORT,
+    ResolvedRoute, SocksRoute, TcpRoute, TlsRoute, TransportRoute, UnresolvedHost,
+    UnresolvedWebsocketServiceRoute, UsesTransport, DEFAULT_HTTPS_PORT,
 };
 
 /// A type that is not itself loggable but can produce a [`LogSafeDisplay`]
@@ -44,33 +43,20 @@ pub struct WithLoggableDescription<R, D> {
     pub description: D,
 }
 
+impl<R: UsesTransport, D> UsesTransport for WithLoggableDescription<R, D> {
+    fn transport_part(&self) -> &TransportRoute {
+        self.route.transport_part()
+    }
+    fn into_transport_part(self) -> TransportRoute {
+        self.route.into_transport_part()
+    }
+}
+
 /// [`Connector`] implementation for [`WithLoggableDescription`].
 ///
 /// Delegates to the wrapped connector, and produces on success its connection
 /// along with the loggable description from the input route.
 pub struct DescribedRouteConnector<C>(pub C);
-
-/// [`RouteDelayPolicy`] for [`WithLoggableDescription<R, D>`] that delegates to
-/// an inner policy.
-///
-/// Delegates to an inner `RouteDelayPolicy` that doesn't use the description.
-pub struct WithoutLoggableDescription<P>(pub P);
-
-impl<P: RouteDelayPolicy<R>, R, D> RouteDelayPolicy<WithLoggableDescription<R, D>>
-    for WithoutLoggableDescription<P>
-{
-    fn compute_delay(
-        &self,
-        route: &WithLoggableDescription<R, D>,
-        now: Instant,
-    ) -> std::time::Duration {
-        let WithLoggableDescription {
-            route,
-            description: _,
-        } = route;
-        self.0.compute_delay(route, now)
-    }
-}
 
 /// Loggable description for a [`UnresolvedWebsocketServiceRoute`].
 #[derive(Clone, Debug, PartialEq)]

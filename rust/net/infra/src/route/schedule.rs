@@ -19,7 +19,7 @@ use tokio::time::{Duration, Instant};
 
 use crate::dns::dns_utils::log_safe_domain;
 use crate::dns::DnsError;
-use crate::route::{ResolveHostnames, ResolvedRoute, Resolver};
+use crate::route::{ResolveHostnames, ResolvedRoute, Resolver, TransportRoute, UsesTransport};
 use crate::utils::binary_heap::{MinKeyValueQueue, Queue};
 use crate::utils::future::SomeOrPending;
 
@@ -415,6 +415,18 @@ impl ConnectionOutcomeParams {
         // the input is negative, and in case of rounding errors that would make
         // it > 1.
         max_delay.mul_f32(factor.clamp(0.0, 1.0))
+    }
+}
+
+/// A [`RouteDelayPolicy`] that acts on a route's [`TransportPart`], ignoring the rest of it.
+pub struct DelayBasedOnTransport<T>(pub T);
+
+impl<T, R: UsesTransport> RouteDelayPolicy<R> for DelayBasedOnTransport<T>
+where
+    T: RouteDelayPolicy<TransportRoute>,
+{
+    fn compute_delay(&self, route: &R, now: Instant) -> Duration {
+        self.0.compute_delay(route.transport_part(), now)
     }
 }
 

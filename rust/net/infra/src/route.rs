@@ -148,6 +148,40 @@ pub type HttpsServiceRoute = HttpsTlsRoute<TransportRoute>;
 /// [`WebSocketRoute`] that contains [`IpAddr`]s.
 pub type WebSocketServiceRoute = WebSocketRoute<HttpsServiceRoute>;
 
+/// Abstracts over routes that contain a [`TransportRoute`].
+///
+/// This allows, e.g. [`ConnectionOutcomes<TransportRoute>`](ConnectionOutcomes) to be used with
+/// several different kinds of route.
+pub trait UsesTransport {
+    fn transport_part(&self) -> &TransportRoute;
+    fn into_transport_part(self) -> TransportRoute;
+}
+
+impl UsesTransport for TransportRoute {
+    fn transport_part(&self) -> &TransportRoute {
+        self
+    }
+    fn into_transport_part(self) -> TransportRoute {
+        self
+    }
+}
+
+macro_rules! impl_uses_transport {
+    ($typ:ident, $delegate_field:ident) => {
+        impl UsesTransport for $typ {
+            fn transport_part(&self) -> &TransportRoute {
+                self.$delegate_field.transport_part()
+            }
+            fn into_transport_part(self) -> TransportRoute {
+                self.$delegate_field.into_transport_part()
+            }
+        }
+    };
+}
+
+impl_uses_transport!(WebSocketServiceRoute, inner);
+impl_uses_transport!(HttpsServiceRoute, inner);
+
 /// Error for [`connect()`].
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum ConnectError<E> {

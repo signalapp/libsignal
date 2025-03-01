@@ -16,11 +16,10 @@ use libsignal_net_infra::dns::DnsResolver;
 use libsignal_net_infra::errors::{LogSafeDisplay, TransportConnectError};
 use libsignal_net_infra::route::{
     ComposedConnector, ConnectError, ConnectionOutcomeParams, ConnectionOutcomes, Connector,
-    ConnectorFactory, DescribedRouteConnector, HttpRouteFragment, ResolveWithSavedDescription,
-    RouteProvider, RouteProviderContext, RouteProviderExt as _, RouteResolver, ThrottlingConnector,
-    TransportRoute, UnresolvedRouteDescription, UnresolvedWebsocketServiceRoute,
-    WebSocketRouteFragment, WebSocketServiceRoute, WithLoggableDescription,
-    WithoutLoggableDescription,
+    ConnectorFactory, DelayBasedOnTransport, DescribedRouteConnector, HttpRouteFragment,
+    ResolveWithSavedDescription, RouteProvider, RouteProviderContext, RouteProviderExt as _,
+    RouteResolver, ThrottlingConnector, TransportRoute, UnresolvedRouteDescription,
+    UnresolvedWebsocketServiceRoute, UsesTransport as _, WebSocketRouteFragment,
 };
 use libsignal_net_infra::timeouts::{TimeoutOr, ONE_ROUTE_CONNECTION_TIMEOUT};
 use libsignal_net_infra::ws::{WebSocketConnectError, WebSocketStreamLike};
@@ -86,7 +85,7 @@ pub struct ConnectState<ConnectorFactory = DefaultConnectorFactory> {
     /// Transport-level connector used for all connections.
     make_transport_connector: ConnectorFactory,
     /// Record of connection outcomes.
-    attempts_record: ConnectionOutcomes<WebSocketServiceRoute>,
+    attempts_record: ConnectionOutcomes<TransportRoute>,
     /// [`RouteProviderContext`] passed to route providers.
     route_provider_context: RouteProviderContextImpl,
 }
@@ -218,7 +217,7 @@ impl<TC> ConnectState<TC> {
         let route_provider = routes.into_iter().map(ResolveWithSavedDescription);
         let connector =
             DescribedRouteConnector(ComposedConnector::new(ws_connector, &transport_connector));
-        let delay_policy = WithoutLoggableDescription(&attempts_record);
+        let delay_policy = DelayBasedOnTransport(&attempts_record);
 
         let start = Instant::now();
         let connect = crate::infra::route::connect(
@@ -263,15 +262,10 @@ impl<TC> ConnectState<TC> {
         }
 
         this.write().await.attempts_record.apply_outcome_updates(
-            updates.outcomes.into_iter().map(
-                |(
-                    WithLoggableDescription {
-                        route,
-                        description: _,
-                    },
-                    outcome,
-                )| (route, outcome),
-            ),
+            updates
+                .outcomes
+                .into_iter()
+                .map(|(route, outcome)| (route.into_transport_part(), outcome)),
             updates.finished_at,
         );
 
