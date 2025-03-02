@@ -16,19 +16,19 @@ workspace = true
 attest = { workspace = true }
 libsignal-core = { workspace = true }
 libsignal-keytrans = { workspace = true }
-libsignal-net-infra = { path = "./infra" }
+libsignal-net-infra = { workspace = true }
 libsignal-protocol = { workspace = true }
 libsignal-svr3 = { workspace = true }
 
 async-trait = { workspace = true }
 base64 = { workspace = true }
 bincode = { workspace = true }
-bytes = "1.4.0"
+bytes = { workspace = true }
 const-str = { workspace = true, features = ["std"] }
 derive-where = { workspace = true }
 derive_more = { workspace = true, features = ["from"] }
 displaydoc = { workspace = true }
-either = "1.10.0"
+either = { workspace = true }
 futures-util = { workspace = true }
 hex = { workspace = true }
 hex-literal = { workspace = true }
@@ -43,7 +43,7 @@ pin-project = { workspace = true }
 prost = { workspace = true }
 rand = { workspace = true }
 rand_core = { workspace = true }
-rustls = { version = "0.23.4", default-features = false, features = ["ring", "std", "tls12"] }
+rustls = { workspace = true, features = ["ring", "std", "tls12"] }
 rustls-platform-verifier = { workspace = true }
 scopeguard = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
@@ -56,9 +56,9 @@ thiserror = { workspace = true }
 tokio = { workspace = true, features = ["rt", "time", "macros"] }
 tokio-boring-signal = { workspace = true }
 tokio-stream = { workspace = true }
-tokio-tungstenite = "0.23.0"
-tungstenite = { version = "0.23.0", features = ["url"] }
-url = "2.4.1"
+tokio-tungstenite = { workspace = true }
+tungstenite = { workspace = true, features = ["url"] }
+url = { workspace = true }
 uuid = { workspace = true }
 visibility = { workspace = true }
 zerocopy = { workspace = true }
@@ -69,18 +69,18 @@ prost-build = { workspace = true }
 [dev-dependencies]
 assert_matches = { workspace = true }
 clap = { workspace = true, features = ["derive"] }
-colored = "3.0"
+colored = { workspace = true }
 env_logger = { workspace = true }
 hex-literal = { workspace = true }
-libsignal-net = { path = ".", features = ["test-util"] }
-libsignal-net-infra = { path = "./infra", features = ["test-util"] }
+libsignal-net = { workspace = true, features = ["test-util"] }
+libsignal-net-infra = { workspace = true, features = ["test-util"] }
 proptest = { workspace = true }
-proptest-state-machine = "0.3.1"
+proptest-state-machine = { workspace = true }
 snow = { workspace = true, features = ["default-resolver"] }
 test-case = { workspace = true }
 test-log = { workspace = true }
 tokio = { workspace = true, features = ["test-util", "io-std", "rt-multi-thread"] }
-warp = { version = "0.3.6", features = ["tls"] }
+warp = { workspace = true, features = ["tls"] }
 
 [[example]]
 name = "svr3_prop_test"
