@@ -463,6 +463,7 @@ export function ServerPublicParams_CreateProfileKeyCredentialRequestContextDeter
 export function ServerPublicParams_CreateReceiptCredentialPresentationDeterministic(serverPublicParams: Wrapper<ServerPublicParams>, randomness: Buffer, receiptCredential: Serialized<ReceiptCredential>): Serialized<ReceiptCredentialPresentation>;
 export function ServerPublicParams_CreateReceiptCredentialRequestContextDeterministic(serverPublicParams: Wrapper<ServerPublicParams>, randomness: Buffer, receiptSerial: Buffer): Serialized<ReceiptCredentialRequestContext>;
 export function ServerPublicParams_Deserialize(buffer: Buffer): ServerPublicParams;
+export function ServerPublicParams_GetEndorsementPublicKey(params: Wrapper<ServerPublicParams>): Buffer;
 export function ServerPublicParams_ReceiveAuthCredentialWithPniAsServiceId(params: Wrapper<ServerPublicParams>, aci: Buffer, pni: Buffer, redemptionTime: Timestamp, authCredentialWithPniResponseBytes: Buffer): Buffer;
 export function ServerPublicParams_ReceiveExpiringProfileKeyCredential(serverPublicParams: Wrapper<ServerPublicParams>, requestContext: Serialized<ProfileKeyCredentialRequestContext>, response: Serialized<ExpiringProfileKeyCredentialResponse>, currentTimeInSeconds: Timestamp): Serialized<ExpiringProfileKeyCredential>;
 export function ServerPublicParams_ReceiveReceiptCredential(serverPublicParams: Wrapper<ServerPublicParams>, requestContext: Serialized<ReceiptCredentialRequestContext>, response: Serialized<ReceiptCredentialResponse>): Serialized<ReceiptCredential>;

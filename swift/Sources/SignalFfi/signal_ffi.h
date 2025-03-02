@@ -1666,6 +1666,8 @@ SignalFfiError *signal_server_secret_params_get_public_params(SignalMutPointerSe
 
 SignalFfiError *signal_server_secret_params_sign_deterministic(uint8_t (*out)[SignalSIGNATURE_LEN], SignalConstPointerServerSecretParams params, const uint8_t (*randomness)[SignalRANDOMNESS_LEN], SignalBorrowedBuffer message);
 
+SignalFfiError *signal_server_public_params_get_endorsement_public_key(SignalOwnedBuffer *out, SignalConstPointerServerPublicParams params);
+
 SignalFfiError *signal_server_public_params_receive_auth_credential_with_pni_as_service_id(SignalOwnedBuffer *out, SignalConstPointerServerPublicParams params, const SignalServiceIdFixedWidthBinaryBytes *aci, const SignalServiceIdFixedWidthBinaryBytes *pni, uint64_t redemption_time, SignalBorrowedBuffer auth_credential_with_pni_response_bytes);
 
 SignalFfiError *signal_server_public_params_create_auth_credential_with_pni_presentation_deterministic(SignalOwnedBuffer *out, SignalConstPointerServerPublicParams server_public_params, const uint8_t (*randomness)[SignalRANDOMNESS_LEN], const unsigned char (*group_secret_params)[SignalGROUP_SECRET_PARAMS_LEN], SignalBorrowedBuffer auth_credential_with_pni_bytes);

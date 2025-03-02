@@ -13,4 +13,6 @@ pub mod receipts;
 pub mod generic_server_params;
 pub mod server_params;
 
-pub use server_params::{ServerPublicParams, ServerSecretParams};
+pub use server_params::{
+    EndorsementPublicKey, EndorsementServerRootKeyPair, ServerPublicParams, ServerSecretParams,
+};

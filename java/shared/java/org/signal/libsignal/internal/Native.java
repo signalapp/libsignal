@@ -615,6 +615,7 @@ public final class Native {
   public static native byte[] ServerPublicParams_CreateReceiptCredentialRequestContextDeterministic(long serverPublicParams, byte[] randomness, byte[] receiptSerial);
   public static native long ServerPublicParams_Deserialize(byte[] buffer) throws Exception;
   public static native void ServerPublicParams_Destroy(long handle);
+  public static native byte[] ServerPublicParams_GetEndorsementPublicKey(long params);
   public static native byte[] ServerPublicParams_ReceiveAuthCredentialWithPniAsServiceId(long params, byte[] aci, byte[] pni, long redemptionTime, byte[] authCredentialWithPniResponseBytes) throws Exception;
   public static native byte[] ServerPublicParams_ReceiveExpiringProfileKeyCredential(long serverPublicParams, byte[] requestContext, byte[] response, long currentTimeInSeconds) throws Exception;
   public static native byte[] ServerPublicParams_ReceiveReceiptCredential(long serverPublicParams, byte[] requestContext, byte[] response) throws Exception;

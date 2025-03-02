@@ -26,6 +26,15 @@ public final class ServerPublicParams extends NativeHandleGuard.SimpleOwner {
     Native.ServerPublicParams_Destroy(handle);
   }
 
+  /**
+   * Get the serialized form of the params' endorsement key.
+   *
+   * <p>Allows decoupling RingRTC's use of endorsements from libsignal's.
+   */
+  public byte[] getEndorsementPublicKey() {
+    return guardedMap(Native::ServerPublicParams_GetEndorsementPublicKey);
+  }
+
   public void verifySignature(byte[] message, NotarySignature notarySignature)
       throws VerificationFailedException {
     filterExceptions(
