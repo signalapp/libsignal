@@ -30,6 +30,9 @@ fn main() {
     let new_public = new_secret.get_public_params();
     let serialized_public = bincode::serialize(&new_public).unwrap();
 
+    let new_secret_endorsements = new_secret.get_endorsement_root_key_pair();
+    let serialized_secret_endorsements = bincode::serialize(&new_secret_endorsements).unwrap();
+
     println!(
         "server_secret: {}",
         BASE64_STANDARD.encode(&serialized_secret[..])
@@ -37,5 +40,9 @@ fn main() {
     println!(
         "server_public: {}",
         BASE64_STANDARD.encode(&serialized_public[..])
+    );
+    println!(
+        "endorsements_secret: {}",
+        BASE64_STANDARD.encode(&serialized_secret_endorsements[..])
     );
 }
