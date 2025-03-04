@@ -46,10 +46,15 @@
       "currency_code": "USD",
       "manually_canceled": true
     },
-    "backup_subscription": null
+    "backup_subscription": null,
+    "svr_pin": ""
   },
   "recipients": [
-    "Self_",
+    {
+      "Self_": {
+        "avatar_color": null
+      }
+    },
     "ReleaseNotes",
     {
       "DistributionList": {

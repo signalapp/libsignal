@@ -61,7 +61,8 @@
       "subscription_id": {
         "IosAppStoreOriginalTransactionId": 5
       }
-    }
+    },
+    "svr_pin": ""
   },
   "recipients": [],
   "chats": [],

@@ -41,6 +41,7 @@ pub struct AccountData<M: Method + ReferencedTypes> {
     pub avatar_url_path: M::Value<String>,
     pub donation_subscription: M::Value<Option<Subscription>>,
     pub backup_subscription: M::Value<Option<IapSubscriberData>>,
+    pub svr_pin: M::Value<String>,
 }
 
 #[derive(Debug, serde::Serialize)]
@@ -181,6 +182,7 @@ impl<M: Method + ReferencedTypes, C: ReportUnusualTimestamp> TryFromWith<proto::
             avatarUrlPath,
             donationSubscriberData,
             backupsSubscriberData,
+            svrPin,
             special_fields: _,
         } = proto;
 
@@ -222,6 +224,7 @@ impl<M: Method + ReferencedTypes, C: ReportUnusualTimestamp> TryFromWith<proto::
             avatar_url_path: M::value(avatarUrlPath),
             donation_subscription: M::value(donation_subscription),
             backup_subscription: M::value(backup_subscription),
+            svr_pin: M::value(svrPin),
         })
     }
 }
@@ -538,6 +541,7 @@ mod test {
                     subscription_id: IapSubscriptionId::IosAppStoreOriginalTransactionId(5),
                 }),
                 donation_subscription: None,
+                svr_pin: "".to_string(),
             }
         }
     }

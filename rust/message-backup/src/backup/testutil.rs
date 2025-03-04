@@ -12,7 +12,7 @@ use crate::backup::chat::PinOrder;
 use crate::backup::frame::RecipientId;
 use crate::backup::method::{Lookup, LookupPair};
 use crate::backup::recipient::group::GroupData;
-use crate::backup::recipient::{self, ContactData, Destination, FullRecipientData};
+use crate::backup::recipient::{self, ContactData, Destination, FullRecipientData, SelfData};
 use crate::backup::time::{ReportUnusualTimestamp, Timestamp, TimestampIssue};
 use crate::backup::{BackupMeta, Purpose};
 use crate::proto::backup as proto;
@@ -40,7 +40,7 @@ impl BackupMeta {
     }
 }
 static SELF_RECIPIENT: LazyLock<FullRecipientData> =
-    LazyLock::new(|| FullRecipientData::new(Destination::Self_));
+    LazyLock::new(|| FullRecipientData::new(Destination::Self_(SelfData { avatar_color: None })));
 static CONTACT_RECIPIENT: LazyLock<FullRecipientData> = LazyLock::new(|| {
     FullRecipientData::new(Destination::Contact(ContactData::from_proto_test_data()))
 });
@@ -64,6 +64,7 @@ static E164_ONLY_RECIPIENT: LazyLock<FullRecipientData> = LazyLock::new(|| {
         system_given_name: "".to_owned(),
         system_family_name: "".to_owned(),
         system_nickname: "".to_owned(),
+        avatar_color: None,
         note: "".into(),
     }))
 });
@@ -89,6 +90,7 @@ static PNI_ONLY_RECIPIENT: LazyLock<FullRecipientData> = LazyLock::new(|| {
         system_family_name: "".to_owned(),
         system_nickname: "".to_owned(),
         nickname: None,
+        avatar_color: None,
         note: "".into(),
     }))
 });

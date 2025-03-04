@@ -291,6 +291,8 @@ pub struct GroupData {
     pub story_send_mode: proto::group::StorySendMode,
     pub snapshot: GroupSnapshot,
     pub blocked: bool,
+    #[serde(serialize_with = "serialize::optional_enum_as_string")]
+    pub avatar_color: Option<proto::AvatarColor>,
     _limit_construction_to_module: (),
 }
 
@@ -304,6 +306,7 @@ impl<C: ReportUnusualTimestamp> TryFromWith<proto::Group, C> for GroupData {
             storySendMode,
             snapshot,
             blocked,
+            avatarColor,
             special_fields: _,
         } = value;
 
@@ -317,6 +320,9 @@ impl<C: ReportUnusualTimestamp> TryFromWith<proto::Group, C> for GroupData {
             | proto::group::StorySendMode::ENABLED) => s,
         };
 
+        // The color is allowed to be unset.
+        let avatar_color = avatarColor.map(|v| v.enum_value_or_default());
+
         let snapshot = snapshot
             .into_option()
             .ok_or(GroupError::MissingSnapshot)?
@@ -329,6 +335,7 @@ impl<C: ReportUnusualTimestamp> TryFromWith<proto::Group, C> for GroupData {
             story_send_mode,
             snapshot,
             blocked,
+            avatar_color,
             _limit_construction_to_module: (),
         })
     }
@@ -434,6 +441,7 @@ mod test {
                     _limit_construction_to_module: (),
                 },
                 blocked: false,
+                avatar_color: None,
                 _limit_construction_to_module: (),
             }
         }

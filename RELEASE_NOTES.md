@@ -6,3 +6,4 @@ v0.67.2
 - Abstract Server(Private/Public)Params from endorsements. Reduces dependencies in clients and issuing servers.
 - Add EndorsementPublicRootKey accessor to ServerPublicParams.
 - Node: ChatListener has a new optional callback for server alerts. (iOS and Android coming later.)
+- Add support for avatarColor/svrPin fields in backup protos

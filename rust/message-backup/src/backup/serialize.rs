@@ -109,6 +109,14 @@ pub(crate) fn enum_as_string<S: Serializer>(
     format!("{source:?}").serialize(serializer)
 }
 
+/// Serializes [`protobuf::Enum`] types as strings.
+pub(crate) fn optional_enum_as_string<S: Serializer>(
+    source: &Option<impl protobuf::Enum>,
+    serializer: S,
+) -> Result<S::Ok, S::Error> {
+    (*source).map(|v| format!("{v:?}")).serialize(serializer)
+}
+
 /// Serializes an optional bytestring as hex.
 pub(crate) fn optional_hex<S: Serializer>(
     value: &Option<impl AsRef<[u8]>>,
@@ -216,7 +224,7 @@ impl SerializeOrder for FullRecipientData {
                 (Destination::CallLink(lhs), Destination::CallLink(rhs)) => {
                     lhs.root_key.cmp(&rhs.root_key)
                 }
-                (Destination::Self_, Destination::Self_)
+                (Destination::Self_(_), Destination::Self_(_))
                 | (Destination::ReleaseNotes, Destination::ReleaseNotes) => {
                     std::cmp::Ordering::Equal
                 }
@@ -224,7 +232,7 @@ impl SerializeOrder for FullRecipientData {
             }
         } else {
             let discriminant = |value: &Destination<_>| match value {
-                Destination::Self_ => 0,
+                Destination::Self_(_) => 0,
                 Destination::ReleaseNotes => 1,
                 Destination::Contact(_) => 2,
                 Destination::Group(_) => 3,
