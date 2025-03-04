@@ -25,6 +25,7 @@ libsignal-net = { workspace = true }
 libsignal-protocol = { workspace = true }
 
 const-str = { workspace = true, features = ["std"] }
+either = { workspace = true }
 futures-util = { workspace = true }
 hex-literal = { workspace = true }
 http = { workspace = true }

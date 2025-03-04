@@ -20,6 +20,7 @@ pub enum ServerEvent {
         server_delivery_timestamp: Timestamp,
         send_ack: ResponseEnvelopeSender,
     },
+    Alerts(Vec<String>),
     Stopped(DisconnectCause),
 }
 
@@ -44,6 +45,7 @@ impl std::fmt::Debug for ServerEvent {
                 .field("envelope", &format_args!("{} bytes", envelope.len()))
                 .field("server_delivery_timestamp", server_delivery_timestamp)
                 .finish(),
+            Self::Alerts(alerts) => f.debug_tuple("Alerts").field(&alerts.len()).finish(),
             Self::Stopped(error) => f
                 .debug_struct("ConnectionInterrupted")
                 .field("reason", error)
@@ -67,6 +69,8 @@ impl TryFrom<ws2::ListenerEvent> for ServerEvent {
 
     fn try_from(value: ws2::ListenerEvent) -> Result<Self, Self::Error> {
         match value {
+            ws2::ListenerEvent::ReceivedAlerts(alerts) => Ok(Self::Alerts(alerts)),
+
             ws2::ListenerEvent::ReceivedMessage(proto, responder) => {
                 convert_received_message(proto, || {
                     Box::new(move |status| Ok(responder.send_response(status)?))

@@ -62,6 +62,13 @@ export interface ChatServiceListener extends ConnectionEventsListener {
    * were in the queue *when the connection was established* have been delivered.
    */
   onQueueEmpty(): void;
+
+  /**
+   * Called when the server has alerts for the current device.
+   *
+   * In practice this happens as part of the connecting process.
+   */
+  onReceivedAlerts?(alerts: string[]): void;
 }
 
 /**
@@ -229,18 +236,22 @@ export class AuthenticatedChatConnection implements ChatConnection {
    *
    * @param asyncContext the async runtime to use
    * @param listener the listener to send events to
+   * @param alerts alerts to send immediately upon connect
    * @returns an {@link AuthenticatedChatConnection} and handle for the remote
    * end of the fake connection.
    */
   public static fakeConnect(
     asyncContext: TokioAsyncContext,
-    listener: ChatServiceListener
+    listener: ChatServiceListener,
+    alerts?: ReadonlyArray<string>
   ): [AuthenticatedChatConnection, Wrapper<Native.FakeChatRemoteEnd>] {
     const nativeChatListener = makeNativeChatListener(asyncContext, listener);
+
     const fakeChat = newNativeHandle(
       Native.TESTING_FakeChatConnection_Create(
         asyncContext,
-        new WeakListenerWrapper(nativeChatListener)
+        new WeakListenerWrapper(nativeChatListener),
+        alerts?.join('\n') ?? ''
       )
     );
 
@@ -326,6 +337,9 @@ class WeakListenerWrapper implements Native.ChatListener {
   _queue_empty(): void {
     this.listener.deref()?._queue_empty();
   }
+  _received_alerts(alerts: string[]): void {
+    this.listener.deref()?._received_alerts(alerts);
+  }
 }
 
 function makeNativeChatListener(
@@ -348,6 +362,9 @@ function makeNativeChatListener(
       _queue_empty(): void {
         listener.onQueueEmpty();
       },
+      _received_alerts(alerts: string[]): void {
+        listener.onReceivedAlerts?.(alerts);
+      },
       _connection_interrupted(cause: Error | null): void {
         listener.onConnectionInterrupted(cause as LibSignalError | null);
       },
@@ -363,6 +380,9 @@ function makeNativeChatListener(
       throw new Error('Event not supported on unauthenticated connection');
     },
     _queue_empty(): void {
+      throw new Error('Event not supported on unauthenticated connection');
+    },
+    _received_alerts(_alerts: string[]): void {
       throw new Error('Event not supported on unauthenticated connection');
     },
     _connection_interrupted(cause: LibSignalError | null): void {

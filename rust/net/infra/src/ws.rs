@@ -6,6 +6,7 @@
 use std::fmt::{Debug, Display};
 use std::future::Future;
 use std::marker::PhantomData;
+use std::pin::Pin;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -14,6 +15,7 @@ use derive_where::derive_where;
 use futures_util::stream::{SplitSink, SplitStream};
 use futures_util::{Sink, SinkExt as _, Stream, StreamExt, TryFutureExt};
 use http::uri::PathAndQuery;
+use pin_project::pin_project;
 use tokio::sync::Mutex;
 use tokio::time::Instant;
 use tokio_tungstenite::WebSocketStream;
@@ -163,6 +165,14 @@ pub enum WebSocketServiceError {
 #[derive(Default)]
 pub struct Stateless;
 
+#[derive(Debug)]
+#[pin_project]
+pub struct StreamWithResponseHeaders<Inner> {
+    #[pin]
+    pub stream: Inner,
+    pub response_headers: http::HeaderMap,
+}
+
 /// Connects a websocket on top of an existing connection.
 ///
 /// This can't just take as the route type a [`WebSocketRouteFragment`] because
@@ -174,7 +184,7 @@ impl<Inner> Connector<(WebSocketRouteFragment, HttpRouteFragment), Inner> for St
 where
     Inner: AsyncDuplexStream,
 {
-    type Connection = tokio_tungstenite::WebSocketStream<Inner>;
+    type Connection = StreamWithResponseHeaders<tokio_tungstenite::WebSocketStream<Inner>>;
 
     type Error = tungstenite::Error;
 
@@ -226,12 +236,61 @@ where
                 )
                 .body(())?;
 
-            let (stream, _response) =
+            let (stream, response) =
                 tokio_tungstenite::client_async_with_config(request, inner, Some(ws_config))
                     .await?;
 
-            Ok(stream)
+            Ok(StreamWithResponseHeaders {
+                stream,
+                response_headers: response.into_parts().0.headers,
+            })
         }
+    }
+}
+
+impl<S> StreamWithResponseHeaders<S> {
+    fn as_pin_mut(self: Pin<&mut Self>) -> Pin<&mut S> {
+        self.project().stream
+    }
+}
+
+impl<S: Stream> Stream for StreamWithResponseHeaders<S> {
+    type Item = S::Item;
+
+    fn poll_next(
+        self: Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<Option<Self::Item>> {
+        self.as_pin_mut().poll_next(cx)
+    }
+}
+
+impl<S: Sink<T>, T> Sink<T> for StreamWithResponseHeaders<S> {
+    type Error = S::Error;
+
+    fn poll_ready(
+        self: Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<Result<(), Self::Error>> {
+        self.as_pin_mut().poll_ready(cx)
+    }
+
+    fn start_send(self: Pin<&mut Self>, item: T) -> Result<(), Self::Error> {
+        self.as_pin_mut().start_send(item)
+    }
+
+    fn poll_flush(
+        self: Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<Result<(), Self::Error>> {
+        self.as_pin_mut().poll_flush(cx)
+    }
+
+    fn poll_close(
+        self: Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<Result<(), Self::Error>> {
+        self.as_pin_mut().poll_close(cx)
     }
 }
 
@@ -660,7 +719,10 @@ pub mod testutil {
         );
         let server_future = tokio_tungstenite::accept_async(server);
         let (client_res, server_res) = tokio::join!(client_future, server_future);
-        let client_stream = client_res.unwrap();
+        let StreamWithResponseHeaders {
+            stream: client_stream,
+            response_headers: _,
+        } = client_res.unwrap();
         let server_stream = server_res.unwrap();
         (server_stream, client_stream)
     }

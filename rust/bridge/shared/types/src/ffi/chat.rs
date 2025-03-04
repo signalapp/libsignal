@@ -107,6 +107,13 @@ impl ChatListener for ChatListenerStruct {
         (self.0.received_queue_empty)(self.0.ctx)
     }
 
+    fn received_alerts(&mut self, alerts: Vec<String>) {
+        // TODO: Implement this for iOS.
+        if !alerts.is_empty() {
+            log::warn!("discarding {} alerts from the server", alerts.len());
+        }
+    }
+
     fn connection_interrupted(&mut self, disconnect_cause: DisconnectCause) {
         let error = match disconnect_cause {
             DisconnectCause::LocalDisconnect => None,

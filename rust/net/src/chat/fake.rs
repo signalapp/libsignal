@@ -14,6 +14,7 @@ use tokio_stream::wrappers::UnboundedReceiverStream;
 
 use crate::chat::{ws2, ChatConnection, ConnectionInfo, MessageProto, RequestProto, ResponseProto};
 use crate::connect_state::RouteInfo;
+use crate::env::ALERT_HEADER_NAME;
 
 /// The remote end of a fake connection to the chat server.
 #[derive(Debug)]
@@ -36,9 +37,10 @@ pub enum ReceiveRequestError {
 
 impl ChatConnection {
     /// Creates a `ChatConnection` connected to a fake remote end.
-    pub fn new_fake(
+    pub fn new_fake<'a>(
         tokio_runtime: tokio::runtime::Handle,
         listener: ws2::EventListener,
+        alerts: impl IntoIterator<Item = &'a str>,
     ) -> (Self, FakeChatRemote) {
         let (tx_to_local, rx_from_remote) = tokio::sync::mpsc::unbounded_channel();
         let (tx_to_remote, rx_from_local) = tokio::sync::mpsc::unbounded_channel();
@@ -70,8 +72,22 @@ impl ChatConnection {
             remote_idle_timeout: Duration::from_secs(86400),
             initial_request_id: 0,
         };
+        let headers = http::HeaderMap::from_iter(alerts.into_iter().map(|alert| {
+            (
+                http::HeaderName::from_static(ALERT_HEADER_NAME),
+                http::HeaderValue::from_str(alert)
+                    .expect("valid headers only for a fake connection"),
+            )
+        }));
         let chat = Self {
-            inner: crate::chat::ws2::Chat::new(tokio_runtime, local, config, log_tag, listener),
+            inner: crate::chat::ws2::Chat::new(
+                tokio_runtime,
+                local,
+                headers,
+                config,
+                log_tag,
+                listener,
+            ),
             connection_info,
         };
         (chat, remote)

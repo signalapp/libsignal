@@ -5,3 +5,4 @@ v0.67.2
 - Switch message chain key storage to store seed value rather than IV/MAC-key/key.
 - Abstract Server(Private/Public)Params from endorsements. Reduces dependencies in clients and issuing servers.
 - Add EndorsementPublicRootKey accessor to ServerPublicParams.
+- Node: ChatListener has a new optional callback for server alerts. (iOS and Android coming later.)

@@ -81,19 +81,26 @@ extension AuthenticatedChatConnection {
         }
     }
 
-    internal static func fakeConnect(tokioAsyncContext: TokioAsyncContext, listener: any ChatConnectionListener) -> (AuthenticatedChatConnection, FakeChatRemote) {
+    internal static func fakeConnect(tokioAsyncContext: TokioAsyncContext, listener: any ChatConnectionListener, alerts: [String] = []) -> (AuthenticatedChatConnection, FakeChatRemote) {
         let listenerBridge = ChatListenerBridge(chatConnectionListener: listener)
         var listenerStruct = listenerBridge
             .makeListenerStruct()
 
         var fakeChatConnection = SignalMutPointerFakeChatConnection()
-        failOnError(
-            withUnsafePointer(to: &listenerStruct) { listener in
-                tokioAsyncContext.withNativeHandle { asyncContext in
-                    signal_testing_fake_chat_connection_create(&fakeChatConnection, asyncContext.const(), SignalConstPointerFfiChatListenerStruct(raw: listener))
+
+        failOnError {
+            try withUnsafePointer(to: &listenerStruct) { listener in
+                try tokioAsyncContext.withNativeHandle { asyncContext in
+                    try checkError(signal_testing_fake_chat_connection_create(
+                        &fakeChatConnection,
+                        asyncContext.const(),
+                        SignalConstPointerFfiChatListenerStruct(raw: listener),
+                        alerts.joined(separator: "\n")
+                    ))
                 }
             }
-        )
+        }
+
         defer { signal_fake_chat_connection_destroy(fakeChatConnection) }
 
         return failOnError {

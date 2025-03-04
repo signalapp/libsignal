@@ -70,12 +70,23 @@ public class AuthenticatedChatConnection extends ChatConnection {
    */
   public static Pair<AuthenticatedChatConnection, FakeChatRemote> fakeConnect(
       final TokioAsyncContext tokioAsyncContext, ChatConnectionListener listener) {
+    return fakeConnect(tokioAsyncContext, listener, new String[0]);
+  }
+
+  /**
+   * Test-only method to create a {@code AuthenticatedChatConnection} connected to a fake remote.
+   *
+   * <p>The returned {@link FakeChatRemote} can be used to send messages to the connection.
+   */
+  public static Pair<AuthenticatedChatConnection, FakeChatRemote> fakeConnect(
+      final TokioAsyncContext tokioAsyncContext, ChatConnectionListener listener, String[] alerts) {
 
     return tokioAsyncContext.guardedMap(
         asyncContextHandle -> {
           SetChatLaterListenerBridge bridgeListener = new SetChatLaterListenerBridge();
           long fakeChatConnection =
-              NativeTesting.TESTING_FakeChatConnection_Create(asyncContextHandle, bridgeListener);
+              NativeTesting.TESTING_FakeChatConnection_Create(
+                  asyncContextHandle, bridgeListener, String.join("\n", alerts));
           AuthenticatedChatConnection chat =
               new AuthenticatedChatConnection(
                   tokioAsyncContext,

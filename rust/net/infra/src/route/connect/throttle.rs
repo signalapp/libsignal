@@ -62,6 +62,13 @@ impl<C> ThrottlingConnector<C> {
 #[pin_project]
 pub struct ThrottledConnection<S>(#[pin] S, OwnedSemaphorePermit);
 
+impl<S> ThrottledConnection<S> {
+    /// Returns the inner connection, **discarding the semaphore permit.**
+    pub fn into_inner(self) -> S {
+        self.0
+    }
+}
+
 impl<C, R, Inner> Connector<R, Inner> for ThrottlingConnector<C>
 where
     R: Send,

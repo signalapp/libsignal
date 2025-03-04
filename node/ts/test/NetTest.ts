@@ -421,12 +421,25 @@ describe('chat service api', () => {
       const listener = {
         onIncomingMessage: sinon.stub(),
         onQueueEmpty: sinon.stub(),
+        onReceivedAlerts: sinon.stub(),
         onConnectionInterrupted: sinon.stub(),
       };
+
+      // We have to set this up ahead of time because the callback is scheduled as part of the
+      // connect action.
+      const receivedAlerts = new CompletablePromise();
+      listener.onReceivedAlerts.callsFake(receivedAlerts.resolve);
+
       const tokio = new TokioAsyncContext(Native.TokioAsyncContext_new());
       const [_chat, fakeRemote] = AuthenticatedChatConnection.fakeConnect(
         tokio,
-        listener
+        listener,
+        ['UPPERcase', 'lowercase']
+      );
+
+      await receivedAlerts.done();
+      expect(listener.onReceivedAlerts).to.have.been.calledOnceWith(
+        sinon.match.array.deepEquals(['UPPERcase', 'lowercase'])
       );
 
       // a helper function to check that the message has been passed to the listener
@@ -475,6 +488,9 @@ describe('chat service api', () => {
         onQueueEmpty(): void {
           recordCall('_queue_empty');
         },
+        onReceivedAlerts(alerts: string[]): void {
+          recordCall('_received_alerts', alerts);
+        },
         onConnectionInterrupted(cause: object | null): void {
           recordCall('_connection_interrupted', cause);
         },
@@ -499,6 +515,10 @@ describe('chat service api', () => {
       ];
       const callsReceived: [string, (object | null)[]][] = [];
       const callsExpected: [string, ((value: object | null) => void)[]][] = [
+        [
+          '_received_alerts',
+          [(value: object | null) => expect(value).deep.equals([])],
+        ],
         ['_incoming_message', []],
         ['_queue_empty', []],
         ['_incoming_message', []],
@@ -550,6 +570,9 @@ describe('chat service api', () => {
         onQueueEmpty(): void {
           fail('unexpected call');
         },
+        onReceivedAlerts(_alerts: string[]): void {
+          fail('unexpected call');
+        },
         onConnectionInterrupted(cause: object | null): void {
           connectionInterruptedReasons.push(cause);
           completable.complete();
@@ -571,6 +594,7 @@ describe('chat service api', () => {
     const [chat, fakeRemote] = AuthenticatedChatConnection.fakeConnect(tokio, {
       onIncomingMessage: () => {},
       onQueueEmpty: () => {},
+      onReceivedAlerts() {},
       onConnectionInterrupted: () => {},
     });
 

@@ -67,7 +67,7 @@ public final class NativeTesting {
   public static native Object TESTING_ErrorOnReturnAsync(Object needsCleanup);
   public static native CompletableFuture<Object> TESTING_ErrorOnReturnIo(long asyncRuntime, Object needsCleanup);
   public static native Object TESTING_ErrorOnReturnSync(Object needsCleanup);
-  public static native long TESTING_FakeChatConnection_Create(long tokio, BridgeChatListener listener);
+  public static native long TESTING_FakeChatConnection_Create(long tokio, BridgeChatListener listener, String alertsJoinedByNewlines);
   public static native long TESTING_FakeChatConnection_TakeAuthenticatedChat(long chat);
   public static native long TESTING_FakeChatConnection_TakeRemote(long chat);
   public static native void TESTING_FakeChatRemoteEnd_InjectConnectionInterrupted(long chat);

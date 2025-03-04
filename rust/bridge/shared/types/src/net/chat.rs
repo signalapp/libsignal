@@ -105,12 +105,13 @@ impl AuthenticatedChatConnection {
         })
     }
 
-    pub fn new_fake(
+    pub fn new_fake<'a>(
         tokio_runtime: tokio::runtime::Handle,
         listener: Box<dyn ChatListener>,
+        alerts: impl IntoIterator<Item = &'a str>,
     ) -> (Self, FakeChatRemote) {
         let (inner, remote) =
-            ChatConnection::new_fake(tokio_runtime, listener.into_event_listener());
+            ChatConnection::new_fake(tokio_runtime, listener.into_event_listener(), alerts);
         (
             Self {
                 inner: MaybeChatConnection::Running(inner).into(),
@@ -343,6 +344,7 @@ pub trait ChatListener: Send {
         ack: ServerMessageAck,
     );
     fn received_queue_empty(&mut self);
+    fn received_alerts(&mut self, alerts: Vec<String>);
     fn connection_interrupted(&mut self, disconnect_cause: DisconnectCause);
 }
 
@@ -362,6 +364,7 @@ impl dyn ChatListener {
                 ServerMessageAck::new(send_ack),
             ),
             chat::server_requests::ServerEvent::QueueEmpty => self.received_queue_empty(),
+            chat::server_requests::ServerEvent::Alerts(alerts) => self.received_alerts(alerts),
             chat::server_requests::ServerEvent::Stopped(error) => {
                 self.connection_interrupted(error)
             }

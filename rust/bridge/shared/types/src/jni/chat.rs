@@ -86,6 +86,13 @@ impl ChatListener for JniChatListener {
         });
     }
 
+    fn received_alerts(&mut self, alerts: Vec<String>) {
+        // TODO: Implement this for Android.
+        if !alerts.is_empty() {
+            log::warn!("discarding {} alerts from the server", alerts.len());
+        }
+    }
+
     fn connection_interrupted(&mut self, disconnect_cause: DisconnectCause) {
         let listener = &self.listener;
         self.attach_and_log_on_error("connection interrupted", move |env| {

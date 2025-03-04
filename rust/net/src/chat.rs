@@ -9,16 +9,16 @@ use std::time::Duration;
 
 use ::http::uri::PathAndQuery;
 use ::http::{HeaderMap, HeaderName, HeaderValue, StatusCode};
-use futures_util::SinkExt;
 use libsignal_net_infra::connection_manager::MultiRouteConnectionManager;
 use libsignal_net_infra::dns::DnsResolver;
 use libsignal_net_infra::route::{
-    Connector, RouteProvider, RouteProviderExt, ThrottledConnection, ThrottlingConnector,
-    TransportRoute, UnresolvedHttpsServiceRoute, UnresolvedWebsocketServiceRoute, WebSocketRoute,
+    Connector, RouteProvider, RouteProviderExt, ThrottlingConnector, TransportRoute,
+    UnresolvedHttpsServiceRoute, UnresolvedWebsocketServiceRoute, WebSocketRoute,
     WebSocketRouteFragment,
 };
 use libsignal_net_infra::timeouts::ONE_ROUTE_CONNECTION_TIMEOUT;
 use libsignal_net_infra::utils::ObservableEvent;
+use libsignal_net_infra::ws::StreamWithResponseHeaders;
 use libsignal_net_infra::{
     make_ws_config, AsHttpHeader, Connection, EndpointConnection, IpType, TransportInfo,
 };
@@ -164,10 +164,6 @@ pub struct ChatConnection {
     connection_info: ConnectionInfo,
 }
 
-/// The type of the websocket connection over a given transport-level connection
-/// used by [`ChatConnection`].
-type ChatWebSocketConnection<TC> = ThrottledConnection<WebSocketStream<TC>>;
-
 type ChatTransportConnection =
     <DefaultTransportConnector as Connector<TransportRoute, ()>>::Connection;
 
@@ -176,7 +172,8 @@ type ChatTransportConnection =
 /// Parameterized over the type of the transport-level connection for testing.
 #[derive(Debug)]
 pub struct PendingChatConnection<T = ChatTransportConnection> {
-    connection: ChatWebSocketConnection<T>,
+    connection: WebSocketStream<T>,
+    connect_response_headers: http::HeaderMap,
     ws_config: ws2::Config,
     route_info: RouteInfo,
     log_tag: Arc<str>,
@@ -250,7 +247,7 @@ impl ChatConnection {
         });
 
         let log_tag: Arc<str> = log_tag.into();
-        let (ws_connection, route_info) = ConnectState::connect_ws(
+        let (connection, route_info) = ConnectState::connect_ws(
             connect,
             ws_routes,
             (),
@@ -268,8 +265,16 @@ impl ChatConnection {
         .await
         .map_err(ChatServiceError::from_single_connect_error)?;
 
+        // It's okay to discard the ThrottlingConnection layer here, because no other routes are
+        // still connecting.
+        let StreamWithResponseHeaders {
+            stream,
+            response_headers,
+        } = connection.into_inner();
+
         Ok(PendingChatConnection {
-            connection: ws_connection,
+            connection: stream,
+            connect_response_headers: response_headers,
             route_info,
             ws_config,
             log_tag,
@@ -283,6 +288,7 @@ impl ChatConnection {
     ) -> Self {
         let PendingChatConnection {
             connection,
+            connect_response_headers,
             ws_config,
             route_info,
             log_tag,
@@ -292,9 +298,10 @@ impl ChatConnection {
                 route_info,
                 transport_info: connection.transport_info(),
             },
-            inner: crate::chat::ws2::Chat::new(
+            inner: ws2::Chat::new(
                 tokio_runtime,
                 connection,
+                connect_response_headers,
                 ws_config,
                 log_tag,
                 listener,
@@ -331,7 +338,7 @@ impl PendingChatConnection {
     }
 
     pub async fn disconnect(&mut self) {
-        if let Err(error) = self.connection.close().await {
+        if let Err(error) = self.connection.close(None).await {
             log::error!(
                 "[{}] pending chat connection disconnect failed with {error}",
                 &self.log_tag

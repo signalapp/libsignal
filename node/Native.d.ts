@@ -123,6 +123,7 @@ type ChatListener = {
     ack: ServerMessageAck
   ): void;
   _queue_empty(): void;
+  _received_alerts(alerts: string[]): void;
   _connection_interrupted(
     // A LibSignalError or null, but not naming the type to avoid circular import dependencies.
     reason: Error | null
@@ -532,7 +533,7 @@ export function TESTING_ErrorOnBorrowSync(_input: null): void;
 export function TESTING_ErrorOnReturnAsync(_needsCleanup: null): Promise<null>;
 export function TESTING_ErrorOnReturnIo(asyncRuntime: Wrapper<NonSuspendingBackgroundThreadRuntime>, _needsCleanup: null): CancellablePromise<null>;
 export function TESTING_ErrorOnReturnSync(_needsCleanup: null): null;
-export function TESTING_FakeChatConnection_Create(tokio: Wrapper<TokioAsyncContext>, listener: ChatListener): FakeChatConnection;
+export function TESTING_FakeChatConnection_Create(tokio: Wrapper<TokioAsyncContext>, listener: ChatListener, alertsJoinedByNewlines: string): FakeChatConnection;
 export function TESTING_FakeChatConnection_TakeAuthenticatedChat(chat: Wrapper<FakeChatConnection>): AuthenticatedChatConnection;
 export function TESTING_FakeChatConnection_TakeRemote(chat: Wrapper<FakeChatConnection>): FakeChatRemoteEnd;
 export function TESTING_FakeChatRemoteEnd_InjectConnectionInterrupted(chat: Wrapper<FakeChatRemoteEnd>): void;

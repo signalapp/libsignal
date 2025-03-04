@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use either::Either;
 use http::{HeaderMap, HeaderName, HeaderValue, StatusCode};
 use libsignal_bridge_macros::*;
 use libsignal_bridge_types::net::chat::{AuthenticatedChatConnection, ChatListener, HttpRequest};
@@ -39,8 +40,17 @@ impl std::panic::RefUnwindSafe for FakeChatRemoteEnd {}
 fn TESTING_FakeChatConnection_Create(
     tokio: &TokioAsyncContext,
     listener: Box<dyn ChatListener>,
+    alerts_joined_by_newlines: String,
 ) -> FakeChatConnection {
-    let (chat, remote) = AuthenticatedChatConnection::new_fake(tokio.handle(), listener);
+    let (chat, remote) = AuthenticatedChatConnection::new_fake(
+        tokio.handle(),
+        listener,
+        if alerts_joined_by_newlines.is_empty() {
+            Either::Left(std::iter::empty())
+        } else {
+            Either::Right(alerts_joined_by_newlines.split('\n'))
+        },
+    );
     FakeChatConnection {
         chat: Some(chat).into(),
         remote_end: Some(remote).into(),

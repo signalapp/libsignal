@@ -35,6 +35,7 @@ use crate::enclave::{
 
 const DEFAULT_HTTPS_PORT: NonZeroU16 = nonzero!(443_u16);
 pub const TIMESTAMP_HEADER_NAME: &str = "x-signal-timestamp";
+pub(crate) const ALERT_HEADER_NAME: &str = "x-signal-alert";
 
 const DOMAIN_CONFIG_CHAT: DomainConfig = DomainConfig {
     ip_v4: &[
