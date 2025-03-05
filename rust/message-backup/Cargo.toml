@@ -39,7 +39,7 @@ required-features = ["test-util"]
 [dependencies]
 libsignal-account-keys = { workspace = true }
 libsignal-core = { workspace = true }
-libsignal-message-backup-macros = { path = "macros" }
+libsignal-message-backup-macros = { workspace = true }
 libsignal-protocol = { workspace = true }
 signal-crypto = { workspace = true }
 usernames = { workspace = true }
@@ -49,11 +49,11 @@ zkgroup = { workspace = true }
 aes = { workspace = true }
 arrayvec = { workspace = true }
 assert_matches = { workspace = true }
-async-compression = { version = "0.4.5", features = ["futures-io", "gzip"] }
+async-compression = { workspace = true, features = ["futures-io", "gzip"] }
 async-trait = { workspace = true }
 cbc = { workspace = true }
 clap = { workspace = true, features = ["derive"] }
-clap-stdin = "0.6.0"
+clap-stdin = { workspace = true }
 derive-where = { workspace = true }
 derive_more = { workspace = true, features = ["from", "into_iterator"] }
 displaydoc = { workspace = true }
@@ -62,14 +62,14 @@ futures = { workspace = true }
 hex = { workspace = true, features = ["serde"] }
 hkdf = { workspace = true }
 hmac = { workspace = true }
-intmap = "3.0.0"
+intmap = { workspace = true }
 itertools = { workspace = true }
 log = { workspace = true }
-macro_rules_attribute = "0.2.0"
+macro_rules_attribute = { workspace = true }
 mediasan-common = { workspace = true }
 num_enum = { workspace = true }
-protobuf = "3.3.0"
-protobuf-json-mapping = { version = "3.3.0", optional = true }
+protobuf = { workspace = true }
+protobuf-json-mapping = { workspace = true, optional = true }
 rand = { workspace = true, optional = true }
 serde = { workspace = true, features = ["derive", "rc"] }
 serde_json = { workspace = true, optional = true, features = ["preserve_order"] }
@@ -82,26 +82,26 @@ uuid = { workspace = true, features = ["serde"] }
 visibility = { workspace = true }
 
 [dev-dependencies]
-libsignal-message-backup = { path = "./", features = ["json", "scramble", "test-util"] }
+libsignal-message-backup = { workspace = true, features = ["json", "scramble", "test-util"] }
 signal-crypto = { workspace = true }
 
 array-concat = { workspace = true }
-assert_cmd = "2.0.13"
+assert_cmd = { workspace = true }
 criterion = { workspace = true }
-dir-test = "0.4.1"
+dir-test = { workspace = true }
 futures = { workspace = true, features = ["executor"] }
 hex-literal = { workspace = true }
-json5 = "0.4.1"
+json5 = { workspace = true }
 nonzero_ext = { workspace = true }
 once_cell = { workspace = true }
 pretty_assertions = { workspace = true }
 test-case = { workspace = true }
-test-log = "0.2.14"
+test-log = { workspace = true }
 uuid = { workspace = true, features = ["v4"] }
 
 [build-dependencies]
-protobuf = "3.3.0"
-protobuf-codegen = "3.3.0"
+protobuf = { workspace = true }
+protobuf-codegen = { workspace = true }
 
 # Enable sha2 asm for local builds (there is a similar block in libsignal-bridge-types).
 [target.'cfg(not(any(windows, target_arch = "x86")))'.dev-dependencies]

@@ -16,7 +16,7 @@ edition = "2021"
 crate-type = ["cdylib"]
 
 [dependencies]
-signal-neon-futures = { path = ".." }
+signal-neon-futures = { workspace = true }
 
 futures-util = { workspace = true }
 neon = { workspace = true, default-features = false, features = ["napi-1"] }
