@@ -54,12 +54,28 @@ public class AuthenticatedChatConnection extends ChatConnection {
   }
 
   private static final class SetChatLaterListenerBridge extends ListenerBridge {
+    String[] savedAlerts;
+
     SetChatLaterListenerBridge() {
       super(null);
     }
 
     void setChat(ChatConnection chat) {
       this.chat = new WeakReference<>(chat);
+      if (savedAlerts != null) {
+        super.onReceivedAlerts(savedAlerts);
+        savedAlerts = null;
+      }
+    }
+
+    public void onReceivedAlerts(String[] alerts) {
+      // This callback can happen before setChat, so we might need to replay it later.
+      if (this.chat.get() == null) {
+        savedAlerts = alerts;
+        return;
+      }
+
+      super.onReceivedAlerts(alerts);
     }
   }
 

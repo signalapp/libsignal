@@ -87,10 +87,16 @@ impl ChatListener for JniChatListener {
     }
 
     fn received_alerts(&mut self, alerts: Vec<String>) {
-        // TODO: Implement this for Android.
-        if !alerts.is_empty() {
-            log::warn!("discarding {} alerts from the server", alerts.len());
-        }
+        let listener = &self.listener;
+        self.attach_and_log_on_error("received alerts", move |env| {
+            let alerts = alerts.into_boxed_slice().convert_into(env)?;
+            call_method_checked(
+                env,
+                listener,
+                "onReceivedAlerts",
+                jni_args!((alerts => [java.lang.String]) -> void),
+            )
+        });
     }
 
     fn connection_interrupted(&mut self, disconnect_cause: DisconnectCause) {

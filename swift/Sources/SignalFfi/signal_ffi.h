@@ -905,6 +905,8 @@ typedef void (*SignalReceivedIncomingMessage)(void *ctx, SignalOwnedBuffer envel
 
 typedef void (*SignalReceivedQueueEmpty)(void *ctx);
 
+typedef void (*SignalReceivedAlerts)(void *ctx, SignalStringArray alerts);
+
 typedef void (*SignalConnectionInterrupted)(void *ctx, SignalFfiError *error);
 
 typedef void (*SignalDestroyChatListener)(void *ctx);
@@ -928,6 +930,7 @@ typedef struct {
   void *ctx;
   SignalReceivedIncomingMessage received_incoming_message;
   SignalReceivedQueueEmpty received_queue_empty;
+  SignalReceivedAlerts received_alerts;
   SignalConnectionInterrupted connection_interrupted;
   SignalDestroyChatListener destroy;
 } SignalFfiChatListenerStruct;

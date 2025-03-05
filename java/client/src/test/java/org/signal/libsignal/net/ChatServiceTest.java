@@ -281,8 +281,9 @@ public class ChatServiceTest {
   }
 
   @Test
-  public void testConnectionListenerCallbacks() throws Exception {
+  public void testConnectionListenerCallbacks() throws Throwable {
     class Listener implements ChatConnectionListener {
+      boolean receivedAlerts;
       boolean receivedMessage1;
       boolean receivedMessage2;
       boolean receivedQueueEmpty;
@@ -297,12 +298,14 @@ public class ChatServiceTest {
         try {
           switch ((int) serverDeliveryTimestamp) {
             case 1000:
+              assertTrue(receivedAlerts);
               assertFalse(receivedMessage1);
               assertFalse(receivedMessage2);
               assertFalse(receivedQueueEmpty);
               receivedMessage1 = true;
               break;
             case 2000:
+              assertTrue(receivedAlerts);
               assertTrue(receivedMessage1);
               assertFalse(receivedMessage2);
               assertFalse(receivedQueueEmpty);
@@ -320,6 +323,7 @@ public class ChatServiceTest {
 
       public void onQueueEmpty(ChatConnection chat) {
         try {
+          assertTrue(receivedAlerts);
           assertTrue(receivedMessage1);
           assertTrue(receivedMessage2);
           assertFalse(receivedQueueEmpty);
@@ -331,9 +335,25 @@ public class ChatServiceTest {
         }
       }
 
+      public void onReceivedAlerts(ChatConnection chat, String[] alerts) {
+        try {
+          assertFalse(receivedAlerts);
+          assertFalse(receivedMessage1);
+          assertFalse(receivedMessage2);
+          assertFalse(receivedQueueEmpty);
+          assertArrayEquals(alerts, new String[] {"UPPERcase", "lowercase"});
+          receivedAlerts = true;
+        } catch (Throwable error) {
+          if (this.error == null) {
+            this.error = error;
+          }
+        }
+      }
+
       public void onConnectionInterrupted(
           ChatConnection chat, ChatServiceException disconnectReason) {
         try {
+          assertTrue(receivedAlerts);
           assertTrue(receivedMessage1);
           assertTrue(receivedMessage2);
           assertTrue(receivedQueueEmpty);
@@ -351,7 +371,9 @@ public class ChatServiceTest {
     final TokioAsyncContext tokioAsyncContext = new TokioAsyncContext();
     final Listener listener = new Listener();
     final Pair<AuthenticatedChatConnection, AuthenticatedChatConnection.FakeChatRemote>
-        chatAndFakeRemote = AuthenticatedChatConnection.fakeConnect(tokioAsyncContext, listener);
+        chatAndFakeRemote =
+            AuthenticatedChatConnection.fakeConnect(
+                tokioAsyncContext, listener, new String[] {"UPPERcase", "lowercase"});
     final AuthenticatedChatConnection chat = chatAndFakeRemote.first();
     final AuthenticatedChatConnection.FakeChatRemote fakeRemote = chatAndFakeRemote.second();
 
@@ -391,7 +413,10 @@ public class ChatServiceTest {
     fakeRemote.guardedRun(NativeTesting::TESTING_FakeChatRemoteEnd_InjectConnectionInterrupted);
 
     listener.latch.await();
-    assertNull(listener.error);
+    if (listener.error != null) {
+      // Rethrow for the original backtrace.
+      throw listener.error;
+    }
 
     // Make sure the chat object doesn't get GC'd early.
     Native.keepAlive(chat);

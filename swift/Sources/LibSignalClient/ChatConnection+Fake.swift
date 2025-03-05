@@ -82,7 +82,7 @@ extension AuthenticatedChatConnection {
     }
 
     internal static func fakeConnect(tokioAsyncContext: TokioAsyncContext, listener: any ChatConnectionListener, alerts: [String] = []) -> (AuthenticatedChatConnection, FakeChatRemote) {
-        let listenerBridge = ChatListenerBridge(chatConnectionListener: listener)
+        let listenerBridge = SetChatLaterListenerBridge(chatConnectionListenerForTesting: listener)
         var listenerStruct = listenerBridge
             .makeListenerStruct()
 
@@ -115,6 +115,34 @@ extension AuthenticatedChatConnection {
             let fakeRemote = FakeChatRemote(handle: NonNull(fakeRemoteHandle)!, tokioAsyncContext: tokioAsyncContext)
             return (chat, fakeRemote)
         }
+    }
+}
+
+private class SetChatLaterListenerBridge: ChatListenerBridge {
+    private var savedAlerts: [String]?
+
+    override init(chatConnectionListenerForTesting chatListener: any ChatConnectionListener) {
+        super.init(chatConnectionListenerForTesting: chatListener)
+    }
+
+    func setConnection(chatConnection: AuthenticatedChatConnection) {
+        self.chatConnection = chatConnection
+
+        if let savedAlerts {
+            super.didReceiveAlerts(savedAlerts)
+            self.savedAlerts = nil
+        }
+    }
+
+    // Override point for ChatConnection+Fake.
+    override func didReceiveAlerts(_ alerts: [String]) {
+        // This callback can happen before setConnection, so we might need to replay it later.
+        guard self.chatConnection != nil else {
+            self.savedAlerts = alerts
+            return
+        }
+
+        super.didReceiveAlerts(alerts)
     }
 }
 

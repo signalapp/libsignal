@@ -32,6 +32,15 @@ public interface ChatConnectionListener {
   default void onQueueEmpty(ChatConnection chat) {}
 
   /**
+   * Called when the server has alerts for the current device.
+   *
+   * <p>In practice this happens as part of the connecting process.
+   *
+   * <p>The default implementation of this method does nothing.
+   */
+  default void onReceivedAlerts(ChatConnection chat, String[] alerts) {}
+
+  /**
    * Called when the client gets disconnected from the server.
    *
    * <p>This includes both deliberate disconnects as well as unexpected socket closures. In the case

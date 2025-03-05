@@ -31,10 +31,18 @@ public protocol ChatConnectionListener: ConnectionEventsListener<AuthenticatedCh
     ///
     /// The default implementation of this method does nothing.
     func chatConnectionDidReceiveQueueEmpty(_ chat: AuthenticatedChatConnection)
+
+    /// Called when the server has alerts for the current device.
+    ///
+    /// In practice this happens as part of the connecting process.
+    ///
+    /// The default implementation of this method does nothing.
+    func chatConnection(_ chat: AuthenticatedChatConnection, didReceiveAlerts alerts: [String])
 }
 
 extension ChatConnectionListener {
     public func chatConnectionDidReceiveQueueEmpty(_: AuthenticatedChatConnection) {}
+    public func chatConnection(_ chat: AuthenticatedChatConnection, didReceiveAlerts alerts: [String]) {}
 }
 
 private protocol ChatListenerConnection {
@@ -50,8 +58,8 @@ internal class ChatListenerBridge {
         }
     }
 
-    private weak var chatConnection: AuthenticatedChatConnection?
-    private var chatListener: any ChatConnectionListener
+    internal weak var chatConnection: AuthenticatedChatConnection?
+    private let chatListener: any ChatConnectionListener
 
     internal init(
         chatConnection: AuthenticatedChatConnection,
@@ -62,13 +70,18 @@ internal class ChatListenerBridge {
     }
 
     internal init(
-        chatConnectionListener: any ChatConnectionListener
+        chatConnectionListenerForTesting chatListener: any ChatConnectionListener
     ) {
-        self.chatListener = chatConnectionListener
+        self.chatListener = chatListener
     }
 
-    internal func setConnection(chatConnection: AuthenticatedChatConnection) {
-        self.chatConnection = chatConnection
+    // Customization point for ChatConnection+Fake.
+    internal func didReceiveAlerts(_ alerts: [String]) {
+        guard let chatConnection = self.chatConnection else {
+            return
+        }
+
+        self.chatListener.chatConnection(chatConnection, didReceiveAlerts: alerts)
     }
 
     /// Creates an **owned** callback struct from this object.
@@ -100,6 +113,19 @@ internal class ChatListenerBridge {
 
             bridge.chatListener.chatConnectionDidReceiveQueueEmpty(chatConnection)
         }
+        let receivedAlerts: SignalReceivedAlerts = { rawCtx, alerts in
+            let bridge = Unmanaged<ChatListenerBridge>.fromOpaque(rawCtx!).takeUnretainedValue()
+
+            // We do this *before* the early-exit so that the memory is reliably cleaned up.
+            let swiftAlerts = failOnError {
+                try invokeFnReturningStringArray {
+                    $0!.pointee = alerts
+                    return nil
+                }
+            }
+
+            bridge.didReceiveAlerts(swiftAlerts)
+        }
         let connectionInterrupted: SignalConnectionInterrupted = { rawCtx, maybeError in
             let bridge = Unmanaged<ChatListenerBridge>.fromOpaque(rawCtx!).takeUnretainedValue()
             guard let chatConnection = bridge.chatConnection else {
@@ -113,6 +139,7 @@ internal class ChatListenerBridge {
             ctx: Unmanaged.passRetained(self).toOpaque(),
             received_incoming_message: receivedIncomingMessage,
             received_queue_empty: receivedQueueEmpty,
+            received_alerts: receivedAlerts,
             connection_interrupted: connectionInterrupted,
             destroy: { rawCtx in
                 _ = Unmanaged<AnyObject>.fromOpaque(rawCtx!).takeRetainedValue()
@@ -166,6 +193,9 @@ internal final class UnauthConnectionEventsListenerBridge {
         let receivedQueueEmpty: SignalReceivedQueueEmpty = { _ in
             fatalError("not used for the unauth listener")
         }
+        let receivedAlerts: SignalReceivedAlerts = { _, _ in
+            fatalError("not used for the unauth listener")
+        }
         let connectionInterrupted: SignalConnectionInterrupted = { rawCtx, maybeError in
             let bridge = Unmanaged<UnauthConnectionEventsListenerBridge>.fromOpaque(rawCtx!)
                 .takeUnretainedValue()
@@ -183,6 +213,7 @@ internal final class UnauthConnectionEventsListenerBridge {
             ctx: Unmanaged.passRetained(self).toOpaque(),
             received_incoming_message: receivedIncomingMessage,
             received_queue_empty: receivedQueueEmpty,
+            received_alerts: receivedAlerts,
             connection_interrupted: connectionInterrupted,
             destroy: { rawCtx in
                 _ = Unmanaged<AnyObject>.fromOpaque(rawCtx!).takeRetainedValue()
