@@ -2254,7 +2254,6 @@ version = "0.1.0"
 dependencies = [
  "attest",
  "const-str",
- "either",
  "futures-util",
  "hex-literal",
  "http 1.2.0",
