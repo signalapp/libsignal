@@ -66,11 +66,16 @@ def main() -> None:
         action="store_true",
         help="Skip the check that the working tree is clean before running this script. Not recommended."
     )
+    parser.add_argument(
+        "-n", "--dry-run",
+        action="store_true",
+        help="Skip any steps that would actually mutate the repository, for testing purposes."
+    )
 
     args = parser.parse_args()
 
     try:
-        prepare_release(skip_main_check=args.skip_main_branch_check, skip_tests_pass_check=args.skip_ci_tests_pass_check, skip_worktree_clean_check=args.skip_worktree_clean_check)
+        prepare_release(skip_main_check=args.skip_main_branch_check, skip_tests_pass_check=args.skip_ci_tests_pass_check, skip_worktree_clean_check=args.skip_worktree_clean_check, dry_run=args.dry_run)
         exit_code = 0
     except subprocess.CalledProcessError as e:
         print(f"Error: command {e.cmd} exited with status {e.returncode}.")
@@ -96,7 +101,7 @@ def main() -> None:
     sys.exit(exit_code)
 
 
-def prepare_release(skip_main_check: bool = False, skip_tests_pass_check: bool = False, skip_worktree_clean_check: bool = False) -> None:
+def prepare_release(*, skip_main_check: bool = False, skip_tests_pass_check: bool = False, skip_worktree_clean_check: bool = False, dry_run: bool = False) -> None:
     setup_and_check_env(skip_main_check, skip_worktree_clean_check)
     REPO_NAME = get_repo_name()
     RELEASE_NOTES_FILE_PATH = Path("RELEASE_NOTES.md")
@@ -132,7 +137,7 @@ def prepare_release(skip_main_check: bool = False, skip_tests_pass_check: bool =
     #       RELEASE_NOTES.md
     #   - Prompt the user to give the Release Notes a final human review. The expected format of the
     #        release notes is specified in RELEASE.md
-    head_release_version = tag_new_release(RELEASE_NOTES_FILE_PATH)
+    head_release_version = tag_new_release(RELEASE_NOTES_FILE_PATH, dry_run=dry_run)
 
     # Release Step 3: Prepare the repository for the next version
     #
@@ -154,9 +159,10 @@ def prepare_release(skip_main_check: bool = False, skip_tests_pass_check: bool =
         run_command(["git", "diff-index", "--quiet", "HEAD", "--"])
         on_failure_rollback_commands.append(["git", "reset", "--hard"])
 
-    run_command(["./bin/update_versions.py", presumptive_next_version])
-    # Use subprocess.run() directly here to pass through `cargo check` output, because it may take a while.
-    subprocess.run(["cargo", "check", "--workspace", "--all-features"], check=True)
+    if not dry_run:
+        run_command(["./bin/update_versions.py", presumptive_next_version])
+        # Use subprocess.run() directly here to pass through `cargo check` output, because it may take a while.
+        subprocess.run(["cargo", "check", "--workspace", "--all-features"], check=True)
 
     # Step 3, Stage 2: Record the code size of the just cut release in code_size.json
     #   Get the cannonical computed code size for the Java library on the commit for the tagged release from GitHub
@@ -189,7 +195,7 @@ def prepare_release(skip_main_check: bool = False, skip_tests_pass_check: bool =
         java_code_size_int = int(input_str)
 
     code_size_file = Path("java/code_size.json")
-    append_code_size(code_size_file, head_release_version, java_code_size_int)
+    append_code_size(code_size_file, head_release_version, java_code_size_int, dry_run=dry_run)
 
     # Step 3, Stage 3: Clear RELEASE_NOTES.md, and update it with the presumptive next version number
     #
@@ -197,14 +203,16 @@ def prepare_release(skip_main_check: bool = False, skip_tests_pass_check: bool =
     #  included all the changes previously in RELEASE_NOTES.md, it's now time to reset RELEASE_NOTES.md
     #
     #  Thus, we edit RELEASE_NOTES.md so that it just contains the next version number on its own line, followed by one newline.
-    with RELEASE_NOTES_FILE_PATH.open("w", encoding="utf-8") as f:
-        f.write(presumptive_next_version + "\n\n")
+    if not dry_run:
+        with RELEASE_NOTES_FILE_PATH.open("w", encoding="utf-8") as f:
+            f.write(presumptive_next_version + "\n\n")
 
     # Step 3, Stage 4: Commit all changes in a single commit!
-    new_release_version = get_first_line_of_file(RELEASE_NOTES_FILE_PATH)
-    run_command([
-        "git", "commit", "-am", f"Reset for version {new_release_version}"
-    ])
+    if not dry_run:
+        new_release_version = get_first_line_of_file(RELEASE_NOTES_FILE_PATH)
+        run_command([
+            "git", "commit", "-am", f"Reset for version {new_release_version}"
+        ])
 
     print("\nRelease process complete!")
     print("Next steps:")
@@ -263,13 +271,17 @@ def setup_and_check_env(skip_main_check: bool = False, skip_worktree_clean_check
             sys.exit(1)
 
 
-def tag_new_release(release_notes_file_path: Path) -> str:
+def tag_new_release(release_notes_file_path: Path, *, dry_run: bool) -> str:
     if not release_notes_file_path.is_file():
         print(f"Error: {release_notes_file_path} not found. Cannot proceed with release.")
         raise ReleaseFailedException
 
     # Read the top line of RELEASE_NOTES.md for the release version
     head_release_version = get_first_line_of_file(release_notes_file_path)
+
+    if dry_run:
+        print(f"The release version is: {head_release_version}. [Normally the tag step would happen here.]")
+        return head_release_version
 
     print("Opening an editor to create an annotated tag for this release.")
     print("Please review and edit the release notes as needed.")
@@ -429,7 +441,7 @@ def get_first_line_of_file(filepath: Path) -> str:
         return f.readline().strip()
 
 
-def append_code_size(code_size_file: Path, version: str, code_size: int) -> None:
+def append_code_size(code_size_file: Path, version: str, code_size: int, *, dry_run: bool) -> None:
     """
     Appends an object of the form { "version": <version>, "size": <code_size> }
     to an existing JSON array in code_size_file.
@@ -438,7 +450,12 @@ def append_code_size(code_size_file: Path, version: str, code_size: int) -> None
     with code_size_file.open("r", encoding="utf-8") as f:
         data = json.load(f)
 
-    data.append({"version": version, "size": code_size})
+    new_entry = {"version": version, "size": code_size}
+    data.append(new_entry)
+
+    if dry_run:
+        print(json.dumps(new_entry))
+        return
 
     with code_size_file.open("w", encoding="utf-8") as f:
         json.dump(data, f, indent=2)
