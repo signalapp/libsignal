@@ -51,7 +51,7 @@ where
             auth,
             resolver,
             confirmation_header_name,
-            (ws_config, crate::infra::ws::Stateless),
+            (ws_config, crate::infra::ws::WithoutResponseHeaders::new()),
             format!("svr3:{}", std::any::type_name::<E>()).into(),
             params,
         )

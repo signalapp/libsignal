@@ -374,7 +374,7 @@ impl CdsiConnection {
                 // wasted handshakes consume resources unnecessarily.  Instead,
                 // allow parallelism at the transport level but throttle the number
                 // of websocket handshakes that can complete.
-                ThrottlingConnector::new(crate::infra::ws::Stateless, 1),
+                ThrottlingConnector::new(crate::infra::ws::WithoutResponseHeaders::new(), 1),
             ),
             "cdsi".into(),
             params,

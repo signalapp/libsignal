@@ -6,7 +6,6 @@
 use std::fmt::{Debug, Display};
 use std::future::Future;
 use std::marker::PhantomData;
-use std::pin::Pin;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -15,7 +14,6 @@ use derive_where::derive_where;
 use futures_util::stream::{SplitSink, SplitStream};
 use futures_util::{Sink, SinkExt as _, Stream, StreamExt, TryFutureExt};
 use http::uri::PathAndQuery;
-use pin_project::pin_project;
 use tokio::sync::Mutex;
 use tokio::time::Instant;
 use tokio_tungstenite::WebSocketStream;
@@ -165,10 +163,21 @@ pub enum WebSocketServiceError {
 #[derive(Default)]
 pub struct Stateless;
 
+/// [`Connector`] for websocket-over-HTTPS routes that discards the response headers.
+#[derive(Default)]
+pub struct WithoutResponseHeaders<T = Stateless>(pub T);
+
+impl WithoutResponseHeaders {
+    /// Creates a [`Stateless`]-based `WithoutResponseHeaders`.
+    ///
+    /// Technically redundant with `default`, but doesn't leave any parameters up to inference.
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
+
 #[derive(Debug)]
-#[pin_project]
 pub struct StreamWithResponseHeaders<Inner> {
-    #[pin]
     pub stream: Inner,
     pub response_headers: http::HeaderMap,
 }
@@ -248,49 +257,30 @@ where
     }
 }
 
-impl<S> StreamWithResponseHeaders<S> {
-    fn as_pin_mut(self: Pin<&mut Self>) -> Pin<&mut S> {
-        self.project().stream
-    }
-}
+impl<T, Inner> Connector<(WebSocketRouteFragment, HttpRouteFragment), Inner>
+    for WithoutResponseHeaders<T>
+where
+    T: Connector<
+        (WebSocketRouteFragment, HttpRouteFragment),
+        Inner,
+        Connection = StreamWithResponseHeaders<tokio_tungstenite::WebSocketStream<Inner>>,
+    >,
+{
+    type Connection = tokio_tungstenite::WebSocketStream<Inner>;
+    type Error = T::Error;
 
-impl<S: Stream> Stream for StreamWithResponseHeaders<S> {
-    type Item = S::Item;
-
-    fn poll_next(
-        self: Pin<&mut Self>,
-        cx: &mut std::task::Context<'_>,
-    ) -> std::task::Poll<Option<Self::Item>> {
-        self.as_pin_mut().poll_next(cx)
-    }
-}
-
-impl<S: Sink<T>, T> Sink<T> for StreamWithResponseHeaders<S> {
-    type Error = S::Error;
-
-    fn poll_ready(
-        self: Pin<&mut Self>,
-        cx: &mut std::task::Context<'_>,
-    ) -> std::task::Poll<Result<(), Self::Error>> {
-        self.as_pin_mut().poll_ready(cx)
-    }
-
-    fn start_send(self: Pin<&mut Self>, item: T) -> Result<(), Self::Error> {
-        self.as_pin_mut().start_send(item)
-    }
-
-    fn poll_flush(
-        self: Pin<&mut Self>,
-        cx: &mut std::task::Context<'_>,
-    ) -> std::task::Poll<Result<(), Self::Error>> {
-        self.as_pin_mut().poll_flush(cx)
-    }
-
-    fn poll_close(
-        self: Pin<&mut Self>,
-        cx: &mut std::task::Context<'_>,
-    ) -> std::task::Poll<Result<(), Self::Error>> {
-        self.as_pin_mut().poll_close(cx)
+    fn connect_over(
+        &self,
+        inner: Inner,
+        route: (WebSocketRouteFragment, HttpRouteFragment),
+        log_tag: Arc<str>,
+    ) -> impl std::future::Future<Output = Result<Self::Connection, Self::Error>> + Send {
+        self.0.connect_over(inner, route, log_tag).map_ok(
+            |StreamWithResponseHeaders {
+                 stream,
+                 response_headers: _,
+             }| stream,
+        )
     }
 }
 
