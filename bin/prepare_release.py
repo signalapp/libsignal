@@ -169,7 +169,11 @@ def prepare_release(skip_main_check: bool = False, skip_tests_pass_check: bool =
     # If it doesn't exist, we prompt the user to look it up manually.
     if not skip_tests_pass_check:
         print(f"Extracting Java library size from GitHub Actions run (ID: {build_and_test_run_id})...")
-        build_and_test_log = run_command(["gh", "run", "view", str(build_and_test_run_id), "--log"])
+        build_and_test_log = run_command([
+            "gh", "run", "view", str(build_and_test_run_id),
+            "--repo", f"signalapp/{REPO_NAME}",
+            "--log"
+        ])
     else:
         build_and_test_log = ""
 
@@ -353,6 +357,7 @@ def check_workflow_success(repo_name: str, workflow_name: str, head_sha: str) ->
     run_search_limit = "100"
     list_cmd = [
         "gh", "run", "list",
+        "--repo", f"signalapp/{repo_name}",
         "--workflow", workflow_name,
         "--limit", run_search_limit,
         "--json", "databaseId,headSha,status,conclusion"
@@ -365,7 +370,7 @@ def check_workflow_success(repo_name: str, workflow_name: str, head_sha: str) ->
     if not matching_runs:
         print(f"Error: Could not find a matching '{workflow_name}' run for commit {head_sha}.")
         print("Make sure CI has run successfully on the current commit before releasing.")
-        if workflow_name == "Slow Tets":
+        if workflow_name == "Slow Tests":
             print("Note that Slow Tests do not run automatically.")
             print(f"You must kick them off automatically at: https://github.com/signalapp/{repo_name}/actions/workflows/slow_tests.yml")
         print("If tests have actually passed, you can skip this check by re-running with --skip-ci-tests-pass-check")
@@ -378,6 +383,7 @@ def check_workflow_success(repo_name: str, workflow_name: str, head_sha: str) ->
 
     run_view_cmd = [
         "gh", "run", "view", str(selected_run_id),
+        "--repo", f"signalapp/{repo_name}",
         "--json", "status,conclusion"
     ]
     run_view_json = run_command(run_view_cmd)
