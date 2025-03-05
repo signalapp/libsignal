@@ -8,6 +8,8 @@
     "dist/acknowledgments.md",
     "dist/*.js",
     "dist/*.d.ts",
+    "dist/net/**/*.js",
+    "dist/net/**/*.d.ts",
     "dist/zkgroup/**/*.js",
     "dist/zkgroup/**/*.d.ts",
     "Native.js",
