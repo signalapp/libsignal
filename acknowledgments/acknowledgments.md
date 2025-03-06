@@ -2776,7 +2776,7 @@ DEALINGS IN THE SOFTWARE.
 
 ```
 
-## lazy_static 1.5.0, rayon-core 1.12.1, rayon 1.10.0
+## rayon-core 1.12.1, rayon 1.10.0
 
 ```
 Copyright (c) 2010 The Rust Project Developers

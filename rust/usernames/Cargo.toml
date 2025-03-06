@@ -23,7 +23,6 @@ curve25519-dalek = { workspace = true, features = ["digest"] }
 displaydoc = { workspace = true }
 hkdf = { workspace = true }
 hmac = { workspace = true }
-lazy_static = { workspace = true }
 log = { workspace = true }
 prost = { workspace = true }
 rand = { workspace = true }

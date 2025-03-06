@@ -64,7 +64,6 @@ assert_matches = { workspace = true }
 env_logger = { workspace = true }
 hickory-proto = { workspace = true }
 hyper = { workspace = true, features = ["http1", "server"] }
-lazy_static = { workspace = true }
 pretty_assertions = { workspace = true }
 proptest = { workspace = true }
 rcgen = { workspace = true }

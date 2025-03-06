@@ -36,7 +36,6 @@ hex-literal = { workspace = true }
 hmac = { workspace = true }
 http = { workspace = true }
 itertools = { workspace = true }
-lazy_static = { workspace = true }
 log = { workspace = true }
 nonzero_ext = { workspace = true }
 num_enum = { workspace = true }

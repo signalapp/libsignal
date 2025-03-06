@@ -26,7 +26,6 @@ ciborium = { workspace = true }
 displaydoc = { workspace = true }
 hex = { workspace = true, features = ["serde"] }
 hex-literal = { workspace = true }
-lazy_static = { workspace = true }
 libc = { workspace = true }
 libcrux-ml-kem = { workspace = true, features = ["mlkem1024"] }
 log = { workspace = true }

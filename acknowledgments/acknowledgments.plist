@@ -2929,7 +2929,7 @@ DEALINGS IN THE SOFTWARE.
 			<key>License</key>
 			<string>MIT License</string>
 			<key>Title</key>
-			<string>lazy_static 1.5.0, rayon-core 1.12.1, rayon 1.10.0</string>
+			<string>rayon-core 1.12.1, rayon 1.10.0</string>
 			<key>Type</key>
 			<string>PSGroupSpecifier</string>
 		</dict>
