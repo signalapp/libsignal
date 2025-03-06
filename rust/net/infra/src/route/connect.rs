@@ -23,6 +23,9 @@ pub use composed::*;
 mod direct_or_proxy;
 pub use direct_or_proxy::*;
 
+mod preconnect;
+pub use preconnect::*;
+
 mod throttle;
 pub use throttle::*;
 
@@ -57,9 +60,9 @@ pub trait ConnectorExt<R>: Connector<R, ()> {
 impl<R, C: Connector<R, ()>> ConnectorExt<R> for C {}
 
 /// Allows state to be shared across Connectors.
-pub trait ConnectorFactory<R, Inner> {
+pub trait ConnectorFactory<R> {
     /// The connector produced by this factory.
-    type Connector: Connector<R, Inner, Connection = Self::Connection>;
+    type Connector: Connector<R, (), Connection = Self::Connection>;
     /// The type of connection returned by the connector.
     ///
     /// Technically redundant, but useful for constraints.
@@ -202,12 +205,12 @@ pub mod testutils {
         }
     }
 
-    impl<R, Inner, F> ConnectorFactory<R, Inner> for ConnectFn<F>
+    impl<R, F> ConnectorFactory<R> for ConnectFn<F>
     where
-        ConnectFn<F>: Connector<R, Inner> + Clone,
+        ConnectFn<F>: Connector<R, ()> + Clone,
     {
         type Connector = Self;
-        type Connection = <Self as Connector<R, Inner>>::Connection;
+        type Connection = <Self as Connector<R, ()>>::Connection;
 
         fn make(&self) -> Self::Connector {
             self.clone()

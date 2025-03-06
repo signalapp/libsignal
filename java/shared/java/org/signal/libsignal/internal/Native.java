@@ -172,6 +172,7 @@ public final class Native {
   public static native CompletableFuture<Long> AuthenticatedChatConnection_connect(long asyncRuntime, long connectionManager, String username, String password, boolean receiveStories);
   public static native CompletableFuture AuthenticatedChatConnection_disconnect(long asyncRuntime, long chat);
   public static native void AuthenticatedChatConnection_init_listener(long chat, BridgeChatListener listener);
+  public static native CompletableFuture<Void> AuthenticatedChatConnection_preconnect(long asyncRuntime, long connectionManager);
   public static native CompletableFuture<Object> AuthenticatedChatConnection_send(long asyncRuntime, long chat, long httpRequest, int timeoutMillis);
 
   public static native void BackupAuthCredentialPresentation_CheckValidContents(byte[] presentationBytes) throws Exception;

@@ -14,7 +14,11 @@ use async_trait::async_trait;
 use futures_util::future::join3;
 use http::HeaderName;
 use libsignal_net::auth::Auth;
-use libsignal_net::connect_state::{ConnectState, SUGGESTED_CONNECT_CONFIG};
+use libsignal_net::connect_state::{
+    ConnectState, DefaultConnectorFactory, PreconnectingFactory,
+    WebSocketTransportConnectorFactory, SUGGESTED_CONNECT_CONFIG,
+    SUGGESTED_TLS_PRECONNECT_LIFETIME,
+};
 use libsignal_net::enclave::{
     Cdsi, EnclaveEndpoint, EnclaveEndpointConnection, EnclaveKind, NewHandshake, Nitro, PpssSetup,
     Sgx, Svr3Flavor, Tpm2Snp,
@@ -152,7 +156,7 @@ pub struct ConnectionManager {
     env: Env<'static, Svr3Env<'static>>,
     user_agent: UserAgent,
     dns_resolver: DnsResolver,
-    connect: ::tokio::sync::RwLock<ConnectState>,
+    connect: ::tokio::sync::RwLock<ConnectState<PreconnectingFactory>>,
     // We could split this up to a separate mutex on each kind of connection,
     // but we don't hold it for very long anyway (just enough to clone the Arc).
     endpoints: std::sync::Mutex<Arc<EndpointConnections>>,
@@ -187,7 +191,13 @@ impl ConnectionManager {
             env,
             endpoints,
             user_agent,
-            connect: ConnectState::new(SUGGESTED_CONNECT_CONFIG),
+            connect: ConnectState::new_with_transport_connector(
+                SUGGESTED_CONNECT_CONFIG,
+                PreconnectingFactory::new(
+                    DefaultConnectorFactory,
+                    SUGGESTED_TLS_PRECONNECT_LIFETIME,
+                ),
+            ),
             dns_resolver,
             transport_connector,
             most_recent_network_change: Instant::now().into(),
@@ -337,7 +347,9 @@ impl Svr3Connect for Svr3Client<'_, CurrentVersion> {
         let (sgx, nitro, tpm2snp) = (env.svr3.sgx(), env.svr3.nitro(), env.svr3.tpm2snp());
 
         async fn connect_one<Enclave>(
-            connect_state: &::tokio::sync::RwLock<ConnectState>,
+            connect_state: &::tokio::sync::RwLock<
+                ConnectState<impl WebSocketTransportConnectorFactory>,
+            >,
             dns_resolver: &DnsResolver,
             user_agent: &UserAgent,
             enable_domain_fronting: EnableDomainFronting,

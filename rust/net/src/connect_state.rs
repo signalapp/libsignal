@@ -5,10 +5,12 @@
 
 use std::default::Default;
 use std::fmt::Debug;
+use std::future::Future;
 use std::ops::ControlFlow;
 use std::sync::Arc;
 use std::time::Duration;
 
+use futures_util::TryFutureExt as _;
 use http::HeaderName;
 use itertools::Itertools as _;
 use libsignal_net_infra::connection_manager::{ErrorClass, ErrorClassifier as _};
@@ -16,10 +18,12 @@ use libsignal_net_infra::dns::DnsResolver;
 use libsignal_net_infra::errors::{LogSafeDisplay, TransportConnectError};
 use libsignal_net_infra::route::{
     ComposedConnector, ConnectError, ConnectionOutcomeParams, ConnectionOutcomes, Connector,
-    ConnectorFactory, DelayBasedOnTransport, DescribedRouteConnector, HttpRouteFragment,
-    ResolveWithSavedDescription, RouteProvider, RouteProviderContext, RouteProviderExt as _,
-    RouteResolver, ThrottlingConnector, TransportRoute, UnresolvedRouteDescription,
-    UnresolvedWebsocketServiceRoute, UsesTransport as _, WebSocketRouteFragment,
+    ConnectorFactory, DelayBasedOnTransport, DescribeForLog, DescribedRouteConnector,
+    HttpRouteFragment, NoDelay, ResolveHostnames, ResolveWithSavedDescription, ResolvedRoute,
+    RouteProvider, RouteProviderContext, RouteProviderExt as _, RouteResolver, ThrottlingConnector,
+    TransportRoute, UnresolvedRouteDescription, UnresolvedTransportRoute,
+    UnresolvedWebsocketServiceRoute, UsePreconnect, UsesTransport, WebSocketRouteFragment,
+    WebSocketServiceRoute,
 };
 use libsignal_net_infra::timeouts::{TimeoutOr, ONE_ROUTE_CONNECTION_TIMEOUT};
 use libsignal_net_infra::ws::{WebSocketConnectError, WebSocketStreamLike};
@@ -49,26 +53,27 @@ pub const SUGGESTED_CONNECT_CONFIG: Config = Config {
     connect_timeout: ONE_ROUTE_CONNECTION_TIMEOUT,
 };
 
+/// Suggested lifetime for a [`PreconnectingConnector`] that handles up to a TLS handshake.
+pub const SUGGESTED_TLS_PRECONNECT_LIFETIME: Duration = Duration::from_millis(1500);
+
 /// Effectively an alias for [`ConnectorFactory`] with connection, route, and error
 /// requirements appropriate for websockets.
 ///
 /// Meant to be simpler to write at use sites.
-pub trait WebSocketTransportConnectorFactory<Inner = ()>:
+pub trait WebSocketTransportConnectorFactory<Transport = TransportRoute>:
     // rustfmt makes some weird choices without this comment blocking it.
     ConnectorFactory<
-        TransportRoute,
-        Inner,
-        Connector: Sync + Connector<TransportRoute, Inner, Error: Into<WebSocketConnectError>>,
+        Transport,
+        Connector: Sync + Connector<Transport, (), Error: Into<WebSocketConnectError>>,
         Connection: AsyncDuplexStream + 'static,
     >
 {
 }
 
-impl<F, Inner> WebSocketTransportConnectorFactory<Inner> for F where
+impl<F, Transport> WebSocketTransportConnectorFactory<Transport> for F where
     F: ConnectorFactory<
-        TransportRoute,
-        Inner,
-        Connector: Sync + Connector<TransportRoute, Inner, Error: Into<WebSocketConnectError>>,
+        Transport,
+        Connector: Sync + Connector<Transport, (), Error: Into<WebSocketConnectError>>,
         Connection: AsyncDuplexStream + 'static,
     >
 {
@@ -107,9 +112,12 @@ pub struct Config {
 }
 
 pub struct DefaultConnectorFactory;
-impl ConnectorFactory<TransportRoute, ()> for DefaultConnectorFactory {
+impl<R> ConnectorFactory<R> for DefaultConnectorFactory
+where
+    DefaultTransportConnector: Connector<R, ()>,
+{
     type Connector = DefaultTransportConnector;
-    type Connection = <DefaultTransportConnector as Connector<TransportRoute, ()>>::Connection;
+    type Connection = <DefaultTransportConnector as Connector<R, ()>>::Connection;
 
     fn make(&self) -> Self::Connector {
         let throttle_tls_connections = ThrottlingConnector::new(Default::default(), 1);
@@ -125,8 +133,7 @@ impl ConnectState {
 }
 
 impl<ConnectorFactory> ConnectState<ConnectorFactory> {
-    #[cfg_attr(feature = "test-util", visibility::make(pub))]
-    fn new_with_transport_connector(
+    pub fn new_with_transport_connector(
         config: Config,
         make_transport_connector: ConnectorFactory,
     ) -> tokio::sync::RwLock<Self> {
@@ -171,23 +178,25 @@ impl RouteInfo {
 }
 
 impl<TC> ConnectState<TC> {
-    pub async fn connect_ws<WC, Inner>(
+    pub async fn connect_ws<WC, UR, Transport>(
         this: &tokio::sync::RwLock<Self>,
-        routes: impl RouteProvider<Route = UnresolvedWebsocketServiceRoute>,
-        inner: Inner,
+        routes: impl RouteProvider<Route = UR>,
         ws_connector: WC,
         resolver: &DnsResolver,
         confirmation_header_name: Option<&HeaderName>,
         log_tag: Arc<str>,
     ) -> Result<(WC::Connection, RouteInfo), TimeoutOr<ConnectError<WebSocketServiceConnectError>>>
     where
-        Inner: Clone + Send,
+        UR: ResolveHostnames<Resolved = WebSocketServiceRoute<Transport>>
+            + DescribeForLog<Description = UnresolvedRouteDescription>
+            + Clone
+            + 'static,
+        Transport: Clone + Send + UsesTransport + ResolvedRoute,
         // Note that we're not using WebSocketTransportConnectorFactory here to make `connect_ws`
         // easier to test; specifically, the output is not guaranteed to be an AsyncDuplexStream.
         TC: ConnectorFactory<
-            TransportRoute,
-            Inner,
-            Connector: Sync + Connector<TransportRoute, Inner, Error: Into<WebSocketConnectError>>,
+            Transport,
+            Connector: Sync + Connector<Transport, (), Error: Into<WebSocketConnectError>>,
         >,
         WC: Connector<
                 (WebSocketRouteFragment, HttpRouteFragment),
@@ -226,7 +235,7 @@ impl<TC> ConnectState<TC> {
             route_provider,
             resolver,
             connector,
-            inner,
+            (),
             log_tag.clone(),
             |error| {
                 let error = WebSocketServiceConnectError::from_websocket_error(
@@ -307,7 +316,6 @@ impl<TC> ConnectState<TC> {
         let (ws, route_info) = ConnectState::connect_ws(
             connect,
             ws_routes,
-            (),
             ws_connector,
             resolver,
             confirmation_header_name.as_ref(),
@@ -333,6 +341,111 @@ impl<TC> ConnectState<TC> {
     }
 }
 
+impl<TC> ConnectState<PreconnectingFactory<TC>>
+where
+    // Note that we're not using WebSocketTransportConnectorFactory here to make `connect_ws`
+    // easier to test; specifically, the output is not guaranteed to be an AsyncDuplexStream.
+    TC: ConnectorFactory<TransportRoute, Connector: Sync, Connection: Send>,
+{
+    pub async fn preconnect_and_save(
+        this: &tokio::sync::RwLock<Self>,
+        routes: impl RouteProvider<Route = UnresolvedTransportRoute>,
+        resolver: &DnsResolver,
+        log_tag: Arc<str>,
+    ) -> Result<(), TimeoutOr<ConnectError<WebSocketServiceConnectError>>> {
+        let connect_read = this.read().await;
+
+        let Self {
+            route_resolver,
+            connect_timeout,
+            make_transport_connector,
+            attempts_record: _,
+            route_provider_context,
+        } = &*connect_read;
+
+        let routes = routes
+            .map_routes(|r| UsePreconnect {
+                should: true,
+                inner: r,
+            })
+            .routes(route_provider_context)
+            .collect_vec();
+
+        log::info!(
+            "[{log_tag}] starting connection attempt with {} routes",
+            routes.len()
+        );
+
+        struct ConnectWithSavedRoute<C>(C);
+
+        impl<R, Inner, C> Connector<R, Inner> for ConnectWithSavedRoute<C>
+        where
+            C: Connector<R, Inner>,
+            R: Clone + Send,
+        {
+            type Connection = (R, C::Connection);
+
+            type Error = C::Error;
+
+            fn connect_over(
+                &self,
+                over: Inner,
+                route: R,
+                log_tag: Arc<str>,
+            ) -> impl Future<Output = Result<Self::Connection, Self::Error>> + Send {
+                self.0
+                    .connect_over(over, route.clone(), log_tag)
+                    .map_ok(|connection| (route, connection))
+            }
+        }
+
+        let transport_connector =
+            ConnectorFactory::<UsePreconnect<_>>::make(make_transport_connector);
+        let route_provider = routes.into_iter();
+        let connector = ConnectWithSavedRoute(&transport_connector);
+
+        let start = Instant::now();
+        let connect = crate::infra::route::connect(
+            route_resolver,
+            NoDelay,
+            route_provider,
+            resolver,
+            connector,
+            (),
+            log_tag.clone(),
+            |_| {
+                // All transport-level errors are considered intermittent; see
+                // WebSocketServiceConnectError::classify.
+                ControlFlow::Continue(())
+            },
+        );
+
+        let (result, _updates) = tokio::time::timeout(*connect_timeout, connect)
+            .await
+            .map_err(|_: tokio::time::error::Elapsed| TimeoutOr::Timeout {
+                attempt_duration: *connect_timeout,
+            })?;
+
+        match &result {
+            Ok(_) => log::info!(
+                "[{log_tag}] connection succeeded after {:.3?}",
+                start.elapsed()
+            ),
+            Err(e) => log::info!("[{log_tag}] connection failed with {e}"),
+        }
+
+        let (
+            UsePreconnect {
+                inner: route,
+                should: _,
+            },
+            connection,
+        ) = result?;
+        make_transport_connector.save_preconnected(route, connection, Instant::now());
+        Ok(())
+    }
+}
+
 #[derive(Debug, Default)]
 struct RouteProviderContextImpl(OsRng);
 
@@ -344,6 +457,10 @@ impl RouteProviderContext for RouteProviderContextImpl {
         owned_rng.gen()
     }
 }
+
+/// Convenience alias for using `PreconnectingConnector`s with [`ConnectState`].
+pub type PreconnectingFactory<Inner = DefaultConnectorFactory> =
+    libsignal_net_infra::route::PreconnectingFactory<TransportRoute, Inner>;
 
 #[cfg(test)]
 mod test {
@@ -453,7 +570,6 @@ mod test {
         let result = ConnectState::connect_ws(
             &state,
             vec![failing_route.clone(), succeeding_route.clone()],
-            (),
             ws_connector,
             &resolver,
             None,
@@ -500,7 +616,6 @@ mod test {
         let connect = ConnectState::connect_ws(
             &state,
             vec![failing_route.clone(), succeeding_route.clone()],
-            (),
             ws_connector,
             &resolver,
             None,

@@ -168,6 +168,7 @@ export function AuthenticatedChatConnection_connect(asyncRuntime: Wrapper<TokioA
 export function AuthenticatedChatConnection_disconnect(asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<AuthenticatedChatConnection>): CancellablePromise<void>;
 export function AuthenticatedChatConnection_info(chat: Wrapper<AuthenticatedChatConnection>): ChatConnectionInfo;
 export function AuthenticatedChatConnection_init_listener(chat: Wrapper<AuthenticatedChatConnection>, listener: ChatListener): void;
+export function AuthenticatedChatConnection_preconnect(asyncRuntime: Wrapper<TokioAsyncContext>, connectionManager: Wrapper<ConnectionManager>): CancellablePromise<void>;
 export function AuthenticatedChatConnection_send(asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<AuthenticatedChatConnection>, httpRequest: Wrapper<HttpRequest>, timeoutMillis: number): CancellablePromise<ChatResponse>;
 export function BackupAuthCredentialPresentation_CheckValidContents(presentationBytes: Buffer): void;
 export function BackupAuthCredentialPresentation_GetBackupId(presentationBytes: Buffer): Buffer;

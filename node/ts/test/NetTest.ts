@@ -315,6 +315,35 @@ describe('chat service api', () => {
       await connectChatUnauthenticated(net);
     }).timeout(10000);
 
+    it('can preconnect and then connect authenticated (partly)', async function () {
+      if (!process.env.LIBSIGNAL_TESTING_RUN_NONHERMETIC_TESTS) {
+        this.skip();
+      }
+      const net = new Net({
+        env: Environment.Production,
+        userAgent: userAgent,
+      });
+      await net.preconnectChat();
+
+      try {
+        // While we get no direct feedback here whether the preconnect was used,
+        // you can check the log lines for: "[authenticated] using preconnection".
+        // We have to use an authenticated connection because that's the only one that's allowed to
+        // use preconnects.
+        await net.connectAuthenticatedChat('', '', true, {
+          onIncomingMessage: sinon.stub(),
+          onConnectionInterrupted: sinon.stub(),
+          onQueueEmpty: sinon.stub(),
+        });
+        assert.fail('should not have managed to authenticate');
+      } catch (e) {
+        assert.instanceOf(e, LibSignalErrorBase);
+        assert.include(e, {
+          code: ErrorCode.DeviceDelinked,
+        });
+      }
+    }).timeout(10000);
+
     it('can connect through a proxy server', async function () {
       const PROXY_SERVER = process.env.LIBSIGNAL_TESTING_PROXY_SERVER;
       if (!PROXY_SERVER) {

@@ -135,26 +135,29 @@ pub type UnresolvedTransportRoute = TlsRoute<
     DirectOrProxyRoute<TcpRoute<UnresolvedHost>, ConnectionProxyRoute<Host<UnresolvedHost>>>,
 >;
 /// [`HttpsTlsRoute`] that contains [`UnresolvedHost`] addresses.
-pub type UnresolvedHttpsServiceRoute = HttpsTlsRoute<UnresolvedTransportRoute>;
+pub type UnresolvedHttpsServiceRoute<Transport = UnresolvedTransportRoute> =
+    HttpsTlsRoute<Transport>;
 
 /// [`WebSocketRoute`] that contains [`UnresolvedHost`] addresses.
-pub type UnresolvedWebsocketServiceRoute = WebSocketRoute<HttpsTlsRoute<UnresolvedTransportRoute>>;
+pub type UnresolvedWebsocketServiceRoute<Transport = UnresolvedTransportRoute> =
+    WebSocketRoute<UnresolvedHttpsServiceRoute<Transport>>;
 
 /// Transport-level route that contains [`IpAddr`]s.
 pub type TransportRoute =
     TlsRoute<DirectOrProxyRoute<TcpRoute<IpAddr>, ConnectionProxyRoute<IpAddr>>>;
 /// [`HttpsTlsRoute`] that contains [`IpAddr`]s.
-pub type HttpsServiceRoute = HttpsTlsRoute<TransportRoute>;
+pub type HttpsServiceRoute<Transport = TransportRoute> = HttpsTlsRoute<Transport>;
 /// [`WebSocketRoute`] that contains [`IpAddr`]s.
-pub type WebSocketServiceRoute = WebSocketRoute<HttpsServiceRoute>;
+pub type WebSocketServiceRoute<Transport = TransportRoute> =
+    WebSocketRoute<HttpsServiceRoute<Transport>>;
 
 /// Abstracts over routes that contain a [`TransportRoute`].
 ///
 /// This allows, e.g. [`ConnectionOutcomes<TransportRoute>`](ConnectionOutcomes) to be used with
 /// several different kinds of route.
-pub trait UsesTransport {
-    fn transport_part(&self) -> &TransportRoute;
-    fn into_transport_part(self) -> TransportRoute;
+pub trait UsesTransport<R = TransportRoute> {
+    fn transport_part(&self) -> &R;
+    fn into_transport_part(self) -> R;
 }
 
 impl UsesTransport for TransportRoute {
@@ -166,13 +169,22 @@ impl UsesTransport for TransportRoute {
     }
 }
 
+impl UsesTransport<Self> for UnresolvedTransportRoute {
+    fn transport_part(&self) -> &UnresolvedTransportRoute {
+        self
+    }
+    fn into_transport_part(self) -> UnresolvedTransportRoute {
+        self
+    }
+}
+
 macro_rules! impl_uses_transport {
     ($typ:ident, $delegate_field:ident) => {
-        impl UsesTransport for $typ {
-            fn transport_part(&self) -> &TransportRoute {
+        impl<R, T: UsesTransport<R>> UsesTransport<R> for $typ<T> {
+            fn transport_part(&self) -> &R {
                 self.$delegate_field.transport_part()
             }
-            fn into_transport_part(self) -> TransportRoute {
+            fn into_transport_part(self) -> R {
                 self.$delegate_field.into_transport_part()
             }
         }
@@ -181,6 +193,7 @@ macro_rules! impl_uses_transport {
 
 impl_uses_transport!(WebSocketServiceRoute, inner);
 impl_uses_transport!(HttpsServiceRoute, inner);
+impl_uses_transport!(UsePreconnect, inner);
 
 /// Error for [`connect()`].
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -573,7 +586,7 @@ mod test {
     use crate::host::Host;
     use crate::route::resolve::testutils::FakeResolver;
     use crate::route::testutils::{FakeContext, FakeRoute};
-    use crate::route::{NoDelay, SocksProxy, TlsProxy};
+    use crate::route::{SocksProxy, TlsProxy};
     use crate::tcp_ssl::proxy::socks;
     use crate::{Alpn, DnsSource};
 

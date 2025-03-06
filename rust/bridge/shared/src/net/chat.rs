@@ -114,6 +114,13 @@ fn UnauthenticatedChatConnection_info(chat: &UnauthenticatedChatConnection) -> C
 }
 
 #[bridge_io(TokioAsyncContext)]
+async fn AuthenticatedChatConnection_preconnect(
+    connection_manager: &ConnectionManager,
+) -> Result<(), ChatServiceError> {
+    AuthenticatedChatConnection::preconnect(connection_manager).await
+}
+
+#[bridge_io(TokioAsyncContext)]
 async fn AuthenticatedChatConnection_connect(
     connection_manager: &ConnectionManager,
     username: String,

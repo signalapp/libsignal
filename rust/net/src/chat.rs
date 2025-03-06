@@ -12,8 +12,8 @@ use ::http::{HeaderMap, HeaderName, HeaderValue, StatusCode};
 use libsignal_net_infra::connection_manager::MultiRouteConnectionManager;
 use libsignal_net_infra::dns::DnsResolver;
 use libsignal_net_infra::route::{
-    Connector, RouteProvider, RouteProviderExt, ThrottlingConnector, TransportRoute,
-    UnresolvedHttpsServiceRoute, UnresolvedWebsocketServiceRoute, WebSocketRoute,
+    Connector, HttpsTlsRoute, RouteProvider, RouteProviderExt, ThrottlingConnector, TransportRoute,
+    UnresolvedHttpsServiceRoute, UnresolvedWebsocketServiceRoute, UsePreconnect, WebSocketRoute,
     WebSocketRouteFragment,
 };
 use libsignal_net_infra::timeouts::ONE_ROUTE_CONNECTION_TIMEOUT;
@@ -179,6 +179,7 @@ pub struct PendingChatConnection<T = ChatTransportConnection> {
     log_tag: Arc<str>,
 }
 
+#[cfg_attr(test, derive(Clone))]
 pub struct AuthenticatedChatHeaders {
     pub auth: Auth,
     pub receive_stories: ReceiveStories,
@@ -198,7 +199,10 @@ impl ChatConnection {
         log_tag: &str,
     ) -> Result<PendingChatConnection, ChatServiceError>
     where
-        TC: WebSocketTransportConnectorFactory<Connection = ChatTransportConnection>,
+        TC: WebSocketTransportConnectorFactory<
+            UsePreconnect<TransportRoute>,
+            Connection = ChatTransportConnection,
+        >,
     {
         Self::start_connect_with_transport(
             connect,
@@ -225,8 +229,9 @@ impl ChatConnection {
         log_tag: &str,
     ) -> Result<PendingChatConnection<TC::Connection>, ChatServiceError>
     where
-        TC: WebSocketTransportConnectorFactory,
+        TC: WebSocketTransportConnectorFactory<UsePreconnect<TransportRoute>>,
     {
+        let should_preconnect = auth.is_some();
         let headers = auth
             .into_iter()
             .flat_map(
@@ -241,8 +246,15 @@ impl ChatConnection {
             endpoint: PathAndQuery::from_static(crate::env::constants::WEB_SOCKET_PATH),
             headers: HeaderMap::from_iter(headers),
         };
-        let ws_routes = http_route_provider.map_routes(|http| WebSocketRoute {
-            inner: http,
+
+        let ws_routes = http_route_provider.map_routes(move |http| WebSocketRoute {
+            inner: HttpsTlsRoute {
+                inner: UsePreconnect {
+                    should: should_preconnect,
+                    inner: http.inner,
+                },
+                fragment: http.fragment,
+            },
             fragment: ws_fragment.clone(),
         });
 
@@ -250,7 +262,6 @@ impl ChatConnection {
         let (connection, route_info) = ConnectState::connect_ws(
             connect,
             ws_routes,
-            (),
             // If we create multiple authenticated chat websocket connections at
             // the same time, the server will terminate earlier ones as later
             // ones complete. Throttling at the websocket connection level
@@ -371,7 +382,9 @@ pub mod test_support {
 
     use super::*;
     use crate::chat::{ws2, ChatConnection, ChatServiceError};
-    use crate::connect_state::{ConnectState, SUGGESTED_CONNECT_CONFIG};
+    use crate::connect_state::{
+        ConnectState, DefaultConnectorFactory, PreconnectingFactory, SUGGESTED_CONNECT_CONFIG,
+    };
     use crate::env::{Env, Svr3Env, UserAgent};
     use crate::infra::route::DirectOrProxyProvider;
 
@@ -391,7 +404,10 @@ pub mod test_support {
         )
         .filter_routes(filter_routes);
 
-        let connect = ConnectState::new(SUGGESTED_CONNECT_CONFIG);
+        let connect = ConnectState::new_with_transport_connector(
+            SUGGESTED_CONNECT_CONFIG,
+            PreconnectingFactory::new(DefaultConnectorFactory, Duration::ZERO),
+        );
         let user_agent = UserAgent::with_libsignal_version("test_simple_chat_connection");
 
         let ws_config = ws2::Config {
@@ -428,17 +444,19 @@ pub mod test_support {
 #[cfg(test)]
 pub(crate) mod test {
     use std::collections::HashMap;
+    use std::sync::atomic::{self, AtomicU8};
 
     use assert_matches::assert_matches;
     use http::{HeaderName, HeaderValue};
+    use itertools::Itertools;
     use libsignal_net_infra::certs::RootCertificates;
     use libsignal_net_infra::dns::lookup_result::LookupResult;
     use libsignal_net_infra::errors::TransportConnectError;
     use libsignal_net_infra::host::Host;
     use libsignal_net_infra::route::testutils::ConnectFn;
     use libsignal_net_infra::route::{
-        DirectOrProxyRoute, HttpRouteFragment, HttpsTlsRoute, TcpRoute, TlsRoute, TlsRouteFragment,
-        UnresolvedHost, DEFAULT_HTTPS_PORT,
+        DirectOrProxyRoute, HttpRouteFragment, HttpsTlsRoute, PreconnectingFactory, TcpRoute,
+        TlsRoute, TlsRouteFragment, UnresolvedHost, DEFAULT_HTTPS_PORT,
     };
     use libsignal_net_infra::ws::WebSocketConnectError;
     use libsignal_net_infra::Alpn;
@@ -598,13 +616,11 @@ pub(crate) mod test {
     #[test_case(429, &[(CONFIRMATION_HEADER, "1"), ("retry-after", "20")] => matches ChatServiceError::RetryLater { retry_after_seconds: 20 })]
     #[test_case(500, &[(CONFIRMATION_HEADER, "1"), ("retry-after", "20")] => matches ChatServiceError::RetryLater { retry_after_seconds: 20 })]
     #[test_case(429, &[("retry-after", "20")] => matches ChatServiceError::AllConnectionRoutesFailed)]
-    #[tokio::test(start_paused = true)]
+    #[test_log::test(tokio::test(start_paused = true))]
     async fn html_status_tests(
         status: u16,
         headers: &'static [(&'static str, &'static str)],
     ) -> ChatServiceError {
-        _ = env_logger::builder().is_test(true).try_init();
-
         let (client, mut server) = tokio::io::duplex(1024);
 
         let server_task = tokio::spawn(async move {
@@ -681,5 +697,117 @@ pub(crate) mod test {
         server_task.await.expect("clean exit");
 
         err
+    }
+
+    #[test_log::test(tokio::test(start_paused = true))]
+    async fn preconnect_same_route() {
+        let number_of_times_called = AtomicU8::new(0);
+
+        let inner_connector = ConnectFn(|_inner, _route, _log_tag| {
+            // This acts like a successful TLS connection to a server that immediately closes
+            // the connection before sending anything.
+            let (client, _server) = tokio::io::duplex(1024);
+            number_of_times_called.fetch_add(1, atomic::Ordering::SeqCst);
+            std::future::ready(Ok::<_, TransportConnectError>(client))
+        });
+        let transport_connector =
+            PreconnectingFactory::new(inner_connector, Duration::from_secs(1));
+
+        let connect_state = ConnectState::new_with_transport_connector(
+            SUGGESTED_CONNECT_CONFIG,
+            transport_connector,
+        );
+
+        let dns_resolver = DnsResolver::new_from_static_map(HashMap::from_iter([(
+            CHAT_DOMAIN,
+            LookupResult::localhost(),
+        )]));
+
+        const CHAT_DOMAIN: &str = "test.signal.org";
+        let routes = vec![HttpsTlsRoute {
+            fragment: HttpRouteFragment {
+                host_header: CHAT_DOMAIN.into(),
+                path_prefix: "".into(),
+                front_name: None,
+            },
+            inner: TlsRoute {
+                fragment: TlsRouteFragment {
+                    root_certs: RootCertificates::Native,
+                    sni: Host::Domain(CHAT_DOMAIN.into()),
+                    alpn: Some(Alpn::Http1_1),
+                },
+                inner: DirectOrProxyRoute::Direct(TcpRoute {
+                    address: UnresolvedHost(CHAT_DOMAIN.into()),
+                    port: DEFAULT_HTTPS_PORT,
+                }),
+            },
+        }];
+
+        ConnectState::preconnect_and_save(
+            &connect_state,
+            routes
+                .iter()
+                .cloned()
+                .map(|route| route.inner)
+                .collect_vec(),
+            &dns_resolver,
+            "preconnect".into(),
+        )
+        .await
+        .expect("success");
+
+        assert_eq!(number_of_times_called.load(atomic::Ordering::SeqCst), 1);
+
+        // ChatConnection only uses the preconnect for auth connections
+        let auth_headers = AuthenticatedChatHeaders {
+            auth: Auth {
+                username: "user".into(),
+                password: "****".into(),
+            },
+            receive_stories: ReceiveStories(true),
+        };
+
+        let err = ChatConnection::start_connect_with_transport(
+            &connect_state,
+            &dns_resolver,
+            routes.clone(),
+            Some(HeaderName::from_static(CONFIRMATION_HEADER)),
+            &UserAgent::with_libsignal_version("test"),
+            ws2::Config {
+                // We shouldn't get to timing out anyway.
+                local_idle_timeout: Duration::ZERO,
+                remote_idle_timeout: Duration::ZERO,
+                initial_request_id: 0,
+            },
+            Some(auth_headers.clone()),
+            "fake chat",
+        )
+        .await
+        .expect_err("should fail to connect");
+
+        assert_matches!(err, ChatServiceError::AllConnectionRoutesFailed);
+        // 1 preconnect that subsequently fails, 1 IPv4 follow-up connection that also fails.
+        assert_eq!(number_of_times_called.load(atomic::Ordering::SeqCst), 2);
+
+        let err = ChatConnection::start_connect_with_transport(
+            &connect_state,
+            &dns_resolver,
+            routes.clone(),
+            Some(HeaderName::from_static(CONFIRMATION_HEADER)),
+            &UserAgent::with_libsignal_version("test"),
+            ws2::Config {
+                // We shouldn't get to timing out anyway.
+                local_idle_timeout: Duration::ZERO,
+                remote_idle_timeout: Duration::ZERO,
+                initial_request_id: 0,
+            },
+            Some(auth_headers),
+            "fake chat",
+        )
+        .await
+        .expect_err("should fail to connect");
+
+        assert_matches!(err, ChatServiceError::AllConnectionRoutesFailed);
+        assert_eq!(number_of_times_called.load(atomic::Ordering::SeqCst), 4);
     }
 }

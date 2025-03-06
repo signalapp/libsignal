@@ -18,7 +18,7 @@ use crate::route::{
     ConnectionProxyKind, ConnectionProxyRoute, Connector, DirectOrProxyRoute,
     HttpProxyRouteFragment, HttpsProxyRoute, HttpsTlsRoute, ProxyTarget, ResolveHostnames,
     ResolvedRoute, SocksRoute, TcpRoute, TlsRoute, TransportRoute, UnresolvedHost,
-    UnresolvedWebsocketServiceRoute, UsesTransport, DEFAULT_HTTPS_PORT,
+    UnresolvedTransportRoute, UnresolvedWebsocketServiceRoute, UsesTransport, DEFAULT_HTTPS_PORT,
 };
 
 /// A type that is not itself loggable but can produce a [`LogSafeDisplay`]
@@ -146,7 +146,9 @@ impl UnresolvedRouteDescription {
     }
 }
 
-impl DescribeForLog for UnresolvedWebsocketServiceRoute {
+impl<Transport: UsesTransport<UnresolvedTransportRoute>> DescribeForLog
+    for UnresolvedWebsocketServiceRoute<Transport>
+{
     type Description = UnresolvedRouteDescription;
 
     fn describe_for_log(&self) -> Self::Description {
@@ -155,13 +157,13 @@ impl DescribeForLog for UnresolvedWebsocketServiceRoute {
             inner:
                 HttpsTlsRoute {
                     fragment: http_fragment,
-                    inner:
-                        TlsRoute {
-                            fragment: tls_fragment,
-                            inner: direct_or_proxy,
-                        },
+                    inner: transport,
                 },
         } = self;
+        let TlsRoute {
+            fragment: tls_fragment,
+            inner: direct_or_proxy,
+        } = transport.transport_part();
 
         let target = match direct_or_proxy {
             DirectOrProxyRoute::Direct(TcpRoute { address, port }) => {

@@ -13,7 +13,7 @@ use futures_util::TryFutureExt as _;
 use libsignal_net::infra::errors::TransportConnectError;
 use libsignal_net_infra::host::Host;
 use libsignal_net_infra::route::{
-    ConnectionProxyRoute, Connector, TcpRoute, TlsRouteFragment, TransportRoute,
+    ConnectionProxyRoute, Connector, TcpRoute, TlsRouteFragment, TransportRoute, UsePreconnect,
 };
 use libsignal_net_infra::AsyncDuplexStream;
 use tokio::io::DuplexStream;
@@ -128,7 +128,7 @@ impl FakeTransportConnector {
     }
 }
 
-impl<C> Connector<TransportRoute, ()> for FakeConnector<C>
+impl<C> Connector<UsePreconnect<TransportRoute>, ()> for FakeConnector<C>
 where
     C: Connector<TransportRoute, FakeStream> + Send,
 {
@@ -139,7 +139,7 @@ where
     fn connect_over(
         &self,
         (): (),
-        route: TransportRoute,
+        route: UsePreconnect<TransportRoute>,
         log_tag: Arc<str>,
     ) -> impl Future<Output = Result<Self::Connection, Self::Error>> + Send {
         let Self {
@@ -147,10 +147,10 @@ where
             server_stream_sender,
         } = self;
         let (local, remote) = tokio::io::duplex(MAX_BUF_SIZE);
-        let sni = route.fragment.sni.clone();
+        let sni = route.inner.fragment.sni.clone();
 
         replaced
-            .connect_over(Box::new(local), route, log_tag)
+            .connect_over(Box::new(local), route.inner, log_tag)
             .inspect_ok(|_| {
                 server_stream_sender.send((sni, remote)).unwrap();
             })

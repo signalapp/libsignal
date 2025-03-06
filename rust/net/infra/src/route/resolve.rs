@@ -18,7 +18,8 @@ use crate::dns::{DnsError, DnsResolver};
 use crate::host::Host;
 use crate::route::{
     ConnectionProxyRoute, DirectOrProxyRoute, HttpProxyRouteFragment, HttpsProxyRoute,
-    HttpsTlsRoute, ProxyTarget, SocksRoute, TcpRoute, TlsRoute, UnresolvedHost, WebSocketRoute,
+    HttpsTlsRoute, ProxyTarget, SocksRoute, TcpRoute, TlsRoute, UnresolvedHost, UsePreconnect,
+    WebSocketRoute,
 };
 
 /// A route with hostnames that can be resolved.
@@ -214,6 +215,7 @@ impl_resolve_hostnames!(TcpRoute, address, port);
 impl_resolve_hostnames!(TlsRoute, inner, fragment);
 impl_resolve_hostnames!(HttpsTlsRoute, inner, fragment);
 impl_resolve_hostnames!(WebSocketRoute, inner, fragment);
+impl_resolve_hostnames!(UsePreconnect, inner, should);
 
 impl<D: ResolveHostnames, P: ResolveHostnames> ResolveHostnames for DirectOrProxyRoute<D, P> {
     type Resolved = DirectOrProxyRoute<D::Resolved, P::Resolved>;
@@ -381,6 +383,7 @@ impl_resolved_route!(TlsRoute, inner);
 impl_resolved_route!(HttpsTlsRoute, inner);
 impl_resolved_route!(HttpsProxyRoute, inner);
 impl_resolved_route!(WebSocketRoute, inner);
+impl_resolved_route!(UsePreconnect, inner);
 
 impl<D: ResolvedRoute, P: ResolvedRoute> ResolvedRoute for DirectOrProxyRoute<D, P> {
     fn immediate_target(&self) -> &IpAddr {

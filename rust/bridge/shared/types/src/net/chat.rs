@@ -20,8 +20,12 @@ use libsignal_net::chat::{
     self, ChatConnection, ChatServiceError, ConnectionInfo, DebugInfo as ChatServiceDebugInfo,
     Request, Response as ChatResponse,
 };
-use libsignal_net::infra::route::{ConnectionProxyConfig, DirectOrProxyProvider};
+use libsignal_net::infra::route::{
+    ConnectionProxyConfig, DirectOrProxyProvider, RouteProvider, RouteProviderExt,
+    UnresolvedHttpsServiceRoute,
+};
 use libsignal_net::infra::tcp_ssl::InvalidProxyConfig;
+use libsignal_net::infra::EnableDomainFronting;
 use libsignal_protocol::Timestamp;
 use static_assertions::assert_impl_all;
 
@@ -103,6 +107,29 @@ impl AuthenticatedChatConnection {
             )
             .into(),
         })
+    }
+
+    pub async fn preconnect(
+        connection_manager: &ConnectionManager,
+    ) -> Result<(), ChatServiceError> {
+        let enable_domain_fronting = connection_manager
+            .endpoints
+            .lock()
+            .expect("not poisoned")
+            .enable_fronting;
+        let route_provider = make_route_provider(connection_manager, enable_domain_fronting)?
+            .map_routes(|r| r.inner);
+
+        log::info!("preconnecting chat");
+        libsignal_net::connect_state::ConnectState::preconnect_and_save(
+            &connection_manager.connect,
+            route_provider,
+            &connection_manager.dns_resolver,
+            "preconnect".into(),
+        )
+        .await
+        .map_err(ChatServiceError::from_single_connect_error)?;
+        Ok(())
     }
 
     pub fn new_fake<'a>(
@@ -223,15 +250,9 @@ async fn establish_chat_connection(
         dns_resolver,
         connect,
         user_agent,
-        transport_connector,
         endpoints,
         ..
     } = connection_manager;
-
-    let proxy_config: Option<ConnectionProxyConfig> =
-        (&*transport_connector.lock().expect("not poisoned"))
-            .try_into()
-            .map_err(|InvalidProxyConfig| ChatServiceError::InvalidConnectionConfiguration)?;
 
     let (ws_config, enable_domain_fronting) = {
         let endpoints_guard = endpoints.lock().expect("not poisoned");
@@ -248,15 +269,14 @@ async fn establish_chat_connection(
     } = ws_config;
 
     let chat_connect = &env.chat_domain_config.connect;
+    let route_provider = make_route_provider(connection_manager, enable_domain_fronting)?;
+
     log::info!("connecting {auth_type} chat");
 
     ChatConnection::start_connect_with(
         connect,
         dns_resolver,
-        DirectOrProxyProvider::maybe_proxied(
-            chat_connect.route_provider(enable_domain_fronting),
-            proxy_config,
-        ),
+        route_provider,
         chat_connect
             .confirmation_header_name
             .map(HeaderName::from_static),
@@ -274,6 +294,29 @@ async fn establish_chat_connection(
         Err(e) => log::warn!("failed to connect {auth_type} chat: {e}"),
     })
     .await
+}
+
+fn make_route_provider(
+    connection_manager: &ConnectionManager,
+    enable_domain_fronting: EnableDomainFronting,
+) -> Result<impl RouteProvider<Route = UnresolvedHttpsServiceRoute>, ChatServiceError> {
+    let ConnectionManager {
+        env,
+        transport_connector,
+        ..
+    } = connection_manager;
+
+    let proxy_config: Option<ConnectionProxyConfig> =
+        (&*transport_connector.lock().expect("not poisoned"))
+            .try_into()
+            .map_err(|InvalidProxyConfig| ChatServiceError::InvalidConnectionConfiguration)?;
+
+    let chat_connect = &env.chat_domain_config.connect;
+
+    Ok(DirectOrProxyProvider::maybe_proxied(
+        chat_connect.route_provider(enable_domain_fronting),
+        proxy_config,
+    ))
 }
 
 pub struct HttpRequest {

@@ -26,7 +26,7 @@ use libsignal_net::infra::utils::ObservableEvent;
 use libsignal_net::infra::{
     AsyncDuplexStream, DnsSource, EnableDomainFronting, EndpointConnection,
 };
-use libsignal_net_infra::route::{Connector, TransportRoute};
+use libsignal_net_infra::route::{Connector, TransportRoute, UsePreconnect};
 use tokio::time::Duration;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 use warp::Filter as _;
@@ -232,15 +232,16 @@ impl FakeDeps {
     }
 }
 
-impl ConnectorFactory<TransportRoute, ()> for ReplacingConnectorFactory {
+impl ConnectorFactory<UsePreconnect<TransportRoute>> for ReplacingConnectorFactory {
     type Connector = FakeConnector<
         <DefaultTransportConnector as ReplaceStatelessConnectorsWithFake>::Replacement,
     >;
 
-    type Connection = <Self::Connector as Connector<TransportRoute, ()>>::Connection;
+    type Connection = <Self::Connector as Connector<UsePreconnect<TransportRoute>, ()>>::Connection;
 
     fn make(&self) -> Self::Connector {
-        self.0.replaced_stateless(self.1.make())
+        self.0
+            .replaced_stateless(ConnectorFactory::<TransportRoute>::make(&self.1))
     }
 }
 
