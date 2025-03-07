@@ -19,8 +19,8 @@ use libsignal_net_infra::errors::{LogSafeDisplay, TransportConnectError};
 use libsignal_net_infra::route::{
     ComposedConnector, ConnectError, ConnectionOutcomeParams, ConnectionOutcomes, Connector,
     ConnectorFactory, DelayBasedOnTransport, DescribeForLog, DescribedRouteConnector,
-    HttpRouteFragment, NoDelay, ResolveHostnames, ResolveWithSavedDescription, ResolvedRoute,
-    RouteProvider, RouteProviderContext, RouteProviderExt as _, RouteResolver, ThrottlingConnector,
+    HttpRouteFragment, ResolveHostnames, ResolveWithSavedDescription, ResolvedRoute, RouteProvider,
+    RouteProviderContext, RouteProviderExt as _, RouteResolver, ThrottlingConnector,
     TransportRoute, UnresolvedRouteDescription, UnresolvedTransportRoute,
     UnresolvedWebsocketServiceRoute, UsePreconnect, UsesTransport, WebSocketRouteFragment,
     WebSocketServiceRoute,
@@ -359,7 +359,7 @@ where
             route_resolver,
             connect_timeout,
             make_transport_connector,
-            attempts_record: _,
+            attempts_record,
             route_provider_context,
         } = &*connect_read;
 
@@ -403,11 +403,12 @@ where
             ConnectorFactory::<UsePreconnect<_>>::make(make_transport_connector);
         let route_provider = routes.into_iter();
         let connector = ConnectWithSavedRoute(&transport_connector);
+        let delay_policy = DelayBasedOnTransport(&attempts_record);
 
         let start = Instant::now();
         let connect = crate::infra::route::connect(
             route_resolver,
-            NoDelay,
+            delay_policy,
             route_provider,
             resolver,
             connector,
@@ -420,29 +421,48 @@ where
             },
         );
 
-        let (result, _updates) = tokio::time::timeout(*connect_timeout, connect)
+        let (result, updates) = tokio::time::timeout(*connect_timeout, connect)
             .await
             .map_err(|_: tokio::time::error::Elapsed| TimeoutOr::Timeout {
                 attempt_duration: *connect_timeout,
             })?;
 
-        match &result {
-            Ok(_) => log::info!(
-                "[{log_tag}] connection succeeded after {:.3?}",
-                start.elapsed()
-            ),
-            Err(e) => log::info!("[{log_tag}] connection failed with {e}"),
-        }
+        // Don't exit yet, we have to save the failed outcomes too!
+        let result = result
+            .map(
+                |(
+                    UsePreconnect {
+                        inner: route,
+                        should: _,
+                    },
+                    connection,
+                )| {
+                    log::info!(
+                        "[{log_tag}] connection succeeded after {:.3?}",
+                        start.elapsed()
+                    );
+                    make_transport_connector.save_preconnected(route, connection, Instant::now());
+                },
+            )
+            .map_err(|e| {
+                log::info!("[{log_tag}] connection failed with {e}");
+                e.into()
+            });
 
-        let (
-            UsePreconnect {
-                inner: route,
-                should: _,
-            },
-            connection,
-        ) = result?;
-        make_transport_connector.save_preconnected(route, connection, Instant::now());
-        Ok(())
+        // Drop our read lock so we can re-acquire as a writer. It's okay if we
+        // race with other writers since the order in which updates are applied
+        // doesn't matter.
+        drop(connect_read);
+
+        this.write().await.attempts_record.apply_outcome_updates(
+            updates
+                .outcomes
+                .into_iter()
+                .map(|(route, outcome)| (route.into_transport_part(), outcome)),
+            updates.finished_at,
+        );
+
+        result
     }
 }
 
@@ -465,7 +485,7 @@ pub type PreconnectingFactory<Inner = DefaultConnectorFactory> =
 #[cfg(test)]
 mod test {
     use std::collections::HashMap;
-    use std::sync::{Arc, LazyLock};
+    use std::sync::{Arc, LazyLock, Mutex};
     use std::time::Duration;
 
     use assert_matches::assert_matches;
@@ -632,5 +652,103 @@ mod test {
             })
         );
         assert_eq!(start.elapsed(), CONNECT_TIMEOUT);
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn preconnect_records_outcomes() {
+        let ws_connector = ConnectFn(|(), route, _log_tag| std::future::ready(Ok(route)));
+        let resolver = DnsResolver::new_from_static_map(HashMap::from([(
+            FAKE_HOST_NAME,
+            LookupResult::new(DnsSource::Static, vec![ip_addr!(v4, "192.0.2.1")], vec![]),
+        )]));
+
+        let attempts_by_host = Mutex::new(HashMap::<Host<_>, u32>::new());
+        let make_transport_connector = PreconnectingFactory::new(
+            ConnectFn(|(), route: TransportRoute, _| {
+                let host = route.fragment.sni;
+                let result = if host == Host::parse_as_ip_or_domain("fail") {
+                    Err(TransportConnectError::TcpConnectionFailed)
+                } else {
+                    Ok(())
+                };
+                *attempts_by_host
+                    .lock()
+                    .expect("no panic")
+                    .entry(host)
+                    .or_default() += 1;
+                std::future::ready(result)
+            }),
+            Duration::from_secs(60),
+        );
+
+        const CONNECT_TIMEOUT: Duration = Duration::from_secs(31);
+
+        let state = ConnectState {
+            connect_timeout: CONNECT_TIMEOUT,
+            route_resolver: RouteResolver::default(),
+            attempts_record: ConnectionOutcomes::new(SUGGESTED_CONNECT_PARAMS),
+            make_transport_connector,
+            route_provider_context: Default::default(),
+        }
+        .into();
+
+        let good_transport_route = FAKE_TRANSPORT_ROUTE.clone();
+        let mut bad_transport_route = good_transport_route.clone();
+        bad_transport_route.fragment.sni = Host::parse_as_ip_or_domain("fail");
+
+        ConnectState::preconnect_and_save(
+            &state,
+            vec![bad_transport_route.clone(), good_transport_route.clone()],
+            &resolver,
+            "preconnect".into(),
+        )
+        .await
+        .expect("success");
+
+        assert_eq!(
+            *attempts_by_host.lock().expect("not poisoned"),
+            HashMap::from_iter([
+                (Host::parse_as_ip_or_domain("fake-sni"), 1),
+                (Host::parse_as_ip_or_domain("fail"), 1),
+            ])
+        );
+
+        _ = ConnectState::connect_ws(
+            &state,
+            [bad_transport_route.clone(), good_transport_route.clone()]
+                .into_iter()
+                .map(|route| WebSocketRoute {
+                    fragment: WebSocketRouteFragment {
+                        ws_config: Default::default(),
+                        endpoint: PathAndQuery::from_static("/"),
+                        headers: HeaderMap::new(),
+                    },
+                    inner: HttpsTlsRoute {
+                        fragment: HttpRouteFragment {
+                            host_header: "host".into(),
+                            path_prefix: "".into(),
+                            front_name: None,
+                        },
+                        inner: route,
+                    },
+                })
+                .collect_vec(),
+            ws_connector,
+            &resolver,
+            None,
+            "test".into(),
+        )
+        .await
+        .expect("succeeded");
+
+        // Even though the bad transport route was listed first, we should have tried the good
+        // transport route first due to the record of the preconnect attempts.
+        assert_eq!(
+            *attempts_by_host.lock().expect("not poisoned"),
+            HashMap::from_iter([
+                (Host::parse_as_ip_or_domain("fake-sni"), 2),
+                (Host::parse_as_ip_or_domain("fail"), 1),
+            ])
+        );
     }
 }
