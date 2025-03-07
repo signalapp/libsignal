@@ -14,7 +14,7 @@
 # thiserror: minimal and highly inlinable, most of the code is synthesized at the use site
 EXPECTED="
 thiserror v1.0.69
-thiserror v2.0.11"
+thiserror v2.0.12"
 
 check_cargo_tree() {
     # Only check the mobile targets, where we care most about code size.

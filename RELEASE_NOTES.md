@@ -5,3 +5,5 @@ v0.67.4
 
 - Net.preconnectChat will start the connection process for an authenticated chat connection
   without needing a username and password ready.
+
+- Rust: Update some dependencies to the lastest compatible versions.
