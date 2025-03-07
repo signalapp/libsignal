@@ -7,3 +7,5 @@ v0.67.4
   without needing a username and password ready.
 
 - Rust: Update some dependencies to the lastest compatible versions.
+
+- Net: Harmonized WebSocket PING interval with the client keep-alive interval to conserve resources.

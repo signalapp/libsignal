@@ -21,7 +21,12 @@ pub const DNS_RESOLUTION_DELAY: Duration = Duration::from_millis(50);
 pub const DNS_CALL_BACKGROUND_TIMEOUT: Duration = Duration::from_secs(30);
 
 /// Frequency of the WebSocket `PING` requests
-pub const WS_KEEP_ALIVE_INTERVAL: Duration = Duration::from_secs(15);
+/// Set to be slightly longer than the client keep-alive interval to minimize duplicate
+///   network usage.
+/// See: Signal-Android's KEEPALIVE_FREQUENCY_SECONDS OkHttpWebSocketConnection.java:58, and
+///      Signal-Desktop's KEEPALIVE_INTERVAL_MS at WebSocketResources.ts:1085,
+///    which are both thirty seconds.
+pub const WS_KEEP_ALIVE_INTERVAL: Duration = Duration::from_secs(31);
 /// Maximum time of incoming packets inactivity allowed on a WebSocket connection
 pub const WS_MAX_IDLE_INTERVAL: Duration = Duration::from_secs(45);
 
