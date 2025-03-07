@@ -109,7 +109,7 @@ async fn test_connection(
     .await?;
 
     // Disconnect immediately to confirm connection and disconnection works.
-    chat_connection.disconect().await;
+    chat_connection.disconnect().await;
 
     log::info!("completed successfully");
     Ok(())

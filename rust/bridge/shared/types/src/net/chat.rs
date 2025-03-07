@@ -194,7 +194,7 @@ impl<C: AsRef<tokio::sync::RwLock<MaybeChatConnection>> + Sync> BridgeChatConnec
     async fn disconnect(&self) {
         let guard = self.as_ref().read().await;
         match &*guard {
-            MaybeChatConnection::Running(chat_connection) => chat_connection.disconect().await,
+            MaybeChatConnection::Running(chat_connection) => chat_connection.disconnect().await,
             MaybeChatConnection::WaitingForListener(_handle, pending_chat_mutex) => {
                 pending_chat_mutex.lock().await.disconnect().await
             }

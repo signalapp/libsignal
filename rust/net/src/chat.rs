@@ -331,7 +331,7 @@ impl ChatConnection {
         Ok(send_result?)
     }
 
-    pub async fn disconect(&self) {
+    pub async fn disconnect(&self) {
         self.inner.disconnect().await
     }
 
