@@ -194,7 +194,13 @@ impl Chat {
         let alerts = connect_response_headers
             .get_all(ALERT_HEADER_NAME)
             .iter()
-            .map(|value| value.to_str().unwrap_or("[non-ASCII alert]").to_owned())
+            .flat_map(|value| {
+                value
+                    .to_str()
+                    .unwrap_or("[non-ASCII alert]")
+                    .split_terminator(',')
+                    .map(|individual_value| individual_value.trim_ascii().to_owned())
+            })
             .collect_vec();
         listener(ListenerEvent::ReceivedAlerts(alerts))
     }
@@ -2044,7 +2050,7 @@ mod test {
                     ("unrelated", "other"),
                     (ALERT_HEADER_NAME, "first"),
                     ("yet-another", "something"),
-                    (ALERT_HEADER_NAME, "second"),
+                    (ALERT_HEADER_NAME, "second,third, fourth"),
                     ("last-one", "x"),
                 ]
                 .map(|(name, val)| {
@@ -2059,7 +2065,7 @@ mod test {
 
         assert_matches!(
             listener_rx.try_recv().expect("present"),
-            ListenerEvent::ReceivedAlerts(alerts) if alerts == ["first", "second"]
+            ListenerEvent::ReceivedAlerts(alerts) if alerts == ["first", "second", "third", "fourth"]
         );
         assert_matches!(listener_rx.try_recv(), Err(TryRecvError::Empty));
     }

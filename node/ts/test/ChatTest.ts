@@ -105,6 +105,11 @@ describe('chat connection to mock server', () => {
     await chatServer.stop();
   });
 
+  function username(): string {
+    const device = chatServer.device?.device;
+    return `${device?.aci}.${device?.deviceId}`;
+  }
+
   type ConnectFn = [
     string,
     (
@@ -131,10 +136,8 @@ describe('chat connection to mock server', () => {
           onReceivedAlerts: (_alerts: string[]) => {},
           ...listener,
         };
-        const device = chatServer.device?.device;
-        const username = `${device?.aci}.${device?.deviceId}`;
         return network.connectAuthenticatedChat(
-          username,
+          username(),
           devicePassword,
           false,
           serviceListener
@@ -166,4 +169,36 @@ describe('chat connection to mock server', () => {
       expect(onDisconnected.resolvedValue).to.be.null;
     });
   });
+
+  [[], ['primary-device-stinky'], ['UPPERcase', 'lowercase']].forEach(
+    (alertList) => {
+      it(`can receive alerts: [${alertList.join(',')}]`, async () => {
+        const headers: Record<string, string> = {
+          unrelated: 'ignore',
+          'x-signal-alert': alertList.join(','),
+        };
+        chatServer.server.setWebsocketUpgradeResponseHeaders(headers);
+        const promisedAlerts = sinon.promise();
+        const chat = await network.connectAuthenticatedChat(
+          username(),
+          devicePassword,
+          false,
+          {
+            onReceivedAlerts: (alerts) => {
+              void promisedAlerts.resolve(alerts);
+            },
+            onIncomingMessage: (
+              _envelope: Buffer,
+              _timestamp: number,
+              _ack: ChatServerMessageAck
+            ) => {},
+            onQueueEmpty: () => {},
+            onConnectionInterrupted: (_cause) => {},
+          }
+        );
+        await expect(promisedAlerts).to.eventually.deep.equal(alertList);
+        await chat.disconnect();
+      });
+    }
+  );
 });
