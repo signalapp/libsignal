@@ -380,6 +380,26 @@ final class ChatConnectionTests: TestCaseBase {
         await self.fulfillment(of: [listener.expectation], timeout: 2)
     }
 
+    func testPreconnectAuth() async throws {
+        // Use the presence of the environment setting to know whether we should make network requests in our tests.
+        guard ProcessInfo.processInfo.environment["LIBSIGNAL_TESTING_RUN_NONHERMETIC_TESTS"] != nil else {
+            throw XCTSkip()
+        }
+
+        let net = Net(env: .staging, userAgent: Self.userAgent)
+        try await net.preconnectChat()
+        do {
+            // While we get no direct feedback here whether the preconnect was used,
+            // you can check the log lines for: "[authenticated] using preconnection".
+            // We have to use an authenticated connection because that's the only one that's allowed to
+            // use preconnects.
+            _ = try await net.connectAuthenticatedChat(username: "", password: "", receiveStories: false)
+            XCTFail("should not have managed to authenticate")
+        } catch SignalError.deviceDeregistered(_:) {
+            // expected error, okay
+        }
+    }
+
     func testConnectUnauthThroughProxy() async throws {
         guard let PROXY_SERVER = ProcessInfo.processInfo.environment["LIBSIGNAL_TESTING_PROXY_SERVER"] else {
             throw XCTSkip()

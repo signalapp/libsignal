@@ -197,6 +197,24 @@ public class Net {
         return CdsiLookup(native: NonNull(handle)!, asyncContext: self.asyncContext)
     }
 
+    /// Starts the process of connecting to the chat server.
+    ///
+    /// If this completes successfully, the next call to
+    /// ``connectAuthenticatedChat(username:password:receiveStories:)`` may be able to finish more
+    /// quickly. If it's incomplete or produces an error, such a call will start from scratch as
+    /// usual. Only one preconnect is recorded, so there's no point in calling this more than once.
+    public func preconnectChat() async throws {
+        _ = try await self.asyncContext.invokeAsyncFunction { promise, asyncContext in
+            self.connectionManager.withNativeHandle { connectionManager in
+                signal_authenticated_chat_connection_preconnect(
+                    promise,
+                    asyncContext.const(),
+                    connectionManager.const()
+                )
+            }
+        }
+    }
+
     /// Asynchronously establishes an authenticated connection to the remote
     /// chat service.
     ///

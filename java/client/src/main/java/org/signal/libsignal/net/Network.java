@@ -197,6 +197,23 @@ public class Network {
   }
 
   /**
+   * Starts the process of connecting to the chat server.
+   *
+   * <p>If this completes successfully, the next call to {@link #connectAuthChat} may be able to
+   * finish more quickly. If it's incomplete or produces an error, such a call will start from
+   * scratch as usual. Only one preconnect is recorded, so there's no point in calling this more
+   * than once.
+   */
+  public CompletableFuture<Void> preconnectChat() {
+    return tokioAsyncContext.guardedMap(
+        asyncContext ->
+            connectionManager.guardedMap(
+                connectionManager ->
+                    Native.AuthenticatedChatConnection_preconnect(
+                        asyncContext, connectionManager)));
+  }
+
+  /**
    * Initiates an unauthenticated connection attempt to the chat service.
    *
    * <p>The returned {@link CompletableFuture} will resolve when the connection attempt succeeds or

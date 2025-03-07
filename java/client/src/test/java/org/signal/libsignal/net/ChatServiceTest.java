@@ -12,9 +12,11 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import org.junit.Assume;
+import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.function.ThrowingRunnable;
@@ -25,6 +27,7 @@ import org.signal.libsignal.internal.NativeTesting;
 import org.signal.libsignal.protocol.util.Pair;
 import org.signal.libsignal.util.Base64;
 import org.signal.libsignal.util.TestEnvironment;
+import org.signal.libsignal.util.TestLogger;
 
 public class ChatServiceTest {
 
@@ -124,6 +127,8 @@ public class ChatServiceTest {
       }
     }
 
+    @ClassRule public static final TestLogger logger = new TestLogger();
+
     @Rule public Timeout perCaseTimeout = new Timeout(15, TimeUnit.SECONDS);
 
     @Test
@@ -141,6 +146,27 @@ public class ChatServiceTest {
 
       ChatServiceException disconnectReason = listener.disconnectReason.get();
       assertNull(disconnectReason);
+    }
+
+    @Test
+    public void testPreconnectAuth() throws Exception {
+      // Use the presence of the environment setting to know whether we should
+      // make network requests in our tests.
+      final String ENABLE_TEST = TestEnvironment.get("LIBSIGNAL_TESTING_RUN_NONHERMETIC_TESTS");
+      Assume.assumeNotNull(ENABLE_TEST);
+
+      final Network net = new Network(Network.Environment.STAGING, USER_AGENT);
+      final Listener listener = new Listener();
+      net.preconnectChat().get();
+
+      // While we get no direct feedback here whether the preconnect was used,
+      // you can check the log lines for: "[authenticated] using preconnection".
+      // We have to use an authenticated connection because that's the only one that's allowed to
+      // use preconnects.
+      final var e =
+          assertThrows(
+              ExecutionException.class, () -> net.connectAuthChat("", "", false, listener).get());
+      assertTrue(e.getCause() instanceof DeviceDeregisteredException);
     }
 
     @Test

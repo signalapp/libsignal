@@ -134,10 +134,10 @@ export class Net {
   /**
    * Starts the process of connecting to the chat server.
    *
-   * If this completes successfully, the next call to {@link #connectAuthenticatedChat} or
-   * {@link #connectUnauthenticatedChat} may be able to finish more quickly. If it's incomplete or
-   * produces an error, such a call will start from scratch as usual. Only one preconnect is
-   * recorded, so there's no point in calling this more than once.
+   * If this completes successfully, the next call to {@link #connectAuthenticatedChat} may be able
+   * to finish more quickly. If it's incomplete or produces an error, such a call will start from
+   * scratch as usual. Only one preconnect is recorded, so there's no point in calling this more
+   * than once.
    *
    * @param options additional options to pass through.
    * @param options.abortSignal an {@link AbortSignal} that will cancel the connection attempt.
