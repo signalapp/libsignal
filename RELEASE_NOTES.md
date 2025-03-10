@@ -6,6 +6,6 @@ v0.67.4
 - Net.preconnectChat will start the connection process for an authenticated chat connection
   without needing a username and password ready.
 
-- Rust: Update some dependencies to the lastest compatible versions.
+- Rust: Update some dependencies (including boring) to the lastest compatible versions.
 
 - Net: Harmonized WebSocket PING interval with the client keep-alive interval to conserve resources.

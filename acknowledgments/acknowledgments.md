@@ -2292,7 +2292,7 @@ limitations under the License.
 
 ```
 
-## boring 4.13.0
+## boring 4.15.0
 
 ```
 Copyright 2011-2017 Google Inc.
@@ -2743,7 +2743,7 @@ express Statement of Purpose.
 
 ```
 
-## boring-sys 4.13.0
+## boring-sys 4.15.0
 
 ```
 /* Copyright (c) 2015, Google Inc.
@@ -3114,7 +3114,7 @@ DEALINGS IN THE SOFTWARE.
 
 ```
 
-## boring-sys 4.13.0
+## boring-sys 4.15.0
 
 ```
 Copyright (c) 2014 Alex Crichton
@@ -3545,7 +3545,7 @@ THE SOFTWARE.
 
 ```
 
-## either 1.15.0, itertools 0.13.0, itertools 0.14.0, petgraph 0.7.1
+## either 1.15.0, itertools 0.10.5, itertools 0.14.0, petgraph 0.7.1
 
 ```
 Copyright (c) 2015
@@ -3839,7 +3839,7 @@ DEALINGS IN THE SOFTWARE.
 
 ```
 
-## boring-sys 4.13.0
+## boring-sys 4.15.0
 
 ```
 Copyright (c) 2015-2016 the fiat-crypto authors (see
@@ -4352,7 +4352,7 @@ SOFTWARE.
 
 ```
 
-## tokio-boring 4.13.0
+## tokio-boring 4.15.0
 
 ```
 Copyright (c) 2016 Tokio contributors
@@ -8019,7 +8019,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-## boring-sys 4.13.0
+## boring-sys 4.15.0
 
 ```
 /* ====================================================================

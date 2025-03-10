@@ -368,7 +368,7 @@ dependencies = [
  "bitflags",
  "cexpr",
  "clang-sys",
- "itertools 0.13.0",
+ "itertools 0.10.5",
  "proc-macro2",
  "quote",
  "regex",
@@ -433,21 +433,20 @@ dependencies = [
 
 [[package]]
 name = "boring"
-version = "4.13.0"
-source = "git+https://github.com/signalapp/boring?tag=signal-v4.13.0#615af5aafbc0c1ba0e532b215b10360b47727283"
+version = "4.15.0"
+source = "git+https://github.com/signalapp/boring?tag=signal-v4.15.0#bb42da53b3900aea1936d41decf9403f25c4259c"
 dependencies = [
  "bitflags",
  "boring-sys",
  "foreign-types",
  "libc",
- "once_cell",
  "openssl-macros",
 ]
 
 [[package]]
 name = "boring-sys"
-version = "4.13.0"
-source = "git+https://github.com/signalapp/boring?tag=signal-v4.13.0#615af5aafbc0c1ba0e532b215b10360b47727283"
+version = "4.15.0"
+source = "git+https://github.com/signalapp/boring?tag=signal-v4.15.0#bb42da53b3900aea1936d41decf9403f25c4259c"
 dependencies = [
  "autocfg",
  "bindgen",
@@ -2035,15 +2034,6 @@ name = "itertools"
 version = "0.10.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b0fd2260e829bddf4cb6ea802289de2f86d6a7a690192fbe91b3f46e0f2c8473"
-dependencies = [
- "either",
-]
-
-[[package]]
-name = "itertools"
-version = "0.13.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "413ee7dfc52ee1a4949ceeb7dbc8a33f2d6c088194d9f922fb8318faf1f01186"
 dependencies = [
  "either",
 ]
@@ -4732,12 +4722,11 @@ dependencies = [
 
 [[package]]
 name = "tokio-boring"
-version = "4.13.0"
-source = "git+https://github.com/signalapp/boring?tag=signal-v4.13.0#615af5aafbc0c1ba0e532b215b10360b47727283"
+version = "4.15.0"
+source = "git+https://github.com/signalapp/boring?tag=signal-v4.15.0#bb42da53b3900aea1936d41decf9403f25c4259c"
 dependencies = [
  "boring",
  "boring-sys",
- "once_cell",
  "tokio",
 ]
 

@@ -2360,7 +2360,7 @@ limitations under the License.
 			<key>License</key>
 			<string>Apache License 2.0</string>
 			<key>Title</key>
-			<string>boring 4.13.0</string>
+			<string>boring 4.15.0</string>
 			<key>Type</key>
 			<string>PSGroupSpecifier</string>
 		</dict>
@@ -2851,7 +2851,7 @@ express Statement of Purpose.
 			<key>License</key>
 			<string>ISC License</string>
 			<key>Title</key>
-			<string>boring-sys 4.13.0</string>
+			<string>boring-sys 4.15.0</string>
 			<key>Type</key>
 			<string>PSGroupSpecifier</string>
 		</dict>
@@ -3292,7 +3292,7 @@ DEALINGS IN THE SOFTWARE.
 			<key>License</key>
 			<string>MIT License</string>
 			<key>Title</key>
-			<string>boring-sys 4.13.0</string>
+			<string>boring-sys 4.15.0</string>
 			<key>Type</key>
 			<string>PSGroupSpecifier</string>
 		</dict>
@@ -3782,7 +3782,7 @@ DEALINGS IN THE SOFTWARE.
 			<key>License</key>
 			<string>MIT License</string>
 			<key>Title</key>
-			<string>either 1.15.0, itertools 0.13.0, itertools 0.14.0, petgraph 0.7.1</string>
+			<string>either 1.15.0, itertools 0.10.5, itertools 0.14.0, petgraph 0.7.1</string>
 			<key>Type</key>
 			<string>PSGroupSpecifier</string>
 		</dict>
@@ -4114,7 +4114,7 @@ SOFTWARE.</string>
 			<key>License</key>
 			<string>MIT License</string>
 			<key>Title</key>
-			<string>boring-sys 4.13.0</string>
+			<string>boring-sys 4.15.0</string>
 			<key>Type</key>
 			<string>PSGroupSpecifier</string>
 		</dict>
@@ -4706,7 +4706,7 @@ DEALINGS IN THE SOFTWARE.
 			<key>License</key>
 			<string>MIT License</string>
 			<key>Title</key>
-			<string>tokio-boring 4.13.0</string>
+			<string>tokio-boring 4.15.0</string>
 			<key>Type</key>
 			<string>PSGroupSpecifier</string>
 		</dict>
@@ -8915,7 +8915,7 @@ SOFTWARE.</string>
 			<key>License</key>
 			<string>OpenSSL License</string>
 			<key>Title</key>
-			<string>boring-sys 4.13.0</string>
+			<string>boring-sys 4.15.0</string>
 			<key>Type</key>
 			<string>PSGroupSpecifier</string>
 		</dict>
