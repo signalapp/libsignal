@@ -27,6 +27,7 @@ use crate::utils::future::SomeOrPending;
 ///
 /// [`RouteResolver::resolve`] is the main entry point; this type exists mostly
 /// to provide some named state that is used as input to that function.
+#[derive(Clone)]
 pub struct RouteResolver {
     pub allow_ipv6: bool,
 }
@@ -71,6 +72,7 @@ pub struct Schedule<S, R, SP> {
 /// Record of recent connection outcomes.
 ///
 /// Implements [`RouteDelayPolicy`].
+#[derive(Clone)]
 pub struct ConnectionOutcomes<R> {
     params: ConnectionOutcomeParams,
     recent_failures: HashMap<R, (Instant, u8)>,

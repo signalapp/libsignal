@@ -177,7 +177,39 @@ impl RouteInfo {
     }
 }
 
+/// A snapshot of [`ConnectState`] for a particular connection attempt.
+///
+/// "Like `ConnectState`, but with a single instantiated connector."
+struct ConnectStateSnapshot<C> {
+    route_resolver: RouteResolver,
+    connect_timeout: Duration,
+    transport_connector: C,
+    attempts_record: ConnectionOutcomes<TransportRoute>,
+    route_provider_context: RouteProviderContextImpl,
+}
+
 impl<TC> ConnectState<TC> {
+    fn snapshot<Transport>(&self) -> ConnectStateSnapshot<TC::Connector>
+    where
+        TC: ConnectorFactory<Transport>,
+    {
+        let Self {
+            route_resolver,
+            connect_timeout,
+            make_transport_connector,
+            attempts_record,
+            route_provider_context,
+        } = self;
+
+        ConnectStateSnapshot {
+            route_resolver: route_resolver.clone(),
+            connect_timeout: *connect_timeout,
+            transport_connector: make_transport_connector.make(),
+            attempts_record: attempts_record.clone(),
+            route_provider_context: route_provider_context.clone(),
+        }
+    }
+
     pub async fn connect_ws<WC, UR, Transport>(
         this: &tokio::sync::RwLock<Self>,
         routes: impl RouteProvider<Route = UR>,
@@ -205,32 +237,29 @@ impl<TC> ConnectState<TC> {
             > + Send
             + Sync,
     {
-        let connect_read = this.read().await;
-
-        let Self {
+        let ConnectStateSnapshot {
             route_resolver,
             connect_timeout,
-            make_transport_connector,
+            transport_connector,
             attempts_record,
             route_provider_context,
-        } = &*connect_read;
+        } = this.read().await.snapshot();
 
-        let routes = routes.routes(route_provider_context).collect_vec();
+        let routes = routes.routes(&route_provider_context).collect_vec();
 
         log::info!(
             "[{log_tag}] starting connection attempt with {} routes",
             routes.len()
         );
 
-        let transport_connector = make_transport_connector.make();
         let route_provider = routes.into_iter().map(ResolveWithSavedDescription);
         let connector =
             DescribedRouteConnector(ComposedConnector::new(ws_connector, &transport_connector));
-        let delay_policy = DelayBasedOnTransport(&attempts_record);
+        let delay_policy = DelayBasedOnTransport(attempts_record);
 
         let start = Instant::now();
         let connect = crate::infra::route::connect(
-            route_resolver,
+            &route_resolver,
             delay_policy,
             route_provider,
             resolver,
@@ -251,21 +280,16 @@ impl<TC> ConnectState<TC> {
             },
         );
 
-        let (result, updates) = tokio::time::timeout(*connect_timeout, connect)
+        let (result, updates) = tokio::time::timeout(connect_timeout, connect)
             .await
             .map_err(|_: tokio::time::error::Elapsed| TimeoutOr::Timeout {
-                attempt_duration: *connect_timeout,
+                attempt_duration: connect_timeout,
             })?;
-
-        // Drop our read lock so we can re-acquire as a writer. It's okay if we
-        // race with other writers since the order in which updates are applied
-        // doesn't matter.
-        drop(connect_read);
 
         match &result {
             Ok((_connection, route)) => log::info!(
                 "[{log_tag}] connection through {route} succeeded after {:.3?}",
-                start.elapsed()
+                updates.finished_at - start
             ),
             Err(e) => log::info!("[{log_tag}] connection failed with {e}"),
         }
@@ -353,22 +377,20 @@ where
         resolver: &DnsResolver,
         log_tag: Arc<str>,
     ) -> Result<(), TimeoutOr<ConnectError<WebSocketServiceConnectError>>> {
-        let connect_read = this.read().await;
-
-        let Self {
+        let ConnectStateSnapshot {
             route_resolver,
             connect_timeout,
-            make_transport_connector,
+            transport_connector,
             attempts_record,
             route_provider_context,
-        } = &*connect_read;
+        } = this.read().await.snapshot::<UsePreconnect<_>>();
 
         let routes = routes
             .map_routes(|r| UsePreconnect {
                 should: true,
                 inner: r,
             })
-            .routes(route_provider_context)
+            .routes(&route_provider_context)
             .collect_vec();
 
         log::info!(
@@ -399,15 +421,13 @@ where
             }
         }
 
-        let transport_connector =
-            ConnectorFactory::<UsePreconnect<_>>::make(make_transport_connector);
         let route_provider = routes.into_iter();
         let connector = ConnectWithSavedRoute(&transport_connector);
-        let delay_policy = DelayBasedOnTransport(&attempts_record);
+        let delay_policy = DelayBasedOnTransport(attempts_record);
 
         let start = Instant::now();
         let connect = crate::infra::route::connect(
-            route_resolver,
+            &route_resolver,
             delay_policy,
             route_provider,
             resolver,
@@ -421,52 +441,56 @@ where
             },
         );
 
-        let (result, updates) = tokio::time::timeout(*connect_timeout, connect)
+        let (result, updates) = tokio::time::timeout(connect_timeout, connect)
             .await
             .map_err(|_: tokio::time::error::Elapsed| TimeoutOr::Timeout {
-                attempt_duration: *connect_timeout,
+                attempt_duration: connect_timeout,
             })?;
 
-        // Don't exit yet, we have to save the failed outcomes too!
-        let result = result
-            .map(
-                |(
-                    UsePreconnect {
-                        inner: route,
-                        should: _,
-                    },
-                    connection,
-                )| {
-                    log::info!(
-                        "[{log_tag}] connection succeeded after {:.3?}",
-                        start.elapsed()
-                    );
-                    make_transport_connector.save_preconnected(route, connection, Instant::now());
+        match &result {
+            Ok(_) => {
+                // We can't log the route here because we don't require DescribeForLog.
+                // That's okay, though, it's not critical.
+                log::info!(
+                    "[{log_tag}] connection succeeded after {:.3?}",
+                    updates.finished_at - start
+                );
+            }
+            Err(e) => log::info!("[{log_tag}] connection failed with {e}"),
+        }
+
+        // Don't exit yet, we have to save the results!
+        {
+            let mut connect_write = this.write().await;
+
+            connect_write.attempts_record.apply_outcome_updates(
+                updates
+                    .outcomes
+                    .into_iter()
+                    .map(|(route, outcome)| (route.into_transport_part(), outcome)),
+                updates.finished_at,
+            );
+
+            let (
+                UsePreconnect {
+                    inner: route,
+                    should: _,
                 },
-            )
-            .map_err(|e| {
-                log::info!("[{log_tag}] connection failed with {e}");
-                e.into()
-            });
+                connection,
+            ) = result?;
 
-        // Drop our read lock so we can re-acquire as a writer. It's okay if we
-        // race with other writers since the order in which updates are applied
-        // doesn't matter.
-        drop(connect_read);
+            connect_write.make_transport_connector.save_preconnected(
+                route,
+                connection,
+                updates.finished_at,
+            );
+        }
 
-        this.write().await.attempts_record.apply_outcome_updates(
-            updates
-                .outcomes
-                .into_iter()
-                .map(|(route, outcome)| (route.into_transport_part(), outcome)),
-            updates.finished_at,
-        );
-
-        result
+        Ok(())
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 struct RouteProviderContextImpl(OsRng);
 
 impl RouteProviderContext for RouteProviderContextImpl {
