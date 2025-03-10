@@ -6114,7 +6114,7 @@ OR OTHER DEALINGS IN THE SOFTWARE.
 			<key>License</key>
 			<string>MIT License</string>
 			<key>Title</key>
-			<string>protobuf-codegen 3.7.1, protobuf-json-mapping 3.7.1, protobuf-support 3.7.1, protobuf 3.7.1</string>
+			<string>protobuf-codegen 3.7.2, protobuf-json-mapping 3.7.2, protobuf-support 3.7.2, protobuf 3.7.2</string>
 			<key>Type</key>
 			<string>PSGroupSpecifier</string>
 		</dict>
@@ -6180,7 +6180,7 @@ support library is itself covered by the above license.
 			<key>License</key>
 			<string>MIT License</string>
 			<key>Title</key>
-			<string>protobuf-parse 3.7.1</string>
+			<string>protobuf-parse 3.7.2</string>
 			<key>Type</key>
 			<string>PSGroupSpecifier</string>
 		</dict>
