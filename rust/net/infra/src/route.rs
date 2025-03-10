@@ -329,6 +329,8 @@ where
     // Every N seconds, log about what we've tried and still have yet to try.
     let mut log_for_slow_connections = tokio::time::interval(Duration::from_secs(3));
     log_for_slow_connections.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+    // Skip the first tick, as tokio::time::interval's "first tick completes immediately."
+    log_for_slow_connections.tick().await;
 
     // Whether the Schedule should be polled for its next route.
     let mut poll_schedule_for_next = true;
