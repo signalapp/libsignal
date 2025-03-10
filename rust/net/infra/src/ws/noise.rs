@@ -100,12 +100,12 @@ impl From<TransportError> for IoError {
 }
 
 fn into_io_error(e: tungstenite::Error) -> IoError {
-    let (error_kind, error) = match e {
+    let error_kind = match e {
         tungstenite::Error::Io(io_error) => return io_error,
-        e @ (tungstenite::Error::ConnectionClosed | tungstenite::Error::AlreadyClosed) => {
-            (IoErrorKind::BrokenPipe, crate::ws::Error::from(e))
+        tungstenite::Error::ConnectionClosed | tungstenite::Error::AlreadyClosed => {
+            IoErrorKind::BrokenPipe
         }
-        e @ (tungstenite::Error::Tls(_)
+        tungstenite::Error::Tls(_)
         | tungstenite::Error::Capacity(_)
         | tungstenite::Error::Protocol(_)
         | tungstenite::Error::WriteBufferFull(_)
@@ -113,8 +113,8 @@ fn into_io_error(e: tungstenite::Error) -> IoError {
         | tungstenite::Error::AttackAttempt
         | tungstenite::Error::Url(_)
         | tungstenite::Error::Http(_)
-        | tungstenite::Error::HttpFormat(_)) => (IoErrorKind::Other, e.into()),
+        | tungstenite::Error::HttpFormat(_) => IoErrorKind::Other,
     };
 
-    IoError::new(error_kind, error)
+    IoError::new(error_kind, crate::ws::LogSafeTungsteniteError::from(e))
 }

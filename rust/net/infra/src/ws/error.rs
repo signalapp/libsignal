@@ -27,7 +27,7 @@ impl std::fmt::Display for WebSocketConnectError {
             WebSocketConnectError::Transport(e) => write!(f, "transport: {e}"),
             WebSocketConnectError::Timeout => write!(f, "timed out while connecting"),
             WebSocketConnectError::WebSocketError(e) => {
-                write!(f, "websocket error: {}", Error::from(e))
+                write!(f, "websocket error: {}", LogSafeTungsteniteError::from(e))
             }
         }
     }
@@ -72,7 +72,7 @@ impl From<Option<CloseFrame<'_>>> for UnexpectedCloseError {
 ///
 /// Provides a user-data-free [`std::fmt::Display`] implementation.
 #[derive(Clone, Debug, Eq, PartialEq, thiserror::Error, displaydoc::Display)]
-pub enum Error {
+pub enum LogSafeTungsteniteError {
     /// The connection is closed
     Closed,
 
@@ -102,7 +102,7 @@ pub enum Error {
     UnexpectedTlsError,
 }
 
-impl LogSafeDisplay for Error {}
+impl LogSafeDisplay for LogSafeTungsteniteError {}
 
 /// Mirror of [`tungstenite::error::CapacityError`] and [`tungstenite::Error::WriteBufferFull`].
 ///
@@ -211,7 +211,7 @@ impl<E: Borrow<http::Error>> From<E> for HttpFormatError {
     }
 }
 
-impl From<tungstenite::Error> for Error {
+impl From<tungstenite::Error> for LogSafeTungsteniteError {
     fn from(value: tungstenite::Error) -> Self {
         match value {
             tungstenite::Error::Protocol(e) => Self::Protocol(ProtocolError::from(e)),
@@ -220,7 +220,7 @@ impl From<tungstenite::Error> for Error {
     }
 }
 
-impl<'a> From<&'a tungstenite::Error> for Error {
+impl<'a> From<&'a tungstenite::Error> for LogSafeTungsteniteError {
     fn from(value: &'a tungstenite::Error) -> Self {
         match value {
             tungstenite::Error::ConnectionClosed | tungstenite::Error::AlreadyClosed => {

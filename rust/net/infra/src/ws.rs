@@ -32,7 +32,7 @@ use crate::{
 };
 
 pub mod error;
-pub use error::{Error, WebSocketConnectError};
+pub use error::{LogSafeTungsteniteError, WebSocketConnectError};
 
 mod noise;
 pub use noise::WebSocketTransport;
