@@ -63,29 +63,43 @@ public class ChatServiceTest {
   }
 
   @Test
-  public void chatServiceErrorConvert() {
-    assertChatServiceErrorIs("AppExpired", AppExpiredException.class);
-    assertChatServiceErrorIs("DeviceDeregistered", DeviceDeregisteredException.class);
-    assertChatServiceErrorIs("Disconnected", ChatServiceInactiveException.class);
+  public void chatConnectErrorConvert() {
+    assertChatConnectErrorIs("AppExpired", AppExpiredException.class);
+    assertChatConnectErrorIs("DeviceDeregistered", DeviceDeregisteredException.class);
 
-    assertChatServiceErrorIs("WebSocket", ChatServiceException.class);
-    assertChatServiceErrorIs("UnexpectedFrameReceived", ChatServiceException.class);
-    assertChatServiceErrorIs("ServerRequestMissingId", ChatServiceException.class);
-    assertChatServiceErrorIs("IncomingDataInvalid", ChatServiceException.class);
-    assertChatServiceErrorIs("RequestSendTimedOut", ChatServiceException.class);
-    assertChatServiceErrorIs("TimeoutEstablishingConnection", ChatServiceException.class);
+    assertChatConnectErrorIs("WebSocketConnectionFailed", ChatServiceException.class);
+    assertChatConnectErrorIs("Timeout", ChatServiceException.class);
+    assertChatConnectErrorIs("AllAttemptsFailed", ChatServiceException.class);
+    assertChatConnectErrorIs("InvalidConnectionConfiguration", ChatServiceException.class);
     RetryLaterException retryLater =
-        assertChatServiceErrorIs("RetryAfter42Seconds", RetryLaterException.class);
+        assertChatConnectErrorIs("RetryAfter42Seconds", RetryLaterException.class);
     assertEquals(retryLater.duration, Duration.ofSeconds(42));
-    assertChatServiceErrorIs("RequestHasInvalidHeader", ChatServiceException.class);
   }
 
-  private static <E extends Throwable> E assertChatServiceErrorIs(
+  @Test
+  public void chatSendErrorConvert() {
+    assertChatSendErrorIs("Disconnected", ChatServiceInactiveException.class);
+
+    assertChatSendErrorIs("WebSocketConnectionReset", ChatServiceException.class);
+    assertChatSendErrorIs("IncomingDataInvalid", ChatServiceException.class);
+    assertChatSendErrorIs("RequestTimedOut", ChatServiceException.class);
+    assertChatSendErrorIs("RequestHasInvalidHeader", ChatServiceException.class);
+  }
+
+  private static <E extends Throwable> E assertChatConnectErrorIs(
       String errorDescription, Class<E> expectedErrorType) {
     return assertThrows(
         "for " + errorDescription,
         expectedErrorType,
-        () -> NativeTesting.TESTING_ChatServiceErrorConvert(errorDescription));
+        () -> NativeTesting.TESTING_ChatConnectErrorConvert(errorDescription));
+  }
+
+  private static <E extends Throwable> E assertChatSendErrorIs(
+      String errorDescription, Class<E> expectedErrorType) {
+    return assertThrows(
+        "for " + errorDescription,
+        expectedErrorType,
+        () -> NativeTesting.TESTING_ChatSendErrorConvert(errorDescription));
   }
 
   @Test

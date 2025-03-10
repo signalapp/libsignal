@@ -10,7 +10,6 @@ use attest::enclave::Error as EnclaveError;
 use attest::hsm_enclave::Error as HsmEnclaveError;
 use device_transfer::Error as DeviceTransferError;
 use libsignal_account_keys::Error as PinError;
-use libsignal_net::chat::ChatServiceError;
 use libsignal_net::infra::ws::WebSocketConnectError;
 use libsignal_net::svr3::Error as Svr3Error;
 use libsignal_net::ws::WebSocketServiceConnectError;
@@ -547,22 +546,14 @@ impl FfiError for Svr3Error {
     }
 }
 
-impl FfiError for ChatServiceError {
+impl FfiError for libsignal_net::chat::ConnectError {
     fn describe(&self) -> String {
         match self {
             Self::WebSocket(e) => format!("WebSocket error: {e}"),
-            Self::AllConnectionRoutesFailed | Self::InvalidConnectionConfiguration => {
+            Self::AllAttemptsFailed | Self::InvalidConnectionConfiguration => {
                 "Connection failed".to_owned()
             }
-            Self::UnexpectedFrameReceived
-            | Self::ServerRequestMissingId
-            | Self::IncomingDataInvalid => format!("Protocol error: {self}"),
-            Self::RequestHasInvalidHeader => {
-                format!("internal error: {self}")
-            }
-            Self::RequestSendTimedOut => "Request timed out".to_string(),
-            Self::TimeoutEstablishingConnection => "Connect timed out".to_owned(),
-            Self::Disconnected => "Chat service disconnected".to_owned(),
+            Self::Timeout => "Connect timed out".to_owned(),
             Self::AppExpired => "App expired".to_owned(),
             Self::DeviceDeregistered => "Device deregistered or delinked".to_owned(),
             Self::RetryLater {
@@ -574,16 +565,10 @@ impl FfiError for ChatServiceError {
     fn code(&self) -> SignalErrorCode {
         match self {
             Self::WebSocket(_) => SignalErrorCode::WebSocket,
-            Self::AllConnectionRoutesFailed { .. } | Self::InvalidConnectionConfiguration => {
+            Self::AllAttemptsFailed { .. } | Self::InvalidConnectionConfiguration => {
                 SignalErrorCode::ConnectionFailed
             }
-            Self::UnexpectedFrameReceived
-            | Self::ServerRequestMissingId
-            | Self::IncomingDataInvalid => SignalErrorCode::NetworkProtocol,
-            Self::RequestHasInvalidHeader => SignalErrorCode::InternalError,
-            Self::RequestSendTimedOut => SignalErrorCode::RequestTimedOut,
-            Self::TimeoutEstablishingConnection => SignalErrorCode::ConnectionTimedOut,
-            Self::Disconnected => SignalErrorCode::ChatServiceInactive,
+            Self::Timeout => SignalErrorCode::ConnectionTimedOut,
             Self::AppExpired => SignalErrorCode::AppExpired,
             Self::DeviceDeregistered => SignalErrorCode::DeviceDeregistered,
             Self::RetryLater { .. } => SignalErrorCode::RateLimited,
@@ -591,11 +576,38 @@ impl FfiError for ChatServiceError {
     }
     fn provide_retry_after_seconds(&self) -> Result<u32, WrongErrorKind> {
         match self {
-            ChatServiceError::RetryLater {
+            Self::RetryLater {
                 retry_after_seconds,
             } => Ok(*retry_after_seconds),
             _ => Err(WrongErrorKind),
         }
+    }
+}
+
+impl FfiError for libsignal_net::chat::SendError {
+    fn describe(&self) -> String {
+        match self {
+            Self::WebSocket(e) => format!("WebSocket error: {e}"),
+            Self::IncomingDataInvalid => format!("Protocol error: {self}"),
+            Self::RequestHasInvalidHeader => {
+                format!("internal error: {self}")
+            }
+            Self::RequestTimedOut => "Request timed out".to_string(),
+            Self::Disconnected => "Chat service disconnected".to_owned(),
+        }
+    }
+
+    fn code(&self) -> SignalErrorCode {
+        match self {
+            Self::WebSocket(_) => SignalErrorCode::WebSocket,
+            Self::IncomingDataInvalid => SignalErrorCode::NetworkProtocol,
+            Self::RequestHasInvalidHeader => SignalErrorCode::InternalError,
+            Self::RequestTimedOut => SignalErrorCode::RequestTimedOut,
+            Self::Disconnected => SignalErrorCode::ChatServiceInactive,
+        }
+    }
+    fn provide_retry_after_seconds(&self) -> Result<u32, WrongErrorKind> {
+        Err(WrongErrorKind)
     }
 }
 

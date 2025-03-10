@@ -17,8 +17,8 @@ use libsignal_net::auth::Auth;
 use libsignal_net::chat::fake::FakeChatRemote;
 use libsignal_net::chat::server_requests::DisconnectCause;
 use libsignal_net::chat::{
-    self, ChatConnection, ChatServiceError, ConnectionInfo, DebugInfo as ChatServiceDebugInfo,
-    Request, Response as ChatResponse,
+    self, ChatConnection, ConnectError, ConnectionInfo, DebugInfo as ChatServiceDebugInfo, Request,
+    Response as ChatResponse, SendError,
 };
 use libsignal_net::infra::route::{
     ConnectionProxyConfig, DirectOrProxyProvider, RouteProvider, RouteProviderExt,
@@ -73,7 +73,7 @@ enum MaybeChatConnection {
 assert_impl_all!(MaybeChatConnection: Send, Sync);
 
 impl UnauthenticatedChatConnection {
-    pub async fn connect(connection_manager: &ConnectionManager) -> Result<Self, ChatServiceError> {
+    pub async fn connect(connection_manager: &ConnectionManager) -> Result<Self, ConnectError> {
         let inner = establish_chat_connection("unauthenticated", connection_manager, None).await?;
         log::info!("connected unauthenticated chat");
         Ok(Self {
@@ -90,7 +90,7 @@ impl AuthenticatedChatConnection {
         connection_manager: &ConnectionManager,
         auth: Auth,
         receive_stories: bool,
-    ) -> Result<Self, ChatServiceError> {
+    ) -> Result<Self, ConnectError> {
         let inner = establish_chat_connection(
             "authenticated",
             connection_manager,
@@ -109,9 +109,7 @@ impl AuthenticatedChatConnection {
         })
     }
 
-    pub async fn preconnect(
-        connection_manager: &ConnectionManager,
-    ) -> Result<(), ChatServiceError> {
+    pub async fn preconnect(connection_manager: &ConnectionManager) -> Result<(), ConnectError> {
         let enable_domain_fronting = connection_manager
             .endpoints
             .lock()
@@ -127,8 +125,7 @@ impl AuthenticatedChatConnection {
             &connection_manager.dns_resolver,
             "preconnect".into(),
         )
-        .await
-        .map_err(ChatServiceError::from_single_connect_error)?;
+        .await?;
         Ok(())
     }
 
@@ -167,7 +164,7 @@ pub trait BridgeChatConnection {
         &self,
         message: Request,
         timeout: Duration,
-    ) -> impl Future<Output = Result<ChatResponse, ChatServiceError>> + Send;
+    ) -> impl Future<Output = Result<ChatResponse, SendError>> + Send;
 
     fn disconnect(&self) -> impl Future<Output = ()> + Send;
 
@@ -179,11 +176,7 @@ impl<C: AsRef<tokio::sync::RwLock<MaybeChatConnection>> + Sync> BridgeChatConnec
         init_listener(&mut self.as_ref().blocking_write(), listener)
     }
 
-    async fn send(
-        &self,
-        message: Request,
-        timeout: Duration,
-    ) -> Result<ChatResponse, ChatServiceError> {
+    async fn send(&self, message: Request, timeout: Duration) -> Result<ChatResponse, SendError> {
         let guard = self.as_ref().read().await;
         let MaybeChatConnection::Running(inner) = &*guard else {
             panic!("listener was not set")
@@ -244,7 +237,7 @@ async fn establish_chat_connection(
     auth_type: &'static str,
     connection_manager: &ConnectionManager,
     auth: Option<chat::AuthenticatedChatHeaders>,
-) -> Result<chat::PendingChatConnection, ChatServiceError> {
+) -> Result<chat::PendingChatConnection, ConnectError> {
     let ConnectionManager {
         env,
         dns_resolver,
@@ -299,7 +292,7 @@ async fn establish_chat_connection(
 fn make_route_provider(
     connection_manager: &ConnectionManager,
     enable_domain_fronting: EnableDomainFronting,
-) -> Result<impl RouteProvider<Route = UnresolvedHttpsServiceRoute>, ChatServiceError> {
+) -> Result<impl RouteProvider<Route = UnresolvedHttpsServiceRoute>, ConnectError> {
     let ConnectionManager {
         env,
         transport_connector,
@@ -309,7 +302,7 @@ fn make_route_provider(
     let proxy_config: Option<ConnectionProxyConfig> =
         (&*transport_connector.lock().expect("not poisoned"))
             .try_into()
-            .map_err(|InvalidProxyConfig| ChatServiceError::InvalidConnectionConfiguration)?;
+            .map_err(|InvalidProxyConfig| ConnectError::InvalidConnectionConfiguration)?;
 
     let chat_connect = &env.chat_domain_config.connect;
 

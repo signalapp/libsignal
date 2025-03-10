@@ -32,7 +32,7 @@ use crate::env::{add_user_agent_header, ConnectionConfig, UserAgent};
 use crate::proto;
 
 mod error;
-pub use error::ChatServiceError;
+pub use error::{ConnectError, SendError};
 
 pub mod fake;
 pub mod noise;
@@ -113,7 +113,7 @@ impl TryFrom<ResponseProto> for Response {
     }
 }
 
-impl From<ResponseProtoInvalidError> for ChatServiceError {
+impl From<ResponseProtoInvalidError> for SendError {
     fn from(ResponseProtoInvalidError: ResponseProtoInvalidError) -> Self {
         Self::IncomingDataInvalid
     }
@@ -197,7 +197,7 @@ impl ChatConnection {
         ws_config: self::ws2::Config,
         auth: Option<AuthenticatedChatHeaders>,
         log_tag: &str,
-    ) -> Result<PendingChatConnection, ChatServiceError>
+    ) -> Result<PendingChatConnection, ConnectError>
     where
         TC: WebSocketTransportConnectorFactory<
             UsePreconnect<TransportRoute>,
@@ -227,7 +227,7 @@ impl ChatConnection {
         ws_config: self::ws2::Config,
         auth: Option<AuthenticatedChatHeaders>,
         log_tag: &str,
-    ) -> Result<PendingChatConnection<TC::Connection>, ChatServiceError>
+    ) -> Result<PendingChatConnection<TC::Connection>, ConnectError>
     where
         TC: WebSocketTransportConnectorFactory<UsePreconnect<TransportRoute>>,
     {
@@ -273,8 +273,7 @@ impl ChatConnection {
             confirmation_header_name.as_ref(),
             log_tag.clone(),
         )
-        .await
-        .map_err(ChatServiceError::from_single_connect_error)?;
+        .await?;
 
         // It's okay to discard the ThrottlingConnection layer here, because no other routes are
         // still connecting.
@@ -320,14 +319,10 @@ impl ChatConnection {
         }
     }
 
-    pub async fn send(
-        &self,
-        msg: Request,
-        timeout: Duration,
-    ) -> Result<Response, ChatServiceError> {
+    pub async fn send(&self, msg: Request, timeout: Duration) -> Result<Response, SendError> {
         let send_result = tokio::time::timeout(timeout, self.inner.send(msg))
             .await
-            .map_err(|_elapsed| ChatServiceError::RequestSendTimedOut)?;
+            .map_err(|_elapsed| SendError::RequestTimedOut)?;
         Ok(send_result?)
     }
 
@@ -381,7 +376,7 @@ pub mod test_support {
     use libsignal_net_infra::EnableDomainFronting;
 
     use super::*;
-    use crate::chat::{ws2, ChatConnection, ChatServiceError};
+    use crate::chat::{ws2, ChatConnection};
     use crate::connect_state::{
         ConnectState, DefaultConnectorFactory, PreconnectingFactory, SUGGESTED_CONNECT_CONFIG,
     };
@@ -391,7 +386,7 @@ pub mod test_support {
     pub async fn simple_chat_connection(
         env: &Env<'static, Svr3Env<'static>>,
         filter_routes: impl Fn(&UnresolvedHttpsServiceRoute) -> bool,
-    ) -> Result<ChatConnection, ChatServiceError> {
+    ) -> Result<ChatConnection, ConnectError> {
         let network_change_event = ObservableEvent::new();
         let dns_resolver =
             DnsResolver::new_with_static_fallback(env.static_fallback(), &network_change_event);
@@ -610,17 +605,17 @@ pub(crate) mod test {
     // It's easier to use this with test_case in string form.
     const CONFIRMATION_HEADER: &str = "x-really-signal";
 
-    #[test_case(403, &[] => matches ChatServiceError::AllConnectionRoutesFailed)]
-    #[test_case(403, &[(CONFIRMATION_HEADER, "1")] => matches ChatServiceError::DeviceDeregistered)]
-    #[test_case(499, &[(CONFIRMATION_HEADER, "1")] => matches ChatServiceError::AppExpired)]
-    #[test_case(429, &[(CONFIRMATION_HEADER, "1"), ("retry-after", "20")] => matches ChatServiceError::RetryLater { retry_after_seconds: 20 })]
-    #[test_case(500, &[(CONFIRMATION_HEADER, "1"), ("retry-after", "20")] => matches ChatServiceError::RetryLater { retry_after_seconds: 20 })]
-    #[test_case(429, &[("retry-after", "20")] => matches ChatServiceError::AllConnectionRoutesFailed)]
+    #[test_case(403, &[] => matches ConnectError::AllAttemptsFailed)]
+    #[test_case(403, &[(CONFIRMATION_HEADER, "1")] => matches ConnectError::DeviceDeregistered)]
+    #[test_case(499, &[(CONFIRMATION_HEADER, "1")] => matches ConnectError::AppExpired)]
+    #[test_case(429, &[(CONFIRMATION_HEADER, "1"), ("retry-after", "20")] => matches ConnectError::RetryLater { retry_after_seconds: 20 })]
+    #[test_case(500, &[(CONFIRMATION_HEADER, "1"), ("retry-after", "20")] => matches ConnectError::RetryLater { retry_after_seconds: 20 })]
+    #[test_case(429, &[("retry-after", "20")] => matches ConnectError::AllAttemptsFailed)]
     #[test_log::test(tokio::test(start_paused = true))]
     async fn html_status_tests(
         status: u16,
         headers: &'static [(&'static str, &'static str)],
-    ) -> ChatServiceError {
+    ) -> ConnectError {
         let (client, mut server) = tokio::io::duplex(1024);
 
         let server_task = tokio::spawn(async move {
@@ -785,7 +780,7 @@ pub(crate) mod test {
         .await
         .expect_err("should fail to connect");
 
-        assert_matches!(err, ChatServiceError::AllConnectionRoutesFailed);
+        assert_matches!(err, ConnectError::AllAttemptsFailed);
         // 1 preconnect that subsequently fails, 1 IPv4 follow-up connection that also fails.
         assert_eq!(number_of_times_called.load(atomic::Ordering::SeqCst), 2);
 
@@ -807,7 +802,7 @@ pub(crate) mod test {
         .await
         .expect_err("should fail to connect");
 
-        assert_matches!(err, ChatServiceError::AllConnectionRoutesFailed);
+        assert_matches!(err, ConnectError::AllAttemptsFailed);
         assert_eq!(number_of_times_called.load(atomic::Ordering::SeqCst), 4);
     }
 }

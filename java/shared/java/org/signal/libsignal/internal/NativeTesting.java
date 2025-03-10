@@ -53,13 +53,14 @@ public final class NativeTesting {
 
   public static native void TESTING_CdsiLookupErrorConvert(String errorDescription) throws Exception;
   public static native CompletableFuture<Object> TESTING_CdsiLookupResponseConvert(long asyncRuntime);
+  public static native void TESTING_ChatConnectErrorConvert(String errorDescription) throws Exception;
   public static native byte[] TESTING_ChatRequestGetBody(long request);
   public static native String TESTING_ChatRequestGetHeaderValue(long request, String headerName);
   public static native String TESTING_ChatRequestGetMethod(long request);
   public static native String TESTING_ChatRequestGetPath(long request);
-  public static native Object TESTING_ChatResponseConvert(boolean bodyPresent) throws Exception;
+  public static native Object TESTING_ChatResponseConvert(boolean bodyPresent);
   public static native long TESTING_ChatSearchResult();
-  public static native void TESTING_ChatServiceErrorConvert(String errorDescription) throws Exception;
+  public static native void TESTING_ChatSendErrorConvert(String errorDescription) throws Exception;
   public static native int TESTING_ConnectionManager_isUsingProxy(long manager);
   public static native void TESTING_ErrorOnBorrowAsync(Object input);
   public static native CompletableFuture TESTING_ErrorOnBorrowIo(long asyncRuntime, Object input);

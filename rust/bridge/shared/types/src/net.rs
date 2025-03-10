@@ -516,7 +516,7 @@ mod empty_env {
 mod test {
     use ::tokio; // otherwise ambiguous with the tokio submodule
     use assert_matches::assert_matches;
-    use libsignal_net::chat::ChatServiceError;
+    use libsignal_net::chat::ConnectError;
     use test_case::test_case;
 
     use super::*;
@@ -538,7 +538,7 @@ mod test {
             .await
             .map(|_| ())
             .expect_err("should fail to connect");
-        assert_matches!(err, ChatServiceError::InvalidConnectionConfiguration);
+        assert_matches!(err, ConnectError::InvalidConnectionConfiguration);
     }
 
     #[test]

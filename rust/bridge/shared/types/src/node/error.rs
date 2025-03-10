@@ -5,7 +5,6 @@
 
 use std::fmt;
 
-use libsignal_net::chat::ChatServiceError;
 use libsignal_net::svr3::Error as Svr3Error;
 use signal_media::sanitize::mp4::{Error as Mp4Error, ParseError as Mp4ParseError};
 use signal_media::sanitize::webp::{Error as WebpError, ParseError as WebpParseError};
@@ -404,7 +403,7 @@ impl SignalNodeError for std::io::Error {
     }
 }
 
-impl SignalNodeError for libsignal_net::chat::ChatServiceError {
+impl SignalNodeError for libsignal_net::chat::ConnectError {
     fn into_throwable<'a, C: Context<'a>>(
         self,
         cx: &mut C,
@@ -412,21 +411,15 @@ impl SignalNodeError for libsignal_net::chat::ChatServiceError {
         operation_name: &str,
     ) -> Handle<'a, JsError> {
         let (name, properties) = match self {
-            ChatServiceError::Disconnected => (Some("ChatServiceInactive"), None),
-            ChatServiceError::AppExpired => (Some("AppExpired"), None),
-            ChatServiceError::DeviceDeregistered => (Some("DeviceDelinked"), None),
-            ChatServiceError::RetryLater {
+            Self::AppExpired => (Some("AppExpired"), None),
+            Self::DeviceDeregistered => (Some("DeviceDelinked"), None),
+            Self::RetryLater {
                 retry_after_seconds,
             } => rate_limited_error(retry_after_seconds),
-            ChatServiceError::WebSocket(_)
-            | ChatServiceError::UnexpectedFrameReceived
-            | ChatServiceError::ServerRequestMissingId
-            | ChatServiceError::IncomingDataInvalid
-            | ChatServiceError::RequestHasInvalidHeader
-            | ChatServiceError::RequestSendTimedOut
-            | ChatServiceError::TimeoutEstablishingConnection
-            | ChatServiceError::AllConnectionRoutesFailed
-            | ChatServiceError::InvalidConnectionConfiguration =>
+            Self::WebSocket(_)
+            | Self::Timeout
+            | Self::AllAttemptsFailed
+            | Self::InvalidConnectionConfiguration =>
             // TODO: Distinguish retryable errors from proper failures?
             {
                 (Some(IO_ERROR), None)
@@ -440,6 +433,36 @@ impl SignalNodeError for libsignal_net::chat::ChatServiceError {
             &message,
             operation_name,
             optional_extra_properties(properties),
+        )
+    }
+}
+
+impl SignalNodeError for libsignal_net::chat::SendError {
+    fn into_throwable<'a, C: Context<'a>>(
+        self,
+        cx: &mut C,
+        module: Handle<'a, JsObject>,
+        operation_name: &str,
+    ) -> Handle<'a, JsError> {
+        let name = match self {
+            Self::Disconnected => Some("ChatServiceInactive"),
+            Self::WebSocket(_)
+            | Self::IncomingDataInvalid
+            | Self::RequestHasInvalidHeader
+            | Self::RequestTimedOut =>
+            // TODO: Distinguish retryable errors from proper failures?
+            {
+                Some(IO_ERROR)
+            }
+        };
+        let message = self.to_string();
+        new_js_error(
+            cx,
+            module,
+            name,
+            &message,
+            operation_name,
+            no_extra_properties,
         )
     }
 }

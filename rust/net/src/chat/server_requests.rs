@@ -6,11 +6,11 @@
 use libsignal_net_infra::ws::WebSocketServiceError;
 use libsignal_protocol::Timestamp;
 
-use crate::chat::{ws2, ChatServiceError, RequestProto};
+use crate::chat::{ws2, RequestProto, SendError};
 use crate::env::TIMESTAMP_HEADER_NAME;
 
 pub type ResponseEnvelopeSender =
-    Box<dyn FnOnce(http::StatusCode) -> Result<(), ChatServiceError> + Send + Sync>;
+    Box<dyn FnOnce(http::StatusCode) -> Result<(), SendError> + Send + Sync>;
 
 pub enum ServerEvent {
     QueueEmpty,
@@ -27,7 +27,7 @@ pub enum ServerEvent {
 #[derive(Debug, derive_more::From)]
 pub enum DisconnectCause {
     LocalDisconnect,
-    Error(#[from] ChatServiceError),
+    Error(#[from] SendError),
 }
 
 impl std::fmt::Debug for ServerEvent {
@@ -80,11 +80,11 @@ impl TryFrom<ws2::ListenerEvent> for ServerEvent {
             ws2::ListenerEvent::Finished(reason) => Ok(ServerEvent::Stopped(match reason {
                 Ok(ws2::FinishReason::LocalDisconnect) => DisconnectCause::LocalDisconnect,
                 Ok(ws2::FinishReason::RemoteDisconnect) => DisconnectCause::Error(
-                    ChatServiceError::WebSocket(WebSocketServiceError::ChannelClosed),
+                    SendError::WebSocket(WebSocketServiceError::ChannelClosed),
                 ),
-                Err(ws2::FinishError::Unknown) => DisconnectCause::Error(
-                    ChatServiceError::WebSocket(WebSocketServiceError::Other("unexpected exit")),
-                ),
+                Err(ws2::FinishError::Unknown) => DisconnectCause::Error(SendError::WebSocket(
+                    WebSocketServiceError::Other("unexpected exit"),
+                )),
                 Err(ws2::FinishError::Error(e)) => DisconnectCause::Error(e.into()),
             })),
         }

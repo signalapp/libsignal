@@ -3,96 +3,70 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use libsignal_net_infra::errors::{LogSafeDisplay, TransportConnectError};
+use libsignal_net_infra::errors::LogSafeDisplay;
 use libsignal_net_infra::extract_retry_after_seconds;
-use libsignal_net_infra::route::ConnectError;
+use libsignal_net_infra::route::ConnectError as RouteConnectError;
 use libsignal_net_infra::timeouts::TimeoutOr;
 use libsignal_net_infra::ws::{WebSocketConnectError, WebSocketServiceError};
 
 use crate::ws::WebSocketServiceConnectError;
 
+/// Error that can occur when sending a request to the Chat service.
 #[derive(Debug, thiserror::Error, displaydoc::Display)]
-pub enum ChatServiceError {
+pub enum SendError {
+    /// timed out while sending a request
+    RequestTimedOut,
+    /// connection is already closed
+    Disconnected,
     /// websocket error: {0}
     WebSocket(#[from] WebSocketServiceError),
-    /// App version too old
-    AppExpired,
-    /// Device deregistered or delinked
-    DeviceDeregistered,
-    /// Unexpected text frame received
-    UnexpectedFrameReceived,
-    /// Request message from the server is missing the `id` field
-    ServerRequestMissingId,
-    /// Failed to decode data received from the server
+    /// failed to decode data received from the server
     IncomingDataInvalid,
-    /// Request object must contain only ASCII text as header names and values.
+    /// request object must contain only ASCII text as header names and values.
     RequestHasInvalidHeader,
-    /// Timed out while establishing connection
-    TimeoutEstablishingConnection,
-    /// Timed out while sending a request
-    RequestSendTimedOut,
-    /// All connection routes failed or timed out
-    AllConnectionRoutesFailed,
-    /// Invalid connection configuration
-    InvalidConnectionConfiguration,
-    /// Connection is already closed
-    Disconnected,
-    /// Service is unavailable now, try again after {retry_after_seconds}s
-    RetryLater { retry_after_seconds: u32 },
 }
 
-impl ChatServiceError {
-    pub fn from_single_connect_error(
-        e: TimeoutOr<ConnectError<WebSocketServiceConnectError>>,
-    ) -> Self {
-        use crate::infra::route::ConnectError;
+/// Error that can occur when connecting to the Chat service.
+#[derive(Debug, thiserror::Error, displaydoc::Display)]
+pub enum ConnectError {
+    /// timed out while establishing a connection
+    Timeout,
+    /// all connect attempts failed
+    AllAttemptsFailed,
+    /// the connection information was invalid
+    InvalidConnectionConfiguration,
+    /// websocket error: {0}
+    WebSocket(#[from] WebSocketConnectError),
+    /// retry after {retry_after_seconds}s
+    RetryLater { retry_after_seconds: u32 },
+    /// app version is too old
+    AppExpired,
+    /// device was deregistered
+    DeviceDeregistered,
+}
+impl LogSafeDisplay for ConnectError {}
+
+impl From<TimeoutOr<RouteConnectError<WebSocketServiceConnectError>>> for ConnectError {
+    fn from(e: TimeoutOr<RouteConnectError<WebSocketServiceConnectError>>) -> Self {
         match e {
-            TimeoutOr::Other(ConnectError::NoResolvedRoutes) => {
-                ChatServiceError::InvalidConnectionConfiguration
+            TimeoutOr::Other(RouteConnectError::NoResolvedRoutes) => {
+                ConnectError::InvalidConnectionConfiguration
             }
-            TimeoutOr::Other(ConnectError::AllAttemptsFailed) => {
-                ChatServiceError::AllConnectionRoutesFailed
+            TimeoutOr::Other(RouteConnectError::AllAttemptsFailed) => {
+                ConnectError::AllAttemptsFailed
             }
-            TimeoutOr::Other(ConnectError::FatalConnect(err)) => err.into(),
+            TimeoutOr::Other(RouteConnectError::FatalConnect(err)) => err.into(),
             TimeoutOr::Timeout {
                 attempt_duration: _,
-            } => ChatServiceError::TimeoutEstablishingConnection,
+            } => ConnectError::Timeout,
         }
     }
 }
 
-impl LogSafeDisplay for ChatServiceError {}
-
-impl From<WebSocketServiceConnectError> for ChatServiceError {
+impl From<WebSocketServiceConnectError> for ConnectError {
     fn from(e: WebSocketServiceConnectError) -> Self {
         match e {
-            WebSocketServiceConnectError::Connect(e, _) => match e {
-                WebSocketConnectError::Transport(e) => match e {
-                    TransportConnectError::InvalidConfiguration => {
-                        WebSocketServiceError::Other("invalid configuration")
-                    }
-                    TransportConnectError::TcpConnectionFailed => {
-                        WebSocketServiceError::Other("TCP connection failed")
-                    }
-                    TransportConnectError::DnsError => WebSocketServiceError::Other("DNS error"),
-                    TransportConnectError::SslError(_)
-                    | TransportConnectError::SslFailedHandshake(_) => {
-                        WebSocketServiceError::Other("TLS failure")
-                    }
-                    TransportConnectError::CertError => {
-                        WebSocketServiceError::Other("failed to load certificates")
-                    }
-                    TransportConnectError::ProxyProtocol => {
-                        WebSocketServiceError::Other("proxy protocol error")
-                    }
-                    TransportConnectError::ClientAbort => {
-                        WebSocketServiceError::Other("client abort error")
-                    }
-                }
-                .into(),
-                WebSocketConnectError::Timeout => Self::TimeoutEstablishingConnection,
-                WebSocketConnectError::WebSocketError(e) => Self::WebSocket(e.into()),
-            },
+            WebSocketServiceConnectError::Connect(e, _) => Self::WebSocket(e),
             WebSocketServiceConnectError::RejectedByServer {
                 response,
                 received_at: _,
@@ -110,7 +84,9 @@ impl From<WebSocketServiceConnectError> for ChatServiceError {
                         // but unidentified sockets should never produce a 403 anyway.
                         Self::DeviceDeregistered
                     }
-                    _ => Self::WebSocket(WebSocketServiceError::Http(response)),
+                    _ => Self::WebSocket(WebSocketConnectError::WebSocketError(
+                        tungstenite::Error::Http(response),
+                    )),
                 }
             }
         }

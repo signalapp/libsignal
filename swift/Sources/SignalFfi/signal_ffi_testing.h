@@ -255,8 +255,6 @@ SignalFfiError *signal_testing_only_completes_by_cancellation(SignalCPromisebool
 
 SignalFfiError *signal_testing_cdsi_lookup_error_convert(const char *error_description);
 
-SignalFfiError *signal_testing_chat_service_error_convert(const char *error_description);
-
 SignalFfiError *signal_testing_connection_manager_is_using_proxy(int32_t *out, SignalConstPointerConnectionManager manager);
 
 SignalFfiError *signal_fake_chat_connection_destroy(SignalMutPointerFakeChatConnection p);
@@ -292,5 +290,9 @@ SignalFfiError *signal_testing_chat_request_get_path(const char **out, SignalCon
 SignalFfiError *signal_testing_chat_request_get_header_value(const char **out, SignalConstPointerHttpRequest request, const char *header_name);
 
 SignalFfiError *signal_testing_chat_request_get_body(SignalOwnedBuffer *out, SignalConstPointerHttpRequest request);
+
+SignalFfiError *signal_testing_chat_connect_error_convert(const char *error_description);
+
+SignalFfiError *signal_testing_chat_send_error_convert(const char *error_description);
 
 #endif  /* SIGNAL_FFI_TESTING_H_ */

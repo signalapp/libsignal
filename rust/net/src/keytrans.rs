@@ -48,7 +48,7 @@ fn common_headers() -> http::HeaderMap {
 #[ignore_extra_doc_attributes]
 pub enum Error {
     /// Chat request failed: {0}
-    ChatServiceError(#[from] chat::ChatServiceError),
+    ChatSendError(#[from] chat::SendError),
     /// Bad status code: {0}
     RequestFailed(http::StatusCode),
     /// Verification failed: {0}
@@ -416,7 +416,7 @@ pub trait UnauthenticatedChat {
         &self,
         request: chat::Request,
         timeout: Duration,
-    ) -> BoxFuture<'_, std::result::Result<chat::Response, chat::ChatServiceError>>;
+    ) -> BoxFuture<'_, std::result::Result<chat::Response, chat::SendError>>;
 }
 
 pub struct Config {
@@ -1260,7 +1260,7 @@ mod test_support {
             &self,
             request: chat::Request,
             timeout: Duration,
-        ) -> BoxFuture<'_, std::result::Result<chat::Response, chat::ChatServiceError>> {
+        ) -> BoxFuture<'_, std::result::Result<chat::Response, chat::SendError>> {
             self.0.send(request, timeout).boxed()
         }
     }

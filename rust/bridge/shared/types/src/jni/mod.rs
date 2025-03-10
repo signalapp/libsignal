@@ -17,6 +17,7 @@ pub use jni::sys::{jboolean, jint, jlong};
 pub use jni::JNIEnv;
 use jni::JavaVM;
 use libsignal_account_keys::Error as PinError;
+use libsignal_net::chat::{ConnectError as ChatConnectError, SendError as ChatSendError};
 use libsignal_net::infra::ws::WebSocketServiceError;
 use libsignal_net::keytrans::Error as KeyTransNetError;
 use libsignal_net::svr3::Error as Svr3Error;
@@ -48,7 +49,6 @@ pub use futures::*;
 
 mod io;
 pub use io::*;
-use libsignal_net::chat::ChatServiceError;
 
 mod storage;
 pub use storage::*;
@@ -643,9 +643,9 @@ impl<'env> ConsumableException<'env> {
 
             SignalJniError::InvalidUri(_) => (ClassName("java.net.MalformedURLException"), error),
 
-            SignalJniError::ChatService(ref chat) => {
+            SignalJniError::ChatConnect(ref chat) => {
                 let class = match chat {
-                    ChatServiceError::RetryLater {
+                    ChatConnectError::RetryLater {
                         retry_after_seconds,
                     } => {
                         return ConsumableException {
@@ -653,24 +653,31 @@ impl<'env> ConsumableException<'env> {
                             error: error.into(),
                         }
                     }
-                    ChatServiceError::Disconnected => {
-                        ClassName("org.signal.libsignal.net.ChatServiceInactiveException")
-                    }
-                    ChatServiceError::AppExpired => {
+                    ChatConnectError::AppExpired => {
                         ClassName("org.signal.libsignal.net.AppExpiredException")
                     }
-                    ChatServiceError::DeviceDeregistered => {
+                    ChatConnectError::DeviceDeregistered => {
                         ClassName("org.signal.libsignal.net.DeviceDeregisteredException")
                     }
-                    ChatServiceError::WebSocket(_)
-                    | ChatServiceError::UnexpectedFrameReceived
-                    | ChatServiceError::ServerRequestMissingId
-                    | ChatServiceError::IncomingDataInvalid
-                    | ChatServiceError::RequestHasInvalidHeader
-                    | ChatServiceError::RequestSendTimedOut
-                    | ChatServiceError::TimeoutEstablishingConnection
-                    | ChatServiceError::AllConnectionRoutesFailed
-                    | ChatServiceError::InvalidConnectionConfiguration => {
+                    ChatConnectError::WebSocket(_)
+                    | ChatConnectError::Timeout
+                    | ChatConnectError::AllAttemptsFailed
+                    | ChatConnectError::InvalidConnectionConfiguration => {
+                        ClassName("org.signal.libsignal.net.ChatServiceException")
+                    }
+                };
+                (class, error)
+            }
+
+            SignalJniError::ChatSend(ref chat) => {
+                let class = match chat {
+                    ChatSendError::Disconnected => {
+                        ClassName("org.signal.libsignal.net.ChatServiceInactiveException")
+                    }
+                    ChatSendError::WebSocket(_)
+                    | ChatSendError::IncomingDataInvalid
+                    | ChatSendError::RequestHasInvalidHeader
+                    | ChatSendError::RequestTimedOut => {
                         ClassName("org.signal.libsignal.net.ChatServiceException")
                     }
                 };
@@ -682,7 +689,7 @@ impl<'env> ConsumableException<'env> {
                     KeyTransNetError::DecodingFailed(_) => {
                         unreachable!("should have been handled separately")
                     }
-                    KeyTransNetError::ChatServiceError(_)
+                    KeyTransNetError::ChatSendError(_)
                     | KeyTransNetError::RequestFailed(_)
                     | KeyTransNetError::VerificationFailed(_)
                     | KeyTransNetError::InvalidResponse(_)

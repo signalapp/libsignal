@@ -8,7 +8,7 @@ use std::process::ExitCode;
 
 use clap::{Parser, ValueEnum};
 use futures_util::{FutureExt, StreamExt};
-use libsignal_net::chat::ChatServiceError;
+use libsignal_net::chat::ConnectError;
 use libsignal_net::env::Svr3Env;
 use strum::IntoEnumIterator as _;
 
@@ -92,7 +92,7 @@ async fn main() -> ExitCode {
 async fn test_connection(
     env: &libsignal_net::env::Env<'static, Svr3Env<'static>>,
     route_types: HashSet<RouteType>,
-) -> Result<(), ChatServiceError> {
+) -> Result<(), ConnectError> {
     let front_names = route_types
         .into_iter()
         .map(|route_type| match route_type {

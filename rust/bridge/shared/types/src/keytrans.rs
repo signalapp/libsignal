@@ -18,7 +18,7 @@ impl UnauthenticatedChat for crate::net::chat::UnauthenticatedChatConnection {
         &self,
         request: chat::Request,
         timeout: Duration,
-    ) -> BoxFuture<'_, Result<chat::Response, chat::ChatServiceError>> {
+    ) -> BoxFuture<'_, Result<chat::Response, chat::SendError>> {
         Box::pin(self.send(request, timeout))
     }
 }

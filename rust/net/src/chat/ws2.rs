@@ -25,9 +25,7 @@ use tokio::task::JoinHandle;
 use tokio::time::Duration;
 use tokio_stream::wrappers::{ReceiverStream, UnboundedReceiverStream};
 
-use crate::chat::{
-    ChatMessageType, ChatServiceError, MessageProto, Request, RequestProto, Response, ResponseProto,
-};
+use crate::chat::{ChatMessageType, MessageProto, Request, RequestProto, Response, ResponseProto};
 use crate::env::ALERT_HEADER_NAME;
 use crate::infra::ws::TextOrBinary;
 use crate::infra::ws2::{MessageEvent, NextEventError, TungsteniteSendError};
@@ -1149,9 +1147,9 @@ impl From<&TungsteniteSendError> for SendError {
     }
 }
 
-impl From<TaskExitError> for ChatServiceError {
+impl From<TaskExitError> for crate::chat::SendError {
     fn from(value: TaskExitError) -> Self {
-        ChatServiceError::WebSocket(match value {
+        crate::chat::SendError::WebSocket(match value {
             TaskExitError::WebsocketError(err) => match err {
                 NextEventError::PingFailed(tungstenite_error)
                 | NextEventError::CloseFailed(tungstenite_error) => tungstenite_error.into(),
@@ -1179,26 +1177,26 @@ impl From<TaskExitError> for ChatServiceError {
     }
 }
 
-impl From<SendError> for ChatServiceError {
+impl From<SendError> for super::SendError {
     fn from(value: SendError) -> Self {
         match value {
-            SendError::Disconnected { .. } => ChatServiceError::Disconnected,
+            SendError::Disconnected { .. } => Self::Disconnected,
             SendError::Io(error_kind) => {
-                ChatServiceError::WebSocket(WebSocketServiceError::Io(error_kind.into()))
+                Self::WebSocket(WebSocketServiceError::Io(error_kind.into()))
             }
             SendError::MessageTooLarge { size, max_size } => {
-                ChatServiceError::WebSocket(WebSocketServiceError::Capacity(
+                Self::WebSocket(WebSocketServiceError::Capacity(
                     libsignal_net_infra::ws::error::SpaceError::Capacity(
                         tungstenite::error::CapacityError::MessageTooLong { size, max_size },
                     ),
                 ))
             }
             SendError::Protocol(protocol_error) => {
-                ChatServiceError::WebSocket(WebSocketServiceError::Protocol(protocol_error.into()))
+                Self::WebSocket(WebSocketServiceError::Protocol(protocol_error.into()))
             }
-            SendError::InvalidResponse => ChatServiceError::IncomingDataInvalid,
+            SendError::InvalidResponse => Self::IncomingDataInvalid,
             SendError::InvalidRequest(InvalidRequestError::InvalidHeader) => {
-                ChatServiceError::RequestHasInvalidHeader
+                Self::RequestHasInvalidHeader
             }
         }
     }

@@ -8,8 +8,9 @@ use libsignal_bridge_macros::*;
 use libsignal_bridge_types::net::chat::{AuthenticatedChatConnection, ChatListener, HttpRequest};
 use libsignal_bridge_types::net::TokioAsyncContext;
 use libsignal_net::chat::fake::FakeChatRemote;
-use libsignal_net::chat::{ChatServiceError, RequestProto, Response as ChatResponse};
+use libsignal_net::chat::{ConnectError, RequestProto, Response as ChatResponse, SendError};
 
+use crate::net::make_error_testing_enum;
 use crate::*;
 
 pub struct FakeChatConnection {
@@ -136,7 +137,7 @@ fn TESTING_FakeChatSentRequest_RequestId(request: &FakeChatSentRequest) -> u64 {
 }
 
 #[bridge_fn]
-fn TESTING_ChatResponseConvert(body_present: bool) -> Result<ChatResponse, ChatServiceError> {
+fn TESTING_ChatResponseConvert(body_present: bool) -> ChatResponse {
     let body = match body_present {
         true => Some(b"content".to_vec().into_boxed_slice()),
         false => None,
@@ -147,12 +148,12 @@ fn TESTING_ChatResponseConvert(body_present: bool) -> Result<ChatResponse, ChatS
         HeaderValue::from_static("application/octet-stream"),
     );
     headers.append(http::header::FORWARDED, HeaderValue::from_static("1.1.1.1"));
-    Ok(ChatResponse {
+    ChatResponse {
         status: StatusCode::OK,
         message: Some("OK".to_string()),
         body,
         headers,
-    })
+    }
 }
 
 #[bridge_fn]
@@ -185,4 +186,68 @@ fn TESTING_ChatRequestGetBody(request: &HttpRequest) -> Vec<u8> {
         .clone()
         .map(|b| b.into_vec())
         .unwrap_or_default()
+}
+
+make_error_testing_enum! {
+    enum TestingChatConnectError for ConnectError {
+        WebSocket => WebSocketConnectionFailed,
+        AppExpired => AppExpired,
+        DeviceDeregistered => DeviceDeregistered,
+        Timeout => Timeout,
+        AllAttemptsFailed => AllAttemptsFailed,
+        InvalidConnectionConfiguration => InvalidConnectionConfiguration,
+        RetryLater => RetryAfter42Seconds,
+    }
+}
+
+#[bridge_fn]
+fn TESTING_ChatConnectErrorConvert(
+    // The stringly-typed API makes the call sites more self-explanatory.
+    error_description: AsType<TestingChatConnectError, String>,
+) -> Result<(), ConnectError> {
+    Err(match error_description.into_inner() {
+        TestingChatConnectError::WebSocketConnectionFailed => {
+            ConnectError::WebSocket(libsignal_net::infra::ws::WebSocketConnectError::Transport(
+                libsignal_net::infra::errors::TransportConnectError::TcpConnectionFailed,
+            ))
+        }
+        TestingChatConnectError::AppExpired => ConnectError::AppExpired,
+        TestingChatConnectError::DeviceDeregistered => ConnectError::DeviceDeregistered,
+        TestingChatConnectError::Timeout => ConnectError::Timeout,
+        TestingChatConnectError::AllAttemptsFailed => ConnectError::AllAttemptsFailed,
+        TestingChatConnectError::InvalidConnectionConfiguration => {
+            ConnectError::InvalidConnectionConfiguration
+        }
+        TestingChatConnectError::RetryAfter42Seconds => ConnectError::RetryLater {
+            retry_after_seconds: 42,
+        },
+    })
+}
+
+make_error_testing_enum! {
+    enum TestingChatSendError for SendError {
+        RequestTimedOut => RequestTimedOut,
+        Disconnected => Disconnected,
+        WebSocket => WebSocketConnectionReset,
+        IncomingDataInvalid => IncomingDataInvalid,
+        RequestHasInvalidHeader => RequestHasInvalidHeader,
+    }
+}
+
+#[bridge_fn]
+fn TESTING_ChatSendErrorConvert(
+    // The stringly-typed API makes the call sites more self-explanatory.
+    error_description: AsType<TestingChatSendError, String>,
+) -> Result<(), SendError> {
+    Err(match error_description.into_inner() {
+        TestingChatSendError::RequestTimedOut => SendError::RequestTimedOut,
+        TestingChatSendError::Disconnected => SendError::Disconnected,
+        TestingChatSendError::WebSocketConnectionReset => {
+            SendError::WebSocket(libsignal_net::infra::ws::WebSocketServiceError::Io(
+                std::io::ErrorKind::ConnectionReset.into(),
+            ))
+        }
+        TestingChatSendError::IncomingDataInvalid => SendError::IncomingDataInvalid,
+        TestingChatSendError::RequestHasInvalidHeader => SendError::RequestHasInvalidHeader,
+    })
 }

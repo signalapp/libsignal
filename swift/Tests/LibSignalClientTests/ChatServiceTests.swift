@@ -61,9 +61,9 @@ final class ChatServiceTests: TestCaseBase {
         }
     }
 
-    func testConvertError() throws {
+    func testConvertConnectError() throws {
         let failWithError = {
-            try checkError(signal_testing_chat_service_error_convert($0))
+            try checkError(signal_testing_chat_connect_error_convert($0))
             XCTFail("should have failed")
         }
         do {
@@ -72,37 +72,49 @@ final class ChatServiceTests: TestCaseBase {
         do {
             try failWithError("DeviceDeregistered")
         } catch SignalError.deviceDeregistered(_) {}
-        do {
-            try failWithError("Disconnected")
-        } catch SignalError.chatServiceInactive(_) {}
 
         do {
-            try failWithError("WebSocket")
+            try failWithError("WebSocketConnectionFailed")
         } catch SignalError.webSocketError(_) {}
         do {
-            try failWithError("UnexpectedFrameReceived")
-        } catch SignalError.networkProtocolError(_) {}
-        do {
-            try failWithError("ServerRequestMissingId")
-        } catch SignalError.networkProtocolError(_) {}
-        do {
-            try failWithError("IncomingDataInvalid")
-        } catch SignalError.networkProtocolError(_) {}
-        do {
-            try failWithError("RequestSendTimedOut")
-        } catch SignalError.requestTimeoutError(_) {}
-        do {
-            try failWithError("TimeoutEstablishingConnection")
+            try failWithError("Timeout")
         } catch SignalError.connectionTimeoutError(_) {}
-
         do {
-            try failWithError("RequestHasInvalidHeader")
-        } catch SignalError.internalError(_) {}
+            try failWithError("AllAttemptsFailed")
+        } catch SignalError.connectionFailed(_) {}
+        do {
+            try failWithError("InvalidConnectionConfiguration")
+        } catch SignalError.connectionFailed(_) {}
+
         do {
             try failWithError("RetryAfter42Seconds")
         } catch SignalError.rateLimitedError(retryAfter: 42, let message) {
             XCTAssertEqual(message, "Rate limited; try again after 42s")
         }
+    }
+
+    func testConvertSendError() throws {
+        let failWithError = {
+            try checkError(signal_testing_chat_send_error_convert($0))
+            XCTFail("should have failed")
+        }
+        do {
+            try failWithError("Disconnected")
+        } catch SignalError.chatServiceInactive(_) {}
+
+        do {
+            try failWithError("WebSocketConnectionReset")
+        } catch SignalError.webSocketError(_) {}
+        do {
+            try failWithError("IncomingDataInvalid")
+        } catch SignalError.networkProtocolError(_) {}
+        do {
+            try failWithError("RequestTimedOut")
+        } catch SignalError.requestTimeoutError(_) {}
+
+        do {
+            try failWithError("RequestHasInvalidHeader")
+        } catch SignalError.internalError(_) {}
     }
 
     func testConstructRequest() throws {

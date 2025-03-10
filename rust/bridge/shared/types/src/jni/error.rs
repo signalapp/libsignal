@@ -13,7 +13,6 @@ use jni::objects::{GlobalRef, JObject, JString, JThrowable};
 use jni::{JNIEnv, JavaVM};
 use libsignal_account_keys::Error as PinError;
 use libsignal_net::cdsi::CdsiProtocolError;
-use libsignal_net::chat::ChatServiceError;
 use libsignal_net::infra::ws::{WebSocketConnectError, WebSocketServiceError};
 use libsignal_net::ws::WebSocketServiceConnectError;
 use libsignal_protocol::*;
@@ -48,7 +47,8 @@ pub enum SignalJniError {
     #[from(skip)]
     Svr3(libsignal_net::svr3::Error),
     WebSocket(WebSocketServiceError),
-    ChatService(ChatServiceError),
+    ChatConnect(libsignal_net::chat::ConnectError),
+    ChatSend(libsignal_net::chat::SendError),
     InvalidUri(InvalidUri),
     ConnectTimedOut,
     BackupValidation(libsignal_message_backup::ReadError),
@@ -98,7 +98,8 @@ impl fmt::Display for SignalJniError {
             #[cfg(feature = "signal-media")]
             SignalJniError::WebpSanitizeParse(e) => write!(f, "{}", e),
             SignalJniError::Cdsi(e) => write!(f, "{}", e),
-            SignalJniError::ChatService(e) => write!(f, "{}", e),
+            SignalJniError::ChatConnect(e) => write!(f, "{}", e),
+            SignalJniError::ChatSend(e) => write!(f, "{}", e),
             SignalJniError::InvalidUri(e) => write!(f, "{}", e),
             SignalJniError::WebSocket(e) => write!(f, "{e}"),
             SignalJniError::ConnectTimedOut => write!(f, "connect timed out"),
@@ -229,7 +230,7 @@ impl From<Svr3Error> for SignalJniError {
 impl From<KeyTransNetError> for SignalJniError {
     fn from(err: KeyTransNetError) -> Self {
         match err {
-            KeyTransNetError::ChatServiceError(e) => SignalJniError::ChatService(e),
+            KeyTransNetError::ChatSendError(e) => SignalJniError::ChatSend(e),
             KeyTransNetError::RequestFailed(_)
             | KeyTransNetError::VerificationFailed(_)
             | KeyTransNetError::InvalidResponse(_)

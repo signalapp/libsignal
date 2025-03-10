@@ -49,18 +49,15 @@ describe('Net class', () => {
 });
 
 describe('chat service api', () => {
-  it('converts errors to native', () => {
+  it('converts connect errors to native', () => {
     const cases: Array<[string, ErrorCode | object]> = [
       ['AppExpired', ErrorCode.AppExpired],
       ['DeviceDeregistered', ErrorCode.DeviceDelinked],
-      ['Disconnected', ErrorCode.ChatServiceInactive],
 
-      ['WebSocket', ErrorCode.IoError],
-      ['UnexpectedFrameReceived', ErrorCode.IoError],
-      ['ServerRequestMissingId', ErrorCode.IoError],
-      ['IncomingDataInvalid', ErrorCode.IoError],
-      ['RequestSendTimedOut', ErrorCode.IoError],
-      ['TimeoutEstablishingConnection', ErrorCode.IoError],
+      ['WebSocketConnectionFailed', ErrorCode.IoError],
+      ['Timeout', ErrorCode.IoError],
+      ['AllAttemptsFailed', ErrorCode.IoError],
+      ['InvalidConnectionConfiguration', ErrorCode.IoError],
       [
         'RetryAfter42Seconds',
         {
@@ -68,12 +65,30 @@ describe('chat service api', () => {
           retryAfterSecs: 42,
         },
       ],
+    ];
+    cases.forEach((testCase) => {
+      const [name, expectation] = testCase;
+      expect(() => Native.TESTING_ChatConnectErrorConvert(name))
+        .throws(LibSignalErrorBase)
+        .to.include(
+          expectation instanceof Object ? expectation : { code: expectation }
+        );
+    });
+  });
+
+  it('converts send errors to native', () => {
+    const cases: Array<[string, ErrorCode | object]> = [
+      ['Disconnected', ErrorCode.ChatServiceInactive],
+
+      ['WebSocketConnectionReset', ErrorCode.IoError],
+      ['IncomingDataInvalid', ErrorCode.IoError],
+      ['RequestTimedOut', ErrorCode.IoError],
 
       ['RequestHasInvalidHeader', ErrorCode.IoError],
     ];
     cases.forEach((testCase) => {
       const [name, expectation] = testCase;
-      expect(() => Native.TESTING_ChatServiceErrorConvert(name))
+      expect(() => Native.TESTING_ChatSendErrorConvert(name))
         .throws(LibSignalErrorBase)
         .to.include(
           expectation instanceof Object ? expectation : { code: expectation }

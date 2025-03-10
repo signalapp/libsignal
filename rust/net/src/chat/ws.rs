@@ -8,18 +8,18 @@ use libsignal_net_infra::ws::WebSocketClientWriter;
 use libsignal_net_infra::AsyncDuplexStream;
 use prost::Message;
 
-use crate::chat::{ChatServiceError, MessageProto, ResponseProto};
+use crate::chat::{MessageProto, ResponseProto, SendError};
 use crate::proto::chat_websocket::web_socket_message::Type;
 
 #[derive(Debug)]
 pub struct ResponseSender<S> {
     request_id: u64,
     // Declared with Option for testing ServerRequest handlers.
-    writer: Option<WebSocketClientWriter<S, ChatServiceError>>,
+    writer: Option<WebSocketClientWriter<S, SendError>>,
 }
 
 impl<S: AsyncDuplexStream> ResponseSender<S> {
-    pub async fn send_response(self, status_code: StatusCode) -> Result<(), ChatServiceError> {
+    pub async fn send_response(self, status_code: StatusCode) -> Result<(), SendError> {
         let Some(writer) = self.writer else {
             return Ok(());
         };

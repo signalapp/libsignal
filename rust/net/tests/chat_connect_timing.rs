@@ -10,7 +10,7 @@ use assert_matches::assert_matches;
 use async_trait::async_trait;
 use futures_util::{StreamExt as _, TryFutureExt as _};
 use itertools::Itertools as _;
-use libsignal_net::chat::ChatServiceError;
+use libsignal_net::chat;
 use libsignal_net::env::STAGING;
 use libsignal_net::infra::errors::TransportConnectError;
 use libsignal_net_infra::dns::dns_lookup::{DnsLookup, DnsLookupRequest};
@@ -46,10 +46,7 @@ async fn all_routes_connect_hangs_forever(expected_duration: Duration) {
     let (elapsed, outcome) = timed(deps.connect_chat().map_ok(|_| ())).await;
 
     assert_eq!(elapsed, expected_duration);
-    assert_matches!(
-        outcome,
-        Err(ChatServiceError::TimeoutEstablishingConnection)
-    );
+    assert_matches!(outcome, Err(chat::ConnectError::Timeout));
 }
 
 #[test_case(Duration::from_millis(500))]
@@ -113,10 +110,7 @@ async fn transport_connects_but_websocket_never_responds(expected_duration: Dura
         incoming_streams.map(|(host, _stream)| host).collect().await;
 
     assert_eq!(elapsed, expected_duration);
-    assert_matches!(
-        outcome,
-        Err(ChatServiceError::TimeoutEstablishingConnection)
-    );
+    assert_matches!(outcome, Err(chat::ConnectError::Timeout));
 
     assert_eq!(
         &incoming_stream_hosts,
@@ -235,10 +229,7 @@ async fn tcp_connects_but_tls_never_responds() {
     );
 
     let (timing, outcome) = timed(deps.connect_chat().map_ok(|_| ())).await;
-    assert_matches!(
-        outcome,
-        Err(ChatServiceError::TimeoutEstablishingConnection)
-    );
+    assert_matches!(outcome, Err(chat::ConnectError::Timeout));
     assert_eq!(timing, Duration::from_secs(60));
 
     use TransportConnectEvent::*;
@@ -324,7 +315,7 @@ async fn custom_dns_failure(lookup: impl DnsLookup + 'static, expected_duration:
     let (elapsed, outcome) = timed(deps.connect_chat().map_ok(|_| ())).await;
 
     assert_eq!(elapsed, expected_duration);
-    assert_matches!(outcome, Err(ChatServiceError::AllConnectionRoutesFailed));
+    assert_matches!(outcome, Err(chat::ConnectError::AllAttemptsFailed));
 }
 
 #[test_case(false, Duration::from_secs(60))]
@@ -353,9 +344,6 @@ async fn slow_dns(should_accept_connection: bool, expected_duration: Duration) {
     if should_accept_connection {
         outcome.expect("accepted")
     } else {
-        assert_matches!(
-            outcome,
-            Err(ChatServiceError::TimeoutEstablishingConnection)
-        );
+        assert_matches!(outcome, Err(chat::ConnectError::Timeout));
     }
 }

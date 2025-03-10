@@ -11,7 +11,7 @@ use const_str::ip_addr;
 use futures_util::stream::StreamExt as _;
 use futures_util::Stream;
 use itertools::Itertools as _;
-use libsignal_net::chat::{self, ChatConnection, ChatServiceError, PendingChatConnection};
+use libsignal_net::chat::{self, ChatConnection, PendingChatConnection};
 use libsignal_net::connect_state::{
     ConnectState, DefaultConnectorFactory, DefaultTransportConnector, SUGGESTED_CONNECT_CONFIG,
 };
@@ -195,7 +195,7 @@ impl FakeDeps {
 
     pub async fn connect_chat(
         &self,
-    ) -> Result<PendingChatConnection<impl AsyncDuplexStream>, ChatServiceError> {
+    ) -> Result<PendingChatConnection<impl AsyncDuplexStream>, chat::ConnectError> {
         let Self {
             endpoint_connection,
             connect_state,
