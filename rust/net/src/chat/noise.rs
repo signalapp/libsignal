@@ -20,9 +20,7 @@ pub enum SendError {
 impl From<SendError> for std::io::Error {
     fn from(value: SendError) -> Self {
         match value {
-            SendError::Noise(e) => {
-                std::io::Error::new(std::io::ErrorKind::Other, format!("noise error: {e}"))
-            }
+            SendError::Noise(e) => std::io::Error::other(format!("noise error: {e}")),
             SendError::Io(e) => e,
         }
     }

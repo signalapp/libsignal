@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 use std::fmt;
-use std::io::{Error as IoError, ErrorKind as IoErrorKind};
+use std::io::Error as IoError;
 use std::time::Duration;
 
 use attest::hsm_enclave::Error as HsmEnclaveError;
@@ -262,8 +262,8 @@ impl From<SignalJniError> for IoError {
             SignalJniError::Bridge(BridgeLayerError::CallbackException(
                 _method_name,
                 exception,
-            )) => IoError::new(IoErrorKind::Other, exception),
-            e => IoError::new(IoErrorKind::Other, e.to_string()),
+            )) => IoError::other(exception),
+            e => IoError::other(e.to_string()),
         }
     }
 }

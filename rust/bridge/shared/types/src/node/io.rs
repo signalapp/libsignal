@@ -93,15 +93,12 @@ impl InputStream for NodeInputStream {
             .try_into()
             .expect("cannot read into a buffer bigger than u32::MAX");
         Ok(InputStreamRead::Pending(Box::pin(
-            self.do_read(amount)
-                .map_err(|err| IoError::new(IoErrorKind::Other, err)),
+            self.do_read(amount).map_err(IoError::other),
         )))
     }
 
     async fn skip(&self, amount: u64) -> IoResult<()> {
-        self.do_skip(amount)
-            .await
-            .map_err(|err| IoError::new(IoErrorKind::Other, err))
+        self.do_skip(amount).await.map_err(IoError::other)
     }
 }
 

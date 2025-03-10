@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use std::io::{Error as IoError, ErrorKind as IoErrorKind};
+use std::io::Error as IoError;
 use std::pin::Pin;
 use std::task::{ready, Context, Poll};
 
@@ -106,9 +106,7 @@ impl<S: Transport + Unpin> AsyncRead for NoiseStream<S> {
                 };
 
                 log::trace!("{ptr:x?} received block, decrypting");
-                let plaintext = transport
-                    .recv(&block)
-                    .map_err(|e| IoError::new(IoErrorKind::Other, e))?;
+                let plaintext = transport.recv(&block).map_err(IoError::other)?;
                 log::trace!("{ptr:x?} decrypted successfully");
 
                 *read = Read::ReadFromBlock(plaintext.into());
@@ -151,9 +149,7 @@ impl<S: Transport + Unpin> AsyncWrite for NoiseStream<S> {
 
         let WriteBufferPolicy::NoBuffering = write.buffer_policy;
         log::trace!("{ptr:x?} encrypting {} bytes to send", buf.len());
-        let ciphertext = transport
-            .send(buf)
-            .map_err(|e| IoError::new(IoErrorKind::Other, e))?;
+        let ciphertext = transport.send(buf).map_err(IoError::other)?;
         log::trace!("{ptr:x?} encrypted to {} bytes", ciphertext.len());
 
         // Since the poll_ready above already succeeded, we can just send!
@@ -203,6 +199,7 @@ pub mod testutil {
 
 #[cfg(test)]
 mod test {
+    use std::io::ErrorKind as IoErrorKind;
     use std::sync::Arc;
 
     use assert_matches::assert_matches;

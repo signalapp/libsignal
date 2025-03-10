@@ -220,10 +220,7 @@ mod test {
 
         // An error from the reader should be bubbled up.
         sender
-            .unbounded_send(Err(futures::io::Error::new(
-                futures::io::ErrorKind::Other,
-                "unknown error",
-            )))
+            .unbounded_send(Err(futures::io::Error::other("unknown error")))
             .expect("can send");
 
         assert_matches!(
@@ -267,7 +264,7 @@ mod test {
 
         impl From<IntoIoError> for futures::io::Error {
             fn from(IntoIoError: IntoIoError) -> Self {
-                futures::io::Error::new(futures::io::ErrorKind::Other, "into io error")
+                futures::io::Error::other("into io error")
             }
         }
 

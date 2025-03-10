@@ -32,7 +32,7 @@ impl FfiInputStreamStruct {
         let result = (self.read)(self.ctx, buf.as_mut_ptr(), buf.len(), &mut amount_read);
         CallbackError::check(result).map_err(|e| {
             let err = SignalProtocolError::for_application_callback("read")(e);
-            io::Error::new(io::ErrorKind::Other, err)
+            io::Error::other(err)
         })?;
         Ok(amount_read)
     }
@@ -41,7 +41,7 @@ impl FfiInputStreamStruct {
         let result = (self.skip)(self.ctx, amount);
         CallbackError::check(result).map_err(|e| {
             let err = SignalProtocolError::for_application_callback("skip")(e);
-            io::Error::new(io::ErrorKind::Other, err)
+            io::Error::other(err)
         })
     }
 }

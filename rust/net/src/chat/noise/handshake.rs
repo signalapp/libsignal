@@ -240,10 +240,9 @@ impl<S: Transport + Unpin> Future for Handshaker<S> {
                 log::trace!("{ptr:x?} decrypted into {}-byte plaintext", read_count);
 
                 if read_count != payload.len() {
-                    return Poll::Ready(Err(IoError::new(
-                        IoErrorKind::Other,
-                        format!("expected {payload_len}-byte payload but got {read_count}",),
-                    )
+                    return Poll::Ready(Err(IoError::other(format!(
+                        "expected {payload_len}-byte payload but got {read_count}",
+                    ))
                     .into()));
                 }
 
