@@ -259,7 +259,7 @@ pub const PROXY_CONFIG_G: ProxyConfig = ProxyConfig {
         "android.clients.google.com",
         "clients3.google.com",
         "clients4.google.com",
-        "inbox.google.com",
+        "googlemail.com",
     ],
     certs: PROXY_G_ROOT_CERTIFICATES,
 };
