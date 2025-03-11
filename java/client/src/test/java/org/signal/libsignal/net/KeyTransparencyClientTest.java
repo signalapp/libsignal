@@ -78,7 +78,7 @@ public class KeyTransparencyClientTest {
     assertTrue(store.getLastDistinguishedTreeHead().isPresent());
     assertTrue(store.getAccountData(TEST_ACI).isPresent());
     assertEquals(
-        "05d0e797ec91a4bce0e88959c419e96eb4fdabbb3dc688965584c966dc24195609",
+        "05111f9464c1822c6a2405acf1c5a4366679dc3349fc8eb015c8d7260e3f771177",
         Hex.toStringCondensed(result.getAciIdentityKey().serialize()));
     assertTrue(result.getAciForE164().isPresent());
     assertEquals(TEST_ACI, result.getAciForE164().get());

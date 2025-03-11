@@ -19,7 +19,7 @@ use crate::*;
 const TEST_ACI: Uuid = uuid::uuid!("90c979fd-eab4-4a08-b6da-69dedeab9b29");
 #[cfg(feature = "jni")]
 const TEST_ACI_IDENTITY_KEY_BYTES: &[u8] =
-    &hex!("05d0e797ec91a4bce0e88959c419e96eb4fdabbb3dc688965584c966dc24195609");
+    &hex!("05111f9464c1822c6a2405acf1c5a4366679dc3349fc8eb015c8d7260e3f771177");
 
 #[bridge_fn(node = false, ffi = false)]
 fn TESTING_ChatSearchResult() -> SearchResult {

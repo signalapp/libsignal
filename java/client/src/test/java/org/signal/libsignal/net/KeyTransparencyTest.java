@@ -27,14 +27,14 @@ public class KeyTransparencyTest {
       Hex.fromStringCondensedAssert(
           "d237a4b83b463ca7da58d4a16bf6a3ba104506eb412b235eb603ea10f467c655");
   static final byte[] TEST_UNIDENTIFIED_ACCESS_KEY =
-      Hex.fromStringCondensedAssert("fdc7951d1507268daf1834b74d23b76c");
+      Hex.fromStringCondensedAssert("c6f7c258c24d69538ea553b4a943c8d9");
 
   static {
     try {
       TEST_ACI_IDENTITY_KEY =
           new IdentityKey(
               Hex.fromStringCondensedAssert(
-                  "05d0e797ec91a4bce0e88959c419e96eb4fdabbb3dc688965584c966dc24195609"));
+                  "05111f9464c1822c6a2405acf1c5a4366679dc3349fc8eb015c8d7260e3f771177"));
     } catch (InvalidKeyException e) {
       throw new RuntimeException(e);
     }
