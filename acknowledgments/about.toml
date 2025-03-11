@@ -201,6 +201,15 @@ path = "LICENSE-MIT"
 checksum = "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
 
 
+# miniz_oxide's LICENSE and LICENSE-MIT.md don't get consistently chosen between. Force the choice here.
+[miniz_oxide.clarify]
+license = "MIT OR Zlib OR Apache-2.0"
+
+[[miniz_oxide.clarify.files]]
+path = "LICENSE"
+checksum = "4108245a1f2df9d4e94df8abed5b4ba0759bb2f9b40a6b939f1be141077ae50b"
+
+
 # mp4san is embedded in a larger repo, and has a tag that doesn't match the revision in Cargo
 [mediasan-common.clarify]
 license = "MIT"
