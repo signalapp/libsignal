@@ -309,7 +309,7 @@ impl ConnectionConfig {
         } = self;
         let domain_front_configs = proxy
             .as_ref()
-            .and_then(|proxy| enable_domain_fronting.0.then_some(proxy))
+            .filter(|_proxy| !matches!(enable_domain_fronting, EnableDomainFronting::No))
             .map(
                 |ConnectionProxyConfig {
                      path_prefix,
@@ -329,7 +329,10 @@ impl ConnectionConfig {
                             sni_list: sni_list.iter().map(|sni| (*sni).into()).collect(),
                             path_prefix: Arc::clone(&fronting_path_prefix),
                             front_name: route_type.into(),
-                            return_routes_with_all_snis: false,
+                            return_routes_with_all_snis: matches!(
+                                enable_domain_fronting,
+                                EnableDomainFronting::AllDomains
+                            ),
                         }
                     };
                     configs.iter().map(make_proxy_config)
@@ -431,8 +434,13 @@ impl ProxyConfig {
     }
 
     #[cfg(feature = "test-util")]
-    pub fn hostnames(&self) -> impl Iterator<Item = &'static str> {
-        self.sni_list.iter().copied()
+    pub fn route_type(&self) -> RouteType {
+        self.route_type
+    }
+
+    #[cfg(feature = "test-util")]
+    pub fn hostnames(&self) -> &[&'static str] {
+        self.sni_list
     }
 }
 
@@ -607,8 +615,11 @@ mod test {
                 ],
             }),
         };
-        let route_provider =
-            CONNECT_CONFIG.route_provider(EnableDomainFronting(enable_domain_fronting));
+        let route_provider = CONNECT_CONFIG.route_provider(if enable_domain_fronting {
+            EnableDomainFronting::OneDomainPerProxy
+        } else {
+            EnableDomainFronting::No
+        });
         let routes = route_provider.routes(&FakeContext::new()).collect_vec();
 
         let expected_direct_route = HttpsTlsRoute {

@@ -385,6 +385,7 @@ pub mod test_support {
 
     pub async fn simple_chat_connection(
         env: &Env<'static>,
+        enable_domain_fronting: EnableDomainFronting,
         filter_routes: impl Fn(&UnresolvedHttpsServiceRoute) -> bool,
     ) -> Result<ChatConnection, ConnectError> {
         let network_change_event = ObservableEvent::new();
@@ -394,7 +395,7 @@ pub mod test_support {
         let route_provider = DirectOrProxyProvider::maybe_proxied(
             env.chat_domain_config
                 .connect
-                .route_provider(EnableDomainFronting(true)),
+                .route_provider(enable_domain_fronting),
             None,
         )
         .filter_routes(filter_routes);

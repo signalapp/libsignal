@@ -105,7 +105,7 @@ pub fn allow_domain_fronting(
         .iter()
         .flat_map(|proxy| {
             proxy.configs.iter().flat_map(|config| {
-                config.hostnames().flat_map(|hostname| {
+                config.hostnames().iter().flat_map(|&hostname| {
                     let ips = &resolved_names[hostname];
                     ips.iter().flat_map(|ip| {
                         [
@@ -215,7 +215,7 @@ impl FakeDeps {
             DirectOrProxyProvider::maybe_proxied(
                 chat_domain_config
                     .connect
-                    .route_provider(EnableDomainFronting(true)),
+                    .route_provider(EnableDomainFronting::OneDomainPerProxy),
                 None,
             ),
             None,
@@ -257,11 +257,12 @@ fn fake_ips_for_names(domain_config: &DomainConfig) -> HashMap<&'static str, Loo
 
     [*hostname]
         .into_iter()
-        .chain(
+        .chain(proxy.iter().flat_map(|proxy| {
             proxy
+                .configs
                 .iter()
-                .flat_map(|proxy| proxy.configs.iter().flat_map(|config| config.hostnames())),
-        )
+                .flat_map(|config| config.hostnames().iter().copied())
+        }))
         .zip(0..)
         .map(|(name, index)| {
             let mut segments = BASE_IP_ADDR.segments();

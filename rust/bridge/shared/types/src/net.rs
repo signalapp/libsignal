@@ -78,7 +78,11 @@ impl EndpointConnections {
         Self {
             chat,
             cdsi,
-            enable_fronting: EnableDomainFronting(use_fallbacks),
+            enable_fronting: if use_fallbacks {
+                EnableDomainFronting::OneDomainPerProxy
+            } else {
+                EnableDomainFronting::No
+            },
         }
     }
 

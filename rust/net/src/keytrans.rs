@@ -1186,6 +1186,7 @@ mod test_support {
     use futures_util::FutureExt as _;
     use libsignal_keytrans::{DeploymentMode, PublicConfig, VerifyingKey, VrfPublicKey};
     use libsignal_net_infra::route::DirectOrProxyRoute;
+    use libsignal_net_infra::EnableDomainFronting;
 
     use super::*;
     use crate::chat::ChatConnection;
@@ -1267,9 +1268,11 @@ mod test_support {
 
     pub(super) async fn make_chat() -> KtUnauthChatConnection {
         use crate::chat::test_support::simple_chat_connection;
-        let chat = simple_chat_connection(&env::STAGING, |route| {
-            matches!(route.inner.inner, DirectOrProxyRoute::Direct(_))
-        })
+        let chat = simple_chat_connection(
+            &env::STAGING,
+            EnableDomainFronting::OneDomainPerProxy,
+            |route| matches!(route.inner.inner, DirectOrProxyRoute::Direct(_)),
+        )
         .await
         .expect("can connect to chat");
         KtUnauthChatConnection(chat)

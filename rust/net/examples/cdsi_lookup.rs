@@ -91,7 +91,7 @@ async fn main() {
             &connect_state,
             &resolver,
             DirectOrProxyProvider::maybe_proxied(
-                cdsi_env.route_provider(EnableDomainFronting(false)),
+                cdsi_env.route_provider(EnableDomainFronting::No),
                 None,
             ),
             confirmation_header,

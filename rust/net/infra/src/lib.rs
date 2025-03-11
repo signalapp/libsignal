@@ -77,7 +77,11 @@ impl std::fmt::Display for IpType {
 
 /// Whether or not to enable domain fronting.
 #[derive(Copy, Clone, Debug, Eq, Hash, PartialEq)]
-pub struct EnableDomainFronting(pub bool);
+pub enum EnableDomainFronting {
+    No,
+    OneDomainPerProxy,
+    AllDomains,
+}
 
 /// A collection of commonly used decorators for HTTP requests.
 #[derive(Clone, Debug, PartialEq, Eq)]
