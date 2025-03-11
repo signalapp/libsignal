@@ -8,7 +8,7 @@ use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 
 use attest::svr2::RaftConfig;
-use attest::{cds2, enclave, nitro, tpm2snp};
+use attest::{cds2, enclave};
 use derive_where::derive_where;
 use http::uri::PathAndQuery;
 use http::HeaderMap;
@@ -32,9 +32,8 @@ use libsignal_net_infra::{
 };
 
 use crate::auth::Auth;
-use crate::env::{DomainConfig, Svr3Env};
+use crate::env::DomainConfig;
 use crate::infra::EnableDomainFronting;
-use crate::svr::SvrConnection;
 use crate::ws::{WebSocketServiceConnectError, WebSocketServiceConnector};
 
 pub trait AsRaftConfig<'a> {
@@ -58,17 +57,9 @@ pub trait EnclaveKind {
     fn url_path(enclave: &[u8]) -> PathAndQuery;
 }
 
-pub trait Svr3Flavor: EnclaveKind {}
-
 pub enum Cdsi {}
 
 pub enum SgxPreQuantum {}
-
-pub enum Sgx {}
-
-pub enum Nitro {}
-
-pub enum Tpm2Snp {}
 
 impl EnclaveKind for Cdsi {
     type RaftConfigType = ();
@@ -83,41 +74,6 @@ impl EnclaveKind for SgxPreQuantum {
         PathAndQuery::try_from(format!("/v1/{}", hex::encode(enclave))).unwrap()
     }
 }
-
-impl EnclaveKind for Sgx {
-    type RaftConfigType = &'static RaftConfig;
-    fn url_path(enclave: &[u8]) -> PathAndQuery {
-        PathAndQuery::try_from(format!("/v1/{}", hex::encode(enclave))).unwrap()
-    }
-}
-
-impl EnclaveKind for Nitro {
-    type RaftConfigType = &'static RaftConfig;
-    fn url_path(enclave: &[u8]) -> PathAndQuery {
-        PathAndQuery::try_from(format!(
-            "/v1/{}",
-            std::str::from_utf8(enclave).expect("valid utf8")
-        ))
-        .unwrap()
-    }
-}
-
-impl EnclaveKind for Tpm2Snp {
-    type RaftConfigType = &'static RaftConfig;
-    fn url_path(enclave: &[u8]) -> PathAndQuery {
-        PathAndQuery::try_from(format!(
-            "/v1/{}",
-            std::str::from_utf8(enclave).expect("valid utf8")
-        ))
-        .unwrap()
-    }
-}
-
-impl Svr3Flavor for Sgx {}
-
-impl Svr3Flavor for Nitro {}
-
-impl Svr3Flavor for Tpm2Snp {}
 
 /// Log-safe human-readable label for a connection.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -204,26 +160,6 @@ pub trait ArrayIsh<T>: AsRef<[T]> + IntoIterator<Item = T> {
 
 impl<T, const N: usize> ArrayIsh<T> for [T; N] {
     const N: usize = N;
-}
-
-pub trait PpssSetup {
-    type ConnectionResults: IntoConnectionResults + Send;
-    type ServerIds: ArrayIsh<u64> + Send;
-    const N: usize = Self::ServerIds::N;
-    fn server_ids() -> Self::ServerIds;
-}
-
-impl PpssSetup for Svr3Env<'_> {
-    type ConnectionResults = (
-        Result<SvrConnection<Sgx>, Error>,
-        Result<SvrConnection<Nitro>, Error>,
-        Result<SvrConnection<Tpm2Snp>, Error>,
-    );
-    type ServerIds = [u64; 3];
-
-    fn server_ids() -> Self::ServerIds {
-        [1, 2, 3]
-    }
 }
 
 #[derive_where(Clone, Copy; Bytes)]
@@ -459,24 +395,6 @@ impl NewHandshake for SgxPreQuantum {
     }
 }
 
-impl NewHandshake for Sgx {
-    fn new_handshake(
-        params: &EndpointParams<Self>,
-        attestation_message: &[u8],
-    ) -> enclave::Result<enclave::Handshake> {
-        attest::svr2::new_handshake(
-            params.mr_enclave.as_ref(),
-            attestation_message,
-            SystemTime::now(),
-            params
-                .raft_config
-                .as_raft_config()
-                .expect("Raft config must be present for SGX"),
-            enclave::HandshakeType::PostQuantum,
-        )
-    }
-}
-
 impl NewHandshake for Cdsi {
     fn new_handshake(
         params: &EndpointParams<Self>,
@@ -486,40 +404,6 @@ impl NewHandshake for Cdsi {
             params.mr_enclave.as_ref(),
             attestation_message,
             SystemTime::now(),
-        )
-    }
-}
-
-impl NewHandshake for Nitro {
-    fn new_handshake(
-        params: &EndpointParams<Self>,
-        attestation_message: &[u8],
-    ) -> enclave::Result<enclave::Handshake> {
-        nitro::new_handshake(
-            params.mr_enclave.as_ref(),
-            attestation_message,
-            SystemTime::now(),
-            params
-                .raft_config
-                .as_raft_config()
-                .expect("Raft config must be present for Nitro"),
-        )
-    }
-}
-
-impl NewHandshake for Tpm2Snp {
-    fn new_handshake(
-        params: &EndpointParams<Self>,
-        attestation_message: &[u8],
-    ) -> enclave::Result<enclave::Handshake> {
-        tpm2snp::new_handshake(
-            params.mr_enclave.as_ref(),
-            attestation_message,
-            SystemTime::now(),
-            params
-                .raft_config
-                .as_raft_config()
-                .expect("Raft config must be present for Tpm2Snp"),
         )
     }
 }

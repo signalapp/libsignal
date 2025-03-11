@@ -380,11 +380,11 @@ pub mod test_support {
     use crate::connect_state::{
         ConnectState, DefaultConnectorFactory, PreconnectingFactory, SUGGESTED_CONNECT_CONFIG,
     };
-    use crate::env::{Env, Svr3Env, UserAgent};
+    use crate::env::{Env, UserAgent};
     use crate::infra::route::DirectOrProxyProvider;
 
     pub async fn simple_chat_connection(
-        env: &Env<'static, Svr3Env<'static>>,
+        env: &Env<'static>,
         filter_routes: impl Fn(&UnresolvedHttpsServiceRoute) -> bool,
     ) -> Result<ChatConnection, ConnectError> {
         let network_change_event = ObservableEvent::new();

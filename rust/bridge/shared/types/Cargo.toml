@@ -21,7 +21,6 @@ libsignal-core = { workspace = true }
 libsignal-message-backup = { workspace = true }
 libsignal-net = { workspace = true }
 libsignal-protocol = { workspace = true }
-libsignal-svr3 = { workspace = true }
 signal-crypto = { workspace = true }
 signal-media = { workspace = true, optional = true }
 usernames = { workspace = true }

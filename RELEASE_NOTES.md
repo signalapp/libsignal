@@ -9,3 +9,5 @@ v0.67.4
 - Rust: Update some dependencies (including boring) to the lastest compatible versions.
 
 - Net: Harmonized WebSocket PING interval with the client keep-alive interval to conserve resources.
+
+- Completely remove SVR3 support

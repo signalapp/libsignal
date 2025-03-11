@@ -10,9 +10,6 @@ use attest::enclave::Error as EnclaveError;
 use attest::hsm_enclave::Error as HsmEnclaveError;
 use device_transfer::Error as DeviceTransferError;
 use libsignal_account_keys::Error as PinError;
-use libsignal_net::infra::ws::WebSocketConnectError;
-use libsignal_net::svr3::Error as Svr3Error;
-use libsignal_net::ws::WebSocketServiceConnectError;
 use libsignal_protocol::*;
 use signal_crypto::Error as SignalCryptoError;
 use usernames::{UsernameError, UsernameLinkError};
@@ -477,70 +474,6 @@ impl FfiError for libsignal_net::cdsi::LookupError {
             Self::RateLimited {
                 retry_after_seconds,
             } => Ok(*retry_after_seconds),
-            _ => Err(WrongErrorKind),
-        }
-    }
-}
-
-impl FfiError for Svr3Error {
-    fn describe(&self) -> String {
-        match self {
-            Self::Connect(WebSocketServiceConnectError::Connect(
-                WebSocketConnectError::Timeout,
-                _,
-            ))
-            | Self::ConnectionTimedOut => "Connect timed out".to_owned(),
-            Self::Connect(WebSocketServiceConnectError::Connect(
-                WebSocketConnectError::Transport(e),
-                _,
-            )) => {
-                format!("IO error: {e}")
-            }
-            Self::Connect(
-                e @ (WebSocketServiceConnectError::Connect(
-                    WebSocketConnectError::WebSocketError(_),
-                    _,
-                )
-                | WebSocketServiceConnectError::RejectedByServer { .. }),
-            ) => {
-                format!("WebSocket error: {e}")
-            }
-            Self::Service(e) => format!("WebSocket error: {e}"),
-            Self::Protocol(e) => format!("Protocol error: {e}"),
-            Self::AttestationError(inner) => inner.describe(),
-            Self::RequestFailed(_)
-            | Self::RestoreFailed(_)
-            | Self::DataMissing
-            | Self::RotationMachineTooManySteps => {
-                format!("SVR error: {self}")
-            }
-        }
-    }
-
-    fn code(&self) -> SignalErrorCode {
-        match self {
-            Self::Connect(e) => match e {
-                WebSocketServiceConnectError::RejectedByServer { .. } => SignalErrorCode::WebSocket,
-                WebSocketServiceConnectError::Connect(e, _) => match e {
-                    WebSocketConnectError::Transport(_) => SignalErrorCode::IoError,
-                    WebSocketConnectError::Timeout => SignalErrorCode::ConnectionTimedOut,
-                    WebSocketConnectError::WebSocketError(_) => SignalErrorCode::WebSocket,
-                },
-            },
-            Self::Service(_) => SignalErrorCode::WebSocket,
-            Self::ConnectionTimedOut => SignalErrorCode::ConnectionTimedOut,
-            Self::AttestationError(inner) => inner.code(),
-            Self::Protocol(_) => SignalErrorCode::NetworkProtocol,
-            Self::RequestFailed(_) => SignalErrorCode::UnknownError,
-            Self::RestoreFailed(_) => SignalErrorCode::SvrRestoreFailed,
-            Self::DataMissing => SignalErrorCode::SvrDataMissing,
-            Self::RotationMachineTooManySteps => SignalErrorCode::SvrRotationMachineTooManySteps,
-        }
-    }
-
-    fn provide_tries_remaining(&self) -> Result<u32, WrongErrorKind> {
-        match self {
-            Self::RestoreFailed(tries_remaining) => Ok(*tries_remaining),
             _ => Err(WrongErrorKind),
         }
     }

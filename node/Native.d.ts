@@ -528,7 +528,7 @@ export function TESTING_ChatRequestGetPath(request: Wrapper<HttpRequest>): strin
 export function TESTING_ChatResponseConvert(bodyPresent: boolean): ChatResponse;
 export function TESTING_ChatSendErrorConvert(errorDescription: string): void;
 export function TESTING_ConnectionManager_isUsingProxy(manager: Wrapper<ConnectionManager>): number;
-export function TESTING_ConnectionManager_newLocalOverride(userAgent: string, chatPort: number, cdsiPort: number, svr2Port: number, svr3SgxPort: number, svr3NitroPort: number, svr3Tpm2SnpPort: number, rootCertificateDer: Buffer): ConnectionManager;
+export function TESTING_ConnectionManager_newLocalOverride(userAgent: string, chatPort: number, cdsiPort: number, svr2Port: number, rootCertificateDer: Buffer): ConnectionManager;
 export function TESTING_ErrorOnBorrowAsync(_input: null): Promise<void>;
 export function TESTING_ErrorOnBorrowIo(asyncRuntime: Wrapper<NonSuspendingBackgroundThreadRuntime>, _input: null): CancellablePromise<void>;
 export function TESTING_ErrorOnBorrowSync(_input: null): void;

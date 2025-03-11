@@ -29,9 +29,7 @@ use rand::seq::SliceRandom;
 use rand::{thread_rng, Rng};
 
 use crate::certs::{PROXY_G_ROOT_CERTIFICATES, SIGNAL_ROOT_CERTIFICATES};
-use crate::enclave::{
-    Cdsi, EnclaveEndpoint, EndpointParams, MrEnclave, Nitro, Sgx, SgxPreQuantum, Tpm2Snp,
-};
+use crate::enclave::{Cdsi, EnclaveEndpoint, EndpointParams, MrEnclave, SgxPreQuantum};
 
 const DEFAULT_HTTPS_PORT: NonZeroU16 = nonzero!(443_u16);
 pub const TIMESTAMP_HEADER_NAME: &str = "x-signal-timestamp";
@@ -139,96 +137,6 @@ const DOMAIN_CONFIG_SVR2_STAGING: DomainConfig = DomainConfig {
     ip_v6: &[],
 };
 
-const DOMAIN_CONFIG_SVR3_SGX: DomainConfig = DomainConfig {
-    connect: ConnectionConfig {
-        hostname: "backend1.svr3.signal.org",
-        port: DEFAULT_HTTPS_PORT,
-        cert: SIGNAL_ROOT_CERTIFICATES,
-        confirmation_header_name: None,
-        proxy: Some(ConnectionProxyConfig {
-            path_prefix: "/svr3-sgx",
-            configs: [PROXY_CONFIG_F_PROD, PROXY_CONFIG_G],
-        }),
-    },
-    ip_v4: &[ip_addr!(v4, "40.112.138.96")],
-    ip_v6: &[],
-};
-
-const DOMAIN_CONFIG_SVR3_SGX_STAGING: DomainConfig = DomainConfig {
-    connect: ConnectionConfig {
-        hostname: "backend1.svr3.staging.signal.org",
-        port: DEFAULT_HTTPS_PORT,
-        cert: SIGNAL_ROOT_CERTIFICATES,
-        confirmation_header_name: None,
-        proxy: Some(ConnectionProxyConfig {
-            path_prefix: "/svr3-sgx-staging",
-            configs: [PROXY_CONFIG_F_STAGING, PROXY_CONFIG_G],
-        }),
-    },
-    ip_v4: &[ip_addr!(v4, "13.88.63.29")],
-    ip_v6: &[],
-};
-
-const DOMAIN_CONFIG_SVR3_NITRO: DomainConfig = DomainConfig {
-    connect: ConnectionConfig {
-        hostname: "backend2.svr3.signal.org",
-        port: DEFAULT_HTTPS_PORT,
-        cert: SIGNAL_ROOT_CERTIFICATES,
-        confirmation_header_name: None,
-        proxy: Some(ConnectionProxyConfig {
-            path_prefix: "/svr3-nitro",
-            configs: [PROXY_CONFIG_F_PROD, PROXY_CONFIG_G],
-        }),
-    },
-    ip_v4: &[ip_addr!(v4, "75.2.91.98")],
-    ip_v6: &[],
-};
-
-const DOMAIN_CONFIG_SVR3_NITRO_STAGING: DomainConfig = DomainConfig {
-    connect: ConnectionConfig {
-        hostname: "backend2.svr3.staging.signal.org",
-        port: DEFAULT_HTTPS_PORT,
-        cert: SIGNAL_ROOT_CERTIFICATES,
-        confirmation_header_name: None,
-        proxy: Some(ConnectionProxyConfig {
-            path_prefix: "/svr3-nitro-staging",
-            configs: [PROXY_CONFIG_F_STAGING, PROXY_CONFIG_G],
-        }),
-    },
-    ip_v4: &[ip_addr!(v4, "75.2.86.85"), ip_addr!(v4, "99.83.239.137")],
-    ip_v6: &[],
-};
-
-pub const DOMAIN_CONFIG_SVR3_TPM2SNP: DomainConfig = DomainConfig {
-    connect: ConnectionConfig {
-        hostname: "backend3.svr3.signal.org",
-        port: DEFAULT_HTTPS_PORT,
-        cert: SIGNAL_ROOT_CERTIFICATES,
-        confirmation_header_name: None,
-        proxy: Some(ConnectionProxyConfig {
-            path_prefix: "/svr3-tpm2snp",
-            configs: [PROXY_CONFIG_F_PROD, PROXY_CONFIG_G],
-        }),
-    },
-    ip_v4: &[ip_addr!(v4, "34.144.241.251")],
-    ip_v6: &[],
-};
-
-pub const DOMAIN_CONFIG_SVR3_TPM2SNP_STAGING: DomainConfig = DomainConfig {
-    connect: ConnectionConfig {
-        hostname: "backend3.svr3.staging.signal.org",
-        port: DEFAULT_HTTPS_PORT,
-        cert: SIGNAL_ROOT_CERTIFICATES,
-        confirmation_header_name: None,
-        proxy: Some(ConnectionProxyConfig {
-            path_prefix: "/svr3-tpm2snp-staging",
-            configs: [PROXY_CONFIG_F_STAGING, PROXY_CONFIG_G],
-        }),
-    },
-    ip_v4: &[ip_addr!(v4, "13.88.30.76")],
-    ip_v6: &[],
-};
-
 pub const PROXY_CONFIG_F_PROD: ProxyConfig = ProxyConfig {
     route_type: RouteType::ProxyF,
     http_host: "reflector-signal.global.ssl.fastly.net",
@@ -274,20 +182,6 @@ pub(crate) const ENDPOINT_PARAMS_SVR2_STAGING: EndpointParams<'static, SgxPreQua
         mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVR2_STAGING),
         raft_config: attest::constants::RAFT_CONFIG_SVR2_STAGING,
     };
-pub(crate) const ENDPOINT_PARAMS_SVR3_SGX_STAGING: EndpointParams<'static, Sgx> = EndpointParams {
-    mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVR3_SGX_STAGING),
-    raft_config: attest::constants::RAFT_CONFIG_SVR3_SGX_STAGING,
-};
-pub(crate) const ENDPOINT_PARAMS_SVR3_NITRO_STAGING: EndpointParams<'static, Nitro> =
-    EndpointParams {
-        mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVR3_NITRO_STAGING),
-        raft_config: attest::constants::RAFT_CONFIG_SVR3_NITRO_STAGING,
-    };
-pub(crate) const ENDPOINT_PARAMS_SVR3_TPM2SNP_STAGING: EndpointParams<'static, Tpm2Snp> =
-    EndpointParams {
-        mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVR3_TPM2SNP_STAGING),
-        raft_config: attest::constants::RAFT_CONFIG_SVR3_TPM2SNP_STAGING,
-    };
 
 pub(crate) const ENDPOINT_PARAMS_CDSI_PROD: EndpointParams<'static, Cdsi> = EndpointParams {
     mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_CDSI_STAGING_AND_PROD),
@@ -297,19 +191,6 @@ pub(crate) const ENDPOINT_PARAMS_SVR2_PROD: EndpointParams<'static, SgxPreQuantu
     EndpointParams {
         mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVR2_PROD),
         raft_config: attest::constants::RAFT_CONFIG_SVR2_PROD,
-    };
-pub(crate) const ENDPOINT_PARAMS_SVR3_SGX_PROD: EndpointParams<'static, Sgx> = EndpointParams {
-    mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVR3_SGX_PROD),
-    raft_config: attest::constants::RAFT_CONFIG_SVR3_SGX_PROD,
-};
-pub(crate) const ENDPOINT_PARAMS_SVR3_NITRO_PROD: EndpointParams<'static, Nitro> = EndpointParams {
-    mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVR3_NITRO_PROD),
-    raft_config: attest::constants::RAFT_CONFIG_SVR3_NITRO_PROD,
-};
-pub(crate) const ENDPOINT_PARAMS_SVR3_TPM2SNP_PROD: EndpointParams<'static, Tpm2Snp> =
-    EndpointParams {
-        mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVR3_TPM2SNP_PROD),
-        raft_config: attest::constants::RAFT_CONFIG_SVR3_TPM2SNP_PROD,
     };
 
 pub(crate) const KEYTRANS_SIGNING_KEY_MATERIAL_STAGING: &[u8; 32] =
@@ -575,68 +456,32 @@ impl From<KeyTransConfig> for PublicConfig {
     }
 }
 
-pub struct Env<'a, Svr3> {
+pub struct Env<'a> {
     pub cdsi: EnclaveEndpoint<'a, Cdsi>,
     pub svr2: EnclaveEndpoint<'a, SgxPreQuantum>,
-    pub svr3: Svr3,
     pub chat_domain_config: DomainConfig,
     // TODO: make non-optional when the public endpoints are up
     pub keytrans_config: Option<KeyTransConfig>,
 }
 
-impl<'a> Env<'a, Svr3Env<'a>> {
+impl<'a> Env<'a> {
     /// Returns a static mapping from hostnames to [`LookupResult`]s.
     pub fn static_fallback(&self) -> HashMap<&'a str, LookupResult> {
         let Self {
             cdsi,
             svr2,
-            svr3,
             chat_domain_config,
             ..
         } = self;
         HashMap::from([
             cdsi.domain_config.static_fallback(),
             svr2.domain_config.static_fallback(),
-            svr3.sgx().domain_config.static_fallback(),
-            svr3.nitro().domain_config.static_fallback(),
-            svr3.tpm2snp().domain_config.static_fallback(),
             chat_domain_config.static_fallback(),
         ])
     }
 }
 
-pub struct Svr3Env<'a>(
-    EnclaveEndpoint<'a, Sgx>,
-    EnclaveEndpoint<'a, Nitro>,
-    EnclaveEndpoint<'a, Tpm2Snp>,
-);
-
-impl<'a> Svr3Env<'a> {
-    pub const fn new(
-        sgx: EnclaveEndpoint<'a, Sgx>,
-        nitro: EnclaveEndpoint<'a, Nitro>,
-        tpm2snp: EnclaveEndpoint<'a, Tpm2Snp>,
-    ) -> Self {
-        Self(sgx, nitro, tpm2snp)
-    }
-
-    #[inline]
-    pub const fn sgx(&self) -> &EnclaveEndpoint<'a, Sgx> {
-        &self.0
-    }
-
-    #[inline]
-    pub const fn nitro(&self) -> &EnclaveEndpoint<'a, Nitro> {
-        &self.1
-    }
-
-    #[inline]
-    pub const fn tpm2snp(&self) -> &EnclaveEndpoint<'a, Tpm2Snp> {
-        &self.2
-    }
-}
-
-pub const STAGING: Env<'static, Svr3Env> = Env {
+pub const STAGING: Env<'static> = Env {
     chat_domain_config: DOMAIN_CONFIG_CHAT_STAGING,
     cdsi: EnclaveEndpoint {
         domain_config: DOMAIN_CONFIG_CDSI_STAGING,
@@ -646,20 +491,6 @@ pub const STAGING: Env<'static, Svr3Env> = Env {
         domain_config: DOMAIN_CONFIG_SVR2_STAGING,
         params: ENDPOINT_PARAMS_SVR2_STAGING,
     },
-    svr3: Svr3Env(
-        EnclaveEndpoint {
-            domain_config: DOMAIN_CONFIG_SVR3_SGX_STAGING,
-            params: ENDPOINT_PARAMS_SVR3_SGX_STAGING,
-        },
-        EnclaveEndpoint {
-            domain_config: DOMAIN_CONFIG_SVR3_NITRO_STAGING,
-            params: ENDPOINT_PARAMS_SVR3_NITRO_STAGING,
-        },
-        EnclaveEndpoint {
-            domain_config: DOMAIN_CONFIG_SVR3_TPM2SNP_STAGING,
-            params: ENDPOINT_PARAMS_SVR3_TPM2SNP_STAGING,
-        },
-    ),
     keytrans_config: Some(KeyTransConfig {
         signing_key_material: KEYTRANS_SIGNING_KEY_MATERIAL_STAGING,
         vrf_key_material: KEYTRANS_VRF_KEY_MATERIAL_STAGING,
@@ -667,7 +498,7 @@ pub const STAGING: Env<'static, Svr3Env> = Env {
     }),
 };
 
-pub const PROD: Env<'static, Svr3Env> = Env {
+pub const PROD: Env<'static> = Env {
     chat_domain_config: DOMAIN_CONFIG_CHAT,
     cdsi: EnclaveEndpoint {
         domain_config: DOMAIN_CONFIG_CDSI,
@@ -677,20 +508,6 @@ pub const PROD: Env<'static, Svr3Env> = Env {
         domain_config: DOMAIN_CONFIG_SVR2,
         params: ENDPOINT_PARAMS_SVR2_PROD,
     },
-    svr3: Svr3Env(
-        EnclaveEndpoint {
-            domain_config: DOMAIN_CONFIG_SVR3_SGX,
-            params: ENDPOINT_PARAMS_SVR3_SGX_PROD,
-        },
-        EnclaveEndpoint {
-            domain_config: DOMAIN_CONFIG_SVR3_NITRO,
-            params: ENDPOINT_PARAMS_SVR3_NITRO_PROD,
-        },
-        EnclaveEndpoint {
-            domain_config: DOMAIN_CONFIG_SVR3_TPM2SNP,
-            params: ENDPOINT_PARAMS_SVR3_TPM2SNP_PROD,
-        },
-    ),
     keytrans_config: None,
 };
 

@@ -13,8 +13,7 @@ use jni::objects::{GlobalRef, JObject, JString, JThrowable};
 use jni::{JNIEnv, JavaVM};
 use libsignal_account_keys::Error as PinError;
 use libsignal_net::cdsi::CdsiProtocolError;
-use libsignal_net::infra::ws::{WebSocketConnectError, WebSocketServiceError};
-use libsignal_net::ws::WebSocketServiceConnectError;
+use libsignal_net::infra::ws::WebSocketServiceError;
 use libsignal_protocol::*;
 use signal_crypto::Error as SignalCryptoError;
 use usernames::{UsernameError, UsernameLinkError};
@@ -44,8 +43,6 @@ pub enum SignalJniError {
     #[cfg(feature = "signal-media")]
     WebpSanitizeParse(signal_media::sanitize::webp::ParseErrorReport),
     Cdsi(CdsiError),
-    #[from(skip)]
-    Svr3(libsignal_net::svr3::Error),
     WebSocket(WebSocketServiceError),
     ChatConnect(libsignal_net::chat::ConnectError),
     ChatSend(libsignal_net::chat::SendError),
@@ -104,7 +101,6 @@ impl fmt::Display for SignalJniError {
             SignalJniError::WebSocket(e) => write!(f, "{e}"),
             SignalJniError::ConnectTimedOut => write!(f, "connect timed out"),
             SignalJniError::BackupValidation(e) => write!(f, "{}", e),
-            SignalJniError::Svr3(e) => write!(f, "{}", e),
             SignalJniError::Bridge(e) => write!(f, "{}", e),
             SignalJniError::TestingError { exception_class } => {
                 write!(f, "TestingError({})", exception_class)
@@ -196,34 +192,6 @@ impl From<libsignal_net::cdsi::LookupError> for SignalJniError {
             LookupError::InvalidToken => CdsiError::InvalidToken,
             LookupError::Server { reason } => CdsiError::Server { reason },
         })
-    }
-}
-
-impl From<Svr3Error> for SignalJniError {
-    fn from(err: Svr3Error) -> Self {
-        match err {
-            Svr3Error::Connect(inner) => match inner {
-                WebSocketServiceConnectError::Connect(e, _) => match e {
-                    WebSocketConnectError::Timeout => SignalJniError::ConnectTimedOut,
-                    WebSocketConnectError::Transport(e) => SignalJniError::Io(e.into()),
-                    WebSocketConnectError::WebSocketError(e) => {
-                        WebSocketServiceError::from(e).into()
-                    }
-                },
-                WebSocketServiceConnectError::RejectedByServer {
-                    response,
-                    received_at: _,
-                } => WebSocketServiceError::Http(response).into(),
-            },
-            Svr3Error::ConnectionTimedOut => SignalJniError::ConnectTimedOut,
-            Svr3Error::Service(inner) => inner.into(),
-            Svr3Error::AttestationError(inner) => inner.into(),
-            Svr3Error::Protocol(_)
-            | Svr3Error::RequestFailed(_)
-            | Svr3Error::RestoreFailed(_)
-            | Svr3Error::DataMissing
-            | Svr3Error::RotationMachineTooManySteps => SignalJniError::Svr3(err),
-        }
     }
 }
 

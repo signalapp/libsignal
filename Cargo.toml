@@ -11,7 +11,6 @@ members = [
     "rust/account-keys",
     "rust/poksho",
     "rust/protocol",
-    "rust/svr3",
     "rust/usernames",
     "rust/zkcredential",
     "rust/zkgroup",
@@ -59,7 +58,6 @@ libsignal-keytrans = { path = "rust/keytrans" }
 libsignal-message-backup = { path = "rust/message-backup" }
 libsignal-net = { path = "rust/net" }
 libsignal-protocol = { path = "rust/protocol" }
-libsignal-svr3 = { path = "rust/svr3" }
 poksho = { path = "rust/poksho" }
 signal-crypto = { path = "rust/crypto" }
 signal-media = { path = "rust/media" }
@@ -105,10 +103,8 @@ cbc = "0.1.2"
 cfg-if = "1.0.0"
 chacha20poly1305 = "0.10.1"
 chrono = "0.4"
-ciborium = "0.2"
 clap = "4.4.11"
 clap-stdin = "0.6.0"
-colored = "3.0"
 const-str = "0.6.2"
 criterion = "0.5"
 ctr = "0.9.2"
@@ -163,7 +159,6 @@ pqcrypto-traits = "0.3.4"
 pretty_assertions = "1.4.0"
 proc-macro2 = "1.0"
 proptest = "1.0"
-proptest-state-machine = "0.3.1"
 prost = "0.13.1"
 prost-build = "0.13.1"
 protobuf = "3.7.2"

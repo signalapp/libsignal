@@ -270,13 +270,11 @@ version = "0.1.0"
 dependencies = [
  "asn1",
  "assert_matches",
- "base64 0.22.1",
  "bitflags",
  "blake2",
  "boring",
  "chacha20poly1305",
  "chrono",
- "ciborium",
  "displaydoc",
  "hex",
  "hex-literal",
@@ -292,8 +290,6 @@ dependencies = [
  "snow",
  "static_assertions",
  "strum",
- "subtle",
- "test-case",
  "thiserror 2.0.12",
  "uuid",
  "x25519-dalek",
@@ -715,15 +711,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5b63caa9aa9397e2d9480a9b13673856c78d8ac123288526c37d7839f2a86990"
 
 [[package]]
-name = "colored"
-version = "3.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fde0e0ec90c9dfb3b4b1a0891a7dcd0e2bffde2f7efed5fe7c9bb00e5bfb915e"
-dependencies = [
- "windows-sys 0.59.0",
-]
-
-[[package]]
 name = "combine"
 version = "4.6.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -882,7 +869,6 @@ dependencies = [
  "curve25519-dalek-derive",
  "digest",
  "fiat-crypto",
- "rand_core",
  "rustc_version",
  "serde",
  "subtle",
@@ -2318,7 +2304,6 @@ dependencies = [
  "libsignal-message-backup",
  "libsignal-net",
  "libsignal-protocol",
- "libsignal-svr3",
  "linkme",
  "log",
  "mediasan-common",
@@ -2518,7 +2503,6 @@ dependencies = [
  "bincode",
  "bytes",
  "clap",
- "colored",
  "const-str",
  "derive-where",
  "derive_more 2.0.1",
@@ -2536,13 +2520,10 @@ dependencies = [
  "libsignal-net",
  "libsignal-net-infra",
  "libsignal-protocol",
- "libsignal-svr3",
  "log",
  "nonzero_ext",
  "num_enum",
  "pin-project",
- "proptest",
- "proptest-state-machine",
  "prost",
  "prost-build",
  "rand",
@@ -2687,31 +2668,6 @@ dependencies = [
  "subtle",
  "thiserror 2.0.12",
  "uuid",
- "zerocopy",
-]
-
-[[package]]
-name = "libsignal-svr3"
-version = "0.1.0"
-dependencies = [
- "aes-gcm-siv",
- "assert_matches",
- "criterion",
- "curve25519-dalek",
- "displaydoc",
- "hex",
- "hex-literal",
- "hkdf",
- "nonzero_ext",
- "proptest",
- "prost",
- "prost-build",
- "rand_core",
- "sha2",
- "signal-crypto",
- "strum",
- "subtle",
- "test-case",
  "zerocopy",
 ]
 
@@ -3636,15 +3592,6 @@ dependencies = [
  "rusty-fork",
  "tempfile",
  "unarray",
-]
-
-[[package]]
-name = "proptest-state-machine"
-version = "0.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e943d140e09d07740fb496487c51fb8eb31c70389ac4a2e9dcd8a0d9fdf228d4"
-dependencies = [
- "proptest",
 ]
 
 [[package]]

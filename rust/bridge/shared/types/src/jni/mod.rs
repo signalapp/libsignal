@@ -20,7 +20,6 @@ use libsignal_account_keys::Error as PinError;
 use libsignal_net::chat::{ConnectError as ChatConnectError, SendError as ChatSendError};
 use libsignal_net::infra::ws::WebSocketServiceError;
 use libsignal_net::keytrans::Error as KeyTransNetError;
-use libsignal_net::svr3::Error as Svr3Error;
 use libsignal_protocol::*;
 use signal_crypto::Error as SignalCryptoError;
 use usernames::{UsernameError, UsernameLinkError};
@@ -615,31 +614,6 @@ impl<'env> ConsumableException<'env> {
                 ClassName("org.signal.libsignal.net.NetworkException"),
                 error,
             ),
-
-            SignalJniError::Svr3(Svr3Error::RestoreFailed(tries_remaining)) => {
-                let throwable = to_java_string(env, error.to_string()).and_then(|message| {
-                    new_instance(
-                        env,
-                        ClassName("org.signal.libsignal.svr.RestoreFailedException"),
-                        // The number of tries will be hard-coded by the client app
-                        // to some sensible value well within the int (i32) range.
-                        // Malicious server can still send an invalid value. In
-                        // this case panic is the best thing we can do.
-                        jni_args!((message => java.lang.String, tries_remaining
-                            .try_into()
-                            .expect("tries_remaining overflows int") => int) -> void),
-                    )
-                });
-                return ConsumableException {
-                    throwable: throwable.map(Into::into),
-                    error: error.into(),
-                };
-            }
-            SignalJniError::Svr3(Svr3Error::DataMissing) => (
-                ClassName("org.signal.libsignal.svr.DataMissingException"),
-                error,
-            ),
-            SignalJniError::Svr3(_) => (ClassName("org.signal.libsignal.svr.SvrException"), error),
 
             SignalJniError::InvalidUri(_) => (ClassName("java.net.MalformedURLException"), error),
 

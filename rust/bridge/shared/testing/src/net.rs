@@ -151,18 +151,12 @@ fn TESTING_ConnectionManager_newLocalOverride(
     chatPort: AsType<NonZeroU16, u16>,
     cdsiPort: AsType<NonZeroU16, u16>,
     svr2Port: AsType<NonZeroU16, u16>,
-    svr3SgxPort: AsType<NonZeroU16, u16>,
-    svr3NitroPort: AsType<NonZeroU16, u16>,
-    svr3Tpm2SnpPort: AsType<NonZeroU16, u16>,
     rootCertificateDer: &[u8],
 ) -> ConnectionManager {
     let ports = net_env::LocalhostEnvPortConfig {
         chat_port: chatPort.into_inner(),
         cdsi_port: cdsiPort.into_inner(),
         svr2_port: svr2Port.into_inner(),
-        svr3_sgx_port: svr3SgxPort.into_inner(),
-        svr3_nitro_port: svr3NitroPort.into_inner(),
-        svr3_tpm2_snp_port: svr3Tpm2SnpPort.into_inner(),
     };
 
     let env = net_env::localhost_test_env_with_ports(ports, rootCertificateDer);
