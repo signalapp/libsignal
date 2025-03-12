@@ -323,7 +323,7 @@ jobs:
         env:
           CARGO_BUILD_TARGET: aarch64-apple-ios
 
-      # Build the simulator architectures for completeness.
+      # Build the simulator architectures for `pod lib lint` below.
       - name: Build for x86_64-apple-ios
         run: swift/build_ffi.sh --release
         env:
@@ -334,8 +334,11 @@ jobs:
         env:
           CARGO_BUILD_TARGET: aarch64-apple-ios-sim
 
-      # The simulator build of the CocoaPod is already tested in regular CI as part of `pod lib lint`.
-
+      # We run this for the non-hermetic tests; it's otherwise the same as regular CI.
+      - name: Run pod lint
+        run: pod lib lint --verbose --platforms=ios
+  
+      # Make sure we can build for device, just for completeness.
       - name: Set up testing workspace
         run: pod install
         working-directory: swift/cocoapods-testing
