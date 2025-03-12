@@ -113,9 +113,9 @@ mod tests {
     #[test]
     fn attest_svr2() {
         const HANDSHAKE_BYTES: &[u8] = include_bytes!("../tests/data/svr2handshakestart.data");
-        let current_time = SystemTime::UNIX_EPOCH + Duration::from_secs(1709245753);
+        let current_time = SystemTime::UNIX_EPOCH + Duration::from_secs(1741649483);
         let mrenclave_bytes =
-            hex!("acb1973aa0bbbd14b3b4e06f145497d948fd4a98efc500fcce363b3b743ec482");
+            hex!("38e01eff4fe357dc0b0e8ef7a44b4abc5489fbccba3a78780f3872c277f62bf3");
         new_handshake_with_constants(
             &mrenclave_bytes,
             HANDSHAKE_BYTES,
@@ -125,7 +125,7 @@ mod tests {
                 min_voting_replicas: 3,
                 max_voting_replicas: 5,
                 super_majority: 0,
-                group_id: 16934825672495360159,
+                group_id: 3565209795906488720,
             },
             HandshakeType::PreQuantum,
         )
@@ -135,9 +135,9 @@ mod tests {
     #[test]
     fn attest_svr2_bad_config() {
         const HANDSHAKE_BYTES: &[u8] = include_bytes!("../tests/data/svr2handshakestart.data");
-        let current_time = SystemTime::UNIX_EPOCH + Duration::from_secs(1709245753);
+        let current_time = SystemTime::UNIX_EPOCH + Duration::from_secs(1741649483);
         let mrenclave_bytes =
-            hex!("acb1973aa0bbbd14b3b4e06f145497d948fd4a98efc500fcce363b3b743ec482");
+            hex!("38e01eff4fe357dc0b0e8ef7a44b4abc5489fbccba3a78780f3872c277f62bf3");
 
         assert!(new_handshake_with_constants(
             &mrenclave_bytes,

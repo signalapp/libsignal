@@ -10,8 +10,6 @@ use crate::util::SmallMap;
 
 pub const ENCLAVE_ID_CDSI_STAGING_AND_PROD: &[u8] =
     &hex!("0f6fd79cdfdaa5b2e6337f534d3baf999318b0c462a7ac1f41297a3e4b424a57");
-pub const ENCLAVE_ID_SVR2_STAGING_OLD: &[u8] =
-    &hex!("acb1973aa0bbbd14b3b4e06f145497d948fd4a98efc500fcce363b3b743ec482");
 pub const ENCLAVE_ID_SVR2_STAGING: &[u8] =
     &hex!("38e01eff4fe357dc0b0e8ef7a44b4abc5489fbccba3a78780f3872c277f62bf3");
 
@@ -20,12 +18,8 @@ pub const ENCLAVE_ID_SVR2_PROD: &[u8] =
 
 /// Map from MREnclave to intel SW advisories that are known to be mitigated in the
 /// build with that MREnclave value
-pub(crate) const ACCEPTABLE_SW_ADVISORIES: &SmallMap<&'static [u8], &'static [&'static str], 3> =
+pub(crate) const ACCEPTABLE_SW_ADVISORIES: &SmallMap<&'static [u8], &'static [&'static str], 2> =
     &SmallMap::new([
-        (
-            ENCLAVE_ID_SVR2_STAGING_OLD,
-            &["INTEL-SA-00615", "INTEL-SA-00657"] as &[&str],
-        ),
         (
             ENCLAVE_ID_SVR2_STAGING,
             &["INTEL-SA-00615", "INTEL-SA-00657"] as &[&str],
@@ -47,12 +41,6 @@ pub const RAFT_CONFIG_SVR2_STAGING: &RaftConfig = &RaftConfig {
     super_majority: 0,
     group_id: 3565209795906488720,
 };
-pub const RAFT_CONFIG_SVR2_STAGING_OLD: &RaftConfig = &RaftConfig {
-    min_voting_replicas: 3,
-    max_voting_replicas: 5,
-    super_majority: 0,
-    group_id: 16934825672495360159,
-};
 
 pub const RAFT_CONFIG_SVR2_PROD: &RaftConfig = &RaftConfig {
     min_voting_replicas: 4,
@@ -63,9 +51,8 @@ pub const RAFT_CONFIG_SVR2_PROD: &RaftConfig = &RaftConfig {
 
 // This is left here primarily to support SVR2 bridging code that does
 // not expose the notion of environment to the clients.
-pub(crate) static EXPECTED_RAFT_CONFIG_SVR2: SmallMap<&'static [u8], &'static RaftConfig, 3> =
+pub(crate) static EXPECTED_RAFT_CONFIG_SVR2: SmallMap<&'static [u8], &'static RaftConfig, 2> =
     SmallMap::new([
-        (ENCLAVE_ID_SVR2_STAGING_OLD, RAFT_CONFIG_SVR2_STAGING_OLD),
         (ENCLAVE_ID_SVR2_STAGING, RAFT_CONFIG_SVR2_STAGING),
         (ENCLAVE_ID_SVR2_PROD, RAFT_CONFIG_SVR2_PROD),
     ]);

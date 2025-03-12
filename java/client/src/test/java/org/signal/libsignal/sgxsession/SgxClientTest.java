@@ -62,9 +62,9 @@ public class SgxClientTest {
           },
           {
             Hex.fromStringCondensed(
-                "acb1973aa0bbbd14b3b4e06f145497d948fd4a98efc500fcce363b3b743ec482"),
+                "38e01eff4fe357dc0b0e8ef7a44b4abc5489fbccba3a78780f3872c277f62bf3"),
             svr2Handshake,
-            Instant.ofEpochSecond(1709245753),
+            Instant.ofEpochSecond(1741649483),
             ServiceType.SVR2
           }
         });
