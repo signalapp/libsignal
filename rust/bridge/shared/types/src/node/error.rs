@@ -5,6 +5,7 @@
 
 use std::fmt;
 
+use libsignal_net::infra::errors::RetryLater;
 use signal_media::sanitize::mp4::{Error as Mp4Error, ParseError as Mp4ParseError};
 use signal_media::sanitize::webp::{Error as WebpError, ParseError as WebpParseError};
 
@@ -408,9 +409,7 @@ impl SignalNodeError for libsignal_net::chat::ConnectError {
         let (name, properties) = match self {
             Self::AppExpired => (Some("AppExpired"), None),
             Self::DeviceDeregistered => (Some("DeviceDelinked"), None),
-            Self::RetryLater {
-                retry_after_seconds,
-            } => rate_limited_error(retry_after_seconds),
+            Self::RetryLater(retry_later) => rate_limited_error(retry_later),
             Self::WebSocket(_)
             | Self::Timeout
             | Self::AllAttemptsFailed
@@ -490,9 +489,7 @@ impl SignalNodeError for libsignal_net::cdsi::LookupError {
         operation_name: &str,
     ) -> Handle<'a, JsError> {
         let (name, make_extra_props) = match self {
-            Self::RateLimited {
-                retry_after_seconds,
-            } => rate_limited_error(retry_after_seconds),
+            Self::RateLimited(retry_later) => rate_limited_error(retry_later),
             Self::AttestationError(e) => return e.into_throwable(cx, module, operation_name),
             Self::InvalidArgument { server_reason: _ } => (None, None),
             Self::InvalidToken => (Some("CdsiInvalidToken"), None),
@@ -518,7 +515,7 @@ impl SignalNodeError for libsignal_net::cdsi::LookupError {
 }
 
 fn rate_limited_error<'a, C: Context<'a>>(
-    retry_after_seconds: u32,
+    retry_later: RetryLater,
 ) -> (
     Option<&'a str>,
     Option<impl Fn(&mut C) -> JsResult<'a, JsValue>>,
@@ -527,7 +524,7 @@ fn rate_limited_error<'a, C: Context<'a>>(
         Some(RATE_LIMITED_ERROR),
         Some(move |cx: &mut C| {
             let props = cx.empty_object();
-            let retry_after = retry_after_seconds.convert_into(cx)?;
+            let retry_after = retry_later.retry_after_seconds.convert_into(cx)?;
             props.set(cx, "retryAfterSecs", retry_after)?;
             Ok(props.upcast())
         }),

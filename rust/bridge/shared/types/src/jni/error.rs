@@ -4,7 +4,6 @@
 //
 use std::fmt;
 use std::io::Error as IoError;
-use std::time::Duration;
 
 use attest::hsm_enclave::Error as HsmEnclaveError;
 use device_transfer::Error as DeviceTransferError;
@@ -183,11 +182,7 @@ impl From<libsignal_net::cdsi::LookupError> for SignalJniError {
             LookupError::CdsiProtocol(CdsiProtocolError::NoTokenInResponse) => {
                 CdsiError::NoTokenInResponse
             }
-            LookupError::RateLimited {
-                retry_after_seconds,
-            } => CdsiError::RateLimited {
-                retry_after: Duration::from_secs(retry_after_seconds.into()),
-            },
+            LookupError::RateLimited(retry_later) => CdsiError::RateLimited(retry_later),
             LookupError::ParseError => CdsiError::ParseError,
             LookupError::InvalidToken => CdsiError::InvalidToken,
             LookupError::Server { reason } => CdsiError::Server { reason },

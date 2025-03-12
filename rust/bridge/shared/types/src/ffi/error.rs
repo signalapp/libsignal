@@ -10,6 +10,7 @@ use attest::enclave::Error as EnclaveError;
 use attest::hsm_enclave::Error as HsmEnclaveError;
 use device_transfer::Error as DeviceTransferError;
 use libsignal_account_keys::Error as PinError;
+use libsignal_net::infra::errors::RetryLater;
 use libsignal_protocol::*;
 use signal_crypto::Error as SignalCryptoError;
 use usernames::{UsernameError, UsernameLinkError};
@@ -441,9 +442,9 @@ impl FfiError for libsignal_net::cdsi::LookupError {
                 format!("Protocol error: {self}")
             }
             Self::AttestationError(e) => e.describe(),
-            Self::RateLimited {
+            Self::RateLimited(RetryLater {
                 retry_after_seconds,
-            } => format!("Rate limited; try again after {retry_after_seconds}s"),
+            }) => format!("Rate limited; try again after {retry_after_seconds}s"),
             Self::InvalidToken => "CDSI request token was invalid".to_owned(),
             Self::ConnectTransport(e) => format!("IO error: {e}"),
             Self::WebSocket(e) => format!("WebSocket error: {e}"),
@@ -471,9 +472,9 @@ impl FfiError for libsignal_net::cdsi::LookupError {
 
     fn provide_retry_after_seconds(&self) -> Result<u32, WrongErrorKind> {
         match self {
-            Self::RateLimited {
+            Self::RateLimited(RetryLater {
                 retry_after_seconds,
-            } => Ok(*retry_after_seconds),
+            }) => Ok(*retry_after_seconds),
             _ => Err(WrongErrorKind),
         }
     }
@@ -489,9 +490,9 @@ impl FfiError for libsignal_net::chat::ConnectError {
             Self::Timeout => "Connect timed out".to_owned(),
             Self::AppExpired => "App expired".to_owned(),
             Self::DeviceDeregistered => "Device deregistered or delinked".to_owned(),
-            Self::RetryLater {
+            Self::RetryLater(RetryLater {
                 retry_after_seconds,
-            } => format!("Rate limited; try again after {retry_after_seconds}s"),
+            }) => format!("Rate limited; try again after {retry_after_seconds}s"),
         }
     }
 
@@ -509,9 +510,9 @@ impl FfiError for libsignal_net::chat::ConnectError {
     }
     fn provide_retry_after_seconds(&self) -> Result<u32, WrongErrorKind> {
         match self {
-            Self::RetryLater {
+            Self::RetryLater(RetryLater {
                 retry_after_seconds,
-            } => Ok(*retry_after_seconds),
+            }) => Ok(*retry_after_seconds),
             _ => Err(WrongErrorKind),
         }
     }

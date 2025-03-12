@@ -20,7 +20,7 @@ use crate::certs::RootCertificates;
 use crate::connection_manager::{
     MultiRouteConnectionManager, SingleRouteThrottlingConnectionManager,
 };
-use crate::errors::{LogSafeDisplay, TransportConnectError};
+use crate::errors::{LogSafeDisplay, RetryLater, TransportConnectError};
 use crate::host::Host;
 use crate::timeouts::{WS_KEEP_ALIVE_INTERVAL, WS_MAX_IDLE_INTERVAL};
 use crate::utils::ObservableEvent;
@@ -392,11 +392,12 @@ pub fn make_ws_config(
 
 /// Extracts and parses the `Retry-After` header.
 ///
-/// Returns raw seconds rather than `Duration` to guarantee the smaller range.
-///
 /// Does not support the "http-date" form of the header.
-pub fn extract_retry_after_seconds(headers: &http::header::HeaderMap) -> Option<u32> {
-    headers.get("retry-after")?.to_str().ok()?.parse().ok()
+pub fn extract_retry_later(headers: &http::header::HeaderMap) -> Option<RetryLater> {
+    let retry_after_seconds = headers.get("retry-after")?.to_str().ok()?.parse().ok()?;
+    Some(RetryLater {
+        retry_after_seconds,
+    })
 }
 
 #[cfg(any(test, feature = "test-util"))]

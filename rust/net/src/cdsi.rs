@@ -10,7 +10,7 @@ use http::{HeaderName, StatusCode};
 use libsignal_core::{Aci, Pni, E164};
 use libsignal_net_infra::connection_manager::ConnectionManager;
 use libsignal_net_infra::dns::DnsResolver;
-use libsignal_net_infra::errors::{LogSafeDisplay, TransportConnectError};
+use libsignal_net_infra::errors::{LogSafeDisplay, RetryLater, TransportConnectError};
 use libsignal_net_infra::route::{
     RouteProvider, ThrottlingConnector, UnresolvedWebsocketServiceRoute,
 };
@@ -18,7 +18,7 @@ use libsignal_net_infra::ws::{NextOrClose, WebSocketConnectError, WebSocketServi
 use libsignal_net_infra::ws2::attested::{
     AttestedConnection, AttestedConnectionError, AttestedProtocolError,
 };
-use libsignal_net_infra::{extract_retry_after_seconds, TransportConnector};
+use libsignal_net_infra::{extract_retry_later, TransportConnector};
 use prost::Message as _;
 use thiserror::Error;
 use tungstenite::protocol::frame::coding::CloseCode;
@@ -242,7 +242,7 @@ pub enum LookupError {
     /// invalid response received from the server
     InvalidResponse,
     /// retry later
-    RateLimited { retry_after_seconds: u32 },
+    RateLimited(#[from] RetryLater),
     /// request token was invalid
     InvalidToken,
     /// failed to parse the response from the server
@@ -289,12 +289,8 @@ impl From<crate::enclave::Error> for LookupError {
                     received_at: _,
                 } => {
                     if response.status() == StatusCode::TOO_MANY_REQUESTS {
-                        if let Some(retry_after_seconds) =
-                            extract_retry_after_seconds(response.headers())
-                        {
-                            return Self::RateLimited {
-                                retry_after_seconds,
-                            };
+                        if let Some(retry_later) = extract_retry_later(response.headers()) {
+                            return Self::RateLimited(retry_later);
                         }
                     }
                     Self::WebSocket(WebSocketServiceError::Http(response))
@@ -526,9 +522,9 @@ fn err_for_close(close: Option<CloseFrame<'_>>) -> LookupError {
                 log::warn!("failed to parse rate limit from reason");
                 return unexpected_close(close);
             };
-            LookupError::RateLimited {
+            LookupError::RateLimited(RetryLater {
                 retry_after_seconds,
-            }
+            })
         }
         CdsiCloseCode::ServerInternalError | CdsiCloseCode::ServerUnavailable => {
             LookupError::Server {
@@ -938,9 +934,9 @@ mod test {
 
         assert_matches!(
             response,
-            Err(LookupError::RateLimited {
+            Err(LookupError::RateLimited(RetryLater {
                 retry_after_seconds: RETRY_AFTER_SECS
-            })
+            }))
         );
     }
 
@@ -992,9 +988,9 @@ mod test {
 
         assert_matches!(
             response,
-            Err(LookupError::RateLimited {
+            Err(LookupError::RateLimited(RetryLater {
                 retry_after_seconds: RETRY_AFTER_SECS
-            })
+            }))
         )
     }
 
@@ -1022,9 +1018,9 @@ mod test {
         let result = CdsiConnection::connect(&endpoint_connection, connector, auth).await;
         assert_matches!(
             result,
-            Err(LookupError::RateLimited {
+            Err(LookupError::RateLimited(RetryLater {
                 retry_after_seconds: 100
-            })
+            }))
         )
     }
 

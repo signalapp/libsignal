@@ -18,6 +18,7 @@ pub use jni::JNIEnv;
 use jni::JavaVM;
 use libsignal_account_keys::Error as PinError;
 use libsignal_net::chat::{ConnectError as ChatConnectError, SendError as ChatSendError};
+use libsignal_net::infra::errors::RetryLater;
 use libsignal_net::infra::ws::WebSocketServiceError;
 use libsignal_net::keytrans::Error as KeyTransNetError;
 use libsignal_protocol::*;
@@ -296,11 +297,9 @@ impl<'env> ConsumableException<'env> {
                 };
             }
 
-            SignalJniError::Cdsi(CdsiError::RateLimited { retry_after }) => {
-                let retry_after_seconds = retry_after
-                    .as_secs()
-                    .try_into()
-                    .expect("duration < lifetime of the universe");
+            SignalJniError::Cdsi(CdsiError::RateLimited(RetryLater {
+                retry_after_seconds,
+            })) => {
                 let throwable = retry_later_exception(env, retry_after_seconds);
 
                 return ConsumableException {
@@ -619,9 +618,9 @@ impl<'env> ConsumableException<'env> {
 
             SignalJniError::ChatConnect(ref chat) => {
                 let class = match chat {
-                    ChatConnectError::RetryLater {
+                    ChatConnectError::RetryLater(RetryLater {
                         retry_after_seconds,
-                    } => {
+                    }) => {
                         return ConsumableException {
                             throwable: retry_later_exception(env, *retry_after_seconds),
                             error: error.into(),

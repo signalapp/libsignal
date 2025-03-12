@@ -9,6 +9,7 @@ use libsignal_bridge_types::net::chat::{AuthenticatedChatConnection, ChatListene
 use libsignal_bridge_types::net::TokioAsyncContext;
 use libsignal_net::chat::fake::FakeChatRemote;
 use libsignal_net::chat::{ConnectError, RequestProto, Response as ChatResponse, SendError};
+use libsignal_net::infra::errors::RetryLater;
 
 use crate::net::make_error_testing_enum;
 use crate::*;
@@ -218,9 +219,9 @@ fn TESTING_ChatConnectErrorConvert(
         TestingChatConnectError::InvalidConnectionConfiguration => {
             ConnectError::InvalidConnectionConfiguration
         }
-        TestingChatConnectError::RetryAfter42Seconds => ConnectError::RetryLater {
+        TestingChatConnectError::RetryAfter42Seconds => ConnectError::RetryLater(RetryLater {
             retry_after_seconds: 42,
-        },
+        }),
     })
 }
 

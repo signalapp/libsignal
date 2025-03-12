@@ -3,8 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use libsignal_net_infra::errors::LogSafeDisplay;
-use libsignal_net_infra::extract_retry_after_seconds;
+use libsignal_net_infra::errors::{LogSafeDisplay, RetryLater};
+use libsignal_net_infra::extract_retry_later;
 use libsignal_net_infra::route::ConnectError as RouteConnectError;
 use libsignal_net_infra::timeouts::TimeoutOr;
 use libsignal_net_infra::ws::{WebSocketConnectError, WebSocketServiceError};
@@ -37,8 +37,8 @@ pub enum ConnectError {
     InvalidConnectionConfiguration,
     /// websocket error: {0}
     WebSocket(#[from] WebSocketConnectError),
-    /// retry after {retry_after_seconds}s
-    RetryLater { retry_after_seconds: u32 },
+    /// {0}
+    RetryLater(#[from] RetryLater),
     /// app version is too old
     AppExpired,
     /// device was deregistered
@@ -72,10 +72,8 @@ impl From<WebSocketServiceConnectError> for ConnectError {
                 received_at: _,
             } => {
                 // Retry-After takes precedence over everything else.
-                if let Some(retry_after_seconds) = extract_retry_after_seconds(response.headers()) {
-                    return Self::RetryLater {
-                        retry_after_seconds,
-                    };
+                if let Some(retry_after) = extract_retry_later(response.headers()) {
+                    return Self::RetryLater(retry_after);
                 }
                 match response.status().as_u16() {
                     499 => Self::AppExpired,

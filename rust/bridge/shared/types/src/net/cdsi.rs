@@ -6,6 +6,7 @@
 use http::HeaderName;
 use libsignal_net::auth::Auth;
 use libsignal_net::cdsi::{self, CdsiConnection, ClientResponseCollector, Token};
+use libsignal_net::infra::errors::RetryLater;
 use libsignal_net::infra::route::{DirectOrProxyProvider, RouteProviderExt};
 use libsignal_net::infra::tcp_ssl::InvalidProxyConfig;
 use libsignal_net::infra::AsHttpHeader as _;
@@ -24,7 +25,7 @@ pub enum CdsiError {
     /// Invalid response received from the server
     InvalidResponse,
     /// Retry later
-    RateLimited { retry_after: std::time::Duration },
+    RateLimited(RetryLater),
     /// Failed to parse the response from the server
     ParseError,
     /// Request token was invalid

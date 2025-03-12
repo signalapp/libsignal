@@ -447,7 +447,7 @@ pub(crate) mod test {
     use itertools::Itertools;
     use libsignal_net_infra::certs::RootCertificates;
     use libsignal_net_infra::dns::lookup_result::LookupResult;
-    use libsignal_net_infra::errors::TransportConnectError;
+    use libsignal_net_infra::errors::{RetryLater, TransportConnectError};
     use libsignal_net_infra::host::Host;
     use libsignal_net_infra::route::testutils::ConnectFn;
     use libsignal_net_infra::route::{
@@ -609,8 +609,8 @@ pub(crate) mod test {
     #[test_case(403, &[] => matches ConnectError::AllAttemptsFailed)]
     #[test_case(403, &[(CONFIRMATION_HEADER, "1")] => matches ConnectError::DeviceDeregistered)]
     #[test_case(499, &[(CONFIRMATION_HEADER, "1")] => matches ConnectError::AppExpired)]
-    #[test_case(429, &[(CONFIRMATION_HEADER, "1"), ("retry-after", "20")] => matches ConnectError::RetryLater { retry_after_seconds: 20 })]
-    #[test_case(500, &[(CONFIRMATION_HEADER, "1"), ("retry-after", "20")] => matches ConnectError::RetryLater { retry_after_seconds: 20 })]
+    #[test_case(429, &[(CONFIRMATION_HEADER, "1"), ("retry-after", "20")] => matches ConnectError::RetryLater(RetryLater { retry_after_seconds: 20 }))]
+    #[test_case(500, &[(CONFIRMATION_HEADER, "1"), ("retry-after", "20")] => matches ConnectError::RetryLater(RetryLater { retry_after_seconds: 20 }))]
     #[test_case(429, &[("retry-after", "20")] => matches ConnectError::AllAttemptsFailed)]
     #[test_log::test(tokio::test(start_paused = true))]
     async fn html_status_tests(
