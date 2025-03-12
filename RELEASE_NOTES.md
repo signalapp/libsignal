@@ -1,3 +1,2 @@
-v0.67.5
+v0.67.6
 
-- Fix a bug in the Swift unauth chat listener that caused a crash on connect.
