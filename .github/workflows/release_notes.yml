@@ -4,7 +4,7 @@ name: Check release notes
 
 on:
  pull_request:
-  types: [opened, reopened, synchronize, labeled, unlabeled]
+  types: [opened, reopened, synchronize, labeled, unlabeled, converted_to_draft, ready_for_review]
   # all target branches
 
 env:
@@ -13,6 +13,8 @@ env:
 jobs:
   check:
     name: Check for release notes
+    # Don't check draft PRs
+    if: github.event.pull_request.draft == false
 
     runs-on: ubuntu-latest
 
