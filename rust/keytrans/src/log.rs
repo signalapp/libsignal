@@ -350,29 +350,6 @@ pub fn evaluate_batch_proof(x: &[u64], n: u64, values: &[Hash], proof: &[Hash]) 
     calc.root()
 }
 
-// Returns the root of the tree immediately after the leaf `x[early_stop]` has
-// been sequenced.
-pub fn truncate_batch_proof(
-    early_stop: usize,
-    x: &[u64],
-    values: &[Hash],
-    proof: &[Hash],
-) -> Result<Hash> {
-    if early_stop >= x.len() {
-        return Err(Error::InvalidInput("early_stop is out of bounds"));
-    }
-    let x = &x[..early_stop + 1];
-    let stop_id = x[early_stop];
-    let copath = math::batch_copath(x, stop_id + 1);
-
-    evaluate_batch_proof(
-        x,
-        stop_id + 1,
-        &values[..early_stop + 1],
-        &proof[..copath.len()],
-    )
-}
-
 // Checks that `proof` is a valid consistency proof between `m_root` and
 // `n_root` where `m` < `n`.
 pub fn verify_consistency_proof(
@@ -449,30 +426,7 @@ mod test {
 
         let got = evaluate_batch_proof(&[0, 1, 2, 4, 8, 16], 18, &values, &proof).unwrap();
         let want = hex!("435b929d1b8da2cb7f35119903c1f72d3f048e30b0dd0081a97b41f8da37f58f");
-        assert!(got == want);
-    }
-
-    #[test]
-    fn test_truncate_batch_proof() {
-        let values = &[
-            hex!("92c3f73e218d073192c84247c56c12cadd8adc70624c5e879ef213afee0a927a"),
-            hex!("42b59b311613ff156ce56686f690ea17794bbe155947e1893263957639e776b7"),
-            hex!("c9fdbec01c9fe76f9b97c7afcc9b93829cb62b4f0fd5018c687ff6e537198d31"),
-        ];
-        let proof = &[
-            hex!("a0b219fe94b49121df5b8210ff4f14b5bbddaf49f689be971cbcfe82d47cc590"),
-            hex!("5bebed9662a891f5ad369fad2a58efdedc37eef70a1979244cb3b3dd2c13782e"),
-            hex!("f8d36bfd0ce37743de10910a32f1eaa1cf3d7b037342b9834b4c9e847b416618"),
-            hex!("190fefcbd2f2617305b74097c449d131fe8c0b62365a1de6d0708ddb6bbf0f7d"),
-            hex!("b941e7a040c42477e2f547003760821428195876b9185a95f70484868e92b900"),
-            hex!("ecf8b73011345554f10c6aea96ea07c685ae2fb37e337075c30a74949ee28e14"),
-            hex!("d306f87c5a08d671d1d27a0050aeb50c34bbd09bee1e04e8843143205de96bb1"),
-            hex!("88d133186fc10d8bf2d11aef0fad6a984c348af392729218916e91366749c1ff"),
-        ];
-
-        let got = truncate_batch_proof(1, &[5, 10, 15], values, proof).unwrap();
-        let want = hex!("1eb26fa1fac53af285479ba4536ef762648fb4c740429f2810065130b92fb00f");
-        assert!(got == want);
+        assert_eq!(got, want);
     }
 
     #[test]
