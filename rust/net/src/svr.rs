@@ -32,7 +32,7 @@ impl<Kind: EnclaveKind> IntoAttestedConnection for SvrConnection<Kind> {
     }
 }
 
-impl<E: EnclaveKind> SvrConnection<E>
+impl<E> SvrConnection<E>
 where
     E: EnclaveKind + NewHandshake + Sized,
 {

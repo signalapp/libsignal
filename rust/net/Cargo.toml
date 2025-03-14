@@ -70,7 +70,7 @@ libsignal-net = { path = ".", features = ["test-util"] }
 libsignal-net-infra = { path = "infra", features = ["test-util"] }
 
 assert_matches = { workspace = true }
-clap = { workspace = true, features = ["derive"] }
+clap = { workspace = true, features = ["derive", "env"] }
 env_logger = { workspace = true }
 hex-literal = { workspace = true }
 snow = { workspace = true, features = ["default-resolver"] }
