@@ -6,7 +6,9 @@
 use std::fmt;
 
 use libsignal_net::infra::errors::RetryLater;
+#[cfg(feature = "signal-media")]
 use signal_media::sanitize::mp4::{Error as Mp4Error, ParseError as Mp4ParseError};
+#[cfg(feature = "signal-media")]
 use signal_media::sanitize::webp::{Error as WebpError, ParseError as WebpParseError};
 
 use super::*;
@@ -312,6 +314,7 @@ impl SignalNodeError for usernames::UsernameLinkError {
     }
 }
 
+#[cfg(feature = "signal-media")]
 impl SignalNodeError for Mp4Error {
     fn into_throwable<'a, C: Context<'a>>(
         self,
@@ -343,6 +346,7 @@ impl SignalNodeError for Mp4Error {
     }
 }
 
+#[cfg(feature = "signal-media")]
 impl SignalNodeError for WebpError {
     fn into_throwable<'a, C: Context<'a>>(
         self,
