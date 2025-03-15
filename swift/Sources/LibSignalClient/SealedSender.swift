@@ -97,6 +97,32 @@ public class UnidentifiedSenderMessageContent: NativeHandleOwner<SignalMutPointe
         }
         self.init(owned: NonNull(result)!)
     }
+    
+    public convenience init<MessageBytes: ContiguousBytes, GroupIdBytes: ContiguousBytes>(
+        _ message: MessageBytes,
+        type: CiphertextMessage.MessageType,
+        from sender: SenderCertificate,
+        contentHint: ContentHint,
+        groupId: GroupIdBytes
+    ) throws {
+        var result = SignalMutPointerUnidentifiedSenderMessageContent()
+        try message.withUnsafeBorrowedBuffer { messageBuffer in
+            try sender.withNativeHandle { senderHandle in
+                try groupId.withUnsafeBorrowedBuffer { groupIdBuffer in
+                    try checkError(
+                        signal_unidentified_sender_message_content_new_from_content_and_type(
+                            &result,
+                            messageBuffer,
+                            type.rawValue,
+                            senderHandle.const(),
+                            contentHint.rawValue,
+                            groupIdBuffer
+                        ))
+                }
+            }
+        }
+        self.init(owned: NonNull(result)!)
+    }
 
     override internal class func destroyNativeHandle(_ handle: NonNull<SignalMutPointerUnidentifiedSenderMessageContent>) -> SignalFfiErrorRef? {
         return signal_unidentified_sender_message_content_destroy(handle.pointer)
