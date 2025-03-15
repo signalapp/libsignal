@@ -857,6 +857,23 @@ fn UnidentifiedSenderMessageContentNewFromContentAndType(
         SignalProtocolError::InvalidArgument(format!("unknown message type {}", message_type))
     })?;
 
+    if let Some(_) = match message_type {
+        CiphertextMessageType::Plaintext => {
+            PlaintextContent::try_from(message_content).err()
+        }
+        CiphertextMessageType::PreKey => {
+            PreKeySignalMessage::try_from(message_content).err()
+        }
+        CiphertextMessageType::SenderKey => {
+            SenderKeyMessage::try_from(message_content).err()
+        }
+        CiphertextMessageType::Whisper => {
+            SignalMessage::try_from(message_content).err()
+        }
+    } {
+        return Err(SignalProtocolError::InvalidArgument(format!("invalid message content")));
+    }
+
     UnidentifiedSenderMessageContent::new(
         message_type,
         sender.clone(),
