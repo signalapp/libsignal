@@ -1517,6 +1517,8 @@ SignalFfiError *signal_unidentified_sender_message_content_get_msg_type(uint8_t 
 
 SignalFfiError *signal_unidentified_sender_message_content_get_content_hint(uint32_t *out, SignalConstPointerUnidentifiedSenderMessageContent m);
 
+SignalFfiError *signal_unidentified_sender_message_content_new_from_content_and_type(SignalMutPointerUnidentifiedSenderMessageContent *out, SignalBorrowedBuffer message_content, uint8_t message_type, SignalConstPointerSenderCertificate sender, uint32_t content_hint, SignalBorrowedBuffer group_id);
+
 SignalFfiError *signal_unidentified_sender_message_content_new(SignalMutPointerUnidentifiedSenderMessageContent *out, SignalConstPointerCiphertextMessage message, SignalConstPointerSenderCertificate sender, uint32_t content_hint, SignalBorrowedBuffer group_id);
 
 SignalFfiError *signal_ciphertext_message_type(uint8_t *out, SignalConstPointerCiphertextMessage msg);
