@@ -176,7 +176,7 @@ public class Network {
         throw new RuntimeException(e);
       }
     }
-  }
+  } 
 
   TokioAsyncContext getAsyncContext() {
     return this.tokioAsyncContext;
