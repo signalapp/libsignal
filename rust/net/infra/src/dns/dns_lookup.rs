@@ -68,8 +68,7 @@ impl DnsLookup for StaticDnsMap {
 #[async_trait]
 impl<T> DnsLookup for CustomDnsResolver<T>
 where
-    T: DnsTransport + Sync + 'static,
-    T::ConnectionParameters: Sync,
+    T: DnsTransport<ConnectionParameters: Sync> + Sync + 'static,
 {
     async fn dns_lookup(&self, request: DnsLookupRequest) -> dns::Result<LookupResult> {
         self.resolve(request).await

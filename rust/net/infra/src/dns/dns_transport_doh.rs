@@ -2,13 +2,13 @@
 // Copyright 2024 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
-use std::net::IpAddr;
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 use std::sync::Arc;
 
-use async_trait::async_trait;
 use bytes::Bytes;
 use const_str::ip_addr;
-use futures_util::stream::{BoxStream, FuturesUnordered};
+use futures_util::stream::FuturesUnordered;
+use futures_util::Stream;
 use http::uri::PathAndQuery;
 use http::{HeaderValue, Method};
 
@@ -19,10 +19,13 @@ use crate::dns::dns_message;
 use crate::dns::dns_message::{parse_a_record, parse_aaaa_record};
 use crate::dns::dns_types::ResourceType;
 use crate::http_client::{http2_client, AggregatingHttp2Client};
-use crate::route::{HttpsTlsRoute, TcpRoute, TlsRoute};
+use crate::route::{HttpsTlsRoute, ResolvedRoute, TcpRoute, TlsRoute};
 use crate::{dns, DnsSource};
 
-pub(crate) const CLOUDFLARE_IP: IpAddr = ip_addr!("1.1.1.1");
+pub(crate) const CLOUDFLARE_IPS: (Ipv4Addr, Ipv6Addr) = (
+    ip_addr!(v4, "1.1.1.1"),
+    ip_addr!(v6, "2606:4700:4700::1111"),
+);
 const MAX_RESPONSE_SIZE: usize = 10240;
 
 /// DNS transport that sends queries over HTTPS
@@ -31,19 +34,21 @@ pub struct DohTransport {
     http_client: AggregatingHttp2Client,
 }
 
-#[async_trait]
 impl DnsTransport for DohTransport {
-    type ConnectionParameters = HttpsTlsRoute<TlsRoute<TcpRoute<IpAddr>>>;
+    type ConnectionParameters = Vec<HttpsTlsRoute<TlsRoute<TcpRoute<IpAddr>>>>;
 
     fn dns_source() -> DnsSource {
         DnsSource::DnsOverHttpsLookup
     }
 
     async fn connect(
-        connection_params: Self::ConnectionParameters,
-        _ipv6_enabled: bool,
+        mut connection_params: Self::ConnectionParameters,
+        ipv6_enabled: bool,
     ) -> dns::Result<Self> {
         let log_tag = "DNS-over-HTTPS".into();
+
+        connection_params.retain(|route| ipv6_enabled || route.immediate_target().is_ipv4());
+
         match http2_client(connection_params, MAX_RESPONSE_SIZE, &log_tag).await {
             Ok(http_client) => Ok(Self { http_client }),
             Err(error) => {
@@ -56,7 +61,7 @@ impl DnsTransport for DohTransport {
     async fn send_queries(
         self,
         request: DnsLookupRequest,
-    ) -> dns::Result<BoxStream<'static, dns::Result<DnsQueryResult>>> {
+    ) -> dns::Result<impl Stream<Item = dns::Result<DnsQueryResult>> + Send + 'static> {
         let arc = Arc::new(self);
         let futures = match request.ipv6_enabled {
             true => vec![
@@ -66,7 +71,7 @@ impl DnsTransport for DohTransport {
             ],
             false => vec![arc.clone().send_request(request.clone(), ResourceType::A)],
         };
-        Ok(Box::pin(FuturesUnordered::from_iter(futures)))
+        Ok(FuturesUnordered::from_iter(futures))
     }
 }
 

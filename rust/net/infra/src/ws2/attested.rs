@@ -9,17 +9,15 @@ use std::sync::Arc;
 use attest::client_connection::ClientConnection;
 use tokio::sync::{mpsc, oneshot};
 use tokio_stream::wrappers::ReceiverStream;
-use tokio_tungstenite::WebSocketStream;
 use tungstenite::protocol::frame::coding::CloseCode;
 use tungstenite::protocol::CloseFrame;
 
 use crate::ws::error::{ProtocolError, SpaceError, UnexpectedCloseError};
-use crate::ws::{NextOrClose, TextOrBinary, WebSocketServiceError};
+use crate::ws::{NextOrClose, TextOrBinary, WebSocketServiceError, WebSocketStreamLike};
 use crate::ws2::{
     FinishReason, MessageEvent, NextEventError, Outcome, TungsteniteReceiveError,
     TungsteniteSendError,
 };
-use crate::AsyncDuplexStream;
 
 /// Encrypted connection to an attested host.
 #[derive(Debug)]
@@ -69,12 +67,15 @@ impl AttestedConnection {
     /// Perform a handshake over the provided websocket stream with the given
     /// handshake function. If the handshake succeeds, return the established
     /// connection.
-    pub async fn connect<S: AsyncDuplexStream + 'static>(
-        ws: WebSocketStream<S>,
+    pub async fn connect<WS>(
+        ws: WS,
         ws_config: crate::ws2::Config,
         log_tag: Arc<str>,
         new_handshake: impl FnOnce(&[u8]) -> attest::enclave::Result<attest::enclave::Handshake>,
-    ) -> Result<Self, AttestedConnectionError> {
+    ) -> Result<Self, AttestedConnectionError>
+    where
+        WS: WebSocketStreamLike + Send + 'static,
+    {
         let mut ws_client = WsClient::new(ws, ws_config, log_tag);
 
         let client_connection = authenticate(&mut ws_client, new_handshake).await?;
@@ -162,11 +163,10 @@ struct WsClient {
 }
 
 impl WsClient {
-    fn new<S: AsyncDuplexStream + 'static>(
-        ws: WebSocketStream<S>,
-        ws_config: crate::ws2::Config,
-        log_tag: Arc<str>,
-    ) -> Self {
+    fn new<WS>(ws: WS, ws_config: crate::ws2::Config, log_tag: Arc<str>) -> Self
+    where
+        WS: WebSocketStreamLike + Send + 'static,
+    {
         let (outgoing_tx, outgoing_rx) = mpsc::channel(WS_MESSAGE_BUFFER);
         let (incoming_tx, incoming_rx) = mpsc::channel(WS_MESSAGE_BUFFER);
 
@@ -245,7 +245,7 @@ enum TaskExitError {
 }
 
 async fn spawned_task_body(
-    stream: WebSocketStream<impl AsyncDuplexStream>,
+    stream: impl WebSocketStreamLike,
     outgoing_rx: mpsc::Receiver<(TextOrBinary, oneshot::Sender<Result<(), SendError>>)>,
     incoming_tx: mpsc::Sender<Result<NextOrClose<TextOrBinary>, ReceiveError>>,
     config: crate::ws2::Config,
@@ -627,12 +627,14 @@ mod test {
     use std::time::Duration;
 
     use assert_matches::assert_matches;
+    use tokio_tungstenite::WebSocketStream;
 
     use super::*;
     use crate::ws::testutil::fake_websocket;
     use crate::ws2::attested::testutil::{
         run_attested_server, AttestedServerOutput, FAKE_ATTESTATION,
     };
+    use crate::AsyncDuplexStream;
 
     const ECHO_BYTES: &[u8] = b"two nibbles to a byte";
 

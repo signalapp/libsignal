@@ -2,8 +2,9 @@
 name = "libsignal-net-infra"
 version = "0.1.0"
 edition = "2021"
-authors = ["Signal Messenger LLC"]
-license = "AGPL-3.0-only"
+rust-version = "1.80"
+authors.workspace = true
+license.workspace = true
 
 [lints]
 workspace = true
@@ -16,20 +17,21 @@ dev-util = []
 attest = { workspace = true }
 
 async-trait = { workspace = true }
+auto_enums = { workspace = true, features = ["tokio1"] }
 base64 = { workspace = true }
-bitstream-io = "1.10.0"
+bitstream-io = { workspace = true }
 boring-signal = { workspace = true }
-bytes = "1.4.0"
+bytes = { workspace = true }
 const-str = { workspace = true, features = ["std"] }
 derive-where = { workspace = true }
 derive_more = { workspace = true, features = ["from", "into", "into_iterator"] }
 displaydoc = { workspace = true }
-either = "1.10.0"
+either = { workspace = true }
 futures-util = { workspace = true }
 http = { workspace = true }
-http-body-util = "0.1.1"
-hyper = { version = "1.3.1", features = ["http1", "http2", "client"] }
-hyper-util = { version = "0.1.3", features = ["tokio"] }
+http-body-util = { workspace = true }
+hyper = { workspace = true, features = ["http1", "http2", "client"] }
+hyper-util = { workspace = true, features = ["tokio"] }
 indexmap = { workspace = true }
 itertools = { workspace = true }
 log = { workspace = true }
@@ -39,8 +41,8 @@ pin-project = { workspace = true }
 prost = { workspace = true }
 rand = { workspace = true }
 rand_core = { workspace = true }
-rangemap = "1.5.1"
-rustls = { version = "0.23.4", default-features = false, features = ["ring", "std", "tls12"] }
+rangemap = { workspace = true }
+rustls = { workspace = true, features = ["ring", "std", "tls12"] }
 rustls-platform-verifier = { workspace = true }
 snow = { workspace = true }
 static_assertions = { workspace = true }
@@ -48,28 +50,27 @@ strum = { workspace = true, features = ["derive"] }
 thiserror = { workspace = true }
 tokio = { workspace = true, features = ["rt", "time", "macros"] }
 tokio-boring-signal = { workspace = true }
-tokio-socks = "0.5.2"
+tokio-socks = { workspace = true }
 tokio-stream = { workspace = true }
-tokio-tungstenite = "0.23.0"
-tokio-util = "0.7.9"
-tungstenite = { version = "0.23.0", features = ["url"] }
-url = "2.4.1"
+tokio-tungstenite = { workspace = true }
+tokio-util = { workspace = true }
+tungstenite = { workspace = true, features = ["url"] }
+url = { workspace = true }
 visibility = { workspace = true }
-warp = { version = "0.3.6", features = ["tls"], optional = true }
+warp = { workspace = true, features = ["tls"], optional = true }
 
 [dev-dependencies]
 assert_matches = { workspace = true }
 env_logger = { workspace = true }
-hickory-proto = "0.24.1"
-hyper = { version = "1.3.1", features = ["http1", "server"] }
-lazy_static = { workspace = true }
+hickory-proto = { workspace = true }
+hyper = { workspace = true, features = ["http1", "server"] }
 pretty_assertions = { workspace = true }
 proptest = { workspace = true }
-rcgen = "0.13.0"
+rcgen = { workspace = true }
 snow = { workspace = true, features = ["default-resolver"] }
-socks5-server = "0.10.1"
+socks5-server = { workspace = true }
 test-case = { workspace = true }
 test-log = { workspace = true }
-tls-parser = "0.11.0"
+tls-parser = { workspace = true }
 tokio = { workspace = true, features = ["test-util", "io-std", "rt-multi-thread"] }
-warp = { version = "0.3.6", features = ["tls"] }
+warp = { workspace = true, features = ["tls"] }

@@ -35,6 +35,11 @@ pub fn run(action: &str) {
     let node_library_path = std::env::temp_dir().join("signal_neon_futures_tests.node");
     std::fs::copy(library_path, &node_library_path).expect("can copy to temporary directory");
 
+    if std::env::var_os("RUST_BACKTRACE").is_some_and(|val| val != "0") {
+        eprintln!("warning: RUST_BACKTRACE is overridden to 0 while running these tests");
+        eprintln!("note: use `npm run test` directly to turn RUST_BACKTRACE on");
+    }
+
     let test_cases = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/node-tests");
     let status = Command::new("npm")
         .arg("run")
@@ -42,6 +47,7 @@ pub fn run(action: &str) {
         .env("SIGNAL_NEON_FUTURES_TEST_LIB", &node_library_path)
         .env("MALLOC_PERTURB_", "1") // Add glibc and macOS use-after-free detection.
         .env("MALLOC_SCRIBBLE", "1")
+        .env("RUST_BACKTRACE", "0") // Don't slow down tests by printing backtraces.
         .current_dir(&test_cases)
         .status()
         .expect("failed to run `npm run test`");

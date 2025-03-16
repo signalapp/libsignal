@@ -47,22 +47,20 @@ public final class NativeTesting {
 
   public static native void FakeChatRemoteEnd_Destroy(long handle);
 
+  public static native void FakeChatSentRequest_Destroy(long handle);
+
   public static native void OtherTestingHandleType_Destroy(long handle);
 
   public static native void TESTING_CdsiLookupErrorConvert(String errorDescription) throws Exception;
   public static native CompletableFuture<Object> TESTING_CdsiLookupResponseConvert(long asyncRuntime);
+  public static native void TESTING_ChatConnectErrorConvert(String errorDescription) throws Exception;
   public static native byte[] TESTING_ChatRequestGetBody(long request);
   public static native String TESTING_ChatRequestGetHeaderValue(long request, String headerName);
   public static native String TESTING_ChatRequestGetMethod(long request);
   public static native String TESTING_ChatRequestGetPath(long request);
+  public static native Object TESTING_ChatResponseConvert(boolean bodyPresent);
   public static native long TESTING_ChatSearchResult();
-  public static native Object TESTING_ChatServiceDebugInfoConvert() throws Exception;
-  public static native void TESTING_ChatServiceErrorConvert(String errorDescription) throws Exception;
-  public static native Object TESTING_ChatServiceResponseAndDebugInfoConvert() throws Exception;
-  public static native Object TESTING_ChatServiceResponseConvert(boolean bodyPresent) throws Exception;
-  public static native void TESTING_ChatService_InjectConnectionInterrupted(long chat);
-  public static native void TESTING_ChatService_InjectIntentionalDisconnect(long chat);
-  public static native void TESTING_ChatService_InjectRawServerRequest(long chat, byte[] bytes);
+  public static native void TESTING_ChatSendErrorConvert(String errorDescription) throws Exception;
   public static native int TESTING_ConnectionManager_isUsingProxy(long manager);
   public static native void TESTING_ErrorOnBorrowAsync(Object input);
   public static native CompletableFuture TESTING_ErrorOnBorrowIo(long asyncRuntime, Object input);
@@ -70,11 +68,15 @@ public final class NativeTesting {
   public static native Object TESTING_ErrorOnReturnAsync(Object needsCleanup);
   public static native CompletableFuture<Object> TESTING_ErrorOnReturnIo(long asyncRuntime, Object needsCleanup);
   public static native Object TESTING_ErrorOnReturnSync(Object needsCleanup);
-  public static native long TESTING_FakeChatConnection_Create(long tokio, BridgeChatListener listener);
+  public static native long TESTING_FakeChatConnection_Create(long tokio, BridgeChatListener listener, String alertsJoinedByNewlines);
   public static native long TESTING_FakeChatConnection_TakeAuthenticatedChat(long chat);
   public static native long TESTING_FakeChatConnection_TakeRemote(long chat);
   public static native void TESTING_FakeChatRemoteEnd_InjectConnectionInterrupted(long chat);
+  public static native CompletableFuture<Long> TESTING_FakeChatRemoteEnd_ReceiveIncomingRequest(long asyncRuntime, long chat);
   public static native void TESTING_FakeChatRemoteEnd_SendRawServerRequest(long chat, byte[] bytes);
+  public static native void TESTING_FakeChatRemoteEnd_SendRawServerResponse(long chat, byte[] bytes);
+  public static native long TESTING_FakeChatSentRequest_RequestId(long request);
+  public static native long TESTING_FakeChatSentRequest_TakeHttpRequest(long request);
   public static native CompletableFuture<Integer> TESTING_FutureFailure(long asyncRuntime, int input);
   public static native CompletableFuture<Long> TESTING_FutureProducesOtherPointerType(long asyncRuntime, String input);
   public static native CompletableFuture<Long> TESTING_FutureProducesPointerType(long asyncRuntime, int input);

@@ -371,8 +371,8 @@ mod test {
         let shorter_ttl = Duration::from_secs(1);
         let longer_ttl = Duration::from_secs(2);
         let expected_ips_and_ttls = [
-            (ip_addr!(v4, "1.1.1.1"), longer_ttl),
-            (ip_addr!(v4, "1.1.1.2"), shorter_ttl),
+            (ip_addr!(v4, "192.0.2.1"), longer_ttl),
+            (ip_addr!(v4, "192.0.2.2"), shorter_ttl),
         ];
         let name = Name::from_str(VALID_DOMAIN).expect("valid name");
 
@@ -483,7 +483,7 @@ mod test {
     fn unexpected_resource_record_is_skipped() {
         let ttl_sec = 100;
         let name = Name::from_str(VALID_DOMAIN).expect("valid name");
-        let expected_ip = ip_addr!(v4, "1.1.1.1");
+        let expected_ip = ip_addr!(v4, "192.0.2.1");
         let response_message = response_bytes(RecordType::A, |message| {
             // add CNAME record
             let cname = Name::from_str("cname.signal.org").unwrap();
@@ -513,10 +513,10 @@ mod test {
 
     #[test]
     fn record_with_invalid_data_is_skipped() {
-        const EXPECTED_IP: Ipv4Addr = ip_addr!(v4, "1.1.1.1");
+        const EXPECTED_IP: Ipv4Addr = ip_addr!(v4, "192.0.2.1");
         let ttl_sec = 100;
         let name = Name::from_str(VALID_DOMAIN).expect("valid name");
-        let ip_to_simulate_error = ip_addr!(v4, "2.2.2.2");
+        let ip_to_simulate_error = ip_addr!(v4, "192.0.2.2");
         let response_message = response_bytes(RecordType::A, move |message| {
             // add invalid record
             let mut rr = hickory_proto::rr::Record::<RData>::new();

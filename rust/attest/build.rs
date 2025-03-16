@@ -8,7 +8,6 @@ fn main() {
         "src/proto/cds2.proto",
         "src/proto/svr.proto",
         "src/proto/svr2.proto",
-        "src/proto/svr3.proto",
     ];
     prost_build::compile_protos(&protos, &["src"]).expect("Protobufs in src are valid");
     for proto in &protos {

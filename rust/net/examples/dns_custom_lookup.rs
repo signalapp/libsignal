@@ -78,7 +78,7 @@ async fn main() {
                 },
             };
             Either::Right(CustomDnsResolver::<DohTransport>::new(
-                target,
+                vec![target],
                 &ObservableEvent::default(),
             ))
         }

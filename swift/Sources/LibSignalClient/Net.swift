@@ -56,7 +56,7 @@ public class Net {
     /// calling ``Net/clearProxy()``.
     ///
     /// Existing connections and services will continue with the setting they were created with.
-    /// (In particular, changing this setting will not affect any existing ``ChatService``s.)
+    /// (In particular, changing this setting will not affect any existing ``ChatConnection``s.)
     ///
     /// - Throws: if the host or port is not structurally valid, such as a port of 0.
     public func setProxy(host: String, port: UInt16?) throws {
@@ -86,7 +86,7 @@ public class Net {
     /// ``Net/setInvalidProxy()``. If none was set, calling this method is a no-op.
     ///
     /// Existing connections and services will continue with the setting they were created with.
-    /// (In particular, changing this setting will not affect any existing ``ChatService``s.)
+    /// (In particular, changing this setting will not affect any existing ``ChatConnection``s.)
     public func clearProxy() {
         self.connectionManager.clearProxy()
     }
@@ -95,7 +95,7 @@ public class Net {
     ///
     /// If CC is enabled, *new* connections and services may try additional routes to the Signal servers.
     /// Existing connections and services will continue with the setting they were created with.
-    /// (In particular, changing this setting will not affect any existing ``ChatService``s.)
+    /// (In particular, changing this setting will not affect any existing ``ChatConnection``s.)
     ///
     /// CC is off by default.
     public func setCensorshipCircumventionEnabled(_ enabled: Bool) {
@@ -120,10 +120,11 @@ public class Net {
         prevE164s: [String],
         e164s: [String],
         acisAndAccessKeys: [AciAndAccessKey],
-        token: Data?
+        token: Data?,
+        useNewConnectLogic: Bool = false
     ) async throws -> CdsiLookup {
         let request = try CdsiLookupRequest(e164s: e164s, prevE164s: prevE164s, acisAndAccessKeys: acisAndAccessKeys, token: token)
-        return try await self.cdsiLookup(auth: auth, request: request)
+        return try await self.cdsiLookup(auth: auth, request: request, useNewConnectLogic: useNewConnectLogic)
     }
 
     @available(*, deprecated, message: "returnAcisWithoutUaks is deprecated; use the overload that does not have it as an argument")
@@ -148,6 +149,7 @@ public class Net {
     /// - Parameters:
     ///   - auth: The information to use when authenticating with the CDSI server.
     ///   - request: The CDSI request to be sent to the server.
+    ///   - useNewConnectLogic: Whether to use the newer logic for establishing the connection used for the request.
     ///
     /// - Returns:
     ///   An object representing the in-progress request. If this method
@@ -181,24 +183,36 @@ public class Net {
     /// ```
     public func cdsiLookup(
         auth: Auth,
-        request: CdsiLookupRequest
+        request: CdsiLookupRequest,
+        useNewConnectLogic: Bool = false
     ) async throws -> CdsiLookup {
+        let create_lookup = useNewConnectLogic ? signal_cdsi_lookup_new_routes : signal_cdsi_lookup_new
         let handle = try await self.asyncContext.invokeAsyncFunction { promise, asyncContext in
             self.connectionManager.withNativeHandle { connectionManager in
                 request.withNativeHandle { request in
-                    signal_cdsi_lookup_new(promise, asyncContext.const(), connectionManager.const(), auth.username, auth.password, request.const())
+                    create_lookup(promise, asyncContext.const(), connectionManager.const(), auth.username, auth.password, request.const())
                 }
             }
         }
         return CdsiLookup(native: NonNull(handle)!, asyncContext: self.asyncContext)
     }
 
-    public func createAuthenticatedChatService(username: String, password: String, receiveStories: Bool) -> AuthenticatedChatService {
-        return AuthenticatedChatService(tokioAsyncContext: self.asyncContext, connectionManager: self.connectionManager, username: username, password: password, receiveStories: receiveStories)
-    }
-
-    public func createUnauthenticatedChatService() -> UnauthenticatedChatService {
-        return UnauthenticatedChatService(tokioAsyncContext: self.asyncContext, connectionManager: self.connectionManager)
+    /// Starts the process of connecting to the chat server.
+    ///
+    /// If this completes successfully, the next call to
+    /// ``connectAuthenticatedChat(username:password:receiveStories:)`` may be able to finish more
+    /// quickly. If it's incomplete or produces an error, such a call will start from scratch as
+    /// usual. Only one preconnect is recorded, so there's no point in calling this more than once.
+    public func preconnectChat() async throws {
+        _ = try await self.asyncContext.invokeAsyncFunction { promise, asyncContext in
+            self.connectionManager.withNativeHandle { connectionManager in
+                signal_authenticated_chat_connection_preconnect(
+                    promise,
+                    asyncContext.const(),
+                    connectionManager.const()
+                )
+            }
+        }
     }
 
     /// Asynchronously establishes an authenticated connection to the remote

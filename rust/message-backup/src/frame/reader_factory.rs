@@ -68,11 +68,8 @@ impl<R: AsyncRead + AsyncSkip, const N: usize> ReaderFactory for LimitedReaderFa
     type Reader = R;
 
     fn make_reader(&mut self) -> futures::io::Result<Self::Reader> {
-        self.0.pop().ok_or_else(|| {
-            futures::io::Error::new(
-                futures::io::ErrorKind::Other,
-                "pre-allocated streams exhausted",
-            )
-        })
+        self.0
+            .pop()
+            .ok_or_else(|| futures::io::Error::other("pre-allocated streams exhausted"))
     }
 }

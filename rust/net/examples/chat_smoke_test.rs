@@ -7,11 +7,10 @@ use std::collections::HashSet;
 use std::process::ExitCode;
 
 use clap::{Parser, ValueEnum};
-use either::Either;
 use futures_util::{FutureExt, StreamExt};
-use itertools::Itertools;
-use libsignal_net::chat::ChatServiceError;
-use libsignal_net::env::Svr3Env;
+use libsignal_net::chat::ConnectError;
+use libsignal_net_infra::host::Host;
+use libsignal_net_infra::EnableDomainFronting;
 use strum::IntoEnumIterator as _;
 
 #[derive(Parser)]
@@ -23,7 +22,7 @@ struct Config {
     try_all_routes: bool,
 }
 
-#[derive(Copy, Clone, Eq, PartialEq, Hash, strum::EnumString, strum::EnumIter)]
+#[derive(Copy, Clone, Eq, PartialEq, Hash, Debug, strum::EnumString, strum::EnumIter)]
 #[strum(serialize_all = "lowercase")]
 enum RouteType {
     Direct,
@@ -55,27 +54,60 @@ async fn main() -> ExitCode {
         Environment::Production => libsignal_net::env::PROD,
     };
 
-    let allowed_route_types = limit_to_routes
-        .is_empty()
-        .then(|| Either::Left(RouteType::iter()))
-        .unwrap_or_else(|| Either::Right(limit_to_routes.into_iter()))
-        .collect_vec();
+    let allowed_route_types = if limit_to_routes.is_empty() {
+        RouteType::iter().collect()
+    } else {
+        limit_to_routes
+    };
+
+    let snis = allowed_route_types.iter().flat_map(|route_type| {
+        let (index, libsignal_net_type) = match route_type {
+            RouteType::Direct => {
+                return std::slice::from_ref(&env.chat_domain_config.connect.hostname)
+            }
+            RouteType::ProxyF => (0, libsignal_net_infra::RouteType::ProxyF),
+            RouteType::ProxyG => (1, libsignal_net_infra::RouteType::ProxyG),
+        };
+        let config = &env
+            .chat_domain_config
+            .connect
+            .proxy
+            .as_ref()
+            .expect("configured")
+            .configs[index];
+        assert_eq!(
+            config.route_type(),
+            libsignal_net_type,
+            "wrong index for {route_type:?}"
+        );
+        config.hostnames()
+    });
 
     let success = if try_all_routes {
-        futures_util::stream::iter(allowed_route_types)
-            .then(|route_type| {
-                test_connection(&env, HashSet::from([route_type])).map(|result| match result {
-                    Ok(()) => true,
-                    Err(e) => {
-                        log::error!("failed to connect: {e}");
-                        false
-                    }
-                })
+        futures_util::stream::iter(snis)
+            .then(|&sni| {
+                log::info!("## Trying {sni} ##");
+                // We use AllDomains mode to generate every route, then filter for the specific one
+                // we're trying to test.
+                test_connection(&env, HashSet::from([sni]), EnableDomainFronting::AllDomains).map(
+                    |result| match result {
+                        Ok(()) => true,
+                        Err(e) => {
+                            log::error!("failed to connect: {e}");
+                            false
+                        }
+                    },
+                )
             })
             .fold(true, |a, b| std::future::ready(a && b))
             .await
     } else {
-        match test_connection(&env, allowed_route_types.into_iter().collect()).await {
+        let domain_fronting = if allowed_route_types == [RouteType::Direct] {
+            EnableDomainFronting::No
+        } else {
+            EnableDomainFronting::OneDomainPerProxy
+        };
+        match test_connection(&env, snis.copied().collect(), domain_fronting).await {
             Ok(()) => true,
             Err(e) => {
                 log::error!("failed to connect: {e}");
@@ -92,26 +124,21 @@ async fn main() -> ExitCode {
 }
 
 async fn test_connection(
-    env: &libsignal_net::env::Env<'static, Svr3Env<'static>>,
-    route_types: HashSet<RouteType>,
-) -> Result<(), ChatServiceError> {
-    let front_names = route_types
-        .into_iter()
-        .map(|route_type| match route_type {
-            RouteType::Direct => None,
-            RouteType::ProxyF => Some(libsignal_net_infra::RouteType::ProxyF.into()),
-            RouteType::ProxyG => Some(libsignal_net_infra::RouteType::ProxyG.into()),
-        })
-        .collect::<HashSet<Option<&'static str>>>();
-
+    env: &libsignal_net::env::Env<'static>,
+    snis: HashSet<&str>,
+    domain_fronting: EnableDomainFronting,
+) -> Result<(), ConnectError> {
     use libsignal_net::chat::test_support::simple_chat_connection;
-    let chat_connection = simple_chat_connection(env, |route| {
-        front_names.contains(&route.fragment.front_name)
+    let chat_connection = simple_chat_connection(env, domain_fronting, |route| {
+        match &route.inner.fragment.sni {
+            Host::Domain(domain) => snis.contains(&domain[..]),
+            Host::Ip(_) => panic!("unexpected IP address as a chat SNI"),
+        }
     })
     .await?;
 
     // Disconnect immediately to confirm connection and disconnection works.
-    chat_connection.disconect().await;
+    chat_connection.disconnect().await;
 
     log::info!("completed successfully");
     Ok(())

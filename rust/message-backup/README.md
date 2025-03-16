@@ -1,6 +1,32 @@
 This crate contains a validator for Signal's backup file format. Structurally, these files are an
 encrypted series of length-delimited protos, following the rules described in [backup.proto](src/proto/backup.proto).
 
+
+## Updating backup.proto
+
+1. Install Rust and the other prerequisites as described in the top-level [README](../../README.md).
+
+2. Copy in the new version of backup.proto.
+
+3. Run `cargo test -p libsignal-message-backup` to find out what needs updating.
+
+4. Fix all errors by copying from the logic for similar fields.
+
+    - This will be easier if you have a Rust-capable IDE, like VS Code with the rust-analyzer extension, or RustRover / IDEA with the Rust plugin.
+
+    - It's okay to not do any validation of new fields right away; just make sure they're populated in the corresponding Rust type.
+
+    - Usually you'll change two files: the file that parses and validates the protobuf, and the scrambler file that walks the protobuf message tree.
+
+    When the above command runs cleanly, you're done.
+
+5. Mention the change in the [upcoming release notes](../../RELEASE_NOTES.md). [This can be pretty simple.](https://github.com/signalapp/libsignal/commit/4723fdbba1970c91795f8cdd8b7bcc4eafb66114) If there are other backup updates, group them together.
+
+6. Open a PR and let a libsignal maintainer know what validation should be added later, if any.
+
+
+## Implementation Details
+
 The crate is used in some specific ways that have led to unusual design decisions, particularly concerning the model types in the `backup` submodule:
 
 - We use the `protobuf-rs` crate instead of the more popular, better-supported, and used-elsewhere-in-libsignal `prost` because `prost` doesn't support doing anything with unknown fields. (We just want to report them, we don't need to store them in every message. But even that doesn't seem interesting to the mainline prost folks. See <https://github.com/tokio-rs/prost/issues/2>.)

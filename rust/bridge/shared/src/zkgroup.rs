@@ -176,6 +176,11 @@ fn ServerSecretParams_SignDeterministic(
 }
 
 #[bridge_fn]
+fn ServerPublicParams_GetEndorsementPublicKey(params: &ServerPublicParams) -> Vec<u8> {
+    zkgroup::serialize(&params.get_endorsement_public_key())
+}
+
+#[bridge_fn]
 fn ServerPublicParams_ReceiveAuthCredentialWithPniAsServiceId(
     params: &ServerPublicParams,
     aci: Aci,

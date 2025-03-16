@@ -40,9 +40,6 @@ impl RootCertificates {
         connector: &mut SslConnectorBuilder,
         host: Host<&str>,
     ) -> Result<(), Error> {
-        // See below.
-        let lifetime_extended_single_der: &[u8];
-
         let ders: &[&[u8]] = match self {
             RootCertificates::Native => {
                 let mut verifier = rustls_platform_verifier::Verifier::new();
@@ -58,12 +55,7 @@ impl RootCertificates {
                 return set_up_platform_verifier(connector, host, verifier);
             }
             RootCertificates::FromStaticDers(ders) => ders,
-            RootCertificates::FromDer(der) => {
-                // We'd like to just produce &[der], but Rust 1.75 does not support extending the
-                // lifetime of the temporary array created there. Eventually we can remove this.
-                lifetime_extended_single_der = der;
-                std::slice::from_ref(&lifetime_extended_single_der)
-            }
+            RootCertificates::FromDer(der) => &[der],
         };
         let mut store_builder = X509StoreBuilder::new()?;
         for der in ders {

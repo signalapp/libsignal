@@ -131,8 +131,9 @@ pub fn run_future_on_runtime<R, F, O>(
     future: impl FnOnce(R::Cancellation) -> F,
 ) where
     R: AsyncRuntime<F>,
-    F: Future + std::panic::UnwindSafe + 'static,
-    F::Output: ResultReporter<Receiver = PromiseCompleter<O>>,
+    F: Future<Output: ResultReporter<Receiver = PromiseCompleter<O>>>
+        + std::panic::UnwindSafe
+        + 'static,
     O: ResultTypeInfo + 'static,
 {
     let completion = PromiseCompleter { promise: *promise };

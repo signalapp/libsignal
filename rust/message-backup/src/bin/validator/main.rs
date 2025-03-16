@@ -142,7 +142,6 @@ fn print_unknown_fields(found_unknown_fields: Vec<FoundUnknownField>) {
 #[cfg(test)]
 mod test {
     use assert_matches::assert_matches;
-    use clap_stdin::FileOrStdin;
     use libsignal_core::Aci;
     use support::{DeriveKey, KeyParts};
     use test_case::test_case;
@@ -163,12 +162,8 @@ mod test {
     fn cli_parse_no_keys_plaintext_binproto() {
         const INPUT: &[&str] = &[EXECUTABLE_NAME, "filename"];
 
-        let file_source = assert_matches!(Cli::try_parse_from(INPUT), Ok(Cli {
-            file:
-                FileOrStdin {
-                    source: clap_stdin::Source::Arg(file_source),
-                    ..
-                },
+        let file = assert_matches!(Cli::try_parse_from(INPUT), Ok(Cli {
+            file,
             verbose: 0,
             print: false,
             purpose: Purpose::RemoteBackup,
@@ -176,8 +171,8 @@ mod test {
                 derive_key: DeriveKey { account_entropy: None, master_key: None, aci: None },
                 key_parts: KeyParts { hmac_key: None, aes_key: None }
             },
-        }) =>  file_source);
-        assert_eq!(file_source, "filename");
+        }) => file);
+        assert_eq!(file.filename(), "filename");
     }
 
     #[test]
@@ -191,12 +186,8 @@ mod test {
             "55555555-5555-5555-5555-555555555555",
         ];
 
-        let (file_source, derive_key) = assert_matches!(Cli::try_parse_from(INPUT), Ok(Cli {
-            file:
-                FileOrStdin {
-                    source: clap_stdin::Source::Arg(file_source),
-                    ..
-                },
+        let (file, derive_key) = assert_matches!(Cli::try_parse_from(INPUT), Ok(Cli {
+            file,
             verbose: 0,
             print: false,
             purpose: Purpose::RemoteBackup,
@@ -204,8 +195,8 @@ mod test {
                 derive_key,
                 key_parts: KeyParts { hmac_key: None, aes_key: None }
             },
-        }) => (file_source, derive_key));
-        assert_eq!(file_source, "filename");
+        }) => (file, derive_key));
+        assert_eq!(file.filename(), "filename");
         assert_eq!(
             derive_key,
             DeriveKey {
@@ -227,12 +218,8 @@ mod test {
             "55555555-5555-5555-5555-555555555555",
         ];
 
-        let (file_source, derive_key) = assert_matches!(Cli::try_parse_from(INPUT), Ok(Cli {
-            file:
-                FileOrStdin {
-                    source: clap_stdin::Source::Arg(file_source),
-                    ..
-                },
+        let (file, derive_key) = assert_matches!(Cli::try_parse_from(INPUT), Ok(Cli {
+            file,
             verbose: 0,
             print: false,
             purpose: Purpose::RemoteBackup,
@@ -240,8 +227,8 @@ mod test {
                 derive_key,
                 key_parts: KeyParts { hmac_key: None, aes_key: None }
             },
-        }) => (file_source, derive_key));
-        assert_eq!(file_source, "filename");
+        }) => (file, derive_key));
+        assert_eq!(file.filename(), "filename");
         assert_eq!(
             derive_key,
             DeriveKey {
@@ -263,12 +250,8 @@ mod test {
             "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
         ];
 
-        let (file_source, key_parts) = assert_matches!(Cli::try_parse_from(INPUT), Ok(Cli {
-            file:
-                FileOrStdin {
-                    source: clap_stdin::Source::Arg(file_source),
-                    ..
-                },
+        let (file, key_parts) = assert_matches!(Cli::try_parse_from(INPUT), Ok(Cli {
+            file,
             verbose: 0,
             print: false,
             purpose: Purpose::RemoteBackup,
@@ -276,8 +259,8 @@ mod test {
                 derive_key: DeriveKey { account_entropy: None, master_key: None, aci: None},
                 key_parts,
             }
-        }) => (file_source, key_parts));
-        assert_eq!(file_source, "filename");
+        }) => (file, key_parts));
+        assert_eq!(file.filename(), "filename");
         assert_eq!(
             key_parts,
             KeyParts {

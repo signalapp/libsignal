@@ -4,9 +4,11 @@
 //
 
 use std::net::IpAddr;
+use std::ops::ControlFlow;
 use std::sync::Arc;
 
 use bytes::Bytes;
+use futures_util::FutureExt;
 use http::response::Parts;
 use http::uri::PathAndQuery;
 use http::HeaderMap;
@@ -15,8 +17,11 @@ use hyper::client::conn::http2;
 use hyper_util::rt::{TokioExecutor, TokioIo};
 
 use crate::errors::{LogSafeDisplay, TransportConnectError};
-use crate::route::{ConnectorExt as _, HttpRouteFragment, HttpsTlsRoute, TcpRoute, TlsRoute};
-use crate::{Connection, TransportInfo};
+use crate::route::{
+    ConnectError, Connector, HttpRouteFragment, HttpsTlsRoute, NoDelay, TcpRoute,
+    ThrottlingConnector, TlsRoute,
+};
+use crate::{AsyncDuplexStream, Connection, TransportInfo};
 
 #[derive(displaydoc::Display, Debug)]
 pub enum HttpError {
@@ -113,52 +118,121 @@ impl AggregatingHttp2Client {
         Ok((parts, content))
     }
 }
+struct StatelessHttp2Connector<C>(C);
+
+struct CompletedH2Connection {
+    sender: hyper::client::conn::http2::SendRequest<Full<Bytes>>,
+    host_header: Arc<str>,
+    path_prefix: Arc<str>,
+}
+
+#[derive(derive_more::From)]
+enum HttpConnectError {
+    Transport(#[from] TransportConnectError),
+    HttpHandshake,
+}
+
+impl<T, C, Inner> Connector<HttpsTlsRoute<T>, Inner> for StatelessHttp2Connector<C>
+where
+    C: Connector<
+            T,
+            Inner,
+            Connection: Connection + Send + AsyncDuplexStream + 'static,
+            Error = TransportConnectError,
+        > + Sync,
+    Inner: Send,
+    T: Send,
+{
+    type Connection = CompletedH2Connection;
+
+    type Error = HttpConnectError;
+
+    async fn connect_over(
+        &self,
+        over: Inner,
+        route: HttpsTlsRoute<T>,
+        log_tag: Arc<str>,
+    ) -> Result<Self::Connection, Self::Error> {
+        let HttpsTlsRoute {
+            fragment:
+                HttpRouteFragment {
+                    host_header,
+                    path_prefix,
+                    front_name: _,
+                },
+            inner: tls_target,
+        } = route;
+
+        let ssl_stream = self
+            .0
+            .connect_over(over, tls_target, log_tag.clone())
+            .await?;
+        let info = ssl_stream.transport_info();
+        let io = TokioIo::new(ssl_stream);
+        let (sender, connection) = http2::handshake::<_, _, Full<Bytes>>(TokioExecutor::new(), io)
+            .await
+            .map_err(|_: hyper::Error| HttpConnectError::HttpHandshake)?;
+
+        // Starting a thread to drive client connection events.
+        // The task will complete once the connection is closed due to an error
+        // or if all clients are dropped.
+        let TransportInfo { ip_version, .. } = info;
+        tokio::spawn(async move {
+            match connection.await {
+                Ok(_) => log::info!("[{log_tag}] HTTP2 connection [{ip_version}] closed"),
+                Err(err) => {
+                    log::warn!("[{log_tag}] HTTP2 connection [{ip_version}] failed: {err}",)
+                }
+            }
+        });
+
+        Ok(CompletedH2Connection {
+            sender,
+            host_header,
+            path_prefix,
+        })
+    }
+}
 
 pub(crate) async fn http2_client(
-    target: HttpsTlsRoute<TlsRoute<TcpRoute<IpAddr>>>,
+    targets: impl IntoIterator<Item = HttpsTlsRoute<TlsRoute<TcpRoute<IpAddr>>>>,
     max_response_size: usize,
     log_tag: &Arc<str>,
 ) -> Result<AggregatingHttp2Client, HttpError> {
-    let HttpsTlsRoute {
-        fragment:
-            HttpRouteFragment {
-                host_header,
-                path_prefix,
-                front_name: _,
-            },
-        inner: tls_target,
-    } = target;
-    let connector = crate::route::ComposedConnector::new(
+    let tls_connector = crate::route::ComposedConnector::new(
         crate::tcp_ssl::StatelessDirect,
-        crate::tcp_ssl::StatelessDirect,
+        ThrottlingConnector::new(crate::tcp_ssl::StatelessDirect, 1),
     );
-    let ssl_stream = connector
-        .connect(tls_target, log_tag.clone())
-        .await
-        .map_err(|e: TransportConnectError| {
-            log::info!(
-                "[{log_tag}] HTTP2 connection failed: {}",
-                (&e as &dyn LogSafeDisplay)
-            );
+    let connector = StatelessHttp2Connector(tls_connector);
+    let CompletedH2Connection {
+        sender,
+        host_header,
+        path_prefix,
+    } = crate::route::connect_resolved(
+        targets.into_iter().collect(),
+        NoDelay,
+        connector,
+        (),
+        log_tag.clone(),
+        |e| match e {
+            HttpConnectError::Transport(t) => {
+                log::info!(
+                    "[{log_tag}] HTTP2 connection failed: {}",
+                    (&t as &dyn LogSafeDisplay)
+                );
+                ControlFlow::Continue(())
+            }
+            HttpConnectError::HttpHandshake => ControlFlow::Break(HttpError::Http2HandshakeFailed),
+        },
+    )
+    .map(|(result, _outcome_updates)| result)
+    .await
+    .map_err(|e| match e {
+        ConnectError::AllAttemptsFailed | ConnectError::NoResolvedRoutes => {
             HttpError::SslHandshakeFailed
-        })?;
-    let info = ssl_stream.transport_info();
-    let io = TokioIo::new(ssl_stream);
-    let (sender, connection) = http2::handshake::<_, _, Full<Bytes>>(TokioExecutor::new(), io)
-        .await
-        .map_err(|_| HttpError::Http2HandshakeFailed)?;
-
-    // Starting a thread to drive client connection events.
-    // The task will complete once the connection is closed due to an error
-    // or if all clients are dropped.
-    let log_tag = Arc::clone(log_tag);
-    let TransportInfo { ip_version, .. } = info;
-    tokio::spawn(async move {
-        match connection.await {
-            Ok(_) => log::info!("[{log_tag}] HTTP2 connection [{ip_version}] closed"),
-            Err(err) => log::warn!("[{log_tag}] HTTP2 connection [{ip_version}] failed: {err}",),
         }
-    });
+        ConnectError::FatalConnect(e) => e,
+    })?;
 
     Ok(AggregatingHttp2Client {
         http_host: host_header,
@@ -237,7 +311,7 @@ mod test {
 
         let host = FAKE_HOSTNAME.into();
         let client = http2_client(
-            HttpsTlsRoute {
+            [HttpsTlsRoute {
                 fragment: HttpRouteFragment {
                     host_header: Arc::clone(&host),
                     path_prefix: "".into(),
@@ -256,7 +330,7 @@ mod test {
                         port: NonZeroU16::new(server_addr.port()).unwrap(),
                     },
                 },
-            },
+            }],
             MAX_RESPONSE_SIZE,
             &"test".into(),
         )
@@ -312,7 +386,7 @@ mod test {
         const INVALID_HOSTNAME: &str = "invalid hostname &&?";
         let host_header = INVALID_HOSTNAME.into();
         let client = http2_client(
-            HttpsTlsRoute {
+            [HttpsTlsRoute {
                 fragment: HttpRouteFragment {
                     host_header,
                     path_prefix: "".into(),
@@ -331,7 +405,7 @@ mod test {
                         port: NonZeroU16::new(server_addr.port()).unwrap(),
                     },
                 },
-            },
+            }],
             MAX_RESPONSE_SIZE,
             &"test".into(),
         )

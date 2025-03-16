@@ -20,7 +20,7 @@ use crate::certs::RootCertificates;
 use crate::connection_manager::{
     MultiRouteConnectionManager, SingleRouteThrottlingConnectionManager,
 };
-use crate::errors::{LogSafeDisplay, TransportConnectError};
+use crate::errors::{LogSafeDisplay, RetryLater, TransportConnectError};
 use crate::host::Host;
 use crate::timeouts::{WS_KEEP_ALIVE_INTERVAL, WS_MAX_IDLE_INTERVAL};
 use crate::utils::ObservableEvent;
@@ -77,7 +77,11 @@ impl std::fmt::Display for IpType {
 
 /// Whether or not to enable domain fronting.
 #[derive(Copy, Clone, Debug, Eq, Hash, PartialEq)]
-pub struct EnableDomainFronting(pub bool);
+pub enum EnableDomainFronting {
+    No,
+    OneDomainPerProxy,
+    AllDomains,
+}
 
 /// A collection of commonly used decorators for HTTP requests.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -388,18 +392,19 @@ pub fn make_ws_config(
 
 /// Extracts and parses the `Retry-After` header.
 ///
-/// Returns raw seconds rather than `Duration` to guarantee the smaller range.
-///
 /// Does not support the "http-date" form of the header.
-pub fn extract_retry_after_seconds(headers: &http::header::HeaderMap) -> Option<u32> {
-    headers.get("retry-after")?.to_str().ok()?.parse().ok()
+pub fn extract_retry_later(headers: &http::header::HeaderMap) -> Option<RetryLater> {
+    let retry_after_seconds = headers.get("retry-after")?.to_str().ok()?.parse().ok()?;
+    Some(RetryLater {
+        retry_after_seconds,
+    })
 }
 
 #[cfg(any(test, feature = "test-util"))]
 pub mod testutil {
     use std::fmt::Debug;
     use std::io;
-    use std::io::{Error as IoError, ErrorKind as IoErrorKind};
+    use std::io::Error as IoError;
     use std::pin::Pin;
     use std::sync::Arc;
     use std::task::{Context, Poll};
@@ -497,8 +502,7 @@ pub mod testutil {
     #[async_trait]
     impl<F> TransportConnector for InMemoryWarpConnector<F>
     where
-        F: Filter + Clone + Send + Sync + 'static,
-        F::Extract: Reply,
+        F: Filter<Extract: Reply> + Clone + Send + Sync + 'static,
     {
         type Stream = DuplexStream;
 
@@ -532,10 +536,13 @@ pub mod testutil {
 
     impl<C> NoReconnectService<C>
     where
-        C: ServiceConnector + Send + Sync + 'static,
-        C::Service: Clone + Send + Sync + 'static,
-        C::Channel: Send + Sync,
-        C::ConnectError: Send + Sync + Debug + LogSafeDisplay + ErrorClassifier,
+        C: ServiceConnector<
+                Service: Clone + Send + Sync + 'static,
+                Channel: Send + Sync,
+                ConnectError: Send + Sync + Debug + LogSafeDisplay + ErrorClassifier,
+            > + Send
+            + Sync
+            + 'static,
     {
         pub async fn start<M>(service_connector: C, connection_manager: M) -> Self
         where
@@ -608,30 +615,31 @@ pub mod testutil {
         type Error = E;
 
         fn poll_ready(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-            self.get_mut().tx.poll_ready_unpin(cx).map_err(|_| {
-                IoError::new(IoErrorKind::Other, "poll_reserve for send failed").into()
-            })
+            self.get_mut()
+                .tx
+                .poll_ready_unpin(cx)
+                .map_err(|_| IoError::other("poll_reserve for send failed").into())
         }
 
         fn start_send(self: Pin<&mut Self>, item: T) -> Result<(), Self::Error> {
             self.get_mut()
                 .tx
                 .start_send_unpin(Ok(item))
-                .map_err(|_| IoError::new(IoErrorKind::Other, "send failed").into())
+                .map_err(|_| IoError::other("send failed").into())
         }
 
         fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
             self.get_mut()
                 .tx
                 .poll_flush_unpin(cx)
-                .map_err(|_| IoError::new(IoErrorKind::Other, "flush failed").into())
+                .map_err(|_| IoError::other("flush failed").into())
         }
 
         fn poll_close(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
             self.get_mut()
                 .tx
                 .poll_close_unpin(cx)
-                .map_err(|_| IoError::new(IoErrorKind::Other, "close failed").into())
+                .map_err(|_| IoError::other("close failed").into())
         }
     }
 }
@@ -660,7 +668,7 @@ pub(crate) mod test {
 
         assert_eq!(
             ServiceConnectionInfo {
-                address: Host::Ip(ip_addr!("1.2.3.4")),
+                address: Host::Ip(ip_addr!("192.0.2.4")),
                 ..connection_info
             }
             .description(),

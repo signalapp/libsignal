@@ -6,10 +6,10 @@
 [package]
 name = "libsignal-bridge"
 version = "0.1.0"
-authors = ["Signal Messenger LLC"]
+authors.workspace = true
+license.workspace = true
 edition = "2021"
-license = "AGPL-3.0-only"
-rust-version = { workspace = true }
+rust-version.workspace = true
 
 [lints]
 workspace = true
@@ -30,13 +30,14 @@ signal-media = { workspace = true, optional = true }
 usernames = { workspace = true }
 zkgroup = { workspace = true }
 
-aes-gcm-siv = "0.11.1"
+aes-gcm-siv = { workspace = true }
 base64 = { workspace = true }
 bincode = { workspace = true }
 futures-util = { workspace = true }
 hkdf = { workspace = true }
 hmac = { workspace = true }
 http = { workspace = true }
+itertools = { workspace = true }
 log = { workspace = true }
 nonzero_ext = { workspace = true }
 paste = { workspace = true }

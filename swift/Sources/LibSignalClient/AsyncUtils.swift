@@ -48,14 +48,6 @@ extension SignalCPromiseFfiChatResponse: PromiseStruct {
     typealias Result = SignalFfiChatResponse
 }
 
-extension SignalCPromiseFfiChatServiceDebugInfo: PromiseStruct {
-    typealias Result = SignalFfiChatServiceDebugInfo
-}
-
-extension SignalCPromiseFfiResponseAndDebugInfo: PromiseStruct {
-    typealias Result = SignalFfiResponseAndDebugInfo
-}
-
 extension SignalCPromiseMutPointerAuthenticatedChatConnection: PromiseStruct {
     typealias Result = SignalMutPointerAuthenticatedChatConnection
 }

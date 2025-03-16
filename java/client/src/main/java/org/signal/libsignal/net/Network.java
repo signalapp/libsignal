@@ -55,8 +55,8 @@ public class Network {
    * overload that takes a separate domain and port number.
    *
    * <p>Existing connections and services will continue with the setting they were created with. (In
-   * particular, changing this setting will not affect any existing {@link ChatService
-   * ChatServices}.)
+   * particular, changing this setting will not affect any existing {@link ChatConnection
+   * ChatConnections}.)
    *
    * @throws IOException if the scheme is unsupported or if the provided parameters are invalid for
    *     that scheme (e.g. Signal TLS proxies don't support authentication)
@@ -74,8 +74,8 @@ public class Network {
    * calling {@link #clearProxy}.
    *
    * <p>Existing connections and services will continue with the setting they were created with. (In
-   * particular, changing this setting will not affect any existing {@link ChatService
-   * ChatServices}.)
+   * particular, changing this setting will not affect any existing {@link ChatConnection
+   * ChatConnections}.)
    *
    * @throws IOException if the host or port are not (structurally) valid, such as a port that
    *     doesn't fit in u16.
@@ -110,8 +110,8 @@ public class Network {
    * none was set, calling this method is a no-op.
    *
    * <p>Existing connections and services will continue with the setting they were created with. (In
-   * particular, changing this setting will not affect any existing {@link ChatService
-   * ChatServices}.)
+   * particular, changing this setting will not affect any existing {@link ChatConnection
+   * ChatConnections}.)
    */
   public void clearProxy() {
     this.connectionManager.clearProxy();
@@ -123,7 +123,7 @@ public class Network {
    * <p>If CC is enabled, <em>new</em> connections and services may try additional routes to the
    * Signal servers. Existing connections and services will continue with the setting they were
    * created with. (In particular, changing this setting will not affect any existing {@link
-   * ChatService ChatServices}.)
+   * ChatConnection ChatConnections}.)
    *
    * <p>CC is off by default.
    */
@@ -143,7 +143,17 @@ public class Network {
   public CompletableFuture<CdsiLookupResponse> cdsiLookup(
       String username, String password, CdsiLookupRequest request, Consumer<byte[]> tokenConsumer)
       throws IOException, InterruptedException, ExecutionException {
-    return CdsiLookup.start(this, username, password, request)
+    return this.cdsiLookup(username, password, request, tokenConsumer, false);
+  }
+
+  public CompletableFuture<CdsiLookupResponse> cdsiLookup(
+      String username,
+      String password,
+      CdsiLookupRequest request,
+      Consumer<byte[]> tokenConsumer,
+      boolean useNewConnectLogic)
+      throws IOException, InterruptedException, ExecutionException {
+    return CdsiLookup.start(this, username, password, request, useNewConnectLogic)
         .thenCompose(
             (CdsiLookup lookup) -> {
               tokenConsumer.accept(lookup.getToken());
@@ -186,17 +196,21 @@ public class Network {
     return this.connectionManager;
   }
 
-  public UnauthenticatedChatService createUnauthChatService(ChatListener listener) {
-    return new UnauthenticatedChatService(tokioAsyncContext, connectionManager, listener);
-  }
-
-  public AuthenticatedChatService createAuthChatService(
-      final String username,
-      final String password,
-      final boolean receiveStories,
-      ChatListener listener) {
-    return new AuthenticatedChatService(
-        tokioAsyncContext, connectionManager, username, password, receiveStories, listener);
+  /**
+   * Starts the process of connecting to the chat server.
+   *
+   * <p>If this completes successfully, the next call to {@link #connectAuthChat} may be able to
+   * finish more quickly. If it's incomplete or produces an error, such a call will start from
+   * scratch as usual. Only one preconnect is recorded, so there's no point in calling this more
+   * than once.
+   */
+  public CompletableFuture<Void> preconnectChat() {
+    return tokioAsyncContext.guardedMap(
+        asyncContext ->
+            connectionManager.guardedMap(
+                connectionManager ->
+                    Native.AuthenticatedChatConnection_preconnect(
+                        asyncContext, connectionManager)));
   }
 
   /**

@@ -4,12 +4,12 @@
 //
 
 use std::collections::HashMap;
-use std::net::Ipv6Addr;
+use std::net::{IpAddr, Ipv6Addr};
 use std::str::FromStr as _;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use nonzero_ext::nonzero;
+use futures_util::{FutureExt as _, StreamExt as _};
 use oneshot_broadcast::Sender;
 use tokio::time::Instant;
 
@@ -17,13 +17,16 @@ use crate::certs::RootCertificates;
 use crate::dns::custom_resolver::CustomDnsResolver;
 use crate::dns::dns_errors::Error;
 use crate::dns::dns_lookup::{DnsLookup, DnsLookupRequest, StaticDnsMap, SystemDnsLookup};
-use crate::dns::dns_transport_doh::{DohTransport, CLOUDFLARE_IP};
+use crate::dns::dns_transport_doh::{DohTransport, CLOUDFLARE_IPS};
 use crate::dns::dns_types::ResourceType;
-use crate::dns::dns_utils::oneshot_broadcast::Receiver;
-use crate::dns::dns_utils::{log_safe_domain, oneshot_broadcast};
+use crate::dns::dns_utils::log_safe_domain;
 use crate::dns::lookup_result::LookupResult;
-use crate::route::{HttpRouteFragment, HttpsTlsRoute, TcpRoute, TlsRoute, TlsRouteFragment};
+use crate::host::Host;
+use crate::route::{
+    HttpRouteFragment, HttpsTlsRoute, TcpRoute, TlsRoute, TlsRouteFragment, DEFAULT_HTTPS_PORT,
+};
 use crate::timeouts::{DNS_FALLBACK_LOOKUP_TIMEOUTS, DNS_SYSTEM_LOOKUP_TIMEOUT};
+use crate::utils::oneshot_broadcast::{self, Receiver};
 use crate::utils::{self, ObservableEvent};
 use crate::Alpn;
 
@@ -81,32 +84,34 @@ struct LookupOption {
 pub fn build_custom_resolver_cloudflare_doh(
     network_change_event: &ObservableEvent,
 ) -> CustomDnsResolver<DohTransport> {
-    let ip_addr = CLOUDFLARE_IP;
-    let host: Arc<str> = Arc::from(ip_addr.to_string());
-    let target = HttpsTlsRoute {
-        fragment: HttpRouteFragment {
-            path_prefix: "".into(),
-            front_name: None,
-            host_header: host.clone(),
-        },
-        inner: TlsRoute {
-            fragment: TlsRouteFragment {
-                sni: ip_addr.into(),
-                root_certs: RootCertificates::Native,
-                alpn: Some(Alpn::Http2),
+    let (v4, v6) = CLOUDFLARE_IPS;
+    let targets = [IpAddr::V6(v6), IpAddr::V4(v4)].map(|ip_addr| {
+        let host = Host::Ip(ip_addr);
+        HttpsTlsRoute {
+            fragment: HttpRouteFragment {
+                path_prefix: "".into(),
+                front_name: None,
+                host_header: Arc::from(host.to_string()),
             },
-            inner: TcpRoute {
-                address: ip_addr,
-                port: nonzero!(443u16),
+            inner: TlsRoute {
+                fragment: TlsRouteFragment {
+                    sni: host,
+                    root_certs: RootCertificates::Native,
+                    alpn: Some(Alpn::Http2),
+                },
+                inner: TcpRoute {
+                    address: ip_addr,
+                    port: DEFAULT_HTTPS_PORT,
+                },
             },
-        },
-    };
-    CustomDnsResolver::<DohTransport>::new(target, network_change_event)
+        }
+    });
+    CustomDnsResolver::<DohTransport>::new(targets.into(), network_change_event)
 }
 
 impl DnsResolver {
-    #[cfg(test)]
-    fn new_custom(lookup_options: Vec<(Box<dyn DnsLookup>, Duration)>) -> Self {
+    #[cfg(any(test, feature = "test-util"))]
+    pub fn new_custom(lookup_options: Vec<(Box<dyn DnsLookup>, Duration)>) -> Self {
         let lookup_options = lookup_options
             .into_iter()
             .map(|(lookup, timeout_after)| LookupOption {
@@ -208,17 +213,16 @@ impl DnsResolver {
 
     fn start_or_join_lookup(&self, hostname: &str) -> Receiver<Result<LookupResult>> {
         let mut guard = self.state.lock().expect("not poisoned");
-        match guard.in_flight_lookups.get(hostname) {
-            None => {
+        let ipv6_enabled = guard.ipv6_enabled;
+        guard
+            .in_flight_lookups
+            .entry(hostname.to_string())
+            .or_insert_with(|| {
                 let (tx, rx) = oneshot_broadcast::channel();
-                guard
-                    .in_flight_lookups
-                    .insert(hostname.to_string(), rx.clone());
-                self.spawn_lookup(hostname.to_string(), tx, guard.ipv6_enabled);
+                self.spawn_lookup(hostname.to_string(), tx, ipv6_enabled);
                 rx
-            }
-            Some(r) => r.clone(),
-        }
+            })
+            .clone()
     }
 
     fn spawn_lookup(
@@ -227,47 +231,45 @@ impl DnsResolver {
         result_sender: Sender<Result<LookupResult>>,
         ipv6_enabled: bool,
     ) {
-        let self_clone = self.clone();
+        let Self {
+            lookup_options,
+            state,
+        } = self.clone();
         tokio::spawn(async move {
             let request = DnsLookupRequest {
                 hostname: Arc::from(hostname.as_str()),
                 ipv6_enabled,
             };
 
-            let perform_lookups = async {
-                for lookup_option in self_clone.lookup_options.iter() {
-                    match lookup_option.attempt(request.clone()).await {
-                        Ok(lookup_result) => return Ok(lookup_result),
-                        Err(_) => {
-                            // If a lookup option fails, move on to the next option.
-                        }
-                    }
-                }
-                Err(Error::LookupFailed)
-            };
+            let successful_lookups = futures_util::stream::iter(lookup_options.iter())
+                .filter_map(|lookup_option| lookup_option.attempt(request.clone()).map(Result::ok));
+            let mut perform_lookups = std::pin::pin!(successful_lookups);
 
-            let result = perform_lookups.await.and_then(|res| match ipv6_enabled {
-                true => Ok(res),
-                false if res.ipv4.is_empty() => Err(Error::RequestedIpTypeNotFound),
-                false => Ok(LookupResult {
-                    ipv6: vec![],
-                    ..res
-                }),
-            });
+            let result = perform_lookups
+                .next()
+                .await
+                .ok_or(Error::LookupFailed)
+                .and_then(|res| match ipv6_enabled {
+                    true => Ok(res),
+                    false if res.ipv4.is_empty() => Err(Error::RequestedIpTypeNotFound),
+                    false => Ok(LookupResult {
+                        ipv6: vec![],
+                        ..res
+                    }),
+                });
 
-            self_clone.clear_in_flight_map(hostname.as_str());
+            state
+                .lock()
+                .expect("not poisoned")
+                .in_flight_lookups
+                .remove(&hostname);
             if result_sender.send(result).is_err() {
                 log::debug!(
                     "No DNS result listeners left for domain [{}]",
-                    log_safe_domain(hostname.as_str())
+                    log_safe_domain(&hostname)
                 );
             }
         });
-    }
-
-    fn clear_in_flight_map(&self, hostname: &str) {
-        let mut guard = self.state.lock().expect("not poisoned");
-        guard.in_flight_lookups.remove(hostname);
     }
 }
 
@@ -320,8 +322,8 @@ mod test {
     use crate::utils::sleep_and_catch_up;
     use crate::DnsSource;
 
-    const IPV4: Ipv4Addr = ip_addr!(v4, "1.1.1.1");
-    const IPV6: Ipv6Addr = ip_addr!(v6, "::1");
+    const IPV4: Ipv4Addr = ip_addr!(v4, "192.0.2.1");
+    const IPV6: Ipv6Addr = ip_addr!(v6, "3fff::1");
 
     const CUSTOM_DOMAIN: &str = "custom.signal.org";
     const IPV4_ONLY_DOMAIN: &str = "ipv4.signal.org";
@@ -625,9 +627,9 @@ mod test {
         let normal_delay = ATTEMPT_TIMEOUT / 2;
         let short_delay = ATTEMPT_TIMEOUT / 10;
 
-        let ip_1 = ip_addr!(v4, "2.2.2.1");
-        let ip_2 = ip_addr!(v4, "2.2.2.2");
-        let ip_3 = ip_addr!(v4, "2.2.2.3");
+        let ip_1 = ip_addr!(v4, "192.0.2.1");
+        let ip_2 = ip_addr!(v4, "192.0.2.2");
+        let ip_3 = ip_addr!(v4, "192.0.2.3");
 
         async fn assert_expected_result(
             lookup_options: Vec<Box<dyn DnsLookup>>,

@@ -9,12 +9,11 @@ use std::num::NonZeroU16;
 use std::sync::Arc;
 
 use async_trait::async_trait;
+use auto_enums::enum_derive;
 use boring_signal::ssl::{ConnectConfiguration, SslConnector, SslMethod, SslSignatureAlgorithm};
 use futures_util::TryFutureExt;
-use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::net::TcpStream;
 use tokio_boring_signal::SslStream;
-use tokio_util::either::Either;
 
 use crate::certs::RootCertificates;
 use crate::dns::DnsResolver;
@@ -90,12 +89,11 @@ impl TryFrom<&TcpSslConnector> for Option<ConnectionProxyConfig> {
     }
 }
 
-pub struct TcpSslConnectorStream(
-    Either<
-        <DirectConnector as TransportConnector>::Stream,
-        <TlsProxyConnector as TransportConnector>::Stream,
-    >,
-);
+#[enum_derive(tokio1::AsyncRead, tokio1::AsyncWrite)]
+pub enum TcpSslConnectorStream {
+    Direct(<DirectConnector as TransportConnector>::Stream),
+    Proxy(<TlsProxyConnector as TransportConnector>::Stream),
+}
 
 #[derive(Clone, Debug)]
 pub struct DirectConnector {
@@ -180,8 +178,7 @@ where
         } = fragment;
         let host = sni;
 
-        let ssl_config =
-            ssl_config(&root_certs, host.as_deref(), alpn).map_err(TransportConnectError::from);
+        let ssl_config = ssl_config(&root_certs, host.as_deref(), alpn);
 
         async move {
             let domain = match &host {
@@ -328,40 +325,6 @@ async fn connect_tcp(
         .ok_or(TransportConnectError::TcpConnectionFailed)
 }
 
-impl AsyncRead for TcpSslConnectorStream {
-    fn poll_read(
-        self: std::pin::Pin<&mut Self>,
-        cx: &mut std::task::Context<'_>,
-        buf: &mut tokio::io::ReadBuf<'_>,
-    ) -> std::task::Poll<std::io::Result<()>> {
-        std::pin::Pin::new(&mut self.get_mut().0).poll_read(cx, buf)
-    }
-}
-
-impl AsyncWrite for TcpSslConnectorStream {
-    fn poll_write(
-        self: std::pin::Pin<&mut Self>,
-        cx: &mut std::task::Context<'_>,
-        buf: &[u8],
-    ) -> std::task::Poll<Result<usize, std::io::Error>> {
-        std::pin::Pin::new(&mut self.get_mut().0).poll_write(cx, buf)
-    }
-
-    fn poll_flush(
-        self: std::pin::Pin<&mut Self>,
-        cx: &mut std::task::Context<'_>,
-    ) -> std::task::Poll<Result<(), std::io::Error>> {
-        std::pin::Pin::new(&mut self.get_mut().0).poll_flush(cx)
-    }
-
-    fn poll_shutdown(
-        self: std::pin::Pin<&mut Self>,
-        cx: &mut std::task::Context<'_>,
-    ) -> std::task::Poll<Result<(), std::io::Error>> {
-        std::pin::Pin::new(&mut self.get_mut().0).poll_shutdown(cx)
-    }
-}
-
 #[async_trait]
 impl TransportConnector for TcpSslConnector {
     type Stream = TcpSslConnectorStream;
@@ -387,7 +350,7 @@ impl TransportConnector for TcpSslConnector {
                 .connect(connection_params, alpn)
                 .await?;
 
-                stream_and_info.map_stream(Either::Left)
+                stream_and_info.map_stream(TcpSslConnectorStream::Direct)
             }
             Some(ConnectionProxyConfig::Tcp(TcpProxy {
                 proxy_host,
@@ -398,7 +361,7 @@ impl TransportConnector for TcpSslConnector {
                     (proxy_host.clone(), *proxy_port),
                 );
                 let stream_and_info = connector.connect(connection_params, alpn).await?;
-                stream_and_info.map_stream(Either::Right)
+                stream_and_info.map_stream(TcpSslConnectorStream::Proxy)
             }
             Some(ConnectionProxyConfig::Tls(TlsProxy {
                 proxy_host,
@@ -409,7 +372,7 @@ impl TransportConnector for TcpSslConnector {
                     TlsProxyConnector::new(dns_resolver.clone(), (proxy_host.clone(), *proxy_port));
                 connector.proxy_certs = proxy_certs.clone();
                 let stream_and_info = connector.connect(connection_params, alpn).await?;
-                stream_and_info.map_stream(Either::Right)
+                stream_and_info.map_stream(TcpSslConnectorStream::Proxy)
             }
             Some(ConnectionProxyConfig::Socks(_) | ConnectionProxyConfig::Http(_)) => {
                 log::warn!("SOCKS and HTTP proxies are not supported by TransportConnector");
@@ -417,7 +380,7 @@ impl TransportConnector for TcpSslConnector {
             }
         };
 
-        Ok(stream_and_info.map_stream(TcpSslConnectorStream))
+        Ok(stream_and_info)
     }
 }
 
@@ -425,19 +388,17 @@ impl TransportConnector for TcpSslConnector {
 pub(crate) mod testutil {
     use std::future::Future;
     use std::net::{Ipv6Addr, SocketAddr};
+    use std::sync::LazyLock;
 
-    use lazy_static::lazy_static;
     use rcgen::CertifiedKey;
     use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
     use warp::Filter;
 
     pub(crate) const SERVER_HOSTNAME: &str = "test-server.signal.org.local";
 
-    lazy_static! {
-        pub(crate) static ref SERVER_CERTIFICATE: CertifiedKey =
-            rcgen::generate_simple_self_signed([SERVER_HOSTNAME.to_string()])
-                .expect("can generate");
-    }
+    pub(crate) static SERVER_CERTIFICATE: LazyLock<CertifiedKey> = LazyLock::new(|| {
+        rcgen::generate_simple_self_signed([SERVER_HOSTNAME.to_string()]).expect("can generate")
+    });
 
     const FAKE_RESPONSE: &str = "Hello there";
     /// Starts an HTTP server listening on `::1` that responds with 200 and

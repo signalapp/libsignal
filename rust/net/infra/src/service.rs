@@ -158,10 +158,12 @@ pub struct ServiceInitializer<C, M> {
 impl<C, M> ServiceInitializer<C, M>
 where
     M: ConnectionManager,
-    C: ServiceConnector + Send + Sync,
-    C::Service: Send,
-    C::Channel: Send,
-    C::ConnectError: Send + Sync + Debug + LogSafeDisplay + ErrorClassifier,
+    C: ServiceConnector<
+            Service: Send,
+            Channel: Send,
+            ConnectError: Send + Sync + Debug + LogSafeDisplay + ErrorClassifier,
+        > + Send
+        + Sync,
 {
     pub fn new(service_connector: C, connection_manager: M) -> Self {
         Self {
@@ -274,8 +276,7 @@ where
 
 impl<C, M> Service<C, M>
 where
-    C: ServiceConnector,
-    C::Service: RemoteAddressInfo,
+    C: ServiceConnector<Service: RemoteAddressInfo>,
 {
     pub async fn connection_info(&self) -> Result<ServiceConnectionInfo, StateError> {
         self.map_service(|s| s.connection_info().clone()).await
@@ -285,10 +286,13 @@ where
 impl<C, M> Service<C, M>
 where
     M: ConnectionManager + 'static,
-    C: ServiceConnector + Send + Sync + 'static,
-    C::Service: Clone + Send + Sync + 'static,
-    C::Channel: Send,
-    C::ConnectError: Send + Sync + Debug + LogSafeDisplay + ErrorClassifier,
+    C: ServiceConnector<
+            Service: Clone + Send + Sync + 'static,
+            Channel: Send,
+            ConnectError: Send + Sync + Debug + LogSafeDisplay + ErrorClassifier,
+        > + Send
+        + Sync
+        + 'static,
 {
     pub fn new(service_connector: C, connection_manager: M, connection_timeout: Duration) -> Self {
         Self {

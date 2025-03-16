@@ -5,6 +5,13 @@ org.signal.libsignal.metadata.SealedSessionCipher:
     188:188:private static synthetic byte[] lambda$multiRecipientMessageForSingleRecipient$3(byte[])
 org.signal.libsignal.metadata.certificate.CertificateValidator:
     41:48:void validate(org.signal.libsignal.metadata.certificate.ServerCertificate)
+org.signal.libsignal.net.AuthenticatedChatConnection$FakeChatRemote:
+    131:138:public org.signal.libsignal.internal.CompletableFuture getNextIncomingRequest()
+    141:148:private static synthetic org.signal.libsignal.protocol.util.Pair lambda$getNextIncomingRequest$2(java.lang.Long)
+    134:134:private synthetic org.signal.libsignal.internal.CompletableFuture lambda$getNextIncomingRequest$1(long)
+    136:136:private static synthetic org.signal.libsignal.internal.CompletableFuture lambda$getNextIncomingRequest$0(long,long)
+org.signal.libsignal.net.CdsiLookup:
+    18:18:public static org.signal.libsignal.internal.CompletableFuture start(org.signal.libsignal.net.Network,java.lang.String,java.lang.String,org.signal.libsignal.net.CdsiLookupRequest)
 org.signal.libsignal.protocol.ServiceId:
     private static final byte FIXED_WIDTH_BINARY_LENGTH
     private static final byte ACI_MARKER

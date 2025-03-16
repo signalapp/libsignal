@@ -5,9 +5,9 @@
 
 [package]
 name = "libsignal-node"
-version = "0.65.6"
-authors = ["Signal Messenger LLC"]
-license = "AGPL-3.0-only"
+version.workspace = true
+authors.workspace = true
+license.workspace = true
 edition = "2021"
 
 [lints]
@@ -25,12 +25,12 @@ libsignal-protocol = { workspace = true }
 futures = { workspace = true }
 log = { workspace = true }
 log-panics = { workspace = true, features = ["with-backtrace"] }
-minidump = { version = "0.21.2", default-features = false }
-minidump-processor = { version = "0.21.2", default-features = false }
-minidump-unwind = { version = "0.21.2", default-features = false }
-neon = { version = "1.0.0", default-features = false, features = ["napi-6"] }
+minidump = { workspace = true }
+minidump-processor = { workspace = true }
+minidump-unwind = { workspace = true }
+neon = { workspace = true, features = ["napi-6"] }
 
 [build-dependencies]
 # cmake 0.1.49 breaks no-toolchain Windows cross-compilation using Visual Studio
 # https://github.com/rust-lang/cmake-rs/pull/158#issuecomment-1544695163
-cmake = ">= 0.1, < 0.1.49"
+cmake = ">=0.1, <0.1.49"

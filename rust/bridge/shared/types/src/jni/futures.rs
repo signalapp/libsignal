@@ -158,9 +158,10 @@ pub fn run_future_on_runtime<'local, R, F, O>(
 ) -> SignalJniResult<JavaCompletableFuture<'local, <O as ResultTypeInfo<'local>>::ResultType>>
 where
     R: AsyncRuntime<F>,
-    F: Future + std::panic::UnwindSafe + 'static,
+    F: Future<Output: ResultReporter<Receiver = FutureCompleter<O>>>
+        + std::panic::UnwindSafe
+        + 'static,
     O: for<'a> ResultTypeInfo<'a> + std::panic::UnwindSafe + 'static,
-    F::Output: ResultReporter<Receiver = FutureCompleter<O>>,
 {
     let java_future = new_instance(
         env,

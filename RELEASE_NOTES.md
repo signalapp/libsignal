@@ -1,4 +1,3 @@
-v0.65.6
+v0.67.5
 
-- Java: Add Mp4Sanitizer.sanitizeFileWithCompoundedMdatBoxes(), which will be
-  used for videos recorded and converted in the Android app.
+- Fix a bug in the Swift unauth chat listener that caused a crash on connect.

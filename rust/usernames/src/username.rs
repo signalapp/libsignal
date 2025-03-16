@@ -6,10 +6,10 @@
 use std::fmt::{Debug, Display, Formatter};
 use std::ops::{Add, Range, RangeInclusive};
 use std::str::FromStr;
+use std::sync::LazyLock;
 
 use curve25519_dalek::ristretto::{CompressedRistretto, RistrettoPoint};
 use curve25519_dalek::scalar::Scalar;
-use lazy_static::lazy_static;
 use poksho::args::{PointArgs, ScalarArgs};
 use poksho::{PokshoError, Statement};
 use rand::Rng;
@@ -20,20 +20,18 @@ use crate::constants::{
 };
 use crate::error::{ProofVerificationFailure, UsernameError};
 
-lazy_static! {
-    static ref PROOF_STATEMENT: Statement = {
-        let mut st = Statement::new();
-        st.add(
-            "username_hash",
-            &[
-                ("username_sha_scalar", "G1"),
-                ("nickname_scalar", "G2"),
-                ("discriminator_scalar", "G3"),
-            ],
-        );
-        st
-    };
-}
+static PROOF_STATEMENT: LazyLock<Statement> = LazyLock::new(|| {
+    let mut st = Statement::new();
+    st.add(
+        "username_hash",
+        &[
+            ("username_sha_scalar", "G1"),
+            ("nickname_scalar", "G2"),
+            ("discriminator_scalar", "G3"),
+        ],
+    );
+    st
+});
 
 #[derive(PartialEq)]
 pub struct Username {

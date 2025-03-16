@@ -41,6 +41,12 @@ pub struct ServerSecretParams {
     pub(crate) endorsement_key_pair: zkcredential::endorsements::ServerRootKeyPair,
 }
 
+impl AsRef<zkcredential::endorsements::ServerRootKeyPair> for ServerSecretParams {
+    fn as_ref(&self) -> &zkcredential::endorsements::ServerRootKeyPair {
+        &self.endorsement_key_pair
+    }
+}
+
 #[derive(Clone, Serialize, Deserialize, PartialDefault)]
 pub struct ServerPublicParams {
     reserved: ReservedByte,
@@ -63,6 +69,12 @@ pub struct ServerPublicParams {
 
     pub(crate) generic_credential_public_key: zkcredential::credentials::CredentialPublicKey,
     pub(crate) endorsement_public_key: zkcredential::endorsements::ServerRootPublicKey,
+}
+
+impl AsRef<zkcredential::endorsements::ServerRootPublicKey> for ServerPublicParams {
+    fn as_ref(&self) -> &zkcredential::endorsements::ServerRootPublicKey {
+        &self.endorsement_public_key
+    }
 }
 
 impl ServerSecretParams {
@@ -96,6 +108,13 @@ impl ServerSecretParams {
             auth_credentials_with_pni_key_pair,
             generic_credential_key_pair,
             endorsement_key_pair,
+        }
+    }
+
+    pub fn get_endorsement_root_key_pair(&self) -> EndorsementServerRootKeyPair {
+        EndorsementServerRootKeyPair {
+            reserved: Default::default(),
+            key_pair: self.endorsement_key_pair.clone(),
         }
     }
 
@@ -323,6 +342,13 @@ impl ServerSecretParams {
 }
 
 impl ServerPublicParams {
+    pub fn get_endorsement_public_key(&self) -> EndorsementPublicKey {
+        EndorsementPublicKey {
+            reserved: Default::default(),
+            public_key: self.endorsement_public_key.clone(),
+        }
+    }
+
     pub fn verify_signature(
         &self,
         message: &[u8],
@@ -522,5 +548,38 @@ impl ServerPublicParams {
             receipt_level: receipt_credential.receipt_level,
             receipt_serial_bytes: receipt_credential.receipt_serial_bytes,
         }
+    }
+}
+
+#[derive(Clone, Serialize, Deserialize, PartialDefault)]
+pub struct EndorsementServerRootKeyPair {
+    reserved: ReservedByte,
+    pub(crate) key_pair: zkcredential::endorsements::ServerRootKeyPair,
+}
+
+impl AsRef<zkcredential::endorsements::ServerRootKeyPair> for EndorsementServerRootKeyPair {
+    fn as_ref(&self) -> &zkcredential::endorsements::ServerRootKeyPair {
+        &self.key_pair
+    }
+}
+
+impl EndorsementServerRootKeyPair {
+    pub fn public_key(&self) -> EndorsementPublicKey {
+        EndorsementPublicKey {
+            reserved: self.reserved,
+            public_key: self.key_pair.public_key().clone(),
+        }
+    }
+}
+
+#[derive(Clone, Serialize, Deserialize, PartialDefault)]
+pub struct EndorsementPublicKey {
+    reserved: ReservedByte,
+    public_key: zkcredential::endorsements::ServerRootPublicKey,
+}
+
+impl AsRef<zkcredential::endorsements::ServerRootPublicKey> for EndorsementPublicKey {
+    fn as_ref(&self) -> &zkcredential::endorsements::ServerRootPublicKey {
+        &self.public_key
     }
 }

@@ -5,11 +5,11 @@
 
 [package]
 name = "libsignal-account-keys"
-authors = ["Signal Messenger LLC"]
+authors.workspace = true
+license.workspace = true
 version = "0.1.0"
 edition = "2021"
 description = "Operations for various account-associated keys"
-license = "AGPL-3.0-only"
 
 [lints]
 workspace = true
@@ -17,7 +17,7 @@ workspace = true
 [dependencies]
 libsignal-core = { workspace = true }
 
-argon2 = { version = "0.5.0", features = ["zeroize"] }
+argon2 = { workspace = true, features = ["zeroize"] }
 derive_more = { workspace = true, features = ["from"] }
 displaydoc = { workspace = true }
 hkdf = { workspace = true }

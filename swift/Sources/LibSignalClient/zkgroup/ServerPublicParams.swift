@@ -19,6 +19,21 @@ public class ServerPublicParams: NativeHandleOwner<SignalMutPointerServerPublicP
         super.init(owned: owned)
     }
 
+    /**
+     * Get the serialized form of the params' endorsement key.
+     *
+     * Allows decoupling RingRTC's use of endorsements from libsignal's.
+     */
+    public var endorsementPublicKey: Data {
+        return failOnError {
+            try self.withNativeHandle { handle in
+                try invokeFnReturningData {
+                    signal_server_public_params_get_endorsement_public_key($0, handle.const())
+                }
+            }
+        }
+    }
+
     public func verifySignature(message: [UInt8], notarySignature: NotarySignature) throws {
         try withNativeHandle { contents in
             try message.withUnsafeBorrowedBuffer { message in

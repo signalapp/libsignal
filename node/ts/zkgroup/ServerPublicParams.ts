@@ -17,6 +17,15 @@ export default class ServerPublicParams {
     }
   }
 
+  /**
+   * Get the serialized form of the params' endorsement key.
+   *
+   * Allows decoupling RingRTC's use of endorsements from libsignal's.
+   */
+  getEndorsementPublicKey(): Buffer {
+    return Native.ServerPublicParams_GetEndorsementPublicKey(this);
+  }
+
   verifySignature(message: Buffer, notarySignature: NotarySignature): void {
     Native.ServerPublicParams_VerifySignature(
       this,

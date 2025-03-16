@@ -65,10 +65,9 @@ impl CertChain {
     /// # Arguments
     ///
     /// * `trust` An X509Store containing trusted certificates and CRLs. If CRLs
-    ///           are present the store should be configured to validate crls
+    ///   are present the store should be configured to validate crls
     /// * `crls`  Additional CRLs that are not trusted, and must be issued by
-    ///           a certificate in this certificate chain rooted in the trust
-    ///           store
+    ///   a certificate in this certificate chain rooted in the trust store
     ///
     pub fn validate_chain(&self, trust: &X509StoreRef, crls: &[&X509CRLRef]) -> Result<()> {
         let crl_stack = Self::stack(crls.iter().map(|&crl| crl.to_owned()))

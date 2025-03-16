@@ -12,15 +12,11 @@ use libsignal_bridge_types::net::chat::*;
 use libsignal_bridge_types::net::{ConnectionManager, TokioAsyncContext};
 use libsignal_bridge_types::support::AsType;
 use libsignal_net::auth::Auth;
-use libsignal_net::chat::{
-    self, ChatServiceError, DebugInfo as ChatServiceDebugInfo, Request, Response as ChatResponse,
-};
+use libsignal_net::chat::{self, ConnectError, Response as ChatResponse, SendError};
 
 use crate::support::*;
 use crate::*;
 
-bridge_handle_fns!(AuthChat, clone = false);
-bridge_handle_fns!(UnauthChat, clone = false);
 bridge_handle_fns!(HttpRequest, clone = false);
 bridge_handle_fns!(UnauthenticatedChatConnection, clone = false);
 bridge_handle_fns!(AuthenticatedChatConnection, clone = false);
@@ -75,29 +71,10 @@ fn ChatConnectionInfo_description(connection_info: &ChatConnectionInfo) -> Strin
     connection_info.to_string()
 }
 
-#[bridge_fn]
-fn ChatService_new_unauth(connection_manager: &ConnectionManager) -> UnauthChat {
-    Chat::new_unauth(connection_manager)
-}
-
-#[bridge_fn]
-fn ChatService_new_auth(
-    connection_manager: &ConnectionManager,
-    username: String,
-    password: String,
-    receive_stories: bool,
-) -> AuthChat {
-    Chat::new_auth(
-        connection_manager,
-        Auth { username, password },
-        receive_stories,
-    )
-}
-
 #[bridge_io(TokioAsyncContext)]
 async fn UnauthenticatedChatConnection_connect(
     connection_manager: &ConnectionManager,
-) -> Result<UnauthenticatedChatConnection, ChatServiceError> {
+) -> Result<UnauthenticatedChatConnection, ConnectError> {
     UnauthenticatedChatConnection::connect(connection_manager).await
 }
 
@@ -114,7 +91,7 @@ async fn UnauthenticatedChatConnection_send(
     chat: &UnauthenticatedChatConnection,
     http_request: &HttpRequest,
     timeout_millis: u32,
-) -> Result<ChatResponse, ChatServiceError> {
+) -> Result<ChatResponse, SendError> {
     let headers = http_request.headers.lock().expect("not poisoned").clone();
     let request = chat::Request {
         method: http_request.method.clone(),
@@ -137,12 +114,19 @@ fn UnauthenticatedChatConnection_info(chat: &UnauthenticatedChatConnection) -> C
 }
 
 #[bridge_io(TokioAsyncContext)]
+async fn AuthenticatedChatConnection_preconnect(
+    connection_manager: &ConnectionManager,
+) -> Result<(), ConnectError> {
+    AuthenticatedChatConnection::preconnect(connection_manager).await
+}
+
+#[bridge_io(TokioAsyncContext)]
 async fn AuthenticatedChatConnection_connect(
     connection_manager: &ConnectionManager,
     username: String,
     password: String,
     receive_stories: bool,
-) -> Result<AuthenticatedChatConnection, ChatServiceError> {
+) -> Result<AuthenticatedChatConnection, ConnectError> {
     AuthenticatedChatConnection::connect(
         connection_manager,
         Auth { username, password },
@@ -164,7 +148,7 @@ async fn AuthenticatedChatConnection_send(
     chat: &AuthenticatedChatConnection,
     http_request: &HttpRequest,
     timeout_millis: u32,
-) -> Result<ChatResponse, ChatServiceError> {
+) -> Result<ChatResponse, SendError> {
     let headers = http_request.headers.lock().expect("not poisoned").clone();
     let request = chat::Request {
         method: http_request.method.clone(),
@@ -186,159 +170,19 @@ fn AuthenticatedChatConnection_info(chat: &AuthenticatedChatConnection) -> ChatC
     chat.info()
 }
 
-#[bridge_io(TokioAsyncContext)]
-async fn ChatService_disconnect_unauth(chat: &UnauthChat) {
-    chat.service.0.disconnect().await
-}
-
-#[bridge_io(TokioAsyncContext)]
-async fn ChatService_disconnect_auth(chat: &AuthChat) {
-    chat.service.0.disconnect().await
-}
-
-#[bridge_io(TokioAsyncContext)]
-async fn ChatService_connect_unauth(
-    chat: &UnauthChat,
-) -> Result<ChatServiceDebugInfo, ChatServiceError> {
-    chat.service.0.connect_unauthenticated().await
-}
-
-#[bridge_io(TokioAsyncContext)]
-async fn ChatService_connect_auth(
-    chat: &AuthChat,
-) -> Result<ChatServiceDebugInfo, ChatServiceError> {
-    chat.service.0.connect_authenticated().await
-}
-
-#[bridge_io(TokioAsyncContext)]
-async fn ChatService_unauth_send(
-    chat: &UnauthChat,
-    http_request: &HttpRequest,
-    timeout_millis: u32,
-) -> Result<ChatResponse, ChatServiceError> {
-    let headers = http_request.headers.lock().expect("not poisoned").clone();
-    let request = chat::Request {
-        method: http_request.method.clone(),
-        path: http_request.path.clone(),
-        headers,
-        body: http_request.body.clone(),
-    };
-    chat.service
-        .0
-        .send_unauthenticated(request, Duration::from_millis(timeout_millis.into()))
-        .await
-}
-
-#[bridge_io(TokioAsyncContext)]
-async fn ChatService_unauth_send_and_debug(
-    chat: &UnauthChat,
-    http_request: &HttpRequest,
-    timeout_millis: u32,
-) -> Result<ResponseAndDebugInfo, ChatServiceError> {
-    let headers = http_request.headers.lock().expect("not poisoned").clone();
-    let request = chat::Request {
-        method: http_request.method.clone(),
-        path: http_request.path.clone(),
-        headers,
-        body: http_request.body.clone(),
-    };
-    let (result, debug_info) = chat
-        .service
-        .0
-        .send_unauthenticated_and_debug(request, Duration::from_millis(timeout_millis.into()))
-        .await;
-
-    result.map(|response| ResponseAndDebugInfo {
-        response,
-        debug_info,
-    })
-}
-
-#[bridge_io(TokioAsyncContext)]
-async fn ChatService_auth_send(
-    chat: &AuthChat,
-    http_request: &HttpRequest,
-    timeout_millis: u32,
-) -> Result<ChatResponse, ChatServiceError> {
-    let headers = http_request.headers.lock().expect("not poisoned").clone();
-    let request = Request {
-        method: http_request.method.clone(),
-        path: http_request.path.clone(),
-        headers,
-        body: http_request.body.clone(),
-    };
-    chat.service
-        .0
-        .send_authenticated(request, Duration::from_millis(timeout_millis.into()))
-        .await
-}
-
-#[bridge_io(TokioAsyncContext)]
-async fn ChatService_auth_send_and_debug(
-    chat: &AuthChat,
-    http_request: &HttpRequest,
-    timeout_millis: u32,
-) -> Result<ResponseAndDebugInfo, ChatServiceError> {
-    let headers = http_request.headers.lock().expect("not poisoned").clone();
-    let request = Request {
-        method: http_request.method.clone(),
-        path: http_request.path.clone(),
-        headers,
-        body: http_request.body.clone(),
-    };
-    let (result, debug_info) = chat
-        .service
-        .0
-        .send_authenticated_and_debug(request, Duration::from_millis(timeout_millis.into()))
-        .await;
-
-    result.map(|response| ResponseAndDebugInfo {
-        response,
-        debug_info,
-    })
-}
-
-#[bridge_fn]
-fn ChatService_SetListenerAuth(
-    runtime: &TokioAsyncContext,
-    chat: &AuthChat,
-    listener: Option<Box<dyn ChatListener>>,
-) {
-    let Some(listener) = listener else {
-        chat.clear_listener();
-        return;
-    };
-
-    chat.set_listener(listener, runtime)
-}
-
-#[bridge_fn]
-fn ChatService_SetListenerUnauth(
-    runtime: &TokioAsyncContext,
-    chat: &UnauthChat,
-    listener: Option<Box<dyn ChatListener>>,
-) {
-    let Some(listener) = listener else {
-        chat.clear_listener();
-        return;
-    };
-
-    chat.set_listener(listener, runtime)
-}
-
 bridge_handle_fns!(ServerMessageAck, clone = false);
 
-#[bridge_io(TokioAsyncContext, node = false)]
-async fn ServerMessageAck_Send(ack: &ServerMessageAck) -> Result<(), ChatServiceError> {
-    let future = ack.take().expect("a message is only acked once");
-    future(StatusCode::OK).await
+#[bridge_fn(node = false)]
+fn ServerMessageAck_Send(ack: &ServerMessageAck) -> Result<(), SendError> {
+    let sender = ack.take().expect("a message is only acked once");
+    sender(StatusCode::OK)
 }
 
-#[bridge_io(TokioAsyncContext, jni = false, ffi = false)]
-async fn ServerMessageAck_SendStatus(
+#[bridge_fn(jni = false, ffi = false)]
+fn ServerMessageAck_SendStatus(
     ack: &ServerMessageAck,
     status: AsType<HttpStatus, u16>,
-) -> Result<(), ChatServiceError> {
-    let future = ack.take().expect("a message is only acked once");
-    future(status.into_inner().into()).await
+) -> Result<(), SendError> {
+    let sender = ack.take().expect("a message is only acked once");
+    sender(status.into_inner().into())
 }

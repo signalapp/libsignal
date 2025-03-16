@@ -572,7 +572,7 @@ impl<'a> UnidentifiedSenderMessage<'a> {
             }
             SEALED_SENDER_V2_MAJOR_VERSION => {
                 /// Uses a flat representation: C || AT || E.pub || ciphertext
-                #[repr(packed)]
+                #[repr(C, packed)]
                 #[derive(FromBytes, FromZeroes)]
                 struct PrefixRepr {
                     encrypted_message_key: [u8; sealed_sender_v2::MESSAGE_KEY_LEN],

@@ -51,6 +51,7 @@ jobs:
           - 'rust-toolchain'
           - 'Cargo.toml'
           - 'Cargo.lock'
+          - '.cargo/**' # overly conservative, but it's fine
           rust:
           - *all
           - '.clippy.toml'
@@ -161,7 +162,7 @@ jobs:
       if: matrix.version == 'nightly'
 
     - name: Check acknowledgments
-      run: PATH="$PATH:$PWD/local-tools/bin" ./bin/regenerate_acknowledgments.sh && git diff --name-status --exit-code acknowledgments
+      run: PATH="$PATH:$PWD/local-tools/bin" ./bin/regenerate_acknowledgments.sh && git diff --exit-code acknowledgments
       if: matrix.version == 'nightly'
 
     - name: Build

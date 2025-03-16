@@ -651,17 +651,15 @@ impl<M: Method + ReferencedTypes> PartialBackup<M> {
             FrameItem::Account(account_data) => self.add_account_data(account_data),
             FrameItem::Recipient(recipient) => self.add_recipient(recipient).map_err(Into::into),
             FrameItem::Chat(chat) => self.add_chat(chat).map_err(Into::into),
-            FrameItem::ChatItem(chat_item) => self.add_chat_item(chat_item).map_err(Into::into),
+            FrameItem::ChatItem(chat_item) => self.add_chat_item(chat_item),
             FrameItem::StickerPack(sticker_pack) => {
                 self.add_sticker_pack(sticker_pack).map_err(Into::into)
             }
             FrameItem::AdHocCall(call) => self.add_ad_hoc_call(call).map_err(Into::into),
-            FrameItem::NotificationProfile(notification_profile) => self
-                .add_notification_profile(notification_profile)
-                .map_err(Into::into),
-            FrameItem::ChatFolder(chat_folder) => {
-                self.add_chat_folder(chat_folder).map_err(Into::into)
+            FrameItem::NotificationProfile(notification_profile) => {
+                self.add_notification_profile(notification_profile)
             }
+            FrameItem::ChatFolder(chat_folder) => self.add_chat_folder(chat_folder),
         }
     }
 

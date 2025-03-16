@@ -10,13 +10,15 @@ use http::{HeaderName, StatusCode};
 use libsignal_core::{Aci, Pni, E164};
 use libsignal_net_infra::connection_manager::ConnectionManager;
 use libsignal_net_infra::dns::DnsResolver;
-use libsignal_net_infra::errors::{LogSafeDisplay, TransportConnectError};
-use libsignal_net_infra::route::{RouteProvider, UnresolvedWebsocketServiceRoute};
+use libsignal_net_infra::errors::{LogSafeDisplay, RetryLater, TransportConnectError};
+use libsignal_net_infra::route::{
+    RouteProvider, ThrottlingConnector, UnresolvedWebsocketServiceRoute,
+};
 use libsignal_net_infra::ws::{NextOrClose, WebSocketConnectError, WebSocketServiceError};
 use libsignal_net_infra::ws2::attested::{
     AttestedConnection, AttestedConnectionError, AttestedProtocolError,
 };
-use libsignal_net_infra::{extract_retry_after_seconds, TransportConnector};
+use libsignal_net_infra::{extract_retry_later, TransportConnector};
 use prost::Message as _;
 use thiserror::Error;
 use tungstenite::protocol::frame::coding::CloseCode;
@@ -24,8 +26,8 @@ use tungstenite::protocol::CloseFrame;
 use uuid::Uuid;
 
 use crate::auth::Auth;
-use crate::connect_state::ConnectState;
-use crate::enclave::{Cdsi, EnclaveEndpointConnection, EndpointParams, NewHandshake as _};
+use crate::connect_state::{ConnectState, WebSocketTransportConnectorFactory};
+use crate::enclave::{Cdsi, EnclaveEndpointConnection, EndpointParams};
 use crate::proto::cds2::{ClientRequest, ClientResponse};
 use crate::ws::WebSocketServiceConnectError;
 
@@ -240,7 +242,7 @@ pub enum LookupError {
     /// invalid response received from the server
     InvalidResponse,
     /// retry later
-    RateLimited { retry_after_seconds: u32 },
+    RateLimited(#[from] RetryLater),
     /// request token was invalid
     InvalidToken,
     /// failed to parse the response from the server
@@ -287,12 +289,8 @@ impl From<crate::enclave::Error> for LookupError {
                     received_at: _,
                 } => {
                     if response.status() == StatusCode::TOO_MANY_REQUESTS {
-                        if let Some(retry_after_seconds) =
-                            extract_retry_after_seconds(response.headers())
-                        {
-                            return Self::RateLimited {
-                                retry_after_seconds,
-                            };
+                        if let Some(retry_later) = extract_retry_later(response.headers()) {
+                            return Self::RateLimited(retry_later);
                         }
                     }
                     Self::WebSocket(WebSocketServiceError::Http(response))
@@ -350,7 +348,7 @@ impl CdsiConnection {
     }
 
     pub async fn connect_with(
-        connect: &tokio::sync::RwLock<ConnectState>,
+        connect: &tokio::sync::RwLock<ConnectState<impl WebSocketTransportConnectorFactory>>,
         resolver: &DnsResolver,
         route_provider: impl RouteProvider<Route = UnresolvedWebsocketServiceRoute>,
         confirmation_header_name: Option<HeaderName>,
@@ -364,9 +362,18 @@ impl CdsiConnection {
             auth,
             resolver,
             confirmation_header_name,
-            ws_config,
+            (
+                ws_config,
+                // We don't want to race multiple websocket handshakes because when
+                // we take the first one, the others will be uncermoniously closed.
+                // That looks like unexpected behavior at the server end, and the
+                // wasted handshakes consume resources unnecessarily.  Instead,
+                // allow parallelism at the transport level but throttle the number
+                // of websocket handshakes that can complete.
+                ThrottlingConnector::new(crate::infra::ws::WithoutResponseHeaders::new(), 1),
+            ),
             "cdsi".into(),
-            move |attestation_message| Cdsi::new_handshake(params, attestation_message),
+            params,
         )
         .await?;
         Ok(Self(connection))
@@ -515,9 +522,9 @@ fn err_for_close(close: Option<CloseFrame<'_>>) -> LookupError {
                 log::warn!("failed to parse rate limit from reason");
                 return unexpected_close(close);
             };
-            LookupError::RateLimited {
+            LookupError::RateLimited(RetryLater {
                 retry_after_seconds,
-            }
+            })
         }
         CdsiCloseCode::ServerInternalError | CdsiCloseCode::ServerUnavailable => {
             LookupError::Server {
@@ -850,8 +857,7 @@ mod test {
             acis_and_access_keys: (1..=LARGE_NUMBER_OF_ENTRIES)
                 .map(|i| {
                     let mut bytes = [0; 16];
-                    // TODO use first_chunk_mut() once MSRV >= 1.77
-                    bytes[..2].copy_from_slice(i.to_be_bytes().as_slice());
+                    *bytes.first_chunk_mut().expect("long enough") = i.to_be_bytes();
                     AciAndAccessKey {
                         access_key: bytes,
                         aci: Uuid::from_bytes(bytes).into(),
@@ -928,9 +934,9 @@ mod test {
 
         assert_matches!(
             response,
-            Err(LookupError::RateLimited {
+            Err(LookupError::RateLimited(RetryLater {
                 retry_after_seconds: RETRY_AFTER_SECS
-            })
+            }))
         );
     }
 
@@ -982,9 +988,9 @@ mod test {
 
         assert_matches!(
             response,
-            Err(LookupError::RateLimited {
+            Err(LookupError::RateLimited(RetryLater {
                 retry_after_seconds: RETRY_AFTER_SECS
-            })
+            }))
         )
     }
 
@@ -1012,9 +1018,9 @@ mod test {
         let result = CdsiConnection::connect(&endpoint_connection, connector, auth).await;
         assert_matches!(
             result,
-            Err(LookupError::RateLimited {
+            Err(LookupError::RateLimited(RetryLater {
                 retry_after_seconds: 100
-            })
+            }))
         )
     }
 

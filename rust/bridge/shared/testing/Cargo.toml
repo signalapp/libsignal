@@ -6,9 +6,10 @@
 [package]
 name = "libsignal-bridge-testing"
 version = "0.1.0"
-authors = ["Signal Messenger LLC"]
+authors.workspace = true
+license.workspace = true
+rust-version.workspace = true
 edition = "2021"
-license = "AGPL-3.0-only"
 
 [lints]
 workspace = true

@@ -27,7 +27,7 @@ bridge_handle_fns!(ConnectionProxyConfig);
 
 #[bridge_fn]
 fn ConnectionProxyConfig_new(
-    scheme: String,
+    mut scheme: String,
     host: String,
     port: i32,
     username: Option<String>,
@@ -65,6 +65,10 @@ fn ConnectionProxyConfig_new(
         }
         (Some(username), password) => Some((username, password.unwrap_or_default())),
     };
+
+    // We allow clients to pass in upper or mixed-case schemes, but convert to
+    // lowercase for ease of matching.
+    scheme.make_ascii_lowercase();
 
     ConnectionProxyConfig::from_parts(&scheme, &host, port, auth).map_err(|e| {
         use libsignal_net::infra::route::ProxyFromPartsError;
@@ -125,7 +129,7 @@ fn ConnectionManager_set_censorship_circumvention_enabled(
 
 #[bridge_fn]
 fn ConnectionManager_on_network_change(connection_manager: &ConnectionManager) {
-    connection_manager.on_network_change()
+    connection_manager.on_network_change(std::time::Instant::now())
 }
 
 #[bridge_fn]
@@ -137,4 +141,23 @@ fn CreateOTP(username: String, secret: &[u8]) -> String {
 fn CreateOTPFromBase64(username: String, secret: String) -> String {
     let secret = BASE64_STANDARD.decode(secret).expect("valid base64");
     Auth::otp(&username, &secret, std::time::SystemTime::now())
+}
+
+#[cfg(any(feature = "node", feature = "jni", feature = "ffi"))]
+#[cfg(test)]
+mod test {
+    use test_case::test_case;
+
+    use super::*;
+
+    #[test_case("http" => matches ConnectionProxyConfig::Http(_); "lowercase")]
+    #[test_case("HTTP" => matches ConnectionProxyConfig::Http(_); "uppercase")]
+    #[test_case("HTtp" => matches ConnectionProxyConfig::Http(_); "mixed case")]
+    #[test_case("Socks" => matches ConnectionProxyConfig::Socks(_); "capitalized")]
+    #[test_case("httpS" => matches ConnectionProxyConfig::Http(_); "reverse capitalized")]
+
+    fn connection_proxy_config_accepts_mixed_case_scheme(scheme: &str) -> ConnectionProxyConfig {
+        ConnectionProxyConfig_new(scheme.to_owned(), "host".to_owned(), 80, None, None)
+            .expect("valid")
+    }
 }

@@ -6,6 +6,7 @@
 use http::HeaderName;
 use libsignal_net::auth::Auth;
 use libsignal_net::cdsi::{self, CdsiConnection, ClientResponseCollector, Token};
+use libsignal_net::infra::errors::RetryLater;
 use libsignal_net::infra::route::{DirectOrProxyProvider, RouteProviderExt};
 use libsignal_net::infra::tcp_ssl::InvalidProxyConfig;
 use libsignal_net::infra::AsHttpHeader as _;
@@ -24,7 +25,7 @@ pub enum CdsiError {
     /// Invalid response received from the server
     InvalidResponse,
     /// Retry later
-    RateLimited { retry_after: std::time::Duration },
+    RateLimited(RetryLater),
     /// Failed to parse the response from the server
     ParseError,
     /// Request token was invalid
@@ -53,6 +54,30 @@ pub struct CdsiLookup {
 
 impl CdsiLookup {
     pub async fn new(
+        connection_manager: &ConnectionManager,
+        auth: Auth,
+        request: cdsi::LookupRequest,
+    ) -> Result<Self, cdsi::LookupError> {
+        let transport_connector = connection_manager
+            .transport_connector
+            .lock()
+            .expect("not poisoned")
+            .clone();
+        let endpoints = connection_manager
+            .endpoints
+            .lock()
+            .expect("not poisoned")
+            .clone();
+        let connected = CdsiConnection::connect(&endpoints.cdsi, transport_connector, auth).await?;
+        let (token, remaining_response) = connected.send_request(request).await?;
+
+        Ok(CdsiLookup {
+            token,
+            remaining: std::sync::Mutex::new(Some(remaining_response)),
+        })
+    }
+
+    pub async fn new_routes(
         connection_manager: &ConnectionManager,
         auth: Auth,
         request: cdsi::LookupRequest,

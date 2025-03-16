@@ -24,8 +24,8 @@ use crate::common::array_utils;
 use crate::common::serialization::ReservedByte;
 use crate::groups::{GroupSecretParams, UuidCiphertext};
 use crate::{
-    crypto, RandomnessBytes, ServerPublicParams, ServerSecretParams, Timestamp,
-    ZkGroupDeserializationFailure, ZkGroupVerificationFailure, SECONDS_PER_DAY,
+    crypto, RandomnessBytes, Timestamp, ZkGroupDeserializationFailure, ZkGroupVerificationFailure,
+    SECONDS_PER_DAY,
 };
 
 const SECONDS_PER_HOUR: u64 = 60 * 60;
@@ -52,12 +52,13 @@ impl GroupSendDerivedKeyPair {
     }
 
     /// Derives the appropriate key pair for the given expiration.
-    pub fn for_expiration(expiration: Timestamp, params: &ServerSecretParams) -> Self {
+    pub fn for_expiration(
+        expiration: Timestamp,
+        root: impl AsRef<zkcredential::endorsements::ServerRootKeyPair>,
+    ) -> Self {
         Self {
             reserved: ReservedByte::default(),
-            key_pair: params
-                .endorsement_key_pair
-                .derive_key(Self::tag_info(expiration)),
+            key_pair: root.as_ref().derive_key(Self::tag_info(expiration)),
             expiration,
         }
     }
@@ -151,7 +152,7 @@ impl GroupSendEndorsementsResponse {
     fn derive_public_signing_key_from_expiration(
         &self,
         now: Timestamp,
-        server_params: &ServerPublicParams,
+        root_public_key: impl AsRef<zkcredential::endorsements::ServerRootPublicKey>,
     ) -> Result<zkcredential::endorsements::ServerDerivedPublicKey, ZkGroupVerificationFailure>
     {
         if !self.expiration.is_day_aligned() {
@@ -172,8 +173,8 @@ impl GroupSendEndorsementsResponse {
             return Err(ZkGroupVerificationFailure);
         }
 
-        Ok(server_params
-            .endorsement_public_key
+        Ok(root_public_key
+            .as_ref()
             .derive_key(GroupSendDerivedKeyPair::tag_info(self.expiration)))
     }
 
@@ -187,9 +188,9 @@ impl GroupSendEndorsementsResponse {
         user_ids: impl IntoIterator<Item = libsignal_core::ServiceId>,
         now: Timestamp,
         group_params: &GroupSecretParams,
-        server_params: &ServerPublicParams,
+        root_public_key: impl AsRef<zkcredential::endorsements::ServerRootPublicKey>,
     ) -> Result<Vec<ReceivedEndorsement>, ZkGroupVerificationFailure> {
-        let derived_key = self.derive_public_signing_key_from_expiration(now, server_params)?;
+        let derived_key = self.derive_public_signing_key_from_expiration(now, root_public_key)?;
 
         // The endorsements are sorted by the serialized *ciphertext* representations.
         // We have to compute the ciphertexts (expensive), but we can skip the second point (which
@@ -240,13 +241,15 @@ impl GroupSendEndorsementsResponse {
         user_ids: T,
         now: Timestamp,
         group_params: &GroupSecretParams,
-        server_params: &ServerPublicParams,
+        root_public_key: impl AsRef<zkcredential::endorsements::ServerRootPublicKey>,
     ) -> Result<Vec<ReceivedEndorsement>, ZkGroupVerificationFailure>
     where
-        T: rayon::iter::IntoParallelIterator<Item = libsignal_core::ServiceId>,
-        T::Iter: rayon::iter::IndexedParallelIterator,
+        T: rayon::iter::IntoParallelIterator<
+            Item = libsignal_core::ServiceId,
+            Iter: rayon::iter::IndexedParallelIterator,
+        >,
     {
-        let derived_key = self.derive_public_signing_key_from_expiration(now, server_params)?;
+        let derived_key = self.derive_public_signing_key_from_expiration(now, root_public_key)?;
 
         // The endorsements are sorted based on the *ciphertext* representations.
         // We have to compute the ciphertexts (expensive), but we can skip the second point (which
@@ -297,9 +300,9 @@ impl GroupSendEndorsementsResponse {
         self,
         member_ciphertexts: impl IntoIterator<Item = UuidCiphertext>,
         now: Timestamp,
-        server_params: &ServerPublicParams,
+        root_public_key: impl AsRef<zkcredential::endorsements::ServerRootPublicKey>,
     ) -> Result<Vec<ReceivedEndorsement>, ZkGroupVerificationFailure> {
-        let derived_key = self.derive_public_signing_key_from_expiration(now, server_params)?;
+        let derived_key = self.derive_public_signing_key_from_expiration(now, root_public_key)?;
 
         // Note: we could save some work here by pulling the single point we need out of the
         // serialized form of UuidCiphertext, and operating directly on that. However, we'd have to

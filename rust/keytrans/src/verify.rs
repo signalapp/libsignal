@@ -167,16 +167,20 @@ fn verify_full_tree_head(
 
     {
         let current_tree_head = (tree_head, &root);
-        maybe_verify_consistency(
+        if let Some(verify) = check_consistency_metadata(
             current_tree_head,
             &get_hash_proof(&fth.last)?,
             last_tree_head,
-        )?;
-        maybe_verify_consistency(
+        )? {
+            verify()?
+        }
+        if let Some(verify) = check_consistency_metadata(
             current_tree_head,
             &get_hash_proof(&fth.distinguished)?,
             last_distinguished_tree_head,
-        )?;
+        )? {
+            verify()?
+        }
     }
 
     // 2. Verify the signature in TreeHead.signature.
@@ -250,7 +254,7 @@ fn verify_full_tree_head(
 }
 
 /// Checks if the consistency proof against the baseline tree head needs to be
-/// verified, and if it does then performs it by calling [`do_verify_consistency`].
+/// verified and if it does, returns a function that performs the verification.
 ///
 /// The `baseline` parameter is either the last_tree_head or the
 /// last_distinguished_tree_head, `proof` is the corresponding consistency proof
@@ -261,12 +265,13 @@ fn verify_full_tree_head(
 /// * Unless the current tree head size is equal to the baseline tree head size,
 ///   in which case the proof should be empty.
 /// * If the baseline is absent, the proof must be empty.
-fn maybe_verify_consistency(
-    current: (&TreeHead, &TreeRoot),
-    proof: &[[u8; 32]],
-    baseline: Option<&LastTreeHead>,
-) -> Result<()> {
+fn check_consistency_metadata<'a>(
+    current: (&'a TreeHead, &'a TreeRoot),
+    proof: &'a [[u8; 32]],
+    baseline: Option<&'a LastTreeHead>,
+) -> Result<Option<impl FnOnce() -> Result<()> + 'a>> {
     let (current_head, current_root) = current;
+
     match baseline {
         None => {
             if !proof.is_empty() {
@@ -274,7 +279,7 @@ fn maybe_verify_consistency(
                     "consistency proof provided when not expected".to_string(),
                 ));
             };
-            Ok(())
+            Ok(None)
         }
         Some((last, last_root)) if last.tree_size == current_head.tree_size => {
             if current_root != last_root {
@@ -282,9 +287,9 @@ fn maybe_verify_consistency(
                     "root is different but tree size is same".to_string(),
                 ));
             }
-            if current_head.timestamp < last.timestamp {
+            if current_head.timestamp != last.timestamp {
                 return Err(Error::VerificationFailed(
-                    "current timestamp is less than previous timestamp".to_string(),
+                    "tree size is the same b".to_string(),
                 ));
             }
             if !proof.is_empty() {
@@ -292,37 +297,30 @@ fn maybe_verify_consistency(
                     "consistency proof provided when not expected".to_string(),
                 ));
             }
-            Ok(())
+            Ok(None)
         }
-        Some(baseline) => do_verify_consistency(current, proof, baseline),
+        Some((last_head, last_root)) => {
+            if current_head.tree_size < last_head.tree_size {
+                return Err(Error::VerificationFailed(
+                    "current tree size is less than previous tree size".to_string(),
+                ));
+            }
+            if current_head.timestamp < last_head.timestamp {
+                return Err(Error::VerificationFailed(
+                    "current timestamp is less than previous timestamp".to_string(),
+                ));
+            }
+            Ok(Some(move || {
+                Ok(verify_consistency_proof(
+                    last_head.tree_size,
+                    current_head.tree_size,
+                    proof,
+                    last_root,
+                    current_root,
+                )?)
+            }))
+        }
     }
-}
-
-/// Actually verifies the consistency proof against the baseline tree head.
-fn do_verify_consistency(
-    current: (&TreeHead, &TreeRoot),
-    proof: &[[u8; 32]],
-    baseline: &LastTreeHead,
-) -> Result<()> {
-    let (current_head, current_root) = current;
-    let (last_head, last_root) = baseline;
-    if current_head.tree_size < last_head.tree_size {
-        return Err(Error::VerificationFailed(
-            "current tree size is less than previous tree size".to_string(),
-        ));
-    }
-    if current_head.timestamp < last_head.timestamp {
-        return Err(Error::VerificationFailed(
-            "current timestamp is less than previous timestamp".to_string(),
-        ));
-    }
-    Ok(verify_consistency_proof(
-        last_head.tree_size,
-        current_head.tree_size,
-        proof,
-        last_root,
-        current_root,
-    )?)
 }
 
 /// The range of allowed timestamp values relative to "now".
@@ -1148,5 +1146,85 @@ mod test {
                 assert!(update.monitoring_data.is_none());
             }
         );
+    }
+
+    enum Baseline {
+        Absent,
+        WithSize(u64),
+        WithTimestamp(i64),
+        WithRoot([u8; 32]),
+    }
+
+    enum VerifierOutcome {
+        NoVerificationNeeded,
+        Error,
+        Verifier,
+    }
+
+    #[test_case(&[Baseline::Absent], false, VerifierOutcome::NoVerificationNeeded; "no baseline no proof no problem")]
+    #[test_case(&[Baseline::Absent], true, VerifierOutcome::Error; "proof without baseline")]
+    #[test_case(&[], false, VerifierOutcome::NoVerificationNeeded; "baseline is current no proof")]
+    #[test_case(&[], true, VerifierOutcome::Error; "baseline is current proof not expected")]
+    #[test_case(&[Baseline::WithSize(43)], false, VerifierOutcome::Error; "baseline is larger no proof")]
+    #[test_case(&[Baseline::WithSize(43)], true, VerifierOutcome::Error; "baseline is larger with proof")]
+    #[test_case(&[Baseline::WithSize(41)], false, VerifierOutcome::Verifier; "baseline is smaller no proof")]
+    #[test_case(&[Baseline::WithSize(41)], true, VerifierOutcome::Verifier; "baseline is smaller with proof")]
+    #[test_case(&[Baseline::WithTimestamp(42)], false, VerifierOutcome::Error; "baseline is newer no proof")]
+    #[test_case(&[Baseline::WithTimestamp(42)], true, VerifierOutcome::Error; "baseline is newer with proof")]
+    #[test_case(&[Baseline::WithTimestamp(-42)], false, VerifierOutcome::Error; "baseline is older no proof")]
+    #[test_case(&[Baseline::WithTimestamp(-42)], true, VerifierOutcome::Error; "baseline is older with proof")]
+    #[test_case(&[Baseline::WithSize(41), Baseline::WithTimestamp(42)], false, VerifierOutcome::Error; "baseline is smaller but newer no proof")]
+    #[test_case(&[Baseline::WithSize(41), Baseline::WithTimestamp(42)], true, VerifierOutcome::Error; "baseline is smaller but newer with proof")]
+    #[test_case(&[Baseline::WithRoot([1u8; 32])], false, VerifierOutcome::Error; "baseline different root no proof")]
+    #[test_case(&[Baseline::WithRoot([1u8; 32])], true, VerifierOutcome::Error; "baseline different root with proof")]
+    fn get_consistency_verifier_permutations(
+        baseline_mods: &[Baseline],
+        has_proof: bool,
+        outcome: VerifierOutcome,
+    ) {
+        let current_head = TreeHead {
+            tree_size: 42,
+            ..TreeHead::default()
+        };
+        let current_root = [0u8; 32];
+
+        let baseline = {
+            let head = current_head.clone();
+            let root = [0u8; 32];
+            let mut baseline = Some((head, root));
+
+            for baseline_mod in baseline_mods {
+                let Some(result) = baseline.as_mut() else {
+                    break;
+                };
+                match baseline_mod {
+                    Baseline::Absent => baseline = None,
+                    Baseline::WithSize(n) => {
+                        result.0.tree_size = *n;
+                    }
+                    Baseline::WithTimestamp(ts) => {
+                        result.0.timestamp = *ts;
+                    }
+                    Baseline::WithRoot(r) => {
+                        result.1 = *r;
+                    }
+                }
+            }
+            baseline
+        };
+
+        let proof = [[0u8; 32]];
+
+        let result = check_consistency_metadata(
+            (&current_head, &current_root),
+            if has_proof { &proof } else { &[] },
+            baseline.as_ref(),
+        );
+
+        match outcome {
+            VerifierOutcome::NoVerificationNeeded => assert!(matches!(result, Ok(None))),
+            VerifierOutcome::Error => assert!(result.is_err()),
+            VerifierOutcome::Verifier => assert!(matches!(result, Ok(Some(_)))),
+        }
     }
 }

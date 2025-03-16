@@ -272,10 +272,7 @@ pub trait AsyncRuntimeBase {
 ///
 /// Putting the future type in the trait signature allows runtimes to impose additional
 /// requirements, such as `Send`, on the Futures they can run.
-pub trait AsyncRuntime<F: Future>: AsyncRuntimeBase
-where
-    F::Output: ResultReporter,
-{
+pub trait AsyncRuntime<F: Future<Output: ResultReporter>>: AsyncRuntimeBase {
     type Cancellation: Future<Output = ()>;
 
     /// Runs the provided future to completion, then reports the result.
@@ -297,10 +294,7 @@ pub struct NoOpAsyncRuntime;
 
 impl AsyncRuntimeBase for NoOpAsyncRuntime {}
 
-impl<F: Future> AsyncRuntime<F> for NoOpAsyncRuntime
-where
-    F::Output: ResultReporter,
-{
+impl<F: Future<Output: ResultReporter>> AsyncRuntime<F> for NoOpAsyncRuntime {
     type Cancellation = std::future::Pending<()>;
 
     fn run_future(

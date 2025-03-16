@@ -1,9 +1,9 @@
 [package]
 name = "signal-media"
 version = "0.1.0"
-authors = ["Signal Messenger LLC"]
+authors.workspace = true
+license.workspace = true
 edition = "2021"
-license = "AGPL-3.0-only"
 
 [lints]
 workspace = true
@@ -11,9 +11,9 @@ workspace = true
 [dependencies]
 futures-util = { workspace = true }
 mediasan-common = { workspace = true }
-mp4san = { version = "0.5.3", optional = true }
+mp4san = { workspace = true, optional = true }
 thiserror = { workspace = true }
-webpsan = { version = "0.5.3", optional = true, default-features = false }
+webpsan = { workspace = true, optional = true }
 
 [features]
 default = ["mp4san", "webpsan"]

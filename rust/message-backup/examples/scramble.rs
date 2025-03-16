@@ -27,7 +27,7 @@ use support::{AsyncReaderFactory, FilenameOrContents, KeyArgs};
 struct CliArgs {
     /// the file to read from, or '-' to read from stdin
     #[arg(value_hint = clap::ValueHint::FilePath)]
-    filename: FileOrStdin,
+    input: FileOrStdin,
 
     /// the purpose the backup is intended for, used to check that validation results haven't
     /// changed
@@ -47,13 +47,13 @@ fn main() -> ExitCode {
         .parse_default_env()
         .init();
     let CliArgs {
-        filename,
+        input,
         purpose,
         key_args,
     } = CliArgs::parse();
 
-    let source = filename.source.clone();
-    let contents = FilenameOrContents::from(filename);
+    let source = input.filename().to_owned();
+    let contents = FilenameOrContents::from(input);
     let mut factory = AsyncReaderFactory::from(&contents);
 
     futures::executor::block_on(async move {

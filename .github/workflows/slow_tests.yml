@@ -162,21 +162,23 @@ jobs:
 
       - name: Create AVD and generate snapshot for caching
         if: steps.avd-cache.outputs.cache-hit != 'true'
-        uses: reactivecircus/android-emulator-runner@6b0df4b0efb23bb0ec63d881db79aefbc976e4b2 # v2.30.1
+        uses: reactivecircus/android-emulator-runner@62dbb605bba737720e10b196cb4220d374026a6d # v2.33.0
         with:
           arch: ${{ matrix.arch }}
           api-level: ${{ env.ANDROID_API_LEVEL }}
           ndk: ${{ env.ANDROID_NDK_VERSION }}
           force-avd-creation: false
+          disk-size: 1024M
           emulator-options: -no-window -noaudio -no-boot-anim
           script: echo "Generated AVD snapshot for caching."
 
       - name: Run tests
-        uses: reactivecircus/android-emulator-runner@6b0df4b0efb23bb0ec63d881db79aefbc976e4b2 # v2.30.1
+        uses: reactivecircus/android-emulator-runner@62dbb605bba737720e10b196cb4220d374026a6d # v2.33.0
         with:
           arch: ${{ matrix.arch }}
           api-level: ${{ env.ANDROID_API_LEVEL }}
           ndk: ${{ env.ANDROID_NDK_VERSION }}
+          disk-size: 1024M
           force-avd-creation: false
           emulator-options: -no-snapshot-save -no-window -noaudio -no-boot-anim
           script: ./gradlew android:connectedCheck android:packaging-test:connectedCheck -x makeJniLibrariesDesktop -x android:makeJniLibraries
@@ -184,7 +186,7 @@ jobs:
 
   aarch64:
     name: AArch64 Linux Tests
-    runs-on: ubuntu-24.04-arm64-2-cores
+    runs-on: ubuntu-24.04-arm64-4-cores
     needs: [check-up-to-date]
     if: ${{ always() && (needs.check-up-to-date.outputs.has-changes || github.event_name != 'schedule') }}
     timeout-minutes: 60
@@ -321,7 +323,7 @@ jobs:
         env:
           CARGO_BUILD_TARGET: aarch64-apple-ios
 
-      # Build the simulator architectures for completeness.
+      # Build the simulator architectures for `pod lib lint` below.
       - name: Build for x86_64-apple-ios
         run: swift/build_ffi.sh --release
         env:
@@ -332,8 +334,11 @@ jobs:
         env:
           CARGO_BUILD_TARGET: aarch64-apple-ios-sim
 
-      # The simulator build of the CocoaPod is already tested in regular CI as part of `pod lib lint`.
-
+      # We run this for the non-hermetic tests; it's otherwise the same as regular CI.
+      - name: Run pod lint
+        run: pod lib lint --verbose --platforms=ios
+  
+      # Make sure we can build for device, just for completeness.
       - name: Set up testing workspace
         run: pod install
         working-directory: swift/cocoapods-testing

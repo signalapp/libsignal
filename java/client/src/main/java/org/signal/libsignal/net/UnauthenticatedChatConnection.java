@@ -10,8 +10,8 @@ import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.net.internal.BridgeChatListener;
 
 /**
- * Represents an unauthenticated (i.e. hopefully anonymous) communication channel with the
- * ChatService.
+ * Represents an unauthenticated (i.e. hopefully anonymous) communication channel with the Chat
+ * service.
  *
  * <p>Created by the factory method {@link Network#connectUnauthChat} rather than instantiated
  * directly.
@@ -78,15 +78,15 @@ public class UnauthenticatedChatConnection extends ChatConnection {
   @Override
   protected CompletableFuture<Object> sendWrapper(
       long nativeAsyncContextHandle,
-      long nativeChatServiceHandle,
+      long nativeChatConnectionHandle,
       long nativeRequestHandle,
       int timeoutMillis) {
     return Native.UnauthenticatedChatConnection_send(
-        nativeAsyncContextHandle, nativeChatServiceHandle, nativeRequestHandle, timeoutMillis);
+        nativeAsyncContextHandle, nativeChatConnectionHandle, nativeRequestHandle, timeoutMillis);
   }
 
   @Override
-  protected void release(long nativeChatServiceHandle) {
-    Native.UnauthenticatedChatConnection_Destroy(nativeChatServiceHandle);
+  protected void release(long nativeChatConnectionHandle) {
+    Native.UnauthenticatedChatConnection_Destroy(nativeChatConnectionHandle);
   }
 }

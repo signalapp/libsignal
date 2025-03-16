@@ -285,6 +285,15 @@ impl MonitoringData {
             .copied()
             .expect("at least one version must be present")
     }
+
+    /// The greatest known version of the search key.
+    pub fn greatest_version(&self) -> u32 {
+        self.ptrs
+            .values()
+            .max()
+            .copied()
+            .expect("at least one version must be present")
+    }
 }
 
 impl From<MonitoringData> for StoredMonitoringData {

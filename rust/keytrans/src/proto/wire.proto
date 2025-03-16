@@ -51,8 +51,7 @@ message SearchProof {
 // UpdateValue wraps the new value for a key with an optional signature from the
 // service provider.
 message UpdateValue {
-  // optional bytes signature = 1; TODO
-  bytes value = 2;
+  bytes value = 1;
 }
 
 // Consistency specifies the parameters of the consistency proof(s) that should

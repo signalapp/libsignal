@@ -19,7 +19,7 @@ use tokio::time::{Duration, Instant};
 
 use crate::dns::dns_utils::log_safe_domain;
 use crate::dns::DnsError;
-use crate::route::{ResolveHostnames, ResolvedRoute, Resolver};
+use crate::route::{ResolveHostnames, ResolvedRoute, Resolver, TransportRoute, UsesTransport};
 use crate::utils::binary_heap::{MinKeyValueQueue, Queue};
 use crate::utils::future::SomeOrPending;
 
@@ -27,6 +27,7 @@ use crate::utils::future::SomeOrPending;
 ///
 /// [`RouteResolver::resolve`] is the main entry point; this type exists mostly
 /// to provide some named state that is used as input to that function.
+#[derive(Clone)]
 pub struct RouteResolver {
     pub allow_ipv6: bool,
 }
@@ -71,9 +72,10 @@ pub struct Schedule<S, R, SP> {
 /// Record of recent connection outcomes.
 ///
 /// Implements [`RouteDelayPolicy`].
+#[derive(Clone)]
 pub struct ConnectionOutcomes<R> {
     params: ConnectionOutcomeParams,
-    recent_failures: Arc<HashMap<R, (Instant, u8)>>,
+    recent_failures: HashMap<R, (Instant, u8)>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -106,8 +108,7 @@ impl RouteResolver {
         resolver: &'r impl Resolver,
     ) -> impl FusedStream<Item = (ResolvedRoutes<R::Resolved>, ResolveMeta)> + 'r
     where
-        R: ResolveHostnames + Clone + 'static,
-        R::Resolved: ResolvedRoute,
+        R: ResolveHostnames<Resolved: ResolvedRoute> + Clone + 'static,
     {
         let Self { allow_ipv6 } = self;
 
@@ -278,9 +279,6 @@ impl<R: Hash + Eq + Clone> ConnectionOutcomes<R> {
             params,
             recent_failures,
         } = self;
-        // Get mutable access to our failures data, cloning it into a new owned
-        // copy if it's currently borrowed.
-        let recent_failures = Arc::make_mut(recent_failures);
 
         // Age out any old entries.
         recent_failures.retain(|_route, (last_time, _failure_count)| {
@@ -306,6 +304,14 @@ impl<R: Hash + Eq + Clone> ConnectionOutcomes<R> {
                 },
             }
         }
+    }
+
+    /// Clear any outcomes from before the cutoff.
+    ///
+    /// Assumes those that completed after the cutoff are still relevant.
+    pub fn reset(&mut self, cutoff: Instant) {
+        self.recent_failures
+            .retain(|_route, (last_time, _failure_count)| cutoff < *last_time);
     }
 }
 
@@ -397,10 +403,7 @@ impl ConnectionOutcomeParams {
         // Exponential decrease: as the age of the last failure increases, it
         // becomes less relevant and the delay is shorter.
         let age_factor = {
-            // TODO use Duration::div_duration_f32 once MSRV >= 1.80
-            let normalized_age =
-                (since_last_failure.as_nanos() as f32 / age_cutoff.as_nanos() as f32).min(1.0);
-
+            let normalized_age = since_last_failure.div_duration_f32(age_cutoff).min(1.0);
             let numerator = cooldown_growth_factor - cooldown_growth_factor.powf(normalized_age);
             let denominator = cooldown_growth_factor - 1.0;
             numerator / denominator
@@ -414,6 +417,18 @@ impl ConnectionOutcomeParams {
         // the input is negative, and in case of rounding errors that would make
         // it > 1.
         max_delay.mul_f32(factor.clamp(0.0, 1.0))
+    }
+}
+
+/// A [`RouteDelayPolicy`] that acts on a route's [`TransportPart`], ignoring the rest of it.
+pub struct DelayBasedOnTransport<T>(pub T);
+
+impl<T, R: UsesTransport> RouteDelayPolicy<R> for DelayBasedOnTransport<T>
+where
+    T: RouteDelayPolicy<TransportRoute>,
+{
+    fn compute_delay(&self, route: &R, now: Instant) -> Duration {
+        self.0.compute_delay(route.transport_part(), now)
     }
 }
 
@@ -455,6 +470,17 @@ const HAPPY_EYEBALLS_DELAY: Duration = Duration::from_millis(300);
 #[derive(Clone, Debug, derive_more::IntoIterator)]
 pub struct ResolvedRoutes<R> {
     routes: Vec<R>,
+}
+
+/// Produces a single `(ResolvedRoutes<R>, ResolveMeta)` pair.
+///
+/// Assumes that the provided routes came from the same pre-resolution source.
+pub(crate) fn as_resolved_group<R>(routes: Vec<R>) -> (ResolvedRoutes<R>, ResolveMeta) {
+    let routes = ResolvedRoutes { routes };
+    let meta = ResolveMeta {
+        original_group_index: 0,
+    };
+    (routes, meta)
 }
 
 type EagerResolutionResult<R> = Result<ResolvedRoutes<R>, (Arc<str>, DnsError)>;
@@ -643,8 +669,8 @@ mod test {
 
     use super::*;
     use crate::dns::lookup_result::LookupResult;
-    use crate::route::testutils::{FakeRoute, NoDelay};
-    use crate::route::UnresolvedHost;
+    use crate::route::testutils::FakeRoute;
+    use crate::route::{NoDelay, UnresolvedHost};
     use crate::DnsSource;
 
     impl<S, R, SP> Schedule<S, R, SP>
@@ -666,8 +692,8 @@ mod test {
         let name_resolver = HashMap::from([(
             "domain-name",
             LookupResult {
-                ipv4: vec![ip_addr!(v4, "1.2.3.4")],
-                ipv6: vec![ip_addr!(v6, "::1234")],
+                ipv4: vec![ip_addr!(v4, "192.0.2.1")],
+                ipv6: vec![ip_addr!(v6, "3fff::1234")],
                 source: DnsSource::Static,
             },
         )]);
@@ -688,8 +714,8 @@ mod test {
         assert_eq!(
             schedule,
             vec![
-                (FakeRoute(ip_addr!("::1234")), Duration::ZERO),
-                (FakeRoute(ip_addr!("1.2.3.4")), HAPPY_EYEBALLS_DELAY),
+                (FakeRoute(ip_addr!("3fff::1234")), Duration::ZERO),
+                (FakeRoute(ip_addr!("192.0.2.1")), HAPPY_EYEBALLS_DELAY),
             ]
         );
     }
@@ -702,16 +728,16 @@ mod test {
             (
                 "name-1",
                 LookupResult {
-                    ipv4: vec![ip_addr!(v4, "1.2.3.4")],
-                    ipv6: vec![ip_addr!(v6, "::1234")],
+                    ipv4: vec![ip_addr!(v4, "192.0.2.11")],
+                    ipv6: vec![ip_addr!(v6, "3fff::1234")],
                     source: DnsSource::Static,
                 },
             ),
             (
                 "name-2",
                 LookupResult {
-                    ipv4: vec![ip_addr!(v4, "5.6.7.8")],
-                    ipv6: vec![ip_addr!(v6, "::5678")],
+                    ipv4: vec![ip_addr!(v4, "192.0.2.22")],
+                    ipv6: vec![ip_addr!(v6, "3fff::5678")],
                     source: DnsSource::Static,
                 },
             ),
@@ -742,10 +768,10 @@ mod test {
         assert_eq!(
             HashSet::from_iter(schedule),
             HashSet::from([
-                (FakeRoute(ip_addr!("::1234")), Duration::ZERO),
-                (FakeRoute(ip_addr!("1.2.3.4")), HAPPY_EYEBALLS_DELAY),
-                (FakeRoute(ip_addr!("::5678")), Duration::ZERO),
-                (FakeRoute(ip_addr!("5.6.7.8")), HAPPY_EYEBALLS_DELAY),
+                (FakeRoute(ip_addr!("3fff::1234")), Duration::ZERO),
+                (FakeRoute(ip_addr!("192.0.2.11")), HAPPY_EYEBALLS_DELAY),
+                (FakeRoute(ip_addr!("3fff::5678")), Duration::ZERO),
+                (FakeRoute(ip_addr!("192.0.2.22")), HAPPY_EYEBALLS_DELAY),
             ])
         );
     }
@@ -852,6 +878,54 @@ mod test {
             delays.iter().map(Duration::as_secs).collect_vec(),
             [6, 16, 32, 58, 99, 99]
         );
+    }
+
+    #[test]
+    fn connection_outcomes_reset_by_cutoff() {
+        const MAX_DELAY: Duration = Duration::from_secs(100);
+        const AGE_CUTOFF: Duration = Duration::from_secs(1000);
+        const MAX_COUNT: u8 = 5;
+
+        let mut outcomes = ConnectionOutcomes::new(ConnectionOutcomeParams {
+            age_cutoff: AGE_CUTOFF,
+            cooldown_growth_factor: 2.0,
+            count_growth_factor: 10.0,
+            max_count: MAX_COUNT,
+            max_delay: MAX_DELAY,
+        });
+
+        const ROUTE: &str = "route";
+        let start = Instant::now();
+
+        // Without any information, the delay should be zero.
+        assert_eq!(outcomes.compute_delay(&ROUTE, start), Duration::ZERO);
+
+        const CONNECT_DELAY: Duration = Duration::from_secs(10);
+        // Record some failures.
+        outcomes.record_outcome(ROUTE, start, CONNECT_DELAY, Err(UnsuccessfulOutcome));
+        outcomes.record_outcome(
+            ROUTE,
+            start + CONNECT_DELAY,
+            CONNECT_DELAY,
+            Err(UnsuccessfulOutcome),
+        );
+        outcomes.record_outcome(
+            ROUTE,
+            start + 2 * CONNECT_DELAY,
+            CONNECT_DELAY,
+            Err(UnsuccessfulOutcome),
+        );
+
+        let full_delay = outcomes.compute_delay(&ROUTE, start + 3 * CONNECT_DELAY);
+        assert_ne!(full_delay, Duration::ZERO, "shouldn't decay that quickly");
+
+        outcomes.reset(start + CONNECT_DELAY);
+        let same_delay = outcomes.compute_delay(&ROUTE, start + 3 * CONNECT_DELAY);
+        assert_eq!(same_delay, full_delay, "should keep more recent outcome");
+
+        outcomes.reset(start + 3 * CONNECT_DELAY);
+        let reset_delay = outcomes.compute_delay(&ROUTE, start + 3 * CONNECT_DELAY);
+        assert_eq!(reset_delay, Duration::ZERO, "all outcomes reset");
     }
 
     #[test]
@@ -981,7 +1055,7 @@ mod test {
         resolver_stream_tx
             .send((
                 ResolvedRoutes {
-                    routes: vec![FakeRoute(ip_addr!("1.1.1.1"))],
+                    routes: vec![FakeRoute(ip_addr!("192.0.2.1"))],
                 },
                 ResolveMeta {
                     original_group_index: 0,
@@ -1001,8 +1075,8 @@ mod test {
 
         let delay_policy = NoDelay;
         let resolver_stream = futures_util::stream::iter((0..ROUTE_GROUP_COUNT).map(|i| {
-            let routes = (100..(100 + ADDRS_PER_ROUTE))
-                .map(|x| FakeRoute(IpAddr::V4(Ipv4Addr::new(i, 0, 0, x))))
+            let routes = (10..(10 + ADDRS_PER_ROUTE))
+                .map(|x| FakeRoute(IpAddr::V4(Ipv4Addr::new(192, 0, 2, 10 * i + x))))
                 .collect();
             (
                 ResolvedRoutes { routes },
@@ -1025,9 +1099,9 @@ mod test {
         assert_eq!(
             immediate_route_schedule,
             [
-                FakeRoute(ip_addr!("0.0.0.100")),
-                FakeRoute(ip_addr!("1.0.0.100")),
-                FakeRoute(ip_addr!("2.0.0.100")),
+                FakeRoute(ip_addr!("192.0.2.10")),
+                FakeRoute(ip_addr!("192.0.2.20")),
+                FakeRoute(ip_addr!("192.0.2.30")),
             ]
         );
 
@@ -1039,9 +1113,9 @@ mod test {
         assert_eq!(
             remaining_route_schedule,
             vec![
-                FakeRoute(ip_addr!("0.0.0.101")),
-                FakeRoute(ip_addr!("1.0.0.101")),
-                FakeRoute(ip_addr!("2.0.0.101")),
+                FakeRoute(ip_addr!("192.0.2.11")),
+                FakeRoute(ip_addr!("192.0.2.21")),
+                FakeRoute(ip_addr!("192.0.2.31")),
             ]
         );
     }

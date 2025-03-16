@@ -13,15 +13,15 @@ use clap_stdin::FileOrStdin;
 /// Compresses and encrypts an unencrypted backup file.
 struct CliArgs {
     /// the file to read from, or '-' to read from stdin
-    filename: FileOrStdin,
+    input: FileOrStdin,
 }
 
 fn main() {
-    let CliArgs { filename } = CliArgs::parse();
+    let CliArgs { input } = CliArgs::parse();
 
-    eprintln!("reading from {:?}", filename.source);
+    eprintln!("reading from {:?}", input.filename());
 
-    let json_input = String::from_utf8(read_file(filename))
+    let json_input = String::from_utf8(read_file(input))
         .expect("not a string")
         // Work around https://github.com/callum-oakley/json5-rs/issues/21
         .replace("\u{2028}", "\\u2028")
@@ -37,10 +37,10 @@ fn main() {
         .expect("failed to write");
 }
 
-fn read_file(filename: FileOrStdin) -> Vec<u8> {
-    let source = filename.source.clone();
+fn read_file(input: FileOrStdin) -> Vec<u8> {
+    let source = input.filename().to_owned();
     let mut contents = Vec::new();
-    filename
+    input
         .into_reader()
         .unwrap_or_else(|e| panic!("failed to read {source:?}: {e}"))
         .read_to_end(&mut contents)

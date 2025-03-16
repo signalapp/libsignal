@@ -63,7 +63,7 @@ async fn main() {
         },
     };
 
-    let doh_transport = DohTransport::connect(route.clone(), !args.no_ipv6)
+    let doh_transport = DohTransport::connect(vec![route.clone()], !args.no_ipv6)
         .await
         .expect("connected to the DNS server");
     log::info!("successfully connected to the DNS server at {:?}", route);

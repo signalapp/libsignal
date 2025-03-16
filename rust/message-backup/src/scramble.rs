@@ -223,6 +223,7 @@ impl Visit<Scrambler> for proto::AccountData {
             donationSubscriberData,
             accountSettings,
             backupsSubscriberData,
+            svrPin,
             special_fields: _,
         } = self;
 
@@ -239,6 +240,7 @@ impl Visit<Scrambler> for proto::AccountData {
         donationSubscriberData.accept(visitor);
         accountSettings.accept(visitor);
         backupsSubscriberData.accept(visitor);
+        svrPin.randomize(&mut visitor.rng);
     }
 }
 
@@ -485,7 +487,11 @@ impl Visit<Scrambler> for proto::Contact {
             identityState: _,
             registration,
             nickname,
+            systemGivenName,
+            systemFamilyName,
+            systemNickname,
             note,
+            avatarColor: _,
             special_fields: _,
         } = self;
 
@@ -524,6 +530,9 @@ impl Visit<Scrambler> for proto::Contact {
         }
 
         nickname.accept(visitor);
+        systemGivenName.randomize(&mut visitor.rng);
+        systemFamilyName.randomize(&mut visitor.rng);
+        systemNickname.randomize(&mut visitor.rng);
         note.randomize(&mut visitor.rng);
     }
 }
@@ -564,6 +573,7 @@ impl Visit<Scrambler> for proto::Group {
             storySendMode: _,
             snapshot,
             blocked: _,
+            avatarColor: _,
             special_fields: _,
         } = self;
         masterKey.randomize(&mut visitor.rng);
@@ -718,7 +728,10 @@ impl Visit<Scrambler> for proto::DistributionListItem {
 
 impl Visit<Scrambler> for proto::Self_ {
     fn accept(&mut self, _visitor: &mut Scrambler) {
-        let Self { special_fields: _ } = self;
+        let Self {
+            avatarColor: _,
+            special_fields: _,
+        } = self;
     }
 }
 

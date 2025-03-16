@@ -8,7 +8,7 @@ use std::io::Error as IoError;
 use std::pin::Pin;
 use std::sync::Arc;
 
-use futures_util::{Sink, SinkExt as _, Stream, StreamExt as _};
+use futures_util::{SinkExt as _, Stream, StreamExt as _};
 use pin_project::pin_project;
 use tokio::select;
 use tokio::time::{Duration, Instant};
@@ -17,7 +17,7 @@ use tungstenite::protocol::CloseFrame;
 use tungstenite::Message;
 
 use crate::errors::LogSafeDisplay;
-use crate::ws::{TextOrBinary, WebSocketServiceError};
+use crate::ws::{TextOrBinary, WebSocketServiceError, WebSocketStreamLike};
 
 pub mod attested;
 
@@ -242,8 +242,7 @@ where
         self: Pin<&mut Self>,
     ) -> Outcome<MessageEvent<SendMeta>, Result<FinishReason, NextEventError>>
     where
-        S: Stream<Item = Result<Message, tungstenite::Error>>
-            + Sink<Message, Error = tungstenite::Error>,
+        S: WebSocketStreamLike,
     {
         let ConnectionProj {
             mut stream,
@@ -929,7 +928,7 @@ mod test {
     }
 
     #[tokio::test(start_paused = true)]
-    async fn sends_ping_after_remote_inactivity() {
+    async fn sends_ping_after_remote_inactivity_then_time_out() {
         // A single ping will be sent locally before the server times out.
         const REMOTE_IDLE_PING_TIMEOUT: Duration = Duration::from_secs(12);
         const REMOTE_DISCONNECT_TIMEOUT: Duration = Duration::from_secs(20);

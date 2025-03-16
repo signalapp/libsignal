@@ -77,7 +77,7 @@ async fn main() {
         proxy_url.host_str().expect("proxy host was not provided"),
     );
     let proxy_port = proxy_url
-        .port()
+        .port_or_known_default()
         .expect("proxy port was not provided")
         .try_into()
         .expect("proxy port was zero");

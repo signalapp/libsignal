@@ -5,7 +5,7 @@
 
 use std::sync::Arc;
 
-use libsignal_net::chat::ChatServiceError;
+use libsignal_net::chat::server_requests::DisconnectCause;
 use libsignal_protocol::Timestamp;
 use neon::context::FunctionContext;
 use neon::event::Channel;
@@ -64,10 +64,29 @@ impl ChatListener for NodeChatListener {
         });
     }
 
-    fn connection_interrupted(&mut self, disconnect_cause: ChatServiceError) {
+    fn received_alerts(&mut self, alerts: Vec<String>) {
+        let roots_shared = self.roots.clone();
+        self.js_channel.send(move |mut cx| {
+            let callback_object_shared = &roots_shared.callback_object;
+            let callback = callback_object_shared.to_inner(&mut cx);
+            let js_alerts = cx.empty_array();
+            // We use zip instead of enumerate here so that i is a u32 rather than usize.
+            for (alert, i) in alerts.into_iter().zip(0..) {
+                let js_alert = cx
+                    .try_string(alert)
+                    .unwrap_or_else(|_| cx.string("[invalid alert]"));
+                js_alerts.set(&mut cx, i, js_alert)?;
+            }
+            let _result = call_method(&mut cx, callback, "_received_alerts", [js_alerts.upcast()])?;
+            roots_shared.finalize(&mut cx);
+            Ok(())
+        });
+    }
+
+    fn connection_interrupted(&mut self, disconnect_cause: DisconnectCause) {
         let disconnect_cause = match disconnect_cause {
-            ChatServiceError::ServiceIntentionallyDisconnected => None,
-            c => Some(c),
+            DisconnectCause::LocalDisconnect => None,
+            DisconnectCause::Error(cause) => Some(cause),
         };
         let roots_shared = self.roots.clone();
         self.js_channel.send(move |mut cx| {

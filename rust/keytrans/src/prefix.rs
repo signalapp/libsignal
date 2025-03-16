@@ -48,7 +48,7 @@ fn evaluate_proof(
         let sibling: &[u8; 32] = proof[i].as_slice().try_into().map_err(|_| MalformedProof)?;
 
         let n = proof.len() - i - 1;
-        let b = key[n / 8] >> (7 - (n % 8)) & 1; // Read n^th bit of key
+        let b = key[n / 8] & (1 << (7 - n % 8)); // Read n^th bit of key
 
         value = if b == 0 {
             parent_hash(&value, sibling)

@@ -204,7 +204,7 @@ typedef enum {
   SignalErrorCodeCdsiInvalidToken = 147,
   SignalErrorCodeConnectionFailed = 148,
   SignalErrorCodeChatServiceInactive = 149,
-  SignalErrorCodeChatServiceIntentionallyDisconnected = 150,
+  SignalErrorCodeRequestTimedOut = 150,
   SignalErrorCodeSvrDataMissing = 160,
   SignalErrorCodeSvrRestoreFailed = 161,
   SignalErrorCodeSvrRotationMachineTooManySteps = 162,
@@ -227,10 +227,6 @@ typedef struct SignalAes256GcmSiv SignalAes256GcmSiv;
 typedef struct SignalAuthenticatedChatConnection SignalAuthenticatedChatConnection;
 
 typedef struct SignalCdsiLookup SignalCdsiLookup;
-
-typedef struct SignalChatAuthChatService SignalChatAuthChatService;
-
-typedef struct SignalChatUnauthChatService SignalChatUnauthChatService;
 
 typedef struct SignalCiphertextMessage SignalCiphertextMessage;
 
@@ -864,18 +860,6 @@ typedef struct {
   SignalCancellationId cancellation_id;
 } SignalCPromiseFfiCdsiLookupResponse;
 
-typedef SignalChatAuthChatService SignalAuthChat;
-
-typedef struct {
-  SignalAuthChat *raw;
-} SignalMutPointerAuthChat;
-
-typedef SignalChatUnauthChatService SignalUnauthChat;
-
-typedef struct {
-  SignalUnauthChat *raw;
-} SignalMutPointerUnauthChat;
-
 typedef struct {
   SignalHttpRequest *raw;
 } SignalMutPointerHttpRequest;
@@ -921,6 +905,8 @@ typedef void (*SignalReceivedIncomingMessage)(void *ctx, SignalOwnedBuffer envel
 
 typedef void (*SignalReceivedQueueEmpty)(void *ctx);
 
+typedef void (*SignalReceivedAlerts)(void *ctx, SignalStringArray alerts);
+
 typedef void (*SignalConnectionInterrupted)(void *ctx, SignalFfiError *error);
 
 typedef void (*SignalDestroyChatListener)(void *ctx);
@@ -944,6 +930,7 @@ typedef struct {
   void *ctx;
   SignalReceivedIncomingMessage received_incoming_message;
   SignalReceivedQueueEmpty received_queue_empty;
+  SignalReceivedAlerts received_alerts;
   SignalConnectionInterrupted connection_interrupted;
   SignalDestroyChatListener destroy;
 } SignalFfiChatListenerStruct;
@@ -1011,55 +998,6 @@ typedef struct {
 typedef struct {
   const SignalAuthenticatedChatConnection *raw;
 } SignalConstPointerAuthenticatedChatConnection;
-
-typedef struct {
-  const SignalUnauthChat *raw;
-} SignalConstPointerUnauthChat;
-
-typedef struct {
-  const SignalAuthChat *raw;
-} SignalConstPointerAuthChat;
-
-typedef struct {
-  uint8_t raw_ip_type;
-  double duration_secs;
-  const char *connection_info;
-} SignalFfiChatServiceDebugInfo;
-
-/**
- * A C callback used to report the results of Rust futures.
- *
- * cbindgen will produce independent C types like `SignalCPromisei32` and
- * `SignalCPromiseProtocolAddress`.
- *
- * This derives Copy because it behaves like a C type; nevertheless, a promise should still only be
- * completed once.
- */
-typedef struct {
-  void (*complete)(SignalFfiError *error, const SignalFfiChatServiceDebugInfo *result, const void *context);
-  const void *context;
-  SignalCancellationId cancellation_id;
-} SignalCPromiseFfiChatServiceDebugInfo;
-
-typedef struct {
-  SignalFfiChatResponse response;
-  SignalFfiChatServiceDebugInfo debug_info;
-} SignalFfiResponseAndDebugInfo;
-
-/**
- * A C callback used to report the results of Rust futures.
- *
- * cbindgen will produce independent C types like `SignalCPromisei32` and
- * `SignalCPromiseProtocolAddress`.
- *
- * This derives Copy because it behaves like a C type; nevertheless, a promise should still only be
- * completed once.
- */
-typedef struct {
-  void (*complete)(SignalFfiError *error, const SignalFfiResponseAndDebugInfo *result, const void *context);
-  const void *context;
-  SignalCancellationId cancellation_id;
-} SignalCPromiseFfiResponseAndDebugInfo;
 
 typedef struct {
   SignalServerMessageAck *raw;
@@ -1731,6 +1669,8 @@ SignalFfiError *signal_server_secret_params_get_public_params(SignalMutPointerSe
 
 SignalFfiError *signal_server_secret_params_sign_deterministic(uint8_t (*out)[SignalSIGNATURE_LEN], SignalConstPointerServerSecretParams params, const uint8_t (*randomness)[SignalRANDOMNESS_LEN], SignalBorrowedBuffer message);
 
+SignalFfiError *signal_server_public_params_get_endorsement_public_key(SignalOwnedBuffer *out, SignalConstPointerServerPublicParams params);
+
 SignalFfiError *signal_server_public_params_receive_auth_credential_with_pni_as_service_id(SignalOwnedBuffer *out, SignalConstPointerServerPublicParams params, const SignalServiceIdFixedWidthBinaryBytes *aci, const SignalServiceIdFixedWidthBinaryBytes *pni, uint64_t redemption_time, SignalBorrowedBuffer auth_credential_with_pni_response_bytes);
 
 SignalFfiError *signal_server_public_params_create_auth_credential_with_pni_presentation_deterministic(SignalOwnedBuffer *out, SignalConstPointerServerPublicParams server_public_params, const uint8_t (*randomness)[SignalRANDOMNESS_LEN], const unsigned char (*group_secret_params)[SignalGROUP_SECRET_PARAMS_LEN], SignalBorrowedBuffer auth_credential_with_pni_bytes);
@@ -1955,13 +1895,11 @@ SignalFfiError *signal_cdsi_lookup_destroy(SignalMutPointerCdsiLookup p);
 
 SignalFfiError *signal_cdsi_lookup_new(SignalCPromiseMutPointerCdsiLookup *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalConstPointerConnectionManager connection_manager, const char *username, const char *password, SignalConstPointerLookupRequest request);
 
+SignalFfiError *signal_cdsi_lookup_new_routes(SignalCPromiseMutPointerCdsiLookup *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalConstPointerConnectionManager connection_manager, const char *username, const char *password, SignalConstPointerLookupRequest request);
+
 SignalFfiError *signal_cdsi_lookup_token(SignalOwnedBuffer *out, SignalConstPointerCdsiLookup lookup);
 
 SignalFfiError *signal_cdsi_lookup_complete(SignalCPromiseFfiCdsiLookupResponse *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalConstPointerCdsiLookup lookup);
-
-SignalFfiError *signal_auth_chat_destroy(SignalMutPointerAuthChat p);
-
-SignalFfiError *signal_unauth_chat_destroy(SignalMutPointerUnauthChat p);
 
 SignalFfiError *signal_http_request_destroy(SignalMutPointerHttpRequest p);
 
@@ -1981,10 +1919,6 @@ SignalFfiError *signal_chat_connection_info_ip_version(uint8_t *out, SignalConst
 
 SignalFfiError *signal_chat_connection_info_description(const char **out, SignalConstPointerChatConnectionInfo connection_info);
 
-SignalFfiError *signal_chat_service_new_unauth(SignalMutPointerUnauthChat *out, SignalConstPointerConnectionManager connection_manager);
-
-SignalFfiError *signal_chat_service_new_auth(SignalMutPointerAuthChat *out, SignalConstPointerConnectionManager connection_manager, const char *username, const char *password, bool receive_stories);
-
 SignalFfiError *signal_unauthenticated_chat_connection_connect(SignalCPromiseMutPointerUnauthenticatedChatConnection *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalConstPointerConnectionManager connection_manager);
 
 SignalFfiError *signal_unauthenticated_chat_connection_init_listener(SignalConstPointerUnauthenticatedChatConnection chat, SignalConstPointerFfiChatListenerStruct listener);
@@ -1994,6 +1928,8 @@ SignalFfiError *signal_unauthenticated_chat_connection_send(SignalCPromiseFfiCha
 SignalFfiError *signal_unauthenticated_chat_connection_disconnect(SignalCPromisebool *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalConstPointerUnauthenticatedChatConnection chat);
 
 SignalFfiError *signal_unauthenticated_chat_connection_info(SignalMutPointerChatConnectionInfo *out, SignalConstPointerUnauthenticatedChatConnection chat);
+
+SignalFfiError *signal_authenticated_chat_connection_preconnect(SignalCPromisebool *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalConstPointerConnectionManager connection_manager);
 
 SignalFfiError *signal_authenticated_chat_connection_connect(SignalCPromiseMutPointerAuthenticatedChatConnection *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalConstPointerConnectionManager connection_manager, const char *username, const char *password, bool receive_stories);
 
@@ -2005,29 +1941,9 @@ SignalFfiError *signal_authenticated_chat_connection_disconnect(SignalCPromisebo
 
 SignalFfiError *signal_authenticated_chat_connection_info(SignalMutPointerChatConnectionInfo *out, SignalConstPointerAuthenticatedChatConnection chat);
 
-SignalFfiError *signal_chat_service_disconnect_unauth(SignalCPromisebool *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalConstPointerUnauthChat chat);
-
-SignalFfiError *signal_chat_service_disconnect_auth(SignalCPromisebool *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalConstPointerAuthChat chat);
-
-SignalFfiError *signal_chat_service_connect_unauth(SignalCPromiseFfiChatServiceDebugInfo *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalConstPointerUnauthChat chat);
-
-SignalFfiError *signal_chat_service_connect_auth(SignalCPromiseFfiChatServiceDebugInfo *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalConstPointerAuthChat chat);
-
-SignalFfiError *signal_chat_service_unauth_send(SignalCPromiseFfiChatResponse *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalConstPointerUnauthChat chat, SignalConstPointerHttpRequest http_request, uint32_t timeout_millis);
-
-SignalFfiError *signal_chat_service_unauth_send_and_debug(SignalCPromiseFfiResponseAndDebugInfo *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalConstPointerUnauthChat chat, SignalConstPointerHttpRequest http_request, uint32_t timeout_millis);
-
-SignalFfiError *signal_chat_service_auth_send(SignalCPromiseFfiChatResponse *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalConstPointerAuthChat chat, SignalConstPointerHttpRequest http_request, uint32_t timeout_millis);
-
-SignalFfiError *signal_chat_service_auth_send_and_debug(SignalCPromiseFfiResponseAndDebugInfo *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalConstPointerAuthChat chat, SignalConstPointerHttpRequest http_request, uint32_t timeout_millis);
-
-SignalFfiError *signal_chat_service_set_listener_auth(SignalConstPointerTokioAsyncContext runtime, SignalConstPointerAuthChat chat, SignalConstPointerFfiChatListenerStruct listener);
-
-SignalFfiError *signal_chat_service_set_listener_unauth(SignalConstPointerTokioAsyncContext runtime, SignalConstPointerUnauthChat chat, SignalConstPointerFfiChatListenerStruct listener);
-
 SignalFfiError *signal_server_message_ack_destroy(SignalMutPointerServerMessageAck p);
 
-SignalFfiError *signal_server_message_ack_send(SignalCPromisebool *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalConstPointerServerMessageAck ack);
+SignalFfiError *signal_server_message_ack_send(SignalConstPointerServerMessageAck ack);
 
 SignalFfiError *signal_tokio_async_context_destroy(SignalMutPointerTokioAsyncContext p);
 

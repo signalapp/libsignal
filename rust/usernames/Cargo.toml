@@ -5,11 +5,12 @@
 
 [package]
 name = "usernames"
-authors = ["Signal Messenger LLC"]
+authors.workspace = true
+license.workspace = true
+rust-version = "1.80"
 version = "0.1.0"
 edition = "2021"
 description = "A zero-knowledge usernames library"
-license = "AGPL-3.0-only"
 
 [lints]
 workspace = true
@@ -22,7 +23,6 @@ curve25519-dalek = { workspace = true, features = ["digest"] }
 displaydoc = { workspace = true }
 hkdf = { workspace = true }
 hmac = { workspace = true }
-lazy_static = { workspace = true }
 log = { workspace = true }
 prost = { workspace = true }
 rand = { workspace = true }

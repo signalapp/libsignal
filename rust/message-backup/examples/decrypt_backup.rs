@@ -19,20 +19,20 @@ use support::KeyArgs;
 /// If no key is provided, the default testing key is assumed.
 struct CliArgs {
     /// the file to read from, or '-' to read from stdin
-    filename: FileOrStdin,
+    input: FileOrStdin,
 
     #[command(flatten)]
     key_args: KeyArgs,
 }
 
 fn main() {
-    let CliArgs { filename, key_args } = CliArgs::parse();
+    let CliArgs { input, key_args } = CliArgs::parse();
 
     let key = key_args.into_key_or_default();
 
-    eprintln!("reading from {:?}", filename.source);
+    eprintln!("reading from {:?}", input.filename());
 
-    let contents = read_file(filename);
+    let contents = read_file(input);
     eprintln!("read {} bytes", contents.len());
 
     let frames = futures::executor::block_on(async {
@@ -46,10 +46,10 @@ fn main() {
     println!("{:#}", serde_json::Value::Array(frames));
 }
 
-fn read_file(filename: FileOrStdin) -> Vec<u8> {
-    let source = filename.source.clone();
+fn read_file(input: FileOrStdin) -> Vec<u8> {
+    let source = input.filename().to_owned();
     let mut contents = Vec::new();
-    filename
+    input
         .into_reader()
         .unwrap_or_else(|e| panic!("failed to read {source:?}: {e}"))
         .read_to_end(&mut contents)

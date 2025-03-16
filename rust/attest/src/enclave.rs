@@ -10,8 +10,7 @@ use prost::Message;
 
 use crate::client_connection::ClientConnection;
 use crate::svr2::RaftConfig;
-use crate::tpm2snp::Tpm2Error;
-use crate::{client_connection, dcap, nitro, proto, snow_resolver};
+use crate::{client_connection, dcap, proto, snow_resolver};
 
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -50,34 +49,6 @@ impl From<prost::DecodeError> for Error {
         Error::AttestationDataError {
             reason: err.to_string(),
         }
-    }
-}
-
-impl From<nitro::NitroError> for AttestationError {
-    fn from(err: nitro::NitroError) -> Self {
-        AttestationError {
-            message: err.to_string(),
-        }
-    }
-}
-
-impl From<nitro::NitroError> for Error {
-    fn from(err: nitro::NitroError) -> Self {
-        Self::AttestationError(err.into())
-    }
-}
-
-impl From<Tpm2Error> for AttestationError {
-    fn from(err: Tpm2Error) -> Self {
-        AttestationError {
-            message: err.to_string(),
-        }
-    }
-}
-
-impl From<Tpm2Error> for Error {
-    fn from(err: Tpm2Error) -> Self {
-        Self::AttestationError(err.into())
     }
 }
 

@@ -55,6 +55,7 @@ async fn main() {
     };
     log::info!("sending DNS request: {:?}", request);
     let mut stream = udp_transport.send_queries(request).await.unwrap();
+    let mut stream = std::pin::pin!(stream);
 
     let next_response = stream.next().await;
     log::info!("received first response from DNS: [{:?}]", next_response);

@@ -3,18 +3,17 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 use std::ops::Range;
+use std::sync::LazyLock;
 
 use curve25519_dalek::ristretto::{CompressedRistretto, RistrettoPoint};
-use lazy_static::lazy_static;
 
-lazy_static! {
-    pub(crate) static ref BASE_POINTS: [RistrettoPoint; 3] =
-        COMPRESSED_BASE_POINTS_RAW.map(|bytes| {
-            let compressed = CompressedRistretto::from_slice(&bytes)
-                .expect("can create compressed ristretto from bytes");
-            compressed.decompress().expect("can decompress ristretto")
-        });
-}
+pub(crate) static BASE_POINTS: LazyLock<[RistrettoPoint; 3]> = LazyLock::new(|| {
+    COMPRESSED_BASE_POINTS_RAW.map(|bytes| {
+        let compressed = CompressedRistretto::from_slice(&bytes)
+            .expect("can create compressed ristretto from bytes");
+        compressed.decompress().expect("can decompress ristretto")
+    })
+});
 
 const COMPRESSED_BASE_POINTS_RAW: [[u8; 32]; 3] = [
     [

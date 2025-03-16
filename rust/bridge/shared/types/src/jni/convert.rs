@@ -17,7 +17,7 @@ use paste::paste;
 use super::*;
 use crate::io::{InputStream, SyncInputStream};
 use crate::message_backup::MessageBackupValidationOutcome;
-use crate::net::chat::{ChatListener, ResponseAndDebugInfo};
+use crate::net::chat::ChatListener;
 use crate::support::{Array, AsType, FixedLengthBincodeSerializable, Serialized};
 
 /// Converts arguments from their JNI form to their Rust form.
@@ -1064,8 +1064,7 @@ where
 
 impl<'a, T, P> SimpleArgTypeInfo<'a> for AsType<T, P>
 where
-    P: SimpleArgTypeInfo<'a> + TryInto<T>,
-    P::Error: Display,
+    P: SimpleArgTypeInfo<'a> + TryInto<T, Error: Display>,
 {
     type ArgType = P::ArgType;
 
@@ -1245,68 +1244,12 @@ impl<'a> ResultTypeInfo<'a> for libsignal_net::chat::Response {
 
         new_instance(
             env,
-            ClassName("org.signal.libsignal.net.ChatService$Response"),
+            ClassName("org.signal.libsignal.net.ChatConnection$Response"),
             jni_args!((
                 status.as_u16().into() => int,
                 message_local => java.lang.String,
                 headers_jmap => java.util.Map,
                 body_arr => [byte]
-            ) -> void),
-        )
-    }
-}
-
-impl<'a> ResultTypeInfo<'a> for libsignal_net::chat::DebugInfo {
-    type ResultType = JObject<'a>;
-
-    fn convert_into(self, env: &mut JNIEnv<'a>) -> Result<Self::ResultType, BridgeLayerError> {
-        let Self {
-            ip_type,
-            duration,
-            connection_info,
-        } = self;
-
-        // ip type as code
-        let ip_type_byte = ip_type.map_or(0, |i| i as i8);
-
-        // duration as millis
-        let duration_ms: i32 = duration.as_millis().try_into().expect("within i32 range");
-
-        // connection info string
-        let connection_info_string = env
-            .new_string(connection_info)
-            .check_exceptions(env, "DebugInfo::convert_into")?;
-
-        new_instance(
-            env,
-            ClassName("org.signal.libsignal.net.ChatService$DebugInfo"),
-            jni_args!((
-                ip_type_byte => byte,
-                duration_ms => int,
-                connection_info_string => java.lang.String,
-            ) -> void),
-        )
-    }
-}
-
-impl<'a> ResultTypeInfo<'a> for ResponseAndDebugInfo {
-    type ResultType = JObject<'a>;
-
-    fn convert_into(self, env: &mut JNIEnv<'a>) -> Result<Self::ResultType, BridgeLayerError> {
-        let Self {
-            response,
-            debug_info,
-        } = self;
-
-        let response: JObject<'a> = response.convert_into(env)?;
-        let debug_info: JObject<'a> = debug_info.convert_into(env)?;
-
-        new_instance(
-            env,
-            ClassName("org.signal.libsignal.net.ChatService$ResponseAndDebugInfo"),
-            jni_args!((
-                response => org.signal.libsignal.net.ChatService::Response,
-                debug_info => org.signal.libsignal.net.ChatService::DebugInfo
             ) -> void),
         )
     }
@@ -1319,15 +1262,16 @@ impl<'a> ResultTypeInfo<'a> for ResponseAndDebugInfo {
 /// operation).
 ///
 /// [FindClass]: https://docs.oracle.com/javase/8/docs/technotes/guides/jni/spec/functions.html#FindClass
-fn make_object_array<'a, It: IntoIterator>(
+fn make_object_array<'a, It>(
     env: &mut JNIEnv<'a>,
     element_type_signature: &str,
     it: It,
 ) -> Result<JObjectArray<'a>, BridgeLayerError>
 where
-    It::Item: ResultTypeInfo<'a>,
-    <It::Item as ResultTypeInfo<'a>>::ResultType: Into<JObject<'a>>,
-    It::IntoIter: ExactSizeIterator,
+    It: IntoIterator<
+        Item: ResultTypeInfo<'a, ResultType: Into<JObject<'a>>>,
+        IntoIter: ExactSizeIterator,
+    >,
 {
     let it = it.into_iter();
     let len = it.len();
@@ -1693,12 +1637,6 @@ macro_rules! jni_result_type {
         ::jni::objects::JObject<'local>
     };
     (ChatResponse) => {
-        ::jni::objects::JObject<'local>
-    };
-    (ChatServiceDebugInfo) => {
-        ::jni::objects::JObject<'local>
-    };
-    (ResponseAndDebugInfo) => {
         ::jni::objects::JObject<'local>
     };
     (CiphertextMessage) => {

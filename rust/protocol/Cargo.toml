@@ -6,9 +6,9 @@
 [package]
 name = "libsignal-protocol"
 version = "0.1.0"
-authors = ["Signal Messenger LLC"]
+authors.workspace = true
+license.workspace = true
 edition = "2021"
-license = "AGPL-3.0-only"
 
 [lints]
 workspace = true
@@ -19,7 +19,7 @@ signal-crypto = { workspace = true }
 
 aes = { workspace = true, features = ["zeroize"] }
 aes-gcm-siv = { workspace = true }
-arrayref = "0.3.6"
+arrayref = { workspace = true }
 assert_matches = { workspace = true }
 async-trait = { workspace = true }
 ctr = { workspace = true, features = ["zeroize"] }
@@ -33,8 +33,8 @@ indexmap = { workspace = true }
 itertools = { workspace = true }
 log = { workspace = true }
 num_enum = { workspace = true }
-pqcrypto-kyber = { version = "0.7.6", default-features = false, features = ["std"] }
-pqcrypto-traits = "0.3.4"
+pqcrypto-kyber = { workspace = true, features = ["std"] }
+pqcrypto-traits = { workspace = true }
 prost = { workspace = true }
 rand = { workspace = true }
 rayon = { workspace = true }
@@ -47,7 +47,7 @@ zerocopy = { workspace = true, features = ["derive"] }
 
 # WARNING: pqcrypto-kyber 0.8 and 0.7 don't actually coexist, they both depend on the same C symbols.
 # We keep this here for if/when that gets cleared up.
-pqcrypto-ml-kem = { version = "0.8.0", default-features = false, features = ["std"], package = "pqcrypto-kyber", optional = true }
+pqcrypto-ml-kem = { workspace = true, features = ["std"], optional = true }
 
 [features]
 kyber768 = []

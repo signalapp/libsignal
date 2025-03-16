@@ -11,11 +11,11 @@ use std::panic::AssertUnwindSafe;
 use std::pin::Pin;
 use std::sync::Arc;
 
-use futures_util::{pin_mut, Sink, Stream, StreamExt as _};
+use futures_util::{pin_mut, Stream, StreamExt as _};
 use http::uri::PathAndQuery;
 use http::{Method, StatusCode};
 use itertools::Itertools as _;
-use libsignal_net_infra::ws::WebSocketServiceError;
+use libsignal_net_infra::ws::{WebSocketServiceError, WebSocketStreamLike};
 pub use libsignal_net_infra::ws2::FinishReason;
 use libsignal_net_infra::ws2::Outcome;
 use pin_project::pin_project;
@@ -24,11 +24,9 @@ use tokio::sync::{mpsc, oneshot, Mutex as TokioMutex};
 use tokio::task::JoinHandle;
 use tokio::time::Duration;
 use tokio_stream::wrappers::{ReceiverStream, UnboundedReceiverStream};
-use tungstenite::Message;
 
-use crate::chat::{
-    ChatMessageType, ChatServiceError, MessageProto, Request, RequestProto, Response, ResponseProto,
-};
+use crate::chat::{ChatMessageType, MessageProto, Request, RequestProto, Response, ResponseProto};
+use crate::env::ALERT_HEADER_NAME;
 use crate::infra::ws::TextOrBinary;
 use crate::infra::ws2::{MessageEvent, NextEventError, TungsteniteSendError};
 
@@ -73,6 +71,12 @@ pub struct Config {
 
 #[derive(Debug)]
 pub enum ListenerEvent {
+    /// Zero or more alerts were received from the server.
+    ///
+    /// These are more lightweight than the full requests of [`Self::ReceivedMessage`].
+    /// They're also not stateful, so "zero alerts" means "clear any previous alerts".
+    ReceivedAlerts(Vec<String>),
+
     /// A request was received from the server.
     ///
     /// The accompanying [`Responder`] can be used to send a response for the
@@ -92,7 +96,10 @@ pub enum ListenerEvent {
 #[cfg_attr(test, derive(PartialEq))]
 pub enum SendError {
     /// the chat service is no longer connected
-    Disconnected { reason: &'static str },
+    Disconnected {
+        #[cfg(test)] // Useful for testing but otherwise unused
+        reason: &'static str,
+    },
     /// an OS-level I/O error occurred
     Io(IoErrorKind),
     /// the message is larger than the configured limit
@@ -147,21 +154,21 @@ impl Chat {
     pub fn new<T>(
         tokio_runtime: tokio::runtime::Handle,
         transport: T,
+        connect_response_headers: http::HeaderMap,
         config: Config,
         log_tag: Arc<str>,
-        listener: EventListener,
+        mut listener: EventListener,
     ) -> Self
     where
-        T: Stream<Item = Result<tungstenite::Message, tungstenite::Error>>
-            + Sink<tungstenite::Message, Error = tungstenite::Error>
-            + Send
-            + 'static,
+        T: WebSocketStreamLike + Send + 'static,
     {
         let Config {
             initial_request_id,
             local_idle_timeout,
             remote_idle_timeout,
         } = config;
+
+        Self::report_alerts(connect_response_headers, &mut listener);
 
         // Enable access to tokio types like Sleep, but only for the duration of this call.
         let _enable_tokio_types = tokio_runtime.enter();
@@ -179,6 +186,21 @@ impl Chat {
             listener,
             tokio_runtime,
         )
+    }
+
+    fn report_alerts(connect_response_headers: http::HeaderMap, listener: &mut EventListener) {
+        let alerts = connect_response_headers
+            .get_all(ALERT_HEADER_NAME)
+            .iter()
+            .flat_map(|value| {
+                value
+                    .to_str()
+                    .unwrap_or("[non-ASCII alert]")
+                    .split_terminator(',')
+                    .map(|individual_value| individual_value.trim_ascii().to_owned())
+            })
+            .collect_vec();
+        listener(ListenerEvent::ReceivedAlerts(alerts))
     }
 
     /// Sends a request to the server and waits for the response.
@@ -354,6 +376,7 @@ impl Responder {
         }
 
         Err(SendError::Disconnected {
+            #[cfg(test)]
             reason: "task exited without receiving response",
         })
     }
@@ -431,7 +454,7 @@ enum ChatProtocolError {
 }
 
 #[derive(Debug, displaydoc::Display)]
-enum ChatProtoDataError {
+pub(super) enum ChatProtoDataError {
     /// protobuf decode failed
     InvalidProtobuf(prost::DecodeError),
     /// unrecognized message type {0}
@@ -657,11 +680,13 @@ async fn send_request(
             } => request_tx.clone(),
             TaskState::SignaledToEnd(_) => {
                 return Err(SendError::Disconnected {
+                    #[cfg(test)]
                     reason: "task was already signalled to end",
                 })
             }
             TaskState::Finished(Ok(_reason)) => {
                 return Err(SendError::Disconnected {
+                    #[cfg(test)]
                     reason: "task already ended gracefully",
                 })
             }
@@ -684,6 +709,7 @@ async fn send_request(
             receiver
                 .await
                 .map_err(|_: oneshot::error::RecvError| SendError::Disconnected {
+                    #[cfg(test)]
                     reason: "response channel sender was dropped",
                 })?;
         response.map_err(SendError::from)
@@ -704,6 +730,7 @@ async fn send_request(
             // The task exited successfully but our send still didn't go
             // through, so return an error.
             SendError::Disconnected {
+                #[cfg(test)]
                 reason: "task ended gracefully before sending request",
             }
         });
@@ -808,10 +835,7 @@ trait IntoInnerConnection {
 
 impl<S> IntoInnerConnection for (S, crate::infra::ws2::Config)
 where
-    S: Stream<Item = Result<Message, tungstenite::Error>>
-        + Sink<Message, Error = tungstenite::Error>
-        + Send
-        + 'static,
+    S: WebSocketStreamLike + Send + 'static,
 {
     fn into_inner_connection<R>(
         self,
@@ -840,9 +864,7 @@ trait InnerConnection {
 
 impl<S, R> InnerConnection for crate::infra::ws2::Connection<S, R>
 where
-    S: Stream<Item = Result<Message, tungstenite::Error>>
-        + Sink<Message, Error = tungstenite::Error>
-        + Send,
+    S: WebSocketStreamLike + Send,
     R: Stream<Item = (TextOrBinary, OutgoingMeta)> + Send,
 {
     fn handle_next_event(
@@ -1009,7 +1031,7 @@ impl TryFrom<TextOrBinary> for ChatMessage {
     }
 }
 
-enum ChatMessageProto {
+pub(super) enum ChatMessageProto {
     Request(RequestProto),
     Response(ResponseProto),
 }
@@ -1030,7 +1052,7 @@ impl From<ChatMessageProto> for MessageProto {
     }
 }
 
-fn decode_and_validate(data: &[u8]) -> Result<ChatMessageProto, ChatProtoDataError> {
+pub(super) fn decode_and_validate(data: &[u8]) -> Result<ChatMessageProto, ChatProtoDataError> {
     let msg = MessageProto::decode(data).map_err(ChatProtoDataError::InvalidProtobuf)?;
     let MessageProto {
         r#type,
@@ -1056,24 +1078,16 @@ fn decode_and_validate(data: &[u8]) -> Result<ChatMessageProto, ChatProtoDataErr
 
 impl From<&TaskErrorState> for SendError {
     fn from(value: &TaskErrorState) -> Self {
-        match value {
-            TaskErrorState::SendFailed => SendError::Disconnected {
-                reason: "send failed",
-            },
-            TaskErrorState::Panic(_) => SendError::Disconnected {
-                reason: "chat task panicked",
-            },
-            TaskErrorState::AbnormalServerClose { .. } => SendError::Disconnected {
-                reason: "server closed abnormally",
-            },
-            TaskErrorState::ReceiveFailed => SendError::Disconnected {
-                reason: "receive failed",
-            },
-            TaskErrorState::ServerIdleTooLong(_) => SendError::Disconnected {
-                reason: "server idle too long",
-            },
-            TaskErrorState::UnexpectedConnectionClose => SendError::Disconnected {
-                reason: "server closed unexpectedly",
+        let _ = value;
+        SendError::Disconnected {
+            #[cfg(test)]
+            reason: match value {
+                TaskErrorState::SendFailed => "send failed",
+                TaskErrorState::Panic(_) => "chat task panicked",
+                TaskErrorState::AbnormalServerClose { .. } => "server closed abnormally",
+                TaskErrorState::ReceiveFailed => "receive failed",
+                TaskErrorState::ServerIdleTooLong(_) => "server idle too long",
+                TaskErrorState::UnexpectedConnectionClose => "server closed unexpectedly",
             },
         }
     }
@@ -1119,6 +1133,7 @@ impl From<&TungsteniteSendError> for SendError {
         match value {
             TungsteniteSendError::Io(io) => SendError::Io(io.kind()),
             TungsteniteSendError::ConnectionAlreadyClosed => SendError::Disconnected {
+                #[cfg(test)]
                 reason: "task failure due to send failure",
             },
             TungsteniteSendError::MessageTooLarge { size, max_size } => {
@@ -1132,9 +1147,9 @@ impl From<&TungsteniteSendError> for SendError {
     }
 }
 
-impl From<TaskExitError> for ChatServiceError {
+impl From<TaskExitError> for crate::chat::SendError {
     fn from(value: TaskExitError) -> Self {
-        ChatServiceError::WebSocket(match value {
+        crate::chat::SendError::WebSocket(match value {
             TaskExitError::WebsocketError(err) => match err {
                 NextEventError::PingFailed(tungstenite_error)
                 | NextEventError::CloseFailed(tungstenite_error) => tungstenite_error.into(),
@@ -1162,26 +1177,26 @@ impl From<TaskExitError> for ChatServiceError {
     }
 }
 
-impl From<SendError> for ChatServiceError {
+impl From<SendError> for super::SendError {
     fn from(value: SendError) -> Self {
         match value {
-            SendError::Disconnected { reason: _ } => ChatServiceError::ServiceInactive,
+            SendError::Disconnected { .. } => Self::Disconnected,
             SendError::Io(error_kind) => {
-                ChatServiceError::WebSocket(WebSocketServiceError::Io(error_kind.into()))
+                Self::WebSocket(WebSocketServiceError::Io(error_kind.into()))
             }
             SendError::MessageTooLarge { size, max_size } => {
-                ChatServiceError::WebSocket(WebSocketServiceError::Capacity(
+                Self::WebSocket(WebSocketServiceError::Capacity(
                     libsignal_net_infra::ws::error::SpaceError::Capacity(
                         tungstenite::error::CapacityError::MessageTooLong { size, max_size },
                     ),
                 ))
             }
             SendError::Protocol(protocol_error) => {
-                ChatServiceError::WebSocket(WebSocketServiceError::Protocol(protocol_error.into()))
+                Self::WebSocket(WebSocketServiceError::Protocol(protocol_error.into()))
             }
-            SendError::InvalidResponse => ChatServiceError::IncomingDataInvalid,
+            SendError::InvalidResponse => Self::IncomingDataInvalid,
             SendError::InvalidRequest(InvalidRequestError::InvalidHeader) => {
-                ChatServiceError::RequestHasInvalidHeader
+                Self::RequestHasInvalidHeader
             }
         }
     }
@@ -1196,6 +1211,7 @@ mod test {
     use http::HeaderMap;
     use test_case::test_case;
     use tokio::select;
+    use tokio::sync::mpsc::error::TryRecvError;
 
     use super::*;
 
@@ -1650,6 +1666,63 @@ mod test {
     }
 
     #[test_log::test(tokio::test(start_paused = true))]
+    async fn request_succeeds_even_if_followed_immediately_by_close() {
+        let (chat, (mut chat_events, inner_responses)) = fake::new_chat(Box::new(|_| ()));
+        assert!(chat.is_connected().await);
+
+        let request = Request {
+            method: Method::GET,
+            path: PathAndQuery::from_static("/request"),
+            headers: HeaderMap::default(),
+            body: None,
+        };
+        let send_request = chat.send(request);
+        pin_mut!(send_request);
+
+        let receive_outbound_request = async {
+            let fake::OutgoingMessage(_message, meta) =
+                chat_events.recv().await.expect("not ended");
+            let request_id = assert_matches!(&meta, OutgoingMeta::SentRequest(id, _) => *id);
+            inner_responses
+                .send(Outcome::Continue(MessageEvent::SentMessage(meta)).into())
+                .expect("not closed");
+            request_id
+        };
+
+        // Start polling the client sending future and the server receive end.
+        // The client sends won't finish until the response to the request is
+        // received, so do't use `join!`. The server receive will complete,
+        // though.
+        let sent_request_id = select! {
+            biased;
+            response = &mut send_request => unreachable!("send finished before responses were sent: {response:?}"),
+            req = receive_outbound_request => req,
+        };
+
+        let response = ResponseProto {
+            id: Some(sent_request_id.0),
+            status: Some(200),
+            message: None,
+            headers: vec!["resp-header: value".to_string()],
+            body: None,
+        };
+
+        // Send the response, then immediately send a "finished" event.
+        for outcome in [
+            Outcome::Continue(MessageEvent::ReceivedMessage(TextOrBinary::Binary(
+                MessageProto::from(ChatMessageProto::Response(response)).encode_to_vec(),
+            ))),
+            Outcome::Finished(Ok(FinishReason::RemoteDisconnect)),
+        ] {
+            inner_responses
+                .send(outcome.into())
+                .expect("can send response");
+        }
+
+        let _response = send_request.await.expect("request succeeded");
+    }
+
+    #[test_log::test(tokio::test(start_paused = true))]
     async fn disconnects_server_on_client_disconnect() {
         let (chat, (mut inner_events, _inner_responses)) = fake::new_chat(Box::new(|_| ()));
 
@@ -1798,6 +1871,12 @@ mod test {
         assert!(!chat.is_connected().await);
     }
 
+    impl From<MessageProto> for TextOrBinary {
+        fn from(proto: MessageProto) -> Self {
+            TextOrBinary::Binary(proto.encode_to_vec())
+        }
+    }
+
     #[test_case(MessageProto::default(); "empty message")]
     #[test_case(MessageProto::from(ChatMessageProto::Response(ResponseProto {
                     id: Some(123),
@@ -1808,8 +1887,10 @@ mod test {
                     response: Some(Default::default()),
                     request: None,
                 }; "invalid request")]
+    #[test_case("unexpected"; "text frame")]
+    #[test_case(Vec::from(b"not a proto"); "invalid proto")]
     #[test_log::test(tokio::test(start_paused = true))]
-    async fn continues_on_invalid_incoming_message(incoming: MessageProto) {
+    async fn continues_on_invalid_incoming_message(incoming: impl Into<TextOrBinary>) {
         let (received_events_tx, mut received_events_rx) = mpsc::unbounded_channel();
 
         let (_chat, (_inner_events, inner_responses)) =
@@ -1826,18 +1907,13 @@ mod test {
             body: None,
         };
         let messages = [
-            incoming,
-            MessageProto::from(ChatMessageProto::Request(second_request.clone())),
+            incoming.into(),
+            MessageProto::from(ChatMessageProto::Request(second_request.clone())).into(),
         ];
 
         for m in messages {
             inner_responses
-                .send(
-                    Outcome::Continue(MessageEvent::ReceivedMessage(TextOrBinary::Binary(
-                        m.encode_to_vec(),
-                    )))
-                    .into(),
-                )
+                .send(Outcome::Continue(MessageEvent::ReceivedMessage(m)).into())
                 .expect("not hung up on");
         }
 
@@ -1951,5 +2027,44 @@ mod test {
 
         assert_eq!(listener_rx.recv().await, Some(true));
         assert_matches!(listener_rx.recv().await, None);
+    }
+
+    #[test]
+    fn reports_alerts() {
+        let (listener_tx, mut listener_rx) = mpsc::unbounded_channel();
+        let mut listener_tx: EventListener =
+            Box::new(move |evt| listener_tx.send(evt).expect("can send"));
+
+        Chat::report_alerts(http::HeaderMap::default(), &mut listener_tx);
+        assert_matches!(
+            listener_rx.try_recv().expect("present"),
+            ListenerEvent::ReceivedAlerts(alerts) if alerts.is_empty()
+        );
+        assert_matches!(listener_rx.try_recv(), Err(TryRecvError::Empty));
+
+        Chat::report_alerts(
+            http::HeaderMap::from_iter(
+                [
+                    ("unrelated", "other"),
+                    (ALERT_HEADER_NAME, "first"),
+                    ("yet-another", "something"),
+                    (ALERT_HEADER_NAME, "second,third, fourth"),
+                    ("last-one", "x"),
+                ]
+                .map(|(name, val)| {
+                    (
+                        http::HeaderName::from_static(name),
+                        http::HeaderValue::from_static(val),
+                    )
+                }),
+            ),
+            &mut listener_tx,
+        );
+
+        assert_matches!(
+            listener_rx.try_recv().expect("present"),
+            ListenerEvent::ReceivedAlerts(alerts) if alerts == ["first", "second", "third", "fourth"]
+        );
+        assert_matches!(listener_rx.try_recv(), Err(TryRecvError::Empty));
     }
 }

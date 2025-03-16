@@ -19,7 +19,7 @@ use paste::paste;
 use super::*;
 use crate::io::{InputStream, SyncInputStream};
 use crate::message_backup::MessageBackupValidationOutcome;
-use crate::net::chat::{ChatListener, ResponseAndDebugInfo};
+use crate::net::chat::ChatListener;
 use crate::node::chat::NodeChatListener;
 use crate::support::{extend_lifetime, Array, AsType, FixedLengthBincodeSerializable, Serialized};
 
@@ -850,10 +850,9 @@ impl<'a> ResultTypeInfo<'a> for Box<[Vec<u8>]> {
     }
 }
 
-fn make_array<'a, It: IntoIterator>(cx: &mut impl Context<'a>, it: It) -> JsResult<'a, JsArray>
+fn make_array<'a, It>(cx: &mut impl Context<'a>, it: It) -> JsResult<'a, JsArray>
 where
-    It::IntoIter: ExactSizeIterator,
-    It::Item: ResultTypeInfo<'a>,
+    It: IntoIterator<IntoIter: ExactSizeIterator, Item: ResultTypeInfo<'a>>,
 {
     let it = it.into_iter();
     let array = JsArray::new(cx, it.len());
@@ -996,47 +995,6 @@ impl<'a> ResultTypeInfo<'a> for libsignal_net::chat::Response {
     }
 }
 
-impl<'a> ResultTypeInfo<'a> for libsignal_net::chat::DebugInfo {
-    type ResultType = JsObject;
-    fn convert_into(self, cx: &mut impl Context<'a>) -> JsResult<'a, Self::ResultType> {
-        let Self {
-            ip_type,
-            duration,
-            connection_info,
-        } = self;
-        let obj = JsObject::new(cx);
-
-        let ip_type = cx.number(ip_type.map_or(0, |i| i as u8));
-        let duration = cx.number(duration.as_millis().try_into().unwrap_or(u32::MAX));
-        let connection_info = cx.string(connection_info);
-
-        obj.set(cx, "ipType", ip_type)?;
-        obj.set(cx, "durationMillis", duration)?;
-        obj.set(cx, "connectionInfo", connection_info)?;
-
-        Ok(obj)
-    }
-}
-
-impl<'a> ResultTypeInfo<'a> for ResponseAndDebugInfo {
-    type ResultType = JsObject;
-    fn convert_into(self, cx: &mut impl Context<'a>) -> JsResult<'a, Self::ResultType> {
-        let Self {
-            response,
-            debug_info,
-        } = self;
-        let obj = JsObject::new(cx);
-
-        let response = response.convert_into(cx)?;
-        let debug_info = debug_info.convert_into(cx)?;
-
-        obj.set(cx, "response", response)?;
-        obj.set(cx, "debugInfo", debug_info)?;
-
-        Ok(obj)
-    }
-}
-
 impl<'a> ResultTypeInfo<'a> for libsignal_net::cdsi::LookupResponse {
     type ResultType = JsObject;
     fn convert_into(self, cx: &mut impl Context<'a>) -> JsResult<'a, Self::ResultType> {
@@ -1131,8 +1089,7 @@ full_range_integer!(i32);
 impl<T, P> SimpleArgTypeInfo for AsType<T, P>
 where
     T: 'static,
-    P: SimpleArgTypeInfo + TryInto<T> + 'static,
-    P::Error: Display,
+    P: SimpleArgTypeInfo + TryInto<T, Error: Display> + 'static,
 {
     type ArgType = P::ArgType;
 
@@ -1268,20 +1225,14 @@ impl<'a, T: BridgeHandle> ResultTypeInfo<'a> for T {
 /// #   Ok(())
 /// # }
 /// ```
-pub struct BorrowedJsBoxedBridgeHandle<'a, Borrowed: Deref + 'a>
-where
-    Borrowed::Target: BridgeHandle,
-{
+pub struct BorrowedJsBoxedBridgeHandle<'a, Borrowed: Deref<Target: BridgeHandle> + 'a> {
     /// Keeps the data alive by functioning as an active GC reference.
     _owned: Handle<'a, DefaultJsBox<JsBoxContentsFor<Borrowed::Target>>>,
     /// Provides access to the data.
     borrowed: Borrowed,
 }
 
-impl<'a, Borrowed: Deref + 'a> BorrowedJsBoxedBridgeHandle<'a, Borrowed>
-where
-    Borrowed::Target: BridgeHandle,
-{
+impl<'a, Borrowed: Deref<Target: BridgeHandle> + 'a> BorrowedJsBoxedBridgeHandle<'a, Borrowed> {
     /// Creates a BorrowedJsBoxedBridgeHandle by accessing `wrapper`, assuming it does in fact
     /// reference a boxed Rust value under the `_nativeHandle` property.
     ///
@@ -1314,9 +1265,8 @@ where
     }
 }
 
-impl<'a, Borrowed: Deref + 'a> Deref for BorrowedJsBoxedBridgeHandle<'a, Borrowed>
-where
-    Borrowed::Target: BridgeHandle,
+impl<'a, Borrowed: Deref<Target: BridgeHandle> + 'a> Deref
+    for BorrowedJsBoxedBridgeHandle<'a, Borrowed>
 {
     type Target = Borrowed::Target;
 
@@ -1325,9 +1275,8 @@ where
     }
 }
 
-impl<'a, Borrowed: DerefMut + 'a> DerefMut for BorrowedJsBoxedBridgeHandle<'a, Borrowed>
-where
-    Borrowed::Target: BridgeHandle + 'static,
+impl<'a, Borrowed: DerefMut<Target: BridgeHandle + 'static> + 'a> DerefMut
+    for BorrowedJsBoxedBridgeHandle<'a, Borrowed>
 {
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.borrowed.deref_mut()

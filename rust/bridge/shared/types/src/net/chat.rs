@@ -4,224 +4,37 @@
 //
 
 use std::future::Future;
-use std::panic::{self, RefUnwindSafe, UnwindSafe};
+use std::panic::{RefUnwindSafe, UnwindSafe};
 use std::str::FromStr;
-use std::sync::Arc;
 use std::time::Duration;
 
 use atomic_take::AtomicTake;
-use futures_util::stream::BoxStream;
-use futures_util::{FutureExt as _, StreamExt as _};
+use futures_util::FutureExt as _;
 use http::status::InvalidStatusCode;
 use http::uri::{InvalidUri, PathAndQuery};
 use http::{HeaderMap, HeaderName, HeaderValue};
 use libsignal_net::auth::Auth;
 use libsignal_net::chat::fake::FakeChatRemote;
+use libsignal_net::chat::server_requests::DisconnectCause;
 use libsignal_net::chat::{
-    self, ChatConnection, ChatServiceError, ConnectionInfo, DebugInfo as ChatServiceDebugInfo,
-    Request, Response as ChatResponse,
+    self, ChatConnection, ConnectError, ConnectionInfo, DebugInfo as ChatServiceDebugInfo, Request,
+    Response as ChatResponse, SendError,
 };
-use libsignal_net::infra::route::{ConnectionProxyConfig, DirectOrProxyProvider};
+use libsignal_net::infra::route::{
+    ConnectionProxyConfig, DirectOrProxyProvider, RouteProvider, RouteProviderExt,
+    UnresolvedHttpsServiceRoute,
+};
 use libsignal_net::infra::tcp_ssl::InvalidProxyConfig;
+use libsignal_net::infra::EnableDomainFronting;
 use libsignal_protocol::Timestamp;
 use static_assertions::assert_impl_all;
-use tokio::sync::{mpsc, oneshot};
 
-use crate::net::{ConnectionManager, TokioAsyncContext};
-use crate::support::*;
+use crate::net::ConnectionManager;
 use crate::*;
 
 pub type ChatConnectionInfo = ConnectionInfo;
 
 bridge_as_handle!(ChatConnectionInfo);
-
-enum ChatListenerState {
-    Inactive(BoxStream<'static, chat::server_requests::ServerEvent>),
-    Active {
-        handle: tokio::task::JoinHandle<BoxStream<'static, chat::server_requests::ServerEvent>>,
-        cancel: oneshot::Sender<()>,
-    },
-    Cancelled(tokio::task::JoinHandle<BoxStream<'static, chat::server_requests::ServerEvent>>),
-    CurrentlyBeingMutated,
-}
-
-impl ChatListenerState {
-    fn cancel(&mut self) {
-        match std::mem::replace(self, ChatListenerState::CurrentlyBeingMutated) {
-            ChatListenerState::Active { handle, cancel } => {
-                *self = ChatListenerState::Cancelled(handle);
-                // Drop the previous cancel_tx to indicate cancellation.
-                // (This could have been implicit, but it's an important state transition.)
-                drop(cancel);
-            }
-            state @ (ChatListenerState::Inactive(_) | ChatListenerState::Cancelled(_)) => {
-                *self = state;
-            }
-            ChatListenerState::CurrentlyBeingMutated => {
-                unreachable!("this state should be ephemeral")
-            }
-        }
-    }
-}
-
-pub struct Chat<T> {
-    pub service: T,
-    listener: std::sync::Mutex<ChatListenerState>,
-    pub synthetic_request_tx:
-        mpsc::Sender<chat::ws::ServerEvent<libsignal_net::infra::tcp_ssl::TcpSslConnectorStream>>,
-}
-
-type MpscPair<T> = (mpsc::Sender<T>, mpsc::Receiver<T>);
-type ServerEventStreamPair =
-    MpscPair<chat::ws::ServerEvent<libsignal_net::infra::tcp_ssl::TcpSslConnectorStream>>;
-
-// These two types are the same for now, but might not be in the future.
-pub struct AuthChatService(
-    pub  chat::Chat<
-        Arc<dyn chat::ChatServiceWithDebugInfo + Send + Sync>,
-        Arc<dyn chat::ChatServiceWithDebugInfo + Send + Sync>,
-    >,
-);
-pub struct UnauthChatService(
-    pub  chat::Chat<
-        Arc<dyn chat::ChatServiceWithDebugInfo + Send + Sync>,
-        Arc<dyn chat::ChatServiceWithDebugInfo + Send + Sync>,
-    >,
-);
-
-impl RefUnwindSafe for AuthChatService {}
-impl RefUnwindSafe for UnauthChatService {}
-
-impl<T> Chat<T> {
-    fn new(service: T, (incoming_tx, incoming_rx): ServerEventStreamPair) -> Self {
-        let incoming_stream = chat::server_requests::stream_incoming_messages(incoming_rx);
-
-        Self {
-            service,
-            listener: std::sync::Mutex::new(ChatListenerState::Inactive(Box::pin(incoming_stream))),
-            synthetic_request_tx: incoming_tx,
-        }
-    }
-
-    pub fn set_listener(&self, listener: Box<dyn ChatListener>, runtime: &TokioAsyncContext) {
-        use futures_util::future::Either;
-
-        let (cancel_tx, cancel_rx) = oneshot::channel::<()>();
-
-        let mut guard = self.listener.lock().expect("unpoisoned");
-        let request_stream_future =
-            match std::mem::replace(&mut *guard, ChatListenerState::CurrentlyBeingMutated) {
-                ChatListenerState::Inactive(request_stream) => {
-                    Either::Left(std::future::ready(Ok(request_stream)))
-                }
-                ChatListenerState::Active { handle, cancel } => {
-                    // Drop the previous cancel_tx to indicate cancellation.
-                    // (This could have been implicit, but it's an important state transition.)
-                    drop(cancel);
-                    Either::Right(handle)
-                }
-                ChatListenerState::Cancelled(handle) => Either::Right(handle),
-                ChatListenerState::CurrentlyBeingMutated => {
-                    unreachable!("this state should be ephemeral")
-                }
-            };
-
-        // We're not using run_future here because we aren't trying to run a single task; we're
-        // starting a run-loop. We *do* want that run-loop to be async so it goes to sleep when
-        // there are no messages.
-        let handle = runtime
-            .rt
-            .spawn(listener.start_listening(request_stream_future, cancel_rx));
-
-        *guard = ChatListenerState::Active {
-            handle,
-            cancel: cancel_tx,
-        };
-        drop(guard);
-    }
-
-    pub fn clear_listener(&self) {
-        self.listener.lock().expect("unpoisoned").cancel();
-    }
-}
-
-impl Chat<AuthChatService> {
-    pub fn new_auth(
-        connection_manager: &ConnectionManager,
-        auth: Auth,
-        receive_stories: bool,
-    ) -> Self {
-        let (incoming_auth_tx, incoming_auth_rx) = mpsc::channel(1);
-        let synthetic_request_tx = incoming_auth_tx.clone();
-
-        let (incoming_unauth_tx, _incoming_unauth_rx) = mpsc::channel(1);
-
-        let endpoints = connection_manager
-            .endpoints
-            .lock()
-            .expect("not poisoned")
-            .clone();
-
-        let service = chat::chat_service(
-            &endpoints.chat,
-            connection_manager
-                .transport_connector
-                .lock()
-                .expect("not poisoned")
-                .clone(),
-            incoming_auth_tx,
-            incoming_unauth_tx,
-            auth,
-            receive_stories,
-        )
-        .into_dyn();
-
-        Self::new(
-            AuthChatService(service),
-            (synthetic_request_tx, incoming_auth_rx),
-        )
-    }
-}
-
-impl Chat<UnauthChatService> {
-    pub fn new_unauth(connection_manager: &ConnectionManager) -> Self {
-        let (incoming_auth_tx, _incoming_auth_rx) = mpsc::channel(1);
-        let (incoming_unauth_tx, incoming_unauth_rx) = mpsc::channel(1);
-        let synthetic_request_tx = incoming_unauth_tx.clone();
-
-        let endpoints = connection_manager
-            .endpoints
-            .lock()
-            .expect("not poisoned")
-            .clone();
-
-        let service = chat::chat_service(
-            &endpoints.chat,
-            connection_manager
-                .transport_connector
-                .lock()
-                .expect("not poisoned")
-                .clone(),
-            incoming_auth_tx,
-            incoming_unauth_tx,
-            // These will be unused because the auth service won't ever be connected.
-            Auth {
-                username: String::new(),
-                password: String::new(),
-            },
-            false,
-        )
-        .into_dyn();
-
-        Self::new(
-            UnauthChatService(service),
-            (synthetic_request_tx, incoming_unauth_rx),
-        )
-    }
-}
-
-pub type UnauthChat = Chat<UnauthChatService>;
-pub type AuthChat = Chat<AuthChatService>;
 
 pub struct UnauthenticatedChatConnection {
     /// The possibly-still-being-constructed [`ChatConnection`].
@@ -260,7 +73,7 @@ enum MaybeChatConnection {
 assert_impl_all!(MaybeChatConnection: Send, Sync);
 
 impl UnauthenticatedChatConnection {
-    pub async fn connect(connection_manager: &ConnectionManager) -> Result<Self, ChatServiceError> {
+    pub async fn connect(connection_manager: &ConnectionManager) -> Result<Self, ConnectError> {
         let inner = establish_chat_connection("unauthenticated", connection_manager, None).await?;
         log::info!("connected unauthenticated chat");
         Ok(Self {
@@ -277,7 +90,7 @@ impl AuthenticatedChatConnection {
         connection_manager: &ConnectionManager,
         auth: Auth,
         receive_stories: bool,
-    ) -> Result<Self, ChatServiceError> {
+    ) -> Result<Self, ConnectError> {
         let inner = establish_chat_connection(
             "authenticated",
             connection_manager,
@@ -296,12 +109,33 @@ impl AuthenticatedChatConnection {
         })
     }
 
-    pub fn new_fake(
+    pub async fn preconnect(connection_manager: &ConnectionManager) -> Result<(), ConnectError> {
+        let enable_domain_fronting = connection_manager
+            .endpoints
+            .lock()
+            .expect("not poisoned")
+            .enable_fronting;
+        let route_provider = make_route_provider(connection_manager, enable_domain_fronting)?
+            .map_routes(|r| r.inner);
+
+        log::info!("preconnecting chat");
+        libsignal_net::connect_state::ConnectState::preconnect_and_save(
+            &connection_manager.connect,
+            route_provider,
+            &connection_manager.dns_resolver,
+            "preconnect".into(),
+        )
+        .await?;
+        Ok(())
+    }
+
+    pub fn new_fake<'a>(
         tokio_runtime: tokio::runtime::Handle,
         listener: Box<dyn ChatListener>,
+        alerts: impl IntoIterator<Item = &'a str>,
     ) -> (Self, FakeChatRemote) {
         let (inner, remote) =
-            ChatConnection::new_fake(tokio_runtime, listener.into_event_listener());
+            ChatConnection::new_fake(tokio_runtime, listener.into_event_listener(), alerts);
         (
             Self {
                 inner: MaybeChatConnection::Running(inner).into(),
@@ -330,7 +164,7 @@ pub trait BridgeChatConnection {
         &self,
         message: Request,
         timeout: Duration,
-    ) -> impl Future<Output = Result<ChatResponse, ChatServiceError>> + Send;
+    ) -> impl Future<Output = Result<ChatResponse, SendError>> + Send;
 
     fn disconnect(&self) -> impl Future<Output = ()> + Send;
 
@@ -342,11 +176,7 @@ impl<C: AsRef<tokio::sync::RwLock<MaybeChatConnection>> + Sync> BridgeChatConnec
         init_listener(&mut self.as_ref().blocking_write(), listener)
     }
 
-    async fn send(
-        &self,
-        message: Request,
-        timeout: Duration,
-    ) -> Result<ChatResponse, ChatServiceError> {
+    async fn send(&self, message: Request, timeout: Duration) -> Result<ChatResponse, SendError> {
         let guard = self.as_ref().read().await;
         let MaybeChatConnection::Running(inner) = &*guard else {
             panic!("listener was not set")
@@ -357,7 +187,7 @@ impl<C: AsRef<tokio::sync::RwLock<MaybeChatConnection>> + Sync> BridgeChatConnec
     async fn disconnect(&self) {
         let guard = self.as_ref().read().await;
         match &*guard {
-            MaybeChatConnection::Running(chat_connection) => chat_connection.disconect().await,
+            MaybeChatConnection::Running(chat_connection) => chat_connection.disconnect().await,
             MaybeChatConnection::WaitingForListener(_handle, pending_chat_mutex) => {
                 pending_chat_mutex.lock().await.disconnect().await
             }
@@ -407,21 +237,15 @@ async fn establish_chat_connection(
     auth_type: &'static str,
     connection_manager: &ConnectionManager,
     auth: Option<chat::AuthenticatedChatHeaders>,
-) -> Result<chat::PendingChatConnection, ChatServiceError> {
+) -> Result<chat::PendingChatConnection, ConnectError> {
     let ConnectionManager {
         env,
         dns_resolver,
         connect,
         user_agent,
-        transport_connector,
         endpoints,
         ..
     } = connection_manager;
-
-    let proxy_config: Option<ConnectionProxyConfig> =
-        (&*transport_connector.lock().expect("not poisoned"))
-            .try_into()
-            .map_err(|InvalidProxyConfig| ChatServiceError::ServiceUnavailable)?;
 
     let (ws_config, enable_domain_fronting) = {
         let endpoints_guard = endpoints.lock().expect("not poisoned");
@@ -438,15 +262,14 @@ async fn establish_chat_connection(
     } = ws_config;
 
     let chat_connect = &env.chat_domain_config.connect;
+    let route_provider = make_route_provider(connection_manager, enable_domain_fronting)?;
+
     log::info!("connecting {auth_type} chat");
 
     ChatConnection::start_connect_with(
         connect,
         dns_resolver,
-        DirectOrProxyProvider::maybe_proxied(
-            chat_connect.route_provider(enable_domain_fronting),
-            proxy_config,
-        ),
+        route_provider,
         chat_connect
             .confirmation_header_name
             .map(HeaderName::from_static),
@@ -466,6 +289,29 @@ async fn establish_chat_connection(
     .await
 }
 
+fn make_route_provider(
+    connection_manager: &ConnectionManager,
+    enable_domain_fronting: EnableDomainFronting,
+) -> Result<impl RouteProvider<Route = UnresolvedHttpsServiceRoute>, ConnectError> {
+    let ConnectionManager {
+        env,
+        transport_connector,
+        ..
+    } = connection_manager;
+
+    let proxy_config: Option<ConnectionProxyConfig> =
+        (&*transport_connector.lock().expect("not poisoned"))
+            .try_into()
+            .map_err(|InvalidProxyConfig| ConnectError::InvalidConnectionConfiguration)?;
+
+    let chat_connect = &env.chat_domain_config.connect;
+
+    Ok(DirectOrProxyProvider::maybe_proxied(
+        chat_connect.route_provider(enable_domain_fronting),
+        proxy_config,
+    ))
+}
+
 pub struct HttpRequest {
     pub method: http::Method,
     pub path: PathAndQuery,
@@ -478,8 +324,6 @@ pub struct ResponseAndDebugInfo {
     pub debug_info: ChatServiceDebugInfo,
 }
 
-bridge_as_handle!(UnauthChat);
-bridge_as_handle!(AuthChat);
 bridge_as_handle!(HttpRequest);
 
 /// Newtype wrapper for implementing [`TryFrom`]`
@@ -536,7 +380,8 @@ pub trait ChatListener: Send {
         ack: ServerMessageAck,
     );
     fn received_queue_empty(&mut self);
-    fn connection_interrupted(&mut self, disconnect_cause: ChatServiceError);
+    fn received_alerts(&mut self, alerts: Vec<String>);
+    fn connection_interrupted(&mut self, disconnect_cause: DisconnectCause);
 }
 
 impl dyn ChatListener {
@@ -555,76 +400,11 @@ impl dyn ChatListener {
                 ServerMessageAck::new(send_ack),
             ),
             chat::server_requests::ServerEvent::QueueEmpty => self.received_queue_empty(),
+            chat::server_requests::ServerEvent::Alerts(alerts) => self.received_alerts(alerts),
             chat::server_requests::ServerEvent::Stopped(error) => {
                 self.connection_interrupted(error)
             }
         }
-    }
-
-    /// Starts a run loop to read from a stream of requests.
-    ///
-    /// Awaits `request_stream_future`, then loops until the stream is drained or `cancel_rx` fires.
-    /// Each item in the stream is processed using [`Self::received_server_request`].
-    ///
-    /// Consumes `self`. Returns the remaining request stream, in case another listener will be set
-    /// later.
-    async fn start_listening(
-        self: Box<Self>,
-        request_stream_future: impl Future<
-            Output = Result<
-                BoxStream<'static, chat::server_requests::ServerEvent>,
-                ::tokio::task::JoinError,
-            >,
-        >,
-        mut cancel_rx: oneshot::Receiver<()>,
-    ) -> BoxStream<'static, chat::server_requests::ServerEvent> {
-        // This is normally done implicitly inside tokio::task::spawn[_blocking], but we do it
-        // explicitly here to get a panic right away rather than only when the first request comes
-        // in.
-        let runtime =
-            ::tokio::runtime::Handle::try_current().expect("must be run within a Tokio runtime");
-
-        // Wait for the previous listener to be done.
-        // If it panicked, though, the stream is now invalid, and there's not much we can do.
-        let mut request_stream = request_stream_future
-            .await
-            .unwrap_or_else(|e| panic::resume_unwind(e.into_panic()));
-
-        let mut listener = Some(self);
-        loop {
-            let next = ::tokio::select! {
-                biased; // Always checking cancellation first makes it easier to test changing listeners.
-                _ = &mut cancel_rx => None,
-                next = request_stream.next() => next,
-            };
-            let Some(next) = next else {
-                break;
-            };
-
-            // We won't read the next item until the first one is delivered, because order is
-            // important. But we still want to jump over to a blocking thread, because we don't
-            // *really* know what the app is going to do, and tokio should be able to work on other
-            // properly async tasks in the mean time. (And because of this, we have to move
-            // `listener` out and back into this task.)
-            let mut listener_for_blocking_task = listener.take().expect("have listener");
-            let blocking_task = runtime.spawn_blocking(move || {
-                listener_for_blocking_task.received_server_request(next);
-                listener_for_blocking_task
-            });
-            listener = match blocking_task.await {
-                Ok(listener) => Some(listener),
-                Err(e) => {
-                    log::error!(
-                            "chat listener panicked; no further messages will be read until a new listener is set: {}",
-                            describe_panic(&e.into_panic())
-                        );
-                    break;
-                }
-            };
-        }
-
-        // Pass the stream along to the next listener, if there is one.
-        request_stream
     }
 
     fn into_event_listener(mut self: Box<Self>) -> Box<dyn FnMut(chat::ws2::ListenerEvent) + Send> {

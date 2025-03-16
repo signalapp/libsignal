@@ -45,7 +45,8 @@ public final class BackupAuthCredentialRequest extends ByteArray {
    * Issues a BackupAuthCredential, using a dedicated source of randomness.
    *
    * <p>This can be used to make tests deterministic. Prefer {@link #issueCredential(Instant,
-   * BackupLevel, GenericServerSecretParams)} if the source of randomness doesn't matter.
+   * BackupLevel, BackupCredentialType, GenericServerSecretParams)} if the source of randomness
+   * doesn't matter.
    *
    * @param timestamp Must be a round number of days. Use {@link Instant#truncatedTo} to ensure
    *     this.

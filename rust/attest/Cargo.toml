@@ -6,38 +6,35 @@
 [package]
 name = "attest"
 version = "0.1.0"
-authors = ["Signal Messenger LLC"]
+authors.workspace = true
+license.workspace = true
+rust-version = "1.80"
 edition = "2021"
-license = "AGPL-3.0-only"
 
 [lints]
 workspace = true
 
 [dependencies]
 asn1 = { workspace = true }
-base64 = { workspace = true }
 bitflags = { workspace = true }
-blake2 = "0.10"
+blake2 = { workspace = true }
 boring-signal = { workspace = true }
 chacha20poly1305 = { workspace = true }
 chrono = { workspace = true, features = ["serde"] }
-ciborium = { workspace = true }
 displaydoc = { workspace = true }
 hex = { workspace = true, features = ["serde"] }
 hex-literal = { workspace = true }
-lazy_static = { workspace = true }
 libc = { workspace = true }
-libcrux-ml-kem = { version = "0.0.2-alpha.3", features = ["mlkem1024"] }
+libcrux-ml-kem = { workspace = true, features = ["mlkem1024"] }
 log = { workspace = true }
 prost = { workspace = true }
 rand_core = { workspace = true }
-serde = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true, features = ["raw_value"] }
 sha2 = { workspace = true }
-snow = { workspace = true }
+snow = { workspace = true, features = ["hfs"] }
 static_assertions = { workspace = true }
 strum = { workspace = true, features = ["derive"] }
-subtle = { workspace = true }
 thiserror = { workspace = true }
 uuid = { workspace = true }
 x25519-dalek = { workspace = true }
@@ -46,7 +43,6 @@ zerocopy = { workspace = true, features = ["derive"] }
 [dev-dependencies]
 assert_matches = { workspace = true }
 snow = { workspace = true, features = ["default-resolver"] }
-test-case = { workspace = true }
 
 [build-dependencies]
 prost-build = { workspace = true }

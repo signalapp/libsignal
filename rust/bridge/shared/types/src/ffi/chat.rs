@@ -6,7 +6,7 @@
 use std::ffi::{c_uchar, c_void};
 use std::panic::UnwindSafe;
 
-use libsignal_net::chat::ChatServiceError;
+use libsignal_net::chat::server_requests::DisconnectCause;
 
 use super::*;
 use crate::net::chat::{ChatListener, ServerMessageAck};
@@ -18,6 +18,7 @@ type ReceivedIncomingMessage = extern "C" fn(
     cleanup: *mut ServerMessageAck,
 );
 type ReceivedQueueEmpty = extern "C" fn(ctx: *mut c_void);
+type ReceivedAlerts = extern "C" fn(ctx: *mut c_void, alerts: StringArray);
 type ConnectionInterrupted = extern "C" fn(ctx: *mut c_void, error: *mut SignalFfiError);
 type DestroyChatListener = extern "C" fn(ctx: *mut c_void);
 
@@ -39,6 +40,7 @@ pub struct FfiChatListenerStruct {
     ctx: *mut c_void,
     received_incoming_message: ReceivedIncomingMessage,
     received_queue_empty: ReceivedQueueEmpty,
+    received_alerts: ReceivedAlerts,
     connection_interrupted: ConnectionInterrupted,
     destroy: DestroyChatListener,
 }
@@ -59,6 +61,7 @@ impl FfiChatListenerStruct {
             ctx,
             received_incoming_message,
             received_queue_empty,
+            received_alerts,
             connection_interrupted,
             destroy,
         } = *self;
@@ -66,6 +69,7 @@ impl FfiChatListenerStruct {
             ctx,
             received_incoming_message,
             received_queue_empty,
+            received_alerts,
             connection_interrupted,
             destroy,
         }))
@@ -107,10 +111,20 @@ impl ChatListener for ChatListenerStruct {
         (self.0.received_queue_empty)(self.0.ctx)
     }
 
-    fn connection_interrupted(&mut self, disconnect_cause: ChatServiceError) {
+    fn received_alerts(&mut self, alerts: Vec<String>) {
+        (self.0.received_alerts)(
+            self.0.ctx,
+            alerts
+                .into_boxed_slice()
+                .convert_into()
+                .expect("Box<[String]> conversion is infallible"),
+        )
+    }
+
+    fn connection_interrupted(&mut self, disconnect_cause: DisconnectCause) {
         let error = match disconnect_cause {
-            ChatServiceError::ServiceIntentionallyDisconnected => None,
-            c => Some(Box::new(SignalFfiError::from(c))),
+            DisconnectCause::LocalDisconnect => None,
+            DisconnectCause::Error(c) => Some(Box::new(SignalFfiError::from(c))),
         };
         (self.0.connection_interrupted)(
             self.0.ctx,

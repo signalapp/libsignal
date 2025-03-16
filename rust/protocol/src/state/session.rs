@@ -10,7 +10,7 @@ use prost::Message;
 use subtle::ConstantTimeEq;
 
 use crate::proto::storage::{session_structure, RecordStructure, SessionStructure};
-use crate::ratchet::{ChainKey, MessageKeys, RootKey};
+use crate::ratchet::{ChainKey, MessageKeyGenerator, RootKey};
 use crate::state::{KyberPreKeyId, PreKeyId, SignedPreKeyId};
 use crate::{consts, kem, IdentityKey, KeyPair, PrivateKey, PublicKey, SignalProtocolError};
 
@@ -370,7 +370,7 @@ impl SessionState {
         &mut self,
         sender: &PublicKey,
         counter: u32,
-    ) -> Result<Option<MessageKeys>, InvalidSessionError> {
+    ) -> Result<Option<MessageKeyGenerator>, InvalidSessionError> {
         if let Some(mut chain_and_index) = self.get_receiver_chain(sender)? {
             let message_key_idx = chain_and_index
                 .0
@@ -380,21 +380,8 @@ impl SessionState {
 
             if let Some(position) = message_key_idx {
                 let message_key = chain_and_index.0.message_keys.remove(position);
-
-                let cipher_key_bytes = message_key
-                    .cipher_key
-                    .try_into()
-                    .map_err(|_| InvalidSessionError("invalid message cipher key"))?;
-                let mac_key_bytes = message_key
-                    .mac_key
-                    .try_into()
-                    .map_err(|_| InvalidSessionError("invalid message MAC key"))?;
-                let iv_bytes = message_key
-                    .iv
-                    .try_into()
-                    .map_err(|_| InvalidSessionError("invalid message IV"))?;
-
-                let keys = MessageKeys::new(cipher_key_bytes, mac_key_bytes, iv_bytes, counter);
+                let keys =
+                    MessageKeyGenerator::from_pb(message_key).map_err(InvalidSessionError)?;
 
                 // Update with message key removed
                 self.session.receiver_chains[chain_and_index.1] = chain_and_index.0;
@@ -408,20 +395,13 @@ impl SessionState {
     pub(crate) fn set_message_keys(
         &mut self,
         sender: &PublicKey,
-        message_keys: &MessageKeys,
+        message_keys: MessageKeyGenerator,
     ) -> Result<(), InvalidSessionError> {
-        let new_keys = session_structure::chain::MessageKey {
-            cipher_key: message_keys.cipher_key().to_vec(),
-            mac_key: message_keys.mac_key().to_vec(),
-            iv: message_keys.iv().to_vec(),
-            index: message_keys.counter(),
-        };
-
         let chain_and_index = self
             .get_receiver_chain(sender)?
             .expect("called set_message_keys for a non-existent chain");
         let mut updated_chain = chain_and_index.0;
-        updated_chain.message_keys.insert(0, new_keys);
+        updated_chain.message_keys.insert(0, message_keys.into_pb());
 
         if updated_chain.message_keys.len() > consts::MAX_MESSAGE_KEYS {
             updated_chain.message_keys.pop();

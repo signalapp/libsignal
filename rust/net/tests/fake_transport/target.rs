@@ -4,45 +4,84 @@
 //
 
 use std::fmt::Display;
+use std::net::IpAddr;
 use std::num::NonZeroU16;
 use std::sync::Arc;
 
-use libsignal_net::infra::host::Host;
-use libsignal_net::infra::{ConnectionParams, TransportConnectionParams};
-use libsignal_net_infra::{Connection, IpType, TransportInfo};
+use libsignal_net_infra::host::Host;
+use libsignal_net_infra::route::{
+    ConnectionProxyRoute, HttpProxyRouteFragment, HttpsProxyRoute, ProxyTarget, SocksRoute,
+    TcpRoute, DEFAULT_HTTPS_PORT,
+};
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
-pub struct FakeTransportTarget {
-    pub host: Host<Arc<str>>,
-    pub port: NonZeroU16,
+pub enum FakeTransportTarget {
+    TcpThroughProxy {
+        host: Option<Host<Arc<str>>>,
+        port: NonZeroU16,
+    },
+    Tcp {
+        host: IpAddr,
+        port: NonZeroU16,
+    },
+    Tls {
+        sni: Host<Arc<str>>,
+    },
+}
+
+impl FakeTransportTarget {
+    pub(crate) fn from_proxy_route(proxy: &ConnectionProxyRoute<IpAddr>) -> Self {
+        match proxy {
+            ConnectionProxyRoute::Tls { .. } | ConnectionProxyRoute::Tcp { .. } => {
+                Self::TcpThroughProxy {
+                    host: None,
+                    port: DEFAULT_HTTPS_PORT,
+                }
+            }
+            ConnectionProxyRoute::Socks(SocksRoute {
+                target_addr: target_host,
+                target_port,
+                ..
+            })
+            | ConnectionProxyRoute::Https(HttpsProxyRoute {
+                fragment:
+                    HttpProxyRouteFragment {
+                        target_host,
+                        target_port,
+                        ..
+                    },
+                ..
+            }) => Self::TcpThroughProxy {
+                host: Some(match target_host {
+                    ProxyTarget::ResolvedLocally(ip) => (*ip).into(),
+                    ProxyTarget::ResolvedRemotely { name } => Host::Domain(name.clone()),
+                }),
+                port: *target_port,
+            },
+        }
+    }
 }
 
 impl Display for FakeTransportTarget {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let Self { host, port } = self;
-        write!(f, "{host}:{port}")
-    }
-}
-
-impl From<TransportConnectionParams> for FakeTransportTarget {
-    fn from(value: TransportConnectionParams) -> Self {
-        Self {
-            host: value.tcp_host,
-            port: value.port,
+        match self {
+            FakeTransportTarget::TcpThroughProxy { host, port } => {
+                let host = host
+                    .as_ref()
+                    .map_or::<&dyn Display, _>(&"(unspecified)", |host| host);
+                write!(f, "proxy to {host}:{port}")
+            }
+            FakeTransportTarget::Tcp { host, port } => write!(f, "{host}:{port}"),
+            FakeTransportTarget::Tls { sni } => write!(f, "TLS @ {sni}"),
         }
     }
 }
-impl From<ConnectionParams> for FakeTransportTarget {
-    fn from(value: ConnectionParams) -> Self {
-        value.transport.into()
-    }
-}
 
-impl Connection for FakeTransportTarget {
-    fn transport_info(&self) -> TransportInfo {
-        TransportInfo {
-            ip_version: IpType::V4,
-            local_port: self.port.into(),
+impl From<TcpRoute<IpAddr>> for FakeTransportTarget {
+    fn from(TcpRoute { address, port }: TcpRoute<IpAddr>) -> Self {
+        Self::Tcp {
+            host: address,
+            port,
         }
     }
 }

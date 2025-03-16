@@ -31,9 +31,7 @@ impl AsyncRuntimeBase for NonSuspendingBackgroundThreadRuntime {}
 
 impl<F> AsyncRuntime<F> for NonSuspendingBackgroundThreadRuntime
 where
-    F: Future + Send + 'static,
-    F::Output: ResultReporter,
-    <F::Output as ResultReporter>::Receiver: Send,
+    F: Future<Output: ResultReporter<Receiver: Send>> + Send + 'static,
 {
     type Cancellation = std::future::Pending<()>;
 

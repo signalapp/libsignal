@@ -13,7 +13,6 @@ pub mod env;
 pub mod keytrans;
 pub mod proto;
 pub mod svr;
-pub mod svr3;
 pub mod ws;
 
 // Re-export from `libsignal_net_infra`.

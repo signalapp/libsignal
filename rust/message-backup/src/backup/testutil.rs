@@ -3,9 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use std::sync::Arc;
-
-use once_cell::sync::Lazy;
+use std::sync::{Arc, LazyLock};
 
 use super::recipient::MinimalRecipientData;
 use crate::backup::call::CallLink;
@@ -14,7 +12,7 @@ use crate::backup::chat::PinOrder;
 use crate::backup::frame::RecipientId;
 use crate::backup::method::{Lookup, LookupPair};
 use crate::backup::recipient::group::GroupData;
-use crate::backup::recipient::{self, ContactData, Destination, FullRecipientData};
+use crate::backup::recipient::{self, ContactData, Destination, FullRecipientData, SelfData};
 use crate::backup::time::{ReportUnusualTimestamp, Timestamp, TimestampIssue};
 use crate::backup::{BackupMeta, Purpose};
 use crate::proto::backup as proto;
@@ -41,11 +39,12 @@ impl BackupMeta {
         }
     }
 }
-static SELF_RECIPIENT: Lazy<FullRecipientData> =
-    Lazy::new(|| FullRecipientData::new(Destination::Self_));
-static CONTACT_RECIPIENT: Lazy<FullRecipientData> =
-    Lazy::new(|| FullRecipientData::new(Destination::Contact(ContactData::from_proto_test_data())));
-static E164_ONLY_RECIPIENT: Lazy<FullRecipientData> = Lazy::new(|| {
+static SELF_RECIPIENT: LazyLock<FullRecipientData> =
+    LazyLock::new(|| FullRecipientData::new(Destination::Self_(SelfData { avatar_color: None })));
+static CONTACT_RECIPIENT: LazyLock<FullRecipientData> = LazyLock::new(|| {
+    FullRecipientData::new(Destination::Contact(ContactData::from_proto_test_data()))
+});
+static E164_ONLY_RECIPIENT: LazyLock<FullRecipientData> = LazyLock::new(|| {
     FullRecipientData::new(Destination::Contact(ContactData {
         aci: None,
         pni: None,
@@ -62,10 +61,14 @@ static E164_ONLY_RECIPIENT: Lazy<FullRecipientData> = Lazy::new(|| {
         identity_key: None,
         identity_state: Default::default(),
         nickname: None,
+        system_given_name: "".to_owned(),
+        system_family_name: "".to_owned(),
+        system_nickname: "".to_owned(),
+        avatar_color: None,
         note: "".into(),
     }))
 });
-static PNI_ONLY_RECIPIENT: Lazy<FullRecipientData> = Lazy::new(|| {
+static PNI_ONLY_RECIPIENT: LazyLock<FullRecipientData> = LazyLock::new(|| {
     FullRecipientData::new(Destination::Contact(ContactData {
         aci: None,
         pni: Some(libsignal_core::Pni::from_uuid_bytes(
@@ -83,16 +86,21 @@ static PNI_ONLY_RECIPIENT: Lazy<FullRecipientData> = Lazy::new(|| {
         hide_story: false,
         identity_key: None,
         identity_state: Default::default(),
+        system_given_name: "".to_owned(),
+        system_family_name: "".to_owned(),
+        system_nickname: "".to_owned(),
         nickname: None,
+        avatar_color: None,
         note: "".into(),
     }))
 });
-static GROUP_RECIPIENT: Lazy<FullRecipientData> =
-    Lazy::new(|| FullRecipientData::new(Destination::Group(GroupData::from_proto_test_data())));
-static CALL_LINK_RECIPIENT: Lazy<FullRecipientData> =
-    Lazy::new(|| FullRecipientData::new(Destination::CallLink(CallLink::from_proto_test_data())));
-static RELEASE_NOTES_RECIPIENT: Lazy<FullRecipientData> =
-    Lazy::new(|| FullRecipientData::new(Destination::ReleaseNotes));
+static GROUP_RECIPIENT: LazyLock<FullRecipientData> =
+    LazyLock::new(|| FullRecipientData::new(Destination::Group(GroupData::from_proto_test_data())));
+static CALL_LINK_RECIPIENT: LazyLock<FullRecipientData> = LazyLock::new(|| {
+    FullRecipientData::new(Destination::CallLink(CallLink::from_proto_test_data()))
+});
+static RELEASE_NOTES_RECIPIENT: LazyLock<FullRecipientData> =
+    LazyLock::new(|| FullRecipientData::new(Destination::ReleaseNotes));
 
 impl TestContext {
     pub(super) const CONTACT_ID: RecipientId = RecipientId(123456789);
@@ -148,8 +156,8 @@ impl ReportUnusualTimestamp for TestContext {
     }
 }
 
-static TEST_CUSTOM_COLOR: Lazy<Arc<CustomChatColor>> =
-    Lazy::new(|| Arc::new(CustomChatColor::from_proto_test_data()));
+static TEST_CUSTOM_COLOR: LazyLock<Arc<CustomChatColor>> =
+    LazyLock::new(|| Arc::new(CustomChatColor::from_proto_test_data()));
 
 impl TestContext {
     pub(super) const DUPLICATE_PINNED_ORDER: PinOrder = PinOrder(183324u32);

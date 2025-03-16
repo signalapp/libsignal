@@ -4,15 +4,14 @@
 //
 
 use std::fmt::Display;
-use std::time::Duration;
 
 use async_trait::async_trait;
 use http::HeaderName;
 use libsignal_net_infra::connection_manager::{ErrorClass, ErrorClassifier};
-use libsignal_net_infra::errors::LogSafeDisplay;
+use libsignal_net_infra::errors::{LogSafeDisplay, TransportConnectError};
 use libsignal_net_infra::service::{CancellationToken, ServiceConnector};
 use libsignal_net_infra::ws::WebSocketConnectError;
-use libsignal_net_infra::{extract_retry_after_seconds, ConnectionParams};
+use libsignal_net_infra::{extract_retry_later, ConnectionParams};
 use tokio::time::Instant;
 
 #[derive(Debug, thiserror::Error)]
@@ -70,6 +69,15 @@ impl WebSocketServiceConnectError {
             },
         )
     }
+
+    pub fn invalid_proxy_configuration() -> Self {
+        Self::Connect(
+            WebSocketConnectError::Transport(TransportConnectError::InvalidConfiguration),
+            NotRejectedByServer {
+                _limit_construction: (),
+            },
+        )
+    }
 }
 
 impl Display for WebSocketServiceConnectError {
@@ -105,9 +113,8 @@ impl<S> WebSocketServiceConnector<S> {
 }
 
 #[async_trait]
-impl<S: ServiceConnector + Sync> ServiceConnector for WebSocketServiceConnector<S>
-where
-    S::ConnectError: Into<WebSocketConnectError>,
+impl<S: ServiceConnector<ConnectError: Into<WebSocketConnectError>> + Sync> ServiceConnector
+    for WebSocketServiceConnector<S>
 {
     type Service = S::Service;
 
@@ -165,10 +172,8 @@ impl ErrorClassifier for WebSocketServiceConnectError {
         };
 
         // Retry-After takes precedence over everything else.
-        if let Some(retry_after_seconds) = extract_retry_after_seconds(response.headers()) {
-            return ErrorClass::RetryAt(
-                *received_at + Duration::from_secs(retry_after_seconds.into()),
-            );
+        if let Some(retry_later) = extract_retry_later(response.headers()) {
+            return ErrorClass::RetryAt(*received_at + retry_later.duration());
         }
 
         // If we're rejected based on the request (4xx), there's no point in retrying.

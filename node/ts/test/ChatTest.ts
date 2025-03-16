@@ -94,9 +94,6 @@ describe('chat connection to mock server', () => {
       TESTING_localServer_chatPort: port,
       TESTING_localServer_cdsiPort: port,
       TESTING_localServer_svr2Port: port,
-      TESTING_localServer_svr3SgxPort: port,
-      TESTING_localServer_svr3NitroPort: port,
-      TESTING_localServer_svr3Tpm2SnpPort: port,
       TESTING_localServer_rootCertificateDer: pemToDer(certificateAuthority),
     });
   });
@@ -104,6 +101,11 @@ describe('chat connection to mock server', () => {
   afterEach(async () => {
     await chatServer.stop();
   });
+
+  function username(): string {
+    const device = chatServer.device?.device;
+    return `${device?.aci}.${device?.deviceId}`;
+  }
 
   type ConnectFn = [
     string,
@@ -128,12 +130,11 @@ describe('chat connection to mock server', () => {
             _ack: ChatServerMessageAck
           ) => {},
           onQueueEmpty: () => {},
+          onReceivedAlerts: (_alerts: string[]) => {},
           ...listener,
         };
-        const device = chatServer.device?.device;
-        const username = `${device?.aci}.${device?.deviceId}`;
         return network.connectAuthenticatedChat(
-          username,
+          username(),
           devicePassword,
           false,
           serviceListener
@@ -165,4 +166,36 @@ describe('chat connection to mock server', () => {
       expect(onDisconnected.resolvedValue).to.be.null;
     });
   });
+
+  [[], ['primary-device-stinky'], ['UPPERcase', 'lowercase']].forEach(
+    (alertList) => {
+      it(`can receive alerts: [${alertList.join(',')}]`, async () => {
+        const headers: Record<string, string> = {
+          unrelated: 'ignore',
+          'x-signal-alert': alertList.join(','),
+        };
+        chatServer.server.setWebsocketUpgradeResponseHeaders(headers);
+        const promisedAlerts = sinon.promise();
+        const chat = await network.connectAuthenticatedChat(
+          username(),
+          devicePassword,
+          false,
+          {
+            onReceivedAlerts: (alerts) => {
+              void promisedAlerts.resolve(alerts);
+            },
+            onIncomingMessage: (
+              _envelope: Buffer,
+              _timestamp: number,
+              _ack: ChatServerMessageAck
+            ) => {},
+            onQueueEmpty: () => {},
+            onConnectionInterrupted: (_cause) => {},
+          }
+        );
+        await expect(promisedAlerts).to.eventually.deep.equal(alertList);
+        await chat.disconnect();
+      });
+    }
+  );
 });

@@ -12,7 +12,7 @@ use std::time::Duration;
 use async_trait::async_trait;
 use derive_where::derive_where;
 use futures_util::stream::{SplitSink, SplitStream};
-use futures_util::{SinkExt as _, StreamExt, TryFutureExt};
+use futures_util::{Sink, SinkExt as _, Stream, StreamExt, TryFutureExt};
 use http::uri::PathAndQuery;
 use tokio::sync::Mutex;
 use tokio::time::Instant;
@@ -32,7 +32,7 @@ use crate::{
 };
 
 pub mod error;
-pub use error::{Error, WebSocketConnectError};
+pub use error::{LogSafeTungsteniteError, WebSocketConnectError};
 
 mod noise;
 pub use noise::WebSocketTransport;
@@ -60,6 +60,22 @@ pub struct WebSocketConfig {
     /// How long to allow the connection to be idle before the server is assumed
     /// to have become unavailable.
     pub max_idle_time: Duration,
+}
+
+/// A type that can be used like a [`tokio_tungstenite::WebSocketStream`].
+///
+/// This trait is blanket-implemented for types that can send and receive
+/// [`tungstenite::Message`]s and [`tungstenite::Error`]s.
+pub trait WebSocketStreamLike:
+    Stream<Item = Result<tungstenite::Message, tungstenite::Error>>
+    + Sink<tungstenite::Message, Error = tungstenite::Error>
+{
+}
+
+impl<S> WebSocketStreamLike for S where
+    S: Stream<Item = Result<tungstenite::Message, tungstenite::Error>>
+        + Sink<tungstenite::Message, Error = tungstenite::Error>
+{
 }
 
 /// [`ServiceConnector`] for services that wrap a websocket connection.
@@ -147,6 +163,25 @@ pub enum WebSocketServiceError {
 #[derive(Default)]
 pub struct Stateless;
 
+/// [`Connector`] for websocket-over-HTTPS routes that discards the response headers.
+#[derive(Default)]
+pub struct WithoutResponseHeaders<T = Stateless>(pub T);
+
+impl WithoutResponseHeaders {
+    /// Creates a [`Stateless`]-based `WithoutResponseHeaders`.
+    ///
+    /// Technically redundant with `default`, but doesn't leave any parameters up to inference.
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
+
+#[derive(Debug)]
+pub struct StreamWithResponseHeaders<Inner> {
+    pub stream: Inner,
+    pub response_headers: http::HeaderMap,
+}
+
 /// Connects a websocket on top of an existing connection.
 ///
 /// This can't just take as the route type a [`WebSocketRouteFragment`] because
@@ -158,7 +193,7 @@ impl<Inner> Connector<(WebSocketRouteFragment, HttpRouteFragment), Inner> for St
 where
     Inner: AsyncDuplexStream,
 {
-    type Connection = tokio_tungstenite::WebSocketStream<Inner>;
+    type Connection = StreamWithResponseHeaders<tokio_tungstenite::WebSocketStream<Inner>>;
 
     type Error = tungstenite::Error;
 
@@ -210,12 +245,42 @@ where
                 )
                 .body(())?;
 
-            let (stream, _response) =
+            let (stream, response) =
                 tokio_tungstenite::client_async_with_config(request, inner, Some(ws_config))
                     .await?;
 
-            Ok(stream)
+            Ok(StreamWithResponseHeaders {
+                stream,
+                response_headers: response.into_parts().0.headers,
+            })
         }
+    }
+}
+
+impl<T, Inner> Connector<(WebSocketRouteFragment, HttpRouteFragment), Inner>
+    for WithoutResponseHeaders<T>
+where
+    T: Connector<
+        (WebSocketRouteFragment, HttpRouteFragment),
+        Inner,
+        Connection = StreamWithResponseHeaders<tokio_tungstenite::WebSocketStream<Inner>>,
+    >,
+{
+    type Connection = tokio_tungstenite::WebSocketStream<Inner>;
+    type Error = T::Error;
+
+    fn connect_over(
+        &self,
+        inner: Inner,
+        route: (WebSocketRouteFragment, HttpRouteFragment),
+        log_tag: Arc<str>,
+    ) -> impl std::future::Future<Output = Result<Self::Connection, Self::Error>> + Send {
+        self.0.connect_over(inner, route, log_tag).map_ok(
+            |StreamWithResponseHeaders {
+                 stream,
+                 response_headers: _,
+             }| stream,
+        )
     }
 }
 
@@ -319,7 +384,6 @@ where
             connect_future,
         )
         .await
-        .map_err(Into::into)
     }
 
     fn start_service(&self, channel: Self::Channel) -> (Self::Service, CancellationToken) {
@@ -478,7 +542,7 @@ where
     if result.is_err() {
         service_status.cancel(CancellationReason::ServiceError);
     }
-    result.map_err(Into::into)
+    result
 }
 
 async fn connect_websocket<T: TransportConnector>(
@@ -530,7 +594,9 @@ async fn connect_websocket<T: TransportConnector>(
 #[derive(Debug, derive_more::From)]
 #[cfg_attr(any(test, feature = "test-util"), derive(Clone, Eq, PartialEq))]
 pub enum TextOrBinary {
+    #[from(String, &str)]
     Text(String),
+    #[from(Vec<u8>)]
     Binary(Vec<u8>),
 }
 
@@ -643,7 +709,10 @@ pub mod testutil {
         );
         let server_future = tokio_tungstenite::accept_async(server);
         let (client_res, server_res) = tokio::join!(client_future, server_future);
-        let client_stream = client_res.unwrap();
+        let StreamWithResponseHeaders {
+            stream: client_stream,
+            response_headers: _,
+        } = client_res.unwrap();
         let server_stream = server_res.unwrap();
         (server_stream, client_stream)
     }

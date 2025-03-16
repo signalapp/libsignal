@@ -18,7 +18,8 @@ use crate::dns::{DnsError, DnsResolver};
 use crate::host::Host;
 use crate::route::{
     ConnectionProxyRoute, DirectOrProxyRoute, HttpProxyRouteFragment, HttpsProxyRoute,
-    HttpsTlsRoute, ProxyTarget, SocksRoute, TcpRoute, TlsRoute, UnresolvedHost, WebSocketRoute,
+    HttpsTlsRoute, ProxyTarget, SocksRoute, TcpRoute, TlsRoute, UnresolvedHost, UsePreconnect,
+    WebSocketRoute,
 };
 
 /// A route with hostnames that can be resolved.
@@ -214,6 +215,7 @@ impl_resolve_hostnames!(TcpRoute, address, port);
 impl_resolve_hostnames!(TlsRoute, inner, fragment);
 impl_resolve_hostnames!(HttpsTlsRoute, inner, fragment);
 impl_resolve_hostnames!(WebSocketRoute, inner, fragment);
+impl_resolve_hostnames!(UsePreconnect, inner, should);
 
 impl<D: ResolveHostnames, P: ResolveHostnames> ResolveHostnames for DirectOrProxyRoute<D, P> {
     type Resolved = DirectOrProxyRoute<D::Resolved, P::Resolved>;
@@ -381,6 +383,7 @@ impl_resolved_route!(TlsRoute, inner);
 impl_resolved_route!(HttpsTlsRoute, inner);
 impl_resolved_route!(HttpsProxyRoute, inner);
 impl_resolved_route!(WebSocketRoute, inner);
+impl_resolved_route!(UsePreconnect, inner);
 
 impl<D: ResolvedRoute, P: ResolvedRoute> ResolvedRoute for DirectOrProxyRoute<D, P> {
     fn immediate_target(&self) -> &IpAddr {
@@ -597,15 +600,15 @@ mod test {
             .respond(Ok(LookupResult {
                 source: DnsSource::Cache,
                 ipv4: vec![],
-                ipv6: vec![ip_addr!(v6, "::1111")],
+                ipv6: vec![ip_addr!(v6, "3fff::11")],
             }));
         responders
             .remove("host-3")
             .unwrap()
             .respond(Ok(LookupResult {
                 source: DnsSource::Cache,
-                ipv4: vec![ip_addr!(v4, "5.5.5.5")],
-                ipv6: vec![ip_addr!(v6, "::2222")],
+                ipv4: vec![ip_addr!(v4, "192.0.2.55")],
+                ipv6: vec![ip_addr!(v6, "3fff::22")],
             }));
 
         let () = tokio::select! {
@@ -620,15 +623,23 @@ mod test {
             .respond(Ok(LookupResult {
                 source: DnsSource::Test,
                 ipv4: vec![],
-                ipv6: vec![ip_addr!(v6, "::3333")],
+                ipv6: vec![ip_addr!(v6, "3fff::33")],
             }));
         let result = resolve.await.expect("finished");
 
         pretty_assertions::assert_eq!(
             result.collect_vec(),
             [
-                vec![ip_addr!("::1111"), ip_addr!("::3333"), ip_addr!("::2222")],
-                vec![ip_addr!("::1111"), ip_addr!("::3333"), ip_addr!("5.5.5.5")]
+                vec![
+                    ip_addr!("3fff::11"),
+                    ip_addr!("3fff::33"),
+                    ip_addr!("3fff::22")
+                ],
+                vec![
+                    ip_addr!("3fff::11"),
+                    ip_addr!("3fff::33"),
+                    ip_addr!("192.0.2.55")
+                ]
             ],
         );
     }
@@ -649,16 +660,16 @@ mod test {
                 "proxy-domain",
                 LookupResult {
                     source: DnsSource::Static,
-                    ipv4: vec![ip_addr!(v4, "10.10.10.10")],
-                    ipv6: vec![ip_addr!(v6, "::ffff")],
+                    ipv4: vec![ip_addr!(v4, "192.0.2.100")],
+                    ipv6: vec![ip_addr!(v6, "3fff::ffff")],
                 },
             ),
             (
                 "target-domain",
                 LookupResult {
                     source: DnsSource::Static,
-                    ipv4: vec![ip_addr!(v4, "1.2.3.4"), ip_addr!(v4, "1.2.3.5")],
-                    ipv6: vec![ip_addr!(v6, "::1234")],
+                    ipv4: vec![ip_addr!(v4, "192.0.2.1"), ip_addr!(v4, "192.0.2.2")],
+                    ipv6: vec![ip_addr!(v6, "3fff::1234")],
                 },
             ),
         ]);
@@ -711,8 +722,8 @@ mod test {
             HttpsTlsRoute {
                 inner: TlsRoute {
                     inner: DirectOrProxyRoute::Proxy(socks_route(
-                        ip_addr!("::ffff"),
-                        ip_addr!("::1234"),
+                        ip_addr!("3fff::ffff"),
+                        ip_addr!("3fff::1234"),
                     )),
                     fragment: tls_fragment.clone(),
                 },
@@ -722,8 +733,8 @@ mod test {
             HttpsTlsRoute {
                 inner: TlsRoute {
                     inner: DirectOrProxyRoute::Proxy(socks_route(
-                        ip_addr!("10.10.10.10"),
-                        ip_addr!("1.2.3.4"),
+                        ip_addr!("192.0.2.100"),
+                        ip_addr!("192.0.2.1"),
                     )),
                     fragment: tls_fragment.clone(),
                 },
@@ -732,8 +743,8 @@ mod test {
             HttpsTlsRoute {
                 inner: TlsRoute {
                     inner: DirectOrProxyRoute::Proxy(socks_route(
-                        ip_addr!("10.10.10.10"),
-                        ip_addr!("1.2.3.5"),
+                        ip_addr!("192.0.2.100"),
+                        ip_addr!("192.0.2.2"),
                     )),
                     fragment: tls_fragment.clone(),
                 },
@@ -743,8 +754,8 @@ mod test {
             HttpsTlsRoute {
                 inner: TlsRoute {
                     inner: DirectOrProxyRoute::Proxy(socks_route(
-                        ip_addr!("::ffff"),
-                        ip_addr!("1.2.3.4"),
+                        ip_addr!("3fff::ffff"),
+                        ip_addr!("192.0.2.1"),
                     )),
                     fragment: tls_fragment.clone(),
                 },
@@ -753,8 +764,8 @@ mod test {
             HttpsTlsRoute {
                 inner: TlsRoute {
                     inner: DirectOrProxyRoute::Proxy(socks_route(
-                        ip_addr!("::ffff"),
-                        ip_addr!("1.2.3.5"),
+                        ip_addr!("3fff::ffff"),
+                        ip_addr!("192.0.2.2"),
                     )),
                     fragment: tls_fragment.clone(),
                 },
@@ -763,8 +774,8 @@ mod test {
             HttpsTlsRoute {
                 inner: TlsRoute {
                     inner: DirectOrProxyRoute::Proxy(socks_route(
-                        ip_addr!("10.10.10.10"),
-                        ip_addr!("::1234"),
+                        ip_addr!("192.0.2.100"),
+                        ip_addr!("3fff::1234"),
                     )),
                     fragment: tls_fragment.clone(),
                 },

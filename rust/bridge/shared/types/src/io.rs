@@ -166,10 +166,7 @@ impl AsyncRead for AsyncInput<'_> {
             AsyncInputState::Idle => self.stream.read(buf)?,
             AsyncInputState::Reading(read_future) => InputStreamRead::Pending(read_future),
             AsyncInputState::Skipping { .. } => {
-                return Poll::Ready(Err(io::Error::new(
-                    io::ErrorKind::Other,
-                    "cannot read while skipping",
-                )))
+                return Poll::Ready(Err(io::Error::other("cannot read while skipping")))
             }
         };
 

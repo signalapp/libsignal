@@ -9,7 +9,7 @@ use std::ops::ControlFlow;
 use std::sync::Arc;
 use std::time::Duration;
 
-use futures_util::stream::FuturesUnordered;
+use futures_util::stream::{FusedStream, FuturesUnordered};
 use futures_util::{FutureExt, StreamExt};
 use tokio::time::Instant;
 use tokio_util::either::Either;
@@ -104,7 +104,7 @@ pub trait RouteProviderContext {
 
 /// A hostname in a route that can later be resolved to IP addresses.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, derive_more::From, derive_more::Into)]
-pub struct UnresolvedHost(Arc<str>);
+pub struct UnresolvedHost(pub Arc<str>);
 
 /// Allows replacing part of a route.
 ///
@@ -135,18 +135,65 @@ pub type UnresolvedTransportRoute = TlsRoute<
     DirectOrProxyRoute<TcpRoute<UnresolvedHost>, ConnectionProxyRoute<Host<UnresolvedHost>>>,
 >;
 /// [`HttpsTlsRoute`] that contains [`UnresolvedHost`] addresses.
-pub type UnresolvedHttpsServiceRoute = HttpsTlsRoute<UnresolvedTransportRoute>;
+pub type UnresolvedHttpsServiceRoute<Transport = UnresolvedTransportRoute> =
+    HttpsTlsRoute<Transport>;
 
 /// [`WebSocketRoute`] that contains [`UnresolvedHost`] addresses.
-pub type UnresolvedWebsocketServiceRoute = WebSocketRoute<HttpsTlsRoute<UnresolvedTransportRoute>>;
+pub type UnresolvedWebsocketServiceRoute<Transport = UnresolvedTransportRoute> =
+    WebSocketRoute<UnresolvedHttpsServiceRoute<Transport>>;
 
 /// Transport-level route that contains [`IpAddr`]s.
 pub type TransportRoute =
     TlsRoute<DirectOrProxyRoute<TcpRoute<IpAddr>, ConnectionProxyRoute<IpAddr>>>;
 /// [`HttpsTlsRoute`] that contains [`IpAddr`]s.
-pub type HttpsServiceRoute = HttpsTlsRoute<TransportRoute>;
+pub type HttpsServiceRoute<Transport = TransportRoute> = HttpsTlsRoute<Transport>;
 /// [`WebSocketRoute`] that contains [`IpAddr`]s.
-pub type WebSocketServiceRoute = WebSocketRoute<HttpsServiceRoute>;
+pub type WebSocketServiceRoute<Transport = TransportRoute> =
+    WebSocketRoute<HttpsServiceRoute<Transport>>;
+
+/// Abstracts over routes that contain a [`TransportRoute`].
+///
+/// This allows, e.g. [`ConnectionOutcomes<TransportRoute>`](ConnectionOutcomes) to be used with
+/// several different kinds of route.
+pub trait UsesTransport<R = TransportRoute> {
+    fn transport_part(&self) -> &R;
+    fn into_transport_part(self) -> R;
+}
+
+impl UsesTransport for TransportRoute {
+    fn transport_part(&self) -> &TransportRoute {
+        self
+    }
+    fn into_transport_part(self) -> TransportRoute {
+        self
+    }
+}
+
+impl UsesTransport<Self> for UnresolvedTransportRoute {
+    fn transport_part(&self) -> &UnresolvedTransportRoute {
+        self
+    }
+    fn into_transport_part(self) -> UnresolvedTransportRoute {
+        self
+    }
+}
+
+macro_rules! impl_uses_transport {
+    ($typ:ident, $delegate_field:ident) => {
+        impl<R, T: UsesTransport<R>> UsesTransport<R> for $typ<T> {
+            fn transport_part(&self) -> &R {
+                self.$delegate_field.transport_part()
+            }
+            fn into_transport_part(self) -> R {
+                self.$delegate_field.into_transport_part()
+            }
+        }
+    };
+}
+
+impl_uses_transport!(WebSocketServiceRoute, inner);
+impl_uses_transport!(HttpsServiceRoute, inner);
+impl_uses_transport!(UsePreconnect, inner);
 
 /// Error for [`connect()`].
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -190,12 +237,74 @@ pub struct OutcomeUpdates<R> {
 ///
 /// The `Future` returned by this function resolves when all connection attempts
 /// are exhausted or a one of them produces a fatal error.
-pub async fn connect<R, UR, C, FatalError>(
+pub async fn connect<R, UR, C, Inner, FatalError>(
     route_resolver: &RouteResolver,
     delay_policy: impl RouteDelayPolicy<R>,
     ordered_routes: impl Iterator<Item = UR>,
     resolver: &impl Resolver,
     connector: C,
+    inner: Inner,
+    log_tag: Arc<str>,
+    on_error: impl FnMut(C::Error) -> ControlFlow<FatalError>,
+) -> (
+    Result<C::Connection, ConnectError<FatalError>>,
+    OutcomeUpdates<R>,
+)
+where
+    Inner: Clone,
+    C: Connector<R, Inner>,
+    UR: ResolveHostnames<Resolved = R> + Clone + 'static,
+    R: Clone + ResolvedRoute,
+{
+    let resolver_stream = route_resolver.resolve(ordered_routes, resolver);
+
+    connect_inner(
+        resolver_stream,
+        delay_policy,
+        connector,
+        inner,
+        log_tag,
+        on_error,
+    )
+    .await
+}
+
+/// Like [`connect`] but takes a collection of resolved routes.
+///
+/// The resolved routes are assumed to all be the result of resolving a single
+/// unresolved route.
+pub async fn connect_resolved<R, C, Inner, FatalError>(
+    routes: Vec<R>,
+    delay_policy: impl RouteDelayPolicy<R>,
+    connector: C,
+    inner: Inner,
+    log_tag: Arc<str>,
+    on_error: impl FnMut(C::Error) -> ControlFlow<FatalError>,
+) -> (
+    Result<C::Connection, ConnectError<FatalError>>,
+    OutcomeUpdates<R>,
+)
+where
+    Inner: Clone,
+    C: Connector<R, Inner>,
+    R: Clone + ResolvedRoute,
+{
+    connect_inner(
+        futures_util::stream::once(std::future::ready(schedule::as_resolved_group(routes))),
+        delay_policy,
+        connector,
+        inner,
+        log_tag,
+        on_error,
+    )
+    .await
+}
+
+async fn connect_inner<R, C, Inner, FatalError>(
+    resolver_stream: impl FusedStream<Item = (ResolvedRoutes<R>, ResolveMeta)>,
+    delay_policy: impl RouteDelayPolicy<R>,
+    connector: C,
+    inner: Inner,
     log_tag: Arc<str>,
     mut on_error: impl FnMut(C::Error) -> ControlFlow<FatalError>,
 ) -> (
@@ -204,11 +313,9 @@ pub async fn connect<R, UR, C, FatalError>(
 )
 where
     R: Clone,
-    C: Connector<R, ()>,
-    UR: ResolveHostnames<Resolved = R> + Clone + 'static,
-    R: ResolvedRoute,
+    Inner: Clone,
+    C: Connector<R, Inner>,
 {
-    let resolver_stream = route_resolver.resolve(ordered_routes, resolver);
     let schedule = Some(Schedule::new(
         resolver_stream,
         delay_policy,
@@ -222,9 +329,12 @@ where
     // Every N seconds, log about what we've tried and still have yet to try.
     let mut log_for_slow_connections = tokio::time::interval(Duration::from_secs(3));
     log_for_slow_connections.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+    // Skip the first tick, as tokio::time::interval's "first tick completes immediately."
+    log_for_slow_connections.tick().await;
 
     // Whether the Schedule should be polled for its next route.
     let mut poll_schedule_for_next = true;
+    let mut most_recent_connection_start = Instant::now();
     let mut connects_in_progress = FuturesUnordered::new();
     let mut outcomes = Vec::new();
 
@@ -279,14 +389,17 @@ where
             Event::NextRouteAvailable(Some(route)) => {
                 connects_in_progress.push(async {
                     let started = Instant::now();
-                    let result = connector.connect(route.clone(), log_tag.clone()).await;
+                    let result = connector
+                        .connect_over(inner.clone(), route.clone(), log_tag.clone())
+                        .await;
                     (route, result, started)
                 });
                 poll_schedule_for_next = false;
+                most_recent_connection_start = Instant::now();
 
-                sleep_until_start_next_connection
-                    .as_mut()
-                    .reset(Instant::now() + pull_next_route_delay(&connects_in_progress));
+                sleep_until_start_next_connection.as_mut().reset(
+                    most_recent_connection_start + pull_next_route_delay(&connects_in_progress),
+                );
             }
             Event::NextRouteAvailable(None) => {
                 // The Schedule is empty, so make sure it's not polled again.
@@ -313,6 +426,11 @@ where
                         break Err(ConnectError::FatalConnect(fatal_err));
                     }
                 }
+
+                // We probably now want to start the next connection sooner.
+                sleep_until_start_next_connection.as_mut().reset(
+                    most_recent_connection_start + pull_next_route_delay(&connects_in_progress),
+                );
             }
             Event::LogStatus => {
                 log::info!(
@@ -362,6 +480,16 @@ impl<R: RouteProvider> RouteProvider for &R {
     }
 }
 
+/// [`RouteDelayPolicy`] that always returns a delay of zero.
+#[derive(Copy, Clone, Debug)]
+pub struct NoDelay;
+
+impl<R> RouteDelayPolicy<R> for NoDelay {
+    fn compute_delay(&self, _route: &R, _now: Instant) -> Duration {
+        Duration::ZERO
+    }
+}
+
 #[cfg(any(test, feature = "test-util"))]
 pub mod testutils {
     use std::cell::RefCell;
@@ -392,16 +520,6 @@ pub mod testutils {
     impl<A: ResolvedRoute> ResolvedRoute for FakeRoute<A> {
         fn immediate_target(&self) -> &IpAddr {
             self.0.immediate_target()
-        }
-    }
-
-    /// [`RouteDelayPolicy`] that always returns a delay of zero.
-    #[derive(Copy, Clone, Debug)]
-    pub struct NoDelay;
-
-    impl<R> RouteDelayPolicy<R> for NoDelay {
-        fn compute_delay(&self, _route: &R, _now: Instant) -> Duration {
-            Duration::ZERO
         }
     }
 
@@ -449,8 +567,9 @@ mod test {
     use std::convert::Infallible;
     use std::fmt::Debug;
     use std::future::Future;
-    use std::net::{IpAddr, Ipv4Addr};
+    use std::net::{IpAddr, Ipv6Addr};
     use std::num::NonZeroU16;
+    use std::sync::LazyLock;
 
     use ::http::uri::PathAndQuery;
     use ::http::HeaderMap;
@@ -468,14 +587,13 @@ mod test {
     use crate::dns::lookup_result::LookupResult;
     use crate::host::Host;
     use crate::route::resolve::testutils::FakeResolver;
-    use crate::route::testutils::{FakeContext, FakeRoute, NoDelay};
+    use crate::route::testutils::{FakeContext, FakeRoute};
     use crate::route::{SocksProxy, TlsProxy};
     use crate::tcp_ssl::proxy::socks;
     use crate::{Alpn, DnsSource};
 
-    lazy_static::lazy_static! {
-        static ref WS_ENDPOINT: PathAndQuery =  PathAndQuery::from_static("/ws-path");
-    }
+    static WS_ENDPOINT: LazyLock<PathAndQuery> =
+        LazyLock::new(|| PathAndQuery::from_static("/ws-path"));
     const ROOT_CERTS: RootCertificates = RootCertificates::FromDer(Cow::Borrowed(b"cert"));
     const PROXY_ROOT_CERTS: RootCertificates = RootCertificates::FromDer(Cow::Borrowed(b"proxy"));
 
@@ -782,14 +900,14 @@ mod test {
 
     #[tokio::test(start_paused = true)]
     async fn connect_slows_down_after_starting_a_connection() {
-        const HOSTNAMES: &[(&str, Ipv4Addr)] = &[
-            ("A", ip_addr!(v4, "1.1.1.1")),
-            ("B", ip_addr!(v4, "2.2.2.2")),
-            ("C", ip_addr!(v4, "3.3.3.3")),
-            ("D", ip_addr!(v4, "4.4.4.4")),
-            ("E", ip_addr!(v4, "5.5.5.5")),
-            ("F", ip_addr!(v4, "6.6.6.6")),
-            ("G", ip_addr!(v4, "7.7.7.7")),
+        const HOSTNAMES: &[(&str, Ipv6Addr)] = &[
+            ("A", ip_addr!(v6, "3fff::1")),
+            ("B", ip_addr!(v6, "3fff::2")),
+            ("C", ip_addr!(v6, "3fff::3")),
+            ("D", ip_addr!(v6, "3fff::4")),
+            ("E", ip_addr!(v6, "3fff::5")),
+            ("F", ip_addr!(v6, "3fff::6")),
+            ("G", ip_addr!(v6, "3fff::7")),
         ];
         let (connector, mut connection_responders) = FakeConnector::new();
         let outcomes = NoDelay;
@@ -804,6 +922,7 @@ mod test {
                     .map(|(h, _addr)| FakeRoute(UnresolvedHost::from(Arc::from(*h)))),
                 &resolver,
                 connector,
+                (),
                 "test".into(),
                 |_err: FakeConnectError| ControlFlow::<Infallible>::Continue(()),
             )
@@ -817,8 +936,8 @@ mod test {
             assert_eq!(responder.hostname(), *host);
             responder.respond(Ok(LookupResult::new(
                 crate::DnsSource::Test,
-                vec![*addr],
                 vec![],
+                vec![*addr],
             )));
         }
 
@@ -835,7 +954,7 @@ mod test {
                 .collect_vec(),
             HOSTNAMES[..1]
                 .iter()
-                .map(|(_, addr)| IpAddr::V4(*addr))
+                .map(|(_, addr)| IpAddr::V6(*addr))
                 .collect_vec()
         );
 
@@ -848,20 +967,20 @@ mod test {
         let start = Instant::now();
         // If, however, we wait a little longer, we will see another one!
         let next_connection = connection_responders.next().await.unwrap();
-        assert_eq!(next_connection.route().0, IpAddr::V4(HOSTNAMES[1].1));
+        assert_eq!(next_connection.route().0, IpAddr::V6(HOSTNAMES[1].1));
         assert_eq!(start.elapsed(), PER_CONNECTION_WAIT_DURATION);
     }
 
     #[tokio::test(start_paused = true)]
     async fn connect_takes_first_successful() {
-        const HOSTNAMES: &[(&str, Ipv4Addr)] = &[
-            ("A", ip_addr!(v4, "1.1.1.1")),
-            ("B", ip_addr!(v4, "2.2.2.2")),
-            ("C", ip_addr!(v4, "3.3.3.3")),
-            ("D", ip_addr!(v4, "4.4.4.4")),
-            ("E", ip_addr!(v4, "5.5.5.5")),
-            ("F", ip_addr!(v4, "6.6.6.6")),
-            ("G", ip_addr!(v4, "7.7.7.7")),
+        const HOSTNAMES: &[(&str, Ipv6Addr)] = &[
+            ("A", ip_addr!(v6, "3fff::1")),
+            ("B", ip_addr!(v6, "3fff::2")),
+            ("C", ip_addr!(v6, "3fff::3")),
+            ("D", ip_addr!(v6, "3fff::4")),
+            ("E", ip_addr!(v6, "3fff::5")),
+            ("F", ip_addr!(v6, "3fff::6")),
+            ("G", ip_addr!(v6, "3fff::7")),
         ];
 
         let (connector, mut connection_responders) = FakeConnector::<FakeRoute<IpAddr>>::new();
@@ -876,7 +995,7 @@ mod test {
                 const SIMULATED_CONNECTION_DELAY: Duration = Duration::from_secs(1);
 
                 let should_succeed =
-                    responder.route().0 == IpAddr::V4(HOSTNAMES[SUCCESSFUL_ROUTE_INDEX].1);
+                    responder.route().0 == IpAddr::V6(HOSTNAMES[SUCCESSFUL_ROUTE_INDEX].1);
                 tokio::task::spawn(async move {
                     tokio::time::sleep(SIMULATED_CONNECTION_DELAY).await;
                     responder.respond(should_succeed.then_some(()).ok_or(FakeConnectError));
@@ -890,8 +1009,8 @@ mod test {
                 assert_eq!(responder.hostname(), *host);
                 responder.respond(Ok(LookupResult::new(
                     crate::DnsSource::Test,
-                    vec![*addr],
                     vec![],
+                    vec![*addr],
                 )));
             }
         });
@@ -904,6 +1023,7 @@ mod test {
                 .map(|(h, _addr)| FakeRoute(UnresolvedHost::from(Arc::from(*h)))),
             &resolver,
             connector,
+            (),
             "test".into(),
             |_err: FakeConnectError| ControlFlow::<Infallible>::Continue(()),
         )
@@ -911,7 +1031,7 @@ mod test {
 
         assert_eq!(
             result,
-            Ok(FakeConnection(FakeRoute(IpAddr::V4(
+            Ok(FakeConnection(FakeRoute(IpAddr::V6(
                 HOSTNAMES[SUCCESSFUL_ROUTE_INDEX].1
             ))))
         );
@@ -925,12 +1045,81 @@ mod test {
             update_outcomes,
             HOSTNAMES[..SUCCESSFUL_ROUTE_INDEX]
                 .iter()
-                .map(|(_, ip)| (FakeRoute(IpAddr::V4(*ip)), Err(UnsuccessfulOutcome)))
+                .map(|(_, ip)| (FakeRoute(IpAddr::V6(*ip)), Err(UnsuccessfulOutcome)))
                 .chain(std::iter::once({
                     let (_, ip) = HOSTNAMES[SUCCESSFUL_ROUTE_INDEX];
-                    (FakeRoute(IpAddr::V4(ip)), Ok(()))
+                    (FakeRoute(IpAddr::V6(ip)), Ok(()))
                 }))
                 .collect_vec()
+        );
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn connect_interleaves_resolved_routes() {
+        const HOSTNAMES: &[(&str, &[Ipv6Addr])] = &[
+            (
+                "A",
+                &[
+                    ip_addr!(v6, "3fff::1:1"),
+                    ip_addr!(v6, "3fff::1:2"),
+                    ip_addr!(v6, "3fff::1:3"),
+                ],
+            ),
+            ("B", &[ip_addr!(v6, "3fff::2:1"), ip_addr!(v6, "3fff::2:2")]),
+            ("C", &[ip_addr!(v6, "3fff::3:1")]),
+        ];
+
+        let (connector, mut connection_responders) = FakeConnector::<FakeRoute<IpAddr>>::new();
+        let outcomes = NoDelay;
+        let (resolver, mut resolution_responders) = FakeResolver::new();
+
+        let connect_task = tokio::spawn(async move {
+            let mut ips = vec![];
+            while let Some(responder) = connection_responders.next().await {
+                ips.push(responder.route().0);
+                responder.respond(Err(FakeConnectError));
+            }
+            ips
+        });
+        let _resolve_task = tokio::spawn(async move {
+            // The routes should be sent for resolution in order.
+            for (host, addrs) in HOSTNAMES {
+                let responder = resolution_responders.next().await.unwrap();
+                assert_eq!(responder.hostname(), *host);
+                responder.respond(Ok(LookupResult::new(
+                    crate::DnsSource::Test,
+                    vec![],
+                    addrs.to_vec(),
+                )));
+            }
+        });
+
+        let (result, _updates) = connect(
+            &RouteResolver::default(),
+            &outcomes,
+            HOSTNAMES
+                .iter()
+                .map(|(h, _addr)| FakeRoute(UnresolvedHost::from(Arc::from(*h)))),
+            &resolver,
+            connector,
+            (),
+            "test".into(),
+            |_err: FakeConnectError| ControlFlow::<Infallible>::Continue(()),
+        )
+        .await;
+        assert_matches!(result, Err(_));
+
+        let ips = connect_task.await.expect("did not panic");
+        assert_eq!(
+            ips,
+            &[
+                HOSTNAMES[0].1[0],
+                HOSTNAMES[1].1[0],
+                HOSTNAMES[2].1[0],
+                HOSTNAMES[0].1[1],
+                HOSTNAMES[1].1[1],
+                HOSTNAMES[0].1[2],
+            ]
         );
     }
 
@@ -954,10 +1143,10 @@ mod test {
 
     #[tokio::test(start_paused = true)]
     async fn connect_succeeds_if_some_routes_hang_indefinitely() {
-        const HOSTNAMES: &[(&str, Ipv4Addr)] = &[
-            ("A", ip_addr!(v4, "1.1.1.1")),
-            ("B", ip_addr!(v4, "2.2.2.2")),
-            ("C", ip_addr!(v4, "3.3.3.3")),
+        const HOSTNAMES: &[(&str, Ipv6Addr)] = &[
+            ("A", ip_addr!(v6, "3fff::1")),
+            ("B", ip_addr!(v6, "3fff::2")),
+            ("C", ip_addr!(v6, "3fff::3")),
         ];
 
         let (connector, connection_responders) = FakeConnector::new();
@@ -968,8 +1157,8 @@ mod test {
                 *name,
                 LookupResult {
                     source: DnsSource::Test,
-                    ipv4: vec![*ip],
-                    ipv6: vec![],
+                    ipv4: vec![],
+                    ipv6: vec![*ip],
                 },
             )
         }));
@@ -984,6 +1173,7 @@ mod test {
                     .map(|(h, _addr)| FakeRoute(UnresolvedHost::from(Arc::from(*h)))),
                 &resolver,
                 connector,
+                (),
                 "test".into(),
                 |_err: FakeConnectError| ControlFlow::<Infallible>::Continue(()),
             )
@@ -997,11 +1187,77 @@ mod test {
             .await
             .try_into()
             .unwrap();
-        assert_eq!(c.route(), &FakeRoute(ip_addr!("3.3.3.3")));
+        assert_eq!(c.route(), &FakeRoute(ip_addr!("3fff::3")));
         c.respond(Ok(()));
 
         let (result, _outcomes) = connect_task.await.unwrap();
 
         assert_matches!(result, Ok(_));
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn start_connections_sooner_if_previous_ones_finish() {
+        const HOSTNAMES: &[(&str, Ipv6Addr)] = &[
+            ("A", ip_addr!(v6, "3fff::1")),
+            ("B", ip_addr!(v6, "3fff::2")),
+            ("C", ip_addr!(v6, "3fff::3")),
+        ];
+
+        let (connector, mut connection_responders) = FakeConnector::new();
+
+        let outcomes = NoDelay;
+        let resolver = HashMap::from_iter(HOSTNAMES.iter().map(|(name, ip)| {
+            (
+                *name,
+                LookupResult {
+                    source: DnsSource::Test,
+                    ipv4: vec![],
+                    ipv6: vec![*ip],
+                },
+            )
+        }));
+
+        let start = Instant::now();
+        let connect_task = tokio::spawn(async move {
+            let route_resolver = RouteResolver::default();
+            super::connect(
+                &route_resolver,
+                outcomes,
+                HOSTNAMES
+                    .iter()
+                    .map(|(h, _addr)| FakeRoute(UnresolvedHost::from(Arc::from(*h)))),
+                &resolver,
+                connector,
+                (),
+                "test".into(),
+                |_err: FakeConnectError| ControlFlow::<Infallible>::Continue(()),
+            )
+            .await
+        });
+
+        let a = connection_responders.next().await.expect("first");
+        let b = connection_responders.next().await.expect("second");
+        assert_eq!(
+            start + PER_CONNECTION_WAIT_DURATION,
+            Instant::now(),
+            "should stagger connections"
+        );
+
+        let after_small_delay = start + PER_CONNECTION_WAIT_DURATION * 3 / 2;
+        tokio::time::sleep_until(after_small_delay).await;
+        a.respond(Err(FakeConnectError));
+
+        let c = connection_responders.next().await.expect("second");
+        assert_eq!(
+            start + 2 * PER_CONNECTION_WAIT_DURATION,
+            Instant::now(),
+            "should not wait more than PER_CONNECTION_WAIT_DURATION start the next connection"
+        );
+
+        c.respond(Err(FakeConnectError));
+        b.respond(Err(FakeConnectError));
+
+        let (result, _outcomes) = connect_task.await.unwrap();
+        assert_matches!(result, Err(_));
     }
 }

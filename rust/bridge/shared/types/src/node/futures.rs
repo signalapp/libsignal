@@ -189,8 +189,9 @@ pub fn run_future_on_runtime<'cx, R, F, O, E>(
 ) -> JsResult<'cx, JsPromise>
 where
     R: AsyncRuntime<F>,
-    F: Future + std::panic::UnwindSafe + 'static,
-    F::Output: ResultReporter<Receiver = PromiseSettler<O, E>>,
+    F: Future<Output: ResultReporter<Receiver = PromiseSettler<O, E>>>
+        + std::panic::UnwindSafe
+        + 'static,
     O: for<'a> ResultTypeInfo<'a> + Send + std::panic::UnwindSafe + 'static,
     E: SignalNodeError + Send + 'static,
 {
@@ -256,9 +257,7 @@ impl AsyncRuntimeBase for ChannelOnItsOriginalThread<'_> {}
 
 impl<F> AsyncRuntime<F> for ChannelOnItsOriginalThread<'_>
 where
-    F: Future + 'static,
-    F::Output: ResultReporter,
-    <F::Output as ResultReporter>::Receiver: Send,
+    F: Future<Output: ResultReporter<Receiver: Send>> + 'static,
 {
     // Cancellation isn't supported at this time.
     type Cancellation = std::future::Pending<()>;

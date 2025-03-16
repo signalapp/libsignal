@@ -3,8 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 use std::fmt;
-use std::io::{Error as IoError, ErrorKind as IoErrorKind};
-use std::time::Duration;
+use std::io::Error as IoError;
 
 use attest::hsm_enclave::Error as HsmEnclaveError;
 use device_transfer::Error as DeviceTransferError;
@@ -13,9 +12,7 @@ use jni::objects::{GlobalRef, JObject, JString, JThrowable};
 use jni::{JNIEnv, JavaVM};
 use libsignal_account_keys::Error as PinError;
 use libsignal_net::cdsi::CdsiProtocolError;
-use libsignal_net::chat::ChatServiceError;
-use libsignal_net::infra::ws::{WebSocketConnectError, WebSocketServiceError};
-use libsignal_net::ws::WebSocketServiceConnectError;
+use libsignal_net::infra::ws::WebSocketServiceError;
 use libsignal_protocol::*;
 use signal_crypto::Error as SignalCryptoError;
 use usernames::{UsernameError, UsernameLinkError};
@@ -45,10 +42,9 @@ pub enum SignalJniError {
     #[cfg(feature = "signal-media")]
     WebpSanitizeParse(signal_media::sanitize::webp::ParseErrorReport),
     Cdsi(CdsiError),
-    #[from(skip)]
-    Svr3(libsignal_net::svr3::Error),
     WebSocket(WebSocketServiceError),
-    ChatService(ChatServiceError),
+    ChatConnect(libsignal_net::chat::ConnectError),
+    ChatSend(libsignal_net::chat::SendError),
     InvalidUri(InvalidUri),
     ConnectTimedOut,
     BackupValidation(libsignal_message_backup::ReadError),
@@ -98,12 +94,12 @@ impl fmt::Display for SignalJniError {
             #[cfg(feature = "signal-media")]
             SignalJniError::WebpSanitizeParse(e) => write!(f, "{}", e),
             SignalJniError::Cdsi(e) => write!(f, "{}", e),
-            SignalJniError::ChatService(e) => write!(f, "{}", e),
+            SignalJniError::ChatConnect(e) => write!(f, "{}", e),
+            SignalJniError::ChatSend(e) => write!(f, "{}", e),
             SignalJniError::InvalidUri(e) => write!(f, "{}", e),
             SignalJniError::WebSocket(e) => write!(f, "{e}"),
             SignalJniError::ConnectTimedOut => write!(f, "connect timed out"),
             SignalJniError::BackupValidation(e) => write!(f, "{}", e),
-            SignalJniError::Svr3(e) => write!(f, "{}", e),
             SignalJniError::Bridge(e) => write!(f, "{}", e),
             SignalJniError::TestingError { exception_class } => {
                 write!(f, "TestingError({})", exception_class)
@@ -186,11 +182,7 @@ impl From<libsignal_net::cdsi::LookupError> for SignalJniError {
             LookupError::CdsiProtocol(CdsiProtocolError::NoTokenInResponse) => {
                 CdsiError::NoTokenInResponse
             }
-            LookupError::RateLimited {
-                retry_after_seconds,
-            } => CdsiError::RateLimited {
-                retry_after: Duration::from_secs(retry_after_seconds.into()),
-            },
+            LookupError::RateLimited(retry_later) => CdsiError::RateLimited(retry_later),
             LookupError::ParseError => CdsiError::ParseError,
             LookupError::InvalidToken => CdsiError::InvalidToken,
             LookupError::Server { reason } => CdsiError::Server { reason },
@@ -198,38 +190,10 @@ impl From<libsignal_net::cdsi::LookupError> for SignalJniError {
     }
 }
 
-impl From<Svr3Error> for SignalJniError {
-    fn from(err: Svr3Error) -> Self {
-        match err {
-            Svr3Error::Connect(inner) => match inner {
-                WebSocketServiceConnectError::Connect(e, _) => match e {
-                    WebSocketConnectError::Timeout => SignalJniError::ConnectTimedOut,
-                    WebSocketConnectError::Transport(e) => SignalJniError::Io(e.into()),
-                    WebSocketConnectError::WebSocketError(e) => {
-                        WebSocketServiceError::from(e).into()
-                    }
-                },
-                WebSocketServiceConnectError::RejectedByServer {
-                    response,
-                    received_at: _,
-                } => WebSocketServiceError::Http(response).into(),
-            },
-            Svr3Error::ConnectionTimedOut => SignalJniError::ConnectTimedOut,
-            Svr3Error::Service(inner) => inner.into(),
-            Svr3Error::AttestationError(inner) => inner.into(),
-            Svr3Error::Protocol(_)
-            | Svr3Error::RequestFailed(_)
-            | Svr3Error::RestoreFailed(_)
-            | Svr3Error::DataMissing
-            | Svr3Error::RotationMachineTooManySteps => SignalJniError::Svr3(err),
-        }
-    }
-}
-
 impl From<KeyTransNetError> for SignalJniError {
     fn from(err: KeyTransNetError) -> Self {
         match err {
-            KeyTransNetError::ChatServiceError(e) => SignalJniError::ChatService(e),
+            KeyTransNetError::ChatSendError(e) => SignalJniError::ChatSend(e),
             KeyTransNetError::RequestFailed(_)
             | KeyTransNetError::VerificationFailed(_)
             | KeyTransNetError::InvalidResponse(_)
@@ -261,8 +225,8 @@ impl From<SignalJniError> for IoError {
             SignalJniError::Bridge(BridgeLayerError::CallbackException(
                 _method_name,
                 exception,
-            )) => IoError::new(IoErrorKind::Other, exception),
-            e => IoError::new(IoErrorKind::Other, e.to_string()),
+            )) => IoError::other(exception),
+            e => IoError::other(e.to_string()),
         }
     }
 }
@@ -408,13 +372,7 @@ impl<T> HandleJniError<T> for Result<T, jni::errors::Error> {
         }
 
         self.map_err(|e| match check_error(e, env, context) {
-            // min_exhaustive_patterns was stabilized in 1.82-nightly, which made the
-            // unreachable_patterns lint much more aggressive. The lint was turned back down in
-            // 1.83-nightly and 1.82-beta, but our pinned nightly is between the two changes.
-            // We can remove the allow when we update our nightly toolchain (but we may eventually
-            // have to put it back). We can remove the entire match arm when our MSRV is 1.82+.
-            #[allow(unreachable_patterns)]
-            Ok(_) => unreachable!(),
+            Ok(infallible) => match infallible {},
             Err(e) => e,
         })
     }

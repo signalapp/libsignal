@@ -197,10 +197,7 @@ fn decrypt_only(c: &mut Criterion) {
 }
 
 fn decrypt_and_decompress_and_hmac(c: &mut Criterion) {
-    fn process<R: ReaderFactory>(input: R, key: &MessageBackupKey)
-    where
-        R::Reader: Unpin,
-    {
+    fn process<R: ReaderFactory<Reader: Unpin>>(input: R, key: &MessageBackupKey) {
         futures::executor::block_on(async {
             let reader = FramesReader::new(key, input).await.expect("success");
             futures::io::copy(reader, &mut futures::io::sink())
@@ -226,13 +223,11 @@ fn decrypt_and_decompress_and_hmac(c: &mut Criterion) {
 }
 
 fn decrypt_and_decompress_and_hmac_and_segment(c: &mut Criterion) {
-    fn process<R: ReaderFactory, R2: AsyncRead + Unpin>(
+    fn process<R: ReaderFactory<Reader: Unpin>, R2: AsyncRead + Unpin>(
         input: R,
         key: &MessageBackupKey,
         transform: impl FnOnce(FramesReader<R::Reader>) -> R2,
-    ) where
-        R::Reader: Unpin,
-    {
+    ) {
         futures::executor::block_on(async move {
             let reader = FramesReader::new(key, input).await.expect("success");
             let mut stream = VarintDelimitedReader::new(transform(reader));
@@ -278,13 +273,11 @@ fn decrypt_and_decompress_and_hmac_and_segment(c: &mut Criterion) {
 }
 
 fn decrypt_and_decompress_and_hmac_and_segment_and_parse(c: &mut Criterion) {
-    fn process<R: ReaderFactory, R2: AsyncRead + Unpin>(
+    fn process<R: ReaderFactory<Reader: Unpin>, R2: AsyncRead + Unpin>(
         input: R,
         key: &MessageBackupKey,
         transform: impl FnOnce(FramesReader<R::Reader>) -> R2,
-    ) where
-        R::Reader: Unpin,
-    {
+    ) {
         futures::executor::block_on(async move {
             let reader = FramesReader::new(key, input).await.expect("success");
             let mut stream = VarintDelimitedReader::new(transform(reader));
@@ -339,13 +332,11 @@ fn decrypt_and_decompress_and_hmac_and_segment_and_parse(c: &mut Criterion) {
 }
 
 fn decrypt_and_decompress_and_hmac_and_segment_and_parse_and_validate(c: &mut Criterion) {
-    fn process<R: ReaderFactory, R2: AsyncRead + Unpin>(
+    fn process<R: ReaderFactory<Reader: Unpin>, R2: AsyncRead + Unpin>(
         input: R,
         key: &MessageBackupKey,
         transform: impl FnOnce(FramesReader<R::Reader>) -> R2,
-    ) where
-        R::Reader: Unpin,
-    {
+    ) {
         futures::executor::block_on(async move {
             let reader = FramesReader::new(key, input).await.expect("success");
             let mut stream = VarintDelimitedReader::new(transform(reader));
@@ -403,10 +394,7 @@ fn decrypt_and_decompress_and_hmac_and_segment_and_parse_and_validate(c: &mut Cr
 }
 
 fn validate_using_full_backup_reader(c: &mut Criterion) {
-    fn process<R: ReaderFactory>(input: R, key: &MessageBackupKey)
-    where
-        R::Reader: Unpin,
-    {
+    fn process<R: ReaderFactory<Reader: Unpin>>(input: R, key: &MessageBackupKey) {
         futures::executor::block_on(async {
             BackupReader::new_encrypted_compressed(
                 key,

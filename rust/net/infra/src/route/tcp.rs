@@ -30,6 +30,16 @@ impl<D> From<&TcpRoute<IpAddr>> for Host<D> {
     }
 }
 
+impl<D> From<TcpRoute<IpAddr>> for TcpRoute<Host<D>> {
+    fn from(value: TcpRoute<IpAddr>) -> Self {
+        let TcpRoute { address, port } = value;
+        Self {
+            address: Host::Ip(address),
+            port,
+        }
+    }
+}
+
 pub struct DirectTcpRouteProvider {
     pub(crate) dns_hostname: Arc<str>,
     pub(crate) port: NonZeroU16,

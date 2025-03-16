@@ -5,8 +5,9 @@
 
 #![allow(non_snake_case)]
 
+use std::sync::LazyLock;
+
 use curve25519_dalek_signal::ristretto::RistrettoPoint;
-use lazy_static::lazy_static;
 use partial_default::PartialDefault;
 use serde::{Deserialize, Serialize};
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
@@ -17,10 +18,8 @@ use crate::common::sho::*;
 use crate::common::simple_types::*;
 use crate::crypto::profile_key_struct;
 
-lazy_static! {
-    static ref SYSTEM_PARAMS: SystemParams =
-        crate::deserialize::<SystemParams>(&SystemParams::SYSTEM_HARDCODED).unwrap();
-}
+static SYSTEM_PARAMS: LazyLock<SystemParams> =
+    LazyLock::new(|| crate::deserialize::<SystemParams>(&SystemParams::SYSTEM_HARDCODED).unwrap());
 
 #[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize, PartialDefault)]
 pub struct SystemParams {

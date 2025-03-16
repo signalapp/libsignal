@@ -9,28 +9,27 @@ use tokio::time::Duration;
 use super::FakeStream;
 
 #[derive(Clone, Debug)]
+#[allow(dead_code)] // Keep all these cases around even if not all the tests use them.
 pub enum Behavior {
     /// Let the connection attempt wait forever.
     ///
     /// This models the behavior of the underlying TCP `connect` syscall having no timeout.
     DelayForever,
     /// Fail the connection attempt with the provided error.
-    #[allow(dead_code)]
     Fail(fn() -> TransportConnectError),
     /// Wait some period of time before following the `then` behavior.
-    #[allow(unused)]
     Delay {
         delay: Duration,
         then: Box<Behavior>,
     },
-    /// Connect the transport, applying the given modifiers to the returned stream.
-    ReturnStream(Vec<fn(FakeStream) -> FakeStream>),
+    /// Connect the transport, applying the given modifier to the returned stream.
+    ReturnStream(Option<fn(FakeStream) -> FakeStream>),
+    /// Panic if invoked.
+    Unreachable,
 }
 
 impl Behavior {
-    pub(super) async fn apply(
-        self,
-    ) -> Result<Vec<fn(FakeStream) -> FakeStream>, TransportConnectError> {
+    pub(super) async fn apply(self) -> Result<fn(FakeStream) -> FakeStream, TransportConnectError> {
         let mut next = self;
 
         loop {
@@ -41,7 +40,10 @@ impl Behavior {
                     next = *then;
                 }
                 Behavior::Fail(make_error) => return Err(make_error()),
-                Behavior::ReturnStream(stream) => return Ok(stream),
+                Behavior::ReturnStream(stream) => {
+                    return Ok(stream.unwrap_or(std::convert::identity))
+                }
+                Behavior::Unreachable => unreachable!("this test should not attempt to connect"),
             }
         }
     }

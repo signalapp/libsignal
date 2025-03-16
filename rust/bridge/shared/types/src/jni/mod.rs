@@ -17,9 +17,10 @@ pub use jni::sys::{jboolean, jint, jlong};
 pub use jni::JNIEnv;
 use jni::JavaVM;
 use libsignal_account_keys::Error as PinError;
+use libsignal_net::chat::{ConnectError as ChatConnectError, SendError as ChatSendError};
+use libsignal_net::infra::errors::RetryLater;
 use libsignal_net::infra::ws::WebSocketServiceError;
 use libsignal_net::keytrans::Error as KeyTransNetError;
-use libsignal_net::svr3::Error as Svr3Error;
 use libsignal_protocol::*;
 use signal_crypto::Error as SignalCryptoError;
 use usernames::{UsernameError, UsernameLinkError};
@@ -48,7 +49,6 @@ pub use futures::*;
 
 mod io;
 pub use io::*;
-use libsignal_net::chat::ChatServiceError;
 
 mod storage;
 pub use storage::*;
@@ -297,15 +297,13 @@ impl<'env> ConsumableException<'env> {
                 };
             }
 
-            SignalJniError::Cdsi(CdsiError::RateLimited { retry_after }) => {
-                let retry_after_seconds = retry_after
-                    .as_secs()
-                    .try_into()
-                    .expect("duration < lifetime of the universe");
+            SignalJniError::Cdsi(CdsiError::RateLimited(RetryLater {
+                retry_after_seconds,
+            })) => {
                 let throwable = retry_later_exception(env, retry_after_seconds);
 
                 return ConsumableException {
-                    throwable: throwable.map(Into::into),
+                    throwable,
                     error: error.into(),
                 };
             }
@@ -616,63 +614,43 @@ impl<'env> ConsumableException<'env> {
                 error,
             ),
 
-            SignalJniError::Svr3(Svr3Error::RestoreFailed(tries_remaining)) => {
-                let throwable = to_java_string(env, error.to_string()).and_then(|message| {
-                    new_instance(
-                        env,
-                        ClassName("org.signal.libsignal.svr.RestoreFailedException"),
-                        // The number of tries will be hard-coded by the client app
-                        // to some sensible value well within the int (i32) range.
-                        // Malicious server can still send an invalid value. In
-                        // this case panic is the best thing we can do.
-                        jni_args!((message => java.lang.String, tries_remaining
-                            .try_into()
-                            .expect("tries_remaining overflows int") => int) -> void),
-                    )
-                });
-                return ConsumableException {
-                    throwable: throwable.map(Into::into),
-                    error: error.into(),
-                };
-            }
-            SignalJniError::Svr3(Svr3Error::DataMissing) => (
-                ClassName("org.signal.libsignal.svr.DataMissingException"),
-                error,
-            ),
-            SignalJniError::Svr3(_) => (ClassName("org.signal.libsignal.svr.SvrException"), error),
-
             SignalJniError::InvalidUri(_) => (ClassName("java.net.MalformedURLException"), error),
 
-            SignalJniError::ChatService(ref chat) => {
+            SignalJniError::ChatConnect(ref chat) => {
                 let class = match chat {
-                    ChatServiceError::RetryLater {
+                    ChatConnectError::RetryLater(RetryLater {
                         retry_after_seconds,
-                    } => {
+                    }) => {
                         return ConsumableException {
                             throwable: retry_later_exception(env, *retry_after_seconds),
                             error: error.into(),
                         }
                     }
-                    ChatServiceError::ServiceInactive => {
-                        ClassName("org.signal.libsignal.net.ChatServiceInactiveException")
-                    }
-                    ChatServiceError::AppExpired => {
+                    ChatConnectError::AppExpired => {
                         ClassName("org.signal.libsignal.net.AppExpiredException")
                     }
-                    ChatServiceError::DeviceDeregistered => {
+                    ChatConnectError::DeviceDeregistered => {
                         ClassName("org.signal.libsignal.net.DeviceDeregisteredException")
                     }
-                    ChatServiceError::WebSocket(_)
-                    | ChatServiceError::UnexpectedFrameReceived
-                    | ChatServiceError::ServerRequestMissingId
-                    | ChatServiceError::FailedToPassMessageToIncomingChannel
-                    | ChatServiceError::IncomingDataInvalid
-                    | ChatServiceError::RequestHasInvalidHeader
-                    | ChatServiceError::Timeout
-                    | ChatServiceError::TimeoutEstablishingConnection { attempts: _ }
-                    | ChatServiceError::AllConnectionRoutesFailed { attempts: _ }
-                    | ChatServiceError::ServiceUnavailable
-                    | ChatServiceError::ServiceIntentionallyDisconnected => {
+                    ChatConnectError::WebSocket(_)
+                    | ChatConnectError::Timeout
+                    | ChatConnectError::AllAttemptsFailed
+                    | ChatConnectError::InvalidConnectionConfiguration => {
+                        ClassName("org.signal.libsignal.net.ChatServiceException")
+                    }
+                };
+                (class, error)
+            }
+
+            SignalJniError::ChatSend(ref chat) => {
+                let class = match chat {
+                    ChatSendError::Disconnected => {
+                        ClassName("org.signal.libsignal.net.ChatServiceInactiveException")
+                    }
+                    ChatSendError::WebSocket(_)
+                    | ChatSendError::IncomingDataInvalid
+                    | ChatSendError::RequestHasInvalidHeader
+                    | ChatSendError::RequestTimedOut => {
                         ClassName("org.signal.libsignal.net.ChatServiceException")
                     }
                 };
@@ -684,7 +662,7 @@ impl<'env> ConsumableException<'env> {
                     KeyTransNetError::DecodingFailed(_) => {
                         unreachable!("should have been handled separately")
                     }
-                    KeyTransNetError::ChatServiceError(_)
+                    KeyTransNetError::ChatSendError(_)
                     | KeyTransNetError::RequestFailed(_)
                     | KeyTransNetError::VerificationFailed(_)
                     | KeyTransNetError::InvalidResponse(_)

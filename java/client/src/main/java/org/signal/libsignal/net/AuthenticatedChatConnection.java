@@ -54,12 +54,28 @@ public class AuthenticatedChatConnection extends ChatConnection {
   }
 
   private static final class SetChatLaterListenerBridge extends ListenerBridge {
+    String[] savedAlerts;
+
     SetChatLaterListenerBridge() {
       super(null);
     }
 
     void setChat(ChatConnection chat) {
       this.chat = new WeakReference<>(chat);
+      if (savedAlerts != null) {
+        super.onReceivedAlerts(savedAlerts);
+        savedAlerts = null;
+      }
+    }
+
+    public void onReceivedAlerts(String[] alerts) {
+      // This callback can happen before setChat, so we might need to replay it later.
+      if (this.chat.get() == null) {
+        savedAlerts = alerts;
+        return;
+      }
+
+      super.onReceivedAlerts(alerts);
     }
   }
 
@@ -70,12 +86,23 @@ public class AuthenticatedChatConnection extends ChatConnection {
    */
   public static Pair<AuthenticatedChatConnection, FakeChatRemote> fakeConnect(
       final TokioAsyncContext tokioAsyncContext, ChatConnectionListener listener) {
+    return fakeConnect(tokioAsyncContext, listener, new String[0]);
+  }
+
+  /**
+   * Test-only method to create a {@code AuthenticatedChatConnection} connected to a fake remote.
+   *
+   * <p>The returned {@link FakeChatRemote} can be used to send messages to the connection.
+   */
+  public static Pair<AuthenticatedChatConnection, FakeChatRemote> fakeConnect(
+      final TokioAsyncContext tokioAsyncContext, ChatConnectionListener listener, String[] alerts) {
 
     return tokioAsyncContext.guardedMap(
         asyncContextHandle -> {
           SetChatLaterListenerBridge bridgeListener = new SetChatLaterListenerBridge();
           long fakeChatConnection =
-              NativeTesting.TESTING_FakeChatConnection_Create(asyncContextHandle, bridgeListener);
+              NativeTesting.TESTING_FakeChatConnection_Create(
+                  asyncContextHandle, bridgeListener, String.join("\n", alerts));
           AuthenticatedChatConnection chat =
               new AuthenticatedChatConnection(
                   tokioAsyncContext,
@@ -85,6 +112,7 @@ public class AuthenticatedChatConnection extends ChatConnection {
           bridgeListener.setChat(chat);
           FakeChatRemote fakeRemote =
               new FakeChatRemote(
+                  tokioAsyncContext,
                   NativeTesting.TESTING_FakeChatConnection_TakeRemote(fakeChatConnection));
           NativeTesting.FakeChatConnection_Destroy(fakeChatConnection);
           return new Pair<>(chat, fakeRemote);
@@ -92,8 +120,33 @@ public class AuthenticatedChatConnection extends ChatConnection {
   }
 
   static class FakeChatRemote extends NativeHandleGuard.SimpleOwner {
-    private FakeChatRemote(long nativeHandle) {
+    private TokioAsyncContext tokioContext;
+
+    private FakeChatRemote(TokioAsyncContext tokioContext, long nativeHandle) {
       super(nativeHandle);
+      this.tokioContext = tokioContext;
+    }
+
+    public CompletableFuture<Pair<InternalRequest, Long>> getNextIncomingRequest() {
+      return tokioContext
+          .guardedMap(
+              asyncContextHandle ->
+                  this.guardedMap(
+                      fakeRemote ->
+                          NativeTesting.TESTING_FakeChatRemoteEnd_ReceiveIncomingRequest(
+                              asyncContextHandle, fakeRemote)))
+          .thenApply(
+              sentRequest -> {
+                try {
+                  var httpRequest =
+                      new InternalRequest(
+                          NativeTesting.TESTING_FakeChatSentRequest_TakeHttpRequest(sentRequest));
+                  var requestId = NativeTesting.TESTING_FakeChatSentRequest_RequestId(sentRequest);
+                  return new Pair<>(httpRequest, requestId);
+                } finally {
+                  NativeTesting.FakeChatSentRequest_Destroy(sentRequest);
+                }
+              });
     }
 
     @Override
@@ -107,9 +160,9 @@ public class AuthenticatedChatConnection extends ChatConnection {
   //   using the shared implementations of those methods in ChatConnection.
   @Override
   protected CompletableFuture disconnectWrapper(
-      long nativeAsyncContextHandle, long nativeChatServiceHandle) {
+      long nativeAsyncContextHandle, long nativeChatConnectionHandle) {
     return Native.AuthenticatedChatConnection_disconnect(
-        nativeAsyncContextHandle, nativeChatServiceHandle);
+        nativeAsyncContextHandle, nativeChatConnectionHandle);
   }
 
   @Override

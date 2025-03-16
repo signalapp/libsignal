@@ -10,10 +10,7 @@ use attest::enclave::Error as EnclaveError;
 use attest::hsm_enclave::Error as HsmEnclaveError;
 use device_transfer::Error as DeviceTransferError;
 use libsignal_account_keys::Error as PinError;
-use libsignal_net::chat::ChatServiceError;
-use libsignal_net::infra::ws::WebSocketConnectError;
-use libsignal_net::svr3::Error as Svr3Error;
-use libsignal_net::ws::WebSocketServiceConnectError;
+use libsignal_net::infra::errors::RetryLater;
 use libsignal_protocol::*;
 use signal_crypto::Error as SignalCryptoError;
 use usernames::{UsernameError, UsernameLinkError};
@@ -95,7 +92,7 @@ pub enum SignalErrorCode {
     CdsiInvalidToken = 147,
     ConnectionFailed = 148,
     ChatServiceInactive = 149,
-    ChatServiceIntentionallyDisconnected = 150,
+    RequestTimedOut = 150,
 
     SvrDataMissing = 160,
     SvrRestoreFailed = 161,
@@ -445,9 +442,9 @@ impl FfiError for libsignal_net::cdsi::LookupError {
                 format!("Protocol error: {self}")
             }
             Self::AttestationError(e) => e.describe(),
-            Self::RateLimited {
+            Self::RateLimited(RetryLater {
                 retry_after_seconds,
-            } => format!("Rate limited; try again after {retry_after_seconds}s"),
+            }) => format!("Rate limited; try again after {retry_after_seconds}s"),
             Self::InvalidToken => "CDSI request token was invalid".to_owned(),
             Self::ConnectTransport(e) => format!("IO error: {e}"),
             Self::WebSocket(e) => format!("WebSocket error: {e}"),
@@ -475,137 +472,76 @@ impl FfiError for libsignal_net::cdsi::LookupError {
 
     fn provide_retry_after_seconds(&self) -> Result<u32, WrongErrorKind> {
         match self {
-            Self::RateLimited {
+            Self::RateLimited(RetryLater {
                 retry_after_seconds,
-            } => Ok(*retry_after_seconds),
+            }) => Ok(*retry_after_seconds),
             _ => Err(WrongErrorKind),
         }
     }
 }
 
-impl FfiError for Svr3Error {
-    fn describe(&self) -> String {
-        match self {
-            Self::Connect(WebSocketServiceConnectError::Connect(
-                WebSocketConnectError::Timeout,
-                _,
-            ))
-            | Self::ConnectionTimedOut => "Connect timed out".to_owned(),
-            Self::Connect(WebSocketServiceConnectError::Connect(
-                WebSocketConnectError::Transport(e),
-                _,
-            )) => {
-                format!("IO error: {e}")
-            }
-            Self::Connect(
-                e @ (WebSocketServiceConnectError::Connect(
-                    WebSocketConnectError::WebSocketError(_),
-                    _,
-                )
-                | WebSocketServiceConnectError::RejectedByServer { .. }),
-            ) => {
-                format!("WebSocket error: {e}")
-            }
-            Self::Service(e) => format!("WebSocket error: {e}"),
-            Self::Protocol(e) => format!("Protocol error: {e}"),
-            Self::AttestationError(inner) => inner.describe(),
-            Self::RequestFailed(_)
-            | Self::RestoreFailed(_)
-            | Self::DataMissing
-            | Self::RotationMachineTooManySteps => {
-                format!("SVR error: {self}")
-            }
-        }
-    }
-
-    fn code(&self) -> SignalErrorCode {
-        match self {
-            Self::Connect(e) => match e {
-                WebSocketServiceConnectError::RejectedByServer { .. } => SignalErrorCode::WebSocket,
-                WebSocketServiceConnectError::Connect(e, _) => match e {
-                    WebSocketConnectError::Transport(_) => SignalErrorCode::IoError,
-                    WebSocketConnectError::Timeout => SignalErrorCode::ConnectionTimedOut,
-                    WebSocketConnectError::WebSocketError(_) => SignalErrorCode::WebSocket,
-                },
-            },
-            Self::Service(_) => SignalErrorCode::WebSocket,
-            Self::ConnectionTimedOut => SignalErrorCode::ConnectionTimedOut,
-            Self::AttestationError(inner) => inner.code(),
-            Self::Protocol(_) => SignalErrorCode::NetworkProtocol,
-            Self::RequestFailed(_) => SignalErrorCode::UnknownError,
-            Self::RestoreFailed(_) => SignalErrorCode::SvrRestoreFailed,
-            Self::DataMissing => SignalErrorCode::SvrDataMissing,
-            Self::RotationMachineTooManySteps => SignalErrorCode::SvrRotationMachineTooManySteps,
-        }
-    }
-
-    fn provide_tries_remaining(&self) -> Result<u32, WrongErrorKind> {
-        match self {
-            Self::RestoreFailed(tries_remaining) => Ok(*tries_remaining),
-            _ => Err(WrongErrorKind),
-        }
-    }
-}
-
-impl FfiError for ChatServiceError {
+impl FfiError for libsignal_net::chat::ConnectError {
     fn describe(&self) -> String {
         match self {
             Self::WebSocket(e) => format!("WebSocket error: {e}"),
-            Self::AllConnectionRoutesFailed { .. } | Self::ServiceUnavailable => {
+            Self::AllAttemptsFailed | Self::InvalidConnectionConfiguration => {
                 "Connection failed".to_owned()
             }
-            Self::UnexpectedFrameReceived
-            | Self::ServerRequestMissingId
-            | Self::IncomingDataInvalid => format!("Protocol error: {self}"),
-            Self::FailedToPassMessageToIncomingChannel | Self::RequestHasInvalidHeader => {
-                format!("internal error: {self}")
-            }
-            Self::Timeout | Self::TimeoutEstablishingConnection { .. } => {
-                "Connect timed out".to_owned()
-            }
-            Self::ServiceInactive => "Chat service inactive".to_owned(),
+            Self::Timeout => "Connect timed out".to_owned(),
             Self::AppExpired => "App expired".to_owned(),
             Self::DeviceDeregistered => "Device deregistered or delinked".to_owned(),
-            Self::ServiceIntentionallyDisconnected => {
-                "Chat service explicitly disconnected".to_owned()
-            }
-            Self::RetryLater {
+            Self::RetryLater(RetryLater {
                 retry_after_seconds,
-            } => format!("Rate limited; try again after {retry_after_seconds}s"),
+            }) => format!("Rate limited; try again after {retry_after_seconds}s"),
         }
     }
 
     fn code(&self) -> SignalErrorCode {
         match self {
             Self::WebSocket(_) => SignalErrorCode::WebSocket,
-            Self::AllConnectionRoutesFailed { .. } | Self::ServiceUnavailable => {
+            Self::AllAttemptsFailed { .. } | Self::InvalidConnectionConfiguration => {
                 SignalErrorCode::ConnectionFailed
             }
-            Self::UnexpectedFrameReceived
-            | Self::ServerRequestMissingId
-            | Self::IncomingDataInvalid => SignalErrorCode::NetworkProtocol,
-            Self::FailedToPassMessageToIncomingChannel | Self::RequestHasInvalidHeader => {
-                SignalErrorCode::InternalError
-            }
-            Self::Timeout | Self::TimeoutEstablishingConnection { .. } => {
-                SignalErrorCode::ConnectionTimedOut
-            }
-            Self::ServiceInactive => SignalErrorCode::ChatServiceInactive,
+            Self::Timeout => SignalErrorCode::ConnectionTimedOut,
             Self::AppExpired => SignalErrorCode::AppExpired,
             Self::DeviceDeregistered => SignalErrorCode::DeviceDeregistered,
-            Self::ServiceIntentionallyDisconnected => {
-                SignalErrorCode::ChatServiceIntentionallyDisconnected
-            }
             Self::RetryLater { .. } => SignalErrorCode::RateLimited,
         }
     }
     fn provide_retry_after_seconds(&self) -> Result<u32, WrongErrorKind> {
         match self {
-            ChatServiceError::RetryLater {
+            Self::RetryLater(RetryLater {
                 retry_after_seconds,
-            } => Ok(*retry_after_seconds),
+            }) => Ok(*retry_after_seconds),
             _ => Err(WrongErrorKind),
         }
+    }
+}
+
+impl FfiError for libsignal_net::chat::SendError {
+    fn describe(&self) -> String {
+        match self {
+            Self::WebSocket(e) => format!("WebSocket error: {e}"),
+            Self::IncomingDataInvalid => format!("Protocol error: {self}"),
+            Self::RequestHasInvalidHeader => {
+                format!("internal error: {self}")
+            }
+            Self::RequestTimedOut => "Request timed out".to_string(),
+            Self::Disconnected => "Chat service disconnected".to_owned(),
+        }
+    }
+
+    fn code(&self) -> SignalErrorCode {
+        match self {
+            Self::WebSocket(_) => SignalErrorCode::WebSocket,
+            Self::IncomingDataInvalid => SignalErrorCode::NetworkProtocol,
+            Self::RequestHasInvalidHeader => SignalErrorCode::InternalError,
+            Self::RequestTimedOut => SignalErrorCode::RequestTimedOut,
+            Self::Disconnected => SignalErrorCode::ChatServiceInactive,
+        }
+    }
+    fn provide_retry_after_seconds(&self) -> Result<u32, WrongErrorKind> {
+        Err(WrongErrorKind)
     }
 }
 
@@ -633,12 +569,12 @@ impl FfiError for signal_media::sanitize::mp4::Error {
         match self {
             Self::Io(e) => e.code(),
             Self::Parse(e) => match e.kind {
-                ParseError::InvalidBoxLayout { .. }
-                | ParseError::InvalidInput { .. }
+                ParseError::InvalidBoxLayout
+                | ParseError::InvalidInput
                 | ParseError::MissingRequiredBox { .. }
                 | ParseError::TruncatedBox => SignalErrorCode::InvalidMediaInput,
 
-                ParseError::UnsupportedBoxLayout { .. }
+                ParseError::UnsupportedBoxLayout
                 | ParseError::UnsupportedBox { .. }
                 | ParseError::UnsupportedFormat { .. } => SignalErrorCode::UnsupportedMediaInput,
             },
@@ -660,9 +596,9 @@ impl FfiError for signal_media::sanitize::webp::Error {
         match self {
             Self::Io(e) => e.code(),
             Self::Parse(e) => match e.kind {
-                ParseError::InvalidChunkLayout { .. }
-                | ParseError::InvalidInput { .. }
-                | ParseError::InvalidVp8lPrefixCode { .. }
+                ParseError::InvalidChunkLayout
+                | ParseError::InvalidInput
+                | ParseError::InvalidVp8lPrefixCode
                 | ParseError::MissingRequiredChunk { .. }
                 | ParseError::TruncatedChunk => SignalErrorCode::InvalidMediaInput,
 

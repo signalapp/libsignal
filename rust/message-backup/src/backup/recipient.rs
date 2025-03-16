@@ -236,7 +236,7 @@ pub enum Destination<R> {
     Group(GroupData),
     #[serde(bound(serialize = "DistributionListItem<R>: serde::Serialize"))]
     DistributionList(DistributionListItem<R>),
-    Self_,
+    Self_(SelfData),
     ReleaseNotes,
     CallLink(CallLink),
 }
@@ -297,6 +297,11 @@ pub struct ContactData {
     pub identity_state: proto::contact::IdentityState,
     pub nickname: Option<ContactName>,
     pub note: String,
+    pub system_given_name: String,
+    pub system_family_name: String,
+    pub system_nickname: String,
+    #[serde(serialize_with = "serialize::optional_enum_as_string")]
+    pub avatar_color: Option<proto::AvatarColor>,
 }
 
 #[derive(Clone, Debug, serde::Serialize)]
@@ -304,6 +309,13 @@ pub struct ContactData {
 pub struct ContactName {
     pub given_name: String,
     pub family_name: String,
+}
+
+#[derive(Clone, Debug, serde::Serialize)]
+#[cfg_attr(test, derive(PartialEq))]
+pub struct SelfData {
+    #[serde(serialize_with = "serialize::optional_enum_as_string")]
+    pub avatar_color: Option<proto::AvatarColor>,
 }
 
 #[derive(Clone, Debug, serde::Serialize)]
@@ -375,7 +387,7 @@ impl<R> From<Destination<R>> for MinimalRecipientData {
                     distribution_id, ..
                 },
             ) => Self::DistributionList { distribution_id },
-            Destination::Self_ => Self::Self_,
+            Destination::Self_(_) => Self::Self_,
             Destination::ReleaseNotes => Self::ReleaseNotes,
             Destination::CallLink(CallLink { root_key, .. }) => Self::CallLink { root_key },
         }
@@ -428,7 +440,7 @@ impl<R> AsRef<DestinationKind> for Destination<R> {
             Destination::Contact(_) => &DestinationKind::Contact,
             Destination::Group(_) => &DestinationKind::Group,
             Destination::DistributionList(_) => &DestinationKind::DistributionList,
-            Destination::Self_ => &DestinationKind::Self_,
+            Destination::Self_(_) => &DestinationKind::Self_,
             Destination::ReleaseNotes => &DestinationKind::ReleaseNotes,
             Destination::CallLink(_) => &DestinationKind::CallLink,
         }
@@ -456,7 +468,14 @@ impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusu
             RecipientDestination::DistributionList(list) => {
                 Destination::DistributionList(list.try_into_with(context)?)
             }
-            RecipientDestination::Self_(proto::Self_ { special_fields: _ }) => Destination::Self_,
+            RecipientDestination::Self_(proto::Self_ {
+                avatarColor,
+                special_fields: _,
+            }) => {
+                // The color is allowed to be unset.
+                let avatar_color = avatarColor.map(|v| v.enum_value_or_default());
+                Destination::Self_(SelfData { avatar_color })
+            }
             RecipientDestination::ReleaseNotes(proto::ReleaseNotes { special_fields: _ }) => {
                 Destination::ReleaseNotes
             }
@@ -487,6 +506,10 @@ impl<C: ReportUnusualTimestamp> TryFromWith<proto::Contact, C> for ContactData {
             identityState,
             nickname,
             note,
+            systemGivenName,
+            systemFamilyName,
+            systemNickname,
+            avatarColor,
             special_fields: _,
         } = value;
 
@@ -589,6 +612,9 @@ impl<C: ReportUnusualTimestamp> TryFromWith<proto::Contact, C> for ContactData {
             )
             .transpose()?;
 
+        // The color is allowed to be unset.
+        let avatar_color = avatarColor.map(|v| v.enum_value_or_default());
+
         Ok(Self {
             aci,
             pni,
@@ -606,6 +632,10 @@ impl<C: ReportUnusualTimestamp> TryFromWith<proto::Contact, C> for ContactData {
             identity_state,
             nickname,
             note,
+            system_given_name: systemGivenName,
+            system_family_name: systemFamilyName,
+            system_nickname: systemNickname,
+            avatar_color,
         })
     }
 }
@@ -795,6 +825,9 @@ mod test {
                     ..Default::default()
                 })
                 .into(),
+                systemGivenName: "GivenSystemName".to_owned(),
+                systemFamilyName: "FamilySystemName".to_owned(),
+                systemNickname: "SystemNickName".to_owned(),
                 note: "nb".into(),
                 ..Default::default()
             }
@@ -843,7 +876,11 @@ mod test {
                     given_name: "GivenNickName".to_owned(),
                     family_name: "FamilyNickName".to_owned(),
                 }),
+                system_given_name: "GivenSystemName".to_owned(),
+                system_family_name: "FamilySystemName".to_owned(),
+                system_nickname: "SystemNickName".to_owned(),
                 note: "nb".into(),
+                avatar_color: None,
             }
         }
     }
@@ -867,7 +904,7 @@ mod test {
 
         assert_eq!(
             Destination::try_from_with(recipient, &TestContext::default()),
-            Ok(Destination::Self_)
+            Ok(Destination::Self_(SelfData { avatar_color: None }))
         )
     }
 
