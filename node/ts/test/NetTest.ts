@@ -788,7 +788,7 @@ describe('cdsi lookup', () => {
           ErrorCode.IoError,
           'invalid response received from the server',
         ],
-        ['RetryAfter42Seconds', ErrorCode.RateLimitedError, 'retry later'],
+        ['RetryAfter42Seconds', ErrorCode.RateLimitedError, 'retry after 42s'],
         [
           'InvalidToken',
           ErrorCode.CdsiInvalidToken,
