@@ -112,7 +112,23 @@ impl std::fmt::Display for ThrownException {
 
 impl std::error::Error for ThrownException {}
 
-pub trait SignalNodeError: Sized + fmt::Display {
+pub trait SignalNodeError {
+    fn into_throwable<'a, C: Context<'a>>(
+        self,
+        cx: &mut C,
+        module: Handle<'a, JsObject>,
+        operation_name: &str,
+    ) -> Handle<'a, JsError>;
+}
+
+/// Provides a simple [`SignalNodeError`] implementation.
+///
+/// Implementing types get a straightforward blanket implementation of
+/// [`SignalNodeError`] that converts to a generic error with
+/// [`self.to_string()`](ToString::to_string) as the error message.
+pub trait DefaultSignalNodeError: ToString {}
+
+impl<S: DefaultSignalNodeError> SignalNodeError for S {
     fn into_throwable<'a, C: Context<'a>>(
         self,
         cx: &mut C,
@@ -229,17 +245,17 @@ impl SignalNodeError for SignalProtocolError {
     }
 }
 
-impl SignalNodeError for device_transfer::Error {}
+impl DefaultSignalNodeError for device_transfer::Error {}
 
-impl SignalNodeError for attest::hsm_enclave::Error {}
+impl DefaultSignalNodeError for attest::hsm_enclave::Error {}
 
-impl SignalNodeError for attest::enclave::Error {}
+impl DefaultSignalNodeError for attest::enclave::Error {}
 
-impl SignalNodeError for signal_crypto::Error {}
+impl DefaultSignalNodeError for signal_crypto::Error {}
 
-impl SignalNodeError for zkgroup::ZkGroupVerificationFailure {}
+impl DefaultSignalNodeError for zkgroup::ZkGroupVerificationFailure {}
 
-impl SignalNodeError for zkgroup::ZkGroupDeserializationFailure {}
+impl DefaultSignalNodeError for zkgroup::ZkGroupDeserializationFailure {}
 
 impl SignalNodeError for usernames::UsernameError {
     fn into_throwable<'a, C: Context<'a>>(
@@ -274,7 +290,7 @@ impl SignalNodeError for usernames::UsernameError {
     }
 }
 
-impl SignalNodeError for usernames::ProofVerificationFailure {}
+impl DefaultSignalNodeError for usernames::ProofVerificationFailure {}
 
 impl SignalNodeError for usernames::UsernameLinkError {
     fn into_throwable<'a, C: Context<'a>>(
