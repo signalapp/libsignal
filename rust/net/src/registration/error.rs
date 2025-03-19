@@ -38,6 +38,14 @@ pub enum ResumeSessionError {
     InvalidResponse,
 }
 
+#[derive(Debug, thiserror::Error, displaydoc::Display)]
+pub(super) enum SessionRequestError {
+    /// {0}
+    RetryLater(#[from] RetryLater),
+    /// unknown HTTP response status: {0}
+    UnrecognizedStatus(StatusCode),
+}
+
 impl From<RetryLater> for RequestError<ResumeSessionError> {
     fn from(value: RetryLater) -> Self {
         // The server doesn't return this code for GET requests.
@@ -106,6 +114,29 @@ impl From<ResponseError> for RequestError<ResumeSessionError> {
                     RequestError::Unknown(format!("unexpected HTTP status {code}"))
                 }
             },
+        }
+    }
+}
+
+impl From<RetryLater> for RequestError<SessionRequestError> {
+    fn from(value: RetryLater) -> Self {
+        Self::Other(value.into())
+    }
+}
+
+impl From<ResponseError> for RequestError<SessionRequestError> {
+    fn from(value: ResponseError) -> Self {
+        match value {
+            ResponseError::RetryLater(retry) => Self::Other(retry.into()),
+            error @ (ResponseError::UnexpectedContentType(_)
+            | ResponseError::MissingBody
+            | ResponseError::InvalidJson
+            | ResponseError::UnexpectedData) => {
+                RequestError::Unknown((&error as &dyn LogSafeDisplay).to_string())
+            }
+            ResponseError::UnrecognizedStatus(status_code) => {
+                Self::Other(SessionRequestError::UnrecognizedStatus(status_code))
+            }
         }
     }
 }

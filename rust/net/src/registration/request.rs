@@ -93,6 +93,33 @@ pub(super) struct RegistrationResponse {
     pub(super) session: RegistrationSession,
 }
 
+/// A value that can be sent to the server as part of a REST request.
+pub(super) trait Request {
+    /// The HTTP [`Method`] to send the request with
+    const METHOD: Method;
+
+    /// The HTTP path to use when sending the request.
+    fn request_path(session_id: &SessionId) -> PathAndQuery;
+
+    /// The serialized JSON for the request body, if any.
+    fn into_json_body(self) -> Option<Box<[u8]>>;
+}
+
+impl Request for GetSession {
+    const METHOD: Method = Method::GET;
+    fn request_path(session_id: &SessionId) -> PathAndQuery {
+        format!(
+            "{VERIFICATION_SESSION_PATH_PREFIX}/{}",
+            session_id.as_url_path_segment()
+        )
+        .parse()
+        .unwrap()
+    }
+    fn into_json_body(self) -> Option<Box<[u8]>> {
+        None
+    }
+}
+
 impl TryFrom<crate::chat::Response> for RegistrationResponse {
     type Error = ResponseError;
 
@@ -143,25 +170,22 @@ impl From<CreateSession> for crate::chat::Request {
     }
 }
 
-impl<'s> From<RegistrationRequest<'s, GetSession>> for crate::chat::Request {
-    fn from(value: RegistrationRequest<'s, GetSession>) -> Self {
+impl<'s, R: Request> From<RegistrationRequest<'s, R>> for crate::chat::Request {
+    fn from(value: RegistrationRequest<'s, R>) -> Self {
         let RegistrationRequest {
             session_id,
-            request: GetSession {},
+            request,
         } = value;
 
-        let path = format!(
-            "{VERIFICATION_SESSION_PATH_PREFIX}/{}",
-            session_id.as_url_path_segment()
-        )
-        .parse()
-        .unwrap();
+        let path = R::request_path(session_id);
+        let body = request.into_json_body();
+        let headers = HeaderMap::from_iter(body.is_some().then_some(CONTENT_TYPE_JSON));
 
         Self {
-            method: Method::GET,
-            headers: HeaderMap::default(),
+            method: R::METHOD,
+            headers,
             path,
-            body: None,
+            body,
         }
     }
 }

@@ -21,7 +21,7 @@ use crate::chat::{
 };
 use crate::registration::{
     CreateSession, CreateSessionError, GetSession, RegistrationRequest, RegistrationResponse,
-    RegistrationSession, RequestError, ResumeSessionError, SessionId,
+    RegistrationSession, Request, RequestError, ResumeSessionError, SessionId, SessionRequestError,
 };
 
 /// A client for the Signal registration API endpoints.
@@ -32,9 +32,7 @@ use crate::registration::{
 pub struct RegistrationService {
     session_id: SessionId,
     session: RegistrationSession,
-    #[allow(unused)]
     connect_chat: Box<dyn ConnectChat + Send>,
-    #[allow(unused)]
     sender: tokio::sync::mpsc::Sender<IncomingRequest>,
 }
 
@@ -129,6 +127,42 @@ impl RegistrationService {
     /// Returns the last known server-reported state of the session.
     pub fn session_state(&self) -> &RegistrationSession {
         &self.session
+    }
+
+    /// Sends a request for an established session.
+    ///
+    /// On success, the state of the session as reported by the server is saved
+    /// (and accessible via [`Self::session_state`]). This method will retry
+    /// internally if transient errors are encountered.
+    #[allow(dead_code)]
+    pub(super) async fn submit_request<R: Request>(
+        &mut self,
+        request: R,
+    ) -> Result<(), RequestError<SessionRequestError>> {
+        let Self {
+            sender,
+            session_id,
+            session,
+            connect_chat,
+        } = self;
+
+        let request: ChatRequest = RegistrationRequest {
+            session_id,
+            request,
+        }
+        .into();
+
+        let (response, request_sender) =
+            send_request(request, &**connect_chat, Some(sender)).await?;
+        *sender = request_sender;
+
+        let RegistrationResponse {
+            session_id: _,
+            session: response_session,
+        } = response.try_into()?;
+
+        *session = response_session;
+        Ok(())
     }
 }
 
