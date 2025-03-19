@@ -349,7 +349,7 @@ impl ConnectionOutcomeParams {
     ///
     /// The implementation is based on exponential backoff with a scaling factor
     /// based on the amount of time since the last known failure.
-    fn compute_delay(
+    pub fn compute_delay(
         &self,
         since_last_failure: Duration,
         consecutive_failure_count: u8,

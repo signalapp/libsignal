@@ -58,6 +58,7 @@ pub struct DebugInfo {
 }
 
 #[derive(Clone, Debug)]
+#[cfg_attr(test, derive(PartialEq))]
 pub struct Request {
     pub method: ::http::Method,
     pub body: Option<Box<[u8]>>,
