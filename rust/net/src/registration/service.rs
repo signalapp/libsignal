@@ -6,7 +6,6 @@
 use std::convert::Infallible;
 use std::fmt::Debug;
 use std::future::Future;
-use std::sync::Arc;
 
 use either::Either;
 use futures_util::future::BoxFuture;
@@ -317,7 +316,6 @@ async fn spawned_task_body(
     incoming_requests: impl Stream<Item = IncomingRequest> + Send,
     mut on_disconnect: impl Future<Output = ()>,
 ) {
-    let chat = Arc::new(chat);
     let mut on_disconnect = std::pin::pin!(on_disconnect);
 
     let incoming_requests = Some(incoming_requests);
@@ -332,28 +330,26 @@ async fn spawned_task_body(
             Disconnected,
         }
 
-        let wait_for_event = match (
-            request_in_progress.as_mut().as_pin_mut(),
-            incoming_requests.as_mut().as_pin_mut(),
-        ) {
-            (Some(in_progress), _) => {
+        let wait_for_event = match request_in_progress.as_mut().as_pin_mut() {
+            Some(in_progress) => {
                 // Don't poll for more incoming requests when there's one in progress.
                 Either::Left(async {
                     in_progress.await;
                     Event::RequestFinished
                 })
             }
-            (None, None) => {
-                // There's no request in progress and none are coming in.
-                break;
-            }
-            (None, Some(mut incoming_requests)) => Either::Right(
-                tokio::time::timeout(
-                    INACTIVITY_TIMEOUT,
-                    async move { incoming_requests.next().await },
-                )
-                .map(Event::Incoming),
-            ),
+            None => match incoming_requests.as_mut().as_pin_mut() {
+                None => {
+                    // There's no request in progress and none are coming in.
+                    break;
+                }
+                Some(mut incoming_requests) => Either::Right(
+                    tokio::time::timeout(INACTIVITY_TIMEOUT, async move {
+                        incoming_requests.next().await
+                    })
+                    .map(Event::Incoming),
+                ),
+            },
         };
 
         let event = tokio::select! {
@@ -412,17 +408,18 @@ type IncomingRequest = (
     oneshot::Sender<Result<ChatResponse, ChatSendError>>,
 );
 
-fn start_request(
-    chat: &Arc<ChatConnection>,
-    (request, responder): IncomingRequest,
-) -> impl Future<Output = ()> {
-    let chat = Arc::clone(chat);
-    async move {
-        let result = chat.send(request, REQUEST_TIMEOUT).await;
-        match responder.send(result) {
-            Ok(()) => (),
-            Err(_failed_to_send) => (),
-        }
+async fn start_request(chat: &ChatConnection, (request, mut responder): IncomingRequest) {
+    if responder.is_closed() {
+        return;
+    }
+    let result = tokio::select! {
+        result = chat.send(request, REQUEST_TIMEOUT) => result,
+        () = responder.closed() => return,
+    };
+
+    match responder.send(result) {
+        Ok(()) => (),
+        Err(_failed_to_send) => (),
     }
 }
 
@@ -610,5 +607,65 @@ mod test {
         let result = send_request.await;
 
         assert_matches!(result, Err(RequestError::Timeout));
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn request_sent_to_task_cancelled_before_send() {
+        let (fake_chat_remote_tx, mut fake_chat_remote_rx) = mpsc::unbounded_channel();
+        let fake_connect = FakeChatConnect {
+            remote: fake_chat_remote_tx,
+        };
+
+        let (request_sender, _join_handle) = spawn_connected_chat(&fake_connect)
+            .await
+            .expect("can connect");
+        let fake_chat_remote = fake_chat_remote_rx.recv().await.unwrap();
+
+        let mut first_send_fut = std::pin::pin!(send_request_to_connected_chat(
+            ChatRequest {
+                path: PathAndQuery::from_static("/1"),
+                ..SOME_REQUEST.clone()
+            },
+            &request_sender,
+        ));
+
+        // Receive the request but don't respond to it until the second request
+        // has been put in the stream for the task. We need to poll both tasks
+        // so the send makes progress.
+        let request = tokio::select! {
+            request = fake_chat_remote.receive_request() => request,
+            _ = first_send_fut.as_mut() => unreachable!("can't finish without response")
+        }
+        .expect("still connected")
+        .expect("request received");
+        assert_eq!(request.path.as_deref(), Some("/1"));
+
+        {
+            // Scope to limit the lifetime of the second send future
+            let mut second_send_fut = std::pin::pin!(send_request_to_connected_chat(
+                ChatRequest {
+                    path: PathAndQuery::from_static("/2"),
+                    ..SOME_REQUEST.clone()
+                },
+                &request_sender,
+            ));
+            let _ = futures_util::poll!(&mut second_send_fut);
+            assert_matches!(fake_chat_remote.receive_request().now_or_never(), None);
+
+            // Cancelling the second request now by ending its scope, before the
+            // actual bytes are put "on the wire", should result in it never being
+            // sent.
+        }
+
+        // Send some response to the first request.
+        fake_chat_remote
+            .send_response(
+                RegistrationResponse::default().into_websocket_response(request.id.unwrap()),
+            )
+            .expect("still connected");
+        let _response = first_send_fut.await;
+
+        // The task should reach its inactivity timeout and disconnect.
+        assert_matches!(fake_chat_remote.receive_request().await, Ok(None));
     }
 }
