@@ -414,8 +414,12 @@ function makeNativeChatListener(
     _queue_empty(): void {
       throw new Error('Event not supported on unauthenticated connection');
     },
-    _received_alerts(_alerts: string[]): void {
-      throw new Error('Event not supported on unauthenticated connection');
+    _received_alerts(alerts: string[]): void {
+      if (alerts.length != 0) {
+        throw new Error(
+          `Got ${alerts.length} unexpected alerts on an unauthenticated connection`
+        );
+      }
     },
     _connection_interrupted(cause: LibSignalError | null): void {
       listener.onConnectionInterrupted(cause);
