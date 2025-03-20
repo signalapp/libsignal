@@ -14,6 +14,7 @@ import { ErrorCode, LibSignalErrorBase } from '../Errors';
 import {
   AuthenticatedChatConnection,
   buildHttpRequest,
+  ChatConnection,
   ChatServerMessageAck,
   ChatServiceListener,
   Environment,
@@ -21,6 +22,7 @@ import {
   newNativeHandle,
   SIGNAL_TLS_PROXY_SCHEME,
   TokioAsyncContext,
+  UnauthenticatedChatConnection,
 } from '../net';
 import {
   ChatResponse,
@@ -633,72 +635,117 @@ describe('chat service api', () => {
     });
   });
 
-  it('chat connection can send requests and receive responses', async () => {
-    const tokio = new TokioAsyncContext(Native.TokioAsyncContext_new());
-    const [chat, fakeRemote] = AuthenticatedChatConnection.fakeConnect(tokio, {
-      onIncomingMessage: () => {},
-      onQueueEmpty: () => {},
-      onReceivedAlerts() {},
-      onConnectionInterrupted: () => {},
-    });
+  class InternalRequest implements Native.Wrapper<Native.HttpRequest> {
+    constructor(readonly _nativeHandle: Native.HttpRequest) {}
+    public get verb(): string {
+      return Native.TESTING_ChatRequestGetMethod(this);
+    }
 
-    const request = {
-      verb: 'PUT',
-      path: '/some/path',
-      headers: [['purpose', 'test request']] as [[string, string]],
-      body: Buffer.of(1, 1, 2, 3),
-    };
-    const responseFuture = chat.fetch(request);
+    public get path(): string {
+      return Native.TESTING_ChatRequestGetPath(this);
+    }
 
-    const requestFromServerWithId =
-      await Native.TESTING_FakeChatRemoteEnd_ReceiveIncomingRequest(
-        tokio,
-        fakeRemote
+    public get headers(): Map<string, string> {
+      const names = Native.TESTING_ChatRequestGetHeaderNames(this);
+      return new Map(
+        names.map((name) => {
+          return [name, Native.TESTING_ChatRequestGetHeaderValue(this, name)];
+        })
       );
-    assert(requestFromServerWithId !== null);
-    const requestFromServer = {
-      _nativeHandle: Native.TESTING_FakeChatSentRequest_TakeHttpRequest({
-        _nativeHandle: requestFromServerWithId,
-      }),
-    };
-    const requestId = Native.TESTING_FakeChatSentRequest_RequestId({
-      _nativeHandle: requestFromServerWithId,
+    }
+
+    public get body(): Buffer {
+      return Native.TESTING_ChatRequestGetBody(this);
+    }
+  }
+
+  describe('fake chat connection', () => {
+    type FakeConnectFn = (
+      tokio: TokioAsyncContext
+    ) => [ChatConnection, Native.Wrapper<Native.FakeChatRemoteEnd>];
+    const cases: Array<[string, FakeConnectFn]> = [
+      [
+        'authenticated',
+        (tokio: TokioAsyncContext) => {
+          return AuthenticatedChatConnection.fakeConnect(tokio, {
+            onIncomingMessage: () => {},
+            onQueueEmpty: () => {},
+            onReceivedAlerts() {},
+            onConnectionInterrupted: () => {},
+          });
+        },
+      ],
+      [
+        'unauthenticated',
+        (tokio: TokioAsyncContext) => {
+          return UnauthenticatedChatConnection.fakeConnect(tokio, {
+            onConnectionInterrupted: () => {},
+            onIncomingMessage: () => {},
+            onQueueEmpty: () => {},
+          });
+        },
+      ],
+    ];
+    cases.forEach(([name, connectFn]) => {
+      describe(name, () => {
+        it('can send requests and receive responses', async () => {
+          const tokio = new TokioAsyncContext(Native.TokioAsyncContext_new());
+          const [chat, fakeRemote] = connectFn(tokio);
+
+          const request = {
+            verb: 'PUT',
+            path: '/some/path',
+            headers: [['purpose', 'test request']] as [[string, string]],
+            body: Buffer.of(1, 1, 2, 3),
+          };
+          const responseFuture = chat.fetch(request);
+
+          const requestFromServerWithId =
+            await Native.TESTING_FakeChatRemoteEnd_ReceiveIncomingRequest(
+              tokio,
+              fakeRemote
+            );
+          assert(requestFromServerWithId !== null);
+          const requestFromServer = new InternalRequest(
+            Native.TESTING_FakeChatSentRequest_TakeHttpRequest({
+              _nativeHandle: requestFromServerWithId,
+            })
+          );
+          const requestId = Native.TESTING_FakeChatSentRequest_RequestId({
+            _nativeHandle: requestFromServerWithId,
+          });
+
+          expect(requestFromServer.verb).to.eq(request.verb);
+          expect(requestFromServer.path).to.eq(request.path);
+          expect(requestFromServer.body).to.deep.eq(request.body);
+          expect(requestFromServer.headers).to.deep.eq(
+            new Map([['purpose', 'test request']])
+          );
+          expect(requestId).to.eq(0n);
+
+          // 1: 0
+          // 2: 201
+          // 3: {"Created"}
+          // 5: {"purpose: test response"}
+          // 4: {5}
+          Native.TESTING_FakeChatRemoteEnd_SendRawServerResponse(
+            fakeRemote,
+            Buffer.from(
+              'CAAQyQEaB0NyZWF0ZWQqFnB1cnBvc2U6IHRlc3QgcmVzcG9uc2UiAQU=',
+              'base64'
+            )
+          );
+
+          const responseFromServer = await responseFuture;
+          expect(responseFromServer).property('status').to.eq(201);
+          expect(responseFromServer).property('message').to.eq('Created');
+          expect(responseFromServer)
+            .property('headers')
+            .to.deep.eq([['purpose', 'test response']]);
+          expect(responseFromServer).property('body').to.deep.eq(Buffer.of(5));
+        });
+      });
     });
-
-    expect(Native.TESTING_ChatRequestGetMethod(requestFromServer)).to.eq(
-      request.verb
-    );
-    expect(Native.TESTING_ChatRequestGetPath(requestFromServer)).to.eq(
-      request.path
-    );
-    expect(Native.TESTING_ChatRequestGetBody(requestFromServer)).to.deep.eq(
-      request.body
-    );
-    expect(
-      Native.TESTING_ChatRequestGetHeaderValue(requestFromServer, 'purpose')
-    ).to.eq('test request');
-    expect(requestId).to.eq(0n);
-
-    // 1: 0
-    // 2: 201
-    // 3: {"Created"}
-    // 5: {"purpose: test response"}
-    // 4: {5}
-    Native.TESTING_FakeChatRemoteEnd_SendRawServerResponse(
-      fakeRemote,
-      Buffer.from(
-        'CAAQyQEaB0NyZWF0ZWQqFnB1cnBvc2U6IHRlc3QgcmVzcG9uc2UiAQU=',
-        'base64'
-      )
-    );
-
-    const responseFromServer = await responseFuture;
-    expect(responseFromServer).property('status').to.eq(201);
-    expect(responseFromServer).property('message').to.eq('Created');
-    expect(responseFromServer)
-      .property('headers')
-      .to.deep.eq([['purpose', 'test response']]);
-    expect(responseFromServer).property('body').to.deep.eq(Buffer.of(5));
   });
 
   it('client can respond with http status code to a server message', () => {

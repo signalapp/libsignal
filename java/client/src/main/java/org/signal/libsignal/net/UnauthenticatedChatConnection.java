@@ -7,7 +7,9 @@ package org.signal.libsignal.net;
 
 import org.signal.libsignal.internal.CompletableFuture;
 import org.signal.libsignal.internal.Native;
+import org.signal.libsignal.internal.NativeTesting;
 import org.signal.libsignal.net.internal.BridgeChatListener;
+import org.signal.libsignal.protocol.util.Pair;
 
 /**
  * Represents an unauthenticated (i.e. hopefully anonymous) communication channel with the Chat
@@ -58,6 +60,39 @@ public class UnauthenticatedChatConnection extends ChatConnection {
    */
   public KeyTransparencyClient keyTransparencyClient() {
     return this.keyTransparencyClient;
+  }
+
+  /**
+   * Test-only method to create a {@code UnauthenticatedChatConnection} connected to a fake remote.
+   *
+   * <p>The returned {@link FakeChatRemote} can be used to send messages to the connection.
+   */
+  public static Pair<UnauthenticatedChatConnection, FakeChatRemote> fakeConnect(
+      final TokioAsyncContext tokioAsyncContext,
+      ChatConnectionListener listener,
+      Network.Environment ktEnvironment) {
+
+    return tokioAsyncContext.guardedMap(
+        asyncContextHandle -> {
+          SetChatLaterListenerBridge bridgeListener = new SetChatLaterListenerBridge();
+          long fakeChatConnection =
+              NativeTesting.TESTING_FakeChatConnection_Create(
+                  asyncContextHandle, bridgeListener, "");
+          UnauthenticatedChatConnection chat =
+              new UnauthenticatedChatConnection(
+                  tokioAsyncContext,
+                  NativeTesting.TESTING_FakeChatConnection_TakeUnauthenticatedChat(
+                      fakeChatConnection),
+                  listener,
+                  ktEnvironment);
+          bridgeListener.setChat(chat);
+          FakeChatRemote fakeRemote =
+              new FakeChatRemote(
+                  tokioAsyncContext,
+                  NativeTesting.TESTING_FakeChatConnection_TakeRemote(fakeChatConnection));
+          NativeTesting.FakeChatConnection_Destroy(fakeChatConnection);
+          return new Pair<>(chat, fakeRemote);
+        });
   }
 
   // Implementing these abstract methods from ChatConnection allows UnauthenticatedChatConnection

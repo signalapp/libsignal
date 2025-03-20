@@ -205,6 +205,8 @@ SignalFfiError *signal_testing_chat_connect_error_convert(const char *error_desc
 
 SignalFfiError *signal_testing_chat_request_get_body(SignalOwnedBuffer *out, SignalConstPointerHttpRequest request);
 
+SignalFfiError *signal_testing_chat_request_get_header_names(SignalStringArray *out, SignalConstPointerHttpRequest request);
+
 SignalFfiError *signal_testing_chat_request_get_header_value(const char **out, SignalConstPointerHttpRequest request, const char *header_name);
 
 SignalFfiError *signal_testing_chat_request_get_method(const char **out, SignalConstPointerHttpRequest request);
@@ -234,6 +236,8 @@ SignalFfiError *signal_testing_fake_chat_connection_create(SignalMutPointerFakeC
 SignalFfiError *signal_testing_fake_chat_connection_take_authenticated_chat(SignalMutPointerAuthenticatedChatConnection *out, SignalConstPointerFakeChatConnection chat);
 
 SignalFfiError *signal_testing_fake_chat_connection_take_remote(SignalMutPointerFakeChatRemoteEnd *out, SignalConstPointerFakeChatConnection chat);
+
+SignalFfiError *signal_testing_fake_chat_connection_take_unauthenticated_chat(SignalMutPointerUnauthenticatedChatConnection *out, SignalConstPointerFakeChatConnection chat);
 
 SignalFfiError *signal_testing_fake_chat_remote_end_inject_connection_interrupted(SignalConstPointerFakeChatRemoteEnd chat);
 

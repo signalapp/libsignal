@@ -304,16 +304,14 @@ public class ChatServiceTest {
         });
   }
 
-  private void injectServerRequest(
-      AuthenticatedChatConnection.FakeChatRemote fakeRemote, String requestBase64) {
+  private void injectServerRequest(FakeChatRemote fakeRemote, String requestBase64) {
     fakeRemote.guardedRun(
         chatHandle ->
             NativeTesting.TESTING_FakeChatRemoteEnd_SendRawServerRequest(
                 chatHandle, Base64.decode(requestBase64)));
   }
 
-  private void injectServerResponse(
-      AuthenticatedChatConnection.FakeChatRemote fakeRemote, String requestBase64) {
+  private void injectServerResponse(FakeChatRemote fakeRemote, String requestBase64) {
     fakeRemote.guardedRun(
         chatHandle ->
             NativeTesting.TESTING_FakeChatRemoteEnd_SendRawServerResponse(
@@ -410,12 +408,11 @@ public class ChatServiceTest {
 
     final TokioAsyncContext tokioAsyncContext = new TokioAsyncContext();
     final Listener listener = new Listener();
-    final Pair<AuthenticatedChatConnection, AuthenticatedChatConnection.FakeChatRemote>
-        chatAndFakeRemote =
-            AuthenticatedChatConnection.fakeConnect(
-                tokioAsyncContext, listener, new String[] {"UPPERcase", "lowercase"});
+    final Pair<AuthenticatedChatConnection, FakeChatRemote> chatAndFakeRemote =
+        AuthenticatedChatConnection.fakeConnect(
+            tokioAsyncContext, listener, new String[] {"UPPERcase", "lowercase"});
     final AuthenticatedChatConnection chat = chatAndFakeRemote.first();
-    final AuthenticatedChatConnection.FakeChatRemote fakeRemote = chatAndFakeRemote.second();
+    final FakeChatRemote fakeRemote = chatAndFakeRemote.second();
 
     // The following payloads were generated via protoscope.
     // % protoscope -s | base64
@@ -463,12 +460,12 @@ public class ChatServiceTest {
   }
 
   @Test
-  public void testSending() throws Exception {
+  public void testAuthenticatedSending() throws Exception {
     final TokioAsyncContext tokioAsyncContext = new TokioAsyncContext();
-    final Pair<AuthenticatedChatConnection, AuthenticatedChatConnection.FakeChatRemote>
-        chatAndFakeRemote = AuthenticatedChatConnection.fakeConnect(tokioAsyncContext, null);
+    final Pair<AuthenticatedChatConnection, FakeChatRemote> chatAndFakeRemote =
+        AuthenticatedChatConnection.fakeConnect(tokioAsyncContext, null);
     final AuthenticatedChatConnection chat = chatAndFakeRemote.first();
-    final AuthenticatedChatConnection.FakeChatRemote fakeRemote = chatAndFakeRemote.second();
+    final FakeChatRemote fakeRemote = chatAndFakeRemote.second();
 
     var request =
         new AuthenticatedChatConnection.Request(
@@ -477,18 +474,49 @@ public class ChatServiceTest {
 
     var requestFromServerWithId = fakeRemote.getNextIncomingRequest().get();
     var requestFromServer = requestFromServerWithId.first();
-    assertEquals(
-        requestFromServer.guardedMap(NativeTesting::TESTING_ChatRequestGetMethod),
-        request.method());
-    assertEquals(
-        requestFromServer.guardedMap(NativeTesting::TESTING_ChatRequestGetPath),
-        request.pathAndQuery());
-    assertArrayEquals(
-        requestFromServer.guardedMap(NativeTesting::TESTING_ChatRequestGetBody), request.body());
-    assertEquals(
-        requestFromServer.guardedMap(
-            req -> NativeTesting.TESTING_ChatRequestGetHeaderValue(req, "purpose")),
-        "test request");
+    assertEquals(requestFromServer.getMethod(), request.method());
+    assertEquals(requestFromServer.getPathAndQuery(), request.pathAndQuery());
+    assertArrayEquals(requestFromServer.getBody(), request.body());
+    assertEquals(requestFromServer.getHeaders(), request.headers());
+    assertEquals(requestFromServerWithId.second(), Long.valueOf(0));
+
+    // 1: 0
+    // 2: 201
+    // 3: {"Created"}
+    // 5: {"purpose: test response"}
+    // 4: {5}
+    injectServerResponse(fakeRemote, "CAAQyQEaB0NyZWF0ZWQqFnB1cnBvc2U6IHRlc3QgcmVzcG9uc2UiAQU=");
+
+    var responseFromServer = responseFuture.get();
+    assertEquals(responseFromServer.status(), 201);
+    assertEquals(responseFromServer.message(), "Created");
+    assertEquals(responseFromServer.headers(), Map.of("purpose", "test response"));
+    assertArrayEquals(responseFromServer.body(), new byte[] {5});
+
+    // Make sure the chat object doesn't get GC'd early.
+    Native.keepAlive(chat);
+  }
+
+  @Test
+  public void testUnauthenticatedSending() throws Exception {
+    final TokioAsyncContext tokioAsyncContext = new TokioAsyncContext();
+    final Pair<UnauthenticatedChatConnection, FakeChatRemote> chatAndFakeRemote =
+        UnauthenticatedChatConnection.fakeConnect(
+            tokioAsyncContext, null, Network.Environment.STAGING);
+    final UnauthenticatedChatConnection chat = chatAndFakeRemote.first();
+    final FakeChatRemote fakeRemote = chatAndFakeRemote.second();
+
+    var request =
+        new UnauthenticatedChatConnection.Request(
+            "PUT", "/some/path", Map.of("purpose", "test request"), new byte[] {1, 1, 2, 3}, 5000);
+    var responseFuture = chat.send(request);
+
+    var requestFromServerWithId = fakeRemote.getNextIncomingRequest().get();
+    var requestFromServer = requestFromServerWithId.first();
+    assertEquals(requestFromServer.getMethod(), request.method());
+    assertEquals(requestFromServer.getPathAndQuery(), request.pathAndQuery());
+    assertArrayEquals(requestFromServer.getBody(), request.body());
+    assertEquals(requestFromServer.getHeaders(), request.headers());
     assertEquals(requestFromServerWithId.second(), Long.valueOf(0));
 
     // 1: 0

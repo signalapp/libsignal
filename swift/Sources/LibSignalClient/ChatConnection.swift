@@ -244,6 +244,11 @@ public class UnauthenticatedChatConnection: NativeHandleOwner<
         super.init(owned: NonNull(nativeHandle)!)
     }
 
+    internal init(fakeHandle handle: NonNull<SignalMutPointerUnauthenticatedChatConnection>, tokioAsyncContext: TokioAsyncContext) {
+        self.tokioAsyncContext = tokioAsyncContext
+        super.init(owned: handle)
+    }
+
     override internal class func destroyNativeHandle(
         _ handle: NonNull<SignalMutPointerUnauthenticatedChatConnection>
     ) -> SignalFfiErrorRef? {

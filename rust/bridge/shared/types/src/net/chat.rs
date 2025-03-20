@@ -85,6 +85,7 @@ impl UnauthenticatedChatConnection {
         })
     }
 }
+
 impl AuthenticatedChatConnection {
     pub async fn connect(
         connection_manager: &ConnectionManager,
@@ -127,21 +128,6 @@ impl AuthenticatedChatConnection {
         )
         .await?;
         Ok(())
-    }
-
-    pub fn new_fake<'a>(
-        tokio_runtime: tokio::runtime::Handle,
-        listener: Box<dyn ChatListener>,
-        alerts: impl IntoIterator<Item = &'a str>,
-    ) -> (Self, FakeChatRemote) {
-        let (inner, remote) =
-            ChatConnection::new_fake(tokio_runtime, listener.into_event_listener(), alerts);
-        (
-            Self {
-                inner: MaybeChatConnection::Running(inner).into(),
-            },
-            remote,
-        )
     }
 }
 
@@ -231,6 +217,34 @@ fn init_listener(connection: &mut MaybeChatConnection, listener: Box<dyn ChatLis
         pending.into_inner(),
         listener.into_event_listener(),
     ))
+}
+
+pub struct FakeChatConnection(ChatConnection);
+
+impl FakeChatConnection {
+    pub fn new<'a>(
+        tokio_runtime: tokio::runtime::Handle,
+        listener: Box<dyn ChatListener>,
+        alerts: impl IntoIterator<Item = &'a str>,
+    ) -> (Self, FakeChatRemote) {
+        let (inner, remote) =
+            ChatConnection::new_fake(tokio_runtime, listener.into_event_listener(), alerts);
+        (Self(inner), remote)
+    }
+
+    pub fn into_unauthenticated(self) -> UnauthenticatedChatConnection {
+        let Self(inner) = self;
+        UnauthenticatedChatConnection {
+            inner: MaybeChatConnection::Running(inner).into(),
+        }
+    }
+
+    pub fn into_authenticated(self) -> AuthenticatedChatConnection {
+        let Self(inner) = self;
+        AuthenticatedChatConnection {
+            inner: MaybeChatConnection::Running(inner).into(),
+        }
+    }
 }
 
 async fn establish_chat_connection(

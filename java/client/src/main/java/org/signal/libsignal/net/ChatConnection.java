@@ -7,11 +7,13 @@ package org.signal.libsignal.net;
 
 import java.lang.ref.WeakReference;
 import java.net.MalformedURLException;
+import java.util.HashMap;
 import java.util.Map;
 import org.signal.libsignal.internal.CompletableFuture;
 import org.signal.libsignal.internal.FilterExceptions;
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
+import org.signal.libsignal.internal.NativeTesting;
 import org.signal.libsignal.net.internal.BridgeChatListener;
 
 /**
@@ -86,6 +88,32 @@ public abstract class ChatConnection extends NativeHandleGuard.SimpleOwner {
                   ? (ChatServiceException) disconnectReason
                   : new ChatServiceException("OtherDisconnectReason", disconnectReason);
       chat.chatListener.onConnectionInterrupted(chat, disconnectReasonChatServiceException);
+    }
+  }
+
+  protected static final class SetChatLaterListenerBridge extends ListenerBridge {
+    String[] savedAlerts;
+
+    SetChatLaterListenerBridge() {
+      super(null);
+    }
+
+    void setChat(ChatConnection chat) {
+      this.chat = new WeakReference<>(chat);
+      if (savedAlerts != null) {
+        super.onReceivedAlerts(savedAlerts);
+        savedAlerts = null;
+      }
+    }
+
+    public void onReceivedAlerts(String[] alerts) {
+      // This callback can happen before setChat, so we might need to replay it later.
+      if (this.chat.get() == null) {
+        savedAlerts = alerts;
+        return;
+      }
+
+      super.onReceivedAlerts(alerts);
     }
   }
 
@@ -182,6 +210,30 @@ public abstract class ChatConnection extends NativeHandleGuard.SimpleOwner {
 
     public void addHeader(final String name, final String value) {
       guardedRun(h -> Native.HttpRequest_add_header(h, name, value));
+    }
+
+    public String getMethod() {
+      return guardedMap(NativeTesting::TESTING_ChatRequestGetMethod);
+    }
+
+    public String getPathAndQuery() {
+      return guardedMap(NativeTesting::TESTING_ChatRequestGetPath);
+    }
+
+    public byte[] getBody() {
+      return guardedMap(NativeTesting::TESTING_ChatRequestGetBody);
+    }
+
+    public Map<String, String> getHeaders() {
+      var headers = (String[]) guardedMap(NativeTesting::TESTING_ChatRequestGetHeaderNames);
+      var map = new HashMap<String, String>();
+      for (var header : headers) {
+        map.put(
+            header,
+            (String)
+                guardedMap(req -> NativeTesting.TESTING_ChatRequestGetHeaderValue(req, header)));
+      }
+      return map;
     }
   }
 
