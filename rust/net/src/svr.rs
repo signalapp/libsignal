@@ -8,6 +8,7 @@ use std::marker::PhantomData;
 use http::HeaderName;
 use libsignal_net_infra::dns::DnsResolver;
 use libsignal_net_infra::route::{RouteProvider, UnresolvedWebsocketServiceRoute};
+use libsignal_net_infra::utils::ObservableEvent;
 use libsignal_net_infra::ws2::attested::AttestedConnection;
 
 use crate::auth::Auth;
@@ -39,6 +40,7 @@ where
     pub async fn connect(
         connect: &tokio::sync::RwLock<ConnectState<impl WebSocketTransportConnectorFactory>>,
         resolver: &DnsResolver,
+        network_change_event: &ObservableEvent,
         route_provider: impl RouteProvider<Route = UnresolvedWebsocketServiceRoute>,
         confirmation_header_name: Option<HeaderName>,
         ws_config: crate::infra::ws2::Config,
@@ -50,6 +52,7 @@ where
             route_provider,
             auth,
             resolver,
+            network_change_event,
             confirmation_header_name,
             (ws_config, crate::infra::ws::WithoutResponseHeaders::new()),
             format!("svr3:{}", std::any::type_name::<E>()).into(),

@@ -43,6 +43,14 @@ pub const WS_MAX_IDLE_INTERVAL: Duration = Duration::from_secs(45);
 /// (this includes DNS resolution, TCP connection, and SSL handshake)
 pub const ONE_ROUTE_CONNECTION_TIMEOUT: Duration = Duration::from_secs(60);
 
+/// How often to check if the network interface has changed (without an OS-provided network change
+/// event).
+pub const NETWORK_INTERFACE_POLL_INTERVAL: Duration = Duration::from_secs(5);
+
+/// Duration to wait after a network change event that has resulted in a different preferred network
+/// interface.
+pub const POST_ROUTE_CHANGE_CONNECTION_TIMEOUT: Duration = Duration::from_secs(1);
+
 /// Timeout for a connect operation that attempts multiple routes
 pub const MULTI_ROUTE_CONNECTION_TIMEOUT: Duration = Duration::from_secs(180);
 

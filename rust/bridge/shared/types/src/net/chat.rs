@@ -124,6 +124,7 @@ impl AuthenticatedChatConnection {
             &connection_manager.connect,
             route_provider,
             &connection_manager.dns_resolver,
+            &connection_manager.network_change_event,
             "preconnect".into(),
         )
         .await?;
@@ -258,6 +259,7 @@ async fn establish_chat_connection(
         connect,
         user_agent,
         endpoints,
+        network_change_event,
         ..
     } = connection_manager;
 
@@ -283,6 +285,7 @@ async fn establish_chat_connection(
     ChatConnection::start_connect_with(
         connect,
         dns_resolver,
+        network_change_event,
         route_provider,
         chat_connect
             .confirmation_header_name

@@ -23,6 +23,9 @@ pub use composed::*;
 mod direct_or_proxy;
 pub use direct_or_proxy::*;
 
+mod interface_monitor;
+pub use interface_monitor::*;
+
 mod preconnect;
 pub use preconnect::*;
 

@@ -162,27 +162,36 @@ impl LogSafeDisplay for WebSocketServiceConnectError {}
 
 impl ErrorClassifier for WebSocketServiceConnectError {
     fn classify(&self) -> ErrorClass {
-        let WebSocketServiceConnectError::RejectedByServer {
-            response,
-            received_at,
-        } = self
-        else {
-            // If we didn't make it to the server, we should retry.
-            return ErrorClass::Intermittent;
-        };
+        match self {
+            WebSocketServiceConnectError::RejectedByServer {
+                response,
+                received_at,
+            } => {
+                // Retry-After takes precedence over everything else.
+                if let Some(retry_later) = extract_retry_later(response.headers()) {
+                    return ErrorClass::RetryAt(*received_at + retry_later.duration());
+                }
 
-        // Retry-After takes precedence over everything else.
-        if let Some(retry_later) = extract_retry_later(response.headers()) {
-            return ErrorClass::RetryAt(*received_at + retry_later.duration());
+                // If we're rejected based on the request (4xx), there's no point in retrying.
+                if response.status().is_client_error() {
+                    return ErrorClass::Fatal;
+                }
+
+                // Otherwise, assume we have a server problem (5xx), and retry.
+                ErrorClass::Intermittent
+            }
+            WebSocketServiceConnectError::Connect(
+                WebSocketConnectError::Transport(TransportConnectError::ClientAbort),
+                NotRejectedByServer { .. },
+            ) => {
+                // If we *locally* chose to abort, that isn't route-specific; treat it as fatal.
+                ErrorClass::Fatal
+            }
+            WebSocketServiceConnectError::Connect(_, NotRejectedByServer { .. }) => {
+                // In any other case, if we didn't make it to the server, we should retry.
+                ErrorClass::Intermittent
+            }
         }
-
-        // If we're rejected based on the request (4xx), there's no point in retrying.
-        if response.status().is_client_error() {
-            return ErrorClass::Fatal;
-        }
-
-        // Otherwise, assume we have a server problem (5xx), and retry.
-        ErrorClass::Intermittent
     }
 }
 

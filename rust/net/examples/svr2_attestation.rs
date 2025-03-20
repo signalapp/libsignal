@@ -110,6 +110,7 @@ async fn main() {
     let _connection = SvrConnection::connect(
         &connect_state,
         &resolver,
+        &network_changed_event,
         DirectOrProxyProvider::maybe_proxied(env.route_provider(EnableDomainFronting::No), None),
         confirmation_header,
         WS2_CONFIG,
