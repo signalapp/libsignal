@@ -57,6 +57,12 @@ public struct ChatRequest: Equatable, Sendable {
             }
         }
 
+        override class func destroyNativeHandle(_ handle: NonNull<SignalMutPointerHttpRequest>) -> SignalFfiErrorRef? {
+            return signal_http_request_destroy(handle.pointer)
+        }
+
+// These testing endpoints aren't generated in device builds, to save on code size.
+#if !os(iOS) || targetEnvironment(simulator)
         internal var method: String {
             failOnError {
                 try withNativeHandle { request in
@@ -103,10 +109,7 @@ public struct ChatRequest: Equatable, Sendable {
                 }
             }
         }
-
-        override class func destroyNativeHandle(_ handle: NonNull<SignalMutPointerHttpRequest>) -> SignalFfiErrorRef? {
-            return signal_http_request_destroy(handle.pointer)
-        }
+#endif
     }
 }
 
