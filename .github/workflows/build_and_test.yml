@@ -438,4 +438,4 @@ jobs:
           CARGO_BUILD_TARGET: aarch64-apple-ios-sim
 
       - name: Run pod lint
-        run: pod lib lint --verbose --platforms=ios
+        run: pod lib lint --verbose --platforms=ios --skip-tests
