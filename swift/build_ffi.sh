@@ -133,6 +133,14 @@ fi
 
 echo_then_run cargo build -p libsignal-ffi ${RELEASE_BUILD:+--release} ${VERBOSE:+--verbose} ${CARGO_BUILD_TARGET:+--target $CARGO_BUILD_TARGET} ${FEATURES:+--features "${FEATURES[*]}"} ${BUILD_STD:+-Zbuild-std}
 
+if [[ -n "${RELEASE_BUILD:-}" && -z "${DEBUG_LEVEL_LOGS:-}" ]]; then
+  # See libsignal-ffi's logging.rs.
+  if grep -q -- '-LEVEL LOGS ENABLED' "${CARGO_TARGET_DIR:-target}/${CARGO_BUILD_TARGET:-}/release/libsignal_ffi.a"; then
+    echo 'error: debug-level logs found in build that should not have them!' >&2
+    exit 2
+  fi
+fi
+
 FFI_HEADER_PATH=swift/Sources/SignalFfi/signal_ffi.h
 FFI_TESTING_HEADER_PATH=swift/Sources/SignalFfi/signal_ffi_testing.h
 

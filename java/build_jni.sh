@@ -36,8 +36,21 @@ while [ "${1:-}" != "" ]; do
 done
 
 if [[ -z "${DEBUG_LEVEL_LOGS:-}" ]]; then
-  FEATURES+=("log/release_max_level_info")
+    FEATURES+=("log/release_max_level_info")
 fi
+
+# usage: check_for_debug_level_logs_if_needed lib_dir
+check_for_debug_level_logs_if_needed () {
+   if [[ -z "${DEBUG_LEVEL_LOGS:-}" ]]; then
+        # See libsignal-jni's logging.rs for the strings matched by this pattern.
+        # Searching *every* file in the lib directory is probably overkill,
+        # but it's easier than figuring out prefixes and suffixes like copy_built_library does.
+        if grep -q -- '-LEVEL LOGS ENABLED' "$1"/*; then
+            echo 'error: debug-level logs found in build that should not have them!' >&2
+            exit 2
+        fi
+   fi
+}
 
 # usage: build_desktop_for_arch target_triple host_triple output_dir
 build_desktop_for_arch () {
@@ -74,6 +87,7 @@ build_desktop_for_arch () {
     echo_then_run cargo build -p libsignal-jni -p libsignal-jni-testing --release ${FEATURES:+--features "${FEATURES[*]}"} --target "$1"
     copy_built_library "target/${1}/release" signal_jni "$lib_dir" "signal_jni_${suffix}"
     copy_built_library "target/${1}/release" signal_jni_testing "$lib_dir" "signal_jni_testing_${suffix}"
+    check_for_debug_level_logs_if_needed "$lib_dir"
 }
 
 android_abis=()
@@ -181,4 +195,5 @@ target_for_abi() {
 for abi in "${android_abis[@]}"; do
     rust_target=$(target_for_abi "$abi")
     echo_then_run cargo build -p libsignal-jni -p libsignal-jni-testing --release ${FEATURES:+--features "${FEATURES[*]}"} -Z unstable-options --target "$rust_target" --artifact-dir "${ANDROID_LIB_DIR}/$abi"
+    check_for_debug_level_logs_if_needed "${ANDROID_LIB_DIR}/$abi"
 done

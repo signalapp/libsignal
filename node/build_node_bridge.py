@@ -6,6 +6,7 @@
 #
 
 import hashlib
+import mmap
 import optparse
 import os
 import shlex
@@ -14,6 +15,14 @@ import subprocess
 import sys
 
 from typing import List, Optional
+
+
+def check_for_debug_level_logs(src_path: str) -> None:
+    with open(src_path, 'rb') as f:
+        with mmap.mmap(f.fileno(), length=0, access=mmap.ACCESS_READ) as m:
+            # See libsignal-node's logging.rs.
+            if m.find(b'-LEVEL LOGS ENABLED') != -1:
+                raise AssertionError('debug-level logs found in build that should not have them!')
 
 
 def maybe_dump_debug_symbols(*, src_path: str, src_checksum_path: str, dst_path: str, dst_checksum_path: str) -> None:
@@ -94,12 +103,17 @@ def main(args: Optional[List[str]] = None) -> int:
     out_dir = options.out_dir.strip('"') or os.path.join('build', configuration_name)
 
     features = []
-    if 'npm_config_libsignal_debug_level_logs' not in os.environ:
+    allow_debug_level_logs = False
+    if 'npm_config_libsignal_debug_level_logs' in os.environ:
+        allow_debug_level_logs = True
+    else:
         features.append('log/release_max_level_info')
 
     cmdline = ['cargo', 'build', '--target', cargo_target, '-p', 'libsignal-node', '--features', ','.join(features)]
     if configuration_name == 'Release':
         cmdline.append('--release')
+    else:
+        allow_debug_level_logs = True
     print("Running '%s'" % (' '.join(cmdline)))
 
     cargo_env = os.environ.copy()
@@ -192,6 +206,9 @@ def main(args: Optional[List[str]] = None) -> int:
 
     src_path = os.path.join(libs_in, lib_format.format('signal_node'))
     if os.access(src_path, os.R_OK):
+        if not allow_debug_level_logs:
+            check_for_debug_level_logs(src_path)
+
         dst_base = 'libsignal_client_%s_%s' % (node_os_name, node_arch)
 
         dst_path = os.path.join(out_dir, dst_base + '.node')

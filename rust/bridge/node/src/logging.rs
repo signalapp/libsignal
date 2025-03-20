@@ -207,6 +207,9 @@ pub(crate) fn init_logger(mut cx: FunctionContext) -> JsResult<JsUndefined> {
                 "Initializing libsignal version:{}",
                 env!("CARGO_PKG_VERSION")
             );
+            // These strings are explicitly looked for by build_node_bridge.py.
+            log::debug!("THIS BUILD HAS DEBUG-LEVEL LOGS ENABLED");
+            log::trace!("THIS BUILD HAS TRACE-LEVEL LOGS ENABLED");
             log_panics::init();
         }
         Err(_) => {
