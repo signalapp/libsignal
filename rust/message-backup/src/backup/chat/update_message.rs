@@ -267,8 +267,8 @@ impl<R> UpdateMessage<R> {
                 }
             }
             UpdateMessage::SessionSwitchover { .. } => {
-                if !author.is_contact_with_aci() {
-                    Err(ChatItemError::SessionSwitchoverNotFromAci)
+                if author.is_release_notes() {
+                    Err(ChatItemError::SessionSwitchoverFromReleaseNotes)
                 } else {
                     Ok(())
                 }
@@ -404,6 +404,8 @@ mod test {
     use crate::backup::testutil::TestContext;
     use crate::proto::backup::chat_update_message::Update as ChatUpdateProto;
 
+    const VALID_E164: u64 = 1234567890;
+
     impl proto::SimpleChatUpdate {
         pub(crate) fn test_data() -> Self {
             Self {
@@ -516,5 +518,30 @@ mod test {
         .map(|_: UpdateMessage<_>| ());
 
         assert_eq!(result, expected)
+    }
+
+    #[test_case(
+        ChatItemAuthorKind::ReleaseNotes,
+        Err(ChatItemError::SessionSwitchoverFromReleaseNotes)
+    )]
+    #[test_case(ChatItemAuthorKind::Self_, Ok(()))]
+    fn test_session_switchover_validate_author(
+        author: ChatItemAuthorKind,
+        expected: Result<(), ChatItemError>,
+    ) {
+        let result = proto::ChatUpdateMessage {
+            update: Some(proto::chat_update_message::Update::SessionSwitchover(
+                proto::SessionSwitchoverChatUpdate {
+                    e164: VALID_E164,
+                    special_fields: Default::default(),
+                },
+            )),
+            ..Default::default()
+        }
+        .try_into_with(&TestContext::default())
+        .map(|um: UpdateMessage<_>| um.validate_author(&author))
+        .expect("Conversion should succeed for a valid SessionSwitchover update");
+
+        assert_eq!(result, expected);
     }
 }
