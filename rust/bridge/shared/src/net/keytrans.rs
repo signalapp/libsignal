@@ -11,11 +11,10 @@ use libsignal_bridge_types::net::chat::UnauthenticatedChatConnection;
 pub use libsignal_bridge_types::net::{Environment, TokioAsyncContext};
 use libsignal_bridge_types::support::AsType;
 use libsignal_core::{Aci, E164};
-use libsignal_keytrans::{
-    AccountData, KeyTransparency, LocalStateUpdate, StoredAccountData, StoredTreeHead,
-};
+use libsignal_keytrans::{AccountData, LocalStateUpdate, StoredAccountData, StoredTreeHead};
 use libsignal_net::keytrans::{
-    monitor_and_search, Error, Kt, KtApi as _, MaybePartial, SearchKey, SearchResult, UsernameHash,
+    monitor_and_search, Error, KeyTransparencyClient, KtApi as _, MaybePartial, SearchKey,
+    SearchResult, UsernameHash,
 };
 use libsignal_protocol::PublicKey;
 use prost::{DecodeError, Message};
@@ -93,19 +92,13 @@ async fn KeyTransparency_Search(
     account_data: Option<Box<[u8]>>,
     last_distinguished_tree_head: Box<[u8]>,
 ) -> Result<SearchResult, Error> {
-    let chat = chatConnection;
     let username_hash = username_hash.map(UsernameHash::from);
     let config = environment
         .into_inner()
         .env()
         .keytrans_config
-        .expect("keytrans config must be set")
-        .into();
-    let kt = Kt {
-        inner: KeyTransparency { config },
-        chat,
-        config: Default::default(),
-    };
+        .expect("keytrans config must be set");
+    let kt = KeyTransparencyClient::new(chatConnection, config);
 
     let e164_pair = make_e164_pair(e164, unidentified_access_key)?;
 
@@ -160,7 +153,6 @@ async fn KeyTransparency_Monitor(
     account_data: Option<Box<[u8]>>,
     last_distinguished_tree_head: Box<[u8]>,
 ) -> Result<Vec<u8>, Error> {
-    let chat = chatConnection;
     let username_hash = username_hash.map(UsernameHash::from);
 
     let Some(account_data) = account_data else {
@@ -180,13 +172,8 @@ async fn KeyTransparency_Monitor(
         .into_inner()
         .env()
         .keytrans_config
-        .expect("keytrans config must be set")
-        .into();
-    let kt = Kt {
-        inner: KeyTransparency { config },
-        chat,
-        config: Default::default(),
-    };
+        .expect("keytrans config must be set");
+    let kt = KeyTransparencyClient::new(chatConnection, config);
 
     let e164_pair = make_e164_pair(e164, unidentified_access_key)?;
     let MaybePartial {
@@ -220,18 +207,12 @@ async fn KeyTransparency_Distinguished(
     chatConnection: &UnauthenticatedChatConnection,
     last_distinguished_tree_head: Option<Box<[u8]>>,
 ) -> Result<Vec<u8>, Error> {
-    let chat = chatConnection;
     let config = environment
         .into_inner()
         .env()
         .keytrans_config
-        .expect("keytrans config must be set")
-        .into();
-    let kt = Kt {
-        inner: KeyTransparency { config },
-        chat,
-        config: Default::default(),
-    };
+        .expect("keytrans config must be set");
+    let kt = KeyTransparencyClient::new(chatConnection, config);
 
     let known_distinguished = last_distinguished_tree_head
         .map(try_decode)

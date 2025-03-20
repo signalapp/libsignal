@@ -30,6 +30,7 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use crate::chat;
+use crate::env::KeyTransConfig;
 
 const SEARCH_PATH: &str = "/v1/key-transparency/search";
 const DISTINGUISHED_PATH: &str = "/v1/key-transparency/distinguished";
@@ -419,11 +420,13 @@ pub trait UnauthenticatedChat {
     ) -> BoxFuture<'_, std::result::Result<chat::Response, chat::SendError>>;
 }
 
-pub struct Config {
-    chat_timeout: Duration,
+/// Network related configuration for [`KeyTransparencyClient`]
+#[derive(Clone, Debug)]
+pub struct NetConfig {
+    pub chat_timeout: Duration,
 }
 
-impl Default for Config {
+impl Default for NetConfig {
     fn default() -> Self {
         Self {
             chat_timeout: Duration::from_secs(10),
@@ -431,10 +434,11 @@ impl Default for Config {
     }
 }
 
-pub struct Kt<'a> {
+#[derive(Clone)]
+pub struct KeyTransparencyClient<'a> {
     pub inner: KeyTransparency,
     pub chat: &'a (dyn UnauthenticatedChat + Sync),
-    pub config: Config,
+    pub net_config: NetConfig,
 }
 
 /// A tag identifying an optional field in [`AccountData`]
@@ -622,7 +626,26 @@ fn has_version_changed_between(stored: &AccountData, updated: &AccountData) -> b
         || cmp_by_key(stored, updated, username_hash_version) == Ordering::Less
 }
 
-impl Kt<'_> {
+impl<'a> KeyTransparencyClient<'a> {
+    pub fn new(chat: &'a (dyn UnauthenticatedChat + Sync), kt_config: KeyTransConfig) -> Self {
+        Self::with_net_config(chat, kt_config, Default::default())
+    }
+
+    pub fn with_net_config(
+        chat: &'a (dyn UnauthenticatedChat + Sync),
+        kt_config: KeyTransConfig,
+        net_config: NetConfig,
+    ) -> Self {
+        let inner = KeyTransparency {
+            config: kt_config.into(),
+        };
+        Self {
+            inner,
+            chat,
+            net_config,
+        }
+    }
+
     async fn send(&self, request: chat::Request) -> Result<chat::Response> {
         log::debug!("{}", &request.path.as_str());
         log::debug!(
@@ -631,7 +654,7 @@ impl Kt<'_> {
         );
         let response = self
             .chat
-            .send_unauthenticated(request, self.config.chat_timeout)
+            .send_unauthenticated(request, self.net_config.chat_timeout)
             .await?;
         log::debug!(
             "{} {:?}, headers: {:?}, body: {}",
@@ -651,7 +674,7 @@ impl Kt<'_> {
     }
 }
 
-impl KtApi for Kt<'_> {
+impl KtApi for KeyTransparencyClient<'_> {
     async fn search(
         &self,
         aci: &Aci,
@@ -1184,17 +1207,13 @@ impl AsChatValue for UsernameHash<'_> {
 #[cfg(test)]
 mod test_support {
     use futures_util::FutureExt as _;
-    use libsignal_keytrans::{DeploymentMode, PublicConfig, VerifyingKey, VrfPublicKey};
     use libsignal_net_infra::route::DirectOrProxyRoute;
     use libsignal_net_infra::EnableDomainFronting;
 
     use super::*;
     use crate::chat::ChatConnection;
     use crate::env;
-    use crate::env::{
-        KEYTRANS_AUDITOR_KEY_MATERIAL_STAGING, KEYTRANS_SIGNING_KEY_MATERIAL_STAGING,
-        KEYTRANS_VRF_KEY_MATERIAL_STAGING,
-    };
+    use crate::env::KEYTRANS_CONFIG_STAGING;
 
     pub(super) mod test_account {
         use std::borrow::Cow;
@@ -1228,28 +1247,8 @@ mod test_support {
         }
     }
 
-    pub(super) fn make_key_transparency() -> KeyTransparency {
-        let signature_key = VerifyingKey::from_bytes(KEYTRANS_SIGNING_KEY_MATERIAL_STAGING)
-            .expect("valid signature key material");
-        let vrf_key = VrfPublicKey::try_from(*KEYTRANS_VRF_KEY_MATERIAL_STAGING)
-            .expect("valid vrf key material");
-        let auditor_key = VerifyingKey::from_bytes(KEYTRANS_AUDITOR_KEY_MATERIAL_STAGING)
-            .expect("valid auditor key material");
-        KeyTransparency {
-            config: PublicConfig {
-                mode: DeploymentMode::ThirdPartyAuditing(auditor_key),
-                signature_key,
-                vrf_key,
-            },
-        }
-    }
-
-    pub(super) fn make_kt(chat: &(dyn UnauthenticatedChat + Sync)) -> Kt<'_> {
-        Kt {
-            inner: make_key_transparency(),
-            chat,
-            config: Default::default(),
-        }
+    pub(super) fn make_kt(chat: &(dyn UnauthenticatedChat + Sync)) -> KeyTransparencyClient<'_> {
+        KeyTransparencyClient::new(chat, KEYTRANS_CONFIG_STAGING)
     }
 
     /// Wrapper for [`ChatConnection`] known to be connected without
@@ -1430,8 +1429,9 @@ mod test {
     use libsignal_keytrans::TreeHead;
     use test_case::test_case;
 
-    use super::test_support::{make_chat, make_key_transparency, make_kt, test_account};
+    use super::test_support::{make_chat, make_kt, test_account};
     use super::*;
+    use crate::env::KEYTRANS_CONFIG_STAGING;
 
     // Distinguished tree parameters as of size 11526
     const DISTINGUISHED_TREE_19941_HEAD: &[u8] =
@@ -1605,10 +1605,12 @@ mod test {
 
         let account_data = test_account_data();
 
-        let kt_impl = make_key_transparency();
+        let kt = KeyTransparency {
+            config: KEYTRANS_CONFIG_STAGING.into(),
+        };
 
         let result = verify_chat_search_response(
-            &kt_impl,
+            &kt,
             &aci,
             e164,
             username_hash,
@@ -1631,7 +1633,6 @@ mod test {
         let e164 = test_account::PHONE_NUMBER;
         let username_hash = test_account::username_hash();
 
-        let kt_impl = make_key_transparency();
         let mut search_response = test_search_response();
         for what in skip {
             match what {
@@ -1646,8 +1647,12 @@ mod test {
 
         let account_data = test_account_data();
 
+        let kt = KeyTransparency {
+            config: KEYTRANS_CONFIG_STAGING.into(),
+        };
+
         let result = verify_chat_search_response(
-            &kt_impl,
+            &kt,
             &aci,
             Some(e164),
             Some(username_hash),

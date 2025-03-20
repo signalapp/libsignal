@@ -171,6 +171,7 @@ impl<'a> FullSearchResponse<'a> {
 }
 
 /// Key transparency main API entrypoint
+#[derive(Clone)]
 pub struct KeyTransparency {
     /// Key transparency system configuration
     pub config: PublicConfig,
