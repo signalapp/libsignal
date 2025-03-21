@@ -111,6 +111,10 @@ pub(super) struct RegistrationRequest<'s, R> {
     pub(super) request: R,
 }
 
+/// Errors that arise from a response to a received request.
+///
+/// This doesn't include timeouts, since the request was known to be received
+/// and the server sent a response.
 #[derive(Debug, thiserror::Error, displaydoc::Display)]
 pub(super) enum ResponseError {
     /// {0}

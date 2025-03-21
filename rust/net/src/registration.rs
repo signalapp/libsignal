@@ -74,21 +74,6 @@ impl RegistrationService {
     }
 }
 
-impl From<RequestError<SessionRequestError>> for RequestError<UpdateSessionError> {
-    fn from(value: RequestError<SessionRequestError>) -> Self {
-        value.map_other(|session_request_error| match session_request_error {
-            SessionRequestError::RetryLater(retry_later) => RequestError::Other(retry_later.into()),
-            SessionRequestError::UnrecognizedStatus { status, .. } => match status.as_u16() {
-                403 => RequestError::Other(UpdateSessionError::Rejected),
-                code => {
-                    log::error!("got unexpected HTTP response status updating the session: {code}");
-                    RequestError::Unknown(format!("unexpected HTTP status {code}"))
-                }
-            },
-        })
-    }
-}
-
 #[cfg(test)]
 mod testutil {
     use std::convert::Infallible;

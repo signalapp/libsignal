@@ -40,6 +40,12 @@ pub enum ResumeSessionError {
     SessionNotFound,
 }
 
+/// Error response to a request made on an established session.
+///
+/// This is notionally a precursor to one of [`UpdateSessionError`],
+/// [`RequestVerificationCodeError`], and [`SubmitVerificationError`].
+/// The [`From`] implementations attempt to extract more specific error
+/// variants.
 #[derive(Debug, thiserror::Error, displaydoc::Display)]
 pub(super) enum SessionRequestError {
     /// {0}
@@ -94,18 +100,33 @@ pub enum SubmitVerificationError {
     RetryLater(#[from] RetryLater),
 }
 
-impl<E> RequestError<E> {
-    /// Convenience function for transforming [`RequestError`]s.
-    ///
-    /// Applies the provided function to [`RequestError::Other`] to produce the
-    /// new error value, preserving other cases.
-    pub(super) fn map_other<E2>(self, f: impl FnOnce(E) -> RequestError<E2>) -> RequestError<E2> {
-        match self {
-            RequestError::Other(e) => f(e),
+/// Convert [`RequestError<SessionRequestError>`] into a typed version.
+///
+/// This boilerplate implementation delegates conversion to the specific
+/// `From<SessionRequestError>` impls for `Self` to produce a `RequestError<E>`.
+impl<E> From<RequestError<SessionRequestError>> for RequestError<E>
+where
+    SessionRequestError: Into<Self>,
+{
+    fn from(value: RequestError<SessionRequestError>) -> Self {
+        match value {
+            RequestError::Other(e) => e.into(),
             RequestError::Timeout => RequestError::Timeout,
             RequestError::RequestWasNotValid => RequestError::RequestWasNotValid,
             RequestError::Unknown(message) => RequestError::Unknown(message),
         }
+    }
+}
+
+impl From<InvalidSessionId> for RequestError<CreateSessionError> {
+    fn from(InvalidSessionId: InvalidSessionId) -> Self {
+        Self::Other(CreateSessionError::InvalidSessionId)
+    }
+}
+
+impl From<InvalidSessionId> for RequestError<ResumeSessionError> {
+    fn from(InvalidSessionId: InvalidSessionId) -> Self {
+        Self::Other(ResumeSessionError::InvalidSessionId)
     }
 }
 
@@ -116,39 +137,15 @@ impl From<RetryLater> for RequestError<ResumeSessionError> {
     }
 }
 
-impl From<InvalidSessionId> for RequestError<ResumeSessionError> {
-    fn from(InvalidSessionId: InvalidSessionId) -> Self {
-        Self::Other(ResumeSessionError::InvalidSessionId)
-    }
-}
-
-impl From<InvalidSessionId> for RequestError<CreateSessionError> {
-    fn from(InvalidSessionId: InvalidSessionId) -> Self {
-        Self::Other(CreateSessionError::InvalidSessionId)
-    }
-}
-
 impl From<RetryLater> for RequestError<CreateSessionError> {
     fn from(value: RetryLater) -> Self {
         Self::Other(CreateSessionError::RetryLater(value))
     }
 }
 
-impl From<ResponseError> for RequestError<CreateSessionError> {
-    fn from(value: ResponseError) -> Self {
-        RequestError::<SessionRequestError>::from(value).into()
-    }
-}
-
-impl From<RequestError<SessionRequestError>> for RequestError<CreateSessionError> {
-    fn from(value: RequestError<SessionRequestError>) -> Self {
-        value.map_other(|e| match e {
-            SessionRequestError::RetryLater(retry_later) => RequestError::Other(retry_later.into()),
-            SessionRequestError::UnrecognizedStatus { status, .. } => {
-                log::error!("got unexpected HTTP status {status} when creating a session");
-                RequestError::Unknown(format!("unexpected HTTP status {status}"))
-            }
-        })
+impl From<RetryLater> for RequestError<SessionRequestError> {
+    fn from(value: RetryLater) -> Self {
+        Self::Other(value.into())
     }
 }
 
@@ -158,25 +155,9 @@ impl From<ResponseError> for RequestError<ResumeSessionError> {
     }
 }
 
-impl From<RequestError<SessionRequestError>> for RequestError<ResumeSessionError> {
-    fn from(value: RequestError<SessionRequestError>) -> Self {
-        value.map_other(|e| match e {
-            SessionRequestError::RetryLater(retry_later) => retry_later.into(),
-            SessionRequestError::UnrecognizedStatus { status, .. } => match status.as_u16() {
-                404 => RequestError::Other(ResumeSessionError::SessionNotFound),
-                400 => RequestError::Other(ResumeSessionError::InvalidSessionId),
-                code => {
-                    log::error!("got unexpected HTTP status {status} when reading a session");
-                    RequestError::Unknown(format!("unexpected HTTP status {code}"))
-                }
-            },
-        })
-    }
-}
-
-impl From<RetryLater> for RequestError<SessionRequestError> {
-    fn from(value: RetryLater) -> Self {
-        Self::Other(value.into())
+impl From<ResponseError> for RequestError<CreateSessionError> {
+    fn from(value: ResponseError) -> Self {
+        RequestError::<SessionRequestError>::from(value).into()
     }
 }
 
@@ -204,49 +185,86 @@ impl From<ResponseError> for RequestError<SessionRequestError> {
     }
 }
 
-impl From<RequestError<SessionRequestError>> for RequestError<RequestVerificationCodeError> {
-    fn from(value: RequestError<SessionRequestError>) -> Self {
-        value.map_other(|e| {
-            RequestError::Other(match e {
-                SessionRequestError::RetryLater(retry_later) => retry_later.into(),
-                SessionRequestError::UnrecognizedStatus {
-                    status,
-                    response_headers,
-                    response_body,
-                } => match status.as_u16() {
-                    400 => RequestVerificationCodeError::InvalidSessionId,
-                    404 => RequestVerificationCodeError::SessionNotFound,
-                    409 => RequestVerificationCodeError::NotReadyForVerification,
-                    418 => RequestVerificationCodeError::SendFailed,
-                    440 => {
-                        let Some(not_deliverable) = response_body.as_deref().and_then(|body| {
-                            VerificationCodeNotDeliverable::from_response(&response_headers, body)
-                        }) else {
-                            return RequestError::Unknown(
-                                "unexpected 440 response format".to_owned(),
-                            );
-                        };
-                        RequestVerificationCodeError::CodeNotDeliverable(not_deliverable)
-                    }
-                    _ => return RequestError::Unknown(format!("unexpected HTTP status {status}")),
-                },
-            })
+impl From<SessionRequestError> for RequestError<CreateSessionError> {
+    fn from(value: SessionRequestError) -> Self {
+        match value {
+            SessionRequestError::RetryLater(retry_later) => RequestError::Other(retry_later.into()),
+            SessionRequestError::UnrecognizedStatus { status, .. } => {
+                log::error!("got unexpected HTTP status {status} when creating a session");
+                RequestError::Unknown(format!("unexpected HTTP status {status}"))
+            }
+        }
+    }
+}
+
+impl From<SessionRequestError> for RequestError<ResumeSessionError> {
+    fn from(value: SessionRequestError) -> Self {
+        match value {
+            SessionRequestError::RetryLater(retry_later) => retry_later.into(),
+            SessionRequestError::UnrecognizedStatus { status, .. } => match status.as_u16() {
+                404 => RequestError::Other(ResumeSessionError::SessionNotFound),
+                400 => RequestError::Other(ResumeSessionError::InvalidSessionId),
+                code => {
+                    log::error!("got unexpected HTTP status {status} when reading a session");
+                    RequestError::Unknown(format!("unexpected HTTP status {code}"))
+                }
+            },
+        }
+    }
+}
+
+impl From<SessionRequestError> for RequestError<UpdateSessionError> {
+    fn from(value: SessionRequestError) -> Self {
+        match value {
+            SessionRequestError::RetryLater(retry_later) => RequestError::Other(retry_later.into()),
+            SessionRequestError::UnrecognizedStatus { status, .. } => match status.as_u16() {
+                403 => RequestError::Other(UpdateSessionError::Rejected),
+                code => {
+                    log::error!("got unexpected HTTP response status updating the session: {code}");
+                    RequestError::Unknown(format!("unexpected HTTP status {code}"))
+                }
+            },
+        }
+    }
+}
+
+impl From<SessionRequestError> for RequestError<RequestVerificationCodeError> {
+    fn from(value: SessionRequestError) -> Self {
+        RequestError::Other(match value {
+            SessionRequestError::RetryLater(retry_later) => retry_later.into(),
+            SessionRequestError::UnrecognizedStatus {
+                status,
+                response_headers,
+                response_body,
+            } => match status.as_u16() {
+                400 => RequestVerificationCodeError::InvalidSessionId,
+                404 => RequestVerificationCodeError::SessionNotFound,
+                409 => RequestVerificationCodeError::NotReadyForVerification,
+                418 => RequestVerificationCodeError::SendFailed,
+                440 => {
+                    let Some(not_deliverable) = response_body.as_deref().and_then(|body| {
+                        VerificationCodeNotDeliverable::from_response(&response_headers, body)
+                    }) else {
+                        return RequestError::Unknown("unexpected 440 response format".to_owned());
+                    };
+                    RequestVerificationCodeError::CodeNotDeliverable(not_deliverable)
+                }
+                _ => return RequestError::Unknown(format!("unexpected HTTP status {status}")),
+            },
         })
     }
 }
 
-impl From<RequestError<SessionRequestError>> for RequestError<SubmitVerificationError> {
-    fn from(value: RequestError<SessionRequestError>) -> Self {
-        value.map_other(|e| {
-            RequestError::Other(match e {
-                SessionRequestError::RetryLater(retry_later) => retry_later.into(),
-                SessionRequestError::UnrecognizedStatus { status, .. } => match status.as_u16() {
-                    400 => SubmitVerificationError::InvalidSessionId,
-                    404 => SubmitVerificationError::SessionNotFound,
-                    409 => SubmitVerificationError::NotReadyForVerification,
-                    _ => return RequestError::Unknown(format!("unexpected HTTP status {status}")),
-                },
-            })
+impl From<SessionRequestError> for RequestError<SubmitVerificationError> {
+    fn from(value: SessionRequestError) -> Self {
+        RequestError::Other(match value {
+            SessionRequestError::RetryLater(retry_later) => retry_later.into(),
+            SessionRequestError::UnrecognizedStatus { status, .. } => match status.as_u16() {
+                400 => SubmitVerificationError::InvalidSessionId,
+                404 => SubmitVerificationError::SessionNotFound,
+                409 => SubmitVerificationError::NotReadyForVerification,
+                _ => return RequestError::Unknown(format!("unexpected HTTP status {status}")),
+            },
         })
     }
 }
