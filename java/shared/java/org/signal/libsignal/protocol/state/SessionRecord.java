@@ -22,29 +22,26 @@ import org.signal.libsignal.protocol.ecc.ECPublicKey;
  *
  * @author Moxie Marlinspike
  */
-public class SessionRecord implements NativeHandleGuard.Owner {
-
-  private final long unsafeHandle;
+public class SessionRecord extends NativeHandleGuard.SimpleOwner {
 
   @Override
-  @SuppressWarnings("deprecation")
-  protected void finalize() {
-    Native.SessionRecord_Destroy(this.unsafeHandle);
+  protected void release(long nativeHandle) {
+    Native.SessionRecord_Destroy(nativeHandle);
   }
 
   public SessionRecord() {
-    this.unsafeHandle = Native.SessionRecord_NewFresh();
+    super(Native.SessionRecord_NewFresh());
   }
 
-  private SessionRecord(long unsafeHandle) {
-    this.unsafeHandle = unsafeHandle;
+  private SessionRecord(long nativeHandle) {
+    super(nativeHandle);
   }
 
   // FIXME: This shouldn't be considered a "message".
   public SessionRecord(byte[] serialized) throws InvalidMessageException {
-    this.unsafeHandle =
+    super(
         filterExceptions(
-            InvalidMessageException.class, () -> Native.SessionRecord_Deserialize(serialized));
+            InvalidMessageException.class, () -> Native.SessionRecord_Deserialize(serialized)));
   }
 
   /**
@@ -52,29 +49,19 @@ public class SessionRecord implements NativeHandleGuard.Owner {
    * current SessionState with a fresh reset instance.
    */
   public void archiveCurrentState() {
-    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      filterExceptions(() -> Native.SessionRecord_ArchiveCurrentState(guard.nativeHandle()));
-    }
+    filterExceptions(() -> guardedRunChecked(Native::SessionRecord_ArchiveCurrentState));
   }
 
   public int getSessionVersion() {
-    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return filterExceptions(() -> Native.SessionRecord_GetSessionVersion(guard.nativeHandle()));
-    }
+    return filterExceptions(() -> guardedMapChecked(Native::SessionRecord_GetSessionVersion));
   }
 
   public int getRemoteRegistrationId() {
-    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return filterExceptions(
-          () -> Native.SessionRecord_GetRemoteRegistrationId(guard.nativeHandle()));
-    }
+    return filterExceptions(() -> guardedMapChecked(Native::SessionRecord_GetRemoteRegistrationId));
   }
 
   public int getLocalRegistrationId() {
-    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return filterExceptions(
-          () -> Native.SessionRecord_GetLocalRegistrationId(guard.nativeHandle()));
-    }
+    return filterExceptions(() -> guardedMapChecked(Native::SessionRecord_GetLocalRegistrationId));
   }
 
   public IdentityKey getRemoteIdentityKey() {
@@ -123,11 +110,11 @@ public class SessionRecord implements NativeHandleGuard.Owner {
    * <p>You should only use this overload if you need to test session expiration.
    */
   public boolean hasSenderChain(Instant now) {
-    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return filterExceptions(
-          () ->
-              Native.SessionRecord_HasUsableSenderChain(guard.nativeHandle(), now.toEpochMilli()));
-    }
+    return filterExceptions(
+        () ->
+            guardedMapChecked(
+                (nativeHandle) ->
+                    Native.SessionRecord_HasUsableSenderChain(nativeHandle, now.toEpochMilli())));
   }
 
   public boolean currentRatchetKeyMatches(ECPublicKey key) {
@@ -144,9 +131,7 @@ public class SessionRecord implements NativeHandleGuard.Owner {
    * @return a serialized version of the current SessionRecord.
    */
   public byte[] serialize() {
-    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return filterExceptions(() -> Native.SessionRecord_Serialize(guard.nativeHandle()));
-    }
+    return filterExceptions(() -> guardedMapChecked(Native::SessionRecord_Serialize));
   }
 
   // Following functions are for internal or testing use and may be removed in the future:
@@ -162,16 +147,11 @@ public class SessionRecord implements NativeHandleGuard.Owner {
   }
 
   public byte[] getSenderChainKeyValue() {
-    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return filterExceptions(
-          () -> Native.SessionRecord_GetSenderChainKeyValue(guard.nativeHandle()));
-    }
+    return filterExceptions(() -> guardedMapChecked(Native::SessionRecord_GetSenderChainKeyValue));
   }
 
   public byte[] getAliceBaseKey() {
-    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return filterExceptions(() -> Native.SessionRecord_GetAliceBaseKey(guard.nativeHandle()));
-    }
+    return filterExceptions(() -> guardedMapChecked(Native::SessionRecord_GetAliceBaseKey));
   }
 
   public static SessionRecord initializeAliceSession(
@@ -238,9 +218,5 @@ public class SessionRecord implements NativeHandleGuard.Owner {
                       theirIdentityGuard.nativeHandle(),
                       theirBaseKeyGuard.nativeHandle())));
     }
-  }
-
-  public long unsafeNativeHandleWithoutGuard() {
-    return this.unsafeHandle;
   }
 }

@@ -13,63 +13,46 @@ import org.signal.libsignal.protocol.InvalidKeyException;
 import org.signal.libsignal.protocol.InvalidMessageException;
 import org.signal.libsignal.protocol.kem.KEMKeyPair;
 
-public class KyberPreKeyRecord implements NativeHandleGuard.Owner {
-  private final long unsafeHandle;
-
+public class KyberPreKeyRecord extends NativeHandleGuard.SimpleOwner {
   @Override
-  @SuppressWarnings("deprecation")
-  protected void finalize() {
-    Native.KyberPreKeyRecord_Destroy(this.unsafeHandle);
+  protected void release(long nativeHandle) {
+    Native.KyberPreKeyRecord_Destroy(nativeHandle);
   }
 
   public KyberPreKeyRecord(int id, long timestamp, KEMKeyPair keyPair, byte[] signature) {
-    try (NativeHandleGuard guard = new NativeHandleGuard(keyPair)) {
-      this.unsafeHandle =
-          Native.KyberPreKeyRecord_New(id, timestamp, guard.nativeHandle(), signature);
-    }
+    super(
+        keyPair.guardedMap(
+            (keyPairHandle) ->
+                Native.KyberPreKeyRecord_New(id, timestamp, keyPairHandle, signature)));
   }
 
   // FIXME: This shouldn't be considered a "message".
   public KyberPreKeyRecord(byte[] serialized) throws InvalidMessageException {
-    this.unsafeHandle =
+    super(
         filterExceptions(
-            InvalidMessageException.class, () -> Native.KyberPreKeyRecord_Deserialize(serialized));
+            InvalidMessageException.class, () -> Native.KyberPreKeyRecord_Deserialize(serialized)));
   }
 
   public int getId() {
-    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return filterExceptions(() -> Native.KyberPreKeyRecord_GetId(guard.nativeHandle()));
-    }
+    return filterExceptions(() -> guardedMapChecked(Native::KyberPreKeyRecord_GetId));
   }
 
   public long getTimestamp() {
-    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return filterExceptions(() -> Native.KyberPreKeyRecord_GetTimestamp(guard.nativeHandle()));
-    }
+    return filterExceptions(() -> guardedMapChecked(Native::KyberPreKeyRecord_GetTimestamp));
   }
 
   public KEMKeyPair getKeyPair() throws InvalidKeyException {
-    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return new KEMKeyPair(
-          filterExceptions(
-              InvalidKeyException.class,
-              () -> Native.KyberPreKeyRecord_GetKeyPair(guard.nativeHandle())));
-    }
+    return new KEMKeyPair(
+        filterExceptions(
+            InvalidKeyException.class,
+            () -> guardedMapChecked(Native::KyberPreKeyRecord_GetKeyPair)));
   }
 
   public byte[] getSignature() {
-    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return filterExceptions(() -> Native.KyberPreKeyRecord_GetSignature(guard.nativeHandle()));
-    }
+    return filterExceptions(() -> guardedMapChecked(Native::KyberPreKeyRecord_GetSignature));
   }
 
   public byte[] serialize() {
-    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return filterExceptions(() -> Native.KyberPreKeyRecord_GetSerialized(guard.nativeHandle()));
-    }
-  }
-
-  public long unsafeNativeHandleWithoutGuard() {
-    return this.unsafeHandle;
+    return filterExceptions(() -> guardedMapChecked(Native::KyberPreKeyRecord_GetSerialized));
   }
 }

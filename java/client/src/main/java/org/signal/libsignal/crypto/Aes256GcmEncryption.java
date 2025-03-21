@@ -11,45 +11,33 @@ import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
 import org.signal.libsignal.protocol.InvalidKeyException;
 
-public class Aes256GcmEncryption implements NativeHandleGuard.Owner {
-  private long unsafeHandle;
-
+public class Aes256GcmEncryption extends NativeHandleGuard.SimpleOwner {
   public Aes256GcmEncryption(byte[] key, byte[] nonce, byte[] associatedData)
       throws InvalidKeyException {
-    this.unsafeHandle =
+    super(
         filterExceptions(
             InvalidKeyException.class,
-            () -> Native.Aes256GcmEncryption_New(key, nonce, associatedData));
+            () -> Native.Aes256GcmEncryption_New(key, nonce, associatedData)));
   }
 
   @Override
-  @SuppressWarnings("deprecation")
-  protected void finalize() {
-    Native.Aes256GcmEncryption_Destroy(this.unsafeHandle);
-  }
-
-  public long unsafeNativeHandleWithoutGuard() {
-    return this.unsafeHandle;
+  protected void release(long nativeHandle) {
+    Native.Aes256GcmEncryption_Destroy(nativeHandle);
   }
 
   public void encrypt(byte[] plaintext, int offset, int length) {
-    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      Native.Aes256GcmEncryption_Update(guard.nativeHandle(), plaintext, offset, length);
-    }
+    guardedRun(
+        (nativeHandle) ->
+            Native.Aes256GcmEncryption_Update(nativeHandle, plaintext, offset, length));
   }
 
   public void encrypt(byte[] plaintext) {
-    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      Native.Aes256GcmEncryption_Update(guard.nativeHandle(), plaintext, 0, plaintext.length);
-    }
+    guardedRun(
+        (nativeHandle) ->
+            Native.Aes256GcmEncryption_Update(nativeHandle, plaintext, 0, plaintext.length));
   }
 
   public byte[] computeTag() {
-    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      byte[] tag = Native.Aes256GcmEncryption_ComputeTag(guard.nativeHandle());
-      Native.Aes256GcmEncryption_Destroy(guard.nativeHandle());
-      this.unsafeHandle = 0;
-      return tag;
-    }
+    return guardedMap(Native::Aes256GcmEncryption_ComputeTag);
   }
 }

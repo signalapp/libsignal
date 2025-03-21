@@ -5,7 +5,9 @@
 
 package org.signal.libsignal.protocol.message;
 
-public interface CiphertextMessage {
+import org.signal.libsignal.internal.NativeHandleGuard;
+
+public interface CiphertextMessage extends NativeHandleGuard.Owner {
 
   public static final int CURRENT_VERSION = 3;
 
@@ -21,6 +23,4 @@ public interface CiphertextMessage {
   public byte[] serialize();
 
   public int getType();
-
-  public long unsafeNativeHandleWithoutGuard();
 }

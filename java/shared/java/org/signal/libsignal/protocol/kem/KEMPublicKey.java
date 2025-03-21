@@ -12,55 +12,52 @@ import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
 import org.signal.libsignal.protocol.InvalidKeyException;
 
-public class KEMPublicKey implements NativeHandleGuard.Owner {
-
-  private final long unsafeHandle;
+public class KEMPublicKey extends NativeHandleGuard.SimpleOwner {
 
   public KEMPublicKey(byte[] serialized, int offset) throws InvalidKeyException {
-    this.unsafeHandle =
+    super(
         filterExceptions(
             InvalidKeyException.class,
-            () -> Native.KyberPublicKey_DeserializeWithOffset(serialized, offset));
+            () -> Native.KyberPublicKey_DeserializeWithOffset(serialized, offset)));
   }
 
   public KEMPublicKey(byte[] serialized) throws InvalidKeyException {
-    this.unsafeHandle =
+    super(
         filterExceptions(
             InvalidKeyException.class,
-            () -> Native.KyberPublicKey_DeserializeWithOffset(serialized, 0));
+            () -> Native.KyberPublicKey_DeserializeWithOffset(serialized, 0)));
   }
 
   public KEMPublicKey(long nativeHandle) {
-    if (nativeHandle == 0) {
+    super(KEMPublicKey.throwIfNull(nativeHandle));
+  }
+
+  private static long throwIfNull(long handle) {
+    if (handle == 0) {
       throw new NullPointerException();
     }
-    this.unsafeHandle = nativeHandle;
+    return handle;
   }
 
   @Override
-  @SuppressWarnings("deprecation")
-  protected void finalize() {
-    Native.KyberPublicKey_Destroy(this.unsafeHandle);
+  protected void release(long nativeHandle) {
+    Native.KyberPublicKey_Destroy(nativeHandle);
   }
 
   public byte[] serialize() {
-    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return filterExceptions(() -> Native.KyberPublicKey_Serialize(guard.nativeHandle()));
-    }
-  }
-
-  public long unsafeNativeHandleWithoutGuard() {
-    return this.unsafeHandle;
+    return filterExceptions(() -> guardedMapChecked(Native::KyberPublicKey_Serialize));
   }
 
   @Override
   public boolean equals(Object other) {
     if (other == null) return false;
     if (!(other instanceof KEMPublicKey)) return false;
-    try (NativeHandleGuard thisGuard = new NativeHandleGuard(this);
-        NativeHandleGuard thatGuard = new NativeHandleGuard((KEMPublicKey) other); ) {
-      return Native.KyberPublicKey_Equals(thisGuard.nativeHandle(), thatGuard.nativeHandle());
-    }
+    return guardedMap(
+        (thisNativeHandle) ->
+            ((KEMPublicKey) other)
+                .guardedMap(
+                    (otherNativeHandle) ->
+                        Native.KyberPublicKey_Equals(thisNativeHandle, otherNativeHandle)));
   }
 
   @Override

@@ -11,21 +11,14 @@ import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
 
 /** A hash of the pin that can be used to interact with a Secure Value Recovery service. */
-public class PinHash implements NativeHandleGuard.Owner {
-  private final long unsafeHandle;
-
-  private PinHash(final long unsafeHandle) {
-    this.unsafeHandle = unsafeHandle;
+public class PinHash extends NativeHandleGuard.SimpleOwner {
+  private PinHash(final long nativeHandle) {
+    super(nativeHandle);
   }
 
   @Override
-  @SuppressWarnings("deprecation")
-  protected void finalize() {
-    Native.PinHash_Destroy(this.unsafeHandle);
-  }
-
-  public long unsafeNativeHandleWithoutGuard() {
-    return this.unsafeHandle;
+  protected void release(long nativeHandle) {
+    Native.PinHash_Destroy(nativeHandle);
   }
 
   /**
@@ -65,7 +58,7 @@ public class PinHash implements NativeHandleGuard.Owner {
    * @return a 32 byte encryption key
    */
   public byte[] encryptionKey() {
-    return Native.PinHash_EncryptionKey(unsafeHandle);
+    return guardedMap(Native::PinHash_EncryptionKey);
   }
 
   /**
@@ -74,6 +67,6 @@ public class PinHash implements NativeHandleGuard.Owner {
    * @return a 32 byte access key
    */
   public byte[] accessKey() {
-    return Native.PinHash_AccessKey(unsafeHandle);
+    return guardedMap(Native::PinHash_AccessKey);
   }
 }

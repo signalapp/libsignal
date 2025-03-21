@@ -18,13 +18,11 @@ import org.signal.libsignal.protocol.LegacyMessageException;
 import org.signal.libsignal.protocol.ecc.ECPublicKey;
 import org.signal.libsignal.protocol.util.ByteUtil;
 
-public class SignalMessage implements CiphertextMessage, NativeHandleGuard.Owner {
-  private final long unsafeHandle;
-
+public class SignalMessage extends NativeHandleGuard.SimpleOwner
+    implements CiphertextMessage, NativeHandleGuard.Owner {
   @Override
-  @SuppressWarnings("deprecation")
-  protected void finalize() {
-    Native.SignalMessage_Destroy(this.unsafeHandle);
+  protected void release(long nativeHandle) {
+    Native.SignalMessage_Destroy(nativeHandle);
   }
 
   public SignalMessage(byte[] serialized)
@@ -32,42 +30,34 @@ public class SignalMessage implements CiphertextMessage, NativeHandleGuard.Owner
           InvalidVersionException,
           InvalidKeyException,
           LegacyMessageException {
-    unsafeHandle =
+    super(
         filterExceptions(
             InvalidMessageException.class,
             InvalidVersionException.class,
             InvalidKeyException.class,
             LegacyMessageException.class,
-            () -> Native.SignalMessage_Deserialize(serialized));
+            () -> Native.SignalMessage_Deserialize(serialized)));
   }
 
-  public SignalMessage(long unsafeHandle) {
-    this.unsafeHandle = unsafeHandle;
+  public SignalMessage(long nativeHandle) {
+    super(nativeHandle);
   }
 
   public ECPublicKey getSenderRatchetKey() {
-    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return new ECPublicKey(
-          filterExceptions(() -> Native.SignalMessage_GetSenderRatchetKey(guard.nativeHandle())));
-    }
+    return new ECPublicKey(
+        filterExceptions(() -> guardedMapChecked(Native::SignalMessage_GetSenderRatchetKey)));
   }
 
   public int getMessageVersion() {
-    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return filterExceptions(() -> Native.SignalMessage_GetMessageVersion(guard.nativeHandle()));
-    }
+    return filterExceptions(() -> guardedMapChecked(Native::SignalMessage_GetMessageVersion));
   }
 
   public int getCounter() {
-    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return filterExceptions(() -> Native.SignalMessage_GetCounter(guard.nativeHandle()));
-    }
+    return filterExceptions(() -> guardedMapChecked(Native::SignalMessage_GetCounter));
   }
 
   public byte[] getBody() {
-    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return filterExceptions(() -> Native.SignalMessage_GetBody(guard.nativeHandle()));
-    }
+    return filterExceptions(() -> guardedMapChecked(Native::SignalMessage_GetBody));
   }
 
   public void verifyMac(
@@ -94,18 +84,12 @@ public class SignalMessage implements CiphertextMessage, NativeHandleGuard.Owner
 
   @Override
   public byte[] serialize() {
-    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return filterExceptions(() -> Native.SignalMessage_GetSerialized(guard.nativeHandle()));
-    }
+    return filterExceptions(() -> guardedMapChecked(Native::SignalMessage_GetSerialized));
   }
 
   @Override
   public int getType() {
     return CiphertextMessage.WHISPER_TYPE;
-  }
-
-  public long unsafeNativeHandleWithoutGuard() {
-    return this.unsafeHandle;
   }
 
   public static boolean isLegacy(byte[] message) {

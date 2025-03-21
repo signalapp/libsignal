@@ -15,70 +15,61 @@ import org.signal.libsignal.protocol.ecc.ECKeyPair;
 import org.signal.libsignal.protocol.ecc.ECPrivateKey;
 import org.signal.libsignal.protocol.ecc.ECPublicKey;
 
-public class SignedPreKeyRecord implements NativeHandleGuard.Owner {
-  private final long unsafeHandle;
-
+public class SignedPreKeyRecord extends NativeHandleGuard.SimpleOwner {
   @Override
-  @SuppressWarnings("deprecation")
-  protected void finalize() {
-    Native.SignedPreKeyRecord_Destroy(this.unsafeHandle);
+  protected void release(long nativeHandle) {
+    Native.SignedPreKeyRecord_Destroy(nativeHandle);
   }
 
   public SignedPreKeyRecord(int id, long timestamp, ECKeyPair keyPair, byte[] signature) {
-    try (NativeHandleGuard publicGuard = new NativeHandleGuard(keyPair.getPublicKey());
-        NativeHandleGuard privateGuard = new NativeHandleGuard(keyPair.getPrivateKey()); ) {
-      this.unsafeHandle =
-          Native.SignedPreKeyRecord_New(
-              id, timestamp, publicGuard.nativeHandle(), privateGuard.nativeHandle(), signature);
-    }
+    super(
+        keyPair
+            .getPublicKey()
+            .guardedMap(
+                (publicKeyHandle) ->
+                    keyPair
+                        .getPrivateKey()
+                        .guardedMap(
+                            (privateKeyHandle) ->
+                                Native.SignedPreKeyRecord_New(
+                                    id, timestamp, publicKeyHandle, privateKeyHandle, signature))));
   }
 
   // FIXME: This shouldn't be considered a "message".
   public SignedPreKeyRecord(byte[] serialized) throws InvalidMessageException {
-    this.unsafeHandle =
+    super(
         filterExceptions(
-            InvalidMessageException.class, () -> Native.SignedPreKeyRecord_Deserialize(serialized));
+            InvalidMessageException.class,
+            () -> Native.SignedPreKeyRecord_Deserialize(serialized)));
   }
 
   public int getId() {
-    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return filterExceptions(() -> Native.SignedPreKeyRecord_GetId(guard.nativeHandle()));
-    }
+    return filterExceptions(() -> guardedMapChecked(Native::SignedPreKeyRecord_GetId));
   }
 
   public long getTimestamp() {
-    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return filterExceptions(() -> Native.SignedPreKeyRecord_GetTimestamp(guard.nativeHandle()));
-    }
+    return filterExceptions(() -> guardedMapChecked(Native::SignedPreKeyRecord_GetTimestamp));
   }
 
   public ECKeyPair getKeyPair() throws InvalidKeyException {
-    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return filterExceptions(
-          InvalidKeyException.class,
-          () -> {
-            ECPublicKey publicKey =
-                new ECPublicKey(Native.SignedPreKeyRecord_GetPublicKey(guard.nativeHandle()));
-            ECPrivateKey privateKey =
-                new ECPrivateKey(Native.SignedPreKeyRecord_GetPrivateKey(guard.nativeHandle()));
-            return new ECKeyPair(publicKey, privateKey);
-          });
-    }
+    return filterExceptions(
+        InvalidKeyException.class,
+        () ->
+            guardedMapChecked(
+                (nativeHandle) -> {
+                  ECPublicKey publicKey =
+                      new ECPublicKey(Native.SignedPreKeyRecord_GetPublicKey(nativeHandle));
+                  ECPrivateKey privateKey =
+                      new ECPrivateKey(Native.SignedPreKeyRecord_GetPrivateKey(nativeHandle));
+                  return new ECKeyPair(publicKey, privateKey);
+                }));
   }
 
   public byte[] getSignature() {
-    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return filterExceptions(() -> Native.SignedPreKeyRecord_GetSignature(guard.nativeHandle()));
-    }
+    return filterExceptions(() -> guardedMapChecked(Native::SignedPreKeyRecord_GetSignature));
   }
 
   public byte[] serialize() {
-    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return filterExceptions(() -> Native.SignedPreKeyRecord_GetSerialized(guard.nativeHandle()));
-    }
-  }
-
-  public long unsafeNativeHandleWithoutGuard() {
-    return this.unsafeHandle;
+    return filterExceptions(() -> guardedMapChecked(Native::SignedPreKeyRecord_GetSerialized));
   }
 }

@@ -16,18 +16,15 @@ import org.signal.libsignal.protocol.InvalidVersionException;
 import org.signal.libsignal.protocol.LegacyMessageException;
 import org.signal.libsignal.protocol.ecc.ECPublicKey;
 
-public class SenderKeyDistributionMessage implements NativeHandleGuard.Owner {
-
-  private final long unsafeHandle;
+public class SenderKeyDistributionMessage extends NativeHandleGuard.SimpleOwner {
 
   @Override
-  @SuppressWarnings("deprecation")
-  protected void finalize() {
-    Native.SenderKeyDistributionMessage_Destroy(this.unsafeHandle);
+  protected void release(long nativeHandle) {
+    Native.SenderKeyDistributionMessage_Destroy(nativeHandle);
   }
 
-  public SenderKeyDistributionMessage(long unsafeHandle) {
-    this.unsafeHandle = unsafeHandle;
+  public SenderKeyDistributionMessage(long nativeHandle) {
+    super(nativeHandle);
   }
 
   public SenderKeyDistributionMessage(byte[] serialized)
@@ -35,59 +32,43 @@ public class SenderKeyDistributionMessage implements NativeHandleGuard.Owner {
           InvalidVersionException,
           LegacyMessageException,
           InvalidKeyException {
-    unsafeHandle =
+    super(
         filterExceptions(
             InvalidMessageException.class,
             InvalidVersionException.class,
             LegacyMessageException.class,
             InvalidKeyException.class,
-            () -> Native.SenderKeyDistributionMessage_Deserialize(serialized));
+            () -> Native.SenderKeyDistributionMessage_Deserialize(serialized)));
   }
 
   public byte[] serialize() {
-    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return filterExceptions(
-          () -> Native.SenderKeyDistributionMessage_GetSerialized(guard.nativeHandle()));
-    }
+    return filterExceptions(
+        () -> guardedMapChecked(Native::SenderKeyDistributionMessage_GetSerialized));
   }
 
   public UUID getDistributionId() {
-    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return filterExceptions(
-          () -> Native.SenderKeyDistributionMessage_GetDistributionId(guard.nativeHandle()));
-    }
+    return filterExceptions(
+        () -> guardedMapChecked(Native::SenderKeyDistributionMessage_GetDistributionId));
   }
 
   public int getIteration() {
-    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return filterExceptions(
-          () -> Native.SenderKeyDistributionMessage_GetIteration(guard.nativeHandle()));
-    }
+    return filterExceptions(
+        () -> guardedMapChecked(Native::SenderKeyDistributionMessage_GetIteration));
   }
 
   public byte[] getChainKey() {
-    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return filterExceptions(
-          () -> Native.SenderKeyDistributionMessage_GetChainKey(guard.nativeHandle()));
-    }
+    return filterExceptions(
+        () -> guardedMapChecked(Native::SenderKeyDistributionMessage_GetChainKey));
   }
 
   public ECPublicKey getSignatureKey() {
-    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return new ECPublicKey(
-          filterExceptions(
-              () -> Native.SenderKeyDistributionMessage_GetSignatureKey(guard.nativeHandle())));
-    }
+    return new ECPublicKey(
+        filterExceptions(
+            () -> guardedMapChecked(Native::SenderKeyDistributionMessage_GetSignatureKey)));
   }
 
   public int getChainId() {
-    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return filterExceptions(
-          () -> Native.SenderKeyDistributionMessage_GetChainId(guard.nativeHandle()));
-    }
-  }
-
-  public long unsafeNativeHandleWithoutGuard() {
-    return this.unsafeHandle;
+    return filterExceptions(
+        () -> guardedMapChecked(Native::SenderKeyDistributionMessage_GetChainId));
   }
 }

@@ -28,7 +28,7 @@ import org.signal.libsignal.internal.NativeTesting;
  * Compare the canonical string representations. The diff of the canonical strings (which may be
  * rather large) will show the differences between the logical content of the input backup files.
  */
-public class ComparableBackup implements NativeHandleGuard.Owner {
+public class ComparableBackup extends NativeHandleGuard.SimpleOwner {
   /**
    * Reads an unencrypted message backup bundle into memory for comparison.
    *
@@ -65,10 +65,8 @@ public class ComparableBackup implements NativeHandleGuard.Owner {
    * @return a canonical string representation of the backup
    */
   public String getComparableString() {
-    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return filterExceptions(
-          () -> NativeTesting.ComparableBackup_GetComparableString(guard.nativeHandle()));
-    }
+    return filterExceptions(
+        () -> guardedMapChecked(NativeTesting::ComparableBackup_GetComparableString));
   }
 
   /**
@@ -80,27 +78,17 @@ public class ComparableBackup implements NativeHandleGuard.Owner {
    * @return information about each unknown field found in the backup
    */
   public String[] getUnknownFieldMessages() {
-    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return (String[])
-          filterExceptions(
-              () -> NativeTesting.ComparableBackup_GetUnknownFields(guard.nativeHandle()));
-    }
+    return filterExceptions(
+        () -> (String[]) guardedMapChecked(NativeTesting::ComparableBackup_GetUnknownFields));
   }
 
   @CalledFromNative
-  private ComparableBackup(long unsafeHandle) {
-    this.unsafeHandle = unsafeHandle;
+  private ComparableBackup(long nativeHandle) {
+    super(nativeHandle);
   }
-
-  private final long unsafeHandle;
 
   @Override
-  @SuppressWarnings("deprecation")
-  protected void finalize() {
-    NativeTesting.ComparableBackup_Destroy(this.unsafeHandle);
-  }
-
-  public long unsafeNativeHandleWithoutGuard() {
-    return this.unsafeHandle;
+  protected void release(long nativeHandle) {
+    NativeTesting.ComparableBackup_Destroy(nativeHandle);
   }
 }

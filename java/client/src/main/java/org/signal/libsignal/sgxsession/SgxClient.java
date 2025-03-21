@@ -29,28 +29,19 @@ import org.signal.libsignal.internal.NativeHandleGuard;
  * SgxClient.establishedRecv(), which decrypts and verifies it, passing the plaintext back to the
  * client for processing.
  */
-public class SgxClient implements NativeHandleGuard.Owner {
-  private final long unsafeHandle;
-
-  protected SgxClient(final long unsafeHandle) {
-    this.unsafeHandle = unsafeHandle;
+public class SgxClient extends NativeHandleGuard.SimpleOwner {
+  protected SgxClient(final long nativeHandle) {
+    super(nativeHandle);
   }
 
   @Override
-  @SuppressWarnings("deprecation")
-  protected void finalize() {
-    Native.SgxClientState_Destroy(this.unsafeHandle);
-  }
-
-  public long unsafeNativeHandleWithoutGuard() {
-    return this.unsafeHandle;
+  protected void release(long nativeHandle) {
+    Native.SgxClientState_Destroy(nativeHandle);
   }
 
   /** Initial request to send to SGX service, which begins post-attestation handshake. */
   public byte[] initialRequest() {
-    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return filterExceptions(() -> Native.SgxClientState_InitialRequest(guard.nativeHandle()));
-    }
+    return filterExceptions(() -> guardedMapChecked(Native::SgxClientState_InitialRequest));
   }
 
   /**
@@ -58,28 +49,31 @@ public class SgxClient implements NativeHandleGuard.Owner {
    * handshake.
    */
   public void completeHandshake(byte[] handshakeResponse) throws SgxCommunicationFailureException {
-    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      filterExceptions(
-          SgxCommunicationFailureException.class,
-          () -> Native.SgxClientState_CompleteHandshake(guard.nativeHandle(), handshakeResponse));
-    }
+    filterExceptions(
+        SgxCommunicationFailureException.class,
+        () ->
+            guardedRunChecked(
+                (nativeHandle) ->
+                    Native.SgxClientState_CompleteHandshake(nativeHandle, handshakeResponse)));
   }
 
   /** Called by client after completeHandshake has succeeded, to encrypt a message to send. */
   public byte[] establishedSend(byte[] plaintextToSend) throws SgxCommunicationFailureException {
-    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return filterExceptions(
-          SgxCommunicationFailureException.class,
-          () -> Native.SgxClientState_EstablishedSend(guard.nativeHandle(), plaintextToSend));
-    }
+    return filterExceptions(
+        SgxCommunicationFailureException.class,
+        () ->
+            guardedMapChecked(
+                (nativeHandle) ->
+                    Native.SgxClientState_EstablishedSend(nativeHandle, plaintextToSend)));
   }
 
   /** Called by client after completeHandshake has succeeded, to decrypt a received message. */
   public byte[] establishedRecv(byte[] receivedCiphertext) throws SgxCommunicationFailureException {
-    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return filterExceptions(
-          SgxCommunicationFailureException.class,
-          () -> Native.SgxClientState_EstablishedRecv(guard.nativeHandle(), receivedCiphertext));
-    }
+    return filterExceptions(
+        SgxCommunicationFailureException.class,
+        () ->
+            guardedMapChecked(
+                (nativeHandle) ->
+                    Native.SgxClientState_EstablishedRecv(nativeHandle, receivedCiphertext)));
   }
 }

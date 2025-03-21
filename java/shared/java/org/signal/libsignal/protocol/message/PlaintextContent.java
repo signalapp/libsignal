@@ -7,52 +7,42 @@ package org.signal.libsignal.protocol.message;
 
 import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
 
+import org.signal.libsignal.internal.CalledFromNative;
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
 import org.signal.libsignal.protocol.InvalidMessageException;
 import org.signal.libsignal.protocol.InvalidVersionException;
 
-public final class PlaintextContent implements CiphertextMessage, NativeHandleGuard.Owner {
-
-  private final long unsafeHandle;
+public final class PlaintextContent extends NativeHandleGuard.SimpleOwner
+    implements CiphertextMessage, NativeHandleGuard.Owner {
 
   @Override
-  @SuppressWarnings("deprecation")
-  protected void finalize() {
-    Native.PlaintextContent_Destroy(this.unsafeHandle);
+  protected void release(long nativeHandle) {
+    Native.PlaintextContent_Destroy(nativeHandle);
   }
 
-  public long unsafeNativeHandleWithoutGuard() {
-    return unsafeHandle;
-  }
-
-  // Used by Rust.
+  @CalledFromNative
   @SuppressWarnings("unused")
-  private PlaintextContent(long unsafeHandle) {
-    this.unsafeHandle = unsafeHandle;
+  private PlaintextContent(long nativeHandle) {
+    super(nativeHandle);
   }
 
   public PlaintextContent(DecryptionErrorMessage message) {
-    try (NativeHandleGuard messageGuard = new NativeHandleGuard(message)) {
-      this.unsafeHandle =
-          Native.PlaintextContent_FromDecryptionErrorMessage(messageGuard.nativeHandle());
-    }
+    super(message.guardedMap(Native::PlaintextContent_FromDecryptionErrorMessage));
   }
 
   public PlaintextContent(byte[] serialized)
       throws InvalidMessageException, InvalidVersionException {
-    unsafeHandle =
+    super(
         filterExceptions(
             InvalidMessageException.class,
             InvalidVersionException.class,
-            () -> Native.PlaintextContent_Deserialize(serialized));
+            () -> Native.PlaintextContent_Deserialize(serialized)));
   }
 
   @Override
   public byte[] serialize() {
-    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return filterExceptions(() -> Native.PlaintextContent_GetSerialized(guard.nativeHandle()));
-    }
+    return filterExceptions(() -> guardedMapChecked(Native::PlaintextContent_GetSerialized));
   }
 
   @Override
@@ -61,8 +51,6 @@ public final class PlaintextContent implements CiphertextMessage, NativeHandleGu
   }
 
   public byte[] getBody() {
-    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return filterExceptions(() -> Native.PlaintextContent_GetBody(guard.nativeHandle()));
-    }
+    return filterExceptions(() -> guardedMapChecked(Native::PlaintextContent_GetBody));
   }
 }

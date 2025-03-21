@@ -14,22 +14,23 @@ import org.signal.libsignal.protocol.ServiceId;
 import org.signal.libsignal.protocol.ecc.ECPrivateKey;
 import org.signal.libsignal.protocol.ecc.ECPublicKey;
 
-public class ServerCertificate implements NativeHandleGuard.Owner {
-  private final long unsafeHandle;
-
+public class ServerCertificate extends NativeHandleGuard.SimpleOwner {
   @Override
-  @SuppressWarnings("deprecation")
-  protected void finalize() {
-    Native.ServerCertificate_Destroy(this.unsafeHandle);
+  protected void release(long nativeHandle) {
+    Native.ServerCertificate_Destroy(nativeHandle);
   }
 
-  public ServerCertificate(long unsafeHandle) {
-    this.unsafeHandle = unsafeHandle;
+  public ServerCertificate(long nativeHandle) {
+    super(nativeHandle);
   }
 
   public ServerCertificate(byte[] serialized) throws InvalidCertificateException {
+    super(ServerCertificate.createNativeFrom(serialized));
+  }
+
+  private static long createNativeFrom(byte[] serialized) throws InvalidCertificateException {
     try {
-      this.unsafeHandle = Native.ServerCertificate_Deserialize(serialized);
+      return Native.ServerCertificate_Deserialize(serialized);
     } catch (Exception e) {
       throw new InvalidCertificateException(e);
     }
@@ -37,51 +38,36 @@ public class ServerCertificate implements NativeHandleGuard.Owner {
 
   /** Use {@code trustRoot} to generate and sign a new server certificate containing {@code key}. */
   public ServerCertificate(ECPrivateKey trustRoot, int keyId, ECPublicKey key) {
-    try (NativeHandleGuard serverPublicGuard = new NativeHandleGuard(key);
-        NativeHandleGuard trustRootPrivateGuard = new NativeHandleGuard(trustRoot)) {
-      this.unsafeHandle =
-          filterExceptions(
-              () ->
-                  Native.ServerCertificate_New(
-                      keyId,
-                      serverPublicGuard.nativeHandle(),
-                      trustRootPrivateGuard.nativeHandle()));
-    }
+    super(
+        filterExceptions(
+            () ->
+                key.guardedMapChecked(
+                    (serverPublicHandle) ->
+                        trustRoot.guardedMapChecked(
+                            (trustRootHandle) ->
+                                Native.ServerCertificate_New(
+                                    keyId, serverPublicHandle, trustRootHandle)))));
   }
 
   public int getKeyId() {
-    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return filterExceptions(() -> Native.ServerCertificate_GetKeyId(guard.nativeHandle()));
-    }
+    return filterExceptions(() -> guardedMapChecked(Native::ServerCertificate_GetKeyId));
   }
 
   public ECPublicKey getKey() {
-    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return new ECPublicKey(
-          filterExceptions(() -> Native.ServerCertificate_GetKey(guard.nativeHandle())));
-    }
+    return new ECPublicKey(
+        filterExceptions(() -> guardedMapChecked(Native::ServerCertificate_GetKey)));
   }
 
   public byte[] getSerialized() {
-    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return filterExceptions(() -> Native.ServerCertificate_GetSerialized(guard.nativeHandle()));
-    }
+    return filterExceptions(() -> guardedMapChecked(Native::ServerCertificate_GetSerialized));
   }
 
   public byte[] getCertificate() {
-    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return filterExceptions(() -> Native.ServerCertificate_GetCertificate(guard.nativeHandle()));
-    }
+    return filterExceptions(() -> guardedMapChecked(Native::ServerCertificate_GetCertificate));
   }
 
   public byte[] getSignature() {
-    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return filterExceptions(() -> Native.ServerCertificate_GetSignature(guard.nativeHandle()));
-    }
-  }
-
-  public long unsafeNativeHandleWithoutGuard() {
-    return this.unsafeHandle;
+    return filterExceptions(() -> guardedMapChecked(Native::ServerCertificate_GetSignature));
   }
 
   /**

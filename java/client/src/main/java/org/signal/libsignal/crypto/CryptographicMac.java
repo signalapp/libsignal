@@ -10,38 +10,27 @@ import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
 
-public class CryptographicMac implements NativeHandleGuard.Owner {
-  private final long unsafeHandle;
-
+public class CryptographicMac extends NativeHandleGuard.SimpleOwner {
   public CryptographicMac(String algo, byte[] key) {
-    this.unsafeHandle = filterExceptions(() -> Native.CryptographicMac_New(algo, key));
+    super(filterExceptions(() -> Native.CryptographicMac_New(algo, key)));
   }
 
   @Override
-  @SuppressWarnings("deprecation")
-  protected void finalize() {
-    Native.CryptographicMac_Destroy(this.unsafeHandle);
-  }
-
-  public long unsafeNativeHandleWithoutGuard() {
-    return this.unsafeHandle;
+  protected void release(long nativeHandle) {
+    Native.CryptographicMac_Destroy(nativeHandle);
   }
 
   public void update(byte[] input, int offset, int len) {
-    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      Native.CryptographicMac_UpdateWithOffset(guard.nativeHandle(), input, offset, len);
-    }
+    guardedRun(
+        (nativeHandle) ->
+            Native.CryptographicMac_UpdateWithOffset(nativeHandle, input, offset, len));
   }
 
   public void update(byte[] input) {
-    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      Native.CryptographicMac_Update(guard.nativeHandle(), input);
-    }
+    guardedRun((nativeHandle) -> Native.CryptographicMac_Update(nativeHandle, input));
   }
 
   public byte[] finish() {
-    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return Native.CryptographicMac_Finalize(guard.nativeHandle());
-    }
+    return guardedMap(Native::CryptographicMac_Finalize);
   }
 }

@@ -30,10 +30,13 @@ import org.signal.libsignal.internal.NativeHandleGuard;
  * HsmEnclaveClient.establishedRecv(), which decrypts and verifies it, passing the plaintext back to
  * the client for processing.
  */
-public class HsmEnclaveClient implements NativeHandleGuard.Owner {
-  private final long unsafeHandle;
+public class HsmEnclaveClient extends NativeHandleGuard.SimpleOwner {
 
   public HsmEnclaveClient(byte[] public_key, List<byte[]> code_hashes) {
+    super(HsmEnclaveClient.createNativeFrom(public_key, code_hashes));
+  }
+
+  private static long createNativeFrom(byte[] public_key, List<byte[]> code_hashes) {
     ByteArrayOutputStream concatHashes = new ByteArrayOutputStream();
     for (byte[] hash : code_hashes) {
       if (hash.length != 32) {
@@ -45,55 +48,52 @@ public class HsmEnclaveClient implements NativeHandleGuard.Owner {
         throw new AssertionError("writing to ByteArrayOutputStream failed", e);
       }
     }
-    this.unsafeHandle =
-        filterExceptions(() -> Native.HsmEnclaveClient_New(public_key, concatHashes.toByteArray()));
+
+    return filterExceptions(
+        () -> Native.HsmEnclaveClient_New(public_key, concatHashes.toByteArray()));
   }
 
   @Override
-  @SuppressWarnings("deprecation")
-  protected void finalize() {
-    Native.HsmEnclaveClient_Destroy(this.unsafeHandle);
-  }
-
-  public long unsafeNativeHandleWithoutGuard() {
-    return this.unsafeHandle;
+  protected void release(long nativeHandle) {
+    Native.HsmEnclaveClient_Destroy(nativeHandle);
   }
 
   /** Initial request to send to HSM enclave, to begin handshake. */
   public byte[] initialRequest() {
-    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return filterExceptions(() -> Native.HsmEnclaveClient_InitialRequest(guard.nativeHandle()));
-    }
+    return filterExceptions(() -> guardedMapChecked(Native::HsmEnclaveClient_InitialRequest));
   }
 
   /** Called by client upon receipt of first message from HSM enclave, to complete handshake. */
   public void completeHandshake(byte[] handshakeResponse)
       throws EnclaveCommunicationFailureException, TrustedCodeMismatchException {
-    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      filterExceptions(
-          EnclaveCommunicationFailureException.class,
-          TrustedCodeMismatchException.class,
-          () -> Native.HsmEnclaveClient_CompleteHandshake(guard.nativeHandle(), handshakeResponse));
-    }
+    filterExceptions(
+        EnclaveCommunicationFailureException.class,
+        TrustedCodeMismatchException.class,
+        () ->
+            guardedRunChecked(
+                (nativeHandle) ->
+                    Native.HsmEnclaveClient_CompleteHandshake(nativeHandle, handshakeResponse)));
   }
 
   /** Called by client after completeHandshake has succeeded, to encrypt a message to send. */
   public byte[] establishedSend(byte[] plaintextToSend)
       throws EnclaveCommunicationFailureException {
-    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return filterExceptions(
-          EnclaveCommunicationFailureException.class,
-          () -> Native.HsmEnclaveClient_EstablishedSend(guard.nativeHandle(), plaintextToSend));
-    }
+    return filterExceptions(
+        EnclaveCommunicationFailureException.class,
+        () ->
+            guardedMapChecked(
+                (nativeHandle) ->
+                    Native.HsmEnclaveClient_EstablishedSend(nativeHandle, plaintextToSend)));
   }
 
   /** Called by client after completeHandshake has succeeded, to decrypt a received message. */
   public byte[] establishedRecv(byte[] receivedCiphertext)
       throws EnclaveCommunicationFailureException {
-    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return filterExceptions(
-          EnclaveCommunicationFailureException.class,
-          () -> Native.HsmEnclaveClient_EstablishedRecv(guard.nativeHandle(), receivedCiphertext));
-    }
+    return filterExceptions(
+        EnclaveCommunicationFailureException.class,
+        () ->
+            guardedMapChecked(
+                (nativeHandle) ->
+                    Native.HsmEnclaveClient_EstablishedRecv(nativeHandle, receivedCiphertext)));
   }
 }
