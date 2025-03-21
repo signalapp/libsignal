@@ -72,6 +72,7 @@ impl RegistrationService {
         create_session: CreateSession,
         connect_chat: Box<dyn ConnectChat + Send>,
     ) -> Result<Self, RequestError<CreateSessionError>> {
+        log::info!("starting new registration session");
         let (response, sender) =
             send_request::<CreateSessionError>(create_session.into(), &*connect_chat, None).await?;
 
@@ -81,6 +82,7 @@ impl RegistrationService {
         } = response.try_into()?;
 
         let session_id = session_id.parse()?;
+        log::info!("started registration session with session ID {session_id}");
 
         Ok(Self {
             session_id,
@@ -99,6 +101,7 @@ impl RegistrationService {
         session_id: SessionId,
         connect_chat: Box<dyn ConnectChat + Send>,
     ) -> Result<Self, RequestError<ResumeSessionError>> {
+        log::info!("trying to resume existing registration session with session ID {session_id}");
         let request: ChatRequest = RegistrationRequest {
             session_id: &session_id,
             request: GetSession {},
@@ -112,6 +115,7 @@ impl RegistrationService {
             session_id: _,
             session,
         } = response.try_into()?;
+        log::info!("successfully resumed registration session");
 
         Ok(Self {
             session_id,
@@ -153,10 +157,18 @@ impl RegistrationService {
         }
         .into();
 
+        log::info!(
+            "sending {request_type} on registration session {session_id}",
+            request_type = std::any::type_name::<R>()
+        );
         let (response, request_sender) =
             send_request(request, &**connect_chat, Some(sender)).await?;
         *sender = request_sender;
 
+        log::info!(
+            "{request_type} succeeded",
+            request_type = std::any::type_name::<R>()
+        );
         let RegistrationResponse {
             session_id: _,
             session: response_session,
@@ -190,8 +202,11 @@ where
             }
         };
         let result = match send_request_to_connected_chat(request.clone(), &sender).await {
-            Err(SendRequestError::ConnectionLost) => continue,
             Ok(response) => Ok((response, sender)),
+            Err(SendRequestError::ConnectionLost) => {
+                log::info!("the connection to the chat server was lost, will retry");
+                continue;
+            }
             Err(SendRequestError::RequestTimedOut) => Err(RequestError::Timeout),
             Err(SendRequestError::Unknown(message)) => Err(RequestError::Unknown(message)),
         };
@@ -246,38 +261,44 @@ async fn spawn_connected_chat(
 
         let chat = match connect_chat.connect_chat(on_disconnect_tx).await {
             Ok(chat) => chat,
-            Err(err) => match err {
-                ChatConnectError::InvalidConnectionConfiguration => {
-                    return Err(FatalConnectError::InvalidConfiguration)
+            Err(err) => {
+                log::warn!(
+                    "registration chat connect failed: {}",
+                    (&err as &dyn LogSafeDisplay)
+                );
+                match err {
+                    ChatConnectError::InvalidConnectionConfiguration => {
+                        return Err(FatalConnectError::InvalidConfiguration)
+                    }
+                    ChatConnectError::RetryLater(retry_later) => {
+                        return Err(FatalConnectError::RetryLater(retry_later));
+                    }
+                    err @ (ChatConnectError::Timeout
+                    | ChatConnectError::AllAttemptsFailed
+                    | ChatConnectError::WebSocket(_)) => {
+                        log::warn!("retryable error: {}", (&err as &dyn LogSafeDisplay));
+                        let now = Instant::now();
+                        let since_last_failure = last_failure_at
+                            .replace(now)
+                            .map_or(Duration::MAX, |previous_failure| now - previous_failure);
+                        let delay = CHAT_CONNECT_DELAY_PARAMS
+                            .compute_delay(since_last_failure, failure_count);
+                        tokio::time::sleep(delay).await;
+                        failure_count += 1;
+                        continue;
+                    }
+                    ChatConnectError::AppExpired => {
+                        return Err(FatalConnectError::Unexpected(
+                            "unauthenticated socket signaled app expired",
+                        ))
+                    }
+                    ChatConnectError::DeviceDeregistered => {
+                        return Err(FatalConnectError::Unexpected(
+                            "unauthenticated socket signaled deregistration",
+                        ));
+                    }
                 }
-                ChatConnectError::RetryLater(retry_later) => {
-                    return Err(FatalConnectError::RetryLater(retry_later));
-                }
-                err @ (ChatConnectError::Timeout
-                | ChatConnectError::AllAttemptsFailed
-                | ChatConnectError::WebSocket(_)) => {
-                    log::warn!("retryable error: {}", (&err as &dyn LogSafeDisplay));
-                    let now = Instant::now();
-                    let since_last_failure = last_failure_at
-                        .replace(now)
-                        .map_or(Duration::MAX, |previous_failure| now - previous_failure);
-                    let delay =
-                        CHAT_CONNECT_DELAY_PARAMS.compute_delay(since_last_failure, failure_count);
-                    tokio::time::sleep(delay).await;
-                    failure_count += 1;
-                    continue;
-                }
-                ChatConnectError::AppExpired => {
-                    return Err(FatalConnectError::Unexpected(
-                        "unauthenticated socket signaled app expired",
-                    ))
-                }
-                ChatConnectError::DeviceDeregistered => {
-                    return Err(FatalConnectError::Unexpected(
-                        "unauthenticated socket signaled deregistration",
-                    ));
-                }
-            },
+            }
         };
 
         break (chat, on_disconnect_rx);
@@ -287,6 +308,7 @@ async fn spawn_connected_chat(
         Ok(infallible) => match infallible {},
         Err(_recv_error) => (),
     });
+    log::info!("successfully connecting chat for registration");
     let handle = tokio::spawn(spawned_task_body(
         chat,
         ReceiverStream::new(receiver),
@@ -322,20 +344,29 @@ async fn send_request_to_connected_chat(
         .await
         .map_err(|_: oneshot::error::RecvError| SendRequestError::ConnectionLost)?;
 
-    result.map_err(|err| match err {
-        ChatSendError::RequestTimedOut => SendRequestError::RequestTimedOut,
-        ChatSendError::Disconnected => SendRequestError::ConnectionLost,
-        ChatSendError::WebSocket(error) => SendRequestError::Unknown(format!(
-            "websocket error: {}",
-            <dyn LogSafeDisplay>::to_string(&error)
-        )),
-        ChatSendError::IncomingDataInvalid => {
-            SendRequestError::Unknown("received invalid response".into())
+    let response = result.map_err(|err| {
+        log::warn!(
+            "registration chat request failed: {}",
+            (&err as &dyn LogSafeDisplay)
+        );
+        match err {
+            ChatSendError::RequestTimedOut => SendRequestError::RequestTimedOut,
+            ChatSendError::Disconnected => SendRequestError::ConnectionLost,
+            ChatSendError::WebSocket(error) => SendRequestError::Unknown(format!(
+                "websocket error: {}",
+                <dyn LogSafeDisplay>::to_string(&error)
+            )),
+            ChatSendError::IncomingDataInvalid => {
+                SendRequestError::Unknown("received invalid response".into())
+            }
+            ChatSendError::RequestHasInvalidHeader => {
+                SendRequestError::Unknown("request had invalid header".into())
+            }
         }
-        ChatSendError::RequestHasInvalidHeader => {
-            SendRequestError::Unknown("request had invalid header".into())
-        }
-    })
+    })?;
+
+    log::debug!("registration chat request succeeded");
+    Ok(response)
 }
 
 /// The body of a spawned [`tokio::task`] that handles the given
@@ -400,6 +431,7 @@ async fn spawned_task_body(
             }
             Event::Incoming(Err(_)) => {
                 // This only happens when there are no requests in flight.
+                log::warn!("registration chat inactivity timeout was reached; disconnecting");
                 break;
             }
             Event::Disconnected => {
