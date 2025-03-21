@@ -15,6 +15,80 @@ pub use service::*;
 mod session_id;
 pub use session_id::*;
 
+impl RegistrationService {
+    pub async fn submit_captcha(
+        &mut self,
+        captcha_value: &str,
+    ) -> Result<(), RequestError<UpdateSessionError>> {
+        self.submit_request(UpdateRegistrationSession {
+            captcha: Some(captcha_value),
+            ..Default::default()
+        })
+        .await
+        .map_err(Into::into)
+    }
+
+    pub async fn request_push_challenge(
+        &mut self,
+        push_token: &str,
+        push_token_type: PushTokenType,
+    ) -> Result<(), RequestError<UpdateSessionError>> {
+        self.submit_request(UpdateRegistrationSession {
+            push_token: Some(push_token),
+            push_token_type: Some(push_token_type),
+            ..Default::default()
+        })
+        .await
+        .map_err(Into::into)
+    }
+
+    pub async fn request_verification_code(
+        &mut self,
+        transport: VerificationTransport,
+        client: String,
+    ) -> Result<(), RequestError<RequestVerificationCodeError>> {
+        self.submit_request(RequestVerificationCode { transport, client })
+            .await
+            .map_err(Into::into)
+    }
+
+    pub async fn submit_push_challenge(
+        &mut self,
+        push_challenge: String,
+    ) -> Result<(), RequestError<UpdateSessionError>> {
+        self.submit_request(UpdateRegistrationSession {
+            push_challenge: Some(push_challenge),
+            ..Default::default()
+        })
+        .await
+        .map_err(Into::into)
+    }
+
+    pub async fn submit_verification_code(
+        &mut self,
+        code: String,
+    ) -> Result<(), RequestError<SubmitVerificationError>> {
+        self.submit_request(SubmitVerificationCode { code })
+            .await
+            .map_err(Into::into)
+    }
+}
+
+impl From<RequestError<SessionRequestError>> for RequestError<UpdateSessionError> {
+    fn from(value: RequestError<SessionRequestError>) -> Self {
+        value.map_other(|session_request_error| match session_request_error {
+            SessionRequestError::RetryLater(retry_later) => RequestError::Other(retry_later.into()),
+            SessionRequestError::UnrecognizedStatus { status, .. } => match status.as_u16() {
+                403 => RequestError::Other(UpdateSessionError::Rejected),
+                code => {
+                    log::error!("got unexpected HTTP response status updating the session: {code}");
+                    RequestError::Unknown(format!("unexpected HTTP status {code}"))
+                }
+            },
+        })
+    }
+}
+
 #[cfg(test)]
 mod testutil {
     use std::convert::Infallible;
@@ -103,6 +177,7 @@ mod testutil {
 mod test {
     use std::str::FromStr as _;
 
+    use assert_matches::assert_matches;
     use tokio::sync::mpsc;
 
     use super::*;
@@ -225,5 +300,101 @@ mod test {
             session_client.session_id(),
             &SessionId::from_str(SESSION_ID).unwrap()
         );
+    }
+
+    #[tokio::test]
+    async fn resume_session_and_make_requests() {
+        let (fake_chat_remote_tx, mut fake_chat_remote_rx) = mpsc::unbounded_channel();
+        let fake_connect = FakeChatConnect {
+            remote: fake_chat_remote_tx,
+        };
+        const SESSION_ID: &str = "abcabc";
+
+        let resume_session = RegistrationService::resume_session(
+            SessionId::from_str(SESSION_ID).unwrap(),
+            Box::new(fake_connect),
+        );
+
+        let answer_resume_request = async {
+            let fake_chat_remote = fake_chat_remote_rx.recv().await.expect("sender not closed");
+            let incoming_request = fake_chat_remote
+                .receive_request()
+                .await
+                .expect("still receiving")
+                .expect("received request");
+
+            assert_eq!(
+                incoming_request,
+                WebSocketRequestMessage {
+                    verb: Some("GET".to_string()),
+                    path: Some("/v1/verification/session/abcabc".to_string()),
+                    body: None,
+                    headers: vec![],
+                    id: Some(0),
+                }
+            );
+
+            fake_chat_remote
+                .send_response(
+                    RegistrationResponse {
+                        session_id: SESSION_ID.to_owned(),
+                        session: RegistrationSession {
+                            allowed_to_request_code: true,
+                            verified: false,
+                            ..Default::default()
+                        },
+                    }
+                    .into_websocket_response(0),
+                )
+                .expect("not disconnected");
+            fake_chat_remote
+        };
+
+        let (session_client, fake_chat_remote) =
+            tokio::join!(resume_session, answer_resume_request);
+
+        // At this point the client should be connected and can make additional
+        // requests.
+        let mut session_client = session_client.expect("resumed session");
+
+        let submit_captcha = session_client.submit_captcha("captcha value");
+
+        let answer_submit_captcha = async move {
+            let incoming_request = fake_chat_remote
+                .receive_request()
+                .await
+                .expect("still receiving")
+                .expect("received request");
+
+            assert_eq!(
+                incoming_request,
+                WebSocketRequestMessage {
+                    verb: Some("PATCH".to_string()),
+                    path: Some("/v1/verification/session/abcabc".to_string()),
+                    body: Some(b"{\"captcha\":\"captcha value\"}".into()),
+                    headers: vec!["content-type: application/json".to_owned()],
+                    id: Some(1),
+                }
+            );
+
+            fake_chat_remote
+                .send_response(
+                    RegistrationResponse {
+                        session_id: SESSION_ID.to_owned(),
+                        session: RegistrationSession {
+                            allowed_to_request_code: true,
+                            verified: true,
+                            ..Default::default()
+                        },
+                    }
+                    .into_websocket_response(1),
+                )
+                .expect("not disconnected");
+            fake_chat_remote
+        };
+
+        let (submit_result, _fake_chat_remote) =
+            tokio::join!(submit_captcha, answer_submit_captcha);
+        assert_matches!(submit_result, Ok(()));
     }
 }

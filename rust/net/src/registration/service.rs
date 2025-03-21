@@ -72,7 +72,8 @@ impl RegistrationService {
         create_session: CreateSession,
         connect_chat: Box<dyn ConnectChat + Send>,
     ) -> Result<Self, RequestError<CreateSessionError>> {
-        let (response, sender) = send_request(create_session.into(), &*connect_chat, None).await?;
+        let (response, sender) =
+            send_request::<CreateSessionError>(create_session.into(), &*connect_chat, None).await?;
 
         let RegistrationResponse {
             session_id,
@@ -104,7 +105,8 @@ impl RegistrationService {
         }
         .into();
 
-        let (response, sender) = send_request(request, &*connect_chat, None).await?;
+        let (response, sender) =
+            send_request::<ResumeSessionError>(request, &*connect_chat, None).await?;
 
         let RegistrationResponse {
             session_id: _,
@@ -134,7 +136,6 @@ impl RegistrationService {
     /// On success, the state of the session as reported by the server is saved
     /// (and accessible via [`Self::session_state`]). This method will retry
     /// internally if transient errors are encountered.
-    #[allow(dead_code)]
     pub(super) async fn submit_request<R: Request>(
         &mut self,
         request: R,

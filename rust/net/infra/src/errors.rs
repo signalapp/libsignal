@@ -6,9 +6,10 @@
 use std::fmt::Display;
 use std::time::Duration;
 
+use http::{HeaderName, HeaderValue};
 use tokio_boring_signal::HandshakeError;
 
-use crate::certs;
+use crate::{certs, AsHttpHeader};
 
 pub trait LogSafeDisplay: Display {}
 
@@ -98,6 +99,14 @@ impl RetryLater {
     /// The amount of time to wait before retrying, as a [`Duration`].
     pub fn duration(&self) -> Duration {
         Duration::from_secs(self.retry_after_seconds.into())
+    }
+}
+
+impl AsHttpHeader for RetryLater {
+    const HEADER_NAME: HeaderName = HeaderName::from_static("retry-after");
+
+    fn header_value(&self) -> HeaderValue {
+        HeaderValue::from(self.retry_after_seconds)
     }
 }
 
