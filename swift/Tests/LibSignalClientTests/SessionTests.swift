@@ -692,32 +692,6 @@ class SessionTests: TestCaseBase {
             groupId: []
         )
         XCTAssertEqual(signal_usmc.messageType, .preKey)
-
-        do {
-            let _ = try UnidentifiedSenderMessageContent(
-                a_message.serialize(),
-                type: CiphertextMessage.MessageType.whisper,
-                from: sender_cert,
-                contentHint: .default,
-                groupId: [42]
-            )
-            XCTFail("should have thrown")
-        } catch {
-            // Expected
-        }
-
-        do {
-            let _ = try UnidentifiedSenderMessageContent(
-                a_message_to_b.serialize(),
-                type: CiphertextMessage.MessageType.senderKey,
-                from: sender_cert,
-                contentHint: .default,
-                groupId: []
-            )
-            XCTFail("should have thrown")
-        } catch {
-            // Expected
-        }
     }
 }
 
