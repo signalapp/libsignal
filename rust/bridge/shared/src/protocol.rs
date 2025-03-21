@@ -845,6 +845,31 @@ fn UnidentifiedSenderMessageContent_New(
     )
 }
 
+#[bridge_fn(jni = false, node = false)]
+fn UnidentifiedSenderMessageContentNewFromContentAndType(
+    message_content: &[u8],
+    message_type: u8,
+    sender: &SenderCertificate,
+    content_hint: u32,
+    group_id: &[u8],
+) -> Result<UnidentifiedSenderMessageContent> {
+    let message_type = CiphertextMessageType::try_from(message_type).map_err(|_| {
+        SignalProtocolError::InvalidArgument(format!("unknown message type {}", message_type))
+    })?;
+
+    UnidentifiedSenderMessageContent::new(
+        message_type,
+        sender.clone(),
+        message_content.to_owned(),
+        ContentHint::from(content_hint),
+        if group_id.is_empty() {
+            None
+        } else {
+            Some(group_id.to_owned())
+        },
+    )
+}
+
 // Alternate version for FFI because FFI can't support optional slices.
 #[bridge_fn(jni = false, node = false)]
 fn UnidentifiedSenderMessageContentNew(

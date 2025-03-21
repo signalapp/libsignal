@@ -2051,6 +2051,8 @@ SignalFfiError *signal_unidentified_sender_message_content_get_sender_cert(Signa
 
 SignalFfiError *signal_unidentified_sender_message_content_new(SignalMutPointerUnidentifiedSenderMessageContent *out, SignalConstPointerCiphertextMessage message, SignalConstPointerSenderCertificate sender, uint32_t content_hint, SignalBorrowedBuffer group_id);
 
+SignalFfiError *signal_unidentified_sender_message_content_new_from_content_and_type(SignalMutPointerUnidentifiedSenderMessageContent *out, SignalBorrowedBuffer message_content, uint8_t message_type, SignalConstPointerSenderCertificate sender, uint32_t content_hint, SignalBorrowedBuffer group_id);
+
 SignalFfiError *signal_unidentified_sender_message_content_serialize(SignalOwnedBuffer *out, SignalConstPointerUnidentifiedSenderMessageContent obj);
 
 SignalFfiError *signal_username_candidates_from(SignalStringArray *out, const char *nickname, uint32_t min_len, uint32_t max_len);
