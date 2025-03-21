@@ -183,6 +183,16 @@ public class UnidentifiedSenderMessageContent: NativeHandleOwner<SignalMutPointe
         }
         return .init(rawValue: rawHint)
     }
+
+    public func serialize() -> [UInt8] {
+        return withNativeHandle { nativeHandle in
+            failOnError {
+                try invokeFnReturningArray {
+                    signal_unidentified_sender_message_content_serialize($0, nativeHandle.const())
+                }
+            }
+        }
+    }
 }
 
 extension SignalMutPointerUnidentifiedSenderMessageContent: SignalMutPointer {
