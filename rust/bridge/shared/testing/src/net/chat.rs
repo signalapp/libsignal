@@ -5,7 +5,9 @@
 
 use http::{HeaderMap, HeaderName, HeaderValue, StatusCode};
 use libsignal_bridge_macros::*;
-use libsignal_bridge_types::net::chat::{AuthenticatedChatConnection, ChatListener, HttpRequest};
+use libsignal_bridge_types::net::chat::{
+    AuthenticatedChatConnection, ChatListener, HttpRequest, UnauthenticatedChatConnection,
+};
 use libsignal_bridge_types::net::TokioAsyncContext;
 use libsignal_net::chat::fake::FakeChatRemote;
 use libsignal_net::chat::{ConnectError, RequestProto, Response as ChatResponse, SendError};
@@ -15,7 +17,7 @@ use crate::net::make_error_testing_enum;
 use crate::*;
 
 pub struct FakeChatConnection {
-    chat: std::sync::Mutex<Option<AuthenticatedChatConnection>>,
+    chat: std::sync::Mutex<Option<libsignal_bridge_types::net::chat::FakeChatConnection>>,
     remote_end: std::sync::Mutex<Option<FakeChatRemote>>,
 }
 
@@ -45,7 +47,11 @@ fn TESTING_FakeChatConnection_Create(
 ) -> FakeChatConnection {
     // "".split_terminator(...) produces [], while normal split() produces [""].
     let alerts = alerts_joined_by_newlines.split_terminator('\n');
-    let (chat, remote) = AuthenticatedChatConnection::new_fake(tokio.handle(), listener, alerts);
+    let (chat, remote) = libsignal_bridge_types::net::chat::FakeChatConnection::new(
+        tokio.handle(),
+        listener,
+        alerts,
+    );
     FakeChatConnection {
         chat: Some(chat).into(),
         remote_end: Some(remote).into(),
@@ -57,7 +63,15 @@ fn TESTING_FakeChatConnection_TakeAuthenticatedChat(
     chat: &FakeChatConnection,
 ) -> AuthenticatedChatConnection {
     let chat = chat.chat.lock().expect("not poisoned").take();
-    chat.expect("can't take chat twice")
+    chat.expect("can't take chat twice").into_authenticated()
+}
+
+#[bridge_fn]
+fn TESTING_FakeChatConnection_TakeUnauthenticatedChat(
+    chat: &FakeChatConnection,
+) -> UnauthenticatedChatConnection {
+    let chat = chat.chat.lock().expect("not poisoned").take();
+    chat.expect("can't take chat twice").into_unauthenticated()
 }
 
 #[bridge_fn]
@@ -165,6 +179,17 @@ fn TESTING_ChatRequestGetMethod(request: &HttpRequest) -> String {
 #[bridge_fn]
 fn TESTING_ChatRequestGetPath(request: &HttpRequest) -> String {
     request.path.to_string()
+}
+
+#[bridge_fn]
+fn TESTING_ChatRequestGetHeaderNames(request: &HttpRequest) -> Box<[String]> {
+    request
+        .headers
+        .lock()
+        .expect("not poisoned")
+        .keys()
+        .map(ToString::to_string)
+        .collect()
 }
 
 #[bridge_fn]

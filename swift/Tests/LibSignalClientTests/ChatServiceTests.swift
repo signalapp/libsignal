@@ -281,7 +281,7 @@ final class ChatConnectionTests: TestCaseBase {
         await self.fulfillment(of: listener.expectations, timeout: 2, enforceOrder: true)
     }
 
-    func testSending() async throws {
+    func testAuthenticatedSending() async throws {
         class NoOpListener: ChatConnectionListener {
             func chatConnection(_ chat: AuthenticatedChatConnection, didReceiveIncomingMessage envelope: Data, serverDeliveryTimestamp: UInt64, sendAck: () throws -> Void) {}
 
@@ -295,23 +295,42 @@ final class ChatConnectionTests: TestCaseBase {
         async let responseFuture = chat.send(request)
 
         let (requestFromServer, id) = try await fakeRemote.getNextIncomingRequest()
-        try requestFromServer.withNativeHandle { requestFromServer in
+        XCTAssertEqual(request.method, requestFromServer.method)
+        XCTAssertEqual(request.pathAndQuery, requestFromServer.pathAndQuery)
+        XCTAssertEqual(request.body, requestFromServer.body)
+        XCTAssertEqual(request.headers, requestFromServer.headers)
+        XCTAssertEqual(id, 0)
 
-            XCTAssertEqual(request.method, try invokeFnReturningString {
-                signal_testing_chat_request_get_method($0, requestFromServer.const())
-            })
-            XCTAssertEqual(request.pathAndQuery, try invokeFnReturningString {
-                signal_testing_chat_request_get_path($0, requestFromServer.const())
-            })
-            XCTAssertEqual(request.body, try invokeFnReturningData {
-                signal_testing_chat_request_get_body($0, requestFromServer.const())
-            })
-            for (k, v) in request.headers {
-                XCTAssertEqual(v, try invokeFnReturningString {
-                    signal_testing_chat_request_get_header_value($0, requestFromServer.const(), k)
-                })
-            }
+        // 1: 0
+        // 2: 201
+        // 3: {"Created"}
+        // 5: {"purpose: test response"}
+        // 4: {5}
+        fakeRemote.injectServerResponse(base64: "CAAQyQEaB0NyZWF0ZWQqFnB1cnBvc2U6IHRlc3QgcmVzcG9uc2UiAQU=")
+
+        let responseFromServer = try await responseFuture
+        XCTAssertEqual(responseFromServer.status, 201)
+        XCTAssertEqual(responseFromServer.message, "Created")
+        XCTAssertEqual(responseFromServer.headers, ["purpose": "test response"])
+        XCTAssertEqual(responseFromServer.body, Data([5]))
+    }
+
+    func testUnauthenticatedSending() async throws {
+        class NoOpListener: ConnectionEventsListener {
+            func connectionWasInterrupted(_: UnauthenticatedChatConnection, error: Error?) {}
         }
+        let tokioAsyncContext = TokioAsyncContext()
+        let (chat, fakeRemote) = UnauthenticatedChatConnection.fakeConnect(tokioAsyncContext: tokioAsyncContext, listener: NoOpListener())
+        defer { withExtendedLifetime(chat) {} }
+
+        let request = ChatRequest(method: "PUT", pathAndQuery: "/some/path", headers: ["purpose": "test request"], body: Data([1, 1, 2, 3]), timeout: TimeInterval(5))
+        async let responseFuture = chat.send(request)
+
+        let (requestFromServer, id) = try await fakeRemote.getNextIncomingRequest()
+        XCTAssertEqual(request.method, requestFromServer.method)
+        XCTAssertEqual(request.pathAndQuery, requestFromServer.pathAndQuery)
+        XCTAssertEqual(request.body, requestFromServer.body)
+        XCTAssertEqual(request.headers, requestFromServer.headers)
         XCTAssertEqual(id, 0)
 
         // 1: 0

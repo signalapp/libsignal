@@ -87,7 +87,7 @@ libsignal-message-backup = { path = "./", features = ["json", "scramble", "test-
 
 signal-crypto = { workspace = true }
 
-array-concat = { workspace = true }
+array-concat = { workspace = true, features = ["const_panic"] }
 assert_cmd = { workspace = true }
 criterion = { workspace = true }
 dir-test = { workspace = true }

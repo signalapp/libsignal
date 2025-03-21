@@ -4,7 +4,6 @@
 //
 
 use std::collections::HashMap;
-use std::future::Future;
 
 use assert_matches::assert_matches;
 use async_trait::async_trait;
@@ -17,6 +16,7 @@ use libsignal_net_infra::dns::dns_lookup::{DnsLookup, DnsLookupRequest};
 use libsignal_net_infra::dns::lookup_result::LookupResult;
 use libsignal_net_infra::dns::{self, DnsResolver};
 use libsignal_net_infra::host::Host;
+use libsignal_net_infra::utils::timed;
 use test_case::test_case;
 use tokio::time::{Duration, Instant};
 
@@ -29,14 +29,6 @@ use crate::fake_transport::{
     allow_all_routes, Behavior, FakeTransportTarget, TransportConnectEvent,
     TransportConnectEventStage,
 };
-
-/// Utility function to track how long a future takes to execute.
-async fn timed<T>(f: impl Future<Output = T>) -> (Duration, T) {
-    let time_at_first_poll = Instant::now();
-    let t = f.await;
-    let finished_at = Instant::now();
-    (finished_at - time_at_first_poll, t)
-}
 
 #[test_case(Duration::from_secs(60))]
 #[test_log::test(tokio::test(start_paused = true))]

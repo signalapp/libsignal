@@ -58,6 +58,7 @@ pub struct DebugInfo {
 }
 
 #[derive(Clone, Debug)]
+#[cfg_attr(test, derive(PartialEq))]
 pub struct Request {
     pub method: ::http::Method,
     pub body: Option<Box<[u8]>>,
@@ -188,9 +189,11 @@ pub struct AuthenticatedChatHeaders {
 pub type ChatServiceRoute = UnresolvedWebsocketServiceRoute;
 
 impl ChatConnection {
+    #[allow(clippy::too_many_arguments)]
     pub async fn start_connect_with<TC>(
         connect: &tokio::sync::RwLock<ConnectState<TC>>,
         resolver: &DnsResolver,
+        network_change_event: &ObservableEvent,
         http_route_provider: impl RouteProvider<Route = UnresolvedHttpsServiceRoute>,
         confirmation_header_name: Option<HeaderName>,
         user_agent: &UserAgent,
@@ -207,6 +210,7 @@ impl ChatConnection {
         Self::start_connect_with_transport(
             connect,
             resolver,
+            network_change_event,
             http_route_provider,
             confirmation_header_name,
             user_agent,
@@ -218,9 +222,11 @@ impl ChatConnection {
     }
 
     #[cfg_attr(feature = "test-util", visibility::make(pub))]
+    #[allow(clippy::too_many_arguments)]
     async fn start_connect_with_transport<TC>(
         connect: &tokio::sync::RwLock<ConnectState<TC>>,
         resolver: &DnsResolver,
+        network_change_event: &ObservableEvent,
         http_route_provider: impl RouteProvider<Route = UnresolvedHttpsServiceRoute>,
         confirmation_header_name: Option<HeaderName>,
         user_agent: &UserAgent,
@@ -270,6 +276,7 @@ impl ChatConnection {
             // at a time.
             ThrottlingConnector::new(crate::infra::ws::Stateless, 1),
             resolver,
+            network_change_event,
             confirmation_header_name.as_ref(),
             log_tag.clone(),
         )
@@ -415,6 +422,7 @@ pub mod test_support {
         let pending = ChatConnection::start_connect_with(
             &connect,
             &dns_resolver,
+            &network_change_event,
             route_provider,
             env.chat_domain_config
                 .connect
@@ -658,6 +666,7 @@ pub(crate) mod test {
                 CHAT_DOMAIN,
                 LookupResult::localhost(),
             )])),
+            &ObservableEvent::new(),
             vec![HttpsTlsRoute {
                 fragment: HttpRouteFragment {
                     host_header: CHAT_DOMAIN.into(),
@@ -747,6 +756,7 @@ pub(crate) mod test {
                 .map(|route| route.inner)
                 .collect_vec(),
             &dns_resolver,
+            &ObservableEvent::new(),
             "preconnect".into(),
         )
         .await
@@ -766,6 +776,7 @@ pub(crate) mod test {
         let err = ChatConnection::start_connect_with_transport(
             &connect_state,
             &dns_resolver,
+            &ObservableEvent::new(),
             routes.clone(),
             Some(HeaderName::from_static(CONFIRMATION_HEADER)),
             &UserAgent::with_libsignal_version("test"),
@@ -788,6 +799,7 @@ pub(crate) mod test {
         let err = ChatConnection::start_connect_with_transport(
             &connect_state,
             &dns_resolver,
+            &ObservableEvent::new(),
             routes.clone(),
             Some(HeaderName::from_static(CONFIRMATION_HEADER)),
             &UserAgent::with_libsignal_version("test"),

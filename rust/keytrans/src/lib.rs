@@ -26,9 +26,7 @@ pub use proto::{
     StoredMonitoringData, StoredTreeHead, TreeHead, UpdateRequest, UpdateResponse,
 };
 pub use verify::Error;
-use verify::{
-    truncate_search_response, verify_distinguished, verify_monitor, verify_search, verify_update,
-};
+use verify::{verify_distinguished, verify_monitor, verify_search};
 pub use vrf::PublicKey as VrfPublicKey;
 
 /// DeploymentMode specifies the way that a transparency log is deployed.
@@ -173,6 +171,7 @@ impl<'a> FullSearchResponse<'a> {
 }
 
 /// Key transparency main API entrypoint
+#[derive(Clone)]
 pub struct KeyTransparency {
     /// Key transparency system configuration
     pub config: PublicConfig,
@@ -213,18 +212,6 @@ impl KeyTransparency {
         verify_distinguished(full_tree_head, last_tree_head, last_distinguished_tree_head)
     }
 
-    /// Returns the TreeHead that would've been issued immediately after the value
-    /// being searched for in `SearchResponse` was sequenced.
-    ///
-    /// Most validation is skipped so the SearchResponse MUST already be verified.
-    pub fn truncate_search_response(
-        &self,
-        request: &SlimSearchRequest,
-        response: &FullSearchResponse,
-    ) -> Result<(u64, [u8; 32]), verify::Error> {
-        truncate_search_response(&self.config, request, response)
-    }
-
     /// Checks that the output of a Monitor operation is valid and updates the
     /// client's stored data.
     pub fn verify_monitor<'a>(
@@ -235,18 +222,6 @@ impl KeyTransparency {
         now: SystemTime,
     ) -> Result<MonitorStateUpdate, verify::Error> {
         verify_monitor(&self.config, request, response, context, now)
-    }
-
-    /// Checks that the output of an Update operation is valid and updates the
-    /// client's stored data.
-    pub fn verify_update(
-        &self,
-        request: &UpdateRequest,
-        response: &UpdateResponse,
-        context: SearchContext,
-        now: SystemTime,
-    ) -> Result<SearchStateUpdate, verify::Error> {
-        verify_update(&self.config, request, response, context, now)
     }
 }
 

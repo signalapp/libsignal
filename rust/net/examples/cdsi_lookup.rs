@@ -90,6 +90,7 @@ async fn main() {
         CdsiConnection::connect_with(
             &connect_state,
             &resolver,
+            &network_change_event,
             DirectOrProxyProvider::maybe_proxied(
                 cdsi_env.route_provider(EnableDomainFronting::No),
                 None,

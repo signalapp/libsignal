@@ -204,8 +204,8 @@ pub enum ChatItemError {
     ProfileChangeNotFromContact,
     /// thread merge not from ACI
     ThreadMergeNotFromAci,
-    /// session switchover not from ACI
-    SessionSwitchoverNotFromAci,
+    /// session switchover from release notes
+    SessionSwitchoverFromReleaseNotes,
     /// call not from contact or self
     CallNotFromContact,
     /// learned profile update not from contact

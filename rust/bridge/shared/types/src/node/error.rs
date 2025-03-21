@@ -5,8 +5,9 @@
 
 use std::fmt;
 
-use libsignal_net::infra::errors::RetryLater;
+#[cfg(feature = "signal-media")]
 use signal_media::sanitize::mp4::{Error as Mp4Error, ParseError as Mp4ParseError};
+#[cfg(feature = "signal-media")]
 use signal_media::sanitize::webp::{Error as WebpError, ParseError as WebpParseError};
 
 use super::*;
@@ -25,15 +26,6 @@ node_register!(registerErrors);
 
 fn no_extra_properties<'a>(cx: &mut impl Context<'a>) -> JsResult<'a, JsValue> {
     Ok(cx.undefined().upcast())
-}
-
-fn optional_extra_properties<'a, C: Context<'a>, F: FnOnce(&mut C) -> JsResult<'a, JsValue>>(
-    f: Option<F>,
-) -> impl FnOnce(&mut C) -> JsResult<'a, JsValue> {
-    |cx| match f {
-        None => no_extra_properties(cx),
-        Some(f) => f(cx),
-    }
 }
 
 fn new_js_error<'a, C: Context<'a>>(
@@ -120,7 +112,23 @@ impl std::fmt::Display for ThrownException {
 
 impl std::error::Error for ThrownException {}
 
-pub trait SignalNodeError: Sized + fmt::Display {
+pub trait SignalNodeError {
+    fn into_throwable<'a, C: Context<'a>>(
+        self,
+        cx: &mut C,
+        module: Handle<'a, JsObject>,
+        operation_name: &str,
+    ) -> Handle<'a, JsError>;
+}
+
+/// Provides a simple [`SignalNodeError`] implementation.
+///
+/// Implementing types get a straightforward blanket implementation of
+/// [`SignalNodeError`] that converts to a generic error with
+/// [`self.to_string()`](ToString::to_string) as the error message.
+pub trait DefaultSignalNodeError: ToString {}
+
+impl<S: DefaultSignalNodeError> SignalNodeError for S {
     fn into_throwable<'a, C: Context<'a>>(
         self,
         cx: &mut C,
@@ -141,7 +149,6 @@ pub trait SignalNodeError: Sized + fmt::Display {
 
 const INVALID_MEDIA_INPUT: &str = "InvalidMediaInput";
 const IO_ERROR: &str = "IoError";
-const RATE_LIMITED_ERROR: &str = "RateLimitedError";
 const UNSUPPORTED_MEDIA_INPUT: &str = "UnsupportedMediaInput";
 
 impl SignalNodeError for SignalProtocolError {
@@ -238,17 +245,17 @@ impl SignalNodeError for SignalProtocolError {
     }
 }
 
-impl SignalNodeError for device_transfer::Error {}
+impl DefaultSignalNodeError for device_transfer::Error {}
 
-impl SignalNodeError for attest::hsm_enclave::Error {}
+impl DefaultSignalNodeError for attest::hsm_enclave::Error {}
 
-impl SignalNodeError for attest::enclave::Error {}
+impl DefaultSignalNodeError for attest::enclave::Error {}
 
-impl SignalNodeError for signal_crypto::Error {}
+impl DefaultSignalNodeError for signal_crypto::Error {}
 
-impl SignalNodeError for zkgroup::ZkGroupVerificationFailure {}
+impl DefaultSignalNodeError for zkgroup::ZkGroupVerificationFailure {}
 
-impl SignalNodeError for zkgroup::ZkGroupDeserializationFailure {}
+impl DefaultSignalNodeError for zkgroup::ZkGroupDeserializationFailure {}
 
 impl SignalNodeError for usernames::UsernameError {
     fn into_throwable<'a, C: Context<'a>>(
@@ -283,7 +290,7 @@ impl SignalNodeError for usernames::UsernameError {
     }
 }
 
-impl SignalNodeError for usernames::ProofVerificationFailure {}
+impl DefaultSignalNodeError for usernames::ProofVerificationFailure {}
 
 impl SignalNodeError for usernames::UsernameLinkError {
     fn into_throwable<'a, C: Context<'a>>(
@@ -312,6 +319,7 @@ impl SignalNodeError for usernames::UsernameLinkError {
     }
 }
 
+#[cfg(feature = "signal-media")]
 impl SignalNodeError for Mp4Error {
     fn into_throwable<'a, C: Context<'a>>(
         self,
@@ -343,6 +351,7 @@ impl SignalNodeError for Mp4Error {
     }
 }
 
+#[cfg(feature = "signal-media")]
 impl SignalNodeError for WebpError {
     fn into_throwable<'a, C: Context<'a>>(
         self,
@@ -406,27 +415,29 @@ impl SignalNodeError for libsignal_net::chat::ConnectError {
         module: Handle<'a, JsObject>,
         operation_name: &str,
     ) -> Handle<'a, JsError> {
-        let (name, properties) = match self {
-            Self::AppExpired => (Some("AppExpired"), None),
-            Self::DeviceDeregistered => (Some("DeviceDelinked"), None),
-            Self::RetryLater(retry_later) => rate_limited_error(retry_later),
+        let name = match self {
+            Self::AppExpired => "AppExpired",
+            Self::DeviceDeregistered => "DeviceDelinked",
+            Self::RetryLater(retry_later) => {
+                return retry_later.into_throwable(cx, module, operation_name)
+            }
             Self::WebSocket(_)
             | Self::Timeout
             | Self::AllAttemptsFailed
             | Self::InvalidConnectionConfiguration =>
             // TODO: Distinguish retryable errors from proper failures?
             {
-                (Some(IO_ERROR), None)
+                IO_ERROR
             }
         };
         let message = self.to_string();
         new_js_error(
             cx,
             module,
-            name,
+            Some(name),
             &message,
             operation_name,
-            optional_extra_properties(properties),
+            no_extra_properties,
         )
     }
 }
@@ -461,6 +472,31 @@ impl SignalNodeError for libsignal_net::chat::SendError {
     }
 }
 
+impl SignalNodeError for libsignal_net::infra::errors::RetryLater {
+    fn into_throwable<'a, C: Context<'a>>(
+        self,
+        cx: &mut C,
+        module: Handle<'a, JsObject>,
+        operation_name: &str,
+    ) -> Handle<'a, JsError> {
+        let properties = move |cx: &mut C| {
+            let props = cx.empty_object();
+            let retry_after = self.retry_after_seconds.convert_into(cx)?;
+            props.set(cx, "retryAfterSecs", retry_after)?;
+            Ok(props.upcast())
+        };
+        let message = self.to_string();
+        new_js_error(
+            cx,
+            module,
+            Some("RateLimitedError"),
+            &message,
+            operation_name,
+            properties,
+        )
+    }
+}
+
 impl SignalNodeError for http::uri::InvalidUri {
     fn into_throwable<'a, C: Context<'a>>(
         self,
@@ -488,11 +524,13 @@ impl SignalNodeError for libsignal_net::cdsi::LookupError {
         module: Handle<'a, JsObject>,
         operation_name: &str,
     ) -> Handle<'a, JsError> {
-        let (name, make_extra_props) = match self {
-            Self::RateLimited(retry_later) => rate_limited_error(retry_later),
+        let name = match self {
+            Self::RateLimited(retry_later) => {
+                return retry_later.into_throwable(cx, module, operation_name)
+            }
             Self::AttestationError(e) => return e.into_throwable(cx, module, operation_name),
-            Self::InvalidArgument { server_reason: _ } => (None, None),
-            Self::InvalidToken => (Some("CdsiInvalidToken"), None),
+            Self::InvalidArgument { server_reason: _ } => None,
+            Self::InvalidToken => Some("CdsiInvalidToken"),
             Self::ConnectionTimedOut
             | Self::ConnectTransport(_)
             | Self::WebSocket(_)
@@ -500,7 +538,7 @@ impl SignalNodeError for libsignal_net::cdsi::LookupError {
             | Self::EnclaveProtocol(_)
             | Self::InvalidResponse
             | Self::ParseError
-            | Self::Server { reason: _ } => (Some(IO_ERROR), None),
+            | Self::Server { reason: _ } => Some(IO_ERROR),
         };
         let message = self.to_string();
         new_js_error(
@@ -509,26 +547,9 @@ impl SignalNodeError for libsignal_net::cdsi::LookupError {
             name,
             &message,
             operation_name,
-            optional_extra_properties(make_extra_props),
+            no_extra_properties,
         )
     }
-}
-
-fn rate_limited_error<'a, C: Context<'a>>(
-    retry_later: RetryLater,
-) -> (
-    Option<&'a str>,
-    Option<impl Fn(&mut C) -> JsResult<'a, JsValue>>,
-) {
-    (
-        Some(RATE_LIMITED_ERROR),
-        Some(move |cx: &mut C| {
-            let props = cx.empty_object();
-            let retry_after = retry_later.retry_after_seconds.convert_into(cx)?;
-            props.set(cx, "retryAfterSecs", retry_after)?;
-            Ok(props.upcast())
-        }),
-    )
 }
 
 impl SignalNodeError for CancellationError {

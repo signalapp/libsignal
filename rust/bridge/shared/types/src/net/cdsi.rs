@@ -89,6 +89,7 @@ impl CdsiLookup {
             user_agent,
             transport_connector,
             endpoints,
+            network_change_event,
             ..
         } = connection_manager;
 
@@ -122,6 +123,7 @@ impl CdsiLookup {
         let connected = CdsiConnection::connect_with(
             connect,
             dns_resolver,
+            network_change_event,
             DirectOrProxyProvider::maybe_proxied(route_provider, proxy_config),
             confirmation_header_name,
             ws_config,

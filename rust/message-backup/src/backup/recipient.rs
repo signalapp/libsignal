@@ -207,6 +207,10 @@ impl ChatItemAuthorKind {
             ChatItemAuthorKind::ReleaseNotes => false,
         }
     }
+
+    pub fn is_release_notes(&self) -> bool {
+        matches!(self, ChatItemAuthorKind::ReleaseNotes)
+    }
 }
 
 impl AsRef<MinimalRecipientData> for MinimalRecipientData {

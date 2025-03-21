@@ -14,6 +14,7 @@ use libsignal_net_infra::errors::{LogSafeDisplay, RetryLater, TransportConnectEr
 use libsignal_net_infra::route::{
     RouteProvider, ThrottlingConnector, UnresolvedWebsocketServiceRoute,
 };
+use libsignal_net_infra::utils::ObservableEvent;
 use libsignal_net_infra::ws::{NextOrClose, WebSocketConnectError, WebSocketServiceError};
 use libsignal_net_infra::ws2::attested::{
     AttestedConnection, AttestedConnectionError, AttestedProtocolError,
@@ -350,6 +351,7 @@ impl CdsiConnection {
     pub async fn connect_with(
         connect: &tokio::sync::RwLock<ConnectState<impl WebSocketTransportConnectorFactory>>,
         resolver: &DnsResolver,
+        network_change_event: &ObservableEvent,
         route_provider: impl RouteProvider<Route = UnresolvedWebsocketServiceRoute>,
         confirmation_header_name: Option<HeaderName>,
         ws_config: crate::infra::ws2::Config,
@@ -361,6 +363,7 @@ impl CdsiConnection {
             route_provider,
             auth,
             resolver,
+            network_change_event,
             confirmation_header_name,
             (
                 ws_config,

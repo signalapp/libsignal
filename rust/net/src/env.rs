@@ -200,6 +200,12 @@ pub(crate) const KEYTRANS_VRF_KEY_MATERIAL_STAGING: &[u8; 32] =
 pub(crate) const KEYTRANS_AUDITOR_KEY_MATERIAL_STAGING: &[u8; 32] =
     &hex!("1123b13ee32479ae6af5739e5d687b51559abf7684120511f68cde7a21a0e755");
 
+pub(crate) const KEYTRANS_CONFIG_STAGING: KeyTransConfig = KeyTransConfig {
+    signing_key_material: KEYTRANS_SIGNING_KEY_MATERIAL_STAGING,
+    vrf_key_material: KEYTRANS_VRF_KEY_MATERIAL_STAGING,
+    auditor_key_material: KEYTRANS_AUDITOR_KEY_MATERIAL_STAGING,
+};
+
 /// Configuration for a target network resource, like `chat.signal.org`.
 #[derive(Clone)]
 pub struct DomainConfig {
@@ -239,6 +245,7 @@ pub struct ConnectionProxyConfig {
     pub configs: [ProxyConfig; 2],
 }
 
+#[derive(Clone)]
 pub struct KeyTransConfig {
     pub signing_key_material: &'static [u8; 32],
     pub vrf_key_material: &'static [u8; 32],
@@ -499,11 +506,7 @@ pub const STAGING: Env<'static> = Env {
         domain_config: DOMAIN_CONFIG_SVR2_STAGING,
         params: ENDPOINT_PARAMS_SVR2_STAGING,
     },
-    keytrans_config: Some(KeyTransConfig {
-        signing_key_material: KEYTRANS_SIGNING_KEY_MATERIAL_STAGING,
-        vrf_key_material: KEYTRANS_VRF_KEY_MATERIAL_STAGING,
-        auditor_key_material: KEYTRANS_AUDITOR_KEY_MATERIAL_STAGING,
-    }),
+    keytrans_config: Some(KEYTRANS_CONFIG_STAGING),
 };
 
 pub const PROD: Env<'static> = Env {

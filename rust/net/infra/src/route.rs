@@ -493,6 +493,8 @@ impl<R> RouteDelayPolicy<R> for NoDelay {
 #[cfg(any(test, feature = "test-util"))]
 pub mod testutils {
     use std::cell::RefCell;
+    use std::convert::Infallible;
+    use std::future::Future;
     use std::net::IpAddr;
 
     use rand::rngs::mock::StepRng;
@@ -558,6 +560,27 @@ pub mod testutils {
             self.rng.borrow_mut().gen()
         }
     }
+
+    #[derive(Debug, PartialEq, Clone)]
+    pub struct FakeConnectError;
+
+    /// [`Connector`] impl whose `connect_over` never resolves.
+    pub struct NeverConnect;
+
+    impl<R> Connector<R, ()> for NeverConnect {
+        type Connection = Infallible;
+
+        type Error = FakeConnectError;
+
+        fn connect_over(
+            &self,
+            (): (),
+            _route: R,
+            _log_tag: Arc<str>,
+        ) -> impl Future<Output = Result<Self::Connection, Self::Error>> + Send {
+            std::future::pending()
+        }
+    }
 }
 
 #[cfg(test)]
@@ -587,7 +610,7 @@ mod test {
     use crate::dns::lookup_result::LookupResult;
     use crate::host::Host;
     use crate::route::resolve::testutils::FakeResolver;
-    use crate::route::testutils::{FakeContext, FakeRoute};
+    use crate::route::testutils::{FakeConnectError, FakeContext, FakeRoute};
     use crate::route::{SocksProxy, TlsProxy};
     use crate::tcp_ssl::proxy::socks;
     use crate::{Alpn, DnsSource};
@@ -846,9 +869,6 @@ mod test {
 
     #[derive(Debug, PartialEq)]
     struct FakeConnection<R>(R);
-
-    #[derive(Debug, PartialEq)]
-    struct FakeConnectError;
 
     #[derive(Debug)]
     struct FakeConnector<R> {
@@ -1121,24 +1141,6 @@ mod test {
                 HOSTNAMES[0].1[2],
             ]
         );
-    }
-
-    /// [`Connector`] impl whose `connect_over` never resolves.
-    struct NeverConnect;
-
-    impl<R> Connector<R, ()> for NeverConnect {
-        type Connection = Infallible;
-
-        type Error = FakeConnectError;
-
-        fn connect_over(
-            &self,
-            (): (),
-            _route: R,
-            _log_tag: Arc<str>,
-        ) -> impl Future<Output = Result<Self::Connection, Self::Error>> + Send {
-            std::future::pending()
-        }
     }
 
     #[tokio::test(start_paused = true)]

@@ -25,7 +25,7 @@ use crate::host::Host;
 use crate::route::{
     HttpRouteFragment, HttpsTlsRoute, TcpRoute, TlsRoute, TlsRouteFragment, DEFAULT_HTTPS_PORT,
 };
-use crate::timeouts::{DNS_FALLBACK_LOOKUP_TIMEOUTS, DNS_SYSTEM_LOOKUP_TIMEOUT};
+use crate::timeouts::{DNS_SYSTEM_LOOKUP_TIMEOUT, DOH_FALLBACK_LOOKUP_TIMEOUT};
 use crate::utils::oneshot_broadcast::{self, Receiver};
 use crate::utils::{self, ObservableEvent};
 use crate::Alpn;
@@ -151,28 +151,23 @@ impl DnsResolver {
     ) -> Self {
         let cloudflare_doh = Box::new(build_custom_resolver_cloudflare_doh(network_change_event));
 
-        let cloudflare_fallback_options =
-            DNS_FALLBACK_LOOKUP_TIMEOUTS
-                .iter()
-                .copied()
-                .map(|timeout_after| LookupOption {
-                    lookup: cloudflare_doh.clone(),
-                    timeout_after,
-                });
+        let lookup_options = [
+            LookupOption {
+                lookup: Box::new(SystemDnsLookup),
+                timeout_after: DNS_SYSTEM_LOOKUP_TIMEOUT,
+            },
+            LookupOption {
+                lookup: cloudflare_doh,
+                timeout_after: DOH_FALLBACK_LOOKUP_TIMEOUT,
+            },
+            LookupOption {
+                lookup: Box::new(StaticDnsMap(static_map)),
+                timeout_after: Duration::from_secs(1),
+            },
+        ];
 
-        let lookup_options = [LookupOption {
-            lookup: Box::new(SystemDnsLookup),
-            timeout_after: DNS_SYSTEM_LOOKUP_TIMEOUT,
-        }]
-        .into_iter()
-        .chain(cloudflare_fallback_options)
-        .chain([LookupOption {
-            lookup: Box::new(StaticDnsMap(static_map)),
-            timeout_after: Duration::from_secs(1),
-        }])
-        .collect();
         DnsResolver {
-            lookup_options,
+            lookup_options: lookup_options.into(),
             state: Default::default(),
         }
     }
@@ -319,7 +314,7 @@ mod test {
     use super::*;
     use crate::dns::dns_lookup::DnsLookupRequest;
     use crate::dns::{DnsLookup, DnsResolver, Error, LookupResult, StaticDnsMap};
-    use crate::utils::sleep_and_catch_up;
+    use crate::utils::{sleep_and_catch_up, timed};
     use crate::DnsSource;
 
     const IPV4: Ipv4Addr = ip_addr!(v4, "192.0.2.1");
@@ -480,6 +475,37 @@ mod test {
             .expect("success");
         assert_non_empty!(result.ipv4);
         assert_non_empty!(result.ipv6);
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn test_fallback_timing() {
+        // We have two resolvers chained together:
+        //   1. The primary resolver with a timeout of two seconds, that take three seconds to return an IPv6 result.
+        //   2. The fallback resolver with a timeout of two seconds, that returns an IPv4 result immediately.
+        //
+        // Thus, we expect that we get an IPv4 result from the fallback resolver almost immediately
+        //   after the primary lookup times out.
+        let primary_timeout = Duration::from_secs(2);
+        let fallback_timeout = Duration::from_secs(2);
+        let primary_lookup = TestLookup::with_custom_response(Duration::from_secs(3), IPV6);
+        let fallback_lookup = TestLookup::with_custom_response(Duration::ZERO, IPV4);
+
+        let resolver = Arc::new(DnsResolver::new_custom(vec![
+            (primary_lookup, primary_timeout),
+            (fallback_lookup, fallback_timeout),
+        ]));
+
+        let (elapsed, result) = timed(resolver.lookup_ip(CUSTOM_DOMAIN)).await;
+
+        assert_eq!(
+            result.unwrap().ipv4,
+            vec![IPV4],
+            "Fallback lookup did not return expected IPv4 result"
+        );
+        assert!(
+            primary_timeout == elapsed,
+            "Lookup timing was incorrect. Expected: primary_timeout ({primary_timeout:?}) == elapsed ({elapsed:?})",
+        );
     }
 
     #[tokio::test]

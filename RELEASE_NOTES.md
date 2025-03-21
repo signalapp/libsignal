@@ -1,3 +1,10 @@
-v0.67.5
+v0.67.6
 
-- Fix a bug in the Swift unauth chat listener that caused a crash on connect.
+- Retire old SVR2 staging enclave
+
+- keytrans: Remove unused APIs
+
+- backups: Relax check on session switchover update message authors
+
+- Node: Don't error if an unauthenticated chat socket receives an empty list of
+  alerts from the server.

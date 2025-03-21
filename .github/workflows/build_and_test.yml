@@ -4,6 +4,7 @@ on:
   push:
     branches: [ main ]
   pull_request: # all target branches
+  workflow_dispatch: {}
 
 env:
   CARGO_TERM_COLOR: always
@@ -437,4 +438,4 @@ jobs:
           CARGO_BUILD_TARGET: aarch64-apple-ios-sim
 
       - name: Run pod lint
-        run: pod lib lint --verbose --platforms=ios
+        run: pod lib lint --verbose --platforms=ios --skip-tests

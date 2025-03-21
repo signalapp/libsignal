@@ -55,6 +55,7 @@ public final class NativeTesting {
   public static native CompletableFuture<Object> TESTING_CdsiLookupResponseConvert(long asyncRuntime);
   public static native void TESTING_ChatConnectErrorConvert(String errorDescription) throws Exception;
   public static native byte[] TESTING_ChatRequestGetBody(long request);
+  public static native Object[] TESTING_ChatRequestGetHeaderNames(long request);
   public static native String TESTING_ChatRequestGetHeaderValue(long request, String headerName);
   public static native String TESTING_ChatRequestGetMethod(long request);
   public static native String TESTING_ChatRequestGetPath(long request);
@@ -71,6 +72,7 @@ public final class NativeTesting {
   public static native long TESTING_FakeChatConnection_Create(long tokio, BridgeChatListener listener, String alertsJoinedByNewlines);
   public static native long TESTING_FakeChatConnection_TakeAuthenticatedChat(long chat);
   public static native long TESTING_FakeChatConnection_TakeRemote(long chat);
+  public static native long TESTING_FakeChatConnection_TakeUnauthenticatedChat(long chat);
   public static native void TESTING_FakeChatRemoteEnd_InjectConnectionInterrupted(long chat);
   public static native CompletableFuture<Long> TESTING_FakeChatRemoteEnd_ReceiveIncomingRequest(long asyncRuntime, long chat);
   public static native void TESTING_FakeChatRemoteEnd_SendRawServerRequest(long chat, byte[] bytes);

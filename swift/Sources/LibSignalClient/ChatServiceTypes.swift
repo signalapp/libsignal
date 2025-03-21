@@ -60,6 +60,56 @@ public struct ChatRequest: Equatable, Sendable {
         override class func destroyNativeHandle(_ handle: NonNull<SignalMutPointerHttpRequest>) -> SignalFfiErrorRef? {
             return signal_http_request_destroy(handle.pointer)
         }
+
+// These testing endpoints aren't generated in device builds, to save on code size.
+#if !os(iOS) || targetEnvironment(simulator)
+        internal var method: String {
+            failOnError {
+                try withNativeHandle { request in
+                    try invokeFnReturningString {
+                        signal_testing_chat_request_get_method($0, request.const())
+                    }
+                }
+            }
+        }
+
+        internal var pathAndQuery: String {
+            failOnError {
+                try withNativeHandle { request in
+                    try invokeFnReturningString {
+                        signal_testing_chat_request_get_path($0, request.const())
+                    }
+                }
+            }
+        }
+
+        internal var body: Data {
+            failOnError {
+                try withNativeHandle { request in
+                    try invokeFnReturningData {
+                        signal_testing_chat_request_get_body($0, request.const())
+                    }
+                }
+            }
+        }
+
+        internal var headers: [String: String] {
+            failOnError {
+                try withNativeHandle { request in
+                    let headerNames = try invokeFnReturningStringArray {
+                        signal_testing_chat_request_get_header_names($0, request.const())
+                    }
+                    var headers = [String: String]()
+                    for k in headerNames {
+                        headers[k] = try invokeFnReturningString {
+                            signal_testing_chat_request_get_header_value($0, request.const(), k)
+                        }
+                    }
+                    return headers
+                }
+            }
+        }
+#endif
     }
 }
 

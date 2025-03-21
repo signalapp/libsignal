@@ -85,6 +85,7 @@ impl UnauthenticatedChatConnection {
         })
     }
 }
+
 impl AuthenticatedChatConnection {
     pub async fn connect(
         connection_manager: &ConnectionManager,
@@ -123,25 +124,11 @@ impl AuthenticatedChatConnection {
             &connection_manager.connect,
             route_provider,
             &connection_manager.dns_resolver,
+            &connection_manager.network_change_event,
             "preconnect".into(),
         )
         .await?;
         Ok(())
-    }
-
-    pub fn new_fake<'a>(
-        tokio_runtime: tokio::runtime::Handle,
-        listener: Box<dyn ChatListener>,
-        alerts: impl IntoIterator<Item = &'a str>,
-    ) -> (Self, FakeChatRemote) {
-        let (inner, remote) =
-            ChatConnection::new_fake(tokio_runtime, listener.into_event_listener(), alerts);
-        (
-            Self {
-                inner: MaybeChatConnection::Running(inner).into(),
-            },
-            remote,
-        )
     }
 }
 
@@ -233,6 +220,34 @@ fn init_listener(connection: &mut MaybeChatConnection, listener: Box<dyn ChatLis
     ))
 }
 
+pub struct FakeChatConnection(ChatConnection);
+
+impl FakeChatConnection {
+    pub fn new<'a>(
+        tokio_runtime: tokio::runtime::Handle,
+        listener: Box<dyn ChatListener>,
+        alerts: impl IntoIterator<Item = &'a str>,
+    ) -> (Self, FakeChatRemote) {
+        let (inner, remote) =
+            ChatConnection::new_fake(tokio_runtime, listener.into_event_listener(), alerts);
+        (Self(inner), remote)
+    }
+
+    pub fn into_unauthenticated(self) -> UnauthenticatedChatConnection {
+        let Self(inner) = self;
+        UnauthenticatedChatConnection {
+            inner: MaybeChatConnection::Running(inner).into(),
+        }
+    }
+
+    pub fn into_authenticated(self) -> AuthenticatedChatConnection {
+        let Self(inner) = self;
+        AuthenticatedChatConnection {
+            inner: MaybeChatConnection::Running(inner).into(),
+        }
+    }
+}
+
 async fn establish_chat_connection(
     auth_type: &'static str,
     connection_manager: &ConnectionManager,
@@ -244,6 +259,7 @@ async fn establish_chat_connection(
         connect,
         user_agent,
         endpoints,
+        network_change_event,
         ..
     } = connection_manager;
 
@@ -269,6 +285,7 @@ async fn establish_chat_connection(
     ChatConnection::start_connect_with(
         connect,
         dns_resolver,
+        network_change_event,
         route_provider,
         chat_connect
             .confirmation_header_name

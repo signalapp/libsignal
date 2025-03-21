@@ -1,13 +1,22 @@
 use std::time::Duration;
 
-/// Timeout for a system DNS lookup
+/// Timeout for a system DNS lookup.
+///
+/// The current DNS strategy is system lookup -> DOH fallback -> static fallback.
+/// Each lookup starts after the previous one has timed out.
+///
+/// This timeout is set low because system DNS is often cached, and when not cached,
+/// it will generally be fetched from a nearby recursive resolver in 1 RTT.
+///
+/// iOS and Android give us a maximum of thirty seconds to fetch notifications in the background,
+/// so [`DNS_SYSTEM_LOOKUP_TIMEOUT`] + [`DOH_FALLBACK_LOOKUP_TIMEOUT`] must be much less than
+/// thirty seconds to leave time for the static fallback in the worst case.
 pub const DNS_SYSTEM_LOOKUP_TIMEOUT: Duration = Duration::from_secs(5);
-/// A list of timeouts per each fallback DNS lookup attempt
-pub const DNS_FALLBACK_LOOKUP_TIMEOUTS: &[Duration] = &[
-    Duration::from_secs(5),
-    Duration::from_secs(10),
-    Duration::from_secs(15),
-];
+/// Timeout for a remote DNS-over-HTTPS lookup.
+///
+/// This timeout needs to be longer than system DNS because it will take at least 3 RTTs
+/// to the nearest Cloudflare point-of-presence.
+pub const DOH_FALLBACK_LOOKUP_TIMEOUT: Duration = Duration::from_secs(10);
 /// If during a DNS resolution we've sent multiple queries (one per IP type)
 /// and one of them produced a result, we'll wait this time interval
 /// to let the other query complete before proceeding
@@ -33,6 +42,14 @@ pub const WS_MAX_IDLE_INTERVAL: Duration = Duration::from_secs(45);
 /// Timeout for a connect operation that attempts one route
 /// (this includes DNS resolution, TCP connection, and SSL handshake)
 pub const ONE_ROUTE_CONNECTION_TIMEOUT: Duration = Duration::from_secs(60);
+
+/// How often to check if the network interface has changed (without an OS-provided network change
+/// event).
+pub const NETWORK_INTERFACE_POLL_INTERVAL: Duration = Duration::from_secs(5);
+
+/// Duration to wait after a network change event that has resulted in a different preferred network
+/// interface.
+pub const POST_ROUTE_CHANGE_CONNECTION_TIMEOUT: Duration = Duration::from_secs(1);
 
 /// Timeout for a connect operation that attempts multiple routes
 pub const MULTI_ROUTE_CONNECTION_TIMEOUT: Duration = Duration::from_secs(180);

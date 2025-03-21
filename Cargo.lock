@@ -169,9 +169,9 @@ dependencies = [
 
 [[package]]
 name = "array-concat"
-version = "0.5.3"
+version = "0.5.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "68b4d2c47ea522f4135657904891e533727daca3d2d852f29f5e4cc50960c77c"
+checksum = "de9067cfeb22d851858da2a5af9a82e385d363623094efa61cef7a45e651fc81"
 
 [[package]]
 name = "arrayref"
@@ -2352,7 +2352,7 @@ dependencies = [
 
 [[package]]
 name = "libsignal-ffi"
-version = "0.67.5"
+version = "0.67.6"
 dependencies = [
  "cpufeatures",
  "futures-util",
@@ -2367,14 +2367,14 @@ dependencies = [
 
 [[package]]
 name = "libsignal-jni"
-version = "0.67.5"
+version = "0.67.6"
 dependencies = [
  "libsignal-jni-impl",
 ]
 
 [[package]]
 name = "libsignal-jni-impl"
-version = "0.67.5"
+version = "0.67.6"
 dependencies = [
  "cfg-if",
  "cpufeatures",
@@ -2390,7 +2390,7 @@ dependencies = [
 
 [[package]]
 name = "libsignal-jni-testing"
-version = "0.67.5"
+version = "0.67.6"
 dependencies = [
  "jni",
  "libsignal-bridge-testing",
@@ -2613,7 +2613,7 @@ dependencies = [
 
 [[package]]
 name = "libsignal-node"
-version = "0.67.5"
+version = "0.67.6"
 dependencies = [
  "cmake",
  "futures",

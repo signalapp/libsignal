@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use libsignal_net_infra::errors::{LogSafeDisplay, RetryLater};
+use libsignal_net_infra::errors::{LogSafeDisplay, RetryLater, TransportConnectError};
 use libsignal_net_infra::extract_retry_later;
 use libsignal_net_infra::route::ConnectError as RouteConnectError;
 use libsignal_net_infra::timeouts::TimeoutOr;
@@ -46,8 +46,8 @@ pub enum ConnectError {
 }
 impl LogSafeDisplay for ConnectError {}
 
-impl From<TimeoutOr<RouteConnectError<WebSocketServiceConnectError>>> for ConnectError {
-    fn from(e: TimeoutOr<RouteConnectError<WebSocketServiceConnectError>>) -> Self {
+impl<T: Into<ConnectError>> From<TimeoutOr<RouteConnectError<T>>> for ConnectError {
+    fn from(e: TimeoutOr<RouteConnectError<T>>) -> Self {
         match e {
             TimeoutOr::Other(RouteConnectError::NoResolvedRoutes) => {
                 ConnectError::InvalidConnectionConfiguration
@@ -88,5 +88,17 @@ impl From<WebSocketServiceConnectError> for ConnectError {
                 }
             }
         }
+    }
+}
+
+/// This is consistent with the conversion from a WebSocketServiceConnectError that nested-ly
+/// contains a TransportConnectError.
+///
+/// It's available so that preconnecting chat can return the same kind of error as fully connecting
+/// chat. It's *not* provided on WebSocketConnectError beacuse that would skip the checking for
+/// particular HTTP responses.
+impl From<TransportConnectError> for ConnectError {
+    fn from(e: TransportConnectError) -> Self {
+        Self::WebSocket(WebSocketConnectError::Transport(e))
     }
 }

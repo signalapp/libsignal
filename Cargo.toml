@@ -35,7 +35,7 @@ default-members = [
 resolver = "2" # so that our dev-dependency features don't leak into products
 
 [workspace.package]
-version = "0.67.5"
+version = "0.67.6"
 rust-version = "1.80.1"
 authors = ["Signal Messenger LLC"]
 license = "AGPL-3.0-only"
@@ -82,7 +82,7 @@ tokio-boring-signal = { git = "https://github.com/signalapp/boring", package = "
 aes = "0.8.3"
 aes-gcm-siv = "0.11.1"
 argon2 = "0.5.0"
-array-concat = "0.5.2"
+array-concat = "0.5.5"
 arrayref = "0.3.6"
 arrayvec = "0.7.4"
 asn1 = "0.21.0"

@@ -170,8 +170,8 @@ extension SignalConstPointerServerMessageAck: SignalConstPointer {
     }
 }
 
-internal final class UnauthConnectionEventsListenerBridge {
-    private weak var chatConnection: UnauthenticatedChatConnection?
+internal class UnauthConnectionEventsListenerBridge {
+    internal weak var chatConnection: UnauthenticatedChatConnection?
     private let chatListener: any ConnectionEventsListener<UnauthenticatedChatConnection>
 
     init(
@@ -180,6 +180,12 @@ internal final class UnauthConnectionEventsListenerBridge {
     ) {
         self.chatConnection = chatConnection
         self.chatListener = listener
+    }
+
+    internal init(
+        chatConnectionEventsListenerForTesting chatListener: any ConnectionEventsListener<UnauthenticatedChatConnection>
+    ) {
+        self.chatListener = chatListener
     }
 
     /// Creates an **owned** callback struct from this object.

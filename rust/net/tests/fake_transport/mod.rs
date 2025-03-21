@@ -212,6 +212,7 @@ impl FakeDeps {
         ChatConnection::start_connect_with_transport(
             connect_state,
             dns_resolver,
+            &ObservableEvent::new(),
             DirectOrProxyProvider::maybe_proxied(
                 chat_domain_config
                     .connect

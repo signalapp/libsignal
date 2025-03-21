@@ -160,6 +160,38 @@ export class UnauthenticatedChatConnection implements ChatConnection {
     );
   }
 
+  /**
+   * Creates a chat connection backed by a fake remote end.
+   *
+   * @param asyncContext the async runtime to use
+   * @param listener the listener to send events to
+   * @returns an {@link UnauthenticatedChatConnection} and handle for the remote
+   * end of the fake connection.
+   */
+  public static fakeConnect(
+    asyncContext: TokioAsyncContext,
+    listener: ChatServiceListener
+  ): [UnauthenticatedChatConnection, Wrapper<Native.FakeChatRemoteEnd>] {
+    const nativeChatListener = makeNativeChatListener(asyncContext, listener);
+
+    const fakeChat = newNativeHandle(
+      Native.TESTING_FakeChatConnection_Create(
+        asyncContext,
+        new WeakListenerWrapper(nativeChatListener),
+        ''
+      )
+    );
+
+    const chat = newNativeHandle(
+      Native.TESTING_FakeChatConnection_TakeUnauthenticatedChat(fakeChat)
+    );
+
+    return [
+      new UnauthenticatedChatConnection(asyncContext, chat, nativeChatListener),
+      newNativeHandle(Native.TESTING_FakeChatConnection_TakeRemote(fakeChat)),
+    ];
+  }
+
   private constructor(
     private readonly asyncContext: TokioAsyncContext,
     private readonly chatService: Wrapper<Native.UnauthenticatedChatConnection>,
@@ -382,8 +414,12 @@ function makeNativeChatListener(
     _queue_empty(): void {
       throw new Error('Event not supported on unauthenticated connection');
     },
-    _received_alerts(_alerts: string[]): void {
-      throw new Error('Event not supported on unauthenticated connection');
+    _received_alerts(alerts: string[]): void {
+      if (alerts.length != 0) {
+        throw new Error(
+          `Got ${alerts.length} unexpected alerts on an unauthenticated connection`
+        );
+      }
     },
     _connection_interrupted(cause: LibSignalError | null): void {
       listener.onConnectionInterrupted(cause);

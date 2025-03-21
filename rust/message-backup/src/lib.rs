@@ -7,11 +7,6 @@
 //!
 //! Contains code to read and validate message backup files.
 
-// There are feature guards being produced as the result of a bug in the
-// array-concat crate. Silence the warnings for them since they're otherwise
-// harmless. See https://github.com/inspier/array-concat/issues/3.
-#![cfg_attr(test, allow(unexpected_cfgs))]
-
 use std::time::Duration;
 
 use futures::AsyncRead;
