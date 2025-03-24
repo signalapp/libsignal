@@ -330,11 +330,13 @@ where
     let mut log_for_slow_connections = tokio::time::interval(Duration::from_secs(3));
     log_for_slow_connections.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
     // Skip the first tick, as tokio::time::interval's "first tick completes immediately."
-    log_for_slow_connections.tick().await;
+    log_for_slow_connections.reset();
+
+    let start_of_connecting = Instant::now();
 
     // Whether the Schedule should be polled for its next route.
     let mut poll_schedule_for_next = true;
-    let mut most_recent_connection_start = Instant::now();
+    let mut most_recent_connection_start = start_of_connecting;
     let mut connects_in_progress = FuturesUnordered::new();
     let mut outcomes = Vec::new();
 
@@ -434,8 +436,9 @@ where
             }
             Event::LogStatus => {
                 log::info!(
-                    "[{log_tag}] {} connection(s) in progress, {} pending",
+                    "[{log_tag}] {} connection(s) in progress after {:.2?}, {} pending",
                     connects_in_progress.len(),
+                    start_of_connecting.elapsed(),
                     if schedule.is_some() { "more" } else { "none" }
                 );
             }
