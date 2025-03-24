@@ -15,7 +15,7 @@ pub use service::*;
 mod session_id;
 pub use session_id::*;
 
-impl RegistrationService {
+impl RegistrationService<'_> {
     pub async fn submit_captcha(
         &mut self,
         captcha_value: &str,
@@ -45,7 +45,7 @@ impl RegistrationService {
     pub async fn request_verification_code(
         &mut self,
         transport: VerificationTransport,
-        client: String,
+        client: &str,
     ) -> Result<(), RequestError<RequestVerificationCodeError>> {
         self.submit_request(RequestVerificationCode { transport, client })
             .await
@@ -54,7 +54,7 @@ impl RegistrationService {
 
     pub async fn submit_push_challenge(
         &mut self,
-        push_challenge: String,
+        push_challenge: &str,
     ) -> Result<(), RequestError<UpdateSessionError>> {
         self.submit_request(UpdateRegistrationSession {
             push_challenge: Some(push_challenge),
@@ -66,7 +66,7 @@ impl RegistrationService {
 
     pub async fn submit_verification_code(
         &mut self,
-        code: String,
+        code: &str,
     ) -> Result<(), RequestError<SubmitVerificationError>> {
         self.submit_request(SubmitVerificationCode { code })
             .await

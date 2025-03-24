@@ -29,14 +29,14 @@ use crate::registration::{
 /// A client is tied to a single registration session (identified by the session
 /// ID). It manages a semi-persistent connection to the Chat service that is
 /// used to communicate with Signal servers.
-pub struct RegistrationService {
+pub struct RegistrationService<'c> {
     session_id: SessionId,
     session: RegistrationSession,
-    connect_chat: Box<dyn ConnectChat + Send>,
+    connect_chat: Box<dyn ConnectChat + Send + 'c>,
     sender: tokio::sync::mpsc::Sender<IncomingRequest>,
 }
 
-impl Debug for RegistrationService {
+impl Debug for RegistrationService<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("RegistrationService")
             .field("session_id", &self.session_id)
@@ -62,7 +62,7 @@ pub trait ConnectChat: Send {
     ) -> BoxFuture<'_, Result<ChatConnection, ChatConnectError>>;
 }
 
-impl RegistrationService {
+impl<'c> RegistrationService<'c> {
     /// Creates a new registration session with the server.
     ///
     /// Yields a [`RegistrationService`] when the server responds successfully,
@@ -70,7 +70,7 @@ impl RegistrationService {
     /// transient errors are encountered.
     pub async fn create_session(
         create_session: CreateSession,
-        connect_chat: Box<dyn ConnectChat + Send>,
+        connect_chat: Box<dyn ConnectChat + Send + 'c>,
     ) -> Result<Self, RequestError<CreateSessionError>> {
         log::info!("starting new registration session");
         let (response, sender) =
@@ -99,7 +99,7 @@ impl RegistrationService {
     /// transient errors are encountered.
     pub async fn resume_session(
         session_id: SessionId,
-        connect_chat: Box<dyn ConnectChat + Send>,
+        connect_chat: Box<dyn ConnectChat + Send + 'c>,
     ) -> Result<Self, RequestError<ResumeSessionError>> {
         log::info!("trying to resume existing registration session with session ID {session_id}");
         let request: ChatRequest = RegistrationRequest {

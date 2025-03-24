@@ -90,20 +90,20 @@ pub(super) struct UpdateRegistrationSession<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) push_token_type: Option<PushTokenType>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub(crate) push_challenge: Option<String>,
+    pub(crate) push_challenge: Option<&'a str>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-pub(super) struct RequestVerificationCode {
+pub(super) struct RequestVerificationCode<'a> {
     pub(super) transport: VerificationTransport,
-    pub(super) client: String,
+    pub(super) client: &'a str,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-pub(super) struct SubmitVerificationCode {
-    pub(super) code: String,
+pub(super) struct SubmitVerificationCode<'a> {
+    pub(super) code: &'a str,
 }
 
 pub(super) struct RegistrationRequest<'s, R> {
@@ -202,7 +202,7 @@ impl Request for UpdateRegistrationSession<'_> {
     }
 }
 
-impl Request for RequestVerificationCode {
+impl Request for RequestVerificationCode<'_> {
     const METHOD: Method = Method::POST;
     fn request_path(session_id: &SessionId) -> PathAndQuery {
         format!(
@@ -221,7 +221,7 @@ impl Request for RequestVerificationCode {
     }
 }
 
-impl Request for SubmitVerificationCode {
+impl Request for SubmitVerificationCode<'_> {
     const METHOD: Method = Method::PUT;
     fn request_path(session_id: &SessionId) -> PathAndQuery {
         RequestVerificationCode::request_path(session_id)
@@ -430,7 +430,7 @@ mod test {
             session_id: &SessionId::from_str("aaabbbcccdddeee").unwrap(),
             request: RequestVerificationCode {
                 transport: VerificationTransport::Sms,
-                client: "client name".to_owned(),
+                client: "client name",
             },
         }
         .into();

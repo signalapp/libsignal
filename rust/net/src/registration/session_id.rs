@@ -36,7 +36,7 @@ impl SessionId {
         validate(&s).map(|()| Self(s.to_string()))
     }
 
-    pub(crate) fn as_url_path_segment(&self) -> &str {
+    pub fn as_url_path_segment(&self) -> &str {
         &self.0
     }
 }
