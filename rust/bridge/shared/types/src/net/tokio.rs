@@ -4,6 +4,7 @@
 //
 
 use std::collections::HashMap;
+use std::convert::Infallible;
 use std::future::Future;
 use std::sync::atomic::AtomicU64;
 use std::sync::{Arc, Mutex};
@@ -15,7 +16,7 @@ use crate::support::*;
 use crate::*;
 pub struct TokioAsyncContext {
     pub(crate) rt: tokio::runtime::Runtime,
-    tasks: Arc<Mutex<HashMap<CancellationId, tokio::sync::oneshot::Sender<()>>>>,
+    tasks: Arc<Mutex<HashMap<CancellationId, tokio::sync::oneshot::Sender<Infallible>>>>,
     next_raw_cancellation_id: AtomicU64,
 }
 
@@ -50,7 +51,7 @@ impl std::panic::RefUnwindSafe for TokioAsyncContext {}
 
 bridge_as_handle!(TokioAsyncContext);
 
-pub struct TokioContextCancellation(tokio::sync::oneshot::Receiver<()>);
+pub struct TokioContextCancellation(tokio::sync::oneshot::Receiver<Infallible>);
 
 impl Future for TokioContextCancellation {
     type Output = ();
@@ -59,7 +60,7 @@ impl Future for TokioContextCancellation {
         mut self: std::pin::Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Self::Output> {
-        // Treat both sends and closes as completion.
+        // Treat closes as completion (sends are impossible).
         self.0.poll_unpin(cx).map(|_| ())
     }
 }
