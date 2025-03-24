@@ -5,14 +5,11 @@
 
 use std::marker::PhantomData;
 
-use http::HeaderName;
-use libsignal_net_infra::dns::DnsResolver;
 use libsignal_net_infra::route::{RouteProvider, UnresolvedWebsocketServiceRoute};
-use libsignal_net_infra::utils::ObservableEvent;
 use libsignal_net_infra::ws2::attested::AttestedConnection;
 
 use crate::auth::Auth;
-use crate::connect_state::{ConnectState, RouteInfo, WebSocketTransportConnectorFactory};
+use crate::connect_state::{ConnectionResources, RouteInfo, WebSocketTransportConnectorFactory};
 pub use crate::enclave::Error;
 use crate::enclave::{
     ConnectionLabel, EnclaveKind, EndpointParams, IntoAttestedConnection, LabeledConnection,
@@ -38,31 +35,25 @@ where
     E: EnclaveKind + NewHandshake + Sized,
 {
     pub async fn connect(
-        connect: &tokio::sync::RwLock<ConnectState<impl WebSocketTransportConnectorFactory>>,
-        resolver: &DnsResolver,
-        network_change_event: &ObservableEvent,
+        connection_resources: ConnectionResources<'_, impl WebSocketTransportConnectorFactory>,
         route_provider: impl RouteProvider<Route = UnresolvedWebsocketServiceRoute>,
-        confirmation_header_name: Option<HeaderName>,
         ws_config: crate::infra::ws2::Config,
         params: &EndpointParams<'_, E>,
         auth: Auth,
     ) -> Result<Self, Error> {
-        ConnectState::connect_attested_ws(
-            connect,
-            route_provider,
-            auth,
-            resolver,
-            network_change_event,
-            confirmation_header_name,
-            (ws_config, crate::infra::ws::WithoutResponseHeaders::new()),
-            format!("svr3:{}", std::any::type_name::<E>()).into(),
-            params,
-        )
-        .await
-        .map(|(connection, info)| Self {
-            inner: connection,
-            remote_address: info,
-            witness: PhantomData,
-        })
+        connection_resources
+            .connect_attested_ws(
+                route_provider,
+                auth,
+                (ws_config, crate::infra::ws::WithoutResponseHeaders::new()),
+                format!("svr3:{}", std::any::type_name::<E>()).into(),
+                params,
+            )
+            .await
+            .map(|(connection, info)| Self {
+                inner: connection,
+                remote_address: info,
+                witness: PhantomData,
+            })
     }
 }

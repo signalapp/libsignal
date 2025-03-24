@@ -13,7 +13,8 @@ use futures_util::Stream;
 use itertools::Itertools as _;
 use libsignal_net::chat::{self, ChatConnection, PendingChatConnection};
 use libsignal_net::connect_state::{
-    ConnectState, DefaultConnectorFactory, DefaultTransportConnector, SUGGESTED_CONNECT_CONFIG,
+    ConnectState, ConnectionResources, DefaultConnectorFactory, DefaultTransportConnector,
+    SUGGESTED_CONNECT_CONFIG,
 };
 use libsignal_net::env::{ConnectionConfig, DomainConfig, UserAgent};
 use libsignal_net::infra::connection_manager::MultiRouteConnectionManager;
@@ -209,17 +210,21 @@ impl FakeDeps {
             remote_idle_ping_timeout,
             remote_idle_disconnect_timeout: _,
         } = endpoint_connection.config.ws2_config();
-        ChatConnection::start_connect_with_transport(
+        let connection_resources = ConnectionResources {
             connect_state,
             dns_resolver,
-            &ObservableEvent::new(),
+            network_change_event: &ObservableEvent::new(),
+            confirmation_header_name: None,
+        };
+
+        ChatConnection::start_connect_with_transport(
+            connection_resources,
             DirectOrProxyProvider::maybe_proxied(
                 chat_domain_config
                     .connect
                     .route_provider(EnableDomainFronting::OneDomainPerProxy),
                 None,
             ),
-            None,
             &UserAgent::with_libsignal_version("test"),
             chat::ws2::Config {
                 local_idle_timeout,

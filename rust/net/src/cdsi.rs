@@ -6,15 +6,13 @@
 use std::default::Default;
 
 use futures_util::TryFutureExt as _;
-use http::{HeaderName, StatusCode};
+use http::StatusCode;
 use libsignal_core::{Aci, Pni, E164};
 use libsignal_net_infra::connection_manager::ConnectionManager;
-use libsignal_net_infra::dns::DnsResolver;
 use libsignal_net_infra::errors::{LogSafeDisplay, RetryLater, TransportConnectError};
 use libsignal_net_infra::route::{
     RouteProvider, ThrottlingConnector, UnresolvedWebsocketServiceRoute,
 };
-use libsignal_net_infra::utils::ObservableEvent;
 use libsignal_net_infra::ws::{NextOrClose, WebSocketConnectError, WebSocketServiceError};
 use libsignal_net_infra::ws2::attested::{
     AttestedConnection, AttestedConnectionError, AttestedProtocolError,
@@ -27,7 +25,7 @@ use tungstenite::protocol::CloseFrame;
 use uuid::Uuid;
 
 use crate::auth::Auth;
-use crate::connect_state::{ConnectState, WebSocketTransportConnectorFactory};
+use crate::connect_state::{ConnectionResources, WebSocketTransportConnectorFactory};
 use crate::enclave::{Cdsi, EnclaveEndpointConnection, EndpointParams};
 use crate::proto::cds2::{ClientRequest, ClientResponse};
 use crate::ws::WebSocketServiceConnectError;
@@ -349,36 +347,30 @@ impl CdsiConnection {
     }
 
     pub async fn connect_with(
-        connect: &tokio::sync::RwLock<ConnectState<impl WebSocketTransportConnectorFactory>>,
-        resolver: &DnsResolver,
-        network_change_event: &ObservableEvent,
+        connection_resources: ConnectionResources<'_, impl WebSocketTransportConnectorFactory>,
         route_provider: impl RouteProvider<Route = UnresolvedWebsocketServiceRoute>,
-        confirmation_header_name: Option<HeaderName>,
         ws_config: crate::infra::ws2::Config,
         params: &EndpointParams<'_, Cdsi>,
         auth: Auth,
     ) -> Result<Self, LookupError> {
-        let (connection, _route_info) = ConnectState::connect_attested_ws(
-            connect,
-            route_provider,
-            auth,
-            resolver,
-            network_change_event,
-            confirmation_header_name,
-            (
-                ws_config,
-                // We don't want to race multiple websocket handshakes because when
-                // we take the first one, the others will be uncermoniously closed.
-                // That looks like unexpected behavior at the server end, and the
-                // wasted handshakes consume resources unnecessarily.  Instead,
-                // allow parallelism at the transport level but throttle the number
-                // of websocket handshakes that can complete.
-                ThrottlingConnector::new(crate::infra::ws::WithoutResponseHeaders::new(), 1),
-            ),
-            "cdsi".into(),
-            params,
-        )
-        .await?;
+        let (connection, _route_info) = connection_resources
+            .connect_attested_ws(
+                route_provider,
+                auth,
+                (
+                    ws_config,
+                    // We don't want to race multiple websocket handshakes because when
+                    // we take the first one, the others will be uncermoniously closed.
+                    // That looks like unexpected behavior at the server end, and the
+                    // wasted handshakes consume resources unnecessarily.  Instead,
+                    // allow parallelism at the transport level but throttle the number
+                    // of websocket handshakes that can complete.
+                    ThrottlingConnector::new(crate::infra::ws::WithoutResponseHeaders::new(), 1),
+                ),
+                "cdsi".into(),
+                params,
+            )
+            .await?;
         Ok(Self(connection))
     }
 

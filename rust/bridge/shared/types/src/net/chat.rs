@@ -20,6 +20,7 @@ use libsignal_net::chat::{
     self, ChatConnection, ConnectError, ConnectionInfo, DebugInfo as ChatServiceDebugInfo, Request,
     Response as ChatResponse, SendError,
 };
+use libsignal_net::connect_state::ConnectionResources;
 use libsignal_net::infra::route::{
     ConnectionProxyConfig, DirectOrProxyProvider, RouteProvider, RouteProviderExt,
     UnresolvedHttpsServiceRoute,
@@ -118,16 +119,17 @@ impl AuthenticatedChatConnection {
             .enable_fronting;
         let route_provider = make_route_provider(connection_manager, enable_domain_fronting)?
             .map_routes(|r| r.inner);
+        let connection_resources = ConnectionResources {
+            connect_state: &connection_manager.connect,
+            dns_resolver: &connection_manager.dns_resolver,
+            network_change_event: &connection_manager.network_change_event,
+            confirmation_header_name: None,
+        };
 
         log::info!("preconnecting chat");
-        libsignal_net::connect_state::ConnectState::preconnect_and_save(
-            &connection_manager.connect,
-            route_provider,
-            &connection_manager.dns_resolver,
-            &connection_manager.network_change_event,
-            "preconnect".into(),
-        )
-        .await?;
+        connection_resources
+            .preconnect_and_save(route_provider, "preconnect".into())
+            .await?;
         Ok(())
     }
 }
@@ -278,18 +280,21 @@ async fn establish_chat_connection(
     } = ws_config;
 
     let chat_connect = &env.chat_domain_config.connect;
+    let connection_resources = ConnectionResources {
+        connect_state: connect,
+        dns_resolver,
+        network_change_event,
+        confirmation_header_name: chat_connect
+            .confirmation_header_name
+            .map(HeaderName::from_static),
+    };
     let route_provider = make_route_provider(connection_manager, enable_domain_fronting)?;
 
     log::info!("connecting {auth_type} chat");
 
     ChatConnection::start_connect_with(
-        connect,
-        dns_resolver,
-        network_change_event,
+        connection_resources,
         route_provider,
-        chat_connect
-            .confirmation_header_name
-            .map(HeaderName::from_static),
         user_agent,
         libsignal_net::chat::ws2::Config {
             local_idle_timeout,

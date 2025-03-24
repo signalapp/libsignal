@@ -6,6 +6,7 @@
 use http::HeaderName;
 use libsignal_net::auth::Auth;
 use libsignal_net::cdsi::{self, CdsiConnection, ClientResponseCollector, Token};
+use libsignal_net::connect_state::ConnectionResources;
 use libsignal_net::infra::errors::RetryLater;
 use libsignal_net::infra::route::{DirectOrProxyProvider, RouteProviderExt};
 use libsignal_net::infra::tcp_ssl::InvalidProxyConfig;
@@ -119,13 +120,16 @@ impl CdsiLookup {
             .connect
             .confirmation_header_name
             .map(HeaderName::from_static);
-
-        let connected = CdsiConnection::connect_with(
-            connect,
+        let connection_resources = ConnectionResources {
+            connect_state: connect,
             dns_resolver,
             network_change_event,
-            DirectOrProxyProvider::maybe_proxied(route_provider, proxy_config),
             confirmation_header_name,
+        };
+
+        let connected = CdsiConnection::connect_with(
+            connection_resources,
+            DirectOrProxyProvider::maybe_proxied(route_provider, proxy_config),
             ws_config,
             &env.cdsi.params,
             auth,

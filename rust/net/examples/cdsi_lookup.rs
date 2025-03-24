@@ -10,7 +10,7 @@ use clap::Parser;
 use http::HeaderName;
 use libsignal_net::auth::Auth;
 use libsignal_net::cdsi::{CdsiConnection, LookupError, LookupRequest, LookupResponse};
-use libsignal_net::connect_state::{ConnectState, SUGGESTED_CONNECT_CONFIG};
+use libsignal_net::connect_state::{ConnectState, ConnectionResources, SUGGESTED_CONNECT_CONFIG};
 use libsignal_net::enclave::EnclaveEndpointConnection;
 use libsignal_net::infra::dns::DnsResolver;
 use libsignal_net::infra::utils::ObservableEvent;
@@ -80,22 +80,25 @@ async fn main() {
     let resolver = DnsResolver::new(&network_change_event);
 
     let connected = if use_routes {
-        let confirmation_header = cdsi_env
+        let confirmation_header_name = cdsi_env
             .domain_config
             .connect
             .confirmation_header_name
             .map(HeaderName::from_static);
         let connect_state = ConnectState::new(SUGGESTED_CONNECT_CONFIG);
+        let connection_resources = ConnectionResources {
+            connect_state: &connect_state,
+            dns_resolver: &resolver,
+            network_change_event: &network_change_event,
+            confirmation_header_name,
+        };
 
         CdsiConnection::connect_with(
-            &connect_state,
-            &resolver,
-            &network_change_event,
+            connection_resources,
             DirectOrProxyProvider::maybe_proxied(
                 cdsi_env.route_provider(EnableDomainFronting::No),
                 None,
             ),
-            confirmation_header,
             WS2_CONFIG,
             &cdsi_env.params,
             auth,
