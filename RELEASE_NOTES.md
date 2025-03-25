@@ -4,3 +4,5 @@ v0.67.7
 
 - net: Add a client for the registration verification service. This is currently
   only available via the Node bindings.
+
+- Java: InputStreams created by MessageBackup.validate() are now correctly closed when the operation is complete.

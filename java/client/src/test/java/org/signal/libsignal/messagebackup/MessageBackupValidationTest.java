@@ -17,6 +17,7 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 import org.junit.Test;
 import org.signal.libsignal.protocol.ServiceId.Aci;
@@ -201,6 +202,36 @@ public class MessageBackupValidationTest {
               MessageBackup.validate(key, BACKUP_PURPOSE, throwingStreamFactory, length);
             });
     assertEquals(thrown.getMessage(), ThrowingInputStream.MESSAGE);
+  }
+
+  @Test
+  public void inputStreamsGetClosed() {
+    final var openCount = new AtomicInteger();
+    final var closeCount = new AtomicInteger();
+
+    Supplier<InputStream> factory =
+        () -> {
+          openCount.incrementAndGet();
+          return new InputStream() {
+            public void close() {
+              closeCount.incrementAndGet();
+            }
+
+            public int read() {
+              return -1; // EOF
+            }
+          };
+        };
+    MessageBackupKey key = makeMessageBackupKey();
+
+    ValidationError error =
+        assertThrows(
+            ValidationError.class,
+            () -> {
+              MessageBackup.validate(key, BACKUP_PURPOSE, factory, 0);
+            });
+    assertTrue("never actually opened?", openCount.get() > 0);
+    assertEquals("stream(s) not properly closed", openCount.get(), closeCount.get());
   }
 }
 
