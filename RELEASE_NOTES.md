@@ -1,4 +1,4 @@
-v0.67.7
+v0.68.0
 
 - Swift: Allow UnidentifiedSenderMessageContent to be constructed from a message type and opaque bytes. (Contributed by @saman3d!)
 
@@ -6,3 +6,5 @@ v0.67.7
   only available via the Node bindings.
 
 - Java: InputStreams created by MessageBackup.validate() are now correctly closed when the operation is complete.
+
+- Node: The InputStream abstraction now has an optional close() method, which will be called by MessageBackup.validate() on any created streams when the operation is complete. If your InputStream already has a close() method, this may be a breaking change for you.

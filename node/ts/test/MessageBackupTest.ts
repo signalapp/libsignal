@@ -13,6 +13,7 @@ import * as path from 'node:path';
 import { hkdf, LogLevel } from '..';
 import { AccountEntropyPool, BackupKey } from '../AccountKeys';
 import { Readable } from 'node:stream';
+import { InputStream } from '../io';
 
 util.initLogger(LogLevel.Trace);
 
@@ -106,6 +107,39 @@ describe('MessageBackup', () => {
       } catch (e) {
         assert.instanceOf(e, ErrorInputStream.Error);
       }
+    });
+
+    it('closes the streams it creates', async () => {
+      let openCount = 0;
+      let closeCount = 0;
+      class CloseCountingInputStream extends InputStream {
+        /* eslint-disable @typescript-eslint/require-await */
+        async close(): Promise<void> {
+          closeCount += 1;
+        }
+        async read(_amount: number): Promise<Buffer> {
+          return Buffer.of();
+        }
+        async skip(amount: number): Promise<void> {
+          if (amount > 0) {
+            throw Error("can't skip in an empty stream");
+          }
+        }
+        /* eslint-enable @typescript-eslint/require-await */
+      }
+
+      const outcome = await MessageBackup.validate(
+        testKey,
+        purpose,
+        () => {
+          openCount += 1;
+          return new CloseCountingInputStream();
+        },
+        0n
+      );
+      assert.equal(outcome.errorMessage, 'not enough bytes for an HMAC');
+      assert.isAbove(openCount, 0, 'never opened?');
+      assert.equal(openCount, closeCount, 'failed to close all streams');
     });
   });
 });
