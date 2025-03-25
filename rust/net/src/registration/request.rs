@@ -47,7 +47,8 @@ pub struct RegistrationSession {
     pub requested_information: HashSet<RequestedInformation>,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, serde::Deserialize)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, serde::Deserialize, strum::AsRefStr)]
+#[strum(serialize_all = "camelCase")]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(test, derive(serde::Serialize))]
 pub enum RequestedInformation {
@@ -55,8 +56,9 @@ pub enum RequestedInformation {
     Captcha,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, serde::Serialize)]
-#[serde(rename_all = "lowercase")]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, serde::Serialize, strum::EnumString)]
+#[strum(serialize_all = "camelCase")]
+#[serde(rename_all = "camelCase")]
 pub enum PushTokenType {
     Apn,
     Fcm,

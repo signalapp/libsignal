@@ -25,6 +25,7 @@ use crate::*;
 
 pub mod cdsi;
 pub mod chat;
+pub mod registration;
 pub mod tokio;
 
 pub use tokio::TokioAsyncContext;

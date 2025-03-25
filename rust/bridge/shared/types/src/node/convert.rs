@@ -10,6 +10,7 @@ use std::hash::Hasher;
 use std::num::ParseIntError;
 use std::ops::{Deref, DerefMut, RangeInclusive};
 use std::slice;
+use std::time::Duration;
 
 use libsignal_account_keys::{AccountEntropyPool, InvalidAccountEntropyPool};
 use neon::prelude::*;
@@ -375,6 +376,44 @@ impl SimpleArgTypeInfo for Box<[u8]> {
     }
 }
 
+impl SimpleArgTypeInfo for libsignal_net::registration::PushTokenType {
+    type ArgType = JsString;
+
+    fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {
+        let s = foreign.value(cx);
+        s.parse()
+            .or_else(|_| cx.throw_type_error(format!("invalid push token type {s:?}")))
+    }
+}
+
+impl SimpleArgTypeInfo for libsignal_net::registration::CreateSession {
+    type ArgType = JsObject;
+
+    fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {
+        let number = foreign.get::<JsString, _, _>(cx, "number")?.value(cx);
+        let push_token = foreign
+            .get_opt::<JsString, _, _>(cx, "push_token")?
+            .map(|s| s.value(cx));
+        let push_token_type = foreign
+            .get_opt(cx, "push_token_type")?
+            .map(|s| SimpleArgTypeInfo::convert_from(cx, s))
+            .transpose()?;
+        let mcc = foreign
+            .get_opt::<JsString, _, _>(cx, "mcc")?
+            .map(|s| s.value(cx));
+        let mnc = foreign
+            .get_opt::<JsString, _, _>(cx, "mnc")?
+            .map(|s| s.value(cx));
+        Ok(Self {
+            number,
+            push_token,
+            push_token_type,
+            mcc,
+            mnc,
+        })
+    }
+}
+
 /// Converts `null` to `None`, passing through all other values.
 impl<'storage, 'context: 'storage, T> ArgTypeInfo<'storage, 'context> for Option<T>
 where
@@ -687,6 +726,23 @@ impl<'a> AsyncArgTypeInfo<'a> for Box<dyn ChatListener> {
 
     fn load_async_arg(stored: &'a mut Self::StoredType) -> Self {
         stored.make_listener()
+    }
+}
+
+impl<'a> AsyncArgTypeInfo<'a> for Box<dyn crate::net::registration::ConnectChatBridge> {
+    type ArgType = JsObject;
+    type StoredType = Option<crate::node::chat::NodeConnectChatFactory>;
+
+    fn save_async_arg(
+        cx: &mut FunctionContext,
+        foreign: Handle<Self::ArgType>,
+    ) -> NeonResult<Self::StoredType> {
+        crate::node::chat::NodeConnectChatFactory::from_connection_manager_wrapper(cx, foreign)
+            .map(Some)
+    }
+
+    fn load_async_arg(stored: &'a mut Self::StoredType) -> Self {
+        Box::new(stored.take().expect("only loaded once"))
     }
 }
 
@@ -1043,6 +1099,56 @@ impl<'a> ResultTypeInfo<'a> for libsignal_net::cdsi::LookupResponse {
         let output = JsObject::new(cx);
         output.set(cx, "entries", map)?;
         output.set(cx, "debugPermitsUsed", debug_permits_used)?;
+        Ok(output)
+    }
+}
+
+impl<'a> ResultTypeInfo<'a> for libsignal_net::registration::RequestedInformation {
+    type ResultType = JsString;
+    fn convert_into(self, cx: &mut impl Context<'a>) -> JsResult<'a, Self::ResultType> {
+        Ok(cx.string(self.as_ref()))
+    }
+}
+
+impl<'a> ResultTypeInfo<'a> for libsignal_net::registration::RegistrationSession {
+    type ResultType = JsObject;
+    fn convert_into(self, cx: &mut impl Context<'a>) -> JsResult<'a, Self::ResultType> {
+        let Self {
+            allowed_to_request_code,
+            verified,
+            next_sms,
+            next_call,
+            next_verification_attempt,
+            requested_information,
+        } = self;
+
+        fn optional_duration_as_secs<'a>(
+            cx: &mut impl Context<'a>,
+            d: Option<Duration>,
+        ) -> Handle<'a, JsValue> {
+            d.map(|d| cx.number(d.as_secs_f64())).or_undefined(cx)
+        }
+
+        let allowed_to_request_code = cx.boolean(allowed_to_request_code);
+        let verified = cx.boolean(verified);
+        let next_sms_secs = optional_duration_as_secs(cx, next_sms);
+        let next_call_secs = optional_duration_as_secs(cx, next_call);
+        let next_verification_attempt_secs =
+            optional_duration_as_secs(cx, next_verification_attempt);
+        let requested_information = make_array(cx, requested_information)?;
+
+        let output = JsObject::new(cx);
+        output.set(cx, "allowedToRequestCode", allowed_to_request_code)?;
+        output.set(cx, "verified", verified)?;
+        output.set(cx, "nextSmsSecs", next_sms_secs)?;
+        output.set(cx, "nextCallSecs", next_call_secs)?;
+        output.set(
+            cx,
+            "nextVerificationAttemptSecs",
+            next_verification_attempt_secs,
+        )?;
+        output.set(cx, "requestedInformation", requested_information)?;
+
         Ok(output)
     }
 }

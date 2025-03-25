@@ -130,6 +130,15 @@ type ChatListener = {
   ): void;
 };
 
+type RegistrationSession = {
+  allowedToRequestCode: boolean;
+  verified: boolean;
+  nextSmsSecs?: number;
+  nextCallSecs?: number;
+  nextVerificationAttemptSecs?: number;
+  requestedInformation: Array<'pushChallenge' | 'captcha'>;
+};
+
 type Wrapper<T> = Readonly<{
   _nativeHandle: T;
 }>;

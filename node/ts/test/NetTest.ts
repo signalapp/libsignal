@@ -876,3 +876,19 @@ describe('cdsi lookup', () => {
     });
   });
 });
+
+describe('registration client', () => {
+  describe('registration session conversion', () => {
+    const expectedSession: Native.RegistrationSession = {
+      allowedToRequestCode: true,
+      verified: true,
+      nextCallSecs: 123,
+      nextSmsSecs: 456,
+      nextVerificationAttemptSecs: 789,
+      requestedInformation: ['pushChallenge'],
+    };
+
+    const convertedSession = Native.TESTING_RegistrationSessionInfoConvert();
+    expect(convertedSession).to.deep.equal(expectedSession);
+  });
+});

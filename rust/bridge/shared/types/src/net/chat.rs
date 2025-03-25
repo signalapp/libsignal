@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::convert::Infallible;
 use std::future::Future;
 use std::panic::{RefUnwindSafe, UnwindSafe};
 use std::str::FromStr;
@@ -16,6 +17,7 @@ use http::{HeaderMap, HeaderName, HeaderValue};
 use libsignal_net::auth::Auth;
 use libsignal_net::chat::fake::FakeChatRemote;
 use libsignal_net::chat::server_requests::DisconnectCause;
+use libsignal_net::chat::ws2::ListenerEvent;
 use libsignal_net::chat::{
     self, ChatConnection, ConnectError, ConnectionInfo, DebugInfo as ChatServiceDebugInfo, Request,
     Response as ChatResponse, SendError,
@@ -200,6 +202,26 @@ impl<C: AsRef<tokio::sync::RwLock<MaybeChatConnection>> + Sync> BridgeChatConnec
 
         connection_info.clone()
     }
+}
+
+pub(crate) async fn connect_registration_chat(
+    tokio_runtime: &tokio::runtime::Handle,
+    connection_manager: &ConnectionManager,
+    drop_on_disconnect: tokio::sync::oneshot::Sender<Infallible>,
+) -> Result<ChatConnection, ConnectError> {
+    let pending = establish_chat_connection("registration", connection_manager, None).await?;
+
+    let mut on_disconnect = Some(drop_on_disconnect);
+    let listener = move |event| match event {
+        ListenerEvent::Finished(_) => drop(on_disconnect.take()),
+        ListenerEvent::ReceivedAlerts(_) | ListenerEvent::ReceivedMessage(_, _) => (),
+    };
+
+    Ok(ChatConnection::finish_connect(
+        tokio_runtime.clone(),
+        pending,
+        Box::new(listener),
+    ))
 }
 
 fn init_listener(connection: &mut MaybeChatConnection, listener: Box<dyn ChatListener>) {

@@ -3,9 +3,14 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::fmt::Debug;
+use std::panic::UnwindSafe;
 use std::sync::Arc;
 
+use futures_util::future::BoxFuture;
+use futures_util::FutureExt;
 use libsignal_net::chat::server_requests::DisconnectCause;
+use libsignal_net::chat::{ChatConnection, ConnectError};
 use libsignal_protocol::Timestamp;
 use neon::context::FunctionContext;
 use neon::event::Channel;
@@ -15,7 +20,8 @@ use neon::result::NeonResult;
 use signal_neon_futures::call_method;
 
 use crate::net::chat::{ChatListener, ServerMessageAck};
-use crate::node::{ResultTypeInfo, SignalNodeError as _};
+use crate::net::ConnectionManager;
+use crate::node::{PersistentBorrowedJsBoxedBridgeHandle, ResultTypeInfo, SignalNodeError as _};
 
 #[derive(Clone)]
 pub struct NodeChatListener {
@@ -140,5 +146,118 @@ impl Finalize for Roots {
     fn finalize<'a, C: neon::prelude::Context<'a>>(self, cx: &mut C) {
         self.callback_object.finalize(cx);
         self.module.finalize(cx);
+    }
+}
+
+pub struct NodeConnectChatFactory {
+    // Option so that it can be moved on `Drop::drop`.
+    connection_manager: Option<PersistentBorrowedJsBoxedBridgeHandle<ConnectionManager>>,
+    // Only used in the `Drop` impl to provide a JS context for finalization.
+    js_channel: Channel,
+}
+
+#[derive(Debug)]
+pub struct NodeConnectChat {
+    tokio_runtime: tokio::runtime::Handle,
+    factory: NodeConnectChatFactory,
+}
+
+// This type is safe to transfer across an unwind boundary. The runtime handle
+// type is unwind-safe since it's part of  a tokio Runtime, which is itself
+// unwind-safe.
+//
+// TODO(https://github.com/tokio-rs/tokio/pull/7230): remove this manual impl in
+// favor of the compiler's auto-generated one.
+impl UnwindSafe for NodeConnectChat {}
+
+impl Debug for NodeConnectChatFactory {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("NodeConnectChatFactory")
+            .field("connection_manager", &"_")
+            .field("js_channel", &self.js_channel)
+            .finish()
+    }
+}
+
+impl NodeConnectChatFactory {
+    pub fn from_connection_manager_wrapper(
+        cx: &mut FunctionContext,
+        connection_manager_wrapper: Handle<JsObject>,
+    ) -> NeonResult<Self> {
+        let mut channel = cx.channel();
+        channel.unref(cx);
+
+        Ok(Self {
+            js_channel: channel,
+            connection_manager: Some(PersistentBorrowedJsBoxedBridgeHandle::new(
+                cx,
+                connection_manager_wrapper,
+            )?),
+        })
+    }
+}
+
+impl crate::net::registration::ConnectChatBridge for NodeConnectChatFactory {
+    fn create_chat_connector(
+        self: Box<Self>,
+        runtime: tokio::runtime::Handle,
+    ) -> Box<dyn libsignal_net::registration::ConnectChat + Send + Sync + UnwindSafe> {
+        Box::new(NodeConnectChat {
+            tokio_runtime: runtime,
+            factory: *self,
+        })
+    }
+}
+
+impl Finalize for NodeConnectChatFactory {
+    fn finalize<'a, C: Context<'a>>(mut self, cx: &mut C) {
+        let Self {
+            connection_manager,
+            js_channel: _,
+        } = &mut self;
+        if let Some(connection_manager) = connection_manager.take() {
+            connection_manager.finalize(cx);
+        }
+    }
+}
+
+impl Drop for NodeConnectChatFactory {
+    fn drop(&mut self) {
+        let Self {
+            connection_manager,
+            js_channel,
+        } = self;
+        if let Some(connection_manager) = connection_manager.take() {
+            let _ = js_channel.send(move |mut cx| {
+                connection_manager.finalize(&mut cx);
+                Ok(())
+            });
+        }
+    }
+}
+
+impl libsignal_net::registration::ConnectChat for NodeConnectChat {
+    fn connect_chat(
+        &self,
+        on_disconnect: tokio::sync::oneshot::Sender<std::convert::Infallible>,
+    ) -> BoxFuture<'_, Result<ChatConnection, ConnectError>> {
+        let Self {
+            factory:
+                NodeConnectChatFactory {
+                    connection_manager,
+                    js_channel: _,
+                },
+            tokio_runtime,
+        } = self;
+        let connection_manager = connection_manager.as_deref().expect("always Some");
+        async move {
+            crate::net::chat::connect_registration_chat(
+                tokio_runtime,
+                connection_manager,
+                on_disconnect,
+            )
+            .await
+        }
+        .boxed()
     }
 }

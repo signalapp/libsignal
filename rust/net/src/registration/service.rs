@@ -6,11 +6,13 @@
 use std::convert::Infallible;
 use std::fmt::Debug;
 use std::future::Future;
+use std::panic::UnwindSafe;
 
 use either::Either;
 use futures_util::future::BoxFuture;
 use futures_util::{FutureExt as _, Stream, StreamExt as _};
 use libsignal_net_infra::errors::{LogSafeDisplay, RetryLater};
+use static_assertions::assert_impl_all;
 use tokio::sync::{mpsc, oneshot};
 use tokio::time::{Duration, Instant};
 use tokio_stream::wrappers::ReceiverStream;
@@ -32,9 +34,11 @@ use crate::registration::{
 pub struct RegistrationService<'c> {
     session_id: SessionId,
     session: RegistrationSession,
-    connect_chat: Box<dyn ConnectChat + Send + 'c>,
+    connect_chat: Box<dyn ConnectChat + Send + Sync + UnwindSafe + 'c>,
     sender: tokio::sync::mpsc::Sender<IncomingRequest>,
 }
+
+assert_impl_all!(RegistrationService<'static>: UnwindSafe);
 
 impl Debug for RegistrationService<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -70,7 +74,7 @@ impl<'c> RegistrationService<'c> {
     /// transient errors are encountered.
     pub async fn create_session(
         create_session: CreateSession,
-        connect_chat: Box<dyn ConnectChat + Send + 'c>,
+        connect_chat: Box<dyn ConnectChat + Send + Sync + UnwindSafe + 'c>,
     ) -> Result<Self, RequestError<CreateSessionError>> {
         log::info!("starting new registration session");
         let (response, sender) =
@@ -99,7 +103,7 @@ impl<'c> RegistrationService<'c> {
     /// transient errors are encountered.
     pub async fn resume_session(
         session_id: SessionId,
-        connect_chat: Box<dyn ConnectChat + Send + 'c>,
+        connect_chat: Box<dyn ConnectChat + Send + Sync + UnwindSafe + 'c>,
     ) -> Result<Self, RequestError<ResumeSessionError>> {
         log::info!("trying to resume existing registration session with session ID {session_id}");
         let request: ChatRequest = RegistrationRequest {
@@ -185,7 +189,7 @@ impl<'c> RegistrationService<'c> {
 /// connection to the service. Non-fatal connect errors are retried.
 async fn send_request<E>(
     request: ChatRequest,
-    connect_chat: &(impl ConnectChat + ?Sized),
+    connect_chat: &(impl ConnectChat + Sync + ?Sized),
     mut sender: Option<&mpsc::Sender<IncomingRequest>>,
 ) -> Result<(ChatResponse, mpsc::Sender<IncomingRequest>), RequestError<E>>
 where
