@@ -48,9 +48,8 @@ pub use target::FakeTransportTarget;
 /// Convenience alias for a dynamically-dispatched stream.
 pub type FakeStream = Box<dyn AsyncDuplexStream>;
 
-/// Produces an iterator with [`Behavior::ReturnStream`] for all un-proxied
-/// (direct and domain-fronted) routes.
-pub fn allow_all_routes(
+/// Produces an iterator with just direct routes (without chaining domain fronted routes).
+pub fn only_direct_routes(
     domain_config: &DomainConfig,
     resolved_names: &HashMap<&'static str, LookupResult>,
 ) -> impl Iterator<Item = (FakeTransportTarget, Behavior)> {
@@ -81,6 +80,14 @@ pub fn allow_all_routes(
             sni: Host::Domain((*hostname).into()),
         }])
         .zip(std::iter::repeat(Behavior::ReturnStream(None)))
+}
+
+/// Produces an iterator with [`Behavior::ReturnStream`] for all un-proxied (direct) and domain-fronted routes.
+pub fn allow_all_routes(
+    domain_config: &DomainConfig,
+    resolved_names: &HashMap<&'static str, LookupResult>,
+) -> impl Iterator<Item = (FakeTransportTarget, Behavior)> {
+    only_direct_routes(domain_config, resolved_names)
         .chain(allow_domain_fronting(domain_config, resolved_names))
 }
 

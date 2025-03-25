@@ -23,11 +23,12 @@ use libsignal_net_infra::route::{
     ResolveWithSavedDescription, ResolvedRoute, RouteProvider, RouteProviderContext,
     RouteProviderExt as _, RouteResolver, ThrottlingConnector, TransportRoute,
     UnresolvedRouteDescription, UnresolvedTransportRoute, UnresolvedWebsocketServiceRoute,
-    UsePreconnect, UsesTransport, WebSocketRouteFragment, WebSocketServiceRoute,
+    UsePreconnect, UsesTransport, VariableTlsTimeoutConnector, WebSocketRouteFragment,
+    WebSocketServiceRoute,
 };
 use libsignal_net_infra::timeouts::{
-    TimeoutOr, NETWORK_INTERFACE_POLL_INTERVAL, ONE_ROUTE_CONNECTION_TIMEOUT,
-    POST_ROUTE_CHANGE_CONNECTION_TIMEOUT,
+    TimeoutOr, MIN_TLS_HANDSHAKE_TIMEOUT, NETWORK_INTERFACE_POLL_INTERVAL,
+    ONE_ROUTE_CONNECTION_TIMEOUT, POST_ROUTE_CHANGE_CONNECTION_TIMEOUT,
 };
 use libsignal_net_infra::utils::ObservableEvent;
 use libsignal_net_infra::ws::{WebSocketConnectError, WebSocketStreamLike};
@@ -105,7 +106,7 @@ pub struct ConnectState<ConnectorFactory = DefaultConnectorFactory> {
     route_provider_context: RouteProviderContextImpl,
 }
 
-pub type DefaultTransportConnector = ComposedConnector<
+pub type DefaultTransportConnector = VariableTlsTimeoutConnector<
     ThrottlingConnector<crate::infra::tcp_ssl::StatelessDirect>,
     crate::infra::route::DirectOrProxy<
         crate::infra::tcp_ssl::StatelessDirect,
@@ -141,7 +142,11 @@ where
     fn make(&self) -> Self::Connector {
         let throttle_tls_connections = ThrottlingConnector::new(Default::default(), 1);
         let proxy_or_direct_connector = Default::default();
-        ComposedConnector::new(throttle_tls_connections, proxy_or_direct_connector)
+        VariableTlsTimeoutConnector::new(
+            throttle_tls_connections,
+            proxy_or_direct_connector,
+            MIN_TLS_HANDSHAKE_TIMEOUT,
+        )
     }
 }
 

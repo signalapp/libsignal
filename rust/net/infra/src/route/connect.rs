@@ -32,6 +32,9 @@ pub use preconnect::*;
 mod throttle;
 pub use throttle::*;
 
+mod variable_timeout;
+pub use variable_timeout::*;
+
 /// Establishes a connection to a route over an inner transport.
 pub trait Connector<R, Inner> {
     /// The type of connection returned on success.
@@ -160,6 +163,34 @@ where
             inner: tcp_route,
         } = route;
         self.connect_inner_then_outer(over, tcp_route, tls_fragment, log_tag)
+    }
+}
+
+/// Same as above but with a variable timeout
+impl<A, B, Inner, T, Error> Connector<TlsRoute<T>, Inner>
+    for VariableTlsTimeoutConnector<A, B, Error>
+where
+    A: Connector<TlsRouteFragment, B::Connection, Error: Into<Error>> + Sync,
+    B: Connector<T, Inner, Error: Into<Error>> + Sync,
+    Inner: Send,
+    T: Send,
+    Error: From<crate::errors::TlsHandshakeTimeout>,
+{
+    type Connection = A::Connection;
+
+    type Error = Error;
+
+    fn connect_over(
+        &self,
+        over: Inner,
+        route: TlsRoute<T>,
+        log_tag: Arc<str>,
+    ) -> impl Future<Output = Result<Self::Connection, Self::Error>> + Send {
+        let TlsRoute {
+            fragment: tls_fragment,
+            inner: tcp_route,
+        } = route;
+        self.connect_inner_then_outer_with_timeout(over, tcp_route, tls_fragment, log_tag)
     }
 }
 

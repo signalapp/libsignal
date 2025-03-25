@@ -3,7 +3,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use libsignal_net_infra::route::{ComposedConnector, DirectOrProxy, ThrottlingConnector};
+use libsignal_net_infra::route::{
+    ComposedConnector, DirectOrProxy, ThrottlingConnector, VariableTlsTimeoutConnector,
+};
 
 use super::FakeTransportConnector;
 
@@ -29,6 +31,24 @@ where
         ComposedConnector::new(
             outer.replace_with_fake(fake.clone()),
             inner.replace_with_fake(fake),
+        )
+    }
+}
+
+impl<Inner, Outer, Error> ReplaceStatelessConnectorsWithFake
+    for VariableTlsTimeoutConnector<Outer, Inner, Error>
+where
+    Outer: ReplaceStatelessConnectorsWithFake,
+    Inner: ReplaceStatelessConnectorsWithFake,
+{
+    type Replacement = VariableTlsTimeoutConnector<Outer::Replacement, Inner::Replacement, Error>;
+
+    fn replace_with_fake(self, fake: FakeTransportConnector) -> Self::Replacement {
+        let (outer, inner, timeout) = self.into_connectors_and_min_timeout();
+        VariableTlsTimeoutConnector::new(
+            outer.replace_with_fake(fake.clone()),
+            inner.replace_with_fake(fake),
+            timeout,
         )
     }
 }

@@ -61,11 +61,23 @@ impl Display for SslErrorReasons {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct FailedHandshakeReason {
     io: Option<std::io::ErrorKind>,
     code: Option<boring_signal::ssl::ErrorCode>,
 }
+
+impl FailedHandshakeReason {
+    pub const TIMED_OUT: Self = Self {
+        io: Some(std::io::ErrorKind::TimedOut),
+        code: None,
+    };
+}
+
+/// Error type for TLS handshake timeouts
+#[derive(Debug, Clone, Copy, thiserror::Error)]
+#[error("TLS handshake timed out")]
+pub struct TlsHandshakeTimeout;
 
 impl<S> From<HandshakeError<S>> for FailedHandshakeReason {
     fn from(value: HandshakeError<S>) -> Self {
@@ -142,5 +154,11 @@ impl From<TransportConnectError> for std::io::Error {
             TransportConnectError::ClientAbort => ErrorKind::ConnectionAborted,
         };
         Self::new(kind, value.to_string())
+    }
+}
+
+impl From<TlsHandshakeTimeout> for TransportConnectError {
+    fn from(TlsHandshakeTimeout: TlsHandshakeTimeout) -> Self {
+        Self::SslFailedHandshake(FailedHandshakeReason::TIMED_OUT)
     }
 }
