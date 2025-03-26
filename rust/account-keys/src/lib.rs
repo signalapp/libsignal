@@ -22,6 +22,7 @@ pub const SVR_KEY_LEN: usize = 32;
 // The randomly-generated user-memorized entropy backing the "Backup Key"
 pub struct AccountEntropyPool {
     // TODO(andrew): Ideally we would swap u8 with std::ascii::char when it stabilizes.
+    // No MSRV yet, see: https://github.com/rust-lang/rust/issues/110998
     entropy_pool: [u8; Self::LENGTH],
 }
 
