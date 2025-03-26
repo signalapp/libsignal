@@ -130,14 +130,7 @@ type ChatListener = {
   ): void;
 };
 
-type RegistrationSession = {
-  allowedToRequestCode: boolean;
-  verified: boolean;
-  nextSmsSecs?: number;
-  nextCallSecs?: number;
-  nextVerificationAttemptSecs?: number;
-  requestedInformation: Array<'pushChallenge' | 'captcha'>;
-};
+type RequestedInformation = 'pushChallenge' | 'captcha';
 
 type Wrapper<T> = Readonly<{
   _nativeHandle: T;
@@ -424,6 +417,12 @@ export function RegistrationService_SessionId(service: Wrapper<RegistrationServi
 export function RegistrationService_SubmitCaptcha(asyncRuntime: Wrapper<TokioAsyncContext>, service: Wrapper<RegistrationService>, captchaValue: string): CancellablePromise<void>;
 export function RegistrationService_SubmitPushChallenge(asyncRuntime: Wrapper<TokioAsyncContext>, service: Wrapper<RegistrationService>, pushChallenge: string): CancellablePromise<void>;
 export function RegistrationService_SubmitVerificationCode(asyncRuntime: Wrapper<TokioAsyncContext>, service: Wrapper<RegistrationService>, code: string): CancellablePromise<void>;
+export function RegistrationSession_GetAllowedToRequestCode(session: Wrapper<RegistrationSession>): boolean;
+export function RegistrationSession_GetNextCallSeconds(session: Wrapper<RegistrationSession>): number | null;
+export function RegistrationSession_GetNextSmsSeconds(session: Wrapper<RegistrationSession>): number | null;
+export function RegistrationSession_GetNextVerificationAttemptSeconds(session: Wrapper<RegistrationSession>): number | null;
+export function RegistrationSession_GetRequestedInformation(session: Wrapper<RegistrationSession>): RequestedInformation[];
+export function RegistrationSession_GetVerified(session: Wrapper<RegistrationSession>): boolean;
 export function SanitizedMetadata_GetDataLen(sanitized: Wrapper<SanitizedMetadata>): bigint;
 export function SanitizedMetadata_GetDataOffset(sanitized: Wrapper<SanitizedMetadata>): bigint;
 export function SanitizedMetadata_GetMetadata(sanitized: Wrapper<SanitizedMetadata>): Buffer;
@@ -672,6 +671,7 @@ interface ReceiptCredentialRequest { readonly __type: unique symbol; }
 interface ReceiptCredentialRequestContext { readonly __type: unique symbol; }
 interface ReceiptCredentialResponse { readonly __type: unique symbol; }
 interface RegistrationService { readonly __type: unique symbol; }
+interface RegistrationSession { readonly __type: unique symbol; }
 interface SanitizedMetadata { readonly __type: unique symbol; }
 interface SealedSenderDecryptionResult { readonly __type: unique symbol; }
 interface SenderCertificate { readonly __type: unique symbol; }

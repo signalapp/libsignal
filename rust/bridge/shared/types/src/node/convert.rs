@@ -10,7 +10,6 @@ use std::hash::Hasher;
 use std::num::ParseIntError;
 use std::ops::{Deref, DerefMut, RangeInclusive};
 use std::slice;
-use std::time::Duration;
 
 use libsignal_account_keys::{AccountEntropyPool, InvalidAccountEntropyPool};
 use neon::prelude::*;
@@ -1110,46 +1109,10 @@ impl<'a> ResultTypeInfo<'a> for libsignal_net::registration::RequestedInformatio
     }
 }
 
-impl<'a> ResultTypeInfo<'a> for libsignal_net::registration::RegistrationSession {
-    type ResultType = JsObject;
+impl<'a> ResultTypeInfo<'a> for Vec<libsignal_net::registration::RequestedInformation> {
+    type ResultType = JsArray;
     fn convert_into(self, cx: &mut impl Context<'a>) -> JsResult<'a, Self::ResultType> {
-        let Self {
-            allowed_to_request_code,
-            verified,
-            next_sms,
-            next_call,
-            next_verification_attempt,
-            requested_information,
-        } = self;
-
-        fn optional_duration_as_secs<'a>(
-            cx: &mut impl Context<'a>,
-            d: Option<Duration>,
-        ) -> Handle<'a, JsValue> {
-            d.map(|d| cx.number(d.as_secs_f64())).or_undefined(cx)
-        }
-
-        let allowed_to_request_code = cx.boolean(allowed_to_request_code);
-        let verified = cx.boolean(verified);
-        let next_sms_secs = optional_duration_as_secs(cx, next_sms);
-        let next_call_secs = optional_duration_as_secs(cx, next_call);
-        let next_verification_attempt_secs =
-            optional_duration_as_secs(cx, next_verification_attempt);
-        let requested_information = make_array(cx, requested_information)?;
-
-        let output = JsObject::new(cx);
-        output.set(cx, "allowedToRequestCode", allowed_to_request_code)?;
-        output.set(cx, "verified", verified)?;
-        output.set(cx, "nextSmsSecs", next_sms_secs)?;
-        output.set(cx, "nextCallSecs", next_call_secs)?;
-        output.set(
-            cx,
-            "nextVerificationAttemptSecs",
-            next_verification_attempt_secs,
-        )?;
-        output.set(cx, "requestedInformation", requested_information)?;
-
-        Ok(output)
+        make_array(cx, self)
     }
 }
 

@@ -9,13 +9,14 @@ use libsignal_bridge_types::net::TokioAsyncContext;
 use libsignal_bridge_types::*;
 use libsignal_net::registration::{
     CreateSession, CreateSessionError, PushTokenType, RegistrationSession, RequestError,
-    RequestVerificationCodeError, ResumeSessionError, SessionId, SubmitVerificationError,
-    UpdateSessionError, VerificationTransport,
+    RequestVerificationCodeError, RequestedInformation, ResumeSessionError, SessionId,
+    SubmitVerificationError, UpdateSessionError, VerificationTransport,
 };
 
 use crate::support::*;
 
 bridge_handle_fns!(RegistrationService, clone = false, ffi = false, jni = false);
+bridge_handle_fns!(RegistrationSession, clone = false, ffi = false, jni = false);
 
 #[bridge_io(TokioAsyncContext, ffi = false, jni = false)]
 async fn RegistrationService_CreateSession(
@@ -108,4 +109,44 @@ fn RegistrationService_SessionId(service: &RegistrationService) -> String {
 #[bridge_fn(ffi = false, jni = false)]
 fn RegistrationService_RegistrationSession(service: &RegistrationService) -> RegistrationSession {
     service.0.blocking_lock().session_state().clone()
+}
+
+#[bridge_fn(ffi = false, jni = false)]
+fn RegistrationSession_GetAllowedToRequestCode(session: &RegistrationSession) -> bool {
+    session.allowed_to_request_code
+}
+
+#[bridge_fn(ffi = false, jni = false)]
+fn RegistrationSession_GetVerified(session: &RegistrationSession) -> bool {
+    session.verified
+}
+
+#[bridge_fn(ffi = false, jni = false)]
+fn RegistrationSession_GetNextCallSeconds(session: &RegistrationSession) -> Option<u32> {
+    session
+        .next_call
+        .map(|d| d.as_secs().try_into().unwrap_or(u32::MAX))
+}
+
+#[bridge_fn(ffi = false, jni = false)]
+fn RegistrationSession_GetNextSmsSeconds(session: &RegistrationSession) -> Option<u32> {
+    session
+        .next_sms
+        .map(|d| d.as_secs().try_into().unwrap_or(u32::MAX))
+}
+
+#[bridge_fn(ffi = false, jni = false)]
+fn RegistrationSession_GetNextVerificationAttemptSeconds(
+    session: &RegistrationSession,
+) -> Option<u32> {
+    session
+        .next_verification_attempt
+        .map(|d| d.as_secs().try_into().unwrap_or(u32::MAX))
+}
+
+#[bridge_fn(ffi = false, jni = false)]
+fn RegistrationSession_GetRequestedInformation(
+    session: &RegistrationSession,
+) -> Vec<RequestedInformation> {
+    session.requested_information.iter().copied().collect()
 }

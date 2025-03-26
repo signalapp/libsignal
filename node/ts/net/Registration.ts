@@ -6,7 +6,7 @@
 import type { ReadonlyDeep } from 'type-fest';
 import * as Native from '../../Native';
 import { LibSignalError, RateLimitedError } from '../Errors';
-import type { Net, TokioAsyncContext } from '../net';
+import { newNativeHandle, type Net, type TokioAsyncContext } from '../net';
 
 type ConnectionManager = Native.Wrapper<Native.ConnectionManager>;
 
@@ -53,11 +53,9 @@ export class RegistrationService {
    * this property.
    */
   public get sessionState(): RegistrationSessionState {
-    const session = Native.RegistrationService_RegistrationSession(this);
-    return {
-      ...session,
-      requestedInformation: new Set(session.requestedInformation),
-    };
+    return RegistrationService._convertNativeSessionState(
+      newNativeHandle(Native.RegistrationService_RegistrationSession(this))
+    );
   }
 
   /**
@@ -120,7 +118,7 @@ export class RegistrationService {
       this,
       captcha
     );
-    return Native.RegistrationService_RegistrationSession(this);
+    return this.sessionState;
   }
 
   public async requestVerification({
@@ -144,6 +142,33 @@ export class RegistrationService {
       this,
       code
     );
-    return Native.RegistrationService_RegistrationSession(this).verified;
+    return this.sessionState.verified;
+  }
+
+  /**
+   *  Internal, only public for testing
+   */
+  public static _convertNativeSessionState(
+    session: Native.Wrapper<Native.RegistrationSession>
+  ): RegistrationSessionState {
+    const nextCallSecs = Native.RegistrationSession_GetNextCallSeconds(session);
+    const nextSmsSecs = Native.RegistrationSession_GetNextSmsSeconds(session);
+    const nextVerificationAttemptSecs =
+      Native.RegistrationSession_GetNextVerificationAttemptSeconds(session);
+
+    return {
+      allowedToRequestCode:
+        Native.RegistrationSession_GetAllowedToRequestCode(session),
+      verified: Native.RegistrationSession_GetVerified(session),
+      nextCallSecs: nextCallSecs != null ? nextCallSecs : undefined,
+      nextSmsSecs: nextSmsSecs != null ? nextSmsSecs : undefined,
+      nextVerificationAttemptSecs:
+        nextVerificationAttemptSecs != null
+          ? nextVerificationAttemptSecs
+          : undefined,
+      requestedInformation: new Set(
+        Native.RegistrationSession_GetRequestedInformation(session)
+      ),
+    };
   }
 }
