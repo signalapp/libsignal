@@ -45,6 +45,9 @@ pub use tcp::*;
 mod tls;
 pub use tls::*;
 
+mod udp;
+pub use udp::*;
+
 mod ws;
 pub use ws::*;
 

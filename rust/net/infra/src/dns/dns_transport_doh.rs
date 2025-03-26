@@ -2,6 +2,7 @@
 // Copyright 2024 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
+
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 use std::sync::Arc;
 
@@ -18,8 +19,12 @@ use crate::dns::dns_lookup::DnsLookupRequest;
 use crate::dns::dns_message;
 use crate::dns::dns_message::{parse_a_record, parse_aaaa_record};
 use crate::dns::dns_types::ResourceType;
-use crate::http_client::{http2_client, AggregatingHttp2Client};
-use crate::route::{ConnectionOutcomes, HttpsTlsRoute, ResolvedRoute, TcpRoute, TlsRoute};
+use crate::errors::{LogSafeDisplay, TransportConnectError};
+use crate::http_client::{AggregatingHttp2Client, Http2Connector};
+use crate::route::{
+    ComposedConnector, Connector, ConnectorExt, ConnectorFactory, HttpsTlsRoute, TcpRoute,
+    ThrottlingConnector, TlsRoute,
+};
 use crate::{dns, DnsSource};
 
 pub(crate) const CLOUDFLARE_IPS: (Ipv4Addr, Ipv6Addr) = (
@@ -28,6 +33,64 @@ pub(crate) const CLOUDFLARE_IPS: (Ipv4Addr, Ipv6Addr) = (
 );
 const MAX_RESPONSE_SIZE: usize = 10240;
 
+pub struct DohTransportConnectorFactory;
+
+impl ConnectorFactory<HttpsTlsRoute<TlsRoute<TcpRoute<IpAddr>>>> for DohTransportConnectorFactory {
+    type Connector = DohTransportConnector;
+    type Connection = DohTransport;
+
+    fn make(&self) -> Self::Connector {
+        Default::default()
+    }
+}
+
+pub struct DohTransportConnector {
+    transport_connector: ComposedConnector<
+        crate::tcp_ssl::StatelessDirect,
+        ThrottlingConnector<crate::tcp_ssl::StatelessDirect>,
+        TransportConnectError,
+    >,
+}
+
+impl Default for DohTransportConnector {
+    fn default() -> Self {
+        Self {
+            transport_connector: ComposedConnector::new(
+                crate::tcp_ssl::StatelessDirect,
+                ThrottlingConnector::new(crate::tcp_ssl::StatelessDirect, 1),
+            ),
+        }
+    }
+}
+
+impl Connector<HttpsTlsRoute<TlsRoute<TcpRoute<IpAddr>>>, ()> for DohTransportConnector {
+    type Connection = DohTransport;
+    type Error = Error;
+
+    async fn connect_over(
+        &self,
+        _over: (),
+        route: HttpsTlsRoute<TlsRoute<TcpRoute<IpAddr>>>,
+        log_tag: Arc<str>,
+    ) -> Result<Self::Connection, Self::Error> {
+        let connector = Http2Connector {
+            inner: &self.transport_connector,
+            max_response_size: MAX_RESPONSE_SIZE,
+        };
+        let http_client = connector
+            .connect(route, log_tag.clone())
+            .await
+            .map_err(|e| {
+                log::error!(
+                    "[{log_tag}] Failed to create HTTP2 client: {}",
+                    &e as &dyn LogSafeDisplay
+                );
+                Error::TransportFailure
+            })?;
+        Ok(DohTransport { http_client })
+    }
+}
+
 /// DNS transport that sends queries over HTTPS
 #[derive(Clone, Debug)]
 pub struct DohTransport {
@@ -35,37 +98,7 @@ pub struct DohTransport {
 }
 
 impl DnsTransport for DohTransport {
-    type ConnectionParameters = Vec<Self::Route>;
-    type Route = HttpsTlsRoute<TlsRoute<TcpRoute<IpAddr>>>;
-
-    fn dns_source() -> DnsSource {
-        DnsSource::DnsOverHttpsLookup
-    }
-
-    async fn connect(
-        mut connection_params: Self::ConnectionParameters,
-        outcomes_record: &tokio::sync::RwLock<ConnectionOutcomes<Self::Route>>,
-        ipv6_enabled: bool,
-    ) -> dns::Result<Self> {
-        let log_tag = "DNS-over-HTTPS".into();
-
-        connection_params.retain(|route| ipv6_enabled || route.immediate_target().is_ipv4());
-
-        match http2_client(
-            connection_params,
-            outcomes_record,
-            MAX_RESPONSE_SIZE,
-            &log_tag,
-        )
-        .await
-        {
-            Ok(http_client) => Ok(Self { http_client }),
-            Err(error) => {
-                log::error!("[{log_tag}] Failed to create HTTP2 client: {error}");
-                Err(Error::TransportFailure)
-            }
-        }
-    }
+    const SOURCE: DnsSource = DnsSource::DnsOverHttpsLookup;
 
     async fn send_queries(
         self,

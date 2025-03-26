@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
+use std::net::IpAddr;
 use std::sync::Arc;
 
 use futures_util::{stream, Stream, StreamExt};
@@ -15,11 +15,50 @@ use crate::dns::dns_lookup::DnsLookupRequest;
 use crate::dns::dns_message;
 use crate::dns::dns_message::{parse_a_record, parse_aaaa_record, MAX_DNS_UDP_MESSAGE_LEN};
 use crate::dns::dns_types::ResourceType;
-use crate::route::ConnectionOutcomes;
+use crate::route::{
+    Connector, ConnectorExt as _, ConnectorFactory, StatelessUdpConnector, UdpRoute,
+};
 use crate::{dns, DnsSource};
 
 const A_REQUEST_ID: u16 = 0;
 const AAAA_REQUEST_ID: u16 = 1;
+
+pub struct UdpTransportConnectorFactory;
+
+impl ConnectorFactory<UdpRoute<IpAddr>> for UdpTransportConnectorFactory {
+    type Connector = UdpTransportConnector;
+    type Connection = UdpTransport;
+
+    fn make(&self) -> Self::Connector {
+        Default::default()
+    }
+}
+
+#[derive(Default)]
+pub struct UdpTransportConnector;
+
+impl Connector<UdpRoute<IpAddr>, ()> for UdpTransportConnector {
+    type Connection = UdpTransport;
+    type Error = Error;
+
+    async fn connect_over(
+        &self,
+        _over: (),
+        route: UdpRoute<IpAddr>,
+        log_tag: Arc<str>,
+    ) -> Result<Self::Connection, Self::Error> {
+        let socket = StatelessUdpConnector
+            .connect(route, log_tag.clone())
+            .await
+            .map_err(|e| {
+                log::error!("[{log_tag}] Failed to create UDP socket: {}", e.kind());
+                Error::TransportFailure
+            })?;
+        Ok(UdpTransport {
+            socket: socket.into(),
+        })
+    }
+}
 
 /// DNS transport that sends queries in plaintext over UDP
 #[derive(Clone, Debug)]
@@ -28,31 +67,7 @@ pub struct UdpTransport {
 }
 
 impl DnsTransport for UdpTransport {
-    type ConnectionParameters = (IpAddr, u16);
-    type Route = Self::ConnectionParameters;
-
-    fn dns_source() -> DnsSource {
-        DnsSource::UdpLookup
-    }
-
-    async fn connect(
-        connection_params: Self::ConnectionParameters,
-        outcomes_record: &tokio::sync::RwLock<ConnectionOutcomes<Self::Route>>,
-        ipv6_enabled: bool,
-    ) -> dns::Result<UdpTransport> {
-        let local_addr = match connection_params.0 {
-            IpAddr::V4(_) => (IpAddr::V4(Ipv4Addr::UNSPECIFIED), 0),
-            IpAddr::V6(_) if !ipv6_enabled => return Err(Error::TransportRestricted),
-            IpAddr::V6(_) => (IpAddr::V6(Ipv6Addr::UNSPECIFIED), 0),
-        };
-        let socket = UdpSocket::bind(local_addr).await?;
-        socket.connect(connection_params).await?;
-        // TODO: Record outcomes from connecting.
-        _ = outcomes_record;
-        Ok(UdpTransport {
-            socket: Arc::new(socket),
-        })
-    }
+    const SOURCE: DnsSource = DnsSource::UdpLookup;
 
     async fn send_queries(
         self,

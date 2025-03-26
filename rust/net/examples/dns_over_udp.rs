@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 use std::net::IpAddr;
+use std::num::NonZeroU16;
 use std::str::FromStr;
 use std::sync::Arc;
 
@@ -10,8 +11,8 @@ use clap::Parser;
 use futures_util::StreamExt;
 use libsignal_net::infra::dns::custom_resolver::DnsTransport;
 use libsignal_net::infra::dns::dns_lookup::DnsLookupRequest;
-use libsignal_net::infra::dns::dns_transport_udp::UdpTransport;
-use libsignal_net_infra::route::ConnectionOutcomes;
+use libsignal_net_infra::dns::dns_transport_udp::UdpTransportConnector;
+use libsignal_net_infra::route::{NoDelay, UdpRoute};
 
 #[derive(Parser, Debug)]
 struct Args {
@@ -26,7 +27,7 @@ struct Args {
     ns_address: String,
     /// port of the name server
     #[arg(long, default_value = "53")]
-    ns_port: u16,
+    ns_port: NonZeroU16,
 }
 
 #[tokio::main]
@@ -37,15 +38,22 @@ async fn main() {
 
     let args = Args::parse();
 
-    let ns_address = (
-        IpAddr::from_str(args.ns_address.as_str()).expect("valid IP address"),
-        args.ns_port,
-    );
+    let ns_address = UdpRoute {
+        address: IpAddr::from_str(args.ns_address.as_str()).expect("valid IP address"),
+        port: args.ns_port,
+    };
 
-    let outcomes_record = ConnectionOutcomes::for_oneshot();
-    let udp_transport = UdpTransport::connect(ns_address, &outcomes_record.into(), !args.no_ipv6)
-        .await
-        .expect("connected to the DNS server");
+    let udp_transport = libsignal_net_infra::route::connect_resolved(
+        vec![ns_address.clone()],
+        NoDelay,
+        UdpTransportConnector,
+        (),
+        "dns_over_https".into(),
+        |_| std::ops::ControlFlow::Continue::<std::convert::Infallible>(()),
+    )
+    .await
+    .0
+    .expect("connected to the DNS server");
     log::info!(
         "successfully connected to the DNS server at {:?}",
         ns_address

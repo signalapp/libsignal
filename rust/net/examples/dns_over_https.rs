@@ -11,10 +11,10 @@ use futures_util::StreamExt;
 use libsignal_net::infra::certs::RootCertificates;
 use libsignal_net::infra::dns::custom_resolver::DnsTransport;
 use libsignal_net::infra::dns::dns_lookup::DnsLookupRequest;
-use libsignal_net::infra::dns::dns_transport_doh::DohTransport;
 use libsignal_net::infra::host::Host;
+use libsignal_net_infra::dns::dns_transport_doh::DohTransportConnector;
 use libsignal_net_infra::route::{
-    ConnectionOutcomes, HttpRouteFragment, HttpsTlsRoute, TcpRoute, TlsRoute, TlsRouteFragment,
+    HttpRouteFragment, HttpsTlsRoute, NoDelay, TcpRoute, TlsRoute, TlsRouteFragment,
 };
 use libsignal_net_infra::Alpn;
 
@@ -63,11 +63,17 @@ async fn main() {
         },
     };
 
-    let outcomes_record = ConnectionOutcomes::for_oneshot();
-    let doh_transport =
-        DohTransport::connect(vec![route.clone()], &outcomes_record.into(), !args.no_ipv6)
-            .await
-            .expect("connected to the DNS server");
+    let doh_transport = libsignal_net_infra::route::connect_resolved(
+        vec![route.clone()],
+        NoDelay,
+        DohTransportConnector::default(),
+        (),
+        "dns_over_https".into(),
+        |_| std::ops::ControlFlow::Continue::<std::convert::Infallible>(()),
+    )
+    .await
+    .0
+    .expect("connected to the DNS server");
     log::info!("successfully connected to the DNS server at {:?}", route);
 
     let request = DnsLookupRequest {

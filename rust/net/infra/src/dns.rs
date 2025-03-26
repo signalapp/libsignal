@@ -17,7 +17,7 @@ use crate::certs::RootCertificates;
 use crate::dns::custom_resolver::CustomDnsResolver;
 use crate::dns::dns_errors::Error;
 use crate::dns::dns_lookup::{DnsLookup, DnsLookupRequest, StaticDnsMap, SystemDnsLookup};
-use crate::dns::dns_transport_doh::{DohTransport, CLOUDFLARE_IPS};
+use crate::dns::dns_transport_doh::{DohTransportConnectorFactory, CLOUDFLARE_IPS};
 use crate::dns::dns_types::ResourceType;
 use crate::dns::dns_utils::log_safe_domain;
 use crate::dns::lookup_result::LookupResult;
@@ -80,7 +80,8 @@ struct LookupOption {
     timeout_after: Duration,
 }
 
-pub fn build_custom_resolver_cloudflare_doh() -> CustomDnsResolver<DohTransport> {
+pub fn build_custom_resolver_cloudflare_doh(
+) -> CustomDnsResolver<HttpsTlsRoute<TlsRoute<TcpRoute<IpAddr>>>, DohTransportConnectorFactory> {
     let (v4, v6) = CLOUDFLARE_IPS;
     let targets = [IpAddr::V6(v6), IpAddr::V4(v4)].map(|ip_addr| {
         let host = Host::Ip(ip_addr);
@@ -103,7 +104,7 @@ pub fn build_custom_resolver_cloudflare_doh() -> CustomDnsResolver<DohTransport>
             },
         }
     });
-    CustomDnsResolver::<DohTransport>::new(targets.into())
+    CustomDnsResolver::new(targets.into(), DohTransportConnectorFactory)
 }
 
 impl DnsResolver {
