@@ -158,10 +158,6 @@ jobs:
       working-directory: rust/protocol/cross-version-testing
       if: matrix.version == 'nightly'
 
-    - name: Check bridge versioning
-      run: ./bin/update_versions.py
-      if: matrix.version == 'nightly'
-
     - name: Check acknowledgments
       run: PATH="$PATH:$PWD/local-tools/bin" ./bin/regenerate_acknowledgments.sh && git diff --exit-code acknowledgments
       if: matrix.version == 'nightly'

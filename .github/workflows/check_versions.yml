@@ -1,0 +1,30 @@
+name: Check Versions
+# We want to run this job on all changes, so that we do not have to risk breakage slipping
+# through due to the set of files included in the version consistency check getting out of sync
+# with the set of files checked by the test dispatch logic.
+#
+# Thus, this job explicitly does not depend on the "Classify Changes" job, like all the other
+# jobs in Build and Test do. The lint job also just runs on a subset of changes. So, this ends
+# up being a completely independent job.
+
+on:
+  push:
+    branches: [ main ]
+  pull_request: # all target branches
+  workflow_dispatch: {}
+
+jobs:
+  check_versions:
+    name: Check version number consistency
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      with:
+        submodules: recursive
+
+    # The update_versions.py script checks that the version numbers in the source code
+    # are consistent with themselves and the version number in RELEASE_NOTES.md.
+    # It exits with a non-zero exit code if they are not consistent.
+    - run: ./bin/update_versions.py 
