@@ -14,7 +14,6 @@ use libsignal_net::infra::dns::dns_lookup::{DnsLookup, DnsLookupRequest};
 use libsignal_net::infra::dns::dns_transport_doh::DohTransport;
 use libsignal_net::infra::dns::dns_transport_udp::UdpTransport;
 use libsignal_net::infra::host::Host;
-use libsignal_net::infra::utils::ObservableEvent;
 use libsignal_net_infra::route::{
     HttpRouteFragment, HttpsTlsRoute, TcpRoute, TlsRoute, TlsRouteFragment,
 };
@@ -52,10 +51,7 @@ async fn main() {
     let custom_resolver = match args.transport {
         Transport::Udp => {
             let ns_address = (HOST_IP, 53);
-            Either::Left(CustomDnsResolver::<UdpTransport>::new(
-                ns_address,
-                &ObservableEvent::default(),
-            ))
+            Either::Left(CustomDnsResolver::<UdpTransport>::new(ns_address))
         }
         Transport::Doh => {
             let host: Arc<str> = HOST_IP.to_string().into();
@@ -77,10 +73,7 @@ async fn main() {
                     },
                 },
             };
-            Either::Right(CustomDnsResolver::<DohTransport>::new(
-                vec![target],
-                &ObservableEvent::default(),
-            ))
+            Either::Right(CustomDnsResolver::<DohTransport>::new(vec![target]))
         }
     };
 

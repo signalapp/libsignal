@@ -15,6 +15,7 @@ use crate::dns::dns_lookup::DnsLookupRequest;
 use crate::dns::dns_message;
 use crate::dns::dns_message::{parse_a_record, parse_aaaa_record, MAX_DNS_UDP_MESSAGE_LEN};
 use crate::dns::dns_types::ResourceType;
+use crate::route::ConnectionOutcomes;
 use crate::{dns, DnsSource};
 
 const A_REQUEST_ID: u16 = 0;
@@ -28,6 +29,7 @@ pub struct UdpTransport {
 
 impl DnsTransport for UdpTransport {
     type ConnectionParameters = (IpAddr, u16);
+    type Route = Self::ConnectionParameters;
 
     fn dns_source() -> DnsSource {
         DnsSource::UdpLookup
@@ -35,6 +37,7 @@ impl DnsTransport for UdpTransport {
 
     async fn connect(
         connection_params: Self::ConnectionParameters,
+        outcomes_record: &tokio::sync::RwLock<ConnectionOutcomes<Self::Route>>,
         ipv6_enabled: bool,
     ) -> dns::Result<UdpTransport> {
         let local_addr = match connection_params.0 {
@@ -44,6 +47,8 @@ impl DnsTransport for UdpTransport {
         };
         let socket = UdpSocket::bind(local_addr).await?;
         socket.connect(connection_params).await?;
+        // TODO: Record outcomes from connecting.
+        _ = outcomes_record;
         Ok(UdpTransport {
             socket: Arc::new(socket),
         })

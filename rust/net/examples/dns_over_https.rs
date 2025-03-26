@@ -14,7 +14,7 @@ use libsignal_net::infra::dns::dns_lookup::DnsLookupRequest;
 use libsignal_net::infra::dns::dns_transport_doh::DohTransport;
 use libsignal_net::infra::host::Host;
 use libsignal_net_infra::route::{
-    HttpRouteFragment, HttpsTlsRoute, TcpRoute, TlsRoute, TlsRouteFragment,
+    ConnectionOutcomes, HttpRouteFragment, HttpsTlsRoute, TcpRoute, TlsRoute, TlsRouteFragment,
 };
 use libsignal_net_infra::Alpn;
 
@@ -63,9 +63,11 @@ async fn main() {
         },
     };
 
-    let doh_transport = DohTransport::connect(vec![route.clone()], !args.no_ipv6)
-        .await
-        .expect("connected to the DNS server");
+    let outcomes_record = ConnectionOutcomes::for_oneshot();
+    let doh_transport =
+        DohTransport::connect(vec![route.clone()], &outcomes_record.into(), !args.no_ipv6)
+            .await
+            .expect("connected to the DNS server");
     log::info!("successfully connected to the DNS server at {:?}", route);
 
     let request = DnsLookupRequest {

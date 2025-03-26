@@ -13,9 +13,9 @@ use libsignal_net::cdsi::{CdsiConnection, LookupError, LookupRequest, LookupResp
 use libsignal_net::connect_state::{ConnectState, ConnectionResources, SUGGESTED_CONNECT_CONFIG};
 use libsignal_net::enclave::EnclaveEndpointConnection;
 use libsignal_net::infra::dns::DnsResolver;
-use libsignal_net::infra::utils::ObservableEvent;
 use libsignal_net_infra::route::DirectOrProxyProvider;
 use libsignal_net_infra::tcp_ssl::DirectConnector;
+use libsignal_net_infra::utils::ObservableEvent;
 use libsignal_net_infra::EnableDomainFronting;
 use tokio::io::AsyncBufReadExt as _;
 
@@ -77,7 +77,7 @@ async fn main() {
 
     let cdsi_env = libsignal_net::env::PROD.cdsi;
     let network_change_event = ObservableEvent::default();
-    let resolver = DnsResolver::new(&network_change_event);
+    let resolver = DnsResolver::new();
 
     let connected = if use_routes {
         let confirmation_header_name = cdsi_env

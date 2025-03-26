@@ -13,7 +13,6 @@ use libsignal_net_infra::dns::build_custom_resolver_cloudflare_doh;
 use libsignal_net_infra::dns::custom_resolver::CustomDnsResolver;
 use libsignal_net_infra::dns::dns_lookup::{DnsLookup, DnsLookupRequest, SystemDnsLookup};
 use libsignal_net_infra::dns::dns_transport_udp::UdpTransport;
-use libsignal_net_infra::utils::ObservableEvent;
 
 macro_rules! skip_unless_nonhermetic {
     () => {
@@ -46,8 +45,7 @@ async fn system_dns_lookup() {
 #[tokio::test]
 async fn udp_dns_lookup() {
     skip_unless_nonhermetic!();
-    let dns =
-        CustomDnsResolver::<UdpTransport>::new((ip_addr!("1.1.1.1"), 53), &ObservableEvent::new());
+    let dns = CustomDnsResolver::<UdpTransport>::new((ip_addr!("1.1.1.1"), 53));
 
     let result = dns
         .resolve(DnsLookupRequest {
@@ -66,7 +64,7 @@ async fn udp_dns_lookup() {
 #[tokio::test]
 async fn dns_over_https_lookup() {
     skip_unless_nonhermetic!();
-    let dns = build_custom_resolver_cloudflare_doh(&ObservableEvent::new());
+    let dns = build_custom_resolver_cloudflare_doh();
 
     let result = dns
         .resolve(DnsLookupRequest {

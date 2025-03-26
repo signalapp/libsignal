@@ -96,7 +96,7 @@ async fn main() {
     };
 
     let network_changed_event = ObservableEvent::default();
-    let resolver = DnsResolver::new(&network_changed_event);
+    let resolver = DnsResolver::new();
 
     let confirmation_header_name = env
         .domain_config

@@ -109,7 +109,7 @@ async fn main() {
         _ => panic!("only one of username or password was provided"),
     };
 
-    let dns_resolver = DnsResolver::new(&Default::default());
+    let dns_resolver = DnsResolver::new();
 
     let Target(target_host, target_port) = target;
     let target_host = match (resolve_hostname_locally, target_host) {

@@ -136,8 +136,7 @@ impl ConnectionManager {
         let network_change_event = ObservableEvent::new();
         let user_agent = UserAgent::with_libsignal_version(user_agent);
 
-        let dns_resolver =
-            DnsResolver::new_with_static_fallback(env.static_fallback(), &network_change_event);
+        let dns_resolver = DnsResolver::new_with_static_fallback(env.static_fallback());
         let transport_connector =
             std::sync::Mutex::new(TcpSslConnector::new_direct(dns_resolver.clone()));
         let endpoints = std::sync::Mutex::new(
@@ -219,6 +218,7 @@ impl ConnectionManager {
         }
         log::info!("ConnectionManager: on_network_change");
         self.network_change_event.fire();
+        self.dns_resolver.on_network_change(now.into());
         self.connect.blocking_write().network_changed(now.into());
     }
 }

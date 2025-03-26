@@ -19,7 +19,7 @@ use crate::dns::dns_message;
 use crate::dns::dns_message::{parse_a_record, parse_aaaa_record};
 use crate::dns::dns_types::ResourceType;
 use crate::http_client::{http2_client, AggregatingHttp2Client};
-use crate::route::{HttpsTlsRoute, ResolvedRoute, TcpRoute, TlsRoute};
+use crate::route::{ConnectionOutcomes, HttpsTlsRoute, ResolvedRoute, TcpRoute, TlsRoute};
 use crate::{dns, DnsSource};
 
 pub(crate) const CLOUDFLARE_IPS: (Ipv4Addr, Ipv6Addr) = (
@@ -35,7 +35,8 @@ pub struct DohTransport {
 }
 
 impl DnsTransport for DohTransport {
-    type ConnectionParameters = Vec<HttpsTlsRoute<TlsRoute<TcpRoute<IpAddr>>>>;
+    type ConnectionParameters = Vec<Self::Route>;
+    type Route = HttpsTlsRoute<TlsRoute<TcpRoute<IpAddr>>>;
 
     fn dns_source() -> DnsSource {
         DnsSource::DnsOverHttpsLookup
@@ -43,13 +44,21 @@ impl DnsTransport for DohTransport {
 
     async fn connect(
         mut connection_params: Self::ConnectionParameters,
+        outcomes_record: &tokio::sync::RwLock<ConnectionOutcomes<Self::Route>>,
         ipv6_enabled: bool,
     ) -> dns::Result<Self> {
         let log_tag = "DNS-over-HTTPS".into();
 
         connection_params.retain(|route| ipv6_enabled || route.immediate_target().is_ipv4());
 
-        match http2_client(connection_params, MAX_RESPONSE_SIZE, &log_tag).await {
+        match http2_client(
+            connection_params,
+            outcomes_record,
+            MAX_RESPONSE_SIZE,
+            &log_tag,
+        )
+        .await
+        {
             Ok(http_client) => Ok(Self { http_client }),
             Err(error) => {
                 log::error!("[{log_tag}] Failed to create HTTP2 client: {error}");

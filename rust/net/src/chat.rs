@@ -381,8 +381,7 @@ pub mod test_support {
         filter_routes: impl Fn(&UnresolvedHttpsServiceRoute) -> bool,
     ) -> Result<ChatConnection, ConnectError> {
         let network_change_event = ObservableEvent::new();
-        let dns_resolver =
-            DnsResolver::new_with_static_fallback(env.static_fallback(), &network_change_event);
+        let dns_resolver = DnsResolver::new_with_static_fallback(env.static_fallback());
 
         let route_provider = DirectOrProxyProvider::maybe_proxied(
             env.chat_domain_config

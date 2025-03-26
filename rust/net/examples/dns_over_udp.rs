@@ -11,6 +11,7 @@ use futures_util::StreamExt;
 use libsignal_net::infra::dns::custom_resolver::DnsTransport;
 use libsignal_net::infra::dns::dns_lookup::DnsLookupRequest;
 use libsignal_net::infra::dns::dns_transport_udp::UdpTransport;
+use libsignal_net_infra::route::ConnectionOutcomes;
 
 #[derive(Parser, Debug)]
 struct Args {
@@ -41,7 +42,8 @@ async fn main() {
         args.ns_port,
     );
 
-    let udp_transport = UdpTransport::connect(ns_address, !args.no_ipv6)
+    let outcomes_record = ConnectionOutcomes::for_oneshot();
+    let udp_transport = UdpTransport::connect(ns_address, &outcomes_record.into(), !args.no_ipv6)
         .await
         .expect("connected to the DNS server");
     log::info!(

@@ -27,8 +27,7 @@ use crate::route::{
 };
 use crate::timeouts::{DNS_SYSTEM_LOOKUP_TIMEOUT, DOH_FALLBACK_LOOKUP_TIMEOUT};
 use crate::utils::oneshot_broadcast::{self, Receiver};
-use crate::utils::{self, ObservableEvent};
-use crate::Alpn;
+use crate::{utils, Alpn};
 
 pub mod custom_resolver;
 mod dns_errors;
@@ -67,7 +66,7 @@ impl Default for DnsResolverState {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct DnsResolver {
     lookup_options: Arc<[LookupOption]>,
     state: Arc<Mutex<DnsResolverState>>,
@@ -81,9 +80,7 @@ struct LookupOption {
     timeout_after: Duration,
 }
 
-pub fn build_custom_resolver_cloudflare_doh(
-    network_change_event: &ObservableEvent,
-) -> CustomDnsResolver<DohTransport> {
+pub fn build_custom_resolver_cloudflare_doh() -> CustomDnsResolver<DohTransport> {
     let (v4, v6) = CLOUDFLARE_IPS;
     let targets = [IpAddr::V6(v6), IpAddr::V4(v4)].map(|ip_addr| {
         let host = Host::Ip(ip_addr);
@@ -106,7 +103,7 @@ pub fn build_custom_resolver_cloudflare_doh(
             },
         }
     });
-    CustomDnsResolver::<DohTransport>::new(targets.into(), network_change_event)
+    CustomDnsResolver::<DohTransport>::new(targets.into())
 }
 
 impl DnsResolver {
@@ -126,8 +123,8 @@ impl DnsResolver {
         }
     }
 
-    pub fn new(network_change_event: &ObservableEvent) -> Self {
-        Self::new_with_static_fallback(HashMap::new(), network_change_event)
+    pub fn new() -> Self {
+        Self::new_with_static_fallback(HashMap::new())
     }
 
     /// Creates a DNS resolver that will only use a provided static map
@@ -145,11 +142,8 @@ impl DnsResolver {
 
     /// Creates a DNS resolver with a default resolution strategy
     /// to be used for most of the external use cases
-    pub fn new_with_static_fallback(
-        static_map: HashMap<&'static str, LookupResult>,
-        network_change_event: &ObservableEvent,
-    ) -> Self {
-        let cloudflare_doh = Box::new(build_custom_resolver_cloudflare_doh(network_change_event));
+    pub fn new_with_static_fallback(static_map: HashMap<&'static str, LookupResult>) -> Self {
+        let cloudflare_doh = Box::new(build_custom_resolver_cloudflare_doh());
 
         let lookup_options = [
             LookupOption {
@@ -177,6 +171,12 @@ impl DnsResolver {
         if guard.ipv6_enabled != ipv6_enabled {
             guard.ipv6_enabled = ipv6_enabled;
             guard.in_flight_lookups.clear();
+        }
+    }
+
+    pub fn on_network_change(&self, now: Instant) {
+        for option in &self.lookup_options[..] {
+            option.lookup.on_network_change(now);
         }
     }
 

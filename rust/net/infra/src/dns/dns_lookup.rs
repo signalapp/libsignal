@@ -11,6 +11,7 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use either::Either;
 use itertools::Itertools;
+use tokio::time::Instant;
 
 use crate::dns::custom_resolver::{CustomDnsResolver, DnsTransport};
 use crate::dns::dns_errors::Error;
@@ -26,6 +27,7 @@ pub struct DnsLookupRequest {
 #[async_trait]
 pub trait DnsLookup: Debug + Send + Sync {
     async fn dns_lookup(&self, request: DnsLookupRequest) -> dns::Result<LookupResult>;
+    fn on_network_change(&self, _now: Instant) {}
 }
 
 /// Performs DNS lookup using system resolver
@@ -72,5 +74,10 @@ where
 {
     async fn dns_lookup(&self, request: DnsLookupRequest) -> dns::Result<LookupResult> {
         self.resolve(request).await
+    }
+
+    fn on_network_change(&self, now: Instant) {
+        // Forward to the non-trait method.
+        self.on_network_change(now);
     }
 }

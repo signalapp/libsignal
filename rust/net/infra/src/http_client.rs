@@ -8,7 +8,6 @@ use std::ops::ControlFlow;
 use std::sync::Arc;
 
 use bytes::Bytes;
-use futures_util::FutureExt;
 use http::response::Parts;
 use http::uri::PathAndQuery;
 use http::HeaderMap;
@@ -18,7 +17,7 @@ use hyper_util::rt::{TokioExecutor, TokioIo};
 
 use crate::errors::{LogSafeDisplay, TransportConnectError};
 use crate::route::{
-    ConnectError, Connector, HttpRouteFragment, HttpsTlsRoute, NoDelay, TcpRoute,
+    ConnectError, ConnectionOutcomes, Connector, HttpRouteFragment, HttpsTlsRoute, TcpRoute,
     ThrottlingConnector, TlsRoute,
 };
 use crate::{AsyncDuplexStream, Connection, TransportInfo};
@@ -196,21 +195,21 @@ where
 
 pub(crate) async fn http2_client(
     targets: impl IntoIterator<Item = HttpsTlsRoute<TlsRoute<TcpRoute<IpAddr>>>>,
+    outcome_record: &tokio::sync::RwLock<
+        ConnectionOutcomes<HttpsTlsRoute<TlsRoute<TcpRoute<IpAddr>>>>,
+    >,
     max_response_size: usize,
     log_tag: &Arc<str>,
 ) -> Result<AggregatingHttp2Client, HttpError> {
+    let outcome_record_snapshot = outcome_record.read().await.clone();
     let tls_connector = crate::route::ComposedConnector::new(
         crate::tcp_ssl::StatelessDirect,
         ThrottlingConnector::new(crate::tcp_ssl::StatelessDirect, 1),
     );
     let connector = StatelessHttp2Connector(tls_connector);
-    let CompletedH2Connection {
-        sender,
-        host_header,
-        path_prefix,
-    } = crate::route::connect_resolved(
+    let (result, updates) = crate::route::connect_resolved(
         targets.into_iter().collect(),
-        NoDelay,
+        &outcome_record_snapshot,
         connector,
         (),
         log_tag.clone(),
@@ -225,9 +224,18 @@ pub(crate) async fn http2_client(
             HttpConnectError::HttpHandshake => ControlFlow::Break(HttpError::Http2HandshakeFailed),
         },
     )
-    .map(|(result, _outcome_updates)| result)
-    .await
-    .map_err(|e| match e {
+    .await;
+
+    outcome_record
+        .write()
+        .await
+        .apply_outcome_updates(updates.outcomes, updates.finished_at);
+
+    let CompletedH2Connection {
+        sender,
+        host_header,
+        path_prefix,
+    } = result.map_err(|e| match e {
         ConnectError::AllAttemptsFailed | ConnectError::NoResolvedRoutes => {
             HttpError::SslHandshakeFailed
         }
@@ -248,6 +256,7 @@ mod test {
     use std::future::Future;
     use std::net::{Ipv6Addr, SocketAddr};
     use std::num::NonZeroU16;
+    use std::time::Duration;
 
     use assert_matches::assert_matches;
     use http::{HeaderName, HeaderValue, Method, StatusCode};
@@ -255,7 +264,7 @@ mod test {
 
     use super::*;
     use crate::host::Host;
-    use crate::route::TlsRouteFragment;
+    use crate::route::{ConnectionOutcomeParams, TlsRouteFragment};
     use crate::tcp_ssl::testutil::{SERVER_CERTIFICATE, SERVER_HOSTNAME};
 
     const FAKE_RESPONSE: &str = "RESPONSE";
@@ -299,6 +308,22 @@ mod test {
         server.bind_ephemeral((Ipv6Addr::LOCALHOST, 0))
     }
 
+    fn outcome_record_for_testing(
+    ) -> tokio::sync::RwLock<ConnectionOutcomes<HttpsTlsRoute<TlsRoute<TcpRoute<IpAddr>>>>> {
+        const MAX_DELAY: Duration = Duration::from_secs(100);
+        const AGE_CUTOFF: Duration = Duration::from_secs(1000);
+        const MAX_COUNT: u8 = 5;
+
+        ConnectionOutcomes::new(ConnectionOutcomeParams {
+            age_cutoff: AGE_CUTOFF,
+            cooldown_growth_factor: 2.0,
+            count_growth_factor: 10.0,
+            max_count: MAX_COUNT,
+            max_delay: MAX_DELAY,
+        })
+        .into()
+    }
+
     #[tokio::test]
     async fn http_client_e2e_test() {
         let _ = env_logger::try_init();
@@ -331,6 +356,7 @@ mod test {
                     },
                 },
             }],
+            &outcome_record_for_testing(),
             MAX_RESPONSE_SIZE,
             &"test".into(),
         )
@@ -406,6 +432,7 @@ mod test {
                     },
                 },
             }],
+            &outcome_record_for_testing(),
             MAX_RESPONSE_SIZE,
             &"test".into(),
         )

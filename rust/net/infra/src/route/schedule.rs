@@ -267,6 +267,17 @@ impl<R: Hash + Eq + Clone> ConnectionOutcomes<R> {
         }
     }
 
+    /// Configuration that stores no history, suitable for one-shot connections.
+    pub fn for_oneshot() -> Self {
+        Self::new(ConnectionOutcomeParams {
+            age_cutoff: Duration::ZERO,
+            cooldown_growth_factor: 0.0,
+            count_growth_factor: 0.0,
+            max_count: 0,
+            max_delay: Duration::ZERO,
+        })
+    }
+
     /// Update the internal state with the results of completed connection attempts.
     pub fn apply_outcome_updates(
         &mut self,
