@@ -354,6 +354,7 @@ impl Visit<Scrambler> for proto::FilePointer {
             match loc {
                 Locator::BackupLocator(loc) => loc.accept(visitor),
                 Locator::AttachmentLocator(loc) => loc.accept(visitor),
+                Locator::LocalLocator(loc) => loc.accept(visitor),
                 Locator::InvalidAttachmentLocator(loc) => loc.accept(visitor),
             }
         }
@@ -398,6 +399,32 @@ impl Visit<Scrambler> for proto::file_pointer::AttachmentLocator {
         cdnKey.randomize(&mut visitor.rng);
         key.randomize(&mut visitor.rng);
         digest.randomize(&mut visitor.rng);
+    }
+}
+
+impl Visit<Scrambler> for proto::file_pointer::LocalLocator {
+    fn accept(&mut self, visitor: &mut Scrambler) {
+        let Self {
+            mediaName,
+            localKey,
+            remoteKey,
+            remoteDigest,
+            size: _,
+            backupCdnNumber: _,
+            transitCdnKey,
+            transitCdnNumber: _,
+            special_fields: _,
+        } = self;
+
+        localKey.randomize(&mut visitor.rng);
+        remoteKey.randomize(&mut visitor.rng);
+        remoteDigest.randomize(&mut visitor.rng);
+        let is_thumbnail = mediaName.ends_with("_thumbnail");
+        *mediaName = hex::encode(remoteDigest);
+        if is_thumbnail {
+            mediaName.push_str("_thumbnail");
+        }
+        transitCdnKey.randomize(&mut visitor.rng);
     }
 }
 
