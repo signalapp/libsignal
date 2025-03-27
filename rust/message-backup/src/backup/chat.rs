@@ -248,9 +248,51 @@ pub enum ChatItemError {
 
 #[derive(Debug, thiserror::Error)]
 #[cfg_attr(test, derive(PartialEq))]
-pub struct InvalidExpiration {
+pub struct ExpirationTooSoon {
     backup_time: Timestamp,
     expires_at: Timestamp,
+}
+
+impl std::fmt::Display for ExpirationTooSoon {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self
+            .expires_at
+            .into_inner()
+            .duration_since(self.backup_time.into_inner())
+        {
+            Ok(until) => write!(f, "expires {}s after backup creation", until.as_secs()),
+            Err(e) => write!(
+                f,
+                "expired {}s before backup creation",
+                e.duration().as_secs()
+            ),
+        }
+    }
+}
+
+#[derive(Debug, thiserror::Error)]
+#[cfg_attr(test, derive(PartialEq))]
+pub struct ExpirationTooShort {
+    expiration_duration: Duration,
+}
+
+impl std::fmt::Display for ExpirationTooShort {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "expiration duration too short: {}s",
+            self.expiration_duration.as_secs()
+        )
+    }
+}
+
+#[derive(Debug, thiserror::Error)]
+#[cfg_attr(test, derive(PartialEq))]
+pub enum InvalidExpiration {
+    #[error("{0}")]
+    TooSoon(#[from] ExpirationTooSoon),
+    #[error("{0}")]
+    TooShort(#[from] ExpirationTooShort),
 }
 
 /// Validated version of [`proto::Chat`].
@@ -418,26 +460,6 @@ pub enum OutgoingSendError {
     SendStatusMissing,
     /// send status for recipient {0:?}: {1}
     InvalidTimestamp(RecipientId, TimestampError),
-}
-
-impl std::fmt::Display for InvalidExpiration {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let Self {
-            backup_time,
-            expires_at,
-        } = self;
-        match expires_at
-            .into_inner()
-            .duration_since(backup_time.into_inner())
-        {
-            Ok(until) => write!(f, "expires {}s after backup creation", until.as_secs()),
-            Err(e) => write!(
-                f,
-                "expired {}s before backup creation",
-                e.duration().as_secs()
-            ),
-        }
-    }
 }
 
 impl<
@@ -678,7 +700,7 @@ impl<
                 // Not a disappearing message.
             }
             (Some(_), None) => return Err(ChatItemError::ExpirationMismatch),
-            (None, Some(_)) => {
+            (None, Some(expires_in)) => {
                 let should_have_started = match &direction {
                     Direction::Incoming {
                         sent: _,
@@ -707,6 +729,19 @@ impl<
                 if should_have_started {
                     return Err(ChatItemError::ExpirationNotStarted);
                 }
+                if expires_in < MAX_REMOTE_BACKUP_DISAPPEARING_MESSAGE_TIME {
+                    match context.as_ref().purpose {
+                        crate::backup::Purpose::DeviceTransfer => {
+                            // For device transfer, we allow short expiring messages
+                        }
+                        crate::backup::Purpose::RemoteBackup => {
+                            return Err(InvalidExpiration::TooShort(ExpirationTooShort {
+                                expiration_duration: expires_in,
+                            })
+                            .into());
+                        }
+                    }
+                }
             }
             (Some(expire_start), Some(expires_in)) => {
                 let expires_at = expire_start + expires_in;
@@ -721,10 +756,10 @@ impl<
                     };
 
                 if expires_at < allowed_expire_at {
-                    return Err(InvalidExpiration {
+                    return Err(InvalidExpiration::TooSoon(ExpirationTooSoon {
                         expires_at,
                         backup_time,
-                    }
+                    })
                     .into());
                 }
             }
@@ -1368,6 +1403,52 @@ mod test {
         let result = ChatItemData::<Store>::try_from_with(item, &TestContext(meta))
             .map(|_| ())
             .map_err(|e| assert_matches!(e, ChatItemError::InvalidExpiration(e) => e).to_string());
+        assert_eq!(result, expected.map_err(ToString::to_string));
+    }
+
+    #[test_case(Purpose::RemoteBackup, Duration::from_hours(12), Err("expiration duration too short: 43200s"); "RemoteBackup with short expiration")]
+    #[test_case(Purpose::DeviceTransfer, Duration::from_hours(12), Ok(()); "DeviceTransfer with short expiration")]
+    #[test_case(Purpose::RemoteBackup, Duration::from_hours(25), Ok(()); "RemoteBackup with long expiration")]
+    #[test_case(Purpose::DeviceTransfer, Duration::from_hours(25), Ok(()); "DeviceTransfer with long expiration")]
+    fn expiring_message_timer_not_started(
+        backup_purpose: Purpose,
+        expiration_duration: Duration,
+        expected: Result<(), &str>,
+    ) {
+        // Create a message with an expiration duration but no start date
+        // (meaning the timer hasn't started yet)
+        let mut item = proto::ChatItem {
+            expireStartDate: None,
+            expiresInMs: Some(expiration_duration.as_secs() * 1000),
+            ..proto::ChatItem::test_data()
+        };
+
+        if let Some(proto::chat_item::DirectionalDetails::Incoming(incoming)) =
+            &mut item.directionalDetails
+        {
+            incoming.read = false;
+        }
+
+        let meta = BackupMeta {
+            backup_time: Timestamp::test_value(),
+            purpose: backup_purpose,
+            media_root_backup_key: libsignal_account_keys::BackupKey(
+                [0; libsignal_account_keys::BACKUP_KEY_LEN],
+            ),
+            version: 0,
+            current_app_version: "".into(),
+            first_app_version: "".into(),
+        };
+
+        let result = ChatItemData::<Store>::try_from_with(item, &TestContext(meta))
+            .map(|_| ())
+            .map_err(|e| match e {
+                ChatItemError::InvalidExpiration(InvalidExpiration::TooShort(err)) => {
+                    err.to_string()
+                }
+                _ => panic!("Unexpected error: {:?}", e),
+            });
+
         assert_eq!(result, expected.map_err(ToString::to_string));
     }
 
