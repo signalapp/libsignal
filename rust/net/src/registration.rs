@@ -169,7 +169,7 @@ mod test {
     use crate::proto::chat_websocket::WebSocketRequestMessage;
     use crate::registration::testutil::FakeChatConnect;
 
-    #[tokio::test]
+    #[tokio::test(start_paused = true)]
     async fn create_session() {
         let (fake_chat_remote_tx, mut fake_chat_remote_rx) = mpsc::unbounded_channel();
         let fake_connect = FakeChatConnect {
@@ -228,7 +228,7 @@ mod test {
         assert_eq!(service.session_state(), &make_session())
     }
 
-    #[tokio::test]
+    #[tokio::test(start_paused = true)]
     async fn resume_session() {
         let (fake_chat_remote_tx, mut fake_chat_remote_rx) = mpsc::unbounded_channel();
         let fake_connect = FakeChatConnect {
@@ -287,7 +287,7 @@ mod test {
         );
     }
 
-    #[tokio::test]
+    #[tokio::test(start_paused = true)]
     async fn resume_session_and_make_requests() {
         let (fake_chat_remote_tx, mut fake_chat_remote_rx) = mpsc::unbounded_channel();
         let fake_connect = FakeChatConnect {
