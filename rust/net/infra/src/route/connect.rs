@@ -26,6 +26,9 @@ pub use direct_or_proxy::*;
 mod interface_monitor;
 pub use interface_monitor::*;
 
+mod logging;
+pub use logging::*;
+
 mod preconnect;
 pub use preconnect::*;
 
@@ -84,10 +87,16 @@ pub type StatelessWebSocketConnector = WebSocketHttpConnector;
 pub type StatelessTransportConnector = TransportConnector;
 
 type TcpConnector = crate::tcp_ssl::StatelessDirect;
-type DirectProxyConnector =
-    DirectOrProxy<TcpConnector, crate::tcp_ssl::proxy::StatelessProxied, TransportConnectError>;
-type TransportConnector =
-    ComposedConnector<crate::tcp_ssl::StatelessDirect, DirectProxyConnector, TransportConnectError>;
+type DirectProxyConnector = DirectOrProxy<
+    LoggingConnector<TcpConnector>,
+    crate::tcp_ssl::proxy::StatelessProxied,
+    TransportConnectError,
+>;
+type TransportConnector = ComposedConnector<
+    LoggingConnector<crate::tcp_ssl::StatelessDirect>,
+    DirectProxyConnector,
+    TransportConnectError,
+>;
 type WebSocketHttpConnector =
     ComposedConnector<crate::ws::Stateless, TransportConnector, WebSocketConnectError>;
 
@@ -211,6 +220,8 @@ impl<C: Connector<R, Inner>, R, Inner> Connector<R, Inner> for &C {
 
 #[cfg(any(test, feature = "test-util"))]
 pub mod testutils {
+    use std::time::Duration;
+
     use super::*;
 
     /// [`Connector`] impl that wraps a [`Fn`].
@@ -248,6 +259,37 @@ pub mod testutils {
 
         fn make(&self) -> Self::Connector {
             self.clone()
+        }
+    }
+
+    #[derive(Debug)]
+    pub struct DummyConnection;
+
+    /// Connector that waits a delay for producing a [`DummyConnection`].
+    pub struct DummyDelayConnector {
+        pub delay: Duration,
+    }
+
+    impl<R, T> Connector<R, T> for DummyDelayConnector
+    where
+        T: Send,
+    {
+        type Connection = DummyConnection;
+        type Error = TransportConnectError;
+
+        fn connect_over(
+            &self,
+            _transport: T,
+            _route: R,
+            _log_tag: Arc<str>,
+        ) -> impl Future<Output = Result<Self::Connection, Self::Error>> + Send {
+            let delay = self.delay;
+            async move {
+                if !delay.is_zero() {
+                    tokio::time::sleep(delay).await;
+                }
+                Ok(DummyConnection)
+            }
         }
     }
 }

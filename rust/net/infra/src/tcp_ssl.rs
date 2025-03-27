@@ -7,6 +7,7 @@ use std::future::Future;
 use std::net::IpAddr;
 use std::num::NonZeroU16;
 use std::sync::Arc;
+use std::time::Duration;
 
 use async_trait::async_trait;
 use auto_enums::enum_derive;
@@ -35,6 +36,9 @@ use crate::{
 };
 
 pub mod proxy;
+
+pub const LONG_TCP_HANDSHAKE_THRESHOLD: Duration = Duration::from_secs(3);
+pub const LONG_TLS_HANDSHAKE_THRESHOLD: Duration = Duration::from_secs(3);
 
 #[derive(Clone, Debug)]
 pub struct TcpSslConnector {

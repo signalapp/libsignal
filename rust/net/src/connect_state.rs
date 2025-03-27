@@ -19,13 +19,14 @@ use libsignal_net_infra::errors::{LogSafeDisplay, TransportConnectError};
 use libsignal_net_infra::route::{
     ComposedConnector, ConnectError, ConnectionOutcomeParams, ConnectionOutcomes, Connector,
     ConnectorFactory, DelayBasedOnTransport, DescribeForLog, DescribedRouteConnector,
-    HttpRouteFragment, InterfaceChangedOr, InterfaceMonitor, ResolveHostnames,
-    ResolveWithSavedDescription, ResolvedRoute, RouteProvider, RouteProviderContext,
-    RouteProviderExt as _, RouteResolver, ThrottlingConnector, TransportRoute,
-    UnresolvedRouteDescription, UnresolvedTransportRoute, UnresolvedWebsocketServiceRoute,
-    UsePreconnect, UsesTransport, VariableTlsTimeoutConnector, WebSocketRouteFragment,
-    WebSocketServiceRoute,
+    DirectOrProxy, HttpRouteFragment, InterfaceChangedOr, InterfaceMonitor, LoggingConnector,
+    ResolveHostnames, ResolveWithSavedDescription, ResolvedRoute, RouteProvider,
+    RouteProviderContext, RouteProviderExt as _, RouteResolver, ThrottlingConnector,
+    TransportRoute, UnresolvedRouteDescription, UnresolvedTransportRoute,
+    UnresolvedWebsocketServiceRoute, UsePreconnect, UsesTransport, VariableTlsTimeoutConnector,
+    WebSocketRouteFragment, WebSocketServiceRoute,
 };
+use libsignal_net_infra::tcp_ssl::{LONG_TCP_HANDSHAKE_THRESHOLD, LONG_TLS_HANDSHAKE_THRESHOLD};
 use libsignal_net_infra::timeouts::{
     TimeoutOr, MIN_TLS_HANDSHAKE_TIMEOUT, NETWORK_INTERFACE_POLL_INTERVAL,
     ONE_ROUTE_CONNECTION_TIMEOUT, POST_ROUTE_CHANGE_CONNECTION_TIMEOUT,
@@ -107,9 +108,9 @@ pub struct ConnectState<ConnectorFactory = DefaultConnectorFactory> {
 }
 
 pub type DefaultTransportConnector = VariableTlsTimeoutConnector<
-    ThrottlingConnector<crate::infra::tcp_ssl::StatelessDirect>,
+    ThrottlingConnector<LoggingConnector<crate::infra::tcp_ssl::StatelessDirect>>,
     crate::infra::route::DirectOrProxy<
-        crate::infra::tcp_ssl::StatelessDirect,
+        LoggingConnector<crate::infra::tcp_ssl::StatelessDirect>,
         crate::infra::tcp_ssl::proxy::StatelessProxied,
         TransportConnectError,
     >,
@@ -140,8 +141,15 @@ where
     type Connection = <DefaultTransportConnector as Connector<R, ()>>::Connection;
 
     fn make(&self) -> Self::Connector {
-        let throttle_tls_connections = ThrottlingConnector::new(Default::default(), 1);
-        let proxy_or_direct_connector = Default::default();
+        let throttle_tls_connections = ThrottlingConnector::new(
+            LoggingConnector::new(Default::default(), LONG_TLS_HANDSHAKE_THRESHOLD, "TLS"),
+            1,
+        );
+        let proxy_or_direct_connector = DirectOrProxy::new(
+            LoggingConnector::new(Default::default(), LONG_TCP_HANDSHAKE_THRESHOLD, "TCP"),
+            // Proxy connectors use LoggingConnector internally
+            Default::default(),
+        );
         VariableTlsTimeoutConnector::new(
             throttle_tls_connections,
             proxy_or_direct_connector,
@@ -262,11 +270,13 @@ impl<TC> ConnectionResources<'_, TC> {
         // easier to test; specifically, the output is not guaranteed to be an AsyncDuplexStream.
         TC: ConnectorFactory<
             Transport,
+            Connection: Send,
             Connector: Sync + Connector<Transport, (), Error: Into<WebSocketConnectError>>,
         >,
         WC: Connector<
                 (WebSocketRouteFragment, HttpRouteFragment),
                 TC::Connection,
+                Connection: Send,
                 Error = tungstenite::Error,
             > + Send
             + Sync,
@@ -302,7 +312,10 @@ impl<TC> ConnectionResources<'_, TC> {
 
         let route_provider = routes.into_iter().map(ResolveWithSavedDescription);
         let connector = InterfaceMonitor::new(
-            DescribedRouteConnector(ComposedConnector::new(ws_connector, &transport_connector)),
+            DescribedRouteConnector(ComposedConnector::new(
+                LoggingConnector::new(ws_connector, Duration::from_secs(3), "websocket"),
+                &transport_connector,
+            )),
             network_change_rx,
             network_interface_poll_interval,
             post_route_change_connect_timeout,

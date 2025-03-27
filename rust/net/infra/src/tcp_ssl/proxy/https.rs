@@ -8,6 +8,7 @@ use std::future::Future;
 use std::net::IpAddr;
 use std::num::NonZeroU16;
 use std::sync::Arc;
+use std::time::Duration;
 
 use bytes::Bytes;
 use futures_util::TryFutureExt as _;
@@ -28,6 +29,10 @@ use crate::route::{
 };
 use crate::ws::error::HttpFormatError;
 use crate::{AsHttpHeader, AsyncDuplexStream, Connection, TransportInfo};
+
+pub(crate) const LONG_FULL_CONNECT_THRESHOLD: Duration = super::LONG_TCP_HANDSHAKE_THRESHOLD
+    .saturating_add(super::LONG_TLS_HANDSHAKE_THRESHOLD)
+    .saturating_add(Duration::from_secs(3));
 
 /// An [`AsyncDuplexStream`] created by an HTTP [`CONNECT`] request.
 ///

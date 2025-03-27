@@ -93,45 +93,15 @@ impl<O, I, E> VariableTlsTimeoutConnector<O, I, E> {
 #[cfg(test)]
 mod tests {
     use assert_matches::assert_matches;
-    use tokio::time;
 
     use super::*;
     use crate::errors::{FailedHandshakeReason, TransportConnectError};
+    use crate::route::connect::testutils::{DummyConnection, DummyDelayConnector};
 
     const TEST_TRANSPORT: () = ();
     const TEST_ROUTE: () = ();
     fn test_log_tag() -> Arc<str> {
         Arc::from("test")
-    }
-
-    #[derive(Debug)]
-    struct DummyConnection;
-
-    struct DummyDelayConnector {
-        delay: Duration,
-    }
-
-    impl<R, T> Connector<R, T> for DummyDelayConnector
-    where
-        T: Send,
-    {
-        type Connection = DummyConnection;
-        type Error = TransportConnectError;
-
-        fn connect_over(
-            &self,
-            _transport: T,
-            _route: R,
-            _log_tag: Arc<str>,
-        ) -> impl Future<Output = Result<Self::Connection, Self::Error>> + Send {
-            let delay = self.delay;
-            async move {
-                if !delay.is_zero() {
-                    time::sleep(delay).await;
-                }
-                Ok(DummyConnection)
-            }
-        }
     }
 
     #[tokio::test(start_paused = true)]

@@ -340,6 +340,7 @@ where
     // Whether the Schedule should be polled for its next route.
     let mut poll_schedule_for_next = true;
     let mut most_recent_connection_start = start_of_connecting;
+    let mut connects_started = 0;
     let mut connects_in_progress = FuturesUnordered::new();
     let mut outcomes = Vec::new();
 
@@ -392,10 +393,12 @@ where
             }
 
             Event::NextRouteAvailable(Some(route)) => {
+                let log_tag_for_connect = format!("{log_tag} {connects_started}").into();
+                connects_started += 1;
                 connects_in_progress.push(async {
                     let started = Instant::now();
                     let result = connector
-                        .connect_over(inner.clone(), route.clone(), log_tag.clone())
+                        .connect_over(inner.clone(), route.clone(), log_tag_for_connect)
                         .await;
                     (route, result, started)
                 });
