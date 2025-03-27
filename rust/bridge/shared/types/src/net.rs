@@ -115,7 +115,7 @@ pub struct ConnectionManager {
     env: Env<'static>,
     user_agent: UserAgent,
     dns_resolver: DnsResolver,
-    connect: ::tokio::sync::RwLock<ConnectState<PreconnectingFactory>>,
+    connect: std::sync::Mutex<ConnectState<PreconnectingFactory>>,
     // We could split this up to a separate mutex on each kind of connection,
     // but we don't hold it for very long anyway (just enough to clone the Arc).
     endpoints: std::sync::Mutex<Arc<EndpointConnections>>,
@@ -183,7 +183,11 @@ impl ConnectionManager {
     pub fn set_ipv6_enabled(&self, ipv6_enabled: bool) {
         let mut guard = self.transport_connector.lock().expect("not poisoned");
         guard.set_ipv6_enabled(ipv6_enabled);
-        self.connect.blocking_write().route_resolver.allow_ipv6 = ipv6_enabled;
+        self.connect
+            .lock()
+            .expect("not poisoned")
+            .route_resolver
+            .allow_ipv6 = ipv6_enabled;
     }
 
     /// Resets the endpoint connections to include or exclude censorship circumvention routes.
@@ -219,7 +223,10 @@ impl ConnectionManager {
         log::info!("ConnectionManager: on_network_change");
         self.network_change_event.fire();
         self.dns_resolver.on_network_change(now.into());
-        self.connect.blocking_write().network_changed(now.into());
+        self.connect
+            .lock()
+            .expect("not poisoned")
+            .network_changed(now.into());
     }
 }
 

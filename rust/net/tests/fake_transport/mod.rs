@@ -159,7 +159,7 @@ struct ReplacingConnectorFactory(FakeTransportConnector, DefaultConnectorFactory
 /// `Chat` values, so keeping them around is useful.
 pub struct FakeDeps {
     pub transport_connector: FakeTransportConnector,
-    connect_state: tokio::sync::RwLock<ConnectState<ReplacingConnectorFactory>>,
+    connect_state: std::sync::Mutex<ConnectState<ReplacingConnectorFactory>>,
     pub dns_resolver: DnsResolver,
     chat_domain_config: DomainConfig,
     endpoint_connection: EndpointConnection<MultiRouteConnectionManager>,

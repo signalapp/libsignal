@@ -125,7 +125,7 @@ pub struct Config {
 }
 
 pub struct ConnectionResources<'a, TC> {
-    pub connect_state: &'a tokio::sync::RwLock<ConnectState<TC>>,
+    pub connect_state: &'a std::sync::Mutex<ConnectState<TC>>,
     pub dns_resolver: &'a DnsResolver,
     pub network_change_event: &'a ObservableEvent,
     pub confirmation_header_name: Option<HeaderName>,
@@ -151,7 +151,7 @@ where
 }
 
 impl ConnectState {
-    pub fn new(config: Config) -> tokio::sync::RwLock<Self> {
+    pub fn new(config: Config) -> std::sync::Mutex<Self> {
         Self::new_with_transport_connector(config, DefaultConnectorFactory)
     }
 }
@@ -160,7 +160,7 @@ impl<ConnectorFactory> ConnectState<ConnectorFactory> {
     pub fn new_with_transport_connector(
         config: Config,
         make_transport_connector: ConnectorFactory,
-    ) -> tokio::sync::RwLock<Self> {
+    ) -> std::sync::Mutex<Self> {
         let Config {
             connect_params,
             connect_timeout,
@@ -286,7 +286,7 @@ impl<TC> ConnectionResources<'_, TC> {
             transport_connector,
             attempts_record,
             route_provider_context,
-        } = connect_state.read().await.snapshot();
+        } = connect_state.lock().expect("not poisoned").snapshot();
 
         let routes = routes.routes(&route_provider_context).collect_vec();
 
@@ -350,8 +350,8 @@ impl<TC> ConnectionResources<'_, TC> {
         }
 
         connect_state
-            .write()
-            .await
+            .lock()
+            .expect("not poisoned")
             .attempts_record
             .apply_outcome_updates(
                 updates
@@ -444,7 +444,10 @@ where
             transport_connector,
             attempts_record,
             route_provider_context,
-        } = connect_state.read().await.snapshot::<UsePreconnect<_>>();
+        } = connect_state
+            .lock()
+            .expect("not poisoned")
+            .snapshot::<UsePreconnect<_>>();
 
         let routes = routes
             .map_routes(|r| UsePreconnect {
@@ -539,7 +542,7 @@ where
 
         // Don't exit yet, we have to save the results!
         {
-            let mut connect_write = connect_state.write().await;
+            let mut connect_write = connect_state.lock().expect("not poisoned");
 
             connect_write.attempts_record.apply_outcome_updates(
                 updates
