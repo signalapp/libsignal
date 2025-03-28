@@ -257,3 +257,34 @@ pub unsafe extern "C" fn signal_sealed_session_cipher_decrypt(
         Ok(())
     })
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn signal_hex_encode(
+    output: *mut c_char,
+    output_len: usize,
+    input: *const u8,
+    input_len: usize,
+) -> *mut SignalFfiError {
+    run_ffi_safe(|| {
+        if input_len == 0 {
+            return Ok(());
+        }
+        if input_len > output_len / 2 {
+            // We check this early because an output buffer of {NULL, 0} is *valid*, just too small
+            // for anything but a zero-length input, while std::slice::from_raw_parts_mut requires a
+            // non-null base pointer.
+            return Err(SignalProtocolError::InvalidArgument(
+                "output buffer too small".to_string(),
+            )
+            .into());
+        }
+        if input.is_null() || output.is_null() {
+            return Err(NullPointerError.into());
+        }
+        let output = std::slice::from_raw_parts_mut(output, output_len);
+        let output = zerocopy::AsBytes::as_bytes_mut(output);
+        let input = std::slice::from_raw_parts(input, input_len);
+        hex::encode_to_slice(input, output).expect("checked above");
+        Ok(())
+    })
+}

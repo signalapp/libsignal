@@ -2349,6 +2349,7 @@ version = "0.68.1"
 dependencies = [
  "cpufeatures",
  "futures-util",
+ "hex",
  "libsignal-bridge",
  "libsignal-bridge-testing",
  "libsignal-net",
@@ -2356,6 +2357,7 @@ dependencies = [
  "log",
  "log-panics",
  "signal-media",
+ "zerocopy",
 ]
 
 [[package]]

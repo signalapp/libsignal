@@ -38,11 +38,7 @@ func randomBytes(_ count: Int) -> [UInt8] {
 
 extension Sequence where Element == UInt8 {
     internal var hexString: String {
-        func hex(b: UInt8) -> String {
-            let prefix = b & 0xF0 == 0 ? "0" : ""
-            return prefix + String(b, radix: 16)
-        }
-        return self.map(hex).joined(separator: "")
+        Array(self).toHex()
     }
 }
 

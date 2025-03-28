@@ -1437,6 +1437,8 @@ SignalFfiError *signal_group_send_token_check_valid_contents(SignalBorrowedBuffe
 
 SignalFfiError *signal_group_send_token_to_full_token(SignalOwnedBuffer *out, SignalBorrowedBuffer token, uint64_t expiration);
 
+SignalFfiError *signal_hex_encode(char *output, size_t output_len, const uint8_t *input, size_t input_len);
+
 SignalFfiError *signal_hkdf_derive(SignalBorrowedMutableBuffer output, SignalBorrowedBuffer ikm, SignalBorrowedBuffer label, SignalBorrowedBuffer salt);
 
 SignalFfiError *signal_hsm_enclave_client_complete_handshake(SignalMutPointerHsmEnclaveClient cli, SignalBorrowedBuffer handshake_received);

@@ -92,6 +92,13 @@ class ZKGroupTests: TestCaseBase {
         XCTAssertEqual(serializedPublicParams, try ServerPublicParams(contents: serializedPublicParams).serialize())
     }
 
+    func testGroupIdStringConversion() throws {
+        let masterKey = try GroupMasterKey(contents: TEST_ARRAY_32_1)
+        let groupSecretParams = try GroupSecretParams.deriveFromMasterKey(groupMasterKey: masterKey)
+        let groupId = try groupSecretParams.getPublicParams().getGroupIdentifier()
+        XCTAssertEqual("84e256730548f8ba09069b223eccc133f599f9827edc7084f8921e4a70cd9e4c", "\(groupId)")
+    }
+
     func testAuthZkcIntegration() throws {
         let aci = Aci(fromUUID: TEST_ARRAY_16)
         let pni = Pni(fromUUID: TEST_ARRAY_16_1)
