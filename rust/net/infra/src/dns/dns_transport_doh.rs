@@ -22,9 +22,10 @@ use crate::dns::dns_types::ResourceType;
 use crate::errors::{LogSafeDisplay, TransportConnectError};
 use crate::http_client::{AggregatingHttp2Client, Http2Connector};
 use crate::route::{
-    ComposedConnector, Connector, ConnectorExt, ConnectorFactory, HttpsTlsRoute, TcpRoute,
-    ThrottlingConnector, TlsRoute,
+    Connector, ConnectorExt, ConnectorFactory, HttpsTlsRoute, TcpRoute, ThrottlingConnector,
+    TlsRoute, VariableTlsTimeoutConnector,
 };
+use crate::timeouts::MIN_TLS_HANDSHAKE_TIMEOUT;
 use crate::{dns, DnsSource};
 
 pub(crate) const CLOUDFLARE_IPS: (Ipv4Addr, Ipv6Addr) = (
@@ -45,7 +46,7 @@ impl ConnectorFactory<HttpsTlsRoute<TlsRoute<TcpRoute<IpAddr>>>> for DohTranspor
 }
 
 pub struct DohTransportConnector {
-    transport_connector: ComposedConnector<
+    transport_connector: VariableTlsTimeoutConnector<
         crate::tcp_ssl::StatelessDirect,
         ThrottlingConnector<crate::tcp_ssl::StatelessDirect>,
         TransportConnectError,
@@ -55,9 +56,10 @@ pub struct DohTransportConnector {
 impl Default for DohTransportConnector {
     fn default() -> Self {
         Self {
-            transport_connector: ComposedConnector::new(
+            transport_connector: VariableTlsTimeoutConnector::new(
                 crate::tcp_ssl::StatelessDirect,
                 ThrottlingConnector::new(crate::tcp_ssl::StatelessDirect, 1),
+                MIN_TLS_HANDSHAKE_TIMEOUT,
             ),
         }
     }
