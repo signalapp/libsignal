@@ -6,6 +6,7 @@ mod support;
 
 use std::time::{Duration, SystemTime};
 
+use assert_matches::assert_matches;
 use futures_util::FutureExt;
 use libsignal_protocol::*;
 use rand::rngs::OsRng;
@@ -2242,6 +2243,156 @@ async fn run_interaction(
         );
     }
 
+    Ok(())
+}
+
+#[test]
+fn test_signedprekey_not_saved() -> TestResult {
+    run(
+        |builder| {
+            builder.add_pre_key(IdChoice::Next);
+            builder.add_signed_pre_key(IdChoice::Next);
+        },
+        PRE_KYBER_MESSAGE_VERSION,
+    )?;
+
+    run(
+        |builder| {
+            builder.add_pre_key(IdChoice::Next);
+            builder.add_signed_pre_key(IdChoice::Next);
+            builder.add_kyber_pre_key(IdChoice::Next);
+        },
+        KYBER_AWARE_MESSAGE_VERSION,
+    )?;
+
+    fn run<F>(bob_add_keys: F, expected_session_version: u32) -> TestResult
+    where
+        F: Fn(&mut TestStoreBuilder),
+    {
+        async {
+            let mut csprng = OsRng;
+
+            let bob_device_id: DeviceId = 1.into();
+
+            let alice_address = ProtocolAddress::new("+14151111111".to_owned(), 1.into());
+            let bob_address = ProtocolAddress::new("+14151111112".to_owned(), bob_device_id);
+
+            let mut bob_store_builder = TestStoreBuilder::new();
+            bob_add_keys(&mut bob_store_builder);
+
+            let mut alice_store_builder = TestStoreBuilder::new();
+            let alice_store = &mut alice_store_builder.store;
+
+            let bob_pre_key_bundle = bob_store_builder.make_bundle_with_latest_keys(bob_device_id);
+
+            process_prekey_bundle(
+                &bob_address,
+                &mut alice_store.session_store,
+                &mut alice_store.identity_store,
+                &bob_pre_key_bundle,
+                SystemTime::now(),
+                &mut csprng,
+            )
+            .await?;
+
+            assert!(alice_store.load_session(&bob_address).await?.is_some());
+            assert_eq!(
+                alice_store.session_version(&bob_address)?,
+                expected_session_version
+            );
+
+            let original_message = "L'homme est condamné à être libre";
+
+            // We encrypt a first message
+            let outgoing_message = encrypt(alice_store, &bob_address, original_message).await?;
+
+            // We encrypt a second message
+            let original_message2 = "L'homme est condamné à nouveau à être libre";
+            let outgoing_message2 = encrypt(alice_store, &bob_address, original_message2).await?;
+
+            assert_eq!(
+                outgoing_message.message_type(),
+                CiphertextMessageType::PreKey
+            );
+
+            // Let's process message 1
+            let incoming_message = CiphertextMessage::PreKeySignalMessage(
+                PreKeySignalMessage::try_from(outgoing_message.serialize())?,
+            );
+
+            let ptext = decrypt(
+                &mut bob_store_builder.store,
+                &alice_address,
+                &incoming_message,
+            )
+            .await?;
+
+            assert_eq!(
+                String::from_utf8(ptext).expect("valid utf8"),
+                original_message
+            );
+
+            // Now, we do not process the actual outgoing_message2, we clone it
+            let pksm_og2 = PreKeySignalMessage::try_from(outgoing_message2.serialize())?;
+            let kyber_payload = if let (Some(id), Some(ct)) =
+                (pksm_og2.kyber_pre_key_id(), pksm_og2.kyber_ciphertext())
+            {
+                // Note that we're relying on the Kyber pre-key being treated like a "last-resort"
+                // key and not being deleted between the two messages.
+                Some(KyberPayload::new(id, ct.clone()))
+            } else {
+                None
+            };
+
+            let arbitrary_other_base_key = KeyPair::generate(&mut csprng);
+
+            // and then recreate from outgoing_message2 a new fresh prekey message
+            let pksm_mal = PreKeySignalMessage::new(
+                pksm_og2.message_version(),
+                pksm_og2.registration_id(),
+                None, // we don't bother with a one time prekey
+                pksm_og2.signed_pre_key_id(),
+                kyber_payload,
+                arbitrary_other_base_key.public_key,
+                *pksm_og2.identity_key(),
+                pksm_og2.message().clone(), // but we keep the originally computed ciphertext
+            )
+            .expect("ok");
+
+            // Now process pksm_mal
+            let bob_session_state_before = bob_store_builder
+                .store
+                .load_session(&alice_address)
+                .await?
+                .expect("session found")
+                .serialize()?;
+            let incoming_message = CiphertextMessage::PreKeySignalMessage(pksm_mal);
+            assert_matches!(
+                decrypt(
+                    &mut bob_store_builder.store,
+                    &alice_address,
+                    &incoming_message,
+                )
+                .await
+                .expect_err("invalid"),
+                SignalProtocolError::InvalidMessage(CiphertextMessageType::PreKey, _)
+            );
+            let bob_session_state_after = bob_store_builder
+                .store
+                .load_session(&alice_address)
+                .await?
+                .expect("session found")
+                .serialize()?;
+            assert_eq!(
+                bob_session_state_before, bob_session_state_after,
+                "session should not have been updated on decryption failure"
+            );
+
+            Ok(())
+        }
+        .now_or_never()
+        .expect("sync")
+    }
     Ok(())
 }
 

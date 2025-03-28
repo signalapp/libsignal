@@ -461,6 +461,22 @@ fn decrypt_message_with_record<R: Rng + CryptoRng>(
             }
             Err(e) => {
                 log_decryption_failure(&current_state, &e);
+                match original_message_type {
+                    CiphertextMessageType::PreKey => {
+                        // A PreKey message creates a session and then decrypts a Whisper message
+                        // using that session. No need to check older sessions.
+                        // Note that we don't propagate `e` here; we always return InvalidMessage,
+                        // as we would for a Whisper message that tried several sessions.
+                        return Err(SignalProtocolError::InvalidMessage(
+                            original_message_type,
+                            "decryption failed",
+                        ));
+                    }
+                    CiphertextMessageType::Whisper => {}
+                    CiphertextMessageType::SenderKey | CiphertextMessageType::Plaintext => {
+                        unreachable!("should not be using Double Ratchet for these")
+                    }
+                }
                 errs.push(e);
             }
         }
