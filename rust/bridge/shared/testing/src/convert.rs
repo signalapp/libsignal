@@ -196,11 +196,12 @@ struct CustomErrorType;
 #[cfg(feature = "jni")]
 impl From<CustomErrorType> for crate::jni::SignalJniError {
     fn from(CustomErrorType: CustomErrorType) -> Self {
-        Self::TestingError {
+        crate::jni::TestingError {
             exception_class: crate::jni::ClassName(
                 "org.signal.libsignal.internal.TestingException",
             ),
         }
+        .into()
     }
 }
 

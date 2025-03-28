@@ -66,7 +66,7 @@ impl<'a> JniInputStream<'a> {
     fn do_skip(&self, amount: u64) -> SignalJniResult<()> {
         self.env.borrow_mut().with_local_frame(8, "skip", |env| {
             let java_amount = amount.try_into().map_err(|_| {
-                SignalJniError::Io(io::Error::new(
+                SignalJniError::from(io::Error::new(
                     io::ErrorKind::UnexpectedEof,
                     "InputStream::skip more than i64::MAX not supported",
                 ))
@@ -80,7 +80,7 @@ impl<'a> JniInputStream<'a> {
             )?;
 
             if amount_skipped != java_amount {
-                return Err(SignalJniError::Io(io::Error::new(
+                return Err(SignalJniError::from(io::Error::new(
                     io::ErrorKind::UnexpectedEof,
                     "InputStream skipped less than requested",
                 )));

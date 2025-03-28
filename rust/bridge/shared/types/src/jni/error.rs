@@ -2,59 +2,83 @@
 // Copyright 2020-2021 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
-use std::fmt;
+use std::fmt::{self, Debug};
 use std::io::Error as IoError;
 
-use attest::hsm_enclave::Error as HsmEnclaveError;
-use device_transfer::Error as DeviceTransferError;
-use http::uri::InvalidUri;
 use jni::objects::{GlobalRef, JObject, JString, JThrowable};
 use jni::{JNIEnv, JavaVM};
-use libsignal_account_keys::Error as PinError;
 use libsignal_net::cdsi::CdsiProtocolError;
-use libsignal_net::infra::ws::WebSocketServiceError;
 use libsignal_protocol::*;
-use signal_crypto::Error as SignalCryptoError;
-use usernames::{UsernameError, UsernameLinkError};
-use zkgroup::{ZkGroupDeserializationFailure, ZkGroupVerificationFailure};
 
 use super::*;
 use crate::net::cdsi::CdsiError;
 use crate::support::describe_panic;
 
 /// The top-level error type for when something goes wrong.
-#[derive(Debug, thiserror::Error, derive_more::From)]
-pub enum SignalJniError {
-    Protocol(SignalProtocolError),
-    DeviceTransfer(DeviceTransferError),
-    SignalCrypto(SignalCryptoError),
-    HsmEnclave(HsmEnclaveError),
-    Enclave(EnclaveError),
-    Pin(PinError),
-    ZkGroupDeserializationFailure(ZkGroupDeserializationFailure),
-    ZkGroupVerificationFailure(ZkGroupVerificationFailure),
-    UsernameError(UsernameError),
-    UsernameProofError(usernames::ProofVerificationFailure),
-    UsernameLinkError(UsernameLinkError),
-    Io(IoError),
-    #[cfg(feature = "signal-media")]
-    Mp4SanitizeParse(signal_media::sanitize::mp4::ParseErrorReport),
-    #[cfg(feature = "signal-media")]
-    WebpSanitizeParse(signal_media::sanitize::webp::ParseErrorReport),
-    Cdsi(CdsiError),
-    WebSocket(WebSocketServiceError),
-    ChatConnect(libsignal_net::chat::ConnectError),
-    ChatSend(libsignal_net::chat::SendError),
-    InvalidUri(InvalidUri),
-    ConnectTimedOut,
-    BackupValidation(libsignal_message_backup::ReadError),
-    Bridge(BridgeLayerError),
-    #[from(skip)]
-    TestingError {
-        exception_class: ClassName<'static>,
-    },
-    #[from(skip)]
-    KeyTransparency(libsignal_net::keytrans::Error),
+#[derive(Debug, thiserror::Error)]
+#[error("{0}")]
+pub struct SignalJniError(Box<dyn JniError + Send>);
+
+#[derive(Debug, thiserror::Error, displaydoc::Display)]
+/// TestingError({exception_class})
+pub struct TestingError {
+    pub exception_class: ClassName<'static>,
+}
+
+#[derive(Debug, thiserror::Error, displaydoc::Display)]
+/// connect timed out
+pub(super) struct ConnectTimedOut;
+
+impl SignalJniError {
+    pub(super) fn to_throwable<'a>(
+        &self,
+        env: &mut JNIEnv<'a>,
+    ) -> Result<JThrowable<'a>, BridgeLayerError> {
+        self.0.to_throwable(env)
+    }
+}
+
+pub(super) trait JniError: Debug + Display {
+    fn to_throwable<'a>(&self, env: &mut JNIEnv<'a>) -> Result<JThrowable<'a>, BridgeLayerError>;
+
+    fn into_io_error(self: Box<Self>) -> IoError {
+        IoError::other(self.to_string())
+    }
+    fn into_protocol_error(self: Box<Self>) -> SignalProtocolError {
+        SignalProtocolError::FfiBindingError(self.to_string())
+    }
+}
+
+/// Simpler trait that provides a blanket impl of [`JniError`].
+///
+/// This should only be implemented for types that, when converted into a Java
+/// `Throwable`, create a class using a constructor that takes a single
+/// `message` argument of type `java.lang.String`.
+pub(super) trait MessageOnlyExceptionJniError: Debug + Display {
+    /// The name of the Java class that a value can be converted into.
+    fn exception_class(&self) -> ClassName<'static>;
+}
+
+impl<M: MessageOnlyExceptionJniError> JniError for M {
+    fn to_throwable<'a>(&self, env: &mut JNIEnv<'a>) -> Result<JThrowable<'a>, BridgeLayerError> {
+        let class = self.exception_class();
+        let throwable = env
+            .new_string(self.to_string())
+            .check_exceptions(env, "JniError::into_throwable")
+            .and_then(|message| {
+                new_instance(env, class, jni_args!((message => java.lang.String) -> void))
+            });
+        throwable.map(Into::into)
+    }
+}
+
+impl<E> From<E> for SignalJniError
+where
+    E: JniError + Send + 'static,
+{
+    fn from(value: E) -> Self {
+        Self(Box::new(value))
+    }
 }
 
 /// Subset of errors that can happen in the bridge layer.
@@ -72,41 +96,6 @@ pub enum BridgeLayerError {
     IncorrectArrayLength { expected: usize, actual: usize },
     CallbackException(&'static str, ThrownException),
     UnexpectedPanic(std::boxed::Box<dyn std::any::Any + std::marker::Send>),
-}
-
-impl fmt::Display for SignalJniError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            SignalJniError::Protocol(s) => write!(f, "{}", s),
-            SignalJniError::DeviceTransfer(s) => write!(f, "{}", s),
-            SignalJniError::HsmEnclave(e) => write!(f, "{}", e),
-            SignalJniError::Enclave(e) => write!(f, "{}", e),
-            SignalJniError::Pin(e) => write!(f, "{}", e),
-            SignalJniError::SignalCrypto(s) => write!(f, "{}", s),
-            SignalJniError::ZkGroupVerificationFailure(e) => write!(f, "{}", e),
-            SignalJniError::ZkGroupDeserializationFailure(e) => write!(f, "{}", e),
-            SignalJniError::UsernameError(e) => write!(f, "{}", e),
-            SignalJniError::UsernameProofError(e) => write!(f, "{}", e),
-            SignalJniError::UsernameLinkError(e) => write!(f, "{}", e),
-            SignalJniError::Io(e) => write!(f, "{}", e),
-            #[cfg(feature = "signal-media")]
-            SignalJniError::Mp4SanitizeParse(e) => write!(f, "{}", e),
-            #[cfg(feature = "signal-media")]
-            SignalJniError::WebpSanitizeParse(e) => write!(f, "{}", e),
-            SignalJniError::Cdsi(e) => write!(f, "{}", e),
-            SignalJniError::ChatConnect(e) => write!(f, "{}", e),
-            SignalJniError::ChatSend(e) => write!(f, "{}", e),
-            SignalJniError::InvalidUri(e) => write!(f, "{}", e),
-            SignalJniError::WebSocket(e) => write!(f, "{e}"),
-            SignalJniError::ConnectTimedOut => write!(f, "connect timed out"),
-            SignalJniError::BackupValidation(e) => write!(f, "{}", e),
-            SignalJniError::Bridge(e) => write!(f, "{}", e),
-            SignalJniError::TestingError { exception_class } => {
-                write!(f, "TestingError({})", exception_class)
-            }
-            SignalJniError::KeyTransparency(e) => write!(f, "{}", e),
-        }
-    }
 }
 
 impl fmt::Display for BridgeLayerError {
@@ -147,8 +136,8 @@ impl From<signal_media::sanitize::mp4::Error> for SignalJniError {
     fn from(e: signal_media::sanitize::mp4::Error) -> Self {
         use signal_media::sanitize::mp4::Error;
         match e {
-            Error::Io(e) => Self::Io(e),
-            Error::Parse(e) => Self::Mp4SanitizeParse(e),
+            Error::Io(e) => e.into(),
+            Error::Parse(e) => e.into(),
         }
     }
 }
@@ -158,8 +147,8 @@ impl From<signal_media::sanitize::webp::Error> for SignalJniError {
     fn from(e: signal_media::sanitize::webp::Error) -> Self {
         use signal_media::sanitize::webp::Error;
         match e {
-            Error::Io(e) => Self::Io(e),
-            Error::Parse(e) => Self::WebpSanitizeParse(e),
+            Error::Io(e) => e.into(),
+            Error::Parse(e) => e.into(),
         }
     }
 }
@@ -167,15 +156,13 @@ impl From<signal_media::sanitize::webp::Error> for SignalJniError {
 impl From<libsignal_net::cdsi::LookupError> for SignalJniError {
     fn from(e: libsignal_net::cdsi::LookupError) -> SignalJniError {
         use libsignal_net::cdsi::LookupError;
-        SignalJniError::Cdsi(match e {
-            LookupError::ConnectionTimedOut => return SignalJniError::ConnectTimedOut,
+        let cdsi_error = match e {
+            LookupError::ConnectionTimedOut => return ConnectTimedOut.into(),
             LookupError::AttestationError(e) => return e.into(),
             LookupError::ConnectTransport(e) => return IoError::from(e).into(),
             LookupError::WebSocket(e) => return e.into(),
             LookupError::InvalidArgument { server_reason: _ } => {
-                return SignalJniError::Protocol(SignalProtocolError::InvalidArgument(
-                    e.to_string(),
-                ))
+                return SignalProtocolError::InvalidArgument(e.to_string()).into()
             }
             LookupError::InvalidResponse => CdsiError::InvalidResponse,
             LookupError::EnclaveProtocol(_) => CdsiError::Protocol,
@@ -186,48 +173,20 @@ impl From<libsignal_net::cdsi::LookupError> for SignalJniError {
             LookupError::ParseError => CdsiError::ParseError,
             LookupError::InvalidToken => CdsiError::InvalidToken,
             LookupError::Server { reason } => CdsiError::Server { reason },
-        })
-    }
-}
-
-impl From<KeyTransNetError> for SignalJniError {
-    fn from(err: KeyTransNetError) -> Self {
-        match err {
-            KeyTransNetError::ChatSendError(e) => SignalJniError::ChatSend(e),
-            KeyTransNetError::RequestFailed(_)
-            | KeyTransNetError::VerificationFailed(_)
-            | KeyTransNetError::InvalidResponse(_)
-            | KeyTransNetError::InvalidRequest(_)
-            | KeyTransNetError::DecodingFailed(_) => SignalJniError::KeyTransparency(err),
-        }
+        };
+        CdsiError::into(cdsi_error)
     }
 }
 
 impl From<SignalJniError> for SignalProtocolError {
-    fn from(err: SignalJniError) -> SignalProtocolError {
-        match err {
-            SignalJniError::Protocol(e) => e,
-            SignalJniError::Bridge(BridgeLayerError::BadJniParameter(m)) => {
-                SignalProtocolError::InvalidArgument(m.to_string())
-            }
-            SignalJniError::Bridge(BridgeLayerError::CallbackException(callback, exception)) => {
-                SignalProtocolError::ApplicationCallbackError(callback, Box::new(exception))
-            }
-            _ => SignalProtocolError::FfiBindingError(format!("{}", err)),
-        }
+    fn from(SignalJniError(err): SignalJniError) -> SignalProtocolError {
+        err.into_protocol_error()
     }
 }
 
 impl From<SignalJniError> for IoError {
-    fn from(err: SignalJniError) -> Self {
-        match err {
-            SignalJniError::Io(e) => e,
-            SignalJniError::Bridge(BridgeLayerError::CallbackException(
-                _method_name,
-                exception,
-            )) => IoError::other(exception),
-            e => IoError::other(e.to_string()),
-        }
+    fn from(SignalJniError(err): SignalJniError) -> Self {
+        err.into_io_error()
     }
 }
 

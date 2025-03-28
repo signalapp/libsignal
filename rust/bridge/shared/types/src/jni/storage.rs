@@ -39,8 +39,29 @@ impl<'a> JniIdentityKeyStore<'a> {
     }
 }
 
+#[derive(Debug, derive_more::From)]
+enum BridgeOrProtocolError {
+    Bridge(BridgeLayerError),
+    Protocol(SignalProtocolError),
+}
+
+impl From<BridgeOrProtocolError> for SignalProtocolError {
+    fn from(value: BridgeOrProtocolError) -> Self {
+        match value {
+            BridgeOrProtocolError::Bridge(e) => e.into(),
+            BridgeOrProtocolError::Protocol(e) => e,
+        }
+    }
+}
+
+impl From<BridgeLayerError> for SignalProtocolError {
+    fn from(value: BridgeLayerError) -> Self {
+        SignalJniError::from(value).into()
+    }
+}
+
 impl JniIdentityKeyStore<'_> {
-    fn do_get_identity_key_pair(&self) -> Result<IdentityKeyPair, SignalJniError> {
+    fn do_get_identity_key_pair(&self) -> Result<IdentityKeyPair, BridgeOrProtocolError> {
         self.env
             .borrow_mut()
             .with_local_frame(8, "getIdentityKeyPair", |env| {
@@ -63,7 +84,7 @@ impl JniIdentityKeyStore<'_> {
             })
     }
 
-    fn do_get_local_registration_id(&self) -> Result<u32, SignalJniError> {
+    fn do_get_local_registration_id(&self) -> Result<u32, BridgeLayerError> {
         self.env
             .borrow_mut()
             .with_local_frame(8, "getLocalRegistrationId", |env| {
@@ -73,7 +94,7 @@ impl JniIdentityKeyStore<'_> {
                     "getLocalRegistrationId",
                     jni_args!(() -> int),
                 )?;
-                Ok(u32::convert_from(env, &i)?)
+                u32::convert_from(env, &i)
             })
     }
 
@@ -81,7 +102,7 @@ impl JniIdentityKeyStore<'_> {
         &mut self,
         address: &ProtocolAddress,
         identity: &IdentityKey,
-    ) -> Result<bool, SignalJniError> {
+    ) -> Result<bool, BridgeLayerError> {
         self.env
             .borrow_mut()
             .with_local_frame(8, "saveIdentity", |env| {
@@ -153,11 +174,10 @@ impl JniIdentityKeyStore<'_> {
     fn do_get_identity(
         &self,
         address: &ProtocolAddress,
-    ) -> Result<Option<IdentityKey>, SignalJniError> {
-        self.env.borrow_mut().with_local_frame(
-            8,
-            "getIdentity",
-            |env| -> SignalJniResult<Option<IdentityKey>> {
+    ) -> Result<Option<IdentityKey>, BridgeOrProtocolError> {
+        self.env
+            .borrow_mut()
+            .with_local_frame(8, "getIdentity", |env| {
                 let address_jobject = protocol_address_to_jobject(env, address)?;
                 let callback_args = jni_args!((
                     address_jobject => org.signal.libsignal.protocol.SignalProtocolAddress,
@@ -170,8 +190,7 @@ impl JniIdentityKeyStore<'_> {
                     None => Ok(None),
                     Some(k) => Ok(Some(IdentityKey::decode(&k)?)),
                 }
-            },
-        )
+            })
     }
 }
 
@@ -244,9 +263,7 @@ impl JniPreKeyStore<'_> {
                     get_object_with_native_handle(env, self.store, callback_args, "loadPreKey")?;
                 match pk {
                     Some(pk) => Ok(pk),
-                    None => Err(SignalJniError::Protocol(
-                        SignalProtocolError::InvalidPreKeyId,
-                    )),
+                    None => Err(SignalJniError::from(SignalProtocolError::InvalidPreKeyId)),
                 }
             })
     }
@@ -347,7 +364,7 @@ impl JniSignedPreKeyStore<'_> {
                 )?;
                 match spk {
                     Some(spk) => Ok(spk),
-                    None => Err(SignalJniError::Protocol(
+                    None => Err(SignalJniError::from(
                         SignalProtocolError::InvalidSignedPreKeyId,
                     )),
                 }
@@ -434,7 +451,7 @@ impl JniKyberPreKeyStore<'_> {
                 )?;
                 match kpk {
                     Some(kpk) => Ok(kpk),
-                    None => Err(SignalJniError::Protocol(
+                    None => Err(SignalJniError::from(
                         SignalProtocolError::InvalidKyberPreKeyId,
                     )),
                 }
@@ -531,7 +548,7 @@ impl JniSessionStore<'_> {
     fn do_load_session(
         &self,
         address: &ProtocolAddress,
-    ) -> Result<Option<SessionRecord>, SignalJniError> {
+    ) -> Result<Option<SessionRecord>, BridgeLayerError> {
         self.env
             .borrow_mut()
             .with_local_frame(8, "loadSession", |env| {
@@ -548,7 +565,7 @@ impl JniSessionStore<'_> {
         &mut self,
         address: &ProtocolAddress,
         record: &SessionRecord,
-    ) -> Result<(), SignalJniError> {
+    ) -> Result<(), BridgeLayerError> {
         self.env
             .borrow_mut()
             .with_local_frame(8, "storeSession", |env| {
@@ -644,7 +661,7 @@ impl JniSenderKeyStore<'_> {
         &mut self,
         sender: &ProtocolAddress,
         distribution_id: Uuid,
-    ) -> Result<Option<SenderKeyRecord>, SignalJniError> {
+    ) -> Result<Option<SenderKeyRecord>, BridgeLayerError> {
         self.env
             .borrow_mut()
             .with_local_frame(8, "loadSenderKey", |env| {
