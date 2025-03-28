@@ -15,34 +15,34 @@ import org.signal.libsignal.protocol.ecc.ECKeyPair;
 import org.signal.libsignal.protocol.ecc.ECPrivateKey;
 import org.signal.libsignal.protocol.ecc.ECPublicKey;
 
-public class PreKeyRecord implements NativeHandleGuard.Owner {
-  private final long unsafeHandle;
-
+public class PreKeyRecord extends NativeHandleGuard.SimpleOwner {
   @Override
-  @SuppressWarnings("deprecation")
-  protected void finalize() {
-    Native.PreKeyRecord_Destroy(this.unsafeHandle);
+  protected void release(long nativeHandle) {
+    Native.PreKeyRecord_Destroy(nativeHandle);
   }
 
   public PreKeyRecord(int id, ECKeyPair keyPair) {
-    try (NativeHandleGuard publicKey = new NativeHandleGuard(keyPair.getPublicKey());
-        NativeHandleGuard privateKey = new NativeHandleGuard(keyPair.getPrivateKey()); ) {
-      this.unsafeHandle =
-          Native.PreKeyRecord_New(id, publicKey.nativeHandle(), privateKey.nativeHandle());
-    }
+    super(
+        keyPair
+            .getPublicKey()
+            .guardedMap(
+                (publicKeyHandle) ->
+                    keyPair
+                        .getPrivateKey()
+                        .guardedMap(
+                            (privateKeyHandle) ->
+                                Native.PreKeyRecord_New(id, publicKeyHandle, privateKeyHandle))));
   }
 
   // FIXME: This shouldn't be considered a "message".
   public PreKeyRecord(byte[] serialized) throws InvalidMessageException {
-    this.unsafeHandle =
+    super(
         filterExceptions(
-            InvalidMessageException.class, () -> Native.PreKeyRecord_Deserialize(serialized));
+            InvalidMessageException.class, () -> Native.PreKeyRecord_Deserialize(serialized)));
   }
 
   public int getId() {
-    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return filterExceptions(() -> Native.PreKeyRecord_GetId(guard.nativeHandle()));
-    }
+    return filterExceptions(() -> guardedMapChecked(Native::PreKeyRecord_GetId));
   }
 
   public ECKeyPair getKeyPair() throws InvalidKeyException {
@@ -60,12 +60,6 @@ public class PreKeyRecord implements NativeHandleGuard.Owner {
   }
 
   public byte[] serialize() {
-    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return filterExceptions(() -> Native.PreKeyRecord_GetSerialized(guard.nativeHandle()));
-    }
-  }
-
-  public long unsafeNativeHandleWithoutGuard() {
-    return this.unsafeHandle;
+    return filterExceptions(() -> guardedMapChecked(Native::PreKeyRecord_GetSerialized));
   }
 }

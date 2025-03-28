@@ -5,16 +5,19 @@
 
 use std::collections::HashMap;
 use std::fmt::Debug;
+use std::hash::Hash;
 use std::net::SocketAddr;
 use std::sync::Arc;
 
 use async_trait::async_trait;
 use either::Either;
 use itertools::Itertools;
+use tokio::time::Instant;
 
 use crate::dns::custom_resolver::{CustomDnsResolver, DnsTransport};
 use crate::dns::dns_errors::Error;
 use crate::dns::lookup_result::LookupResult;
+use crate::route::{ConnectorFactory, ResolvedRoute};
 use crate::{dns, DnsSource};
 
 #[derive(Clone, Debug)]
@@ -26,6 +29,7 @@ pub struct DnsLookupRequest {
 #[async_trait]
 pub trait DnsLookup: Debug + Send + Sync {
     async fn dns_lookup(&self, request: DnsLookupRequest) -> dns::Result<LookupResult>;
+    fn on_network_change(&self, _now: Instant) {}
 }
 
 /// Performs DNS lookup using system resolver
@@ -66,11 +70,19 @@ impl DnsLookup for StaticDnsMap {
 }
 
 #[async_trait]
-impl<T> DnsLookup for CustomDnsResolver<T>
+impl<R, T> DnsLookup for CustomDnsResolver<R, T>
 where
-    T: DnsTransport<ConnectionParameters: Sync> + Sync + 'static,
+    T: ConnectorFactory<R, Connection: DnsTransport + 'static, Connector: Send + Sync>
+        + Send
+        + Sync,
+    R: ResolvedRoute + Clone + Hash + Eq + Send + Sync + Debug,
 {
     async fn dns_lookup(&self, request: DnsLookupRequest) -> dns::Result<LookupResult> {
         self.resolve(request).await
+    }
+
+    fn on_network_change(&self, now: Instant) {
+        // Forward to the non-trait method.
+        self.on_network_change(now);
     }
 }

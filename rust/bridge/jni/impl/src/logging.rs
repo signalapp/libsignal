@@ -172,6 +172,9 @@ pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_Logger_1Initi
                     "Initializing libsignal version:{}",
                     env!("CARGO_PKG_VERSION")
                 );
+                // These strings are explicitly looked for by build_jni.sh.
+                log::debug!("THIS BUILD HAS DEBUG-LEVEL LOGS ENABLED");
+                log::trace!("THIS BUILD HAS TRACE-LEVEL LOGS ENABLED");
                 let backtrace_mode = {
                     cfg_if::cfg_if! {
                         if #[cfg(target_os = "android")] {

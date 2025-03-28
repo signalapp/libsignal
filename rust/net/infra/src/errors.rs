@@ -6,9 +6,10 @@
 use std::fmt::Display;
 use std::time::Duration;
 
+use http::{HeaderName, HeaderValue};
 use tokio_boring_signal::HandshakeError;
 
-use crate::certs;
+use crate::{certs, AsHttpHeader};
 
 pub trait LogSafeDisplay: Display {}
 
@@ -60,11 +61,23 @@ impl Display for SslErrorReasons {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct FailedHandshakeReason {
     io: Option<std::io::ErrorKind>,
     code: Option<boring_signal::ssl::ErrorCode>,
 }
+
+impl FailedHandshakeReason {
+    pub const TIMED_OUT: Self = Self {
+        io: Some(std::io::ErrorKind::TimedOut),
+        code: None,
+    };
+}
+
+/// Error type for TLS handshake timeouts
+#[derive(Debug, Clone, Copy, thiserror::Error)]
+#[error("TLS handshake timed out")]
+pub struct TlsHandshakeTimeout;
 
 impl<S> From<HandshakeError<S>> for FailedHandshakeReason {
     fn from(value: HandshakeError<S>) -> Self {
@@ -101,6 +114,14 @@ impl RetryLater {
     }
 }
 
+impl AsHttpHeader for RetryLater {
+    const HEADER_NAME: HeaderName = HeaderName::from_static("retry-after");
+
+    fn header_value(&self) -> HeaderValue {
+        HeaderValue::from(self.retry_after_seconds)
+    }
+}
+
 impl From<boring_signal::error::ErrorStack> for TransportConnectError {
     fn from(value: boring_signal::error::ErrorStack) -> Self {
         Self::SslError(SslErrorReasons(value))
@@ -133,5 +154,11 @@ impl From<TransportConnectError> for std::io::Error {
             TransportConnectError::ClientAbort => ErrorKind::ConnectionAborted,
         };
         Self::new(kind, value.to_string())
+    }
+}
+
+impl From<TlsHandshakeTimeout> for TransportConnectError {
+    fn from(TlsHandshakeTimeout: TlsHandshakeTimeout) -> Self {
+        Self::SslFailedHandshake(FailedHandshakeReason::TIMED_OUT)
     }
 }

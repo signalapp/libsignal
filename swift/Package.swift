@@ -33,6 +33,7 @@ let package = Package(
         .testTarget(
             name: "LibSignalClientTests",
             dependencies: ["LibSignalClient"],
+            resources: [.process("Resources")],
             swiftSettings: [.enableExperimentalFeature("StrictConcurrency")],
             linkerSettings: [.unsafeFlags(["-L\(rustBuildDir)"])]
         ),

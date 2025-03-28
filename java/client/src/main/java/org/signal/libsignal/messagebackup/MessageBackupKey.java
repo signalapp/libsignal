@@ -16,10 +16,10 @@ import org.signal.libsignal.protocol.ServiceId.Aci;
  *
  * @see BackupKey
  */
-public class MessageBackupKey implements NativeHandleGuard.Owner {
+public class MessageBackupKey extends NativeHandleGuard.SimpleOwner {
 
   private MessageBackupKey(long nativeHandle) {
-    this.nativeHandle = nativeHandle;
+    super(nativeHandle);
   }
 
   /**
@@ -27,8 +27,7 @@ public class MessageBackupKey implements NativeHandleGuard.Owner {
    */
   @Deprecated
   public MessageBackupKey(byte[] masterKey, Aci aci) {
-    this.nativeHandle =
-        Native.MessageBackupKey_FromMasterKey(masterKey, aci.toServiceIdFixedWidthBinary());
+    super(Native.MessageBackupKey_FromMasterKey(masterKey, aci.toServiceIdFixedWidthBinary()));
   }
 
   /**
@@ -38,9 +37,9 @@ public class MessageBackupKey implements NativeHandleGuard.Owner {
    * String here is considered a programmer error.
    */
   public MessageBackupKey(String accountEntropy, Aci aci) {
-    this.nativeHandle =
+    super(
         Native.MessageBackupKey_FromAccountEntropyPool(
-            accountEntropy, aci.toServiceIdFixedWidthBinary());
+            accountEntropy, aci.toServiceIdFixedWidthBinary()));
   }
 
   /**
@@ -52,9 +51,9 @@ public class MessageBackupKey implements NativeHandleGuard.Owner {
    * created from a master key.
    */
   public MessageBackupKey(BackupKey backupKey, byte[] backupId) {
-    this.nativeHandle =
+    super(
         Native.MessageBackupKey_FromBackupKeyAndBackupId(
-            backupKey.getInternalContentsForJNI(), backupId);
+            backupKey.getInternalContentsForJNI(), backupId));
   }
 
   /**
@@ -75,29 +74,17 @@ public class MessageBackupKey implements NativeHandleGuard.Owner {
     return new MessageBackupKey(Native.MessageBackupKey_FromParts(hmacKey, aesKey));
   }
 
-  @Override
-  public long unsafeNativeHandleWithoutGuard() {
-    return nativeHandle;
-  }
-
-  @SuppressWarnings("deprecation")
-  protected void finalize() {
-    Native.MessageBackupKey_Destroy(this.nativeHandle);
+  protected void release(long nativeHandle) {
+    Native.MessageBackupKey_Destroy(nativeHandle);
   }
 
   /** An HMAC key used to sign a backup file. */
   public byte[] getHmacKey() {
-    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return Native.MessageBackupKey_GetHmacKey(guard.nativeHandle());
-    }
+    return guardedMap(Native::MessageBackupKey_GetHmacKey);
   }
 
   /** An AES-256-CBC key used to encrypt a backup file. */
   public byte[] getAesKey() {
-    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return Native.MessageBackupKey_GetAesKey(guard.nativeHandle());
-    }
+    return guardedMap(Native::MessageBackupKey_GetAesKey);
   }
-
-  private long nativeHandle;
 }

@@ -20,6 +20,15 @@ export abstract class InputStream implements Native.InputStream {
   }
 
   /**
+   * Called to indicate the stream's resources should be released.
+   *
+   * The default implementation does nothing and completes immediately. Subclasses should not expect
+   */
+  close(): Promise<void> {
+    return Promise.resolve();
+  }
+
+  /**
    * Read an amount of bytes from the input stream.
    *
    * The actual amount of bytes returned may be smaller than the amount requested by the caller, for any reason;

@@ -3,26 +3,28 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use assert_matches::assert_matches;
 use async_trait::async_trait;
 use futures_util::{StreamExt as _, TryFutureExt as _};
 use itertools::Itertools as _;
 use libsignal_net::chat;
-use libsignal_net::env::STAGING;
+use libsignal_net::env::{DomainConfig, STAGING};
 use libsignal_net::infra::errors::TransportConnectError;
 use libsignal_net_infra::dns::dns_lookup::{DnsLookup, DnsLookupRequest};
 use libsignal_net_infra::dns::lookup_result::LookupResult;
 use libsignal_net_infra::dns::{self, DnsResolver};
 use libsignal_net_infra::host::Host;
+use libsignal_net_infra::timeouts::MIN_TLS_HANDSHAKE_TIMEOUT;
 use libsignal_net_infra::utils::timed;
 use test_case::test_case;
 use tokio::time::{Duration, Instant};
 
 mod fake_transport;
 use fake_transport::{
-    allow_domain_fronting, connect_websockets_on_incoming, error_all_hosts_after, FakeDeps,
+    allow_domain_fronting, connect_websockets_on_incoming, error_all_hosts_after,
+    only_direct_routes, FakeDeps,
 };
 
 use crate::fake_transport::{
@@ -146,7 +148,14 @@ async fn runs_one_tls_handshake_at_a_time() {
     let domain_config = STAGING.chat_domain_config;
     let (deps, incoming_streams) = FakeDeps::new(&domain_config);
 
-    const TLS_HANDSHAKE_DELAY: Duration = Duration::from_secs(5);
+    // This is set to be less than MIN_TLS_HANDSHAKE_TIMEOUT, so that we don't have to otherwise
+    // take the timeout into account.
+    // TODO: Replace this with checked_sub() and then Option::unwrap() once we have MSRV >= 1.83
+    const TLS_HANDSHAKE_DELAY: Duration = Duration::from_millis(2999);
+    assert_eq!(
+        TLS_HANDSHAKE_DELAY,
+        MIN_TLS_HANDSHAKE_TIMEOUT - Duration::from_millis(1)
+    );
     tokio::spawn(connect_websockets_on_incoming(incoming_streams));
     deps.transport_connector.set_behaviors(
         allow_all_routes(&domain_config, deps.static_ip_map()).map(|(target, behavior)| {
@@ -199,30 +208,37 @@ async fn runs_one_tls_handshake_at_a_time() {
             ((TlsHandshake(_), End), TLS_HANDSHAKE_DELAY),
         ] => assert_eq!(&**first_sni, STAGING.chat_domain_config.connect.hostname)
     );
-    assert_eq!(timing, Duration::from_secs(5));
+    assert_eq!(timing, TLS_HANDSHAKE_DELAY);
 }
 
+#[test_case(MIN_TLS_HANDSHAKE_TIMEOUT)]
 #[test_log::test(tokio::test(start_paused = true))]
-async fn tcp_connects_but_tls_never_responds() {
-    let domain_config = STAGING.chat_domain_config;
-    let (deps, incoming_streams) = FakeDeps::new(&domain_config);
+async fn first_tls_hangs_then_fallback_succeeds(expected_duration: Duration) {
+    const CHAT_DOMAIN_CONFIG: DomainConfig = STAGING.chat_domain_config;
+    let (deps, incoming_streams) = FakeDeps::new(&CHAT_DOMAIN_CONFIG);
 
-    tokio::spawn(connect_websockets_on_incoming(incoming_streams));
+    // Simulate a hanging TLS handshake on the direct route (using allow_direct_routes) to force a fallback via domain fronting.
     deps.transport_connector.set_behaviors(
-        allow_all_routes(&domain_config, deps.static_ip_map()).map(|(target, behavior)| {
-            let new_behavior = match &target {
-                FakeTransportTarget::Tls { .. } => Behavior::DelayForever,
-                FakeTransportTarget::TcpThroughProxy { .. } | FakeTransportTarget::Tcp { .. } => {
-                    behavior
-                }
-            };
-            (target, new_behavior)
-        }),
+        only_direct_routes(&CHAT_DOMAIN_CONFIG, deps.static_ip_map())
+            .map(|(target, behavior)| {
+                let modified = match &target {
+                    // For direct TLS handshake, force a hang.
+                    FakeTransportTarget::Tls { .. } => Behavior::DelayForever,
+                    _ => behavior,
+                };
+                (target, modified)
+            })
+            .chain(allow_domain_fronting(
+                &CHAT_DOMAIN_CONFIG,
+                deps.static_ip_map(),
+            )),
     );
 
-    let (timing, outcome) = timed(deps.connect_chat().map_ok(|_| ())).await;
-    assert_matches!(outcome, Err(chat::ConnectError::Timeout));
-    assert_eq!(timing, Duration::from_secs(60));
+    tokio::spawn(connect_websockets_on_incoming(incoming_streams));
+
+    let (elapsed, outcome) = timed(deps.connect_chat().map_ok(|_| ())).await;
+    outcome.expect("expected connection to succeed via fallback route");
+    assert_eq!(elapsed, expected_duration);
 
     use TransportConnectEvent::*;
     use TransportConnectEventStage::*;
@@ -236,13 +252,31 @@ async fn tcp_connects_but_tls_never_responds() {
         .filter(|event| matches!(event, (TlsHandshake(..), _)))
         .collect_vec();
 
-    assert_eq!(
-        &tls_events,
-        &[(
-            TlsHandshake(Host::Domain(domain_config.connect.hostname.into())),
-            Start
-        )],
-        "TLS handshake does not complete and no other handshakes start",
+    const DIRECT_CHAT_DOMAIN: &str = CHAT_DOMAIN_CONFIG.connect.hostname;
+
+    let valid_proxy_snis: HashSet<String> =
+        allow_domain_fronting(&CHAT_DOMAIN_CONFIG, deps.static_ip_map())
+            .filter_map(|(target, _)| match target {
+                FakeTransportTarget::Tls {
+                    sni: Host::Domain(sni),
+                } => Some(sni.to_string()),
+                _ => None,
+            })
+            .collect();
+
+    assert_matches!(&tls_events[..], [
+        (TlsHandshake(Host::Domain(first_sni)), Start),
+        (TlsHandshake(Host::Domain(second_sni_start)), Start),
+        (TlsHandshake(Host::Domain(second_sni_end)), End),
+      ] => {
+        assert_eq!(&**first_sni, DIRECT_CHAT_DOMAIN);
+        assert_eq!(second_sni_start, second_sni_end, "The end event should be for the SNI for the handshake started second");
+        assert!(valid_proxy_snis.contains(&second_sni_start.to_string()),
+            "SNI '{}' should be in the valid proxy SNIs: {:?}",
+            &**second_sni_start,
+            valid_proxy_snis
+        );
+      }
     );
 }
 

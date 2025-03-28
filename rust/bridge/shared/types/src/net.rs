@@ -25,6 +25,7 @@ use crate::*;
 
 pub mod cdsi;
 pub mod chat;
+pub mod registration;
 pub mod tokio;
 
 pub use tokio::TokioAsyncContext;
@@ -114,7 +115,7 @@ pub struct ConnectionManager {
     env: Env<'static>,
     user_agent: UserAgent,
     dns_resolver: DnsResolver,
-    connect: ::tokio::sync::RwLock<ConnectState<PreconnectingFactory>>,
+    connect: std::sync::Mutex<ConnectState<PreconnectingFactory>>,
     // We could split this up to a separate mutex on each kind of connection,
     // but we don't hold it for very long anyway (just enough to clone the Arc).
     endpoints: std::sync::Mutex<Arc<EndpointConnections>>,
@@ -135,8 +136,7 @@ impl ConnectionManager {
         let network_change_event = ObservableEvent::new();
         let user_agent = UserAgent::with_libsignal_version(user_agent);
 
-        let dns_resolver =
-            DnsResolver::new_with_static_fallback(env.static_fallback(), &network_change_event);
+        let dns_resolver = DnsResolver::new_with_static_fallback(env.static_fallback());
         let transport_connector =
             std::sync::Mutex::new(TcpSslConnector::new_direct(dns_resolver.clone()));
         let endpoints = std::sync::Mutex::new(
@@ -183,7 +183,11 @@ impl ConnectionManager {
     pub fn set_ipv6_enabled(&self, ipv6_enabled: bool) {
         let mut guard = self.transport_connector.lock().expect("not poisoned");
         guard.set_ipv6_enabled(ipv6_enabled);
-        self.connect.blocking_write().route_resolver.allow_ipv6 = ipv6_enabled;
+        self.connect
+            .lock()
+            .expect("not poisoned")
+            .route_resolver
+            .allow_ipv6 = ipv6_enabled;
     }
 
     /// Resets the endpoint connections to include or exclude censorship circumvention routes.
@@ -218,7 +222,11 @@ impl ConnectionManager {
         }
         log::info!("ConnectionManager: on_network_change");
         self.network_change_event.fire();
-        self.connect.blocking_write().network_changed(now.into());
+        self.dns_resolver.on_network_change(now.into());
+        self.connect
+            .lock()
+            .expect("not poisoned")
+            .network_changed(now.into());
     }
 }
 

@@ -1,4 +1,5 @@
 use std::collections::HashSet;
+use std::str::FromStr;
 use std::time::Duration;
 
 use http::uri::PathAndQuery;
@@ -8,7 +9,7 @@ use libsignal_net_infra::extract_retry_later;
 
 use crate::registration::SessionId;
 
-const CONTENT_TYPE_JSON: (HeaderName, HeaderValue) = (
+pub(super) const CONTENT_TYPE_JSON: (HeaderName, HeaderValue) = (
     http::header::CONTENT_TYPE,
     HeaderValue::from_static("application/json"),
 );
@@ -46,7 +47,8 @@ pub struct RegistrationSession {
     pub requested_information: HashSet<RequestedInformation>,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, serde::Deserialize)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, serde::Deserialize, strum::AsRefStr)]
+#[strum(serialize_all = "camelCase")]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(test, derive(serde::Serialize))]
 pub enum RequestedInformation {
@@ -54,11 +56,56 @@ pub enum RequestedInformation {
     Captcha,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, serde::Serialize)]
-#[serde(rename_all = "lowercase")]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, serde::Serialize, strum::EnumString)]
+#[strum(serialize_all = "camelCase")]
+#[serde(rename_all = "camelCase")]
 pub enum PushTokenType {
     Apn,
     Fcm,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, serde::Serialize, strum::EnumString)]
+#[strum(serialize_all = "camelCase")]
+#[serde(rename_all = "camelCase")]
+pub enum VerificationTransport {
+    Sms,
+    Voice,
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Eq, serde::Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct VerificationCodeNotDeliverable {
+    // This could be a stronger type but we don't need it to be in libsignal and
+    // the additional flexibility could be useful if the server adds more
+    // "reason" values.
+    reason: String,
+    permanent_failure: bool,
+}
+
+#[derive(Clone, Debug, Default, Eq, PartialEq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(super) struct UpdateRegistrationSession<'a> {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(super) captcha: Option<&'a str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(super) push_token: Option<&'a str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) push_token_type: Option<PushTokenType>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) push_challenge: Option<&'a str>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(super) struct RequestVerificationCode<'a> {
+    pub(super) transport: VerificationTransport,
+    pub(super) client: &'a str,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(super) struct SubmitVerificationCode<'a> {
+    pub(super) code: &'a str,
 }
 
 pub(super) struct RegistrationRequest<'s, R> {
@@ -66,14 +113,24 @@ pub(super) struct RegistrationRequest<'s, R> {
     pub(super) request: R,
 }
 
+/// Errors that arise from a response to a received request.
+///
+/// This doesn't include timeouts, since the request was known to be received
+/// and the server sent a response.
 #[derive(Debug, thiserror::Error, displaydoc::Display)]
 pub(super) enum ResponseError {
     /// {0}
     RetryLater(RetryLater),
+    /// the request did not pass server validation
+    InvalidRequest,
     /// unexpected content-type {0:?}
     UnexpectedContentType(Option<HeaderValue>),
-    /// unexpected response status {0}
-    UnrecognizedStatus(StatusCode),
+    /// unexpected response status {status}
+    UnrecognizedStatus {
+        status: StatusCode,
+        response_headers: HeaderMap,
+        response_body: Option<Box<[u8]>>,
+    },
     /// response had no body
     MissingBody,
     /// response body was not valid JSON
@@ -91,6 +148,19 @@ pub(super) struct RegistrationResponse {
     pub(super) session_id: String,
     #[serde(flatten)]
     pub(super) session: RegistrationSession,
+}
+
+impl VerificationCodeNotDeliverable {
+    pub(crate) fn from_response(
+        response_headers: &HeaderMap,
+        response_body: &[u8],
+    ) -> Option<Self> {
+        if response_headers.get(CONTENT_TYPE_JSON.0) != Some(&CONTENT_TYPE_JSON.1) {
+            return None;
+        }
+
+        serde_json::from_slice(response_body).ok()
+    }
 }
 
 /// A value that can be sent to the server as part of a REST request.
@@ -120,6 +190,53 @@ impl Request for GetSession {
     }
 }
 
+impl Request for UpdateRegistrationSession<'_> {
+    const METHOD: Method = Method::PATCH;
+    fn request_path(session_id: &SessionId) -> PathAndQuery {
+        GetSession::request_path(session_id)
+    }
+    fn into_json_body(self) -> Option<Box<[u8]>> {
+        Some(
+            serde_json::to_vec(&self)
+                .expect("no maps")
+                .into_boxed_slice(),
+        )
+    }
+}
+
+impl Request for RequestVerificationCode<'_> {
+    const METHOD: Method = Method::POST;
+    fn request_path(session_id: &SessionId) -> PathAndQuery {
+        format!(
+            "{VERIFICATION_SESSION_PATH_PREFIX}/{}/code",
+            session_id.as_url_path_segment()
+        )
+        .parse()
+        .unwrap()
+    }
+    fn into_json_body(self) -> Option<Box<[u8]>> {
+        Some(
+            serde_json::to_vec(&self)
+                .expect("no maps")
+                .into_boxed_slice(),
+        )
+    }
+}
+
+impl Request for SubmitVerificationCode<'_> {
+    const METHOD: Method = Method::PUT;
+    fn request_path(session_id: &SessionId) -> PathAndQuery {
+        RequestVerificationCode::request_path(session_id)
+    }
+    fn into_json_body(self) -> Option<Box<[u8]>> {
+        Some(
+            serde_json::to_vec(&self)
+                .expect("no maps")
+                .into_boxed_slice(),
+        )
+    }
+}
+
 impl TryFrom<crate::chat::Response> for RegistrationResponse {
     type Error = ResponseError;
 
@@ -131,13 +248,23 @@ impl TryFrom<crate::chat::Response> for RegistrationResponse {
             headers,
         } = value;
         if !status.is_success() {
-            if let Some(retry_later) = (status == StatusCode::TOO_MANY_REQUESTS)
-                .then(|| extract_retry_later(&headers))
-                .flatten()
-            {
-                return Err(ResponseError::RetryLater(retry_later));
+            if status.as_u16() == 429 {
+                if let Some(retry_later) = extract_retry_later(&headers) {
+                    return Err(ResponseError::RetryLater(retry_later));
+                }
             }
-            return Err(ResponseError::UnrecognizedStatus(status));
+            if status.as_u16() == 422 {
+                return Err(ResponseError::InvalidRequest);
+            }
+            log::debug!(
+                "got unsuccessful response with {status}: {:?}",
+                DebugAsStrOrBytes(body.as_deref().unwrap_or_default())
+            );
+            return Err(ResponseError::UnrecognizedStatus {
+                status,
+                response_headers: headers,
+                response_body: body,
+            });
         }
         let content_type = headers.get(http::header::CONTENT_TYPE);
         if content_type != Some(&HeaderValue::from_static("application/json")) {
@@ -151,6 +278,16 @@ impl TryFrom<crate::chat::Response> for RegistrationResponse {
             | serde_json::error::Category::Io
             | serde_json::error::Category::Eof => ResponseError::InvalidJson,
         })
+    }
+}
+
+struct DebugAsStrOrBytes<'b>(&'b [u8]);
+impl std::fmt::Debug for DebugAsStrOrBytes<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match std::str::from_utf8(self.0) {
+            Ok(s) => s.fmt(f),
+            Err(_) => hex::encode(self.0).fmt(f),
+        }
     }
 }
 
@@ -198,6 +335,14 @@ where
         .map(|value: Option<u32>| value.map(Into::into).map(Duration::from_secs))
 }
 
+impl TryFrom<String> for VerificationTransport {
+    type Error = <Self as FromStr>::Err;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        FromStr::from_str(&value)
+    }
+}
+
 #[cfg(test)]
 impl RegistrationResponse {
     pub(super) fn into_websocket_response(
@@ -222,7 +367,7 @@ mod test {
     use crate::chat::{Request as ChatRequest, Response as ChatResponse};
 
     #[test]
-    fn registration_request_as_chat_request() {
+    fn registration_get_session_request_as_chat_request() {
         let request: ChatRequest = RegistrationRequest {
             session_id: &SessionId::from_str("aaabbbcccdddeee").unwrap(),
             request: GetSession {},
@@ -238,6 +383,73 @@ mod test {
                 body: None,
             }
         )
+    }
+
+    #[test]
+    fn registration_update_session_request_as_chat_request() {
+        let captcha_request: ChatRequest = RegistrationRequest {
+            session_id: &SessionId::from_str("aaabbbcccdddeee").unwrap(),
+            request: UpdateRegistrationSession {
+                captcha: Some("captcha"),
+                ..Default::default()
+            },
+        }
+        .into();
+
+        assert_eq!(
+            captcha_request,
+            ChatRequest {
+                method: Method::PATCH,
+                path: PathAndQuery::from_static("/v1/verification/session/aaabbbcccdddeee"),
+                headers: HeaderMap::from_iter([CONTENT_TYPE_JSON]),
+                body: Some(b"{\"captcha\":\"captcha\"}".as_slice().into())
+            }
+        );
+
+        let captcha_request: ChatRequest = RegistrationRequest {
+            session_id: &SessionId::from_str("aaabbbcccdddeee").unwrap(),
+            request: UpdateRegistrationSession {
+                push_token_type: Some(PushTokenType::Apn),
+                ..Default::default()
+            },
+        }
+        .into();
+
+        assert_eq!(
+            captcha_request,
+            ChatRequest {
+                method: Method::PATCH,
+                path: PathAndQuery::from_static("/v1/verification/session/aaabbbcccdddeee"),
+                headers: HeaderMap::from_iter([CONTENT_TYPE_JSON]),
+                body: Some(b"{\"pushTokenType\":\"apn\"}".as_slice().into())
+            }
+        )
+    }
+
+    #[test]
+    fn registration_request_verification_as_chat_request() {
+        let captcha_request: ChatRequest = RegistrationRequest {
+            session_id: &SessionId::from_str("aaabbbcccdddeee").unwrap(),
+            request: RequestVerificationCode {
+                transport: VerificationTransport::Sms,
+                client: "client name",
+            },
+        }
+        .into();
+
+        assert_eq!(
+            captcha_request,
+            ChatRequest {
+                method: Method::POST,
+                path: PathAndQuery::from_static("/v1/verification/session/aaabbbcccdddeee/code"),
+                headers: HeaderMap::from_iter([CONTENT_TYPE_JSON]),
+                body: Some(
+                    b"{\"transport\":\"sms\",\"client\":\"client name\"}"
+                        .as_slice()
+                        .into()
+                )
+            }
+        );
     }
 
     #[test]

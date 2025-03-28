@@ -19,6 +19,7 @@ use crate::*;
 pub(crate) mod cdsi;
 pub(crate) mod chat;
 mod keytrans;
+mod registration;
 mod tokio;
 
 bridge_handle_fns!(ConnectionInfo, clone = false, jni = false);

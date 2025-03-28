@@ -376,6 +376,14 @@ class SessionTests: TestCaseBase {
             sessionStore: alice_store,
             context: NullContext()
         )
+        let a_usmc_from_type = try! UnidentifiedSenderMessageContent(
+            a_message.serialize(),
+            type: a_message.messageType,
+            from: sender_cert,
+            contentHint: .default,
+            groupId: [42]
+        )
+        XCTAssertEqual(a_usmc.serialize(), a_usmc_from_type.serialize())
 
         let b_ctext = try! sealedSenderMultiRecipientMessageForSingleRecipient(a_ctext)
 
@@ -603,6 +611,15 @@ class SessionTests: TestCaseBase {
             contentHint: .implicit,
             groupId: []
         )
+        let error_message_usmc_from_type = try UnidentifiedSenderMessageContent(
+            PlaintextContent(error_message).serialize(),
+            type: .plaintext,
+            from: sender_cert,
+            contentHint: .implicit,
+            groupId: []
+        )
+        XCTAssertEqual(error_message_usmc.serialize(), error_message_usmc_from_type.serialize())
+
         let ciphertext = try sealedSenderEncrypt(
             error_message_usmc,
             for: bob_address,

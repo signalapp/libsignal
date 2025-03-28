@@ -1,10 +1,14 @@
-v0.67.6
+v0.68.0
 
-- Retire old SVR2 staging enclave
+- Swift: Allow UnidentifiedSenderMessageContent to be constructed from a message type and opaque bytes. (Contributed by @saman3d!)
 
-- keytrans: Remove unused APIs
+- net: Add a client for the registration verification service. This is currently
+  only available via the Node bindings.
 
-- backups: Relax check on session switchover update message authors
+- Java: InputStreams created by MessageBackup.validate() are now correctly closed when the operation is complete.
 
-- Node: Don't error if an unauthenticated chat socket receives an empty list of
-  alerts from the server.
+- Node: The InputStream abstraction now has an optional close() method, which will be called by MessageBackup.validate() on any created streams when the operation is complete. If your InputStream already has a close() method, this may be a breaking change for you.
+
+- backups: Enforce that messages with expiration timers < 24 hours are not included in Remote Backups.
+
+- backups: Add support for LocalLocator for local backups

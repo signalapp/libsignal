@@ -552,6 +552,160 @@ impl SignalNodeError for libsignal_net::cdsi::LookupError {
     }
 }
 
+mod registration {
+    use libsignal_net::infra::errors::RetryLater;
+    use libsignal_net::registration::{
+        CreateSessionError, RequestError, RequestVerificationCodeError, ResumeSessionError,
+        SubmitVerificationError, UpdateSessionError, VerificationCodeNotDeliverable,
+    };
+
+    use super::*;
+
+    impl<E: Into<BridgedErrorVariant> + std::fmt::Display> SignalNodeError for RequestError<E> {
+        fn into_throwable<'a, C: Context<'a>>(
+            self,
+            cx: &mut C,
+            module: Handle<'a, JsObject>,
+            operation_name: &str,
+        ) -> Handle<'a, JsError> {
+            let inner = match self {
+                RequestError::RequestWasNotValid => BridgedErrorVariant::RequestInvalid,
+                RequestError::Other(inner) => inner.into(),
+                RequestError::Timeout => {
+                    return libsignal_net::chat::SendError::RequestTimedOut.into_throwable(
+                        cx,
+                        module,
+                        operation_name,
+                    )
+                }
+                RequestError::Unknown(message) => {
+                    return new_js_error(
+                        cx,
+                        module,
+                        None,
+                        &message,
+                        operation_name,
+                        no_extra_properties,
+                    )
+                }
+            };
+            SignalNodeError::into_throwable(inner, cx, module, operation_name)
+        }
+    }
+
+    enum BridgedErrorVariant {
+        SessionNotFound,
+        InvalidSessionId,
+        RequestInvalid,
+        RetryLater(RetryLater),
+        RequestRejected,
+        NotReadyForVerification,
+        VerificationSendFailed,
+        VerificationNotDeliverable(VerificationCodeNotDeliverable),
+    }
+
+    impl std::fmt::Display for BridgedErrorVariant {
+        fn fmt(&self, _: &mut fmt::Formatter<'_>) -> fmt::Result {
+            unreachable!("not actually used")
+        }
+    }
+
+    impl SignalNodeError for BridgedErrorVariant {
+        fn into_throwable<'a, C: Context<'a>>(
+            self,
+            cx: &mut C,
+            module: Handle<'a, JsObject>,
+            operation_name: &str,
+        ) -> Handle<'a, JsError> {
+            let message = match self {
+                BridgedErrorVariant::RetryLater(retry_later) => {
+                    return retry_later.into_throwable(cx, module, operation_name)
+                }
+                BridgedErrorVariant::SessionNotFound => {
+                    "no verification session found for the session ID"
+                }
+                BridgedErrorVariant::InvalidSessionId => "the session ID was invalid",
+                BridgedErrorVariant::RequestInvalid => "the request did not pass server validation",
+                BridgedErrorVariant::RequestRejected => "the information provided was rejected",
+                BridgedErrorVariant::NotReadyForVerification => {
+                    "the session is not ready for verification"
+                }
+                BridgedErrorVariant::VerificationSendFailed => {
+                    "sending the verification code failed"
+                }
+                BridgedErrorVariant::VerificationNotDeliverable(_not_deliverable) => {
+                    "the verification code could not be delivered"
+                }
+            };
+            new_js_error(
+                cx,
+                module,
+                None,
+                message,
+                operation_name,
+                no_extra_properties,
+            )
+        }
+    }
+
+    impl From<CreateSessionError> for BridgedErrorVariant {
+        fn from(value: CreateSessionError) -> Self {
+            match value {
+                CreateSessionError::InvalidSessionId => Self::InvalidSessionId,
+                CreateSessionError::RetryLater(retry_later) => Self::RetryLater(retry_later),
+            }
+        }
+    }
+
+    impl From<ResumeSessionError> for BridgedErrorVariant {
+        fn from(value: ResumeSessionError) -> Self {
+            match value {
+                ResumeSessionError::InvalidSessionId => Self::InvalidSessionId,
+                ResumeSessionError::SessionNotFound => Self::SessionNotFound,
+            }
+        }
+    }
+
+    impl From<UpdateSessionError> for BridgedErrorVariant {
+        fn from(value: UpdateSessionError) -> Self {
+            match value {
+                UpdateSessionError::Rejected => Self::RequestRejected,
+                UpdateSessionError::RetryLater(retry_later) => Self::RetryLater(retry_later),
+            }
+        }
+    }
+
+    impl From<RequestVerificationCodeError> for BridgedErrorVariant {
+        fn from(value: RequestVerificationCodeError) -> Self {
+            match value {
+                RequestVerificationCodeError::InvalidSessionId => Self::InvalidSessionId,
+                RequestVerificationCodeError::SessionNotFound => Self::SessionNotFound,
+                RequestVerificationCodeError::NotReadyForVerification => {
+                    Self::NotReadyForVerification
+                }
+                RequestVerificationCodeError::SendFailed => Self::VerificationSendFailed,
+                RequestVerificationCodeError::CodeNotDeliverable(not_deliverable) => {
+                    Self::VerificationNotDeliverable(not_deliverable)
+                }
+                RequestVerificationCodeError::RetryLater(retry_later) => {
+                    Self::RetryLater(retry_later)
+                }
+            }
+        }
+    }
+
+    impl From<SubmitVerificationError> for BridgedErrorVariant {
+        fn from(value: SubmitVerificationError) -> Self {
+            match value {
+                SubmitVerificationError::InvalidSessionId => Self::InvalidSessionId,
+                SubmitVerificationError::SessionNotFound => Self::SessionNotFound,
+                SubmitVerificationError::NotReadyForVerification => Self::NotReadyForVerification,
+                SubmitVerificationError::RetryLater(retry_later) => Self::RetryLater(retry_later),
+            }
+        }
+    }
+}
+
 impl SignalNodeError for CancellationError {
     fn into_throwable<'a, C: Context<'a>>(
         self,

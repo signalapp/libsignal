@@ -90,7 +90,7 @@ async fn main() {
         .try_into()
         .expect("proxy port was zero");
 
-    let dns_resolver = DnsResolver::new(&Default::default());
+    let dns_resolver = DnsResolver::new();
     let root_certs = RootCertificates::Native;
 
     let mut connection = if use_new_connector {

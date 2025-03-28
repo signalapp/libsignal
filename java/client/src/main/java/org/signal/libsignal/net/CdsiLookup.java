@@ -11,7 +11,7 @@ import org.signal.libsignal.internal.CompletableFuture;
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
 
-class CdsiLookup implements NativeHandleGuard.Owner {
+class CdsiLookup extends NativeHandleGuard.SimpleOwner {
   public static CompletableFuture<CdsiLookup> start(
       Network network, String username, String password, CdsiLookupRequest request)
       throws IOException, InterruptedException, ExecutionException {
@@ -38,10 +38,10 @@ class CdsiLookup implements NativeHandleGuard.Owner {
     StartCdsiLookup startLookup =
         useNewConnectLogic ? Native::CdsiLookup_new_routes : Native::CdsiLookup_new;
 
-    CdsiLookupRequest.NativeRequest nativeRequest = request.makeNative();
     try (NativeHandleGuard asyncRuntime = new NativeHandleGuard(network.getAsyncContext());
         NativeHandleGuard connectionManager =
-            new NativeHandleGuard(network.getConnectionManager())) {
+            new NativeHandleGuard(network.getConnectionManager());
+        NativeHandleGuard lookupRequest = new NativeHandleGuard(request.makeNative())) {
 
       return startLookup
           .invoke(
@@ -49,7 +49,7 @@ class CdsiLookup implements NativeHandleGuard.Owner {
               connectionManager.nativeHandle(),
               username,
               password,
-              nativeRequest.getHandle())
+              lookupRequest.nativeHandle())
           .thenApply((Long nativeHandle) -> new CdsiLookup(nativeHandle, network));
     }
   }
@@ -63,25 +63,18 @@ class CdsiLookup implements NativeHandleGuard.Owner {
   }
 
   public byte[] getToken() {
-    return Native.CdsiLookup_token(this.nativeHandle);
-  }
-
-  @Override
-  public long unsafeNativeHandleWithoutGuard() {
-    return this.nativeHandle;
+    return guardedMap(Native::CdsiLookup_token);
   }
 
   private CdsiLookup(long nativeHandle, Network network) {
-    this.nativeHandle = nativeHandle;
+    super(nativeHandle);
     this.network = network;
   }
 
   private Network network;
-  private long nativeHandle;
 
   @Override
-  @SuppressWarnings("deprecation")
-  protected void finalize() {
-    Native.CdsiLookup_Destroy(this.nativeHandle);
+  protected void release(long nativeHandle) {
+    Native.CdsiLookup_Destroy(nativeHandle);
   }
 }

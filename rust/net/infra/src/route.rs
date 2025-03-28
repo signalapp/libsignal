@@ -45,6 +45,9 @@ pub use tcp::*;
 mod tls;
 pub use tls::*;
 
+mod udp;
+pub use udp::*;
+
 mod ws;
 pub use ws::*;
 
@@ -330,11 +333,14 @@ where
     let mut log_for_slow_connections = tokio::time::interval(Duration::from_secs(3));
     log_for_slow_connections.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
     // Skip the first tick, as tokio::time::interval's "first tick completes immediately."
-    log_for_slow_connections.tick().await;
+    log_for_slow_connections.reset();
+
+    let start_of_connecting = Instant::now();
 
     // Whether the Schedule should be polled for its next route.
     let mut poll_schedule_for_next = true;
-    let mut most_recent_connection_start = Instant::now();
+    let mut most_recent_connection_start = start_of_connecting;
+    let mut connects_started = 0;
     let mut connects_in_progress = FuturesUnordered::new();
     let mut outcomes = Vec::new();
 
@@ -387,10 +393,12 @@ where
             }
 
             Event::NextRouteAvailable(Some(route)) => {
+                let log_tag_for_connect = format!("{log_tag} {connects_started}").into();
+                connects_started += 1;
                 connects_in_progress.push(async {
                     let started = Instant::now();
                     let result = connector
-                        .connect_over(inner.clone(), route.clone(), log_tag.clone())
+                        .connect_over(inner.clone(), route.clone(), log_tag_for_connect)
                         .await;
                     (route, result, started)
                 });
@@ -434,9 +442,14 @@ where
             }
             Event::LogStatus => {
                 log::info!(
-                    "[{log_tag}] {} connection(s) in progress, {} pending",
+                    "[{log_tag}] {} connection(s) in progress after {:.2?}, {}",
                     connects_in_progress.len(),
-                    if schedule.is_some() { "more" } else { "none" }
+                    start_of_connecting.elapsed(),
+                    schedule
+                        .as_ref()
+                        .as_pin_ref()
+                        .map(|schedule| schedule.status())
+                        .unwrap_or_default(),
                 );
             }
         }

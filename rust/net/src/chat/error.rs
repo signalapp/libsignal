@@ -25,6 +25,7 @@ pub enum SendError {
     /// request object must contain only ASCII text as header names and values.
     RequestHasInvalidHeader,
 }
+impl LogSafeDisplay for SendError where WebSocketServiceError: LogSafeDisplay {}
 
 /// Error that can occur when connecting to the Chat service.
 #[derive(Debug, thiserror::Error, displaydoc::Display)]

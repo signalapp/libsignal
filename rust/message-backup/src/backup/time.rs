@@ -151,6 +151,10 @@ impl Duration {
         // std::time::Duration::from_hours isn't stable yet, but it's the same as this.
         Self(std::time::Duration::from_secs(60 * 60 * hours))
     }
+
+    pub(super) fn as_secs(&self) -> u64 {
+        self.0.as_secs()
+    }
 }
 
 impl serde::Serialize for Duration {

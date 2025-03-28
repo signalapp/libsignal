@@ -394,7 +394,12 @@ pub fn make_ws_config(
 ///
 /// Does not support the "http-date" form of the header.
 pub fn extract_retry_later(headers: &http::header::HeaderMap) -> Option<RetryLater> {
-    let retry_after_seconds = headers.get("retry-after")?.to_str().ok()?.parse().ok()?;
+    let retry_after_seconds = headers
+        .get(RetryLater::HEADER_NAME)?
+        .to_str()
+        .ok()?
+        .parse()
+        .ok()?;
     Some(RetryLater {
         retry_after_seconds,
     })

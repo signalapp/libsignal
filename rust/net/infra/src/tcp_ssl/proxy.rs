@@ -11,7 +11,9 @@ use tokio::net::TcpStream;
 use tokio_util::either::Either;
 
 use crate::errors::TransportConnectError;
-use crate::route::{ConnectionProxyRoute, Connector, ConnectorExt as _, TlsRoute};
+use crate::route::{
+    ConnectionProxyRoute, Connector, ConnectorExt as _, LoggingConnector, TlsRoute,
+};
 use crate::{Connection, IpType};
 
 pub mod https;
@@ -20,6 +22,8 @@ pub mod tls;
 
 mod stream;
 pub use stream::ProxyStream;
+
+use super::{LONG_TCP_HANDSHAKE_THRESHOLD, LONG_TLS_HANDSHAKE_THRESHOLD};
 
 /// Stateless [`Connector`] impl for [`ConnectionProxyRoute`].
 #[derive(Debug, Default)]
@@ -43,26 +47,52 @@ impl Connector<ConnectionProxyRoute<IpAddr>, ()> for StatelessProxied {
                     inner,
                 } = proxy;
 
-                let connector = super::StatelessDirect;
-
-                let tcp = connector.connect(inner, log_tag.clone()).await?;
-                connector
-                    .connect_over(tcp, tls_fragment, log_tag)
-                    .await
-                    .map(Into::into)
+                let tcp = LoggingConnector::new(
+                    super::StatelessDirect,
+                    LONG_TCP_HANDSHAKE_THRESHOLD,
+                    "Proxy-TCP",
+                )
+                .connect(inner, log_tag.clone())
+                .await?;
+                LoggingConnector::new(
+                    super::StatelessDirect,
+                    LONG_TLS_HANDSHAKE_THRESHOLD,
+                    "Proxy-TLS",
+                )
+                .connect_over(tcp, tls_fragment, log_tag)
+                .await
+                .map(Into::into)
             }
             ConnectionProxyRoute::Tcp { proxy } => {
-                let connector = super::StatelessDirect;
+                let connector = LoggingConnector::new(
+                    super::StatelessDirect,
+                    LONG_TCP_HANDSHAKE_THRESHOLD,
+                    "Proxy-TCP",
+                );
                 match connector.connect(proxy, log_tag).await {
                     Ok(connection) => Ok(connection.into()),
                     Err(_io_error) => Err(TransportConnectError::TcpConnectionFailed),
                 }
             }
             ConnectionProxyRoute::Socks(route) => {
-                self.connect(route, log_tag).map_ok(Into::into).await
+                LoggingConnector::new(
+                    self,
+                    socks::LONG_FULL_CONNECT_THRESHOLD,
+                    "Proxy-TCP+SOCKS+TLS",
+                )
+                .connect(route, log_tag)
+                .map_ok(Into::into)
+                .await
             }
             ConnectionProxyRoute::Https(route) => {
-                self.connect(route, log_tag).map_ok(Into::into).await
+                LoggingConnector::new(
+                    self,
+                    https::LONG_FULL_CONNECT_THRESHOLD,
+                    "Proxy-TCP+TLS+HTTP+TLS",
+                )
+                .connect(route, log_tag)
+                .map_ok(Into::into)
+                .await
             }
         }
     }

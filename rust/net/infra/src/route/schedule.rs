@@ -4,7 +4,7 @@
 //
 
 use std::collections::HashMap;
-use std::fmt::Debug;
+use std::fmt::{Debug, Display};
 use std::future::Future;
 use std::hash::Hash;
 use std::pin::Pin;
@@ -139,6 +139,32 @@ impl RouteResolver {
     }
 }
 
+#[derive(Default)]
+pub struct ScheduleStatus {
+    waiting_on_resolution: bool,
+    scheduled_route_count: usize,
+    scheduled_route_cooldown: Duration,
+}
+
+impl Display for ScheduleStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match (self.waiting_on_resolution, self.scheduled_route_count) {
+            (false, 0) => write!(f, "no more routes"),
+            (false, count) => write!(
+                f,
+                "{count} route(s) delayed for another {:?}",
+                self.scheduled_route_cooldown
+            ),
+            (true, 0) => write!(f, "more routes waiting on DNS resolution"),
+            (true, count) => write!(
+                f,
+                "{count} route(s) delayed for {:?}, more waiting on DNS resolution",
+                self.scheduled_route_cooldown
+            ),
+        }
+    }
+}
+
 impl<S, R, SP> Schedule<S, R, SP>
 where
     S: FusedStream<Item = (ResolvedRoutes<R>, ResolveMeta)>,
@@ -244,6 +270,18 @@ where
             }
         }
     }
+
+    pub fn status(&self) -> ScheduleStatus {
+        ScheduleStatus {
+            waiting_on_resolution: !self.resolver_stream.is_terminated(),
+            scheduled_route_count: self.delayed_individual_routes.len(),
+            scheduled_route_cooldown: self
+                .delayed_individual_routes
+                .peek()
+                .map(|(key, _)| key.time.saturating_duration_since(Instant::now()))
+                .unwrap_or_default(),
+        }
+    }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -265,6 +303,17 @@ impl<R: Hash + Eq + Clone> ConnectionOutcomes<R> {
             params,
             recent_failures: Default::default(),
         }
+    }
+
+    /// Configuration that stores no history, suitable for one-shot connections.
+    pub fn for_oneshot() -> Self {
+        Self::new(ConnectionOutcomeParams {
+            age_cutoff: Duration::ZERO,
+            cooldown_growth_factor: 0.0,
+            count_growth_factor: 0.0,
+            max_count: 0,
+            max_delay: Duration::ZERO,
+        })
     }
 
     /// Update the internal state with the results of completed connection attempts.

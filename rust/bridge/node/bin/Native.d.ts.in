@@ -130,6 +130,8 @@ type ChatListener = {
   ): void;
 };
 
+type RequestedInformation = 'pushChallenge' | 'captcha';
+
 type Wrapper<T> = Readonly<{
   _nativeHandle: T;
 }>;

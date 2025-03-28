@@ -375,6 +375,44 @@ impl SimpleArgTypeInfo for Box<[u8]> {
     }
 }
 
+impl SimpleArgTypeInfo for libsignal_net::registration::PushTokenType {
+    type ArgType = JsString;
+
+    fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {
+        let s = foreign.value(cx);
+        s.parse()
+            .or_else(|_| cx.throw_type_error(format!("invalid push token type {s:?}")))
+    }
+}
+
+impl SimpleArgTypeInfo for libsignal_net::registration::CreateSession {
+    type ArgType = JsObject;
+
+    fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {
+        let number = foreign.get::<JsString, _, _>(cx, "number")?.value(cx);
+        let push_token = foreign
+            .get_opt::<JsString, _, _>(cx, "push_token")?
+            .map(|s| s.value(cx));
+        let push_token_type = foreign
+            .get_opt(cx, "push_token_type")?
+            .map(|s| SimpleArgTypeInfo::convert_from(cx, s))
+            .transpose()?;
+        let mcc = foreign
+            .get_opt::<JsString, _, _>(cx, "mcc")?
+            .map(|s| s.value(cx));
+        let mnc = foreign
+            .get_opt::<JsString, _, _>(cx, "mnc")?
+            .map(|s| s.value(cx));
+        Ok(Self {
+            number,
+            push_token,
+            push_token_type,
+            mcc,
+            mnc,
+        })
+    }
+}
+
 /// Converts `null` to `None`, passing through all other values.
 impl<'storage, 'context: 'storage, T> ArgTypeInfo<'storage, 'context> for Option<T>
 where
@@ -687,6 +725,23 @@ impl<'a> AsyncArgTypeInfo<'a> for Box<dyn ChatListener> {
 
     fn load_async_arg(stored: &'a mut Self::StoredType) -> Self {
         stored.make_listener()
+    }
+}
+
+impl<'a> AsyncArgTypeInfo<'a> for Box<dyn crate::net::registration::ConnectChatBridge> {
+    type ArgType = JsObject;
+    type StoredType = Option<crate::node::chat::NodeConnectChatFactory>;
+
+    fn save_async_arg(
+        cx: &mut FunctionContext,
+        foreign: Handle<Self::ArgType>,
+    ) -> NeonResult<Self::StoredType> {
+        crate::node::chat::NodeConnectChatFactory::from_connection_manager_wrapper(cx, foreign)
+            .map(Some)
+    }
+
+    fn load_async_arg(stored: &'a mut Self::StoredType) -> Self {
+        Box::new(stored.take().expect("only loaded once"))
     }
 }
 
@@ -1044,6 +1099,20 @@ impl<'a> ResultTypeInfo<'a> for libsignal_net::cdsi::LookupResponse {
         output.set(cx, "entries", map)?;
         output.set(cx, "debugPermitsUsed", debug_permits_used)?;
         Ok(output)
+    }
+}
+
+impl<'a> ResultTypeInfo<'a> for libsignal_net::registration::RequestedInformation {
+    type ResultType = JsString;
+    fn convert_into(self, cx: &mut impl Context<'a>) -> JsResult<'a, Self::ResultType> {
+        Ok(cx.string(self.as_ref()))
+    }
+}
+
+impl<'a> ResultTypeInfo<'a> for Vec<libsignal_net::registration::RequestedInformation> {
+    type ResultType = JsArray;
+    fn convert_into(self, cx: &mut impl Context<'a>) -> JsResult<'a, Self::ResultType> {
+        make_array(cx, self)
     }
 }
 

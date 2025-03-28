@@ -13,63 +13,49 @@ import org.signal.libsignal.internal.NativeHandleGuard;
 import org.signal.libsignal.protocol.ServiceId;
 import org.signal.libsignal.protocol.ecc.ECPublicKey;
 
-public class SenderCertificate implements NativeHandleGuard.Owner {
-  private final long unsafeHandle;
-
+public class SenderCertificate extends NativeHandleGuard.SimpleOwner {
   @Override
-  @SuppressWarnings("deprecation")
-  protected void finalize() {
-    Native.SenderCertificate_Destroy(this.unsafeHandle);
-  }
-
-  public long unsafeNativeHandleWithoutGuard() {
-    return this.unsafeHandle;
+  protected void release(long nativeHandle) {
+    Native.SenderCertificate_Destroy(nativeHandle);
   }
 
   public SenderCertificate(byte[] serialized) throws InvalidCertificateException {
+    super(SenderCertificate.createNativeFrom(serialized));
+  }
+
+  private static long createNativeFrom(byte[] serialized) throws InvalidCertificateException {
     try {
-      unsafeHandle = Native.SenderCertificate_Deserialize(serialized);
+      return Native.SenderCertificate_Deserialize(serialized);
     } catch (Exception e) {
       throw new InvalidCertificateException(e);
     }
   }
 
-  public SenderCertificate(long unsafeHandle) {
-    this.unsafeHandle = unsafeHandle;
+  public SenderCertificate(long nativeHandle) {
+    super(nativeHandle);
   }
 
   public ServerCertificate getSigner() {
-    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return new ServerCertificate(
-          filterExceptions(
-              () -> Native.SenderCertificate_GetServerCertificate(guard.nativeHandle())));
-    }
+    return new ServerCertificate(
+        filterExceptions(() -> guardedMapChecked(Native::SenderCertificate_GetServerCertificate)));
   }
 
   public ECPublicKey getKey() {
-    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return new ECPublicKey(
-          filterExceptions(() -> Native.SenderCertificate_GetKey(guard.nativeHandle())));
-    }
+    return new ECPublicKey(
+        filterExceptions(() -> guardedMapChecked(Native::SenderCertificate_GetKey)));
   }
 
   public int getSenderDeviceId() {
-    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return filterExceptions(() -> Native.SenderCertificate_GetDeviceId(guard.nativeHandle()));
-    }
+    return filterExceptions(() -> guardedMapChecked(Native::SenderCertificate_GetDeviceId));
   }
 
   public String getSenderUuid() {
-    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return filterExceptions(() -> Native.SenderCertificate_GetSenderUuid(guard.nativeHandle()));
-    }
+    return filterExceptions(() -> guardedMapChecked(Native::SenderCertificate_GetSenderUuid));
   }
 
   public Optional<String> getSenderE164() {
-    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return Optional.ofNullable(
-          filterExceptions(() -> Native.SenderCertificate_GetSenderE164(guard.nativeHandle())));
-    }
+    return Optional.ofNullable(
+        filterExceptions(() -> guardedMapChecked(Native::SenderCertificate_GetSenderE164)));
   }
 
   public String getSender() {
@@ -90,26 +76,18 @@ public class SenderCertificate implements NativeHandleGuard.Owner {
   }
 
   public long getExpiration() {
-    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return filterExceptions(() -> Native.SenderCertificate_GetExpiration(guard.nativeHandle()));
-    }
+    return filterExceptions(() -> guardedMapChecked(Native::SenderCertificate_GetExpiration));
   }
 
   public byte[] getSerialized() {
-    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return filterExceptions(() -> Native.SenderCertificate_GetSerialized(guard.nativeHandle()));
-    }
+    return filterExceptions(() -> guardedMapChecked(Native::SenderCertificate_GetSerialized));
   }
 
   public byte[] getCertificate() {
-    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return filterExceptions(() -> Native.SenderCertificate_GetCertificate(guard.nativeHandle()));
-    }
+    return filterExceptions(() -> guardedMapChecked(Native::SenderCertificate_GetCertificate));
   }
 
   public byte[] getSignature() {
-    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return filterExceptions(() -> Native.SenderCertificate_GetSignature(guard.nativeHandle()));
-    }
+    return filterExceptions(() -> guardedMapChecked(Native::SenderCertificate_GetSignature));
   }
 }

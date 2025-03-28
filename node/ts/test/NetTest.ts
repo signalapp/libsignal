@@ -20,6 +20,8 @@ import {
   Environment,
   Net,
   newNativeHandle,
+  RegistrationService,
+  RegistrationSessionState,
   SIGNAL_TLS_PROXY_SCHEME,
   TokioAsyncContext,
   UnauthenticatedChatConnection,
@@ -874,5 +876,23 @@ describe('cdsi lookup', () => {
           });
       });
     });
+  });
+});
+
+describe('registration client', () => {
+  describe('registration session conversion', () => {
+    const expectedSession: RegistrationSessionState = {
+      allowedToRequestCode: true,
+      verified: true,
+      nextCallSecs: 123,
+      nextSmsSecs: 456,
+      nextVerificationAttemptSecs: 789,
+      requestedInformation: new Set(['pushChallenge']),
+    };
+
+    const convertedSession = RegistrationService._convertNativeSessionState(
+      newNativeHandle(Native.TESTING_RegistrationSessionInfoConvert())
+    );
+    expect(convertedSession).to.deep.equal(expectedSession);
   });
 });

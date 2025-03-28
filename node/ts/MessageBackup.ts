@@ -150,17 +150,24 @@ export async function validate(
   inputFactory: InputStreamFactory,
   length: bigint
 ): Promise<ValidationOutcome> {
-  const firstStream = inputFactory();
-  const secondStream = inputFactory();
-  return new ValidationOutcome(
-    await Native.MessageBackupValidator_Validate(
-      backupKey,
-      firstStream,
-      secondStream,
-      length,
-      purpose
-    )
-  );
+  let firstStream: InputStream | undefined;
+  let secondStream: InputStream | undefined;
+  try {
+    firstStream = inputFactory();
+    secondStream = inputFactory();
+    return new ValidationOutcome(
+      await Native.MessageBackupValidator_Validate(
+        backupKey,
+        firstStream,
+        secondStream,
+        length,
+        purpose
+      )
+    );
+  } finally {
+    await firstStream?.close();
+    await secondStream?.close();
+  }
 }
 
 /**

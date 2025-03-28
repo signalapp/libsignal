@@ -9,6 +9,7 @@ use std::future::Future;
 use std::net::IpAddr;
 use std::num::NonZeroU16;
 use std::sync::Arc;
+use std::time::Duration;
 
 use async_trait::async_trait;
 use auto_enums::enum_derive;
@@ -27,6 +28,10 @@ use crate::{
     Alpn, Connection, DnsSource, RouteType, ServiceConnectionInfo, StreamAndInfo,
     TransportConnectionParams, TransportConnector,
 };
+
+pub(crate) const LONG_FULL_CONNECT_THRESHOLD: Duration = super::LONG_TCP_HANDSHAKE_THRESHOLD
+    .saturating_add(super::LONG_TLS_HANDSHAKE_THRESHOLD)
+    .saturating_add(Duration::from_secs(3));
 
 #[derive(Clone)]
 pub struct SocksConnector {

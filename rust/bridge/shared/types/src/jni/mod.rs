@@ -939,10 +939,10 @@ pub fn with_local_frame_returning_local<'env>(
     Ok(result)
 }
 
-/// Calls a method, then clones the Rust value from the result.
+/// Calls a Java method, then clones the Rust value from the result.
 ///
-/// The method is assumed to return a type with a `long unsafeHandle` field,
-/// which in turn must hold a raw pointer produced from a boxed Rust value.
+/// The Java method is assumed to return a type that implements the
+/// `NativeHandleGuard.Owner` interface.
 pub fn get_object_with_native_handle<T: 'static + Clone, const LEN: usize>(
     env: &mut JNIEnv,
     store_obj: &JObject,
@@ -961,7 +961,12 @@ pub fn get_object_with_native_handle<T: 'static + Clone, const LEN: usize>(
         }
 
         let handle: jlong = env
-            .get_field(obj, "unsafeHandle", jni_signature!(long))
+            .call_method(
+                obj,
+                "unsafeNativeHandleWithoutGuard",
+                jni_signature!(() -> long),
+                &[],
+            )
             .check_exceptions(env, callback_fn)?
             .try_into()
             .expect_no_exceptions()?;

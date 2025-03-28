@@ -575,7 +575,12 @@ impl<'a> SimpleArgTypeInfo<'a> for CiphertextMessageRef<'a> {
                 .check_exceptions(env, "CiphertextMessageRef::convert_from")?
             {
                 let handle: jlong = env
-                    .get_field(foreign, "unsafeHandle", jni_signature!(long))
+                    .call_method(
+                        foreign,
+                        "unsafeNativeHandleWithoutGuard",
+                        jni_signature!(() -> long),
+                        &[],
+                    )
                     .check_exceptions(env, "CiphertextMessageRef::convert_from")?
                     .try_into()
                     .expect_no_exceptions()?;

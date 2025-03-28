@@ -130,6 +130,8 @@ type ChatListener = {
   ): void;
 };
 
+type RequestedInformation = 'pushChallenge' | 'captcha';
+
 type Wrapper<T> = Readonly<{
   _nativeHandle: T;
 }>;
@@ -406,6 +408,21 @@ export function ReceiptCredentialResponse_CheckValidContents(buffer: Buffer): vo
 export function ReceiptCredential_CheckValidContents(buffer: Buffer): void;
 export function ReceiptCredential_GetReceiptExpirationTime(receiptCredential: Serialized<ReceiptCredential>): Timestamp;
 export function ReceiptCredential_GetReceiptLevel(receiptCredential: Serialized<ReceiptCredential>): bigint;
+export function RegistrationService_CreateSession(asyncRuntime: Wrapper<TokioAsyncContext>, createSession: CreateSession, connectChat: ConnectChatBridge): CancellablePromise<RegistrationService>;
+export function RegistrationService_RegistrationSession(service: Wrapper<RegistrationService>): RegistrationSession;
+export function RegistrationService_RequestPushChallenge(asyncRuntime: Wrapper<TokioAsyncContext>, service: Wrapper<RegistrationService>, pushToken: string, pushTokenType: PushTokenType): CancellablePromise<void>;
+export function RegistrationService_RequestVerificationCode(asyncRuntime: Wrapper<TokioAsyncContext>, service: Wrapper<RegistrationService>, transport: string, client: string): CancellablePromise<void>;
+export function RegistrationService_ResumeSession(asyncRuntime: Wrapper<TokioAsyncContext>, sessionId: string, connectChat: ConnectChatBridge): CancellablePromise<RegistrationService>;
+export function RegistrationService_SessionId(service: Wrapper<RegistrationService>): string;
+export function RegistrationService_SubmitCaptcha(asyncRuntime: Wrapper<TokioAsyncContext>, service: Wrapper<RegistrationService>, captchaValue: string): CancellablePromise<void>;
+export function RegistrationService_SubmitPushChallenge(asyncRuntime: Wrapper<TokioAsyncContext>, service: Wrapper<RegistrationService>, pushChallenge: string): CancellablePromise<void>;
+export function RegistrationService_SubmitVerificationCode(asyncRuntime: Wrapper<TokioAsyncContext>, service: Wrapper<RegistrationService>, code: string): CancellablePromise<void>;
+export function RegistrationSession_GetAllowedToRequestCode(session: Wrapper<RegistrationSession>): boolean;
+export function RegistrationSession_GetNextCallSeconds(session: Wrapper<RegistrationSession>): number | null;
+export function RegistrationSession_GetNextSmsSeconds(session: Wrapper<RegistrationSession>): number | null;
+export function RegistrationSession_GetNextVerificationAttemptSeconds(session: Wrapper<RegistrationSession>): number | null;
+export function RegistrationSession_GetRequestedInformation(session: Wrapper<RegistrationSession>): RequestedInformation[];
+export function RegistrationSession_GetVerified(session: Wrapper<RegistrationSession>): boolean;
 export function SanitizedMetadata_GetDataLen(sanitized: Wrapper<SanitizedMetadata>): bigint;
 export function SanitizedMetadata_GetDataOffset(sanitized: Wrapper<SanitizedMetadata>): bigint;
 export function SanitizedMetadata_GetMetadata(sanitized: Wrapper<SanitizedMetadata>): Buffer;
@@ -567,6 +584,7 @@ export function TESTING_PanicOnReturnAsync(_needsCleanup: null): Promise<null>;
 export function TESTING_PanicOnReturnIo(asyncRuntime: Wrapper<NonSuspendingBackgroundThreadRuntime>, _needsCleanup: null): CancellablePromise<null>;
 export function TESTING_PanicOnReturnSync(_needsCleanup: null): null;
 export function TESTING_ProcessBytestringArray(input: Buffer[]): Buffer[];
+export function TESTING_RegistrationSessionInfoConvert(): RegistrationSession;
 export function TESTING_ReturnStringArray(): string[];
 export function TESTING_RoundTripI32(input: number): number;
 export function TESTING_RoundTripU16(input: number): number;
@@ -652,6 +670,8 @@ interface ReceiptCredentialPresentation { readonly __type: unique symbol; }
 interface ReceiptCredentialRequest { readonly __type: unique symbol; }
 interface ReceiptCredentialRequestContext { readonly __type: unique symbol; }
 interface ReceiptCredentialResponse { readonly __type: unique symbol; }
+interface RegistrationService { readonly __type: unique symbol; }
+interface RegistrationSession { readonly __type: unique symbol; }
 interface SanitizedMetadata { readonly __type: unique symbol; }
 interface SealedSenderDecryptionResult { readonly __type: unique symbol; }
 interface SenderCertificate { readonly __type: unique symbol; }

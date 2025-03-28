@@ -39,10 +39,7 @@ async fn can_connect_to_cdsi_staging() {
         EnclaveEndpointConnection::new(&STAGING.cdsi, Duration::from_secs(10), &network_changed);
     let auth = Auth::from_uid_and_secret(uid, secret);
 
-    let transport = {
-        let dns = DnsResolver::new(&network_changed);
-        DirectConnector::new(dns)
-    };
+    let transport = DirectConnector::new(DnsResolver::new());
     CdsiConnection::connect(&endpoint_connection, transport, auth)
         .await
         .expect("can connect to cdsi");

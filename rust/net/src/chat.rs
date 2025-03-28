@@ -10,7 +10,6 @@ use std::time::Duration;
 use ::http::uri::PathAndQuery;
 use ::http::{HeaderMap, HeaderName, HeaderValue, StatusCode};
 use libsignal_net_infra::connection_manager::MultiRouteConnectionManager;
-use libsignal_net_infra::dns::DnsResolver;
 use libsignal_net_infra::route::{
     Connector, HttpsTlsRoute, RouteProvider, RouteProviderExt, ThrottlingConnector, TransportRoute,
     UnresolvedHttpsServiceRoute, UnresolvedWebsocketServiceRoute, UsePreconnect, WebSocketRoute,
@@ -26,7 +25,7 @@ use tokio_tungstenite::WebSocketStream;
 
 use crate::auth::Auth;
 use crate::connect_state::{
-    ConnectState, DefaultTransportConnector, RouteInfo, WebSocketTransportConnectorFactory,
+    ConnectionResources, DefaultTransportConnector, RouteInfo, WebSocketTransportConnectorFactory,
 };
 use crate::env::{add_user_agent_header, ConnectionConfig, UserAgent};
 use crate::proto;
@@ -189,13 +188,9 @@ pub struct AuthenticatedChatHeaders {
 pub type ChatServiceRoute = UnresolvedWebsocketServiceRoute;
 
 impl ChatConnection {
-    #[allow(clippy::too_many_arguments)]
     pub async fn start_connect_with<TC>(
-        connect: &tokio::sync::RwLock<ConnectState<TC>>,
-        resolver: &DnsResolver,
-        network_change_event: &ObservableEvent,
+        connection_resources: ConnectionResources<'_, TC>,
         http_route_provider: impl RouteProvider<Route = UnresolvedHttpsServiceRoute>,
-        confirmation_header_name: Option<HeaderName>,
         user_agent: &UserAgent,
         ws_config: self::ws2::Config,
         auth: Option<AuthenticatedChatHeaders>,
@@ -208,11 +203,8 @@ impl ChatConnection {
         >,
     {
         Self::start_connect_with_transport(
-            connect,
-            resolver,
-            network_change_event,
+            connection_resources,
             http_route_provider,
-            confirmation_header_name,
             user_agent,
             ws_config,
             auth,
@@ -222,13 +214,9 @@ impl ChatConnection {
     }
 
     #[cfg_attr(feature = "test-util", visibility::make(pub))]
-    #[allow(clippy::too_many_arguments)]
     async fn start_connect_with_transport<TC>(
-        connect: &tokio::sync::RwLock<ConnectState<TC>>,
-        resolver: &DnsResolver,
-        network_change_event: &ObservableEvent,
+        connection_resources: ConnectionResources<'_, TC>,
         http_route_provider: impl RouteProvider<Route = UnresolvedHttpsServiceRoute>,
-        confirmation_header_name: Option<HeaderName>,
         user_agent: &UserAgent,
         ws_config: self::ws2::Config,
         auth: Option<AuthenticatedChatHeaders>,
@@ -265,22 +253,19 @@ impl ChatConnection {
         });
 
         let log_tag: Arc<str> = log_tag.into();
-        let (connection, route_info) = ConnectState::connect_ws(
-            connect,
-            ws_routes,
-            // If we create multiple authenticated chat websocket connections at
-            // the same time, the server will terminate earlier ones as later
-            // ones complete. Throttling at the websocket connection level
-            // lets us get connection parallelism at the transport level (which
-            // is useful) while limiting us to one fully established connection
-            // at a time.
-            ThrottlingConnector::new(crate::infra::ws::Stateless, 1),
-            resolver,
-            network_change_event,
-            confirmation_header_name.as_ref(),
-            log_tag.clone(),
-        )
-        .await?;
+        let (connection, route_info) = connection_resources
+            .connect_ws(
+                ws_routes,
+                // If we create multiple authenticated chat websocket connections at
+                // the same time, the server will terminate earlier ones as later
+                // ones complete. Throttling at the websocket connection level
+                // lets us get connection parallelism at the transport level (which
+                // is useful) while limiting us to one fully established connection
+                // at a time.
+                ThrottlingConnector::new(crate::infra::ws::Stateless, 1),
+                log_tag.clone(),
+            )
+            .await?;
 
         // It's okay to discard the ThrottlingConnection layer here, because no other routes are
         // still connecting.
@@ -396,8 +381,7 @@ pub mod test_support {
         filter_routes: impl Fn(&UnresolvedHttpsServiceRoute) -> bool,
     ) -> Result<ChatConnection, ConnectError> {
         let network_change_event = ObservableEvent::new();
-        let dns_resolver =
-            DnsResolver::new_with_static_fallback(env.static_fallback(), &network_change_event);
+        let dns_resolver = DnsResolver::new_with_static_fallback(env.static_fallback());
 
         let route_provider = DirectOrProxyProvider::maybe_proxied(
             env.chat_domain_config
@@ -419,15 +403,20 @@ pub mod test_support {
             remote_idle_timeout: Duration::from_secs(60),
         };
 
-        let pending = ChatConnection::start_connect_with(
-            &connect,
-            &dns_resolver,
-            &network_change_event,
-            route_provider,
-            env.chat_domain_config
+        let connection_resources = ConnectionResources {
+            connect_state: &connect,
+            dns_resolver: &dns_resolver,
+            network_change_event: &network_change_event,
+            confirmation_header_name: env
+                .chat_domain_config
                 .connect
                 .confirmation_header_name
                 .map(HeaderName::from_static),
+        };
+
+        let pending = ChatConnection::start_connect_with(
+            connection_resources,
+            route_provider,
             &user_agent,
             ws_config,
             None,
@@ -455,6 +444,7 @@ pub(crate) mod test {
     use itertools::Itertools;
     use libsignal_net_infra::certs::RootCertificates;
     use libsignal_net_infra::dns::lookup_result::LookupResult;
+    use libsignal_net_infra::dns::DnsResolver;
     use libsignal_net_infra::errors::{RetryLater, TransportConnectError};
     use libsignal_net_infra::host::Host;
     use libsignal_net_infra::route::testutils::ConnectFn;
@@ -468,7 +458,7 @@ pub(crate) mod test {
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
     use super::*;
-    use crate::connect_state::SUGGESTED_CONNECT_CONFIG;
+    use crate::connect_state::{ConnectState, SUGGESTED_CONNECT_CONFIG};
 
     #[test]
     fn proto_into_response_works_with_valid_data() {
@@ -659,14 +649,18 @@ pub(crate) mod test {
         );
 
         const CHAT_DOMAIN: &str = "test.signal.org";
-
-        let err = ChatConnection::start_connect_with_transport(
-            &connect_state,
-            &DnsResolver::new_from_static_map(HashMap::from_iter([(
+        let connection_resources = ConnectionResources {
+            connect_state: &connect_state,
+            dns_resolver: &DnsResolver::new_from_static_map(HashMap::from_iter([(
                 CHAT_DOMAIN,
                 LookupResult::localhost(),
             )])),
-            &ObservableEvent::new(),
+            network_change_event: &ObservableEvent::new(),
+            confirmation_header_name: Some(HeaderName::from_static(CONFIRMATION_HEADER)),
+        };
+
+        let err = ChatConnection::start_connect_with_transport(
+            connection_resources,
             vec![HttpsTlsRoute {
                 fragment: HttpRouteFragment {
                     host_header: CHAT_DOMAIN.into(),
@@ -685,7 +679,6 @@ pub(crate) mod test {
                     }),
                 },
             }],
-            Some(HeaderName::from_static(CONFIRMATION_HEADER)),
             &UserAgent::with_libsignal_version("test"),
             ws2::Config {
                 // We shouldn't get to timing out anyway.
@@ -748,19 +741,25 @@ pub(crate) mod test {
             },
         }];
 
-        ConnectState::preconnect_and_save(
-            &connect_state,
-            routes
-                .iter()
-                .cloned()
-                .map(|route| route.inner)
-                .collect_vec(),
-            &dns_resolver,
-            &ObservableEvent::new(),
-            "preconnect".into(),
-        )
-        .await
-        .expect("success");
+        let network_change_event = ObservableEvent::new();
+        let make_connection_resources = || ConnectionResources {
+            connect_state: &connect_state,
+            dns_resolver: &dns_resolver,
+            network_change_event: &network_change_event,
+            confirmation_header_name: Some(HeaderName::from_static(CONFIRMATION_HEADER)),
+        };
+
+        make_connection_resources()
+            .preconnect_and_save(
+                routes
+                    .iter()
+                    .cloned()
+                    .map(|route| route.inner)
+                    .collect_vec(),
+                "preconnect".into(),
+            )
+            .await
+            .expect("success");
 
         assert_eq!(number_of_times_called.load(atomic::Ordering::SeqCst), 1);
 
@@ -774,11 +773,8 @@ pub(crate) mod test {
         };
 
         let err = ChatConnection::start_connect_with_transport(
-            &connect_state,
-            &dns_resolver,
-            &ObservableEvent::new(),
+            make_connection_resources(),
             routes.clone(),
-            Some(HeaderName::from_static(CONFIRMATION_HEADER)),
             &UserAgent::with_libsignal_version("test"),
             ws2::Config {
                 // We shouldn't get to timing out anyway.
@@ -797,11 +793,8 @@ pub(crate) mod test {
         assert_eq!(number_of_times_called.load(atomic::Ordering::SeqCst), 2);
 
         let err = ChatConnection::start_connect_with_transport(
-            &connect_state,
-            &dns_resolver,
-            &ObservableEvent::new(),
+            make_connection_resources(),
             routes.clone(),
-            Some(HeaderName::from_static(CONFIRMATION_HEADER)),
             &UserAgent::with_libsignal_version("test"),
             ws2::Config {
                 // We shouldn't get to timing out anyway.

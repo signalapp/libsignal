@@ -10,38 +10,27 @@ import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
 
-public class CryptographicHash implements NativeHandleGuard.Owner {
-  private final long unsafeHandle;
-
+public class CryptographicHash extends NativeHandleGuard.SimpleOwner {
   public CryptographicHash(String algo) {
-    this.unsafeHandle = filterExceptions(() -> Native.CryptographicHash_New(algo));
-  }
-
-  public long unsafeNativeHandleWithoutGuard() {
-    return unsafeHandle;
+    super(filterExceptions(() -> Native.CryptographicHash_New(algo)));
   }
 
   @Override
-  @SuppressWarnings("deprecation")
-  protected void finalize() {
-    Native.CryptographicHash_Destroy(this.unsafeHandle);
+  protected void release(long nativeHandle) {
+    Native.CryptographicHash_Destroy(nativeHandle);
   }
 
   public void update(byte[] input, int offset, int len) {
-    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      Native.CryptographicHash_UpdateWithOffset(guard.nativeHandle(), input, offset, len);
-    }
+    guardedRun(
+        (nativeHandle) ->
+            Native.CryptographicHash_UpdateWithOffset(nativeHandle, input, offset, len));
   }
 
   public void update(byte[] input) {
-    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      Native.CryptographicHash_Update(guard.nativeHandle(), input);
-    }
+    guardedRun((nativeHandle) -> Native.CryptographicHash_Update(nativeHandle, input));
   }
 
   public byte[] finish() {
-    try (NativeHandleGuard guard = new NativeHandleGuard(this)) {
-      return Native.CryptographicHash_Finalize(guard.nativeHandle());
-    }
+    return guardedMap(Native::CryptographicHash_Finalize);
   }
 }

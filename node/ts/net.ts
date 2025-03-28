@@ -14,8 +14,10 @@ import {
   AuthenticatedChatConnection,
   ChatServiceListener,
 } from './net/Chat';
+import { RegistrationService } from './net/Registration';
 export * from './net/CDSI';
 export * from './net/Chat';
+export * from './net/Registration';
 
 // This must match the libsignal-bridge Rust enum of the same name.
 export enum Environment {
@@ -186,6 +188,40 @@ export class Net {
       receiveStories,
       listener,
       options
+    );
+  }
+
+  public async resumeRegistrationSession({
+    sessionId,
+    connectionTimeoutMillis,
+  }: {
+    sessionId: string;
+    connectionTimeoutMillis?: number;
+  }): Promise<RegistrationService> {
+    return RegistrationService.resumeSession(
+      {
+        connectionManager: this._connectionManager,
+        tokioAsyncContext: this.asyncContext,
+        connectionTimeoutMillis: connectionTimeoutMillis,
+      },
+      { sessionId }
+    );
+  }
+
+  public async createRegistrationSession({
+    e164,
+    connectionTimeoutMillis,
+  }: {
+    e164: string;
+    connectionTimeoutMillis?: number;
+  }): Promise<RegistrationService> {
+    return RegistrationService.createSession(
+      {
+        connectionManager: this._connectionManager,
+        tokioAsyncContext: this.asyncContext,
+        connectionTimeoutMillis: connectionTimeoutMillis,
+      },
+      { e164 }
     );
   }
 

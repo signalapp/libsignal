@@ -13,7 +13,8 @@ use futures_util::Stream;
 use itertools::Itertools as _;
 use libsignal_net::chat::{self, ChatConnection, PendingChatConnection};
 use libsignal_net::connect_state::{
-    ConnectState, DefaultConnectorFactory, DefaultTransportConnector, SUGGESTED_CONNECT_CONFIG,
+    ConnectState, ConnectionResources, DefaultConnectorFactory, DefaultTransportConnector,
+    SUGGESTED_CONNECT_CONFIG,
 };
 use libsignal_net::env::{ConnectionConfig, DomainConfig, UserAgent};
 use libsignal_net::infra::connection_manager::MultiRouteConnectionManager;
@@ -47,9 +48,8 @@ pub use target::FakeTransportTarget;
 /// Convenience alias for a dynamically-dispatched stream.
 pub type FakeStream = Box<dyn AsyncDuplexStream>;
 
-/// Produces an iterator with [`Behavior::ReturnStream`] for all un-proxied
-/// (direct and domain-fronted) routes.
-pub fn allow_all_routes(
+/// Produces an iterator with just direct routes (without chaining domain fronted routes).
+pub fn only_direct_routes(
     domain_config: &DomainConfig,
     resolved_names: &HashMap<&'static str, LookupResult>,
 ) -> impl Iterator<Item = (FakeTransportTarget, Behavior)> {
@@ -80,6 +80,14 @@ pub fn allow_all_routes(
             sni: Host::Domain((*hostname).into()),
         }])
         .zip(std::iter::repeat(Behavior::ReturnStream(None)))
+}
+
+/// Produces an iterator with [`Behavior::ReturnStream`] for all un-proxied (direct) and domain-fronted routes.
+pub fn allow_all_routes(
+    domain_config: &DomainConfig,
+    resolved_names: &HashMap<&'static str, LookupResult>,
+) -> impl Iterator<Item = (FakeTransportTarget, Behavior)> {
+    only_direct_routes(domain_config, resolved_names)
         .chain(allow_domain_fronting(domain_config, resolved_names))
 }
 
@@ -151,7 +159,7 @@ struct ReplacingConnectorFactory(FakeTransportConnector, DefaultConnectorFactory
 /// `Chat` values, so keeping them around is useful.
 pub struct FakeDeps {
     pub transport_connector: FakeTransportConnector,
-    connect_state: tokio::sync::RwLock<ConnectState<ReplacingConnectorFactory>>,
+    connect_state: std::sync::Mutex<ConnectState<ReplacingConnectorFactory>>,
     pub dns_resolver: DnsResolver,
     chat_domain_config: DomainConfig,
     endpoint_connection: EndpointConnection<MultiRouteConnectionManager>,
@@ -209,17 +217,21 @@ impl FakeDeps {
             remote_idle_ping_timeout,
             remote_idle_disconnect_timeout: _,
         } = endpoint_connection.config.ws2_config();
-        ChatConnection::start_connect_with_transport(
+        let connection_resources = ConnectionResources {
             connect_state,
             dns_resolver,
-            &ObservableEvent::new(),
+            network_change_event: &ObservableEvent::new(),
+            confirmation_header_name: None,
+        };
+
+        ChatConnection::start_connect_with_transport(
+            connection_resources,
             DirectOrProxyProvider::maybe_proxied(
                 chat_domain_config
                     .connect
                     .route_provider(EnableDomainFronting::OneDomainPerProxy),
                 None,
             ),
-            None,
             &UserAgent::with_libsignal_version("test"),
             chat::ws2::Config {
                 local_idle_timeout,

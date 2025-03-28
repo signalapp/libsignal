@@ -3,24 +3,19 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use std::net::IpAddr;
-use std::ops::ControlFlow;
 use std::sync::Arc;
 
 use bytes::Bytes;
-use futures_util::FutureExt;
 use http::response::Parts;
 use http::uri::PathAndQuery;
 use http::HeaderMap;
 use http_body_util::{BodyExt, Full, Limited};
 use hyper::client::conn::http2;
 use hyper_util::rt::{TokioExecutor, TokioIo};
+use static_assertions::assert_impl_all;
 
 use crate::errors::{LogSafeDisplay, TransportConnectError};
-use crate::route::{
-    ConnectError, Connector, HttpRouteFragment, HttpsTlsRoute, NoDelay, TcpRoute,
-    ThrottlingConnector, TlsRoute,
-};
+use crate::route::{Connector, HttpRouteFragment, HttpsTlsRoute};
 use crate::{AsyncDuplexStream, Connection, TransportInfo};
 
 #[derive(displaydoc::Display, Debug)]
@@ -118,21 +113,23 @@ impl AggregatingHttp2Client {
         Ok((parts, content))
     }
 }
-struct StatelessHttp2Connector<C>(C);
-
-struct CompletedH2Connection {
-    sender: hyper::client::conn::http2::SendRequest<Full<Bytes>>,
-    host_header: Arc<str>,
-    path_prefix: Arc<str>,
+pub(crate) struct Http2Connector<C> {
+    pub inner: C,
+    pub max_response_size: usize,
 }
 
-#[derive(derive_more::From)]
-enum HttpConnectError {
+#[derive(derive_more::From, displaydoc::Display)]
+pub(crate) enum HttpConnectError {
+    /// {0}
     Transport(#[from] TransportConnectError),
+    /// HTTP handshake failed
     HttpHandshake,
 }
 
-impl<T, C, Inner> Connector<HttpsTlsRoute<T>, Inner> for StatelessHttp2Connector<C>
+assert_impl_all!(TransportConnectError: LogSafeDisplay);
+impl LogSafeDisplay for HttpConnectError {}
+
+impl<T, C, Inner> Connector<HttpsTlsRoute<T>, Inner> for Http2Connector<C>
 where
     C: Connector<
             T,
@@ -143,7 +140,7 @@ where
     Inner: Send,
     T: Send,
 {
-    type Connection = CompletedH2Connection;
+    type Connection = AggregatingHttp2Client;
 
     type Error = HttpConnectError;
 
@@ -164,7 +161,7 @@ where
         } = route;
 
         let ssl_stream = self
-            .0
+            .inner
             .connect_over(over, tls_target, log_tag.clone())
             .await?;
         let info = ssl_stream.transport_info();
@@ -186,68 +183,23 @@ where
             }
         });
 
-        Ok(CompletedH2Connection {
-            sender,
-            host_header,
+        Ok(AggregatingHttp2Client {
+            service: sender,
+            http_host: host_header,
             path_prefix,
+            max_response_size: self.max_response_size,
         })
     }
-}
-
-pub(crate) async fn http2_client(
-    targets: impl IntoIterator<Item = HttpsTlsRoute<TlsRoute<TcpRoute<IpAddr>>>>,
-    max_response_size: usize,
-    log_tag: &Arc<str>,
-) -> Result<AggregatingHttp2Client, HttpError> {
-    let tls_connector = crate::route::ComposedConnector::new(
-        crate::tcp_ssl::StatelessDirect,
-        ThrottlingConnector::new(crate::tcp_ssl::StatelessDirect, 1),
-    );
-    let connector = StatelessHttp2Connector(tls_connector);
-    let CompletedH2Connection {
-        sender,
-        host_header,
-        path_prefix,
-    } = crate::route::connect_resolved(
-        targets.into_iter().collect(),
-        NoDelay,
-        connector,
-        (),
-        log_tag.clone(),
-        |e| match e {
-            HttpConnectError::Transport(t) => {
-                log::info!(
-                    "[{log_tag}] HTTP2 connection failed: {}",
-                    (&t as &dyn LogSafeDisplay)
-                );
-                ControlFlow::Continue(())
-            }
-            HttpConnectError::HttpHandshake => ControlFlow::Break(HttpError::Http2HandshakeFailed),
-        },
-    )
-    .map(|(result, _outcome_updates)| result)
-    .await
-    .map_err(|e| match e {
-        ConnectError::AllAttemptsFailed | ConnectError::NoResolvedRoutes => {
-            HttpError::SslHandshakeFailed
-        }
-        ConnectError::FatalConnect(e) => e,
-    })?;
-
-    Ok(AggregatingHttp2Client {
-        http_host: host_header,
-        path_prefix,
-        service: sender,
-        max_response_size,
-    })
 }
 
 #[cfg(test)]
 mod test {
     use std::borrow::Cow;
     use std::future::Future;
-    use std::net::{Ipv6Addr, SocketAddr};
+    use std::net::{IpAddr, Ipv6Addr, SocketAddr};
     use std::num::NonZeroU16;
+    use std::ops::ControlFlow;
+    use std::time::Duration;
 
     use assert_matches::assert_matches;
     use http::{HeaderName, HeaderValue, Method, StatusCode};
@@ -255,7 +207,10 @@ mod test {
 
     use super::*;
     use crate::host::Host;
-    use crate::route::TlsRouteFragment;
+    use crate::route::{
+        ConnectError, ConnectionOutcomeParams, ConnectionOutcomes, TcpRoute, ThrottlingConnector,
+        TlsRoute, TlsRouteFragment,
+    };
     use crate::tcp_ssl::testutil::{SERVER_CERTIFICATE, SERVER_HOSTNAME};
 
     const FAKE_RESPONSE: &str = "RESPONSE";
@@ -299,6 +254,74 @@ mod test {
         server.bind_ephemeral((Ipv6Addr::LOCALHOST, 0))
     }
 
+    fn outcome_record_for_testing(
+    ) -> tokio::sync::RwLock<ConnectionOutcomes<HttpsTlsRoute<TlsRoute<TcpRoute<IpAddr>>>>> {
+        const MAX_DELAY: Duration = Duration::from_secs(100);
+        const AGE_CUTOFF: Duration = Duration::from_secs(1000);
+        const MAX_COUNT: u8 = 5;
+
+        ConnectionOutcomes::new(ConnectionOutcomeParams {
+            age_cutoff: AGE_CUTOFF,
+            cooldown_growth_factor: 2.0,
+            count_growth_factor: 10.0,
+            max_count: MAX_COUNT,
+            max_delay: MAX_DELAY,
+        })
+        .into()
+    }
+
+    // This was originally exposed as API from this module, and may be again in the future.
+    async fn http2_client(
+        targets: impl IntoIterator<Item = HttpsTlsRoute<TlsRoute<TcpRoute<IpAddr>>>>,
+        outcome_record: &tokio::sync::RwLock<
+            ConnectionOutcomes<HttpsTlsRoute<TlsRoute<TcpRoute<IpAddr>>>>,
+        >,
+        max_response_size: usize,
+        log_tag: &Arc<str>,
+    ) -> Result<AggregatingHttp2Client, HttpError> {
+        let outcome_record_snapshot = outcome_record.read().await.clone();
+        let tls_connector = crate::route::ComposedConnector::new(
+            crate::tcp_ssl::StatelessDirect,
+            ThrottlingConnector::new(crate::tcp_ssl::StatelessDirect, 1),
+        );
+        let connector = Http2Connector {
+            inner: tls_connector,
+            max_response_size,
+        };
+        let (result, updates) = crate::route::connect_resolved(
+            targets.into_iter().collect(),
+            &outcome_record_snapshot,
+            connector,
+            (),
+            log_tag.clone(),
+            |e| match e {
+                HttpConnectError::Transport(t) => {
+                    log::info!(
+                        "[{log_tag}] HTTP2 connection failed: {}",
+                        (&t as &dyn LogSafeDisplay)
+                    );
+                    ControlFlow::Continue(())
+                }
+                HttpConnectError::HttpHandshake => {
+                    ControlFlow::Break(HttpError::Http2HandshakeFailed)
+                }
+            },
+        )
+        .await;
+
+        outcome_record
+            .write()
+            .await
+            .apply_outcome_updates(updates.outcomes, updates.finished_at);
+
+        result.map_err(|e| match e {
+            ConnectError::AllAttemptsFailed | ConnectError::NoResolvedRoutes => {
+                HttpError::SslHandshakeFailed
+            }
+            ConnectError::FatalConnect(e) => e,
+        })
+    }
+
     #[tokio::test]
     async fn http_client_e2e_test() {
         let _ = env_logger::try_init();
@@ -331,6 +354,7 @@ mod test {
                     },
                 },
             }],
+            &outcome_record_for_testing(),
             MAX_RESPONSE_SIZE,
             &"test".into(),
         )
@@ -406,6 +430,7 @@ mod test {
                     },
                 },
             }],
+            &outcome_record_for_testing(),
             MAX_RESPONSE_SIZE,
             &"test".into(),
         )

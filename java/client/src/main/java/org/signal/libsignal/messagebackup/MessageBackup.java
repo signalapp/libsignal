@@ -54,11 +54,10 @@ public class MessageBackup {
   public static ValidationResult validate(
       MessageBackupKey key, Purpose purpose, Supplier<InputStream> streamFactory, long streamLength)
       throws ValidationError, IOException {
-    InputStream first = streamFactory.get();
-    InputStream second = streamFactory.get();
-
     Pair<String, String[]> result;
-    try (NativeHandleGuard keyGuard = new NativeHandleGuard(key)) {
+    try (InputStream first = streamFactory.get();
+        InputStream second = streamFactory.get();
+        NativeHandleGuard keyGuard = new NativeHandleGuard(key)) {
 
       Object output =
           filterExceptions(
