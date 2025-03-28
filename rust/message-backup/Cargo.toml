@@ -89,10 +89,10 @@ signal-crypto = { workspace = true }
 
 array-concat = { workspace = true, features = ["const_panic"] }
 assert_cmd = { workspace = true }
+const-str = { workspace = true }
 criterion = { workspace = true }
 dir-test = { workspace = true }
 futures = { workspace = true, features = ["executor"] }
-hex-literal = { workspace = true }
 json5 = { workspace = true }
 nonzero_ext = { workspace = true }
 once_cell = { workspace = true }

@@ -282,7 +282,7 @@ static_assertions::const_assert_eq!(16, std::mem::size_of::<EndorsementsHeader>(
 
 #[cfg(test)]
 mod tests {
-    use hex_literal::hex;
+    use const_str::hex;
     use zerocopy::FromBytes;
 
     use super::*;

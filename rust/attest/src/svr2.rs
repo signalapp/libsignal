@@ -106,7 +106,7 @@ fn new_handshake_with_constants(
 mod tests {
     use std::time::{Duration, SystemTime};
 
-    use hex_literal::hex;
+    use const_str::hex;
 
     use super::*;
 

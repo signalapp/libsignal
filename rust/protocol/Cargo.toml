@@ -58,10 +58,10 @@ mlkem1024 = ["pqcrypto-ml-kem"]
 
 [dev-dependencies]
 clap = { workspace = true, features = ["derive"] }
+const-str = { workspace = true }
 criterion = { workspace = true }
 env_logger = { workspace = true }
 futures-util = { workspace = true }
-hex-literal = { workspace = true }
 proptest = { workspace = true }
 
 [build-dependencies]

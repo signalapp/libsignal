@@ -67,7 +67,7 @@ impl MessageBackupKey {
 
 #[cfg(test)]
 pub(crate) mod test {
-    use hex_literal::hex;
+    use const_str::hex;
     use libsignal_core::Aci;
 
     use super::*;

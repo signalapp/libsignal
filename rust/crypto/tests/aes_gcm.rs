@@ -5,7 +5,7 @@
 
 use std::collections::HashMap;
 
-use hex_literal::hex;
+use const_str::hex;
 use rand::Rng;
 use serde::Deserialize;
 

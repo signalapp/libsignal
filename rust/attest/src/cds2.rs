@@ -57,7 +57,7 @@ pub fn extract_metrics(attestation_msg: &[u8]) -> Result<HashMap<String, i64>> {
 mod test {
     use std::time::{Duration, SystemTime};
 
-    use hex_literal::hex;
+    use const_str::hex;
 
     use super::*;
 

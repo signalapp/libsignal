@@ -228,10 +228,10 @@ mod test {
     use array_concat::concat_arrays;
     use assert_matches::assert_matches;
     use async_compression::futures::write::GzipEncoder;
+    use const_str::hex;
     use futures::executor::block_on;
     use futures::io::{Cursor, ErrorKind};
     use futures::AsyncWriteExt;
-    use hex_literal::hex;
     use test_case::test_case;
 
     use super::*;

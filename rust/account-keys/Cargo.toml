@@ -31,8 +31,8 @@ thiserror = { workspace = true }
 
 [dev-dependencies]
 assert_matches = { workspace = true }
+const-str = { workspace = true }
 criterion = { workspace = true }
-hex-literal = { workspace = true }
 hmac = { workspace = true, features = ["reset"] }
 proptest = { workspace = true }
 

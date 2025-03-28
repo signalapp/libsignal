@@ -7,10 +7,10 @@
 
 use std::sync::LazyLock;
 
+use const_str::hex;
 use curve25519_dalek_signal::constants::RISTRETTO_BASEPOINT_POINT;
 use curve25519_dalek_signal::ristretto::RistrettoPoint;
 use curve25519_dalek_signal::scalar::Scalar;
-use hex_literal::hex;
 use partial_default::PartialDefault;
 use serde::{Deserialize, Serialize};
 

@@ -5,7 +5,7 @@
 
 use std::time::SystemTime;
 
-use hex_literal::hex;
+use const_str::hex;
 use libsignal_bridge_macros::*;
 use libsignal_core::Aci;
 use libsignal_keytrans::{StoredAccountData, StoredMonitoringData, StoredTreeHead, TreeHead};

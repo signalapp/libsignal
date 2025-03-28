@@ -234,7 +234,7 @@ impl SystemParams {
 
 #[cfg(test)]
 mod tests {
-    use hex_literal::hex;
+    use const_str::hex;
 
     use super::*;
 

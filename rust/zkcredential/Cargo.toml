@@ -32,8 +32,8 @@ rayon = { workspace = true, optional = true }
 
 [dev-dependencies]
 bincode = { workspace = true }
+const-str = { workspace = true }
 hex = { workspace = true }
-hex-literal = { workspace = true }
 
 # For benchmarking
 criterion = { workspace = true }

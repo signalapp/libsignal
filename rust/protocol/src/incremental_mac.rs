@@ -136,7 +136,7 @@ impl<M: Mac + Clone> Validating<M> {
 
 #[cfg(test)]
 mod test {
-    use hex_literal::hex;
+    use const_str::hex;
     use hmac::Hmac;
     use proptest::prelude::*;
     use rand::distributions::Uniform;

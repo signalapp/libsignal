@@ -5,8 +5,8 @@
 
 use std::time::{Duration, SystemTime};
 
+use const_str::hex;
 use criterion::{criterion_group, criterion_main, Criterion};
-use hex_literal::hex;
 use libsignal_keytrans::{
     CondensedTreeSearchResponse, DeploymentMode, FullSearchResponse, FullTreeHead, KeyTransparency,
     PublicConfig, SearchContext, SlimSearchRequest, VerifyingKey, VrfPublicKey,
@@ -36,17 +36,18 @@ fn bench_verify_search(c: &mut Criterion) {
         CondensedTreeSearchResponse::decode(bytes.as_slice()).unwrap()
     };
     let response_tree_head = FullTreeHead::decode(
-        hex!(
-            "0a4c08f23710bbd4dfb897321a40385a"
-            "2eee61b2a0ef463251e8f0301389c3a3"
-            "34a0146bc6f2cb9b35938d9c16ba9922"
-            "3a651e963fab86e64e02484e49b5718d"
-            "d826aafe7c3e38dfe53226220603224e"
-            "0a4c08f23710e1d4e0b897321a40a973"
-            "dd2f6a412287f93b051bd7a5da9dc99b"
-            "61d86db8a25c861934e00ee6895097b5"
-            "5272f5f71de8b610b5da0b49fc263e0c"
-            "5e33cd3de26d3a9f98fd5d2aae06")
+        hex!([
+            "0a4c08f23710bbd4dfb897321a40385a",
+            "2eee61b2a0ef463251e8f0301389c3a3",
+            "34a0146bc6f2cb9b35938d9c16ba9922",
+            "3a651e963fab86e64e02484e49b5718d",
+            "d826aafe7c3e38dfe53226220603224e",
+            "0a4c08f23710e1d4e0b897321a40a973",
+            "dd2f6a412287f93b051bd7a5da9dc99b",
+            "61d86db8a25c861934e00ee6895097b5",
+            "5272f5f71de8b610b5da0b49fc263e0c",
+            "5e33cd3de26d3a9f98fd5d2aae06"
+        ])
         .as_slice(),
     )
     .expect("valid test full tree head");

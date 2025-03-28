@@ -177,7 +177,7 @@ impl BackupId {
 
 #[cfg(test)]
 pub(crate) mod test {
-    use hex_literal::hex;
+    use const_str::hex;
 
     use super::*;
 

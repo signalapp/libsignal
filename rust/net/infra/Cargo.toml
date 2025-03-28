@@ -22,7 +22,7 @@ base64 = { workspace = true }
 bitstream-io = { workspace = true }
 boring-signal = { workspace = true }
 bytes = { workspace = true }
-const-str = { workspace = true, features = ["std"] }
+const-str = { workspace = true }
 derive-where = { workspace = true }
 derive_more = { workspace = true, features = ["from", "into", "into_iterator"] }
 displaydoc = { workspace = true }

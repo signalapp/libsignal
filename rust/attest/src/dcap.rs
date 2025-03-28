@@ -646,7 +646,7 @@ mod test {
     use std::time::{Duration, SystemTime};
 
     use boring_signal::bn::BigNum;
-    use hex_literal::hex;
+    use const_str::hex;
 
     use super::*;
     use crate::dcap::endorsements::{QeTcbLevel, TcbInfoVersion};

@@ -9,8 +9,7 @@ use std::net::{Ipv4Addr, Ipv6Addr};
 use std::num::NonZeroU16;
 use std::sync::Arc;
 
-use const_str::ip_addr;
-use hex_literal::hex;
+use const_str::{hex, ip_addr};
 use http::HeaderValue;
 use libsignal_keytrans::{DeploymentMode, PublicConfig, VerifyingKey, VrfPublicKey};
 use libsignal_net_infra::certs::RootCertificates;

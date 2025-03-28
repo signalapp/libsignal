@@ -275,9 +275,9 @@ dependencies = [
  "boring",
  "chacha20poly1305",
  "chrono",
+ "const-str",
  "displaydoc",
  "hex",
- "hex-literal",
  "libc",
  "libcrux-ml-kem",
  "log",
@@ -1609,12 +1609,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "hex-literal"
-version = "0.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6fe2267d4ed49bc07b63801559be28c718ea06c4738b7a03c94df7386d2cde46"
-
-[[package]]
 name = "hickory-proto"
 version = "0.24.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2180,10 +2174,10 @@ version = "0.1.0"
 dependencies = [
  "argon2",
  "assert_matches",
+ "const-str",
  "criterion",
  "derive_more 2.0.1",
  "displaydoc",
- "hex-literal",
  "hkdf",
  "hmac",
  "libsignal-core",
@@ -2261,7 +2255,6 @@ dependencies = [
  "attest",
  "const-str",
  "futures-util",
- "hex-literal",
  "http 1.2.0",
  "jni",
  "libsignal-bridge-macros",
@@ -2336,11 +2329,11 @@ name = "libsignal-core"
 version = "0.1.0"
 dependencies = [
  "assert_matches",
+ "const-str",
  "criterion",
  "curve25519-dalek",
  "derive_more 2.0.1",
  "displaydoc",
- "hex-literal",
  "num_enum",
  "proptest",
  "rand",
@@ -2404,12 +2397,12 @@ name = "libsignal-keytrans"
 version = "0.0.1"
 dependencies = [
  "assert_matches",
+ "const-str",
  "criterion",
  "curve25519-dalek",
  "displaydoc",
  "ed25519-dalek",
  "hex",
- "hex-literal",
  "hmac",
  "proptest",
  "prost",
@@ -2433,6 +2426,7 @@ dependencies = [
  "cbc",
  "clap",
  "clap-stdin",
+ "const-str",
  "criterion",
  "derive-where",
  "derive_more 2.0.1",
@@ -2442,7 +2436,6 @@ dependencies = [
  "flate2",
  "futures",
  "hex",
- "hex-literal",
  "hkdf",
  "hmac",
  "intmap",
@@ -2511,7 +2504,6 @@ dependencies = [
  "env_logger",
  "futures-util",
  "hex",
- "hex-literal",
  "hmac",
  "http 1.2.0",
  "itertools 0.14.0",
@@ -2638,6 +2630,7 @@ dependencies = [
  "assert_matches",
  "async-trait",
  "clap",
+ "const-str",
  "criterion",
  "ctr",
  "derive-where",
@@ -2646,7 +2639,6 @@ dependencies = [
  "env_logger",
  "futures-util",
  "hex",
- "hex-literal",
  "hkdf",
  "hmac",
  "indexmap",
@@ -4230,12 +4222,12 @@ version = "0.1.0"
 dependencies = [
  "aes",
  "cbc",
+ "const-str",
  "criterion",
  "ctr",
  "displaydoc",
  "ghash",
  "hex",
- "hex-literal",
  "hmac",
  "rand",
  "serde",
@@ -5611,12 +5603,12 @@ version = "0.1.0"
 dependencies = [
  "bincode",
  "cfg-if",
+ "const-str",
  "criterion",
  "curve25519-dalek",
  "derive-where",
  "displaydoc",
  "hex",
- "hex-literal",
  "partial-default",
  "poksho",
  "rayon",
@@ -5634,13 +5626,13 @@ dependencies = [
  "assert_matches",
  "base64 0.22.1",
  "bincode",
+ "const-str",
  "criterion",
  "curve25519-dalek",
  "derive-where",
  "derive_more 2.0.1",
  "displaydoc",
  "hex",
- "hex-literal",
  "hkdf",
  "libsignal-account-keys",
  "libsignal-core",

@@ -21,9 +21,9 @@ blake2 = { workspace = true }
 boring-signal = { workspace = true }
 chacha20poly1305 = { workspace = true }
 chrono = { workspace = true, features = ["serde"] }
+const-str = { workspace = true }
 displaydoc = { workspace = true }
 hex = { workspace = true, features = ["serde"] }
-hex-literal = { workspace = true }
 libc = { workspace = true }
 libcrux-ml-kem = { workspace = true, features = ["mlkem1024"] }
 log = { workspace = true }

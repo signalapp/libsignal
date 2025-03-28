@@ -355,7 +355,7 @@ impl<C: ReportUnusualTimestamp + ?Sized> TryFromWith<proto::MessageAttachment, C
 
 #[cfg(test)]
 mod test {
-    use hex_literal::hex;
+    use const_str::hex;
     use test_case::test_case;
 
     use super::*;

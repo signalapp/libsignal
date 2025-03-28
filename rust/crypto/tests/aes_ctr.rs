@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use hex_literal::hex;
+use const_str::hex;
 use rand::Rng;
 
 #[test]

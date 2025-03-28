@@ -126,7 +126,7 @@ pub fn verify_local_pin_hash(encoded_hash: &str, pin: &[u8]) -> Result<bool> {
 
 #[cfg(test)]
 mod test {
-    use hex_literal::hex;
+    use const_str::hex;
     use hmac::{Hmac, Mac};
     use sha2::Sha256;
 

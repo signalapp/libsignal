@@ -408,7 +408,7 @@ pub fn verify_consistency_proof(
 
 #[cfg(test)]
 mod test {
-    use hex_literal::hex;
+    use const_str::hex;
 
     use super::*;
 

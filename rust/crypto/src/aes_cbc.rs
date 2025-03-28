@@ -52,7 +52,7 @@ pub fn aes_256_cbc_decrypt(
 
 #[cfg(test)]
 mod test {
-    use hex_literal::hex;
+    use const_str::hex;
 
     use super::*;
 

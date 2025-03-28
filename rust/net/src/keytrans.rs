@@ -1218,7 +1218,7 @@ mod test_support {
     pub(super) mod test_account {
         use std::borrow::Cow;
 
-        use hex_literal::hex;
+        use const_str::hex;
         use libsignal_core::curve::PublicKey;
         use libsignal_core::{Aci, E164};
         use nonzero_ext::nonzero;
@@ -1424,7 +1424,7 @@ mod test {
     use std::sync::{Arc, Mutex};
 
     use assert_matches::assert_matches;
-    use hex_literal::hex;
+    use const_str::hex;
     use http::StatusCode;
     use libsignal_keytrans::TreeHead;
     use test_case::test_case;

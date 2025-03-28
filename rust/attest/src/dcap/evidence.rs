@@ -156,7 +156,7 @@ impl CustomClaims<'_> {
 
 #[cfg(test)]
 mod test {
-    use hex_literal::hex;
+    use const_str::hex;
 
     use super::*;
     use crate::dcap::MREnclave;

@@ -26,8 +26,8 @@ x25519-dalek = { workspace = true, features = ["static_secrets"] }
 
 [dev-dependencies]
 assert_matches = { workspace = true }
+const-str = { workspace = true }
 criterion = { workspace = true }
-hex-literal = { workspace = true }
 proptest = { workspace = true }
 
 [[bench]]

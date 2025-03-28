@@ -274,9 +274,8 @@ mod test {
 
     use assert_matches::assert_matches;
     use bytes::Bytes;
-    use const_str::concat;
+    use const_str::{concat, hex};
     use futures_util::{pin_mut, SinkExt, StreamExt};
-    use hex_literal::hex;
     use libsignal_net_infra::noise::testutil::echo_forever;
     use libsignal_net_infra::testutil::TestStream;
     use libsignal_net_infra::utils::testutil::TestWaker;

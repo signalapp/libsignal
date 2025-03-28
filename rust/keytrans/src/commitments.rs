@@ -36,7 +36,7 @@ pub fn verify(search_key: &[u8], commitment: &[u8], data: &[u8], nonce: &[u8; 16
 
 #[cfg(test)]
 mod test {
-    use hex_literal::hex;
+    use const_str::hex;
     use test_case::test_case;
 
     use super::*;

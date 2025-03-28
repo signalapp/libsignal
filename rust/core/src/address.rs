@@ -543,7 +543,7 @@ mod service_id_tests {
             ServiceId::parse_from_service_id_string("00000000-0000-0000-0000-000000000001")
                 .expect("can decode");
         assert_eq!(
-            &hex_literal::hex!("00000000 0000 0000 0000 000000000001"),
+            &const_str::hex!("00000000 0000 0000 0000 000000000001"),
             service_id.raw_uuid().as_bytes(),
         );
         assert_eq!(ServiceIdKind::Aci, service_id.kind());
