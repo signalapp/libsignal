@@ -7,6 +7,7 @@ use std::fmt::Debug;
 use std::num::NonZeroU32;
 
 use derive_where::derive_where;
+use serde_with::{serde_as, DisplayFromStr};
 use usernames::constants::USERNAME_LINK_ENTROPY_SIZE;
 use usernames::{Username, UsernameError};
 use uuid::Uuid;
@@ -44,22 +45,23 @@ pub struct AccountData<M: Method + ReferencedTypes> {
     pub svr_pin: M::Value<String>,
 }
 
+#[serde_as]
 #[derive(Debug, serde::Serialize)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct UsernameData {
-    #[serde(serialize_with = "serialize::to_string")]
+    #[serde_as(as = "DisplayFromStr")]
     pub username: Username,
     pub link: Option<UsernameLink>,
 }
 
+#[serde_as]
 #[derive(Debug, serde::Serialize)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct UsernameLink {
-    #[serde(serialize_with = "serialize::enum_as_string")]
+    #[serde_as(as = "serialize::EnumAsString")]
     pub color: crate::proto::backup::account_data::username_link::Color,
-    #[serde(serialize_with = "hex::serialize")]
+    #[serde(with = "hex")]
     pub entropy: [u8; USERNAME_LINK_ENTROPY_SIZE],
-    #[serde(serialize_with = "serialize::to_string")]
     pub server_id: Uuid,
 }
 

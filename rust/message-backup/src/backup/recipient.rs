@@ -11,6 +11,8 @@ use intmap::IntMap;
 use itertools::Itertools as _;
 use libsignal_core::{Aci, Pni, ServiceIdKind};
 use libsignal_protocol::IdentityKey;
+use serde_with::hex::Hex;
+use serde_with::serde_as;
 use uuid::Uuid;
 use zkgroup::ProfileKeyBytes;
 
@@ -276,35 +278,36 @@ impl std::fmt::Display for E164 {
     }
 }
 
+#[serde_as]
 #[derive(Clone, Debug, serde::Serialize)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct ContactData {
-    #[serde(serialize_with = "serialize::optional_service_id_as_string")]
+    #[serde_as(as = "Option<serialize::ServiceIdAsString>")]
     pub aci: Option<Aci>,
-    #[serde(serialize_with = "serialize::optional_service_id_as_string")]
+    #[serde_as(as = "Option<serialize::ServiceIdAsString>")]
     pub pni: Option<Pni>,
-    #[serde(serialize_with = "serialize::optional_hex")]
+    #[serde_as(as = "Option<Hex>")]
     pub profile_key: Option<ProfileKeyBytes>,
     pub username: Option<String>,
     pub registration: Registration,
     pub e164: Option<E164>,
     pub blocked: bool,
-    #[serde(serialize_with = "serialize::enum_as_string")]
+    #[serde_as(as = "serialize::EnumAsString")]
     pub visibility: proto::contact::Visibility,
     pub profile_sharing: bool,
     pub profile_given_name: Option<String>,
     pub profile_family_name: Option<String>,
     pub hide_story: bool,
-    #[serde(serialize_with = "serialize::optional_identity_key_hex")]
+    #[serde_as(as = "Option<serialize::IdentityKeyHex>")]
     pub identity_key: Option<IdentityKey>,
-    #[serde(serialize_with = "serialize::enum_as_string")]
+    #[serde_as(as = "serialize::EnumAsString")]
     pub identity_state: proto::contact::IdentityState,
     pub nickname: Option<ContactName>,
     pub note: String,
     pub system_given_name: String,
     pub system_family_name: String,
     pub system_nickname: String,
-    #[serde(serialize_with = "serialize::optional_enum_as_string")]
+    #[serde_as(as = "Option<serialize::EnumAsString>")]
     pub avatar_color: Option<proto::AvatarColor>,
 }
 
@@ -315,10 +318,11 @@ pub struct ContactName {
     pub family_name: String,
 }
 
+#[serde_as]
 #[derive(Clone, Debug, serde::Serialize)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct SelfData {
-    #[serde(serialize_with = "serialize::optional_enum_as_string")]
+    #[serde_as(as = "Option<serialize::EnumAsString>")]
     pub avatar_color: Option<proto::AvatarColor>,
 }
 

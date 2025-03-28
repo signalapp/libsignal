@@ -6,6 +6,7 @@ use http::uri::PathAndQuery;
 use http::{HeaderMap, HeaderName, HeaderValue, Method, StatusCode};
 use libsignal_net_infra::errors::{LogSafeDisplay, RetryLater};
 use libsignal_net_infra::extract_retry_later;
+use serde_with::{serde_as, skip_serializing_none, DurationSeconds};
 
 use crate::registration::SessionId;
 
@@ -32,17 +33,18 @@ pub struct CreateSession {
 #[serde(rename_all = "camelCase")]
 pub struct GetSession {}
 
+#[serde_as]
 #[derive(Clone, Debug, Default, PartialEq, Eq, serde::Deserialize)]
 #[cfg_attr(test, derive(serde::Serialize))]
 #[serde(rename_all = "camelCase", default)]
 pub struct RegistrationSession {
     pub allowed_to_request_code: bool,
     pub verified: bool,
-    #[serde(deserialize_with = "optional_duration_seconds")]
+    #[serde_as(as = "Option<DurationSeconds>")]
     pub next_sms: Option<Duration>,
-    #[serde(deserialize_with = "optional_duration_seconds")]
+    #[serde_as(as = "Option<DurationSeconds>")]
     pub next_call: Option<Duration>,
-    #[serde(deserialize_with = "optional_duration_seconds")]
+    #[serde_as(as = "Option<DurationSeconds>")]
     pub next_verification_attempt: Option<Duration>,
     pub requested_information: HashSet<RequestedInformation>,
 }
@@ -82,16 +84,13 @@ pub struct VerificationCodeNotDeliverable {
     permanent_failure: bool,
 }
 
+#[skip_serializing_none]
 #[derive(Clone, Debug, Default, Eq, PartialEq, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub(super) struct UpdateRegistrationSession<'a> {
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub(super) captcha: Option<&'a str>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub(super) push_token: Option<&'a str>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) push_token_type: Option<PushTokenType>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) push_challenge: Option<&'a str>,
 }
 
@@ -325,14 +324,6 @@ impl<'s, R: Request> From<RegistrationRequest<'s, R>> for crate::chat::Request {
             body,
         }
     }
-}
-
-fn optional_duration_seconds<'de, D>(deserializer: D) -> Result<Option<Duration>, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    serde::Deserialize::deserialize(deserializer)
-        .map(|value: Option<u32>| value.map(Into::into).map(Duration::from_secs))
 }
 
 impl TryFrom<String> for VerificationTransport {

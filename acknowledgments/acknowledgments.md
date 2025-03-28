@@ -3338,7 +3338,7 @@ THE SOFTWARE.
 
 ```
 
-## either 1.15.0, itertools 0.10.5, itertools 0.14.0, petgraph 0.7.1
+## either 1.15.0, itertools 0.10.5, itertools 0.14.0, petgraph 0.7.1, serde_with 3.12.0, serde_with_macros 3.12.0
 
 ```
 Copyright (c) 2015

@@ -5,6 +5,9 @@
 
 use std::fmt::Display;
 
+use serde_with::hex::Hex;
+use serde_with::serde_as;
+
 use crate::backup::time::{ReportUnusualTimestamp, Timestamp, TimestampError};
 use crate::backup::{serialize, TryFromWith, TryIntoWith};
 use crate::proto::backup as proto;
@@ -25,18 +28,19 @@ pub enum TransactionDetails {
     FailedTransaction(FailedTransaction),
 }
 
+#[serde_as]
 #[derive(Clone, Debug, serde::Serialize)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct Transaction {
-    #[serde(serialize_with = "serialize::enum_as_string")]
+    #[serde_as(as = "serialize::EnumAsString")]
     pub status: proto::payment_notification::transaction_details::transaction::Status,
     pub identification: Option<Identification>,
     pub timestamp: Option<Timestamp>,
     pub block_timestamp: Option<Timestamp>,
     pub block_index: Option<u64>,
-    #[serde(serialize_with = "serialize::optional_hex")]
+    #[serde_as(as = "Option<Hex>")]
     pub transaction: Option<Vec<u8>>,
-    #[serde(serialize_with = "serialize::optional_hex")]
+    #[serde_as(as = "Option<Hex>")]
     pub receipt: Option<Vec<u8>>,
 }
 
@@ -46,20 +50,26 @@ pub struct Transaction {
 #[serde(transparent)]
 pub struct MobAmount(String);
 
+#[serde_as]
 #[derive(Clone, Debug, serde::Serialize)]
 #[cfg_attr(test, derive(PartialEq))]
 pub enum Identification {
-    #[serde(serialize_with = "serialize::list_of_hex")]
-    Sent { key_images: Vec<Vec<u8>> },
-    #[serde(serialize_with = "serialize::list_of_hex")]
-    Received { public_keys: Vec<Vec<u8>> },
+    Sent {
+        #[serde_as(as = "Vec<Hex>")]
+        key_images: Vec<Vec<u8>>,
+    },
+    Received {
+        #[serde_as(as = "Vec<Hex>")]
+        public_keys: Vec<Vec<u8>>,
+    },
 }
 
+#[serde_as]
 #[derive(Clone, Debug, serde::Serialize)]
 #[cfg_attr(test, derive(PartialEq))]
 #[serde(transparent)]
 pub struct FailedTransaction {
-    #[serde(serialize_with = "serialize::enum_as_string")]
+    #[serde_as(as = "serialize::EnumAsString")]
     pub reason: proto::payment_notification::transaction_details::failed_transaction::FailureReason,
 }
 

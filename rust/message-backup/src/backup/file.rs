@@ -9,12 +9,15 @@
 #![allow(clippy::manual_non_exhaustive)]
 
 use hex::ToHex as _;
+use serde_with::hex::Hex;
+use serde_with::serde_as;
 use uuid::Uuid;
 
 use crate::backup::time::{ReportUnusualTimestamp, Timestamp, TimestampError};
 use crate::backup::{serialize, TryFromWith, TryIntoWith};
 use crate::proto::backup as proto;
 
+#[serde_as]
 #[derive(Debug, serde::Serialize)]
 #[cfg_attr(test, derive(Default, PartialEq))]
 pub enum AttachmentLocator {
@@ -40,7 +43,7 @@ pub enum AttachmentLocator {
         size: u32,
     },
     Local {
-        #[serde(serialize_with = "serialize::optional_hex")]
+        #[serde_as(as = "Option<Hex>")]
         local_key: Option<Vec<u8>>,
         #[serde(with = "hex")]
         remote_key: Vec<u8>,
@@ -224,12 +227,13 @@ impl<C: ReportUnusualTimestamp + ?Sized> TryFromWith<proto::file_pointer::Locato
     }
 }
 
+#[serde_as]
 #[derive(Debug, serde::Serialize)]
 #[cfg_attr(test, derive(Default, PartialEq))]
 pub struct FilePointer {
     pub locator: AttachmentLocator,
     pub content_type: Option<String>,
-    #[serde(serialize_with = "serialize::optional_hex")]
+    #[serde_as(as = "Option<Hex>")]
     pub incremental_mac: Option<Vec<u8>>,
     pub incremental_mac_chunk_size: Option<u32>,
     pub file_name: Option<String>,
@@ -298,11 +302,12 @@ impl<C: ReportUnusualTimestamp + ?Sized> TryFromWith<proto::FilePointer, C> for 
     }
 }
 
+#[serde_as]
 #[derive(Debug, serde::Serialize)]
 #[cfg_attr(test, derive(Default, PartialEq))]
 pub struct MessageAttachment {
     pub pointer: FilePointer,
-    #[serde(serialize_with = "serialize::enum_as_string")]
+    #[serde_as(as = "serialize::EnumAsString")]
     pub flag: proto::message_attachment::Flag,
     pub client_uuid: Option<Uuid>,
     #[serde(skip)]

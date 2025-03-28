@@ -175,6 +175,7 @@ rustls-platform-verifier = "0.5.0"
 scopeguard = "1.0"
 serde = "1.0"
 serde_json = "1.0"
+serde_with = "3.1.0"
 sha1 = "0.10"
 sha2 = "0.10"
 snow = { version = "0.9.6", default-features = false }

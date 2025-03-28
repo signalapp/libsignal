@@ -4,6 +4,7 @@
 //
 
 use libsignal_core::{Aci, ServiceId, WrongKindOfServiceIdError};
+use serde_with::serde_as;
 
 use super::GroupError;
 use crate::backup::serialize::{self, SerializeOrder};
@@ -17,10 +18,11 @@ pub enum Role {
     Administrator,
 }
 
+#[serde_as]
 #[derive(Clone, Debug, serde::Serialize)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct GroupMember {
-    #[serde(serialize_with = "serialize::service_id_as_string")]
+    #[serde_as(as = "serialize::ServiceIdAsString")]
     pub user_id: Aci,
     pub role: Role,
     pub joined_at_version: u32,
@@ -69,14 +71,15 @@ impl TryFrom<proto::group::Member> for GroupMember {
     }
 }
 
+#[serde_as]
 #[derive(Clone, Debug, serde::Serialize)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct GroupMemberPendingProfileKey {
-    #[serde(serialize_with = "serialize::service_id_as_string")]
+    #[serde_as(as = "serialize::ServiceIdAsString")]
     pub user_id: ServiceId,
     pub role: Role,
     pub joined_at_version: u32,
-    #[serde(serialize_with = "serialize::service_id_as_string")]
+    #[serde_as(as = "serialize::ServiceIdAsString")]
     pub added_by_user_id: Aci,
     pub timestamp: Timestamp,
     pub(super) _limit_construction_to_module: (),
@@ -152,10 +155,11 @@ impl<C: ReportUnusualTimestamp> TryFromWith<proto::group::MemberPendingProfileKe
     }
 }
 
+#[serde_as]
 #[derive(Clone, Debug, serde::Serialize)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct GroupMemberPendingAdminApproval {
-    #[serde(serialize_with = "serialize::service_id_as_string")]
+    #[serde_as(as = "serialize::ServiceIdAsString")]
     pub user_id: Aci,
     pub timestamp: Timestamp,
     pub(super) _limit_construction_to_module: (),
@@ -203,10 +207,11 @@ impl<C: ReportUnusualTimestamp> TryFromWith<proto::group::MemberPendingAdminAppr
     }
 }
 
+#[serde_as]
 #[derive(Clone, Debug, serde::Serialize)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct GroupMemberBanned {
-    #[serde(serialize_with = "serialize::service_id_as_string")]
+    #[serde_as(as = "serialize::ServiceIdAsString")]
     pub user_id: ServiceId,
     pub timestamp: Timestamp,
     pub(super) _limit_construction_to_module: (),

@@ -4,6 +4,7 @@
 //
 
 use libsignal_core::Aci;
+use serde_with::serde_as;
 
 use crate::backup::serialize::{self, UnorderedList};
 use crate::backup::{likely_empty, uuid_bytes_to_aci};
@@ -25,11 +26,12 @@ pub struct TextRange {
     pub effect: TextEffect,
 }
 
+#[serde_as]
 #[derive(Debug, serde::Serialize)]
 #[cfg_attr(test, derive(PartialEq, Clone))]
 pub enum TextEffect {
-    MentionAci(#[serde(serialize_with = "serialize::service_id_as_string")] Aci),
-    Style(#[serde(serialize_with = "serialize::enum_as_string")] proto::body_range::Style),
+    MentionAci(#[serde_as(as = "serialize::ServiceIdAsString")] Aci),
+    Style(#[serde_as(as = "serialize::EnumAsString")] proto::body_range::Style),
 }
 
 #[derive(Debug, displaydoc::Display, thiserror::Error)]

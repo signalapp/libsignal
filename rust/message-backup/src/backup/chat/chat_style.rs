@@ -7,6 +7,7 @@ use std::fmt::Debug;
 
 use derive_where::derive_where;
 use itertools::Itertools as _;
+use serde_with::serde_as;
 
 use crate::backup::file::{FilePointer, FilePointerError};
 use crate::backup::method::{Lookup, Method};
@@ -33,11 +34,12 @@ pub enum Wallpaper<M: Method> {
     Photo(M::BoxedValue<FilePointer>),
 }
 
+#[serde_as]
 #[derive(Debug, serde::Serialize)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct WallpaperPreset {
     /// Guaranteed to not be [`proto::chat_style::WallpaperPreset::UNKNOWN_WALLPAPER_PRESET`].
-    #[serde(serialize_with = "serialize::enum_as_string")]
+    #[serde_as(as = "serialize::EnumAsString")]
     enum_value: proto::chat_style::WallpaperPreset,
 }
 
@@ -65,12 +67,13 @@ impl SerializeOrder for BubbleGradientColor {
     }
 }
 
+#[serde_as]
 #[derive(Debug, serde::Serialize)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct BubbleColorPreset {
     /// Guaranteed to not be [`proto::chat_style::BubbleColorPreset::UNKNOWN_BUBBLE_COLOR_PRESET`].
     #[allow(unused)]
-    #[serde(serialize_with = "serialize::enum_as_string")]
+    #[serde_as(as = "serialize::EnumAsString")]
     enum_value: proto::chat_style::BubbleColorPreset,
 }
 

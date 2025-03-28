@@ -3571,7 +3571,7 @@ DEALINGS IN THE SOFTWARE.
 			<key>License</key>
 			<string>MIT License</string>
 			<key>Title</key>
-			<string>either 1.15.0, itertools 0.10.5, itertools 0.14.0, petgraph 0.7.1</string>
+			<string>either 1.15.0, itertools 0.10.5, itertools 0.14.0, petgraph 0.7.1, serde_with 3.12.0, serde_with_macros 3.12.0</string>
 			<key>Type</key>
 			<string>PSGroupSpecifier</string>
 		</dict>

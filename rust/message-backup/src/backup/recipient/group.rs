@@ -10,6 +10,7 @@
 
 use itertools::Itertools as _;
 use libsignal_core::ServiceIdKind;
+use serde_with::serde_as;
 use zkgroup::GroupMasterKeyBytes;
 
 use crate::backup::serialize::{self, UnorderedList};
@@ -20,6 +21,7 @@ use crate::proto::backup as proto;
 mod members;
 use members::*;
 
+#[serde_as]
 #[derive(Clone, Debug, serde::Serialize)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct GroupSnapshot {
@@ -27,11 +29,11 @@ pub struct GroupSnapshot {
     pub description: Option<String>,
     pub avatar_url: String,
     pub disappearing_messages_timer: Option<Duration>,
-    #[serde(serialize_with = "serialize::enum_as_string")]
+    #[serde_as(as = "serialize::EnumAsString")]
     pub access_control_attributes: proto::group::access_control::AccessRequired,
-    #[serde(serialize_with = "serialize::enum_as_string")]
+    #[serde_as(as = "serialize::EnumAsString")]
     pub access_control_members: proto::group::access_control::AccessRequired,
-    #[serde(serialize_with = "serialize::enum_as_string")]
+    #[serde_as(as = "serialize::EnumAsString")]
     pub access_control_add_from_invite_link: proto::group::access_control::AccessRequired,
     pub version: u32,
     pub members: UnorderedList<GroupMember>,
@@ -280,6 +282,7 @@ impl<C: ReportUnusualTimestamp> TryFromWith<proto::group::GroupSnapshot, C> for 
     }
 }
 
+#[serde_as]
 #[derive(Clone, Debug, serde::Serialize)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct GroupData {
@@ -287,11 +290,11 @@ pub struct GroupData {
     pub master_key: GroupMasterKeyBytes,
     pub whitelisted: bool,
     pub hide_story: bool,
-    #[serde(serialize_with = "serialize::enum_as_string")]
+    #[serde_as(as = "serialize::EnumAsString")]
     pub story_send_mode: proto::group::StorySendMode,
     pub snapshot: GroupSnapshot,
     pub blocked: bool,
-    #[serde(serialize_with = "serialize::optional_enum_as_string")]
+    #[serde_as(as = "Option<serialize::EnumAsString>")]
     pub avatar_color: Option<proto::AvatarColor>,
     _limit_construction_to_module: (),
 }

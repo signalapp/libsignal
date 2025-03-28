@@ -5,6 +5,9 @@
 
 use std::fmt::Debug;
 
+use serde_with::hex::Hex;
+use serde_with::serde_as;
+
 use crate::backup::frame::RecipientId;
 use crate::backup::method::LookupPair;
 use crate::backup::recipient::{DestinationKind, MinimalRecipientData};
@@ -135,14 +138,15 @@ const CALL_LINK_ROOT_KEY_LEN: usize = 16;
 pub(crate) type CallLinkRootKey = [u8; CALL_LINK_ROOT_KEY_LEN];
 
 /// Validated version of [`proto::CallLink`].
+#[serde_as]
 #[derive(Clone, Debug, serde::Serialize)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct CallLink {
-    #[serde(serialize_with = "serialize::enum_as_string")]
+    #[serde_as(as = "serialize::EnumAsString")]
     pub restrictions: proto::call_link::Restrictions,
     #[serde(with = "hex")]
     pub root_key: CallLinkRootKey,
-    #[serde(serialize_with = "serialize::optional_hex")]
+    #[serde_as(as = "Option<Hex>")]
     pub admin_key: Option<Vec<u8>>,
     pub expiration: Timestamp,
     pub name: String,

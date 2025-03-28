@@ -78,78 +78,55 @@ impl From<CompletedBackup<Store>> for Backup {
     }
 }
 
-/// Serializes using [`ToString`].
-pub(crate) fn to_string<S: Serializer>(t: &impl ToString, s: S) -> Result<S::Ok, S::Error> {
-    t.to_string().serialize(s)
-}
+pub(crate) struct ServiceIdAsString;
 
-/// Serializes using [`ServiceId::service_id_string`].
-pub(crate) fn service_id_as_string<S: Serializer>(
-    id: &(impl Copy + Into<ServiceId>),
-    serializer: S,
-) -> Result<S::Ok, S::Error> {
-    (*id).into().service_id_string().serialize(serializer)
-}
-
-/// Serializes using [`ServiceId::service_id_string`].
-pub(crate) fn optional_service_id_as_string<S: Serializer>(
-    id: &Option<(impl Copy + Into<ServiceId>)>,
-    serializer: S,
-) -> Result<S::Ok, S::Error> {
-    (*id)
-        .map(|id| id.into().service_id_string())
-        .serialize(serializer)
+impl<T: Copy + Into<ServiceId>> serde_with::SerializeAs<T> for ServiceIdAsString {
+    fn serialize_as<S>(source: &T, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        (*source).into().service_id_string().serialize(serializer)
+    }
 }
 
 /// Serializes [`protobuf::Enum`] types as strings.
-pub(crate) fn enum_as_string<S: Serializer>(
-    source: &impl protobuf::Enum,
-    serializer: S,
-) -> Result<S::Ok, S::Error> {
-    format!("{source:?}").serialize(serializer)
+pub(crate) struct EnumAsString;
+
+impl<E: protobuf::Enum> serde_with::SerializeAs<E> for EnumAsString {
+    fn serialize_as<S>(source: &E, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        format!("{source:?}").serialize(serializer)
+    }
 }
 
-/// Serializes [`protobuf::Enum`] types as strings.
-pub(crate) fn optional_enum_as_string<S: Serializer>(
-    source: &Option<impl protobuf::Enum>,
-    serializer: S,
-) -> Result<S::Ok, S::Error> {
-    (*source).map(|v| format!("{v:?}")).serialize(serializer)
+pub(crate) struct BackupKeyHex;
+
+impl serde_with::SerializeAs<libsignal_account_keys::BackupKey> for BackupKeyHex {
+    fn serialize_as<S>(
+        source: &libsignal_account_keys::BackupKey,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serde_with::hex::Hex::<serde_with::formats::Lowercase>::serialize_as(&source.0, serializer)
+    }
 }
 
-/// Serializes an optional bytestring as hex.
-pub(crate) fn optional_hex<S: Serializer>(
-    value: &Option<impl AsRef<[u8]>>,
-    serializer: S,
-) -> Result<S::Ok, S::Error> {
-    value.as_ref().map(hex::encode).serialize(serializer)
-}
+pub(crate) struct IdentityKeyHex;
 
-/// Serializes an optional bytestring as hex.
-pub(crate) fn list_of_hex<S: Serializer>(
-    value: &[impl AsRef<[u8]>],
-    serializer: S,
-) -> Result<S::Ok, S::Error> {
-    // From the implementation of Serialize for [T],
-    // https://docs.rs/serde/1.0.210/src/serde/ser/impls.rs.html#175-186
-    serializer.collect_seq(value.iter().map(hex::encode))
-}
-
-pub(crate) fn backup_key_as_hex<S: Serializer>(
-    value: &libsignal_account_keys::BackupKey,
-    serializer: S,
-) -> Result<S::Ok, S::Error> {
-    hex::encode(value.0).serialize(serializer)
-}
-
-pub(crate) fn optional_identity_key_hex<S: Serializer>(
-    value: &Option<libsignal_protocol::IdentityKey>,
-    serializer: S,
-) -> Result<S::Ok, S::Error> {
-    value
-        .as_ref()
-        .map(|key| key.serialize())
-        .serialize(serializer)
+impl serde_with::SerializeAs<libsignal_protocol::IdentityKey> for IdentityKeyHex {
+    fn serialize_as<S>(
+        source: &libsignal_protocol::IdentityKey,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        source.serialize().serialize(serializer)
+    }
 }
 
 /// Serialization helper for [`UnorderedList`].

@@ -12,6 +12,7 @@ use derive_where::derive_where;
 use intmap::IntMap;
 use libsignal_account_keys::BACKUP_KEY_LEN;
 use libsignal_core::{Aci, Pni};
+use serde_with::serde_as;
 
 pub(crate) use crate::backup::account_data::{AccountData, AccountDataError};
 use crate::backup::call::{AdHocCall, CallError};
@@ -24,7 +25,7 @@ use crate::backup::method::{Lookup, LookupPair, Method};
 pub use crate::backup::method::{Store, ValidateOnly};
 use crate::backup::notification_profile::{NotificationProfile, NotificationProfileError};
 use crate::backup::recipient::{FullRecipientData, MinimalRecipientData, RecipientError};
-use crate::backup::serialize::{backup_key_as_hex, SerializeOrder, UnorderedList};
+use crate::backup::serialize::{SerializeOrder, UnorderedList};
 use crate::backup::sticker::{PackId as StickerPackId, StickerPack, StickerPackError};
 use crate::backup::time::{
     ReportUnusualTimestamp, Timestamp, TimestampError, TimestampIssue, UnusualTimestampTracker,
@@ -115,6 +116,7 @@ struct ChatsData<M: Method + ReferencedTypes> {
     pub chat_items_count: usize,
 }
 
+#[serde_as]
 #[derive(Debug, serde::Serialize)]
 pub struct BackupMeta {
     /// The version of the backup format being parsed.
@@ -125,7 +127,7 @@ pub struct BackupMeta {
     #[serde(skip)]
     pub backup_time: Timestamp,
     /// The key used to encrypt and upload media associated with this backup.
-    #[serde(serialize_with = "backup_key_as_hex")]
+    #[serde_as(as = "serialize::BackupKeyHex")]
     pub media_root_backup_key: libsignal_account_keys::BackupKey,
     /// The app version that made the backup.
     ///
