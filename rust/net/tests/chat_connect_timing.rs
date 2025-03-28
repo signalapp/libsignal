@@ -150,12 +150,8 @@ async fn runs_one_tls_handshake_at_a_time() {
 
     // This is set to be less than MIN_TLS_HANDSHAKE_TIMEOUT, so that we don't have to otherwise
     // take the timeout into account.
-    // TODO: Replace this with checked_sub() and then Option::unwrap() once we have MSRV >= 1.83
-    const TLS_HANDSHAKE_DELAY: Duration = Duration::from_millis(2999);
-    assert_eq!(
-        TLS_HANDSHAKE_DELAY,
-        MIN_TLS_HANDSHAKE_TIMEOUT - Duration::from_millis(1)
-    );
+    const TLS_HANDSHAKE_DELAY: Duration =
+        MIN_TLS_HANDSHAKE_TIMEOUT.saturating_sub(Duration::from_millis(1));
     tokio::spawn(connect_websockets_on_incoming(incoming_streams));
     deps.transport_connector.set_behaviors(
         allow_all_routes(&domain_config, deps.static_ip_map()).map(|(target, behavior)| {
