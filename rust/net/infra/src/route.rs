@@ -442,10 +442,14 @@ where
             }
             Event::LogStatus => {
                 log::info!(
-                    "[{log_tag}] {} connection(s) in progress after {:.2?}, {} pending",
+                    "[{log_tag}] {} connection(s) in progress after {:.2?}, {}",
                     connects_in_progress.len(),
                     start_of_connecting.elapsed(),
-                    if schedule.is_some() { "more" } else { "none" }
+                    schedule
+                        .as_ref()
+                        .as_pin_ref()
+                        .map(|schedule| schedule.status())
+                        .unwrap_or_default(),
                 );
             }
         }

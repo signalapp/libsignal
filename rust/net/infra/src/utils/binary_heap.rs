@@ -34,6 +34,9 @@ pub trait Queue: Default {
     fn is_empty(&self) -> bool {
         self.peek().is_none()
     }
+
+    /// Returns the number of elements currently in the queue.
+    fn len(&self) -> usize;
 }
 
 /// A min-heap.
@@ -76,6 +79,10 @@ impl<T: Ord + Eq> Queue for MinHeap<T> {
     fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
+
+    fn len(&self) -> usize {
+        self.0.len()
+    }
 }
 
 impl<T: Ord + Eq> Extend<T> for MinHeap<T> {
@@ -105,6 +112,10 @@ impl<K: Ord + Eq, V> Queue for MinKeyValueQueue<K, V> {
 
     fn is_empty(&self) -> bool {
         self.0.is_empty()
+    }
+
+    fn len(&self) -> usize {
+        self.0.len()
     }
 }
 
