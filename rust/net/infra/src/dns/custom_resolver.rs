@@ -364,12 +364,15 @@ pub(crate) mod test {
     use std::net::IpAddr;
     use std::pin::pin;
     use std::sync::atomic::{AtomicU32, Ordering};
+    use std::sync::Mutex;
 
     use assert_matches::assert_matches;
     use const_str::ip_addr;
     use futures_util::stream::FuturesUnordered;
+    use test_case::test_case;
 
     use super::*;
+    use crate::route::testutils::ConnectFn;
     use crate::route::Connector;
     use crate::utils::{sleep_and_catch_up, sleep_until_and_catch_up};
 
@@ -808,6 +811,38 @@ pub(crate) mod test {
         });
         let result = resolver.resolve(test_request()).await;
         assert_matches!(result, Err(Error::LookupFailed));
+    }
+
+    #[test_case(false)]
+    #[test_case(true)]
+    #[tokio::test(start_paused = true)]
+    async fn respects_ipv6_filter_for_dns_server_itself(ipv6_enabled: bool) {
+        let ips = [ip_addr!("3fff::100"), DNS_SERVER_IP];
+        let routes_tried = Arc::new(Mutex::new(HashSet::new()));
+        let resolver = CustomDnsResolver::new(
+            ips.to_vec(),
+            ConnectFn(|_over, route: IpAddr, _log_tag| {
+                routes_tried.lock().expect("not poisoned").insert(route);
+                std::future::ready(Err::<TestDnsTransportFailingToConnect, _>(Error::Io(
+                    std::io::ErrorKind::BrokenPipe,
+                )))
+            }),
+        );
+        let result = resolver
+            .resolve(DnsLookupRequest {
+                ipv6_enabled,
+                ..test_request()
+            })
+            .await;
+        assert_matches!(result, Err(Error::TransportFailure));
+        assert_eq!(
+            *routes_tried.lock().expect("not poisoned"),
+            HashSet::from_iter(if ipv6_enabled {
+                ips.iter().copied()
+            } else {
+                [DNS_SERVER_IP].iter().copied()
+            })
+        );
     }
 
     #[tokio::test]
