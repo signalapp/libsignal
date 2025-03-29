@@ -439,8 +439,7 @@ pub(crate) mod test {
     }
 
     pub(crate) type OneshotDnsQueryResultSender = oneshot::Sender<dns::Result<DnsQueryResult>>;
-    pub(crate) type SenderHandlerFn<T> =
-        Box<dyn Fn(DnsLookupRequest, u32, T) + Send + Sync + 'static>;
+    pub(crate) type SenderHandlerFn<T> = dyn Fn(DnsLookupRequest, u32, T) + Send + Sync + 'static;
 
     #[derive(Clone)]
     pub(crate) struct TestDnsTransportWithResponses<const RESPONSES: usize> {
@@ -842,6 +841,59 @@ pub(crate) mod test {
             } else {
                 [DNS_SERVER_IP].iter().copied()
             })
+        );
+    }
+
+    #[test_log::test(tokio::test(start_paused = true))]
+    async fn outcomes_recorded() {
+        let attempts_by_ip = Arc::new(Mutex::new(HashMap::<IpAddr, u32>::new()));
+        let ips = [ip_addr!("3fff::100"), DNS_SERVER_IP];
+        let resolver = CustomDnsResolver::new(
+            ips.to_vec(),
+            ConnectFn(|_over, route: IpAddr, _log_tag| {
+                *attempts_by_ip
+                    .lock()
+                    .expect("no panic")
+                    .entry(route)
+                    .or_default() += 1;
+                let result = if route.is_ipv4() {
+                    Ok(TestDnsTransportWithTwoResponses {
+                        queries_count: Default::default(),
+                        sender_handler: Arc::new(|_, _, txs| {
+                            let [tx_1, tx_2] = txs;
+                            tx_1.send(ok_query_result_ipv4(NORMAL_TTL, IP_V4_LIST_1))
+                                .unwrap();
+                            tx_2.send(ok_query_result_ipv6(NORMAL_TTL, IP_V6_LIST_1))
+                                .unwrap();
+                        }),
+                    })
+                } else {
+                    Err(Error::Io(std::io::ErrorKind::BrokenPipe))
+                };
+                std::future::ready(result)
+            }),
+        );
+        let result = resolver.resolve(test_request()).await;
+        assert_lookup_result_content_equal(&result.unwrap(), IP_V4_LIST_1, IP_V6_LIST_1);
+        // We should have tried both routes, with the good one being second.
+        assert_eq!(
+            *attempts_by_ip.lock().expect("not poisoned"),
+            HashMap::from_iter([(ips[0], 1), (ips[1], 1)])
+        );
+
+        // Try a second time (with a different hostname, so we don't hit the cache!)
+        let result = resolver
+            .resolve(DnsLookupRequest {
+                hostname: "chat.staging.signal.org".into(),
+                ..test_request()
+            })
+            .await;
+        assert_lookup_result_content_equal(&result.unwrap(), IP_V4_LIST_1, IP_V6_LIST_1);
+        // Even though the bad transport route was listed first, we should have tried the good
+        // transport route first on our second attempt.
+        assert_eq!(
+            *attempts_by_ip.lock().expect("not poisoned"),
+            HashMap::from_iter([(ips[0], 1), (ips[1], 2)])
         );
     }
 
