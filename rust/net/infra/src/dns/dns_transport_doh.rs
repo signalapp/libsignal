@@ -104,22 +104,21 @@ impl DnsTransport for DohTransport {
         self,
         request: DnsLookupRequest,
     ) -> dns::Result<impl Stream<Item = dns::Result<DnsQueryResult>> + Send + 'static> {
-        let arc = Arc::new(self);
-        let futures = match request.ipv6_enabled {
-            true => vec![
-                arc.clone()
-                    .send_request(request.clone(), ResourceType::AAAA),
-                arc.clone().send_request(request.clone(), ResourceType::A),
-            ],
-            false => vec![arc.clone().send_request(request.clone(), ResourceType::A)],
-        };
+        let futures = request
+            .ipv6_enabled
+            .then(|| {
+                self.clone()
+                    .send_request(request.clone(), ResourceType::AAAA)
+            })
+            .into_iter()
+            .chain([self.send_request(request, ResourceType::A)]);
         Ok(FuturesUnordered::from_iter(futures))
     }
 }
 
 impl DohTransport {
     async fn send_request(
-        self: Arc<Self>,
+        self,
         request: DnsLookupRequest,
         resource_type: ResourceType,
     ) -> dns::Result<DnsQueryResult> {
