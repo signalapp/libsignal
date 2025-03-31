@@ -141,34 +141,9 @@ impl JniError for BridgeLayerError {
         };
         make_single_message_throwable(env, &self.to_string(), class_name)
     }
-
-    fn into_io_error(self: Box<Self>) -> IoError {
-        match *self {
-            BridgeLayerError::CallbackException(_method_name, exception) => {
-                IoError::other(exception)
-            }
-            e => IoError::other(e.to_string()),
-        }
-    }
-
-    fn into_protocol_error(self: Box<Self>) -> SignalProtocolError {
-        match *self {
-            BridgeLayerError::BadJniParameter(m) => {
-                SignalProtocolError::InvalidArgument(m.to_string())
-            }
-            BridgeLayerError::CallbackException(callback, exception) => {
-                SignalProtocolError::ApplicationCallbackError(callback, Box::new(exception))
-            }
-            err => SignalProtocolError::FfiBindingError(format!("{}", err)),
-        }
-    }
 }
 
 impl JniError for SignalProtocolError {
-    fn into_protocol_error(self: Box<Self>) -> SignalProtocolError {
-        *self
-    }
-
     fn to_throwable<'a>(&self, env: &mut JNIEnv<'a>) -> Result<JThrowable<'a>, BridgeLayerError> {
         fn to_java_string<'env>(
             env: &mut JNIEnv<'env>,
@@ -357,10 +332,6 @@ impl JniError for IoError {
         }
 
         make_single_message_throwable(env, &self.to_string(), ClassName("java.io.IOException"))
-    }
-
-    fn into_io_error(self: Box<Self>) -> IoError {
-        *self
     }
 }
 

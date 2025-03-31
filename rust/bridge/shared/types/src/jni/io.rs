@@ -23,6 +23,12 @@ pub struct JniInputStream<'a> {
 /// Implementation of [`SyncInputStream`].
 pub type JniSyncInputStream<'a> = JniInputStream<'a>;
 
+#[derive(Debug, derive_more::From)]
+enum BridgeOrIoError {
+    Bridge(BridgeLayerError),
+    Io(IoError),
+}
+
 impl<'a> JniInputStream<'a> {
     pub fn new<'context: 'a>(
         env: &mut JNIEnv<'context>,
@@ -35,7 +41,7 @@ impl<'a> JniInputStream<'a> {
         })
     }
 
-    fn do_read(&self, buf: &mut [u8]) -> SignalJniResult<usize> {
+    fn do_read(&self, buf: &mut [u8]) -> Result<usize, BridgeOrIoError> {
         self.env.borrow_mut().with_local_frame(8, "read", |env| {
             let amount = buf
                 .len()
@@ -63,13 +69,13 @@ impl<'a> JniInputStream<'a> {
         })
     }
 
-    fn do_skip(&self, amount: u64) -> SignalJniResult<()> {
+    fn do_skip(&self, amount: u64) -> Result<(), BridgeOrIoError> {
         self.env.borrow_mut().with_local_frame(8, "skip", |env| {
             let java_amount = amount.try_into().map_err(|_| {
-                SignalJniError::from(io::Error::new(
+                io::Error::new(
                     io::ErrorKind::UnexpectedEof,
                     "InputStream::skip more than i64::MAX not supported",
-                ))
+                )
             })?;
 
             let amount_skipped: jlong = call_method_checked(
@@ -80,13 +86,28 @@ impl<'a> JniInputStream<'a> {
             )?;
 
             if amount_skipped != java_amount {
-                return Err(SignalJniError::from(io::Error::new(
+                return Err(io::Error::new(
                     io::ErrorKind::UnexpectedEof,
                     "InputStream skipped less than requested",
-                )));
+                )
+                .into());
             }
             Ok(())
         })
+    }
+}
+
+impl From<BridgeOrIoError> for IoError {
+    fn from(value: BridgeOrIoError) -> Self {
+        match value {
+            BridgeOrIoError::Io(error) => error,
+            BridgeOrIoError::Bridge(bridge_layer_error) => match bridge_layer_error {
+                BridgeLayerError::CallbackException(_method_name, exception) => {
+                    IoError::other(exception)
+                }
+                e => IoError::other(e.to_string()),
+            },
+        }
     }
 }
 

@@ -40,13 +40,6 @@ impl SignalJniError {
 
 pub(super) trait JniError: Debug + Display {
     fn to_throwable<'a>(&self, env: &mut JNIEnv<'a>) -> Result<JThrowable<'a>, BridgeLayerError>;
-
-    fn into_io_error(self: Box<Self>) -> IoError {
-        IoError::other(self.to_string())
-    }
-    fn into_protocol_error(self: Box<Self>) -> SignalProtocolError {
-        SignalProtocolError::FfiBindingError(self.to_string())
-    }
 }
 
 /// Simpler trait that provides a blanket impl of [`JniError`].
@@ -175,18 +168,6 @@ impl From<libsignal_net::cdsi::LookupError> for SignalJniError {
             LookupError::Server { reason } => CdsiError::Server { reason },
         };
         CdsiError::into(cdsi_error)
-    }
-}
-
-impl From<SignalJniError> for SignalProtocolError {
-    fn from(SignalJniError(err): SignalJniError) -> SignalProtocolError {
-        err.into_protocol_error()
-    }
-}
-
-impl From<SignalJniError> for IoError {
-    fn from(SignalJniError(err): SignalJniError) -> Self {
-        err.into_io_error()
     }
 }
 

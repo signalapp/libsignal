@@ -48,15 +48,17 @@ enum BridgeOrProtocolError {
 impl From<BridgeOrProtocolError> for SignalProtocolError {
     fn from(value: BridgeOrProtocolError) -> Self {
         match value {
-            BridgeOrProtocolError::Bridge(e) => e.into(),
             BridgeOrProtocolError::Protocol(e) => e,
+            BridgeOrProtocolError::Bridge(e) => match e {
+                BridgeLayerError::BadJniParameter(m) => {
+                    SignalProtocolError::InvalidArgument(m.to_string())
+                }
+                BridgeLayerError::CallbackException(callback, exception) => {
+                    SignalProtocolError::ApplicationCallbackError(callback, Box::new(exception))
+                }
+                err => SignalProtocolError::FfiBindingError(format!("{}", err)),
+            },
         }
-    }
-}
-
-impl From<BridgeLayerError> for SignalProtocolError {
-    fn from(value: BridgeLayerError) -> Self {
-        SignalJniError::from(value).into()
     }
 }
 
@@ -128,7 +130,7 @@ impl JniIdentityKeyStore<'_> {
         address: &ProtocolAddress,
         identity: &IdentityKey,
         direction: Direction,
-    ) -> Result<bool, SignalJniError> {
+    ) -> Result<bool, BridgeLayerError> {
         self.env
             .borrow_mut()
             .with_local_frame(8, "isTrustedIdentity", |env| {
@@ -201,7 +203,9 @@ impl IdentityKeyStore for JniIdentityKeyStore<'_> {
     }
 
     async fn get_local_registration_id(&self) -> Result<u32, SignalProtocolError> {
-        Ok(self.do_get_local_registration_id()?)
+        Ok(self
+            .do_get_local_registration_id()
+            .map_err(BridgeOrProtocolError::from)?)
     }
 
     async fn save_identity(
@@ -209,7 +213,9 @@ impl IdentityKeyStore for JniIdentityKeyStore<'_> {
         address: &ProtocolAddress,
         identity: &IdentityKey,
     ) -> Result<bool, SignalProtocolError> {
-        Ok(self.do_save_identity(address, identity)?)
+        Ok(self
+            .do_save_identity(address, identity)
+            .map_err(BridgeOrProtocolError::from)?)
     }
 
     async fn is_trusted_identity(
@@ -218,7 +224,9 @@ impl IdentityKeyStore for JniIdentityKeyStore<'_> {
         identity: &IdentityKey,
         direction: Direction,
     ) -> Result<bool, SignalProtocolError> {
-        Ok(self.do_is_trusted_identity(address, identity, direction)?)
+        Ok(self
+            .do_is_trusted_identity(address, identity, direction)
+            .map_err(BridgeOrProtocolError::from)?)
     }
 
     async fn get_identity(
@@ -252,7 +260,7 @@ impl<'a> JniPreKeyStore<'a> {
 }
 
 impl JniPreKeyStore<'_> {
-    fn do_get_pre_key(&self, prekey_id: u32) -> Result<PreKeyRecord, SignalJniError> {
+    fn do_get_pre_key(&self, prekey_id: u32) -> Result<PreKeyRecord, BridgeOrProtocolError> {
         self.env
             .borrow_mut()
             .with_local_frame(8, "loadPreKey", |env| {
@@ -263,7 +271,7 @@ impl JniPreKeyStore<'_> {
                     get_object_with_native_handle(env, self.store, callback_args, "loadPreKey")?;
                 match pk {
                     Some(pk) => Ok(pk),
-                    None => Err(SignalJniError::from(SignalProtocolError::InvalidPreKeyId)),
+                    None => Err(SignalProtocolError::InvalidPreKeyId.into()),
                 }
             })
     }
@@ -272,7 +280,7 @@ impl JniPreKeyStore<'_> {
         &mut self,
         prekey_id: u32,
         record: &PreKeyRecord,
-    ) -> Result<(), SignalJniError> {
+    ) -> Result<(), BridgeOrProtocolError> {
         self.env
             .borrow_mut()
             .with_local_frame(8, "storePreKey", |env| {
@@ -291,7 +299,7 @@ impl JniPreKeyStore<'_> {
             })
     }
 
-    fn do_remove_pre_key(&mut self, prekey_id: u32) -> Result<(), SignalJniError> {
+    fn do_remove_pre_key(&mut self, prekey_id: u32) -> Result<(), BridgeOrProtocolError> {
         self.env
             .borrow_mut()
             .with_local_frame(8, "removePreKey", |env| {
@@ -349,7 +357,10 @@ impl<'a> JniSignedPreKeyStore<'a> {
 }
 
 impl JniSignedPreKeyStore<'_> {
-    fn do_get_signed_pre_key(&self, prekey_id: u32) -> Result<SignedPreKeyRecord, SignalJniError> {
+    fn do_get_signed_pre_key(
+        &self,
+        prekey_id: u32,
+    ) -> Result<SignedPreKeyRecord, BridgeOrProtocolError> {
         self.env
             .borrow_mut()
             .with_local_frame(8, "loadSignedPreKey", |env| {
@@ -364,9 +375,7 @@ impl JniSignedPreKeyStore<'_> {
                 )?;
                 match spk {
                     Some(spk) => Ok(spk),
-                    None => Err(SignalJniError::from(
-                        SignalProtocolError::InvalidSignedPreKeyId,
-                    )),
+                    None => Err(SignalProtocolError::InvalidSignedPreKeyId.into()),
                 }
             })
     }
@@ -375,7 +384,7 @@ impl JniSignedPreKeyStore<'_> {
         &mut self,
         prekey_id: u32,
         record: &SignedPreKeyRecord,
-    ) -> Result<(), SignalJniError> {
+    ) -> Result<(), BridgeOrProtocolError> {
         self.env
             .borrow_mut()
             .with_local_frame(8, "storeSignedPreKey", |env| {
@@ -436,7 +445,10 @@ impl<'a> JniKyberPreKeyStore<'a> {
 }
 
 impl JniKyberPreKeyStore<'_> {
-    fn do_get_kyber_pre_key(&self, prekey_id: u32) -> Result<KyberPreKeyRecord, SignalJniError> {
+    fn do_get_kyber_pre_key(
+        &self,
+        prekey_id: u32,
+    ) -> Result<KyberPreKeyRecord, BridgeOrProtocolError> {
         self.env
             .borrow_mut()
             .with_local_frame(8, "loadKyberPreKey", |env| {
@@ -451,9 +463,7 @@ impl JniKyberPreKeyStore<'_> {
                 )?;
                 match kpk {
                     Some(kpk) => Ok(kpk),
-                    None => Err(SignalJniError::from(
-                        SignalProtocolError::InvalidKyberPreKeyId,
-                    )),
+                    None => Err(SignalProtocolError::InvalidKyberPreKeyId.into()),
                 }
             })
     }
@@ -462,7 +472,7 @@ impl JniKyberPreKeyStore<'_> {
         &mut self,
         prekey_id: u32,
         record: &KyberPreKeyRecord,
-    ) -> Result<(), SignalJniError> {
+    ) -> Result<(), BridgeOrProtocolError> {
         self.env
             .borrow_mut()
             .with_local_frame(8, "storeKyberPreKey", |env| {
@@ -481,7 +491,7 @@ impl JniKyberPreKeyStore<'_> {
             })
     }
 
-    fn do_mark_kyber_pre_key_used(&mut self, prekey_id: u32) -> Result<(), SignalJniError> {
+    fn do_mark_kyber_pre_key_used(&mut self, prekey_id: u32) -> Result<(), BridgeOrProtocolError> {
         self.env
             .borrow_mut()
             .with_local_frame(8, "markKyberPreKeyUsed", |env| {
@@ -593,7 +603,9 @@ impl SessionStore for JniSessionStore<'_> {
         &self,
         address: &ProtocolAddress,
     ) -> Result<Option<SessionRecord>, SignalProtocolError> {
-        Ok(self.do_load_session(address)?)
+        Ok(self
+            .do_load_session(address)
+            .map_err(BridgeOrProtocolError::from)?)
     }
 
     async fn store_session(
@@ -601,7 +613,9 @@ impl SessionStore for JniSessionStore<'_> {
         address: &ProtocolAddress,
         record: &SessionRecord,
     ) -> Result<(), SignalProtocolError> {
-        Ok(self.do_store_session(address, record)?)
+        Ok(self
+            .do_store_session(address, record)
+            .map_err(BridgeOrProtocolError::from)?)
     }
 }
 
@@ -633,7 +647,7 @@ impl JniSenderKeyStore<'_> {
         sender: &ProtocolAddress,
         distribution_id: Uuid,
         record: &SenderKeyRecord,
-    ) -> Result<(), SignalJniError> {
+    ) -> Result<(), BridgeOrProtocolError> {
         self.env
             .borrow_mut()
             .with_local_frame(8, "storeSenderKey", |env| {
@@ -692,6 +706,8 @@ impl SenderKeyStore for JniSenderKeyStore<'_> {
         sender: &ProtocolAddress,
         distribution_id: Uuid,
     ) -> Result<Option<SenderKeyRecord>, SignalProtocolError> {
-        Ok(self.do_load_sender_key(sender, distribution_id)?)
+        Ok(self
+            .do_load_sender_key(sender, distribution_id)
+            .map_err(BridgeOrProtocolError::from)?)
     }
 }
