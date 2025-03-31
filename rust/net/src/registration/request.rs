@@ -236,16 +236,18 @@ impl Request for SubmitVerificationCode<'_> {
     }
 }
 
-impl TryFrom<crate::chat::Response> for RegistrationResponse {
-    type Error = ResponseError;
-
-    fn try_from(value: crate::chat::Response) -> Result<Self, Self::Error> {
-        let crate::chat::Response {
+impl crate::chat::Response {
+    /// Interpret `self` as a registration request response.
+    pub(super) fn try_into_response<R>(self) -> Result<R, ResponseError>
+    where
+        R: for<'a> serde::Deserialize<'a>,
+    {
+        let Self {
             status,
             message: _,
             body,
             headers,
-        } = value;
+        } = self;
         if !status.is_success() {
             if status.as_u16() == 429 {
                 if let Some(retry_later) = extract_retry_later(&headers) {
@@ -457,7 +459,7 @@ mod test {
             headers: HeaderMap::from_iter([CONTENT_TYPE_JSON]),
             body: Some(RESPONSE_JSON.as_bytes().into()),
         }
-        .try_into()
+        .try_into_response()
         .unwrap();
 
         assert_eq!(

@@ -3734,7 +3734,7 @@ DEALINGS IN THE SOFTWARE.
 			<key>License</key>
 			<string>MIT License</string>
 			<key>Title</key>
-			<string>gimli 0.31.1, heck 0.5.0</string>
+			<string>gimli 0.31.1, heck 0.5.0, unicode-xid 0.2.6</string>
 			<key>Type</key>
 			<string>PSGroupSpecifier</string>
 		</dict>

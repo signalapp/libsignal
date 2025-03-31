@@ -3,6 +3,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::panic::UnwindSafe;
+
+use static_assertions::assert_impl_all;
+
 mod error;
 pub use error::*;
 
@@ -15,7 +19,93 @@ pub use service::*;
 mod session_id;
 pub use session_id::*;
 
-impl RegistrationService<'_> {
+/// A client for the Signal registration API endpoints.
+///
+/// A client is tied to a single registration session (identified by the session
+/// ID). It manages a semi-persistent connection to the Chat service that is
+/// used to communicate with Signal servers.
+#[derive(Debug)]
+pub struct RegistrationService<'c> {
+    session: RegistrationSession,
+    connection: RegistrationConnection<'c>,
+    session_id: SessionId,
+}
+
+assert_impl_all!(RegistrationService<'static>: UnwindSafe);
+
+impl<'c> RegistrationService<'c> {
+    /// Creates a new registration session with the server.
+    ///
+    /// Yields a [`RegistrationService`] when the server responds successfully,
+    /// or an error if the request failed. This method will retry internally if
+    /// transient errors are encountered.
+    pub async fn create_session(
+        create_session: CreateSession,
+        connect_chat: Box<dyn ConnectChat + Send + Sync + UnwindSafe + 'c>,
+    ) -> Result<Self, RequestError<CreateSessionError>> {
+        log::info!("starting new registration session");
+
+        let (connection, response) =
+            RegistrationConnection::connect_and_send(connect_chat, create_session.into()).await?;
+
+        let RegistrationResponse {
+            session_id,
+            session,
+        } = response.try_into_response()?;
+
+        let session_id = session_id.parse()?;
+        log::info!("started registration session with session ID {session_id}");
+
+        Ok(Self {
+            session_id,
+            connection,
+            session,
+        })
+    }
+
+    /// Resumes a previous registration session with the server.
+    ///
+    /// Yields a [`RegistrationService`] when the server responds successfully,
+    /// or an error if the request failed. This method will retry internally if
+    /// transient errors are encountered.
+    pub async fn resume_session(
+        session_id: SessionId,
+        connect_chat: Box<dyn ConnectChat + Send + Sync + UnwindSafe + 'c>,
+    ) -> Result<Self, RequestError<ResumeSessionError>> {
+        log::info!("trying to resume existing registration session with session ID {session_id}");
+        let (connection, response) = RegistrationConnection::connect_and_send(
+            connect_chat,
+            RegistrationRequest {
+                session_id: &session_id,
+                request: GetSession {},
+            }
+            .into(),
+        )
+        .await?;
+
+        let RegistrationResponse {
+            session_id: _,
+            session,
+        } = response.try_into_response()?;
+        log::info!("successfully resumed registration session");
+
+        Ok(Self {
+            session_id,
+            connection,
+            session,
+        })
+    }
+
+    /// Returns the server identifier for the bound session.
+    pub fn session_id(&self) -> &SessionId {
+        &self.session_id
+    }
+
+    /// Returns the last known server-reported state of the session.
+    pub fn session_state(&self) -> &RegistrationSession {
+        &self.session
+    }
+
     pub async fn submit_captcha(
         &mut self,
         captcha_value: &str,
@@ -71,6 +161,48 @@ impl RegistrationService<'_> {
         self.submit_request(SubmitVerificationCode { code })
             .await
             .map_err(Into::into)
+    }
+
+    /// Sends a request for an established session.
+    ///
+    /// On success, the state of the session as reported by the server is saved
+    /// (and accessible via [`Self::session_state`]). This method will retry
+    /// internally if transient errors are encountered.
+    async fn submit_request<R: Request>(
+        &mut self,
+        request: R,
+    ) -> Result<(), RequestError<SessionRequestError>> {
+        let Self {
+            connection,
+            session,
+            session_id,
+        } = self;
+        log::info!(
+            "sending {request_type} on registration session {session_id}",
+            request_type = std::any::type_name::<R>()
+        );
+
+        let response = connection
+            .submit_chat_request(
+                RegistrationRequest {
+                    session_id,
+                    request,
+                }
+                .into(),
+            )
+            .await?;
+
+        log::info!(
+            "{request_type} succeeded",
+            request_type = std::any::type_name::<R>()
+        );
+        let RegistrationResponse {
+            session_id: _,
+            session: response_session,
+        } = response.try_into_response()?;
+
+        *session = response_session;
+        Ok(())
     }
 }
 

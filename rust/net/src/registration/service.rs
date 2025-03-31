@@ -12,7 +12,6 @@ use either::Either;
 use futures_util::future::BoxFuture;
 use futures_util::{FutureExt as _, Stream, StreamExt as _};
 use libsignal_net_infra::errors::{LogSafeDisplay, RetryLater};
-use static_assertions::assert_impl_all;
 use tokio::sync::{mpsc, oneshot};
 use tokio::time::{Duration, Instant};
 use tokio_stream::wrappers::ReceiverStream;
@@ -21,34 +20,19 @@ use crate::chat::{
     ChatConnection, ConnectError as ChatConnectError, Request as ChatRequest,
     Response as ChatResponse, SendError as ChatSendError,
 };
-use crate::registration::{
-    CreateSession, CreateSessionError, GetSession, RegistrationRequest, RegistrationResponse,
-    RegistrationSession, Request, RequestError, ResumeSessionError, SessionId, SessionRequestError,
-};
+use crate::registration::{RequestError, SessionRequestError};
 
-/// A client for the Signal registration API endpoints.
+/// Internal connection implementation for the registration client.
 ///
-/// A client is tied to a single registration session (identified by the session
-/// ID). It manages a semi-persistent connection to the Chat service that is
-/// used to communicate with Signal servers.
-pub struct RegistrationService<'c> {
-    session_id: SessionId,
-    session: RegistrationSession,
+/// A lazy connection to the Chat service used for making registration requests.
+/// When a request is initiated, the existing connection is used or a new one is
+/// established. The actual logic runs in a [tokio] task that is communicated
+/// with via a channel.
+#[derive(derive_more::Debug)]
+pub(super) struct RegistrationConnection<'c> {
+    #[debug("_")]
     connect_chat: Box<dyn ConnectChat + Send + Sync + UnwindSafe + 'c>,
     sender: tokio::sync::mpsc::Sender<IncomingRequest>,
-}
-
-assert_impl_all!(RegistrationService<'static>: UnwindSafe);
-
-impl Debug for RegistrationService<'_> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("RegistrationService")
-            .field("session_id", &self.session_id)
-            .field("session", &self.session)
-            .field("connect_chat", &"_")
-            .field("sender", &self.sender)
-            .finish()
-    }
 }
 
 /// Describes how to make a [`ChatConnection`].
@@ -66,120 +50,42 @@ pub trait ConnectChat: Send {
     ) -> BoxFuture<'_, Result<ChatConnection, ChatConnectError>>;
 }
 
-impl<'c> RegistrationService<'c> {
-    /// Creates a new registration session with the server.
+impl<'c> RegistrationConnection<'c> {
+    /// Attempts to connect to the chat service and send a request.
     ///
-    /// Yields a [`RegistrationService`] when the server responds successfully,
-    /// or an error if the request failed. This method will retry internally if
-    /// transient errors are encountered.
-    pub async fn create_session(
-        create_session: CreateSession,
+    /// This method will retry internally if transient errors are encountered.
+    pub(super) async fn connect_and_send(
         connect_chat: Box<dyn ConnectChat + Send + Sync + UnwindSafe + 'c>,
-    ) -> Result<Self, RequestError<CreateSessionError>> {
-        log::info!("starting new registration session");
-        let (response, sender) =
-            send_request::<CreateSessionError>(create_session.into(), &*connect_chat, None).await?;
+        request: ChatRequest,
+    ) -> Result<(Self, ChatResponse), RequestError<SessionRequestError>> {
+        let (response, sender) = send_request(request, &*connect_chat, None).await?;
 
-        let RegistrationResponse {
-            session_id,
-            session,
-        } = response.try_into()?;
-
-        let session_id = session_id.parse()?;
-        log::info!("started registration session with session ID {session_id}");
-
-        Ok(Self {
-            session_id,
-            connect_chat,
-            session,
-            sender,
-        })
+        Ok((
+            Self {
+                connect_chat,
+                sender,
+            },
+            response,
+        ))
     }
 
-    /// Resumes a previous registration session with the server.
+    /// Sends a request on an established connection.
     ///
-    /// Yields a [`RegistrationService`] when the server responds successfully,
-    /// or an error if the request failed. This method will retry internally if
-    /// transient errors are encountered.
-    pub async fn resume_session(
-        session_id: SessionId,
-        connect_chat: Box<dyn ConnectChat + Send + Sync + UnwindSafe + 'c>,
-    ) -> Result<Self, RequestError<ResumeSessionError>> {
-        log::info!("trying to resume existing registration session with session ID {session_id}");
-        let request: ChatRequest = RegistrationRequest {
-            session_id: &session_id,
-            request: GetSession {},
-        }
-        .into();
-
-        let (response, sender) =
-            send_request::<ResumeSessionError>(request, &*connect_chat, None).await?;
-
-        let RegistrationResponse {
-            session_id: _,
-            session,
-        } = response.try_into()?;
-        log::info!("successfully resumed registration session");
-
-        Ok(Self {
-            session_id,
-            sender,
-            session,
-            connect_chat,
-        })
-    }
-
-    /// Returns the server identifier for the bound session.
-    pub fn session_id(&self) -> &SessionId {
-        &self.session_id
-    }
-
-    /// Returns the last known server-reported state of the session.
-    pub fn session_state(&self) -> &RegistrationSession {
-        &self.session
-    }
-
-    /// Sends a request for an established session.
-    ///
-    /// On success, the state of the session as reported by the server is saved
-    /// (and accessible via [`Self::session_state`]). This method will retry
-    /// internally if transient errors are encountered.
-    pub(super) async fn submit_request<R: Request>(
+    /// This method will retry internally if transient errors are encountered.
+    pub(super) async fn submit_chat_request(
         &mut self,
-        request: R,
-    ) -> Result<(), RequestError<SessionRequestError>> {
+        request: ChatRequest,
+    ) -> Result<ChatResponse, RequestError<SessionRequestError>> {
         let Self {
             sender,
-            session_id,
-            session,
             connect_chat,
         } = self;
 
-        let request: ChatRequest = RegistrationRequest {
-            session_id,
-            request,
-        }
-        .into();
-
-        log::info!(
-            "sending {request_type} on registration session {session_id}",
-            request_type = std::any::type_name::<R>()
-        );
         let (response, request_sender) =
             send_request(request, &**connect_chat, Some(sender)).await?;
         *sender = request_sender;
 
-        log::info!(
-            "{request_type} succeeded",
-            request_type = std::any::type_name::<R>()
-        );
-        let RegistrationResponse {
-            session_id: _,
-            session: response_session,
-        } = response.try_into()?;
-
-        *session = response_session;
-        Ok(())
+        Ok(response)
     }
 }
 
@@ -508,6 +414,7 @@ mod test {
 
     use super::*;
     use crate::registration::testutil::{ConnectChatFn, DropOnDisconnect, FakeChatConnect};
+    use crate::registration::{RegistrationResponse, RegistrationSession};
 
     /// A value to use when we don't care about the contents of the request.
     static SOME_REQUEST: LazyLock<ChatRequest> = LazyLock::new(|| ChatRequest {

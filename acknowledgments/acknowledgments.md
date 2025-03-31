@@ -3481,7 +3481,7 @@ DEALINGS IN THE SOFTWARE.
 
 ```
 
-## gimli 0.31.1, heck 0.5.0
+## gimli 0.31.1, heck 0.5.0, unicode-xid 0.2.6
 
 ```
 Copyright (c) 2015 The Rust Project Developers
