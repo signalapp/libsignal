@@ -553,7 +553,7 @@ impl JniError for CdsiError {
     fn to_throwable<'a>(&self, env: &mut JNIEnv<'a>) -> Result<JThrowable<'a>, BridgeLayerError> {
         let class = match *self {
             CdsiError::RateLimited(retry_later) => {
-                return retry_later_exception(env, retry_later.retry_after_seconds)
+                return retry_later.to_throwable(env);
             }
             CdsiError::InvalidToken => {
                 ClassName("org.signal.libsignal.net.CdsiInvalidTokenException")
@@ -596,9 +596,7 @@ impl MessageOnlyExceptionJniError for InvalidUri {
 impl JniError for ChatConnectError {
     fn to_throwable<'a>(&self, env: &mut JNIEnv<'a>) -> Result<JThrowable<'a>, BridgeLayerError> {
         let class = match *self {
-            ChatConnectError::RetryLater(RetryLater {
-                retry_after_seconds,
-            }) => return retry_later_exception(env, retry_after_seconds),
+            ChatConnectError::RetryLater(retry_later) => return retry_later.to_throwable(env),
             ChatConnectError::AppExpired => {
                 ClassName("org.signal.libsignal.net.AppExpiredException")
             }
@@ -653,16 +651,18 @@ impl MessageOnlyExceptionJniError for TestingError {
     }
 }
 
-fn retry_later_exception<'env>(
-    env: &mut JNIEnv<'env>,
-    retry_after_seconds: u32,
-) -> Result<JThrowable<'env>, BridgeLayerError> {
-    new_instance(
-        env,
-        ClassName("org.signal.libsignal.net.RetryLaterException"),
-        jni_args!((retry_after_seconds.into() => long) -> void),
-    )
-    .map(Into::into)
+impl JniError for RetryLater {
+    fn to_throwable<'a>(&self, env: &mut JNIEnv<'a>) -> Result<JThrowable<'a>, BridgeLayerError> {
+        let Self {
+            retry_after_seconds,
+        } = self;
+        new_instance(
+            env,
+            ClassName("org.signal.libsignal.net.RetryLaterException"),
+            jni_args!(((*retry_after_seconds).into() => long) -> void),
+        )
+        .map(Into::into)
+    }
 }
 
 /// Translates errors into Java exceptions.
