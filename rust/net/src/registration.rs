@@ -241,7 +241,7 @@ mod test {
             Box::new(fake_connect),
         );
 
-        tokio::spawn(async move {
+        let remote_respond = async {
             let fake_chat_remote = fake_chat_remote_rx.recv().await.expect("sender not closed");
             let incoming_request = fake_chat_remote
                 .receive_request()
@@ -273,10 +273,12 @@ mod test {
                     .into_websocket_response(0),
                 )
                 .expect("not disconnected");
+            // Yield the remote instead of dropping it so the fake server
+            // doesn't disconnect.
             fake_chat_remote
-        });
+        };
 
-        let session_client = resume_session.await;
+        let (session_client, _fake_chat_remote) = tokio::join!(resume_session, remote_respond);
 
         // At this point the client should be connected and can make additional
         // requests.
