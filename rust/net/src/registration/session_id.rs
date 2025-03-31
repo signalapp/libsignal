@@ -11,7 +11,7 @@ use libsignal_net_infra::errors::LogSafeDisplay;
 /// A session ID received from the server.
 ///
 /// This type can be infallibly encoded as an URL path segment.
-#[derive(Clone, Debug, PartialEq, Eq, derive_more::Deref)]
+#[derive(Clone, Debug, PartialEq, Eq, derive_more::Deref, serde::Serialize)]
 pub struct SessionId(String);
 
 impl SessionId {

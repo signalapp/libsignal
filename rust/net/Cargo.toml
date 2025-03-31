@@ -19,6 +19,7 @@ attest = { workspace = true }
 libsignal-core = { workspace = true }
 libsignal-keytrans = { workspace = true }
 libsignal-protocol = { workspace = true }
+zkgroup = { workspace = true }
 
 async-trait = { workspace = true }
 base64 = { workspace = true }
@@ -58,7 +59,7 @@ tokio-stream = { workspace = true }
 tokio-tungstenite = { workspace = true }
 tungstenite = { workspace = true, features = ["url"] }
 url = { workspace = true }
-uuid = { workspace = true }
+uuid = { workspace = true, features = ["serde"] }
 visibility = { workspace = true }
 zerocopy = { workspace = true }
 
@@ -72,6 +73,8 @@ libsignal-net-infra = { path = "infra", features = ["test-util"] }
 assert_matches = { workspace = true }
 clap = { workspace = true, features = ["derive", "env"] }
 env_logger = { workspace = true }
+pretty_assertions = { workspace = true }
+rand_chacha = { workspace = true }
 snow = { workspace = true, features = ["default-resolver"] }
 test-case = { workspace = true }
 test-log = { workspace = true }

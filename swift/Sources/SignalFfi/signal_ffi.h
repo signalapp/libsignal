@@ -29,11 +29,6 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 #define SignalBackupId_LEN 16
 
-/**
- * The encoded length of a [`FourCC`], in bytes.
- */
-#define SignalFourCC_ENCODED_LEN 4
-
 #define SignalNUM_AUTH_CRED_ATTRIBUTES 3
 
 #define SignalNUM_PROFILE_KEY_CRED_ATTRIBUTES 4
@@ -124,6 +119,11 @@ SPDX-License-Identifier: AGPL-3.0-only
  * Seconds in a 24-hour cycle (ignoring leap seconds).
  */
 #define SignalSECONDS_PER_DAY 86400
+
+/**
+ * The encoded length of a [`FourCC`], in bytes.
+ */
+#define SignalFourCC_ENCODED_LEN 4
 
 typedef enum {
   SignalCiphertextMessageTypeWhisper = 2,
