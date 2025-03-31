@@ -165,12 +165,11 @@ impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R>>
                     .ok_or(ChatFolderError::IncludedMemberUnknown(id))?;
                 let kind = data.as_ref();
                 match kind {
-                    DestinationKind::Contact | DestinationKind::Self_ | DestinationKind::Group => {
-                        Ok(recipient.clone())
-                    }
-                    DestinationKind::ReleaseNotes
-                    | DestinationKind::DistributionList
-                    | DestinationKind::CallLink => {
+                    DestinationKind::Contact
+                    | DestinationKind::Self_
+                    | DestinationKind::Group
+                    | DestinationKind::ReleaseNotes => Ok(recipient.clone()),
+                    DestinationKind::DistributionList | DestinationKind::CallLink => {
                         Err(ChatFolderError::IncludedMemberWrongKind(id, *kind))
                     }
                 }
@@ -193,12 +192,11 @@ impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R>>
                     .ok_or(ChatFolderError::ExcludedMemberUnknown(id))?;
                 let kind = data.as_ref();
                 match kind {
-                    DestinationKind::Contact | DestinationKind::Self_ | DestinationKind::Group => {
-                        Ok(recipient.clone())
-                    }
-                    DestinationKind::ReleaseNotes
-                    | DestinationKind::DistributionList
-                    | DestinationKind::CallLink => {
+                    DestinationKind::Contact
+                    | DestinationKind::Self_
+                    | DestinationKind::Group
+                    | DestinationKind::ReleaseNotes => Ok(recipient.clone()),
+                    DestinationKind::DistributionList | DestinationKind::CallLink => {
                         Err(ChatFolderError::ExcludedMemberWrongKind(id, *kind))
                     }
                 }
@@ -295,6 +293,8 @@ mod test {
     #[test_case(|x| x.includedRecipientIds.push(TestContext::CALL_LINK_ID.0) => Err(ChatFolderError::IncludedMemberWrongKind(TestContext::CALL_LINK_ID, DestinationKind::CallLink)); "including call links is not okay")]
     #[test_case(|x| x.includedRecipientIds.push(TestContext::CONTACT_ID.0) => Err(ChatFolderError::MemberIsBothIncludedAndExcluded(TestContext::CONTACT_ID)); "member in both lists")]
     #[test_case(|x| x.includedRecipientIds.push(TestContext::GROUP_ID.0) => Ok(()); "include a group even though all groups are included by default")]
+    #[test_case(|x| x.includedRecipientIds.push(TestContext::RELEASE_NOTES_ID.0) => Ok(()); "including release notes")]
+    #[test_case(|x| x.excludedRecipientIds.push(TestContext::RELEASE_NOTES_ID.0) => Ok(()); "excluding release notes")]
     fn folder(mutator: fn(&mut proto::ChatFolder)) -> Result<(), ChatFolderError> {
         let mut folder = proto::ChatFolder::test_data();
         mutator(&mut folder);
