@@ -604,12 +604,6 @@ mod registration {
         VerificationNotDeliverable(VerificationCodeNotDeliverable),
     }
 
-    impl std::fmt::Display for BridgedErrorVariant {
-        fn fmt(&self, _: &mut fmt::Formatter<'_>) -> fmt::Result {
-            unreachable!("not actually used")
-        }
-    }
-
     impl SignalNodeError for BridgedErrorVariant {
         fn into_throwable<'a, C: Context<'a>>(
             self,

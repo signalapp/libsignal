@@ -227,7 +227,7 @@ fn generate_ts_signature_comment(
     ts_args.extend(
         sig.inputs
             .iter()
-            .map(|arg| arg.to_token_stream().to_string()),
+            .map(|arg| arg.to_token_stream().to_string().replace('\n', " ")),
     );
 
     let result_type_format = match (sig.asyncness, bridging_kind) {

@@ -8,7 +8,7 @@ use libsignal_net_infra::errors::{LogSafeDisplay, RetryLater};
 
 use crate::registration::{InvalidSessionId, ResponseError, VerificationCodeNotDeliverable};
 
-#[derive(Debug, thiserror::Error, displaydoc::Display)]
+#[derive(Debug, thiserror::Error, displaydoc::Display, strum::EnumString)]
 pub enum RequestError<E> {
     /// the request timed out
     Timeout,
@@ -17,6 +17,7 @@ pub enum RequestError<E> {
     /// unknown error: {0}
     Unknown(String),
     /// {0}
+    #[strum(disabled)]
     Other(E),
 }
 

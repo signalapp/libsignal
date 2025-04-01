@@ -85,8 +85,8 @@ pub struct VerificationCodeNotDeliverable {
     // This could be a stronger type but we don't need it to be in libsignal and
     // the additional flexibility could be useful if the server adds more
     // "reason" values.
-    reason: String,
-    permanent_failure: bool,
+    pub reason: String,
+    pub permanent_failure: bool,
 }
 
 /// The subset of account attributes that don't need any additional validation.
