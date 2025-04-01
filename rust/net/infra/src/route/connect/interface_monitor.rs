@@ -91,7 +91,7 @@ where
     ) -> Result<Self::Connection, Self::Error> {
         // We need our own Receiver so that multiple connections can be going at once.
         let mut network_change_event = self.network_change_event.clone();
-        network_change_event.mark_changed();
+        network_change_event.mark_unchanged();
 
         let target_ip = *route.immediate_target();
         let initial_interface = self
