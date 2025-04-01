@@ -1007,8 +1007,8 @@ mod test {
 
         let connect_state =
             ConnectState::new_with_transport_connector(SUGGESTED_CONNECT_CONFIG, connector);
-        let dns_resolver = DnsResolver::new();
         let network_change_event = no_network_change_events();
+        let dns_resolver = DnsResolver::new(&network_change_event);
         let result = CdsiConnection::connect_with(
             ConnectionResources {
                 connect_state: &connect_state,

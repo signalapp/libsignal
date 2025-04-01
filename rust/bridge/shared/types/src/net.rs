@@ -133,20 +133,15 @@ impl ConnectionManager {
     }
 
     pub fn new_from_static_environment(env: Env<'static>, user_agent: &str) -> Self {
-        let network_change_event_tx = ::tokio::sync::watch::Sender::new(());
+        let (network_change_event_tx, network_change_event_rx) = ::tokio::sync::watch::channel(());
         let user_agent = UserAgent::with_libsignal_version(user_agent);
 
-        let dns_resolver = DnsResolver::new_with_static_fallback(env.static_fallback());
+        let dns_resolver =
+            DnsResolver::new_with_static_fallback(env.static_fallback(), &network_change_event_rx);
         let transport_connector =
             std::sync::Mutex::new(TcpSslConnector::new_direct(dns_resolver.clone()));
         let endpoints = std::sync::Mutex::new(
-            EndpointConnections::new(
-                &env,
-                &user_agent,
-                false,
-                &network_change_event_tx.subscribe(),
-            )
-            .into(),
+            EndpointConnections::new(&env, &user_agent, false, &network_change_event_rx).into(),
         );
         Self {
             env,

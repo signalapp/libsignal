@@ -381,7 +381,10 @@ pub mod test_support {
         enable_domain_fronting: EnableDomainFronting,
         filter_routes: impl Fn(&UnresolvedHttpsServiceRoute) -> bool,
     ) -> Result<ChatConnection, ConnectError> {
-        let dns_resolver = DnsResolver::new_with_static_fallback(env.static_fallback());
+        let dns_resolver = DnsResolver::new_with_static_fallback(
+            env.static_fallback(),
+            &no_network_change_events(),
+        );
 
         let route_provider = DirectOrProxyProvider::maybe_proxied(
             env.chat_domain_config

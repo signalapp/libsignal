@@ -23,6 +23,7 @@ use libsignal_net_infra::route::{
     ConnectorExt as _, ProxyTarget, SocksRoute, TcpRoute, TlsRoute, TlsRouteFragment,
     UnresolvedHost,
 };
+use libsignal_net_infra::testutil::no_network_change_events;
 use tokio::time::Duration;
 use url::Url;
 
@@ -90,7 +91,7 @@ async fn main() {
         .try_into()
         .expect("proxy port was zero");
 
-    let dns_resolver = DnsResolver::new();
+    let dns_resolver = DnsResolver::new(&no_network_change_events());
     let root_certs = RootCertificates::Native;
 
     let mut connection = if use_new_connector {

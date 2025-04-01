@@ -68,7 +68,7 @@ async fn main() {
     };
 
     let cdsi_env = libsignal_net::env::PROD.cdsi;
-    let resolver = DnsResolver::new();
+    let resolver = DnsResolver::new(&no_network_change_events());
 
     let connected = {
         let confirmation_header_name = cdsi_env

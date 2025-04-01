@@ -14,6 +14,7 @@ use libsignal_net_infra::dns::custom_resolver::CustomDnsResolver;
 use libsignal_net_infra::dns::dns_lookup::{DnsLookup, DnsLookupRequest, SystemDnsLookup};
 use libsignal_net_infra::dns::dns_transport_udp::UdpTransportConnectorFactory;
 use libsignal_net_infra::route::UdpRoute;
+use libsignal_net_infra::testutil::no_network_change_events;
 use nonzero_ext::nonzero;
 
 macro_rules! skip_unless_nonhermetic {
@@ -53,6 +54,7 @@ async fn udp_dns_lookup() {
             port: nonzero!(53u16),
         }],
         UdpTransportConnectorFactory,
+        &no_network_change_events(),
     );
 
     let result = dns
@@ -72,7 +74,7 @@ async fn udp_dns_lookup() {
 #[tokio::test]
 async fn dns_over_https_lookup() {
     skip_unless_nonhermetic!();
-    let dns = build_custom_resolver_cloudflare_doh();
+    let dns = build_custom_resolver_cloudflare_doh(&no_network_change_events());
 
     let result = dns
         .resolve(DnsLookupRequest {

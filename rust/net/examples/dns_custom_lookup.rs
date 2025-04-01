@@ -17,6 +17,7 @@ use libsignal_net_infra::dns::dns_transport_udp::UdpTransportConnectorFactory;
 use libsignal_net_infra::route::{
     HttpRouteFragment, HttpsTlsRoute, TcpRoute, TlsRoute, TlsRouteFragment, UdpRoute,
 };
+use libsignal_net_infra::testutil::no_network_change_events;
 use libsignal_net_infra::Alpn;
 use nonzero_ext::nonzero;
 use tokio::time::Instant;
@@ -57,6 +58,7 @@ async fn main() {
             Either::Left(CustomDnsResolver::new(
                 vec![ns_address],
                 UdpTransportConnectorFactory,
+                &no_network_change_events(),
             ))
         }
         Transport::Doh => {
@@ -82,6 +84,7 @@ async fn main() {
             Either::Right(CustomDnsResolver::new(
                 vec![target],
                 DohTransportConnectorFactory,
+                &no_network_change_events(),
             ))
         }
     };

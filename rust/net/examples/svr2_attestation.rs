@@ -95,7 +95,7 @@ async fn main() {
         libsignal_net::env::STAGING.svr2
     };
 
-    let resolver = DnsResolver::new();
+    let resolver = DnsResolver::new(&no_network_change_events());
 
     let confirmation_header_name = env
         .domain_config

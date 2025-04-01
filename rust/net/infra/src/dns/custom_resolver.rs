@@ -22,9 +22,15 @@ use crate::dns::dns_lookup::DnsLookupRequest;
 use crate::dns::dns_types::Expiring;
 use crate::dns::dns_utils::log_safe_domain;
 use crate::dns::lookup_result::LookupResult;
-use crate::route::{ConnectionOutcomeParams, ConnectionOutcomes, ConnectorFactory, ResolvedRoute};
-use crate::timeouts::{DNS_CALL_BACKGROUND_TIMEOUT, DNS_RESOLUTION_DELAY};
+use crate::route::{
+    ConnectionOutcomeParams, ConnectionOutcomes, ConnectorFactory, InterfaceMonitor, ResolvedRoute,
+};
+use crate::timeouts::{
+    DNS_CALL_BACKGROUND_TIMEOUT, DNS_RESOLUTION_DELAY, NETWORK_INTERFACE_POLL_INTERVAL,
+    POST_ROUTE_CHANGE_CONNECTION_TIMEOUT,
+};
 use crate::utils::future::results_within_interval;
+use crate::utils::NetworkChangeEvent;
 use crate::{dns, DnsSource};
 
 pub type DnsIpv4Result = Expiring<Vec<Ipv4Addr>>;
@@ -94,16 +100,21 @@ const DNS_CONNECTION_COOLDOWN_CONFIG: ConnectionOutcomeParams = ConnectionOutcom
 pub struct CustomDnsResolver<R, T> {
     connector_factory: T,
     routes: Vec<R>,
+    network_change_event: NetworkChangeEvent,
     attempts_record: Arc<tokio::sync::RwLock<ConnectionOutcomes<R>>>,
     cache: Arc<std::sync::Mutex<SharedCacheWithGenerations<String, Expiring<LookupResult>>>>,
 }
 
 impl<R, T> CustomDnsResolver<R, T>
 where
-    T: ConnectorFactory<R, Connection: DnsTransport + 'static>,
+    T: ConnectorFactory<R, Connector: Sync, Connection: DnsTransport + 'static>,
     R: ResolvedRoute + Clone + Hash + Eq + Send + Sync,
 {
-    pub fn new(routes: Vec<R>, connector_factory: T) -> Self {
+    pub fn new(
+        routes: Vec<R>,
+        connector_factory: T,
+        network_change_event: &NetworkChangeEvent,
+    ) -> Self {
         let cache = Arc::new(std::sync::Mutex::new(SharedCacheWithGenerations::default()));
         let attempts_record = Arc::new(tokio::sync::RwLock::new(ConnectionOutcomes::new(
             DNS_CONNECTION_COOLDOWN_CONFIG,
@@ -112,6 +123,7 @@ where
         Self {
             connector_factory,
             routes,
+            network_change_event: network_change_event.clone(),
             attempts_record,
             cache,
         }
@@ -154,7 +166,12 @@ where
     }
 
     async fn lookup(&self, request: DnsLookupRequest) -> dns::Result<LookupResult> {
-        let connector = self.connector_factory.make();
+        let connector = InterfaceMonitor::new(
+            self.connector_factory.make(),
+            self.network_change_event.clone(),
+            NETWORK_INTERFACE_POLL_INTERVAL,
+            POST_ROUTE_CHANGE_CONNECTION_TIMEOUT,
+        );
         let routes = self
             .routes
             .iter()
@@ -374,6 +391,7 @@ pub(crate) mod test {
     use super::*;
     use crate::route::testutils::ConnectFn;
     use crate::route::Connector;
+    use crate::testutil::no_network_change_events;
     use crate::utils::{sleep_and_catch_up, sleep_until_and_catch_up};
 
     // Remove this when Rust figures out how to make arbitrary Div impls const.
@@ -486,6 +504,7 @@ pub(crate) mod test {
                     sender_handler: Arc::new(Box::new(sender_handler)),
                     queries_count: Default::default(),
                 }),
+                &no_network_change_events(),
             )
         }
 
@@ -508,6 +527,7 @@ pub(crate) mod test {
             let resolver = CustomDnsResolver::new(
                 vec![DNS_SERVER_IP],
                 MakeConnectorByCloning(transport.clone()),
+                &no_network_change_events(),
             );
             (transport, resolver)
         }
@@ -798,6 +818,7 @@ pub(crate) mod test {
             MakeConnectorByCloning(TestDnsTransportFailingToConnect(Error::Io(
                 std::io::ErrorKind::BrokenPipe,
             ))),
+            &no_network_change_events(),
         );
         let result = resolver.resolve(test_request()).await;
         assert_matches!(result, Err(Error::TransportFailure));
@@ -826,6 +847,7 @@ pub(crate) mod test {
                     std::io::ErrorKind::BrokenPipe,
                 )))
             }),
+            &no_network_change_events(),
         );
         let result = resolver
             .resolve(DnsLookupRequest {
@@ -872,6 +894,7 @@ pub(crate) mod test {
                 };
                 std::future::ready(result)
             }),
+            &no_network_change_events(),
         );
         let result = resolver.resolve(test_request()).await;
         assert_lookup_result_content_equal(&result.unwrap(), IP_V4_LIST_1, IP_V6_LIST_1);

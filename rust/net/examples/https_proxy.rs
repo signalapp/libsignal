@@ -35,6 +35,7 @@ use libsignal_net_infra::route::{
     ConnectorExt as _, HttpProxyAuth, HttpProxyRouteFragment, HttpsProxyRoute, ProxyTarget,
     TcpRoute, TlsRoute, TlsRouteFragment, UnresolvedHost,
 };
+use libsignal_net_infra::testutil::no_network_change_events;
 use libsignal_net_infra::Alpn;
 use tokio::time::Duration;
 use url::Url;
@@ -109,7 +110,7 @@ async fn main() {
         _ => panic!("only one of username or password was provided"),
     };
 
-    let dns_resolver = DnsResolver::new();
+    let dns_resolver = DnsResolver::new(&no_network_change_events());
 
     let Target(target_host, target_port) = target;
     let target_host = match (resolve_hostname_locally, target_host) {

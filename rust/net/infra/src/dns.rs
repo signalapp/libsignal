@@ -27,6 +27,7 @@ use crate::route::{
 };
 use crate::timeouts::{DNS_SYSTEM_LOOKUP_TIMEOUT, DOH_FALLBACK_LOOKUP_TIMEOUT};
 use crate::utils::oneshot_broadcast::{self, Receiver};
+use crate::utils::NetworkChangeEvent;
 use crate::{utils, Alpn};
 
 pub mod custom_resolver;
@@ -81,6 +82,7 @@ struct LookupOption {
 }
 
 pub fn build_custom_resolver_cloudflare_doh(
+    network_change_event: &NetworkChangeEvent,
 ) -> CustomDnsResolver<HttpsTlsRoute<TlsRoute<TcpRoute<IpAddr>>>, DohTransportConnectorFactory> {
     let (v4, v6) = CLOUDFLARE_IPS;
     let targets = [IpAddr::V6(v6), IpAddr::V4(v4)].map(|ip_addr| {
@@ -104,7 +106,11 @@ pub fn build_custom_resolver_cloudflare_doh(
             },
         }
     });
-    CustomDnsResolver::new(targets.into(), DohTransportConnectorFactory)
+    CustomDnsResolver::new(
+        targets.into(),
+        DohTransportConnectorFactory,
+        network_change_event,
+    )
 }
 
 impl DnsResolver {
@@ -124,8 +130,8 @@ impl DnsResolver {
         }
     }
 
-    pub fn new() -> Self {
-        Self::new_with_static_fallback(HashMap::new())
+    pub fn new(network_change_event: &NetworkChangeEvent) -> Self {
+        Self::new_with_static_fallback(HashMap::new(), network_change_event)
     }
 
     /// Creates a DNS resolver that will only use a provided static map
@@ -143,8 +149,11 @@ impl DnsResolver {
 
     /// Creates a DNS resolver with a default resolution strategy
     /// to be used for most of the external use cases
-    pub fn new_with_static_fallback(static_map: HashMap<&'static str, LookupResult>) -> Self {
-        let cloudflare_doh = Box::new(build_custom_resolver_cloudflare_doh());
+    pub fn new_with_static_fallback(
+        static_map: HashMap<&'static str, LookupResult>,
+        network_change_event: &NetworkChangeEvent,
+    ) -> Self {
+        let cloudflare_doh = Box::new(build_custom_resolver_cloudflare_doh(network_change_event));
 
         let lookup_options = [
             LookupOption {
