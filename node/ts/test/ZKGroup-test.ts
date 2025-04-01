@@ -182,6 +182,13 @@ describe('ZKGroup', () => {
     );
   });
 
+  it('has a string representation for GroupIdentifier', () => {
+    const masterKey = new GroupMasterKey(TEST_ARRAY_32_1);
+    const groupSecretParams = GroupSecretParams.deriveFromMasterKey(masterKey);
+    const groupId = groupSecretParams.getPublicParams().getGroupIdentifier();
+    assert.equal(`${groupId}`, 'hOJWcwVI+LoJBpsiPszBM/WZ+YJ+3HCE+JIeSnDNnkw=');
+  });
+
   it('testAuthZkcIntegration', () => {
     const aci = Aci.fromUuid(TEST_UUID);
     const pni = Pni.fromUuid(TEST_UUID_1);
