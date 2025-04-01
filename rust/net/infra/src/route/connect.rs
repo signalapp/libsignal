@@ -86,14 +86,14 @@ pub type StatelessWebSocketConnector = WebSocketHttpConnector;
 /// Stateless connector that connects [`TransportRoute`]s.
 pub type StatelessTransportConnector = TransportConnector;
 
-type TcpConnector = crate::tcp_ssl::StatelessDirect;
+type TcpConnector = crate::tcp_ssl::StatelessTcp;
 type DirectProxyConnector = DirectOrProxy<
     LoggingConnector<TcpConnector>,
     crate::tcp_ssl::proxy::StatelessProxied,
     TransportConnectError,
 >;
 type TransportConnector = ComposedConnector<
-    LoggingConnector<crate::tcp_ssl::StatelessDirect>,
+    LoggingConnector<crate::tcp_ssl::StatelessTls>,
     DirectProxyConnector,
     TransportConnectError,
 >;

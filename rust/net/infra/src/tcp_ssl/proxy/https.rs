@@ -47,12 +47,9 @@ pub struct HttpProxyStream {
 
 assert_impl_all!(HttpProxyStream: AsyncDuplexStream);
 
-type StatelessTcpConnector = super::super::StatelessDirect;
-type StatelessTlsConnector = ComposedConnector<
-    super::super::StatelessDirect,
-    super::super::StatelessDirect,
-    TransportConnectError,
->;
+type StatelessTcpConnector = super::super::StatelessTcp;
+type StatelessTlsConnector =
+    ComposedConnector<super::super::StatelessTls, StatelessTcpConnector, TransportConnectError>;
 
 impl Connector<HttpsProxyRoute<IpAddr>, ()> for super::StatelessProxied {
     type Connection = HttpProxyStream;

@@ -204,7 +204,7 @@ impl Connector<SocksRoute<IpAddr>, ()> for super::StatelessProxied {
                 }
             };
 
-            let stream = super::super::StatelessDirect
+            let stream = super::super::StatelessTcp
                 .connect(proxy, log_tag.clone())
                 .await?;
             log::info!("[{log_tag}] performing proxy handshake");

@@ -124,7 +124,7 @@ async fn main() {
             .expect("failed to resolve");
         let connector =
             libsignal_net::infra::route::ComposedConnector::<_, _, TransportConnectError>::new(
-                libsignal_net::infra::tcp_ssl::StatelessDirect,
+                libsignal_net::infra::tcp_ssl::StatelessTls,
                 libsignal_net::infra::tcp_ssl::proxy::StatelessProxied,
             );
 

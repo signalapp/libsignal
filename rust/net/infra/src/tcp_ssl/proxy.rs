@@ -48,14 +48,14 @@ impl Connector<ConnectionProxyRoute<IpAddr>, ()> for StatelessProxied {
                 } = proxy;
 
                 let tcp = LoggingConnector::new(
-                    super::StatelessDirect,
+                    super::StatelessTcp,
                     LONG_TCP_HANDSHAKE_THRESHOLD,
                     "Proxy-TCP",
                 )
                 .connect(inner, log_tag.clone())
                 .await?;
                 LoggingConnector::new(
-                    super::StatelessDirect,
+                    super::StatelessTls,
                     LONG_TLS_HANDSHAKE_THRESHOLD,
                     "Proxy-TLS",
                 )
@@ -65,7 +65,7 @@ impl Connector<ConnectionProxyRoute<IpAddr>, ()> for StatelessProxied {
             }
             ConnectionProxyRoute::Tcp { proxy } => {
                 let connector = LoggingConnector::new(
-                    super::StatelessDirect,
+                    super::StatelessTcp,
                     LONG_TCP_HANDSHAKE_THRESHOLD,
                     "Proxy-TCP",
                 );

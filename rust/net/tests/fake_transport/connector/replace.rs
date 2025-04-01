@@ -78,7 +78,15 @@ impl ReplaceStatelessConnectorsWithFake for libsignal_net::infra::tcp_ssl::proxy
     }
 }
 
-impl ReplaceStatelessConnectorsWithFake for libsignal_net::infra::tcp_ssl::StatelessDirect {
+impl ReplaceStatelessConnectorsWithFake for libsignal_net::infra::tcp_ssl::StatelessTcp {
+    type Replacement = FakeTransportConnector;
+
+    fn replace_with_fake(self, fake: FakeTransportConnector) -> Self::Replacement {
+        fake
+    }
+}
+
+impl ReplaceStatelessConnectorsWithFake for libsignal_net::infra::tcp_ssl::StatelessTls {
     type Replacement = FakeTransportConnector;
 
     fn replace_with_fake(self, fake: FakeTransportConnector) -> Self::Replacement {

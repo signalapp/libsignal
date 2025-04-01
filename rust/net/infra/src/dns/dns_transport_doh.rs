@@ -47,8 +47,8 @@ impl ConnectorFactory<HttpsTlsRoute<TlsRoute<TcpRoute<IpAddr>>>> for DohTranspor
 
 pub struct DohTransportConnector {
     transport_connector: VariableTlsTimeoutConnector<
-        crate::tcp_ssl::StatelessDirect,
-        ThrottlingConnector<crate::tcp_ssl::StatelessDirect>,
+        ThrottlingConnector<crate::tcp_ssl::StatelessTls>,
+        crate::tcp_ssl::StatelessTcp,
         TransportConnectError,
     >,
 }
@@ -57,8 +57,8 @@ impl Default for DohTransportConnector {
     fn default() -> Self {
         Self {
             transport_connector: VariableTlsTimeoutConnector::new(
-                crate::tcp_ssl::StatelessDirect,
-                ThrottlingConnector::new(crate::tcp_ssl::StatelessDirect, 1),
+                ThrottlingConnector::new(crate::tcp_ssl::StatelessTls, 1),
+                crate::tcp_ssl::StatelessTcp,
                 MIN_TLS_HANDSHAKE_TIMEOUT,
             ),
         }

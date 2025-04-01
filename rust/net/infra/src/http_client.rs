@@ -281,8 +281,8 @@ mod test {
     ) -> Result<AggregatingHttp2Client, HttpError> {
         let outcome_record_snapshot = outcome_record.read().await.clone();
         let tls_connector = crate::route::ComposedConnector::new(
-            crate::tcp_ssl::StatelessDirect,
-            ThrottlingConnector::new(crate::tcp_ssl::StatelessDirect, 1),
+            ThrottlingConnector::new(crate::tcp_ssl::StatelessTls, 1),
+            crate::tcp_ssl::StatelessTcp,
         );
         let connector = Http2Connector {
             inner: tls_connector,

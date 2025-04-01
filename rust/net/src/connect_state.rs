@@ -108,9 +108,9 @@ pub struct ConnectState<ConnectorFactory = DefaultConnectorFactory> {
 }
 
 pub type DefaultTransportConnector = VariableTlsTimeoutConnector<
-    ThrottlingConnector<LoggingConnector<crate::infra::tcp_ssl::StatelessDirect>>,
+    ThrottlingConnector<LoggingConnector<crate::infra::tcp_ssl::StatelessTls>>,
     crate::infra::route::DirectOrProxy<
-        LoggingConnector<crate::infra::tcp_ssl::StatelessDirect>,
+        LoggingConnector<crate::infra::tcp_ssl::StatelessTcp>,
         crate::infra::tcp_ssl::proxy::StatelessProxied,
         TransportConnectError,
     >,
