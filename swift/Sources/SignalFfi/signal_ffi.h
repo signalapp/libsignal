@@ -210,6 +210,8 @@ typedef enum {
   SignalErrorCodeSvrRotationMachineTooManySteps = 162,
   SignalErrorCodeAppExpired = 170,
   SignalErrorCodeDeviceDeregistered = 171,
+  SignalErrorCodeConnectionInvalidated = 172,
+  SignalErrorCodeConnectedElsewhere = 173,
   SignalErrorCodeBackupValidation = 180,
 } SignalErrorCode;
 

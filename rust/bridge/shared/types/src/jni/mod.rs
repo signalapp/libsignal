@@ -591,6 +591,12 @@ impl MessageOnlyExceptionJniError for ChatSendError {
             ChatSendError::Disconnected => {
                 ClassName("org.signal.libsignal.net.ChatServiceInactiveException")
             }
+            ChatSendError::ConnectionInvalidated => {
+                ClassName("org.signal.libsignal.net.ConnectionInvalidatedException")
+            }
+            ChatSendError::ConnectedElsewhere => {
+                ClassName("org.signal.libsignal.net.ConnectedElsewhereException")
+            }
             ChatSendError::WebSocket(_)
             | ChatSendError::IncomingDataInvalid
             | ChatSendError::RequestHasInvalidHeader

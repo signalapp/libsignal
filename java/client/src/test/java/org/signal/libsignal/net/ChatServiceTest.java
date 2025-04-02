@@ -84,6 +84,8 @@ public class ChatServiceTest {
     assertChatSendErrorIs("IncomingDataInvalid", ChatServiceException.class);
     assertChatSendErrorIs("RequestTimedOut", ChatServiceException.class);
     assertChatSendErrorIs("RequestHasInvalidHeader", ChatServiceException.class);
+    assertChatSendErrorIs("ConnectionInvalidated", ConnectionInvalidatedException.class);
+    assertChatSendErrorIs("ConnectedElsewhere", ConnectedElsewhereException.class);
   }
 
   private static <E extends Throwable> E assertChatConnectErrorIs(

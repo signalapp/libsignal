@@ -451,6 +451,8 @@ impl SignalNodeError for libsignal_net::chat::SendError {
     ) -> Handle<'a, JsError> {
         let name = match self {
             Self::Disconnected => Some("ChatServiceInactive"),
+            Self::ConnectionInvalidated => Some("ConnectionInvalidated"),
+            Self::ConnectedElsewhere => Some("ConnectedElsewhere"),
             Self::WebSocket(_)
             | Self::IncomingDataInvalid
             | Self::RequestHasInvalidHeader

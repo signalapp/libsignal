@@ -254,6 +254,8 @@ make_error_testing_enum! {
     enum TestingChatSendError for SendError {
         RequestTimedOut => RequestTimedOut,
         Disconnected => Disconnected,
+        ConnectionInvalidated => ConnectionInvalidated,
+        ConnectedElsewhere => ConnectedElsewhere,
         WebSocket => WebSocketConnectionReset,
         IncomingDataInvalid => IncomingDataInvalid,
         RequestHasInvalidHeader => RequestHasInvalidHeader,
@@ -268,6 +270,8 @@ fn TESTING_ChatSendErrorConvert(
     Err(match error_description.into_inner() {
         TestingChatSendError::RequestTimedOut => SendError::RequestTimedOut,
         TestingChatSendError::Disconnected => SendError::Disconnected,
+        TestingChatSendError::ConnectionInvalidated => SendError::ConnectionInvalidated,
+        TestingChatSendError::ConnectedElsewhere => SendError::ConnectedElsewhere,
         TestingChatSendError::WebSocketConnectionReset => {
             SendError::WebSocket(libsignal_net::infra::ws::WebSocketServiceError::Io(
                 std::io::ErrorKind::ConnectionReset.into(),

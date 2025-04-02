@@ -100,6 +100,8 @@ pub enum SignalErrorCode {
 
     AppExpired = 170,
     DeviceDeregistered = 171,
+    ConnectionInvalidated = 172,
+    ConnectedElsewhere = 173,
 
     BackupValidation = 180,
 }
@@ -528,6 +530,8 @@ impl FfiError for libsignal_net::chat::SendError {
             }
             Self::RequestTimedOut => "Request timed out".to_string(),
             Self::Disconnected => "Chat service disconnected".to_owned(),
+            Self::ConnectionInvalidated => "Connection invalidated".to_owned(),
+            Self::ConnectedElsewhere => "Connected elsewhere".to_owned(),
         }
     }
 
@@ -538,6 +542,8 @@ impl FfiError for libsignal_net::chat::SendError {
             Self::RequestHasInvalidHeader => SignalErrorCode::InternalError,
             Self::RequestTimedOut => SignalErrorCode::RequestTimedOut,
             Self::Disconnected => SignalErrorCode::ChatServiceInactive,
+            Self::ConnectionInvalidated => SignalErrorCode::ConnectionInvalidated,
+            Self::ConnectedElsewhere => SignalErrorCode::ConnectedElsewhere,
         }
     }
     fn provide_retry_after_seconds(&self) -> Result<u32, WrongErrorKind> {

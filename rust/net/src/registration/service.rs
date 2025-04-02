@@ -262,6 +262,11 @@ async fn send_request_to_connected_chat(
         match err {
             ChatSendError::RequestTimedOut => SendRequestError::RequestTimedOut,
             ChatSendError::Disconnected => SendRequestError::ConnectionLost,
+            ChatSendError::ConnectionInvalidated | ChatSendError::ConnectedElsewhere => {
+                SendRequestError::Unknown(
+                    "registration connection unexpectedly closed by server".into(),
+                )
+            }
             ChatSendError::WebSocket(error) => SendRequestError::Unknown(format!(
                 "websocket error: {}",
                 <dyn LogSafeDisplay>::to_string(&error)

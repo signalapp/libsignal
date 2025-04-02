@@ -63,6 +63,8 @@ public enum SignalError: Error {
     case chatServiceInactive(String)
     case appExpired(String)
     case deviceDeregistered(String)
+    case connectionInvalidated(String)
+    case connectedElsewhere(String)
 
     case unknown(UInt32, String)
 }
@@ -220,6 +222,10 @@ internal func checkError(_ error: SignalFfiErrorRef?) throws {
         throw SignalError.appExpired(errStr)
     case SignalErrorCodeDeviceDeregistered:
         throw SignalError.deviceDeregistered(errStr)
+    case SignalErrorCodeConnectionInvalidated:
+        throw SignalError.connectionInvalidated(errStr)
+    case SignalErrorCodeConnectedElsewhere:
+        throw SignalError.connectedElsewhere(errStr)
     case SignalErrorCodeBackupValidation:
         let unknownFields = try invokeFnReturningStringArray {
             signal_error_get_unknown_fields(error, $0)

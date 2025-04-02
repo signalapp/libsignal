@@ -50,6 +50,8 @@ export enum ErrorCode {
   ChatServiceInactive,
   AppExpired,
   DeviceDelinked,
+  ConnectionInvalidated,
+  ConnectedElsewhere,
 
   BackupValidation,
 
@@ -252,6 +254,14 @@ export type DeviceDelinkedError = LibSignalErrorBase & {
   code: ErrorCode.DeviceDelinked;
 };
 
+export type ConnectionInvalidatedError = LibSignalErrorBase & {
+  code: ErrorCode.ConnectionInvalidated;
+};
+
+export type ConnectedElsewhereError = LibSignalErrorBase & {
+  code: ErrorCode.ConnectedElsewhere;
+};
+
 export type SvrDataMissingError = LibSignalErrorBase & {
   code: ErrorCode.SvrDataMissing;
 };
@@ -309,6 +319,8 @@ export type LibSignalError =
   | ChatServiceInactive
   | AppExpiredError
   | DeviceDelinkedError
+  | ConnectionInvalidatedError
+  | ConnectedElsewhereError
   | RateLimitedError
   | BackupValidationError
   | CancellationError;

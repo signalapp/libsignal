@@ -24,9 +24,12 @@ use tokio::sync::{mpsc, oneshot, Mutex as TokioMutex};
 use tokio::task::JoinHandle;
 use tokio::time::Duration;
 use tokio_stream::wrappers::{ReceiverStream, UnboundedReceiverStream};
+use tungstenite::protocol::frame::coding::CloseCode;
 
 use crate::chat::{ChatMessageType, MessageProto, Request, RequestProto, Response, ResponseProto};
-use crate::env::ALERT_HEADER_NAME;
+use crate::env::{
+    ALERT_HEADER_NAME, CONNECTED_ELSEWHERE_CLOSE_CODE, CONNECTION_INVALIDATED_CLOSE_CODE,
+};
 use crate::infra::ws::TextOrBinary;
 use crate::infra::ws2::{MessageEvent, NextEventError, TungsteniteSendError};
 
@@ -1154,10 +1157,16 @@ impl From<TaskExitError> for crate::chat::SendError {
                 NextEventError::PingFailed(tungstenite_error)
                 | NextEventError::CloseFailed(tungstenite_error) => tungstenite_error.into(),
                 NextEventError::ReceiveError(tungstenite_error) => tungstenite_error.into(),
-                NextEventError::UnexpectedConnectionClose
-                | NextEventError::AbnormalServerClose { .. } => {
-                    WebSocketServiceError::ChannelClosed
-                }
+                NextEventError::UnexpectedConnectionClose => WebSocketServiceError::ChannelClosed,
+                NextEventError::AbnormalServerClose { code, reason: _ } => match code {
+                    CloseCode::Library(CONNECTION_INVALIDATED_CLOSE_CODE) => {
+                        return Self::ConnectionInvalidated
+                    }
+                    CloseCode::Library(CONNECTED_ELSEWHERE_CLOSE_CODE) => {
+                        return Self::ConnectedElsewhere
+                    }
+                    _ => WebSocketServiceError::ChannelClosed,
+                },
                 NextEventError::ServerIdleTimeout(_duration) => {
                     WebSocketServiceError::ChannelIdleTooLong
                 }
@@ -1869,6 +1878,65 @@ mod test {
         tokio::time::sleep(Duration::from_millis(1)).await;
 
         assert!(!chat.is_connected().await);
+    }
+
+    #[test_case(
+        CloseCode::from(CONNECTION_INVALIDATED_CLOSE_CODE) => matches crate::chat::SendError::ConnectionInvalidated;
+        "CONNECTION_INVALIDATED_CLOSE_CODE results in ConnectionInvalidated"
+    )]
+    #[test_case(
+        CloseCode::from(CONNECTED_ELSEWHERE_CLOSE_CODE) => matches crate::chat::SendError::ConnectedElsewhere;
+        "CONNECTED_ELSEWHERE_CLOSE_CODE results in ConnectedElsewhere"
+    )]
+    #[test_case(
+        CloseCode::Normal => matches crate::chat::SendError::WebSocket(WebSocketServiceError::ChannelClosed);
+        "Normal close results in WebSocket ChannelClosed"
+    )]
+    #[test_case(
+        CloseCode::from(4499_u16) => matches crate::chat::SendError::WebSocket(WebSocketServiceError::ChannelClosed);
+        "Other abnormal close results in WebSocket ChannelClosed"
+    )]
+    #[test_log::test(tokio::test(start_paused = true))]
+    async fn websocket_close_code_maps_to_correct_error(
+        close_code: CloseCode,
+    ) -> crate::chat::SendError {
+        let (received_events_tx, mut received_events_rx) = mpsc::unbounded_channel();
+        let (chat, (_inner_events, inner_responses)) =
+            fake::new_chat(received_events_tx.into_event_listener());
+        assert!(chat.is_connected().await);
+
+        inner_responses
+            .send(
+                Outcome::Finished(Err(NextEventError::AbnormalServerClose {
+                    code: close_code,
+                    reason: format!("close code: {close_code}"),
+                }))
+                .into(),
+            )
+            .expect("can disconnect");
+
+        let listener_event = received_events_rx
+            .recv()
+            .await
+            .expect("should receive an event");
+
+        // Extract the TaskExitError from the listener event
+        let task_exit_error = match listener_event {
+            ListenerEvent::Finished(Err(FinishError::Error(
+                task_exit_error @ TaskExitError::WebsocketError(
+                    NextEventError::AbnormalServerClose { code, reason: _ },
+                ),
+            ))) => {
+                assert_eq!(code, close_code);
+                task_exit_error
+            }
+            other => panic!("Unexpected listener event: {other:?}"),
+        };
+
+        // Convert the TaskExitError to a SendError, which is closest to what is eventually passed up to
+        //   the clients across the bridge.
+        let actual_error: crate::chat::SendError = task_exit_error.into();
+        actual_error
     }
 
     impl From<MessageProto> for TextOrBinary {

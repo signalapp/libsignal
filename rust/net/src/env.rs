@@ -33,6 +33,8 @@ use crate::enclave::{Cdsi, EnclaveEndpoint, EndpointParams, MrEnclave, SgxPreQua
 const DEFAULT_HTTPS_PORT: NonZeroU16 = nonzero!(443_u16);
 pub const TIMESTAMP_HEADER_NAME: &str = "x-signal-timestamp";
 pub(crate) const ALERT_HEADER_NAME: &str = "x-signal-alert";
+pub(crate) const CONNECTION_INVALIDATED_CLOSE_CODE: u16 = 4401;
+pub(crate) const CONNECTED_ELSEWHERE_CLOSE_CODE: u16 = 4409;
 
 const DOMAIN_CONFIG_CHAT: DomainConfig = DomainConfig {
     ip_v4: &[

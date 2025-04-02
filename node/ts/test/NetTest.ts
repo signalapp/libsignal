@@ -87,6 +87,8 @@ describe('chat service api', () => {
       ['RequestTimedOut', ErrorCode.IoError],
 
       ['RequestHasInvalidHeader', ErrorCode.IoError],
+      ['ConnectionInvalidated', ErrorCode.ConnectionInvalidated],
+      ['ConnectedElsewhere', ErrorCode.ConnectedElsewhere],
     ];
     cases.forEach((testCase) => {
       const [name, expectation] = testCase;
