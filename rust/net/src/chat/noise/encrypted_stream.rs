@@ -548,9 +548,8 @@ mod test {
         assert!(read_waker.was_woken());
     }
 
-    #[test]
+    #[test_log::test]
     fn half_close_during_handshake() {
-        env_logger::init();
         let (a, mut b) = TestStream::new_pair(10);
 
         let server_builder = snow::Builder::new(

@@ -4,37 +4,30 @@
 //
 
 use std::marker::PhantomData;
-use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 
 use attest::svr2::RaftConfig;
 use attest::{cds2, enclave};
 use derive_where::derive_where;
 use http::uri::PathAndQuery;
-use http::HeaderMap;
 use libsignal_net_infra::connection_manager::{
-    ConnectionManager, MultiRouteConnectionManager, SingleRouteThrottlingConnectionManager,
+    MultiRouteConnectionManager, SingleRouteThrottlingConnectionManager,
 };
 use libsignal_net_infra::errors::LogSafeDisplay;
 use libsignal_net_infra::route::{
     DirectTcpRouteProvider, DomainFrontRouteProvider, HttpsProvider, TlsRouteProvider,
     WebSocketProvider, WebSocketRouteFragment,
 };
-use libsignal_net_infra::service::{ServiceInitializer, ServiceState};
 use libsignal_net_infra::utils::ObservableEvent;
-use libsignal_net_infra::ws::{WebSocketServiceError, WebSocketStreamConnector};
+use libsignal_net_infra::ws::WebSocketServiceError;
 use libsignal_net_infra::ws2::attested::{
     AttestedConnection, AttestedConnectionError, AttestedProtocolError,
 };
-use libsignal_net_infra::{
-    make_ws_config, AsHttpHeader as _, AsyncDuplexStream, ConnectionParams, EndpointConnection,
-    ServiceConnectionInfo, TransportConnector,
-};
+use libsignal_net_infra::{make_ws_config, ConnectionParams, EndpointConnection};
 
-use crate::auth::Auth;
 use crate::env::DomainConfig;
 use crate::infra::EnableDomainFronting;
-use crate::ws::{WebSocketServiceConnectError, WebSocketServiceConnector};
+use crate::ws::WebSocketServiceConnectError;
 
 pub trait AsRaftConfig<'a> {
     fn as_raft_config(&self) -> Option<&'a RaftConfig>;
@@ -206,6 +199,7 @@ pub trait NewHandshake: EnclaveKind + Sized {
 
 pub struct EnclaveEndpointConnection<E: EnclaveKind, C> {
     pub(crate) endpoint_connection: EndpointConnection<C>,
+    #[allow(unused)]
     pub(crate) params: EndpointParams<'static, E>,
 }
 
@@ -241,31 +235,6 @@ impl<E: EnclaveKind, C> EnclaveEndpointConnection<E, C> {
     }
 }
 
-impl<E: EnclaveKind + NewHandshake, C: ConnectionManager> EnclaveEndpointConnection<E, C> {
-    pub(crate) async fn connect<S: AsyncDuplexStream, T: TransportConnector<Stream = S>>(
-        &self,
-        auth: Auth,
-        transport_connector: T,
-        log_tag: Arc<str>,
-    ) -> Result<(AttestedConnection, ServiceConnectionInfo), Error>
-    where
-        C: ConnectionManager,
-    {
-        // Delegate to a function that dynamically-dispatches. This could be
-        // inlined, but then the body would be duplicated in the generated code
-        // for each instantiation of this trait (of which there is one per
-        // unique `E: EnclaveKind`).
-        connect_attested(
-            &self.endpoint_connection,
-            auth,
-            transport_connector,
-            log_tag,
-            &move |attestation_message| E::new_handshake(&self.params, attestation_message),
-        )
-        .await
-    }
-}
-
 impl<E: EnclaveKind> EnclaveEndpoint<'_, E> {
     pub fn route_provider(
         &self,
@@ -287,49 +256,6 @@ impl<E: EnclaveKind> EnclaveEndpoint<'_, E> {
 
         WebSocketProvider::new(ws_fragment, http_provider)
     }
-}
-
-/// Create an `AttestedConnection`.
-///
-/// Making the handshaker a concrete type (via `&dyn`) prevents this from being
-/// instantiated multiple times and duplicated in the generated code.
-async fn connect_attested<C: ConnectionManager, T: TransportConnector>(
-    endpoint_connection: &EndpointConnection<C>,
-    auth: Auth,
-    transport_connector: T,
-    log_tag: Arc<str>,
-    do_handshake: &(dyn Sync + Fn(&[u8]) -> enclave::Result<enclave::Handshake>),
-) -> Result<(AttestedConnection, ServiceConnectionInfo), Error> {
-    let connector = WebSocketStreamConnector::new(
-        transport_connector,
-        WebSocketRouteFragment {
-            ws_config: endpoint_connection.config.ws_config,
-            endpoint: endpoint_connection.config.endpoint.clone(),
-            headers: HeaderMap::from_iter([auth.as_header()]),
-        },
-        endpoint_connection.config.max_connection_time,
-    );
-    let connector = WebSocketServiceConnector::new(connector);
-    let service_initializer = ServiceInitializer::new(connector, &endpoint_connection.manager);
-    let connection_attempt_result = service_initializer.connect().await;
-    let (websocket, connection_info) = match connection_attempt_result {
-        ServiceState::Active(websocket, _) => Ok(websocket),
-        ServiceState::Error(e) => Err(Error::WebSocketConnect(e)),
-        ServiceState::Cooldown(_) | ServiceState::ConnectionTimedOut => {
-            Err(Error::ConnectionTimedOut)
-        }
-        ServiceState::Inactive => {
-            unreachable!("can't be returned by the initializer")
-        }
-    }?;
-    let attested = AttestedConnection::connect(
-        websocket,
-        endpoint_connection.config.ws2_config(),
-        log_tag,
-        do_handshake,
-    )
-    .await?;
-    Ok((attested, connection_info))
 }
 
 impl<E: EnclaveKind> EnclaveEndpointConnection<E, SingleRouteThrottlingConnectionManager> {
@@ -415,12 +341,15 @@ mod test {
 
     use assert_matches::assert_matches;
     use async_trait::async_trait;
-    use libsignal_net_infra::connection_manager::ConnectionAttemptOutcome;
+    use http::HeaderMap;
+    use libsignal_net_infra::connection_manager::{ConnectionAttemptOutcome, ConnectionManager};
     use libsignal_net_infra::errors::TransportConnectError;
     use libsignal_net_infra::host::Host;
-    use libsignal_net_infra::ws::WebSocketConnectError;
+    use libsignal_net_infra::service::{ServiceInitializer, ServiceState};
+    use libsignal_net_infra::ws::{WebSocketConnectError, WebSocketStreamConnector};
     use libsignal_net_infra::{
-        Alpn, HttpRequestDecoratorSeq, RouteType, StreamAndInfo, TransportConnectionParams,
+        Alpn, AsHttpHeader as _, AsyncDuplexStream, HttpRequestDecoratorSeq, RouteType,
+        ServiceConnectionInfo, StreamAndInfo, TransportConnectionParams, TransportConnector,
     };
     use nonzero_ext::nonzero;
     use tokio::net::TcpStream;
@@ -428,6 +357,7 @@ mod test {
 
     use super::*;
     use crate::auth::Auth;
+    use crate::ws::WebSocketServiceConnector;
 
     #[derive(Clone, Debug)]
     struct AlwaysFailingConnector;
@@ -488,6 +418,75 @@ mod test {
             http_host: Arc::from("fake-http"),
             connection_confirmation_header: None,
         }
+    }
+
+    impl<E: EnclaveKind + NewHandshake, C: ConnectionManager> EnclaveEndpointConnection<E, C> {
+        pub(crate) async fn connect<S: AsyncDuplexStream, T: TransportConnector<Stream = S>>(
+            &self,
+            auth: Auth,
+            transport_connector: T,
+            log_tag: Arc<str>,
+        ) -> Result<(AttestedConnection, ServiceConnectionInfo), Error>
+        where
+            C: ConnectionManager,
+        {
+            // Delegate to a function that dynamically-dispatches. This could be
+            // inlined, but then the body would be duplicated in the generated code
+            // for each instantiation of this trait (of which there is one per
+            // unique `E: EnclaveKind`).
+
+            connect_attested(
+                &self.endpoint_connection,
+                auth,
+                transport_connector,
+                log_tag,
+                &move |attestation_message| E::new_handshake(&self.params, attestation_message),
+            )
+            .await
+        }
+    }
+
+    /// Create an `AttestedConnection`.
+    ///
+    /// Making the handshaker a concrete type (via `&dyn`) prevents this from being
+    /// instantiated multiple times and duplicated in the generated code.
+    async fn connect_attested<C: ConnectionManager, T: TransportConnector>(
+        endpoint_connection: &EndpointConnection<C>,
+        auth: Auth,
+        transport_connector: T,
+        log_tag: Arc<str>,
+        do_handshake: &(dyn Sync + Fn(&[u8]) -> enclave::Result<enclave::Handshake>),
+    ) -> Result<(AttestedConnection, ServiceConnectionInfo), Error> {
+        let connector = WebSocketStreamConnector::new(
+            transport_connector,
+            WebSocketRouteFragment {
+                ws_config: endpoint_connection.config.ws_config,
+                endpoint: endpoint_connection.config.endpoint.clone(),
+                headers: HeaderMap::from_iter([auth.as_header()]),
+            },
+            endpoint_connection.config.max_connection_time,
+        );
+        let connector = WebSocketServiceConnector::new(connector);
+        let service_initializer = ServiceInitializer::new(connector, &endpoint_connection.manager);
+        let connection_attempt_result = service_initializer.connect().await;
+        let (websocket, connection_info) = match connection_attempt_result {
+            ServiceState::Active(websocket, _) => Ok(websocket),
+            ServiceState::Error(e) => Err(Error::WebSocketConnect(e)),
+            ServiceState::Cooldown(_) | ServiceState::ConnectionTimedOut => {
+                Err(Error::ConnectionTimedOut)
+            }
+            ServiceState::Inactive => {
+                unreachable!("can't be returned by the initializer")
+            }
+        }?;
+        let attested = AttestedConnection::connect(
+            websocket,
+            endpoint_connection.config.ws2_config(),
+            log_tag,
+            do_handshake,
+        )
+        .await?;
+        Ok((attested, connection_info))
     }
 
     #[tokio::test]

@@ -211,7 +211,6 @@ export function CallLinkSecretParams_GetPublicParams(paramsBytes: Buffer): Buffe
 export function Cds2ClientState_New(mrenclave: Buffer, attestationMsg: Buffer, currentTimestamp: Timestamp): SgxClientState;
 export function CdsiLookup_complete(asyncRuntime: Wrapper<TokioAsyncContext>, lookup: Wrapper<CdsiLookup>): CancellablePromise<LookupResponse>;
 export function CdsiLookup_new(asyncRuntime: Wrapper<TokioAsyncContext>, connectionManager: Wrapper<ConnectionManager>, username: string, password: string, request: Wrapper<LookupRequest>): CancellablePromise<CdsiLookup>;
-export function CdsiLookup_new_routes(asyncRuntime: Wrapper<TokioAsyncContext>, connectionManager: Wrapper<ConnectionManager>, username: string, password: string, request: Wrapper<LookupRequest>): CancellablePromise<CdsiLookup>;
 export function CdsiLookup_token(lookup: Wrapper<CdsiLookup>): Buffer;
 export function ChatConnectionInfo_description(connectionInfo: Wrapper<ChatConnectionInfo>): string;
 export function ChatConnectionInfo_ip_version(connectionInfo: Wrapper<ChatConnectionInfo>): number;

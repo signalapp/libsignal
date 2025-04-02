@@ -229,7 +229,6 @@ public final class Native {
   public static native void CdsiLookup_Destroy(long handle);
   public static native CompletableFuture<Object> CdsiLookup_complete(long asyncRuntime, long lookup);
   public static native CompletableFuture<Long> CdsiLookup_new(long asyncRuntime, long connectionManager, String username, String password, long request);
-  public static native CompletableFuture<Long> CdsiLookup_new_routes(long asyncRuntime, long connectionManager, String username, String password, long request);
   public static native byte[] CdsiLookup_token(long lookup);
 
   public static native void ConnectionManager_Destroy(long handle);

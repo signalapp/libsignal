@@ -5,11 +5,10 @@
 
 use std::default::Default;
 
-use futures_util::TryFutureExt as _;
 use http::StatusCode;
 use libsignal_core::{Aci, Pni, E164};
-use libsignal_net_infra::connection_manager::ConnectionManager;
 use libsignal_net_infra::errors::{LogSafeDisplay, RetryLater, TransportConnectError};
+use libsignal_net_infra::extract_retry_later;
 use libsignal_net_infra::route::{
     RouteProvider, ThrottlingConnector, UnresolvedWebsocketServiceRoute,
 };
@@ -17,7 +16,6 @@ use libsignal_net_infra::ws::{NextOrClose, WebSocketConnectError, WebSocketServi
 use libsignal_net_infra::ws2::attested::{
     AttestedConnection, AttestedConnectionError, AttestedProtocolError,
 };
-use libsignal_net_infra::{extract_retry_later, TransportConnector};
 use prost::Message as _;
 use thiserror::Error;
 use tungstenite::protocol::frame::coding::CloseCode;
@@ -26,7 +24,7 @@ use uuid::Uuid;
 
 use crate::auth::Auth;
 use crate::connect_state::{ConnectionResources, WebSocketTransportConnectorFactory};
-use crate::enclave::{Cdsi, EnclaveEndpointConnection, EndpointParams};
+use crate::enclave::{Cdsi, EndpointParams};
 use crate::proto::cds2::{ClientRequest, ClientResponse};
 use crate::ws::WebSocketServiceConnectError;
 
@@ -324,28 +322,6 @@ struct RateLimitExceededResponse {
 pub struct ClientResponseCollector(CdsiConnection);
 
 impl CdsiConnection {
-    /// Connect to remote host and verify remote attestation.
-    pub async fn connect<C, T>(
-        endpoint: &EnclaveEndpointConnection<Cdsi, C>,
-        transport_connector: T,
-        auth: Auth,
-    ) -> Result<Self, LookupError>
-    where
-        C: ConnectionManager,
-        T: TransportConnector,
-    {
-        log::info!("connecting to CDSI endpoint");
-        let (connection, _info) = endpoint
-            .connect(auth, transport_connector, "cdsi".into())
-            .inspect_err(|e| {
-                log::warn!("CDSI connection failed: {e}");
-            })
-            .await?;
-
-        log::info!("successfully established attested connection to CDSI endpoint");
-        Ok(Self(connection))
-    }
-
     pub async fn connect_with(
         connection_resources: ConnectionResources<'_, impl WebSocketTransportConnectorFactory>,
         route_provider: impl RouteProvider<Route = UnresolvedWebsocketServiceRoute>,
@@ -537,13 +513,17 @@ mod test {
     use assert_matches::assert_matches;
     use const_str::hex;
     use itertools::Itertools as _;
-    use libsignal_net_infra::testutil::InMemoryWarpConnector;
+    use libsignal_net_infra::dns::DnsResolver;
+    use libsignal_net_infra::route::testutils::ConnectFn;
+    use libsignal_net_infra::route::DirectOrProxyProvider;
     use libsignal_net_infra::utils::ObservableEvent;
     use libsignal_net_infra::ws::testutil::fake_websocket;
     use libsignal_net_infra::ws2::attested::testutil::{
         run_attested_server, AttestedServerOutput, FAKE_ATTESTATION,
     };
+    use libsignal_net_infra::{AsHttpHeader as _, EnableDomainFronting};
     use nonzero_ext::nonzero;
+    use tokio_stream::wrappers::UnboundedReceiverStream;
     use tungstenite::protocol::frame::coding::CloseCode;
     use tungstenite::protocol::CloseFrame;
     use uuid::Uuid;
@@ -551,6 +531,8 @@ mod test {
 
     use super::*;
     use crate::auth::Auth;
+    use crate::connect_state::{ConnectState, SUGGESTED_CONNECT_CONFIG};
+    use crate::enclave::EnclaveEndpointConnection;
 
     #[test]
     fn parse_lookup_response_entries() {
@@ -989,28 +971,61 @@ mod test {
         )
     }
 
-    #[tokio::test]
+    #[test_log::test(tokio::test)]
     async fn websocket_rejected_with_http_429_too_many_requests() {
         let h2_server = warp::get().then(|| async move {
-            warp::reply::with_status(
-                warp::reply::with_header("(ignored body)", "Retry-After", "100"),
-                warp::http::StatusCode::TOO_MANY_REQUESTS,
-            )
+            let reply = warp::reply();
+            let reply = warp::reply::with_header(reply, RetryLater::HEADER_NAME.as_str(), "100");
+            warp::reply::with_status(reply, warp::http::StatusCode::TOO_MANY_REQUESTS)
         });
-        let connector = InMemoryWarpConnector::new(h2_server);
+
+        let (tx_connections, incoming_connections) = tokio::sync::mpsc::unbounded_channel();
+        tokio::spawn(
+            warp::serve(h2_server)
+                .serve_incoming(UnboundedReceiverStream::new(incoming_connections)),
+        );
+
+        let connector = ConnectFn(|(), _route, _log_tag| {
+            let (local, remote) = tokio::io::duplex(1024);
+            tx_connections
+                .send(Ok::<_, TransportConnectError>(local))
+                .unwrap();
+            std::future::ready(Ok::<_, TransportConnectError>(remote))
+        });
 
         let env = crate::env::PROD;
-        let endpoint_connection = EnclaveEndpointConnection::new(
+        let ws2_config = EnclaveEndpointConnection::new(
             &env.cdsi,
             Duration::from_secs(10),
             &ObservableEvent::default(),
-        );
+        )
+        .ws2_config();
         let auth = Auth {
             username: "username".to_string(),
             password: "password".to_string(),
         };
 
-        let result = CdsiConnection::connect(&endpoint_connection, connector, auth).await;
+        let connect_state =
+            ConnectState::new_with_transport_connector(SUGGESTED_CONNECT_CONFIG, connector);
+        let dns_resolver = DnsResolver::new();
+        let network_change_event = ObservableEvent::new();
+        let result = CdsiConnection::connect_with(
+            ConnectionResources {
+                connect_state: &connect_state,
+                dns_resolver: &dns_resolver,
+                network_change_event: &network_change_event,
+                confirmation_header_name: None,
+            },
+            DirectOrProxyProvider::maybe_proxied(
+                env.cdsi.route_provider(EnableDomainFronting::No),
+                None,
+            ),
+            ws2_config,
+            &env.cdsi.params,
+            auth,
+        )
+        .await;
+
         assert_matches!(
             result,
             Err(LookupError::RateLimited(RetryLater {

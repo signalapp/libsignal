@@ -1,4 +1,6 @@
-v0.68.2
+v0.69.0
+
+- Net: Remove the fallback connect code paths for CDSI. This is a breaking change.
 
 - backups: Validate ChatFolder::id
 

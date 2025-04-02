@@ -68,19 +68,6 @@ async fn CdsiLookup_new(
     let request = std::mem::take(&mut *request.lock());
     let auth = Auth { username, password };
 
-    CdsiLookup::new(connection_manager, auth, request).await
-}
-
-#[bridge_io(TokioAsyncContext)]
-async fn CdsiLookup_new_routes(
-    connection_manager: &ConnectionManager,
-    username: String,
-    password: String,
-    request: &LookupRequest,
-) -> Result<CdsiLookup, cdsi::LookupError> {
-    let request = std::mem::take(&mut *request.lock());
-    let auth = Auth { username, password };
-
     CdsiLookup::new_routes(connection_manager, auth, request).await
 }
 

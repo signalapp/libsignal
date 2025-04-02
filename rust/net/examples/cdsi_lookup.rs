@@ -11,10 +11,8 @@ use http::HeaderName;
 use libsignal_net::auth::Auth;
 use libsignal_net::cdsi::{CdsiConnection, LookupError, LookupRequest, LookupResponse};
 use libsignal_net::connect_state::{ConnectState, ConnectionResources, SUGGESTED_CONNECT_CONFIG};
-use libsignal_net::enclave::EnclaveEndpointConnection;
 use libsignal_net::infra::dns::DnsResolver;
 use libsignal_net_infra::route::DirectOrProxyProvider;
-use libsignal_net_infra::tcp_ssl::DirectConnector;
 use libsignal_net_infra::utils::ObservableEvent;
 use libsignal_net_infra::EnableDomainFronting;
 use tokio::io::AsyncBufReadExt as _;
@@ -36,8 +34,6 @@ async fn cdsi_lookup(
 
 #[derive(clap::Parser)]
 struct CliArgs {
-    #[arg(long, default_value_t = false)]
-    use_routes: bool,
     #[arg(long, default_value_t = std::env::var("USERNAME").unwrap())]
     username: String,
     #[arg(long, default_value_t = std::env::var("PASSWORD").unwrap())]
@@ -54,11 +50,7 @@ const WS2_CONFIG: libsignal_net_infra::ws2::Config = libsignal_net_infra::ws2::C
 async fn main() {
     env_logger::init();
 
-    let CliArgs {
-        use_routes,
-        username,
-        password,
-    } = CliArgs::parse();
+    let CliArgs { username, password } = CliArgs::parse();
 
     let auth = Auth { username, password };
 
@@ -79,7 +71,7 @@ async fn main() {
     let network_change_event = ObservableEvent::default();
     let resolver = DnsResolver::new();
 
-    let connected = if use_routes {
+    let connected = {
         let confirmation_header_name = cdsi_env
             .domain_config
             .connect
@@ -104,14 +96,6 @@ async fn main() {
             auth,
         )
         .await
-    } else {
-        let endpoint_connection = EnclaveEndpointConnection::new(
-            &cdsi_env,
-            Duration::from_secs(10),
-            &network_change_event,
-        );
-        let transport_connection = DirectConnector::new(resolver);
-        CdsiConnection::connect(&endpoint_connection, transport_connection, auth).await
     }
     .unwrap();
 

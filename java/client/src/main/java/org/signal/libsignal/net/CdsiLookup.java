@@ -15,36 +15,13 @@ class CdsiLookup extends NativeHandleGuard.SimpleOwner {
   public static CompletableFuture<CdsiLookup> start(
       Network network, String username, String password, CdsiLookupRequest request)
       throws IOException, InterruptedException, ExecutionException {
-    return CdsiLookup.start(network, username, password, request, false);
-  }
-
-  public static CompletableFuture<CdsiLookup> start(
-      Network network,
-      String username,
-      String password,
-      CdsiLookupRequest request,
-      boolean useNewConnectLogic)
-      throws IOException, InterruptedException, ExecutionException {
-
-    interface StartCdsiLookup {
-      CompletableFuture<Long> invoke(
-          long asyncRuntime,
-          long connectionManager,
-          String username,
-          String password,
-          long nativeRequest);
-    }
-
-    StartCdsiLookup startLookup =
-        useNewConnectLogic ? Native::CdsiLookup_new_routes : Native::CdsiLookup_new;
 
     try (NativeHandleGuard asyncRuntime = new NativeHandleGuard(network.getAsyncContext());
         NativeHandleGuard connectionManager =
             new NativeHandleGuard(network.getConnectionManager());
         NativeHandleGuard lookupRequest = new NativeHandleGuard(request.makeNative())) {
 
-      return startLookup
-          .invoke(
+      return Native.CdsiLookup_new(
               asyncRuntime.nativeHandle(),
               connectionManager.nativeHandle(),
               username,

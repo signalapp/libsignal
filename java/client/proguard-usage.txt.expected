@@ -5,8 +5,6 @@ org.signal.libsignal.metadata.SealedSessionCipher:
     188:188:private static synthetic byte[] lambda$multiRecipientMessageForSingleRecipient$3(byte[])
 org.signal.libsignal.metadata.certificate.CertificateValidator:
     41:48:void validate(org.signal.libsignal.metadata.certificate.ServerCertificate)
-org.signal.libsignal.net.CdsiLookup:
-    18:18:public static org.signal.libsignal.internal.CompletableFuture start(org.signal.libsignal.net.Network,java.lang.String,java.lang.String,org.signal.libsignal.net.CdsiLookupRequest)
 org.signal.libsignal.net.ChatConnection$InternalRequest:
     216:216:public java.lang.String getMethod()
     220:220:public java.lang.String getPathAndQuery()
