@@ -18,6 +18,9 @@ file_header:
     // Copyright \d{4}(-\d{4})? Signal Messenger, LLC.
     // SPDX-License-Identifier: AGPL-3.0-only
     //
+file_length:
+  warning: 1000
+  error: 1000
 inclusive_language:
   override_allowed_terms:
   - master
