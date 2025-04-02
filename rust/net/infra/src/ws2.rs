@@ -331,6 +331,14 @@ where
                 )))
             }
             Event::ConnectionIdle => {
+                if last_sent_to_server > last_heard_from_server {
+                    // Differentiate between local-idle and remote-idle pings by checking if we have a
+                    // ping or request sent since our last response.
+                    log::warn!(
+                        "[{log_tag}] server hasn't responded in {:.3?}; sending a ping",
+                        last_heard_from_server.elapsed()
+                    );
+                }
                 *ping_count = ping_count.wrapping_add(1);
                 match stream
                     .send(Message::Ping(vec![*ping_count]))
