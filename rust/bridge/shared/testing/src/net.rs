@@ -162,7 +162,7 @@ fn TESTING_ConnectionManager_newLocalOverride(
     };
 
     let env = net_env::localhost_test_env_with_ports(ports, rootCertificateDer);
-    ConnectionManager::new_from_static_environment(env, userAgent.as_str())
+    ConnectionManager::new_from_static_environment(env, userAgent.as_str(), Default::default())
 }
 
 #[bridge_fn]

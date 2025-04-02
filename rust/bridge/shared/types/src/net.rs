@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::collections::HashMap;
 use std::panic::RefUnwindSafe;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -115,6 +116,8 @@ pub struct ConnectionManager {
     env: Env<'static>,
     user_agent: UserAgent,
     dns_resolver: DnsResolver,
+    #[allow(dead_code)]
+    remote_config: std::sync::Mutex<HashMap<String, String>>,
     connect: std::sync::Mutex<ConnectState<PreconnectingFactory>>,
     // We could split this up to a separate mutex on each kind of connection,
     // but we don't hold it for very long anyway (just enough to clone the Arc).
@@ -127,12 +130,20 @@ pub struct ConnectionManager {
 impl RefUnwindSafe for ConnectionManager {}
 
 impl ConnectionManager {
-    pub fn new(environment: Environment, user_agent: &str) -> Self {
+    pub fn new(
+        environment: Environment,
+        user_agent: &str,
+        remote_config: HashMap<String, String>,
+    ) -> Self {
         log::info!("Initializing connection manager for {}...", &environment);
-        Self::new_from_static_environment(environment.env(), user_agent)
+        Self::new_from_static_environment(environment.env(), user_agent, remote_config)
     }
 
-    pub fn new_from_static_environment(env: Env<'static>, user_agent: &str) -> Self {
+    pub fn new_from_static_environment(
+        env: Env<'static>,
+        user_agent: &str,
+        remote_config: HashMap<String, String>,
+    ) -> Self {
         let (network_change_event_tx, network_change_event_rx) = ::tokio::sync::watch::channel(());
         let user_agent = UserAgent::with_libsignal_version(user_agent);
 
@@ -147,6 +158,7 @@ impl ConnectionManager {
             env,
             endpoints,
             user_agent,
+            remote_config: remote_config.into(),
             connect: ConnectState::new_with_transport_connector(
                 SUGGESTED_CONNECT_CONFIG,
                 PreconnectingFactory::new(
@@ -205,6 +217,10 @@ impl ConnectionManager {
         *self.endpoints.lock().expect("not poisoned") = Arc::new(new_endpoints);
     }
 
+    pub fn set_remote_config(&self, remote_config: HashMap<String, String>) {
+        *self.remote_config.lock().expect("not poisoned") = remote_config;
+    }
+
     const NETWORK_CHANGE_DEBOUNCE: Duration = Duration::from_secs(1);
 
     pub fn on_network_change(&self, now: Instant) {
@@ -247,14 +263,15 @@ mod test {
     #[test_case(Environment::Staging; "staging")]
     #[test_case(Environment::Prod; "prod")]
     fn can_create_connection_manager(env: Environment) {
-        let _ = ConnectionManager::new(env, "test-user-agent");
+        let _ = ConnectionManager::new(env, "test-user-agent", Default::default());
     }
 
     // Normally we would write this test in the app languages, but it depends on timeouts.
     // Using a paused tokio runtime auto-advances time when there's no other work to be done.
     #[tokio::test(start_paused = true)]
     async fn cannot_connect_through_invalid_proxy() {
-        let cm = ConnectionManager::new(Environment::Staging, "test-user-agent");
+        let cm =
+            ConnectionManager::new(Environment::Staging, "test-user-agent", Default::default());
         cm.set_invalid_proxy();
         let err = UnauthenticatedChatConnection::connect(&cm)
             .await
@@ -265,7 +282,8 @@ mod test {
 
     #[test]
     fn network_change_event_debounced() {
-        let cm = ConnectionManager::new(Environment::Staging, "test-user-agent");
+        let cm =
+            ConnectionManager::new(Environment::Staging, "test-user-agent", Default::default());
 
         let mut fired = cm.network_change_event_tx.subscribe();
         assert_matches!(fired.has_changed(), Ok(false));

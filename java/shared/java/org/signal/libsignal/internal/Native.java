@@ -238,11 +238,12 @@ public final class Native {
 
   public static native void ConnectionManager_Destroy(long handle);
   public static native void ConnectionManager_clear_proxy(long connectionManager);
-  public static native long ConnectionManager_new(int environment, String userAgent);
+  public static native long ConnectionManager_new(int environment, String userAgent, long remoteConfig);
   public static native void ConnectionManager_on_network_change(long connectionManager);
   public static native void ConnectionManager_set_censorship_circumvention_enabled(long connectionManager, boolean enabled);
   public static native void ConnectionManager_set_invalid_proxy(long connectionManager);
   public static native void ConnectionManager_set_proxy(long connectionManager, long proxy);
+  public static native void ConnectionManager_set_remote_config(long connectionManager, long remoteConfig);
 
   public static native void ConnectionProxyConfig_Destroy(long handle);
   public static native long ConnectionProxyConfig_new(String scheme, String host, int port, String username, String password) throws Exception;

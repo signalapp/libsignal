@@ -15,6 +15,7 @@ import {
   ChatServiceListener,
 } from './net/Chat';
 import { RegistrationService } from './net/Registration';
+import { BridgedStringMap } from './internal';
 export * from './net/CDSI';
 export * from './net/Chat';
 export * from './net/Registration';
@@ -79,6 +80,7 @@ export type NetConstructorOptions = Readonly<
       localTestServer?: false;
       env: Environment;
       userAgent: string;
+      remoteConfig?: Map<string, string>;
     }
   | {
       localTestServer: true;
@@ -122,7 +124,11 @@ export class Net {
       );
     } else {
       this._connectionManager = newNativeHandle(
-        Native.ConnectionManager_new(options.env, options.userAgent)
+        Native.ConnectionManager_new(
+          options.env,
+          options.userAgent,
+          new BridgedStringMap(options.remoteConfig || new Map<string, string>())
+        )
       );
     }
   }
@@ -395,6 +401,14 @@ export class Net {
    */
   clearProxy(): void {
     Native.ConnectionManager_clear_proxy(this._connectionManager);
+  }
+
+  /** Updates the remote config settings used by libsignal. */
+  setRemoteConfig(remoteConfig: Map<string, string>): void {
+    Native.ConnectionManager_set_remote_config(
+      this._connectionManager,
+      new BridgedStringMap(remoteConfig)
+    );
   }
 
   /**

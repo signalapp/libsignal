@@ -1269,7 +1269,7 @@ SignalFfiError *signal_connection_manager_clear_proxy(SignalConstPointerConnecti
 
 SignalFfiError *signal_connection_manager_destroy(SignalMutPointerConnectionManager p);
 
-SignalFfiError *signal_connection_manager_new(SignalMutPointerConnectionManager *out, uint8_t environment, const char *user_agent);
+SignalFfiError *signal_connection_manager_new(SignalMutPointerConnectionManager *out, uint8_t environment, const char *user_agent, SignalMutPointerBridgedStringMap remote_config);
 
 SignalFfiError *signal_connection_manager_on_network_change(SignalConstPointerConnectionManager connection_manager);
 
@@ -1278,6 +1278,8 @@ SignalFfiError *signal_connection_manager_set_censorship_circumvention_enabled(S
 SignalFfiError *signal_connection_manager_set_invalid_proxy(SignalConstPointerConnectionManager connection_manager);
 
 SignalFfiError *signal_connection_manager_set_proxy(SignalConstPointerConnectionManager connection_manager, SignalConstPointerConnectionProxyConfig proxy);
+
+SignalFfiError *signal_connection_manager_set_remote_config(SignalConstPointerConnectionManager connection_manager, SignalMutPointerBridgedStringMap remote_config);
 
 SignalFfiError *signal_connection_proxy_config_clone(SignalMutPointerConnectionProxyConfig *new_obj, SignalConstPointerConnectionProxyConfig obj);
 

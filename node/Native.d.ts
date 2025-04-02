@@ -225,12 +225,13 @@ export function ComparableBackup_GetComparableString(backup: Wrapper<ComparableB
 export function ComparableBackup_GetUnknownFields(backup: Wrapper<ComparableBackup>): string[];
 export function ComparableBackup_ReadUnencrypted(stream: InputStream, len: bigint, purpose: number): Promise<ComparableBackup>;
 export function ConnectionManager_clear_proxy(connectionManager: Wrapper<ConnectionManager>): void;
-export function ConnectionManager_new(environment: number, userAgent: string): ConnectionManager;
+export function ConnectionManager_new(environment: number, userAgent: string, remoteConfig: Wrapper<BridgedStringMap>): ConnectionManager;
 export function ConnectionManager_on_network_change(connectionManager: Wrapper<ConnectionManager>): void;
 export function ConnectionManager_set_censorship_circumvention_enabled(connectionManager: Wrapper<ConnectionManager>, enabled: boolean): void;
 export function ConnectionManager_set_invalid_proxy(connectionManager: Wrapper<ConnectionManager>): void;
 export function ConnectionManager_set_ipv6_enabled(connectionManager: Wrapper<ConnectionManager>, ipv6Enabled: boolean): void;
 export function ConnectionManager_set_proxy(connectionManager: Wrapper<ConnectionManager>, proxy: Wrapper<ConnectionProxyConfig>): void;
+export function ConnectionManager_set_remote_config(connectionManager: Wrapper<ConnectionManager>, remoteConfig: Wrapper<BridgedStringMap>): void;
 export function ConnectionProxyConfig_new(scheme: string, host: string, port: number, username: string | null, password: string | null): ConnectionProxyConfig;
 export function CreateCallLinkCredentialPresentation_CheckValidContents(presentationBytes: Buffer): void;
 export function CreateCallLinkCredentialPresentation_Verify(presentationBytes: Buffer, roomId: Buffer, now: Timestamp, serverParamsBytes: Buffer, callLinkParamsBytes: Buffer): void;
