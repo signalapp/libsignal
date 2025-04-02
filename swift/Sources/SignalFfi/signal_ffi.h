@@ -228,6 +228,8 @@ typedef struct SignalAes256GcmSiv SignalAes256GcmSiv;
 
 typedef struct SignalAuthenticatedChatConnection SignalAuthenticatedChatConnection;
 
+typedef struct SignalBridgedStringMap SignalBridgedStringMap;
+
 typedef struct SignalCdsiLookup SignalCdsiLookup;
 
 typedef struct SignalCiphertextMessage SignalCiphertextMessage;
@@ -543,6 +545,14 @@ typedef uint8_t SignalServiceIdFixedWidthBinaryBytes[17];
 typedef struct {
   SignalPrivateKey *raw;
 } SignalMutPointerPrivateKey;
+
+typedef struct {
+  SignalBridgedStringMap *raw;
+} SignalMutPointerBridgedStringMap;
+
+typedef struct {
+  const SignalBridgedStringMap *raw;
+} SignalConstPointerBridgedStringMap;
 
 typedef struct {
   SignalSgxClientState *raw;
@@ -1192,6 +1202,14 @@ SignalFfiError *signal_backup_key_derive_media_encryption_key(uint8_t (*out)[Sig
 SignalFfiError *signal_backup_key_derive_media_id(uint8_t (*out)[SignalMEDIA_ID_LEN], const uint8_t (*backup_key)[SignalBACKUP_KEY_LEN], const char *media_name);
 
 SignalFfiError *signal_backup_key_derive_thumbnail_transit_encryption_key(uint8_t (*out)[SignalMEDIA_ENCRYPTION_KEY_LEN], const uint8_t (*backup_key)[SignalBACKUP_KEY_LEN], const uint8_t (*media_id)[SignalMEDIA_ID_LEN]);
+
+SignalFfiError *signal_bridged_string_map_clone(SignalMutPointerBridgedStringMap *new_obj, SignalConstPointerBridgedStringMap obj);
+
+SignalFfiError *signal_bridged_string_map_destroy(SignalMutPointerBridgedStringMap p);
+
+SignalFfiError *signal_bridged_string_map_insert(SignalMutPointerBridgedStringMap map, const char *key, const char *value);
+
+SignalFfiError *signal_bridged_string_map_new(SignalMutPointerBridgedStringMap *out, uint32_t initial_capacity);
 
 SignalFfiError *signal_call_link_auth_credential_check_valid_contents(SignalBorrowedBuffer credential_bytes);
 

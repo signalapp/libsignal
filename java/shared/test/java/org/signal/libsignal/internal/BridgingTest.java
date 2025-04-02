@@ -8,6 +8,8 @@ package org.signal.libsignal.internal;
 import static org.junit.Assert.*;
 
 import java.nio.ByteBuffer;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.concurrent.ExecutionException;
 import org.junit.Test;
 
@@ -136,5 +138,24 @@ public class BridgingTest {
     for (var value : new int[] {0, 1, -1, Integer.MIN_VALUE, Integer.MAX_VALUE}) {
       assertEquals(value, NativeTesting.TESTING_RoundTripI32(value));
     }
+  }
+
+  @Test
+  public void testBridgedStringMap() {
+    final var empty = new BridgedStringMap(Collections.emptyMap()).dump();
+    assertEquals(empty, "{}");
+
+    final var map = new HashMap<String, String>();
+    map.put("b", "bbb");
+    map.put("a", "aaa");
+    map.put("c", "ccc");
+    final var dumped = new BridgedStringMap(map).dump();
+    assertEquals(
+        dumped, """
+      {
+        "a": "aaa",
+        "b": "bbb",
+        "c": "ccc"
+      }""");
   }
 }

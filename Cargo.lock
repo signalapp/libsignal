@@ -2290,6 +2290,7 @@ dependencies = [
  "paste",
  "prost",
  "scopeguard",
+ "serde_json",
  "strum",
  "tokio",
  "uuid",

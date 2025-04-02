@@ -204,6 +204,10 @@ public final class Native {
   public static native byte[] BackupKey_DeriveMediaId(byte[] backupKey, String mediaName);
   public static native byte[] BackupKey_DeriveThumbnailTransitEncryptionKey(byte[] backupKey, byte[] mediaId);
 
+  public static native void BridgedStringMap_Destroy(long handle);
+  public static native void BridgedStringMap_insert(long map, String key, String value);
+  public static native long BridgedStringMap_new(int initialCapacity);
+
   public static native void CallLinkAuthCredentialPresentation_CheckValidContents(byte[] presentationBytes) throws Exception;
   public static native byte[] CallLinkAuthCredentialPresentation_GetUserId(byte[] presentationBytes);
   public static native void CallLinkAuthCredentialPresentation_Verify(byte[] presentationBytes, long now, byte[] serverParamsBytes, byte[] callLinkParamsBytes) throws Exception;

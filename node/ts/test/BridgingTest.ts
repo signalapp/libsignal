@@ -6,6 +6,7 @@
 import { assert, use } from 'chai';
 import * as chaiAsPromised from 'chai-as-promised';
 import * as Native from '../../Native';
+import { BridgedStringMap } from '../internal';
 
 use(chaiAsPromised);
 
@@ -180,5 +181,29 @@ describe('bridge_fn', () => {
     for (const value of [-1n, 0x1_0000_0000_0000_0000n]) {
       assert.throws(() => Native.TESTING_RoundTripU64(value));
     }
+  });
+});
+
+describe('BridgedStringMap', () => {
+  it('can round-trip', () => {
+    const empty = new BridgedStringMap(new Map()).dump();
+    assert.equal(empty, '{}');
+
+    const dumped = new BridgedStringMap(
+      new Map([
+        ['b', 'bbb'],
+        ['a', 'aaa'],
+        ['c', 'ccc'],
+      ])
+    ).dump();
+    assert.equal(
+      dumped,
+      `\
+{
+  "a": "aaa",
+  "b": "bbb",
+  "c": "ccc"
+}`
+    );
   });
 });

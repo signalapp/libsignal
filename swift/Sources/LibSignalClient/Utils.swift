@@ -264,3 +264,39 @@ extension Data {
         return String(decoding: hex, as: Unicode.UTF8.self)
     }
 }
+
+extension [String: String] {
+    internal func withBridgedStringMap<Result>(_ callback: (SignalMutPointerBridgedStringMap) throws -> Result) rethrows -> Result {
+        var map = SignalMutPointerBridgedStringMap()
+        failOnError(signal_bridged_string_map_new(&map, UInt32(clamping: self.count)))
+        defer { signal_bridged_string_map_destroy(map) }
+
+        for (key, value) in self {
+            failOnError(signal_bridged_string_map_insert(map, key, value))
+        }
+
+        return try callback(map)
+    }
+}
+
+extension SignalMutPointerBridgedStringMap: SignalMutPointer {
+    public typealias ConstPointer = SignalConstPointerBridgedStringMap
+
+    public init(untyped: OpaquePointer?) {
+        self.init(raw: untyped)
+    }
+
+    public func toOpaque() -> OpaquePointer? {
+        self.raw
+    }
+
+    public func const() -> Self.ConstPointer {
+        Self.ConstPointer(raw: self.raw)
+    }
+}
+
+extension SignalConstPointerBridgedStringMap: SignalConstPointer {
+    public func toOpaque() -> OpaquePointer? {
+        self.raw
+    }
+}

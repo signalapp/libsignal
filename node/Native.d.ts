@@ -195,6 +195,8 @@ export function BackupKey_DeriveLocalBackupMetadataKey(backupKey: Buffer): Buffe
 export function BackupKey_DeriveMediaEncryptionKey(backupKey: Buffer, mediaId: Buffer): Buffer;
 export function BackupKey_DeriveMediaId(backupKey: Buffer, mediaName: string): Buffer;
 export function BackupKey_DeriveThumbnailTransitEncryptionKey(backupKey: Buffer, mediaId: Buffer): Buffer;
+export function BridgedStringMap_insert(map: Wrapper<BridgedStringMap>, key: string, value: string): void;
+export function BridgedStringMap_new(initialCapacity: number): BridgedStringMap;
 export function CallLinkAuthCredentialPresentation_CheckValidContents(presentationBytes: Buffer): void;
 export function CallLinkAuthCredentialPresentation_GetUserId(presentationBytes: Buffer): Serialized<UuidCiphertext>;
 export function CallLinkAuthCredentialPresentation_Verify(presentationBytes: Buffer, now: Timestamp, serverParamsBytes: Buffer, callLinkParamsBytes: Buffer): void;
@@ -536,6 +538,7 @@ export function SignedPreKeyRecord_GetSignature(obj: Wrapper<SignedPreKeyRecord>
 export function SignedPreKeyRecord_GetTimestamp(obj: Wrapper<SignedPreKeyRecord>): Timestamp;
 export function SignedPreKeyRecord_New(id: number, timestamp: Timestamp, pubKey: Wrapper<PublicKey>, privKey: Wrapper<PrivateKey>, signature: Buffer): SignedPreKeyRecord;
 export function SignedPreKeyRecord_Serialize(obj: Wrapper<SignedPreKeyRecord>): Buffer;
+export function TESTING_BridgedStringMap_dump_to_json(map: Wrapper<BridgedStringMap>): string;
 export function TESTING_CdsiLookupErrorConvert(errorDescription: string): void;
 export function TESTING_CdsiLookupResponseConvert(asyncRuntime: Wrapper<TokioAsyncContext>): CancellablePromise<LookupResponse>;
 export function TESTING_ChatConnectErrorConvert(errorDescription: string): void;
@@ -630,6 +633,7 @@ export function initLogger(maxLevel: LogLevel, callback: (level: LogLevel, targe
 export function test_only_fn_returns_123(): number;
 interface Aes256GcmSiv { readonly __type: unique symbol; }
 interface AuthenticatedChatConnection { readonly __type: unique symbol; }
+interface BridgedStringMap { readonly __type: unique symbol; }
 interface CdsiLookup { readonly __type: unique symbol; }
 interface ChatConnectionInfo { readonly __type: unique symbol; }
 interface CiphertextMessage { readonly __type: unique symbol; }

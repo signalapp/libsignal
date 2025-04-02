@@ -31,6 +31,7 @@ nonzero_ext = { workspace = true }
 paste = { workspace = true }
 prost = { workspace = true }
 scopeguard = { workspace = true }
+serde_json = { workspace = true }
 strum = { workspace = true, features = ["derive"] }
 tokio = { workspace = true }
 uuid = { workspace = true }

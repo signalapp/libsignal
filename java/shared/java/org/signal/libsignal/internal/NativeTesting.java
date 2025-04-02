@@ -51,6 +51,7 @@ public final class NativeTesting {
 
   public static native void OtherTestingHandleType_Destroy(long handle);
 
+  public static native String TESTING_BridgedStringMap_dump_to_json(long map);
   public static native void TESTING_CdsiLookupErrorConvert(String errorDescription) throws Exception;
   public static native CompletableFuture<Object> TESTING_CdsiLookupResponseConvert(long asyncRuntime);
   public static native void TESTING_ChatConnectErrorConvert(String errorDescription) throws Exception;

@@ -197,6 +197,8 @@ SignalFfiError *signal_test_only_fn_returns_123(uint32_t *out);
 
 SignalFfiError *signal_testing_NonSuspendingBackgroundThreadRuntime_destroy(SignalMutPointerNonSuspendingBackgroundThreadRuntime p);
 
+SignalFfiError *signal_testing_bridged_string_map_dump_to_json(const char **out, SignalConstPointerBridgedStringMap map);
+
 SignalFfiError *signal_testing_cdsi_lookup_error_convert(const char *error_description);
 
 SignalFfiError *signal_testing_cdsi_lookup_response_convert(SignalCPromiseFfiCdsiLookupResponse *promise, SignalConstPointerTokioAsyncContext async_runtime);
