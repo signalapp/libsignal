@@ -23,7 +23,7 @@ use crate::connection_manager::{
 use crate::errors::{LogSafeDisplay, RetryLater, TransportConnectError};
 use crate::host::Host;
 use crate::timeouts::{WS_KEEP_ALIVE_INTERVAL, WS_MAX_IDLE_INTERVAL};
-use crate::utils::ObservableEvent;
+use crate::utils::NetworkChangeEvent;
 use crate::ws::WebSocketConfig;
 
 pub mod certs;
@@ -357,7 +357,7 @@ impl EndpointConnection<MultiRouteConnectionManager> {
         connection_params: impl IntoIterator<Item = ConnectionParams>,
         one_route_connect_timeout: Duration,
         config: WebSocketConfig,
-        network_changed_event: &ObservableEvent,
+        network_changed_event: &NetworkChangeEvent,
     ) -> Self {
         Self {
             manager: MultiRouteConnectionManager::new(
@@ -411,7 +411,7 @@ pub mod testutil {
     use std::io;
     use std::io::Error as IoError;
     use std::pin::Pin;
-    use std::sync::Arc;
+    use std::sync::{Arc, LazyLock};
     use std::task::{Context, Poll};
     use std::time::Duration;
 
@@ -427,6 +427,7 @@ pub mod testutil {
     use crate::connection_manager::{ConnectionManager, ErrorClass, ErrorClassifier};
     use crate::errors::{LogSafeDisplay, TransportConnectError};
     use crate::service::{CancellationToken, ServiceConnector, ServiceInitializer, ServiceState};
+    use crate::utils::NetworkChangeEvent;
     use crate::{
         Alpn, DnsSource, RouteType, ServiceConnectionInfo, StreamAndInfo,
         TransportConnectionParams, TransportConnector,
@@ -492,6 +493,12 @@ pub mod testutil {
     // don't step over the cool down time
     #[cfg(test)]
     pub(crate) const TIME_ADVANCE_VALUE: Duration = Duration::from_millis(5);
+
+    pub fn no_network_change_events() -> NetworkChangeEvent {
+        static SENDER_THAT_NEVER_SENDS: LazyLock<tokio::sync::watch::Sender<()>> =
+            LazyLock::new(Default::default);
+        SENDER_THAT_NEVER_SENDS.subscribe()
+    }
 
     #[derive(Clone)]
     pub struct InMemoryWarpConnector<F> {

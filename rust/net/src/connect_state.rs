@@ -31,7 +31,7 @@ use libsignal_net_infra::timeouts::{
     TimeoutOr, MIN_TLS_HANDSHAKE_TIMEOUT, NETWORK_INTERFACE_POLL_INTERVAL,
     ONE_ROUTE_CONNECTION_TIMEOUT, POST_ROUTE_CHANGE_CONNECTION_TIMEOUT,
 };
-use libsignal_net_infra::utils::ObservableEvent;
+use libsignal_net_infra::utils::NetworkChangeEvent;
 use libsignal_net_infra::ws::{WebSocketConnectError, WebSocketStreamLike};
 use libsignal_net_infra::ws2::attested::AttestedConnection;
 use libsignal_net_infra::{AsHttpHeader as _, AsyncDuplexStream};
@@ -128,7 +128,7 @@ pub struct Config {
 pub struct ConnectionResources<'a, TC> {
     pub connect_state: &'a std::sync::Mutex<ConnectState<TC>>,
     pub dns_resolver: &'a DnsResolver,
-    pub network_change_event: &'a ObservableEvent,
+    pub network_change_event: &'a NetworkChangeEvent,
     pub confirmation_header_name: Option<HeaderName>,
 }
 
@@ -305,18 +305,13 @@ impl<TC> ConnectionResources<'_, TC> {
             routes.len()
         );
 
-        let (network_change_tx, network_change_rx) = tokio::sync::watch::channel(());
-        let _network_change_subscription = network_change_event.subscribe(Box::new(move || {
-            network_change_tx.send_replace(());
-        }));
-
         let route_provider = routes.into_iter().map(ResolveWithSavedDescription);
         let connector = InterfaceMonitor::new(
             DescribedRouteConnector(ComposedConnector::new(
                 LoggingConnector::new(ws_connector, Duration::from_secs(3), "websocket"),
                 &transport_connector,
             )),
-            network_change_rx,
+            network_change_event.clone(),
             network_interface_poll_interval,
             post_route_change_connect_timeout,
         );
@@ -498,15 +493,10 @@ where
             }
         }
 
-        let (network_change_tx, network_change_rx) = tokio::sync::watch::channel(());
-        let _network_change_subscription = network_change_event.subscribe(Box::new(move || {
-            network_change_tx.send_replace(());
-        }));
-
         let route_provider = routes.into_iter();
         let connector = InterfaceMonitor::new(
             ConnectWithSavedRoute(&transport_connector),
-            network_change_rx,
+            network_change_event.clone(),
             network_interface_poll_interval,
             post_route_change_connect_timeout,
         );
@@ -618,6 +608,7 @@ mod test {
         DirectOrProxyRoute, HttpsTlsRoute, TcpRoute, TlsRoute, TlsRouteFragment, UnresolvedHost,
         UnresolvedTransportRoute, WebSocketRoute,
     };
+    use libsignal_net_infra::testutil::no_network_change_events;
     use libsignal_net_infra::{Alpn, DnsSource, RouteType};
     use nonzero_ext::nonzero;
 
@@ -711,7 +702,7 @@ mod test {
         let connection_resources = ConnectionResources {
             connect_state: &state,
             dns_resolver: &resolver,
-            network_change_event: &ObservableEvent::new(),
+            network_change_event: &no_network_change_events(),
             confirmation_header_name: None,
         };
 
@@ -741,7 +732,6 @@ mod test {
             FAKE_HOST_NAME,
             LookupResult::new(DnsSource::Static, vec![ip_addr!(v4, "192.0.2.1")], vec![]),
         )]));
-        let network_change_event = ObservableEvent::new();
 
         let always_hangs_connector = ConnectFn(|(), _, _| {
             std::future::pending::<Result<tokio::io::DuplexStream, WebSocketConnectError>>()
@@ -765,7 +755,7 @@ mod test {
         let connection_resources = ConnectionResources {
             connect_state: &state,
             dns_resolver: &resolver,
-            network_change_event: &network_change_event,
+            network_change_event: &no_network_change_events(),
             confirmation_header_name: None,
         };
 
@@ -799,7 +789,6 @@ mod test {
             FAKE_HOST_NAME,
             LookupResult::new(DnsSource::Static, vec![ip_addr!(v4, "192.0.2.1")], vec![]),
         )]));
-        let network_change_event = ObservableEvent::new();
 
         let client_abort_connector = ConnectFn(|(), _, _| {
             std::future::ready(Err::<tokio::io::DuplexStream, _>(
@@ -825,7 +814,7 @@ mod test {
         let connection_resources = ConnectionResources {
             connect_state: &state,
             dns_resolver: &resolver,
-            network_change_event: &network_change_event,
+            network_change_event: &no_network_change_events(),
             confirmation_header_name: None,
         };
 
@@ -895,7 +884,7 @@ mod test {
         let connection_resources = ConnectionResources {
             connect_state: &state,
             dns_resolver: &resolver,
-            network_change_event: &ObservableEvent::new(),
+            network_change_event: &no_network_change_events(),
             confirmation_header_name: None,
         };
 
@@ -918,7 +907,7 @@ mod test {
         let connection_resources = ConnectionResources {
             connect_state: &state,
             dns_resolver: &resolver,
-            network_change_event: &ObservableEvent::new(),
+            network_change_event: &no_network_change_events(),
             confirmation_header_name: None,
         };
 

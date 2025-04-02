@@ -23,7 +23,7 @@ use libsignal_net::enclave::{EnclaveKind, EndpointParams, MrEnclave, NewHandshak
 use libsignal_net::svr::SvrConnection;
 use libsignal_net_infra::dns::DnsResolver;
 use libsignal_net_infra::route::DirectOrProxyProvider;
-use libsignal_net_infra::utils::ObservableEvent;
+use libsignal_net_infra::testutil::no_network_change_events;
 use libsignal_net_infra::EnableDomainFronting;
 
 const WS2_CONFIG: libsignal_net_infra::ws2::Config = libsignal_net_infra::ws2::Config {
@@ -95,7 +95,6 @@ async fn main() {
         libsignal_net::env::STAGING.svr2
     };
 
-    let network_changed_event = ObservableEvent::default();
     let resolver = DnsResolver::new();
 
     let confirmation_header_name = env
@@ -107,7 +106,7 @@ async fn main() {
     let connection_resources = ConnectionResources {
         connect_state: &connect_state,
         dns_resolver: &resolver,
-        network_change_event: &network_changed_event,
+        network_change_event: &no_network_change_events(),
         confirmation_header_name,
     };
 

@@ -11,13 +11,14 @@ use futures_util::TryFutureExt as _;
 
 use super::Connector;
 use crate::route::ResolvedRoute;
+use crate::utils::NetworkChangeEvent;
 
 /// A [`Connector`] that listens for network changes and aborts sooner if one happens *and* a
 /// preferred route change is subsequently detected.
 pub struct InterfaceMonitor<Inner, F = DefaultGetCurrentInterface> {
     inner: Inner,
     get_current_interface: F,
-    network_change_event: tokio::sync::watch::Receiver<()>,
+    network_change_event: NetworkChangeEvent,
     network_change_poll_interval: Duration,
     post_change_grace_period: Duration,
 }
@@ -58,7 +59,7 @@ pub trait GetCurrentInterface {
 impl<Inner> InterfaceMonitor<Inner> {
     pub fn new(
         inner: Inner,
-        network_change_event: tokio::sync::watch::Receiver<()>,
+        network_change_event: NetworkChangeEvent,
         network_change_poll_interval: Duration,
         post_change_grace_period: Duration,
     ) -> Self {

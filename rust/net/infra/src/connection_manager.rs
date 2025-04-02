@@ -18,7 +18,7 @@ use tokio::time::{timeout_at, Instant};
 
 use crate::errors::LogSafeDisplay;
 use crate::timeouts::{CONNECTION_ROUTE_COOLDOWN_INTERVALS, CONNECTION_ROUTE_MAX_COOLDOWN};
-use crate::utils::{EventSubscription, ObservableEvent};
+use crate::utils::NetworkChangeEvent;
 use crate::ConnectionParams;
 
 /// Represents the outcome of the connection attempt
@@ -78,8 +78,9 @@ where
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 struct ThrottlingConnectionManagerState {
+    network_change_event: NetworkChangeEvent,
     consecutive_fails: u16,
     next_attempt: Instant,
     latest_attempt: Instant,
@@ -88,8 +89,11 @@ struct ThrottlingConnectionManagerState {
 }
 
 impl ThrottlingConnectionManagerState {
-    fn new(now: Instant) -> Self {
+    fn new(now: Instant, network_change_event: &NetworkChangeEvent) -> Self {
+        let mut network_change_event = network_change_event.clone();
+        network_change_event.mark_unchanged();
         Self {
+            network_change_event,
             consecutive_fails: 0,
             next_attempt: now,
             latest_attempt: now - Duration::from_nanos(1),
@@ -98,7 +102,7 @@ impl ThrottlingConnectionManagerState {
         }
     }
 
-    /// Produces a new state after a success or failure.
+    /// Updates the state after a success or failure.
     ///
     /// The logic here is to track an attempt start time and to take it into
     /// account when updating the state. Then, if we see failed attempts that
@@ -106,56 +110,58 @@ impl ThrottlingConnectionManagerState {
     /// discarded. If, however, outcomes of failed attempts are arriving out of
     /// order in which attempts started, those failures will still be reflected
     /// in `consecutive_fails`.
-    fn after_attempt(self, was_successful: bool, attempt_start_time: Instant) -> Self {
-        let mut s = self;
+    fn update_after_attempt(&mut self, was_successful: bool, attempt_start_time: Instant) {
         if was_successful {
             // comparing using `>=` to guarantee that successful attempt takes precedence
-            if attempt_start_time >= s.latest_attempt {
-                s.latest_attempt = attempt_start_time;
-                s.consecutive_fails = 0;
-                s.next_attempt = attempt_start_time;
+            if attempt_start_time >= self.latest_attempt {
+                self.latest_attempt = attempt_start_time;
+                self.consecutive_fails = 0;
+                self.next_attempt = attempt_start_time;
             }
-        } else if attempt_start_time > s.latest_attempt || s.consecutive_fails > 0 {
-            s.latest_attempt = max(attempt_start_time, s.latest_attempt);
-            let idx: usize = s.consecutive_fails.into();
+        } else if attempt_start_time > self.latest_attempt || self.consecutive_fails > 0 {
+            self.latest_attempt = max(attempt_start_time, self.latest_attempt);
+            let idx: usize = self.consecutive_fails.into();
             let cooldown_interval = CONNECTION_ROUTE_COOLDOWN_INTERVALS
                 .get(idx)
                 .unwrap_or(&CONNECTION_ROUTE_MAX_COOLDOWN);
-            s.next_attempt = Instant::now() + *cooldown_interval;
-            s.consecutive_fails = min(
-                s.consecutive_fails.saturating_add(1),
+            self.next_attempt = Instant::now() + *cooldown_interval;
+            self.consecutive_fails = min(
+                self.consecutive_fails.saturating_add(1),
                 (CONNECTION_ROUTE_COOLDOWN_INTERVALS.len() - 1)
                     .try_into()
                     .unwrap(),
             );
         }
-        s
     }
 
     /// Reset the state after a network change event.
     fn network_changed(&mut self, network_change_time: Instant) {
+        let Self {
+            network_change_event,
+            consecutive_fails,
+            next_attempt,
+            latest_attempt,
+            #[cfg(test)]
+            reset_counter,
+        } = self;
+
         #[cfg(test)]
         {
-            self.reset_counter = self.reset_counter.saturating_add(1);
+            *reset_counter = reset_counter.saturating_add(1);
         }
+        network_change_event.mark_unchanged();
 
-        if self.consecutive_fails == 0 {
+        if std::mem::replace(consecutive_fails, 0) == 0 {
             // Easy case: the most recent attempt has been successful, so there's currently no
             // cooldown we need to reset.
             return;
         }
 
-        let Self {
+        *next_attempt = network_change_time;
+        let latest_attempt = std::mem::replace(
             latest_attempt,
-            #[cfg(test)]
-            reset_counter,
-            ..
-        } = std::mem::replace(self, Self::new(network_change_time));
-
-        #[cfg(test)]
-        {
-            self.reset_counter = reset_counter;
-        }
+            network_change_time - Duration::from_nanos(1),
+        );
 
         if latest_attempt < network_change_time {
             // Also easy: all completed attempts were on the old network, and we can't / don't need
@@ -167,7 +173,7 @@ impl ThrottlingConnectionManagerState {
         // we'd *like* to reset the consecutive fails counter to the number of fails since the
         // change, but we don't have that information. Compromise by re-recording the most recent
         // attempt as a single failure.
-        *self = self.clone().after_attempt(false, latest_attempt);
+        self.update_after_attempt(false, latest_attempt);
     }
 }
 
@@ -180,7 +186,6 @@ pub struct SingleRouteThrottlingConnectionManager<C = ConnectionParams> {
     state: Arc<Mutex<ThrottlingConnectionManagerState>>,
     connection_params: C,
     connection_timeout: Duration,
-    _network_changed_subscription: Arc<EventSubscription>,
 }
 
 /// A connection manager that holds a list of [SingleRouteThrottlingConnectionManager] instances.
@@ -336,40 +341,18 @@ impl<C> SingleRouteThrottlingConnectionManager<C> {
     pub fn new(
         connection_params: C,
         connection_timeout: Duration,
-        network_changed_event: &ObservableEvent,
+        network_changed_event: &NetworkChangeEvent,
     ) -> Self {
         let now = Instant::now();
-        let state = Arc::new(Mutex::new(ThrottlingConnectionManagerState::new(now)));
-
-        // Make sure that we don't have a reference cycle subscribing to the network change event:
-        // - the connection manager's subscription to the event will live as long as it does...
-        // - but the subscription alone shouldn't keep the connection manager state alive.
-        // This isn't strictly necessary because the subscription isn't stored in the shared state,
-        // but it hedges against future refactorings, and is a safer pattern in general when
-        // ignoring a callback during teardown is the right thing to do.
-        let state_for_network_changed = Arc::downgrade(&state);
-        let network_changed_subscription = network_changed_event.subscribe(Box::new(move || {
-            let Some(state) = state_for_network_changed.upgrade() else {
-                return;
-            };
-            let time_of_event = Instant::now();
-            // We'd like to reset the cooldowns synchronously, but tokio won't let us block on an
-            // async-aware mutex if we're currently within an async runtime. Spawn a task to do the
-            // reset ASAP instead.
-            if let Ok(tokio_runtime) = tokio::runtime::Handle::try_current() {
-                tokio_runtime.spawn(async move {
-                    state.lock().await.network_changed(time_of_event);
-                });
-            } else {
-                state.blocking_lock().network_changed(time_of_event);
-            }
-        }));
+        let state = Arc::new(Mutex::new(ThrottlingConnectionManagerState::new(
+            now,
+            network_changed_event,
+        )));
 
         Self {
             connection_params,
             connection_timeout,
             state,
-            _network_changed_subscription: Arc::new(network_changed_subscription),
         }
     }
 
@@ -383,10 +366,22 @@ impl<C> SingleRouteThrottlingConnectionManager<C> {
         Fun: Fn(&'a C) -> Fut + Send + Sync,
         Fut: Future<Output = Result<T, E>> + Send,
     {
-        let state = self.state.lock().await.clone();
         let attempt_start_time = Instant::now();
-        if attempt_start_time < state.next_attempt {
-            return ConnectionAttemptOutcome::WaitUntil(state.next_attempt);
+        let next_attempt = {
+            let mut guard = self.state.lock().await;
+            if guard
+                .network_change_event
+                .has_changed()
+                .is_ok_and(|changed| changed)
+            {
+                // This is not correct, the change happened a while ago.
+                // But we're phasing ConnectionManager out anyway.
+                guard.network_changed(attempt_start_time);
+            }
+            guard.next_attempt
+        };
+        if attempt_start_time < next_attempt {
+            return ConnectionAttemptOutcome::WaitUntil(next_attempt);
         }
         let connection_result_or_timeout = timeout_at(
             attempt_start_time.add(self.connection_timeout),
@@ -401,8 +396,7 @@ impl<C> SingleRouteThrottlingConnectionManager<C> {
         let was_successful = connection_result_or_timeout
             .as_ref()
             .is_ok_and(|r| r.is_ok());
-        let new_state = s.clone().after_attempt(was_successful, attempt_start_time);
-        *s = new_state;
+        s.update_after_attempt(was_successful, attempt_start_time);
 
         connection_result_or_timeout.map_or(ConnectionAttemptOutcome::TimedOut, |result| {
             ConnectionAttemptOutcome::Attempted(result)
@@ -449,8 +443,8 @@ mod test {
     use crate::certs::RootCertificates;
     use crate::host::Host;
     use crate::testutil::{
-        ClassifiableTestError, TestError, FEW_ATTEMPTS, LONG_CONNECTION_TIME, MANY_ATTEMPTS,
-        TIMEOUT_DURATION, TIME_ADVANCE_VALUE,
+        no_network_change_events, ClassifiableTestError, TestError, FEW_ATTEMPTS,
+        LONG_CONNECTION_TIME, MANY_ATTEMPTS, TIMEOUT_DURATION, TIME_ADVANCE_VALUE,
     };
     use crate::{HttpRequestDecoratorSeq, RouteType, TransportConnectionParams};
 
@@ -465,7 +459,7 @@ mod test {
         let manager = SingleRouteThrottlingConnectionManager::new(
             example_connection_params("chat.staging.signal.org"),
             TIMEOUT_DURATION,
-            &ObservableEvent::default(),
+            &no_network_change_events(),
         );
         for _ in 0..FEW_ATTEMPTS {
             let attempt_outcome: ConnectionAttemptOutcome<(), TestError> =
@@ -479,7 +473,7 @@ mod test {
         let manager = SingleRouteThrottlingConnectionManager::new(
             example_connection_params("chat.staging.signal.org"),
             TIMEOUT_DURATION,
-            &ObservableEvent::default(),
+            &no_network_change_events(),
         );
         for _ in 0..FEW_ATTEMPTS {
             let attempt_outcome: ConnectionAttemptOutcome<(), TestError> = manager
@@ -501,7 +495,7 @@ mod test {
         let manager = SingleRouteThrottlingConnectionManager::new(
             example_connection_params("chat.staging.signal.org"),
             TIMEOUT_DURATION,
-            &ObservableEvent::default(),
+            &no_network_change_events(),
         );
         time::advance(TIME_ADVANCE_VALUE).await;
         // first attempt
@@ -537,7 +531,7 @@ mod test {
         let manager = SingleRouteThrottlingConnectionManager::new(
             example_connection_params("chat.staging.signal.org"),
             TIMEOUT_DURATION,
-            &ObservableEvent::default(),
+            &no_network_change_events(),
         );
         for _ in 0..MANY_ATTEMPTS {
             time::advance(TIME_ADVANCE_VALUE).await;
@@ -560,11 +554,11 @@ mod test {
 
     #[tokio::test(flavor = "current_thread", start_paused = true)]
     async fn single_route_manager_resets_cooldown_on_network_changed() {
-        let network_changed_event = ObservableEvent::default();
+        let (network_change_tx, network_change_rx) = tokio::sync::watch::channel(());
         let manager = SingleRouteThrottlingConnectionManager::new(
             example_connection_params("chat.staging.signal.org"),
             TIMEOUT_DURATION,
-            &network_changed_event,
+            &network_change_rx,
         );
         for _ in 0..MANY_ATTEMPTS {
             time::advance(TIME_ADVANCE_VALUE).await;
@@ -580,25 +574,23 @@ mod test {
 
         // Wait a bit, but not long enough that the cooldown should have elapsed.
         time::advance(TIME_ADVANCE_VALUE).await;
-        network_changed_event.fire();
-        // At this point the cooldown reset task has been spawned, but not run.
-        // Yielding does not guarantee that tokio will execute it, but it does make it very likely,
-        // especially on the current_thread runtime.
-        tokio::task::yield_now().await;
-        assert_eq!(manager.state.lock().await.reset_counter, 1);
+        network_change_tx.send_replace(());
 
+        // The change won't be applied until the next time we try to connect.
+        assert_eq!(manager.state.lock().await.reset_counter, 0);
         let attempt_outcome: ConnectionAttemptOutcome<(), TestError> =
             manager.connect_or_wait(|_| future::ready(Ok(()))).await;
         assert_matches!(attempt_outcome, ConnectionAttemptOutcome::Attempted(Ok(())));
+        assert_eq!(manager.state.lock().await.reset_counter, 1);
     }
 
     #[tokio::test(flavor = "current_thread", start_paused = true)]
     async fn single_route_manager_resets_cooldown_count_on_network_changed() {
-        let network_changed_event = ObservableEvent::default();
+        let (network_change_tx, network_change_rx) = tokio::sync::watch::channel(());
         let manager = SingleRouteThrottlingConnectionManager::new(
             example_connection_params("chat.staging.signal.org"),
             TIMEOUT_DURATION,
-            &network_changed_event,
+            &network_change_rx,
         );
         for _ in 0..MANY_ATTEMPTS {
             time::advance(TIME_ADVANCE_VALUE).await;
@@ -614,14 +606,11 @@ mod test {
 
         // Wait a bit, but not long enough that the cooldown should have elapsed.
         time::advance(TIME_ADVANCE_VALUE).await;
-        network_changed_event.fire();
-        // At this point the cooldown reset task has been spawned, but not run.
-        // Yielding does not guarantee that tokio will execute it, but it does make it very likely,
-        // especially on the current_thread runtime.
-        tokio::task::yield_now().await;
-        assert_eq!(manager.state.lock().await.reset_counter, 1);
+        network_change_tx.send_replace(());
 
         // first attempt after network change
+        // The change won't be applied until the next time we try to connect.
+        assert_eq!(manager.state.lock().await.reset_counter, 0);
         let time_over_timeout = TIMEOUT_DURATION * 2;
         let attempt_outcome: ConnectionAttemptOutcome<(), TestError> = manager
             .connect_or_wait(|_| async {
@@ -630,6 +619,7 @@ mod test {
             })
             .await;
         assert_matches!(attempt_outcome, ConnectionAttemptOutcome::TimedOut);
+        assert_eq!(manager.state.lock().await.reset_counter, 1);
 
         // second attempt
         let attempt_outcome: ConnectionAttemptOutcome<(), TestError> = manager
@@ -659,8 +649,9 @@ mod test {
 
     #[tokio::test(flavor = "current_thread", start_paused = true)]
     async fn network_resets_consider_latest_attempt_time() {
-        let mut state = ThrottlingConnectionManagerState::new(Instant::now());
-        state = state.clone().after_attempt(false, Instant::now());
+        let mut state =
+            ThrottlingConnectionManagerState::new(Instant::now(), &no_network_change_events());
+        state.update_after_attempt(false, Instant::now());
         assert_eq!(state.consecutive_fails, 1);
         assert_eq!(state.reset_counter, 0);
 
@@ -670,18 +661,18 @@ mod test {
         assert_eq!(state.next_attempt, Instant::now());
 
         time::advance(TIME_ADVANCE_VALUE).await;
-        state = state.clone().after_attempt(false, Instant::now());
+        state.update_after_attempt(false, Instant::now());
         assert_eq!(state.consecutive_fails, 1);
 
         time::advance(TIME_ADVANCE_VALUE).await;
         let network_change_time = Instant::now();
 
         time::advance(TIME_ADVANCE_VALUE).await;
-        state = state.clone().after_attempt(false, Instant::now());
+        state.update_after_attempt(false, Instant::now());
         assert_eq!(state.consecutive_fails, 2);
 
         time::advance(TIME_ADVANCE_VALUE).await;
-        state = state.clone().after_attempt(false, Instant::now());
+        state.update_after_attempt(false, Instant::now());
         assert_eq!(state.consecutive_fails, 3);
 
         time::advance(TIME_ADVANCE_VALUE).await;
@@ -702,12 +693,12 @@ mod test {
         let manager_1 = SingleRouteThrottlingConnectionManager::new(
             example_connection_params(ROUTE_1),
             TIMEOUT_DURATION,
-            &ObservableEvent::default(),
+            &no_network_change_events(),
         );
         let manager_2 = SingleRouteThrottlingConnectionManager::new(
             example_connection_params(ROUTE_2),
             TIMEOUT_DURATION,
-            &ObservableEvent::default(),
+            &no_network_change_events(),
         );
         let multi_route_manager = MultiRouteConnectionManager::new(vec![manager_1, manager_2]);
 
@@ -733,12 +724,12 @@ mod test {
         let timing_out_route_manager = SingleRouteThrottlingConnectionManager::new(
             example_connection_params(ROUTE_THAT_TIMES_OUT),
             TIMEOUT_DURATION,
-            &ObservableEvent::default(),
+            &no_network_change_events(),
         );
         let manager_1 = SingleRouteThrottlingConnectionManager::new(
             example_connection_params(ROUTE_1),
             TIMEOUT_DURATION,
-            &ObservableEvent::default(),
+            &no_network_change_events(),
         );
         let multi_route_manager =
             MultiRouteConnectionManager::new(vec![timing_out_route_manager, manager_1]);

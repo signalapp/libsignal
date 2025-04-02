@@ -124,7 +124,7 @@ impl AuthenticatedChatConnection {
         let connection_resources = ConnectionResources {
             connect_state: &connection_manager.connect,
             dns_resolver: &connection_manager.dns_resolver,
-            network_change_event: &connection_manager.network_change_event,
+            network_change_event: &connection_manager.network_change_event_tx.subscribe(),
             confirmation_header_name: None,
         };
 
@@ -283,7 +283,7 @@ async fn establish_chat_connection(
         connect,
         user_agent,
         endpoints,
-        network_change_event,
+        network_change_event_tx,
         ..
     } = connection_manager;
 
@@ -305,7 +305,7 @@ async fn establish_chat_connection(
     let connection_resources = ConnectionResources {
         connect_state: connect,
         dns_resolver,
-        network_change_event,
+        network_change_event: &network_change_event_tx.subscribe(),
         confirmation_header_name: chat_connect
             .confirmation_header_name
             .map(HeaderName::from_static),

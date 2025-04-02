@@ -18,7 +18,7 @@ use libsignal_net::infra::dns::DnsResolver;
 use libsignal_net::infra::route::ConnectionProxyConfig;
 use libsignal_net::infra::tcp_ssl::{InvalidProxyConfig, TcpSslConnector};
 use libsignal_net::infra::timeouts::ONE_ROUTE_CONNECTION_TIMEOUT;
-use libsignal_net::infra::utils::ObservableEvent;
+use libsignal_net::infra::utils::NetworkChangeEvent;
 use libsignal_net::infra::{EnableDomainFronting, EndpointConnection};
 
 use crate::*;
@@ -58,7 +58,7 @@ impl EndpointConnections {
         env: &Env<'static>,
         user_agent: &UserAgent,
         use_fallbacks: bool,
-        network_change_event: &ObservableEvent,
+        network_change_event: &NetworkChangeEvent,
     ) -> Self {
         log::info!(
             "Creating endpoint connections (fallbacks {}) for {} and others",
@@ -91,7 +91,7 @@ impl EndpointConnections {
         endpoint: &EnclaveEndpoint<'static, E>,
         user_agent: &UserAgent,
         include_fallback: bool,
-        network_change_event: &ObservableEvent,
+        network_change_event: &NetworkChangeEvent,
     ) -> EnclaveEndpointConnection<E, MultiRouteConnectionManager> {
         let params = if include_fallback {
             endpoint
@@ -121,7 +121,7 @@ pub struct ConnectionManager {
     endpoints: std::sync::Mutex<Arc<EndpointConnections>>,
     transport_connector: std::sync::Mutex<TcpSslConnector>,
     most_recent_network_change: std::sync::Mutex<Instant>,
-    network_change_event: ObservableEvent,
+    network_change_event_tx: ::tokio::sync::watch::Sender<()>,
 }
 
 impl RefUnwindSafe for ConnectionManager {}
@@ -133,14 +133,20 @@ impl ConnectionManager {
     }
 
     pub fn new_from_static_environment(env: Env<'static>, user_agent: &str) -> Self {
-        let network_change_event = ObservableEvent::new();
+        let network_change_event_tx = ::tokio::sync::watch::Sender::new(());
         let user_agent = UserAgent::with_libsignal_version(user_agent);
 
         let dns_resolver = DnsResolver::new_with_static_fallback(env.static_fallback());
         let transport_connector =
             std::sync::Mutex::new(TcpSslConnector::new_direct(dns_resolver.clone()));
         let endpoints = std::sync::Mutex::new(
-            EndpointConnections::new(&env, &user_agent, false, &network_change_event).into(),
+            EndpointConnections::new(
+                &env,
+                &user_agent,
+                false,
+                &network_change_event_tx.subscribe(),
+            )
+            .into(),
         );
         Self {
             env,
@@ -156,7 +162,7 @@ impl ConnectionManager {
             dns_resolver,
             transport_connector,
             most_recent_network_change: Instant::now().into(),
-            network_change_event,
+            network_change_event_tx,
         }
     }
 
@@ -199,7 +205,7 @@ impl ConnectionManager {
             &self.env,
             &self.user_agent,
             enabled,
-            &self.network_change_event,
+            &self.network_change_event_tx.subscribe(),
         );
         *self.endpoints.lock().expect("not poisoned") = Arc::new(new_endpoints);
     }
@@ -221,7 +227,7 @@ impl ConnectionManager {
             *most_recent_change_guard = now;
         }
         log::info!("ConnectionManager: on_network_change");
-        self.network_change_event.fire();
+        self.network_change_event_tx.send_replace(());
         self.dns_resolver.on_network_change(now.into());
         self.connect
             .lock()
@@ -266,36 +272,34 @@ mod test {
     fn network_change_event_debounced() {
         let cm = ConnectionManager::new(Environment::Staging, "test-user-agent");
 
-        let fire_count = Arc::new(std::sync::atomic::AtomicU8::new(0));
-        let _subscription = {
-            let fire_count = fire_count.clone();
-            cm.network_change_event.subscribe(Box::new(move || {
-                _ = fire_count.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-            }))
-        };
+        let mut fired = cm.network_change_event_tx.subscribe();
+        assert_matches!(fired.has_changed(), Ok(false));
 
         // The creation of the ConnectionManager sets the initial debounce timestamp,
         // so let's say our first even happens well after that.
         let start = Instant::now() + ConnectionManager::NETWORK_CHANGE_DEBOUNCE * 10;
         cm.on_network_change(start);
-        assert_eq!(1, fire_count.load(std::sync::atomic::Ordering::SeqCst));
+        assert_matches!(fired.has_changed(), Ok(true));
+        fired.mark_unchanged();
 
         cm.on_network_change(start);
-        assert_eq!(1, fire_count.load(std::sync::atomic::Ordering::SeqCst));
+        assert_matches!(fired.has_changed(), Ok(false));
 
         cm.on_network_change(start + ConnectionManager::NETWORK_CHANGE_DEBOUNCE / 2);
-        assert_eq!(1, fire_count.load(std::sync::atomic::Ordering::SeqCst));
+        assert_matches!(fired.has_changed(), Ok(false));
 
         cm.on_network_change(start + ConnectionManager::NETWORK_CHANGE_DEBOUNCE);
-        assert_eq!(2, fire_count.load(std::sync::atomic::Ordering::SeqCst));
+        assert_matches!(fired.has_changed(), Ok(true));
+        fired.mark_unchanged();
 
         cm.on_network_change(start);
-        assert_eq!(2, fire_count.load(std::sync::atomic::Ordering::SeqCst));
+        assert_matches!(fired.has_changed(), Ok(false));
 
         cm.on_network_change(start + ConnectionManager::NETWORK_CHANGE_DEBOUNCE * 3 / 2);
-        assert_eq!(2, fire_count.load(std::sync::atomic::Ordering::SeqCst));
+        assert_matches!(fired.has_changed(), Ok(false));
 
         cm.on_network_change(start + ConnectionManager::NETWORK_CHANGE_DEBOUNCE * 4);
-        assert_eq!(3, fire_count.load(std::sync::atomic::Ordering::SeqCst));
+        assert_matches!(fired.has_changed(), Ok(true));
+        fired.mark_unchanged();
     }
 }

@@ -12,7 +12,7 @@ use libsignal_net::cdsi::CdsiConnection;
 use libsignal_net::connect_state::{ConnectState, ConnectionResources, SUGGESTED_CONNECT_CONFIG};
 use libsignal_net::env::STAGING;
 use libsignal_net::infra::dns::DnsResolver;
-use libsignal_net::infra::utils::ObservableEvent;
+use libsignal_net::infra::testutil::no_network_change_events;
 use libsignal_net_infra::route::DirectOrProxyProvider;
 use libsignal_net_infra::EnableDomainFronting;
 use rand_core::{OsRng, RngCore};
@@ -44,7 +44,7 @@ async fn can_connect_to_cdsi_staging() {
 
     let auth = Auth::from_uid_and_secret(uid, secret);
     let resolver = DnsResolver::new();
-    let network_changed = ObservableEvent::default();
+    let network_changed = no_network_change_events();
     let cdsi_env = STAGING.cdsi;
 
     let confirmation_header_name = cdsi_env

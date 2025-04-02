@@ -66,7 +66,7 @@ impl CdsiLookup {
             user_agent,
             transport_connector,
             endpoints,
-            network_change_event,
+            network_change_event_tx,
             ..
         } = connection_manager;
 
@@ -99,7 +99,7 @@ impl CdsiLookup {
         let connection_resources = ConnectionResources {
             connect_state: connect,
             dns_resolver,
-            network_change_event,
+            network_change_event: &network_change_event_tx.subscribe(),
             confirmation_header_name,
         };
 

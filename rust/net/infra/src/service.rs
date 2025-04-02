@@ -440,11 +440,11 @@ mod test {
     use crate::connection_manager::SingleRouteThrottlingConnectionManager;
     use crate::host::Host;
     use crate::testutil::{
-        ClassifiableTestError, LONG_CONNECTION_TIME, NORMAL_CONNECTION_TIME, TIMEOUT_DURATION,
-        TIME_ADVANCE_VALUE,
+        no_network_change_events, ClassifiableTestError, LONG_CONNECTION_TIME,
+        NORMAL_CONNECTION_TIME, TIMEOUT_DURATION, TIME_ADVANCE_VALUE,
     };
     use crate::timeouts::CONNECTION_ROUTE_MAX_COOLDOWN;
-    use crate::utils::{sleep_and_catch_up, ObservableEvent};
+    use crate::utils::sleep_and_catch_up;
     use crate::{ConnectionParams, HttpRequestDecoratorSeq, RouteType, TransportConnectionParams};
 
     #[derive(Clone, Debug)]
@@ -530,7 +530,7 @@ mod test {
         let manager = SingleRouteThrottlingConnectionManager::new(
             example_connection_params(),
             TIMEOUT_DURATION,
-            &ObservableEvent::default(),
+            &no_network_change_events(),
         );
         let _ = Service::new(connector.clone(), manager, TIMEOUT_DURATION);
         assert_eq!(connector.attempts_made(), 0);
@@ -630,7 +630,7 @@ mod test {
         let manager = SingleRouteThrottlingConnectionManager::new(
             example_connection_params(),
             connection_timeout,
-            &ObservableEvent::default(),
+            &no_network_change_events(),
         );
         let service = Service::new(connector.clone(), manager, service_timeout);
         let res = service.connect().await;
@@ -653,7 +653,7 @@ mod test {
         let manager = SingleRouteThrottlingConnectionManager::new(
             example_connection_params(),
             connection_timeout,
-            &ObservableEvent::default(),
+            &no_network_change_events(),
         );
         let service = Service::new(connector.clone(), manager, service_timeout);
         let res = service.connect().await;
@@ -733,7 +733,7 @@ mod test {
         let manager = SingleRouteThrottlingConnectionManager::new(
             example_connection_params(),
             TIMEOUT_DURATION,
-            &ObservableEvent::default(),
+            &no_network_change_events(),
         );
         let service = Service::new(connector.clone(), manager, TIMEOUT_DURATION);
         (connector, service)

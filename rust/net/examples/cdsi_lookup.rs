@@ -13,7 +13,7 @@ use libsignal_net::cdsi::{CdsiConnection, LookupError, LookupRequest, LookupResp
 use libsignal_net::connect_state::{ConnectState, ConnectionResources, SUGGESTED_CONNECT_CONFIG};
 use libsignal_net::infra::dns::DnsResolver;
 use libsignal_net_infra::route::DirectOrProxyProvider;
-use libsignal_net_infra::utils::ObservableEvent;
+use libsignal_net_infra::testutil::no_network_change_events;
 use libsignal_net_infra::EnableDomainFronting;
 use tokio::io::AsyncBufReadExt as _;
 
@@ -68,7 +68,6 @@ async fn main() {
     };
 
     let cdsi_env = libsignal_net::env::PROD.cdsi;
-    let network_change_event = ObservableEvent::default();
     let resolver = DnsResolver::new();
 
     let connected = {
@@ -81,7 +80,7 @@ async fn main() {
         let connection_resources = ConnectionResources {
             connect_state: &connect_state,
             dns_resolver: &resolver,
-            network_change_event: &network_change_event,
+            network_change_event: &no_network_change_events(),
             confirmation_header_name,
         };
 

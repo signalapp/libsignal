@@ -16,7 +16,7 @@ use libsignal_net_infra::route::{
     WebSocketRouteFragment,
 };
 use libsignal_net_infra::timeouts::ONE_ROUTE_CONNECTION_TIMEOUT;
-use libsignal_net_infra::utils::ObservableEvent;
+use libsignal_net_infra::utils::NetworkChangeEvent;
 use libsignal_net_infra::ws::StreamWithResponseHeaders;
 use libsignal_net_infra::{
     make_ws_config, AsHttpHeader, Connection, EndpointConnection, IpType, TransportInfo,
@@ -134,7 +134,7 @@ pub fn endpoint_connection(
     connection_config: &ConnectionConfig,
     user_agent: &UserAgent,
     include_fallback: bool,
-    network_change_event: &ObservableEvent,
+    network_change_event: &NetworkChangeEvent,
 ) -> EndpointConnection<MultiRouteConnectionManager> {
     let chat_endpoint = PathAndQuery::from_static(crate::env::constants::WEB_SOCKET_PATH);
     let chat_connection_params = if include_fallback {
@@ -365,6 +365,7 @@ pub mod test_support {
     use std::time::Duration;
 
     use libsignal_net_infra::dns::DnsResolver;
+    use libsignal_net_infra::testutil::no_network_change_events;
     use libsignal_net_infra::EnableDomainFronting;
 
     use super::*;
@@ -380,7 +381,6 @@ pub mod test_support {
         enable_domain_fronting: EnableDomainFronting,
         filter_routes: impl Fn(&UnresolvedHttpsServiceRoute) -> bool,
     ) -> Result<ChatConnection, ConnectError> {
-        let network_change_event = ObservableEvent::new();
         let dns_resolver = DnsResolver::new_with_static_fallback(env.static_fallback());
 
         let route_provider = DirectOrProxyProvider::maybe_proxied(
@@ -406,7 +406,7 @@ pub mod test_support {
         let connection_resources = ConnectionResources {
             connect_state: &connect,
             dns_resolver: &dns_resolver,
-            network_change_event: &network_change_event,
+            network_change_event: &no_network_change_events(),
             confirmation_header_name: env
                 .chat_domain_config
                 .connect
@@ -452,6 +452,7 @@ pub(crate) mod test {
         DirectOrProxyRoute, HttpRouteFragment, HttpsTlsRoute, PreconnectingFactory, TcpRoute,
         TlsRoute, TlsRouteFragment, UnresolvedHost, DEFAULT_HTTPS_PORT,
     };
+    use libsignal_net_infra::testutil::no_network_change_events;
     use libsignal_net_infra::ws::WebSocketConnectError;
     use libsignal_net_infra::Alpn;
     use test_case::test_case;
@@ -655,7 +656,7 @@ pub(crate) mod test {
                 CHAT_DOMAIN,
                 LookupResult::localhost(),
             )])),
-            network_change_event: &ObservableEvent::new(),
+            network_change_event: &no_network_change_events(),
             confirmation_header_name: Some(HeaderName::from_static(CONFIRMATION_HEADER)),
         };
 
@@ -741,7 +742,7 @@ pub(crate) mod test {
             },
         }];
 
-        let network_change_event = ObservableEvent::new();
+        let network_change_event = no_network_change_events();
         let make_connection_resources = || ConnectionResources {
             connect_state: &connect_state,
             dns_resolver: &dns_resolver,

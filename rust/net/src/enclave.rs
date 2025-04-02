@@ -18,7 +18,7 @@ use libsignal_net_infra::route::{
     DirectTcpRouteProvider, DomainFrontRouteProvider, HttpsProvider, TlsRouteProvider,
     WebSocketProvider, WebSocketRouteFragment,
 };
-use libsignal_net_infra::utils::ObservableEvent;
+use libsignal_net_infra::utils::NetworkChangeEvent;
 use libsignal_net_infra::ws::WebSocketServiceError;
 use libsignal_net_infra::ws2::attested::{
     AttestedConnection, AttestedConnectionError, AttestedProtocolError,
@@ -262,7 +262,7 @@ impl<E: EnclaveKind> EnclaveEndpointConnection<E, SingleRouteThrottlingConnectio
     pub fn new(
         endpoint: &EnclaveEndpoint<'static, E>,
         connect_timeout: Duration,
-        network_change_event: &ObservableEvent,
+        network_change_event: &NetworkChangeEvent,
     ) -> Self {
         Self {
             endpoint_connection: EndpointConnection {
@@ -286,7 +286,7 @@ impl<E: EnclaveKind> EnclaveEndpointConnection<E, MultiRouteConnectionManager> {
         endpoint: &EnclaveEndpoint<'static, E>,
         connection_params: impl IntoIterator<Item = ConnectionParams>,
         one_route_connect_timeout: Duration,
-        network_change_event: &ObservableEvent,
+        network_change_event: &NetworkChangeEvent,
     ) -> Self {
         Self {
             endpoint_connection: EndpointConnection::new_multi(
@@ -346,6 +346,7 @@ mod test {
     use libsignal_net_infra::errors::TransportConnectError;
     use libsignal_net_infra::host::Host;
     use libsignal_net_infra::service::{ServiceInitializer, ServiceState};
+    use libsignal_net_infra::testutil::no_network_change_events;
     use libsignal_net_infra::ws::{WebSocketConnectError, WebSocketStreamConnector};
     use libsignal_net_infra::{
         Alpn, AsHttpHeader as _, AsyncDuplexStream, HttpRequestDecoratorSeq, RouteType,
@@ -494,7 +495,7 @@ mod test {
         let result = enclave_connect(SingleRouteThrottlingConnectionManager::new(
             fake_connection_params(),
             CONNECT_TIMEOUT,
-            &ObservableEvent::default(),
+            &no_network_change_events(),
         ))
         .await;
         assert_matches!(
@@ -514,7 +515,7 @@ mod test {
             SingleRouteThrottlingConnectionManager::new(
                 fake_connection_params(),
                 CONNECT_TIMEOUT,
-                &ObservableEvent::default(),
+                &no_network_change_events(),
             );
             3
         ]))
@@ -530,7 +531,7 @@ mod test {
             SingleRouteThrottlingConnectionManager::new(
                 fake_connection_params(),
                 CONNECT_TIMEOUT,
-                &ObservableEvent::default(),
+                &no_network_change_events(),
             );
             3
         ]);

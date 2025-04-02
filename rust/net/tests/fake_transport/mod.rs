@@ -23,11 +23,11 @@ use libsignal_net::infra::dns::DnsResolver;
 use libsignal_net::infra::errors::TransportConnectError;
 use libsignal_net::infra::host::Host;
 use libsignal_net::infra::route::{ConnectorFactory, DirectOrProxyProvider, DEFAULT_HTTPS_PORT};
-use libsignal_net::infra::utils::ObservableEvent;
 use libsignal_net::infra::{
     AsyncDuplexStream, DnsSource, EnableDomainFronting, EndpointConnection,
 };
 use libsignal_net_infra::route::{Connector, TransportRoute, UsePreconnect};
+use libsignal_net_infra::testutil::no_network_change_events;
 use tokio::time::Duration;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 use warp::Filter as _;
@@ -175,7 +175,7 @@ impl FakeDeps {
             &chat_domain_config.connect,
             &UserAgent::with_libsignal_version("libsignal test"),
             true,
-            &ObservableEvent::new(),
+            &no_network_change_events(),
         );
 
         let connector_factory =
@@ -220,7 +220,7 @@ impl FakeDeps {
         let connection_resources = ConnectionResources {
             connect_state,
             dns_resolver,
-            network_change_event: &ObservableEvent::new(),
+            network_change_event: &no_network_change_events(),
             confirmation_header_name: None,
         };
 

@@ -10,12 +10,10 @@ use base64::prelude::{Engine as _, BASE64_STANDARD};
 use futures_util::stream::FuturesUnordered;
 use futures_util::StreamExt;
 use http::HeaderValue;
+use tokio::time::Instant;
 
 pub(crate) mod binary_heap;
 pub mod future;
-mod observable_event;
-pub use observable_event::*;
-use tokio::time::Instant;
 pub mod oneshot_broadcast;
 
 /// Constructs the value of the `Authorization` header for the `Basic` auth scheme.
@@ -129,6 +127,9 @@ pub async fn timed<T>(f: impl Future<Output = T>) -> (Duration, T) {
     let finished_at = Instant::now();
     (finished_at - time_at_first_poll, t)
 }
+
+/// The type used by ongoing operations to track network change events.
+pub type NetworkChangeEvent = tokio::sync::watch::Receiver<()>;
 
 #[cfg(any(test, feature = "test-util"))]
 pub mod testutil {
