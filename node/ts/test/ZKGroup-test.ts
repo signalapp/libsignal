@@ -1001,4 +1001,63 @@ describe('ZKGroup', () => {
       );
     });
   });
+
+  it('works with CallLinkSecretParams', () => {
+    // SERVER: generate secret params and derive public params
+    const serverSecretParams =
+      ServerSecretParams.generateWithRandom(TEST_ARRAY_32);
+    const serverPublicParams = serverSecretParams.getPublicParams();
+
+    const aliceAci = Aci.parseFromServiceIdString(
+      '9d0652a3-dcc3-4d11-975f-74d61598733f'
+    );
+    const bobAci = Aci.parseFromServiceIdString(
+      '6838237d-02f6-4098-b110-698253d15961'
+    );
+
+    const callLinkSecretParams =
+      CallLinkSecretParams.deriveFromRootKey(TEST_ARRAY_32_1);
+
+    // CLIENT: encrypt service IDs using the call link secret params
+    const groupCiphertexts = [aliceAci, bobAci].map((aci) =>
+      callLinkSecretParams.encryptUserId(aci)
+    );
+
+    const aliceCiphertext = groupCiphertexts[0];
+
+    // SERVER: create an endorsements response for those ciphertexts using a
+    //   derived key with a fixed expiration
+    const now = Math.floor(Date.now() / 1000);
+    const startOfDay = now - (now % SECONDS_PER_DAY);
+    const expiration = new Date(1000 * (startOfDay + 2 * SECONDS_PER_DAY));
+    const todaysKey = GroupSendDerivedKeyPair.forExpiration(
+      expiration,
+      serverSecretParams
+    );
+    const response = GroupSendEndorsementsResponse.issue(
+      groupCiphertexts,
+      todaysKey
+    );
+
+    // CLIENT: receive the endorsements (using alice as the local user)
+    const receivedEndorsements = response.receiveWithCiphertexts(
+      groupCiphertexts,
+      aliceCiphertext,
+      serverPublicParams
+    );
+
+    // Call toToken with the CallLinkSecretParams and convert it to a full token.
+    // Internally, this decrypts the ciphertext using the CallLinkSecretParams.
+    const token =
+      receivedEndorsements.combinedEndorsement.toToken(callLinkSecretParams);
+    const fullToken = token.toFullToken(expiration);
+
+    const verifyKey = GroupSendDerivedKeyPair.forExpiration(
+      fullToken.getExpiration(),
+      serverSecretParams
+    );
+
+    // Check that the token generated from the CallLinkSecretParams includes bob, the remote user.
+    fullToken.verify([bobAci], verifyKey);
+  });
 });

@@ -207,6 +207,7 @@ export function CallLinkPublicParams_CheckValidContents(paramsBytes: Buffer): vo
 export function CallLinkSecretParams_CheckValidContents(paramsBytes: Buffer): void;
 export function CallLinkSecretParams_DecryptUserId(paramsBytes: Buffer, userId: Serialized<UuidCiphertext>): Buffer;
 export function CallLinkSecretParams_DeriveFromRootKey(rootKey: Buffer): Buffer;
+export function CallLinkSecretParams_EncryptUserId(paramsBytes: Buffer, userId: Buffer): Serialized<UuidCiphertext>;
 export function CallLinkSecretParams_GetPublicParams(paramsBytes: Buffer): Buffer;
 export function Cds2ClientState_New(mrenclave: Buffer, attestationMsg: Buffer, currentTimestamp: Timestamp): SgxClientState;
 export function CdsiLookup_complete(asyncRuntime: Wrapper<TokioAsyncContext>, lookup: Wrapper<CdsiLookup>): CancellablePromise<LookupResponse>;
@@ -277,6 +278,7 @@ export function GroupSecretParams_GetMasterKey(params: Serialized<GroupSecretPar
 export function GroupSecretParams_GetPublicParams(params: Serialized<GroupSecretParams>): Serialized<GroupPublicParams>;
 export function GroupSendDerivedKeyPair_CheckValidContents(bytes: Buffer): void;
 export function GroupSendDerivedKeyPair_ForExpiration(expiration: Timestamp, serverParams: Wrapper<ServerSecretParams>): Buffer;
+export function GroupSendEndorsement_CallLinkParams_ToToken(endorsement: Buffer, callLinkSecretParamsSerialized: Buffer): Buffer;
 export function GroupSendEndorsement_CheckValidContents(bytes: Buffer): void;
 export function GroupSendEndorsement_Combine(endorsements: Buffer[]): Buffer;
 export function GroupSendEndorsement_Remove(endorsement: Buffer, toRemove: Buffer): Buffer;

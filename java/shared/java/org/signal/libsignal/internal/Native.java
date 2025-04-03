@@ -220,6 +220,7 @@ public final class Native {
   public static native void CallLinkSecretParams_CheckValidContents(byte[] paramsBytes) throws Exception;
   public static native byte[] CallLinkSecretParams_DecryptUserId(byte[] paramsBytes, byte[] userId) throws Exception;
   public static native byte[] CallLinkSecretParams_DeriveFromRootKey(byte[] rootKey);
+  public static native byte[] CallLinkSecretParams_EncryptUserId(byte[] paramsBytes, byte[] userId);
   public static native byte[] CallLinkSecretParams_GetPublicParams(byte[] paramsBytes);
 
   public static native long Cds2ClientState_New(byte[] mrenclave, byte[] attestationMsg, long currentTimestamp) throws Exception;
@@ -336,6 +337,7 @@ public final class Native {
   public static native void GroupSendDerivedKeyPair_CheckValidContents(byte[] bytes) throws Exception;
   public static native byte[] GroupSendDerivedKeyPair_ForExpiration(long expiration, long serverParams);
 
+  public static native byte[] GroupSendEndorsement_CallLinkParams_ToToken(byte[] endorsement, byte[] callLinkSecretParamsSerialized);
   public static native void GroupSendEndorsement_CheckValidContents(byte[] bytes) throws Exception;
   public static native byte[] GroupSendEndorsement_Combine(ByteBuffer[] endorsements);
   public static native byte[] GroupSendEndorsement_Remove(byte[] endorsement, byte[] toRemove);

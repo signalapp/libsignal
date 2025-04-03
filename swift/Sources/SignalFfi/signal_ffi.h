@@ -1217,6 +1217,8 @@ SignalFfiError *signal_call_link_secret_params_decrypt_user_id(SignalServiceIdFi
 
 SignalFfiError *signal_call_link_secret_params_derive_from_root_key(SignalOwnedBuffer *out, SignalBorrowedBuffer root_key);
 
+SignalFfiError *signal_call_link_secret_params_encrypt_user_id(unsigned char (*out)[SignalUUID_CIPHERTEXT_LEN], SignalBorrowedBuffer params_bytes, const SignalServiceIdFixedWidthBinaryBytes *user_id);
+
 SignalFfiError *signal_call_link_secret_params_get_public_params(SignalOwnedBuffer *out, SignalBorrowedBuffer params_bytes);
 
 SignalFfiError *signal_cds2_client_state_new(SignalMutPointerSgxClientState *out, SignalBorrowedBuffer mrenclave, SignalBorrowedBuffer attestation_msg, uint64_t current_timestamp);
@@ -1408,6 +1410,8 @@ SignalFfiError *signal_group_secret_params_get_public_params(unsigned char (*out
 SignalFfiError *signal_group_send_derived_key_pair_check_valid_contents(SignalBorrowedBuffer bytes);
 
 SignalFfiError *signal_group_send_derived_key_pair_for_expiration(SignalOwnedBuffer *out, uint64_t expiration, SignalConstPointerServerSecretParams server_params);
+
+SignalFfiError *signal_group_send_endorsement_call_link_params_to_token(SignalOwnedBuffer *out, SignalBorrowedBuffer endorsement, SignalBorrowedBuffer call_link_secret_params_serialized);
 
 SignalFfiError *signal_group_send_endorsement_check_valid_contents(SignalBorrowedBuffer bytes);
 

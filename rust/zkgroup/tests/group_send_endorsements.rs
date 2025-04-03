@@ -69,7 +69,7 @@ fn test_endorsement() {
                 .remove(&endorsements[0]);
 
         let token = combined_endorsements
-            .to_token(&group_secret_params)
+            .to_token(group_secret_params)
             .into_full_token(expiration);
 
         // server verification of the credential presentation
@@ -110,7 +110,7 @@ fn test_endorsement() {
                 .remove(&endorsements[0]);
 
         let token = combined_endorsements
-            .to_token(&group_secret_params)
+            .to_token(group_secret_params)
             .into_full_token(expiration);
 
         // server verification of the credential presentation

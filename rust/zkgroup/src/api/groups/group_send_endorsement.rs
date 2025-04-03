@@ -22,6 +22,7 @@ use zkcredential::attributes::Attribute as _;
 
 use crate::common::array_utils;
 use crate::common::serialization::ReservedByte;
+use crate::crypto::uid_encryption;
 use crate::groups::{GroupSecretParams, UuidCiphertext};
 use crate::{
     crypto, RandomnessBytes, Timestamp, ZkGroupDeserializationFailure, ZkGroupVerificationFailure,
@@ -487,10 +488,10 @@ impl GroupSendEndorsement {
     ///
     /// This can be cached by the client for repeatedly sending to the same recipient,
     /// but must be converted to a GroupSendFullToken before sending it to the server.
-    pub fn to_token(&self, group_params: &GroupSecretParams) -> GroupSendToken {
+    pub fn to_token<T: AsRef<uid_encryption::KeyPair>>(&self, key_pair: T) -> GroupSendToken {
         let client_key =
             zkcredential::endorsements::ClientDecryptionKey::for_first_point_of_attribute(
-                &group_params.uid_enc_key_pair,
+                key_pair.as_ref(),
             );
         let raw_token = self.endorsement.to_token(&client_key);
         GroupSendToken {
