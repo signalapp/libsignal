@@ -31,7 +31,7 @@ export default class BackupAuthCredentialRequestContext extends ByteArray {
     return new BackupAuthCredentialRequestContext(
       Native.BackupAuthCredentialRequestContext_New(
         backupKey,
-        Buffer.from(uuid.parse(aci) as Uint8Array)
+        Buffer.from(uuid.parse(aci))
       )
     );
   }
