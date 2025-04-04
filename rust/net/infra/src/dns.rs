@@ -291,14 +291,14 @@ impl LookupOption {
         match &result {
             Ok(_) => {
                 log::debug!(
-                    "Resolved domain [{}] after {:?}",
+                    "Resolved domain [{}] after {:.3?}",
                     log_safe_domain,
                     started_at.elapsed(),
                 );
             }
             Err(error) => {
                 log::warn!(
-                    "Failed to resolve domain [{}] after {:?}: {}",
+                    "Failed to resolve domain [{}] after {:.3?}: {}",
                     log_safe_domain,
                     started_at.elapsed(),
                     error,

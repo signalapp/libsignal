@@ -78,7 +78,6 @@ assert_impl_all!(MaybeChatConnection: Send, Sync);
 impl UnauthenticatedChatConnection {
     pub async fn connect(connection_manager: &ConnectionManager) -> Result<Self, ConnectError> {
         let inner = establish_chat_connection("unauthenticated", connection_manager, None).await?;
-        log::info!("connected unauthenticated chat");
         Ok(Self {
             inner: MaybeChatConnection::WaitingForListener(
                 tokio::runtime::Handle::current(),

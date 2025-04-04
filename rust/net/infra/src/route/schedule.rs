@@ -152,13 +152,13 @@ impl Display for ScheduleStatus {
             (false, 0) => write!(f, "no more routes"),
             (false, count) => write!(
                 f,
-                "{count} route(s) delayed for another {:?}",
+                "{count} route(s) delayed for another {:.2?}",
                 self.scheduled_route_cooldown
             ),
             (true, 0) => write!(f, "more routes waiting on DNS resolution"),
             (true, count) => write!(
                 f,
-                "{count} route(s) delayed for {:?}, more waiting on DNS resolution",
+                "{count} route(s) delayed for {:.2?}, more waiting on DNS resolution",
                 self.scheduled_route_cooldown
             ),
         }
