@@ -40,7 +40,7 @@ class SgxTests: TestCaseBase {
         for (serviceType, mrenclave, attestationMessage, currentDate) in self.testCases {
             let client = try! SgxTests.build(serviceType: serviceType, mrenclave: mrenclave, attestationMessage: attestationMessage, currentDate: currentDate)
             let initialMessage = client.initialRequest()
-            XCTAssertEqual(48, initialMessage.count, String(describing: serviceType))
+            XCTAssertEqual(serviceType == .svr2 ? 48 : 1632, initialMessage.count, String(describing: serviceType))
         }
     }
 

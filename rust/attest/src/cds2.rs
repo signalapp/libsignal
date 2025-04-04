@@ -7,7 +7,7 @@ use std::collections::HashMap;
 
 use prost::Message;
 
-use crate::constants::ENCLAVE_ID_CDSI_STAGING_AND_PROD;
+use crate::constants::{ENCLAVE_ID_CDSI, ENCLAVE_ID_CDSI_PREQUANTUM};
 use crate::dcap;
 use crate::enclave::{Handshake, HandshakeType, Result};
 use crate::proto::cds2;
@@ -15,10 +15,22 @@ use crate::util::SmallMap;
 
 /// Map from MREnclave to intel SW advisories that are known to be mitigated in the
 /// build with that MREnclave value.
-const ACCEPTABLE_SW_ADVISORIES: &SmallMap<&[u8], &'static [&'static str], 1> = &SmallMap::new([(
-    ENCLAVE_ID_CDSI_STAGING_AND_PROD,
-    &["INTEL-SA-00615", "INTEL-SA-00657"] as &[&str],
-)]);
+const ACCEPTABLE_SW_ADVISORIES: &SmallMap<&[u8], &'static [&'static str], 2> = &SmallMap::new([
+    (
+        ENCLAVE_ID_CDSI,
+        &["INTEL-SA-00615", "INTEL-SA-00657"] as &[&str],
+    ),
+    (
+        ENCLAVE_ID_CDSI_PREQUANTUM,
+        &["INTEL-SA-00615", "INTEL-SA-00657"] as &[&str],
+    ),
+]);
+
+/// Map from MREnclave to pre/post-quantum.
+/// If a MREnclave does not have an entry here, it defaults to using
+/// PostQuantum.
+const PREQUANTUM_OVERRIDE: &SmallMap<&[u8], HandshakeType, 1> =
+    &SmallMap::new([(ENCLAVE_ID_CDSI_PREQUANTUM, HandshakeType::PreQuantum)]);
 
 /// SW advisories known to be mitigated by default. If an MREnclave is provided that
 /// is not contained in `ACCEPTABLE_SW_ADVISORIES`, this will be used
@@ -39,7 +51,9 @@ pub fn new_handshake(
             .get(&mrenclave)
             .unwrap_or(&DEFAULT_SW_ADVISORIES),
         current_time,
-        HandshakeType::PreQuantum,
+        *PREQUANTUM_OVERRIDE
+            .get(&mrenclave)
+            .unwrap_or(&HandshakeType::PostQuantum),
     )?
     .skip_raft_validation())
 }

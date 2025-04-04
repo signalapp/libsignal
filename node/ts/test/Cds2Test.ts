@@ -31,7 +31,7 @@ describe('Cds2Client', () => {
       currentDate
     );
     const initialMessage = cds2Client.initialRequest();
-    assert.lengthOf(initialMessage, 48, 'initial message length');
+    assert.lengthOf(initialMessage, 1632, 'initial message length');
   });
   it('invalid mrenclave', () => {
     const invalidMrenclave = Buffer.from([]);

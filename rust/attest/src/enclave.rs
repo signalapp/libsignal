@@ -52,6 +52,7 @@ impl From<prost::DecodeError> for Error {
     }
 }
 
+#[derive(Clone, Copy)]
 pub enum HandshakeType {
     PreQuantum,
     PostQuantum,

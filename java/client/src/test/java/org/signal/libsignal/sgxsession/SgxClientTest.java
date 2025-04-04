@@ -33,16 +33,19 @@ public class SgxClientTest {
   private byte[] attestationMsg;
   private Instant validInstant;
   private ServiceType serviceType;
+  private int initialMessageSize;
 
   public SgxClientTest(
       byte[] mrenclave,
       byte[] attestationMsg,
       Instant earliestValidInstant,
-      ServiceType serviceType) {
+      ServiceType serviceType,
+      int initialMessageSize) {
     this.mrenclave = mrenclave;
     this.attestationMsg = attestationMsg;
     this.validInstant = earliestValidInstant;
     this.serviceType = serviceType;
+    this.initialMessageSize = initialMessageSize;
   }
 
   @Parameters(name = "{3}")
@@ -58,14 +61,16 @@ public class SgxClientTest {
                 "39d78f17f8aa9a8e9cdaf16595947a057bac21f014d1abfd6a99b2dfd4e18d1d"),
             cds2Handshake,
             Instant.ofEpochMilli(1655857680000L),
-            ServiceType.CDS2
+            ServiceType.CDS2,
+            1632
           },
           {
             Hex.fromStringCondensed(
                 "38e01eff4fe357dc0b0e8ef7a44b4abc5489fbccba3a78780f3872c277f62bf3"),
             svr2Handshake,
             Instant.ofEpochSecond(1741649483),
-            ServiceType.SVR2
+            ServiceType.SVR2,
+            48
           }
         });
   }
@@ -85,7 +90,7 @@ public class SgxClientTest {
   public void testCreateClient() throws AttestationDataException, AttestationFailedException {
     SgxClient client = getClient(mrenclave, attestationMsg, validInstant);
     byte[] initialMessage = client.initialRequest();
-    assertEquals(48, initialMessage.length);
+    assertEquals(this.initialMessageSize, initialMessage.length);
   }
 
   @Test(expected = AttestationDataException.class)
