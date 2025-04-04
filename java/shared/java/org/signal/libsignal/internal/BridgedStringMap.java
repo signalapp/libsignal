@@ -20,7 +20,7 @@ public class BridgedStringMap extends NativeHandleGuard.SimpleOwner {
     Native.BridgedStringMap_Destroy(nativeHandle);
   }
 
-  public String dump() {
+  String dump() {
     return guardedMap(NativeTesting::TESTING_BridgedStringMap_dump_to_json);
   }
 }

@@ -1,3 +1,5 @@
+org.signal.libsignal.internal.BridgedStringMap:
+    24:24:java.lang.String dump()
 org.signal.libsignal.media.GuaranteedSkipInputStream:
     private static final int SKIP_BUFFER_SIZE
 org.signal.libsignal.metadata.SealedSessionCipher:
