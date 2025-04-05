@@ -58,6 +58,16 @@ public class UnidentifiedSenderMessageContent: NativeHandleOwner<SignalMutPointe
     }
 
     public convenience init<Bytes: ContiguousBytes>(
+        bytes: Bytes
+    ) throws {
+        var result = SignalMutPointerUnidentifiedSenderMessageContent()
+        try bytes.withUnsafeBorrowedBuffer {
+            try checkError(signal_unidentified_sender_message_content_deserialize(&result, $0))
+        }
+        self.init(owned: NonNull(result)!)
+    }
+
+    public convenience init<Bytes: ContiguousBytes>(
         message sealedSenderMessage: Bytes,
         identityStore: IdentityKeyStore,
         context: StoreContext
