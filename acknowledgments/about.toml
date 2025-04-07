@@ -162,6 +162,22 @@ path = "LICENSES/MIT.txt"
 checksum = "b85dcd3e453d05982552c52b5fc9e0bdd6d23c6f8e844b984a88af32570b0cc0"
 
 
+# The hax crates are embedded in a larger repo.
+[hax-lib.clarify]
+license = "Apache-2.0"
+
+[[hax-lib.clarify.git]]
+path = "LICENSE"
+checksum = "9a50bad5a51e0ad726ea3a7f4b7b758e1b4d1784e6abefe1367f5bf01e972725"
+
+[hax-lib-macros.clarify]
+license = "Apache-2.0"
+
+[[hax-lib-macros.clarify.git]]
+path = "LICENSE"
+checksum = "9a50bad5a51e0ad726ea3a7f4b7b758e1b4d1784e6abefe1367f5bf01e972725"
+
+
 # The libcrux crates are embedded in a larger repo.
 [libcrux-intrinsics.clarify]
 license = "Apache-2.0"
@@ -288,6 +304,15 @@ path = "LICENSE-MIT"
 checksum = "1c7cf76689c837a68ed8d704994e52a0f2940c087958f860d17f3186afbdcc0c"
 
 
+# ryu has an unusual choice of licenses
+[ryu.clarify]
+license = "Apache-2.0 OR BSL-1.0"
+
+[[ryu.clarify.files]]
+path = "LICENSE-APACHE"
+checksum = "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a"
+
+
 # webpsan is embedded in a larger repo, and has a tag that doesn't match the revision in Cargo
 [webpsan.clarify]
 license = "MIT"
@@ -303,6 +328,41 @@ checksum = "f78d723e5d254b2037aa633b034dfe314caf37ace39727c66271b119027e5730"
 license = "MIT"
 
 [[windows-core.clarify.files]]
+path = "license-mit"
+checksum = "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383"
+
+[windows-implement.clarify]
+license = "MIT"
+
+[[windows-implement.clarify.files]]
+path = "license-mit"
+checksum = "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383"
+
+[windows-interface.clarify]
+license = "MIT"
+
+[[windows-interface.clarify.files]]
+path = "license-mit"
+checksum = "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383"
+
+[windows-link.clarify]
+license = "MIT"
+
+[[windows-link.clarify.files]]
+path = "license-mit"
+checksum = "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383"
+
+[windows-result.clarify]
+license = "MIT"
+
+[[windows-result.clarify.files]]
+path = "license-mit"
+checksum = "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383"
+
+[windows-strings.clarify]
+license = "MIT"
+
+[[windows-strings.clarify.files]]
 path = "license-mit"
 checksum = "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383"
 
