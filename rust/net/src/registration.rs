@@ -295,18 +295,45 @@ mod test {
     use std::str::FromStr as _;
 
     use assert_matches::assert_matches;
+    use futures_util::future::BoxFuture;
+    use futures_util::FutureExt as _;
     use tokio::sync::mpsc;
 
     use super::*;
+    use crate::chat::fake::FakeChatRemote;
+    use crate::chat::{ChatConnection, ConnectError};
     use crate::proto::chat_websocket::WebSocketRequestMessage;
-    use crate::registration::testutil::FakeChatConnect;
+
+    struct ConnectOnlyOnce<C>(std::sync::Mutex<Option<C>>);
+
+    impl<C: ConnectChat> ConnectChat for ConnectOnlyOnce<C> {
+        fn connect_chat(
+            &self,
+            on_disconnect: tokio::sync::oneshot::Sender<std::convert::Infallible>,
+        ) -> BoxFuture<'_, Result<ChatConnection, ConnectError>> {
+            let inner = self
+                .0
+                .lock()
+                .expect("not locked")
+                .take()
+                .expect("only one connect is allowed");
+
+            async move { inner.connect_chat(on_disconnect).await }.boxed()
+        }
+    }
+
+    type FakeChatConnectOnce = ConnectOnlyOnce<crate::registration::testutil::FakeChatConnect>;
+
+    impl FakeChatConnectOnce {
+        fn new(remote_tx: mpsc::UnboundedSender<FakeChatRemote>) -> Self {
+            Self(Some(crate::registration::testutil::FakeChatConnect { remote: remote_tx }).into())
+        }
+    }
 
     #[test_log::test(tokio::test(start_paused = true))]
     async fn create_session() {
         let (fake_chat_remote_tx, mut fake_chat_remote_rx) = mpsc::unbounded_channel();
-        let fake_connect = FakeChatConnect {
-            remote: fake_chat_remote_tx,
-        };
+        let fake_connect = FakeChatConnectOnce::new(fake_chat_remote_tx);
 
         let create_session = RegistrationService::create_session(
             CreateSession {
@@ -323,7 +350,7 @@ mod test {
             ..Default::default()
         };
 
-        tokio::spawn(async move {
+        let remote_respond = async move {
             let fake_chat_remote = fake_chat_remote_rx.recv().await.expect("started connect");
 
             let incoming_request = fake_chat_remote
@@ -352,20 +379,23 @@ mod test {
                     .into_websocket_response(incoming_request.id()),
                 )
                 .expect("sent");
-        });
+            fake_chat_remote
+        };
 
-        let service = create_session.await.expect("can create session");
+        let (service, fake_chat_remote) = tokio::join!(create_session, remote_respond);
+
+        let service = service.expect("can create session");
 
         assert_eq!(**service.session_id(), SESSION_ID);
-        assert_eq!(service.session_state(), &make_session())
+        assert_eq!(service.session_state(), &make_session());
+        // If the remote end goes away too early the client complains.
+        drop(fake_chat_remote);
     }
 
     #[test_log::test(tokio::test(start_paused = true))]
     async fn resume_session() {
         let (fake_chat_remote_tx, mut fake_chat_remote_rx) = mpsc::unbounded_channel();
-        let fake_connect = FakeChatConnect {
-            remote: fake_chat_remote_tx,
-        };
+        let fake_connect = FakeChatConnectOnce::new(fake_chat_remote_tx);
         const SESSION_ID: &str = "abcabc";
 
         let resume_session = RegistrationService::resume_session(
@@ -410,7 +440,7 @@ mod test {
             fake_chat_remote
         };
 
-        let (session_client, _fake_chat_remote) = tokio::join!(resume_session, remote_respond);
+        let (session_client, fake_chat_remote) = tokio::join!(resume_session, remote_respond);
 
         // At this point the client should be connected and can make additional
         // requests.
@@ -419,14 +449,14 @@ mod test {
             session_client.session_id(),
             &SessionId::from_str(SESSION_ID).unwrap()
         );
+        // If the remote end goes away too early the client complains.
+        drop(fake_chat_remote);
     }
 
     #[test_log::test(tokio::test(start_paused = true))]
     async fn resume_session_and_make_requests() {
         let (fake_chat_remote_tx, mut fake_chat_remote_rx) = mpsc::unbounded_channel();
-        let fake_connect = FakeChatConnect {
-            remote: fake_chat_remote_tx,
-        };
+        let fake_connect = FakeChatConnectOnce::new(fake_chat_remote_tx);
         const SESSION_ID: &str = "abcabc";
 
         let resume_session = RegistrationService::resume_session(
@@ -478,7 +508,7 @@ mod test {
 
         let submit_captcha = session_client.submit_captcha("captcha value");
 
-        let answer_submit_captcha = async move {
+        let answer_submit_captcha = async {
             let incoming_request = fake_chat_remote
                 .receive_request()
                 .await
@@ -509,11 +539,11 @@ mod test {
                     .into_websocket_response(1),
                 )
                 .expect("not disconnected");
-            fake_chat_remote
         };
 
-        let (submit_result, _fake_chat_remote) =
-            tokio::join!(submit_captcha, answer_submit_captcha);
+        let (submit_result, ()) = tokio::join!(submit_captcha, answer_submit_captcha);
         assert_matches!(submit_result, Ok(()));
+        // If the remote end goes away too early the client complains.
+        drop(fake_chat_remote);
     }
 }
