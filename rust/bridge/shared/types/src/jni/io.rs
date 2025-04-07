@@ -61,7 +61,7 @@ impl<'a> JniInputStream<'a> {
             env.get_byte_array_region(
                 java_buf,
                 0,
-                zerocopy::FromBytes::mut_slice_from(&mut buf[..amount_read])
+                zerocopy::FromBytes::mut_from_bytes(&mut buf[..amount_read])
                     .expect("types have same alignment"),
             )
             .check_exceptions(env, "read")?;

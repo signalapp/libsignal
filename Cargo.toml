@@ -203,7 +203,7 @@ visibility = "0.1.1"
 warp = "0.3.6"
 webpsan = { version = "0.5.3", default-features = false }
 x25519-dalek = "2.0.0"
-zerocopy = "0.7.34"
+zerocopy = "0.8.24"
 
 [patch.crates-io]
 # When building libsignal, just use our forks so we don't end up with two different versions of the libraries.

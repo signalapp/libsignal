@@ -357,7 +357,7 @@ impl<'storage, 'param: 'storage, 'context: 'param> ArgTypeInfo<'storage, 'param,
     }
     fn load_from(stored: &'storage mut Self::StoredType) -> &'storage [u8] {
         // Deref `stored` to the contained slice of [jbyte] ([i8]), then cast that to [u8].
-        zerocopy::AsBytes::as_bytes(&**stored)
+        zerocopy::IntoBytes::as_bytes(&**stored)
     }
 }
 
@@ -395,7 +395,7 @@ impl<'storage, 'param: 'storage, 'context: 'param> ArgTypeInfo<'storage, 'param,
     }
     fn load_from(stored: &'storage mut Self::StoredType) -> &'storage mut [u8] {
         // Deref `stored` to the contained slice of [jbyte] ([i8]), then cast that to [u8].
-        zerocopy::AsBytes::as_bytes_mut(&mut **stored)
+        zerocopy::IntoBytes::as_mut_bytes(&mut **stored)
     }
 }
 
@@ -817,7 +817,7 @@ impl<'storage, 'param: 'storage, 'context: 'param, const LEN: usize>
     fn load_from(stored: &'storage mut Self::StoredType) -> &'storage [u8; LEN] {
         // Deref `stored` to the contained slice of [jbyte] ([i8]), then cast that to [u8],
         // then convert the fixed-sized array [u8; LEN]
-        zerocopy::AsBytes::as_bytes(&**stored)
+        zerocopy::IntoBytes::as_bytes(&**stored)
             .try_into()
             .expect("checked in construction")
     }

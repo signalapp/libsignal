@@ -15,7 +15,7 @@ use prost::Message;
 use proto::sealed_sender::unidentified_sender_message::message::Type as ProtoMessageType;
 use rand::{CryptoRng, Rng};
 use subtle::ConstantTimeEq;
-use zerocopy::{FromBytes, FromZeroes};
+use zerocopy::{FromBytes, Immutable, KnownLayout};
 
 use crate::{
     crypto, message_encrypt, proto, session_cipher, Aci, CiphertextMessageType, DeviceId,
@@ -572,22 +572,22 @@ impl<'a> UnidentifiedSenderMessage<'a> {
             }
             SEALED_SENDER_V2_MAJOR_VERSION => {
                 /// Uses a flat representation: C || AT || E.pub || ciphertext
+                #[derive(FromBytes, Immutable, KnownLayout)]
                 #[repr(C, packed)]
-                #[derive(FromBytes, FromZeroes)]
                 struct PrefixRepr {
                     encrypted_message_key: [u8; sealed_sender_v2::MESSAGE_KEY_LEN],
                     encrypted_authentication_tag: [u8; sealed_sender_v2::AUTH_TAG_LEN],
                     ephemeral_public: [u8; sealed_sender_v2::PUBLIC_KEY_LEN],
                 }
                 let (prefix, encrypted_message) =
-                    zerocopy::Ref::<_, PrefixRepr>::new_from_prefix(remaining)
-                        .ok_or(SignalProtocolError::InvalidProtobufEncoding)?;
+                    zerocopy::Ref::<_, PrefixRepr>::from_prefix(remaining)
+                        .map_err(|_| SignalProtocolError::InvalidProtobufEncoding)?;
 
                 let PrefixRepr {
                     encrypted_message_key,
                     encrypted_authentication_tag,
                     ephemeral_public,
-                } = prefix.into_ref();
+                } = zerocopy::Ref::into_ref(prefix);
 
                 Ok(Self::V2 {
                     ephemeral_public: PublicKey::from_djb_public_key_bytes(

@@ -60,8 +60,8 @@ pub(crate) fn read_bytes<'a>(bytes: &mut &'a [u8], size: usize) -> &'a [u8] {
 ///
 /// Returns `None` and leaves `bytes` unchanged if it isn't long enough.
 pub(crate) fn read_from_bytes<T: zerocopy::FromBytes>(bytes: &mut &[u8]) -> Option<T> {
-    let front = T::read_from_prefix(bytes)?;
-    *bytes = &bytes[std::mem::size_of::<T>()..];
+    let (front, rest) = T::read_from_prefix(bytes).ok()?;
+    *bytes = rest;
     Some(front)
 }
 
@@ -119,7 +119,7 @@ mod test {
     #[test]
     fn test_read_from_bytes() {
         let mut input: &[u8] = &[1u8, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 3, 0];
-        #[derive(Debug, PartialEq, zerocopy::FromBytes, zerocopy::FromZeroes)]
+        #[derive(Debug, PartialEq, zerocopy::FromBytes)]
         #[repr(C)]
         struct Values {
             one: UInt64LE,

@@ -282,7 +282,7 @@ pub unsafe extern "C" fn signal_hex_encode(
             return Err(NullPointerError.into());
         }
         let output = std::slice::from_raw_parts_mut(output, output_len);
-        let output = zerocopy::AsBytes::as_bytes_mut(output);
+        let output = zerocopy::IntoBytes::as_mut_bytes(output);
         let input = std::slice::from_raw_parts(input, input_len);
         hex::encode_to_slice(input, output).expect("checked above");
         Ok(())

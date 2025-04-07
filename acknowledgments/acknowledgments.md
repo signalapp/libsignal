@@ -1118,7 +1118,7 @@ You should also get your employer (if you work as a programmer) or school, if an
 
 ```
 
-## ring 0.17.13
+## ring 0.17.14
 
 ```
 
@@ -1604,7 +1604,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ```
 
-## libcrux-intrinsics 0.0.2-beta.3, libcrux-ml-kem 0.0.2-alpha.3, libcrux-platform 0.0.2-pre.2, libcrux-sha3 0.0.2-beta.3
+## libcrux-intrinsics 0.0.2, libcrux-ml-kem 0.0.2-alpha.3, libcrux-platform 0.0.2, libcrux-sha3 0.0.2
 
 ```
                                  Apache License
@@ -2006,7 +2006,7 @@ limitations under the License.
 
 ```
 
-## hax-lib-macros 0.1.0, hax-lib 0.1.0, ryu 1.0.20
+## hax-lib-macros 0.2.0, hax-lib 0.2.0, ryu 1.0.20
 
 ```
 Apache License
@@ -2573,7 +2573,7 @@ express Statement of Purpose.
 
 ```
 
-## ring 0.17.13
+## ring 0.17.14
 
 ```
 Copyright 2015-2025 Brian Smith.
@@ -2610,7 +2610,7 @@ THIS SOFTWARE.
 
 ```
 
-## rustls-webpki 0.102.8
+## rustls-webpki 0.102.8, rustls-webpki 0.103.1
 
 ```
 Except as otherwise noted, this project is licensed under the following
@@ -2635,7 +2635,7 @@ third-party/chromium/LICENSE.
 
 ```
 
-## windows-core 0.52.0, windows-sys 0.45.0, windows-sys 0.52.0, windows-sys 0.59.0, windows-targets 0.42.2, windows-targets 0.52.6, windows_aarch64_msvc 0.42.2, windows_aarch64_msvc 0.52.6, windows_x86_64_gnu 0.52.6, windows_x86_64_msvc 0.42.2, windows_x86_64_msvc 0.52.6
+## windows-core 0.61.0, windows-sys 0.45.0, windows-sys 0.52.0, windows-sys 0.59.0, windows-targets 0.42.2, windows-targets 0.52.6, windows_aarch64_msvc 0.42.2, windows_aarch64_msvc 0.52.6, windows_x86_64_gnu 0.52.6, windows_x86_64_msvc 0.42.2, windows_x86_64_msvc 0.52.6
 
 ```
     MIT License
@@ -2876,7 +2876,7 @@ DEALINGS IN THE SOFTWARE.
 
 ```
 
-## backtrace 0.3.74, cc 1.2.16, cfg-if 1.0.0, cmake 0.1.48, jobserver 0.1.32, openssl-probe 0.1.6, pkg-config 0.3.32, rustc-demangle 0.1.24, scoped-tls 1.0.1, socket2 0.5.8
+## backtrace 0.3.74, cc 1.2.18, cfg-if 1.0.0, cmake 0.1.48, jobserver 0.1.33, openssl-probe 0.1.6, pkg-config 0.3.32, rustc-demangle 0.1.24, scoped-tls 1.0.1, socket2 0.5.9
 
 ```
 Copyright (c) 2014 Alex Crichton
@@ -2939,7 +2939,7 @@ DEALINGS IN THE SOFTWARE.
 
 ```
 
-## libz-sys 1.1.21
+## libz-sys 1.1.22
 
 ```
 Copyright (c) 2014 Alex Crichton
@@ -2996,7 +2996,7 @@ THE SOFTWARE.
 
 ```
 
-## errno 0.3.10
+## errno 0.3.11
 
 ```
 Copyright (c) 2014 Chris Wong
@@ -3085,7 +3085,7 @@ DEALINGS IN THE SOFTWARE.
 
 ```
 
-## bitflags 2.9.0, glob 0.3.2, log 0.4.26, num-derive 0.4.2, num-integer 0.1.46, num-traits 0.2.19, range-map 0.2.0, regex-automata 0.4.9, regex-syntax 0.8.5, regex 1.11.1
+## bitflags 2.9.0, glob 0.3.2, log 0.4.27, num-derive 0.4.2, num-integer 0.1.46, num-traits 0.2.19, range-map 0.2.0, regex-automata 0.4.9, regex-syntax 0.8.5, regex 1.11.1
 
 ```
 Copyright (c) 2014 The Rust Project Developers
@@ -3116,7 +3116,7 @@ DEALINGS IN THE SOFTWARE.
 
 ```
 
-## uuid 1.15.1
+## uuid 1.16.0
 
 ```
 Copyright (c) 2014 The Rust Project Developers
@@ -3226,7 +3226,7 @@ THE SOFTWARE.
 
 ```
 
-## libc 0.2.170
+## libc 0.2.171
 
 ```
 Copyright (c) 2014-2020 The Rust Project Developers
@@ -3282,7 +3282,7 @@ THE SOFTWARE.
 
 ```
 
-## flate2 1.1.0
+## flate2 1.1.1
 
 ```
 Copyright (c) 2014-2025 Alex Crichton
@@ -3338,7 +3338,7 @@ THE SOFTWARE.
 
 ```
 
-## either 1.15.0, itertools 0.10.5, itertools 0.14.0, petgraph 0.7.1, serde_with 3.12.0, serde_with_macros 3.12.0
+## either 1.15.0, itertools 0.13.0, itertools 0.14.0, petgraph 0.7.1, serde_with 3.12.0, serde_with_macros 3.12.0
 
 ```
 Copyright (c) 2015
@@ -3419,7 +3419,7 @@ SOFTWARE.
 
 ```
 
-## tempfile 3.18.0
+## tempfile 3.19.1
 
 ```
 Copyright (c) 2015 Steven Allen
@@ -3970,7 +3970,7 @@ DEALINGS IN THE SOFTWARE.
 
 ```
 
-## rustls-native-certs 0.8.1, rustls-pemfile 2.2.0, rustls 0.22.4, rustls 0.23.23
+## rustls-native-certs 0.8.1, rustls-pemfile 2.2.0, rustls 0.22.4, rustls 0.23.25
 
 ```
 Copyright (c) 2016 Joseph Birr-Pixton <jpixton@gmail.com>
@@ -4176,7 +4176,7 @@ DEALINGS IN THE SOFTWARE.
 
 ```
 
-## indexmap 2.7.1
+## indexmap 2.9.0
 
 ```
 Copyright (c) 2016--2017
@@ -4620,7 +4620,7 @@ DEALINGS IN THE SOFTWARE.
 
 ```
 
-## http 0.2.12, http 1.2.0
+## http 0.2.12, http 1.3.1
 
 ```
 Copyright (c) 2017 http-rs authors
@@ -4775,7 +4775,7 @@ DEALINGS IN THE SOFTWARE.
 
 ```
 
-## smallvec 1.14.0
+## smallvec 1.15.0
 
 ```
 Copyright (c) 2018 The Servo Project Developers
@@ -5041,10 +5041,42 @@ DEALINGS IN THE SOFTWARE.
 
 ```
 
-## getrandom 0.2.15, getrandom 0.3.1
+## getrandom 0.2.15
 
 ```
 Copyright (c) 2018-2024 The rust-random Project Developers
+Copyright (c) 2014 The Rust Project Developers
+
+Permission is hereby granted, free of charge, to any
+person obtaining a copy of this software and associated
+documentation files (the "Software"), to deal in the
+Software without restriction, including without
+limitation the rights to use, copy, modify, merge,
+publish, distribute, sublicense, and/or sell copies of
+the Software, and to permit persons to whom the Software
+is furnished to do so, subject to the following
+conditions:
+
+The above copyright notice and this permission notice
+shall be included in all copies or substantial portions
+of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF
+ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED
+TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT
+SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
+IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+DEALINGS IN THE SOFTWARE.
+
+```
+
+## getrandom 0.3.2
+
+```
+Copyright (c) 2018-2025 The rust-random Project Developers
 Copyright (c) 2014 The Rust Project Developers
 
 Permission is hereby granted, free of charge, to any
@@ -5104,7 +5136,7 @@ DEALINGS IN THE SOFTWARE.
 
 ```
 
-## http-body-util 0.1.2, http-body 0.4.6
+## http-body 0.4.6
 
 ```
 Copyright (c) 2019 Hyper Contributors
@@ -5253,7 +5285,7 @@ support library is itself covered by the above license.
 
 ```
 
-## ppv-lite86 0.2.20
+## ppv-lite86 0.2.21
 
 ```
 Copyright (c) 2019 The CryptoCorrosion Contributors
@@ -5533,7 +5565,38 @@ DEALINGS IN THE SOFTWARE.
 
 ```
 
-## iana-time-zone 0.1.61
+## http-body-util 0.1.3
+
+```
+Copyright (c) 2019-2025 Sean McArthur & Hyper Contributors
+
+Permission is hereby granted, free of charge, to any
+person obtaining a copy of this software and associated
+documentation files (the "Software"), to deal in the
+Software without restriction, including without
+limitation the rights to use, copy, modify, merge,
+publish, distribute, sublicense, and/or sell copies of
+the Software, and to permit persons to whom the Software
+is furnished to do so, subject to the following
+conditions:
+
+The above copyright notice and this permission notice
+shall be included in all copies or substantial portions
+of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF
+ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED
+TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT
+SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
+IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+DEALINGS IN THE SOFTWARE.
+
+```
+
+## iana-time-zone 0.1.63
 
 ```
 Copyright (c) 2020 Andrew D. Straw
@@ -5783,31 +5846,6 @@ DEALINGS IN THE SOFTWARE.
 
 ```
 
-## deranged 0.3.11
-
-```
-Copyright (c) 2022 Jacob Pratt et al.
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-
-```
-
 ## openssl-macros 0.1.1
 
 ```
@@ -5996,10 +6034,10 @@ SOFTWARE.
 
 ```
 
-## hyper-util 0.1.10
+## hyper-util 0.1.11
 
 ```
-Copyright (c) 2023 Sean McArthur
+Copyright (c) 2023-2025 Sean McArthur
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -6021,7 +6059,32 @@ THE SOFTWARE.
 
 ```
 
-## anstream 0.6.18, anstyle-query 1.1.2, clap 4.5.31, colorchoice 1.0.3, env_filter 0.1.3, env_logger 0.11.7, is_terminal_polyfill 1.70.1, toml_datetime 0.6.8, toml_edit 0.22.24
+## deranged 0.4.0
+
+```
+Copyright (c) 2024 Jacob Pratt et al.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+```
+
+## anstream 0.6.18, anstyle-query 1.1.2, clap 4.5.35, colorchoice 1.0.3, env_filter 0.1.3, env_logger 0.11.8, is_terminal_polyfill 1.70.1, toml_datetime 0.6.8, toml_edit 0.22.24
 
 ```
 Copyright (c) Individual contributors
@@ -6046,7 +6109,7 @@ SOFTWARE.
 
 ```
 
-## time-core 0.1.3, time 0.3.39
+## time-core 0.1.4, time 0.3.41
 
 ```
 Copyright (c) Jacob Pratt et al.
@@ -6203,7 +6266,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 ```
 
-## zerocopy-derive 0.7.35, zerocopy 0.7.35
+## zerocopy-derive 0.8.24, zerocopy 0.8.24
 
 ```
 Copyright 2023 The Fuchsia Authors
@@ -6293,7 +6356,7 @@ SOFTWARE.
 
 ```
 
-## scroll_derive 0.12.0
+## scroll_derive 0.12.1
 
 ```
 MIT License
@@ -6401,7 +6464,7 @@ SOFTWARE.
 
 ```
 
-## darling 0.20.10, darling_core 0.20.10, darling_macro 0.20.10
+## darling 0.20.11, darling_core 0.20.11, darling_macro 0.20.11
 
 ```
 MIT License
@@ -6806,7 +6869,7 @@ SOFTWARE.
 
 ```
 
-## rustls-platform-verifier-android 0.1.1, rustls-platform-verifier 0.5.0
+## rustls-platform-verifier-android 0.1.1, rustls-platform-verifier 0.5.1
 
 ```
 MIT License
@@ -6860,7 +6923,7 @@ SOFTWARE.
 
 ```
 
-## cesu8 1.1.0, pqcrypto-internals 0.2.10, pqcrypto-kyber 0.7.9, pqcrypto-kyber 0.8.1, pqcrypto-traits 0.3.5, windows-link 0.1.0
+## cesu8 1.1.0, pqcrypto-internals 0.2.10, pqcrypto-kyber 0.7.9, pqcrypto-kyber 0.8.1, pqcrypto-traits 0.3.5, windows-implement 0.60.0, windows-interface 0.59.1, windows-link 0.1.1, windows-result 0.3.2, windows-strings 0.4.0
 
 ```
 MIT License
@@ -6884,7 +6947,7 @@ USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ```
 
-## tokio-stream 0.1.17, tokio-util 0.7.13, tokio 1.43.0
+## tokio-stream 0.1.17, tokio-util 0.7.14, tokio 1.44.2
 
 ```
 MIT License
@@ -6938,7 +7001,7 @@ SOFTWARE.
 
 ```
 
-## miniz_oxide 0.8.5
+## miniz_oxide 0.8.7
 
 ```
 MIT License
@@ -6994,7 +7057,7 @@ SOFTWARE.
 
 ```
 
-## curve25519-dalek-derive 0.1.1, adler2 2.0.0, anyhow 1.0.97, async-trait 0.1.87, atomic-waker 1.1.2, auto_enums 0.8.7, derive_utils 0.15.0, displaydoc 0.2.5, dyn-clone 1.0.19, fastrand 2.3.0, home 0.5.9, itoa 1.0.15, linkme-impl 0.3.32, linkme 0.3.32, linux-raw-sys 0.4.15, linux-raw-sys 0.9.2, minimal-lexical 0.2.1, num_enum 0.7.3, num_enum_derive 0.7.3, once_cell 1.20.3, paste 1.0.15, pin-project-internal 1.1.10, pin-project-lite 0.2.16, pin-project 1.1.10, prettyplease 0.2.30, proc-macro-crate 3.3.0, proc-macro2 1.0.94, quote 1.0.39, rustc-hash 1.1.0, rustix 0.38.44, rustix 1.0.1, rustversion 1.0.20, semver 1.0.26, send_wrapper 0.6.0, serde 1.0.218, serde_derive 1.0.218, serde_json 1.0.140, syn-mid 0.6.0, syn 2.0.99, thiserror-impl 1.0.69, thiserror-impl 2.0.12, thiserror 1.0.69, thiserror 2.0.12, unicode-ident 1.0.18, utf-8 0.7.6
+## curve25519-dalek-derive 0.1.1, adler2 2.0.0, anyhow 1.0.97, async-trait 0.1.88, atomic-waker 1.1.2, auto_enums 0.8.7, derive_utils 0.15.0, displaydoc 0.2.5, dyn-clone 1.0.19, fastrand 2.3.0, home 0.5.9, itoa 1.0.15, linkme-impl 0.3.32, linkme 0.3.32, linux-raw-sys 0.4.15, linux-raw-sys 0.9.3, minimal-lexical 0.2.1, num_enum 0.7.3, num_enum_derive 0.7.3, once_cell 1.21.3, paste 1.0.15, pin-project-internal 1.1.10, pin-project-lite 0.2.16, pin-project 1.1.10, prettyplease 0.2.32, proc-macro-crate 3.3.0, proc-macro2 1.0.94, quote 1.0.40, rustc-hash 1.1.0, rustix 0.38.44, rustix 1.0.5, rustversion 1.0.20, semver 1.0.26, send_wrapper 0.6.0, serde 1.0.219, serde_derive 1.0.219, serde_json 1.0.140, syn-mid 0.6.0, syn 2.0.100, thiserror-impl 1.0.69, thiserror-impl 2.0.12, thiserror 1.0.69, thiserror 2.0.12, unicode-ident 1.0.18, utf-8 0.7.6
 
 ```
 Permission is hereby granted, free of charge, to any
@@ -7023,7 +7086,7 @@ DEALINGS IN THE SOFTWARE.
 
 ```
 
-## winnow 0.7.3
+## winnow 0.7.4
 
 ```
 Permission is hereby granted, free of charge, to any person obtaining
@@ -7179,7 +7242,7 @@ THE SOFTWARE.
 
 ```
 
-## aho-corasick 1.1.3, byteorder 1.5.0, jiff 0.2.4, memchr 2.7.4, walkdir 2.5.0
+## aho-corasick 1.1.3, byteorder 1.5.0, jiff 0.2.5, memchr 2.7.4, walkdir 2.5.0
 
 ```
 The MIT License (MIT)
@@ -7344,7 +7407,7 @@ SOFTWARE.
 
 ```
 
-## clap_builder 4.5.31, clap_derive 4.5.28, clap_lex 0.7.4
+## clap_builder 4.5.35, clap_derive 4.5.32, clap_lex 0.7.4
 
 ```
 The MIT License (MIT)
@@ -7479,7 +7542,7 @@ THE SOFTWARE.
 
 ```
 
-## async-compression 0.4.20
+## async-compression 0.4.22
 
 ```
 The MIT License (MIT)
@@ -7836,7 +7899,7 @@ authorization of the copyright holder.
 
 ```
 
-## icu_collections 1.5.0, icu_locid 1.5.0, icu_locid_transform 1.5.0, icu_locid_transform_data 1.5.0, icu_normalizer 1.5.0, icu_normalizer_data 1.5.0, icu_properties 1.5.1, icu_properties_data 1.5.0, icu_provider 1.5.0, icu_provider_macros 1.5.0, litemap 0.7.4, tinystr 0.7.6, writeable 0.5.5, yoke-derive 0.7.5, yoke 0.7.5, zerofrom-derive 0.1.5, zerofrom 0.1.5, zerovec-derive 0.10.3, zerovec 0.10.4
+## icu_collections 1.5.0, icu_locid 1.5.0, icu_locid_transform 1.5.0, icu_locid_transform_data 1.5.1, icu_normalizer 1.5.0, icu_normalizer_data 1.5.1, icu_properties 1.5.1, icu_properties_data 1.5.1, icu_provider 1.5.0, icu_provider_macros 1.5.0, litemap 0.7.4, tinystr 0.7.6, writeable 0.5.5, yoke-derive 0.7.5, yoke 0.7.5, zerofrom-derive 0.1.5, zerofrom 0.1.5, zerovec-derive 0.10.3, zerovec 0.10.4
 
 ```
 UNICODE LICENSE V3
