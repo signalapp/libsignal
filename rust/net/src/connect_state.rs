@@ -20,8 +20,8 @@ use libsignal_net_infra::route::{
     ComposedConnector, ConnectError, ConnectionOutcomeParams, ConnectionOutcomes, Connector,
     ConnectorFactory, DelayBasedOnTransport, DescribeForLog, DescribedRouteConnector,
     DirectOrProxy, HttpRouteFragment, InterfaceChangedOr, InterfaceMonitor, LoggingConnector,
-    ResolveHostnames, ResolveWithSavedDescription, ResolvedRoute, RouteProvider,
-    RouteProviderContext, RouteProviderExt as _, RouteResolver, ThrottlingConnector,
+    ResettingConnectionOutcomes, ResolveHostnames, ResolveWithSavedDescription, ResolvedRoute,
+    RouteProvider, RouteProviderContext, RouteProviderExt as _, RouteResolver, ThrottlingConnector,
     TransportRoute, UnresolvedRouteDescription, UnresolvedTransportRoute,
     UnresolvedWebsocketServiceRoute, UsePreconnect, UsesTransport, VariableTlsTimeoutConnector,
     WebSocketRouteFragment, WebSocketServiceRoute,
@@ -315,7 +315,10 @@ impl<TC> ConnectionResources<'_, TC> {
             network_interface_poll_interval,
             post_route_change_connect_timeout,
         );
-        let delay_policy = DelayBasedOnTransport(attempts_record);
+        let delay_policy = DelayBasedOnTransport(ResettingConnectionOutcomes::new(
+            attempts_record,
+            network_change_event,
+        ));
 
         let start = Instant::now();
         let connect = crate::infra::route::connect(
@@ -605,8 +608,9 @@ mod test {
     use libsignal_net_infra::host::Host;
     use libsignal_net_infra::route::testutils::ConnectFn;
     use libsignal_net_infra::route::{
-        DirectOrProxyRoute, HttpsTlsRoute, TcpRoute, TlsRoute, TlsRouteFragment, UnresolvedHost,
-        UnresolvedTransportRoute, WebSocketRoute,
+        AttemptOutcome, DirectOrProxyRoute, HttpsTlsRoute, TcpRoute, TlsRoute, TlsRouteFragment,
+        UnresolvedHost, UnresolvedTransportRoute, UnsuccessfulOutcome, WebSocketRoute,
+        HAPPY_EYEBALLS_DELAY,
     };
     use libsignal_net_infra::testutil::no_network_change_events;
     use libsignal_net_infra::{Alpn, DnsSource, RouteType};
@@ -835,6 +839,86 @@ mod test {
                 )
             )))
         );
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn cooldowns_reset_on_network_change_even_during_connect() {
+        // This doesn't actually matter since we're using a fake connector, but
+        // using the real route type is easier than trying to add yet more
+        // generic parameters.
+        let route = FAKE_WEBSOCKET_ROUTES[0].clone();
+        let start = Instant::now();
+
+        let ws_connector = ConnectFn(|(), route, _log_tag| std::future::ready(Ok(route)));
+        let bad_ip = ip_addr!(v4, "192.0.2.1");
+        let good_ip = ip_addr!(v4, "192.0.2.2");
+        let resolver = DnsResolver::new_from_static_map(HashMap::from([(
+            FAKE_HOST_NAME,
+            LookupResult::new(DnsSource::Static, vec![bad_ip, good_ip], vec![]),
+        )]));
+
+        let fake_transport_connector = ConnectFn(move |(), route: TransportRoute, _| {
+            std::future::ready(if *route.immediate_target() == bad_ip {
+                Err(WebSocketConnectError::Timeout)
+            } else {
+                Ok(())
+            })
+        });
+
+        let mut state = ConnectState {
+            connect_timeout: Duration::MAX,
+            network_interface_poll_interval: Duration::MAX,
+            post_route_change_connect_timeout: Duration::MAX,
+            route_resolver: RouteResolver::default(),
+            attempts_record: ConnectionOutcomes::new(SUGGESTED_CONNECT_PARAMS),
+            make_transport_connector: fake_transport_connector,
+            route_provider_context: Default::default(),
+        };
+
+        let past_failure = AttemptOutcome {
+            started: start,
+            result: Err(UnsuccessfulOutcome),
+        };
+        state.attempts_record.apply_outcome_updates(
+            [
+                (
+                    route.transport_part().clone().resolve(|_| bad_ip.into()),
+                    past_failure,
+                ),
+                (
+                    route.transport_part().clone().resolve(|_| good_ip.into()),
+                    past_failure,
+                ),
+            ],
+            start,
+        );
+
+        let (network_change_tx, network_change_rx) = tokio::sync::watch::channel(());
+
+        let connection_resources = ConnectionResources {
+            connect_state: &state.into(),
+            dns_resolver: &resolver,
+            network_change_event: &network_change_rx,
+            confirmation_header_name: None,
+        };
+
+        let mut connect = std::pin::pin!(connection_resources.connect_ws(
+            vec![route.clone()],
+            ws_connector,
+            "test".into(),
+        ));
+
+        let network_change_delay = Duration::from_millis(500);
+        _ = tokio::time::timeout(network_change_delay, connect.as_mut())
+            .await
+            .expect_err("should not be ready yet");
+
+        network_change_tx.send_replace(());
+        let result = connect.await;
+
+        let (connection, _info) = result.expect("succeeded");
+        assert_eq!(connection, (route.fragment, route.inner.fragment));
+        assert_eq!(start.elapsed(), network_change_delay + HAPPY_EYEBALLS_DELAY);
     }
 
     #[tokio::test(start_paused = true)]

@@ -943,13 +943,12 @@ mod test {
             ("G", ip_addr!(v6, "3fff::7")),
         ];
         let (connector, mut connection_responders) = FakeConnector::new();
-        let outcomes = NoDelay;
         let (resolver, mut resolution_responders) = FakeResolver::new();
 
         let _connection_task = tokio::spawn(async move {
             connect(
                 &RouteResolver::default(),
-                &outcomes,
+                NoDelay,
                 HOSTNAMES
                     .iter()
                     .map(|(h, _addr)| FakeRoute(UnresolvedHost::from(Arc::from(*h)))),
@@ -1017,7 +1016,6 @@ mod test {
         ];
 
         let (connector, mut connection_responders) = FakeConnector::<FakeRoute<IpAddr>>::new();
-        let outcomes = NoDelay;
         let (resolver, mut resolution_responders) = FakeResolver::new();
 
         const SUCCESSFUL_ROUTE_INDEX: usize = 4;
@@ -1050,7 +1048,7 @@ mod test {
 
         let (result, updates) = connect(
             &RouteResolver::default(),
-            &outcomes,
+            NoDelay,
             HOSTNAMES
                 .iter()
                 .map(|(h, _addr)| FakeRoute(UnresolvedHost::from(Arc::from(*h)))),
@@ -1103,7 +1101,6 @@ mod test {
         ];
 
         let (connector, mut connection_responders) = FakeConnector::<FakeRoute<IpAddr>>::new();
-        let outcomes = NoDelay;
         let (resolver, mut resolution_responders) = FakeResolver::new();
 
         let connect_task = tokio::spawn(async move {
@@ -1129,7 +1126,7 @@ mod test {
 
         let (result, _updates) = connect(
             &RouteResolver::default(),
-            &outcomes,
+            NoDelay,
             HOSTNAMES
                 .iter()
                 .map(|(h, _addr)| FakeRoute(UnresolvedHost::from(Arc::from(*h)))),

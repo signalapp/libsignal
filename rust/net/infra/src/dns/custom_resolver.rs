@@ -179,10 +179,10 @@ where
             .cloned()
             .collect();
 
-        let attempts_record_snapshot = self.attempts_record.read().await.clone();
+        let mut attempts_record_snapshot = self.attempts_record.read().await.clone();
         let (result, updates) = crate::route::connect_resolved(
             routes,
-            &attempts_record_snapshot,
+            &mut attempts_record_snapshot,
             connector,
             (),
             "dns".into(),

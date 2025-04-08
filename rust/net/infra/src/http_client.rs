@@ -279,7 +279,7 @@ mod test {
         max_response_size: usize,
         log_tag: &Arc<str>,
     ) -> Result<AggregatingHttp2Client, HttpError> {
-        let outcome_record_snapshot = outcome_record.read().await.clone();
+        let mut outcome_record_snapshot = outcome_record.read().await.clone();
         let tls_connector = crate::route::ComposedConnector::new(
             ThrottlingConnector::new(crate::tcp_ssl::StatelessTls, 1),
             crate::tcp_ssl::StatelessTcp,
@@ -290,7 +290,7 @@ mod test {
         };
         let (result, updates) = crate::route::connect_resolved(
             targets.into_iter().collect(),
-            &outcome_record_snapshot,
+            &mut outcome_record_snapshot,
             connector,
             (),
             log_tag.clone(),

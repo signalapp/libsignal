@@ -22,6 +22,7 @@ use crate::dns::DnsError;
 use crate::route::{ResolveHostnames, ResolvedRoute, Resolver, TransportRoute, UsesTransport};
 use crate::utils::binary_heap::{MinKeyValueQueue, Queue};
 use crate::utils::future::SomeOrPending;
+use crate::utils::NetworkChangeEvent;
 
 /// Resolves routes with domain names to equivalent routes with IP addresses.
 ///
@@ -36,6 +37,15 @@ pub struct RouteResolver {
 pub trait RouteDelayPolicy<R> {
     /// Given a route, how much should it be delayed by?
     fn compute_delay(&self, route: &R, now: Instant) -> Duration;
+
+    /// Produces a future that completes when the RouteDelayPolicy wants to indicate that its
+    /// previous delays are no longer accurate.
+    ///
+    /// This future should be "cancel-safe"; if it's ready but not polled to completion, the next
+    /// call to `wants_recalculation` should produce a ready future immediately.
+    fn wants_recalculation(&mut self) -> impl Future<Output = ()> + '_ {
+        std::future::pending()
+    }
 }
 
 /// Metadata about a resolved route.
@@ -205,6 +215,7 @@ where
         enum Event<T> {
             PulledFromResolver(T),
             ReturnNextIndividualRoute,
+            RecalculateDelays,
         }
 
         let mut resolver_stream =
@@ -227,6 +238,7 @@ where
             let event = tokio::select! {
                 () = SomeOrPending(next_from_individual_routes) => Event::ReturnNextIndividualRoute,
                 route = SomeOrPending(pull_from_resolver_if_not_terminated) => Event::PulledFromResolver(route),
+                () = scoring_policy.wants_recalculation() => Event::RecalculateDelays,
             };
 
             match event {
@@ -259,6 +271,17 @@ where
                     // We know for sure the resolver stream is terminated. Start
                     // the top of the loop again so we can check if the two
                     // queues are empty and we need to exit.
+                    continue;
+                }
+                Event::RecalculateDelays => {
+                    let now = Instant::now();
+                    delayed_individual_routes.recalculate_keys(|key, route| {
+                        let delay = HAPPY_EYEBALLS_DELAY
+                            * u32::try_from(key.resolved_index).unwrap_or(u32::MAX)
+                            + scoring_policy.compute_delay(route, now);
+                        key.time = now + delay;
+                    });
+                    // Start over with our new delays.
                     continue;
                 }
                 Event::ReturnNextIndividualRoute => {
@@ -364,9 +387,12 @@ impl<R: Hash + Eq + Clone> ConnectionOutcomes<R> {
     }
 }
 
-impl<P: RouteDelayPolicy<R>, R> RouteDelayPolicy<R> for &P {
+impl<P: RouteDelayPolicy<R>, R> RouteDelayPolicy<R> for &mut P {
     fn compute_delay(&self, route: &R, now: Instant) -> Duration {
         P::compute_delay(self, route, now)
+    }
+    fn wants_recalculation(&mut self) -> impl Future<Output = ()> + '_ {
+        P::wants_recalculation(self)
     }
 }
 
@@ -479,6 +505,49 @@ where
     fn compute_delay(&self, route: &R, now: Instant) -> Duration {
         self.0.compute_delay(route.transport_part(), now)
     }
+    fn wants_recalculation(&mut self) -> impl Future<Output = ()> + '_ {
+        self.0.wants_recalculation()
+    }
+}
+
+/// A wrapper around [`ConnectionOutcomes`] that turns into [`NoDelay`](super::NoDelay) on a
+/// [`NetworkChangeEvent`].
+pub struct ResettingConnectionOutcomes<R> {
+    outcomes: Option<ConnectionOutcomes<R>>,
+    reset_signal: NetworkChangeEvent,
+}
+
+impl<R> ResettingConnectionOutcomes<R> {
+    pub fn new(outcomes: ConnectionOutcomes<R>, reset_signal: &NetworkChangeEvent) -> Self {
+        Self {
+            outcomes: Some(outcomes),
+            reset_signal: reset_signal.clone(),
+        }
+    }
+}
+
+impl<R: Eq + Hash> RouteDelayPolicy<R> for ResettingConnectionOutcomes<R> {
+    fn compute_delay(&self, route: &R, now: Instant) -> Duration {
+        let Some(outcomes) = &self.outcomes else {
+            return Duration::ZERO;
+        };
+        outcomes.compute_delay(route, now)
+    }
+
+    async fn wants_recalculation(&mut self) {
+        if self.outcomes.is_none() {
+            // We only report that we want recalculation if anything would change.
+            () = std::future::pending().await;
+        }
+        match self.reset_signal.changed().await {
+            Ok(()) => {}
+            Err(_) => {
+                // If the sender for the reset signal dropped, we'll never want recalculation.
+                () = std::future::pending().await;
+            }
+        }
+        self.outcomes = None;
+    }
 }
 
 #[derive(Copy, Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
@@ -513,6 +582,7 @@ impl<S: FusedStream<Item = (A, B)>, A, B> FusedStream for SwapPairStream<S> {
     }
 }
 
+#[cfg_attr(feature = "test-util", visibility::make(pub))]
 const HAPPY_EYEBALLS_DELAY: Duration = Duration::from_millis(300);
 
 /// A group of resolved routes that came from the same unresolved route.
