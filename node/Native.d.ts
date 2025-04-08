@@ -566,13 +566,19 @@ export function TESTING_FakeChatRemoteEnd_InjectConnectionInterrupted(chat: Wrap
 export function TESTING_FakeChatRemoteEnd_ReceiveIncomingRequest(asyncRuntime: Wrapper<TokioAsyncContext>, chat: Wrapper<FakeChatRemoteEnd>): CancellablePromise<FakeChatSentRequest | null>;
 export function TESTING_FakeChatRemoteEnd_SendRawServerRequest(chat: Wrapper<FakeChatRemoteEnd>, bytes: Buffer): void;
 export function TESTING_FakeChatRemoteEnd_SendRawServerResponse(chat: Wrapper<FakeChatRemoteEnd>, bytes: Buffer): void;
+export function TESTING_FakeChatRemoteEnd_SendServerResponse(chat: Wrapper<FakeChatRemoteEnd>, response: Wrapper<FakeChatResponse>): void;
+export function TESTING_FakeChatResponse_Create(id: bigint, status: number, message: string, headers: string[], body: Buffer | null): FakeChatResponse;
 export function TESTING_FakeChatSentRequest_RequestId(request: Wrapper<FakeChatSentRequest>): bigint;
 export function TESTING_FakeChatSentRequest_TakeHttpRequest(request: Wrapper<FakeChatSentRequest>): HttpRequest;
+export function TESTING_FakeChatServer_Create(): FakeChatServer;
+export function TESTING_FakeChatServer_GetNextRemote(asyncRuntime: Wrapper<TokioAsyncContext>, server: Wrapper<FakeChatServer>): CancellablePromise<FakeChatRemoteEnd>;
+export function TESTING_FakeRegistrationSession_CreateSession(asyncRuntime: Wrapper<TokioAsyncContext>, createSession: CreateSession, chat: Wrapper<FakeChatServer>): CancellablePromise<RegistrationService>;
 export function TESTING_FutureFailure(asyncRuntime: Wrapper<NonSuspendingBackgroundThreadRuntime>, _input: number): CancellablePromise<number>;
 export function TESTING_FutureProducesOtherPointerType(asyncRuntime: Wrapper<NonSuspendingBackgroundThreadRuntime>, input: string): CancellablePromise<OtherTestingHandleType>;
 export function TESTING_FutureProducesPointerType(asyncRuntime: Wrapper<NonSuspendingBackgroundThreadRuntime>, input: number): CancellablePromise<TestingHandleType>;
 export function TESTING_FutureSuccess(asyncRuntime: Wrapper<NonSuspendingBackgroundThreadRuntime>, input: number): CancellablePromise<number>;
 export function TESTING_InputStreamReadIntoZeroLengthSlice(capsAlphabetInput: InputStream): Promise<Buffer>;
+export function TESTING_JoinStringArray(array: string[], joinWith: string): string;
 export function TESTING_NonSuspendingBackgroundThreadRuntime_New(): NonSuspendingBackgroundThreadRuntime;
 export function TESTING_OnlyCompletesByCancellation(asyncRuntime: Wrapper<TokioAsyncContext>): CancellablePromise<void>;
 export function TESTING_OtherTestingHandleType_getValue(handle: Wrapper<OtherTestingHandleType>): string;
@@ -647,7 +653,9 @@ interface ExpiringProfileKeyCredential { readonly __type: unique symbol; }
 interface ExpiringProfileKeyCredentialResponse { readonly __type: unique symbol; }
 interface FakeChatConnection { readonly __type: unique symbol; }
 interface FakeChatRemoteEnd { readonly __type: unique symbol; }
+interface FakeChatResponse { readonly __type: unique symbol; }
 interface FakeChatSentRequest { readonly __type: unique symbol; }
+interface FakeChatServer { readonly __type: unique symbol; }
 interface Fingerprint { readonly __type: unique symbol; }
 interface GroupMasterKey { readonly __type: unique symbol; }
 interface GroupPublicParams { readonly __type: unique symbol; }

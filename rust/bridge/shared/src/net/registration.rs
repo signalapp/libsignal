@@ -103,7 +103,12 @@ async fn RegistrationService_SubmitCaptcha(
 
 #[bridge_fn(ffi = false, jni = false)]
 fn RegistrationService_SessionId(service: &RegistrationService) -> String {
-    service.0.blocking_lock().session_id().to_string()
+    service
+        .0
+        .blocking_lock()
+        .session_id()
+        .as_url_path_segment()
+        .to_owned()
 }
 
 #[bridge_fn(ffi = false, jni = false)]

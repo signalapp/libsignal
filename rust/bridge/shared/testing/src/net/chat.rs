@@ -10,7 +10,9 @@ use libsignal_bridge_types::net::chat::{
 };
 use libsignal_bridge_types::net::TokioAsyncContext;
 use libsignal_net::chat::fake::FakeChatRemote;
-use libsignal_net::chat::{ConnectError, RequestProto, Response as ChatResponse, SendError};
+use libsignal_net::chat::{
+    ConnectError, RequestProto, Response as ChatResponse, ResponseProto, SendError,
+};
 use libsignal_net::infra::errors::RetryLater;
 
 use crate::net::make_error_testing_enum;
@@ -21,6 +23,11 @@ pub struct FakeChatConnection {
     remote_end: std::sync::Mutex<Option<FakeChatRemote>>,
 }
 
+pub struct FakeChatServer {
+    pub(crate) tx: tokio::sync::mpsc::UnboundedSender<FakeChatRemote>,
+    remote_end: tokio::sync::Mutex<tokio::sync::mpsc::UnboundedReceiver<FakeChatRemote>>,
+}
+
 pub struct FakeChatRemoteEnd(FakeChatRemote);
 
 pub struct FakeChatSentRequest {
@@ -29,15 +36,44 @@ pub struct FakeChatSentRequest {
     id: u64,
 }
 
+pub struct FakeChatResponse(ResponseProto);
+
 bridge_as_handle!(FakeChatConnection);
 bridge_handle_fns!(FakeChatConnection, clone = false);
 bridge_as_handle!(FakeChatRemoteEnd);
 bridge_handle_fns!(FakeChatRemoteEnd, clone = false);
 bridge_as_handle!(FakeChatSentRequest, mut = true);
 bridge_handle_fns!(FakeChatSentRequest, clone = false);
+bridge_as_handle!(FakeChatServer, ffi = false, jni = false);
+bridge_handle_fns!(FakeChatService, ffi = false, jni = false);
+bridge_as_handle!(FakeChatResponse, ffi = false, jni = false);
+bridge_handle_fns!(FakeChatResponse, ffi = false, jni = false);
 
+impl std::panic::RefUnwindSafe for FakeChatServer {}
 impl std::panic::RefUnwindSafe for FakeChatConnection {}
 impl std::panic::RefUnwindSafe for FakeChatRemoteEnd {}
+
+#[bridge_fn(ffi = false, jni = false)]
+fn TESTING_FakeChatServer_Create() -> FakeChatServer {
+    let (fake_chat_remote_tx, fake_chat_remote_rx) = tokio::sync::mpsc::unbounded_channel();
+
+    FakeChatServer {
+        tx: fake_chat_remote_tx,
+        remote_end: fake_chat_remote_rx.into(),
+    }
+}
+
+#[bridge_io(TokioAsyncContext, ffi = false, jni = false)]
+async fn TESTING_FakeChatServer_GetNextRemote(server: &FakeChatServer) -> FakeChatRemoteEnd {
+    let remote = server
+        .remote_end
+        .lock()
+        .await
+        .recv()
+        .await
+        .expect("server still live");
+    FakeChatRemoteEnd(remote)
+}
 
 #[bridge_fn]
 fn TESTING_FakeChatConnection_Create(
@@ -91,6 +127,17 @@ fn TESTING_FakeChatRemoteEnd_SendRawServerRequest(chat: &FakeChatRemoteEnd, byte
 fn TESTING_FakeChatRemoteEnd_SendRawServerResponse(chat: &FakeChatRemoteEnd, bytes: &[u8]) {
     chat.0
         .send_response(prost::Message::decode(bytes).expect("invalid Response proto"))
+        .expect("chat task finished")
+}
+
+#[bridge_fn(ffi = false, jni = false)]
+fn TESTING_FakeChatRemoteEnd_SendServerResponse(
+    chat: &FakeChatRemoteEnd,
+    response: &FakeChatResponse,
+) {
+    let FakeChatResponse(proto) = response;
+    chat.0
+        .send_response(proto.clone())
         .expect("chat task finished")
 }
 
@@ -212,6 +259,23 @@ fn TESTING_ChatRequestGetBody(request: &HttpRequest) -> Vec<u8> {
         .clone()
         .map(|b| b.into_vec())
         .unwrap_or_default()
+}
+
+#[bridge_fn(ffi = false, jni = false)]
+fn TESTING_FakeChatResponse_Create(
+    id: u64,
+    status: u16,
+    message: String,
+    headers: Box<[String]>,
+    body: Option<Box<[u8]>>,
+) -> FakeChatResponse {
+    FakeChatResponse(ResponseProto {
+        id: Some(id),
+        status: Some(status.into()),
+        message: Some(message),
+        headers: headers.into(),
+        body: body.map(Into::into),
+    })
 }
 
 make_error_testing_enum! {

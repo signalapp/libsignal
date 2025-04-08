@@ -87,6 +87,13 @@ describe('bridge_fn', () => {
     );
   });
 
+  it('can take string arrays', () => {
+    assert.deepStrictEqual(
+      Native.TESTING_JoinStringArray(['a', 'b', 'c'], ' - '),
+      'a - b - c'
+    );
+  });
+
   it('can return string arrays', () => {
     assert.deepStrictEqual(Native.TESTING_ReturnStringArray(), [
       'easy',

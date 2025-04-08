@@ -218,6 +218,12 @@ fn TESTING_ReturnStringArray() -> Box<[String]> {
         .collect()
 }
 
+#[allow(clippy::boxed_local)] // &[String] isn't supported for bridging (yet).
+#[bridge_fn(ffi = false, jni = false)]
+fn TESTING_JoinStringArray(array: Box<[String]>, join_with: String) -> String {
+    array.join(&join_with)
+}
+
 #[bridge_fn]
 fn TESTING_ProcessBytestringArray(input: Vec<&[u8]>) -> Box<[Vec<u8>]> {
     input

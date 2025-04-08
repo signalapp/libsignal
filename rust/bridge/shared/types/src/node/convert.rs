@@ -375,6 +375,20 @@ impl SimpleArgTypeInfo for Box<[u8]> {
     }
 }
 
+impl SimpleArgTypeInfo for Box<[String]> {
+    type ArgType = JsArray;
+
+    fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {
+        let count = foreign.len(cx);
+        (0..count)
+            .map(|i| {
+                let next = foreign.get(cx, i)?;
+                String::convert_from(cx, next)
+            })
+            .collect()
+    }
+}
+
 impl SimpleArgTypeInfo for libsignal_net::registration::PushTokenType {
     type ArgType = JsString;
 

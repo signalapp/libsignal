@@ -127,7 +127,9 @@ export class Net {
         Native.ConnectionManager_new(
           options.env,
           options.userAgent,
-          new BridgedStringMap(options.remoteConfig || new Map<string, string>())
+          new BridgedStringMap(
+            options.remoteConfig || new Map<string, string>()
+          )
         )
       );
     }

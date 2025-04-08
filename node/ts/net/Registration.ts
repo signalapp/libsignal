@@ -25,6 +25,14 @@ export type RegistrationSessionState = {
   requestedInformation: Set<'pushChallenge' | 'captcha'>;
 };
 
+type CreateSessionArgs = Readonly<{
+  e164: string;
+}>;
+
+type ResumeSessionArgs = Readonly<{
+  sessionId: string;
+}>;
+
 /**
  * A client for the Signal registration service.
  *
@@ -74,7 +82,7 @@ export class RegistrationService {
    */
   public static async resumeSession(
     options: ReadonlyDeep<RegistrationOptions>,
-    { sessionId }: { sessionId: string }
+    { sessionId }: ResumeSessionArgs
   ): Promise<RegistrationService> {
     const session = await Native.RegistrationService_ResumeSession(
       options.tokioAsyncContext,
@@ -100,7 +108,7 @@ export class RegistrationService {
    */
   public static async createSession(
     options: ReadonlyDeep<RegistrationOptions>,
-    { e164 }: { e164: string }
+    { e164 }: CreateSessionArgs
   ): Promise<RegistrationService> {
     const session = await Native.RegistrationService_CreateSession(
       options.tokioAsyncContext,
@@ -170,5 +178,30 @@ export class RegistrationService {
         Native.RegistrationSession_GetRequestedInformation(session)
       ),
     };
+  }
+
+  /**
+   * Create a registration client that sends requests to the returned fake chat.
+   *
+   * Calling code will need to retrieve the first fake remote from the fake chat
+   * server and respond in order for the returned Promise to resolve.
+   *
+   * Internal, only public for testing
+   */
+  static fakeCreateSession(
+    tokio: TokioAsyncContext,
+    { e164 }: CreateSessionArgs
+  ): [Promise<RegistrationService>, Native.Wrapper<Native.FakeChatServer>] {
+    const server = newNativeHandle(Native.TESTING_FakeChatServer_Create());
+    const registration = async () => {
+      const handle = await Native.TESTING_FakeRegistrationSession_CreateSession(
+        tokio,
+        { number: e164 },
+        server
+      );
+      return new RegistrationService(handle, tokio);
+    };
+
+    return [registration(), server];
   }
 }
