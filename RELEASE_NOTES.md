@@ -7,3 +7,5 @@ v0.69.1
 - Build for Android with 16KB page support, which makes the library usable on some newer Android devices that were previously not supported.
 
 - Add in new CDSI enclave ID, now supporting Kyber HFS Noise channels.
+
+- Swift: Allow initializing UnidentifiedSenderMessageContent from its serialized form. (Contributed by @saman3d!)

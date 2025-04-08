@@ -395,6 +395,17 @@ class SessionTests: TestCaseBase {
 
         XCTAssertEqual(b_usmc.groupId, a_usmc.groupId)
 
+        // UnidentifiedSenderMessageContent ser/de test
+        let b_usmc_serialized = b_usmc.serialize()
+        let b_usmc_deserialized = try! UnidentifiedSenderMessageContent(
+            bytes: b_usmc_serialized
+        )
+        XCTAssertEqual(b_usmc.groupId, b_usmc_deserialized.groupId)
+        XCTAssertEqual(b_usmc.contents, b_usmc_deserialized.contents)
+        XCTAssertEqual(b_usmc.contentHint, b_usmc_deserialized.contentHint)
+        XCTAssertEqual(b_usmc.senderCertificate.serialize(), b_usmc_deserialized.senderCertificate.serialize())
+        XCTAssertEqual(b_usmc.messageType, b_usmc_deserialized.messageType)
+
         let b_ptext = try! groupDecrypt(
             b_usmc.contents,
             from: alice_address,
