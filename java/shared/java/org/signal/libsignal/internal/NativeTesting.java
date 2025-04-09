@@ -47,7 +47,11 @@ public final class NativeTesting {
 
   public static native void FakeChatRemoteEnd_Destroy(long handle);
 
+  public static native void FakeChatResponse_Destroy(long handle);
+
   public static native void FakeChatSentRequest_Destroy(long handle);
+
+  public static native void FakeChatServer_Destroy(long handle);
 
   public static native void OtherTestingHandleType_Destroy(long handle);
 
@@ -78,14 +82,20 @@ public final class NativeTesting {
   public static native CompletableFuture<Long> TESTING_FakeChatRemoteEnd_ReceiveIncomingRequest(long asyncRuntime, long chat);
   public static native void TESTING_FakeChatRemoteEnd_SendRawServerRequest(long chat, byte[] bytes);
   public static native void TESTING_FakeChatRemoteEnd_SendRawServerResponse(long chat, byte[] bytes);
+  public static native void TESTING_FakeChatRemoteEnd_SendServerResponse(long chat, long response);
+  public static native long TESTING_FakeChatResponse_Create(long id, int status, String message, Object[] headers, byte[] body);
   public static native long TESTING_FakeChatSentRequest_RequestId(long request);
   public static native long TESTING_FakeChatSentRequest_TakeHttpRequest(long request);
+  public static native long TESTING_FakeChatServer_Create();
+  public static native CompletableFuture<Long> TESTING_FakeChatServer_GetNextRemote(long asyncRuntime, long server);
+  public static native CompletableFuture<Long> TESTING_FakeRegistrationSession_CreateSession(long asyncRuntime, Object createSession, long chat);
   public static native CompletableFuture<Integer> TESTING_FutureFailure(long asyncRuntime, int input);
   public static native CompletableFuture<Long> TESTING_FutureProducesOtherPointerType(long asyncRuntime, String input);
   public static native CompletableFuture<Long> TESTING_FutureProducesPointerType(long asyncRuntime, int input);
   public static native CompletableFuture<Integer> TESTING_FutureSuccess(long asyncRuntime, int input);
   public static native CompletableFuture<Void> TESTING_FutureThrowsCustomErrorType(long asyncRuntime);
   public static native byte[] TESTING_InputStreamReadIntoZeroLengthSlice(InputStream capsAlphabetInput);
+  public static native String TESTING_JoinStringArray(Object[] array, String joinWith);
   public static native void TESTING_NonSuspendingBackgroundThreadRuntime_Destroy(long handle);
   public static native CompletableFuture TESTING_OnlyCompletesByCancellation(long asyncRuntime);
   public static native String TESTING_OtherTestingHandleType_getValue(long handle);
@@ -102,6 +112,12 @@ public final class NativeTesting {
   public static native CompletableFuture<Object> TESTING_PanicOnReturnIo(long asyncRuntime, Object needsCleanup);
   public static native Object TESTING_PanicOnReturnSync(Object needsCleanup);
   public static native byte[][] TESTING_ProcessBytestringArray(ByteBuffer[] input);
+  public static native void TESTING_RegistrationService_CreateSessionErrorConvert(String errorDescription) throws Exception;
+  public static native void TESTING_RegistrationService_RequestVerificationCodeErrorConvert(String errorDescription) throws Exception;
+  public static native void TESTING_RegistrationService_ResumeSessionErrorConvert(String errorDescription) throws Exception;
+  public static native void TESTING_RegistrationService_SubmitVerificationErrorConvert(String errorDescription) throws Exception;
+  public static native void TESTING_RegistrationService_UpdateSessionErrorConvert(String errorDescription) throws Exception;
+  public static native long TESTING_RegistrationSessionInfoConvert();
   public static native Object[] TESTING_ReturnStringArray();
   public static native int TESTING_RoundTripI32(int input);
   public static native int TESTING_RoundTripU16(int input);

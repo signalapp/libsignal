@@ -95,7 +95,7 @@ impl<'c> RegistrationConnection<'c> {
 /// connection to the service. Non-fatal connect errors are retried.
 async fn send_request<E>(
     request: ChatRequest,
-    connect_chat: &(impl ConnectChat + Sync + ?Sized),
+    connect_chat: &(dyn ConnectChat + Sync),
     mut sender: Option<&mpsc::Sender<IncomingRequest>>,
 ) -> Result<(ChatResponse, mpsc::Sender<IncomingRequest>), RequestError<E>>
 where

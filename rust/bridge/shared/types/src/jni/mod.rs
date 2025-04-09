@@ -520,6 +520,169 @@ impl MessageOnlyExceptionJniError for signal_media::sanitize::webp::ParseErrorRe
     }
 }
 
+mod registration {
+    use libsignal_net::registration::{
+        CreateSessionError, InvalidSessionId, RequestError, RequestVerificationCodeError,
+        ResumeSessionError, SubmitVerificationError, UpdateSessionError,
+        VerificationCodeNotDeliverable,
+    };
+
+    use super::*;
+
+    impl<E: JniError> JniError for RequestError<E> {
+        fn to_throwable<'a>(
+            &self,
+            env: &mut JNIEnv<'a>,
+        ) -> Result<JThrowable<'a>, BridgeLayerError> {
+            let message = match self {
+                RequestError::RequestWasNotValid => "the request did not pass server validation",
+
+                RequestError::Other(inner) => return inner.to_throwable(env),
+                RequestError::Timeout => {
+                    return libsignal_net::chat::SendError::RequestTimedOut.to_throwable(env)
+                }
+                RequestError::Unknown(message) => message,
+            };
+            make_single_message_throwable(
+                env,
+                message,
+                ClassName("org.signal.libsignal.net.RegistrationException"),
+            )
+        }
+    }
+
+    impl MessageOnlyExceptionJniError for InvalidSessionId {
+        fn exception_class(&self) -> ClassName<'static> {
+            ClassName("org.signal.libsignal.net.RegistrationSessionIdInvalidException")
+        }
+    }
+
+    fn session_not_found<'a>(
+        env: &mut JNIEnv<'a>,
+        message: &str,
+    ) -> Result<JThrowable<'a>, BridgeLayerError> {
+        make_single_message_throwable(
+            env,
+            message,
+            ClassName("org.signal.libsignal.net.RegistrationSessionNotFoundException"),
+        )
+    }
+    fn not_ready_for_verification<'a>(
+        env: &mut JNIEnv<'a>,
+        message: &str,
+    ) -> Result<JThrowable<'a>, BridgeLayerError> {
+        make_single_message_throwable(
+            env,
+            message,
+            ClassName("org.signal.libsignal.net.RegistrationSessionNotReadyException"),
+        )
+    }
+
+    impl JniError for CreateSessionError {
+        fn to_throwable<'a>(
+            &self,
+            env: &mut JNIEnv<'a>,
+        ) -> Result<JThrowable<'a>, BridgeLayerError> {
+            match self {
+                CreateSessionError::InvalidSessionId => InvalidSessionId.to_throwable(env),
+                CreateSessionError::RetryLater(retry_later) => retry_later.to_throwable(env),
+            }
+        }
+    }
+
+    impl JniError for ResumeSessionError {
+        fn to_throwable<'a>(
+            &self,
+            env: &mut JNIEnv<'a>,
+        ) -> Result<JThrowable<'a>, BridgeLayerError> {
+            match self {
+                ResumeSessionError::InvalidSessionId => InvalidSessionId.to_throwable(env),
+                ResumeSessionError::SessionNotFound => session_not_found(env, &self.to_string()),
+            }
+        }
+    }
+
+    impl JniError for UpdateSessionError {
+        fn to_throwable<'a>(
+            &self,
+            env: &mut JNIEnv<'a>,
+        ) -> Result<JThrowable<'a>, BridgeLayerError> {
+            match self {
+                UpdateSessionError::RetryLater(retry_later) => retry_later.to_throwable(env),
+                UpdateSessionError::Rejected => make_single_message_throwable(
+                    env,
+                    &self.to_string(),
+                    ClassName("org.signal.libsignal.net.RegistrationException"),
+                ),
+            }
+        }
+    }
+
+    impl JniError for RequestVerificationCodeError {
+        fn to_throwable<'a>(
+            &self,
+            env: &mut JNIEnv<'a>,
+        ) -> Result<JThrowable<'a>, BridgeLayerError> {
+            match self {
+                RequestVerificationCodeError::InvalidSessionId => {
+                    InvalidSessionId.to_throwable(env)
+                }
+                RequestVerificationCodeError::SessionNotFound => {
+                    session_not_found(env, &self.to_string())
+                }
+                RequestVerificationCodeError::NotReadyForVerification => {
+                    not_ready_for_verification(env, &self.to_string())
+                }
+                RequestVerificationCodeError::SendFailed => make_single_message_throwable(
+                    env,
+                    &self.to_string(),
+                    ClassName("org.signal.libsignal.net.RegistrationSessionSendCodeException"),
+                ),
+                RequestVerificationCodeError::CodeNotDeliverable(
+                    VerificationCodeNotDeliverable {
+                        reason,
+                        permanent_failure,
+                    },
+                ) => {
+                    let (message, reason) =
+                        (|| Ok((env.new_string(self.to_string())?, env.new_string(reason)?)))()
+                            .check_exceptions(env, "RequestVerificationCodeError::to_throwable")?;
+                    let args = jni_args!((message => java.lang.String, reason => java.lang.String, *permanent_failure => boolean) -> void);
+                    new_instance(
+                        env,
+                        ClassName(
+                            "org.signal.libsignal.net.RegistrationCodeNotDeliverableException",
+                        ),
+                        args,
+                    )
+                    .map(Into::into)
+                }
+                RequestVerificationCodeError::RetryLater(retry_later) => {
+                    retry_later.to_throwable(env)
+                }
+            }
+        }
+    }
+
+    impl JniError for SubmitVerificationError {
+        fn to_throwable<'a>(
+            &self,
+            env: &mut JNIEnv<'a>,
+        ) -> Result<JThrowable<'a>, BridgeLayerError> {
+            match self {
+                SubmitVerificationError::InvalidSessionId => InvalidSessionId.to_throwable(env),
+                SubmitVerificationError::SessionNotFound => {
+                    session_not_found(env, &self.to_string())
+                }
+                SubmitVerificationError::NotReadyForVerification => {
+                    not_ready_for_verification(env, &self.to_string())
+                }
+                SubmitVerificationError::RetryLater(retry_later) => retry_later.to_throwable(env),
+            }
+        }
+    }
+}
+
 impl JniError for CdsiError {
     fn to_throwable<'a>(&self, env: &mut JNIEnv<'a>) -> Result<JThrowable<'a>, BridgeLayerError> {
         let class = match *self {
@@ -681,9 +844,16 @@ where
     }
 }
 
-pub unsafe fn native_handle_cast<T>(
+/// Casts the given handle as a `&T`.
+///
+/// # Safety
+///
+/// The caller must ensure that the provided handle is in fact the Java
+/// representation of a pointer to a value of type `T`, and that the pointer
+/// remains valid as long as the returned reference is around.
+pub unsafe fn native_handle_cast<'l, T>(
     handle: ObjectHandle,
-) -> Result<&'static mut T, BridgeLayerError> {
+) -> Result<&'l mut T, BridgeLayerError> {
     /*
     Should we try testing the encoded pointer for sanity here, beyond
     being null? For example verifying that lowest bits are zero,

@@ -3,8 +3,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::future::Future;
 use std::panic::UnwindSafe;
 
+use libsignal_net_infra::route::Captures;
 use static_assertions::assert_impl_all;
 
 mod error;
@@ -207,42 +209,50 @@ impl<'c> RegistrationService<'c> {
     /// On success, the state of the session as reported by the server is saved
     /// (and accessible via [`Self::session_state`]). This method will retry
     /// internally if transient errors are encountered.
-    async fn submit_request<R: Request>(
+    fn submit_request<R: Request>(
         &mut self,
         request: R,
-    ) -> Result<(), RequestError<SessionRequestError>> {
-        let Self {
-            connection,
-            session,
-            session_id,
-            number: _,
-        } = self;
-        log::info!(
-            "sending {request_type} on registration session {session_id}",
-            request_type = std::any::type_name::<R>()
-        );
+        // Write this as `impl Future` so we can include the `Send` bound, which
+        // lets us surface errors earlier.
+    ) -> impl Future<Output = Result<(), RequestError<SessionRequestError>>>
+           + Send
+           + Captures<&'_ ()>
+           + Captures<&'c ()> {
+        // Delegate to a non-templated function to reduce code size cost.
+        async fn submit_request_impl(
+            this: &mut RegistrationService<'_>,
+            request: crate::chat::Request,
+            request_type: &'static str,
+        ) -> Result<(), RequestError<SessionRequestError>> {
+            let RegistrationService {
+                connection,
+                session,
+                session_id,
+                number: _,
+            } = this;
+            log::info!("sending {request_type} on registration session {session_id}");
 
-        let response = connection
-            .submit_chat_request(
-                RegistrationRequest {
-                    session_id,
-                    request,
-                }
-                .into(),
-            )
-            .await?;
+            let response = connection.submit_chat_request(request).await?;
 
-        log::info!(
-            "{request_type} succeeded",
-            request_type = std::any::type_name::<R>()
-        );
-        let RegistrationResponse {
-            session_id: _,
-            session: response_session,
-        } = response.try_into_response()?;
+            log::info!("{request_type} succeeded");
+            let RegistrationResponse {
+                session_id: _,
+                session: response_session,
+            } = response.try_into_response()?;
 
-        *session = response_session;
-        Ok(())
+            *session = response_session;
+            Ok(())
+        }
+
+        submit_request_impl(
+            self,
+            RegistrationRequest {
+                request,
+                session_id: &self.session_id,
+            }
+            .into(),
+            std::any::type_name::<R>(),
+        )
     }
 }
 

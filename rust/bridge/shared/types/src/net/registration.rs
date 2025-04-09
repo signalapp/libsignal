@@ -8,8 +8,8 @@ use std::panic::{RefUnwindSafe, UnwindSafe};
 
 use futures_util::TryFutureExt as _;
 use libsignal_net::registration::{
-    self as net_registration, ConnectChat, CreateSessionError, RegistrationSession, RequestError,
-    ResumeSessionError, SessionId,
+    self as net_registration, ConnectChat, CreateSession, CreateSessionError, PushTokenType,
+    RegistrationSession, RequestError, ResumeSessionError, SessionId,
 };
 
 use crate::*;
@@ -26,8 +26,13 @@ impl RefUnwindSafe for RegistrationService where
 {
 }
 
-bridge_as_handle!(RegistrationService, ffi = false, jni = false);
-bridge_as_handle!(RegistrationSession, ffi = false, jni = false);
+bridge_as_handle!(RegistrationService, ffi = false);
+bridge_as_handle!(RegistrationSession, ffi = false);
+
+// Aliases so that places that refer to syntactic argument names (e.g.
+// jni::jni_arg and friends) aren't ambiguous.
+pub type RegistrationCreateSessionRequest = CreateSession;
+pub type RegistrationPushTokenType = PushTokenType;
 
 /// Precursor to a [`Box<dyn ConnectChat>`](ConnectChat).
 ///

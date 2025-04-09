@@ -17,6 +17,7 @@ import org.signal.libsignal.protocol.groups.state.SenderKeyStore;
 import org.signal.libsignal.protocol.logging.Log;
 import org.signal.libsignal.protocol.logging.SignalProtocolLogger;
 import org.signal.libsignal.net.internal.BridgeChatListener;
+import org.signal.libsignal.net.internal.ConnectChatBridge;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -542,6 +543,25 @@ public final class Native {
   public static native void ReceiptCredential_CheckValidContents(byte[] buffer) throws Exception;
   public static native long ReceiptCredential_GetReceiptExpirationTime(byte[] receiptCredential);
   public static native long ReceiptCredential_GetReceiptLevel(byte[] receiptCredential);
+
+  public static native CompletableFuture<Long> RegistrationService_CreateSession(long asyncRuntime, Object createSession, ConnectChatBridge connectChat);
+  public static native void RegistrationService_Destroy(long handle);
+  public static native long RegistrationService_RegistrationSession(long service);
+  public static native CompletableFuture<Void> RegistrationService_RequestPushChallenge(long asyncRuntime, long service, String pushToken, Object pushTokenType);
+  public static native CompletableFuture<Void> RegistrationService_RequestVerificationCode(long asyncRuntime, long service, String transport, String client);
+  public static native CompletableFuture<Long> RegistrationService_ResumeSession(long asyncRuntime, String sessionId, String number, ConnectChatBridge connectChat);
+  public static native String RegistrationService_SessionId(long service);
+  public static native CompletableFuture<Void> RegistrationService_SubmitCaptcha(long asyncRuntime, long service, String captchaValue);
+  public static native CompletableFuture<Void> RegistrationService_SubmitPushChallenge(long asyncRuntime, long service, String pushChallenge);
+  public static native CompletableFuture<Void> RegistrationService_SubmitVerificationCode(long asyncRuntime, long service, String code);
+
+  public static native void RegistrationSession_Destroy(long handle);
+  public static native boolean RegistrationSession_GetAllowedToRequestCode(long session);
+  public static native int RegistrationSession_GetNextCallSeconds(long session);
+  public static native int RegistrationSession_GetNextSmsSeconds(long session);
+  public static native int RegistrationSession_GetNextVerificationAttemptSeconds(long session);
+  public static native Object[] RegistrationSession_GetRequestedInformation(long session);
+  public static native boolean RegistrationSession_GetVerified(long session);
 
   public static native void SanitizedMetadata_Destroy(long handle);
   public static native long SanitizedMetadata_GetDataLen(long sanitized);

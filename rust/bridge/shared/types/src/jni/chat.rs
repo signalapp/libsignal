@@ -3,7 +3,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::panic::UnwindSafe;
+
+use futures_util::future::BoxFuture;
+use futures_util::FutureExt;
 use libsignal_net::chat::server_requests::DisconnectCause;
+use libsignal_net::chat::ChatConnection;
 
 use super::*;
 use crate::net::chat::{ChatListener, ServerMessageAck};
@@ -36,21 +41,19 @@ struct JniChatListener {
     listener: GlobalRef,
 }
 
-impl JniChatListener {
-    fn attach_and_log_on_error(
-        &self,
-        name: &'static str,
-        operation: impl FnOnce(&mut JNIEnv<'_>) -> Result<(), BridgeLayerError>,
-    ) {
-        let attach_and_run = move || {
-            let mut env = self.vm.attach_current_thread().expect("can attach thread");
-            operation(&mut env)
-        };
-        match attach_and_run() {
-            Ok(()) => {}
-            Err(e) => {
-                log::error!("failed to report {name}: {e}")
-            }
+fn attach_and_log_on_error(
+    vm: &JavaVM,
+    name: &'static str,
+    operation: impl FnOnce(&mut JNIEnv<'_>) -> Result<(), BridgeLayerError>,
+) {
+    let attach_and_run = move || {
+        let mut env = vm.attach_current_thread().expect("can attach thread");
+        operation(&mut env)
+    };
+    match attach_and_run() {
+        Ok(()) => {}
+        Err(e) => {
+            log::error!("failed to report {name}: {e}")
         }
     }
 }
@@ -63,7 +66,7 @@ impl ChatListener for JniChatListener {
         ack: ServerMessageAck,
     ) {
         let listener = &self.listener;
-        self.attach_and_log_on_error("incoming message", move |env| {
+        attach_and_log_on_error(&self.vm, "incoming message", move |env| {
             let env_array = envelope.convert_into(env)?;
             let ack_handle = ack.convert_into(env)?;
             call_method_checked(
@@ -81,14 +84,14 @@ impl ChatListener for JniChatListener {
 
     fn received_queue_empty(&mut self) {
         let listener = &self.listener;
-        self.attach_and_log_on_error("queue empty", move |env| {
+        attach_and_log_on_error(&self.vm, "queue empty", move |env| {
             call_method_checked(env, listener, "onQueueEmpty", jni_args!(() -> void))
         });
     }
 
     fn received_alerts(&mut self, alerts: Vec<String>) {
         let listener = &self.listener;
-        self.attach_and_log_on_error("received alerts", move |env| {
+        attach_and_log_on_error(&self.vm, "received alerts", move |env| {
             let alerts = alerts.into_boxed_slice().convert_into(env)?;
             call_method_checked(
                 env,
@@ -101,7 +104,7 @@ impl ChatListener for JniChatListener {
 
     fn connection_interrupted(&mut self, disconnect_cause: DisconnectCause) {
         let listener = &self.listener;
-        self.attach_and_log_on_error("connection interrupted", move |env| {
+        attach_and_log_on_error(&self.vm, "connection interrupted", move |env| {
             let throw_exception = move |env, listener, throwable: JThrowable<'_>| {
                 call_method_checked(
                     env,
@@ -131,5 +134,100 @@ impl ChatListener for JniChatListener {
             };
             Ok(())
         });
+    }
+}
+
+pub type JavaConnectChatBridge<'a> = JObject<'a>;
+
+const CONNECTION_MANAGER_CLASS: ClassName =
+    ClassName("org.signal.libsignal.net.Network$ConnectionManager");
+
+#[derive(Debug)]
+pub struct JniConnectChatBridge {
+    vm: JavaVM,
+    /// Guaranteed to be a [`CONNECTION_MANAGER_CLASS`].
+    connection_manager: GlobalRef,
+}
+
+#[derive(Debug)]
+pub struct JniConnectChat {
+    tokio_runtime: tokio::runtime::Handle,
+    bridge: JniConnectChatBridge,
+}
+
+// This is safe because the runtime handle is unwind-safe (it is included in the
+// tokio Runtime type, which is unwind-safe), and because the other fields are unwind-safe.
+impl UnwindSafe for JniConnectChat where JniConnectChatBridge: UnwindSafe {}
+
+impl JniConnectChatBridge {
+    pub fn new(
+        env: &mut JNIEnv<'_>,
+        connection_manager: &JObject,
+    ) -> Result<Self, BridgeLayerError> {
+        check_jobject_type(env, connection_manager, CONNECTION_MANAGER_CLASS)?;
+
+        Ok(Self {
+            vm: env.get_java_vm().expect("can get VM"),
+            connection_manager: env.new_global_ref(connection_manager).expect("can get env"),
+        })
+    }
+}
+
+impl crate::net::registration::ConnectChatBridge for JniConnectChatBridge {
+    fn create_chat_connector(
+        self: Box<Self>,
+        runtime: tokio::runtime::Handle,
+    ) -> Box<dyn libsignal_net::registration::ConnectChat + Send + Sync + UnwindSafe> {
+        Box::new(JniConnectChat {
+            tokio_runtime: runtime,
+            bridge: *self,
+        })
+    }
+}
+
+impl libsignal_net::registration::ConnectChat for JniConnectChat {
+    fn connect_chat(
+        &self,
+        on_disconnect: tokio::sync::oneshot::Sender<std::convert::Infallible>,
+    ) -> BoxFuture<'_, Result<ChatConnection, ChatConnectError>> {
+        let Self {
+            bridge:
+                JniConnectChatBridge {
+                    connection_manager: java_connection_manager,
+                    vm,
+                },
+            tokio_runtime,
+        } = self;
+
+        let mut connect = None;
+        attach_and_log_on_error(vm, "connect chat", |env| {
+            let handle = env
+                .call_method(
+                    java_connection_manager,
+                    "getConnectionManagerUnsafeNativeHandle",
+                    jni_signature!(() -> long),
+                    &[],
+                )
+                .and_then(|result| result.j())
+                .check_exceptions(env, "connect_chat")?;
+            // Safety: the returned value won't outlive the JniConnectChat
+            // since it won't outlive the resolved value of the future, and the
+            // future can't outlive `self`.
+            let connection_manager = unsafe { native_handle_cast(handle)? };
+            connect = Some(crate::net::chat::connect_registration_chat(
+                tokio_runtime,
+                connection_manager,
+                on_disconnect,
+            ));
+            Ok(())
+        });
+
+        match connect {
+            Some(connect) => connect.boxed(),
+            None => {
+                log::error!("failed to start chat connection attempt");
+                std::future::ready(Err(ChatConnectError::InvalidConnectionConfiguration)).boxed()
+            }
+        }
     }
 }

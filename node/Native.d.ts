@@ -130,7 +130,17 @@ type ChatListener = {
   ): void;
 };
 
-type RequestedInformation = 'pushChallenge' | 'captcha';
+type RegistrationSessionRequestedInformation = 'pushChallenge' | 'captcha';
+
+type RegistrationPushTokenType = 'apn' | 'fcm';
+
+type RegistrationCreateSessionRequest = {
+  number: string;
+  push_token?: string;
+  push_token_type?: RegistrationPushTokenType;
+  mcc?: string;
+  mnc?: string;
+};
 
 type Wrapper<T> = Readonly<{
   _nativeHandle: T;
@@ -411,9 +421,9 @@ export function ReceiptCredentialResponse_CheckValidContents(buffer: Buffer): vo
 export function ReceiptCredential_CheckValidContents(buffer: Buffer): void;
 export function ReceiptCredential_GetReceiptExpirationTime(receiptCredential: Serialized<ReceiptCredential>): Timestamp;
 export function ReceiptCredential_GetReceiptLevel(receiptCredential: Serialized<ReceiptCredential>): bigint;
-export function RegistrationService_CreateSession(asyncRuntime: Wrapper<TokioAsyncContext>, createSession: CreateSession, connectChat: ConnectChatBridge): CancellablePromise<RegistrationService>;
+export function RegistrationService_CreateSession(asyncRuntime: Wrapper<TokioAsyncContext>, createSession: RegistrationCreateSessionRequest, connectChat: ConnectChatBridge): CancellablePromise<RegistrationService>;
 export function RegistrationService_RegistrationSession(service: Wrapper<RegistrationService>): RegistrationSession;
-export function RegistrationService_RequestPushChallenge(asyncRuntime: Wrapper<TokioAsyncContext>, service: Wrapper<RegistrationService>, pushToken: string, pushTokenType: PushTokenType): CancellablePromise<void>;
+export function RegistrationService_RequestPushChallenge(asyncRuntime: Wrapper<TokioAsyncContext>, service: Wrapper<RegistrationService>, pushToken: string, pushTokenType: RegistrationPushTokenType): CancellablePromise<void>;
 export function RegistrationService_RequestVerificationCode(asyncRuntime: Wrapper<TokioAsyncContext>, service: Wrapper<RegistrationService>, transport: string, client: string): CancellablePromise<void>;
 export function RegistrationService_ResumeSession(asyncRuntime: Wrapper<TokioAsyncContext>, sessionId: string, number: string, connectChat: ConnectChatBridge): CancellablePromise<RegistrationService>;
 export function RegistrationService_SessionId(service: Wrapper<RegistrationService>): string;
@@ -424,7 +434,7 @@ export function RegistrationSession_GetAllowedToRequestCode(session: Wrapper<Reg
 export function RegistrationSession_GetNextCallSeconds(session: Wrapper<RegistrationSession>): number | null;
 export function RegistrationSession_GetNextSmsSeconds(session: Wrapper<RegistrationSession>): number | null;
 export function RegistrationSession_GetNextVerificationAttemptSeconds(session: Wrapper<RegistrationSession>): number | null;
-export function RegistrationSession_GetRequestedInformation(session: Wrapper<RegistrationSession>): RequestedInformation[];
+export function RegistrationSession_GetRequestedInformation(session: Wrapper<RegistrationSession>): RegistrationSessionRequestedInformation[];
 export function RegistrationSession_GetVerified(session: Wrapper<RegistrationSession>): boolean;
 export function SanitizedMetadata_GetDataLen(sanitized: Wrapper<SanitizedMetadata>): bigint;
 export function SanitizedMetadata_GetDataOffset(sanitized: Wrapper<SanitizedMetadata>): bigint;
@@ -571,7 +581,7 @@ export function TESTING_FakeChatSentRequest_RequestId(request: Wrapper<FakeChatS
 export function TESTING_FakeChatSentRequest_TakeHttpRequest(request: Wrapper<FakeChatSentRequest>): HttpRequest;
 export function TESTING_FakeChatServer_Create(): FakeChatServer;
 export function TESTING_FakeChatServer_GetNextRemote(asyncRuntime: Wrapper<TokioAsyncContext>, server: Wrapper<FakeChatServer>): CancellablePromise<FakeChatRemoteEnd>;
-export function TESTING_FakeRegistrationSession_CreateSession(asyncRuntime: Wrapper<TokioAsyncContext>, createSession: CreateSession, chat: Wrapper<FakeChatServer>): CancellablePromise<RegistrationService>;
+export function TESTING_FakeRegistrationSession_CreateSession(asyncRuntime: Wrapper<TokioAsyncContext>, createSession: RegistrationCreateSessionRequest, chat: Wrapper<FakeChatServer>): CancellablePromise<RegistrationService>;
 export function TESTING_FutureFailure(asyncRuntime: Wrapper<NonSuspendingBackgroundThreadRuntime>, _input: number): CancellablePromise<number>;
 export function TESTING_FutureProducesOtherPointerType(asyncRuntime: Wrapper<NonSuspendingBackgroundThreadRuntime>, input: string): CancellablePromise<OtherTestingHandleType>;
 export function TESTING_FutureProducesPointerType(asyncRuntime: Wrapper<NonSuspendingBackgroundThreadRuntime>, input: number): CancellablePromise<TestingHandleType>;

@@ -44,16 +44,16 @@ bridge_as_handle!(FakeChatRemoteEnd);
 bridge_handle_fns!(FakeChatRemoteEnd, clone = false);
 bridge_as_handle!(FakeChatSentRequest, mut = true);
 bridge_handle_fns!(FakeChatSentRequest, clone = false);
-bridge_as_handle!(FakeChatServer, ffi = false, jni = false);
-bridge_handle_fns!(FakeChatService, ffi = false, jni = false);
-bridge_as_handle!(FakeChatResponse, ffi = false, jni = false);
-bridge_handle_fns!(FakeChatResponse, ffi = false, jni = false);
+bridge_as_handle!(FakeChatServer, ffi = false);
+bridge_handle_fns!(FakeChatServer, ffi = false);
+bridge_as_handle!(FakeChatResponse, ffi = false);
+bridge_handle_fns!(FakeChatResponse, ffi = false);
 
 impl std::panic::RefUnwindSafe for FakeChatServer {}
 impl std::panic::RefUnwindSafe for FakeChatConnection {}
 impl std::panic::RefUnwindSafe for FakeChatRemoteEnd {}
 
-#[bridge_fn(ffi = false, jni = false)]
+#[bridge_fn(ffi = false)]
 fn TESTING_FakeChatServer_Create() -> FakeChatServer {
     let (fake_chat_remote_tx, fake_chat_remote_rx) = tokio::sync::mpsc::unbounded_channel();
 
@@ -63,7 +63,7 @@ fn TESTING_FakeChatServer_Create() -> FakeChatServer {
     }
 }
 
-#[bridge_io(TokioAsyncContext, ffi = false, jni = false)]
+#[bridge_io(TokioAsyncContext, ffi = false)]
 async fn TESTING_FakeChatServer_GetNextRemote(server: &FakeChatServer) -> FakeChatRemoteEnd {
     let remote = server
         .remote_end
@@ -130,7 +130,7 @@ fn TESTING_FakeChatRemoteEnd_SendRawServerResponse(chat: &FakeChatRemoteEnd, byt
         .expect("chat task finished")
 }
 
-#[bridge_fn(ffi = false, jni = false)]
+#[bridge_fn(ffi = false)]
 fn TESTING_FakeChatRemoteEnd_SendServerResponse(
     chat: &FakeChatRemoteEnd,
     response: &FakeChatResponse,
@@ -261,7 +261,7 @@ fn TESTING_ChatRequestGetBody(request: &HttpRequest) -> Vec<u8> {
         .unwrap_or_default()
 }
 
-#[bridge_fn(ffi = false, jni = false)]
+#[bridge_fn(ffi = false)]
 fn TESTING_FakeChatResponse_Create(
     id: u64,
     status: u16,

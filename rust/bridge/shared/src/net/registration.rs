@@ -4,23 +4,26 @@
 //
 
 use libsignal_bridge_macros::{bridge_fn, bridge_io};
-use libsignal_bridge_types::net::registration::{ConnectChatBridge, RegistrationService};
+use libsignal_bridge_types::net::registration::{
+    ConnectChatBridge, RegistrationCreateSessionRequest, RegistrationPushTokenType,
+    RegistrationService,
+};
 use libsignal_bridge_types::net::TokioAsyncContext;
 use libsignal_bridge_types::*;
 use libsignal_net::registration::{
-    CreateSession, CreateSessionError, PushTokenType, RegistrationSession, RequestError,
-    RequestVerificationCodeError, RequestedInformation, ResumeSessionError, SessionId,
-    SubmitVerificationError, UpdateSessionError, VerificationTransport,
+    CreateSessionError, RegistrationSession, RequestError, RequestVerificationCodeError,
+    RequestedInformation, ResumeSessionError, SessionId, SubmitVerificationError,
+    UpdateSessionError, VerificationTransport,
 };
 
 use crate::support::*;
 
-bridge_handle_fns!(RegistrationService, clone = false, ffi = false, jni = false);
-bridge_handle_fns!(RegistrationSession, clone = false, ffi = false, jni = false);
+bridge_handle_fns!(RegistrationService, clone = false, ffi = false);
+bridge_handle_fns!(RegistrationSession, clone = false, ffi = false);
 
-#[bridge_io(TokioAsyncContext, ffi = false, jni = false)]
+#[bridge_io(TokioAsyncContext, ffi = false)]
 async fn RegistrationService_CreateSession(
-    create_session: CreateSession,
+    create_session: RegistrationCreateSessionRequest,
     connect_chat: Box<dyn ConnectChatBridge>,
 ) -> Result<RegistrationService, RequestError<CreateSessionError>> {
     RegistrationService::create_session(
@@ -31,7 +34,7 @@ async fn RegistrationService_CreateSession(
     .await
 }
 
-#[bridge_io(TokioAsyncContext, ffi = false, jni = false)]
+#[bridge_io(TokioAsyncContext, ffi = false)]
 async fn RegistrationService_ResumeSession(
     session_id: AsType<SessionId, String>,
     number: String,
@@ -46,11 +49,11 @@ async fn RegistrationService_ResumeSession(
     .await
 }
 
-#[bridge_io(TokioAsyncContext, ffi = false, jni = false)]
+#[bridge_io(TokioAsyncContext, ffi = false)]
 async fn RegistrationService_RequestPushChallenge(
     service: &RegistrationService,
     push_token: String,
-    push_token_type: PushTokenType,
+    push_token_type: RegistrationPushTokenType,
 ) -> Result<(), RequestError<UpdateSessionError>> {
     service
         .0
@@ -60,7 +63,7 @@ async fn RegistrationService_RequestPushChallenge(
         .await
 }
 
-#[bridge_io(TokioAsyncContext, ffi = false, jni = false)]
+#[bridge_io(TokioAsyncContext, ffi = false)]
 async fn RegistrationService_SubmitPushChallenge(
     service: &RegistrationService,
     push_challenge: String,
@@ -73,7 +76,7 @@ async fn RegistrationService_SubmitPushChallenge(
         .await
 }
 
-#[bridge_io(TokioAsyncContext, ffi = false, jni = false)]
+#[bridge_io(TokioAsyncContext, ffi = false)]
 async fn RegistrationService_RequestVerificationCode(
     service: &RegistrationService,
     transport: AsType<VerificationTransport, String>,
@@ -87,7 +90,7 @@ async fn RegistrationService_RequestVerificationCode(
         .await
 }
 
-#[bridge_io(TokioAsyncContext, ffi = false, jni = false)]
+#[bridge_io(TokioAsyncContext, ffi = false)]
 async fn RegistrationService_SubmitVerificationCode(
     service: &RegistrationService,
     code: String,
@@ -95,7 +98,7 @@ async fn RegistrationService_SubmitVerificationCode(
     service.0.lock().await.submit_verification_code(&code).await
 }
 
-#[bridge_io(TokioAsyncContext, ffi = false, jni = false)]
+#[bridge_io(TokioAsyncContext, ffi = false)]
 async fn RegistrationService_SubmitCaptcha(
     service: &RegistrationService,
     captcha_value: String,
@@ -103,7 +106,7 @@ async fn RegistrationService_SubmitCaptcha(
     service.0.lock().await.submit_captcha(&captcha_value).await
 }
 
-#[bridge_fn(ffi = false, jni = false)]
+#[bridge_fn(ffi = false)]
 fn RegistrationService_SessionId(service: &RegistrationService) -> String {
     service
         .0
@@ -113,36 +116,36 @@ fn RegistrationService_SessionId(service: &RegistrationService) -> String {
         .to_owned()
 }
 
-#[bridge_fn(ffi = false, jni = false)]
+#[bridge_fn(ffi = false)]
 fn RegistrationService_RegistrationSession(service: &RegistrationService) -> RegistrationSession {
     service.0.blocking_lock().session_state().clone()
 }
 
-#[bridge_fn(ffi = false, jni = false)]
+#[bridge_fn(ffi = false)]
 fn RegistrationSession_GetAllowedToRequestCode(session: &RegistrationSession) -> bool {
     session.allowed_to_request_code
 }
 
-#[bridge_fn(ffi = false, jni = false)]
+#[bridge_fn(ffi = false)]
 fn RegistrationSession_GetVerified(session: &RegistrationSession) -> bool {
     session.verified
 }
 
-#[bridge_fn(ffi = false, jni = false)]
+#[bridge_fn(ffi = false)]
 fn RegistrationSession_GetNextCallSeconds(session: &RegistrationSession) -> Option<u32> {
     session
         .next_call
         .map(|d| d.as_secs().try_into().unwrap_or(u32::MAX))
 }
 
-#[bridge_fn(ffi = false, jni = false)]
+#[bridge_fn(ffi = false)]
 fn RegistrationSession_GetNextSmsSeconds(session: &RegistrationSession) -> Option<u32> {
     session
         .next_sms
         .map(|d| d.as_secs().try_into().unwrap_or(u32::MAX))
 }
 
-#[bridge_fn(ffi = false, jni = false)]
+#[bridge_fn(ffi = false)]
 fn RegistrationSession_GetNextVerificationAttemptSeconds(
     session: &RegistrationSession,
 ) -> Option<u32> {
@@ -151,9 +154,11 @@ fn RegistrationSession_GetNextVerificationAttemptSeconds(
         .map(|d| d.as_secs().try_into().unwrap_or(u32::MAX))
 }
 
-#[bridge_fn(ffi = false, jni = false)]
+type RegistrationSessionRequestedInformation = RequestedInformation;
+
+#[bridge_fn(ffi = false)]
 fn RegistrationSession_GetRequestedInformation(
     session: &RegistrationSession,
-) -> Vec<RequestedInformation> {
+) -> Box<[RegistrationSessionRequestedInformation]> {
     session.requested_information.iter().copied().collect()
 }

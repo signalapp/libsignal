@@ -76,6 +76,12 @@ public class BridgingTest {
   }
 
   @Test
+  public void testTakeStringArrayAsArg() {
+    assertEquals(
+        NativeTesting.TESTING_JoinStringArray(new String[] {"a", "b", "c"}, " - "), "a - b - c");
+  }
+
+  @Test
   public void testReturnStringArray() {
     assertArrayEquals(
         NativeTesting.TESTING_ReturnStringArray(), new String[] {"easy", "as", "ABC", "123"});

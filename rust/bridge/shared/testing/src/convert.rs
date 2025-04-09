@@ -219,7 +219,7 @@ fn TESTING_ReturnStringArray() -> Box<[String]> {
 }
 
 #[allow(clippy::boxed_local)] // &[String] isn't supported for bridging (yet).
-#[bridge_fn(ffi = false, jni = false)]
+#[bridge_fn(ffi = false)]
 fn TESTING_JoinStringArray(array: Box<[String]>, join_with: String) -> String {
     array.join(&join_with)
 }

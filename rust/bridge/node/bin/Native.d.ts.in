@@ -130,7 +130,17 @@ type ChatListener = {
   ): void;
 };
 
-type RequestedInformation = 'pushChallenge' | 'captcha';
+type RegistrationSessionRequestedInformation = 'pushChallenge' | 'captcha';
+
+type RegistrationPushTokenType = 'apn' | 'fcm';
+
+type RegistrationCreateSessionRequest = {
+  number: string;
+  push_token?: string;
+  push_token_type?: RegistrationPushTokenType;
+  mcc?: string;
+  mnc?: string;
+};
 
 type Wrapper<T> = Readonly<{
   _nativeHandle: T;

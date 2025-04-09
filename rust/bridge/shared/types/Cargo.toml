@@ -35,6 +35,7 @@ displaydoc = { workspace = true }
 futures-util = { workspace = true }
 hmac = { workspace = true }
 http = { workspace = true }
+itertools = { workspace = true }
 log = { workspace = true }
 mediasan-common = { workspace = true }
 num_enum = { workspace = true }

@@ -41,6 +41,25 @@ class FakeChatRemote extends NativeHandleGuard.SimpleOwner {
             });
   }
 
+  public void sendResponse(
+      long requestId, int status, String message, String[] headers, byte[] body) {
+    var fakeResponse =
+        new NativeHandleGuard.SimpleOwner(
+            NativeTesting.TESTING_FakeChatResponse_Create(
+                requestId, status, message, headers, body)) {
+          protected void release(long nativeHandle) {
+            NativeTesting.FakeChatResponse_Destroy(nativeHandle);
+          }
+        };
+
+    guardedRun(
+        fakeRemote ->
+            fakeResponse.guardedRun(
+                response ->
+                    NativeTesting.TESTING_FakeChatRemoteEnd_SendServerResponse(
+                        fakeRemote, response)));
+  }
+
   @Override
   protected void release(long nativeHandle) {
     NativeTesting.FakeChatRemoteEnd_Destroy(nativeHandle);

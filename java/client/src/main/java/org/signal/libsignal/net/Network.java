@@ -16,6 +16,7 @@ import org.signal.libsignal.internal.BridgedStringMap;
 import org.signal.libsignal.internal.CompletableFuture;
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
+import org.signal.libsignal.net.internal.ConnectChatBridge;
 
 public class Network {
   public enum Environment {
@@ -251,7 +252,8 @@ public class Network {
         tokioAsyncContext, connectionManager, username, password, receiveStories, listener);
   }
 
-  static class ConnectionManager extends NativeHandleGuard.SimpleOwner {
+  static class ConnectionManager extends NativeHandleGuard.SimpleOwner
+      implements ConnectChatBridge {
     private final Environment environment;
 
     private ConnectionManager(Environment env, String userAgent, Map<String, String> remoteConfig) {
@@ -310,6 +312,11 @@ public class Network {
       new BridgedStringMap(remoteConfig)
           .guardedRun(
               map -> this.guardedRun(h -> Native.ConnectionManager_set_remote_config(h, map)));
+    }
+
+    @Override
+    public long getConnectionManagerUnsafeNativeHandle() {
+      return unsafeNativeHandleWithoutGuard();
     }
 
     @Override

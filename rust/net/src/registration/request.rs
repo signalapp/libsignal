@@ -56,8 +56,7 @@ pub struct RegistrationSession {
     pub requested_information: HashSet<RequestedInformation>,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, serde::Deserialize, strum::AsRefStr)]
-#[strum(serialize_all = "camelCase")]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(test, derive(serde::Serialize))]
 pub enum RequestedInformation {
@@ -284,7 +283,7 @@ pub(super) trait Request {
     fn request_path(session_id: &SessionId) -> PathAndQuery;
 
     /// The serialized JSON for the request body, if any.
-    fn into_json_body(self) -> Option<Box<[u8]>>;
+    fn to_json_body(&self) -> Option<Box<[u8]>>;
 }
 
 impl Request for GetSession {
@@ -297,7 +296,7 @@ impl Request for GetSession {
         .parse()
         .unwrap()
     }
-    fn into_json_body(self) -> Option<Box<[u8]>> {
+    fn to_json_body(&self) -> Option<Box<[u8]>> {
         None
     }
 }
@@ -307,7 +306,7 @@ impl Request for UpdateRegistrationSession<'_> {
     fn request_path(session_id: &SessionId) -> PathAndQuery {
         GetSession::request_path(session_id)
     }
-    fn into_json_body(self) -> Option<Box<[u8]>> {
+    fn to_json_body(&self) -> Option<Box<[u8]>> {
         Some(
             serde_json::to_vec(&self)
                 .expect("no maps")
@@ -326,7 +325,7 @@ impl Request for RequestVerificationCode<'_> {
         .parse()
         .unwrap()
     }
-    fn into_json_body(self) -> Option<Box<[u8]>> {
+    fn to_json_body(&self) -> Option<Box<[u8]>> {
         Some(
             serde_json::to_vec(&self)
                 .expect("no maps")
@@ -340,7 +339,7 @@ impl Request for SubmitVerificationCode<'_> {
     fn request_path(session_id: &SessionId) -> PathAndQuery {
         RequestVerificationCode::request_path(session_id)
     }
-    fn into_json_body(self) -> Option<Box<[u8]>> {
+    fn to_json_body(&self) -> Option<Box<[u8]>> {
         Some(
             serde_json::to_vec(&self)
                 .expect("no maps")
@@ -536,7 +535,7 @@ impl<'s, R: Request> From<RegistrationRequest<'s, R>> for crate::chat::Request {
         } = value;
 
         let path = R::request_path(session_id);
-        let body = request.into_json_body();
+        let body = request.to_json_body();
         let headers = HeaderMap::from_iter(body.is_some().then_some(CONTENT_TYPE_JSON));
 
         Self {

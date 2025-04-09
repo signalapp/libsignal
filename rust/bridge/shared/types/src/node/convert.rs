@@ -1119,11 +1119,14 @@ impl<'a> ResultTypeInfo<'a> for libsignal_net::cdsi::LookupResponse {
 impl<'a> ResultTypeInfo<'a> for libsignal_net::registration::RequestedInformation {
     type ResultType = JsString;
     fn convert_into(self, cx: &mut impl Context<'a>) -> JsResult<'a, Self::ResultType> {
-        Ok(cx.string(self.as_ref()))
+        Ok(cx.string(match self {
+            Self::PushChallenge => "pushChallenge",
+            Self::Captcha => "captcha",
+        }))
     }
 }
 
-impl<'a> ResultTypeInfo<'a> for Vec<libsignal_net::registration::RequestedInformation> {
+impl<'a> ResultTypeInfo<'a> for Box<[libsignal_net::registration::RequestedInformation]> {
     type ResultType = JsArray;
     fn convert_into(self, cx: &mut impl Context<'a>) -> JsResult<'a, Self::ResultType> {
         make_array(cx, self)
