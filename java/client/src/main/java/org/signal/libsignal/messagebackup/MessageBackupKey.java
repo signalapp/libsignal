@@ -5,8 +5,6 @@
 
 package org.signal.libsignal.messagebackup;
 
-import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
-
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
 import org.signal.libsignal.protocol.ServiceId.Aci;
@@ -20,14 +18,6 @@ public class MessageBackupKey extends NativeHandleGuard.SimpleOwner {
 
   private MessageBackupKey(long nativeHandle) {
     super(nativeHandle);
-  }
-
-  /**
-   * @deprecated Use AccountEntropyPool instead.
-   */
-  @Deprecated
-  public MessageBackupKey(byte[] masterKey, Aci aci) {
-    super(Native.MessageBackupKey_FromMasterKey(masterKey, aci.toServiceIdFixedWidthBinary()));
   }
 
   /**
@@ -54,14 +44,6 @@ public class MessageBackupKey extends NativeHandleGuard.SimpleOwner {
     super(
         Native.MessageBackupKey_FromBackupKeyAndBackupId(
             backupKey.getInternalContentsForJNI(), backupId));
-  }
-
-  /**
-   * @deprecated Use the overload that takes a strongly-typed BackupKey instead.
-   */
-  @Deprecated
-  public MessageBackupKey(byte[] backupKey, byte[] backupId) {
-    this(filterExceptions(() -> new BackupKey(backupKey)), backupId);
   }
 
   /**

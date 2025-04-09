@@ -12,10 +12,6 @@ import { TokioAsyncContext, newNativeHandle, ServiceAuth } from '../net';
 export type CDSRequestOptionsType = {
   e164s: Array<string>;
   acisAndAccessKeys: Array<{ aci: string; accessKey: string }>;
-  /**
-   * @deprecated this option is ignored by the server.
-   */
-  returnAcisWithoutUaks: boolean;
   abortSignal?: AbortSignal;
 };
 

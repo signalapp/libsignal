@@ -31,20 +31,3 @@ public func hkdf(
 
     return output
 }
-
-@available(*, deprecated, message: "Remove the 'version' parameter for standard HKDF behavior")
-public func hkdf(
-    outputLength: Int,
-    version: UInt32,
-    inputKeyMaterial: some ContiguousBytes,
-    salt: some ContiguousBytes,
-    info: some ContiguousBytes
-) throws -> [UInt8] {
-    precondition(version == 3, "HKDF versions other than 3 are no longer supported")
-    return try hkdf(
-        outputLength: outputLength,
-        inputKeyMaterial: inputKeyMaterial,
-        salt: salt,
-        info: info
-    )
-}

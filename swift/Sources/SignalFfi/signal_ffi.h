@@ -1573,8 +1573,6 @@ SignalFfiError *signal_message_backup_key_from_account_entropy_pool(SignalMutPoi
 
 SignalFfiError *signal_message_backup_key_from_backup_key_and_backup_id(SignalMutPointerMessageBackupKey *out, const uint8_t (*backup_key)[32], const uint8_t (*backup_id)[16]);
 
-SignalFfiError *signal_message_backup_key_from_master_key(SignalMutPointerMessageBackupKey *out, const uint8_t (*master_key)[32], const SignalServiceIdFixedWidthBinaryBytes *aci);
-
 SignalFfiError *signal_message_backup_key_get_aes_key(uint8_t (*out)[32], SignalConstPointerMessageBackupKey key);
 
 SignalFfiError *signal_message_backup_key_get_hmac_key(uint8_t (*out)[32], SignalConstPointerMessageBackupKey key);

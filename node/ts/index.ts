@@ -49,27 +49,6 @@ export enum ContentHint {
 
 export type Uuid = string;
 
-export class HKDF {
-  /**
-   * @deprecated Use the top-level 'hkdf' function for standard HKDF behavior
-   */
-  static new(version: number): HKDF {
-    if (version != 3) {
-      throw new Error('HKDF versions other than 3 are no longer supported');
-    }
-    return new HKDF();
-  }
-
-  deriveSecrets(
-    outputLength: number,
-    keyMaterial: Buffer,
-    label: Buffer,
-    salt: Buffer | null
-  ): Buffer {
-    return hkdf(outputLength, keyMaterial, label, salt);
-  }
-}
-
 export function hkdf(
   outputLength: number,
   keyMaterial: Buffer,

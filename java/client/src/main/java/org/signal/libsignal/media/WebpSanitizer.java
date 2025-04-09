@@ -35,15 +35,4 @@ public class WebpSanitizer {
         ParseException.class,
         () -> Native.WebpSanitizer_Sanitize(TrustedSkipInputStream.makeTrusted(input)));
   }
-
-  /**
-   * Sanitize a WebP input.
-   *
-   * @deprecated Prefer the version without a length; it is now ignored.
-   */
-  @Deprecated
-  public static void sanitize(InputStream input, long ignoredLength)
-      throws IOException, ParseException {
-    sanitize(input);
-  }
 }

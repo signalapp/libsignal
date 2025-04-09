@@ -10,19 +10,6 @@ import SignalFfi
 ///
 /// - SeeAlso: ``BackupKey``
 public class MessageBackupKey: NativeHandleOwner<SignalMutPointerMessageBackupKey>, @unchecked Sendable {
-    @available(*, deprecated, message: "Use init(accountEntropy:aci:) instead")
-    public convenience init(masterKey: [UInt8], aci: Aci) throws {
-        let masterKey = try ByteArray(newContents: masterKey, expectedLength: 32)
-        let handle = try masterKey.withUnsafePointerToSerialized { masterKey in
-            try aci.withPointerToFixedWidthBinary { aci in
-                var outputHandle = SignalMutPointerMessageBackupKey()
-                try checkError(signal_message_backup_key_from_master_key(&outputHandle, masterKey, aci))
-                return outputHandle
-            }
-        }
-        self.init(owned: NonNull(handle)!)
-    }
-
     /// Derives a `MessageBackupKey` from the given account entropy pool.
     ///
     /// `accountEntropy` must be a **validated** account entropy pool;
@@ -52,12 +39,6 @@ public class MessageBackupKey: NativeHandleOwner<SignalMutPointerMessageBackupKe
             }
         }
         self.init(owned: NonNull(handle)!)
-    }
-
-    @available(*, deprecated, message: "Use the overload that takes a strongly-typed BackupKey instead")
-    public convenience init(backupKey: [UInt8], backupId: [UInt8]) throws {
-        let backupKey = try BackupKey(contents: backupKey)
-        try self.init(backupKey: backupKey, backupId: backupId)
     }
 
     internal required init(owned handle: NonNull<SignalMutPointerMessageBackupKey>) {

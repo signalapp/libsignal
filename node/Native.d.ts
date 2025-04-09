@@ -336,7 +336,6 @@ export function LookupRequest_new(): LookupRequest;
 export function LookupRequest_setToken(request: Wrapper<LookupRequest>, token: Buffer): void;
 export function MessageBackupKey_FromAccountEntropyPool(accountEntropy: AccountEntropyPool, aci: Buffer): MessageBackupKey;
 export function MessageBackupKey_FromBackupKeyAndBackupId(backupKey: Buffer, backupId: Buffer): MessageBackupKey;
-export function MessageBackupKey_FromMasterKey(masterKey: Buffer, aci: Buffer): MessageBackupKey;
 export function MessageBackupKey_GetAesKey(key: Wrapper<MessageBackupKey>): Buffer;
 export function MessageBackupKey_GetHmacKey(key: Wrapper<MessageBackupKey>): Buffer;
 export function MessageBackupValidator_Validate(key: Wrapper<MessageBackupKey>, firstStream: InputStream, secondStream: InputStream, len: bigint, purpose: number): Promise<MessageBackupValidationOutcome>;

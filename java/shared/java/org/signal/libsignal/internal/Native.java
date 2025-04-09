@@ -434,7 +434,6 @@ public final class Native {
   public static native void MessageBackupKey_Destroy(long handle);
   public static native long MessageBackupKey_FromAccountEntropyPool(String accountEntropy, byte[] aci);
   public static native long MessageBackupKey_FromBackupKeyAndBackupId(byte[] backupKey, byte[] backupId);
-  public static native long MessageBackupKey_FromMasterKey(byte[] masterKey, byte[] aci);
   public static native long MessageBackupKey_FromParts(byte[] hmacKey, byte[] aesKey);
   public static native byte[] MessageBackupKey_GetAesKey(long key);
   public static native byte[] MessageBackupKey_GetHmacKey(long key);

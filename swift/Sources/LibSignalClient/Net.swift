@@ -131,18 +131,6 @@ public class Net {
         return try await self.cdsiLookup(auth: auth, request: request)
     }
 
-    @available(*, deprecated, message: "returnAcisWithoutUaks is deprecated; use the overload that does not have it as an argument")
-    public func cdsiLookup(
-        auth: Auth,
-        prevE164s: [String],
-        e164s: [String],
-        acisAndAccessKeys: [AciAndAccessKey],
-        returnAcisWithoutUaks: Bool,
-        token: Data?
-    ) async throws -> CdsiLookup {
-        return try await self.cdsiLookup(auth: auth, prevE164s: prevE164s, e164s: e164s, acisAndAccessKeys: acisAndAccessKeys, token: token)
-    }
-
     /// Starts a new CDSI lookup request.
     ///
     /// Initiates a new CDSI request. Once the attested connection has been
