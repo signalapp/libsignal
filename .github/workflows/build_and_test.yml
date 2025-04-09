@@ -8,7 +8,7 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
-  NDK_VERSION: 27.0.12077973
+  NDK_VERSION: 28.0.13004108
   RUST_BACKTRACE: 1
   # For dev builds, include limited debug info in the output. See
   # https://doc.rust-lang.org/cargo/reference/profiles.html#debug

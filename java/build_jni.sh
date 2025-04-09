@@ -171,9 +171,6 @@ export TARGET_AR="${ANDROID_TOOLCHAIN_DIR}/llvm-ar"
 # Comment out the following to allow the 32-bit backend on 32-bit targets.
 export RUSTFLAGS="--cfg curve25519_dalek_bits=\"64\" ${RUSTFLAGS:-}"
 
-# Support newer Android devices which use 16KB pages instead of the default 4KB.
-export RUSTFLAGS="-Clink-arg=-Wl,-z,max-page-size=16384 ${RUSTFLAGS:-}"
-
 target_for_abi() {
     case "$1" in
         arm64-v8a)
