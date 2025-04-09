@@ -9,7 +9,9 @@ use libsignal_core::{Aci, Pni};
 use libsignal_net_infra::errors::{LogSafeDisplay, RetryLater};
 use libsignal_net_infra::{extract_retry_later, AsHttpHeader as _};
 use libsignal_protocol::{GenericSignedPreKey, KyberPreKeyRecord, PublicKey, SignedPreKeyRecord};
-use serde_with::{serde_as, skip_serializing_none, DurationSeconds, FromInto};
+use serde_with::{
+    serde_as, skip_serializing_none, DurationMilliSeconds, DurationSeconds, FromInto,
+};
 use uuid::Uuid;
 
 use crate::auth::Auth;
@@ -89,6 +91,16 @@ pub struct VerificationCodeNotDeliverable {
     pub permanent_failure: bool,
 }
 
+#[serde_as]
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, derive_more::Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct RegistrationLock {
+    #[serde_as(as = "DurationMilliSeconds")]
+    time_remaining: Duration,
+    #[debug("_")]
+    svr2_credentials: Auth,
+}
+
 /// The subset of account attributes that don't need any additional validation.
 #[serde_as]
 #[skip_serializing_none]
@@ -144,6 +156,13 @@ pub struct ForServiceIds<T> {
     pub pni: T,
 }
 
+/// Keys associated with a single service ID for an account.
+pub struct AccountKeys<'a> {
+    pub identity_key: &'a PublicKey,
+    pub signed_pre_key: &'a SignedPreKeyRecord,
+    pub pq_last_resort_pre_key: &'a KyberPreKeyRecord,
+}
+
 /// How a device wants to be notified of messages when offline.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum NewMessageNotification<'a> {
@@ -181,12 +200,6 @@ pub(super) struct SubmitVerificationCode<'a> {
 pub(super) struct RegistrationRequest<'s, R> {
     pub(super) session_id: &'s SessionId,
     pub(super) request: R,
-}
-
-pub(super) struct AccountKeys<'a> {
-    identity_key: &'a PublicKey,
-    signed_pre_key: &'a SignedPreKeyRecord,
-    pq_last_resort_pre_key: &'a KyberPreKeyRecord,
 }
 
 #[serde_as]
@@ -237,6 +250,19 @@ pub(super) struct RegistrationResponse {
 }
 
 impl VerificationCodeNotDeliverable {
+    pub(crate) fn from_response(
+        response_headers: &HeaderMap,
+        response_body: &[u8],
+    ) -> Option<Self> {
+        if response_headers.get(CONTENT_TYPE_JSON.0) != Some(&CONTENT_TYPE_JSON.1) {
+            return None;
+        }
+
+        serde_json::from_slice(response_body).ok()
+    }
+}
+
+impl RegistrationLock {
     pub(crate) fn from_response(
         response_headers: &HeaderMap,
         response_body: &[u8],
@@ -341,15 +367,14 @@ impl<T> ForServiceIds<T> {
 pub struct SkipDeviceTransfer;
 
 impl crate::chat::Request {
-    #[allow(unused)]
     pub(super) fn register_account(
+        number: &str,
         session_id: Option<&SessionId>,
         message_notification: NewMessageNotification<'_>,
         account_attributes: ProvidedAccountAttributes<'_>,
         device_transfer: Option<SkipDeviceTransfer>,
         keys: ForServiceIds<AccountKeys<'_>>,
         account_password: &[u8],
-        number: &str,
     ) -> Self {
         #[serde_as]
         #[skip_serializing_none]
@@ -785,6 +810,7 @@ mod test {
         });
 
         let request = crate::chat::Request::register_account(
+            "+18005550101",
             Some(&"abc".parse().unwrap()),
             NewMessageNotification::Apn("appleId"),
             ACCOUNT_ATTRIBUTES.clone(),
@@ -802,7 +828,6 @@ mod test {
                 },
             },
             b"account password",
-            "+18005550101",
         );
 
         let crate::chat::Request {
@@ -895,6 +920,7 @@ mod test {
         let (identity_keys, signed_pre_keys) = &*REGISTER_KEYS;
 
         let request = crate::chat::Request::register_account(
+            "+18005550101",
             Some(&"abc".parse().unwrap()),
             NewMessageNotification::WillFetchMessages,
             ACCOUNT_ATTRIBUTES.clone(),
@@ -912,7 +938,6 @@ mod test {
                 },
             },
             b"account password",
-            "+18005550101",
         );
 
         let body = serde_json::from_slice::<'_, serde_json::Value>(&request.body.unwrap()).unwrap();

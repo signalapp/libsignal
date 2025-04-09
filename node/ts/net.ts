@@ -201,9 +201,11 @@ export class Net {
 
   public async resumeRegistrationSession({
     sessionId,
+    e164,
     connectionTimeoutMillis,
   }: {
     sessionId: string;
+    e164: string;
     connectionTimeoutMillis?: number;
   }): Promise<RegistrationService> {
     return RegistrationService.resumeSession(
@@ -212,7 +214,7 @@ export class Net {
         tokioAsyncContext: this.asyncContext,
         connectionTimeoutMillis: connectionTimeoutMillis,
       },
-      { sessionId }
+      { sessionId, e164 }
     );
   }
 

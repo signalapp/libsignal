@@ -31,6 +31,7 @@ type CreateSessionArgs = Readonly<{
 
 type ResumeSessionArgs = Readonly<{
   sessionId: string;
+  e164: string;
 }>;
 
 /**
@@ -82,11 +83,12 @@ export class RegistrationService {
    */
   public static async resumeSession(
     options: ReadonlyDeep<RegistrationOptions>,
-    { sessionId }: ResumeSessionArgs
+    { sessionId, e164 }: ResumeSessionArgs
   ): Promise<RegistrationService> {
     const session = await Native.RegistrationService_ResumeSession(
       options.tokioAsyncContext,
       sessionId,
+      e164,
       options.connectionManager
     );
     return new RegistrationService(session, options.tokioAsyncContext);

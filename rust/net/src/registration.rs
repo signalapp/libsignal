@@ -29,6 +29,7 @@ pub struct RegistrationService<'c> {
     session: RegistrationSession,
     connection: RegistrationConnection<'c>,
     session_id: SessionId,
+    number: String,
 }
 
 assert_impl_all!(RegistrationService<'static>: UnwindSafe);
@@ -44,6 +45,7 @@ impl<'c> RegistrationService<'c> {
         connect_chat: Box<dyn ConnectChat + Send + Sync + UnwindSafe + 'c>,
     ) -> Result<Self, RequestError<CreateSessionError>> {
         log::info!("starting new registration session");
+        let number = create_session.number.clone();
 
         let (connection, response) =
             RegistrationConnection::connect_and_send(connect_chat, create_session.into()).await?;
@@ -58,6 +60,7 @@ impl<'c> RegistrationService<'c> {
 
         Ok(Self {
             session_id,
+            number,
             connection,
             session,
         })
@@ -70,6 +73,7 @@ impl<'c> RegistrationService<'c> {
     /// transient errors are encountered.
     pub async fn resume_session(
         session_id: SessionId,
+        number: String,
         connect_chat: Box<dyn ConnectChat + Send + Sync + UnwindSafe + 'c>,
     ) -> Result<Self, RequestError<ResumeSessionError>> {
         log::info!("trying to resume existing registration session with session ID {session_id}");
@@ -93,6 +97,7 @@ impl<'c> RegistrationService<'c> {
             session_id,
             connection,
             session,
+            number,
         })
     }
 
@@ -163,6 +168,40 @@ impl<'c> RegistrationService<'c> {
             .map_err(Into::into)
     }
 
+    pub async fn register_account(
+        &mut self,
+        message_notification: NewMessageNotification<'_>,
+        account_attributes: ProvidedAccountAttributes<'_>,
+        device_transfer: Option<SkipDeviceTransfer>,
+        keys: ForServiceIds<AccountKeys<'_>>,
+        account_password: &[u8],
+    ) -> Result<RegisterAccountResponse, RequestError<RegisterAccountError>> {
+        let Self {
+            connection,
+            session_id,
+            number,
+            session: _,
+        } = self;
+
+        let request = crate::chat::Request::register_account(
+            number,
+            Some(session_id),
+            message_notification,
+            account_attributes,
+            device_transfer,
+            keys,
+            account_password,
+        );
+
+        log::info!("sending register account request");
+        let response = connection.submit_chat_request(request).await?;
+        log::info!("register account succeeded");
+
+        response
+            .try_into_response()
+            .map_err(|e| RequestError::<SessionRequestError>::from(e).into())
+    }
+
     /// Sends a request for an established session.
     ///
     /// On success, the state of the session as reported by the server is saved
@@ -176,6 +215,7 @@ impl<'c> RegistrationService<'c> {
             connection,
             session,
             session_id,
+            number: _,
         } = self;
         log::info!(
             "sending {request_type} on registration session {session_id}",
@@ -204,6 +244,36 @@ impl<'c> RegistrationService<'c> {
         *session = response_session;
         Ok(())
     }
+}
+
+pub async fn reregister_account(
+    number: &str,
+    connect_chat: Box<dyn ConnectChat + Send + Sync + UnwindSafe + '_>,
+    message_notification: NewMessageNotification<'_>,
+    account_attributes: ProvidedAccountAttributes<'_>,
+    device_transfer: Option<SkipDeviceTransfer>,
+    keys: ForServiceIds<AccountKeys<'_>>,
+    account_password: &[u8],
+) -> Result<RegisterAccountResponse, RequestError<RegisterAccountError>> {
+    let request = crate::chat::Request::register_account(
+        number,
+        None,
+        message_notification,
+        account_attributes,
+        device_transfer,
+        keys,
+        account_password,
+    );
+
+    log::info!("sending regregister account request");
+
+    let (_connection, response) =
+        RegistrationConnection::connect_and_send(connect_chat, request).await?;
+
+    log::info!("reregister account request succeded");
+    response
+        .try_into_response()
+        .map_err(|e| RequestError::<SessionRequestError>::from(e).into())
 }
 
 #[cfg(test)]
@@ -400,6 +470,7 @@ mod test {
 
         let resume_session = RegistrationService::resume_session(
             SessionId::from_str(SESSION_ID).unwrap(),
+            "+18005550101".to_string(),
             Box::new(fake_connect),
         );
 
@@ -461,6 +532,7 @@ mod test {
 
         let resume_session = RegistrationService::resume_session(
             SessionId::from_str(SESSION_ID).unwrap(),
+            "+18005550101".to_string(),
             Box::new(fake_connect),
         );
 

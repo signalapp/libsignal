@@ -34,12 +34,14 @@ async fn RegistrationService_CreateSession(
 #[bridge_io(TokioAsyncContext, ffi = false, jni = false)]
 async fn RegistrationService_ResumeSession(
     session_id: AsType<SessionId, String>,
+    number: String,
     connect_chat: Box<dyn ConnectChatBridge>,
 ) -> Result<RegistrationService, RequestError<ResumeSessionError>> {
     RegistrationService::resume_session(
         connect_chat,
         tokio::runtime::Handle::current(),
         session_id.into_inner(),
+        number,
     )
     .await
 }

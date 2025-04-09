@@ -6,7 +6,9 @@
 use http::{HeaderMap, StatusCode};
 use libsignal_net_infra::errors::{LogSafeDisplay, RetryLater};
 
-use crate::registration::{InvalidSessionId, ResponseError, VerificationCodeNotDeliverable};
+use crate::registration::{
+    InvalidSessionId, RegistrationLock, ResponseError, VerificationCodeNotDeliverable,
+};
 
 #[derive(Debug, thiserror::Error, displaydoc::Display, strum::EnumString)]
 pub enum RequestError<E> {
@@ -99,6 +101,20 @@ pub enum SubmitVerificationError {
     NotReadyForVerification,
     /// {0}
     RetryLater(#[from] RetryLater),
+}
+
+#[derive(Debug, thiserror::Error, displaydoc::Display)]
+#[cfg_attr(test, derive(strum::EnumDiscriminants))]
+#[cfg_attr(test, strum_discriminants(derive(strum::EnumIter)))]
+pub enum RegisterAccountError {
+    /// a device transfer is possible and was not explicitly skipped.
+    DeviceTransferIsPossibleButNotSkipped,
+    /// {0}
+    RetryLater(#[from] RetryLater),
+    /// registration recovery password verification failed
+    RegistrationRecoveryVerificationFailed,
+    /// registration lock is enabled
+    RegistrationLock(RegistrationLock),
 }
 
 /// Convert [`RequestError<SessionRequestError>`] into a typed version.
@@ -270,6 +286,32 @@ impl From<SessionRequestError> for RequestError<SubmitVerificationError> {
     }
 }
 
+impl From<SessionRequestError> for RequestError<RegisterAccountError> {
+    fn from(value: SessionRequestError) -> Self {
+        RequestError::Other(match value {
+            SessionRequestError::RetryLater(retry_later) => retry_later.into(),
+            SessionRequestError::UnrecognizedStatus {
+                status,
+                response_headers,
+                response_body,
+            } => match status.as_u16() {
+                403 => RegisterAccountError::RegistrationRecoveryVerificationFailed,
+                409 => RegisterAccountError::DeviceTransferIsPossibleButNotSkipped,
+                423 => {
+                    let Some(registration_lock) = response_body
+                        .as_deref()
+                        .and_then(|body| RegistrationLock::from_response(&response_headers, body))
+                    else {
+                        return RequestError::Unknown("unexpected 423 response format".to_owned());
+                    };
+                    RegisterAccountError::RegistrationLock(registration_lock)
+                }
+                _ => return RequestError::Unknown(format!("unexpected HTTP status {status}")),
+            },
+        })
+    }
+}
+
 #[cfg(test)]
 impl From<RetryLater> for RequestError<RetryLater> {
     fn from(value: RetryLater) -> Self {
@@ -376,6 +418,17 @@ mod test {
         }
     }
 
+    impl AsStatus for RegisterAccountErrorDiscriminants {
+        fn as_status(&self) -> Option<u16> {
+            Some(match self {
+                Self::DeviceTransferIsPossibleButNotSkipped => 409,
+                Self::RegistrationRecoveryVerificationFailed => 403,
+                Self::RegistrationLock => 423,
+                Self::RetryLater => 429,
+            })
+        }
+    }
+
     #[test]
     fn error_type_status_mapping() {
         // This is just a re-hashing of the non-test logic but in a more easily
@@ -391,7 +444,11 @@ mod test {
         assert_eq!(
             SubmitVerificationError::sorted_statuses(),
             vec![400, 404, 409, 422, 429]
-        )
+        );
+        assert_eq!(
+            RegisterAccountError::sorted_statuses(),
+            vec![403, 409, 422, 423, 429]
+        );
     }
 
     fn error_for_status(status: u16) -> ResponseError {
@@ -399,6 +456,20 @@ mod test {
         let mut response_body = None;
         match status {
             422 => return ResponseError::InvalidRequest,
+            423 => {
+                response_headers.append(CONTENT_TYPE_JSON.0, CONTENT_TYPE_JSON.1);
+                response_body = Some(
+                    serde_json::to_vec(&serde_json::json!({
+                        "timeRemaining": 1234,
+                        "svr2Credentials": {
+                            "username": "username",
+                            "password": "password",
+                        }
+                    }))
+                    .unwrap()
+                    .into_boxed_slice(),
+                )
+            }
             429 => {
                 return ResponseError::RetryLater(RetryLater {
                     retry_after_seconds: 30,
@@ -436,7 +507,9 @@ mod test {
             let inner = match request_error.into() {
                 RequestError::RequestWasNotValid => continue,
                 RequestError::Other(inner) => inner,
-                RequestError::Timeout | RequestError::Unknown(_) => unreachable!(),
+                e @ (RequestError::Timeout | RequestError::Unknown(_)) => {
+                    unreachable!("unexpected {e:?}")
+                }
             };
             assert_eq!(inner.discriminant().as_status(), Some(status));
         }
@@ -450,6 +523,7 @@ mod test {
     #[test_case(e::<UpdateSessionError>)]
     #[test_case(e::<RequestVerificationCodeError>)]
     #[test_case(e::<SubmitVerificationError>)]
+    #[test_case(e::<RegisterAccountError>)]
     fn error_type_from_status<T>(_type_hint: fn(T))
     where
         RequestError<SessionRequestError>: Into<RequestError<T>>,

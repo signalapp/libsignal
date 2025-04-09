@@ -60,9 +60,11 @@ impl RegistrationService {
         connect_bridge: Box<dyn ConnectChatBridge>,
         tokio_runtime: tokio::runtime::Handle,
         session_id: SessionId,
+        number: String,
     ) -> impl Future<Output = Result<Self, RequestError<ResumeSessionError>>> + Send {
         net_registration::RegistrationService::resume_session(
             session_id,
+            number,
             connect_bridge.create_chat_connector(tokio_runtime),
         )
         .map_ok(|registration| Self(registration.into()))
