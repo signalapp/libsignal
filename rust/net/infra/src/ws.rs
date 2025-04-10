@@ -9,7 +9,6 @@ use std::marker::PhantomData;
 use std::sync::Arc;
 use std::time::Duration;
 
-use async_trait::async_trait;
 use derive_where::derive_where;
 use futures_util::stream::{SplitSink, SplitStream};
 use futures_util::{Sink, SinkExt as _, Stream, StreamExt, TryFutureExt};
@@ -17,19 +16,14 @@ use http::uri::PathAndQuery;
 use tokio::sync::Mutex;
 use tokio::time::Instant;
 use tokio_tungstenite::WebSocketStream;
-use tungstenite::handshake::client::generate_key;
 use tungstenite::protocol::CloseFrame;
 use tungstenite::{http, Message};
 
 use crate::errors::LogSafeDisplay;
 use crate::route::{Connector, HttpRouteFragment, WebSocketRouteFragment};
-use crate::service::{CancellationReason, CancellationToken, ServiceConnector};
-use crate::utils::timeout;
+use crate::service::{CancellationReason, CancellationToken};
 use crate::ws::error::{HttpFormatError, ProtocolError, SpaceError};
-use crate::{
-    Alpn, AsyncDuplexStream, Connection, ConnectionParams, HttpRequestDecorator,
-    ServiceConnectionInfo, StreamAndInfo, TransportConnector,
-};
+use crate::{AsyncDuplexStream, Connection};
 
 pub mod error;
 pub use error::{LogSafeTungsteniteError, WebSocketConnectError};
@@ -76,63 +70,6 @@ impl<S> WebSocketStreamLike for S where
     S: Stream<Item = Result<tungstenite::Message, tungstenite::Error>>
         + Sink<tungstenite::Message, Error = tungstenite::Error>
 {
-}
-
-/// [`ServiceConnector`] for services that wrap a websocket connection.
-#[derive_where(Clone; T)]
-pub struct WebSocketClientConnector<T, E> {
-    service_connector: WebSocketStreamConnector<T>,
-    keep_alive_interval: Duration,
-    max_idle_time: Duration,
-    service_error_type: PhantomData<E>,
-}
-
-impl<T: TransportConnector, E> WebSocketClientConnector<T, E> {
-    pub fn new(transport_connector: T, cfg: WebSocketConfig) -> Self {
-        let WebSocketConfig {
-            ws_config,
-            endpoint,
-            max_connection_time,
-            keep_alive_interval,
-            max_idle_time,
-        } = cfg;
-        Self {
-            service_connector: WebSocketStreamConnector::new(
-                transport_connector,
-                WebSocketRouteFragment {
-                    headers: Default::default(),
-                    ws_config,
-                    endpoint,
-                },
-                max_connection_time,
-            ),
-            keep_alive_interval,
-            max_idle_time,
-            service_error_type: PhantomData,
-        }
-    }
-}
-
-/// [`ServiceConnector`] that produces a [`WebSocketStream`] as its service.
-#[derive(Clone)]
-pub struct WebSocketStreamConnector<T> {
-    transport_connector: T,
-    fragment: WebSocketRouteFragment,
-    max_connection_time: Duration,
-}
-
-impl<T: TransportConnector> WebSocketStreamConnector<T> {
-    pub fn new(
-        transport_connector: T,
-        fragment: WebSocketRouteFragment,
-        max_connection_time: Duration,
-    ) -> Self {
-        Self {
-            transport_connector,
-            fragment,
-            max_connection_time,
-        }
-    }
 }
 
 impl WebSocketConfig {
@@ -324,103 +261,6 @@ impl From<tungstenite::Error> for WebSocketServiceError {
     }
 }
 
-#[async_trait]
-impl<T, E> ServiceConnector for WebSocketClientConnector<T, E>
-where
-    T: TransportConnector,
-    E: Send + Sync,
-    WebSocketServiceError: Into<E>,
-{
-    type Service = (WebSocketClient<T::Stream, E>, ServiceConnectionInfo);
-    type Channel = (WebSocketStream<T::Stream>, ServiceConnectionInfo);
-    type ConnectError = WebSocketConnectError;
-
-    async fn connect_channel(
-        &self,
-        connection_params: &ConnectionParams,
-    ) -> Result<Self::Channel, Self::ConnectError> {
-        self.service_connector
-            .connect_channel(connection_params)
-            .await
-    }
-
-    fn start_service(&self, channel: Self::Channel) -> (Self::Service, CancellationToken) {
-        let (service, token) =
-            start_ws_service(channel.0, self.keep_alive_interval, self.max_idle_time);
-        ((service, channel.1), token)
-    }
-}
-
-#[async_trait]
-impl<T> ServiceConnector for WebSocketStreamConnector<T>
-where
-    T: TransportConnector,
-{
-    type Service = (WebSocketStream<T::Stream>, ServiceConnectionInfo);
-    type Channel = (WebSocketStream<T::Stream>, ServiceConnectionInfo);
-    type ConnectError = WebSocketConnectError;
-
-    async fn connect_channel(
-        &self,
-        connection_params: &ConnectionParams,
-    ) -> Result<Self::Channel, Self::ConnectError> {
-        let WebSocketRouteFragment {
-            ws_config,
-            endpoint,
-            headers,
-        } = &self.fragment;
-        let connection_params = connection_params
-            .clone()
-            .with_decorator(HttpRequestDecorator::Headers(headers.clone()));
-        let connect_future = connect_websocket(
-            &connection_params,
-            endpoint.clone(),
-            *ws_config,
-            &self.transport_connector,
-        );
-        timeout(
-            self.max_connection_time,
-            WebSocketConnectError::Timeout,
-            connect_future,
-        )
-        .await
-    }
-
-    fn start_service(&self, channel: Self::Channel) -> (Self::Service, CancellationToken) {
-        (channel, CancellationToken::new())
-    }
-}
-
-fn start_ws_service<S: AsyncDuplexStream, E>(
-    channel: WebSocketStream<S>,
-    keep_alive_interval: Duration,
-    max_idle_time: Duration,
-) -> (WebSocketClient<S, E>, CancellationToken) {
-    let service_cancellation = CancellationToken::new();
-    let (ws_sink, ws_stream) = channel.split();
-    let ws_client_writer = WebSocketClientWriter {
-        ws_sink: Arc::new(Mutex::new(ws_sink)),
-        service_cancellation: service_cancellation.clone(),
-        error_type: Default::default(),
-    };
-    let ws_client_reader = WebSocketClientReader {
-        ws_stream,
-        keep_alive_interval,
-        max_idle_time,
-        ws_writer: ws_client_writer.clone(),
-        service_cancellation: service_cancellation.clone(),
-        last_frame_received: Instant::now(),
-        last_keepalive_sent: Instant::now(),
-    };
-    (
-        WebSocketClient {
-            ws_client_writer,
-            ws_client_reader,
-        },
-        service_cancellation,
-    )
-}
-
 #[derive_where(Clone)]
 #[derive(Debug)]
 pub struct WebSocketClientWriter<S, E> {
@@ -545,52 +385,6 @@ where
     result
 }
 
-async fn connect_websocket<T: TransportConnector>(
-    connection_params: &ConnectionParams,
-    endpoint: PathAndQuery,
-    ws_config: tungstenite::protocol::WebSocketConfig,
-    transport_connector: &T,
-) -> Result<(WebSocketStream<T::Stream>, ServiceConnectionInfo), WebSocketConnectError> {
-    let StreamAndInfo(ssl_stream, remote_address) = transport_connector
-        .connect(&connection_params.transport, Alpn::Http1_1)
-        .await?;
-
-    // we need to explicitly create upgrade request
-    // because request decorators require a request `Builder`
-    let request_builder = http::Request::builder()
-        .method("GET")
-        .header(
-            http::header::HOST,
-            http::HeaderValue::from_str(&connection_params.http_host)
-                .expect("valid `HOST` header value"),
-        )
-        .header("Connection", "Upgrade")
-        .header("Upgrade", "websocket")
-        .header("Sec-WebSocket-Version", "13")
-        .header("Sec-WebSocket-Key", generate_key())
-        .uri(
-            http::uri::Builder::new()
-                .authority(connection_params.http_host.to_string())
-                .path_and_query(endpoint)
-                .scheme("wss")
-                .build()
-                .unwrap(),
-        );
-
-    let request_builder = connection_params
-        .http_request_decorator
-        .decorate_request(request_builder);
-
-    let (ws_stream, _response) = tokio_tungstenite::client_async_with_config(
-        request_builder.body(()).expect("can get request body"),
-        ssl_stream,
-        Some(ws_config),
-    )
-    .await?;
-
-    Ok((ws_stream, remote_address))
-}
-
 #[derive(Debug, derive_more::From)]
 #[cfg_attr(any(test, feature = "test-util"), derive(Clone, Eq, PartialEq))]
 pub enum TextOrBinary {
@@ -606,38 +400,6 @@ impl From<TextOrBinary> for Message {
             TextOrBinary::Binary(b) => Self::Binary(b),
             TextOrBinary::Text(t) => Self::Text(t),
         }
-    }
-}
-
-/// Wrapper for a websocket that can be used to send [`TextOrBinary`] messages.
-#[derive(Debug)]
-pub struct WebSocketClient<S, E> {
-    pub ws_client_writer: WebSocketClientWriter<S, E>,
-    pub ws_client_reader: WebSocketClientReader<S, E>,
-}
-
-#[cfg(any(test, feature = "test-util"))]
-impl<S: AsyncDuplexStream, E> WebSocketClient<S, E>
-where
-    WebSocketServiceError: Into<E>,
-{
-    /// Sends a request on the connection.
-    ///
-    /// An error is returned if the send fails.
-    pub(crate) async fn send(&mut self, item: TextOrBinary) -> Result<(), E> {
-        self.ws_client_writer.send(item).await
-    }
-
-    pub(crate) async fn close(self, close: Option<CloseFrame<'static>>) -> Result<(), E> {
-        self.ws_client_writer.send(Message::Close(close)).await
-    }
-
-    /// Receives a message on the connection.
-    ///
-    /// Returns the next text or binary message received on the wrapped socket.
-    /// If the next response received is a [`Message::Close`], returns `None`.
-    pub(crate) async fn receive(&mut self) -> Result<NextOrClose<TextOrBinary>, E> {
-        self.ws_client_reader.next().await
     }
 }
 
@@ -685,8 +447,6 @@ pub mod testutil {
     use tungstenite::protocol::WebSocketConfig;
 
     use super::*;
-    use crate::timeouts::{WS_KEEP_ALIVE_INTERVAL, WS_MAX_IDLE_INTERVAL};
-    use crate::AsyncDuplexStream;
 
     pub async fn fake_websocket() -> (WebSocketStream<DuplexStream>, WebSocketStream<DuplexStream>)
     {
@@ -716,32 +476,13 @@ pub mod testutil {
         let server_stream = server_res.unwrap();
         (server_stream, client_stream)
     }
-
-    pub fn websocket_test_client<S: AsyncDuplexStream>(
-        channel: WebSocketStream<S>,
-    ) -> WebSocketClient<S, WebSocketServiceError> {
-        start_ws_service(channel, WS_KEEP_ALIVE_INTERVAL, WS_MAX_IDLE_INTERVAL).0
-    }
-
-    impl<S: AsyncDuplexStream, E> WebSocketClient<S, E> {
-        pub fn new_fake(channel: WebSocketStream<S>) -> Self {
-            const VERY_LARGE_TIMEOUT: Duration = Duration::from_secs(u32::MAX as u64);
-            let (client, _service_status) =
-                start_ws_service(channel, VERY_LARGE_TIMEOUT, VERY_LARGE_TIMEOUT);
-            client
-        }
-    }
 }
 
 #[cfg(test)]
 mod test {
-    use assert_matches::assert_matches;
-    use futures_util::{pin_mut, poll};
 
     use super::testutil::*;
     use super::*;
-
-    const MESSAGE_TEXT: &str = "text";
 
     #[tokio::test]
     async fn websocket_client_sends_pong_on_server_ping() {
@@ -756,62 +497,5 @@ mod test {
             .expect("some result")
             .expect("ok result");
         assert_eq!(response, Message::Pong(vec![]));
-    }
-
-    #[tokio::test]
-    async fn websocket_send_receive() {
-        let (mut server, client) = fake_websocket().await;
-
-        let _echo = tokio::spawn(async move {
-            while let Some(Ok(m)) = server.next().await {
-                server.send(m).await.unwrap();
-            }
-        });
-
-        let mut synchronous = websocket_test_client(client);
-        let item = TextOrBinary::Text(MESSAGE_TEXT.into());
-
-        synchronous.send(item.clone()).await.unwrap();
-        let response = synchronous.receive().await.unwrap();
-        assert_eq!(response, NextOrClose::Next(item));
-    }
-
-    #[tokio::test]
-    async fn websocket_receive() {
-        let (mut server, client) = fake_websocket().await;
-
-        let mut synchronous = websocket_test_client(client);
-        let receive_unsolicited = synchronous.receive();
-        pin_mut!(receive_unsolicited);
-
-        assert_matches!(poll!(&mut receive_unsolicited), std::task::Poll::Pending);
-
-        let item = TextOrBinary::Text(MESSAGE_TEXT.into());
-        server.send(item.clone().into()).await.unwrap();
-
-        let received_item =
-            assert_matches!(receive_unsolicited.await, Ok(NextOrClose::Next(item)) => item);
-        assert_eq!(received_item, item);
-    }
-
-    #[tokio::test]
-    async fn websocket_remote_hangs_up() {
-        let (mut server, client) = fake_websocket().await;
-
-        let send_and_receive = async move {
-            let mut ws = websocket_test_client(client);
-            ws.send(TextOrBinary::Text(MESSAGE_TEXT.to_string())).await
-        };
-
-        let handle = tokio::spawn(send_and_receive);
-
-        assert_eq!(
-            server.next().await.unwrap().unwrap(),
-            Message::Text(MESSAGE_TEXT.to_string())
-        );
-
-        // Hang up.
-        drop(server);
-        assert_matches!(handle.await.expect("joined"), Ok(()));
     }
 }
