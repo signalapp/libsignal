@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::str::FromStr;
 use std::time::Duration;
 
@@ -140,6 +140,19 @@ pub struct RegisterAccountResponse {
     pub username_hash: Option<Box<[u8]>>,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq, serde::Deserialize)]
+pub struct CheckSvr2CredentialsResponse {
+    pub matches: HashMap<String, Svr2CredentialsResult>,
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq, serde::Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum Svr2CredentialsResult {
+    Match,
+    NoMatch,
+    Invalid,
+}
+
 #[serde_as]
 #[derive(Copy, Clone, Debug, Eq, PartialEq, serde::Serialize, strum::EnumTryAs)]
 #[serde(rename_all = "camelCase")]
@@ -199,6 +212,12 @@ pub(super) struct SubmitVerificationCode<'a> {
 pub(super) struct RegistrationRequest<'s, R> {
     pub(super) session_id: &'s SessionId,
     pub(super) request: R,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, serde::Serialize)]
+pub(super) struct CheckSvr2CredentialsRequest<'s> {
+    pub(super) number: &'s str,
+    pub(super) tokens: &'s [String],
 }
 
 #[serde_as]
@@ -345,6 +364,21 @@ impl Request for SubmitVerificationCode<'_> {
                 .expect("no maps")
                 .into_boxed_slice(),
         )
+    }
+}
+
+impl From<CheckSvr2CredentialsRequest<'_>> for crate::chat::Request {
+    fn from(value: CheckSvr2CredentialsRequest<'_>) -> Self {
+        Self {
+            method: Method::POST,
+            path: PathAndQuery::from_static("/v2/backup/auth/check"),
+            headers: HeaderMap::from_iter([CONTENT_TYPE_JSON]),
+            body: Some(
+                serde_json::to_vec(&value)
+                    .expect("no maps")
+                    .into_boxed_slice(),
+            ),
+        }
     }
 }
 
@@ -753,6 +787,55 @@ mod test {
                 }
             }
         );
+    }
+
+    #[test]
+    fn check_svr2_credentials_request() {
+        let request = CheckSvr2CredentialsRequest {
+            number: "+18005550123",
+            tokens: &["user:pass1", "user:pass2", "user:pass3"].map(ToOwned::to_owned),
+        };
+        // Don't bother duplicating the impl by checking other fields
+        let crate::chat::Request { body, .. } = request.into();
+        assert_eq!(
+            body.as_deref(),
+            Some(
+                serde_json::json!({
+                    "number": "+18005550123",
+                    "tokens": [
+                        "user:pass1",
+                        "user:pass2",
+                        "user:pass3",
+                    ]
+                })
+                .to_string()
+                .as_bytes()
+            )
+        )
+    }
+
+    #[test]
+    fn check_svr2_credentials_response_parse() {
+        const RESPONSE_JSON: &str = r#" {
+            "matches": {
+                "property1": "match",
+                "property2": "match"
+            }
+        } "#;
+
+        let CheckSvr2CredentialsResponse { matches } =
+            serde_json::from_str(RESPONSE_JSON).expect("parses");
+
+        assert_eq!(
+            matches,
+            HashMap::from_iter(
+                [
+                    ("property1", Svr2CredentialsResult::Match),
+                    ("property2", Svr2CredentialsResult::Match)
+                ]
+                .map(|(k, v)| (k.to_owned(), v))
+            )
+        )
     }
 
     static ACCOUNT_ATTRIBUTES: LazyLock<ProvidedAccountAttributes<'static>> =

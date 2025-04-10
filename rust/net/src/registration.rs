@@ -170,6 +170,32 @@ impl<'c> RegistrationService<'c> {
             .map_err(Into::into)
     }
 
+    pub async fn check_svr2_credentials(
+        &mut self,
+        svr_tokens: &[String],
+    ) -> Result<CheckSvr2CredentialsResponse, RequestError<CheckSvr2CredentialsError>> {
+        let Self {
+            number, connection, ..
+        } = self;
+        log::info!("sending unauthenticated check SVR2 credentials request");
+
+        let response = connection
+            .submit_chat_request(
+                CheckSvr2CredentialsRequest {
+                    number,
+                    tokens: svr_tokens,
+                }
+                .into(),
+            )
+            .await?;
+
+        log::info!("unauthenticated SVR2 credentials check succeeded");
+
+        response
+            .try_into_response()
+            .map_err(|e| RequestError::<SessionRequestError>::from(e).into())
+    }
+
     pub async fn register_account(
         &mut self,
         message_notification: NewMessageNotification<'_>,

@@ -106,6 +106,14 @@ pub enum SubmitVerificationError {
 #[derive(Debug, thiserror::Error, displaydoc::Display)]
 #[cfg_attr(test, derive(strum::EnumDiscriminants))]
 #[cfg_attr(test, strum_discriminants(derive(strum::EnumIter)))]
+pub enum CheckSvr2CredentialsError {
+    /// provided list of SVR2 credentials could not be parsed.
+    CredentialsCouldNotBeParsed,
+}
+
+#[derive(Debug, thiserror::Error, displaydoc::Display)]
+#[cfg_attr(test, derive(strum::EnumDiscriminants))]
+#[cfg_attr(test, strum_discriminants(derive(strum::EnumIter)))]
 pub enum RegisterAccountError {
     /// a device transfer is possible and was not explicitly skipped.
     DeviceTransferIsPossibleButNotSkipped,
@@ -286,6 +294,21 @@ impl From<SessionRequestError> for RequestError<SubmitVerificationError> {
     }
 }
 
+impl From<SessionRequestError> for RequestError<CheckSvr2CredentialsError> {
+    fn from(value: SessionRequestError) -> Self {
+        match value {
+            SessionRequestError::RetryLater(retry_later) => {
+                RequestError::Unknown(format!("unexpected {retry_later}"))
+            }
+            SessionRequestError::UnrecognizedStatus { status, .. } => match status.as_u16() {
+                400 => RequestError::RequestWasNotValid,
+                422 => RequestError::Other(CheckSvr2CredentialsError::CredentialsCouldNotBeParsed),
+                _ => RequestError::Unknown(format!("unexpected status {status}")),
+            },
+        }
+    }
+}
+
 impl From<SessionRequestError> for RequestError<RegisterAccountError> {
     fn from(value: SessionRequestError) -> Self {
         RequestError::Other(match value {
@@ -418,6 +441,14 @@ mod test {
         }
     }
 
+    impl AsStatus for CheckSvr2CredentialsErrorDiscriminants {
+        fn as_status(&self) -> Option<u16> {
+            Some(match self {
+                Self::CredentialsCouldNotBeParsed => 422,
+            })
+        }
+    }
+
     impl AsStatus for RegisterAccountErrorDiscriminants {
         fn as_status(&self) -> Option<u16> {
             Some(match self {
@@ -523,6 +554,7 @@ mod test {
     #[test_case(e::<UpdateSessionError>)]
     #[test_case(e::<RequestVerificationCodeError>)]
     #[test_case(e::<SubmitVerificationError>)]
+    #[test_case(e::<CheckSvr2CredentialsError>)]
     #[test_case(e::<RegisterAccountError>)]
     fn error_type_from_status<T>(_type_hint: fn(T))
     where
