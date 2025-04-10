@@ -15,6 +15,7 @@ workspace = true
 
 [dependencies]
 libsignal-bridge = { workspace = true, features = ["jni", "signal-media"] }
+libsignal-core = { workspace = true }
 libsignal-protocol = { workspace = true }
 signal-crypto = { workspace = true }
 

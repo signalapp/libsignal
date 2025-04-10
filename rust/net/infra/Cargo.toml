@@ -15,6 +15,7 @@ dev-util = []
 
 [dependencies]
 attest = { workspace = true }
+libsignal-core = { workspace = true }
 
 async-trait = { workspace = true }
 auto_enums = { workspace = true, features = ["tokio1"] }

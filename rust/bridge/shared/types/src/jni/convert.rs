@@ -11,6 +11,7 @@ use jni::objects::{AutoLocal, JByteBuffer, JMap, JObjectArray};
 use jni::sys::{jbyte, JNI_FALSE, JNI_TRUE};
 use jni::JNIEnv;
 use libsignal_account_keys::{AccountEntropyPool, InvalidAccountEntropyPool};
+use libsignal_core::try_scoped;
 use libsignal_net::cdsi::LookupResponseEntry;
 use libsignal_protocol::*;
 use paste::paste;
@@ -337,8 +338,7 @@ impl<'a> SimpleArgTypeInfo<'a> for Box<[String]> {
         env: &mut JNIEnv<'a>,
         foreign: &Self::ArgType,
     ) -> Result<Self, BridgeLayerError> {
-        // TODO use a try block when those are stabilized.
-        (|| {
+        try_scoped(|| {
             let len = env.get_array_length(foreign)?;
             (0..len)
                 .map(|i| {
@@ -349,7 +349,7 @@ impl<'a> SimpleArgTypeInfo<'a> for Box<[String]> {
                     env.get_string(&next).map(Into::into)
                 })
                 .try_collect()
-        })()
+        })
         .check_exceptions(env, "Box<[String]>::convert_from")
     }
 }
@@ -457,38 +457,38 @@ impl<'a> SimpleArgTypeInfo<'a> for Vec<&'a [u8]> {
         env: &mut JNIEnv<'a>,
         foreign: &Self::ArgType,
     ) -> Result<Self, BridgeLayerError> {
-        let len = env
-            .get_array_length(foreign)
-            .check_exceptions(env, "Vec<&[u8]>::convert_from")?;
-        let slices: Vec<&[u8]> = (0..len)
-            .map(|i| {
-                let next = AutoLocal::new(
-                    JByteBuffer::from(
-                        env.get_object_array_element(foreign, i)
-                            .check_exceptions(env, "Vec<&[u8]>::convert_from")?,
-                    ),
-                    env,
-                );
-                let len = env
-                    .get_direct_buffer_capacity(&next)
-                    .check_exceptions(env, "Vec<&[u8]>::convert_from")?;
-                let addr = env
-                    .get_direct_buffer_address(&next)
-                    .check_exceptions(env, "Vec<&[u8]>::convert_from")?;
-                if !addr.is_null() {
-                    Ok(unsafe { std::slice::from_raw_parts(addr, len) })
-                } else {
-                    if len != 0 {
-                        return Err(BridgeLayerError::NullPointer(Some(
-                            "ByteBuffer direct address",
-                        )));
+        #[derive(derive_more::From)]
+        enum JniErrorOrNull {
+            Jni(#[from] jni::errors::Error),
+            Null(&'static str),
+        }
+        try_scoped(|| {
+            let len = env.get_array_length(foreign)?;
+            (0..len)
+                .map(|i| {
+                    let next = AutoLocal::new(
+                        JByteBuffer::from(env.get_object_array_element(foreign, i)?),
+                        env,
+                    );
+                    let len = env.get_direct_buffer_capacity(&next)?;
+                    let addr = env.get_direct_buffer_address(&next)?;
+                    if !addr.is_null() {
+                        Ok(unsafe { std::slice::from_raw_parts(addr, len) })
+                    } else {
+                        if len != 0 {
+                            return Err(JniErrorOrNull::Null("ByteBuffer direct address"));
+                        }
+                        Ok([].as_slice())
                     }
-                    Ok([].as_slice())
-                }
-            })
-            .collect::<Result<_, _>>()?;
-
-        Ok(slices)
+                })
+                .collect()
+        })
+        .or_else(|e| match e {
+            JniErrorOrNull::Jni(jni_error) => {
+                Err(jni_error).check_exceptions(env, "Vec<&[u8]>::convert_from")
+            }
+            JniErrorOrNull::Null(message) => Err(BridgeLayerError::NullPointer(Some(message))),
+        })
     }
 }
 

@@ -15,3 +15,14 @@ pub use address::{
 };
 pub use e164::E164;
 pub use version::VERSION;
+
+/// Simple wrapper that invokes a lambda.
+///
+/// Once try-blocks are stabilized
+/// (https://github.com/rust-lang/rust/issues/31436), usages of this function
+/// can be removed and replaced with the new syntax.
+#[inline]
+#[track_caller]
+pub fn try_scoped<T, E>(f: impl FnOnce() -> Result<T, E>) -> Result<T, E> {
+    f()
+}

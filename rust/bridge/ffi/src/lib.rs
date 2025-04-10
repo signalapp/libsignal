@@ -14,6 +14,7 @@ use libsignal_bridge::ffi::*;
 #[cfg(feature = "libsignal-bridge-testing")]
 #[allow(unused_imports)]
 use libsignal_bridge_testing::*;
+use libsignal_core::try_scoped;
 use libsignal_protocol::*;
 
 pub mod logging;
@@ -68,10 +69,10 @@ pub unsafe extern "C" fn signal_error_get_message(
     err: *const SignalFfiError,
     out: *mut *const c_char,
 ) -> *mut SignalFfiError {
-    let result = (|| {
+    let result = try_scoped(|| {
         let err = err.as_ref().ok_or(NullPointerError)?;
         write_result_to(out, err.to_string())
-    })();
+    });
 
     match result {
         Ok(()) => std::ptr::null_mut(),

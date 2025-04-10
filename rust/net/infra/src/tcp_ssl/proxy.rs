@@ -128,6 +128,7 @@ pub(crate) mod testutil {
     use boring_signal::ssl::{SslAcceptor, SslMethod};
     use boring_signal::x509::X509;
     use futures_util::{pin_mut, Stream, StreamExt as _};
+    use libsignal_core::try_scoped;
     use rcgen::CertifiedKey;
     use tls_parser::{ClientHello, TlsExtension, TlsMessage, TlsMessageHandshake, TlsPlaintext};
     use tokio::io::{AsyncBufReadExt, AsyncRead, AsyncWrite, BufStream};
@@ -212,9 +213,7 @@ pub(crate) mod testutil {
 
     impl TlsServer {
         pub(super) fn new(server: TcpServer, certificate: &CertifiedKey) -> Self {
-            // TODO(https://github.com/rust-lang/rust/issues/31436): use a `try`
-            // block instead of immediately-invoked closure.
-            let ssl_acceptor = (|| {
+            let ssl_acceptor = try_scoped(|| {
                 let mut builder = SslAcceptor::mozilla_intermediate_v5(SslMethod::tls_server())?;
                 builder.set_certificate(X509::from_der(certificate.cert.der())?.as_ref())?;
                 builder.set_private_key(
@@ -222,7 +221,7 @@ pub(crate) mod testutil {
                 )?;
                 // If the cert can be loaded, build the thing.
                 builder.check_private_key().map(|()| builder.build())
-            })()
+            })
             .expect("can configure acceptor");
 
             Self {

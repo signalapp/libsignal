@@ -521,6 +521,7 @@ impl MessageOnlyExceptionJniError for signal_media::sanitize::webp::ParseErrorRe
 }
 
 mod registration {
+    use libsignal_core::try_scoped;
     use libsignal_net::registration::{
         CreateSessionError, InvalidSessionId, RequestError, RequestVerificationCodeError,
         ResumeSessionError, SubmitVerificationError, UpdateSessionError,
@@ -644,9 +645,10 @@ mod registration {
                         permanent_failure,
                     },
                 ) => {
-                    let (message, reason) =
-                        (|| Ok((env.new_string(self.to_string())?, env.new_string(reason)?)))()
-                            .check_exceptions(env, "RequestVerificationCodeError::to_throwable")?;
+                    let (message, reason) = try_scoped(|| {
+                        Ok((env.new_string(self.to_string())?, env.new_string(reason)?))
+                    })
+                    .check_exceptions(env, "RequestVerificationCodeError::to_throwable")?;
                     let args = jni_args!((message => java.lang.String, reason => java.lang.String, *permanent_failure => boolean) -> void);
                     new_instance(
                         env,
