@@ -7,7 +7,7 @@ authors.workspace = true
 license.workspace = true
 
 [features]
-test-util = []
+test-util = ["libsignal-net-infra/test-util"]
 
 [lints]
 workspace = true
@@ -68,7 +68,6 @@ prost-build = { workspace = true }
 
 [dev-dependencies]
 libsignal-net = { path = ".", features = ["test-util"] }
-libsignal-net-infra = { path = "infra", features = ["test-util"] }
 
 assert_matches = { workspace = true }
 clap = { workspace = true, features = ["derive", "env"] }
