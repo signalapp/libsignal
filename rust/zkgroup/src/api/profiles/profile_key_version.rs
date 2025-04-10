@@ -25,6 +25,13 @@ pub struct ProfileKeyVersion {
     ascii: ProfileKeyVersionEncodedBytes,
 }
 
+impl AsRef<str> for ProfileKeyVersion {
+    fn as_ref(&self) -> &str {
+        // An "encoded" profile key version is hexadecimal ASCII.
+        std::str::from_utf8(&self.ascii).expect("ASCII")
+    }
+}
+
 impl Serialize for ProfileKeyVersion {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where

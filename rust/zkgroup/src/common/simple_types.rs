@@ -93,6 +93,17 @@ impl From<Timestamp> for std::time::SystemTime {
     }
 }
 
+impl From<std::time::SystemTime> for Timestamp {
+    fn from(timestamp: std::time::SystemTime) -> Self {
+        Self::from_epoch_seconds(
+            timestamp
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_secs(),
+        )
+    }
+}
+
 impl rand::distr::Distribution<Timestamp> for rand::distr::StandardUniform {
     fn sample<R: rand::prelude::Rng + ?Sized>(&self, rng: &mut R) -> Timestamp {
         Timestamp(Self::sample(self, rng))

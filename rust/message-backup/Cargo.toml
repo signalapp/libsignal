@@ -85,6 +85,7 @@ visibility = { workspace = true }
 [dev-dependencies]
 libsignal-message-backup = { path = "./", features = ["json", "scramble", "test-util"] }
 
+libsignal-cli-utils = { workspace = true }
 signal-crypto = { workspace = true }
 
 array-concat = { workspace = true, features = ["const_panic"] }

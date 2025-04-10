@@ -8,6 +8,8 @@ members = [
     "rust/media",
     "rust/message-backup",
     "rust/net",
+    "rust/net/infra",
+    "rust/net/chat",
     "rust/account-keys",
     "rust/poksho",
     "rust/protocol",
@@ -53,6 +55,7 @@ unexpected_cfgs = { level = "warn", check-cfg = ['cfg(fuzzing)'] }
 attest = { path = "rust/attest" }
 device-transfer = { path = "rust/device-transfer" }
 libsignal-account-keys = { path = "rust/account-keys" }
+libsignal-cli-utils = { path = "rust/cli-utils" }
 libsignal-core = { path = "rust/core" }
 libsignal-keytrans = { path = "rust/keytrans" }
 libsignal-message-backup = { path = "rust/message-backup" }
@@ -81,6 +84,7 @@ tokio-boring-signal = { git = "https://github.com/signalapp/boring", package = "
 
 aes = "0.8.3"
 aes-gcm-siv = "0.11.1"
+anyhow = "1.0.97"
 argon2 = "0.5.0"
 array-concat = "0.5.5"
 arrayref = "0.3.6"
