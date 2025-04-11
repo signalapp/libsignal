@@ -142,6 +142,12 @@ type RegistrationCreateSessionRequest = {
   mnc?: string;
 };
 
+type RegisterResponseBadge = {
+  id: string;
+  visible: boolean;
+  expirationSeconds: number;
+};
+
 type SignedPublicPreKey = {
   keyId: number;
   publicKey: Buffer;
@@ -433,9 +439,15 @@ export function RegisterAccountRequest_SetIdentityPqLastResortPreKey(registerAcc
 export function RegisterAccountRequest_SetIdentityPublicKey(registerAccount: Wrapper<RegisterAccountRequest>, identityType: number, identityKey: Wrapper<PublicKey>): void;
 export function RegisterAccountRequest_SetIdentitySignedPreKey(registerAccount: Wrapper<RegisterAccountRequest>, identityType: number, signedPreKey: SignedPublicPreKey): void;
 export function RegisterAccountRequest_SetSkipDeviceTransfer(registerAccount: Wrapper<RegisterAccountRequest>): void;
-export function RegisterAccountResponse_GetIdentity(response: Wrapper<RegisterAccountResponse>, identityType: number): Buffer | null;
+export function RegisterAccountResponse_GetEntitlementBackupExpirationSeconds(response: Wrapper<RegisterAccountResponse>): bigint | null;
+export function RegisterAccountResponse_GetEntitlementBackupLevel(response: Wrapper<RegisterAccountResponse>): bigint | null;
+export function RegisterAccountResponse_GetEntitlementBadges(response: Wrapper<RegisterAccountResponse>): RegisterResponseBadge[];
+export function RegisterAccountResponse_GetIdentity(response: Wrapper<RegisterAccountResponse>, identityType: number): Buffer;
 export function RegisterAccountResponse_GetNumber(response: Wrapper<RegisterAccountResponse>): string;
+export function RegisterAccountResponse_GetReregistration(response: Wrapper<RegisterAccountResponse>): boolean;
+export function RegisterAccountResponse_GetStorageCapable(response: Wrapper<RegisterAccountResponse>): boolean;
 export function RegisterAccountResponse_GetUsernameHash(response: Wrapper<RegisterAccountResponse>): Buffer | null;
+export function RegisterAccountResponse_GetUsernameLinkHandle(response: Wrapper<RegisterAccountResponse>): Uuid | null;
 export function RegistrationAccountAttributes_Create(recoveryPassword: Buffer, aciRegistrationId: number, pniRegistrationId: number, registrationLock: string | null, unidentifiedAccessKey: Buffer | null, unrestrictedUnidentifiedAccess: boolean, capabilities: string[], discoverableByPhoneNumber: boolean): RegistrationAccountAttributes;
 export function RegistrationService_CreateSession(asyncRuntime: Wrapper<TokioAsyncContext>, createSession: RegistrationCreateSessionRequest, connectChat: ConnectChatBridge): CancellablePromise<RegistrationService>;
 export function RegistrationService_RegisterAccount(asyncRuntime: Wrapper<TokioAsyncContext>, service: Wrapper<RegistrationService>, registerAccount: Wrapper<RegisterAccountRequest>, accountAttributes: Wrapper<RegistrationAccountAttributes>): CancellablePromise<RegisterAccountResponse>;

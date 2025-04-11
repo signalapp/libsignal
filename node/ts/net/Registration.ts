@@ -4,6 +4,7 @@
 //
 
 import type { ReadonlyDeep } from 'type-fest';
+
 import * as Native from '../../Native';
 import { LibSignalError, RateLimitedError } from '../Errors';
 import { newNativeHandle, type Net, type TokioAsyncContext } from '../net';
@@ -337,25 +338,58 @@ export class RegisterAccountResponse {
   public constructor(readonly _nativeHandle: Native.RegisterAccountResponse) {}
 
   public get aci(): Aci {
-    const bytes = Native.RegisterAccountResponse_GetIdentity(
-      this,
-      ServiceIdKind.Aci
+    return new Aci(
+      Native.RegisterAccountResponse_GetIdentity(this, ServiceIdKind.Aci)
     );
-    // PNI might be null but ACI is guaranteed not to be.
-    return new Aci(bytes as Buffer);
   }
 
-  public get pni(): Pni | null {
-    const bytes = Native.RegisterAccountResponse_GetIdentity(
-      this,
-      ServiceIdKind.Pni
+  public get pni(): Pni {
+    return new Pni(
+      Native.RegisterAccountResponse_GetIdentity(this, ServiceIdKind.Pni)
     );
-    return bytes == null ? null : new Pni(bytes);
   }
+
   public get number(): string {
     return Native.RegisterAccountResponse_GetNumber(this);
   }
+
   public get usernameHash(): Buffer | null {
     return Native.RegisterAccountResponse_GetUsernameHash(this);
+  }
+  public get usernameLinkHandle(): Buffer | null {
+    return Native.RegisterAccountResponse_GetUsernameLinkHandle(this);
+  }
+
+  public get backupEntitlement(): {
+    backupLevel: bigint;
+    expirationSeconds: bigint;
+  } | null {
+    const backupLevel =
+      Native.RegisterAccountResponse_GetEntitlementBackupLevel(this);
+    const expirationSeconds =
+      Native.RegisterAccountResponse_GetEntitlementBackupExpirationSeconds(
+        this
+      );
+    if (backupLevel == null || expirationSeconds == null) return null;
+
+    return {
+      backupLevel,
+      expirationSeconds,
+    };
+  }
+
+  public get entitlementBadges(): Array<{
+    id: string;
+    expirationSeconds: number;
+    visible: boolean;
+  }> {
+    return Native.RegisterAccountResponse_GetEntitlementBadges(this);
+  }
+
+  public get reregistration(): boolean {
+    return Native.RegisterAccountResponse_GetReregistration(this);
+  }
+  public get storageCapable(): boolean {
+    return Native.RegisterAccountResponse_GetStorageCapable(this);
   }
 }

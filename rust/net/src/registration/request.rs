@@ -138,8 +138,8 @@ pub struct RegisterAccountResponse {
     /// The phone number associated with this account.
     pub number: String,
     /// The account identifier for this account's phone-number identity.
-    #[serde_as(as = "Option<FromInto<Uuid>>")]
-    pub pni: Option<Pni>,
+    #[serde_as(as = "FromInto<Uuid>")]
+    pub pni: Pni,
     /// A hash of this account's username, if set.
     #[serde_as(as = "Option<Base64Padded>")]
     pub username_hash: Option<Box<[u8]>>,
@@ -1200,7 +1200,7 @@ mod test {
             RegisterAccountResponse {
                 aci: Aci::from(uuid!("095be615-a8ad-4c33-8e9c-c7612fbf6c9f")),
                 number: "+18005550123".to_owned(),
-                pni: Some(Pni::from(uuid!("06d9ee19-7126-49ad-b4cb-de1a4d42305a"))),
+                pni: Pni::from(uuid!("06d9ee19-7126-49ad-b4cb-de1a4d42305a")),
                 username_hash: Some((*b"abcdefghi").into()),
                 username_link_handle: Some(uuid!("431ca581-2806-466f-a4a3-4492d3c9a64b")),
                 storage_capable: true,

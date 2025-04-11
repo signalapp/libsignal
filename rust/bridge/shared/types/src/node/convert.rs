@@ -1152,6 +1152,36 @@ impl<'a> ResultTypeInfo<'a> for Box<[libsignal_net::registration::RequestedInfor
     }
 }
 
+impl<'a> ResultTypeInfo<'a> for Box<[libsignal_net::registration::RegisterResponseBadge]> {
+    type ResultType = JsArray;
+    fn convert_into(self, cx: &mut impl Context<'a>) -> JsResult<'a, Self::ResultType> {
+        make_array(cx, self)
+    }
+}
+
+impl<'a> ResultTypeInfo<'a> for libsignal_net::registration::RegisterResponseBadge {
+    type ResultType = JsObject;
+    fn convert_into(self, cx: &mut impl Context<'a>) -> JsResult<'a, Self::ResultType> {
+        let Self {
+            id,
+            visible,
+            expiration,
+        } = self;
+        let obj = cx.empty_object();
+
+        let id = cx.string(id);
+        obj.set(cx, "id", id)?;
+
+        let visible = cx.boolean(visible);
+        obj.set(cx, "visible", visible)?;
+
+        let expiration_seconds = cx.number(expiration.as_secs_f64());
+        obj.set(cx, "expirationSeconds", expiration_seconds)?;
+
+        Ok(obj)
+    }
+}
+
 macro_rules! full_range_integer {
     ($typ:ty) => {
         #[doc = "Converts all valid integer values for the type."]

@@ -13,11 +13,12 @@ use libsignal_bridge_types::net::TokioAsyncContext;
 use libsignal_bridge_types::*;
 use libsignal_net::registration::{
     CreateSessionError, ForServiceIds, RegisterAccountError, RegisterAccountResponse,
-    RegistrationSession, RequestError, RequestVerificationCodeError, RequestedInformation,
-    ResumeSessionError, SessionId, SignedPreKeyBody, SubmitVerificationError, UpdateSessionError,
-    VerificationTransport,
+    RegisterResponseBadge, RegistrationSession, RequestError, RequestVerificationCodeError,
+    RequestedInformation, ResumeSessionError, SessionId, SignedPreKeyBody, SubmitVerificationError,
+    UpdateSessionError, VerificationTransport,
 };
 use libsignal_protocol::*;
+use uuid::Uuid;
 
 use crate::support::*;
 
@@ -343,10 +344,10 @@ fn RegistrationAccountAttributes_Create(
 fn RegisterAccountResponse_GetIdentity(
     response: &RegisterAccountResponse,
     identity_type: AsType<ServiceIdKind, u8>,
-) -> Option<ServiceId> {
+) -> ServiceId {
     match identity_type.into_inner() {
-        ServiceIdKind::Aci => Some(response.aci.into()),
-        ServiceIdKind::Pni => response.pni.map(Into::into),
+        ServiceIdKind::Aci => response.aci.into(),
+        ServiceIdKind::Pni => response.pni.into(),
     }
 }
 
@@ -358,4 +359,50 @@ fn RegisterAccountResponse_GetNumber(response: &RegisterAccountResponse) -> &str
 #[bridge_fn(ffi = false, jni = false)]
 fn RegisterAccountResponse_GetUsernameHash(response: &RegisterAccountResponse) -> Option<&[u8]> {
     response.username_hash.as_deref()
+}
+
+#[bridge_fn(ffi = false, jni = false)]
+fn RegisterAccountResponse_GetUsernameLinkHandle(
+    response: &RegisterAccountResponse,
+) -> Option<Uuid> {
+    response.username_link_handle
+}
+
+#[bridge_fn(ffi = false, jni = false)]
+fn RegisterAccountResponse_GetStorageCapable(response: &RegisterAccountResponse) -> bool {
+    response.storage_capable
+}
+
+#[bridge_fn(ffi = false, jni = false)]
+fn RegisterAccountResponse_GetReregistration(response: &RegisterAccountResponse) -> bool {
+    response.reregistration
+}
+
+#[bridge_fn(ffi = false, jni = false)]
+fn RegisterAccountResponse_GetEntitlementBadges(
+    response: &RegisterAccountResponse,
+) -> Box<[RegisterResponseBadge]> {
+    response.entitlements.badges.clone()
+}
+
+#[bridge_fn(ffi = false, jni = false)]
+fn RegisterAccountResponse_GetEntitlementBackupLevel(
+    response: &RegisterAccountResponse,
+) -> Option<u64> {
+    response
+        .entitlements
+        .backup
+        .as_ref()
+        .map(|backup| backup.backup_level)
+}
+
+#[bridge_fn(ffi = false, jni = false)]
+fn RegisterAccountResponse_GetEntitlementBackupExpirationSeconds(
+    response: &RegisterAccountResponse,
+) -> Option<u64> {
+    response
+        .entitlements
+        .backup
+        .as_ref()
+        .map(|backup| backup.expiration.as_secs())
 }
