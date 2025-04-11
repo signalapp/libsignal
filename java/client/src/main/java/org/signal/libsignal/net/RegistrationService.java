@@ -5,6 +5,7 @@
 
 package org.signal.libsignal.net;
 
+import java.util.Locale;
 import org.signal.libsignal.internal.CompletableFuture;
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
@@ -134,13 +135,21 @@ public class RegistrationService extends NativeHandleGuard.SimpleOwner {
    * or one of the previously listed exception types.
    */
   public CompletableFuture<Void> requestVerificationCode(
-      VerificationTransport transport, String client) {
+      VerificationTransport transport, String client, Locale locale) {
+    var languages =
+        locale == null
+            ? new String[0]
+            : new String[] {locale.getLanguage() + "-" + locale.getCountry()};
     return guardedMap(
         nativeHandle ->
             tokioAsyncContext.guardedMap(
                 asyncContextHandle ->
                     Native.RegistrationService_RequestVerificationCode(
-                        asyncContextHandle, nativeHandle, transport.name().toLowerCase(), client)));
+                        asyncContextHandle,
+                        nativeHandle,
+                        transport.name().toLowerCase(),
+                        client,
+                        languages)));
   }
 
   /**

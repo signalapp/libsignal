@@ -143,10 +143,23 @@ impl<'c> RegistrationService<'c> {
         &mut self,
         transport: VerificationTransport,
         client: &str,
+        languages: &[String],
     ) -> Result<(), RequestError<RequestVerificationCodeError>> {
-        self.submit_request(RequestVerificationCode { transport, client })
-            .await
-            .map_err(Into::into)
+        let language_list = (!languages.is_empty())
+            .then(|| languages.join(", ").parse())
+            .transpose()
+            .map_err(|_| {
+                RequestError::<RequestVerificationCodeError>::Unknown(
+                    "invalid language list".to_owned(),
+                )
+            })?;
+        self.submit_request(RequestVerificationCode {
+            transport,
+            client,
+            language_list: language_list.as_ref().map(LanguageList),
+        })
+        .await
+        .map_err(Into::into)
     }
 
     pub async fn submit_push_challenge(

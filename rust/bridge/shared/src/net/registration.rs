@@ -102,12 +102,13 @@ async fn RegistrationService_RequestVerificationCode(
     service: &RegistrationService,
     transport: AsType<VerificationTransport, String>,
     client: String,
+    languages: Box<[String]>,
 ) -> Result<(), RequestError<RequestVerificationCodeError>> {
     service
         .0
         .lock()
         .await
-        .request_verification_code(transport.into_inner(), &client)
+        .request_verification_code(transport.into_inner(), &client, &languages)
         .await
 }
 

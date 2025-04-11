@@ -24,10 +24,10 @@ org.signal.libsignal.net.FakeChatRemote:
 org.signal.libsignal.net.FakeChatRemote$1
 org.signal.libsignal.net.FakeChatServer
 org.signal.libsignal.net.RegistrationService:
-    201:212:static org.signal.libsignal.protocol.util.Pair fakeCreateSession(org.signal.libsignal.net.TokioAsyncContext,org.signal.libsignal.net.RegistrationService$CreateSession)
-    210:210:private static synthetic org.signal.libsignal.net.RegistrationService lambda$fakeCreateSession$17(org.signal.libsignal.net.TokioAsyncContext,java.lang.Long)
-    206:206:private static synthetic org.signal.libsignal.internal.CompletableFuture lambda$fakeCreateSession$16(org.signal.libsignal.net.FakeChatServer,org.signal.libsignal.net.RegistrationService$CreateSession,long)
-    208:208:private static synthetic org.signal.libsignal.internal.CompletableFuture lambda$fakeCreateSession$15(long,org.signal.libsignal.net.RegistrationService$CreateSession,long)
+    210:221:static org.signal.libsignal.protocol.util.Pair fakeCreateSession(org.signal.libsignal.net.TokioAsyncContext,org.signal.libsignal.net.RegistrationService$CreateSession)
+    219:219:private static synthetic org.signal.libsignal.net.RegistrationService lambda$fakeCreateSession$17(org.signal.libsignal.net.TokioAsyncContext,java.lang.Long)
+    215:215:private static synthetic org.signal.libsignal.internal.CompletableFuture lambda$fakeCreateSession$16(org.signal.libsignal.net.FakeChatServer,org.signal.libsignal.net.RegistrationService$CreateSession,long)
+    217:217:private static synthetic org.signal.libsignal.internal.CompletableFuture lambda$fakeCreateSession$15(long,org.signal.libsignal.net.RegistrationService$CreateSession,long)
 org.signal.libsignal.protocol.ServiceId:
     private static final byte FIXED_WIDTH_BINARY_LENGTH
     private static final byte ACI_MARKER

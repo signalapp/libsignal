@@ -7,7 +7,7 @@ use http::uri::PathAndQuery;
 use http::{HeaderMap, HeaderName, HeaderValue, Method, StatusCode};
 use libsignal_core::{Aci, Pni, ServiceIdKind};
 use libsignal_net_infra::errors::{LogSafeDisplay, RetryLater};
-use libsignal_net_infra::{extract_retry_later, AsHttpHeader as _};
+use libsignal_net_infra::{extract_retry_later, AsHttpHeader};
 use libsignal_protocol::{GenericSignedPreKey, PublicKey};
 use serde_with::{
     serde_as, skip_serializing_none, DurationMilliSeconds, DurationSeconds, FromInto,
@@ -249,11 +249,16 @@ pub(super) struct UpdateRegistrationSession<'a> {
     pub(crate) push_challenge: Option<&'a str>,
 }
 
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub(super) struct LanguageList<'a>(pub(super) &'a HeaderValue);
+
 #[derive(Clone, Debug, Eq, PartialEq, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub(super) struct RequestVerificationCode<'a> {
     pub(super) transport: VerificationTransport,
     pub(super) client: &'a str,
+    #[serde(skip)]
+    pub(super) language_list: Option<LanguageList<'a>>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, serde::Serialize)]
@@ -346,6 +351,14 @@ impl RegistrationLock {
     }
 }
 
+impl AsHttpHeader for LanguageList<'_> {
+    const HEADER_NAME: HeaderName = http::header::ACCEPT_LANGUAGE;
+
+    fn header_value(&self) -> HeaderValue {
+        self.0.clone()
+    }
+}
+
 /// A value that can be sent to the server as part of a REST request.
 pub(super) trait Request {
     /// The HTTP [`Method`] to send the request with
@@ -353,6 +366,13 @@ pub(super) trait Request {
 
     /// The HTTP path to use when sending the request.
     fn request_path(session_id: &SessionId) -> PathAndQuery;
+
+    fn headers<'s>(&'s self) -> impl Iterator<Item = (HeaderName, HeaderValue)> + 's
+    where
+        Self: 's,
+    {
+        std::iter::empty()
+    }
 
     /// The serialized JSON for the request body, if any.
     fn to_json_body(&self) -> Option<Box<[u8]>>;
@@ -390,13 +410,16 @@ impl Request for UpdateRegistrationSession<'_> {
 impl Request for RequestVerificationCode<'_> {
     const METHOD: Method = Method::POST;
     fn request_path(session_id: &SessionId) -> PathAndQuery {
-        format!(
-            "{VERIFICATION_SESSION_PATH_PREFIX}/{}/code",
-            session_id.as_url_path_segment()
-        )
-        .parse()
-        .unwrap()
+        SubmitVerificationCode::request_path(session_id)
     }
+
+    fn headers<'s>(&'s self) -> impl Iterator<Item = (HeaderName, HeaderValue)> + 's
+    where
+        Self: 's,
+    {
+        self.language_list.map(|l| l.as_header()).into_iter()
+    }
+
     fn to_json_body(&self) -> Option<Box<[u8]>> {
         Some(
             serde_json::to_vec(&self)
@@ -409,7 +432,12 @@ impl Request for RequestVerificationCode<'_> {
 impl Request for SubmitVerificationCode<'_> {
     const METHOD: Method = Method::PUT;
     fn request_path(session_id: &SessionId) -> PathAndQuery {
-        RequestVerificationCode::request_path(session_id)
+        format!(
+            "{VERIFICATION_SESSION_PATH_PREFIX}/{}/code",
+            session_id.as_url_path_segment()
+        )
+        .parse()
+        .unwrap()
     }
     fn to_json_body(&self) -> Option<Box<[u8]>> {
         Some(
@@ -647,7 +675,10 @@ impl<'s, R: Request> From<RegistrationRequest<'s, R>> for crate::chat::Request {
 
         let path = R::request_path(session_id);
         let body = request.to_json_body();
-        let headers = HeaderMap::from_iter(body.is_some().then_some(CONTENT_TYPE_JSON));
+        let headers = request
+            .headers()
+            .chain(body.is_some().then_some(CONTENT_TYPE_JSON))
+            .collect();
 
         Self {
             method: R::METHOD,
@@ -846,6 +877,7 @@ mod test {
             request: RequestVerificationCode {
                 transport: VerificationTransport::Sms,
                 client: "client name",
+                language_list: Some(LanguageList(&HeaderValue::from_static("tlh"))),
             },
         }
         .into();
@@ -855,7 +887,10 @@ mod test {
             ChatRequest {
                 method: Method::POST,
                 path: PathAndQuery::from_static("/v1/verification/session/aaabbbcccdddeee/code"),
-                headers: HeaderMap::from_iter([CONTENT_TYPE_JSON]),
+                headers: HeaderMap::from_iter([
+                    CONTENT_TYPE_JSON,
+                    ("accept-language".parse().unwrap(), "tlh".parse().unwrap())
+                ]),
                 body: Some(
                     b"{\"transport\":\"sms\",\"client\":\"client name\"}"
                         .as_slice()

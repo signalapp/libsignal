@@ -9,6 +9,8 @@ import static org.junit.Assert.*;
 
 import java.time.Duration;
 import java.util.EnumSet;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import org.junit.Test;
@@ -190,5 +192,42 @@ public class RegistrationServiceTest {
         Set.of(
             RegistrationSessionState.RequestedInformation.PUSH_CHALLENGE,
             RegistrationSessionState.RequestedInformation.CAPTCHA));
+
+    var requestVerification =
+        session.requestVerificationCode(
+            RegistrationService.VerificationTransport.VOICE,
+            "libsignal test",
+            Locale.CANADA_FRENCH);
+
+    var secondRequestAndId = fakeRemote.getNextIncomingRequest().get();
+    assertNotNull(secondRequestAndId);
+    var secondRequest = secondRequestAndId.first();
+
+    assertEquals(secondRequest.getMethod(), "POST");
+    assertEquals(secondRequest.getPathAndQuery(), "/v1/verification/session/fake-session-A/code");
+    assertEquals(
+        new String(secondRequest.getBody()),
+        """
+        {"transport":"voice","client":"libsignal test"}""");
+    assertEquals(
+        secondRequest.getHeaders(),
+        Map.of("content-type", "application/json", "accept-language", "fr-CA"));
+
+    fakeRemote.sendResponse(
+        secondRequestAndId.second(),
+        200,
+        "OK",
+        new String[] {"content-type: application/json"},
+        """
+        {
+            "allowedToRequestCode": true,
+            "verified": false,
+            "requestedInformation": ["pushChallenge", "captcha"],
+            "id": "fake-session-A"
+        }
+        """
+            .getBytes());
+
+    requestVerification.get();
   }
 }

@@ -193,6 +193,56 @@ describe('Registration client', () => {
       expect(session.sessionState)
         .property('requestedInformation')
         .to.eql(new Set(['pushChallenge', 'captcha']));
+
+      const requestVerification = session.requestVerification({
+        transport: 'voice',
+        client: 'libsignal test',
+        languages: ['fr-CA'],
+      });
+
+      const secondRequestHandle =
+        await Native.TESTING_FakeChatRemoteEnd_ReceiveIncomingRequest(
+          tokio,
+          fakeRemote
+        );
+      assert(secondRequestHandle !== null);
+      const secondRequest = new InternalRequest(secondRequestHandle);
+
+      expect(secondRequest.verb).to.eq('POST');
+      expect(secondRequest.path).to.eq(
+        '/v1/verification/session/fake-session-A/code'
+      );
+      expect(secondRequest.body.toString()).to.eq(
+        '{"transport":"voice","client":"libsignal test"}'
+      );
+      expect(secondRequest.headers).to.deep.eq(
+        new Map([
+          ['content-type', 'application/json'],
+          ['accept-language', 'fr-CA'],
+        ])
+      );
+
+      Native.TESTING_FakeChatRemoteEnd_SendServerResponse(
+        fakeRemote,
+        newNativeHandle(
+          Native.TESTING_FakeChatResponse_Create(
+            secondRequest.requestId,
+            200,
+            'OK',
+            ['content-type: application/json'],
+            Buffer.from(
+              JSON.stringify({
+                allowedToRequestCode: true,
+                verified: false,
+                requestedInformation: ['pushChallenge', 'captcha'],
+                id: 'fake-session-A',
+              })
+            )
+          )
+        )
+      );
+
+      await requestVerification;
     });
   });
 });

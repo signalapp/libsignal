@@ -137,15 +137,18 @@ export class RegistrationService {
   public async requestVerification({
     transport,
     client,
+    languages = [],
   }: {
     transport: 'sms' | 'voice';
     client: string;
+    languages: string[];
   }): Promise<void> {
     await Native.RegistrationService_RequestVerificationCode(
       this.tokioAsyncContext,
       this,
       transport,
-      client
+      client,
+      languages
     );
   }
 
@@ -339,7 +342,7 @@ export class RegisterAccountResponse {
       ServiceIdKind.Aci
     );
     // PNI might be null but ACI is guaranteed not to be.
-    return new Aci(bytes as Buffer)
+    return new Aci(bytes as Buffer);
   }
 
   public get pni(): Pni | null {

@@ -441,7 +441,7 @@ export function RegistrationService_CreateSession(asyncRuntime: Wrapper<TokioAsy
 export function RegistrationService_RegisterAccount(asyncRuntime: Wrapper<TokioAsyncContext>, service: Wrapper<RegistrationService>, registerAccount: Wrapper<RegisterAccountRequest>, accountAttributes: Wrapper<RegistrationAccountAttributes>): CancellablePromise<RegisterAccountResponse>;
 export function RegistrationService_RegistrationSession(service: Wrapper<RegistrationService>): RegistrationSession;
 export function RegistrationService_RequestPushChallenge(asyncRuntime: Wrapper<TokioAsyncContext>, service: Wrapper<RegistrationService>, pushToken: string, pushTokenType: RegistrationPushTokenType): CancellablePromise<void>;
-export function RegistrationService_RequestVerificationCode(asyncRuntime: Wrapper<TokioAsyncContext>, service: Wrapper<RegistrationService>, transport: string, client: string): CancellablePromise<void>;
+export function RegistrationService_RequestVerificationCode(asyncRuntime: Wrapper<TokioAsyncContext>, service: Wrapper<RegistrationService>, transport: string, client: string, languages: string[]): CancellablePromise<void>;
 export function RegistrationService_ResumeSession(asyncRuntime: Wrapper<TokioAsyncContext>, sessionId: string, number: string, connectChat: ConnectChatBridge): CancellablePromise<RegistrationService>;
 export function RegistrationService_SessionId(service: Wrapper<RegistrationService>): string;
 export function RegistrationService_SubmitCaptcha(asyncRuntime: Wrapper<TokioAsyncContext>, service: Wrapper<RegistrationService>, captchaValue: string): CancellablePromise<void>;
