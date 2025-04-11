@@ -277,7 +277,7 @@ impl<TC> ConnectionResources<'_, TC> {
                 (WebSocketRouteFragment, HttpRouteFragment),
                 TC::Connection,
                 Connection: Send,
-                Error = tungstenite::Error,
+                Error = WebSocketConnectError,
             > + Send
             + Sync,
     {
@@ -395,7 +395,7 @@ impl<TC> ConnectionResources<'_, TC> {
                 (WebSocketRouteFragment, HttpRouteFragment),
                 TC::Connection,
                 Connection: WebSocketStreamLike + Send + 'static,
-                Error = tungstenite::Error,
+                Error = WebSocketConnectError,
             > + Send
             + Sync,
         E: NewHandshake,
@@ -678,7 +678,7 @@ mod test {
             let (ws, http) = &route;
             std::future::ready(
                 if (ws, http) == (&failing_route.fragment, &failing_route.inner.fragment) {
-                    Err(tungstenite::Error::ConnectionClosed)
+                    Err(tungstenite::Error::ConnectionClosed.into())
                 } else {
                     Ok(route)
                 },

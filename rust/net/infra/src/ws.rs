@@ -132,7 +132,7 @@ where
 {
     type Connection = StreamWithResponseHeaders<tokio_tungstenite::WebSocketStream<Inner>>;
 
-    type Error = tungstenite::Error;
+    type Error = WebSocketConnectError;
 
     fn connect_over(
         &self,
@@ -157,6 +157,7 @@ where
             Ok(endpoint)
         } else {
             PathAndQuery::from_maybe_shared(format!("{path_prefix}{endpoint}"))
+                .map_err(tungstenite::Error::from)
         };
 
         async move {
@@ -164,7 +165,8 @@ where
                 .path_and_query(uri_path?)
                 .authority(&*host_header)
                 .scheme("wss")
-                .build()?;
+                .build()
+                .map_err(tungstenite::Error::from)?;
 
             let mut builder = http::Request::builder();
             *builder.headers_mut().expect("no headers, so not invalid") = headers;
@@ -180,7 +182,8 @@ where
                     http::header::SEC_WEBSOCKET_KEY,
                     tungstenite::handshake::client::generate_key(),
                 )
-                .body(())?;
+                .body(())
+                .map_err(tungstenite::Error::from)?;
 
             let (stream, response) =
                 tokio_tungstenite::client_async_with_config(request, inner, Some(ws_config))
