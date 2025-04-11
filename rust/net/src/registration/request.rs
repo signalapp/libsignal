@@ -5,10 +5,10 @@ use std::time::Duration;
 use base64::Engine as _;
 use http::uri::PathAndQuery;
 use http::{HeaderMap, HeaderName, HeaderValue, Method, StatusCode};
-use libsignal_core::{Aci, Pni};
+use libsignal_core::{Aci, Pni, ServiceIdKind};
 use libsignal_net_infra::errors::{LogSafeDisplay, RetryLater};
 use libsignal_net_infra::{extract_retry_later, AsHttpHeader as _};
-use libsignal_protocol::{GenericSignedPreKey, KyberPreKeyRecord, PublicKey, SignedPreKeyRecord};
+use libsignal_protocol::{GenericSignedPreKey, PublicKey};
 use serde_with::{
     serde_as, skip_serializing_none, DurationMilliSeconds, DurationSeconds, FromInto,
 };
@@ -16,6 +16,8 @@ use uuid::Uuid;
 
 use crate::auth::Auth;
 use crate::registration::SessionId;
+
+pub type UnidentifiedAccessKey = [u8; zkgroup::ACCESS_KEY_LEN];
 
 pub(super) const CONTENT_TYPE_JSON: (HeaderName, HeaderValue) = (
     http::header::CONTENT_TYPE,
@@ -117,13 +119,12 @@ pub struct ProvidedAccountAttributes<'a> {
     pub name: Option<&'a [u8]>,
     pub registration_lock: Option<&'a str>,
     /// Generated from the user's profile key.
-    pub unidentified_access_key: Option<&'a [u8; zkgroup::ACCESS_KEY_LEN]>,
+    pub unidentified_access_key: Option<&'a UnidentifiedAccessKey>,
     /// Whether the user allows sealed sender messages to come from arbitrary senders.
     pub unrestricted_unidentified_access: bool,
     #[serde_as(as = "MappedToTrue")]
     pub capabilities: HashSet<&'a str>,
     pub discoverable_by_phone_number: bool,
-    pub each_registration_id_valid: Option<bool>,
 }
 
 #[serde_as]
@@ -213,7 +214,7 @@ pub enum SessionValidation<'a> {
 }
 
 /// Pair of values where one is for an ACI and the other a PNI.
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, Default)]
 pub struct ForServiceIds<T> {
     pub aci: T,
     pub pni: T,
@@ -222,18 +223,19 @@ pub struct ForServiceIds<T> {
 /// Keys associated with a single service ID for an account.
 pub struct AccountKeys<'a> {
     pub identity_key: &'a PublicKey,
-    pub signed_pre_key: &'a SignedPreKeyRecord,
-    pub pq_last_resort_pre_key: &'a KyberPreKeyRecord,
+    pub signed_pre_key: SignedPreKeyBody<&'a [u8]>,
+    pub pq_last_resort_pre_key: SignedPreKeyBody<&'a [u8]>,
 }
 
 /// How a device wants to be notified of messages when offline.
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub enum NewMessageNotification<'a> {
+#[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
+pub enum NewMessageNotification<S> {
     /// Use the provided APN ID to receive push notifications.
-    Apn(&'a str),
+    Apn(S),
     /// Use the provided GCM/FCM ID to receive push notifications.
-    Gcm(&'a str),
+    Gcm(S),
     /// The device will poll on its own.
+    #[default]
     WillFetchMessages,
 }
 
@@ -433,12 +435,40 @@ impl From<CheckSvr2CredentialsRequest<'_>> for crate::chat::Request {
     }
 }
 
-#[cfg(test)]
 impl<T> ForServiceIds<T> {
+    pub fn get_mut(&mut self, kind: ServiceIdKind) -> &mut T {
+        match kind {
+            ServiceIdKind::Aci => &mut self.aci,
+            ServiceIdKind::Pni => &mut self.pni,
+        }
+    }
+
+    #[cfg(test)]
+    fn get(&self, kind: ServiceIdKind) -> &T {
+        match kind {
+            ServiceIdKind::Aci => &self.aci,
+            ServiceIdKind::Pni => &self.pni,
+        }
+    }
+
+    #[cfg(test)]
     fn generate(mut f: impl FnMut(libsignal_core::ServiceIdKind) -> T) -> Self {
         ForServiceIds {
             aci: f(libsignal_core::ServiceIdKind::Aci),
             pni: f(libsignal_core::ServiceIdKind::Pni),
+        }
+    }
+}
+
+impl<S> NewMessageNotification<S> {
+    pub fn as_deref(&self) -> NewMessageNotification<&S::Target>
+    where
+        S: std::ops::Deref,
+    {
+        match self {
+            Self::Apn(apn) => NewMessageNotification::Apn(apn),
+            Self::Gcm(gcm) => NewMessageNotification::Gcm(gcm),
+            Self::WillFetchMessages => NewMessageNotification::WillFetchMessages,
         }
     }
 }
@@ -454,7 +484,7 @@ impl crate::chat::Request {
     pub(super) fn register_account(
         number: &str,
         session_id: Option<&SessionId>,
-        message_notification: NewMessageNotification<'_>,
+        message_notification: NewMessageNotification<&str>,
         account_attributes: ProvidedAccountAttributes<'_>,
         device_transfer: Option<SkipDeviceTransfer>,
         keys: ForServiceIds<AccountKeys<'_>>,
@@ -473,14 +503,10 @@ impl crate::chat::Request {
             aci_identity_key: &'a PublicKey,
             #[serde_as(as = "FromInto<PublicKeyBytes>")]
             pni_identity_key: &'a PublicKey,
-            #[serde_as(as = "FromInto<SignedPrekeyBody>")]
-            aci_signed_pre_key: &'a SignedPreKeyRecord,
-            #[serde_as(as = "FromInto<SignedPrekeyBody>")]
-            pni_signed_pre_key: &'a SignedPreKeyRecord,
-            #[serde_as(as = "FromInto<SignedPrekeyBody>")]
-            aci_pq_last_resort_pre_key: &'a KyberPreKeyRecord,
-            #[serde_as(as = "FromInto<SignedPrekeyBody>")]
-            pni_pq_last_resort_pre_key: &'a KyberPreKeyRecord,
+            aci_signed_pre_key: SignedPreKeyBody<&'a [u8]>,
+            pni_signed_pre_key: SignedPreKeyBody<&'a [u8]>,
+            aci_pq_last_resort_pre_key: SignedPreKeyBody<&'a [u8]>,
+            pni_pq_last_resort_pre_key: SignedPreKeyBody<&'a [u8]>,
             // Intentionally not #[serde(flatten)]-ed
             push_token: Option<PushToken<'a>>,
         }
@@ -647,23 +673,57 @@ impl From<&PublicKey> for PublicKeyBytes {
 }
 
 #[serde_as]
-#[derive(serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-struct SignedPrekeyBody<'a> {
-    key_id: u32,
+#[derive(Copy, Clone, Debug, Eq, PartialEq, serde::Serialize)]
+#[serde(rename_all = "camelCase", bound = "B: AsRef<[u8]>")]
+pub struct SignedPreKeyBody<B> {
+    pub key_id: u32,
     #[serde_as(as = "Base64Padded")]
-    public_key: &'a [u8],
+    pub public_key: B,
     #[serde_as(as = "Base64Padded")]
-    signature: &'a [u8],
+    pub signature: B,
 }
 
-impl<'a, T: GenericSignedPreKey> From<&'a T> for SignedPrekeyBody<'a> {
+impl<'a, T: GenericSignedPreKey> From<&'a T> for SignedPreKeyBody<&'a [u8]> {
     fn from(record: &'a T) -> Self {
         let storage = record.get_storage();
-        SignedPrekeyBody {
+        Self {
             key_id: storage.id,
             public_key: &storage.public_key,
             signature: &storage.signature,
+        }
+    }
+}
+
+impl<T> SignedPreKeyBody<T> {
+    pub fn to_owned(&self) -> SignedPreKeyBody<T::Owned>
+    where
+        T: ToOwned,
+    {
+        let Self {
+            key_id,
+            public_key,
+            signature,
+        } = self;
+        SignedPreKeyBody {
+            key_id: *key_id,
+            public_key: public_key.to_owned(),
+            signature: signature.to_owned(),
+        }
+    }
+
+    pub fn as_deref(&self) -> SignedPreKeyBody<&T::Target>
+    where
+        T: std::ops::Deref,
+    {
+        let Self {
+            key_id,
+            public_key,
+            signature,
+        } = self;
+        SignedPreKeyBody {
+            key_id: *key_id,
+            public_key,
+            signature,
         }
     }
 }
@@ -711,7 +771,7 @@ mod test {
     use std::str::FromStr as _;
     use std::sync::LazyLock;
 
-    use libsignal_protocol::KeyPair;
+    use libsignal_protocol::{KeyPair, KyberPreKeyRecord};
     use rand::SeedableRng as _;
     use serde_json::json;
     use uuid::uuid;
@@ -901,46 +961,51 @@ mod test {
             unrestricted_unidentified_access: true,
             capabilities: HashSet::from(["can wear cape"]),
             discoverable_by_phone_number: true,
-            each_registration_id_valid: Some(true),
         });
 
-    static REGISTER_KEYS: LazyLock<(ForServiceIds<PublicKey>, ForServiceIds<SignedPreKeyRecord>)> =
+    #[allow(clippy::type_complexity)]
+    static REGISTER_KEYS: LazyLock<ForServiceIds<(PublicKey, SignedPreKeyBody<Box<[u8]>>)>> =
         LazyLock::new(|| {
             // Use a seeded RNG for deterministic generation.
             let mut rng = rand_chacha::ChaChaRng::from_seed([1; 32]);
 
-            let identity_keys = ForServiceIds::generate(|_| KeyPair::generate(&mut rng).public_key);
+            ForServiceIds::generate(|_| {
+                let identity_key = KeyPair::generate(&mut rng).public_key;
 
-            let signed_pre_keys = ForServiceIds::generate(|_| {
-                SignedPreKeyRecord::new(
-                    1.into(),
-                    libsignal_protocol::Timestamp::from_epoch_millis(42),
-                    &KeyPair::generate(&mut rng),
-                    b"signature",
-                )
-            });
+                let signed_pre_key = {
+                    let key_pair = KeyPair::generate(&mut rng);
+                    SignedPreKeyBody {
+                        key_id: 1,
+                        public_key: key_pair.public_key.serialize(),
+                        signature: (*b"signature").into(),
+                    }
+                };
 
-            (identity_keys, signed_pre_keys)
+                (identity_key, signed_pre_key)
+            })
         });
 
     /// "Golden" test that makes sure the auto-generated serialization code ends
     /// up producing the JSON we expect.
     #[test]
     fn register_account_request() {
-        let (identity_keys, signed_pre_keys) = &*REGISTER_KEYS;
-
         // There's no good way to generate this deterministically. We just check
         // below that these keys appear in the correct spot in the generated
         // request.
         let kem_keypair =
             libsignal_protocol::kem::KeyPair::generate(libsignal_protocol::kem::KeyType::Kyber1024);
         let pq_last_resort_pre_keys = ForServiceIds::generate(|_| {
-            KyberPreKeyRecord::new(
+            let record = KyberPreKeyRecord::new(
                 1.into(),
                 libsignal_protocol::Timestamp::from_epoch_millis(42),
                 &kem_keypair,
                 b"signature",
-            )
+            );
+            SignedPreKeyBody {
+                key_id: 1,
+                public_key: Box::from(record.get_storage().public_key.clone()),
+                signature: Box::from(record.get_storage().signature.clone()),
+            }
         });
 
         let request = crate::chat::Request::register_account(
@@ -949,18 +1014,11 @@ mod test {
             NewMessageNotification::Apn("appleId"),
             ACCOUNT_ATTRIBUTES.clone(),
             Some(SkipDeviceTransfer),
-            ForServiceIds {
-                aci: AccountKeys {
-                    identity_key: &identity_keys.aci,
-                    signed_pre_key: &signed_pre_keys.aci,
-                    pq_last_resort_pre_key: &pq_last_resort_pre_keys.aci,
-                },
-                pni: AccountKeys {
-                    identity_key: &identity_keys.pni,
-                    signed_pre_key: &signed_pre_keys.pni,
-                    pq_last_resort_pre_key: &pq_last_resort_pre_keys.pni,
-                },
-            },
+            ForServiceIds::generate(|kind| AccountKeys {
+                identity_key: &REGISTER_KEYS.get(kind).0,
+                signed_pre_key: REGISTER_KEYS.get(kind).1.as_deref(),
+                pq_last_resort_pre_key: pq_last_resort_pre_keys.get(kind).as_deref(),
+            }),
             b"account password",
         );
 
@@ -1002,7 +1060,6 @@ mod test {
                   "can wear cape": true
                 },
                 "discoverableByPhoneNumber": true,
-                "eachRegistrationIdValid": true,
                 "fetchesMessages": false,
                 "name": "ZGV2aWNlIG5hbWUgcHJvdG8=",
                 "pniRegistrationId": 456,
@@ -1013,10 +1070,10 @@ mod test {
                 "unrestrictedUnidentifiedAccess": true
               },
               "aciIdentityKey": "BdU7n+od1NVw2+OBgHZ8I2RWymYz8QPxqgY357YT0lJ0",
-              "pniIdentityKey": "BQkeh2V1eV9fztQ/985a5lLbIeNFPGsexdO9I7HsQQZV",
+              "pniIdentityKey": "BQ2BxG+rk+cP5r4EcBEzkU24jhR+Uh6YjC49E0BNgqEd",
               "aciSignedPreKey": {
                 "keyId": 1,
-                "publicKey": "BQ2BxG+rk+cP5r4EcBEzkU24jhR+Uh6YjC49E0BNgqEd",
+                "publicKey": "BQkeh2V1eV9fztQ/985a5lLbIeNFPGsexdO9I7HsQQZV",
                 "signature": "c2lnbmF0dXJl"
               },
               "pniSignedPreKey": {
@@ -1032,8 +1089,8 @@ mod test {
               // Not including the full serialized representation for these
               // since it's the same as the signed pre-keys so asserting
               // equality on them doesn't add value.
-              "aciPqLastResortPreKey": SignedPrekeyBody::from(&pq_last_resort_pre_keys.aci),
-              "pniPqLastResortPreKey": SignedPrekeyBody::from(&pq_last_resort_pre_keys.pni),
+              "aciPqLastResortPreKey": pq_last_resort_pre_keys.aci.as_deref(),
+              "pniPqLastResortPreKey": pq_last_resort_pre_keys.pni.as_deref(),
             })
         );
     }
@@ -1051,26 +1108,17 @@ mod test {
             )
         });
 
-        let (identity_keys, signed_pre_keys) = &*REGISTER_KEYS;
-
         let request = crate::chat::Request::register_account(
             "+18005550101",
             Some(&"abc".parse().unwrap()),
             NewMessageNotification::WillFetchMessages,
             ACCOUNT_ATTRIBUTES.clone(),
             Some(SkipDeviceTransfer),
-            ForServiceIds {
-                aci: AccountKeys {
-                    identity_key: &identity_keys.aci,
-                    signed_pre_key: &signed_pre_keys.aci,
-                    pq_last_resort_pre_key: &pq_last_resort_pre_keys.aci,
-                },
-                pni: AccountKeys {
-                    identity_key: &identity_keys.pni,
-                    signed_pre_key: &signed_pre_keys.pni,
-                    pq_last_resort_pre_key: &pq_last_resort_pre_keys.pni,
-                },
-            },
+            ForServiceIds::generate(|kind| AccountKeys {
+                identity_key: &REGISTER_KEYS.get(kind).0,
+                signed_pre_key: REGISTER_KEYS.get(kind).1.as_deref(),
+                pq_last_resort_pre_key: pq_last_resort_pre_keys.get(kind).into(),
+            }),
             b"account password",
         );
 

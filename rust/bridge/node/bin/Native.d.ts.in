@@ -142,6 +142,12 @@ type RegistrationCreateSessionRequest = {
   mnc?: string;
 };
 
+type SignedPublicPreKey = {
+  keyId: number;
+  publicKey: Buffer;
+  signature: Buffer;
+};
+
 type Wrapper<T> = Readonly<{
   _nativeHandle: T;
 }>;

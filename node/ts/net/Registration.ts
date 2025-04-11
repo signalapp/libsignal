@@ -7,6 +7,9 @@ import type { ReadonlyDeep } from 'type-fest';
 import * as Native from '../../Native';
 import { LibSignalError, RateLimitedError } from '../Errors';
 import { newNativeHandle, type Net, type TokioAsyncContext } from '../net';
+import { PublicKey } from '../EcKeys';
+import { Aci, Pni, ServiceIdKind } from '../Address';
+import { SignedKyberPublicPreKey, SignedPublicPreKey } from '..';
 
 type ConnectionManager = Native.Wrapper<Native.ConnectionManager>;
 
@@ -155,6 +158,78 @@ export class RegistrationService {
     return this.sessionState.verified;
   }
 
+  public async registerAccount(inputs: {
+    accountPassword: Uint8Array;
+    skipDeviceTransfer: boolean;
+    accountAttributes: AccountAttributes;
+    aciPublicKey: PublicKey;
+    pniPublicKey: PublicKey;
+    aciSignedPreKey: SignedPublicPreKey;
+    pniSignedPreKey: SignedPublicPreKey;
+    aciPqLastResortPreKey: SignedKyberPublicPreKey;
+    pniPqLastResortPreKey: SignedKyberPublicPreKey;
+  }): Promise<RegisterAccountResponse> {
+    const {
+      accountPassword,
+      skipDeviceTransfer = false,
+      accountAttributes,
+      aciPublicKey,
+      pniPublicKey,
+      aciSignedPreKey,
+      pniSignedPreKey,
+      aciPqLastResortPreKey,
+      pniPqLastResortPreKey,
+    } = inputs;
+    const args = newNativeHandle(Native.RegisterAccountRequest_Create());
+    Native.RegisterAccountRequest_SetAccountPassword(
+      args,
+      Buffer.from(accountPassword)
+    );
+    if (skipDeviceTransfer) {
+      Native.RegisterAccountRequest_SetSkipDeviceTransfer(args);
+    }
+    Native.RegisterAccountRequest_SetIdentityPublicKey(
+      args,
+      ServiceIdKind.Aci,
+      aciPublicKey
+    );
+    Native.RegisterAccountRequest_SetIdentityPublicKey(
+      args,
+      ServiceIdKind.Pni,
+      pniPublicKey
+    );
+
+    Native.RegisterAccountRequest_SetIdentitySignedPreKey(
+      args,
+      ServiceIdKind.Aci,
+      toBridgedPublicPreKey(aciSignedPreKey)
+    );
+    Native.RegisterAccountRequest_SetIdentitySignedPreKey(
+      args,
+      ServiceIdKind.Pni,
+      toBridgedPublicPreKey(pniSignedPreKey)
+    );
+    Native.RegisterAccountRequest_SetIdentityPqLastResortPreKey(
+      args,
+      ServiceIdKind.Aci,
+      toBridgedPublicPreKey(aciPqLastResortPreKey)
+    );
+    Native.RegisterAccountRequest_SetIdentityPqLastResortPreKey(
+      args,
+      ServiceIdKind.Pni,
+      toBridgedPublicPreKey(pniPqLastResortPreKey)
+    );
+
+    return new RegisterAccountResponse(
+      await Native.RegistrationService_RegisterAccount(
+        this.tokioAsyncContext,
+        this,
+        args,
+        accountAttributes
+      )
+    );
+  }
+
   /**
    *  Internal, only public for testing
    */
@@ -205,5 +280,79 @@ export class RegistrationService {
     };
 
     return [registration(), server];
+  }
+}
+
+function toBridgedPublicPreKey(
+  key: SignedPublicPreKey | SignedKyberPublicPreKey
+): Native.SignedPublicPreKey {
+  return {
+    keyId: key.id(),
+    signature: key.signature(),
+    publicKey: key.publicKey().serialize(),
+  };
+}
+
+export class AccountAttributes {
+  readonly _nativeHandle: Native.RegistrationAccountAttributes;
+
+  public constructor({
+    recoveryPassword,
+    aciRegistrationId,
+    pniRegistrationId,
+    registrationLock,
+    unidentifiedAccessKey,
+    unrestrictedUnidentifiedAccess,
+    capabilities,
+    discoverableByPhoneNumber,
+  }: {
+    recoveryPassword: Uint8Array;
+    aciRegistrationId: number;
+    pniRegistrationId: number;
+    registrationLock: string | null;
+    unidentifiedAccessKey: Uint8Array;
+    unrestrictedUnidentifiedAccess: boolean;
+    capabilities: Set<string>;
+    discoverableByPhoneNumber: boolean;
+  }) {
+    const capabilitiesArray = Array.from(capabilities);
+
+    this._nativeHandle = Native.RegistrationAccountAttributes_Create(
+      Buffer.from(recoveryPassword),
+      aciRegistrationId,
+      pniRegistrationId,
+      registrationLock,
+      Buffer.from(unidentifiedAccessKey),
+      unrestrictedUnidentifiedAccess,
+      capabilitiesArray,
+      discoverableByPhoneNumber
+    );
+  }
+}
+
+export class RegisterAccountResponse {
+  public constructor(readonly _nativeHandle: Native.RegisterAccountResponse) {}
+
+  public get aci(): Aci {
+    const bytes = Native.RegisterAccountResponse_GetIdentity(
+      this,
+      ServiceIdKind.Aci
+    );
+    // PNI might be null but ACI is guaranteed not to be.
+    return new Aci(bytes as Buffer)
+  }
+
+  public get pni(): Pni | null {
+    const bytes = Native.RegisterAccountResponse_GetIdentity(
+      this,
+      ServiceIdKind.Pni
+    );
+    return bytes == null ? null : new Pni(bytes);
+  }
+  public get number(): string {
+    return Native.RegisterAccountResponse_GetNumber(this);
+  }
+  public get usernameHash(): Buffer | null {
+    return Native.RegisterAccountResponse_GetUsernameHash(this);
   }
 }

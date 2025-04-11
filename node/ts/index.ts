@@ -222,6 +222,20 @@ export class KEMKeyPair {
   }
 }
 
+/** The public information contained in a {@link SignedPreKeyRecord} */
+export type SignedPublicPreKey = {
+  id(): number;
+  publicKey(): PublicKey;
+  signature(): Buffer;
+};
+
+/** The public information contained in a {@link KyberPreKeyRecord} */
+export type SignedKyberPublicPreKey = {
+  id(): number;
+  publicKey(): KEMPublicKey;
+  signature(): Buffer;
+};
+
 export class PreKeyBundle {
   readonly _nativeHandle: Native.PreKeyBundle;
 
@@ -348,7 +362,7 @@ export class PreKeyRecord {
   }
 }
 
-export class SignedPreKeyRecord {
+export class SignedPreKeyRecord implements SignedPublicPreKey {
   readonly _nativeHandle: Native.SignedPreKeyRecord;
 
   private constructor(handle: Native.SignedPreKeyRecord) {
@@ -408,7 +422,7 @@ export class SignedPreKeyRecord {
   }
 }
 
-export class KyberPreKeyRecord {
+export class KyberPreKeyRecord implements SignedKyberPublicPreKey {
   readonly _nativeHandle: Native.KyberPreKeyRecord;
 
   private constructor(handle: Native.KyberPreKeyRecord) {

@@ -427,6 +427,25 @@ impl SimpleArgTypeInfo for libsignal_net::registration::CreateSession {
     }
 }
 
+impl SimpleArgTypeInfo for libsignal_net::registration::SignedPreKeyBody<Box<[u8]>> {
+    type ArgType = JsObject;
+    fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {
+        let key_id = foreign.get(cx, "keyId")?;
+        let key_id = u32::convert_from(cx, key_id)?;
+
+        let public_key: Handle<'_, JsBuffer> = foreign.get(cx, "publicKey")?;
+        let public_key_bytes = public_key.as_slice(cx).into();
+
+        let signature: Handle<'_, JsBuffer> = foreign.get(cx, "signature")?;
+        let signature = signature.as_slice(cx).into();
+        Ok(Self {
+            key_id,
+            public_key: public_key_bytes,
+            signature,
+        })
+    }
+}
+
 /// Converts `null` to `None`, passing through all other values.
 impl<'storage, 'context: 'storage, T> ArgTypeInfo<'storage, 'context> for Option<T>
 where

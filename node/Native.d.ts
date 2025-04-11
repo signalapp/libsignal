@@ -142,6 +142,12 @@ type RegistrationCreateSessionRequest = {
   mnc?: string;
 };
 
+type SignedPublicPreKey = {
+  keyId: number;
+  publicKey: Buffer;
+  signature: Buffer;
+};
+
 type Wrapper<T> = Readonly<{
   _nativeHandle: T;
 }>;
@@ -421,7 +427,18 @@ export function ReceiptCredentialResponse_CheckValidContents(buffer: Buffer): vo
 export function ReceiptCredential_CheckValidContents(buffer: Buffer): void;
 export function ReceiptCredential_GetReceiptExpirationTime(receiptCredential: Serialized<ReceiptCredential>): Timestamp;
 export function ReceiptCredential_GetReceiptLevel(receiptCredential: Serialized<ReceiptCredential>): bigint;
+export function RegisterAccountRequest_Create(): RegisterAccountRequest;
+export function RegisterAccountRequest_SetAccountPassword(registerAccount: Wrapper<RegisterAccountRequest>, accountPassword: Buffer): void;
+export function RegisterAccountRequest_SetIdentityPqLastResortPreKey(registerAccount: Wrapper<RegisterAccountRequest>, identityType: number, pqLastResortPreKey: SignedPublicPreKey): void;
+export function RegisterAccountRequest_SetIdentityPublicKey(registerAccount: Wrapper<RegisterAccountRequest>, identityType: number, identityKey: Wrapper<PublicKey>): void;
+export function RegisterAccountRequest_SetIdentitySignedPreKey(registerAccount: Wrapper<RegisterAccountRequest>, identityType: number, signedPreKey: SignedPublicPreKey): void;
+export function RegisterAccountRequest_SetSkipDeviceTransfer(registerAccount: Wrapper<RegisterAccountRequest>): void;
+export function RegisterAccountResponse_GetIdentity(response: Wrapper<RegisterAccountResponse>, identityType: number): Buffer | null;
+export function RegisterAccountResponse_GetNumber(response: Wrapper<RegisterAccountResponse>): string;
+export function RegisterAccountResponse_GetUsernameHash(response: Wrapper<RegisterAccountResponse>): Buffer | null;
+export function RegistrationAccountAttributes_Create(recoveryPassword: Buffer, aciRegistrationId: number, pniRegistrationId: number, registrationLock: string | null, unidentifiedAccessKey: Buffer | null, unrestrictedUnidentifiedAccess: boolean, capabilities: string[], discoverableByPhoneNumber: boolean): RegistrationAccountAttributes;
 export function RegistrationService_CreateSession(asyncRuntime: Wrapper<TokioAsyncContext>, createSession: RegistrationCreateSessionRequest, connectChat: ConnectChatBridge): CancellablePromise<RegistrationService>;
+export function RegistrationService_RegisterAccount(asyncRuntime: Wrapper<TokioAsyncContext>, service: Wrapper<RegistrationService>, registerAccount: Wrapper<RegisterAccountRequest>, accountAttributes: Wrapper<RegistrationAccountAttributes>): CancellablePromise<RegisterAccountResponse>;
 export function RegistrationService_RegistrationSession(service: Wrapper<RegistrationService>): RegistrationSession;
 export function RegistrationService_RequestPushChallenge(asyncRuntime: Wrapper<TokioAsyncContext>, service: Wrapper<RegistrationService>, pushToken: string, pushTokenType: RegistrationPushTokenType): CancellablePromise<void>;
 export function RegistrationService_RequestVerificationCode(asyncRuntime: Wrapper<TokioAsyncContext>, service: Wrapper<RegistrationService>, transport: string, client: string): CancellablePromise<void>;
@@ -698,6 +715,9 @@ interface ReceiptCredentialPresentation { readonly __type: unique symbol; }
 interface ReceiptCredentialRequest { readonly __type: unique symbol; }
 interface ReceiptCredentialRequestContext { readonly __type: unique symbol; }
 interface ReceiptCredentialResponse { readonly __type: unique symbol; }
+interface RegisterAccountRequest { readonly __type: unique symbol; }
+interface RegisterAccountResponse { readonly __type: unique symbol; }
+interface RegistrationAccountAttributes { readonly __type: unique symbol; }
 interface RegistrationService { readonly __type: unique symbol; }
 interface RegistrationSession { readonly __type: unique symbol; }
 interface SanitizedMetadata { readonly __type: unique symbol; }

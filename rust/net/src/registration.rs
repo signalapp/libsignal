@@ -198,7 +198,7 @@ impl<'c> RegistrationService<'c> {
 
     pub async fn register_account(
         &mut self,
-        message_notification: NewMessageNotification<'_>,
+        message_notification: NewMessageNotification<&str>,
         account_attributes: ProvidedAccountAttributes<'_>,
         device_transfer: Option<SkipDeviceTransfer>,
         keys: ForServiceIds<AccountKeys<'_>>,
@@ -285,7 +285,7 @@ impl<'c> RegistrationService<'c> {
 pub async fn reregister_account(
     number: &str,
     connect_chat: Box<dyn ConnectChat + Send + Sync + UnwindSafe + '_>,
-    message_notification: NewMessageNotification<'_>,
+    message_notification: NewMessageNotification<&str>,
     account_attributes: ProvidedAccountAttributes<'_>,
     device_transfer: Option<SkipDeviceTransfer>,
     keys: ForServiceIds<AccountKeys<'_>>,

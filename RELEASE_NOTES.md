@@ -4,6 +4,8 @@ v0.70.0
 
 - Make the registration service client available in Java.
 
+- Enable registering an account via the Node registration service client.
+
 - Java, Node, Swift: remove items marked as deprecated. This includes functions related to CDSI, HKDF, message backup validation, media sanitization, incremental MACs, and usernames.
 
 - Android: Build with NDK 28, the latest stable.
