@@ -130,14 +130,65 @@ pub struct ProvidedAccountAttributes<'a> {
 #[derive(Clone, Debug, Eq, PartialEq, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RegisterAccountResponse {
-    #[serde_as(as = "Option<FromInto<Uuid>>")]
+    /// The account identifier for this account.
+    #[serde_as(as = "FromInto<Uuid>")]
     #[serde(rename = "uuid")]
-    pub aci: Option<Aci>,
-    pub number: Option<String>,
+    pub aci: Aci,
+    /// The phone number associated with this account.
+    pub number: String,
+    /// The account identifier for this account's phone-number identity.
     #[serde_as(as = "Option<FromInto<Uuid>>")]
     pub pni: Option<Pni>,
+    /// A hash of this account's username, if set.
     #[serde_as(as = "Option<Base64Padded>")]
     pub username_hash: Option<Box<[u8]>>,
+    /// The account's username link handle, if set.
+    pub username_link_handle: Option<Uuid>,
+    /// Whether any of this account's devices support storage.
+    #[serde(default)]
+    pub storage_capable: bool,
+    /// Entitlements for this account and their current expirations.
+    #[serde(default)]
+    pub entitlements: RegisterResponseEntitlements,
+    /// If true, there was an existing account registered for this number.
+    #[serde(default)]
+    pub reregistration: bool,
+}
+
+#[serde_as]
+#[derive(Clone, Debug, Default, Eq, PartialEq, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RegisterResponseEntitlements {
+    /// Active badges.
+    pub badges: Box<[RegisterResponseBadge]>,
+    /// If present, the backup level set.
+    pub backup: Option<RegisterResponseBackup>,
+}
+
+#[serde_as]
+#[derive(Clone, Debug, Eq, PartialEq, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RegisterResponseBadge {
+    /// The badge ID.
+    pub id: String,
+    /// Whether the badge is currently configured to be visible.
+    pub visible: bool,
+    /// When the badge expires.
+    #[serde_as(as = "DurationSeconds")]
+    #[serde(rename = "expirationSeconds")]
+    pub expiration: Duration,
+}
+
+#[serde_as]
+#[derive(Clone, Debug, Eq, PartialEq, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RegisterResponseBackup {
+    /// The backup level of the account.
+    pub backup_level: u64,
+    /// When the backup entitlement expires.
+    #[serde_as(as = "DurationSeconds")]
+    #[serde(rename = "expirationSeconds")]
+    pub expiration: Duration,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, serde::Deserialize)]
@@ -663,6 +714,7 @@ mod test {
     use libsignal_protocol::KeyPair;
     use rand::SeedableRng as _;
     use serde_json::json;
+    use uuid::uuid;
 
     use super::*;
     use crate::chat::{Request as ChatRequest, Response as ChatResponse};
@@ -1030,5 +1082,59 @@ mod test {
             Some(&serde_json::Value::Bool(true))
         );
         assert_eq!(body.get("pushToken"), None);
+    }
+
+    #[test]
+    fn register_account_response_parse() {
+        const RESPONSE_JSON: &str = r#" {
+            "uuid": "095be615-a8ad-4c33-8e9c-c7612fbf6c9f",
+            "number": "+18005550123",
+            "pni": "06d9ee19-7126-49ad-b4cb-de1a4d42305a",
+            "usernameHash": "YWJjZGVmZ2hp",
+            "usernameLinkHandle": "431ca581-2806-466f-a4a3-4492d3c9a64b",
+            "storageCapable": true,
+            "entitlements": {
+                "badges": [
+                    {
+                        "id": "badge-1",
+                        "visible": true,
+                        "expirationSeconds": 123456789
+                    }
+                ],
+                "backup": {
+                    "backupLevel": 555,
+                    "expirationSeconds": 987654321
+                }
+            },
+            "reregistration": true,
+            "unknownFieldShouldBeIgnored": "Make sure that additional fields don't cause the response to be rejected."
+        } "#;
+
+        let response: RegisterAccountResponse = serde_json::from_str(RESPONSE_JSON).unwrap();
+
+        assert_eq!(
+            response,
+            RegisterAccountResponse {
+                aci: Aci::from(uuid!("095be615-a8ad-4c33-8e9c-c7612fbf6c9f")),
+                number: "+18005550123".to_owned(),
+                pni: Some(Pni::from(uuid!("06d9ee19-7126-49ad-b4cb-de1a4d42305a"))),
+                username_hash: Some((*b"abcdefghi").into()),
+                username_link_handle: Some(uuid!("431ca581-2806-466f-a4a3-4492d3c9a64b")),
+                storage_capable: true,
+                entitlements: RegisterResponseEntitlements {
+                    badges: [RegisterResponseBadge {
+                        id: "badge-1".to_owned(),
+                        visible: true,
+                        expiration: Duration::from_secs(123456789),
+                    }]
+                    .into(),
+                    backup: Some(RegisterResponseBackup {
+                        backup_level: 555,
+                        expiration: Duration::from_secs(987654321),
+                    })
+                },
+                reregistration: true,
+            }
+        )
     }
 }
