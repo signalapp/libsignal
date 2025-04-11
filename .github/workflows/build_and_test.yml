@@ -346,7 +346,7 @@ jobs:
       if: matrix.os == 'ubuntu-latest'
       working-directory: node
 
-    - run: npm run format -c
+    - run: npm run format-check
       if: matrix.os == 'ubuntu-latest'
       working-directory: node
 
