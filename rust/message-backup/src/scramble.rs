@@ -2074,10 +2074,12 @@ impl Visit<Scrambler> for proto::NotificationProfile {
             scheduleStartTime: _,
             scheduleEndTime: _,
             scheduleDaysEnabled: _,
+            id,
             special_fields: _,
         } = self;
 
-        name.randomize(&mut visitor.rng)
+        name.randomize(&mut visitor.rng);
+        id.randomize(&mut visitor.rng)
     }
 }
 

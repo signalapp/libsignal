@@ -1310,6 +1310,7 @@ message NotificationProfile {
   uint32 scheduleStartTime = 9; // 24-hour clock int, 0000-2359 (e.g., 15, 900, 1130, 2345)
   uint32 scheduleEndTime = 10; // 24-hour clock int, 0000-2359 (e.g., 15, 900, 1130, 2345)
   repeated DayOfWeek scheduleDaysEnabled = 11;
+  bytes id = 12;
 }
 
 message ChatFolder {

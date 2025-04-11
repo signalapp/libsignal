@@ -35,6 +35,7 @@ pub struct NotificationProfile<Recipient> {
     days_enabled: UnorderedList<DayOfWeek>,
     #[serde(bound(serialize = "Recipient: serde::Serialize + SerializeOrder"))]
     allowed_members: UnorderedList<Recipient>,
+    id: Vec<u8>,
 }
 
 #[derive(Debug, thiserror::Error, displaydoc::Display)]
@@ -60,6 +61,10 @@ pub enum NotificationProfileError {
     DuplicateDay(DayOfWeek),
     /// {0}
     InvalidTimestamp(#[from] TimestampError),
+    /// missing id for profile
+    MissingId,
+    /// id is invalid (not 16 bytes)
+    InvalidId,
 }
 
 impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusualTimestamp>
@@ -79,6 +84,7 @@ impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusu
             scheduleEndTime,
             scheduleDaysEnabled,
             allowedMembers,
+            id,
             special_fields: _,
         } = item;
 
@@ -132,6 +138,13 @@ impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusu
             days_enabled.push(day);
         }
 
+        if id.is_empty() {
+            return Err(NotificationProfileError::MissingId);
+        }
+        if id.len() != 16 {
+            return Err(NotificationProfileError::InvalidId);
+        }
+
         Ok(Self {
             name,
             emoji,
@@ -144,6 +157,7 @@ impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusu
             end_time,
             days_enabled: days_enabled.into(),
             allowed_members,
+            id,
         })
     }
 }
@@ -229,6 +243,8 @@ mod test {
     use crate::backup::TryIntoWith as _;
 
     impl proto::NotificationProfile {
+        const NOTIFICATION_PROFILE_ID: [u8; 16] = [0xa1; 16];
+
         fn test_data() -> Self {
             Self {
                 name: "Test".into(),
@@ -245,6 +261,7 @@ mod test {
                     proto::notification_profile::DayOfWeek::MONDAY.into(),
                 ],
                 allowedMembers: vec![TestContext::CONTACT_ID.0],
+                id: Self::NOTIFICATION_PROFILE_ID.to_vec(),
                 ..Default::default()
             }
         }
@@ -266,6 +283,7 @@ mod test {
                 end_time: ClockTime(1320),
                 days_enabled: vec![DayOfWeek::Wednesday, DayOfWeek::Monday].into(),
                 allowed_members: vec![TestContext::contact_recipient().clone()].into(),
+                id: vec![0xa1; 16],
             })
         )
     }
@@ -302,6 +320,8 @@ mod test {
         Err(NotificationProfileError::InvalidTimestamp(TimestampError("NotificationProfile.createdAtMs", MillisecondsSinceEpoch::FAR_FUTURE.0)));
         "invalid createdAtMs"
     )]
+    #[test_case(|x| x.id = vec![] => Err(NotificationProfileError::MissingId); "must have an id")]
+    #[test_case(|x| x.id = vec![0xa1; 15] => Err(NotificationProfileError::InvalidId); "id must be 16 bytes")]
     fn profile(
         mutator: fn(&mut proto::NotificationProfile),
     ) -> Result<(), NotificationProfileError> {
