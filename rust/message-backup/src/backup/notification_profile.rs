@@ -35,7 +35,7 @@ pub struct NotificationProfile<Recipient> {
     days_enabled: UnorderedList<DayOfWeek>,
     #[serde(bound(serialize = "Recipient: serde::Serialize + SerializeOrder"))]
     allowed_members: UnorderedList<Recipient>,
-    id: Vec<u8>,
+    id: [u8; 16],
 }
 
 #[derive(Debug, thiserror::Error, displaydoc::Display)]
@@ -141,9 +141,10 @@ impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusu
         if id.is_empty() {
             return Err(NotificationProfileError::MissingId);
         }
-        if id.len() != 16 {
-            return Err(NotificationProfileError::InvalidId);
-        }
+
+        let id = id
+            .try_into()
+            .map_err(|_| NotificationProfileError::InvalidId)?;
 
         Ok(Self {
             name,
@@ -283,7 +284,7 @@ mod test {
                 end_time: ClockTime(1320),
                 days_enabled: vec![DayOfWeek::Wednesday, DayOfWeek::Monday].into(),
                 allowed_members: vec![TestContext::contact_recipient().clone()].into(),
-                id: vec![0xa1; 16],
+                id: [0xa1; 16],
             })
         )
     }
