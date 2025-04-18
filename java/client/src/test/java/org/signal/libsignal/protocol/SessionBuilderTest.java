@@ -10,6 +10,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.signal.libsignal.protocol.SessionRecordTest.getAliceBaseKey;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -96,7 +97,7 @@ public class SessionBuilderTest {
 
       assertTrue(bobStore.containsSession(ALICE_ADDRESS));
       assertEquals(bobStore.loadSession(ALICE_ADDRESS).getSessionVersion(), expectedVersion);
-      assertNotNull(bobStore.loadSession(ALICE_ADDRESS).getAliceBaseKey());
+      assertNotNull(getAliceBaseKey(bobStore.loadSession(ALICE_ADDRESS)));
       assertTrue(originalMessage.equals(new String(plaintext)));
 
       CiphertextMessage bobOutgoingMessage = bobSessionCipher.encrypt(originalMessage.getBytes());
@@ -243,7 +244,7 @@ public class SessionBuilderTest {
 
       assertTrue(bobStore.containsSession(ALICE_ADDRESS));
       assertEquals(bobStore.loadSession(ALICE_ADDRESS).getSessionVersion(), expectedVersion);
-      assertNotNull(bobStore.loadSession(ALICE_ADDRESS).getAliceBaseKey());
+      assertNotNull(getAliceBaseKey(bobStore.loadSession(ALICE_ADDRESS)));
       assertEquals(originalMessage, new String(plaintext));
     }
 

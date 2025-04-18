@@ -982,7 +982,6 @@ fn SessionRecord_CurrentRatchetKeyMatches(s: &SessionRecord, key: &PublicKey) ->
 
 bridge_deserialize!(SessionRecord::deserialize);
 bridge_get!(SessionRecord::serialize as Serialize -> Vec<u8>);
-bridge_get!(SessionRecord::alice_base_key -> &[u8], ffi = false, node = false);
 bridge_get!(
     SessionRecord::local_identity_key_bytes as GetLocalIdentityKeyPublic -> Vec<u8>,
     ffi = false,
@@ -1004,93 +1003,6 @@ bridge_get!(
     ffi = false,
     jni = false
 );
-
-// The following SessionRecord APIs are just exposed to make it possible to retain some of the Java tests:
-
-bridge_get!(
-    SessionRecord::get_sender_chain_key_bytes as GetSenderChainKeyValue -> Vec<u8>,
-    ffi = false,
-    node = false
-);
-#[bridge_fn(ffi = false, node = false)]
-fn SessionRecord_GetReceiverChainKeyValue(
-    session_state: &SessionRecord,
-    key: &PublicKey,
-) -> Result<Option<Vec<u8>>> {
-    Ok(session_state
-        .get_receiver_chain_key_bytes(key)?
-        .map(Vec::from))
-}
-
-#[bridge_fn(ffi = false, node = false)]
-fn SessionRecord_InitializeAliceSession(
-    identity_key_private: &PrivateKey,
-    identity_key_public: &PublicKey,
-    base_private: &PrivateKey,
-    base_public: &PublicKey,
-    their_identity_key: &PublicKey,
-    their_signed_prekey: &PublicKey,
-    their_ratchet_key: &PublicKey,
-) -> Result<SessionRecord> {
-    let our_identity_key_pair = IdentityKeyPair::new(
-        IdentityKey::new(*identity_key_public),
-        *identity_key_private,
-    );
-
-    let our_base_key_pair = KeyPair::new(*base_public, *base_private);
-
-    let their_identity_key = IdentityKey::new(*their_identity_key);
-
-    let mut csprng = rand::rngs::OsRng;
-
-    let parameters = AliceSignalProtocolParameters::new(
-        our_identity_key_pair,
-        our_base_key_pair,
-        their_identity_key,
-        *their_signed_prekey,
-        *their_ratchet_key,
-    );
-
-    initialize_alice_session_record(&parameters, &mut csprng)
-}
-
-#[bridge_fn(ffi = false, node = false)]
-fn SessionRecord_InitializeBobSession(
-    identity_key_private: &PrivateKey,
-    identity_key_public: &PublicKey,
-    signed_prekey_private: &PrivateKey,
-    signed_prekey_public: &PublicKey,
-    eph_private: &PrivateKey,
-    eph_public: &PublicKey,
-    their_identity_key: &PublicKey,
-    their_base_key: &PublicKey,
-) -> Result<SessionRecord> {
-    let our_identity_key_pair = IdentityKeyPair::new(
-        IdentityKey::new(*identity_key_public),
-        *identity_key_private,
-    );
-
-    let our_signed_pre_key_pair = KeyPair::new(*signed_prekey_public, *signed_prekey_private);
-
-    let our_ratchet_key_pair = KeyPair::new(*eph_public, *eph_private);
-
-    let their_identity_key = IdentityKey::new(*their_identity_key);
-
-    let parameters = BobSignalProtocolParameters::new(
-        our_identity_key_pair,
-        our_signed_pre_key_pair,
-        None,
-        our_ratchet_key_pair,
-        None,
-        their_identity_key,
-        *their_base_key,
-        None,
-    );
-
-    initialize_bob_session_record(&parameters)
-}
-
-// End SessionRecord testing functions
 
 #[bridge_fn(ffi = "process_prekey_bundle")]
 async fn SessionBuilder_ProcessPreKeyBundle(

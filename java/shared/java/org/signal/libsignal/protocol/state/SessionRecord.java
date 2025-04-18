@@ -11,10 +11,8 @@ import java.time.Instant;
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
 import org.signal.libsignal.protocol.IdentityKey;
-import org.signal.libsignal.protocol.IdentityKeyPair;
 import org.signal.libsignal.protocol.InvalidKeyException;
 import org.signal.libsignal.protocol.InvalidMessageException;
-import org.signal.libsignal.protocol.ecc.ECKeyPair;
 import org.signal.libsignal.protocol.ecc.ECPublicKey;
 
 /**
@@ -132,91 +130,5 @@ public class SessionRecord extends NativeHandleGuard.SimpleOwner {
    */
   public byte[] serialize() {
     return filterExceptions(() -> guardedMapChecked(Native::SessionRecord_Serialize));
-  }
-
-  // Following functions are for internal or testing use and may be removed in the future:
-
-  public byte[] getReceiverChainKeyValue(ECPublicKey senderEphemeral) {
-    try (NativeHandleGuard guard = new NativeHandleGuard(this);
-        NativeHandleGuard ephemeralGuard = new NativeHandleGuard(senderEphemeral); ) {
-      return filterExceptions(
-          () ->
-              Native.SessionRecord_GetReceiverChainKeyValue(
-                  guard.nativeHandle(), ephemeralGuard.nativeHandle()));
-    }
-  }
-
-  public byte[] getSenderChainKeyValue() {
-    return filterExceptions(() -> guardedMapChecked(Native::SessionRecord_GetSenderChainKeyValue));
-  }
-
-  public byte[] getAliceBaseKey() {
-    return filterExceptions(() -> guardedMapChecked(Native::SessionRecord_GetAliceBaseKey));
-  }
-
-  public static SessionRecord initializeAliceSession(
-      IdentityKeyPair identityKey,
-      ECKeyPair baseKey,
-      IdentityKey theirIdentityKey,
-      ECPublicKey theirSignedPreKey,
-      ECPublicKey theirRatchetKey) {
-    try (NativeHandleGuard identityPrivateGuard =
-            new NativeHandleGuard(identityKey.getPrivateKey());
-        NativeHandleGuard identityPublicGuard =
-            new NativeHandleGuard(identityKey.getPublicKey().getPublicKey());
-        NativeHandleGuard basePrivateGuard = new NativeHandleGuard(baseKey.getPrivateKey());
-        NativeHandleGuard basePublicGuard = new NativeHandleGuard(baseKey.getPublicKey());
-        NativeHandleGuard theirIdentityGuard =
-            new NativeHandleGuard(theirIdentityKey.getPublicKey());
-        NativeHandleGuard theirSignedPreKeyGuard = new NativeHandleGuard(theirSignedPreKey);
-        NativeHandleGuard theirRatchetKeyGuard = new NativeHandleGuard(theirRatchetKey); ) {
-      return new SessionRecord(
-          filterExceptions(
-              () ->
-                  Native.SessionRecord_InitializeAliceSession(
-                      identityPrivateGuard.nativeHandle(),
-                      identityPublicGuard.nativeHandle(),
-                      basePrivateGuard.nativeHandle(),
-                      basePublicGuard.nativeHandle(),
-                      theirIdentityGuard.nativeHandle(),
-                      theirSignedPreKeyGuard.nativeHandle(),
-                      theirRatchetKeyGuard.nativeHandle())));
-    }
-  }
-
-  public static SessionRecord initializeBobSession(
-      IdentityKeyPair identityKey,
-      ECKeyPair signedPreKey,
-      ECKeyPair ephemeralKey,
-      IdentityKey theirIdentityKey,
-      ECPublicKey theirBaseKey) {
-    try (NativeHandleGuard identityPrivateGuard =
-            new NativeHandleGuard(identityKey.getPrivateKey());
-        NativeHandleGuard identityPublicGuard =
-            new NativeHandleGuard(identityKey.getPublicKey().getPublicKey());
-        NativeHandleGuard signedPreKeyPrivateGuard =
-            new NativeHandleGuard(signedPreKey.getPrivateKey());
-        NativeHandleGuard signedPreKeyPublicGuard =
-            new NativeHandleGuard(signedPreKey.getPublicKey());
-        NativeHandleGuard ephemeralPrivateGuard =
-            new NativeHandleGuard(ephemeralKey.getPrivateKey());
-        NativeHandleGuard ephemeralPublicGuard =
-            new NativeHandleGuard(ephemeralKey.getPublicKey());
-        NativeHandleGuard theirIdentityGuard =
-            new NativeHandleGuard(theirIdentityKey.getPublicKey());
-        NativeHandleGuard theirBaseKeyGuard = new NativeHandleGuard(theirBaseKey); ) {
-      return new SessionRecord(
-          filterExceptions(
-              () ->
-                  Native.SessionRecord_InitializeBobSession(
-                      identityPrivateGuard.nativeHandle(),
-                      identityPublicGuard.nativeHandle(),
-                      signedPreKeyPrivateGuard.nativeHandle(),
-                      signedPreKeyPublicGuard.nativeHandle(),
-                      ephemeralPrivateGuard.nativeHandle(),
-                      ephemeralPublicGuard.nativeHandle(),
-                      theirIdentityGuard.nativeHandle(),
-                      theirBaseKeyGuard.nativeHandle())));
-    }
   }
 }

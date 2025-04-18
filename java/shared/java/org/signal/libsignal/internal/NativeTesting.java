@@ -55,6 +55,12 @@ public final class NativeTesting {
 
   public static native void OtherTestingHandleType_Destroy(long handle);
 
+  public static native byte[] SessionRecord_GetAliceBaseKey(long obj) throws Exception;
+  public static native byte[] SessionRecord_GetReceiverChainKeyValue(long sessionState, long key) throws Exception;
+  public static native byte[] SessionRecord_GetSenderChainKeyValue(long obj) throws Exception;
+  public static native byte[] SessionRecord_InitializeAliceSession(long identityKeyPrivate, long identityKeyPublic, long basePrivate, long basePublic, long theirIdentityKey, long theirSignedPrekey, long theirRatchetKey) throws Exception;
+  public static native byte[] SessionRecord_InitializeBobSession(long identityKeyPrivate, long identityKeyPublic, long signedPrekeyPrivate, long signedPrekeyPublic, long ephPrivate, long ephPublic, long theirIdentityKey, long theirBaseKey) throws Exception;
+
   public static native String TESTING_BridgedStringMap_dump_to_json(long map);
   public static native void TESTING_CdsiLookupErrorConvert(String errorDescription) throws Exception;
   public static native CompletableFuture<Object> TESTING_CdsiLookupResponseConvert(long asyncRuntime);

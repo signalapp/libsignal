@@ -8,6 +8,7 @@ package org.signal.libsignal.protocol;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.signal.libsignal.protocol.SessionRecordTest.getAliceBaseKey;
 
 import java.util.Arrays;
 import java.util.Collection;
@@ -529,7 +530,7 @@ public class SimultaneousInitiateTests {
 
   private boolean isSessionIdEqual(SignalProtocolStore aliceStore, SignalProtocolStore bobStore) {
     return Arrays.equals(
-        aliceStore.loadSession(BOB_ADDRESS).getAliceBaseKey(),
-        bobStore.loadSession(ALICE_ADDRESS).getAliceBaseKey());
+        getAliceBaseKey(aliceStore.loadSession(BOB_ADDRESS)),
+        getAliceBaseKey(bobStore.loadSession(ALICE_ADDRESS)));
   }
 }

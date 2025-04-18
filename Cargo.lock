@@ -2338,6 +2338,7 @@ dependencies = [
  "nonzero_ext",
  "paste",
  "prost",
+ "rand",
  "scopeguard",
  "serde_json",
  "strum",

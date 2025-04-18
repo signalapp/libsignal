@@ -677,17 +677,12 @@ public final class Native {
   public static native boolean SessionRecord_CurrentRatchetKeyMatches(long s, long key) throws Exception;
   public static native long SessionRecord_Deserialize(byte[] data) throws Exception;
   public static native void SessionRecord_Destroy(long handle);
-  public static native byte[] SessionRecord_GetAliceBaseKey(long obj) throws Exception;
   public static native byte[] SessionRecord_GetLocalIdentityKeyPublic(long obj) throws Exception;
   public static native int SessionRecord_GetLocalRegistrationId(long obj) throws Exception;
-  public static native byte[] SessionRecord_GetReceiverChainKeyValue(long sessionState, long key) throws Exception;
   public static native byte[] SessionRecord_GetRemoteIdentityKeyPublic(long obj) throws Exception;
   public static native int SessionRecord_GetRemoteRegistrationId(long obj) throws Exception;
-  public static native byte[] SessionRecord_GetSenderChainKeyValue(long obj) throws Exception;
   public static native int SessionRecord_GetSessionVersion(long s) throws Exception;
   public static native boolean SessionRecord_HasUsableSenderChain(long s, long now) throws Exception;
-  public static native long SessionRecord_InitializeAliceSession(long identityKeyPrivate, long identityKeyPublic, long basePrivate, long basePublic, long theirIdentityKey, long theirSignedPrekey, long theirRatchetKey) throws Exception;
-  public static native long SessionRecord_InitializeBobSession(long identityKeyPrivate, long identityKeyPublic, long signedPrekeyPrivate, long signedPrekeyPublic, long ephPrivate, long ephPublic, long theirIdentityKey, long theirBaseKey) throws Exception;
   public static native long SessionRecord_NewFresh();
   public static native byte[] SessionRecord_Serialize(long obj) throws Exception;
 

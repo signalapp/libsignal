@@ -20,6 +20,7 @@ pub mod message_backup;
 pub mod net;
 #[cfg(feature = "node")]
 pub mod net_env;
+pub mod protocol;
 pub mod types;
 
 #[bridge_fn]
