@@ -865,6 +865,26 @@ impl<'storage, 'param: 'storage, 'context: 'param, const LEN: usize>
     }
 }
 
+impl<'storage, 'param: 'storage, 'context: 'param, const LEN: usize>
+    ArgTypeInfo<'storage, 'param, 'context> for Option<&'storage [u8; LEN]>
+{
+    type ArgType = JByteArray<'context>;
+    type StoredType = Option<AutoElements<'context, 'context, 'param, jbyte>>;
+    fn borrow(
+        env: &mut JNIEnv<'context>,
+        foreign: &'param Self::ArgType,
+    ) -> Result<Self::StoredType, BridgeLayerError> {
+        if foreign.is_null() {
+            Ok(None)
+        } else {
+            <&'storage [u8; LEN]>::borrow(env, foreign).map(Some)
+        }
+    }
+    fn load_from(stored: &'storage mut Self::StoredType) -> Self {
+        stored.as_mut().map(ArgTypeInfo::load_from)
+    }
+}
+
 impl<'a, const LEN: usize> ResultTypeInfo<'a> for [u8; LEN] {
     type ResultType = JByteArray<'a>;
     fn convert_into(self, env: &mut JNIEnv<'a>) -> Result<Self::ResultType, BridgeLayerError> {
@@ -1624,6 +1644,9 @@ macro_rules! jni_arg_type {
         ::jni::objects::JObjectArray<'local>
     };
     (Option<Box<[u8]> >) => {
+        ::jni::objects::JByteArray<'local>
+    };
+    (Option<&[u8; $len:expr] >) => {
         ::jni::objects::JByteArray<'local>
     };
     (ServiceId) => {
