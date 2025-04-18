@@ -34,9 +34,9 @@ async fn cdsi_lookup(
 
 #[derive(clap::Parser)]
 struct CliArgs {
-    #[arg(long, default_value_t = std::env::var("USERNAME").unwrap())]
+    #[arg(long, env = "USERNAME")]
     username: String,
-    #[arg(long, default_value_t = std::env::var("PASSWORD").unwrap())]
+    #[arg(long, env = "PASSWORD")]
     password: String,
 }
 
