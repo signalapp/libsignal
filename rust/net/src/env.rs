@@ -185,7 +185,7 @@ pub(crate) const ENDPOINT_PARAMS_SVR2_STAGING: EndpointParams<'static, SgxPreQua
     };
 
 pub(crate) const ENDPOINT_PARAMS_CDSI_PROD: EndpointParams<'static, Cdsi> = EndpointParams {
-    mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_CDSI_PREQUANTUM),
+    mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_CDSI),
     raft_config: (),
 };
 pub(crate) const ENDPOINT_PARAMS_SVR2_PROD: EndpointParams<'static, SgxPreQuantum> =
