@@ -2324,6 +2324,7 @@ dependencies = [
  "attest",
  "const-str",
  "futures-util",
+ "hex",
  "http 1.3.1",
  "jni",
  "libsignal-bridge-macros",

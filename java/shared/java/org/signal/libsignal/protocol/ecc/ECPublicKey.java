@@ -11,8 +11,10 @@ import java.util.Arrays;
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
 import org.signal.libsignal.protocol.InvalidKeyException;
+import org.signal.libsignal.protocol.SerializablePublicKey;
 
-public class ECPublicKey extends NativeHandleGuard.SimpleOwner implements Comparable<ECPublicKey> {
+public final class ECPublicKey extends NativeHandleGuard.SimpleOwner
+    implements Comparable<ECPublicKey>, SerializablePublicKey {
 
   public static final int KEY_SIZE = 33;
 

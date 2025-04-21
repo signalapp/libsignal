@@ -15,6 +15,8 @@ import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import org.junit.Test;
 import org.signal.libsignal.internal.NativeTesting;
+import org.signal.libsignal.protocol.SignedPublicPreKey;
+import org.signal.libsignal.protocol.ecc.Curve;
 
 public class RegistrationServiceTest {
 
@@ -35,6 +37,16 @@ public class RegistrationServiceTest {
     assertEquals(
         info.getRequestedInformation(),
         EnumSet.of(RegistrationSessionState.RequestedInformation.PUSH_CHALLENGE));
+  }
+
+  @Test
+  public void testConvertSignedPreKey() {
+    var key = Curve.generateKeyPair().getPublicKey();
+    var signedPublicPreKey = new SignedPublicPreKey<>(42, key, "signature".getBytes());
+    key.guardedRun(
+        keyHandle ->
+            NativeTesting.TESTING_SignedPublicPreKey_CheckBridgesCorrectly(
+                keyHandle, signedPublicPreKey));
   }
 
   @Test

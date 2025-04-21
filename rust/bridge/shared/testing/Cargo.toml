@@ -26,6 +26,7 @@ libsignal-protocol = { workspace = true }
 
 const-str = { workspace = true }
 futures-util = { workspace = true }
+hex = { workspace = true }
 http = { workspace = true }
 nonzero_ext = { workspace = true }
 paste = { workspace = true }

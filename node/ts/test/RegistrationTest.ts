@@ -16,6 +16,7 @@ import {
   TokioAsyncContext,
 } from '../net';
 import { InternalRequest } from './NetTest';
+import { IdentityKeyPair } from '../EcKeys';
 
 use(chaiAsPromised);
 use(sinonChai);
@@ -38,6 +39,19 @@ describe('Registration types', () => {
       newNativeHandle(Native.TESTING_RegistrationSessionInfoConvert())
     );
     expect(convertedSession).to.deep.equal(expectedSession);
+  });
+
+  it('marshals signed public pre-key correctly', () => {
+    const key = IdentityKeyPair.generate().publicKey;
+    const signedPublicPreKey = {
+      keyId: 42,
+      publicKey: key.serialize(),
+      signature: Buffer.from('signature'),
+    };
+    Native.TESTING_SignedPublicPreKey_CheckBridgesCorrectly(
+      key,
+      signedPublicPreKey
+    );
   });
 
   expect(() =>

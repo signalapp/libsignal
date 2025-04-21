@@ -11,8 +11,9 @@ import java.util.Arrays;
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
 import org.signal.libsignal.protocol.InvalidKeyException;
+import org.signal.libsignal.protocol.SerializablePublicKey;
 
-public class KEMPublicKey extends NativeHandleGuard.SimpleOwner {
+public class KEMPublicKey extends NativeHandleGuard.SimpleOwner implements SerializablePublicKey {
 
   public KEMPublicKey(byte[] serialized, int offset) throws InvalidKeyException {
     super(

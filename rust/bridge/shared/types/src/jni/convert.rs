@@ -21,6 +21,7 @@ use crate::io::{InputStream, SyncInputStream};
 use crate::message_backup::MessageBackupValidationOutcome;
 use crate::net::chat::ChatListener;
 use crate::net::registration::ConnectChatBridge;
+use crate::protocol::KyberPublicKey;
 use crate::support::{Array, AsType, FixedLengthBincodeSerializable, Serialized};
 
 /// Converts arguments from their JNI form to their Rust form.
@@ -1273,6 +1274,83 @@ impl<'a> SimpleArgTypeInfo<'a> for libsignal_net::registration::PushTokenType {
     }
 }
 
+impl<'a> SimpleArgTypeInfo<'a> for libsignal_net::registration::SignedPreKeyBody<Box<[u8]>> {
+    type ArgType = JObject<'a>;
+    fn convert_from(env: &mut JNIEnv<'a>, obj: &Self::ArgType) -> Result<Self, BridgeLayerError> {
+        check_jobject_type(
+            env,
+            obj,
+            ClassName("org.signal.libsignal.protocol.SignedPublicPreKey"),
+        )?;
+
+        let values = try_scoped(|| {
+            let key_id = env.get_field(obj, "id", jni_signature!(int))?.i()?;
+
+            let public_key = env
+                .get_field(
+                    obj,
+                    "publicKey",
+                    jni_signature!(org.signal.libsignal.protocol.SerializablePublicKey),
+                )?
+                .l()?;
+
+            let signature = env
+                .get_field(obj, "signature", jni_signature!([byte]))?
+                .l()?;
+
+            Ok((key_id, public_key, signature.into()))
+        })
+        .check_exceptions(env, "SignedPreKeyBody::convert_from")?;
+
+        let (key_id, public_key, signature) = values;
+
+        let key_id = key_id.try_into().map_err(|_| {
+            BridgeLayerError::IntegerOverflow("id field is out of bounds".to_owned())
+        })?;
+
+        let public_key = {
+            let native_handle = env
+                .call_method(
+                    &public_key,
+                    "unsafeNativeHandleWithoutGuard",
+                    jni_signature!(() -> long),
+                    &[],
+                )
+                .and_then(|k| k.j())
+                .check_exceptions(env, "SignedPreKeyBody::convert_from")?;
+
+            if env
+                .is_instance_of(
+                    &public_key,
+                    jni_class_name!(org.signal.libsignal.protocol.ecc.ECPublicKey),
+                )
+                .expect_no_exceptions()?
+            {
+                SimpleArgTypeInfo::convert_from(env, &native_handle).map(PublicKey::serialize)
+            } else if env
+                .is_instance_of(
+                    &public_key,
+                    jni_class_name!(org.signal.libsignal.protocol.kem.KEMPublicKey),
+                )
+                .expect_no_exceptions()?
+            {
+                SimpleArgTypeInfo::convert_from(env, &native_handle).map(KyberPublicKey::serialize)
+            } else {
+                Err(BridgeLayerError::BadArgument(
+                    "publicKey type is not supported".to_owned(),
+                ))
+            }?
+        };
+        let signature = <Box<[u8]>>::convert_from(env, &signature)?;
+
+        Ok(Self {
+            key_id,
+            public_key,
+            signature,
+        })
+    }
+}
+
 impl<'a, T> ResultTypeInfo<'a> for Serialized<T>
 where
     T: FixedLengthBincodeSerializable + serde::Serialize,
@@ -1630,6 +1708,9 @@ macro_rules! jni_arg_type {
     };
     (RegistrationPushTokenType) => {
         ::jni::objects::JObject<'local>
+    };
+    (SignedPublicPreKey) => {
+        jni::JavaSignedPublicPreKey<'local>
     };
     (&mut [u8]) => {
         ::jni::objects::JByteArray<'local>

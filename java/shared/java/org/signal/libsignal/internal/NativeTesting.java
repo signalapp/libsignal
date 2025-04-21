@@ -14,6 +14,7 @@ import org.signal.libsignal.protocol.state.SessionStore;
 import org.signal.libsignal.protocol.state.PreKeyStore;
 import org.signal.libsignal.protocol.state.SignedPreKeyStore;
 import org.signal.libsignal.protocol.state.KyberPreKeyStore;
+import org.signal.libsignal.protocol.SignedPublicPreKey;
 import org.signal.libsignal.protocol.groups.state.SenderKeyStore;
 import org.signal.libsignal.protocol.logging.Log;
 import org.signal.libsignal.protocol.logging.SignalProtocolLogger;
@@ -130,6 +131,7 @@ public final class NativeTesting {
   public static native int TESTING_RoundTripU32(int input);
   public static native long TESTING_RoundTripU64(long input);
   public static native int TESTING_RoundTripU8(int input);
+  public static native void TESTING_SignedPublicPreKey_CheckBridgesCorrectly(long sourcePublicKey, SignedPublicPreKey signedPreKey);
   public static native int TESTING_TestingHandleType_getValue(long handle);
 
   public static native void TestingHandleType_Destroy(long handle);
