@@ -53,6 +53,7 @@
     "chance": "^1.1.11",
     "eslint": "^8.30.0",
     "eslint-config-prettier": "^8.5.0",
+    "eslint-plugin-chai-expect": "^3.1.0",
     "eslint-plugin-header": "^3.1.0",
     "eslint-plugin-import": "^2.26.0",
     "eslint-plugin-jsdoc": "^48.2.0",

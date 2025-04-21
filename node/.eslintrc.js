@@ -13,12 +13,21 @@ module.exports = {
     'import/core-modules': ['electron'],
   },
 
-  plugins: ['header', 'import', 'jsdoc', 'mocha', 'more', '@typescript-eslint'],
+  plugins: [
+    'chai-expect',
+    'header',
+    'import',
+    'jsdoc',
+    'mocha',
+    'more',
+    '@typescript-eslint',
+  ],
 
   extends: [
     'eslint:recommended',
     'plugin:@typescript-eslint/recommended',
     'plugin:@typescript-eslint/recommended-requiring-type-checking',
+    'plugin:chai-expect/recommended',
     'plugin:import/errors',
     'plugin:import/warnings',
     'plugin:import/typescript',
