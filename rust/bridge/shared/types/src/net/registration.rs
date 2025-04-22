@@ -65,7 +65,7 @@ pub type RegistrationAccountAttributes = AccountAttributes;
 bridge_as_handle!(RegistrationService, ffi = false);
 bridge_as_handle!(RegistrationSession, ffi = false);
 bridge_as_handle!(RegisterAccountRequest, ffi = false, jni = false);
-bridge_as_handle!(RegisterAccountResponse, ffi = false, jni = false);
+bridge_as_handle!(RegisterAccountResponse, ffi = false);
 bridge_as_handle!(RegistrationAccountAttributes, ffi = false, jni = false);
 
 /// Precursor to a [`Box<dyn ConnectChat>`](ConnectChat).

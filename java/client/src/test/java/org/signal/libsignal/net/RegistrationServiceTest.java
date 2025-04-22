@@ -12,9 +12,11 @@ import java.util.EnumSet;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import org.junit.Test;
 import org.signal.libsignal.internal.NativeTesting;
+import org.signal.libsignal.protocol.ServiceId;
 import org.signal.libsignal.protocol.SignedPublicPreKey;
 import org.signal.libsignal.protocol.ecc.Curve;
 
@@ -47,6 +49,33 @@ public class RegistrationServiceTest {
         keyHandle ->
             NativeTesting.TESTING_SignedPublicPreKey_CheckBridgesCorrectly(
                 keyHandle, signedPublicPreKey));
+  }
+
+  @Test
+  public void testConvertRegistrationResponse() throws Exception {
+    var response =
+        new RegisterAccountResponse(
+            NativeTesting.TESTING_RegisterAccountResponse_CreateTestValue());
+    assertEquals(response.getNumber(), "+18005550123");
+    assertEquals(
+        response.getAci(), ServiceId.Aci.parseFromString("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"));
+    assertEquals(
+        response.getPni(),
+        ServiceId.Pni.parseFromString("PNI:bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"));
+    assertArrayEquals(response.getUsernameHash(), "username-hash".getBytes());
+    assertEquals(
+        response.getUsernameLinkHandle(), UUID.fromString("55555555-5555-5555-5555-555555555555"));
+    assertEquals(response.isStorageCapable(), true);
+    assertArrayEquals(
+        response.getBadgeEntitlements(),
+        new RegisterAccountResponse.BadgeEntitlement[] {
+          new RegisterAccountResponse.BadgeEntitlement("first", true, Duration.ofSeconds(123456)),
+          new RegisterAccountResponse.BadgeEntitlement("second", false, Duration.ofSeconds(555)),
+        });
+    assertEquals(
+        response.getBackupEntitlement(),
+        new RegisterAccountResponse.BackupEntitlement(123, Duration.ofSeconds(888888)));
+    assertEquals(response.isReregistration(), true);
   }
 
   @Test

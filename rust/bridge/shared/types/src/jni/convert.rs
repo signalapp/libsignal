@@ -763,6 +763,17 @@ impl ResultTypeInfo<'_> for crate::protocol::Timestamp {
     }
 }
 
+/// Reinterprets the bits of the `u64` as a Java `long`. Returns `-1` for `None`.
+///
+/// Note that this is different from the implementation of [`ArgTypeInfo`] for `Option<u64>`.
+impl ResultTypeInfo<'_> for Option<u64> {
+    type ResultType = jlong;
+    fn convert_into(self, _env: &mut JNIEnv) -> Result<Self::ResultType, BridgeLayerError> {
+        // Note that we don't check bounds here.
+        Ok(self.unwrap_or(u64::MAX) as jlong)
+    }
+}
+
 /// Reinterprets the bits of the timestamp's `u64` as a Java `long`.
 ///
 /// Note that this is different from the implementation of [`ArgTypeInfo`] for `Timestamp`.
@@ -906,6 +917,14 @@ impl<'a> ResultTypeInfo<'a> for uuid::Uuid {
                 jlong::from_be_bytes(lsb.try_into().expect("correct length")) => long,
             ) -> void),
         )
+    }
+}
+
+impl<'a> ResultTypeInfo<'a> for Option<uuid::Uuid> {
+    type ResultType = JObject<'a>;
+    fn convert_into(self, env: &mut JNIEnv<'a>) -> Result<Self::ResultType, BridgeLayerError> {
+        self.map(|uuid| uuid.convert_into(env))
+            .unwrap_or(Ok(JObject::null()))
     }
 }
 
@@ -1512,6 +1531,51 @@ impl<'a> ResultTypeInfo<'a> for Box<[libsignal_net::registration::RequestedInfor
     }
 }
 
+impl<'a> ResultTypeInfo<'a> for libsignal_net::registration::RegisterResponseBadge {
+    type ResultType = JObject<'a>;
+
+    fn convert_into(self, env: &mut JNIEnv<'a>) -> Result<Self::ResultType, BridgeLayerError> {
+        let class = find_class(
+            env,
+            ClassName("org.signal.libsignal.net.RegisterAccountResponse$BadgeEntitlement"),
+        )?;
+
+        let Self {
+            id,
+            visible,
+            expiration,
+        } = self;
+
+        let expiration_seconds = expiration.as_secs().convert_into(env)?;
+        try_scoped(|| {
+            let id = env.new_string(id)?;
+
+            new_object(
+                env,
+                class,
+                jni_args!((
+                    id => java.lang.String,
+                    visible => boolean,
+                    expiration_seconds => long
+                ) -> void),
+            )
+        })
+        .check_exceptions(env, "RegisterResponseBadge::convert_into")
+    }
+}
+
+impl<'a> ResultTypeInfo<'a> for Box<[libsignal_net::registration::RegisterResponseBadge]> {
+    type ResultType = JObjectArray<'a>;
+
+    fn convert_into(self, env: &mut JNIEnv<'a>) -> Result<Self::ResultType, BridgeLayerError> {
+        make_object_array(
+            env,
+            jni_class_name!(org.signal.libsignal.net.RegisterAccountResponse::BadgeEntitlement),
+            self,
+        )
+    }
+}
+
 /// Converts each element of `it` to a Java object, storing the result in an array.
 ///
 /// `element_type_signature` should use [`jni_class_name`] if it's a plain class and
@@ -1921,6 +1985,9 @@ macro_rules! jni_result_type {
         jni::JavaCiphertextMessage<'local>
     };
     (Box<[RegistrationSessionRequestedInformation] >) => {
+        ::jni::objects::JObjectArray<'local>
+    };
+    (Box<[RegisterResponseBadge] >) => {
         ::jni::objects::JObjectArray<'local>
     };
     (Serialized<$typ:ident>) => {

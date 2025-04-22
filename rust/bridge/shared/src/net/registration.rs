@@ -30,12 +30,7 @@ bridge_handle_fns!(
     ffi = false,
     jni = false
 );
-bridge_handle_fns!(
-    RegisterAccountResponse,
-    clone = false,
-    ffi = false,
-    jni = false
-);
+bridge_handle_fns!(RegisterAccountResponse, clone = false, ffi = false);
 bridge_handle_fns!(
     RegistrationAccountAttributes,
     clone = false,
@@ -340,7 +335,7 @@ fn RegistrationAccountAttributes_Create(
     }
 }
 
-#[bridge_fn(ffi = false, jni = false)]
+#[bridge_fn(ffi = false)]
 fn RegisterAccountResponse_GetIdentity(
     response: &RegisterAccountResponse,
     identity_type: AsType<ServiceIdKind, u8>,
@@ -351,41 +346,41 @@ fn RegisterAccountResponse_GetIdentity(
     }
 }
 
-#[bridge_fn(ffi = false, jni = false)]
+#[bridge_fn(ffi = false)]
 fn RegisterAccountResponse_GetNumber(response: &RegisterAccountResponse) -> &str {
     &response.number
 }
 
-#[bridge_fn(ffi = false, jni = false)]
+#[bridge_fn(ffi = false)]
 fn RegisterAccountResponse_GetUsernameHash(response: &RegisterAccountResponse) -> Option<&[u8]> {
     response.username_hash.as_deref()
 }
 
-#[bridge_fn(ffi = false, jni = false)]
+#[bridge_fn(ffi = false)]
 fn RegisterAccountResponse_GetUsernameLinkHandle(
     response: &RegisterAccountResponse,
 ) -> Option<Uuid> {
     response.username_link_handle
 }
 
-#[bridge_fn(ffi = false, jni = false)]
+#[bridge_fn(ffi = false)]
 fn RegisterAccountResponse_GetStorageCapable(response: &RegisterAccountResponse) -> bool {
     response.storage_capable
 }
 
-#[bridge_fn(ffi = false, jni = false)]
+#[bridge_fn(ffi = false)]
 fn RegisterAccountResponse_GetReregistration(response: &RegisterAccountResponse) -> bool {
     response.reregistration
 }
 
-#[bridge_fn(ffi = false, jni = false)]
+#[bridge_fn(ffi = false)]
 fn RegisterAccountResponse_GetEntitlementBadges(
     response: &RegisterAccountResponse,
 ) -> Box<[RegisterResponseBadge]> {
     response.entitlements.badges.clone()
 }
 
-#[bridge_fn(ffi = false, jni = false)]
+#[bridge_fn(ffi = false)]
 fn RegisterAccountResponse_GetEntitlementBackupLevel(
     response: &RegisterAccountResponse,
 ) -> Option<u64> {
@@ -396,7 +391,7 @@ fn RegisterAccountResponse_GetEntitlementBackupLevel(
         .map(|backup| backup.backup_level)
 }
 
-#[bridge_fn(ffi = false, jni = false)]
+#[bridge_fn(ffi = false)]
 fn RegisterAccountResponse_GetEntitlementBackupExpirationSeconds(
     response: &RegisterAccountResponse,
 ) -> Option<u64> {

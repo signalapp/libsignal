@@ -24,6 +24,13 @@ import org.signal.libsignal.internal.Native;
  * bytes of the UUID.
  */
 public abstract class ServiceId implements Comparable<ServiceId> {
+  /** The kind of a service ID. */
+  public static enum Kind {
+    // This should be kept in sync with the Rust enum of the same name.
+    ACI,
+    PNI,
+  };
+
   private static final byte FIXED_WIDTH_BINARY_LENGTH = 17;
 
   private static final byte ACI_MARKER = 0x00;
@@ -102,6 +109,10 @@ public abstract class ServiceId implements Comparable<ServiceId> {
     ByteBuffer buffer = ByteBuffer.wrap(this.storage);
     byte unusedMarkerByte = buffer.get();
     return uuidFromBytes(buffer.slice());
+  }
+
+  public Kind getKind() {
+    return storage[0] == ACI_MARKER ? Kind.ACI : Kind.PNI;
   }
 
   public static ServiceId parseFromString(String serviceIdString) throws InvalidServiceIdException {

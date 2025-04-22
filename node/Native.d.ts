@@ -633,6 +633,7 @@ export function TESTING_PanicOnReturnAsync(_needsCleanup: null): Promise<null>;
 export function TESTING_PanicOnReturnIo(asyncRuntime: Wrapper<NonSuspendingBackgroundThreadRuntime>, _needsCleanup: null): CancellablePromise<null>;
 export function TESTING_PanicOnReturnSync(_needsCleanup: null): null;
 export function TESTING_ProcessBytestringArray(input: Buffer[]): Buffer[];
+export function TESTING_RegisterAccountResponse_CreateTestValue(): RegisterAccountResponse;
 export function TESTING_RegistrationService_CreateSessionErrorConvert(errorDescription: string): void;
 export function TESTING_RegistrationService_RequestVerificationCodeErrorConvert(errorDescription: string): void;
 export function TESTING_RegistrationService_ResumeSessionErrorConvert(errorDescription: string): void;

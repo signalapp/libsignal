@@ -11,12 +11,14 @@ import * as Native from '../../Native';
 import { ErrorCode, LibSignalErrorBase } from '../Errors';
 import {
   newNativeHandle,
+  RegisterAccountResponse,
   RegistrationService,
   RegistrationSessionState,
   TokioAsyncContext,
 } from '../net';
 import { InternalRequest } from './NetTest';
 import { IdentityKeyPair } from '../EcKeys';
+import { Aci, Pni } from '../Address';
 
 use(chaiAsPromised);
 use(sinonChai);
@@ -52,6 +54,33 @@ describe('Registration types', () => {
       key,
       signedPublicPreKey
     );
+  });
+
+  it('converts register account response correctly', () => {
+    const response = new RegisterAccountResponse(
+      Native.TESTING_RegisterAccountResponse_CreateTestValue()
+    );
+    expect(response.number).to.eq('+18005550123');
+    expect(response.aci).to.deep.eq(
+      Aci.parseFromServiceIdString('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa')
+    );
+    expect(response.pni).to.deep.eq(
+      Pni.parseFromServiceIdString('PNI:bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb')
+    );
+    expect(response.usernameHash).to.deep.eq(Buffer.from('username-hash'));
+    expect(response.usernameLinkHandle).to.deep.eq(
+      Buffer.from(Array(16).fill(0x55))
+    );
+    expect(response.storageCapable).to.eq(true);
+    expect(response.entitlementBadges).to.deep.eq([
+      { id: 'first', visible: true, expirationSeconds: 123456 },
+      { id: 'second', visible: false, expirationSeconds: 555 },
+    ]);
+    expect(response.backupEntitlement).to.deep.eq({
+      backupLevel: 123n,
+      expirationSeconds: 888888n,
+    });
+    expect(response.reregistration).to.eq(true);
   });
 
   expect(() =>

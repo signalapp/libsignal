@@ -545,6 +545,17 @@ public final class Native {
   public static native long ReceiptCredential_GetReceiptExpirationTime(byte[] receiptCredential);
   public static native long ReceiptCredential_GetReceiptLevel(byte[] receiptCredential);
 
+  public static native void RegisterAccountResponse_Destroy(long handle);
+  public static native long RegisterAccountResponse_GetEntitlementBackupExpirationSeconds(long response);
+  public static native long RegisterAccountResponse_GetEntitlementBackupLevel(long response);
+  public static native Object[] RegisterAccountResponse_GetEntitlementBadges(long response);
+  public static native byte[] RegisterAccountResponse_GetIdentity(long response, int identityType);
+  public static native String RegisterAccountResponse_GetNumber(long response);
+  public static native boolean RegisterAccountResponse_GetReregistration(long response);
+  public static native boolean RegisterAccountResponse_GetStorageCapable(long response);
+  public static native byte[] RegisterAccountResponse_GetUsernameHash(long response);
+  public static native UUID RegisterAccountResponse_GetUsernameLinkHandle(long response);
+
   public static native CompletableFuture<Long> RegistrationService_CreateSession(long asyncRuntime, Object createSession, ConnectChatBridge connectChat);
   public static native void RegistrationService_Destroy(long handle);
   public static native long RegistrationService_RegistrationSession(long service);
