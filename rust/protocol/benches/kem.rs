@@ -11,7 +11,7 @@ fn bench_kem(c: &mut Criterion) {
     for key_type in [KeyType::Kyber768, KeyType::Kyber1024] {
         c.bench_function(format!("{key_type:?}_generate").as_str(), |b| {
             b.iter(|| {
-                black_box(KeyPair::generate(KeyType::Kyber768));
+                black_box(KeyPair::generate(key_type));
             });
         });
         let key_pairs: Vec<_> = std::iter::from_fn(|| Some(KeyPair::generate(key_type)))
