@@ -452,7 +452,8 @@ impl From<&LookupRequest> for LookupRequestDebugInfo {
 
 /// Numeric code set by the server on the websocket close frame.
 #[repr(u16)]
-#[derive(Copy, Clone, num_enum::TryFromPrimitive, strum::IntoStaticStr)]
+#[derive(Copy, Clone, derive_more::TryFrom, strum::IntoStaticStr)]
+#[try_from(repr)]
 enum CdsiCloseCode {
     InvalidArgument = 4003,
     RateLimitExceeded = 4008,

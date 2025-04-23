@@ -4,7 +4,6 @@
 //
 
 use libsignal_core::{Aci, Pni};
-use num_enum::TryFromPrimitive;
 use partial_default::PartialDefault;
 use serde::Serialize;
 
@@ -33,7 +32,8 @@ pub enum AuthCredentialWithPniResponse {
 }
 
 #[repr(u8)]
-#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialDefault, TryFromPrimitive)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialDefault, derive_more::TryFrom)]
+#[try_from(repr)]
 pub enum AuthCredentialWithPniVersion {
     #[partial_default]
     Zkc = 3,

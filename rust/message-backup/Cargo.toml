@@ -56,7 +56,7 @@ cbc = { workspace = true }
 clap = { workspace = true, features = ["derive"] }
 clap-stdin = { workspace = true }
 derive-where = { workspace = true }
-derive_more = { workspace = true, features = ["from", "into_iterator"] }
+derive_more = { workspace = true, features = ["from", "into_iterator", "try_from"] }
 displaydoc = { workspace = true }
 env_logger = { workspace = true }
 futures = { workspace = true }
@@ -68,7 +68,6 @@ itertools = { workspace = true }
 log = { workspace = true }
 macro_rules_attribute = { workspace = true }
 mediasan-common = { workspace = true }
-num_enum = { workspace = true }
 protobuf = { workspace = true }
 protobuf-json-mapping = { workspace = true, optional = true }
 rand = { workspace = true, optional = true }

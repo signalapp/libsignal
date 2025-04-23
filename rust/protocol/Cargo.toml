@@ -32,7 +32,6 @@ hmac = { workspace = true }
 indexmap = { workspace = true }
 itertools = { workspace = true }
 log = { workspace = true }
-num_enum = { workspace = true }
 pqcrypto-kyber = { workspace = true, features = ["std"] }
 pqcrypto-traits = { workspace = true }
 prost = { workspace = true }

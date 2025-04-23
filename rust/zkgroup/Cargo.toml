@@ -29,11 +29,10 @@ aes-gcm-siv = { workspace = true }
 bincode = { workspace = true }
 const-str = { workspace = true }
 derive-where = { workspace = true }
-derive_more = { workspace = true, features = ["from"] }
+derive_more = { workspace = true, features = ["from", "try_from"] }
 displaydoc = { workspace = true }
 hex = { workspace = true }
 hkdf = { workspace = true }
-num_enum = { workspace = true }
 partial-default = { workspace = true, features = ["derive"] }
 rand = { workspace = true }
 rayon = { workspace = true }

@@ -28,8 +28,9 @@ pub enum CiphertextMessage {
     PlaintextContent(PlaintextContent),
 }
 
-#[derive(Copy, Clone, Eq, PartialEq, Debug, num_enum::TryFromPrimitive)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, derive_more::TryFrom)]
 #[repr(u8)]
+#[try_from(repr)]
 pub enum CiphertextMessageType {
     Whisper = 2,
     PreKey = 3,

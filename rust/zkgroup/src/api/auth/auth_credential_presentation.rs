@@ -13,13 +13,18 @@ pub enum AnyAuthCredentialPresentation {
 }
 
 #[repr(u8)]
-#[derive(
-    Copy, Clone, Debug, PartialDefault, num_enum::IntoPrimitive, num_enum::TryFromPrimitive,
-)]
+#[derive(Copy, Clone, Debug, PartialDefault, derive_more::TryFrom)]
+#[try_from(repr)]
 enum PresentationVersion {
     // V1-V3 are no longer supported.
     #[partial_default]
     V4 = PRESENTATION_VERSION_4,
+}
+
+impl From<PresentationVersion> for u8 {
+    fn from(value: PresentationVersion) -> Self {
+        value as u8
+    }
 }
 
 impl AnyAuthCredentialPresentation {

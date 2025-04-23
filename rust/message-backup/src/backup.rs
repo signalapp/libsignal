@@ -146,12 +146,13 @@ pub struct BackupMeta {
     Clone,
     Debug,
     PartialEq,
-    num_enum::TryFromPrimitive,
+    derive_more::TryFrom,
     strum::EnumString,
     strum::Display,
     strum::IntoStaticStr,
     serde::Serialize,
 )]
+#[try_from(repr)]
 pub enum Purpose {
     /// Intended for immediate transfer from one device to another.
     #[strum(

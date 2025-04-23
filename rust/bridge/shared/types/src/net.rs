@@ -31,9 +31,9 @@ pub mod tokio;
 
 pub use tokio::TokioAsyncContext;
 
-#[derive(num_enum::TryFromPrimitive)]
 #[repr(u8)]
-#[derive(Clone, Copy, strum::Display)]
+#[derive(Clone, Copy, strum::Display, derive_more::TryFrom)]
+#[try_from(repr)]
 pub enum Environment {
     Staging = 0,
     Prod = 1,

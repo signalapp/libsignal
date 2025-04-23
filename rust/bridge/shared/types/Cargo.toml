@@ -38,7 +38,6 @@ http = { workspace = true }
 itertools = { workspace = true }
 log = { workspace = true }
 mediasan-common = { workspace = true }
-num_enum = { workspace = true }
 once_cell = { workspace = true }
 partial-default = { workspace = true }
 paste = { workspace = true }

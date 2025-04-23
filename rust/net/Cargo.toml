@@ -27,7 +27,7 @@ bincode = { workspace = true }
 bytes = { workspace = true }
 const-str = { workspace = true }
 derive-where = { workspace = true }
-derive_more = { workspace = true, features = ["debug", "from"] }
+derive_more = { workspace = true, features = ["debug", "from", "try_from"] }
 displaydoc = { workspace = true }
 either = { workspace = true }
 futures-util = { workspace = true }
@@ -37,7 +37,6 @@ http = { workspace = true }
 itertools = { workspace = true }
 log = { workspace = true }
 nonzero_ext = { workspace = true }
-num_enum = { workspace = true }
 pin-project = { workspace = true }
 prost = { workspace = true }
 rand = { workspace = true }
