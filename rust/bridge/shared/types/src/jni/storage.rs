@@ -104,7 +104,7 @@ impl JniIdentityKeyStore<'_> {
         &mut self,
         address: &ProtocolAddress,
         identity: &IdentityKey,
-    ) -> Result<bool, BridgeLayerError> {
+    ) -> Result<IdentityChange, BridgeLayerError> {
         self.env
             .borrow_mut()
             .with_local_frame(8, "saveIdentity", |env| {
@@ -121,7 +121,7 @@ impl JniIdentityKeyStore<'_> {
                 ) -> boolean);
                 let result: jboolean =
                     call_method_checked(env, self.store, "saveIdentity", callback_args)?;
-                Ok(result != 0)
+                Ok(IdentityChange::from_changed(result != 0))
             })
     }
 
@@ -212,7 +212,7 @@ impl IdentityKeyStore for JniIdentityKeyStore<'_> {
         &mut self,
         address: &ProtocolAddress,
         identity: &IdentityKey,
-    ) -> Result<bool, SignalProtocolError> {
+    ) -> Result<IdentityChange, SignalProtocolError> {
         Ok(self
             .do_save_identity(address, identity)
             .map_err(BridgeOrProtocolError::from)?)

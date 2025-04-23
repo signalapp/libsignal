@@ -177,7 +177,7 @@ fn test_basic_prekey() -> TestResult {
                 SignalProtocolError::UntrustedIdentity(a) if a == alice_address
             ));
 
-            assert!(
+            assert_eq!(
                 bob_store_builder
                     .store
                     .save_identity(
@@ -187,7 +187,8 @@ fn test_basic_prekey() -> TestResult {
                             .await?
                             .identity_key(),
                     )
-                    .await?
+                    .await?,
+                IdentityChange::ReplacedExisting
             );
 
             let decrypted = decrypt(

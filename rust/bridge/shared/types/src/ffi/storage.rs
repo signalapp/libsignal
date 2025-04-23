@@ -87,12 +87,12 @@ impl IdentityKeyStore for &FfiIdentityKeyStoreStruct {
         &mut self,
         address: &ProtocolAddress,
         identity: &IdentityKey,
-    ) -> Result<bool, SignalProtocolError> {
+    ) -> Result<IdentityChange, SignalProtocolError> {
         let result = (self.save_identity)(self.ctx, address.into(), identity.public_key().into());
 
         match result {
-            0 => Ok(false),
-            1 => Ok(true),
+            0 => Ok(IdentityChange::NewOrUnchanged),
+            1 => Ok(IdentityChange::ReplacedExisting),
             r => Err(SignalProtocolError::for_application_callback(
                 "save_identity",
             )(

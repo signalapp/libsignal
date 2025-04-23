@@ -29,6 +29,15 @@ pub enum Direction {
     Receiving,
 }
 
+/// The result of saving a new identity key for a protocol address.
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum IdentityChange {
+    /// The protocol address didn't have an identity key or had the same key.
+    NewOrUnchanged,
+    /// The new identity key replaced a different key for the protocol address.
+    ReplacedExisting,
+}
+
 /// Interface defining the identity store, which may be in-memory, on-disk, etc.
 ///
 /// Signal clients usually use the identity store in a [TOFU] manner, but this is not required.
@@ -49,16 +58,14 @@ pub trait IdentityKeyStore {
     /// be regenerated.
     async fn get_local_registration_id(&self) -> Result<u32>;
 
-    // TODO: make this into an enum instead of a bool!
     /// Record an identity into the store. The identity is then considered "trusted".
     ///
-    /// The return value represents whether an existing identity was replaced (`Ok(true)`). If it is
-    /// new or hasn't changed, the return value should be `Ok(false)`.
+    /// The return value represents whether an existing identity was replaced.
     async fn save_identity(
         &mut self,
         address: &ProtocolAddress,
         identity: &IdentityKey,
-    ) -> Result<bool>;
+    ) -> Result<IdentityChange>;
 
     /// Return whether an identity is trusted for the role specified by `direction`.
     async fn is_trusted_identity(
@@ -166,4 +173,18 @@ pub trait SenderKeyStore {
 pub trait ProtocolStore:
     SessionStore + PreKeyStore + SignedPreKeyStore + KyberPreKeyStore + IdentityKeyStore
 {
+}
+
+impl IdentityChange {
+    /// Convenience constructor from a boolean `changed` flag.
+    ///
+    /// Returns [`IdentityChange::ReplacedExisting`] if `changed` is `true`,
+    /// otherwise [`IdentityChange::NewOrUnchanged`].
+    pub fn from_changed(changed: bool) -> Self {
+        if changed {
+            Self::ReplacedExisting
+        } else {
+            Self::NewOrUnchanged
+        }
+    }
 }

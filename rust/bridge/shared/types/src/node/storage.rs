@@ -539,7 +539,7 @@ impl NodeIdentityKeyStore {
         &self,
         name: ProtocolAddress,
         key: PublicKey,
-    ) -> Result<bool, String> {
+    ) -> Result<IdentityChange, String> {
         let store_object_shared = self.store_object.clone();
         JsFuture::get_promise(&self.js_channel, move |cx| {
             let store_object = store_object_shared.to_inner(cx);
@@ -552,7 +552,7 @@ impl NodeIdentityKeyStore {
         })
         .then(|cx, result| match result {
             Ok(value) => match value.downcast::<JsBoolean, _>(cx) {
-                Ok(b) => Ok(b.value(cx)),
+                Ok(b) => Ok(IdentityChange::from_changed(b.value(cx))),
                 Err(_) => Err("unexpected result from _saveIdentity".into()),
             },
             Err(error) => Err(error
@@ -639,7 +639,7 @@ impl IdentityKeyStore for NodeIdentityKeyStore {
         &mut self,
         address: &ProtocolAddress,
         identity: &IdentityKey,
-    ) -> Result<bool, SignalProtocolError> {
+    ) -> Result<IdentityChange, SignalProtocolError> {
         self.do_save_identity(address.clone(), *identity.public_key())
             .await
             .map_err(|s| js_error_to_rust("saveIdentity", s))
