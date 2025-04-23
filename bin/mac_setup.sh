@@ -3,7 +3,6 @@
 #set -ex
 
 cat << EOF | brew bundle install --file=-
-tap "homebrew/bundle"
 brew "awscli"
 brew "cmake"
 brew "cocoapods"
