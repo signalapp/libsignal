@@ -13,17 +13,17 @@ use std::time::SystemTime;
 use futures_util::FutureExt;
 use libsignal_protocol::*;
 use rand::rngs::OsRng;
-use rand::{CryptoRng, Rng};
+use rand::{CryptoRng, Rng, TryRngCore as _};
 
 // Deliberately not reusing the constants from `protocol`.
 pub(crate) const PRE_KYBER_MESSAGE_VERSION: u32 = 3;
 pub(crate) const KYBER_AWARE_MESSAGE_VERSION: u32 = 4;
 
 pub fn test_in_memory_protocol_store() -> Result<InMemSignalProtocolStore, SignalProtocolError> {
-    let mut csprng = OsRng;
+    let mut csprng = OsRng.unwrap_err();
     let identity_key = IdentityKeyPair::generate(&mut csprng);
     // Valid registration IDs fit in 14 bits.
-    let registration_id: u8 = csprng.gen();
+    let registration_id: u8 = csprng.random();
 
     InMemSignalProtocolStore::new(identity_key, registration_id as u32)
 }
@@ -48,7 +48,7 @@ pub async fn decrypt(
     remote_address: &ProtocolAddress,
     msg: &CiphertextMessage,
 ) -> Result<Vec<u8>, SignalProtocolError> {
-    let mut csprng = OsRng;
+    let mut csprng = OsRng.unwrap_err();
     message_decrypt(
         msg,
         remote_address,
@@ -84,10 +84,10 @@ pub async fn create_pre_key_bundle<R: Rng + CryptoRng>(
         .private_key()
         .calculate_signature(&kyber_pre_key_public, &mut csprng)?;
 
-    let device_id: u32 = csprng.gen();
-    let pre_key_id: u32 = csprng.gen();
-    let signed_pre_key_id: u32 = csprng.gen();
-    let kyber_pre_key_id: u32 = csprng.gen();
+    let device_id: u32 = csprng.random();
+    let pre_key_id: u32 = csprng.random();
+    let signed_pre_key_id: u32 = csprng.random();
+    let kyber_pre_key_id: u32 = csprng.random();
 
     let pre_key_bundle = PreKeyBundle::new(
         store.get_local_registration_id().await?,
@@ -111,7 +111,7 @@ pub async fn create_pre_key_bundle<R: Rng + CryptoRng>(
         )
         .await?;
 
-    let timestamp = Timestamp::from_epoch_millis(csprng.gen());
+    let timestamp = Timestamp::from_epoch_millis(csprng.random());
 
     store
         .save_signed_pre_key(
@@ -140,7 +140,7 @@ pub async fn create_pre_key_bundle<R: Rng + CryptoRng>(
 }
 
 pub fn initialize_sessions_v3() -> Result<(SessionRecord, SessionRecord), SignalProtocolError> {
-    let mut csprng = OsRng;
+    let mut csprng = OsRng.unwrap_err();
     let alice_identity = IdentityKeyPair::generate(&mut csprng);
     let bob_identity = IdentityKeyPair::generate(&mut csprng);
 
@@ -176,7 +176,7 @@ pub fn initialize_sessions_v3() -> Result<(SessionRecord, SessionRecord), Signal
 }
 
 pub fn initialize_sessions_v4() -> Result<(SessionRecord, SessionRecord), SignalProtocolError> {
-    let mut csprng = OsRng;
+    let mut csprng = OsRng.unwrap_err();
     let alice_identity = IdentityKeyPair::generate(&mut csprng);
     let bob_identity = IdentityKeyPair::generate(&mut csprng);
 
@@ -245,17 +245,17 @@ impl From<u32> for IdChoice {
 }
 
 pub struct TestStoreBuilder {
-    rng: OsRng,
+    rng: rand_core::UnwrapErr<OsRng>,
     pub(crate) store: InMemSignalProtocolStore,
     id_range: RangeFrom<u32>,
 }
 
 impl TestStoreBuilder {
     pub fn new() -> Self {
-        let mut rng = OsRng;
+        let mut rng = OsRng.unwrap_err();
         let identity_key = IdentityKeyPair::generate(&mut rng);
         // Valid registration IDs fit in 14 bits.
-        let registration_id: u8 = rng.gen();
+        let registration_id: u8 = rng.random();
 
         let store = InMemSignalProtocolStore::new(identity_key, registration_id as u32)
             .expect("can create store");
@@ -268,7 +268,7 @@ impl TestStoreBuilder {
 
     pub fn from_store(store: &InMemSignalProtocolStore) -> Self {
         Self {
-            rng: OsRng,
+            rng: OsRng.unwrap_err(),
             store: store.clone(),
             id_range: 0..,
         }
@@ -439,7 +439,7 @@ impl TestStoreBuilder {
             IdChoice::Exactly(id) => id,
             // TODO: check the maximal existing id and continue from it
             IdChoice::Next => self.next_id(),
-            IdChoice::Random => self.rng.gen(),
+            IdChoice::Random => self.rng.random(),
         }
     }
 }

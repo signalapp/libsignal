@@ -11,13 +11,13 @@ use futures_util::FutureExt;
 use libsignal_protocol::*;
 use rand::rngs::OsRng;
 use rand::seq::SliceRandom;
-use rand::Rng;
+use rand::{Rng, TryRngCore as _};
 use support::*;
 use uuid::Uuid;
 
 #[test]
 fn group_no_send_session() -> Result<(), SignalProtocolError> {
-    let mut csprng = OsRng;
+    let mut csprng = OsRng.unwrap_err().unwrap_err();
 
     let sender_address = ProtocolAddress::new("+14159999111".to_owned(), 1.into());
     let distribution_id = Uuid::from_u128(0xd1d1d1d1_7000_11eb_b32a_33b8a8a487a6);
@@ -41,7 +41,7 @@ fn group_no_send_session() -> Result<(), SignalProtocolError> {
 #[test]
 fn group_no_recv_session() -> Result<(), SignalProtocolError> {
     async {
-        let mut csprng = OsRng;
+        let mut csprng = OsRng.unwrap_err().unwrap_err();
 
         let device_id: DeviceId = 1.into();
         let sender_address = ProtocolAddress::new("+14159999111".to_owned(), device_id);
@@ -88,7 +88,7 @@ fn group_no_recv_session() -> Result<(), SignalProtocolError> {
 #[test]
 fn group_basic_encrypt_decrypt() -> Result<(), SignalProtocolError> {
     async {
-        let mut csprng = OsRng;
+        let mut csprng = OsRng.unwrap_err();
 
         let sender_address = ProtocolAddress::new("+14159999111".to_owned(), 1.into());
         let distribution_id = Uuid::from_u128(0xd1d1d1d1_7000_11eb_b32a_33b8a8a487a6);
@@ -144,7 +144,7 @@ fn group_basic_encrypt_decrypt() -> Result<(), SignalProtocolError> {
 #[test]
 fn group_sealed_sender() -> Result<(), SignalProtocolError> {
     async {
-        let mut csprng = OsRng;
+        let mut csprng = OsRng.unwrap_err();
 
         let alice_device_id: DeviceId = 23.into();
         let bob_device_id: DeviceId = 42.into();
@@ -347,7 +347,7 @@ fn group_sealed_sender() -> Result<(), SignalProtocolError> {
 #[test]
 fn group_sealed_sender_multiple_devices() -> Result<(), SignalProtocolError> {
     async {
-        let mut csprng = OsRng;
+        let mut csprng = OsRng.unwrap_err();
 
         let alice_device_id: DeviceId = 23.into();
         let bob_device_id: DeviceId = 42.into();
@@ -580,7 +580,7 @@ fn group_sealed_sender_multiple_devices() -> Result<(), SignalProtocolError> {
 fn group_sealed_sender_multiple_devices_and_excluded_recipients() -> Result<(), SignalProtocolError>
 {
     async {
-        let mut csprng = OsRng;
+        let mut csprng = OsRng.unwrap_err();
 
         let alice_device_id: DeviceId = 23.into();
         let bob_device_id: DeviceId = 42.into();
@@ -846,7 +846,7 @@ fn group_sealed_sender_multiple_devices_and_excluded_recipients() -> Result<(), 
 #[test]
 fn group_large_messages() -> Result<(), SignalProtocolError> {
     async {
-        let mut csprng = OsRng;
+        let mut csprng = OsRng.unwrap_err();
 
         let sender_address = ProtocolAddress::new("+14159999111".to_owned(), 1.into());
         let distribution_id = Uuid::from_u128(0xd1d1d1d1_7000_11eb_b32a_33b8a8a487a6);
@@ -867,7 +867,7 @@ fn group_large_messages() -> Result<(), SignalProtocolError> {
 
         let mut large_message: Vec<u8> = Vec::with_capacity(1024);
         for _ in 0..large_message.capacity() {
-            large_message.push(csprng.gen());
+            large_message.push(csprng.random());
         }
 
         let alice_ciphertext = group_encrypt(
@@ -904,7 +904,7 @@ fn group_large_messages() -> Result<(), SignalProtocolError> {
 #[test]
 fn group_basic_ratchet() -> Result<(), SignalProtocolError> {
     async {
-        let mut csprng = OsRng;
+        let mut csprng = OsRng.unwrap_err();
 
         let sender_address = ProtocolAddress::new("+14159999111".to_owned(), 1.into());
         let distribution_id = Uuid::from_u128(0xd1d1d1d1_7000_11eb_b32a_33b8a8a487a6);
@@ -1007,7 +1007,7 @@ fn group_basic_ratchet() -> Result<(), SignalProtocolError> {
 #[test]
 fn group_late_join() -> Result<(), SignalProtocolError> {
     async {
-        let mut csprng = OsRng;
+        let mut csprng = OsRng.unwrap_err();
 
         let sender_address = ProtocolAddress::new("+14159999111".to_owned(), 1.into());
         let distribution_id = Uuid::from_u128(0xd1d1d1d1_7000_11eb_b32a_33b8a8a487a6);
@@ -1074,7 +1074,7 @@ fn group_late_join() -> Result<(), SignalProtocolError> {
 #[test]
 fn group_out_of_order() -> Result<(), SignalProtocolError> {
     async {
-        let mut csprng = OsRng;
+        let mut csprng = OsRng.unwrap_err();
 
         let sender_address = ProtocolAddress::new("+14159999111".to_owned(), 1.into());
         let distribution_id = Uuid::from_u128(0xd1d1d1d1_7000_11eb_b32a_33b8a8a487a6);
@@ -1144,7 +1144,7 @@ fn group_out_of_order() -> Result<(), SignalProtocolError> {
 #[ignore = "slow to run locally"]
 fn group_too_far_in_the_future() -> Result<(), SignalProtocolError> {
     async {
-        let mut csprng = OsRng;
+        let mut csprng = OsRng.unwrap_err();
 
         let sender_address = ProtocolAddress::new("+14159999111".to_owned(), 1.into());
         let distribution_id = Uuid::from_u128(0xd1d1d1d1_7000_11eb_b32a_33b8a8a487a6);
@@ -1207,7 +1207,7 @@ fn group_too_far_in_the_future() -> Result<(), SignalProtocolError> {
 #[test]
 fn group_message_key_limit() -> Result<(), SignalProtocolError> {
     async {
-        let mut csprng = OsRng;
+        let mut csprng = OsRng.unwrap_err();
 
         let sender_address = ProtocolAddress::new("+14159999111".to_owned(), 1.into());
         let distribution_id = Uuid::from_u128(0xd1d1d1d1_7000_11eb_b32a_33b8a8a487a6);

@@ -29,6 +29,7 @@ libcrux-ml-kem = { workspace = true, features = ["mlkem1024"] }
 log = { workspace = true }
 prost = { workspace = true }
 rand_core = { workspace = true }
+rand_core_06 = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true, features = ["raw_value"] }
 sha2 = { workspace = true }

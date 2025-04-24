@@ -12,7 +12,7 @@ use zkgroup::generic_server_params::GenericServerSecretParams;
 use zkgroup::RANDOMNESS_LEN;
 
 fn main() {
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     let mut randomness = [0u8; RANDOMNESS_LEN];
     rng.fill(&mut randomness);
 

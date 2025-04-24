@@ -15,7 +15,7 @@ use libsignal_net::infra::dns::DnsResolver;
 use libsignal_net::infra::testutil::no_network_change_events;
 use libsignal_net_infra::route::DirectOrProxyProvider;
 use libsignal_net_infra::EnableDomainFronting;
-use rand_core::{OsRng, RngCore};
+use rand_core::{OsRng, RngCore, TryRngCore as _};
 
 const WS2_CONFIG: libsignal_net_infra::ws2::Config = libsignal_net_infra::ws2::Config {
     local_idle_timeout: Duration::from_secs(10),
@@ -27,7 +27,7 @@ const WS2_CONFIG: libsignal_net_infra::ws2::Config = libsignal_net_infra::ws2::C
 async fn can_connect_to_cdsi_staging() {
     init_logger();
 
-    let mut rng = OsRng;
+    let mut rng = OsRng.unwrap_err();
 
     let uid = {
         let mut bytes = [0u8; 16];

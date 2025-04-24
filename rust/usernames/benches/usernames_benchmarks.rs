@@ -4,6 +4,7 @@
 //
 use criterion::{criterion_group, criterion_main, Criterion};
 use rand::rngs::OsRng;
+use rand::TryRngCore as _;
 
 extern crate usernames;
 use usernames::{NicknameLimits, Username, UsernameError};
@@ -19,7 +20,7 @@ pub fn username_proof(username: &str, randomness: &[u8; 32]) -> Result<Vec<u8>, 
 // Username validation is inseparable from the hash/proof calculations and therefore its costs are
 // included in the benchmarks for both.
 fn bench_usernames(c: &mut Criterion) {
-    let mut rng = OsRng;
+    let mut rng = OsRng.unwrap_err();
     let usernames =
         Username::candidates_from(&mut rng, "signal", NicknameLimits::default()).unwrap();
 

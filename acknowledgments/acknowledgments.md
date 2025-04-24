@@ -1800,7 +1800,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ```
 
-## libcrux-intrinsics 0.0.2, libcrux-ml-kem 0.0.2-alpha.3, libcrux-platform 0.0.2, libcrux-sha3 0.0.2
+## libcrux-intrinsics 0.0.2, libcrux-ml-kem 0.0.2, libcrux-platform 0.0.2, libcrux-sha3 0.0.2
 
 ```
                                  Apache License
@@ -6520,7 +6520,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 ```
 
-## rand 0.8.5, rand_chacha 0.3.1, rand_core 0.6.4
+## rand 0.8.5, rand 0.9.0, rand_chacha 0.3.1, rand_chacha 0.9.0, rand_core 0.6.4, rand_core 0.9.3
 
 ```
 Copyright 2018 Developers of the Rand project

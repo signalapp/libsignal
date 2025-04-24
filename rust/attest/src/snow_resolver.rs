@@ -6,7 +6,7 @@
 use blake2::{Blake2b, Blake2b512};
 use chacha20poly1305::{AeadInPlace, ChaCha20Poly1305, KeyInit};
 use libcrux_ml_kem::mlkem1024;
-use rand_core::{CryptoRng, RngCore};
+use rand_core::TryRngCore as _;
 use sha2::{Digest, Sha256};
 use snow::error::Error as SnowError;
 use snow::params::{CipherChoice, DHChoice, HashChoice, KemChoice};
@@ -18,7 +18,13 @@ const TAGLEN: usize = 16;
 
 struct Rng<T>(T);
 
-impl<T: RngCore> RngCore for Rng<T> {
+/// Implement the legacy RngCore trait in terms of the modern one.
+///
+/// This is necessary because the `snow` crate still depends on the legacy
+/// [`rand_core_06`] crate.` Once it moves to the same version of `rand` as
+/// everything else, the trait bounds can be replaced with ones from the
+/// [`rand_core`] crate.
+impl<T: rand_core::RngCore> rand_core_06::RngCore for Rng<T> {
     fn next_u32(&mut self) -> u32 {
         self.0.next_u32()
     }
@@ -31,14 +37,15 @@ impl<T: RngCore> RngCore for Rng<T> {
         self.0.fill_bytes(dest)
     }
 
-    fn try_fill_bytes(&mut self, dest: &mut [u8]) -> Result<(), rand_core::Error> {
-        self.0.try_fill_bytes(dest)
+    fn try_fill_bytes(&mut self, dest: &mut [u8]) -> Result<(), rand_core_06::Error> {
+        self.0.fill_bytes(dest);
+        Ok(())
     }
 }
 
-impl<T: CryptoRng> CryptoRng for Rng<T> {}
+impl<T: rand_core::CryptoRng> rand_core_06::CryptoRng for Rng<T> {}
 
-impl<T: RngCore + CryptoRng + Send + Sync> Random for Rng<T> {}
+impl<T: rand_core::RngCore + rand_core::CryptoRng + Send + Sync> Random for Rng<T> {}
 
 // From snow's resolvers/default.rs
 #[derive(Default)]
@@ -274,13 +281,14 @@ impl Kem for Kyber1024 {
         shared_secret_out: &mut [u8],
         ciphertext_out: &mut [u8],
     ) -> Result<(usize, usize), ()> {
-        let mlkem_pubkey = mlkem1024::validate_public_key(
-            mlkem1024::MlKem1024PublicKey::try_from(pubkey).map_err(|_| ())?,
-        )
+        let mlkem_pubkey = {
+            let key = mlkem1024::MlKem1024PublicKey::try_from(pubkey).map_err(|_| ())?;
+            mlkem1024::validate_public_key(&key).then_some(key)
+        }
         .ok_or(())?;
         // We don't get a RNG passed in, so currently we use OsRng directly:
         let mut randomness = [0u8; 32];
-        rand_core::OsRng.fill_bytes(&mut randomness);
+        rand_core::OsRng.try_fill_bytes(&mut randomness).unwrap();
         let (ciphertext, shared_secret) = mlkem1024::encapsulate(&mlkem_pubkey, randomness);
         shared_secret_out.copy_from_slice(shared_secret.as_ref());
         ciphertext_out.copy_from_slice(ciphertext.as_ref());
@@ -300,7 +308,7 @@ pub struct Resolver;
 
 impl CryptoResolver for Resolver {
     fn resolve_rng(&self) -> Option<Box<dyn Random>> {
-        Some(Box::new(Rng(rand_core::OsRng)))
+        Some(Box::new(Rng(rand_core::OsRng.unwrap_err())))
     }
 
     fn resolve_dh(&self, choice: &DHChoice) -> Option<Box<dyn Dh>> {

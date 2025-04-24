@@ -340,8 +340,8 @@ mod service_id_tests {
     use std::borrow::Borrow;
 
     use proptest::prelude::*;
+    use rand::rng;
     use rand::seq::SliceRandom;
-    use rand::thread_rng;
 
     use super::*;
 
@@ -627,7 +627,7 @@ mod service_id_tests {
             Pni::from_uuid(test_uuid).into(),
         ];
         let original = ids;
-        ids.shuffle(&mut thread_rng());
+        ids.shuffle(&mut rng());
         ids.sort();
         assert_eq!(original, ids);
     }

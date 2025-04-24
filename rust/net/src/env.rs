@@ -25,7 +25,7 @@ use libsignal_net_infra::{
 };
 use nonzero_ext::nonzero;
 use rand::seq::SliceRandom;
-use rand::{thread_rng, Rng};
+use rand::{rng, Rng};
 
 use crate::certs::{PROXY_G_ROOT_CERTIFICATES, SIGNAL_ROOT_CERTIFICATES};
 use crate::enclave::{Cdsi, EnclaveEndpoint, EndpointParams, MrEnclave, SgxPreQuantum};
@@ -288,7 +288,7 @@ impl ConnectionConfig {
     pub fn connection_params_with_fallback(&self) -> Vec<ConnectionParams> {
         let direct = self.direct_connection_params();
         if let Some(proxy) = &self.proxy {
-            let mut rng = thread_rng();
+            let mut rng = rng();
             let [params_a, params_b] = proxy.configs.each_ref().map(|config| {
                 config.shuffled_connection_params(
                     proxy.path_prefix,

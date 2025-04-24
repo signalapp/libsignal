@@ -62,6 +62,7 @@ criterion = { workspace = true }
 env_logger = { workspace = true }
 futures-util = { workspace = true }
 proptest = { workspace = true }
+rand_core = { workspace = true }
 
 [build-dependencies]
 prost-build = { workspace = true }

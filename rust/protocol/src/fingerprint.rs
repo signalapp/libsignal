@@ -215,6 +215,7 @@ impl Fingerprint {
 #[cfg(test)]
 mod test {
     use const_str::hex;
+    use rand::TryRngCore as _;
 
     use super::*;
 
@@ -362,8 +363,8 @@ mod test {
 
         use crate::IdentityKeyPair;
 
-        let a_key_pair = IdentityKeyPair::generate(&mut OsRng);
-        let b_key_pair = IdentityKeyPair::generate(&mut OsRng);
+        let a_key_pair = IdentityKeyPair::generate(&mut OsRng.unwrap_err());
+        let b_key_pair = IdentityKeyPair::generate(&mut OsRng.unwrap_err());
 
         let a_key = a_key_pair.identity_key();
         let b_key = b_key_pair.identity_key();
@@ -419,9 +420,10 @@ mod test {
 
         use crate::IdentityKeyPair;
 
-        let a_key_pair = IdentityKeyPair::generate(&mut OsRng);
-        let b_key_pair = IdentityKeyPair::generate(&mut OsRng);
-        let m_key_pair = IdentityKeyPair::generate(&mut OsRng); // mitm
+        let mut rng = OsRng.unwrap_err();
+        let a_key_pair = IdentityKeyPair::generate(&mut rng);
+        let b_key_pair = IdentityKeyPair::generate(&mut rng);
+        let m_key_pair = IdentityKeyPair::generate(&mut rng); // mitm
 
         let a_key = a_key_pair.identity_key();
         let b_key = b_key_pair.identity_key();
@@ -469,8 +471,9 @@ mod test {
 
         use crate::IdentityKeyPair;
 
-        let a_key_pair = IdentityKeyPair::generate(&mut OsRng);
-        let b_key_pair = IdentityKeyPair::generate(&mut OsRng);
+        let mut rng = OsRng.unwrap_err();
+        let a_key_pair = IdentityKeyPair::generate(&mut rng);
+        let b_key_pair = IdentityKeyPair::generate(&mut rng);
 
         let a_key = a_key_pair.identity_key();
         let b_key = b_key_pair.identity_key();

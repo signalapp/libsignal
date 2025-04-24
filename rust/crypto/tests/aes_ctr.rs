@@ -4,7 +4,7 @@
 //
 
 use const_str::hex;
-use rand::Rng;
+use rand::{Rng, TryRngCore as _};
 
 #[test]
 fn aes_ctr_smoke_test() -> Result<(), signal_crypto::Error> {
@@ -38,7 +38,7 @@ fn aes_ctr_long_test() -> Result<(), signal_crypto::Error> {
 
     assert_eq!(hex::encode(buf), hex::encode(output));
 
-    let mut rng = rand::rngs::OsRng;
+    let mut rng = rand::rngs::OsRng.unwrap_err();
 
     for _ in 0..32 {
         // Do it again but with split inputs:
@@ -49,7 +49,7 @@ fn aes_ctr_long_test() -> Result<(), signal_crypto::Error> {
         while processed != buf.len() {
             let remaining = buf.len() - processed;
             let this_time = if remaining > 1 {
-                rng.gen_range(1..remaining)
+                rng.random_range(1..remaining)
             } else {
                 remaining
             };

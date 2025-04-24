@@ -11,6 +11,7 @@ use libsignal_bridge_macros::*;
 use libsignal_bridge_types::jni;
 use libsignal_protocol::error::Result;
 use libsignal_protocol::*;
+use rand::TryRngCore as _;
 use static_assertions::const_assert_eq;
 use uuid::Uuid;
 
@@ -181,7 +182,7 @@ bridge_get!(
 
 #[bridge_fn(ffi = "privatekey_generate", node = "PrivateKey_Generate")]
 fn ECPrivateKey_Generate() -> PrivateKey {
-    let mut rng = rand::rngs::OsRng;
+    let mut rng = rand::rngs::OsRng.unwrap_err();
     let keypair = KeyPair::generate(&mut rng);
     keypair.private_key
 }
@@ -193,7 +194,7 @@ fn ECPrivateKey_GetPublicKey(k: &PrivateKey) -> Result<PublicKey> {
 
 #[bridge_fn(ffi = "privatekey_sign", node = "PrivateKey_Sign")]
 fn ECPrivateKey_Sign(key: &PrivateKey, message: &[u8]) -> Result<Vec<u8>> {
-    let mut rng = rand::rngs::OsRng;
+    let mut rng = rand::rngs::OsRng.unwrap_err();
     Ok(key.calculate_signature(message, &mut rng)?.into_vec())
 }
 
@@ -260,7 +261,7 @@ fn IdentityKeyPair_SignAlternateIdentity(
     private_key: &PrivateKey,
     other_identity: &PublicKey,
 ) -> Result<Vec<u8>> {
-    let mut rng = rand::rngs::OsRng;
+    let mut rng = rand::rngs::OsRng.unwrap_err();
     let identity_key_pair = IdentityKeyPair::new(IdentityKey::new(*public_key), *private_key);
     let other_identity = IdentityKey::new(*other_identity);
     Ok(identity_key_pair
@@ -456,7 +457,7 @@ fn SenderKeyMessage_New(
     ciphertext: &[u8],
     pk: &PrivateKey,
 ) -> Result<SenderKeyMessage> {
-    let mut csprng = rand::rngs::OsRng;
+    let mut csprng = rand::rngs::OsRng.unwrap_err();
     SenderKeyMessage::new(
         message_version,
         distribution_id,
@@ -722,7 +723,7 @@ fn ServerCertificate_New(
     server_key: &PublicKey,
     trust_root: &PrivateKey,
 ) -> Result<ServerCertificate> {
-    let mut rng = rand::rngs::OsRng;
+    let mut rng = rand::rngs::OsRng.unwrap_err();
     ServerCertificate::new(key_id, *server_key, trust_root, &mut rng)
 }
 
@@ -760,7 +761,7 @@ fn SenderCertificate_New(
     signer_cert: &ServerCertificate,
     signer_key: &PrivateKey,
 ) -> Result<SenderCertificate> {
-    let mut rng = rand::rngs::OsRng;
+    let mut rng = rand::rngs::OsRng.unwrap_err();
 
     SenderCertificate::new(
         sender_uuid,
@@ -1012,7 +1013,7 @@ async fn SessionBuilder_ProcessPreKeyBundle(
     identity_key_store: &mut dyn IdentityKeyStore,
     now: Timestamp,
 ) -> Result<()> {
-    let mut csprng = rand::rngs::OsRng;
+    let mut csprng = rand::rngs::OsRng.unwrap_err();
     process_prekey_bundle(
         protocol_address,
         session_store,
@@ -1049,7 +1050,7 @@ async fn SessionCipher_DecryptSignalMessage(
     session_store: &mut dyn SessionStore,
     identity_key_store: &mut dyn IdentityKeyStore,
 ) -> Result<Vec<u8>> {
-    let mut csprng = rand::rngs::OsRng;
+    let mut csprng = rand::rngs::OsRng.unwrap_err();
     message_decrypt_signal(
         message,
         protocol_address,
@@ -1070,7 +1071,7 @@ async fn SessionCipher_DecryptPreKeySignalMessage(
     signed_prekey_store: &mut dyn SignedPreKeyStore,
     kyber_prekey_store: &mut dyn KyberPreKeyStore,
 ) -> Result<Vec<u8>> {
-    let mut csprng = rand::rngs::OsRng;
+    let mut csprng = rand::rngs::OsRng.unwrap_err();
     message_decrypt_prekey(
         message,
         protocol_address,
@@ -1090,7 +1091,7 @@ async fn SealedSessionCipher_Encrypt(
     content: &UnidentifiedSenderMessageContent,
     identity_key_store: &mut dyn IdentityKeyStore,
 ) -> Result<Vec<u8>> {
-    let mut rng = rand::rngs::OsRng;
+    let mut rng = rand::rngs::OsRng.unwrap_err();
     sealed_sender_encrypt_from_usmc(destination, content, identity_key_store, &mut rng).await
 }
 
@@ -1102,7 +1103,7 @@ async fn SealedSender_MultiRecipientEncrypt(
     content: &UnidentifiedSenderMessageContent,
     identity_key_store: &mut dyn IdentityKeyStore,
 ) -> Result<Vec<u8>> {
-    let mut rng = rand::rngs::OsRng;
+    let mut rng = rand::rngs::OsRng.unwrap_err();
     sealed_sender_multi_recipient_encrypt(
         recipients,
         recipient_sessions,
@@ -1123,7 +1124,7 @@ async fn SealedSender_MultiRecipientEncryptNode(
     content: &UnidentifiedSenderMessageContent,
     identity_key_store: &mut dyn IdentityKeyStore,
 ) -> Result<Vec<u8>> {
-    let mut rng = rand::rngs::OsRng;
+    let mut rng = rand::rngs::OsRng.unwrap_err();
     sealed_sender_multi_recipient_encrypt(
         recipients,
         &recipient_sessions.iter().collect::<Vec<&SessionRecord>>(),
@@ -1197,7 +1198,7 @@ async fn SenderKeyDistributionMessage_Create(
     distribution_id: Uuid,
     store: &mut dyn SenderKeyStore,
 ) -> Result<SenderKeyDistributionMessage> {
-    let mut csprng = rand::rngs::OsRng;
+    let mut csprng = rand::rngs::OsRng.unwrap_err();
     create_sender_key_distribution_message(sender, distribution_id, store, &mut csprng).await
 }
 
@@ -1220,7 +1221,7 @@ async fn GroupCipher_EncryptMessage(
     message: &[u8],
     store: &mut dyn SenderKeyStore,
 ) -> Result<CiphertextMessage> {
-    let mut rng = rand::rngs::OsRng;
+    let mut rng = rand::rngs::OsRng.unwrap_err();
     let ctext = group_encrypt(store, sender, distribution_id, message, &mut rng).await?;
     Ok(CiphertextMessage::SenderKeyMessage(ctext))
 }

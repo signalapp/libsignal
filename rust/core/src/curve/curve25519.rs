@@ -167,7 +167,7 @@ impl From<[u8; PRIVATE_KEY_LENGTH]> for PrivateKey {
 #[cfg(test)]
 mod tests {
     use rand::rngs::OsRng;
-    use rand::RngCore;
+    use rand::{RngCore, TryRngCore as _};
 
     use super::*;
 
@@ -214,7 +214,7 @@ mod tests {
 
     #[test]
     fn test_random_agreements() {
-        let mut csprng = OsRng;
+        let mut csprng = OsRng.unwrap_err();
         for _ in 0..50 {
             let alice_key = PrivateKey::new(&mut csprng);
             let bob_key = PrivateKey::new(&mut csprng);
@@ -287,7 +287,7 @@ mod tests {
 
     #[test]
     fn test_random_signatures() {
-        let mut csprng = OsRng;
+        let mut csprng = OsRng.unwrap_err();
         for _ in 0..50 {
             let mut message = [0u8; 64];
             csprng.fill_bytes(&mut message);

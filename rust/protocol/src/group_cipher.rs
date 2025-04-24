@@ -245,7 +245,7 @@ pub async fn create_sender_key_distribution_message<R: Rng + CryptoRng>(
         Some(record) => record,
         None => {
             // libsignal-protocol-java uses 31-bit integers for sender key chain IDs
-            let chain_id = (csprng.gen::<u32>()) >> 1;
+            let chain_id = (csprng.random::<u32>()) >> 1;
             log::info!(
                 "Creating SenderKey for distribution {} with chain ID {}",
                 distribution_id,
@@ -253,7 +253,7 @@ pub async fn create_sender_key_distribution_message<R: Rng + CryptoRng>(
             );
 
             let iteration = 0;
-            let sender_key: [u8; 32] = csprng.gen();
+            let sender_key: [u8; 32] = csprng.random();
             let signing_key = KeyPair::generate(csprng);
             let mut record = SenderKeyRecord::new_empty();
             record.add_sender_key_state(

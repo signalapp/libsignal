@@ -7,7 +7,7 @@ use std::time::SystemTime;
 
 use futures_util::FutureExt;
 use libsignal_protocol_current::*;
-use rand::{thread_rng, Rng};
+use rand::{rng, Rng};
 
 fn address(id: &str) -> ProtocolAddress {
     ProtocolAddress::new(id.into(), 1.into())
@@ -17,10 +17,10 @@ pub struct LibSignalProtocolCurrent(InMemSignalProtocolStore);
 
 impl LibSignalProtocolCurrent {
     pub fn new() -> Self {
-        let mut csprng = thread_rng();
+        let mut csprng = rng();
         let identity_key = IdentityKeyPair::generate(&mut csprng);
         // Valid registration IDs fit in 14 bits.
-        let registration_id: u8 = csprng.gen();
+        let registration_id: u8 = csprng.random();
 
         Self(
             InMemSignalProtocolStore::new(identity_key, registration_id as u32)
@@ -35,7 +35,7 @@ impl super::LibSignalProtocolStore for LibSignalProtocolCurrent {
     }
 
     fn create_pre_key_bundle(&mut self) -> PreKeyBundle {
-        let mut csprng = thread_rng();
+        let mut csprng = rng();
         let pre_key_pair = KeyPair::generate(&mut csprng);
         let signed_pre_key_pair = KeyPair::generate(&mut csprng);
 
@@ -50,9 +50,9 @@ impl super::LibSignalProtocolStore for LibSignalProtocolCurrent {
             .calculate_signature(&signed_pre_key_public, &mut csprng)
             .expect("can calculate signatures");
 
-        let device_id: u32 = csprng.gen();
-        let pre_key_id: u32 = csprng.gen();
-        let signed_pre_key_id: u32 = csprng.gen();
+        let device_id: u32 = csprng.random();
+        let pre_key_id: u32 = csprng.random();
+        let signed_pre_key_id: u32 = csprng.random();
 
         let pre_key_bundle = PreKeyBundle::new(
             self.0
@@ -84,7 +84,7 @@ impl super::LibSignalProtocolStore for LibSignalProtocolCurrent {
             .expect("synchronous")
             .expect("can save pre-keys");
 
-        let timestamp = csprng.gen();
+        let timestamp = csprng.random();
 
         self.0
             .save_signed_pre_key(
@@ -110,7 +110,7 @@ impl super::LibSignalProtocolStore for LibSignalProtocolCurrent {
             &mut self.0.identity_store,
             &pre_key_bundle,
             SystemTime::now(),
-            &mut thread_rng(),
+            &mut rng(),
         )
         .now_or_never()
         .expect("synchronous")
@@ -138,7 +138,7 @@ impl super::LibSignalProtocolStore for LibSignalProtocolCurrent {
                 &address(remote),
                 &mut self.0.session_store,
                 &mut self.0.identity_store,
-                &mut thread_rng(),
+                &mut rng(),
             )
             .now_or_never()
             .expect("synchronous")
@@ -151,7 +151,7 @@ impl super::LibSignalProtocolStore for LibSignalProtocolCurrent {
                 &mut self.0.pre_key_store,
                 &mut self.0.signed_pre_key_store,
                 &mut self.0.kyber_pre_key_store,
-                &mut thread_rng(),
+                &mut rng(),
             )
             .now_or_never()
             .expect("synchronous")

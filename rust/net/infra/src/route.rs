@@ -510,8 +510,8 @@ pub mod testutils {
     use std::future::Future;
     use std::net::IpAddr;
 
+    use rand::distr::uniform::{UniformSampler, UniformUsize};
     use rand::rngs::mock::StepRng;
-    use rand::Rng as _;
 
     pub use super::connect::testutils::*;
     pub use super::resolve::testutils::*;
@@ -570,7 +570,8 @@ pub mod testutils {
 
     impl RouteProviderContext for FakeContext {
         fn random_usize(&self) -> usize {
-            self.rng.borrow_mut().gen()
+            UniformUsize::sample_single_inclusive(0, usize::MAX, &mut self.rng.borrow_mut())
+                .unwrap()
         }
     }
 

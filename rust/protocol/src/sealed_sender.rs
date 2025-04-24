@@ -13,7 +13,7 @@ use indexmap::IndexMap;
 use itertools::Itertools;
 use prost::Message;
 use proto::sealed_sender::unidentified_sender_message::message::Type as ProtoMessageType;
-use rand::{CryptoRng, Rng};
+use rand::{CryptoRng, Rng, TryRngCore as _};
 use subtle::ConstantTimeEq;
 use zerocopy::{FromBytes, Immutable, KnownLayout};
 
@@ -709,11 +709,11 @@ mod sealed_sender_v1 {
     #[test]
     fn test_agreement_and_authentication() -> Result<()> {
         // The sender and recipient each have a long-term identity key pair.
-        let sender_identity = IdentityKeyPair::generate(&mut rand::thread_rng());
-        let recipient_identity = IdentityKeyPair::generate(&mut rand::thread_rng());
+        let sender_identity = IdentityKeyPair::generate(&mut rand::rng());
+        let recipient_identity = IdentityKeyPair::generate(&mut rand::rng());
 
         // Generate an ephemeral key pair.
-        let sender_ephemeral = KeyPair::generate(&mut rand::thread_rng());
+        let sender_ephemeral = KeyPair::generate(&mut rand::rng());
         let ephemeral_public = sender_ephemeral.public_key;
         // Generate ephemeral cipher, chain, and MAC keys.
         let sender_eph_keys = EphemeralKeys::calculate(
@@ -1040,11 +1040,11 @@ mod sealed_sender_v2 {
     #[test]
     fn test_agreement_and_authentication() -> Result<()> {
         // The sender and recipient each have a long-term identity key pair.
-        let sender_identity = IdentityKeyPair::generate(&mut rand::thread_rng());
-        let recipient_identity = IdentityKeyPair::generate(&mut rand::thread_rng());
+        let sender_identity = IdentityKeyPair::generate(&mut rand::rng());
+        let recipient_identity = IdentityKeyPair::generate(&mut rand::rng());
 
         // Generate random bytes used for our multi-recipient encoding scheme.
-        let m: [u8; MESSAGE_KEY_LEN] = rand::thread_rng().gen();
+        let m: [u8; MESSAGE_KEY_LEN] = rand::rng().random();
         // Derive an ephemeral key pair from those random bytes.
         let ephemeral_keys = DerivedKeys::new(&m);
         let e = ephemeral_keys.derive_e();
@@ -1291,7 +1291,7 @@ where
     let excluded_recipients = excluded_recipients.into_iter();
     let our_identity = identity_store.get_identity_key_pair().await?;
 
-    let m: [u8; sealed_sender_v2::MESSAGE_KEY_LEN] = rng.gen();
+    let m: [u8; sealed_sender_v2::MESSAGE_KEY_LEN] = rng.random();
     let keys = sealed_sender_v2::DerivedKeys::new(&m);
     let e = keys.derive_e();
     let e_pub = &e.public_key;
@@ -1936,7 +1936,7 @@ pub async fn sealed_sender_decrypt(
         return Err(SignalProtocolError::SealedSenderSelfSend);
     }
 
-    let mut rng = rand::rngs::OsRng;
+    let mut rng = rand::rngs::OsRng.unwrap_err();
 
     let remote_address = ProtocolAddress::new(
         usmc.sender()?.sender_uuid()?.to_string(),

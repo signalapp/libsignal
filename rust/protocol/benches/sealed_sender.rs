@@ -10,14 +10,14 @@ use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use futures_util::FutureExt;
 use libsignal_protocol::*;
 use rand::rngs::OsRng;
-use rand::Rng;
+use rand::{Rng, TryRngCore as _};
 use uuid::Uuid;
 
 #[path = "../tests/support/mod.rs"]
 mod support;
 
 pub fn v1(c: &mut Criterion) {
-    let mut rng = OsRng;
+    let mut rng = OsRng.unwrap_err();
 
     let alice_address =
         ProtocolAddress::new("9d0652a3-dcc3-4d11-975f-74d61598733f".to_owned(), 1.into());
@@ -110,7 +110,7 @@ pub fn v1(c: &mut Criterion) {
 }
 
 pub fn v2(c: &mut Criterion) {
-    let mut rng = OsRng;
+    let mut rng = OsRng.unwrap_err();
 
     let alice_address =
         ProtocolAddress::new("9d0652a3-dcc3-4d11-975f-74d61598733f".to_owned(), 1.into());
@@ -213,7 +213,8 @@ pub fn v2(c: &mut Criterion) {
     // Fill out additional recipients.
     let mut recipients = vec![bob_address.clone()];
     while recipients.len() < 1000 {
-        let next_address = ProtocolAddress::new(Uuid::from_bytes(rng.gen()).to_string(), 1.into());
+        let next_address =
+            ProtocolAddress::new(Uuid::from_bytes(rng.random()).to_string(), 1.into());
 
         let mut next_store = support::test_in_memory_protocol_store().expect("brand new store");
 

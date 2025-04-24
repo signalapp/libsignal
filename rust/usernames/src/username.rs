@@ -507,7 +507,7 @@ mod test {
 
     #[test]
     fn many_random_makes_valid_usernames() {
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let randomness = std::array::from_fn(|i| (i + 1).try_into().unwrap());
         let nickname = "_SiGNA1";
         let candidates = Username::candidates_from(&mut rng, nickname, Default::default()).unwrap();
@@ -522,7 +522,7 @@ mod test {
 
     #[test]
     fn generate_discriminators() {
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let ds = random_discriminators(&mut rng, &[4, 3, 2, 1], &DISCRIMINATOR_RANGES).unwrap();
         assert!(DISCRIMINATOR_RANGES[0].contains(&ds[0]));
         assert!(DISCRIMINATOR_RANGES[0].contains(&ds[1]));
@@ -539,7 +539,7 @@ mod test {
     #[test]
     #[should_panic]
     fn too_few_ranges() {
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let counts: Vec<usize> = (0usize..DISCRIMINATOR_RANGES.len() + 1).collect();
         let _ = random_discriminators(&mut rng, &counts, &DISCRIMINATOR_RANGES);
     }

@@ -10,6 +10,7 @@ use assert_matches::assert_matches;
 use futures_util::FutureExt;
 use libsignal_protocol::*;
 use rand::rngs::OsRng;
+use rand::TryRngCore as _;
 use support::*;
 
 type TestResult = Result<(), SignalProtocolError>;
@@ -47,7 +48,7 @@ fn test_basic_prekey() -> TestResult {
         F: Fn(&mut TestStoreBuilder),
     {
         async {
-            let mut csprng = OsRng;
+            let mut csprng = OsRng.unwrap_err();
 
             let bob_device_id: DeviceId = 1.into();
 
@@ -255,7 +256,7 @@ fn test_chain_jump_over_limit() -> TestResult {
         bob_store_builder: &mut TestStoreBuilder,
     ) -> TestResult {
         async {
-            let mut csprng = OsRng;
+            let mut csprng = OsRng.unwrap_err();
 
             let alice_address = ProtocolAddress::new("+14151111111".to_owned(), 1.into());
             let bob_address = ProtocolAddress::new("+14151111112".to_owned(), 1.into());
@@ -319,7 +320,7 @@ fn test_chain_jump_over_limit_with_self() -> TestResult {
         a2_store_builder: &mut TestStoreBuilder,
     ) -> TestResult {
         async {
-            let mut csprng = OsRng;
+            let mut csprng = OsRng.unwrap_err();
 
             let device_id_1: DeviceId = 1.into();
             let a1_address = ProtocolAddress::new("+14151111111".to_owned(), device_id_1);
@@ -369,7 +370,7 @@ fn test_chain_jump_over_limit_with_self() -> TestResult {
 #[test]
 fn test_bad_signed_pre_key_signature() -> TestResult {
     async {
-        let mut csprng = OsRng;
+        let mut csprng = OsRng.unwrap_err();
         let bob_address = ProtocolAddress::new("+14151111112".to_owned(), 1.into());
 
         let mut alice_store = TestStoreBuilder::new().store;
@@ -454,7 +455,7 @@ fn test_repeat_bundle_message() -> TestResult {
         expected_session_version: u32,
     ) -> TestResult {
         async {
-            let mut csprng = OsRng;
+            let mut csprng = OsRng.unwrap_err();
             let alice_address = ProtocolAddress::new("+14151111111".to_owned(), 1.into());
             let bob_address = ProtocolAddress::new("+14151111112".to_owned(), 1.into());
 
@@ -587,7 +588,7 @@ fn test_bad_message_bundle() -> TestResult {
         expected_session_version: u32,
     ) -> TestResult {
         async {
-            let mut csprng = OsRng;
+            let mut csprng = OsRng.unwrap_err();
 
             let alice_address = ProtocolAddress::new("+14151111111".to_owned(), 1.into());
             let bob_address = ProtocolAddress::new("+14151111112".to_owned(), 1.into());
@@ -688,7 +689,7 @@ fn test_optional_one_time_prekey() -> TestResult {
         expected_session_version: u32,
     ) -> TestResult {
         async {
-            let mut csprng = OsRng;
+            let mut csprng = OsRng.unwrap_err();
             let alice_address = ProtocolAddress::new("+14151111111".to_owned(), 1.into());
             let bob_address = ProtocolAddress::new("+14151111112".to_owned(), 1.into());
 
@@ -856,7 +857,7 @@ fn test_basic_simultaneous_initiate() -> TestResult {
         expected_session_version: u32,
     ) -> TestResult {
         async {
-            let mut csprng = OsRng;
+            let mut csprng = OsRng.unwrap_err();
 
             let alice_address = ProtocolAddress::new("+14151111111".to_owned(), 1.into());
             let bob_address = ProtocolAddress::new("+14151111112".to_owned(), 1.into());
@@ -1030,7 +1031,7 @@ fn test_simultaneous_initiate_with_lossage() -> TestResult {
         expected_session_version: u32,
     ) -> TestResult {
         async {
-            let mut csprng = OsRng;
+            let mut csprng = OsRng.unwrap_err();
 
             let alice_address = ProtocolAddress::new("+14151111111".to_owned(), 1.into());
             let bob_address = ProtocolAddress::new("+14151111112".to_owned(), 1.into());
@@ -1184,7 +1185,7 @@ fn test_simultaneous_initiate_lost_message() -> TestResult {
         expected_session_version: u32,
     ) -> TestResult {
         async {
-            let mut csprng = OsRng;
+            let mut csprng = OsRng.unwrap_err();
 
             let alice_address = ProtocolAddress::new("+14151111111".to_owned(), 1.into());
             let bob_address = ProtocolAddress::new("+14151111112".to_owned(), 1.into());
@@ -1345,7 +1346,7 @@ fn test_simultaneous_initiate_repeated_messages() -> TestResult {
         expected_session_version: u32,
     ) -> TestResult {
         async {
-            let mut csprng = OsRng;
+            let mut csprng = OsRng.unwrap_err();
 
             let alice_address = ProtocolAddress::new("+14151111111".to_owned(), 1.into());
             let bob_address = ProtocolAddress::new("+14151111112".to_owned(), 1.into());
@@ -1599,7 +1600,7 @@ fn test_simultaneous_initiate_lost_message_repeated_messages() -> TestResult {
         F: Fn(&mut TestStoreBuilder),
     {
         async {
-            let mut csprng = OsRng;
+            let mut csprng = OsRng.unwrap_err();
 
             let alice_address = ProtocolAddress::new("+14151111111".to_owned(), 1.into());
             let bob_address = ProtocolAddress::new("+14151111112".to_owned(), 1.into());
@@ -1910,7 +1911,7 @@ fn test_simultaneous_initiate_lost_message_repeated_messages() -> TestResult {
 #[test]
 fn test_zero_is_a_valid_prekey_id() -> TestResult {
     async {
-        let mut csprng = OsRng;
+        let mut csprng = OsRng.unwrap_err();
         let alice_address = ProtocolAddress::new("+14151111111".to_owned(), 1.into());
         let bob_address = ProtocolAddress::new("+14151111112".to_owned(), 1.into());
 
@@ -1977,7 +1978,7 @@ fn test_unacknowledged_sessions_eventually_expire() -> TestResult {
     async {
         const WELL_PAST_EXPIRATION: Duration = Duration::from_secs(60 * 60 * 24 * 90);
 
-        let mut csprng = OsRng;
+        let mut csprng = OsRng.unwrap_err();
         let bob_address = ProtocolAddress::new("+14151111112".to_owned(), 1.into());
 
         let mut alice_store = TestStoreBuilder::new().store;
@@ -2106,7 +2107,7 @@ fn run_session_interaction(alice_session: SessionRecord, bob_session: SessionRec
             alice_messages.push((ptext, ctext));
         }
 
-        let mut rng = rand::rngs::OsRng;
+        let mut rng = rand::rngs::OsRng.unwrap_err();
 
         alice_messages.shuffle(&mut rng);
 
@@ -2271,7 +2272,7 @@ fn test_signedprekey_not_saved() -> TestResult {
         F: Fn(&mut TestStoreBuilder),
     {
         async {
-            let mut csprng = OsRng;
+            let mut csprng = OsRng.unwrap_err();
 
             let bob_device_id: DeviceId = 1.into();
 

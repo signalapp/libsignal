@@ -5,7 +5,6 @@
 
 #![no_main]
 
-
 use std::time::SystemTime;
 
 use futures_util::FutureExt;
@@ -114,10 +113,10 @@ impl Participant {
             .and_then(|session| session.has_usable_sender_chain(SystemTime::UNIX_EPOCH).ok())
             .unwrap_or(false)
         {
-            self.process_pre_key(them, rng.gen_bool(0.75), rng).await;
+            self.process_pre_key(them, rng.random_bool(0.75), rng).await;
         }
 
-        let length = rng.gen_range(0..140);
+        let length = rng.random_range(0..140);
         let mut buffer = vec![0; length];
         rng.fill_bytes(&mut buffer);
 
@@ -194,7 +193,7 @@ fuzz_target!(|data: (u64, &[u8])| {
             address: ProtocolAddress::new("+14151111111".to_owned(), 1.into()),
             store: InMemSignalProtocolStore::new(
                 IdentityKeyPair::generate(&mut csprng),
-                csprng.gen(),
+                csprng.random(),
             )
             .unwrap(),
             message_queue: Vec::new(),
@@ -206,7 +205,7 @@ fuzz_target!(|data: (u64, &[u8])| {
             address: ProtocolAddress::new("+14151111112".to_owned(), 1.into()),
             store: InMemSignalProtocolStore::new(
                 IdentityKeyPair::generate(&mut csprng),
-                csprng.gen(),
+                csprng.random(),
             )
             .unwrap(),
             message_queue: Vec::new(),
@@ -235,7 +234,10 @@ fuzz_target!(|data: (u64, &[u8])| {
                         // We're not testing that.
                         me.archive_session(&them.address).await
                     } else {
-                        info!("{}: archiving LIMITED at {}/{}", me.name, me.archive_count, them.archive_count);
+                        info!(
+                            "{}: archiving LIMITED at {}/{}",
+                            me.name, me.archive_count, them.archive_count
+                        );
                     }
                 }
                 1..=32 => me.receive_messages(&them.address, &mut csprng).await,

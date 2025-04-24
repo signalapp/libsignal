@@ -9,12 +9,13 @@ use std::time::SystemTime;
 use futures_util::FutureExt;
 use libsignal_protocol::*;
 use rand::rngs::OsRng;
+use rand::TryRngCore as _;
 use support::*;
 use uuid::Uuid;
 
 #[test]
 fn test_server_cert() -> Result<(), SignalProtocolError> {
-    let mut rng = OsRng;
+    let mut rng = OsRng.unwrap_err();
     let trust_root = KeyPair::generate(&mut rng);
     let server_key = KeyPair::generate(&mut rng);
 
@@ -56,7 +57,7 @@ fn test_server_cert() -> Result<(), SignalProtocolError> {
 
 #[test]
 fn test_revoked_server_cert() -> Result<(), SignalProtocolError> {
-    let mut rng = OsRng;
+    let mut rng = OsRng.unwrap_err();
     let trust_root = KeyPair::generate(&mut rng);
     let server_key = KeyPair::generate(&mut rng);
 
@@ -80,7 +81,7 @@ fn test_revoked_server_cert() -> Result<(), SignalProtocolError> {
 
 #[test]
 fn test_sender_cert() -> Result<(), SignalProtocolError> {
-    let mut rng = OsRng;
+    let mut rng = OsRng.unwrap_err();
     let trust_root = KeyPair::generate(&mut rng);
     let server_key = KeyPair::generate(&mut rng);
     let key = KeyPair::generate(&mut rng);
@@ -135,7 +136,7 @@ fn test_sender_cert() -> Result<(), SignalProtocolError> {
 #[test]
 fn test_sealed_sender() -> Result<(), SignalProtocolError> {
     async {
-        let mut rng = OsRng;
+        let mut rng = OsRng.unwrap_err();
 
         let alice_device_id: DeviceId = 23.into();
         let bob_device_id: DeviceId = 42.into();
@@ -303,7 +304,7 @@ fn test_sealed_sender() -> Result<(), SignalProtocolError> {
 #[test]
 fn test_sender_key_in_sealed_sender() -> Result<(), SignalProtocolError> {
     async {
-        let mut rng = OsRng;
+        let mut rng = OsRng.unwrap_err();
 
         let alice_device_id: DeviceId = 23.into();
         let bob_device_id: DeviceId = 42.into();
@@ -419,7 +420,7 @@ fn test_sender_key_in_sealed_sender() -> Result<(), SignalProtocolError> {
 #[test]
 fn test_sealed_sender_multi_recipient() -> Result<(), SignalProtocolError> {
     async {
-        let mut rng = OsRng;
+        let mut rng = OsRng.unwrap_err();
 
         let alice_device_id: DeviceId = 23.into();
         let bob_device_id: DeviceId = 42.into();
@@ -664,7 +665,7 @@ fn test_sealed_sender_multi_recipient() -> Result<(), SignalProtocolError> {
 fn test_sealed_sender_multi_recipient_encrypt_with_archived_session(
 ) -> Result<(), SignalProtocolError> {
     async {
-        let mut rng = OsRng;
+        let mut rng = OsRng.unwrap_err();
 
         let alice_device_id: DeviceId = 23.into();
         let bob_device_id: DeviceId = 42.into();
@@ -769,7 +770,7 @@ fn test_sealed_sender_multi_recipient_encrypt_with_archived_session(
 fn test_sealed_sender_multi_recipient_encrypt_with_bad_registration_id(
 ) -> Result<(), SignalProtocolError> {
     async {
-        let mut rng = OsRng;
+        let mut rng = OsRng.unwrap_err();
 
         let alice_device_id = 23;
         let bob_device_id = 42;
@@ -865,7 +866,7 @@ fn test_sealed_sender_multi_recipient_encrypt_with_bad_registration_id(
 #[test]
 fn test_decryption_error_in_sealed_sender() -> Result<(), SignalProtocolError> {
     async {
-        let mut rng = OsRng;
+        let mut rng = OsRng.unwrap_err();
 
         let alice_device_id: DeviceId = 23.into();
         let bob_device_id: DeviceId = 42.into();
@@ -1011,7 +1012,7 @@ fn parse_empty_multi_recipient_sealed_sender() {
 #[test]
 fn test_sealed_sender_multi_recipient_redundant_empty_devices() -> Result<(), SignalProtocolError> {
     async {
-        let mut csprng = OsRng;
+        let mut csprng = OsRng.unwrap_err();
 
         let alice_device_id: DeviceId = 23.into();
         let bob_device_id: DeviceId = 42.into();

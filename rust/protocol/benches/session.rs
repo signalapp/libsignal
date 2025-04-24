@@ -9,6 +9,7 @@ use criterion::{criterion_group, criterion_main, Criterion};
 use futures_util::FutureExt;
 use libsignal_protocol::*;
 use rand::rngs::OsRng;
+use rand::TryRngCore as _;
 
 #[path = "../tests/support/mod.rs"]
 mod support;
@@ -83,7 +84,7 @@ pub fn session_encrypt_result(c: &mut Criterion) -> Result<(), SignalProtocolErr
         .expect("sync")?;
 
     // ...then initialize a new session...
-    let bob_signed_pre_key_pair = KeyPair::generate(&mut OsRng);
+    let bob_signed_pre_key_pair = KeyPair::generate(&mut OsRng.unwrap_err());
 
     let bob_signed_pre_key_public = bob_signed_pre_key_pair.public_key.serialize();
     let bob_signed_pre_key_signature = bob_store
@@ -91,7 +92,7 @@ pub fn session_encrypt_result(c: &mut Criterion) -> Result<(), SignalProtocolErr
         .now_or_never()
         .expect("sync")?
         .private_key()
-        .calculate_signature(&bob_signed_pre_key_public, &mut OsRng)?;
+        .calculate_signature(&bob_signed_pre_key_public, &mut OsRng.unwrap_err())?;
 
     let signed_pre_key_id = 22;
 
@@ -136,7 +137,7 @@ pub fn session_encrypt_result(c: &mut Criterion) -> Result<(), SignalProtocolErr
         &mut alice_store.identity_store,
         &bob_pre_key_bundle,
         SystemTime::now(),
-        &mut OsRng,
+        &mut OsRng.unwrap_err(),
     )
     .now_or_never()
     .expect("sync")?;

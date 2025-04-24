@@ -12,7 +12,16 @@
 # and then document them here.
 #
 # thiserror: minimal and highly inlinable, most of the code is synthesized at the use site
+# rand, rand_core, getrandom, rand_chacha: waiting on snow to support rand_core 0.9
 EXPECTED="
+getrandom v0.2.15
+getrandom v0.3.2
+rand v0.8.5
+rand v0.9.0
+rand_chacha v0.3.1
+rand_chacha v0.9.0
+rand_core v0.6.4
+rand_core v0.9.3
 thiserror v1.0.69
 thiserror v2.0.12"
 

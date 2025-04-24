@@ -9,6 +9,7 @@ use ::usernames::{
     UsernameLinkError,
 };
 use libsignal_bridge_macros::*;
+use rand::TryRngCore as _;
 
 #[allow(unused_imports)]
 use crate::support::*;
@@ -43,7 +44,7 @@ pub fn Username_CandidatesFrom(
     min_len: u32,
     max_len: u32,
 ) -> Result<Box<[String]>, UsernameError> {
-    let mut rng = rand::rngs::OsRng;
+    let mut rng = rand::rngs::OsRng.unwrap_err();
     let limits = NicknameLimits::new(min_len as usize, max_len as usize);
     Username::candidates_from(&mut rng, &nickname, limits).map(Vec::into_boxed_slice)
 }
@@ -64,7 +65,7 @@ pub fn UsernameLink_Create(
     username: String,
     entropy: Option<&[u8]>,
 ) -> Result<Vec<u8>, UsernameLinkError> {
-    let mut rng = rand::rngs::OsRng;
+    let mut rng = rand::rngs::OsRng.unwrap_err();
     let entropy = entropy
         .map(|buf| {
             buf.try_into()
@@ -81,7 +82,7 @@ pub fn UsernameLink_CreateAllowingEmptyEntropy(
     username: String,
     entropy: &[u8],
 ) -> Result<Vec<u8>, UsernameLinkError> {
-    let mut rng = rand::rngs::OsRng;
+    let mut rng = rand::rngs::OsRng.unwrap_err();
     let entropy = if entropy.is_empty() {
         None
     } else {

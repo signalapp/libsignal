@@ -92,7 +92,7 @@ impl From<Timestamp> for std::time::SystemTime {
     }
 }
 
-impl rand::distributions::Distribution<Timestamp> for rand::distributions::Standard {
+impl rand::distr::Distribution<Timestamp> for rand::distr::StandardUniform {
     fn sample<R: rand::prelude::Rng + ?Sized>(&self, rng: &mut R) -> Timestamp {
         Timestamp(Self::sample(self, rng))
     }

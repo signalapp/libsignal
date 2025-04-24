@@ -10,6 +10,7 @@ use libsignal_net::registration::{
 };
 use libsignal_protocol::error::Result;
 use libsignal_protocol::*;
+use rand::TryRngCore as _;
 use uuid::uuid;
 
 use crate::*;
@@ -49,7 +50,7 @@ fn SessionRecord_InitializeAliceSession(
 
     let their_identity_key = IdentityKey::new(*their_identity_key);
 
-    let mut csprng = rand::rngs::OsRng;
+    let mut csprng = rand::rngs::OsRng.unwrap_err();
 
     let parameters = AliceSignalProtocolParameters::new(
         our_identity_key_pair,

@@ -139,7 +139,7 @@ mod test {
     use const_str::hex;
     use hmac::Hmac;
     use proptest::prelude::*;
-    use rand::distributions::Uniform;
+    use rand::distr::uniform::{UniformSampler as _, UniformUsize};
     use rand::prelude::{Rng, ThreadRng};
     use sha2::digest::OutputSizeUser;
     use sha2::Sha256;
@@ -412,7 +412,7 @@ mod test {
     #[derive(Clone)]
     struct RandomChunks<'a, T, R: Rng> {
         base: &'a [T],
-        distribution: Uniform<usize>,
+        distribution: UniformUsize,
         rng: R,
     }
 
@@ -423,7 +423,7 @@ mod test {
             if self.base.is_empty() {
                 None
             } else {
-                let candidate = self.rng.sample(self.distribution);
+                let candidate = self.distribution.sample(&mut self.rng);
                 let chunk_size = std::cmp::min(candidate, self.base.len());
                 let (before, after) = self.base.split_at(chunk_size);
                 self.base = after;
@@ -441,7 +441,7 @@ mod test {
             assert!(max_size > 0, "Maximal chunk size should be positive");
             RandomChunks {
                 base: self,
-                distribution: Uniform::new(0, max_size + 1),
+                distribution: UniformUsize::new_inclusive(0, max_size).expect("valid range"),
                 rng: Default::default(),
             }
         }

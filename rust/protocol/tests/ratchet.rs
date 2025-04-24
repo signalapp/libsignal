@@ -7,6 +7,7 @@ use const_str::hex;
 use libsignal_protocol::*;
 
 mod support;
+use rand::TryRngCore as _;
 use support::*;
 
 #[test]
@@ -137,7 +138,7 @@ fn test_ratcheting_session_as_alice() -> Result<(), SignalProtocolError> {
         bob_ephemeral_public,
     );
 
-    let mut csprng = rand::rngs::OsRng;
+    let mut csprng = rand::rngs::OsRng.unwrap_err();
     let alice_record = initialize_alice_session_record(&alice_parameters, &mut csprng)?;
 
     assert_eq!(
@@ -171,7 +172,7 @@ fn test_ratcheting_session_as_alice() -> Result<(), SignalProtocolError> {
 
 #[test]
 fn test_alice_and_bob_agree_on_chain_keys_with_kyber() -> Result<(), SignalProtocolError> {
-    let mut csprng = rand::rngs::OsRng;
+    let mut csprng = rand::rngs::OsRng.unwrap_err();
 
     let alice_identity_key_pair = IdentityKeyPair::generate(&mut csprng);
     let alice_base_key_pair = KeyPair::generate(&mut csprng);

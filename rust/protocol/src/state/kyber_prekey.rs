@@ -5,6 +5,8 @@
 
 use std::fmt;
 
+use rand::TryRngCore as _;
+
 use crate::proto::storage::SignedPreKeyRecordStructure;
 use crate::state::GenericSignedPreKey;
 use crate::{kem, PrivateKey, Result, Timestamp};
@@ -54,7 +56,7 @@ impl KyberPreKeyRecord {
         signing_key: &PrivateKey,
     ) -> Result<KyberPreKeyRecord> {
         let key_pair = kem::KeyPair::generate(kyber_key_type);
-        let mut rng = rand::rngs::OsRng;
+        let mut rng = rand::rngs::OsRng.unwrap_err();
         let signature = signing_key
             .calculate_signature(&key_pair.public_key.serialize(), &mut rng)?
             .into_vec();

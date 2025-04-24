@@ -357,12 +357,13 @@ impl TryFrom<PrivateKey> for KeyPair {
 mod tests {
     use assert_matches::assert_matches;
     use rand::rngs::OsRng;
+    use rand::TryRngCore as _;
 
     use super::*;
 
     #[test]
     fn test_large_signatures() -> Result<(), CurveError> {
-        let mut csprng = OsRng;
+        let mut csprng = OsRng.unwrap_err();
         let key_pair = KeyPair::generate(&mut csprng);
         let mut message = [0u8; 1024 * 1024];
         let signature = key_pair
@@ -392,7 +393,7 @@ mod tests {
 
     #[test]
     fn test_decode_size() -> Result<(), CurveError> {
-        let mut csprng = OsRng;
+        let mut csprng = OsRng.unwrap_err();
         let key_pair = KeyPair::generate(&mut csprng);
         let serialized_public = key_pair.public_key.serialize();
 

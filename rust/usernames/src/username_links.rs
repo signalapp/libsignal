@@ -107,6 +107,7 @@ fn random_bytes<const SIZE: usize, R: Rng + CryptoRng>(rng: &mut R) -> [u8; SIZE
 #[cfg(test)]
 mod test {
     use rand::rngs::OsRng;
+    use rand::TryRngCore as _;
 
     use super::*;
     use crate::constants::{DISCRIMINATOR_RANGES, MAX_NICKNAME_LENGTH};
@@ -115,7 +116,7 @@ mod test {
 
     #[test]
     fn input_data_too_long() {
-        let mut csprng = OsRng;
+        let mut csprng = OsRng.unwrap_err();
         let long_username = "\
             abcdefghijklmnopqrstuvwxyz\
             abcdefghijklmnopqrstuvwxyz\
@@ -198,7 +199,7 @@ mod test {
     #[test]
     fn happy_case() {
         let expected_username = "test_username.42";
-        let mut csprng = OsRng;
+        let mut csprng = OsRng.unwrap_err();
         let (entropy, encrypted_username) =
             create_for_username(&mut csprng, expected_username.into(), None).expect("no error");
         let actual_username = decrypt_username(&entropy, &encrypted_username).expect("no error");
@@ -212,7 +213,7 @@ mod test {
             ["a"; MAX_NICKNAME_LENGTH].join(""),
             DISCRIMINATOR_RANGES.last().expect("non-empty").end - 1
         );
-        let mut csprng = OsRng;
+        let mut csprng = OsRng.unwrap_err();
         let (entropy, encrypted_username) =
             create_for_username(&mut csprng, expected_username.clone(), None).expect("no error");
         let actual_username = decrypt_username(&entropy, &encrypted_username).expect("no error");
@@ -222,7 +223,7 @@ mod test {
     #[test]
     fn reuse_entropy() {
         let expected_username = "test_username.42";
-        let mut csprng = OsRng;
+        let mut csprng = OsRng.unwrap_err();
         let (entropy, encrypted_username) =
             create_for_username(&mut csprng, expected_username.into(), None).expect("no error");
         let actual_username = decrypt_username(&entropy, &encrypted_username).expect("no error");

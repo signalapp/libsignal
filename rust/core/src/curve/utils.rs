@@ -83,6 +83,8 @@ pub(crate) fn constant_time_cmp(x: &[u8], y: &[u8]) -> Ordering {
 
 #[cfg(test)]
 mod tests {
+    use rand::TryRngCore as _;
+
     use super::*;
 
     #[test]
@@ -94,10 +96,10 @@ mod tests {
         assert_eq!(constant_time_cmp(&[1], &[0, 1]), Ordering::Less);
         assert_eq!(constant_time_cmp(&[2], &[1, 0, 1]), Ordering::Less);
 
-        let mut rng = rand::rngs::OsRng;
+        let mut rng = rand::rngs::OsRng.unwrap_err();
         for len in 1..320 {
-            let x: Vec<u8> = (0..len).map(|_| rng.gen()).collect();
-            let y: Vec<u8> = (0..len).map(|_| rng.gen()).collect();
+            let x: Vec<u8> = (0..len).map(|_| rng.random()).collect();
+            let y: Vec<u8> = (0..len).map(|_| rng.random()).collect();
             let expected = x.cmp(&y);
             let result = constant_time_cmp(&x, &y);
             assert_eq!(result, expected);

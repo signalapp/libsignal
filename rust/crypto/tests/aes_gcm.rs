@@ -6,7 +6,7 @@
 use std::collections::HashMap;
 
 use const_str::hex;
-use rand::Rng;
+use rand::{Rng, TryRngCore as _};
 use serde::Deserialize;
 
 #[allow(dead_code)]
@@ -57,7 +57,7 @@ struct WycheproofTestSet {
 }
 
 fn test_kat(kat: WycheproofTest) -> Result<(), signal_crypto::Error> {
-    let mut rng = rand::rngs::OsRng;
+    let mut rng = rand::rngs::OsRng.unwrap_err();
 
     let key = hex::decode(kat.key).expect("valid hex");
     let aad = hex::decode(kat.aad).expect("valid hex");
@@ -101,7 +101,7 @@ fn test_kat(kat: WycheproofTest) -> Result<(), signal_crypto::Error> {
             while processed != buf.len() {
                 let remaining = buf.len() - processed;
                 let this_time = if remaining > 1 {
-                    rng.gen_range(1..remaining)
+                    rng.random_range(1..remaining)
                 } else {
                     remaining
                 };

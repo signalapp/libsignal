@@ -35,8 +35,8 @@ use libsignal_net_infra::utils::NetworkChangeEvent;
 use libsignal_net_infra::ws::{WebSocketConnectError, WebSocketStreamLike};
 use libsignal_net_infra::ws2::attested::AttestedConnection;
 use libsignal_net_infra::{AsHttpHeader as _, AsyncDuplexStream};
-use rand::Rng;
-use rand_core::OsRng;
+use rand::distr::uniform::{UniformSampler, UniformUsize};
+use rand_core::{OsRng, UnwrapErr};
 use static_assertions::assert_eq_size_val;
 use tokio::time::Instant;
 
@@ -578,14 +578,14 @@ where
 }
 
 #[derive(Debug, Default, Clone)]
-struct RouteProviderContextImpl(OsRng);
+struct RouteProviderContextImpl(UnwrapErr<OsRng>);
 
 impl RouteProviderContext for RouteProviderContextImpl {
     fn random_usize(&self) -> usize {
         // OsRng is zero-sized, so we're not losing random values by copying it.
-        let mut owned_rng: OsRng = self.0;
+        let mut owned_rng: UnwrapErr<OsRng> = self.0;
         assert_eq_size_val!(owned_rng, ());
-        owned_rng.gen()
+        UniformUsize::sample_single_inclusive(0, usize::MAX, &mut owned_rng).expect("valid range")
     }
 }
 
