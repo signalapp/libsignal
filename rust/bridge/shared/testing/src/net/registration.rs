@@ -15,12 +15,13 @@ use libsignal_bridge_types::net::registration::{
     ConnectChatBridge, RegistrationCreateSessionRequest, RegistrationService,
 };
 use libsignal_bridge_types::net::TokioAsyncContext;
+use libsignal_net::auth::Auth;
 use libsignal_net::chat::fake::FakeChatRemote;
 use libsignal_net::chat::ChatConnection;
 use libsignal_net::infra::errors::RetryLater;
 use libsignal_net::registration::{
-    ConnectChat, CreateSessionError, RegistrationSession, RequestError,
-    RequestVerificationCodeError, RequestedInformation, ResumeSessionError,
+    ConnectChat, CreateSessionError, RegisterAccountError, RegistrationLock, RegistrationSession,
+    RequestError, RequestVerificationCodeError, RequestedInformation, ResumeSessionError,
     SubmitVerificationError, UpdateSessionError, VerificationCodeNotDeliverable,
 };
 
@@ -109,6 +110,8 @@ type TestingRequestVerificationCodeRequestError =
     TestingRequestError<TestingRequestVerificationCodeError>;
 /// cbindgen:ignore
 type TestingSubmitVerificationRequestError = TestingRequestError<TestingSubmitVerificationError>;
+/// cbindgen:ignore
+type TestingRegisterAccountRequestError = TestingRequestError<TestingRegisterAccountError>;
 
 struct TestingRequestError<E>(RequestError<E>);
 
@@ -288,6 +291,45 @@ fn TESTING_RegistrationService_SubmitVerificationErrorConvert(
             }
             TestingSubmitVerificationError::RetryAfter42Seconds => {
                 SubmitVerificationError::RetryLater(RETRY_AFTER_42_SECONDS)
+            }
+        }))
+}
+
+make_error_testing_enum!(
+    enum TestingRegisterAccountError for RegisterAccountError {
+        DeviceTransferIsPossibleButNotSkipped => DeviceTransferIsPossibleButNotSkipped,
+        RegistrationRecoveryVerificationFailed => RegistrationRecoveryVerificationFailed,
+        RegistrationLock => RegistrationLockFor50Seconds,
+        RetryLater => RetryAfter42Seconds,
+    }
+);
+
+/// Return an error matching the requested description.
+#[bridge_fn(ffi = false)]
+fn TESTING_RegistrationService_RegisterAccountErrorConvert(
+    // The stringly-typed API makes the call sites more self-explanatory.
+    error_description: AsType<TestingRegisterAccountRequestError, String>,
+) -> Result<(), RequestError<RegisterAccountError>> {
+    Err(error_description
+        .into_inner()
+        .map_into_error(|inner| match inner {
+            TestingRegisterAccountError::RetryAfter42Seconds => {
+                RegisterAccountError::RetryLater(RETRY_AFTER_42_SECONDS)
+            }
+            TestingRegisterAccountError::DeviceTransferIsPossibleButNotSkipped => {
+                RegisterAccountError::DeviceTransferIsPossibleButNotSkipped
+            }
+            TestingRegisterAccountError::RegistrationRecoveryVerificationFailed => {
+                RegisterAccountError::RegistrationRecoveryVerificationFailed
+            }
+            TestingRegisterAccountError::RegistrationLockFor50Seconds => {
+                RegisterAccountError::RegistrationLock(RegistrationLock {
+                    time_remaining: Duration::from_secs(50),
+                    svr2_credentials: Auth {
+                        username: "user".to_owned(),
+                        password: "pass".to_owned(),
+                    },
+                })
             }
         }))
 }

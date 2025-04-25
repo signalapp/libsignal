@@ -121,6 +121,7 @@ public final class NativeTesting {
   public static native byte[][] TESTING_ProcessBytestringArray(ByteBuffer[] input);
   public static native long TESTING_RegisterAccountResponse_CreateTestValue();
   public static native void TESTING_RegistrationService_CreateSessionErrorConvert(String errorDescription) throws Exception;
+  public static native void TESTING_RegistrationService_RegisterAccountErrorConvert(String errorDescription) throws Exception;
   public static native void TESTING_RegistrationService_RequestVerificationCodeErrorConvert(String errorDescription) throws Exception;
   public static native void TESTING_RegistrationService_ResumeSessionErrorConvert(String errorDescription) throws Exception;
   public static native void TESTING_RegistrationService_SubmitVerificationErrorConvert(String errorDescription) throws Exception;

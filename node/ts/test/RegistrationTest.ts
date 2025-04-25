@@ -168,6 +168,19 @@ describe('Registration types', () => {
           timeoutCase,
         ],
       },
+      {
+        operationName: 'RegisterAccount',
+        convertFn:
+          Native.TESTING_RegistrationService_RegisterAccountErrorConvert,
+        cases: [
+          ['DeviceTransferIsPossibleButNotSkipped', ErrorCode.Generic],
+          ['RegistrationRecoveryVerificationFailed', ErrorCode.Generic],
+          ['RegistrationLockFor50Seconds', ErrorCode.Generic],
+          retryLaterCase,
+          unknownCase,
+          timeoutCase,
+        ],
+      },
     ];
 
     cases.forEach(({ operationName, convertFn, cases: testCases }) => {

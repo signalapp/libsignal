@@ -169,6 +169,25 @@ public class RegistrationServiceTest {
     assertIsUnknownError(NativeTesting::TESTING_RegistrationService_SubmitVerificationErrorConvert);
   }
 
+  @Test
+  public void testRegisterAccountErrorConversion() {
+    assertRegistrationSessionErrorIs(
+        "DeviceTransferIsPossibleButNotSkipped",
+        DeviceTransferPossibleException.class,
+        NativeTesting::TESTING_RegistrationService_RegisterAccountErrorConvert);
+    assertRegistrationSessionErrorIs(
+        "RegistrationRecoveryVerificationFailed",
+        RegistrationRecoveryFailedException.class,
+        NativeTesting::TESTING_RegistrationService_RegisterAccountErrorConvert);
+    assertRegistrationSessionErrorIs(
+        "RegistrationLockFor50Seconds",
+        RegistrationLockException.class,
+        NativeTesting::TESTING_RegistrationService_RegisterAccountErrorConvert);
+    assertIsRetryAfterError(NativeTesting::TESTING_RegistrationService_RegisterAccountErrorConvert);
+    assertIsTimeoutError(NativeTesting::TESTING_RegistrationService_RegisterAccountErrorConvert);
+    assertIsUnknownError(NativeTesting::TESTING_RegistrationService_RegisterAccountErrorConvert);
+  }
+
   private static <E extends Throwable> E assertRegistrationSessionErrorIs(
       String errorDescription, Class<E> expectedErrorType, ThrowingConsumer<String> throwError) {
     return assertThrows(

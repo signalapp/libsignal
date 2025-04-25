@@ -635,6 +635,7 @@ export function TESTING_PanicOnReturnSync(_needsCleanup: null): null;
 export function TESTING_ProcessBytestringArray(input: Buffer[]): Buffer[];
 export function TESTING_RegisterAccountResponse_CreateTestValue(): RegisterAccountResponse;
 export function TESTING_RegistrationService_CreateSessionErrorConvert(errorDescription: string): void;
+export function TESTING_RegistrationService_RegisterAccountErrorConvert(errorDescription: string): void;
 export function TESTING_RegistrationService_RequestVerificationCodeErrorConvert(errorDescription: string): void;
 export function TESTING_RegistrationService_ResumeSessionErrorConvert(errorDescription: string): void;
 export function TESTING_RegistrationService_SubmitVerificationErrorConvert(errorDescription: string): void;

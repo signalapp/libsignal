@@ -97,9 +97,9 @@ pub struct VerificationCodeNotDeliverable {
 #[serde(rename_all = "camelCase")]
 pub struct RegistrationLock {
     #[serde_as(as = "DurationMilliSeconds")]
-    time_remaining: Duration,
+    pub time_remaining: Duration,
     #[debug("_")]
-    svr2_credentials: Auth,
+    pub svr2_credentials: Auth,
 }
 
 /// The subset of account attributes that don't need any additional validation.
