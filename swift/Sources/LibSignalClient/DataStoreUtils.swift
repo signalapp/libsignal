@@ -43,11 +43,9 @@ internal func withIdentityKeyStore<Result>(_ store: IdentityKeyStore, _ context:
             var public_key = PublicKey(borrowing: public_key)
             defer { cloneOrForgetAsNeeded(&public_key) }
             let identity = IdentityKey(publicKey: public_key)
-            let new_id = try store.saveIdentity(identity, for: address, context: context)
-            if new_id {
-                return 1
-            } else {
-                return 0
+            return switch try store.saveIdentity(identity, for: address, context: context) {
+            case .newOrUnchanged: Int32(SignalIdentityChangeNewOrUnchanged.rawValue)
+            case .replacedExisting: Int32(SignalIdentityChangeReplacedExisting.rawValue)
             }
         }
     }

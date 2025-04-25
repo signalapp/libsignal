@@ -57,10 +57,16 @@ type SealedSenderMultiRecipientMessage = {
   offsetOfSharedData: number;
 };
 
+enum IdentityChange {
+  // This must be kept in sync with the Rust enum of the same name.
+  NewOrUnchanged = 0,
+  ReplacedExisting = 1,
+}
+
 type IdentityKeyStore = {
   _getIdentityKey(): Promise<PrivateKey>;
   _getLocalRegistrationId(): Promise<number>;
-  _saveIdentity(name: ProtocolAddress, key: PublicKey): Promise<boolean>;
+  _saveIdentity(name: ProtocolAddress, key: PublicKey): Promise<IdentityChange>;
   _isTrustedIdentity(
     name: ProtocolAddress,
     key: PublicKey,

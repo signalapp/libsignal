@@ -28,6 +28,7 @@ include = [
     "FfiCiphertextMessageType",
     "FfiContentHint",
     "RandomnessBytes",
+    "IdentityChange",
 ]
 exclude = ["TAG_SIZE", "NONCE_SIZE", "VERSION"]
 item_types = [

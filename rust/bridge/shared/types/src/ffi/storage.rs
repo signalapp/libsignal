@@ -90,15 +90,15 @@ impl IdentityKeyStore for &FfiIdentityKeyStoreStruct {
     ) -> Result<IdentityChange, SignalProtocolError> {
         let result = (self.save_identity)(self.ctx, address.into(), identity.public_key().into());
 
-        match result {
-            0 => Ok(IdentityChange::NewOrUnchanged),
-            1 => Ok(IdentityChange::ReplacedExisting),
-            r => Err(SignalProtocolError::for_application_callback(
-                "save_identity",
-            )(
-                CallbackError::check(r).expect_err("verified non-zero")
-            )),
-        }
+        result
+            .try_into()
+            .ok()
+            .and_then(|r: isize| IdentityChange::try_from(r).ok())
+            .ok_or_else(|| {
+                SignalProtocolError::for_application_callback("save_identity")(
+                    CallbackError::check(result).expect_err("verified non-zero"),
+                )
+            })
     }
 
     async fn is_trusted_identity(

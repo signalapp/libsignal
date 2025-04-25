@@ -30,7 +30,9 @@ pub enum Direction {
 }
 
 /// The result of saving a new identity key for a protocol address.
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, derive_more::TryFrom)]
+#[repr(C)]
+#[try_from(repr)]
 pub enum IdentityChange {
     /// The protocol address didn't have an identity key or had the same key.
     NewOrUnchanged,

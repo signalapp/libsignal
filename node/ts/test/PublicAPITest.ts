@@ -87,17 +87,15 @@ class InMemoryIdentityKeyStore extends SignalClient.IdentityKeyStore {
   async saveIdentity(
     name: SignalClient.ProtocolAddress,
     key: SignalClient.PublicKey
-  ): Promise<boolean> {
+  ): Promise<SignalClient.IdentityChange> {
     const idx = `${name.name()}::${name.deviceId()}`;
     const currentKey = this.idKeys.get(idx);
-    if (currentKey) {
-      const changed = currentKey.compare(key) != 0;
-      this.idKeys.set(idx, key);
-      return changed;
-    }
-
     this.idKeys.set(idx, key);
-    return false;
+
+    const changed = (currentKey?.compare(key) ?? 0) != 0;
+    return changed
+      ? SignalClient.IdentityChange.ReplacedExisting
+      : SignalClient.IdentityChange.NewOrUnchanged;
   }
   async getIdentity(
     name: SignalClient.ProtocolAddress

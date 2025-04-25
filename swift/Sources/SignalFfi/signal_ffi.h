@@ -143,6 +143,20 @@ typedef enum {
   SignalDirectionReceiving = 1,
 } SignalDirection;
 
+/**
+ * The result of saving a new identity key for a protocol address.
+ */
+typedef enum {
+  /**
+   * The protocol address didn't have an identity key or had the same key.
+   */
+  SignalIdentityChangeNewOrUnchanged,
+  /**
+   * The new identity key replaced a different key for the protocol address.
+   */
+  SignalIdentityChangeReplacedExisting,
+} SignalIdentityChange;
+
 typedef enum {
   SignalLogLevelError = 1,
   SignalLogLevelWarn,

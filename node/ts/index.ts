@@ -1036,6 +1036,12 @@ export abstract class SessionStore implements Native.SessionStore {
   ): Promise<SessionRecord[]>;
 }
 
+export enum IdentityChange {
+  // This must be kept in sync with the Rust enum of the same name.
+  NewOrUnchanged = 0,
+  ReplacedExisting = 1,
+}
+
 export abstract class IdentityKeyStore implements Native.IdentityKeyStore {
   async _getIdentityKey(): Promise<Native.PrivateKey> {
     const key = await this.getIdentityKey();
@@ -1048,7 +1054,7 @@ export abstract class IdentityKeyStore implements Native.IdentityKeyStore {
   async _saveIdentity(
     name: Native.ProtocolAddress,
     key: Native.PublicKey
-  ): Promise<boolean> {
+  ): Promise<Native.IdentityChange> {
     return this.saveIdentity(
       ProtocolAddress._fromNativeHandle(name),
       PublicKey._fromNativeHandle(key)
@@ -1083,7 +1089,7 @@ export abstract class IdentityKeyStore implements Native.IdentityKeyStore {
   abstract saveIdentity(
     name: ProtocolAddress,
     key: PublicKey
-  ): Promise<boolean>;
+  ): Promise<IdentityChange>;
   abstract isTrustedIdentity(
     name: ProtocolAddress,
     key: PublicKey,

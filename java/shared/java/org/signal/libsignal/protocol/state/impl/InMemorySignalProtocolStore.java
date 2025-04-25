@@ -45,7 +45,7 @@ public class InMemorySignalProtocolStore implements SignalProtocolStore {
   }
 
   @Override
-  public boolean saveIdentity(SignalProtocolAddress address, IdentityKey identityKey) {
+  public IdentityChange saveIdentity(SignalProtocolAddress address, IdentityKey identityKey) {
     return identityKeyStore.saveIdentity(address, identityKey);
   }
 

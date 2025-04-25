@@ -551,9 +551,13 @@ impl NodeIdentityKeyStore {
             Ok(result)
         })
         .then(|cx, result| match result {
-            Ok(value) => match value.downcast::<JsBoolean, _>(cx) {
-                Ok(b) => Ok(IdentityChange::from_changed(b.value(cx))),
+            Ok(value) => match value.downcast::<JsNumber, _>(cx) {
                 Err(_) => Err("unexpected result from _saveIdentity".into()),
+                Ok(n) => {
+                    let n: isize = u8::convert_from(cx, n).map_err(|e| e.to_string())?.into();
+                    n.try_into()
+                        .map_err(|_| format!("{n} invalid for IdentityChange"))
+                }
             },
             Err(error) => Err(error
                 .to_string(cx)

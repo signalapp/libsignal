@@ -118,10 +118,18 @@ impl JniIdentityKeyStore<'_> {
                 let callback_args = jni_args!((
                     address_jobject => org.signal.libsignal.protocol.SignalProtocolAddress,
                     key_jobject => org.signal.libsignal.protocol.IdentityKey
-                ) -> boolean);
-                let result: jboolean =
-                    call_method_checked(env, self.store, "saveIdentity", callback_args)?;
-                Ok(IdentityChange::from_changed(result != 0))
+                ) -> org.signal.libsignal.protocol.state.IdentityKeyStore::IdentityChange);
+                let result = call_method_checked(env, self.store, "saveIdentity", callback_args)?;
+                let result = call_method_checked(env, result, "ordinal", jni_args!(() -> int))?;
+                result
+                    .try_into()
+                    .ok()
+                    .and_then(|v: isize| IdentityChange::try_from(v).ok())
+                    .ok_or_else(|| {
+                        BridgeLayerError::IntegerOverflow(format!(
+                            "{result} invalid as IdentityChange"
+                        ))
+                    })
             })
     }
 
