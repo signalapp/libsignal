@@ -2,7 +2,6 @@ use std::collections::{HashMap, HashSet};
 use std::str::FromStr;
 use std::time::Duration;
 
-use base64::Engine as _;
 use http::uri::PathAndQuery;
 use http::{HeaderMap, HeaderName, HeaderValue, Method, StatusCode};
 use libsignal_core::{Aci, Pni, ServiceIdKind};
@@ -516,7 +515,7 @@ impl crate::chat::Request {
         account_attributes: ProvidedAccountAttributes<'_>,
         device_transfer: Option<SkipDeviceTransfer>,
         keys: ForServiceIds<AccountKeys<'_>>,
-        account_password: &[u8],
+        account_password: &str,
     ) -> Self {
         #[serde_as]
         #[skip_serializing_none]
@@ -584,7 +583,7 @@ impl crate::chat::Request {
                 CONTENT_TYPE_JSON,
                 Auth {
                     username: number,
-                    password: &base64::prelude::BASE64_STANDARD_NO_PAD.encode(account_password),
+                    password: account_password,
                 }
                 .as_header(),
             ]),
@@ -802,6 +801,7 @@ mod test {
     use std::str::FromStr as _;
     use std::sync::LazyLock;
 
+    use base64::Engine;
     use libsignal_protocol::{KeyPair, KyberPreKeyRecord};
     use rand::SeedableRng as _;
     use serde_json::json;
@@ -1054,7 +1054,14 @@ mod test {
                 signed_pre_key: REGISTER_KEYS.get(kind).1.as_deref(),
                 pq_last_resort_pre_key: pq_last_resort_pre_keys.get(kind).as_deref(),
             }),
-            b"account password",
+            "encoded account password",
+        );
+
+        const ENCODED_BASIC_AUTH: &str = "KzE4MDA1NTUwMTAxOmVuY29kZWQgYWNjb3VudCBwYXNzd29yZA==";
+        // Assert as a means of explaining where this value comes from.
+        assert_eq!(
+            ENCODED_BASIC_AUTH,
+            base64::prelude::BASE64_STANDARD.encode(b"+18005550101:encoded account password")
         );
 
         let crate::chat::Request {
@@ -1073,7 +1080,7 @@ mod test {
                         ("content-type", "application/json"),
                         (
                             "authorization",
-                            "Basic KzE4MDA1NTUwMTAxOllXTmpiM1Z1ZENCd1lYTnpkMjl5WkE="
+                            const_str::concat!("Basic ", ENCODED_BASIC_AUTH),
                         )
                     ]
                     .into_iter()
@@ -1154,7 +1161,7 @@ mod test {
                 signed_pre_key: REGISTER_KEYS.get(kind).1.as_deref(),
                 pq_last_resort_pre_key: pq_last_resort_pre_keys.get(kind).into(),
             }),
-            b"account password",
+            "encoded account password",
         );
 
         let body = serde_json::from_slice::<'_, serde_json::Value>(&request.body.unwrap()).unwrap();

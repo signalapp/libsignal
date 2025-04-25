@@ -263,7 +263,7 @@ fn RegisterAccountRequest_SetSkipDeviceTransfer(register_account: &RegisterAccou
 #[bridge_fn(ffi = false, jni = false)]
 fn RegisterAccountRequest_SetAccountPassword(
     register_account: &RegisterAccountRequest,
-    account_password: &[u8],
+    account_password: String,
 ) {
     register_account
         .0
@@ -271,7 +271,7 @@ fn RegisterAccountRequest_SetAccountPassword(
         .expect("not poisoned")
         .as_mut()
         .expect("not taken")
-        .account_password = account_password.into()
+        .account_password = account_password.into_boxed_str()
 }
 
 #[bridge_fn(ffi = false, jni = false)]

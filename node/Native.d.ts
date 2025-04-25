@@ -440,7 +440,7 @@ export function ReceiptCredential_CheckValidContents(buffer: Buffer): void;
 export function ReceiptCredential_GetReceiptExpirationTime(receiptCredential: Serialized<ReceiptCredential>): Timestamp;
 export function ReceiptCredential_GetReceiptLevel(receiptCredential: Serialized<ReceiptCredential>): bigint;
 export function RegisterAccountRequest_Create(): RegisterAccountRequest;
-export function RegisterAccountRequest_SetAccountPassword(registerAccount: Wrapper<RegisterAccountRequest>, accountPassword: Buffer): void;
+export function RegisterAccountRequest_SetAccountPassword(registerAccount: Wrapper<RegisterAccountRequest>, accountPassword: string): void;
 export function RegisterAccountRequest_SetIdentityPqLastResortPreKey(registerAccount: Wrapper<RegisterAccountRequest>, identityType: number, pqLastResortPreKey: SignedPublicPreKey): void;
 export function RegisterAccountRequest_SetIdentityPublicKey(registerAccount: Wrapper<RegisterAccountRequest>, identityType: number, identityKey: Wrapper<PublicKey>): void;
 export function RegisterAccountRequest_SetIdentitySignedPreKey(registerAccount: Wrapper<RegisterAccountRequest>, identityType: number, signedPreKey: SignedPublicPreKey): void;

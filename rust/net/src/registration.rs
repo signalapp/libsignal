@@ -215,7 +215,7 @@ impl<'c> RegistrationService<'c> {
         account_attributes: ProvidedAccountAttributes<'_>,
         device_transfer: Option<SkipDeviceTransfer>,
         keys: ForServiceIds<AccountKeys<'_>>,
-        account_password: &[u8],
+        account_password: &str,
     ) -> Result<RegisterAccountResponse, RequestError<RegisterAccountError>> {
         let Self {
             connection,
@@ -302,7 +302,7 @@ pub async fn reregister_account(
     account_attributes: ProvidedAccountAttributes<'_>,
     device_transfer: Option<SkipDeviceTransfer>,
     keys: ForServiceIds<AccountKeys<'_>>,
-    account_password: &[u8],
+    account_password: &str,
 ) -> Result<RegisterAccountResponse, RequestError<RegisterAccountError>> {
     let request = crate::chat::Request::register_account(
         number,

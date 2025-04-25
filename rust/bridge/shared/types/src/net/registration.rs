@@ -36,7 +36,7 @@ impl RefUnwindSafe for RegistrationService where
 pub struct RegisterAccountInner {
     pub message_notification: NewMessageNotification<String>,
     pub device_transfer: Option<SkipDeviceTransfer>,
-    pub account_password: Box<[u8]>,
+    pub account_password: Box<str>,
     pub identity_keys: ForServiceIds<Option<PublicKey>>,
     pub signed_pre_keys: ForServiceIds<Option<SignedPreKeyBody<Box<[u8]>>>>,
     pub pq_last_resort_pre_keys: ForServiceIds<Option<SignedPreKeyBody<Box<[u8]>>>>,

@@ -163,7 +163,7 @@ export class RegistrationService {
   }
 
   public async registerAccount(inputs: {
-    accountPassword: Uint8Array;
+    accountPassword: string;
     skipDeviceTransfer: boolean;
     accountAttributes: AccountAttributes;
     aciPublicKey: PublicKey;
@@ -185,10 +185,7 @@ export class RegistrationService {
       pniPqLastResortPreKey,
     } = inputs;
     const args = newNativeHandle(Native.RegisterAccountRequest_Create());
-    Native.RegisterAccountRequest_SetAccountPassword(
-      args,
-      Buffer.from(accountPassword)
-    );
+    Native.RegisterAccountRequest_SetAccountPassword(args, accountPassword);
     if (skipDeviceTransfer) {
       Native.RegisterAccountRequest_SetSkipDeviceTransfer(args);
     }
