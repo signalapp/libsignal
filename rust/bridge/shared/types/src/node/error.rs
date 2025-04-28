@@ -257,6 +257,8 @@ impl DefaultSignalNodeError for zkgroup::ZkGroupVerificationFailure {}
 
 impl DefaultSignalNodeError for zkgroup::ZkGroupDeserializationFailure {}
 
+impl DefaultSignalNodeError for libsignal_net::keytrans::Error {}
+
 impl SignalNodeError for usernames::UsernameError {
     fn into_throwable<'a, C: Context<'a>>(
         self,

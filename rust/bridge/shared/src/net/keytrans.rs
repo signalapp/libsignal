@@ -22,39 +22,39 @@ use prost::{DecodeError, Message};
 use crate::support::*;
 use crate::*;
 
-#[bridge_fn(node = false, ffi = false)]
+#[bridge_fn(ffi = false)]
 fn KeyTransparency_AciSearchKey(aci: Aci) -> Vec<u8> {
     aci.as_search_key()
 }
 
-#[bridge_fn(node = false, ffi = false)]
+#[bridge_fn(ffi = false)]
 fn KeyTransparency_E164SearchKey(e164: E164) -> Vec<u8> {
     e164.as_search_key()
 }
 
-#[bridge_fn(node = false, ffi = false)]
+#[bridge_fn(ffi = false)]
 fn KeyTransparency_UsernameHashSearchKey(hash: &[u8]) -> Vec<u8> {
     UsernameHash::from_slice(hash).as_search_key()
 }
 
-bridge_handle_fns!(SearchResult, clone = false, ffi = false, node = false);
+bridge_handle_fns!(SearchResult, clone = false, ffi = false);
 
-#[bridge_fn(node = false, ffi = false)]
+#[bridge_fn(ffi = false)]
 fn SearchResult_GetAciIdentityKey(res: &SearchResult) -> PublicKey {
     *res.aci_identity_key.public_key()
 }
 
-#[bridge_fn(node = false, ffi = false)]
+#[bridge_fn(ffi = false)]
 fn SearchResult_GetAciForE164(res: &SearchResult) -> Option<Aci> {
     res.aci_for_e164
 }
 
-#[bridge_fn(node = false, ffi = false)]
+#[bridge_fn(ffi = false)]
 fn SearchResult_GetAciForUsernameHash(res: &SearchResult) -> Option<Aci> {
     res.aci_for_username_hash
 }
 
-#[bridge_fn(node = false, ffi = false)]
+#[bridge_fn(ffi = false)]
 fn SearchResult_GetTimestamp(res: &SearchResult) -> u64 {
     res.timestamp
         .duration_since(SystemTime::UNIX_EPOCH)
@@ -64,12 +64,12 @@ fn SearchResult_GetTimestamp(res: &SearchResult) -> u64 {
         .expect("in u64 range")
 }
 
-#[bridge_fn(node = false, ffi = false)]
+#[bridge_fn(ffi = false)]
 fn SearchResult_GetAccountData(res: &SearchResult) -> Vec<u8> {
     res.account_data.encode_to_vec()
 }
 
-#[cfg(feature = "jni")]
+#[cfg(any(feature = "jni", feature = "node"))]
 fn try_decode<B, T>(bytes: B) -> Result<T, DecodeError>
 where
     B: AsRef<[u8]>,
@@ -78,7 +78,7 @@ where
     T::decode(bytes.as_ref())
 }
 
-#[bridge_io(TokioAsyncContext, node = false, ffi = false)]
+#[bridge_io(TokioAsyncContext, ffi = false)]
 #[allow(clippy::too_many_arguments)]
 async fn KeyTransparency_Search(
     // TODO: it is currently possible to pass an env that does not match chat
@@ -137,7 +137,7 @@ async fn KeyTransparency_Search(
     }
 }
 
-#[bridge_io(TokioAsyncContext, node = false, ffi = false)]
+#[bridge_io(TokioAsyncContext, ffi = false)]
 #[allow(clippy::too_many_arguments)]
 async fn KeyTransparency_Monitor(
     // TODO: it is currently possible to pass an env that does not match chat
@@ -200,7 +200,7 @@ async fn KeyTransparency_Monitor(
     Ok(StoredAccountData::from(updated_account_data).encode_to_vec())
 }
 
-#[bridge_io(TokioAsyncContext, node = false, ffi = false)]
+#[bridge_io(TokioAsyncContext, ffi = false)]
 async fn KeyTransparency_Distinguished(
     // TODO: it is currently possible to pass an env that does not match chat
     environment: AsType<Environment, u8>,
@@ -228,7 +228,7 @@ async fn KeyTransparency_Distinguished(
     Ok(serialized)
 }
 
-#[cfg(feature = "jni")]
+#[cfg(any(feature = "jni", feature = "node"))]
 fn make_e164_pair(
     e164: Option<E164>,
     unidentified_access_key: Option<Box<[u8]>>,

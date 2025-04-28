@@ -109,7 +109,7 @@ export class Net {
   /** Exposed only for testing. */
   readonly _connectionManager: ConnectionManager;
 
-  constructor(options: NetConstructorOptions) {
+  constructor(private readonly options: NetConstructorOptions) {
     this.asyncContext = new TokioAsyncContext(Native.TokioAsyncContext_new());
 
     if (options.localTestServer) {
@@ -170,10 +170,12 @@ export class Net {
     listener: ConnectionEventsListener,
     options?: { abortSignal?: AbortSignal }
   ): Promise<UnauthenticatedChatConnection> {
+    const env = this.options.localTestServer ? undefined : this.options.env;
     return UnauthenticatedChatConnection.connect(
       this.asyncContext,
       this._connectionManager,
       listener,
+      env,
       options
     );
   }
