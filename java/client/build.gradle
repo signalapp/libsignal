@@ -40,6 +40,7 @@ sourceSets {
 
 dependencies {
     testImplementation 'junit:junit:4.13'
+    testImplementation 'com.googlecode.json-simple:json-simple:1.1'
 }
 
 test {

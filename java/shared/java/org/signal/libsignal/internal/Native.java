@@ -545,6 +545,15 @@ public final class Native {
   public static native long ReceiptCredential_GetReceiptExpirationTime(byte[] receiptCredential);
   public static native long ReceiptCredential_GetReceiptLevel(byte[] receiptCredential);
 
+  public static native long RegisterAccountRequest_Create();
+  public static native void RegisterAccountRequest_Destroy(long handle);
+  public static native void RegisterAccountRequest_SetAccountPassword(long registerAccount, String accountPassword);
+  public static native void RegisterAccountRequest_SetGcmPushToken(long registerAccount, String gcmPushToken);
+  public static native void RegisterAccountRequest_SetIdentityPqLastResortPreKey(long registerAccount, int identityType, SignedPublicPreKey pqLastResortPreKey);
+  public static native void RegisterAccountRequest_SetIdentityPublicKey(long registerAccount, int identityType, long identityKey);
+  public static native void RegisterAccountRequest_SetIdentitySignedPreKey(long registerAccount, int identityType, SignedPublicPreKey signedPreKey);
+  public static native void RegisterAccountRequest_SetSkipDeviceTransfer(long registerAccount);
+
   public static native void RegisterAccountResponse_Destroy(long handle);
   public static native long RegisterAccountResponse_GetEntitlementBackupExpirationSeconds(long response);
   public static native long RegisterAccountResponse_GetEntitlementBackupLevel(long response);
@@ -556,8 +565,12 @@ public final class Native {
   public static native byte[] RegisterAccountResponse_GetUsernameHash(long response);
   public static native UUID RegisterAccountResponse_GetUsernameLinkHandle(long response);
 
+  public static native long RegistrationAccountAttributes_Create(byte[] recoveryPassword, int aciRegistrationId, int pniRegistrationId, String registrationLock, byte[] unidentifiedAccessKey, boolean unrestrictedUnidentifiedAccess, Object[] capabilities, boolean discoverableByPhoneNumber);
+  public static native void RegistrationAccountAttributes_Destroy(long handle);
+
   public static native CompletableFuture<Long> RegistrationService_CreateSession(long asyncRuntime, Object createSession, ConnectChatBridge connectChat);
   public static native void RegistrationService_Destroy(long handle);
+  public static native CompletableFuture<Long> RegistrationService_RegisterAccount(long asyncRuntime, long service, long registerAccount, long accountAttributes);
   public static native long RegistrationService_RegistrationSession(long service);
   public static native CompletableFuture<Void> RegistrationService_RequestPushChallenge(long asyncRuntime, long service, String pushToken, Object pushTokenType);
   public static native CompletableFuture<Void> RegistrationService_RequestVerificationCode(long asyncRuntime, long service, String transport, String client, Object[] languages);

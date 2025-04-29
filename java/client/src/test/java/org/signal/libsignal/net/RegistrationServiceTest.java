@@ -8,17 +8,26 @@ package org.signal.libsignal.net;
 import static org.junit.Assert.*;
 
 import java.time.Duration;
+import java.util.Arrays;
+import java.util.Base64;
 import java.util.EnumSet;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
+import org.json.simple.JSONObject;
+import org.json.simple.parser.JSONParser;
+import org.json.simple.parser.ParseException;
 import org.junit.Test;
 import org.signal.libsignal.internal.NativeTesting;
 import org.signal.libsignal.protocol.ServiceId;
 import org.signal.libsignal.protocol.SignedPublicPreKey;
 import org.signal.libsignal.protocol.ecc.Curve;
+import org.signal.libsignal.protocol.ecc.ECPublicKey;
+import org.signal.libsignal.protocol.kem.KEMKeyPair;
+import org.signal.libsignal.protocol.kem.KEMKeyType;
+import org.signal.libsignal.protocol.kem.KEMPublicKey;
 
 public class RegistrationServiceTest {
 
@@ -289,5 +298,176 @@ public class RegistrationServiceTest {
             .getBytes());
 
     requestVerification.get();
+  }
+
+  @Test
+  public void testFakeRemoteRegisterAccount()
+      throws ExecutionException, InterruptedException, ParseException {
+    var tokio = new TokioAsyncContext();
+    var serverAndCreateSession =
+        RegistrationService.fakeCreateSession(
+            tokio,
+            new RegistrationService.CreateSession("+18005550123", "myPushToken", null, null));
+
+    var fakeRemote = serverAndCreateSession.first().getNextRemote().get();
+    var firstRequestAndId = fakeRemote.getNextIncomingRequest().get();
+    assertNotNull(firstRequestAndId);
+
+    // Send a response to allow the request to complete.
+    fakeRemote.sendResponse(
+        firstRequestAndId.second(),
+        200,
+        "OK",
+        new String[] {"content-type: application/json"},
+        """
+        {
+            "allowedToRequestCode": true,
+            "verified": false,
+            "requestedInformation": ["pushChallenge", "captcha"],
+            "id": "fake-session-A"
+        }
+        """
+            .getBytes());
+
+    var session = serverAndCreateSession.second().get();
+    assertEquals("fake-session-A", session.getSessionId());
+
+    var base64 = Base64.getEncoder();
+    var unidentifiedAccessKey = new byte[16];
+    Arrays.fill(unidentifiedAccessKey, (byte) 0x55);
+    var aciKeys = RegisterAccountKeys.createForTest();
+    var pniKeys = RegisterAccountKeys.createForTest();
+    var registerAccount =
+        session.registerAccount(
+            "account password",
+            true,
+            new RegistrationService.AccountAttributes(
+                "recovery password".getBytes(),
+                1,
+                2,
+                "registration lock",
+                unidentifiedAccessKey,
+                true,
+                Set.of("capable"),
+                true),
+            "push token",
+            aciKeys.publicKey,
+            pniKeys.publicKey,
+            aciKeys.signedPreKey,
+            pniKeys.signedPreKey,
+            aciKeys.pqLastResortPreKey,
+            pniKeys.pqLastResortPreKey);
+
+    var secondRequestAndId = fakeRemote.getNextIncomingRequest().get();
+    assertNotNull(secondRequestAndId);
+    var secondRequest = secondRequestAndId.first();
+
+    assertEquals("POST", secondRequest.getMethod());
+    assertEquals("/v1/registration", secondRequest.getPathAndQuery());
+
+    assertEquals(
+        Map.of(
+            "content-type",
+            "application/json",
+            "authorization",
+            "Basic " + base64.encodeToString("+18005550123:account password".getBytes())),
+        secondRequest.getHeaders());
+
+    var secondRequestJson =
+        (JSONObject) new JSONParser().parse(new String(secondRequest.getBody()));
+
+    assertEquals("fake-session-A", secondRequestJson.get("sessionId"));
+    assertEquals(true, secondRequestJson.get("skipDeviceTransfer"));
+    assertEquals(
+        new JSONParser()
+            .parse(
+                """
+            {
+                "recoveryPassword": "cmVjb3ZlcnkgcGFzc3dvcmQ=",
+                "registrationId": 1,
+                "pniRegistrationId": 2,
+                "registrationLock": "registration lock",
+                "unidentifiedAccessKey": [ 85, 85, 85, 85, 85, 85, 85, 85, 85, 85, 85, 85, 85, 85, 85, 85 ],
+                "unrestrictedUnidentifiedAccess": true,
+                "capabilities": { "capable": true },
+                "discoverableByPhoneNumber": true,
+                "fetchesMessages": false,
+            }
+            """),
+        secondRequestJson.get("accountAttributes"));
+
+    assertEquals(
+        base64.encodeToString(aciKeys.publicKey.serialize()),
+        secondRequestJson.get("aciIdentityKey"));
+    assertEquals(
+        base64.encodeToString(pniKeys.publicKey.serialize()),
+        secondRequestJson.get("pniIdentityKey"));
+
+    // We don't need to check all the keys, just one of each kind is enough.
+    assertEquals(
+        Map.of(
+            "signature", base64.encodeToString("EC signature".getBytes()),
+            "keyId", 1L,
+            "publicKey", base64.encodeToString(aciKeys.signedPreKey.publicKey().serialize())),
+        secondRequestJson.get("aciSignedPreKey"));
+    assertEquals(
+        Map.of(
+            "signature", base64.encodeToString("KEM signature".getBytes()),
+            "keyId", 2L,
+            "publicKey", base64.encodeToString(aciKeys.pqLastResortPreKey.publicKey().serialize())),
+        secondRequestJson.get("aciPqLastResortPreKey"));
+
+    fakeRemote.sendResponse(
+        secondRequestAndId.second(),
+        200,
+        "OK",
+        new String[] {"content-type: application/json"},
+        """
+        {
+            "uuid": "aabbaabb-5555-6666-8888-111111111111",
+            "pni": "ddeeddee-5555-6666-8888-111111111111",
+            "number": "+18005550123",
+            "storageCapable": true,
+            "entitlements": {
+                "badges": [{
+                    "id": "one",
+                    "visible": true,
+                    "expirationSeconds": 13
+                },{
+                    "id": "two",
+                    "visible": false,
+                    "expirationSeconds": 66666
+                }],
+                "backup": {
+                    "backupLevel": 1569,
+                    "expirationSeconds": 987654321
+                }
+            }
+        }
+        """
+            .getBytes());
+
+    var response = registerAccount.get();
+    // We only perform a cursory check here because there is a already a dedicated test for bridging
+    // the response.
+    assertEquals("aabbaabb-5555-6666-8888-111111111111", response.getAci().toServiceIdString());
+    assertEquals("PNI:ddeeddee-5555-6666-8888-111111111111", response.getPni().toServiceIdString());
+    assertEquals("+18005550123", response.getNumber());
+  }
+
+  private static record RegisterAccountKeys(
+      ECPublicKey publicKey,
+      SignedPublicPreKey<ECPublicKey> signedPreKey,
+      SignedPublicPreKey<KEMPublicKey> pqLastResortPreKey) {
+    public static RegisterAccountKeys createForTest() {
+      return new RegisterAccountKeys(
+          Curve.generateKeyPair().getPublicKey(),
+          new SignedPublicPreKey<>(
+              1, Curve.generateKeyPair().getPublicKey(), "EC signature".getBytes()),
+          new SignedPublicPreKey<>(
+              2,
+              KEMKeyPair.generate(KEMKeyType.KYBER_1024).getPublicKey(),
+              "KEM signature".getBytes()));
+    }
   }
 }
