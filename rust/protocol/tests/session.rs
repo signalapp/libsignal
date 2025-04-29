@@ -2061,6 +2061,106 @@ fn test_unacknowledged_sessions_eventually_expire() -> TestResult {
     .expect("sync")
 }
 
+#[test]
+fn prekey_message_failed_decryption_does_not_update_stores() -> TestResult {
+    async {
+        let mut csprng = OsRng.unwrap_err();
+        let alice_address = ProtocolAddress::new("+14151111111".to_owned(), 1.into());
+        let bob_address = ProtocolAddress::new("+14151111112".to_owned(), 1.into());
+
+        let alice_store_builder = TestStoreBuilder::new()
+            .with_pre_key(0.into())
+            .with_signed_pre_key(0.into())
+            .with_kyber_pre_key(0.into());
+        let alice_pre_key_bundle = alice_store_builder.make_bundle_with_latest_keys(1.into());
+
+        let mut alice_store = alice_store_builder.store;
+
+        let mut bob_store = TestStoreBuilder::new().store;
+        process_prekey_bundle(
+            &alice_address,
+            &mut bob_store.session_store,
+            &mut bob_store.identity_store,
+            &alice_pre_key_bundle,
+            SystemTime::UNIX_EPOCH,
+            &mut csprng,
+        )
+        .await
+        .expect("can receive bundle");
+
+        // Bob sends a pre-key message that doesn't decrypt successfully.
+        let pre_key_message = {
+            let message = message_encrypt(
+                "from Bob".as_bytes(),
+                &alice_address,
+                &mut bob_store.session_store,
+                &mut bob_store.identity_store,
+                SystemTime::UNIX_EPOCH,
+            )
+            .await;
+            let message =
+                assert_matches!(message, Ok(CiphertextMessage::PreKeySignalMessage(m)) => m);
+
+            // Perturb the ciphertext so it doesn't decrypt successfully, but
+            // don't touch anything else.
+            let mut signal_message = message.message().serialized().to_owned();
+            let last_byte = signal_message.last_mut().unwrap();
+            *last_byte = last_byte.wrapping_add(1);
+
+            PreKeySignalMessage::new(
+                message.message_version(),
+                message.registration_id(),
+                message.pre_key_id(),
+                message.signed_pre_key_id(),
+                message
+                    .kyber_pre_key_id()
+                    .zip(message.kyber_ciphertext())
+                    .map(|(id, ciphertext)| KyberPayload::new(id, ciphertext.clone())),
+                *message.base_key(),
+                *message.identity_key(),
+                (&*signal_message).try_into().unwrap(),
+            )
+            .unwrap()
+        };
+
+        // The decryption fails, as expected.
+        assert_matches!(
+            decrypt(
+                &mut alice_store,
+                &bob_address,
+                &CiphertextMessage::PreKeySignalMessage(pre_key_message)
+            )
+            .await,
+            Err(SignalProtocolError::InvalidMessage(
+                CiphertextMessageType::PreKey,
+                "decryption failed"
+            ))
+        );
+
+        // Because the decryption failed, the identity and session stores were
+        // not updated.
+        assert_eq!(
+            alice_store
+                .identity_store
+                .get_identity(&bob_address)
+                .await
+                .unwrap(),
+            None
+        );
+
+        assert!(alice_store
+            .session_store
+            .load_session(&bob_address)
+            .await
+            .expect("can load")
+            .is_none());
+
+        Ok(())
+    }
+    .now_or_never()
+    .expect("sync")
+}
+
 #[allow(clippy::needless_range_loop)]
 fn run_session_interaction(alice_session: SessionRecord, bob_session: SessionRecord) -> TestResult {
     async {

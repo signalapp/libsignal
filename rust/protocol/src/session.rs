@@ -10,15 +10,26 @@ use rand::{CryptoRng, Rng};
 use crate::ratchet::{AliceSignalProtocolParameters, BobSignalProtocolParameters};
 use crate::state::GenericSignedPreKey;
 use crate::{
-    kem, ratchet, Direction, IdentityKeyStore, KeyPair, KyberPreKeyId, KyberPreKeyStore,
-    PreKeyBundle, PreKeyId, PreKeySignalMessage, PreKeyStore, ProtocolAddress, Result,
-    SessionRecord, SessionStore, SignalProtocolError, SignedPreKeyStore,
+    kem, ratchet, Direction, IdentityKey, IdentityKeyStore, KeyPair, KyberPreKeyId,
+    KyberPreKeyStore, PreKeyBundle, PreKeyId, PreKeySignalMessage, PreKeyStore, ProtocolAddress,
+    Result, SessionRecord, SessionStore, SignalProtocolError, SignedPreKeyStore,
 };
 
 #[derive(Default)]
 pub struct PreKeysUsed {
     pub pre_key_id: Option<PreKeyId>,
     pub kyber_pre_key_id: Option<KyberPreKeyId>,
+}
+
+/// Expected [`IdentityKeyStore`] change when [`process_prekey`] succeeds.
+///
+/// This represents a deferred action. Assuming later operations succeed, the
+/// caller of `process_prekey` should apply this to the `IdentityKeyStore` that
+/// was provided.
+#[must_use]
+pub struct IdentityToSave<'a> {
+    pub remote_address: &'a ProtocolAddress,
+    pub their_identity_key: &'a IdentityKey,
 }
 
 /*
@@ -30,15 +41,15 @@ its reference to the various data stores, instead the functions are
 free standing.
  */
 
-pub async fn process_prekey(
-    message: &PreKeySignalMessage,
-    remote_address: &ProtocolAddress,
+pub async fn process_prekey<'a>(
+    message: &'a PreKeySignalMessage,
+    remote_address: &'a ProtocolAddress,
     session_record: &mut SessionRecord,
-    identity_store: &mut dyn IdentityKeyStore,
+    identity_store: &dyn IdentityKeyStore,
     pre_key_store: &dyn PreKeyStore,
     signed_prekey_store: &dyn SignedPreKeyStore,
     kyber_prekey_store: &dyn KyberPreKeyStore,
-) -> Result<PreKeysUsed> {
+) -> Result<(PreKeysUsed, IdentityToSave<'a>)> {
     let their_identity_key = message.identity_key();
 
     if !identity_store
@@ -61,11 +72,12 @@ pub async fn process_prekey(
     )
     .await?;
 
-    identity_store
-        .save_identity(remote_address, their_identity_key)
-        .await?;
+    let identity_to_save = IdentityToSave {
+        remote_address,
+        their_identity_key,
+    };
 
-    Ok(pre_keys_used)
+    Ok((pre_keys_used, identity_to_save))
 }
 
 async fn process_prekey_impl(
