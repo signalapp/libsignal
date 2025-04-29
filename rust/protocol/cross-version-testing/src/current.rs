@@ -38,7 +38,7 @@ impl super::LibSignalProtocolStore for LibSignalProtocolCurrent {
         let mut csprng = rng();
         let pre_key_pair = KeyPair::generate(&mut csprng);
         let signed_pre_key_pair = KeyPair::generate(&mut csprng);
-        let signed_pq_pre_key_pair = kem::KeyPair::generate(kem::KeyType::Kyber1024);
+        let signed_pq_pre_key_pair = kem::KeyPair::generate(kem::KeyType::Kyber1024, &mut csprng);
 
         let identity_key = self
             .0

@@ -68,7 +68,7 @@ pub async fn create_pre_key_bundle<R: Rng + CryptoRng>(
 ) -> Result<PreKeyBundle, SignalProtocolError> {
     let pre_key_pair = KeyPair::generate(&mut csprng);
     let signed_pre_key_pair = KeyPair::generate(&mut csprng);
-    let kyber_pre_key_pair = kem::KeyPair::generate(kem::KeyType::Kyber1024);
+    let kyber_pre_key_pair = kem::KeyPair::generate(kem::KeyType::Kyber1024, &mut csprng);
 
     let signed_pre_key_public = signed_pre_key_pair.public_key.serialize();
     let signed_pre_key_signature = store
@@ -185,7 +185,7 @@ pub fn initialize_sessions_v4() -> Result<(SessionRecord, SessionRecord), Signal
     let bob_base_key = KeyPair::generate(&mut csprng);
     let bob_ephemeral_key = bob_base_key;
 
-    let bob_kyber_key = kem::KeyPair::generate(kem::KeyType::Kyber1024);
+    let bob_kyber_key = kem::KeyPair::generate(kem::KeyType::Kyber1024, &mut csprng);
 
     let alice_params = AliceSignalProtocolParameters::new(
         alice_identity,
@@ -335,7 +335,7 @@ impl TestStoreBuilder {
                 "Signed pre key ids should be increasing"
             );
         }
-        let pair = kem::KeyPair::generate(kem::KeyType::Kyber1024);
+        let pair = kem::KeyPair::generate(kem::KeyType::Kyber1024, &mut self.rng);
         let public = pair.public_key.serialize();
         let signature = self.sign(&public);
         let record = KyberPreKeyRecord::new(

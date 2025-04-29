@@ -81,7 +81,7 @@ pub(crate) fn initialize_alice_session<R: Rng + CryptoRng>(
     let kyber_ciphertext = parameters
         .their_kyber_pre_key()
         .map(|kyber_public| {
-            let (ss, ct) = kyber_public.encapsulate()?;
+            let (ss, ct) = kyber_public.encapsulate(&mut csprng)?;
             secrets.extend_from_slice(ss.as_ref());
             Ok::<_, SignalProtocolError>(ct)
         })

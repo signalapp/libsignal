@@ -998,62 +998,79 @@ mod test {
             discoverable_by_phone_number: true,
         });
 
-    #[allow(clippy::type_complexity)]
-    static REGISTER_KEYS: LazyLock<ForServiceIds<(PublicKey, SignedPreKeyBody<Box<[u8]>>)>> =
-        LazyLock::new(|| {
-            // Use a seeded RNG for deterministic generation.
-            let mut rng = rand_chacha::ChaChaRng::from_seed([1; 32]);
+    struct OwnedAccountKeys {
+        identity_key: PublicKey,
+        signed_pre_key: SignedPreKeyBody<Box<[u8]>>,
+        pq_last_resort_pre_key: SignedPreKeyBody<Box<[u8]>>,
+    }
 
-            ForServiceIds::generate(|_| {
-                let identity_key = KeyPair::generate(&mut rng).public_key;
+    impl OwnedAccountKeys {
+        fn as_borrowed(&self) -> AccountKeys<'_> {
+            let Self {
+                identity_key,
+                signed_pre_key,
+                pq_last_resort_pre_key,
+            } = self;
+            AccountKeys {
+                identity_key,
+                signed_pre_key: signed_pre_key.as_deref(),
+                pq_last_resort_pre_key: pq_last_resort_pre_key.as_deref(),
+            }
+        }
+    }
 
-                let signed_pre_key = {
-                    let key_pair = KeyPair::generate(&mut rng);
-                    SignedPreKeyBody {
-                        key_id: 1,
-                        public_key: key_pair.public_key.serialize(),
-                        signature: (*b"signature").into(),
-                    }
-                };
+    static REGISTER_KEYS: LazyLock<ForServiceIds<OwnedAccountKeys>> = LazyLock::new(|| {
+        // Use a seeded RNG for deterministic generation.
+        let mut rng = rand_chacha::ChaChaRng::from_seed([1; 32]);
 
-                (identity_key, signed_pre_key)
-            })
-        });
+        ForServiceIds::generate(|_| {
+            let identity_key = KeyPair::generate(&mut rng).public_key;
+
+            let signed_pre_key = {
+                let key_pair = KeyPair::generate(&mut rng);
+                SignedPreKeyBody {
+                    key_id: 1,
+                    public_key: key_pair.public_key.serialize(),
+                    signature: (*b"signature").into(),
+                }
+            };
+            let pq_last_resort_pre_key = {
+                let kem_keypair = libsignal_protocol::kem::KeyPair::generate(
+                    libsignal_protocol::kem::KeyType::Kyber1024,
+                    &mut rng,
+                );
+                let record = KyberPreKeyRecord::new(
+                    1.into(),
+                    libsignal_protocol::Timestamp::from_epoch_millis(42),
+                    &kem_keypair,
+                    b"signature",
+                );
+                SignedPreKeyBody {
+                    key_id: 1,
+                    public_key: Box::from(record.get_storage().public_key.clone()),
+                    signature: Box::from(record.get_storage().signature.clone()),
+                }
+            };
+
+            OwnedAccountKeys {
+                identity_key,
+                signed_pre_key,
+                pq_last_resort_pre_key,
+            }
+        })
+    });
 
     /// "Golden" test that makes sure the auto-generated serialization code ends
     /// up producing the JSON we expect.
     #[test]
     fn register_account_request() {
-        // There's no good way to generate this deterministically. We just check
-        // below that these keys appear in the correct spot in the generated
-        // request.
-        let kem_keypair =
-            libsignal_protocol::kem::KeyPair::generate(libsignal_protocol::kem::KeyType::Kyber1024);
-        let pq_last_resort_pre_keys = ForServiceIds::generate(|_| {
-            let record = KyberPreKeyRecord::new(
-                1.into(),
-                libsignal_protocol::Timestamp::from_epoch_millis(42),
-                &kem_keypair,
-                b"signature",
-            );
-            SignedPreKeyBody {
-                key_id: 1,
-                public_key: Box::from(record.get_storage().public_key.clone()),
-                signature: Box::from(record.get_storage().signature.clone()),
-            }
-        });
-
         let request = crate::chat::Request::register_account(
             "+18005550101",
             Some(&"abc".parse().unwrap()),
             NewMessageNotification::Apn("appleId"),
             ACCOUNT_ATTRIBUTES.clone(),
             Some(SkipDeviceTransfer),
-            ForServiceIds::generate(|kind| AccountKeys {
-                identity_key: &REGISTER_KEYS.get(kind).0,
-                signed_pre_key: REGISTER_KEYS.get(kind).1.as_deref(),
-                pq_last_resort_pre_key: pq_last_resort_pre_keys.get(kind).as_deref(),
-            }),
+            ForServiceIds::generate(|kind| REGISTER_KEYS.get(kind).as_borrowed()),
             "encoded account password",
         );
 
@@ -1112,7 +1129,7 @@ mod test {
                 "unrestrictedUnidentifiedAccess": true
               },
               "aciIdentityKey": "BdU7n+od1NVw2+OBgHZ8I2RWymYz8QPxqgY357YT0lJ0",
-              "pniIdentityKey": "BQ2BxG+rk+cP5r4EcBEzkU24jhR+Uh6YjC49E0BNgqEd",
+              "pniIdentityKey": "BYUaOAA2JBxAXm0FEShgyoAvouVIKheoHGSCRtKXtR4T",
               "aciSignedPreKey": {
                 "keyId": 1,
                 "publicKey": "BQkeh2V1eV9fztQ/985a5lLbIeNFPGsexdO9I7HsQQZV",
@@ -1120,7 +1137,7 @@ mod test {
               },
               "pniSignedPreKey": {
                 "keyId": 1,
-                "publicKey": "BbXFSRLIu8fIgPw0h1UFmwAUESqGkcNdWbYwolhBK8x6",
+                "publicKey": "BeMJD5ri/FBr3/zaIzZ94XpgemAejHLtHgniY0LIx94s",
                 "signature": "c2lnbmF0dXJl"
               },
               "pushToken": {
@@ -1128,39 +1145,30 @@ mod test {
               },
               "sessionId": "abc",
               "skipDeviceTransfer": true,
-              // Not including the full serialized representation for these
-              // since it's the same as the signed pre-keys so asserting
-              // equality on them doesn't add value.
-              "aciPqLastResortPreKey": pq_last_resort_pre_keys.aci.as_deref(),
-              "pniPqLastResortPreKey": pq_last_resort_pre_keys.pni.as_deref(),
+              "aciPqLastResortPreKey": "",
+              "aciPqLastResortPreKey": {
+                "keyId": 1,
+                "publicKey": "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",
+                "signature": "c2lnbmF0dXJl",
+              },
+              "pniPqLastResortPreKey": {
+                "keyId": 1,
+                "publicKey": "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",
+                "signature": "c2lnbmF0dXJl",
+              },
             })
         );
     }
 
     #[test]
     fn register_account_request_fetches_messages_no_push_tokens() {
-        let pq_last_resort_pre_keys = ForServiceIds::generate(|_| {
-            KyberPreKeyRecord::new(
-                1.into(),
-                libsignal_protocol::Timestamp::from_epoch_millis(42),
-                &libsignal_protocol::kem::KeyPair::generate(
-                    libsignal_protocol::kem::KeyType::Kyber1024,
-                ),
-                b"signature",
-            )
-        });
-
         let request = crate::chat::Request::register_account(
             "+18005550101",
             Some(&"abc".parse().unwrap()),
             NewMessageNotification::WillFetchMessages,
             ACCOUNT_ATTRIBUTES.clone(),
             Some(SkipDeviceTransfer),
-            ForServiceIds::generate(|kind| AccountKeys {
-                identity_key: &REGISTER_KEYS.get(kind).0,
-                signed_pre_key: REGISTER_KEYS.get(kind).1.as_deref(),
-                pq_last_resort_pre_key: pq_last_resort_pre_keys.get(kind).into(),
-            }),
+            ForServiceIds::generate(|kind| REGISTER_KEYS.get(kind).as_borrowed()),
             "encoded account password",
         );
 

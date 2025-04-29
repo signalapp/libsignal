@@ -5,8 +5,7 @@
 
 use libcrux_ml_kem::mlkem1024::{MlKem1024Ciphertext, MlKem1024PrivateKey, MlKem1024PublicKey};
 use libcrux_ml_kem::{kyber1024, SHARED_SECRET_SIZE};
-use rand::rngs::OsRng;
-use rand::{Rng as _, TryRngCore as _};
+use rand::{CryptoRng, Rng as _};
 
 use super::{
     BadKEMKeyLength, ConstantLength as _, DecapsulateError, KeyMaterial, KeyType, Public, Secret,
@@ -21,17 +20,20 @@ impl super::Parameters for Parameters {
     const CIPHERTEXT_LENGTH: usize = MlKem1024Ciphertext::LENGTH;
     const SHARED_SECRET_LENGTH: usize = SHARED_SECRET_SIZE;
 
-    fn generate() -> (KeyMaterial<Public>, KeyMaterial<Secret>) {
-        let (sk, pk) = kyber1024::generate_key_pair(OsRng.unwrap_err().random()).into_parts();
+    fn generate<R: CryptoRng + ?Sized>(
+        csprng: &mut R,
+    ) -> (KeyMaterial<Public>, KeyMaterial<Secret>) {
+        let (sk, pk) = kyber1024::generate_key_pair(csprng.random()).into_parts();
         (KeyMaterial::from(pk), KeyMaterial::from(sk))
     }
 
-    fn encapsulate(
+    fn encapsulate<R: CryptoRng + ?Sized>(
         pub_key: &KeyMaterial<Public>,
+        csprng: &mut R,
     ) -> Result<(Box<[u8]>, Box<[u8]>), BadKEMKeyLength> {
         let kyber_pk =
             MlKem1024PublicKey::try_from(pub_key.as_ref()).map_err(|_| BadKEMKeyLength)?;
-        let (kyber_ct, kyber_ss) = kyber1024::encapsulate(&kyber_pk, OsRng.unwrap_err().random());
+        let (kyber_ct, kyber_ss) = kyber1024::encapsulate(&kyber_pk, csprng.random());
         Ok((kyber_ss.as_ref().into(), kyber_ct.as_ref().into()))
     }
 

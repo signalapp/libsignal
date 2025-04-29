@@ -181,7 +181,7 @@ fn test_alice_and_bob_agree_on_chain_keys_with_kyber() -> Result<(), SignalProto
     let bob_identity_key_pair = IdentityKeyPair::generate(&mut csprng);
     let bob_signed_pre_key_pair = KeyPair::generate(&mut csprng);
 
-    let bob_kyber_pre_key_pair = kem::KeyPair::generate(kem::KeyType::Kyber1024);
+    let bob_kyber_pre_key_pair = kem::KeyPair::generate(kem::KeyType::Kyber1024, &mut csprng);
 
     let alice_parameters = AliceSignalProtocolParameters::new(
         alice_identity_key_pair,

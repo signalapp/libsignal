@@ -236,7 +236,8 @@ fn KyberPublicKey_Equals(lhs: &KyberPublicKey, rhs: &KyberPublicKey) -> bool {
 
 #[bridge_fn]
 fn KyberKeyPair_Generate() -> KyberKeyPair {
-    KyberKeyPair::generate(KYBER_KEY_TYPE)
+    let mut rng = rand::rngs::OsRng.unwrap_err();
+    KyberKeyPair::generate(KYBER_KEY_TYPE, &mut rng)
 }
 
 #[bridge_fn]

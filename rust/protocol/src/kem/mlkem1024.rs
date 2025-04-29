@@ -7,8 +7,7 @@ use libcrux_ml_kem::mlkem1024::{
     self, MlKem1024Ciphertext, MlKem1024PrivateKey, MlKem1024PublicKey,
 };
 use libcrux_ml_kem::SHARED_SECRET_SIZE;
-use rand::rngs::OsRng;
-use rand::{Rng as _, TryRngCore as _};
+use rand::Rng as _;
 
 use super::{
     BadKEMKeyLength, ConstantLength as _, DecapsulateError, KeyMaterial, KeyType, Public, Secret,
@@ -23,17 +22,20 @@ impl super::Parameters for Parameters {
     const CIPHERTEXT_LENGTH: usize = MlKem1024Ciphertext::LENGTH;
     const SHARED_SECRET_LENGTH: usize = SHARED_SECRET_SIZE;
 
-    fn generate() -> (KeyMaterial<Public>, KeyMaterial<Secret>) {
-        let (sk, pk) = mlkem1024::generate_key_pair(OsRng.unwrap_err().random()).into_parts();
+    fn generate<R: rand::CryptoRng + ?Sized>(
+        csprng: &mut R,
+    ) -> (KeyMaterial<Public>, KeyMaterial<Secret>) {
+        let (sk, pk) = mlkem1024::generate_key_pair(csprng.random()).into_parts();
         (KeyMaterial::from(pk), KeyMaterial::from(sk))
     }
 
-    fn encapsulate(
+    fn encapsulate<R: rand::CryptoRng + ?Sized>(
         pub_key: &KeyMaterial<Public>,
+        csprng: &mut R,
     ) -> Result<(Box<[u8]>, Box<[u8]>), BadKEMKeyLength> {
         let mlkem_pk =
             MlKem1024PublicKey::try_from(pub_key.as_ref()).map_err(|_| BadKEMKeyLength)?;
-        let (mlkem_ct, mlkem_ss) = mlkem1024::encapsulate(&mlkem_pk, OsRng.unwrap_err().random());
+        let (mlkem_ct, mlkem_ss) = mlkem1024::encapsulate(&mlkem_pk, csprng.random());
         Ok((mlkem_ss.as_ref().into(), mlkem_ct.as_ref().into()))
     }
 
