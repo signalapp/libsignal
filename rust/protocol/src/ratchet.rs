@@ -12,7 +12,7 @@ pub(crate) use self::keys::{ChainKey, MessageKeyGenerator, RootKey};
 pub use self::params::{AliceSignalProtocolParameters, BobSignalProtocolParameters};
 use crate::protocol::{CIPHERTEXT_MESSAGE_CURRENT_VERSION, CIPHERTEXT_MESSAGE_PRE_KYBER_VERSION};
 use crate::state::SessionState;
-use crate::{KeyPair, Result, SessionRecord};
+use crate::{KeyPair, Result, SessionRecord, SignalProtocolError};
 
 fn derive_keys(has_kyber: bool, secret_input: &[u8]) -> (RootKey, ChainKey) {
     let label = if has_kyber {
@@ -78,11 +78,14 @@ pub(crate) fn initialize_alice_session<R: Rng + CryptoRng>(
             .extend_from_slice(&our_base_private_key.calculate_agreement(their_one_time_prekey)?);
     }
 
-    let kyber_ciphertext = parameters.their_kyber_pre_key().map(|kyber_public| {
-        let (ss, ct) = kyber_public.encapsulate();
-        secrets.extend_from_slice(ss.as_ref());
-        ct
-    });
+    let kyber_ciphertext = parameters
+        .their_kyber_pre_key()
+        .map(|kyber_public| {
+            let (ss, ct) = kyber_public.encapsulate()?;
+            secrets.extend_from_slice(ss.as_ref());
+            Ok::<_, SignalProtocolError>(ct)
+        })
+        .transpose()?;
     let has_kyber = parameters.their_kyber_pre_key().is_some();
 
     let (root_key, chain_key) = derive_keys(has_kyber, &secrets);

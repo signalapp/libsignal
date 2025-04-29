@@ -20,7 +20,7 @@ fn bench_kem(c: &mut Criterion) {
         c.bench_function(format!("{key_type:?}_encapsulate").as_str(), |b| {
             let mut public_keys = key_pairs.iter().map(|kp| &kp.public_key).cycle();
             b.iter(|| {
-                black_box(public_keys.next().unwrap().encapsulate());
+                black_box(public_keys.next().unwrap().encapsulate()).expect("encapsulation works");
             });
         });
         c.bench_function(format!("{key_type:?}_decapsulate").as_str(), |b| {
@@ -28,7 +28,7 @@ fn bench_kem(c: &mut Criterion) {
                 .iter()
                 .map(|kp| {
                     let sk = &kp.secret_key;
-                    let (_ss, ct) = kp.public_key.encapsulate();
+                    let (_ss, ct) = kp.public_key.encapsulate().expect("encapsulation works");
                     (ct, sk)
                 })
                 .cycle();

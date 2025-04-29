@@ -10,13 +10,14 @@ use libcrux_ml_kem::SHARED_SECRET_SIZE;
 use rand::rngs::OsRng;
 use rand::{Rng as _, TryRngCore as _};
 
-use super::{KeyMaterial, Public, Secret};
-use crate::kem::ConstantLength as _;
-use crate::Result;
+use super::{
+    BadKEMKeyLength, ConstantLength as _, DecapsulateError, KeyMaterial, KeyType, Public, Secret,
+};
 
 pub(crate) struct Parameters;
 
 impl super::Parameters for Parameters {
+    const KEY_TYPE: KeyType = KeyType::Kyber1024;
     const PUBLIC_KEY_LENGTH: usize = MlKem1024PublicKey::LENGTH;
     const SECRET_KEY_LENGTH: usize = MlKem1024PrivateKey::LENGTH;
     const CIPHERTEXT_LENGTH: usize = MlKem1024Ciphertext::LENGTH;
@@ -27,21 +28,23 @@ impl super::Parameters for Parameters {
         (KeyMaterial::from(pk), KeyMaterial::from(sk))
     }
 
-    fn encapsulate(pub_key: &KeyMaterial<Public>) -> (super::SharedSecret, super::RawCiphertext) {
-        let mlkem_pk = MlKem1024PublicKey::try_from(pub_key.as_ref())
-            .expect("valid ML-KEM 1024 public key bytes");
+    fn encapsulate(
+        pub_key: &KeyMaterial<Public>,
+    ) -> Result<(Box<[u8]>, Box<[u8]>), BadKEMKeyLength> {
+        let mlkem_pk =
+            MlKem1024PublicKey::try_from(pub_key.as_ref()).map_err(|_| BadKEMKeyLength)?;
         let (mlkem_ct, mlkem_ss) = mlkem1024::encapsulate(&mlkem_pk, OsRng.unwrap_err().random());
-        (mlkem_ss.as_ref().into(), mlkem_ct.as_ref().into())
+        Ok((mlkem_ss.as_ref().into(), mlkem_ct.as_ref().into()))
     }
 
     fn decapsulate(
         secret_key: &KeyMaterial<Secret>,
         ciphertext: &[u8],
-    ) -> Result<super::SharedSecret> {
+    ) -> Result<Box<[u8]>, DecapsulateError> {
         let mlkem_sk = MlKem1024PrivateKey::try_from(secret_key.as_ref())
-            .expect("valid ML-KEM 1024 secret key bytes");
-        let mlkem_ct =
-            MlKem1024Ciphertext::try_from(ciphertext).expect("valid ML-KEM 1024 ciphertext");
+            .map_err(|_| DecapsulateError::BadKeyLength)?;
+        let mlkem_ct = MlKem1024Ciphertext::try_from(ciphertext)
+            .map_err(|_| DecapsulateError::BadCiphertext)?;
         let mlkem_ss = mlkem1024::decapsulate(&mlkem_sk, &mlkem_ct);
 
         Ok(mlkem_ss.as_ref().into())

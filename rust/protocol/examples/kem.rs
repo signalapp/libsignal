@@ -83,7 +83,7 @@ fn main() {
         Command::Encapsulate { public_path } => {
             let key_bytes = std::fs::read(public_path).expect("can read file");
             let key = PublicKey::deserialize(&key_bytes).expect("valid public key");
-            let (ss, ciphertext) = key.encapsulate();
+            let (ss, ciphertext) = key.encapsulate().expect("can encapsulate");
             log::info!("encapsulating shared secret {}", hex::encode(&ss));
             std::io::stdout()
                 .write_all(&ciphertext)
