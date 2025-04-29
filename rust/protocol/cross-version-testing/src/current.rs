@@ -38,21 +38,30 @@ impl super::LibSignalProtocolStore for LibSignalProtocolCurrent {
         let mut csprng = rng();
         let pre_key_pair = KeyPair::generate(&mut csprng);
         let signed_pre_key_pair = KeyPair::generate(&mut csprng);
+        let signed_pq_pre_key_pair = kem::KeyPair::generate(kem::KeyType::Kyber1024);
 
-        let signed_pre_key_public = signed_pre_key_pair.public_key.serialize();
-        let signed_pre_key_signature = self
+        let identity_key = self
             .0
             .get_identity_key_pair()
             .now_or_never()
             .expect("synchronous")
-            .expect("can fetch identity key")
+            .expect("can fetch identity key");
+        let signed_pre_key_public = signed_pre_key_pair.public_key.serialize();
+        let signed_pre_key_signature = identity_key
             .private_key()
             .calculate_signature(&signed_pre_key_public, &mut csprng)
             .expect("can calculate signatures");
 
+        let signed_pq_pre_key_public = signed_pq_pre_key_pair.public_key.serialize();
+        let signed_pq_pre_key_signature = identity_key
+            .private_key()
+            .calculate_signature(&signed_pq_pre_key_public, &mut csprng)
+            .expect("can sign");
+
         let device_id: u32 = csprng.random();
         let pre_key_id: u32 = csprng.random();
         let signed_pre_key_id: u32 = csprng.random();
+        let kyber_pre_key_id: u32 = csprng.random();
 
         let pre_key_bundle = PreKeyBundle::new(
             self.0
@@ -73,7 +82,12 @@ impl super::LibSignalProtocolStore for LibSignalProtocolCurrent {
                 .expect("can fetch identity key")
                 .identity_key(),
         )
-        .expect("can create pre-key bundles");
+        .expect("can create pre-key bundles")
+        .with_kyber_pre_key(
+            kyber_pre_key_id.into(),
+            signed_pq_pre_key_pair.public_key.clone(),
+            signed_pq_pre_key_signature.to_vec(),
+        );
 
         self.0
             .save_pre_key(
@@ -99,6 +113,20 @@ impl super::LibSignalProtocolStore for LibSignalProtocolCurrent {
             .now_or_never()
             .expect("synchronous")
             .expect("can save pre-keys");
+
+        self.0
+            .save_kyber_pre_key(
+                kyber_pre_key_id.into(),
+                &KyberPreKeyRecord::new(
+                    kyber_pre_key_id.into(),
+                    timestamp,
+                    &signed_pq_pre_key_pair,
+                    &signed_pq_pre_key_signature,
+                ),
+            )
+            .now_or_never()
+            .expect("synchronous")
+            .expect("can save");
 
         pre_key_bundle
     }

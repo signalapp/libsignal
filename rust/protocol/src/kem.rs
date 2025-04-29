@@ -142,6 +142,21 @@ impl<T: Parameters> DynParameters for T {
     }
 }
 
+/// Helper trait for extracting the size of [`libcrux_ml_kem`]'s generic types.
+trait ConstantLength {
+    const LENGTH: usize;
+}
+
+impl<const N: usize> ConstantLength for libcrux_ml_kem::MlKemPrivateKey<N> {
+    const LENGTH: usize = N;
+}
+impl<const N: usize> ConstantLength for libcrux_ml_kem::MlKemPublicKey<N> {
+    const LENGTH: usize = N;
+}
+impl<const N: usize> ConstantLength for libcrux_ml_kem::MlKemCiphertext<N> {
+    const LENGTH: usize = N;
+}
+
 /// Designates a supported KEM protocol
 #[derive(Display, Debug, Copy, Clone, PartialEq, Eq)]
 pub enum KeyType {
@@ -229,6 +244,18 @@ impl<T: KeyKind> KeyMaterial<T> {
             data,
             kind: PhantomData,
         }
+    }
+}
+
+impl<const SIZE: usize> From<libcrux_ml_kem::MlKemPublicKey<SIZE>> for KeyMaterial<Public> {
+    fn from(value: libcrux_ml_kem::MlKemPublicKey<SIZE>) -> Self {
+        KeyMaterial::new(value.as_ref().into())
+    }
+}
+
+impl<const SIZE: usize> From<libcrux_ml_kem::MlKemPrivateKey<SIZE>> for KeyMaterial<Secret> {
+    fn from(value: libcrux_ml_kem::MlKemPrivateKey<SIZE>) -> Self {
+        KeyMaterial::new(value.as_ref().into())
     }
 }
 
@@ -434,6 +461,8 @@ impl<'a> Ciphertext<'a> {
 
 #[cfg(test)]
 mod tests {
+    use rand::{Rng as _, TryRngCore as _};
+
     use super::*;
 
     #[test]
@@ -461,10 +490,11 @@ mod tests {
 
     #[test]
     fn test_raw_kem() {
-        use pqcrypto_kyber::kyber1024::{decapsulate, encapsulate, keypair};
-        let (pk, sk) = keypair();
-        let (ss1, ct) = encapsulate(&pk);
-        let ss2 = decapsulate(&ct, &sk);
+        use libcrux_ml_kem::kyber1024::{decapsulate, encapsulate, generate_key_pair};
+        let mut rng = rand::rngs::OsRng.unwrap_err();
+        let (sk, pk) = generate_key_pair(rng.random()).into_parts();
+        let (ct, ss1) = encapsulate(&pk, rng.random());
+        let ss2 = decapsulate(&sk, &ct);
         assert!(ss1 == ss2);
     }
 
