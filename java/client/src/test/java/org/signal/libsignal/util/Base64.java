@@ -13,6 +13,7 @@ import java.util.function.Function;
 // This whole helper can go away when we reach Android 26, which supports java.util.Base64.
 public class Base64 {
   private static Function<byte[], byte[]> decodeImpl;
+  private static Function<byte[], String> encodeImpl;
 
   static {
     // Prefer the Android class. If we preferred the JRE one, we'd only test the Android
@@ -26,6 +27,16 @@ public class Base64 {
             (input) -> {
               try {
                 return (byte[]) decodeMethod.invoke(null, input, /*DEFAULT*/ 0);
+              } catch (IllegalAccessException | InvocationTargetException e) {
+                throw new AssertionError(e);
+              }
+            };
+        Method encodeMethod =
+            androidBase64.getDeclaredMethod("encodeToString", byte[].class, int.class);
+        encodeImpl =
+            (input) -> {
+              try {
+                return (String) encodeMethod.invoke(null, input, /* NO_WRAP */ 2);
               } catch (IllegalAccessException | InvocationTargetException e) {
                 throw new AssertionError(e);
               }
@@ -46,6 +57,19 @@ public class Base64 {
                 throw new AssertionError(e);
               }
             };
+        // https://docs.oracle.com/javase/8/docs/api/java/util/Base64.html#getEncoder--
+        Method getEncoderMethod = javaBase64.getDeclaredMethod("getEncoder");
+        Object encoder = getEncoderMethod.invoke(null);
+        // https://docs.oracle.com/javase/8/docs/api/java/util/Base64.Encoder.html#encodeToString-byte:A-
+        Method encodeMethod = encoder.getClass().getDeclaredMethod("encodeToString", byte[].class);
+        encodeImpl =
+            (input) -> {
+              try {
+                return (String) encodeMethod.invoke(encoder, input);
+              } catch (IllegalAccessException | InvocationTargetException e) {
+                throw new AssertionError(e);
+              }
+            };
       }
     } catch (Exception e) {
       throw new AssertionError(e);
@@ -54,5 +78,9 @@ public class Base64 {
 
   public static byte[] decode(String str) {
     return decodeImpl.apply(str.getBytes(StandardCharsets.UTF_8));
+  }
+
+  public static String encodeToString(byte[] input) {
+    return encodeImpl.apply(input);
   }
 }

@@ -9,7 +9,6 @@ import static org.junit.Assert.*;
 
 import java.time.Duration;
 import java.util.Arrays;
-import java.util.Base64;
 import java.util.EnumSet;
 import java.util.Locale;
 import java.util.Map;
@@ -28,6 +27,7 @@ import org.signal.libsignal.protocol.ecc.ECPublicKey;
 import org.signal.libsignal.protocol.kem.KEMKeyPair;
 import org.signal.libsignal.protocol.kem.KEMKeyType;
 import org.signal.libsignal.protocol.kem.KEMPublicKey;
+import org.signal.libsignal.util.Base64;
 
 public class RegistrationServiceTest {
 
@@ -332,7 +332,6 @@ public class RegistrationServiceTest {
     var session = serverAndCreateSession.second().get();
     assertEquals("fake-session-A", session.getSessionId());
 
-    var base64 = Base64.getEncoder();
     var unidentifiedAccessKey = new byte[16];
     Arrays.fill(unidentifiedAccessKey, (byte) 0x55);
     var aciKeys = RegisterAccountKeys.createForTest();
@@ -370,7 +369,7 @@ public class RegistrationServiceTest {
             "content-type",
             "application/json",
             "authorization",
-            "Basic " + base64.encodeToString("+18005550123:account password".getBytes())),
+            "Basic " + Base64.encodeToString("+18005550123:account password".getBytes())),
         secondRequest.getHeaders());
 
     var secondRequestJson =
@@ -397,24 +396,24 @@ public class RegistrationServiceTest {
         secondRequestJson.get("accountAttributes"));
 
     assertEquals(
-        base64.encodeToString(aciKeys.publicKey.serialize()),
+        Base64.encodeToString(aciKeys.publicKey.serialize()),
         secondRequestJson.get("aciIdentityKey"));
     assertEquals(
-        base64.encodeToString(pniKeys.publicKey.serialize()),
+        Base64.encodeToString(pniKeys.publicKey.serialize()),
         secondRequestJson.get("pniIdentityKey"));
 
     // We don't need to check all the keys, just one of each kind is enough.
     assertEquals(
         Map.of(
-            "signature", base64.encodeToString("EC signature".getBytes()),
+            "signature", Base64.encodeToString("EC signature".getBytes()),
             "keyId", 1L,
-            "publicKey", base64.encodeToString(aciKeys.signedPreKey.publicKey().serialize())),
+            "publicKey", Base64.encodeToString(aciKeys.signedPreKey.publicKey().serialize())),
         secondRequestJson.get("aciSignedPreKey"));
     assertEquals(
         Map.of(
-            "signature", base64.encodeToString("KEM signature".getBytes()),
+            "signature", Base64.encodeToString("KEM signature".getBytes()),
             "keyId", 2L,
-            "publicKey", base64.encodeToString(aciKeys.pqLastResortPreKey.publicKey().serialize())),
+            "publicKey", Base64.encodeToString(aciKeys.pqLastResortPreKey.publicKey().serialize())),
         secondRequestJson.get("aciPqLastResortPreKey"));
 
     fakeRemote.sendResponse(
