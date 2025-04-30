@@ -131,7 +131,7 @@ impl TransportConnector for DirectConnector {
         )
         .await?;
 
-        let ssl_stream = connect_tls(tcp_stream, connection_params, alpn, log_tag).await?;
+        let ssl_stream = connect_tls(tcp_stream, connection_params, alpn, None, log_tag).await?;
 
         Ok(StreamAndInfo(ssl_stream, remote_address))
     }
@@ -184,10 +184,11 @@ where
             root_certs,
             sni,
             alpn,
+            min_protocol_version,
         } = fragment;
         let host = sni;
 
-        let ssl_config = ssl_config(&root_certs, host.as_deref(), alpn);
+        let ssl_config = ssl_config(&root_certs, host.as_deref(), alpn, min_protocol_version);
 
         async move {
             let domain = match &host {
@@ -213,12 +214,14 @@ fn ssl_config(
     certs: &RootCertificates,
     host: Host<&str>,
     alpn: Option<Alpn>,
+    min_required_tls_version: Option<boring_signal::ssl::SslVersion>,
 ) -> Result<ConnectConfiguration, TransportConnectError> {
     let mut ssl = SslConnector::builder(SslMethod::tls_client())?;
     certs.apply_to_connector(&mut ssl, host)?;
     if let Some(alpn) = alpn {
         ssl.set_alpn_protos(alpn.as_ref())?;
     }
+    ssl.set_min_proto_version(min_required_tls_version)?;
 
     // This is just the default Boring TLS supported signature scheme list
     //   with ed25519 added at the top of the preference order.
@@ -247,12 +250,14 @@ async fn connect_tls<S: AsyncDuplexStream>(
     transport: S,
     connection_params: &TransportConnectionParams,
     alpn: Alpn,
+    min_protocol_version: Option<boring_signal::ssl::SslVersion>,
     log_tag: Arc<str>,
 ) -> Result<SslStream<S>, TransportConnectError> {
     let route = TlsRouteFragment {
         root_certs: connection_params.certs.clone(),
         sni: Host::Domain(Arc::clone(&connection_params.sni)),
         alpn: Some(alpn),
+        min_protocol_version,
     };
 
     StatelessTls.connect_over(transport, route, log_tag).await

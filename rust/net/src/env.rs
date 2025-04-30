@@ -9,6 +9,7 @@ use std::net::{Ipv4Addr, Ipv6Addr};
 use std::num::NonZeroU16;
 use std::sync::Arc;
 
+use boring_signal::ssl::SslVersion;
 use const_str::{hex, ip_addr};
 use http::HeaderValue;
 use libsignal_keytrans::{DeploymentMode, PublicConfig, VerifyingKey, VrfPublicKey};
@@ -49,6 +50,7 @@ const DOMAIN_CONFIG_CHAT: DomainConfig = DomainConfig {
         hostname: "chat.signal.org",
         port: DEFAULT_HTTPS_PORT,
         cert: SIGNAL_ROOT_CERTIFICATES,
+        min_tls_version: Some(SslVersion::TLS1_3),
         confirmation_header_name: Some(TIMESTAMP_HEADER_NAME),
         proxy: Some(ConnectionProxyConfig {
             path_prefix: "/service",
@@ -70,6 +72,7 @@ const DOMAIN_CONFIG_CHAT_STAGING: DomainConfig = DomainConfig {
         hostname: "chat.staging.signal.org",
         port: DEFAULT_HTTPS_PORT,
         cert: SIGNAL_ROOT_CERTIFICATES,
+        min_tls_version: Some(SslVersion::TLS1_3),
         confirmation_header_name: Some(TIMESTAMP_HEADER_NAME),
         proxy: Some(ConnectionProxyConfig {
             path_prefix: "/service-staging",
@@ -83,6 +86,7 @@ const DOMAIN_CONFIG_CDSI: DomainConfig = DomainConfig {
         hostname: "cdsi.signal.org",
         port: DEFAULT_HTTPS_PORT,
         cert: SIGNAL_ROOT_CERTIFICATES,
+        min_tls_version: Some(SslVersion::TLS1_3),
         confirmation_header_name: None,
         proxy: Some(ConnectionProxyConfig {
             path_prefix: "/cdsi",
@@ -98,6 +102,7 @@ const DOMAIN_CONFIG_CDSI_STAGING: DomainConfig = DomainConfig {
         hostname: "cdsi.staging.signal.org",
         port: DEFAULT_HTTPS_PORT,
         cert: SIGNAL_ROOT_CERTIFICATES,
+        min_tls_version: Some(SslVersion::TLS1_3),
         confirmation_header_name: None,
         proxy: Some(ConnectionProxyConfig {
             path_prefix: "/cdsi-staging",
@@ -113,6 +118,7 @@ const DOMAIN_CONFIG_SVR2: DomainConfig = DomainConfig {
         hostname: "svr2.signal.org",
         port: DEFAULT_HTTPS_PORT,
         cert: SIGNAL_ROOT_CERTIFICATES,
+        min_tls_version: Some(SslVersion::TLS1_3),
         confirmation_header_name: None,
         proxy: Some(ConnectionProxyConfig {
             path_prefix: "/svr2",
@@ -128,6 +134,7 @@ const DOMAIN_CONFIG_SVR2_STAGING: DomainConfig = DomainConfig {
         hostname: "svr2.staging.signal.org",
         port: DEFAULT_HTTPS_PORT,
         cert: SIGNAL_ROOT_CERTIFICATES,
+        min_tls_version: Some(SslVersion::TLS1_3),
         confirmation_header_name: None,
         proxy: Some(ConnectionProxyConfig {
             path_prefix: "/svr2-staging",
@@ -226,6 +233,8 @@ pub struct ConnectionConfig {
     pub port: NonZeroU16,
     /// Which certificates to use when connecting to the resource.
     pub cert: RootCertificates,
+    /// Which minimum version of TLS to require when connecting to the resource.
+    pub min_tls_version: Option<SslVersion>,
     /// A header to look for that indicates that the resource was reached.
     ///
     /// If this is `Some()`, then the presence of the header in an HTTP response
@@ -312,6 +321,7 @@ impl ConnectionConfig {
             hostname,
             port,
             cert,
+            min_tls_version,
             confirmation_header_name: _,
             proxy,
         } = self;
@@ -358,10 +368,17 @@ impl ConnectionConfig {
             DomainFrontRouteProvider::new(HttpVersion::Http1_1, domain_front_configs),
             TlsRouteProvider::new(
                 cert.clone(),
+                *min_tls_version,
                 Host::Domain(Arc::clone(&hostname)),
                 DirectTcpRouteProvider::new(hostname, *port),
             ),
         )
+    }
+
+    pub fn config_with_permissive_min_tls_version(&self) -> Self {
+        let mut permissive_config = self.clone();
+        permissive_config.min_tls_version = None;
+        permissive_config
     }
 }
 
@@ -600,6 +617,7 @@ mod test {
             hostname: "host",
             port: PORT,
             cert: RootCertificates::Native,
+            min_tls_version: Some(SslVersion::TLS1_2),
             confirmation_header_name: None,
             proxy: Some(ConnectionProxyConfig {
                 path_prefix: "proxy-prefix",
@@ -637,6 +655,7 @@ mod test {
                     root_certs: RootCertificates::Native,
                     sni: Host::Domain("host".into()),
                     alpn: Some(Alpn::Http1_1),
+                    min_protocol_version: Some(SslVersion::TLS1_2),
                 },
                 inner: TcpRoute {
                     address: UnresolvedHost::from(Arc::from("host")),

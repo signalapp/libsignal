@@ -61,6 +61,7 @@ pub fn only_direct_routes(
                 port,
                 hostname,
                 cert: _,
+                min_tls_version: _,
                 confirmation_header_name: _,
                 proxy: _,
             },
@@ -105,6 +106,7 @@ pub fn allow_domain_fronting(
                 port: _,
                 hostname: _,
                 cert: _,
+                min_tls_version: _,
                 confirmation_header_name: _,
                 proxy,
             },
@@ -175,6 +177,7 @@ impl FakeDeps {
             &chat_domain_config.connect,
             &UserAgent::with_libsignal_version("libsignal test"),
             true,
+            &chat::EnforceMinimumTls::Yes,
             &no_network_change_events(),
         );
 

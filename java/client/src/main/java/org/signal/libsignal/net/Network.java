@@ -139,7 +139,29 @@ public class Network {
     this.connectionManager.setCensorshipCircumventionEnabled(enabled);
   }
 
-  /** Updates the remote config settings used by libsignal. */
+  /**
+   * Updates libsignal's remote configuration settings.
+   *
+   * <p>The provided configuration map must conform to the following requirements:
+   *
+   * <ul>
+   *   <li>Each key represents an enabled configuration and directly indicates that the setting is
+   *       enabled.
+   *   <li>Keys must have had the platform-specific prefix (e.g., "android.libsignal.") removed.
+   *   <li>Entries explicitly disabled by the server must not appear in the map.
+   *   <li>Values originally set to {@code null} by the server must be represented as empty strings.
+   *   <li>Values should otherwise maintain the same format as they are returned by the server.
+   * </ul>
+   *
+   * <p>These constraints ensure configurations passed to libsignal precisely reflect enabled
+   * server-provided settings, without ambiguity.
+   *
+   * <p>Only new connections made *after* this call will use the new remote config settings.
+   * Existing connections are not affected.
+   *
+   * @param remoteConfig a map containing preprocessed libsignal configuration keys and their
+   *     associated values
+   */
   public void setRemoteConfig(Map<String, String> remoteConfig) {
     this.connectionManager.setRemoteConfig(remoteConfig);
   }

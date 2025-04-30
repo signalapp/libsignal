@@ -399,6 +399,7 @@ impl AsReplacer for TlsProxy {
             root_certs: proxy_certs.clone(),
             sni: proxy_host.clone(),
             alpn: None,
+            min_protocol_version: None,
         };
 
         let tcp = TcpRoute {
@@ -477,6 +478,7 @@ impl AsReplacer for HttpProxy {
                     root_certs: proxy_certs.clone(),
                     sni: proxy_host.clone(),
                     alpn: Some(Alpn::Http1_1),
+                    min_protocol_version: None,
                 },
             }),
             None => Either::Right(proxy_tcp_route),

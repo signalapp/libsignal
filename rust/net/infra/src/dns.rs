@@ -98,6 +98,7 @@ pub fn build_custom_resolver_cloudflare_doh(
                     sni: host,
                     root_certs: RootCertificates::Native,
                     alpn: Some(Alpn::Http2),
+                    min_protocol_version: Some(boring_signal::ssl::SslVersion::TLS1_2),
                 },
                 inner: TcpRoute {
                     address: ip_addr,

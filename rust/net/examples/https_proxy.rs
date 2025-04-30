@@ -96,6 +96,7 @@ async fn main() {
                 root_certs,
                 sni: proxy_host.clone(),
                 alpn: Some(Alpn::Http1_1),
+                min_protocol_version: None,
             },
         }),
         scheme => panic!("unsupported protocol {scheme}"),

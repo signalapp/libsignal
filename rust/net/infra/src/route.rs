@@ -661,6 +661,7 @@ mod test {
                 inner: TlsRouteProvider {
                     sni: Host::Domain("sni-name".into()),
                     certs: ROOT_CERTS.clone(),
+                    min_protocol_version: Some(boring_signal::ssl::SslVersion::TLS1_3),
                     inner: DirectTcpRouteProvider {
                         dns_hostname: "target-host".into(),
                         port: TARGET_PORT,
@@ -689,6 +690,7 @@ mod test {
                             root_certs: ROOT_CERTS.clone(),
                             sni: Host::Domain("sni-name".into()),
                             alpn: Some(Alpn::Http1_1),
+                            min_protocol_version: Some(boring_signal::ssl::SslVersion::TLS1_3),
                         },
                         inner: TcpRoute {
                             address: UnresolvedHost("target-host".into()),
@@ -714,6 +716,7 @@ mod test {
                             root_certs: PROXY_ROOT_CERTS,
                             sni: Host::Domain("front-sni1".into()),
                             alpn: Some(Alpn::Http2),
+                            min_protocol_version: None,
                         },
                         inner: TcpRoute {
                             address: UnresolvedHost("front-sni1".into()),
@@ -739,6 +742,7 @@ mod test {
                             root_certs: PROXY_ROOT_CERTS,
                             sni: Host::Domain("front-sni2".into()),
                             alpn: Some(Alpn::Http2),
+                            min_protocol_version: None,
                         },
                         inner: TcpRoute {
                             address: UnresolvedHost("front-sni2".into()),
@@ -761,6 +765,7 @@ mod test {
         let direct_provider = TlsRouteProvider {
             sni: Host::Domain("direct-sni".into()),
             certs: ROOT_CERTS.clone(),
+            min_protocol_version: Some(boring_signal::ssl::SslVersion::TLS1_1),
             inner: DirectTcpRouteProvider {
                 dns_hostname: "direct-target".into(),
                 port: TARGET_PORT,
@@ -786,6 +791,7 @@ mod test {
                     root_certs: ROOT_CERTS.clone(),
                     sni: Host::Domain("direct-sni".into()),
                     alpn: None,
+                    min_protocol_version: Some(boring_signal::ssl::SslVersion::TLS1_1),
                 },
                 inner: ConnectionProxyRoute::Tls {
                     proxy: TlsRoute {
@@ -797,6 +803,7 @@ mod test {
                             root_certs: PROXY_CERTS.clone(),
                             sni: Host::Domain("tls-proxy".into()),
                             alpn: None,
+                            min_protocol_version: None,
                         },
                     },
                 },
@@ -815,6 +822,7 @@ mod test {
         let direct_provider = TlsRouteProvider {
             sni: Host::Domain("direct-sni".into()),
             certs: ROOT_CERTS.clone(),
+            min_protocol_version: Some(boring_signal::ssl::SslVersion::TLS1_1),
             inner: DirectTcpRouteProvider {
                 dns_hostname: "direct-target".into(),
                 port: TARGET_PORT,
@@ -839,6 +847,7 @@ mod test {
                 root_certs: ROOT_CERTS.clone(),
                 sni: Host::Domain("direct-sni".into()),
                 alpn: None,
+                min_protocol_version: Some(boring_signal::ssl::SslVersion::TLS1_1),
             },
             inner: ConnectionProxyRoute::Socks(SocksRoute {
                 proxy: TcpRoute {

@@ -22,13 +22,16 @@ use libsignal_net::infra::timeouts::ONE_ROUTE_CONNECTION_TIMEOUT;
 use libsignal_net::infra::utils::NetworkChangeEvent;
 use libsignal_net::infra::{EnableDomainFronting, EndpointConnection};
 
+use self::remote_config::{RemoteConfig, RemoteConfigKeys};
 use crate::*;
 
 pub mod cdsi;
 pub mod chat;
 pub mod registration;
+pub mod remote_config;
 pub mod tokio;
 
+pub use libsignal_net::chat::EnforceMinimumTls;
 pub use tokio::TokioAsyncContext;
 
 #[repr(u8)]
@@ -59,6 +62,7 @@ impl EndpointConnections {
         env: &Env<'static>,
         user_agent: &UserAgent,
         use_fallbacks: bool,
+        enforce_minimum_tls: EnforceMinimumTls,
         network_change_event: &NetworkChangeEvent,
     ) -> Self {
         log::info!(
@@ -73,10 +77,16 @@ impl EndpointConnections {
             &env.chat_domain_config.connect,
             user_agent,
             use_fallbacks,
+            &enforce_minimum_tls,
             network_change_event,
         );
-        let cdsi =
-            Self::endpoint_connection(&env.cdsi, user_agent, use_fallbacks, network_change_event);
+        let cdsi = Self::endpoint_connection(
+            &env.cdsi,
+            user_agent,
+            use_fallbacks,
+            &enforce_minimum_tls,
+            network_change_event,
+        );
         Self {
             chat,
             cdsi,
@@ -92,13 +102,18 @@ impl EndpointConnections {
         endpoint: &EnclaveEndpoint<'static, E>,
         user_agent: &UserAgent,
         include_fallback: bool,
+        enforce_minimum_tls: &EnforceMinimumTls,
         network_change_event: &NetworkChangeEvent,
     ) -> EnclaveEndpointConnection<E, MultiRouteConnectionManager> {
-        let params = if include_fallback {
-            endpoint
+        let connection_config = match enforce_minimum_tls {
+            EnforceMinimumTls::Yes => &endpoint.domain_config.connect,
+            EnforceMinimumTls::No => &endpoint
                 .domain_config
                 .connect
-                .connection_params_with_fallback()
+                .config_with_permissive_min_tls_version(),
+        };
+        let params = if include_fallback {
+            connection_config.connection_params_with_fallback()
         } else {
             vec![endpoint.domain_config.connect.direct_connection_params()]
         };
@@ -117,7 +132,7 @@ pub struct ConnectionManager {
     user_agent: UserAgent,
     dns_resolver: DnsResolver,
     #[allow(dead_code)]
-    remote_config: std::sync::Mutex<HashMap<String, String>>,
+    remote_config: std::sync::Mutex<RemoteConfig>,
     connect: std::sync::Mutex<ConnectState<PreconnectingFactory>>,
     // We could split this up to a separate mutex on each kind of connection,
     // but we don't hold it for very long anyway (just enough to clone the Arc).
@@ -151,8 +166,21 @@ impl ConnectionManager {
             DnsResolver::new_with_static_fallback(env.static_fallback(), &network_change_event_rx);
         let transport_connector =
             std::sync::Mutex::new(TcpSslConnector::new_direct(dns_resolver.clone()));
+        let remote_config = RemoteConfig::new(remote_config);
+        let enforce_minimum_tls = if remote_config.is_enabled(RemoteConfigKeys::EnforceMinimumTls) {
+            EnforceMinimumTls::Yes
+        } else {
+            EnforceMinimumTls::No
+        };
         let endpoints = std::sync::Mutex::new(
-            EndpointConnections::new(&env, &user_agent, false, &network_change_event_rx).into(),
+            EndpointConnections::new(
+                &env,
+                &user_agent,
+                false,
+                enforce_minimum_tls,
+                &network_change_event_rx,
+            )
+            .into(),
         );
         Self {
             env,
@@ -208,17 +236,28 @@ impl ConnectionManager {
     /// This is not itself a network change event; existing working connections are expected to
     /// continue to work, and existing failing connections will continue to fail.
     pub fn set_censorship_circumvention_enabled(&self, enabled: bool) {
+        let enforce_minimum_tls = if self
+            .remote_config
+            .lock()
+            .expect("not poisoned")
+            .is_enabled(RemoteConfigKeys::EnforceMinimumTls)
+        {
+            EnforceMinimumTls::Yes
+        } else {
+            EnforceMinimumTls::No
+        };
         let new_endpoints = EndpointConnections::new(
             &self.env,
             &self.user_agent,
             enabled,
+            enforce_minimum_tls,
             &self.network_change_event_tx.subscribe(),
         );
         *self.endpoints.lock().expect("not poisoned") = Arc::new(new_endpoints);
     }
 
     pub fn set_remote_config(&self, remote_config: HashMap<String, String>) {
-        *self.remote_config.lock().expect("not poisoned") = remote_config;
+        *self.remote_config.lock().expect("not poisoned") = RemoteConfig::new(remote_config);
     }
 
     const NETWORK_CHANGE_DEBOUNCE: Duration = Duration::from_secs(1);

@@ -107,6 +107,7 @@ async fn main() {
                 root_certs,
                 sni: Host::Domain(host_name),
                 alpn: None,
+                min_protocol_version: None,
             },
             inner: SocksRoute {
                 proxy: TcpRoute {

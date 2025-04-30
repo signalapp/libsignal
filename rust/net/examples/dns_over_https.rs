@@ -55,6 +55,7 @@ async fn main() {
                 root_certs: RootCertificates::Native,
                 sni: Host::Domain(host),
                 alpn: Some(Alpn::Http2),
+                min_protocol_version: None,
             },
             inner: TcpRoute {
                 address,

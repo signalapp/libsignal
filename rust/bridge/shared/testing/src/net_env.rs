@@ -25,6 +25,7 @@ fn localhost_test_domain_config_with_port_and_cert(
             hostname: "localhost",
             port,
             cert: RootCertificates::FromDer(std::borrow::Cow::Owned(root_certificate_der.to_vec())),
+            min_tls_version: None,
             confirmation_header_name: None,
             proxy: None,
         },

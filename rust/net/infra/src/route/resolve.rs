@@ -685,6 +685,7 @@ mod test {
             root_certs: RootCertificates::Native,
             sni: Host::Domain("target-domain".into()),
             alpn: None,
+            min_protocol_version: None,
         };
 
         fn socks_route<A>(proxy: A, target: A) -> ConnectionProxyRoute<A> {

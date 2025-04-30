@@ -2514,6 +2514,7 @@ dependencies = [
  "attest",
  "base64 0.22.1",
  "bincode",
+ "boring",
  "bytes",
  "clap",
  "const-str",

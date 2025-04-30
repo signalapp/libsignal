@@ -5,16 +5,28 @@
 
 use std::sync::Arc;
 
+use boring_signal::ssl::SslVersion;
+
 use crate::certs::RootCertificates;
 use crate::host::Host;
 use crate::route::{ReplaceFragment, RouteProvider, RouteProviderContext, SimpleRoute};
 use crate::Alpn;
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TlsRouteFragment {
     pub root_certs: RootCertificates,
     pub sni: Host<Arc<str>>,
     pub alpn: Option<Alpn>,
+    pub min_protocol_version: Option<SslVersion>,
+}
+
+impl std::hash::Hash for TlsRouteFragment {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.root_certs.hash(state);
+        self.sni.hash(state);
+        self.alpn.hash(state);
+        // Ignore SslVersion, an opaque enum. Unfortunate, but a valid hash implementation.
+    }
 }
 
 pub type TlsRoute<T> = SimpleRoute<TlsRouteFragment, T>;
@@ -23,12 +35,23 @@ pub type TlsRoute<T> = SimpleRoute<TlsRouteFragment, T>;
 pub struct TlsRouteProvider<P> {
     pub(crate) sni: Host<Arc<str>>,
     pub(crate) certs: RootCertificates,
+    pub(crate) min_protocol_version: Option<SslVersion>,
     pub(crate) inner: P,
 }
 
 impl<T> TlsRouteProvider<T> {
-    pub fn new(certs: RootCertificates, sni: Host<Arc<str>>, inner: T) -> Self {
-        Self { sni, certs, inner }
+    pub fn new(
+        certs: RootCertificates,
+        min_protocol_version: Option<SslVersion>,
+        sni: Host<Arc<str>>,
+        inner: T,
+    ) -> Self {
+        Self {
+            sni,
+            certs,
+            min_protocol_version,
+            inner,
+        }
     }
 }
 
@@ -45,13 +68,19 @@ impl<P: RouteProvider> RouteProvider for TlsRouteProvider<P> {
         &'s self,
         context: &impl RouteProviderContext,
     ) -> impl Iterator<Item = Self::Route> + 's {
-        let Self { sni, certs, inner } = self;
+        let Self {
+            sni,
+            certs,
+            min_protocol_version,
+            inner,
+        } = self;
 
         inner.routes(context).map(|route| TlsRoute {
             fragment: TlsRouteFragment {
                 root_certs: certs.clone(),
                 sni: sni.clone(),
                 alpn: None,
+                min_protocol_version: *min_protocol_version,
             },
             inner: route,
         })

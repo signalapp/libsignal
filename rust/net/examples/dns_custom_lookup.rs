@@ -74,6 +74,7 @@ async fn main() {
                         root_certs: RootCertificates::Native,
                         sni: Host::Domain(host.clone()),
                         alpn: Some(Alpn::Http2),
+                        min_protocol_version: None,
                     },
                     inner: TcpRoute {
                         address: HOST_IP,

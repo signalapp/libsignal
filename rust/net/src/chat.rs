@@ -130,12 +130,22 @@ impl AsHttpHeader for ReceiveStories {
     }
 }
 
+pub enum EnforceMinimumTls {
+    Yes,
+    No,
+}
+
 pub fn endpoint_connection(
     connection_config: &ConnectionConfig,
     user_agent: &UserAgent,
     include_fallback: bool,
+    enforce_minimum_tls: &EnforceMinimumTls,
     network_change_event: &NetworkChangeEvent,
 ) -> EndpointConnection<MultiRouteConnectionManager> {
+    let connection_config = match enforce_minimum_tls {
+        EnforceMinimumTls::No => &connection_config.config_with_permissive_min_tls_version(),
+        EnforceMinimumTls::Yes => connection_config,
+    };
     let chat_endpoint = PathAndQuery::from_static(crate::env::constants::WEB_SOCKET_PATH);
     let chat_connection_params = if include_fallback {
         connection_config.connection_params_with_fallback()
@@ -676,6 +686,7 @@ pub(crate) mod test {
                         root_certs: RootCertificates::Native,
                         sni: Host::Domain(CHAT_DOMAIN.into()),
                         alpn: Some(Alpn::Http1_1),
+                        min_protocol_version: Some(boring_signal::ssl::SslVersion::TLS1_3),
                     },
                     inner: DirectOrProxyRoute::Direct(TcpRoute {
                         address: UnresolvedHost(CHAT_DOMAIN.into()),
@@ -737,6 +748,7 @@ pub(crate) mod test {
                     root_certs: RootCertificates::Native,
                     sni: Host::Domain(CHAT_DOMAIN.into()),
                     alpn: Some(Alpn::Http1_1),
+                    min_protocol_version: Some(boring_signal::ssl::SslVersion::TLS1_3),
                 },
                 inner: DirectOrProxyRoute::Direct(TcpRoute {
                     address: UnresolvedHost(CHAT_DOMAIN.into()),

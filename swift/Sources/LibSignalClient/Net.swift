@@ -102,7 +102,18 @@ public class Net {
         self.connectionManager.setCensorshipCircumventionEnabled(enabled)
     }
 
-    /// Updates the remote config settings used by libsignal.
+    /// Updates the remote configuration settings used by libsignal.
+    ///
+    /// The provided dictionary should be preprocessed as follows:
+    /// - Include only keys representing enabled configurations (entries explicitly disabled by the server should be omitted).
+    /// - Remove any platform-specific prefixes from keys (e.g., `"ios.libsignal."`).
+    /// - Replace values originally set to `nil` by the server with an empty string (`""`).
+    /// - Values should otherwise maintain the same format as they are returned by the server.
+    ///
+    /// Only new connections made *after* this call will use the new remote config settings.
+    /// Existing connections are not affected.
+    ///
+    /// - Parameter remoteConfig: A dictionary containing preprocessed libsignal configuration keys and their associated values
     public func setRemoteConfig(_ remoteConfig: [String: String]) {
         self.connectionManager.setRemoteConfig(remoteConfig)
     }

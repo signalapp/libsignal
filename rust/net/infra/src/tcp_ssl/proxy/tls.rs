@@ -73,7 +73,8 @@ impl TransportConnector for TlsProxyConnector {
                 );
                 // This won't always work, but it's enough to connect to proxies
                 // by hostnames.
-                let ssl_config = ssl_config(&self.proxy_certs, self.proxy_host.as_deref(), None)?;
+                let ssl_config =
+                    ssl_config(&self.proxy_certs, self.proxy_host.as_deref(), None, None)?;
                 Either::Left(
                     tokio_boring_signal::connect(
                         ssl_config,
@@ -93,7 +94,7 @@ impl TransportConnector for TlsProxyConnector {
             }
         };
 
-        let tls_stream = connect_tls(inner_stream, connection_params, alpn, log_tag).await?;
+        let tls_stream = connect_tls(inner_stream, connection_params, alpn, None, log_tag).await?;
 
         Ok(StreamAndInfo(
             tls_stream,

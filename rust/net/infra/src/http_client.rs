@@ -347,6 +347,7 @@ mod test {
                             SERVER_CERTIFICATE.cert.der(),
                         )),
                         alpn: None,
+                        min_protocol_version: None,
                     },
                     inner: TcpRoute {
                         address: Ipv6Addr::LOCALHOST.into(),
@@ -423,6 +424,7 @@ mod test {
                             SERVER_CERTIFICATE.cert.der(),
                         )),
                         alpn: None,
+                        min_protocol_version: None,
                     },
                     inner: TcpRoute {
                         address: Ipv6Addr::LOCALHOST.into(),

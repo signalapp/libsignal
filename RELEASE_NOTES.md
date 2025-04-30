@@ -9,3 +9,5 @@ v0.71.0
 - Node: RegistrationService.registerAccount takes account password as a string.
 
 - keytrans: Bridge to Node
+
+- net: Connections to Signal services (and to Cloudflare's DNS-over-HTTPS server) will now require TLS v1.3, which they would already have been using.

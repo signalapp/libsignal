@@ -625,6 +625,7 @@ mod test {
             root_certs: RootCertificates::Native,
             sni: Host::Domain("fake-sni".into()),
             alpn: Some(Alpn::Http1_1),
+            min_protocol_version: Some(boring_signal::ssl::SslVersion::TLS1_3),
         },
         inner: DirectOrProxyRoute::Direct(TcpRoute {
             address: UnresolvedHost::from(Arc::from(FAKE_HOST_NAME)),

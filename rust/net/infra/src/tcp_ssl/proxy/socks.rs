@@ -149,7 +149,8 @@ impl TransportConnector for SocksConnector {
 
         log::debug!("connecting TLS through proxy");
         let stream =
-            crate::tcp_ssl::connect_tls(socks_stream, connection_params, alpn, log_tag).await?;
+            crate::tcp_ssl::connect_tls(socks_stream, connection_params, alpn, None, log_tag)
+                .await?;
 
         log::info!("connection through SOCKS proxy established successfully");
         Ok(StreamAndInfo(
