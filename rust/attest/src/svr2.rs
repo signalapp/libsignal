@@ -7,6 +7,7 @@ use prost::Message;
 
 use crate::constants::{
     ACCEPTABLE_SW_ADVISORIES, DEFAULT_SW_ADVISORIES, EXPECTED_RAFT_CONFIG_SVR2,
+    SVR2_POSTQUANTUM_OVERRIDE,
 };
 use crate::enclave::{Error, Handshake, HandshakeType, Result};
 use crate::proto::svr;
@@ -42,7 +43,6 @@ pub fn new_handshake_with_raft_config_lookup(
     mrenclave: &[u8],
     attestation_msg: &[u8],
     current_time: std::time::SystemTime,
-    handshake_type: HandshakeType,
 ) -> Result<Handshake> {
     let expected_raft_config =
         EXPECTED_RAFT_CONFIG_SVR2
@@ -56,7 +56,6 @@ pub fn new_handshake_with_raft_config_lookup(
         attestation_msg,
         current_time,
         expected_raft_config,
-        handshake_type,
     )
 }
 
@@ -65,7 +64,6 @@ pub fn new_handshake(
     attestation_msg: &[u8],
     current_time: std::time::SystemTime,
     expected_raft_config: &'static RaftConfig,
-    handshake_type: HandshakeType,
 ) -> Result<Handshake> {
     new_handshake_with_constants(
         mrenclave,
@@ -75,7 +73,10 @@ pub fn new_handshake(
             .get(&mrenclave)
             .unwrap_or(&DEFAULT_SW_ADVISORIES),
         expected_raft_config,
-        handshake_type,
+        SVR2_POSTQUANTUM_OVERRIDE
+            .get(&mrenclave)
+            .copied()
+            .unwrap_or(HandshakeType::PostQuantum),
     )
 }
 

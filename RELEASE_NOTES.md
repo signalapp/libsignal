@@ -11,3 +11,5 @@ v0.71.0
 - keytrans: Bridge to Node
 
 - net: Connections to Signal services (and to Cloudflare's DNS-over-HTTPS server) will now require TLS v1.3, which they would already have been using.
+
+- New SVR2 enclaves for staging and production.

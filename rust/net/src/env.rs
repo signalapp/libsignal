@@ -29,7 +29,7 @@ use rand::seq::SliceRandom;
 use rand::{rng, Rng};
 
 use crate::certs::{PROXY_G_ROOT_CERTIFICATES, SIGNAL_ROOT_CERTIFICATES};
-use crate::enclave::{Cdsi, EnclaveEndpoint, EndpointParams, MrEnclave, SgxPreQuantum};
+use crate::enclave::{Cdsi, EnclaveEndpoint, EndpointParams, MrEnclave, Svr2};
 
 const DEFAULT_HTTPS_PORT: NonZeroU16 = nonzero!(443_u16);
 pub const TIMESTAMP_HEADER_NAME: &str = "x-signal-timestamp";
@@ -185,20 +185,22 @@ pub(crate) const ENDPOINT_PARAMS_CDSI_STAGING: EndpointParams<'static, Cdsi> = E
     raft_config: (),
 };
 
-pub(crate) const ENDPOINT_PARAMS_SVR2_STAGING: EndpointParams<'static, SgxPreQuantum> =
-    EndpointParams {
-        mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVR2_STAGING),
-        raft_config: attest::constants::RAFT_CONFIG_SVR2_STAGING,
-    };
+pub(crate) const ENDPOINT_PARAMS_SVR2_STAGING: EndpointParams<'static, Svr2> = EndpointParams {
+    mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVR2_STAGING),
+    raft_config: attest::constants::RAFT_CONFIG_SVR2_STAGING,
+};
 
 pub(crate) const ENDPOINT_PARAMS_CDSI_PROD: EndpointParams<'static, Cdsi> = EndpointParams {
     mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_CDSI),
     raft_config: (),
 };
-pub(crate) const ENDPOINT_PARAMS_SVR2_PROD: EndpointParams<'static, SgxPreQuantum> =
+
+// Currently, the production SVR2 is prequantum while we're testing the postquantum
+// handshakes in staging.
+pub(crate) const ENDPOINT_PARAMS_SVR2_PROD_PREQUANTUM: EndpointParams<'static, Svr2> =
     EndpointParams {
-        mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVR2_PROD),
-        raft_config: attest::constants::RAFT_CONFIG_SVR2_PROD,
+        mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVR2_PROD_PREQUANTUM),
+        raft_config: attest::constants::RAFT_CONFIG_SVR2_PROD_PREQUANTUM,
     };
 
 pub(crate) const KEYTRANS_SIGNING_KEY_MATERIAL_STAGING: &[u8; 32] =
@@ -491,7 +493,7 @@ impl From<KeyTransConfig> for PublicConfig {
 
 pub struct Env<'a> {
     pub cdsi: EnclaveEndpoint<'a, Cdsi>,
-    pub svr2: EnclaveEndpoint<'a, SgxPreQuantum>,
+    pub svr2: EnclaveEndpoint<'a, Svr2>,
     pub chat_domain_config: DomainConfig,
     // TODO: make non-optional when the public endpoints are up
     pub keytrans_config: Option<KeyTransConfig>,
@@ -535,7 +537,9 @@ pub const PROD: Env<'static> = Env {
     },
     svr2: EnclaveEndpoint {
         domain_config: DOMAIN_CONFIG_SVR2,
-        params: ENDPOINT_PARAMS_SVR2_PROD,
+        // Currently, the production SVR2 is prequantum while we're testing the postquantum
+        // handshakes in staging.
+        params: ENDPOINT_PARAMS_SVR2_PROD_PREQUANTUM,
     },
     keytrans_config: None,
 };
