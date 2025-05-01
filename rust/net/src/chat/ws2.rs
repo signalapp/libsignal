@@ -99,10 +99,7 @@ pub enum ListenerEvent {
 #[cfg_attr(test, derive(PartialEq))]
 pub enum SendError {
     /// the chat service is no longer connected
-    Disconnected {
-        #[cfg(test)] // Useful for testing but otherwise unused
-        reason: &'static str,
-    },
+    Disconnected(DisconnectedReason),
     /// an OS-level I/O error occurred
     Io(IoErrorKind),
     /// the message is larger than the configured limit
@@ -113,6 +110,20 @@ pub enum SendError {
     InvalidResponse,
     /// the request was invalid
     InvalidRequest(InvalidRequestError),
+}
+
+#[derive(Debug)]
+#[cfg_attr(test, derive(PartialEq))]
+pub enum DisconnectedReason {
+    /// the server explicitly disconnected us because we connected elsewhere with the same credentials
+    ConnectedElsewhere,
+    /// the server has disconnect us because the credentials we used to connect have become invalidated
+    ConnectionInvalidated,
+    // the socket was closed, either by us or by the server, for some other reason.
+    SocketClosed {
+        #[cfg(test)] // Useful for testing but otherwise unused
+        reason: &'static str,
+    },
 }
 
 #[derive(Debug)]
@@ -378,10 +389,10 @@ impl Responder {
             }
         }
 
-        Err(SendError::Disconnected {
+        Err(SendError::Disconnected(DisconnectedReason::SocketClosed {
             #[cfg(test)]
             reason: "task exited without receiving response",
-        })
+        }))
     }
 }
 
@@ -668,6 +679,29 @@ async fn spawned_task_body<I: InnerConnection>(
     task_result
 }
 
+/// Retrieves the final task error state and converts it to a `SendError`.
+///
+/// This function waits for the task to finish if it hasn't already, and then
+/// extracts the error state. It should only be called when we know the task is
+/// ending or has already ended, such as when a send operation to the task has
+/// failed, or it will hold the state lock for an unboundedly long time.
+async fn get_task_finish_error(state: &TokioMutex<TaskState>, _reason: &'static str) -> SendError {
+    // We're holding the lock here across an await point to prevent
+    // another method from also trying to wait for the task result and
+    // update state.  Since the earlier send failed, the task must have
+    // dropped its receiver, and it doesn't do much after that so this
+    // should be a short wait.
+    let mut guard = state.lock().await;
+    let finished_state = wait_for_task_to_finish(&mut guard).await.as_ref();
+    match finished_state {
+        Ok(_) => SendError::Disconnected(DisconnectedReason::SocketClosed {
+            #[cfg(test)]
+            reason: _reason,
+        }),
+        Err(err) => SendError::from(err),
+    }
+}
+
 async fn send_request(
     state: &TokioMutex<TaskState>,
     request: PartialRequestProto,
@@ -682,16 +716,16 @@ async fn send_request(
                 task: _,
             } => request_tx.clone(),
             TaskState::SignaledToEnd(_) => {
-                return Err(SendError::Disconnected {
+                return Err(SendError::Disconnected(DisconnectedReason::SocketClosed {
                     #[cfg(test)]
                     reason: "task was already signalled to end",
-                })
+                }))
             }
             TaskState::Finished(Ok(_reason)) => {
-                return Err(SendError::Disconnected {
+                return Err(SendError::Disconnected(DisconnectedReason::SocketClosed {
                     #[cfg(test)]
                     reason: "task already ended gracefully",
-                })
+                }))
             }
             TaskState::Finished(Err(err)) => return Err(SendError::from(&*err)),
         }
@@ -708,36 +742,21 @@ async fn send_request(
         .is_ok()
     {
         // The request was sent, now wait for the response to be sent back.
-        let response =
-            receiver
-                .await
-                .map_err(|_: oneshot::error::RecvError| SendError::Disconnected {
-                    #[cfg(test)]
-                    reason: "response channel sender was dropped",
-                })?;
-        response.map_err(SendError::from)
-    } else {
-        // The request couldn't be sent to the task. We could give up now
-        // and return SendError::Disconnected but that's not as useful as
-        // something derived from the actual end status.
-        let mut guard = state.lock().await;
-
-        // We're holding the lock here across an await point to prevent
-        // another method from also trying to wait for the task result and
-        // update state.  Since the earlier send failed, the task must have
-        // dropped its receiver, and it doesn't do much after that so this
-        // should be a short wait.
-        let finished_state = wait_for_task_to_finish(&mut guard).await.as_ref();
-
-        let send_error = finished_state.map_or_else(SendError::from, |_reason| {
-            // The task exited successfully but our send still didn't go
-            // through, so return an error.
-            SendError::Disconnected {
-                #[cfg(test)]
-                reason: "task ended gracefully before sending request",
+        match receiver.await {
+            Ok(response) => response.map_err(SendError::from),
+            Err(_) => {
+                // The sender was dropped without sending a response.
+                // This happens when the connection is closed while our request is in flight.
+                // Fetch the reason for the underlying connection failure, and return that as the
+                // reason for the request failure, to be most useful.
+                Err(get_task_finish_error(state, "response channel sender was dropped").await)
             }
-        });
-        Err(send_error)
+        }
+    } else {
+        // We could not send the request at all, so the task must have ended, probably due to the connection
+        // closing. Fetch the reason for the underlying connection failure, and return that as the reason for
+        // the request failure.
+        Err(get_task_finish_error(state, "task ended gracefully before sending request").await)
     }
 }
 
@@ -1081,23 +1100,37 @@ pub(super) fn decode_and_validate(data: &[u8]) -> Result<ChatMessageProto, ChatP
 
 impl From<&TaskErrorState> for SendError {
     fn from(value: &TaskErrorState) -> Self {
-        let _ = value;
-        SendError::Disconnected {
-            #[cfg(test)]
-            reason: match value {
-                TaskErrorState::SendFailed => "send failed",
-                TaskErrorState::Panic(_) => "chat task panicked",
-                TaskErrorState::AbnormalServerClose { .. } => "server closed abnormally",
-                TaskErrorState::ReceiveFailed => "receive failed",
-                TaskErrorState::ServerIdleTooLong(_) => "server idle too long",
-                TaskErrorState::UnexpectedConnectionClose => "server closed unexpectedly",
+        match value {
+            TaskErrorState::AbnormalServerClose { code, reason: _ } => match code {
+                CloseCode::Library(CONNECTED_ELSEWHERE_CLOSE_CODE) => {
+                    SendError::Disconnected(DisconnectedReason::ConnectedElsewhere)
+                }
+                CloseCode::Library(CONNECTION_INVALIDATED_CLOSE_CODE) => {
+                    SendError::Disconnected(DisconnectedReason::ConnectionInvalidated)
+                }
+                _ => SendError::Disconnected(DisconnectedReason::SocketClosed {
+                    #[cfg(test)]
+                    reason: "server closed abnormally",
+                }),
             },
+            _ => SendError::Disconnected(DisconnectedReason::SocketClosed {
+                #[cfg(test)]
+                reason: match value {
+                    TaskErrorState::SendFailed => "send failed",
+                    TaskErrorState::Panic(_) => "chat task panicked",
+                    // Already handled above, this is test-only code so fail-fast is desirable.
+                    TaskErrorState::AbnormalServerClose { .. } => unreachable!(),
+                    TaskErrorState::ReceiveFailed => "receive failed",
+                    TaskErrorState::ServerIdleTooLong(_) => "server idle too long",
+                    TaskErrorState::UnexpectedConnectionClose => "server closed unexpectedly",
+                },
+            }),
         }
     }
 }
 
 impl From<TaskSendError> for SendError {
-    fn from(value: TaskSendError) -> SendError {
+    fn from(value: TaskSendError) -> Self {
         match value {
             TaskSendError::StreamSendFailed(send_error) => send_error.into(),
             TaskSendError::InvalidResponse => SendError::InvalidResponse,
@@ -1135,10 +1168,12 @@ impl From<&TungsteniteSendError> for SendError {
     fn from(value: &TungsteniteSendError) -> Self {
         match value {
             TungsteniteSendError::Io(io) => SendError::Io(io.kind()),
-            TungsteniteSendError::ConnectionAlreadyClosed => SendError::Disconnected {
-                #[cfg(test)]
-                reason: "task failure due to send failure",
-            },
+            TungsteniteSendError::ConnectionAlreadyClosed => {
+                SendError::Disconnected(DisconnectedReason::SocketClosed {
+                    #[cfg(test)]
+                    reason: "task failure due to send failure",
+                })
+            }
             TungsteniteSendError::MessageTooLarge { size, max_size } => {
                 SendError::MessageTooLarge {
                     size: *size,
@@ -1189,7 +1224,13 @@ impl From<TaskExitError> for crate::chat::SendError {
 impl From<SendError> for super::SendError {
     fn from(value: SendError) -> Self {
         match value {
-            SendError::Disconnected { .. } => Self::Disconnected,
+            SendError::Disconnected(DisconnectedReason::SocketClosed { .. }) => Self::Disconnected,
+            SendError::Disconnected(DisconnectedReason::ConnectedElsewhere) => {
+                Self::ConnectedElsewhere
+            }
+            SendError::Disconnected(DisconnectedReason::ConnectionInvalidated) => {
+                Self::ConnectionInvalidated
+            }
             SendError::Io(error_kind) => {
                 Self::WebSocket(WebSocketServiceError::Io(error_kind.into()))
             }
@@ -2134,5 +2175,138 @@ mod test {
             ListenerEvent::ReceivedAlerts(alerts) if alerts == ["first", "second", "third", "fourth"]
         );
         assert_matches!(listener_rx.try_recv(), Err(TryRecvError::Empty));
+    }
+
+    #[test_case(
+        CloseCode::from(CONNECTION_INVALIDATED_CLOSE_CODE), SendError::Disconnected(DisconnectedReason::ConnectionInvalidated);
+        "CONNECTION_INVALIDATED_CLOSE_CODE results in ConnectionInvalidated"
+    )]
+    #[test_case(
+        CloseCode::from(CONNECTED_ELSEWHERE_CLOSE_CODE), SendError::Disconnected(DisconnectedReason::ConnectedElsewhere);
+        "CONNECTED_ELSEWHERE_CLOSE_CODE results in ConnectedElsewhere"
+    )]
+    #[test_case(
+        CloseCode::Normal, SendError::Disconnected(DisconnectedReason::SocketClosed { #[cfg(test)] reason: "server closed abnormally" });
+        "Normal close results in Disconnected"
+    )]
+    #[test_log::test(tokio::test(start_paused = true))]
+    async fn send_after_ws_close_returns_proper_error(
+        close_code: CloseCode,
+        expected_error: SendError,
+    ) {
+        let (chat, (_inner_events, inner_responses)) = fake::new_chat(Box::new(|_| ()));
+        assert!(chat.is_connected().await);
+
+        // Close the connection with the specific close code
+        inner_responses
+            .send(
+                Outcome::Finished(Err(NextEventError::AbnormalServerClose {
+                    code: close_code,
+                    reason: format!("close code: {close_code}"),
+                }))
+                .into(),
+            )
+            .expect("can send close event");
+
+        let wait_for_disconnect = async {
+            while chat.is_connected().await {
+                tokio::task::yield_now().await;
+            }
+        };
+
+        tokio::time::timeout(Duration::from_secs(1), wait_for_disconnect)
+            .await
+            .expect("chat disconnect does not take long");
+
+        // Try to send a request, which should fail with the expected error
+        let send_result = chat
+            .send(Request {
+                method: Method::GET,
+                path: PathAndQuery::from_static("/test"),
+                headers: HeaderMap::default(),
+                body: None,
+            })
+            .await;
+
+        assert_eq!(send_result, Err(expected_error));
+    }
+
+    #[test_case(
+        CloseCode::from(CONNECTION_INVALIDATED_CLOSE_CODE),
+        SendError::Disconnected(DisconnectedReason::ConnectionInvalidated);
+        "CONNECTION_INVALIDATED_CLOSE_CODE should propagate correctly"
+    )]
+    #[test_case(
+        CloseCode::from(CONNECTED_ELSEWHERE_CLOSE_CODE),
+        SendError::Disconnected(DisconnectedReason::ConnectedElsewhere);
+        "CONNECTED_ELSEWHERE_CLOSE_CODE should propagate correctly"
+    )]
+    #[test_case(
+        CloseCode::Normal,
+        SendError::Disconnected(DisconnectedReason::SocketClosed { #[cfg(test)] reason: "server closed abnormally" });
+        "Normal close results in Disconnected"
+    )]
+    #[test_log::test(tokio::test(start_paused = true))]
+    async fn connection_close_with_in_flight_request(
+        close_code: CloseCode,
+        expected_error: SendError,
+    ) {
+        // Create channels for listener events
+        let (listener_tx, mut listener_rx) = mpsc::unbounded_channel();
+        let (chat, (mut chat_events, inner_responses)) = fake::new_chat(Box::new(move |evt| {
+            let _ = listener_tx.send(evt);
+        }));
+
+        // Start a request but don't complete it right away
+        let send_task = tokio::spawn(async move {
+            chat.send(Request {
+                method: Method::GET,
+                path: PathAndQuery::from_static("/test"),
+                headers: HeaderMap::default(),
+                body: None,
+            })
+            .await
+        });
+
+        // Take the outbound message and acknowledge it was sent
+        if let Some(fake::OutgoingMessage(_, meta)) = chat_events.recv().await {
+            inner_responses
+                .send(Outcome::Continue(MessageEvent::SentMessage(meta)).into())
+                .expect("Should be able to send event");
+        } else {
+            panic!("Failed to receive outbound message");
+        }
+
+        // Now close the connection with the specified close code
+        inner_responses
+            .send(
+                Outcome::Finished(Err(NextEventError::AbnormalServerClose {
+                    code: close_code,
+                    reason: format!("Test close with code: {close_code}"),
+                }))
+                .into(),
+            )
+            .expect("Should be able to send close event");
+
+        // Wait for the listener to receive the close event
+        let mut received_close = false;
+        while let Some(event) = listener_rx.recv().await {
+            if let ListenerEvent::Finished(_) = event {
+                received_close = true;
+                break;
+            }
+        }
+        assert!(
+            received_close,
+            "Listener should have received a close event"
+        );
+
+        // Wait for the send task to complete and verify the error type
+        let send_result = tokio::time::timeout(Duration::from_secs(1), send_task)
+            .await
+            .expect("send completes within timeout")
+            .expect("Task should not panic");
+
+        assert_eq!(send_result, Err(expected_error));
     }
 }
