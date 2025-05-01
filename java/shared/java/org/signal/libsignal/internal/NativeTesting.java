@@ -120,6 +120,8 @@ public final class NativeTesting {
   public static native Object TESTING_PanicOnReturnSync(Object needsCleanup);
   public static native byte[][] TESTING_ProcessBytestringArray(ByteBuffer[] input);
   public static native long TESTING_RegisterAccountResponse_CreateTestValue();
+  public static native void TESTING_RegistrationService_CheckSvr2CredentialsErrorConvert(String errorDescription) throws Exception;
+  public static native Object TESTING_RegistrationService_CheckSvr2CredentialsResponseConvert();
   public static native void TESTING_RegistrationService_CreateSessionErrorConvert(String errorDescription) throws Exception;
   public static native void TESTING_RegistrationService_RegisterAccountErrorConvert(String errorDescription) throws Exception;
   public static native void TESTING_RegistrationService_RequestVerificationCodeErrorConvert(String errorDescription) throws Exception;

@@ -154,6 +154,11 @@ type RegisterResponseBadge = {
   expirationSeconds: number;
 };
 
+type CheckSvr2CredentialsResponse = Map<
+  string,
+  'match' | 'no-match' | 'invalid'
+>;
+
 type SignedPublicPreKey = {
   keyId: number;
   publicKey: Buffer;
@@ -461,6 +466,7 @@ export function RegisterAccountResponse_GetStorageCapable(response: Wrapper<Regi
 export function RegisterAccountResponse_GetUsernameHash(response: Wrapper<RegisterAccountResponse>): Buffer | null;
 export function RegisterAccountResponse_GetUsernameLinkHandle(response: Wrapper<RegisterAccountResponse>): Uuid | null;
 export function RegistrationAccountAttributes_Create(recoveryPassword: Buffer, aciRegistrationId: number, pniRegistrationId: number, registrationLock: string | null, unidentifiedAccessKey: Buffer | null, unrestrictedUnidentifiedAccess: boolean, capabilities: string[], discoverableByPhoneNumber: boolean): RegistrationAccountAttributes;
+export function RegistrationService_CheckSvr2Credentials(asyncRuntime: Wrapper<TokioAsyncContext>, service: Wrapper<RegistrationService>, svrTokens: string[]): CancellablePromise<CheckSvr2CredentialsResponse>;
 export function RegistrationService_CreateSession(asyncRuntime: Wrapper<TokioAsyncContext>, createSession: RegistrationCreateSessionRequest, connectChat: ConnectChatBridge): CancellablePromise<RegistrationService>;
 export function RegistrationService_RegisterAccount(asyncRuntime: Wrapper<TokioAsyncContext>, service: Wrapper<RegistrationService>, registerAccount: Wrapper<RegisterAccountRequest>, accountAttributes: Wrapper<RegistrationAccountAttributes>): CancellablePromise<RegisterAccountResponse>;
 export function RegistrationService_RegistrationSession(service: Wrapper<RegistrationService>): RegistrationSession;
@@ -651,6 +657,8 @@ export function TESTING_PanicOnReturnIo(asyncRuntime: Wrapper<NonSuspendingBackg
 export function TESTING_PanicOnReturnSync(_needsCleanup: null): null;
 export function TESTING_ProcessBytestringArray(input: Buffer[]): Buffer[];
 export function TESTING_RegisterAccountResponse_CreateTestValue(): RegisterAccountResponse;
+export function TESTING_RegistrationService_CheckSvr2CredentialsErrorConvert(errorDescription: string): void;
+export function TESTING_RegistrationService_CheckSvr2CredentialsResponseConvert(): CheckSvr2CredentialsResponse;
 export function TESTING_RegistrationService_CreateSessionErrorConvert(errorDescription: string): void;
 export function TESTING_RegistrationService_RegisterAccountErrorConvert(errorDescription: string): void;
 export function TESTING_RegistrationService_RequestVerificationCodeErrorConvert(errorDescription: string): void;

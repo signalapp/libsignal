@@ -196,7 +196,8 @@ pub struct CheckSvr2CredentialsResponse {
     pub matches: HashMap<String, Svr2CredentialsResult>,
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, serde::Deserialize)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, serde::Deserialize, strum::AsRefStr)]
+#[strum(serialize_all = "kebab-case")]
 #[serde(rename_all = "kebab-case")]
 pub enum Svr2CredentialsResult {
     Match,

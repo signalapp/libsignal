@@ -38,6 +38,8 @@ type ResumeSessionArgs = Readonly<{
   e164: string;
 }>;
 
+export type Svr2CredentialResult = 'match' | 'no-match' | 'invalid';
+
 /**
  * A client for the Signal registration service.
  *
@@ -160,6 +162,16 @@ export class RegistrationService {
       code
     );
     return this.sessionState.verified;
+  }
+
+  public async checkSvr2Credentials(
+    svr2Tokens: Array<string>
+  ): Promise<Map<string, Svr2CredentialResult>> {
+    return Native.RegistrationService_CheckSvr2Credentials(
+      this.tokioAsyncContext,
+      this,
+      svr2Tokens
+    );
   }
 
   public async registerAccount(inputs: {

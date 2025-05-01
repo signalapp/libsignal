@@ -61,6 +61,17 @@ public class RegistrationServiceTest {
   }
 
   @Test
+  public void testConvertCheckSvr2CredentialsResponse() {
+    var response = NativeTesting.TESTING_RegistrationService_CheckSvr2CredentialsResponseConvert();
+    assertEquals(
+        Map.of(
+            "username:pass-match", RegistrationService.Svr2CredentialsResult.MATCH,
+            "username:pass-no-match", RegistrationService.Svr2CredentialsResult.NO_MATCH,
+            "username:pass-invalid", RegistrationService.Svr2CredentialsResult.INVALID),
+        response);
+  }
+
+  @Test
   public void testConvertRegistrationResponse() throws Exception {
     var response =
         new RegisterAccountResponse(
@@ -176,6 +187,18 @@ public class RegistrationServiceTest {
         NativeTesting::TESTING_RegistrationService_SubmitVerificationErrorConvert);
     assertIsTimeoutError(NativeTesting::TESTING_RegistrationService_SubmitVerificationErrorConvert);
     assertIsUnknownError(NativeTesting::TESTING_RegistrationService_SubmitVerificationErrorConvert);
+  }
+
+  @Test
+  public void testCheckSvr2CredentialsErrorConversion() {
+    assertRegistrationSessionErrorIs(
+        "CredentialsCouldNotBeParsed",
+        RegistrationException.class,
+        NativeTesting::TESTING_RegistrationService_CheckSvr2CredentialsErrorConvert);
+    assertIsTimeoutError(
+        NativeTesting::TESTING_RegistrationService_CheckSvr2CredentialsErrorConvert);
+    assertIsUnknownError(
+        NativeTesting::TESTING_RegistrationService_CheckSvr2CredentialsErrorConvert);
   }
 
   @Test

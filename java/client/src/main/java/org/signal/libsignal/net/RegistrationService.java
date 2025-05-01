@@ -6,7 +6,9 @@
 package org.signal.libsignal.net;
 
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
+import org.signal.libsignal.internal.CalledFromNative;
 import org.signal.libsignal.internal.CompletableFuture;
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
@@ -48,6 +50,13 @@ public class RegistrationService extends NativeHandleGuard.SimpleOwner {
   public static enum VerificationTransport {
     SMS,
     VOICE;
+  }
+
+  @CalledFromNative
+  public static enum Svr2CredentialsResult {
+    MATCH,
+    NO_MATCH,
+    INVALID,
   }
 
   /**
@@ -195,6 +204,31 @@ public class RegistrationService extends NativeHandleGuard.SimpleOwner {
                 asyncContextHandle ->
                     Native.RegistrationService_SubmitCaptcha(
                         asyncContextHandle, nativeHandle, captchaValue)));
+  }
+
+  /**
+   * Check that the given list of SVR credentials is valid.
+   *
+   * <p>If the request succeeds, the returned future resolves with a map of submitted credential to
+   * check result.
+   *
+   * <p>On failure, the future completes exceptionally with one of the previously listed exception
+   * types.
+   */
+  public CompletableFuture<Map<String, Svr2CredentialsResult>> checkSvr2Credentials(
+      String[] svrTokens) {
+    return guardedMap(
+            nativeHandle ->
+                tokioAsyncContext.guardedMap(
+                    asyncContextHandle ->
+                        Native.RegistrationService_CheckSvr2Credentials(
+                            asyncContextHandle, nativeHandle, svrTokens)))
+        .thenApply(
+            result -> {
+              @SuppressWarnings("unchecked")
+              var resultMap = (Map<String, Svr2CredentialsResult>) result;
+              return resultMap;
+            });
   }
 
   /** Get the ID for this registration validation session. */

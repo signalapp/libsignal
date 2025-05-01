@@ -14,6 +14,7 @@ import {
   RegisterAccountResponse,
   RegistrationService,
   RegistrationSessionState,
+  Svr2CredentialResult,
   TokioAsyncContext,
 } from '../net';
 import { InternalRequest } from './NetTest';
@@ -81,6 +82,19 @@ describe('Registration types', () => {
       expirationSeconds: 888888n,
     });
     expect(response.reregistration).to.eq(true);
+  });
+
+  it('converts SVR2 credential response correctly', () => {
+    const expectedEntries: Map<string, Svr2CredentialResult> = new Map(
+      Object.entries({
+        'username:pass-match': 'match',
+        'username:pass-no-match': 'no-match',
+        'username:pass-invalid': 'invalid',
+      })
+    );
+    expect(
+      Native.TESTING_RegistrationService_CheckSvr2CredentialsResponseConvert()
+    ).deep.eq(expectedEntries);
   });
 
   expect(() =>
@@ -164,6 +178,16 @@ describe('Registration types', () => {
           ['SessionNotFound', ErrorCode.Generic],
           ['NotReadyForVerification', ErrorCode.Generic],
           retryLaterCase,
+          unknownCase,
+          timeoutCase,
+        ],
+      },
+      {
+        operationName: 'CheckSvr2Credentials',
+        convertFn:
+          Native.TESTING_RegistrationService_CheckSvr2CredentialsErrorConvert,
+        cases: [
+          ['CredentialsCouldNotBeParsed', ErrorCode.Generic],
           unknownCase,
           timeoutCase,
         ],

@@ -1182,6 +1182,32 @@ impl<'a> ResultTypeInfo<'a> for libsignal_net::registration::RegisterResponseBad
     }
 }
 
+impl<'a> ResultTypeInfo<'a> for libsignal_net::registration::CheckSvr2CredentialsResponse {
+    type ResultType = JsObject;
+    fn convert_into(self, cx: &mut impl Context<'a>) -> JsResult<'a, Self::ResultType> {
+        let Self { matches } = self;
+        let map_constructor: Handle<'_, JsFunction> =
+            cx.global("Map").expect("Map constructor exists");
+        let num_elements = matches.len();
+
+        // Construct a JS Map by calling its constructor with an array of [K, V] arrays.
+        let entries = JsArray::new(cx, num_elements);
+        for ((token, outcome), i) in matches.into_iter().zip(0..) {
+            let (key, value) = {
+                let outcome: &str = outcome.as_ref();
+                (cx.string(token), cx.string(outcome))
+            };
+            let entry = JsArray::new(cx, 2);
+            entry.set(cx, 0, key)?;
+            entry.set(cx, 1, value)?;
+            entries.set(cx, i, entry)?;
+        }
+        let entries = entries.as_value(cx);
+
+        map_constructor.construct(cx, [entries])
+    }
+}
+
 macro_rules! full_range_integer {
     ($typ:ty) => {
         #[doc = "Converts all valid integer values for the type."]

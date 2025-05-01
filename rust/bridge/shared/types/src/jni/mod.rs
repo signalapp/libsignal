@@ -525,9 +525,9 @@ mod registration {
     use libsignal_core::try_scoped;
     use libsignal_net::auth::Auth;
     use libsignal_net::registration::{
-        CreateSessionError, InvalidSessionId, RegisterAccountError, RegistrationLock, RequestError,
-        RequestVerificationCodeError, ResumeSessionError, SubmitVerificationError,
-        UpdateSessionError, VerificationCodeNotDeliverable,
+        CheckSvr2CredentialsError, CreateSessionError, InvalidSessionId, RegisterAccountError,
+        RegistrationLock, RequestError, RequestVerificationCodeError, ResumeSessionError,
+        SubmitVerificationError, UpdateSessionError, VerificationCodeNotDeliverable,
     };
 
     use super::*;
@@ -682,6 +682,16 @@ mod registration {
                     not_ready_for_verification(env, &self.to_string())
                 }
                 SubmitVerificationError::RetryLater(retry_later) => retry_later.to_throwable(env),
+            }
+        }
+    }
+
+    impl MessageOnlyExceptionJniError for CheckSvr2CredentialsError {
+        fn exception_class(&self) -> ClassName<'static> {
+            match self {
+                CheckSvr2CredentialsError::CredentialsCouldNotBeParsed => {
+                    ClassName("org.signal.libsignal.net.RegistrationException")
+                }
             }
         }
     }

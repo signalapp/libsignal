@@ -1576,6 +1576,34 @@ impl<'a> ResultTypeInfo<'a> for Box<[libsignal_net::registration::RegisterRespon
     }
 }
 
+impl<'a> ResultTypeInfo<'a> for libsignal_net::registration::CheckSvr2CredentialsResponse {
+    type ResultType = JObject<'a>;
+    fn convert_into(self, env: &mut JNIEnv<'a>) -> Result<Self::ResultType, BridgeLayerError> {
+        let jobj = new_instance(env, ClassName("java.util.HashMap"), jni_args!(() -> void))?;
+        let jmap = JMap::from_env(env, &jobj)
+            .check_exceptions(env, "CheckSvr2CredentialsResponse::convert_into")?;
+
+        let response_class = find_class(
+            env,
+            ClassName("org.signal.libsignal.net.RegistrationService$Svr2CredentialsResult"),
+        )?;
+        let Self { matches } = self;
+        for (k, v) in matches {
+            let k = k.convert_into(env)?;
+            let name = match v {
+                libsignal_net::registration::Svr2CredentialsResult::Match => "MATCH",
+                libsignal_net::registration::Svr2CredentialsResult::NoMatch => "NO_MATCH",
+                libsignal_net::registration::Svr2CredentialsResult::Invalid => "INVALID",
+            };
+            let v = env.get_static_field(&response_class, name, jni_signature!(org.signal.libsignal.net.RegistrationService::Svr2CredentialsResult))
+            .and_then(|v| v.l())
+                .check_exceptions(env, "Svr2CredentialsResult")?;
+            jmap.put(env, &k, &v).check_exceptions(env, "put")?;
+        }
+        Ok(jobj)
+    }
+}
+
 /// Converts each element of `it` to a Java object, storing the result in an array.
 ///
 /// `element_type_signature` should use [`jni_class_name`] if it's a plain class and
@@ -1989,6 +2017,9 @@ macro_rules! jni_result_type {
     };
     (Box<[RegisterResponseBadge] >) => {
         ::jni::objects::JObjectArray<'local>
+    };
+    (CheckSvr2CredentialsResponse) => {
+        ::jni::objects::JObject<'local>
     };
     (Serialized<$typ:ident>) => {
         ::jni::objects::JByteArray<'local>

@@ -154,6 +154,11 @@ type RegisterResponseBadge = {
   expirationSeconds: number;
 };
 
+type CheckSvr2CredentialsResponse = Map<
+  string,
+  'match' | 'no-match' | 'invalid'
+>;
+
 type SignedPublicPreKey = {
   keyId: number;
   publicKey: Buffer;

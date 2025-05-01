@@ -568,6 +568,7 @@ public final class Native {
   public static native long RegistrationAccountAttributes_Create(byte[] recoveryPassword, int aciRegistrationId, int pniRegistrationId, String registrationLock, byte[] unidentifiedAccessKey, boolean unrestrictedUnidentifiedAccess, Object[] capabilities, boolean discoverableByPhoneNumber);
   public static native void RegistrationAccountAttributes_Destroy(long handle);
 
+  public static native CompletableFuture<Object> RegistrationService_CheckSvr2Credentials(long asyncRuntime, long service, Object[] svrTokens);
   public static native CompletableFuture<Long> RegistrationService_CreateSession(long asyncRuntime, Object createSession, ConnectChatBridge connectChat);
   public static native void RegistrationService_Destroy(long handle);
   public static native CompletableFuture<Long> RegistrationService_RegisterAccount(long asyncRuntime, long service, long registerAccount, long accountAttributes);

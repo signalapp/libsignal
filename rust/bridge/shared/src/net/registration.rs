@@ -12,10 +12,11 @@ use libsignal_bridge_types::net::registration::{
 use libsignal_bridge_types::net::TokioAsyncContext;
 use libsignal_bridge_types::*;
 use libsignal_net::registration::{
-    CreateSessionError, ForServiceIds, NewMessageNotification, RegisterAccountError,
-    RegisterAccountResponse, RegisterResponseBadge, RegistrationSession, RequestError,
-    RequestVerificationCodeError, RequestedInformation, ResumeSessionError, SessionId,
-    SignedPreKeyBody, SubmitVerificationError, UpdateSessionError, VerificationTransport,
+    CheckSvr2CredentialsError, CheckSvr2CredentialsResponse, CreateSessionError, ForServiceIds,
+    NewMessageNotification, RegisterAccountError, RegisterAccountResponse, RegisterResponseBadge,
+    RegistrationSession, RequestError, RequestVerificationCodeError, RequestedInformation,
+    ResumeSessionError, SessionId, SignedPreKeyBody, SubmitVerificationError, UpdateSessionError,
+    VerificationTransport,
 };
 use libsignal_protocol::*;
 use uuid::Uuid;
@@ -112,6 +113,19 @@ async fn RegistrationService_SubmitCaptcha(
     captcha_value: String,
 ) -> Result<(), RequestError<UpdateSessionError>> {
     service.0.lock().await.submit_captcha(&captcha_value).await
+}
+
+#[bridge_io(TokioAsyncContext, ffi = false)]
+async fn RegistrationService_CheckSvr2Credentials(
+    service: &RegistrationService,
+    svr_tokens: Box<[String]>,
+) -> Result<CheckSvr2CredentialsResponse, RequestError<CheckSvr2CredentialsError>> {
+    service
+        .0
+        .lock()
+        .await
+        .check_svr2_credentials(&svr_tokens)
+        .await
 }
 
 #[bridge_io(TokioAsyncContext, ffi = false)]
