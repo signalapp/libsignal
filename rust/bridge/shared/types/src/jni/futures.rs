@@ -14,6 +14,7 @@ use crate::support::{AsyncRuntime, ResultReporter};
 pub struct FutureCompleter<T> {
     jvm: JavaVM,
     future: GlobalRef,
+    future_creation_stack_trace_elements: GlobalRef,
     complete_signature: PhantomData<fn(T)>,
 }
 
@@ -30,16 +31,44 @@ impl<T, U> FutureResultReporter<T, U> {
 }
 
 impl<T: for<'a> ResultTypeInfo<'a> + std::panic::UnwindSafe> FutureCompleter<T> {
-    /// Stores a handle to the JVM and a global reference to the given future.
+    /// Stores a handle to the JVM, a global reference to the given future, and
+    /// captures the current stack trace to be used later if the future completes
+    /// with an exception.
     ///
     /// `future` is expected to refer to a CompletableFuture instance, and will
     /// have methods called on it that match the signatures on CompletableFuture.
     pub fn new(env: &mut JNIEnv, future: &JObject) -> Result<Self, BridgeLayerError> {
+        let future_creation_stack_trace_elements = Self::get_current_thread_stack_trace(env)?;
+
         Ok(Self {
             jvm: env.get_java_vm().expect_no_exceptions()?,
             future: env.new_global_ref(future).expect_no_exceptions()?,
+            future_creation_stack_trace_elements: env
+                .new_global_ref(&future_creation_stack_trace_elements)
+                .expect_no_exceptions()?,
             complete_signature: PhantomData,
         })
+    }
+
+    fn get_current_thread_stack_trace<'a>(
+        env: &mut JNIEnv<'a>,
+    ) -> Result<JObject<'a>, BridgeLayerError> {
+        let thread_class = find_class(env, ClassName("java.lang.Thread"))?;
+        let thread = call_static_method_checked(
+            env,
+            &thread_class,
+            "currentThread",
+            jni_args!(() -> java.lang.Thread),
+        )?;
+
+        let stack_trace_elements = call_method_checked(
+            env,
+            &thread,
+            "getStackTrace",
+            jni_args!(() -> [java.lang.StackTraceElement]),
+        )?;
+
+        Ok(stack_trace_elements)
     }
 }
 
@@ -56,6 +85,7 @@ impl<T: for<'a> ResultTypeInfo<'a> + std::panic::UnwindSafe, U> ResultReporter
         let FutureCompleter {
             jvm,
             future,
+            future_creation_stack_trace_elements,
             complete_signature: _,
         } = receiver;
 
@@ -102,11 +132,19 @@ impl<T: for<'a> ResultTypeInfo<'a> + std::panic::UnwindSafe, U> ResultReporter
         // is consistent with the synchronous implementation in run_ffi_safe, which doesn't catch
         // panics when converting errors to exceptions either.
         let future_for_convert = &future;
+        let stack_elements_for_convert = &future_creation_stack_trace_elements;
         let env_mut = &mut *env;
         maybe_error.unwrap_or_else(move |error| {
             convert_to_exception(env_mut, error, move |env, throwable, error| {
                 throwable
                     .and_then(move |throwable| {
+                        call_method_checked(
+                            env,
+                            &throwable,
+                            "setStackTrace",
+                            jni_args!((stack_elements_for_convert => [java.lang.StackTraceElement]) -> void),
+                        )?;
+
                         _ = call_method_checked(
                             env,
                             future_for_convert,
@@ -125,6 +163,7 @@ impl<T: for<'a> ResultTypeInfo<'a> + std::panic::UnwindSafe, U> ResultReporter
 
         // Explicitly drop these while the thread is still attached to the JVM.
         drop(future);
+        drop(future_creation_stack_trace_elements);
         drop(extra_args_to_drop);
         drop(env);
     }
