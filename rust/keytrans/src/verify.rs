@@ -13,7 +13,10 @@ use crate::guide::{InvalidState, ProofGuide};
 use crate::implicit::{full_monitoring_path, monitoring_path};
 use crate::log::{evaluate_batch_proof, verify_consistency_proof};
 use crate::prefix::{evaluate as evaluate_prefix, MalformedProof};
-use crate::proto::*;
+use crate::proto::{
+    AuditorTreeHead as SingleSignatureTreeHead, CondensedTreeSearchResponse, FullTreeHead,
+    MonitorKey, MonitorProof, MonitorRequest, MonitorResponse, ProofStep, TreeHead,
+};
 use crate::{
     guide, log, vrf, DeploymentMode, FullSearchResponse, LastTreeHead, MonitorContext,
     MonitorStateUpdate, MonitoringData, PublicConfig, SearchContext, SearchStateUpdate,
@@ -140,16 +143,16 @@ fn leaf_hash(prefix_root: &[u8; 32], commitment: &[u8; 32]) -> [u8; 32] {
 /// Checks the signature on the provided transparency tree head using the given key
 fn verify_tree_head_signature(
     config: &PublicConfig,
-    head: &TreeHead,
+    head: &SingleSignatureTreeHead,
     root: &[u8; 32],
     verifying_key: &VerifyingKey,
 ) -> Result<()> {
     let raw = marshal_tree_head_tbs(head.tree_size, head.timestamp, root, config)?;
-    let sig = Signature::from_slice(&head.signature).map_err(|_| {
+    let signature = Signature::from_slice(&head.signature).map_err(|_| {
         Error::VerificationFailed("failed to verify tree head signature (bad format)".to_string())
     })?;
     verifying_key
-        .verify(&raw, &sig)
+        .verify(&raw, &signature)
         .map_err(|_| Error::VerificationFailed("failed to verify tree head signature".to_string()))
 }
 
@@ -184,7 +187,12 @@ fn verify_full_tree_head(
     }
 
     // 2. Verify the signature in TreeHead.signature.
-    verify_tree_head_signature(config, tree_head, &root, &config.signature_key)?;
+    {
+        let single_sig_tree_head = tree_head
+            .to_single_signature_tree_head(config)
+            .ok_or(Error::RequiredFieldMissing("Server signature not found"))?;
+        verify_tree_head_signature(config, &single_sig_tree_head, &root, &config.signature_key)?;
+    }
 
     // 3. Verify that the timestamp in TreeHead is sufficiently recent.
     verify_timestamp(tree_head.timestamp, ALLOWED_TIMESTAMP_RANGE, None, now)?;
@@ -192,7 +200,9 @@ fn verify_full_tree_head(
     // 4. If third-party auditing is used, verify auditor_tree_head with the
     //    steps described in Section 11.2.
     if let DeploymentMode::ThirdPartyAuditing(auditor_key) = config.mode {
-        let auditor_tree_head = get_proto_field(&fth.auditor_tree_head, "auditor_tree_head")?;
+        let auditor_tree_head = fth
+            .select_auditor_tree_head(&auditor_key)
+            .ok_or(Error::RequiredFieldMissing("Auditor tree head not found"))?;
         let auditor_head = get_proto_field(&auditor_tree_head.tree_head, "tree_head")?;
 
         // 2. Verify that TreeHead.timestamp is sufficiently recent.
@@ -385,7 +395,7 @@ pub fn verify_distinguished(
         TreeHead {
             tree_size: distinguished_size,
             timestamp: _,
-            signature: _,
+            signatures: _,
         },
         distinguished_root,
     ) = last_distinguished_tree_head;
@@ -896,6 +906,7 @@ mod test {
     use test_case::test_case;
 
     use super::*;
+    use crate::ChatSearchResponse;
 
     const MAX_AHEAD: Duration = Duration::from_secs(42);
     const MAX_BEHIND: Duration = Duration::from_secs(42);
@@ -935,80 +946,62 @@ mod test {
     #[test]
     fn can_verify_search_response() {
         let sig_key = VerifyingKey::from_bytes(&hex!(
-            "12a21ad60d5a3978e19a3b0baa8c35c55a20e10d45f39e5cb34bf6e1b3cce432"
+            "ac0de1fd7f33552bbeb6ebc12b9d4ea10bf5f025c45073d3fb5f5648955a749e"
         ))
         .unwrap();
         let vrf_key = vrf::PublicKey::try_from(hex!(
-            "1e71563470c1b8a6e0aadf280b6aa96f8ad064674e69b80292ee46d1ab655fcf"
+            "ec3a268237cf5c47115cf222405d5f90cc633ebe05caf82c0dd5acf9d341dadb"
         ))
         .unwrap();
         let auditor_key = VerifyingKey::from_bytes(&hex!(
             "1123b13ee32479ae6af5739e5d687b51559abf7684120511f68cde7a21a0e755"
         ))
         .unwrap();
-        let aci = uuid::uuid!("84fd7196-b3fa-4d4d-bbf8-8f1cdf2b7cea");
+        let aci = uuid::uuid!("90c979fd-eab4-4a08-b6da-69dedeab9b29");
         let request = SlimSearchRequest::new([b"a", aci.as_bytes().as_slice()].concat());
 
-        let condensed_response = {
-            let bytes = include_bytes!("../res/kt-search-response-condensed.dat");
-            CondensedTreeSearchResponse::decode(bytes.as_slice()).unwrap()
+        let (response_tree_head, condensed_response) = {
+            let bytes = include_bytes!("../res/chat_search_response.dat");
+            let response =
+                ChatSearchResponse::decode(bytes.as_slice()).expect("can decode chat response");
+
+            let mut head = response.tree_head.expect("has tree head");
+            // we don't expect these fields to be present in the verification that follows
+            head.distinguished = vec![];
+            head.last = vec![];
+
+            (head, response.aci.expect("has ACI condensed response"))
         };
-        let response_tree_head = FullTreeHead::decode(
-            hex!([
-                "0a4c08f23710bbd4dfb897321a40385a",
-                "2eee61b2a0ef463251e8f0301389c3a3",
-                "34a0146bc6f2cb9b35938d9c16ba9922",
-                "3a651e963fab86e64e02484e49b5718d",
-                "d826aafe7c3e38dfe53226220603224e",
-                "0a4c08f23710e1d4e0b897321a40a973",
-                "dd2f6a412287f93b051bd7a5da9dc99b",
-                "61d86db8a25c861934e00ee6895097b5",
-                "5272f5f71de8b610b5da0b49fc263e0c",
-                "5e33cd3de26d3a9f98fd5d2aae06"
-            ])
-            .as_slice(),
-        )
-        .expect("valid test full tree head");
         let response = FullSearchResponse {
             condensed: condensed_response,
             tree_head: &response_tree_head,
         };
 
-        let valid_at = SystemTime::UNIX_EPOCH + Duration::from_secs(1724279958);
+        let valid_at = SystemTime::UNIX_EPOCH + Duration::from_secs(1746042060);
         let config = PublicConfig {
             mode: DeploymentMode::ThirdPartyAuditing(auditor_key),
             signature_key: sig_key,
             vrf_key,
         };
 
-        let last_tree_head = TreeHead {
-            tree_size: 7154,
-            timestamp: 1724279941691,
-            signature: hex!([
-                "385a2eee61b2a0ef463251e8f0301389",
-                "c3a334a0146bc6f2cb9b35938d9c16ba",
-                "99223a651e963fab86e64e02484e49b5",
-                "718dd826aafe7c3e38dfe53226220603"
-            ])
-            .to_vec(),
-        };
-        let last_root = hex!("1a7ff40e291a276bdcb63d97fe363edfc1c209971e06a806b82d16cbdcb38611");
+        let last_root = hex!("87d59202bfd679c7d5753c6e5ad241852abbc2c45650de114b02620ed6098a07");
         let expected_data_update = MonitoringData {
-            index: hex!("28fb992ac153f6d44485cc242b5e4b0d51aa0f0b31548b1a65161feebbb8d84d"),
-            pos: 5594,
-            ptrs: HashMap::from([(6143, 0)]),
+            index: hex!("3901c94081c4e6321e92b3e434dcaf788f5326913e7bdcab47b4fd2ae7a6848a"),
+            pos: 35,
+            ptrs: HashMap::from([(16777215, 2)]),
             owned: true,
         };
 
         assert_matches!(
             verify_search_internal(&config, request.clone(), response.clone(), SearchContext::default(), true, valid_at),
             Ok(update) => {
-                assert_eq!(update.tree_head, last_tree_head);
+                assert_eq!(&update.tree_head, response_tree_head.tree_head.as_ref().expect("has tree head"));
                 assert_eq!(update.tree_root, last_root);
                 assert_eq!(update.monitoring_data, Some(expected_data_update.clone()));
             }
         );
         // Verification result should always include the monitoring data field, even if it has not changed.
+        let last_tree_head = response_tree_head.tree_head.as_ref().unwrap();
         let last_tree = (last_tree_head.clone(), last_root);
         let context = SearchContext {
             last_tree_head: Some(&last_tree),
@@ -1019,7 +1012,7 @@ mod test {
         assert_matches!(
             verify_search_internal(&config, request.clone(), response.clone(), context, true, valid_at),
             Ok(update) => {
-                assert_eq!(&update.tree_head, &last_tree_head);
+                assert_eq!(&update.tree_head, last_tree_head);
                 assert_eq!(update.tree_root, last_root);
                 assert_eq!(update.monitoring_data, Some(expected_data_update));
             }
@@ -1027,7 +1020,7 @@ mod test {
         assert_matches!(
             verify_search_internal(&config, request, response, SearchContext::default(), false, valid_at),
             Ok(update) => {
-                assert_eq!(update.tree_head, last_tree_head);
+                assert_eq!(&update.tree_head, last_tree_head);
                 assert_eq!(update.tree_root, last_root);
                 // When monitor == false there should be no data update
                 assert!(update.monitoring_data.is_none());

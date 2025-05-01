@@ -8,7 +8,9 @@ use std::time::SystemTime;
 use const_str::hex;
 use libsignal_bridge_macros::*;
 use libsignal_core::Aci;
-use libsignal_keytrans::{StoredAccountData, StoredMonitoringData, StoredTreeHead, TreeHead};
+use libsignal_keytrans::{
+    Signature, StoredAccountData, StoredMonitoringData, StoredTreeHead, TreeHead,
+};
 use libsignal_net::keytrans::SearchResult;
 use libsignal_protocol::IdentityKey;
 use uuid::Uuid;
@@ -28,7 +30,10 @@ fn TESTING_ChatSearchResult() -> SearchResult {
         tree_head: Some(TreeHead {
             tree_size: 42,
             timestamp: 42424242,
-            signature: vec![1, 2, 3],
+            signatures: vec![Signature {
+                auditor_public_key: vec![1, 2, 3],
+                signature: vec![4, 5, 6],
+            }],
         }),
         root: vec![42; 32],
     });

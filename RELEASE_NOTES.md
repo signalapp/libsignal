@@ -15,3 +15,5 @@ v0.71.0
 - net: Futures returned by ChatConnection.send() will now return more specific errors on failure
 
 - New SVR2 enclaves for staging and production.
+
+- keytrans: Support multiple auditors

@@ -1291,7 +1291,7 @@ mod test_support {
     // - Replace the "const" definitions in the code with the ones printed out by the test.
     // - Copy the "chat_search_response.dat" file to "rust/net/tests/data/" replacing the existing one.
     //
-    //#[tokio::test]
+    // #[tokio::test]
     async fn collect_test_data() {
         fn prompt(text: &str) {
             println!("{} >", text);
@@ -1433,26 +1433,23 @@ mod test {
     use super::*;
     use crate::env::KEYTRANS_CONFIG_STAGING;
 
-    // Distinguished tree parameters as of size 11526
-    const DISTINGUISHED_TREE_19941_HEAD: &[u8] =
-        &hex!("08e59b0110898a95cfd2321a4026d5499cad422621f01e4b3874b7bdda5e7d4a3f7b152ad34ac57a644f2efeb9458b527e5de5e44bb776d19f317206e6f4d02ddd3215038d66c426e531113b02");
-    const DISTINGUISHED_TREE_19941_ROOT: &[u8] =
-        &hex!("9f661d1beb7c567e1fbf281a54b2372f95dab2bb3c8d1389c2590103c785c092");
+    const DISTINGUISHED_TREE_25223230_HEAD: &[u8] = &hex!("08bec0830c10f1beddc1e8321a640a201123b13ee32479ae6af5739e5d687b51559abf7684120511f68cde7a21a0e75512404dc142dc8f20605328f39b230b7f4160638c8c9c0fd1985b5348d152bd482c449efbba837ac5bed017e02216ae26ca72fd0b654401c99fdbaa0fdcee38d4a90b");
+    const DISTINGUISHED_TREE_25223230_ROOT: &[u8] =
+        &hex!("85d15cf60676285c0105d9474139dfc7b070996c6dba7ab12ccf2ffcfff8cbcd");
 
-    const STORED_ACCOUNT_DATA_19996: &[u8] =
-        &hex!("0a2b0a203901c94081c4e6321e92b3e434dcaf788f5326913e7bdcab47b4fd2ae7a6848a10231a0308ff7f2001122c0a2086052cc2a2689558e852d053c5ab411d8c3baef20171ec298e551574806ca95d1081011a0308ff7f20011a2c0a20bc1cfaae736c27c437b99175798933ee32caf07a5226840ec963a4e614916e9010dc011a0308ff7f200122710a4d089c9c0110ffdf95cfd2321a407ad5434982865677e3a31513aa78afaf3bebec2174aefd6331be83aa80dad9731eaeca611573e6592605e2014f2ee47f76eb804cf676c6ca7e1be0f907f4cc02122013846855087b9268e136e7920bc5e84dcbe470f6ee4e629ecba7f10f64caaf96");
+    const STORED_ACCOUNT_DATA_25223245: &[u8] = &hex!("0a2f0a203901c94081c4e6321e92b3e434dcaf788f5326913e7bdcab47b4fd2ae7a6848a10231a0708ffffff071002200112300a2086052cc2a2689558e852d053c5ab411d8c3baef20171ec298e551574806ca95d1081011a0708ffffff07100220011a300a20bc1cfaae736c27c437b99175798933ee32caf07a5226840ec963a4e614916e9010dc011a0708ffffff07100220012296010a7208cdc0830c10a8d6ddc1e8321a640a201123b13ee32479ae6af5739e5d687b51559abf7684120511f68cde7a21a0e75512408d5ed11ea43c26fc56d4758369210ecc79ffd24b3f45a54d827b2da29e5104bd67cdb69cb31b06704e4bcefe9e2a57f39e6a63237b86bfd054fe0c9ec001990b122048e51aeb705ffa2fe7bed5f7aad51d216c551547892280eded1db2708eba359a");
 
     fn test_distinguished_tree() -> LastTreeHead {
         (
-            TreeHead::decode(DISTINGUISHED_TREE_19941_HEAD).expect("valid TreeHead"),
-            DISTINGUISHED_TREE_19941_ROOT
+            TreeHead::decode(DISTINGUISHED_TREE_25223230_HEAD).expect("valid TreeHead"),
+            DISTINGUISHED_TREE_25223230_ROOT
                 .try_into()
                 .expect("valid root size"),
         )
     }
 
     fn test_stored_account_data() -> StoredAccountData {
-        StoredAccountData::decode(STORED_ACCOUNT_DATA_19996).expect("valid stored acc data")
+        StoredAccountData::decode(STORED_ACCOUNT_DATA_25223245).expect("valid stored acc data")
     }
 
     fn test_account_data() -> AccountData {
@@ -1572,7 +1569,7 @@ mod test {
     }
 
     const CHAT_SEARCH_RESPONSE: &[u8] = include_bytes!("../tests/data/chat_search_response.dat");
-    const CHAT_SEARCH_RESPONSE_VALID_AT: Duration = Duration::from_secs(1740164663);
+    const CHAT_SEARCH_RESPONSE_VALID_AT: Duration = Duration::from_secs(1746042060);
 
     fn test_search_response() -> TypedSearchResponse {
         let chat_search_response =
