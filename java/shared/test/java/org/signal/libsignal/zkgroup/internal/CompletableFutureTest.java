@@ -7,9 +7,11 @@ package org.signal.libsignal.internal;
 
 import static org.junit.Assert.*;
 
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 import org.junit.Test;
@@ -481,5 +483,77 @@ public class CompletableFutureTest {
       assertEquals(futureException, ex.getCause());
       assertNotEquals(callbackException, ex.getCause());
     }
+  }
+
+  @Test
+  public void regressionTestNoDeadlockDuringCompletionCallbacks() throws Exception {
+    final Object externalLock = new Object();
+    final CountDownLatch externalLockHeldBySecondThread = new CountDownLatch(1);
+    final CountDownLatch callbackBlockedOnLock = new CountDownLatch(1);
+    final AtomicBoolean futureAccessedWhileCallbackExecuting = new AtomicBoolean(false);
+
+    CompletableFuture<Integer> future = new CompletableFuture<>();
+
+    // Add a callback that will signal when it's running, and then block on the external lock.
+    future.whenComplete(
+        (value, exc) -> {
+          try {
+            externalLockHeldBySecondThread.await();
+            // Without this, it's possible that the accessorThread may execute to completion
+            //   before we get scheduled to grab the lock. It's still theoretically possible
+            //   with this check, but I don't expect it to happen in practice, because this thread
+            // would
+            //   have to get interrupted exactly between this countdown call and locking on
+            // externalLock.
+            callbackBlockedOnLock.countDown();
+            synchronized (externalLock) {
+              // Immediately release the lock once we have it, the point was just on getting it.
+            }
+          } catch (InterruptedException e) {
+            fail("Test interrupted");
+          }
+        });
+
+    // Thread 1: Completes the future, which executes the callback
+    Thread completerThread =
+        new Thread(
+            () -> {
+              future.complete(42);
+            });
+
+    // Thread 2: Waits for callback to block, then holds external lock and tries to access future
+    Thread accessorThread =
+        new Thread(
+            () -> {
+              synchronized (externalLock) {
+                externalLockHeldBySecondThread.countDown();
+
+                try {
+                  // Make sure that the callback is actually blocked before proceeding.
+                  callbackBlockedOnLock.await(500, TimeUnit.MILLISECONDS);
+                } catch (InterruptedException e) {
+                  fail("Test interrupted");
+                }
+
+                // This would deadlock in an old implementation if future's lock was still held
+                //   while the completion handlers were called.
+                boolean isDone = future.isDone();
+
+                futureAccessedWhileCallbackExecuting.set(true);
+              }
+            });
+
+    completerThread.start();
+    accessorThread.start();
+
+    completerThread.join(1000);
+    accessorThread.join(1000);
+
+    assertFalse("Completer thread deadlocked", completerThread.isAlive());
+    assertFalse("Accessor thread deadlocked", accessorThread.isAlive());
+
+    assertTrue(
+        "Future was not accessed during callback execution",
+        futureAccessedWhileCallbackExecuting.get());
   }
 }

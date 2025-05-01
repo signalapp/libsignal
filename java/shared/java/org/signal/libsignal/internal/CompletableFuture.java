@@ -6,6 +6,7 @@
 package org.signal.libsignal.internal;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
@@ -22,6 +23,9 @@ public class CompletableFuture<T> implements Future<T> {
   private T result;
   private Throwable exception;
   private List<ThenApplyCompleter<T>> consumers;
+  // This is an immutable, unmodifiable sentinel list used to mark that the consumers member
+  //   is invalidated after the future is completed.
+  private final List<ThenApplyCompleter<T>> INVALIDATED_LIST = Collections.emptyList();
 
   @CalledFromNative
   public CompletableFuture() {
@@ -45,15 +49,27 @@ public class CompletableFuture<T> implements Future<T> {
   }
 
   @CalledFromNative
-  public synchronized boolean complete(T result) {
-    if (completed) return false;
+  public boolean complete(T result) {
+    final List<ThenApplyCompleter<T>> consumers;
 
-    this.result = result;
-    this.completed = true;
+    synchronized (this) {
+      if (completed) return false;
 
-    notifyAll();
+      this.result = result;
+      this.completed = true;
 
-    for (ThenApplyCompleter<T> completer : this.consumers) {
+      consumers = this.consumers;
+      this.consumers = INVALIDATED_LIST;
+
+      notifyAll();
+    }
+
+    // We execute the completion handlers after releasing our lock to prevent
+    //   deadlocks if e.g. any consumers require locks of their own that they
+    //   only release after some other operation of ours that requires our
+    //   lock completes.
+    // We actually saw this happen in the field on Android before.
+    for (ThenApplyCompleter<T> completer : consumers) {
       completer.complete.accept(result);
     }
 
@@ -61,19 +77,31 @@ public class CompletableFuture<T> implements Future<T> {
   }
 
   @CalledFromNative
-  public synchronized boolean completeExceptionally(Throwable throwable) {
-    if (completed) return false;
+  public boolean completeExceptionally(Throwable throwable) {
+    final List<ThenApplyCompleter<T>> consumers;
 
-    if (throwable == null) {
-      throwable = new AssertionError("Future failed, but no exception provided");
+    synchronized (this) {
+      if (completed) return false;
+
+      if (throwable == null) {
+        throwable = new AssertionError("Future failed, but no exception provided");
+      }
+
+      this.exception = throwable;
+      this.completed = true;
+
+      consumers = this.consumers;
+      this.consumers = INVALIDATED_LIST;
+
+      notifyAll();
     }
 
-    this.exception = throwable;
-    this.completed = true;
-
-    notifyAll();
-
-    for (ThenApplyCompleter<T> completer : this.consumers) {
+    // We execute the completion handlers after releasing our lock to prevent
+    //   deadlocks if e.g. any consumers require locks of their own that they
+    //   only release after some other operation of ours that requires our
+    //   lock completes.
+    // We actually saw this happen in the field on Android before.
+    for (ThenApplyCompleter<T> completer : consumers) {
       completer.completeExceptionally.accept(throwable);
     }
 
@@ -206,6 +234,15 @@ public class CompletableFuture<T> implements Future<T> {
     T result;
     Throwable exception;
     synchronized (this) {
+      // This check is load bearing for thread safety.
+      //
+      // CompletableFuture's complete() and completeExceptionally() methods set
+      //   completed = true to indicate that the future is complete, the callbacks
+      //   have been or are currently being called, and that this.consumers should
+      //   no longer be modified. They do so in a synchronized block, so there is a
+      //   happens-before relationship in the Java Memory Model between this.completed
+      //   being set, and this.consumers being rendered invalid, which will protect us
+      //   since we are in a synchronized block synchronized on the same lock.
       if (!this.completed) {
         this.consumers.add(completer);
         return;
