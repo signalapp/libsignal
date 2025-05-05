@@ -19,7 +19,7 @@ if [[ -n "${CARGO_BUILD_TARGET:-}" ]]; then
 fi
 
 if [[ "${CARGO_BUILD_TARGET:-}" =~ -ios(-sim|-macabi)?$ ]]; then
-  export IPHONEOS_DEPLOYMENT_TARGET=13
+  export IPHONEOS_DEPLOYMENT_TARGET=15
   # Use full LTO to reduce binary size
   export CARGO_PROFILE_RELEASE_LTO=fat
   export CFLAGS="-flto=full ${CFLAGS:-}"
