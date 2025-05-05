@@ -226,7 +226,34 @@ class SessionTests: TestCaseBase {
         )
 
         let message = Array("2020 vision".utf8)
-        let ciphertext = try sealedSenderEncrypt(
+
+        func sealedSenderEncryptPlaintext<Bytes: ContiguousBytes>(
+            message: Bytes,
+            for address: ProtocolAddress,
+            from senderCert: SenderCertificate,
+            sessionStore: SessionStore,
+            identityStore: IdentityKeyStore,
+            context: StoreContext
+        ) throws -> [UInt8] {
+            let ciphertextMessage = try signalEncrypt(
+                message: message,
+                for: address,
+                sessionStore: sessionStore,
+                identityStore: identityStore,
+                context: context
+            )
+
+            let usmc = try UnidentifiedSenderMessageContent(
+                ciphertextMessage,
+                from: senderCert,
+                contentHint: .default,
+                groupId: []
+            )
+
+            return try sealedSenderEncrypt(usmc, for: address, identityStore: identityStore, context: context)
+        }
+
+        let ciphertext = try sealedSenderEncryptPlaintext(
             message: message,
             for: bob_address,
             from: sender_cert,
@@ -235,22 +262,24 @@ class SessionTests: TestCaseBase {
             context: NullContext()
         )
 
-        let recipient_addr = try! SealedSenderAddress(e164: nil, uuidString: bob_address.name, deviceId: 1)
-        let plaintext = try sealedSenderDecrypt(
-            message: ciphertext,
-            from: recipient_addr,
-            trustRoot: trust_root.publicKey,
-            timestamp: 31335,
+        let usmc = try! UnidentifiedSenderMessageContent(message: ciphertext, identityStore: bob_store, context: NullContext())
+        XCTAssertEqual(usmc.messageType, .preKey)
+        XCTAssertTrue(try! usmc.senderCertificate.validate(trustRoot: trust_root.publicKey, time: 31335))
+        XCTAssertEqual(usmc.senderCertificate.sender, sender_addr)
+        XCTAssertEqual(usmc.senderCertificate.senderAci, alice_address.serviceId)
+
+        let plaintext = try signalDecryptPreKey(
+            message: try! PreKeySignalMessage(bytes: usmc.contents),
+            from: alice_address,
             sessionStore: bob_store,
             identityStore: bob_store,
             preKeyStore: bob_store,
             signedPreKeyStore: bob_store,
+            kyberPreKeyStore: bob_store,
             context: NullContext()
         )
 
-        XCTAssertEqual(plaintext.message, message)
-        XCTAssertEqual(plaintext.sender, sender_addr)
-        XCTAssertEqual(plaintext.sender.senderAci, alice_address.serviceId)
+        XCTAssertEqual(plaintext, message)
 
         let innerMessage = try signalEncrypt(
             message: [],

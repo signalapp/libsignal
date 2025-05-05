@@ -6,10 +6,9 @@
 #![allow(clippy::missing_safety_doc)]
 #![warn(clippy::unwrap_used)]
 
-use std::ffi::{c_char, c_uchar, c_uint, CString};
+use std::ffi::{c_char, c_uchar, CString};
 use std::panic::AssertUnwindSafe;
 
-use futures_util::FutureExt;
 use libsignal_bridge::ffi::*;
 #[cfg(feature = "libsignal-bridge-testing")]
 #[allow(unused_imports)]
@@ -193,68 +192,6 @@ pub unsafe extern "C" fn signal_identitykeypair_deserialize(
         let identity_key_pair = IdentityKeyPair::try_from(input)?;
         write_result_to(public_key, *identity_key_pair.public_key())?;
         write_result_to(private_key, *identity_key_pair.private_key())?;
-        Ok(())
-    })
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn signal_sealed_session_cipher_decrypt(
-    out: *mut OwnedBufferOf<c_uchar>,
-    sender_e164: *mut *const c_char,
-    sender_uuid: *mut *const c_char,
-    sender_device_id: *mut u32,
-    ctext: BorrowedSliceOf<c_uchar>,
-    trust_root: ConstPointer<PublicKey>,
-    timestamp: u64,
-    local_e164: *const c_char,
-    local_uuid: *const c_char,
-    local_device_id: c_uint,
-    session_store: ConstPointer<FfiSessionStoreStruct>,
-    identity_store: ConstPointer<FfiIdentityKeyStoreStruct>,
-    prekey_store: ConstPointer<FfiPreKeyStoreStruct>,
-    signed_prekey_store: ConstPointer<FfiSignedPreKeyStoreStruct>,
-) -> *mut SignalFfiError {
-    run_ffi_safe(|| {
-        let mut kyber_pre_key_store = InMemKyberPreKeyStore::new();
-        let ctext = ctext.as_slice()?;
-        let trust_root = native_handle_cast::<PublicKey>(trust_root.into_inner())?;
-        let mut identity_store = identity_store
-            .into_inner()
-            .as_ref()
-            .ok_or(NullPointerError)?;
-        let mut session_store = session_store
-            .into_inner()
-            .as_ref()
-            .ok_or(NullPointerError)?;
-        let mut prekey_store = prekey_store.into_inner().as_ref().ok_or(NullPointerError)?;
-        let signed_prekey_store = signed_prekey_store
-            .into_inner()
-            .as_ref()
-            .ok_or(NullPointerError)?;
-
-        let local_e164 = Option::convert_from(local_e164)?;
-        let local_uuid = Option::convert_from(local_uuid)?.ok_or(NullPointerError)?;
-
-        let decrypted = sealed_sender_decrypt(
-            ctext,
-            trust_root,
-            Timestamp::from_epoch_millis(timestamp),
-            local_e164,
-            local_uuid,
-            local_device_id.into(),
-            &mut identity_store,
-            &mut session_store,
-            &mut prekey_store,
-            &signed_prekey_store,
-            &mut kyber_pre_key_store,
-        )
-        .now_or_never()
-        .expect("synchronous")?;
-
-        write_result_to(sender_e164, decrypted.sender_e164)?;
-        write_result_to(sender_uuid, decrypted.sender_uuid)?;
-        write_result_to(sender_device_id, u32::from(decrypted.device_id))?;
-        write_result_to(out, decrypted.message)?;
         Ok(())
     })
 }

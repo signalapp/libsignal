@@ -30,7 +30,6 @@ libsignal-net = { workspace = true }
 libsignal-protocol = { workspace = true }
 signal-media = { workspace = true }
 
-futures-util = { workspace = true }
 hex = { workspace = true }
 log = { workspace = true }
 log-panics = { workspace = true, features = ["with-backtrace"] }
