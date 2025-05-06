@@ -11,11 +11,18 @@ SCRIPT_DIR=$(dirname "$0")
 cd "${SCRIPT_DIR}"/..
 . bin/build_helpers.sh
 
+check_rust
+
+# Fetch dependencies first, so we can use them in computing later options.
+cargo fetch
+
 export CARGO_PROFILE_RELEASE_DEBUG=1 # enable line tables
 
 if [[ -n "${CARGO_BUILD_TARGET:-}" ]]; then
   # Avoid overriding RUSTFLAGS for host builds, because that resets the incremental build.
-  export RUSTFLAGS="--cfg aes_armv8 ${RUSTFLAGS:-}" # Enable ARMv8 cryptography acceleration when available
+  RUSTFLAGS="--cfg aes_armv8 ${RUSTFLAGS:-}" # Enable ARMv8 cryptography acceleration when available
+  RUSTFLAGS="$(rust_remap_path_options) ${RUSTFLAGS:-}" # Strip absolute paths
+  export RUSTFLAGS
 fi
 
 if [[ "${CARGO_BUILD_TARGET:-}" =~ -ios(-sim|-macabi)?$ ]]; then
@@ -106,8 +113,6 @@ while [ "${1:-}" != "" ]; do
   esac
   shift
 done
-
-check_rust
 
 if [[ -n "${DEVELOPER_SDK_DIR:-}" ]]; then
   # Assume we're in Xcode, which means we're probably cross-compiling.

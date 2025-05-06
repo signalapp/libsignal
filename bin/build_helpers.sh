@@ -64,3 +64,11 @@ echo_then_run() {
   echo
   "$@"
 }
+
+rust_remap_path_options() {
+  python3 "$(dirname "${BASH_SOURCE[0]}")"/build_helpers.py print-rust-paths-to-remap |
+  while read -r prefix; do
+    # Echo everything on a single line, since it's going into an environment variable.
+    echo -n "--remap-path-prefix ${prefix}= "
+  done
+}

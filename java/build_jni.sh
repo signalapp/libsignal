@@ -16,8 +16,13 @@ ANDROID_LIB_DIR=java/android/src/main/jniLibs
 DESKTOP_LIB_DIR=java/client/src/main/resources
 SERVER_LIB_DIR=java/server/src/main/resources
 
-export CARGO_PROFILE_RELEASE_DEBUG=1 # enable line tables
-export RUSTFLAGS="--cfg aes_armv8 ${RUSTFLAGS:-}" # Enable ARMv8 cryptography acceleration when available
+# Fetch dependencies first, so we can use them in computing later options.
+cargo fetch
+
+export CARGO_PROFILE_RELEASE_DEBUG=1 # Enable line tables
+RUSTFLAGS="--cfg aes_armv8 ${RUSTFLAGS:-}" # Enable ARMv8 cryptography acceleration when available
+RUSTFLAGS="$(rust_remap_path_options) ${RUSTFLAGS:-}" # Strip absolute paths
+export RUSTFLAGS
 
 DEBUG_LEVEL_LOGS=
 while [ "${1:-}" != "" ]; do
