@@ -32,6 +32,7 @@ pub enum CreateSessionError {
     /// {0}
     RetryLater(#[from] RetryLater),
 }
+impl LogSafeDisplay for CreateSessionError {}
 
 #[derive(Debug, thiserror::Error, displaydoc::Display)]
 #[cfg_attr(test, derive(strum::EnumDiscriminants))]

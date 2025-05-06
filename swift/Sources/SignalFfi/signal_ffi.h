@@ -227,6 +227,9 @@ typedef enum {
   SignalErrorCodeConnectionInvalidated = 172,
   SignalErrorCodeConnectedElsewhere = 173,
   SignalErrorCodeBackupValidation = 180,
+  SignalErrorCodeRegistrationInvalidSessionId = 190,
+  SignalErrorCodeRegistrationRequestNotValid,
+  SignalErrorCodeRegistrationUnknown,
 } SignalErrorCode;
 
 /**

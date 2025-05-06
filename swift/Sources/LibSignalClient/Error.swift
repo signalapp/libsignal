@@ -235,6 +235,12 @@ internal func checkError(_ error: SignalFfiErrorRef?) throws {
             errorMessage: errStr,
             unknownFields: MessageBackupUnknownFields(fields: unknownFields)
         )
+    case SignalErrorCodeRegistrationUnknown:
+        throw RegistrationError.unknown(errStr)
+    case SignalErrorCodeRegistrationInvalidSessionId:
+        throw RegistrationError.invalidSessionId(errStr)
+    case SignalErrorCodeRegistrationRequestNotValid:
+        throw RegistrationError.requestNotValid(errStr)
     default:
         throw SignalError.unknown(errType, errStr)
     }

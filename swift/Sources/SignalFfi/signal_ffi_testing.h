@@ -297,6 +297,8 @@ SignalFfiError *signal_testing_panic_on_return_sync(const void **out, const void
 
 SignalFfiError *signal_testing_process_bytestring_array(SignalBytestringArray *out, SignalBorrowedSliceOfBuffers input);
 
+SignalFfiError *signal_testing_registration_service_create_session_error_convert(const char *error_description);
+
 SignalFfiError *signal_testing_return_string_array(SignalStringArray *out);
 
 SignalFfiError *signal_testing_testing_handle_type_get_value(uint8_t *out, SignalConstPointerTestingHandleType handle);

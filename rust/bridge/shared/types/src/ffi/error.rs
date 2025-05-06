@@ -104,6 +104,10 @@ pub enum SignalErrorCode {
     ConnectedElsewhere = 173,
 
     BackupValidation = 180,
+
+    RegistrationInvalidSessionId = 190,
+    RegistrationRequestNotValid,
+    RegistrationUnknown,
 }
 
 pub trait UpcastAsAny {
@@ -492,9 +496,7 @@ impl FfiError for libsignal_net::chat::ConnectError {
             Self::Timeout => "Connect timed out".to_owned(),
             Self::AppExpired => "App expired".to_owned(),
             Self::DeviceDeregistered => "Device deregistered or delinked".to_owned(),
-            Self::RetryLater(RetryLater {
-                retry_after_seconds,
-            }) => format!("Rate limited; try again after {retry_after_seconds}s"),
+            Self::RetryLater(retry_later) => retry_later.describe(),
         }
     }
 
@@ -512,11 +514,25 @@ impl FfiError for libsignal_net::chat::ConnectError {
     }
     fn provide_retry_after_seconds(&self) -> Result<u32, WrongErrorKind> {
         match self {
-            Self::RetryLater(RetryLater {
-                retry_after_seconds,
-            }) => Ok(*retry_after_seconds),
+            Self::RetryLater(retry_later) => retry_later.provide_retry_after_seconds(),
             _ => Err(WrongErrorKind),
         }
+    }
+}
+
+impl FfiError for libsignal_net::infra::errors::RetryLater {
+    fn code(&self) -> SignalErrorCode {
+        SignalErrorCode::RateLimited
+    }
+
+    fn describe(&self) -> String {
+        let Self {
+            retry_after_seconds,
+        } = self;
+        format!("Rate limited; try again after {retry_after_seconds}s")
+    }
+    fn provide_retry_after_seconds(&self) -> Result<u32, WrongErrorKind> {
+        Ok(self.retry_after_seconds)
     }
 }
 
@@ -548,6 +564,72 @@ impl FfiError for libsignal_net::chat::SendError {
     }
     fn provide_retry_after_seconds(&self) -> Result<u32, WrongErrorKind> {
         Err(WrongErrorKind)
+    }
+}
+
+mod registration {
+    use libsignal_net::infra::errors::LogSafeDisplay;
+    use libsignal_net::registration::{CreateSessionError, RequestError};
+
+    use super::*;
+
+    #[derive(derive_more::From)]
+    enum RegistrationError<'a> {
+        InvalidSessionId,
+        RequestNotValid,
+        RetryLater(&'a RetryLater),
+        Unknown,
+    }
+
+    impl<'a> From<RegistrationError<'a>> for SignalErrorCode {
+        fn from(value: RegistrationError<'a>) -> Self {
+            match value {
+                RegistrationError::InvalidSessionId => Self::RegistrationInvalidSessionId,
+                RegistrationError::RequestNotValid => Self::RegistrationRequestNotValid,
+                RegistrationError::Unknown => Self::RegistrationUnknown,
+                RegistrationError::RetryLater(retry_later) => retry_later.code(),
+            }
+        }
+    }
+
+    impl<E> FfiError for RequestError<E>
+    where
+        E: Send + LogSafeDisplay + std::fmt::Debug + 'static,
+        for<'a> &'a E: Into<RegistrationError<'a>>,
+    {
+        fn code(&self) -> SignalErrorCode {
+            let error_class = match self {
+                RequestError::Timeout => return SignalErrorCode::RequestTimedOut,
+                RequestError::RequestWasNotValid => RegistrationError::RequestNotValid,
+                RequestError::Unknown(_) => RegistrationError::Unknown,
+                RequestError::Other(err) => err.into(),
+            };
+            error_class.into()
+        }
+
+        fn describe(&self) -> String {
+            self.to_string()
+        }
+        fn provide_retry_after_seconds(&self) -> Result<u32, WrongErrorKind> {
+            match self {
+                RequestError::Other(e) => match e.into() {
+                    RegistrationError::RetryLater(retry) => retry.provide_retry_after_seconds(),
+                    _ => Err(WrongErrorKind),
+                },
+                RequestError::Timeout
+                | RequestError::RequestWasNotValid
+                | RequestError::Unknown(_) => Err(WrongErrorKind),
+            }
+        }
+    }
+
+    impl<'a> From<&'a CreateSessionError> for RegistrationError<'a> {
+        fn from(value: &'a CreateSessionError) -> Self {
+            match value {
+                CreateSessionError::InvalidSessionId => Self::InvalidSessionId,
+                CreateSessionError::RetryLater(retry) => retry.into(),
+            }
+        }
     }
 }
 
