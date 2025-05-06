@@ -264,8 +264,7 @@ public class Net {
         return try await UnauthenticatedChatConnection(tokioAsyncContext: self.asyncContext, connectionManager: self.connectionManager)
     }
 
-    private var asyncContext: TokioAsyncContext
-    /// Exposed for testing.
+    internal var asyncContext: TokioAsyncContext
     internal var connectionManager: ConnectionManager
 }
 

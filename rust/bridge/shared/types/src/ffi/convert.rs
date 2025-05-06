@@ -9,6 +9,7 @@ use std::num::{NonZeroU64, ParseIntError};
 use std::ops::Deref;
 
 use libsignal_account_keys::{AccountEntropyPool, InvalidAccountEntropyPool};
+use libsignal_net::registration::PushTokenType;
 use libsignal_protocol::*;
 use paste::paste;
 use uuid::Uuid;
@@ -16,6 +17,7 @@ use uuid::Uuid;
 use super::*;
 use crate::io::{InputStream, SyncInputStream};
 use crate::net::chat::ChatListener;
+use crate::net::registration::{ConnectChatBridge, RegistrationCreateSessionRequest};
 use crate::support::{extend_lifetime, AsType, FixedLengthBincodeSerializable, Serialized};
 
 /// Converts arguments from their FFI form to their Rust form.
@@ -430,6 +432,38 @@ impl<'a> ArgTypeInfo<'a> for Option<Box<dyn ChatListener>> {
     }
     fn load_from(stored: &'a mut Self::StoredType) -> Self {
         stored.take().map(|b| b as Box<_>)
+    }
+}
+
+impl SimpleArgTypeInfo for Box<dyn ConnectChatBridge> {
+    type ArgType = ConstPointer<FfiConnectChatBridgeStruct>;
+    fn convert_from(foreign: Self::ArgType) -> SignalFfiResult<Self> {
+        let foreign = unsafe { foreign.into_inner().as_ref() }.ok_or(NullPointerError)?;
+        Ok(Box::new(FfiConnectChatBridge::new(foreign)?))
+    }
+}
+
+impl SimpleArgTypeInfo for RegistrationCreateSessionRequest {
+    type ArgType = FfiRegistrationCreateSessionRequest;
+
+    fn convert_from(foreign: Self::ArgType) -> SignalFfiResult<Self> {
+        let FfiRegistrationCreateSessionRequest {
+            number,
+            push_token,
+            mcc,
+            mnc,
+        } = foreign;
+        let push_token: Option<String> = SimpleArgTypeInfo::convert_from(push_token)?;
+
+        // The FFI bindings are only used for Swift, which is used on Apple platforms.
+        let push_token_type = push_token.is_some().then_some(PushTokenType::Apn);
+        Ok(Self {
+            number: String::convert_from(number)?,
+            push_token,
+            push_token_type,
+            mcc: SimpleArgTypeInfo::convert_from(mcc)?,
+            mnc: SimpleArgTypeInfo::convert_from(mnc)?,
+        })
     }
 }
 
@@ -854,6 +888,7 @@ macro_rules! ffi_arg_type {
     (Pni) => (*const libsignal_protocol::ServiceIdFixedWidthBinaryBytes);
     (E164) => (*const std::ffi::c_char);
     (AccountEntropyPool) => (*const std::ffi::c_char);
+    (RegistrationCreateSessionRequest) => (ffi::FfiRegistrationCreateSessionRequest);
     (&[u8; $len:expr]) => (*const [u8; $len]);
     (&[& $typ:ty]) => (ffi::BorrowedSliceOf<ffi::ConstPointer< $typ >>);
     (&mut dyn $typ:ty) => (ffi::ConstPointer< ::paste::paste!(ffi::[<Ffi $typ Struct>]) >);

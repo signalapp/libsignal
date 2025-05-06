@@ -62,7 +62,7 @@ pub type RegistrationCreateSessionRequest = CreateSession;
 pub type RegistrationPushTokenType = PushTokenType;
 pub type RegistrationAccountAttributes = AccountAttributes;
 
-bridge_as_handle!(RegistrationService, ffi = false);
+bridge_as_handle!(RegistrationService);
 bridge_as_handle!(RegistrationSession, ffi = false);
 bridge_as_handle!(RegisterAccountRequest, ffi = false);
 bridge_as_handle!(RegisterAccountResponse, ffi = false);
@@ -71,7 +71,7 @@ bridge_as_handle!(RegistrationAccountAttributes, ffi = false);
 /// Precursor to a [`Box<dyn ConnectChat>`](ConnectChat).
 ///
 /// Functionally a `FnOnce(Handle) -> Box<dyn ConnectChat>` but named for clarity.
-pub trait ConnectChatBridge: Send {
+pub trait ConnectChatBridge: Send + UnwindSafe {
     /// Converts `self` into a `ConnectChat` impl.
     ///
     /// The provided runtime handle can be used to spawn tasks needed by the

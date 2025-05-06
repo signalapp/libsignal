@@ -303,6 +303,8 @@ typedef struct SignalProtocolAddress SignalProtocolAddress;
 
 typedef struct SignalPublicKey SignalPublicKey;
 
+typedef struct SignalRegistrationService SignalRegistrationService;
+
 typedef struct SignalSanitizedMetadata SignalSanitizedMetadata;
 
 typedef struct SignalSenderCertificate SignalSenderCertificate;
@@ -996,6 +998,50 @@ typedef struct {
 typedef struct {
   const SignalSenderKeyDistributionMessage *raw;
 } SignalConstPointerSenderKeyDistributionMessage;
+
+typedef struct {
+  SignalRegistrationService *raw;
+} SignalMutPointerRegistrationService;
+
+/**
+ * A C callback used to report the results of Rust futures.
+ *
+ * cbindgen will produce independent C types like `SignalCPromisei32` and
+ * `SignalCPromiseProtocolAddress`.
+ *
+ * This derives Copy because it behaves like a C type; nevertheless, a promise should still only be
+ * completed once.
+ */
+typedef struct {
+  void (*complete)(SignalFfiError *error, const SignalMutPointerRegistrationService *result, const void *context);
+  const void *context;
+  SignalCancellationId cancellation_id;
+} SignalCPromiseMutPointerRegistrationService;
+
+typedef struct {
+  const char *number;
+  const char *push_token;
+  const char *mcc;
+  const char *mnc;
+} SignalFfiRegistrationCreateSessionRequest;
+
+typedef const SignalConnectionManager *(*SignalGetConnectChatConnectionManager)(void *ctx);
+
+typedef void (*SignalDestroyConnectChatBridge)(void *ctx);
+
+/**
+ * A ref-counting pointer to a [`ConnectionManager`] and a callback to
+ * decrement the count.
+ */
+typedef struct {
+  void *ctx;
+  SignalGetConnectChatConnectionManager get_connection_manager;
+  SignalDestroyConnectChatBridge destroy;
+} SignalFfiConnectChatBridgeStruct;
+
+typedef struct {
+  const SignalFfiConnectChatBridgeStruct *raw;
+} SignalConstPointerFfiConnectChatBridgeStruct;
 
 typedef struct {
   const SignalSanitizedMetadata *raw;
@@ -1813,6 +1859,10 @@ SignalFfiError *signal_receipt_credential_request_context_check_valid_contents(S
 SignalFfiError *signal_receipt_credential_request_context_get_request(unsigned char (*out)[SignalRECEIPT_CREDENTIAL_REQUEST_LEN], const unsigned char (*request_context)[SignalRECEIPT_CREDENTIAL_REQUEST_CONTEXT_LEN]);
 
 SignalFfiError *signal_receipt_credential_response_check_valid_contents(SignalBorrowedBuffer buffer);
+
+SignalFfiError *signal_registration_service_create_session(SignalCPromiseMutPointerRegistrationService *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalFfiRegistrationCreateSessionRequest create_session, SignalConstPointerFfiConnectChatBridgeStruct connect_chat);
+
+SignalFfiError *signal_registration_service_destroy(SignalMutPointerRegistrationService p);
 
 #if defined(SIGNAL_MEDIA_SUPPORTED)
 SignalFfiError *signal_sanitized_metadata_clone(SignalMutPointerSanitizedMetadata *new_obj, SignalConstPointerSanitizedMetadata obj);

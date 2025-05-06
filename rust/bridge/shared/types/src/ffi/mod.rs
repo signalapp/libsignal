@@ -191,6 +191,14 @@ pub struct FfiResponseAndDebugInfo {
     debug_info: FfiChatServiceDebugInfo,
 }
 
+#[repr(C)]
+pub struct FfiRegistrationCreateSessionRequest {
+    number: *const std::ffi::c_char,
+    push_token: *const std::ffi::c_char,
+    mcc: *const std::ffi::c_char,
+    mnc: *const std::ffi::c_char,
+}
+
 #[cfg_attr(doc, visibility::make(pub))]
 struct UnexpectedPanic(Box<dyn std::any::Any + Send>);
 

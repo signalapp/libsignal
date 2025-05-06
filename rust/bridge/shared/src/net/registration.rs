@@ -23,13 +23,13 @@ use uuid::Uuid;
 
 use crate::support::*;
 
-bridge_handle_fns!(RegistrationService, clone = false, ffi = false);
+bridge_handle_fns!(RegistrationService, clone = false);
 bridge_handle_fns!(RegistrationSession, clone = false, ffi = false);
 bridge_handle_fns!(RegisterAccountRequest, clone = false, ffi = false);
 bridge_handle_fns!(RegisterAccountResponse, clone = false, ffi = false);
 bridge_handle_fns!(RegistrationAccountAttributes, clone = false, ffi = false);
 
-#[bridge_io(TokioAsyncContext, ffi = false)]
+#[bridge_io(TokioAsyncContext)]
 async fn RegistrationService_CreateSession(
     create_session: RegistrationCreateSessionRequest,
     connect_chat: Box<dyn ConnectChatBridge>,
