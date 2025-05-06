@@ -155,10 +155,6 @@ pub struct JniConnectChat {
     bridge: JniConnectChatBridge,
 }
 
-// This is safe because the runtime handle is unwind-safe (it is included in the
-// tokio Runtime type, which is unwind-safe), and because the other fields are unwind-safe.
-impl UnwindSafe for JniConnectChat where JniConnectChatBridge: UnwindSafe {}
-
 impl JniConnectChatBridge {
     pub fn new(
         env: &mut JNIEnv<'_>,

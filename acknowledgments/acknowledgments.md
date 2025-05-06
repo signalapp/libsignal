@@ -7119,7 +7119,7 @@ USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ```
 
-## tokio-stream 0.1.17, tokio-util 0.7.14, tokio 1.44.2
+## tokio-stream 0.1.17, tokio-util 0.7.14, tokio 1.45.0
 
 ```
 MIT License

@@ -7852,7 +7852,7 @@ SOFTWARE.
 			<key>License</key>
 			<string>MIT License</string>
 			<key>Title</key>
-			<string>tokio-stream 0.1.17, tokio-util 0.7.14, tokio 1.44.2</string>
+			<string>tokio-stream 0.1.17, tokio-util 0.7.14, tokio 1.45.0</string>
 			<key>Type</key>
 			<string>PSGroupSpecifier</string>
 		</dict>

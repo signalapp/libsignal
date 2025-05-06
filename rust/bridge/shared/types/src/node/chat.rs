@@ -162,14 +162,6 @@ pub struct NodeConnectChat {
     factory: NodeConnectChatFactory,
 }
 
-// This type is safe to transfer across an unwind boundary. The runtime handle
-// type is unwind-safe since it's part of  a tokio Runtime, which is itself
-// unwind-safe.
-//
-// TODO(https://github.com/tokio-rs/tokio/pull/7230): remove this manual impl in
-// favor of the compiler's auto-generated one.
-impl UnwindSafe for NodeConnectChat {}
-
 impl Debug for NodeConnectChatFactory {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("NodeConnectChatFactory")

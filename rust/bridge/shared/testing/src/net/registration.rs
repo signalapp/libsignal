@@ -4,7 +4,6 @@
 //
 
 use std::collections::HashSet;
-use std::panic::UnwindSafe;
 use std::str::FromStr;
 use std::time::Duration;
 
@@ -65,8 +64,6 @@ struct ConnectFakeChat(
 );
 
 struct ConnectFakeChatBridge(tokio::sync::mpsc::UnboundedSender<FakeChatRemote>);
-
-impl UnwindSafe for ConnectFakeChat {}
 
 impl ConnectChatBridge for ConnectFakeChatBridge {
     fn create_chat_connector(

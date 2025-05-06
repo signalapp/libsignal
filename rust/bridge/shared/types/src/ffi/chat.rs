@@ -224,12 +224,6 @@ impl ConnectChat for FfiConnectChat {
     }
 }
 
-// SAFETY: Tokio's Handle is unwind-safe.
-// TODO: once there is a release that contains
-// https://github.com/tokio-rs/tokio/pull/7230, upgrade to it and remove this
-// manual impl.
-impl UnwindSafe for FfiConnectChat where FfiConnectChatBridgeStruct: UnwindSafe {}
-
 impl ConnectChatBridge for FfiConnectChatBridge {
     fn create_chat_connector(
         self: Box<Self>,
