@@ -238,6 +238,13 @@ typedef enum {
   SignalErrorCodeRegistrationCredentialsCouldNotBeParsed,
 } SignalErrorCode;
 
+enum SignalSvr2CredentialsResult {
+  SignalSvr2CredentialsResultMatch,
+  SignalSvr2CredentialsResultNoMatch,
+  SignalSvr2CredentialsResultInvalid,
+};
+typedef uint8_t SignalSvr2CredentialsResult;
+
 /**
  * A wrapper around [`ctr::Ctr32BE`] that uses a smaller nonce and supports an initial counter.
  */
@@ -1004,6 +1011,43 @@ typedef struct {
 typedef struct {
   const SignalSenderKeyDistributionMessage *raw;
 } SignalConstPointerSenderKeyDistributionMessage;
+
+typedef struct {
+  /**
+   * Bridged as a string of bytes, but each entry is a UTF-8 `String` key
+   * concatenated with a byte for the value.
+   */
+  SignalBytestringArray entries;
+} SignalFfiCheckSvr2CredentialsResponse;
+
+/**
+ * A C callback used to report the results of Rust futures.
+ *
+ * cbindgen will produce independent C types like `SignalCPromisei32` and
+ * `SignalCPromiseProtocolAddress`.
+ *
+ * This derives Copy because it behaves like a C type; nevertheless, a promise should still only be
+ * completed once.
+ */
+typedef struct {
+  void (*complete)(SignalFfiError *error, const SignalFfiCheckSvr2CredentialsResponse *result, const void *context);
+  const void *context;
+  SignalCancellationId cancellation_id;
+} SignalCPromiseFfiCheckSvr2CredentialsResponse;
+
+typedef struct {
+  const SignalRegistrationService *raw;
+} SignalConstPointerRegistrationService;
+
+typedef struct {
+  const size_t *base;
+  size_t length;
+} SignalBorrowedSliceOfusize;
+
+typedef struct {
+  SignalBorrowedBuffer bytes;
+  SignalBorrowedSliceOfusize lengths;
+} SignalBorrowedBytestringArray;
 
 typedef struct {
   SignalRegistrationService *raw;
@@ -1868,9 +1912,23 @@ SignalFfiError *signal_receipt_credential_request_context_get_request(unsigned c
 
 SignalFfiError *signal_receipt_credential_response_check_valid_contents(SignalBorrowedBuffer buffer);
 
+SignalFfiError *signal_registration_service_check_svr2_credentials(SignalCPromiseFfiCheckSvr2CredentialsResponse *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalConstPointerRegistrationService service, SignalBorrowedBytestringArray svr_tokens);
+
 SignalFfiError *signal_registration_service_create_session(SignalCPromiseMutPointerRegistrationService *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalFfiRegistrationCreateSessionRequest create_session, SignalConstPointerFfiConnectChatBridgeStruct connect_chat);
 
 SignalFfiError *signal_registration_service_destroy(SignalMutPointerRegistrationService p);
+
+SignalFfiError *signal_registration_service_request_push_challenge(SignalCPromisebool *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalConstPointerRegistrationService service, const char *push_token, const void *push_token_type);
+
+SignalFfiError *signal_registration_service_request_verification_code(SignalCPromisebool *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalConstPointerRegistrationService service, const char *transport, const char *client, SignalBorrowedBytestringArray languages);
+
+SignalFfiError *signal_registration_service_resume_session(SignalCPromiseMutPointerRegistrationService *promise, SignalConstPointerTokioAsyncContext async_runtime, const char *session_id, const char *number, SignalConstPointerFfiConnectChatBridgeStruct connect_chat);
+
+SignalFfiError *signal_registration_service_submit_captcha(SignalCPromisebool *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalConstPointerRegistrationService service, const char *captcha_value);
+
+SignalFfiError *signal_registration_service_submit_push_challenge(SignalCPromisebool *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalConstPointerRegistrationService service, const char *push_challenge);
+
+SignalFfiError *signal_registration_service_submit_verification_code(SignalCPromisebool *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalConstPointerRegistrationService service, const char *code);
 
 #if defined(SIGNAL_MEDIA_SUPPORTED)
 SignalFfiError *signal_sanitized_metadata_clone(SignalMutPointerSanitizedMetadata *new_obj, SignalConstPointerSanitizedMetadata obj);

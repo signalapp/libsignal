@@ -113,6 +113,13 @@ pub struct BytestringArray {
     bytes: OwnedBufferOf<std::ffi::c_uchar>,
     lengths: OwnedBufferOf<usize>,
 }
+
+#[repr(C)]
+pub struct BorrowedBytestringArray {
+    bytes: BorrowedSliceOf<std::ffi::c_uchar>,
+    lengths: BorrowedSliceOf<usize>,
+}
+
 pub type StringArray = BytestringArray;
 
 impl BytestringArray {
@@ -161,6 +168,13 @@ pub struct FfiCdsiLookupResponseEntry {
 pub struct FfiCdsiLookupResponse {
     entries: OwnedBufferOf<FfiCdsiLookupResponseEntry>,
     debug_permits_used: i32,
+}
+
+#[repr(C)]
+pub struct FfiCheckSvr2CredentialsResponse {
+    /// Bridged as a string of bytes, but each entry is a UTF-8 `String` key
+    /// concatenated with a byte for the value.
+    entries: BytestringArray,
 }
 
 /// A type alias to be used with [`OwnedBufferOf`], so that `OwnedBufferOf<c_char>` and

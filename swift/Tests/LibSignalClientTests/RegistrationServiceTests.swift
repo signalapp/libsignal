@@ -109,4 +109,17 @@ class RegistrationServiceConversionTests: XCTestCase {
             }
         }
     }
+
+    func testCheckSvr2CredentialsConvert() {
+        let expectedEntries = [
+            "username:pass-match": Svr2CredentialsResult.match,
+            "username:pass-no-match": Svr2CredentialsResult.noMatch,
+            "username:pass-invalid": Svr2CredentialsResult.invalid,
+        ]
+
+        XCTAssertEqual(
+            try invokeFnReturningCheckSvr2CredentialsResponse(fn: signal_testing_registration_service_check_svr2_credentials_response_convert),
+            expectedEntries
+        )
+    }
 }

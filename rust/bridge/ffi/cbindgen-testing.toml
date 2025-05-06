@@ -43,6 +43,7 @@ exclude = [
     "FfiChatListenerStruct",
     "FfiChatResponse",
     "FfiChatServiceDebugInfo",
+    "FfiCheckSvr2CredentialsResponse",
     "FfiResponseAndDebugInfo",
     "MutPointerAuthenticatedChatConnection",
     "MutPointerHttpRequest",

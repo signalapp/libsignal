@@ -199,6 +199,7 @@ pub struct CheckSvr2CredentialsResponse {
 #[derive(Copy, Clone, Debug, Eq, PartialEq, serde::Deserialize, strum::AsRefStr)]
 #[strum(serialize_all = "kebab-case")]
 #[serde(rename_all = "kebab-case")]
+#[repr(u8)]
 pub enum Svr2CredentialsResult {
     Match,
     NoMatch,

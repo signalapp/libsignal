@@ -8,6 +8,7 @@ use std::fmt::Display;
 use std::num::{NonZeroU64, ParseIntError};
 use std::ops::Deref;
 
+use itertools::Itertools as _;
 use libsignal_account_keys::{AccountEntropyPool, InvalidAccountEntropyPool};
 use libsignal_net::registration::PushTokenType;
 use libsignal_protocol::*;
@@ -17,7 +18,9 @@ use uuid::Uuid;
 use super::*;
 use crate::io::{InputStream, SyncInputStream};
 use crate::net::chat::ChatListener;
-use crate::net::registration::{ConnectChatBridge, RegistrationCreateSessionRequest};
+use crate::net::registration::{
+    ConnectChatBridge, RegistrationCreateSessionRequest, RegistrationPushTokenType,
+};
 use crate::support::{extend_lifetime, AsType, FixedLengthBincodeSerializable, Serialized};
 
 /// Converts arguments from their FFI form to their Rust form.
@@ -358,6 +361,25 @@ impl<const LEN: usize> ResultTypeInfo for [u8; LEN] {
     }
 }
 
+impl SimpleArgTypeInfo for Box<[String]> {
+    type ArgType = BorrowedBytestringArray;
+    fn convert_from(foreign: Self::ArgType) -> SignalFfiResult<Self> {
+        let BorrowedBytestringArray { bytes, lengths } = foreign;
+        let (mut bytes, lengths) = unsafe { (bytes.as_slice()?, lengths.as_slice()?) };
+
+        let mut out = Vec::with_capacity(lengths.len());
+        for length in lengths {
+            let string;
+            (string, bytes) = bytes.split_at(*length);
+            let string = std::str::from_utf8(string)
+                .map_err(|_| SignalProtocolError::InvalidArgument("invalid UTF-8".to_string()))?;
+            out.push(string.to_owned())
+        }
+
+        Ok(out.into_boxed_slice())
+    }
+}
+
 macro_rules! bridge_trait {
     ($name:ident) => {
         paste! {
@@ -440,6 +462,14 @@ impl SimpleArgTypeInfo for Box<dyn ConnectChatBridge> {
     fn convert_from(foreign: Self::ArgType) -> SignalFfiResult<Self> {
         let foreign = unsafe { foreign.into_inner().as_ref() }.ok_or(NullPointerError)?;
         Ok(Box::new(FfiConnectChatBridge::new(foreign)?))
+    }
+}
+
+impl SimpleArgTypeInfo for RegistrationPushTokenType {
+    type ArgType = *const std::ffi::c_void;
+    fn convert_from(_foreign: Self::ArgType) -> SignalFfiResult<Self> {
+        // FFI is only used from Apple platforms.
+        Ok(Self::Apn)
     }
 }
 
@@ -777,6 +807,24 @@ impl ResultTypeInfo for libsignal_net::chat::Response {
     }
 }
 
+impl ResultTypeInfo for libsignal_net::registration::CheckSvr2CredentialsResponse {
+    type ResultType = FfiCheckSvr2CredentialsResponse;
+    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
+        let Self { matches } = self;
+        let entries = matches
+            .into_iter()
+            .map(|(key, value)| {
+                let mut bytes = key.into_bytes();
+                bytes.push(value as u8);
+                bytes
+            })
+            .collect_vec();
+        Ok(FfiCheckSvr2CredentialsResponse {
+            entries: entries.into_boxed_slice().convert_into()?,
+        })
+    }
+}
+
 /// Defines an `extern "C"` function for cloning the given type.
 #[macro_export]
 macro_rules! ffi_bridge_handle_clone {
@@ -889,6 +937,7 @@ macro_rules! ffi_arg_type {
     (E164) => (*const std::ffi::c_char);
     (AccountEntropyPool) => (*const std::ffi::c_char);
     (RegistrationCreateSessionRequest) => (ffi::FfiRegistrationCreateSessionRequest);
+    (RegistrationPushTokenType) => (*const std::ffi::c_void);
     (&[u8; $len:expr]) => (*const [u8; $len]);
     (&[& $typ:ty]) => (ffi::BorrowedSliceOf<ffi::ConstPointer< $typ >>);
     (&mut dyn $typ:ty) => (ffi::ConstPointer< ::paste::paste!(ffi::[<Ffi $typ Struct>]) >);
@@ -896,6 +945,7 @@ macro_rules! ffi_arg_type {
     (& $typ:ty) => (ffi::ConstPointer< $typ >);
     (&mut $typ:ty) => (ffi::MutPointer< $typ >);
     (Option<& $typ:ty>) => (ffi::ConstPointer< $typ >);
+    (Box<[String]>) => (ffi::BorrowedBytestringArray);
     (Box<[u8]>) => (ffi::BorrowedSliceOf<std::ffi::c_uchar>);
     (Box<dyn $typ:ty >) => (ffi::ConstPointer< ::paste::paste!(ffi::[<Ffi $typ Struct>]) >);
     (Option<Box<dyn $typ:ty> >) => (ffi::ConstPointer< ::paste::paste!(ffi::[<Ffi $typ Struct>]) >);
@@ -952,6 +1002,7 @@ macro_rules! ffi_result_type {
 
     (LookupResponse) => (ffi::FfiCdsiLookupResponse);
     (ChatResponse) => (ffi::FfiChatResponse);
+    (CheckSvr2CredentialsResponse) => (ffi::FfiCheckSvr2CredentialsResponse);
 
     // In order to provide a fixed-sized array of the correct length,
     // a serialized type FooBar must have a constant FOO_BAR_LEN that's in scope (and exposed to C).

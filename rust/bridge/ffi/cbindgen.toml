@@ -29,6 +29,7 @@ include = [
     "FfiContentHint",
     "RandomnessBytes",
     "IdentityChange",
+    "Svr2CredentialsResult",
 ]
 exclude = ["TAG_SIZE", "NONCE_SIZE", "VERSION"]
 item_types = [

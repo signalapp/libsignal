@@ -42,7 +42,7 @@ async fn RegistrationService_CreateSession(
     .await
 }
 
-#[bridge_io(TokioAsyncContext, ffi = false)]
+#[bridge_io(TokioAsyncContext)]
 async fn RegistrationService_ResumeSession(
     session_id: AsType<SessionId, String>,
     number: String,
@@ -57,7 +57,7 @@ async fn RegistrationService_ResumeSession(
     .await
 }
 
-#[bridge_io(TokioAsyncContext, ffi = false)]
+#[bridge_io(TokioAsyncContext)]
 async fn RegistrationService_RequestPushChallenge(
     service: &RegistrationService,
     push_token: String,
@@ -71,7 +71,7 @@ async fn RegistrationService_RequestPushChallenge(
         .await
 }
 
-#[bridge_io(TokioAsyncContext, ffi = false)]
+#[bridge_io(TokioAsyncContext)]
 async fn RegistrationService_SubmitPushChallenge(
     service: &RegistrationService,
     push_challenge: String,
@@ -84,7 +84,7 @@ async fn RegistrationService_SubmitPushChallenge(
         .await
 }
 
-#[bridge_io(TokioAsyncContext, ffi = false)]
+#[bridge_io(TokioAsyncContext)]
 async fn RegistrationService_RequestVerificationCode(
     service: &RegistrationService,
     transport: AsType<VerificationTransport, String>,
@@ -99,7 +99,7 @@ async fn RegistrationService_RequestVerificationCode(
         .await
 }
 
-#[bridge_io(TokioAsyncContext, ffi = false)]
+#[bridge_io(TokioAsyncContext)]
 async fn RegistrationService_SubmitVerificationCode(
     service: &RegistrationService,
     code: String,
@@ -107,7 +107,7 @@ async fn RegistrationService_SubmitVerificationCode(
     service.0.lock().await.submit_verification_code(&code).await
 }
 
-#[bridge_io(TokioAsyncContext, ffi = false)]
+#[bridge_io(TokioAsyncContext)]
 async fn RegistrationService_SubmitCaptcha(
     service: &RegistrationService,
     captcha_value: String,
@@ -115,7 +115,7 @@ async fn RegistrationService_SubmitCaptcha(
     service.0.lock().await.submit_captcha(&captcha_value).await
 }
 
-#[bridge_io(TokioAsyncContext, ffi = false)]
+#[bridge_io(TokioAsyncContext)]
 async fn RegistrationService_CheckSvr2Credentials(
     service: &RegistrationService,
     svr_tokens: Box<[String]>,

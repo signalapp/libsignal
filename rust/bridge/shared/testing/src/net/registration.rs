@@ -42,7 +42,7 @@ pub fn TESTING_RegistrationSessionInfoConvert() -> RegistrationSession {
     }
 }
 
-#[bridge_fn(ffi = false)]
+#[bridge_fn]
 pub fn TESTING_RegistrationService_CheckSvr2CredentialsResponseConvert(
 ) -> CheckSvr2CredentialsResponse {
     CheckSvr2CredentialsResponse {
