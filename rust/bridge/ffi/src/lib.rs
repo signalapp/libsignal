@@ -175,6 +175,32 @@ pub unsafe extern "C" fn signal_error_get_unknown_fields(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn signal_error_get_registration_error_not_deliverable(
+    err: *const SignalFfiError,
+    out_reason: *mut *const c_char,
+    out_permanent: *mut bool,
+) -> *mut SignalFfiError {
+    let err = AssertUnwindSafe(err);
+    run_ffi_safe(|| {
+        let err = err.as_ref().ok_or(NullPointerError)?;
+
+        let libsignal_net::registration::VerificationCodeNotDeliverable {
+            reason,
+            permanent_failure,
+        } = err
+            .provide_registration_code_not_deliverable()
+            .map_err(|_| {
+                SignalProtocolError::InvalidArgument(format!(
+                    "cannot get registration error from error ({err})"
+                ))
+            })?;
+        write_result_to(out_reason, reason.as_str())?;
+        write_result_to(out_permanent, *permanent_failure)?;
+        Ok(())
+    })
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn signal_error_free(err: *mut SignalFfiError) {
     if !err.is_null() {
         let _boxed_err = Box::from_raw(err);

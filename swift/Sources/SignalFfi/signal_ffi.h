@@ -230,6 +230,12 @@ typedef enum {
   SignalErrorCodeRegistrationInvalidSessionId = 190,
   SignalErrorCodeRegistrationRequestNotValid,
   SignalErrorCodeRegistrationUnknown,
+  SignalErrorCodeRegistrationSessionNotFound,
+  SignalErrorCodeRegistrationNotReadyForVerification,
+  SignalErrorCodeRegistrationSendVerificationCodeFailed,
+  SignalErrorCodeRegistrationCodeNotDeliverable,
+  SignalErrorCodeRegistrationSessionUpdateRejected,
+  SignalErrorCodeRegistrationCredentialsCouldNotBeParsed,
 } SignalErrorCode;
 
 /**
@@ -1411,6 +1417,8 @@ void signal_error_free(SignalFfiError *err);
 SignalFfiError *signal_error_get_address(const SignalFfiError *err, SignalMutPointerProtocolAddress *out);
 
 SignalFfiError *signal_error_get_message(const SignalFfiError *err, const char **out);
+
+SignalFfiError *signal_error_get_registration_error_not_deliverable(const SignalFfiError *err, const char **out_reason, bool *out_permanent);
 
 SignalFfiError *signal_error_get_retry_after_seconds(const SignalFfiError *err, uint32_t *out);
 

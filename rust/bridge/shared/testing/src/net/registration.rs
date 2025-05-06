@@ -202,7 +202,7 @@ make_error_testing_enum!(
 );
 
 /// Return an error matching the requested description.
-#[bridge_fn(ffi = false)]
+#[bridge_fn]
 fn TESTING_RegistrationService_ResumeSessionErrorConvert(
     // The stringly-typed API makes the call sites more self-explanatory.
     error_description: AsType<TestingResumeSessionRequestError, String>,
@@ -223,7 +223,7 @@ make_error_testing_enum!(
 );
 
 /// Return an error matching the requested description.
-#[bridge_fn(ffi = false)]
+#[bridge_fn]
 fn TESTING_RegistrationService_UpdateSessionErrorConvert(
     // The stringly-typed API makes the call sites more self-explanatory.
     error_description: AsType<TestingUpdateSessionRequestError, String>,
@@ -250,7 +250,7 @@ make_error_testing_enum!(
 );
 
 /// Return an error matching the requested description.
-#[bridge_fn(ffi = false)]
+#[bridge_fn]
 fn TESTING_RegistrationService_RequestVerificationCodeErrorConvert(
     // The stringly-typed API makes the call sites more self-explanatory.
     error_description: AsType<TestingRequestVerificationCodeRequestError, String>,
@@ -292,7 +292,7 @@ make_error_testing_enum!(
 );
 
 /// Return an error matching the requested description.
-#[bridge_fn(ffi = false)]
+#[bridge_fn]
 fn TESTING_RegistrationService_SubmitVerificationErrorConvert(
     // The stringly-typed API makes the call sites more self-explanatory.
     error_description: AsType<TestingSubmitVerificationRequestError, String>,
@@ -322,7 +322,7 @@ make_error_testing_enum!(
 );
 
 /// Return an error matching the requested description.
-#[bridge_fn(ffi = false)]
+#[bridge_fn]
 fn TESTING_RegistrationService_CheckSvr2CredentialsErrorConvert(
     // The stringly-typed API makes the call sites more self-explanatory.
     error_description: AsType<TestingCheckSvr2CredentialsRequestError, String>,

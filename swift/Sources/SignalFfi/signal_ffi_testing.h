@@ -297,7 +297,17 @@ SignalFfiError *signal_testing_panic_on_return_sync(const void **out, const void
 
 SignalFfiError *signal_testing_process_bytestring_array(SignalBytestringArray *out, SignalBorrowedSliceOfBuffers input);
 
+SignalFfiError *signal_testing_registration_service_check_svr2_credentials_error_convert(const char *error_description);
+
 SignalFfiError *signal_testing_registration_service_create_session_error_convert(const char *error_description);
+
+SignalFfiError *signal_testing_registration_service_request_verification_code_error_convert(const char *error_description);
+
+SignalFfiError *signal_testing_registration_service_resume_session_error_convert(const char *error_description);
+
+SignalFfiError *signal_testing_registration_service_submit_verification_error_convert(const char *error_description);
+
+SignalFfiError *signal_testing_registration_service_update_session_error_convert(const char *error_description);
 
 SignalFfiError *signal_testing_return_string_array(SignalStringArray *out);
 

@@ -43,6 +43,7 @@ pub enum ResumeSessionError {
     /// session not found
     SessionNotFound,
 }
+impl LogSafeDisplay for ResumeSessionError {}
 
 /// Error response to a request made on an established session.
 ///
@@ -71,6 +72,7 @@ pub enum UpdateSessionError {
     /// {0}
     RetryLater(#[from] RetryLater),
 }
+impl LogSafeDisplay for UpdateSessionError {}
 
 #[derive(Debug, thiserror::Error, displaydoc::Display)]
 #[cfg_attr(test, derive(strum::EnumDiscriminants))]
@@ -89,6 +91,7 @@ pub enum RequestVerificationCodeError {
     /// {0}
     RetryLater(#[from] RetryLater),
 }
+impl LogSafeDisplay for RequestVerificationCodeError {}
 
 #[derive(Debug, thiserror::Error, displaydoc::Display)]
 #[cfg_attr(test, derive(strum::EnumDiscriminants))]
@@ -103,6 +106,7 @@ pub enum SubmitVerificationError {
     /// {0}
     RetryLater(#[from] RetryLater),
 }
+impl LogSafeDisplay for SubmitVerificationError {}
 
 #[derive(Debug, thiserror::Error, displaydoc::Display)]
 #[cfg_attr(test, derive(strum::EnumDiscriminants))]
@@ -111,6 +115,7 @@ pub enum CheckSvr2CredentialsError {
     /// provided list of SVR2 credentials could not be parsed.
     CredentialsCouldNotBeParsed,
 }
+impl LogSafeDisplay for CheckSvr2CredentialsError {}
 
 #[derive(Debug, thiserror::Error, displaydoc::Display)]
 #[cfg_attr(test, derive(strum::EnumDiscriminants))]

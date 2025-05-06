@@ -241,6 +241,22 @@ internal func checkError(_ error: SignalFfiErrorRef?) throws {
         throw RegistrationError.invalidSessionId(errStr)
     case SignalErrorCodeRegistrationRequestNotValid:
         throw RegistrationError.requestNotValid(errStr)
+    case SignalErrorCodeRegistrationSessionNotFound:
+        throw RegistrationError.sessionNotFound(errStr)
+    case SignalErrorCodeRegistrationNotReadyForVerification:
+        throw RegistrationError.notReadyForVerification(errStr)
+    case SignalErrorCodeRegistrationSendVerificationCodeFailed:
+        throw RegistrationError.sendVerificationFailed(errStr)
+    case SignalErrorCodeRegistrationCodeNotDeliverable:
+        var permanent = false
+        let message = try invokeFnReturningString {
+            signal_error_get_registration_error_not_deliverable(error, $0, &permanent)
+        }
+        throw RegistrationError.codeNotDeliverable(message: message, permanentFailure: permanent)
+    case SignalErrorCodeRegistrationSessionUpdateRejected:
+        throw RegistrationError.sessionUpdateRejected(errStr)
+    case SignalErrorCodeRegistrationCredentialsCouldNotBeParsed:
+        throw RegistrationError.credentialsCouldNotBeParsed(errStr)
     default:
         throw SignalError.unknown(errType, errStr)
     }

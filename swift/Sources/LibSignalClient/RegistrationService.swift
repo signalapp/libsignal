@@ -9,6 +9,12 @@ import SignalFfi
 public enum RegistrationError: Error {
     case invalidSessionId(String)
     case requestNotValid(String)
+    case notReadyForVerification(String)
+    case sessionNotFound(String)
+    case sendVerificationFailed(String)
+    case codeNotDeliverable(message: String, permanentFailure: Bool)
+    case sessionUpdateRejected(String)
+    case credentialsCouldNotBeParsed(String)
     case unknown(String)
 }
 
