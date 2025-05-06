@@ -10,7 +10,6 @@ import * as util from './util';
 import * as Native from '../../Native';
 import { ErrorCode, LibSignalErrorBase } from '../Errors';
 import {
-  newNativeHandle,
   RegisterAccountResponse,
   RegistrationService,
   RegistrationSessionState,
@@ -20,6 +19,7 @@ import {
 import { InternalRequest } from './NetTest';
 import { IdentityKeyPair } from '../EcKeys';
 import { Aci, Pni } from '../Address';
+import { newNativeHandle } from '../internal';
 
 use(chaiAsPromised);
 use(sinonChai);

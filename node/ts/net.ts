@@ -15,7 +15,7 @@ import {
   ChatServiceListener,
 } from './net/Chat';
 import { RegistrationService } from './net/Registration';
-import { BridgedStringMap } from './internal';
+import { BridgedStringMap, newNativeHandle } from './internal';
 export * from './net/CDSI';
 export * from './net/Chat';
 export * from './net/Registration';
@@ -40,12 +40,6 @@ export type ChatRequest = Readonly<{
 }>;
 
 type ConnectionManager = Native.Wrapper<Native.ConnectionManager>;
-
-export function newNativeHandle<T>(handle: T): Native.Wrapper<T> {
-  return {
-    _nativeHandle: handle,
-  };
-}
 
 /** Low-level async runtime control, mostly just exported for testing. */
 export class TokioAsyncContext {

@@ -19,3 +19,9 @@ export class BridgedStringMap {
     return Native.TESTING_BridgedStringMap_dump_to_json(this);
   }
 }
+
+export function newNativeHandle<T>(handle: T): Native.Wrapper<T> {
+  return {
+    _nativeHandle: handle,
+  };
+}

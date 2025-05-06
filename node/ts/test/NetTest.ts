@@ -19,7 +19,6 @@ import {
   ChatServiceListener,
   Environment,
   Net,
-  newNativeHandle,
   SIGNAL_TLS_PROXY_SCHEME,
   TokioAsyncContext,
   UnauthenticatedChatConnection,
@@ -30,6 +29,7 @@ import {
 } from '../../Native';
 import { CompletablePromise } from './util';
 import { fail } from 'assert';
+import { newNativeHandle } from '../internal';
 
 use(chaiAsPromised);
 use(sinonChai);

@@ -6,7 +6,8 @@
 import * as Native from '../../Native';
 import { Aci } from '../Address';
 import { PublicKey } from '../EcKeys';
-import { Environment, newNativeHandle, type TokioAsyncContext } from '../net';
+import { Environment, type TokioAsyncContext } from '../net';
+import { newNativeHandle } from '../internal';
 
 // For JSDoc references
 import { type UnauthenticatedChatConnection } from './Chat';

@@ -7,10 +7,11 @@ import type { ReadonlyDeep } from 'type-fest';
 
 import * as Native from '../../Native';
 import { LibSignalError, RateLimitedError } from '../Errors';
-import { newNativeHandle, type Net, type TokioAsyncContext } from '../net';
+import { type Net, type TokioAsyncContext } from '../net';
 import { PublicKey } from '../EcKeys';
 import { Aci, Pni, ServiceIdKind } from '../Address';
 import { SignedKyberPublicPreKey, SignedPublicPreKey } from '..';
+import { newNativeHandle } from '../internal';
 
 type ConnectionManager = Native.Wrapper<Native.ConnectionManager>;
 

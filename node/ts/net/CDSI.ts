@@ -7,7 +7,8 @@ import type { ReadonlyDeep } from 'type-fest';
 import * as Native from '../../Native';
 import { Aci } from '../Address';
 import { Buffer } from 'node:buffer';
-import { TokioAsyncContext, newNativeHandle, ServiceAuth } from '../net';
+import { TokioAsyncContext, ServiceAuth } from '../net';
+import { newNativeHandle } from '../internal';
 
 export type CDSRequestOptionsType = {
   e164s: Array<string>;

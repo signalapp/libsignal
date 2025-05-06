@@ -7,8 +7,9 @@ import * as Native from '../../Native';
 import { LibSignalError } from '../Errors';
 import { ServerMessageAck, Wrapper } from '../../Native';
 import { Buffer } from 'node:buffer';
-import { TokioAsyncContext, newNativeHandle, Environment } from '../net';
+import { TokioAsyncContext, Environment } from '../net';
 import * as KT from './KeyTransparency';
+import { newNativeHandle } from '../internal';
 
 const DEFAULT_CHAT_REQUEST_TIMEOUT_MILLIS = 5000;
 
