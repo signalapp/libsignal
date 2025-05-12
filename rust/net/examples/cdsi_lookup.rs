@@ -32,12 +32,21 @@ async fn cdsi_lookup(
     remaining_response.collect().await
 }
 
+#[derive(Copy, Clone, Debug, strum::EnumString, strum::Display)]
+#[strum(serialize_all = "lowercase")]
+enum Environment {
+    Staging,
+    Prod,
+}
+
 #[derive(clap::Parser)]
 struct CliArgs {
     #[arg(long, env = "USERNAME")]
     username: String,
     #[arg(long, env = "PASSWORD")]
     password: String,
+    #[arg(long, default_value_t = Environment::Prod)]
+    environment: Environment,
 }
 
 const WS2_CONFIG: libsignal_net_infra::ws2::Config = libsignal_net_infra::ws2::Config {
@@ -50,7 +59,11 @@ const WS2_CONFIG: libsignal_net_infra::ws2::Config = libsignal_net_infra::ws2::C
 async fn main() {
     env_logger::init();
 
-    let CliArgs { username, password } = CliArgs::parse();
+    let CliArgs {
+        username,
+        password,
+        environment,
+    } = CliArgs::parse();
 
     let auth = Auth { username, password };
 
@@ -67,7 +80,10 @@ async fn main() {
         ..Default::default()
     };
 
-    let cdsi_env = libsignal_net::env::PROD.cdsi;
+    let cdsi_env = match environment {
+        Environment::Prod => libsignal_net::env::PROD.cdsi,
+        Environment::Staging => libsignal_net::env::STAGING.cdsi,
+    };
     let resolver = DnsResolver::new(&no_network_change_events());
 
     let connected = {
