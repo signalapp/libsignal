@@ -8,6 +8,9 @@ import Foundation
 import SignalFfi
 import XCTest
 
+// These tests depend on test-only functions that aren't available on device builds to save on code size.
+#if !os(iOS) || targetEnvironment(simulator)
+
 class RegistrationServiceConversionTests: XCTestCase {
     private struct ErrorTest {
         public let operationName: String
@@ -123,3 +126,5 @@ class RegistrationServiceConversionTests: XCTestCase {
         )
     }
 }
+
+#endif
