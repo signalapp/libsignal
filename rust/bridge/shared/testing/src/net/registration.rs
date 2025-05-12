@@ -20,17 +20,19 @@ use libsignal_net::chat::ChatConnection;
 use libsignal_net::infra::errors::RetryLater;
 use libsignal_net::registration::{
     CheckSvr2CredentialsError, CheckSvr2CredentialsResponse, ConnectChat, CreateSessionError,
-    RegisterAccountError, RegistrationLock, RegistrationSession, RequestError,
+    RegisterAccountError, RegisterAccountResponse, RegisterResponseBackup, RegisterResponseBadge,
+    RegisterResponseEntitlements, RegistrationLock, RegistrationSession, RequestError,
     RequestVerificationCodeError, RequestedInformation, ResumeSessionError,
     SubmitVerificationError, Svr2CredentialsResult, UpdateSessionError,
     VerificationCodeNotDeliverable,
 };
+use uuid::uuid;
 
 use super::make_error_testing_enum;
 use crate::net::chat::FakeChatServer;
 use crate::*;
 
-#[bridge_fn(ffi = false)]
+#[bridge_fn]
 pub fn TESTING_RegistrationSessionInfoConvert() -> RegistrationSession {
     RegistrationSession {
         allowed_to_request_code: true,
@@ -109,6 +111,38 @@ async fn TESTING_FakeRegistrationSession_CreateSession(
         create_session,
     )
     .await
+}
+
+#[bridge_fn]
+fn TESTING_RegisterAccountResponse_CreateTestValue() -> RegisterAccountResponse {
+    RegisterAccountResponse {
+        aci: uuid!("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa").into(),
+        number: "+18005550123".to_owned(),
+        pni: uuid!("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb").into(),
+        username_hash: Some((*b"username-hash").into()),
+        username_link_handle: Some(uuid!("55555555-5555-5555-5555-555555555555")),
+        storage_capable: true,
+        entitlements: RegisterResponseEntitlements {
+            badges: [
+                RegisterResponseBadge {
+                    id: "first".to_owned(),
+                    visible: true,
+                    expiration: Duration::from_secs(123456),
+                },
+                RegisterResponseBadge {
+                    id: "second".to_owned(),
+                    visible: false,
+                    expiration: Duration::from_secs(555),
+                },
+            ]
+            .into(),
+            backup: Some(RegisterResponseBackup {
+                backup_level: 123,
+                expiration: Duration::from_secs(888888),
+            }),
+        },
+        reregistration: true,
+    }
 }
 
 // Use aliases so that places that refer to syntactic argument names (e.g.

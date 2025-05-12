@@ -30,6 +30,7 @@ include = [
     "RandomnessBytes",
     "IdentityChange",
     "Svr2CredentialsResult",
+    "RequestedInformation",
 ]
 exclude = ["TAG_SIZE", "NONCE_SIZE", "VERSION"]
 item_types = [

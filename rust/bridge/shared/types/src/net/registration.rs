@@ -11,8 +11,8 @@ use futures_util::TryFutureExt as _;
 use libsignal_net::registration::{
     self as net_registration, ConnectChat, CreateSession, CreateSessionError, ForServiceIds,
     NewMessageNotification, ProvidedAccountAttributes, PushTokenType, RegisterAccountResponse,
-    RegistrationSession, RequestError, ResumeSessionError, SessionId, SignedPreKeyBody,
-    SkipDeviceTransfer, UnidentifiedAccessKey,
+    RegistrationSession, RequestError, RequestedInformation, ResumeSessionError, SessionId,
+    SignedPreKeyBody, SkipDeviceTransfer, UnidentifiedAccessKey,
 };
 use libsignal_protocol::PublicKey;
 
@@ -61,11 +61,12 @@ pub struct AccountAttributes {
 pub type RegistrationCreateSessionRequest = CreateSession;
 pub type RegistrationPushTokenType = PushTokenType;
 pub type RegistrationAccountAttributes = AccountAttributes;
+pub type RegistrationSessionRequestedInformation = RequestedInformation;
 
 bridge_as_handle!(RegistrationService);
-bridge_as_handle!(RegistrationSession, ffi = false);
+bridge_as_handle!(RegistrationSession);
 bridge_as_handle!(RegisterAccountRequest, ffi = false);
-bridge_as_handle!(RegisterAccountResponse, ffi = false);
+bridge_as_handle!(RegisterAccountResponse);
 bridge_as_handle!(RegistrationAccountAttributes, ffi = false);
 
 /// Precursor to a [`Box<dyn ConnectChat>`](ConnectChat).

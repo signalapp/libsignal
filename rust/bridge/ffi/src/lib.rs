@@ -52,6 +52,21 @@ pub unsafe extern "C" fn signal_free_list_of_strings(buffer: OwnedBufferOf<CStri
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn signal_free_list_of_register_response_badges(
+    buffer: OwnedBufferOf<FfiRegisterResponseBadge>,
+) {
+    for badge in buffer.into_box() {
+        let FfiRegisterResponseBadge {
+            id,
+            visible,
+            expiration_secs,
+        } = badge;
+        signal_free_string(id);
+        let _: (bool, f64) = (visible, expiration_secs);
+    }
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn signal_free_lookup_response_entry_list(
     buffer: OwnedBufferOf<crate::FfiCdsiLookupResponseEntry>,
 ) {

@@ -2,16 +2,11 @@
 // Copyright 2021-2022 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
-use std::time::Duration;
 
-use libsignal_net::registration::{
-    RegisterAccountResponse, RegisterResponseBackup, RegisterResponseBadge,
-    RegisterResponseEntitlements, SignedPreKeyBody,
-};
+use libsignal_net::registration::SignedPreKeyBody;
 use libsignal_protocol::error::Result;
 use libsignal_protocol::*;
 use rand::TryRngCore as _;
-use uuid::uuid;
 
 use crate::*;
 
@@ -119,36 +114,4 @@ fn TESTING_SignedPublicPreKey_CheckBridgesCorrectly(
         hex::encode(source_public_key.serialize())
     );
     assert_eq!(&*signature, b"signature");
-}
-
-#[bridge_fn(ffi = false)]
-fn TESTING_RegisterAccountResponse_CreateTestValue() -> RegisterAccountResponse {
-    RegisterAccountResponse {
-        aci: uuid!("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa").into(),
-        number: "+18005550123".to_owned(),
-        pni: uuid!("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb").into(),
-        username_hash: Some((*b"username-hash").into()),
-        username_link_handle: Some(uuid!("55555555-5555-5555-5555-555555555555")),
-        storage_capable: true,
-        entitlements: RegisterResponseEntitlements {
-            badges: [
-                RegisterResponseBadge {
-                    id: "first".to_owned(),
-                    visible: true,
-                    expiration: Duration::from_secs(123456),
-                },
-                RegisterResponseBadge {
-                    id: "second".to_owned(),
-                    visible: false,
-                    expiration: Duration::from_secs(555),
-                },
-            ]
-            .into(),
-            backup: Some(RegisterResponseBackup {
-                backup_level: 123,
-                expiration: Duration::from_secs(888888),
-            }),
-        },
-        reregistration: true,
-    }
 }

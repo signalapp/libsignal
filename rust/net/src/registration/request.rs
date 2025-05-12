@@ -60,6 +60,7 @@ pub struct RegistrationSession {
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(test, derive(serde::Serialize))]
+#[repr(u8)]
 pub enum RequestedInformation {
     PushChallenge,
     Captcha,

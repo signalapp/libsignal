@@ -74,6 +74,8 @@ typedef struct {
   SignalNonSuspendingBackgroundThreadRuntime *raw;
 } SignalMutPointerNonSuspendingBackgroundThreadRuntime;
 
+typedef uint8_t SignalOptionalUuid[17];
+
 typedef struct {
   const SignalNonSuspendingBackgroundThreadRuntime *raw;
 } SignalConstPointerNonSuspendingBackgroundThreadRuntime;
@@ -221,6 +223,8 @@ SignalFfiError *signal_testing_chat_send_error_convert(const char *error_descrip
 
 SignalFfiError *signal_testing_connection_manager_is_using_proxy(int32_t *out, SignalConstPointerConnectionManager manager);
 
+SignalFfiError *signal_testing_convert_optional_uuid(SignalOptionalUuid *out, bool present);
+
 SignalFfiError *signal_testing_error_on_borrow_async(const void *_input);
 
 SignalFfiError *signal_testing_error_on_borrow_io(SignalCPromisebool *promise, SignalConstPointerNonSuspendingBackgroundThreadRuntime async_runtime, const void *_input);
@@ -297,6 +301,8 @@ SignalFfiError *signal_testing_panic_on_return_sync(const void **out, const void
 
 SignalFfiError *signal_testing_process_bytestring_array(SignalBytestringArray *out, SignalBorrowedSliceOfBuffers input);
 
+SignalFfiError *signal_testing_register_account_response_create_test_value(SignalMutPointerRegisterAccountResponse *out);
+
 SignalFfiError *signal_testing_registration_service_check_svr2_credentials_error_convert(const char *error_description);
 
 SignalFfiError *signal_testing_registration_service_check_svr2_credentials_response_convert(SignalFfiCheckSvr2CredentialsResponse *out);
@@ -310,6 +316,8 @@ SignalFfiError *signal_testing_registration_service_resume_session_error_convert
 SignalFfiError *signal_testing_registration_service_submit_verification_error_convert(const char *error_description);
 
 SignalFfiError *signal_testing_registration_service_update_session_error_convert(const char *error_description);
+
+SignalFfiError *signal_testing_registration_session_info_convert(SignalMutPointerRegistrationSession *out);
 
 SignalFfiError *signal_testing_return_string_array(SignalStringArray *out);
 

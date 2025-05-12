@@ -153,6 +153,8 @@ impl<S: AsRef<[u8]>> FromIterator<S> for BytestringArray {
     }
 }
 
+pub type OptionalUuid = [u8; 17];
+
 #[repr(C)]
 #[derive(Debug)]
 /// cbindgen:field-names=[e164, rawAciUuid, rawPniUuid]
@@ -211,6 +213,16 @@ pub struct FfiRegistrationCreateSessionRequest {
     push_token: *const std::ffi::c_char,
     mcc: *const std::ffi::c_char,
     mnc: *const std::ffi::c_char,
+}
+
+#[repr(C)]
+pub struct FfiRegisterResponseBadge {
+    /// The badge ID.
+    pub id: *const std::ffi::c_char,
+    /// Whether the badge is currently configured to be visible.
+    pub visible: bool,
+    /// When the badge expires.
+    pub expiration_secs: f64,
 }
 
 #[cfg_attr(doc, visibility::make(pub))]

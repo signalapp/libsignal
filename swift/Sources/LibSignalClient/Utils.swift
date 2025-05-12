@@ -62,6 +62,18 @@ internal func invokeFnReturningArray(fn: (UnsafeMutablePointer<SignalOwnedBuffer
     return result
 }
 
+internal func invokeFnReturningOptionalArray(fn: (UnsafeMutablePointer<SignalOwnedBuffer>?) -> SignalFfiErrorRef?) throws -> [UInt8]? {
+    var output = SignalOwnedBuffer()
+    try checkError(fn(&output))
+    defer { signal_free_buffer(output.base, output.length) }
+
+    return if output.base == nil {
+        nil
+    } else {
+        Array(UnsafeBufferPointer(start: output.base, count: output.length))
+    }
+}
+
 internal func invokeFnReturningData(fn: (UnsafeMutablePointer<SignalOwnedBuffer>?) -> SignalFfiErrorRef?) throws -> Data {
     var output = SignalOwnedBuffer()
     try checkError(fn(&output))
@@ -111,6 +123,16 @@ internal func invokeFnReturningUuid(fn: (UnsafeMutablePointer<uuid_t>?) -> Signa
     var output: uuid_t = (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
     try checkError(fn(&output))
     return UUID(uuid: output)
+}
+
+internal func invokeFnReturningOptionalUuid(fn: (UnsafeMutablePointer<SignalOptionalUuid>?) -> SignalFfiErrorRef?) throws -> UUID? {
+    var output: SignalOptionalUuid = (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+    try checkError(fn(&output))
+    let (isPresent, u0, u1, u2, u3, u4, u5, u6, u7, u8, u9, u10, u11, u12, u13, u14, u15) = output
+    if isPresent == 0 {
+        return nil
+    }
+    return UUID(uuid: (u0, u1, u2, u3, u4, u5, u6, u7, u8, u9, u10, u11, u12, u13, u14, u15))
 }
 
 internal func invokeFnReturningServiceId<Id: ServiceId>(fn: (UnsafeMutablePointer<ServiceIdStorage>?) -> SignalFfiErrorRef?) throws -> Id {

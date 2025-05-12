@@ -231,6 +231,17 @@ final class BridgingTests: XCTestCase {
             }
             """)
     }
+
+    func testReturnOptionalUuid() throws {
+        let shouldBeNil = try invokeFnReturningOptionalUuid {
+            signal_testing_convert_optional_uuid($0, false)
+        }
+        XCTAssertEqual(nil, shouldBeNil)
+        let shouldBePresent = try invokeFnReturningOptionalUuid {
+            signal_testing_convert_optional_uuid($0, true)
+        }
+        XCTAssertEqual(UUID(uuidString: "abababab-1212-3434-5656-787878787878"), shouldBePresent)
+    }
 }
 
 #endif

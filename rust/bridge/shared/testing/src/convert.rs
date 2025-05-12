@@ -11,6 +11,7 @@ use libsignal_bridge_macros::*;
 use libsignal_bridge_types::support::*;
 use libsignal_bridge_types::*;
 use libsignal_protocol::SignalProtocolError;
+use uuid::Uuid;
 
 use crate::types::*;
 
@@ -253,6 +254,10 @@ fn TESTING_RoundTripI32(input: i32) -> i32 {
 #[bridge_fn(ffi = false)]
 fn TESTING_RoundTripU64(input: u64) -> u64 {
     input
+}
+#[bridge_fn(jni = false, node = false)]
+fn TESTING_ConvertOptionalUuid(present: bool) -> Option<Uuid> {
+    present.then_some(uuid::uuid!("abababab-1212-3434-5656-787878787878"))
 }
 
 #[bridge_fn]

@@ -14,9 +14,8 @@ use libsignal_bridge_types::*;
 use libsignal_net::registration::{
     CheckSvr2CredentialsError, CheckSvr2CredentialsResponse, CreateSessionError, ForServiceIds,
     NewMessageNotification, RegisterAccountError, RegisterAccountResponse, RegisterResponseBadge,
-    RegistrationSession, RequestError, RequestVerificationCodeError, RequestedInformation,
-    ResumeSessionError, SessionId, SignedPreKeyBody, SubmitVerificationError, UpdateSessionError,
-    VerificationTransport,
+    RegistrationSession, RequestError, RequestVerificationCodeError, ResumeSessionError, SessionId,
+    SignedPreKeyBody, SubmitVerificationError, UpdateSessionError, VerificationTransport,
 };
 use libsignal_protocol::*;
 use uuid::Uuid;
@@ -24,9 +23,9 @@ use uuid::Uuid;
 use crate::support::*;
 
 bridge_handle_fns!(RegistrationService, clone = false);
-bridge_handle_fns!(RegistrationSession, clone = false, ffi = false);
+bridge_handle_fns!(RegistrationSession, clone = false);
 bridge_handle_fns!(RegisterAccountRequest, clone = false, ffi = false);
-bridge_handle_fns!(RegisterAccountResponse, clone = false, ffi = false);
+bridge_handle_fns!(RegisterAccountResponse, clone = false);
 bridge_handle_fns!(RegistrationAccountAttributes, clone = false, ffi = false);
 
 #[bridge_io(TokioAsyncContext)]
@@ -191,7 +190,7 @@ async fn RegistrationService_RegisterAccount(
         .await
 }
 
-#[bridge_fn(ffi = false)]
+#[bridge_fn]
 fn RegistrationService_SessionId(service: &RegistrationService) -> String {
     service
         .0
@@ -201,36 +200,36 @@ fn RegistrationService_SessionId(service: &RegistrationService) -> String {
         .to_owned()
 }
 
-#[bridge_fn(ffi = false)]
+#[bridge_fn]
 fn RegistrationService_RegistrationSession(service: &RegistrationService) -> RegistrationSession {
     service.0.blocking_lock().session_state().clone()
 }
 
-#[bridge_fn(ffi = false)]
+#[bridge_fn]
 fn RegistrationSession_GetAllowedToRequestCode(session: &RegistrationSession) -> bool {
     session.allowed_to_request_code
 }
 
-#[bridge_fn(ffi = false)]
+#[bridge_fn]
 fn RegistrationSession_GetVerified(session: &RegistrationSession) -> bool {
     session.verified
 }
 
-#[bridge_fn(ffi = false)]
+#[bridge_fn]
 fn RegistrationSession_GetNextCallSeconds(session: &RegistrationSession) -> Option<u32> {
     session
         .next_call
         .map(|d| d.as_secs().try_into().unwrap_or(u32::MAX))
 }
 
-#[bridge_fn(ffi = false)]
+#[bridge_fn]
 fn RegistrationSession_GetNextSmsSeconds(session: &RegistrationSession) -> Option<u32> {
     session
         .next_sms
         .map(|d| d.as_secs().try_into().unwrap_or(u32::MAX))
 }
 
-#[bridge_fn(ffi = false)]
+#[bridge_fn]
 fn RegistrationSession_GetNextVerificationAttemptSeconds(
     session: &RegistrationSession,
 ) -> Option<u32> {
@@ -239,9 +238,7 @@ fn RegistrationSession_GetNextVerificationAttemptSeconds(
         .map(|d| d.as_secs().try_into().unwrap_or(u32::MAX))
 }
 
-type RegistrationSessionRequestedInformation = RequestedInformation;
-
-#[bridge_fn(ffi = false)]
+#[bridge_fn]
 fn RegistrationSession_GetRequestedInformation(
     session: &RegistrationSession,
 ) -> Box<[RegistrationSessionRequestedInformation]> {
@@ -307,6 +304,8 @@ fn RegisterAccountRequest_SetIdentityPublicKey(
 /// cbindgen: ignore
 type SignedPublicPreKey = SignedPreKeyBody<Box<[u8]>>;
 
+pub use libsignal_bridge_types::net::registration::RegistrationSessionRequestedInformation;
+
 #[bridge_fn(ffi = false)]
 fn RegisterAccountRequest_SetIdentitySignedPreKey(
     register_account: &RegisterAccountRequest,
@@ -354,7 +353,7 @@ fn RegistrationAccountAttributes_Create(
     }
 }
 
-#[bridge_fn(ffi = false)]
+#[bridge_fn]
 fn RegisterAccountResponse_GetIdentity(
     response: &RegisterAccountResponse,
     identity_type: AsType<ServiceIdKind, u8>,
@@ -365,41 +364,41 @@ fn RegisterAccountResponse_GetIdentity(
     }
 }
 
-#[bridge_fn(ffi = false)]
+#[bridge_fn]
 fn RegisterAccountResponse_GetNumber(response: &RegisterAccountResponse) -> &str {
     &response.number
 }
 
-#[bridge_fn(ffi = false)]
+#[bridge_fn]
 fn RegisterAccountResponse_GetUsernameHash(response: &RegisterAccountResponse) -> Option<&[u8]> {
     response.username_hash.as_deref()
 }
 
-#[bridge_fn(ffi = false)]
+#[bridge_fn]
 fn RegisterAccountResponse_GetUsernameLinkHandle(
     response: &RegisterAccountResponse,
 ) -> Option<Uuid> {
     response.username_link_handle
 }
 
-#[bridge_fn(ffi = false)]
+#[bridge_fn]
 fn RegisterAccountResponse_GetStorageCapable(response: &RegisterAccountResponse) -> bool {
     response.storage_capable
 }
 
-#[bridge_fn(ffi = false)]
+#[bridge_fn]
 fn RegisterAccountResponse_GetReregistration(response: &RegisterAccountResponse) -> bool {
     response.reregistration
 }
 
-#[bridge_fn(ffi = false)]
+#[bridge_fn]
 fn RegisterAccountResponse_GetEntitlementBadges(
     response: &RegisterAccountResponse,
 ) -> Box<[RegisterResponseBadge]> {
     response.entitlements.badges.clone()
 }
 
-#[bridge_fn(ffi = false)]
+#[bridge_fn]
 fn RegisterAccountResponse_GetEntitlementBackupLevel(
     response: &RegisterAccountResponse,
 ) -> Option<u64> {
@@ -410,7 +409,7 @@ fn RegisterAccountResponse_GetEntitlementBackupLevel(
         .map(|backup| backup.backup_level)
 }
 
-#[bridge_fn(ffi = false)]
+#[bridge_fn]
 fn RegisterAccountResponse_GetEntitlementBackupExpirationSeconds(
     response: &RegisterAccountResponse,
 ) -> Option<u64> {

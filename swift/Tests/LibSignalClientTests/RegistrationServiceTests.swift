@@ -27,6 +27,36 @@ class RegistrationServiceConversionTests: XCTestCase {
         }
     }
 
+    func testRegistrationSessionStateConversion() throws {
+        let sessionState: RegistrationSessionState = try invokeFnReturningNativeHandle {
+            signal_testing_registration_session_info_convert($0)
+        }
+        XCTAssertEqual(sessionState.allowedToRequestCode, true)
+        XCTAssertEqual(sessionState.verified, true)
+        XCTAssertEqual(sessionState.nextCall, TimeInterval(123))
+        XCTAssertEqual(sessionState.nextSms, TimeInterval(456))
+        XCTAssertEqual(sessionState.nextVerificationAttempt, TimeInterval(789))
+        XCTAssertEqual(sessionState.requestedInformation, [.pushChallenge])
+    }
+
+    func testRegisterAccountResponseConversion() throws {
+        let response: RegisterAccountResponse = try invokeFnReturningNativeHandle {
+            signal_testing_register_account_response_create_test_value($0)
+        }
+        XCTAssertEqual(response.number, "+18005550123")
+        XCTAssertEqual(response.aci, try Aci.parseFrom(serviceIdString: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"))
+        XCTAssertEqual(response.pni, try Pni.parseFrom(serviceIdString: "PNI:bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"))
+        XCTAssertEqual(response.usernameHash, Array("username-hash".utf8))
+        XCTAssertEqual(response.usernameLinkHandle, UUID(uuidString: "55555555-5555-5555-5555-555555555555"))
+        XCTAssertEqual(response.storageCapable, true)
+        XCTAssertEqual(response.entitlements.0, [
+            BadgeEntitlement(id: "first", visible: true, expiration: 123_456),
+            BadgeEntitlement(id: "second", visible: false, expiration: 555),
+        ])
+        XCTAssertEqual(response.entitlements.1, BackupEntitlement(expiration: 888_888, level: 123))
+        XCTAssertEqual(response.reregistration, true)
+    }
+
     func testErrorConversion() {
         let retryLaterCase = ("RetryAfter42Seconds", { (e: Error) in if case SignalError.rateLimitedError(retryAfter: 42, message: "retry after 42s") = e { true } else { false }})
         let unknownCase = ("Unknown", { (e: Error) in if case RegistrationError.unknown("unknown error: some message") = e { true } else { false }})

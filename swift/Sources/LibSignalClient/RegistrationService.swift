@@ -229,6 +229,228 @@ public class RegistrationService: NativeHandleOwner<SignalMutPointerRegistration
             return nil
         }
     }
+
+    /// The ID for this registration validation session.
+    public var sessionId: String {
+        return failOnError {
+            try invokeFnReturningString { out in
+                self.withNativeHandle {
+                    signal_registration_service_session_id(out, $0.const())
+                }
+            }
+        }
+    }
+
+    /// The session state received from the server with the last completed validation request.
+    public var sessionState: RegistrationSessionState {
+        return failOnError {
+            try invokeFnReturningNativeHandle { out in
+                self.withNativeHandle { nativeHandle in
+                    signal_registration_service_registration_session(out, nativeHandle.const())
+                }
+            }
+        }
+    }
+}
+
+public class RegistrationSessionState: NativeHandleOwner<SignalMutPointerRegistrationSession> {
+    override internal class func destroyNativeHandle(
+        _ nativeHandle: NonNull<SignalMutPointerRegistrationSession>
+    ) -> SignalFfiErrorRef? {
+        signal_registration_session_destroy(nativeHandle.pointer)
+    }
+
+    public var allowedToRequestCode: Bool {
+        return failOnError {
+            try invokeFnReturningBool { out in
+                self.withNativeHandle {
+                    signal_registration_session_get_allowed_to_request_code(out, $0.const())
+                }
+            }
+        }
+    }
+
+    public var verified: Bool {
+        return failOnError {
+            try invokeFnReturningBool { out in
+                self.withNativeHandle {
+                    signal_registration_session_get_verified(out, $0.const())
+                }
+            }
+        }
+    }
+
+    public var nextSms: TimeInterval? {
+        return failOnError {
+            try invokeFnReturningOptionalInteger { out in
+                self.withNativeHandle {
+                    signal_registration_session_get_next_sms_seconds(out, $0.const())
+                }
+            }.map { TimeInterval($0) }
+        }
+    }
+
+    public var nextCall: TimeInterval? {
+        return failOnError {
+            try invokeFnReturningOptionalInteger { out in
+                self.withNativeHandle {
+                    signal_registration_session_get_next_call_seconds(out, $0.const())
+                }
+            }.map { TimeInterval($0) }
+        }
+    }
+
+    public var nextVerificationAttempt: TimeInterval? {
+        return failOnError {
+            try invokeFnReturningOptionalInteger { out in
+                self.withNativeHandle {
+                    signal_registration_session_get_next_verification_attempt_seconds(out, $0.const())
+                }
+            }.map { TimeInterval($0) }
+        }
+    }
+
+    public var requestedInformation: Set<RequestedInformation> {
+        return failOnError {
+            let items = try invokeFnReturningArray { out in
+                self.withNativeHandle {
+                    signal_registration_session_get_requested_information(out, $0.const())
+                }
+            }
+            return Set(try items.map {
+                return switch UInt32($0) {
+                case SignalRequestedInformationCaptcha.rawValue:
+                    RequestedInformation.captcha
+                case SignalRequestedInformationPushChallenge.rawValue:
+                    RequestedInformation.pushChallenge
+                default:
+                    throw SignalError.internalError("unknown requested information")
+                }
+            })
+        }
+    }
+}
+
+public class RegisterAccountResponse: NativeHandleOwner<SignalMutPointerRegisterAccountResponse> {
+    override internal class func destroyNativeHandle(_ nativeHandle: NonNull<SignalMutPointerRegisterAccountResponse>) -> SignalFfiErrorRef? {
+        signal_register_account_response_destroy(nativeHandle.pointer)
+    }
+
+    public var aci: Aci {
+        return failOnError {
+            try self.withNativeHandle { native in
+                try invokeFnReturningServiceId {
+                    signal_register_account_response_get_identity($0, native.const(), ServiceIdKind.aci.rawValue)
+                }
+            }
+        }
+    }
+
+    public var pni: Pni {
+        return failOnError {
+            try self.withNativeHandle { native in
+                try invokeFnReturningServiceId {
+                    signal_register_account_response_get_identity($0, native.const(), ServiceIdKind.pni.rawValue)
+                }
+            }
+        }
+    }
+
+    public var number: String {
+        return failOnError {
+            try self.withNativeHandle { native in
+                try invokeFnReturningString {
+                    signal_register_account_response_get_number($0, native.const())
+                }
+            }
+        }
+    }
+
+    public var usernameHash: [UInt8]? {
+        return failOnError {
+            try self.withNativeHandle { native in
+                try invokeFnReturningOptionalArray {
+                    signal_register_account_response_get_username_hash($0, native.const())
+                }
+            }
+        }
+    }
+
+    public var usernameLinkHandle: UUID? {
+        return failOnError {
+            try self.withNativeHandle { native in
+                try invokeFnReturningOptionalUuid {
+                    signal_register_account_response_get_username_link_handle($0, native.const())
+                }
+            }
+        }
+    }
+
+    public var storageCapable: Bool {
+        return failOnError {
+            try self.withNativeHandle { native in
+                try invokeFnReturningBool {
+                    signal_register_account_response_get_storage_capable($0, native.const())
+                }
+            }
+        }
+    }
+
+    public var reregistration: Bool {
+        return failOnError {
+            try self.withNativeHandle { native in
+                try invokeFnReturningBool {
+                    signal_register_account_response_get_reregistration($0, native.const())
+                }
+            }
+        }
+    }
+
+    public var entitlements: ([BadgeEntitlement], BackupEntitlement?) {
+        return failOnError {
+            try self.withNativeHandle { native in
+                let badges = try invokeFnReturningBadgeEntitlementArray {
+                    signal_register_account_response_get_entitlement_badges($0, native.const())
+                }
+
+                let backup = try BackupEntitlement(fromResponse: native.const())
+
+                return (badges, backup)
+            }
+        }
+    }
+}
+
+public struct BadgeEntitlement: Equatable {
+    public let id: String
+    public let visible: Bool
+    public let expiration: TimeInterval
+}
+
+public struct BackupEntitlement: Equatable {
+    public let expiration: TimeInterval
+    public let level: UInt64
+    public init(expiration: TimeInterval, level: UInt64) {
+        self.expiration = expiration
+        self.level = level
+    }
+
+    fileprivate init?(fromResponse native: SignalConstPointerRegisterAccountResponse) throws {
+        let backupExpiration = try invokeFnReturningOptionalInteger {
+            signal_register_account_response_get_entitlement_backup_expiration_seconds($0, native)
+        }
+        guard case .some(let expiration) = backupExpiration else {
+            return nil
+        }
+
+        let level = try invokeFnReturningOptionalInteger {
+            signal_register_account_response_get_entitlement_backup_level($0, native)
+        }
+        guard case .some(let level) = level else {
+            return nil
+        }
+        self.init(expiration: TimeInterval(expiration), level: level)
+    }
 }
 
 public enum VerificationTransport: CustomStringConvertible {
@@ -247,6 +469,11 @@ public enum Svr2CredentialsResult {
     case match
     case noMatch
     case invalid
+}
+
+public enum RequestedInformation: Hashable {
+    case captcha
+    case pushChallenge
 }
 
 extension SignalFfiConnectChatBridgeStruct {
@@ -268,25 +495,22 @@ extension SignalFfiConnectChatBridgeStruct {
     }
 }
 
-extension SignalMutPointerRegistrationService: SignalMutPointer {
-    public typealias ConstPointer = SignalConstPointerRegistrationService
-
-    public init(untyped: OpaquePointer?) {
-        self.init(raw: untyped)
-    }
-
-    public func toOpaque() -> OpaquePointer? {
-        self.raw
-    }
-
-    public func const() -> Self.ConstPointer {
-        SignalConstPointerRegistrationService(raw: self.raw)
-    }
+/// Invoke a function returning an unsigned integral result where `nil` is bridged as the maximum value.
+///
+/// Bridging `nil` as max isn't a convention we want to rely on generally. It's
+/// true for the getters in this file, though, hence `fileprivate`.
+private func invokeFnReturningOptionalInteger<Result: FixedWidthInteger & UnsignedInteger>(fn: (UnsafeMutablePointer<Result>?) -> SignalFfiErrorRef?) throws -> Result? {
+    let output = try invokeFnReturningInteger(fn: fn)
+    return if output == Result.max { nil } else { output }
 }
 
-extension SignalConstPointerRegistrationService: SignalConstPointer {
-    public func toOpaque() -> OpaquePointer? {
-        self.raw
+private func invokeFnReturningBadgeEntitlementArray(fn: (_ out: UnsafeMutablePointer<SignalOwnedBufferOfFfiRegisterResponseBadge>) -> SignalFfiErrorRef?) throws -> [BadgeEntitlement] {
+    var out = SignalOwnedBufferOfFfiRegisterResponseBadge()
+    try checkError(fn(&out))
+    defer { signal_free_list_of_register_response_badges(out) }
+
+    return UnsafeBufferPointer(start: out.base, count: out.length).map {
+        BadgeEntitlement(id: String(cString: $0.id), visible: $0.visible, expiration: TimeInterval($0.expiration_secs))
     }
 }
 
@@ -320,4 +544,70 @@ internal func invokeFnReturningCheckSvr2CredentialsResponse(fn: (_ out: UnsafeMu
     })
 
     return Dictionary(uniqueKeysWithValues: entries)
+}
+
+extension SignalMutPointerRegistrationService: SignalMutPointer {
+    public typealias ConstPointer = SignalConstPointerRegistrationService
+
+    public init(untyped: OpaquePointer?) {
+        self.init(raw: untyped)
+    }
+
+    public func toOpaque() -> OpaquePointer? {
+        self.raw
+    }
+
+    public func const() -> Self.ConstPointer {
+        SignalConstPointerRegistrationService(raw: self.raw)
+    }
+}
+
+extension SignalConstPointerRegistrationService: SignalConstPointer {
+    public func toOpaque() -> OpaquePointer? {
+        self.raw
+    }
+}
+
+extension SignalMutPointerRegistrationSession: SignalMutPointer {
+    public typealias ConstPointer = SignalConstPointerRegistrationSession
+
+    public init(untyped: OpaquePointer?) {
+        self.init(raw: untyped)
+    }
+
+    public func toOpaque() -> OpaquePointer? {
+        self.raw
+    }
+
+    public func const() -> Self.ConstPointer {
+        SignalConstPointerRegistrationSession(raw: self.raw)
+    }
+}
+
+extension SignalConstPointerRegistrationSession: SignalConstPointer {
+    public func toOpaque() -> OpaquePointer? {
+        self.raw
+    }
+}
+
+extension SignalMutPointerRegisterAccountResponse: SignalMutPointer {
+    public typealias ConstPointer = SignalConstPointerRegisterAccountResponse
+
+    public init(untyped: OpaquePointer?) {
+        self.init(raw: untyped)
+    }
+
+    public func toOpaque() -> OpaquePointer? {
+        self.raw
+    }
+
+    public func const() -> Self.ConstPointer {
+        SignalConstPointerRegisterAccountResponse(raw: self.raw)
+    }
+}
+
+extension SignalConstPointerRegisterAccountResponse: SignalConstPointer {
+    public func toOpaque() -> OpaquePointer? {
+        self.raw
+    }
 }

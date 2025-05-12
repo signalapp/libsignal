@@ -47,6 +47,8 @@ exclude = [
     "FfiResponseAndDebugInfo",
     "MutPointerAuthenticatedChatConnection",
     "MutPointerHttpRequest",
+    "MutPointerRegisterAccountResponse",
+    "MutPointerRegistrationSession",
     "MutPointerUnauthenticatedChatConnection",
     "OwnedBufferOfc_uchar",
     "OwnedBufferOfCStringPtr",

@@ -20,6 +20,7 @@ use crate::io::{InputStream, SyncInputStream};
 use crate::net::chat::ChatListener;
 use crate::net::registration::{
     ConnectChatBridge, RegistrationCreateSessionRequest, RegistrationPushTokenType,
+    RegistrationSessionRequestedInformation,
 };
 use crate::support::{extend_lifetime, AsType, FixedLengthBincodeSerializable, Serialized};
 
@@ -261,6 +262,19 @@ impl ResultTypeInfo for uuid::Uuid {
     type ResultType = uuid::Bytes;
     fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
         Ok(*self.as_bytes())
+    }
+}
+
+impl ResultTypeInfo for Option<uuid::Uuid> {
+    type ResultType = [u8; 17];
+    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
+        let mut bytes = [0; 17];
+        if let Some(uuid) = self {
+            let (present, out) = bytes.split_first_mut().expect("not empty");
+            *present = true.into();
+            out.copy_from_slice(uuid.as_bytes());
+        }
+        Ok(bytes)
     }
 }
 
@@ -573,11 +587,37 @@ impl ResultTypeInfo for &[u8] {
     }
 }
 
+impl ResultTypeInfo for Option<&[u8]> {
+    type ResultType = OwnedBufferOf<std::ffi::c_uchar>;
+    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
+        Ok(self
+            .map(|slice| {
+                let owned = OwnedBufferOf::from(Box::from(slice));
+                // A boxed slice always has a non-null base pointer, even when
+                // the length is zero.
+                debug_assert_ne!(owned.base, std::ptr::null_mut());
+                owned
+            })
+            .unwrap_or(OwnedBufferOf {
+                base: std::ptr::null_mut(),
+                length: 0,
+            }))
+    }
+}
+
 /// `u32::MAX` (`UINT_MAX`, `~0u`) is used to represent `None` here.
 impl ResultTypeInfo for Option<u32> {
     type ResultType = u32;
     fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
         Ok(self.unwrap_or(u32::MAX))
+    }
+}
+
+/// [`u64::MAX`] (`~0u`) is used to represent `None` here.
+impl ResultTypeInfo for Option<u64> {
+    type ResultType = u64;
+    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
+        Ok(self.unwrap_or(u64::MAX))
     }
 }
 
@@ -606,6 +646,46 @@ impl ResultTypeInfo for crate::zkgroup::Timestamp {
     type ResultType = u64;
     fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
         Ok(self.epoch_seconds())
+    }
+}
+
+impl ResultTypeInfo for Box<[RegistrationSessionRequestedInformation]> {
+    type ResultType = <Vec<u8> as ResultTypeInfo>::ResultType;
+    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
+        static_assertions::assert_eq_size!(RegistrationSessionRequestedInformation, u8);
+        static_assertions::assert_eq_align!(RegistrationSessionRequestedInformation, u8);
+        // Trivially droppable, like u8.
+        static_assertions::assert_impl_all!(RegistrationSessionRequestedInformation: Copy);
+        let b: Box<[u8]> = unsafe { std::mem::transmute(self) };
+        Ok(b.into())
+    }
+}
+
+impl ResultTypeInfo for Box<[libsignal_net::registration::RegisterResponseBadge]> {
+    type ResultType = OwnedBufferOf<FfiRegisterResponseBadge>;
+
+    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
+        let converted = IntoIterator::into_iter(self)
+            .map(ResultTypeInfo::convert_into)
+            .try_collect();
+        Ok(Box::into(converted?))
+    }
+}
+
+impl ResultTypeInfo for libsignal_net::registration::RegisterResponseBadge {
+    type ResultType = FfiRegisterResponseBadge;
+
+    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
+        let Self {
+            id,
+            visible,
+            expiration,
+        } = self;
+        Ok(FfiRegisterResponseBadge {
+            id: id.convert_into()?,
+            visible,
+            expiration_secs: expiration.as_secs_f64(),
+        })
     }
 }
 
@@ -983,26 +1063,31 @@ macro_rules! ffi_result_type {
     (u32) => (u32);
     (Option<u32>) => (u32);
     (u64) => (u64);
+    (Option<u64>) => (u64);
     (bool) => (bool);
     (&str) => (*const std::ffi::c_char);
     (String) => (*const std::ffi::c_char);
     (Option<String>) => (*const std::ffi::c_char);
     (Option<&str>) => (*const std::ffi::c_char);
-    (Option<$typ:ty>) => ($crate::ffi::MutPointer<$typ>);
     (Timestamp) => (u64);
     (Uuid) => ([u8; 16]);
+    (Option<Uuid>) => (ffi::OptionalUuid);
     (ServiceId) => (libsignal_protocol::ServiceIdFixedWidthBinaryBytes);
     (Aci) => (libsignal_protocol::ServiceIdFixedWidthBinaryBytes);
     (Pni) => (libsignal_protocol::ServiceIdFixedWidthBinaryBytes);
     ([u8; $len:expr]) => ([u8; $len]);
     (&[u8]) => (ffi::OwnedBufferOf<std::ffi::c_uchar>);
+    (Option<&[u8]>) => (ffi::OwnedBufferOf<std::ffi::c_uchar>);
     (Vec<u8>) => (ffi::OwnedBufferOf<std::ffi::c_uchar>);
     (Box<[String]>) => (ffi::StringArray);
     (Box<[Vec<u8>]>) => (ffi::BytestringArray);
+    (Box<[RegistrationSessionRequestedInformation]>) => (ffi_result_type!(Vec<u8>));
+    (Option<$typ:ty>) => ($crate::ffi::MutPointer<$typ>);
 
     (LookupResponse) => (ffi::FfiCdsiLookupResponse);
     (ChatResponse) => (ffi::FfiChatResponse);
     (CheckSvr2CredentialsResponse) => (ffi::FfiCheckSvr2CredentialsResponse);
+    (Box<[RegisterResponseBadge]>) => (ffi::OwnedBufferOf<ffi::FfiRegisterResponseBadge>);
 
     // In order to provide a fixed-sized array of the correct length,
     // a serialized type FooBar must have a constant FOO_BAR_LEN that's in scope (and exposed to C).
@@ -1011,4 +1096,33 @@ macro_rules! ffi_result_type {
     (Ignored<$typ:ty>) => (*const std::ffi::c_void);
 
     ( $typ:ty ) => ($crate::ffi::MutPointer<$typ>);
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn optional_buffer_convert() {
+        {
+            let owned_buffer = <Option<&[u8]>>::convert_into(Some(b"abcdef")).expect("can convert");
+            assert_ne!(owned_buffer.base, std::ptr::null_mut());
+            assert_eq!(owned_buffer.length, 6);
+            let _ = unsafe { owned_buffer.into_box() };
+        }
+
+        {
+            let owned_buffer = <Option<&[u8]>>::convert_into(Some(&[])).expect("can convert");
+            assert_ne!(owned_buffer.base, std::ptr::null_mut());
+            assert_eq!(owned_buffer.length, 0);
+            let _ = unsafe { owned_buffer.into_box() };
+        }
+
+        {
+            let owned_buffer = <Option<&[u8]>>::convert_into(None).expect("can convert");
+            assert_eq!(owned_buffer.base, std::ptr::null_mut());
+            assert_eq!(owned_buffer.length, 0);
+            let _ = unsafe { owned_buffer.into_box() };
+        }
+    }
 }
