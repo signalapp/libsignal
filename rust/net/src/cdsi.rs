@@ -313,8 +313,8 @@ impl From<prost::DecodeError> for LookupError {
 }
 
 #[derive(serde::Deserialize)]
-#[cfg_attr(test, derive(serde::Serialize))]
 struct RateLimitExceededResponse {
+    #[serde(rename = "retry_after")]
     retry_after_seconds: u32,
 }
 
@@ -865,8 +865,6 @@ mod test {
         assert_eq!(response.records.len(), LARGE_NUMBER_OF_ENTRIES as usize);
     }
 
-    const RETRY_AFTER_SECS: u32 = 12345;
-
     #[tokio::test]
     async fn websocket_close_with_rate_limit_exceeded_after_initial_request() {
         let (server, client) = fake_websocket().await;
@@ -875,11 +873,7 @@ mod test {
             &FakeServerState::AwaitingLookupRequest,
             CloseFrame {
                 code: CloseCode::Bad(4008),
-                reason: serde_json::to_string_pretty(&RateLimitExceededResponse {
-                    retry_after_seconds: RETRY_AFTER_SECS,
-                })
-                .expect("can JSON-encode")
-                .into(),
+                reason: r#"{"retry_after": 12345}"#.into(),
             },
         );
 
@@ -913,7 +907,7 @@ mod test {
         assert_matches!(
             response,
             Err(LookupError::RateLimited(RetryLater {
-                retry_after_seconds: RETRY_AFTER_SECS
+                retry_after_seconds: 12345
             }))
         );
     }
@@ -926,11 +920,7 @@ mod test {
             &FakeServerState::AwaitingTokenAck,
             CloseFrame {
                 code: CloseCode::Bad(4008),
-                reason: serde_json::to_string_pretty(&RateLimitExceededResponse {
-                    retry_after_seconds: RETRY_AFTER_SECS,
-                })
-                .expect("can JSON-encode")
-                .into(),
+                reason: r#"{"retry_after": 513}"#.into(),
             },
         );
 
@@ -967,7 +957,7 @@ mod test {
         assert_matches!(
             response,
             Err(LookupError::RateLimited(RetryLater {
-                retry_after_seconds: RETRY_AFTER_SECS
+                retry_after_seconds: 513
             }))
         )
     }

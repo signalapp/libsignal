@@ -5,3 +5,5 @@ v0.72.0
 - The iOS minimum deployment target has been bumped to iOS 15.
 
 - Unnecessary prefixes have been removed from file paths in log output.
+
+- CDSI: fix handling of rate-limit-exceeded error to correctly parse the server-requested delay.
