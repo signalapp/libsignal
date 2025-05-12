@@ -12,32 +12,47 @@ import java.io.StringWriter;
 import java.util.Arrays;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 
 public class FutureTest {
+  long ioRuntime = 0;
+
+  @Before
+  public void initIoRuntime() {
+    ioRuntime = NativeTesting.TESTING_NonSuspendingBackgroundThreadRuntime_New();
+  }
+
+  @After
+  public void destroyIoRuntime() {
+    NativeTesting.TESTING_NonSuspendingBackgroundThreadRuntime_Destroy(ioRuntime);
+    ioRuntime = 0;
+  }
+
   @Test
   public void testSuccessFromRust() throws Exception {
-    Future<Integer> future = NativeTesting.TESTING_FutureSuccess(1, 21);
+    Future<Integer> future = NativeTesting.TESTING_FutureSuccess(ioRuntime, 21);
     assertEquals(42, (int) future.get());
   }
 
   @Test
   public void testFailureFromRust() throws Exception {
-    Future<Integer> future = NativeTesting.TESTING_FutureFailure(1, 21);
+    Future<Integer> future = NativeTesting.TESTING_FutureFailure(ioRuntime, 21);
     ExecutionException e = assertThrows(ExecutionException.class, () -> future.get());
     assertTrue(e.getCause() instanceof IllegalArgumentException);
   }
 
   @Test
   public void testFutureThrowsUnloadedException() throws Exception {
-    Future future = NativeTesting.TESTING_FutureThrowsCustomErrorType(1);
+    Future future = NativeTesting.TESTING_FutureThrowsCustomErrorType(ioRuntime);
     ExecutionException e = assertThrows(ExecutionException.class, () -> future.get());
     assertTrue(e.getCause() instanceof org.signal.libsignal.internal.TestingException);
   }
 
   @Test
   public void testCapturedStackTraceInException() throws Exception {
-    Future future = NativeTesting.TESTING_FutureFailure(1, 21);
+    Future future = NativeTesting.TESTING_FutureFailure(ioRuntime, 21);
     ExecutionException e = assertThrows(ExecutionException.class, () -> future.get());
 
     Throwable actualStackTrace = e.getCause();

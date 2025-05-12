@@ -607,7 +607,7 @@ impl<'storage, 'param: 'storage, 'context: 'param> ArgTypeInfo<'storage, 'param,
 impl<'a> SimpleArgTypeInfo<'a> for CiphertextMessageRef<'a> {
     type ArgType = JavaCiphertextMessage<'a>;
     fn convert_from(env: &mut JNIEnv, foreign: &Self::ArgType) -> Result<Self, BridgeLayerError> {
-        fn native_handle_from_message<'a, T: 'static>(
+        fn native_handle_from_message<'a, T: BridgeHandle>(
             env: &mut JNIEnv,
             foreign: &JavaCiphertextMessage<'a>,
             class_name: &'static str,
@@ -627,7 +627,9 @@ impl<'a> SimpleArgTypeInfo<'a> for CiphertextMessageRef<'a> {
                     .check_exceptions(env, "CiphertextMessageRef::convert_from")?
                     .try_into()
                     .expect_no_exceptions()?;
-                Ok(Some(make_result(unsafe { native_handle_cast(handle)? })))
+                Ok(Some(make_result(unsafe {
+                    T::native_handle_cast(handle)?.as_ref()
+                })))
             } else {
                 Ok(None)
             }
@@ -976,16 +978,67 @@ impl<'a> ResultTypeInfo<'a> for Option<JObject<'a>> {
     }
 }
 
+/// The offset, in bits, to store an 8-bit type tag in a pointer.
+///
+/// The top 8 bits of (64-bit) pointers get used for OS-based pointer integrity checks on some
+/// devices. The bottom 48 are the extent of a "normal" address space on both x86_64 and aarch64.
+/// That leaves 8 bits in the middle for us to store our own type tag. As long as we don't deploy to
+/// a server with a memory space bigger than a terabyte, we should be good.
+const TYPE_TAG_POINTER_OFFSET: usize = 48;
+
 /// A marker for Rust objects exposed as opaque handles (pointers converted to `jlong`).
 ///
 /// When we do this, we hand the lifetime over to the app. Since we don't know how long the object
 /// will be kept alive, it can't (safely) have references to anything with a non-static lifetime.
-pub trait BridgeHandle: 'static {}
+pub trait BridgeHandle: Sized + 'static {
+    const TYPE_TAG: u8;
+
+    /// Casts the given handle as a `NonNull<T>`.
+    ///
+    /// Does some rudimentary checks that the handle probably does represent a real object, but
+    /// cannot guarantee it.
+    fn native_handle_cast(handle: ObjectHandle) -> Result<NonNull<Self>, BridgeLayerError> {
+        if handle == 0 {
+            return Err(BridgeLayerError::NullPointer(None));
+        }
+
+        let addr = if cfg!(feature = "jni-type-tagging") {
+            if ((handle >> TYPE_TAG_POINTER_OFFSET) & 0xFF) as u8 != Self::TYPE_TAG {
+                return Err(BridgeLayerError::BadJniParameter(
+                    std::any::type_name::<Self>(),
+                ));
+            }
+            handle & !(0xFF << TYPE_TAG_POINTER_OFFSET)
+        } else {
+            handle
+        };
+
+        // We could add additional validity checks here (alignment, "not a very low address", etc)
+        // but the type tag is already a good check that we haven't been handed garbage.
+
+        // SAFETY: For this to fail, we would have needed to be passed a handle that has a correct
+        // type tag but no actual address.
+        Ok(unsafe { NonNull::new_unchecked(addr as *mut Self) })
+    }
+
+    /// Converts `boxed_value` to a raw pointer and then encodes it as a handle.
+    fn encode_as_handle(boxed_value: Box<Self>) -> ObjectHandle {
+        let mut addr = Box::into_raw(boxed_value) as ObjectHandle;
+        if cfg!(feature = "jni-type-tagging") {
+            assert!(
+                (addr >> TYPE_TAG_POINTER_OFFSET) & 0xFF == 0,
+                "type-tag bits already in use"
+            );
+            addr |= (Self::TYPE_TAG as ObjectHandle) << TYPE_TAG_POINTER_OFFSET;
+        }
+        addr
+    }
+}
 
 impl<T: BridgeHandle> SimpleArgTypeInfo<'_> for &T {
     type ArgType = ObjectHandle;
     fn convert_from(_env: &mut JNIEnv, foreign: &Self::ArgType) -> Result<Self, BridgeLayerError> {
-        Ok(unsafe { native_handle_cast(*foreign) }?)
+        Ok(unsafe { T::native_handle_cast(*foreign)?.as_ref() })
     }
 }
 
@@ -1003,7 +1056,7 @@ impl<T: BridgeHandle> SimpleArgTypeInfo<'_> for Option<&T> {
 impl<T: BridgeHandle> SimpleArgTypeInfo<'_> for &mut T {
     type ArgType = ObjectHandle;
     fn convert_from(_env: &mut JNIEnv, foreign: &Self::ArgType) -> Result<Self, BridgeLayerError> {
-        unsafe { native_handle_cast(*foreign) }
+        Ok(unsafe { T::native_handle_cast(*foreign)?.as_mut() })
     }
 }
 
@@ -1020,11 +1073,7 @@ impl<'storage, 'param: 'storage, 'context: 'param, T: BridgeHandle>
             .check_exceptions(env, "<&[&T]>::borrow")?;
         array
             .iter()
-            .map(|&raw_handle| unsafe {
-                (raw_handle as *const T)
-                    .as_ref()
-                    .ok_or(BridgeLayerError::NullPointer(None))
-            })
+            .map(|raw_handle| SimpleArgTypeInfo::convert_from(env, raw_handle))
             .collect()
     }
     fn load_from(stored: &'storage mut Self::StoredType) -> &'storage [&'storage T] {
@@ -1035,7 +1084,7 @@ impl<'storage, 'param: 'storage, 'context: 'param, T: BridgeHandle>
 impl<T: BridgeHandle> ResultTypeInfo<'_> for T {
     type ResultType = ObjectHandle;
     fn convert_into(self, _env: &mut JNIEnv) -> Result<Self::ResultType, BridgeLayerError> {
-        Ok(Box::into_raw(Box::new(self)) as ObjectHandle)
+        Ok(T::encode_as_handle(Box::new(self)))
     }
 }
 
@@ -1693,7 +1742,9 @@ impl<'a> ResultTypeInfo<'a> for MessageBackupValidationOutcome {
 macro_rules! jni_bridge_as_handle {
     ( $typ:ty as false $(, $($_:tt)*)? ) => {};
     ( $typ:ty as $jni_name:ident ) => {
-        impl $crate::jni::BridgeHandle for $typ {}
+        impl $crate::jni::BridgeHandle for $typ {
+            const TYPE_TAG: u8 = $crate::jni::hash_location_for_type_tag(file!(), line!());
+        }
     };
     ( $typ:ty ) => {
         // `paste!` turns the type back into an identifier.

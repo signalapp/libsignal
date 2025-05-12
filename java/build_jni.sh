@@ -25,10 +25,15 @@ RUSTFLAGS="$(rust_remap_path_options) ${RUSTFLAGS:-}" # Strip absolute paths
 export RUSTFLAGS
 
 DEBUG_LEVEL_LOGS=
+JNI_TYPE_TAGGING=
 while [ "${1:-}" != "" ]; do
     case "${1:-}" in
         --debug-level-logs )
             DEBUG_LEVEL_LOGS=1
+            shift
+            ;;
+        --jni-type-tagging )
+            JNI_TYPE_TAGGING=1
             shift
             ;;
         -* )
@@ -42,6 +47,9 @@ done
 
 if [[ -z "${DEBUG_LEVEL_LOGS:-}" ]]; then
     FEATURES+=("log/release_max_level_info")
+fi
+if [[ -n "${JNI_TYPE_TAGGING:-}" ]]; then
+    FEATURES+=("libsignal-bridge-types/jni-type-tagging")
 fi
 
 # usage: check_for_debug_level_logs_if_needed lib_dir

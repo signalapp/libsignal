@@ -6,6 +6,7 @@ use std::error::Error;
 use std::fmt::{Debug, Display};
 use std::io::Error as IoError;
 use std::marker::PhantomData;
+use std::ptr::NonNull;
 
 use attest::enclave::Error as EnclaveError;
 use attest::hsm_enclave::Error as HsmEnclaveError;
@@ -904,28 +905,6 @@ where
     }
 }
 
-/// Casts the given handle as a `&T`.
-///
-/// # Safety
-///
-/// The caller must ensure that the provided handle is in fact the Java
-/// representation of a pointer to a value of type `T`, and that the pointer
-/// remains valid as long as the returned reference is around.
-pub unsafe fn native_handle_cast<'l, T>(
-    handle: ObjectHandle,
-) -> Result<&'l mut T, BridgeLayerError> {
-    /*
-    Should we try testing the encoded pointer for sanity here, beyond
-    being null? For example verifying that lowest bits are zero,
-    highest bits are zero, greater than 64K, etc?
-    */
-    if handle == 0 {
-        return Err(BridgeLayerError::NullPointer(None));
-    }
-
-    Ok(&mut *(handle as *mut T))
-}
-
 /// Calls a method and translates any thrown exceptions to
 /// [`BridgeLayerError::CallbackException`].
 ///
@@ -1103,7 +1082,7 @@ pub fn with_local_frame_returning_local<'env>(
 ///
 /// The Java method is assumed to return a type that implements the
 /// `NativeHandleGuard.Owner` interface.
-pub fn get_object_with_native_handle<T: 'static + Clone, const LEN: usize>(
+pub fn get_object_with_native_handle<T: BridgeHandle + Clone, const LEN: usize>(
     env: &mut JNIEnv,
     store_obj: &JObject,
     callback_args: JniArgs<JObject<'_>, LEN>,
@@ -1134,7 +1113,7 @@ pub fn get_object_with_native_handle<T: 'static + Clone, const LEN: usize>(
             return Ok(None);
         }
 
-        let object = unsafe { native_handle_cast::<T>(handle)? };
+        let object = unsafe { T::native_handle_cast(handle)?.as_ref() };
         Ok(Some(object.clone()))
     })
 }
@@ -1221,11 +1200,47 @@ macro_rules! jni_bridge_handle_destroy {
                 handle: $crate::jni::ObjectHandle,
             ) {
                 if handle != 0 {
-                    let _boxed_value = Box::from_raw(handle as *mut $typ);
+                    drop(Box::from_raw(
+                        <$typ as $crate::jni::BridgeHandle>::native_handle_cast(handle)
+                            .expect("valid")
+                            .as_mut(),
+                    ));
                 }
             }
         }
     };
+}
+
+/// A constant **non-cryptographic** hash function for type tagging purposes.
+///
+/// With only 8 bits collisions are certainly possible, but hopefully uncommon enough to still catch
+/// simple mistakes, especially since mistaken types are probably defined near each other.
+pub const fn hash_location_for_type_tag(file: &'static str, line: u32) -> u8 {
+    // A const implementation of FNV-1a, a simple hash function in the public domain.
+    // http://www.isthe.com/chongo/tech/comp/fnv/index.html
+    const fn update(mut hash: u32, b: u8) -> u32 {
+        hash ^= b as u32;
+        hash = hash.wrapping_mul(16777619u32);
+        hash
+    }
+
+    let mut hash = 2166136261u32;
+
+    let mut i = 0;
+    while i < file.len() {
+        hash = update(hash, file.as_bytes()[i]);
+        i += 1;
+    }
+    let [line_a, line_b, line_c, line_d] = line.to_le_bytes();
+    hash = update(hash, line_a);
+    hash = update(hash, line_b);
+    hash = update(hash, line_c);
+    hash = update(hash, line_d);
+
+    // One level of XOR-folding, as recommended by the section
+    // "For tiny x < 16 bit values, we recommend using a 32 bit FNV-1 hash as follows":
+    hash ^= hash >> 8;
+    (hash & 0xFF) as u8
 }
 
 /// A wrapper around a cloned [`JNIEnv`] that forces scoped use.

@@ -51,8 +51,9 @@ task makeJniLibrariesDesktop(type:Exec) {
   description 'Build the JNI libraries'
 
   def debugLevelLogsFlag = project.hasProperty('debugLevelLogs') ? ['--debug-level-logs'] : []
+  def jniTypeTaggingFlag = project.hasProperty('jniTypeTagging') ? ['--jni-type-tagging'] : []
   // Explicitly specify 'bash' for Windows compatibility.
-  commandLine 'bash', './build_jni.sh', *debugLevelLogsFlag, 'desktop'
+  commandLine 'bash', './build_jni.sh', *debugLevelLogsFlag, *jniTypeTaggingFlag, 'desktop'
 }
 
 task makeJniLibrariesServer(type:Exec) {
@@ -60,9 +61,10 @@ task makeJniLibrariesServer(type:Exec) {
   description 'Build the JNI libraries'
 
   def debugLevelLogsFlag = project.hasProperty('debugLevelLogs') ? ['--debug-level-logs'] : []
+  def jniTypeTaggingFlag = project.hasProperty('jniTypeTagging') ? ['--jni-type-tagging'] : []
   def target = project.hasProperty('crossCompileServer') ? 'server-all' : 'server'
 
-  commandLine 'bash', './build_jni.sh', *debugLevelLogsFlag, target
+  commandLine 'bash', './build_jni.sh', *debugLevelLogsFlag, *jniTypeTaggingFlag, target
 }
 
 task cargoClean(type:Exec) {

@@ -57,7 +57,7 @@ where
     }
 }
 
-#[bridge_fn(ffi = false, jni = false)]
+#[bridge_fn(ffi = false)]
 fn TESTING_NonSuspendingBackgroundThreadRuntime_New() -> NonSuspendingBackgroundThreadRuntime {
     NonSuspendingBackgroundThreadRuntime
 }

@@ -104,6 +104,7 @@ public final class NativeTesting {
   public static native byte[] TESTING_InputStreamReadIntoZeroLengthSlice(InputStream capsAlphabetInput);
   public static native String TESTING_JoinStringArray(Object[] array, String joinWith);
   public static native void TESTING_NonSuspendingBackgroundThreadRuntime_Destroy(long handle);
+  public static native long TESTING_NonSuspendingBackgroundThreadRuntime_New();
   public static native CompletableFuture TESTING_OnlyCompletesByCancellation(long asyncRuntime);
   public static native String TESTING_OtherTestingHandleType_getValue(long handle);
   public static native void TESTING_PanicInBodyAsync(Object input);

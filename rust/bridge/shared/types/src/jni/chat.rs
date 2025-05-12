@@ -209,7 +209,7 @@ impl libsignal_net::registration::ConnectChat for JniConnectChat {
             // Safety: the returned value won't outlive the JniConnectChat
             // since it won't outlive the resolved value of the future, and the
             // future can't outlive `self`.
-            let connection_manager = unsafe { native_handle_cast(handle)? };
+            let connection_manager = unsafe { BridgeHandle::native_handle_cast(handle)?.as_ref() };
             connect = Some(crate::net::chat::connect_registration_chat(
                 tokio_runtime,
                 connection_manager,

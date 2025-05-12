@@ -112,7 +112,7 @@ $ ./gradlew build # if you need AAR outputs
 ```
 
 You can pass `-P debugLevelLogs` to Gradle to build without filtering out debug- and verbose-level
-logs from Rust.
+logs from Rust, and `-P jniTypeTagging` to enable additional checks in the Rust JNI bridging code.
 
 Alternately, a build system using Docker is available:
 
