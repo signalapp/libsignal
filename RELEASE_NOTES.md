@@ -7,3 +7,5 @@ v0.72.0
 - Unnecessary prefixes have been removed from file paths in log output.
 
 - CDSI: fix handling of rate-limit-exceeded error to correctly parse the server-requested delay.
+
+- Update incremental mac reading to support streaming videos.

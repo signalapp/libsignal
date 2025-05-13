@@ -33,4 +33,9 @@ org.signal.libsignal.protocol.ServiceId:
     private static final byte ACI_MARKER
     private static final byte PNI_MARKER
 org.signal.libsignal.protocol.incrementalmac.IncrementalMacInputStream:
-    private static final int MAX_BUFFER_SIZE
+    private static final int VALIDATION_BUFFER_SIZE
+org.signal.libsignal.protocol.incrementalmac.IncrementalMacInputStream$ReadChunkResult:
+    230:230:public static org.signal.libsignal.protocol.incrementalmac.IncrementalMacInputStream$ReadChunkResult[] values()
+    230:230:public static org.signal.libsignal.protocol.incrementalmac.IncrementalMacInputStream$ReadChunkResult valueOf(java.lang.String)
+org.signal.libsignal.protocol.incrementalmac.IncrementalMacInputStream$ReadState:
+    225:225:public static org.signal.libsignal.protocol.incrementalmac.IncrementalMacInputStream$ReadState valueOf(java.lang.String)
