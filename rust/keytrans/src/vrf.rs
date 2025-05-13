@@ -6,7 +6,7 @@
 //! Implements ECVRF-EDWARDS25519-SHA512-TAI from RFC 9381.
 use curve25519_dalek::edwards::{CompressedEdwardsY, EdwardsPoint};
 use curve25519_dalek::scalar::Scalar;
-use curve25519_dalek::traits::VartimeMultiscalarMul;
+use curve25519_dalek::traits::{IsIdentity as _, VartimeMultiscalarMul as _};
 use sha2::{Digest as _, Sha512};
 
 const SUITE_ID: u8 = 0x03;
@@ -26,21 +26,27 @@ pub enum Error {
 type Result<T> = std::result::Result<T, Error>;
 
 fn encode_to_curve_try_and_increment(salt: &[u8], data: &[u8]) -> EdwardsPoint {
-    let mut i = 0;
     let mut hasher = Sha512::new();
 
-    loop {
+    for i in 0u8..=u8::MAX {
         hasher.update([SUITE_ID, DOMAIN_SEPARATOR_ENCODE]);
         hasher.update(salt);
         hasher.update(data);
         hasher.update([i, DOMAIN_SEPARATOR_BACK]);
 
         let r = hasher.finalize_reset();
-        match CompressedEdwardsY(r[..32].try_into().expect("hash has enough bytes")).decompress() {
-            Some(pt) => return pt.mul_by_cofactor(),
-            None => i += 1,
+
+        if let Some(pt) =
+            CompressedEdwardsY(r[..32].try_into().expect("hash has enough bytes")).decompress()
+        {
+            let maybe_res = pt.mul_by_cofactor();
+            if !maybe_res.is_identity() {
+                return maybe_res;
+            }
         }
     }
+    // The probability of reaching this line is very low (2^-256)
+    panic!("try and increment overflow");
 }
 
 fn generate_challenge(pts: [&[u8; 32]; 5]) -> [u8; 16] {
@@ -77,11 +83,12 @@ impl TryFrom<[u8; 32]> for PublicKey {
 
     fn try_from(public_key: [u8; 32]) -> Result<Self> {
         match CompressedEdwardsY(public_key).decompress() {
+            None => Err(Error::InvalidCurvePoint),
+            Some(pt) if pt.is_small_order() => Err(Error::InvalidCurvePoint),
             Some(pt) => Ok(PublicKey {
                 compressed: public_key,
                 decompressed: pt,
             }),
-            None => Err(Error::InvalidCurvePoint),
         }
     }
 }
@@ -137,6 +144,7 @@ impl PublicKey {
 #[cfg(test)]
 mod tests {
     use const_str::hex;
+    use proptest::proptest;
 
     use super::*;
 
@@ -180,6 +188,13 @@ mod tests {
                 .0;
             assert_eq!(got, v.h);
         }
+    }
+
+    #[test]
+    fn try_and_increment_terminates() {
+        proptest!(|(data: [u8; 34])| {
+            let _ = encode_to_curve_try_and_increment(&data[..32], &data[32..]);
+        })
     }
 
     #[test]
