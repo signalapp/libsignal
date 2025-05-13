@@ -30,6 +30,32 @@ public class NativeHandleGuard implements AutoCloseable {
     default NativeHandleGuard guard() {
       return new NativeHandleGuard(this);
     }
+
+    default <T> T guardedMap(final LongFunction<T> function) {
+      try (final NativeHandleGuard guard = new NativeHandleGuard(this)) {
+        return function.apply(guard.nativeHandle());
+      }
+    }
+
+    default <T> T guardedMapChecked(final FilterExceptions.ThrowingLongFunction<T> function)
+        throws Exception {
+      try (final NativeHandleGuard guard = new NativeHandleGuard(this)) {
+        return function.apply(guard.nativeHandle());
+      }
+    }
+
+    default void guardedRun(final LongConsumer consumer) {
+      try (final NativeHandleGuard guard = new NativeHandleGuard(this)) {
+        consumer.accept(guard.nativeHandle());
+      }
+    }
+
+    default void guardedRunChecked(final FilterExceptions.ThrowingLongConsumer consumer)
+        throws Exception {
+      try (final NativeHandleGuard guard = new NativeHandleGuard(this)) {
+        consumer.accept(guard.nativeHandle());
+      }
+    }
   }
 
   public abstract static class SimpleOwner implements Owner {
@@ -52,31 +78,29 @@ public class NativeHandleGuard implements AutoCloseable {
     protected void finalize() {
       release(this.nativeHandle);
     }
+  }
 
-    public <T> T guardedMap(final LongFunction<T> function) {
-      try (final NativeHandleGuard guard = new NativeHandleGuard(this)) {
-        return function.apply(guard.nativeHandle());
-      }
+  public abstract static class CloseableOwner extends SimpleOwner implements AutoCloseable {
+    private boolean isClosed = false;
+
+    protected CloseableOwner(long nativeHandle) {
+      super(nativeHandle);
     }
 
-    public <T> T guardedMapChecked(final FilterExceptions.ThrowingLongFunction<T> function)
-        throws Exception {
-      try (final NativeHandleGuard guard = new NativeHandleGuard(this)) {
-        return function.apply(guard.nativeHandle());
+    @Override
+    public void close() {
+      if (isClosed) {
+        return;
       }
+      this.isClosed = true;
+      this.release(this.unsafeNativeHandleWithoutGuard());
     }
 
-    public void guardedRun(final LongConsumer consumer) {
-      try (final NativeHandleGuard guard = new NativeHandleGuard(this)) {
-        consumer.accept(guard.nativeHandle());
-      }
-    }
-
-    public void guardedRunChecked(final FilterExceptions.ThrowingLongConsumer consumer)
-        throws Exception {
-      try (final NativeHandleGuard guard = new NativeHandleGuard(this)) {
-        consumer.accept(guard.nativeHandle());
-      }
+    @Override
+    @SuppressWarnings("deprecation")
+    protected void finalize() {
+      close();
+      // Not calling super.finalize() is fine, because close already does the same thing.
     }
   }
 

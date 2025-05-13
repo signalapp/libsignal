@@ -35,7 +35,7 @@ org.signal.libsignal.protocol.ServiceId:
 org.signal.libsignal.protocol.incrementalmac.IncrementalMacInputStream:
     private static final int VALIDATION_BUFFER_SIZE
 org.signal.libsignal.protocol.incrementalmac.IncrementalMacInputStream$ReadChunkResult:
-    230:230:public static org.signal.libsignal.protocol.incrementalmac.IncrementalMacInputStream$ReadChunkResult[] values()
-    230:230:public static org.signal.libsignal.protocol.incrementalmac.IncrementalMacInputStream$ReadChunkResult valueOf(java.lang.String)
+    255:255:public static org.signal.libsignal.protocol.incrementalmac.IncrementalMacInputStream$ReadChunkResult[] values()
+    255:255:public static org.signal.libsignal.protocol.incrementalmac.IncrementalMacInputStream$ReadChunkResult valueOf(java.lang.String)
 org.signal.libsignal.protocol.incrementalmac.IncrementalMacInputStream$ReadState:
-    225:225:public static org.signal.libsignal.protocol.incrementalmac.IncrementalMacInputStream$ReadState valueOf(java.lang.String)
+    250:250:public static org.signal.libsignal.protocol.incrementalmac.IncrementalMacInputStream$ReadState valueOf(java.lang.String)

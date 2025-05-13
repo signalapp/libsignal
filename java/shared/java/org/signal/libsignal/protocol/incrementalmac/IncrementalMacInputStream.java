@@ -11,9 +11,10 @@ import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
 import org.signal.libsignal.internal.Native;
+import org.signal.libsignal.internal.NativeHandleGuard;
 
 public final class IncrementalMacInputStream extends InputStream {
-  private final long validatingMac;
+  private final NativeHandleGuard.CloseableOwner handleOwner;
   private final int chunkSize;
 
   private final MaybeEmptyChannel channel;
@@ -39,9 +40,17 @@ public final class IncrementalMacInputStream extends InputStream {
         useDirectBuffer ? ByteBuffer.allocateDirect(chunkSize) : ByteBuffer.allocate(chunkSize);
     this.chunkValidationBuffer =
         this.currentChunk.hasArray() ? null : new byte[VALIDATION_BUFFER_SIZE];
-    this.validatingMac = Native.ValidatingMac_Initialize(key, chunkSize, digest);
     this.channel = new MaybeEmptyChannel(channel);
     this.readState = ReadState.READ_FROM_INPUT;
+
+    this.handleOwner =
+        new NativeHandleGuard.CloseableOwner(
+            Native.ValidatingMac_Initialize(key, chunkSize, digest)) {
+          @Override
+          protected void release(long nativeHandle) {
+            Native.ValidatingMac_Destroy(nativeHandle);
+          }
+        };
   }
 
   public IncrementalMacInputStream(
@@ -90,8 +99,18 @@ public final class IncrementalMacInputStream extends InputStream {
       return;
     }
     this.channel.close();
-    Native.ValidatingMac_Destroy(this.validatingMac);
+    this.handleOwner.close();
     this.closed = true;
+  }
+
+  @Override
+  @SuppressWarnings("deprecation")
+  protected void finalize() throws Throwable {
+    try {
+      close();
+    } finally {
+      super.finalize();
+    }
   }
 
   // Read implementation for the READ_FROM_INPUT state.
@@ -109,7 +128,8 @@ public final class IncrementalMacInputStream extends InputStream {
       if (!this.channel.hasAtLeastOneByteBeenRead) {
         // This is special case for validating empty inputs.
         // It does not matter what byte[] we pass in since both offset and length are 0.
-        Native.ValidatingMac_Update(this.validatingMac, this.singleByteBuffer, 0, 0);
+        this.handleOwner.guardedRun(
+            (handle) -> Native.ValidatingMac_Update(handle, this.singleByteBuffer, 0, 0));
         return ReadChunkResult.EOF;
       }
     }
@@ -166,7 +186,8 @@ public final class IncrementalMacInputStream extends InputStream {
     // need to validate even if the chunk is partial
     assertValidBytes(validateChunkImpl(chunk));
     if (this.eof) {
-      assertValidBytes(Native.ValidatingMac_Finalize(this.validatingMac));
+      int validBytes = this.handleOwner.guardedMap(Native::ValidatingMac_Finalize);
+      assertValidBytes(validBytes);
     }
   }
 
@@ -196,8 +217,10 @@ public final class IncrementalMacInputStream extends InputStream {
       // Because we are reading one chunk at a time only the last update will return a non-zero
       // value
       validBytes =
-          Native.ValidatingMac_Update(
-              this.validatingMac, this.chunkValidationBuffer, 0, currentlyValidating);
+          this.handleOwner.guardedMap(
+              (handle) ->
+                  Native.ValidatingMac_Update(
+                      handle, this.chunkValidationBuffer, 0, currentlyValidating));
       assert validBytes == 0 || validBytes == -1 || validBytes == this.chunkSize
           : "Unexpected incremental mac update result";
     }
@@ -208,14 +231,16 @@ public final class IncrementalMacInputStream extends InputStream {
     int validBytes;
     int arrayOffset = chunk.arrayOffset();
     validBytes =
-        Native.ValidatingMac_Update(
-            this.validatingMac,
-            chunk.array(),
-            // chunk here is a slice, so its pos should be 0 therefore using arrayOffset is
-            // correct
-            arrayOffset,
-            // similarly we can use chunk.limit for the length
-            arrayOffset + chunk.limit());
+        this.handleOwner.guardedMap(
+            (handle) ->
+                Native.ValidatingMac_Update(
+                    handle,
+                    chunk.array(),
+                    // chunk here is a slice, so its pos should be 0 therefore using arrayOffset is
+                    // correct
+                    arrayOffset,
+                    // similarly we can use chunk.limit for the length
+                    arrayOffset + chunk.limit()));
     assert validBytes == 0 || validBytes == -1 || validBytes == this.chunkSize
         : "Unexpected incremental mac update result";
     // We don't need to update chunk's position. This is a throwaway slice anyway.

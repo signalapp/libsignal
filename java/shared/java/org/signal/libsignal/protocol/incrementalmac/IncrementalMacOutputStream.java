@@ -8,9 +8,10 @@ package org.signal.libsignal.protocol.incrementalmac;
 import java.io.IOException;
 import java.io.OutputStream;
 import org.signal.libsignal.internal.Native;
+import org.signal.libsignal.internal.NativeHandleGuard;
 
 public final class IncrementalMacOutputStream extends OutputStream {
-  private final long incrementalMac;
+  private final NativeHandleGuard.CloseableOwner handleOwner;
   private final OutputStream digestStream;
   private final OutputStream inner;
   private boolean closed = false;
@@ -18,16 +19,23 @@ public final class IncrementalMacOutputStream extends OutputStream {
   public IncrementalMacOutputStream(
       OutputStream inner, byte[] key, ChunkSizeChoice sizeChoice, OutputStream digestStream) {
     int chunkSize = sizeChoice.getSizeInBytes();
-    this.incrementalMac = Native.IncrementalMac_Initialize(key, chunkSize);
     this.inner = inner;
     this.digestStream = digestStream;
+    this.handleOwner =
+        new NativeHandleGuard.CloseableOwner(Native.IncrementalMac_Initialize(key, chunkSize)) {
+          @Override
+          protected void release(long nativeHandle) {
+            Native.IncrementalMac_Destroy(nativeHandle);
+          }
+        };
   }
 
   @Override
   public void write(byte[] buffer) throws IOException {
     this.inner.write(buffer);
     byte[] digestIncrement =
-        Native.IncrementalMac_Update(this.incrementalMac, buffer, 0, buffer.length);
+        this.handleOwner.guardedMap(
+            (handle) -> Native.IncrementalMac_Update(handle, buffer, 0, buffer.length));
     digestStream.write(digestIncrement);
   }
 
@@ -35,7 +43,8 @@ public final class IncrementalMacOutputStream extends OutputStream {
   public void write(byte[] buffer, int offset, int length) throws IOException {
     this.inner.write(buffer, offset, length);
     byte[] digestIncrement =
-        Native.IncrementalMac_Update(this.incrementalMac, buffer, offset, length);
+        this.handleOwner.guardedMap(
+            (handle) -> Native.IncrementalMac_Update(handle, buffer, offset, length));
     digestStream.write(digestIncrement);
   }
 
@@ -43,7 +52,8 @@ public final class IncrementalMacOutputStream extends OutputStream {
   public void write(int b) throws IOException {
     // According to the spec the narrowing conversion to byte is expected here
     byte[] bytes = {(byte) b};
-    byte[] digestIncrement = Native.IncrementalMac_Update(this.incrementalMac, bytes, 0, 1);
+    byte[] digestIncrement =
+        this.handleOwner.guardedMap((handle) -> Native.IncrementalMac_Update(handle, bytes, 0, 1));
     this.inner.write(b);
     this.digestStream.write(digestIncrement);
   }
@@ -63,12 +73,23 @@ public final class IncrementalMacOutputStream extends OutputStream {
       flush();
     } catch (IOException ignored) {
     }
-    byte[] digestIncrement = Native.IncrementalMac_Finalize(this.incrementalMac);
+    byte[] digestIncrement = this.handleOwner.guardedMap(Native::IncrementalMac_Finalize);
     digestStream.write(digestIncrement);
-    Native.IncrementalMac_Destroy(this.incrementalMac);
+    this.handleOwner.close();
+
     // Intentionally not closing the inner stream, as it seems to be causing
     // problems on Android
     this.digestStream.close();
     this.closed = true;
+  }
+
+  @Override
+  @SuppressWarnings("deprecation")
+  protected void finalize() throws Throwable {
+    try {
+      close();
+    } finally {
+      super.finalize();
+    }
   }
 }
