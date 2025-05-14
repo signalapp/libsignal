@@ -466,8 +466,8 @@ enum CdsiCloseCode {
 ///
 /// Returns `Some(err)` if there is a relevant `LookupError` value for the
 /// provided close frame. Otherwise returns `None`.
-fn err_for_close(close: Option<CloseFrame<'_>>) -> LookupError {
-    fn unexpected_close(close: Option<CloseFrame<'_>>) -> LookupError {
+fn err_for_close(close: Option<CloseFrame>) -> LookupError {
+    fn unexpected_close(close: Option<CloseFrame>) -> LookupError {
         LookupError::EnclaveProtocol(AttestedProtocolError::UnexpectedClose(close.into()))
     }
 
@@ -483,7 +483,7 @@ fn err_for_close(close: Option<CloseFrame<'_>>) -> LookupError {
 
     match code {
         CdsiCloseCode::InvalidArgument => LookupError::InvalidArgument {
-            server_reason: reason.clone().into_owned(),
+            server_reason: reason.as_str().to_owned(),
         },
         CdsiCloseCode::InvalidToken => LookupError::InvalidToken,
         CdsiCloseCode::RateLimitExceeded => {
@@ -691,7 +691,7 @@ mod test {
         fn into_handler_with_close_from(
             mut self,
             state_before_close: &'static FakeServerState,
-            close_frame: CloseFrame<'static>,
+            close_frame: CloseFrame,
         ) -> impl FnMut(NextOrClose<Vec<u8>>) -> AttestedServerOutput {
             move |frame| {
                 if &self == state_before_close {

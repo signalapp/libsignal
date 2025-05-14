@@ -36,7 +36,7 @@ impl<S: AsyncRead + AsyncWrite + Unpin> Sink<Bytes> for WebSocketTransport<S> {
 
     fn start_send(mut self: Pin<&mut Self>, item: Bytes) -> Result<(), Self::Error> {
         self.0
-            .start_send_unpin(Message::Binary(item.into()))
+            .start_send_unpin(Message::Binary(item))
             .map_err(into_io_error)
     }
 
@@ -69,7 +69,7 @@ impl<S: AsyncRead + AsyncWrite + Unpin> Stream for WebSocketTransport<S> {
             match message {
                 Some(Message::Ping(_)) => return self.poll_next(cx),
                 Some(Message::Pong(_)) => return self.poll_next(cx),
-                Some(Message::Binary(bytes)) => Some(Ok(bytes.into())),
+                Some(Message::Binary(bytes)) => Some(Ok(bytes)),
                 None | Some(Message::Close(None)) => None,
                 Some(Message::Close(Some(frame)))
                     if frame.code == CloseCode::Normal && frame.reason.is_empty() =>

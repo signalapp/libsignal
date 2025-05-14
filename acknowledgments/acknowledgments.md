@@ -4503,7 +4503,7 @@ DEALINGS IN THE SOFTWARE.
 
 ```
 
-## tungstenite 0.21.0, tungstenite 0.23.0
+## tungstenite 0.21.0, tungstenite 0.26.2
 
 ```
 Copyright (c) 2017 Alexey Galakhov
@@ -4622,7 +4622,7 @@ DEALINGS IN THE SOFTWARE.
 
 ```
 
-## tokio-tungstenite 0.21.0, tokio-tungstenite 0.23.1
+## tokio-tungstenite 0.21.0, tokio-tungstenite 0.26.2
 
 ```
 Copyright (c) 2017 Daniel Abramov

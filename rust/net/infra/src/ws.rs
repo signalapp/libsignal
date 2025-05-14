@@ -17,7 +17,7 @@ use tokio::sync::Mutex;
 use tokio::time::Instant;
 use tokio_tungstenite::WebSocketStream;
 use tungstenite::protocol::CloseFrame;
-use tungstenite::{http, Message};
+use tungstenite::{http, Message, Utf8Bytes};
 
 use crate::errors::LogSafeDisplay;
 use crate::route::{Connector, HttpRouteFragment, WebSocketRouteFragment};
@@ -324,7 +324,9 @@ where
                     _ = self.service_cancellation.cancelled() => Event::StopService,
                 } {
                     Event::SendKeepAlive => {
-                        self.ws_writer.send(Message::Ping(vec![])).await?;
+                        self.ws_writer
+                            .send(Message::Ping(bytes::Bytes::new()))
+                            .await?;
                         self.last_keepalive_sent = Instant::now();
                         continue;
                     }
@@ -353,8 +355,8 @@ where
                 // finally, looking at the type of the message
                 self.last_frame_received = Instant::now();
                 match message {
-                    Message::Text(t) => return Ok(NextOrClose::Next(t.into())),
-                    Message::Binary(b) => return Ok(NextOrClose::Next(b.into())),
+                    Message::Text(t) => return Ok(NextOrClose::Next(TextOrBinary::Text(t))),
+                    Message::Binary(b) => return Ok(NextOrClose::Next(TextOrBinary::Binary(b))),
                     Message::Ping(_) | Message::Pong(_) => continue,
                     Message::Close(close_frame) => {
                         self.service_cancellation
@@ -391,10 +393,10 @@ where
 #[derive(Debug, derive_more::From)]
 #[cfg_attr(any(test, feature = "test-util"), derive(Clone, Eq, PartialEq))]
 pub enum TextOrBinary {
-    #[from(String, &str)]
-    Text(String),
-    #[from(Vec<u8>)]
-    Binary(Vec<u8>),
+    #[from(Utf8Bytes, String, &str)]
+    Text(Utf8Bytes),
+    #[from(bytes::Bytes, Vec<u8>)]
+    Binary(bytes::Bytes),
 }
 
 impl From<TextOrBinary> for Message {
@@ -412,7 +414,7 @@ pub type DefaultStream = tokio_boring_signal::SslStream<tokio::net::TcpStream>;
 #[cfg_attr(any(test, feature = "test-util"), derive(Debug))]
 pub enum NextOrClose<T> {
     Next(T),
-    Close(Option<CloseFrame<'static>>),
+    Close(Option<CloseFrame>),
 }
 
 impl<T> NextOrClose<T> {
@@ -423,10 +425,7 @@ impl<T> NextOrClose<T> {
         }
     }
 
-    pub fn next_or_else<E>(
-        self,
-        on_close: impl FnOnce(Option<CloseFrame<'static>>) -> E,
-    ) -> Result<T, E> {
+    pub fn next_or_else<E>(self, on_close: impl FnOnce(Option<CloseFrame>) -> E) -> Result<T, E> {
         match self {
             Self::Next(t) => Ok(t),
             Self::Close(close) => Err(on_close(close)),
@@ -493,12 +492,12 @@ mod test {
         // starting a client that only listens to the incoming messages,
         // but not sending any responses on its own
         let _client = tokio::spawn(async move { while let Some(Ok(_)) = client.next().await {} });
-        server.send(Message::Ping(vec![])).await.unwrap();
+        server.send(Message::Ping(vec![].into())).await.unwrap();
         let response = server
             .next()
             .await
             .expect("some result")
             .expect("ok result");
-        assert_eq!(response, Message::Pong(vec![]));
+        assert_eq!(response, Message::Pong(vec![].into()));
     }
 }

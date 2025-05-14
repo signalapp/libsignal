@@ -524,7 +524,9 @@ impl OutgoingRequest {
         };
 
         let message = TextOrBinary::Binary(
-            MessageProto::from(ChatMessageProto::Request(message)).encode_to_vec(),
+            MessageProto::from(ChatMessageProto::Request(message))
+                .encode_to_vec()
+                .into(),
         );
         let meta = OutgoingMeta::SentRequest(RequestId(id), response_sender);
         (message, meta)
@@ -1016,7 +1018,11 @@ impl<I: InnerConnection> ConnectionImpl<I> {
 }
 
 fn response_for_status(id: u64, status: StatusCode) -> TextOrBinary {
-    TextOrBinary::Binary(super::ws::response_for_code(id, status).encode_to_vec())
+    TextOrBinary::Binary(
+        super::ws::response_for_code(id, status)
+            .encode_to_vec()
+            .into(),
+    )
 }
 
 enum ChatMessage {
@@ -1503,7 +1509,8 @@ mod test {
                         request: Some(request.clone()),
                         response: None,
                     }
-                    .encode_to_vec(),
+                    .encode_to_vec()
+                    .into(),
                 )
             })
             .collect_vec();
@@ -1526,7 +1533,8 @@ mod test {
                 .send(
                     Outcome::Continue(MessageEvent::ReceivedMessage(TextOrBinary::Binary(
                         MessageProto::from(ChatMessageProto::Response(response.clone()))
-                            .encode_to_vec(),
+                            .encode_to_vec()
+                            .into(),
                     )))
                     .into(),
                 )
@@ -1574,7 +1582,8 @@ mod test {
                             request: Some(request.clone()),
                             response: None,
                         }
-                        .encode_to_vec(),
+                        .encode_to_vec()
+                        .into(),
                     )))
                     .into(),
                 )
@@ -1675,7 +1684,8 @@ mod test {
                         headers: vec![],
                         path: Some("/".to_string()),
                     }))
-                    .encode_to_vec(),
+                    .encode_to_vec()
+                    .into(),
                 )))
                 .into(),
             )
@@ -1760,7 +1770,9 @@ mod test {
         // Send the response, then immediately send a "finished" event.
         for outcome in [
             Outcome::Continue(MessageEvent::ReceivedMessage(TextOrBinary::Binary(
-                MessageProto::from(ChatMessageProto::Response(response)).encode_to_vec(),
+                MessageProto::from(ChatMessageProto::Response(response))
+                    .encode_to_vec()
+                    .into(),
             ))),
             Outcome::Finished(Ok(FinishReason::RemoteDisconnect)),
         ] {
@@ -1834,7 +1846,8 @@ mod test {
                             id: Some(123),
                             ..Default::default()
                         }))
-                        .encode_to_vec(),
+                        .encode_to_vec()
+                        .into(),
                     )))
                     .into(),
                 )
@@ -1982,7 +1995,7 @@ mod test {
 
     impl From<MessageProto> for TextOrBinary {
         fn from(proto: MessageProto) -> Self {
-            TextOrBinary::Binary(proto.encode_to_vec())
+            TextOrBinary::Binary(proto.encode_to_vec().into())
         }
     }
 
@@ -2105,7 +2118,8 @@ mod test {
                         id: Some(123),
                         ..Default::default()
                     }))
-                    .encode_to_vec(),
+                    .encode_to_vec()
+                    .into(),
                 )))
                 .into(),
             )

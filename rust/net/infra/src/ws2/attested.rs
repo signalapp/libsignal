@@ -3,7 +3,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use std::borrow::Cow;
 use std::sync::Arc;
 
 use attest::client_connection::ClientConnection;
@@ -195,7 +194,7 @@ impl WsClient {
         Ok(())
     }
 
-    async fn read(&mut self) -> Result<NextOrClose<Vec<u8>>, ReceiveError> {
+    async fn read(&mut self) -> Result<NextOrClose<bytes::Bytes>, ReceiveError> {
         let recv = self
             .incoming_rx
             .recv()
@@ -316,7 +315,7 @@ async fn spawned_task_body(
                         if incoming_tx
                             .send(Ok(NextOrClose::Close(Some(CloseFrame {
                                 code,
-                                reason: Cow::Owned(reason),
+                                reason: reason.into(),
                             }))))
                             .await
                             .is_err()
@@ -499,7 +498,7 @@ pub mod testutil {
     #[derive(Default)]
     pub struct AttestedServerOutput {
         pub message: Option<Vec<u8>>,
-        pub close_after: Option<Option<CloseFrame<'static>>>,
+        pub close_after: Option<Option<CloseFrame>>,
     }
 
     impl AttestedServerOutput {
@@ -510,7 +509,7 @@ pub mod testutil {
             }
         }
 
-        pub fn close(frame: Option<CloseFrame<'static>>) -> Self {
+        pub fn close(frame: Option<CloseFrame>) -> Self {
             Self {
                 close_after: Some(frame),
                 ..Default::default()
@@ -519,7 +518,7 @@ pub mod testutil {
     }
 
     impl TextOrBinary {
-        pub fn try_into_binary(self) -> Result<Vec<u8>, AttestedConnectionError> {
+        pub fn try_into_binary(self) -> Result<bytes::Bytes, AttestedConnectionError> {
             match self {
                 TextOrBinary::Text(_) => Err(AttestedConnectionError::Protocol(
                     AttestedProtocolError::TextFrame,

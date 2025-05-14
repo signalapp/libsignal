@@ -7,7 +7,7 @@
 //! [`Error`] type is a mirror of [`tungstenite::error::Error`] whose
 //! [`std::fmt::Display`] impl doesn't contain any user data.
 
-use std::borrow::{Borrow, Cow};
+use std::borrow::Borrow;
 
 use tungstenite::protocol::CloseFrame;
 
@@ -45,7 +45,7 @@ impl From<std::io::Error> for WebSocketConnectError {
 ///
 /// If a [`CloseFrame`] was sent, it is included.
 #[derive(Debug)]
-pub struct UnexpectedCloseError(Option<CloseFrame<'static>>);
+pub struct UnexpectedCloseError(Option<CloseFrame>);
 
 impl std::fmt::Display for UnexpectedCloseError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -59,12 +59,9 @@ impl std::fmt::Display for UnexpectedCloseError {
 
 impl LogSafeDisplay for UnexpectedCloseError {}
 
-impl From<Option<CloseFrame<'_>>> for UnexpectedCloseError {
-    fn from(value: Option<CloseFrame<'_>>) -> Self {
-        Self(value.map(|CloseFrame { code, reason }| CloseFrame {
-            code,
-            reason: Cow::Owned(reason.into_owned()),
-        }))
+impl From<Option<CloseFrame>> for UnexpectedCloseError {
+    fn from(value: Option<CloseFrame>) -> Self {
+        Self(value)
     }
 }
 

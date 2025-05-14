@@ -104,7 +104,9 @@ impl FakeChatRemote {
             response: None,
         };
         self.tx
-            .send(Ok(tungstenite::Message::Binary(proto.encode_to_vec())))
+            .send(Ok(tungstenite::Message::Binary(
+                proto.encode_to_vec().into(),
+            )))
             .map_err(|_failed_send| Disconnected)
     }
 
@@ -117,7 +119,9 @@ impl FakeChatRemote {
             response: Some(response),
         };
         self.tx
-            .send(Ok(tungstenite::Message::Binary(proto.encode_to_vec())))
+            .send(Ok(tungstenite::Message::Binary(
+                proto.encode_to_vec().into(),
+            )))
             .map_err(|_failed_send| Disconnected)
     }
 
