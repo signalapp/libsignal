@@ -153,6 +153,12 @@ impl<S: AsRef<[u8]>> FromIterator<S> for BytestringArray {
     }
 }
 
+#[repr(C)]
+pub struct OptionalBorrowedSliceOf<T> {
+    pub present: bool,
+    pub value: BorrowedSliceOf<T>,
+}
+
 pub type OptionalUuid = [u8; 17];
 
 #[repr(C)]

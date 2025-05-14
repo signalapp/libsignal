@@ -100,7 +100,7 @@ impl ConnectChat for ConnectFakeChat {
     }
 }
 
-#[bridge_io(TokioAsyncContext, ffi = false)]
+#[bridge_io(TokioAsyncContext)]
 async fn TESTING_FakeRegistrationSession_CreateSession(
     create_session: RegistrationCreateSessionRequest,
     chat: &FakeChatServer,

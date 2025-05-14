@@ -394,6 +394,16 @@ impl SimpleArgTypeInfo for Box<[String]> {
     }
 }
 
+impl SimpleArgTypeInfo for Option<Box<[u8]>> {
+    type ArgType = OptionalBorrowedSliceOf<c_uchar>;
+
+    fn convert_from(foreign: Self::ArgType) -> SignalFfiResult<Self> {
+        let OptionalBorrowedSliceOf { present, value } = foreign;
+        let slice = present.then(|| unsafe { value.as_slice() }).transpose()?;
+        Ok(slice.map(Box::from))
+    }
+}
+
 macro_rules! bridge_trait {
     ($name:ident) => {
         paste! {
@@ -1029,6 +1039,7 @@ macro_rules! ffi_arg_type {
     (Box<[u8]>) => (ffi::BorrowedSliceOf<std::ffi::c_uchar>);
     (Box<dyn $typ:ty >) => (ffi::ConstPointer< ::paste::paste!(ffi::[<Ffi $typ Struct>]) >);
     (Option<Box<dyn $typ:ty> >) => (ffi::ConstPointer< ::paste::paste!(ffi::[<Ffi $typ Struct>]) >);
+    (Option<Box<[u8]> >) => (ffi::OptionalBorrowedSliceOf<std::ffi::c_uchar>);
 
     (Ignored<$typ:ty>) => (*const std::ffi::c_void);
     (AsType<$typ:ident, $bridged:ident>) => (ffi_arg_type!($bridged));

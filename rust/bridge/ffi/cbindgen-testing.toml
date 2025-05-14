@@ -26,6 +26,7 @@ prefix_with_name = true
 [export]
 exclude = [
     # Already in signal_ffi.h
+    "BorrowedBytestringArray",
     "BorrowedSliceOfBorrowedSliceOfc_uchar",
     "BorrowedSliceOfc_uchar",
     "BytestringArray",
@@ -38,16 +39,19 @@ exclude = [
     "ConstPointerTokioAsyncContext",
     "CPromisebool",
     "CPromiseFfiCdsiLookupResponse",
+    "CPromiseMutPointerRegistrationService",
     "FfiCdsiLookupResponse",
     "FfiCdsiLookupResponseEntry",
     "FfiChatListenerStruct",
     "FfiChatResponse",
     "FfiChatServiceDebugInfo",
     "FfiCheckSvr2CredentialsResponse",
+    "FfiRegistrationCreateSessionRequest",
     "FfiResponseAndDebugInfo",
     "MutPointerAuthenticatedChatConnection",
     "MutPointerHttpRequest",
     "MutPointerRegisterAccountResponse",
+    "MutPointerRegistrationService",
     "MutPointerRegistrationSession",
     "MutPointerUnauthenticatedChatConnection",
     "OwnedBufferOfc_uchar",

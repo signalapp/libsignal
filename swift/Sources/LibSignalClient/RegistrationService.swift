@@ -22,14 +22,14 @@ public enum RegistrationError: Error {
 ///
 /// This wraps a ``Net`` to provide a reliable registration service client.
 ///
-public class RegistrationService: NativeHandleOwner<SignalMutPointerRegistrationService> {
+public class RegistrationService: NativeHandleOwner<SignalMutPointerRegistrationService>, @unchecked Sendable {
     private let asyncContext: TokioAsyncContext
 
     override internal class func destroyNativeHandle(_ nativeHandle: NonNull<SignalMutPointerRegistrationService>) -> SignalFfiErrorRef? {
         signal_registration_service_destroy(nativeHandle.pointer)
     }
 
-    private init(owned: NonNull<SignalMutPointerRegistrationService>, asyncContext: TokioAsyncContext) {
+    internal init(owned: NonNull<SignalMutPointerRegistrationService>, asyncContext: TokioAsyncContext) {
         self.asyncContext = asyncContext
         super.init(owned: owned)
     }
@@ -59,26 +59,18 @@ public class RegistrationService: NativeHandleOwner<SignalMutPointerRegistration
 
         let service: SignalMutPointerRegistrationService =
             try await net.asyncContext.invokeAsyncFunction { promise, tokioContext in
-                e164.withCString { e164 in
-                    pushToken.withCString { pushToken in
-                        mcc.withCString { mcc in
-                            mnc.withCString { mnc in
-                                let request = SignalFfiRegistrationCreateSessionRequest(
-                                    number: e164, push_token: pushToken,
-                                    mcc: mcc, mnc: mnc
-                                )
+                SignalFfiRegistrationCreateSessionRequest.withNativeStruct(
+                    e164: e164, pushToken: pushToken, mcc: mcc, mnc: mnc
+                ) { request in
 
-                                return withUnsafePointer(to: connectChatBridge) { connectChatBridge in
-                                    signal_registration_service_create_session(
-                                        promise,
-                                        tokioContext.const(),
-                                        request,
-                                        SignalConstPointerFfiConnectChatBridgeStruct(
-                                            raw: connectChatBridge)
-                                    )
-                                }
-                            }
-                        }
+                    withUnsafePointer(to: connectChatBridge) { connectChatBridge in
+                        signal_registration_service_create_session(
+                            promise,
+                            tokioContext.const(),
+                            request,
+                            SignalConstPointerFfiConnectChatBridgeStruct(
+                                raw: connectChatBridge)
+                        )
                     }
                 }
             }
@@ -492,6 +484,30 @@ extension SignalFfiConnectChatBridgeStruct {
             destroy: { ctx in _ = Unmanaged<ConnectionManager>.fromOpaque(ctx!).takeRetainedValue()
             }
         )
+    }
+}
+
+extension SignalFfiRegistrationCreateSessionRequest {
+    internal static func withNativeStruct<Result>(
+        e164: String,
+        pushToken: String?,
+        mcc: String?,
+        mnc: String?,
+        _ fn: (Self) throws -> Result
+    ) rethrows -> Result {
+        try e164.withCString { e164 in
+            try pushToken.withCString { pushToken in
+                try mcc.withCString { mcc in
+                    try mnc.withCString { mnc in
+                        let request = SignalFfiRegistrationCreateSessionRequest(
+                            number: e164, push_token: pushToken,
+                            mcc: mcc, mnc: mnc
+                        )
+                        return try fn(request)
+                    }
+                }
+            }
+        }
     }
 }
 

@@ -157,4 +157,113 @@ class RegistrationServiceConversionTests: XCTestCase {
     }
 }
 
+class RegistrationServiceFakeChatTests: XCTestCase {
+    public func testFakeRemoteCreateSession() async throws {
+        let tokio = TokioAsyncContext()
+        let server = FakeChatServer(asyncContext: tokio)
+        async let startCreateSessionRequest =
+            RegistrationService.fakeCreateSession(
+                fakeChatServer: server,
+                e164: "+18005550123", pushToken: "myPushToken"
+            )
+
+        let fakeRemote = try await server.getNextRemote()
+        let (firstRequest, firstRequestId) = try await fakeRemote.getNextIncomingRequest()
+
+        XCTAssertEqual(firstRequest.method, "POST")
+        XCTAssertEqual(firstRequest.pathAndQuery, "/v1/verification/session")
+
+        try fakeRemote.sendResponse(
+            requestId: firstRequestId,
+            ChatResponse(
+                status: 200,
+                message: "OK",
+                headers: ["content-type": "application/json"],
+                body: Data("""
+                    {
+                        "allowedToRequestCode": true,
+                        "verified": false,
+                        "requestedInformation": ["pushChallenge", "captcha"],
+                        "id": "fake-session-A"
+                    }
+                    """.utf8)
+            )
+        )
+
+        let session = try await startCreateSessionRequest
+        XCTAssertEqual(session.sessionId, "fake-session-A")
+
+        let sessionState = session.sessionState
+        XCTAssertEqual(sessionState.verified, false)
+        XCTAssertEqual(
+            sessionState.requestedInformation,
+            [
+                .pushChallenge,
+                .captcha,
+            ]
+        )
+
+        async let requestVerification: () = session.requestVerificationCode(
+            transport: .voice,
+            client: "libsignal test",
+            languages: ["fr-CA"]
+        )
+
+        let (secondRequest, secondRequestId) = try await fakeRemote.getNextIncomingRequest()
+
+        XCTAssertEqual(secondRequest.method, "POST")
+        XCTAssertEqual(secondRequest.pathAndQuery, "/v1/verification/session/fake-session-A/code")
+        XCTAssertEqual(
+            secondRequest.body,
+            Data("""
+                {"transport":"voice","client":"libsignal test"}
+                """.utf8)
+        )
+        XCTAssertEqual(
+            secondRequest.headers,
+            ["content-type": "application/json", "accept-language": "fr-CA"]
+        )
+
+        try fakeRemote.sendResponse(
+            requestId: secondRequestId,
+            ChatResponse(
+                status: 200,
+                message: "OK",
+                headers: ["content-type": "application/json"],
+                body: Data("""
+                    {
+                        "allowedToRequestCode": true,
+                        "verified": false,
+                        "requestedInformation": ["captcha"],
+                        "id": "fake-session-A"
+                    }
+                    """
+                    .utf8)
+            )
+        )
+
+        let () = try await requestVerification
+        XCTAssertEqual(session.sessionState.requestedInformation, [.captcha])
+    }
+}
+
+extension RegistrationService {
+    static func fakeCreateSession(
+        fakeChatServer: FakeChatServer,
+        e164: String,
+        pushToken: String?,
+        mcc: String? = nil,
+        mnc: String? = nil
+    ) async throws -> RegistrationService {
+        let registrationService: SignalMutPointerRegistrationService = try await fakeChatServer.asyncContext.invokeAsyncFunction { promise, asyncContext in
+            SignalFfiRegistrationCreateSessionRequest.withNativeStruct(e164: e164, pushToken: pushToken, mcc: mcc, mnc: mnc) { request in
+                fakeChatServer.withNativeHandle { fakeChatServer in
+                    signal_testing_fake_registration_session_create_session(promise, asyncContext.const(), request, fakeChatServer.const())
+                }
+            }
+        }
+        return RegistrationService(owned: NonNull(registrationService)!, asyncContext: fakeChatServer.asyncContext)
+    }
+}
+
 #endif
