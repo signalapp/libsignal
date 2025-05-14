@@ -19,6 +19,7 @@ import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 import org.signal.libsignal.protocol.util.Hex;
+import org.signal.libsignal.util.ResourceReader;
 
 @RunWith(Parameterized.class)
 public class IncrementalStreamsTest {
@@ -40,7 +41,6 @@ public class IncrementalStreamsTest {
 
   @Parameter public boolean useDirectBuffer;
 
-  // TODO: this now affects all the tests. Not ideal as it is only used in one test case.
   @Parameters
   public static Collection<Boolean> data() {
     return Arrays.asList(Boolean.TRUE, Boolean.FALSE);
@@ -186,7 +186,7 @@ public class IncrementalStreamsTest {
     byte[] digest = fullIncrementalDigest(new ByteArrayOutputStream(), TEST_INPUT_PARTS);
     try (IncrementalMacInputStream incrementalIn =
         makeIncrementalInputStream(new byte[0], digest)) {
-      byte[] read = incrementalIn.readAllBytes();
+      byte[] read = ResourceReader.readAll(incrementalIn);
       assertEquals(0, read.length);
     }
   }
