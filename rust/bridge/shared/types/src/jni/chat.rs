@@ -5,6 +5,7 @@
 
 use std::panic::UnwindSafe;
 
+use bytes::Bytes;
 use futures_util::future::BoxFuture;
 use futures_util::FutureExt;
 use libsignal_net::chat::server_requests::DisconnectCause;
@@ -61,7 +62,7 @@ fn attach_and_log_on_error(
 impl ChatListener for JniChatListener {
     fn received_incoming_message(
         &mut self,
-        envelope: Vec<u8>,
+        envelope: Bytes,
         timestamp: Timestamp,
         ack: ServerMessageAck,
     ) {

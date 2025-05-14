@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use bytes::Bytes;
 use http::{HeaderMap, StatusCode};
 use libsignal_net_infra::errors::{LogSafeDisplay, RetryLater};
 
@@ -59,7 +60,7 @@ pub(super) enum SessionRequestError {
     UnrecognizedStatus {
         status: StatusCode,
         response_headers: HeaderMap,
-        response_body: Option<Box<[u8]>>,
+        response_body: Option<Bytes>,
     },
 }
 
@@ -505,7 +506,7 @@ mod test {
                         }
                     }))
                     .unwrap()
-                    .into_boxed_slice(),
+                    .into(),
                 )
             }
             429 => {
@@ -521,7 +522,7 @@ mod test {
                         "permanentFailure": true
                     }))
                     .unwrap()
-                    .into_boxed_slice(),
+                    .into(),
                 )
             }
             _ => {}

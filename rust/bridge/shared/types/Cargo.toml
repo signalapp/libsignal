@@ -29,6 +29,7 @@ zkgroup = { workspace = true }
 aes-gcm-siv = { workspace = true }
 async-trait = { workspace = true }
 atomic-take = { workspace = true }
+bytes = { workspace = true }
 derive-where = { workspace = true }
 derive_more = { workspace = true, features = ["deref", "from", "into"] }
 displaydoc = { workspace = true }

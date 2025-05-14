@@ -2,6 +2,7 @@ use std::collections::{HashMap, HashSet};
 use std::str::FromStr;
 use std::time::Duration;
 
+use bytes::Bytes;
 use http::uri::PathAndQuery;
 use http::{HeaderMap, HeaderName, HeaderValue, Method, StatusCode};
 use libsignal_core::{Aci, Pni, ServiceIdKind};
@@ -306,7 +307,7 @@ pub(super) enum ResponseError {
     UnrecognizedStatus {
         status: StatusCode,
         response_headers: HeaderMap,
-        response_body: Option<Box<[u8]>>,
+        response_body: Option<Bytes>,
     },
     /// response had no body
     MissingBody,
@@ -456,11 +457,7 @@ impl From<CheckSvr2CredentialsRequest<'_>> for crate::chat::Request {
             method: Method::POST,
             path: PathAndQuery::from_static("/v2/backup/auth/check"),
             headers: HeaderMap::from_iter([CONTENT_TYPE_JSON]),
-            body: Some(
-                serde_json::to_vec(&value)
-                    .expect("no maps")
-                    .into_boxed_slice(),
-            ),
+            body: Some(serde_json::to_vec(&value).expect("no maps").into()),
         }
     }
 }
@@ -577,7 +574,7 @@ impl crate::chat::Request {
         let body = Some(
             serde_json::to_vec(&register_account)
                 .expect("no maps")
-                .into_boxed_slice(),
+                .into(),
         );
 
         Self {
@@ -656,9 +653,7 @@ const VERIFICATION_SESSION_PATH_PREFIX: &str = "/v1/verification/session";
 
 impl From<CreateSession> for crate::chat::Request {
     fn from(value: CreateSession) -> Self {
-        let body = serde_json::to_vec(&value)
-            .expect("no maps")
-            .into_boxed_slice();
+        let body = serde_json::to_vec(&value).expect("no maps").into();
         Self {
             method: Method::POST,
             headers: HeaderMap::from_iter([CONTENT_TYPE_JSON]),
@@ -676,7 +671,7 @@ impl<'s, R: Request> From<RegistrationRequest<'s, R>> for crate::chat::Request {
         } = value;
 
         let path = R::request_path(session_id);
-        let body = request.to_json_body();
+        let body = request.to_json_body().map(Bytes::from);
         let headers = request
             .headers()
             .chain(body.is_some().then_some(CONTENT_TYPE_JSON))
@@ -794,7 +789,7 @@ impl RegistrationResponse {
             status: Some(http::StatusCode::OK.as_u16().into()),
             message: Some("OK".to_string()),
             headers: vec!["content-type: application/json".to_owned()],
-            body: Some(serde_json::to_vec(&self).unwrap()),
+            body: Some(serde_json::to_vec(&self).unwrap().into()),
         }
     }
 }

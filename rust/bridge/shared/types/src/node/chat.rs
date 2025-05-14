@@ -7,6 +7,7 @@ use std::fmt::Debug;
 use std::panic::UnwindSafe;
 use std::sync::Arc;
 
+use bytes::Bytes;
 use futures_util::future::BoxFuture;
 use futures_util::FutureExt;
 use libsignal_net::chat::server_requests::DisconnectCause;
@@ -37,7 +38,7 @@ struct Roots {
 impl ChatListener for NodeChatListener {
     fn received_incoming_message(
         &mut self,
-        envelope: Vec<u8>,
+        envelope: Bytes,
         timestamp: Timestamp,
         ack: ServerMessageAck,
     ) {

@@ -2267,6 +2267,7 @@ name = "libsignal-bridge-testing"
 version = "0.1.0"
 dependencies = [
  "attest",
+ "bytes",
  "const-str",
  "futures-util",
  "hex",
@@ -2301,6 +2302,7 @@ dependencies = [
  "async-trait",
  "atomic-take",
  "attest",
+ "bytes",
  "derive-where",
  "derive_more 2.0.1",
  "device-transfer",

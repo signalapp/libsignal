@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use bytes::Bytes;
 use http::{HeaderMap, HeaderName, HeaderValue, StatusCode};
 use libsignal_bridge_macros::*;
 use libsignal_bridge_types::net::chat::{
@@ -168,7 +169,7 @@ async fn TESTING_FakeChatRemoteEnd_ReceiveIncomingRequest(
     let http_request = HttpRequest {
         method: verb.unwrap().as_str().try_into().unwrap(),
         path: path.unwrap().try_into().unwrap(),
-        body: body.map(Vec::into_boxed_slice),
+        body,
         headers: headers
             .into_iter()
             .map(|header| {
@@ -201,7 +202,7 @@ fn TESTING_FakeChatSentRequest_RequestId(request: &FakeChatSentRequest) -> u64 {
 #[bridge_fn]
 fn TESTING_ChatResponseConvert(body_present: bool) -> ChatResponse {
     let body = match body_present {
-        true => Some(b"content".to_vec().into_boxed_slice()),
+        true => Some(Bytes::from_static(b"content")),
         false => None,
     };
     let mut headers = HeaderMap::new();
@@ -253,12 +254,8 @@ fn TESTING_ChatRequestGetHeaderValue(request: &HttpRequest, header_name: String)
 }
 
 #[bridge_fn]
-fn TESTING_ChatRequestGetBody(request: &HttpRequest) -> Vec<u8> {
-    request
-        .body
-        .clone()
-        .map(|b| b.into_vec())
-        .unwrap_or_default()
+fn TESTING_ChatRequestGetBody(request: &HttpRequest) -> &[u8] {
+    request.body.as_deref().unwrap_or_default()
 }
 
 #[bridge_fn]

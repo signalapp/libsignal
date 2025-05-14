@@ -414,6 +414,7 @@ mod test {
     use std::str::FromStr as _;
 
     use assert_matches::assert_matches;
+    use bytes::Bytes;
     use futures_util::future::BoxFuture;
     use futures_util::FutureExt as _;
     use tokio::sync::mpsc;
@@ -483,7 +484,7 @@ mod test {
                 WebSocketRequestMessage {
                     verb: Some("POST".to_string()),
                     path: Some("/v1/verification/session".to_string()),
-                    body: Some(b"{\"number\":\"+18005550101\"}".into()),
+                    body: Some(Bytes::from_static(b"{\"number\":\"+18005550101\"}")),
                     headers: vec!["content-type: application/json".to_string()],
                     id: Some(0),
                 }
@@ -641,7 +642,7 @@ mod test {
                 WebSocketRequestMessage {
                     verb: Some("PATCH".to_string()),
                     path: Some("/v1/verification/session/abcabc".to_string()),
-                    body: Some(b"{\"captcha\":\"captcha value\"}".into()),
+                    body: Some(Bytes::from_static(b"{\"captcha\":\"captcha value\"}")),
                     headers: vec!["content-type: application/json".to_owned()],
                     id: Some(1),
                 }

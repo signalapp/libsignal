@@ -6,6 +6,7 @@
 use std::ffi::{c_uchar, c_void};
 use std::panic::UnwindSafe;
 
+use bytes::Bytes;
 use futures_util::future::BoxFuture;
 use futures_util::FutureExt as _;
 use libsignal_net::chat::server_requests::DisconnectCause;
@@ -97,7 +98,7 @@ impl Drop for ChatListenerStruct {
 impl ChatListener for ChatListenerStruct {
     fn received_incoming_message(
         &mut self,
-        envelope: Vec<u8>,
+        envelope: Bytes,
         timestamp: Timestamp,
         ack: ServerMessageAck,
     ) {

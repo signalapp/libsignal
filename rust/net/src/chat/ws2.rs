@@ -518,7 +518,7 @@ impl OutgoingRequest {
         let message = RequestProto {
             verb: Some(verb.to_string()),
             path: Some(path.to_string()),
-            body,
+            body: body.map(Into::into),
             headers,
             id: Some(id),
         };

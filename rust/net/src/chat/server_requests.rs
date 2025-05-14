@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use bytes::Bytes;
 use libsignal_net_infra::ws::WebSocketServiceError;
 use libsignal_protocol::Timestamp;
 
@@ -16,7 +17,7 @@ pub enum ServerEvent {
     QueueEmpty,
     IncomingMessage {
         request_id: u64,
-        envelope: Vec<u8>,
+        envelope: Bytes,
         server_delivery_timestamp: Timestamp,
         send_ack: ResponseEnvelopeSender,
     },

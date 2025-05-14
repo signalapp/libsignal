@@ -9,6 +9,7 @@ use std::time::Duration;
 
 use ::http::uri::PathAndQuery;
 use ::http::{HeaderMap, HeaderName, HeaderValue, StatusCode};
+use bytes::Bytes;
 use libsignal_net_infra::connection_manager::MultiRouteConnectionManager;
 use libsignal_net_infra::route::{
     Connector, HttpsTlsRoute, RouteProvider, RouteProviderExt, ThrottlingConnector, TransportRoute,
@@ -60,7 +61,7 @@ pub struct DebugInfo {
 #[cfg_attr(test, derive(PartialEq))]
 pub struct Request {
     pub method: ::http::Method,
-    pub body: Option<Box<[u8]>>,
+    pub body: Option<Bytes>,
     pub headers: HeaderMap,
     pub path: PathAndQuery,
 }
@@ -70,7 +71,7 @@ pub struct Request {
 pub struct Response {
     pub status: StatusCode,
     pub message: Option<String>,
-    pub body: Option<Box<[u8]>>,
+    pub body: Option<Bytes>,
     pub headers: HeaderMap,
 }
 
@@ -81,29 +82,34 @@ impl TryFrom<ResponseProto> for Response {
     type Error = ResponseProtoInvalidError;
 
     fn try_from(response_proto: ResponseProto) -> Result<Self, Self::Error> {
-        let status = response_proto
-            .status()
+        let ResponseProto {
+            id: _,
+            status,
+            message,
+            headers,
+            body,
+        } = response_proto;
+        let status = status
+            .unwrap_or_default()
             .try_into()
             .map_err(|_| ResponseProtoInvalidError)
             .and_then(|status_code| {
                 StatusCode::from_u16(status_code).map_err(|_| ResponseProtoInvalidError)
             })?;
-        let message = response_proto.message;
-        let body = response_proto.body.map(|v| v.into_boxed_slice());
-        let headers = response_proto.headers.into_iter().try_fold(
-            HeaderMap::new(),
-            |mut headers, header_string| {
-                let (name, value) = header_string
-                    .split_once(':')
-                    .ok_or(ResponseProtoInvalidError)?;
-                let header_name =
-                    HeaderName::try_from(name).map_err(|_| ResponseProtoInvalidError)?;
-                let header_value =
-                    HeaderValue::from_str(value.trim()).map_err(|_| ResponseProtoInvalidError)?;
-                headers.append(header_name, header_value);
-                Ok(headers)
-            },
-        )?;
+        let headers =
+            headers
+                .into_iter()
+                .try_fold(HeaderMap::new(), |mut headers, header_string| {
+                    let (name, value) = header_string
+                        .split_once(':')
+                        .ok_or(ResponseProtoInvalidError)?;
+                    let header_name =
+                        HeaderName::try_from(name).map_err(|_| ResponseProtoInvalidError)?;
+                    let header_value = HeaderValue::from_str(value.trim())
+                        .map_err(|_| ResponseProtoInvalidError)?;
+                    headers.append(header_name, header_value);
+                    Ok(headers)
+                })?;
         Ok(Response {
             status,
             message,
@@ -482,7 +488,7 @@ pub(crate) mod test {
         let proto = ResponseProto {
             status: Some(expected_status.into()),
             headers: vec![format!("HOST: {}", expected_host_value)],
-            body: Some(expected_body.to_vec()),
+            body: Some(Bytes::from_static(expected_body)),
             message: None,
             id: None,
         };
@@ -584,7 +590,7 @@ pub(crate) mod test {
         let proto = ResponseProto {
             status,
             headers,
-            body,
+            body: body.map(Bytes::from),
             message: None,
             id: None,
         };

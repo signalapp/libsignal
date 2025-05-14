@@ -111,7 +111,7 @@ impl From<RawChatSearchRequest> for chat::Request {
     fn from(request: RawChatSearchRequest) -> Self {
         Self {
             method: http::Method::POST,
-            body: Some(serde_json::to_vec(&request).unwrap().into_boxed_slice()),
+            body: Some(serde_json::to_vec(&request).unwrap().into()),
             headers: common_headers(),
             path: PathAndQuery::from_static(SEARCH_PATH),
         }
@@ -315,7 +315,7 @@ impl From<RawChatMonitorRequest> for chat::Request {
     fn from(request: RawChatMonitorRequest) -> Self {
         Self {
             method: http::Method::POST,
-            body: Some(serde_json::to_vec(&request).unwrap().into_boxed_slice()),
+            body: Some(serde_json::to_vec(&request).unwrap().into()),
             headers: common_headers(),
             path: PathAndQuery::from_static(MONITOR_PATH),
         }

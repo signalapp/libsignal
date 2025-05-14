@@ -10,6 +10,7 @@ use std::str::FromStr;
 use std::time::Duration;
 
 use atomic_take::AtomicTake;
+use bytes::Bytes;
 use futures_util::FutureExt as _;
 use http::status::InvalidStatusCode;
 use http::uri::{InvalidUri, PathAndQuery};
@@ -358,7 +359,7 @@ fn make_route_provider(
 pub struct HttpRequest {
     pub method: http::Method,
     pub path: PathAndQuery,
-    pub body: Option<Box<[u8]>>,
+    pub body: Option<Bytes>,
     pub headers: std::sync::Mutex<HeaderMap>,
 }
 
@@ -395,7 +396,7 @@ impl HttpRequest {
         path: String,
         body_as_slice: Option<&[u8]>,
     ) -> Result<Self, InvalidUri> {
-        let body = body_as_slice.map(|slice| slice.to_vec().into_boxed_slice());
+        let body = body_as_slice.map(Bytes::copy_from_slice);
         let method = method.0;
         let path = path.try_into()?;
         Ok(HttpRequest {
@@ -418,7 +419,7 @@ impl HttpRequest {
 pub trait ChatListener: Send {
     fn received_incoming_message(
         &mut self,
-        envelope: Vec<u8>,
+        envelope: Bytes,
         timestamp: Timestamp,
         ack: ServerMessageAck,
     );
