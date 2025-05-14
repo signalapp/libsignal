@@ -15,6 +15,9 @@ public enum RegistrationError: Error {
     case codeNotDeliverable(message: String, permanentFailure: Bool)
     case sessionUpdateRejected(String)
     case credentialsCouldNotBeParsed(String)
+    case deviceTransferPossible(String)
+    case recoveryVerificationFailed(String)
+    case registrationLock(timeRemaining: TimeInterval, svr2Username: String, svr2Password: String)
     case unknown(String)
 }
 
@@ -243,6 +246,55 @@ public class RegistrationService: NativeHandleOwner<SignalMutPointerRegistration
             }
         }
     }
+
+    /// Send a register account request.
+    ///
+    /// # Return
+    /// If the request succeeds, returns a ``RegisterAccountResponse``.
+    ///
+    /// - Throws: On failure, throws one of
+    ///   - ``RegistrationError/registrationLock(_:)``
+    ///   - ``RegistrationError/deviceTransferPossible(_:)``
+    ///   - ``RegistrationError/recoveryVerificationFailed(_:)``
+    ///   - A different ``RegistrationError`` if the request fails with another known error response.
+    ///   - ``SignalError/rateLimitedError(retryAfter:message:)`` if the server requests a retry later.
+    ///   - Some other `SignalError` if the request can't be completed.
+    public func registerAccount(
+        accountPassword: String,
+        skipDeviceTransfer: Bool,
+        accountAttributes: RegisterAccountAttributes,
+        apnPushToken: String?,
+        aciPublicKey: PublicKey,
+        pniPublicKey: PublicKey,
+        aciSignedPreKey: SignedPublicPreKey<PublicKey>,
+        pniSignedPreKey: SignedPublicPreKey<PublicKey>,
+        aciPqLastResortPreKey: SignedPublicPreKey<KEMPublicKey>,
+        pniPqLastResortPreKey: SignedPublicPreKey<KEMPublicKey>
+    ) async throws -> RegisterAccountResponse {
+        let request = RegisterAccountRequst.create(
+            apnPushToken: apnPushToken,
+            accountPassword: accountPassword,
+            skipDeviceTransfer: skipDeviceTransfer,
+            aciIdentityKey: aciPublicKey,
+            pniIdentityKey: pniPublicKey,
+            aciSignedPreKey: aciSignedPreKey,
+            pniSignedPreKey: pniSignedPreKey,
+            aciPqSignedPreKey: aciPqLastResortPreKey,
+            pniPqSignedPreKey: pniPqLastResortPreKey
+        )
+
+        let response = try await self.asyncContext.invokeAsyncFunction { promise, asyncContext in
+            self.withNativeHandle { registrationService in
+                request.withNativeHandle { request in
+                    accountAttributes.withNativeHandle { accountAttributes in
+                        signal_registration_service_register_account(promise, asyncContext.const(), registrationService.const(), request.const(), accountAttributes.const())
+                    }
+                }
+            }
+        }
+
+        return RegisterAccountResponse(owned: NonNull(response)!)
+    }
 }
 
 public class RegistrationSessionState: NativeHandleOwner<SignalMutPointerRegistrationSession> {
@@ -323,7 +375,7 @@ public class RegistrationSessionState: NativeHandleOwner<SignalMutPointerRegistr
     }
 }
 
-public class RegisterAccountResponse: NativeHandleOwner<SignalMutPointerRegisterAccountResponse> {
+public class RegisterAccountResponse: NativeHandleOwner<SignalMutPointerRegisterAccountResponse>, @unchecked Sendable {
     override internal class func destroyNativeHandle(_ nativeHandle: NonNull<SignalMutPointerRegisterAccountResponse>) -> SignalFfiErrorRef? {
         signal_register_account_response_destroy(nativeHandle.pointer)
     }
@@ -466,6 +518,120 @@ public enum Svr2CredentialsResult {
 public enum RequestedInformation: Hashable {
     case captcha
     case pushChallenge
+}
+
+private class RegisterAccountRequst: NativeHandleOwner<SignalMutPointerRegisterAccountRequest> {
+    override internal class func destroyNativeHandle(
+        _ nativeHandle: NonNull<SignalMutPointerRegisterAccountRequest>
+    ) -> SignalFfiErrorRef? {
+        signal_register_account_request_destroy(nativeHandle.pointer)
+    }
+
+    fileprivate static func create(
+        apnPushToken: String?,
+        accountPassword: String,
+        skipDeviceTransfer: Bool,
+        aciIdentityKey: PublicKey,
+        pniIdentityKey: PublicKey,
+        aciSignedPreKey: SignedPublicPreKey<PublicKey>,
+        pniSignedPreKey: SignedPublicPreKey<PublicKey>,
+        aciPqSignedPreKey: SignedPublicPreKey<KEMPublicKey>,
+        pniPqSignedPreKey: SignedPublicPreKey<KEMPublicKey>
+    ) -> Self {
+        let request: Self = failOnError { try invokeFnReturningNativeHandle {
+            signal_register_account_request_create($0)
+        } }
+        failOnError {
+            try request.withNativeHandle { native in
+
+                try checkError(accountPassword.withCString {
+                    signal_register_account_request_set_account_password(native.const(), $0)
+                })
+                if let apnPushToken {
+                    try checkError(apnPushToken.withCString {
+                        signal_register_account_request_set_apn_push_token(native.const(), $0)
+                    })
+                }
+                if skipDeviceTransfer {
+                    try checkError(signal_register_account_request_set_skip_device_transfer(native.const()))
+                }
+
+                try checkError(aciIdentityKey.withNativeHandle {
+                    signal_register_account_request_set_identity_public_key(native.const(), ServiceIdKind.aci.rawValue, $0.const())
+                })
+                try checkError(pniIdentityKey.withNativeHandle {
+                    signal_register_account_request_set_identity_public_key(native.const(), ServiceIdKind.pni.rawValue, $0.const())
+                })
+                try checkError(aciSignedPreKey.withNativeStruct {
+                    signal_register_account_request_set_identity_signed_pre_key(native.const(), ServiceIdKind.aci.rawValue, $0)
+                })
+                try checkError(pniSignedPreKey.withNativeStruct {
+                    signal_register_account_request_set_identity_signed_pre_key(native.const(), ServiceIdKind.pni.rawValue, $0)
+                })
+                try checkError(aciPqSignedPreKey.withNativeStruct {
+                    signal_register_account_request_set_identity_pq_last_resort_pre_key(native.const(), ServiceIdKind.aci.rawValue, $0)
+                })
+                try checkError(pniPqSignedPreKey.withNativeStruct {
+                    signal_register_account_request_set_identity_pq_last_resort_pre_key(native.const(), ServiceIdKind.pni.rawValue, $0)
+                })
+            }
+        }
+
+        return request
+    }
+}
+
+/// Account attributes sent as part of a ``RegistrationService/registerAccount(accountPassword:skipDeviceTransfer:accountAttributes:apnPushToken:aciPublicKey:pniPublicKey:aciSignedPreKey:pniSignedPreKey:aciPqLastResortPreKey:pniPqLastResortPreKey:)`` request.
+public class RegisterAccountAttributes: NativeHandleOwner<SignalMutPointerRegistrationAccountAttributes> {
+    /// Constructs the set of attributes to pass to the server.
+    /// - Throws: ``SignalError.invalidArgument`` if the `unidentifiedAccessKey` is not 16 bytes.
+    public convenience init(
+        recoveryPassword: Data,
+        aciRegistrationId: UInt16,
+        pniRegistrationId: UInt16,
+        registrationLock: String?,
+        unidentifiedAccessKey: Data,
+        unrestrictedUnidentifiedAccess: Bool,
+        capabilities: [String],
+        discoverableByPhoneNumber: Bool
+    ) throws {
+        var uak = SignalUnidentifiedAccessKey(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+        try withUnsafeMutableBytes(of: &uak) { uakBytes in
+            if uakBytes.count != unidentifiedAccessKey.count {
+                throw SignalError.invalidArgument("unidentifiedAccessKey has \(unidentifiedAccessKey.count) bytes; expected \(uakBytes.count)")
+            }
+            uakBytes.copyBytes(from: unidentifiedAccessKey)
+        }
+        let nativeHandle = failOnError {
+            try recoveryPassword.withUnsafeBorrowedBuffer { recoveryPassword in
+                try registrationLock.withCString { registrationLock in
+                    try withUnsafePointer(to: &uak) { unidentifiedAccessKey in
+                        try capabilities.withUnsafeBorrowedBytestringArray { capabilities in
+                            var nativeHandle = SignalMutPointerRegistrationAccountAttributes()
+                            try checkError(
+                                signal_registration_account_attributes_create(
+                                    &nativeHandle,
+                                    recoveryPassword,
+                                    aciRegistrationId,
+                                    pniRegistrationId,
+                                    registrationLock,
+                                    unidentifiedAccessKey,
+                                    unrestrictedUnidentifiedAccess,
+                                    capabilities,
+                                    discoverableByPhoneNumber
+                                ))
+                            return nativeHandle
+                        }
+                    }
+                }
+            }
+        }
+        self.init(owned: NonNull(nativeHandle)!)
+    }
+
+    override internal class func destroyNativeHandle(_ nativeHandle: NonNull<SignalMutPointerRegistrationAccountAttributes>) -> SignalFfiErrorRef? {
+        signal_registration_account_attributes_destroy(nativeHandle.pointer)
+    }
 }
 
 extension SignalFfiConnectChatBridgeStruct {
@@ -623,6 +789,50 @@ extension SignalMutPointerRegisterAccountResponse: SignalMutPointer {
 }
 
 extension SignalConstPointerRegisterAccountResponse: SignalConstPointer {
+    public func toOpaque() -> OpaquePointer? {
+        self.raw
+    }
+}
+
+extension SignalMutPointerRegisterAccountRequest: SignalMutPointer {
+    public typealias ConstPointer = SignalConstPointerRegisterAccountRequest
+
+    public init(untyped: OpaquePointer?) {
+        self.init(raw: untyped)
+    }
+
+    public func toOpaque() -> OpaquePointer? {
+        self.raw
+    }
+
+    public func const() -> Self.ConstPointer {
+        SignalConstPointerRegisterAccountRequest(raw: self.raw)
+    }
+}
+
+extension SignalConstPointerRegisterAccountRequest: SignalConstPointer {
+    public func toOpaque() -> OpaquePointer? {
+        self.raw
+    }
+}
+
+extension SignalMutPointerRegistrationAccountAttributes: SignalMutPointer {
+    public typealias ConstPointer = SignalConstPointerRegistrationAccountAttributes
+
+    public init(untyped: OpaquePointer?) {
+        self.init(raw: untyped)
+    }
+
+    public func toOpaque() -> OpaquePointer? {
+        self.raw
+    }
+
+    public func const() -> Self.ConstPointer {
+        SignalConstPointerRegistrationAccountAttributes(raw: self.raw)
+    }
+}
+
+extension SignalConstPointerRegistrationAccountAttributes: SignalConstPointer {
     public func toOpaque() -> OpaquePointer? {
         self.raw
     }

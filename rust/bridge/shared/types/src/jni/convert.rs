@@ -1342,7 +1342,7 @@ impl<'a> SimpleArgTypeInfo<'a> for libsignal_net::registration::PushTokenType {
     }
 }
 
-impl<'a> SimpleArgTypeInfo<'a> for libsignal_net::registration::SignedPreKeyBody<Box<[u8]>> {
+impl<'a> SimpleArgTypeInfo<'a> for crate::net::registration::SignedPublicPreKey {
     type ArgType = JObject<'a>;
     fn convert_from(env: &mut JNIEnv<'a>, obj: &Self::ArgType) -> Result<Self, BridgeLayerError> {
         check_jobject_type(

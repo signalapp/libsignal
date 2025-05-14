@@ -11,7 +11,7 @@ use attest::hsm_enclave::Error as HsmEnclaveError;
 use device_transfer::Error as DeviceTransferError;
 use libsignal_account_keys::Error as PinError;
 use libsignal_net::infra::errors::RetryLater;
-use libsignal_net::registration::VerificationCodeNotDeliverable;
+use libsignal_net::registration::{RegistrationLock, VerificationCodeNotDeliverable};
 use libsignal_protocol::*;
 use signal_crypto::Error as SignalCryptoError;
 use usernames::{UsernameError, UsernameLinkError};
@@ -115,6 +115,9 @@ pub enum SignalErrorCode {
     RegistrationCodeNotDeliverable,
     RegistrationSessionUpdateRejected,
     RegistrationCredentialsCouldNotBeParsed,
+    RegistrationDeviceTransferPossible,
+    RegistrationRecoveryVerificationFailed,
+    RegistrationLock,
 }
 
 pub trait UpcastAsAny {
@@ -151,6 +154,9 @@ pub trait FfiError: UpcastAsAny + fmt::Debug + Send + 'static {
     fn provide_registration_code_not_deliverable(
         &self,
     ) -> Result<&VerificationCodeNotDeliverable, WrongErrorKind> {
+        Err(WrongErrorKind)
+    }
+    fn provide_registration_lock(&self) -> Result<&RegistrationLock, WrongErrorKind> {
         Err(WrongErrorKind)
     }
 }
@@ -582,9 +588,9 @@ impl FfiError for libsignal_net::chat::SendError {
 mod registration {
     use libsignal_net::infra::errors::LogSafeDisplay;
     use libsignal_net::registration::{
-        CheckSvr2CredentialsError, CreateSessionError, RequestError, RequestVerificationCodeError,
-        ResumeSessionError, SubmitVerificationError, UpdateSessionError,
-        VerificationCodeNotDeliverable,
+        CheckSvr2CredentialsError, CreateSessionError, RegisterAccountError, RegistrationLock,
+        RequestError, RequestVerificationCodeError, ResumeSessionError, SubmitVerificationError,
+        UpdateSessionError, VerificationCodeNotDeliverable,
     };
 
     use super::*;
@@ -601,6 +607,9 @@ mod registration {
         CodeNotDeliverable(&'a VerificationCodeNotDeliverable),
         SessionUpdateRejected,
         CredentialsCouldNotBeParsed,
+        DeviceTransferPossible,
+        RegistrationRecoveryVerificationFailed,
+        RegistrationLock(&'a RegistrationLock),
     }
 
     impl<'a> From<RegistrationError<'a>> for SignalErrorCode {
@@ -622,6 +631,13 @@ mod registration {
                 RegistrationError::CredentialsCouldNotBeParsed => {
                     Self::RegistrationCredentialsCouldNotBeParsed
                 }
+                RegistrationError::DeviceTransferPossible => {
+                    Self::RegistrationDeviceTransferPossible
+                }
+                RegistrationError::RegistrationRecoveryVerificationFailed => {
+                    Self::RegistrationRecoveryVerificationFailed
+                }
+                RegistrationError::RegistrationLock(_) => Self::RegistrationLock,
             }
         }
     }
@@ -661,6 +677,17 @@ mod registration {
             match self {
                 RequestError::Other(e) => match e.into() {
                     RegistrationError::CodeNotDeliverable(code) => Ok(code),
+                    _ => Err(WrongErrorKind),
+                },
+                RequestError::Timeout
+                | RequestError::RequestWasNotValid
+                | RequestError::Unknown(_) => Err(WrongErrorKind),
+            }
+        }
+        fn provide_registration_lock(&self) -> Result<&RegistrationLock, WrongErrorKind> {
+            match self {
+                RequestError::Other(e) => match e.into() {
+                    RegistrationError::RegistrationLock(lock) => Ok(lock),
                     _ => Err(WrongErrorKind),
                 },
                 RequestError::Timeout
@@ -730,6 +757,23 @@ mod registration {
             match value {
                 CheckSvr2CredentialsError::CredentialsCouldNotBeParsed => {
                     Self::CredentialsCouldNotBeParsed
+                }
+            }
+        }
+    }
+
+    impl<'a> From<&'a RegisterAccountError> for RegistrationError<'a> {
+        fn from(value: &'a RegisterAccountError) -> Self {
+            match value {
+                RegisterAccountError::DeviceTransferIsPossibleButNotSkipped => {
+                    Self::DeviceTransferPossible
+                }
+                RegisterAccountError::RetryLater(retry_later) => Self::RetryLater(retry_later),
+                RegisterAccountError::RegistrationRecoveryVerificationFailed => {
+                    Self::RegistrationRecoveryVerificationFailed
+                }
+                RegisterAccountError::RegistrationLock(registration_lock) => {
+                    Self::RegistrationLock(registration_lock)
                 }
             }
         }

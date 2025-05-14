@@ -368,6 +368,14 @@ impl<const LEN: usize> SimpleArgTypeInfo for &'_ [u8; LEN] {
     }
 }
 
+impl<const LEN: usize> SimpleArgTypeInfo for Option<&'_ [u8; LEN]> {
+    type ArgType = *const [u8; LEN];
+    #[allow(clippy::not_unsafe_ptr_arg_deref)]
+    fn convert_from(arg: Self::ArgType) -> SignalFfiResult<Self> {
+        Ok(unsafe { arg.as_ref() })
+    }
+}
+
 impl<const LEN: usize> ResultTypeInfo for [u8; LEN] {
     type ResultType = [u8; LEN];
     fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
@@ -517,6 +525,34 @@ impl SimpleArgTypeInfo for RegistrationCreateSessionRequest {
             push_token_type,
             mcc: SimpleArgTypeInfo::convert_from(mcc)?,
             mnc: SimpleArgTypeInfo::convert_from(mnc)?,
+        })
+    }
+}
+
+impl SimpleArgTypeInfo for crate::net::registration::SignedPublicPreKey {
+    type ArgType = FfiSignedPublicPreKey;
+    fn convert_from(foreign: Self::ArgType) -> SignalFfiResult<Self> {
+        let FfiSignedPublicPreKey {
+            key_id,
+            public_key_type,
+            public_key,
+            signature,
+        } = foreign;
+        let public_key = match &public_key_type {
+            FfiPublicKeyType::ECC => <&PublicKey>::convert_from(ConstPointer {
+                raw: public_key.cast(),
+            })?
+            .serialize(),
+            FfiPublicKeyType::Kyber => <&kem::PublicKey>::convert_from(ConstPointer {
+                raw: public_key.cast(),
+            })?
+            .serialize(),
+        };
+        let signature = unsafe { signature.as_slice()? }.into();
+        Ok(Self {
+            key_id,
+            public_key,
+            signature,
         })
     }
 }
@@ -1028,7 +1064,9 @@ macro_rules! ffi_arg_type {
     (AccountEntropyPool) => (*const std::ffi::c_char);
     (RegistrationCreateSessionRequest) => (ffi::FfiRegistrationCreateSessionRequest);
     (RegistrationPushTokenType) => (*const std::ffi::c_void);
+    (SignedPublicPreKey) => (ffi::FfiSignedPublicPreKey);
     (&[u8; $len:expr]) => (*const [u8; $len]);
+    (Option<&[u8; $len:expr]>) => (*const [u8; $len]);
     (&[& $typ:ty]) => (ffi::BorrowedSliceOf<ffi::ConstPointer< $typ >>);
     (&mut dyn $typ:ty) => (ffi::ConstPointer< ::paste::paste!(ffi::[<Ffi $typ Struct>]) >);
     (Option<&dyn $typ:ty>) => (ffi::ConstPointer< ::paste::paste!(ffi::[<Ffi $typ Struct>]) >);

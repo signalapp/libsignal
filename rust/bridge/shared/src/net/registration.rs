@@ -8,6 +8,7 @@ use libsignal_bridge_macros::{bridge_fn, bridge_io};
 use libsignal_bridge_types::net::registration::{
     ConnectChatBridge, RegisterAccountInner, RegisterAccountRequest, RegistrationAccountAttributes,
     RegistrationCreateSessionRequest, RegistrationPushTokenType, RegistrationService,
+    SignedPublicPreKey,
 };
 use libsignal_bridge_types::net::TokioAsyncContext;
 use libsignal_bridge_types::*;
@@ -15,7 +16,7 @@ use libsignal_net::registration::{
     CheckSvr2CredentialsError, CheckSvr2CredentialsResponse, CreateSessionError, ForServiceIds,
     NewMessageNotification, RegisterAccountError, RegisterAccountResponse, RegisterResponseBadge,
     RegistrationSession, RequestError, RequestVerificationCodeError, ResumeSessionError, SessionId,
-    SignedPreKeyBody, SubmitVerificationError, UpdateSessionError, VerificationTransport,
+    SubmitVerificationError, UpdateSessionError, VerificationTransport,
 };
 use libsignal_protocol::*;
 use uuid::Uuid;
@@ -24,9 +25,9 @@ use crate::support::*;
 
 bridge_handle_fns!(RegistrationService, clone = false);
 bridge_handle_fns!(RegistrationSession, clone = false);
-bridge_handle_fns!(RegisterAccountRequest, clone = false, ffi = false);
+bridge_handle_fns!(RegisterAccountRequest, clone = false);
 bridge_handle_fns!(RegisterAccountResponse, clone = false);
-bridge_handle_fns!(RegistrationAccountAttributes, clone = false, ffi = false);
+bridge_handle_fns!(RegistrationAccountAttributes, clone = false);
 
 #[bridge_io(TokioAsyncContext)]
 async fn RegistrationService_CreateSession(
@@ -127,7 +128,7 @@ async fn RegistrationService_CheckSvr2Credentials(
         .await
 }
 
-#[bridge_io(TokioAsyncContext, ffi = false)]
+#[bridge_io(TokioAsyncContext)]
 async fn RegistrationService_RegisterAccount(
     service: &RegistrationService,
     register_account: &RegisterAccountRequest,
@@ -245,12 +246,12 @@ fn RegistrationSession_GetRequestedInformation(
     session.requested_information.iter().copied().collect()
 }
 
-#[bridge_fn(ffi = false)]
+#[bridge_fn]
 fn RegisterAccountRequest_Create() -> RegisterAccountRequest {
     RegisterAccountRequest(Some(RegisterAccountInner::default()).into())
 }
 
-#[bridge_fn(ffi = false)]
+#[bridge_fn]
 fn RegisterAccountRequest_SetSkipDeviceTransfer(register_account: &RegisterAccountRequest) {
     register_account
         .0
@@ -261,7 +262,7 @@ fn RegisterAccountRequest_SetSkipDeviceTransfer(register_account: &RegisterAccou
         .device_transfer = Some(libsignal_net::registration::SkipDeviceTransfer);
 }
 
-#[bridge_fn(ffi = false)]
+#[bridge_fn]
 fn RegisterAccountRequest_SetAccountPassword(
     register_account: &RegisterAccountRequest,
     account_password: String,
@@ -275,11 +276,10 @@ fn RegisterAccountRequest_SetAccountPassword(
         .account_password = account_password.into_boxed_str()
 }
 
-// GCM is only used for Android.
-#[bridge_fn(ffi = false, node = false)]
-fn RegisterAccountRequest_SetGcmPushToken(
+#[cfg(any(feature = "ffi", feature = "jni"))]
+fn set_message_notification(
     register_account: &RegisterAccountRequest,
-    gcm_push_token: String,
+    notification: NewMessageNotification<String>,
 ) {
     register_account
         .0
@@ -287,10 +287,34 @@ fn RegisterAccountRequest_SetGcmPushToken(
         .expect("not poisoned")
         .as_mut()
         .expect("not taken")
-        .message_notification = NewMessageNotification::Gcm(gcm_push_token)
+        .message_notification = notification
 }
 
-#[bridge_fn(ffi = false)]
+// GCM is only used for Android.
+#[bridge_fn(ffi = false, node = false)]
+fn RegisterAccountRequest_SetGcmPushToken(
+    register_account: &RegisterAccountRequest,
+    gcm_push_token: String,
+) {
+    set_message_notification(
+        register_account,
+        NewMessageNotification::Gcm(gcm_push_token),
+    );
+}
+
+// APN is only used for iOS.
+#[bridge_fn(jni = false, node = false)]
+fn RegisterAccountRequest_SetApnPushToken(
+    register_account: &RegisterAccountRequest,
+    apn_push_token: String,
+) {
+    set_message_notification(
+        register_account,
+        NewMessageNotification::Apn(apn_push_token),
+    )
+}
+
+#[bridge_fn]
 fn RegisterAccountRequest_SetIdentityPublicKey(
     register_account: &RegisterAccountRequest,
     identity_type: AsType<ServiceIdKind, u8>,
@@ -301,12 +325,9 @@ fn RegisterAccountRequest_SetIdentityPublicKey(
     *account.identity_keys.get_mut(identity_type.into_inner()) = Some(*identity_key);
 }
 
-/// cbindgen: ignore
-type SignedPublicPreKey = SignedPreKeyBody<Box<[u8]>>;
-
 pub use libsignal_bridge_types::net::registration::RegistrationSessionRequestedInformation;
 
-#[bridge_fn(ffi = false)]
+#[bridge_fn]
 fn RegisterAccountRequest_SetIdentitySignedPreKey(
     register_account: &RegisterAccountRequest,
     identity_type: AsType<ServiceIdKind, u8>,
@@ -317,7 +338,7 @@ fn RegisterAccountRequest_SetIdentitySignedPreKey(
     *account.signed_pre_keys.get_mut(identity_type.into_inner()) = Some(signed_pre_key);
 }
 
-#[bridge_fn(ffi = false)]
+#[bridge_fn]
 fn RegisterAccountRequest_SetIdentityPqLastResortPreKey(
     register_account: &RegisterAccountRequest,
     identity_type: AsType<ServiceIdKind, u8>,
@@ -330,13 +351,13 @@ fn RegisterAccountRequest_SetIdentityPqLastResortPreKey(
         .get_mut(identity_type.into_inner()) = Some(pq_last_resort_pre_key);
 }
 
-#[bridge_fn(ffi = false)]
+#[bridge_fn]
 fn RegistrationAccountAttributes_Create(
     recovery_password: Box<[u8]>,
     aci_registration_id: u16,
     pni_registration_id: u16,
     registration_lock: Option<String>,
-    unidentified_access_key: Option<&[u8; 16]>,
+    unidentified_access_key: &[u8; 16],
     unrestricted_unidentified_access: bool,
     capabilities: Box<[String]>,
     discoverable_by_phone_number: bool,
@@ -346,7 +367,7 @@ fn RegistrationAccountAttributes_Create(
         aci_registration_id,
         pni_registration_id,
         registration_lock,
-        unidentified_access_key: unidentified_access_key.copied(),
+        unidentified_access_key: *unidentified_access_key,
         unrestricted_unidentified_access,
         capabilities: HashSet::from_iter(capabilities),
         discoverable_by_phone_number,

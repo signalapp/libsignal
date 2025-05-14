@@ -257,6 +257,24 @@ internal func checkError(_ error: SignalFfiErrorRef?) throws {
         throw RegistrationError.sessionUpdateRejected(errStr)
     case SignalErrorCodeRegistrationCredentialsCouldNotBeParsed:
         throw RegistrationError.credentialsCouldNotBeParsed(errStr)
+    case SignalErrorCodeRegistrationDeviceTransferPossible:
+        throw RegistrationError.deviceTransferPossible(errStr)
+    case SignalErrorCodeRegistrationRecoveryVerificationFailed:
+        throw RegistrationError.recoveryVerificationFailed(errStr)
+    case SignalErrorCodeRegistrationLock:
+        var timeRemaining: UInt64 = 0
+        var svr2Password = ""
+        let svr2Username = try invokeFnReturningString { svr2Username in
+            var bridgedPassword: UnsafePointer<CChar>? = nil
+            let err = signal_error_get_registration_lock(error, &timeRemaining, svr2Username, &bridgedPassword)
+            if err == nil {
+                svr2Password = String(cString: bridgedPassword!)
+                signal_free_string(bridgedPassword)
+            }
+            return err
+        }
+
+        throw RegistrationError.registrationLock(timeRemaining: TimeInterval(timeRemaining), svr2Username: svr2Username, svr2Password: svr2Password)
     default:
         throw SignalError.unknown(errType, errStr)
     }

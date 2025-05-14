@@ -119,7 +119,7 @@ pub struct ProvidedAccountAttributes<'a> {
     pub name: Option<&'a [u8]>,
     pub registration_lock: Option<&'a str>,
     /// Generated from the user's profile key.
-    pub unidentified_access_key: Option<&'a UnidentifiedAccessKey>,
+    pub unidentified_access_key: &'a UnidentifiedAccessKey,
     /// Whether the user allows sealed sender messages to come from arbitrary senders.
     pub unrestricted_unidentified_access: bool,
     #[serde_as(as = "MappedToTrue")]
@@ -995,7 +995,7 @@ mod test {
             pni_registration_id: 456,
             name: Some(b"device name proto"),
             registration_lock: Some("reg lock"),
-            unidentified_access_key: Some(b"unidentified key"),
+            unidentified_access_key: b"unidentified key",
             unrestricted_unidentified_access: true,
             capabilities: HashSet::from(["can wear cape"]),
             discoverable_by_phone_number: true,

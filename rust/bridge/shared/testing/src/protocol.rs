@@ -97,7 +97,7 @@ fn SessionRecord_InitializeBobSession(
 /// cbindgen: ignore
 type SignedPublicPreKey = SignedPreKeyBody<Box<[u8]>>;
 
-#[bridge_fn(ffi = false)]
+#[bridge_fn]
 fn TESTING_SignedPublicPreKey_CheckBridgesCorrectly(
     source_public_key: &PublicKey,
     signed_pre_key: SignedPublicPreKey,

@@ -214,6 +214,35 @@ pub unsafe extern "C" fn signal_error_get_registration_error_not_deliverable(
         Ok(())
     })
 }
+#[no_mangle]
+pub unsafe extern "C" fn signal_error_get_registration_lock(
+    err: *const SignalFfiError,
+    out_time_remaining_seconds: *mut u64,
+    out_svr2_username: *mut *const c_char,
+    out_svr2_password: *mut *const c_char,
+) -> *mut SignalFfiError {
+    let err = AssertUnwindSafe(err);
+    run_ffi_safe(|| {
+        let err = err.as_ref().ok_or(NullPointerError)?;
+
+        let libsignal_net::registration::RegistrationLock {
+            time_remaining,
+            svr2_credentials:
+                libsignal_net::auth::Auth {
+                    username: svr2_username,
+                    password: svr2_password,
+                },
+        } = err.provide_registration_lock().map_err(|_| {
+            SignalProtocolError::InvalidArgument(format!(
+                "cannot get registration error from error ({err})"
+            ))
+        })?;
+        write_result_to(out_time_remaining_seconds, time_remaining.as_secs())?;
+        write_result_to(out_svr2_username, svr2_username.as_str())?;
+        write_result_to(out_svr2_password, svr2_password.as_str())?;
+        Ok(())
+    })
+}
 
 #[no_mangle]
 pub unsafe extern "C" fn signal_error_free(err: *mut SignalFfiError) {

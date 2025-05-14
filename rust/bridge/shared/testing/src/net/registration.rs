@@ -377,7 +377,7 @@ make_error_testing_enum!(
 );
 
 /// Return an error matching the requested description.
-#[bridge_fn(ffi = false)]
+#[bridge_fn]
 fn TESTING_RegistrationService_RegisterAccountErrorConvert(
     // The stringly-typed API makes the call sites more self-explanatory.
     error_description: AsType<TestingRegisterAccountRequestError, String>,

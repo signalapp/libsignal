@@ -231,6 +231,20 @@ pub struct FfiRegisterResponseBadge {
     pub expiration_secs: f64,
 }
 
+#[repr(C)]
+pub struct FfiSignedPublicPreKey {
+    pub key_id: u32,
+    pub public_key_type: FfiPublicKeyType,
+    pub public_key: *const std::ffi::c_void,
+    pub signature: BorrowedSliceOf<std::ffi::c_uchar>,
+}
+
+#[repr(u8)]
+pub enum FfiPublicKeyType {
+    ECC,
+    Kyber,
+}
+
 #[cfg_attr(doc, visibility::make(pub))]
 struct UnexpectedPanic(Box<dyn std::any::Any + Send>);
 

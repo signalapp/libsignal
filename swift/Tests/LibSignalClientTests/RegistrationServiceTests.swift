@@ -127,6 +127,18 @@ class RegistrationServiceConversionTests: XCTestCase {
                     requestNotValidCase,
                 ]
             ),
+            ErrorTest(
+                "RegisterAccount",
+                signal_testing_registration_service_register_account_error_convert,
+                [
+                    ("DeviceTransferIsPossibleButNotSkipped", { if case RegistrationError.deviceTransferPossible("a device transfer is possible and was not explicitly skipped.") = $0 { true } else { false }}),
+                    ("RegistrationRecoveryVerificationFailed", { if case RegistrationError.recoveryVerificationFailed("registration recovery password verification failed") = $0 { true } else { false }}),
+                    ("RegistrationLockFor50Seconds", { if case RegistrationError.registrationLock(timeRemaining: 50, svr2Username: "user", svr2Password: "pass") = $0 { true } else { false }}),
+                    retryLaterCase,
+                    unknownCase,
+                    timeoutCase,
+                ]
+            ),
         ]
 
         for item in cases {
@@ -154,6 +166,17 @@ class RegistrationServiceConversionTests: XCTestCase {
             try invokeFnReturningCheckSvr2CredentialsResponse(fn: signal_testing_registration_service_check_svr2_credentials_response_convert),
             expectedEntries
         )
+    }
+
+    func testConvertSignedPreKey() throws {
+        let key = PrivateKey.generate().publicKey
+        let signedPublicPreKey = SignedPublicPreKey(keyId: 42, publicKey: key, signature: Data("signature".utf8))
+
+        try key.withNativeHandle { key in
+            try signedPublicPreKey.withNativeStruct { signedPublicPreKey in
+                try checkError(signal_testing_signed_public_pre_key_check_bridges_correctly(key.const(), signedPublicPreKey))
+            }
+        }
     }
 }
 
@@ -244,6 +267,193 @@ class RegistrationServiceFakeChatTests: XCTestCase {
 
         let () = try await requestVerification
         XCTAssertEqual(session.sessionState.requestedInformation, [.captcha])
+    }
+
+    func testFakeRemoteRegisterAccount() async throws {
+        let tokio = TokioAsyncContext()
+        let server = FakeChatServer(asyncContext: tokio)
+        async let startCreateSessionRequest =
+            RegistrationService.fakeCreateSession(
+                fakeChatServer: server,
+                e164: "+18005550123", pushToken: "myPushToken"
+            )
+
+        let fakeRemote = try await server.getNextRemote()
+        let (firstRequest, firstRequestId) = try await fakeRemote.getNextIncomingRequest()
+        // The request contents are checked by another test.
+        _ = firstRequest
+
+        // Send a response to allow the request to complete.
+        try fakeRemote.sendResponse(
+            requestId: firstRequestId,
+            ChatResponse(
+                status: 200,
+                message: "OK",
+                headers: ["content-type": "application/json"],
+                body: Data(
+                    """
+                    {
+                        "allowedToRequestCode": true,
+                        "verified": false,
+                        "requestedInformation": ["pushChallenge", "captcha"],
+                        "id": "fake-session-A"
+                    }
+                    """
+                    .utf8)
+            )
+        )
+
+        let session = try await startCreateSessionRequest
+        XCTAssertEqual("fake-session-A", session.sessionId)
+
+        let unidentifiedAccessKey = Data(repeating: 0x55, count: 16)
+        let aciKeys = RegisterAccountKeys.createForTest()
+        let pniKeys = RegisterAccountKeys.createForTest()
+        async let registerAccount =
+            session.registerAccount(
+                accountPassword: "account password",
+                skipDeviceTransfer: true,
+                accountAttributes: RegisterAccountAttributes(
+                    recoveryPassword: Data("recovery password".utf8),
+                    aciRegistrationId: 1,
+                    pniRegistrationId: 2,
+                    registrationLock: "registration lock",
+                    unidentifiedAccessKey: unidentifiedAccessKey,
+                    unrestrictedUnidentifiedAccess:
+                    true,
+                    capabilities: ["capable"],
+                    discoverableByPhoneNumber: true
+                ),
+                apnPushToken: "push token",
+                aciPublicKey: aciKeys.publicKey,
+                pniPublicKey: pniKeys.publicKey,
+                aciSignedPreKey: aciKeys.signedPreKey,
+                pniSignedPreKey: pniKeys.signedPreKey,
+                aciPqLastResortPreKey: aciKeys.pqLastResortPreKey,
+                pniPqLastResortPreKey: pniKeys.pqLastResortPreKey
+            )
+
+        let (secondRequest, secondRequestId) = try await fakeRemote.getNextIncomingRequest()
+
+        XCTAssertEqual("POST", secondRequest.method)
+        XCTAssertEqual("/v1/registration", secondRequest.pathAndQuery)
+
+        XCTAssertEqual(
+            [
+                "content-type": "application/json",
+                "authorization": "Basic " + Data("+18005550123:account password".utf8).base64EncodedString(),
+            ],
+            secondRequest.headers
+        )
+
+        let secondRequestBodyJson = try JSONSerialization.jsonObject(with: secondRequest.body)
+        guard let secondRequestJson: [String: Any] = secondRequestBodyJson as? [String: Any] else {
+            fatalError("body was \(secondRequestBodyJson)")
+        }
+
+        XCTAssertEqual("fake-session-A", secondRequestJson["sessionId"] as? String)
+        XCTAssertEqual(true, secondRequestJson["skipDeviceTransfer"] as? Bool)
+        do {
+            guard let accountAttributes = secondRequestJson["accountAttributes"] as? [String: Any] else {
+                fatalError("accountAttributes was \(String(describing: secondRequestJson["accountAttributes"]))")
+            }
+            XCTAssertEqual(
+                accountAttributes["recoveryPassword"] as? String, "cmVjb3ZlcnkgcGFzc3dvcmQ="
+            )
+            XCTAssertEqual(accountAttributes["registrationId"] as? Double, 1)
+            XCTAssertEqual(accountAttributes["pniRegistrationId"] as? Double, 2)
+            XCTAssertEqual(accountAttributes["registrationLock"] as? String, "registration lock")
+            XCTAssertEqual(accountAttributes["unidentifiedAccessKey"] as? Array, Array(repeating: 0x55, count: 16))
+            XCTAssertEqual(accountAttributes["unrestrictedUnidentifiedAccess"] as? Bool, true)
+            XCTAssertEqual(accountAttributes["capabilities"] as? [String: Bool], ["capable": true])
+            XCTAssertEqual(accountAttributes["discoverableByPhoneNumber"] as? Bool, true)
+            XCTAssertEqual(accountAttributes["fetchesMessages"] as? Bool, false)
+        }
+
+        XCTAssertEqual(
+            Data(aciKeys.publicKey.serialize()).base64EncodedString(), secondRequestJson["aciIdentityKey"] as? String
+        )
+        XCTAssertEqual(
+            Data(pniKeys.publicKey.serialize()).base64EncodedString(), secondRequestJson["pniIdentityKey"] as? String
+        )
+
+        // We don't need to check all the keys, just one of each kind is enough.
+        do {
+            guard let aciSignedPreKey = secondRequestJson["aciSignedPreKey"] as? [String: Any] else {
+                fatalError("aciSignedPreKey was \(String(describing: secondRequestJson["aciSignedPreKey"]))")
+            }
+            XCTAssertEqual(aciSignedPreKey["signature"] as? String, Data("EC signature".utf8).base64EncodedString())
+            XCTAssertEqual(aciSignedPreKey["keyId"] as? Double, 1)
+            XCTAssertEqual(aciSignedPreKey["publicKey"] as? String, Data(aciKeys.signedPreKey.publicKey.serialize()).base64EncodedString())
+
+            guard let aciPqLastResortPreKey = secondRequestJson["aciPqLastResortPreKey"] as? [String: Any] else {
+                fatalError("aciSignedPreKey was \(String(describing: secondRequestJson["aciPqLastResortPreKey"]))")
+            }
+            XCTAssertEqual(aciPqLastResortPreKey["signature"] as? String, Data("KEM signature".utf8).base64EncodedString())
+            XCTAssertEqual(aciPqLastResortPreKey["keyId"] as? Double, 2)
+            XCTAssertEqual(aciPqLastResortPreKey["publicKey"] as? String, Data(aciKeys.pqLastResortPreKey.publicKey.serialize()).base64EncodedString())
+        }
+
+        try fakeRemote.sendResponse(
+            requestId: secondRequestId,
+            ChatResponse(
+                status: 200,
+                message: "OK",
+                headers: ["content-type": "application/json"],
+                body: Data("""
+                    {
+                        "uuid": "aabbaabb-5555-6666-8888-111111111111",
+                        "pni": "ddeeddee-5555-6666-8888-111111111111",
+                        "number": "+18005550123",
+                        "storageCapable": true,
+                        "entitlements": {
+                            "badges": [{
+                                "id": "one",
+                                "visible": true,
+                                "expirationSeconds": 13
+                            },{
+                                "id": "two",
+                                "visible": false,
+                                "expirationSeconds": 66666
+                            }],
+                            "backup": {
+                                "backupLevel": 1569,
+                                "expirationSeconds": 987654321
+                            }
+                        }
+                    }
+                    """
+                    .utf8)
+            )
+        )
+
+        let response = try await registerAccount
+        // We only perform a cursory check here because there is a already a dedicated test for bridging
+        // the response.
+        XCTAssertEqual("aabbaabb-5555-6666-8888-111111111111", response.aci.serviceIdString)
+        XCTAssertEqual("PNI:ddeeddee-5555-6666-8888-111111111111", response.pni.serviceIdString)
+        XCTAssertEqual("+18005550123", response.number)
+    }
+
+    private struct RegisterAccountKeys: Sendable {
+        public let publicKey: PublicKey
+        public let signedPreKey: SignedPublicPreKey<PublicKey>
+        public let pqLastResortPreKey: SignedPublicPreKey<KEMPublicKey>
+
+        public static func createForTest() -> Self {
+            return RegisterAccountKeys(
+                publicKey: PrivateKey.generate().publicKey,
+                signedPreKey: SignedPublicPreKey(
+                    keyId: 1, publicKey: PrivateKey.generate().publicKey, signature: Data("EC signature".utf8)
+                ),
+                pqLastResortPreKey: SignedPublicPreKey(
+                    keyId: 2,
+                    publicKey: KEMKeyPair.generate().publicKey,
+                    signature: Data(
+                        "KEM signature".utf8)
+                )
+            )
+        }
     }
 }
 

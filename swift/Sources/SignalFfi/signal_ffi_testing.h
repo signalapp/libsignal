@@ -363,6 +363,8 @@ SignalFfiError *signal_testing_registration_service_check_svr2_credentials_respo
 
 SignalFfiError *signal_testing_registration_service_create_session_error_convert(const char *error_description);
 
+SignalFfiError *signal_testing_registration_service_register_account_error_convert(const char *error_description);
+
 SignalFfiError *signal_testing_registration_service_request_verification_code_error_convert(const char *error_description);
 
 SignalFfiError *signal_testing_registration_service_resume_session_error_convert(const char *error_description);
@@ -374,6 +376,8 @@ SignalFfiError *signal_testing_registration_service_update_session_error_convert
 SignalFfiError *signal_testing_registration_session_info_convert(SignalMutPointerRegistrationSession *out);
 
 SignalFfiError *signal_testing_return_string_array(SignalStringArray *out);
+
+SignalFfiError *signal_testing_signed_public_pre_key_check_bridges_correctly(SignalConstPointerPublicKey source_public_key, SignalFfiSignedPublicPreKey signed_pre_key);
 
 SignalFfiError *signal_testing_testing_handle_type_get_value(uint8_t *out, SignalConstPointerTestingHandleType handle);
 

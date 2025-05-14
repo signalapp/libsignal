@@ -130,6 +130,7 @@ pub enum RegisterAccountError {
     /// registration lock is enabled
     RegistrationLock(RegistrationLock),
 }
+impl LogSafeDisplay for RegisterAccountError {}
 
 /// Convert [`RequestError<SessionRequestError>`] into a typed version.
 ///
