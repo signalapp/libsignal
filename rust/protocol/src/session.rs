@@ -89,11 +89,11 @@ async fn process_prekey_impl(
     pre_key_store: &dyn PreKeyStore,
     identity_store: &dyn IdentityKeyStore,
 ) -> Result<PreKeysUsed> {
-    if session_record.has_session_state(
+    if session_record.promote_matching_session(
         message.message_version() as u32,
         &message.base_key().serialize(),
     )? {
-        // We've already setup a session for this message, letting bundled message fall through
+        // We've already set up a session for this message, we can exit early.
         return Ok(Default::default());
     }
 

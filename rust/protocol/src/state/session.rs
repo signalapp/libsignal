@@ -586,8 +586,14 @@ impl SessionRecord {
         })
     }
 
-    pub(crate) fn has_session_state(
-        &self,
+    /// If there's a session with a matching version and `alice_base_key`, ensures that it is the
+    /// current session, promoting if necessary.
+    ///
+    /// Returns `Ok(true)` if such a session was found, `Ok(false)` if not, and
+    /// `Err(InvalidSessionError)` if an invalid session was found during the search (whether
+    /// current or not).
+    pub(crate) fn promote_matching_session(
+        &mut self,
         version: u32,
         alice_base_key: &[u8],
     ) -> Result<bool, InvalidSessionError> {
@@ -601,13 +607,20 @@ impl SessionRecord {
             }
         }
 
-        for previous in self.previous_session_states() {
+        let mut session_to_promote = None;
+        for (i, previous) in self.previous_session_states().enumerate() {
             let previous = previous?;
             if previous.session_version()? == version
                 && alice_base_key.ct_eq(previous.alice_base_key()).into()
             {
-                return Ok(true);
+                session_to_promote = Some((i, previous));
+                break;
             }
+        }
+
+        if let Some((i, state)) = session_to_promote {
+            self.promote_old_session(i, state);
+            return Ok(true);
         }
 
         Ok(false)

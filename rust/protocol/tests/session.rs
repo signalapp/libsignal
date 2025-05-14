@@ -2161,6 +2161,241 @@ fn prekey_message_failed_decryption_does_not_update_stores() -> TestResult {
     .expect("sync")
 }
 
+#[test]
+fn prekey_message_failed_decryption_does_not_update_stores_even_when_previously_archived(
+) -> TestResult {
+    async {
+        let mut csprng = OsRng.unwrap_err();
+        let alice_address = ProtocolAddress::new("+14151111111".to_owned(), 1.into());
+        let bob_address = ProtocolAddress::new("+14151111112".to_owned(), 1.into());
+
+        let alice_store_builder = TestStoreBuilder::new()
+            .with_pre_key(0.into())
+            .with_signed_pre_key(0.into())
+            .with_kyber_pre_key(0.into());
+        let alice_pre_key_bundle = alice_store_builder.make_bundle_with_latest_keys(1.into());
+
+        let mut alice_store = alice_store_builder.store;
+
+        let mut bob_store = TestStoreBuilder::new().store;
+        process_prekey_bundle(
+            &alice_address,
+            &mut bob_store.session_store,
+            &mut bob_store.identity_store,
+            &alice_pre_key_bundle,
+            SystemTime::now(),
+            &mut csprng,
+        )
+        .await
+        .expect("can receive bundle");
+
+        // Bob sends a message that decrypts just fine.
+        let bob_ciphertext = encrypt(&mut bob_store, &alice_address, "from Bob")
+            .await
+            .expect("valid");
+        _ = decrypt(&mut alice_store, &bob_address, &bob_ciphertext)
+            .await
+            .expect("valid");
+
+        // Alice archives the session because she feels like it.
+        let mut alice_session_with_bob = alice_store
+            .load_session(&bob_address)
+            .await
+            .expect("can load")
+            .expect("has session record");
+        assert!(alice_session_with_bob
+            .has_usable_sender_chain(SystemTime::now())
+            .expect("can ask about sender chains"));
+        alice_session_with_bob
+            .archive_current_state()
+            .expect("can archive");
+        assert!(!alice_session_with_bob
+            .has_usable_sender_chain(SystemTime::now())
+            .expect("can ask about sender chains"));
+        alice_store
+            .store_session(&bob_address, &alice_session_with_bob)
+            .await
+            .expect("can save");
+
+        // Bob sends a pre-key message that doesn't decrypt successfully.
+        let pre_key_message = {
+            let message = message_encrypt(
+                "from Bob".as_bytes(),
+                &alice_address,
+                &mut bob_store.session_store,
+                &mut bob_store.identity_store,
+                SystemTime::now(),
+            )
+            .await;
+            let message =
+                assert_matches!(message, Ok(CiphertextMessage::PreKeySignalMessage(m)) => m);
+
+            // Perturb the ciphertext so it doesn't decrypt successfully, but
+            // don't touch anything else.
+            let mut signal_message = message.message().serialized().to_owned();
+            let last_byte = signal_message.last_mut().unwrap();
+            *last_byte = last_byte.wrapping_add(1);
+
+            PreKeySignalMessage::new(
+                message.message_version(),
+                message.registration_id(),
+                message.pre_key_id(),
+                message.signed_pre_key_id(),
+                message
+                    .kyber_pre_key_id()
+                    .zip(message.kyber_ciphertext())
+                    .map(|(id, ciphertext)| KyberPayload::new(id, ciphertext.clone())),
+                *message.base_key(),
+                *message.identity_key(),
+                (&*signal_message).try_into().unwrap(),
+            )
+            .unwrap()
+        };
+
+        // The decryption fails, as expected.
+        assert_matches!(
+            decrypt(
+                &mut alice_store,
+                &bob_address,
+                &CiphertextMessage::PreKeySignalMessage(pre_key_message)
+            )
+            .await,
+            Err(SignalProtocolError::InvalidMessage(
+                CiphertextMessageType::PreKey,
+                "decryption failed"
+            ))
+        );
+
+        // Because the decryption failed, the session should still be archived.
+        let alice_current_session_with_bob = alice_store
+            .session_store
+            .load_session(&bob_address)
+            .await
+            .expect("can load")
+            .expect("has session record");
+
+        assert!(!alice_current_session_with_bob
+            .has_usable_sender_chain(SystemTime::now())
+            .expect("can ask about sender chains"));
+        assert_eq!(
+            &alice_session_with_bob.serialize().expect("can serialize"),
+            &alice_current_session_with_bob
+                .serialize()
+                .expect("can serialize")
+        );
+
+        Ok(())
+    }
+    .now_or_never()
+    .expect("sync")
+}
+
+#[test]
+fn prekey_message_to_archived_session() -> TestResult {
+    async {
+        let mut csprng = OsRng.unwrap_err();
+        let alice_address = ProtocolAddress::new("+14151111111".to_owned(), 1.into());
+        let bob_address = ProtocolAddress::new("+14151111112".to_owned(), 1.into());
+
+        let alice_store_builder = TestStoreBuilder::new()
+            .with_pre_key(0.into())
+            .with_signed_pre_key(0.into())
+            .with_kyber_pre_key(0.into());
+        let alice_pre_key_bundle =
+            alice_store_builder.make_bundle_with_latest_keys(alice_address.device_id());
+        let mut alice_store = alice_store_builder.store;
+
+        let bob_store_builder = TestStoreBuilder::new()
+            .with_pre_key(10.into())
+            .with_signed_pre_key(10.into())
+            .with_kyber_pre_key(10.into());
+        let bob_pre_key_bundle =
+            bob_store_builder.make_bundle_with_latest_keys(bob_address.device_id());
+        let mut bob_store = bob_store_builder.store;
+
+        // First Bob sends a message to Alice.
+        process_prekey_bundle(
+            &alice_address,
+            &mut bob_store.session_store,
+            &mut bob_store.identity_store,
+            &alice_pre_key_bundle,
+            SystemTime::now(),
+            &mut csprng,
+        )
+        .await
+        .expect("can receive bundle");
+
+        let bob_ciphertext = encrypt(&mut bob_store, &alice_address, "from Bob")
+            .await
+            .expect("valid");
+        assert_eq!(bob_ciphertext.message_type(), CiphertextMessageType::PreKey);
+
+        // Alice receives the message.
+        let received_message = decrypt(&mut alice_store, &bob_address, &bob_ciphertext)
+            .await
+            .expect("valid");
+        assert_eq!(received_message, b"from Bob");
+
+        // Alice decides to archive the session and then send a message to Bob on a new session.
+        process_prekey_bundle(
+            &bob_address,
+            &mut alice_store.session_store,
+            &mut alice_store.identity_store,
+            &bob_pre_key_bundle,
+            SystemTime::now(),
+            &mut csprng,
+        )
+        .await
+        .expect("can receive bundle");
+
+        // (This is technically unnecessary, the process_prekey_bundle is sufficient, but it's illustrative.)
+        let unsent_alice_ciphertext = encrypt(&mut alice_store, &bob_address, "from Alice")
+            .await
+            .expect("valid");
+        assert_eq!(
+            unsent_alice_ciphertext.message_type(),
+            CiphertextMessageType::PreKey
+        );
+
+        // But before Alice can send the message, she gets a second message from Bob.
+        let bob_ciphertext_2 = encrypt(&mut bob_store, &alice_address, "from Bob 2")
+            .await
+            .expect("valid");
+        assert_eq!(
+            bob_ciphertext_2.message_type(),
+            CiphertextMessageType::PreKey
+        );
+        let received_message_2 = decrypt(&mut alice_store, &bob_address, &bob_ciphertext_2)
+            .await
+            .expect("valid");
+        assert_eq!(received_message_2, b"from Bob 2");
+
+        // This should promote Bob's session back to the front of Alice's session state.
+        let alice_session_record = alice_store
+            .load_session(&bob_address)
+            .await
+            .expect("no errors")
+            .expect("Alice has a session with Bob");
+        let bob_session_record = bob_store
+            .load_session(&alice_address)
+            .await
+            .expect("no errors")
+            .expect("Bob has a session with Alice");
+        assert_eq!(
+            alice_session_record
+                .alice_base_key()
+                .expect("has current session with valid base key"),
+            bob_session_record
+                .alice_base_key()
+                .expect("has current session with valid base key")
+        );
+
+        Ok(())
+    }
+    .now_or_never()
+    .expect("sync")
+}
+
 #[allow(clippy::needless_range_loop)]
 fn run_session_interaction(alice_session: SessionRecord, bob_session: SessionRecord) -> TestResult {
     async {
