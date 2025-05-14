@@ -240,7 +240,7 @@ public final class IncrementalMacInputStream extends InputStream {
                     // correct
                     arrayOffset,
                     // similarly we can use chunk.limit for the length
-                    arrayOffset + chunk.limit()));
+                    chunk.limit()));
     assert validBytes == 0 || validBytes == -1 || validBytes == this.chunkSize
         : "Unexpected incremental mac update result";
     // We don't need to update chunk's position. This is a throwaway slice anyway.
