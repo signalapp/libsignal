@@ -508,6 +508,7 @@ fn err_for_close(close: Option<CloseFrame>) -> LookupError {
 
 #[cfg(test)]
 mod test {
+    use std::collections::HashMap;
     use std::num::NonZeroU64;
     use std::time::Duration;
 
@@ -999,7 +1000,11 @@ mod test {
         let connect_state =
             ConnectState::new_with_transport_connector(SUGGESTED_CONNECT_CONFIG, connector);
         let network_change_event = no_network_change_events();
-        let dns_resolver = DnsResolver::new(&network_change_event);
+
+        // If we don't mock out the DNS, this test will fail on machines without internet access.
+        let static_map = HashMap::from([env.cdsi.domain_config.static_fallback()]);
+        let dns_resolver = DnsResolver::new_from_static_map(static_map);
+
         let result = CdsiConnection::connect_with(
             ConnectionResources {
                 connect_state: &connect_state,
