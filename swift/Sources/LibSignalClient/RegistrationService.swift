@@ -52,7 +52,6 @@ public class RegistrationService: NativeHandleOwner<SignalMutPointerRegistration
     ///   - Some other `SignalError` if the request can't be completed.
     public static func createSession(
         _ net: Net,
-        connectionTimeoutMillis: UInt32?,
         e164: String,
         pushToken: String?,
         mcc: String? = nil,
@@ -92,7 +91,6 @@ public class RegistrationService: NativeHandleOwner<SignalMutPointerRegistration
     ///   - Some other `SignalError` if the request can't be completed.
     public static func resumeSession(
         _ net: Net,
-        connectionTimeoutMillis: UInt32?,
         sessionId: String,
         number: String
     ) async throws -> RegistrationService {

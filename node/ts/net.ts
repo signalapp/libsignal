@@ -198,17 +198,14 @@ export class Net {
   public async resumeRegistrationSession({
     sessionId,
     e164,
-    connectionTimeoutMillis,
   }: {
     sessionId: string;
     e164: string;
-    connectionTimeoutMillis?: number;
   }): Promise<RegistrationService> {
     return RegistrationService.resumeSession(
       {
         connectionManager: this._connectionManager,
         tokioAsyncContext: this.asyncContext,
-        connectionTimeoutMillis: connectionTimeoutMillis,
       },
       { sessionId, e164 }
     );
@@ -216,16 +213,13 @@ export class Net {
 
   public async createRegistrationSession({
     e164,
-    connectionTimeoutMillis,
   }: {
     e164: string;
-    connectionTimeoutMillis?: number;
   }): Promise<RegistrationService> {
     return RegistrationService.createSession(
       {
         connectionManager: this._connectionManager,
         tokioAsyncContext: this.asyncContext,
-        connectionTimeoutMillis: connectionTimeoutMillis,
       },
       { e164 }
     );

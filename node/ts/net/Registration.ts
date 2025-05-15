@@ -18,7 +18,6 @@ type ConnectionManager = Native.Wrapper<Native.ConnectionManager>;
 type RegistrationOptions = {
   tokioAsyncContext: TokioAsyncContext;
   connectionManager: ConnectionManager;
-  connectionTimeoutMillis?: number;
 };
 
 export type RegistrationSessionState = {
