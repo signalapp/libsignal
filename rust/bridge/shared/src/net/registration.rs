@@ -13,10 +13,11 @@ use libsignal_bridge_types::net::registration::{
 use libsignal_bridge_types::net::TokioAsyncContext;
 use libsignal_bridge_types::*;
 use libsignal_net::registration::{
-    CheckSvr2CredentialsError, CheckSvr2CredentialsResponse, CreateSessionError, ForServiceIds,
-    NewMessageNotification, RegisterAccountError, RegisterAccountResponse, RegisterResponseBadge,
-    RegistrationSession, RequestError, RequestVerificationCodeError, ResumeSessionError, SessionId,
-    SubmitVerificationError, UpdateSessionError, VerificationTransport,
+    AccountKeys, CheckSvr2CredentialsError, CheckSvr2CredentialsResponse, CreateSessionError,
+    ForServiceIds, NewMessageNotification, RegisterAccountError, RegisterAccountResponse,
+    RegisterResponseBadge, RegistrationSession, RequestError, RequestVerificationCodeError,
+    ResumeSessionError, SessionId, SubmitVerificationError, UpdateSessionError,
+    VerificationTransport,
 };
 use libsignal_protocol::*;
 use uuid::Uuid;
@@ -134,8 +135,6 @@ async fn RegistrationService_RegisterAccount(
     register_account: &RegisterAccountRequest,
     account_attributes: &RegistrationAccountAttributes,
 ) -> Result<RegisterAccountResponse, RequestError<RegisterAccountError>> {
-    use libsignal_net::registration::AccountKeys;
-
     let RegisterAccountInner {
         message_notification,
         device_transfer,
@@ -158,37 +157,67 @@ async fn RegistrationService_RegisterAccount(
             message_notification.as_deref(),
             account_attributes.into(),
             device_transfer,
-            ForServiceIds {
-                aci: AccountKeys {
-                    identity_key: identity_keys.aci.as_ref().expect("key was provided"),
-                    signed_pre_key: signed_pre_keys
-                        .aci
-                        .as_ref()
-                        .expect("key was provided")
-                        .as_deref(),
-                    pq_last_resort_pre_key: pq_last_resort_pre_keys
-                        .aci
-                        .as_ref()
-                        .expect("key was provided")
-                        .as_deref(),
-                },
-                pni: AccountKeys {
-                    identity_key: identity_keys.pni.as_ref().expect("key was provided"),
-                    signed_pre_key: signed_pre_keys
-                        .pni
-                        .as_ref()
-                        .expect("key was provided")
-                        .as_deref(),
-                    pq_last_resort_pre_key: pq_last_resort_pre_keys
-                        .pni
-                        .as_ref()
-                        .expect("key was provided")
-                        .as_deref(),
-                },
-            },
+            ForServiceIds::generate(|kind| AccountKeys {
+                identity_key: identity_keys.get(kind).as_ref().expect("key was provided"),
+                signed_pre_key: signed_pre_keys
+                    .get(kind)
+                    .as_ref()
+                    .expect("key was provided")
+                    .as_deref(),
+                pq_last_resort_pre_key: pq_last_resort_pre_keys
+                    .get(kind)
+                    .as_ref()
+                    .expect("key was provided")
+                    .as_deref(),
+            }),
             &account_password,
         )
         .await
+}
+
+#[bridge_io(TokioAsyncContext)]
+async fn RegistrationService_ReregisterAccount(
+    connect_chat: Box<dyn ConnectChatBridge>,
+    number: String,
+    register_account: &RegisterAccountRequest,
+    account_attributes: &RegistrationAccountAttributes,
+) -> Result<RegisterAccountResponse, RequestError<RegisterAccountError>> {
+    let RegisterAccountInner {
+        message_notification,
+        device_transfer,
+        account_password,
+        identity_keys,
+        signed_pre_keys,
+        pq_last_resort_pre_keys,
+    } = register_account
+        .0
+        .lock()
+        .expect("not poisoned")
+        .take()
+        .expect("not taken");
+
+    libsignal_net::registration::reregister_account(
+        &number,
+        connect_chat.create_chat_connector(tokio::runtime::Handle::current()),
+        message_notification.as_deref(),
+        account_attributes.into(),
+        device_transfer,
+        ForServiceIds::generate(|kind| AccountKeys {
+            identity_key: identity_keys.get(kind).as_ref().expect("key was provided"),
+            signed_pre_key: signed_pre_keys
+                .get(kind)
+                .as_ref()
+                .expect("key was provided")
+                .as_deref(),
+            pq_last_resort_pre_key: pq_last_resort_pre_keys
+                .get(kind)
+                .as_ref()
+                .expect("key was provided")
+                .as_deref(),
+        }),
+        &account_password,
+    )
+    .await
 }
 
 #[bridge_fn]

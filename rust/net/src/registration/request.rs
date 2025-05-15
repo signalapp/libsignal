@@ -470,16 +470,14 @@ impl<T> ForServiceIds<T> {
         }
     }
 
-    #[cfg(test)]
-    fn get(&self, kind: ServiceIdKind) -> &T {
+    pub fn get(&self, kind: ServiceIdKind) -> &T {
         match kind {
             ServiceIdKind::Aci => &self.aci,
             ServiceIdKind::Pni => &self.pni,
         }
     }
 
-    #[cfg(test)]
-    fn generate(mut f: impl FnMut(libsignal_core::ServiceIdKind) -> T) -> Self {
+    pub fn generate(mut f: impl FnMut(libsignal_core::ServiceIdKind) -> T) -> Self {
         ForServiceIds {
             aci: f(libsignal_core::ServiceIdKind::Aci),
             pni: f(libsignal_core::ServiceIdKind::Pni),

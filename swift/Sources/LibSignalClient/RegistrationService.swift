@@ -293,6 +293,70 @@ public class RegistrationService: NativeHandleOwner<SignalMutPointerRegistration
 
         return RegisterAccountResponse(owned: NonNull(response)!)
     }
+
+    /// Send a request to re-register the account.
+    ///
+    /// This is a `class` method because it uses the account's recovery password to authenticate instead of a verification session.
+    ///
+    /// # Return
+    /// If the request succeeds, returns a ``RegisterAccountResponse``.
+    ///
+    /// - Throws: On failure, throws one of
+    ///   - ``RegistrationError/registrationLock(_:)``
+    ///   - ``RegistrationError/deviceTransferPossible(_:)``
+    ///   - ``RegistrationError/recoveryVerificationFailed(_:)``
+    ///   - A different ``RegistrationError`` if the request fails with another known error response.
+    ///   - ``SignalError/rateLimitedError(retryAfter:message:)`` if the server requests a retry later.
+    ///   - Some other `SignalError` if the request can't be completed.
+    public class func reregisterAccount(
+        _ net: Net,
+        e164: String,
+        accountPassword: String,
+        skipDeviceTransfer: Bool,
+        accountAttributes: RegisterAccountAttributes,
+        apnPushToken: String?,
+        aciPublicKey: PublicKey,
+        pniPublicKey: PublicKey,
+        aciSignedPreKey: SignedPublicPreKey<PublicKey>,
+        pniSignedPreKey: SignedPublicPreKey<PublicKey>,
+        aciPqLastResortPreKey: SignedPublicPreKey<KEMPublicKey>,
+        pniPqLastResortPreKey: SignedPublicPreKey<KEMPublicKey>
+    ) async throws -> RegisterAccountResponse {
+        let request = RegisterAccountRequst.create(
+            apnPushToken: apnPushToken,
+            accountPassword: accountPassword,
+            skipDeviceTransfer: skipDeviceTransfer,
+            aciIdentityKey: aciPublicKey,
+            pniIdentityKey: pniPublicKey,
+            aciSignedPreKey: aciSignedPreKey,
+            pniSignedPreKey: pniSignedPreKey,
+            aciPqSignedPreKey: aciPqLastResortPreKey,
+            pniPqSignedPreKey: pniPqLastResortPreKey
+        )
+
+        var connectChatBridge = SignalFfiConnectChatBridgeStruct.forManager(net.connectionManager)
+
+        let response = try await net.asyncContext.invokeAsyncFunction { promise, asyncContext in
+            request.withNativeHandle { request in
+                accountAttributes.withNativeHandle { accountAttributes in
+                    withUnsafePointer(to: &connectChatBridge) { connectChatBridge in
+                        e164.withCString { e164 in
+                            signal_registration_service_reregister_account(
+                                promise,
+                                asyncContext.const(),
+                                SignalConstPointerFfiConnectChatBridgeStruct(raw: connectChatBridge),
+                                e164,
+                                request.const(),
+                                accountAttributes.const()
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        return RegisterAccountResponse(owned: NonNull(response)!)
+    }
 }
 
 public class RegistrationSessionState: NativeHandleOwner<SignalMutPointerRegistrationSession> {

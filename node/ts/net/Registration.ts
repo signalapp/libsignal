@@ -185,60 +185,41 @@ export class RegistrationService {
     aciPqLastResortPreKey: SignedKyberPublicPreKey;
     pniPqLastResortPreKey: SignedKyberPublicPreKey;
   }): Promise<RegisterAccountResponse> {
-    const {
-      accountPassword,
-      skipDeviceTransfer = false,
-      accountAttributes,
-      aciPublicKey,
-      pniPublicKey,
-      aciSignedPreKey,
-      pniSignedPreKey,
-      aciPqLastResortPreKey,
-      pniPqLastResortPreKey,
-    } = inputs;
-    const args = newNativeHandle(Native.RegisterAccountRequest_Create());
-    Native.RegisterAccountRequest_SetAccountPassword(args, accountPassword);
-    if (skipDeviceTransfer) {
-      Native.RegisterAccountRequest_SetSkipDeviceTransfer(args);
-    }
-    Native.RegisterAccountRequest_SetIdentityPublicKey(
-      args,
-      ServiceIdKind.Aci,
-      aciPublicKey
-    );
-    Native.RegisterAccountRequest_SetIdentityPublicKey(
-      args,
-      ServiceIdKind.Pni,
-      pniPublicKey
-    );
-
-    Native.RegisterAccountRequest_SetIdentitySignedPreKey(
-      args,
-      ServiceIdKind.Aci,
-      toBridgedPublicPreKey(aciSignedPreKey)
-    );
-    Native.RegisterAccountRequest_SetIdentitySignedPreKey(
-      args,
-      ServiceIdKind.Pni,
-      toBridgedPublicPreKey(pniSignedPreKey)
-    );
-    Native.RegisterAccountRequest_SetIdentityPqLastResortPreKey(
-      args,
-      ServiceIdKind.Aci,
-      toBridgedPublicPreKey(aciPqLastResortPreKey)
-    );
-    Native.RegisterAccountRequest_SetIdentityPqLastResortPreKey(
-      args,
-      ServiceIdKind.Pni,
-      toBridgedPublicPreKey(pniPqLastResortPreKey)
-    );
-
+    const request = new RegisterAccountRequest(inputs);
     return new RegisterAccountResponse(
       await Native.RegistrationService_RegisterAccount(
         this.tokioAsyncContext,
         this,
-        args,
-        accountAttributes
+        request,
+        inputs.accountAttributes
+      )
+    );
+  }
+
+  public static async reregisterAccount(
+    options: ReadonlyDeep<RegistrationOptions>,
+    inputs: {
+      e164: string;
+      accountPassword: string;
+      skipDeviceTransfer: boolean;
+      accountAttributes: AccountAttributes;
+      aciPublicKey: PublicKey;
+      pniPublicKey: PublicKey;
+      aciSignedPreKey: SignedPublicPreKey;
+      pniSignedPreKey: SignedPublicPreKey;
+      aciPqLastResortPreKey: SignedKyberPublicPreKey;
+      pniPqLastResortPreKey: SignedKyberPublicPreKey;
+    }
+  ): Promise<RegisterAccountResponse> {
+    const { tokioAsyncContext, connectionManager } = options;
+    const request = new RegisterAccountRequest(inputs);
+    return new RegisterAccountResponse(
+      await Native.RegistrationService_ReregisterAccount(
+        tokioAsyncContext,
+        connectionManager,
+        inputs.e164,
+        request,
+        inputs.accountAttributes
       )
     );
   }
@@ -400,5 +381,67 @@ export class RegisterAccountResponse {
   }
   public get storageCapable(): boolean {
     return Native.RegisterAccountResponse_GetStorageCapable(this);
+  }
+}
+
+class RegisterAccountRequest {
+  _nativeHandle: Native.RegisterAccountRequest;
+
+  public constructor(inputs: {
+    accountPassword: string;
+    skipDeviceTransfer: boolean;
+    aciPublicKey: PublicKey;
+    pniPublicKey: PublicKey;
+    aciSignedPreKey: SignedPublicPreKey;
+    pniSignedPreKey: SignedPublicPreKey;
+    aciPqLastResortPreKey: SignedKyberPublicPreKey;
+    pniPqLastResortPreKey: SignedKyberPublicPreKey;
+  }) {
+    const {
+      accountPassword,
+      skipDeviceTransfer,
+      aciPublicKey,
+      pniPublicKey,
+      aciSignedPreKey,
+      pniSignedPreKey,
+      aciPqLastResortPreKey,
+      pniPqLastResortPreKey,
+    } = inputs;
+    this._nativeHandle = Native.RegisterAccountRequest_Create();
+    Native.RegisterAccountRequest_SetAccountPassword(this, accountPassword);
+    if (skipDeviceTransfer) {
+      Native.RegisterAccountRequest_SetSkipDeviceTransfer(this);
+    }
+    Native.RegisterAccountRequest_SetIdentityPublicKey(
+      this,
+      ServiceIdKind.Aci,
+      aciPublicKey
+    );
+    Native.RegisterAccountRequest_SetIdentityPublicKey(
+      this,
+      ServiceIdKind.Pni,
+      pniPublicKey
+    );
+
+    Native.RegisterAccountRequest_SetIdentitySignedPreKey(
+      this,
+      ServiceIdKind.Aci,
+      toBridgedPublicPreKey(aciSignedPreKey)
+    );
+    Native.RegisterAccountRequest_SetIdentitySignedPreKey(
+      this,
+      ServiceIdKind.Pni,
+      toBridgedPublicPreKey(pniSignedPreKey)
+    );
+    Native.RegisterAccountRequest_SetIdentityPqLastResortPreKey(
+      this,
+      ServiceIdKind.Aci,
+      toBridgedPublicPreKey(aciPqLastResortPreKey)
+    );
+    Native.RegisterAccountRequest_SetIdentityPqLastResortPreKey(
+      this,
+      ServiceIdKind.Pni,
+      toBridgedPublicPreKey(pniPqLastResortPreKey)
+    );
   }
 }

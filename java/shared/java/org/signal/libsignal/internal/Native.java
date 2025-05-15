@@ -575,6 +575,7 @@ public final class Native {
   public static native long RegistrationService_RegistrationSession(long service);
   public static native CompletableFuture<Void> RegistrationService_RequestPushChallenge(long asyncRuntime, long service, String pushToken, Object pushTokenType);
   public static native CompletableFuture<Void> RegistrationService_RequestVerificationCode(long asyncRuntime, long service, String transport, String client, Object[] languages);
+  public static native CompletableFuture<Long> RegistrationService_ReregisterAccount(long asyncRuntime, ConnectChatBridge connectChat, String number, long registerAccount, long accountAttributes);
   public static native CompletableFuture<Long> RegistrationService_ResumeSession(long asyncRuntime, String sessionId, String number, ConnectChatBridge connectChat);
   public static native String RegistrationService_SessionId(long service);
   public static native CompletableFuture<Void> RegistrationService_SubmitCaptcha(long asyncRuntime, long service, String captchaValue);

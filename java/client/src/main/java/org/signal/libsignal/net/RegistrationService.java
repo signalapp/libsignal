@@ -299,40 +299,16 @@ public class RegistrationService extends NativeHandleGuard.SimpleOwner {
       SignedPublicPreKey<KEMPublicKey> pniPqLastResortPreKey) {
 
     var request =
-        new NativeHandleGuard.SimpleOwner(Native.RegisterAccountRequest_Create()) {
-          protected void release(long nativeHandle) {
-            Native.RegisterAccountRequest_Destroy(nativeHandle);
-          }
-        };
-
-    final int ACI = ServiceId.Kind.ACI.ordinal();
-    final int PNI = ServiceId.Kind.PNI.ordinal();
-
-    request.guardedRun(
-        requestHandle -> {
-          Native.RegisterAccountRequest_SetAccountPassword(requestHandle, accountPassword);
-          Native.RegisterAccountRequest_SetGcmPushToken(requestHandle, gcmPushToken);
-          aciPublicKey.guardedRun(
-              handle ->
-                  Native.RegisterAccountRequest_SetIdentityPublicKey(requestHandle, ACI, handle));
-          pniPublicKey.guardedRun(
-              handle ->
-                  Native.RegisterAccountRequest_SetIdentityPublicKey(requestHandle, PNI, handle));
-
-          Native.RegisterAccountRequest_SetIdentitySignedPreKey(
-              requestHandle, ACI, aciSignedPreKey);
-          Native.RegisterAccountRequest_SetIdentitySignedPreKey(
-              requestHandle, PNI, pniSignedPreKey);
-
-          Native.RegisterAccountRequest_SetIdentityPqLastResortPreKey(
-              requestHandle, ACI, aciPqLastResortPreKey);
-          Native.RegisterAccountRequest_SetIdentityPqLastResortPreKey(
-              requestHandle, PNI, pniPqLastResortPreKey);
-
-          if (skipDeviceTransfer) {
-            Native.RegisterAccountRequest_SetSkipDeviceTransfer(requestHandle);
-          }
-        });
+        new RegisterAccountRequest(
+            accountPassword,
+            skipDeviceTransfer,
+            gcmPushToken,
+            aciPublicKey,
+            pniPublicKey,
+            aciSignedPreKey,
+            pniSignedPreKey,
+            aciPqLastResortPreKey,
+            pniPqLastResortPreKey);
 
     return tokioAsyncContext
         .guardedMap(
@@ -345,6 +321,65 @@ public class RegistrationService extends NativeHandleGuard.SimpleOwner {
                                     register ->
                                         Native.RegistrationService_RegisterAccount(
                                             tokioContext, service, register, attributesHandle)))))
+        .thenApply(responseHandle -> new RegisterAccountResponse(responseHandle));
+  }
+
+  /**
+   * Send a request to re-register an account.
+   *
+   * <p>This is a static method since it uses the recovery password to authenticate instead of a
+   * verification session. The returned future resolves to a {@link RegisterAccountResponse} if the
+   * request is successful. If not, the future resolves with
+   *
+   * <ul>
+   *   <li>{@link RegistrationLockException}
+   *   <li>{@link DeviceTransferPossibleException}
+   *   <li>{@link RegistrationRecoveryFailedException}
+   * </ul>
+   *
+   * or one of the previously listed exception types.
+   */
+  public static CompletableFuture<RegisterAccountResponse> reregisterAccount(
+      Network network,
+      String number,
+      String accountPassword,
+      boolean skipDeviceTransfer,
+      AccountAttributes accountAttributes,
+      String gcmPushToken,
+      ECPublicKey aciPublicKey,
+      ECPublicKey pniPublicKey,
+      SignedPublicPreKey<ECPublicKey> aciSignedPreKey,
+      SignedPublicPreKey<ECPublicKey> pniSignedPreKey,
+      SignedPublicPreKey<KEMPublicKey> aciPqLastResortPreKey,
+      SignedPublicPreKey<KEMPublicKey> pniPqLastResortPreKey) {
+
+    var request =
+        new RegisterAccountRequest(
+            accountPassword,
+            skipDeviceTransfer,
+            gcmPushToken,
+            aciPublicKey,
+            pniPublicKey,
+            aciSignedPreKey,
+            pniSignedPreKey,
+            aciPqLastResortPreKey,
+            pniPqLastResortPreKey);
+
+    var tokioAsyncContext = network.getAsyncContext();
+
+    return tokioAsyncContext
+        .guardedMap(
+            tokioContext ->
+                accountAttributes.guardedMap(
+                    attributesHandle ->
+                        request.guardedMap(
+                            register ->
+                                Native.RegistrationService_ReregisterAccount(
+                                    tokioContext,
+                                    network.getConnectionManager(),
+                                    number,
+                                    register,
+                                    attributesHandle))))
         .thenApply(responseHandle -> new RegisterAccountResponse(responseHandle));
   }
 
@@ -362,6 +397,57 @@ public class RegistrationService extends NativeHandleGuard.SimpleOwner {
             .thenApply(registration -> new RegistrationService(registration, asyncContext));
 
     return new Pair<>(fakeServer, createSessionFut);
+  }
+
+  private static class RegisterAccountRequest extends NativeHandleGuard.SimpleOwner {
+    public RegisterAccountRequest() {
+      super(Native.RegisterAccountRequest_Create());
+    }
+
+    public RegisterAccountRequest(
+        String accountPassword,
+        boolean skipDeviceTransfer,
+        String gcmPushToken,
+        ECPublicKey aciPublicKey,
+        ECPublicKey pniPublicKey,
+        SignedPublicPreKey<ECPublicKey> aciSignedPreKey,
+        SignedPublicPreKey<ECPublicKey> pniSignedPreKey,
+        SignedPublicPreKey<KEMPublicKey> aciPqLastResortPreKey,
+        SignedPublicPreKey<KEMPublicKey> pniPqLastResortPreKey) {
+      this();
+      final int ACI = ServiceId.Kind.ACI.ordinal();
+      final int PNI = ServiceId.Kind.PNI.ordinal();
+
+      this.guardedRun(
+          requestHandle -> {
+            Native.RegisterAccountRequest_SetAccountPassword(requestHandle, accountPassword);
+            Native.RegisterAccountRequest_SetGcmPushToken(requestHandle, gcmPushToken);
+            aciPublicKey.guardedRun(
+                handle ->
+                    Native.RegisterAccountRequest_SetIdentityPublicKey(requestHandle, ACI, handle));
+            pniPublicKey.guardedRun(
+                handle ->
+                    Native.RegisterAccountRequest_SetIdentityPublicKey(requestHandle, PNI, handle));
+
+            Native.RegisterAccountRequest_SetIdentitySignedPreKey(
+                requestHandle, ACI, aciSignedPreKey);
+            Native.RegisterAccountRequest_SetIdentitySignedPreKey(
+                requestHandle, PNI, pniSignedPreKey);
+
+            Native.RegisterAccountRequest_SetIdentityPqLastResortPreKey(
+                requestHandle, ACI, aciPqLastResortPreKey);
+            Native.RegisterAccountRequest_SetIdentityPqLastResortPreKey(
+                requestHandle, PNI, pniPqLastResortPreKey);
+
+            if (skipDeviceTransfer) {
+              Native.RegisterAccountRequest_SetSkipDeviceTransfer(requestHandle);
+            }
+          });
+    }
+
+    protected void release(long nativeHandle) {
+      Native.RegisterAccountRequest_Destroy(nativeHandle);
+    }
   }
 
   private TokioAsyncContext tokioAsyncContext;

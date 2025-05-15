@@ -2079,6 +2079,8 @@ SignalFfiError *signal_registration_service_request_push_challenge(SignalCPromis
 
 SignalFfiError *signal_registration_service_request_verification_code(SignalCPromisebool *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalConstPointerRegistrationService service, const char *transport, const char *client, SignalBorrowedBytestringArray languages);
 
+SignalFfiError *signal_registration_service_reregister_account(SignalCPromiseMutPointerRegisterAccountResponse *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalConstPointerFfiConnectChatBridgeStruct connect_chat, const char *number, SignalConstPointerRegisterAccountRequest register_account, SignalConstPointerRegistrationAccountAttributes account_attributes);
+
 SignalFfiError *signal_registration_service_resume_session(SignalCPromiseMutPointerRegistrationService *promise, SignalConstPointerTokioAsyncContext async_runtime, const char *session_id, const char *number, SignalConstPointerFfiConnectChatBridgeStruct connect_chat);
 
 SignalFfiError *signal_registration_service_session_id(const char **out, SignalConstPointerRegistrationService service);
