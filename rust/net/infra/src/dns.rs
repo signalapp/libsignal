@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::net::{IpAddr, Ipv6Addr};
 use std::str::FromStr as _;
 use std::sync::{Arc, Mutex};
@@ -43,6 +43,20 @@ pub mod lookup_result;
 pub type DnsError = Error;
 pub type Result<T> = std::result::Result<T, Error>;
 
+fn has_dns64_prefix(addr: &Ipv6Addr) -> bool {
+    /// From "RFC 6052: IPv6 Addressing of IPv4/IPv6 Translators", Section 2.1:  Well-Known Prefix
+    const DNS64_WELL_KNOWN_PREFIX: [u8; 12] = {
+        let octs = const_str::ip_addr!(v6, "64:ff9b::").octets();
+        // TODO: Use `Option.unwrap()` when MSRV >= 1.83
+        match octs.first_chunk() {
+            Some(p) => *p,
+            None => unreachable!(), // 16-byte array can’t be too short
+        }
+    };
+
+    addr.octets().starts_with(&DNS64_WELL_KNOWN_PREFIX)
+}
+
 struct DnsResolverState {
     /// Controls if lookup results will contain IPv6 entries.
     ipv6_enabled: bool,
@@ -71,6 +85,7 @@ impl Default for DnsResolverState {
 pub struct DnsResolver {
     lookup_options: Arc<[LookupOption]>,
     state: Arc<Mutex<DnsResolverState>>,
+    known_good_results: Arc<HashMap<&'static str, HashSet<IpAddr>>>,
 }
 
 /// A single DNS resolution strategy that can be tried.
@@ -128,6 +143,7 @@ impl DnsResolver {
         DnsResolver {
             lookup_options,
             state: Default::default(),
+            known_good_results: Arc::new(HashMap::new()),
         }
     }
 
@@ -145,6 +161,7 @@ impl DnsResolver {
                 timeout_after: Duration::from_millis(1),
             }]),
             state: Default::default(),
+            known_good_results: Arc::new(HashMap::new()),
         }
     }
 
@@ -155,6 +172,13 @@ impl DnsResolver {
         network_change_event: &NetworkChangeEvent,
     ) -> Self {
         let cloudflare_doh = Box::new(build_custom_resolver_cloudflare_doh(network_change_event));
+
+        let known_good_results = Arc::new(
+            static_map
+                .iter()
+                .map(|(host, result)| (*host, HashSet::from_iter(result)))
+                .collect(),
+        );
 
         let lookup_options = [
             LookupOption {
@@ -174,6 +198,7 @@ impl DnsResolver {
         DnsResolver {
             lookup_options: lookup_options.into(),
             state: Default::default(),
+            known_good_results,
         }
     }
 
@@ -240,6 +265,7 @@ impl DnsResolver {
         let Self {
             lookup_options,
             state,
+            known_good_results,
         } = self.clone();
         tokio::spawn(async move {
             let request = DnsLookupRequest {
@@ -264,16 +290,37 @@ impl DnsResolver {
                     }),
                 });
 
+            let log_safe_hostname = log_safe_domain(&hostname);
+
+            if let Ok(lookup) = &result {
+                if let Some(expected) = known_good_results.get(hostname.as_str()) {
+                    let mut unexpected =
+                        lookup.iter().filter(|ip| !expected.contains(ip)).peekable();
+
+                    if unexpected.peek().is_some() {
+                        let dns64_suffix = unexpected
+                            .any(|ip| matches!(ip, IpAddr::V6(v6) if has_dns64_prefix(&v6)))
+                            .then_some(" with DNS64 prefix")
+                            .unwrap_or_default();
+
+                        log::warn!(
+                            "DNS resolution for domain [{log_safe_hostname}] returned unexpected result {dns64_suffix}",
+                        );
+                    }
+                }
+
+                if lookup.ipv6.iter().any(has_dns64_prefix) {
+                    log::info!("Detected DNS64 in use for domain [{log_safe_hostname}]",);
+                }
+            }
+
             state
                 .lock()
                 .expect("not poisoned")
                 .in_flight_lookups
                 .remove(&hostname);
             if result_sender.send(result).is_err() {
-                log::debug!(
-                    "No DNS result listeners left for domain [{}]",
-                    log_safe_domain(&hostname)
-                );
+                log::debug!("No DNS result listeners left for domain [{log_safe_hostname}]",);
             }
         });
     }
