@@ -379,10 +379,58 @@ jobs:
     # We don't run Clippy because GitHub silently updates `stable` and that can introduce new lints,
     # and we don't have a guarantee that any particular pinned nightly can build older libsignals.
 
+  rust-fuzzing:
+    name: Rust fuzzing
+    runs-on: ubuntu-latest-4-cores
+    if: ${{ github.event_name != 'schedule' || (github.repository_owner == 'signalapp' && endsWith(github.repository, '-private')) }}
+    timeout-minutes: 45
+
+    env:
+      CARGO_FUZZ_VERSION: 0.12.0
+      FUZZ_TIME_SECONDS: 60
+      FUZZ_JOBS: 4 # because this is a "4-cores" runner
+
+    steps:
+    - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      with:
+        submodules: recursive
+
+    - run: sudo apt-get update && sudo apt-get install protobuf-compiler
+
+    - run: rustup toolchain install $(cat rust-toolchain) --profile minimal
+
+    - name: Cache cargo-fuzz
+      uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
+      with:
+        path: local-tools
+        key: ${{ runner.os }}-fuzzing-local-tools-${{ env.CARGO_FUZZ_VERSION }}
+
+    - name: Install cargo-fuzz if needed
+      run: cargo +stable install --version ${{ env.CARGO_FUZZ_VERSION }} --locked cargo-fuzz --root local-tools
+
+    - run: echo "$PWD/local-tools/bin" >> $GITHUB_PATH
+
+    # Note that these invocations will use libsignal's pinned toolchain,
+    # but it's always possible cargo-fuzz will want an older/newer nightly.
+    - run: cargo fuzz build interaction && cargo fuzz run interaction -j${{ env.FUZZ_JOBS }} -- -max_total_time=${{ env.FUZZ_TIME_SECONDS }}
+      working-directory: rust/protocol
+
+    - run: cargo fuzz build sealed_sender_v2 && cargo fuzz run sealed_sender_v2 -j${{ env.FUZZ_JOBS }} -- -max_total_time=${{ env.FUZZ_TIME_SECONDS }}
+      working-directory: rust/protocol
+
+    - run: cargo fuzz build dcap && cargo fuzz run dcap -j${{ env.FUZZ_JOBS }} -- -max_total_time=${{ env.FUZZ_TIME_SECONDS }}
+      working-directory: rust/attest
+
+    - uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4.3.1
+      if: failure()
+      with:
+        name: fuzzing-artifacts-${{ github.sha }}
+        path: rust/*/fuzz/artifacts
+
   report_failures:
     name: Report Failures
     runs-on: ubuntu-latest
-    needs: [java-docker, java-reproducibility, android-emulator-tests, aarch64, node-docker, node-reproducibility, node-windows-arm64, swift-cocoapod, rust-stable-testing]
+    needs: [java-docker, java-reproducibility, android-emulator-tests, aarch64, node-docker, node-reproducibility, node-windows-arm64, swift-cocoapod, rust-stable-testing, rust-fuzzing]
     if: ${{ failure() && github.event_name == 'schedule' }}
 
     permissions:
