@@ -8,6 +8,7 @@ package org.signal.libsignal.internal;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -20,27 +21,78 @@ import java.util.function.Function;
 /** A stripped-down, Android-21-compatible version of java.util.concurrent.CompletableFuture. */
 public class CompletableFuture<T> implements Future<T> {
   private boolean completed;
+  private boolean cancelled;
   private T result;
   private Throwable exception;
   private List<ThenApplyCompleter<T>> consumers;
+
   // This is an immutable, unmodifiable sentinel list used to mark that the consumers member
   //   is invalidated after the future is completed.
   private final List<ThenApplyCompleter<T>> INVALIDATED_LIST = Collections.emptyList();
 
-  @CalledFromNative
+  private Optional<TokioAsyncContext> runtime = Optional.empty();
+  private Optional<Long> cancellationId = Optional.empty();
+
   public CompletableFuture() {
     this.consumers = new ArrayList<>();
   }
 
+  @CalledFromNative
+  void setCancellationId(long cancellationId) {
+    this.cancellationId = Optional.of(cancellationId);
+  }
+
+  public CompletableFuture<T> makeCancelable(TokioAsyncContext context) {
+    this.runtime = Optional.of(context);
+    return this;
+  }
+
   @Override
-  public synchronized boolean cancel(boolean mayInterruptIfRunning) {
-    // We do not currently support cancellation.
-    return false;
+  public boolean cancel(boolean mayInterruptIfRunning) {
+    if (!mayInterruptIfRunning) {
+      // The underlying Rust futures start immediately, so if
+      // we can't interrupt them, we can't cancel them.
+      return false;
+    }
+
+    Throwable throwable = new CancellationException("Future was canceled");
+    final List<ThenApplyCompleter<T>> consumers;
+
+    synchronized (this) {
+      if (completed || cancelled) return false;
+
+      if (!runtime.isPresent() || !cancellationId.isPresent()) {
+        return false;
+      }
+
+      runtime
+          .get()
+          .guardedRun(
+              (nativeContextHandle) ->
+                  Native.TokioAsyncContext_cancel(nativeContextHandle, cancellationId.get()));
+
+      // Capture consumers before calling completeExceptionally(), because:
+      //   - we will need to notify them manually *after* releasing the lock
+      //   - completeExceptionally() will invalidate the consumers list
+      consumers = this.consumers;
+      completeExceptionally(throwable, false);
+
+      // completeExceptionally() will set completed = true, so we only need to set cancelled = true
+      cancelled = true;
+    }
+
+    // Manually notify all the consumers that the future was canceled.
+    // We do this outside of the synchronized block to avoid deadlocks.
+    for (ThenApplyCompleter<T> completer : consumers) {
+      completer.completeExceptionally.accept(throwable);
+    }
+
+    return true;
   }
 
   @Override
   public synchronized boolean isCancelled() {
-    return false;
+    return cancelled;
   }
 
   @Override
@@ -53,7 +105,7 @@ public class CompletableFuture<T> implements Future<T> {
     final List<ThenApplyCompleter<T>> consumers;
 
     synchronized (this) {
-      if (completed) return false;
+      if (completed || cancelled) return false;
 
       this.result = result;
       this.completed = true;
@@ -78,10 +130,14 @@ public class CompletableFuture<T> implements Future<T> {
 
   @CalledFromNative
   public boolean completeExceptionally(Throwable throwable) {
+    return completeExceptionally(throwable, true);
+  }
+
+  private boolean completeExceptionally(Throwable throwable, boolean notifyConsumers) {
     final List<ThenApplyCompleter<T>> consumers;
 
     synchronized (this) {
-      if (completed) return false;
+      if (completed || cancelled) return false;
 
       if (throwable == null) {
         throwable = new AssertionError("Future failed, but no exception provided");
@@ -96,13 +152,15 @@ public class CompletableFuture<T> implements Future<T> {
       notifyAll();
     }
 
-    // We execute the completion handlers after releasing our lock to prevent
-    //   deadlocks if e.g. any consumers require locks of their own that they
-    //   only release after some other operation of ours that requires our
-    //   lock completes.
-    // We actually saw this happen in the field on Android before.
-    for (ThenApplyCompleter<T> completer : consumers) {
-      completer.completeExceptionally.accept(throwable);
+    if (notifyConsumers) {
+      // We execute the completion handlers after releasing our lock to prevent
+      //   deadlocks if e.g. any consumers require locks of their own that they
+      //   only release after some other operation of ours that requires our
+      //   lock completes.
+      // We actually saw this happen in the field on Android before.
+      for (ThenApplyCompleter<T> completer : consumers) {
+        completer.completeExceptionally.accept(throwable);
+      }
     }
 
     return true;
@@ -142,6 +200,10 @@ public class CompletableFuture<T> implements Future<T> {
    * <p>If this future completes exceptionally, the exception will be propagated to the returned
    * future. If this future completes normally but the applied function throws, the returned future
    * will complete exceptionally with the thrown exception.
+   *
+   * <p><strong>Note:</strong> Unlike the standard CompletableFuture implementation, cancellation
+   * propagates both downstream and upstream. If this future or the returned future is cancelled,
+   * all futures in the chain will be cancelled.
    */
   public <U> CompletableFuture<U> thenApply(Function<? super T, ? extends U> fn) {
     return this.addChainedFuture(
@@ -166,6 +228,10 @@ public class CompletableFuture<T> implements Future<T> {
    * future. If this future completes normally but the applied function throws, the returned future
    * will complete exceptionally with the thrown exception. If the future produced by function
    * application completes exceptionally, its error value will be propagated to the returned future.
+   *
+   * <p><strong>Note:</strong> Unlike the standard CompletableFuture implementation, cancellation
+   * propagates both downstream and upstream. If this future or the returned future is cancelled,
+   * all futures in the chain will be cancelled.
    */
   public <U> CompletableFuture<U> thenCompose(
       Function<? super T, ? extends CompletableFuture<U>> fn) {
@@ -194,6 +260,10 @@ public class CompletableFuture<T> implements Future<T> {
    * exceptions thrown by action itself are ignored in this case. If the source future succeeds but
    * provided action throws an exception, this exception will be used to complete the resulting
    * future exceptionally.
+   *
+   * <p><strong>Note:</strong> Unlike the standard CompletableFuture implementation, cancellation
+   * propagates both downstream and upstream. If this future or the returned future is cancelled,
+   * all futures in the chain will be cancelled.
    */
   public CompletableFuture<T> whenComplete(BiConsumer<? super T, Throwable> fn) {
     return this.addChainedFuture(
@@ -222,6 +292,10 @@ public class CompletableFuture<T> implements Future<T> {
       BiConsumer<CompletableFuture<U>, T> complete,
       BiConsumer<CompletableFuture<U>, Throwable> completeExceptionally) {
     CompletableFuture<U> future = new CompletableFuture<>();
+    if (runtime.isPresent() && cancellationId.isPresent()) {
+      future.setCancellationId(cancellationId.get());
+      future.makeCancelable(runtime.get());
+    }
     ThenApplyCompleter<T> completer =
         new ThenApplyCompleter<T>(
             (T value) -> complete.accept(future, value),

@@ -381,4 +381,6 @@ SignalFfiError *signal_testing_signed_public_pre_key_check_bridges_correctly(Sig
 
 SignalFfiError *signal_testing_testing_handle_type_get_value(uint8_t *out, SignalConstPointerTestingHandleType handle);
 
+SignalFfiError *signal_testing_tokio_async_future(SignalCPromisei32 *promise, SignalConstPointerTokioAsyncContext async_runtime, uint8_t input);
+
 #endif  /* SIGNAL_FFI_TESTING_H_ */

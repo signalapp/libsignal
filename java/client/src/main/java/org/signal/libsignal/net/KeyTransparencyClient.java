@@ -9,6 +9,7 @@ import java.util.Optional;
 import org.signal.libsignal.internal.CompletableFuture;
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
+import org.signal.libsignal.internal.TokioAsyncContext;
 import org.signal.libsignal.keytrans.SearchResult;
 import org.signal.libsignal.keytrans.Store;
 import org.signal.libsignal.protocol.IdentityKey;

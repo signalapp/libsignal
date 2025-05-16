@@ -8,7 +8,7 @@ use std::future::Future;
 use futures_util::{FutureExt, TryFutureExt};
 
 use super::*;
-use crate::support::{AsyncRuntime, ResultReporter};
+use crate::support::{AsyncRuntime, CancellationId, ResultReporter};
 
 /// Used to complete a Java CompletableFuture from any thread.
 pub struct FutureCompleter<T> {
@@ -207,8 +207,18 @@ where
         ClassName("org.signal.libsignal.internal.CompletableFuture"),
         jni_args!(() -> void),
     )?;
+
     let completer = FutureCompleter::new(env, &java_future)?;
-    runtime.run_future(future, completer);
+    let cancellation_token = runtime.run_future(future, completer);
+    if let CancellationId::Id(cancellation_id) = cancellation_token {
+        call_method_checked(
+            env,
+            &java_future,
+            "setCancellationId",
+            jni_args!((cancellation_id.get() as i64 => long) -> void),
+        )?;
+    }
+
     Ok(java_future.into())
 }
 

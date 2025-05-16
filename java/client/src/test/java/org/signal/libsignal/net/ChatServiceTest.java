@@ -24,6 +24,7 @@ import org.junit.rules.Timeout;
 import org.signal.libsignal.internal.CompletableFuture;
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeTesting;
+import org.signal.libsignal.internal.TokioAsyncContext;
 import org.signal.libsignal.protocol.util.Pair;
 import org.signal.libsignal.util.Base64;
 import org.signal.libsignal.util.TestEnvironment;
@@ -162,6 +163,24 @@ public class ChatServiceTest {
 
       ChatServiceException disconnectReason = listener.disconnectReason.get();
       assertNull(disconnectReason);
+    }
+
+    @Test
+    public void testConnectCancellationUnauth() throws Exception {
+      // Use the presence of the environment setting to know whether we should
+      // make network requests in our tests.
+      final String ENABLE_TEST = TestEnvironment.get("LIBSIGNAL_TESTING_RUN_NONHERMETIC_TESTS");
+      Assume.assumeNotNull(ENABLE_TEST);
+
+      final Network net = new Network(Network.Environment.STAGING, USER_AGENT);
+      final Listener listener = new Listener();
+      final CompletableFuture<UnauthenticatedChatConnection> connectFuture =
+          net.connectUnauthChat(listener);
+      assertTrue("Expected cancellation of connect in progress", connectFuture.cancel(true));
+      ExecutionException e = assertThrows(ExecutionException.class, () -> connectFuture.get());
+      assertTrue(
+          "Expected CancellationException as cause",
+          e.getCause() instanceof java.util.concurrent.CancellationException);
     }
 
     @Test

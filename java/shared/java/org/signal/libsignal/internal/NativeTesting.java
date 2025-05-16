@@ -138,6 +138,7 @@ public final class NativeTesting {
   public static native int TESTING_RoundTripU8(int input);
   public static native void TESTING_SignedPublicPreKey_CheckBridgesCorrectly(long sourcePublicKey, SignedPublicPreKey signedPreKey);
   public static native int TESTING_TestingHandleType_getValue(long handle);
+  public static native CompletableFuture<Integer> TESTING_TokioAsyncFuture(long asyncRuntime, int input);
 
   public static native void TestingHandleType_Destroy(long handle);
 

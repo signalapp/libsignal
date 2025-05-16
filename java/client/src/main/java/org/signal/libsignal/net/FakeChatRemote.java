@@ -8,6 +8,7 @@ package org.signal.libsignal.net;
 import org.signal.libsignal.internal.CompletableFuture;
 import org.signal.libsignal.internal.NativeHandleGuard;
 import org.signal.libsignal.internal.NativeTesting;
+import org.signal.libsignal.internal.TokioAsyncContext;
 import org.signal.libsignal.net.ChatConnection.InternalRequest;
 import org.signal.libsignal.protocol.util.Pair;
 

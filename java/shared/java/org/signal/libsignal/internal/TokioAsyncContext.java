@@ -3,19 +3,15 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-package org.signal.libsignal.net;
+package org.signal.libsignal.internal;
 
-import org.signal.libsignal.internal.CompletableFuture;
-import org.signal.libsignal.internal.Native;
-import org.signal.libsignal.internal.NativeHandleGuard;
-
-class TokioAsyncContext extends NativeHandleGuard.SimpleOwner {
-  TokioAsyncContext() {
+public class TokioAsyncContext extends NativeHandleGuard.SimpleOwner {
+  public TokioAsyncContext() {
     super(Native.TokioAsyncContext_new());
   }
 
   @SuppressWarnings("unchecked")
-  CompletableFuture<Class<Object>> loadClassAsync(String className) {
+  public CompletableFuture<Class<Object>> loadClassAsync(String className) {
     return (CompletableFuture<Class<Object>>) Native.AsyncLoadClass(this, className);
   }
 

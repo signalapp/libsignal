@@ -1,5 +1,5 @@
 //
-// Copyright 2024 Signal Messenger, LLC.
+// Copyright 2025 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
@@ -11,8 +11,9 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import org.junit.Test;
+import org.signal.libsignal.internal.TokioAsyncContext;
 
-public class TokioAsyncContextTest {
+public class NetworkExceptionLoadingTest {
   @Test
   public void loadExceptionClasses() throws ExecutionException, InterruptedException {
     TokioAsyncContext context = new TokioAsyncContext();
@@ -33,6 +34,11 @@ public class TokioAsyncContextTest {
     assertClassNotFound(context, "org.signal.libsignal.ClassThatDoesNotExist8");
     assertClassNotFound(context, "org.signal.libsignal.ClassThatDoesNotExist9");
     assertClassNotFound(context, "org.signal.libsignal.ClassThatDoesNotExist10");
+  }
+
+  @Test
+  public void runNetworkClassLoadTestFunction() throws ExecutionException, InterruptedException {
+    Network.checkClassesCanBeLoadedAsyncForTest();
   }
 
   /** Assert that the class with the given name can be loaded on a Tokio worker thread. */
@@ -58,10 +64,5 @@ public class TokioAsyncContextTest {
     assertTrue(
         "unexpected error: " + cause,
         cause instanceof ClassNotFoundException || cause instanceof NoClassDefFoundError);
-  }
-
-  @Test
-  public void runNetworkClassLoadTestFunction() throws ExecutionException, InterruptedException {
-    Network.checkClassesCanBeLoadedAsyncForTest();
   }
 }

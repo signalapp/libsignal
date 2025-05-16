@@ -16,6 +16,7 @@ import org.signal.libsignal.internal.BridgedStringMap;
 import org.signal.libsignal.internal.CompletableFuture;
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
+import org.signal.libsignal.internal.TokioAsyncContext;
 import org.signal.libsignal.net.internal.ConnectChatBridge;
 
 public class Network {

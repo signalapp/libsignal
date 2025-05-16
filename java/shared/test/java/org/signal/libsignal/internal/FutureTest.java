@@ -51,6 +51,43 @@ public class FutureTest {
   }
 
   @Test
+  public void testFutureFromRustCancel() {
+    TokioAsyncContext context = new TokioAsyncContext();
+    org.signal.libsignal.internal.CompletableFuture<Integer> testFuture =
+        context
+            .guardedMap(
+                (nativeContextHandle) ->
+                    NativeTesting.TESTING_TokioAsyncFuture(nativeContextHandle, 21))
+            .makeCancelable(context);
+    assertTrue(testFuture.cancel(true));
+    ExecutionException e = assertThrows(ExecutionException.class, () -> testFuture.get());
+    assertTrue(
+        "Expected CancellationException as cause",
+        e.getCause() instanceof java.util.concurrent.CancellationException);
+    assertTrue(testFuture.isCancelled());
+    assertTrue(testFuture.isDone());
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  public void testFutureOnlyCompletesByCancellation() {
+    TokioAsyncContext context = new TokioAsyncContext();
+    org.signal.libsignal.internal.CompletableFuture<Integer> testFuture =
+        context
+            .guardedMap(
+                (nativeContextHandle) ->
+                    NativeTesting.TESTING_OnlyCompletesByCancellation(nativeContextHandle))
+            .makeCancelable(context);
+    assertTrue(testFuture.cancel(true));
+    ExecutionException e = assertThrows(ExecutionException.class, () -> testFuture.get());
+    assertTrue(
+        "Expected CancellationException as cause",
+        e.getCause() instanceof java.util.concurrent.CancellationException);
+    assertTrue(testFuture.isCancelled());
+    assertTrue(testFuture.isDone());
+  }
+
+  @Test
   public void testCapturedStackTraceInException() throws Exception {
     Future future = NativeTesting.TESTING_FutureFailure(ioRuntime, 21);
     ExecutionException e = assertThrows(ExecutionException.class, () -> future.get());
