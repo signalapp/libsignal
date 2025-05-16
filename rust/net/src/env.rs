@@ -80,7 +80,7 @@ const DOMAIN_CONFIG_CHAT_STAGING: DomainConfig = DomainConfig {
 
 const DOMAIN_CONFIG_CDSI: DomainConfig = DomainConfig {
     connect: ConnectionConfig {
-        hostname: "cdsi.signal.org",
+        hostname: "cdsi.tapofthink.com",
         port: DEFAULT_HTTPS_PORT,
         cert: SIGNAL_ROOT_CERTIFICATES,
         confirmation_header_name: None,
@@ -89,13 +89,13 @@ const DOMAIN_CONFIG_CDSI: DomainConfig = DomainConfig {
             configs: [PROXY_CONFIG_F_PROD, PROXY_CONFIG_G],
         }),
     },
-    ip_v4: &[ip_addr!(v4, "40.122.45.194")],
+    ip_v4: &[ip_addr!(v4, "134.33.139.154")],
     ip_v6: &[ip_addr!(v6, "2603:1030:7::1")],
 };
 
 const DOMAIN_CONFIG_CDSI_STAGING: DomainConfig = DomainConfig {
     connect: ConnectionConfig {
-        hostname: "cdsi.staging.signal.org",
+        hostname: "cdsi-dev.tapofthink.com",
         port: DEFAULT_HTTPS_PORT,
         cert: SIGNAL_ROOT_CERTIFICATES,
         confirmation_header_name: None,
