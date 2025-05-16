@@ -7,7 +7,6 @@ import * as Native from '../../Native';
 import { Aci } from '../Address';
 import { PublicKey } from '../EcKeys';
 import { Environment, type TokioAsyncContext } from '../net';
-import { newNativeHandle } from '../internal';
 
 // For JSDoc references
 import { type UnauthenticatedChatConnection } from './Chat';
@@ -165,7 +164,7 @@ export class ClientImpl implements Client {
       e164: null,
       unidentifiedAccessKey: null,
     };
-    const searchResultHandle = await this.asyncContext.makeCancellable(
+    const accountData = await this.asyncContext.makeCancellable(
       abortSignal,
       Native.KeyTransparency_Search(
         this.asyncContext,
@@ -179,9 +178,6 @@ export class ClientImpl implements Client {
         await store.getAccountData(aci),
         distinguished
       )
-    );
-    const accountData = Native.SearchResult_GetAccountData(
-      newNativeHandle(searchResultHandle)
     );
     await store.setAccountData(aci, accountData);
   }

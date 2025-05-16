@@ -3,8 +3,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use std::time::SystemTime;
-
 use itertools::Itertools;
 use libsignal_bridge_macros::{bridge_fn, bridge_io};
 use libsignal_bridge_types::net::chat::UnauthenticatedChatConnection;
@@ -14,7 +12,7 @@ use libsignal_core::{Aci, E164};
 use libsignal_keytrans::{AccountData, LocalStateUpdate, StoredAccountData, StoredTreeHead};
 use libsignal_net::keytrans::{
     monitor_and_search, Error, KeyTransparencyClient, KtApi as _, MaybePartial, SearchKey,
-    SearchResult, UsernameHash,
+    UsernameHash,
 };
 use libsignal_protocol::PublicKey;
 use prost::{DecodeError, Message};
@@ -35,38 +33,6 @@ fn KeyTransparency_E164SearchKey(e164: E164) -> Vec<u8> {
 #[bridge_fn(ffi = false)]
 fn KeyTransparency_UsernameHashSearchKey(hash: &[u8]) -> Vec<u8> {
     UsernameHash::from_slice(hash).as_search_key()
-}
-
-bridge_handle_fns!(SearchResult, clone = false, ffi = false);
-
-#[bridge_fn(ffi = false)]
-fn SearchResult_GetAciIdentityKey(res: &SearchResult) -> PublicKey {
-    *res.aci_identity_key.public_key()
-}
-
-#[bridge_fn(ffi = false)]
-fn SearchResult_GetAciForE164(res: &SearchResult) -> Option<Aci> {
-    res.aci_for_e164
-}
-
-#[bridge_fn(ffi = false)]
-fn SearchResult_GetAciForUsernameHash(res: &SearchResult) -> Option<Aci> {
-    res.aci_for_username_hash
-}
-
-#[bridge_fn(ffi = false)]
-fn SearchResult_GetTimestamp(res: &SearchResult) -> u64 {
-    res.timestamp
-        .duration_since(SystemTime::UNIX_EPOCH)
-        .expect("valid timestamp")
-        .as_millis()
-        .try_into()
-        .expect("in u64 range")
-}
-
-#[bridge_fn(ffi = false)]
-fn SearchResult_GetAccountData(res: &SearchResult) -> Vec<u8> {
-    res.account_data.encode_to_vec()
 }
 
 #[cfg(any(feature = "jni", feature = "node"))]
@@ -91,7 +57,7 @@ async fn KeyTransparency_Search(
     username_hash: Option<Box<[u8]>>,
     account_data: Option<Box<[u8]>>,
     last_distinguished_tree_head: Box<[u8]>,
-) -> Result<SearchResult, Error> {
+) -> Result<Vec<u8>, Error> {
     let username_hash = username_hash.map(UsernameHash::from);
     let config = environment
         .into_inner()
@@ -114,7 +80,7 @@ async fn KeyTransparency_Search(
         .ok_or(Error::InvalidRequest("last distinguished tree is required"))?;
 
     let MaybePartial {
-        inner: result,
+        inner: returned_account_data,
         missing_fields,
     } = kt
         .search(
@@ -128,7 +94,7 @@ async fn KeyTransparency_Search(
         .await?;
 
     if missing_fields.is_empty() {
-        Ok(result)
+        Ok(StoredAccountData::from(returned_account_data).encode_to_vec())
     } else {
         Err(Error::InvalidResponse(format!(
             "some fields are missing from the response: {}",

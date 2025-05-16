@@ -72,7 +72,6 @@ public final class NativeTesting {
   public static native String TESTING_ChatRequestGetMethod(long request);
   public static native String TESTING_ChatRequestGetPath(long request);
   public static native Object TESTING_ChatResponseConvert(boolean bodyPresent);
-  public static native long TESTING_ChatSearchResult();
   public static native void TESTING_ChatSendErrorConvert(String errorDescription) throws Exception;
   public static native int TESTING_ConnectionManager_isUsingProxy(long manager);
   public static native void TESTING_ErrorOnBorrowAsync(Object input);

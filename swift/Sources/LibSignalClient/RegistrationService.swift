@@ -64,7 +64,6 @@ public class RegistrationService: NativeHandleOwner<SignalMutPointerRegistration
                 SignalFfiRegistrationCreateSessionRequest.withNativeStruct(
                     e164: e164, pushToken: pushToken, mcc: mcc, mnc: mnc
                 ) { request in
-
                     withUnsafePointer(to: connectChatBridge) { connectChatBridge in
                         signal_registration_service_create_session(
                             promise,
@@ -605,7 +604,6 @@ private class RegisterAccountRequst: NativeHandleOwner<SignalMutPointerRegisterA
         } }
         failOnError {
             try request.withNativeHandle { native in
-
                 try checkError(accountPassword.withCString {
                     signal_register_account_request_set_account_password(native.const(), $0)
                 })

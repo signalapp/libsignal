@@ -10,7 +10,6 @@ import org.signal.libsignal.internal.CompletableFuture;
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
 import org.signal.libsignal.internal.TokioAsyncContext;
-import org.signal.libsignal.keytrans.SearchResult;
 import org.signal.libsignal.keytrans.Store;
 import org.signal.libsignal.protocol.IdentityKey;
 import org.signal.libsignal.protocol.ServiceId;
@@ -66,24 +65,21 @@ public class KeyTransparencyClient {
    * </ul>
    *
    * @param aci the ACI of the account to be searched for. Required.
-   * @param aciIdentityKey {@link IdentityKey} associated with the ACI. Required. Although key
-   *     transparency is used to request this information, passing it in the request lets chat
-   *     server know that it is not a random guess and that the caller of this API has communicated
-   *     with the ACI.
+   * @param aciIdentityKey {@link IdentityKey} associated with the ACI. Required.
    * @param e164 string representation of an E.164 number associated with the account. Optional.
-   * @param unidentifiedAccessKey provides the same guess protections as the ACI identity key. This
-   *     parameter has the same optionality as the E.164 parameter.
+   * @param unidentifiedAccessKey unidentified access key for the account. This parameter has the
+   *     same optionality as the E.164 parameter.
    * @param usernameHash hash of the username associated with the account. Optional.
    * @param store local persistent storage for key transparency-related data, such as the latest
    *     tree heads and account monitoring data. It will be queried for data before performing the
    *     server request and updated with the latest information from the server response if it
    *     succeeds.
-   * @return an instance of {@link CompletableFuture} that, upon success, will return {@link
-   *     SearchResult} containing the requested information and will update the latest tree head and
-   *     account monitoring data in the store.
+   * @return an instance of {@link CompletableFuture} successful completion of which will indicate
+   *     that the search request has succeeded and store has been updated with the latest account
+   *     data.
    * @throws IllegalArgumentException if the store contains corrupted data.
    */
-  public CompletableFuture<SearchResult> search(
+  public CompletableFuture<Void> search(
       /* @NotNull */ final ServiceId.Aci aci,
       /* @NotNull */ final IdentityKey aciIdentityKey,
       final String e164,
@@ -116,10 +112,9 @@ public class KeyTransparencyClient {
               store.getAccountData(aci).orElse(null),
               lastDistinguishedTreeHead.get())
           .thenApply(
-              (handle) -> {
-                SearchResult result = new SearchResult(handle);
-                store.applyUpdates(aci, result);
-                return result;
+              (accountData) -> {
+                store.setAccountData(aci, accountData);
+                return null;
               });
     }
   }
@@ -170,7 +165,7 @@ public class KeyTransparencyClient {
   /**
    * Issue a monitor request to the key transparency service.
    *
-   * <p>Store must contain data associated with the accoung being requested prior to making this
+   * <p>Store must contain data associated with the account being requested prior to making this
    * call. Another way of putting this is: monitor cannot be called before {@link #search}.
    *
    * <p>If any of the monitored fields in the server response contain a version that is higher than
@@ -195,13 +190,10 @@ public class KeyTransparencyClient {
    * </ul>
    *
    * @param aci the ACI of the account to be searched for. Required.
-   * @param aciIdentityKey {@link IdentityKey} associated with the ACI. Required. Although key
-   *     transparency is used to request this information, passing it in the request lets chat
-   *     server know that it is not a random guess and that the caller of this API has communicated
-   *     with the ACI.
+   * @param aciIdentityKey {@link IdentityKey} associated with the ACI. Required.
    * @param e164 string representation of an E.164 number associated with the account. Optional.
-   * @param unidentifiedAccessKey provides the same guess protections as the ACI identity key. This
-   *     parameter has the same optionality as the E.164 parameter.
+   * @param unidentifiedAccessKey unidentified access key for the account. This parameter has the
+   *     same optionality as the E.164 parameter.
    * @param usernameHash hash of the username associated with the account. Optional.
    * @param store local persistent storage for key transparency-related data, such as the latest
    *     tree heads and account monitoring data. It will be queried for data before performing the

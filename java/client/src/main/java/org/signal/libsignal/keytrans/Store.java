@@ -31,8 +31,4 @@ public interface Store {
   Optional<byte[]> getAccountData(ServiceId.Aci aci);
 
   void setAccountData(ServiceId.Aci aci, byte[] data);
-
-  default void applyUpdates(ServiceId.Aci aci, SearchResult searchResult) {
-    searchResult.updateStore(aci, this);
-  }
 }

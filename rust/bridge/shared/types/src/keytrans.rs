@@ -6,12 +6,9 @@ use std::time::Duration;
 
 use futures_util::future::BoxFuture;
 use libsignal_net::chat;
-use libsignal_net::keytrans::{SearchResult, UnauthenticatedChat};
+use libsignal_net::keytrans::UnauthenticatedChat;
 
 use crate::net::chat::BridgeChatConnection as _;
-use crate::*;
-
-bridge_as_handle!(SearchResult, ffi = false);
 
 impl UnauthenticatedChat for crate::net::chat::UnauthenticatedChatConnection {
     fn send_unauthenticated(

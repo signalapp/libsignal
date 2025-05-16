@@ -349,7 +349,7 @@ export function KeyTransparency_AciSearchKey(aci: Buffer): Buffer;
 export function KeyTransparency_Distinguished(asyncRuntime: Wrapper<TokioAsyncContext>, environment: number, chatConnection: Wrapper<UnauthenticatedChatConnection>, lastDistinguishedTreeHead: Buffer | null): CancellablePromise<Buffer>;
 export function KeyTransparency_E164SearchKey(e164: string): Buffer;
 export function KeyTransparency_Monitor(asyncRuntime: Wrapper<TokioAsyncContext>, environment: number, chatConnection: Wrapper<UnauthenticatedChatConnection>, aci: Buffer, aciIdentityKey: Wrapper<PublicKey>, e164: string | null, unidentifiedAccessKey: Buffer | null, usernameHash: Buffer | null, accountData: Buffer | null, lastDistinguishedTreeHead: Buffer): CancellablePromise<Buffer>;
-export function KeyTransparency_Search(asyncRuntime: Wrapper<TokioAsyncContext>, environment: number, chatConnection: Wrapper<UnauthenticatedChatConnection>, aci: Buffer, aciIdentityKey: Wrapper<PublicKey>, e164: string | null, unidentifiedAccessKey: Buffer | null, usernameHash: Buffer | null, accountData: Buffer | null, lastDistinguishedTreeHead: Buffer): CancellablePromise<SearchResult>;
+export function KeyTransparency_Search(asyncRuntime: Wrapper<TokioAsyncContext>, environment: number, chatConnection: Wrapper<UnauthenticatedChatConnection>, aci: Buffer, aciIdentityKey: Wrapper<PublicKey>, e164: string | null, unidentifiedAccessKey: Buffer | null, usernameHash: Buffer | null, accountData: Buffer | null, lastDistinguishedTreeHead: Buffer): CancellablePromise<Buffer>;
 export function KeyTransparency_UsernameHashSearchKey(hash: Buffer): Buffer;
 export function KyberKeyPair_Generate(): KyberKeyPair;
 export function KyberKeyPair_GetPublicKey(keyPair: Wrapper<KyberKeyPair>): KyberPublicKey;
@@ -498,11 +498,6 @@ export function SealedSender_DecryptToUsmc(ctext: Buffer, identityStore: Identit
 export function SealedSender_Encrypt(destination: Wrapper<ProtocolAddress>, content: Wrapper<UnidentifiedSenderMessageContent>, identityKeyStore: IdentityKeyStore): Promise<Buffer>;
 export function SealedSender_MultiRecipientEncrypt(recipients: Wrapper<ProtocolAddress>[], recipientSessions: Wrapper<SessionRecord>[], excludedRecipients: Buffer, content: Wrapper<UnidentifiedSenderMessageContent>, identityKeyStore: IdentityKeyStore): Promise<Buffer>;
 export function SealedSender_MultiRecipientMessageForSingleRecipient(encodedMultiRecipientMessage: Buffer): Buffer;
-export function SearchResult_GetAccountData(res: Wrapper<SearchResult>): Buffer;
-export function SearchResult_GetAciForE164(res: Wrapper<SearchResult>): Buffer | null;
-export function SearchResult_GetAciForUsernameHash(res: Wrapper<SearchResult>): Buffer | null;
-export function SearchResult_GetAciIdentityKey(res: Wrapper<SearchResult>): PublicKey;
-export function SearchResult_GetTimestamp(res: Wrapper<SearchResult>): bigint;
 export function SenderCertificate_Deserialize(data: Buffer): SenderCertificate;
 export function SenderCertificate_GetCertificate(obj: Wrapper<SenderCertificate>): Buffer;
 export function SenderCertificate_GetDeviceId(obj: Wrapper<SenderCertificate>): number;
@@ -764,7 +759,6 @@ interface RegistrationService { readonly __type: unique symbol; }
 interface RegistrationSession { readonly __type: unique symbol; }
 interface SanitizedMetadata { readonly __type: unique symbol; }
 interface SealedSenderDecryptionResult { readonly __type: unique symbol; }
-interface SearchResult { readonly __type: unique symbol; }
 interface SenderCertificate { readonly __type: unique symbol; }
 interface SenderKeyDistributionMessage { readonly __type: unique symbol; }
 interface SenderKeyMessage { readonly __type: unique symbol; }

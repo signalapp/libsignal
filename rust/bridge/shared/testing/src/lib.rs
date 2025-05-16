@@ -15,7 +15,6 @@ use libsignal_bridge_types::support::*;
 use libsignal_bridge_types::*;
 
 pub mod convert;
-mod keytrans;
 pub mod message_backup;
 pub mod net;
 #[cfg(feature = "node")]

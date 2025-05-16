@@ -7,12 +7,7 @@ package org.signal.libsignal.net;
 
 import static org.junit.Assert.*;
 
-import java.util.Optional;
 import java.util.UUID;
-import org.junit.Test;
-import org.signal.libsignal.internal.NativeTesting;
-import org.signal.libsignal.keytrans.SearchResult;
-import org.signal.libsignal.keytrans.TestStore;
 import org.signal.libsignal.protocol.IdentityKey;
 import org.signal.libsignal.protocol.InvalidKeyException;
 import org.signal.libsignal.protocol.ServiceId;
@@ -38,17 +33,5 @@ public class KeyTransparencyTest {
     } catch (InvalidKeyException e) {
       throw new RuntimeException(e);
     }
-  }
-
-  @Test
-  public void canBridgeSearchResult() throws Exception {
-    SearchResult result = new SearchResult(NativeTesting.TESTING_ChatSearchResult());
-    assertEquals(TEST_ACI_IDENTITY_KEY, result.getAciIdentityKey());
-    assertEquals(Optional.of(TEST_ACI), result.getAciForE164());
-    assertEquals(Optional.of(TEST_ACI), result.getAciForUsernameHash());
-    TestStore store = new TestStore();
-    store.applyUpdates(TEST_ACI, result);
-
-    assertTrue(store.getAccountData(TEST_ACI).isPresent());
   }
 }

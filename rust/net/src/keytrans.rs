@@ -21,8 +21,7 @@ use libsignal_keytrans::{
     AccountData, ChatDistinguishedResponse, ChatMonitorResponse, ChatSearchResponse,
     CondensedTreeSearchResponse, FullSearchResponse, FullTreeHead, KeyTransparency, LastTreeHead,
     LocalStateUpdate, MonitorContext, MonitorKey, MonitorProof, MonitorRequest, MonitorResponse,
-    MonitoringData, SearchContext, SearchStateUpdate, SlimSearchRequest, StoredAccountData,
-    StoredMonitoringData, StoredTreeHead, VerifiedSearchResult,
+    MonitoringData, SearchContext, SearchStateUpdate, SlimSearchRequest, VerifiedSearchResult,
 };
 use libsignal_protocol::{IdentityKey, PublicKey};
 use prost::{DecodeError, Message};
@@ -527,15 +526,6 @@ impl<T, E> MaybePartial<std::result::Result<T, E>> {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct SearchResult {
-    pub aci_identity_key: IdentityKey,
-    pub aci_for_e164: Option<Aci>,
-    pub aci_for_username_hash: Option<Aci>,
-    pub timestamp: SystemTime,
-    pub account_data: StoredAccountData,
-}
-
 pub trait KtApi {
     fn search(
         &self,
@@ -545,7 +535,7 @@ pub trait KtApi {
         username_hash: Option<UsernameHash<'_>>,
         stored_account_data: Option<AccountData>,
         distinguished_tree_head: &LastTreeHead,
-    ) -> impl Future<Output = Result<MaybePartial<SearchResult>>> + Send;
+    ) -> impl Future<Output = Result<MaybePartial<AccountData>>> + Send;
 
     fn distinguished(
         &self,
@@ -586,19 +576,15 @@ pub async fn monitor_and_search(
     // either both be Some() or both None.
     let should_search = has_version_changed_between(&stored_account_data, &updated_account_data);
     let final_account_data = if should_search {
-        let search_result = kt
-            .search(
-                aci,
-                aci_identity_key,
-                e164,
-                username_hash,
-                Some(stored_account_data),
-                distinguished_tree_head,
-            )
-            .await?;
-        search_result
-            .map(|res| AccountData::try_from(res.account_data))
-            .transpose()?
+        kt.search(
+            aci,
+            aci_identity_key,
+            e164,
+            username_hash,
+            Some(stored_account_data),
+            distinguished_tree_head,
+        )
+        .await?
     } else {
         updated_account_data.into()
     };
@@ -683,7 +669,7 @@ impl KtApi for KeyTransparencyClient<'_> {
         username_hash: Option<UsernameHash<'_>>,
         stored_account_data: Option<AccountData>,
         distinguished_tree_head: &LastTreeHead,
-    ) -> Result<MaybePartial<SearchResult>> {
+    ) -> Result<MaybePartial<AccountData>> {
         let raw_request = RawChatSearchRequest::new(
             aci,
             aci_identity_key,
@@ -929,7 +915,7 @@ fn verify_chat_search_response(
     chat_search_response: TypedSearchResponse,
     last_distinguished_tree_head: Option<&LastTreeHead>,
     now: SystemTime,
-) -> Result<MaybePartial<SearchResult>> {
+) -> Result<MaybePartial<AccountData>> {
     let TypedSearchResponse {
         full_tree_head,
         aci_search_response,
@@ -1017,16 +1003,6 @@ fn verify_chat_search_response(
         return Err(Error::InvalidResponse("mismatching tree roots".to_string()));
     }
 
-    let identity_key = extract_value_as::<IdentityKey>(&aci_result)?;
-    let aci_for_e164 = e164_result
-        .as_ref()
-        .map(extract_value_as::<Aci>)
-        .transpose()?;
-    let aci_for_username_hash = username_hash_result
-        .as_ref()
-        .map(extract_value_as::<Aci>)
-        .transpose()?;
-
     // ACI response is guaranteed to be present, taking the last tree head from it.
     let LocalStateUpdate {
         tree_head,
@@ -1034,32 +1010,16 @@ fn verify_chat_search_response(
         monitoring_data: updated_aci_monitoring_data,
     } = aci_result.state_update;
 
-    let last_tree_head = StoredTreeHead {
-        tree_head: Some(tree_head),
-        root: tree_root.into(),
-    };
-
-    let updated_account_data = StoredAccountData {
-        aci: updated_aci_monitoring_data.map(StoredMonitoringData::from),
-        e164: e164_result
-            .and_then(|r| r.state_update.monitoring_data)
-            .map(StoredMonitoringData::from),
-        username_hash: username_hash_result
-            .and_then(|r| r.state_update.monitoring_data)
-            .map(StoredMonitoringData::from),
-        last_tree_head: Some(last_tree_head),
-    };
-
-    let search_result = SearchResult {
-        aci_identity_key: identity_key,
-        aci_for_e164,
-        aci_for_username_hash,
-        timestamp: now,
-        account_data: updated_account_data,
+    let updated_account_data = AccountData {
+        aci: updated_aci_monitoring_data
+            .ok_or_else(|| Error::InvalidResponse("ACI data is missing".to_string()))?,
+        e164: e164_result.and_then(|r| r.state_update.monitoring_data),
+        username_hash: username_hash_result.and_then(|r| r.state_update.monitoring_data),
+        last_tree_head: (tree_head, tree_root),
     };
 
     Ok(MaybePartial {
-        inner: search_result,
+        inner: updated_account_data,
         missing_fields,
     })
 }
@@ -1093,15 +1053,6 @@ fn match_optional_fields<T, U>(
         ))),
         (Some(_), None) => Ok(MaybePartial::new(None, vec![field])),
     }
-}
-
-// Cannot be a method on VerifiedSearchResult due to use of SearchValue
-fn extract_value_as<T>(result: &VerifiedSearchResult) -> Result<T>
-where
-    T: for<'a> TryFrom<SearchValue<'a>, Error = Error>,
-{
-    let val = SearchValue::try_from(result)?;
-    val.try_into()
 }
 
 const SEARCH_KEY_PREFIX_ACI: &[u8] = b"a";
@@ -1207,6 +1158,7 @@ impl AsChatValue for UsernameHash<'_> {
 #[cfg(test)]
 mod test_support {
     use futures_util::FutureExt as _;
+    use libsignal_keytrans::StoredAccountData;
     use libsignal_net_infra::route::DirectOrProxyRoute;
     use libsignal_net_infra::EnableDomainFronting;
 
@@ -1340,7 +1292,7 @@ mod test_support {
 
         println!("Requesting account data...");
 
-        let result = kt
+        let account_data = kt
             .search(
                 &aci,
                 &aci_identity_key,
@@ -1350,17 +1302,10 @@ mod test_support {
                 &distinguished_tree,
             )
             .await
-            .expect("can perform search");
+            .expect("can perform search")
+            .inner;
 
-        let last_tree_size = result
-            .inner
-            .account_data
-            .clone()
-            .last_tree_head
-            .unwrap()
-            .tree_head
-            .unwrap()
-            .tree_size;
+        let last_tree_size = account_data.clone().last_tree_head.0.tree_size;
 
         assert_ne!(
             distinguished_tree_size, last_tree_size,
@@ -1371,11 +1316,8 @@ mod test_support {
         println!(
             "const STORED_ACCOUNT_DATA_{}: &[u8] = &hex!(\"{}\");",
             last_tree_size,
-            &hex::encode(result.inner.account_data.encode_to_vec())
+            &hex::encode(StoredAccountData::from(account_data.clone()).encode_to_vec())
         );
-
-        let account_data =
-            AccountData::try_from(result.inner.account_data).expect("valid account data");
 
         prompt("Now advance the tree. Yes, again! (and press ENTER)");
 
@@ -1426,7 +1368,7 @@ mod test {
     use assert_matches::assert_matches;
     use const_str::hex;
     use http::StatusCode;
-    use libsignal_keytrans::TreeHead;
+    use libsignal_keytrans::{StoredAccountData, TreeHead};
     use test_case::test_case;
 
     use super::test_support::{make_chat, make_kt, test_account};
@@ -1477,24 +1419,18 @@ mod test {
         );
         let username_hash = test_account::username_hash();
 
-        let acc_data = test_account_data();
+        let known_account_data = test_account_data();
 
-        let result = kt
-            .search(
-                &aci,
-                &aci_identity_key,
-                use_e164.then_some(e164),
-                use_username_hash.then_some(username_hash),
-                Some(acc_data),
-                &test_distinguished_tree(),
-            )
-            .await
-            .expect("can perform search");
-
-        assert_eq!(
-            &hex::encode(test_account::ACI_IDENTITY_KEY_BYTES),
-            &hex::encode(result.inner.aci_identity_key.serialize())
-        );
+        kt.search(
+            &aci,
+            &aci_identity_key,
+            use_e164.then_some(e164),
+            use_username_hash.then_some(username_hash),
+            Some(known_account_data),
+            &test_distinguished_tree(),
+        )
+        .await
+        .expect("can perform search");
     }
 
     #[tokio::test]
@@ -1666,7 +1602,7 @@ mod test {
 
     struct TestKt {
         monitor: Arc<Mutex<Option<Result<AccountData>>>>,
-        search: Arc<Mutex<Option<Result<MaybePartial<SearchResult>>>>>,
+        search: Arc<Mutex<Option<Result<MaybePartial<AccountData>>>>>,
     }
 
     impl TestKt {
@@ -1677,7 +1613,7 @@ mod test {
             }
         }
 
-        fn new(monitor: Result<AccountData>, search: Result<MaybePartial<SearchResult>>) -> Self {
+        fn new(monitor: Result<AccountData>, search: Result<MaybePartial<AccountData>>) -> Self {
             Self {
                 monitor: Arc::new(Mutex::new(Some(monitor))),
                 search: Arc::new(Mutex::new(Some(search))),
@@ -1694,7 +1630,7 @@ mod test {
             _username_hash: Option<UsernameHash<'_>>,
             _stored_account_data: Option<AccountData>,
             _distinguished_tree_head: &LastTreeHead,
-        ) -> impl Future<Output = Result<MaybePartial<SearchResult>>> + Send {
+        ) -> impl Future<Output = Result<MaybePartial<AccountData>>> + Send {
             let result = self
                 .search
                 .lock()
@@ -1830,15 +1766,10 @@ mod test {
         // make some unique change to validate this is the one that gets returned
         search_result_account_data.last_tree_head.1 = [42; 32];
 
-        let search_result = SearchResult {
-            aci_identity_key: IdentityKey::new(test_account::aci_identity_key()),
-            aci_for_e164: None,
-            aci_for_username_hash: None,
-            timestamp: SystemTime::now(),
-            account_data: search_result_account_data.clone().into(),
-        };
-
-        let kt = TestKt::new(Ok(monitor_result.clone()), Ok(search_result.into()));
+        let kt = TestKt::new(
+            Ok(monitor_result.clone()),
+            Ok(search_result_account_data.clone().into()),
+        );
 
         let updated_account_data = monitor_and_search(
             &kt,

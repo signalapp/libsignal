@@ -50,8 +50,7 @@ check-format-all:
     (cd java && ./gradlew spotlessCheck)
 
 # Runs some quick local checks; useful to make sure CI will not fail immediately after push.
-check-pre-commit:
-    just check-format-all
+check-pre-commit: check-format-all
     (cd node && npm run lint)
     (cd swift && ./verify_error_codes.sh)
     (cd swift && swiftlint lint --strict)

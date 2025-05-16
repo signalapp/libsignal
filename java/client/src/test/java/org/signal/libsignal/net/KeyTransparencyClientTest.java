@@ -23,9 +23,7 @@ import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 import org.signal.libsignal.internal.CompletableFuture;
-import org.signal.libsignal.keytrans.SearchResult;
 import org.signal.libsignal.keytrans.TestStore;
-import org.signal.libsignal.protocol.util.Hex;
 import org.signal.libsignal.util.TestEnvironment;
 
 @RunWith(Parameterized.class)
@@ -64,26 +62,18 @@ public class KeyTransparencyClientTest {
 
     TestStore store = new TestStore();
 
-    SearchResult result =
-        ktClient
-            .search(
-                TEST_ACI,
-                TEST_ACI_IDENTITY_KEY,
-                TEST_E164,
-                TEST_UNIDENTIFIED_ACCESS_KEY,
-                TEST_USERNAME_HASH,
-                store)
-            .get();
+    ktClient
+        .search(
+            TEST_ACI,
+            TEST_ACI_IDENTITY_KEY,
+            TEST_E164,
+            TEST_UNIDENTIFIED_ACCESS_KEY,
+            TEST_USERNAME_HASH,
+            store)
+        .get();
 
     assertTrue(store.getLastDistinguishedTreeHead().isPresent());
     assertTrue(store.getAccountData(TEST_ACI).isPresent());
-    assertEquals(
-        "05111f9464c1822c6a2405acf1c5a4366679dc3349fc8eb015c8d7260e3f771177",
-        Hex.toStringCondensed(result.getAciIdentityKey().serialize()));
-    assertTrue(result.getAciForE164().isPresent());
-    assertEquals(TEST_ACI, result.getAciForE164().get());
-    assertTrue(result.getAciForUsernameHash().isPresent());
-    assertEquals(TEST_ACI, result.getAciForUsernameHash().get());
   }
 
   @Test
@@ -108,16 +98,15 @@ public class KeyTransparencyClientTest {
 
     TestStore store = new TestStore();
 
-    SearchResult ignoredSearchResult =
-        ktClient
-            .search(
-                TEST_ACI,
-                TEST_ACI_IDENTITY_KEY,
-                TEST_E164,
-                TEST_UNIDENTIFIED_ACCESS_KEY,
-                TEST_USERNAME_HASH,
-                store)
-            .get();
+    ktClient
+        .search(
+            TEST_ACI,
+            TEST_ACI_IDENTITY_KEY,
+            TEST_E164,
+            TEST_UNIDENTIFIED_ACCESS_KEY,
+            TEST_USERNAME_HASH,
+            store)
+        .get();
 
     Deque<byte[]> accountDataHistory = store.storage.get(TEST_ACI);
 

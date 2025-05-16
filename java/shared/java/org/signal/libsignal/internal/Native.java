@@ -395,7 +395,7 @@ public final class Native {
   public static native CompletableFuture<byte[]> KeyTransparency_Distinguished(long asyncRuntime, int environment, long chatConnection, byte[] lastDistinguishedTreeHead);
   public static native byte[] KeyTransparency_E164SearchKey(String e164);
   public static native CompletableFuture<byte[]> KeyTransparency_Monitor(long asyncRuntime, int environment, long chatConnection, byte[] aci, long aciIdentityKey, String e164, byte[] unidentifiedAccessKey, byte[] usernameHash, byte[] accountData, byte[] lastDistinguishedTreeHead);
-  public static native CompletableFuture<Long> KeyTransparency_Search(long asyncRuntime, int environment, long chatConnection, byte[] aci, long aciIdentityKey, String e164, byte[] unidentifiedAccessKey, byte[] usernameHash, byte[] accountData, byte[] lastDistinguishedTreeHead);
+  public static native CompletableFuture<byte[]> KeyTransparency_Search(long asyncRuntime, int environment, long chatConnection, byte[] aci, long aciIdentityKey, String e164, byte[] unidentifiedAccessKey, byte[] usernameHash, byte[] accountData, byte[] lastDistinguishedTreeHead);
   public static native byte[] KeyTransparency_UsernameHashSearchKey(byte[] hash);
 
   public static native void KyberKeyPair_Destroy(long handle);
@@ -603,13 +603,6 @@ public final class Native {
   public static native byte[] SealedSessionCipher_Encrypt(long destination, long content, IdentityKeyStore identityKeyStore) throws Exception;
   public static native byte[] SealedSessionCipher_MultiRecipientEncrypt(long[] recipients, long[] recipientSessions, byte[] excludedRecipients, long content, IdentityKeyStore identityKeyStore) throws Exception;
   public static native byte[] SealedSessionCipher_MultiRecipientMessageForSingleRecipient(byte[] encodedMultiRecipientMessage) throws Exception;
-
-  public static native void SearchResult_Destroy(long handle);
-  public static native byte[] SearchResult_GetAccountData(long res);
-  public static native byte[] SearchResult_GetAciForE164(long res);
-  public static native byte[] SearchResult_GetAciForUsernameHash(long res);
-  public static native long SearchResult_GetAciIdentityKey(long res);
-  public static native long SearchResult_GetTimestamp(long res);
 
   public static native long SenderCertificate_Deserialize(byte[] data) throws Exception;
   public static native void SenderCertificate_Destroy(long handle);
