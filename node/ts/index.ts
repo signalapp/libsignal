@@ -252,24 +252,23 @@ export class PreKeyBundle {
     signed_prekey: PublicKey,
     signed_prekey_signature: Buffer,
     identity_key: PublicKey,
-    kyber_prekey_id?: number | null,
-    kyber_prekey?: KEMPublicKey | null,
-    kyber_prekey_signature?: Buffer | null
+    kyber_prekey_id: number,
+    kyber_prekey: KEMPublicKey,
+    kyber_prekey_signature: Buffer
   ): PreKeyBundle {
     return new PreKeyBundle(
       Native.PreKeyBundle_New(
         registration_id,
         device_id,
         prekey_id,
-        prekey != null ? prekey : null,
-        //prekey?,
+        prekey,
         signed_prekey_id,
         signed_prekey,
         signed_prekey_signature,
         identity_key,
-        kyber_prekey_id ?? null,
-        kyber_prekey ?? null,
-        kyber_prekey_signature ?? Buffer.alloc(0)
+        kyber_prekey_id,
+        kyber_prekey,
+        kyber_prekey_signature
       )
     );
   }
@@ -309,18 +308,18 @@ export class PreKeyBundle {
     return Native.PreKeyBundle_GetSignedPreKeySignature(this);
   }
 
-  kyberPreKeyId(): number | null {
+  kyberPreKeyId(): number {
     return Native.PreKeyBundle_GetKyberPreKeyId(this);
   }
 
-  kyberPreKeyPublic(): KEMPublicKey | null {
-    const handle = Native.PreKeyBundle_GetKyberPreKeyPublic(this);
-    return handle == null ? null : KEMPublicKey._fromNativeHandle(handle);
+  kyberPreKeyPublic(): KEMPublicKey {
+    return KEMPublicKey._fromNativeHandle(
+      Native.PreKeyBundle_GetKyberPreKeyPublic(this)
+    );
   }
 
-  kyberPreKeySignature(): Buffer | null {
-    const buf = Native.PreKeyBundle_GetKyberPreKeySignature(this);
-    return buf.length == 0 ? null : buf;
+  kyberPreKeySignature(): Buffer {
+    return Native.PreKeyBundle_GetKyberPreKeySignature(this);
   }
 }
 

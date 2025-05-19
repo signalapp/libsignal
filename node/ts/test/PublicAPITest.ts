@@ -203,47 +203,6 @@ class TestStores {
   }
 }
 
-async function makeX3DHBundle(
-  address: SignalClient.ProtocolAddress,
-  stores: TestStores
-): Promise<SignalClient.PreKeyBundle> {
-  const identityKey = await stores.identity.getIdentityKey();
-  const prekeyId = chance.natural({ max: 10000 });
-  const prekey = SignalClient.PrivateKey.generate();
-  const signedPrekeyId = chance.natural({ max: 10000 });
-  const signedPrekey = SignalClient.PrivateKey.generate();
-  const signedPrekeySignature = identityKey.sign(
-    signedPrekey.getPublicKey().serialize()
-  );
-
-  await stores.prekey.savePreKey(
-    prekeyId,
-    SignalClient.PreKeyRecord.new(prekeyId, prekey.getPublicKey(), prekey)
-  );
-
-  await stores.signed.saveSignedPreKey(
-    signedPrekeyId,
-    SignalClient.SignedPreKeyRecord.new(
-      signedPrekeyId,
-      chance.timestamp(),
-      signedPrekey.getPublicKey(),
-      signedPrekey,
-      signedPrekeySignature
-    )
-  );
-
-  return SignalClient.PreKeyBundle.new(
-    await stores.identity.getLocalRegistrationId(),
-    address.deviceId(),
-    prekeyId,
-    prekey.getPublicKey(),
-    signedPrekeyId,
-    signedPrekey.getPublicKey(),
-    signedPrekeySignature,
-    identityKey.getPublicKey()
-  );
-}
-
 async function makePQXDHBundle(
   address: SignalClient.ProtocolAddress,
   stores: TestStores
@@ -304,7 +263,6 @@ async function makePQXDHBundle(
 }
 
 const sessionVersionTestCases = [
-  { suffix: 'v3', makeBundle: makeX3DHBundle, expectedVersion: 3 },
   { suffix: 'v4', makeBundle: makePQXDHBundle, expectedVersion: 4 },
 ];
 
@@ -710,60 +668,6 @@ describe('SignalClient', () => {
     });
   });
 
-  it('PublicKeyBundle', () => {
-    const registrationId = 5;
-    const deviceId = 23;
-    const prekeyId = 42;
-    const prekey = SignalClient.PrivateKey.generate().getPublicKey();
-    const signedPrekeyId = 2300;
-    const signedPrekey = SignalClient.PrivateKey.generate().getPublicKey();
-    const signedPrekeySignature = SignalClient.PrivateKey.generate().sign(
-      Buffer.from('010203', 'hex')
-    );
-    const identityKey = SignalClient.PrivateKey.generate().getPublicKey();
-
-    const pkb = SignalClient.PreKeyBundle.new(
-      registrationId,
-      deviceId,
-      prekeyId,
-      prekey,
-      signedPrekeyId,
-      signedPrekey,
-      signedPrekeySignature,
-      identityKey
-    );
-
-    assert.deepEqual(pkb.registrationId(), registrationId);
-    assert.deepEqual(pkb.deviceId(), deviceId);
-    assert.deepEqual(pkb.preKeyId(), prekeyId);
-    assert.deepEqual(pkb.preKeyPublic(), prekey);
-    assert.deepEqual(pkb.signedPreKeyId(), signedPrekeyId);
-    assert.deepEqual(pkb.signedPreKeyPublic(), signedPrekey);
-    assert.deepEqual(pkb.signedPreKeySignature(), signedPrekeySignature);
-    assert.deepEqual(pkb.identityKey(), identityKey);
-
-    // null handling:
-    const pkb2 = SignalClient.PreKeyBundle.new(
-      registrationId,
-      deviceId,
-      null,
-      null,
-      signedPrekeyId,
-      signedPrekey,
-      signedPrekeySignature,
-      identityKey
-    );
-
-    assert.deepEqual(pkb2.registrationId(), registrationId);
-    assert.deepEqual(pkb2.deviceId(), deviceId);
-    assert.deepEqual(pkb2.preKeyId(), null);
-    assert.deepEqual(pkb2.preKeyPublic(), null);
-    assert.deepEqual(pkb2.signedPreKeyId(), signedPrekeyId);
-    assert.deepEqual(pkb2.signedPreKeyPublic(), signedPrekey);
-    assert.deepEqual(pkb2.signedPreKeySignature(), signedPrekeySignature);
-    assert.deepEqual(pkb2.identityKey(), identityKey);
-  });
-
   it('PublicKeyBundle Kyber', () => {
     const signingKey = SignalClient.PrivateKey.generate();
     const registrationId = 5;
@@ -804,39 +708,32 @@ describe('SignalClient', () => {
     assert.deepEqual(pkb.kyberPreKeyPublic(), kyberPrekey);
     assert.deepEqual(pkb.kyberPreKeySignature(), kyberPrekeySignature);
 
-    // optional kyber keys
+    // no one-time EC pre-key
     const pkb2 = SignalClient.PreKeyBundle.new(
       registrationId,
       deviceId,
-      prekeyId,
-      prekey,
-      signedPrekeyId,
-      signedPrekey,
-      signedPrekeySignature,
-      identityKey
-    );
-
-    assert.deepEqual(pkb2.kyberPreKeyId(), null);
-    assert.deepEqual(pkb2.kyberPreKeyPublic(), null);
-    assert.deepEqual(pkb2.kyberPreKeySignature(), null);
-
-    const pkb3 = SignalClient.PreKeyBundle.new(
-      registrationId,
-      deviceId,
-      prekeyId,
-      prekey,
+      null,
+      null,
       signedPrekeyId,
       signedPrekey,
       signedPrekeySignature,
       identityKey,
-      null,
-      null,
-      null
+      kyberPrekeyId,
+      kyberPrekey,
+      kyberPrekeySignature
     );
 
-    assert.deepEqual(pkb3.kyberPreKeyId(), null);
-    assert.deepEqual(pkb3.kyberPreKeyPublic(), null);
-    assert.deepEqual(pkb3.kyberPreKeySignature(), null);
+    assert.deepEqual(pkb2.registrationId(), registrationId);
+    assert.deepEqual(pkb2.deviceId(), deviceId);
+    assert.deepEqual(pkb2.preKeyId(), null);
+    assert.deepEqual(pkb2.preKeyPublic(), null);
+    assert.deepEqual(pkb2.signedPreKeyId(), signedPrekeyId);
+    assert.deepEqual(pkb2.signedPreKeyPublic(), signedPrekey);
+    assert.deepEqual(pkb2.signedPreKeySignature(), signedPrekeySignature);
+    assert.deepEqual(pkb2.identityKey(), identityKey);
+    assert.deepEqual(pkb2.kyberPreKeyId(), kyberPrekeyId);
+    assert.deepEqual(pkb2.kyberPreKeyPublic(), kyberPrekey);
+    assert.deepEqual(pkb2.kyberPreKeySignature(), kyberPrekeySignature);
   });
 
   it('PreKeyRecord', () => {
@@ -1240,7 +1137,7 @@ describe('SignalClient', () => {
 
       const bPreK = new InMemoryPreKeyStore();
       const bSPreK = new InMemorySignedPreKeyStore();
-      const kyberStore = new InMemoryKyberPreKeyStore();
+      const bKyberStore = new InMemoryKyberPreKeyStore();
 
       const bPreKey = SignalClient.PrivateKey.generate();
       const bSPreKey = SignalClient.PrivateKey.generate();
@@ -1285,6 +1182,12 @@ describe('SignalClient', () => {
         bSPreKey.getPublicKey().serialize()
       );
 
+      const bKyberPrekeyId = 777;
+      const bKyberKeyPair = SignalClient.KEMKeyPair.generate();
+      const bKyberPrekeySignature = bIdentityKey.sign(
+        bKyberKeyPair.getPublicKey().serialize()
+      );
+
       const bPreKeyBundle = SignalClient.PreKeyBundle.new(
         bRegistrationId,
         bDeviceId,
@@ -1293,7 +1196,10 @@ describe('SignalClient', () => {
         bSignedPreKeyId,
         bSPreKey.getPublicKey(),
         bSignedPreKeySig,
-        bIdentityKey.getPublicKey()
+        bIdentityKey.getPublicKey(),
+        bKyberPrekeyId,
+        bKyberKeyPair.getPublicKey(),
+        bKyberPrekeySignature
       );
 
       const bPreKeyRecord = SignalClient.PreKeyRecord.new(
@@ -1311,6 +1217,14 @@ describe('SignalClient', () => {
         bSignedPreKeySig
       );
       await bSPreK.saveSignedPreKey(bSignedPreKeyId, bSPreKeyRecord);
+
+      const bKyberPreKeyRecord = SignalClient.KyberPreKeyRecord.new(
+        bKyberPrekeyId,
+        42, // timestamp
+        bKyberKeyPair,
+        bKyberPrekeySignature
+      );
+      await bKyberStore.saveKyberPreKey(bKyberPrekeyId, bKyberPreKeyRecord);
 
       const bAddress = SignalClient.ProtocolAddress.new(bUuid, bDeviceId);
       await SignalClient.processPreKeyBundle(
@@ -1341,7 +1255,7 @@ describe('SignalClient', () => {
         bKeys,
         bPreK,
         bSPreK,
-        kyberStore
+        bKyberStore
       );
 
       assert(bPlaintext != null);
@@ -1391,7 +1305,7 @@ describe('SignalClient', () => {
 
       const bPreK = new InMemoryPreKeyStore();
       const bSPreK = new InMemorySignedPreKeyStore();
-      const kyberStore = new InMemoryKyberPreKeyStore();
+      const bKyberStore = new InMemoryKyberPreKeyStore();
 
       const bPreKey = SignalClient.PrivateKey.generate();
       const bSPreKey = SignalClient.PrivateKey.generate();
@@ -1432,6 +1346,12 @@ describe('SignalClient', () => {
         bSPreKey.getPublicKey().serialize()
       );
 
+      const bKyberPrekeyId = 777;
+      const bKyberKeyPair = SignalClient.KEMKeyPair.generate();
+      const bKyberPrekeySignature = sharedIdentityKey.sign(
+        bKyberKeyPair.getPublicKey().serialize()
+      );
+
       const bPreKeyBundle = SignalClient.PreKeyBundle.new(
         sharedRegistrationId,
         sharedDeviceId,
@@ -1440,7 +1360,10 @@ describe('SignalClient', () => {
         bSignedPreKeyId,
         bSPreKey.getPublicKey(),
         bSignedPreKeySig,
-        sharedIdentityKey.getPublicKey()
+        sharedIdentityKey.getPublicKey(),
+        bKyberPrekeyId,
+        bKyberKeyPair.getPublicKey(),
+        bKyberPrekeySignature
       );
 
       const bPreKeyRecord = SignalClient.PreKeyRecord.new(
@@ -1458,6 +1381,14 @@ describe('SignalClient', () => {
         bSignedPreKeySig
       );
       await bSPreK.saveSignedPreKey(bSignedPreKeyId, bSPreKeyRecord);
+
+      const bKyberPreKeyRecord = SignalClient.KyberPreKeyRecord.new(
+        bKyberPrekeyId,
+        42, // timestamp
+        bKyberKeyPair,
+        bKyberPrekeySignature
+      );
+      await bKyberStore.saveKyberPreKey(bKyberPrekeyId, bKyberPreKeyRecord);
 
       const sharedAddress = SignalClient.ProtocolAddress.new(
         sharedUuid,
@@ -1492,7 +1423,7 @@ describe('SignalClient', () => {
           sharedKeys,
           bPreK,
           bSPreK,
-          kyberStore
+          bKyberStore
         );
         assert.fail();
       } catch (e) {
@@ -1514,6 +1445,7 @@ describe('SignalClient', () => {
 
       const bPreK = new InMemoryPreKeyStore();
       const bSPreK = new InMemorySignedPreKeyStore();
+      const bKyberStore = new InMemoryKyberPreKeyStore();
 
       const bPreKey = SignalClient.PrivateKey.generate();
       const bSPreKey = SignalClient.PrivateKey.generate();
@@ -1557,6 +1489,12 @@ describe('SignalClient', () => {
         bSPreKey.getPublicKey().serialize()
       );
 
+      const bKyberPrekeyId = 777;
+      const bKyberKeyPair = SignalClient.KEMKeyPair.generate();
+      const bKyberPrekeySignature = bIdentityKey.sign(
+        bKyberKeyPair.getPublicKey().serialize()
+      );
+
       const bPreKeyBundle = SignalClient.PreKeyBundle.new(
         bRegistrationId,
         bDeviceId,
@@ -1565,7 +1503,10 @@ describe('SignalClient', () => {
         bSignedPreKeyId,
         bSPreKey.getPublicKey(),
         bSignedPreKeySig,
-        bIdentityKey.getPublicKey()
+        bIdentityKey.getPublicKey(),
+        bKyberPrekeyId,
+        bKyberKeyPair.getPublicKey(),
+        bKyberPrekeySignature
       );
 
       const bPreKeyRecord = SignalClient.PreKeyRecord.new(
@@ -1583,6 +1524,14 @@ describe('SignalClient', () => {
         bSignedPreKeySig
       );
       await bSPreK.saveSignedPreKey(bSignedPreKeyId, bSPreKeyRecord);
+
+      const bKyberPreKeyRecord = SignalClient.KyberPreKeyRecord.new(
+        bKyberPrekeyId,
+        42, // timestamp
+        bKyberKeyPair,
+        bKyberPrekeySignature
+      );
+      await bKyberStore.saveKyberPreKey(bKyberPrekeyId, bKyberPreKeyRecord);
 
       const bAddress = SignalClient.ProtocolAddress.new(bUuid, bDeviceId);
       await SignalClient.processPreKeyBundle(
@@ -1726,6 +1675,12 @@ describe('SignalClient', () => {
         bSPreKey.getPublicKey().serialize()
       );
 
+      const bKyberPrekeyId = 777;
+      const bKyberKeyPair = SignalClient.KEMKeyPair.generate();
+      const bKyberPrekeySignature = bIdentityKey.sign(
+        bKyberKeyPair.getPublicKey().serialize()
+      );
+
       const bPreKeyBundle = SignalClient.PreKeyBundle.new(
         0x4000,
         bDeviceId,
@@ -1734,7 +1689,10 @@ describe('SignalClient', () => {
         bSignedPreKeyId,
         bSPreKey.getPublicKey(),
         bSignedPreKeySig,
-        bIdentityKey.getPublicKey()
+        bIdentityKey.getPublicKey(),
+        bKyberPrekeyId,
+        bKyberKeyPair.getPublicKey(),
+        bKyberPrekeySignature
       );
 
       const bAddress = SignalClient.ProtocolAddress.new(bUuid, bDeviceId);
@@ -1854,6 +1812,12 @@ describe('SignalClient', () => {
         bSPreKey.getPublicKey().serialize()
       );
 
+      const bKyberPrekeyId = 777;
+      const bKyberKeyPair = SignalClient.KEMKeyPair.generate();
+      const bKyberPrekeySignature = bIdentityKey.sign(
+        bKyberKeyPair.getPublicKey().serialize()
+      );
+
       const bPreKeyBundle = SignalClient.PreKeyBundle.new(
         0x2000,
         bDeviceId,
@@ -1862,7 +1826,10 @@ describe('SignalClient', () => {
         bSignedPreKeyId,
         bSPreKey.getPublicKey(),
         bSignedPreKeySig,
-        bIdentityKey.getPublicKey()
+        bIdentityKey.getPublicKey(),
+        bKyberPrekeyId,
+        bKyberKeyPair.getPublicKey(),
+        bKyberPrekeySignature
       );
 
       const bAddress = SignalClient.ProtocolAddress.new(bUuid, bDeviceId);
@@ -1934,7 +1901,7 @@ describe('SignalClient', () => {
     });
   });
 
-  it('DecryptionMessageError', async () => {
+  it('DecryptionErrorMessage', async () => {
     const aKeys = new InMemoryIdentityKeyStore();
     const bKeys = new InMemoryIdentityKeyStore();
 
@@ -1943,7 +1910,7 @@ describe('SignalClient', () => {
 
     const bPreK = new InMemoryPreKeyStore();
     const bSPreK = new InMemorySignedPreKeyStore();
-    const kyberStore = new InMemoryKyberPreKeyStore();
+    const bKyberStore = new InMemoryKyberPreKeyStore();
 
     const bPreKey = SignalClient.PrivateKey.generate();
     const bSPreKey = SignalClient.PrivateKey.generate();
@@ -1987,6 +1954,12 @@ describe('SignalClient', () => {
       bSPreKey.getPublicKey().serialize()
     );
 
+    const bKyberPrekeyId = 777;
+    const bKyberKeyPair = SignalClient.KEMKeyPair.generate();
+    const bKyberPrekeySignature = bIdentityKey.sign(
+      bKyberKeyPair.getPublicKey().serialize()
+    );
+
     const bPreKeyBundle = SignalClient.PreKeyBundle.new(
       bRegistrationId,
       bDeviceId,
@@ -1995,7 +1968,10 @@ describe('SignalClient', () => {
       bSignedPreKeyId,
       bSPreKey.getPublicKey(),
       bSignedPreKeySig,
-      bIdentityKey.getPublicKey()
+      bIdentityKey.getPublicKey(),
+      bKyberPrekeyId,
+      bKyberKeyPair.getPublicKey(),
+      bKyberPrekeySignature
     );
 
     const bPreKeyRecord = SignalClient.PreKeyRecord.new(
@@ -2013,6 +1989,14 @@ describe('SignalClient', () => {
       bSignedPreKeySig
     );
     await bSPreK.saveSignedPreKey(bSignedPreKeyId, bSPreKeyRecord);
+
+    const bKyberPreKeyRecord = SignalClient.KyberPreKeyRecord.new(
+      bKyberPrekeyId,
+      42, // timestamp
+      bKyberKeyPair,
+      bKyberPrekeySignature
+    );
+    await bKyberStore.saveKyberPreKey(bKyberPrekeyId, bKyberPreKeyRecord);
 
     // Set up the session with a message from A to B.
 
@@ -2045,7 +2029,7 @@ describe('SignalClient', () => {
       bKeys,
       bPreK,
       bSPreK,
-      kyberStore
+      bKyberStore
     );
 
     // Pretend to send a message from B back to A that "fails".

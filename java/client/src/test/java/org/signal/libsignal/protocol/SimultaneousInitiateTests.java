@@ -40,11 +40,7 @@ public class SimultaneousInitiateTests {
 
   @Parameters(name = "v{1}")
   public static Collection<Object[]> data() throws Exception {
-    return Arrays.asList(
-        new Object[][] {
-          {new X3DHBundleFactory(), 3},
-          {new PQXDHBundleFactory(), 4}
-        });
+    return Arrays.asList(new Object[][] {{new PQXDHBundleFactory(), 4}});
   }
 
   @Test

@@ -26,6 +26,8 @@ import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 import org.signal.libsignal.protocol.ecc.Curve;
 import org.signal.libsignal.protocol.ecc.ECKeyPair;
+import org.signal.libsignal.protocol.kem.KEMKeyPair;
+import org.signal.libsignal.protocol.kem.KEMKeyType;
 import org.signal.libsignal.protocol.message.CiphertextMessage;
 import org.signal.libsignal.protocol.message.PreKeySignalMessage;
 import org.signal.libsignal.protocol.message.SignalMessage;
@@ -55,11 +57,7 @@ public class SessionBuilderTest {
 
     @Parameters(name = "v{1}")
     public static Collection<Object[]> data() throws Exception {
-      return Arrays.asList(
-          new Object[][] {
-            {new X3DHBundleFactory(), 3},
-            {new PQXDHBundleFactory(), 4}
-          });
+      return Arrays.asList(new Object[][] {{new PQXDHBundleFactory(), 4}});
     }
 
     @Test
@@ -139,7 +137,10 @@ public class SessionBuilderTest {
               random.nextInt(Medium.MAX_VALUE),
               bobPreKey.getSignedPreKey(),
               bobPreKey.getSignedPreKeySignature(),
-              aliceStore.getIdentityKeyPair().getPublicKey());
+              aliceStore.getIdentityKeyPair().getPublicKey(),
+              random.nextInt(Medium.MAX_VALUE),
+              bobPreKey.getKyberPreKey(),
+              bobPreKey.getKyberPreKeySignature());
 
       try {
         aliceSessionBuilder.process(badIdentityBundle);
@@ -309,6 +310,12 @@ public class SessionBuilderTest {
               bobIdentityKeyStore.getIdentityKeyPair().getPrivateKey(),
               bobSignedPreKeyPair.getPublicKey().serialize());
 
+      KEMKeyPair bobKyberPreKeyPair = KEMKeyPair.generate(KEMKeyType.KYBER_1024);
+      byte[] bobKyberPreKeySignature =
+          Curve.calculateSignature(
+              bobIdentityKeyStore.getIdentityKeyPair().getPrivateKey(),
+              bobKyberPreKeyPair.getPublicKey().serialize());
+
       for (int i = 0; i < bobSignedPreKeySignature.length * 8; i++) {
         byte[] modifiedSignature = new byte[bobSignedPreKeySignature.length];
         System.arraycopy(
@@ -326,13 +333,42 @@ public class SessionBuilderTest {
                 bobSignedPreKeyPair.getPublicKey(),
                 modifiedSignature,
                 bobIdentityKeyStore.getIdentityKeyPair().getPublicKey(),
-                -1,
-                null,
-                new byte[0]);
+                777,
+                bobKyberPreKeyPair.getPublicKey(),
+                bobKyberPreKeySignature);
 
         try {
           aliceSessionBuilder.process(bobPreKey);
           fail("Accepted modified device key signature!");
+        } catch (InvalidKeyException ike) {
+          // good
+        }
+      }
+
+      for (int i = 0; i < bobKyberPreKeySignature.length * 8; i++) {
+        byte[] modifiedSignature = new byte[bobKyberPreKeySignature.length];
+        System.arraycopy(
+            bobKyberPreKeySignature, 0, modifiedSignature, 0, modifiedSignature.length);
+
+        modifiedSignature[i / 8] ^= (0x01 << (i % 8));
+
+        PreKeyBundle bobPreKey =
+            new PreKeyBundle(
+                bobIdentityKeyStore.getLocalRegistrationId(),
+                1,
+                31337,
+                bobPreKeyPair.getPublicKey(),
+                22,
+                bobSignedPreKeyPair.getPublicKey(),
+                bobSignedPreKeySignature,
+                bobIdentityKeyStore.getIdentityKeyPair().getPublicKey(),
+                777,
+                bobKyberPreKeyPair.getPublicKey(),
+                modifiedSignature);
+
+        try {
+          aliceSessionBuilder.process(bobPreKey);
+          fail("Accepted modified Kyber key signature!");
         } catch (InvalidKeyException ike) {
           // good
         }
@@ -347,7 +383,10 @@ public class SessionBuilderTest {
               22,
               bobSignedPreKeyPair.getPublicKey(),
               bobSignedPreKeySignature,
-              bobIdentityKeyStore.getIdentityKeyPair().getPublicKey());
+              bobIdentityKeyStore.getIdentityKeyPair().getPublicKey(),
+              777,
+              bobKyberPreKeyPair.getPublicKey(),
+              bobKyberPreKeySignature);
 
       aliceSessionBuilder.process(bobPreKey);
     }

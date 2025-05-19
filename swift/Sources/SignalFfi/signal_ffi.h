@@ -1881,7 +1881,7 @@ SignalFfiError *signal_pre_key_bundle_get_device_id(uint32_t *out, SignalConstPo
 
 SignalFfiError *signal_pre_key_bundle_get_identity_key(SignalMutPointerPublicKey *out, SignalConstPointerPreKeyBundle p);
 
-SignalFfiError *signal_pre_key_bundle_get_kyber_pre_key_id(uint32_t *out, SignalConstPointerPreKeyBundle obj);
+SignalFfiError *signal_pre_key_bundle_get_kyber_pre_key_id(uint32_t *out, SignalConstPointerPreKeyBundle bundle);
 
 SignalFfiError *signal_pre_key_bundle_get_kyber_pre_key_public(SignalMutPointerKyberPublicKey *out, SignalConstPointerPreKeyBundle bundle);
 

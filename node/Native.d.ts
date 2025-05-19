@@ -389,8 +389,8 @@ export function PlaintextContent_GetBody(obj: Wrapper<PlaintextContent>): Buffer
 export function PlaintextContent_Serialize(obj: Wrapper<PlaintextContent>): Buffer;
 export function PreKeyBundle_GetDeviceId(obj: Wrapper<PreKeyBundle>): number;
 export function PreKeyBundle_GetIdentityKey(p: Wrapper<PreKeyBundle>): PublicKey;
-export function PreKeyBundle_GetKyberPreKeyId(obj: Wrapper<PreKeyBundle>): number | null;
-export function PreKeyBundle_GetKyberPreKeyPublic(bundle: Wrapper<PreKeyBundle>): KyberPublicKey | null;
+export function PreKeyBundle_GetKyberPreKeyId(bundle: Wrapper<PreKeyBundle>): number;
+export function PreKeyBundle_GetKyberPreKeyPublic(bundle: Wrapper<PreKeyBundle>): KyberPublicKey;
 export function PreKeyBundle_GetKyberPreKeySignature(bundle: Wrapper<PreKeyBundle>): Buffer;
 export function PreKeyBundle_GetPreKeyId(obj: Wrapper<PreKeyBundle>): number | null;
 export function PreKeyBundle_GetPreKeyPublic(obj: Wrapper<PreKeyBundle>): PublicKey | null;
@@ -398,7 +398,7 @@ export function PreKeyBundle_GetRegistrationId(obj: Wrapper<PreKeyBundle>): numb
 export function PreKeyBundle_GetSignedPreKeyId(obj: Wrapper<PreKeyBundle>): number;
 export function PreKeyBundle_GetSignedPreKeyPublic(obj: Wrapper<PreKeyBundle>): PublicKey;
 export function PreKeyBundle_GetSignedPreKeySignature(obj: Wrapper<PreKeyBundle>): Buffer;
-export function PreKeyBundle_New(registrationId: number, deviceId: number, prekeyId: number | null, prekey: Wrapper<PublicKey> | null, signedPrekeyId: number, signedPrekey: Wrapper<PublicKey>, signedPrekeySignature: Buffer, identityKey: Wrapper<PublicKey>, kyberPrekeyId: number | null, kyberPrekey: Wrapper<KyberPublicKey> | null, kyberPrekeySignature: Buffer): PreKeyBundle;
+export function PreKeyBundle_New(registrationId: number, deviceId: number, prekeyId: number | null, prekey: Wrapper<PublicKey> | null, signedPrekeyId: number, signedPrekey: Wrapper<PublicKey>, signedPrekeySignature: Buffer, identityKey: Wrapper<PublicKey>, kyberPrekeyId: number, kyberPrekey: Wrapper<KyberPublicKey>, kyberPrekeySignature: Buffer): PreKeyBundle;
 export function PreKeyRecord_Deserialize(data: Buffer): PreKeyRecord;
 export function PreKeyRecord_GetId(obj: Wrapper<PreKeyRecord>): number;
 export function PreKeyRecord_GetPrivateKey(obj: Wrapper<PreKeyRecord>): PrivateKey;
