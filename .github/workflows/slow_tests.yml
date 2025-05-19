@@ -15,7 +15,14 @@ on:
     # We pick 8:25 UTC, aiming for "later than PST/UTC-8 night work" and
     # "earlier than ADT/UTC-3 morning work".
     - cron: '25 8 * * *'
-  workflow_dispatch: {} # no parameters
+  workflow_dispatch:
+    inputs:
+      ios_runner:
+        description: 'Runner for iOS tests'
+        required: true
+        # This is redundant with specifying it at the use site, but makes it appear in the website UI.
+        # See https://github.com/actions/runner-images/blob/main/README.md#available-images
+        default: 'macos-latest'
 
 jobs:
   java-docker:
@@ -285,7 +292,7 @@ jobs:
 
   swift-cocoapod:
     name: Swift CocoaPod (all architectures)
-    runs-on: macOS-latest
+    runs-on: ${{ inputs.ios_runner || 'macos-latest' }}
     if: ${{ github.event_name != 'schedule' || (github.repository_owner == 'signalapp' && endsWith(github.repository, '-private')) }}
     timeout-minutes: 45
 
