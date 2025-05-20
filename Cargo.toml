@@ -35,7 +35,7 @@ default-members = [
 resolver = "2" # so that our dev-dependency features don't leak into products
 
 [workspace.package]
-version = "0.73.0"
+version = "0.73.1"
 rust-version = "1.80.1"
 authors = ["Signal Messenger LLC"]
 license = "AGPL-3.0-only"
