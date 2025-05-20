@@ -65,6 +65,15 @@ public class FutureTest {
           "Expected CancellationException as cause",
           e.getCause() instanceof java.util.concurrent.CancellationException);
       assertTrue(testFuture.isCancelled());
+    } else {
+      // The future completed before we could cancel it.
+      // Oppurtunitically, let's just check that the future completed as expected.
+      try {
+        assertEquals(63, (int) testFuture.get());
+        assertFalse(testFuture.isCancelled());
+      } catch (ExecutionException | InterruptedException e) {
+        fail("testFuture.get() threw an unexpected exception: " + e.getMessage());
+      }
     }
     assertTrue(testFuture.isDone());
   }
