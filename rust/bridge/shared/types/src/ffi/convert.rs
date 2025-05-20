@@ -1082,6 +1082,8 @@ macro_rules! ffi_arg_type {
     (Ignored<$typ:ty>) => (*const std::ffi::c_void);
     (AsType<$typ:ident, $bridged:ident>) => (ffi_arg_type!($bridged));
 
+    (TestingFutureCancellationGuard) => (ffi_arg_type!(&TestingFutureCancellationCounter));
+
     // In order to provide a fixed-sized array of the correct length,
     // a serialized type FooBar must have a constant FOO_BAR_LEN that's in scope (and exposed to C).
     (Serialized<$typ:ident>) => (*const [std::ffi::c_uchar; ::paste::paste!([<$typ:snake:upper _LEN>])]);

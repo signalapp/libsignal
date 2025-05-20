@@ -68,15 +68,26 @@ public class FutureTest {
     assertTrue(testFuture.isDone());
   }
 
-  @Test
+  @Test(timeout = 5000)
   @SuppressWarnings("unchecked")
-  public void testFutureOnlyCompletesByCancellation() {
+  public void testFutureOnlyCompletesByCancellation() throws Exception {
     TokioAsyncContext context = new TokioAsyncContext();
+    var counter =
+        new NativeHandleGuard.SimpleOwner(
+            NativeTesting.TESTING_FutureCancellationCounter_Create(0)) {
+          @Override
+          protected void release(long nativeHandle) {
+            NativeTesting.TestingFutureCancellationCounter_Destroy(nativeHandle);
+          }
+        };
     org.signal.libsignal.internal.CompletableFuture<Integer> testFuture =
         context
             .guardedMap(
                 (nativeContextHandle) ->
-                    NativeTesting.TESTING_OnlyCompletesByCancellation(nativeContextHandle))
+                    counter.guardedMap(
+                        counterHandle ->
+                            NativeTesting.TESTING_FutureIncrementOnCancel(
+                                nativeContextHandle, counterHandle)))
             .makeCancelable(context);
     assertTrue(testFuture.cancel(true));
     ExecutionException e = assertThrows(ExecutionException.class, () -> testFuture.get());
@@ -85,6 +96,16 @@ public class FutureTest {
         e.getCause() instanceof java.util.concurrent.CancellationException);
     assertTrue(testFuture.isCancelled());
     assertTrue(testFuture.isDone());
+
+    // Hangs if the count never gets incremented.
+    context
+        .guardedMap(
+            (nativeContextHandle) ->
+                counter.guardedMap(
+                    counterHandle ->
+                        NativeTesting.TESTING_FutureCancellationCounter_WaitForCount(
+                            nativeContextHandle, counterHandle, 1)))
+        .get();
   }
 
   @Test

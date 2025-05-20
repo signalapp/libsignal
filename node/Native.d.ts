@@ -630,14 +630,16 @@ export function TESTING_FakeChatSentRequest_TakeHttpRequest(request: Wrapper<Fak
 export function TESTING_FakeChatServer_Create(): FakeChatServer;
 export function TESTING_FakeChatServer_GetNextRemote(asyncRuntime: Wrapper<TokioAsyncContext>, server: Wrapper<FakeChatServer>): CancellablePromise<FakeChatRemoteEnd>;
 export function TESTING_FakeRegistrationSession_CreateSession(asyncRuntime: Wrapper<TokioAsyncContext>, createSession: RegistrationCreateSessionRequest, chat: Wrapper<FakeChatServer>): CancellablePromise<RegistrationService>;
+export function TESTING_FutureCancellationCounter_Create(initialValue: number): TestingFutureCancellationCounter;
+export function TESTING_FutureCancellationCounter_WaitForCount(asyncRuntime: Wrapper<TokioAsyncContext>, count: Wrapper<TestingFutureCancellationCounter>, target: number): CancellablePromise<void>;
 export function TESTING_FutureFailure(asyncRuntime: Wrapper<NonSuspendingBackgroundThreadRuntime>, _input: number): CancellablePromise<number>;
+export function TESTING_FutureIncrementOnCancel(asyncRuntime: Wrapper<TokioAsyncContext>, _guard: TestingFutureCancellationGuard): CancellablePromise<void>;
 export function TESTING_FutureProducesOtherPointerType(asyncRuntime: Wrapper<NonSuspendingBackgroundThreadRuntime>, input: string): CancellablePromise<OtherTestingHandleType>;
 export function TESTING_FutureProducesPointerType(asyncRuntime: Wrapper<NonSuspendingBackgroundThreadRuntime>, input: number): CancellablePromise<TestingHandleType>;
 export function TESTING_FutureSuccess(asyncRuntime: Wrapper<NonSuspendingBackgroundThreadRuntime>, input: number): CancellablePromise<number>;
 export function TESTING_InputStreamReadIntoZeroLengthSlice(capsAlphabetInput: InputStream): Promise<Buffer>;
 export function TESTING_JoinStringArray(array: string[], joinWith: string): string;
 export function TESTING_NonSuspendingBackgroundThreadRuntime_New(): NonSuspendingBackgroundThreadRuntime;
-export function TESTING_OnlyCompletesByCancellation(asyncRuntime: Wrapper<TokioAsyncContext>): CancellablePromise<void>;
 export function TESTING_OtherTestingHandleType_getValue(handle: Wrapper<OtherTestingHandleType>): string;
 export function TESTING_PanicInBodyAsync(_input: null): Promise<void>;
 export function TESTING_PanicInBodyIo(asyncRuntime: Wrapper<NonSuspendingBackgroundThreadRuntime>, _input: null): CancellablePromise<void>;
@@ -771,6 +773,7 @@ interface SessionRecord { readonly __type: unique symbol; }
 interface SgxClientState { readonly __type: unique symbol; }
 interface SignalMessage { readonly __type: unique symbol; }
 interface SignedPreKeyRecord { readonly __type: unique symbol; }
+interface TestingFutureCancellationCounter { readonly __type: unique symbol; }
 interface TestingHandleType { readonly __type: unique symbol; }
 interface TokioAsyncContext { readonly __type: unique symbol; }
 interface UnauthenticatedChatConnection { readonly __type: unique symbol; }

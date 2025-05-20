@@ -42,6 +42,11 @@ typedef struct SignalOtherTestingHandleType SignalOtherTestingHandleType;
  */
 typedef struct SignalFfiError SignalFfiError;
 
+/**
+ * Counter for future cancellations
+ */
+typedef struct SignalTestingFutureCancellationCounter SignalTestingFutureCancellationCounter;
+
 typedef struct SignalTestingHandleType SignalTestingHandleType;
 
 typedef struct {
@@ -163,6 +168,14 @@ typedef struct {
 typedef struct {
   const SignalFakeChatServer *raw;
 } SignalConstPointerFakeChatServer;
+
+typedef struct {
+  SignalTestingFutureCancellationCounter *raw;
+} SignalMutPointerTestingFutureCancellationCounter;
+
+typedef struct {
+  const SignalTestingFutureCancellationCounter *raw;
+} SignalConstPointerTestingFutureCancellationCounter;
 
 /**
  * A C callback used to report the results of Rust futures.
@@ -311,7 +324,15 @@ SignalFfiError *signal_testing_fake_chat_server_get_next_remote(SignalCPromiseMu
 
 SignalFfiError *signal_testing_fake_registration_session_create_session(SignalCPromiseMutPointerRegistrationService *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalFfiRegistrationCreateSessionRequest create_session, SignalConstPointerFakeChatServer chat);
 
+SignalFfiError *signal_testing_future_cancellation_counter_create(SignalMutPointerTestingFutureCancellationCounter *out, uint8_t initial_value);
+
+SignalFfiError *signal_testing_future_cancellation_counter_destroy(SignalMutPointerTestingFutureCancellationCounter p);
+
+SignalFfiError *signal_testing_future_cancellation_counter_wait_for_count(SignalCPromisebool *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalConstPointerTestingFutureCancellationCounter count, uint8_t target);
+
 SignalFfiError *signal_testing_future_failure(SignalCPromisei32 *promise, SignalConstPointerNonSuspendingBackgroundThreadRuntime async_runtime, uint8_t _input);
+
+SignalFfiError *signal_testing_future_increment_on_cancel(SignalCPromisebool *promise, SignalConstPointerTokioAsyncContext async_runtime, SignalConstPointerTestingFutureCancellationCounter _guard);
 
 SignalFfiError *signal_testing_future_produces_other_pointer_type(SignalCPromiseMutPointerOtherTestingHandleType *promise, SignalConstPointerNonSuspendingBackgroundThreadRuntime async_runtime, const char *input);
 
@@ -324,8 +345,6 @@ SignalFfiError *signal_testing_handle_type_clone(SignalMutPointerTestingHandleTy
 SignalFfiError *signal_testing_handle_type_destroy(SignalMutPointerTestingHandleType p);
 
 SignalFfiError *signal_testing_input_stream_read_into_zero_length_slice(SignalOwnedBuffer *out, SignalConstPointerFfiInputStreamStruct caps_alphabet_input);
-
-SignalFfiError *signal_testing_only_completes_by_cancellation(SignalCPromisebool *promise, SignalConstPointerTokioAsyncContext async_runtime);
 
 SignalFfiError *signal_testing_other_testing_handle_type_get_value(const char **out, SignalConstPointerOtherTestingHandleType handle);
 

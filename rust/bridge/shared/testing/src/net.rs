@@ -49,11 +49,6 @@ async fn TESTING_CdsiLookupResponseConvert() -> LookupResponse {
     }
 }
 
-#[bridge_io(TokioAsyncContext)]
-async fn TESTING_OnlyCompletesByCancellation() {
-    std::future::pending::<()>().await
-}
-
 macro_rules! make_error_testing_enum {
     (enum $name:ident for $orig:ident {
         $($orig_case:ident => $case:ident,)*

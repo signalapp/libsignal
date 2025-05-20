@@ -1933,6 +1933,7 @@ macro_rules! jni_arg_type {
     (CreateSession) => {
         $crate::jni::JObject<'local>
     };
+    (TestingFutureCancellationGuard) => { ::jni::sys::jlong };
 
     (Ignored<$typ:ty>) => (::jni::objects::JObject<'local>);
 }

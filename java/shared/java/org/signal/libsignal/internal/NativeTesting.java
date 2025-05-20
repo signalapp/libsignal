@@ -95,7 +95,10 @@ public final class NativeTesting {
   public static native long TESTING_FakeChatServer_Create();
   public static native CompletableFuture<Long> TESTING_FakeChatServer_GetNextRemote(long asyncRuntime, long server);
   public static native CompletableFuture<Long> TESTING_FakeRegistrationSession_CreateSession(long asyncRuntime, Object createSession, long chat);
+  public static native long TESTING_FutureCancellationCounter_Create(int initialValue);
+  public static native CompletableFuture TESTING_FutureCancellationCounter_WaitForCount(long asyncRuntime, long count, int target);
   public static native CompletableFuture<Integer> TESTING_FutureFailure(long asyncRuntime, int input);
+  public static native CompletableFuture TESTING_FutureIncrementOnCancel(long asyncRuntime, long guard);
   public static native CompletableFuture<Long> TESTING_FutureProducesOtherPointerType(long asyncRuntime, String input);
   public static native CompletableFuture<Long> TESTING_FutureProducesPointerType(long asyncRuntime, int input);
   public static native CompletableFuture<Integer> TESTING_FutureSuccess(long asyncRuntime, int input);
@@ -104,7 +107,6 @@ public final class NativeTesting {
   public static native String TESTING_JoinStringArray(Object[] array, String joinWith);
   public static native void TESTING_NonSuspendingBackgroundThreadRuntime_Destroy(long handle);
   public static native long TESTING_NonSuspendingBackgroundThreadRuntime_New();
-  public static native CompletableFuture TESTING_OnlyCompletesByCancellation(long asyncRuntime);
   public static native String TESTING_OtherTestingHandleType_getValue(long handle);
   public static native void TESTING_PanicInBodyAsync(Object input);
   public static native CompletableFuture TESTING_PanicInBodyIo(long asyncRuntime, Object input);
@@ -138,6 +140,8 @@ public final class NativeTesting {
   public static native void TESTING_SignedPublicPreKey_CheckBridgesCorrectly(long sourcePublicKey, SignedPublicPreKey signedPreKey);
   public static native int TESTING_TestingHandleType_getValue(long handle);
   public static native CompletableFuture<Integer> TESTING_TokioAsyncFuture(long asyncRuntime, int input);
+
+  public static native void TestingFutureCancellationCounter_Destroy(long handle);
 
   public static native void TestingHandleType_Destroy(long handle);
 

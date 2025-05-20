@@ -62,6 +62,50 @@ extension SignalConstPointerOtherTestingHandleType: SignalConstPointer {
     }
 }
 
+extension SignalMutPointerTestingFutureCancellationCounter: SignalMutPointer {
+    public typealias ConstPointer = SignalConstPointerTestingFutureCancellationCounter
+
+    public init(untyped: OpaquePointer?) {
+        self.init(raw: untyped)
+    }
+
+    public func toOpaque() -> OpaquePointer? {
+        self.raw
+    }
+
+    public func const() -> Self.ConstPointer {
+        Self.ConstPointer(raw: self.raw)
+    }
+}
+
+extension SignalConstPointerTestingFutureCancellationCounter: SignalConstPointer {
+    public func toOpaque() -> OpaquePointer? {
+        self.raw
+    }
+}
+
+private final class CancelCounter: NativeHandleOwner<SignalMutPointerTestingFutureCancellationCounter>, @unchecked Sendable {
+    public convenience init(initialValue: UInt8 = 0) {
+        var out = SignalMutPointerTestingFutureCancellationCounter()
+        failOnError {
+            try checkError(signal_testing_future_cancellation_counter_create(&out, initialValue))
+        }
+        self.init(owned: NonNull(out)!)
+    }
+
+    public func waitForCount(asyncContext: TokioAsyncContext, target: UInt8) async throws {
+        let _: Bool = try await asyncContext.invokeAsyncFunction { promise, asyncContext in
+            self.withNativeHandle {
+                signal_testing_future_cancellation_counter_wait_for_count(promise, asyncContext.const(), $0.const(), target)
+            }
+        }
+    }
+
+    override static func destroyNativeHandle(_ nativeHandle: NonNull<SignalMutPointerTestingFutureCancellationCounter>) -> SignalFfiErrorRef? {
+        signal_testing_future_cancellation_counter_destroy(nativeHandle.pointer)
+    }
+}
+
 final class AsyncTests: TestCaseBase {
     func testSuccess() async throws {
         let result: Int32 = try await invokeAsyncFunction {
@@ -117,8 +161,9 @@ final class AsyncTests: TestCaseBase {
         var _continuation: AsyncStream<Int>.Continuation!
         let completionStream = AsyncStream<Int> { _continuation = $0 }
         let continuation = _continuation!
+        let counter = CancelCounter()
 
-        let makeTask = { (id: Int) in
+        let makeTask = { (id: Int, counter: CancelCounter) in
             Task {
                 defer {
                     // Do this unconditionally so that the outer test procedure doesn't get stuck.
@@ -126,7 +171,9 @@ final class AsyncTests: TestCaseBase {
                 }
                 do {
                     _ = try await asyncContext.invokeAsyncFunction { promise, asyncContext in
-                        signal_testing_only_completes_by_cancellation(promise, asyncContext.const())
+                        counter.withNativeHandle { counter in
+                            signal_testing_future_increment_on_cancel(promise, asyncContext.const(), counter.const())
+                        }
                     }
                 } catch is CancellationError {
                     // Okay, expected.
@@ -135,8 +182,8 @@ final class AsyncTests: TestCaseBase {
                 }
             }
         }
-        let task1 = makeTask(1)
-        let task2 = makeTask(2)
+        let task1 = makeTask(1, counter)
+        let task2 = makeTask(2, counter)
 
         var completionIter = completionStream.makeAsyncIterator()
 
@@ -150,6 +197,8 @@ final class AsyncTests: TestCaseBase {
         task1.cancel()
         let secondCompletionId = await completionIter.next()
         XCTAssertEqual(secondCompletionId, 1)
+
+        try await counter.waitForCount(asyncContext: asyncContext, target: 2)
     }
 }
 

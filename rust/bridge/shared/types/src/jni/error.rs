@@ -271,6 +271,17 @@ impl fmt::Debug for ThrownException {
 
 impl std::error::Error for ThrownException {}
 
+/// Error output when a future is cancelled.
+#[derive(Debug, thiserror::Error)]
+#[error("the future was cancelled")]
+pub struct FutureCancelled;
+
+impl MessageOnlyExceptionJniError for FutureCancelled {
+    fn exception_class(&self) -> ClassName<'static> {
+        ClassName("java.util.concurrent.CancellationException")
+    }
+}
+
 pub trait HandleJniError<T> {
     fn check_exceptions(
         self,

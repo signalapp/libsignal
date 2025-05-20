@@ -3,6 +3,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::panic::{RefUnwindSafe, UnwindSafe};
+use std::sync::Arc;
+
 #[allow(unused_imports)]
 use libsignal_protocol::SignalProtocolError;
 
@@ -347,3 +350,74 @@ impl<'a> node::ResultTypeInfo<'a> for PanicOnReturn {
         panic!("deliberate panic");
     }
 }
+
+/// Counter for future cancellations
+pub struct TestingFutureCancellationCounter(pub(crate) Arc<tokio::sync::Semaphore>);
+
+impl UnwindSafe for TestingFutureCancellationCounter {}
+impl RefUnwindSafe for TestingFutureCancellationCounter {}
+
+/// RAII guard that increments a counter on `Drop`.
+///
+/// This is bridged as a reference to a [`TestingFutureCancellationCounter`].
+pub struct TestingFutureCancellationGuard {
+    increment_on_drop: Arc<tokio::sync::Semaphore>,
+}
+
+impl Drop for TestingFutureCancellationGuard {
+    fn drop(&mut self) {
+        self.increment_on_drop.add_permits(1);
+    }
+}
+
+#[cfg(feature = "ffi")]
+impl ffi::SimpleArgTypeInfo for TestingFutureCancellationGuard {
+    type ArgType = <&'static TestingFutureCancellationCounter as ffi::SimpleArgTypeInfo>::ArgType;
+
+    fn convert_from(foreign: Self::ArgType) -> ffi::SignalFfiResult<Self> {
+        <&TestingFutureCancellationCounter as ffi::SimpleArgTypeInfo>::convert_from(foreign).map(
+            |TestingFutureCancellationCounter(counter)| TestingFutureCancellationGuard {
+                increment_on_drop: Arc::clone(counter),
+            },
+        )
+    }
+}
+
+#[cfg(feature = "jni")]
+impl<'a> jni::SimpleArgTypeInfo<'a> for TestingFutureCancellationGuard {
+    type ArgType = <&'a TestingFutureCancellationCounter as jni::SimpleArgTypeInfo<'a>>::ArgType;
+
+    fn convert_from(
+        env: &mut jni::JNIEnv<'a>,
+        foreign: &Self::ArgType,
+    ) -> Result<Self, jni::BridgeLayerError> {
+        <&TestingFutureCancellationCounter as jni::SimpleArgTypeInfo>::convert_from(env, foreign)
+            .map(
+                |TestingFutureCancellationCounter(counter)| TestingFutureCancellationGuard {
+                    increment_on_drop: Arc::clone(counter),
+                },
+            )
+    }
+}
+
+#[cfg(feature = "node")]
+impl<'storage> node::AsyncArgTypeInfo<'storage> for TestingFutureCancellationGuard {
+    type ArgType = node::JsObject;
+    type StoredType = Option<node::DefaultFinalize<Self>>;
+    fn save_async_arg(
+        cx: &mut neon::prelude::FunctionContext,
+        foreign: neon::prelude::Handle<Self::ArgType>,
+    ) -> neon::prelude::NeonResult<Self::StoredType> {
+        <&TestingFutureCancellationCounter as node::AsyncArgTypeInfo>::save_async_arg(cx, foreign)
+            .map(move |handle| {
+                Some(node::DefaultFinalize(TestingFutureCancellationGuard {
+                    increment_on_drop: Arc::clone(&handle.0),
+                }))
+            })
+    }
+    fn load_async_arg(stored: &'storage mut Self::StoredType) -> Self {
+        stored.take().unwrap().0
+    }
+}
+
+bridge_as_handle!(TestingFutureCancellationCounter);
