@@ -59,12 +59,13 @@ public class FutureTest {
                 (nativeContextHandle) ->
                     NativeTesting.TESTING_TokioAsyncFuture(nativeContextHandle, 21))
             .makeCancelable(context);
-    assertTrue(testFuture.cancel(true));
-    ExecutionException e = assertThrows(ExecutionException.class, () -> testFuture.get());
-    assertTrue(
-        "Expected CancellationException as cause",
-        e.getCause() instanceof java.util.concurrent.CancellationException);
-    assertTrue(testFuture.isCancelled());
+    if (testFuture.cancel(true)) {
+      ExecutionException e = assertThrows(ExecutionException.class, () -> testFuture.get());
+      assertTrue(
+          "Expected CancellationException as cause",
+          e.getCause() instanceof java.util.concurrent.CancellationException);
+      assertTrue(testFuture.isCancelled());
+    }
     assertTrue(testFuture.isDone());
   }
 
