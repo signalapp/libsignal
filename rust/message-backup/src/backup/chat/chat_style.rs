@@ -583,7 +583,7 @@ mod test {
     #[test_case(|x| x.set_wallpaperPhoto(proto::FilePointer::test_data()) => Ok(()); "wallpaper photo")]
     #[test_case(
         |x| x.set_wallpaperPhoto(proto::FilePointer::default()) =>
-        Err(ChatStyleError::WallpaperPhoto(FilePointerError::NoLocator));
+        Err(ChatStyleError::WallpaperPhoto(FilePointerError::NoLocatorInfo));
         "invalid wallpaper photo"
     )]
     #[test_case(

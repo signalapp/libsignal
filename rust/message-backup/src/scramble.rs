@@ -292,6 +292,7 @@ impl Visit<Scrambler> for proto::account_data::AccountSettings {
             phoneNumberSharingMode: _,
             defaultChatStyle,
             customChatColors,
+            optimizeOnDeviceStorage: _,
             special_fields: _,
         } = self;
 
@@ -340,6 +341,7 @@ impl Visit<Scrambler> for proto::FilePointer {
             caption,
             blurHash,
             locator,
+            locatorInfo,
             special_fields: _,
         } = self;
 
@@ -350,13 +352,22 @@ impl Visit<Scrambler> for proto::FilePointer {
         blurHash.randomize(&mut visitor.rng);
 
         if let Some(loc) = locator {
-            use proto::file_pointer::Locator;
-            match loc {
-                Locator::BackupLocator(loc) => loc.accept(visitor),
-                Locator::AttachmentLocator(loc) => loc.accept(visitor),
-                Locator::LocalLocator(loc) => loc.accept(visitor),
-                Locator::InvalidAttachmentLocator(loc) => loc.accept(visitor),
-            }
+            loc.accept(visitor);
+        }
+        if let Some(loc) = locatorInfo.as_mut() {
+            loc.accept(visitor);
+        }
+    }
+}
+
+impl Visit<Scrambler> for proto::file_pointer::Locator {
+    fn accept(&mut self, visitor: &mut Scrambler) {
+        use proto::file_pointer::Locator;
+        match self {
+            Locator::BackupLocator(loc) => loc.accept(visitor),
+            Locator::AttachmentLocator(loc) => loc.accept(visitor),
+            Locator::LocalLocator(loc) => loc.accept(visitor),
+            Locator::InvalidAttachmentLocator(loc) => loc.accept(visitor),
         }
     }
 }
@@ -421,6 +432,33 @@ impl Visit<Scrambler> for proto::file_pointer::LocalLocator {
         remoteDigest.randomize(&mut visitor.rng);
         let is_thumbnail = mediaName.ends_with("_thumbnail");
         *mediaName = hex::encode(remoteDigest);
+        if is_thumbnail {
+            mediaName.push_str("_thumbnail");
+        }
+        transitCdnKey.randomize(&mut visitor.rng);
+    }
+}
+
+impl Visit<Scrambler> for proto::file_pointer::LocatorInfo {
+    fn accept(&mut self, visitor: &mut Scrambler) {
+        let Self {
+            key,
+            digest,
+            size: _,
+            transitCdnKey,
+            transitCdnNumber: _,
+            transitTierUploadTimestamp: _,
+            mediaTierCdnNumber: _,
+            mediaName,
+            localKey,
+            special_fields: _,
+        } = self;
+
+        localKey.randomize(&mut visitor.rng);
+        key.randomize(&mut visitor.rng);
+        digest.randomize(&mut visitor.rng);
+        let is_thumbnail = mediaName.ends_with("_thumbnail");
+        *mediaName = hex::encode(digest);
         if is_thumbnail {
             mediaName.push_str("_thumbnail");
         }

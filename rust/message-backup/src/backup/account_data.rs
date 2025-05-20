@@ -123,6 +123,7 @@ pub struct AccountSettings<M: Method + ReferencedTypes> {
     pub preferred_reaction_emoji: M::Value<Vec<String>>,
     pub default_chat_style: M::Value<Option<ChatStyle<M>>>,
     pub custom_chat_colors: CustomColorMap<M>,
+    pub optimize_on_device_storage: M::Value<bool>,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, serde::Serialize)]
@@ -361,6 +362,7 @@ impl<M: Method + ReferencedTypes, C: ReportUnusualTimestamp>
             preferredReactionEmoji,
             defaultChatStyle,
             customChatColors,
+            optimizeOnDeviceStorage,
             special_fields: _,
         } = value;
 
@@ -403,6 +405,7 @@ impl<M: Method + ReferencedTypes, C: ReportUnusualTimestamp>
             has_completed_username_onboarding: M::value(hasCompletedUsernameOnboarding),
             preferred_reaction_emoji: M::value(preferredReactionEmoji),
             universal_expire_timer: M::value(universal_expire_timer),
+            optimize_on_device_storage: M::value(optimizeOnDeviceStorage),
         })
     }
 }
@@ -460,6 +463,7 @@ mod test {
                     special_fields: Default::default(),
                 })
                 .into(),
+                optimizeOnDeviceStorage: true,
                 ..Default::default()
             }
         }
@@ -536,6 +540,7 @@ mod test {
                     universal_expire_timer: None,
                     preferred_reaction_emoji: vec![],
                     custom_chat_colors: CustomColorMap::from_proto_test_data(),
+                    optimize_on_device_storage: true,
                 },
                 avatar_url_path: "".to_string(),
                 backup_subscription: Some(IapSubscriberData {

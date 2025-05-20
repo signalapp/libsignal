@@ -38,7 +38,8 @@
         "🏎️"
       ],
       "default_chat_style": null,
-      "custom_chat_colors": {}
+      "custom_chat_colors": {},
+      "optimize_on_device_storage": false
     },
     "avatar_url_path": "",
     "donation_subscription": {

@@ -216,7 +216,7 @@ mod test {
     #[test_case(|x| x.data = None.into() => Err(MessageStickerError::MissingDataPointer); "no data")]
     #[test_case(
         |x| x.data = Some(proto::FilePointer::default()).into() =>
-        Err(MessageStickerError::DataPointer(FilePointerError::NoLocator));
+        Err(MessageStickerError::DataPointer(FilePointerError::NoLocatorInfo));
         "invalid data"
     )]
     fn message_sticker(mutator: fn(&mut proto::Sticker)) -> Result<(), MessageStickerError> {

@@ -157,7 +157,7 @@ mod test {
         "invalid text"
     )]
     #[test_case(|x| x.mut_textReply().longText = Some(proto::FilePointer::test_data()).into() => Ok(()); "long text")]
-    #[test_case(|x| x.mut_textReply().longText = Some(Default::default()).into() => Err(DirectStoryReplyError::LongText(FilePointerError::NoLocator)); "invalid long text")]
+    #[test_case(|x| x.mut_textReply().longText = Some(Default::default()).into() => Err(DirectStoryReplyError::LongText(FilePointerError::NoLocatorInfo)); "invalid long text")]
     #[test_case(|x| *x.mut_emoji() = "".into() => Err(DirectStoryReplyError::EmptyEmoji); "empty emoji")]
     #[test_case(|x| *x.mut_emoji() = "x".into() => Ok(()); "valid emoji")]
     #[test_case(|x| x.reactions.clear() => Ok(()); "no reactions")]

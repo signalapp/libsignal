@@ -264,7 +264,7 @@ mod test {
     #[test_case(
         |x| x.contact.as_mut().unwrap().avatar = Some(proto::FilePointer::default()).into() =>
         Err(ChatItemError::ContactAttachment(ContactAttachmentError::Avatar(
-            FilePointerError::NoLocator
+            FilePointerError::NoLocatorInfo
         )));
         "with invalid avatar"
     )]

@@ -92,7 +92,7 @@ mod test {
     #[test_case(|x| x.title = None => Ok(()); "no title")]
     #[test_case(|x| x.title = Some("".into()) => Ok(()); "empty title")]
     #[test_case(|x| x.image = None.into() => Ok(()); "no image")]
-    #[test_case(|x| x.image = Some(proto::FilePointer::default()).into() => Err(LinkPreviewError::Image(FilePointerError::NoLocator)); "invalid image")]
+    #[test_case(|x| x.image = Some(proto::FilePointer::default()).into() => Err(LinkPreviewError::Image(FilePointerError::NoLocatorInfo)); "invalid image")]
     #[test_case(|x| x.description = None => Ok(()); "no description")]
     #[test_case(|x| x.description = Some("".into()) => Ok(()); "empty description")]
     #[test_case(
