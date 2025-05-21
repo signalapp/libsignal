@@ -247,12 +247,13 @@ public class RegistrationServiceTest {
   @Test
   public void testFakeRemoteCreateSession() throws ExecutionException, InterruptedException {
     var tokio = new TokioAsyncContext();
-    var serverAndCreateSession =
+    var fakeServer = new FakeChatServer(tokio);
+    var createSession =
         RegistrationService.fakeCreateSession(
-            tokio,
+            fakeServer,
             new RegistrationService.CreateSession("+18005550123", "myPushToken", null, null));
 
-    var fakeRemote = serverAndCreateSession.first().getNextRemote().get();
+    var fakeRemote = fakeServer.getNextRemote().get();
     var firstRequestAndId = fakeRemote.getNextIncomingRequest().get();
     assertNotNull(firstRequestAndId);
     var firstRequest = firstRequestAndId.first();
@@ -275,7 +276,7 @@ public class RegistrationServiceTest {
         """
             .getBytes());
 
-    var session = serverAndCreateSession.second().get();
+    var session = createSession.get();
     assertEquals(session.getSessionId(), "fake-session-A");
 
     var sessionState = session.getSessionState();
@@ -328,12 +329,13 @@ public class RegistrationServiceTest {
   public void testFakeRemoteRegisterAccount()
       throws ExecutionException, InterruptedException, ParseException {
     var tokio = new TokioAsyncContext();
-    var serverAndCreateSession =
+    var fakeServer = new FakeChatServer(tokio);
+    var createSession =
         RegistrationService.fakeCreateSession(
-            tokio,
+            fakeServer,
             new RegistrationService.CreateSession("+18005550123", "myPushToken", null, null));
 
-    var fakeRemote = serverAndCreateSession.first().getNextRemote().get();
+    var fakeRemote = fakeServer.getNextRemote().get();
     var firstRequestAndId = fakeRemote.getNextIncomingRequest().get();
     assertNotNull(firstRequestAndId);
 
@@ -353,7 +355,7 @@ public class RegistrationServiceTest {
         """
             .getBytes());
 
-    var session = serverAndCreateSession.second().get();
+    var session = createSession.get();
     assertEquals("fake-session-A", session.getSessionId());
 
     var unidentifiedAccessKey = new byte[16];

@@ -7,7 +7,12 @@ package org.signal.libsignal.net;
 
 import org.signal.libsignal.internal.CalledFromNative;
 
-/** The session ID is not valid. */
+/**
+ * The session ID is not valid.
+ *
+ * <p>Thrown when attempting to make a request, or when a response is received with a structurally
+ * invalid validation session ID.
+ */
 public class RegistrationSessionIdInvalidException extends RegistrationException {
   @CalledFromNative
   public RegistrationSessionIdInvalidException(String message) {

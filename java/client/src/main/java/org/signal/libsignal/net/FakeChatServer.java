@@ -22,6 +22,10 @@ class FakeChatServer extends NativeHandleGuard.SimpleOwner {
     this.tokioContext = tokioContext;
   }
 
+  public TokioAsyncContext getTokioContext() {
+    return this.tokioContext;
+  }
+
   public CompletableFuture<FakeChatRemote> getNextRemote() {
     return tokioContext
         .guardedMap(

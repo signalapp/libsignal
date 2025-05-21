@@ -8,6 +8,12 @@ package org.signal.libsignal.net;
 import java.time.Duration;
 import org.signal.libsignal.internal.CalledFromNative;
 
+/**
+ * Thrown when a registration request is made for an account that has registration lock enabled.
+ *
+ * <p>When the websocket transport is in use, this corresponds to a {@code HTTP 423} response to a
+ * POST request to {@code /v1/registration}.
+ */
 public class RegistrationLockException extends RegistrationException {
   private Duration timeRemaining;
   private String svr2Username;
@@ -22,14 +28,17 @@ public class RegistrationLockException extends RegistrationException {
     this.svr2Password = svr2Password;
   }
 
+  /** Time remaining before the existing registration lock expires. */
   public Duration getTimeRemaining() {
     return this.timeRemaining;
   }
 
+  /** SVR username to use to recover the secret used to derive the registration lock password. */
   public String getSvr2Username() {
     return this.svr2Username;
   }
 
+  /** SVR password to use to recover the secret used to derive the registration lock password. */
   public String getSvr2Password() {
     return this.svr2Password;
   }
