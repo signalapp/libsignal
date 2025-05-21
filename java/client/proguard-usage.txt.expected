@@ -8,11 +8,11 @@ org.signal.libsignal.metadata.SealedSessionCipher:
 org.signal.libsignal.metadata.certificate.CertificateValidator:
     41:48:void validate(org.signal.libsignal.metadata.certificate.ServerCertificate)
 org.signal.libsignal.net.ChatConnection$InternalRequest:
-    217:217:public java.lang.String getMethod()
-    221:221:public java.lang.String getPathAndQuery()
-    225:225:public byte[] getBody()
-    229:237:public java.util.Map getHeaders()
-    235:235:private static synthetic java.lang.String lambda$getHeaders$2(java.lang.String,long)
+    218:218:public java.lang.String getMethod()
+    222:222:public java.lang.String getPathAndQuery()
+    226:226:public byte[] getBody()
+    230:238:public java.util.Map getHeaders()
+    236:236:private static synthetic java.lang.String lambda$getHeaders$2(java.lang.String,long)
 org.signal.libsignal.net.FakeChatRemote:
     24:31:public org.signal.libsignal.internal.CompletableFuture getNextIncomingRequest()
     47:62:public void sendResponse(long,int,java.lang.String,java.lang.String[],byte[])
