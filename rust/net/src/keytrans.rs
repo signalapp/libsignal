@@ -24,7 +24,7 @@ use libsignal_keytrans::{
     MonitoringData, SearchContext, SearchStateUpdate, SlimSearchRequest, VerifiedSearchResult,
 };
 use libsignal_protocol::{IdentityKey, PublicKey};
-use prost::{DecodeError, Message};
+use prost::Message;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -57,14 +57,6 @@ pub enum Error {
     InvalidResponse(String),
     /// Invalid request: {0}
     InvalidRequest(&'static str),
-    /// Invalid protobuf: {0}
-    DecodingFailed(DecodeError),
-}
-
-impl From<DecodeError> for Error {
-    fn from(err: DecodeError) -> Self {
-        Error::DecodingFailed(err)
-    }
 }
 
 type Result<T> = std::result::Result<T, Error>;

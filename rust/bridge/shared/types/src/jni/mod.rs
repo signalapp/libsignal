@@ -838,8 +838,7 @@ impl MessageOnlyExceptionJniError for KeyTransNetError {
             KeyTransNetError::RequestFailed(_)
             | KeyTransNetError::VerificationFailed(_)
             | KeyTransNetError::InvalidResponse(_)
-            | KeyTransNetError::InvalidRequest(_)
-            | KeyTransNetError::DecodingFailed(_) => {
+            | KeyTransNetError::InvalidRequest(_) => {
                 ClassName("org.signal.libsignal.net.KeyTransparencyException")
             }
         }

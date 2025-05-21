@@ -70,13 +70,15 @@ async fn KeyTransparency_Search(
 
     let account_data = account_data
         .map(|bytes| {
-            let stored: StoredAccountData = try_decode(bytes)?;
+            let stored: StoredAccountData = try_decode(bytes)
+                .map_err(|_| Error::InvalidRequest("could not decode account data"))?;
             AccountData::try_from(stored).map_err(Error::from)
         })
         .transpose()?;
 
     let last_distinguished_tree_head = try_decode(last_distinguished_tree_head)
-        .map(|stored: StoredTreeHead| stored.into_last_tree_head())?
+        .map(|stored: StoredTreeHead| stored.into_last_tree_head())
+        .map_err(|_| Error::InvalidRequest("could not decode last distingushed tree head"))?
         .ok_or(Error::InvalidRequest("last distinguished tree is required"))?;
 
     let MaybePartial {
@@ -126,12 +128,14 @@ async fn KeyTransparency_Monitor(
     };
 
     let account_data = {
-        let stored: StoredAccountData = try_decode(account_data)?;
+        let stored: StoredAccountData = try_decode(account_data)
+            .map_err(|_| Error::InvalidRequest("could not decode account data"))?;
         AccountData::try_from(stored).map_err(Error::from)?
     };
 
     let last_distinguished_tree_head = try_decode(last_distinguished_tree_head)
-        .map(|stored: StoredTreeHead| stored.into_last_tree_head())?
+        .map(|stored: StoredTreeHead| stored.into_last_tree_head())
+        .map_err(|_| Error::InvalidRequest("could not decode last distinguished tree head"))?
         .ok_or(Error::InvalidRequest("last distinguished tree is required"))?;
 
     let config = environment
@@ -182,7 +186,8 @@ async fn KeyTransparency_Distinguished(
 
     let known_distinguished = last_distinguished_tree_head
         .map(try_decode)
-        .transpose()?
+        .transpose()
+        .map_err(|_| Error::InvalidRequest("could not decode account data"))?
         .and_then(|stored: StoredTreeHead| stored.into_last_tree_head());
     let LocalStateUpdate {
         tree_head,
