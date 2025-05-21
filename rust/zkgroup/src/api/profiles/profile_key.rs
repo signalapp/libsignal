@@ -64,31 +64,6 @@ impl ProfileKey {
         }
     }
 
-    pub fn get_profile_key_version(
-        &self,
-        user_id: libsignal_core::Aci,
-    ) -> api::profiles::ProfileKeyVersion {
-        let uid_bytes = uuid::Uuid::from(user_id).into_bytes();
-        let mut combined_array = [0u8; PROFILE_KEY_LEN + UUID_LEN];
-        combined_array[..PROFILE_KEY_LEN].copy_from_slice(&self.bytes);
-        combined_array[PROFILE_KEY_LEN..].copy_from_slice(&uid_bytes);
-        let mut sho = Sho::new(
-            b"Signal_ZKGroup_20200424_ProfileKeyAndUid_ProfileKey_GetProfileKeyVersion",
-            &combined_array,
-        );
-
-        let mut pkv_hex_array: [u8; PROFILE_KEY_VERSION_ENCODED_LEN] =
-            [0u8; PROFILE_KEY_VERSION_ENCODED_LEN];
-        hex::encode_to_slice(
-            sho.squeeze_as_array::<PROFILE_KEY_VERSION_LEN>(),
-            &mut pkv_hex_array,
-        )
-        .expect("lengths match");
-        api::profiles::ProfileKeyVersion {
-            bytes: pkv_hex_array,
-        }
-    }
-
     pub fn derive_access_key(&self) -> [u8; ACCESS_KEY_LEN] {
         let nonce = &[0u8; AESGCM_NONCE_LEN];
         let mut cipher = Aes256GcmEncryption::new(&self.bytes, nonce, &[]).unwrap();

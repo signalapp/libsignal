@@ -19,6 +19,7 @@ pub type SignatureBytes = [u8; SIGNATURE_LEN];
 pub type NotarySignatureBytes = [u8; SIGNATURE_LEN];
 pub type GroupIdentifierBytes = [u8; GROUP_IDENTIFIER_LEN];
 pub type ProfileKeyVersionBytes = [u8; PROFILE_KEY_VERSION_LEN];
+// TODO: Use ascii::Char when stable (the "encoding" is hex)
 pub type ProfileKeyVersionEncodedBytes = [u8; PROFILE_KEY_VERSION_ENCODED_LEN];
 
 // A random UUID that the receipt issuing server will blind authorize to redeem a given receipt
