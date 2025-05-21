@@ -98,10 +98,30 @@ $ cargo +stable install --version "$(cat ../.taplo-cli-version)" --locked taplo-
 
 ## Java/Android
 
+### Toolchain Setup / Configuration
+
 To build for Android you must install several additional packages including a JDK,
 the Android NDK/SDK, and add the Android targets to the Rust compiler, using
 
 ```rustup target add armv7-linux-androideabi aarch64-linux-android i686-linux-android x86_64-linux-android```
+
+Our officially supported JDK version for Android builds is JDK 17, so be sure to install e.g. OpenJDK 17, and then point JAVA_HOME to it.
+
+You can easily do this on macOS via:
+
+```shell
+export JAVA_HOME=$(/usr/libexec/java_home -v 17)
+```
+
+On Linux, the way you do this varies by distribution. For Debian based distributions like Ubuntu, you can use:
+
+```shell
+sudo update-alternatives --config java
+```
+
+We also check-in a `.tools_version` file for use with runtime version managers.
+
+### Building and Testing
 
 To build the Java/Android ``jar`` and ``aar``, and run the tests:
 
