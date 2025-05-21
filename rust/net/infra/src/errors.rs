@@ -9,7 +9,7 @@ use std::time::Duration;
 use http::{HeaderName, HeaderValue};
 use tokio_boring_signal::HandshakeError;
 
-use crate::{certs, AsHttpHeader};
+use crate::{certs, AsStaticHttpHeader};
 
 pub trait LogSafeDisplay: Display {}
 
@@ -114,7 +114,7 @@ impl RetryLater {
     }
 }
 
-impl AsHttpHeader for RetryLater {
+impl AsStaticHttpHeader for RetryLater {
     const HEADER_NAME: HeaderName = HeaderName::from_static("retry-after");
 
     fn header_value(&self) -> HeaderValue {

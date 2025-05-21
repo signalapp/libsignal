@@ -20,7 +20,8 @@ use libsignal_net_infra::timeouts::ONE_ROUTE_CONNECTION_TIMEOUT;
 use libsignal_net_infra::utils::NetworkChangeEvent;
 use libsignal_net_infra::ws::StreamWithResponseHeaders;
 use libsignal_net_infra::{
-    make_ws_config, AsHttpHeader, Connection, EndpointConnection, IpType, TransportInfo,
+    make_ws_config, AsHttpHeader as _, AsStaticHttpHeader, Connection, EndpointConnection, IpType,
+    TransportInfo,
 };
 use tokio_tungstenite::WebSocketStream;
 
@@ -128,7 +129,7 @@ impl From<ResponseProtoInvalidError> for SendError {
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, derive_more::From)]
 pub struct ReceiveStories(bool);
 
-impl AsHttpHeader for ReceiveStories {
+impl AsStaticHttpHeader for ReceiveStories {
     const HEADER_NAME: HeaderName = HeaderName::from_static(RECEIVE_STORIES_HEADER_NAME);
 
     fn header_value(&self) -> HeaderValue {

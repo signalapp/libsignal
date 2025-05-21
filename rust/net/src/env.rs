@@ -21,7 +21,7 @@ use libsignal_net_infra::route::{
     HttpsProvider, TlsRouteProvider,
 };
 use libsignal_net_infra::{
-    AsHttpHeader, ConnectionParams, DnsSource, EnableDomainFronting, HttpRequestDecorator,
+    AsStaticHttpHeader, ConnectionParams, DnsSource, EnableDomainFronting, HttpRequestDecorator,
     HttpRequestDecoratorSeq, RouteType, TransportConnectionParams,
 };
 use nonzero_ext::nonzero;
@@ -393,7 +393,7 @@ impl UserAgent {
     }
 }
 
-impl AsHttpHeader for UserAgent {
+impl AsStaticHttpHeader for UserAgent {
     const HEADER_NAME: http::HeaderName = http::header::USER_AGENT;
 
     fn header_value(&self) -> HeaderValue {
@@ -405,10 +405,8 @@ pub fn add_user_agent_header(
     mut connection_params_list: Vec<ConnectionParams>,
     agent: &UserAgent,
 ) -> Vec<ConnectionParams> {
-    let (name, value) = agent.as_header();
     connection_params_list.iter_mut().for_each(|cp| {
-        cp.http_request_decorator
-            .add(HttpRequestDecorator::header(name.clone(), value.clone()));
+        cp.http_request_decorator.add(agent.into());
     });
     connection_params_list
 }

@@ -523,7 +523,7 @@ mod test {
     use libsignal_net_infra::ws2::attested::testutil::{
         run_attested_server, AttestedServerOutput, FAKE_ATTESTATION,
     };
-    use libsignal_net_infra::{AsHttpHeader as _, EnableDomainFronting};
+    use libsignal_net_infra::{AsStaticHttpHeader as _, EnableDomainFronting};
     use nonzero_ext::nonzero;
     use tokio_stream::wrappers::UnboundedReceiverStream;
     use tungstenite::protocol::frame::coding::CloseCode;

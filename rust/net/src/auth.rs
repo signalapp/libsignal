@@ -7,7 +7,7 @@ use std::time::SystemTime;
 
 use hmac::{Hmac, Mac};
 use libsignal_net_infra::utils::basic_authorization;
-use libsignal_net_infra::AsHttpHeader;
+use libsignal_net_infra::AsStaticHttpHeader;
 use sha2::Sha256;
 
 /// Generic username/password combination.
@@ -48,7 +48,7 @@ impl Auth {
     }
 }
 
-impl<S: Deref<Target = str>> AsHttpHeader for Auth<S> {
+impl<S: Deref<Target = str>> AsStaticHttpHeader for Auth<S> {
     const HEADER_NAME: http::HeaderName = http::header::AUTHORIZATION;
     fn header_value(&self) -> http::HeaderValue {
         let Self { username, password } = self;

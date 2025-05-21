@@ -28,7 +28,7 @@ use crate::route::{
     HttpsProxyRoute, ProxyTarget,
 };
 use crate::ws::error::HttpFormatError;
-use crate::{AsHttpHeader, AsyncDuplexStream, Connection, TransportInfo};
+use crate::{AsHttpHeader as _, AsStaticHttpHeader, AsyncDuplexStream, Connection, TransportInfo};
 
 pub(crate) const LONG_FULL_CONNECT_THRESHOLD: Duration = super::LONG_TCP_HANDSHAKE_THRESHOLD
     .saturating_add(super::LONG_TLS_HANDSHAKE_THRESHOLD)
@@ -224,7 +224,7 @@ fn make_connect_request(
         .map_err(ConnectError::InvalidRequest)
 }
 
-impl AsHttpHeader for HttpProxyAuth {
+impl AsStaticHttpHeader for HttpProxyAuth {
     const HEADER_NAME: http::HeaderName = http::header::PROXY_AUTHORIZATION;
 
     fn header_value(&self) -> http::HeaderValue {
@@ -339,7 +339,7 @@ mod test {
                     return Ok(res);
                 };
 
-                let expected_auth = expected_auth.as_ref().map(|h| h.as_header().1);
+                let expected_auth = expected_auth.as_ref().map(|h| h.header_value());
                 let auth = req.headers().get(HttpProxyAuth::HEADER_NAME);
                 if auth != expected_auth.as_ref() {
                     log::error!("auth header mismatch; expected {expected_auth:?}, got {auth:?}");
