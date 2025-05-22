@@ -33,6 +33,7 @@ public class CompletableFuture<T> implements Future<T> {
   private Optional<TokioAsyncContext> runtime = Optional.empty();
   private Optional<Long> cancellationId = Optional.empty();
 
+  @CalledFromNative
   public CompletableFuture() {
     this.consumers = new ArrayList<>();
   }
