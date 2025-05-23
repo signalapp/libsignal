@@ -460,24 +460,10 @@ pub struct CallFrameError {
     error: CallError,
 }
 
-/// Like [`TryFrom`] but with an extra context argument.
-///
-/// Implements fallible conversions from `T` into `Self` with an additional
-/// "context" argument.
-trait TryFromWith<T, C: ?Sized>: Sized {
-    type Error;
-
-    /// Uses additional context to convert `item` into an instance of `Self`.
-    ///
-    /// If the lookup fails, an instance of `Self::Error` is returned.
-    fn try_from_with(item: T, context: &C) -> Result<Self, Self::Error>;
-}
-
 /// Like [`TryInto`] but with an extra context argument.
 ///
-/// This trait is blanket-implemented for types that implement [`TryFromWith`].
-/// Its only purpose is to offer the more convenient `x.try_into_with(c)` as
-/// opposed to `Y::try_from_with(x, c)`.
+/// Implements fallible conversions from `Self` into `T` with an additional
+/// "context" argument.
 trait TryIntoWith<T, C: ?Sized>: Sized {
     type Error;
 
@@ -485,13 +471,6 @@ trait TryIntoWith<T, C: ?Sized>: Sized {
     ///
     /// If the lookup fails, an instance of `Self::Error` is returned.
     fn try_into_with(self, context: &C) -> Result<T, Self::Error>;
-}
-
-impl<A, B: TryFromWith<A, C>, C: ?Sized> TryIntoWith<B, C> for A {
-    type Error = B::Error;
-    fn try_into_with(self, context: &C) -> Result<B, Self::Error> {
-        B::try_from_with(self, context)
-    }
 }
 
 #[derive(Debug, displaydoc::Display, thiserror::Error)]
@@ -697,8 +676,7 @@ impl<M: Method + ReferencedTypes> PartialBackup<M> {
             return Err(err_with_id(RecipientError::InvalidId));
         }
 
-        let recipient =
-            recipient::Destination::try_from_with(recipient, self).map_err(err_with_id)?;
+        let recipient = recipient.try_into_with(self).map_err(err_with_id)?;
 
         match self.recipients.entry(id) {
             intmap::Entry::Occupied(_) => Err(err_with_id(RecipientError::DuplicateRecipient)),

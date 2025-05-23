@@ -11,7 +11,7 @@ use crate::backup::method::LookupPair;
 use crate::backup::recipient::{DestinationKind, MinimalRecipientData};
 use crate::backup::serialize::{SerializeOrder, UnorderedList};
 use crate::backup::time::{ReportUnusualTimestamp, Timestamp, TimestampError};
-use crate::backup::{TryFromWith, TryIntoWith};
+use crate::backup::TryIntoWith;
 use crate::proto::backup as proto;
 
 /// Validated version of [`proto::Reaction`].
@@ -55,18 +55,18 @@ pub enum ReactionError {
 }
 
 impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusualTimestamp>
-    TryFromWith<proto::Reaction, C> for Reaction<R>
+    TryIntoWith<Reaction<R>, C> for proto::Reaction
 {
     type Error = ReactionError;
 
-    fn try_from_with(item: proto::Reaction, context: &C) -> Result<Self, Self::Error> {
+    fn try_into_with(self, context: &C) -> Result<Reaction<R>, Self::Error> {
         let proto::Reaction {
             authorId,
             sentTimestamp,
             emoji,
             sortOrder,
             special_fields: _,
-        } = item;
+        } = self;
 
         if emoji.is_empty() {
             return Err(ReactionError::EmptyEmoji);
@@ -100,7 +100,7 @@ impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusu
         let sent_timestamp =
             Timestamp::from_millis(sentTimestamp, "Reaction.sentTimestamp", context)?;
 
-        Ok(Self {
+        Ok(Reaction {
             emoji,
             sort_order: sortOrder,
             author,
@@ -118,15 +118,15 @@ pub struct ReactionSet<Recipient> {
 }
 
 impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusualTimestamp>
-    TryFromWith<Vec<proto::Reaction>, C> for ReactionSet<R>
+    TryIntoWith<ReactionSet<R>, C> for Vec<proto::Reaction>
 {
     type Error = ReactionError;
 
-    fn try_from_with(items: Vec<proto::Reaction>, context: &C) -> Result<Self, Self::Error> {
-        let mut existing = IntMap::with_capacity(items.len());
-        let mut reactions = Vec::with_capacity(items.len());
+    fn try_into_with(self, context: &C) -> Result<ReactionSet<R>, Self::Error> {
+        let mut existing = IntMap::with_capacity(self.len());
+        let mut reactions = Vec::with_capacity(self.len());
 
-        for item in items {
+        for item in self {
             let author_id = RecipientId(item.authorId);
             if existing.insert(author_id, ()).is_some() {
                 return Err(ReactionError::MultipleReactions(author_id));
@@ -134,7 +134,7 @@ impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusu
             reactions.push(item.try_into_with(context)?);
         }
 
-        Ok(Self {
+        Ok(ReactionSet {
             reactions: reactions.into(),
         })
     }
@@ -247,26 +247,22 @@ mod test {
     #[test]
     fn duplicate_reactions_are_rejected() {
         assert_matches!(
-            ReactionSet::try_from_with(
-                vec![proto::Reaction::test_data(), proto::Reaction::test_data()],
-                &TestContext::default(),
-            ),
+            vec![proto::Reaction::test_data(), proto::Reaction::test_data()]
+                .try_into_with(&TestContext::default()),
             Err(ReactionError::MultipleReactions(TestContext::SELF_ID))
         );
 
         // Note that having the same sort order is okay. Some clients use timestamps as sort order
         // and it's possible for those to be identical.
         assert_matches!(
-            ReactionSet::try_from_with(
-                vec![
-                    proto::Reaction::test_data(),
-                    proto::Reaction {
-                        authorId: TestContext::CONTACT_ID.0,
-                        ..proto::Reaction::test_data()
-                    }
-                ],
-                &TestContext::default(),
-            ),
+            vec![
+                proto::Reaction::test_data(),
+                proto::Reaction {
+                    authorId: TestContext::CONTACT_ID.0,
+                    ..proto::Reaction::test_data()
+                }
+            ]
+            .try_into_with(&TestContext::default()),
             Ok(_)
         );
     }

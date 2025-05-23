@@ -5,7 +5,7 @@
 
 use crate::backup::file::{FilePointer, FilePointerError};
 use crate::backup::time::{ReportUnusualTimestamp, Timestamp, TimestampError};
-use crate::backup::TryFromWith;
+use crate::backup::TryIntoWith;
 use crate::proto::backup as proto;
 
 #[derive(Debug, serde::Serialize)]
@@ -29,10 +29,10 @@ pub enum LinkPreviewError {
     InvalidTimestamp(#[from] TimestampError),
 }
 
-impl<C: ReportUnusualTimestamp> TryFromWith<proto::LinkPreview, C> for LinkPreview {
+impl<C: ReportUnusualTimestamp> TryIntoWith<LinkPreview, C> for proto::LinkPreview {
     type Error = LinkPreviewError;
 
-    fn try_from_with(value: proto::LinkPreview, context: &C) -> Result<Self, Self::Error> {
+    fn try_into_with(self, context: &C) -> Result<LinkPreview, Self::Error> {
         let proto::LinkPreview {
             url,
             title,
@@ -40,7 +40,7 @@ impl<C: ReportUnusualTimestamp> TryFromWith<proto::LinkPreview, C> for LinkPrevi
             description,
             date,
             special_fields: _,
-        } = value;
+        } = self;
 
         if url.is_empty() {
             return Err(LinkPreviewError::EmptyUrl);
@@ -52,11 +52,11 @@ impl<C: ReportUnusualTimestamp> TryFromWith<proto::LinkPreview, C> for LinkPrevi
 
         let image = image
             .into_option()
-            .map(|file| FilePointer::try_from_with(file, context))
+            .map(|file| file.try_into_with(context))
             .transpose()
             .map_err(LinkPreviewError::Image)?;
 
-        Ok(Self {
+        Ok(LinkPreview {
             url,
             title,
             image,
@@ -105,6 +105,6 @@ mod test {
     ) -> Result<(), LinkPreviewError> {
         let mut locator = proto::LinkPreview::test_data();
         modifier(&mut locator);
-        LinkPreview::try_from_with(locator, &TestContext::default()).map(|_| ())
+        locator.try_into_with(&TestContext::default()).map(|_| ())
     }
 }

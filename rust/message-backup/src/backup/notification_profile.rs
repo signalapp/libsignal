@@ -16,7 +16,7 @@ use crate::backup::method::LookupPair;
 use crate::backup::recipient::{DestinationKind, MinimalRecipientData};
 use crate::backup::serialize::{SerializeOrder, UnorderedList};
 use crate::backup::time::{ReportUnusualTimestamp, Timestamp, TimestampError};
-use crate::backup::{Color, ColorError, TryFromWith};
+use crate::backup::{Color, ColorError, TryIntoWith};
 use crate::proto::backup as proto;
 
 /// Validated version of [`proto::NotificationProfile`].
@@ -68,10 +68,10 @@ pub enum NotificationProfileError {
 }
 
 impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusualTimestamp>
-    TryFromWith<proto::NotificationProfile, C> for NotificationProfile<R>
+    TryIntoWith<NotificationProfile<R>, C> for proto::NotificationProfile
 {
     type Error = NotificationProfileError;
-    fn try_from_with(item: proto::NotificationProfile, context: &C) -> Result<Self, Self::Error> {
+    fn try_into_with(self, context: &C) -> Result<NotificationProfile<R>, Self::Error> {
         let proto::NotificationProfile {
             name,
             emoji,
@@ -86,7 +86,7 @@ impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusu
             allowedMembers,
             id,
             special_fields: _,
-        } = item;
+        } = self;
 
         if name.is_empty() {
             return Err(NotificationProfileError::MissingName);
@@ -146,7 +146,7 @@ impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusu
             .try_into()
             .map_err(|_| NotificationProfileError::InvalidId)?;
 
-        Ok(Self {
+        Ok(NotificationProfile {
             name,
             emoji,
             color,
@@ -241,7 +241,6 @@ mod test {
     use crate::backup::recipient::FullRecipientData;
     use crate::backup::testutil::TestContext;
     use crate::backup::time::testutil::MillisecondsSinceEpoch;
-    use crate::backup::TryIntoWith as _;
 
     impl proto::NotificationProfile {
         const NOTIFICATION_PROFILE_ID: [u8; 16] = [0xa1; 16];

@@ -9,7 +9,7 @@ use crate::backup::frame::RecipientId;
 use crate::backup::method::LookupPair;
 use crate::backup::recipient::{ChatItemAuthorKind, ChatRecipientKind, MinimalRecipientData, E164};
 use crate::backup::time::{Duration, ReportUnusualTimestamp};
-use crate::backup::{TryFromWith, TryIntoWith as _};
+use crate::backup::TryIntoWith;
 use crate::proto::backup as proto;
 
 /// Validated version of [`proto::chat_update_message::Update`].
@@ -50,15 +50,15 @@ pub enum SimpleChatUpdate {
 }
 
 impl<C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusualTimestamp, R: Clone>
-    TryFromWith<proto::ChatUpdateMessage, C> for UpdateMessage<R>
+    TryIntoWith<UpdateMessage<R>, C> for proto::ChatUpdateMessage
 {
     type Error = ChatItemError;
 
-    fn try_from_with(item: proto::ChatUpdateMessage, context: &C) -> Result<Self, Self::Error> {
+    fn try_into_with(self, context: &C) -> Result<UpdateMessage<R>, Self::Error> {
         let proto::ChatUpdateMessage {
             update,
             special_fields: _,
-        } = item;
+        } = self;
 
         let update = update.ok_or(ChatItemError::UpdateIsEmpty)?;
 
@@ -171,7 +171,7 @@ impl<C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusualTimestam
 
 impl<R> UpdateMessage<R> {
     // This could be folded into the initial creation of the message,
-    // but then it wouldn't fit the TryFromWith signature (or would require a tuple).
+    // but then it wouldn't fit the TryIntoWith signature (or would require a tuple).
     pub(super) fn validate_author(&self, author: &ChatItemAuthorKind) -> Result<(), ChatItemError> {
         match self {
             UpdateMessage::Simple(
@@ -458,10 +458,7 @@ mod test {
     #[test]
     fn chat_update_message_no_item() {
         assert_matches!(
-            UpdateMessage::try_from_with(
-                proto::ChatUpdateMessage::default(),
-                &TestContext::default()
-            ),
+            proto::ChatUpdateMessage::default().try_into_with(&TestContext::default()),
             Err(ChatItemError::UpdateIsEmpty)
         );
     }

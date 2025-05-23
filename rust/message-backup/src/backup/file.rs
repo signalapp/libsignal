@@ -14,7 +14,7 @@ use serde_with::serde_as;
 use uuid::Uuid;
 
 use crate::backup::time::{ReportUnusualTimestamp, Timestamp, TimestampError};
-use crate::backup::{serialize, TryFromWith, TryIntoWith};
+use crate::backup::{serialize, TryIntoWith};
 use crate::proto::backup as proto;
 
 #[serde_as]
@@ -72,33 +72,27 @@ pub enum LocatorError {
     InvalidTimestamp(#[from] TimestampError),
 }
 
-impl<C: ReportUnusualTimestamp + ?Sized> TryFromWith<proto::file_pointer::LocatorInfo, C>
-    for Locator
+impl<C: ReportUnusualTimestamp + ?Sized> TryIntoWith<Locator, C>
+    for proto::file_pointer::LocatorInfo
 {
     type Error = LocatorError;
 
-    fn try_from_with(
-        value: proto::file_pointer::LocatorInfo,
-        context: &C,
-    ) -> Result<Self, Self::Error> {
+    fn try_into_with(self, context: &C) -> Result<Locator, Self::Error> {
         // The "invalid" locator is encoded as an empty message.
-        if value == proto::file_pointer::LocatorInfo::default() {
-            return Ok(Self::Invalid);
+        if self == proto::file_pointer::LocatorInfo::default() {
+            return Ok(Locator::Invalid);
         }
 
-        value.try_into_with(context).map(Self::LocatorInfo)
+        self.try_into_with(context).map(Locator::LocatorInfo)
     }
 }
 
-impl<C: ReportUnusualTimestamp + ?Sized> TryFromWith<proto::file_pointer::LocatorInfo, C>
-    for LocatorInfo
+impl<C: ReportUnusualTimestamp + ?Sized> TryIntoWith<LocatorInfo, C>
+    for proto::file_pointer::LocatorInfo
 {
     type Error = LocatorError;
 
-    fn try_from_with(
-        value: proto::file_pointer::LocatorInfo,
-        context: &C,
-    ) -> Result<Self, Self::Error> {
+    fn try_into_with(self, context: &C) -> Result<LocatorInfo, Self::Error> {
         let proto::file_pointer::LocatorInfo {
             key,
             digest,
@@ -110,7 +104,7 @@ impl<C: ReportUnusualTimestamp + ?Sized> TryFromWith<proto::file_pointer::Locato
             mediaName,
             localKey,
             special_fields: _,
-        } = value;
+        } = self;
 
         if key.is_empty() {
             return Err(LocatorError::MissingKey);
@@ -132,12 +126,10 @@ impl<C: ReportUnusualTimestamp + ?Sized> TryFromWith<proto::file_pointer::Locato
             mediaName
         };
 
-        let transit = TryFromWith::try_from_with(
-            (transitCdnKey, transitCdnNumber, transitTierUploadTimestamp),
-            context,
-        )?;
+        let transit =
+            (transitCdnKey, transitCdnNumber, transitTierUploadTimestamp).try_into_with(context)?;
 
-        Ok(Self {
+        Ok(LocatorInfo {
             key,
             local_key: localKey,
             digest,
@@ -149,19 +141,13 @@ impl<C: ReportUnusualTimestamp + ?Sized> TryFromWith<proto::file_pointer::Locato
     }
 }
 
-impl<C: ReportUnusualTimestamp + ?Sized> TryFromWith<(Option<String>, Option<u32>, Option<u64>), C>
-    for Option<TransitTierLocator>
+impl<C: ReportUnusualTimestamp + ?Sized> TryIntoWith<Option<TransitTierLocator>, C>
+    for (Option<String>, Option<u32>, Option<u64>)
 {
     type Error = LocatorError;
 
-    fn try_from_with(
-        (transit_cdn_key, transit_cdn_number, transit_tier_upload_timestamp): (
-            Option<String>,
-            Option<u32>,
-            Option<u64>,
-        ),
-        context: &C,
-    ) -> Result<Self, Self::Error> {
+    fn try_into_with(self, context: &C) -> Result<Option<TransitTierLocator>, Self::Error> {
+        let (transit_cdn_key, transit_cdn_number, transit_tier_upload_timestamp) = self;
         match (
             transit_cdn_key,
             transit_cdn_number,
@@ -225,10 +211,10 @@ pub enum FilePointerError {
     IncrementalMacMismatch,
 }
 
-impl<C: ReportUnusualTimestamp + ?Sized> TryFromWith<proto::FilePointer, C> for FilePointer {
+impl<C: ReportUnusualTimestamp + ?Sized> TryIntoWith<FilePointer, C> for proto::FilePointer {
     type Error = FilePointerError;
 
-    fn try_from_with(value: proto::FilePointer, context: &C) -> Result<Self, Self::Error> {
+    fn try_into_with(self, context: &C) -> Result<FilePointer, Self::Error> {
         let proto::FilePointer {
             locator: legacy_locator,
             contentType,
@@ -241,7 +227,7 @@ impl<C: ReportUnusualTimestamp + ?Sized> TryFromWith<proto::FilePointer, C> for 
             blurHash,
             locatorInfo,
             special_fields: _,
-        } = value;
+        } = self;
 
         // The legacy locator format is deprecated and will soon no longer be
         // accepted. Just ignore it for now.
@@ -260,7 +246,7 @@ impl<C: ReportUnusualTimestamp + ?Sized> TryFromWith<proto::FilePointer, C> for 
             return Err(FilePointerError::MissingIncrementalMac);
         }
 
-        Ok(Self {
+        Ok(FilePointer {
             locator_info,
             content_type: contentType,
             incremental_mac: incrementalMac,
@@ -298,19 +284,19 @@ pub enum MessageAttachmentError {
     InvalidUuid,
 }
 
-impl<C: ReportUnusualTimestamp + ?Sized> TryFromWith<proto::MessageAttachment, C>
-    for MessageAttachment
+impl<C: ReportUnusualTimestamp + ?Sized> TryIntoWith<MessageAttachment, C>
+    for proto::MessageAttachment
 {
     type Error = MessageAttachmentError;
 
-    fn try_from_with(value: proto::MessageAttachment, context: &C) -> Result<Self, Self::Error> {
+    fn try_into_with(self, context: &C) -> Result<MessageAttachment, Self::Error> {
         let proto::MessageAttachment {
             pointer,
             flag,
             clientUuid,
             wasDownloaded: _,
             special_fields: _,
-        } = value;
+        } = self;
 
         let client_uuid = clientUuid
             .map(Uuid::try_from)
@@ -405,7 +391,9 @@ mod test {
     ) -> Result<(), LocatorError> {
         let mut locator = proto::file_pointer::LocatorInfo::test_data();
         modifier(&mut locator);
-        LocatorInfo::try_from_with(locator, &TestContext::default()).map(|_| ())
+        locator
+            .try_into_with(&TestContext::default())
+            .map(|_: Locator| ())
     }
 
     impl proto::FilePointer {
@@ -465,7 +453,7 @@ mod test {
     ) -> Result<(), FilePointerError> {
         let mut pointer = proto::FilePointer::test_data();
         modifier(&mut pointer);
-        FilePointer::try_from_with(pointer, &TestContext::default()).map(|_| ())
+        pointer.try_into_with(&TestContext::default()).map(|_| ())
     }
 
     impl proto::MessageAttachment {

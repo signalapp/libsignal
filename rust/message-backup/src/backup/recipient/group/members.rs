@@ -9,7 +9,7 @@ use serde_with::serde_as;
 use super::GroupError;
 use crate::backup::serialize::{self, SerializeOrder};
 use crate::backup::time::{ReportUnusualTimestamp, Timestamp};
-use crate::backup::TryFromWith;
+use crate::backup::TryIntoWith;
 use crate::proto::backup as proto;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
@@ -91,21 +91,18 @@ impl SerializeOrder for GroupMemberPendingProfileKey {
     }
 }
 
-impl<C: ReportUnusualTimestamp> TryFromWith<proto::group::MemberPendingProfileKey, C>
-    for GroupMemberPendingProfileKey
+impl<C: ReportUnusualTimestamp> TryIntoWith<GroupMemberPendingProfileKey, C>
+    for proto::group::MemberPendingProfileKey
 {
     type Error = GroupError;
 
-    fn try_from_with(
-        member: proto::group::MemberPendingProfileKey,
-        context: &C,
-    ) -> Result<Self, Self::Error> {
+    fn try_into_with(self, context: &C) -> Result<GroupMemberPendingProfileKey, Self::Error> {
         let proto::group::MemberPendingProfileKey {
             member,
             addedByUserId,
             timestamp,
             special_fields: _,
-        } = member;
+        } = self;
 
         let proto::group::Member {
             userId,
@@ -171,20 +168,17 @@ impl SerializeOrder for GroupMemberPendingAdminApproval {
     }
 }
 
-impl<C: ReportUnusualTimestamp> TryFromWith<proto::group::MemberPendingAdminApproval, C>
-    for GroupMemberPendingAdminApproval
+impl<C: ReportUnusualTimestamp> TryIntoWith<GroupMemberPendingAdminApproval, C>
+    for proto::group::MemberPendingAdminApproval
 {
     type Error = GroupError;
 
-    fn try_from_with(
-        member: proto::group::MemberPendingAdminApproval,
-        context: &C,
-    ) -> Result<Self, Self::Error> {
+    fn try_into_with(self, context: &C) -> Result<GroupMemberPendingAdminApproval, Self::Error> {
         let proto::group::MemberPendingAdminApproval {
             userId,
             timestamp,
             special_fields: _,
-        } = member;
+        } = self;
 
         let user_id = ServiceId::parse_from_service_id_binary(&userId)
             .ok_or(GroupError::MemberInvalidServiceId {
@@ -223,15 +217,15 @@ impl SerializeOrder for GroupMemberBanned {
     }
 }
 
-impl<C: ReportUnusualTimestamp> TryFromWith<proto::group::MemberBanned, C> for GroupMemberBanned {
+impl<C: ReportUnusualTimestamp> TryIntoWith<GroupMemberBanned, C> for proto::group::MemberBanned {
     type Error = GroupError;
 
-    fn try_from_with(member: proto::group::MemberBanned, context: &C) -> Result<Self, Self::Error> {
+    fn try_into_with(self, context: &C) -> Result<GroupMemberBanned, Self::Error> {
         let proto::group::MemberBanned {
             userId,
             timestamp,
             special_fields: _,
-        } = member;
+        } = self;
 
         let user_id = ServiceId::parse_from_service_id_binary(&userId).ok_or(
             GroupError::MemberInvalidServiceId {
@@ -329,11 +323,9 @@ mod tests {
     #[test]
     fn valid_member_pending_profile_key() {
         assert_eq!(
-            GroupMemberPendingProfileKey::try_from_with(
-                proto::group::MemberPendingProfileKey::test_data(),
-                &TestContext::default()
-            )
-            .expect("valid"),
+            proto::group::MemberPendingProfileKey::test_data()
+                .try_into_with(&TestContext::default())
+                .expect("valid"),
             GroupMemberPendingProfileKey::from_proto_test_data(),
         );
     }
@@ -356,7 +348,7 @@ mod tests {
     ) -> Result<(), GroupError> {
         let mut member = proto::group::MemberPendingProfileKey::test_data();
         modifier(&mut member);
-        GroupMemberPendingProfileKey::try_from_with(member, &TestContext::default()).map(|_| ())
+        member.try_into_with(&TestContext::default()).map(|_| ())
     }
 
     impl proto::group::MemberPendingAdminApproval {
@@ -382,11 +374,9 @@ mod tests {
     #[test]
     fn valid_member_pending_admin_approval() {
         assert_eq!(
-            GroupMemberPendingAdminApproval::try_from_with(
-                proto::group::MemberPendingAdminApproval::test_data(),
-                &TestContext::default()
-            )
-            .expect("valid"),
+            proto::group::MemberPendingAdminApproval::test_data()
+                .try_into_with(&TestContext::default())
+                .expect("valid"),
             GroupMemberPendingAdminApproval::from_proto_test_data(),
         );
     }
@@ -403,7 +393,7 @@ mod tests {
     ) -> Result<(), GroupError> {
         let mut member = proto::group::MemberPendingAdminApproval::test_data();
         modifier(&mut member);
-        GroupMemberPendingAdminApproval::try_from_with(member, &TestContext::default()).map(|_| ())
+        member.try_into_with(&TestContext::default()).map(|_| ())
     }
 
     impl proto::group::MemberBanned {
@@ -429,11 +419,9 @@ mod tests {
     #[test]
     fn valid_member_banned() {
         assert_eq!(
-            GroupMemberBanned::try_from_with(
-                proto::group::MemberBanned::test_data(),
-                &TestContext::default()
-            )
-            .expect("valid"),
+            proto::group::MemberBanned::test_data()
+                .try_into_with(&TestContext::default())
+                .expect("valid"),
             GroupMemberBanned::from_proto_test_data(),
         );
     }
@@ -450,6 +438,6 @@ mod tests {
     ) -> Result<(), GroupError> {
         let mut member = proto::group::MemberBanned::test_data();
         modifier(&mut member);
-        GroupMemberBanned::try_from_with(member, &TestContext::default()).map(|_| ())
+        member.try_into_with(&TestContext::default()).map(|_| ())
     }
 }

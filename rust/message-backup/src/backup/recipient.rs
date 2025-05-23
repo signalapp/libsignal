@@ -21,7 +21,7 @@ use crate::backup::frame::RecipientId;
 use crate::backup::method::LookupPair;
 use crate::backup::serialize::{self, SerializeOrder, UnorderedList};
 use crate::backup::time::{ReportUnusualTimestamp, Timestamp, TimestampError};
-use crate::backup::{TryFromWith, TryIntoWith};
+use crate::backup::TryIntoWith;
 use crate::proto::backup as proto;
 use crate::proto::backup::recipient::Destination as RecipientDestination;
 
@@ -456,15 +456,15 @@ impl<R> AsRef<DestinationKind> for Destination<R> {
 }
 
 impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusualTimestamp>
-    TryFromWith<proto::Recipient, C> for Destination<R>
+    TryIntoWith<Destination<R>, C> for proto::Recipient
 {
     type Error = RecipientError;
-    fn try_from_with(value: proto::Recipient, context: &C) -> Result<Self, Self::Error> {
-        let proto::Recipient {
+    fn try_into_with(self, context: &C) -> Result<Destination<R>, Self::Error> {
+        let Self {
             id: _,
             destination,
             special_fields: _,
-        } = value;
+        } = self;
 
         let destination = destination.ok_or(RecipientError::MissingDestination)?;
 
@@ -494,10 +494,10 @@ impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusu
     }
 }
 
-impl<C: ReportUnusualTimestamp> TryFromWith<proto::Contact, C> for ContactData {
+impl<C: ReportUnusualTimestamp> TryIntoWith<ContactData, C> for proto::Contact {
     type Error = RecipientError;
-    fn try_from_with(value: proto::Contact, context: &C) -> Result<Self, Self::Error> {
-        let proto::Contact {
+    fn try_into_with(self, context: &C) -> Result<ContactData, Self::Error> {
+        let Self {
             aci,
             pni,
             profileKey,
@@ -519,7 +519,7 @@ impl<C: ReportUnusualTimestamp> TryFromWith<proto::Contact, C> for ContactData {
             systemNickname,
             avatarColor,
             special_fields: _,
-        } = value;
+        } = self;
 
         let aci = aci
             .map(TryInto::try_into)
@@ -623,7 +623,7 @@ impl<C: ReportUnusualTimestamp> TryFromWith<proto::Contact, C> for ContactData {
         // The color is allowed to be unset.
         let avatar_color = avatarColor.map(|v| v.enum_value_or_default());
 
-        Ok(Self {
+        Ok(ContactData {
             aci,
             pni,
             profile_key,
@@ -649,16 +649,16 @@ impl<C: ReportUnusualTimestamp> TryFromWith<proto::Contact, C> for ContactData {
 }
 
 impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusualTimestamp>
-    TryFromWith<proto::DistributionListItem, C> for DistributionListItem<R>
+    TryIntoWith<DistributionListItem<R>, C> for proto::DistributionListItem
 {
     type Error = RecipientError;
 
-    fn try_from_with(value: proto::DistributionListItem, context: &C) -> Result<Self, Self::Error> {
-        let proto::DistributionListItem {
+    fn try_into_with(self, context: &C) -> Result<DistributionListItem<R>, Self::Error> {
+        let Self {
             distributionId,
             item,
             special_fields: _,
-        } = value;
+        } = self;
 
         let distribution_id = Uuid::from_bytes(
             distributionId
@@ -678,7 +678,7 @@ impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusu
                         "DistributionList.deletionTimestamp",
                         context,
                     )?;
-                    Self::Deleted {
+                    DistributionListItem::Deleted {
                         distribution_id,
                         at,
                     }
@@ -757,7 +757,7 @@ impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusu
                         }
                     };
 
-                    Self::List {
+                    DistributionListItem::List {
                         distribution_id,
                         name,
                         allow_replies: allowReplies,
@@ -901,7 +901,7 @@ mod test {
         };
 
         assert_matches!(
-            Destination::try_from_with(recipient, &TestContext::default()),
+            recipient.try_into_with(&TestContext::default()),
             Err(RecipientError::MissingDestination)
         );
     }
@@ -911,7 +911,7 @@ mod test {
         let recipient = proto::Recipient::test_data();
 
         assert_eq!(
-            Destination::try_from_with(recipient, &TestContext::default()),
+            recipient.try_into_with(&TestContext::default()),
             Ok(Destination::Self_(SelfData { avatar_color: None }))
         )
     }
@@ -924,7 +924,7 @@ mod test {
         };
 
         assert_eq!(
-            Destination::try_from_with(recipient, &TestContext::default()),
+            recipient.try_into_with(&TestContext::default()),
             Ok(Destination::Contact(ContactData::from_proto_test_data()))
         )
     }
@@ -973,7 +973,7 @@ mod test {
             ..proto::Recipient::test_data()
         };
 
-        Destination::try_from_with(recipient, &TestContext::default()).map(|_| ())
+        recipient.try_into_with(&TestContext::default()).map(|_| ())
     }
 
     #[test]
@@ -984,7 +984,7 @@ mod test {
         };
 
         assert_eq!(
-            Destination::try_from_with(recipient, &TestContext::default()),
+            recipient.try_into_with(&TestContext::default()),
             Ok(Destination::Group(GroupData::from_proto_test_data()))
         );
     }
@@ -1000,7 +1000,7 @@ mod test {
             ..proto::Recipient::test_data()
         };
 
-        Destination::try_from_with(recipient, &TestContext::default()).map(|_| ())
+        recipient.try_into_with(&TestContext::default()).map(|_| ())
     }
 
     #[test]
@@ -1011,7 +1011,7 @@ mod test {
         };
 
         assert_eq!(
-            Destination::try_from_with(recipient, &TestContext::default()),
+            recipient.try_into_with(&TestContext::default()),
             Ok(Destination::DistributionList(DistributionListItem::List {
                 distribution_id: Uuid::nil(),
                 privacy_mode: PrivacyMode::AllExcept(
@@ -1099,6 +1099,6 @@ mod test {
             ..proto::Recipient::test_data()
         };
 
-        Destination::try_from_with(recipient, &TestContext::default()).map(|_| ())
+        recipient.try_into_with(&TestContext::default()).map(|_| ())
     }
 }

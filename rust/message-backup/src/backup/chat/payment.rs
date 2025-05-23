@@ -9,7 +9,7 @@ use serde_with::hex::Hex;
 use serde_with::serde_as;
 
 use crate::backup::time::{ReportUnusualTimestamp, Timestamp, TimestampError};
-use crate::backup::{serialize, TryFromWith, TryIntoWith};
+use crate::backup::{serialize, TryIntoWith};
 use crate::proto::backup as proto;
 
 #[derive(Debug, serde::Serialize)]
@@ -97,17 +97,17 @@ pub enum TransactionError {
     InvalidTimestamp(#[from] TimestampError),
 }
 
-impl<C: ReportUnusualTimestamp> TryFromWith<proto::PaymentNotification, C> for PaymentNotification {
+impl<C: ReportUnusualTimestamp> TryIntoWith<PaymentNotification, C> for proto::PaymentNotification {
     type Error = PaymentError;
 
-    fn try_from_with(value: proto::PaymentNotification, context: &C) -> Result<Self, Self::Error> {
+    fn try_into_with(self, context: &C) -> Result<PaymentNotification, Self::Error> {
         let proto::PaymentNotification {
             amountMob,
             feeMob,
             note,
             transactionDetails,
             special_fields: _,
-        } = value;
+        } = self;
 
         let amount = amountMob
             .map(MobAmount::try_from)
@@ -140,7 +140,7 @@ impl<C: ReportUnusualTimestamp> TryFromWith<proto::PaymentNotification, C> for P
             )
             .transpose()?;
 
-        Ok(Self {
+        Ok(PaymentNotification {
             amount,
             fee,
             note,
@@ -149,15 +149,12 @@ impl<C: ReportUnusualTimestamp> TryFromWith<proto::PaymentNotification, C> for P
     }
 }
 
-impl<C: ReportUnusualTimestamp>
-    TryFromWith<proto::payment_notification::transaction_details::Transaction, C> for Transaction
+impl<C: ReportUnusualTimestamp> TryIntoWith<Transaction, C>
+    for proto::payment_notification::transaction_details::Transaction
 {
     type Error = TransactionError;
 
-    fn try_from_with(
-        value: proto::payment_notification::transaction_details::Transaction,
-        context: &C,
-    ) -> Result<Self, Self::Error> {
+    fn try_into_with(self, context: &C) -> Result<Transaction, Self::Error> {
         use proto::payment_notification::transaction_details::transaction::Status;
         use proto::payment_notification::transaction_details::{
             MobileCoinTxoIdentification, Transaction as TransactionProto,
@@ -172,7 +169,7 @@ impl<C: ReportUnusualTimestamp>
             transaction,
             receipt,
             special_fields: _,
-        } = value;
+        } = self;
 
         let status = match status.enum_value_or_default() {
             // Pass the value through but fail compilation if a new variant is added.
@@ -208,7 +205,7 @@ impl<C: ReportUnusualTimestamp>
             .map(|t| Timestamp::from_millis(t, "Transaction.blockTimestamp", context))
             .transpose()?;
 
-        Ok(Self {
+        Ok(Transaction {
             status,
             identification,
             timestamp,
@@ -397,7 +394,9 @@ mod test {
         let mut transaction =
             proto::payment_notification::transaction_details::Transaction::test_data();
         modifier(&mut transaction);
-        Transaction::try_from_with(transaction, &TestContext::default()).map(|_| ())
+        transaction
+            .try_into_with(&TestContext::default())
+            .map(|_| ())
     }
 
     fn both(
@@ -425,7 +424,7 @@ mod test {
             proto::payment_notification::transaction_details::Transaction::test_data();
         modifier(transaction.mobileCoinIdentification.as_mut().unwrap());
         assert_eq!(
-            Transaction::try_from_with(transaction, &TestContext::default()),
+            transaction.try_into_with(&TestContext::default()),
             Err(expected_err)
         );
     }

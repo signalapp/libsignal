@@ -15,7 +15,7 @@ use crate::backup::frame::RecipientId;
 use crate::backup::method::LookupPair;
 use crate::backup::recipient::{DestinationKind, MinimalRecipientData};
 use crate::backup::serialize::{SerializeOrder, UnorderedList};
-use crate::backup::TryFromWith;
+use crate::backup::TryIntoWith;
 use crate::proto::backup as proto;
 
 /// Validated version of [`proto::ChatFolder`].
@@ -133,17 +133,17 @@ impl<R> ChatFolder<R> {
     }
 }
 
-impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R>>
-    TryFromWith<proto::ChatFolder, C> for ChatFolder<R>
+impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R>> TryIntoWith<ChatFolder<R>, C>
+    for proto::ChatFolder
 {
     type Error = ChatFolderError;
-    fn try_from_with(item: proto::ChatFolder, context: &C) -> Result<Self, Self::Error> {
-        match item.folderType.enum_value_or_default() {
+    fn try_into_with(self, context: &C) -> Result<ChatFolder<R>, Self::Error> {
+        match self.folderType.enum_value_or_default() {
             proto::chat_folder::FolderType::UNKNOWN => {
-                return Err(ChatFolderError::UnknownType(item.folderType.value()));
+                return Err(ChatFolderError::UnknownType(self.folderType.value()));
             }
             proto::chat_folder::FolderType::ALL => {
-                return Self::validate_all_chat_folder(item);
+                return ChatFolder::<R>::validate_all_chat_folder(self);
             }
             proto::chat_folder::FolderType::CUSTOM => {}
         }
@@ -159,7 +159,7 @@ impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R>>
             excludedRecipientIds,
             id,
             special_fields: _,
-        } = item;
+        } = self;
 
         if name.is_empty() {
             return Err(ChatFolderError::MissingName);
@@ -223,7 +223,7 @@ impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R>>
             return Err(ChatFolderError::InvalidId);
         }
 
-        Ok(Self::Custom {
+        Ok(ChatFolder::Custom {
             name,
             show_only_unread: showOnlyUnread,
             show_muted_chats: showMutedChats,
@@ -245,7 +245,6 @@ mod test {
     use super::*;
     use crate::backup::recipient::FullRecipientData;
     use crate::backup::testutil::TestContext;
-    use crate::backup::TryIntoWith as _;
 
     impl proto::ChatFolder {
         const TEST_FOLDER_ID: [u8; 16] = [0xa1; 16];

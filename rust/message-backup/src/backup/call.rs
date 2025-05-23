@@ -12,7 +12,7 @@ use crate::backup::frame::RecipientId;
 use crate::backup::method::LookupPair;
 use crate::backup::recipient::{DestinationKind, MinimalRecipientData};
 use crate::backup::time::{ReportUnusualTimestamp, Timestamp, TimestampError};
-use crate::backup::{serialize, TryFromWith};
+use crate::backup::{serialize, TryIntoWith};
 use crate::proto::backup as proto;
 
 /// Validated version of [`proto::AdHocCall`].
@@ -152,10 +152,10 @@ pub struct CallLink {
     pub name: String,
 }
 
-impl<C: ReportUnusualTimestamp> TryFromWith<proto::IndividualCall, C> for IndividualCall {
+impl<C: ReportUnusualTimestamp> TryIntoWith<IndividualCall, C> for proto::IndividualCall {
     type Error = CallError;
 
-    fn try_from_with(call: proto::IndividualCall, context: &C) -> Result<Self, Self::Error> {
+    fn try_into_with(self, context: &C) -> Result<IndividualCall, Self::Error> {
         let proto::IndividualCall {
             callId,
             type_,
@@ -164,7 +164,7 @@ impl<C: ReportUnusualTimestamp> TryFromWith<proto::IndividualCall, C> for Indivi
             startedCallTimestamp,
             read,
             special_fields: _,
-        } = call;
+        } = self;
 
         let outgoing = {
             use proto::individual_call::Direction;
@@ -200,7 +200,7 @@ impl<C: ReportUnusualTimestamp> TryFromWith<proto::IndividualCall, C> for Indivi
         let started_at = Timestamp::from_millis(startedCallTimestamp, "Call.timestamp", context)?;
         let id = callId.map(CallId);
 
-        Ok(Self {
+        Ok(IndividualCall {
             id,
             call_type,
             state,
@@ -212,11 +212,11 @@ impl<C: ReportUnusualTimestamp> TryFromWith<proto::IndividualCall, C> for Indivi
 }
 
 impl<C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusualTimestamp, R: Clone>
-    TryFromWith<proto::GroupCall, C> for GroupCall<R>
+    TryIntoWith<GroupCall<R>, C> for proto::GroupCall
 {
     type Error = CallError;
 
-    fn try_from_with(call: proto::GroupCall, context: &C) -> Result<Self, Self::Error> {
+    fn try_into_with(self, context: &C) -> Result<GroupCall<R>, Self::Error> {
         let proto::GroupCall {
             callId,
             state,
@@ -226,7 +226,7 @@ impl<C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusualTimestam
             endedCallTimestamp,
             read,
             special_fields: _,
-        } = call;
+        } = self;
 
         let started_call_recipient = startedCallRecipientId
             .map(|id| {
@@ -305,7 +305,7 @@ impl<C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusualTimestam
             .transpose()?;
         let id = callId.map(CallId);
 
-        Ok(Self {
+        Ok(GroupCall {
             id,
             state,
             started_call_recipient,
@@ -320,18 +320,18 @@ impl<C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusualTimestam
 impl<
         C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusualTimestamp,
         R: Clone + Debug,
-    > TryFromWith<proto::AdHocCall, C> for AdHocCall<R>
+    > TryIntoWith<AdHocCall<R>, C> for proto::AdHocCall
 {
     type Error = CallError;
 
-    fn try_from_with(item: proto::AdHocCall, context: &C) -> Result<Self, Self::Error> {
+    fn try_into_with(self, context: &C) -> Result<AdHocCall<R>, Self::Error> {
         let proto::AdHocCall {
             callId,
             recipientId,
             state,
             callTimestamp,
             special_fields: _,
-        } = item;
+        } = self;
 
         let id = CallId(callId);
 
@@ -360,7 +360,7 @@ impl<
         let timestamp =
             Timestamp::from_millis(callTimestamp, "AdHocCall.startedCallTimestamp", context)?;
 
-        Ok(Self {
+        Ok(AdHocCall {
             id,
             timestamp,
             recipient,
@@ -368,10 +368,10 @@ impl<
     }
 }
 
-impl<C: ReportUnusualTimestamp> TryFromWith<proto::CallLink, C> for CallLink {
+impl<C: ReportUnusualTimestamp> TryIntoWith<CallLink, C> for proto::CallLink {
     type Error = CallLinkError;
 
-    fn try_from_with(value: proto::CallLink, context: &C) -> Result<Self, Self::Error> {
+    fn try_into_with(self, context: &C) -> Result<CallLink, Self::Error> {
         let proto::CallLink {
             rootKey,
             adminKey,
@@ -379,7 +379,7 @@ impl<C: ReportUnusualTimestamp> TryFromWith<proto::CallLink, C> for CallLink {
             restrictions,
             expirationMs,
             special_fields: _,
-        } = value;
+        } = self;
 
         let root_key = rootKey
             .try_into()
@@ -396,7 +396,7 @@ impl<C: ReportUnusualTimestamp> TryFromWith<proto::CallLink, C> for CallLink {
         let restrictions = restrictions.enum_value_or(proto::call_link::Restrictions::UNKNOWN);
         let expiration = Timestamp::from_millis(expirationMs, "CallLink.expirationMs", context)?;
 
-        Ok(Self {
+        Ok(CallLink {
             root_key,
             restrictions,
             admin_key,
@@ -414,7 +414,6 @@ pub(crate) mod test {
     use super::*;
     use crate::backup::time::testutil::MillisecondsSinceEpoch;
     use crate::backup::time::{Duration, ReportUnusualTimestamp};
-    use crate::backup::TryIntoWith as _;
 
     impl proto::IndividualCall {
         const TEST_ID: CallId = CallId(33333);

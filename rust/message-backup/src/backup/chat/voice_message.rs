@@ -13,7 +13,7 @@ use crate::backup::method::LookupPair;
 use crate::backup::recipient::MinimalRecipientData;
 use crate::backup::serialize::SerializeOrder;
 use crate::backup::time::ReportUnusualTimestamp;
-use crate::backup::{TryFromWith, TryIntoWith as _};
+use crate::backup::TryIntoWith;
 use crate::proto::backup as proto;
 
 /// Validated version of a voice message [`proto::StandardMessage`].
@@ -45,11 +45,11 @@ pub enum VoiceMessageError {
 }
 
 impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusualTimestamp>
-    TryFromWith<proto::StandardMessage, C> for VoiceMessage<R>
+    TryIntoWith<VoiceMessage<R>, C> for proto::StandardMessage
 {
     type Error = VoiceMessageError;
 
-    fn try_from_with(item: proto::StandardMessage, context: &C) -> Result<Self, Self::Error> {
+    fn try_into_with(self, context: &C) -> Result<VoiceMessage<R>, Self::Error> {
         let proto::StandardMessage {
             quote,
             reactions,
@@ -58,7 +58,7 @@ impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusu
             linkPreview,
             longText,
             special_fields: _,
-        } = item;
+        } = self;
 
         match () {
             _ if text.is_some() => Err("text"),
@@ -84,7 +84,7 @@ impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusu
 
         let reactions = reactions.try_into_with(context)?;
 
-        Ok(Self {
+        Ok(VoiceMessage {
             reactions,
             quote,
             attachment: Box::new(attachment),

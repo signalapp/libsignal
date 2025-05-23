@@ -12,7 +12,7 @@ use crate::backup::method::LookupPair;
 use crate::backup::recipient::MinimalRecipientData;
 use crate::backup::serialize::SerializeOrder;
 use crate::backup::time::ReportUnusualTimestamp;
-use crate::backup::{TryFromWith, TryIntoWith as _};
+use crate::backup::TryIntoWith;
 use crate::proto::backup as proto;
 
 /// Validated version of [`proto::ContactMessage`].
@@ -59,16 +59,16 @@ pub enum ContactAttachmentError {
 }
 
 impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusualTimestamp>
-    TryFromWith<proto::ContactMessage, C> for ContactMessage<R>
+    TryIntoWith<ContactMessage<R>, C> for proto::ContactMessage
 {
     type Error = ChatItemError;
 
-    fn try_from_with(item: proto::ContactMessage, context: &C) -> Result<Self, Self::Error> {
+    fn try_into_with(self, context: &C) -> Result<ContactMessage<R>, Self::Error> {
         let proto::ContactMessage {
             reactions,
             contact,
             special_fields: _,
-        } = item;
+        } = self;
 
         let reactions = reactions.try_into_with(context)?;
 
@@ -77,7 +77,7 @@ impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusu
             .ok_or(ContactAttachmentError::Missing)?
             .try_into_with(context)?;
 
-        Ok(Self {
+        Ok(ContactMessage {
             contact: Box::new(contact),
             reactions,
             _limit_construction_to_module: (),
@@ -85,10 +85,10 @@ impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusu
     }
 }
 
-impl<C: ReportUnusualTimestamp> TryFromWith<proto::ContactAttachment, C> for ContactAttachment {
+impl<C: ReportUnusualTimestamp> TryIntoWith<ContactAttachment, C> for proto::ContactAttachment {
     type Error = ContactAttachmentError;
 
-    fn try_from_with(value: proto::ContactAttachment, context: &C) -> Result<Self, Self::Error> {
+    fn try_into_with(self, context: &C) -> Result<ContactAttachment, Self::Error> {
         let proto::ContactAttachment {
             name,
             number,
@@ -97,7 +97,7 @@ impl<C: ReportUnusualTimestamp> TryFromWith<proto::ContactAttachment, C> for Con
             organization,
             avatar,
             special_fields: _,
-        } = value;
+        } = self;
 
         if let Some(proto::contact_attachment::Name {
             givenName,
@@ -184,7 +184,7 @@ impl<C: ReportUnusualTimestamp> TryFromWith<proto::ContactAttachment, C> for Con
 
         let avatar = avatar
             .into_option()
-            .map(|file| FilePointer::try_from_with(file, context))
+            .map(|file| file.try_into_with(context))
             .transpose()
             .map_err(ContactAttachmentError::Avatar)?;
 

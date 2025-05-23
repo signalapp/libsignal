@@ -15,7 +15,7 @@ use zkgroup::GroupMasterKeyBytes;
 
 use crate::backup::serialize::{self, UnorderedList};
 use crate::backup::time::{Duration, ReportUnusualTimestamp, TimestampError};
-use crate::backup::{likely_empty, TryFromWith, TryIntoWith};
+use crate::backup::{likely_empty, TryIntoWith};
 use crate::proto::backup as proto;
 
 mod members;
@@ -99,10 +99,10 @@ impl proto::group::group_attribute_blob::Content {
     }
 }
 
-impl<C: ReportUnusualTimestamp> TryFromWith<proto::group::GroupSnapshot, C> for GroupSnapshot {
+impl<C: ReportUnusualTimestamp> TryIntoWith<GroupSnapshot, C> for proto::group::GroupSnapshot {
     type Error = GroupError;
 
-    fn try_from_with(value: proto::group::GroupSnapshot, context: &C) -> Result<Self, Self::Error> {
+    fn try_into_with(self, context: &C) -> Result<GroupSnapshot, Self::Error> {
         let proto::group::GroupSnapshot {
             title,
             description,
@@ -117,7 +117,7 @@ impl<C: ReportUnusualTimestamp> TryFromWith<proto::group::GroupSnapshot, C> for 
             announcements_only,
             members_banned,
             special_fields: _,
-        } = value;
+        } = self;
 
         let title = title
             .into_option()
@@ -248,21 +248,18 @@ impl<C: ReportUnusualTimestamp> TryFromWith<proto::group::GroupSnapshot, C> for 
             .try_collect()?;
 
         let members_pending_profile_key = likely_empty(membersPendingProfileKey, |iter| {
-            iter.map(|m| GroupMemberPendingProfileKey::try_from_with(m, context))
-                .try_collect()
+            iter.map(|m| m.try_into_with(context)).try_collect()
         })?;
 
         let members_pending_admin_approval = likely_empty(membersPendingAdminApproval, |iter| {
-            iter.map(|m| GroupMemberPendingAdminApproval::try_from_with(m, context))
-                .try_collect()
+            iter.map(|m| m.try_into_with(context)).try_collect()
         })?;
 
         let members_banned = likely_empty(members_banned, |iter| {
-            iter.map(|m| GroupMemberBanned::try_from_with(m, context))
-                .try_collect()
+            iter.map(|m| m.try_into_with(context)).try_collect()
         })?;
 
-        Ok(Self {
+        Ok(GroupSnapshot {
             title,
             description,
             avatar_url,
@@ -299,9 +296,9 @@ pub struct GroupData {
     _limit_construction_to_module: (),
 }
 
-impl<C: ReportUnusualTimestamp> TryFromWith<proto::Group, C> for GroupData {
+impl<C: ReportUnusualTimestamp> TryIntoWith<GroupData, C> for proto::Group {
     type Error = GroupError;
-    fn try_from_with(value: proto::Group, context: &C) -> Result<Self, Self::Error> {
+    fn try_into_with(self, context: &C) -> Result<GroupData, Self::Error> {
         let proto::Group {
             masterKey,
             whitelisted,
@@ -311,7 +308,7 @@ impl<C: ReportUnusualTimestamp> TryFromWith<proto::Group, C> for GroupData {
             blocked,
             avatarColor,
             special_fields: _,
-        } = value;
+        } = self;
 
         let master_key = masterKey
             .try_into()
@@ -453,7 +450,8 @@ mod test {
     #[test]
     fn valid_group() {
         assert_eq!(
-            GroupData::try_from_with(proto::Group::test_data(), &TestContext::default())
+            proto::Group::test_data()
+                .try_into_with(&TestContext::default())
                 .expect("valid"),
             GroupData::from_proto_test_data(),
         )
@@ -464,7 +462,7 @@ mod test {
     fn group_data(modifier: impl FnOnce(&mut proto::Group)) -> Result<(), GroupError> {
         let mut group = proto::Group::test_data();
         modifier(&mut group);
-        GroupData::try_from_with(group, &TestContext::default()).map(|_| ())
+        group.try_into_with(&TestContext::default()).map(|_| ())
     }
 
     #[test_case(|x| x.title = None.into() => Ok(()); "missing title")]
@@ -487,7 +485,7 @@ mod test {
     ) -> Result<(), GroupError> {
         let mut group = proto::Group::test_data().snapshot.unwrap();
         modifier(&mut group);
-        GroupSnapshot::try_from_with(group, &TestContext::default()).map(|_| ())
+        group.try_into_with(&TestContext::default()).map(|_| ())
     }
 
     #[test]

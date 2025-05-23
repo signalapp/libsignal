@@ -16,7 +16,7 @@ use zkgroup::ProfileKeyBytes;
 use crate::backup::chat::chat_style::{ChatStyle, ChatStyleError, CustomColorMap};
 use crate::backup::method::Method;
 use crate::backup::time::{Duration, ReportUnusualTimestamp};
-use crate::backup::{serialize, ReferencedTypes, TryFromWith, TryIntoWith};
+use crate::backup::{serialize, ReferencedTypes, TryIntoWith};
 use crate::proto::backup as proto;
 
 #[derive_where(Debug)]
@@ -170,11 +170,11 @@ pub enum SubscriptionError {
     MissingIapSubscriptionId,
 }
 
-impl<M: Method + ReferencedTypes, C: ReportUnusualTimestamp> TryFromWith<proto::AccountData, C>
-    for AccountData<M>
+impl<M: Method + ReferencedTypes, C: ReportUnusualTimestamp> TryIntoWith<AccountData<M>, C>
+    for proto::AccountData
 {
     type Error = AccountDataError;
-    fn try_from_with(proto: proto::AccountData, context: &C) -> Result<Self, Self::Error> {
+    fn try_into_with(self, context: &C) -> Result<AccountData<M>, Self::Error> {
         let proto::AccountData {
             profileKey,
             username,
@@ -187,7 +187,7 @@ impl<M: Method + ReferencedTypes, C: ReportUnusualTimestamp> TryFromWith<proto::
             backupsSubscriberData,
             svrPin,
             special_fields: _,
-        } = proto;
+        } = self;
 
         let profile_key = ProfileKeyBytes::try_from(profileKey)
             .map_err(|_| AccountDataError::InvalidProfileKey)?;
@@ -218,7 +218,7 @@ impl<M: Method + ReferencedTypes, C: ReportUnusualTimestamp> TryFromWith<proto::
             .transpose()
             .map_err(AccountDataError::BackupSubscription)?;
 
-        Ok(Self {
+        Ok(AccountData {
             profile_key: M::value(profile_key),
             username: M::value(username),
             given_name: M::value(givenName),
@@ -333,15 +333,12 @@ impl TryFrom<proto::account_data::UsernameLink> for UsernameLink {
     }
 }
 
-impl<M: Method + ReferencedTypes, C: ReportUnusualTimestamp>
-    TryFromWith<proto::account_data::AccountSettings, C> for AccountSettings<M>
+impl<M: Method + ReferencedTypes, C: ReportUnusualTimestamp> TryIntoWith<AccountSettings<M>, C>
+    for proto::account_data::AccountSettings
 {
     type Error = AccountDataError;
 
-    fn try_from_with(
-        value: proto::account_data::AccountSettings,
-        context: &C,
-    ) -> Result<Self, Self::Error> {
+    fn try_into_with(self, context: &C) -> Result<AccountSettings<M>, Self::Error> {
         let proto::account_data::AccountSettings {
             phoneNumberSharingMode,
             readReceipts,
@@ -364,7 +361,7 @@ impl<M: Method + ReferencedTypes, C: ReportUnusualTimestamp>
             customChatColors,
             optimizeOnDeviceStorage,
             special_fields: _,
-        } = value;
+        } = self;
 
         use proto::account_data::PhoneNumberSharingMode;
         let phone_number_sharing = match phoneNumberSharingMode.enum_value_or_default() {
@@ -385,7 +382,7 @@ impl<M: Method + ReferencedTypes, C: ReportUnusualTimestamp>
         let universal_expire_timer = NonZeroU32::new(universalExpireTimerSeconds)
             .map(|seconds| Duration::from_millis(1000 * u64::from(seconds.get())));
 
-        Ok(Self {
+        Ok(AccountSettings {
             phone_number_sharing: M::value(phone_number_sharing),
             default_chat_style: M::value(default_chat_style),
             custom_chat_colors,
@@ -608,6 +605,7 @@ mod test {
         let mut data = proto::AccountData::test_data();
         modifier(&mut data);
 
-        AccountData::<ValidateOnly>::try_from_with(data, &TestContext::default()).map(|_| ())
+        data.try_into_with(&TestContext::default())
+            .map(|_: AccountData<ValidateOnly>| ())
     }
 }

@@ -12,7 +12,7 @@ use crate::backup::recipient::MinimalRecipientData;
 use crate::backup::serialize::SerializeOrder;
 use crate::backup::sticker::MessageSticker;
 use crate::backup::time::ReportUnusualTimestamp;
-use crate::backup::{TryFromWith, TryIntoWith as _};
+use crate::backup::TryIntoWith;
 use crate::proto::backup as proto;
 
 /// Validated version of [`proto::StickerMessage`].
@@ -26,16 +26,16 @@ pub struct StickerMessage<Recipient> {
 }
 
 impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusualTimestamp>
-    TryFromWith<proto::StickerMessage, C> for StickerMessage<R>
+    TryIntoWith<StickerMessage<R>, C> for proto::StickerMessage
 {
     type Error = ChatItemError;
 
-    fn try_from_with(item: proto::StickerMessage, context: &C) -> Result<Self, Self::Error> {
+    fn try_into_with(self, context: &C) -> Result<StickerMessage<R>, Self::Error> {
         let proto::StickerMessage {
             reactions,
             sticker,
             special_fields: _,
-        } = item;
+        } = self;
 
         let reactions = reactions.try_into_with(context)?;
 
@@ -44,7 +44,7 @@ impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusu
             .ok_or(ChatItemError::StickerMessageMissingSticker)?
             .try_into_with(context)?;
 
-        Ok(Self {
+        Ok(StickerMessage {
             reactions,
             sticker: Box::new(sticker),
             _limit_construction_to_module: (),

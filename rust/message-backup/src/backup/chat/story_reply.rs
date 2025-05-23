@@ -12,7 +12,7 @@ use crate::backup::method::LookupPair;
 use crate::backup::recipient::MinimalRecipientData;
 use crate::backup::serialize::SerializeOrder;
 use crate::backup::time::ReportUnusualTimestamp;
-use crate::backup::{TryFromWith, TryIntoWith as _};
+use crate::backup::TryIntoWith;
 use crate::proto::backup as proto;
 
 /// Validated version of a 1:1 story reply message [`proto::DirectStoryReplyMessage`].
@@ -53,19 +53,16 @@ pub enum DirectStoryReplyError {
 }
 
 impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusualTimestamp>
-    TryFromWith<proto::DirectStoryReplyMessage, C> for DirectStoryReplyMessage<R>
+    TryIntoWith<DirectStoryReplyMessage<R>, C> for proto::DirectStoryReplyMessage
 {
     type Error = DirectStoryReplyError;
 
-    fn try_from_with(
-        item: proto::DirectStoryReplyMessage,
-        context: &C,
-    ) -> Result<Self, Self::Error> {
+    fn try_into_with(self, context: &C) -> Result<DirectStoryReplyMessage<R>, Self::Error> {
         let proto::DirectStoryReplyMessage {
             reactions,
             reply,
             special_fields: _,
-        } = item;
+        } = self;
 
         let reactions = reactions.try_into_with(context)?;
 
@@ -99,7 +96,7 @@ impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusu
             }
         };
 
-        Ok(Self {
+        Ok(DirectStoryReplyMessage {
             content,
             reactions,
             _limit_construction_to_module: (),
