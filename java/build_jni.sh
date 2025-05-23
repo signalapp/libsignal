@@ -26,6 +26,7 @@ export RUSTFLAGS
 
 DEBUG_LEVEL_LOGS=
 JNI_TYPE_TAGGING=
+RUST_RELEASE="release"
 while [ "${1:-}" != "" ]; do
     case "${1:-}" in
         --debug-level-logs )
@@ -36,8 +37,12 @@ while [ "${1:-}" != "" ]; do
             JNI_TYPE_TAGGING=1
             shift
             ;;
+        --debug )
+            RUST_RELEASE=
+            shift
+            ;;
         -* )
-            echo "Unrecognized flag $1; expected --debug-level-logs" >&2
+            echo "Unrecognized flag $1; expected --debug-level-logs, --jni-type-tagging, or --debug" >&2
             exit 2
             ;;
         *)
@@ -54,7 +59,13 @@ fi
 
 # usage: check_for_debug_level_logs_if_needed lib_dir
 check_for_debug_level_logs_if_needed () {
-   if [[ -z "${DEBUG_LEVEL_LOGS:-}" ]]; then
+    if [[ "${RUST_RELEASE}" == "" ]]; then
+        # Unused strings are only stripped in release builds, not debug builds,
+        # so the check below won't tell us anything.
+        return
+    fi
+
+    if [[ -z "${DEBUG_LEVEL_LOGS:-}" ]]; then
         # See libsignal-jni's logging.rs for the strings matched by this pattern.
         # Searching *every* file in the lib directory is probably overkill,
         # but it's easier than figuring out prefixes and suffixes like copy_built_library does.
@@ -62,7 +73,7 @@ check_for_debug_level_logs_if_needed () {
             echo 'error: debug-level logs found in build that should not have them!' >&2
             exit 2
         fi
-   fi
+    fi
 }
 
 # usage: build_desktop_for_arch target_triple host_triple output_dir
@@ -97,9 +108,9 @@ build_desktop_for_arch () {
         fi
     fi
 
-    echo_then_run cargo build -p libsignal-jni -p libsignal-jni-testing --release ${FEATURES:+--features "${FEATURES[*]}"} --target "$1"
-    copy_built_library "target/${1}/release" signal_jni "$lib_dir" "signal_jni_${suffix}"
-    copy_built_library "target/${1}/release" signal_jni_testing "$lib_dir" "signal_jni_testing_${suffix}"
+    echo_then_run cargo build -p libsignal-jni -p libsignal-jni-testing ${RUST_RELEASE:+--release} ${FEATURES:+--features "${FEATURES[*]}"} --target "$1"
+    copy_built_library "target/${1}/${RUST_RELEASE:-debug}" signal_jni "$lib_dir" "signal_jni_${suffix}"
+    copy_built_library "target/${1}/${RUST_RELEASE:-debug}" signal_jni_testing "$lib_dir" "signal_jni_testing_${suffix}"
     check_for_debug_level_logs_if_needed "$lib_dir"
 }
 
@@ -207,6 +218,6 @@ target_for_abi() {
 
 for abi in "${android_abis[@]}"; do
     rust_target=$(target_for_abi "$abi")
-    echo_then_run cargo build -p libsignal-jni -p libsignal-jni-testing --release ${FEATURES:+--features "${FEATURES[*]}"} -Z unstable-options --target "$rust_target" --artifact-dir "${ANDROID_LIB_DIR}/$abi"
+    echo_then_run cargo build -p libsignal-jni -p libsignal-jni-testing ${RUST_RELEASE:+--release} ${FEATURES:+--features "${FEATURES[*]}"} -Z unstable-options --target "$rust_target" --artifact-dir "${ANDROID_LIB_DIR}/$abi"
     check_for_debug_level_logs_if_needed "${ANDROID_LIB_DIR}/$abi"
 done
