@@ -3,6 +3,7 @@ plugins {
     id "signing"
     id "com.diffplug.spotless" version "6.20.0"
     id "io.github.gradle-nexus.publish-plugin" version "2.0.0"
+    id "org.jetbrains.kotlin.jvm" version "2.1.0"
 }
 
 allprojects {
@@ -33,6 +34,11 @@ subprojects {
 
     apply plugin: "com.diffplug.spotless"
     spotless {
+        kotlin {
+            target('**/*.kt')
+            targetExclude("**/acknowledgments/**")
+            ktlint()
+        }
         java {
             target('**/*.java')
             targetExclude('**/Native.java', '**/NativeTesting.java')

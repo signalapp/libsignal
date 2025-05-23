@@ -11,6 +11,7 @@ plugins {
     id 'java-library'
     id 'maven-publish'
     id 'signing'
+    id 'org.jetbrains.kotlin.jvm'
 }
 
 sourceCompatibility = 17
@@ -27,6 +28,13 @@ sourceSets {
             // Include libsignal sources shared between the client and server
             srcDir '../shared/java'
         }
+        kotlin {
+            srcDir 'src/main/java'
+            srcDir 'src/main/kotlin'
+            // Include libsignal sources shared between the client and server
+            srcDir '../shared/java'
+            srcDir '../shared/kotlin'
+        }
         resources {
             srcDir '../shared/resources'
         }
@@ -34,6 +42,12 @@ sourceSets {
     test {
         java {
             srcDir '../shared/test/java'
+        }
+        kotlin {
+            srcDir 'src/test/java'
+            srcDir 'src/test/kotlin'
+            srcDir '../shared/test/java'
+            srcDir '../shared/test/kotlin'
         }
     }
 }
@@ -83,6 +97,8 @@ task proguard(type: proguard.gradle.ProGuardTask) {
 
     // Include the runtime classes (java.lang.Class, for example)
     libraryjars "${System.getProperty('java.home')}/jmods/java.base.jmod", jarfilter: '!**.jar', filter: '!module-info.class'
+    // Include the Kotlin library jars
+    libraryjars sourceSets.main.compileClasspath
 
     configuration '../shared/resources/META-INF/proguard/libsignal.pro'
     // Assume for reachability purposes that all public methods are reachable.
