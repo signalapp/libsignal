@@ -704,8 +704,7 @@ mod test {
 
         assert_eq!(
             resolved_set, static_set,
-            "Resolved IP addresses do not match static ones for {}",
-            hostname
+            "Resolved IP addresses do not match static ones for {hostname}"
         );
     }
 }

@@ -1031,7 +1031,7 @@ fn group_late_join() -> Result<(), SignalProtocolError> {
                 &mut alice_store,
                 &sender_address,
                 distribution_id,
-                format!("nefarious plotting {}/100", i).as_bytes(),
+                format!("nefarious plotting {i}/100").as_bytes(),
                 &mut csprng,
             )
             .await?;
@@ -1108,7 +1108,7 @@ fn group_out_of_order() -> Result<(), SignalProtocolError> {
                     &mut alice_store,
                     &sender_address,
                     distribution_id,
-                    format!("nefarious plotting {:02}/100", i).as_bytes(),
+                    format!("nefarious plotting {i:02}/100").as_bytes(),
                     &mut csprng,
                 )
                 .await?,
@@ -1130,7 +1130,7 @@ fn group_out_of_order() -> Result<(), SignalProtocolError> {
         for (i, plaintext) in plaintexts.iter().enumerate() {
             assert_eq!(
                 String::from_utf8(plaintext.to_vec()).expect("valid utf8"),
-                format!("nefarious plotting {:02}/100", i)
+                format!("nefarious plotting {i:02}/100")
             );
         }
 
@@ -1175,7 +1175,7 @@ fn group_too_far_in_the_future() -> Result<(), SignalProtocolError> {
                 &mut alice_store,
                 &sender_address,
                 distribution_id,
-                format!("nefarious plotting {}", i).as_bytes(),
+                format!("nefarious plotting {i}").as_bytes(),
                 &mut csprng,
             )
             .await?;

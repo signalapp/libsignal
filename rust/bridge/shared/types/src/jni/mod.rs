@@ -871,11 +871,11 @@ impl JniError for RetryLater {
 /// appropriate Java exception class and thrown.
 fn throw_error(env: &mut JNIEnv, error: SignalJniError) {
     convert_to_exception(env, error, |env, throwable, error| match throwable {
-        Err(failure) => log::error!("failed to create exception for {}: {}", error, failure),
+        Err(failure) => log::error!("failed to create exception for {error}: {failure}"),
         Ok(throwable) => {
             let result = env.throw(throwable);
             if let Err(failure) = result {
-                log::error!("failed to throw exception for {}: {}", error, failure);
+                log::error!("failed to throw exception for {error}: {failure}");
             }
         }
     });

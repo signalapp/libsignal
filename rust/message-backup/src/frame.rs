@@ -184,7 +184,7 @@ impl std::fmt::Display for HmacMismatchError {
         hex::encode_to_slice(self.found, &mut found).expect("correct length");
         let found = std::str::from_utf8(&found).expect("hex is UTF-8");
 
-        write!(f, "expected {}, found {}", expected, found)
+        write!(f, "expected {expected}, found {found}")
     }
 }
 

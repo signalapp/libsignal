@@ -44,7 +44,7 @@ impl Auth {
         let digest = mac.finalize().into_bytes();
         let mut khex = hex::encode(digest);
         khex.truncate(Self::OTP_LEN);
-        format!("{}:{}", ts, khex)
+        format!("{ts}:{khex}")
     }
 }
 

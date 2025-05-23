@@ -301,7 +301,7 @@ impl serde::Serialize for proto::contact_attachment::Phone {
         } = self;
         let mut ser = serializer.serialize_struct("Phone", 3)?;
         ser.serialize_field("value", value)?;
-        ser.serialize_field("type_", &format!("{:?}", type_))?;
+        ser.serialize_field("type_", &format!("{type_:?}"))?;
         ser.serialize_field("label", label)?;
         ser.end()
     }
@@ -320,7 +320,7 @@ impl serde::Serialize for proto::contact_attachment::Email {
         } = self;
         let mut ser = serializer.serialize_struct("Email", 3)?;
         ser.serialize_field("value", value)?;
-        ser.serialize_field("type_", &format!("{:?}", type_))?;
+        ser.serialize_field("type_", &format!("{type_:?}"))?;
         ser.serialize_field("label", label)?;
         ser.end()
     }
@@ -344,7 +344,7 @@ impl serde::Serialize for proto::contact_attachment::PostalAddress {
             special_fields: _,
         } = self;
         let mut ser = serializer.serialize_struct("PostalAddress", 9)?;
-        ser.serialize_field("type_", &format!("{:?}", type_))?;
+        ser.serialize_field("type_", &format!("{type_:?}"))?;
         ser.serialize_field("label", label)?;
         ser.serialize_field("street", street)?;
         ser.serialize_field("pobox", pobox)?;

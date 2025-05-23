@@ -290,8 +290,7 @@ impl<S: AttrScalars> KeyPair<S> {
         assert!(S::NUM_ATTRS >= 1, "at least one attribute required");
         assert!(
             S::NUM_ATTRS <= NUM_SUPPORTED_ATTRS,
-            "more than {} attributes not supported",
-            NUM_SUPPORTED_ATTRS
+            "more than {NUM_SUPPORTED_ATTRS} attributes not supported"
         );
         assert!(
             S::NUM_ATTRS <= S::Storage::LEN,

@@ -357,7 +357,7 @@ fn verify_timestamp(
     let delta = now - timestamp as i128;
     let format_message = |s: &str| match description {
         None => s.to_string(),
-        Some(desc) => format!("{} {}", desc, s),
+        Some(desc) => format!("{desc} {s}"),
     };
     if delta > max_behind.as_millis() as i128 {
         let message = format_message("timestamp is too far behind current time");

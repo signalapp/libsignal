@@ -142,8 +142,7 @@ impl TryFrom<&[u8]> for SgxEndorsements {
 
         if version != OE_ENDORSEMENTS_V1 {
             return Err(Error::new(format!(
-                "unsupported SGX endorsement version {}",
-                version
+                "unsupported SGX endorsement version {version}"
             )));
         }
 
@@ -240,14 +239,14 @@ fn der_crl_for_field(
 ) -> Result<RevocationList> {
     let data = data_for_field(field, offsets, data);
 
-    RevocationList::from_der_data(data).with_context(|| format!("{:?}", field))
+    RevocationList::from_der_data(data).with_context(|| format!("{field:?}"))
 }
 
 fn string_for_field(field: SgxEndorsementField, offsets: &[usize], data: &[u8]) -> Result<String> {
     let mut bytes = data_for_field(field, offsets, data);
     util::strip_trailing_null_byte(&mut bytes);
 
-    String::from_utf8(Vec::from(bytes)).map_err(|e| Error::from(e).context(format!("{:?}", field)))
+    String::from_utf8(Vec::from(bytes)).map_err(|e| Error::from(e).context(format!("{field:?}")))
 }
 
 fn data_for_field<'a>(field: SgxEndorsementField, offsets: &[usize], data: &'a [u8]) -> &'a [u8] {

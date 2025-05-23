@@ -184,10 +184,7 @@ impl Connector<SocksRoute<IpAddr>, ()> for super::StatelessProxied {
 
         async move {
             log::info!("[{log_tag}] establishing connection to host over SOCKS proxy");
-            log::debug!(
-                "[{log_tag}] establishing connection to {:?} over SOCKS proxy",
-                target_addr
-            );
+            log::debug!("[{log_tag}] establishing connection to {target_addr:?} over SOCKS proxy");
 
             log::info!("[{log_tag}] connecting to {protocol:?} proxy over TCP");
             let TcpRoute {

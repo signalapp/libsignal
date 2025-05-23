@@ -94,25 +94,21 @@ pub enum BridgeLayerError {
 impl fmt::Display for BridgeLayerError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Jni(s) => write!(f, "JNI error {}", s),
+            Self::Jni(s) => write!(f, "JNI error {s}"),
             Self::NullPointer(None) => write!(f, "unexpected null"),
             Self::NullPointer(Some(expected_type)) => {
                 write!(f, "got null where {expected_type} instance is expected")
             }
-            Self::BadArgument(m) => write!(f, "{}", m),
-            Self::BadJniParameter(m) => write!(f, "bad parameter type {}", m),
+            Self::BadArgument(m) => write!(f, "{m}"),
+            Self::BadJniParameter(m) => write!(f, "bad parameter type {m}"),
             Self::UnexpectedJniResultType(m, t) => {
-                write!(f, "calling {} returned unexpected type {}", m, t)
+                write!(f, "calling {m} returned unexpected type {t}")
             }
             Self::IntegerOverflow(m) => {
-                write!(f, "integer overflow during conversion of {}", m)
+                write!(f, "integer overflow during conversion of {m}")
             }
             Self::IncorrectArrayLength { expected, actual } => {
-                write!(
-                    f,
-                    "expected array with length {} (was {})",
-                    expected, actual
-                )
+                write!(f, "expected array with length {expected} (was {actual})")
             }
             Self::CallbackException(callback_name, exception) => {
                 write!(f, "exception in method call '{callback_name}': {exception}")
@@ -245,9 +241,9 @@ impl fmt::Display for ThrownException {
         let exn_type = exn_type.as_deref().unwrap_or("<unknown>");
 
         if let Ok(message) = self.message(env) {
-            write!(f, "exception {} \"{}\"", exn_type, message)
+            write!(f, "exception {exn_type} \"{message}\"")
         } else {
-            write!(f, "exception {}", exn_type)
+            write!(f, "exception {exn_type}")
         }
     }
 }
@@ -262,9 +258,9 @@ impl fmt::Debug for ThrownException {
         let obj_addr = **self.exception_ref.as_obj();
 
         if let Ok(message) = self.message(env) {
-            write!(f, "exception {} ({:p}) \"{}\"", exn_type, obj_addr, message)
+            write!(f, "exception {exn_type} ({obj_addr:p}) \"{message}\"")
         } else {
-            write!(f, "exception {} ({:p})", exn_type, obj_addr)
+            write!(f, "exception {exn_type} ({obj_addr:p})")
         }
     }
 }

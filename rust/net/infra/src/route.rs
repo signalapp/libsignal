@@ -326,7 +326,7 @@ where
     ));
     let mut schedule = std::pin::pin!(schedule);
 
-    let mut sleep_until_start_next_connection = tokio::time::sleep(Duration::ZERO);
+    let sleep_until_start_next_connection = tokio::time::sleep(Duration::ZERO);
     let mut sleep_until_start_next_connection = std::pin::pin!(sleep_until_start_next_connection);
 
     // Every N seconds, log about what we've tried and still have yet to try.

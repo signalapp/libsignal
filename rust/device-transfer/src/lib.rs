@@ -31,7 +31,7 @@ impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Error::KeyDecodingFailed => write!(f, "Decoding provided RSA private key failed"),
-            Error::InternalError(s) => write!(f, "Internal error in device transfer ({})", s),
+            Error::InternalError(s) => write!(f, "Internal error in device transfer ({s})"),
         }
     }
 }

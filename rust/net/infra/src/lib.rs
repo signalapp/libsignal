@@ -672,7 +672,7 @@ pub(crate) mod test {
             let builder = Request::get(input);
             let builder = HttpRequestDecorator::PathPrefix("/chat").decorate_request(builder);
             let (parts, _) = builder.body(()).unwrap().into_parts();
-            assert_eq!(expected_path, parts.uri.path(), "for input [{}]", input)
+            assert_eq!(expected_path, parts.uri.path(), "for input [{input}]")
         }
     }
 

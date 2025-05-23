@@ -118,5 +118,5 @@ async fn main() {
         .await
         .unwrap();
 
-    println!("{:?}", cdsi_response);
+    println!("{cdsi_response:?}");
 }

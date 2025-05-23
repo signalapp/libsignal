@@ -230,16 +230,16 @@ impl<'a, T: MayHavePublicKey> PresentationProofBuilderCore<'a, T> {
         let mut encryption_sum_terms = vec![];
         for key in &self.encryption_keys {
             let key_id = key.id();
-            let a1 = format!("a1_{}", key_id);
+            let a1 = format!("a1_{key_id}");
 
             // These terms are an addition by Trevor Perrin to the original paper to more carefully
             // ensure the validity of the encryption keys used.
             // 0 = z1_uid * I + a1_uid * Z
-            st.add("0", &[(&format!("z1_{}", key_id), "I"), (&a1, "Z")]);
+            st.add("0", &[(&format!("z1_{key_id}"), "I"), (&a1, "Z")]);
 
             if key.public_key().is_some() {
-                encryption_sum_terms.push((a1, format!("G_a1_{}", key_id)));
-                encryption_sum_terms.push((format!("a2_{}", key_id), format!("G_a2_{}", key_id)));
+                encryption_sum_terms.push((a1, format!("G_a1_{key_id}")));
+                encryption_sum_terms.push((format!("a2_{key_id}"), format!("G_a2_{key_id}")));
             }
         }
         if !encryption_sum_terms.is_empty() {
@@ -266,11 +266,11 @@ impl<'a, T: MayHavePublicKey> PresentationProofBuilderCore<'a, T> {
                     &format!("E_A{}", attr.first_point_index),
                     &[
                         (
-                            &format!("a1_{}", key_id),
+                            &format!("a1_{key_id}"),
                             &format!("C_y{}", attr.first_point_index),
                         ),
                         (
-                            &format!("z1_{}", key_id),
+                            &format!("z1_{key_id}"),
                             &format!("G_y{}", attr.first_point_index),
                         ),
                     ],
@@ -281,7 +281,7 @@ impl<'a, T: MayHavePublicKey> PresentationProofBuilderCore<'a, T> {
                     &[
                         ("z", &format!("G_y{}", attr.second_point_index)),
                         (
-                            &format!("a2_{}", key_id),
+                            &format!("a2_{key_id}"),
                             &format!("-E_A{}", attr.first_point_index),
                         ),
                     ],
@@ -502,9 +502,9 @@ impl<'a> PresentationProofBuilder<'a> {
         scalar_args.add("z0", z0);
         for key in &self.core.encryption_keys {
             let key_id = key.id();
-            scalar_args.add(format!("a1_{}", key_id), key.a1);
-            scalar_args.add(format!("a2_{}", key_id), key.a2);
-            scalar_args.add(format!("z1_{}", key_id), -z * key.a1);
+            scalar_args.add(format!("a1_{key_id}"), key.a1);
+            scalar_args.add(format!("a2_{key_id}"), key.a2);
+            scalar_args.add(format!("z1_{key_id}"), -z * key.a1);
         }
 
         let mut point_args = self.core.prepare_non_attribute_point_args(I, &commitments);
@@ -516,7 +516,7 @@ impl<'a> PresentationProofBuilder<'a> {
                 second_point_index,
             } = attr;
             point_args.add(
-                format!("C_y{}", first_point_index),
+                format!("C_y{first_point_index}"),
                 commitments.C_y[first_point_index],
             );
 
@@ -524,10 +524,10 @@ impl<'a> PresentationProofBuilder<'a> {
                 let key = &self.core.encryption_keys[key_index];
                 let E_A1 = key.a1 * self.core.attr_points[first_point_index];
                 let E_A2 = key.a2 * E_A1 + self.core.attr_points[second_point_index];
-                point_args.add(format!("E_A{}", first_point_index), E_A1);
-                point_args.add(format!("-E_A{}", first_point_index), -E_A1);
+                point_args.add(format!("E_A{first_point_index}"), E_A1);
+                point_args.add(format!("-E_A{first_point_index}"), -E_A1);
                 point_args.add(
-                    format!("C_y{0}-E_A{0}", second_point_index),
+                    format!("C_y{second_point_index}-E_A{second_point_index}"),
                     commitments.C_y[second_point_index] - E_A2,
                 );
             } else {
@@ -676,19 +676,19 @@ impl<'a> PresentationProofVerifier<'a> {
                 second_point_index,
                 key_index,
             } = attr;
-            point_args.add(format!("C_y{}", first_point_index), C_y[first_point_index]);
+            point_args.add(format!("C_y{first_point_index}"), C_y[first_point_index]);
 
             if key_index.is_some() {
                 point_args.add(
-                    format!("E_A{}", first_point_index),
+                    format!("E_A{first_point_index}"),
                     self.core.attr_points[first_point_index],
                 );
                 point_args.add(
-                    format!("-E_A{}", first_point_index),
+                    format!("-E_A{first_point_index}"),
                     -self.core.attr_points[first_point_index],
                 );
                 point_args.add(
-                    format!("C_y{0}-E_A{0}", second_point_index),
+                    format!("C_y{second_point_index}-E_A{second_point_index}"),
                     C_y[second_point_index] - self.core.attr_points[second_point_index],
                 );
             } else {

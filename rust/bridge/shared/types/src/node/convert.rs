@@ -263,7 +263,7 @@ impl SimpleArgTypeInfo for crate::protocol::Timestamp {
     fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {
         let value = foreign.value(cx);
         if !can_convert_js_number_to_int(value, 0.0..=MAX_SAFE_JS_INTEGER) {
-            return cx.throw_range_error(format!("cannot convert {} to Timestamp (u64)", value));
+            return cx.throw_range_error(format!("cannot convert {value} to Timestamp (u64)"));
         }
         Ok(Self::from_epoch_millis(value as u64))
     }
@@ -278,7 +278,7 @@ impl SimpleArgTypeInfo for crate::zkgroup::Timestamp {
     fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {
         let value = foreign.value(cx);
         if !can_convert_js_number_to_int(value, 0.0..=MAX_SAFE_JS_INTEGER) {
-            return cx.throw_range_error(format!("cannot convert {} to Timestamp (u64)", value));
+            return cx.throw_range_error(format!("cannot convert {value} to Timestamp (u64)"));
         }
         Ok(Self::from_epoch_seconds(value as u64))
     }

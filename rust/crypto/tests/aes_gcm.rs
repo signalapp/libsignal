@@ -69,7 +69,7 @@ fn test_kat(kat: WycheproofTest) -> Result<(), signal_crypto::Error> {
     let valid = match kat.result.as_ref() {
         "valid" => true,
         "invalid" => false,
-        wut => panic!("unknown result field {}", wut),
+        wut => panic!("unknown result field {wut}"),
     };
 
     let mut gcm_enc = signal_crypto::Aes256GcmEncryption::new(&key, &nonce, &aad)?;
@@ -89,7 +89,7 @@ fn test_kat(kat: WycheproofTest) -> Result<(), signal_crypto::Error> {
         assert_eq!(hex::encode(&buf), hex::encode(&pt));
 
         for i in 2..32 {
-            println!("Test {}", i);
+            println!("Test {i}");
             // Do it again but with split inputs:
             let mut gcm_enc = signal_crypto::Aes256GcmEncryption::new(&key, &nonce, &aad)?;
             let mut gcm_dec = signal_crypto::Aes256GcmDecryption::new(&key, &nonce, &aad)?;

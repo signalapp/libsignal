@@ -298,10 +298,13 @@ impl DnsResolver {
                         lookup.iter().filter(|ip| !expected.contains(ip)).peekable();
 
                     if unexpected.peek().is_some() {
-                        let dns64_suffix = unexpected
+                        let dns64_suffix = if unexpected
                             .any(|ip| matches!(ip, IpAddr::V6(v6) if has_dns64_prefix(&v6)))
-                            .then_some(" with DNS64 prefix")
-                            .unwrap_or_default();
+                        {
+                            " with DNS64 prefix"
+                        } else {
+                            ""
+                        };
 
                         log::warn!(
                             "DNS resolution for domain [{log_safe_hostname}] returned unexpected result {dns64_suffix}",

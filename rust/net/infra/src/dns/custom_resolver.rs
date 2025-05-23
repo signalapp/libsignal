@@ -282,7 +282,7 @@ async fn do_lookup_task_body<T: DnsTransport>(
     let started_at = Instant::now();
     let timeout_at = started_at + DNS_CALL_BACKGROUND_TIMEOUT;
 
-    let mut stream = match transport.send_queries(request.clone()).await {
+    let stream = match transport.send_queries(request.clone()).await {
         Ok(stream) => stream,
         Err(err) => {
             log::error!(

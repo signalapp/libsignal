@@ -116,13 +116,10 @@ async fn process_prekey_impl(
     }
 
     let our_one_time_pre_key_pair = if let Some(pre_key_id) = message.pre_key_id() {
-        log::info!("processing PreKey message from {}", remote_address);
+        log::info!("processing PreKey message from {remote_address}");
         Some(pre_key_store.get_pre_key(pre_key_id).await?.key_pair()?)
     } else {
-        log::warn!(
-            "processing PreKey message from {} which had no one-time prekey",
-            remote_address
-        );
+        log::warn!("processing PreKey message from {remote_address} which had no one-time prekey");
         None
     };
 

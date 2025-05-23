@@ -78,6 +78,6 @@ fn main() {
         .expect("failed to write");
 
     for proto in PROTOS.iter().chain(TEST_PROTOS) {
-        println!("cargo:rerun-if-changed={}", proto);
+        println!("cargo:rerun-if-changed={proto}");
     }
 }

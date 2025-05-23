@@ -18,8 +18,8 @@ pub mod oneshot_broadcast;
 
 /// Constructs the value of the `Authorization` header for the `Basic` auth scheme.
 pub fn basic_authorization(username: &str, password: &str) -> HeaderValue {
-    let auth = BASE64_STANDARD.encode(format!("{}:{}", username, password).as_bytes());
-    let auth = format!("Basic {}", auth);
+    let auth = BASE64_STANDARD.encode(format!("{username}:{password}").as_bytes());
+    let auth = format!("Basic {auth}");
     HeaderValue::try_from(auth).expect("valid header value")
 }
 

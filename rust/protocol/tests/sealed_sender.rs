@@ -46,7 +46,7 @@ fn test_server_cert() -> Result<(), SignalProtocolError> {
                 | SignalProtocolError::BadKeyLength(_, _) => {}
 
                 unexpected_err => {
-                    panic!("unexpected error {:?}", unexpected_err)
+                    panic!("unexpected error {unexpected_err:?}")
                 }
             },
         }
@@ -124,7 +124,7 @@ fn test_sender_cert() -> Result<(), SignalProtocolError> {
                 | SignalProtocolError::BadKeyType(_) => {}
 
                 unexpected_err => {
-                    panic!("unexpected error {:?}", unexpected_err)
+                    panic!("unexpected error {unexpected_err:?}")
                 }
             },
         }
@@ -248,7 +248,7 @@ fn test_sealed_sender() -> Result<(), SignalProtocolError> {
         match bob_ptext {
             Err(SignalProtocolError::InvalidSealedSenderMessage(_)) => { /* ok */ }
             Err(err) => {
-                panic!("Unexpected error {}", err)
+                panic!("Unexpected error {err}")
             }
             Ok(_) => {
                 panic!("Shouldn't have decrypted")
@@ -288,7 +288,7 @@ fn test_sealed_sender() -> Result<(), SignalProtocolError> {
         match bob_ptext {
             Err(SignalProtocolError::InvalidSealedSenderMessage(_)) => { /* ok */ }
             Err(err) => {
-                panic!("Unexpected error {}", err)
+                panic!("Unexpected error {err}")
             }
             Ok(_) => {
                 panic!("Shouldn't have decrypted")
@@ -587,7 +587,7 @@ fn test_sealed_sender_multi_recipient() -> Result<(), SignalProtocolError> {
         match bob_ptext {
             Err(SignalProtocolError::InvalidSealedSenderMessage(_)) => { /* ok */ }
             Err(err) => {
-                panic!("Unexpected error {}", err)
+                panic!("Unexpected error {err}")
             }
             Ok(_) => {
                 panic!("Shouldn't have decrypted")
@@ -648,7 +648,7 @@ fn test_sealed_sender_multi_recipient() -> Result<(), SignalProtocolError> {
         match bob_ptext {
             Err(SignalProtocolError::InvalidSealedSenderMessage(_)) => { /* ok */ }
             Err(err) => {
-                panic!("Unexpected error {}", err)
+                panic!("Unexpected error {err}")
             }
             Ok(_) => {
                 panic!("Shouldn't have decrypted")
@@ -754,8 +754,7 @@ fn test_sealed_sender_multi_recipient_encrypt_with_archived_session(
                 let description = e.to_string();
                 assert!(
                     description.contains(&bob_uuid_address.to_string()),
-                    "should mention recipient in message \"{}\"",
-                    description
+                    "should mention recipient in message \"{description}\""
                 );
             }
         }
@@ -854,7 +853,7 @@ fn test_sealed_sender_multi_recipient_encrypt_with_bad_registration_id(
             Err(SignalProtocolError::InvalidRegistrationId(address, _id)) => {
                 assert_eq!(address, bob_uuid_address);
             }
-            Err(e) => panic!("wrong error: {}", e),
+            Err(e) => panic!("wrong error: {e}"),
         }
 
         Ok(())

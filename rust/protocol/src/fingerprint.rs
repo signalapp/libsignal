@@ -45,7 +45,7 @@ fn get_encoded_string(fprint: &[u8]) -> Result<String> {
     let s = fprint.chunks_exact(5).take(6).map(read5_mod_100k).fold(
         String::with_capacity(5 * 6),
         |mut s, n| {
-            write!(s, "{:05}", n).expect("can always write to a String");
+            write!(s, "{n:05}").expect("can always write to a String");
             s
         },
     );
@@ -161,8 +161,7 @@ impl Fingerprint {
     ) -> Result<Vec<u8>> {
         if iterations <= 1 || iterations > 1000000 {
             return Err(SignalProtocolError::InvalidArgument(format!(
-                "Invalid fingerprint iterations {}",
-                iterations
+                "Invalid fingerprint iterations {iterations}"
             )));
         }
 

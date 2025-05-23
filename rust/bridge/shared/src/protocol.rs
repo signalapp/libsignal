@@ -64,7 +64,7 @@ fn HKDF_DeriveSecrets(
     hkdf::Hkdf::<sha2::Sha256>::new(salt, ikm)
         .expand(label, &mut buffer)
         .map_err(|_| {
-            SignalProtocolError::InvalidArgument(format!("output too long ({})", output_length))
+            SignalProtocolError::InvalidArgument(format!("output too long ({output_length})"))
         })?;
     Ok(buffer)
 }
@@ -534,7 +534,7 @@ fn DecryptionErrorMessage_ForOriginalMessage(
     original_sender_device_id: u32,
 ) -> Result<DecryptionErrorMessage> {
     let original_type = CiphertextMessageType::try_from(original_type).map_err(|_| {
-        SignalProtocolError::InvalidArgument(format!("unknown message type {}", original_type))
+        SignalProtocolError::InvalidArgument(format!("unknown message type {original_type}"))
     })?;
     DecryptionErrorMessage::for_original(
         original_bytes,
@@ -861,7 +861,7 @@ fn UnidentifiedSenderMessageContentNewFromContentAndType(
     group_id: &[u8],
 ) -> Result<UnidentifiedSenderMessageContent> {
     let message_type = CiphertextMessageType::try_from(message_type).map_err(|_| {
-        SignalProtocolError::InvalidArgument(format!("unknown message type {}", message_type))
+        SignalProtocolError::InvalidArgument(format!("unknown message type {message_type}"))
     })?;
 
     UnidentifiedSenderMessageContent::new(

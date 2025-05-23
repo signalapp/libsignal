@@ -75,18 +75,18 @@ async fn main() {
     .await
     .0
     .expect("connected to the DNS server");
-    log::info!("successfully connected to the DNS server at {:?}", route);
+    log::info!("successfully connected to the DNS server at {route:?}");
 
     let request = DnsLookupRequest {
         hostname: Arc::from(args.domain),
         ipv6_enabled: !args.no_ipv6,
     };
-    log::info!("sending DNS request: {:?}", request);
+    log::info!("sending DNS request: {request:?}");
     let mut stream = doh_transport.send_queries(request).await.unwrap();
 
     let next_response = stream.next().await;
-    log::info!("received first response from DNS: [{:?}]", next_response);
+    log::info!("received first response from DNS: [{next_response:?}]");
 
     let next_response = stream.next().await;
-    log::info!("received second response from DNS: [{:?}]", next_response);
+    log::info!("received second response from DNS: [{next_response:?}]");
 }

@@ -1086,7 +1086,7 @@ mod test {
 
         let (source_tx, source_rx) = tokio::sync::mpsc::unbounded_channel();
         const DEBOUNCE: Duration = Duration::from_secs(1);
-        let mut stream =
+        let stream =
             MinKeyValueQueueStream::new(UnboundedReceiverStream::new(source_rx).fuse(), DEBOUNCE);
         let mut stream = std::pin::pin!(stream);
 
@@ -1161,10 +1161,10 @@ mod test {
         let resolver_stream = UnboundedReceiverStream::new(resolver_stream_rx);
         let delay_policy = NoDelay;
 
-        let mut schedule = Schedule::new(resolver_stream.fuse(), delay_policy, DEBOUNCE_TIME);
+        let schedule = Schedule::new(resolver_stream.fuse(), delay_policy, DEBOUNCE_TIME);
         let schedule = std::pin::pin!(schedule);
 
-        let mut next = schedule.next();
+        let next = schedule.next();
         let mut next = std::pin::pin!(next);
 
         // With no inputs, polling won't complete.
@@ -1205,9 +1205,9 @@ mod test {
             )
         }));
 
-        let mut schedule = Schedule::new(resolver_stream.fuse(), delay_policy, DEBOUNCE_TIME);
+        let schedule = Schedule::new(resolver_stream.fuse(), delay_policy, DEBOUNCE_TIME);
         let schedule = std::pin::pin!(schedule);
-        let mut schedule = schedule.as_stream();
+        let schedule = schedule.as_stream();
         let mut schedule = std::pin::pin!(schedule);
 
         // This schedule has all its inputs ready immediately and won't delay

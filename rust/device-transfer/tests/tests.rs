@@ -20,7 +20,7 @@ fn test_generate_and_parse() -> Result<(), Error> {
         let days_to_expire = 10;
         let cert = create_self_signed_cert(&key, "test", days_to_expire)?;
 
-        println!("Key format: {:?}", key_format);
+        println!("Key format: {key_format:?}");
         println!("key = {}", hex::encode(&key));
         println!("cert = {}", hex::encode(&cert));
 

@@ -785,7 +785,7 @@ fn test_message_key_limits() -> TestResult {
 
             for i in 0..TOO_MANY_MESSAGES {
                 inflight.push(
-                    encrypt(&mut alice_store, &bob_address, &format!("It's over {}", i)).await?,
+                    encrypt(&mut alice_store, &bob_address, &format!("It's over {i}")).await?,
                 );
             }
 
@@ -2051,8 +2051,7 @@ fn test_unacknowledged_sessions_eventually_expire() -> TestResult {
         .unwrap_err();
         assert!(
             matches!(&error, SignalProtocolError::SessionNotFound(addr) if addr == &bob_address),
-            "{:?}",
-            error
+            "{error:?}"
         );
 
         Ok(())
@@ -2437,7 +2436,7 @@ fn run_session_interaction(alice_session: SessionRecord, bob_session: SessionRec
         let mut alice_messages = Vec::with_capacity(ALICE_MESSAGE_COUNT);
 
         for i in 0..ALICE_MESSAGE_COUNT {
-            let ptext = format!("смерть за смерть {}", i);
+            let ptext = format!("смерть за смерть {i}");
             let ctext = encrypt(&mut alice_store, &bob_address, &ptext).await?;
             alice_messages.push((ptext, ctext));
         }
@@ -2457,7 +2456,7 @@ fn run_session_interaction(alice_session: SessionRecord, bob_session: SessionRec
         let mut bob_messages = Vec::with_capacity(BOB_MESSAGE_COUNT);
 
         for i in 0..BOB_MESSAGE_COUNT {
-            let ptext = format!("Relax in the safety of your own delusions. {}", i);
+            let ptext = format!("Relax in the safety of your own delusions. {i}");
             let ctext = encrypt(&mut bob_store, &alice_address, &ptext).await?;
             bob_messages.push((ptext, ctext));
         }
@@ -2521,7 +2520,7 @@ async fn run_interaction(
     );
 
     for i in 0..10 {
-        let alice_ptext = format!("A->B message {}", i);
+        let alice_ptext = format!("A->B message {i}");
         let alice_message = encrypt(alice_store, bob_address, &alice_ptext).await?;
         assert_eq!(alice_message.message_type(), CiphertextMessageType::Whisper);
         assert_eq!(
@@ -2532,7 +2531,7 @@ async fn run_interaction(
     }
 
     for i in 0..10 {
-        let bob_ptext = format!("B->A message {}", i);
+        let bob_ptext = format!("B->A message {i}");
         let bob_message = encrypt(bob_store, alice_address, &bob_ptext).await?;
         assert_eq!(bob_message.message_type(), CiphertextMessageType::Whisper);
         assert_eq!(
@@ -2545,13 +2544,13 @@ async fn run_interaction(
     let mut alice_ooo_messages = vec![];
 
     for i in 0..10 {
-        let alice_ptext = format!("A->B OOO message {}", i);
+        let alice_ptext = format!("A->B OOO message {i}");
         let alice_message = encrypt(alice_store, bob_address, &alice_ptext).await?;
         alice_ooo_messages.push((alice_ptext, alice_message));
     }
 
     for i in 0..10 {
-        let alice_ptext = format!("A->B post-OOO message {}", i);
+        let alice_ptext = format!("A->B post-OOO message {i}");
         let alice_message = encrypt(alice_store, bob_address, &alice_ptext).await?;
         assert_eq!(alice_message.message_type(), CiphertextMessageType::Whisper);
         assert_eq!(
@@ -2562,7 +2561,7 @@ async fn run_interaction(
     }
 
     for i in 0..10 {
-        let bob_ptext = format!("B->A message post-OOO {}", i);
+        let bob_ptext = format!("B->A message post-OOO {i}");
         let bob_message = encrypt(bob_store, alice_address, &bob_ptext).await?;
         assert_eq!(bob_message.message_type(), CiphertextMessageType::Whisper);
         assert_eq!(

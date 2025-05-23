@@ -541,10 +541,7 @@ impl<'a> UnidentifiedSenderMessage<'a> {
             SignalProtocolError::InvalidSealedSenderMessage("Message was empty".to_owned())
         })?;
         let version = version_byte >> 4;
-        log::debug!(
-            "deserializing UnidentifiedSenderMessage with version {}",
-            version
-        );
+        log::debug!("deserializing UnidentifiedSenderMessage with version {version}");
 
         match version {
             0 | SEALED_SENDER_V1_MAJOR_VERSION => {
@@ -1336,7 +1333,7 @@ where
                     .get_identity(destination)
                     .await?
                     .ok_or_else(|| {
-                        log::error!("missing identity key for {}", destination);
+                        log::error!("missing identity key for {destination}");
                         // Returned as a SessionNotFound error because (a) we don't have an identity
                         // error that includes the address, and (b) re-establishing the session should
                         // re-fetch the identity.
@@ -1768,7 +1765,7 @@ pub async fn sealed_sender_decrypt_to_usmc(
                     unreachable!("just derived these keys; they should be valid");
                 }
                 Err(crypto::DecryptionError::BadCiphertext(msg)) => {
-                    log::error!("failed to decrypt sealed sender v1 message key: {}", msg);
+                    log::error!("failed to decrypt sealed sender v1 message key: {msg}");
                     return Err(SignalProtocolError::InvalidSealedSenderMessage(
                         "failed to decrypt sealed sender v1 message key".to_owned(),
                     ));
@@ -1794,10 +1791,7 @@ pub async fn sealed_sender_decrypt_to_usmc(
                     unreachable!("just derived these keys; they should be valid");
                 }
                 Err(crypto::DecryptionError::BadCiphertext(msg)) => {
-                    log::error!(
-                        "failed to decrypt sealed sender v1 message contents: {}",
-                        msg
-                    );
+                    log::error!("failed to decrypt sealed sender v1 message contents: {msg}");
                     return Err(SignalProtocolError::InvalidSealedSenderMessage(
                         "failed to decrypt sealed sender v1 message contents".to_owned(),
                     ));
@@ -1845,8 +1839,7 @@ pub async fn sealed_sender_decrypt_to_usmc(
                 )
                 .map_err(|err| {
                     SignalProtocolError::InvalidSealedSenderMessage(format!(
-                        "failed to decrypt inner message: {}",
-                        err
+                        "failed to decrypt inner message: {err}"
                     ))
                 })?;
 

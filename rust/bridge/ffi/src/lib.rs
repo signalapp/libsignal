@@ -20,7 +20,7 @@ pub mod logging;
 
 #[no_mangle]
 pub unsafe extern "C" fn signal_print_ptr(p: *const std::ffi::c_void) {
-    println!("In rust that's {:?}", p);
+    println!("In rust that's {p:?}");
 }
 
 #[no_mangle]
@@ -103,7 +103,7 @@ pub unsafe extern "C" fn signal_error_get_address(
     run_ffi_safe(|| {
         let err = err.as_ref().ok_or(NullPointerError)?;
         let value = err.provide_address().map_err(|_| {
-            SignalProtocolError::InvalidArgument(format!("cannot get address from error ({})", err))
+            SignalProtocolError::InvalidArgument(format!("cannot get address from error ({err})"))
         })?;
         write_result_to(out, value)
     })
@@ -118,7 +118,7 @@ pub unsafe extern "C" fn signal_error_get_uuid(
     run_ffi_safe(|| {
         let err = err.as_ref().ok_or(NullPointerError)?;
         let value = err.provide_uuid().map_err(|_| {
-            SignalProtocolError::InvalidArgument(format!("cannot get UUID from error ({})", err))
+            SignalProtocolError::InvalidArgument(format!("cannot get UUID from error ({err})"))
         })?;
         write_result_to(out, value.into_bytes())
     })
@@ -142,8 +142,7 @@ pub unsafe extern "C" fn signal_error_get_retry_after_seconds(
         let err = err.as_ref().ok_or(NullPointerError)?;
         let value = err.provide_retry_after_seconds().map_err(|_| {
             SignalProtocolError::InvalidArgument(format!(
-                "cannot get retry_after_seconds from error ({})",
-                err
+                "cannot get retry_after_seconds from error ({err})"
             ))
         })?;
         write_result_to(out, value)
@@ -160,8 +159,7 @@ pub unsafe extern "C" fn signal_error_get_tries_remaining(
         let err = err.as_ref().ok_or(NullPointerError)?;
         let value = err.provide_tries_remaining().map_err(|_| {
             SignalProtocolError::InvalidArgument(format!(
-                "cannot get tries_remaining from error ({})",
-                err
+                "cannot get tries_remaining from error ({err})"
             ))
         })?;
         write_result_to(out, value)
@@ -180,8 +178,7 @@ pub unsafe extern "C" fn signal_error_get_unknown_fields(
             .provide_unknown_fields()
             .map_err(|_| {
                 SignalProtocolError::InvalidArgument(format!(
-                    "cannot get unknown_fields from error ({})",
-                    err
+                    "cannot get unknown_fields from error ({err})"
                 ))
             })?
             .into_boxed_slice();

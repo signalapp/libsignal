@@ -295,7 +295,7 @@ async fn send_request_to_connected_chat(
 async fn spawned_task_body(
     chat: ChatConnection,
     incoming_requests: impl Stream<Item = IncomingRequest> + Send,
-    mut on_disconnect: impl Future<Output = ()>,
+    on_disconnect: impl Future<Output = ()>,
 ) {
     let mut on_disconnect = std::pin::pin!(on_disconnect);
 

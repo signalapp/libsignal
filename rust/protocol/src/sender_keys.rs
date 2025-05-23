@@ -304,8 +304,7 @@ impl SenderKeyRecord {
 
         if self.remove_states_with_chain_id(chain_id) > 0 {
             log::warn!(
-                "Removed a matching chain_id ({}) found with a different public key",
-                chain_id
+                "Removed a matching chain_id ({chain_id}) found with a different public key"
             );
         }
 

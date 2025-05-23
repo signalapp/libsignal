@@ -155,8 +155,7 @@ impl UnvalidatedHandshake {
         if expected_raft_config != *actual_config {
             return Err(Error::AttestationDataError {
                 reason: format!(
-                    "Unexpected raft config {:?} (expected {:?})",
-                    actual_config, expected_raft_config
+                    "Unexpected raft config {actual_config:?} (expected {expected_raft_config:?})"
                 ),
             });
         }

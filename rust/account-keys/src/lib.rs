@@ -130,7 +130,7 @@ mod tests {
                 let entropy_pool: String = AccountEntropyPool::generate(&mut test_rng(seed)).to_string();
                 let actual_chars = HashSet::<char>::from_iter(entropy_pool.chars());
                 let diff = actual_chars.difference(&allowed_chars).collect::<HashSet<_>>();
-                assert!(diff.is_empty(), "Disallowed characters in the pool: {:?} from {seed}", diff);
+                assert!(diff.is_empty(), "Disallowed characters in the pool: {diff:?} from {seed}");
             });
         }
 

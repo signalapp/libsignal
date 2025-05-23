@@ -189,16 +189,14 @@ fn parse_extensions<'a>(
                 .with_context(|| sgx_extension_id.to_string())?;
         } else {
             return Err(Error::new(format!(
-                "unexpected extension in PCK certificate {}",
-                sgx_extension_id
+                "unexpected extension in PCK certificate {sgx_extension_id}"
             )));
         }
     }
     for (oid, attr) in attributes {
         if attr.is_none() {
             return Err(Error::new(format!(
-                "could not parse required extension from PCK certificate: {}",
-                oid
+                "could not parse required extension from PCK certificate: {oid}"
             )));
         }
     }

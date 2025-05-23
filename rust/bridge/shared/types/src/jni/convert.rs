@@ -156,8 +156,7 @@ impl SimpleArgTypeInfo<'_> for u32 {
     fn convert_from(_env: &mut JNIEnv, foreign: &jint) -> Result<Self, BridgeLayerError> {
         if *foreign < 0 {
             return Err(BridgeLayerError::IntegerOverflow(format!(
-                "{} to u32",
-                foreign
+                "{foreign} to u32"
             )));
         }
         Ok(*foreign as u32)
@@ -195,8 +194,7 @@ impl SimpleArgTypeInfo<'_> for crate::protocol::Timestamp {
     fn convert_from(_env: &mut JNIEnv, foreign: &jlong) -> Result<Self, BridgeLayerError> {
         if *foreign < 0 {
             return Err(BridgeLayerError::IntegerOverflow(format!(
-                "{} to Timestamp (u64)",
-                foreign
+                "{foreign} to Timestamp (u64)"
             )));
         }
         Ok(Self::from_epoch_millis(*foreign as u64))
@@ -212,8 +210,7 @@ impl SimpleArgTypeInfo<'_> for crate::zkgroup::Timestamp {
     fn convert_from(_env: &mut JNIEnv, foreign: &jlong) -> Result<Self, BridgeLayerError> {
         if *foreign < 0 {
             return Err(BridgeLayerError::IntegerOverflow(format!(
-                "{} to Timestamp (u64)",
-                foreign
+                "{foreign} to Timestamp (u64)"
             )));
         }
         Ok(Self::from_epoch_seconds(*foreign as u64))
@@ -225,7 +222,7 @@ impl SimpleArgTypeInfo<'_> for u8 {
     type ArgType = jint;
     fn convert_from(_env: &mut JNIEnv, foreign: &jint) -> Result<Self, BridgeLayerError> {
         u8::try_from(*foreign)
-            .map_err(|_| BridgeLayerError::IntegerOverflow(format!("{} to u8", foreign)))
+            .map_err(|_| BridgeLayerError::IntegerOverflow(format!("{foreign} to u8")))
     }
 }
 
@@ -234,7 +231,7 @@ impl SimpleArgTypeInfo<'_> for u16 {
     type ArgType = jint;
     fn convert_from(_env: &mut JNIEnv, foreign: &jint) -> Result<Self, BridgeLayerError> {
         u16::try_from(*foreign)
-            .map_err(|_| BridgeLayerError::IntegerOverflow(format!("{} to u16", foreign)))
+            .map_err(|_| BridgeLayerError::IntegerOverflow(format!("{foreign} to u16")))
     }
 }
 

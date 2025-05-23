@@ -54,7 +54,7 @@ pub fn ratchet_forward_result(c: &mut Criterion) -> Result<(), SignalProtocolErr
                 &mut alice_store,
                 &sender_address,
                 distribution_id,
-                format!("nefarious plotting {}", i).as_bytes(),
+                format!("nefarious plotting {i}").as_bytes(),
                 &mut csprng,
             )
             .now_or_never()
@@ -71,7 +71,7 @@ pub fn ratchet_forward_result(c: &mut Criterion) -> Result<(), SignalProtocolErr
         .now_or_never()
         .expect("sync")?;
 
-        group.bench_function(format!("ratchet {}", ratchets), |b| {
+        group.bench_function(format!("ratchet {ratchets}"), |b| {
             b.iter(|| {
                 let mut bob_store = bob_store.clone();
                 group_decrypt(

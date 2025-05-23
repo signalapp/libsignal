@@ -99,8 +99,7 @@ pub fn verify_remote_attestation(
             .any(|id| !acceptable_sw_advisories.contains(&id.as_str()))
         {
             return Err(Error::new(format!(
-                "TCB contains unmitigated unaccepted advisory ids: {:?}",
-                advisory_ids
+                "TCB contains unmitigated unaccepted advisory ids: {advisory_ids:?}"
             ))
             .into());
         }
@@ -432,8 +431,7 @@ fn verify_enclave_source(evidence: &Evidence, endorsements: &SgxEndorsements) ->
     let collateral_isvprodid = qe_identity.isvprodid;
     if report_isvprodid != collateral_isvprodid {
         return Err(Error::new(format!(
-            "qe isvprodid mismatch: expected {}, actual {}",
-            report_isvprodid, collateral_isvprodid
+            "qe isvprodid mismatch: expected {report_isvprodid}, actual {collateral_isvprodid}"
         )));
     }
 
@@ -473,8 +471,7 @@ fn verify_enclave_source(evidence: &Evidence, endorsements: &SgxEndorsements) ->
     let tcb_status = qe_identity.tcb_status(report_isvsvn);
     if tcb_status != &QeTcbStatus::UpToDate {
         return Err(Error::new(format!(
-            "Enclave version tcb not up to date (was {:?})",
-            tcb_status
+            "Enclave version tcb not up to date (was {tcb_status:?})"
         )));
     }
 

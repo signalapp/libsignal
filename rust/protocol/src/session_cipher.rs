@@ -46,14 +46,14 @@ pub async fn message_encrypt(
     let their_identity_key = session_state.remote_identity_key()?.ok_or_else(|| {
         SignalProtocolError::InvalidState(
             "message_encrypt",
-            format!("no remote identity key for {}", remote_address),
+            format!("no remote identity key for {remote_address}"),
         )
     })?;
 
     let ctext =
         signal_crypto::aes_256_cbc_encrypt(ptext, message_keys.cipher_key(), message_keys.iv())
             .map_err(|_| {
-                log::error!("session state corrupt for {}", remote_address);
+                log::error!("session state corrupt for {remote_address}");
                 SignalProtocolError::InvalidSessionStructure("invalid sender chain message keys")
             })?;
 
@@ -65,9 +65,7 @@ pub async fn message_encrypt(
             .as_secs();
         if items.timestamp() + MAX_UNACKNOWLEDGED_SESSION_AGE < now {
             log::warn!(
-                "stale unacknowledged session for {} (created at {})",
-                remote_address,
-                timestamp_as_unix_time
+                "stale unacknowledged session for {remote_address} (created at {timestamp_as_unix_time})"
             );
             return Err(SignalProtocolError::SessionNotFound(remote_address.clone()));
         }
@@ -340,8 +338,7 @@ fn create_decryption_failure_log(
             }
             (Some(err), Err(state_err)) => {
                 lines.push(format!(
-                    "Candidate session {} failed with '{}'; cannot get receiver chain info ({})",
-                    idx, err, state_err,
+                    "Candidate session {idx} failed with '{err}'; cannot get receiver chain info ({state_err})",
                 ));
             }
             (None, Ok(chains)) => {
@@ -353,8 +350,7 @@ fn create_decryption_failure_log(
             }
             (None, Err(state_err)) => {
                 lines.push(format!(
-                    "Candidate session {}: cannot get receiver chain info ({})",
-                    idx, state_err,
+                    "Candidate session {idx}: cannot get receiver chain info ({state_err})",
                 ));
             }
         }
@@ -431,7 +427,7 @@ fn decrypt_message_with_record<R: Rng + CryptoRng>(
             remote_address,
             state
                 .sender_ratchet_key_for_logging()
-                .unwrap_or_else(|e| format!("<error: {}>", e)),
+                .unwrap_or_else(|e| format!("<error: {e}>")),
             state.previous_counter(),
             error
         );
@@ -547,7 +543,7 @@ fn decrypt_message_with_record<R: Rng + CryptoRng>(
                 "No valid session for recipient: {}, current session base key {}, number of previous states: {}",
                 remote_address,
                 current_state.sender_ratchet_key_for_logging()
-                .unwrap_or_else(|e| format!("<error: {}>", e)),
+                .unwrap_or_else(|e| format!("<error: {e}>")),
                 previous_state_count(),
             );
         } else {
@@ -646,17 +642,13 @@ fn decrypt_message_with_state<R: Rng + CryptoRng>(
     ) {
         Ok(ptext) => ptext,
         Err(signal_crypto::DecryptionError::BadKeyOrIv) => {
-            log::warn!(
-                "{} session state corrupt for {}",
-                current_or_previous,
-                remote_address,
-            );
+            log::warn!("{current_or_previous} session state corrupt for {remote_address}",);
             return Err(SignalProtocolError::InvalidSessionStructure(
                 "invalid receiver chain message keys",
             ));
         }
         Err(signal_crypto::DecryptionError::BadCiphertext(msg)) => {
-            log::warn!("failed to decrypt 1:1 message: {}", msg);
+            log::warn!("failed to decrypt 1:1 message: {msg}");
             return Err(SignalProtocolError::InvalidMessage(
                 original_message_type,
                 "failed to decrypt",
@@ -676,11 +668,11 @@ fn get_or_create_chain_key<R: Rng + CryptoRng>(
     csprng: &mut R,
 ) -> Result<ChainKey> {
     if let Some(chain) = state.get_receiver_chain_key(their_ephemeral)? {
-        log::debug!("{} has existing receiver chain.", remote_address);
+        log::debug!("{remote_address} has existing receiver chain.");
         return Ok(chain);
     }
 
-    log::info!("{} creating new chains.", remote_address);
+    log::info!("{remote_address} creating new chains.");
 
     let root_key = state.root_key()?;
     let our_ephemeral = state.sender_ratchet_private_key()?;
@@ -719,11 +711,7 @@ fn get_or_create_message_key(
         return match state.get_message_keys(their_ephemeral, counter)? {
             Some(keys) => Ok(keys),
             None => {
-                log::info!(
-                    "{} Duplicate message for counter: {}",
-                    remote_address,
-                    counter
-                );
+                log::info!("{remote_address} Duplicate message for counter: {counter}");
                 Err(SignalProtocolError::DuplicatedMessage(chain_index, counter))
             }
         };
@@ -736,19 +724,11 @@ fn get_or_create_message_key(
     if jump > MAX_FORWARD_JUMPS {
         if state.session_with_self()? {
             log::info!(
-                "{} Jumping ahead {} messages (index: {}, counter: {})",
-                remote_address,
-                jump,
-                chain_index,
-                counter
+                "{remote_address} Jumping ahead {jump} messages (index: {chain_index}, counter: {counter})"
             );
         } else {
             log::error!(
-                "{} Exceeded future message limit: {}, index: {}, counter: {})",
-                remote_address,
-                MAX_FORWARD_JUMPS,
-                chain_index,
-                counter
+                "{remote_address} Exceeded future message limit: {MAX_FORWARD_JUMPS}, index: {chain_index}, counter: {counter})"
             );
             return Err(SignalProtocolError::InvalidMessage(
                 original_message_type,

@@ -56,7 +56,7 @@ impl From<BridgeOrProtocolError> for SignalProtocolError {
                 BridgeLayerError::CallbackException(callback, exception) => {
                     SignalProtocolError::ApplicationCallbackError(callback, Box::new(exception))
                 }
-                err => SignalProtocolError::FfiBindingError(format!("{}", err)),
+                err => SignalProtocolError::FfiBindingError(format!("{err}")),
             },
         }
     }

@@ -1238,7 +1238,7 @@ mod test_support {
     // #[tokio::test]
     async fn collect_test_data() {
         fn prompt(text: &str) {
-            println!("{} >", text);
+            println!("{text} >");
 
             let mut input = String::new();
 

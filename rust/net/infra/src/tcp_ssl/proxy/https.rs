@@ -128,7 +128,7 @@ impl Display for ConnectError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             ConnectError::Transport(transport_connect_error) => {
-                write!(f, "transport: {}", transport_connect_error)
+                write!(f, "transport: {transport_connect_error}")
             }
             ConnectError::HttpConnectionFailed(err) => {
                 write!(f, "HTTP connection failed: {}", LogSafeHyperError(err))
@@ -150,7 +150,7 @@ impl Display for ConnectError {
                 )
             }
             ConnectError::InvalidUri(error) => {
-                write!(f, "URI was invalid: {}", error)
+                write!(f, "URI was invalid: {error}")
             }
         }
     }
@@ -363,7 +363,7 @@ mod test {
                             )
                             .await;
                         }
-                        Err(e) => eprintln!("upgrade error: {}", e),
+                        Err(e) => eprintln!("upgrade error: {e}"),
                     }
                 });
                 upgrades_tx.send(upgraded).expect("not hung up on");

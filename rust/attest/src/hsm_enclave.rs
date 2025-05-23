@@ -36,19 +36,18 @@ pub type Result<T> = std::result::Result<T, Error>;
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Error::HSMCommunicationError(n) => write!(f, "Error in communication to HSM ({})", n),
-            Error::HSMHandshakeError(n) => write!(f, "Error in handshake to HSM ({})", n),
+            Error::HSMCommunicationError(n) => write!(f, "Error in communication to HSM ({n})"),
+            Error::HSMHandshakeError(n) => write!(f, "Error in handshake to HSM ({n})"),
             Error::TrustedCodeError => {
                 write!(f, "Trusted HSM process does not match trusted code hash")
             }
             Error::InvalidPublicKeyError => {
-                write!(f, "Invalid public key, must be {} bytes", PUB_KEY_SIZE)
+                write!(f, "Invalid public key, must be {PUB_KEY_SIZE} bytes")
             }
             Error::InvalidCodeHashError => {
                 write!(
                     f,
-                    "Invalid code hashes, must be >0 hashes, each exactly {} bytes",
-                    CODE_HASH_SIZE
+                    "Invalid code hashes, must be >0 hashes, each exactly {CODE_HASH_SIZE} bytes"
                 )
             }
             Error::InvalidBridgeStateError => {
@@ -136,10 +135,7 @@ impl ClientConnectionEstablishment {
         }
         let handshake_hash = self.hs.get_handshake_hash().to_vec();
         let transport = self.hs.into_transport_mode()?;
-        log::info!(
-            "Successfully completed HSM-enclave connection to codehash {:x?}",
-            received_hash
-        );
+        log::info!("Successfully completed HSM-enclave connection to codehash {received_hash:x?}");
         Ok(client_connection::ClientConnection {
             handshake_hash,
             transport,

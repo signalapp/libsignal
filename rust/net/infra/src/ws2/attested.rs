@@ -250,7 +250,7 @@ async fn spawned_task_body(
     config: crate::ws2::Config,
     log_tag: Arc<str>,
 ) -> Result<(), TaskExitError> {
-    let mut connection = crate::ws2::Connection::new(
+    let connection = crate::ws2::Connection::new(
         stream,
         ReceiverStream::new(outgoing_rx),
         config,

@@ -495,7 +495,7 @@ mod service_id_tests {
         let aci = Aci::from(uuid);
         assert_eq!(
             "<ACI:8c78cd2a-16ff-427d-83dc-1a5e36ce713d>",
-            format!("{:?}", aci)
+            format!("{aci:?}")
         );
         assert_eq!(
             "<ACI:8c78cd2a-16ff-427d-83dc-1a5e36ce713d>",
@@ -504,7 +504,7 @@ mod service_id_tests {
         let pni = Pni::from(uuid);
         assert_eq!(
             "<PNI:8c78cd2a-16ff-427d-83dc-1a5e36ce713d>",
-            format!("{:?}", pni)
+            format!("{pni:?}")
         );
         assert_eq!(
             "<PNI:8c78cd2a-16ff-427d-83dc-1a5e36ce713d>",

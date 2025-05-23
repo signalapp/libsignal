@@ -1443,7 +1443,7 @@ mod test {
                 ChatItemError::InvalidExpiration(InvalidExpiration::TooShort(err)) => {
                     err.to_string()
                 }
-                _ => panic!("Unexpected error: {:?}", e),
+                _ => panic!("Unexpected error: {e:?}"),
             });
 
         assert_eq!(result, expected.map_err(ToString::to_string));

@@ -104,8 +104,8 @@ impl From<&str> for ThrownException {
 impl std::fmt::Display for ThrownException {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Error(r) => write!(f, "{:?}", r),
-            Self::String(s) => write!(f, "{}", s),
+            Self::Error(r) => write!(f, "{r:?}"),
+            Self::String(s) => write!(f, "{s}"),
         }
     }
 }

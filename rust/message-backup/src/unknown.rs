@@ -19,7 +19,7 @@ impl std::fmt::Display for FormatPath<&[PathPart]> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut it = self.0.iter().peekable();
         while let Some(part) = it.next() {
-            write!(f, "{}", part)?;
+            write!(f, "{part}")?;
             if it.peek().is_some() {
                 write!(f, ".")?
             }

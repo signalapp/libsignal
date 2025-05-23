@@ -68,14 +68,11 @@ impl NicknameLimits {
     pub fn new(min_len: usize, max_len: usize) -> Self {
         assert!(
             max_len <= MAX_NICKNAME_LENGTH,
-            "Long nicknames are not supported. The maximum supported length is {}",
-            MAX_NICKNAME_LENGTH
+            "Long nicknames are not supported. The maximum supported length is {MAX_NICKNAME_LENGTH}"
         );
         assert!(
             min_len < max_len,
-            "Invalid nickname size limits: {}..{}",
-            min_len,
-            max_len
+            "Invalid nickname size limits: {min_len}..{max_len}"
         );
         NicknameLimits(min_len..=max_len)
     }
@@ -141,7 +138,7 @@ impl Username {
         let message = *hash.compress().as_bytes();
         PROOF_STATEMENT
             .prove(&scalar_args, &point_args, &message, randomness)
-            .map_err(|e| panic!("Failed to create proof. Cause: PokshoError::{:?}", e))
+            .map_err(|e| panic!("Failed to create proof. Cause: PokshoError::{e:?}"))
     }
 
     pub fn verify_proof(proof: &[u8], hash: [u8; 32]) -> Result<(), ProofVerificationFailure> {
@@ -153,7 +150,7 @@ impl Username {
             .verify_proof(proof, &point_args, &hash)
             .map_err(|e| match e {
                 PokshoError::VerificationFailure => ProofVerificationFailure,
-                _ => panic!("Unexpected verification error PokshoError::{:?}", e),
+                _ => panic!("Unexpected verification error PokshoError::{e:?}"),
             })
     }
 

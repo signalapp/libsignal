@@ -338,10 +338,7 @@ impl Chat {
         let log_tag_for_responses = log_tag.clone();
         let response_rx = UnboundedReceiverStream::new(response_rx).map(move |response| {
             let OutgoingResponse { id, status } = response;
-            log::debug!(
-                "[{log_tag_for_responses}] sending response for incoming request {}",
-                id
-            );
+            log::debug!("[{log_tag_for_responses}] sending response for incoming request {id}");
             let message = response_for_status(id, status);
             (message, OutgoingMeta::ResponseToIncoming)
         });
@@ -1828,7 +1825,7 @@ mod test {
         };
         let (chat, (mut chat_events, inner_responses)) = fake::new_chat(listener);
 
-        let mut send_future = if outgoing_request_fails {
+        let send_future = if outgoing_request_fails {
             let send = chat.send(Request {
                 method: Method::GET,
                 path: PathAndQuery::from_static("/"),
