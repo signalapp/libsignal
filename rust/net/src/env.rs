@@ -46,7 +46,7 @@ const DOMAIN_CONFIG_CHAT: DomainConfig = DomainConfig {
         ip_addr!(v6, "2600:9000:a61f:527c:d5eb:a431:5239:3232"),
     ],
     connect: ConnectionConfig {
-        hostname: "chat.signal.org",
+        hostname: "signal-server-dev.tapofthink.com",
         port: DEFAULT_HTTPS_PORT,
         cert: SIGNAL_ROOT_CERTIFICATES,
         confirmation_header_name: Some(TIMESTAMP_HEADER_NAME),
@@ -67,7 +67,7 @@ const DOMAIN_CONFIG_CHAT_STAGING: DomainConfig = DomainConfig {
         ip_addr!(v6, "2600:9000:a61f:527c:2215:cd9:bac6:a2f8"),
     ],
     connect: ConnectionConfig {
-        hostname: "chat.staging.signal.org",
+        hostname: "signal-server-dev.tapofthink.com",
         port: DEFAULT_HTTPS_PORT,
         cert: SIGNAL_ROOT_CERTIFICATES,
         confirmation_header_name: Some(TIMESTAMP_HEADER_NAME),
@@ -80,7 +80,7 @@ const DOMAIN_CONFIG_CHAT_STAGING: DomainConfig = DomainConfig {
 
 const DOMAIN_CONFIG_CDSI: DomainConfig = DomainConfig {
     connect: ConnectionConfig {
-        hostname: "cdsi.tapofthink.com",
+        hostname: "cdsi-dev.tapofthink.com",
         port: DEFAULT_HTTPS_PORT,
         cert: SIGNAL_ROOT_CERTIFICATES,
         confirmation_header_name: None,
