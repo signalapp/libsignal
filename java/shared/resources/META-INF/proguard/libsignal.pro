@@ -42,7 +42,7 @@
 
 # Keep constructors for all our exceptions.
 # (This could be more fine-grained but doesn't really have to be.)
--keep,includedescriptorclasses class org.signal.libsignal.**.*Exception {
+-keep,includedescriptorclasses class org.signal.libsignal.** extends java.lang.Exception {
     <init>(...);
 }
 
