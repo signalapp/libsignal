@@ -1,3 +1,6 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+
 plugins {
     id "base"
     id "signing"
@@ -9,6 +12,10 @@ plugins {
 allprojects {
     version = "0.73.2"
     group   = "org.signal"
+
+    tasks.withType(KotlinCompile).configureEach {
+        compilerOptions.jvmTarget = JvmTarget.JVM_17
+    }
 }
 
 subprojects {
