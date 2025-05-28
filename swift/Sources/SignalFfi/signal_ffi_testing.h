@@ -142,11 +142,6 @@ typedef struct {
 } SignalConstPointerFakeChatResponse;
 
 typedef struct {
-  bool present;
-  SignalBorrowedBuffer value;
-} SignalOptionalBorrowedSliceOfc_uchar;
-
-typedef struct {
   const SignalFakeChatSentRequest *raw;
 } SignalConstPointerFakeChatSentRequest;
 

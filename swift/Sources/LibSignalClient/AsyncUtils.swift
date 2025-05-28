@@ -68,6 +68,10 @@ extension SignalCPromiseMutPointerRegisterAccountResponse: PromiseStruct {
     typealias Result = SignalMutPointerRegisterAccountResponse
 }
 
+extension SignalCPromiseOwnedBufferOfc_uchar: PromiseStruct {
+    typealias Result = SignalOwnedBuffer
+}
+
 /// A type-erased version of ``Completer``.
 ///
 /// Not for direct use, see Completer instead.

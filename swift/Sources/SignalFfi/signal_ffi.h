@@ -240,17 +240,19 @@ typedef enum {
   SignalErrorCodeConnectedElsewhere = 173,
   SignalErrorCodeBackupValidation = 180,
   SignalErrorCodeRegistrationInvalidSessionId = 190,
-  SignalErrorCodeRegistrationRequestNotValid,
-  SignalErrorCodeRegistrationUnknown,
-  SignalErrorCodeRegistrationSessionNotFound,
-  SignalErrorCodeRegistrationNotReadyForVerification,
-  SignalErrorCodeRegistrationSendVerificationCodeFailed,
-  SignalErrorCodeRegistrationCodeNotDeliverable,
-  SignalErrorCodeRegistrationSessionUpdateRejected,
-  SignalErrorCodeRegistrationCredentialsCouldNotBeParsed,
-  SignalErrorCodeRegistrationDeviceTransferPossible,
-  SignalErrorCodeRegistrationRecoveryVerificationFailed,
-  SignalErrorCodeRegistrationLock,
+  SignalErrorCodeRegistrationRequestNotValid = 191,
+  SignalErrorCodeRegistrationUnknown = 192,
+  SignalErrorCodeRegistrationSessionNotFound = 193,
+  SignalErrorCodeRegistrationNotReadyForVerification = 194,
+  SignalErrorCodeRegistrationSendVerificationCodeFailed = 195,
+  SignalErrorCodeRegistrationCodeNotDeliverable = 196,
+  SignalErrorCodeRegistrationSessionUpdateRejected = 197,
+  SignalErrorCodeRegistrationCredentialsCouldNotBeParsed = 198,
+  SignalErrorCodeRegistrationDeviceTransferPossible = 199,
+  SignalErrorCodeRegistrationRecoveryVerificationFailed = 200,
+  SignalErrorCodeRegistrationLock = 201,
+  SignalErrorCodeKeyTransparencyError = 210,
+  SignalErrorCodeKeyTransparencyVerificationFailed = 211,
 } SignalErrorCode;
 
 enum SignalSvr2CredentialsResult {
@@ -952,6 +954,30 @@ typedef struct {
   SignalLogFlushCallback flush;
 } SignalFfiLogger;
 
+/**
+ * A C callback used to report the results of Rust futures.
+ *
+ * cbindgen will produce independent C types like `SignalCPromisei32` and
+ * `SignalCPromiseProtocolAddress`.
+ *
+ * This derives Copy because it behaves like a C type; nevertheless, a promise should still only be
+ * completed once.
+ */
+typedef struct {
+  void (*complete)(SignalFfiError *error, const SignalOwnedBuffer *result, const void *context);
+  const void *context;
+  SignalCancellationId cancellation_id;
+} SignalCPromiseOwnedBufferOfc_uchar;
+
+typedef struct {
+  const SignalUnauthenticatedChatConnection *raw;
+} SignalConstPointerUnauthenticatedChatConnection;
+
+typedef struct {
+  bool present;
+  SignalBorrowedBuffer value;
+} SignalOptionalBorrowedSliceOfc_uchar;
+
 typedef SignalKeyPair SignalKyberKeyPair;
 
 typedef struct {
@@ -1292,10 +1318,6 @@ typedef struct {
   const void *context;
   SignalCancellationId cancellation_id;
 } SignalCPromiseMutPointerUnauthenticatedChatConnection;
-
-typedef struct {
-  const SignalUnauthenticatedChatConnection *raw;
-} SignalConstPointerUnauthenticatedChatConnection;
 
 typedef struct {
   SignalValidatingMac *raw;
@@ -1732,6 +1754,18 @@ SignalFfiError *signal_incremental_mac_initialize(SignalMutPointerIncrementalMac
 SignalFfiError *signal_incremental_mac_update(SignalOwnedBuffer *out, SignalMutPointerIncrementalMac mac, SignalBorrowedBuffer bytes, uint32_t offset, uint32_t length);
 
 bool signal_init_logger(SignalLogLevel max_level, SignalFfiLogger logger);
+
+SignalFfiError *signal_key_transparency_aci_search_key(SignalOwnedBuffer *out, const SignalServiceIdFixedWidthBinaryBytes *aci);
+
+SignalFfiError *signal_key_transparency_distinguished(SignalCPromiseOwnedBufferOfc_uchar *promise, SignalConstPointerTokioAsyncContext async_runtime, uint8_t environment, SignalConstPointerUnauthenticatedChatConnection chat_connection, SignalOptionalBorrowedSliceOfc_uchar last_distinguished_tree_head);
+
+SignalFfiError *signal_key_transparency_e164_search_key(SignalOwnedBuffer *out, const char *e164);
+
+SignalFfiError *signal_key_transparency_monitor(SignalCPromiseOwnedBufferOfc_uchar *promise, SignalConstPointerTokioAsyncContext async_runtime, uint8_t environment, SignalConstPointerUnauthenticatedChatConnection chat_connection, const SignalServiceIdFixedWidthBinaryBytes *aci, SignalConstPointerPublicKey aci_identity_key, const char *e164, SignalOptionalBorrowedSliceOfc_uchar unidentified_access_key, SignalOptionalBorrowedSliceOfc_uchar username_hash, SignalOptionalBorrowedSliceOfc_uchar account_data, SignalBorrowedBuffer last_distinguished_tree_head);
+
+SignalFfiError *signal_key_transparency_search(SignalCPromiseOwnedBufferOfc_uchar *promise, SignalConstPointerTokioAsyncContext async_runtime, uint8_t environment, SignalConstPointerUnauthenticatedChatConnection chat_connection, const SignalServiceIdFixedWidthBinaryBytes *aci, SignalConstPointerPublicKey aci_identity_key, const char *e164, SignalOptionalBorrowedSliceOfc_uchar unidentified_access_key, SignalOptionalBorrowedSliceOfc_uchar username_hash, SignalOptionalBorrowedSliceOfc_uchar account_data, SignalBorrowedBuffer last_distinguished_tree_head);
+
+SignalFfiError *signal_key_transparency_username_hash_search_key(SignalOwnedBuffer *out, SignalBorrowedBuffer hash);
 
 SignalFfiError *signal_kyber_key_pair_clone(SignalMutPointerKyberKeyPair *new_obj, SignalConstPointerKyberKeyPair obj);
 

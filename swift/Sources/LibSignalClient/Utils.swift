@@ -173,6 +173,25 @@ extension ContiguousBytes {
     }
 }
 
+internal func withUnsafeOptionalBorrowedSlice<
+    T: ContiguousBytes,
+    R
+>(
+    of this: T?,
+    _ body: (SignalOptionalBorrowedSliceOfc_uchar) throws -> R
+) rethrows -> R {
+    switch this {
+    case .none:
+        let empty = SignalOptionalBorrowedSliceOfc_uchar()
+        return try body(empty)
+    case .some(let wrapped):
+        return try wrapped.withUnsafeBorrowedBuffer { buffer in
+            let slice = SignalOptionalBorrowedSliceOfc_uchar(present: true, value: buffer)
+            return try body(slice)
+        }
+    }
+}
+
 extension Sequence where Self.Element == String {
     func withUnsafeBorrowedBytestringArray<Result>(_ body: (SignalBorrowedBytestringArray) throws -> Result) rethrows -> Result {
         let lengths = self.map { $0.utf8.count }
@@ -202,6 +221,18 @@ extension SignalBorrowedBuffer {
 extension SignalBorrowedMutableBuffer {
     internal init(_ buffer: UnsafeMutableRawBufferPointer) {
         self.init(base: buffer.baseAddress?.assumingMemoryBound(to: UInt8.self), length: buffer.count)
+    }
+}
+
+extension Data {
+    internal init(consuming buffer: SignalOwnedBuffer) {
+        if let base = buffer.base {
+            self.init(bytesNoCopy: base, count: buffer.length, deallocator: .custom { base, length in
+                signal_free_buffer(base, length)
+            })
+        } else {
+            self.init()
+        }
     }
 }
 

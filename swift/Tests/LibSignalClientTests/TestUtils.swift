@@ -42,7 +42,7 @@ extension Sequence where Element == UInt8 {
     }
 }
 
-extension Array where Element == UInt8 {
+extension RangeReplaceableCollection where Element == UInt8 {
     internal init?(fromHexString hex: String) {
         guard hex.count % 2 == 0 else {
             return nil

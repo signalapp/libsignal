@@ -57,6 +57,7 @@ exclude = [
     "MutPointerRegistrationService",
     "MutPointerRegistrationSession",
     "MutPointerUnauthenticatedChatConnection",
+    "OptionalBorrowedSliceOfc_uchar",
     "OwnedBufferOfc_uchar",
     "OwnedBufferOfCStringPtr",
     "OwnedBufferOfFfiCdsiLookupResponseEntry",

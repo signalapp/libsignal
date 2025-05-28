@@ -11,6 +11,7 @@ use attest::hsm_enclave::Error as HsmEnclaveError;
 use device_transfer::Error as DeviceTransferError;
 use libsignal_account_keys::Error as PinError;
 use libsignal_net::infra::errors::RetryLater;
+use libsignal_net::keytrans::Error;
 use libsignal_net::registration::{RegistrationLock, VerificationCodeNotDeliverable};
 use libsignal_protocol::*;
 use signal_crypto::Error as SignalCryptoError;
@@ -107,17 +108,20 @@ pub enum SignalErrorCode {
     BackupValidation = 180,
 
     RegistrationInvalidSessionId = 190,
-    RegistrationRequestNotValid,
-    RegistrationUnknown,
-    RegistrationSessionNotFound,
-    RegistrationNotReadyForVerification,
-    RegistrationSendVerificationCodeFailed,
-    RegistrationCodeNotDeliverable,
-    RegistrationSessionUpdateRejected,
-    RegistrationCredentialsCouldNotBeParsed,
-    RegistrationDeviceTransferPossible,
-    RegistrationRecoveryVerificationFailed,
-    RegistrationLock,
+    RegistrationRequestNotValid = 191,
+    RegistrationUnknown = 192,
+    RegistrationSessionNotFound = 193,
+    RegistrationNotReadyForVerification = 194,
+    RegistrationSendVerificationCodeFailed = 195,
+    RegistrationCodeNotDeliverable = 196,
+    RegistrationSessionUpdateRejected = 197,
+    RegistrationCredentialsCouldNotBeParsed = 198,
+    RegistrationDeviceTransferPossible = 199,
+    RegistrationRecoveryVerificationFailed = 200,
+    RegistrationLock = 201,
+
+    KeyTransparencyError = 210,
+    KeyTransparencyVerificationFailed = 211,
 }
 
 pub trait UpcastAsAny {
@@ -582,6 +586,29 @@ impl FfiError for libsignal_net::chat::SendError {
     }
     fn provide_retry_after_seconds(&self) -> Result<u32, WrongErrorKind> {
         Err(WrongErrorKind)
+    }
+}
+
+impl FfiError for libsignal_net::keytrans::Error {
+    fn describe(&self) -> String {
+        match self {
+            Error::ChatSendError(err) => err.describe(),
+            Error::RequestFailed(_)
+            | Error::VerificationFailed(_)
+            | Error::InvalidResponse(_)
+            | Error::InvalidRequest(_) => self.to_string(),
+        }
+    }
+
+    fn code(&self) -> SignalErrorCode {
+        match self {
+            Error::ChatSendError(err) => err.code(),
+            Error::RequestFailed(_) => SignalErrorCode::NetworkProtocol,
+            Error::InvalidResponse(_) | Error::InvalidRequest(_) => {
+                SignalErrorCode::KeyTransparencyError
+            }
+            Error::VerificationFailed(_) => SignalErrorCode::KeyTransparencyVerificationFailed,
+        }
     }
 }
 

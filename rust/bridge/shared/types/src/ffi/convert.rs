@@ -329,13 +329,26 @@ impl SimpleArgTypeInfo for libsignal_protocol::Pni {
     }
 }
 
+fn parse_e164(s: &str) -> SignalFfiResult<libsignal_core::E164> {
+    let parsed = s.parse().map_err(|_: ParseIntError| {
+        SignalProtocolError::InvalidArgument(format!("{s} is not an e164"))
+    })?;
+    Ok(parsed)
+}
+
 impl SimpleArgTypeInfo for libsignal_core::E164 {
     type ArgType = <String as SimpleArgTypeInfo>::ArgType;
     fn convert_from(e164: Self::ArgType) -> SignalFfiResult<Self> {
         let e164 = String::convert_from(e164)?;
-        let parsed = e164.parse().map_err(|_: ParseIntError| {
-            SignalProtocolError::InvalidArgument(format!("{e164} is not an e164"))
-        })?;
+        parse_e164(&e164)
+    }
+}
+
+impl SimpleArgTypeInfo for Option<libsignal_core::E164> {
+    type ArgType = <Option<String> as SimpleArgTypeInfo>::ArgType;
+    fn convert_from(e164: Self::ArgType) -> SignalFfiResult<Self> {
+        let e164 = Option::<String>::convert_from(e164)?;
+        let parsed = e164.as_deref().map(parse_e164).transpose()?;
         Ok(parsed)
     }
 }
@@ -1061,6 +1074,7 @@ macro_rules! ffi_arg_type {
     (Aci) => (*const libsignal_protocol::ServiceIdFixedWidthBinaryBytes);
     (Pni) => (*const libsignal_protocol::ServiceIdFixedWidthBinaryBytes);
     (E164) => (*const std::ffi::c_char);
+    (Option<E164>) => (*const std::ffi::c_char);
     (AccountEntropyPool) => (*const std::ffi::c_char);
     (RegistrationCreateSessionRequest) => (ffi::FfiRegistrationCreateSessionRequest);
     (RegistrationPushTokenType) => (*const std::ffi::c_void);

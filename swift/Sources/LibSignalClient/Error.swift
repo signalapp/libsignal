@@ -65,6 +65,8 @@ public enum SignalError: Error {
     case deviceDeregistered(String)
     case connectionInvalidated(String)
     case connectedElsewhere(String)
+    case keyTransparencyError(String)
+    case keyTransparencyVerificationFailed(String)
 
     case unknown(UInt32, String)
 }
@@ -275,6 +277,10 @@ internal func checkError(_ error: SignalFfiErrorRef?) throws {
         }
 
         throw RegistrationError.registrationLock(timeRemaining: TimeInterval(timeRemaining), svr2Username: svr2Username, svr2Password: svr2Password)
+    case SignalErrorCodeKeyTransparencyError:
+        throw SignalError.keyTransparencyError(errStr)
+    case SignalErrorCodeKeyTransparencyVerificationFailed:
+        throw SignalError.keyTransparencyVerificationFailed(errStr)
     default:
         throw SignalError.unknown(errType, errStr)
     }

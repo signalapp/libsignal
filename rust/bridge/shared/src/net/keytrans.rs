@@ -20,22 +20,21 @@ use prost::{DecodeError, Message};
 use crate::support::*;
 use crate::*;
 
-#[bridge_fn(ffi = false)]
+#[bridge_fn]
 fn KeyTransparency_AciSearchKey(aci: Aci) -> Vec<u8> {
     aci.as_search_key()
 }
 
-#[bridge_fn(ffi = false)]
+#[bridge_fn]
 fn KeyTransparency_E164SearchKey(e164: E164) -> Vec<u8> {
     e164.as_search_key()
 }
 
-#[bridge_fn(ffi = false)]
+#[bridge_fn]
 fn KeyTransparency_UsernameHashSearchKey(hash: &[u8]) -> Vec<u8> {
     UsernameHash::from_slice(hash).as_search_key()
 }
 
-#[cfg(any(feature = "jni", feature = "node"))]
 fn try_decode<B, T>(bytes: B) -> Result<T, DecodeError>
 where
     B: AsRef<[u8]>,
@@ -44,12 +43,12 @@ where
     T::decode(bytes.as_ref())
 }
 
-#[bridge_io(TokioAsyncContext, ffi = false)]
+#[bridge_io(TokioAsyncContext)]
 #[allow(clippy::too_many_arguments)]
 async fn KeyTransparency_Search(
     // TODO: it is currently possible to pass an env that does not match chat
     environment: AsType<Environment, u8>,
-    chatConnection: &UnauthenticatedChatConnection,
+    chat_connection: &UnauthenticatedChatConnection,
     aci: Aci,
     aci_identity_key: &PublicKey,
     e164: Option<E164>,
@@ -64,7 +63,7 @@ async fn KeyTransparency_Search(
         .env()
         .keytrans_config
         .expect("keytrans config must be set");
-    let kt = KeyTransparencyClient::new(chatConnection, config);
+    let kt = KeyTransparencyClient::new(chat_connection, config);
 
     let e164_pair = make_e164_pair(e164, unidentified_access_key)?;
 
@@ -105,12 +104,12 @@ async fn KeyTransparency_Search(
     }
 }
 
-#[bridge_io(TokioAsyncContext, ffi = false)]
+#[bridge_io(TokioAsyncContext)]
 #[allow(clippy::too_many_arguments)]
 async fn KeyTransparency_Monitor(
     // TODO: it is currently possible to pass an env that does not match chat
     environment: AsType<Environment, u8>,
-    chatConnection: &UnauthenticatedChatConnection,
+    chat_connection: &UnauthenticatedChatConnection,
     aci: Aci,
     aci_identity_key: &PublicKey,
     e164: Option<E164>,
@@ -143,7 +142,7 @@ async fn KeyTransparency_Monitor(
         .env()
         .keytrans_config
         .expect("keytrans config must be set");
-    let kt = KeyTransparencyClient::new(chatConnection, config);
+    let kt = KeyTransparencyClient::new(chat_connection, config);
 
     let e164_pair = make_e164_pair(e164, unidentified_access_key)?;
     let MaybePartial {
@@ -170,11 +169,11 @@ async fn KeyTransparency_Monitor(
     Ok(StoredAccountData::from(updated_account_data).encode_to_vec())
 }
 
-#[bridge_io(TokioAsyncContext, ffi = false)]
+#[bridge_io(TokioAsyncContext)]
 async fn KeyTransparency_Distinguished(
     // TODO: it is currently possible to pass an env that does not match chat
     environment: AsType<Environment, u8>,
-    chatConnection: &UnauthenticatedChatConnection,
+    chat_connection: &UnauthenticatedChatConnection,
     last_distinguished_tree_head: Option<Box<[u8]>>,
 ) -> Result<Vec<u8>, Error> {
     let config = environment
@@ -182,7 +181,7 @@ async fn KeyTransparency_Distinguished(
         .env()
         .keytrans_config
         .expect("keytrans config must be set");
-    let kt = KeyTransparencyClient::new(chatConnection, config);
+    let kt = KeyTransparencyClient::new(chat_connection, config);
 
     let known_distinguished = last_distinguished_tree_head
         .map(try_decode)
@@ -199,7 +198,6 @@ async fn KeyTransparency_Distinguished(
     Ok(serialized)
 }
 
-#[cfg(any(feature = "jni", feature = "node"))]
 fn make_e164_pair(
     e164: Option<E164>,
     unidentified_access_key: Option<Box<[u8]>>,

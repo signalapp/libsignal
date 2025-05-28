@@ -69,7 +69,7 @@ extension UnauthenticatedChatConnection {
                     ))
             }
             let chat = UnauthenticatedChatConnection(
-                fakeHandle: NonNull(chatHandle)!, tokioAsyncContext: tokioAsyncContext
+                fakeHandle: NonNull(chatHandle)!, tokioAsyncContext: tokioAsyncContext, environment: .staging
             )
 
             listenerBridge.setConnection(chatConnection: chat)
