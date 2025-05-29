@@ -38,6 +38,9 @@ pub use args::*;
 mod chat;
 pub use chat::*;
 
+mod call_method;
+pub use call_method::*;
+
 mod class_lookup;
 pub use class_lookup::*;
 
@@ -904,77 +907,6 @@ where
     }
 }
 
-/// Calls a method and translates any thrown exceptions to
-/// [`BridgeLayerError::CallbackException`].
-///
-/// Wraps [`JNIEnv::call_method`].
-/// The result must have the correct type, or [`BridgeLayerError::UnexpectedJniResultType`] will be
-/// returned instead.
-pub fn call_method_checked<
-    'input,
-    'output,
-    O: AsRef<JObject<'input>>,
-    R: TryFrom<JValueOwned<'output>>,
-    const LEN: usize,
->(
-    env: &mut JNIEnv<'output>,
-    obj: O,
-    fn_name: &'static str,
-    args: JniArgs<R, LEN>,
-) -> Result<R, BridgeLayerError> {
-    // Note that we are *not* unwrapping the result yet!
-    // We need to check for exceptions *first*.
-    let result = env.call_method(obj, fn_name, args.sig, &args.args);
-    check_exceptions_and_convert_result(env, fn_name, result)
-}
-
-/// Calls a method and translates any thrown exceptions to
-/// [`BridgeLayerError::CallbackException`].
-///
-/// Wraps [`JNIEnv::call_static_method`].
-/// The result must have the correct type, or [`BridgeLayerError::UnexpectedJniResultType`] will be
-/// returned instead.
-pub fn call_static_method_checked<
-    'input,
-    'output,
-    C: jni::descriptors::Desc<'output, JClass<'input>>,
-    R: TryFrom<JValueOwned<'output>>,
-    const LEN: usize,
->(
-    env: &mut JNIEnv<'output>,
-    cls: C,
-    fn_name: &'static str,
-    args: JniArgs<R, LEN>,
-) -> Result<R, BridgeLayerError> {
-    // Note that we are *not* unwrapping the result yet!
-    // We need to check for exceptions *first*.
-    let result = env.call_static_method(cls, fn_name, args.sig, &args.args);
-    check_exceptions_and_convert_result(env, fn_name, result)
-}
-
-fn check_exceptions_and_convert_result<'output, R: TryFrom<JValueOwned<'output>>>(
-    env: &mut JNIEnv<'output>,
-    fn_name: &'static str,
-    result: jni::errors::Result<JValueOwned<'output>>,
-) -> Result<R, BridgeLayerError> {
-    let result = result.check_exceptions(env, fn_name)?;
-    let type_name = result.type_name();
-    result
-        .try_into()
-        .map_err(|_| BridgeLayerError::UnexpectedJniResultType(fn_name, type_name))
-}
-
-/// Constructs a new object using [`JniArgs`].
-///
-/// Wraps [`JNIEnv::new_object`]; all arguments are the same.
-pub fn new_object<'output, 'a, const LEN: usize>(
-    env: &mut JNIEnv<'output>,
-    cls: impl AsRef<JClass<'a>>,
-    args: JniArgs<(), LEN>,
-) -> jni::errors::Result<JObject<'output>> {
-    env.new_object(cls.as_ref(), args.sig, &args.args)
-}
-
 /// Looks up a class by name and constructs a new instance using [`new_object`].
 pub fn new_instance<'output, const LEN: usize>(
     env: &mut JNIEnv<'output>,
@@ -1098,16 +1030,12 @@ pub fn get_object_with_native_handle<T: BridgeHandle + Clone, const LEN: usize>(
             return Ok(None);
         }
 
-        let handle: jlong = env
-            .call_method(
-                obj,
-                "unsafeNativeHandleWithoutGuard",
-                jni_signature!(() -> long),
-                &[],
-            )
-            .check_exceptions(env, callback_fn)?
-            .try_into()
-            .expect_no_exceptions()?;
+        let handle: jlong = call_method_checked(
+            env,
+            obj,
+            "unsafeNativeHandleWithoutGuard",
+            jni_args!(() -> long),
+        )?;
         if handle == 0 {
             return Ok(None);
         }

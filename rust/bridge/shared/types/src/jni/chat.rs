@@ -198,15 +198,12 @@ impl libsignal_net::registration::ConnectChat for JniConnectChat {
 
         let mut connect = None;
         attach_and_log_on_error(vm, "connect chat", |env| {
-            let handle = env
-                .call_method(
-                    java_connection_manager,
-                    "getConnectionManagerUnsafeNativeHandle",
-                    jni_signature!(() -> long),
-                    &[],
-                )
-                .and_then(|result| result.j())
-                .check_exceptions(env, "connect_chat")?;
+            let handle = call_method_checked(
+                env,
+                java_connection_manager,
+                "getConnectionManagerUnsafeNativeHandle",
+                jni_args!(() -> long),
+            )?;
             // Safety: the returned value won't outlive the JniConnectChat
             // since it won't outlive the resolved value of the future, and the
             // future can't outlive `self`.

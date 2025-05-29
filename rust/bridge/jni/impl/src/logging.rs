@@ -90,6 +90,10 @@ impl JniLogger {
         );
         let message = AutoLocal::new(env.new_string(message)?, &env);
         let result = unsafe {
+            // This gets called often enough during backup validation that the
+            // performance wins of using the unchecked call with a cached method
+            // ID are worth not having the guardrails.
+            #[allow(clippy::disallowed_methods)]
             env.call_static_method_unchecked(
                 &self.logger_class,
                 self.logger_method,

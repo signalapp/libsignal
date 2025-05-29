@@ -614,16 +614,12 @@ impl<'a> SimpleArgTypeInfo<'a> for CiphertextMessageRef<'a> {
                 .is_instance_of(foreign, class_name)
                 .check_exceptions(env, "CiphertextMessageRef::convert_from")?
             {
-                let handle: jlong = env
-                    .call_method(
-                        foreign,
-                        "unsafeNativeHandleWithoutGuard",
-                        jni_signature!(() -> long),
-                        &[],
-                    )
-                    .check_exceptions(env, "CiphertextMessageRef::convert_from")?
-                    .try_into()
-                    .expect_no_exceptions()?;
+                let handle: jlong = call_method_checked(
+                    env,
+                    foreign,
+                    "unsafeNativeHandleWithoutGuard",
+                    jni_args!(() -> long),
+                )?;
                 Ok(Some(make_result(unsafe {
                     T::native_handle_cast(handle)?.as_ref()
                 })))
@@ -1374,15 +1370,12 @@ impl<'a> SimpleArgTypeInfo<'a> for crate::net::registration::SignedPublicPreKey 
         })?;
 
         let public_key = {
-            let native_handle = env
-                .call_method(
-                    &public_key,
-                    "unsafeNativeHandleWithoutGuard",
-                    jni_signature!(() -> long),
-                    &[],
-                )
-                .and_then(|k| k.j())
-                .check_exceptions(env, "SignedPreKeyBody::convert_from")?;
+            let native_handle = call_method_checked(
+                env,
+                &public_key,
+                "unsafeNativeHandleWithoutGuard",
+                jni_args!(() -> long),
+            )?;
 
             if env
                 .is_instance_of(
