@@ -2605,6 +2605,7 @@ dependencies = [
  "serde_with",
  "thiserror 2.0.12",
  "tokio",
+ "usernames",
  "zkgroup",
 ]
 

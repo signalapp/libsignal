@@ -32,6 +32,7 @@ thiserror = { workspace = true }
 [dev-dependencies]
 libsignal-cli-utils = { workspace = true }
 libsignal-net = { path = "..", features = ["test-util"] }
+usernames = { workspace = true }
 
 anyhow = { workspace = true }
 clap = { workspace = true, features = ["derive"] }

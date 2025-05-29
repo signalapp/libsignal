@@ -7,6 +7,7 @@
 //! websocket, as implemented in [`libsignal_net::chat`].
 
 mod profiles;
+mod usernames;
 
 use base64::prelude::BASE64_STANDARD;
 use base64::Engine as _;

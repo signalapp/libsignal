@@ -9,6 +9,7 @@
 use libsignal_net::infra::errors::LogSafeDisplay;
 
 pub mod profiles;
+pub mod usernames;
 
 /// Marker wrapper for unauthenticated connections.
 #[derive(derive_more::Deref)]
@@ -51,5 +52,11 @@ impl<E> LogSafeDisplay for RequestError<E> where E: LogSafeDisplay {}
 /// A convenience trait covering all Chat APIs.
 ///
 /// This should be extended to include any new submodules' traits.
-pub trait UnauthenticatedChatApi: profiles::UnauthenticatedChatApi {}
-impl<T> UnauthenticatedChatApi for T where T: profiles::UnauthenticatedChatApi {}
+pub trait UnauthenticatedChatApi:
+    profiles::UnauthenticatedChatApi + usernames::UnauthenticatedChatApi
+{
+}
+impl<T> UnauthenticatedChatApi for T where
+    T: profiles::UnauthenticatedChatApi + usernames::UnauthenticatedChatApi
+{
+}

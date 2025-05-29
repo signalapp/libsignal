@@ -45,6 +45,7 @@ impl crate::api::profiles::UnauthenticatedChatApi for Unauth<ChatConnection> {
                     headers: http::HeaderMap::from_iter([auth.as_header()]),
                     body: None,
                 },
+                // TODO: Figure out timeouts for libsignal-net-chat APIs.
                 Duration::MAX,
             )
             .await?;
