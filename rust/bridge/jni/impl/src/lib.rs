@@ -11,8 +11,8 @@ use jni::objects::{AutoLocal, JList, JMap, JValue};
 use jni::objects::{JByteArray, JClass, JLongArray, JObject, JString};
 use jni::JNIEnv;
 use libsignal_bridge::jni::*;
-use libsignal_bridge::jni_args;
 use libsignal_bridge::net::TokioAsyncContext;
+use libsignal_bridge::{jni_args, jni_signature};
 use libsignal_protocol::*;
 
 pub mod logging;
@@ -137,19 +137,39 @@ pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_SealedSender_
         let excluded_recipients_list = JList::from_env(env, &excluded_recipients_list_object)
             .check_exceptions(env, "java.util.List")?;
 
+        let parse_from_fixed_width_binary_method = env
+            .get_static_method_id(
+                &service_id_class,
+                "parseFromFixedWidthBinary",
+                jni_signature!(([byte]) -> org.signal.libsignal.protocol.ServiceId),
+            )
+            .check_exceptions(env, "parseFromFixedWidthBinary")?;
+        let recipient_class_constructor = env
+            .get_method_id(
+                &recipient_class,
+                "<init>",
+                jni_signature!(([byte], [short], int, int) -> void),
+            )
+            .check_exceptions(env, recipient_class_name.0)?;
+
         for (service_id, recipient) in &messages.recipients {
-            let java_service_id_bytes = AutoLocal::new(service_id.convert_into(env)?, env);
-            let java_service_id = AutoLocal::new(
-                call_static_method_checked(
+            let java_service_id = {
+                let java_service_id_bytes = AutoLocal::new(service_id.convert_into(env)?, env);
+                AutoLocal::new(
+                    // Use the unchecked method with a cached method identifier
+                    // to improve performance.
+                    #[allow(clippy::disallowed_methods)]
+                    env.call_static_method_unchecked(
+                        &service_id_class,
+                        parse_from_fixed_width_binary_method,
+                        jni::signature::ReturnType::Object,
+                        &[JValue::from(&java_service_id_bytes).as_jni()],
+                    )
+                    .and_then(|v| v.l())
+                    .check_exceptions(env, "parseFromFixedWidthBinary")?,
                     env,
-                    &service_id_class,
-                    "parseFromFixedWidthBinary",
-                    jni_args!((
-                        java_service_id_bytes => [byte]
-                    ) -> org.signal.libsignal.protocol.ServiceId),
-                )?,
-                env,
-            );
+                )
+            };
 
             if recipient.devices.is_empty() {
                 excluded_recipients_list
@@ -181,22 +201,28 @@ pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_SealedSender_
             env.set_short_array_region(&java_registration_ids, 0, &registration_ids)
                 .check_exceptions(env, "MultiRecipientParseSentMessage")?;
 
-            let range = messages.range_for_recipient_key_material(recipient);
+            let java_recipient = {
+                let range = messages.range_for_recipient_key_material(recipient);
 
-            let java_recipient = AutoLocal::new(
-                new_object(
+                AutoLocal::new(
+                    // Use the unchecked method with a cached method identifier
+                    // to improve performance.
+                    #[allow(clippy::disallowed_methods)]
+                    env.new_object_unchecked(
+                        &recipient_class,
+                        recipient_class_constructor,
+                        &[
+                            JValue::from(&java_device_ids),
+                            JValue::from(&java_registration_ids),
+                            JValue::Int(range.start.try_into().expect("data too large")),
+                            JValue::Int(range.len().try_into().expect("data too large")),
+                        ]
+                        .map(|j| j.as_jni()),
+                    )
+                    .check_exceptions(env, recipient_class_name.0)?,
                     env,
-                    &recipient_class,
-                    jni_args!((
-                        java_device_ids => [byte],
-                        java_registration_ids => [short],
-                        range.start.try_into().expect("data too large") => int,
-                        range.len().try_into().expect("data too large") => int,
-                    ) -> void),
                 )
-                .check_exceptions(env, recipient_class_name.0)?,
-                env,
-            );
+            };
 
             recipient_map
                 .put(env, &java_service_id, &java_recipient)
