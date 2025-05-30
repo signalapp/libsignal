@@ -158,8 +158,8 @@ pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_SealedSender_
                 AutoLocal::new(
                     // Use the unchecked method with a cached method identifier
                     // to improve performance.
-                    #[allow(clippy::disallowed_methods)]
-                    env.call_static_method_unchecked(
+                    call_static_method_unchecked(
+                        env,
                         &service_id_class,
                         parse_from_fixed_width_binary_method,
                         jni::signature::ReturnType::Object,
@@ -207,8 +207,8 @@ pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_SealedSender_
                 AutoLocal::new(
                     // Use the unchecked method with a cached method identifier
                     // to improve performance.
-                    #[allow(clippy::disallowed_methods)]
-                    env.new_object_unchecked(
+                    new_object_unchecked(
+                        env,
                         &recipient_class,
                         recipient_class_constructor,
                         &[

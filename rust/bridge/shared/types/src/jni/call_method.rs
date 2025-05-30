@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use jni::objects::{JClass, JObject, JValueOwned};
+use jni::objects::{JClass, JMethodID, JObject, JStaticMethodID, JValueOwned};
 use jni::JNIEnv;
 
 use crate::jni::{BridgeLayerError, HandleJniError as _, JniArgs};
@@ -58,6 +58,24 @@ pub fn call_static_method_checked<
     check_exceptions_and_convert_result(env, fn_name, result)
 }
 
+/// Calls a static method provided as a [`JStaticMethodID`].
+///
+/// Wraps [`JNIEnv::call_static_method_unchecked`]. All the arguments are the same.
+pub unsafe fn call_static_method_unchecked<'local, 'other_local, T, U>(
+    env: &mut JNIEnv<'local>,
+    class: T,
+    method_id: U,
+    ret: jni::signature::ReturnType,
+    args: &[jni::sys::jvalue],
+) -> jni::errors::Result<JValueOwned<'local>>
+where
+    T: jni::descriptors::Desc<'local, JClass<'other_local>>,
+    U: jni::descriptors::Desc<'local, JStaticMethodID>,
+{
+    #[allow(clippy::disallowed_methods)]
+    env.call_static_method_unchecked(class, method_id, ret, args)
+}
+
 /// Constructs a new object using [`JniArgs`].
 ///
 /// Wraps [`JNIEnv::new_object`]; all arguments are the same.
@@ -68,6 +86,22 @@ pub fn new_object<'output, 'a, const LEN: usize>(
 ) -> jni::errors::Result<JObject<'output>> {
     #[allow(clippy::disallowed_methods)]
     env.new_object(cls, args.sig, &args.args)
+}
+
+/// Constructs a new object from a constructor [`JMethodID`].
+///
+/// Wraps [`JNIEnv::new_object_unchecked`]; all arguments are the same.
+pub unsafe fn new_object_unchecked<'local, 'other_local, T>(
+    env: &mut JNIEnv<'local>,
+    class: T,
+    ctor_id: JMethodID,
+    ctor_args: &[jni::sys::jvalue],
+) -> jni::errors::Result<JObject<'local>>
+where
+    T: jni::descriptors::Desc<'local, JClass<'other_local>>,
+{
+    #[allow(clippy::disallowed_methods)]
+    env.new_object_unchecked(class, ctor_id, ctor_args)
 }
 
 fn check_exceptions_and_convert_result<'output, R: TryFrom<JValueOwned<'output>>>(
