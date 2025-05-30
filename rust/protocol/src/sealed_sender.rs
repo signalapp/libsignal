@@ -1544,13 +1544,11 @@ impl<'a> SealedSenderV2SentMessage<'a> {
         }
 
         fn advance<'a, const N: usize>(buf: &mut &'a [u8]) -> Result<&'a [u8; N]> {
-            if N > buf.len() {
-                return Err(SignalProtocolError::InvalidProtobufEncoding);
-            }
-            // TODO: Replace with split_array_ref or split_first_chunk when stabilized.
-            let (prefix, remaining) = buf.split_at(N);
+            let (prefix, remaining) = buf
+                .split_first_chunk()
+                .ok_or(SignalProtocolError::InvalidProtobufEncoding)?;
             *buf = remaining;
-            Ok(prefix.try_into().expect("checked length"))
+            Ok(prefix)
         }
         fn decode_varint(buf: &mut &[u8]) -> Result<u32> {
             let result: usize = prost::decode_length_delimiter(*buf)

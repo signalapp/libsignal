@@ -47,11 +47,7 @@ fn has_dns64_prefix(addr: &Ipv6Addr) -> bool {
     /// From "RFC 6052: IPv6 Addressing of IPv4/IPv6 Translators", Section 2.1:  Well-Known Prefix
     const DNS64_WELL_KNOWN_PREFIX: [u8; 12] = {
         let octs = const_str::ip_addr!(v6, "64:ff9b::").octets();
-        // TODO: Use `Option.unwrap()` when MSRV >= 1.83
-        match octs.first_chunk() {
-            Some(p) => *p,
-            None => unreachable!(), // 16-byte array can’t be too short
-        }
+        *octs.first_chunk().unwrap()
     };
 
     addr.octets().starts_with(&DNS64_WELL_KNOWN_PREFIX)

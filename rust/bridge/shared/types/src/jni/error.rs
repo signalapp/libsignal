@@ -319,7 +319,6 @@ impl<T> HandleJniError<T> for Result<T, jni::errors::Error> {
         }
 
         self.map_err(|e| match check_error(e, env, context) {
-            Ok(infallible) => match infallible {},
             Err(e) => e,
         })
     }
