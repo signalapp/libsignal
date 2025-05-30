@@ -37,11 +37,8 @@ pub struct KeyArgs {
 #[group(conflicts_with = "KeyParts")]
 pub struct DeriveKey {
     /// account entropy pool, used with the ACI to derive the message backup key
-    #[arg(long, conflicts_with = "master_key", requires = "aci")]
+    #[arg(long, requires = "aci")]
     pub account_entropy: Option<String>,
-    /// master key used (with the ACI) to derive the backup keys (deprecated)
-    #[arg(long, conflicts_with = "account_entropy", value_parser=parse_hex_bytes::<32>)]
-    pub master_key: Option<[u8; BackupKey::MASTER_KEY_LEN]>,
     /// ACI for the backup creator
     #[arg(long, value_parser=parse_aci)]
     pub aci: Option<Aci>,
@@ -68,10 +65,9 @@ impl KeyArgs {
         let derive_key = {
             let DeriveKey {
                 account_entropy,
-                master_key,
                 aci,
             } = derive_key;
-            aci.map(|aci| (aci, account_entropy, master_key))
+            aci.map(|aci| (aci, account_entropy))
         };
         let key_parts = {
             let KeyParts { hmac_key, aes_key } = key_parts;
@@ -81,25 +77,16 @@ impl KeyArgs {
         match (derive_key, key_parts) {
             (None, None) => None,
             (None, Some((hmac_key, aes_key))) => Some(MessageBackupKey { aes_key, hmac_key }),
-            (Some((_aci, None, None)), None) => {
-                panic!("ACI provided, but no account-entropy or master-key")
+            (Some((_aci, None)), None) => {
+                panic!("ACI provided, but no account-entropy")
             }
-            (Some((aci, None, Some(master_key))), None) => Some({
-                #[allow(deprecated)]
-                let backup_key = BackupKey::derive_from_master_key(&master_key);
-                let backup_id = backup_key.derive_backup_id(&aci);
-                MessageBackupKey::derive(&backup_key, &backup_id)
-            }),
-            (Some((aci, Some(account_entropy), None)), None) => Some({
+            (Some((aci, Some(account_entropy))), None) => Some({
                 let account_entropy =
                     AccountEntropyPool::from_str(&account_entropy).expect("valid account-entropy");
                 let backup_key = BackupKey::derive_from_account_entropy_pool(&account_entropy);
                 let backup_id = backup_key.derive_backup_id(&aci);
                 MessageBackupKey::derive(&backup_key, &backup_id)
             }),
-            (Some((_aci, Some(_), Some(_))), None) => {
-                unreachable!("disallowed by clap arg parser")
-            }
             (Some(_), Some(_)) => unreachable!("disallowed by clap arg parser"),
         }
     }

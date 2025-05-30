@@ -25,8 +25,6 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 #define SignalMEDIA_ENCRYPTION_KEY_LEN (32 + 32)
 
-#define SignalBackupKey_MASTER_KEY_LEN SignalSVR_KEY_LEN
-
 #define SignalBackupId_LEN 16
 
 #define SignalNUM_AUTH_CRED_ATTRIBUTES 3

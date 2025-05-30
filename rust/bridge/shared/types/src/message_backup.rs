@@ -15,13 +15,6 @@ use crate::*;
 pub struct MessageBackupKey(pub MessageBackupKeyInner);
 
 impl MessageBackupKey {
-    pub fn from_master_key(master_key: &[u8; 32], aci: Aci) -> Self {
-        #[allow(deprecated)]
-        let backup_key = BackupKey::derive_from_master_key(master_key);
-        let backup_id = backup_key.derive_backup_id(&aci);
-        Self(MessageBackupKeyInner::derive(&backup_key, &backup_id))
-    }
-
     pub fn from_account_entropy_pool(account_entropy: &AccountEntropyPool, aci: Aci) -> Self {
         let backup_key = BackupKey::derive_from_account_entropy_pool(account_entropy);
         let backup_id = backup_key.derive_backup_id(&aci);
