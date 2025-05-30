@@ -84,6 +84,14 @@ public enum KeyTransparency {
         ///     the account data and the latest distinguished tree head before sending the
         ///     server request and, if the request succeeds, will be updated with the
         ///     search operation results.
+        /// - Throws:
+        ///   - `SignalError.keyTransparencyError` for errors related to key transparency logic, which
+        ///     includes missing required fields in the serialized data. Retrying the search without
+        ///     changing any of the arguments (including the state of the store) is unlikely to yield a
+        ///     different result.
+        ///   - `SignalError.keyTransparencyVerificationFailed` when it fails to
+        ///     verify the data in key transparency server response, such as an incorrect proof or a
+        ///     wrong signature.
         ///
         /// Completes successfully if the search succeeds and the local state has been
         /// updated to reflect the latest changes. If the operation fails, the UI should
@@ -142,6 +150,14 @@ public enum KeyTransparency {
         ///     the account data and the latest distinguished tree head before sending the
         ///     server request and, if the request succeeds, will be updated with the
         ///     search operation results.
+        /// - Throws:
+        ///   - `SignalError.keyTransparencyError` for errors related to key transparency logic, which
+        ///     includes missing required fields in the serialized data. Retrying the search without
+        ///     changing any of the arguments (including the state of the store) is unlikely to yield a
+        ///     different result.
+        ///   - `SignalError.keyTransparencyVerificationFailed` when it fails to
+        ///     verify the data in key transparency server response, such as an incorrect proof or a
+        ///     wrong signature.
         ///
         /// Completes successfully if the search succeeds and the local state has been
         /// updated to reflect the latest changes. If the operation fails, the UI should

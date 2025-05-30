@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-package org.signal.libsignal.net;
+package org.signal.libsignal.keytrans;
 
 /** Key transparency operation failed. */
 public class KeyTransparencyException extends Exception {

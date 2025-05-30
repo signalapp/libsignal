@@ -23,6 +23,8 @@ alias generate-ts := generate-node
 # Regenerate bridge code for all three app languages.
 generate-bridge: generate-jni generate-node generate-ffi
 
+alias generate-all := generate-bridge
+
 format-jni:
     (cd java && ./gradlew spotlessApply)
 

@@ -639,6 +639,9 @@ export function TESTING_FutureProducesPointerType(asyncRuntime: Wrapper<NonSuspe
 export function TESTING_FutureSuccess(asyncRuntime: Wrapper<NonSuspendingBackgroundThreadRuntime>, input: number): CancellablePromise<number>;
 export function TESTING_InputStreamReadIntoZeroLengthSlice(capsAlphabetInput: InputStream): Promise<Buffer>;
 export function TESTING_JoinStringArray(array: string[], joinWith: string): string;
+export function TESTING_KeyTransChatSendError(): void;
+export function TESTING_KeyTransFatalVerificationFailure(): void;
+export function TESTING_KeyTransNonFatalVerificationFailure(): void;
 export function TESTING_NonSuspendingBackgroundThreadRuntime_New(): NonSuspendingBackgroundThreadRuntime;
 export function TESTING_OtherTestingHandleType_getValue(handle: Wrapper<OtherTestingHandleType>): string;
 export function TESTING_PanicInBodyAsync(_input: null): Promise<void>;

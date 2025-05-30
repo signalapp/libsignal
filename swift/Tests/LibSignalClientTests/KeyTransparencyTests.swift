@@ -122,4 +122,34 @@ final class KeyTransparencyTests: TestCaseBase {
         // Successful monitor request should update account data in store
         XCTAssertEqual(2, store.accountData[self.testAccount.aci]!.count)
     }
+
+    func testNonFatalErrorBridging() throws {
+        do {
+            try checkError(signal_testing_key_trans_non_fatal_verification_failure())
+            XCTFail("should have failed")
+        } catch SignalError.keyTransparencyError(_) {
+        } catch {
+            XCTFail("unexpected exception thrown: \(error)")
+        }
+    }
+
+    func testFatalErrorBridging() throws {
+        do {
+            try checkError(signal_testing_key_trans_fatal_verification_failure())
+            XCTFail("should have failed")
+        } catch SignalError.keyTransparencyVerificationFailed(_) {
+        } catch {
+            XCTFail("unexpected exception thrown: \(error)")
+        }
+    }
+
+    func testChatSendErrorBridging() throws {
+        do {
+            try checkError(signal_testing_key_trans_chat_send_error())
+            XCTFail("should have failed")
+        } catch SignalError.chatServiceInactive(_) {
+        } catch {
+            XCTFail("unexpected exception thrown: \(error)")
+        }
+    }
 }

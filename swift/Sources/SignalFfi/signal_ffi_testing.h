@@ -341,6 +341,12 @@ SignalFfiError *signal_testing_handle_type_destroy(SignalMutPointerTestingHandle
 
 SignalFfiError *signal_testing_input_stream_read_into_zero_length_slice(SignalOwnedBuffer *out, SignalConstPointerFfiInputStreamStruct caps_alphabet_input);
 
+SignalFfiError *signal_testing_key_trans_chat_send_error(void);
+
+SignalFfiError *signal_testing_key_trans_fatal_verification_failure(void);
+
+SignalFfiError *signal_testing_key_trans_non_fatal_verification_failure(void);
+
 SignalFfiError *signal_testing_other_testing_handle_type_get_value(const char **out, SignalConstPointerOtherTestingHandleType handle);
 
 SignalFfiError *signal_testing_panic_in_body_async(const void *_input);

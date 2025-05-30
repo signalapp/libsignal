@@ -56,6 +56,9 @@ export enum ErrorCode {
   BackupValidation,
 
   Cancelled,
+
+  KeyTransparencyError,
+  KeyTransparencyVerificationFailed,
 }
 
 export class LibSignalErrorBase extends Error {
@@ -284,6 +287,14 @@ export type CancellationError = LibSignalErrorCommon & {
   code: ErrorCode.Cancelled;
 };
 
+export type KeyTransparencyError = LibSignalErrorCommon & {
+  code: ErrorCode.KeyTransparencyError;
+};
+
+export type KeyTransparencyVerificationFailed = LibSignalErrorCommon & {
+  code: ErrorCode.KeyTransparencyVerificationFailed;
+};
+
 export type LibSignalError =
   | GenericError
   | DuplicatedMessageError
@@ -323,4 +334,6 @@ export type LibSignalError =
   | ConnectedElsewhereError
   | RateLimitedError
   | BackupValidationError
-  | CancellationError;
+  | CancellationError
+  | KeyTransparencyError
+  | KeyTransparencyVerificationFailed;

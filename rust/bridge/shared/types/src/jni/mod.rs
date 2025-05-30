@@ -839,10 +839,13 @@ impl MessageOnlyExceptionJniError for KeyTransNetError {
         match &self {
             KeyTransNetError::ChatSendError(send_error) => send_error.exception_class(),
             KeyTransNetError::RequestFailed(_)
-            | KeyTransNetError::VerificationFailed(_)
+            | KeyTransNetError::NonFatalVerificationFailure(_)
             | KeyTransNetError::InvalidResponse(_)
             | KeyTransNetError::InvalidRequest(_) => {
-                ClassName("org.signal.libsignal.net.KeyTransparencyException")
+                ClassName("org.signal.libsignal.keytrans.KeyTransparencyException")
+            }
+            KeyTransNetError::FatalVerificationFailure(_) => {
+                ClassName("org.signal.libsignal.keytrans.VerificationFailedException")
             }
         }
     }

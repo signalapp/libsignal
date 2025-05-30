@@ -105,6 +105,9 @@ public final class NativeTesting {
   public static native CompletableFuture<Void> TESTING_FutureThrowsCustomErrorType(long asyncRuntime);
   public static native byte[] TESTING_InputStreamReadIntoZeroLengthSlice(InputStream capsAlphabetInput);
   public static native String TESTING_JoinStringArray(Object[] array, String joinWith);
+  public static native void TESTING_KeyTransChatSendError() throws Exception;
+  public static native void TESTING_KeyTransFatalVerificationFailure() throws Exception;
+  public static native void TESTING_KeyTransNonFatalVerificationFailure() throws Exception;
   public static native void TESTING_NonSuspendingBackgroundThreadRuntime_Destroy(long handle);
   public static native long TESTING_NonSuspendingBackgroundThreadRuntime_New();
   public static native String TESTING_OtherTestingHandleType_getValue(long handle);

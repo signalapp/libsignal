@@ -51,12 +51,28 @@ pub enum Error {
     ChatSendError(#[from] chat::SendError),
     /// Bad status code: {0}
     RequestFailed(http::StatusCode),
+    /// Verification failed due to malformed data: {0}
+    NonFatalVerificationFailure(String),
     /// Verification failed: {0}
-    VerificationFailed(#[from] libsignal_keytrans::Error),
+    FatalVerificationFailure(String),
     /// Invalid response: {0}
     InvalidResponse(String),
     /// Invalid request: {0}
     InvalidRequest(&'static str),
+}
+
+impl From<libsignal_keytrans::Error> for Error {
+    fn from(value: libsignal_keytrans::Error) -> Self {
+        use libsignal_keytrans::Error as KeyTransError;
+        match value {
+            err @ (KeyTransError::RequiredFieldMissing(_) | KeyTransError::BadData(_)) => {
+                Self::NonFatalVerificationFailure(err.to_string())
+            }
+            err @ KeyTransError::VerificationFailed(_) => {
+                Self::FatalVerificationFailure(err.to_string())
+            }
+        }
+    }
 }
 
 type Result<T> = std::result::Result<T, Error>;

@@ -594,9 +594,10 @@ impl FfiError for libsignal_net::keytrans::Error {
         match self {
             Error::ChatSendError(err) => err.describe(),
             Error::RequestFailed(_)
-            | Error::VerificationFailed(_)
             | Error::InvalidResponse(_)
-            | Error::InvalidRequest(_) => self.to_string(),
+            | Error::InvalidRequest(_)
+            | Error::NonFatalVerificationFailure(_)
+            | Error::FatalVerificationFailure(_) => self.to_string(),
         }
     }
 
@@ -604,10 +605,12 @@ impl FfiError for libsignal_net::keytrans::Error {
         match self {
             Error::ChatSendError(err) => err.code(),
             Error::RequestFailed(_) => SignalErrorCode::NetworkProtocol,
-            Error::InvalidResponse(_) | Error::InvalidRequest(_) => {
-                SignalErrorCode::KeyTransparencyError
+            Error::InvalidResponse(_)
+            | Error::InvalidRequest(_)
+            | Error::NonFatalVerificationFailure(_) => SignalErrorCode::KeyTransparencyError,
+            Error::FatalVerificationFailure(_) => {
+                SignalErrorCode::KeyTransparencyVerificationFailed
             }
-            Error::VerificationFailed(_) => SignalErrorCode::KeyTransparencyVerificationFailed,
         }
     }
 }
