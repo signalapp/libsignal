@@ -8,6 +8,7 @@ use once_cell::sync::OnceCell;
 
 use crate::jni::{BridgeLayerError, HandleJniError};
 
+/// If present, a cached `java.lang.ClassLoader`.
 static CACHED_CLASS_LOADER: OnceCell<GlobalRef> = OnceCell::new();
 
 /// Saves the class loader from the provided `java.lang.Class` instance.
@@ -52,20 +53,22 @@ impl std::fmt::Display for ClassName<'_> {
 pub fn find_class<'output>(
     env: &mut JNIEnv<'output>,
     class_name: ClassName<'_>,
-) -> Result<JClass<'output>, BridgeLayerError> {
+) -> jni::errors::Result<JClass<'output>> {
     let Some(class_loader) = CACHED_CLASS_LOADER.get() else {
         let jni_name = jni_name_from_binary_name(class_name);
-        return real_jni_find_class(env, &jni_name).check_exceptions(env, "FindClass");
+        return real_jni_find_class(env, &jni_name);
     };
 
     let ClassName(name) = class_name;
-    let binary_name = env.new_string(name).check_exceptions(env, "FindClass")?;
-    let class = super::call_method_checked(
-        env,
-        class_loader,
-        "loadClass",
-        jni_args!((binary_name => java.lang.String) -> java.lang.Class),
-    )?;
+    let binary_name = env.new_string(name)?;
+    let sig = jni_args!((binary_name => java.lang.String) -> java.lang.Class);
+
+    // Use the real function instead of the helper so we can keep our jni Result
+    // type as output.
+    #[allow(clippy::disallowed_methods)]
+    let class = env
+        .call_method(class_loader, "loadClass", sig.sig, &sig.args)?
+        .l()?;
 
     Ok(class.into())
 }

@@ -79,7 +79,7 @@ pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_AsyncLoadClas
         type ResultType = JClass<'a>;
 
         fn convert_into(self, env: &mut JNIEnv<'a>) -> Result<Self::ResultType, BridgeLayerError> {
-            find_class(env, ClassName(&self.0))
+            find_class(env, ClassName(&self.0)).check_exceptions(env, "AsyncLoadClass")
         }
     }
 
@@ -111,6 +111,8 @@ pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_SealedSender_
     _class: JClass,
     data: JByteArray<'local>,
 ) -> JObject<'local> {
+    use libsignal_core::try_scoped;
+
     run_ffi_safe(&mut env, |env| {
         let mut data_stored =
             unsafe { env.get_array_elements(&data, jni::objects::ReleaseMode::NoCopyBack) }
@@ -123,14 +125,16 @@ pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_SealedSender_
             ClassName("java.util.LinkedHashMap"),
             jni_args!(() -> void),
         )?;
-        let recipient_map: JMap = JMap::from_env(env, &recipient_map_object)
-            .check_exceptions(env, "MultiRecipientParseSentMessage")?;
-
-        let recipient_class_name =
+        const RECIPIENT_CLASS_NAME: ClassName<'_> =
             ClassName("org.signal.libsignal.protocol.SealedSenderMultiRecipientMessage$Recipient");
-        let recipient_class = find_class(env, recipient_class_name)?;
-        let service_id_class =
-            find_class(env, ClassName("org.signal.libsignal.protocol.ServiceId"))?;
+        let (recipient_map, recipient_class, service_id_class) = try_scoped(|| {
+            Ok((
+                JMap::from_env(env, &recipient_map_object)?,
+                find_class(env, RECIPIENT_CLASS_NAME)?,
+                find_class(env, ClassName("org.signal.libsignal.protocol.ServiceId"))?,
+            ))
+        })
+        .check_exceptions(env, "MultiRecipientParseSentMessage")?;
 
         let excluded_recipients_list_object =
             new_instance(env, ClassName("java.util.ArrayList"), jni_args!(() -> void))?;
@@ -150,7 +154,7 @@ pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_SealedSender_
                 "<init>",
                 jni_signature!(([byte], [short], int, int) -> void),
             )
-            .check_exceptions(env, recipient_class_name.0)?;
+            .check_exceptions(env, RECIPIENT_CLASS_NAME.0)?;
 
         for (service_id, recipient) in &messages.recipients {
             let java_service_id = {
@@ -219,7 +223,7 @@ pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_SealedSender_
                         ]
                         .map(|j| j.as_jni()),
                     )
-                    .check_exceptions(env, recipient_class_name.0)?,
+                    .check_exceptions(env, RECIPIENT_CLASS_NAME.0)?,
                     env,
                 )
             };
