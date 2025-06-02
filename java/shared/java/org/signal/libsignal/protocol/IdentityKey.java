@@ -7,6 +7,7 @@ package org.signal.libsignal.protocol;
 
 import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
 
+import org.signal.libsignal.internal.CalledFromNative;
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
 import org.signal.libsignal.protocol.ecc.Curve;
@@ -34,6 +35,7 @@ public class IdentityKey {
     this.publicKey = Curve.decodePoint(bytes, 0);
   }
 
+  @CalledFromNative
   public IdentityKey(long nativeHandle) {
     this.publicKey = new ECPublicKey(nativeHandle);
   }
@@ -42,6 +44,7 @@ public class IdentityKey {
     return publicKey;
   }
 
+  @CalledFromNative
   public byte[] serialize() {
     return publicKey.serialize();
   }

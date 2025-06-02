@@ -5,6 +5,7 @@
 
 package org.signal.libsignal.protocol;
 
+import org.signal.libsignal.internal.CalledFromNative;
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
 
@@ -17,6 +18,7 @@ public class SignalProtocolAddress extends NativeHandleGuard.SimpleOwner {
     this(serviceId.toServiceIdString(), deviceId);
   }
 
+  @CalledFromNative
   public SignalProtocolAddress(long nativeHandle) {
     super(nativeHandle);
   }

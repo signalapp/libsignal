@@ -2,7 +2,7 @@
 // Copyright 2024 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
-use jni::objects::{GlobalRef, JClass, JObject, JValue};
+use jni::objects::{GlobalRef, JClass, JObject};
 use jni::JNIEnv;
 use once_cell::sync::OnceCell;
 
@@ -64,7 +64,8 @@ pub fn find_class<'output>(
     let sig = jni_args!((binary_name => java.lang.String) -> java.lang.Class);
 
     // Use the real function instead of the helper so we can keep our jni Result
-    // type as output.
+    // type as output. This also avoids potential recursion in some builds where
+    // the helper would call back into this function.
     #[allow(clippy::disallowed_methods)]
     let class = env
         .call_method(class_loader, "loadClass", sig.sig, &sig.args)?

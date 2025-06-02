@@ -37,6 +37,10 @@ while [ "${1:-}" != "" ]; do
             JNI_TYPE_TAGGING=1
             shift
             ;;
+        --jni-check-annotations )
+            JNI_CHECK_ANNOTATIONS=1
+            shift
+            ;;
         --debug )
             RUST_RELEASE=
             shift
@@ -55,6 +59,9 @@ if [[ -z "${DEBUG_LEVEL_LOGS:-}" ]]; then
 fi
 if [[ -n "${JNI_TYPE_TAGGING:-}" ]]; then
     FEATURES+=("libsignal-bridge-types/jni-type-tagging")
+fi
+if [[ -n "${JNI_CHECK_ANNOTATIONS:-}" ]]; then
+    FEATURES+=("libsignal-bridge-types/jni-invoke-annotated")
 fi
 
 # usage: check_for_debug_level_logs_if_needed lib_dir

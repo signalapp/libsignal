@@ -8,6 +8,7 @@ package org.signal.libsignal.protocol.message;
 import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
 
 import java.util.Optional;
+import org.signal.libsignal.internal.CalledFromNative;
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
 import org.signal.libsignal.protocol.IdentityKey;
@@ -39,6 +40,7 @@ public class PreKeySignalMessage extends NativeHandleGuard.SimpleOwner
             () -> Native.PreKeySignalMessage_Deserialize(serialized)));
   }
 
+  @CalledFromNative
   public PreKeySignalMessage(long nativeHandle) {
     super(nativeHandle);
   }

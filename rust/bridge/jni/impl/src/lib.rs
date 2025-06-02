@@ -13,6 +13,7 @@ use jni::JNIEnv;
 use libsignal_bridge::jni::*;
 use libsignal_bridge::net::TokioAsyncContext;
 use libsignal_bridge::{jni_args, jni_signature};
+use libsignal_core::try_scoped;
 use libsignal_protocol::*;
 
 pub mod logging;
@@ -111,8 +112,6 @@ pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_SealedSender_
     _class: JClass,
     data: JByteArray<'local>,
 ) -> JObject<'local> {
-    use libsignal_core::try_scoped;
-
     run_ffi_safe(&mut env, |env| {
         let mut data_stored =
             unsafe { env.get_array_elements(&data, jni::objects::ReleaseMode::NoCopyBack) }
@@ -125,6 +124,7 @@ pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_SealedSender_
             ClassName("java.util.LinkedHashMap"),
             jni_args!(() -> void),
         )?;
+
         const RECIPIENT_CLASS_NAME: ClassName<'_> =
             ClassName("org.signal.libsignal.protocol.SealedSenderMultiRecipientMessage$Recipient");
         let (recipient_map, recipient_class, service_id_class) = try_scoped(|| {

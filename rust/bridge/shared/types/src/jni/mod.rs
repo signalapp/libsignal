@@ -13,9 +13,10 @@ use attest::hsm_enclave::Error as HsmEnclaveError;
 use device_transfer::Error as DeviceTransferError;
 use http::uri::InvalidUri;
 pub use jni::objects::{
-    AutoElements, JByteArray, JClass, JLongArray, JObject, JObjectArray, JString, ReleaseMode,
+    AutoElements, JByteArray, JClass, JLongArray, JObject, JObjectArray, JString, JValue,
+    ReleaseMode,
 };
-use jni::objects::{GlobalRef, JThrowable, JValue, JValueOwned};
+use jni::objects::{GlobalRef, JThrowable, JValueOwned};
 pub use jni::sys::{jboolean, jint, jlong};
 pub use jni::JNIEnv;
 use jni::JavaVM;

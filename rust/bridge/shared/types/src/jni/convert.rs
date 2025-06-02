@@ -687,7 +687,7 @@ impl<'a> ResultTypeInfo<'a> for crate::cds2::Cds2Metrics {
         for (k, v) in self.0 {
             let k = k.convert_into(env)?;
             let v = new_object(env, &long_class, jni_args!((v => long) -> void))
-                .check_exceptions(env, "java.lang.Long")?;
+                .check_exceptions(env, LONG_CLASS_NAME.0)?;
             jmap.put(env, &k, &v).check_exceptions(env, "put")?;
         }
         Ok(jobj)
@@ -1469,7 +1469,7 @@ impl<'a> ResultTypeInfo<'a> for libsignal_net::cdsi::LookupResponse {
                     &entry_class,
                     jni_args!( (aci => [byte], pni => [byte]) -> void),
                 )
-                .check_exceptions(env, ENTRY_CLASS.0)?,
+                .check_exceptions(env, "LookupResponse::convert_into")?,
                 env,
             );
 
