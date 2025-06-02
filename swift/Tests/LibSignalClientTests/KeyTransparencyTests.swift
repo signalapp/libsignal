@@ -123,6 +123,8 @@ final class KeyTransparencyTests: TestCaseBase {
         XCTAssertEqual(2, store.accountData[self.testAccount.aci]!.count)
     }
 
+// These testing endpoints aren't generated in device builds, to save on code size.
+#if !os(iOS) || targetEnvironment(simulator)
     func testNonFatalErrorBridging() throws {
         do {
             try checkError(signal_testing_key_trans_non_fatal_verification_failure())
@@ -152,4 +154,5 @@ final class KeyTransparencyTests: TestCaseBase {
             XCTFail("unexpected exception thrown: \(error)")
         }
     }
+#endif
 }
