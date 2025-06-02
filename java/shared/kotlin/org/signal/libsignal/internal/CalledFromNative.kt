@@ -44,7 +44,7 @@ annotation class CalledFromNative {
 
         // Special-case everything in the java package; it's not bundled and
         // so can't be stripped.
-        if (declaringClass.packageName.startsWith("java.")) {
+        if (declaringClass.getPackage()?.name?.startsWith("java.") == true) {
           return
         }
 
@@ -55,7 +55,7 @@ annotation class CalledFromNative {
 
         // Special-case constructors of libsignal exception types. These are
         // kept even without annotations!
-        if (declaringClass.packageName.startsWith("org.signal.libsignal") &&
+        if (declaringClass.getPackage()?.name?.startsWith("org.signal.libsignal") == true &&
           Exception::class.java.isAssignableFrom(declaringClass)
         ) {
           return
@@ -80,7 +80,7 @@ annotation class CalledFromNative {
 
         // Special-case everything in the java package; it's not bundled and
         // so can't be stripped.
-        if (declaringClass.packageName.startsWith("java.")) {
+        if (declaringClass.getPackage()?.name?.startsWith("java.") == true) {
           return
         }
 
@@ -125,7 +125,7 @@ annotation class CalledFromNative {
 
         // Special-case everything in the java package; it's not bundled and
         // so can't be stripped.
-        if (declaringClass.packageName.startsWith("java.")) {
+        if (declaringClass.getPackage()?.name?.startsWith("java.") == true) {
           return
         }
 
