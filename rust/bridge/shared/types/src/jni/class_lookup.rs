@@ -2,14 +2,21 @@
 // Copyright 2024 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
-use jni::objects::{GlobalRef, JClass, JObject};
+use jni::objects::{GlobalRef, JClass, JMethodID, JObject, JValue};
 use jni::JNIEnv;
+use libsignal_core::try_scoped;
 use once_cell::sync::OnceCell;
 
 use crate::jni::{BridgeLayerError, HandleJniError};
 
-/// If present, a cached `java.lang.ClassLoader`.
-static CACHED_CLASS_LOADER: OnceCell<GlobalRef> = OnceCell::new();
+static CACHED_CLASS_LOADER: OnceCell<CachedLoader> = OnceCell::new();
+
+struct CachedLoader {
+    /// A `java.lang.ClassLoader`.
+    class_loader: GlobalRef,
+    /// JNI reference to `ClassLoader.loadClass`.
+    load_class_method: JMethodID,
+}
 
 /// Saves the class loader from the provided `java.lang.Class` instance.
 ///
@@ -23,13 +30,26 @@ pub fn save_class_loader(
     native_class: &JClass<'_>,
 ) -> Result<(), BridgeLayerError> {
     let _saved = CACHED_CLASS_LOADER.get_or_try_init(|| {
-        super::call_method_checked(
+        let loader = super::call_method_checked(
             env,
             native_class,
             "getClassLoader",
             jni_args!(() -> java.lang.ClassLoader),
-        )
-        .and_then(|class_loader| env.new_global_ref(class_loader).expect_no_exceptions())
+        )?;
+
+        try_scoped(|| {
+            let load_class_method = env.get_method_id(
+                jni_class_name!(java.lang.ClassLoader),
+                "loadClass",
+                jni_signature!((java.lang.String) -> java.lang.Class),
+            )?;
+            let class_loader = env.new_global_ref(loader)?;
+            Ok(CachedLoader {
+                class_loader,
+                load_class_method,
+            })
+        })
+        .expect_no_exceptions()
     })?;
     Ok(())
 }
@@ -61,15 +81,27 @@ pub fn find_class<'output>(
 
     let ClassName(name) = class_name;
     let binary_name = env.new_string(name)?;
-    let sig = jni_args!((binary_name => java.lang.String) -> java.lang.Class);
 
-    // Use the real function instead of the helper so we can keep our jni Result
-    // type as output. This also avoids potential recursion in some builds where
-    // the helper would call back into this function.
-    #[allow(clippy::disallowed_methods)]
-    let class = env
-        .call_method(class_loader, "loadClass", sig.sig, &sig.args)?
-        .l()?;
+    let CachedLoader {
+        class_loader,
+        load_class_method,
+    } = class_loader;
+
+    // SAFETY: the method was looked up for the loader and the arguments and
+    // return type passed in here match the signature it was looked up with.
+    let class = unsafe {
+        // There isn't a helper for this (yet), but even if there were we
+        // probably wouldn't want to use it. Doing so would lead to recursion in
+        // some builds where the helper would call back into this function.
+        #[allow(clippy::disallowed_methods)]
+        env.call_method_unchecked(
+            class_loader,
+            load_class_method,
+            jni::signature::ReturnType::Object,
+            &[JValue::from(&binary_name).as_jni()],
+        )
+    }?
+    .l()?;
 
     Ok(class.into())
 }
