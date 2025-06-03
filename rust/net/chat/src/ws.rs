@@ -12,7 +12,7 @@ mod usernames;
 use base64::prelude::BASE64_STANDARD;
 use base64::Engine as _;
 use libsignal_net::chat;
-use libsignal_net::infra::errors::{LogSafeDisplay, RetryLater};
+use libsignal_net::infra::errors::LogSafeDisplay;
 use libsignal_net::infra::{extract_retry_later, AsHttpHeader};
 
 use crate::api::{RequestError, UserBasedAuthorization};
@@ -57,23 +57,17 @@ impl<E> From<chat::SendError> for RequestError<E> {
     }
 }
 
-/// Errors that arise from a response to a received request.
-///
-/// This doesn't include timeouts, since the request was known to be received
-/// and the server sent a response.
+/// Errors that arise from processing a response to a received request.
 #[derive(Debug, thiserror::Error, displaydoc::Display)]
 pub(super) enum ResponseError {
-    /// {0}
-    RetryLater(RetryLater),
-    /// the request did not pass server validation
-    InvalidRequest,
-    /// unexpected content-type {0:?}
-    UnexpectedContentType(Option<http::HeaderValue>),
     /// unexpected response status {status}
     UnrecognizedStatus {
+        /// Pulled out for easier matching and displaying.
         status: http::StatusCode,
         response: chat::Response,
     },
+    /// unexpected content-type {0:?}
+    UnexpectedContentType(Option<http::HeaderValue>),
     /// response had no body
     MissingBody,
     /// response body was not valid JSON
@@ -84,23 +78,60 @@ pub(super) enum ResponseError {
 impl LogSafeDisplay for ResponseError {}
 
 impl ResponseError {
+    /// Converts a `ResponseError` into a [`RequestError`] by calling `map_unrecognized` for any
+    /// non-success status codes.
+    ///
+    /// If `map_unrecognized` returns `None`, some basic checks will be done for request-independent
+    /// response codes (like 429 Too Many Requests).
     fn into_request_error<E>(
         self,
-        map_unrecognized: impl FnOnce(chat::Response) -> Option<RequestError<E>>,
+        map_unrecognized: impl FnOnce(&chat::Response) -> Option<E>,
     ) -> RequestError<E> {
         match self {
-            ResponseError::RetryLater(retry_later) => RequestError::RetryLater(retry_later),
-            e @ (ResponseError::InvalidRequest
-            | ResponseError::UnexpectedContentType(_)
+            e @ (ResponseError::UnexpectedContentType(_)
             | ResponseError::MissingBody
             | ResponseError::InvalidJson
             | ResponseError::UnexpectedData) => RequestError::Unexpected {
                 log_safe: e.to_string(),
             },
-            ResponseError::UnrecognizedStatus { status, response } => map_unrecognized(response)
-                .unwrap_or_else(|| RequestError::Unexpected {
-                    log_safe: format!("unexpected response status {status}"),
-                }),
+            ResponseError::UnrecognizedStatus {
+                status: _,
+                response,
+            } => match map_unrecognized(&response) {
+                Some(specific_error) => RequestError::Other(specific_error),
+                None => {
+                    let chat::Response {
+                        status,
+                        message,
+                        body,
+                        headers,
+                    } = response;
+
+                    log::debug!(
+                        "got unsuccessful response with {status} {}: {:?}",
+                        message.unwrap_or_default(),
+                        DebugAsStrOrBytes(body.as_deref().unwrap_or_default())
+                    );
+
+                    if status.is_server_error() {
+                        return RequestError::ServerSideError;
+                    }
+                    if status.as_u16() == 429 {
+                        if let Some(retry_later) = extract_retry_later(&headers) {
+                            return RequestError::RetryLater(retry_later);
+                        }
+                    }
+                    if status.as_u16() == 422 {
+                        return RequestError::Unexpected {
+                            log_safe: "the request did not pass server validation".into(),
+                        };
+                    }
+
+                    RequestError::Unexpected {
+                        log_safe: format!("unexpected response status {status}"),
+                    }
+                }
+            },
         }
     }
 }
@@ -172,33 +203,15 @@ where
 
 #[allow(clippy::result_large_err)]
 fn check_response_status(response: chat::Response) -> Result<chat::Response, ResponseError> {
-    let chat::Response {
-        status,
-        message: _,
-        body,
-        headers,
-    } = &response;
-    if !status.is_success() {
-        if status.as_u16() == 429 {
-            if let Some(retry_later) = extract_retry_later(headers) {
-                return Err(ResponseError::RetryLater(retry_later));
-            }
-        }
-        if status.as_u16() == 422 {
-            return Err(ResponseError::InvalidRequest);
-        }
-        // TODO: Treat 5xx more like RetryLater than like a 4xx.
-        log::debug!(
-            "got unsuccessful response with {status}: {:?}",
-            DebugAsStrOrBytes(body.as_deref().unwrap_or_default())
-        );
-        return Err(ResponseError::UnrecognizedStatus {
-            status: *status,
+    if response.status.is_success() {
+        // TODO: warn on unusual success codes?
+        Ok(response)
+    } else {
+        Err(ResponseError::UnrecognizedStatus {
+            status: response.status,
             response,
-        });
+        })
     }
-    // TODO: warn on unusual success codes?
-    Ok(response)
 }
 
 struct DebugAsStrOrBytes<'b>(&'b [u8]);

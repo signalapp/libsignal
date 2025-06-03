@@ -38,6 +38,8 @@ pub enum RequestError<E> {
     RetryLater(#[from] libsignal_net::infra::errors::RetryLater),
     /// transport error: {log_safe}
     Transport { log_safe: String },
+    /// server-side error, retryable with backoff
+    ServerSideError,
     /// {log_safe}
     ///
     /// This is distinct from `Transport` in that the request completed and we got a response, but
