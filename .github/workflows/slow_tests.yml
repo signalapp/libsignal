@@ -108,6 +108,22 @@ jobs:
           path: b/aars/
       - run: diff -qr a/ b/
 
+  java-extra-bridging-checks:
+    name: Java with runtime bridging checks
+    runs-on: ubuntu-latest-4-cores
+    if: ${{ github.event_name != 'schedule' || (github.repository_owner == 'signalapp' && endsWith(github.repository, '-private')) }}
+    timeout-minutes: 60
+
+    steps:
+    - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      with:
+        submodules: recursive
+
+    - run: sudo apt-get install protobuf-compiler
+
+    - run: ./gradlew :client:test :server:test -PskipAndroid -PjniTypeTagging -PjniCheckAnnotations
+      working-directory: java
+
   android-emulator-tests:
     name: Android Emulator Tests
     # For hardware acceleration; see https://github.blog/changelog/2023-02-23-hardware-accelerated-android-virtualization-on-actions-windows-and-linux-larger-hosted-runners/
