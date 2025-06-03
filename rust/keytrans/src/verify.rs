@@ -188,7 +188,7 @@ fn verify_full_tree_head(
     {
         let single_sig_tree_head = tree_head
             .to_single_signature_tree_head(config)
-            .ok_or(Error::RequiredFieldMissing("Server signature not found"))?;
+            .ok_or(Error::RequiredFieldMissing("server signature"))?;
         verify_tree_head_signature(config, &single_sig_tree_head, &root, &config.signature_key)?;
     }
 
@@ -200,7 +200,7 @@ fn verify_full_tree_head(
     if let DeploymentMode::ThirdPartyAuditing(auditor_key) = config.mode {
         let auditor_tree_head = fth
             .select_auditor_tree_head(&auditor_key)
-            .ok_or(Error::RequiredFieldMissing("Auditor tree head not found"))?;
+            .ok_or(Error::RequiredFieldMissing("auditor tree head"))?;
         let auditor_head = get_proto_field(&auditor_tree_head.tree_head, "tree_head")?;
 
         // 2. Verify that TreeHead.timestamp is sufficiently recent.
@@ -625,9 +625,7 @@ pub fn verify_monitor<'a>(
             // don't update monitoring data based on parts of the tree that we
             // don't intend to retain.
             consistency.and_then(|consistency| consistency.last).ok_or(
-                Error::RequiredFieldMissing(
-                    "consistency field expected when monitoring distinguished key",
-                ),
+                Error::RequiredFieldMissing("consistency field when monitoring distinguished key"),
             )?
         } else {
             tree_size

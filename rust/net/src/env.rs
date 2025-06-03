@@ -216,6 +216,19 @@ pub(crate) const KEYTRANS_CONFIG_STAGING: KeyTransConfig = KeyTransConfig {
     auditor_key_material: KEYTRANS_AUDITOR_KEY_MATERIAL_STAGING,
 };
 
+pub(crate) const KEYTRANS_SIGNING_KEY_MATERIAL_PROD: &[u8; 32] =
+    &hex!("a3973067984382cfa89ec26d7cc176680aefe92b3d2eba85159dad0b8354b622");
+pub(crate) const KEYTRANS_VRF_KEY_MATERIAL_PROD: &[u8; 32] =
+    &hex!("3849cf116c7bc9aef5f13f0c61a7c246e5bade4eb7e1c7b0efcacdd8c1e6a6ff");
+pub(crate) const KEYTRANS_AUDITOR_KEY_MATERIAL_PROD: &[u8; 32] =
+    &hex!("2d973608e909a09e12cbdbd21ad58775fd72fe1034a5a079f26541d5764ce17f");
+
+pub(crate) const KEYTRANS_CONFIG_PROD: KeyTransConfig = KeyTransConfig {
+    signing_key_material: KEYTRANS_SIGNING_KEY_MATERIAL_PROD,
+    vrf_key_material: KEYTRANS_VRF_KEY_MATERIAL_PROD,
+    auditor_key_material: KEYTRANS_AUDITOR_KEY_MATERIAL_PROD,
+};
+
 /// Configuration for a target network resource, like `chat.signal.org`.
 #[derive(Clone)]
 pub struct DomainConfig {
@@ -493,8 +506,7 @@ pub struct Env<'a> {
     pub cdsi: EnclaveEndpoint<'a, Cdsi>,
     pub svr2: EnclaveEndpoint<'a, Svr2>,
     pub chat_domain_config: DomainConfig,
-    // TODO: make non-optional when the public endpoints are up
-    pub keytrans_config: Option<KeyTransConfig>,
+    pub keytrans_config: KeyTransConfig,
 }
 
 impl<'a> Env<'a> {
@@ -524,7 +536,7 @@ pub const STAGING: Env<'static> = Env {
         domain_config: DOMAIN_CONFIG_SVR2_STAGING,
         params: ENDPOINT_PARAMS_SVR2_STAGING,
     },
-    keytrans_config: Some(KEYTRANS_CONFIG_STAGING),
+    keytrans_config: KEYTRANS_CONFIG_STAGING,
 };
 
 pub const PROD: Env<'static> = Env {
@@ -539,7 +551,7 @@ pub const PROD: Env<'static> = Env {
         // handshakes in staging.
         params: ENDPOINT_PARAMS_SVR2_PROD_PREQUANTUM,
     },
-    keytrans_config: None,
+    keytrans_config: KEYTRANS_CONFIG_PROD,
 };
 
 pub mod constants {

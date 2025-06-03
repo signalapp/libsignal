@@ -436,7 +436,7 @@ pub struct NetConfig {
 impl Default for NetConfig {
     fn default() -> Self {
         Self {
-            chat_timeout: Duration::from_secs(10),
+            chat_timeout: Duration::from_secs(30),
         }
     }
 }
