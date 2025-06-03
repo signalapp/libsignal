@@ -74,6 +74,7 @@ public final class NativeTesting {
   public static native Object TESTING_ChatResponseConvert(boolean bodyPresent);
   public static native void TESTING_ChatSendErrorConvert(String errorDescription) throws Exception;
   public static native int TESTING_ConnectionManager_isUsingProxy(long manager);
+  public static native UUID TESTING_ConvertOptionalUuid(boolean present);
   public static native void TESTING_ErrorOnBorrowAsync(Object input);
   public static native CompletableFuture TESTING_ErrorOnBorrowIo(long asyncRuntime, Object input);
   public static native void TESTING_ErrorOnBorrowSync(Object input);

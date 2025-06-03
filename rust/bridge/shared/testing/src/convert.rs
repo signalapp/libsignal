@@ -285,9 +285,10 @@ fn TESTING_RoundTripI32(input: i32) -> i32 {
 fn TESTING_RoundTripU64(input: u64) -> u64 {
     input
 }
-#[bridge_fn(jni = false, node = false)]
+
+#[bridge_fn]
 fn TESTING_ConvertOptionalUuid(present: bool) -> Option<Uuid> {
-    present.then_some(uuid::uuid!("abababab-1212-3434-5656-787878787878"))
+    present.then_some(uuid::uuid!("abababab-1212-8989-baba-565656565656"))
 }
 
 #[bridge_fn]

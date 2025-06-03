@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+import * as uuid from 'uuid';
 import { assert, use } from 'chai';
 import * as chaiAsPromised from 'chai-as-promised';
 import * as Native from '../../Native';
@@ -188,6 +189,17 @@ describe('bridge_fn', () => {
     for (const value of [-1n, 0x1_0000_0000_0000_0000n]) {
       assert.throws(() => Native.TESTING_RoundTripU64(value));
     }
+  });
+
+  it('can convert optional UUID values', () => {
+    const present = Native.TESTING_ConvertOptionalUuid(true);
+    assert.deepEqual(
+      present,
+      Buffer.from(uuid.parse('abababab-1212-8989-baba-565656565656'))
+    );
+
+    const absent = Native.TESTING_ConvertOptionalUuid(false);
+    assert.isNull(absent);
   });
 });
 
