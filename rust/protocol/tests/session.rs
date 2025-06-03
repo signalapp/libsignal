@@ -2395,7 +2395,7 @@ fn prekey_message_to_archived_session() -> TestResult {
     .expect("sync")
 }
 
-#[allow(clippy::needless_range_loop)]
+#[expect(clippy::needless_range_loop)]
 fn run_session_interaction(alice_session: SessionRecord, bob_session: SessionRecord) -> TestResult {
     async {
         use rand::seq::SliceRandom;

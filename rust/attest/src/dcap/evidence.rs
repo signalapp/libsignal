@@ -63,7 +63,6 @@ pub(crate) struct CustomClaims<'a> {
 //     uint64_t num_claims;
 #[derive(zerocopy::FromBytes)]
 #[repr(C)]
-#[allow(dead_code)] // incorrectly identified as never constructed
 struct CustomClaimsHeader {
     custom_claims_version: UInt64LE,
     num_claims: UInt64LE,
@@ -76,7 +75,6 @@ struct CustomClaimsHeader {
 //       // value_size_bytes follow.
 #[derive(zerocopy::FromBytes)]
 #[repr(C)]
-#[allow(dead_code)] // incorrectly identified as never constructed
 struct CustomClaimsEntryHeader {
     name_size: UInt64LE,
     value_size: UInt64LE,

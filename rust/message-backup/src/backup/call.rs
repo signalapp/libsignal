@@ -87,7 +87,7 @@ pub enum CallError {
 
 #[derive(Debug, displaydoc::Display, thiserror::Error)]
 #[cfg_attr(test, derive(PartialEq))]
-#[allow(clippy::enum_variant_names)]
+#[expect(clippy::enum_variant_names)]
 pub enum CallLinkError {
     /// expected {CALL_LINK_ROOT_KEY_LEN:?}-byte root key, found {0} bytes
     InvalidRootKey(usize),

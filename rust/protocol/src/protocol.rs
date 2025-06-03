@@ -63,7 +63,7 @@ pub struct SignalMessage {
     message_version: u8,
     sender_ratchet_key: PublicKey,
     counter: u32,
-    #[allow(dead_code)]
+    #[cfg_attr(not(test), expect(dead_code))]
     previous_counter: u32,
     ciphertext: Box<[u8]>,
     serialized: Box<[u8]>,
@@ -264,7 +264,6 @@ pub struct PreKeySignalMessage {
 }
 
 impl PreKeySignalMessage {
-    #[allow(clippy::too_many_arguments)]
     pub fn new(
         message_version: u8,
         registration_id: u32,

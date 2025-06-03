@@ -84,7 +84,6 @@ macro_rules! jni_signature {
 #[test]
 fn test_jni_signature() {
     // Literals
-    #[allow(clippy::eq_op)]
     {
         assert_eq!(jni_signature!("Lfoo/bar;"), "Lfoo/bar;");
     }
@@ -157,7 +156,6 @@ macro_rules! jni_arg {
     };
 }
 
-#[allow(clippy::float_cmp)]
 #[test]
 fn test_jni_arg() {
     assert!(matches!(jni_arg!(true => boolean), JValue::Bool(1)));

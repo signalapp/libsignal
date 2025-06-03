@@ -18,7 +18,6 @@ use uuid::Uuid;
 use crate::support::*;
 use crate::*;
 
-#[allow(dead_code)]
 const KYBER_KEY_TYPE: kem::KeyType = kem::KeyType::Kyber1024;
 
 pub type KyberKeyPair = kem::KeyPair;
@@ -571,7 +570,7 @@ fn PlaintextContent_DeserializeAndGetContent(bytes: &[u8]) -> Result<Vec<u8>> {
     Ok(PlaintextContent::try_from(bytes)?.body().to_vec())
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 #[bridge_fn(jni = "PreKeyBundle_1New")]
 fn PreKeyBundle_New(
     registration_id: u32,
@@ -1167,7 +1166,7 @@ async fn SealedSessionCipher_DecryptToUsmc(
     sealed_sender_decrypt_to_usmc(ctext, identity_store).await
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 #[bridge_fn(ffi = false, jni = false)]
 async fn SealedSender_DecryptMessage(
     message: &[u8],

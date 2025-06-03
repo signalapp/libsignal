@@ -227,7 +227,7 @@ mod test {
         let connector = InterfaceMonitor {
             inner,
             get_current_interface: |_target| async move {
-                #[allow(clippy::cast_possible_truncation)]
+                #[expect(clippy::cast_possible_truncation)]
                 {
                     start.elapsed().div_duration_f32(ROUTE_CHANGE_INTERVAL) as u8
                 }

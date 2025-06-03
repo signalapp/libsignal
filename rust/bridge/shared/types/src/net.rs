@@ -131,7 +131,6 @@ pub struct ConnectionManager {
     env: Env<'static>,
     user_agent: UserAgent,
     dns_resolver: DnsResolver,
-    #[allow(dead_code)]
     remote_config: std::sync::Mutex<RemoteConfig>,
     connect: std::sync::Mutex<ConnectState<PreconnectingFactory>>,
     // We could split this up to a separate mutex on each kind of connection,

@@ -113,7 +113,7 @@ pub fn find_class<'output>(
 /// [`find_class`] function in this module should be used instead. However,
 /// since the real thing is needed to implement that helper, this function
 /// exists to provide a narrowly-scoped `#[allow]`ed exception to the rule.
-#[allow(clippy::disallowed_methods)]
+#[expect(clippy::disallowed_methods)]
 fn real_jni_find_class<'output>(
     env: &mut JNIEnv<'output>,
     name: &str,

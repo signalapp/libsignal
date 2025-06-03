@@ -150,7 +150,6 @@ trait TryIntoResponse<R>: Sized {
 ///
 /// Necessary because `()` implements `serde::Deserialize`, so it looks like a valid JSON body to
 /// the type system.
-#[allow(dead_code)]
 struct Empty;
 
 impl TryIntoResponse<Empty> for chat::Response {

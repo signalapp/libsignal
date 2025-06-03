@@ -16,7 +16,7 @@ use super::*;
 const ERRORS_PROPERTY_NAME: &str = "Errors";
 const ERROR_CLASS_NAME: &str = "LibSignalErrorBase";
 
-#[allow(non_snake_case)]
+#[expect(non_snake_case)]
 fn node_registerErrors(mut cx: FunctionContext) -> JsResult<JsValue> {
     let errors_module = cx.argument::<JsObject>(0)?;
     cx.this::<JsObject>()?

@@ -52,7 +52,7 @@ mod tests {
     use super::*;
 
     #[test]
-    #[allow(
+    #[expect(
         clippy::cast_possible_truncation,
         clippy::needless_range_loop,
         clippy::unwrap_used

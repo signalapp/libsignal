@@ -170,7 +170,7 @@ impl UnvalidatedHandshake {
 pub struct Claims {
     pub(crate) public_key: Vec<u8>,
     pub(crate) raft_group_config: Option<proto::svr::RaftGroupConfig>,
-    #[allow(dead_code)]
+    #[expect(dead_code, reason = "this field is never read")]
     pub(crate) custom: HashMap<String, Vec<u8>>,
 }
 

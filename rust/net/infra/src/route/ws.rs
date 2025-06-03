@@ -96,7 +96,6 @@ impl std::hash::Hash for WebSocketRouteFragment {
     }
 }
 
-#[allow(deprecated)]
 fn ws_config_eq(lhs: &WebSocketConfig, rhs: &WebSocketConfig) -> bool {
     let WebSocketConfig {
         read_buffer_size,
@@ -116,7 +115,6 @@ fn ws_config_eq(lhs: &WebSocketConfig, rhs: &WebSocketConfig) -> bool {
         && accept_unmasked_frames == &rhs.accept_unmasked_frames
 }
 
-#[allow(deprecated)]
 fn ws_config_hash(ws: &WebSocketConfig, state: &mut impl std::hash::Hasher) {
     let WebSocketConfig {
         read_buffer_size,

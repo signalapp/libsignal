@@ -44,7 +44,7 @@ where
 }
 
 #[bridge_io(TokioAsyncContext)]
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 async fn KeyTransparency_Search(
     // TODO: it is currently possible to pass an env that does not match chat
     environment: AsType<Environment, u8>,
@@ -101,7 +101,7 @@ async fn KeyTransparency_Search(
 }
 
 #[bridge_io(TokioAsyncContext)]
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 async fn KeyTransparency_Monitor(
     // TODO: it is currently possible to pass an env that does not match chat
     environment: AsType<Environment, u8>,

@@ -199,7 +199,7 @@ pub trait NewHandshake: EnclaveKind + Sized {
 
 pub struct EnclaveEndpointConnection<E: EnclaveKind, C> {
     pub(crate) endpoint_connection: EndpointConnection<C>,
-    #[allow(unused)]
+    #[expect(unused)]
     pub(crate) params: EndpointParams<'static, E>,
 }
 

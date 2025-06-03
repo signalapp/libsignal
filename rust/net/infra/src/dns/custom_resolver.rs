@@ -451,7 +451,10 @@ pub(crate) mod test {
             Output = dns::Result<impl Stream<Item = dns::Result<DnsQueryResult>> + Send + 'static>,
         > + Send {
             panic!("not implemented");
-            #[allow(unreachable_code)] // needed for the compiler to infer the return type
+            #[expect(
+                unreachable_code,
+                reason = "needed for the compiler to infer the return type"
+            )]
             std::future::ready(Ok(futures_util::stream::empty()))
         }
     }

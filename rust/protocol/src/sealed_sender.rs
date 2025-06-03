@@ -1894,7 +1894,7 @@ impl SealedSenderDecryptionResult {
 /// the embedded [`SenderCertificate`]. The sender certificate (signed by the [`ServerCertificate`])
 /// is then validated against the `trust_root` baked into the client to ensure that the sender's
 /// identity was not forged.
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 pub async fn sealed_sender_decrypt(
     ciphertext: &[u8],
     trust_root: &PublicKey,
