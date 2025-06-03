@@ -72,16 +72,6 @@ impl<S> WebSocketStreamLike for S where
 {
 }
 
-impl WebSocketConfig {
-    pub fn ws2_config(&self) -> crate::ws2::Config {
-        crate::ws2::Config {
-            local_idle_timeout: self.keep_alive_interval,
-            remote_idle_ping_timeout: self.keep_alive_interval,
-            remote_idle_disconnect_timeout: self.max_idle_time,
-        }
-    }
-}
-
 /// A simplified version of [`tungstenite::Error`] that supports [`LogSafeDisplay`].
 #[derive(Debug, thiserror::Error)]
 pub enum WebSocketServiceError {

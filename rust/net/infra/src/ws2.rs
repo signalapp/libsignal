@@ -22,6 +22,7 @@ use crate::ws::{TextOrBinary, WebSocketServiceError, WebSocketStreamLike};
 pub mod attested;
 
 /// Configuration values for managing the connected websocket.
+#[derive(Clone, Copy)]
 pub struct Config {
     /// How long to wait after the last outgoing message before sending a
     /// [`Message::Ping`].

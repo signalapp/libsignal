@@ -10,18 +10,14 @@ use std::time::Duration;
 use ::http::uri::PathAndQuery;
 use ::http::{HeaderMap, HeaderName, HeaderValue, StatusCode};
 use bytes::Bytes;
-use libsignal_net_infra::connection_manager::MultiRouteConnectionManager;
 use libsignal_net_infra::route::{
     Connector, HttpsTlsRoute, RouteProvider, RouteProviderExt, ThrottlingConnector, TransportRoute,
     UnresolvedHttpsServiceRoute, UnresolvedWebsocketServiceRoute, UsePreconnect, WebSocketRoute,
     WebSocketRouteFragment,
 };
-use libsignal_net_infra::timeouts::ONE_ROUTE_CONNECTION_TIMEOUT;
-use libsignal_net_infra::utils::NetworkChangeEvent;
 use libsignal_net_infra::ws::StreamWithResponseHeaders;
 use libsignal_net_infra::{
-    make_ws_config, AsHttpHeader as _, AsStaticHttpHeader, Connection, EndpointConnection, IpType,
-    TransportInfo,
+    AsHttpHeader as _, AsStaticHttpHeader, Connection, IpType, TransportInfo,
 };
 use tokio_tungstenite::WebSocketStream;
 
@@ -29,7 +25,7 @@ use crate::auth::Auth;
 use crate::connect_state::{
     ConnectionResources, DefaultTransportConnector, RouteInfo, WebSocketTransportConnectorFactory,
 };
-use crate::env::{add_user_agent_header, ConnectionConfig, UserAgent};
+use crate::env::UserAgent;
 use crate::proto;
 
 mod error;
@@ -135,38 +131,6 @@ impl AsStaticHttpHeader for ReceiveStories {
     fn header_value(&self) -> HeaderValue {
         HeaderValue::from_static(if self.0 { "true" } else { "false" })
     }
-}
-
-pub enum EnforceMinimumTls {
-    Yes,
-    No,
-}
-
-pub fn endpoint_connection(
-    connection_config: &ConnectionConfig,
-    user_agent: &UserAgent,
-    include_fallback: bool,
-    enforce_minimum_tls: &EnforceMinimumTls,
-    network_change_event: &NetworkChangeEvent,
-) -> EndpointConnection<MultiRouteConnectionManager> {
-    let connection_config = match enforce_minimum_tls {
-        EnforceMinimumTls::No => &connection_config.config_with_permissive_min_tls_version(),
-        EnforceMinimumTls::Yes => connection_config,
-    };
-    let chat_endpoint = PathAndQuery::from_static(crate::env::constants::WEB_SOCKET_PATH);
-    let chat_connection_params = if include_fallback {
-        connection_config.connection_params_with_fallback()
-    } else {
-        vec![connection_config.direct_connection_params()]
-    };
-    let chat_connection_params = add_user_agent_header(chat_connection_params, user_agent);
-    let chat_ws_config = make_ws_config(chat_endpoint, ONE_ROUTE_CONNECTION_TIMEOUT);
-    EndpointConnection::new_multi(
-        chat_connection_params,
-        ONE_ROUTE_CONNECTION_TIMEOUT,
-        chat_ws_config,
-        network_change_event,
-    )
 }
 
 /// Information about an established connection.

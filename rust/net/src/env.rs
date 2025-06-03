@@ -21,8 +21,8 @@ use libsignal_net_infra::route::{
     HttpsProvider, TlsRouteProvider,
 };
 use libsignal_net_infra::{
-    AsStaticHttpHeader, ConnectionParams, DnsSource, EnableDomainFronting, HttpRequestDecorator,
-    HttpRequestDecoratorSeq, RouteType, TransportConnectionParams,
+    AsStaticHttpHeader, ConnectionParams, DnsSource, EnableDomainFronting, EnforceMinimumTls,
+    HttpRequestDecorator, HttpRequestDecoratorSeq, RouteType, TransportConnectionParams,
 };
 use nonzero_ext::nonzero;
 use rand::seq::SliceRandom;
@@ -388,6 +388,19 @@ impl ConnectionConfig {
                 DirectTcpRouteProvider::new(hostname, *port),
             ),
         )
+    }
+
+    pub fn route_provider_with_options(
+        &self,
+        enable_domain_fronting: EnableDomainFronting,
+        enforce_minimum_tls: EnforceMinimumTls,
+    ) -> HttpsProvider<DomainFrontRouteProvider, TlsRouteProvider<DirectTcpRouteProvider>> {
+        match enforce_minimum_tls {
+            EnforceMinimumTls::Yes => self.route_provider(enable_domain_fronting),
+            EnforceMinimumTls::No => self
+                .config_with_permissive_min_tls_version()
+                .route_provider(enable_domain_fronting),
+        }
     }
 
     pub fn config_with_permissive_min_tls_version(&self) -> Self {
