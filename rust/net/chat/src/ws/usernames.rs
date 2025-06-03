@@ -54,7 +54,11 @@ impl crate::api::usernames::UnauthenticatedChatApi for Unauth<ChatConnection> {
                 }
                 return Ok(None);
             }
-            Err(e) => return Err(e.into_request_error(|_response| None)),
+            Err(e) => {
+                return Err(
+                    e.into_request_error("GET /v1/accounts/username_hash/*", |_response| None)
+                )
+            }
         };
 
         let aci = Aci::parse_from_service_id_string(&uuid_string).ok_or_else(|| {

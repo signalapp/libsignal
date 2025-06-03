@@ -85,6 +85,7 @@ impl ResponseError {
     /// response codes (like 429 Too Many Requests).
     fn into_request_error<E>(
         self,
+        operation: &'static str,
         map_unrecognized: impl FnOnce(&chat::Response) -> Option<E>,
     ) -> RequestError<E> {
         match self {
@@ -94,44 +95,44 @@ impl ResponseError {
             | ResponseError::UnexpectedData) => RequestError::Unexpected {
                 log_safe: e.to_string(),
             },
-            ResponseError::UnrecognizedStatus {
-                status: _,
-                response,
-            } => match map_unrecognized(&response) {
-                Some(specific_error) => RequestError::Other(specific_error),
-                None => {
-                    let chat::Response {
-                        status,
-                        message,
-                        body,
-                        headers,
-                    } = response;
+            ResponseError::UnrecognizedStatus { status, response } => {
+                log::warn!("{operation}: {status} response");
+                match map_unrecognized(&response) {
+                    Some(specific_error) => RequestError::Other(specific_error),
+                    None => {
+                        let chat::Response {
+                            status,
+                            message,
+                            body,
+                            headers,
+                        } = response;
 
-                    log::debug!(
-                        "got unsuccessful response with {status} {}: {:?}",
-                        message.unwrap_or_default(),
-                        DebugAsStrOrBytes(body.as_deref().unwrap_or_default())
-                    );
+                        log::debug!(
+                            "{operation}: got unsuccessful response with {status} {}: {:?}",
+                            message.unwrap_or_default(),
+                            DebugAsStrOrBytes(body.as_deref().unwrap_or_default())
+                        );
 
-                    if status.is_server_error() {
-                        return RequestError::ServerSideError;
-                    }
-                    if status.as_u16() == 429 {
-                        if let Some(retry_later) = extract_retry_later(&headers) {
-                            return RequestError::RetryLater(retry_later);
+                        if status.is_server_error() {
+                            return RequestError::ServerSideError;
+                        }
+                        if status.as_u16() == 429 {
+                            if let Some(retry_later) = extract_retry_later(&headers) {
+                                return RequestError::RetryLater(retry_later);
+                            }
+                        }
+                        if status.as_u16() == 422 {
+                            return RequestError::Unexpected {
+                                log_safe: "the request did not pass server validation".into(),
+                            };
+                        }
+
+                        RequestError::Unexpected {
+                            log_safe: format!("unexpected response status {status}"),
                         }
                     }
-                    if status.as_u16() == 422 {
-                        return RequestError::Unexpected {
-                            log_safe: "the request did not pass server validation".into(),
-                        };
-                    }
-
-                    RequestError::Unexpected {
-                        log_safe: format!("unexpected response status {status}"),
-                    }
                 }
-            },
+            }
         }
     }
 }
