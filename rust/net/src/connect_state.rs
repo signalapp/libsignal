@@ -20,10 +20,10 @@ use libsignal_net_infra::route::{
     ConnectorFactory, DelayBasedOnTransport, DescribeForLog, DescribedRouteConnector,
     DirectOrProxy, HttpRouteFragment, InterfaceChangedOr, InterfaceMonitor, LoggingConnector,
     ResettingConnectionOutcomes, ResolveHostnames, ResolveWithSavedDescription, ResolvedRoute,
-    RouteProvider, RouteProviderContext, RouteProviderExt as _, RouteResolver, ThrottlingConnector,
-    TransportRoute, UnresolvedRouteDescription, UnresolvedTransportRoute,
-    UnresolvedWebsocketServiceRoute, UsePreconnect, UsesTransport, VariableTlsTimeoutConnector,
-    WebSocketRouteFragment, WebSocketServiceRoute,
+    RouteProvider, RouteProviderContext, RouteProviderExt as _, RouteResolver,
+    StaticTcpTimeoutConnector, ThrottlingConnector, TransportRoute, UnresolvedRouteDescription,
+    UnresolvedTransportRoute, UnresolvedWebsocketServiceRoute, UsePreconnect, UsesTransport,
+    VariableTlsTimeoutConnector, WebSocketRouteFragment, WebSocketServiceRoute,
 };
 use libsignal_net_infra::tcp_ssl::{LONG_TCP_HANDSHAKE_THRESHOLD, LONG_TLS_HANDSHAKE_THRESHOLD};
 use libsignal_net_infra::timeouts::{
@@ -109,7 +109,7 @@ pub struct ConnectState<ConnectorFactory = DefaultConnectorFactory> {
 pub type DefaultTransportConnector = VariableTlsTimeoutConnector<
     ThrottlingConnector<LoggingConnector<crate::infra::tcp_ssl::StatelessTls>>,
     crate::infra::route::DirectOrProxy<
-        LoggingConnector<crate::infra::tcp_ssl::StatelessTcp>,
+        LoggingConnector<StaticTcpTimeoutConnector<crate::infra::tcp_ssl::StatelessTcp>>,
         crate::infra::tcp_ssl::proxy::StatelessProxied,
         TransportConnectError,
     >,
@@ -145,7 +145,11 @@ where
             1,
         );
         let proxy_or_direct_connector = DirectOrProxy::new(
-            LoggingConnector::new(Default::default(), LONG_TCP_HANDSHAKE_THRESHOLD, "TCP"),
+            LoggingConnector::new(
+                StaticTcpTimeoutConnector::default(),
+                LONG_TCP_HANDSHAKE_THRESHOLD,
+                "TCP",
+            ),
             // Proxy connectors use LoggingConnector internally
             Default::default(),
         );

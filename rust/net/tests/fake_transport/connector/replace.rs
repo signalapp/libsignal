@@ -4,8 +4,8 @@
 //
 
 use libsignal_net_infra::route::{
-    ComposedConnector, DirectOrProxy, LoggingConnector, ThrottlingConnector,
-    VariableTlsTimeoutConnector,
+    ComposedConnector, DirectOrProxy, LoggingConnector, StaticTcpTimeoutConnector,
+    ThrottlingConnector, VariableTlsTimeoutConnector,
 };
 
 use super::FakeTransportConnector;
@@ -112,5 +112,16 @@ impl<C: ReplaceStatelessConnectorsWithFake> ReplaceStatelessConnectorsWithFake
     fn replace_with_fake(self, fake: FakeTransportConnector) -> Self::Replacement {
         // Discard the logging for fake connections.
         self.into_inner().replace_with_fake(fake)
+    }
+}
+
+impl<C: ReplaceStatelessConnectorsWithFake> ReplaceStatelessConnectorsWithFake
+    for StaticTcpTimeoutConnector<C>
+{
+    type Replacement = StaticTcpTimeoutConnector<C::Replacement>;
+
+    fn replace_with_fake(self, fake: FakeTransportConnector) -> Self::Replacement {
+        let (inner, timeout) = self.into_connector_and_timeout();
+        StaticTcpTimeoutConnector::new(inner.replace_with_fake(fake), timeout)
     }
 }

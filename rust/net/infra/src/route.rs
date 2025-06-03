@@ -473,6 +473,7 @@ impl<E: std::fmt::Display> std::fmt::Display for ConnectError<E> {
     }
 }
 
+#[cfg_attr(feature = "test-util", visibility::make(pub))]
 const PER_CONNECTION_WAIT_DURATION: Duration = Duration::from_millis(500);
 
 fn pull_next_route_delay<F>(connects_in_progress: &FuturesUnordered<F>) -> Duration {

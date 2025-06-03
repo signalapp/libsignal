@@ -547,36 +547,6 @@ mod test {
         }
     }
 
-    #[tokio::test(start_paused = true)]
-    async fn test_tcp_connection_timeout() {
-        // 192.0.2.0/24 is reserved for documentation (TEST-NET-1) and should never connect
-        let unreachable_ip = "192.0.2.1".parse::<IpAddr>().unwrap();
-        // This is the discard service port, to make it even more obvious that we're not
-        // connecting to a real server.
-        let port = NonZeroU16::new(9).unwrap();
-
-        let route = TcpRoute {
-            address: unreachable_ip,
-            port,
-        };
-
-        let start = tokio::time::Instant::now();
-
-        let connector = StatelessTcp;
-        let result = connector.connect_over((), route, Arc::from("test")).await;
-
-        assert_matches!(result, Err(TransportConnectError::TcpConnectionFailed));
-
-        let elapsed = start.elapsed();
-        assert_eq!(
-            elapsed,
-            crate::timeouts::TCP_CONNECTION_TIMEOUT,
-            "Expected timeout after {:?}, but took {:?}",
-            crate::timeouts::TCP_CONNECTION_TIMEOUT,
-            elapsed
-        );
-    }
-
     #[tokio::test]
     async fn test_tcp_connection_success() {
         // Create a local server that we can connect to
