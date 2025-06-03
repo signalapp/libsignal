@@ -451,11 +451,10 @@ impl SessionState {
         self.session.pending_pre_key = Some(pending);
     }
 
-    #[allow(clippy::boxed_local)]
     pub(crate) fn set_kyber_ciphertext(&mut self, ciphertext: kem::SerializedCiphertext) {
         let pending = session_structure::PendingKyberPreKey {
             pre_key_id: u32::MAX, // has to be set to the actual value separately
-            ciphertext: ciphertext.to_vec(),
+            ciphertext: ciphertext.into_vec(),
         };
         self.session.pending_kyber_pre_key = Some(pending);
     }

@@ -87,12 +87,10 @@ impl log::Log for NodeLogger {
         let throttle_counter = self.throttle_counter.clone();
 
         const MAX_LOGS_IN_FLIGHT: usize = 100;
-        const END_OF_SPIKE: usize = 80;
-        // TODO: Use exclusive range patterns when they're stabilized.
-        #[allow(overlapping_range_endpoints, clippy::match_overlapping_arm)]
+        const END_OF_SPIKE: usize = 81;
         let should_additionally_log_about_dropped_logs =
             match Arc::strong_count(&self.throttle_counter) {
-                0..=END_OF_SPIKE => {
+                0..END_OF_SPIKE => {
                     // We are not in a spike, or we are no longer in a spike.
                     self.currently_in_log_spike
                         .store(false, std::sync::atomic::Ordering::Release);

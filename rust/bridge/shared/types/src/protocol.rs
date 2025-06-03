@@ -11,9 +11,6 @@ use static_assertions::const_assert_eq;
 
 use crate::*;
 
-#[allow(dead_code)]
-const KYBER_KEY_TYPE: kem::KeyType = kem::KeyType::Kyber1024;
-
 pub type KyberKeyPair = kem::KeyPair;
 pub type KyberPublicKey = kem::PublicKey;
 pub type KyberSecretKey = kem::SecretKey;
