@@ -1,6 +1,7 @@
 fn main() {
     cc::Build::new()
-        .file("./src/aesenc-int.c")
+        .file("../../c-src/aesenc-int.c")
+        .flag("-w")
         .flag("-march=native")
         .flag("-fomit-frame-pointer")
         .flag("-Wno-unused-function")
@@ -10,7 +11,7 @@ fn main() {
         .compile("aesenc-int");
 
     cc::Build::new()
-        .file("./src/arithmetic/fq.s")
+        .file("../../asm/fq.s")
         .flag("-march=native")
         .flag("-fomit-frame-pointer")
         .flag("-fPIC")
