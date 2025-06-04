@@ -17,10 +17,6 @@ criterion = { workspace = true }
 name="bench_full"
 harness=false
 
-[[bench]]
-name="bench_scheme"
-harness=false
-
 [lib]
 name = "ref0"
 path = "src/lib.rs"

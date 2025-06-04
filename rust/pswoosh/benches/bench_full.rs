@@ -129,4 +129,10 @@ criterion_group!(
     bench_pswoosh_skey_deriv
 );
 
-criterion_main!(benches);
+criterion_group!(
+    benches_main,
+    bench_pswoosh_keygen,
+    bench_pswoosh_skey_deriv
+);
+
+criterion_main!(benches_main);
