@@ -1171,7 +1171,7 @@ mod test_support {
     use libsignal_net_infra::EnableDomainFronting;
 
     use super::*;
-    use crate::chat::ChatConnection;
+    use crate::chat::{ChatConnection, ConnectError};
     use crate::env;
     use crate::env::KEYTRANS_CONFIG_STAGING;
 
@@ -1207,8 +1207,108 @@ mod test_support {
         }
     }
 
-    pub(super) fn make_kt(chat: &(dyn UnauthenticatedChat + Sync)) -> KeyTransparencyClient<'_> {
-        KeyTransparencyClient::new(chat, KEYTRANS_CONFIG_STAGING)
+    pub(super) struct RetryingKtClient<'a> {
+        pub(super) inner: KeyTransparencyClient<'a>,
+    }
+
+    // Try connect/send operations to the real server this many times before failing
+    const NETWORK_RETRY_COUNT: usize = 3;
+
+    async fn retry_n<R, F, P, Fut>(n: usize, mut make_fut: F, mut should_retry: P) -> R
+    where
+        F: FnMut() -> Fut,
+        Fut: Future<Output = R>,
+        P: FnMut(&R) -> bool,
+    {
+        let mut result = make_fut().await;
+        for _ in 1..n {
+            if !should_retry(&result) {
+                break;
+            }
+            result = make_fut().await;
+        }
+        result
+    }
+
+    impl<'a> RetryingKtClient<'a> {
+        fn new(inner: KeyTransparencyClient<'a>) -> Self {
+            Self { inner }
+        }
+
+        fn is_send_timeout<T>(res: &Result<T>) -> bool {
+            matches!(
+                res,
+                Err(Error::ChatSendError(chat::SendError::RequestTimedOut))
+            )
+        }
+    }
+
+    impl KtApi for RetryingKtClient<'_> {
+        async fn search(
+            &self,
+            aci: &Aci,
+            aci_identity_key: &PublicKey,
+            e164: Option<(E164, Vec<u8>)>,
+            username_hash: Option<UsernameHash<'_>>,
+            stored_account_data: Option<AccountData>,
+            distinguished_tree_head: &LastTreeHead,
+        ) -> Result<MaybePartial<AccountData>> {
+            retry_n(
+                NETWORK_RETRY_COUNT,
+                || {
+                    self.inner.search(
+                        aci,
+                        aci_identity_key,
+                        e164.clone(),
+                        username_hash.clone(),
+                        stored_account_data.clone(),
+                        distinguished_tree_head,
+                    )
+                },
+                Self::is_send_timeout,
+            )
+            .await
+        }
+
+        async fn distinguished(
+            &self,
+            last_distinguished: Option<LastTreeHead>,
+        ) -> Result<SearchStateUpdate> {
+            retry_n(
+                NETWORK_RETRY_COUNT,
+                || self.inner.distinguished(last_distinguished.clone()),
+                Self::is_send_timeout,
+            )
+            .await
+        }
+
+        async fn monitor(
+            &self,
+            aci: &Aci,
+            e164: Option<E164>,
+            username_hash: Option<UsernameHash<'_>>,
+            account_data: AccountData,
+            last_distinguished_tree_head: &LastTreeHead,
+        ) -> Result<AccountData> {
+            retry_n(
+                NETWORK_RETRY_COUNT,
+                || {
+                    self.inner.monitor(
+                        aci,
+                        e164,
+                        username_hash.clone(),
+                        account_data.clone(),
+                        last_distinguished_tree_head,
+                    )
+                },
+                Self::is_send_timeout,
+            )
+            .await
+        }
+    }
+
+    pub(super) fn make_kt(chat: &(dyn UnauthenticatedChat + Sync)) -> RetryingKtClient<'_> {
+        RetryingKtClient::new(KeyTransparencyClient::new(chat, KEYTRANS_CONFIG_STAGING))
     }
 
     /// Wrapper for [`ChatConnection`] known to be connected without
@@ -1227,10 +1327,16 @@ mod test_support {
 
     pub(super) async fn make_chat() -> KtUnauthChatConnection {
         use crate::chat::test_support::simple_chat_connection;
-        let chat = simple_chat_connection(
-            &env::STAGING,
-            EnableDomainFronting::OneDomainPerProxy,
-            |route| matches!(route.inner.inner, DirectOrProxyRoute::Direct(_)),
+        let chat = retry_n(
+            NETWORK_RETRY_COUNT,
+            || {
+                simple_chat_connection(
+                    &env::STAGING,
+                    EnableDomainFronting::OneDomainPerProxy,
+                    |route| matches!(route.inner.inner, DirectOrProxyRoute::Direct(_)),
+                )
+            },
+            |res| matches!(res, Err(ConnectError::Timeout)),
         )
         .await
         .expect("can connect to chat");
@@ -1338,6 +1444,7 @@ mod test_support {
             distinguished_tree.0.tree_size,
         );
         let response = kt
+            .inner
             .send(raw_request.into())
             .await
             .expect("can send raw search request");
