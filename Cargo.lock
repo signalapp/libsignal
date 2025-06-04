@@ -2457,11 +2457,16 @@ name = "libsignal-core"
 version = "0.1.0"
 dependencies = [
  "assert_matches",
+ "boring",
+ "boring-sys",
+ "clap",
  "const-str",
  "criterion",
  "curve25519-dalek",
  "derive_more 2.0.1",
  "displaydoc",
+ "foreign-types",
+ "hex",
  "proptest",
  "rand 0.9.0",
  "sha2",

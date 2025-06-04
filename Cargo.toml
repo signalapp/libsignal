@@ -103,6 +103,7 @@ bitflags = "2.3.3"
 bitstream-io = "1.10.0"
 blake2 = "0.10"
 boring = { version = "4.6.0", default-features = false }
+boring-sys = { version = "4.6.0", default-features = false }
 bytes = "1.4.0"
 cbc = "0.1.2"
 cfg-if = "1.0.0"
@@ -122,6 +123,7 @@ ed25519-dalek = "2.1.0"
 either = "1.10.0"
 env_logger = "0.11.7"
 flate2 = { version = "1", default-features = false }
+foreign-types = "0.5"
 futures = "0.3"
 futures-util = "0.3"
 ghash = "0.5.0"
@@ -212,6 +214,7 @@ zerocopy = "0.8.24"
 # When building libsignal, just use our forks so we don't end up with two different versions of the libraries.
 
 boring = { git = 'https://github.com/signalapp/boring', tag = 'signal-v4.15.0' }
+boring-sys = { git = 'https://github.com/signalapp/boring', tag = 'signal-v4.15.0' }
 curve25519-dalek = { git = 'https://github.com/signalapp/curve25519-dalek', tag = 'signal-curve25519-4.1.3' }
 
 [profile.dev.package.argon2]
