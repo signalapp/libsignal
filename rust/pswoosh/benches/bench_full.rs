@@ -55,9 +55,14 @@ fn bench_expand_seed_aes(c: &mut Criterion) {
 fn bench_genoffset(c: &mut Criterion) {
     let rin: [u8; POLYVEC_BYTES * 2] = [0; POLYVEC_BYTES * 2];
     
-    c.bench_function("genoffset", |b| {
+    let mut group = c.benchmark_group("genoffset");
+    group.measurement_time(std::time::Duration::from_secs_f64(10.0));
+    
+    group.bench_function("genoffset", |b| {
         b.iter(|| black_box(genoffset(&rin)))
     });
+    
+    group.finish();
 }
 
 fn bench_poly_ntt(c: &mut Criterion) {
@@ -106,7 +111,7 @@ fn bench_pswoosh_skey_deriv(c: &mut Criterion) {
     let (skp, pkp) = pswoosh_keygen(&A, true);
     
     let mut group = c.benchmark_group("pswoosh_skey_deriv");
-    group.measurement_time(std::time::Duration::from_secs_f64(8.4)); // Exact 8.4 seconds
+    group.measurement_time(std::time::Duration::from_secs_f64(12.0));
     
     group.bench_function("pswoosh_skey_deriv", |b| {
         b.iter(|| black_box(pswoosh_skey_deriv(&pkp, &pkp, &skp, true)))
@@ -129,10 +134,4 @@ criterion_group!(
     bench_pswoosh_skey_deriv
 );
 
-criterion_group!(
-    benches_main,
-    bench_pswoosh_keygen,
-    bench_pswoosh_skey_deriv
-);
-
-criterion_main!(benches_main);
+criterion_main!(benches);
