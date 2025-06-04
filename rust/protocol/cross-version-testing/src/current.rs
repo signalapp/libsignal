@@ -180,6 +180,7 @@ impl super::LibSignalProtocolStore for LibSignalProtocolCurrent {
                 &mut self.0.signed_pre_key_store,
                 &mut self.0.kyber_pre_key_store,
                 &mut rng(),
+                true,
             )
             .now_or_never()
             .expect("synchronous")

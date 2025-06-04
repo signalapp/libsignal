@@ -27,6 +27,7 @@ fn SessionRecord_GetReceiverChainKeyValue(
 }
 
 #[bridge_fn(ffi = false, node = false)]
+#[allow(clippy::too_many_arguments)]
 fn SessionRecord_InitializeAliceSession(
     identity_key_private: &PrivateKey,
     identity_key_public: &PublicKey,
@@ -35,6 +36,7 @@ fn SessionRecord_InitializeAliceSession(
     their_identity_key: &PublicKey,
     their_signed_prekey: &PublicKey,
     their_ratchet_key: &PublicKey,
+    use_pq_ratchet: bool,
 ) -> Result<Vec<u8>> {
     let our_identity_key_pair = IdentityKeyPair::new(
         IdentityKey::new(*identity_key_public),
@@ -53,12 +55,14 @@ fn SessionRecord_InitializeAliceSession(
         their_identity_key,
         *their_signed_prekey,
         *their_ratchet_key,
+        UsePQRatchet::from(use_pq_ratchet),
     );
 
     initialize_alice_session_record(&parameters, &mut csprng).and_then(|s| s.serialize())
 }
 
 #[bridge_fn(ffi = false, node = false)]
+#[allow(clippy::too_many_arguments)]
 fn SessionRecord_InitializeBobSession(
     identity_key_private: &PrivateKey,
     identity_key_public: &PublicKey,
@@ -68,6 +72,7 @@ fn SessionRecord_InitializeBobSession(
     eph_public: &PublicKey,
     their_identity_key: &PublicKey,
     their_base_key: &PublicKey,
+    use_pq_ratchet: bool,
 ) -> Result<Vec<u8>> {
     let our_identity_key_pair = IdentityKeyPair::new(
         IdentityKey::new(*identity_key_public),
@@ -89,6 +94,7 @@ fn SessionRecord_InitializeBobSession(
         their_identity_key,
         *their_base_key,
         None,
+        UsePQRatchet::from(use_pq_ratchet),
     );
 
     initialize_bob_session_record(&parameters).and_then(|s| s.serialize())

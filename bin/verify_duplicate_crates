@@ -16,6 +16,8 @@
 EXPECTED="
 getrandom v0.2.15
 getrandom v0.3.2
+hax-lib v0.2.0
+hax-lib v0.3.1
 rand_core v0.6.4
 rand_core v0.9.3
 thiserror v1.0.69

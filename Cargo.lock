@@ -868,6 +868,7 @@ dependencies = [
  "curve25519-dalek-derive",
  "digest",
  "fiat-crypto",
+ "rand_core 0.6.4",
  "rustc_version",
  "serde",
  "subtle",
@@ -1532,7 +1533,18 @@ version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "61933dbb676f11311378720e1ee97a511813edb7044255381ba0d625cac6be7b"
 dependencies = [
- "hax-lib-macros",
+ "hax-lib-macros 0.2.0",
+ "num-bigint",
+ "num-traits",
+]
+
+[[package]]
+name = "hax-lib"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a89999d4446ba7d86c777bc6a30c106b9bf60d12eb1952242af5d1d7cb33943d"
+dependencies = [
+ "hax-lib-macros 0.3.1",
  "num-bigint",
  "num-traits",
 ]
@@ -1543,9 +1555,22 @@ version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7ba3a8d32921c3f535e973f72053d20bc8c7f74028911a269748440952157807"
 dependencies = [
- "hax-lib-macros-types",
+ "hax-lib-macros-types 0.2.0",
  "paste",
  "proc-macro-error",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.100",
+]
+
+[[package]]
+name = "hax-lib-macros"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "704a31fb12a8c50243e8d4c88d006f64852822b0e24488a0de9986803a661792"
+dependencies = [
+ "hax-lib-macros-types 0.3.1",
+ "proc-macro-error2",
  "proc-macro2",
  "quote",
  "syn 2.0.100",
@@ -1556,6 +1581,19 @@ name = "hax-lib-macros-types"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d5a22f64cb35f8363892df6285e7edbe96885cd660d85bfd6765c95886647b77"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "serde",
+ "serde_json",
+ "uuid",
+]
+
+[[package]]
+name = "hax-lib-macros-types"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f302d2a43ba5888c61454ffeb8719dc43e7c0e83082d0fe302ac82d8d898b075"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2131,12 +2169,52 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c19937216e9d3aa9956d9bb8dfc0b0c8beb6058fc4f7a4dc4d850edf86a237d6"
 
 [[package]]
+name = "libcrux-hacl-rs"
+version = "0.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f8bba0885296a72555a5d77056c39cc9b04edd9ab1afa3025ef3dbd96220705c"
+dependencies = [
+ "libcrux-macros",
+]
+
+[[package]]
+name = "libcrux-hkdf"
+version = "0.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4f42b91d695ed80a637c7670bdc7a5a5e11b98493b01266d985a1477bfaa6bd7"
+dependencies = [
+ "libcrux-hacl-rs",
+ "libcrux-hmac",
+]
+
+[[package]]
+name = "libcrux-hmac"
+version = "0.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e478f3208de8b92021a4e97a9590027e2eb115673ad6b1a2ebdf9f367c2b6057"
+dependencies = [
+ "libcrux-hacl-rs",
+ "libcrux-macros",
+ "libcrux-sha2",
+]
+
+[[package]]
 name = "libcrux-intrinsics"
 version = "0.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f4f764ef781467a75b92f4df575911f1cdcf77a7beb316d8054a233fed53a7ab"
 dependencies = [
- "hax-lib",
+ "hax-lib 0.2.0",
+]
+
+[[package]]
+name = "libcrux-macros"
+version = "0.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3021bc24fb679408d4d7175e21cf808f49816c599733ebf4a97e5bd39c3ce7c0"
+dependencies = [
+ "quote",
+ "syn 2.0.100",
 ]
 
 [[package]]
@@ -2145,7 +2223,7 @@ version = "0.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "34075e62474b4531bd02647a59190b9d4982b5ecca5d9775fc3d35dd70d9cff1"
 dependencies = [
- "hax-lib",
+ "hax-lib 0.2.0",
  "libcrux-intrinsics",
  "libcrux-platform",
  "libcrux-sha3",
@@ -2162,14 +2240,34 @@ dependencies = [
 ]
 
 [[package]]
+name = "libcrux-sha2"
+version = "0.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "412cf855804ed65212e3d61983d500cea8b9259eff35bb6f8bf03aaf0ac19fbc"
+dependencies = [
+ "libcrux-hacl-rs",
+ "libcrux-macros",
+ "libcrux-traits",
+]
+
+[[package]]
 name = "libcrux-sha3"
 version = "0.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3678ede46c5b5e7d5c0035065f8b9575fb67b6df405a88778ddb89cfb71d8fed"
 dependencies = [
- "hax-lib",
+ "hax-lib 0.2.0",
  "libcrux-intrinsics",
  "libcrux-platform",
+]
+
+[[package]]
+name = "libcrux-traits"
+version = "0.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "50c487a3fb34361f4f78a9c9dc5eff4ae62ef3ccb69a916af7b524dd288de9db"
+dependencies = [
+ "rand 0.9.0",
 ]
 
 [[package]]
@@ -2374,7 +2472,7 @@ dependencies = [
 
 [[package]]
 name = "libsignal-ffi"
-version = "0.73.4"
+version = "0.74.0"
 dependencies = [
  "cpufeatures",
  "hex",
@@ -2391,14 +2489,14 @@ dependencies = [
 
 [[package]]
 name = "libsignal-jni"
-version = "0.73.4"
+version = "0.74.0"
 dependencies = [
  "libsignal-jni-impl",
 ]
 
 [[package]]
 name = "libsignal-jni-impl"
-version = "0.73.4"
+version = "0.74.0"
 dependencies = [
  "cfg-if",
  "cpufeatures",
@@ -2415,7 +2513,7 @@ dependencies = [
 
 [[package]]
 name = "libsignal-jni-testing"
-version = "0.73.4"
+version = "0.74.0"
 dependencies = [
  "jni",
  "libsignal-bridge-testing",
@@ -2671,7 +2769,7 @@ dependencies = [
 
 [[package]]
 name = "libsignal-node"
-version = "0.73.4"
+version = "0.74.0"
 dependencies = [
  "cmake",
  "futures",
@@ -2721,6 +2819,7 @@ dependencies = [
  "serde",
  "sha2",
  "signal-crypto",
+ "spqr",
  "subtle",
  "thiserror 2.0.12",
  "uuid",
@@ -3567,6 +3666,28 @@ dependencies = [
  "proc-macro2",
  "quote",
  "version_check",
+]
+
+[[package]]
+name = "proc-macro-error-attr2"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "96de42df36bb9bba5542fe9f1a054b8cc87e172759a1868aa05c1f3acc89dfc5"
+dependencies = [
+ "proc-macro2",
+ "quote",
+]
+
+[[package]]
+name = "proc-macro-error2"
+version = "2.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "11ec05c52be0a07b08061f7dd003e7d7092e0472bc731b4af7bb1ef876109802"
+dependencies = [
+ "proc-macro-error-attr2",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.100",
 ]
 
 [[package]]
@@ -4457,6 +4578,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "sorted-vec"
+version = "0.8.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d372029cb5195f9ab4e4b9aef550787dce78b124fcaee8d82519925defcd6f0d"
+
+[[package]]
 name = "spin"
 version = "0.9.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4470,6 +4597,29 @@ checksum = "d91ed6c858b01f942cd56b37a94b3e0a1798290327d1236e4d9cf4eaca44d29d"
 dependencies = [
  "base64ct",
  "der",
+]
+
+[[package]]
+name = "spqr"
+version = "0.1.0"
+source = "git+https://github.com/signalapp/SparsePostQuantumRatchet.git?tag=v1.0.0#d6c10734689ec5844d09c1a054a288d36cde2adc"
+dependencies = [
+ "cpufeatures",
+ "curve25519-dalek",
+ "displaydoc",
+ "hax-lib 0.3.1",
+ "hkdf",
+ "libcrux-hkdf",
+ "libcrux-hmac",
+ "libcrux-ml-kem",
+ "num_enum",
+ "prost",
+ "prost-build",
+ "rand 0.9.0",
+ "rand_core 0.9.3",
+ "sha2",
+ "sorted-vec",
+ "thiserror 2.0.12",
 ]
 
 [[package]]

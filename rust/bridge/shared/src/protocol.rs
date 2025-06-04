@@ -347,7 +347,14 @@ bridge_get!(SignalMessage::serialized -> &[u8], ffi = "message_get_serialized");
 bridge_get!(SignalMessage::counter -> u32, ffi = "message_get_counter");
 bridge_get!(SignalMessage::message_version -> u32, ffi = "message_get_message_version");
 
+// Normal bridge_get!() doesn't work here, since msg.pq_ratchet() returns a &spqr::SerializedMessage.
+#[bridge_fn(ffi = "message_get_pq_ratchet")]
+fn SignalMessage_GetPqRatchet(msg: &SignalMessage) -> &[u8] {
+    msg.pq_ratchet()
+}
+
 #[bridge_fn(ffi = "message_new")]
+#[allow(clippy::too_many_arguments)]
 fn SignalMessage_New(
     message_version: u8,
     mac_key: &[u8],
@@ -357,6 +364,7 @@ fn SignalMessage_New(
     ciphertext: &[u8],
     sender_identity_key: &PublicKey,
     receiver_identity_key: &PublicKey,
+    pq_ratchet: &[u8],
 ) -> Result<SignalMessage> {
     SignalMessage::new(
         message_version,
@@ -367,6 +375,7 @@ fn SignalMessage_New(
         ciphertext,
         &IdentityKey::new(*sender_identity_key),
         &IdentityKey::new(*receiver_identity_key),
+        pq_ratchet,
     )
 }
 
@@ -1017,6 +1026,7 @@ async fn SessionBuilder_ProcessPreKeyBundle(
     session_store: &mut dyn SessionStore,
     identity_key_store: &mut dyn IdentityKeyStore,
     now: Timestamp,
+    use_pq_ratchet: bool,
 ) -> Result<()> {
     let mut csprng = rand::rngs::OsRng.unwrap_err();
     process_prekey_bundle(
@@ -1026,6 +1036,7 @@ async fn SessionBuilder_ProcessPreKeyBundle(
         bundle,
         now.into(),
         &mut csprng,
+        UsePQRatchet::from(use_pq_ratchet),
     )
     .await
 }
@@ -1038,12 +1049,14 @@ async fn SessionCipher_EncryptMessage(
     identity_key_store: &mut dyn IdentityKeyStore,
     now: Timestamp,
 ) -> Result<CiphertextMessage> {
+    let mut csprng = rand::rngs::OsRng.unwrap_err();
     message_encrypt(
         ptext,
         protocol_address,
         session_store,
         identity_key_store,
         now.into(),
+        &mut csprng,
     )
     .await
 }
@@ -1075,6 +1088,7 @@ async fn SessionCipher_DecryptPreKeySignalMessage(
     prekey_store: &mut dyn PreKeyStore,
     signed_prekey_store: &mut dyn SignedPreKeyStore,
     kyber_prekey_store: &mut dyn KyberPreKeyStore,
+    use_pq_ratchet: bool,
 ) -> Result<Vec<u8>> {
     let mut csprng = rand::rngs::OsRng.unwrap_err();
     message_decrypt_prekey(
@@ -1086,6 +1100,7 @@ async fn SessionCipher_DecryptPreKeySignalMessage(
         signed_prekey_store,
         kyber_prekey_store,
         &mut csprng,
+        UsePQRatchet::from(use_pq_ratchet),
     )
     .await
 }
@@ -1180,6 +1195,7 @@ async fn SealedSender_DecryptMessage(
     prekey_store: &mut dyn PreKeyStore,
     signed_prekey_store: &mut dyn SignedPreKeyStore,
     kyber_prekey_store: &mut dyn KyberPreKeyStore,
+    use_pq_ratchet: bool,
 ) -> Result<SealedSenderDecryptionResult> {
     sealed_sender_decrypt(
         message,
@@ -1193,6 +1209,7 @@ async fn SealedSender_DecryptMessage(
         prekey_store,
         signed_prekey_store,
         kyber_prekey_store,
+        UsePQRatchet::from(use_pq_ratchet),
     )
     .await
 }

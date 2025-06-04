@@ -39,6 +39,7 @@ rand = { workspace = true }
 rayon = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 sha2 = { workspace = true }
+spqr = { workspace = true }
 subtle = { workspace = true }
 thiserror = { workspace = true }
 uuid = { workspace = true }

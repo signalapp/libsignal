@@ -18,7 +18,7 @@ use subtle::ConstantTimeEq;
 use zerocopy::{FromBytes, Immutable, KnownLayout};
 
 use crate::{
-    crypto, message_encrypt, proto, session_cipher, Aci, CiphertextMessageType, DeviceId,
+    crypto, message_encrypt, proto, ratchet, session_cipher, Aci, CiphertextMessageType, DeviceId,
     Direction, IdentityKey, IdentityKeyPair, IdentityKeyStore, KeyPair, KyberPreKeyStore,
     PreKeySignalMessage, PreKeyStore, PrivateKey, ProtocolAddress, PublicKey, Result, ServiceId,
     ServiceIdFixedWidthBinaryBytes, SessionRecord, SessionStore, SignalMessage,
@@ -794,7 +794,8 @@ pub async fn sealed_sender_encrypt<R: Rng + CryptoRng>(
     now: SystemTime,
     rng: &mut R,
 ) -> Result<Vec<u8>> {
-    let message = message_encrypt(ptext, destination, session_store, identity_store, now).await?;
+    let message =
+        message_encrypt(ptext, destination, session_store, identity_store, now, rng).await?;
     let usmc = UnidentifiedSenderMessageContent::new(
         message.message_type(),
         sender_cert.clone(),
@@ -1907,6 +1908,7 @@ pub async fn sealed_sender_decrypt(
     pre_key_store: &mut dyn PreKeyStore,
     signed_pre_key_store: &dyn SignedPreKeyStore,
     kyber_pre_key_store: &mut dyn KyberPreKeyStore,
+    use_pq_ratchet: ratchet::UsePQRatchet,
 ) -> Result<SealedSenderDecryptionResult> {
     let usmc = sealed_sender_decrypt_to_usmc(ciphertext, identity_store).await?;
 
@@ -1957,6 +1959,7 @@ pub async fn sealed_sender_decrypt(
                 signed_pre_key_store,
                 kyber_pre_key_store,
                 &mut rng,
+                use_pq_ratchet,
             )
             .await?
         }

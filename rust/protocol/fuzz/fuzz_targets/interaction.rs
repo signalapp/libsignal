@@ -98,6 +98,7 @@ impl Participant {
             &their_pre_key_bundle,
             SystemTime::UNIX_EPOCH,
             rng,
+            UsePQRatchet::Yes,
         )
         .await
         .unwrap();
@@ -126,6 +127,7 @@ impl Participant {
             &mut self.store.session_store,
             &mut self.store.identity_store,
             SystemTime::UNIX_EPOCH,
+            rng,
         )
         .await
         .unwrap();
@@ -160,6 +162,7 @@ impl Participant {
                 &mut self.store.signed_pre_key_store,
                 &mut self.store.kyber_pre_key_store,
                 rng,
+                UsePQRatchet::Yes,
             )
             .await
             .unwrap();

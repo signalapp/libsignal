@@ -822,7 +822,8 @@ describe('SignalClient', () => {
       previousCounter,
       ciphertext,
       senderIdentityKey,
-      receiverIdentityKey
+      receiverIdentityKey,
+      Buffer.alloc(0)
     );
 
     assert.deepEqual(sm.counter(), counter);
@@ -876,7 +877,8 @@ describe('SignalClient', () => {
           bPreKeyBundle,
           bAddress,
           aliceStores.session,
-          aliceStores.identity
+          aliceStores.identity,
+          SignalClient.UsePQRatchet.Yes
         );
         const aMessage = Buffer.from('Greetings hoo-man', 'utf8');
 
@@ -903,7 +905,8 @@ describe('SignalClient', () => {
           bobStores.identity,
           bobStores.prekey,
           bobStores.signed,
-          bobStores.kyber
+          bobStores.kyber,
+          SignalClient.UsePQRatchet.Yes
         );
         assert.deepEqual(bDPlaintext, aMessage);
 
@@ -972,7 +975,8 @@ describe('SignalClient', () => {
           bPreKeyBundle,
           bAddress,
           aliceStores.session,
-          aliceStores.identity
+          aliceStores.identity,
+          SignalClient.UsePQRatchet.Yes
         );
         const aMessage = Buffer.from('Greetings hoo-man', 'utf8');
 
@@ -999,7 +1003,8 @@ describe('SignalClient', () => {
           bobStores.identity,
           bobStores.prekey,
           bobStores.signed,
-          bobStores.kyber
+          bobStores.kyber,
+          SignalClient.UsePQRatchet.Yes
         );
         assert.deepEqual(bDPlaintext, aMessage);
 
@@ -1011,7 +1016,8 @@ describe('SignalClient', () => {
             bobStores.identity,
             bobStores.prekey,
             bobStores.signed,
-            bobStores.kyber
+            bobStores.kyber,
+            SignalClient.UsePQRatchet.Yes
           );
           assert.fail();
         } catch (e) {
@@ -1089,6 +1095,7 @@ describe('SignalClient', () => {
           bAddress,
           aliceStores.session,
           aliceStores.identity,
+          SignalClient.UsePQRatchet.Yes,
           new Date('2020-01-01')
         );
 
@@ -1231,7 +1238,8 @@ describe('SignalClient', () => {
         bPreKeyBundle,
         bAddress,
         aSess,
-        aKeys
+        aKeys,
+        SignalClient.UsePQRatchet.Yes
       );
 
       const aPlaintext = Buffer.from('hi there', 'utf8');
@@ -1255,7 +1263,8 @@ describe('SignalClient', () => {
         bKeys,
         bPreK,
         bSPreK,
-        bKyberStore
+        bKyberStore,
+        SignalClient.UsePQRatchet.Yes
       );
 
       assert(bPlaintext != null);
@@ -1398,7 +1407,8 @@ describe('SignalClient', () => {
         bPreKeyBundle,
         sharedAddress,
         aSess,
-        sharedKeys
+        sharedKeys,
+        SignalClient.UsePQRatchet.Yes
       );
 
       const aPlaintext = Buffer.from('hi there', 'utf8');
@@ -1423,7 +1433,8 @@ describe('SignalClient', () => {
           sharedKeys,
           bPreK,
           bSPreK,
-          bKyberStore
+          bKyberStore,
+          SignalClient.UsePQRatchet.Yes
         );
         assert.fail();
       } catch (e) {
@@ -1538,7 +1549,8 @@ describe('SignalClient', () => {
         bPreKeyBundle,
         bAddress,
         aSess,
-        aKeys
+        aKeys,
+        SignalClient.UsePQRatchet.Yes
       );
 
       const aAddress = SignalClient.ProtocolAddress.new(aUuid, aDeviceId);
@@ -1700,7 +1712,8 @@ describe('SignalClient', () => {
         bPreKeyBundle,
         bAddress,
         aSess,
-        aKeys
+        aKeys,
+        SignalClient.UsePQRatchet.Yes
       );
 
       const aAddress = SignalClient.ProtocolAddress.new(aUuid, aDeviceId);
@@ -1837,7 +1850,8 @@ describe('SignalClient', () => {
         bPreKeyBundle,
         bAddress,
         aSess,
-        aKeys
+        aKeys,
+        SignalClient.UsePQRatchet.Yes
       );
 
       const aAddress = SignalClient.ProtocolAddress.new(aUuid, aDeviceId);
@@ -2005,7 +2019,8 @@ describe('SignalClient', () => {
       bPreKeyBundle,
       bAddress,
       aSess,
-      aKeys
+      aKeys,
+      SignalClient.UsePQRatchet.Yes
     );
 
     const aPlaintext = Buffer.from('hi there', 'utf8');
@@ -2029,7 +2044,8 @@ describe('SignalClient', () => {
       bKeys,
       bPreK,
       bSPreK,
-      bKyberStore
+      bKyberStore,
+      SignalClient.UsePQRatchet.Yes
     );
 
     // Pretend to send a message from B back to A that "fails".

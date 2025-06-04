@@ -24,7 +24,7 @@ message SessionStructure {
       bytes  cipher_key = 2;
       bytes  mac_key    = 3;
       bytes  iv         = 4;
-      // If `seed` is set, then `cipher_key`, `mac_key`, and `iv` should
+      // If `seed` is set, then `cipher_key`, `mac_key`, and `iv`
       // will be empty and should be generated from it.
       bytes  seed       = 5;
     }
@@ -63,7 +63,8 @@ message SessionStructure {
 
   reserved 12; // no longer used
   bytes          alice_base_key            = 13;
-  // Next index: 15
+  bytes          pq_ratchet_state          = 15;
+  // Next index: 16
 }
 
 message RecordStructure {

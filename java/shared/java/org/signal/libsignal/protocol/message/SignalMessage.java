@@ -62,6 +62,10 @@ public class SignalMessage extends NativeHandleGuard.SimpleOwner
     return filterExceptions(() -> guardedMapChecked(Native::SignalMessage_GetBody));
   }
 
+  public byte[] getPqRatchet() {
+    return filterExceptions(() -> guardedMapChecked(Native::SignalMessage_GetPqRatchet));
+  }
+
   public void verifyMac(
       IdentityKey senderIdentityKey, IdentityKey receiverIdentityKey, SecretKeySpec macKey)
       throws InvalidMessageException, InvalidKeyException {

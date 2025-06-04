@@ -66,12 +66,14 @@ pub struct SignalMessage {
     #[cfg_attr(not(test), expect(dead_code))]
     previous_counter: u32,
     ciphertext: Box<[u8]>,
+    pq_ratchet: spqr::SerializedState,
     serialized: Box<[u8]>,
 }
 
 impl SignalMessage {
     const MAC_LENGTH: usize = 8;
 
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         message_version: u8,
         mac_key: &[u8],
@@ -81,12 +83,18 @@ impl SignalMessage {
         ciphertext: &[u8],
         sender_identity_key: &IdentityKey,
         receiver_identity_key: &IdentityKey,
+        pq_ratchet: &[u8],
     ) -> Result<Self> {
         let message = proto::wire::SignalMessage {
             ratchet_key: Some(sender_ratchet_key.serialize().into_vec()),
             counter: Some(counter),
             previous_counter: Some(previous_counter),
             ciphertext: Some(Vec::<u8>::from(ciphertext)),
+            pq_ratchet: if pq_ratchet.is_empty() {
+                None
+            } else {
+                Some(pq_ratchet.to_vec())
+            },
         };
         let mut serialized = Vec::with_capacity(1 + message.encoded_len() + Self::MAC_LENGTH);
         serialized.push(((message_version & 0xF) << 4) | CIPHERTEXT_MESSAGE_CURRENT_VERSION);
@@ -107,6 +115,7 @@ impl SignalMessage {
             counter,
             previous_counter,
             ciphertext: ciphertext.into(),
+            pq_ratchet: pq_ratchet.to_vec(),
             serialized,
         })
     }
@@ -124,6 +133,11 @@ impl SignalMessage {
     #[inline]
     pub fn counter(&self) -> u32 {
         self.counter
+    }
+
+    #[inline]
+    pub fn pq_ratchet(&self) -> &spqr::SerializedMessage {
+        &self.pq_ratchet
     }
 
     #[inline]
@@ -230,6 +244,7 @@ impl TryFrom<&[u8]> for SignalMessage {
             counter,
             previous_counter,
             ciphertext,
+            pq_ratchet: proto_structure.pq_ratchet.unwrap_or(vec![]),
             serialized: Box::from(value),
         })
     }
@@ -928,6 +943,7 @@ mod tests {
             &ciphertext,
             &sender_identity_key_pair.public_key.into(),
             &receiver_identity_key_pair.public_key.into(),
+            b"", // pq_ratchet
         )
     }
 
