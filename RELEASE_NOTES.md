@@ -1,3 +1,2 @@
-v0.74.0
+v0.74.1
 
-- Integrate post-quantum ratchet in opt-in mode.
