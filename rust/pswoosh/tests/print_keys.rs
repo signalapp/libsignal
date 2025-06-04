@@ -1,78 +1,62 @@
-use std::thread;
+#[cfg(test)]
+mod tests {
 
-use ref0::sys_a::*;
-use ref0::*;
+    use ref0::sys_a::*;
+    use ref0::*;
+    use ref0::stack_utils::run_with_large_stack;
 
-const STACK_SIZE: usize = 30 * 1024 * 1024;
+    #[test]
+    fn test_keys() {
+        run_with_large_stack(
+            || {
+                // Step 1: Generate key pairs
+                let (sk1, pk1) = pswoosh_keygen(&A, true);
+                let (sk2, pk2) = pswoosh_keygen(&AT, false);
+                // Step 3: Exchange public keys (happens in a real application)
 
-// Increase stack size for the tests
-fn run_test_with_stack<F>(test_fn: F, test_name: &str)
-where
-    F: FnOnce() + Send + 'static,
-{
-    let builder = thread::Builder::new().stack_size(STACK_SIZE);
-    let test_name = String::from(test_name);
-    let handler = builder
-        .spawn(move || {
-            println!("Running {} with 30MB stack", test_name);
-            test_fn();
-        })
-        .unwrap();
+                // Step 4: Derive the shared secret
+                let ss1 = pswoosh_skey_deriv(&pk1, &pk2, &sk1, true);
+                let ss2 = pswoosh_skey_deriv(&pk2, &pk1, &sk2, false);
 
-    handler.join().unwrap();
-}
+                // Verify that both parties derived the same secret
+                assert_eq!(ss1, ss2, "ERROR: shared secrets don't match!");
 
-#[test]
-fn test_keys() {
-    run_test_with_stack(
-        || {
-            // Step 1: Generate key pairs
-            let (sk1, pk1) = pswoosh_keygen(&A, true);
-            let (sk2, pk2) = pswoosh_keygen(&AT, false);
-            // Step 3: Exchange public keys (happens in a real application)
+                // Use the shared secret for encryption or other purposes
+                println!("Successfully generated shared secret!");
+                println!("Shared secret: {:?}", ss1);
+                println!("Shared secret 2: {:?}", ss2);
+            },
+            "test_keys",
+        );
+    }
 
-            // Step 4: Derive the shared secret
-            let ss1 = pswoosh_skey_deriv(&pk1, &pk2, &sk1, true);
-            let ss2 = pswoosh_skey_deriv(&pk2, &pk1, &sk2, false);
+    #[test]
+    fn test_keys_random_matrix() {
+        run_with_large_stack(
+            || {
+                let mut seed: [u8; SYMBYTES] = [0; SYMBYTES];
+                getrandom::getrandom(&mut seed).expect("getrandom failed");
+                let a = genmatrix(&seed, true); // Matrix A
+                let at = genmatrix(&seed, false); // Initialize matrix At
 
-            // Verify that both parties derived the same secret
-            assert_eq!(ss1, ss2, "ERROR: shared secrets don't match!");
+                // Step 1: Generate key pairs
+                let (sk1, pk1) = pswoosh_keygen(&a, true);
+                let (sk2, pk2) = pswoosh_keygen(&at, true);
+                // Step 3: Exchange public keys (happens in a real application)
 
-            // Use the shared secret for encryption or other purposes
-            println!("Successfully generated shared secret!");
-            println!("Shared secret: {:?}", ss1);
-            println!("Shared secret 2: {:?}", ss2);
-        },
-        "test_keys",
-    );
-}
+                // Step 4: Derive the shared secret
+                let ss1 = pswoosh_skey_deriv(&pk1, &pk2, &sk1, true);
+                let ss2 = pswoosh_skey_deriv(&pk2, &pk1, &sk2, false);
 
-#[test]
-fn test_keys_random_matrix() {
-    run_test_with_stack(
-        || {
-            let mut seed: [u8; SYMBYTES] = [0; SYMBYTES];
-            getrandom::getrandom(&mut seed).expect("getrandom failed");
-            let a = genmatrix(&seed, true); // Matrix A
-            let at = genmatrix(&seed, false); // Initialize matrix At
+                // Verify that both parties derived the same secret
+                assert_eq!(ss1, ss2, "ERROR: shared secrets don't match!");
 
-            // Step 1: Generate key pairs
-            let (sk1, pk1) = pswoosh_keygen(&a, true);
-            let (sk2, pk2) = pswoosh_keygen(&at, true);
-            // Step 3: Exchange public keys (happens in a real application)
-
-            // Step 4: Derive the shared secret
-            let ss1 = pswoosh_skey_deriv(&pk1, &pk2, &sk1, true);
-            let ss2 = pswoosh_skey_deriv(&pk2, &pk1, &sk2, false);
-
-            // Verify that both parties derived the same secret
-            assert_eq!(ss1, ss2, "ERROR: shared secrets don't match!");
-
-            // Use the shared secret for encryption or other purposes
-            println!("Successfully generated shared secret!");
-            println!("Shared secret: {:?}", ss1);
-            println!("Shared secret 2: {:?}", ss2);
-        },
-        "test_keys_random_matrix",
-    );
+                // Use the shared secret for encryption or other purposes
+                println!("Successfully generated shared secret!");
+                println!("Shared secret: {:?}", ss1);
+                println!("Shared secret 2: {:?}", ss2);
+            },
+            "test_keys_random_matrix",
+        );
+    }
 }

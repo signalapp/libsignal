@@ -89,30 +89,11 @@ pub fn polyvec_tobytes(a: PolyVec) -> [u8; POLYVEC_BYTES] {
 mod tests {
     use super::*;
     use crate::arithmetic::fq::*;
-    use std::thread;
-
-    const STACK_SIZE: usize = 10 * 1024 * 1024;
-
-    // Increase stack size for the tests
-    fn run_test_with_stack<F>(test_fn: F, test_name: &str)
-    where
-        F: FnOnce() + Send + 'static,
-    {
-        let builder = thread::Builder::new().stack_size(STACK_SIZE);
-        let test_name = String::from(test_name);
-        let handler = builder
-            .spawn(move || {
-                println!("Running {} with 10MB stack", test_name);
-                test_fn();
-            })
-            .unwrap();
-
-        handler.join().unwrap();
-    }
-
+    use crate::stack_utils::run_with_large_stack;
+    
     #[test]
     fn test_polyvec_add() {
-        run_test_with_stack(
+        run_with_large_stack(
             || {
                 let a: PolyVec = [[HQ.clone(); D]; N];
                 let b: PolyVec = [[QQ.clone(); D]; N];
@@ -128,7 +109,7 @@ mod tests {
 
     #[test]
     fn test_polyvec_bytes() {
-        run_test_with_stack(
+        run_with_large_stack(
             || {
                 let a: PolyVec = [[HQ.clone(); D]; N];
                 let b1: [u8; POLYVEC_BYTES] = polyvec_tobytes(a);
