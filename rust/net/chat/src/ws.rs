@@ -105,11 +105,11 @@ impl ResponseError {
                             message,
                             body,
                             headers,
-                        } = response;
+                        } = &response;
 
                         log::debug!(
                             "{operation}: got unsuccessful response with {status} {}: {:?}",
-                            message.unwrap_or_default(),
+                            message.as_deref().unwrap_or_default(),
                             DebugAsStrOrBytes(body.as_deref().unwrap_or_default())
                         );
 
@@ -117,8 +117,22 @@ impl ResponseError {
                             return RequestError::ServerSideError;
                         }
                         if status.as_u16() == 429 {
-                            if let Some(retry_later) = extract_retry_later(&headers) {
+                            if let Some(retry_later) = extract_retry_later(headers) {
                                 return RequestError::RetryLater(retry_later);
+                            }
+                        }
+                        if status.as_u16() == 428 {
+                            #[derive(serde::Deserialize)]
+                            struct ChallengeBody {
+                                token: String,
+                                // TODO: Move this type into libsignal-net-chat.
+                                options: Vec<libsignal_net::registration::RequestedInformation>,
+                            }
+
+                            if let Ok(ChallengeBody { token, options }) =
+                                parse_json_from_body(&response)
+                            {
+                                return RequestError::Challenge { token, options };
                             }
                         }
                         if status.as_u16() == 422 {
@@ -174,30 +188,15 @@ impl TryIntoResponse<Empty> for chat::Response {
     }
 }
 
+const JSON_CONTENT_TYPE: http::HeaderValue = http::HeaderValue::from_static("application/json");
+
 impl<R> TryIntoResponse<R> for chat::Response
 where
     R: for<'a> serde::Deserialize<'a>,
 {
     fn try_into_response(self) -> Result<R, ResponseError> {
-        let chat::Response {
-            status: _,
-            message: _,
-            body,
-            headers,
-        } = &check_response_status(self)?;
-
-        let content_type = headers.get(http::header::CONTENT_TYPE);
-        if content_type != Some(&http::HeaderValue::from_static("application/json")) {
-            return Err(ResponseError::UnexpectedContentType(content_type.cloned()));
-        }
-
-        let body = body.as_ref().ok_or(ResponseError::MissingBody)?;
-        serde_json::from_slice(body).map_err(|e| match e.classify() {
-            serde_json::error::Category::Data => ResponseError::UnexpectedData,
-            serde_json::error::Category::Syntax
-            | serde_json::error::Category::Io
-            | serde_json::error::Category::Eof => ResponseError::InvalidJson,
-        })
+        let response = check_response_status(self)?;
+        parse_json_from_body(&response)
     }
 }
 
@@ -212,6 +211,32 @@ fn check_response_status(response: chat::Response) -> Result<chat::Response, Res
             response,
         })
     }
+}
+
+/// Like [`TryIntoResponse`], but without checking the status code first.
+fn parse_json_from_body<R>(response: &chat::Response) -> Result<R, ResponseError>
+where
+    R: for<'a> serde::Deserialize<'a>,
+{
+    let chat::Response {
+        status: _,
+        message: _,
+        body,
+        headers,
+    } = response;
+
+    let content_type = headers.get(http::header::CONTENT_TYPE);
+    if content_type != Some(&JSON_CONTENT_TYPE) {
+        return Err(ResponseError::UnexpectedContentType(content_type.cloned()));
+    }
+
+    let body = body.as_ref().ok_or(ResponseError::MissingBody)?;
+    serde_json::from_slice(body).map_err(|e| match e.classify() {
+        serde_json::error::Category::Data => ResponseError::UnexpectedData,
+        serde_json::error::Category::Syntax
+        | serde_json::error::Category::Io
+        | serde_json::error::Category::Eof => ResponseError::InvalidJson,
+    })
 }
 
 struct DebugAsStrOrBytes<'b>(&'b [u8]);
