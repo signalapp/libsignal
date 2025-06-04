@@ -91,18 +91,18 @@ mod tests {
     use crate::arithmetic::fq::*;
     use std::thread;
 
-    const STACK_SIZE: usize = 16 * 1024 * 1024;
+    const STACK_SIZE: usize = 10 * 1024 * 1024;
 
     // Increase stack size for the tests
     fn run_test_with_stack<F>(test_fn: F, test_name: &str)
     where
         F: FnOnce() + Send + 'static,
     {
-        let builder = thread::Builder::new().stack_size(STACK_SIZE); // 100 MB stack size
+        let builder = thread::Builder::new().stack_size(STACK_SIZE);
         let test_name = String::from(test_name);
         let handler = builder
             .spawn(move || {
-                println!("Running {} with 100MB stack", test_name);
+                println!("Running {} with 10MB stack", test_name);
                 test_fn();
             })
             .unwrap();
