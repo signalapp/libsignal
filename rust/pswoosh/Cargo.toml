@@ -1,0 +1,39 @@
+[package]
+name = "pswoosh-protocol"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+getrandom = "0.2.7"
+sha3 = "0.10.6"
+
+[build-dependencies]
+cc = "1.0.78"
+
+[dev-dependencies]
+criterion = { workspace = true }
+
+[[bench]]
+name="bench_full"
+harness=false
+
+[[bench]]
+name="bench_scheme"
+harness=false
+
+[lib]
+name = "ref0"
+path = "src/lib.rs"
+
+[profile.test]
+opt-level = 3            # Optimization level.
+target-cpu = "native"
+
+[profile.dev]
+opt-level = 3            # Optimization level.
+target-cpu = "native"
+
+[profile.release]
+opt-level = 3            # Optimization level.
+target-cpu = "native"
+

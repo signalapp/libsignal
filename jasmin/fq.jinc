@@ -1,0 +1,46 @@
+param int NLIMBS = 4;
+
+/* prime NIKE (Q) 2^214 - 255*/
+u64[NLIMBS] glob_p = {
+  0xffffffffffffff01,
+  0xffffffffffffffff,
+  0xffffffffffffffff,
+  0x00000000003fffff
+};
+
+/* R - P = 2^(NLIMBS*64) - P */
+u64[NLIMBS] glob_mp = {
+  0x00000000000000ff,
+  0x0000000000000000,
+  0x0000000000000000,
+  0xffffffffffc00000
+};
+
+/* P - 2 */
+u64[NLIMBS] glob_pm2 = {
+  0xfffffffffffffeff,
+  0xffffffffffffffff,
+  0xffffffffffffffff,
+  0x00000000003fffff
+};
+
+/* (glob_p[0] * u0) mod 2^64 = -1 */
+u64 glob_u0 = 18374403900871474943;
+
+/* R mod P = 2^(NLIMBS*64) mod P */
+u64[NLIMBS] glob_oneM = {
+  0x0003fc0000000000,
+  0x0000000000000000,
+  0x0000000000000000,
+  0x0000000000000000
+};
+
+/* R^2 mod P = 2^(2*NLIMBS*64) mod P */
+u64[NLIMBS] glob_rM = {
+  0x0000000000000000,
+  0x0000000fe0100000,
+  0x0000000000000000,
+  0x0000000000000000
+};
+
+from Libjbn require "common/fp/amd64/ref/fp_generic.jinc"

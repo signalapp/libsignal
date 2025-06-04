@@ -8,7 +8,7 @@
 /node/build
 
 /rust/bridge/node/futures/tests/node-tests/node_modules
-rust/pswoosh/rust/ref0/target
+rust/pswoosh/target
 *.orig
 *.rej
 
