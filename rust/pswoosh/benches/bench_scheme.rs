@@ -1,32 +1,39 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use ref0::sys_a::*;
 use ref0::*;
+use ref0::sys_a::*;
 
-fn bench_keygen(c: &mut Criterion) {
+fn bench_pswoosh_keygen_scheme(c: &mut Criterion) {
     c.bench_function("pswoosh_keygen", |b| {
-        b.iter(|| {
-            let (skp, pkp) = pswoosh_keygen(&A, black_box(true));
-            black_box((skp, pkp))
+        b.iter_custom(|iters| {
+            let start = std::time::Instant::now();
+            
+            for _ in 0..iters {
+                let _keys = pswoosh_keygen(&A, true);
+            }
+            
+            start.elapsed()
         })
     });
 }
 
-fn bench_skey_deriv(c: &mut Criterion) {
-    // Setup data for the benchmark
+fn bench_pswoosh_skey_deriv_scheme(c: &mut Criterion) {
     let (skp, pkp) = pswoosh_keygen(&A, true);
-
-    c.bench_function("pswoosh_skey_deriv", |b| {
-        b.iter(|| {
-            let ss = pswoosh_skey_deriv(
-                black_box(&pkp),
-                black_box(&pkp),
-                black_box(&skp),
-                black_box(true),
-            );
-            black_box(ss)
-        })
+    
+    let mut group = c.benchmark_group("pswoosh_skey_deriv_scheme");
+    group.measurement_time(std::time::Duration::from_secs_f64(10.0));
+    
+    group.bench_function("pswoosh_skey_deriv", |b| {
+        b.iter(|| black_box(pswoosh_skey_deriv(&pkp, &pkp, &skp, true)))
     });
+    
+    group.finish();
 }
 
-criterion_group!(benches, bench_keygen, bench_skey_deriv);
-criterion_main!(benches);
+criterion_group!(
+    scheme_benches,
+    bench_pswoosh_keygen_scheme,
+    bench_pswoosh_skey_deriv_scheme
+);
+
+
+criterion_main!(scheme_benches);
