@@ -24,16 +24,3 @@ harness=false
 [lib]
 name = "ref0"
 path = "src/lib.rs"
-
-[profile.test]
-opt-level = 3            # Optimization level.
-target-cpu = "native"
-
-[profile.dev]
-opt-level = 3            # Optimization level.
-target-cpu = "native"
-
-[profile.release]
-opt-level = 3            # Optimization level.
-target-cpu = "native"
-

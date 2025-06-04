@@ -1,20 +1,20 @@
 use std::thread;
 
-use ref0::sysA::*;
+use ref0::sys_a::*;
 use ref0::*;
 
-const STACK_SIZE: usize = 100 * 1024 * 1024;
+const STACK_SIZE: usize = 30 * 1024 * 1024;
 
 // Increase stack size for the tests
 fn run_test_with_stack<F>(test_fn: F, test_name: &str)
 where
     F: FnOnce() + Send + 'static,
 {
-    let builder = thread::Builder::new().stack_size(STACK_SIZE); // 100 MB stack size
+    let builder = thread::Builder::new().stack_size(STACK_SIZE);
     let test_name = String::from(test_name);
     let handler = builder
         .spawn(move || {
-            println!("Running {} with 100MB stack", test_name);
+            println!("Running {} with 30MB stack", test_name);
             test_fn();
         })
         .unwrap();
@@ -28,7 +28,7 @@ fn test_keys() {
         || {
             // Step 1: Generate key pairs
             let (sk1, pk1) = pswoosh_keygen(&A, true);
-            let (sk2, pk2) = pswoosh_keygen(&At, false);
+            let (sk2, pk2) = pswoosh_keygen(&AT, false);
             // Step 3: Exchange public keys (happens in a real application)
 
             // Step 4: Derive the shared secret

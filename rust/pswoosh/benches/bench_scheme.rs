@@ -1,5 +1,5 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use ref0::sysA::*;
+use ref0::sys_a::*;
 use ref0::*;
 
 fn bench_keygen(c: &mut Criterion) {

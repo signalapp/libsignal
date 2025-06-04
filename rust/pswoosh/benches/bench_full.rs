@@ -2,7 +2,7 @@ use criterion::{criterion_group, criterion_main, Criterion};
 use getrandom;
 use ref0::arithmetic::poly::*;
 use ref0::arithmetic::polyvec::*;
-use ref0::sysA::*;
+use ref0::sys_a::*;
 use ref0::*;
 
 fn bench_full(c: &mut Criterion) {

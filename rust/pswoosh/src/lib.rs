@@ -1,5 +1,5 @@
 pub mod arithmetic;
-pub mod sysA;
+pub mod sys_a;
 pub mod util;
 
 use std::arch::asm;
@@ -7,7 +7,6 @@ use std::arch::asm;
 use getrandom;
 use sha3::digest::{ExtendableOutput, Update, XofReader};
 use sha3::{CShake128, CShake128Core, CShake256, CShake256Core};
-use sysA::*;
 
 pub(crate) use crate::arithmetic::fq::*;
 pub(crate) use crate::arithmetic::params::*;
@@ -25,7 +24,7 @@ pub type Matrix = [PolyVec; N];
 pub fn matrix_init() -> Matrix {
     [polyvec_init(); N]
 }
-
+/*
 fn setup(f: bool) -> Matrix {
     let mut seed: [u8; SYMBYTES] = [0; SYMBYTES];
     getrandom::getrandom(&mut seed).expect("getrandom failed");
@@ -34,6 +33,7 @@ fn setup(f: bool) -> Matrix {
 
     a
 }
+*/
 
 /*
  * Key generation wrapper
@@ -45,7 +45,7 @@ pub fn pswoosh_keygen(a: &Matrix, f: bool) -> ([u8; SECRETKEY_BYTES], [u8; PUBLI
 /*
  * Generate secret and error vectors and compute public key
  */
-fn kg(a: &Matrix, f: bool) -> ([u8; SECRETKEY_BYTES], [u8; PUBLICKEY_BYTES]) {
+fn kg(a: &Matrix, _f: bool) -> ([u8; SECRETKEY_BYTES], [u8; PUBLICKEY_BYTES]) {
     let mut nonce: u8 = 0;
     let mut noiseseed: [u8; SYMBYTES] = [0; SYMBYTES];
     let skv: [u8; SECRETKEY_BYTES];
@@ -121,7 +121,7 @@ fn rec(kv: &Poly, k: &mut [u8; SYMBYTES]) {
     for i in 0..D / 8 {
         k[i] = 0;
         for j in 0..8 {
-            k[i] |= (round(kv[8 * i + j]) << j);
+            k[i] |= round(kv[8 * i + j]) << j;
         }
     }
 }
@@ -172,7 +172,7 @@ fn rej_sampling(buf: &[u8; RATE], p: &mut Poly, mut offset: usize) -> usize {
     let mut t: u8;
     let mut t_elem: Elem;
 
-    while (c < RATE - ELEM_BYTES && offset < D) {
+    while c < RATE - ELEM_BYTES && offset < D {
         t_elem = elem_frombytes(buf[c..c + ELEM_BYTES].try_into().unwrap());
         t = cmp(t_elem, Q);
         t = t >> 7; //t = 0x80 if t_elem < Q
@@ -188,14 +188,14 @@ pub fn genoffset(inp: &[u8; POLYVEC_BYTES * 2]) -> Poly {
     let mut buf: [u8; RATE] = [0; RATE];
     let mut r: Poly = poly_init();
     let mut ctr: usize = 0;
-    let mut ds: [u8; 1] = [0x2];
+    let ds: [u8; 1] = [0x2];
     let mut xof: CShake256 = CShake256::from_core(CShake256Core::new(&ds));
     let mut rxof;
 
     xof.update(inp);
     rxof = xof.finalize_xof();
 
-    while (ctr < D) {
+    while ctr < D {
         rxof.read(&mut buf); //squeeze RATE bytes from state
         ctr = rej_sampling(&buf, &mut r, ctr);
     }
@@ -284,7 +284,7 @@ fn cbd_spec(buf: &[u8; NOISE_BYTES], p: &mut PolyVec) {
 
 pub fn expand_seed(seed: &[u8; SYMBYTES], nonce: u8, buf: &mut [u8; NOISE_BYTES]) {
     let mut inp: [u8; SYMBYTES + 1] = [0; SYMBYTES + 1];
-    let mut ds: [u8; 2] = [0x1, nonce];
+    let ds: [u8; 2] = [0x1, nonce];
     let mut xof: CShake128 = CShake128::from_core(CShake128Core::new(&ds));
     let mut rxof;
 
@@ -329,7 +329,7 @@ pub fn getnoise_spec(seed: &[u8; SYMBYTES], nonce: u8) -> PolyVec {
     let mut inp: [u8; SYMBYTES + 1] = [0; SYMBYTES + 1];
     let mut buf: [u8; NOISE_BYTES] = [0; NOISE_BYTES];
     let mut p: PolyVec = polyvec_init();
-    let mut ds: [u8; 2] = [0x1, nonce];
+    let ds: [u8; 2] = [0x1, nonce];
     let mut xof: CShake128 = CShake128::from_core(CShake128Core::new(&ds));
     let mut rxof;
 
@@ -348,7 +348,7 @@ pub fn getnoise_spec(seed: &[u8; SYMBYTES], nonce: u8) -> PolyVec {
 
 /*
  * Transpose matrix (testing purposes only)
- */
+ 
 fn transpose(a: &[PolyVec; N], at: &mut Matrix) {
     for i in 0..N {
         for j in 0..N {
@@ -356,7 +356,7 @@ fn transpose(a: &[PolyVec; N], at: &mut Matrix) {
         }
     }
 }
-
+*/
 /*
  * Generates matrix A from a seed
  * - t => generate A^T
@@ -377,7 +377,7 @@ pub fn genmatrix(seed: &[u8; SYMBYTES], t: bool) -> Matrix {
             for j in 0..N {
                 ctr = 0;
 
-                while (ctr < D) {
+                while ctr < D {
                     rxof.read(&mut buf); //squeeze RATE bytes from state
                     ctr = rej_sampling(&buf, &mut a[i][j], ctr);
                 }
@@ -388,7 +388,7 @@ pub fn genmatrix(seed: &[u8; SYMBYTES], t: bool) -> Matrix {
             for j in 0..N {
                 ctr = 0;
 
-                while (ctr < D) {
+                while ctr < D {
                     rxof.read(&mut buf); //squeeze RATE bytes from state
                     ctr = rej_sampling(&buf, &mut a[j][i], ctr);
                 }
@@ -401,25 +401,25 @@ pub fn genmatrix(seed: &[u8; SYMBYTES], t: bool) -> Matrix {
 
 #[cfg(test)]
 mod tests {
-    use std::time::*;
+    
 
     use getrandom;
-
+    use sys_a::*;
     use super::*;
-    use crate::util::*;
+    
 
     #[test]
     fn test_scheme() {
-        let mut seed: [u8; SYMBYTES] = [0; SYMBYTES];
-        let mut pk1: [u8; PUBLICKEY_BYTES] = [0; PUBLICKEY_BYTES];
-        let mut sk1: [u8; SECRETKEY_BYTES] = [0; SECRETKEY_BYTES];
-        let mut pk2: [u8; PUBLICKEY_BYTES] = [0; PUBLICKEY_BYTES];
-        let mut sk2: [u8; SECRETKEY_BYTES] = [0; SECRETKEY_BYTES];
-        let mut ss1: [u8; SYMBYTES] = [0; SYMBYTES];
-        let mut ss2: [u8; SYMBYTES] = [0; SYMBYTES];
+        let _seed: [u8; SYMBYTES] = [0; SYMBYTES];
+        let pk1: [u8; PUBLICKEY_BYTES];
+        let sk1: [u8; SECRETKEY_BYTES];
+        let pk2: [u8; PUBLICKEY_BYTES];
+        let sk2: [u8; SECRETKEY_BYTES];
+        let ss1: [u8; SYMBYTES];
+        let ss2: [u8; SYMBYTES];
 
         (sk1, pk1) = kg(&A, true);
-        (sk2, pk2) = kg(&At, false);
+        (sk2, pk2) = kg(&AT, false);
         ss1 = pswoosh_skey_deriv(&pk1, &pk2, &sk1, true);
         ss2 = pswoosh_skey_deriv(&pk2, &pk1, &sk2, false);
 
@@ -429,14 +429,14 @@ mod tests {
     #[test]
     fn test_genoffset() {
         let mut seed: [u8; POLYVEC_BYTES * 2] = [0; POLYVEC_BYTES * 2];
-        let mut s: Poly = poly_init();
+        let s: Poly;
         let mut lt: bool = true;
 
         getrandom::getrandom(&mut seed).expect("getrandom failed");
         s = genoffset(&seed);
 
         for i in 0..D {
-            lt &= (cmp(s[i], Q) == 0x80);
+            lt &= cmp(s[i], Q) == 0x80;
         }
 
         assert!(lt, "Elements out of range");
@@ -445,11 +445,11 @@ mod tests {
     #[test]
     fn test_getnoise() {
         let mut seed: [u8; SYMBYTES] = [0; SYMBYTES];
-        let mut s: PolyVec = polyvec_init();
+        let s: PolyVec;
         let mut sml: bool = true;
-        let mut t0: bool = true;
-        let mut t1: bool = true;
-        let mut tn1: bool = true;
+        let mut t0: bool;
+        let mut t1: bool;
+        let mut tn1: bool;
         let e0: Elem = fp_init();
         let e1: Elem = [0x01, 0x0, 0x0, 0x0];
         let mut qm1: Elem = fp_init();
@@ -464,7 +464,7 @@ mod tests {
                 t0 = cmp(s[i][j], e0) == 0x00;
                 t1 = cmp(s[i][j], e1) == 0x00;
                 tn1 = cmp(s[i][j], qm1) == 0x00;
-                sml &= (t0 | t1 | tn1);
+                sml &= t0 | t1 | tn1;
             }
         }
 
@@ -502,7 +502,7 @@ mod tests {
         let s3: Elem = fp_init();
         let b0: u8 = 0x00;
         let b1: u8 = 0x01;
-        let mut rb: u8 = 0;
+        let mut rb: u8;
 
         rb = round(s3);
         assert_eq!(rb, b0);

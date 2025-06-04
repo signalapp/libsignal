@@ -5,7 +5,7 @@ pub const NRUNS: usize = 10000;
 fn median_u128(t: &mut [u128; NRUNS]) -> u128 {
     t.sort();
 
-    if (NRUNS % 2 == 1) {
+    if NRUNS % 2 == 1 {
         t[NRUNS / 2]
     } else {
         (t[NRUNS / 2 - 1] + t[NRUNS / 2]) / 2
@@ -38,7 +38,7 @@ pub fn rdtsc() -> u64 {
 fn median(t: &mut [u64; NRUNS]) -> u64 {
     t.sort();
 
-    if (NRUNS % 2 == 1) {
+    if NRUNS % 2 == 1 {
         t[NRUNS / 2]
     } else {
         (t[NRUNS / 2 - 1] + t[NRUNS / 2]) / 2

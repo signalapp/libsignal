@@ -48,13 +48,13 @@ pub fn polyvec_invntt(a: &mut PolyVec) {
     }
 }
 
-pub fn polyvec_fromM(a: &mut PolyVec) {
+pub fn polyvec_from_m(a: &mut PolyVec) {
     for i in 0..N {
         poly_from_m(&mut a[i]);
     }
 }
 
-pub fn polyvec_toM(a: &mut PolyVec) {
+pub fn polyvec_to_m(a: &mut PolyVec) {
     for i in 0..N {
         poly_to_m(&mut a[i]);
     }
@@ -117,9 +117,7 @@ mod tests {
                 let a: PolyVec = [[HQ.clone(); D]; N];
                 let b: PolyVec = [[QQ.clone(); D]; N];
                 let rc: PolyVec = [[TQQ.clone(); D]; N];
-                let mut c: PolyVec = polyvec_init();
-
-                c = polyvec_add(a, b);
+                let c: PolyVec = polyvec_add(a, b);
 
                 assert_eq!(rc, c, "polyvec_add: polynomial vectors don't match");
             },
@@ -133,13 +131,9 @@ mod tests {
         run_test_with_stack(
             || {
                 let a: PolyVec = [[HQ.clone(); D]; N];
-                let mut r: PolyVec = polyvec_init();
-                let mut b1: [u8; POLYVEC_BYTES] = [0; POLYVEC_BYTES];
-                let mut b2: [u8; POLYVEC_BYTES] = [0; POLYVEC_BYTES];
-
-                b1 = polyvec_tobytes(a);
-                r = polyvec_frombytes(&b1);
-                b2 = polyvec_tobytes(r);
+                let b1: [u8; POLYVEC_BYTES] = polyvec_tobytes(a);
+                let r: PolyVec = polyvec_frombytes(&b1);
+                let b2: [u8; POLYVEC_BYTES] = polyvec_tobytes(r);
 
                 assert_eq!(b1, b2, "polyvec_bytes: buffers don't match");
                 assert_eq!(a, r, "polyvec_bytes: polynomial vectors don't match");

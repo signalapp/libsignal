@@ -24,7 +24,7 @@ pub fn poly_from_m(ap: &mut Poly) {
     let mut t: Elem = fp_init();
 
     for i in 0..D {
-        fromM(&mut t, ap[i]);
+        from_m(&mut t, ap[i]);
         ap[i] = t;
     }
 }
@@ -33,7 +33,7 @@ pub fn poly_to_m(ap: &mut Poly) {
     let mut t: Elem = fp_init();
 
     for i in 0..D {
-        toM(&mut t, ap[i]);
+        to_m(&mut t, ap[i]);
         ap[i] = t;
     }
 }
@@ -41,6 +41,7 @@ pub fn poly_to_m(ap: &mut Poly) {
 /*
  * Schoolbook multiplication in polynomials (testing purposes only)
 */
+#[allow(unused)]
 fn schoolbook_mul(a: Poly, b: Poly) -> Poly {
     let mut c: Poly = poly_init();
     let mut t0: Elem;
@@ -72,7 +73,7 @@ pub fn poly_basemul(a: Poly, b: Poly) -> Poly {
     let mut zoff: usize = D / 4;
     let mut i: usize = 0;
 
-    while (i < D) {
+    while i < D {
         zeta = ZETAS[zoff];
         zoff += 1;
 
@@ -117,7 +118,7 @@ pub fn poly_ntt(a: &mut Poly) {
 
     for _i in 0..7 {
         off = 0;
-        while (off < D) {
+        while off < D {
             zoff += 1;
             joff = off;
             for _j in 0..len {
@@ -146,9 +147,9 @@ pub fn poly_invntt(a: &mut Poly) {
     let mut r: Elem;
     let mut m: Elem = fp_init();
 
-    for i in 0..7 {
+    for _i in 0..7 {
         off = 0;
-        while (off < D) {
+        while off < D {
             joff = off;
             for _j in 0..len {
                 t = a[joff];
@@ -207,12 +208,10 @@ mod tests {
 
     #[test]
     fn test_poly_add() {
-        let mut a: Poly = [QQ.clone(); D];
-        let mut b: Poly = [HQ.clone(); D];
+        let a: Poly = [QQ.clone(); D];
+        let b: Poly = [HQ.clone(); D];
         let rc: Poly = [TQQ.clone(); D];
-        let mut c: Poly = poly_init();
-
-        c = poly_add(a, b);
+        let c: Poly = poly_add(a, b);
 
         assert_eq!(rc, c, "poly_add: polynomials don't match");
     }
@@ -221,12 +220,12 @@ mod tests {
     fn test_poly_basemul() {
         let mut a: Poly = [QQ.clone(); D];
         let mut b: Poly = [[0x02, 0x0, 0x0, 0x0]; D];
-        let mut aM: Poly = a;
+        let mut a_m: Poly = a;
         let mut c: Poly;
-        let mut rc: Poly;
+        let rc: Poly;
 
-        poly_to_m(&mut aM);
-        rc = schoolbook_mul(aM, b);
+        poly_to_m(&mut a_m);
+        rc = schoolbook_mul(a_m, b);
 
         poly_ntt(&mut a);
         poly_ntt(&mut b);
@@ -251,11 +250,9 @@ mod tests {
     #[test]
     fn test_poly_bytes() {
         let a: Poly = [TQQ.clone(); D];
-        let mut r: Poly = poly_init();
-        let mut b: [u8; POLY_BYTES] = [0; POLY_BYTES];
-
-        b = poly_tobytes(a);
-        r = poly_frombytes(&b);
+        let b: [u8; POLY_BYTES] = poly_tobytes(a);
+        let r: Poly = poly_frombytes(&b);
+        
         assert_eq!(a, r, "poly_bytes: Values don't match");
     }
 }

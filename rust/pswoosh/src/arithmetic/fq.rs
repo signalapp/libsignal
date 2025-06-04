@@ -2,7 +2,7 @@ pub const NLIMBS: usize = 4;
 pub type Elem = [u64; NLIMBS];
 const K: usize = 214; // bit size of q
 pub const ELEM_BYTES: usize = K / 8 + 1;
-const RAD: usize = 64; //radix
+//const RAD: usize = 64; //radix
 
 /* Q = 2^214-255 */
 /* 2^0              2^64               2^128              2^192   */
@@ -61,15 +61,15 @@ pub fn mul(c: &mut Elem, a: Elem, b: Elem) {
     }
 }
 
-pub fn toM(aM: &mut Elem, a: Elem) {
+pub fn to_m(a_m: &mut Elem, a: Elem) {
     unsafe {
-        fp_toM(aM.as_ptr(), a.as_ptr());
+        fp_toM(a_m.as_ptr(), a.as_ptr());
     }
 }
 
-pub fn fromM(a: &mut Elem, aM: Elem) {
+pub fn from_m(a: &mut Elem, a_m: Elem) {
     unsafe {
-        fp_fromM(a.as_ptr(), aM.as_ptr());
+        fp_fromM(a.as_ptr(), a_m.as_ptr());
     }
 }
 
@@ -100,8 +100,8 @@ pub fn cmp(a: Elem, b: Elem) -> u8 {
         lt &= mask;
         gt &= mask;
 
-        mask ^= (lt | gt);
-        r |= (lt << 7);
+        mask ^= lt | gt;
+        r |= lt << 7;
         r |= gt;
     }
 
@@ -171,17 +171,17 @@ mod tests {
     #[test]
     fn test_fp_mul() {
         let a: Elem = QQ.clone();
-        let mut aM: Elem = fp_init();
+        let mut a_m: Elem = fp_init();
         let b: Elem = [0x03, 0x0, 0x0, 0x0];
-        let mut bM: Elem = fp_init();
+        let mut b_m: Elem = fp_init();
         let rc: Elem = TQQ.clone();
         let mut c: Elem = fp_init();
-        let mut cM: Elem = fp_init();
+        let mut c_m: Elem = fp_init();
 
-        toM(&mut aM, a);
-        toM(&mut bM, b);
-        mul(&mut cM, aM, bM); // q/4 * 3
-        fromM(&mut c, cM);
+        to_m(&mut a_m, a);
+        to_m(&mut b_m, b);
+        mul(&mut c_m, a_m, b_m); // q/4 * 3
+        from_m(&mut c, c_m);
 
         assert_eq!(rc, c, "fp_mul: Values don't match");
     }
@@ -189,8 +189,8 @@ mod tests {
     #[test]
     fn test_fp_bytes() {
         let a: Elem = QQ.clone();
-        let mut r: Elem;
-        let mut b: [u8; ELEM_BYTES] = [0; ELEM_BYTES];
+        let r: Elem;
+        let b: [u8; ELEM_BYTES];
 
         b = elem_tobytes(a);
         r = elem_frombytes(&b);
