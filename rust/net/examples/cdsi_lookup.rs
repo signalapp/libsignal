@@ -103,7 +103,7 @@ async fn main() {
         CdsiConnection::connect_with(
             connection_resources,
             DirectOrProxyProvider::maybe_proxied(
-                cdsi_env.route_provider(EnableDomainFronting::No),
+                cdsi_env.enclave_websocket_provider(EnableDomainFronting::No),
                 None,
             ),
             WS2_CONFIG,

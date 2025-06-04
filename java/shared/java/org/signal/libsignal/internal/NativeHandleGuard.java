@@ -69,6 +69,7 @@ public class NativeHandleGuard implements AutoCloseable {
     protected abstract void release(long nativeHandle);
 
     @Override
+    @CalledFromNative
     public long unsafeNativeHandleWithoutGuard() {
       return nativeHandle;
     }

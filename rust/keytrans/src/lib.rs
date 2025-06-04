@@ -193,11 +193,9 @@ impl KeyTransparency {
         let unverified_value = response.condensed.value.as_ref().map(|v| v.value.clone());
         let state_update =
             verify_search(&self.config, request, response, context, force_monitor, now)?;
+        let verified_value = unverified_value.ok_or(Error::RequiredFieldMissing("update value"))?;
         Ok(VerifiedSearchResult {
-            // the value has now been verified
-            value: unverified_value.ok_or(Error::VerificationFailed(
-                "unverified_value is not set".to_string(),
-            ))?,
+            value: verified_value,
             state_update,
         })
     }

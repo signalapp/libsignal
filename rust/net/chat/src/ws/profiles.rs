@@ -60,12 +60,12 @@ impl crate::api::profiles::UnauthenticatedChatApi for Unauth<ChatConnection> {
         }
 
         let GetProfileResponse { credential } = response.try_into_response().map_err(|e| {
-            e.into_request_error(|response| {
-                Some(RequestError::Other(match response.status.as_u16() {
+            e.into_request_error("GET /v1/profile/*/*/*", |response| {
+                Some(match response.status.as_u16() {
                     401 => ProfileKeyCredentialRequestError::AuthFailed,
                     404 => ProfileKeyCredentialRequestError::VersionNotFound,
                     _ => return None,
-                }))
+                })
             })
         })?;
 

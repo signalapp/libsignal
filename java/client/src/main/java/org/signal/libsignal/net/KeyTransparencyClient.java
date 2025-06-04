@@ -59,9 +59,13 @@ public class KeyTransparencyClient {
    * <ul>
    *   <li>{@link ChatServiceException} for errors related to communication with the server.
    *       Depending on the severity, the search can be retried.
-   *   <li>{@link KeyTransparencyException} for errors related to key transparency logic. Retrying
-   *       the search without changing any of the arguments (including the state of the store) is
-   *       unlikely to yield a different result.
+   *   <li>{@link KeyTransparencyException} for errors related to key transparency logic, which
+   *       includes missing required fields in the serialized data. Retrying the search without
+   *       changing any of the arguments (including the state of the store) is unlikely to yield a
+   *       different result.
+   *   <li>{@link org.signal.libsignal.keytrans.VerificationFailedException} indicates a failure to
+   *       verify the data in key transparency server response, such as an incorrect proof or a
+   *       wrong signature.
    * </ul>
    *
    * @param aci the ACI of the account to be searched for. Required.
@@ -184,9 +188,13 @@ public class KeyTransparencyClient {
    * <ul>
    *   <li>{@link ChatServiceException} for errors related to communication with the server.
    *       Depending on the severity, the search can be retried.
-   *   <li>{@link KeyTransparencyException} for errors related to key transparency logic. Retrying
-   *       the search without changing any of the arguments (including the state of the store) is
-   *       unlikely to yield a different result.
+   *   <li>{@link KeyTransparencyException} for errors related to key transparency logic, which
+   *       includes missing required fields in the serialized data. Retrying the search without
+   *       changing any of the arguments (including the state of the store) is unlikely to yield a
+   *       different result.
+   *   <li>{@link org.signal.libsignal.keytrans.VerificationFailedException} indicates a failure to
+   *       verify the data in key transparency server response, such as an incorrect proof or a
+   *       wrong signature.
    * </ul>
    *
    * @param aci the ACI of the account to be searched for. Required.

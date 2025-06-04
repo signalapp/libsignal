@@ -1,5 +1,3 @@
-v0.73.2
+v0.74.0
 
-- Android: Fix bug which can cause CompletableFuture to be stripped by ProGuard/R8.
-
-- keytrans: Bridge to ffi
+- Integrate post-quantum ratchet in opt-in mode.

@@ -8,6 +8,10 @@ package org.signal.libsignal.net;
 import static org.junit.Assert.*;
 
 import java.util.UUID;
+import org.junit.Test;
+import org.signal.libsignal.internal.NativeTesting;
+import org.signal.libsignal.keytrans.KeyTransparencyException;
+import org.signal.libsignal.keytrans.VerificationFailedException;
 import org.signal.libsignal.protocol.IdentityKey;
 import org.signal.libsignal.protocol.InvalidKeyException;
 import org.signal.libsignal.protocol.ServiceId;
@@ -33,5 +37,22 @@ public class KeyTransparencyTest {
     } catch (InvalidKeyException e) {
       throw new RuntimeException(e);
     }
+  }
+
+  @Test
+  public void canBridgeFatalError() {
+    assertThrows(
+        VerificationFailedException.class, NativeTesting::TESTING_KeyTransFatalVerificationFailure);
+  }
+
+  @Test
+  public void canBridgeNonFatalError() {
+    assertThrows(
+        KeyTransparencyException.class, NativeTesting::TESTING_KeyTransNonFatalVerificationFailure);
+  }
+
+  @Test
+  public void canBridgeChatSendError() {
+    assertThrows(ChatServiceException.class, NativeTesting::TESTING_KeyTransChatSendError);
   }
 }

@@ -95,7 +95,6 @@ pub enum LogSafeTungsteniteError {
     HttpFormat(#[from] HttpFormatError),
 
     /// TLS error; this should not happen since tungstinite's TLS is not used
-    #[allow(clippy::enum_variant_names)]
     UnexpectedTlsError,
 }
 

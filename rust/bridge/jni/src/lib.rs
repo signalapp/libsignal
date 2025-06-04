@@ -4,5 +4,5 @@
 //
 
 // Re-export all the functions from the implementation crate.
-#[allow(unused)]
+#[expect(unused_imports)]
 use libsignal_jni_impl::*;

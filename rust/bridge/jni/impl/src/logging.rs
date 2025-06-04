@@ -9,6 +9,7 @@ use std::process::abort;
 use jni::objects::{AutoLocal, GlobalRef, JClass, JObject, JStaticMethodID, JValue};
 use jni::sys::jint;
 use jni::{JNIEnv, JavaVM};
+use libsignal_bridge::jni::call_static_method_unchecked;
 use libsignal_bridge::{describe_panic, jni_signature};
 
 // Keep this in sync with SignalProtocolLogger.java, as well as the list below.
@@ -93,8 +94,8 @@ impl JniLogger {
             // This gets called often enough during backup validation that the
             // performance wins of using the unchecked call with a cached method
             // ID are worth not having the guardrails.
-            #[allow(clippy::disallowed_methods)]
-            env.call_static_method_unchecked(
+            call_static_method_unchecked(
+                &mut env,
                 &self.logger_class,
                 self.logger_method,
                 jni::signature::ReturnType::Primitive(jni::signature::Primitive::Void),

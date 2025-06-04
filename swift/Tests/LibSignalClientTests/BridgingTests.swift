@@ -240,7 +240,7 @@ final class BridgingTests: XCTestCase {
         let shouldBePresent = try invokeFnReturningOptionalUuid {
             signal_testing_convert_optional_uuid($0, true)
         }
-        XCTAssertEqual(UUID(uuidString: "abababab-1212-3434-5656-787878787878"), shouldBePresent)
+        XCTAssertEqual(UUID(uuidString: "abababab-1212-8989-baba-565656565656"), shouldBePresent)
     }
 }
 

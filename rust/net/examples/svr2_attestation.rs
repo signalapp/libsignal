@@ -114,7 +114,10 @@ async fn main() {
 
     let _connection = SvrConnection::connect(
         connection_resources,
-        DirectOrProxyProvider::maybe_proxied(env.route_provider(EnableDomainFronting::No), None),
+        DirectOrProxyProvider::maybe_proxied(
+            env.enclave_websocket_provider(EnableDomainFronting::No),
+            None,
+        ),
         WS2_CONFIG,
         &params,
         auth,

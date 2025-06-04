@@ -49,7 +49,7 @@ impl Scrambler {
 
     fn replace_e164(&mut self, field: &mut u64) {
         // Start with numbers in the range +1-555-555-01xx, generate further plausible numbers after that.
-        #[allow(clippy::inconsistent_digit_grouping)]
+        #[expect(clippy::inconsistent_digit_grouping)]
         const E164_START: u64 = 1_555_555_0100;
 
         let original = *field;

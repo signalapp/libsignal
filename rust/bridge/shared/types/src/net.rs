@@ -12,15 +12,11 @@ use libsignal_net::connect_state::{
     ConnectState, DefaultConnectorFactory, PreconnectingFactory, SUGGESTED_CONNECT_CONFIG,
     SUGGESTED_TLS_PRECONNECT_LIFETIME,
 };
-use libsignal_net::enclave::{Cdsi, EnclaveEndpoint, EnclaveEndpointConnection, EnclaveKind};
-use libsignal_net::env::{add_user_agent_header, Env, UserAgent};
-use libsignal_net::infra::connection_manager::MultiRouteConnectionManager;
+use libsignal_net::env::{Env, UserAgent};
 use libsignal_net::infra::dns::DnsResolver;
 use libsignal_net::infra::route::ConnectionProxyConfig;
 use libsignal_net::infra::tcp_ssl::{InvalidProxyConfig, TcpSslConnector};
-use libsignal_net::infra::timeouts::ONE_ROUTE_CONNECTION_TIMEOUT;
-use libsignal_net::infra::utils::NetworkChangeEvent;
-use libsignal_net::infra::{EnableDomainFronting, EndpointConnection};
+use libsignal_net::infra::{EnableDomainFronting, RECOMMENDED_WS2_CONFIG};
 
 use self::remote_config::{RemoteConfig, RemoteConfigKeys};
 use crate::*;
@@ -28,10 +24,11 @@ use crate::*;
 pub mod cdsi;
 pub mod chat;
 pub mod registration;
+
+pub use libsignal_net::infra::EnforceMinimumTls;
+
 pub mod remote_config;
 pub mod tokio;
-
-pub use libsignal_net::chat::EnforceMinimumTls;
 pub use tokio::TokioAsyncContext;
 
 #[repr(u8)]
@@ -52,18 +49,17 @@ impl Environment {
 }
 
 struct EndpointConnections {
-    chat: EndpointConnection<MultiRouteConnectionManager>,
-    cdsi: EnclaveEndpointConnection<Cdsi, MultiRouteConnectionManager>,
+    chat_ws2_config: libsignal_net::infra::ws2::Config,
+    cdsi_ws2_config: libsignal_net::infra::ws2::Config,
     enable_fronting: EnableDomainFronting,
+    enforce_minimum_tls: EnforceMinimumTls,
 }
 
 impl EndpointConnections {
     fn new(
         env: &Env<'static>,
-        user_agent: &UserAgent,
         use_fallbacks: bool,
         enforce_minimum_tls: EnforceMinimumTls,
-        network_change_event: &NetworkChangeEvent,
     ) -> Self {
         log::info!(
             "Creating endpoint connections (fallbacks {}) for {} and others",
@@ -73,57 +69,16 @@ impl EndpointConnections {
             // testing. (Or the person running this isn't Signal.)
             env.chat_domain_config.connect.hostname
         );
-        let chat = libsignal_net::chat::endpoint_connection(
-            &env.chat_domain_config.connect,
-            user_agent,
-            use_fallbacks,
-            &enforce_minimum_tls,
-            network_change_event,
-        );
-        let cdsi = Self::endpoint_connection(
-            &env.cdsi,
-            user_agent,
-            use_fallbacks,
-            &enforce_minimum_tls,
-            network_change_event,
-        );
         Self {
-            chat,
-            cdsi,
+            chat_ws2_config: RECOMMENDED_WS2_CONFIG,
+            cdsi_ws2_config: RECOMMENDED_WS2_CONFIG,
             enable_fronting: if use_fallbacks {
                 EnableDomainFronting::OneDomainPerProxy
             } else {
                 EnableDomainFronting::No
             },
+            enforce_minimum_tls,
         }
-    }
-
-    fn endpoint_connection<E: EnclaveKind>(
-        endpoint: &EnclaveEndpoint<'static, E>,
-        user_agent: &UserAgent,
-        include_fallback: bool,
-        enforce_minimum_tls: &EnforceMinimumTls,
-        network_change_event: &NetworkChangeEvent,
-    ) -> EnclaveEndpointConnection<E, MultiRouteConnectionManager> {
-        let connection_config = match enforce_minimum_tls {
-            EnforceMinimumTls::Yes => &endpoint.domain_config.connect,
-            EnforceMinimumTls::No => &endpoint
-                .domain_config
-                .connect
-                .config_with_permissive_min_tls_version(),
-        };
-        let params = if include_fallback {
-            connection_config.connection_params_with_fallback()
-        } else {
-            vec![endpoint.domain_config.connect.direct_connection_params()]
-        };
-        let params = add_user_agent_header(params, user_agent);
-        EnclaveEndpointConnection::new_multi(
-            endpoint,
-            params,
-            ONE_ROUTE_CONNECTION_TIMEOUT,
-            network_change_event,
-        )
     }
 }
 
@@ -131,7 +86,6 @@ pub struct ConnectionManager {
     env: Env<'static>,
     user_agent: UserAgent,
     dns_resolver: DnsResolver,
-    #[allow(dead_code)]
     remote_config: std::sync::Mutex<RemoteConfig>,
     connect: std::sync::Mutex<ConnectState<PreconnectingFactory>>,
     // We could split this up to a separate mutex on each kind of connection,
@@ -173,14 +127,7 @@ impl ConnectionManager {
             EnforceMinimumTls::No
         };
         let endpoints = std::sync::Mutex::new(
-            EndpointConnections::new(
-                &env,
-                &user_agent,
-                false,
-                enforce_minimum_tls,
-                &network_change_event_rx,
-            )
-            .into(),
+            EndpointConnections::new(&env, false, enforce_minimum_tls).into(),
         );
         Self {
             env,
@@ -246,13 +193,7 @@ impl ConnectionManager {
         } else {
             EnforceMinimumTls::No
         };
-        let new_endpoints = EndpointConnections::new(
-            &self.env,
-            &self.user_agent,
-            enabled,
-            enforce_minimum_tls,
-            &self.network_change_event_tx.subscribe(),
-        );
+        let new_endpoints = EndpointConnections::new(&self.env, enabled, enforce_minimum_tls);
         *self.endpoints.lock().expect("not poisoned") = Arc::new(new_endpoints);
     }
 

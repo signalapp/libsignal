@@ -246,6 +246,8 @@ public abstract class ChatConnection extends NativeHandleGuard.SimpleOwner {
       byte[] body,
       int timeoutMillis) {}
 
-  @CalledFromNative
-  public record Response(int status, String message, Map<String, String> headers, byte[] body) {}
+  public record Response(int status, String message, Map<String, String> headers, byte[] body) {
+    @CalledFromNative
+    public Response {}
+  }
 }

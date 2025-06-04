@@ -47,6 +47,11 @@ export enum ContentHint {
   Implicit = 2,
 }
 
+export enum UsePQRatchet {
+  Yes,
+  No,
+}
+
 export type Uuid = string;
 
 export function hkdf(
@@ -499,7 +504,8 @@ export class SignalMessage {
     previousCounter: number,
     ciphertext: Buffer,
     senderIdentityKey: PublicKey,
-    receiverIdentityKey: PublicKey
+    receiverIdentityKey: PublicKey,
+    pqRatchet: Buffer
   ): SignalMessage {
     return new SignalMessage(
       Native.SignalMessage_New(
@@ -510,7 +516,8 @@ export class SignalMessage {
         previousCounter,
         ciphertext,
         senderIdentityKey,
-        receiverIdentityKey
+        receiverIdentityKey,
+        pqRatchet
       )
     );
   }
@@ -521,6 +528,10 @@ export class SignalMessage {
 
   body(): Buffer {
     return Native.SignalMessage_GetBody(this);
+  }
+
+  pqRatchet(): Buffer {
+    return Native.SignalMessage_GetPqRatchet(this);
   }
 
   counter(): number {
@@ -1400,6 +1411,7 @@ export function processPreKeyBundle(
   address: ProtocolAddress,
   sessionStore: SessionStore,
   identityStore: IdentityKeyStore,
+  usePqRatchet: UsePQRatchet,
   now: Date = new Date()
 ): Promise<void> {
   return Native.SessionBuilder_ProcessPreKeyBundle(
@@ -1407,7 +1419,8 @@ export function processPreKeyBundle(
     address,
     sessionStore,
     identityStore,
-    now.getTime()
+    now.getTime(),
+    usePqRatchet == UsePQRatchet.Yes
   );
 }
 
@@ -1450,7 +1463,8 @@ export function signalDecryptPreKey(
   identityStore: IdentityKeyStore,
   prekeyStore: PreKeyStore,
   signedPrekeyStore: SignedPreKeyStore,
-  kyberPrekeyStore: KyberPreKeyStore
+  kyberPrekeyStore: KyberPreKeyStore,
+  usePqRatchet: UsePQRatchet
 ): Promise<Buffer> {
   return Native.SessionCipher_DecryptPreKeySignalMessage(
     message,
@@ -1459,7 +1473,8 @@ export function signalDecryptPreKey(
     identityStore,
     prekeyStore,
     signedPrekeyStore,
-    kyberPrekeyStore
+    kyberPrekeyStore,
+    usePqRatchet == UsePQRatchet.Yes
   );
 }
 
@@ -1562,7 +1577,8 @@ export async function sealedSenderDecryptMessage(
   identityStore: IdentityKeyStore,
   prekeyStore: PreKeyStore,
   signedPrekeyStore: SignedPreKeyStore,
-  kyberPrekeyStore: KyberPreKeyStore
+  kyberPrekeyStore: KyberPreKeyStore,
+  usePqRatchet: UsePQRatchet
 ): Promise<SealedSenderDecryptionResult> {
   const ssdr = await Native.SealedSender_DecryptMessage(
     message,
@@ -1575,7 +1591,8 @@ export async function sealedSenderDecryptMessage(
     identityStore,
     prekeyStore,
     signedPrekeyStore,
-    kyberPrekeyStore
+    kyberPrekeyStore,
+    usePqRatchet == UsePQRatchet.Yes
   );
   return SealedSenderDecryptionResult._fromNativeHandle(ssdr);
 }

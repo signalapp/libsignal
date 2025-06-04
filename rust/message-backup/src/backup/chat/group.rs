@@ -2,11 +2,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-// Silence clippy's complaints about private fields used to prevent construction
-// and recommends `#[non_exhaustive]`. The annotation only applies outside this
-// crate, but we want intra-crate privacy.
-#![allow(clippy::manual_non_exhaustive)]
-
 use std::fmt::Debug;
 use std::num::NonZeroU32;
 
@@ -88,7 +83,7 @@ macro_rules! TryFromProto {
 
 /// Validated version of [`proto::group_change_chat_update::update::Update`].
 #[serde_as]
-#[allow(clippy::enum_variant_names, non_snake_case)] // names taken from proto message.
+#[expect(clippy::enum_variant_names, non_snake_case)] // names taken from proto message.
 #[derive(Debug, serde::Serialize)]
 #[macro_rules_derive(TryFromProto)]
 #[cfg_attr(test, derive(PartialEq))]

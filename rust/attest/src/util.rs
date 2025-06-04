@@ -28,10 +28,6 @@ impl<K, V, const N: usize> SmallMap<K, V, N> {
     pub(crate) const fn new(items: [(K, V); N]) -> Self {
         // Evaluate CHECK_MAX_SIZE; this will fail compilation if `N` is too
         // large.
-        //
-        // TODO(https://github.com/rust-lang/rust-clippy/issues/9048): Remove
-        // the unnecessary #[allow].
-        #[allow(clippy::let_unit_value)]
         let _: () = Self::CHECK_MAX_SIZE;
         Self(items)
     }

@@ -6,7 +6,7 @@
 use neon::prelude::*;
 use signal_neon_futures::*;
 
-#[allow(unreachable_code, unused_variables)]
+#[expect(unreachable_code, unused_variables)]
 pub fn panic_pre_await(mut cx: FunctionContext) -> JsResult<JsPromise> {
     let promise = cx.argument::<JsObject>(0)?;
 
@@ -25,7 +25,6 @@ pub fn panic_pre_await(mut cx: FunctionContext) -> JsResult<JsPromise> {
     })
 }
 
-#[allow(unreachable_code)]
 pub fn panic_during_callback(mut cx: FunctionContext) -> JsResult<JsPromise> {
     let promise = cx.argument::<JsObject>(0)?;
 
@@ -39,7 +38,7 @@ pub fn panic_during_callback(mut cx: FunctionContext) -> JsResult<JsPromise> {
     })
 }
 
-#[allow(unreachable_code)]
+#[expect(unreachable_code)]
 pub fn panic_post_await(mut cx: FunctionContext) -> JsResult<JsPromise> {
     let promise = cx.argument::<JsObject>(0)?;
 
@@ -58,7 +57,7 @@ pub fn panic_post_await(mut cx: FunctionContext) -> JsResult<JsPromise> {
     })
 }
 
-#[allow(unreachable_code, unused_variables)]
+#[expect(unreachable_code, unused_variables)]
 pub fn panic_during_settle(mut cx: FunctionContext) -> JsResult<JsPromise> {
     let promise = cx.argument::<JsObject>(0)?;
 
@@ -79,7 +78,7 @@ pub fn panic_during_settle(mut cx: FunctionContext) -> JsResult<JsPromise> {
     })
 }
 
-#[allow(unreachable_code, unused_variables)]
+#[expect(unreachable_code, unused_variables)]
 pub fn throw_pre_await(mut cx: FunctionContext) -> JsResult<JsPromise> {
     let promise = cx.argument::<JsObject>(0)?;
 
@@ -118,7 +117,7 @@ pub fn throw_during_callback(mut cx: FunctionContext) -> JsResult<JsPromise> {
     })
 }
 
-#[allow(unreachable_code)]
+#[expect(unreachable_code)]
 pub fn throw_post_await(mut cx: FunctionContext) -> JsResult<JsPromise> {
     let promise = cx.argument::<JsObject>(0)?;
 

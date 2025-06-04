@@ -8,6 +8,7 @@ package org.signal.libsignal.protocol.message;
 import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
 
 import javax.crypto.spec.SecretKeySpec;
+import org.signal.libsignal.internal.CalledFromNative;
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
 import org.signal.libsignal.protocol.IdentityKey;
@@ -39,6 +40,7 @@ public class SignalMessage extends NativeHandleGuard.SimpleOwner
             () -> Native.SignalMessage_Deserialize(serialized)));
   }
 
+  @CalledFromNative
   public SignalMessage(long nativeHandle) {
     super(nativeHandle);
   }
@@ -58,6 +60,10 @@ public class SignalMessage extends NativeHandleGuard.SimpleOwner
 
   public byte[] getBody() {
     return filterExceptions(() -> guardedMapChecked(Native::SignalMessage_GetBody));
+  }
+
+  public byte[] getPqRatchet() {
+    return filterExceptions(() -> guardedMapChecked(Native::SignalMessage_GetPqRatchet));
   }
 
   public void verifyMac(

@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
+import org.signal.libsignal.internal.CalledFromNative;
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.protocol.util.Pair;
 
@@ -40,6 +41,7 @@ public class SealedSenderMultiRecipientMessage {
     // the length of the recipient-specific key material on the Java side.
     private final int lengthOfRecipientSpecificKeyMaterial;
 
+    @CalledFromNative
     private Recipient(
         byte[] devices,
         short[] registrationIds,
@@ -113,6 +115,7 @@ public class SealedSenderMultiRecipientMessage {
         Native.SealedSender_MultiRecipientParseSentMessage(input);
   }
 
+  @CalledFromNative
   private SealedSenderMultiRecipientMessage(
       byte[] fullMessageData,
       Map<ServiceId, Recipient> recipients,

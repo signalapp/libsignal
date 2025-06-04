@@ -139,6 +139,7 @@ impl super::LibSignalProtocolStore for LibSignalProtocolCurrent {
             &pre_key_bundle,
             SystemTime::now(),
             &mut rng(),
+            UsePQRatchet::Yes,
         )
         .now_or_never()
         .expect("synchronous")
@@ -152,6 +153,7 @@ impl super::LibSignalProtocolStore for LibSignalProtocolCurrent {
             &mut self.0.session_store,
             &mut self.0.identity_store,
             SystemTime::now(),
+            &mut rng(),
         )
         .now_or_never()
         .expect("synchronous")
@@ -180,6 +182,7 @@ impl super::LibSignalProtocolStore for LibSignalProtocolCurrent {
                 &mut self.0.signed_pre_key_store,
                 &mut self.0.kyber_pre_key_store,
                 &mut rng(),
+                UsePQRatchet::Yes,
             )
             .now_or_never()
             .expect("synchronous")

@@ -18,7 +18,7 @@ use subtle::ConstantTimeEq;
 use zerocopy::{FromBytes, Immutable, KnownLayout};
 
 use crate::{
-    crypto, message_encrypt, proto, session_cipher, Aci, CiphertextMessageType, DeviceId,
+    crypto, message_encrypt, proto, ratchet, session_cipher, Aci, CiphertextMessageType, DeviceId,
     Direction, IdentityKey, IdentityKeyPair, IdentityKeyStore, KeyPair, KyberPreKeyStore,
     PreKeySignalMessage, PreKeyStore, PrivateKey, ProtocolAddress, PublicKey, Result, ServiceId,
     ServiceIdFixedWidthBinaryBytes, SessionRecord, SessionStore, SignalMessage,
@@ -794,7 +794,8 @@ pub async fn sealed_sender_encrypt<R: Rng + CryptoRng>(
     now: SystemTime,
     rng: &mut R,
 ) -> Result<Vec<u8>> {
-    let message = message_encrypt(ptext, destination, session_store, identity_store, now).await?;
+    let message =
+        message_encrypt(ptext, destination, session_store, identity_store, now, rng).await?;
     let usmc = UnidentifiedSenderMessageContent::new(
         message.message_type(),
         sender_cert.clone(),
@@ -1544,13 +1545,11 @@ impl<'a> SealedSenderV2SentMessage<'a> {
         }
 
         fn advance<'a, const N: usize>(buf: &mut &'a [u8]) -> Result<&'a [u8; N]> {
-            if N > buf.len() {
-                return Err(SignalProtocolError::InvalidProtobufEncoding);
-            }
-            // TODO: Replace with split_array_ref or split_first_chunk when stabilized.
-            let (prefix, remaining) = buf.split_at(N);
+            let (prefix, remaining) = buf
+                .split_first_chunk()
+                .ok_or(SignalProtocolError::InvalidProtobufEncoding)?;
             *buf = remaining;
-            Ok(prefix.try_into().expect("checked length"))
+            Ok(prefix)
         }
         fn decode_varint(buf: &mut &[u8]) -> Result<u32> {
             let result: usize = prost::decode_length_delimiter(*buf)
@@ -1896,7 +1895,7 @@ impl SealedSenderDecryptionResult {
 /// the embedded [`SenderCertificate`]. The sender certificate (signed by the [`ServerCertificate`])
 /// is then validated against the `trust_root` baked into the client to ensure that the sender's
 /// identity was not forged.
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 pub async fn sealed_sender_decrypt(
     ciphertext: &[u8],
     trust_root: &PublicKey,
@@ -1909,6 +1908,7 @@ pub async fn sealed_sender_decrypt(
     pre_key_store: &mut dyn PreKeyStore,
     signed_pre_key_store: &dyn SignedPreKeyStore,
     kyber_pre_key_store: &mut dyn KyberPreKeyStore,
+    use_pq_ratchet: ratchet::UsePQRatchet,
 ) -> Result<SealedSenderDecryptionResult> {
     let usmc = sealed_sender_decrypt_to_usmc(ciphertext, identity_store).await?;
 
@@ -1959,6 +1959,7 @@ pub async fn sealed_sender_decrypt(
                 signed_pre_key_store,
                 kyber_pre_key_store,
                 &mut rng,
+                use_pq_ratchet,
             )
             .await?
         }

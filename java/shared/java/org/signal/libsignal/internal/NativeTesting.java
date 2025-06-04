@@ -59,8 +59,8 @@ public final class NativeTesting {
   public static native byte[] SessionRecord_GetAliceBaseKey(long obj) throws Exception;
   public static native byte[] SessionRecord_GetReceiverChainKeyValue(long sessionState, long key) throws Exception;
   public static native byte[] SessionRecord_GetSenderChainKeyValue(long obj) throws Exception;
-  public static native byte[] SessionRecord_InitializeAliceSession(long identityKeyPrivate, long identityKeyPublic, long basePrivate, long basePublic, long theirIdentityKey, long theirSignedPrekey, long theirRatchetKey) throws Exception;
-  public static native byte[] SessionRecord_InitializeBobSession(long identityKeyPrivate, long identityKeyPublic, long signedPrekeyPrivate, long signedPrekeyPublic, long ephPrivate, long ephPublic, long theirIdentityKey, long theirBaseKey) throws Exception;
+  public static native byte[] SessionRecord_InitializeAliceSession(long identityKeyPrivate, long identityKeyPublic, long basePrivate, long basePublic, long theirIdentityKey, long theirSignedPrekey, long theirRatchetKey, boolean usePqRatchet) throws Exception;
+  public static native byte[] SessionRecord_InitializeBobSession(long identityKeyPrivate, long identityKeyPublic, long signedPrekeyPrivate, long signedPrekeyPublic, long ephPrivate, long ephPublic, long theirIdentityKey, long theirBaseKey, boolean usePqRatchet) throws Exception;
 
   public static native String TESTING_BridgedStringMap_dump_to_json(long map);
   public static native void TESTING_CdsiLookupErrorConvert(String errorDescription) throws Exception;
@@ -74,6 +74,7 @@ public final class NativeTesting {
   public static native Object TESTING_ChatResponseConvert(boolean bodyPresent);
   public static native void TESTING_ChatSendErrorConvert(String errorDescription) throws Exception;
   public static native int TESTING_ConnectionManager_isUsingProxy(long manager);
+  public static native UUID TESTING_ConvertOptionalUuid(boolean present);
   public static native void TESTING_ErrorOnBorrowAsync(Object input);
   public static native CompletableFuture TESTING_ErrorOnBorrowIo(long asyncRuntime, Object input);
   public static native void TESTING_ErrorOnBorrowSync(Object input);
@@ -105,6 +106,9 @@ public final class NativeTesting {
   public static native CompletableFuture<Void> TESTING_FutureThrowsCustomErrorType(long asyncRuntime);
   public static native byte[] TESTING_InputStreamReadIntoZeroLengthSlice(InputStream capsAlphabetInput);
   public static native String TESTING_JoinStringArray(Object[] array, String joinWith);
+  public static native void TESTING_KeyTransChatSendError() throws Exception;
+  public static native void TESTING_KeyTransFatalVerificationFailure() throws Exception;
+  public static native void TESTING_KeyTransNonFatalVerificationFailure() throws Exception;
   public static native void TESTING_NonSuspendingBackgroundThreadRuntime_Destroy(long handle);
   public static native long TESTING_NonSuspendingBackgroundThreadRuntime_New();
   public static native String TESTING_OtherTestingHandleType_getValue(long handle);

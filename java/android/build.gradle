@@ -133,9 +133,10 @@ task makeJniLibraries(type:Exec) {
     def archs = archsFromProperty('androidArchs') ?: ['android']
     def debugLevelLogsFlag = project.hasProperty('debugLevelLogs') ? ['--debug-level-logs'] : []
     def jniTypeTaggingFlag = project.hasProperty('jniTypeTagging') ? ['--jni-type-tagging'] : []
+    def jniCheckAnnotationsFlag = project.hasProperty('jniCheckAnnotations') ? ['--jni-check-annotations'] : []
     def debugFlag = project.hasProperty('debugRust') ? ['--debug'] : []
     // Explicitly specify 'bash' for Windows compatibility.
-    commandLine 'bash', '../build_jni.sh', *debugLevelLogsFlag, *jniTypeTaggingFlag, *debugFlag, *archs
+    commandLine 'bash', '../build_jni.sh', *debugLevelLogsFlag, *jniTypeTaggingFlag, *jniCheckAnnotationsFlag, *debugFlag, *archs
     environment 'ANDROID_NDK_HOME', android.ndkDirectory
 }
 

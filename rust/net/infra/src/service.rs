@@ -8,7 +8,6 @@ use std::fmt::Debug;
 use displaydoc::Display;
 use tokio::time::Instant;
 
-use crate::connection_manager::{ErrorClass, ErrorClassifier};
 use crate::errors::LogSafeDisplay;
 use crate::ServiceConnectionInfo;
 
@@ -56,17 +55,6 @@ pub enum ConnectError<E: LogSafeDisplay> {
     AllRoutesFailed { attempts: u16 },
     /// Rejected by server: {0}
     RejectedByServer(E),
-}
-
-impl<E: LogSafeDisplay> ErrorClassifier for ConnectError<E> {
-    fn classify(&self) -> ErrorClass {
-        match self {
-            ConnectError::Timeout { .. } | ConnectError::AllRoutesFailed { .. } => {
-                ErrorClass::Intermittent
-            }
-            ConnectError::RejectedByServer(_) => ErrorClass::Fatal,
-        }
-    }
 }
 
 #[derive(Debug, Display)]

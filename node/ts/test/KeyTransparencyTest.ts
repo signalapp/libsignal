@@ -3,12 +3,20 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+import * as Native from '../../Native';
 import { config, expect, use } from 'chai';
 import * as chaiAsPromised from 'chai-as-promised';
 import * as util from './util';
 import { UnauthenticatedChatConnection, Environment, Net } from '../net';
 import { Aci } from '../Address';
 import { PublicKey } from '../EcKeys';
+import {
+  ChatServiceInactive,
+  ErrorCode,
+  KeyTransparencyError,
+  KeyTransparencyVerificationFailed,
+  LibSignalErrorBase,
+} from '../Errors';
 import * as KT from '../net/KeyTransparency';
 
 use(chaiAsPromised);
@@ -46,6 +54,34 @@ const testRequest = {
   },
   usernameHash: testUsernameHash,
 };
+
+describe('KeyTransparency bridging', () => {
+  it('can bridge non fatal error', () => {
+    expect(() => Native.TESTING_KeyTransNonFatalVerificationFailure())
+      .to.throw(LibSignalErrorBase)
+      .that.satisfies(
+        (err: KeyTransparencyError) =>
+          err.code === ErrorCode.KeyTransparencyError
+      );
+  });
+
+  it('can bridge fatal error', () => {
+    expect(() => Native.TESTING_KeyTransFatalVerificationFailure())
+      .to.throw(LibSignalErrorBase)
+      .that.satisfies(
+        (err: KeyTransparencyVerificationFailed) =>
+          err.code === ErrorCode.KeyTransparencyVerificationFailed
+      );
+  });
+
+  it('can bridge chat send error', () => {
+    expect(() => Native.TESTING_KeyTransChatSendError())
+      .to.throw(LibSignalErrorBase)
+      .that.satisfies(
+        (err: ChatServiceInactive) => err.code === ErrorCode.ChatServiceInactive
+      );
+  });
+});
 
 describe('KeyTransparency Integration', function (this: Mocha.Suite) {
   before(() => {

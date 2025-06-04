@@ -687,9 +687,9 @@ public final class Native {
   public static native String ServiceId_ServiceIdLog(byte[] value);
   public static native String ServiceId_ServiceIdString(byte[] value);
 
-  public static native void SessionBuilder_ProcessPreKeyBundle(long bundle, long protocolAddress, SessionStore sessionStore, IdentityKeyStore identityKeyStore, long now) throws Exception;
+  public static native void SessionBuilder_ProcessPreKeyBundle(long bundle, long protocolAddress, SessionStore sessionStore, IdentityKeyStore identityKeyStore, long now, boolean usePqRatchet) throws Exception;
 
-  public static native byte[] SessionCipher_DecryptPreKeySignalMessage(long message, long protocolAddress, SessionStore sessionStore, IdentityKeyStore identityKeyStore, PreKeyStore prekeyStore, SignedPreKeyStore signedPrekeyStore, KyberPreKeyStore kyberPrekeyStore) throws Exception;
+  public static native byte[] SessionCipher_DecryptPreKeySignalMessage(long message, long protocolAddress, SessionStore sessionStore, IdentityKeyStore identityKeyStore, PreKeyStore prekeyStore, SignedPreKeyStore signedPrekeyStore, KyberPreKeyStore kyberPrekeyStore, boolean usePqRatchet) throws Exception;
   public static native byte[] SessionCipher_DecryptSignalMessage(long message, long protocolAddress, SessionStore sessionStore, IdentityKeyStore identityKeyStore) throws Exception;
   public static native CiphertextMessage SessionCipher_EncryptMessage(byte[] ptext, long protocolAddress, SessionStore sessionStore, IdentityKeyStore identityKeyStore, long now) throws Exception;
 
@@ -719,9 +719,10 @@ public final class Native {
   public static native byte[] SignalMessage_GetBody(long obj) throws Exception;
   public static native int SignalMessage_GetCounter(long obj) throws Exception;
   public static native int SignalMessage_GetMessageVersion(long obj) throws Exception;
+  public static native byte[] SignalMessage_GetPqRatchet(long msg);
   public static native long SignalMessage_GetSenderRatchetKey(long m);
   public static native byte[] SignalMessage_GetSerialized(long obj) throws Exception;
-  public static native long SignalMessage_New(int messageVersion, byte[] macKey, long senderRatchetKey, int counter, int previousCounter, byte[] ciphertext, long senderIdentityKey, long receiverIdentityKey) throws Exception;
+  public static native long SignalMessage_New(int messageVersion, byte[] macKey, long senderRatchetKey, int counter, int previousCounter, byte[] ciphertext, long senderIdentityKey, long receiverIdentityKey, byte[] pqRatchet) throws Exception;
   public static native boolean SignalMessage_VerifyMac(long msg, long senderIdentityKey, long receiverIdentityKey, byte[] macKey) throws Exception;
 
   public static native long SignedPreKeyRecord_Deserialize(byte[] data) throws Exception;

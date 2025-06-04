@@ -153,7 +153,7 @@ impl JniIdentityKeyStore<'_> {
                 let direction_class = find_class(
                     env,
                     ClassName("org.signal.libsignal.protocol.state.IdentityKeyStore$Direction"),
-                )?;
+                ).check_exceptions(env, "isTrustedIdentity")?;
                 let field_name = match direction {
                     Direction::Sending => "SENDING",
                     Direction::Receiving => "RECEIVING",

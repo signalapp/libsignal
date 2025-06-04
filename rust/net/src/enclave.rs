@@ -4,29 +4,24 @@
 //
 
 use std::marker::PhantomData;
-use std::time::{Duration, SystemTime};
+use std::time::SystemTime;
 
 use attest::svr2::RaftConfig;
 use attest::{cds2, enclave};
 use derive_where::derive_where;
 use http::uri::PathAndQuery;
-use libsignal_net_infra::connection_manager::{
-    MultiRouteConnectionManager, SingleRouteThrottlingConnectionManager,
-};
 use libsignal_net_infra::errors::LogSafeDisplay;
 use libsignal_net_infra::route::{
     DirectTcpRouteProvider, DomainFrontRouteProvider, HttpsProvider, TlsRouteProvider,
     WebSocketProvider, WebSocketRouteFragment,
 };
-use libsignal_net_infra::utils::NetworkChangeEvent;
 use libsignal_net_infra::ws::WebSocketServiceError;
 use libsignal_net_infra::ws2::attested::{
     AttestedConnection, AttestedConnectionError, AttestedProtocolError,
 };
-use libsignal_net_infra::{make_ws_config, ConnectionParams, EndpointConnection};
 
 use crate::env::DomainConfig;
-use crate::infra::EnableDomainFronting;
+use crate::infra::{EnableDomainFronting, EnforceMinimumTls};
 use crate::ws::WebSocketServiceConnectError;
 
 pub trait AsRaftConfig<'a> {
@@ -197,12 +192,6 @@ pub trait NewHandshake: EnclaveKind + Sized {
     ) -> enclave::Result<enclave::Handshake>;
 }
 
-pub struct EnclaveEndpointConnection<E: EnclaveKind, C> {
-    pub(crate) endpoint_connection: EndpointConnection<C>,
-    #[allow(unused)]
-    pub(crate) params: EndpointParams<'static, E>,
-}
-
 #[derive(Debug, thiserror::Error, displaydoc::Display)]
 pub enum Error {
     /// websocket error: {0}
@@ -229,14 +218,8 @@ impl From<AttestedConnectionError> for Error {
     }
 }
 
-impl<E: EnclaveKind, C> EnclaveEndpointConnection<E, C> {
-    pub fn ws2_config(&self) -> libsignal_net_infra::ws2::Config {
-        self.endpoint_connection.config.ws2_config()
-    }
-}
-
 impl<E: EnclaveKind> EnclaveEndpoint<'_, E> {
-    pub fn route_provider(
+    pub fn enclave_websocket_provider(
         &self,
         enable_domain_fronting: EnableDomainFronting,
     ) -> WebSocketProvider<
@@ -256,50 +239,29 @@ impl<E: EnclaveKind> EnclaveEndpoint<'_, E> {
 
         WebSocketProvider::new(ws_fragment, http_provider)
     }
-}
 
-impl<E: EnclaveKind> EnclaveEndpointConnection<E, SingleRouteThrottlingConnectionManager> {
-    pub fn new(
-        endpoint: &EnclaveEndpoint<'static, E>,
-        connect_timeout: Duration,
-        network_change_event: &NetworkChangeEvent,
-    ) -> Self {
-        Self {
-            endpoint_connection: EndpointConnection {
-                manager: SingleRouteThrottlingConnectionManager::new(
-                    endpoint.domain_config.connect.direct_connection_params(),
-                    connect_timeout,
-                    network_change_event,
-                ),
-                config: make_ws_config(
-                    E::url_path(endpoint.params.mr_enclave.as_ref()),
-                    connect_timeout,
-                ),
-            },
-            params: endpoint.params.clone(),
-        }
-    }
-}
+    pub fn enclave_websocket_provider_with_options(
+        &self,
+        enable_domain_fronting: EnableDomainFronting,
+        enforce_minimum_tls: EnforceMinimumTls,
+    ) -> WebSocketProvider<
+        HttpsProvider<DomainFrontRouteProvider, TlsRouteProvider<DirectTcpRouteProvider>>,
+    > {
+        let Self {
+            domain_config,
+            params,
+        } = self;
+        let http_provider = domain_config
+            .connect
+            .route_provider_with_options(enable_domain_fronting, enforce_minimum_tls);
 
-impl<E: EnclaveKind> EnclaveEndpointConnection<E, MultiRouteConnectionManager> {
-    pub fn new_multi(
-        endpoint: &EnclaveEndpoint<'static, E>,
-        connection_params: impl IntoIterator<Item = ConnectionParams>,
-        one_route_connect_timeout: Duration,
-        network_change_event: &NetworkChangeEvent,
-    ) -> Self {
-        Self {
-            endpoint_connection: EndpointConnection::new_multi(
-                connection_params,
-                one_route_connect_timeout,
-                make_ws_config(
-                    E::url_path(endpoint.params.mr_enclave.as_ref()),
-                    one_route_connect_timeout,
-                ),
-                network_change_event,
-            ),
-            params: endpoint.params.clone(),
-        }
+        let ws_fragment = WebSocketRouteFragment {
+            ws_config: Default::default(),
+            endpoint: E::url_path(params.mr_enclave.as_ref()),
+            headers: Default::default(),
+        };
+
+        WebSocketProvider::new(ws_fragment, http_provider)
     }
 }
 

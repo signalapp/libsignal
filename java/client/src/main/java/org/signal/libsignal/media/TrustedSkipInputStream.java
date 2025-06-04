@@ -7,11 +7,13 @@ package org.signal.libsignal.media;
 
 import java.io.IOException;
 import java.io.InputStream;
+import org.signal.libsignal.internal.CalledFromNative;
 
 /**
  * Implemented by InputStreams that guarantee that their {@code skip} methods always skip the full
  * amount unless EOF is reached (or an exception is thrown).
  */
+@CalledFromNative
 public interface TrustedSkipInputStream {
   /**
    * @see InputStream#skip

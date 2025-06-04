@@ -23,7 +23,6 @@ pub type Ignored<T> = T;
 ///
 /// Most useful with `bridge_io`, as well as async `bridge_fn` on Node, since those have to do
 /// cleanup in a separate call frame from where arguments are initially saved.
-#[allow(dead_code)] // Certain cases are only used with certain targets
 pub enum NeedsCleanup {
     /// Does not do any special checks.
     None,
@@ -31,6 +30,7 @@ pub enum NeedsCleanup {
     #[cfg(feature = "jni")]
     AttachedToJVM(::jni::JavaVM),
     /// Requires that the value be [finalized][neon::prelude::Finalize] instead of being dropped.
+    #[cfg(feature = "node")]
     FinalizedByNeon,
 }
 
@@ -42,6 +42,7 @@ impl Drop for NeedsCleanup {
             Self::AttachedToJVM(jvm) => {
                 assert!(jvm.get_env().is_ok());
             }
+            #[cfg(feature = "node")]
             Self::FinalizedByNeon => {
                 panic!("should been Finalized")
             }

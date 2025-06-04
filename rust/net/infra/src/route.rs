@@ -80,16 +80,15 @@ pub trait RouteProvider {
     ///
     /// There are two potential ways we could work around this:
     ///
-    /// 1. Use the new precise-capture syntax introduced in Rust 1.82. This
-    ///    isn't an option now because that syntax isn't supported in trait
-    ///    methods. Once <https://github.com/rust-lang/rust/issues/130044> is
-    ///    stabilized and available (per our MSRV) we can revisit this.
+    /// 1. Use the new precise-capture syntax introduced in Rust 1.82, and
+    ///    stabilized for use in traits in Rust 1.87.
     ///
     /// 2. Introduce a named associated type that only captures `'s`, not `'c`.
     ///    This works now, but would require all returned iterator types to be
     ///    named. That would prevent us from using `Iterator::map` and other
     ///    combinators, or require any uses be `Box`ed and those tradeoffs
     ///    aren't (currently) worth the imprecision.
+    // TODO: when our MSRV >= 1.87, use precise captures and make context &mut.
     fn routes<'s>(
         &'s self,
         context: &impl RouteProviderContext,
@@ -474,6 +473,7 @@ impl<E: std::fmt::Display> std::fmt::Display for ConnectError<E> {
     }
 }
 
+#[cfg_attr(feature = "test-util", visibility::make(pub))]
 const PER_CONNECTION_WAIT_DURATION: Duration = Duration::from_millis(500);
 
 fn pull_next_route_delay<F>(connects_in_progress: &FuturesUnordered<F>) -> Duration {

@@ -523,7 +523,9 @@ mod test {
     use libsignal_net_infra::ws2::attested::testutil::{
         run_attested_server, AttestedServerOutput, FAKE_ATTESTATION,
     };
-    use libsignal_net_infra::{AsStaticHttpHeader as _, EnableDomainFronting};
+    use libsignal_net_infra::{
+        AsStaticHttpHeader as _, EnableDomainFronting, RECOMMENDED_WS2_CONFIG,
+    };
     use nonzero_ext::nonzero;
     use tokio_stream::wrappers::UnboundedReceiverStream;
     use tungstenite::protocol::frame::coding::CloseCode;
@@ -534,7 +536,6 @@ mod test {
     use super::*;
     use crate::auth::Auth;
     use crate::connect_state::{ConnectState, SUGGESTED_CONNECT_CONFIG};
-    use crate::enclave::EnclaveEndpointConnection;
 
     #[test]
     fn parse_lookup_response_entries() {
@@ -986,12 +987,7 @@ mod test {
         });
 
         let env = crate::env::PROD;
-        let ws2_config = EnclaveEndpointConnection::new(
-            &env.cdsi,
-            Duration::from_secs(10),
-            &no_network_change_events(),
-        )
-        .ws2_config();
+        let ws2_config = RECOMMENDED_WS2_CONFIG;
         let auth = Auth {
             username: "username".to_string(),
             password: "password".to_string(),
@@ -1013,7 +1009,8 @@ mod test {
                 confirmation_header_name: None,
             },
             DirectOrProxyProvider::maybe_proxied(
-                env.cdsi.route_provider(EnableDomainFronting::No),
+                env.cdsi
+                    .enclave_websocket_provider(EnableDomainFronting::No),
                 None,
             ),
             ws2_config,

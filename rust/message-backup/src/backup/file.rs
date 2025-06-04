@@ -3,11 +3,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-// Silence clippy's complaints about private fields used to prevent construction
-// and recommendation of `#[non_exhaustive]`. The annotation only applies
-// outside this crate, but we want intra-crate privacy.
-#![allow(clippy::manual_non_exhaustive)]
-
 use hex::ToHex as _;
 use serde_with::hex::Hex;
 use serde_with::serde_as;

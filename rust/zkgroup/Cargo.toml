@@ -8,7 +8,7 @@ name = "zkgroup"
 version = "0.9.0"
 authors.workspace = true
 license.workspace = true
-rust-version = "1.80"
+rust-version = "1.81"
 edition = "2021"
 description = "A zero-knowledge group library"
 

@@ -8,6 +8,7 @@ package org.signal.libsignal.protocol.state;
 import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
 
 import java.time.Instant;
+import org.signal.libsignal.internal.CalledFromNative;
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
 import org.signal.libsignal.protocol.IdentityKey;
@@ -31,6 +32,7 @@ public class SessionRecord extends NativeHandleGuard.SimpleOwner {
     super(Native.SessionRecord_NewFresh());
   }
 
+  @CalledFromNative
   private SessionRecord(long nativeHandle) {
     super(nativeHandle);
   }

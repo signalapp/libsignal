@@ -23,6 +23,7 @@ import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 import org.signal.libsignal.internal.CompletableFuture;
+import org.signal.libsignal.keytrans.KeyTransparencyException;
 import org.signal.libsignal.keytrans.TestStore;
 import org.signal.libsignal.util.TestEnvironment;
 

@@ -10,6 +10,7 @@ import static org.junit.Assert.*;
 import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import org.junit.After;
 import org.junit.Assume;
@@ -164,6 +165,15 @@ public class BridgingTest {
     for (var value : new int[] {0, 1, -1, Integer.MIN_VALUE, Integer.MAX_VALUE}) {
       assertEquals(value, NativeTesting.TESTING_RoundTripI32(value));
     }
+  }
+
+  @Test
+  public void testOptionalUuid() {
+    final var present = NativeTesting.TESTING_ConvertOptionalUuid(true);
+    assertEquals(present, UUID.fromString("abababab-1212-8989-baba-565656565656"));
+
+    final var absent = NativeTesting.TESTING_ConvertOptionalUuid(false);
+    assertNull(absent);
   }
 
   @Test

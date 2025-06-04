@@ -41,10 +41,8 @@ const ENTRIES_MAX_BEHIND: u64 = 10_000_000;
 pub enum Error {
     /// Required field '{0}' not found
     RequiredFieldMissing(&'static str),
-    /// Proof element is wrong size
-    InvalidProofElement,
-    /// Value is too long to be encoded
-    ValueTooLong,
+    /// Bad data: {0}
+    BadData(&'static str),
     /// Verification failed: {0}
     VerificationFailed(String),
 }
@@ -86,7 +84,7 @@ fn get_hash_proof(proof: &[Vec<u8>]) -> Result<Vec<[u8; 32]>> {
         .iter()
         .map(|elem| <&[u8] as TryInto<[u8; 32]>>::try_into(elem))
         .collect::<std::result::Result<_, _>>()
-        .map_err(|_| Error::InvalidProofElement)
+        .map_err(|_| Error::BadData("proof element is wrong size"))
 }
 
 fn serialize_key(buffer: &mut Vec<u8>, key_material: &[u8], key_kind: &str) {
@@ -124,7 +122,8 @@ fn marshal_tree_head_tbs(
 fn marshal_update_value(value: &[u8]) -> Result<Vec<u8>> {
     let mut buf = vec![];
 
-    let length = u32::try_from(value.len()).map_err(|_| Error::ValueTooLong)?;
+    let length =
+        u32::try_from(value.len()).map_err(|_| Error::BadData("value too long to be encoded"))?;
     buf.extend_from_slice(&length.to_be_bytes());
     buf.extend_from_slice(value);
 
@@ -148,9 +147,8 @@ fn verify_tree_head_signature(
     verifying_key: &VerifyingKey,
 ) -> Result<()> {
     let raw = marshal_tree_head_tbs(head.tree_size, head.timestamp, root, config)?;
-    let signature = Signature::from_slice(&head.signature).map_err(|_| {
-        Error::VerificationFailed("failed to verify tree head signature (bad format)".to_string())
-    })?;
+    let signature = Signature::from_slice(&head.signature)
+        .map_err(|_| Error::BadData("signature has wrong size"))?;
     verifying_key
         .verify(&raw, &signature)
         .map_err(|_| Error::VerificationFailed("failed to verify tree head signature".to_string()))
@@ -190,39 +188,34 @@ fn verify_full_tree_head(
     {
         let single_sig_tree_head = tree_head
             .to_single_signature_tree_head(config)
-            .ok_or(Error::RequiredFieldMissing("Server signature not found"))?;
+            .ok_or(Error::RequiredFieldMissing("server signature"))?;
         verify_tree_head_signature(config, &single_sig_tree_head, &root, &config.signature_key)?;
     }
 
     // 3. Verify that the timestamp in TreeHead is sufficiently recent.
-    verify_timestamp(tree_head.timestamp, ALLOWED_TIMESTAMP_RANGE, None, now)?;
+    verify_timestamp(tree_head.timestamp, ALLOWED_TIMESTAMP_RANGE, now)?;
 
     // 4. If third-party auditing is used, verify auditor_tree_head with the
     //    steps described in Section 11.2.
     if let DeploymentMode::ThirdPartyAuditing(auditor_key) = config.mode {
         let auditor_tree_head = fth
             .select_auditor_tree_head(&auditor_key)
-            .ok_or(Error::RequiredFieldMissing("Auditor tree head not found"))?;
+            .ok_or(Error::RequiredFieldMissing("auditor tree head"))?;
         let auditor_head = get_proto_field(&auditor_tree_head.tree_head, "tree_head")?;
 
         // 2. Verify that TreeHead.timestamp is sufficiently recent.
-        verify_timestamp(
-            auditor_head.timestamp,
-            ALLOWED_AUDITOR_TIMESTAMP_RANGE,
-            Some("auditor"),
-            now,
-        )?;
+        verify_timestamp(auditor_head.timestamp, ALLOWED_AUDITOR_TIMESTAMP_RANGE, now)?;
 
         // 3. Verify that TreeHead.tree_size is sufficiently close to the most
         //    recent tree head from the service operator.
         if auditor_head.tree_size > tree_head.tree_size {
-            return Err(Error::VerificationFailed(
-                "auditor tree head may not be further along than service tree head".to_string(),
+            return Err(Error::BadData(
+                "auditor tree head may not be further along than service tree head",
             ));
         }
         if tree_head.tree_size - auditor_head.tree_size > ENTRIES_MAX_BEHIND {
-            return Err(Error::VerificationFailed(
-                "auditor tree head is too far behind service tree head".to_string(),
+            return Err(Error::BadData(
+                "auditor tree head is too far behind service tree head",
             ));
         }
         // 4. Verify the consistency proof between this tree head and the most
@@ -233,9 +226,7 @@ fn verify_full_tree_head(
                 get_proto_field(&auditor_tree_head.root_value, "root_value")?
                     .as_slice()
                     .try_into()
-                    .map_err(|_| {
-                        Error::VerificationFailed("auditor tree head is malformed".to_string())
-                    })?;
+                    .map_err(|_| Error::BadData("auditor tree head is malformed"))?;
             let proof = get_hash_proof(&auditor_tree_head.consistency)?;
             verify_consistency_proof(
                 auditor_head.tree_size,
@@ -247,13 +238,13 @@ fn verify_full_tree_head(
             verify_tree_head_signature(config, auditor_head, auditor_root, &auditor_key)?;
         } else {
             if !auditor_tree_head.consistency.is_empty() {
-                return Err(Error::VerificationFailed(
-                    "consistency proof provided when not expected".to_string(),
+                return Err(Error::BadData(
+                    "consistency proof provided when not expected",
                 ));
             }
             if auditor_tree_head.root_value.is_some() {
-                return Err(Error::VerificationFailed(
-                    "explicit root value provided when not expected".to_string(),
+                return Err(Error::BadData(
+                    "explicit root value provided when not expected",
                 ));
             }
             verify_tree_head_signature(config, auditor_head, &root, &auditor_key)?;
@@ -285,39 +276,37 @@ fn check_consistency_metadata<'a>(
     match baseline {
         None => {
             if !proof.is_empty() {
-                return Err(Error::VerificationFailed(
-                    "consistency proof provided when not expected".to_string(),
+                return Err(Error::BadData(
+                    "consistency proof provided when not expected",
                 ));
             };
             Ok(None)
         }
         Some((last, last_root)) if last.tree_size == current_head.tree_size => {
             if current_root != last_root {
-                return Err(Error::VerificationFailed(
-                    "root is different but tree size is same".to_string(),
-                ));
+                return Err(Error::BadData("root is different but tree size is same"));
             }
             if current_head.timestamp != last.timestamp {
-                return Err(Error::VerificationFailed(
-                    "tree size is the same b".to_string(),
+                return Err(Error::BadData(
+                    "tree size is the same but timestamps differ",
                 ));
             }
             if !proof.is_empty() {
-                return Err(Error::VerificationFailed(
-                    "consistency proof provided when not expected".to_string(),
+                return Err(Error::BadData(
+                    "consistency proof provided when not expected",
                 ));
             }
             Ok(None)
         }
         Some((last_head, last_root)) => {
             if current_head.tree_size < last_head.tree_size {
-                return Err(Error::VerificationFailed(
-                    "current tree size is less than previous tree size".to_string(),
+                return Err(Error::BadData(
+                    "current tree size is less than previous tree size",
                 ));
             }
             if current_head.timestamp < last_head.timestamp {
-                return Err(Error::VerificationFailed(
-                    "current timestamp is less than previous timestamp".to_string(),
+                return Err(Error::BadData(
+                    "current timestamp is less than previous timestamp",
                 ));
             }
             Ok(Some(move || {
@@ -340,12 +329,7 @@ struct TimestampRange {
     max_ahead: Duration,
 }
 
-fn verify_timestamp(
-    timestamp: i64,
-    allowed_range: &TimestampRange,
-    description: Option<&str>,
-    now: SystemTime,
-) -> Result<()> {
+fn verify_timestamp(timestamp: i64, allowed_range: &TimestampRange, now: SystemTime) -> Result<()> {
     let TimestampRange {
         max_behind,
         max_ahead,
@@ -355,17 +339,11 @@ fn verify_timestamp(
         .expect("valid system time")
         .as_millis() as i128;
     let delta = now - timestamp as i128;
-    let format_message = |s: &str| match description {
-        None => s.to_string(),
-        Some(desc) => format!("{desc} {s}"),
-    };
     if delta > max_behind.as_millis() as i128 {
-        let message = format_message("timestamp is too far behind current time");
-        return Err(Error::VerificationFailed(message));
+        return Err(Error::BadData("timestamp is too far behind current time"));
     }
     if (-delta) > max_ahead.as_millis() as i128 {
-        let message = format_message("timestamp is too far ahead of current time");
-        return Err(Error::VerificationFailed(message));
+        return Err(Error::BadData("timestamp is too far ahead of current time"));
     }
     Ok(())
 }
@@ -384,11 +362,7 @@ pub fn verify_distinguished(
     }
     let root = match last_tree_head {
         Some((tree_head, root)) if tree_head.tree_size == tree_size => root,
-        _ => {
-            return Err(Error::VerificationFailed(
-                "expected tree head not found in storage".to_string(),
-            ))
-        }
+        _ => return Err(Error::BadData("expected tree head not found in storage")),
     };
 
     let (
@@ -405,9 +379,7 @@ pub fn verify_distinguished(
         let result = if root == distinguished_root {
             Ok(())
         } else {
-            Err(Error::VerificationFailed(
-                "root hash does not match expected value".to_string(),
-            ))
+            Err(Error::BadData("root hash does not match expected value"))
         };
         return result;
     }
@@ -589,8 +561,8 @@ pub fn verify_monitor<'a>(
 ) -> Result<MonitorStateUpdate> {
     // Verify proof responses are the expected lengths.
     if req.keys.len() != res.proofs.len() {
-        return Err(Error::VerificationFailed(
-            "monitoring response is malformed: wrong number of key proofs".to_string(),
+        return Err(Error::BadData(
+            "monitoring response is malformed: wrong number of key proofs",
         ));
     }
 
@@ -652,9 +624,9 @@ pub fn verify_monitor<'a>(
             // when monitoring the "distinguished" key, we need to make sure we
             // don't update monitoring data based on parts of the tree that we
             // don't intend to retain.
-            consistency
-                .and_then(|consistency| consistency.last)
-                .ok_or(Error::VerificationFailed("monitoring request malformed: consistency field expected when monitoring distinguished key".to_string()))?
+            consistency.and_then(|consistency| consistency.last).ok_or(
+                Error::RequiredFieldMissing("consistency field when monitoring distinguished key"),
+            )?
         } else {
             tree_size
         };
@@ -701,11 +673,9 @@ impl MonitorProofAcc {
     ) -> Result<()> {
         // Get the existing monitoring data from storage and check that it
         // matches the request.
-        let data = monitoring_data.get(&key.search_key).ok_or_else(|| {
-            Error::VerificationFailed(
-                "unable to process monitoring response for unknown search key".to_string(),
-            )
-        })?;
+        let data = monitoring_data.get(&key.search_key).ok_or(Error::BadData(
+            "unable to process monitoring response for unknown search key",
+        ))?;
 
         // Compute which entry in the log each proof is supposed to correspond to.
         let entries = full_monitoring_path(key.entry_position, data.pos, self.tree_size);
@@ -927,8 +897,8 @@ mod test {
     fn verify_timestamps_error(time: SystemTime) {
         let ts = make_timestamp(time);
         assert_matches!(
-            verify_timestamp(ts, TIMESTAMP_RANGE, None, SystemTime::now()),
-            Err(Error::VerificationFailed(_))
+            verify_timestamp(ts, TIMESTAMP_RANGE, SystemTime::now()),
+            Err(Error::BadData(_))
         );
     }
 
@@ -938,7 +908,7 @@ mod test {
     fn verify_timestamps_success(time: SystemTime) {
         let ts = make_timestamp(time);
         assert_matches!(
-            verify_timestamp(ts, TIMESTAMP_RANGE, None, SystemTime::now()),
+            verify_timestamp(ts, TIMESTAMP_RANGE, SystemTime::now()),
             Ok(())
         );
     }

@@ -10,7 +10,7 @@ plugins {
 }
 
 allprojects {
-    version = "0.73.2"
+    version = "0.74.0"
     group   = "org.signal"
 
     tasks.withType(KotlinCompile).configureEach {
@@ -65,9 +65,10 @@ task makeJniLibrariesDesktop(type:Exec) {
 
   def debugLevelLogsFlag = project.hasProperty('debugLevelLogs') ? ['--debug-level-logs'] : []
   def jniTypeTaggingFlag = project.hasProperty('jniTypeTagging') ? ['--jni-type-tagging'] : []
+  def jniCheckAnnotationsFlag = project.hasProperty('jniCheckAnnotations') ? ['--jni-check-annotations'] : []
   def debugFlag = project.hasProperty('debugRust') ? ['--debug'] : []
   // Explicitly specify 'bash' for Windows compatibility.
-  commandLine 'bash', './build_jni.sh', *debugLevelLogsFlag, *jniTypeTaggingFlag, *debugFlag, 'desktop'
+  commandLine 'bash', './build_jni.sh', *debugLevelLogsFlag, *jniTypeTaggingFlag, *jniCheckAnnotationsFlag, *debugFlag, 'desktop'
 }
 
 task makeJniLibrariesServer(type:Exec) {
@@ -76,10 +77,11 @@ task makeJniLibrariesServer(type:Exec) {
 
   def debugLevelLogsFlag = project.hasProperty('debugLevelLogs') ? ['--debug-level-logs'] : []
   def jniTypeTaggingFlag = project.hasProperty('jniTypeTagging') ? ['--jni-type-tagging'] : []
+  def jniCheckAnnotationsFlag = project.hasProperty('jniCheckAnnotations') ? ['--jni-check-annotations'] : []
   def debugFlag = project.hasProperty('debugRust') ? ['--debug'] : []
   def target = project.hasProperty('crossCompileServer') ? 'server-all' : 'server'
   // Explicitly specify 'bash' for Windows compatibility.
-  commandLine 'bash', './build_jni.sh', *debugLevelLogsFlag, *jniTypeTaggingFlag, *debugFlag, target
+  commandLine 'bash', './build_jni.sh', *debugLevelLogsFlag, *jniTypeTaggingFlag, *jniCheckAnnotationsFlag, *debugFlag, target
 }
 
 task cargoClean(type:Exec) {

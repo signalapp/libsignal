@@ -437,16 +437,15 @@ enum TaskSendError {
 
 #[derive(Debug)]
 enum TaskErrorState {
-    Panic(#[allow(unused)] Box<dyn Any + Send>),
+    Panic(#[expect(unused)] Box<dyn Any + Send>),
     SendFailed,
     AbnormalServerClose {
-        #[allow(unused)]
         code: tungstenite::protocol::frame::coding::CloseCode,
-        #[allow(unused)]
+        #[expect(unused)]
         reason: String,
     },
     ReceiveFailed,
-    ServerIdleTooLong(#[allow(unused)] Duration),
+    ServerIdleTooLong(#[expect(unused)] Duration),
     UnexpectedConnectionClose,
 }
 

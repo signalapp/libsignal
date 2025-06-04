@@ -326,7 +326,7 @@ impl TryFrom<asn1::Enumerated> for SgxType {
     }
 }
 
-#[allow(dead_code)]
+#[expect(dead_code, reason = "these fields are never read")]
 #[derive(Debug)]
 pub(crate) struct Configuration {
     // TODO should we let clients specify configuration requirements?

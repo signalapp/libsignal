@@ -44,7 +44,7 @@ where
 }
 
 #[bridge_io(TokioAsyncContext)]
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 async fn KeyTransparency_Search(
     // TODO: it is currently possible to pass an env that does not match chat
     environment: AsType<Environment, u8>,
@@ -58,11 +58,7 @@ async fn KeyTransparency_Search(
     last_distinguished_tree_head: Box<[u8]>,
 ) -> Result<Vec<u8>, Error> {
     let username_hash = username_hash.map(UsernameHash::from);
-    let config = environment
-        .into_inner()
-        .env()
-        .keytrans_config
-        .expect("keytrans config must be set");
+    let config = environment.into_inner().env().keytrans_config;
     let kt = KeyTransparencyClient::new(chat_connection, config);
 
     let e164_pair = make_e164_pair(e164, unidentified_access_key)?;
@@ -77,7 +73,7 @@ async fn KeyTransparency_Search(
 
     let last_distinguished_tree_head = try_decode(last_distinguished_tree_head)
         .map(|stored: StoredTreeHead| stored.into_last_tree_head())
-        .map_err(|_| Error::InvalidRequest("could not decode last distingushed tree head"))?
+        .map_err(|_| Error::InvalidRequest("could not decode last distinguished tree head"))?
         .ok_or(Error::InvalidRequest("last distinguished tree is required"))?;
 
     let MaybePartial {
@@ -105,7 +101,7 @@ async fn KeyTransparency_Search(
 }
 
 #[bridge_io(TokioAsyncContext)]
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 async fn KeyTransparency_Monitor(
     // TODO: it is currently possible to pass an env that does not match chat
     environment: AsType<Environment, u8>,
@@ -137,11 +133,7 @@ async fn KeyTransparency_Monitor(
         .map_err(|_| Error::InvalidRequest("could not decode last distinguished tree head"))?
         .ok_or(Error::InvalidRequest("last distinguished tree is required"))?;
 
-    let config = environment
-        .into_inner()
-        .env()
-        .keytrans_config
-        .expect("keytrans config must be set");
+    let config = environment.into_inner().env().keytrans_config;
     let kt = KeyTransparencyClient::new(chat_connection, config);
 
     let e164_pair = make_e164_pair(e164, unidentified_access_key)?;
@@ -176,11 +168,7 @@ async fn KeyTransparency_Distinguished(
     chat_connection: &UnauthenticatedChatConnection,
     last_distinguished_tree_head: Option<Box<[u8]>>,
 ) -> Result<Vec<u8>, Error> {
-    let config = environment
-        .into_inner()
-        .env()
-        .keytrans_config
-        .expect("keytrans config must be set");
+    let config = environment.into_inner().env().keytrans_config;
     let kt = KeyTransparencyClient::new(chat_connection, config);
 
     let known_distinguished = last_distinguished_tree_head

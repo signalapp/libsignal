@@ -38,6 +38,9 @@ pub use throttle::*;
 mod variable_timeout;
 pub use variable_timeout::*;
 
+mod static_tcp_timeout;
+pub use static_tcp_timeout::*;
+
 /// Establishes a connection to a route over an inner transport.
 pub trait Connector<R, Inner> {
     /// The type of connection returned on success.

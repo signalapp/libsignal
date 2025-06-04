@@ -215,7 +215,6 @@ async fn spawn_connected_chat(
     };
     let (sender, receiver) = mpsc::channel(MAX_PENDING_REQUESTS);
     let on_disconnect = on_disconnect_rx.map(|r| match r {
-        Ok(infallible) => match infallible {},
         Err(_recv_error) => (),
     });
     log::info!("successfully connecting chat for registration");

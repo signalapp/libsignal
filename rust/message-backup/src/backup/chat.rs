@@ -3,11 +3,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-// Silence clippy's complains about private fields used to prevent construction
-// and recommends `#[non_exhaustive]`. The annotation only applies outside this
-// crate, but we want intra-crate privacy.
-#![allow(clippy::manual_non_exhaustive)]
-
 use std::fmt::Debug;
 
 use derive_where::derive_where;
@@ -375,7 +370,7 @@ pub enum ChatItemMessage<M: Method + ReferencedTypes> {
     DirectStoryReply(DirectStoryReplyMessage<M::RecipientReference>),
 }
 
-#[allow(dead_code)]
+#[expect(dead_code)]
 const CHAT_ITEM_MESSAGE_SIZE_LIMIT: usize = 200;
 static_assertions::const_assert!(
     std::mem::size_of::<StandardMessage<RecipientId>>() < CHAT_ITEM_MESSAGE_SIZE_LIMIT

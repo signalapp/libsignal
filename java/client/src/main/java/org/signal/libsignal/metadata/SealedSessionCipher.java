@@ -29,6 +29,7 @@ import org.signal.libsignal.protocol.ServiceId;
 import org.signal.libsignal.protocol.SessionCipher;
 import org.signal.libsignal.protocol.SignalProtocolAddress;
 import org.signal.libsignal.protocol.UntrustedIdentityException;
+import org.signal.libsignal.protocol.UsePqRatchet;
 import org.signal.libsignal.protocol.groups.GroupCipher;
 import org.signal.libsignal.protocol.message.CiphertextMessage;
 import org.signal.libsignal.protocol.message.PreKeySignalMessage;
@@ -188,7 +189,8 @@ public class SealedSessionCipher {
         () -> Native.SealedSessionCipher_MultiRecipientMessageForSingleRecipient(message));
   }
 
-  public DecryptionResult decrypt(CertificateValidator validator, byte[] ciphertext, long timestamp)
+  public DecryptionResult decrypt(
+      CertificateValidator validator, byte[] ciphertext, long timestamp, UsePqRatchet usePqRatchet)
       throws InvalidMetadataMessageException,
           InvalidMetadataVersionException,
           ProtocolInvalidMessageException,
@@ -227,7 +229,7 @@ public class SealedSessionCipher {
           content.getSenderCertificate().getSenderDeviceId(),
           content.getType(),
           content.getGroupId(),
-          decrypt(content));
+          decrypt(content, usePqRatchet));
     } catch (InvalidMessageException e) {
       throw new ProtocolInvalidMessageException(e, content);
     } catch (InvalidKeyException e) {
@@ -255,7 +257,7 @@ public class SealedSessionCipher {
     return new SessionCipher(signalProtocolStore, remoteAddress).getRemoteRegistrationId();
   }
 
-  private byte[] decrypt(UnidentifiedSenderMessageContent message)
+  private byte[] decrypt(UnidentifiedSenderMessageContent message, UsePqRatchet usePqRatchet)
       throws InvalidVersionException,
           InvalidMessageException,
           InvalidKeyException,
@@ -275,7 +277,7 @@ public class SealedSessionCipher {
             .decrypt(new SignalMessage(message.getContent()));
       case CiphertextMessage.PREKEY_TYPE:
         return new SessionCipher(signalProtocolStore, sender)
-            .decrypt(new PreKeySignalMessage(message.getContent()));
+            .decrypt(new PreKeySignalMessage(message.getContent()), usePqRatchet);
       case CiphertextMessage.SENDERKEY_TYPE:
         return new GroupCipher(signalProtocolStore, sender).decrypt(message.getContent());
       case CiphertextMessage.PLAINTEXT_CONTENT_TYPE:

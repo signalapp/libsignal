@@ -79,18 +79,21 @@ impl CdsiLookup {
                     )
                 })?;
 
-        let (ws_config, enable_domain_fronting) = {
+        let (ws_config, enable_domain_fronting, enforce_minimum_tls) = {
             let guard = endpoints.lock().expect("not poisoned");
-            (guard.cdsi.ws2_config(), guard.enable_fronting)
+            (
+                guard.cdsi_ws2_config,
+                guard.enable_fronting,
+                guard.enforce_minimum_tls,
+            )
         };
         let env_cdsi = &env.cdsi;
-        let route_provider =
-            env_cdsi
-                .route_provider(enable_domain_fronting)
-                .map_routes(|mut route| {
-                    route.fragment.headers.extend([user_agent.as_header()]);
-                    route
-                });
+        let cdsi_route_provider = env_cdsi
+            .enclave_websocket_provider_with_options(enable_domain_fronting, enforce_minimum_tls);
+        let route_provider = cdsi_route_provider.map_routes(|mut route| {
+            route.fragment.headers.extend([user_agent.as_header()]);
+            route
+        });
         let confirmation_header_name = env_cdsi
             .domain_config
             .connect

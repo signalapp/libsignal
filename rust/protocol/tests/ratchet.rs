@@ -62,6 +62,7 @@ fn test_ratcheting_session_as_bob() -> Result<(), SignalProtocolError> {
         IdentityKey::decode(&alice_identity_public)?,
         alice_base_public_key,
         None,
+        UsePQRatchet::Yes,
     );
 
     let bob_record = initialize_bob_session_record(&bob_parameters)?;
@@ -136,6 +137,7 @@ fn test_ratcheting_session_as_alice() -> Result<(), SignalProtocolError> {
         IdentityKey::decode(&bob_identity_public)?,
         bob_signed_prekey_public,
         bob_ephemeral_public,
+        UsePQRatchet::Yes,
     );
 
     let mut csprng = rand::rngs::OsRng.unwrap_err();
@@ -189,6 +191,7 @@ fn test_alice_and_bob_agree_on_chain_keys_with_kyber() -> Result<(), SignalProto
         *bob_identity_key_pair.identity_key(),
         bob_signed_pre_key_pair.public_key,
         bob_ephemeral_key_pair.public_key,
+        UsePQRatchet::Yes,
     )
     .with_their_kyber_pre_key(&bob_kyber_pre_key_pair.public_key);
 
@@ -215,6 +218,7 @@ fn test_alice_and_bob_agree_on_chain_keys_with_kyber() -> Result<(), SignalProto
         *alice_identity_key_pair.identity_key(),
         alice_base_key_pair.public_key,
         Some(&kyber_ciphertext),
+        UsePQRatchet::Yes,
     );
     let bob_record = initialize_bob_session_record(&bob_parameters)?;
 

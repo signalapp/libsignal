@@ -243,7 +243,7 @@ mod test {
     fn prost_ignores_unknown_fields_and_handles_missing_ones() {
         // Field # 0b1111111_1111 (way higher than anything we'd use) with a type of VARINT (0) and a value of 0
         // See https://protobuf.dev/programming-guides/encoding/
-        #[allow(clippy::unusual_byte_groupings)]
+        #[expect(clippy::unusual_byte_groupings)]
         let not_an_encoded_username_proto = [0b1_1111_000, 0b0_1111111, 0];
         let username_message =
             proto::username::UsernameData::decode(not_an_encoded_username_proto.as_slice())

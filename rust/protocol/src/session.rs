@@ -49,6 +49,7 @@ pub async fn process_prekey<'a>(
     pre_key_store: &dyn PreKeyStore,
     signed_prekey_store: &dyn SignedPreKeyStore,
     kyber_prekey_store: &dyn KyberPreKeyStore,
+    use_pq_ratchet: ratchet::UsePQRatchet,
 ) -> Result<(PreKeysUsed, IdentityToSave<'a>)> {
     let their_identity_key = message.identity_key();
 
@@ -69,6 +70,7 @@ pub async fn process_prekey<'a>(
         kyber_prekey_store,
         pre_key_store,
         identity_store,
+        use_pq_ratchet,
     )
     .await?;
 
@@ -88,6 +90,7 @@ async fn process_prekey_impl(
     kyber_prekey_store: &dyn KyberPreKeyStore,
     pre_key_store: &dyn PreKeyStore,
     identity_store: &dyn IdentityKeyStore,
+    use_pq_ratchet: ratchet::UsePQRatchet,
 ) -> Result<PreKeysUsed> {
     if session_record.promote_matching_session(
         message.message_version() as u32,
@@ -132,6 +135,7 @@ async fn process_prekey_impl(
         *message.identity_key(),
         *message.base_key(),
         message.kyber_ciphertext(),
+        use_pq_ratchet,
     );
 
     let mut new_session = ratchet::initialize_bob_session(&parameters)?;
@@ -155,6 +159,7 @@ pub async fn process_prekey_bundle<R: Rng + CryptoRng>(
     bundle: &PreKeyBundle,
     now: SystemTime,
     mut csprng: &mut R,
+    use_pq_ratchet: ratchet::UsePQRatchet,
 ) -> Result<()> {
     let their_identity_key = bundle.identity_key()?;
 
@@ -203,6 +208,7 @@ pub async fn process_prekey_bundle<R: Rng + CryptoRng>(
         *their_identity_key,
         their_signed_prekey,
         their_signed_prekey,
+        use_pq_ratchet,
     );
     if let Some(key) = bundle.pre_key_public()? {
         parameters.set_their_one_time_pre_key(key);

@@ -10,6 +10,12 @@ import { Environment, type TokioAsyncContext } from '../net';
 
 // For JSDoc references
 import { type UnauthenticatedChatConnection } from './Chat';
+import {
+  type KeyTransparencyError,
+  type KeyTransparencyVerificationFailed,
+  type ChatServiceInactive,
+  type IoError,
+} from '../Errors';
 
 /**
  * Interface of a local persistent key transparency data store.
@@ -105,8 +111,18 @@ export interface Client {
    * @returns A promise that resolves if the search succeeds and the local state has been updated
    * to reflect the latest changes. If the promise is rejected, the UI should be updated to notify
    * the user of the failure.
-   */
-  // TODO: document concrete errors
+   *
+   * @throws {KeyTransparencyError} for errors related to key transparency logic, which
+   * includes missing required fields in the serialized data. Retrying the search without
+   * changing any of the arguments (including the state of the store) is unlikely to yield a
+   * different result.
+   * @throws {KeyTransparencyVerificationFailed} when it fails to
+   * verify the data in key transparency server response, such as an incorrect proof or a
+   * wrong signature.
+   * @throws {ChatServiceInactive} if the chat connection has been closed.
+   * @throws {IoError} if an error occurred while commuicating with the
+   * server.
+   * */
   search(
     request: Request,
     store: Store,
@@ -129,8 +145,18 @@ export interface Client {
    * @returns A promise that resolves if the monitor succeeds and the local state has been updated
    * to reflect the latest changes. If the promise is rejected, the UI should be updated to notify
    * the user of the failure.
+   *
+   * @throws {KeyTransparencyError} for errors related to key transparency logic, which
+   * includes missing required fields in the serialized data. Retrying the search without
+   * changing any of the arguments (including the state of the store) is unlikely to yield a
+   * different result.
+   * @throws {KeyTransparencyVerificationFailed} when it fails to
+   * verify the data in key transparency server response, such as an incorrect proof or a
+   * wrong signature.
+   * @throws {ChatServiceInactive} if the chat connection has been closed.
+   * @throws {IoError} if an error occurred while commuicating with the
+   * server.
    */
-  // TODO: document concrete errors
   monitor(
     request: Request,
     store: Store,

@@ -84,7 +84,6 @@ macro_rules! jni_signature {
 #[test]
 fn test_jni_signature() {
     // Literals
-    #[allow(clippy::eq_op)]
     {
         assert_eq!(jni_signature!("Lfoo/bar;"), "Lfoo/bar;");
     }
@@ -124,40 +123,39 @@ fn test_jni_signature() {
 #[macro_export]
 macro_rules! jni_arg {
     ( $arg:expr => boolean ) => {
-        <JValue as From<bool>>::from($arg)
+        <$crate::jni::JValue as From<bool>>::from($arg)
     };
     // jni_signature will reject this, but having it do something reasonable avoids multiple errors.
     ( $arg:expr => bool ) => {
-        <JValue as From<bool>>::from($arg)
+        <$crate::jni::JValue as From<bool>>::from($arg)
     };
     ( $arg:expr => byte ) => {
-        JValue::Byte($arg)
+        $crate::jni::JValue::Byte($arg)
     };
     ( $arg:expr => char ) => {
-        JValue::Char($arg)
+        $crate::jni::JValue::Char($arg)
     };
     ( $arg:expr => short ) => {
-        JValue::Short($arg)
+        $crate::jni::JValue::Short($arg)
     };
     ( $arg:expr => int ) => {
-        JValue::Int($arg)
+        $crate::jni::JValue::Int($arg)
     };
     ( $arg:expr => long ) => {
-        JValue::Long($arg)
+        $crate::jni::JValue::Long($arg)
     };
     ( $arg:expr => float ) => {
-        JValue::Float($arg)
+        $crate::jni::JValue::Float($arg)
     };
     ( $arg:expr => double ) => {
-        JValue::Double($arg)
+        $crate::jni::JValue::Double($arg)
     };
     // Assume anything else is an object. This includes arrays and classes.
     ( $arg:expr => $($_:tt)+) => {
-        JValue::Object($arg.as_ref())
+        $crate::jni::JValue::Object($arg.as_ref())
     };
 }
 
-#[allow(clippy::float_cmp)]
 #[test]
 fn test_jni_arg() {
     assert!(matches!(jni_arg!(true => boolean), JValue::Bool(1)));

@@ -70,6 +70,8 @@ tokio = { workspace = true, features = ["test-util", "time", "macros"] }
 ffi = []
 jni = ["dep:jni", "zerocopy"]
 jni-type-tagging = []
+jni-invoke-annotated = []
+extra-jni-checks = ["jni-type-tagging", "jni-invoke-annotated"]
 node = ["neon", "linkme", "signal-neon-futures"]
 
 [target.'cfg(not(any(windows, target_arch = "x86")))'.dependencies]

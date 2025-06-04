@@ -91,63 +91,6 @@ processResources {
     dependsOn ':makeJniLibrariesDesktop'
 }
 
-task proguard(type: proguard.gradle.ProGuardTask) {
-    dependsOn jar
-    injars jar.archiveFile
-
-    // Include the runtime classes (java.lang.Class, for example)
-    libraryjars "${System.getProperty('java.home')}/jmods/java.base.jmod", jarfilter: '!**.jar', filter: '!module-info.class'
-    // Include the Kotlin library jars
-    libraryjars sourceSets.main.compileClasspath
-
-    configuration '../shared/resources/META-INF/proguard/libsignal.pro'
-    // Assume for reachability purposes that all public methods are reachable.
-    // This isn't a perfect proxy for analysis under whole-program minimization
-    // since not all public methods end up being used, but it's good enough.
-    // The worry is that an unused-but-public method might call some non-public
-    // method, so our analysis here would find the second one reachable, but
-    // whole-program minimization would detect it as unreachable. This is
-    // unlikely enough in practice that we aren't going to try harder to catch
-    // it.
-    keep 'public class org.signal.libsignal.** { public *; }'
-
-    def destinationDirectory = layout.buildDirectory.dir("proguard").get()
-    outputs.dir(destinationDirectory)
-
-    printseeds destinationDirectory.file("seeds.txt")
-    printusage destinationDirectory.file("usage.txt")
-    printmapping destinationDirectory.file("mapping.txt")
-}
-
-task diffUnusedProguard {
-    dependsOn proguard
-    def expected = file('./proguard-usage.txt.expected')
-    def actual = proguard.outputs.getFiles().filter({ f -> f.name == "usage.txt"}).singleFile
-
-    inputs.file(expected)
-    inputs.file(actual)
-
-    doLast {
-        if (expected.text != actual.text) {
-            logger.error "${expected} and ${actual} differ"
-            logger.error "==== Begin expected contents"
-            logger.error expected.text
-            logger.error "==== End expected contents"
-
-            logger.error "==== Begin actual contents"
-            logger.error actual.text
-            logger.error "==== End actual contents"
-
-            logger.error "If this is expected, run the following to fix this:"
-            logger.error "\$ cp ${actual} ${expected}"
-            throw new GradleException("${expected} and ${actual} differ")
-        }
-    }
-}
-test {
-    dependsOn diffUnusedProguard
-}
-
 // MARK: Publishing
 
 publishing {

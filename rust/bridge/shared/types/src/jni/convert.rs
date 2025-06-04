@@ -682,11 +682,12 @@ impl<'a> ResultTypeInfo<'a> for crate::cds2::Cds2Metrics {
         let jobj = new_instance(env, ClassName("java.util.HashMap"), jni_args!(() -> void))?;
         let jmap = JMap::from_env(env, &jobj).check_exceptions(env, "Cds2Metrics::convert_into")?;
 
-        let long_class = find_class(env, ClassName("java.lang.Long"))?;
+        const LONG_CLASS_NAME: ClassName<'_> = ClassName("java.lang.Long");
+        let long_class = find_class(env, LONG_CLASS_NAME).expect_no_exceptions()?;
         for (k, v) in self.0 {
             let k = k.convert_into(env)?;
             let v = new_object(env, &long_class, jni_args!((v => long) -> void))
-                .check_exceptions(env, "java.lang.Long")?;
+                .check_exceptions(env, LONG_CLASS_NAME.0)?;
             jmap.put(env, &k, &v).check_exceptions(env, "put")?;
         }
         Ok(jobj)
@@ -1437,7 +1438,8 @@ impl<'a> ResultTypeInfo<'a> for libsignal_net::cdsi::LookupResponse {
 
         const ENTRY_CLASS: ClassName =
             ClassName("org.signal.libsignal.net.CdsiLookupResponse$Entry");
-        let entry_class = find_class(env, ENTRY_CLASS)?;
+        let entry_class =
+            find_class(env, ENTRY_CLASS).check_exceptions(env, "LookupResponse::convert_into")?;
 
         for entry in records {
             let LookupResponseEntry { aci, e164, pni } = entry;
@@ -1467,7 +1469,7 @@ impl<'a> ResultTypeInfo<'a> for libsignal_net::cdsi::LookupResponse {
                     &entry_class,
                     jni_args!( (aci => [byte], pni => [byte]) -> void),
                 )
-                .check_exceptions(env, ENTRY_CLASS.0)?,
+                .check_exceptions(env, "LookupResponse::convert_into")?,
                 env,
             );
 
@@ -1539,21 +1541,24 @@ impl<'a> ResultTypeInfo<'a> for libsignal_net::registration::RequestedInformatio
     type ResultType = JObject<'a>;
 
     fn convert_into(self, env: &mut JNIEnv<'a>) -> Result<Self::ResultType, BridgeLayerError> {
-        let class = find_class(
-            env,
-            ClassName("org.signal.libsignal.net.RegistrationSessionState$RequestedInformation"),
-        )?;
+        try_scoped(|| {
+            let class = find_class(
+                env,
+                ClassName("org.signal.libsignal.net.RegistrationSessionState$RequestedInformation"),
+            )?;
 
-        let field_name = match self {
-            libsignal_net::registration::RequestedInformation::PushChallenge => "PUSH_CHALLENGE",
-            libsignal_net::registration::RequestedInformation::Captcha => "CAPTCHA",
-        };
-        env.get_static_field(
-            class,
-            field_name,
-            jni_signature!(org.signal.libsignal.net.RegistrationSessionState::RequestedInformation),
-        )
-        .and_then(|v| v.l())
+            let field_name = match self {
+                libsignal_net::registration::RequestedInformation::PushChallenge => {
+                    "PUSH_CHALLENGE"
+                }
+                libsignal_net::registration::RequestedInformation::Captcha => "CAPTCHA",
+            };
+            env.get_static_field(
+                class,
+                field_name,
+                jni_signature!(org.signal.libsignal.net.RegistrationSessionState::RequestedInformation),
+            )?.l()
+        })
         .check_exceptions(env, "RequestedInformation::convert_into")
     }
 }
@@ -1574,10 +1579,10 @@ impl<'a> ResultTypeInfo<'a> for libsignal_net::registration::RegisterResponseBad
     type ResultType = JObject<'a>;
 
     fn convert_into(self, env: &mut JNIEnv<'a>) -> Result<Self::ResultType, BridgeLayerError> {
-        let class = find_class(
-            env,
-            ClassName("org.signal.libsignal.net.RegisterAccountResponse$BadgeEntitlement"),
-        )?;
+        const CLASS_NAME: ClassName<'_> =
+            ClassName("org.signal.libsignal.net.RegisterAccountResponse$BadgeEntitlement");
+        let class = find_class(env, CLASS_NAME)
+            .check_exceptions(env, "RegisterResponseBadge::convert_into")?;
 
         let Self {
             id,
@@ -1618,14 +1623,17 @@ impl<'a> ResultTypeInfo<'a> for Box<[libsignal_net::registration::RegisterRespon
 impl<'a> ResultTypeInfo<'a> for libsignal_net::registration::CheckSvr2CredentialsResponse {
     type ResultType = JObject<'a>;
     fn convert_into(self, env: &mut JNIEnv<'a>) -> Result<Self::ResultType, BridgeLayerError> {
+        const RESULT_CLASS_NAME: &str =
+            "org.signal.libsignal.net.RegistrationService$Svr2CredentialsResult";
         let jobj = new_instance(env, ClassName("java.util.HashMap"), jni_args!(() -> void))?;
-        let jmap = JMap::from_env(env, &jobj)
-            .check_exceptions(env, "CheckSvr2CredentialsResponse::convert_into")?;
+        let (jmap, response_class) = try_scoped(|| {
+            Ok((
+                JMap::from_env(env, &jobj)?,
+                find_class(env, ClassName(RESULT_CLASS_NAME))?,
+            ))
+        })
+        .check_exceptions(env, "CheckSvr2CredentialsResponse::convert_into")?;
 
-        let response_class = find_class(
-            env,
-            ClassName("org.signal.libsignal.net.RegistrationService$Svr2CredentialsResult"),
-        )?;
         let Self { matches } = self;
         for (k, v) in matches {
             let k = k.convert_into(env)?;

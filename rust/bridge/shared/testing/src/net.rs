@@ -19,6 +19,7 @@ use uuid::Uuid;
 use crate::*;
 
 pub mod chat;
+pub mod keytrans;
 pub mod registration;
 
 #[bridge_io(TokioAsyncContext)]

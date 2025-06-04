@@ -6,7 +6,6 @@
 use std::future::Future;
 use std::panic::UnwindSafe;
 
-use libsignal_net_infra::route::Captures;
 use static_assertions::assert_impl_all;
 
 mod error;
@@ -253,10 +252,8 @@ impl<'c> RegistrationService<'c> {
         request: R,
         // Write this as `impl Future` so we can include the `Send` bound, which
         // lets us surface errors earlier.
-    ) -> impl Future<Output = Result<(), RequestError<SessionRequestError>>>
-           + Send
-           + Captures<&'_ ()>
-           + Captures<&'c ()> {
+    ) -> impl Future<Output = Result<(), RequestError<SessionRequestError>>> + Send + use<'_, 'c, R>
+    {
         // Delegate to a non-templated function to reduce code size cost.
         async fn submit_request_impl(
             this: &mut RegistrationService<'_>,

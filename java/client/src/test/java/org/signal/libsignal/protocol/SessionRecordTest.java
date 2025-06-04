@@ -69,7 +69,8 @@ public class SessionRecordTest {
                       basePublicGuard.nativeHandle(),
                       theirIdentityGuard.nativeHandle(),
                       theirSignedPreKeyGuard.nativeHandle(),
-                      theirRatchetKeyGuard.nativeHandle())));
+                      theirRatchetKeyGuard.nativeHandle(),
+                      true)));
     } catch (InvalidMessageException m) {
       throw new RuntimeException(m);
     }
@@ -107,7 +108,8 @@ public class SessionRecordTest {
                       ephemeralPrivateGuard.nativeHandle(),
                       ephemeralPublicGuard.nativeHandle(),
                       theirIdentityGuard.nativeHandle(),
-                      theirBaseKeyGuard.nativeHandle())));
+                      theirBaseKeyGuard.nativeHandle(),
+                      true)));
     } catch (InvalidMessageException m) {
       throw new RuntimeException(m);
     }

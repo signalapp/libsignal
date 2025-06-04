@@ -13,13 +13,15 @@ use attest::hsm_enclave::Error as HsmEnclaveError;
 use device_transfer::Error as DeviceTransferError;
 use http::uri::InvalidUri;
 pub use jni::objects::{
-    AutoElements, JByteArray, JClass, JLongArray, JObject, JObjectArray, JString, ReleaseMode,
+    AutoElements, JByteArray, JClass, JLongArray, JObject, JObjectArray, JString, JValue,
+    ReleaseMode,
 };
-use jni::objects::{GlobalRef, JThrowable, JValue, JValueOwned};
+use jni::objects::{GlobalRef, JThrowable, JValueOwned};
 pub use jni::sys::{jboolean, jint, jlong};
 pub use jni::JNIEnv;
 use jni::JavaVM;
 use libsignal_account_keys::Error as PinError;
+use libsignal_core::try_scoped;
 use libsignal_net::chat::{ConnectError as ChatConnectError, SendError as ChatSendError};
 use libsignal_net::infra::errors::RetryLater;
 use libsignal_net::infra::ws::WebSocketServiceError;
@@ -839,10 +841,13 @@ impl MessageOnlyExceptionJniError for KeyTransNetError {
         match &self {
             KeyTransNetError::ChatSendError(send_error) => send_error.exception_class(),
             KeyTransNetError::RequestFailed(_)
-            | KeyTransNetError::VerificationFailed(_)
+            | KeyTransNetError::NonFatalVerificationFailure(_)
             | KeyTransNetError::InvalidResponse(_)
             | KeyTransNetError::InvalidRequest(_) => {
-                ClassName("org.signal.libsignal.net.KeyTransparencyException")
+                ClassName("org.signal.libsignal.keytrans.KeyTransparencyException")
+            }
+            KeyTransNetError::FatalVerificationFailure(_) => {
+                ClassName("org.signal.libsignal.keytrans.VerificationFailedException")
             }
         }
     }
@@ -913,8 +918,11 @@ pub fn new_instance<'output, const LEN: usize>(
     class_name: ClassName<'static>,
     args: JniArgs<(), LEN>,
 ) -> Result<JObject<'output>, BridgeLayerError> {
-    let class = find_class(env, class_name)?;
-    new_object(env, class, args).check_exceptions(env, class_name.0)
+    try_scoped(|| {
+        let class = find_class(env, class_name)?;
+        new_object(env, class, args)
+    })
+    .check_exceptions(env, class_name.0)
 }
 
 /// Constructs a Java object from the given boxed Rust value.
@@ -953,7 +961,7 @@ pub fn check_jobject_type(
         return Err(BridgeLayerError::NullPointer(Some(class_name.0)));
     }
 
-    let class = find_class(env, class_name)?;
+    let class = find_class(env, class_name).check_exceptions(env, class_name.0)?;
 
     if !env.is_instance_of(obj, class).expect_no_exceptions()? {
         return Err(BridgeLayerError::BadJniParameter(class_name.0));
