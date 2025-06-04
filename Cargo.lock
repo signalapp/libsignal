@@ -3732,7 +3732,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "pswoosh-protocol"
+name = "pswoosh"
 version = "0.1.0"
 dependencies = [
  "cc",
