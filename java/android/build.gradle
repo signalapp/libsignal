@@ -1,7 +1,8 @@
 import groovy.json.JsonSlurper
 
 plugins {
-    id 'com.android.library' version '8.9.0'
+    id 'com.android.library'
+    id 'kotlin-android'
     id 'maven-publish'
     id 'signing'
 }
@@ -42,6 +43,10 @@ android {
                 // Also run all the Android-agnostic tests by default.
                 srcDir '../client/src/test/java'
                 srcDir '../shared/test/java'
+            }
+            kotlin {
+                srcDir '../client/src/test/kotlin'
+                srcDir '../shared/test/kotlin'
             }
             resources {
                 srcDir '../client/src/test/resources'
@@ -110,9 +115,12 @@ File findRustlsPlatformVerifierClasses() {
 dependencies {
     implementation files(findRustlsPlatformVerifierClasses())
 
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2'
     androidTestImplementation "androidx.test:runner:1.4.0"
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'
     androidTestImplementation 'com.googlecode.json-simple:json-simple:1.1'
+    androidTestImplementation 'org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2'
+    androidTestImplementation 'org.jetbrains.kotlin:kotlin-test:2.1.0'
     coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:1.1.6'
     api project(':client')
 }
