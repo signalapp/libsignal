@@ -549,8 +549,7 @@ mod test {
         // Generate a sequence of triples by repeating the above data a few times.
         const NUM_REPEATS: usize = 4;
         let e164_pni_aci_triples =
-            std::iter::repeat([e164_bytes.as_slice(), &PNI_BYTES, &ACI_BYTES])
-                .take(NUM_REPEATS)
+            std::iter::repeat_n([e164_bytes.as_slice(), &PNI_BYTES, &ACI_BYTES], NUM_REPEATS)
                 .flatten()
                 .flatten()
                 .cloned()

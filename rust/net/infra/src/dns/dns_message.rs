@@ -322,7 +322,7 @@ mod test {
     fn invalid_name_too_long() {
         // 127 labels produces a domain name of length 254,
         // which, with a '.' suffix, is exactly the maximum allowed name length
-        let mut long_name = iter::repeat('a').take(127).join(".");
+        let mut long_name = iter::repeat_n('a', 127).join(".");
         assert_matches!(
             create_request_with_id(REQUEST_ID, &long_name, ResourceType::A),
             Ok(_)
@@ -347,7 +347,7 @@ mod test {
 
     #[test]
     fn invalid_name_label_too_long() {
-        let mut long_label = iter::repeat('a').take(MAX_DNS_LABEL_LEN).join("");
+        let mut long_label = iter::repeat_n('a', MAX_DNS_LABEL_LEN).join("");
         let name = format!("{long_label}.signal.org");
         assert_matches!(
             create_request_with_id(REQUEST_ID, &name, ResourceType::A),

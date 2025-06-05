@@ -796,7 +796,7 @@ mod test {
         S: FusedStream<Item = (ResolvedRoutes<R>, ResolveMeta)>,
         SP: RouteDelayPolicy<R>,
     {
-        pub fn as_stream<'a>(self: Pin<&'a mut Self>) -> impl Stream<Item = R> + 'a {
+        pub fn as_stream(self: Pin<&mut Self>) -> impl Stream<Item = R> + use<'_, S, R, SP> {
             let schedule = self;
             futures_util::stream::unfold(schedule, |mut schedule| async {
                 schedule.as_mut().next().await.map(|r| (r, schedule))
