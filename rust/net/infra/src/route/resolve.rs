@@ -507,7 +507,6 @@ mod test {
         UnresolvedHttpsServiceRoute,
     };
     use crate::tcp_ssl::proxy::socks;
-    use crate::DnsSource;
 
     const PROXY_PORT: NonZeroU16 = nonzero!(444u16);
     const TARGET_PORT: NonZeroU16 = nonzero!(888u16);
@@ -599,7 +598,6 @@ mod test {
             .remove("host-1")
             .unwrap()
             .respond(Ok(LookupResult {
-                source: DnsSource::Cache,
                 ipv4: vec![],
                 ipv6: vec![ip_addr!(v6, "3fff::11")],
             }));
@@ -607,7 +605,6 @@ mod test {
             .remove("host-3")
             .unwrap()
             .respond(Ok(LookupResult {
-                source: DnsSource::Cache,
                 ipv4: vec![ip_addr!(v4, "192.0.2.55")],
                 ipv6: vec![ip_addr!(v6, "3fff::22")],
             }));
@@ -622,7 +619,6 @@ mod test {
             .remove("host-2")
             .unwrap()
             .respond(Ok(LookupResult {
-                source: DnsSource::Test,
                 ipv4: vec![],
                 ipv6: vec![ip_addr!(v6, "3fff::33")],
             }));
@@ -660,7 +656,6 @@ mod test {
             (
                 "proxy-domain",
                 LookupResult {
-                    source: DnsSource::Static,
                     ipv4: vec![ip_addr!(v4, "192.0.2.100")],
                     ipv6: vec![ip_addr!(v6, "3fff::ffff")],
                 },
@@ -668,7 +663,6 @@ mod test {
             (
                 "target-domain",
                 LookupResult {
-                    source: DnsSource::Static,
                     ipv4: vec![ip_addr!(v4, "192.0.2.1"), ip_addr!(v4, "192.0.2.2")],
                     ipv6: vec![ip_addr!(v6, "3fff::1234")],
                 },

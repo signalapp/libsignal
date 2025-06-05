@@ -83,9 +83,9 @@ impl ConnectChat for ConnectFakeChat {
     ) -> BoxFuture<'_, Result<ChatConnection, libsignal_net::chat::ConnectError>> {
         let mut on_disconnect = Some(on_disconnect);
         let listener = move |event| match event {
-            libsignal_net::chat::ws2::ListenerEvent::Finished(_) => drop(on_disconnect.take()),
-            libsignal_net::chat::ws2::ListenerEvent::ReceivedAlerts(_)
-            | libsignal_net::chat::ws2::ListenerEvent::ReceivedMessage(_, _) => (),
+            libsignal_net::chat::ws::ListenerEvent::Finished(_) => drop(on_disconnect.take()),
+            libsignal_net::chat::ws::ListenerEvent::ReceivedAlerts(_)
+            | libsignal_net::chat::ws::ListenerEvent::ReceivedMessage(_, _) => (),
         };
 
         let (chat, remote) = ChatConnection::new_fake(self.0.clone(), Box::new(listener), []);

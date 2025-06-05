@@ -627,7 +627,7 @@ mod test {
     use crate::route::testutils::{FakeConnectError, FakeContext, FakeRoute};
     use crate::route::{SocksProxy, TlsProxy};
     use crate::tcp_ssl::proxy::socks;
-    use crate::{Alpn, DnsSource};
+    use crate::Alpn;
 
     static WS_ENDPOINT: LazyLock<PathAndQuery> =
         LazyLock::new(|| PathAndQuery::from_static("/ws-path"));
@@ -976,11 +976,7 @@ mod test {
         for (host, addr) in HOSTNAMES {
             let responder = resolution_responders.next().await.unwrap();
             assert_eq!(responder.hostname(), *host);
-            responder.respond(Ok(LookupResult::new(
-                crate::DnsSource::Test,
-                vec![],
-                vec![*addr],
-            )));
+            responder.respond(Ok(LookupResult::new(vec![], vec![*addr])));
         }
 
         // Let the task run so it can kick off some connection attempts.
@@ -1048,11 +1044,7 @@ mod test {
             for (host, addr) in HOSTNAMES {
                 let responder = resolution_responders.next().await.unwrap();
                 assert_eq!(responder.hostname(), *host);
-                responder.respond(Ok(LookupResult::new(
-                    crate::DnsSource::Test,
-                    vec![],
-                    vec![*addr],
-                )));
+                responder.respond(Ok(LookupResult::new(vec![], vec![*addr])));
             }
         });
 
@@ -1126,11 +1118,7 @@ mod test {
             for (host, addrs) in HOSTNAMES {
                 let responder = resolution_responders.next().await.unwrap();
                 assert_eq!(responder.hostname(), *host);
-                responder.respond(Ok(LookupResult::new(
-                    crate::DnsSource::Test,
-                    vec![],
-                    addrs.to_vec(),
-                )));
+                responder.respond(Ok(LookupResult::new(vec![], addrs.to_vec())));
             }
         });
 
@@ -1178,7 +1166,6 @@ mod test {
             (
                 *name,
                 LookupResult {
-                    source: DnsSource::Test,
                     ipv4: vec![],
                     ipv6: vec![*ip],
                 },
@@ -1232,7 +1219,6 @@ mod test {
             (
                 *name,
                 LookupResult {
-                    source: DnsSource::Test,
                     ipv4: vec![],
                     ipv6: vec![*ip],
                 },

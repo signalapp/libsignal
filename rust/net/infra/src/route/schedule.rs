@@ -790,7 +790,6 @@ mod test {
     use crate::dns::lookup_result::LookupResult;
     use crate::route::testutils::FakeRoute;
     use crate::route::{NoDelay, UnresolvedHost};
-    use crate::DnsSource;
 
     impl<S, R, SP> Schedule<S, R, SP>
     where
@@ -813,7 +812,6 @@ mod test {
             LookupResult {
                 ipv4: vec![ip_addr!(v4, "192.0.2.1")],
                 ipv6: vec![ip_addr!(v6, "3fff::1234")],
-                source: DnsSource::Static,
             },
         )]);
 
@@ -849,7 +847,6 @@ mod test {
                 LookupResult {
                     ipv4: vec![ip_addr!(v4, "192.0.2.11")],
                     ipv6: vec![ip_addr!(v6, "3fff::1234")],
-                    source: DnsSource::Static,
                 },
             ),
             (
@@ -857,7 +854,6 @@ mod test {
                 LookupResult {
                     ipv4: vec![ip_addr!(v4, "192.0.2.22")],
                     ipv6: vec![ip_addr!(v6, "3fff::5678")],
-                    source: DnsSource::Static,
                 },
             ),
         ]);

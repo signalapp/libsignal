@@ -14,11 +14,11 @@ use either::Either;
 use itertools::Itertools;
 use tokio::time::Instant;
 
+use crate::dns;
 use crate::dns::custom_resolver::{CustomDnsResolver, DnsTransport};
 use crate::dns::dns_errors::Error;
 use crate::dns::lookup_result::LookupResult;
 use crate::route::{ConnectorFactory, ResolvedRoute};
-use crate::{dns, DnsSource};
 
 #[derive(Clone, Debug)]
 pub struct DnsLookupRequest {
@@ -52,7 +52,7 @@ impl DnsLookup for SystemDnsLookup {
                 SocketAddr::V4(v4) => Either::Left(*v4.ip()),
                 SocketAddr::V6(v6) => Either::Right(*v6.ip()),
             });
-        match LookupResult::new(DnsSource::SystemLookup, ipv4s, ipv6s) {
+        match LookupResult::new(ipv4s, ipv6s) {
             lookup_result if !lookup_result.is_empty() => Ok(lookup_result),
             _ => Err(Error::LookupFailed),
         }

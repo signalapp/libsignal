@@ -11,12 +11,11 @@ use std::sync::Arc;
 
 use ::http::uri::PathAndQuery;
 use ::http::Uri;
-use async_trait::async_trait;
 use http::{HeaderMap, HeaderName, HeaderValue};
 use tokio::io::{AsyncRead, AsyncWrite};
 
 use crate::certs::RootCertificates;
-use crate::errors::{LogSafeDisplay, RetryLater, TransportConnectError};
+use crate::errors::{LogSafeDisplay, RetryLater};
 use crate::host::Host;
 use crate::timeouts::{WS_KEEP_ALIVE_INTERVAL, WS_MAX_IDLE_INTERVAL};
 
@@ -27,7 +26,6 @@ pub mod host;
 pub mod http_client;
 pub mod noise;
 pub mod route;
-pub mod service;
 pub mod tcp_ssl;
 pub mod timeouts;
 pub mod utils;
@@ -312,34 +310,9 @@ impl HttpRequestDecorator {
     }
 }
 
-#[derive(Debug)]
-pub struct StreamAndInfo<T>(pub T, pub ServiceConnectionInfo);
-
-impl<T> StreamAndInfo<T> {
-    fn map_stream<U>(self, f: impl FnOnce(T) -> U) -> StreamAndInfo<U> {
-        StreamAndInfo(f(self.0), self.1)
-    }
-}
-
 pub trait AsyncDuplexStream: AsyncRead + AsyncWrite + Unpin + Send {}
 
 impl<S: AsyncRead + AsyncWrite + Unpin + Send> AsyncDuplexStream for S {}
-
-/// Establishes TCP/TLS connections to remote destinations.
-///
-/// Given a destination in the form of [`TransportConnectionParams`],
-/// establishes a TLS handshake with the remote target, possibly through one or
-/// more intermediary proxies.
-#[async_trait]
-pub trait TransportConnector: Clone + Send + Sync {
-    type Stream: AsyncDuplexStream + 'static;
-
-    async fn connect(
-        &self,
-        connection_params: &TransportConnectionParams,
-        alpn: Alpn,
-    ) -> Result<StreamAndInfo<Self::Stream>, TransportConnectError>;
-}
 
 /// A single ALPN list entry.
 ///
@@ -385,27 +358,19 @@ pub fn extract_retry_later(headers: &http::header::HeaderMap) -> Option<RetryLat
 #[cfg(any(test, feature = "test-util"))]
 pub mod testutil {
     use std::fmt::Debug;
-    use std::io;
     use std::io::Error as IoError;
     use std::pin::Pin;
     use std::sync::LazyLock;
     use std::task::{Context, Poll};
     use std::time::Duration;
 
-    use async_trait::async_trait;
     use displaydoc::Display;
     use futures_util::stream::FusedStream;
     use futures_util::{Sink, SinkExt as _, Stream};
-    use tokio::io::DuplexStream;
     use tokio_util::sync::PollSender;
-    use warp::{Filter, Reply};
 
-    use crate::errors::{LogSafeDisplay, TransportConnectError};
+    use crate::errors::LogSafeDisplay;
     use crate::utils::NetworkChangeEvent;
-    use crate::{
-        Alpn, DnsSource, RouteType, ServiceConnectionInfo, StreamAndInfo,
-        TransportConnectionParams, TransportConnector,
-    };
 
     #[derive(Debug, Display)]
     pub enum TestError {
@@ -433,47 +398,6 @@ pub mod testutil {
         static SENDER_THAT_NEVER_SENDS: LazyLock<tokio::sync::watch::Sender<()>> =
             LazyLock::new(Default::default);
         SENDER_THAT_NEVER_SENDS.subscribe()
-    }
-
-    #[derive(Clone)]
-    pub struct InMemoryWarpConnector<F> {
-        filter: F,
-    }
-
-    impl<F> InMemoryWarpConnector<F> {
-        pub fn new(filter: F) -> Self {
-            Self { filter }
-        }
-    }
-
-    #[async_trait]
-    impl<F> TransportConnector for InMemoryWarpConnector<F>
-    where
-        F: Filter<Extract: Reply> + Clone + Send + Sync + 'static,
-    {
-        type Stream = DuplexStream;
-
-        async fn connect(
-            &self,
-            connection_params: &TransportConnectionParams,
-            _alpn: Alpn,
-        ) -> Result<StreamAndInfo<Self::Stream>, TransportConnectError> {
-            let (client, server) = tokio::io::duplex(1024);
-            let routes = self.filter.clone();
-            tokio::spawn(async {
-                let one_element_iter =
-                    futures_util::stream::iter(vec![Ok::<DuplexStream, io::Error>(server)]);
-                warp::serve(routes).run_incoming(one_element_iter).await;
-            });
-            Ok(StreamAndInfo(
-                client,
-                ServiceConnectionInfo {
-                    route_type: RouteType::Test,
-                    dns_source: DnsSource::Test,
-                    address: connection_params.tcp_host.clone(),
-                },
-            ))
-        }
     }
 
     /// Trivial [`Sink`] and [`Stream`] implementation over a pair of buffered channels.

@@ -4,24 +4,16 @@
 //
 
 use std::fmt::{Debug, Display};
-use std::future::Future;
-use std::marker::PhantomData;
 use std::sync::Arc;
 use std::time::Duration;
 
-use derive_where::derive_where;
-use futures_util::stream::{SplitSink, SplitStream};
-use futures_util::{Sink, SinkExt as _, Stream, StreamExt, TryFutureExt};
+use futures_util::{Sink, Stream, TryFutureExt};
 use http::uri::PathAndQuery;
-use tokio::sync::Mutex;
-use tokio::time::Instant;
-use tokio_tungstenite::WebSocketStream;
 use tungstenite::protocol::CloseFrame;
 use tungstenite::{http, Message, Utf8Bytes};
 
 use crate::errors::LogSafeDisplay;
 use crate::route::{Connector, HttpRouteFragment, WebSocketRouteFragment};
-use crate::service::{CancellationReason, CancellationToken};
 use crate::ws::error::{HttpFormatError, ProtocolError, SpaceError};
 use crate::{AsyncDuplexStream, Connection};
 
@@ -254,132 +246,6 @@ impl From<tungstenite::Error> for WebSocketServiceError {
     }
 }
 
-#[derive_where(Clone)]
-#[derive(Debug)]
-pub struct WebSocketClientWriter<S, E> {
-    ws_sink: Arc<Mutex<SplitSink<WebSocketStream<S>, Message>>>,
-    service_cancellation: CancellationToken,
-    error_type: PhantomData<E>,
-}
-
-impl<S: AsyncDuplexStream, E> WebSocketClientWriter<S, E>
-where
-    WebSocketServiceError: Into<E>,
-{
-    pub async fn send(&self, message: impl Into<Message>) -> Result<(), E> {
-        run_and_update_status(&self.service_cancellation, || {
-            async {
-                let mut guard = self.ws_sink.lock().await;
-                guard.send(message.into()).await?;
-                guard.flush().await?;
-                Ok(())
-            }
-            .map_err(|e: tungstenite::Error| WebSocketServiceError::from(e).into())
-        })
-        .await
-    }
-}
-
-#[derive(Debug)]
-pub struct WebSocketClientReader<S, E> {
-    ws_stream: SplitStream<WebSocketStream<S>>,
-    ws_writer: WebSocketClientWriter<S, E>,
-    service_cancellation: CancellationToken,
-    keep_alive_interval: Duration,
-    max_idle_time: Duration,
-    last_frame_received: Instant,
-    last_keepalive_sent: Instant,
-}
-
-impl<S: AsyncDuplexStream, E> WebSocketClientReader<S, E>
-where
-    WebSocketServiceError: Into<E>,
-{
-    pub async fn next(&mut self) -> Result<NextOrClose<TextOrBinary>, E> {
-        enum Event {
-            Message(Option<Result<Message, tungstenite::Error>>),
-            SendKeepAlive,
-            IdleTimeout,
-            StopService,
-        }
-        run_and_update_status(&self.service_cancellation, || async {
-            loop {
-                // first, waiting for the next lifecycle action
-                let next_ping_time = self.last_keepalive_sent + self.keep_alive_interval;
-                let idle_timeout_time = self.last_frame_received + self.max_idle_time;
-                let maybe_message = match tokio::select! {
-                    maybe_message = self.ws_stream.next() => Event::Message(maybe_message),
-                    _ = tokio::time::sleep_until(next_ping_time) => Event::SendKeepAlive,
-                    _ = tokio::time::sleep_until(idle_timeout_time) => Event::IdleTimeout,
-                    _ = self.service_cancellation.cancelled() => Event::StopService,
-                } {
-                    Event::SendKeepAlive => {
-                        self.ws_writer
-                            .send(Message::Ping(bytes::Bytes::new()))
-                            .await?;
-                        self.last_keepalive_sent = Instant::now();
-                        continue;
-                    }
-                    Event::Message(maybe_message) => maybe_message,
-                    Event::StopService => {
-                        log::info!("service was stopped");
-                        return Err(WebSocketServiceError::ChannelClosed.into());
-                    }
-                    Event::IdleTimeout => {
-                        log::warn!("channel was idle for {}s", self.max_idle_time.as_secs());
-                        return Err(WebSocketServiceError::ChannelIdleTooLong.into());
-                    }
-                };
-                // now checking if whatever we've read from the stream is a message
-                let message = match maybe_message {
-                    None | Some(Err(tungstenite::Error::ConnectionClosed)) => {
-                        log::warn!("websocket connection was unexpectedly closed");
-                        return Ok(NextOrClose::Close(None));
-                    }
-                    Some(Err(e)) => {
-                        log::trace!("websocket error: {e}");
-                        return Err(WebSocketServiceError::from(e).into());
-                    }
-                    Some(Ok(message)) => message,
-                };
-                // finally, looking at the type of the message
-                self.last_frame_received = Instant::now();
-                match message {
-                    Message::Text(t) => return Ok(NextOrClose::Next(TextOrBinary::Text(t))),
-                    Message::Binary(b) => return Ok(NextOrClose::Next(TextOrBinary::Binary(b))),
-                    Message::Ping(_) | Message::Pong(_) => continue,
-                    Message::Close(close_frame) => {
-                        self.service_cancellation
-                            .cancel(CancellationReason::RemoteClose);
-                        return Ok(NextOrClose::Close(close_frame));
-                    }
-                    Message::Frame(_) => unreachable!("only for sending"),
-                }
-            }
-        })
-        .await
-    }
-}
-
-async fn run_and_update_status<T, F, Ft, E>(
-    service_status: &CancellationToken,
-    f: F,
-) -> Result<T, E>
-where
-    WebSocketServiceError: Into<E>,
-    F: FnOnce() -> Ft,
-    Ft: Future<Output = Result<T, E>>,
-{
-    if service_status.is_cancelled() {
-        return Err(WebSocketServiceError::ChannelClosed.into());
-    }
-    let result = f().await;
-    if result.is_err() {
-        service_status.cancel(CancellationReason::ServiceError);
-    }
-    result
-}
-
 #[derive(Debug, derive_more::From)]
 #[cfg_attr(any(test, feature = "test-util"), derive(Clone, Eq, PartialEq))]
 pub enum TextOrBinary {
@@ -472,6 +338,8 @@ pub mod testutil {
 
 #[cfg(test)]
 mod test {
+
+    use futures_util::{SinkExt as _, StreamExt as _};
 
     use super::testutil::*;
     use super::*;
