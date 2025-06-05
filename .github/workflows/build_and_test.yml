@@ -87,6 +87,7 @@ jobs:
           - '.gitignore'
           - '.gitattributes'
           - '.editorconfig'
+          - '.tool-versions'
           - 'justfile'
           - 'doc/**'
 
