@@ -22,6 +22,7 @@ members = [
     "rust/bridge/jni/testing",
     "rust/bridge/node",
     "rust/pswoosh",
+    "rust/examples",
 ]
 default-members = [
     "rust/crypto",
