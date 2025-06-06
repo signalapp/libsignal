@@ -15,6 +15,10 @@ async fn main() -> Result<(), SignalProtocolError> {
     let alice_identity = IdentityKeyPair::generate(&mut csprng);
     let bob_identity = IdentityKeyPair::generate(&mut csprng);
     
+    println!("=== IDENTITY KEYS ===");
+    println!("Alice Identity Public Key: {:?}", hex::encode(alice_identity.identity_key().serialize()));
+    println!("Bob Identity Public Key: {:?}", hex::encode(bob_identity.identity_key().serialize()));
+    
     // Create in-memory stores for both parties
     let mut alice_store = InMemSignalProtocolStore::new(alice_identity, csprng.next_u32())?;
     let mut bob_store = InMemSignalProtocolStore::new(bob_identity, csprng.next_u32())?;
@@ -33,6 +37,11 @@ async fn main() -> Result<(), SignalProtocolError> {
         &bob_signed_prekey_signature,
     );
     
+    println!("\n=== BOB'S SIGNED PRE-KEY ===");
+    println!("Signed Pre-Key ID: {:?}", bob_signed_prekey_id);
+    println!("Signed Pre-Key Public: {:?}", hex::encode(bob_signed_prekey_pair.public_key.serialize()));
+    println!("Signed Pre-Key Signature: {:?}", hex::encode(&bob_signed_prekey_signature));
+    
     // Generate Bob's Kyber pre-key (required for PQ ratchet)
     let bob_kyber_keypair = kem::KeyPair::generate(kem::KeyType::Kyber1024, &mut csprng);
     let bob_kyber_prekey_id = KyberPreKeyId::from(1u32);
@@ -47,6 +56,12 @@ async fn main() -> Result<(), SignalProtocolError> {
         &bob_kyber_prekey_signature,
     );
     
+    println!("\n=== BOB'S KYBER PRE-KEY (Post-Quantum) ===");
+    println!("Kyber Pre-Key ID: {:?}", bob_kyber_prekey_id);
+    println!("Kyber Public Key Length: {} bytes", bob_kyber_keypair.public_key.serialize().len());
+    println!("Kyber Public Key: {:?}", hex::encode(bob_kyber_keypair.public_key.serialize()));
+    println!("Kyber Pre-Key Signature: {:?}", hex::encode(&bob_kyber_prekey_signature));
+    
     // Store Bob's pre-keys
     bob_store.save_signed_pre_key(bob_signed_prekey_id, &bob_signed_prekey).await?;
     bob_store.save_kyber_pre_key(bob_kyber_prekey_id, &bob_kyber_prekey).await?;
@@ -55,6 +70,10 @@ async fn main() -> Result<(), SignalProtocolError> {
     let bob_prekey_pair = KeyPair::generate(&mut csprng);
     let bob_prekey_id = PreKeyId::from(1u32);
     let bob_prekey = PreKeyRecord::new(bob_prekey_id, &bob_prekey_pair);
+    
+    println!("\n=== BOB'S ONE-TIME PRE-KEY ===");
+    println!("One-Time Pre-Key ID: {:?}", bob_prekey_id);
+    println!("One-Time Pre-Key Public: {:?}", hex::encode(bob_prekey_pair.public_key.serialize()));
     
     bob_store.save_pre_key(bob_prekey_id, &bob_prekey).await?;
     
@@ -74,6 +93,9 @@ async fn main() -> Result<(), SignalProtocolError> {
         bob_kyber_prekey.signature().unwrap(),
     );
     
+    println!("\n=== PRE-KEY BUNDLE CREATED ===");
+    println!("Registration ID: {:?}", bob_store.get_local_registration_id().await?);
+    
     // Alice processes Bob's pre-key bundle to establish session
     process_prekey_bundle(
         &bob_address,
@@ -84,6 +106,8 @@ async fn main() -> Result<(), SignalProtocolError> {
         &mut csprng,
         UsePQRatchet::Yes,
     ).await?;
+    
+    println!("\n=== SESSION ESTABLISHED ===");
     
     // Alice encrypts a message to Bob
     let alice_message = "Hello Bob! This is Alice.";
@@ -96,12 +120,16 @@ async fn main() -> Result<(), SignalProtocolError> {
         &mut csprng,
     ).await?;
     
+    println!("\n=== ALICE'S MESSAGE ===");
     println!("Alice sent: {}", alice_message);
     println!("Ciphertext type: {:?}", alice_ciphertext.message_type());
+    println!("Ciphertext length: {} bytes", alice_ciphertext.serialize().len());
+    println!("Encrypted message: {:?}", hex::encode(alice_ciphertext.serialize()));
     
     // Bob decrypts Alice's message - correct usage
     let bob_plaintext = match &alice_ciphertext {
         CiphertextMessage::PreKeySignalMessage(prekey_msg) => {
+            println!("\n=== DECRYPTING PRE-KEY MESSAGE ===");
             message_decrypt_prekey(
                 prekey_msg,
                 &alice_address,
@@ -115,6 +143,7 @@ async fn main() -> Result<(), SignalProtocolError> {
             ).await?
         },
         CiphertextMessage::SignalMessage(signal_msg) => {
+            println!("\n=== DECRYPTING SIGNAL MESSAGE ===");
             message_decrypt_signal(
                 signal_msg,
                 &alice_address,
@@ -140,12 +169,16 @@ async fn main() -> Result<(), SignalProtocolError> {
         &mut csprng,
     ).await?;
     
+    println!("\n=== BOB'S REPLY ===");
     println!("Bob sent: {}", bob_reply);
     println!("Reply ciphertext type: {:?}", bob_ciphertext.message_type());
+    println!("Reply ciphertext length: {} bytes", bob_ciphertext.serialize().len());
+    println!("Encrypted reply: {:?}", hex::encode(bob_ciphertext.serialize()));
     
     // Alice decrypts Bob's reply (should be SignalMessage after first exchange)
     let alice_received = match &bob_ciphertext {
         CiphertextMessage::SignalMessage(signal_msg) => {
+            println!("\n=== ALICE DECRYPTING BOB'S REPLY ===");
             message_decrypt_signal(
                 signal_msg,
                 &bob_address,
@@ -160,6 +193,7 @@ async fn main() -> Result<(), SignalProtocolError> {
     let alice_decrypted_reply = String::from_utf8(alice_received).expect("Valid UTF-8");
     println!("Alice received reply: {}", alice_decrypted_reply);
     
+    println!("\n=== COMMUNICATION COMPLETE ===");
     println!("Communication established successfully!");
     
     Ok(())

@@ -2839,6 +2839,7 @@ dependencies = [
 name = "libsignal-sample"
 version = "0.1.0"
 dependencies = [
+ "hex",
  "libsignal-protocol",
  "rand 0.9.0",
  "tokio",

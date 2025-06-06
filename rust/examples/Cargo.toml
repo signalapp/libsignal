@@ -6,4 +6,9 @@ edition = "2024"
 [dependencies]
 libsignal-protocol = { path = "../protocol" }
 rand = "0.9"
+hex = "0.4"
 tokio = { version = "1.0", features = ["full"] }
+
+[[bin]]
+name = "communication"
+path = "src/communication.rs"
