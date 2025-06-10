@@ -165,6 +165,7 @@ trait TryIntoResponse<R>: Sized {
 ///
 /// Necessary because `()` implements `serde::Deserialize`, so it looks like a valid JSON body to
 /// the type system.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct Empty;
 
 impl TryIntoResponse<Empty> for chat::Response {
@@ -246,5 +247,94 @@ impl std::fmt::Debug for DebugAsStrOrBytes<'_> {
             Ok(s) => s.fmt(f),
             Err(_) => hex::encode(self.0).fmt(f),
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use libsignal_net::infra::errors::RetryLater;
+    use libsignal_net::infra::AsStaticHttpHeader as _;
+    use libsignal_net::registration::RequestedInformation;
+    use test_case::test_case;
+
+    use super::*;
+
+    fn json(status: u16, body: &str) -> chat::Response {
+        chat::Response {
+            status: http::StatusCode::from_u16(status).expect("valid"),
+            message: None,
+            headers: http::HeaderMap::from_iter([(http::header::CONTENT_TYPE, JSON_CONTENT_TYPE)]),
+            body: Some(bytes::Bytes::copy_from_slice(body.as_bytes())),
+        }
+    }
+
+    fn empty(status: u16) -> chat::Response {
+        chat::Response {
+            status: http::StatusCode::from_u16(status).expect("valid"),
+            message: None,
+            headers: http::HeaderMap::new(),
+            body: None,
+        }
+    }
+
+    fn headers(status: u16, headers: &[(http::HeaderName, &'static str)]) -> chat::Response {
+        chat::Response {
+            status: http::StatusCode::from_u16(status).expect("valid"),
+            message: None,
+            headers: headers
+                .iter()
+                .map(|(name, value)| (name.clone(), http::HeaderValue::from_static(value)))
+                .collect(),
+            body: None,
+        }
+    }
+
+    #[test_case(empty(200) => matches Ok(Empty))]
+    #[test_case(empty(204) => matches Ok(Empty))]
+    #[test_case(json(200, "{}") => matches Err(RequestError::Unexpected { log_safe: m }) if m.contains("content-type"))]
+    #[test_case(empty(500) => matches Err(RequestError::ServerSideError))]
+    #[test_case(json(503, "{}") => matches Err(RequestError::ServerSideError))]
+    #[test_case(empty(429) => matches Err(RequestError::Unexpected { log_safe: m }) if m.contains("429"))]
+    #[test_case(headers(
+        429, &[(RetryLater::HEADER_NAME, "5")]
+    ) => matches Err(RequestError::RetryLater(RetryLater { retry_after_seconds: 5 })))]
+    #[test_case(empty(428) => matches Err(RequestError::Unexpected { log_safe: m }) if m.contains("428"))]
+    #[test_case(json(428, "{}") => matches Err(RequestError::Unexpected { log_safe: m }) if m.contains("428"))]
+    #[test_case(json(
+        428, r#"{"token": "zzz", "options": ["captcha"]}"#
+    ) => matches Err(RequestError::Challenge { token, options }) if token == "zzz" && options == vec![RequestedInformation::Captcha])]
+    #[test_case(empty(422) => matches Err(RequestError::Unexpected { log_safe: m }) if m.contains("server validation"))]
+    #[test_case(empty(419) => matches Err(RequestError::Unexpected { log_safe: m }) if m.contains("419"))]
+    fn try_parse_empty(
+        input: chat::Response,
+    ) -> Result<Empty, RequestError<std::convert::Infallible>> {
+        input
+            .try_into_response()
+            .map_err(|e| e.into_request_error("test", |_| None))
+    }
+
+    #[derive(Debug, serde::Deserialize)]
+    struct Example {
+        foo: u8,
+    }
+
+    #[test_case(empty(200) => matches Err(RequestError::Unexpected { log_safe: m }) if m.contains("content-type"))]
+    #[test_case(headers(
+        200, &[(http::header::CONTENT_TYPE, "application/json")]
+    ) => matches Err(RequestError::Unexpected { log_safe: m }) if m.contains("body"))]
+    #[test_case(json(200, "{}") => matches Err(RequestError::Unexpected { log_safe: m }) if m.contains("body"))]
+    #[test_case(json(200, r#"{"foo": 12}"#) => matches Ok(Example { foo: 12 }))]
+    #[test_case(json(200, r#"{"foo": 12, "bar": 15}"#) => matches Ok(Example { foo: 12 }))]
+    #[test_case(json(200, r#"{"foo": 300}"#) => matches Err(RequestError::Unexpected { log_safe: m }) if m.contains("body"))]
+    #[test_case(
+        chat::Response { headers: http::HeaderMap::new(), ..json(200, r#"{"foo": 12}"#) }
+    => matches Err(RequestError::Unexpected { log_safe: m }) if m.contains("content-type"))]
+    #[test_case(empty(500) => matches Err(RequestError::ServerSideError))]
+    fn try_parse_json(
+        input: chat::Response,
+    ) -> Result<Example, RequestError<std::convert::Infallible>> {
+        input
+            .try_into_response()
+            .map_err(|e| e.into_request_error("test", |_| None))
     }
 }
