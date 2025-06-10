@@ -3,7 +3,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use hex::ToHex as _;
 use serde_with::hex::Hex;
 use serde_with::serde_as;
 use uuid::Uuid;
@@ -23,18 +22,30 @@ pub enum Locator {
 
 #[serde_as]
 #[derive(Debug, serde::Serialize)]
-#[cfg_attr(test, derive(Default, PartialEq))]
+#[cfg_attr(test, derive(PartialEq))]
 pub struct LocatorInfo {
     #[serde(with = "hex")]
     key: Vec<u8>,
-    #[serde(with = "hex")]
-    digest: Vec<u8>,
-    size: u32,
+    integrity_check: IntegrityCheck,
+    plaintext_size: u32,
     transit: Option<TransitTierLocator>,
     media_tier_cdn_number: Option<u32>,
-    media_name: String,
+
     #[serde_as(as = "Option<Hex>")]
     local_key: Option<Vec<u8>>,
+}
+
+#[derive(Debug, serde::Serialize)]
+#[cfg_attr(test, derive(PartialEq))]
+pub enum IntegrityCheck {
+    EncryptedDigest {
+        #[serde(with = "hex")]
+        digest: Vec<u8>,
+    },
+    PlaintextHash {
+        #[serde(with = "hex")]
+        plaintext_hash: Vec<u8>,
+    },
 }
 
 #[serde_as]
@@ -51,18 +62,20 @@ pub struct TransitTierLocator {
 pub enum LocatorError {
     /// Missing key
     MissingKey,
-    /// Missing digest
-    MissingDigest,
+    /// Missing integrity check (digest or plaintextHash)
+    MissingIntegrityCheck,
+    /// localKey is present but plaintextHash is not set
+    UnexpectedLocalKey,
     /// Locator had exactly one of transitCdnKey and transitCdnNumber
     TransitCdnMismatch,
     /// Locator had transitCdnUploadTimestamp but not transitCdnKey
     UnexpectedTransitCdnUploadTimestamp,
     /// transitCdnKey was present but empty
     MissingTransitCdnKey,
-    /// mediaName isn't digest encoded as hex (maybe with "_thumbnail" suffix)
-    InvalidMediaName,
-    /// mediaName is empty but mediaTierCdnNumber is present
+    /// mediaTierCdnNumber is present but plaintextHash is not set
     UnexpectedMediaTierCdnNumber,
+    /// key is present but neither transitCdnKey nor plaintextHash are set
+    UnexpectedKey,
     /// {0}
     InvalidTimestamp(#[from] TimestampError),
 }
@@ -90,48 +103,70 @@ impl<C: ReportUnusualTimestamp + ?Sized> TryIntoWith<LocatorInfo, C>
     fn try_into_with(self, context: &C) -> Result<LocatorInfo, Self::Error> {
         let proto::file_pointer::LocatorInfo {
             key,
-            digest,
-            size,
+            size: plaintext_size,
+            integrityCheck,
             transitCdnKey,
             transitCdnNumber,
             transitTierUploadTimestamp,
             mediaTierCdnNumber,
-            mediaName,
             localKey,
+            legacyDigest: _,
+            legacyMediaName: _,
             special_fields: _,
         } = self;
 
-        if key.is_empty() {
-            return Err(LocatorError::MissingKey);
-        }
-        if digest.is_empty() {
-            return Err(LocatorError::MissingDigest);
-        }
+        let integrity_check = match integrityCheck {
+            Some(proto::file_pointer::locator_info::IntegrityCheck::EncryptedDigest(digest)) => {
+                if digest.is_empty() {
+                    return Err(LocatorError::MissingIntegrityCheck);
+                }
 
-        let media_name = if mediaName.is_empty() {
-            if mediaTierCdnNumber.is_some() {
-                return Err(LocatorError::UnexpectedMediaTierCdnNumber);
+                IntegrityCheck::EncryptedDigest { digest }
             }
-            mediaName
-        } else {
-            let media_name = mediaName.strip_suffix("_thumbnail").unwrap_or(&mediaName);
-            if !media_name.eq_ignore_ascii_case(&digest.encode_hex::<String>()) {
-                return Err(LocatorError::InvalidMediaName);
+            Some(proto::file_pointer::locator_info::IntegrityCheck::PlaintextHash(hash)) => {
+                if hash.is_empty() {
+                    return Err(LocatorError::MissingIntegrityCheck);
+                }
+
+                IntegrityCheck::PlaintextHash {
+                    plaintext_hash: hash,
+                }
             }
-            mediaName
+            None => return Err(LocatorError::MissingIntegrityCheck),
         };
 
         let transit =
             (transitCdnKey, transitCdnNumber, transitTierUploadTimestamp).try_into_with(context)?;
 
+        let has_content =
+            transit.is_some() || matches!(integrity_check, IntegrityCheck::PlaintextHash { .. });
+        match (has_content, key.is_empty()) {
+            (true, true) => return Err(LocatorError::MissingKey),
+            (false, false) => return Err(LocatorError::UnexpectedKey),
+            (true, false) => {} // Content and key are both present, normal happy case.
+            (false, true) => {} // Neither content nor key are present, equivalent to old InvalidAttachmentLocator.
+        }
+
+        // If plaintextHash is not set, we have never downloaded the file, so
+        // we cannot have a local key. If we have never downloaded it, we also
+        // can never have uploaded it to the media tier, so we should not have
+        // a media tier CDN number.
+        if !matches!(integrity_check, IntegrityCheck::PlaintextHash { .. }) {
+            if localKey.is_some() {
+                return Err(LocatorError::UnexpectedLocalKey);
+            }
+            if mediaTierCdnNumber.is_some() {
+                return Err(LocatorError::UnexpectedMediaTierCdnNumber);
+            }
+        }
+
         Ok(LocatorInfo {
             key,
             local_key: localKey,
-            digest,
-            size,
+            plaintext_size,
             transit,
             media_tier_cdn_number: mediaTierCdnNumber,
-            media_name,
+            integrity_check,
         })
     }
 }
@@ -324,16 +359,41 @@ mod test {
     impl proto::file_pointer::LocatorInfo {
         fn test_data() -> Self {
             Self {
-                mediaName: "5678".into(),
                 key: hex!("1234").into(),
-                digest: hex!("5678").into(),
+                legacyDigest: vec![],
+                integrityCheck: None, // Will be set by specific test data methods
                 size: 123,
                 transitCdnKey: Some("ABCDEFG".into()),
                 transitCdnNumber: Some(2),
                 transitTierUploadTimestamp: Some(MillisecondsSinceEpoch::TEST_VALUE.0),
+                localKey: None,
+                mediaTierCdnNumber: None,
+                legacyMediaName: "".to_string(),
+                special_fields: Default::default(),
+            }
+        }
+
+        fn test_data_with_plaintext_hash() -> Self {
+            Self {
+                integrityCheck: Some(
+                    proto::file_pointer::locator_info::IntegrityCheck::PlaintextHash(
+                        b"plaintextHash".to_vec(),
+                    ),
+                ),
                 localKey: Some(b"local key".to_vec()),
                 mediaTierCdnNumber: Some(87),
-                special_fields: Default::default(),
+                ..Self::test_data()
+            }
+        }
+
+        fn test_data_with_digest() -> Self {
+            Self {
+                integrityCheck: Some(
+                    proto::file_pointer::locator_info::IntegrityCheck::EncryptedDigest(
+                        hex!("abcd").into(),
+                    ),
+                ),
+                ..Self::test_data()
             }
         }
     }
@@ -341,7 +401,8 @@ mod test {
     #[test]
     fn valid_locator_info() {
         assert_eq!(
-            proto::file_pointer::LocatorInfo::test_data().try_into_with(&TestContext::default()),
+            proto::file_pointer::LocatorInfo::test_data_with_plaintext_hash()
+                .try_into_with(&TestContext::default()),
             Ok(Locator::LocatorInfo(LocatorInfo {
                 transit: Some(TransitTierLocator {
                     cdn_key: "ABCDEFG".into(),
@@ -349,23 +410,42 @@ mod test {
                     upload_timestamp: Some(Timestamp::test_value())
                 }),
                 key: vec![0x12, 0x34],
-                digest: vec![0x56, 0x78],
-                size: 123,
+                integrity_check: IntegrityCheck::PlaintextHash {
+                    plaintext_hash: b"plaintextHash".to_vec()
+                },
+                plaintext_size: 123,
                 media_tier_cdn_number: Some(87),
-                media_name: "5678".into(),
                 local_key: Some(b"local key".to_vec())
             }))
         )
     }
 
+    #[test]
+    fn valid_locator_info_with_digest() {
+        assert_eq!(
+            proto::file_pointer::LocatorInfo::test_data_with_digest()
+                .try_into_with(&TestContext::default()),
+            Ok(Locator::LocatorInfo(LocatorInfo {
+                transit: Some(TransitTierLocator {
+                    cdn_key: "ABCDEFG".into(),
+                    cdn_number: 2,
+                    upload_timestamp: Some(Timestamp::test_value())
+                }),
+                key: vec![0x12, 0x34],
+                integrity_check: IntegrityCheck::EncryptedDigest {
+                    digest: vec![0xab, 0xcd]
+                },
+                plaintext_size: 123,
+                media_tier_cdn_number: None,
+                local_key: None
+            }))
+        )
+    }
+
     #[test_case(|_| {} => Ok(()); "valid")]
-    #[test_case(|x| {x.mediaName = "".into(); x.mediaTierCdnNumber = None } => Ok(()); "mediaName can be empty")]
-    #[test_case(|x| x.mediaName = "1234".into() => Err(LocatorError::InvalidMediaName); "invalid mediaName")]
-    #[test_case(|x| x.mediaName = "5678_thumbnail".into() => Ok(()); "thumbnail mediaName")]
-    #[test_case(|x| x.mediaName = "".into() => Err(LocatorError::UnexpectedMediaTierCdnNumber); "mediaTierCdnNumber without mediaName")]
+    #[test_case(|x| x.integrityCheck = None => Err(LocatorError::MissingIntegrityCheck); "no integrityCheck")]
     #[test_case(|x| x.mediaTierCdnNumber = None => Ok(()); "no mediaTierCdnNumber")]
     #[test_case(|x| x.key = vec![] => Err(LocatorError::MissingKey); "no key")]
-    #[test_case(|x| x.digest = vec![] => Err(LocatorError::MissingDigest); "no digest")]
     #[test_case(|x| x.size = 0 => Ok(()); "size zero")]
     #[test_case(|x| x.transitCdnKey = None => Err(LocatorError::TransitCdnMismatch); "no transitCdnKey")]
     #[test_case(|x| x.transitCdnKey = Some("".into()) => Err(LocatorError::MissingTransitCdnKey); "empty transitCdnKey")]
@@ -384,7 +464,32 @@ mod test {
     fn locator_info(
         modifier: impl FnOnce(&mut proto::file_pointer::LocatorInfo),
     ) -> Result<(), LocatorError> {
-        let mut locator = proto::file_pointer::LocatorInfo::test_data();
+        let mut locator = proto::file_pointer::LocatorInfo::test_data_with_plaintext_hash();
+        modifier(&mut locator);
+        locator
+            .try_into_with(&TestContext::default())
+            .map(|_: Locator| ())
+    }
+
+    #[test_case(|_| {} => Ok(()); "valid with digest")]
+    #[test_case(|x| x.integrityCheck = Some(proto::file_pointer::locator_info::IntegrityCheck::EncryptedDigest(vec![])) => Err(LocatorError::MissingIntegrityCheck); "empty digest")]
+    #[test_case(|x| x.localKey = Some(b"key".to_vec()) => Err(LocatorError::UnexpectedLocalKey); "localKey means we downloaded it, so we should have plaintextHash instead of digest")]
+    #[test_case(|x| x.mediaTierCdnNumber = Some(1) => Err(LocatorError::UnexpectedMediaTierCdnNumber); "mediaTierCdnNumber means we uploaded it to the media tier, so we should have calculated a plaintextHash when we did that")]
+    #[test_case(|x| {
+        x.transitCdnKey = None;
+        x.transitCdnNumber = None;
+        x.transitTierUploadTimestamp = None;
+    } => Err(LocatorError::UnexpectedKey); "no transit CDN info or plaintextHash, but key is present")]
+    #[test_case(|x| {
+        x.key = vec![];
+        x.transitCdnKey = None;
+        x.transitCdnNumber = None;
+        x.transitTierUploadTimestamp = None;
+    } => Ok(()); "digest-only, no key")]
+    fn locator_info_with_digest(
+        modifier: impl FnOnce(&mut proto::file_pointer::LocatorInfo),
+    ) -> Result<(), LocatorError> {
+        let mut locator = proto::file_pointer::LocatorInfo::test_data_with_digest();
         modifier(&mut locator);
         locator
             .try_into_with(&TestContext::default())
@@ -420,7 +525,7 @@ mod test {
 
     #[test_case(|_| {} => Ok(()); "valid")]
     #[test_case(|x| {
-        x.locatorInfo = Some(proto::file_pointer::LocatorInfo::test_data()).into();
+        x.locatorInfo = Some(proto::file_pointer::LocatorInfo::test_data_with_plaintext_hash()).into();
     } => Ok(()); "with locatorInfo")]
     #[test_case(|x| x.locator = None => Ok(()); "no legacy locator")]
     #[test_case(|x| x.locatorInfo = None.into() => Err(FilePointerError::NoLocatorInfo); "no locatorInfo")]

@@ -443,26 +443,35 @@ impl Visit<Scrambler> for proto::file_pointer::LocatorInfo {
     fn accept(&mut self, visitor: &mut Scrambler) {
         let Self {
             key,
-            digest,
+            integrityCheck,
             size: _,
             transitCdnKey,
             transitCdnNumber: _,
             transitTierUploadTimestamp: _,
             mediaTierCdnNumber: _,
-            mediaName,
             localKey,
+            legacyDigest,
+            legacyMediaName,
             special_fields: _,
         } = self;
 
         localKey.randomize(&mut visitor.rng);
         key.randomize(&mut visitor.rng);
-        digest.randomize(&mut visitor.rng);
-        let is_thumbnail = mediaName.ends_with("_thumbnail");
-        *mediaName = hex::encode(digest);
-        if is_thumbnail {
-            mediaName.push_str("_thumbnail");
+
+        // Randomize the integrity check while preserving the type
+        if let Some(check) = integrityCheck {
+            use proto::file_pointer::locator_info::IntegrityCheck;
+            match check {
+                IntegrityCheck::EncryptedDigest(digest) => digest.randomize(&mut visitor.rng),
+                IntegrityCheck::PlaintextHash(hash) => hash.randomize(&mut visitor.rng),
+            }
         }
+
         transitCdnKey.randomize(&mut visitor.rng);
+
+        // We can remove this after all clients have removed support for the old fields.
+        legacyDigest.randomize(&mut visitor.rng);
+        legacyMediaName.randomize(&mut visitor.rng);
     }
 }
 
