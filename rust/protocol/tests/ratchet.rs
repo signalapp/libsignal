@@ -25,7 +25,7 @@ fn test_ratcheting_session_as_bob() -> Result<(), SignalProtocolError> {
         hex!("4875cc69ddf8ea0719ec947d61081135868d5fd801f02c0225e516df2156605e");
 
     let alice_base_public =
-        hex!("05472d1fb1a9862c3af6beaca8920277e2b26f4a79213ec7c906aeb35e03cf8950");
+        hex!("05e2c05860f2ac6b2b57ba564b421ffe71e4b128c591e46e0491cc9b33dbf22a27");
 
     let alice_identity_public =
         hex!("05b4a8455660ada65b401007f615e654041746432e3339c6875149bceefcb42b4a");
@@ -36,7 +36,7 @@ fn test_ratcheting_session_as_bob() -> Result<(), SignalProtocolError> {
     let bob_signed_prekey_private =
         hex!("583900131fb727998b7803fe6ac22cc591f342e4e42a8c8d5d78194209b8d253");
 
-    let expected_sender_chain = "9797caca53c989bbe229a40ca7727010eb2604fc14945d77958a0aeda088b44d";
+    let expected_sender_chain = "ab9be50e5cb22a925446ab90ee5670545f4fd32902459ec274b6ad0ae5d6031a";
 
     let bob_identity_key_public = IdentityKey::decode(&bob_identity_public)?;
 
@@ -100,10 +100,10 @@ fn test_ratcheting_session_as_alice() -> Result<(), SignalProtocolError> {
         hex!("05f1f43874f6966956c2dd473f8fa15adeb71d1cb991b2341692324cefb1c5e626");
 
     let alice_base_public =
-        hex!("05472d1fb1a9862c3af6beaca8920277e2b26f4a79213ec7c906aeb35e03cf8950");
+        hex!("05e2c05860f2ac6b2b57ba564b421ffe71e4b128c591e46e0491cc9b33dbf22a27");
 
     let alice_base_private =
-        hex!("11ae7c64d1e61cd596b76a0db5012673391cae66edbfcf073b4da80516a47449");
+        hex!("10ae7c64d1e61cd596b76a0db5012673391cae66edbfcf073b4da80516a47449");
 
     let bob_signed_prekey_public =
         hex!("05ac248a8f263be6863576eb0362e28c828f0107a3379d34bab1586bf8c770cd67");
@@ -114,7 +114,6 @@ fn test_ratcheting_session_as_alice() -> Result<(), SignalProtocolError> {
     let alice_identity_private =
         hex!("9040f0d4e09cf38f6dc7c13779c908c015a1da4fa78737a080eb0a6f4f5f8f58");
 
-    // This differs from the Java test and needs investigation
     let expected_receiver_chain =
         "ab9be50e5cb22a925446ab90ee5670545f4fd32902459ec274b6ad0ae5d6031a";
 
