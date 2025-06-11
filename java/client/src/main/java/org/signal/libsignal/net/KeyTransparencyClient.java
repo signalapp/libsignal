@@ -28,6 +28,19 @@ import org.signal.libsignal.protocol.ServiceId;
  *   <li>Types implementing {@code Store} can be made thread safe
  *   <li>{@link KeyTransparencyClient} operations-completed asynchronous calls-can be serialized.
  * </ul>
+ *
+ * <p>Example usage:
+ *
+ * <pre>
+ * var net = new Network(Network.Environment.STAGING, "key-transparency-example");
+ * var chat = net.connectUnauthChat(new Listener()).get();
+ * chat.start();
+ *
+ * KeyTransparencyClient client = chat.keyTransparencyClient();
+ *
+ * client.search(aci, identityKey, null, null, null, KT_DATA_STORE).get();
+ *
+ * </pre>
  */
 public class KeyTransparencyClient {
   private final TokioAsyncContext tokioAsyncContext;
