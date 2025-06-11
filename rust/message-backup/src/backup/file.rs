@@ -140,11 +140,12 @@ impl<C: ReportUnusualTimestamp + ?Sized> TryIntoWith<LocatorInfo, C>
 
         let has_content =
             transit.is_some() || matches!(integrity_check, IntegrityCheck::PlaintextHash { .. });
-        match (has_content, key.is_empty()) {
-            (true, true) => return Err(LocatorError::MissingKey),
-            (false, false) => return Err(LocatorError::UnexpectedKey),
-            (true, false) => {} // Content and key are both present, normal happy case.
-            (false, true) => {} // Neither content nor key are present, equivalent to old InvalidAttachmentLocator.
+        let has_key = !key.is_empty();
+        match (has_content, has_key) {
+            (true, false) => return Err(LocatorError::MissingKey),
+            (false, true) => return Err(LocatorError::UnexpectedKey),
+            (true, true) => {} // Content and key are both present, normal happy case.
+            (false, false) => {} // Neither content nor key are present, equivalent to old InvalidAttachmentLocator. This is the case for old InvalidAttachmentLocator.
         }
 
         // If plaintextHash is not set, we have never downloaded the file, so
