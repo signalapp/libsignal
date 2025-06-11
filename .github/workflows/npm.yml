@@ -24,9 +24,9 @@ jobs:
 
     strategy:
       matrix:
-        os: [windows-latest, macos-latest]
+        os: [windows-latest, macos-15]
         include:
-        - os: macos-latest
+        - os: macos-15
           rust-cross-target: x86_64-apple-darwin
         - os: windows-latest
           rust-cross-target: aarch64-pc-windows-msvc

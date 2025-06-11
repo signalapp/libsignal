@@ -21,10 +21,10 @@ jobs:
 
     strategy:
       matrix:
-        os: [windows-latest, macos-latest]
+        os: [windows-latest, macos-15]
         include:
           - os: windows-latest
-          - os: macos-latest
+          - os: macos-15
             additional-rust-target: x86_64-apple-darwin
         # Ubuntu binaries are built using Docker, below
 
@@ -64,7 +64,7 @@ jobs:
       if: matrix.os == 'windows-latest'
 
     - run: brew install protobuf
-      if: matrix.os == 'macos-latest'
+      if: startsWith(matrix.os, 'macos-')
 
     - name: Build client for host
       run: java/build_jni.sh desktop
@@ -76,13 +76,13 @@ jobs:
 
     - name: Build client for alternate target
       run: java/build_jni.sh desktop
-      if: matrix.os == 'macos-latest'
+      if: startsWith(matrix.os, 'macos-')
       env:
         CARGO_BUILD_TARGET: ${{ matrix.additional-rust-target }}
 
     - name: Build server for alternate target
       run: java/build_jni.sh server
-      if: matrix.os == 'macos-latest'
+      if: startsWith(matrix.os, 'macos-')
       env:
         CARGO_BUILD_TARGET: ${{ matrix.additional-rust-target }}
 

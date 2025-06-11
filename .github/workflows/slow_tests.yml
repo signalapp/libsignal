@@ -22,7 +22,7 @@ on:
         required: true
         # This is redundant with specifying it at the use site, but makes it appear in the website UI.
         # See https://github.com/actions/runner-images/blob/main/README.md#available-images
-        default: 'macos-latest'
+        default: 'macos-15'
 
 jobs:
   java-docker:
@@ -308,7 +308,7 @@ jobs:
 
   swift-cocoapod:
     name: Swift CocoaPod (all architectures)
-    runs-on: ${{ inputs.ios_runner || 'macos-latest' }}
+    runs-on: ${{ inputs.ios_runner || 'macos-15' }}
     if: ${{ github.event_name != 'schedule' || (github.repository_owner == 'signalapp' && endsWith(github.repository, '-private')) }}
     timeout-minutes: 45
 
