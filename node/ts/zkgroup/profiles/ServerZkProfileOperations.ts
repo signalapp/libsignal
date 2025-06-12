@@ -41,7 +41,7 @@ export default class ServerZkProfileOperations {
   }
 
   issueExpiringProfileKeyCredentialWithRandom(
-    random: Buffer,
+    random: Uint8Array,
     profileKeyCredentialRequest: ProfileKeyCredentialRequest,
     userId: Aci,
     profileKeyCommitment: ProfileKeyCommitment,

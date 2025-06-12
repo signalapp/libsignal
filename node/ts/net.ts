@@ -5,7 +5,6 @@
 
 import type { ReadonlyDeep } from 'type-fest';
 import * as Native from '../Native';
-import { Buffer } from 'node:buffer';
 import { cdsiLookup, CDSRequestOptionsType, CDSResponseType } from './net/CDSI';
 import {
   ChatConnection,
@@ -82,7 +81,7 @@ export type NetConstructorOptions = Readonly<
       TESTING_localServer_chatPort: number;
       TESTING_localServer_cdsiPort: number;
       TESTING_localServer_svr2Port: number;
-      TESTING_localServer_rootCertificateDer: Buffer;
+      TESTING_localServer_rootCertificateDer: Uint8Array;
     }
 >;
 

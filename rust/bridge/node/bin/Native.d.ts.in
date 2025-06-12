@@ -1,11 +1,11 @@
 //
-// Copyright 2020-2022 Signal Messenger, LLC.
+// Copyright 2020 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
 // WARNING: this file was automatically generated
 
-type Uuid = Buffer;
+type Uuid = Uint8Array;
 
 /// A Native.Timestamp may be measured in seconds or in milliseconds;
 /// what's important is that it's an integer less than Number.MAX_SAFE_INTEGER.
@@ -28,7 +28,7 @@ type ChatResponse = {
   status: number;
   message: string | undefined;
   headers: ReadonlyArray<[string, string]>;
-  body: Buffer | undefined;
+  body: Uint8Array | undefined;
 };
 
 type ChatServiceDebugInfo = {
@@ -116,15 +116,15 @@ type SenderKeyStore = {
 };
 
 type InputStream = {
-  _read(amount: number): Promise<Buffer>;
+  _read(amount: number): Promise<Uint8Array>;
   _skip(amount: number): Promise<void>;
 };
 
-type SyncInputStream = Buffer;
+type SyncInputStream = Uint8Array;
 
 type ChatListener = {
   _incoming_message(
-    envelope: Buffer,
+    envelope: Uint8Array,
     timestamp: number,
     ack: ServerMessageAck
   ): void;
@@ -161,8 +161,8 @@ type CheckSvr2CredentialsResponse = Map<
 
 type SignedPublicPreKey = {
   keyId: number;
-  publicKey: Buffer;
-  signature: Buffer;
+  publicKey: Uint8Array;
+  signature: Uint8Array;
 };
 
 type Wrapper<T> = Readonly<{
@@ -181,6 +181,6 @@ type CancellablePromise<T> = Promise<T> & {
 };
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-type Serialized<T> = Buffer;
+type Serialized<T> = Uint8Array;
 
 export function registerErrors(errorsModule: Record<string, unknown>): void;

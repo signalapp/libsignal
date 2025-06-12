@@ -16,7 +16,7 @@ export class PublicKey {
     return new PublicKey(handle);
   }
 
-  static deserialize(buf: Buffer): PublicKey {
+  static deserialize(buf: Uint8Array): PublicKey {
     return new PublicKey(Native.PublicKey_Deserialize(buf));
   }
 
@@ -25,19 +25,19 @@ export class PublicKey {
     return Native.PublicKey_Compare(this, other);
   }
 
-  serialize(): Buffer {
+  serialize(): Uint8Array {
     return Native.PublicKey_Serialize(this);
   }
 
-  getPublicKeyBytes(): Buffer {
+  getPublicKeyBytes(): Uint8Array {
     return Native.PublicKey_GetPublicKeyBytes(this);
   }
 
-  verify(msg: Buffer, sig: Buffer): boolean {
+  verify(msg: Uint8Array, sig: Uint8Array): boolean {
     return Native.PublicKey_Verify(this, msg, sig);
   }
 
-  verifyAlternateIdentity(other: PublicKey, signature: Buffer): boolean {
+  verifyAlternateIdentity(other: PublicKey, signature: Uint8Array): boolean {
     return Native.IdentityKey_VerifyAlternateIdentity(this, other, signature);
   }
 }
@@ -57,19 +57,19 @@ export class PrivateKey {
     return new PrivateKey(Native.PrivateKey_Generate());
   }
 
-  static deserialize(buf: Buffer): PrivateKey {
+  static deserialize(buf: Uint8Array): PrivateKey {
     return new PrivateKey(Native.PrivateKey_Deserialize(buf));
   }
 
-  serialize(): Buffer {
+  serialize(): Uint8Array {
     return Native.PrivateKey_Serialize(this);
   }
 
-  sign(msg: Buffer): Buffer {
+  sign(msg: Uint8Array): Uint8Array {
     return Native.PrivateKey_Sign(this, msg);
   }
 
-  agree(other_key: PublicKey): Buffer {
+  agree(other_key: PublicKey): Uint8Array {
     return Native.PrivateKey_Agree(this, other_key);
   }
 
@@ -92,7 +92,7 @@ export class IdentityKeyPair {
     return new IdentityKeyPair(privateKey.getPublicKey(), privateKey);
   }
 
-  static deserialize(buffer: Buffer): IdentityKeyPair {
+  static deserialize(buffer: Uint8Array): IdentityKeyPair {
     const { privateKey, publicKey } =
       Native.IdentityKeyPair_Deserialize(buffer);
     return new IdentityKeyPair(
@@ -101,11 +101,11 @@ export class IdentityKeyPair {
     );
   }
 
-  serialize(): Buffer {
+  serialize(): Uint8Array {
     return Native.IdentityKeyPair_Serialize(this.publicKey, this.privateKey);
   }
 
-  signAlternateIdentity(other: PublicKey): Buffer {
+  signAlternateIdentity(other: PublicKey): Uint8Array {
     return Native.IdentityKeyPair_SignAlternateIdentity(
       this.publicKey,
       this.privateKey,

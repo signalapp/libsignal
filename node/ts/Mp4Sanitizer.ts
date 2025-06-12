@@ -56,7 +56,7 @@ export class SanitizedMetadata {
    * Get the sanitized metadata, if any.
    * @returns The sanitized metadata, or `null` if it didn't need to be sanitized.
    */
-  getMetadata(): Buffer | null {
+  getMetadata(): Uint8Array | null {
     const metadata = Native.SanitizedMetadata_GetMetadata(this);
     if (metadata.length == 0) {
       return null;

@@ -106,9 +106,9 @@ describe('bridge_fn', () => {
 
   it('can process bytestring arrays', () => {
     const result = Native.TESTING_ProcessBytestringArray([
-      Buffer.of(1, 2, 3),
-      Buffer.of(),
-      Buffer.of(4, 5, 6),
+      Uint8Array.of(1, 2, 3),
+      Uint8Array.of(),
+      Uint8Array.of(4, 5, 6),
     ]);
     assert.deepStrictEqual(
       result.map((buffer) => Array.from(buffer)),
@@ -195,7 +195,7 @@ describe('bridge_fn', () => {
     const present = Native.TESTING_ConvertOptionalUuid(true);
     assert.deepEqual(
       present,
-      Buffer.from(uuid.parse('abababab-1212-8989-baba-565656565656'))
+      uuid.parse('abababab-1212-8989-baba-565656565656')
     );
 
     const absent = Native.TESTING_ConvertOptionalUuid(false);

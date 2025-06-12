@@ -10,7 +10,7 @@ import GroupIdentifier from './GroupIdentifier';
 export default class GroupPublicParams extends ByteArray {
   private readonly __type?: never;
 
-  constructor(contents: Buffer) {
+  constructor(contents: Uint8Array) {
     super(contents, Native.GroupPublicParams_CheckValidContents);
   }
 

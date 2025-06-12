@@ -70,7 +70,7 @@ describe('Registration types', () => {
     );
     expect(response.usernameHash).to.deep.eq(Buffer.from('username-hash'));
     expect(response.usernameLinkHandle).to.deep.eq(
-      Buffer.from(Array(16).fill(0x55))
+      Uint8Array.from(Array(16).fill(0x55))
     );
     expect(response.storageCapable).to.eq(true);
     expect(response.entitlementBadges).to.deep.eq([
@@ -292,7 +292,7 @@ describe('Registration client', () => {
       expect(secondRequest.path).to.eq(
         '/v1/verification/session/fake-session-A/code'
       );
-      expect(secondRequest.body.toString()).to.eq(
+      expect(new TextDecoder().decode(secondRequest.body)).to.eq(
         '{"transport":"voice","client":"libsignal test"}'
       );
       expect(secondRequest.headers).to.deep.eq(

@@ -9,14 +9,16 @@ export default class ProfileKeyVersion extends ByteArray {
   private readonly __type?: never;
   static SIZE = 64;
 
-  constructor(contents: Buffer | string) {
+  constructor(contents: Uint8Array | string) {
     super(
-      typeof contents === 'string' ? Buffer.from(contents) : contents,
+      typeof contents === 'string'
+        ? new TextEncoder().encode(contents)
+        : contents,
       ProfileKeyVersion.checkLength(ProfileKeyVersion.SIZE)
     );
   }
 
   toString(): string {
-    return this.contents.toString('utf8');
+    return new TextDecoder().decode(this.contents);
   }
 }

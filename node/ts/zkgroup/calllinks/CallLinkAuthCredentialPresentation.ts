@@ -13,7 +13,7 @@ import UuidCiphertext from '../groups/UuidCiphertext';
 export default class CallLinkAuthCredentialPresentation extends ByteArray {
   private readonly __type?: never;
 
-  constructor(contents: Buffer) {
+  constructor(contents: Uint8Array) {
     super(
       contents,
       Native.CallLinkAuthCredentialPresentation_CheckValidContents

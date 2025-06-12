@@ -16,6 +16,7 @@ import {
 import { LibSignalErrorBase } from '../Errors';
 
 import * as stream from 'stream';
+import { assertArrayEquals } from './util';
 
 use(chaiAsPromised);
 
@@ -56,10 +57,7 @@ describe('Incremental MAC', () => {
         CHUNK_SIZE
       );
       await stream.promises.pipeline(testInputStream(), digestingPassThrough);
-      assert.equal(
-        TEST_DIGEST.toString('hex'),
-        digestingPassThrough.getFinalDigest().toString('hex')
-      );
+      assertArrayEquals(TEST_DIGEST, digestingPassThrough.getFinalDigest());
     });
   });
 
@@ -123,8 +121,8 @@ describe('Incremental MAC', () => {
     // Use uneven chunk size to trigger buffering
     const CHUNK_SIZE = 13579;
 
-    function toChunkedReadable(buffer: Buffer): stream.Readable {
-      const chunked = new Array<Buffer>();
+    function toChunkedReadable(buffer: Uint8Array): stream.Readable {
+      const chunked = new Array<Uint8Array>();
       for (let i = 0; i < buffer.byteLength; i += CHUNK_SIZE) {
         chunked.push(buffer.subarray(i, i + CHUNK_SIZE));
       }

@@ -53,8 +53,8 @@ export type MessageBackupKeyInput = Readonly<
       aci: Aci;
     }
   | {
-      backupKey: BackupKey | Buffer;
-      backupId: Buffer;
+      backupKey: BackupKey | Uint8Array;
+      backupId: Uint8Array;
     }
 >;
 
@@ -97,12 +97,12 @@ export class MessageBackupKey {
   }
 
   /** An HMAC key used to sign a backup file. */
-  public get hmacKey(): Buffer {
+  public get hmacKey(): Uint8Array {
     return Native.MessageBackupKey_GetHmacKey(this);
   }
 
   /** An AES-256-CBC key used to encrypt a backup file. */
-  public get aesKey(): Buffer {
+  public get aesKey(): Uint8Array {
     return Native.MessageBackupKey_GetAesKey(this);
   }
 }
@@ -183,7 +183,7 @@ export class OnlineBackupValidator {
    *
    * @throws BackupValidationError on error
    */
-  constructor(backupInfo: Buffer, purpose: Purpose) {
+  constructor(backupInfo: Uint8Array, purpose: Purpose) {
     this._nativeHandle = Native.OnlineBackupValidator_New(backupInfo, purpose);
   }
 
@@ -194,7 +194,7 @@ export class OnlineBackupValidator {
    *
    * @throws BackupValidationError on error
    */
-  addFrame(frame: Buffer): void {
+  addFrame(frame: Uint8Array): void {
     Native.OnlineBackupValidator_AddFrame(this, frame);
   }
 

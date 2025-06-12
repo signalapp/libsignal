@@ -9,7 +9,7 @@ import * as Native from '../../../Native';
 export default class ReceiptCredentialResponse extends ByteArray {
   private readonly __type?: never;
 
-  constructor(contents: Buffer) {
+  constructor(contents: Uint8Array) {
     super(contents, Native.ReceiptCredentialResponse_CheckValidContents);
   }
 }

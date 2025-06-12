@@ -43,7 +43,7 @@ impl NodeInputStream {
             Ok(result)
         })
         .then(|cx, result| match result {
-            Ok(value) => match value.downcast::<JsBuffer, _>(cx) {
+            Ok(value) => match value.downcast::<JsUint8Array, _>(cx) {
                 Ok(b) => Ok(b.as_slice(cx).to_vec()),
                 Err(_) => Err("unexpected result from _read".into()),
             },

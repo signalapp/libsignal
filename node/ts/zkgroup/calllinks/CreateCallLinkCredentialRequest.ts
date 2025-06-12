@@ -16,7 +16,7 @@ import { Aci } from '../../Address';
 export default class CreateCallLinkCredentialRequest extends ByteArray {
   private readonly __type?: never;
 
-  constructor(contents: Buffer) {
+  constructor(contents: Uint8Array) {
     super(contents, Native.CreateCallLinkCredentialRequest_CheckValidContents);
   }
 
@@ -33,7 +33,7 @@ export default class CreateCallLinkCredentialRequest extends ByteArray {
     userId: Aci,
     timestamp: number,
     params: GenericServerSecretParams,
-    random: Buffer
+    random: Uint8Array
   ): CreateCallLinkCredentialResponse {
     return new CreateCallLinkCredentialResponse(
       Native.CreateCallLinkCredentialRequest_IssueDeterministic(

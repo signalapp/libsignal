@@ -23,14 +23,14 @@ export interface Recipient {
  * material.
  */
 export default class SealedSenderMultiRecipientMessage {
-  readonly _buffer: Buffer;
+  readonly _buffer: Uint8Array;
   readonly _recipientMap: {
     [serviceId: string]: Native.SealedSenderMultiRecipientMessageRecipient;
   };
   readonly _excludedRecipients: string[];
   readonly _offsetOfSharedData: number;
 
-  constructor(buffer: Buffer) {
+  constructor(buffer: Uint8Array) {
     const { recipientMap, excludedRecipients, offsetOfSharedData } =
       Native.SealedSenderMultiRecipientMessage_Parse(buffer);
     this._buffer = buffer;
@@ -66,16 +66,20 @@ export default class SealedSenderMultiRecipientMessage {
    * {@link #recipientsByServiceIdString}. The same payload should be sent to all of the recipient's
    * devices.
    */
-  messageForRecipient(recipient: Recipient): Buffer {
+  messageForRecipient(recipient: Recipient): Uint8Array {
     const nativeRecipient =
       recipient as Native.SealedSenderMultiRecipientMessageRecipient;
-    return Buffer.concat([
-      Buffer.of(0x22), // The "original" Sealed Sender V2 version
-      this._buffer.subarray(
-        nativeRecipient.rangeOffset,
-        nativeRecipient.rangeOffset + nativeRecipient.rangeLen
-      ),
-      this._buffer.subarray(this._offsetOfSharedData),
-    ]);
+    // Use Buffer.concat for convenience, but return a proper Uint8Array, both for the correct type
+    // and to make an independent copy of a possibly-reused buffer.
+    return new Uint8Array(
+      Buffer.concat([
+        Buffer.of(0x22), // The "original" Sealed Sender V2 version
+        this._buffer.subarray(
+          nativeRecipient.rangeOffset,
+          nativeRecipient.rangeOffset + nativeRecipient.rangeLen
+        ),
+        this._buffer.subarray(this._offsetOfSharedData),
+      ])
+    );
   }
 }

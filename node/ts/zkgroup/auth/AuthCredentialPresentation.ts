@@ -10,7 +10,7 @@ import UuidCiphertext from '../groups/UuidCiphertext';
 export default class AuthCredentialPresentation extends ByteArray {
   private readonly __type?: never;
 
-  constructor(contents: Buffer) {
+  constructor(contents: Uint8Array) {
     super(contents, Native.AuthCredentialPresentation_CheckValidContents);
   }
 

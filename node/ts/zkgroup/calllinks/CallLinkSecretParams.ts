@@ -13,13 +13,13 @@ import { Aci } from '../../Address';
 export default class CallLinkSecretParams extends ByteArray {
   private readonly __type?: never;
 
-  static deriveFromRootKey(callLinkRootKey: Buffer): CallLinkSecretParams {
+  static deriveFromRootKey(callLinkRootKey: Uint8Array): CallLinkSecretParams {
     return new CallLinkSecretParams(
       Native.CallLinkSecretParams_DeriveFromRootKey(callLinkRootKey)
     );
   }
 
-  constructor(contents: Buffer) {
+  constructor(contents: Uint8Array) {
     super(contents, Native.CallLinkSecretParams_CheckValidContents);
   }
 

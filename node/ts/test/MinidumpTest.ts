@@ -42,7 +42,7 @@ describe('Minidump', () => {
 
   it('throws on bad minidump', () => {
     assert.throws(() => {
-      Minidump.toJSONString(Buffer.alloc(1024));
+      Minidump.toJSONString(new Uint8Array(1024));
     }, /Failed to parse minidump: HeaderMismatch/);
   });
 });

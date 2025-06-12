@@ -312,11 +312,11 @@ export class AccountAttributes {
     const capabilitiesArray = Array.from(capabilities);
 
     this._nativeHandle = Native.RegistrationAccountAttributes_Create(
-      Buffer.from(recoveryPassword),
+      recoveryPassword,
       aciRegistrationId,
       pniRegistrationId,
       registrationLock,
-      Buffer.from(unidentifiedAccessKey),
+      unidentifiedAccessKey,
       unrestrictedUnidentifiedAccess,
       capabilitiesArray,
       discoverableByPhoneNumber
@@ -343,10 +343,10 @@ export class RegisterAccountResponse {
     return Native.RegisterAccountResponse_GetNumber(this);
   }
 
-  public get usernameHash(): Buffer | null {
+  public get usernameHash(): Uint8Array | null {
     return Native.RegisterAccountResponse_GetUsernameHash(this);
   }
-  public get usernameLinkHandle(): Buffer | null {
+  public get usernameLinkHandle(): Uint8Array | null {
     return Native.RegisterAccountResponse_GetUsernameLinkHandle(this);
   }
 

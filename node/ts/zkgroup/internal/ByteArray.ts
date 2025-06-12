@@ -9,23 +9,23 @@ import * as Native from '../../../Native';
 export const UNCHECKED_AND_UNCLONED: unique symbol = Symbol();
 
 export default class ByteArray {
-  contents: Buffer;
+  contents: Uint8Array;
 
   protected constructor(
-    contents: Buffer,
-    checkValid: ((contents: Buffer) => void) | typeof UNCHECKED_AND_UNCLONED
+    contents: Uint8Array,
+    checkValid: ((contents: Uint8Array) => void) | typeof UNCHECKED_AND_UNCLONED
   ) {
     if (checkValid === UNCHECKED_AND_UNCLONED) {
       this.contents = contents;
     } else {
       checkValid.call(Native, contents);
-      this.contents = Buffer.from(contents);
+      this.contents = Uint8Array.from(contents);
     }
   }
 
   protected static checkLength(
     expectedLength: number
-  ): (contents: Buffer) => void {
+  ): (contents: Uint8Array) => void {
     return (contents) => {
       if (contents.length !== expectedLength) {
         throw new LibSignalErrorBase(
@@ -37,11 +37,11 @@ export default class ByteArray {
     };
   }
 
-  public getContents(): Buffer {
+  public getContents(): Uint8Array {
     return this.contents;
   }
 
-  public serialize(): Buffer {
-    return Buffer.from(this.contents);
+  public serialize(): Uint8Array {
+    return Uint8Array.from(this.contents);
   }
 }

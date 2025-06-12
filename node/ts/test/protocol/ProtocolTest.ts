@@ -51,9 +51,9 @@ it('Fingerprint', () => {
     bobKey
   );
 
-  assert.deepEqual(
-    aFprint1.scannableFingerprint().toBuffer().toString('hex'),
-    '080112220a201e301a0353dce3dbe7684cb8336e85136cdc0ee96219494ada305d62a7bd61df1a220a20d62cbf73a11592015b6b9f1682ac306fea3aaf3885b84d12bca631e9d4fb3a4d'
+  util.assertByteArray(
+    '080112220a201e301a0353dce3dbe7684cb8336e85136cdc0ee96219494ada305d62a7bd61df1a220a20d62cbf73a11592015b6b9f1682ac306fea3aaf3885b84d12bca631e9d4fb3a4d',
+    aFprint1.scannableFingerprint().toBuffer()
   );
 
   assert.deepEqual(
@@ -70,9 +70,9 @@ it('Fingerprint', () => {
     aliceKey
   );
 
-  assert.deepEqual(
-    bFprint1.scannableFingerprint().toBuffer().toString('hex'),
-    '080112220a20d62cbf73a11592015b6b9f1682ac306fea3aaf3885b84d12bca631e9d4fb3a4d1a220a201e301a0353dce3dbe7684cb8336e85136cdc0ee96219494ada305d62a7bd61df'
+  util.assertByteArray(
+    '080112220a20d62cbf73a11592015b6b9f1682ac306fea3aaf3885b84d12bca631e9d4fb3a4d1a220a201e301a0353dce3dbe7684cb8336e85136cdc0ee96219494ada305d62a7bd61df',
+    bFprint1.scannableFingerprint().toBuffer()
   );
   assert.deepEqual(
     bFprint1.displayableFingerprint().toString(),
@@ -434,7 +434,7 @@ describe('SenderKeyDistributionMessage Store API', () => {
       aCtext.serialize()
     );
 
-    assert.deepEqual(message, bPtext);
+    util.assertArrayEquals(message, bPtext);
 
     const anotherSkdm = await SignalClient.SenderKeyDistributionMessage.create(
       sender,

@@ -12,7 +12,7 @@ import GenericServerSecretParams from '../GenericServerSecretParams';
 export default class CreateCallLinkCredentialPresentation extends ByteArray {
   private readonly __type?: never;
 
-  constructor(contents: Buffer) {
+  constructor(contents: Uint8Array) {
     super(
       contents,
       Native.CreateCallLinkCredentialPresentation_CheckValidContents
@@ -20,7 +20,7 @@ export default class CreateCallLinkCredentialPresentation extends ByteArray {
   }
 
   verify(
-    roomId: Buffer,
+    roomId: Uint8Array,
     serverParams: GenericServerSecretParams,
     callLinkParams: CallLinkPublicParams,
     now: Date = new Date()

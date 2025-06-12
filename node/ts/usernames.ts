@@ -9,7 +9,10 @@ import { randomBytes } from 'crypto';
 import { RANDOM_LENGTH } from './zkgroup/internal/Constants';
 import * as Native from '../Native';
 
-export type UsernameLink = { entropy: Buffer; encryptedUsername: Buffer };
+export type UsernameLink = {
+  entropy: Uint8Array;
+  encryptedUsername: Uint8Array;
+};
 
 export function generateCandidates(
   nickname: string,
@@ -28,7 +31,7 @@ export function fromParts(
   discriminator: string,
   minNicknameLength: number,
   maxNicknameLength: number
-): { username: string; hash: Buffer } {
+): { username: string; hash: Uint8Array } {
   const hash = Native.Username_HashFromParts(
     nickname,
     discriminator,
@@ -40,19 +43,19 @@ export function fromParts(
   return { username, hash };
 }
 
-export function hash(username: string): Buffer {
+export function hash(username: string): Uint8Array {
   return Native.Username_Hash(username);
 }
 
-export function generateProof(username: string): Buffer {
+export function generateProof(username: string): Uint8Array {
   const random = randomBytes(RANDOM_LENGTH);
   return generateProofWithRandom(username, random);
 }
 
 export function generateProofWithRandom(
   username: string,
-  random: Buffer
-): Buffer {
+  random: Uint8Array
+): Uint8Array {
   return Native.Username_Proof(username, random);
 }
 
@@ -65,18 +68,18 @@ export function decryptUsernameLink(usernameLink: UsernameLink): string {
 
 export function createUsernameLink(
   username: string,
-  previousEntropy?: Buffer
+  previousEntropy?: Uint8Array
 ): UsernameLink {
   const usernameLinkData = Native.UsernameLink_Create(
     username,
     previousEntropy ?? null
   );
-  const entropy = usernameLinkData.slice(0, 32);
-  const encryptedUsername = usernameLinkData.slice(32);
+  const entropy = usernameLinkData.subarray(0, 32);
+  const encryptedUsername = usernameLinkData.subarray(32);
   return { entropy, encryptedUsername };
 }
 
 // Only for testing. Will throw on failure.
-export function verifyProof(proof: Buffer, hash: Buffer): void {
+export function verifyProof(proof: Uint8Array, hash: Uint8Array): void {
   Native.Username_Verify(proof, hash);
 }

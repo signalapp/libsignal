@@ -22,22 +22,22 @@ describe('SignalClient', () => {
     );
     const empty = Buffer.from('', 'hex');
 
-    assert.deepEqual(
-      SignalClient.hkdf(42, secret, empty, empty).toString('hex'),
-      '8da4e775a563c18f715f802a063c5a31b8a11f5c5ee1879ec3454e5f3c738d2d9d201395faa4b61a96c8'
+    util.assertByteArray(
+      '8da4e775a563c18f715f802a063c5a31b8a11f5c5ee1879ec3454e5f3c738d2d9d201395faa4b61a96c8',
+      SignalClient.hkdf(42, secret, empty, empty)
     );
 
-    assert.deepEqual(
-      SignalClient.hkdf(42, secret, empty, null).toString('hex'),
-      '8da4e775a563c18f715f802a063c5a31b8a11f5c5ee1879ec3454e5f3c738d2d9d201395faa4b61a96c8'
+    util.assertByteArray(
+      '8da4e775a563c18f715f802a063c5a31b8a11f5c5ee1879ec3454e5f3c738d2d9d201395faa4b61a96c8',
+      SignalClient.hkdf(42, secret, empty, null)
     );
 
     const salt = Buffer.from('000102030405060708090A0B0C', 'hex');
     const label = Buffer.from('F0F1F2F3F4F5F6F7F8F9', 'hex');
 
-    assert.deepEqual(
-      SignalClient.hkdf(42, secret, label, salt).toString('hex'),
-      '3cb25f25faacd57a90434f64d0362f2a2d2d0a90cf1a5a4c5db02d56ecc4c5bf34007208d5b887185865'
+    util.assertByteArray(
+      '3cb25f25faacd57a90434f64d0362f2a2d2d0a90cf1a5a4c5db02d56ecc4c5bf34007208d5b887185865',
+      SignalClient.hkdf(42, secret, label, salt)
     );
   });
 
@@ -56,14 +56,11 @@ describe('SignalClient', () => {
 
     const ctext = aes_gcm_siv.encrypt(ptext, nonce, aad);
 
-    assert.deepEqual(
-      ctext.toString('hex'),
-      '22b3f4cd1835e517741dfddccfa07fa4661b74cf'
-    );
+    util.assertByteArray('22b3f4cd1835e517741dfddccfa07fa4661b74cf', ctext);
 
     const decrypted = aes_gcm_siv.decrypt(ctext, nonce, aad);
 
-    assert.deepEqual(decrypted.toString('hex'), '02000000');
+    util.assertByteArray('02000000', decrypted);
   });
   it('ECC signatures work', () => {
     const priv_a = SignalClient.PrivateKey.generate();

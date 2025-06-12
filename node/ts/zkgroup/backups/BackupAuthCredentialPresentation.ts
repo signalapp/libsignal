@@ -13,7 +13,7 @@ import BackupCredentialType from './BackupCredentialType';
 export default class BackupAuthCredentialPresentation extends ByteArray {
   private readonly __type?: never;
 
-  constructor(contents: Buffer) {
+  constructor(contents: Uint8Array) {
     super(contents, Native.BackupAuthCredentialPresentation_CheckValidContents);
   }
 
@@ -28,7 +28,7 @@ export default class BackupAuthCredentialPresentation extends ByteArray {
     );
   }
 
-  getBackupId(): Buffer {
+  getBackupId(): Uint8Array {
     return Native.BackupAuthCredentialPresentation_GetBackupId(this.contents);
   }
 

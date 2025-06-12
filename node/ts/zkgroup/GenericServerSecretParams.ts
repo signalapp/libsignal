@@ -19,13 +19,13 @@ export default class GenericServerSecretParams extends ByteArray {
     return GenericServerSecretParams.generateWithRandom(random);
   }
 
-  static generateWithRandom(random: Buffer): GenericServerSecretParams {
+  static generateWithRandom(random: Uint8Array): GenericServerSecretParams {
     return new GenericServerSecretParams(
       Native.GenericServerSecretParams_GenerateDeterministic(random)
     );
   }
 
-  constructor(contents: Buffer) {
+  constructor(contents: Uint8Array) {
     super(contents, Native.GenericServerSecretParams_CheckValidContents);
   }
 

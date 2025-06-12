@@ -504,7 +504,7 @@ describe('SealedSender', () => {
       bUsmc.contents()
     );
 
-    assert.deepEqual(message, bPtext);
+    util.assertArrayEquals(message, bPtext);
 
     // Make sure the option-based syntax does the same thing.
     const aSealedSenderMessageViaOptions =
@@ -781,20 +781,24 @@ describe('SealedSender', () => {
 
     // Clients can't directly parse arbitrary SSv2 SentMessages, so just check that it contains
     // the excluded recipient service IDs followed by a device ID of 0.
-    const hexEncodedSentMessage = aSentMessage.toString('hex');
+    const hexEncodedSentMessage = Buffer.from(aSentMessage).toString('hex');
 
     const indexOfE = hexEncodedSentMessage.indexOf(
-      SignalClient.ServiceId.parseFromServiceIdString(eUuid)
-        .getServiceIdFixedWidthBinary()
-        .toString('hex')
+      Buffer.from(
+        SignalClient.ServiceId.parseFromServiceIdString(
+          eUuid
+        ).getServiceIdFixedWidthBinary()
+      ).toString('hex')
     );
     assert.notEqual(indexOfE, -1);
     assert.equal(aSentMessage[indexOfE / 2 + 17], 0);
 
     const indexOfM = hexEncodedSentMessage.indexOf(
-      SignalClient.ServiceId.parseFromServiceIdString(mUuid)
-        .getServiceIdFixedWidthBinary()
-        .toString('hex')
+      Buffer.from(
+        SignalClient.ServiceId.parseFromServiceIdString(
+          mUuid
+        ).getServiceIdFixedWidthBinary()
+      ).toString('hex')
     );
     assert.notEqual(indexOfM, -1);
     assert.equal(aSentMessage[indexOfM / 2 + 17], 0);

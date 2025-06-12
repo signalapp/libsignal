@@ -49,7 +49,7 @@ export class AccountEntropyPool {
    * `accountEntropyPool` must be a **validated** account entropy pool;
    * passing an arbitrary string here is considered a programmer error.
    */
-  public static deriveSvrKey(accountEntropyPool: string): Buffer {
+  public static deriveSvrKey(accountEntropyPool: string): Uint8Array {
     return Native.AccountEntropyPool_DeriveSvrKey(accountEntropyPool);
   }
 
@@ -79,7 +79,7 @@ export class BackupKey extends ByteArray {
   private readonly __type?: never;
   static SIZE = 32;
 
-  constructor(contents: Buffer) {
+  constructor(contents: Uint8Array) {
     super(contents, BackupKey.checkLength(BackupKey.SIZE));
   }
 
@@ -100,7 +100,7 @@ export class BackupKey extends ByteArray {
    *
    * Used for both message and media backups.
    */
-  public deriveBackupId(aci: Aci): Buffer {
+  public deriveBackupId(aci: Aci): Uint8Array {
     return Native.BackupKey_DeriveBackupId(
       this.contents,
       aci.getServiceIdFixedWidthBinary()
@@ -126,7 +126,7 @@ export class BackupKey extends ByteArray {
    *
    * Only relevant for message backup keys.
    */
-  public deriveLocalBackupMetadataKey(): Buffer {
+  public deriveLocalBackupMetadataKey(): Uint8Array {
     return Native.BackupKey_DeriveLocalBackupMetadataKey(this.contents);
   }
 
@@ -135,7 +135,7 @@ export class BackupKey extends ByteArray {
    *
    * Only relevant for media backup keys.
    */
-  public deriveMediaId(mediaName: string): Buffer {
+  public deriveMediaId(mediaName: string): Uint8Array {
     return Native.BackupKey_DeriveMediaId(this.contents, mediaName);
   }
 
@@ -146,7 +146,7 @@ export class BackupKey extends ByteArray {
    *
    * Only relevant for media backup keys.
    */
-  public deriveMediaEncryptionKey(mediaId: Buffer): Buffer {
+  public deriveMediaEncryptionKey(mediaId: Uint8Array): Uint8Array {
     return Native.BackupKey_DeriveMediaEncryptionKey(this.contents, mediaId);
   }
 
@@ -158,7 +158,7 @@ export class BackupKey extends ByteArray {
    *
    * Only relevant for media backup keys.
    */
-  public deriveThumbnailTransitEncryptionKey(mediaId: Buffer): Buffer {
+  public deriveThumbnailTransitEncryptionKey(mediaId: Uint8Array): Uint8Array {
     return Native.BackupKey_DeriveThumbnailTransitEncryptionKey(
       this.contents,
       mediaId

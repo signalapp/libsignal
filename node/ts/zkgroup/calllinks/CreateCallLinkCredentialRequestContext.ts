@@ -18,21 +18,21 @@ import { Aci } from '../../Address';
 export default class CreateCallLinkCredentialRequestContext extends ByteArray {
   private readonly __type?: never;
 
-  constructor(contents: Buffer) {
+  constructor(contents: Uint8Array) {
     super(
       contents,
       Native.CreateCallLinkCredentialRequestContext_CheckValidContents
     );
   }
 
-  static forRoomId(roomId: Buffer): CreateCallLinkCredentialRequestContext {
+  static forRoomId(roomId: Uint8Array): CreateCallLinkCredentialRequestContext {
     const random = randomBytes(RANDOM_LENGTH);
     return this.forRoomIdWithRandom(roomId, random);
   }
 
   static forRoomIdWithRandom(
-    roomId: Buffer,
-    random: Buffer
+    roomId: Uint8Array,
+    random: Uint8Array
   ): CreateCallLinkCredentialRequestContext {
     return new CreateCallLinkCredentialRequestContext(
       Native.CreateCallLinkCredentialRequestContext_NewDeterministic(

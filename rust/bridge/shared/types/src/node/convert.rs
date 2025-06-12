@@ -301,7 +301,7 @@ impl SimpleArgTypeInfo for String {
 }
 
 impl SimpleArgTypeInfo for uuid::Uuid {
-    type ArgType = JsBuffer;
+    type ArgType = JsUint8Array;
     fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {
         uuid::Uuid::from_slice(foreign.as_slice(cx))
             .or_else(|_| cx.throw_type_error("UUIDs have 16 bytes"))
@@ -309,7 +309,7 @@ impl SimpleArgTypeInfo for uuid::Uuid {
 }
 
 impl SimpleArgTypeInfo for libsignal_protocol::ServiceId {
-    type ArgType = JsBuffer;
+    type ArgType = JsUint8Array;
     fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {
         foreign
             .as_slice(cx)
@@ -324,7 +324,7 @@ impl SimpleArgTypeInfo for libsignal_protocol::ServiceId {
 }
 
 impl SimpleArgTypeInfo for libsignal_protocol::Aci {
-    type ArgType = JsBuffer;
+    type ArgType = JsUint8Array;
     fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {
         libsignal_protocol::ServiceId::convert_from(cx, foreign)?
             .try_into()
@@ -333,7 +333,7 @@ impl SimpleArgTypeInfo for libsignal_protocol::Aci {
 }
 
 impl SimpleArgTypeInfo for libsignal_protocol::Pni {
-    type ArgType = JsBuffer;
+    type ArgType = JsUint8Array;
     fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {
         libsignal_protocol::ServiceId::convert_from(cx, foreign)?
             .try_into()
@@ -368,7 +368,7 @@ impl SimpleArgTypeInfo for bool {
 }
 
 impl SimpleArgTypeInfo for Box<[u8]> {
-    type ArgType = JsBuffer;
+    type ArgType = JsUint8Array;
 
     fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {
         Ok(foreign.as_slice(cx).to_vec().into())
@@ -433,10 +433,10 @@ impl SimpleArgTypeInfo for libsignal_net::registration::SignedPreKeyBody<Box<[u8
         let key_id = foreign.get(cx, "keyId")?;
         let key_id = u32::convert_from(cx, key_id)?;
 
-        let public_key: Handle<'_, JsBuffer> = foreign.get(cx, "publicKey")?;
+        let public_key: Handle<'_, JsUint8Array> = foreign.get(cx, "publicKey")?;
         let public_key_bytes = public_key.as_slice(cx).into();
 
-        let signature: Handle<'_, JsBuffer> = foreign.get(cx, "signature")?;
+        let signature: Handle<'_, JsUint8Array> = foreign.get(cx, "signature")?;
         let signature = signature.as_slice(cx).into();
         Ok(Self {
             key_id,
@@ -516,13 +516,13 @@ pub struct AssumedImmutableBuffer<'a> {
 impl<'a> AssumedImmutableBuffer<'a> {
     /// Loads and checksums a slice from `handle`.
     ///
-    /// [A JsBuffer owns its storage][napi], so it's safe to assume the buffer won't get
+    /// [A JsUint8Array owns its storage][napi], so it's safe to assume the buffer won't get
     /// deallocated. What's unsafe is assuming that no one else will modify the buffer while we
     /// have a reference to it, which is why we checksum it. (We can't stop the Rust compiler from
     /// potentially optimizing out that checksum, though.)
     ///
     /// [napi]: https://nodejs.org/api/n-api.html#n_api_napi_get_buffer_info
-    pub fn new<'b>(cx: &impl Context<'b>, handle: Handle<'a, JsBuffer>) -> Self {
+    pub fn new<'b>(cx: &impl Context<'b>, handle: Handle<'a, JsUint8Array>) -> Self {
         let buf = handle.as_slice(cx);
         let extended_lifetime_buffer = if buf.is_empty() {
             &[]
@@ -546,10 +546,10 @@ impl Drop for AssumedImmutableBuffer<'_> {
     }
 }
 
-/// Loads from a JsBuffer, assuming it won't be mutated while in use.
+/// Loads from a JsUint8Array, assuming it won't be mutated while in use.
 /// See [`AssumedImmutableBuffer`].
 impl<'storage, 'context: 'storage> ArgTypeInfo<'storage, 'context> for &'storage [u8] {
-    type ArgType = JsBuffer;
+    type ArgType = JsUint8Array;
     type StoredType = AssumedImmutableBuffer<'context>;
     fn borrow(
         cx: &mut FunctionContext,
@@ -570,7 +570,7 @@ impl<'storage, 'context: 'storage> ArgTypeInfo<'storage, 'context> for &'storage
 /// A `PersistentAssumedImmutableBuffer` **cannot be dropped**; instead, it must be explicitly
 /// finalized in a JavaScript context, as it contains a [`neon::handle::Root`].
 pub struct PersistentAssumedImmutableBuffer {
-    owner: Root<JsBuffer>,
+    owner: Root<JsUint8Array>,
     buffer_start: *const u8,
     buffer_len: usize,
     hash: u64,
@@ -579,13 +579,13 @@ pub struct PersistentAssumedImmutableBuffer {
 impl PersistentAssumedImmutableBuffer {
     /// Establishes a GC root for `buffer`, then loads and checksums a slice from it.
     ///
-    /// [A JsBuffer owns its storage][napi], so it's safe to assume the buffer won't get
+    /// [A JsUint8Array owns its storage][napi], so it's safe to assume the buffer won't get
     /// deallocated. What's unsafe is assuming that no one else will modify the buffer while we
     /// have a reference to it, which is why we checksum it. (We can't stop the Rust compiler from
     /// potentially optimizing out that checksum, though.)
     ///
     /// [napi]: https://nodejs.org/api/n-api.html#n_api_napi_get_buffer_info
-    fn new<'a>(cx: &mut impl Context<'a>, buffer: Handle<JsBuffer>) -> Self {
+    fn new<'a>(cx: &mut impl Context<'a>, buffer: Handle<JsUint8Array>) -> Self {
         let owner = buffer.root(cx);
         let buffer_as_slice = buffer.as_slice(cx);
         let buffer_start = if buffer_as_slice.is_empty() {
@@ -629,10 +629,10 @@ impl Finalize for PersistentAssumedImmutableBuffer {
     }
 }
 
-/// Persists the JsBuffer, assuming it won't be mutated while in use.
+/// Persists the JsUint8Array, assuming it won't be mutated while in use.
 /// See [`PersistentAssumedImmutableBuffer`].
 impl<'a> AsyncArgTypeInfo<'a> for &'a [u8] {
-    type ArgType = JsBuffer;
+    type ArgType = JsUint8Array;
     type StoredType = PersistentAssumedImmutableBuffer;
     fn save_async_arg(
         cx: &mut FunctionContext,
@@ -649,7 +649,7 @@ impl<'a> AsyncArgTypeInfo<'a> for &'a [u8] {
 impl<'storage, 'context: 'storage> ArgTypeInfo<'storage, 'context>
     for crate::support::ServiceIdSequence<'storage>
 {
-    type ArgType = JsBuffer;
+    type ArgType = JsUint8Array;
     type StoredType = AssumedImmutableBuffer<'context>;
     fn borrow(
         cx: &mut FunctionContext,
@@ -664,7 +664,7 @@ impl<'storage, 'context: 'storage> ArgTypeInfo<'storage, 'context>
 
 /// See [`PersistentAssumedImmutableBuffer`].
 impl<'a> AsyncArgTypeInfo<'a> for crate::support::ServiceIdSequence<'a> {
-    type ArgType = JsBuffer;
+    type ArgType = JsUint8Array;
     type StoredType = PersistentAssumedImmutableBuffer;
     fn save_async_arg(
         cx: &mut FunctionContext,
@@ -781,7 +781,7 @@ impl<'a> AsyncArgTypeInfo<'a> for Box<dyn crate::net::registration::ConnectChatB
 impl<'storage, 'context: 'storage> ArgTypeInfo<'storage, 'context>
     for &'storage mut dyn SyncInputStream
 {
-    type ArgType = JsBuffer;
+    type ArgType = JsUint8Array;
     type StoredType = NodeSyncInputStream<'context>;
 
     fn borrow(
@@ -862,43 +862,35 @@ impl<'a> ResultTypeInfo<'a> for &str {
 }
 
 impl<'a> ResultTypeInfo<'a> for &[u8] {
-    type ResultType = JsBuffer;
+    type ResultType = JsUint8Array;
     fn convert_into(self, cx: &mut impl Context<'a>) -> NeonResult<Handle<'a, Self::ResultType>> {
-        let mut buffer = cx.buffer(self.len())?;
-        buffer.as_mut_slice(cx).copy_from_slice(self);
-        Ok(buffer)
+        JsUint8Array::from_slice(cx, self)
     }
 }
 
 impl<'a> ResultTypeInfo<'a> for uuid::Uuid {
-    type ResultType = JsBuffer;
+    type ResultType = JsUint8Array;
     fn convert_into(self, cx: &mut impl Context<'a>) -> JsResult<'a, Self::ResultType> {
-        let mut buffer = cx.buffer(16)?;
-        buffer.as_mut_slice(cx).copy_from_slice(self.as_bytes());
-        Ok(buffer)
+        JsUint8Array::from_slice(cx, self.as_bytes())
     }
 }
 
 impl<'a> ResultTypeInfo<'a> for libsignal_protocol::ServiceId {
-    type ResultType = JsBuffer;
+    type ResultType = JsUint8Array;
     fn convert_into(self, cx: &mut impl Context<'a>) -> JsResult<'a, Self::ResultType> {
-        let mut buffer = cx.buffer(17)?;
-        buffer
-            .as_mut_slice(cx)
-            .copy_from_slice(&self.service_id_fixed_width_binary());
-        Ok(buffer)
+        JsUint8Array::from_slice(cx, &self.service_id_fixed_width_binary())
     }
 }
 
 impl<'a> ResultTypeInfo<'a> for libsignal_protocol::Aci {
-    type ResultType = JsBuffer;
+    type ResultType = JsUint8Array;
     fn convert_into(self, cx: &mut impl Context<'a>) -> JsResult<'a, Self::ResultType> {
         libsignal_protocol::ServiceId::from(self).convert_into(cx)
     }
 }
 
 impl<'a> ResultTypeInfo<'a> for libsignal_protocol::Pni {
-    type ResultType = JsBuffer;
+    type ResultType = JsUint8Array;
     fn convert_into(self, cx: &mut impl Context<'a>) -> JsResult<'a, Self::ResultType> {
         libsignal_protocol::ServiceId::from(self).convert_into(cx)
     }
@@ -916,11 +908,9 @@ impl<'a, T: ResultTypeInfo<'a>> ResultTypeInfo<'a> for Option<T> {
 }
 
 impl<'a> ResultTypeInfo<'a> for Vec<u8> {
-    type ResultType = JsBuffer;
+    type ResultType = JsUint8Array;
     fn convert_into(self, cx: &mut impl Context<'a>) -> NeonResult<Handle<'a, Self::ResultType>> {
-        let mut buffer = cx.buffer(self.len())?;
-        buffer.as_mut_slice(cx).copy_from_slice(&self);
-        Ok(buffer)
+        JsUint8Array::from_slice(cx, &self)
     }
 }
 
@@ -951,12 +941,12 @@ where
     Ok(array)
 }
 
-/// Loads from a JsBuffer, assuming it won't be mutated while in use.
+/// Loads from a JsUint8Array, assuming it won't be mutated while in use.
 /// See [`AssumedImmutableBuffer`].
 impl<'storage, 'context: 'storage, const LEN: usize> ArgTypeInfo<'storage, 'context>
     for &'storage [u8; LEN]
 {
-    type ArgType = JsBuffer;
+    type ArgType = JsUint8Array;
     type StoredType = AssumedImmutableBuffer<'context>;
     fn borrow(
         cx: &mut FunctionContext,
@@ -978,7 +968,7 @@ impl<'storage, 'context: 'storage, const LEN: usize> ArgTypeInfo<'storage, 'cont
 }
 
 impl<'a, const LEN: usize> ResultTypeInfo<'a> for [u8; LEN] {
-    type ResultType = JsBuffer;
+    type ResultType = JsUint8Array;
     fn convert_into(self, cx: &mut impl Context<'a>) -> NeonResult<Handle<'a, Self::ResultType>> {
         self.as_ref().convert_into(cx)
     }
@@ -1269,7 +1259,7 @@ where
         + for<'a> serde::Deserialize<'a>
         + partial_default::PartialDefault,
 {
-    type ArgType = JsBuffer;
+    type ArgType = JsUint8Array;
 
     fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {
         let bytes = foreign.as_slice(cx);
@@ -1292,7 +1282,7 @@ impl<'a, T> crate::node::ResultTypeInfo<'a> for Serialized<T>
 where
     T: FixedLengthBincodeSerializable + serde::Serialize,
 {
-    type ResultType = JsBuffer;
+    type ResultType = JsUint8Array;
 
     fn convert_into(self, cx: &mut impl Context<'a>) -> JsResult<'a, Self::ResultType> {
         let result = zkgroup::serialize(self.deref());

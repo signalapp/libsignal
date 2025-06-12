@@ -14,6 +14,7 @@ import { hkdf, LogLevel } from '..';
 import { AccountEntropyPool, BackupKey } from '../AccountKeys';
 import { Readable } from 'node:stream';
 import { InputStream } from '../io';
+import { assertArrayNotEquals } from './util';
 
 util.initLogger(LogLevel.Trace);
 
@@ -82,7 +83,7 @@ describe('MessageBackup', () => {
       // Just check some basic expectations.
       assert.equal(32, testKey.hmacKey.length);
       assert.equal(32, testKey.aesKey.length);
-      assert.isFalse(testKey.hmacKey.equals(testKey.aesKey));
+      assertArrayNotEquals(testKey.hmacKey, testKey.aesKey);
     });
 
     it('produces an error message on empty input', async () => {
@@ -117,8 +118,8 @@ describe('MessageBackup', () => {
         async close(): Promise<void> {
           closeCount += 1;
         }
-        async read(_amount: number): Promise<Buffer> {
-          return Buffer.of();
+        async read(_amount: number): Promise<Uint8Array> {
+          return Uint8Array.of();
         }
         async skip(amount: number): Promise<void> {
           if (amount > 0) {
@@ -169,12 +170,12 @@ describe('ComparableBackup', () => {
 describe('OnlineBackupValidator', () => {
   it('can read frames from a valid file', () => {
     // `Readable.read` normally returns `any`, because it supports settable encodings.
-    // Here we override that `read` member with one that always produces a Buffer,
+    // Here we override that `read` member with one that always produces a Uint8Array,
     // for more convenient use in the test. Note that this is unchecked.
-    type ReadableUsingBuffer = Omit<Readable, 'read'> & {
-      read(size: number): Buffer;
+    type ReadableUsingUint8Array = Omit<Readable, 'read'> & {
+      read(size: number): Uint8Array;
     };
-    const input: ReadableUsingBuffer = new Readable();
+    const input: ReadableUsingUint8Array = new Readable();
     input.push(exampleBackup);
     input.push(null);
 
@@ -209,7 +210,7 @@ describe('OnlineBackupValidator', () => {
     assert.throws(
       () =>
         new MessageBackup.OnlineBackupValidator(
-          Buffer.of(),
+          Uint8Array.of(),
           MessageBackup.Purpose.RemoteBackup
         )
     );
@@ -232,7 +233,7 @@ describe('OnlineBackupValidator', () => {
       VALID_BACKUP_INFO,
       MessageBackup.Purpose.RemoteBackup
     );
-    assert.throws(() => backup.addFrame(Buffer.of()));
+    assert.throws(() => backup.addFrame(Uint8Array.of()));
   });
 
   it('rejects invalid backups on finalize', () => {

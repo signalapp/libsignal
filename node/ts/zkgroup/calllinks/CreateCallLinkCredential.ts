@@ -17,12 +17,12 @@ import { Aci } from '../../Address';
 export default class CreateCallLinkCredential extends ByteArray {
   private readonly __type?: never;
 
-  constructor(contents: Buffer) {
+  constructor(contents: Uint8Array) {
     super(contents, Native.CreateCallLinkCredential_CheckValidContents);
   }
 
   present(
-    roomId: Buffer,
+    roomId: Uint8Array,
     userId: Aci,
     serverParams: GenericServerPublicParams,
     callLinkParams: CallLinkSecretParams
@@ -38,11 +38,11 @@ export default class CreateCallLinkCredential extends ByteArray {
   }
 
   presentWithRandom(
-    roomId: Buffer,
+    roomId: Uint8Array,
     userId: Aci,
     serverParams: GenericServerPublicParams,
     callLinkParams: CallLinkSecretParams,
-    random: Buffer
+    random: Uint8Array
   ): CreateCallLinkCredentialPresentation {
     return new CreateCallLinkCredentialPresentation(
       Native.CreateCallLinkCredential_PresentDeterministic(

@@ -492,7 +492,7 @@ describe('chat service api', () => {
 
       // a helper function to check that the message has been passed to the listener
       async function check(
-        serverRequest: Buffer,
+        serverRequest: Uint8Array,
         expectedMethod: sinon.SinonStub,
         expectedArguments: unknown[]
       ) {
@@ -510,13 +510,13 @@ describe('chat service api', () => {
       }
 
       await check(INCOMING_MESSAGE_1, listener.onIncomingMessage, [
-        Buffer.from('payload', 'utf8'),
+        new TextEncoder().encode('payload'),
         1000,
         sinon.match.object,
       ]);
 
       await check(INCOMING_MESSAGE_2, listener.onIncomingMessage, [
-        Buffer.from('payload', 'utf8'),
+        new TextEncoder().encode('payload'),
         2000,
         sinon.match.object,
       ]);
@@ -527,7 +527,7 @@ describe('chat service api', () => {
     it('messages arrive in order', async () => {
       const listener: ChatServiceListener = {
         onIncomingMessage(
-          _envelope: Buffer,
+          _envelope: Uint8Array,
           _timestamp: number,
           _ack: ChatServerMessageAck
         ): void {
@@ -548,7 +548,7 @@ describe('chat service api', () => {
         tokio,
         listener
       );
-      const sendRawServerRequest = (message: Buffer) =>
+      const sendRawServerRequest = (message: Uint8Array) =>
         Native.TESTING_FakeChatRemoteEnd_SendRawServerRequest(
           fakeRemote,
           message
@@ -609,7 +609,7 @@ describe('chat service api', () => {
       const connectionInterruptedReasons: (object | null)[] = [];
       const listener: ChatServiceListener = {
         onIncomingMessage(
-          _envelope: Buffer,
+          _envelope: Uint8Array,
           _timestamp: number,
           _ack: ChatServerMessageAck
         ): void {
@@ -674,7 +674,7 @@ describe('chat service api', () => {
             verb: 'PUT',
             path: '/some/path',
             headers: [['purpose', 'test request']] as [[string, string]],
-            body: Buffer.of(1, 1, 2, 3),
+            body: Uint8Array.of(1, 1, 2, 3),
           };
           const responseFuture = chat.fetch(request);
 
@@ -714,7 +714,9 @@ describe('chat service api', () => {
           expect(responseFromServer)
             .property('headers')
             .to.deep.eq([['purpose', 'test response']]);
-          expect(responseFromServer).property('body').to.deep.eq(Buffer.of(5));
+          expect(responseFromServer)
+            .property('body')
+            .to.deep.eq(Uint8Array.of(5));
         });
       });
     });
@@ -877,7 +879,7 @@ export class InternalRequest implements Native.Wrapper<Native.HttpRequest> {
     );
   }
 
-  public get body(): Buffer {
+  public get body(): Uint8Array {
     return Native.TESTING_ChatRequestGetBody(this);
   }
 }

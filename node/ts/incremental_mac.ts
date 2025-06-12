@@ -24,9 +24,9 @@ export function inferChunkSize(dataSize: number): ChunkSizeChoice {
 class DigestingWritable extends stream.Writable {
   _nativeHandle: Native.IncrementalMac;
 
-  _digests: Buffer[] = [];
+  _digests: Uint8Array[] = [];
 
-  constructor(key: Buffer, sizeChoice: ChunkSizeChoice) {
+  constructor(key: Uint8Array, sizeChoice: ChunkSizeChoice) {
     super();
     this._nativeHandle = Native.IncrementalMac_Initialize(
       key,
@@ -34,8 +34,10 @@ class DigestingWritable extends stream.Writable {
     );
   }
 
-  getFinalDigest(): Buffer {
-    return Buffer.concat(this._digests);
+  getFinalDigest(): Uint8Array {
+    // Use Buffer.concat for convenience, but return a proper Uint8Array, both for the correct type
+    // and to make an independent copy of a possibly-reused buffer.
+    return new Uint8Array(Buffer.concat(this._digests));
   }
 
   _write(
@@ -67,7 +69,7 @@ class DigestingWritable extends stream.Writable {
 export class DigestingPassThrough extends stream.Transform {
   private digester: DigestingWritable;
 
-  constructor(key: Buffer, sizeChoice: ChunkSizeChoice) {
+  constructor(key: Uint8Array, sizeChoice: ChunkSizeChoice) {
     super();
     this.digester = new DigestingWritable(key, sizeChoice);
 
@@ -77,12 +79,12 @@ export class DigestingPassThrough extends stream.Transform {
     });
   }
 
-  getFinalDigest(): Buffer {
+  getFinalDigest(): Uint8Array {
     return this.digester.getFinalDigest();
   }
 
   public override _transform(
-    data: Buffer,
+    data: Uint8Array,
     enc: BufferEncoding,
     callback: CallbackType
   ): void {
@@ -111,7 +113,11 @@ class ValidatingWritable extends stream.Writable {
 
   _validatedBytes = 0;
 
-  constructor(key: Buffer, sizeChoice: ChunkSizeChoice, digest: Buffer) {
+  constructor(
+    key: Uint8Array,
+    sizeChoice: ChunkSizeChoice,
+    digest: Uint8Array
+  ) {
     super();
     this._nativeHandle = Native.ValidatingMac_Initialize(
       key,
@@ -159,9 +165,13 @@ class ValidatingWritable extends stream.Writable {
 
 export class ValidatingPassThrough extends stream.Transform {
   private validator: ValidatingWritable;
-  private buffer = new Array<Buffer>();
+  private buffer = new Array<Uint8Array>();
 
-  constructor(key: Buffer, sizeChoice: ChunkSizeChoice, digest: Buffer) {
+  constructor(
+    key: Uint8Array,
+    sizeChoice: ChunkSizeChoice,
+    digest: Uint8Array
+  ) {
     super();
     this.validator = new ValidatingWritable(key, sizeChoice, digest);
 
@@ -172,7 +182,7 @@ export class ValidatingPassThrough extends stream.Transform {
   }
 
   public override _transform(
-    data: Buffer,
+    data: Uint8Array,
     enc: BufferEncoding,
     callback: CallbackType
   ): void {

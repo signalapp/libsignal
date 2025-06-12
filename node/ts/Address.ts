@@ -21,10 +21,10 @@ const SERVICE_ID_FIXED_WIDTH_BINARY_LEN = 17;
  * user on the Signal service.
  */
 export abstract class ServiceId extends Object {
-  private readonly serviceIdFixedWidthBinary: Buffer;
+  private readonly serviceIdFixedWidthBinary: Uint8Array;
 
   // This has to be public for `InstanceType<T>`, which we use below.
-  constructor(serviceIdFixedWidthBinary: Buffer) {
+  constructor(serviceIdFixedWidthBinary: Uint8Array) {
     super();
     if (serviceIdFixedWidthBinary.length != SERVICE_ID_FIXED_WIDTH_BINARY_LEN) {
       throw new TypeError('invalid Service-Id-FixedWidthBinary');
@@ -37,22 +37,22 @@ export abstract class ServiceId extends Object {
     // Because ServiceId is abstract, and TypeScript won't let us construct an abstract class.
     // Strictly speaking we don't need the 'typeof' and 'InstanceType',
     // but it's more consistent with the factory methods below.
-    this: new (serviceIdFixedWidthBinary: Buffer) => InstanceType<T>,
+    this: new (serviceIdFixedWidthBinary: Uint8Array) => InstanceType<T>,
     uuidBytes: ArrayLike<number>,
     kind: ServiceIdKind
   ): InstanceType<T> {
-    const buffer = Buffer.alloc(SERVICE_ID_FIXED_WIDTH_BINARY_LEN);
+    const buffer = new Uint8Array(SERVICE_ID_FIXED_WIDTH_BINARY_LEN);
     buffer[0] = kind;
     buffer.set(uuidBytes, 1);
     return new this(buffer);
   }
 
-  getServiceIdBinary(): Buffer {
+  getServiceIdBinary(): Uint8Array {
     return Native.ServiceId_ServiceIdBinary(this.serviceIdFixedWidthBinary);
   }
 
-  getServiceIdFixedWidthBinary(): Buffer {
-    return Buffer.from(this.serviceIdFixedWidthBinary);
+  getServiceIdFixedWidthBinary(): Uint8Array {
+    return Uint8Array.from(this.serviceIdFixedWidthBinary);
   }
 
   getServiceIdString(): string {
@@ -75,7 +75,7 @@ export abstract class ServiceId extends Object {
 
   static parseFromServiceIdFixedWidthBinary<T extends typeof ServiceId>(
     this: T,
-    serviceIdFixedWidthBinary: Buffer
+    serviceIdFixedWidthBinary: Uint8Array
   ): InstanceType<T> {
     let result: ServiceId;
     switch (serviceIdFixedWidthBinary[0]) {
@@ -93,7 +93,7 @@ export abstract class ServiceId extends Object {
 
   static parseFromServiceIdBinary<T extends typeof ServiceId>(
     this: T,
-    serviceIdBinary: Buffer
+    serviceIdBinary: Uint8Array
   ): InstanceType<T> {
     const result = ServiceId.parseFromServiceIdFixedWidthBinary(
       Native.ServiceId_ParseFromServiceIdBinary(serviceIdBinary)
@@ -115,14 +115,12 @@ export abstract class ServiceId extends Object {
     return uuid.stringify(this.serviceIdFixedWidthBinary, 1);
   }
 
-  getRawUuidBytes(): Buffer {
-    return Buffer.from(this.serviceIdFixedWidthBinary.buffer, 1);
+  getRawUuidBytes(): Uint8Array {
+    return this.serviceIdFixedWidthBinary.subarray(1);
   }
 
   isEqual(other: ServiceId): boolean {
-    return this.serviceIdFixedWidthBinary.equals(
-      other.serviceIdFixedWidthBinary
-    );
+    return ServiceId.comparator(this, other) == 0;
   }
 
   /**
@@ -131,11 +129,14 @@ export abstract class ServiceId extends Object {
    * Compatible with <code>Array.sort</code>.
    */
   static comparator(this: void, lhs: ServiceId, rhs: ServiceId): number {
-    return lhs.serviceIdFixedWidthBinary.compare(rhs.serviceIdFixedWidthBinary);
+    return Buffer.compare(
+      lhs.serviceIdFixedWidthBinary,
+      rhs.serviceIdFixedWidthBinary
+    );
   }
 
-  static toConcatenatedFixedWidthBinary(serviceIds: ServiceId[]): Buffer {
-    const result = Buffer.alloc(
+  static toConcatenatedFixedWidthBinary(serviceIds: ServiceId[]): Uint8Array {
+    const result = new Uint8Array(
       serviceIds.length * SERVICE_ID_FIXED_WIDTH_BINARY_LEN
     );
     let offset = 0;

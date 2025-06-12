@@ -65,7 +65,7 @@ def translate_to_ts(typ: str) -> str:
 
     type_map = {
         "()": "void",
-        "&[u8]": "Buffer",
+        "&[u8]": "Uint8Array",
         "i32": "number",
         "u8": "number",
         "u16": "number",
@@ -74,13 +74,13 @@ def translate_to_ts(typ: str) -> str:
         "bool": "boolean",
         "String": "string",
         "&str": "string",
-        "Vec<u8>": "Buffer",
-        "Box<[u8]>": "Buffer",
-        "ServiceId": "Buffer",
-        "Aci": "Buffer",
-        "Pni": "Buffer",
+        "Vec<u8>": "Uint8Array",
+        "Box<[u8]>": "Uint8Array",
+        "ServiceId": "Uint8Array",
+        "Aci": "Uint8Array",
+        "Pni": "Uint8Array",
         "E164": "string",
-        "ServiceIdSequence<'_>": "Buffer",
+        "ServiceIdSequence<'_>": "Uint8Array",
         "PathAndQuery": "string",
     }
 
@@ -88,7 +88,7 @@ def translate_to_ts(typ: str) -> str:
         return type_map[typ]
 
     if typ.startswith('[u8;') or typ.startswith('&[u8;'):
-        return 'Buffer'
+        return 'Uint8Array'
 
     if typ.startswith('&mutdyn'):
         return typ[7:]

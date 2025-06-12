@@ -90,7 +90,7 @@ describe('WebpSanitizer', () => {
     it('throws on empty input', () => {
       const input = new Uint8Array([]);
       try {
-        WebpSanitizer.sanitize(Buffer.from(input));
+        WebpSanitizer.sanitize(input);
         assert.fail('did not throw');
       } catch (e) {
         assert(e instanceof LibSignalErrorBase);
@@ -101,7 +101,7 @@ describe('WebpSanitizer', () => {
     it('throws on truncated input', () => {
       const input = new Uint8Array([0, 0, 0, 0]);
       try {
-        WebpSanitizer.sanitize(Buffer.from(input));
+        WebpSanitizer.sanitize(input);
         assert.fail('did not throw');
       } catch (e) {
         assert(e instanceof LibSignalErrorBase);
@@ -111,7 +111,7 @@ describe('WebpSanitizer', () => {
 
     it('accepts a minimal webp', () => {
       const input = new Uint8Array(webp());
-      WebpSanitizer.sanitize(Buffer.from(input));
+      WebpSanitizer.sanitize(input);
     });
   });
 });

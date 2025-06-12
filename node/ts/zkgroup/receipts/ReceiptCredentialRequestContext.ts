@@ -11,7 +11,7 @@ export default class ReceiptCredentialRequestContext extends ByteArray {
   private readonly __type?: never;
   static SIZE = 177;
 
-  constructor(contents: Buffer) {
+  constructor(contents: Uint8Array) {
     super(contents, Native.ReceiptCredentialRequestContext_CheckValidContents);
   }
 

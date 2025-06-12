@@ -9,7 +9,7 @@ export default class GroupMasterKey extends ByteArray {
   private readonly __type?: never;
   static SIZE = 32;
 
-  constructor(contents: Buffer) {
+  constructor(contents: Uint8Array) {
     super(contents, GroupMasterKey.checkLength(GroupMasterKey.SIZE));
   }
 }

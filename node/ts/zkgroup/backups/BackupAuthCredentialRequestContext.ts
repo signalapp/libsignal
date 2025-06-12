@@ -17,7 +17,7 @@ import type { Uuid } from '../..';
 export default class BackupAuthCredentialRequestContext extends ByteArray {
   private readonly __type?: never;
 
-  constructor(contents: Buffer) {
+  constructor(contents: Uint8Array) {
     super(
       contents,
       Native.BackupAuthCredentialRequestContext_CheckValidContents
@@ -25,14 +25,11 @@ export default class BackupAuthCredentialRequestContext extends ByteArray {
   }
 
   static create(
-    backupKey: Buffer,
+    backupKey: Uint8Array,
     aci: Uuid
   ): BackupAuthCredentialRequestContext {
     return new BackupAuthCredentialRequestContext(
-      Native.BackupAuthCredentialRequestContext_New(
-        backupKey,
-        Buffer.from(uuid.parse(aci))
-      )
+      Native.BackupAuthCredentialRequestContext_New(backupKey, uuid.parse(aci))
     );
   }
 

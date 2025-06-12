@@ -9,17 +9,17 @@ import * as Native from '../../../Native';
 export default class UuidCiphertext extends ByteArray {
   private readonly __type?: never;
 
-  constructor(contents: Buffer) {
+  constructor(contents: Uint8Array) {
     super(contents, Native.UuidCiphertext_CheckValidContents);
   }
 
-  static serializeAndConcatenate(ciphertexts: UuidCiphertext[]): Buffer {
+  static serializeAndConcatenate(ciphertexts: UuidCiphertext[]): Uint8Array {
     if (ciphertexts.length == 0) {
-      return Buffer.of();
+      return Uint8Array.of();
     }
 
     const uuidCiphertextLen = ciphertexts[0].contents.length;
-    const concatenated = Buffer.alloc(ciphertexts.length * uuidCiphertextLen);
+    const concatenated = new Uint8Array(ciphertexts.length * uuidCiphertextLen);
     let offset = 0;
     for (const next of ciphertexts) {
       if (next.contents.length !== uuidCiphertextLen) {

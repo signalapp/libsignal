@@ -9,8 +9,8 @@ import NotarySignature from './NotarySignature';
 export default class ServerPublicParams {
   readonly _nativeHandle: Native.ServerPublicParams;
 
-  constructor(contents: Buffer | Native.ServerPublicParams) {
-    if (contents instanceof Buffer) {
+  constructor(contents: Uint8Array | Native.ServerPublicParams) {
+    if (contents instanceof Uint8Array) {
       this._nativeHandle = Native.ServerPublicParams_Deserialize(contents);
     } else {
       this._nativeHandle = contents;
@@ -22,11 +22,11 @@ export default class ServerPublicParams {
    *
    * Allows decoupling RingRTC's use of endorsements from libsignal's.
    */
-  getEndorsementPublicKey(): Buffer {
+  getEndorsementPublicKey(): Uint8Array {
     return Native.ServerPublicParams_GetEndorsementPublicKey(this);
   }
 
-  verifySignature(message: Buffer, notarySignature: NotarySignature): void {
+  verifySignature(message: Uint8Array, notarySignature: NotarySignature): void {
     Native.ServerPublicParams_VerifySignature(
       this,
       message,
@@ -34,7 +34,7 @@ export default class ServerPublicParams {
     );
   }
 
-  serialize(): Buffer {
+  serialize(): Uint8Array {
     return Native.ServerPublicParams_Serialize(this);
   }
 }

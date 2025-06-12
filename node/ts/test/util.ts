@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+import { assert } from 'chai';
 import * as SignalClient from '../index';
 
 export function initLogger(logLevel?: SignalClient.LogLevel): void {
@@ -48,4 +49,28 @@ export class CompletablePromise {
   public async done(): Promise<void> {
     await this.promise;
   }
+}
+
+export function assertByteArray(hex: string, actual: Uint8Array): void {
+  const actualHex = Buffer.from(actual).toString('hex');
+
+  assert.strictEqual(hex, actualHex);
+}
+export function assertArrayEquals(
+  expected: Uint8Array,
+  actual: Uint8Array
+): void {
+  const expectedHex = Buffer.from(expected).toString('hex');
+  const actualHex = Buffer.from(actual).toString('hex');
+
+  assert.strictEqual(expectedHex, actualHex);
+}
+export function assertArrayNotEquals(
+  expected: Uint8Array,
+  actual: Uint8Array
+): void {
+  const expectedHex = Buffer.from(expected).toString('hex');
+  const actualHex = Buffer.from(actual).toString('hex');
+
+  assert.notEqual(expectedHex, actualHex);
 }

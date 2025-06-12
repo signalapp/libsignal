@@ -17,7 +17,7 @@ export default class ServerSecretParams {
     return ServerSecretParams.generateWithRandom(random);
   }
 
-  static generateWithRandom(random: Buffer): ServerSecretParams {
+  static generateWithRandom(random: Uint8Array): ServerSecretParams {
     return new ServerSecretParams(
       Native.ServerSecretParams_GenerateDeterministic(random)
     );
@@ -25,8 +25,8 @@ export default class ServerSecretParams {
 
   readonly _nativeHandle: Native.ServerSecretParams;
 
-  constructor(contents: Buffer | Native.ServerSecretParams) {
-    if (contents instanceof Buffer) {
+  constructor(contents: Uint8Array | Native.ServerSecretParams) {
+    if (contents instanceof Uint8Array) {
       this._nativeHandle = Native.ServerSecretParams_Deserialize(contents);
     } else {
       this._nativeHandle = contents;
@@ -39,19 +39,19 @@ export default class ServerSecretParams {
     );
   }
 
-  sign(message: Buffer): NotarySignature {
+  sign(message: Uint8Array): NotarySignature {
     const random = randomBytes(RANDOM_LENGTH);
 
     return this.signWithRandom(random, message);
   }
 
-  signWithRandom(random: Buffer, message: Buffer): NotarySignature {
+  signWithRandom(random: Uint8Array, message: Uint8Array): NotarySignature {
     return new NotarySignature(
       Native.ServerSecretParams_SignDeterministic(this, random, message)
     );
   }
 
-  serialize(): Buffer {
+  serialize(): Uint8Array {
     return Native.ServerSecretParams_Serialize(this);
   }
 }

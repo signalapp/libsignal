@@ -40,7 +40,7 @@ export default class ClientZkProfileOperations {
   }
 
   createProfileKeyCredentialRequestContextWithRandom(
-    random: Buffer,
+    random: Uint8Array,
     userId: Aci,
     profileKey: ProfileKey
   ): ProfileKeyCredentialRequestContext {
@@ -83,7 +83,7 @@ export default class ClientZkProfileOperations {
   }
 
   createExpiringProfileKeyCredentialPresentationWithRandom(
-    random: Buffer,
+    random: Uint8Array,
     groupSecretParams: GroupSecretParams,
     profileKeyCredential: ExpiringProfileKeyCredential
   ): ProfileKeyCredentialPresentation {

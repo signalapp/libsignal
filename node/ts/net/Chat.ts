@@ -6,7 +6,6 @@
 import * as Native from '../../Native';
 import { LibSignalError } from '../Errors';
 import { ServerMessageAck, Wrapper } from '../../Native';
-import { Buffer } from 'node:buffer';
 import { TokioAsyncContext, Environment } from '../net';
 import * as KT from './KeyTransparency';
 import { newNativeHandle } from '../internal';
@@ -52,7 +51,7 @@ export interface ChatServiceListener extends ConnectionEventsListener {
    * queue and attempt to deliver it again in the future.
    */
   onIncomingMessage(
-    envelope: Buffer,
+    envelope: Uint8Array,
     timestamp: number,
     ack: ChatServerMessageAck
   ): void;
@@ -372,7 +371,7 @@ class WeakListenerWrapper implements Native.ChatListener {
     this.listener.deref()?._connection_interrupted(reason);
   }
   _incoming_message(
-    envelope: Buffer,
+    envelope: Uint8Array,
     timestamp: number,
     ack: ServerMessageAck
   ): void {
@@ -393,7 +392,7 @@ function makeNativeChatListener(
   if ('onQueueEmpty' in listener) {
     return {
       _incoming_message(
-        envelope: Buffer,
+        envelope: Uint8Array,
         timestamp: number,
         ack: ServerMessageAck
       ): void {
@@ -417,7 +416,7 @@ function makeNativeChatListener(
 
   return {
     _incoming_message(
-      _envelope: Buffer,
+      _envelope: Uint8Array,
       _timestamp: number,
       _ack: ServerMessageAck
     ): void {
@@ -443,10 +442,8 @@ export function buildHttpRequest(
   chatRequest: ChatRequest
 ): Wrapper<Native.HttpRequest> {
   const { verb, path, body, headers } = chatRequest;
-  const bodyBuffer: Buffer | null =
-    body !== undefined ? Buffer.from(body) : null;
   const httpRequest = {
-    _nativeHandle: Native.HttpRequest_new(verb, path, bodyBuffer),
+    _nativeHandle: Native.HttpRequest_new(verb, path, body ?? null),
   };
   headers.forEach((header) => {
     const [name, value] = header;
