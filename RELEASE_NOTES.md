@@ -3,3 +3,5 @@ v0.75.0
 - Require Swift 6.0 to build LibSignalClient.
 
 - Java: remove Curve.kt from the public API.
+
+- Java: port several classes to Kotlin; these changes are Java-compatible but might require changes in consuming Kotlin code.

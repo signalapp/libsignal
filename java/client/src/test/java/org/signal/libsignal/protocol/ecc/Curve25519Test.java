@@ -5,8 +5,7 @@
 
 package org.signal.libsignal.protocol.ecc;
 
-import static org.junit.Assert.assertThrows;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 import java.util.Arrays;
 import org.junit.Test;
@@ -167,6 +166,7 @@ public class Curve25519Test {
   public void testDecodeSize() throws InvalidKeyException {
     ECKeyPair keyPair = ECKeyPair.generate();
     byte[] serializedPublic = keyPair.getPublicKey().serialize();
+    assertEquals(serializedPublic.length, ECPublicKey.KEY_SIZE);
 
     ECPublicKey justRight = new ECPublicKey(serializedPublic, 0);
 

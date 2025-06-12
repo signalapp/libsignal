@@ -68,6 +68,13 @@ public class NativeHandleGuard implements AutoCloseable {
 
     protected abstract void release(long nativeHandle);
 
+    protected static final long throwIfNull(long handle) {
+      if (handle == 0L) {
+        throw new NullPointerException();
+      }
+      return handle;
+    }
+
     @Override
     @CalledFromNative
     public long unsafeNativeHandleWithoutGuard() {
