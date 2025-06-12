@@ -89,38 +89,31 @@ pub fn polyvec_tobytes(a: PolyVec) -> [u8; POLYVEC_BYTES] {
 mod tests {
     use super::*;
     use crate::arithmetic::fq::*;
-    use crate::stack_utils::run_with_large_stack;
     
     #[test]
     fn test_polyvec_add() {
-        run_with_large_stack(
-            || {
-                let a: PolyVec = [[HQ.clone(); D]; N];
-                let b: PolyVec = [[QQ.clone(); D]; N];
-                let rc: PolyVec = [[TQQ.clone(); D]; N];
-                let c: PolyVec = polyvec_add(a, b);
+        
+        let a: PolyVec = [[HQ.clone(); D]; N];
+        let b: PolyVec = [[QQ.clone(); D]; N];
+        let rc: PolyVec = [[TQQ.clone(); D]; N];
+        let c: PolyVec = polyvec_add(a, b);
 
-                assert_eq!(rc, c, "polyvec_add: polynomial vectors don't match");
-            },
-            "test_polyvec_add",
-        );
+        assert_eq!(rc, c, "polyvec_add: polynomial vectors don't match");
+           
         
     }
 
     #[test]
     fn test_polyvec_bytes() {
-        run_with_large_stack(
-            || {
-                let a: PolyVec = [[HQ.clone(); D]; N];
-                let b1: [u8; POLYVEC_BYTES] = polyvec_tobytes(a);
-                let r: PolyVec = polyvec_frombytes(&b1);
-                let b2: [u8; POLYVEC_BYTES] = polyvec_tobytes(r);
+       
+        let a: PolyVec = [[HQ.clone(); D]; N];
+        let b1: [u8; POLYVEC_BYTES] = polyvec_tobytes(a);
+        let r: PolyVec = polyvec_frombytes(&b1);
+        let b2: [u8; POLYVEC_BYTES] = polyvec_tobytes(r);
 
-                assert_eq!(b1, b2, "polyvec_bytes: buffers don't match");
-                assert_eq!(a, r, "polyvec_bytes: polynomial vectors don't match");
-            },
-            "test_polyvec_bytes",
-        );
+        assert_eq!(b1, b2, "polyvec_bytes: buffers don't match");
+        assert_eq!(a, r, "polyvec_bytes: polynomial vectors don't match");
+          
         
     }
 }

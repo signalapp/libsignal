@@ -1,7 +1,6 @@
 pub mod arithmetic;
 pub mod sys_a;
 pub mod util;
-pub mod stack_utils;
 
 use std::arch::asm;
 
@@ -406,21 +405,16 @@ mod tests {
     use getrandom;
     use sys_a::*;
     use super::*;
-    use crate::stack_utils::run_with_large_stack;
 
     #[test]
     fn test_scheme() {
-        run_with_large_stack(
-            || {
 
-                let (sk1, pk1) = kg(&A, true);
-                let (sk2, pk2) = kg(&AT, false);
-                let ss1 = pswoosh_skey_deriv(&pk1, &pk2, &sk1, true);
-                let ss2 = pswoosh_skey_deriv(&pk2, &pk1, &sk2, false);
+        let (sk1, pk1) = kg(&A, true);
+        let (sk2, pk2) = kg(&AT, false);
+        let ss1 = pswoosh_skey_deriv(&pk1, &pk2, &sk1, true);
+        let ss2 = pswoosh_skey_deriv(&pk2, &pk1, &sk2, false);
 
-                assert_eq!(ss1, ss2, "ERROR: shared secrets don't match!");
-            }, 
-            "test_scheme");
+        assert_eq!(ss1, ss2, "ERROR: shared secrets don't match!");
         
     }
 
