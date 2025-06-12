@@ -191,10 +191,82 @@ async fn main() -> Result<(), SignalProtocolError> {
     };
     
     let alice_decrypted_reply = String::from_utf8(alice_received).expect("Valid UTF-8");
-    println!("Alice received reply: {}", alice_decrypted_reply);
+    println!("Alice received: {}", alice_decrypted_reply);
+    
+    // Continue the conversation - Alice sends another message (Turn 3)
+    let alice_second_message = "Thanks Bob! How's the post-quantum cryptography working for you?";
+    let alice_second_ciphertext = message_encrypt(
+        alice_second_message.as_bytes(),
+        &bob_address,
+        &mut alice_store.session_store,
+        &mut alice_store.identity_store,
+        SystemTime::UNIX_EPOCH,
+        &mut csprng,
+    ).await?;
+    
+    println!("\n=== ALICE'S SECOND MESSAGE (Turn 3) ===");
+    println!("Alice sent: {}", alice_second_message);
+    println!("Ciphertext type: {:?}", alice_second_ciphertext.message_type());
+    println!("Ciphertext length: {} bytes", alice_second_ciphertext.serialize().len());
+    println!("Encrypted message: {:?}", hex::encode(alice_second_ciphertext.serialize()));
+    
+    // Bob decrypts Alice's second message
+    let bob_second_plaintext = match &alice_second_ciphertext {
+        CiphertextMessage::SignalMessage(signal_msg) => {
+            println!("\n=== BOB DECRYPTING ALICE'S SECOND MESSAGE ===");
+            message_decrypt_signal(
+                signal_msg,
+                &alice_address,
+                &mut bob_store.session_store,
+                &mut bob_store.identity_store,
+                &mut csprng,
+            ).await?
+        },
+        _ => return Err(SignalProtocolError::InvalidMessage(CiphertextMessageType::Plaintext, "Expected SignalMessage")),
+    };
+    
+    let bob_decrypted_second = String::from_utf8(bob_second_plaintext).expect("Valid UTF-8");
+    println!("Bob received: {}", bob_decrypted_second);
+    
+    // Bob sends another reply (Turn 4)
+    let bob_second_reply = "It's amazing! The Kyber1024 integration provides excellent quantum resistance.";
+    let bob_second_ciphertext = message_encrypt(
+        bob_second_reply.as_bytes(),
+        &alice_address,
+        &mut bob_store.session_store,
+        &mut bob_store.identity_store,
+        SystemTime::UNIX_EPOCH,
+        &mut csprng,
+    ).await?;
+    
+    println!("\n=== BOB'S SECOND REPLY (Turn 4) ===");
+    println!("Bob sent: {}", bob_second_reply);
+    println!("Reply ciphertext type: {:?}", bob_second_ciphertext.message_type());
+    println!("Reply ciphertext length: {} bytes", bob_second_ciphertext.serialize().len());
+    println!("Encrypted reply: {:?}", hex::encode(bob_second_ciphertext.serialize()));
+    
+    // Alice decrypts Bob's second reply
+    let alice_second_received = match &bob_second_ciphertext {
+        CiphertextMessage::SignalMessage(signal_msg) => {
+            println!("\n=== ALICE DECRYPTING BOB'S SECOND REPLY ===");
+            message_decrypt_signal(
+                signal_msg,
+                &bob_address,
+                &mut alice_store.session_store,
+                &mut alice_store.identity_store,
+                &mut csprng,
+            ).await?
+        },
+        _ => return Err(SignalProtocolError::InvalidMessage(CiphertextMessageType::Plaintext, "Expected SignalMessage")),
+    };
+    
+    let alice_decrypted_second_reply = String::from_utf8(alice_second_received).expect("Valid UTF-8");
+    println!("Alice received reply: {}", alice_decrypted_second_reply);
     
     println!("\n=== COMMUNICATION COMPLETE ===");
     println!("Communication established successfully!");
+    println!("Total double ratchet turns: 4");
+    println!("Messages exchanged: 4 (2 from Alice, 2 from Bob)");
     
     Ok(())
 }
