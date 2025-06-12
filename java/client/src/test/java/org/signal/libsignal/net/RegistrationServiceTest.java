@@ -23,7 +23,7 @@ import org.signal.libsignal.internal.NativeTesting;
 import org.signal.libsignal.internal.TokioAsyncContext;
 import org.signal.libsignal.protocol.ServiceId;
 import org.signal.libsignal.protocol.SignedPublicPreKey;
-import org.signal.libsignal.protocol.ecc.Curve;
+import org.signal.libsignal.protocol.ecc.ECKeyPair;
 import org.signal.libsignal.protocol.ecc.ECPublicKey;
 import org.signal.libsignal.protocol.kem.KEMKeyPair;
 import org.signal.libsignal.protocol.kem.KEMKeyType;
@@ -53,7 +53,7 @@ public class RegistrationServiceTest {
 
   @Test
   public void testConvertSignedPreKey() {
-    var key = Curve.generateKeyPair().getPublicKey();
+    var key = ECKeyPair.generate().getPublicKey();
     var signedPublicPreKey = new SignedPublicPreKey<>(42, key, "signature".getBytes());
     key.guardedRun(
         keyHandle ->
@@ -486,9 +486,9 @@ public class RegistrationServiceTest {
       SignedPublicPreKey<KEMPublicKey> pqLastResortPreKey) {
     public static RegisterAccountKeys createForTest() {
       return new RegisterAccountKeys(
-          Curve.generateKeyPair().getPublicKey(),
+          ECKeyPair.generate().getPublicKey(),
           new SignedPublicPreKey<>(
-              1, Curve.generateKeyPair().getPublicKey(), "EC signature".getBytes()),
+              1, ECKeyPair.generate().getPublicKey(), "EC signature".getBytes()),
           new SignedPublicPreKey<>(
               2,
               KEMKeyPair.generate(KEMKeyType.KYBER_1024).getPublicKey(),

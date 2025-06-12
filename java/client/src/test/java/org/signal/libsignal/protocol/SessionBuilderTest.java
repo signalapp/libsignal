@@ -24,7 +24,6 @@ import org.junit.experimental.runners.Enclosed;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
-import org.signal.libsignal.protocol.ecc.Curve;
 import org.signal.libsignal.protocol.ecc.ECKeyPair;
 import org.signal.libsignal.protocol.kem.KEMKeyPair;
 import org.signal.libsignal.protocol.kem.KEMKeyType;
@@ -137,7 +136,7 @@ public class SessionBuilderTest {
               bobStore.getLocalRegistrationId(),
               1,
               random.nextInt(Medium.MAX_VALUE),
-              Curve.generateKeyPair().getPublicKey(),
+              ECKeyPair.generate().getPublicKey(),
               random.nextInt(Medium.MAX_VALUE),
               bobPreKey.getSignedPreKey(),
               bobPreKey.getSignedPreKeySignature(),
@@ -309,18 +308,20 @@ public class SessionBuilderTest {
 
       IdentityKeyStore bobIdentityKeyStore = new TestInMemoryIdentityKeyStore();
 
-      ECKeyPair bobPreKeyPair = Curve.generateKeyPair();
-      ECKeyPair bobSignedPreKeyPair = Curve.generateKeyPair();
+      ECKeyPair bobPreKeyPair = ECKeyPair.generate();
+      ECKeyPair bobSignedPreKeyPair = ECKeyPair.generate();
       byte[] bobSignedPreKeySignature =
-          Curve.calculateSignature(
-              bobIdentityKeyStore.getIdentityKeyPair().getPrivateKey(),
-              bobSignedPreKeyPair.getPublicKey().serialize());
+          bobIdentityKeyStore
+              .getIdentityKeyPair()
+              .getPrivateKey()
+              .calculateSignature(bobSignedPreKeyPair.getPublicKey().serialize());
 
       KEMKeyPair bobKyberPreKeyPair = KEMKeyPair.generate(KEMKeyType.KYBER_1024);
       byte[] bobKyberPreKeySignature =
-          Curve.calculateSignature(
-              bobIdentityKeyStore.getIdentityKeyPair().getPrivateKey(),
-              bobKyberPreKeyPair.getPublicKey().serialize());
+          bobIdentityKeyStore
+              .getIdentityKeyPair()
+              .getPrivateKey()
+              .calculateSignature(bobKyberPreKeyPair.getPublicKey().serialize());
 
       for (int i = 0; i < bobSignedPreKeySignature.length * 8; i++) {
         byte[] modifiedSignature = new byte[bobSignedPreKeySignature.length];

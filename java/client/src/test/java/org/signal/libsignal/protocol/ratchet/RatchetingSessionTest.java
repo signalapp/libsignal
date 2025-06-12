@@ -11,7 +11,6 @@ import org.signal.libsignal.protocol.IdentityKey;
 import org.signal.libsignal.protocol.IdentityKeyPair;
 import org.signal.libsignal.protocol.InvalidKeyException;
 import org.signal.libsignal.protocol.SessionRecordTest;
-import org.signal.libsignal.protocol.ecc.Curve;
 import org.signal.libsignal.protocol.ecc.ECKeyPair;
 import org.signal.libsignal.protocol.ecc.ECPrivateKey;
 import org.signal.libsignal.protocol.ecc.ECPublicKey;
@@ -58,19 +57,18 @@ public class RatchetingSessionTest extends TestCase {
             "ab9be50e5cb22a925446ab90ee5670545f4fd32902459ec274b6ad0ae5d6031a");
 
     IdentityKey bobIdentityKeyPublic = new IdentityKey(bobIdentityPublic, 0);
-    ECPrivateKey bobIdentityKeyPrivate = Curve.decodePrivatePoint(bobIdentityPrivate);
+    ECPrivateKey bobIdentityKeyPrivate = new ECPrivateKey(bobIdentityPrivate);
     IdentityKeyPair bobIdentityKey =
         new IdentityKeyPair(bobIdentityKeyPublic, bobIdentityKeyPrivate);
-    ECPublicKey bobEphemeralPublicKey = Curve.decodePoint(bobPublic, 0);
-    ECPrivateKey bobEphemeralPrivateKey = Curve.decodePrivatePoint(bobPrivate);
+    ECPublicKey bobEphemeralPublicKey = new ECPublicKey(bobPublic, 0);
+    ECPrivateKey bobEphemeralPrivateKey = new ECPrivateKey(bobPrivate);
     ECKeyPair bobEphemeralKey = new ECKeyPair(bobEphemeralPublicKey, bobEphemeralPrivateKey);
     ECKeyPair bobBaseKey = bobEphemeralKey;
     ECKeyPair bobSignedPreKey =
         new ECKeyPair(
-            Curve.decodePoint(bobSignedPreKeyPublic, 0),
-            Curve.decodePrivatePoint(bobSignedPreKeyPrivate));
+            new ECPublicKey(bobSignedPreKeyPublic, 0), new ECPrivateKey(bobSignedPreKeyPrivate));
 
-    ECPublicKey aliceBasePublicKey = Curve.decodePoint(aliceBasePublic, 0);
+    ECPublicKey aliceBasePublicKey = new ECPublicKey(aliceBasePublic, 0);
     IdentityKey aliceIdentityPublicKey = new IdentityKey(aliceIdentityPublic, 0);
 
     SessionRecord session =
@@ -128,16 +126,16 @@ public class RatchetingSessionTest extends TestCase {
             "ab9be50e5cb22a925446ab90ee5670545f4fd32902459ec274b6ad0ae5d6031a");
 
     IdentityKey bobIdentityKey = new IdentityKey(bobIdentityPublic, 0);
-    ECPublicKey bobEphemeralPublicKey = Curve.decodePoint(bobPublic, 0);
-    ECPublicKey bobSignedPreKey = Curve.decodePoint(bobSignedPreKeyPublic, 0);
-    ECPublicKey aliceBasePublicKey = Curve.decodePoint(aliceBasePublic, 0);
-    ECPrivateKey aliceBasePrivateKey = Curve.decodePrivatePoint(aliceBasePrivate);
+    ECPublicKey bobEphemeralPublicKey = new ECPublicKey(bobPublic, 0);
+    ECPublicKey bobSignedPreKey = new ECPublicKey(bobSignedPreKeyPublic, 0);
+    ECPublicKey aliceBasePublicKey = new ECPublicKey(aliceBasePublic, 0);
+    ECPrivateKey aliceBasePrivateKey = new ECPrivateKey(aliceBasePrivate);
     ECKeyPair aliceBaseKey = new ECKeyPair(aliceBasePublicKey, aliceBasePrivateKey);
-    ECPublicKey aliceEphemeralPublicKey = Curve.decodePoint(aliceEphemeralPublic, 0);
-    ECPrivateKey aliceEphemeralPrivateKey = Curve.decodePrivatePoint(aliceEphemeralPrivate);
+    ECPublicKey aliceEphemeralPublicKey = new ECPublicKey(aliceEphemeralPublic, 0);
+    ECPrivateKey aliceEphemeralPrivateKey = new ECPrivateKey(aliceEphemeralPrivate);
     ECKeyPair aliceEphemeralKey = new ECKeyPair(aliceEphemeralPublicKey, aliceEphemeralPrivateKey);
     IdentityKey aliceIdentityPublicKey = new IdentityKey(aliceIdentityPublic, 0);
-    ECPrivateKey aliceIdentityPrivateKey = Curve.decodePrivatePoint(aliceIdentityPrivate);
+    ECPrivateKey aliceIdentityPrivateKey = new ECPrivateKey(aliceIdentityPrivate);
     IdentityKeyPair aliceIdentityKey =
         new IdentityKeyPair(aliceIdentityPublicKey, aliceIdentityPrivateKey);
 

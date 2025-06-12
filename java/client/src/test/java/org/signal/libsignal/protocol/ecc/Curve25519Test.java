@@ -66,14 +66,14 @@ public class Curve25519Test {
       (byte) 0xe6, (byte) 0x29
     };
 
-    ECPublicKey alicePublicKey = Curve.decodePoint(alicePublic, 0);
-    ECPrivateKey alicePrivateKey = Curve.decodePrivatePoint(alicePrivate);
+    ECPublicKey alicePublicKey = new ECPublicKey(alicePublic, 0);
+    ECPrivateKey alicePrivateKey = new ECPrivateKey(alicePrivate);
 
-    ECPublicKey bobPublicKey = Curve.decodePoint(bobPublic, 0);
-    ECPrivateKey bobPrivateKey = Curve.decodePrivatePoint(bobPrivate);
+    ECPublicKey bobPublicKey = new ECPublicKey(bobPublic, 0);
+    ECPrivateKey bobPrivateKey = new ECPrivateKey(bobPrivate);
 
-    byte[] sharedOne = Curve.calculateAgreement(alicePublicKey, bobPrivateKey);
-    byte[] sharedTwo = Curve.calculateAgreement(bobPublicKey, alicePrivateKey);
+    byte[] sharedOne = bobPrivateKey.calculateAgreement(alicePublicKey);
+    byte[] sharedTwo = alicePrivateKey.calculateAgreement(bobPublicKey);
 
     assertTrue(Arrays.equals(sharedOne, shared));
     assertTrue(Arrays.equals(sharedTwo, shared));
@@ -82,11 +82,11 @@ public class Curve25519Test {
   @Test
   public void testRandomAgreements() throws InvalidKeyException {
     for (int i = 0; i < 50; i++) {
-      ECKeyPair alice = Curve.generateKeyPair();
-      ECKeyPair bob = Curve.generateKeyPair();
+      ECKeyPair alice = ECKeyPair.generate();
+      ECKeyPair bob = ECKeyPair.generate();
 
-      byte[] sharedAlice = Curve.calculateAgreement(bob.getPublicKey(), alice.getPrivateKey());
-      byte[] sharedBob = Curve.calculateAgreement(alice.getPublicKey(), bob.getPrivateKey());
+      byte[] sharedAlice = alice.getPrivateKey().calculateAgreement(bob.getPublicKey());
+      byte[] sharedBob = bob.getPrivateKey().calculateAgreement(alice.getPublicKey());
 
       assertTrue(Arrays.equals(sharedAlice, sharedBob));
     }
@@ -140,11 +140,11 @@ public class Curve25519Test {
       (byte) 0x60, (byte) 0xb8, (byte) 0x6e, (byte) 0x88
     };
 
-    ECPrivateKey alicePrivateKey = Curve.decodePrivatePoint(aliceIdentityPrivate);
-    ECPublicKey alicePublicKey = Curve.decodePoint(aliceIdentityPublic, 0);
-    ECPublicKey aliceEphemeral = Curve.decodePoint(aliceEphemeralPublic, 0);
+    ECPrivateKey alicePrivateKey = new ECPrivateKey(aliceIdentityPrivate);
+    ECPublicKey alicePublicKey = new ECPublicKey(aliceIdentityPublic, 0);
+    ECPublicKey aliceEphemeral = new ECPublicKey(aliceEphemeralPublic, 0);
 
-    if (!Curve.verifySignature(alicePublicKey, aliceEphemeral.serialize(), aliceSignature)) {
+    if (!alicePublicKey.verifySignature(aliceEphemeral.serialize(), aliceSignature)) {
       throw new AssertionError("Sig verification failed!");
     }
 
@@ -157,7 +157,7 @@ public class Curve25519Test {
 
       modifiedSignature[i] ^= 0x01;
 
-      if (Curve.verifySignature(alicePublicKey, aliceEphemeral.serialize(), modifiedSignature)) {
+      if (alicePublicKey.verifySignature(aliceEphemeral.serialize(), modifiedSignature)) {
         throw new AssertionError("Sig verification succeeded!");
       }
     }
@@ -165,44 +165,44 @@ public class Curve25519Test {
 
   @Test
   public void testDecodeSize() throws InvalidKeyException {
-    ECKeyPair keyPair = Curve.generateKeyPair();
+    ECKeyPair keyPair = ECKeyPair.generate();
     byte[] serializedPublic = keyPair.getPublicKey().serialize();
 
-    ECPublicKey justRight = Curve.decodePoint(serializedPublic, 0);
+    ECPublicKey justRight = new ECPublicKey(serializedPublic, 0);
 
     assertThrows(
         "too small w/ offset",
         InvalidKeyException.class,
-        () -> Curve.decodePoint(serializedPublic, 1));
+        () -> new ECPublicKey(serializedPublic, 1));
 
     byte[] truncated = new byte[31];
     System.arraycopy(serializedPublic, 1, truncated, 0, truncated.length);
-    assertThrows("too small", InvalidKeyException.class, () -> Curve.decodePoint(truncated, 0));
-    assertThrows("too small", InvalidKeyException.class, () -> Curve.decodePrivatePoint(truncated));
+    assertThrows("too small", InvalidKeyException.class, () -> new ECPublicKey(truncated, 0));
+    assertThrows("too small", InvalidKeyException.class, () -> new ECPrivateKey(truncated));
     assertThrows(
         "too small", InvalidKeyException.class, () -> ECPublicKey.fromPublicKeyBytes(truncated));
 
-    assertThrows("empty", InvalidKeyException.class, () -> Curve.decodePoint(new byte[0], 0));
-    assertThrows("empty", InvalidKeyException.class, () -> Curve.decodePrivatePoint(new byte[0]));
+    assertThrows("empty", InvalidKeyException.class, () -> new ECPublicKey(new byte[0], 0));
+    assertThrows("empty", InvalidKeyException.class, () -> new ECPrivateKey(new byte[0]));
     assertThrows(
         "empty", InvalidKeyException.class, () -> ECPublicKey.fromPublicKeyBytes(new byte[0]));
 
     byte[] badKeyType = new byte[33];
     System.arraycopy(serializedPublic, 0, badKeyType, 0, serializedPublic.length);
     badKeyType[0] = 0x01;
-    assertThrows(InvalidKeyException.class, () -> Curve.decodePoint(badKeyType, 0));
+    assertThrows(InvalidKeyException.class, () -> new ECPublicKey(badKeyType, 0));
 
     // We allow extra trailing space for keys with type bytes for historical compatibility.
     byte[] extraSpace = new byte[serializedPublic.length + 1];
     System.arraycopy(serializedPublic, 0, extraSpace, 0, serializedPublic.length);
-    ECPublicKey extra = Curve.decodePoint(extraSpace, 0);
-    assertThrows("too big", InvalidKeyException.class, () -> Curve.decodePrivatePoint(extraSpace));
+    ECPublicKey extra = new ECPublicKey(extraSpace, 0);
+    assertThrows("too big", InvalidKeyException.class, () -> new ECPrivateKey(extraSpace));
     assertThrows(
         "too big", InvalidKeyException.class, () -> ECPublicKey.fromPublicKeyBytes(extraSpace));
 
     byte[] offsetSpace = new byte[serializedPublic.length + 1];
     System.arraycopy(serializedPublic, 0, offsetSpace, 1, serializedPublic.length);
-    ECPublicKey offset = Curve.decodePoint(offsetSpace, 1);
+    ECPublicKey offset = new ECPublicKey(offsetSpace, 1);
 
     assertTrue(Arrays.equals(serializedPublic, justRight.serialize()));
     assertTrue(Arrays.equals(extra.serialize(), serializedPublic));

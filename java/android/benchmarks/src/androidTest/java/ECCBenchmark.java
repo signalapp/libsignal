@@ -12,8 +12,8 @@ import org.signal.libsignal.protocol.ecc.*;
 public class ECCBenchmark {
   @Rule public final BenchmarkRule benchmarkRule = new BenchmarkRule();
 
-  private final ECKeyPair alicePair = Curve.generateKeyPair();
-  private final ECKeyPair bobPair = Curve.generateKeyPair();
+  private final ECKeyPair alicePair = ECKeyPair.generate();
+  private final ECKeyPair bobPair = ECKeyPair.generate();
   private final byte[] arbitraryData = new byte[] {0x53, 0x69, 0x67, 0x6E, 0x61, 0x6C};
 
   @Test

@@ -5,7 +5,6 @@
 
 package org.signal.libsignal.protocol;
 
-import org.signal.libsignal.protocol.ecc.Curve;
 import org.signal.libsignal.protocol.ecc.ECKeyPair;
 import org.signal.libsignal.protocol.util.KeyHelper;
 
@@ -16,7 +15,7 @@ public class TestInMemoryIdentityKeyStore
   }
 
   private static IdentityKeyPair generateIdentityKeyPair() {
-    ECKeyPair identityKeyPairKeys = Curve.generateKeyPair();
+    ECKeyPair identityKeyPairKeys = ECKeyPair.generate();
 
     return new IdentityKeyPair(
         new IdentityKey(identityKeyPairKeys.getPublicKey()), identityKeyPairKeys.getPrivateKey());

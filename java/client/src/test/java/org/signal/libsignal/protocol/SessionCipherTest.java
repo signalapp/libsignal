@@ -13,7 +13,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Random;
 import junit.framework.TestCase;
-import org.signal.libsignal.protocol.ecc.Curve;
 import org.signal.libsignal.protocol.ecc.ECKeyPair;
 import org.signal.libsignal.protocol.message.CiphertextMessage;
 import org.signal.libsignal.protocol.message.SignalMessage;
@@ -101,9 +100,9 @@ public class SessionCipherTest extends TestCase {
     CiphertextMessage message2 = aliceCipher.encrypt(alicePlaintext);
 
     SessionRecord bobSession = bobStore.loadSession(aliceAddress);
-    assertFalse(bobSession.currentRatchetKeyMatches(Curve.generateKeyPair().getPublicKey()));
+    assertFalse(bobSession.currentRatchetKeyMatches(ECKeyPair.generate().getPublicKey()));
     bobSession.archiveCurrentState();
-    assertFalse(bobSession.currentRatchetKeyMatches(Curve.generateKeyPair().getPublicKey()));
+    assertFalse(bobSession.currentRatchetKeyMatches(ECKeyPair.generate().getPublicKey()));
     bobStore.storeSession(aliceAddress, bobSession);
 
     byte[] bobPlaintext2 = bobCipher.decrypt(new SignalMessage(message2.serialize()));
@@ -225,24 +224,24 @@ public class SessionCipherTest extends TestCase {
   }
 
   private PairOfSessions initializeSessionsV3() throws InvalidKeyException {
-    ECKeyPair aliceIdentityKeyPair = Curve.generateKeyPair();
+    ECKeyPair aliceIdentityKeyPair = ECKeyPair.generate();
     IdentityKeyPair aliceIdentityKey =
         new IdentityKeyPair(
             new IdentityKey(aliceIdentityKeyPair.getPublicKey()),
             aliceIdentityKeyPair.getPrivateKey());
-    ECKeyPair aliceBaseKey = Curve.generateKeyPair();
-    ECKeyPair aliceEphemeralKey = Curve.generateKeyPair();
+    ECKeyPair aliceBaseKey = ECKeyPair.generate();
+    ECKeyPair aliceEphemeralKey = ECKeyPair.generate();
 
     ECKeyPair alicePreKey = aliceBaseKey;
 
-    ECKeyPair bobIdentityKeyPair = Curve.generateKeyPair();
+    ECKeyPair bobIdentityKeyPair = ECKeyPair.generate();
     IdentityKeyPair bobIdentityKey =
         new IdentityKeyPair(
             new IdentityKey(bobIdentityKeyPair.getPublicKey()), bobIdentityKeyPair.getPrivateKey());
-    ECKeyPair bobBaseKey = Curve.generateKeyPair();
+    ECKeyPair bobBaseKey = ECKeyPair.generate();
     ECKeyPair bobEphemeralKey = bobBaseKey;
 
-    ECKeyPair bobPreKey = Curve.generateKeyPair();
+    ECKeyPair bobPreKey = ECKeyPair.generate();
 
     SessionRecord aliceSessionRecord =
         SessionRecordTest.initializeAliceSession(

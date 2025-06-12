@@ -8,7 +8,6 @@ package org.signal.libsignal.protocol.fingerprint;
 import java.util.Arrays;
 import junit.framework.TestCase;
 import org.signal.libsignal.protocol.IdentityKey;
-import org.signal.libsignal.protocol.ecc.Curve;
 import org.signal.libsignal.protocol.ecc.ECKeyPair;
 import org.signal.libsignal.protocol.util.Hex;
 
@@ -102,8 +101,8 @@ public class NumericFingerprintGeneratorTest extends TestCase {
 
   public void testMatchingFingerprints()
       throws FingerprintVersionMismatchException, FingerprintParsingException {
-    ECKeyPair aliceKeyPair = Curve.generateKeyPair();
-    ECKeyPair bobKeyPair = Curve.generateKeyPair();
+    ECKeyPair aliceKeyPair = ECKeyPair.generate();
+    ECKeyPair bobKeyPair = ECKeyPair.generate();
 
     IdentityKey aliceIdentityKey = new IdentityKey(aliceKeyPair.getPublicKey());
     IdentityKey bobIdentityKey = new IdentityKey(bobKeyPair.getPublicKey());
@@ -143,9 +142,9 @@ public class NumericFingerprintGeneratorTest extends TestCase {
 
   public void testMismatchingFingerprints()
       throws FingerprintVersionMismatchException, FingerprintParsingException {
-    ECKeyPair aliceKeyPair = Curve.generateKeyPair();
-    ECKeyPair bobKeyPair = Curve.generateKeyPair();
-    ECKeyPair mitmKeyPair = Curve.generateKeyPair();
+    ECKeyPair aliceKeyPair = ECKeyPair.generate();
+    ECKeyPair bobKeyPair = ECKeyPair.generate();
+    ECKeyPair mitmKeyPair = ECKeyPair.generate();
 
     IdentityKey aliceIdentityKey = new IdentityKey(aliceKeyPair.getPublicKey());
     IdentityKey bobIdentityKey = new IdentityKey(bobKeyPair.getPublicKey());
@@ -186,8 +185,8 @@ public class NumericFingerprintGeneratorTest extends TestCase {
 
   public void testMismatchingIdentifiers()
       throws FingerprintVersionMismatchException, FingerprintParsingException {
-    ECKeyPair aliceKeyPair = Curve.generateKeyPair();
-    ECKeyPair bobKeyPair = Curve.generateKeyPair();
+    ECKeyPair aliceKeyPair = ECKeyPair.generate();
+    ECKeyPair bobKeyPair = ECKeyPair.generate();
 
     IdentityKey aliceIdentityKey = new IdentityKey(aliceKeyPair.getPublicKey());
     IdentityKey bobIdentityKey = new IdentityKey(bobKeyPair.getPublicKey());

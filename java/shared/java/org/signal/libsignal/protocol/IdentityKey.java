@@ -10,7 +10,6 @@ import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
 import org.signal.libsignal.internal.CalledFromNative;
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
-import org.signal.libsignal.protocol.ecc.Curve;
 import org.signal.libsignal.protocol.ecc.ECPublicKey;
 import org.signal.libsignal.protocol.util.Hex;
 
@@ -28,11 +27,11 @@ public class IdentityKey {
   }
 
   public IdentityKey(byte[] bytes, int offset) throws InvalidKeyException {
-    this.publicKey = Curve.decodePoint(bytes, offset);
+    this.publicKey = new ECPublicKey(bytes, offset);
   }
 
   public IdentityKey(byte[] bytes) throws InvalidKeyException {
-    this.publicKey = Curve.decodePoint(bytes, 0);
+    this.publicKey = new ECPublicKey(bytes, 0);
   }
 
   @CalledFromNative

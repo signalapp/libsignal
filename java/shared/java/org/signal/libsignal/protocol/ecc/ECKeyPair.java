@@ -22,4 +22,9 @@ public class ECKeyPair {
   public ECPrivateKey getPrivateKey() {
     return privateKey;
   }
+
+  public static ECKeyPair generate() {
+    var privateKey = ECPrivateKey.generate();
+    return new ECKeyPair(privateKey.publicKey(), privateKey);
+  }
 }

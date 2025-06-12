@@ -10,8 +10,6 @@ import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
 import org.signal.libsignal.internal.CalledFromNative;
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
-import org.signal.libsignal.protocol.ecc.Curve;
-import org.signal.libsignal.protocol.ecc.ECKeyPair;
 import org.signal.libsignal.protocol.ecc.ECPrivateKey;
 import org.signal.libsignal.protocol.ecc.ECPublicKey;
 
@@ -39,9 +37,8 @@ public class IdentityKeyPair {
   }
 
   public static IdentityKeyPair generate() {
-    ECKeyPair keyPair = Curve.generateKeyPair();
-    ECPrivateKey privateKey = keyPair.getPrivateKey();
-    ECPublicKey publicKey = keyPair.getPublicKey();
+    ECPrivateKey privateKey = ECPrivateKey.generate();
+    ECPublicKey publicKey = privateKey.publicKey();
     return new IdentityKeyPair(new IdentityKey(publicKey), privateKey);
   }
 

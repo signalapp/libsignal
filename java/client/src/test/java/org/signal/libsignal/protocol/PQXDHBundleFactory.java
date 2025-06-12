@@ -6,7 +6,6 @@
 package org.signal.libsignal.protocol;
 
 import java.util.Random;
-import org.signal.libsignal.protocol.ecc.Curve;
 import org.signal.libsignal.protocol.ecc.ECKeyPair;
 import org.signal.libsignal.protocol.kem.KEMKeyPair;
 import org.signal.libsignal.protocol.kem.KEMKeyType;
@@ -20,16 +19,19 @@ import org.signal.libsignal.protocol.util.Medium;
 public final class PQXDHBundleFactory implements BundleFactory {
   @Override
   public PreKeyBundle createBundle(SignalProtocolStore store) throws InvalidKeyException {
-    ECKeyPair preKeyPair = Curve.generateKeyPair();
-    ECKeyPair signedPreKeyPair = Curve.generateKeyPair();
+    ECKeyPair preKeyPair = ECKeyPair.generate();
+    ECKeyPair signedPreKeyPair = ECKeyPair.generate();
     byte[] signedPreKeySignature =
-        Curve.calculateSignature(
-            store.getIdentityKeyPair().getPrivateKey(),
-            signedPreKeyPair.getPublicKey().serialize());
+        store
+            .getIdentityKeyPair()
+            .getPrivateKey()
+            .calculateSignature(signedPreKeyPair.getPublicKey().serialize());
     KEMKeyPair kyberPreKeyPair = KEMKeyPair.generate(KEMKeyType.KYBER_1024);
     byte[] kyberPreKeySignature =
-        Curve.calculateSignature(
-            store.getIdentityKeyPair().getPrivateKey(), kyberPreKeyPair.getPublicKey().serialize());
+        store
+            .getIdentityKeyPair()
+            .getPrivateKey()
+            .calculateSignature(kyberPreKeyPair.getPublicKey().serialize());
 
     Random random = new Random();
     int preKeyId = random.nextInt(Medium.MAX_VALUE);

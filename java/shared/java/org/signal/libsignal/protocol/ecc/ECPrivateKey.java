@@ -12,7 +12,7 @@ import org.signal.libsignal.internal.NativeHandleGuard;
 import org.signal.libsignal.protocol.InvalidKeyException;
 
 public class ECPrivateKey extends NativeHandleGuard.SimpleOwner {
-  static ECPrivateKey generate() {
+  public static ECPrivateKey generate() {
     return new ECPrivateKey(Native.ECPrivateKey_Generate());
   }
 

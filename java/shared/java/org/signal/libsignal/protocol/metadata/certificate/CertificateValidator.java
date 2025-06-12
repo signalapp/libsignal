@@ -7,8 +7,6 @@ package org.signal.libsignal.metadata.certificate;
 
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
-import org.signal.libsignal.protocol.InvalidKeyException;
-import org.signal.libsignal.protocol.ecc.Curve;
 import org.signal.libsignal.protocol.ecc.ECPublicKey;
 
 public class CertificateValidator {
@@ -37,13 +35,8 @@ public class CertificateValidator {
 
   // VisibleForTesting
   void validate(ServerCertificate certificate) throws InvalidCertificateException {
-    try {
-      if (!Curve.verifySignature(
-          trustRoot, certificate.getCertificate(), certificate.getSignature())) {
-        throw new InvalidCertificateException("Signature failed");
-      }
-    } catch (InvalidKeyException e) {
-      throw new InvalidCertificateException(e);
+    if (!trustRoot.verifySignature(certificate.getCertificate(), certificate.getSignature())) {
+      throw new InvalidCertificateException("Signature failed");
     }
   }
 }

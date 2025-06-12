@@ -10,16 +10,15 @@ import java.util.UUID;
 import junit.framework.TestCase;
 import org.signal.libsignal.protocol.InvalidKeyException;
 import org.signal.libsignal.protocol.ServiceId;
-import org.signal.libsignal.protocol.ecc.Curve;
 import org.signal.libsignal.protocol.ecc.ECKeyPair;
 import org.signal.libsignal.protocol.ecc.ECPublicKey;
 
 public class SenderCertificateTest extends TestCase {
 
-  private final ECKeyPair trustRoot = Curve.generateKeyPair();
+  private final ECKeyPair trustRoot = ECKeyPair.generate();
 
   public void testSignature() throws InvalidCertificateException, InvalidKeyException {
-    ECKeyPair key = Curve.generateKeyPair();
+    ECKeyPair key = ECKeyPair.generate();
     SenderCertificate senderCertificate =
         createCertificateFor(
             trustRoot,
@@ -33,7 +32,7 @@ public class SenderCertificateTest extends TestCase {
   }
 
   public void testExpiredSignature() throws InvalidCertificateException, InvalidKeyException {
-    ECKeyPair key = Curve.generateKeyPair();
+    ECKeyPair key = ECKeyPair.generate();
 
     SenderCertificate senderCertificate =
         createCertificateFor(
@@ -52,7 +51,7 @@ public class SenderCertificateTest extends TestCase {
   }
 
   public void testBadSignature() throws InvalidCertificateException, InvalidKeyException {
-    ECKeyPair key = Curve.generateKeyPair();
+    ECKeyPair key = ECKeyPair.generate();
 
     SenderCertificate senderCertificate =
         createCertificateFor(
@@ -79,7 +78,7 @@ public class SenderCertificateTest extends TestCase {
 
   public void testGetSenderAci()
       throws InvalidCertificateException, InvalidKeyException, ServiceId.InvalidServiceIdException {
-    ECKeyPair key = Curve.generateKeyPair();
+    ECKeyPair key = ECKeyPair.generate();
     UUID uuid = UUID.fromString("9d0652a3-dcc3-4d11-975f-74d61598733f");
     SenderCertificate senderCertificate =
         createCertificateFor(trustRoot, uuid, null, 31338, key.getPublicKey(), 31337);
@@ -95,7 +94,7 @@ public class SenderCertificateTest extends TestCase {
       ECPublicKey identityKey,
       long expires)
       throws InvalidKeyException, InvalidCertificateException {
-    ECKeyPair serverKey = Curve.generateKeyPair();
+    ECKeyPair serverKey = ECKeyPair.generate();
     ServerCertificate serverCertificate =
         new ServerCertificate(trustRoot.getPrivateKey(), 1, serverKey.getPublicKey());
     return serverCertificate.issue(
