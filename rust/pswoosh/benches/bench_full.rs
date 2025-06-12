@@ -1,7 +1,7 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use ref0::*;
-use ref0::sys_a::*;
-use ref0::{arithmetic::{poly::*, polyvec::*}};
+use pswoosh::*;
+use pswoosh::sys_a::*;
+use pswoosh::{arithmetic::{poly::*, polyvec::*}};
 use getrandom;
 
 fn bench_getnoise_spec(c: &mut Criterion) {

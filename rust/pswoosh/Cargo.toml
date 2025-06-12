@@ -18,5 +18,5 @@ name="bench_full"
 harness=false
 
 [lib]
-name = "ref0"
+name = "pswoosh"
 path = "src/lib.rs"

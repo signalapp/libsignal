@@ -1,8 +1,8 @@
 #[cfg(test)]
 mod tests {
 
-    use ref0::sys_a::*;
-    use ref0::*;
+    use pswoosh::sys_a::*;
+    use pswoosh::*;
 
     #[test]
     fn test_keys() {
