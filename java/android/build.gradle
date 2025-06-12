@@ -45,8 +45,8 @@ android {
                 srcDir '../shared/test/java'
             }
             kotlin {
-                srcDir '../client/src/test/kotlin'
-                srcDir '../shared/test/kotlin'
+                srcDir '../client/src/test/java'
+                srcDir '../shared/test/java'
             }
             resources {
                 srcDir '../client/src/test/resources'

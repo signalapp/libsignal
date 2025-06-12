@@ -30,10 +30,8 @@ sourceSets {
         }
         kotlin {
             srcDir 'src/main/java'
-            srcDir 'src/main/kotlin'
             // Include libsignal sources shared between the client and server
             srcDir '../shared/java'
-            srcDir '../shared/kotlin'
         }
         resources {
             srcDir '../shared/resources'
@@ -45,9 +43,7 @@ sourceSets {
         }
         kotlin {
             srcDir 'src/test/java'
-            srcDir 'src/test/kotlin'
             srcDir '../shared/test/java'
-            srcDir '../shared/test/kotlin'
         }
     }
 }
