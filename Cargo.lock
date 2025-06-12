@@ -2466,11 +2466,16 @@ name = "libsignal-core"
 version = "0.1.0"
 dependencies = [
  "assert_matches",
+ "boring",
+ "boring-sys",
+ "clap",
  "const-str",
  "criterion",
  "curve25519-dalek",
  "derive_more 2.0.1",
  "displaydoc",
+ "foreign-types",
+ "hex",
  "proptest",
  "rand 0.9.0",
  "sha2",
@@ -2481,7 +2486,7 @@ dependencies = [
 
 [[package]]
 name = "libsignal-ffi"
-version = "0.74.0"
+version = "0.74.1"
 dependencies = [
  "cpufeatures",
  "hex",
@@ -2498,14 +2503,14 @@ dependencies = [
 
 [[package]]
 name = "libsignal-jni"
-version = "0.74.0"
+version = "0.74.1"
 dependencies = [
  "libsignal-jni-impl",
 ]
 
 [[package]]
 name = "libsignal-jni-impl"
-version = "0.74.0"
+version = "0.74.1"
 dependencies = [
  "cfg-if",
  "cpufeatures",
@@ -2522,7 +2527,7 @@ dependencies = [
 
 [[package]]
 name = "libsignal-jni-testing"
-version = "0.74.0"
+version = "0.74.1"
 dependencies = [
  "jni",
  "libsignal-bridge-testing",
@@ -2694,6 +2699,7 @@ dependencies = [
  "anyhow",
  "async-trait",
  "base64 0.22.1",
+ "bytes",
  "clap",
  "derive_more 2.0.1",
  "displaydoc",
@@ -2710,6 +2716,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_with",
+ "test-case",
  "thiserror 2.0.12",
  "tokio",
  "usernames",
@@ -2778,7 +2785,7 @@ dependencies = [
 
 [[package]]
 name = "libsignal-node"
-version = "0.74.0"
+version = "0.74.1"
 dependencies = [
  "cmake",
  "futures",

@@ -790,14 +790,13 @@ mod test {
     use crate::dns::lookup_result::LookupResult;
     use crate::route::testutils::FakeRoute;
     use crate::route::{NoDelay, UnresolvedHost};
-    use crate::DnsSource;
 
     impl<S, R, SP> Schedule<S, R, SP>
     where
         S: FusedStream<Item = (ResolvedRoutes<R>, ResolveMeta)>,
         SP: RouteDelayPolicy<R>,
     {
-        pub fn as_stream<'a>(self: Pin<&'a mut Self>) -> impl Stream<Item = R> + 'a {
+        pub fn as_stream(self: Pin<&mut Self>) -> impl Stream<Item = R> + use<'_, S, R, SP> {
             let schedule = self;
             futures_util::stream::unfold(schedule, |mut schedule| async {
                 schedule.as_mut().next().await.map(|r| (r, schedule))
@@ -813,7 +812,6 @@ mod test {
             LookupResult {
                 ipv4: vec![ip_addr!(v4, "192.0.2.1")],
                 ipv6: vec![ip_addr!(v6, "3fff::1234")],
-                source: DnsSource::Static,
             },
         )]);
 
@@ -849,7 +847,6 @@ mod test {
                 LookupResult {
                     ipv4: vec![ip_addr!(v4, "192.0.2.11")],
                     ipv6: vec![ip_addr!(v6, "3fff::1234")],
-                    source: DnsSource::Static,
                 },
             ),
             (
@@ -857,7 +854,6 @@ mod test {
                 LookupResult {
                     ipv4: vec![ip_addr!(v4, "192.0.2.22")],
                     ipv6: vec![ip_addr!(v6, "3fff::5678")],
-                    source: DnsSource::Static,
                 },
             ),
         ]);

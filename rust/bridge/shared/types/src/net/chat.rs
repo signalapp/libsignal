@@ -18,7 +18,7 @@ use http::{HeaderMap, HeaderName, HeaderValue};
 use libsignal_net::auth::Auth;
 use libsignal_net::chat::fake::FakeChatRemote;
 use libsignal_net::chat::server_requests::DisconnectCause;
-use libsignal_net::chat::ws2::ListenerEvent;
+use libsignal_net::chat::ws::ListenerEvent;
 use libsignal_net::chat::{
     self, ChatConnection, ConnectError, ConnectionInfo, DebugInfo as ChatServiceDebugInfo, Request,
     Response as ChatResponse, SendError,
@@ -329,7 +329,7 @@ async fn establish_chat_connection(
         connection_resources,
         route_provider,
         user_agent,
-        libsignal_net::chat::ws2::Config {
+        libsignal_net::chat::ws::Config {
             local_idle_timeout,
             remote_idle_timeout: remote_idle_disconnect_timeout,
             initial_request_id: 0,
@@ -463,7 +463,7 @@ impl dyn ChatListener {
         }
     }
 
-    fn into_event_listener(mut self: Box<Self>) -> Box<dyn FnMut(chat::ws2::ListenerEvent) + Send> {
+    fn into_event_listener(mut self: Box<Self>) -> Box<dyn FnMut(chat::ws::ListenerEvent) + Send> {
         Box::new(move |event| {
             let event: chat::server_requests::ServerEvent = match event.try_into() {
                 Ok(event) => event,

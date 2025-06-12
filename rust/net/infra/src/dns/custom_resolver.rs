@@ -208,7 +208,7 @@ where
         .await;
         let ipv4s = maybe_ipv4.map_or(vec![], |r| r.data);
         let ipv6s = maybe_ipv6.map_or(vec![], |r| r.data);
-        match LookupResult::new(T::Connection::SOURCE, ipv4s, ipv6s) {
+        match LookupResult::new(ipv4s, ipv6s) {
             lookup_result if !lookup_result.is_empty() => Ok(lookup_result),
             _ => Err(Error::LookupFailed),
         }
@@ -366,7 +366,7 @@ async fn do_lookup_task_body<T: DnsTransport>(
     let v4 = maybe_ipv4_res.map_or(vec![], |e| e.data);
     let v6 = maybe_ipv6_res.map_or(vec![], |e| e.data);
     let expiring_entry = Expiring {
-        data: LookupResult::new(DnsSource::Cache, v4, v6),
+        data: LookupResult::new(v4, v6),
         // Clamp cached TTLs.
         expiration: min(expiration, started_at + MAX_CACHE_TTL),
     };

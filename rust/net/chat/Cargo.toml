@@ -35,7 +35,9 @@ libsignal-net = { path = "..", features = ["test-util"] }
 usernames = { workspace = true }
 
 anyhow = { workspace = true }
+bytes = { workspace = true }
 clap = { workspace = true, features = ["derive"] }
 env_logger = { workspace = true }
 rand = { workspace = true }
+test-case = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread"] }

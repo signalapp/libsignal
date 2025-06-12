@@ -21,7 +21,7 @@ use libsignal_net_infra::route::{
     HttpsProvider, TlsRouteProvider,
 };
 use libsignal_net_infra::{
-    AsStaticHttpHeader, ConnectionParams, DnsSource, EnableDomainFronting, EnforceMinimumTls,
+    AsStaticHttpHeader, ConnectionParams, EnableDomainFronting, EnforceMinimumTls,
     HttpRequestDecorator, HttpRequestDecoratorSeq, RouteType, TransportConnectionParams,
 };
 use nonzero_ext::nonzero;
@@ -281,7 +281,7 @@ impl DomainConfig {
     pub fn static_fallback(&self) -> (&'static str, LookupResult) {
         (
             self.connect.hostname,
-            LookupResult::new(DnsSource::Static, self.ip_v4.into(), self.ip_v6.into()),
+            LookupResult::new(self.ip_v4.into(), self.ip_v6.into()),
         )
     }
 }

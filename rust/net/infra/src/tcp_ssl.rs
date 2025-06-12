@@ -5,14 +5,10 @@
 
 use std::future::Future;
 use std::net::IpAddr;
-use std::num::NonZeroU16;
 use std::sync::Arc;
 use std::time::Duration;
 
-use async_trait::async_trait;
-use auto_enums::enum_derive;
 use boring_signal::ssl::{ConnectConfiguration, SslConnector, SslMethod, SslSignatureAlgorithm};
-use futures_util::TryFutureExt;
 use tokio::net::TcpStream;
 use tokio_boring_signal::SslStream;
 
@@ -20,20 +16,11 @@ use crate::certs::RootCertificates;
 use crate::dns::DnsResolver;
 use crate::errors::TransportConnectError;
 use crate::host::Host;
-use crate::route::{
-    ConnectionProxyConfig, Connector, ConnectorExt as _, TcpProxy, TcpRoute, TlsProxy,
-    TlsRouteFragment,
-};
-use crate::tcp_ssl::proxy::tls::TlsProxyConnector;
-use crate::timeouts::TCP_CONNECTION_ATTEMPT_DELAY;
+use crate::route::{ConnectionProxyConfig, Connector, TcpRoute, TlsRouteFragment};
 #[cfg(feature = "dev-util")]
 #[allow(unused_imports)]
 use crate::utils::development_only_enable_nss_standard_debug_interop;
-use crate::utils::first_ok;
-use crate::{
-    Alpn, AsyncDuplexStream, Connection, RouteType, ServiceConnectionInfo, StreamAndInfo,
-    TransportConnectionParams, TransportConnector,
-};
+use crate::{Alpn, AsyncDuplexStream, Connection};
 
 pub mod proxy;
 
@@ -93,12 +80,6 @@ impl TryFrom<&TcpSslConnector> for Option<ConnectionProxyConfig> {
     }
 }
 
-#[enum_derive(tokio1::AsyncRead, tokio1::AsyncWrite)]
-pub enum TcpSslConnectorStream {
-    Direct(<DirectConnector as TransportConnector>::Stream),
-    Proxy(<TlsProxyConnector as TransportConnector>::Stream),
-}
-
 #[derive(Clone, Debug)]
 pub struct DirectConnector {
     pub dns_resolver: DnsResolver,
@@ -111,42 +92,6 @@ pub struct StatelessTcp;
 /// Stateless [`Connector`] for [`TlsRouteFragment`]s.
 #[derive(Debug, Default)]
 pub struct StatelessTls;
-
-#[async_trait]
-impl TransportConnector for DirectConnector {
-    type Stream = SslStream<TcpStream>;
-
-    async fn connect(
-        &self,
-        connection_params: &TransportConnectionParams,
-        alpn: Alpn,
-    ) -> Result<StreamAndInfo<Self::Stream>, TransportConnectError> {
-        let log_tag: Arc<str> = "DirectConnector".into();
-        let StreamAndInfo(tcp_stream, remote_address) = connect_tcp(
-            &self.dns_resolver,
-            RouteType::Direct,
-            connection_params.tcp_host.as_deref(),
-            connection_params.port,
-            log_tag.clone(),
-        )
-        .await?;
-
-        let ssl_stream = connect_tls(tcp_stream, connection_params, alpn, None, log_tag).await?;
-
-        Ok(StreamAndInfo(ssl_stream, remote_address))
-    }
-}
-
-impl DirectConnector {
-    pub fn new(dns_resolver: DnsResolver) -> Self {
-        Self { dns_resolver }
-    }
-
-    pub fn with_proxy(&self, proxy_addr: (Host<Arc<str>>, NonZeroU16)) -> TlsProxyConnector {
-        let Self { dns_resolver } = self;
-        TlsProxyConnector::new(dns_resolver.clone(), proxy_addr)
-    }
-}
 
 impl Connector<TcpRoute<IpAddr>, ()> for StatelessTcp {
     type Connection = TcpStream;
@@ -258,156 +203,6 @@ fn ssl_config(
     Ok(ssl.build().configure()?)
 }
 
-async fn connect_tls<S: AsyncDuplexStream>(
-    transport: S,
-    connection_params: &TransportConnectionParams,
-    alpn: Alpn,
-    min_protocol_version: Option<boring_signal::ssl::SslVersion>,
-    log_tag: Arc<str>,
-) -> Result<SslStream<S>, TransportConnectError> {
-    let route = TlsRouteFragment {
-        root_certs: connection_params.certs.clone(),
-        sni: Host::Domain(Arc::clone(&connection_params.sni)),
-        alpn: Some(alpn),
-        min_protocol_version,
-    };
-
-    StatelessTls.connect_over(transport, route, log_tag).await
-}
-
-async fn connect_tcp(
-    dns_resolver: &DnsResolver,
-    route_type: RouteType,
-    host: Host<&str>,
-    port: NonZeroU16,
-    log_tag: Arc<str>,
-) -> Result<StreamAndInfo<TcpStream>, TransportConnectError> {
-    let dns_lookup = match host {
-        Host::Ip(ip) => {
-            let (ipv4, ipv6) = match ip {
-                std::net::IpAddr::V4(v4) => (vec![v4], vec![]),
-                std::net::IpAddr::V6(v6) => (vec![], vec![v6]),
-            };
-            crate::dns::lookup_result::LookupResult {
-                source: crate::DnsSource::Static,
-                ipv4,
-                ipv6,
-            }
-        }
-        Host::Domain(domain) => dns_resolver
-            .lookup_ip(domain)
-            .await
-            .map_err(|_| TransportConnectError::DnsError)?,
-    };
-
-    if dns_lookup.is_empty() {
-        return Err(TransportConnectError::DnsError);
-    }
-
-    let dns_source = dns_lookup.source();
-
-    // The idea is to go through the list of candidate IP addresses
-    // and to attempt a connection to each of them, giving each one a `CONNECTION_ATTEMPT_DELAY` headstart
-    // before moving on to the next candidate.
-    // The process stops once we have a successful connection.
-
-    // First, for each resolved IP address, constructing a future
-    // that incorporates the delay based on its position in the list.
-    // This way we can start all futures at once and simply wait for the first one to complete successfully.
-    let connector = StatelessTcp;
-    let staggered_futures = dns_lookup.into_iter().enumerate().map(|(idx, ip)| {
-        let delay = TCP_CONNECTION_ATTEMPT_DELAY * idx.try_into().unwrap();
-        let connector = &connector;
-        let log_tag = log_tag.clone();
-        async move {
-            if !delay.is_zero() {
-                tokio::time::sleep(delay).await;
-            }
-            let route = TcpRoute { address: ip, port };
-            connector
-                .connect(route, log_tag)
-                .inspect_err(|e| {
-                    log::debug!("failed to connect to IP [{ip}] with an error: {e:?}");
-                })
-                .await
-                .map(|r| {
-                    log::debug!("successfully connected to IP [{ip}]");
-                    StreamAndInfo(
-                        r,
-                        ServiceConnectionInfo {
-                            route_type,
-                            dns_source,
-                            address: ip.into(),
-                        },
-                    )
-                })
-        }
-    });
-
-    first_ok(staggered_futures)
-        .await
-        .ok_or(TransportConnectError::TcpConnectionFailed)
-}
-
-#[async_trait]
-impl TransportConnector for TcpSslConnector {
-    type Stream = TcpSslConnectorStream;
-
-    async fn connect(
-        &self,
-        connection_params: &TransportConnectionParams,
-        alpn: Alpn,
-    ) -> Result<StreamAndInfo<Self::Stream>, TransportConnectError> {
-        let Self {
-            dns_resolver,
-            proxy,
-        } = self;
-        let proxy = proxy
-            .as_ref()
-            .map_err(|InvalidProxyConfig| TransportConnectError::InvalidConfiguration)?;
-
-        let stream_and_info = match proxy {
-            None => {
-                let stream_and_info = DirectConnector {
-                    dns_resolver: dns_resolver.clone(),
-                }
-                .connect(connection_params, alpn)
-                .await?;
-
-                stream_and_info.map_stream(TcpSslConnectorStream::Direct)
-            }
-            Some(ConnectionProxyConfig::Tcp(TcpProxy {
-                proxy_host,
-                proxy_port,
-            })) => {
-                let connector = TlsProxyConnector::new_tcp(
-                    dns_resolver.clone(),
-                    (proxy_host.clone(), *proxy_port),
-                );
-                let stream_and_info = connector.connect(connection_params, alpn).await?;
-                stream_and_info.map_stream(TcpSslConnectorStream::Proxy)
-            }
-            Some(ConnectionProxyConfig::Tls(TlsProxy {
-                proxy_host,
-                proxy_port,
-                proxy_certs,
-            })) => {
-                let mut connector =
-                    TlsProxyConnector::new(dns_resolver.clone(), (proxy_host.clone(), *proxy_port));
-                connector.proxy_certs = proxy_certs.clone();
-                let stream_and_info = connector.connect(connection_params, alpn).await?;
-                stream_and_info.map_stream(TcpSslConnectorStream::Proxy)
-            }
-            Some(ConnectionProxyConfig::Socks(_) | ConnectionProxyConfig::Http(_)) => {
-                log::warn!("SOCKS and HTTP proxies are not supported by TransportConnector");
-                return Err(TransportConnectError::InvalidConfiguration);
-            }
-        };
-
-        Ok(stream_and_info)
-    }
-}
-
 #[cfg(test)]
 pub(crate) mod testutil {
     use std::future::Future;
@@ -425,11 +220,11 @@ pub(crate) mod testutil {
     });
 
     const FAKE_RESPONSE: &str = "Hello there";
-    /// Starts an HTTP server listening on `::1` that responds with 200 and
+    /// Starts an HTTPS server listening on `::1` that responds with 200 and
     /// [`FAKE_RESPONSE`].
     ///
     /// Returns the address of the server and a [`Future`] that runs it.
-    pub(crate) fn localhost_http_server() -> (SocketAddr, impl Future<Output = ()>) {
+    pub(crate) fn localhost_https_server() -> (SocketAddr, impl Future<Output = ()>) {
         let filter = warp::any().map(|| FAKE_RESPONSE);
         let server = warp::serve(filter)
             .tls()
@@ -462,107 +257,5 @@ pub(crate) mod testutil {
 
         assert_eq!(lines.first(), Some("HTTP/1.1 200 OK").as_ref(), "{lines:?}");
         assert_eq!(lines.last(), Some(FAKE_RESPONSE).as_ref(), "{lines:?}");
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use std::borrow::Cow;
-    use std::collections::HashMap;
-    use std::net::Ipv6Addr;
-
-    use assert_matches::assert_matches;
-    use test_case::test_case;
-
-    use super::testutil::*;
-    use super::*;
-    use crate::dns::lookup_result::LookupResult;
-    use crate::host::Host;
-
-    #[test_case(true; "resolved hostname")]
-    #[test_case(false; "by IP")]
-    #[tokio::test]
-    async fn connect_to_server(use_hostname: bool) {
-        let (addr, server) = localhost_http_server();
-        let _server_handle = tokio::spawn(server);
-
-        let connector = DirectConnector::new(DnsResolver::new_from_static_map(HashMap::from([(
-            SERVER_HOSTNAME,
-            LookupResult::localhost(),
-        )])));
-        let connection_params = TransportConnectionParams {
-            sni: SERVER_HOSTNAME.into(),
-            tcp_host: match use_hostname {
-                true => Host::Domain(SERVER_HOSTNAME.into()),
-                false => addr.ip().into(),
-            },
-            port: addr.port().try_into().expect("bound port"),
-            certs: RootCertificates::FromDer(Cow::Borrowed(SERVER_CERTIFICATE.cert.der())),
-        };
-
-        let StreamAndInfo(stream, info) = connector
-            .connect(&connection_params, Alpn::Http1_1)
-            .await
-            .expect("can connect");
-
-        assert_eq!(
-            info,
-            ServiceConnectionInfo {
-                address: Host::Ip(Ipv6Addr::LOCALHOST.into()),
-                dns_source: crate::DnsSource::Static,
-                route_type: RouteType::Direct,
-            }
-        );
-
-        make_http_request_response_over(stream).await
-    }
-
-    #[tokio::test]
-    async fn connect_through_invalid() {
-        let (addr, server) = localhost_http_server();
-        let _server_handle = tokio::spawn(server);
-
-        let connector = TcpSslConnector {
-            dns_resolver: DnsResolver::new_from_static_map(HashMap::from([(
-                SERVER_HOSTNAME,
-                LookupResult::localhost(),
-            )])),
-            proxy: Err(InvalidProxyConfig),
-        };
-        let connection_params = TransportConnectionParams {
-            sni: SERVER_HOSTNAME.into(),
-            tcp_host: Host::Ip(addr.ip()),
-            port: addr.port().try_into().expect("bound port"),
-            certs: RootCertificates::FromDer(Cow::Borrowed(SERVER_CERTIFICATE.cert.der())),
-        };
-
-        match connector.connect(&connection_params, Alpn::Http1_1).await {
-            Ok(_) => {
-                // We can't use expect_err() or assert_matches! because the success case isn't Debug.
-                panic!("should have failed");
-            }
-            Err(e) => {
-                assert_matches!(e, TransportConnectError::InvalidConfiguration);
-            }
-        }
-    }
-
-    #[tokio::test]
-    async fn test_tcp_connection_success() {
-        // Create a local server that we can connect to
-        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
-        let addr = listener.local_addr().unwrap();
-        let _server_handle = tokio::spawn(async move {
-            let (_, _) = listener.accept().await.unwrap();
-        });
-
-        let connector = StatelessTcp;
-        let route = TcpRoute {
-            address: addr.ip(),
-            port: NonZeroU16::new(addr.port()).unwrap(),
-        };
-
-        let result = connector.connect_over((), route, Arc::from("test")).await;
-        assert!(result.is_ok(), "TCP connection should succeed");
     }
 }

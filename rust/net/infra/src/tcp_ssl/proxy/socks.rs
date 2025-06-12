@@ -4,30 +4,23 @@
 //
 
 use std::borrow::Cow;
-use std::fmt::Display;
 use std::future::Future;
 use std::net::IpAddr;
 use std::num::NonZeroU16;
 use std::sync::Arc;
 use std::time::Duration;
 
-use async_trait::async_trait;
 use auto_enums::enum_derive;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::net::TcpStream;
-use tokio_boring_signal::SslStream;
 use tokio_socks::tcp::{Socks4Stream, Socks5Stream};
 use tokio_socks::TargetAddr;
 
-use crate::dns::lookup_result::LookupResult;
 use crate::dns::DnsResolver;
 use crate::errors::TransportConnectError;
 use crate::host::Host;
 use crate::route::{Connector, ConnectorExt as _, SocksRoute, TcpRoute};
-use crate::{
-    Alpn, Connection, DnsSource, RouteType, ServiceConnectionInfo, StreamAndInfo,
-    TransportConnectionParams, TransportConnector,
-};
+use crate::Connection;
 
 pub(crate) const LONG_FULL_CONNECT_THRESHOLD: Duration = super::LONG_TCP_HANDSHAKE_THRESHOLD
     .saturating_add(super::LONG_TLS_HANDSHAKE_THRESHOLD)
@@ -60,108 +53,6 @@ pub enum Protocol {
 pub enum SocksStream<S> {
     Socks4(Socks4Stream<S>),
     Socks5(Socks5Stream<S>),
-}
-
-#[async_trait]
-impl TransportConnector for SocksConnector {
-    type Stream = SslStream<SocksStream<TcpStream>>;
-
-    async fn connect(
-        &self,
-        connection_params: &TransportConnectionParams,
-        alpn: Alpn,
-    ) -> Result<StreamAndInfo<Self::Stream>, TransportConnectError> {
-        let Self {
-            resolve_hostname_locally,
-            protocol,
-            proxy_host,
-            proxy_port,
-            dns_resolver,
-        } = self;
-
-        log::info!("establishing connection to host over SOCKS proxy");
-        log::debug!(
-            "establishing connection to {} over SOCKS proxy",
-            connection_params.tcp_host
-        );
-
-        let which_protocol = ProtocolKind::from(protocol);
-        log::info!("connecting to {which_protocol:?} proxy over TCP");
-        log::debug!("connecting to {which_protocol:?} proxy at {proxy_host}:{proxy_port} over TCP");
-
-        let log_tag: Arc<str> = "SocksConnector".into();
-
-        let StreamAndInfo(tcp_stream, remote_address) = crate::tcp_ssl::connect_tcp(
-            dns_resolver,
-            RouteType::SocksProxy,
-            proxy_host.as_deref(),
-            *proxy_port,
-            log_tag.clone(),
-        )
-        .await?;
-        let is_ipv6 = tcp_stream
-            .peer_addr()
-            .expect("can retrieve addr info")
-            .is_ipv6();
-
-        let (target, dns_source) = match &connection_params.tcp_host {
-            Host::Ip(ip) => (
-                TargetAddr::Ip((*ip, connection_params.port.get()).into()),
-                DnsSource::Static,
-            ),
-            Host::Domain(host) if *resolve_hostname_locally => {
-                let LookupResult { source, ipv4, ipv6 } = dns_resolver
-                    .lookup_ip(host)
-                    .await
-                    .map_err(|_| TransportConnectError::DnsError)?;
-                let ipv4 = ipv4.into_iter().map(IpAddr::from);
-                let ipv6 = ipv6.into_iter().map(IpAddr::from);
-
-                // Prefer the same address family as is being used to connect to the proxy.
-                let address = if is_ipv6 {
-                    ipv6.chain(ipv4).next()
-                } else {
-                    ipv4.chain(ipv6).next()
-                }
-                .ok_or(TransportConnectError::DnsError)?;
-                (
-                    TargetAddr::Ip((address, connection_params.port.get()).into()),
-                    source,
-                )
-            }
-            Host::Domain(host) => (
-                TargetAddr::Domain(Cow::Borrowed(host), connection_params.port.get()),
-                DnsSource::Delegated,
-            ),
-        };
-
-        log::info!("performing proxy handshake");
-        log::debug!("performing proxy handshake with {target:?}");
-
-        let socks_stream = protocol
-            .connect_to_proxy(tcp_stream, target)
-            .await
-            .map_err(|e| {
-                let e = ErrorForLog(e);
-                log::warn!("proxy connection failed: {e}");
-                TransportConnectError::ProxyProtocol
-            })?;
-
-        log::debug!("connecting TLS through proxy");
-        let stream =
-            crate::tcp_ssl::connect_tls(socks_stream, connection_params, alpn, None, log_tag)
-                .await?;
-
-        log::info!("connection through SOCKS proxy established successfully");
-        Ok(StreamAndInfo(
-            stream,
-            ServiceConnectionInfo {
-                route_type: RouteType::SocksProxy,
-                dns_source,
-                address: remote_address.address,
-            },
-        ))
-    }
 }
 
 impl Connector<SocksRoute<IpAddr>, ()> for super::StatelessProxied {
@@ -264,60 +155,21 @@ impl Protocol {
     }
 }
 
-struct ErrorForLog(tokio_socks::Error);
-
-impl Display for ErrorForLog {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        use tokio_socks::Error;
-        match &self.0 {
-            Error::Io(e) => write!(f, "IO error: {}", e.kind()),
-            Error::ParseError(infallible) => match *infallible {},
-            err_with_static_msg @ (Error::InvalidTargetAddress(msg)
-            | Error::InvalidAuthValues(msg)) => {
-                // Prove the lifetime is 'static, so this doesn't contain user data.
-                let _msg: &'static str = msg;
-                Display::fmt(err_with_static_msg, f)
-            }
-            e @ (Error::ProxyServerUnreachable
-            | Error::InvalidResponseVersion
-            | Error::NoAcceptableAuthMethods
-            | Error::UnknownAuthMethod
-            | Error::GeneralSocksServerFailure
-            | Error::ConnectionNotAllowedByRuleset
-            | Error::NetworkUnreachable
-            | Error::HostUnreachable
-            | Error::ConnectionRefused
-            | Error::TtlExpired
-            | Error::CommandNotSupported
-            | Error::AddressTypeNotSupported
-            | Error::UnknownError
-            | Error::InvalidReservedByte
-            | Error::UnknownAddressType
-            | Error::AuthorizationRequired
-            | Error::IdentdAuthFailure
-            | Error::InvalidUserIdAuthFailure) => Display::fmt(e, f),
-            e @ Error::PasswordAuthFailure(code) => {
-                let _code: &u8 = code;
-                Display::fmt(e, f)
-            }
-        }
-    }
-}
-
 #[cfg(test)]
 mod test {
-    use std::collections::HashMap;
     use std::sync::Arc;
 
     use assert_matches::assert_matches;
+    use async_trait::async_trait;
     use futures_util::{select, FutureExt as _};
     use test_case::test_matrix;
     use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
     use tokio::join;
 
     use super::*;
-    use crate::host::Host;
-    use crate::tcp_ssl::proxy::testutil::{TcpServer, TlsServer, PROXY_HOSTNAME};
+    use crate::route::ProxyTarget;
+    use crate::tcp_ssl::proxy::testutil::{TcpServer, TlsServer};
+    use crate::tcp_ssl::proxy::StatelessProxied;
     use crate::tcp_ssl::testutil::{SERVER_CERTIFICATE, SERVER_HOSTNAME};
 
     /// Authentication method.
@@ -416,33 +268,18 @@ mod test {
         IpTarget,
     }
 
-    #[derive(Copy, Clone)]
-    enum ResolveHostname {
-        ResolveLocally,
-        ResolveRemotely,
-    }
     use Auth::*;
-    use ResolveHostname::*;
     use TargetAddressType::*;
 
     #[test_matrix(
         (Authenticated, Unauthenticated),
-        (HostnameTarget, IpTarget),
-        (ResolveLocally, ResolveRemotely)
+        (IpTarget, HostnameTarget)
     )]
     #[tokio::test]
-    async fn socks5_server_basic_e2e(
-        auth: Auth,
-        target_addr: TargetAddressType,
-        resolve_hostname: ResolveHostname,
-    ) {
+    async fn socks5_server_basic_e2e(auth: Auth, target_addr: TargetAddressType) {
         let proxy_credentials = match auth {
             Authenticated => Some((VALID_CREDS.0.to_owned(), VALID_CREDS.1.to_owned())),
             Unauthenticated => None,
-        };
-        let resolve_hostname_locally = match resolve_hostname {
-            ResolveLocally => true,
-            ResolveRemotely => false,
         };
         let expect_password = proxy_credentials.is_some();
 
@@ -455,46 +292,39 @@ mod test {
             .into(),
         );
 
-        let tls_server = TlsServer::new(TcpServer::bind_localhost(), &SERVER_CERTIFICATE);
+        let tcp_server = TcpServer::bind_localhost();
         let target_host = match target_addr {
-            HostnameTarget => Host::Domain(SERVER_HOSTNAME.into()),
-            IpTarget => Host::Ip(tls_server.tcp.listen_addr.ip()),
-        };
-        let expected_client_target_addr = match (target_addr, resolve_hostname) {
-            (HostnameTarget, ResolveRemotely) => socks5_server::proto::Address::DomainAddress(
-                target_host.to_string().into(),
-                tls_server.tcp.listen_addr.port(),
-            ),
-            _ => socks5_server::proto::Address::SocketAddress(tls_server.tcp.listen_addr),
-        };
-        let expected_dns_source = match (target_addr, resolve_hostname) {
-            (HostnameTarget, ResolveLocally) => DnsSource::Static,
-            (HostnameTarget, ResolveRemotely) => DnsSource::Delegated,
-            (IpTarget, _) => DnsSource::Static,
-        };
-
-        let connector = SocksConnector {
-            proxy_host: Host::Domain(PROXY_HOSTNAME.into()),
-            proxy_port: NonZeroU16::new(proxy.0.local_addr().unwrap().port()).unwrap(),
-            protocol: Protocol::Socks5 {
-                username_password: proxy_credentials.clone(),
+            HostnameTarget => ProxyTarget::ResolvedRemotely {
+                name: SERVER_HOSTNAME.into(),
             },
-            resolve_hostname_locally,
-            dns_resolver: DnsResolver::new_from_static_map(HashMap::from([
-                (PROXY_HOSTNAME, LookupResult::localhost()),
-                (SERVER_HOSTNAME, LookupResult::localhost()),
-            ])),
+            IpTarget => ProxyTarget::ResolvedLocally(tcp_server.listen_addr.ip()),
+        };
+        let expected_client_target_addr = match target_addr {
+            HostnameTarget => socks5_server::proto::Address::DomainAddress(
+                SERVER_HOSTNAME.into(),
+                tcp_server.listen_addr.port(),
+            ),
+            IpTarget => socks5_server::proto::Address::SocketAddress(tcp_server.listen_addr),
+        };
+        let proxy_addr = {
+            let local_addr = proxy.0.local_addr().unwrap();
+            TcpRoute {
+                address: local_addr.ip(),
+                port: local_addr.port().try_into().unwrap(),
+            }
         };
 
-        let connection_params = TransportConnectionParams {
-            sni: SERVER_HOSTNAME.into(),
-            tcp_host: target_host,
-            port: NonZeroU16::new(tls_server.tcp.listen_addr.port()).unwrap(),
-            certs: crate::certs::RootCertificates::FromDer(std::borrow::Cow::Borrowed(
-                SERVER_CERTIFICATE.cert.der(),
-            )),
-        };
-        let mut connect = connector.connect(&connection_params, Alpn::Http1_1);
+        let mut connect = std::pin::pin!(StatelessProxied.connect(
+            SocksRoute {
+                proxy: proxy_addr,
+                target_addr: target_host,
+                target_port: tcp_server.listen_addr.port().try_into().unwrap(),
+                protocol: Protocol::Socks5 {
+                    username_password: proxy_credentials.clone(),
+                },
+            },
+            "socks test".into(),
+        ));
 
         // Use `select!` to drive both futures since they both need to make
         // progress: the client needs to start connecting, and the proxy needs
@@ -505,7 +335,7 @@ mod test {
         };
 
         // Start a task to handle the proxying. The proxy will connect
-        // internally to the TLS server, then proxy until one or the other end
+        // internally to the TCP server, then proxy until one or the other end
         // of the connection is closed.
         let proxy_task = tokio::spawn(async move {
             let (after_auth, auth_outcome) = proxy_server_connection
@@ -517,37 +347,25 @@ mod test {
             let mut connection = connect
                 .reply(
                     socks5_server::proto::Reply::Succeeded,
-                    socks5_server::proto::Address::SocketAddress(tls_server.tcp.listen_addr),
+                    socks5_server::proto::Address::SocketAddress(tcp_server.listen_addr),
                 )
                 .await
                 .expect("can reply");
 
-            let mut proxy_to_tls = tokio::net::TcpStream::connect(tls_server.tcp.listen_addr)
+            let mut proxy_to_server = tokio::net::TcpStream::connect(tcp_server.listen_addr)
                 .await
                 .expect("can connect to TCP server");
 
-            tokio::io::copy_bidirectional(&mut connection, &mut proxy_to_tls)
+            tokio::io::copy_bidirectional(&mut connection, &mut proxy_to_server)
                 .await
                 .expect("ends gracefully");
 
             (auth_outcome, address)
         });
 
-        let (
-            (mut server_connection, _server_addr),
-            StreamAndInfo(mut client_connection, client_info),
-        ) = join!(
-            tls_server.accept(),
+        let ((mut server_connection, _server_addr), mut client_connection) = join!(
+            tcp_server.accept(),
             connect.map(|r| r.expect("connected successfully"))
-        );
-
-        assert_eq!(
-            client_info,
-            ServiceConnectionInfo {
-                route_type: RouteType::SocksProxy,
-                dns_source: expected_dns_source,
-                address: Host::Ip(tls_server.tcp.listen_addr.ip())
-            }
         );
 
         // If we send on the client connection, it should get received on the server connection.
@@ -595,29 +413,27 @@ mod test {
         let tls_server = TlsServer::new(TcpServer::bind_localhost(), &SERVER_CERTIFICATE);
 
         let proxy_credentials = ("abc".to_owned(), "password".to_owned());
+        let proxy_addr = {
+            let local_addr = proxy.0.local_addr().unwrap();
+            TcpRoute {
+                address: local_addr.ip(),
+                port: local_addr.port().try_into().unwrap(),
+            }
+        };
 
-        let connector = SocksConnector {
-            proxy_host: Host::Domain("localhost".into()),
-            proxy_port: NonZeroU16::new(proxy.0.local_addr().unwrap().port()).unwrap(),
-            protocol: Protocol::Socks5 {
-                username_password: Some(proxy_credentials.clone()),
+        let connect = std::pin::pin!(StatelessProxied.connect(
+            SocksRoute {
+                proxy: proxy_addr,
+                target_addr: ProxyTarget::ResolvedRemotely {
+                    name: SERVER_HOSTNAME.into()
+                },
+                target_port: tls_server.tcp.listen_addr.port().try_into().unwrap(),
+                protocol: Protocol::Socks5 {
+                    username_password: Some(proxy_credentials.clone()),
+                },
             },
-            resolve_hostname_locally: true,
-            dns_resolver: DnsResolver::new_from_static_map(HashMap::from([
-                (SERVER_HOSTNAME, LookupResult::localhost()),
-                ("localhost", LookupResult::localhost()),
-            ])),
-        };
-
-        let connection_params = TransportConnectionParams {
-            sni: SERVER_HOSTNAME.into(),
-            tcp_host: Host::Domain(SERVER_HOSTNAME.into()),
-            port: NonZeroU16::new(tls_server.tcp.listen_addr.port()).unwrap(),
-            certs: crate::certs::RootCertificates::FromDer(std::borrow::Cow::Borrowed(
-                SERVER_CERTIFICATE.cert.der(),
-            )),
-        };
-        let connect = connector.connect(&connection_params, Alpn::Http1_1);
+            "socks test".into(),
+        ));
 
         let proxy_accept_and_negotiate = async {
             let (_connection, auth_outcome) = proxy

@@ -180,12 +180,13 @@ mod test {
     use super::*;
     use crate::tcp_ssl::proxy::testutil::PROXY_CERTIFICATE;
     use crate::tcp_ssl::testutil::{
-        localhost_http_server, make_http_request_response_over, SERVER_CERTIFICATE, SERVER_HOSTNAME,
+        localhost_https_server, make_http_request_response_over, SERVER_CERTIFICATE,
+        SERVER_HOSTNAME,
     };
 
     #[tokio::test]
     async fn verify_certificate_via_rustls() {
-        let (addr, server) = localhost_http_server();
+        let (addr, server) = localhost_https_server();
         let _server_handle = tokio::spawn(server);
 
         let mut root_cert_store = RootCertStore::empty();
@@ -218,7 +219,7 @@ mod test {
 
     #[tokio::test]
     async fn verify_certificate_failure_via_rustls() {
-        let (addr, server) = localhost_http_server();
+        let (addr, server) = localhost_https_server();
         let _server_handle = tokio::spawn(server);
 
         let mut root_cert_store = RootCertStore::empty();

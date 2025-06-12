@@ -7,7 +7,7 @@ use bytes::Bytes;
 use libsignal_net_infra::ws::WebSocketServiceError;
 use libsignal_protocol::Timestamp;
 
-use crate::chat::{ws2, RequestProto, SendError};
+use crate::chat::{ws, RequestProto, SendError};
 use crate::env::TIMESTAMP_HEADER_NAME;
 
 pub type ResponseEnvelopeSender =
@@ -65,28 +65,28 @@ pub enum ServerEventError {
     UnrecognizedPath(String),
 }
 
-impl TryFrom<ws2::ListenerEvent> for ServerEvent {
+impl TryFrom<ws::ListenerEvent> for ServerEvent {
     type Error = ServerEventError;
 
-    fn try_from(value: ws2::ListenerEvent) -> Result<Self, Self::Error> {
+    fn try_from(value: ws::ListenerEvent) -> Result<Self, Self::Error> {
         match value {
-            ws2::ListenerEvent::ReceivedAlerts(alerts) => Ok(Self::Alerts(alerts)),
+            ws::ListenerEvent::ReceivedAlerts(alerts) => Ok(Self::Alerts(alerts)),
 
-            ws2::ListenerEvent::ReceivedMessage(proto, responder) => {
+            ws::ListenerEvent::ReceivedMessage(proto, responder) => {
                 convert_received_message(proto, || {
                     Box::new(move |status| Ok(responder.send_response(status)?))
                 })
             }
 
-            ws2::ListenerEvent::Finished(reason) => Ok(ServerEvent::Stopped(match reason {
-                Ok(ws2::FinishReason::LocalDisconnect) => DisconnectCause::LocalDisconnect,
-                Ok(ws2::FinishReason::RemoteDisconnect) => DisconnectCause::Error(
+            ws::ListenerEvent::Finished(reason) => Ok(ServerEvent::Stopped(match reason {
+                Ok(ws::FinishReason::LocalDisconnect) => DisconnectCause::LocalDisconnect,
+                Ok(ws::FinishReason::RemoteDisconnect) => DisconnectCause::Error(
                     SendError::WebSocket(WebSocketServiceError::ChannelClosed),
                 ),
-                Err(ws2::FinishError::Unknown) => DisconnectCause::Error(SendError::WebSocket(
+                Err(ws::FinishError::Unknown) => DisconnectCause::Error(SendError::WebSocket(
                     WebSocketServiceError::Other("unexpected exit"),
                 )),
-                Err(ws2::FinishError::Error(e)) => DisconnectCause::Error(e.into()),
+                Err(ws::FinishError::Error(e)) => DisconnectCause::Error(e.into()),
             })),
         }
     }

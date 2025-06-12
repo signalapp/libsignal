@@ -22,9 +22,7 @@ use libsignal_net::infra::dns::DnsResolver;
 use libsignal_net::infra::errors::TransportConnectError;
 use libsignal_net::infra::host::Host;
 use libsignal_net::infra::route::{ConnectorFactory, DirectOrProxyProvider, DEFAULT_HTTPS_PORT};
-use libsignal_net::infra::{
-    AsyncDuplexStream, DnsSource, EnableDomainFronting, RECOMMENDED_WS2_CONFIG,
-};
+use libsignal_net::infra::{AsyncDuplexStream, EnableDomainFronting, RECOMMENDED_WS2_CONFIG};
 use libsignal_net_infra::route::{Connector, TransportRoute, UsePreconnect};
 use libsignal_net_infra::testutil::no_network_change_events;
 use tokio::time::Duration;
@@ -225,7 +223,7 @@ impl FakeDeps {
                 None,
             ),
             &UserAgent::with_libsignal_version("test"),
-            chat::ws2::Config {
+            chat::ws::Config {
                 local_idle_timeout,
                 remote_idle_timeout: remote_idle_ping_timeout,
                 initial_request_id: 0,
@@ -272,10 +270,7 @@ fn fake_ips_for_names(domain_config: &DomainConfig) -> HashMap<&'static str, Loo
         .map(|(name, index)| {
             let mut segments = BASE_IP_ADDR.segments();
             *segments.last_mut().unwrap() = index;
-            (
-                name,
-                LookupResult::new(DnsSource::Test, vec![], vec![segments.into()]),
-            )
+            (name, LookupResult::new(vec![], vec![segments.into()]))
         })
         .collect()
 }

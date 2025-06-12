@@ -639,7 +639,7 @@ mod test {
         HAPPY_EYEBALLS_DELAY,
     };
     use libsignal_net_infra::testutil::no_network_change_events;
-    use libsignal_net_infra::{Alpn, DnsSource, RouteType};
+    use libsignal_net_infra::{Alpn, RouteType};
     use nonzero_ext::nonzero;
 
     use super::*;
@@ -713,7 +713,7 @@ mod test {
         });
         let resolver = DnsResolver::new_from_static_map(HashMap::from([(
             FAKE_HOST_NAME,
-            LookupResult::new(DnsSource::Static, vec![ip_addr!(v4, "192.0.2.1")], vec![]),
+            LookupResult::new(vec![ip_addr!(v4, "192.0.2.1")], vec![]),
         )]));
 
         let fake_transport_connector =
@@ -761,7 +761,7 @@ mod test {
         let ws_connector = crate::infra::ws::Stateless;
         let resolver = DnsResolver::new_from_static_map(HashMap::from([(
             FAKE_HOST_NAME,
-            LookupResult::new(DnsSource::Static, vec![ip_addr!(v4, "192.0.2.1")], vec![]),
+            LookupResult::new(vec![ip_addr!(v4, "192.0.2.1")], vec![]),
         )]));
 
         let always_hangs_connector = ConnectFn(|(), _, _| {
@@ -818,7 +818,7 @@ mod test {
         let ws_connector = crate::infra::ws::Stateless;
         let resolver = DnsResolver::new_from_static_map(HashMap::from([(
             FAKE_HOST_NAME,
-            LookupResult::new(DnsSource::Static, vec![ip_addr!(v4, "192.0.2.1")], vec![]),
+            LookupResult::new(vec![ip_addr!(v4, "192.0.2.1")], vec![]),
         )]));
 
         let client_abort_connector = ConnectFn(|(), _, _| {
@@ -881,7 +881,7 @@ mod test {
         let good_ip = ip_addr!(v4, "192.0.2.2");
         let resolver = DnsResolver::new_from_static_map(HashMap::from([(
             FAKE_HOST_NAME,
-            LookupResult::new(DnsSource::Static, vec![bad_ip, good_ip], vec![]),
+            LookupResult::new(vec![bad_ip, good_ip], vec![]),
         )]));
 
         let fake_transport_connector = ConnectFn(move |(), route: TransportRoute, _| {
@@ -953,7 +953,7 @@ mod test {
         let ws_connector = ConnectFn(|(), route, _log_tag| std::future::ready(Ok(route)));
         let resolver = DnsResolver::new_from_static_map(HashMap::from([(
             FAKE_HOST_NAME,
-            LookupResult::new(DnsSource::Static, vec![ip_addr!(v4, "192.0.2.1")], vec![]),
+            LookupResult::new(vec![ip_addr!(v4, "192.0.2.1")], vec![]),
         )]));
 
         let attempts_by_host = Mutex::new(HashMap::<Host<_>, u32>::new());

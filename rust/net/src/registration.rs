@@ -333,7 +333,7 @@ mod testutil {
     use tokio::sync::{mpsc, oneshot};
 
     use crate::chat::fake::FakeChatRemote;
-    use crate::chat::ws2::ListenerEvent;
+    use crate::chat::ws::ListenerEvent;
     use crate::chat::{ChatConnection, ConnectError as ChatConnectError};
     use crate::registration::ConnectChat;
 
@@ -349,7 +349,7 @@ mod testutil {
             Self(Some(value))
         }
 
-        pub(super) fn into_listener(mut self) -> crate::chat::ws2::EventListener
+        pub(super) fn into_listener(mut self) -> crate::chat::ws::EventListener
         where
             T: Send + 'static,
         {
