@@ -24,23 +24,6 @@ no-clearly-defined = true
 # in a fraction of the time.
 max-depth = 1
 
-# List every target we ship, just in case some dependencies are platform-gated.
-targets = [
-    "aarch64-apple-darwin",
-    "aarch64-pc-windows-msvc",
-    "aarch64-unknown-linux-gnu",
-    "x86_64-apple-darwin",
-    "x86_64-pc-windows-msvc",
-    "x86_64-unknown-linux-gnu",
-
-    "aarch64-apple-ios",
-
-    "aarch64-linux-android",
-    "armv7-linux-androideabi",
-    "i686-linux-android",
-    "x86_64-linux-android",
-]
-
 workarounds = [
     "chrono",
     "prost",

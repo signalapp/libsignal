@@ -28,7 +28,7 @@
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
     "format": "p() { prettier ${@:- --write} '**/*.{css,js,json,md,scss,ts,tsx}' ../rust/bridge/node/bin/Native.d.ts.in; }; p",
     "format-check": "p() { prettier ${@:- --check} '**/*.{css,js,json,md,scss,ts,tsx}' ../rust/bridge/node/bin/Native.d.ts.in; }; p",
-    "prepack": "cp ../acknowledgments/acknowledgments.md dist"
+    "prepack": "cp ../acknowledgments/acknowledgments-desktop.md dist/acknowledgments.md"
   },
   "dependencies": {
     "node-gyp-build": "^4.8.0",

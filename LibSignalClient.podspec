@@ -20,7 +20,7 @@ Pod::Spec.new do |s|
   s.preserve_paths = [
     'swift/Sources/SignalFfi',
     'bin/fetch_archive.py',
-    'acknowledgments/acknowledgments.plist',
+    'acknowledgments/acknowledgments-ios.plist',
   ]
 
   s.pod_target_xcconfig = {

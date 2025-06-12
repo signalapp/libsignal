@@ -149,8 +149,9 @@ task makeJniLibraries(type:Exec) {
 }
 
 task collectAssets(type:Copy) {
-    from('../../acknowledgments/acknowledgments.md') {
-        rename 'acknowledgments.md', 'libsignal.md'
+    from('../../acknowledgments') {
+        include 'acknowledgments-android*.md'
+        rename 'acknowledgments-android(.*)[.]md', 'libsignal$1.md'
     }
     into 'src/main/assets/acknowledgments'
 }
