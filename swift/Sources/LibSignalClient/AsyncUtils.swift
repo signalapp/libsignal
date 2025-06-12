@@ -76,11 +76,7 @@ extension SignalCPromiseOwnedBufferOfc_uchar: PromiseStruct {
 ///
 /// Not for direct use, see Completer instead.
 private class CompleterBase {
-#if compiler(>=6.0)
     typealias RawCompletion = @Sendable (_ error: SignalFfiErrorRef?, _ valuePtr: sending UnsafeRawPointer?) -> Void
-#else
-    typealias RawCompletion = @Sendable (_ error: SignalFfiErrorRef?, _ valuePtr: UnsafeRawPointer?) -> Void
-#endif
 
     let completeUnsafe: RawCompletion
 
@@ -124,11 +120,7 @@ private class Completer<Promise: PromiseStruct>: CompleterBase {
     /// You must ensure that either the callback is called, or the result is passed to
     /// ``cleanUpUncompletedPromiseStruct(_:)``.
     func makePromiseStruct() -> Promise {
-#if compiler(>=6.0)
         typealias RawPromiseCallback = @convention(c) (_ error: SignalFfiErrorRef?, _ value: sending UnsafeRawPointer?, _ context: UnsafeRawPointer?) -> Void
-#else
-        typealias RawPromiseCallback = @convention(c) (_ error: SignalFfiErrorRef?, _ value: UnsafeRawPointer?, _ context: UnsafeRawPointer?) -> Void
-#endif
         let completeOpaque: RawPromiseCallback = { error, value, context in
             let completer: CompleterBase = Unmanaged.fromOpaque(context!).takeRetainedValue()
             completer.completeUnsafe(error, value)
