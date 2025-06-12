@@ -3339,3 +3339,74 @@ fn test_pqr_state_empty_if_disabled() -> TestResult {
 
     Ok(())
 }
+
+#[test]
+fn test_pqr_state_and_message_contents_nonempty_if_enabled() -> TestResult {
+    async {
+        let mut csprng = OsRng.unwrap_err();
+
+        let alice_device_id: DeviceId = 1.into();
+        let bob_device_id: DeviceId = 1.into();
+
+        let alice_address = ProtocolAddress::new("+14151111111".to_owned(), alice_device_id);
+        let bob_address = ProtocolAddress::new("+14151111112".to_owned(), bob_device_id);
+
+        let mut alice_store_builder = TestStoreBuilder::new();
+        alice_store_builder.add_pre_key(IdChoice::Next);
+        alice_store_builder.add_signed_pre_key(IdChoice::Next);
+        alice_store_builder.add_kyber_pre_key(IdChoice::Next);
+        let mut bob_store_builder = TestStoreBuilder::new();
+        bob_store_builder.add_pre_key(IdChoice::Next);
+        bob_store_builder.add_signed_pre_key(IdChoice::Next);
+        bob_store_builder.add_kyber_pre_key(IdChoice::Next);
+
+        let bob_pre_key_bundle = bob_store_builder.make_bundle_with_latest_keys(bob_device_id);
+
+        let alice_store = &mut alice_store_builder.store;
+        let bob_store = &mut bob_store_builder.store;
+
+        process_prekey_bundle(
+            &bob_address,
+            &mut alice_store.session_store,
+            &mut alice_store.identity_store,
+            &bob_pre_key_bundle,
+            SystemTime::now(),
+            &mut csprng,
+            UsePQRatchet::Yes,
+        )
+        .await?;
+
+        let msg = encrypt(alice_store, &bob_address, "msg1").await?;
+        assert_matches!(&msg, CiphertextMessage::PreKeySignalMessage(m) if !m.message().pq_ratchet().is_empty());
+        decrypt(bob_store, &alice_address, &msg, UsePQRatchet::Yes).await?;
+
+        let msg = encrypt(bob_store, &alice_address, "msg2").await?;
+        assert_matches!(&msg, CiphertextMessage::SignalMessage(m) if !m.pq_ratchet().is_empty());
+        decrypt(alice_store, &bob_address, &msg, UsePQRatchet::Yes).await?;
+
+        let msg = encrypt(alice_store, &bob_address, "msg3").await?;
+        assert_matches!(&msg, CiphertextMessage::SignalMessage(m) if !m.pq_ratchet().is_empty());
+
+        assert!(!alice_store
+            .session_store
+            .load_existing_sessions(&[&bob_address])?
+            .first()
+            .expect("should have Bob's address")
+            .current_pq_state()
+            .expect("should have Bob's PQ state")
+            .is_empty());
+
+        assert!(!bob_store
+            .session_store
+            .load_existing_sessions(&[&alice_address])?
+            .first()
+            .expect("should have Alice's address")
+            .current_pq_state()
+            .expect("should have Alice's PQ state")
+            .is_empty());
+
+        Ok(())
+    }
+    .now_or_never()
+    .unwrap()
+}
